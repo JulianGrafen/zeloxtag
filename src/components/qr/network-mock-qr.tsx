@@ -32,13 +32,19 @@ export function NetworkMockQr() {
     async function build() {
       try {
         let unclaimedUuid: string = MOCK_TAG_UUIDS.unclaimed;
-        const response = await fetch("/api/tags/next-unclaimed");
-        const payload = (await response.json().catch(() => null)) as {
-          ok?: boolean;
-          uuid?: string | null;
-        } | null;
-        if (payload?.ok && payload.uuid) {
-          unclaimedUuid = payload.uuid;
+        try {
+          const response = await fetch("/api/tags/next-unclaimed", {
+            cache: "no-store",
+          });
+          const payload = (await response.json().catch(() => null)) as {
+            ok?: boolean;
+            uuid?: string | null;
+          } | null;
+          if (payload?.ok && typeof payload.uuid === "string" && payload.uuid) {
+            unclaimedUuid = payload.uuid;
+          }
+        } catch {
+          // Keep mock UUID — QR page must work offline / without auth.
         }
 
         const nextTargets: QrTarget[] = [

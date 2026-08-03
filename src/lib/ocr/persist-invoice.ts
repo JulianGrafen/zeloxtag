@@ -86,6 +86,7 @@ export async function persistOcrInvoice(input: {
     .insert({
       id: documentId,
       vehicle_id: input.vehicleId,
+      user_id: input.userId,
       title,
       type: docType,
       file_url: publicUrl,
@@ -102,6 +103,7 @@ export async function persistOcrInvoice(input: {
       manufacturer: null,
       invoice_number: null,
       mileage_km: null,
+      technical_specs: null,
       amount: input.ocr.amount,
       date: input.ocr.date,
     })
@@ -128,6 +130,7 @@ export async function persistOcrInvoice(input: {
     manufacturer: document.manufacturer ?? null,
     invoice_number: document.invoice_number ?? null,
     mileage_km: document.mileage_km ?? null,
+    technical_specs: document.technical_specs ?? null,
     category: input.ocr.category,
   };
 }

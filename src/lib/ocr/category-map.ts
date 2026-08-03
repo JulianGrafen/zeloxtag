@@ -26,10 +26,37 @@ export function titleFromParsedInvoice(input: {
     ).slice(0, 160);
   }
 
+  // Prefer caller-provided summary; dashboard titles for invoices should use
+  // `buildInvoiceDashboardTitle` (line items / dominant work).
   const base =
     input.summary?.trim() ||
     input.vendor?.trim() ||
     "Rechnung";
 
   return base.slice(0, 160);
+}
+
+/**
+ * ABE list/detail title: "Hersteller Modell" (e.g. "BBS Superleggera").
+ * Avoids duplicating the brand if the model already starts with it.
+ */
+export function titleFromAbeFields(input: {
+  manufacturer: string | null | undefined;
+  partType: string | null | undefined;
+}): string {
+  const manufacturer = input.manufacturer?.trim() ?? "";
+  const partType = input.partType?.trim() ?? "";
+
+  if (manufacturer && partType) {
+    const brandPrefix = manufacturer.toLowerCase();
+    const modelAlreadyIncludesBrand = partType
+      .toLowerCase()
+      .startsWith(brandPrefix);
+    const combined = modelAlreadyIncludesBrand
+      ? partType
+      : `${manufacturer} ${partType}`;
+    return combined.slice(0, 160);
+  }
+
+  return (partType || manufacturer || "ABE").slice(0, 160);
 }

@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
   title: "Anmelden · ZeloxTag",
-  description: "Per Magic Link bei ZeloxTag anmelden.",
+  description: "Sicher bei ZeloxTag anmelden (Passwort, Magic Link, MFA).",
 };
 
 interface LoginPageProps {
@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <AppShell>
-      <LoginForm nextPath={next ?? "/"} initialError={error} />
+      <LoginForm nextPath={next ?? "/dashboard"} initialError={error} />
     </AppShell>
   );
 }

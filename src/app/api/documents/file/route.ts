@@ -1,23 +1,38 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
 
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
+import { enforceRateLimit } from "@/lib/security/api-guard";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
+
+const querySchema = z
+  .object({
+    src: z.string().trim().min(1).max(2048),
+  })
+  .strict();
 
 /**
  * Proxy document bytes with Content-Disposition: inline so browsers preview
  * instead of downloading (Supabase public URLs often force attachment).
  *
+ * Public GET allowlisted for QR digital-twin viewing (SSRF-hardened + rate-limited).
  * Allowed sources:
  * - Same-origin /demo/* assets
  * - Public Supabase Storage objects in `vehicle-documents`
  */
 export async function GET(request: NextRequest) {
-  const src = request.nextUrl.searchParams.get("src")?.trim() ?? "";
-  if (!src) {
+  const limited = enforceRateLimit(request, "apiDefault", "documents-file");
+  if (limited) return limited;
+
+  const parsed = querySchema.safeParse({
+    src: request.nextUrl.searchParams.get("src")?.trim() ?? "",
+  });
+  if (!parsed.success) {
     return NextResponse.json({ error: "src is required" }, { status: 400 });
   }
+  const src = parsed.data.src;
 
   try {
     if (src.startsWith("/demo/")) {
@@ -26,12 +41,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { url: supabaseUrl } = getSupabaseEnv();
-    const parsed = new URL(src);
+    const parsedUrl = new URL(src);
     const supabaseHost = supabaseUrl ? new URL(supabaseUrl).host : "";
     const isSupabasePublic =
       Boolean(supabaseHost) &&
-      parsed.host === supabaseHost &&
-      parsed.pathname.includes(`/object/public/${DOCUMENT_BUCKET}/`);
+      parsedUrl.host === supabaseHost &&
+      parsedUrl.pathname.includes(`/object/public/${DOCUMENT_BUCKET}/`);
 
     if (!isSupabasePublic) {
       return NextResponse.json({ error: "Source not allowed" }, { status: 403 });

@@ -2,6 +2,10 @@ import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
 import type { Document, Vehicle } from "@/types/database";
 
+import {
+  filterOilChangeDocuments,
+  latestOilChangeIsoDate,
+} from "@/lib/documents/oil-changes";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
 import { deriveNextInspectionFromDocuments } from "@/lib/documents/tuev-schedule";
 
@@ -12,6 +16,8 @@ interface TagDashboardViewProps {
   documents: Document[];
   tagUuid: string;
   ownerName?: string | null;
+  /** When false, hide the scan FAB (guest / wrong account). */
+  canScan?: boolean;
   onOpenScanner?: () => void;
 }
 
@@ -23,12 +29,15 @@ export function TagDashboardView({
   documents,
   tagUuid,
   ownerName,
+  canScan = true,
   onOpenScanner,
 }: TagDashboardViewProps) {
   const invoiceCount = documents.filter((doc) => doc.type === "invoice").length;
   const abeCount = documents.filter((doc) => doc.type === "abe").length;
   const tuevCount = documents.filter((doc) => doc.type === "tuev").length;
   const serviceCount = filterServiceInspectionDocuments(documents).length;
+  const oilChangeCount = filterOilChangeDocuments(documents).length;
+  const lastOilChange = latestOilChangeIsoDate(documents);
   const shortTag = tagUuid.length > 12 ? `${tagUuid.slice(0, 12)}…` : tagUuid;
   const vehicleModel = `${vehicle.make} ${vehicle.model}`;
   const vinLabel = vehicle.vin ? `VIN ${vehicle.vin}` : "VIN nicht hinterlegt";
@@ -41,7 +50,7 @@ export function TagDashboardView({
       : undefined,
     vehicleImageAlt: `${vehicleModel} (${vehicle.year})`,
     statusLabel: `ZeloxTag · ${shortTag}`,
-    lastOilChange: "2026-03-12",
+    lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),
     roadsidePhone: "+49 170 1234567",
   };
@@ -104,6 +113,22 @@ export function TagDashboardView({
       };
     }
 
+    if (tile.id === "oil-change") {
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: `/v/${tagUuid}/intervalle`,
+          subtitle:
+            oilChangeCount > 0
+              ? tile.meta?.subtitle ??
+                `${oilChangeCount} Ölwechsel`
+              : "Ölwechsel scannen",
+          badge: oilChangeCount > 0 ? String(oilChangeCount) : undefined,
+        },
+      };
+    }
+
     if (tile.id === "specs") {
       return {
         ...tile,
@@ -120,8 +145,13 @@ export function TagDashboardView({
 
   return (
     <div className="relative">
-      <VehicleDashboard data={{ ...data, tiles }} className="pb-24" />
-      <DashboardScanFab tagUuid={tagUuid} onOpenScanner={onOpenScanner} />
+      <VehicleDashboard
+        data={{ ...data, tiles }}
+        className={canScan ? "pb-24" : undefined}
+      />
+      {canScan ? (
+        <DashboardScanFab tagUuid={tagUuid} onOpenScanner={onOpenScanner} />
+      ) : null}
     </div>
   );
 }

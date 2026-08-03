@@ -14,6 +14,7 @@ interface VehicleInvoicesViewProps {
   tagUuid: string;
   vehicleModel: string;
   documents: Document[];
+  canWrite?: boolean;
 }
 
 function formatCompactDate(iso: string | null): string {
@@ -34,6 +35,7 @@ export function VehicleInvoicesView({
   tagUuid,
   vehicleModel,
   documents,
+  canWrite = false,
 }: VehicleInvoicesViewProps) {
   const invoices = documents
     .filter((doc) => doc.type === "invoice")
@@ -153,18 +155,20 @@ export function VehicleInvoicesView({
         </section>
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
-        <div className="pointer-events-auto mx-auto max-w-lg">
-          <PressableLink
-            href={`/v/${tagUuid}?scan=1`}
-            variant="button"
-            className="claim-cta shadow-[var(--vd-shadow)]"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Rechnung scannen
-          </PressableLink>
+      {canWrite ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
+          <div className="pointer-events-auto mx-auto max-w-lg">
+            <PressableLink
+              href={`/v/${tagUuid}?scan=1`}
+              variant="button"
+              className="claim-cta shadow-[var(--vd-shadow)]"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Rechnung scannen
+            </PressableLink>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

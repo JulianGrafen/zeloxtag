@@ -138,18 +138,6 @@ nextjs-portal {
   --vd-nav-enter: 380ms;
 }
 
-/* View Transitions: never intercept taps (stuck VT overlays feel like dead UI) */
-::view-transition {
-  pointer-events: none !important;
-}
-
-::view-transition-group(*),
-::view-transition-image-pair(*),
-::view-transition-old(*),
-::view-transition-new(*) {
-  pointer-events: none !important;
-}
-
 /* View Transitions: Vorwärts / Zurück beim Öffnen von Seiten */
 ::view-transition-old(.nav-forward) {
   --slide-offset: -28%;
@@ -275,19 +263,16 @@ nextjs-portal {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   user-select: none;
-  -webkit-user-select: none;
-  cursor: pointer;
   transition:
     transform var(--vd-press-out) var(--vd-ease-out),
     background-color 0.2s ease,
     box-shadow var(--vd-press-out) var(--vd-ease-out),
     opacity 0.2s ease,
     filter 0.2s ease;
+  will-change: transform;
 }
 
 .vd-pressable[data-pressed="true"] {
-  /* Promote layer only while pressed — avoids iOS hit-testing glitches */
-  will-change: transform;
   transition-duration: var(--vd-press-in);
   transition-timing-function: ease-out;
 }

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
 
 import {
   analyzeInvoiceDocument,
@@ -7,6 +8,7 @@ import {
 import { getDocumentIntelligenceEnv } from "@/lib/ocr/document-intelligence-env";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
+import { enforceRateLimit } from "@/lib/security/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -26,6 +28,13 @@ const ALLOWED_MIME = new Set([
   "application/octet-stream",
 ]);
 
+const optionalMetaSchema = z
+  .object({
+    vehicleId: z.string().uuid().optional(),
+    tagUuid: z.string().trim().min(1).max(128).optional(),
+  })
+  .strict();
+
 type AnalyzeSuccess = {
   ok: true;
   fields: InvoiceTextParseResult;
@@ -36,7 +45,7 @@ type AnalyzeSuccess = {
 type AnalyzeError = {
   ok: false;
   error: string;
-  code: "unauthorized" | "bad_request" | "config" | "analyze_failed";
+  code: "unauthorized" | "bad_request" | "config" | "analyze_failed" | "rate_limited";
 };
 
 function jsonError(
@@ -50,10 +59,14 @@ function jsonError(
 
 /**
  * POST /api/documents/analyze
- * Cheap path: DI Read OCR → OCR JSON → Foundry field parse (< ~1¢ / page).
+ * Cheap path: DI Read OCR → OCR JSON → Foundry field parse.
+ * Public for QR scan UX (rate-limited); keys stay server-side.
  */
 export async function POST(request: NextRequest) {
   try {
+    const limited = enforceRateLimit(request, "upload", "analyze");
+    if (limited) return limited;
+
     const { isConfigured } = getDocumentIntelligenceEnv();
     if (!isConfigured) {
       return jsonError(
@@ -71,13 +84,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // No session check: Magic Link auth is deferred; keys stay server-side only.
-
     let formData: FormData;
     try {
       formData = await request.formData();
     } catch {
       return jsonError(400, "Expected multipart form data.", "bad_request");
+    }
+
+    const vehicleRaw = String(formData.get("vehicleId") ?? "").trim();
+    const tagRaw = String(formData.get("tagUuid") ?? "").trim();
+    const meta = optionalMetaSchema.safeParse({
+      ...(vehicleRaw ? { vehicleId: vehicleRaw } : {}),
+      ...(tagRaw ? { tagUuid: tagRaw } : {}),
+    });
+    if (!meta.success) {
+      return jsonError(400, "Invalid optional metadata fields.", "bad_request");
     }
 
     const file = formData.get("file");

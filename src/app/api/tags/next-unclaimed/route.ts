@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
+import { enforceRateLimit } from "@/lib/security/api-guard";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -12,8 +13,14 @@ export const runtime = "nodejs";
 /**
  * GET /api/tags/next-unclaimed
  * Latest unclaimed tag UUID for QR / inventory testing.
+ *
+ * Public (rate-limited): always falls back to the local mock UUID so `/qr`
+ * keeps working without a session. Live Supabase lookup runs when configured.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const limited = enforceRateLimit(request, "apiDefault", "next-unclaimed");
+  if (limited) return limited;
+
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured || !isSupabaseAdminConfigured()) {
     return NextResponse.json({
@@ -35,17 +42,19 @@ export async function GET() {
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json(
-        { ok: false, error: error.message },
-        { status: 500 },
-      );
+      return NextResponse.json({
+        ok: true,
+        uuid: MOCK_TAG_UUIDS.unclaimed,
+        source: "mock",
+        warning: error.message,
+      });
     }
 
     if (!data?.uuid) {
       return NextResponse.json({
         ok: true,
-        uuid: null,
-        source: "empty",
+        uuid: MOCK_TAG_UUIDS.unclaimed,
+        source: "empty-fallback-mock",
       });
     }
 
@@ -55,12 +64,11 @@ export async function GET() {
       source: "supabase",
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: error instanceof Error ? error.message : "Lookup failed",
-      },
-      { status: 500 },
-    );
+    return NextResponse.json({
+      ok: true,
+      uuid: MOCK_TAG_UUIDS.unclaimed,
+      source: "mock",
+      warning: error instanceof Error ? error.message : "Lookup failed",
+    });
   }
 }

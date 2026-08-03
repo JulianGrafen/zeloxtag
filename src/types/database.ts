@@ -38,9 +38,17 @@ export type DocumentLineItem = {
   amount: number;
 };
 
+/** ABE technical dimension / Maßangabe. */
+export type DocumentTechnicalSpec = {
+  label: string;
+  value: string;
+};
+
 export type Document = {
   id: string;
   vehicle_id: string;
+  /** Owner; kept in sync with vehicles.user_id (see migration 00012). */
+  user_id: string;
   title: string;
   type: DocumentType;
   file_url: string;
@@ -68,8 +76,10 @@ export type Document = {
   manufacturer: string | null;
   /** Invoice / Beleg number (e.g. RE-2026-0312). */
   invoice_number: string | null;
-  /** Odometer reading from the invoice (km). */
+  /** Odometer reading from invoice (km). */
   mileage_km: number | null;
+  /** ABE technical dimensions (ET, Breite, Durchmesser, …). */
+  technical_specs: DocumentTechnicalSpec[] | null;
   amount: number | null;
   date: string | null;
   created_at: string;
@@ -152,6 +162,7 @@ export type Database = {
         Insert: {
           id?: string;
           vehicle_id: string;
+          user_id?: string;
           title: string;
           type?: DocumentType;
           file_url: string;
@@ -168,6 +179,7 @@ export type Database = {
           manufacturer?: string | null;
           invoice_number?: string | null;
           mileage_km?: number | null;
+          technical_specs?: DocumentTechnicalSpec[] | null;
           amount?: number | null;
           date?: string | null;
           created_at?: string;
@@ -175,6 +187,7 @@ export type Database = {
         Update: {
           id?: string;
           vehicle_id?: string;
+          user_id?: string;
           title?: string;
           type?: DocumentType;
           file_url?: string;
@@ -191,6 +204,7 @@ export type Database = {
           manufacturer?: string | null;
           invoice_number?: string | null;
           mileage_km?: number | null;
+          technical_specs?: DocumentTechnicalSpec[] | null;
           amount?: number | null;
           date?: string | null;
           created_at?: string;

@@ -20,53 +20,33 @@ export const invoiceLineItemSchema = z.object({
 
 export type InvoiceLineItem = z.infer<typeof invoiceLineItemSchema>;
 
-const flexibleString = (max: number) =>
-  z.preprocess((value) => {
-    if (typeof value !== "string") return value;
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    return trimmed.slice(0, max);
-  }, z.string().min(1).max(max).nullable());
-
-const flexibleStringList = (maxItem: number, maxItems: number) =>
-  z.preprocess((value) => {
-    if (value == null) return null;
-    if (!Array.isArray(value)) return value;
-    const cleaned = value
-      .filter((entry): entry is string => typeof entry === "string")
-      .map((entry) => entry.trim().slice(0, maxItem))
-      .filter(Boolean)
-      .slice(0, maxItems);
-    return cleaned.length > 0 ? cleaned : null;
-  }, z.array(z.string().min(1).max(maxItem)).max(maxItems).nullable());
-
 export const invoiceTextParseSchema = z.object({
-  vendor: flexibleString(160),
+  vendor: z.string().trim().min(1).max(160).nullable(),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
     .nullable(),
   amount: z.number().finite().nullable(),
   category: z.enum(INVOICE_TEXT_PARSE_CATEGORIES),
-  summary: flexibleString(80),
+  summary: z.string().trim().min(1).max(80).nullable(),
   lineItems: z.array(invoiceLineItemSchema).max(40).nullable(),
   /** ABE / Teilegutachten approval number (KBA, ABE-Nr., …). */
-  kbaNumber: flexibleString(80),
-  /** Approved vehicles: preferably make + model. */
-  vehicleApprovals: flexibleStringList(160, 40),
+  kbaNumber: z.string().trim().min(1).max(80).nullable(),
+  /** Vehicles / variants the part is approved for. */
+  vehicleApprovals: z.array(z.string().trim().min(1).max(120)).max(40).nullable(),
   /** Issuing authority, e.g. KBA / Hersteller. */
-  authority: flexibleString(120),
+  authority: z.string().trim().min(1).max(120).nullable(),
   /** ABE Auflagen / conditions — full wording, not summaries. */
-  conditions: flexibleStringList(1200, 40),
+  conditions: z.array(z.string().trim().min(1).max(1200)).max(40).nullable(),
   /** Part family label: Aerodynamik, Räder, Fahrwerk, Abgasanlage, … */
-  partCategory: flexibleString(60),
+  partCategory: z.string().trim().min(1).max(60).nullable(),
   /** Longer freigabe description for ABE detail. */
-  notes: flexibleString(500),
+  notes: z.string().trim().min(1).max(500).nullable(),
   /** ABE part manufacturer / brand (e.g. AutoExe, Milltek). */
-  manufacturer: flexibleString(120),
+  manufacturer: z.string().trim().min(1).max(120).nullable(),
   /** Invoice / Beleg number (e.g. RE-2026-0312). */
-  invoiceNumber: flexibleString(80),
-  /** Odometer reading in kilometers (Kilometerstand). */
+  invoiceNumber: z.string().trim().min(1).max(80).nullable(),
+  /** Odometer / Kilometerstand from the invoice (km). */
   mileageKm: z.number().int().nonnegative().max(9_999_999).nullable(),
 });
 
@@ -126,26 +106,34 @@ export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
       },
       lineItems: {
         type: ["array", "null"],
-        description: "Invoice positions. Null for ABE/TÜV.",
+        description:
+          "Invoice positions — ONE entry per billable row. Never merge materials (e.g. Reifen, Sportfedern, Felgen, Motoröl, Ölfilter, Bremsen) into one label. Include labor and MwSt. as separate rows when present. amount = Gesamtpreis/Zeilensumme only (NOT Einzelpreis/Stückpreis). Null for ABE/TÜV.",
         items: {
           type: "object",
           additionalProperties: false,
           required: ["label", "amount"],
           properties: {
-            label: { type: "string" },
-            amount: { type: "number" },
+            label: {
+              type: "string",
+              description:
+                "Short position name only, e.g. 'Sportfedern H&R', 'Reifen 225/45 R17', 'Arbeitslohn Montage'. Do not concatenate multiple parts.",
+            },
+            amount: {
+              type: "number",
+              description:
+                "Gesamtpreis / Zeilensumme in EUR for this position (qty × unit). NEVER the Einzelpreis/Stückpreis alone. Example: 4×120 → amount 480, not 120.",
+            },
           },
         },
       },
       kbaNumber: {
         type: ["string", "null"],
         description:
-          "ABE only: KBA approval number, preferably exactly 'KBA' + 5 digits (e.g. 'KBA 91234'). Also accept 'ABE-Nr. …' if that is what the document shows. Never put authority names here. Null otherwise.",
+          "ABE only: approval number e.g. 'ABE KBA 12345'. Null otherwise.",
       },
       vehicleApprovals: {
         type: ["array", "null"],
-        description:
-          "ABE only: approved vehicles as 'Fahrzeughersteller + Fahrzeugmodell' from Verwendungsbereich / Handelsbezeichnung, e.g. 'Mazda RX-8', 'Mazda RX-8 Spirit R', 'BMW 320i', 'Audi A4 (B8)'. NEVER technical data (ET, Lochkreis, Radlast, Felgendurchmesser, Abrollumfang, EG-BE-Nr., tire sizes). Never make-only or bare type codes (SE3P). Null otherwise.",
+        description: "ABE only: approved vehicles/variants. Null otherwise.",
         items: { type: "string" },
       },
       authority: {
@@ -172,7 +160,7 @@ export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
       manufacturer: {
         type: ["string", "null"],
         description:
-          "ABE only: manufacturer / brand of the part, e.g. 'AutoExe', 'Milltek', 'OZ', 'Tein'. Not the vehicle make. Null otherwise.",
+          "ABE only: Hersteller / Herstellerzeichen of the part (e.g. AutoExe, Milltek, OZ, Tein). NEVER use Auftraggeber, Antragsteller, Besteller, Inverkehrbringer, Importeur, or Vertreiber. Not the vehicle make. Null if absent or only Auftraggeber is present.",
       },
       invoiceNumber: {
         type: ["string", "null"],
@@ -182,7 +170,7 @@ export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
       mileageKm: {
         type: ["integer", "null"],
         description:
-          "Invoice / service docs: odometer reading (Kilometerstand) as integer km, e.g. 67210. Parse values like '67.210 km' or '67210 km'. Null if absent or for ABE.",
+          "Invoice only: odometer reading as integer km (e.g. 67210). Required when labels like Kilometerstand, km-Stand, Tachostand, or values like '67.210 km' appear. Strip thousand separators. Null if absent or for ABE/TÜV.",
       },
     },
   },
@@ -231,7 +219,7 @@ export function normalizeTextParseResult(
     summary: fields.summary?.trim().slice(0, 80) || null,
     lineItems: normalizeLineItems(fields.lineItems),
     kbaNumber: fields.kbaNumber?.trim().slice(0, 80) || null,
-    vehicleApprovals: normalizeStringList(fields.vehicleApprovals, 160),
+    vehicleApprovals: normalizeStringList(fields.vehicleApprovals, 120),
     authority: fields.authority?.trim().slice(0, 120) || null,
     conditions: normalizeStringList(fields.conditions, 1200, 40),
     partCategory: fields.partCategory?.trim().slice(0, 60) || null,
@@ -242,7 +230,7 @@ export function normalizeTextParseResult(
   };
 }
 
-export function normalizeMileageKm(value: unknown): number | null {
+function normalizeMileageKm(value: number | null | undefined): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   const km = Math.round(value);
   if (km < 0 || km > 9_999_999) return null;

@@ -46,15 +46,27 @@ export function DocumentAbeDetailView({
 }: DocumentAbeDetailViewProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const title = displayDocumentTitle(document.title);
-  const partName = document.vendor?.trim() || title;
+  // Prefer stored title ("BBS Superleggera") over vendor-only model name.
+  const partName = title || document.vendor?.trim() || "ABE";
+  const manufacturer = document.manufacturer?.trim() || "";
+  const titleIncludesManufacturer =
+    manufacturer.length > 0 &&
+    partName.toLowerCase().startsWith(manufacturer.toLowerCase());
   const approvals = document.vehicle_approvals ?? [];
   const conditions = document.conditions ?? [];
+  const technicalSpecs = document.technical_specs ?? [];
   const pages = document.page_count && document.page_count > 0 ? document.page_count : 1;
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
   const resolvedBack =
     backHref ?? `/v/${tagUuid}/dokumente?type=abe`;
   const scannedLabel = formatDocumentDate(document.created_at.slice(0, 10));
   const fileName = fileNameFromUrl(document.file_url, partName);
+  const subtitle = [
+    titleIncludesManufacturer ? null : manufacturer || null,
+    vehicleLabel,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -82,11 +94,11 @@ export function DocumentAbeDetailView({
               <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
                 {partName}
               </h1>
-              <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-                {[document.manufacturer?.trim(), vehicleLabel]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
+              {subtitle ? (
+                <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
+                  {subtitle}
+                </p>
+              ) : null}
             </div>
             <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white">
               <FileText className="h-5 w-5" strokeWidth={1.75} aria-hidden />
@@ -116,26 +128,10 @@ export function DocumentAbeDetailView({
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                KBA-Nummer
+                Nummer
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                 {document.kba_number ?? "—"}
-              </dd>
-            </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                Hersteller
-              </dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {document.manufacturer?.trim() || "—"}
-              </dd>
-            </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                Bauteil
-              </dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {partName}
               </dd>
             </div>
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
@@ -148,53 +144,37 @@ export function DocumentAbeDetailView({
             </div>
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                Ausgestellt
+                Scandatum
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {formatDocumentDate(document.date)}
-              </dd>
-            </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                Gescannt
-              </dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {scannedLabel}
+                {document.date
+                  ? formatDocumentDate(document.date)
+                  : scannedLabel}
               </dd>
             </div>
           </dl>
         </section>
 
         <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
-          <h2 className="mb-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Fahrzeugfreigaben
+          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+            Freigabe
           </h2>
-          <p className="mb-3 text-[0.78rem] text-[color:var(--vd-muted)]">
-            Freigegebene Fahrzeugmodelle
-          </p>
           {approvals.length === 0 ? (
             <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
-              Keine Fahrzeugmodelle erkannt.
+              Keine Fahrzeugfreigaben erkannt.
             </p>
           ) : (
             <ul className="space-y-2">
               {approvals.map((item) => (
                 <li
                   key={item}
-                  className="flex items-start gap-2 rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5"
+                  className="flex items-center gap-2 text-[0.88rem] font-medium text-[color:var(--vd-text)]"
                 >
                   <ShieldCheck
-                    className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+                    className="h-4 w-4 shrink-0 text-emerald-600"
                     aria-hidden
                   />
-                  <span className="min-w-0">
-                    <span className="block text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                      Modell
-                    </span>
-                    <span className="block text-[0.92rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                      {item}
-                    </span>
-                  </span>
+                  {item}
                 </li>
               ))}
             </ul>
@@ -204,6 +184,31 @@ export function DocumentAbeDetailView({
               {document.notes}
             </p>
           ) : null}
+        </section>
+
+        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+            Technische Maße
+          </h2>
+          {technicalSpecs.length === 0 ? (
+            <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
+              Keine technischen Maße erkannt.
+            </p>
+          ) : (
+            <dl className="grid gap-2.5 text-[0.88rem]">
+              {technicalSpecs.map((spec, index) => (
+                <div
+                  key={`${spec.label}-${index}`}
+                  className="flex items-start justify-between gap-3 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3"
+                >
+                  <dt className="text-[color:var(--vd-muted)]">{spec.label}</dt>
+                  <dd className="shrink-0 font-semibold tabular-nums tracking-[-0.02em] text-[color:var(--vd-text)]">
+                    {spec.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </section>
 
         <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">

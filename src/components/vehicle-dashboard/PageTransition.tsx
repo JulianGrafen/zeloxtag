@@ -12,27 +12,24 @@ interface PageTransitionProps {
  * - Vorwärts: neue Seite von rechts
  * - Zurück: neue Seite von links
  * Nutzt React View Transitions (Next experimental.viewTransition).
- *
- * Important: do NOT remount this boundary with key={pathname} — that can
- * leave a stuck ::view-transition layer that blocks all taps.
  */
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
 
   return (
     <ViewTransition
+      key={pathname}
       enter={{
         "nav-forward": "nav-forward",
         "nav-back": "nav-back",
-        default: "none",
+        default: "nav-forward",
       }}
       exit={{
         "nav-forward": "nav-forward",
         "nav-back": "nav-back",
-        default: "none",
+        default: "nav-forward",
       }}
       default="none"
-      update="none"
     >
       <div className="vd-page" data-vd-page data-pathname={pathname}>
         {children}

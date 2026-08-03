@@ -9,9 +9,6 @@ export type ParseStringListOptions = {
 export const ABE_CONDITION_MAX_LENGTH = 1_200;
 export const ABE_CONDITION_MAX_ITEMS = 40;
 
-/** Make + model freigaben labels. */
-export const ABE_APPROVAL_MAX_LENGTH = 160;
-
 /**
  * Parse string[] from FormData / JSONB / unknown RPC payloads.
  */

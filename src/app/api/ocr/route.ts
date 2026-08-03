@@ -1,11 +1,12 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
 
-import { getCurrentUser } from "@/lib/auth/get-user";
 import { extractInvoiceFromImage, OcrExtractionError } from "@/lib/ocr/extract-invoice";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { OcrPersistError, persistOcrInvoice } from "@/lib/ocr/persist-invoice";
 import type { OcrApiError, OcrApiSuccess } from "@/lib/ocr/types";
+import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
@@ -21,23 +22,33 @@ const ALLOWED_OCR_MIME = new Set([
   "image/heif",
 ]);
 
+const formMetaSchema = z
+  .object({
+    vehicleId: z.string().uuid(),
+    tagUuid: z.string().trim().min(1).max(128).optional(),
+  })
+  .strict();
+
 function jsonError(
   status: number,
   error: string,
-  code: OcrApiError["code"],
+  code: OcrApiError["code"] | "rate_limited",
 ) {
-  const body: OcrApiError = { ok: false, error, code };
+  const body = { ok: false as const, error, code };
   return NextResponse.json(body, { status });
 }
 
 /**
  * POST /api/ocr
  * 1) Validate owner + compressed invoice image
- * 2) Run gpt-4o-mini vision OCR (strict JSON schema)
+ * 2) Run vision OCR (strict JSON schema)
  * 3) Only after success → Supabase Storage + documents row for vehicle_id
  */
 export async function POST(request: NextRequest) {
   try {
+    const limited = enforceRateLimit(request, "ocr", "vision");
+    if (limited) return limited;
+
     const { isConfigured } = getSupabaseEnv();
     if (!isConfigured) {
       return jsonError(
@@ -55,10 +66,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await getCurrentUser();
-    if (!user) {
-      return jsonError(401, "Authentication required.", "unauthorized");
-    }
+    const auth = await requireApiUser();
+    if (!auth.ok) return auth.response;
+    const user = auth.user;
 
     let formData: FormData;
     try {
@@ -67,14 +77,17 @@ export async function POST(request: NextRequest) {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
 
-    const vehicleId = String(formData.get("vehicleId") ?? "").trim();
-    const tagUuid = String(formData.get("tagUuid") ?? "").trim();
-    const file = formData.get("file");
+    const tagRaw = String(formData.get("tagUuid") ?? "").trim();
+    const meta = formMetaSchema.safeParse({
+      vehicleId: String(formData.get("vehicleId") ?? "").trim(),
+      ...(tagRaw ? { tagUuid: tagRaw } : {}),
+    });
 
-    if (!vehicleId) {
-      return jsonError(400, "vehicleId is required.", "bad_request");
+    if (!meta.success) {
+      return jsonError(400, "vehicleId (UUID) is required.", "bad_request");
     }
 
+    const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Image file is required.", "bad_request");
     }
@@ -97,7 +110,6 @@ export async function POST(request: NextRequest) {
 
     const bytes = Buffer.from(await file.arrayBuffer());
 
-    // Step A — OCR first (no storage write yet).
     let ocr;
     try {
       ocr = await extractInvoiceFromImage({
@@ -112,11 +124,10 @@ export async function POST(request: NextRequest) {
       return jsonError(422, message, "ocr_failed");
     }
 
-    // Step B — Persist only after successful parse.
     let document;
     try {
       document = await persistOcrInvoice({
-        vehicleId,
+        vehicleId: meta.data.vehicleId,
         userId: user.id,
         bytes,
         mimeType: file.type,
@@ -135,9 +146,9 @@ export async function POST(request: NextRequest) {
       return jsonError(500, "Failed to store invoice after OCR.", "storage_failed");
     }
 
-    if (tagUuid) {
-      revalidatePath(`/v/${tagUuid}`);
-      revalidatePath(`/v/${tagUuid}/dokumente`);
+    if (meta.data.tagUuid) {
+      revalidatePath(`/v/${meta.data.tagUuid}`);
+      revalidatePath(`/v/${meta.data.tagUuid}/dokumente`);
     }
 
     const body: OcrApiSuccess = {

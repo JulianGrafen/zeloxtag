@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { securityHeaderEntries } from "./src/lib/security/csp";
+
 const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
@@ -8,6 +10,14 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   experimental: {
     viewTransition: true,
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaderEntries(),
+      },
+    ];
   },
 };
 

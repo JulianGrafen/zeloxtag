@@ -7,4 +7,4 @@ alter table public.documents
   add column if not exists mileage_km integer null;
 
 comment on column public.documents.mileage_km is
-  'Odometer reading in kilometers from the invoice / service document';
+  'Odometer reading from invoice (km), if printed on the document';

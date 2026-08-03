@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   AlertTriangle,
   FileText,
@@ -14,18 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAbeExtraction } from "@/hooks/use-abe-extraction";
+import { formatDocumentDate } from "@/lib/documents/format";
 import {
   ABE_PART_CATEGORIES,
   ABE_PART_CATEGORY_LABELS,
   type AbeCoreParseResult,
   type AbePartCategory,
 } from "@/lib/ocr/abe-parse-schema";
-import { normalizeVehicleApprovals } from "@/lib/ocr/abe-from-text";
-
-export type AbeSavePayload = AbeCoreParseResult & {
-  vehicleApprovals: string[] | null;
-  conditions: string[] | null;
-};
 
 export type ABEOverviewProps = {
   /** Object URL or same-origin URL for the scanned PDF/image. */
@@ -36,35 +31,14 @@ export type ABEOverviewProps = {
   rawText?: string;
   /** Seed / fallback while extraction runs. */
   initialFields?: Partial<AbeCoreParseResult>;
-  /** Approved vehicle models (make + model) from OCR. */
-  initialVehicleApprovals?: string[] | null;
-  /** Auflagen from OCR. */
-  initialConditions?: string[] | null;
   /** Skip auto-call when parent already ran specialized parse. */
   autoExtract?: boolean;
   isSaving?: boolean;
   /** Extra error from parent save path. */
   saveError?: string | null;
-  onSave: (fields: AbeSavePayload) => void | Promise<void>;
+  onSave: (fields: AbeCoreParseResult) => void | Promise<void>;
   onCancel?: () => void;
 };
-
-function parseCommaList(value: string): string[] | null {
-  const items = value
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return items.length > 0 ? items : null;
-}
-
-/** One Auflage per line (full wording; avoids `|` inside legal text). */
-function parseConditionLines(value: string): string[] | null {
-  const items = value
-    .split(/\n+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return items.length > 0 ? items : null;
-}
 
 /**
  * ABE review surface: scrollable document preview + editable core metadata.
@@ -76,8 +50,6 @@ export function ABEOverview({
   pageCount = 1,
   rawText = "",
   initialFields,
-  initialVehicleApprovals = null,
-  initialConditions = null,
   autoExtract = true,
   isSaving = false,
   saveError = null,
@@ -95,6 +67,8 @@ export function ABEOverview({
     setIsEditing,
     updateField,
     updatePartCategory,
+    updateConditionsText,
+    updateTechnicalSpecsText,
     extract,
   } = useAbeExtraction({
     rawText,
@@ -102,38 +76,8 @@ export function ABEOverview({
     autoExtract,
   });
 
-  const [vehicleApprovalsText, setVehicleApprovalsText] = useState(() =>
-    (normalizeVehicleApprovals(initialVehicleApprovals) ?? []).join(", "),
-  );
-  const [conditionsText, setConditionsText] = useState(() =>
-    (initialConditions ?? []).join("\n"),
-  );
-  const [approvalsTouched, setApprovalsTouched] = useState(false);
-  const [conditionsTouched, setConditionsTouched] = useState(false);
-
-  // Adopt OCR seeds that arrive after first paint.
-  useEffect(() => {
-    if (approvalsTouched) return;
-    const next = (normalizeVehicleApprovals(initialVehicleApprovals) ?? []).join(
-      ", ",
-    );
-    if (next) setVehicleApprovalsText(next);
-  }, [initialVehicleApprovals, approvalsTouched]);
-
-  useEffect(() => {
-    if (conditionsTouched) return;
-    const next = (initialConditions ?? []).join("\n");
-    if (next) setConditionsText(next);
-  }, [initialConditions, conditionsTouched]);
-
-  const vehicleApprovals = useMemo(
-    () => normalizeVehicleApprovals(parseCommaList(vehicleApprovalsText)),
-    [vehicleApprovalsText],
-  );
-  const conditions = useMemo(
-    () => parseConditionLines(conditionsText),
-    [conditionsText],
-  );
+  const conditions = fields.conditions ?? [];
+  const technicalSpecs = fields.technicalSpecs ?? [];
 
   const bannerError = saveError ?? extractError;
   const kbaMissing = !fields.kbaNumber?.trim();
@@ -254,13 +198,13 @@ export function ABEOverview({
 
             {isEditing ? (
               <div className="space-y-3">
-                <FieldLabel label="Hersteller">
+                <FieldLabel label="Hersteller / Herstellerzeichen">
                   <Input
                     value={fields.manufacturer ?? ""}
                     onChange={(event) =>
                       updateField("manufacturer", event.target.value || null)
                     }
-                    placeholder="z. B. AutoExe, Milltek, OZ"
+                    placeholder="z. B. AutoExe — nicht Auftraggeber"
                   />
                 </FieldLabel>
                 <FieldLabel label="Bauteil / Typ">
@@ -270,6 +214,15 @@ export function ABEOverview({
                       updateField("partType", event.target.value || null)
                     }
                     placeholder="z. B. Carbon Frontlippe"
+                  />
+                </FieldLabel>
+                <FieldLabel label="Scandatum">
+                  <Input
+                    type="date"
+                    value={fields.date ?? ""}
+                    onChange={(event) =>
+                      updateField("date", event.target.value || null)
+                    }
                   />
                 </FieldLabel>
                 <FieldLabel label="Kategorie">
@@ -287,86 +240,108 @@ export function ABEOverview({
                     ))}
                   </select>
                 </FieldLabel>
-                <FieldLabel label="Fahrzeugmodelle (Freigaben)">
-                  <Input
-                    value={vehicleApprovalsText}
-                    onChange={(event) => {
-                      setApprovalsTouched(true);
-                      setVehicleApprovalsText(event.target.value);
-                    }}
-                    placeholder="z. B. Mazda RX-8, Mazda RX-8 Spirit R"
+                <FieldLabel label="Technische Maße">
+                  <textarea
+                    value={technicalSpecs
+                      .map((spec) => `${spec.label}: ${spec.value}`)
+                      .join("\n")}
+                    onChange={(event) =>
+                      updateTechnicalSpecsText(event.target.value)
+                    }
+                    rows={Math.min(6, Math.max(3, technicalSpecs.length || 3))}
+                    placeholder={
+                      "Einpresstiefe (ET): 35 mm\nFelgengröße: 8,5 J x 18\nMaßcode: 8Jx18 Ø72,6"
+                    }
+                    className="mt-1 w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 font-mono text-[0.82rem] leading-relaxed text-[color:var(--vd-text)] outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
                   />
                 </FieldLabel>
-                <FieldLabel label="Auflagen (eine pro Zeile)">
+                <FieldLabel label="Auflagen">
                   <textarea
-                    value={conditionsText}
-                    onChange={(event) => {
-                      setConditionsTouched(true);
-                      setConditionsText(event.target.value);
-                    }}
-                    placeholder={"Auflage 1\nAuflage 2"}
-                    rows={5}
-                    className="flex min-h-[7.5rem] w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 text-[0.88rem] leading-relaxed text-[color:var(--vd-text)] outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+                    value={conditions.join("\n")}
+                    onChange={(event) =>
+                      updateConditionsText(event.target.value)
+                    }
+                    rows={Math.min(8, Math.max(3, conditions.length || 3))}
+                    placeholder="Eine vollständige Auflage pro Zeile"
+                    className="mt-1 w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 text-[0.88rem] leading-relaxed text-[color:var(--vd-text)] outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
                   />
                 </FieldLabel>
               </div>
             ) : (
-              <dl className="grid gap-2.5 text-[0.88rem]">
-                <SummaryRow
-                  label="Hersteller"
-                  value={fields.manufacturer}
-                />
-                <SummaryRow label="Bauteil / Typ" value={fields.partType} />
-                <SummaryRow
-                  label="Kategorie"
-                  value={ABE_PART_CATEGORY_LABELS[fields.partCategory]}
-                />
-                <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
-                  <dt className="text-[0.68rem] uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                    Fahrzeugmodelle
-                  </dt>
-                  <dd className="mt-1.5 space-y-1.5">
-                    {vehicleApprovals?.length ? (
-                      vehicleApprovals.map((model) => (
-                        <p
-                          key={model}
-                          className="flex items-center gap-1.5 font-medium text-[color:var(--vd-text)]"
+              <div className="space-y-3">
+                <dl className="grid gap-2.5 text-[0.88rem]">
+                  <SummaryRow
+                    label="Hersteller / Herstellerzeichen"
+                    value={fields.manufacturer}
+                  />
+                  <SummaryRow label="Bauteil / Typ" value={fields.partType} />
+                  <SummaryRow
+                    label="Scandatum"
+                    value={
+                      fields.date ? formatDocumentDate(fields.date) : null
+                    }
+                  />
+                  <SummaryRow
+                    label="Kategorie"
+                    value={ABE_PART_CATEGORY_LABELS[fields.partCategory]}
+                  />
+                </dl>
+
+                <div>
+                  <p className="mb-2 text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                    Technische Maße
+                  </p>
+                  {technicalSpecs.length === 0 ? (
+                    <p className="rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.82rem] text-[color:var(--vd-muted)]">
+                      Keine Maße erkannt — ggf. bearbeiten oder erneut lesen.
+                    </p>
+                  ) : (
+                    <dl className="grid gap-2 text-[0.82rem]">
+                      {technicalSpecs.map((spec, index) => (
+                        <div
+                          key={`${spec.label}-${index}`}
+                          className="flex items-start justify-between gap-3 rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5"
                         >
-                          <ShieldCheck
-                            className="h-3.5 w-3.5 shrink-0 text-emerald-600"
-                            aria-hidden
-                          />
-                          {model}
-                        </p>
-                      ))
-                    ) : (
-                      <span className="text-[color:var(--vd-muted)]">—</span>
-                    )}
-                  </dd>
+                          <dt className="text-[color:var(--vd-muted)]">
+                            {spec.label}
+                          </dt>
+                          <dd className="shrink-0 font-medium tabular-nums text-[color:var(--vd-text)]">
+                            {spec.value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
                 </div>
-                <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
-                  <dt className="text-[0.68rem] uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+
+                <div>
+                  <p className="mb-2 text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                     Auflagen
-                  </dt>
-                  <dd className="mt-1.5 space-y-2">
-                    {conditions?.length ? (
-                      conditions.map((condition, index) => (
-                        <p
-                          key={`${index}-${condition.slice(0, 24)}`}
-                          className="text-[0.84rem] leading-relaxed text-[color:var(--vd-text)]"
+                  </p>
+                  {conditions.length === 0 ? (
+                    <p className="rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.82rem] text-[color:var(--vd-muted)]">
+                      Keine Auflagen erkannt — ggf. bearbeiten oder erneut
+                      lesen.
+                    </p>
+                  ) : (
+                    <ol className="space-y-2">
+                      {conditions.map((condition, index) => (
+                        <li
+                          key={`${index}-${condition.slice(0, 40)}`}
+                          className="flex gap-2.5 rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.82rem] leading-relaxed text-[color:var(--vd-text)]"
                         >
-                          <span className="mr-1.5 font-semibold text-[color:var(--vd-muted)]">
-                            {index + 1}.
+                          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[0.65rem] font-semibold text-white">
+                            {index + 1}
                           </span>
-                          {condition}
-                        </p>
-                      ))
-                    ) : (
-                      <span className="text-[color:var(--vd-muted)]">—</span>
-                    )}
-                  </dd>
+                          <span className="whitespace-pre-wrap pt-0.5">
+                            {condition}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
                 </div>
-              </dl>
+              </div>
             )}
           </div>
         )}
@@ -384,14 +359,10 @@ export function ABEOverview({
         <div className="mt-5 flex flex-col gap-2">
           <Button
             type="button"
-            disabled={isLoading || isRefreshing || isSaving}
+            disabled={isLoading || isSaving}
             onClick={() => {
               if (!isEditing) setIsEditing(false);
-              void onSave({
-                ...fields,
-                vehicleApprovals,
-                conditions,
-              });
+              void onSave(fields);
             }}
           >
             {isSaving ? (

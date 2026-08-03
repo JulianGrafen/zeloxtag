@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
-import { createClient } from "@/lib/supabase/server";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import type { Document, DocumentType } from "@/types/database";
 
@@ -18,7 +17,7 @@ import {
 import { parseLineItems } from "./line-items";
 import { appendMockUploadedDocument } from "./mock-uploads";
 import { parseAbeConditions, parseStringList } from "./string-list";
-import { normalizeMileageKm } from "@/lib/ocr/text-parse-schema";
+import { parseTechnicalSpecs } from "./technical-specs";
 
 export type UploadDocumentResult =
   | { status: "uploaded"; document: Document; tagUuid: string }
@@ -50,6 +49,15 @@ function parseDate(raw: string | undefined): string | null {
   return raw;
 }
 
+function parseMileageKm(raw: string | undefined): number | null {
+  if (!raw?.trim()) return null;
+  const digits = raw.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  const value = Number.parseInt(digits, 10);
+  if (!Number.isFinite(value) || value < 0 || value > 9_999_999) return null;
+  return value;
+}
+
 function ensurePdfFilename(name: string): string {
   const safe = sanitizeFilename(name || "dokument.pdf");
   return safe.toLowerCase().endsWith(".pdf") ? safe : `${safe.replace(/\.[^.]+$/, "")}.pdf`;
@@ -58,7 +66,7 @@ function ensurePdfFilename(name: string): string {
 /**
  * Persist a document PDF to Supabase Storage + documents row.
  * Without Supabase env → mock metadata cookie (local demo).
- * With service role (auth deferred) → admin upload when no session.
+ * With service role (auth deferred for QR scan UX) → admin upload when no session.
  */
 export async function uploadDocument(
   formData: FormData,
@@ -74,6 +82,7 @@ export async function uploadDocument(
   const vehicleApprovalsRaw = String(formData.get("vehicleApprovals") ?? "");
   const authorityRaw = String(formData.get("authority") ?? "").trim();
   const conditionsRaw = String(formData.get("conditions") ?? "");
+  const technicalSpecsRaw = String(formData.get("technicalSpecs") ?? "");
   const partCategoryRaw = String(formData.get("partCategory") ?? "").trim();
   const notesRaw = String(formData.get("notes") ?? "").trim();
   const manufacturerRaw = String(formData.get("manufacturer") ?? "").trim();
@@ -119,19 +128,15 @@ export async function uploadDocument(
   const category = categoryRaw.slice(0, 40) || null;
   const lineItems = parseLineItems(lineItemsRaw);
   const kbaNumber = kbaNumberRaw.slice(0, 80) || null;
-  const vehicleApprovals = parseStringList(vehicleApprovalsRaw, {
-    maxItemLength: 160,
-    maxItems: 40,
-  });
+  const vehicleApprovals = parseStringList(vehicleApprovalsRaw);
   const authority = authorityRaw.slice(0, 120) || null;
   const conditions = parseAbeConditions(conditionsRaw);
+  const technicalSpecs = parseTechnicalSpecs(technicalSpecsRaw);
   const partCategory = partCategoryRaw.slice(0, 60) || null;
   const notes = notesRaw.slice(0, 500) || null;
   const manufacturer = manufacturerRaw.slice(0, 120) || null;
   const invoiceNumber = invoiceNumberRaw.slice(0, 80) || null;
-  const mileageKm = normalizeMileageKm(
-    mileageKmRaw ? Number.parseInt(mileageKmRaw.replace(/\D/g, ""), 10) : null,
-  );
+  const mileageKm = parseMileageKm(mileageKmRaw);
   const pageCountParsed = Number.parseInt(pageCountRaw, 10);
   const pageCount =
     Number.isFinite(pageCountParsed) && pageCountParsed > 0
@@ -153,6 +158,7 @@ export async function uploadDocument(
     const document: Document = {
       id: documentId,
       vehicle_id: vehicleId,
+      user_id: "user_demo",
       title,
       type: typeRaw,
       file_url: `mock://upload/${documentId}/${safeName}`,
@@ -169,6 +175,7 @@ export async function uploadDocument(
       manufacturer,
       invoice_number: invoiceNumber,
       mileage_km: mileageKm,
+      technical_specs: technicalSpecs,
       amount,
       date,
       created_at: now,
@@ -182,20 +189,22 @@ export async function uploadDocument(
   }
 
   const user = await getCurrentUser();
-  const useAdmin = !user && isSupabaseAdminConfigured();
-
-  if (!user && !useAdmin) {
+  if (!user) {
     return {
       status: "error",
-      message:
-        "Bitte zuerst anmelden — oder SUPABASE_SERVICE_ROLE_KEY setzen (Auth noch deaktiviert).",
+      message: "Bitte mit dem Fahrzeug-Konto anmelden, um zu speichern.",
     };
   }
 
-  // Always use one client type to keep Supabase generics happy.
-  if (!isSupabaseAdminConfigured() && !user) {
-    return { status: "error", message: "Supabase Admin fehlt." };
+  if (!isSupabaseAdminConfigured()) {
+    return {
+      status: "error",
+      message: "SUPABASE_SERVICE_ROLE_KEY fehlt für Dokument-Uploads.",
+    };
   }
+
+  // Service role for storage/DB writes; ownership is enforced explicitly below
+  // so accounts never write into each other's vehicles.
   const supabase = createAdminClient();
 
   const { data: vehicle, error: vehicleError } = await supabase
@@ -210,9 +219,15 @@ export async function uploadDocument(
   if (!vehicle) {
     return { status: "error", message: "Fahrzeug nicht gefunden." };
   }
-  if (user && vehicle.user_id !== user.id) {
-    return { status: "error", message: "Kein Schreibzugriff auf dieses Fahrzeug." };
+  if (vehicle.user_id !== user.id) {
+    return {
+      status: "error",
+      message:
+        "Dieses Fahrzeug gehört zu einem anderen Konto. Bitte abmelden und mit dem richtigen Konto anmelden.",
+    };
   }
+
+  const ownerUserId = user.id;
 
   const storagePath = `${vehicleId}/${documentId}-${safeName}`;
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -235,6 +250,7 @@ export async function uploadDocument(
   const baseRow = {
     id: documentId,
     vehicle_id: vehicleId,
+    user_id: ownerUserId,
     title,
     type: typeRaw,
     file_url: publicUrl,
@@ -242,14 +258,7 @@ export async function uploadDocument(
     date,
   };
 
-  // Prefer keeping ABE columns across schema-cache fallbacks. Never drop
-  // kba/freigaben/auflagen/manufacturer just because mileage_km is missing.
-  const abeCore = {
-    vendor,
-    category,
-    line_items: lineItems,
-    kba_number: kbaNumber,
-    vehicle_approvals: vehicleApprovals,
+  const abeDetail = {
     authority,
     conditions,
     part_category: partCategory,
@@ -261,57 +270,15 @@ export async function uploadDocument(
   const insertAttempts = [
     {
       ...baseRow,
-      ...abeCore,
+      vendor,
+      category,
+      line_items: lineItems,
+      kba_number: kbaNumber,
+      vehicle_approvals: vehicleApprovals,
       invoice_number: invoiceNumber,
       mileage_km: mileageKm,
-    },
-    {
-      ...baseRow,
-      ...abeCore,
-      invoice_number: invoiceNumber,
-    },
-    {
-      ...baseRow,
-      ...abeCore,
-    },
-    {
-      ...baseRow,
-      vendor,
-      category,
-      line_items: lineItems,
-      kba_number: kbaNumber,
-      vehicle_approvals: vehicleApprovals,
-      manufacturer,
-      conditions,
-      authority,
-      part_category: partCategory,
-    },
-    {
-      ...baseRow,
-      vendor,
-      category,
-      line_items: lineItems,
-      kba_number: kbaNumber,
-      vehicle_approvals: vehicleApprovals,
-      manufacturer,
-      conditions,
-    },
-    {
-      ...baseRow,
-      vendor,
-      category,
-      line_items: lineItems,
-      kba_number: kbaNumber,
-      vehicle_approvals: vehicleApprovals,
-      manufacturer,
-    },
-    {
-      ...baseRow,
-      vendor,
-      category,
-      line_items: lineItems,
-      kba_number: kbaNumber,
-      vehicle_approvals: vehicleApprovals,
+      technical_specs: technicalSpecs,
+      ...abeDetail,
     },
     {
       ...baseRow,
@@ -320,6 +287,48 @@ export async function uploadDocument(
       line_items: lineItems,
       invoice_number: invoiceNumber,
       mileage_km: mileageKm,
+      technical_specs: technicalSpecs,
+    },
+    {
+      ...baseRow,
+      vendor,
+      category,
+      line_items: lineItems,
+      invoice_number: invoiceNumber,
+      mileage_km: mileageKm,
+    },
+    {
+      ...baseRow,
+      vendor,
+      category,
+      line_items: lineItems,
+      invoice_number: invoiceNumber,
+    },
+    {
+      ...baseRow,
+      vendor,
+      category,
+      line_items: lineItems,
+      kba_number: kbaNumber,
+      vehicle_approvals: vehicleApprovals,
+      ...abeDetail,
+    },
+    {
+      ...baseRow,
+      vendor,
+      category,
+      line_items: lineItems,
+      kba_number: kbaNumber,
+      vehicle_approvals: vehicleApprovals,
+      manufacturer,
+    },
+    {
+      ...baseRow,
+      vendor,
+      category,
+      line_items: lineItems,
+      kba_number: kbaNumber,
+      vehicle_approvals: vehicleApprovals,
     },
     { ...baseRow, vendor, category, line_items: lineItems },
     { ...baseRow, vendor, category },
@@ -339,6 +348,10 @@ export async function uploadDocument(
     if (!result.error && result.data) {
       document = {
         ...result.data,
+        user_id:
+          typeof result.data.user_id === "string"
+            ? result.data.user_id
+            : ownerUserId,
         vendor:
           typeof result.data.vendor === "string"
             ? result.data.vendor
@@ -353,10 +366,7 @@ export async function uploadDocument(
             ? result.data.kba_number
             : kbaNumber,
         vehicle_approvals:
-          parseStringList(result.data.vehicle_approvals, {
-            maxItemLength: 160,
-            maxItems: 40,
-          }) ?? vehicleApprovals,
+          parseStringList(result.data.vehicle_approvals) ?? vehicleApprovals,
         authority:
           typeof result.data.authority === "string"
             ? result.data.authority
@@ -383,6 +393,8 @@ export async function uploadDocument(
           typeof result.data.mileage_km === "number"
             ? result.data.mileage_km
             : mileageKm,
+        technical_specs:
+          parseTechnicalSpecs(result.data.technical_specs) ?? technicalSpecs,
       };
       insertError = null;
       break;

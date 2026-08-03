@@ -1,4 +1,4 @@
-"use client";
+-"use client";
 
 import { ArrowLeft, ChevronRight, FileText } from "lucide-react";
 

@@ -147,14 +147,17 @@ vendor-Regeln:
 - Rechnung: Werkstatt-/Händlername.
 - ABE: Bauteilname (z.B. "Carbon Frontlippe"), nicht nur die Marke.
 invoiceNumber: nur Rechnungen (z.B. RE-2026-0312); sonst null.
-mileageKm: nur Rechnungen — Kilometerstand als Ganzzahl (z.B. 67210 aus "67.210 km"); sonst null.
-lineItems: nur Rechnungen inkl. MwSt.-Zeile wenn ausgewiesen; sonst null.
+mileageKm: nur Rechnungen — Kilometerstand/Tachostand als ganze Zahl (z.B. 67210); sonst null.
+lineItems: nur Rechnungen — JEDE Position einzeln (Material, Arbeitslohn, MwSt.).
+  Niemals Materialien zusammenfassen (falsch: "Reifen und Sportfedern").
+  Richtig getrennte Einträge z.B. Reifen, Sportfedern, Felgen, Motoröl, Ölfilter.
+  amount = immer Gesamtpreis/Zeilensumme (Menge×Einzelpreis), NIE der Einzelpreis.
+  Beispiel: 4 × 120,00 → amount 480. Bei mehreren Beträgen in einer Zeile: letzter/rechter.
+  MwSt.-Zeile am Ende wenn ausgewiesen; sonst null.
+Ölwechsel-Rechnungen: category=service, summary mit 'Ölwechsel', lineItems inkl. Motoröl/Ölfilter, mileageKm wenn vorhanden.
 ABE-Regeln:
-- manufacturer: Hersteller/Marke (AutoExe, Milltek, OZ, Tein)
-- kbaNumber, authority (Behörde),
-- vehicleApprovals: NUR Fahrzeughersteller + Fahrzeugmodell (z.B. "Mazda RX-8",
-  "BMW 320i", "Audi A4 (B8)"). Nie technische Daten (ET, Lochkreis, Radlast,
-  Felgengröße, EG-BE-Nr.). Nie nur Marke. Ein Eintrag pro Modell/Variante.
+- manufacturer: NUR Hersteller/Herstellerzeichen (AutoExe, Milltek, OZ, Tein) — NIEMALS Auftraggeber, Antragsteller, Besteller, Inverkehrbringer oder Importeur
+- kbaNumber, vehicleApprovals, authority (Behörde),
 - conditions: jede Auflage VOLLSTÄNDIG und wörtlich aus dem Dokument
   (komplette Sätze, nicht kürzen, nicht zusammenfassen; ein Array-Eintrag pro Auflage),
 - partCategory (Aerodynamik/Räder/Fahrwerk/…),

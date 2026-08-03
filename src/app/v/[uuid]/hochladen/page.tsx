@@ -5,6 +5,7 @@ import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { AppShell } from "@/components/layout/app-shell";
 import { DocumentUploadForm } from "@/components/documents/document-upload-form";
 import { InvoiceScannerForm } from "@/components/documents/invoice-scanner-form";
+import { getVehicleAccess } from "@/lib/auth/vehicle-access";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 import type { DocumentType } from "@/types/database";
 
@@ -31,6 +32,11 @@ export default async function UploadDocumentPage({
 
   if (!result?.vehicle || result.tag.status !== "active") {
     notFound();
+  }
+
+  const access = await getVehicleAccess(result.vehicle.user_id);
+  if (!access.isOwner) {
+    redirect(`/v/${uuid}`);
   }
 
   // Default scanner lives on the dashboard — keep legacy modes for manual/perspective.

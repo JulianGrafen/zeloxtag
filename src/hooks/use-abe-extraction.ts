@@ -54,14 +54,24 @@ function mergeFields(
     partCategory:
       patch.partCategory !== undefined ? patch.partCategory : base.partCategory,
     partType: patch.partType !== undefined ? patch.partType : base.partType,
+    date: patch.date !== undefined ? patch.date : base.date,
+    conditions:
+      patch.conditions !== undefined ? patch.conditions : base.conditions,
+    technicalSpecs:
+      patch.technicalSpecs !== undefined
+        ? patch.technicalSpecs
+        : base.technicalSpecs,
   });
 }
 
 function hasUsableSeed(fields: AbeCoreParseResult): boolean {
+  // Date alone (always scan date) does not count as extracted content.
   return Boolean(
     fields.kbaNumber?.trim() ||
       fields.manufacturer?.trim() ||
-      fields.partType?.trim(),
+      fields.partType?.trim() ||
+      (fields.conditions?.length ?? 0) > 0 ||
+      (fields.technicalSpecs?.length ?? 0) > 0,
   );
 }
 
@@ -81,26 +91,6 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
   const [status, setStatus] = useState<AbeExtractionStatus>(() =>
     hasUsableSeed(seeded) ? "ready" : "idle",
   );
-
-  // Parent OCR fields often arrive after first paint — adopt richer seeds.
-  useEffect(() => {
-    if (!initialFields) return;
-    setFields((current) => {
-      if (hasUsableSeed(current)) {
-        // Fill only still-empty keys from a later parent seed.
-        return mergeFields(current, {
-          kbaNumber: current.kbaNumber ?? initialFields.kbaNumber,
-          manufacturer: current.manufacturer ?? initialFields.manufacturer,
-          partType: current.partType ?? initialFields.partType,
-          partCategory: current.partCategory ?? initialFields.partCategory,
-        });
-      }
-      return mergeFields(emptyAbeCoreFields(), initialFields);
-    });
-    if (hasUsableSeed(mergeFields(emptyAbeCoreFields(), initialFields))) {
-      setStatus("ready");
-    }
-  }, [initialFields]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -141,7 +131,7 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
       const response = await fetch("/api/ocr/parse-abe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rawText: payload.slice(0, 12_000) }),
+        body: JSON.stringify({ rawText: payload.slice(0, 48_000) }),
       });
 
       const json = (await response.json()) as
@@ -149,6 +139,7 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
         | ParseAbeApiError;
 
       if (requestId !== requestIdRef.current) {
+        // Superseded — do not touch UI state owned by the newer request.
         return null;
       }
 
@@ -164,7 +155,22 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
       }
 
       const normalized = normalizeAbeCoreParseResult(json.fields);
-      setFields(normalized);
+      setFields((current) => {
+        // Keep previously seeded values if the refine pass returns none.
+        // Date is always the scan date — never replace with document issue date.
+        return {
+          ...normalized,
+          date: current.date ?? normalized.date,
+          conditions:
+            normalized.conditions?.length
+              ? normalized.conditions
+              : current.conditions,
+          technicalSpecs:
+            normalized.technicalSpecs?.length
+              ? normalized.technicalSpecs
+              : current.technicalSpecs,
+        };
+      });
       setStatus("ready");
       setIsRefreshing(false);
       setError(
@@ -219,6 +225,44 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
     );
   }, []);
 
+  const updateConditionsText = useCallback((text: string) => {
+    const next = text
+      .split(/\n+/)
+      .map((line) => line.replace(/^\d+[\).\s]+/, "").trim())
+      .filter(Boolean);
+    setFields((current) =>
+      normalizeAbeCoreParseResult({
+        ...current,
+        conditions: next.length > 0 ? next : null,
+      }),
+    );
+  }, []);
+
+  /** Edit technical specs as `Label: Wert` lines. */
+  const updateTechnicalSpecsText = useCallback((text: string) => {
+    const next = text
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const splitAt = line.indexOf(":");
+        if (splitAt <= 0) {
+          return { label: "Maß", value: line };
+        }
+        return {
+          label: line.slice(0, splitAt).trim(),
+          value: line.slice(splitAt + 1).trim(),
+        };
+      })
+      .filter((item) => item.label && item.value);
+    setFields((current) =>
+      normalizeAbeCoreParseResult({
+        ...current,
+        technicalSpecs: next.length > 0 ? next : null,
+      }),
+    );
+  }, []);
+
   const reset = useCallback(() => {
     requestIdRef.current += 1;
     extractedForTextRef.current = null;
@@ -242,6 +286,8 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
     setFields,
     updateField,
     updatePartCategory,
+    updateConditionsText,
+    updateTechnicalSpecsText,
     extract,
     reset,
   };

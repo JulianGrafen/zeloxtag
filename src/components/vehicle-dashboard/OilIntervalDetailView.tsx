@@ -15,11 +15,17 @@ import { PressableLink } from "./Pressable";
 interface OilIntervalDetailViewProps {
   record: OilChangeRecord;
   vehicleModel: string;
+  /** Back to oil history list. */
+  backHref?: string;
+  /** Optional link to the source invoice document. */
+  invoiceHref?: string | null;
 }
 
 export function OilIntervalDetailView({
   record,
   vehicleModel,
+  backHref = "/intervalle",
+  invoiceHref = null,
 }: OilIntervalDetailViewProps) {
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -30,7 +36,7 @@ export function OilIntervalDetailView({
 
       <div className="vd-anim-stack relative z-10 mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <PressableLink
-          href="/intervalle"
+          href={backHref}
           variant="pill"
           className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
         >
@@ -166,9 +172,9 @@ export function OilIntervalDetailView({
             {record.notes}
           </p>
 
-          {record.invoiceRef ? (
+          {invoiceHref || record.invoiceRef ? (
             <PressableLink
-              href={`/rechnungen/${record.invoiceRef}`}
+              href={invoiceHref ?? `/rechnungen/${record.invoiceRef}`}
               variant="button"
               className="mt-4 inline-flex items-center gap-1.5 text-[0.82rem] font-semibold text-[color:var(--vd-text)] underline-offset-2"
             >

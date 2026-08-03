@@ -1,5 +1,6 @@
 "use server";
 
+import { ensureClaimAccount } from "@/lib/auth/ensure-claim-account";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import {
   createAdminClient,
@@ -15,19 +16,15 @@ import {
   type PendingClaim,
 } from "@/lib/tags/pending-claim";
 
-/** Feature flag: Magic Link auth is deferred — claims use service role. */
-const MAGIC_LINK_ENABLED = false;
-
-/** Fallback owner while Magic Link is off (seeded by `npm run db:seed-demo`). */
-const DEMO_OWNER_EMAIL = "demo@zeloxtag.local";
-
 export type ClaimTagInput = {
   tagUuid: string;
   make: string;
   model: string;
   year: string;
   vin?: string;
+  /** Required on first claim when not already signed in. */
   email?: string;
+  password?: string;
   name?: string;
 };
 
@@ -35,7 +32,9 @@ export type ClaimTagResult =
   | { status: "error"; message: string }
   | { status: "continue"; href: string; nextTagUuid: string | null };
 
-type NormalizedClaim = PendingClaim;
+type NormalizedClaim = PendingClaim & {
+  password: string | null;
+};
 
 function normalizeVin(raw: string | undefined): string | null {
   const vin = raw?.trim().toUpperCase() ?? "";
@@ -53,6 +52,7 @@ function normalizeClaimInput(input: ClaimTagInput): NormalizedClaim {
   const year = Number.parseInt(input.year, 10);
   const email = (input.email ?? "").trim().toLowerCase();
   const name = input.name?.trim() || null;
+  const password = input.password?.trim() || null;
 
   if (!tagUuid) throw new Error("Tag-UUID fehlt.");
   if (!make) throw new Error("Marke ist erforderlich.");
@@ -69,6 +69,7 @@ function normalizeClaimInput(input: ClaimTagInput): NormalizedClaim {
     vin: normalizeVin(input.vin),
     email,
     name,
+    password,
   };
 }
 
@@ -76,38 +77,9 @@ function dashboardScannerHref(tagUuid: string): string {
   return `/v/${tagUuid}?scan=1`;
 }
 
-async function resolveDeferredOwnerUserId(): Promise<string> {
-  const admin = createAdminClient();
-  const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-  if (listed.error) {
-    throw new Error(`Owner-Lookup: ${listed.error.message}`);
-  }
-
-  const existing = listed.data.users.find(
-    (user) => user.email?.toLowerCase() === DEMO_OWNER_EMAIL,
-  );
-  if (existing) return existing.id;
-
-  const created = await admin.auth.admin.createUser({
-    email: DEMO_OWNER_EMAIL,
-    password: randomDemoPassword(),
-    email_confirm: true,
-    user_metadata: { name: "ZeloxTag Demo" },
-  });
-  if (created.error || !created.data.user) {
-    throw new Error(
-      `Demo-Owner: ${created.error?.message ?? "Anlage fehlgeschlagen"}`,
-    );
-  }
-  return created.data.user.id;
-}
-
-function randomDemoPassword(): string {
-  return `zt-${crypto.randomUUID()}`;
-}
-
 /**
- * Claims an unclaimed ZeloxTag, then mints a fresh unclaimed tag for the next QR.
+ * Claims an unclaimed ZeloxTag for a real user account, then mints the next tag.
+ * First-time scanners create an account (email + password) as part of the claim.
  */
 export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
   let normalized: NormalizedClaim;
@@ -135,28 +107,40 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
     };
   }
 
-  const user = await getCurrentUser();
+  let ownerUserId: string;
+  const currentUser = await getCurrentUser();
 
-  if (!user && MAGIC_LINK_ENABLED) {
-    return {
-      status: "error",
-      message: "Anmeldung ist erforderlich.",
-    };
-  }
+  if (currentUser) {
+    ownerUserId = currentUser.id;
+  } else {
+    if (!normalized.email || !normalized.password) {
+      return {
+        status: "error",
+        message: "E-Mail und Passwort sind für die Kontoanlage erforderlich.",
+      };
+    }
 
-  if (!user && !isSupabaseAdminConfigured()) {
-    return {
-      status: "error",
-      message:
-        "SUPABASE_SERVICE_ROLE_KEY fehlt — Claim ohne Login nicht möglich.",
-    };
+    const account = await ensureClaimAccount({
+      email: normalized.email,
+      password: normalized.password,
+      name: normalized.name,
+    });
+
+    if (!account.ok) {
+      return { status: "error", message: account.message };
+    }
+    ownerUserId = account.userId;
   }
 
   try {
-    const ownerUserId = user?.id ?? (await resolveDeferredOwnerUserId());
     const result = await completeClaimForOwner(ownerUserId, {
-      ...normalized,
-      email: (user?.email ?? normalized.email).toLowerCase(),
+      tagUuid: normalized.tagUuid,
+      make: normalized.make,
+      model: normalized.model,
+      year: normalized.year,
+      vin: normalized.vin,
+      email: (currentUser?.email ?? normalized.email).toLowerCase(),
+      name: normalized.name,
     });
 
     if (result.status === "error") {
@@ -178,15 +162,13 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
 }
 
 /**
- * Completes a claim after Magic Link callback (kept for later re-enable).
+ * Completes a claim after Magic Link callback (optional path).
  */
 export async function completePendingClaim(): Promise<
   | { status: "claimed"; tagUuid: string; nextTagUuid: string | null }
   | { status: "error"; message: string }
   | null
 > {
-  if (!MAGIC_LINK_ENABLED) return null;
-
   const pending = await getPendingClaim();
   if (!pending) return null;
 
@@ -207,7 +189,6 @@ async function completeClaimForOwner(
   | { status: "claimed"; tagUuid: string; nextTagUuid: string | null }
   | { status: "error"; message: string }
 > {
-  // Prefer admin while auth is deferred / for minting the next unclaimed tag.
   if (!isSupabaseAdminConfigured()) {
     return {
       status: "error",
@@ -276,7 +257,6 @@ async function completeClaimForOwner(
     const nextTag = await createUnclaimedTag();
     nextTagUuid = nextTag.uuid;
   } catch (mintError) {
-    // Claim already succeeded — surface mint failure but keep the claimed tag usable.
     console.error("Failed to mint next unclaimed tag after claim:", mintError);
   }
 

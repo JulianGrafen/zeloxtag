@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ChevronRight, Droplet } from "lucide-react";
+import { ArrowLeft, ChevronRight, Droplet, Plus } from "lucide-react";
 
 import {
   getLatestOilChange,
@@ -12,11 +12,20 @@ import { PressableLink } from "./Pressable";
 interface OilIntervalsViewProps {
   vehicleModel: string;
   records?: OilChangeRecord[];
+  /** Back navigation target (tag dashboard or demo home). */
+  backHref?: string;
+  /** Base path for detail links, e.g. `/v/{uuid}/intervalle`. */
+  basePath?: string;
+  /** Optional scan CTA for oil-change invoices. */
+  scanHref?: string;
 }
 
 export function OilIntervalsView({
   vehicleModel,
   records = OIL_CHANGE_RECORDS,
+  backHref = "/",
+  basePath = "/intervalle",
+  scanHref,
 }: OilIntervalsViewProps) {
   const latest = getLatestOilChange(records);
 
@@ -29,14 +38,26 @@ export function OilIntervalsView({
 
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <header className="vd-anim-header space-y-4">
-          <PressableLink
-            href="/"
-            variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Zurück
-          </PressableLink>
+          <div className="flex items-center justify-between gap-2">
+            <PressableLink
+              href={backHref}
+              variant="pill"
+              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Zurück
+            </PressableLink>
+            {scanHref ? (
+              <PressableLink
+                href={scanHref}
+                variant="pill"
+                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-2 text-[0.78rem] font-medium text-white"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Scannen
+              </PressableLink>
+            ) : null}
+          </div>
 
           <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
             <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
@@ -83,11 +104,19 @@ export function OilIntervalsView({
             Historie
           </h2>
 
+          {records.length === 0 ? (
+            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-6 text-center shadow-[var(--vd-shadow-sm)]">
+              <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
+                Noch keine Ölwechsel. Scanne eine Rechnung mit Motoröl /
+                Ölfilter — sie wird automatisch hier eingetragen.
+              </p>
+            </div>
+          ) : (
           <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
             {records.map((record, index) => (
               <li key={record.id}>
                 <PressableLink
-                  href={`/intervalle/${record.id}`}
+                  href={`${basePath}/${record.id}`}
                   variant="row"
                   className="group flex w-full items-center gap-3 px-4 py-3.5 text-left"
                 >
@@ -127,6 +156,7 @@ export function OilIntervalsView({
               </li>
             ))}
           </ul>
+          )}
         </section>
       </div>
     </div>

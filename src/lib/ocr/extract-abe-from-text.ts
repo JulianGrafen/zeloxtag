@@ -1,59 +1,77 @@
 import type OpenAI from "openai";
 
-import { extractKbaNumber, isPlausibleKbaNumber } from "./abe-from-text";
+import {
+  budgetAbeOcrText,
+  extractAbeConditionsFromText,
+  preferAbeConditions,
+  preferAbeManufacturer,
+  stripAbeFitmentSections,
+} from "./abe-from-text";
 import {
   ABE_CORE_PARSE_JSON_SCHEMA,
   abeCoreParseSchema,
   normalizeAbeCoreParseResult,
   type AbeCoreParseResult,
 } from "./abe-parse-schema";
+import {
+  extractAbeTechnicalSpecsFromText,
+  preferAbeTechnicalSpecs,
+} from "./abe-technical-specs-from-text";
 import { getInvoiceLlmClient } from "./llm-client";
 import { TextParseError } from "./extract-from-text";
-import {
-  extractAbeManufacturer,
-  extractAbePartName,
-  resolveAbePartIdentity,
-} from "./part-from-text";
 
-const PARSE_MAX_TOKENS = 400;
-const MAX_RAW_TEXT_CHARS = 10_000;
+const PARSE_MAX_TOKENS = 2_200;
+/** Larger budget — Auflagen sit late in multi-page ABEs. */
+const MAX_RAW_TEXT_CHARS = 48_000;
 
 const ABE_SYSTEM_PROMPT = `Du bist ein spezialisierter Parser für deutsche ABE-/Teilegutachten-Dokumente.
 
-Extrahiere NUR die Kern-Metadaten als JSON gemäß Schema.
+Extrahiere die Kern-Metadaten als JSON gemäß Schema.
 Setze fehlende oder unleserliche Werte auf null (außer partCategory → "other").
 
 WICHTIG — ignoriere vollständig:
 - den Abschnitt "Verwendungsbereich" und alle Fahrzeug-/Typ-/EG-Zulassungstabellen
-- Auflagenlisten, Montagehinweise, Unterschriften, Stempel, Seitenköpfe/-füße
+- Unterschriften, Stempel, Seitenköpfe/-füße
 - lange Typenschlüssel- oder Fahrgestell-Tabellen
 
-kbaNumber: bevorzugt genau "KBA #####" (5 Ziffern). Auch wenn OCR
-"KBA" und die Ziffern auf getrennten Zeilen hat.
+Hersteller (manufacturer) — NICHT verwechseln:
+- manufacturer = nur "Hersteller" / "Herstellerzeichen" / Marke des Bauteils
+- NICHT "Auftraggeber", "Antragsteller", "Besteller", "Inverkehrbringer",
+  "Importeur", "Vertreiber" — das sind andere Parteien und gehören NICHT in manufacturer
+- Wenn nur Auftraggeber lesbar ist, aber kein Hersteller: manufacturer = null
 
-Ziel: minimale Token-Nutzung, keine Halluzination von Fahrzeugfreigaben.
+Datum (date):
+- Immer null — das Scandatum setzt die App clientseitig
+
+Auflagen (conditions) — PFLICHTFELD wenn vorhanden:
+- Suche Abschnitte "Auflage", "Auflagen", "Hinweise", "Bedingungen"
+- Extrahiere JEDEN Auflagepunkt vollständig und möglichst wörtlich
+- Keine Kürzung, keine Zusammenfassung, keine Paraphrase
+- Ein Array-Eintrag pro nummerierter Auflage / Auflagepunkt
+- Nur wenn wirklich keine Auflagen im Text stehen: null
+
+Technische Maße (technicalSpecs):
+- Extrahiere alle technischen Maßangaben (ET/Einpresstiefe, Breite, Durchmesser,
+  Abmessungen L×B×H, Gewicht, Lochkreis, Mittenloch, Federweg, …)
+- WICHTIG: Auch kryptische Zahlen-/Buchstaben-Kombinationen mit Durchmesser-Zeichen
+  (Ø, ⌀, ø) vollständig speichern, z.B. "8Jx18 Ø72,6", "A12B Ø67,1 mm", "M14x1,5Ø12"
+- Label z.B. "Maßcode", "Durchmesser", "Felgengröße", "Einpresstiefe (ET)"
+- Format: { "label": "Maßcode", "value": "8Jx18 Ø72,6" }
+- Wenn keine Maße vorhanden: null
+
 Keine Erklärungen — nur JSON.`;
 
-/**
- * Drop bulky Verwendungsbereich / fitment sections before the LLM call.
- * Defensive: if markers are missing, returns the original text unchanged.
- */
-export function stripAbeFitmentSections(rawText: string): string {
-  const text = rawText.replace(/\r\n/g, "\n");
-  const start = text.search(/verwendungsbereich/i);
-  if (start < 0) return text;
-
-  const tail = text.slice(start);
-  const resume = tail.search(
-    /\n\s*(auflage|auflagen|hinweis|hinweise|bedingungen|bemerkungen|anlage\b|seite\s+\d)/i,
-  );
-
-  if (resume < 0) {
-    return `${text.slice(0, start)}\n`.trim();
-  }
-
-  return `${text.slice(0, start)}\n${tail.slice(resume)}`.trim();
+/** Preserve line breaks (needed for numbered Auflagen); collapse only spaces. */
+function prepareAbeTextForLlm(rawText: string): string {
+  const prepared = stripAbeFitmentSections(rawText)
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return budgetAbeOcrText(prepared, MAX_RAW_TEXT_CHARS);
 }
+
+/** Re-export for callers that previously imported from this module. */
+export { stripAbeFitmentSections } from "./abe-from-text";
 
 function extractJsonObject(content: string): unknown {
   const trimmed = content.trim();
@@ -74,20 +92,45 @@ function extractJsonObject(content: string): unknown {
 }
 
 /**
- * Specialized ABE core extraction (KBA, manufacturer, category, part type).
- * Does not extract Verwendungsbereich / vehicle fitment tables.
+ * Specialized ABE extraction: core metadata + fully worded Auflagen.
+ * LLM result is merged with a heuristic Auflagen fallback.
  */
 export async function extractAbeFromText(
   rawText: string,
 ): Promise<AbeCoreParseResult> {
-  const stripped = stripAbeFitmentSections(rawText);
-  const text = stripped.replace(/\s+/g, " ").trim().slice(0, MAX_RAW_TEXT_CHARS);
+  const text = prepareAbeTextForLlm(rawText);
+  // Prefer prepared text (fitment stripped, Auflagen kept) for heuristics too.
+  const heuristicConditions =
+    extractAbeConditionsFromText(text) ??
+    extractAbeConditionsFromText(rawText);
+  const heuristicTechnicalSpecs =
+    extractAbeTechnicalSpecsFromText(text) ??
+    extractAbeTechnicalSpecsFromText(rawText);
 
   if (text.length < 8) {
     throw new TextParseError(
       "OCR-Text ist zu kurz oder enthält keine lesbare ABE-Information.",
     );
   }
+
+  const heuristicManufacturer = preferAbeManufacturer(null, text);
+
+  const heuristicOnlyPayload = (): AbeCoreParseResult =>
+    normalizeAbeCoreParseResult({
+      kbaNumber: null,
+      manufacturer: heuristicManufacturer,
+      partCategory: "other",
+      partType: null,
+      date: null,
+      conditions: heuristicConditions,
+      technicalSpecs: heuristicTechnicalSpecs,
+    });
+
+  const hasHeuristicFallback = Boolean(
+    heuristicConditions?.length ||
+      heuristicTechnicalSpecs?.length ||
+      heuristicManufacturer,
+  );
 
   let client: OpenAI;
   let model: string;
@@ -118,7 +161,13 @@ export async function extractAbeFromText(
           role: "user",
           content: [
             "OCR-Text einer ABE / eines Teilegutachtens (Azure prebuilt-read).",
-            "Extrahiere nur: kbaNumber, manufacturer, partCategory, partType.",
+            "Extrahiere: kbaNumber, manufacturer, partCategory, partType,",
+            "conditions, technicalSpecs. date immer null (Scandatum setzt die App).",
+            "manufacturer = NUR Hersteller/Herstellerzeichen — NIEMALS Auftraggeber/Antragsteller.",
+            "conditions = JEDE Auflage vollständig und wörtlich (Pflicht, falls vorhanden).",
+            "Achte auf Überschriften wie 'Auflagen', 'Auflage', 'Hinweise'.",
+            "technicalSpecs = technische Maße als {label, value}.",
+            "Auch kryptische Codes mit Ø/⌀ (z.B. '8Jx18 Ø72,6') als technicalSpecs speichern.",
             "Ignoriere Verwendungsbereich und Fahrzeugtabellen.",
             "",
             text,
@@ -127,6 +176,7 @@ export async function extractAbeFromText(
       ],
     });
   } catch (error) {
+    if (hasHeuristicFallback) return heuristicOnlyPayload();
     const message =
       error instanceof Error ? error.message : "LLM request failed.";
     throw new TextParseError(`ABE parse request failed: ${message}`);
@@ -134,6 +184,7 @@ export async function extractAbeFromText(
 
   const content = completion.choices[0]?.message?.content;
   if (!content) {
+    if (hasHeuristicFallback) return heuristicOnlyPayload();
     throw new TextParseError("ABE parse returned an empty response.");
   }
 
@@ -141,31 +192,25 @@ export async function extractAbeFromText(
   try {
     parsedJson = extractJsonObject(content);
   } catch {
+    if (hasHeuristicFallback) return heuristicOnlyPayload();
     throw new TextParseError("ABE parse returned invalid JSON.");
   }
 
   const parsed = abeCoreParseSchema.safeParse(parsedJson);
   if (!parsed.success) {
+    if (hasHeuristicFallback) return heuristicOnlyPayload();
     throw new TextParseError("ABE parse payload failed schema validation.");
   }
 
   const normalized = normalizeAbeCoreParseResult(parsed.data);
-  const identity = resolveAbePartIdentity({
-    structuredVendor: normalized.partType,
-    structuredManufacturer: normalized.manufacturer,
-    rawText,
-  });
-
   return {
     ...normalized,
-    kbaNumber: isPlausibleKbaNumber(normalized.kbaNumber)
-      ? normalized.kbaNumber
-      : extractKbaNumber(rawText),
-    manufacturer:
-      identity.manufacturer ??
-      extractAbeManufacturer(rawText) ??
-      normalized.manufacturer,
-    partType:
-      identity.vendor ?? extractAbePartName(rawText) ?? normalized.partType,
+    manufacturer: preferAbeManufacturer(normalized.manufacturer, text),
+    date: null,
+    conditions: preferAbeConditions(normalized.conditions, heuristicConditions),
+    technicalSpecs: preferAbeTechnicalSpecs(
+      normalized.technicalSpecs,
+      heuristicTechnicalSpecs,
+    ),
   };
 }

@@ -4,6 +4,7 @@ import {
   parseAbeConditions,
   parseStringList,
 } from "@/lib/documents/string-list";
+import { parseTechnicalSpecs } from "@/lib/documents/technical-specs";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
@@ -24,14 +25,12 @@ function normalizeDocument(value: unknown): Document | null {
   if (typeof doc.id !== "string" || typeof doc.title !== "string") return null;
   return {
     ...doc,
+    user_id: typeof doc.user_id === "string" ? doc.user_id : "",
     vendor: typeof doc.vendor === "string" ? doc.vendor : null,
     category: typeof doc.category === "string" ? doc.category : null,
     line_items: parseLineItems(doc.line_items),
     kba_number: typeof doc.kba_number === "string" ? doc.kba_number : null,
-    vehicle_approvals: parseStringList(doc.vehicle_approvals, {
-      maxItemLength: 160,
-      maxItems: 40,
-    }),
+    vehicle_approvals: parseStringList(doc.vehicle_approvals),
     authority: typeof doc.authority === "string" ? doc.authority : null,
     conditions: parseAbeConditions(doc.conditions),
     part_category:
@@ -43,6 +42,7 @@ function normalizeDocument(value: unknown): Document | null {
     invoice_number:
       typeof doc.invoice_number === "string" ? doc.invoice_number : null,
     mileage_km: typeof doc.mileage_km === "number" ? doc.mileage_km : null,
+    technical_specs: parseTechnicalSpecs(doc.technical_specs),
   };
 }
 

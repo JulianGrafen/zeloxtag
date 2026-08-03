@@ -6,7 +6,7 @@ import { ClaimFlow } from "@/components/tags/claim-flow";
 import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { TagNotFound } from "@/components/tags/tag-not-found";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { getSupabaseEnv } from "@/lib/supabase/env";
+import { getVehicleAccess } from "@/lib/auth/vehicle-access";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 
 interface TagScanPageProps {
@@ -27,8 +27,8 @@ export async function generateMetadata({
 /**
  * QR scan landing route — resolves physical tag UUID.
  *
- * - State A `unclaimed` → Claim Flow
- * - State B `active` → Vehicle dashboard (+ inline scanner)
+ * - State A `unclaimed` → Claim Flow (+ account creation)
+ * - State B `active` → Digital twin (owner: write, guest: read-only)
  * - State C missing → clean not-found UI
  */
 export default async function TagScanPage({
@@ -39,7 +39,6 @@ export default async function TagScanPage({
   const { scan, type: scanType } = await searchParams;
   const result = await getTagByUuid(uuid);
 
-  // State C — tag does not exist
   if (!result) {
     return (
       <AppShell showNavbar={false}>
@@ -51,7 +50,6 @@ export default async function TagScanPage({
   const { tag, vehicle, documents } = result;
   const user = await getCurrentUser();
 
-  // State A — claim / register
   if (tag.status === "unclaimed") {
     return (
       <AppShell showNavbar={false}>
@@ -64,9 +62,10 @@ export default async function TagScanPage({
     );
   }
 
-  // State B — active digital twin (full access; auth deferred)
   if (tag.status === "active" && vehicle) {
-    const ownerName = await resolveOwnerName();
+    const access = await getVehicleAccess(vehicle.user_id);
+    const canWrite = access.isOwner;
+    const openScanner = canWrite && scan === "1";
 
     return (
       <AppShell showNavbar={false}>
@@ -74,25 +73,17 @@ export default async function TagScanPage({
           vehicle={vehicle}
           documents={documents}
           tagUuid={tag.uuid}
-          ownerName={ownerName}
-          initialMode={scan === "1" ? "scanner" : "dashboard"}
-          initialScanType={scanType === "abe" ? "abe" : undefined}
+          ownerName={access.ownerName}
+          isOwner={canWrite}
+          sessionEmail={access.sessionEmail}
+          initialMode={openScanner ? "scanner" : "dashboard"}
+          initialScanType={
+            openScanner && scanType === "abe" ? "abe" : undefined
+          }
         />
       </AppShell>
     );
   }
 
-  // Inconsistent row (active without vehicle)
   notFound();
-}
-
-async function resolveOwnerName(): Promise<string | null> {
-  const { isConfigured } = getSupabaseEnv();
-  if (!isConfigured) return "Julian";
-
-  const user = await getCurrentUser();
-  if (user && typeof user.user_metadata?.name === "string") {
-    return user.user_metadata.name;
-  }
-  return user?.email?.split("@")[0] ?? "Fahrer";
 }

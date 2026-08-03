@@ -38,47 +38,50 @@ function defaultNav(
   return "none";
 }
 
-function isViewTransitionActive(): boolean {
-  if (typeof document === "undefined") return false;
-  try {
-    // CSS :active-view-transition — when true, another VT is in flight.
-    return document.documentElement.matches(":active-view-transition");
-  } catch {
-    return false;
-  }
-}
-
 export function PressableLink({
   variant = "row",
   className,
   children,
   nav,
   transitionTypes,
-  onClick,
+  onPointerDown,
+  onPointerUp,
+  onPointerCancel,
+  onBlur,
   ...props
 }: PressableLinkProps) {
   const { pressProps } = usePressFeedback();
   const direction = defaultNav(variant, nav);
+  const types =
+    transitionTypes ??
+    (direction === "none"
+      ? undefined
+      : direction === "back"
+        ? ["nav-back"]
+        : ["nav-forward"]);
 
   return (
     <Link
       {...props}
-      {...pressProps}
-      transitionTypes={
-        // Avoid queuing overlapping view transitions (common cause of
-        // "dead" taps until reload).
-        isViewTransitionActive()
-          ? undefined
-          : (transitionTypes ??
-            (direction === "none"
-              ? undefined
-              : direction === "back"
-                ? ["nav-back"]
-                : ["nav-forward"]))
-      }
-      onClick={(event) => {
-        onClick?.(event);
+      transitionTypes={types}
+      onPointerDown={(event) => {
+        pressProps.onPointerDown(event);
+        onPointerDown?.(event);
       }}
+      onPointerUp={(event) => {
+        pressProps.onPointerUp(event);
+        onPointerUp?.(event);
+      }}
+      onPointerCancel={(event) => {
+        pressProps.onPointerCancel(event);
+        onPointerCancel?.(event);
+      }}
+      onLostPointerCapture={pressProps.onLostPointerCapture}
+      onBlur={(event) => {
+        pressProps.onBlur();
+        onBlur?.(event);
+      }}
+      data-pressed={pressProps["data-pressed"]}
       className={pressClass(variant, className)}
       style={{ WebkitTapHighlightColor: "transparent", ...props.style }}
     >
@@ -92,7 +95,10 @@ export function PressableButton({
   className,
   children,
   type = "button",
-  onClick,
+  onPointerDown,
+  onPointerUp,
+  onPointerCancel,
+  onBlur,
   ...props
 }: PressableButtonProps) {
   const { pressProps } = usePressFeedback();
@@ -101,10 +107,24 @@ export function PressableButton({
     <button
       type={type}
       {...props}
-      {...pressProps}
-      onClick={(event) => {
-        onClick?.(event);
+      onPointerDown={(event) => {
+        pressProps.onPointerDown(event);
+        onPointerDown?.(event);
       }}
+      onPointerUp={(event) => {
+        pressProps.onPointerUp(event);
+        onPointerUp?.(event);
+      }}
+      onPointerCancel={(event) => {
+        pressProps.onPointerCancel(event);
+        onPointerCancel?.(event);
+      }}
+      onLostPointerCapture={pressProps.onLostPointerCapture}
+      onBlur={(event) => {
+        pressProps.onBlur();
+        onBlur?.(event);
+      }}
+      data-pressed={pressProps["data-pressed"]}
       className={pressClass(variant, className)}
       style={{ WebkitTapHighlightColor: "transparent", ...props.style }}
     >

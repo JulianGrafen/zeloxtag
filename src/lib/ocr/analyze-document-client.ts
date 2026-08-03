@@ -6,8 +6,6 @@ import type {
   InvoiceTextParseCategory,
   InvoiceTextParseResult,
 } from "./text-parse-schema";
-import { normalizeVehicleApprovals } from "./abe-from-text";
-import { enrichAbeFieldsFromText } from "./enrich-abe-fields";
 import { normalizeTextParseResult } from "./text-parse-schema";
 
 export type AnalyzeDocumentResult = {
@@ -101,13 +99,11 @@ function mergeFields(
       results.find((result) => result.fields.kbaNumber)?.fields.kbaNumber ??
       null,
     vehicleApprovals:
-      vehicleApprovals.length > 0
-        ? normalizeVehicleApprovals(vehicleApprovals)
-        : null,
+      vehicleApprovals.length > 0 ? vehicleApprovals : null,
     authority:
       results.find((result) => result.fields.authority)?.fields.authority ??
       null,
-    conditions: conditions.length > 0 ? conditions.slice(0, 40) : null,
+    conditions: conditions.length > 0 ? conditions : null,
     partCategory:
       results.find((result) => result.fields.partCategory)?.fields
         .partCategory ?? null,
@@ -138,11 +134,7 @@ export async function analyzeDocumentFiles(
 
   if (files.length === 1) {
     onPageProgress?.(1, 1);
-    const single = await analyzeOneFile(files[0]);
-    return {
-      ...single,
-      fields: enrichAbeFieldsFromText(single.fields, single.rawText),
-    };
+    return analyzeOneFile(files[0]);
   }
 
   const results: AnalyzeDocumentResult[] = [];
@@ -157,7 +149,7 @@ export async function analyzeDocumentFiles(
     .trim();
 
   return {
-    fields: enrichAbeFieldsFromText(mergeFields(results), rawText),
+    fields: mergeFields(results),
     rawText,
     modelId: results[0]?.modelId ?? "prebuilt-read",
   };

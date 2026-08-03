@@ -1,22 +1,24 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { getCurrentUser } from "@/lib/auth/get-user";
 import {
   extractInvoiceFromText,
   TextParseError,
 } from "@/lib/ocr/extract-from-text";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
-import { getSupabaseEnv } from "@/lib/supabase/env";
+import { enforceRateLimit } from "@/lib/security/api-guard";
+import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
 
 export const runtime = "nodejs";
 
 const MAX_RAW_TEXT_CHARS = 12_000;
 
-const requestSchema = z.object({
-  rawText: z.string().trim().min(8).max(MAX_RAW_TEXT_CHARS),
-});
+const requestSchema = z
+  .object({
+    rawText: z.string().trim().min(8).max(MAX_RAW_TEXT_CHARS),
+  })
+  .strict();
 
 type ParseTextSuccess = {
   ok: true;
@@ -30,7 +32,8 @@ type ParseTextError = {
     | "unauthorized"
     | "bad_request"
     | "config"
-    | "parse_failed";
+    | "parse_failed"
+    | "rate_limited";
 };
 
 function jsonError(
@@ -45,9 +48,13 @@ function jsonError(
 /**
  * POST /api/ocr/parse-text
  * Hybrid OCR step 2: structured extraction from client Tesseract text.
+ * Public for QR scan UX (rate-limited); keys stay server-side.
  */
 export async function POST(request: NextRequest) {
   try {
+    const limited = enforceRateLimit(request, "ocr", "parse-text");
+    if (limited) return limited;
+
     if (!isLlmConfigured()) {
       return jsonError(
         503,
@@ -56,23 +63,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { isConfigured } = getSupabaseEnv();
-    if (isConfigured) {
-      const user = await getCurrentUser();
-      if (!user) {
-        return jsonError(401, "Authentication required.", "unauthorized");
-      }
+    const bodyRead = await readJsonBody(request);
+    if (!bodyRead.ok) {
+      return jsonError(400, bodyRead.error, "bad_request");
     }
 
-    let json: unknown;
-    try {
-      json = await request.json();
-    } catch {
-      return jsonError(400, "Expected JSON body.", "bad_request");
-    }
-
-    const parsedBody = requestSchema.safeParse(json);
-    if (!parsedBody.success) {
+    const parsedBody = parseStrictBody(requestSchema, bodyRead.json);
+    if (!parsedBody.ok) {
       return jsonError(
         400,
         "rawText is required (min 8 characters).",

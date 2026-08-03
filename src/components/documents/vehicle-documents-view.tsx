@@ -34,6 +34,8 @@ interface VehicleDocumentsViewProps {
   vehicleModel?: string;
   documents: Document[];
   filterType?: DocumentType | "all";
+  /** Owner-only scan / delete actions. */
+  canWrite?: boolean;
 }
 
 const FILTERS: Array<{ id: DocumentType | "all"; label: string }> = [
@@ -51,6 +53,7 @@ export function VehicleDocumentsView({
   vehicleModel,
   documents,
   filterType = "all",
+  canWrite = false,
 }: VehicleDocumentsViewProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +70,7 @@ export function VehicleDocumentsView({
         tagUuid={tagUuid}
         vehicleModel={vehicleModel?.trim() || vehicleLabel.split("·")[0]?.trim() || vehicleLabel}
         documents={documents}
+        canWrite={canWrite}
       />
     );
   }
@@ -79,6 +83,7 @@ export function VehicleDocumentsView({
   );
 
   function handleDelete(documentId: string) {
+    if (!canWrite) return;
     const confirmed = window.confirm("Dokument wirklich löschen?");
     if (!confirmed) return;
 
@@ -206,6 +211,7 @@ export function VehicleDocumentsView({
                   <DocumentRow
                     tagUuid={tagUuid}
                     document={doc}
+                    canDelete={canWrite}
                     deleting={pending && pendingId === doc.id}
                     onDelete={() => handleDelete(doc.id)}
                     onOpen={() => {
@@ -231,22 +237,24 @@ export function VehicleDocumentsView({
         />
       ) : null}
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
-        <div className="pointer-events-auto mx-auto max-w-lg">
-          <PressableLink
-            href={
-              filterType === "abe"
-                ? `/v/${tagUuid}?scan=1&type=abe`
-                : `/v/${tagUuid}?scan=1`
-            }
-            variant="button"
-            className="claim-cta shadow-[var(--vd-shadow)]"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            {filterType === "abe" ? "ABE scannen" : "Rechnung scannen"}
-          </PressableLink>
+      {canWrite ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
+          <div className="pointer-events-auto mx-auto max-w-lg">
+            <PressableLink
+              href={
+                filterType === "abe"
+                  ? `/v/${tagUuid}?scan=1&type=abe`
+                  : `/v/${tagUuid}?scan=1`
+              }
+              variant="button"
+              className="claim-cta shadow-[var(--vd-shadow)]"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              {filterType === "abe" ? "ABE scannen" : "Rechnung scannen"}
+            </PressableLink>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }
@@ -254,12 +262,14 @@ export function VehicleDocumentsView({
 function DocumentRow({
   tagUuid,
   document,
+  canDelete: allowDelete,
   deleting,
   onDelete,
   onOpen,
 }: {
   tagUuid: string;
   document: Document;
+  canDelete: boolean;
   deleting: boolean;
   onDelete: () => void;
   onOpen: () => void;
@@ -268,18 +278,29 @@ function DocumentRow({
   const isMock = document.file_url.startsWith("mock://");
   const canView = isViewableDocumentUrl(document.file_url);
   const Icon = document.type === "abe" ? Stamp : FileText;
-  const canDelete = isMock || !document.file_url.startsWith("/demo/");
+  const canDelete =
+    allowDelete && (isMock || !document.file_url.startsWith("/demo/"));
   const opensDetail =
     document.type === "invoice" || document.type === "abe";
   const detailHref = `/v/${tagUuid}/dokumente/${document.id}`;
   const lineCount = document.line_items?.length ?? 0;
   const approvalCount = document.vehicle_approvals?.length ?? 0;
 
+  const listTitle = displayDocumentTitle(document.title);
+  const manufacturer = document.manufacturer?.trim() || "";
+  const model = document.vendor?.trim() || "";
   const subtitle =
     document.type === "invoice"
       ? document.vendor?.trim() || null
       : document.type === "abe"
-        ? document.manufacturer?.trim() || null
+        ? // Title is already "Hersteller Modell" — only show leftover model/brand if needed.
+          manufacturer &&
+          !listTitle.toLowerCase().startsWith(manufacturer.toLowerCase())
+            ? manufacturer
+            : model &&
+                !listTitle.toLowerCase().includes(model.toLowerCase())
+              ? model
+              : null
         : null;
 
   const meta = (
@@ -309,7 +330,7 @@ function DocumentRow({
         <span className="flex items-start justify-between gap-2">
           <span className="min-w-0">
             <span className="block font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-              {displayDocumentTitle(document.title)}
+              {listTitle}
             </span>
             {subtitle ? (
               <span className="mt-0.5 block truncate text-[0.75rem] text-[color:var(--vd-muted)]">

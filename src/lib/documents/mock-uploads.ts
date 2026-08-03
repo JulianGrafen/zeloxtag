@@ -4,6 +4,7 @@ import type { Document } from "@/types/database";
 
 import { parseLineItems } from "./line-items";
 import { parseAbeConditions, parseStringList } from "./string-list";
+import { parseTechnicalSpecs } from "./technical-specs";
 
 export const MOCK_UPLOADS_COOKIE = "zt_mock_uploads";
 
@@ -20,10 +21,7 @@ function normalizeDocument(document: Document): Document {
     line_items: parseLineItems(document.line_items),
     kba_number:
       typeof document.kba_number === "string" ? document.kba_number : null,
-    vehicle_approvals: parseStringList(document.vehicle_approvals, {
-      maxItemLength: 160,
-      maxItems: 40,
-    }),
+    vehicle_approvals: parseStringList(document.vehicle_approvals),
     authority:
       typeof document.authority === "string" ? document.authority : null,
     conditions: parseAbeConditions(document.conditions),
@@ -44,6 +42,7 @@ function normalizeDocument(document: Document): Document {
         : null,
     mileage_km:
       typeof document.mileage_km === "number" ? document.mileage_km : null,
+    technical_specs: parseTechnicalSpecs(document.technical_specs),
   };
 }
 

@@ -12,7 +12,7 @@
 --   supabase/migrations/00008_documents_manufacturer.sql
 --   supabase/migrations/00009_documents_invoice_number.sql
 --   supabase/migrations/00010_documents_mileage_km.sql
---   supabase/migrations/00011_documents_abe_columns_ensure.sql
+--   supabase/migrations/00011_documents_technical_specs.sql
 --
 -- Apply with Supabase CLI:
 --   supabase db push

@@ -6,13 +6,23 @@
  * Target: well under 1 cent per single-page scan (no invoice model, no add-ons, no vision).
  */
 
-import { looksLikeAbeDocument, resolveAbeFields } from "./abe-from-text";
+import {
+  budgetAbeOcrText,
+  extractAbeConditionsFromText,
+  preferAbeConditions,
+  preferAbeManufacturer,
+  resolveAbeFields,
+} from "./abe-from-text";
 import { extractInvoiceFromText, TextParseError } from "./extract-from-text";
 import { getDocumentIntelligenceEnv } from "./document-intelligence-env";
-import { enrichAbeFieldsFromText } from "./enrich-abe-fields";
 import { inferInvoiceCategory } from "./infer-invoice-category";
+import {
+  extractInvoiceLineItemsFromText,
+  preferInvoiceLineItems,
+} from "./invoice-line-items-from-text";
+import { preferMileageKm } from "./mileage-from-text";
 import { isLlmConfigured } from "./llm-client";
-import { resolveAbePartIdentity } from "./part-from-text";
+import { resolveAbePartName } from "./part-from-text";
 import {
   normalizeTextParseResult,
   type InvoiceTextParseResult,
@@ -25,7 +35,11 @@ const MODEL_ID = "prebuilt-read";
 const LOCALE = "de-DE";
 const POLL_INTERVAL_MS = 700;
 const POLL_TIMEOUT_MS = 60_000;
-const MAX_OCR_TEXT_CHARS = 10_000;
+/**
+ * Multi-page ABEs often exceed 10k chars before Auflagen appear.
+ * Budget keeps head metadata + Auflagen (see budgetAbeOcrText).
+ */
+const MAX_OCR_TEXT_CHARS = 48_000;
 
 export class DocumentIntelligenceError extends Error {
   constructor(message: string) {
@@ -175,7 +189,7 @@ export function buildOcrJsonPayload(result: DiAnalyzeResult): OcrJsonPayload {
     modelId: MODEL_ID,
     locale: LOCALE,
     pageCount: Math.max(1, pages.length || 1),
-    text: text.slice(0, MAX_OCR_TEXT_CHARS),
+    text: budgetAbeOcrText(text, MAX_OCR_TEXT_CHARS),
     headerLines: firstPageLines.slice(0, 12),
   };
 }
@@ -189,56 +203,49 @@ function mergeParsedFields(
 
   const categorySeed = `${fullText}\n${parsed.summary ?? ""}\n${parsed.vendor ?? ""}`;
   const scored = inferInvoiceCategory(categorySeed);
-  const scoredCategory =
-    scored !== "other"
-      ? scored
-      : parsed.category !== "other"
-        ? parsed.category
-        : "other";
+  // Heuristic wins over LLM for ABE — parts invoices often say "inkl. ABE".
+  let category: InvoiceTextParseResult["category"];
+  if (scored === "abe") {
+    category = "abe";
+  } else if (parsed.category === "abe") {
+    category = scored;
+  } else if (scored !== "other") {
+    category = scored;
+  } else if (parsed.category !== "other") {
+    category = parsed.category;
+  } else {
+    category = "other";
+  }
 
-  // Keep ABE detail fields when the LLM/OCR says ABE — never wipe KBA /
-  // Freigaben / Auflagen just because category scoring drifted to "other".
-  const isAbe =
-    scoredCategory === "abe" ||
-    parsed.category === "abe" ||
-    Boolean(parsed.kbaNumber?.trim()) ||
-    Boolean(parsed.vehicleApprovals?.length) ||
-    Boolean(parsed.conditions?.length) ||
-    looksLikeAbeDocument(fullText);
-
-  const category = isAbe ? "abe" : scoredCategory;
-
-  const abePart = isAbe
-    ? resolveAbePartIdentity({
-        structuredVendor: parsed.vendor,
-        structuredManufacturer: parsed.manufacturer,
-        rawText: fullText,
-      })
-    : null;
-
-  const vendor = isAbe
-    ? abePart?.vendor ?? null
-    : resolveVendorName({
-        structuredVendor: parsed.vendor,
-        logoCandidates: ocr.headerLines.slice(0, 4),
-        rawText: fullText,
-      });
+  // ABE: vendor field holds Bauteil (Marke + Art), not workshop name.
+  const vendor =
+    category === "abe"
+      ? resolveAbePartName({
+          structuredPart: parsed.vendor,
+          rawText: fullText,
+        })
+      : resolveVendorName({
+          structuredVendor: parsed.vendor,
+          logoCandidates: ocr.headerLines.slice(0, 4),
+          rawText: fullText,
+        });
 
   const summary =
-    isAbe && vendor && !parsed.summary ? vendor.slice(0, 80) : parsed.summary;
+    category === "abe" && vendor && !parsed.summary
+      ? vendor.slice(0, 80)
+      : parsed.summary;
 
-  const abeFields = isAbe
-    ? resolveAbeFields({
-        structuredKba: parsed.kbaNumber,
-        structuredApprovals: parsed.vehicleApprovals,
-        structuredConditions: parsed.conditions,
-        rawText: fullText,
-      })
-    : {
-        kbaNumber: null,
-        vehicleApprovals: null,
-        conditions: null,
-      };
+  const abeFields =
+    category === "abe"
+      ? resolveAbeFields({
+          structuredKba: parsed.kbaNumber,
+          structuredApprovals: parsed.vehicleApprovals,
+          rawText: fullText,
+        })
+      : { kbaNumber: null, vehicleApprovals: null };
+
+  const heuristicLineItems =
+    category === "abe" ? null : extractInvoiceLineItemsFromText(fullText);
 
   return normalizeTextParseResult({
     ...parsed,
@@ -247,14 +254,27 @@ function mergeParsedFields(
     summary,
     kbaNumber: abeFields.kbaNumber,
     vehicleApprovals: abeFields.vehicleApprovals,
-    lineItems: isAbe ? null : parsed.lineItems,
-    authority: isAbe ? parsed.authority : null,
-    conditions: abeFields.conditions,
-    partCategory: isAbe ? parsed.partCategory : null,
-    notes: isAbe ? parsed.notes : null,
-    manufacturer: isAbe ? (abePart?.manufacturer ?? null) : null,
-    invoiceNumber: isAbe ? null : parsed.invoiceNumber,
-    mileageKm: isAbe ? null : parsed.mileageKm,
+    lineItems:
+      category === "abe"
+        ? null
+        : preferInvoiceLineItems(parsed.lineItems, heuristicLineItems),
+    authority: category === "abe" ? parsed.authority : null,
+    conditions:
+      category === "abe"
+        ? preferAbeConditions(
+            parsed.conditions,
+            extractAbeConditionsFromText(fullText),
+          )
+        : null,
+    partCategory: category === "abe" ? parsed.partCategory : null,
+    notes: category === "abe" ? parsed.notes : null,
+    manufacturer:
+      category === "abe"
+        ? preferAbeManufacturer(parsed.manufacturer, fullText)
+        : null,
+    invoiceNumber: category === "abe" ? null : parsed.invoiceNumber,
+    mileageKm:
+      category === "abe" ? null : preferMileageKm(parsed.mileageKm, fullText),
   });
 }
 
@@ -333,10 +353,7 @@ export async function analyzeInvoiceDocument(input: {
     throw new DocumentIntelligenceError(message);
   }
 
-  const fields = enrichAbeFieldsFromText(
-    mergeParsedFields(parsed, ocrJson),
-    ocrJson.text,
-  );
+  const fields = mergeParsedFields(parsed, ocrJson);
 
   return {
     fields,

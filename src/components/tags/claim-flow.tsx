@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
 
 import { claimTag } from "@/actions/claim-tag";
 import { Button } from "@/components/ui/button";
@@ -11,21 +11,32 @@ import { Label } from "@/components/ui/label";
 
 interface ClaimFlowProps {
   tagUuid: string;
-  /** Kept for API compatibility; Magic Link auth is currently disabled. */
   isAuthenticated?: boolean;
   userEmail?: string | null;
 }
 
-type Step = "intro" | "vehicle";
+type Step = "intro" | "vehicle" | "account";
 
-export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
+export function ClaimFlow({
+  tagUuid,
+  isAuthenticated = false,
+  userEmail = null,
+}: ClaimFlowProps) {
   const [step, setStep] = useState<Step>("intro");
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
   const [vin, setVin] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState(userEmail ?? "");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const needsAccount = !isAuthenticated;
+  const stepCount = needsAccount ? 2 : 1;
+  const stepIndex = step === "vehicle" ? 1 : step === "account" ? 2 : 0;
 
   function validateVehicle(): string | null {
     if (!make.trim()) return "Marke ist erforderlich.";
@@ -41,12 +52,36 @@ export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
     return null;
   }
 
+  function validateAccount(): string | null {
+    if (!email.trim() || !email.includes("@")) {
+      return "Gültige E-Mail erforderlich.";
+    }
+    if (password.length < 10) {
+      return "Passwort muss mindestens 10 Zeichen haben.";
+    }
+    if (password !== passwordConfirm) {
+      return "Passwörter stimmen nicht überein.";
+    }
+    return null;
+  }
+
   function submitClaim() {
     setError(null);
+
     const vehicleError = validateVehicle();
     if (vehicleError) {
       setError(vehicleError);
+      setStep("vehicle");
       return;
+    }
+
+    if (needsAccount) {
+      const accountError = validateAccount();
+      if (accountError) {
+        setError(accountError);
+        setStep("account");
+        return;
+      }
     }
 
     startTransition(async () => {
@@ -57,6 +92,13 @@ export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
           model,
           year,
           vin: vin.trim() || undefined,
+          ...(needsAccount
+            ? {
+                email: email.trim(),
+                password,
+                name: name.trim() || undefined,
+              }
+            : {}),
         });
 
         if (result.status === "error") {
@@ -78,12 +120,19 @@ export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
 
   return (
     <ClaimShell>
-      {step === "vehicle" ? (
+      {step !== "intro" ? (
         <div
           className="mb-5 flex items-center gap-2 vd-anim-header"
-          aria-label="Schritt 1 von 1"
+          aria-label={`Schritt ${stepIndex} von ${stepCount}`}
         >
-          <div className="h-1 flex-1 rounded-full bg-neutral-900" />
+          {Array.from({ length: stepCount }, (_, index) => (
+            <div
+              key={index}
+              className={`h-1 flex-1 rounded-full ${
+                index < stepIndex ? "bg-neutral-900" : "bg-neutral-200"
+              }`}
+            />
+          ))}
         </div>
       ) : null}
 
@@ -97,13 +146,22 @@ export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
               Dein Fahrzeug. Ein Scan entfernt.
             </p>
             <p className="max-w-[34ch] text-[0.95rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Verknüpfe den Tag mit deinem Auto — danach kannst du Rechnungen
-              direkt scannen und speichern.
+              {needsAccount
+                ? "Beim ersten Scan legst du ein Konto an, verknüpfst den Tag mit deinem Auto — und kannst danach Dokumente speichern."
+                : "Verknüpfe den Tag mit deinem Auto — danach kannst du Rechnungen direkt scannen und speichern."}
             </p>
           </div>
 
           <div className="vd-anim-stack mt-8 space-y-3.5">
             <SteelTagPlate uuid={tagUuid} />
+            {isAuthenticated && userEmail ? (
+              <p className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
+                Angemeldet als{" "}
+                <span className="font-medium text-[color:var(--vd-text)]">
+                  {userEmail}
+                </span>
+              </p>
+            ) : null}
             <Button type="button" onClick={() => setStep("vehicle")}>
               Tag beanspruchen
               <ArrowRight className="h-4 w-4" aria-hidden />
@@ -111,6 +169,14 @@ export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
             <Link href="/" className="claim-later">
               Später fortfahren
             </Link>
+            {!isAuthenticated ? (
+              <Link
+                href={`/login?next=${encodeURIComponent(`/v/${tagUuid}`)}`}
+                className="claim-later"
+              >
+                Bereits ein Konto? Anmelden
+              </Link>
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -121,8 +187,10 @@ export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
             <p className="claim-kicker">Fahrzeugdaten</p>
             <h1 className="claim-title mt-2">Fahrzeug verknüpfen</h1>
             <p className="claim-copy mt-2">
-              Marke, Modell und Baujahr reichen für den Start. Danach geht’s
-              direkt zum Dokument-Scanner.
+              Marke, Modell und Baujahr reichen für den Start.
+              {needsAccount
+                ? " Als Nächstes legst du dein Konto an."
+                : " Danach geht’s direkt zum Dokument-Scanner."}
             </p>
           </header>
 
@@ -130,6 +198,16 @@ export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
             className="mt-6 space-y-4"
             onSubmit={(event) => {
               event.preventDefault();
+              setError(null);
+              const vehicleError = validateVehicle();
+              if (vehicleError) {
+                setError(vehicleError);
+                return;
+              }
+              if (needsAccount) {
+                setStep("account");
+                return;
+              }
               submitClaim();
             }}
           >
@@ -189,7 +267,103 @@ export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
                 Zurück
               </Button>
               <Button type="submit" disabled={pending} className="flex-1">
-                {pending ? "Verknüpfen…" : "Weiter zum Scanner"}
+                {needsAccount
+                  ? "Weiter zum Konto"
+                  : pending
+                    ? "Verknüpfen…"
+                    : "Weiter zum Scanner"}
+                {needsAccount ? (
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                ) : (
+                  <Check className="h-4 w-4" aria-hidden />
+                )}
+              </Button>
+            </div>
+          </form>
+        </section>
+      ) : null}
+
+      {step === "account" ? (
+        <section className="claim-panel vd-anim-header">
+          <header>
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+              <ShieldCheck className="h-5 w-5" aria-hidden />
+            </div>
+            <p className="claim-kicker mt-4">Konto</p>
+            <h1 className="claim-title mt-2">Konto anlegen</h1>
+            <p className="claim-copy mt-2">
+              Damit bleiben Fahrzeug und Dokumente sicher mit dir verknüpft.
+              Hast du schon ein Konto, melden wir dich mit E-Mail und Passwort an.
+            </p>
+          </header>
+
+          <form
+            className="mt-6 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitClaim();
+            }}
+          >
+            <Field
+              label="Name (optional)"
+              value={name}
+              onChange={setName}
+              placeholder="Dein Name"
+              autoComplete="name"
+            />
+            <Field
+              label="E-Mail"
+              value={email}
+              onChange={setEmail}
+              type="email"
+              inputMode="email"
+              placeholder="du@beispiel.de"
+              required
+              autoComplete="email"
+            />
+            <Field
+              label="Passwort"
+              value={password}
+              onChange={setPassword}
+              type="password"
+              placeholder="Mindestens 10 Zeichen"
+              required
+              autoComplete="new-password"
+            />
+            <Field
+              label="Passwort bestätigen"
+              value={passwordConfirm}
+              onChange={setPasswordConfirm}
+              type="password"
+              placeholder="Passwort wiederholen"
+              required
+              autoComplete="new-password"
+            />
+
+            {error ? (
+              <p
+                role="alert"
+                className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
+              >
+                {error}
+              </p>
+            ) : null}
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setError(null);
+                  setStep("vehicle");
+                }}
+                disabled={pending}
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden />
+                Zurück
+              </Button>
+              <Button type="submit" disabled={pending} className="flex-1">
+                {pending ? "Konto wird angelegt…" : "Konto anlegen & starten"}
                 <Check className="h-4 w-4" aria-hidden />
               </Button>
             </div>
@@ -240,6 +414,7 @@ function Field({
   inputMode,
   required,
   placeholder,
+  autoComplete,
 }: {
   label: string;
   value: string;
@@ -248,6 +423,7 @@ function Field({
   inputMode?: "numeric" | "email" | "text";
   required?: boolean;
   placeholder?: string;
+  autoComplete?: string;
 }) {
   return (
     <Label>
@@ -260,6 +436,7 @@ function Field({
         required={required}
         value={value}
         placeholder={placeholder}
+        autoComplete={autoComplete}
         onChange={(event) => onChange(event.target.value)}
       />
     </Label>

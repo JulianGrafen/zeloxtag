@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { VehicleDocumentsView } from "@/components/documents/vehicle-documents-view";
+import { getVehicleAccess } from "@/lib/auth/vehicle-access";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 import type { DocumentType } from "@/types/database";
 
@@ -45,6 +46,8 @@ export default async function VehicleDocumentsPage({
       ? (typeRaw as DocumentType | "all")
       : "all";
 
+  const access = await getVehicleAccess(result.vehicle.user_id);
+
   return (
     <VehicleDocumentsView
       tagUuid={result.tag.uuid}
@@ -53,6 +56,7 @@ export default async function VehicleDocumentsPage({
       vehicleModel={result.vehicle.model}
       documents={result.documents}
       filterType={filterType}
+      canWrite={access.isOwner}
     />
   );
 }

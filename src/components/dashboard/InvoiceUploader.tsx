@@ -20,16 +20,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { localDateIso } from "@/lib/documents/format";
+import {
+  buildInvoiceDashboardTitle,
+  isPrimaryOilChange,
+} from "@/lib/documents/invoice-title";
+import { detectOilChangeInvoice } from "@/lib/documents/oil-changes";
 import { uploadDocument } from "@/lib/documents/upload-document";
-import type { AbeSavePayload } from "@/components/dashboard/ABEOverview";
 import {
   abePartCategoryLabel,
   coerceAbePartCategory,
+  type AbeCoreParseResult,
 } from "@/lib/ocr/abe-parse-schema";
 import { analyzeDocumentFiles } from "@/lib/ocr/analyze-document-client";
 import {
   documentTypeForTextCategory,
-  titleFromParsedInvoice,
+  titleFromAbeFields,
 } from "@/lib/ocr/category-map";
 import type { CompressedPage } from "@/lib/ocr/compress-page";
 import {
@@ -265,27 +271,55 @@ export function InvoiceUploader({
       setPageCount(processed.pageCount);
       setRawText(analyzed.rawText);
 
-      const nextFields =
-        lockCategory && initialCategory === "abe"
+      const oil = detectOilChangeInvoice({
+        title: analyzed.fields.summary,
+        summary: analyzed.fields.summary,
+        vendor: analyzed.fields.vendor,
+        category: analyzed.fields.category,
+        notes: analyzed.fields.notes,
+        lineItems: analyzed.fields.lineItems,
+        rawText: analyzed.rawText,
+      });
+      const oilPrimary = isPrimaryOilChange({
+        summary: analyzed.fields.summary,
+        vendor: analyzed.fields.vendor,
+        category: analyzed.fields.category,
+        lineItems: analyzed.fields.lineItems,
+        rawText: analyzed.rawText,
+        oil,
+      });
+
+      const baseFields = lockCategory
+        ? { ...analyzed.fields, category: initialCategory }
+        : analyzed.fields;
+
+      // Only promote to Service/Ölwechsel title when oil is the main job.
+      const nextFields = {
+        ...baseFields,
+        ...(oilPrimary
           ? {
-              ...analyzed.fields,
-              category: "abe" as const,
-              // Keep ABE identity fields even if category voting drifted.
-              vendor: analyzed.fields.vendor,
-              manufacturer: analyzed.fields.manufacturer,
-              kbaNumber: analyzed.fields.kbaNumber,
-              vehicleApprovals: analyzed.fields.vehicleApprovals,
-              conditions: analyzed.fields.conditions,
+              category: "service" as const,
+              notes: oil.notes,
+              summary: oil.title,
             }
-          : lockCategory
-            ? { ...analyzed.fields, category: initialCategory }
-            : analyzed.fields;
+          : oil.isOilChange
+            ? {
+                notes: baseFields.notes?.trim()
+                  ? `${baseFields.notes.trim()} · ${oil.notes}`
+                  : oil.notes,
+              }
+            : {}),
+      };
       setFields(nextFields);
 
-      const defaultTitle = titleFromParsedInvoice(nextFields).replace(
-        /^\[[^\]]+\]\s*/,
-        "",
-      );
+      const defaultTitle = buildInvoiceDashboardTitle({
+        summary: nextFields.summary,
+        vendor: nextFields.vendor,
+        category: nextFields.category,
+        lineItems: nextFields.lineItems,
+        rawText: analyzed.rawText,
+        oil,
+      });
       setTitle(defaultTitle);
 
       setProgress({ label: "Fertig", percent: 100 });
@@ -323,6 +357,10 @@ export function InvoiceUploader({
       manufacturer: fields.manufacturer,
       partCategory: coerceAbePartCategory(fields.partCategory),
       partType: fields.vendor ?? fields.summary,
+      // ABE document date = scan day (not Ausstellungsdatum from the PDF).
+      date: localDateIso(),
+      conditions: fields.conditions,
+      technicalSpecs: null,
     }),
     [
       fields.kbaNumber,
@@ -330,10 +368,11 @@ export function InvoiceUploader({
       fields.partCategory,
       fields.vendor,
       fields.summary,
+      fields.conditions,
     ],
   );
 
-  function saveAbeDocument(abe: AbeSavePayload) {
+  function saveAbeDocument(abe: AbeCoreParseResult) {
     if (!uploadFile) {
       setError("Keine Datei zum Speichern vorhanden.");
       return;
@@ -342,7 +381,7 @@ export function InvoiceUploader({
     setError(null);
     const partType = abe.partType?.trim() || null;
     const manufacturer = abe.manufacturer?.trim() || null;
-    const storedTitle = partType || manufacturer || "ABE";
+    const storedTitle = titleFromAbeFields({ manufacturer, partType });
 
     startTransition(async () => {
       const formData = new FormData();
@@ -351,15 +390,16 @@ export function InvoiceUploader({
       formData.set("title", storedTitle);
       formData.set("type", "abe");
       formData.set("category", "abe");
-      formData.set("vendor", partType ?? "");
-      formData.set("date", fields.date ?? "");
+      // Keep Bauteil/Modell in vendor; list title is manufacturer + model.
+      formData.set("vendor", partType ?? storedTitle);
+      formData.set("date", abe.date?.trim() || localDateIso());
       formData.set("amount", "");
       formData.set("lineItems", "");
       formData.set("kbaNumber", abe.kbaNumber?.trim() ?? "");
       formData.set(
         "vehicleApprovals",
-        abe.vehicleApprovals?.length
-          ? JSON.stringify(abe.vehicleApprovals)
+        fields.vehicleApprovals?.length
+          ? JSON.stringify(fields.vehicleApprovals)
           : "",
       );
       formData.set("authority", fields.authority?.trim() ?? "");
@@ -367,9 +407,17 @@ export function InvoiceUploader({
         "conditions",
         abe.conditions?.length ? JSON.stringify(abe.conditions) : "",
       );
+      formData.set(
+        "technicalSpecs",
+        abe.technicalSpecs?.length
+          ? JSON.stringify(abe.technicalSpecs)
+          : "",
+      );
       formData.set("partCategory", abePartCategoryLabel(abe.partCategory));
       formData.set("notes", fields.notes?.trim() ?? "");
       formData.set("manufacturer", manufacturer ?? "");
+      formData.set("invoiceNumber", "");
+      formData.set("mileageKm", "");
       formData.set("pageCount", String(pageCount || 1));
       formData.set("file", uploadFile);
 
@@ -654,11 +702,8 @@ export function InvoiceUploader({
           pageCount={pageCount}
           rawText={rawText}
           initialFields={abeInitialFields}
-          initialVehicleApprovals={fields.vehicleApprovals}
-          initialConditions={fields.conditions}
-          // Azure already seeded fields — skip second parse that caused flicker.
-          // User can still refine via "Erneut lesen".
-          autoExtract={false}
+          // Soft refine (no skeleton flicker) so Auflagen are filled completely.
+          autoExtract
           isSaving={pending}
           saveError={error}
           onCancel={resetWizard}
@@ -680,18 +725,40 @@ export function InvoiceUploader({
             }
 
             startTransition(async () => {
-              const formData = new FormData();
-              const storedTitle = titleFromParsedInvoice({
+              const oil = detectOilChangeInvoice({
+                title: resolvedTitle,
                 summary: resolvedTitle,
                 vendor: fields.vendor,
                 category: fields.category,
+                notes: fields.notes,
+                lineItems: fields.lineItems,
+                rawText,
+              });
+              const oilPrimary = isPrimaryOilChange({
+                summary: resolvedTitle,
+                vendor: fields.vendor,
+                category: fields.category,
+                lineItems: fields.lineItems,
+                rawText,
+                oil,
               });
 
+              const category = oilPrimary ? "service" : fields.category;
+              const storedTitle = buildInvoiceDashboardTitle({
+                summary: resolvedTitle,
+                vendor: fields.vendor,
+                category,
+                lineItems: fields.lineItems,
+                rawText,
+                oil,
+              });
+
+              const formData = new FormData();
               formData.set("vehicleId", vehicleId);
               formData.set("tagUuid", tagUuid);
               formData.set("title", storedTitle);
-              formData.set("type", documentTypeForTextCategory(fields.category));
-              formData.set("category", fields.category);
+              formData.set("type", documentTypeForTextCategory(category));
+              formData.set("category", category);
               formData.set("vendor", fields.vendor?.trim() ?? "");
               formData.set("date", fields.date ?? "");
               formData.set(
@@ -710,8 +777,14 @@ export function InvoiceUploader({
               formData.set("vehicleApprovals", "");
               formData.set("authority", "");
               formData.set("conditions", "");
+              formData.set("technicalSpecs", "");
               formData.set("partCategory", "");
-              formData.set("notes", "");
+              formData.set(
+                "notes",
+                oil.isOilChange
+                  ? (fields.notes?.trim() || oil.notes)
+                  : (fields.notes?.trim() ?? ""),
+              );
               formData.set("manufacturer", "");
               formData.set(
                 "invoiceNumber",
@@ -732,11 +805,14 @@ export function InvoiceUploader({
                 return;
               }
 
+              // Primary oil jobs open Intervalle; incidental oil stays on the invoice.
               router.push(
-                successHref ??
-                  (result.document.type === "invoice"
-                    ? `/v/${result.tagUuid}/dokumente/${result.document.id}`
-                    : `/v/${result.tagUuid}/dokumente?type=${result.document.type}`),
+                oilPrimary
+                  ? `/v/${result.tagUuid}/intervalle`
+                  : successHref ??
+                      (result.document.type === "invoice"
+                        ? `/v/${result.tagUuid}/dokumente/${result.document.id}`
+                        : `/v/${result.tagUuid}/dokumente?type=${result.document.type}`),
               );
               router.refresh();
             });
@@ -766,6 +842,43 @@ export function InvoiceUploader({
           </div>
 
           <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+            {(() => {
+              const oil = detectOilChangeInvoice({
+                title,
+                summary: title,
+                vendor: fields.vendor,
+                category: fields.category,
+                notes: fields.notes,
+                lineItems: fields.lineItems,
+                rawText,
+              });
+              if (!oil.isOilChange) return null;
+              const primary = isPrimaryOilChange({
+                summary: title,
+                vendor: fields.vendor,
+                category: fields.category,
+                lineItems: fields.lineItems,
+                rawText,
+                oil,
+              });
+              return (
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/8 px-3 py-2.5 text-[0.82rem] text-emerald-800">
+                  {primary ? (
+                    <>
+                      Ölwechsel ist die Hauptarbeit — Titel & Speicherung unter{" "}
+                      <span className="font-semibold">Intervalle</span>.
+                    </>
+                  ) : (
+                    <>
+                      Ölwechsel als Nebenposition erkannt — bleibt unter{" "}
+                      <span className="font-semibold">Intervalle</span>, Titel
+                      beschreibt die Hauptarbeit.
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
             <Label>
               <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                 Titel / Summary
@@ -826,12 +939,12 @@ export function InvoiceUploader({
                     : String(fields.mileageKm)
                 }
                 onChange={(event) => {
-                  const digits = event.target.value.replace(/\D/g, "");
-                  if (!digits) {
+                  const raw = event.target.value.replace(/[^\d]/g, "");
+                  if (!raw) {
                     setFields((current) => ({ ...current, mileageKm: null }));
                     return;
                   }
-                  const value = Number.parseInt(digits, 10);
+                  const value = Number.parseInt(raw, 10);
                   setFields((current) => ({
                     ...current,
                     mileageKm: Number.isFinite(value) ? value : current.mileageKm,

@@ -1,20 +1,22 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { getCurrentUser } from "@/lib/auth/get-user";
 import type { AbeCoreParseResult } from "@/lib/ocr/abe-parse-schema";
 import { extractAbeFromText } from "@/lib/ocr/extract-abe-from-text";
 import { TextParseError } from "@/lib/ocr/extract-from-text";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
-import { getSupabaseEnv } from "@/lib/supabase/env";
+import { enforceRateLimit } from "@/lib/security/api-guard";
+import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
 
 export const runtime = "nodejs";
 
-const MAX_RAW_TEXT_CHARS = 12_000;
+const MAX_RAW_TEXT_CHARS = 48_000;
 
-const requestSchema = z.object({
-  rawText: z.string().trim().min(8).max(MAX_RAW_TEXT_CHARS),
-});
+const requestSchema = z
+  .object({
+    rawText: z.string().trim().min(8).max(MAX_RAW_TEXT_CHARS),
+  })
+  .strict();
 
 type ParseAbeSuccess = {
   ok: true;
@@ -24,7 +26,7 @@ type ParseAbeSuccess = {
 type ParseAbeError = {
   ok: false;
   error: string;
-  code: "unauthorized" | "bad_request" | "config" | "parse_failed";
+  code: "unauthorized" | "bad_request" | "config" | "parse_failed" | "rate_limited";
 };
 
 function jsonError(
@@ -38,11 +40,14 @@ function jsonError(
 
 /**
  * POST /api/ocr/parse-abe
- * Specialized ABE step: structured core metadata from Azure OCR text.
- * Ignores Verwendungsbereich / vehicle fitment tables by design.
+ * Specialized ABE step: core metadata + fully worded Auflagen from Azure OCR text.
+ * Public for QR scan UX (rate-limited); keys stay server-side.
  */
 export async function POST(request: NextRequest) {
   try {
+    const limited = enforceRateLimit(request, "ocr", "parse-abe");
+    if (limited) return limited;
+
     if (!isLlmConfigured()) {
       return jsonError(
         503,
@@ -51,23 +56,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { isConfigured } = getSupabaseEnv();
-    if (isConfigured) {
-      const user = await getCurrentUser();
-      if (!user) {
-        return jsonError(401, "Authentication required.", "unauthorized");
-      }
+    const bodyRead = await readJsonBody(request);
+    if (!bodyRead.ok) {
+      return jsonError(400, bodyRead.error, "bad_request");
     }
 
-    let json: unknown;
-    try {
-      json = await request.json();
-    } catch {
-      return jsonError(400, "Expected JSON body.", "bad_request");
-    }
-
-    const parsedBody = requestSchema.safeParse(json);
-    if (!parsedBody.success) {
+    const parsedBody = parseStrictBody(requestSchema, bodyRead.json);
+    if (!parsedBody.ok) {
       return jsonError(
         400,
         "rawText is required (min 8 characters). PDF ohne Textschicht oder leerer OCR-Text.",

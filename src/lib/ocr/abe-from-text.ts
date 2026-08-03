@@ -1,188 +1,38 @@
 /**
- * Heuristic ABE field extraction (KBA number + vehicle fitment) from OCR text.
+ * Heuristic ABE field extraction (KBA, vehicle fitment, Auflagen) from OCR text.
  */
 
-import { normalizeKbaNumber } from "./abe-parse-schema";
+import {
+  ABE_CONDITION_MAX_ITEMS,
+  ABE_CONDITION_MAX_LENGTH,
+  normalizeAbeDate,
+} from "./abe-parse-schema";
 
 const KBA_PATTERNS = [
-  // Classic German ABE: KBA + 5 digits (allow OCR noise around K.B.A.)
-  /\bK\.?\s*B\.?\s*A\.?\s*[-]?\s*(?:Nr\.?|Nummer)?\s*[:.]?\s*(\d{5})\b/i,
-  // ABE-Nr. / ABE Nummer → often followed by KBA ##### or bare #####
-  /\bABE[-\s]?(?:Nr\.?|Nummer)?\s*[:.]?\s*(?:KBA\s*)?(\d{5})\b/i,
-  // Combined token forms
-  /\b((?:ABE|KBA)\s+\d{3,8}[A-Z0-9./\-]*)\b/i,
-  // Labeled approval / registration numbers
-  /\b(?:Genehmigungs(?:nr\.?|nummer|zeichen)|Zulassungs(?:nr\.?|nummer)|Nummer\s+der\s+(?:Allgemeinen\s+)?Betriebserlaubnis)\s*[:.]?\s*(?:KBA\s*)?([A-Z0-9][A-Z0-9./\- ]{2,40})/i,
-  // ECE / e-mark style
-  /\b(e\s*\d\s*\*?\s*\d{2,4}\s*\/\s*\d{2,6}\s*\*?\s*\d{2,6}(?:\s*\*?\s*\d{1,4})?)\b/i,
+  /\b(?:ABE[-\s]?(?:Nr\.?|Nummer)?|KBA[-\s]?(?:Nr\.?|Nummer)?|Genehmigungs(?:nr\.?|nummer)|Zulassungs(?:nr\.?|nummer))\s*[:.]?\s*([A-Z0-9][A-Z0-9./\- ]{2,40})/i,
+  /\b((?:ABE|KBA)\s*\d{3,8}[A-Z0-9./\-]*)\b/i,
+  /\b(e\s*\d\s*\*?\s*\d{2,4}\s*\/\s*\d{2,6}\s*\*?\s*\d{2,6})\b/i,
 ];
 
-const MAKE_PATTERN =
-  /\b(mazda|bmw|audi|mercedes(?:-benz)?|vw|volkswagen|porsche|toyota|honda|nissan|ford|opel|skoda|škoda|seat|hyundai|kia|volvo|subaru|mitsubishi|lexus|mini|alfa(?:\s*romeo)?|fiat|peugeot|citroen|citroën|renault|cupra|tesla|suzuki|dacia|jeep|land\s*rover|jaguar|chevrolet|dodge|bentley|aston\s*martin|maserati|ferrari|lamborghini|mclaren|smart|ssangyong|isuzu|cadillac|chrysler|infiniti|acura|genesis)\b/i;
+const VEHICLE_LINE =
+  /(?:^|\n)\s*(?:fahrzeug(?:e|typ(?:en)?)?|freigabe(?:n)?|geeignet\s+für|gilt\s+für|anwendbar\s+für|typliste|fahrzeugliste)\s*[:.]?\s*(.+)/gi;
 
-const MODEL_HINT =
-  /\b(rx-?\d|mx-?\d|cx-?\d|[a-z]\d{1,2}|m\d|x[1-7]|i\d|\d{2,3}[iieds]?|golf|passat|polo|civic|clio|yaris|leon|ibiza|octavia|astra|corsa|focus|fiesta|mustang|911|cayenne|macan|spirit\s*r|touring|touran|avant|sportback|gran\s*coupe)\b/i;
+const LOOKS_LIKE_VEHICLE =
+  /\b(mazda|bmw|audi|mercedes|vw|volkswagen|porsche|toyota|honda|nissan|ford|opel|skoda|seat|hyundai|kia|volvo|subaru|mitsubishi|lexus|mini|alfa|fiat|peugeot|citroen|renault|cupra|tesla|rx-?\d|m\d|e\d{2}|f\d{2}|g\d{2}|a\d{1,2}|s\d{1,2}|golf|passat|polo|caddy|transporter)\b/i;
 
-/** Wheel / type-approval / measurement noise — never a Freigabe entry. */
-const TECH_SPEC =
-  /\b(et\s*-?\s*\d|einpresstiefe|lochkreis|felgen(?:durchmesser|gr[oö]sse|breite)?|rad(?:last|gr[oö]sse)|abrollumfang|reifendruck|reifengr|zoll|gesamtgewicht|achslast|hubraum|nennleistung|technische\s+daten|eg[-\s]?be|typgenehmigungs|fahrgestell|vin\b|ccm\b|\bkw\b|\bps\b|\bmm\b|\bkg\b)\b/i;
+/** Heading that starts an Auflagen / Hinweise block. */
+const AUFLAGEN_HEADING =
+  /(?:^|\n)\s*((?:besondere\s+)?auflagen?(?:\s*(?:\/|,|und)\s*hinweise?)?|hinweise(?:\s*(?:\/|,|und)\s*auflagen?)?|bedingungen)\b/i;
 
-const BOILERPLATE_APPROVAL =
-  /^(betriebserlaubnis|teilegutachten|verwendungsbereich|auflage|auflagen|hinweis|seite\s*\d+|fahrzeughersteller|fahrzeugtyp|handelsbezeichnung|fahrzeugmodell|geeignet\s+für|gilt\s+für)$/i;
+const AUFLAGEN_SECTION_END =
+  /\n\s*(?:verwendungsbereich|fahrzeugliste|typliste|typenschlüssel|unterschrift|genehmigungszeichen)\b/i;
 
-const MAKE_LABEL =
-  /^(?:fahrzeughersteller|hersteller\s*(?:des\s*fahrzeugs)?|fahrzeugmarke|make)\s*[:.]?\s*(.+)$/i;
-
-const MODEL_LABEL =
-  /^(?:handelsbezeichnung|fahrzeugmodell(?:e)?|modell(?:bezeichnung)?|verkaufsbezeichnung|type\s*designation)\s*[:.]?\s*(.+)$/i;
-
-const ABE_DOCUMENT_HINT =
-  /\ballgemeine\s+betriebserlaubnis\b|\bteilegutachten\b|\b§\s*22\b|\babe[-\s]?nr|\bk\.?\s*b\.?\s*a\.?\b/i;
-
-const MAKE_CANONICAL: Record<string, string> = {
-  bmw: "BMW",
-  vw: "VW",
-  volkswagen: "VW",
-  "mercedes-benz": "Mercedes-Benz",
-  mercedes: "Mercedes-Benz",
-  "alfa romeo": "Alfa Romeo",
-  "land rover": "Land Rover",
-  skoda: "Škoda",
-  škoda: "Škoda",
-  citroen: "Citroën",
-  citroën: "Citroën",
-  mini: "MINI",
-  cupra: "CUPRA",
-  kia: "Kia",
-  mg: "MG",
-};
+/** Numbered / lettered Auflage marker at line start. */
+const CONDITION_MARKER =
+  /(?:^|\n)\s*(?:auflage\s*)?(?:\(?\d{1,2}(?:\.\d{1,2})?\)|[1-9]\d?(?:\.\d{1,2})?[\.)]|[IVXLC]{1,4}\.|[a-z]\))\s+/gi;
 
 function clean(value: string): string {
   return value.replace(/\s+/g, " ").trim();
-}
-
-function titleCaseMake(value: string): string {
-  return value
-    .split(/(\s+|-)/)
-    .map((part) => {
-      if (part === " " || part === "-") return part;
-      if (part.length <= 3 && part === part.toUpperCase()) return part;
-      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
-    })
-    .join("");
-}
-
-function canonicalMake(raw: string): string {
-  const key = clean(raw).toLowerCase().replace(/\s+/g, " ");
-  if (MAKE_CANONICAL[key]) return MAKE_CANONICAL[key];
-  const match = raw.match(MAKE_PATTERN);
-  if (match?.[1]) {
-    const found = match[1].toLowerCase().replace(/\s+/g, " ");
-    if (MAKE_CANONICAL[found]) return MAKE_CANONICAL[found];
-    return titleCaseMake(match[1]);
-  }
-  return titleCaseMake(clean(raw));
-}
-
-function isTechSpec(value: string): boolean {
-  const trimmed = clean(value);
-  if (!trimmed) return true;
-  if (TECH_SPEC.test(trimmed)) return true;
-  if (/^e\s*\d+\s*\*/i.test(trimmed)) return true;
-  if (/^\d+\s*x\s*\d+/i.test(trimmed)) return true;
-  if (/^\d+([.,]\d+)?\s*(mm|kg|zoll|″|"|kw|ps|ccm)$/i.test(trimmed)) {
-    return true;
-  }
-  if (/^(et|lk|ra|au)\s*-?\s*\d+/i.test(trimmed)) return true;
-  return false;
-}
-
-function stripFieldLabel(value: string): string {
-  return clean(value)
-    .replace(
-      /^(?:fahrzeughersteller|fahrzeugtyp|handelsbezeichnung|fahrzeugmodell(?:e)?|eg[-\s]?be[-\s]?nr\.?|typgenehmigung|radlast|abrollumfang)\s*[:.]?\s*/i,
-      "",
-    )
-    .trim();
-}
-
-/** True when entry looks like "BMW 320i" / "Mazda RX-8 Spirit R". */
-export function looksLikeMakeModel(value: string): boolean {
-  const trimmed = stripFieldLabel(value);
-  if (trimmed.length < 3 || trimmed.length > 80) return false;
-  if (BOILERPLATE_APPROVAL.test(trimmed)) return false;
-  if (isTechSpec(trimmed)) return false;
-  if (!MAKE_PATTERN.test(trimmed)) return false;
-  const withoutMake = trimmed
-    .replace(MAKE_PATTERN, "")
-    .replace(/^[,\-–/:]+/, "")
-    .trim();
-  if (withoutMake.length < 1) return false;
-  // Reject bare type codes like "SE3P" alone after make — need readable model.
-  if (/^[A-Z0-9]{2,6}$/.test(withoutMake) && !MODEL_HINT.test(withoutMake)) {
-    return false;
-  }
-  return trimmed.split(/\s+/).length >= 2;
-}
-
-/**
- * Keep only Fahrzeughersteller + Modell Freigaben.
- * Drops technical data, EG-BE numbers, wheel specs, bare makes.
- */
-export function normalizeVehicleApprovals(
-  values: string[] | null | undefined,
-): string[] | null {
-  if (!values?.length) return null;
-
-  const cleaned = values
-    .map((value) => stripFieldLabel(String(value)).replace(/\.$/, ""))
-    .filter((value) => looksLikeMakeModel(value))
-    .map((value) => {
-      const makeMatch = value.match(MAKE_PATTERN);
-      if (!makeMatch?.[1]) return value.slice(0, 160);
-      const make = canonicalMake(makeMatch[1]);
-      const rest = value
-        .replace(MAKE_PATTERN, "")
-        .replace(/^[,\-–/:]+/, "")
-        .trim();
-      return `${make} ${rest}`.replace(/\s+/g, " ").trim().slice(0, 160);
-    });
-
-  if (cleaned.length === 0) return null;
-
-  const unique = [...new Set(cleaned)].slice(0, 40);
-  return unique.length > 0 ? unique : null;
-}
-
-/** Reject LLM prose / authority names mistaken for a KBA number. */
-export function isPlausibleKbaNumber(
-  value: string | null | undefined,
-): boolean {
-  if (!value) return false;
-  const trimmed = clean(value);
-  if (trimmed.length < 3 || trimmed.length > 80) return false;
-  if (!/\d{3,}/.test(trimmed)) return false;
-  if (trimmed.split(/\s+/).length > 6) return false;
-  if (
-    /kraftfahrt|bundesamt|hersteller|betriebserlaubnis|teilegutachten|siehe\s|auflage|verwendungsbereich/i.test(
-      trimmed,
-    ) &&
-    !/\d{5}/.test(trimmed)
-  ) {
-    return false;
-  }
-  return (
-    /(?:kba|abe)/i.test(trimmed) ||
-    /^\d{5}$/.test(trimmed) ||
-    /^e\s*\d/i.test(trimmed) ||
-    /\d{4,}/.test(trimmed)
-  );
-}
-
-export function looksLikeAbeDocument(rawText: string): boolean {
-  if (!rawText.trim()) return false;
-  if (ABE_DOCUMENT_HINT.test(rawText)) return true;
-  return Boolean(extractKbaNumber(rawText));
 }
 
 export function extractKbaNumber(rawText: string): string | null {
@@ -190,302 +40,464 @@ export function extractKbaNumber(rawText: string): string | null {
     const match = rawText.match(pattern);
     const value = match?.[1] ? clean(match[1]) : null;
     if (!value) continue;
-    if (/^(seite|page|datum|tel|nr)$/i.test(value)) continue;
-    if (!isPlausibleKbaNumber(value)) continue;
-    return normalizeKbaNumber(value);
+    if (value.length < 3 || value.length > 80) continue;
+    if (/^(seite|page|datum|tel)/i.test(value)) continue;
+    return value.slice(0, 80);
   }
-
-  // OCR often splits label / number across lines: "KBA" then "91234"
-  const lines = rawText.split(/\n+/).map(clean).filter(Boolean);
-  for (let index = 0; index < lines.length - 1; index += 1) {
-    const line = lines[index];
-    if (
-      !/^(?:K\.?\s*B\.?\s*A\.?\.?|KBA(?:\s*(?:Nr\.?|Nummer))?)\s*:?$/i.test(line)
-    ) {
-      continue;
-    }
-    const digits = lines[index + 1].match(/^(\d{5})\b/);
-    if (digits?.[1]) {
-      return normalizeKbaNumber(digits[1]);
-    }
-  }
-
   return null;
 }
 
-function splitModelList(raw: string): string[] {
-  return raw
-    .split(/[,;/·•]|(?:\s+und\s+)/i)
-    .map((part) => clean(part).replace(/^\(|\)$/g, "").trim())
-    .filter((part) => part.length >= 1 && part.length <= 80)
-    .filter((part) => !isTechSpec(part))
-    .filter((part) => !/^e\s*\d+/i.test(part));
-}
-
-/**
- * Extract Freigaben as "Hersteller Modell" from Verwendungsbereich tables
- * and plain make+model lines. Never returns wheel/type-approval tech data.
- */
 export function extractVehicleApprovals(rawText: string): string[] | null {
   const found = new Set<string>();
-  const lines = rawText.split(/\n+/).map(clean).filter(Boolean);
 
-  let currentMake: string | null = null;
-  let inFitment = false;
-
-  for (const line of lines) {
-    if (
-      /verwendungsbereich|fahrzeugliste|typliste|freigabe(?:n)?|geeignet\s+für|genehmigt\s+für/i.test(
-        line,
-      )
-    ) {
-      inFitment = true;
-    }
-    if (
-      inFitment &&
-      /^(auflage|auflagen|nebenbestimmung|hinweis|technische\s+daten|seite\s*\d)/i.test(
-        line,
-      )
-    ) {
-      inFitment = false;
-    }
-
-    const makeField = line.match(MAKE_LABEL);
-    if (makeField?.[1] && !isTechSpec(makeField[1])) {
-      currentMake = canonicalMake(makeField[1]);
-      continue;
-    }
-
-    const modelField = line.match(MODEL_LABEL);
-    if (modelField?.[1]) {
-      const make =
-        currentMake ??
-        (MAKE_PATTERN.test(modelField[1])
-          ? canonicalMake(modelField[1].match(MAKE_PATTERN)?.[1] ?? "")
-          : null);
-      for (const model of splitModelList(modelField[1])) {
-        if (MAKE_PATTERN.test(model)) {
-          if (looksLikeMakeModel(model)) found.add(model);
-          continue;
-        }
-        if (make && model.length >= 1) {
-          found.add(`${make} ${model}`);
-        }
-      }
-      continue;
-    }
-
-    // Plain "BMW 320i" / "Audi A4 (B8)" lines (often inside Freigaben lists).
-    if (line.length <= 80 && looksLikeMakeModel(line)) {
-      found.add(line);
-      continue;
-    }
-
-    // "Mazda: RX-8, RX-8 Spirit R"
-    const makeColon = line.match(MAKE_PATTERN);
-    if (
-      makeColon?.[1] &&
-      /^[A-Za-zÄÖÜäöüß. -]+\s*[:–-]\s*.+/i.test(line) &&
-      line.toLowerCase().startsWith(makeColon[1].toLowerCase())
-    ) {
-      const rest = line
-        .slice(makeColon[0].length)
-        .replace(/^\s*[:–-]\s*/, "")
-        .trim();
-      if (rest) {
-        const make = canonicalMake(makeColon[1]);
-        for (const model of splitModelList(rest)) {
-          if (!MAKE_PATTERN.test(model)) found.add(`${make} ${model}`);
-          else if (looksLikeMakeModel(model)) found.add(model);
-        }
+  for (const match of rawText.matchAll(VEHICLE_LINE)) {
+    const chunk = match[1];
+    if (!chunk) continue;
+    for (const part of chunk.split(/[,;|/]/)) {
+      const value = clean(part).replace(/\.$/, "");
+      if (value.length < 3 || value.length > 120) continue;
+      if (LOOKS_LIKE_VEHICLE.test(value) || /\b\d{3,4}\b/.test(value)) {
+        found.add(value.slice(0, 120));
       }
     }
   }
 
-  // Fallback: any make+model phrase in the document if table parse was empty.
+  // Fallback: collect short lines that look like vehicle models.
   if (found.size === 0) {
-    for (const line of lines.slice(0, 80)) {
-      if (line.length > 80 || isTechSpec(line)) continue;
-      if (looksLikeMakeModel(line)) {
-        found.add(line);
-        if (found.size >= 20) break;
+    for (const line of rawText.split(/\n+/).map(clean).filter(Boolean)) {
+      if (line.length > 80) continue;
+      if (!LOOKS_LIKE_VEHICLE.test(line)) continue;
+      if (/betriebserlaubnis|teilegutachten|auflage|hinweis/i.test(line)) {
+        continue;
       }
+      found.add(line.slice(0, 120));
+      if (found.size >= 12) break;
     }
   }
 
-  return normalizeVehicleApprovals([...found]);
-}
-
-const CONDITIONS_HEADER =
-  /^(?:(?:[IVXLC]+|\d+)[\).:]?\s*)?(?:auflage(?:n)?|nebenbestimmung(?:en)?|hinweis(?:e)?)\b\s*[:.]?\s*(.*)$/i;
-
-const CONDITIONS_SECTION_END =
-  /^(verwendungsbereich|fahrzeugliste|typliste|technische\s+daten|gegenstand|handelsbezeichnung|unterschrift|stempel|anlage\b|seite\s*\d)/i;
-
-/** Matches 1. / 1) / 4.1 / 4.1. / a) / IV. leading markers. */
-const NUMBERED_CONDITION =
-  /^(?:auflage\s*)?(?:\d+(?:\.\d+)+|\d+|[a-z]|[ivxlc]+)[\).:]?\s+(.+)$/i;
-
-const BULLET_CONDITION = /^[•●▪◦\-–—*]\s+(.+)$/;
-
-function pushCondition(target: string[], value: string): void {
-  let text = clean(value);
-  text = text.replace(NUMBERED_CONDITION, "$1").trim();
-  if (text.length < 12) return;
-  if (CONDITIONS_HEADER.test(text) && text.length < 40) return;
-  if (/^(verwendungsbereich|fahrzeughersteller)\b/i.test(text)) return;
-  // Deduplicate exact repeats from overlapping strategies.
-  if (target.some((entry) => entry === text)) return;
-  target.push(text.slice(0, 1200));
-}
-
-function appendContinuation(target: string[], line: string): void {
-  if (target.length === 0) return;
-  const text = clean(line);
-  if (text.length < 8) return;
-  target[target.length - 1] = `${target[target.length - 1]} ${text}`.slice(
-    0,
-    1200,
-  );
+  const list = [...found].slice(0, 40);
+  return list.length > 0 ? list : null;
 }
 
 /**
- * Best-effort Auflagen from OCR text when the LLM omits them.
- * Supports: "Auflagen", "III. Auflagen", "Nebenbestimmungen", "4.1 …", bullets,
- * and prose paragraphs directly under the header.
+ * Drop bulky Verwendungsbereich / fitment tables before LLM / budget cuts.
+ * Never discards trailing Auflagen blocks.
  */
-export function extractConditionsFromText(rawText: string): string[] | null {
-  const found: string[] = [];
-  // Preserve structure; also split glued OCR on numbered markers.
-  const normalized = rawText
-    .replace(/\r\n/g, "\n")
-    .replace(
-      /(?<!\n)\s+(?=(?:auflage\s*)?(?:\d+(?:\.\d+)?|[IVXLC]+)[\).:]\s+\S)/gi,
-      "\n",
+export function stripAbeFitmentSections(rawText: string): string {
+  const text = rawText.replace(/\r\n/g, "\n");
+  const start = text.search(/verwendungsbereich/i);
+  if (start < 0) return text;
+
+  const tail = text.slice(start);
+  const resume = tail.search(AUFLAGEN_HEADING);
+
+  if (resume >= 0) {
+    return `${text.slice(0, start)}\n${tail.slice(resume)}`.trim();
+  }
+
+  // No clear Auflagen heading after fitment — keep full text so Auflagen
+  // that sit inside/after the table are not deleted.
+  return text;
+}
+
+/**
+ * Keep OCR text under a char budget without chopping off Auflagen.
+ * Prefer: strip fitment → keep head metadata + Auflagen section / document tail.
+ */
+export function budgetAbeOcrText(rawText: string, maxChars: number): string {
+  const normalized = rawText.replace(/\r\n/g, "\n").trim();
+  if (normalized.length <= maxChars) return normalized;
+
+  const stripped = stripAbeFitmentSections(normalized);
+  if (stripped.length <= maxChars) return stripped;
+
+  const headingAt = stripped.search(AUFLAGEN_HEADING);
+  if (headingAt >= 0) {
+    const headBudget = Math.min(
+      Math.floor(maxChars * 0.4),
+      Math.max(800, headingAt),
     );
-  const lines = normalized.split(/\n+/).map(clean).filter(Boolean);
-
-  let inBlock = false;
-  for (const line of lines) {
-    const header = line.match(CONDITIONS_HEADER);
-    if (header) {
-      inBlock = true;
-      const rest = clean(header[1] ?? "");
-      // "Auflagen und Hinweise" is still a header — only keep real sentence rest.
-      if (
-        rest.length >= 20 &&
-        !/^(und\s+hinweise|zur\s+betriebserlaubnis)\b/i.test(rest)
-      ) {
-        pushCondition(found, rest);
-      }
-      continue;
-    }
-
-    if (!inBlock) continue;
-    if (CONDITIONS_SECTION_END.test(line)) {
-      inBlock = false;
-      continue;
-    }
-
-    const numbered = line.match(NUMBERED_CONDITION);
-    if (numbered?.[1]) {
-      pushCondition(found, numbered[1]);
-      continue;
-    }
-
-    const bullet = line.match(BULLET_CONDITION);
-    if (bullet?.[1]) {
-      pushCondition(found, bullet[1]);
-      continue;
-    }
-
-    // "Auflage 1:" on its own line, body follows.
-    const auflageLabel = line.match(/^auflage\s*(\d+)\s*[:.]?\s*(.*)$/i);
-    if (auflageLabel) {
-      const rest = clean(auflageLabel[2] ?? "");
-      if (rest.length >= 12) pushCondition(found, rest);
-      continue;
-    }
-
-    // Prose under Auflagen header (common when OCR drops numbering).
-    if (line.length >= 40) {
-      if (found.length === 0 || /[.!?]$/.test(found[found.length - 1] ?? "")) {
-        pushCondition(found, line);
-      } else {
-        appendContinuation(found, line);
-      }
-      continue;
-    }
-
-    if (line.length >= 12) {
-      appendContinuation(found, line);
-    }
-
-    if (found.length >= 40) break;
+    const head = stripped.slice(0, Math.min(headBudget, headingAt)).trimEnd();
+    const tailBudget = maxChars - head.length - 8;
+    const tail = stripped.slice(headingAt, headingAt + Math.max(tailBudget, 0));
+    return `${head}\n\n…\n\n${tail}`.trim().slice(0, maxChars);
   }
 
-  // Fallback: scan whole text for "Auflage n …" fragments without a clean block.
-  if (found.length === 0) {
-    for (const match of rawText.matchAll(
-      /(?:^|\n)\s*(?:auflage\s*)?(?:\d+(?:\.\d+)?)[\).:]\s+([A-ZÄÖÜa-zäöü][^\n]{20,400})/gi,
+  // No heading found — keep head (KBA/manufacturer) + tail (often Auflagen).
+  const headBudget = Math.floor(maxChars * 0.45);
+  const tailBudget = maxChars - headBudget - 8;
+  return `${stripped.slice(0, headBudget)}\n\n…\n\n${stripped.slice(-tailBudget)}`
+    .trim()
+    .slice(0, maxChars);
+}
+
+function findAuflagenBody(text: string): string {
+  const match = text.match(
+    new RegExp(
+      `${AUFLAGEN_HEADING.source}\\s*[:.]?\\s*([\\s\\S]{8,20000})`,
+      "i",
+    ),
+  );
+  let body = match?.[2] ?? "";
+  if (!body) return "";
+  body = body.split(AUFLAGEN_SECTION_END)[0] ?? body;
+  return body.trim();
+}
+
+function collectNumberedConditions(source: string): string[] {
+  const items: string[] = [];
+  // Fresh regex — avoid sticky lastIndex from the module-level /g pattern.
+  const marker = new RegExp(CONDITION_MARKER.source, "gi");
+  const matches = [...source.matchAll(marker)];
+
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
+    if (match.index === undefined) continue;
+    const contentStart = match.index + match[0].length;
+    const contentEnd =
+      index + 1 < matches.length && matches[index + 1].index !== undefined
+        ? matches[index + 1].index!
+        : source.length;
+    const value = clean(source.slice(contentStart, contentEnd));
+    if (!isPlausibleCondition(value)) continue;
+    items.push(value.slice(0, ABE_CONDITION_MAX_LENGTH));
+    if (items.length >= ABE_CONDITION_MAX_ITEMS) break;
+  }
+
+  return items;
+}
+
+function collectBulletConditions(source: string): string[] {
+  const items: string[] = [];
+  for (const line of source.split(/\n+/)) {
+    const bullet = line.match(/^\s*[-•*–—]\s+(.+)/);
+    if (!bullet?.[1]) continue;
+    const value = clean(bullet[1]);
+    if (!isPlausibleCondition(value)) continue;
+    items.push(value.slice(0, ABE_CONDITION_MAX_LENGTH));
+    if (items.length >= ABE_CONDITION_MAX_ITEMS) break;
+  }
+  return items;
+}
+
+function collectParagraphConditions(source: string): string[] {
+  const items: string[] = [];
+  for (const block of source.split(/\n{2,}/)) {
+    const value = clean(block);
+    if (!isPlausibleCondition(value)) continue;
+    // Skip leftover table / header noise inside the section.
+    if (/^(seite|page|typ|eg-typ|fahrzeug)\b/i.test(value)) continue;
+    if (value.length < 40) continue;
+    items.push(value.slice(0, ABE_CONDITION_MAX_LENGTH));
+    if (items.length >= ABE_CONDITION_MAX_ITEMS) break;
+  }
+  return items;
+}
+
+/**
+ * Pull fully worded Auflagen from OCR text when the LLM returns nothing.
+ * Looks for Auflagen-/Hinweise-sections and numbered / bulleted items.
+ */
+export function extractAbeConditionsFromText(rawText: string): string[] | null {
+  const text = rawText.replace(/\r\n/g, "\n");
+  const body = findAuflagenBody(text);
+  const source = body || text;
+
+  let items = collectNumberedConditions(source);
+
+  if (items.length === 0) {
+    items = collectBulletConditions(source);
+  }
+
+  if (items.length === 0 && body) {
+    // Section found but unnumbered — keep substantial paragraphs.
+    items = collectParagraphConditions(body);
+  }
+
+  if (items.length === 0) {
+    for (const match of text.matchAll(
+      /(?:^|\n)\s*auflage(?:\s*\d+)?\s*[:.]\s*([^\n]{12,400}(?:\n(?!\s*auflage)[^\n]+)*)/gi,
     )) {
-      pushCondition(found, match[1] ?? "");
-      if (found.length >= 40) break;
+      const value = clean(match[1] ?? "");
+      if (!isPlausibleCondition(value)) continue;
+      items.push(value.slice(0, ABE_CONDITION_MAX_LENGTH));
+      if (items.length >= ABE_CONDITION_MAX_ITEMS) break;
     }
   }
 
-  return found.length > 0 ? found.slice(0, 40) : null;
+  return items.length > 0 ? items : null;
+}
+
+function isPlausibleCondition(value: string): boolean {
+  if (value.length < 12 || value.length > ABE_CONDITION_MAX_LENGTH) return false;
+  if (/^(seite|page|tel|fax|datum|kba|abe)\b/i.test(value)) return false;
+  if (/^verwendungsbereich\b/i.test(value)) return false;
+  // Reject pure vehicle / type-code table rows.
+  if (/^[A-Z0-9][A-Z0-9\s./\-]{0,40}$/.test(value) && value.length < 50) {
+    return false;
+  }
+  return /[a-zäöüß]/i.test(value);
+}
+
+/** Prefer the more complete Auflagen set (LLM vs heuristic). */
+export function preferAbeConditions(
+  primary: string[] | null | undefined,
+  fallback: string[] | null | undefined,
+): string[] | null {
+  const a = primary?.map((v) => clean(v)).filter(isPlausibleCondition) ?? [];
+  const b = fallback?.map((v) => clean(v)).filter(isPlausibleCondition) ?? [];
+  if (a.length === 0) return b.length > 0 ? b.slice(0, ABE_CONDITION_MAX_ITEMS) : null;
+  if (b.length === 0) return a.slice(0, ABE_CONDITION_MAX_ITEMS);
+
+  const aChars = a.reduce((sum, item) => sum + item.length, 0);
+  const bChars = b.reduce((sum, item) => sum + item.length, 0);
+  // Heuristic wins only if clearly more complete.
+  if (b.length >= a.length + 1 || bChars > aChars * 1.25) {
+    return b.slice(0, ABE_CONDITION_MAX_ITEMS);
+  }
+  return a.slice(0, ABE_CONDITION_MAX_ITEMS);
 }
 
 export function resolveAbeFields(input: {
   structuredKba: string | null;
   structuredApprovals: string[] | null;
-  structuredConditions?: string[] | null;
   rawText: string;
 }): {
   kbaNumber: string | null;
   vehicleApprovals: string[] | null;
-  conditions: string[] | null;
 } {
-  // LLM placeholders / authority prose must not block the OCR heuristic.
-  const structuredKba = isPlausibleKbaNumber(input.structuredKba)
-    ? normalizeKbaNumber(input.structuredKba)
-    : null;
-  const kbaNumber = structuredKba || extractKbaNumber(input.rawText);
+  const kbaNumber =
+    input.structuredKba?.trim().slice(0, 80) ||
+    extractKbaNumber(input.rawText);
 
-  // LLM often returns tech rows — keep only make+model; fill from OCR if empty.
-  const structuredApprovals = normalizeVehicleApprovals(
-    input.structuredApprovals,
-  );
-  const heuristicApprovals = extractVehicleApprovals(input.rawText);
   const vehicleApprovals =
-    structuredApprovals && structuredApprovals.length > 0
-      ? structuredApprovals
-      : heuristicApprovals;
-
-  const structuredConditions =
-    input.structuredConditions
-      ?.map((value) => clean(value))
-      .filter((value) => value.length >= 12)
-      .filter((value) => !isTechSpec(value))
-      .filter(
-        (value) =>
-          !/^(verwendungsbereich|fahrzeughersteller|handelsbezeichnung)\b/i.test(
-            value,
-          ),
-      )
-      .map((value) => value.slice(0, 1200))
-      .slice(0, 40) ?? null;
-
-  const heuristicConditions = extractConditionsFromText(input.rawText);
-  const conditions =
-    structuredConditions && structuredConditions.length > 0
-      ? structuredConditions
-      : heuristicConditions;
+    input.structuredApprovals && input.structuredApprovals.length > 0
+      ? input.structuredApprovals.map((v) => v.trim().slice(0, 120)).filter(Boolean)
+      : extractVehicleApprovals(input.rawText);
 
   return {
     kbaNumber: kbaNumber || null,
-    vehicleApprovals,
-    conditions,
+    vehicleApprovals:
+      vehicleApprovals && vehicleApprovals.length > 0
+        ? vehicleApprovals.slice(0, 40)
+        : null,
   };
+}
+
+const GERMAN_MONTHS: Record<string, number> = {
+  januar: 1,
+  jan: 1,
+  februar: 2,
+  feb: 2,
+  märz: 3,
+  maerz: 3,
+  mar: 3,
+  april: 4,
+  apr: 4,
+  mai: 5,
+  juni: 6,
+  jun: 6,
+  juli: 7,
+  jul: 7,
+  august: 8,
+  aug: 8,
+  september: 9,
+  sept: 9,
+  sep: 9,
+  oktober: 10,
+  okt: 10,
+  november: 11,
+  nov: 11,
+  dezember: 12,
+  dez: 12,
+};
+
+function toIsoDate(year: number, month: number, day: number): string | null {
+  if (year < 1980 || year > 2100) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const iso = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return normalizeAbeDate(iso);
+}
+
+/**
+ * Extract Ausstellung-/Gutachtendatum from ABE OCR text → YYYY-MM-DD.
+ */
+export function extractAbeDateFromText(rawText: string): string | null {
+  const text = rawText.replace(/\r\n/g, "\n");
+
+  const labeled = [
+    ...text.matchAll(
+      /(?:^|\n)\s*(?:ausstellungs(?:datum)?|gutachten(?:datum)?|datum(?:\s+der\s+ausstellung)?|ausgestellt\s+am|erstellt\s+am|date)\s*[:.]?\s*([^\n]{6,40})/gi,
+    ),
+  ];
+  for (const match of labeled) {
+    const parsed = parseGermanDateChunk(match[1] ?? "");
+    if (parsed) return parsed;
+  }
+
+  // Fallback: first plausible German date in the document head.
+  const head = text.slice(0, 2_500);
+  for (const match of head.matchAll(
+    /\b(\d{1,2})[./](\d{1,2})[./](\d{2,4})\b/g,
+  )) {
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    let year = Number(match[3]);
+    if (year < 100) year += year >= 70 ? 1900 : 2000;
+    const iso = toIsoDate(year, month, day);
+    if (iso) return iso;
+  }
+
+  for (const match of head.matchAll(
+    /\b(\d{1,2})\.?\s+([A-Za-zÄÖÜäöüß]{3,9})\s+(\d{4})\b/g,
+  )) {
+    const day = Number(match[1]);
+    const month = GERMAN_MONTHS[(match[2] ?? "").toLowerCase()];
+    const year = Number(match[3]);
+    if (!month) continue;
+    const iso = toIsoDate(year, month, day);
+    if (iso) return iso;
+  }
+
+  return null;
+}
+
+function parseGermanDateChunk(chunk: string): string | null {
+  const value = clean(chunk);
+  if (!value) return null;
+
+  const numeric = value.match(/\b(\d{1,2})[./](\d{1,2})[./](\d{2,4})\b/);
+  if (numeric) {
+    const day = Number(numeric[1]);
+    const month = Number(numeric[2]);
+    let year = Number(numeric[3]);
+    if (year < 100) year += year >= 70 ? 1900 : 2000;
+    return toIsoDate(year, month, day);
+  }
+
+  const named = value.match(
+    /\b(\d{1,2})\.?\s+([A-Za-zÄÖÜäöüß]{3,9})\s+(\d{4})\b/,
+  );
+  if (named) {
+    const day = Number(named[1]);
+    const month = GERMAN_MONTHS[(named[2] ?? "").toLowerCase()];
+    const year = Number(named[3]);
+    if (!month) return null;
+    return toIsoDate(year, month, day);
+  }
+
+  const iso = value.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  if (iso) {
+    return toIsoDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+  }
+
+  return null;
+}
+
+/** Prefer structured date; fall back to OCR heuristic. */
+export function preferAbeDate(
+  structured: string | null | undefined,
+  rawText: string,
+): string | null {
+  return normalizeAbeDate(structured) ?? extractAbeDateFromText(rawText);
+}
+
+/** Labels that identify the part manufacturer / mark (Herstellerzeichen). */
+const MANUFACTURER_LABEL =
+  /(?:^|\n)\s*(?:hersteller(?:zeichen)?|hersteller\s*(?:\/|,|und)\s*marke|fabrikant|fertiger(?:werk)?)\s*[:.]?\s*([^\n]{2,120})/gi;
+
+/**
+ * Labels that look similar but are NOT the manufacturer
+ * (Auftraggeber, Antragsteller, Importeur, …).
+ */
+const NON_MANUFACTURER_LABEL =
+  /(?:^|\n)\s*(?:auftraggeber|antragsteller|besteller|inverkehrbringer|importeur|vertreiber|vertrieb|händler|haendler|kunde|antragssteller)\s*[:.]?\s*([^\n]{2,120})/gi;
+
+function normalizeManufacturerName(value: string): string {
+  return clean(value)
+    .replace(/^["'„“]+|["'„“]+$/g, "")
+    .replace(/\s*[;,]\s*$/, "")
+    .slice(0, 120);
+}
+
+function manufacturerKey(value: string): string {
+  return normalizeManufacturerName(value).toLowerCase();
+}
+
+/** Collect names printed under Auftraggeber / Antragsteller / … */
+export function extractAbeNonManufacturerNames(rawText: string): string[] {
+  const text = rawText.replace(/\r\n/g, "\n");
+  const found: string[] = [];
+  for (const match of text.matchAll(NON_MANUFACTURER_LABEL)) {
+    const value = normalizeManufacturerName(match[1] ?? "");
+    if (value.length < 2) continue;
+    if (/^(seite|page|tel|fax|datum)$/i.test(value)) continue;
+    found.push(value);
+  }
+  return found;
+}
+
+/**
+ * Extract Hersteller / Herstellerzeichen — never Auftraggeber.
+ */
+export function extractAbeManufacturerFromText(rawText: string): string | null {
+  const text = rawText.replace(/\r\n/g, "\n");
+  const rejected = new Set(
+    extractAbeNonManufacturerNames(text).map(manufacturerKey),
+  );
+
+  for (const match of text.matchAll(MANUFACTURER_LABEL)) {
+    const value = normalizeManufacturerName(match[1] ?? "");
+    if (value.length < 2 || value.length > 120) continue;
+    if (/^(seite|page|tel|fax|datum|kba|abe)$/i.test(value)) continue;
+    if (rejected.has(manufacturerKey(value))) continue;
+    // Avoid grabbing a following field label as the value.
+    if (/^(auftraggeber|antragsteller|verwendungsbereich|auflage)/i.test(value)) {
+      continue;
+    }
+    return value;
+  }
+
+  return null;
+}
+
+/**
+ * Prefer a structured manufacturer only if it is not an Auftraggeber value.
+ * Heuristic Hersteller-/Herstellerzeichen labels win over mistaken LLM values.
+ */
+export function preferAbeManufacturer(
+  structured: string | null | undefined,
+  rawText: string,
+): string | null {
+  const heuristic = extractAbeManufacturerFromText(rawText);
+  const rejected = new Set(
+    extractAbeNonManufacturerNames(rawText).map(manufacturerKey),
+  );
+
+  const structuredClean = structured
+    ? normalizeManufacturerName(structured)
+    : null;
+
+  if (structuredClean && rejected.has(manufacturerKey(structuredClean))) {
+    return heuristic;
+  }
+
+  // Explicit Hersteller label in the document is authoritative.
+  if (heuristic) {
+    if (
+      !structuredClean ||
+      manufacturerKey(structuredClean) === manufacturerKey(heuristic) ||
+      rejected.has(manufacturerKey(structuredClean))
+    ) {
+      return heuristic;
+    }
+    // Both present and different — keep Hersteller label.
+    return heuristic;
+  }
+
+  if (structuredClean && !rejected.has(manufacturerKey(structuredClean))) {
+    return structuredClean;
+  }
+
+  return null;
 }

@@ -35,15 +35,6 @@ const PART_BRANDS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /\bforge\b/i, label: "Forge" },
   { pattern: /\bgreddy\b|\btrust\b/i, label: "Greddy" },
   { pattern: /\bhks\b/i, label: "HKS" },
-  { pattern: /\bac\s*-?\s*schnitzer\b/i, label: "AC Schnitzer" },
-  { pattern: /\bmanthey(?:\s*racing)?\b/i, label: "Manthey" },
-  { pattern: /\bbrabus\b/i, label: "Brabus" },
-  { pattern: /\btechart\b/i, label: "TechArt" },
-  { pattern: /\bd[äa]hler\b/i, label: "Dähler" },
-  { pattern: /\bhamann\b/i, label: "Hamann" },
-  { pattern: /\blorinser\b/i, label: "Lorinser" },
-  { pattern: /\bnovitec\b/i, label: "Novitec" },
-  { pattern: /\babt(?:\s*sportsline)?\b/i, label: "ABT" },
   { pattern: /\bcarbon\s*cleaning\b/i, label: "Carbon" },
 ];
 
@@ -64,7 +55,7 @@ const PART_TYPES: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /\bfahrwerk\b|\btieferlegung\b|\bfedern?\b/i, label: "Fahrwerk" },
   {
     pattern:
-      /\bfrontlippe\b|\bfrontspoiler\b|\bheckspoiler\b|\bheckflügel\b|\bheckfluegel\b|\bspoiler\b|\bdiffuser\b|\bseitenschweller\b|\baerodynamik\b/i,
+      /\bfrontlippe\b|\bfrontspoiler\b|\bheckspoiler\b|\bheckflügel\b|\bheckfluegel\b|\bspoiler\b|\bdiffuser\b|\bseitenschweller\b/i,
     label: "Aerodynamik",
   },
   {
@@ -75,30 +66,15 @@ const PART_TYPES: Array<{ pattern: RegExp; label: string }> = [
     pattern: /\bintercooler\b|\bladeluftkühler\b|\bladeluftkuehler\b/i,
     label: "Intercooler",
   },
-  {
-    pattern: /\bbremss[aä]tze?\b|\bbig\s*brake\b|\bbremsscheiben?\b/i,
-    label: "Bremsen",
-  },
+  { pattern: /\bbremss[aä]tze?\b|\bbig\s*brake\b|\bbremsscheiben?\b/i, label: "Bremsen" },
 ];
 
 /** Labeled fields often printed on German ABE / Teilegutachten. */
 const LABELED_PART_FIELD =
-  /(?:gegenstand|handelsbezeichnung|teilebezeichnung|bauteil|bezeichnung|typ(?:enbezeichnung)?|artikel)\s*[:.]?\s*(.+)/i;
-
-const LABELED_MANUFACTURER_FIELD =
-  /(?:hersteller|marke|antragsteller|inhaber(?:\s+der\s+(?:abe|erlaubnis))?|firma|produzent|applicant|manufacturer)\s*[:.]?\s*(.+)/i;
+  /(?:gegenstand|handelsbezeichnung|teilebezeichnung|bauteil|bezeichnung|typ(?:enbezeichnung)?|artikel|marke)\s*[:.]?\s*(.+)/i;
 
 function cleanLine(line: string): string {
   return line.replace(/\s+/g, " ").trim();
-}
-
-function stripLegalSuffix(value: string): string {
-  return value
-    .replace(
-      /\s*,?\s*(GmbH|AG|S\.?p\.?A\.?|Ltd\.?|Inc\.?|LLC|KG|UG|e\.?\s*K\.?)\.?$/i,
-      "",
-    )
-    .trim();
 }
 
 function findBrand(text: string): string | null {
@@ -117,7 +93,7 @@ function findPartType(text: string): string | null {
 
 function fromLabeledFields(text: string): string | null {
   const lines = text.split(/\n+/).map(cleanLine).filter(Boolean);
-  for (const line of lines.slice(0, 50)) {
+  for (const line of lines.slice(0, 40)) {
     const match = line.match(LABELED_PART_FIELD);
     if (!match?.[1]) continue;
     let value = match[1].replace(/\s+/g, " ").trim();
@@ -147,21 +123,7 @@ function isPlausiblePartName(value: string): boolean {
   if (cleaned.length < 2 || cleaned.length > 80) return false;
   if (SKIP_LINE.test(cleaned)) return false;
   if (/^\d+[.,]\d{2}/.test(cleaned)) return false;
-  if (/kraftfahrt|bundesamt/i.test(cleaned)) return false;
   if (!/\p{L}{2,}/u.test(cleaned)) return false;
-  return true;
-}
-
-function isPlausibleManufacturer(value: string): boolean {
-  const cleaned = stripLegalSuffix(cleanLine(value));
-  if (cleaned.length < 2 || cleaned.length > 80) return false;
-  if (SKIP_LINE.test(cleaned)) return false;
-  if (/kraftfahrt|bundesamt|prüfstelle|pruefstelle|dekra|tüv|tuev/i.test(cleaned)) {
-    return false;
-  }
-  if (/^\d+[.,]\d{2}/.test(cleaned)) return false;
-  if (!/\p{L}{2,}/u.test(cleaned)) return false;
-  if (cleaned.split(/\s+/).length > 6) return false;
   return true;
 }
 
@@ -201,22 +163,6 @@ export function extractAbePartName(rawText: string): string | null {
   return null;
 }
 
-/** Hersteller / Marke from labeled fields or known aftermarket brands. */
-export function extractAbeManufacturer(rawText: string): string | null {
-  const lines = rawText.split(/\n+/).map(cleanLine).filter(Boolean);
-
-  for (const line of lines.slice(0, 60)) {
-    const match = line.match(LABELED_MANUFACTURER_FIELD);
-    if (!match?.[1]) continue;
-    let value = stripLegalSuffix(match[1].replace(/\s*[|;].*$/, "").trim());
-    if (!isPlausibleManufacturer(value)) continue;
-    const known = findBrand(value);
-    return (known ?? value).slice(0, 120);
-  }
-
-  return findBrand(rawText);
-}
-
 /**
  * Prefer LLM Bauteil when it already looks like a part/brand name;
  * otherwise fall back to heuristic extraction.
@@ -243,62 +189,4 @@ export function resolveAbePartName(input: {
   }
 
   return extractAbePartName(input.rawText);
-}
-
-export function resolveAbeManufacturer(input: {
-  structuredManufacturer: string | null;
-  rawText: string;
-  resolvedPartName?: string | null;
-}): string | null {
-  const structured = input.structuredManufacturer?.trim() || null;
-  if (structured && isPlausibleManufacturer(structured)) {
-    return (findBrand(structured) ?? stripLegalSuffix(structured)).slice(0, 120);
-  }
-
-  const fromText = extractAbeManufacturer(input.rawText);
-  if (fromText) return fromText;
-
-  if (input.resolvedPartName) {
-    return findBrand(input.resolvedPartName);
-  }
-
-  return null;
-}
-
-/** Resolve Bauteil (vendor) + Hersteller together for ABE merge. */
-export function resolveAbePartIdentity(input: {
-  structuredVendor: string | null;
-  structuredManufacturer: string | null;
-  rawText: string;
-}): {
-  vendor: string | null;
-  manufacturer: string | null;
-} {
-  const vendor = resolveAbePartName({
-    structuredPart: input.structuredVendor,
-    rawText: input.rawText,
-  });
-
-  const manufacturer = resolveAbeManufacturer({
-    structuredManufacturer: input.structuredManufacturer,
-    rawText: input.rawText,
-    resolvedPartName: vendor,
-  });
-
-  // If we only found a brand as vendor, prefer a clearer Bauteil label.
-  if (
-    manufacturer &&
-    vendor &&
-    vendor.toLowerCase() === manufacturer.toLowerCase()
-  ) {
-    const type = findPartType(input.rawText);
-    if (type) {
-      return {
-        vendor: `${manufacturer} ${type}`.slice(0, 160),
-        manufacturer,
-      };
-    }
-  }
-
-  return { vendor, manufacturer };
 }
