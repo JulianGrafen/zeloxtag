@@ -1,0 +1,39 @@
+import { DOCUMENT_BUCKET } from "./constants";
+
+export type DocumentMediaKind = "pdf" | "image" | "unknown";
+
+/**
+ * Classify a document URL by path / extension for the in-app viewer.
+ */
+export function documentMediaKind(fileUrl: string): DocumentMediaKind {
+  const lower = fileUrl.toLowerCase().split("?")[0] ?? "";
+  if (lower.endsWith(".pdf") || lower.includes("application/pdf")) {
+    return "pdf";
+  }
+  if (/\.(jpe?g|png|webp|gif|heic|heif)$/.test(lower)) {
+    return "image";
+  }
+  return "unknown";
+}
+
+/**
+ * Whether this URL can be opened in the in-app viewer (has real bytes).
+ */
+export function isViewableDocumentUrl(fileUrl: string): boolean {
+  if (!fileUrl || fileUrl.startsWith("mock://")) return false;
+  if (fileUrl.startsWith("/demo/")) return true;
+  try {
+    const url = new URL(fileUrl);
+    return url.pathname.includes(`/object/public/${DOCUMENT_BUCKET}/`);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Same-origin proxy URL that forces `Content-Disposition: inline`.
+ */
+export function inlineDocumentProxyUrl(fileUrl: string): string {
+  const params = new URLSearchParams({ src: fileUrl });
+  return `/api/documents/file?${params.toString()}`;
+}

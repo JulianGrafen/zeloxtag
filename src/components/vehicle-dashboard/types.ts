@@ -1,0 +1,77 @@
+export type DashboardTileId =
+  | "invoices"
+  | "oil-change"
+  | "abe"
+  | "tuv"
+  | "service"
+  | "modifications"
+  | "roadside"
+  | "tuning-history"
+  | "specs";
+
+/** Serializable icon keys (resolved to Lucide on the client). */
+export type DashboardIconName =
+  | "file-text"
+  | "droplet"
+  | "stamp"
+  | "history"
+  | "shield-check"
+  | "wrench"
+  | "images"
+  | "info"
+  | "triangle-alert";
+
+export type DashboardTileTone =
+  | "default"
+  | "accent"
+  | "warning"
+  | "critical";
+
+export interface DashboardTileMeta {
+  /** Optional secondary line under the title (e.g. "42 days left") */
+  subtitle?: string;
+  /** Highlight badge text (e.g. "Due soon") */
+  badge?: string;
+  /** Direct action URL (e.g. tel:+491701234567 for roadside) */
+  href?: string;
+}
+
+export interface DashboardTileConfig {
+  id: DashboardTileId | (string & {});
+  title: string;
+  description?: string;
+  icon: DashboardIconName;
+  tone?: DashboardTileTone;
+  meta?: DashboardTileMeta;
+  /** Span full width on mobile grid */
+  featured?: boolean;
+}
+
+export interface VehicleInspectionInfo {
+  nextDate: string;
+  /** Precomputed countdown label; if omitted, derived from nextDate */
+  countdownLabel?: string;
+}
+
+export interface VehicleDashboardData {
+  ownerName: string;
+  vehicleModel: string;
+  /** Optional real photo; falls back to silhouette */
+  vehicleImage?: string;
+  vehicleImageAlt?: string;
+  /** Accent label under the greeting, e.g. "QR Tag · Active" */
+  statusLabel?: string;
+  /** ISO-Datum des letzten Ölwechsels */
+  lastOilChange?: string;
+  nextInspection?: VehicleInspectionInfo;
+  roadsidePhone?: string;
+  /** Override or extend the default tile set */
+  tiles?: DashboardTileConfig[];
+}
+
+export interface VehicleDashboardProps {
+  data: VehicleDashboardData;
+  /** Called when a tile without href is activated */
+  onTileClick?: (tileId: string) => void;
+  className?: string;
+}

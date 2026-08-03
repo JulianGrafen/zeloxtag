@@ -1,0 +1,267 @@
+"use client";
+
+import { useState, useTransition, type ReactNode } from "react";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+
+import { claimTag } from "@/actions/claim-tag";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+interface ClaimFlowProps {
+  tagUuid: string;
+  /** Kept for API compatibility; Magic Link auth is currently disabled. */
+  isAuthenticated?: boolean;
+  userEmail?: string | null;
+}
+
+type Step = "intro" | "vehicle";
+
+export function ClaimFlow({ tagUuid }: ClaimFlowProps) {
+  const [step, setStep] = useState<Step>("intro");
+  const [make, setMake] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState("");
+  const [vin, setVin] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function validateVehicle(): string | null {
+    if (!make.trim()) return "Marke ist erforderlich.";
+    if (!model.trim()) return "Modell ist erforderlich.";
+    const parsedYear = Number.parseInt(year, 10);
+    if (!Number.isFinite(parsedYear) || parsedYear < 1900 || parsedYear > 2100) {
+      return "Baujahr muss zwischen 1900 und 2100 liegen.";
+    }
+    const trimmedVin = vin.trim();
+    if (trimmedVin && (trimmedVin.length < 5 || trimmedVin.length > 32)) {
+      return "VIN muss zwischen 5 und 32 Zeichen liegen.";
+    }
+    return null;
+  }
+
+  function submitClaim() {
+    setError(null);
+    const vehicleError = validateVehicle();
+    if (vehicleError) {
+      setError(vehicleError);
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const result = await claimTag({
+          tagUuid,
+          make,
+          model,
+          year,
+          vin: vin.trim() || undefined,
+        });
+
+        if (result.status === "error") {
+          setError(result.message);
+          return;
+        }
+
+        // Hard navigation: Soft Router can stall after Server Actions on LAN/mobile.
+        window.location.assign(result.href);
+      } catch (submitError) {
+        setError(
+          submitError instanceof Error
+            ? submitError.message
+            : "Weiterleitung fehlgeschlagen.",
+        );
+      }
+    });
+  }
+
+  return (
+    <ClaimShell>
+      {step === "vehicle" ? (
+        <div
+          className="mb-5 flex items-center gap-2 vd-anim-header"
+          aria-label="Schritt 1 von 1"
+        >
+          <div className="h-1 flex-1 rounded-full bg-neutral-900" />
+        </div>
+      ) : null}
+
+      {step === "intro" ? (
+        <section className="claim-intro flex flex-col py-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="vd-anim-header space-y-4 pt-2">
+            <h1 className="font-[family-name:var(--font-display)] text-[2.75rem] font-semibold leading-none tracking-[-0.05em] text-[color:var(--vd-text)] sm:text-[3.15rem]">
+              ZeloxTag
+            </h1>
+            <p className="max-w-[18ch] font-[family-name:var(--font-display)] text-[1.35rem] font-medium leading-snug tracking-[-0.03em] text-[color:var(--vd-text)]">
+              Dein Fahrzeug. Ein Scan entfernt.
+            </p>
+            <p className="max-w-[34ch] text-[0.95rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Verknüpfe den Tag mit deinem Auto — danach kannst du Rechnungen
+              direkt scannen und speichern.
+            </p>
+          </div>
+
+          <div className="vd-anim-stack mt-8 space-y-3.5">
+            <SteelTagPlate uuid={tagUuid} />
+            <Button type="button" onClick={() => setStep("vehicle")}>
+              Tag beanspruchen
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Button>
+            <Link href="/" className="claim-later">
+              Später fortfahren
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      {step === "vehicle" ? (
+        <section className="claim-panel vd-anim-header">
+          <header>
+            <p className="claim-kicker">Fahrzeugdaten</p>
+            <h1 className="claim-title mt-2">Fahrzeug verknüpfen</h1>
+            <p className="claim-copy mt-2">
+              Marke, Modell und Baujahr reichen für den Start. Danach geht’s
+              direkt zum Dokument-Scanner.
+            </p>
+          </header>
+
+          <form
+            className="mt-6 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitClaim();
+            }}
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label="Marke"
+                value={make}
+                onChange={setMake}
+                placeholder="Mazda"
+                required
+              />
+              <Field
+                label="Modell"
+                value={model}
+                onChange={setModel}
+                placeholder="RX-8"
+                required
+              />
+            </div>
+
+            <Field
+              label="Baujahr"
+              value={year}
+              onChange={setYear}
+              inputMode="numeric"
+              placeholder="2011"
+              required
+            />
+
+            <Field
+              label="VIN (optional)"
+              value={vin}
+              onChange={setVin}
+              placeholder="Fahrgestellnummer"
+            />
+
+            {error ? (
+              <p
+                role="alert"
+                className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
+              >
+                {error}
+              </p>
+            ) : null}
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setError(null);
+                  setStep("intro");
+                }}
+                disabled={pending}
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden />
+                Zurück
+              </Button>
+              <Button type="submit" disabled={pending} className="flex-1">
+                {pending ? "Verknüpfen…" : "Weiter zum Scanner"}
+                <Check className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+          </form>
+        </section>
+      ) : null}
+    </ClaimShell>
+  );
+}
+
+function ClaimShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-auto flex w-full max-w-lg flex-col px-4 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
+      {children}
+    </div>
+  );
+}
+
+function SteelTagPlate({ uuid }: { uuid: string }) {
+  return (
+    <div className="claim-steel" aria-label={`Tag ${uuid}`}>
+      <div className="claim-steel__grain" aria-hidden />
+      <div className="relative z-10 flex items-center gap-4">
+        <div className="claim-steel__qr" aria-hidden>
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[0.65rem] font-semibold tracking-[0.2em] text-white/55 uppercase">
+            Unclaimed
+          </p>
+          <p className="mt-1 truncate font-mono text-[0.82rem] tracking-wide text-white/90">
+            {uuid}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  inputMode,
+  required,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  inputMode?: "numeric" | "email" | "text";
+  required?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <Label>
+      <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
+        {label}
+      </span>
+      <Input
+        type={type}
+        inputMode={inputMode}
+        required={required}
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </Label>
+  );
+}

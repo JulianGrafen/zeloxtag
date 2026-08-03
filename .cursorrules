@@ -1,0 +1,41 @@
+# PROJECT CONTEXT: ZeloxTag
+
+## 1. The Core Vision
+ZeloxTag is a hybrid Hardware/SaaS product for car enthusiasts and tuning workshops. It consists of a physical, laser-engraved stainless steel QR code tag applied to a vehicle's engine bay (e.g., intake manifold or core support). Scanning the tag bridges the physical vehicle to its digital twin: a cloud-based dashboard storing vehicle history, ABEs (General Operating Permits), TÜV reports, and invoices.
+
+The goal is to provide a seamless, high-end "Physical Web" experience that increases the resale value of modified vehicles through gapless digital documentation.
+
+## 2. Tech Stack Requirements
+- Framework: Next.js 14+ (App Router, TypeScript)
+- Styling: Tailwind CSS, shadcn/ui
+- Icons: Lucide React
+- Backend/Database/Auth: Supabase (PostgreSQL, Row Level Security, Storage, Magic Link/Email Auth)
+- Deployment: Vercel
+
+## 3. Database Architecture (Supabase)
+Relational PostgreSQL schema:
+- `users`: Managed by Supabase Auth.
+- `vehicles`: (id, user_id, make, model, year, vin, created_at) — a user can own multiple vehicles.
+- `tags`: (id, uuid [e.g. 'zlx-8f3a9b2c'], vehicle_id, status ['unclaimed' | 'active'], created_at) — physical QR representation.
+- `documents`: (id, vehicle_id, title, type ['abe' | 'invoice' | 'tuev' | 'other'], file_url, amount, date) — uploaded PDFs or images.
+
+## 4. Core User Flows
+### A. The Claim Flow (Onboarding)
+1. User receives the physical tag and scans it.
+2. Route hits `/v/[uuid]`.
+3. If `tags.status === 'unclaimed'`: authenticate, add vehicle details, link tag to `vehicle_id`, mark `active`.
+
+### B. The Public / Dashboard Flow
+1. Scanning an `active` tag routes to `/v/[uuid]`.
+2. Show a clean, mobile-first vehicle dashboard (Make, Model, Year).
+3. Owner (authenticated): full read/write (upload PDFs, delete documents, OCR for paper invoices).
+4. Third party (buyer, mechanic, police): read-only public documents via Supabase RLS.
+
+## 5. Development Principles & Code Style (STRICT)
+- Write clean, production-ready, highly readable, maintainable TypeScript.
+- Futureproof: modular, scalable for 5–10 years. Strict DRY.
+- Server-First: Server Components for data fetching. `"use client"` ONLY for UI state/interactivity.
+- UI/UX: Mobile-First (outdoor scan at the engine bay). High contrast, large tap targets, speed.
+- Security: Never bypass RLS. Scope queries to the authenticated user where appropriate.
+- Avoid messy inline logic; prefer hooks, helpers, and typed boundaries.
+- Always implement proper error handling and fallback states (loading, errors).

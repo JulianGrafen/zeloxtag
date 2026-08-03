@@ -1,0 +1,23 @@
+-- =============================================================================
+-- ZeloxTag schema entrypoint
+-- =============================================================================
+-- Canonical production DDL:
+--   supabase/migrations/00001_initial_schema.sql
+--   supabase/migrations/00002_storage_vehicle_documents.sql
+--   supabase/migrations/00003_documents_vendor.sql
+--   supabase/migrations/00004_documents_category.sql
+--   supabase/migrations/00005_documents_line_items.sql
+--   supabase/migrations/00006_documents_abe_fields.sql
+--   supabase/migrations/00007_documents_abe_detail.sql
+--   supabase/migrations/00008_documents_manufacturer.sql
+--   supabase/migrations/00009_documents_invoice_number.sql
+--   supabase/migrations/00010_documents_mileage_km.sql
+--   supabase/migrations/00011_documents_abe_columns_ensure.sql
+--
+-- Apply with Supabase CLI:
+--   supabase db push
+--
+-- Or paste both migration files into the Supabase SQL editor.
+-- Then seed demo vehicle/tag:
+--   node --env-file=.env scripts/seed-demo-vehicle.mjs
+-- =============================================================================
