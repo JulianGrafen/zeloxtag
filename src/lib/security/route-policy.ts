@@ -43,7 +43,13 @@ export function isPublicPath(pathname: string): boolean {
 
 export function isProtectedApiPath(pathname: string, method: string): boolean {
   if (!pathname.startsWith("/api/")) return false;
-  if (method === "GET" && PUBLIC_API_GET.has(pathname)) return false;
+  // HEAD probes (devtools / some browsers) must match the public GET allowlist.
+  if (
+    (method === "GET" || method === "HEAD") &&
+    PUBLIC_API_GET.has(pathname)
+  ) {
+    return false;
+  }
   if (method === "POST" && PUBLIC_API_POST.has(pathname)) return false;
   return true;
 }

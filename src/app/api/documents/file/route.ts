@@ -81,6 +81,9 @@ async function proxyInline(
       "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "public, max-age=3600",
       "X-Content-Type-Options": "nosniff",
+      // Explicitly allow same-origin DocumentViewer iframe (overrides global DENY).
+      "X-Frame-Options": "SAMEORIGIN",
+      "Content-Security-Policy": "default-src 'none'; frame-ancestors 'self'",
     },
   });
 }

@@ -54,7 +54,9 @@ export function buildContentSecurityPolicy(): string {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    "frame-src 'none'",
+    // Same-origin only — DocumentViewer embeds PDFs via `/api/documents/file`.
+    "frame-src 'self'",
+    "child-src 'self'",
   ];
 
   if (isHttpsDeployment()) {
@@ -108,4 +110,37 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
   }
 
   return headers;
+}
+
+/**
+ * Headers for `/api/documents/file` — must be frameable by the same-origin
+ * DocumentViewer iframe. Global `X-Frame-Options: DENY` / `frame-ancestors 'none'`
+ * would blank the PDF preview.
+ */
+export function documentFileSecurityHeaderEntries(): Array<{
+  key: string;
+  value: string;
+}> {
+  return [
+    {
+      key: "Content-Security-Policy",
+      value: "default-src 'none'; frame-ancestors 'self'",
+    },
+    {
+      key: "X-Frame-Options",
+      value: "SAMEORIGIN",
+    },
+    {
+      key: "X-Content-Type-Options",
+      value: "nosniff",
+    },
+    {
+      key: "Cross-Origin-Resource-Policy",
+      value: "same-origin",
+    },
+    {
+      key: "Referrer-Policy",
+      value: "strict-origin-when-cross-origin",
+    },
+  ];
 }

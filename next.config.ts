@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
-import { securityHeaderEntries } from "./src/lib/security/csp";
+import {
+  documentFileSecurityHeaderEntries,
+  securityHeaderEntries,
+} from "./src/lib/security/csp";
 
 const nextConfig: NextConfig = {
   turbopack: {
@@ -16,6 +19,11 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: securityHeaderEntries(),
+      },
+      // Later entries override conflicting keys for the document proxy.
+      {
+        source: "/api/documents/file",
+        headers: documentFileSecurityHeaderEntries(),
       },
     ];
   },
