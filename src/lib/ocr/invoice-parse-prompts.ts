@@ -70,7 +70,7 @@ FEW-SHOT — lineItems (Markdown / HTML tables):
 /** Per-request user instructions appended before OCR Markdown. */
 export const INVOICE_USER_PROMPT_LINES = [
   "Nachfolgend OCR-MARKDOWN einer Kfz-RECHNUNG / eines Servicebelegs",
-  "(Azure Document Intelligence, outputContentFormat=markdown).",
+  "(OCR-Markdown mit Tabellen).",
   "Extrahiere nur Rechnungsfelder gemäß Schema.",
   "vendor, invoiceNumber, amount, lineItems, mileageKm, date, category, summary.",
   "ABE-Felder (kbaNumber, conditions, manufacturer, …) IMMER null.",

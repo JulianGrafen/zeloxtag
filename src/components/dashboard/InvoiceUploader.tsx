@@ -117,7 +117,7 @@ function formatBytes(bytes: number): string {
 }
 
 /**
- * Document upload wizard: prepare PDF locally, extract fields via Azure DI.
+ * Document upload wizard: prepare PDF locally, extract fields, review & save.
  */
 export function InvoiceUploader({
   vehicleId,
@@ -490,13 +490,13 @@ export function InvoiceUploader({
             <FileText className="h-5 w-5" aria-hidden />
           </div>
           <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            Document Intelligence
+            Scanner
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
             {heading}
           </h1>
           <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-            {subheading ?? `${vehicleLabel} · Analyse über Azure`}
+            {subheading ?? `${vehicleLabel} · Beleg einlesen`}
           </p>
         </div>
       </header>

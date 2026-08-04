@@ -40,7 +40,7 @@ Technische Maße (technicalSpecs):
 Keine Erklärungen — nur JSON.`;
 
 export const ABE_USER_PROMPT_LINES = [
-  "OCR-Text einer ABE / eines Teilegutachtens (Azure prebuilt-read).",
+  "OCR-Text einer ABE / eines Teilegutachtens.",
   "Extrahiere: kbaNumber, manufacturer, partCategory, partType,",
   "conditions, technicalSpecs. date immer null (Scandatum setzt die App).",
   "manufacturer = NUR Hersteller/Herstellerzeichen — NIEMALS Auftraggeber/Antragsteller.",

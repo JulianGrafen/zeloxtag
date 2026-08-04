@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     if (!isLlmConfigured()) {
       return jsonError(
         503,
-        "LLM API key fehlt. In .env setzen: API_KEY (Foundry) — DOCUMENTINTELLIGENCE_API_KEY reicht nur für OCR.",
+        "Dokumentanalyse ist nicht vollständig konfiguriert.",
         "config",
       );
     }

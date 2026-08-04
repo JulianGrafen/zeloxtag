@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (!isConfigured) {
       return jsonError(
         503,
-        "Document Intelligence ist nicht konfiguriert (DOCUMENTINTELLIGENCE_ENDPOINT / DOCUMENTINTELLIGENCE_API_KEY).",
+        "Dokumentanalyse ist nicht konfiguriert.",
         "config",
       );
     }

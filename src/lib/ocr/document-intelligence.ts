@@ -109,9 +109,9 @@ async function startAnalyze(input: {
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Network error talking to Azure.";
+      error instanceof Error ? error.message : "Netzwerkfehler.";
     throw new DocumentIntelligenceError(
-      `Document Intelligence unreachable: ${message}`,
+      `Dokumentanalyse nicht erreichbar: ${message}`,
     );
   }
 }
@@ -134,16 +134,16 @@ async function pollAnalyzeResult(
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Network error during poll.";
+        error instanceof Error ? error.message : "Netzwerkfehler.";
       throw new DocumentIntelligenceError(
-        `Document Intelligence unreachable: ${message}`,
+        `Dokumentanalyse nicht erreichbar: ${message}`,
       );
     }
 
     if (!pollResponse.ok) {
       const detail = (await pollResponse.text()).slice(0, 400);
       throw new DocumentIntelligenceError(
-        `Document Intelligence poll failed (${pollResponse.status}): ${detail}`,
+        `Dokumentanalyse fehlgeschlagen (${pollResponse.status}): ${detail}`,
       );
     }
 
@@ -159,13 +159,13 @@ async function pollAnalyzeResult(
 
     if (payload.status === "failed") {
       throw new DocumentIntelligenceError(
-        payload.error?.message || "Document Intelligence Analyse fehlgeschlagen.",
+        payload.error?.message || "Dokumentanalyse fehlgeschlagen.",
       );
     }
   }
 
   throw new DocumentIntelligenceError(
-    "Document Intelligence Timeout — bitte erneut versuchen.",
+    "Analyse dauert zu lange — bitte erneut versuchen.",
   );
 }
 
@@ -219,7 +219,7 @@ async function runDocumentOcr(input: {
   const { endpoint, apiKey, isConfigured } = getDocumentIntelligenceEnv();
   if (!isConfigured) {
     throw new DocumentIntelligenceError(
-      "Document Intelligence ist nicht konfiguriert (DOCUMENTINTELLIGENCE_ENDPOINT / DOCUMENTINTELLIGENCE_API_KEY).",
+      "Dokumentanalyse ist nicht konfiguriert.",
     );
   }
 
@@ -233,14 +233,14 @@ async function runDocumentOcr(input: {
   if (!startResponse.ok) {
     const detail = (await startResponse.text()).slice(0, 400);
     throw new DocumentIntelligenceError(
-      `Document Intelligence start failed (${startResponse.status}): ${detail}`,
+      `Dokumentanalyse fehlgeschlagen (${startResponse.status}): ${detail}`,
     );
   }
 
   const operationLocation = startResponse.headers.get("operation-location");
   if (!operationLocation) {
     throw new DocumentIntelligenceError(
-      "Document Intelligence lieferte keine operation-location.",
+      "Dokumentanalyse konnte nicht gestartet werden.",
     );
   }
 
@@ -282,7 +282,7 @@ export async function analyzeDocument(input: {
 }): Promise<AnalyzeDocumentResult> {
   if (!isLlmConfigured()) {
     throw new DocumentIntelligenceError(
-      "LLM API key fehlt (API_KEY) — OCR-JSON-Parse benötigt Foundry/OpenAI.",
+      "Dokumentanalyse ist nicht vollständig konfiguriert.",
     );
   }
 

@@ -18,8 +18,7 @@ const VALID_TYPES = new Set<DocumentType>(["invoice", "abe", "tuev", "other"]);
 
 export const metadata: Metadata = {
   title: "Dokument scannen · ZeloxTag",
-  description:
-    "Rechnung fotografieren und per Azure Document Intelligence strukturiert speichern.",
+  description: "Rechnung oder Beleg fotografieren und speichern.",
 };
 
 export default async function UploadDocumentPage({
