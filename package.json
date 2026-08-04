@@ -4,8 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
+    "build": "npm run test:extraction && next build",
     "start": "next start --hostname 0.0.0.0",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:extraction": "vitest run src/lib/ocr/extraction-quality.test.ts src/services/documents/document-services.test.ts",
+    "predeploy": "npm run test:extraction",
     "db:seed-demo": "node --env-file=.env scripts/seed-demo-vehicle.mjs"
   },
   "dependencies": {
@@ -32,6 +37,7 @@
     "eslint-config-next": "16.2.12",
     "sharp": "^0.35.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }
