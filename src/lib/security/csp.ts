@@ -57,6 +57,7 @@ export function buildContentSecurityPolicy(): string {
     // Same-origin only — DocumentViewer embeds PDFs via `/api/documents/file`.
     "frame-src 'self'",
     "child-src 'self'",
+    "manifest-src 'self'",
   ];
 
   if (isHttpsDeployment()) {

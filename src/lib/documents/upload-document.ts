@@ -4,36 +4,23 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { validateDocumentUpload } from "@/lib/security/file-upload";
+import { parseStrictBody } from "@/lib/security/parse-body";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
-import type { Document, DocumentType } from "@/types/database";
+import type { Document } from "@/types/database";
 
-import {
-  DOCUMENT_BUCKET,
-  DOCUMENT_TYPE_OPTIONS,
-  MAX_DOCUMENT_BYTES,
-} from "./constants";
+import { DOCUMENT_BUCKET } from "./constants";
 import { parseLineItems } from "./line-items";
 import { appendMockUploadedDocument } from "./mock-uploads";
 import { parseAbeConditions, parseStringList } from "./string-list";
 import { parseTechnicalSpecs } from "./technical-specs";
+import { metaFromFormData, uploadDocumentMetaSchema } from "./upload-schema";
 
 export type UploadDocumentResult =
   | { status: "uploaded"; document: Document; tagUuid: string }
   | { status: "error"; message: string };
-
-function isDocumentType(value: string): value is DocumentType {
-  return (DOCUMENT_TYPE_OPTIONS as string[]).includes(value);
-}
-
-function sanitizeFilename(name: string): string {
-  return name
-    .normalize("NFKD")
-    .replace(/[^\w.\-]+/g, "_")
-    .replace(/_+/g, "_")
-    .slice(0, 80);
-}
 
 function parseAmount(raw: string | undefined): number | null {
   if (!raw?.trim()) return null;
@@ -64,92 +51,64 @@ function parseMileageKm(raw: string | undefined): number | null {
   return value;
 }
 
-function ensurePdfFilename(name: string): string {
-  const safe = sanitizeFilename(name || "dokument.pdf");
-  return safe.toLowerCase().endsWith(".pdf") ? safe : `${safe.replace(/\.[^.]+$/, "")}.pdf`;
-}
-
 /**
  * Persist a document PDF to Supabase Storage + documents row.
- * Without Supabase env → mock metadata cookie (local demo).
- * With service role (auth deferred for QR scan UX) → admin upload when no session.
+ * Strict Zod metadata + magic-byte MIME checks before any write.
  */
 export async function uploadDocument(
   formData: FormData,
 ): Promise<UploadDocumentResult> {
-  const vehicleId = String(formData.get("vehicleId") ?? "").trim();
-  const tagUuid = String(formData.get("tagUuid") ?? "").trim();
-  const title = String(formData.get("title") ?? "").trim();
-  const typeRaw = String(formData.get("type") ?? "").trim();
-  const vendorRaw = String(formData.get("vendor") ?? "").trim();
-  const categoryRaw = String(formData.get("category") ?? "").trim();
-  const lineItemsRaw = String(formData.get("lineItems") ?? "");
-  const kbaNumberRaw = String(formData.get("kbaNumber") ?? "").trim();
-  const vehicleApprovalsRaw = String(formData.get("vehicleApprovals") ?? "");
-  const authorityRaw = String(formData.get("authority") ?? "").trim();
-  const conditionsRaw = String(formData.get("conditions") ?? "");
-  const technicalSpecsRaw = String(formData.get("technicalSpecs") ?? "");
-  const partCategoryRaw = String(formData.get("partCategory") ?? "").trim();
-  const notesRaw = String(formData.get("notes") ?? "").trim();
-  const manufacturerRaw = String(formData.get("manufacturer") ?? "").trim();
-  const invoiceNumberRaw = String(formData.get("invoiceNumber") ?? "").trim();
-  const mileageKmRaw = String(formData.get("mileageKm") ?? "").trim();
-  const pageCountRaw = String(formData.get("pageCount") ?? "").trim();
-  const dateRaw = String(formData.get("date") ?? "");
-  const amountRaw = String(formData.get("amount") ?? "");
-  const file = formData.get("file");
+  const metaParsed = parseStrictBody(
+    uploadDocumentMetaSchema,
+    metaFromFormData(formData),
+  );
+  if (!metaParsed.ok) {
+    return {
+      status: "error",
+      message: "Ungültige Upload-Daten.",
+    };
+  }
 
-  if (!vehicleId || !tagUuid) {
-    return { status: "error", message: "Fahrzeug- oder Tag-Bezug fehlt." };
-  }
-  if (!title) {
-    return { status: "error", message: "Titel ist erforderlich." };
-  }
-  if (!isDocumentType(typeRaw)) {
-    return { status: "error", message: "Ungültiger Dokumenttyp." };
-  }
-  if (!(file instanceof File) || file.size === 0) {
+  const meta = metaParsed.data;
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
     return { status: "error", message: "Bitte eine Datei auswählen." };
   }
-  if (file.size > MAX_DOCUMENT_BYTES) {
-    return {
-      status: "error",
-      message: `Datei zu groß (max. ${Math.round(MAX_DOCUMENT_BYTES / (1024 * 1024))} MB).`,
-    };
+
+  const fileCheck = await validateDocumentUpload(file, { pdfOnly: true });
+  if (!fileCheck.ok) {
+    return { status: "error", message: fileCheck.error };
   }
 
-  const isPdf =
-    file.type === "application/pdf" ||
-    file.name.toLowerCase().endsWith(".pdf");
-  if (!isPdf) {
-    return {
-      status: "error",
-      message: "Nur PDF-Dateien können gespeichert werden.",
-    };
-  }
+  const {
+    vehicleId,
+    tagUuid,
+    title,
+    type: typeRaw,
+  } = meta;
 
-  const amount = parseAmount(amountRaw);
-  const date = parseDate(dateRaw);
-  const vendor = vendorRaw.slice(0, 160) || null;
-  const category = categoryRaw.slice(0, 40) || null;
-  const lineItems = parseLineItems(lineItemsRaw);
-  const kbaNumber = kbaNumberRaw.slice(0, 80) || null;
-  const vehicleApprovals = parseStringList(vehicleApprovalsRaw);
-  const authority = authorityRaw.slice(0, 120) || null;
-  const conditions = parseAbeConditions(conditionsRaw);
-  const technicalSpecs = parseTechnicalSpecs(technicalSpecsRaw);
-  const partCategory = partCategoryRaw.slice(0, 60) || null;
-  const notes = notesRaw.slice(0, 500) || null;
-  const manufacturer = manufacturerRaw.slice(0, 120) || null;
-  const invoiceNumber = invoiceNumberRaw.slice(0, 80) || null;
-  const mileageKm = parseMileageKm(mileageKmRaw);
-  const pageCountParsed = Number.parseInt(pageCountRaw, 10);
+  const amount = parseAmount(meta.amount);
+  const date = parseDate(meta.date);
+  const vendor = meta.vendor.slice(0, 160) || null;
+  const category = meta.category.slice(0, 40) || null;
+  const lineItems = parseLineItems(meta.lineItems);
+  const kbaNumber = meta.kbaNumber.slice(0, 80) || null;
+  const vehicleApprovals = parseStringList(meta.vehicleApprovals);
+  const authority = meta.authority.slice(0, 120) || null;
+  const conditions = parseAbeConditions(meta.conditions);
+  const technicalSpecs = parseTechnicalSpecs(meta.technicalSpecs);
+  const partCategory = meta.partCategory.slice(0, 60) || null;
+  const notes = meta.notes.slice(0, 500) || null;
+  const manufacturer = meta.manufacturer.slice(0, 120) || null;
+  const invoiceNumber = meta.invoiceNumber.slice(0, 80) || null;
+  const mileageKm = parseMileageKm(meta.mileageKm);
+  const pageCountParsed = Number.parseInt(meta.pageCount, 10);
   const pageCount =
     Number.isFinite(pageCountParsed) && pageCountParsed > 0
       ? pageCountParsed
       : null;
   const documentId = randomUUID();
-  const safeName = ensurePdfFilename(file.name || "dokument.pdf");
+  const safeName = fileCheck.safeName;
   const now = new Date().toISOString();
 
   const { isConfigured } = getSupabaseEnv();
@@ -241,7 +200,7 @@ export async function uploadDocument(
   const { error: storageError } = await supabase.storage
     .from(DOCUMENT_BUCKET)
     .upload(storagePath, bytes, {
-      contentType: "application/pdf",
+      contentType: fileCheck.mime,
       upsert: false,
     });
 

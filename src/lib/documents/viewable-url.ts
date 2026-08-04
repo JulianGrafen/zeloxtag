@@ -16,15 +16,24 @@ export function documentMediaKind(fileUrl: string): DocumentMediaKind {
   return "unknown";
 }
 
+function isSupabaseDocumentObjectPath(pathname: string): boolean {
+  return (
+    pathname.includes(`/object/public/${DOCUMENT_BUCKET}/`) ||
+    pathname.includes(`/object/authenticated/${DOCUMENT_BUCKET}/`) ||
+    pathname.includes(`/object/sign/${DOCUMENT_BUCKET}/`)
+  );
+}
+
 /**
  * Whether this URL can be opened in the in-app viewer (has real bytes).
+ * Private-bucket objects are still viewable via `/api/documents/file` proxy.
  */
 export function isViewableDocumentUrl(fileUrl: string): boolean {
   if (!fileUrl || fileUrl.startsWith("mock://")) return false;
   if (fileUrl.startsWith("/demo/")) return true;
   try {
     const url = new URL(fileUrl);
-    return url.pathname.includes(`/object/public/${DOCUMENT_BUCKET}/`);
+    return isSupabaseDocumentObjectPath(url.pathname);
   } catch {
     return false;
   }

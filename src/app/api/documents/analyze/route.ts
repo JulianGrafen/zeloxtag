@@ -11,29 +11,20 @@ import type { DocumentParseKind, OcrDocumentType } from "@/lib/ocr/ocr-types";
 import { OCR_DOCUMENT_TYPES } from "@/lib/ocr/ocr-types";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { enforceRateLimit } from "@/lib/security/api-guard";
+import { sniffAllowedMime } from "@/lib/security/file-upload";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** High-fidelity invoice photos / multi-page PDFs (Azure S0 allows far more). */
+/** High-fidelity invoice photos / multi-page PDFs. */
 const MAX_BYTES = 25 * 1024 * 1024;
-
-const ALLOWED_MIME = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/tiff",
-  "image/bmp",
-  "image/heic",
-  "image/heif",
-  "application/octet-stream",
-]);
 
 const optionalMetaSchema = z
   .object({
     vehicleId: z.string().uuid().optional(),
     tagUuid: z.string().trim().min(1).max(128).optional(),
+    kind: z.enum(["invoice", "abe", "auto"]).optional(),
+    documentType: z.enum(OCR_DOCUMENT_TYPES).optional(),
   })
   .strict();
 
@@ -98,9 +89,19 @@ export async function POST(request: NextRequest) {
 
     const vehicleRaw = String(formData.get("vehicleId") ?? "").trim();
     const tagRaw = String(formData.get("tagUuid") ?? "").trim();
+    const kindRaw = String(formData.get("kind") ?? "").trim().toLowerCase();
+    const documentTypeRaw = String(formData.get("documentType") ?? "")
+      .trim()
+      .toLowerCase();
     const meta = optionalMetaSchema.safeParse({
       ...(vehicleRaw ? { vehicleId: vehicleRaw } : {}),
       ...(tagRaw ? { tagUuid: tagRaw } : {}),
+      ...(kindRaw === "invoice" || kindRaw === "abe" || kindRaw === "auto"
+        ? { kind: kindRaw }
+        : {}),
+      ...(documentTypeRaw
+        ? { documentType: documentTypeRaw }
+        : {}),
     });
     if (!meta.success) {
       return jsonError(400, "Invalid optional metadata fields.", "bad_request");
@@ -119,34 +120,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const contentType = file.type || "application/octet-stream";
-    if (!ALLOWED_MIME.has(contentType)) {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const sniffed = sniffAllowedMime(bytes);
+    if (!sniffed) {
       return jsonError(
         400,
-        `Unsupported content type: ${contentType}`,
+        "Unsupported or spoofed file type (PDF/JPEG/PNG/WebP/HEIC required).",
         "bad_request",
       );
     }
 
-    const kindRaw = String(formData.get("kind") ?? "auto").trim().toLowerCase();
-    const kind: DocumentParseKind =
-      kindRaw === "invoice" || kindRaw === "abe" || kindRaw === "auto"
-        ? kindRaw
-        : "auto";
+    const kind: DocumentParseKind = meta.data.kind ?? "auto";
+    const documentType: OcrDocumentType | undefined = meta.data.documentType;
 
-    const documentTypeRaw = String(formData.get("documentType") ?? "")
-      .trim()
-      .toLowerCase();
-    const documentType = (
-      OCR_DOCUMENT_TYPES as readonly string[]
-    ).includes(documentTypeRaw)
-      ? (documentTypeRaw as OcrDocumentType)
-      : undefined;
-
-    const bytes = Buffer.from(await file.arrayBuffer());
     const result = await analyzeDocument({
       bytes,
-      contentType,
+      contentType: sniffed,
       kind,
       documentType,
     });

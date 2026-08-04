@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { completePendingClaimForUser } from "@/actions/claim-tag";
+import { enforceRateLimit } from "@/lib/security/api-guard";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createRouteHandlerClient } from "@/lib/supabase/route";
 
@@ -25,6 +26,11 @@ function mapAuthCallbackError(message: string): string {
  * verifier and new session cookies travel with the redirect.
  */
 export async function GET(request: NextRequest) {
+  const limited = enforceRateLimit(request, "auth", "auth-callback");
+  if (limited) {
+    return NextResponse.redirect(new URL("/login?error=rate_limited", request.nextUrl.origin));
+  }
+
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
   const nextRaw = searchParams.get("next") ?? "/";

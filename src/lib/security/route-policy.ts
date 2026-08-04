@@ -1,6 +1,6 @@
 /**
- * Path classification for Next.js Proxy auth gates.
- * Public QR digital-twin routes stay open; dashboard + mutating owner APIs require a session.
+ * Path classification for Next.js Proxy auth gates (Zero-Trust).
+ * Public QR digital-twin routes stay open; dashboard + owner APIs require a session.
  */
 
 const PUBLIC_EXACT = new Set([
@@ -17,6 +17,9 @@ const PUBLIC_PREFIXES = [
   "/_next/",
   "/demo/",
 ];
+
+/** Explicit owner-only API namespace — always authenticated. */
+const PROTECTED_API_PREFIXES = ["/api/protected"];
 
 /** Public GET APIs (read-only / inventory helpers). */
 const PUBLIC_API_GET = new Set([
@@ -43,6 +46,11 @@ export function isPublicPath(pathname: string): boolean {
 
 export function isProtectedApiPath(pathname: string, method: string): boolean {
   if (!pathname.startsWith("/api/")) return false;
+
+  if (PROTECTED_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return true;
+  }
+
   // HEAD probes (devtools / some browsers) must match the public GET allowlist.
   if (
     (method === "GET" || method === "HEAD") &&

@@ -83,8 +83,12 @@ export function clientIpFromHeaders(headers: Headers): string {
 }
 
 export const RATE_LIMITS = {
-  auth: { limit: 8, windowMs: 60_000 },
-  ocr: { limit: 20, windowMs: 60_000 },
-  upload: { limit: 15, windowMs: 60_000 },
-  apiDefault: { limit: 60, windowMs: 60_000 },
+  /** Login / MFA / auth callback — brute-force resistance. */
+  auth: { limit: 6, windowMs: 60_000 },
+  /** Expensive Document Intelligence + LLM parse. */
+  ocr: { limit: 12, windowMs: 60_000 },
+  /** Multipart analyze / storage-bound uploads. */
+  upload: { limit: 10, windowMs: 60_000 },
+  /** Generic public GET helpers. */
+  apiDefault: { limit: 45, windowMs: 60_000 },
 } as const;

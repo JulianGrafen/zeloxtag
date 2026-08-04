@@ -9,9 +9,10 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 import { updateSession } from "@/lib/supabase/proxy";
 
 /**
- * Next.js 16 Proxy (replaces deprecated middleware.ts).
+ * Next.js 16 Proxy — Zero-Trust edge gate (replaces deprecated middleware.ts).
  * — Refreshes Supabase session cookies (HttpOnly / Secure / SameSite=Lax)
- * — Gates /dashboard, owner hubs, and /api/* behind authentication
+ * — NEVER stores access tokens in localStorage
+ * — Gates /dashboard, /settings, /api/protected, and other owner APIs
  * — Forces MFA step-up when TOTP is enrolled but session is still AAL1
  */
 export async function proxy(request: NextRequest) {
@@ -26,7 +27,9 @@ export async function proxy(request: NextRequest) {
 
   const method = request.method.toUpperCase();
   const requiresAuth =
-    isProtectedPagePath(pathname) || isProtectedApiPath(pathname, method);
+    isProtectedPagePath(pathname) ||
+    isProtectedApiPath(pathname, method) ||
+    pathname.startsWith("/api/protected");
 
   if (requiresAuth && !userId) {
     if (pathname.startsWith("/api/")) {

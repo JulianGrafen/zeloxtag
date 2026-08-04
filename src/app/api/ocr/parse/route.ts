@@ -14,24 +14,13 @@ import {
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
 import { enforceRateLimit } from "@/lib/security/api-guard";
+import { sniffAllowedMime } from "@/lib/security/file-upload";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /** High-fidelity invoice photos / multi-page PDFs. */
 const MAX_BYTES = 25 * 1024 * 1024;
-
-const ALLOWED_MIME = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/tiff",
-  "image/bmp",
-  "image/heic",
-  "image/heif",
-  "application/octet-stream",
-]);
 
 const documentTypeSchema = z.enum(OCR_DOCUMENT_TYPES);
 
@@ -127,16 +116,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const contentType = file.type || "application/octet-stream";
-    if (!ALLOWED_MIME.has(contentType)) {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const sniffed = sniffAllowedMime(bytes);
+    const contentType = sniffed ?? file.type;
+    if (!sniffed) {
       return jsonError(
         400,
-        `Unsupported content type: ${contentType}`,
+        "Unsupported or spoofed file type (PDF/JPEG/PNG/WebP/HEIC required).",
         "bad_request",
       );
     }
 
-    const bytes = Buffer.from(await file.arrayBuffer());
     const result = await analyzeDocument({
       bytes,
       contentType,

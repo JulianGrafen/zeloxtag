@@ -7,6 +7,7 @@ import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { OcrPersistError, persistOcrInvoice } from "@/lib/ocr/persist-invoice";
 import type { OcrApiError, OcrApiSuccess } from "@/lib/ocr/types";
 import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
+import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
@@ -92,14 +93,6 @@ export async function POST(request: NextRequest) {
       return jsonError(400, "Image file is required.", "bad_request");
     }
 
-    if (!ALLOWED_OCR_MIME.has(file.type)) {
-      return jsonError(
-        400,
-        "Only compressed images are accepted (JPEG, PNG, WebP, HEIC).",
-        "bad_request",
-      );
-    }
-
     if (file.size > MAX_OCR_BYTES) {
       return jsonError(
         400,
@@ -109,12 +102,20 @@ export async function POST(request: NextRequest) {
     }
 
     const bytes = Buffer.from(await file.arrayBuffer());
+    const sniffed = sniffAllowedMime(bytes);
+    if (!sniffed || !ALLOWED_OCR_MIME.has(sniffed)) {
+      return jsonError(
+        400,
+        "Only compressed images are accepted (JPEG, PNG, WebP, HEIC).",
+        "bad_request",
+      );
+    }
 
     let ocr;
     try {
       ocr = await extractInvoiceFromImage({
         bytes,
-        mimeType: file.type,
+        mimeType: sniffed,
       });
     } catch (error) {
       const message =

@@ -3,6 +3,11 @@ import { z } from "zod";
 
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import { enforceRateLimit } from "@/lib/security/api-guard";
+import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
@@ -14,13 +19,11 @@ const querySchema = z
   .strict();
 
 /**
- * Proxy document bytes with Content-Disposition: inline so browsers preview
- * instead of downloading (Supabase public URLs often force attachment).
+ * Proxy document bytes with Content-Disposition: inline.
  *
- * Public GET allowlisted for QR digital-twin viewing (SSRF-hardened + rate-limited).
- * Allowed sources:
- * - Same-origin /demo/* assets
- * - Public Supabase Storage objects in `vehicle-documents`
+ * Zero-Trust: vehicle-documents bucket is private. Bytes are loaded via
+ * service-role after SSRF-hardening the `src` to our Supabase host + bucket.
+ * Public GET is allowlisted so QR digital-twin viewers can open originals.
  */
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, "apiDefault", "documents-file");
@@ -41,17 +44,57 @@ export async function GET(request: NextRequest) {
     }
 
     const { url: supabaseUrl } = getSupabaseEnv();
-    const parsedUrl = new URL(src);
-    const supabaseHost = supabaseUrl ? new URL(supabaseUrl).host : "";
-    const isSupabasePublic =
-      Boolean(supabaseHost) &&
-      parsedUrl.host === supabaseHost &&
-      parsedUrl.pathname.includes(`/object/public/${DOCUMENT_BUCKET}/`);
+    if (!supabaseUrl) {
+      return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+    }
 
-    if (!isSupabasePublic) {
+    const parsedUrl = new URL(src);
+    const supabaseHost = new URL(supabaseUrl).host;
+    if (parsedUrl.host !== supabaseHost) {
       return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
     }
 
+    const storagePath = storagePathFromPublicOrAuthenticatedUrl(
+      src,
+      DOCUMENT_BUCKET,
+    );
+    if (!storagePath) {
+      return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
+    }
+
+    // Private bucket → service-role download (never expose the key to the client).
+    if (isSupabaseAdminConfigured()) {
+      const admin = createAdminClient();
+      const { data, error } = await admin.storage
+        .from(DOCUMENT_BUCKET)
+        .download(storagePath);
+
+      if (error || !data) {
+        return NextResponse.json(
+          { error: error?.message ?? "Not found" },
+          { status: 404 },
+        );
+      }
+
+      const buffer = Buffer.from(await data.arrayBuffer());
+      const contentType =
+        data.type?.split(";")[0]?.trim() || guessContentType(storagePath);
+      const filename = filenameFromUrl(storagePath);
+
+      return new NextResponse(buffer, {
+        status: 200,
+        headers: {
+          "Content-Type": contentType,
+          "Content-Disposition": `inline; filename="${filename}"`,
+          "Cache-Control": "private, max-age=300",
+          "X-Content-Type-Options": "nosniff",
+          "X-Frame-Options": "SAMEORIGIN",
+          "Content-Security-Policy": "default-src 'none'; frame-ancestors 'self'",
+        },
+      });
+    }
+
+    // Local/dev fallback when admin key is missing — public URL only.
     return proxyInline(src, guessContentType(src));
   } catch {
     return NextResponse.json({ error: "Invalid src" }, { status: 400 });
@@ -79,9 +122,8 @@ async function proxyInline(
     headers: {
       "Content-Type": contentType,
       "Content-Disposition": `inline; filename="${filename}"`,
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "private, max-age=300",
       "X-Content-Type-Options": "nosniff",
-      // Explicitly allow same-origin DocumentViewer iframe (overrides global DENY).
       "X-Frame-Options": "SAMEORIGIN",
       "Content-Security-Policy": "default-src 'none'; frame-ancestors 'self'",
     },
