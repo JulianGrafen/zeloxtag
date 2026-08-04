@@ -7,7 +7,8 @@ export type DashboardTileId =
   | "modifications"
   | "roadside"
   | "tuning-history"
-  | "specs";
+  | "specs"
+  | "settings";
 
 /** Serializable icon keys (resolved to Lucide on the client). */
 export type DashboardIconName =
@@ -19,7 +20,8 @@ export type DashboardIconName =
   | "wrench"
   | "images"
   | "info"
-  | "triangle-alert";
+  | "triangle-alert"
+  | "settings";
 
 export type DashboardTileTone =
   | "default"

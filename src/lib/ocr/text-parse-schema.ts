@@ -28,6 +28,9 @@ export function coerceLooseNumber(value: unknown): number | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
+  // Percentages are never EUR / km — parseFloat("15%") === 15 otherwise.
+  if (/%/.test(trimmed)) return null;
+
   let normalized = trimmed.replace(/\s/g, "").replace(/€|eur/gi, "");
   if (/\d,\d{1,2}$/.test(normalized) && normalized.includes(".")) {
     normalized = normalized.replace(/\./g, "").replace(",", ".");
@@ -132,7 +135,8 @@ export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
       },
       amount: {
         type: ["number", "null"],
-        description: "Gross total EUR, or null for ABE/TÜV.",
+        description:
+          "Gross total EUR only (Rechnungsbetrag/Zahlbetrag). Never a percentage such as 15 from '-15%' or 'Skonto 2%'. Null for ABE/TÜV.",
       },
       category: {
         type: "string",
@@ -161,7 +165,7 @@ export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
             amount: {
               type: "number",
               description:
-                "Gesamtpreis / Zeilensumme in EUR for this position (qty × unit). NEVER the Einzelpreis/Stückpreis alone. Example: 4×120 → amount 480, not 120.",
+                "Gesamtpreis / Zeilensumme in EUR for this position (qty × unit). NEVER the Einzelpreis/Stückpreis alone. NEVER a percentage (15 from '-15%' / 'Skonto 2%' / 'MwSt 19%'). Example: 4×120 → amount 480, not 120.",
             },
           },
         },
@@ -216,6 +220,30 @@ export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
   },
 } as const;
 
+/**
+ * True when the line amount is just a restated percentage from the label
+ * (e.g. label "Rabatt -15%", amount 15 / -15) — never a EUR position.
+ */
+export function isPercentRestatedAsAmount(
+  label: string,
+  amount: number,
+): boolean {
+  if (!Number.isFinite(amount)) return false;
+  if (/(?:€|eur)\b/i.test(label)) return false;
+
+  const percentMatch = label.match(/(-?\d+(?:[.,]\d+)?)\s*%/);
+  if (!percentMatch?.[1]) return false;
+
+  const percentValue = Number.parseFloat(percentMatch[1].replace(",", "."));
+  if (!Number.isFinite(percentValue)) return false;
+
+  return (
+    Math.abs(percentValue - amount) < 0.001 ||
+    Math.abs(percentValue + amount) < 0.001 ||
+    Math.abs(Math.abs(percentValue) - Math.abs(amount)) < 0.001
+  );
+}
+
 function normalizeLineItems(
   items: InvoiceLineItem[] | null | undefined,
 ): InvoiceLineItem[] | null {
@@ -231,7 +259,8 @@ function normalizeLineItems(
         item.label.length > 0 &&
         Number.isFinite(item.amount) &&
         !isHtmlDebrisLabel(item.label) &&
-        /[a-zäöüß]{2,}/i.test(item.label),
+        /[a-zäöüß]{2,}/i.test(item.label) &&
+        !isPercentRestatedAsAmount(item.label, item.amount),
     )
     .slice(0, 40);
 

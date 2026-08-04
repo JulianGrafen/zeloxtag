@@ -11,7 +11,7 @@ const VAT_OR_TOTAL =
   /(?:^|[^A-Za-z0-9_])(?:mwst|m\.?\s*w\.?\s*st\.?|ust\.?|umsatzsteuer|vat|steuer|summe|gesamt|netto|brutto|zahlbetrag)(?:[^A-Za-z0-9_]|$)/i;
 
 const OIL_LINE =
-  /(?:^|[^A-Za-z0-9_])(?:ölwechsel|oelwechsel|motoröl|motoroel|ölfilter|oelfilter|oil\s*filter|engine\s*oil|(?:5|0|10|15)w-?\d{2})(?:[^A-Za-z0-9_]|$)/i;
+  /(?:öl[-\s]*wechsel|oel[-\s]*wechsel|ol[-\s]*wechsel|motoröl|motoroel|motorol|ölfilter|oelfilter|olfilter|oil\s*filter|engine\s*oil|(?:5|0|10|15)w-?\d{2})/i;
 
 const TUNING_LINE =
   /(?:^|[^A-Za-z0-9_])(?:sportfedern?|federn?|fahrwerk|gewindefahrwerk|downpipe|sportauspuff|auspuff|abgasanlage|intercooler|chiptuning|remap|stage\s*[1-3]|felgen?|leichtmetallr|spoiler|frontlippe|diffuser|seitenschweller|ladedruck|turbolader\s*upgrade|tuning)(?:[^A-Za-z0-9_]|$)/i;
@@ -123,7 +123,7 @@ export function buildInvoiceDashboardTitle(input: InvoiceTitleInput): string {
 
   // Drop oil-forced summaries when oil is only incidental.
   const summaryLooksOilOnly =
-    /ölwechsel|oelwechsel/i.test(summary) &&
+    /öl[-\s]*wechsel|oel[-\s]*wechsel|ol[-\s]*wechsel/i.test(summary) &&
     !TUNING_LINE.test(summary) &&
     !REPAIR_LINE.test(summary);
   const usableSummary =

@@ -8,7 +8,10 @@ import {
   normalizeOcrMarkdown,
   stripHtmlTags,
 } from "./normalize-ocr-markdown";
-import type { InvoiceLineItem } from "./text-parse-schema";
+import {
+  isPercentRestatedAsAmount,
+  type InvoiceLineItem,
+} from "./text-parse-schema";
 
 const MAX_ITEMS = 40;
 const MAX_LABEL = 160;
@@ -105,7 +108,14 @@ function cleanLabel(value: string): string {
 const MONEY =
   /-?\d{1,3}(?:\.\d{3})*(?:,\d{2})|-?\d+,\d{2}/g;
 
+/** True when a matched number is a percentage rate, not a EUR amount. */
+function isPercentToken(text: string, index: number, raw: string): boolean {
+  const after = text.slice(index + raw.length);
+  return /^\s*%/.test(after);
+}
+
 function parseGermanAmount(raw: string): number | null {
+  if (/%/.test(raw)) return null;
   const normalized = raw
     .replace(/\s/g, "")
     .replace(/\.(?=\d{3}(?:[.,]|$))/g, "")
@@ -134,6 +144,8 @@ function pushItem(
   const cleaned = cleanLabel(label);
   if (!isPlausibleLabel(cleaned)) return;
   if (!Number.isFinite(amount)) return;
+  // "Rabatt -15%" must not become a €15 / €-15 position.
+  if (isPercentRestatedAsAmount(cleaned, amount)) return;
 
   const key = `${cleaned.toLowerCase()}|${amount}`;
   if (seen.has(key)) return;
@@ -163,7 +175,8 @@ export function lineTotalFromInvoiceRow(line: string): {
     }))
     .filter(
       (entry): entry is { raw: string; index: number; value: number } =>
-        entry.value !== null,
+        entry.value !== null &&
+        !isPercentToken(normalized, entry.index, entry.raw),
     );
 
   if (amounts.length === 0) return null;

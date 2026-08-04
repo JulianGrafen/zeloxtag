@@ -138,6 +138,16 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
         badge: "SOS",
       },
     },
+    {
+      id: "settings",
+      title: "Einstellungen",
+      description: "2FA & Konto",
+      icon: "settings",
+      meta: {
+        subtitle: "Zwei-Faktor aktivieren",
+        href: "/settings",
+      },
+    },
   ];
 
   return tiles;

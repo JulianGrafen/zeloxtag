@@ -7,6 +7,7 @@ import { TagNotFound } from "@/components/tags/tag-not-found";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getVehicleAccess } from "@/lib/auth/vehicle-access";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
+import { toPublicTagScanResult } from "@/lib/tags/public-tag-dto";
 
 interface TagScanPageProps {
   params: Promise<{ uuid: string }>;
@@ -65,12 +66,14 @@ export default async function TagScanPage({
     const access = await getVehicleAccess(vehicle.user_id);
     const canWrite = access.isOwner;
     const openScanner = canWrite && scan === "1";
+    // Strip owner UUID before hydrating the client tree (guests + owners).
+    const publicTwin = toPublicTagScanResult({ tag, vehicle, documents });
 
     return (
       <AppShell showNavbar={false}>
         <TagDashboardShell
-          vehicle={vehicle}
-          documents={documents}
+          vehicle={publicTwin.vehicle!}
+          documents={publicTwin.documents}
           tagUuid={tag.uuid}
           ownerName={access.ownerName}
           isOwner={canWrite}

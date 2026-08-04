@@ -13,7 +13,7 @@ import {
   invoiceTextParseSchema,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
-import { enforceRateLimit } from "@/lib/security/api-guard";
+import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 
 export const runtime = "nodejs";
@@ -68,6 +68,9 @@ export async function POST(request: NextRequest) {
     const limited = enforceRateLimit(request, "ocr", "parse");
     if (limited) return limited;
 
+    const auth = await requireApiUser();
+    if (!auth.ok) return auth.response;
+
     const { isConfigured } = getDocumentIntelligenceEnv();
     if (!isConfigured) {
       return jsonError(
@@ -80,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (!isLlmConfigured()) {
       return jsonError(
         503,
-        "LLM API key fehlt (API_KEY) — benötigt für Markdown → JSON Parse.",
+        "Dokumentanalyse ist nicht vollständig konfiguriert.",
         "config",
       );
     }

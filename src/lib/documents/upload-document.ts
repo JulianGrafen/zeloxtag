@@ -12,8 +12,13 @@ import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import type { Document } from "@/types/database";
 
 import { DOCUMENT_BUCKET } from "./constants";
+import { isPrimaryOilChange } from "./invoice-title";
 import { parseLineItems } from "./line-items";
 import { appendMockUploadedDocument } from "./mock-uploads";
+import {
+  detectOilChangeInvoice,
+  ensureOilChangeNotes,
+} from "./oil-changes";
 import { parseAbeConditions, parseStringList } from "./string-list";
 import { parseTechnicalSpecs } from "./technical-specs";
 import { metaFromFormData, uploadDocumentMetaSchema } from "./upload-schema";
@@ -24,6 +29,8 @@ export type UploadDocumentResult =
 
 function parseAmount(raw: string | undefined): number | null {
   if (!raw?.trim()) return null;
+  // Percentages (Skonto/Rabatt) are never EUR totals.
+  if (/%/.test(raw)) return null;
   let normalized = raw.replace(/\s/g, "").replace(/€|eur/gi, "");
   // German: 1.234,56 → 1234.56; plain 428,90 → 428.90
   if (/\d,\d{1,2}$/.test(normalized) && normalized.includes(".")) {
@@ -80,17 +87,12 @@ export async function uploadDocument(
     return { status: "error", message: fileCheck.error };
   }
 
-  const {
-    vehicleId,
-    tagUuid,
-    title,
-    type: typeRaw,
-  } = meta;
+  const { vehicleId, tagUuid } = meta;
 
   const amount = parseAmount(meta.amount);
   const date = parseDate(meta.date);
   const vendor = meta.vendor.slice(0, 160) || null;
-  const category = meta.category.slice(0, 40) || null;
+  let category = meta.category.slice(0, 40) || null;
   const lineItems = parseLineItems(meta.lineItems);
   const kbaNumber = meta.kbaNumber.slice(0, 80) || null;
   const vehicleApprovals = parseStringList(meta.vehicleApprovals);
@@ -98,7 +100,7 @@ export async function uploadDocument(
   const conditions = parseAbeConditions(meta.conditions);
   const technicalSpecs = parseTechnicalSpecs(meta.technicalSpecs);
   const partCategory = meta.partCategory.slice(0, 60) || null;
-  const notes = meta.notes.slice(0, 500) || null;
+  let notes = meta.notes.slice(0, 500) || null;
   const manufacturer = meta.manufacturer.slice(0, 120) || null;
   const invoiceNumber = meta.invoiceNumber.slice(0, 80) || null;
   const mileageKm = parseMileageKm(meta.mileageKm);
@@ -107,6 +109,34 @@ export async function uploadDocument(
     Number.isFinite(pageCountParsed) && pageCountParsed > 0
       ? pageCountParsed
       : null;
+
+  // Durable oil-change marker for Intervalle history (no raw OCR at read time).
+  const oil = detectOilChangeInvoice({
+    title: meta.title,
+    summary: meta.title,
+    vendor,
+    category,
+    notes,
+    lineItems,
+  });
+  notes = ensureOilChangeNotes(notes, oil);
+  const oilPrimary = isPrimaryOilChange({
+    summary: meta.title,
+    vendor,
+    category,
+    lineItems,
+    oil,
+  });
+  let title = meta.title;
+  let typeRaw = meta.type;
+  if (oilPrimary) {
+    category = "service";
+    title = oil.title || title;
+    if (typeRaw === "invoice" || typeRaw === "other") {
+      typeRaw = "invoice";
+    }
+  }
+
   const documentId = randomUUID();
   const safeName = fileCheck.safeName;
   const now = new Date().toISOString();
@@ -150,6 +180,7 @@ export async function uploadDocument(
     revalidatePath(`/v/${tagUuid}`);
     revalidatePath(`/v/${tagUuid}/dokumente`);
     revalidatePath(`/v/${tagUuid}/service`);
+    revalidatePath(`/v/${tagUuid}/intervalle`);
     return { status: "uploaded", document, tagUuid };
   }
 
@@ -390,6 +421,7 @@ export async function uploadDocument(
   revalidatePath(`/v/${tagUuid}`);
   revalidatePath(`/v/${tagUuid}/dokumente`);
   revalidatePath(`/v/${tagUuid}/service`);
+  revalidatePath(`/v/${tagUuid}/intervalle`);
 
   return { status: "uploaded", document, tagUuid };
 }

@@ -33,6 +33,10 @@ Regeln:
 - lineItems = JEDE Tabellen-/Positionszeile einzeln (Material, Arbeitslohn, MwSt.)
   Niemals Materialien zusammenfassen (falsch: "Reifen und Sportfedern")
   amount = immer Gesamtpreis/Zeilensumme (Menge×Einzelpreis), NIE der Einzelpreis
+- Prozentwerte sind KEINE Euro-Beträge: "-15%", "15 %", "Skonto 2%", "MwSt. 19%"
+  niemals als amount oder lineItems.amount speichern. Nur echte €-Summen.
+  Rabatt-/Skonto-Zeilen nur aufnehmen, wenn ein Euro-Betrag (z.B. -45,00) steht —
+  dann amount = dieser Euro-Wert, nicht die Prozentzahl.
 - Ölwechsel: category=service, summary mit 'Ölwechsel', mileageKm wenn vorhanden
 - TÜV/HU: category=tuev; lineItems oft null
 - ABE-Felder IMMER null — niemals category=abe
@@ -56,6 +60,8 @@ FEW-SHOT — lineItems (Markdown / HTML tables):
 - ALWAYS use the INNER TEXT of cells as label — NEVER output tags like "<td>", "</td>", "td", "th".
 - Extract EVERY billable row individually. Do NOT group materials into one label.
 - amount = row total (qty × unit). Never the unit price alone.
+- NEVER treat percentages as EUR: "-15%", "15 %", "Skonto 2%", "MwSt 19%" → skip
+  or use the € column only (e.g. "Rabatt 15% | -45,00" → amount -45, not 15).
 - Example Markdown row: "| 4x | Reifen | 120,00 |"
   → { "label": "Reifen", "amount": 480 }
 - Example HTML: "<tr><td>1</td><td>Ölfilter</td><td>42,90</td></tr>"

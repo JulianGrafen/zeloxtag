@@ -77,14 +77,15 @@ export function NetworkMockQr() {
         error?: string;
       } | null;
 
+      if (response.status === 401) {
+        throw new Error("Bitte anmelden, um echte QR-Codes zu erzeugen.");
+      }
+
       if (!response.ok || !payload?.ok || !payload.uuid) {
-        const missing = payload?.missingEnv?.length
-          ? ` Fehlende Env: ${payload.missingEnv.join(", ")}.`
-          : "";
         throw new Error(
           payload?.error ||
             payload?.warning ||
-            `Echter Tag konnte nicht geladen werden.${missing}`,
+            "Echter Tag konnte nicht geladen werden.",
         );
       }
 
@@ -93,11 +94,8 @@ export function NetworkMockQr() {
         payload.source === "empty-fallback-mock" ||
         !isRealTagUuid(payload.uuid)
       ) {
-        const missing = payload.missingEnv?.length
-          ? ` Setze in Vercel: ${payload.missingEnv.join(", ")} (Production) und redeploy.`
-          : "";
         throw new Error(
-          `${payload.warning ?? "Demo-Fallback aktiv — keine echten QR-Codes."}${missing}`,
+          payload.warning ?? "Demo-Fallback aktiv — keine echten QR-Codes.",
         );
       }
 

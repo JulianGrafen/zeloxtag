@@ -39,11 +39,12 @@ export function MfaSetupPanel() {
     <div className="space-y-4">
       <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
         <h2 className="font-[family-name:var(--font-display)] text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
-          Multi-Faktor-Authentifizierung (TOTP)
+          Zwei-Faktor-Authentifizierung (2FA)
         </h2>
         <p className="mt-2 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
           Optional: Schütze dein Konto mit einem Authenticator (Google Authenticator,
-          1Password, Authy, …).
+          1Password, Authy, …). Nach der Aktivierung brauchst du bei jedem Login
+          zusätzlich einen 6-stelligen Code.
         </p>
 
         {factors.length > 0 ? (
@@ -86,7 +87,7 @@ export function MfaSetupPanel() {
           </ul>
         ) : (
           <p className="mt-3 text-[0.8rem] text-[color:var(--vd-muted)]">
-            Noch kein TOTP-Faktor aktiv.
+            2FA ist noch nicht aktiviert.
           </p>
         )}
 
@@ -113,7 +114,7 @@ export function MfaSetupPanel() {
             }}
             className="mt-4 inline-flex rounded-2xl bg-neutral-900 px-4 py-3 text-[0.85rem] font-semibold text-white"
           >
-            TOTP einrichten
+            2FA aktivieren
           </PressableButton>
         ) : null}
       </div>
@@ -141,7 +142,7 @@ export function MfaSetupPanel() {
               startTransition(async () => {
                 const result = await verifyTotpEnrollment(factorId, code);
                 if (result.status === "verified") {
-                  setMessage("MFA erfolgreich aktiviert.");
+                  setMessage("2FA erfolgreich aktiviert.");
                   setQrCode(null);
                   setSecret(null);
                   setFactorId(null);

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
@@ -18,12 +19,16 @@ const querySchema = z
   })
   .strict();
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /**
  * Proxy document bytes with Content-Disposition: inline.
  *
- * Zero-Trust: vehicle-documents bucket is private. Bytes are loaded via
- * service-role after SSRF-hardening the `src` to our Supabase host + bucket.
- * Public GET is allowlisted so QR digital-twin viewers can open originals.
+ * Authorization (fail closed):
+ * - Authenticated owner of the vehicle folder, OR
+ * - Vehicle has an active claimed tag (public digital twin).
+ * Never download arbitrary storage paths for strangers.
  */
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, "apiDefault", "documents-file");
@@ -62,43 +67,75 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
     }
 
-    // Private bucket → service-role download (never expose the key to the client).
-    if (isSupabaseAdminConfigured()) {
-      const admin = createAdminClient();
-      const { data, error } = await admin.storage
-        .from(DOCUMENT_BUCKET)
-        .download(storagePath);
-
-      if (error || !data) {
-        return NextResponse.json(
-          { error: error?.message ?? "Not found" },
-          { status: 404 },
-        );
-      }
-
-      const buffer = Buffer.from(await data.arrayBuffer());
-      const contentType =
-        data.type?.split(";")[0]?.trim() || guessContentType(storagePath);
-      const filename = filenameFromUrl(storagePath);
-
-      return new NextResponse(buffer, {
-        status: 200,
-        headers: {
-          "Content-Type": contentType,
-          "Content-Disposition": `inline; filename="${filename}"`,
-          "Cache-Control": "private, max-age=300",
-          "X-Content-Type-Options": "nosniff",
-          "X-Frame-Options": "SAMEORIGIN",
-          "Content-Security-Policy": "default-src 'none'; frame-ancestors 'self'",
-        },
-      });
+    const vehicleId = storagePath.split("/")[0] ?? "";
+    if (!UUID_RE.test(vehicleId)) {
+      return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
     }
 
-    // Local/dev fallback when admin key is missing — public URL only.
-    return proxyInline(src, guessContentType(src));
+    if (!isSupabaseAdminConfigured()) {
+      return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+    }
+
+    const admin = createAdminClient();
+    const allowed = await authorizeDocumentRead(admin, vehicleId);
+    if (!allowed) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { data, error } = await admin.storage
+      .from(DOCUMENT_BUCKET)
+      .download(storagePath);
+
+    if (error || !data) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const buffer = Buffer.from(await data.arrayBuffer());
+    const contentType =
+      data.type?.split(";")[0]?.trim() || guessContentType(storagePath);
+    const filename = filenameFromPath(storagePath);
+
+    return new NextResponse(buffer, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Content-Disposition": `inline; filename="${filename}"`,
+        "Cache-Control": "private, max-age=300",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "SAMEORIGIN",
+        "Content-Security-Policy": "default-src 'none'; frame-ancestors 'self'",
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Invalid src" }, { status: 400 });
   }
+}
+
+async function authorizeDocumentRead(
+  admin: ReturnType<typeof createAdminClient>,
+  vehicleId: string,
+): Promise<boolean> {
+  const user = await getCurrentUser();
+  if (user) {
+    const { data: vehicle } = await admin
+      .from("vehicles")
+      .select("id")
+      .eq("id", vehicleId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (vehicle) return true;
+  }
+
+  // Guest digital twin: only vehicles that already have an active plaque.
+  const { data: tag } = await admin
+    .from("tags")
+    .select("id")
+    .eq("vehicle_id", vehicleId)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  return Boolean(tag);
 }
 
 async function proxyInline(
@@ -115,7 +152,7 @@ async function proxyInline(
 
   const contentType =
     upstream.headers.get("content-type")?.split(";")[0]?.trim() || fallbackType;
-  const filename = filenameFromUrl(remoteUrl);
+  const filename = filenameFromPath(remoteUrl);
 
   return new NextResponse(upstream.body, {
     status: 200,
@@ -130,7 +167,7 @@ async function proxyInline(
   });
 }
 
-function filenameFromUrl(url: string): string {
+function filenameFromPath(url: string): string {
   try {
     const path = new URL(url, "http://local").pathname;
     const base = path.split("/").pop() || "document.pdf";

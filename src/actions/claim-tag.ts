@@ -253,18 +253,26 @@ async function completeClaimForOwner(
     };
   }
 
-  const { error: linkError } = await supabase
+  const { data: linkedTag, error: linkError } = await supabase
     .from("tags")
     .update({
       status: "active",
       vehicle_id: vehicle.id,
     })
     .eq("id", tag.id)
-    .eq("status", "unclaimed");
+    .eq("status", "unclaimed")
+    .is("vehicle_id", null)
+    .select("id")
+    .maybeSingle();
 
-  if (linkError) {
+  if (linkError || !linkedTag) {
     await supabase.from("vehicles").delete().eq("id", vehicle.id);
-    return { status: "error", message: `Verknüpfung: ${linkError.message}` };
+    return {
+      status: "error",
+      message: linkError
+        ? `Verknüpfung: ${linkError.message}`
+        : "Dieser Tag wurde gerade von jemand anderem beansprucht.",
+    };
   }
 
   let nextTagUuid: string | null = null;

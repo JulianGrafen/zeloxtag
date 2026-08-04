@@ -5,7 +5,7 @@ import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { invoiceParseService } from "@/lib/ocr/services/invoice-parse-service";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
-import { enforceRateLimit } from "@/lib/security/api-guard";
+import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
 
 export const runtime = "nodejs";
@@ -52,6 +52,9 @@ export async function POST(request: NextRequest) {
   try {
     const limited = enforceRateLimit(request, "ocr", "parse-text");
     if (limited) return limited;
+
+    const auth = await requireApiUser();
+    if (!auth.ok) return auth.response;
 
     if (!isLlmConfigured()) {
       return jsonError(

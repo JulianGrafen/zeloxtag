@@ -6,6 +6,7 @@ import {
   History,
   Images,
   Info,
+  Settings,
   ShieldCheck,
   Stamp,
   TriangleAlert,
@@ -26,4 +27,5 @@ export const DASHBOARD_ICONS: Record<DashboardIconName, LucideIcon> = {
   images: Images,
   info: Info,
   "triangle-alert": TriangleAlert,
+  settings: Settings,
 };

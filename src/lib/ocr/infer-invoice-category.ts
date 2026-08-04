@@ -81,7 +81,7 @@ const ABE_WEAK_PATTERNS: WeightedPattern[] = [
 const SERVICE_PATTERNS: WeightedPattern[] = [
   {
     pattern:
-      /(?:^|[^A-Za-z0-9_])(?:ölwechsel|oelwechsel|öl\s*&\s*filter|öl\s*\/\s*filter)(?:[^A-Za-z0-9_]|$)/i,
+      /öl[-\s]*wechsel|oel[-\s]*wechsel|ol[-\s]*wechsel|ölwechselpauschale|öl[-\s]*(?:und|&|\/)\s*filter|motoröl|ölfilter/i,
     weight: 5,
   },
   { pattern: /\binspektion\b|\bwartung\b|\bservice\b/i, weight: 3 },

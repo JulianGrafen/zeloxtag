@@ -9,7 +9,7 @@ const PUBLIC_EXACT = new Set([
   "/login/mfa",
   "/auth/callback",
   "/demo",
-  "/qr",
+  // /qr requires auth — inventory mint must not be anonymous
 ]);
 
 const PUBLIC_PREFIXES = [
@@ -21,22 +21,18 @@ const PUBLIC_PREFIXES = [
 /** Explicit owner-only API namespace — always authenticated. */
 const PROTECTED_API_PREFIXES = ["/api/protected"];
 
-/** Public GET APIs (read-only / inventory helpers). */
-const PUBLIC_API_GET = new Set([
-  "/api/documents/file",
-  "/api/tags/next-unclaimed",
-]);
+/**
+ * Public GET APIs.
+ * Document bytes stay allowlisted for QR digital-twin viewers, but the handler
+ * enforces active-tag / owner authorization before service-role download.
+ */
+const PUBLIC_API_GET = new Set(["/api/documents/file"]);
 
 /**
- * Public POST APIs used by the physical QR scan → OCR flow.
- * Keys stay server-side; routes are rate-limited. Persistence still checks ownership.
+ * No unauthenticated OCR/LLM POST routes — prevents cost abuse + PII extraction.
+ * Scan UI runs only for authenticated vehicle owners.
  */
-const PUBLIC_API_POST = new Set([
-  "/api/documents/analyze",
-  "/api/ocr/parse",
-  "/api/ocr/parse-abe",
-  "/api/ocr/parse-text",
-]);
+const PUBLIC_API_POST = new Set<string>();
 
 export function isPublicPath(pathname: string): boolean {
   if (PUBLIC_EXACT.has(pathname)) return true;
@@ -63,10 +59,15 @@ export function isProtectedApiPath(pathname: string, method: string): boolean {
 }
 
 export function isProtectedPagePath(pathname: string): boolean {
+  if (pathname === "/qr" || pathname.startsWith("/qr/")) {
+    return true;
+  }
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
     return true;
   }
-  if (pathname.startsWith("/settings/")) return true;
+  if (pathname === "/settings" || pathname.startsWith("/settings/")) {
+    return true;
+  }
   // Legacy owner hubs (not QR-scoped)
   if (
     pathname.startsWith("/abe") ||

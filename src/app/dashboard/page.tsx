@@ -38,10 +38,15 @@ export default async function DashboardPage() {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
-            href="/settings/security"
-            className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 text-[0.9rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            href="/settings"
+            className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
           >
-            Sicherheit & MFA
+            <span className="block text-[0.9rem] font-semibold text-[color:var(--vd-text)]">
+              Einstellungen
+            </span>
+            <span className="mt-1 block text-[0.78rem] font-normal text-[color:var(--vd-muted)]">
+              2FA aktivieren & Konto
+            </span>
           </Link>
           <Link
             href="/qr"

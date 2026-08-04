@@ -144,6 +144,10 @@ export function TagDashboardView({
     }
 
     return tile;
+  }).filter((tile) => {
+    // Account settings (2FA) only for the vehicle owner — not public twin guests.
+    if (tile.id === "settings") return canScan;
+    return true;
   });
 
   return (

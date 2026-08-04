@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { enforceRateLimit } from "@/lib/security/api-guard";
+import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseEnvDiagnostics } from "@/lib/supabase/env";
 import { createUnclaimedTag } from "@/lib/tags/create-unclaimed-tag";
@@ -11,27 +11,25 @@ type NextUnclaimedOk = {
   ok: true;
   uuid: string;
   source: "supabase" | "minted";
-  warning?: string;
 };
 
 type NextUnclaimedErr = {
   ok: false;
   error: string;
-  source: "config" | "supabase";
-  missingEnv?: string[];
-  warning?: string;
+  source: "config" | "supabase" | "unauthorized";
 };
 
 /**
  * GET /api/tags/next-unclaimed
- * Latest unclaimed tag UUID for the online QR generator (`/qr` on Vercel).
- *
- * Never returns demo/mock UUIDs. Missing admin env or DB errors → 503/500.
- * Pass `?mint=1` to always create a new plaque UUID (inventory tooling).
+ * Inventory helper for authenticated operators only (service-role mint).
+ * Pass `?mint=1` to always create a new plaque UUID.
  */
 export async function GET(request: NextRequest) {
-  const limited = enforceRateLimit(request, "apiDefault", "next-unclaimed");
+  const limited = enforceRateLimit(request, "auth", "next-unclaimed");
   if (limited) return limited;
+
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
 
   const forceMint = request.nextUrl.searchParams.get("mint") === "1";
   const diagnostics = getSupabaseEnvDiagnostics();
@@ -40,11 +38,7 @@ export async function GET(request: NextRequest) {
     const body: NextUnclaimedErr = {
       ok: false,
       source: "config",
-      missingEnv: diagnostics.missing,
-      error:
-        diagnostics.missing.length > 0
-          ? `Vercel Env fehlt: ${diagnostics.missing.join(", ")}. In Vercel → Settings → Environment Variables setzen (Production) und Redeploy.`
-          : "Supabase Admin fehlt — echte QR-Codes sind nicht möglich.",
+      error: "Dokument-/Tag-Service ist nicht konfiguriert.",
     };
     return NextResponse.json(body, { status: 503 });
   }
@@ -74,8 +68,7 @@ export async function GET(request: NextRequest) {
       const body: NextUnclaimedErr = {
         ok: false,
         source: "supabase",
-        error: `Tag-Lookup fehlgeschlagen: ${error.message}`,
-        warning: error.message,
+        error: "Tag-Lookup fehlgeschlagen.",
       };
       return NextResponse.json(body, { status: 500 });
     }
@@ -89,7 +82,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(body);
     }
 
-    // Empty inventory → mint so Vercel `/qr` always has a live target.
     const minted = await createUnclaimedTag();
     const body: NextUnclaimedOk = {
       ok: true,
@@ -97,14 +89,11 @@ export async function GET(request: NextRequest) {
       source: "minted",
     };
     return NextResponse.json(body);
-  } catch (error) {
+  } catch {
     const body: NextUnclaimedErr = {
       ok: false,
       source: "supabase",
-      error:
-        error instanceof Error
-          ? error.message
-          : "Tag konnte nicht erzeugt werden.",
+      error: "Tag konnte nicht erzeugt werden.",
     };
     return NextResponse.json(body, { status: 500 });
   }
