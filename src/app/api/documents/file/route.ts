@@ -26,9 +26,8 @@ const UUID_RE =
  * Proxy document bytes with Content-Disposition: inline.
  *
  * Authorization (fail closed):
- * - Authenticated owner of the vehicle folder, OR
- * - Vehicle has an active claimed tag (public digital twin).
- * Never download arbitrary storage paths for strangers.
+ * - Authenticated owner of the vehicle folder only.
+ * Guests / foreign accounts never receive invoice or ABE PDF bytes via QR UUID.
  */
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, "apiDefault", "documents-file");
@@ -77,7 +76,7 @@ export async function GET(request: NextRequest) {
     }
 
     const admin = createAdminClient();
-    const allowed = await authorizeDocumentRead(admin, vehicleId);
+    const allowed = await authorizeOwnerDocumentRead(admin, vehicleId);
     if (!allowed) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -111,31 +110,21 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function authorizeDocumentRead(
+async function authorizeOwnerDocumentRead(
   admin: ReturnType<typeof createAdminClient>,
   vehicleId: string,
 ): Promise<boolean> {
   const user = await getCurrentUser();
-  if (user) {
-    const { data: vehicle } = await admin
-      .from("vehicles")
-      .select("id")
-      .eq("id", vehicleId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (vehicle) return true;
-  }
+  if (!user) return false;
 
-  // Guest digital twin: only vehicles that already have an active plaque.
-  const { data: tag } = await admin
-    .from("tags")
+  const { data: vehicle } = await admin
+    .from("vehicles")
     .select("id")
-    .eq("vehicle_id", vehicleId)
-    .eq("status", "active")
-    .limit(1)
+    .eq("id", vehicleId)
+    .eq("user_id", user.id)
     .maybeSingle();
 
-  return Boolean(tag);
+  return Boolean(vehicle);
 }
 
 async function proxyInline(

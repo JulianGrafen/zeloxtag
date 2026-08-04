@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { VehicleDocumentsView } from "@/components/documents/vehicle-documents-view";
-import { getVehicleAccess } from "@/lib/auth/vehicle-access";
-import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
+import { requireTagOwner } from "@/lib/auth/require-tag-owner";
 import type { DocumentType } from "@/types/database";
 
 interface DocumentsPageProps {
@@ -35,28 +33,22 @@ export default async function VehicleDocumentsPage({
 }: DocumentsPageProps) {
   const { uuid } = await params;
   const { type: typeRaw } = await searchParams;
-  const result = await getTagByUuid(uuid);
-
-  if (!result?.vehicle || result.tag.status !== "active") {
-    notFound();
-  }
+  const { result } = await requireTagOwner(uuid);
 
   const filterType =
     typeRaw && VALID_TYPES.has(typeRaw as DocumentType | "all")
       ? (typeRaw as DocumentType | "all")
       : "all";
 
-  const access = await getVehicleAccess(result.vehicle.user_id);
-
   return (
     <VehicleDocumentsView
       tagUuid={result.tag.uuid}
-      vehicleId={result.vehicle.id}
-      vehicleLabel={`${result.vehicle.make} ${result.vehicle.model} · ${result.vehicle.year}`}
-      vehicleModel={result.vehicle.model}
+      vehicleId={result.vehicle!.id}
+      vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
+      vehicleModel={result.vehicle!.model}
       documents={result.documents}
       filterType={filterType}
-      canWrite={access.isOwner}
+      canWrite
     />
   );
 }

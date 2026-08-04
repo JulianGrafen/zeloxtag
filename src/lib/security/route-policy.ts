@@ -8,25 +8,24 @@ const PUBLIC_EXACT = new Set([
   "/login",
   "/login/mfa",
   "/auth/callback",
-  "/demo",
+  "/demo", // redirects to login — keep public
   // /qr requires auth — inventory mint must not be anonymous
 ]);
 
 const PUBLIC_PREFIXES = [
   "/v/", // physical QR scan surface
   "/_next/",
-  "/demo/",
 ];
 
 /** Explicit owner-only API namespace — always authenticated. */
 const PROTECTED_API_PREFIXES = ["/api/protected"];
 
 /**
- * Public GET APIs.
- * Document bytes stay allowlisted for QR digital-twin viewers, but the handler
- * enforces active-tag / owner authorization before service-role download.
+ * Public GET APIs — empty by design.
+ * Document bytes (`/api/documents/file`) require a session at the proxy layer
+ * and an ownership check inside the route handler (fail closed).
  */
-const PUBLIC_API_GET = new Set(["/api/documents/file"]);
+const PUBLIC_API_GET = new Set<string>();
 
 /**
  * No unauthenticated OCR/LLM POST routes — prevents cost abuse + PII extraction.

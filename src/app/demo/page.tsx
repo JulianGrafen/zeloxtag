@@ -1,15 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { VehicleDashboard } from "@/components/vehicle-dashboard";
-import { demoVehicle } from "@/lib/demoVehicle";
-
+/** Legacy RX-8 demo dashboard — removed from production. */
 export default function DemoPage() {
-  return (
-    <VehicleDashboard
-      data={demoVehicle}
-      onTileClick={(tileId) => {
-        console.log("Kachel öffnen:", tileId);
-      }}
-    />
-  );
+  redirect("/");
 }

@@ -1,15 +1,34 @@
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
 /**
- * Public QR digital-twin projection — strips ownership / auth identifiers.
- * Guests must never receive `user_id` (or other account handles).
+ * Client-safe projections for the QR digital twin.
+ *
+ * High-security rule: non-owners never receive invoices, PDFs, VIN,
+ * financial fields, or document metadata — only public vehicle identity.
  */
-export function toPublicTagScanResult(result: TagScanResult): TagScanResult {
+
+export function toOwnerClientTagScanResult(result: TagScanResult): TagScanResult {
   return {
     tag: toPublicTag(result.tag),
-    vehicle: result.vehicle ? toPublicVehicle(result.vehicle) : null,
-    documents: result.documents.map(toPublicDocument),
+    vehicle: result.vehicle ? toOwnerClientVehicle(result.vehicle) : null,
+    documents: result.documents.map(toOwnerClientDocument),
   };
+}
+
+/**
+ * Guest / foreign-account projection — empty document list, no VIN / owner id.
+ */
+export function toGuestClientTagScanResult(result: TagScanResult): TagScanResult {
+  return {
+    tag: toPublicTag(result.tag),
+    vehicle: result.vehicle ? toGuestClientVehicle(result.vehicle) : null,
+    documents: [],
+  };
+}
+
+/** @deprecated Use {@link toGuestClientTagScanResult} / {@link toOwnerClientTagScanResult}. */
+export function toPublicTagScanResult(result: TagScanResult): TagScanResult {
+  return toGuestClientTagScanResult(result);
 }
 
 function toPublicTag(tag: Tag): Tag {
@@ -23,21 +42,28 @@ function toPublicTag(tag: Tag): Tag {
   };
 }
 
-function toPublicVehicle(vehicle: Vehicle): Vehicle {
+function toOwnerClientVehicle(vehicle: Vehicle): Vehicle {
+  return {
+    ...vehicle,
+    // Never hydrate auth subject ids into the browser tree.
+    user_id: "",
+  };
+}
+
+function toGuestClientVehicle(vehicle: Vehicle): Vehicle {
   return {
     id: vehicle.id,
-    // Empty string keeps type shape; UI must not treat this as a real owner id.
     user_id: "",
     make: vehicle.make,
     model: vehicle.model,
     year: vehicle.year,
-    vin: vehicle.vin,
+    vin: null,
     created_at: vehicle.created_at,
     updated_at: vehicle.updated_at,
   };
 }
 
-function toPublicDocument(doc: Document): Document {
+function toOwnerClientDocument(doc: Document): Document {
   return {
     ...doc,
     user_id: "",

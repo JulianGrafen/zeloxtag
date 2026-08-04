@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ClaimFlow } from "@/components/tags/claim-flow";
+import { PrivateTwinGate } from "@/components/tags/private-twin-gate";
 import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { TagNotFound } from "@/components/tags/tag-not-found";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { getVehicleAccess } from "@/lib/auth/vehicle-access";
+import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
-import { toPublicTagScanResult } from "@/lib/tags/public-tag-dto";
+import { toOwnerClientTagScanResult } from "@/lib/tags/public-tag-dto";
 
 interface TagScanPageProps {
   params: Promise<{ uuid: string }>;
@@ -28,7 +29,8 @@ export async function generateMetadata({
  * QR scan landing route — resolves physical tag UUID.
  *
  * - State A `unclaimed` → Claim Flow (+ account creation)
- * - State B `active` → Digital twin (owner: write, guest: read-only)
+ * - State B `active` + owner → full digital twin
+ * - State B `active` + guest → locked private gate (no invoices / PDFs)
  * - State C missing → clean not-found UI
  */
 export default async function TagScanPage({
@@ -47,7 +49,7 @@ export default async function TagScanPage({
     );
   }
 
-  const { tag, vehicle, documents } = result;
+  const { tag, vehicle } = result;
   const user = await getCurrentUser();
 
   if (tag.status === "unclaimed") {
@@ -63,20 +65,32 @@ export default async function TagScanPage({
   }
 
   if (tag.status === "active" && vehicle) {
-    const access = await getVehicleAccess(vehicle.user_id);
-    const canWrite = access.isOwner;
-    const openScanner = canWrite && scan === "1";
-    // Strip owner UUID before hydrating the client tree (guests + owners).
-    const publicTwin = toPublicTagScanResult({ tag, vehicle, documents });
+    const access = await getTagVehicleAccess(tag.uuid, vehicle.user_id);
+
+    if (!access.isOwner) {
+      return (
+        <AppShell showNavbar={false}>
+          <PrivateTwinGate
+            tagUuid={tag.uuid}
+            vehicleLabel={`${vehicle.make} ${vehicle.model} · ${vehicle.year}`}
+            ownerName={access.ownerName}
+            sessionEmail={access.sessionEmail}
+          />
+        </AppShell>
+      );
+    }
+
+    const openScanner = scan === "1";
+    const ownerTwin = toOwnerClientTagScanResult(result);
 
     return (
       <AppShell showNavbar={false}>
         <TagDashboardShell
-          vehicle={publicTwin.vehicle!}
-          documents={publicTwin.documents}
+          vehicle={ownerTwin.vehicle!}
+          documents={ownerTwin.documents}
           tagUuid={tag.uuid}
           ownerName={access.ownerName}
-          isOwner={canWrite}
+          isOwner
           sessionEmail={access.sessionEmail}
           initialMode={openScanner ? "scanner" : "dashboard"}
           initialScanType={
@@ -87,8 +101,6 @@ export default async function TagScanPage({
     );
   }
 
-  // Active tag without vehicle (or unexpected status) — show product 404,
-  // not Next.js default English "page not found".
   return (
     <AppShell showNavbar={false}>
       <TagNotFound uuid={uuid} />

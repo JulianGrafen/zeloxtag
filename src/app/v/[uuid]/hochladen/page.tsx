@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { AppShell } from "@/components/layout/app-shell";
 import { DocumentUploadForm } from "@/components/documents/document-upload-form";
 import { InvoiceScannerForm } from "@/components/documents/invoice-scanner-form";
-import { getVehicleAccess } from "@/lib/auth/vehicle-access";
-import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
+import { requireTagOwner } from "@/lib/auth/require-tag-owner";
 import type { DocumentType } from "@/types/database";
 
 interface UploadPageProps {
@@ -27,16 +26,7 @@ export default async function UploadDocumentPage({
 }: UploadPageProps) {
   const { uuid } = await params;
   const { type: typeRaw, mode } = await searchParams;
-  const result = await getTagByUuid(uuid);
-
-  if (!result?.vehicle || result.tag.status !== "active") {
-    notFound();
-  }
-
-  const access = await getVehicleAccess(result.vehicle.user_id);
-  if (!access.isOwner) {
-    redirect(`/v/${uuid}`);
-  }
+  const { result } = await requireTagOwner(uuid);
 
   // Default scanner lives on the dashboard — keep legacy modes for manual/perspective.
   if (!mode) {
@@ -48,7 +38,8 @@ export default async function UploadDocumentPage({
       ? (typeRaw as DocumentType)
       : "invoice";
 
-  const vehicleLabel = `${result.vehicle.make} ${result.vehicle.model}`;
+  const vehicle = result.vehicle!;
+  const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
   const useManual = mode === "manual";
   const usePerspectiveScan = mode === "scan";
 
@@ -56,20 +47,20 @@ export default async function UploadDocumentPage({
     <AppShell showNavbar={false}>
       {useManual ? (
         <DocumentUploadForm
-          vehicleId={result.vehicle.id}
+          vehicleId={vehicle.id}
           tagUuid={result.tag.uuid}
           vehicleLabel={vehicleLabel}
           defaultType={defaultType}
         />
       ) : usePerspectiveScan ? (
         <InvoiceScannerForm
-          vehicleId={result.vehicle.id}
+          vehicleId={vehicle.id}
           tagUuid={result.tag.uuid}
           vehicleLabel={vehicleLabel}
         />
       ) : (
         <InvoiceUploader
-          vehicleId={result.vehicle.id}
+          vehicleId={vehicle.id}
           tagUuid={result.tag.uuid}
           vehicleLabel={vehicleLabel}
           backHref={`/v/${uuid}`}

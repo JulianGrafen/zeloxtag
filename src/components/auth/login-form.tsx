@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyRound, ShieldCheck } from "lucide-react";
 
@@ -43,20 +42,16 @@ export function LoginForm({ nextPath = "/dashboard", initialError }: LoginFormPr
   ];
 
   return (
-    <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-6 sm:px-5">
+    <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-[max(1.75rem,env(safe-area-inset-top))] sm:px-5">
       <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-6 shadow-[var(--vd-shadow)]">
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-900 text-white">
           <ShieldCheck className="h-5 w-5" aria-hidden />
         </div>
-        <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-          ZeloxTag Auth
-        </p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-          Sicher anmelden
+        <h1 className="mt-4 font-[family-name:var(--font-display)] text-[1.85rem] font-semibold tracking-[-0.04em] text-[color:var(--vd-text)]">
+          ZeloxTag
         </h1>
-        <p className="mt-2 text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
-          E-Mail und Passwort — Sessions laufen über HttpOnly-Cookies mit
-          SameSite=Lax.
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-[color:var(--vd-muted)]">
+          Melde dich an, um deine digitale Fahrzeugakte zu öffnen.
         </p>
       </div>
 
@@ -179,12 +174,9 @@ export function LoginForm({ nextPath = "/dashboard", initialError }: LoginFormPr
         </PressableButton>
       </form>
 
-      <Link
-        href="/"
-        className="block text-center text-[0.82rem] font-medium text-[color:var(--vd-muted)]"
-      >
-        Zur Startseite
-      </Link>
+      <p className="text-center text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
+        Neuer Tag? Scanne den QR-Code am Fahrzeug, um ihn zu beanspruchen.
+      </p>
     </section>
   );
 }

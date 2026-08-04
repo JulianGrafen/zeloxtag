@@ -75,7 +75,11 @@ export async function proxy(request: NextRequest) {
   }
 
   // Authenticated users who finished MFA leave the login screens.
-  if (userId && !needsMfa && (pathname === "/login" || pathname === "/login/mfa")) {
+  if (
+    userId &&
+    !needsMfa &&
+    (pathname === "/" || pathname === "/login" || pathname === "/login/mfa")
+  ) {
     return NextResponse.redirect(new URL("/dashboard", origin));
   }
 

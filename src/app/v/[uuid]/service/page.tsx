@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { ServiceInspectionsView } from "@/components/documents/service-inspections-view";
-import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
+import { requireTagOwner } from "@/lib/auth/require-tag-owner";
 
 interface ServicePageProps {
   params: Promise<{ uuid: string }>;
@@ -25,17 +24,13 @@ export default async function ServiceInspectionsPage({
 }: ServicePageProps) {
   const { uuid } = await params;
   const { scan } = await searchParams;
-  const result = await getTagByUuid(uuid);
-
-  if (!result?.vehicle || result.tag.status !== "active") {
-    notFound();
-  }
+  const { result } = await requireTagOwner(uuid);
 
   return (
     <ServiceInspectionsView
       tagUuid={result.tag.uuid}
-      vehicleId={result.vehicle.id}
-      vehicleLabel={`${result.vehicle.make} ${result.vehicle.model} · ${result.vehicle.year}`}
+      vehicleId={result.vehicle!.id}
+      vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
       documents={result.documents}
       initialScan={scan === "1"}
     />

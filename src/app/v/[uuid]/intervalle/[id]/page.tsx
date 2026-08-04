@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { OilIntervalDetailView } from "@/components/vehicle-dashboard";
+import { requireTagOwner } from "@/lib/auth/require-tag-owner";
 import { oilChangeRecordsFromDocuments } from "@/lib/documents/oil-changes";
-import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 
 interface OilIntervalDetailPageProps {
   params: Promise<{ uuid: string; id: string }>;
@@ -23,11 +23,7 @@ export default async function VehicleOilIntervalDetailPage({
   params,
 }: OilIntervalDetailPageProps) {
   const { uuid, id } = await params;
-  const result = await getTagByUuid(uuid);
-
-  if (!result?.vehicle || result.tag.status !== "active") {
-    notFound();
-  }
+  const { result } = await requireTagOwner(uuid);
 
   const records = oilChangeRecordsFromDocuments(result.documents);
   const record = records.find((entry) => entry.id === id);
@@ -35,7 +31,7 @@ export default async function VehicleOilIntervalDetailPage({
     notFound();
   }
 
-  const vehicleModel = `${result.vehicle.make} ${result.vehicle.model}`;
+  const vehicleModel = `${result.vehicle!.make} ${result.vehicle!.model}`;
 
   return (
     <OilIntervalDetailView

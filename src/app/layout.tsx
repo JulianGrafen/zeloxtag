@@ -11,9 +11,9 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "ZeloxTag · Fahrzeug-Dashboard",
+  title: "ZeloxTag",
   description:
-    "Mobiles Premium-Dashboard nach dem Scannen eines ZeloxTag QR-Codes.",
+    "Digitale Fahrzeugakte per QR-Code — Rechnungen, ABE und Service sicher verwalten.",
 };
 
 export const viewport: Viewport = {

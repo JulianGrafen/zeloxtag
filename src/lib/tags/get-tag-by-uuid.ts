@@ -174,9 +174,10 @@ async function resolveTagWithRpc(
 /**
  * Resolves a physical ZeloxTag QR UUID to tag + optional vehicle payload.
  *
- * Prefers the service-role path so anonymous (and freshly claimed) scanners
- * always receive the digital twin under FORCE RLS. Falls back to the
- * SECURITY DEFINER RPC, then to mock data for local demo UUIDs.
+ * Prefers the service-role path (full twin for server-side owner checks).
+ * The public RPC (`resolve_tag_by_uuid`) is redacted — no documents/VIN/owner id —
+ * and is only a fallback. Never hydrate RPC/admin payloads into the client for
+ * non-owners; use `toGuestClientTagScanResult` / `PrivateTwinGate` instead.
  */
 export async function getTagByUuid(uuid: string): Promise<TagScanResult | null> {
   const normalized = uuid.trim();

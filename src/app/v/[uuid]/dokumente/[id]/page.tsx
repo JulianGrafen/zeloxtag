@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { DocumentAbeDetailView } from "@/components/documents/document-abe-detail-view";
 import { DocumentInvoiceDetailView } from "@/components/documents/document-invoice-detail-view";
-import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
+import { requireTagOwner } from "@/lib/auth/require-tag-owner";
 
 interface DocumentDetailPageProps {
   params: Promise<{ uuid: string; id: string }>;
@@ -23,18 +23,14 @@ export default async function DocumentDetailPage({
   params,
 }: DocumentDetailPageProps) {
   const { uuid, id } = await params;
-  const result = await getTagByUuid(uuid);
-
-  if (!result?.vehicle || result.tag.status !== "active") {
-    notFound();
-  }
+  const { result } = await requireTagOwner(uuid);
 
   const document = result.documents.find((doc) => doc.id === id);
   if (!document) {
     notFound();
   }
 
-  const vehicleLabel = `${result.vehicle.make} ${result.vehicle.model} · ${result.vehicle.year}`;
+  const vehicleLabel = `${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`;
 
   if (document.type === "abe") {
     return (
