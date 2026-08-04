@@ -13,7 +13,6 @@ import {
 
 import { deleteDocument } from "@/actions/delete-document";
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
-import { DocumentViewer } from "@/components/documents/document-viewer";
 import {
   PressableButton,
   PressableLink,
@@ -24,7 +23,6 @@ import {
   formatDocumentDate,
 } from "@/lib/documents/format";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
-import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
 
 interface ServiceInspectionsViewProps {
@@ -45,10 +43,6 @@ export function ServiceInspectionsView({
 }: ServiceInspectionsViewProps) {
   const router = useRouter();
   const [scanning, setScanning] = useState(initialScan);
-  const [viewer, setViewer] = useState<{
-    title: string;
-    fileUrl: string;
-  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -66,7 +60,6 @@ export function ServiceInspectionsView({
         onBack={() => setScanning(false)}
         initialCategory="service"
         lockCategory
-        successHref={`/v/${tagUuid}/service`}
         heading="Inspektion scannen"
         subheading={`${vehicleLabel} · Servicebeleg einlesen`}
       />
@@ -154,44 +147,28 @@ export function ServiceInspectionsView({
               {inspections.map((doc) => {
                 const amount = formatDocumentAmount(doc.amount);
                 const workshop = doc.vendor?.trim() || null;
-                const canView = isViewableDocumentUrl(doc.file_url);
                 const isMock = doc.file_url.startsWith("mock://");
                 const canDelete = isMock || !doc.file_url.startsWith("/demo/");
+                const detailHref = `/v/${tagUuid}/dokumente/${doc.id}`;
 
                 return (
                   <li
                     key={doc.id}
                     className="flex w-full items-center gap-2 border-b border-[color:var(--vd-border)] px-3 py-3 last:border-b-0 sm:px-4 sm:py-3.5"
                   >
-                    {canView ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setViewer({
-                            title: displayDocumentTitle(doc.title),
-                            fileUrl: doc.file_url,
-                          })
-                        }
-                        className="vd-pressable vd-pressable--row group flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left"
-                      >
-                        <InspectionRowBody
-                          title={displayDocumentTitle(doc.title)}
-                          workshop={workshop}
-                          date={formatDocumentDate(doc.date)}
-                          amount={amount}
-                          showEye
-                        />
-                      </button>
-                    ) : (
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <InspectionRowBody
-                          title={displayDocumentTitle(doc.title)}
-                          workshop={workshop}
-                          date={formatDocumentDate(doc.date)}
-                          amount={amount}
-                        />
-                      </div>
-                    )}
+                    <PressableLink
+                      href={detailHref}
+                      variant="row"
+                      className="vd-pressable vd-pressable--row group flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left"
+                    >
+                      <InspectionRowBody
+                        title={displayDocumentTitle(doc.title)}
+                        workshop={workshop}
+                        date={formatDocumentDate(doc.date)}
+                        amount={amount}
+                        showEye
+                      />
+                    </PressableLink>
 
                     {canDelete ? (
                       <PressableButton
@@ -212,14 +189,6 @@ export function ServiceInspectionsView({
           )}
         </section>
       </div>
-
-      {viewer ? (
-        <DocumentViewer
-          title={viewer.title}
-          fileUrl={viewer.fileUrl}
-          onClose={() => setViewer(null)}
-        />
-      ) : null}
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="pointer-events-auto w-full max-w-lg">

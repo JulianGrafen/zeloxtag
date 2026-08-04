@@ -13,9 +13,40 @@ export const INVOICE_TEXT_PARSE_CATEGORIES = [
 export type InvoiceTextParseCategory =
   (typeof INVOICE_TEXT_PARSE_CATEGORIES)[number];
 
+/** Coerce LLM/OCR number-ish values ("428,90", "67.210") into finite numbers. */
+export function coerceLooseNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  let normalized = trimmed.replace(/\s/g, "").replace(/€|eur/gi, "");
+  if (/\d,\d{1,2}$/.test(normalized) && normalized.includes(".")) {
+    normalized = normalized.replace(/\./g, "").replace(",", ".");
+  } else if (/\d,\d{1,2}$/.test(normalized)) {
+    normalized = normalized.replace(",", ".");
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(normalized)) {
+    // German thousands without decimals: 67.210 → 67210
+    normalized = normalized.replace(/\./g, "");
+  }
+
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function looseNumberSchema(max = Number.POSITIVE_INFINITY) {
+  return z.preprocess((value) => coerceLooseNumber(value), z.number().finite().max(max).nullable());
+}
+
 export const invoiceLineItemSchema = z.object({
   label: z.string().trim().min(1).max(160),
-  amount: z.number().finite(),
+  amount: z.preprocess(
+    (value) => coerceLooseNumber(value) ?? value,
+    z.number().finite(),
+  ),
 });
 
 export type InvoiceLineItem = z.infer<typeof invoiceLineItemSchema>;
@@ -26,7 +57,7 @@ export const invoiceTextParseSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
     .nullable(),
-  amount: z.number().finite().nullable(),
+  amount: looseNumberSchema(250_000),
   category: z.enum(INVOICE_TEXT_PARSE_CATEGORIES),
   summary: z.string().trim().min(1).max(80).nullable(),
   lineItems: z.array(invoiceLineItemSchema).max(40).nullable(),
@@ -47,7 +78,11 @@ export const invoiceTextParseSchema = z.object({
   /** Invoice / Beleg number (e.g. RE-2026-0312). */
   invoiceNumber: z.string().trim().min(1).max(80).nullable(),
   /** Odometer / Kilometerstand from the invoice (km). */
-  mileageKm: z.number().int().nonnegative().max(9_999_999).nullable(),
+  mileageKm: z.preprocess((value) => {
+    const n = coerceLooseNumber(value);
+    if (n === null) return null;
+    return Math.round(n);
+  }, z.number().int().nonnegative().max(9_999_999).nullable()),
 });
 
 export type InvoiceTextParseResult = z.infer<typeof invoiceTextParseSchema>;
@@ -98,7 +133,7 @@ export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
         type: "string",
         enum: [...INVOICE_TEXT_PARSE_CATEGORIES],
         description:
-          "abe = Teilegutachten/ABE. tuev = HU/AU. repair/service/tuning/other as appropriate.",
+          "InvoiceParseService: tuning|service|tuev|repair|other (never abe). category=abe is set only by AbeParseService.",
       },
       summary: {
         type: ["string", "null"],

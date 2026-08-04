@@ -22,10 +22,10 @@ function readApiKey(): string | null {
 }
 
 /**
- * Shared chat client for invoice parsing.
+ * Shared chat client for OCR domain parse services (invoice + ABE).
  * Prefers Azure AI Foundry project endpoint when configured.
  */
-export function getInvoiceLlmClient(): LlmClientConfig {
+export function getOcrLlmClient(): LlmClientConfig {
   const apiKey = readApiKey();
   if (!apiKey) {
     throw new Error(
@@ -64,6 +64,11 @@ export function getInvoiceLlmClient(): LlmClientConfig {
     model,
     client: new OpenAI({ apiKey }),
   };
+}
+
+/** @deprecated Use {@link getOcrLlmClient}. */
+export function getInvoiceLlmClient(): LlmClientConfig {
+  return getOcrLlmClient();
 }
 
 export function isLlmConfigured(): boolean {

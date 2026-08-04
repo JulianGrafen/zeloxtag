@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ClaimFlow } from "@/components/tags/claim-flow";
@@ -85,5 +84,11 @@ export default async function TagScanPage({
     );
   }
 
-  notFound();
+  // Active tag without vehicle (or unexpected status) — show product 404,
+  // not Next.js default English "page not found".
+  return (
+    <AppShell showNavbar={false}>
+      <TagNotFound uuid={uuid} />
+    </AppShell>
+  );
 }

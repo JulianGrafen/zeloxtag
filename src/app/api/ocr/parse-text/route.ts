@@ -1,11 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import {
-  extractInvoiceFromText,
-  TextParseError,
-} from "@/lib/ocr/extract-from-text";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
+import { TextParseError } from "@/lib/ocr/parse-error";
+import { invoiceParseService } from "@/lib/ocr/services/invoice-parse-service";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
@@ -79,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     let fields: InvoiceTextParseResult;
     try {
-      fields = await extractInvoiceFromText(parsedBody.data.rawText);
+      fields = await invoiceParseService.parseFromText(parsedBody.data.rawText);
     } catch (error) {
       const message =
         error instanceof TextParseError

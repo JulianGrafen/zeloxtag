@@ -2,11 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import {
-  analyzeInvoiceDocument,
+  analyzeDocument,
   DocumentIntelligenceError,
 } from "@/lib/ocr/document-intelligence";
 import { getDocumentIntelligenceEnv } from "@/lib/ocr/document-intelligence-env";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
+import type { DocumentParseKind } from "@/lib/ocr/ocr-types";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 
@@ -37,6 +38,7 @@ const optionalMetaSchema = z
 
 type AnalyzeSuccess = {
   ok: true;
+  kind: "invoice" | "abe";
   fields: InvoiceTextParseResult;
   rawText: string;
   modelId: string;
@@ -123,11 +125,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const kindRaw = String(formData.get("kind") ?? "auto").trim().toLowerCase();
+    const kind: DocumentParseKind =
+      kindRaw === "invoice" || kindRaw === "abe" || kindRaw === "auto"
+        ? kindRaw
+        : "auto";
+
     const bytes = Buffer.from(await file.arrayBuffer());
-    const result = await analyzeInvoiceDocument({ bytes, contentType });
+    const result = await analyzeDocument({ bytes, contentType, kind });
 
     const body: AnalyzeSuccess = {
       ok: true,
+      kind: result.kind,
       fields: result.fields,
       rawText: result.rawText,
       modelId: result.modelId,

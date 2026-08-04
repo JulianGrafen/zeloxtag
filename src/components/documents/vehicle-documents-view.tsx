@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 
 import { deleteDocument } from "@/actions/delete-document";
-import { DocumentViewer } from "@/components/documents/document-viewer";
 import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-view";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import {
@@ -59,10 +58,6 @@ export function VehicleDocumentsView({
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [viewer, setViewer] = useState<{
-    title: string;
-    fileUrl: string;
-  } | null>(null);
 
   if (filterType === "invoice") {
     return (
@@ -214,13 +209,6 @@ export function VehicleDocumentsView({
                     canDelete={canWrite}
                     deleting={pending && pendingId === doc.id}
                     onDelete={() => handleDelete(doc.id)}
-                    onOpen={() => {
-                      if (!isViewableDocumentUrl(doc.file_url)) return;
-                      setViewer({
-                        title: displayDocumentTitle(doc.title),
-                        fileUrl: doc.file_url,
-                      });
-                    }}
                   />
                 </li>
               ))}
@@ -228,14 +216,6 @@ export function VehicleDocumentsView({
           )}
         </section>
       </div>
-
-      {viewer ? (
-        <DocumentViewer
-          title={viewer.title}
-          fileUrl={viewer.fileUrl}
-          onClose={() => setViewer(null)}
-        />
-      ) : null}
 
       {canWrite ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
@@ -265,14 +245,12 @@ function DocumentRow({
   canDelete: allowDelete,
   deleting,
   onDelete,
-  onOpen,
 }: {
   tagUuid: string;
   document: Document;
   canDelete: boolean;
   deleting: boolean;
   onDelete: () => void;
-  onOpen: () => void;
 }) {
   const amount = formatDocumentAmount(document.amount);
   const isMock = document.file_url.startsWith("mock://");
@@ -280,8 +258,6 @@ function DocumentRow({
   const Icon = document.type === "abe" ? Stamp : FileText;
   const canDelete =
     allowDelete && (isMock || !document.file_url.startsWith("/demo/"));
-  const opensDetail =
-    document.type === "invoice" || document.type === "abe";
   const detailHref = `/v/${tagUuid}/dokumente/${document.id}`;
   const lineCount = document.line_items?.length ?? 0;
   const approvalCount = document.vehicle_approvals?.length ?? 0;
@@ -346,7 +322,7 @@ function DocumentRow({
         </span>
         {meta}
       </span>
-      {opensDetail || canView ? (
+      {canView ? (
         <Eye
           className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
           aria-hidden
@@ -357,25 +333,13 @@ function DocumentRow({
 
   return (
     <div className="flex w-full items-center gap-2 px-3 py-3 text-left sm:px-4 sm:py-3.5">
-      {opensDetail ? (
-        <PressableLink
-          href={detailHref}
-          variant="row"
-          className="vd-pressable vd-pressable--row group flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left"
-        >
-          {body}
-        </PressableLink>
-      ) : canView ? (
-        <button
-          type="button"
-          onClick={onOpen}
-          className="vd-pressable vd-pressable--row group flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left"
-        >
-          {body}
-        </button>
-      ) : (
-        <div className="flex min-w-0 flex-1 items-center gap-3">{body}</div>
-      )}
+      <PressableLink
+        href={detailHref}
+        variant="row"
+        className="vd-pressable vd-pressable--row group flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left"
+      >
+        {body}
+      </PressableLink>
 
       {canDelete ? (
         <PressableButton

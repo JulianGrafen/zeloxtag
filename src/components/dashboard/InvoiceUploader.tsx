@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   FileText,
@@ -132,7 +131,6 @@ export function InvoiceUploader({
   heading = "Rechnung scannen",
   subheading,
 }: InvoiceUploaderProps) {
-  const router = useRouter();
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/dokumente`;
   const [step, setStep] = useState<WizardStep>("compose");
   const [pages, setPages] = useState<CompressedPage[]>([]);
@@ -230,6 +228,8 @@ export function InvoiceUploader({
     });
   }
 
+  const isAbeUpload = lockCategory && initialCategory === "abe";
+
   async function runExtraction() {
     setError(null);
 
@@ -249,20 +249,30 @@ export function InvoiceUploader({
         setProgress,
       );
 
+      const parseKind = isAbeUpload ? "abe" : "auto";
+      // ABE: one combined PDF so Auflagen across pages stay in one AbeParseService call.
+      const analyzeFiles =
+        parseKind === "abe" && processed.uploadFile
+          ? [processed.uploadFile]
+          : processed.analyzeFiles;
+
       const analyzed = await analyzeDocumentFiles(
-        processed.analyzeFiles,
+        analyzeFiles,
         (page, totalPages) => {
           const span = 25 / Math.max(1, totalPages);
           setProgress({
             label:
               totalPages > 1
                 ? `Seite ${page} von ${totalPages} wird analysiert…`
-                : "A4-Seite wird analysiert…",
+                : parseKind === "abe"
+                  ? "ABE wird analysiert…"
+                  : "A4-Seite wird analysiert…",
             percent: Math.min(99, Math.round(70 + (page - 1) * span + span * 0.5)),
             page,
             totalPages,
           });
         },
+        { kind: parseKind },
       );
 
       setUploadFile(processed.uploadFile);
@@ -336,8 +346,6 @@ export function InvoiceUploader({
   }
 
   const canProcess = Boolean(nativePdf) || pages.length > 0;
-  const isAbeUpload =
-    lockCategory && initialCategory === "abe";
   const isAbeReview =
     step === "review" && fields.category === "abe" && Boolean(previewUrl) && Boolean(uploadFile);
 
@@ -427,10 +435,10 @@ export function InvoiceUploader({
         return;
       }
 
-      router.push(
-        successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`,
-      );
-      router.refresh();
+      const href =
+        successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      // Hard nav so detail always loads fresh extracted fields (not PDF overlay).
+      window.location.assign(href);
     });
   }
 
@@ -805,16 +813,12 @@ export function InvoiceUploader({
                 return;
               }
 
-              // Primary oil jobs open Intervalle; incidental oil stays on the invoice.
-              router.push(
-                oilPrimary
-                  ? `/v/${result.tagUuid}/intervalle`
-                  : successHref ??
-                      (result.document.type === "invoice"
-                        ? `/v/${result.tagUuid}/dokumente/${result.document.id}`
-                        : `/v/${result.tagUuid}/dokumente?type=${result.document.type}`),
-              );
-              router.refresh();
+              // Primary oil jobs open Intervalle; otherwise structured detail.
+              const href = oilPrimary
+                ? `/v/${result.tagUuid}/intervalle`
+                : (successHref ??
+                  `/v/${result.tagUuid}/dokumente/${result.document.id}`);
+              window.location.assign(href);
             });
           }}
         >

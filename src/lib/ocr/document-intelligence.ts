@@ -1,33 +1,20 @@
 /**
- * Low-cost scan pipeline:
- * 1) Azure Document Intelligence `prebuilt-read` (OCR only, ~$1.50 / 1k pages)
- * 2) Compact OCR JSON → Foundry LLM for structured invoice fields
- *
- * Target: well under 1 cent per single-page scan (no invoice model, no add-ons, no vision).
+ * Shared Azure Document Intelligence OCR + domain parse dispatch.
+ * Invoice → {@link InvoiceParseService}
+ * ABE → {@link AbeParseService}
  */
 
-import {
-  budgetAbeOcrText,
-  extractAbeConditionsFromText,
-  preferAbeConditions,
-  preferAbeManufacturer,
-  resolveAbeFields,
-} from "./abe-from-text";
-import { extractInvoiceFromText, TextParseError } from "./extract-from-text";
+import { budgetAbeOcrText } from "./abe-from-text";
 import { getDocumentIntelligenceEnv } from "./document-intelligence-env";
 import { inferInvoiceCategory } from "./infer-invoice-category";
-import {
-  extractInvoiceLineItemsFromText,
-  preferInvoiceLineItems,
-} from "./invoice-line-items-from-text";
-import { preferMileageKm } from "./mileage-from-text";
 import { isLlmConfigured } from "./llm-client";
-import { resolveAbePartName } from "./part-from-text";
-import {
-  normalizeTextParseResult,
-  type InvoiceTextParseResult,
-} from "./text-parse-schema";
-import { resolveVendorName } from "./vendor-from-text";
+import type { DocumentParseKind, OcrJsonPayload } from "./ocr-types";
+import { TextParseError } from "./parse-error";
+import { abeParseService } from "./services/abe-parse-service";
+import { invoiceParseService } from "./services/invoice-parse-service";
+import type { InvoiceTextParseResult } from "./text-parse-schema";
+
+export type { DocumentParseKind, OcrJsonPayload } from "./ocr-types";
 
 const API_VERSION = "2024-11-30";
 /** Cheapest DI model suitable for full-page OCR. */
@@ -67,15 +54,12 @@ type DiAnalyzeResult = {
   paragraphs?: DiParagraph[];
 };
 
-/** Compact OCR payload sent to the Foundry parse API. */
-export type OcrJsonPayload = {
+export type AnalyzeDocumentResult = {
+  kind: "invoice" | "abe";
+  fields: InvoiceTextParseResult;
+  rawText: string;
+  ocrJson: OcrJsonPayload;
   modelId: string;
-  locale: string;
-  pageCount: number;
-  /** Full reading-order text (primary input for the LLM). */
-  text: string;
-  /** First-page header lines — often contain logo / workshop name. */
-  headerLines: string[];
 };
 
 function sleep(ms: number): Promise<void> {
@@ -194,112 +178,14 @@ export function buildOcrJsonPayload(result: DiAnalyzeResult): OcrJsonPayload {
   };
 }
 
-function mergeParsedFields(
-  parsed: InvoiceTextParseResult,
-  ocr: OcrJsonPayload,
-): InvoiceTextParseResult {
-  const headerBlob = ocr.headerLines.join("\n");
-  const fullText = `${headerBlob}\n${ocr.text}`;
-
-  const categorySeed = `${fullText}\n${parsed.summary ?? ""}\n${parsed.vendor ?? ""}`;
-  const scored = inferInvoiceCategory(categorySeed);
-  // Heuristic wins over LLM for ABE — parts invoices often say "inkl. ABE".
-  let category: InvoiceTextParseResult["category"];
-  if (scored === "abe") {
-    category = "abe";
-  } else if (parsed.category === "abe") {
-    category = scored;
-  } else if (scored !== "other") {
-    category = scored;
-  } else if (parsed.category !== "other") {
-    category = parsed.category;
-  } else {
-    category = "other";
-  }
-
-  // ABE: vendor field holds Bauteil (Marke + Art), not workshop name.
-  const vendor =
-    category === "abe"
-      ? resolveAbePartName({
-          structuredPart: parsed.vendor,
-          rawText: fullText,
-        })
-      : resolveVendorName({
-          structuredVendor: parsed.vendor,
-          logoCandidates: ocr.headerLines.slice(0, 4),
-          rawText: fullText,
-        });
-
-  const summary =
-    category === "abe" && vendor && !parsed.summary
-      ? vendor.slice(0, 80)
-      : parsed.summary;
-
-  const abeFields =
-    category === "abe"
-      ? resolveAbeFields({
-          structuredKba: parsed.kbaNumber,
-          structuredApprovals: parsed.vehicleApprovals,
-          rawText: fullText,
-        })
-      : { kbaNumber: null, vehicleApprovals: null };
-
-  const heuristicLineItems =
-    category === "abe" ? null : extractInvoiceLineItemsFromText(fullText);
-
-  return normalizeTextParseResult({
-    ...parsed,
-    vendor,
-    category,
-    summary,
-    kbaNumber: abeFields.kbaNumber,
-    vehicleApprovals: abeFields.vehicleApprovals,
-    lineItems:
-      category === "abe"
-        ? null
-        : preferInvoiceLineItems(parsed.lineItems, heuristicLineItems),
-    authority: category === "abe" ? parsed.authority : null,
-    conditions:
-      category === "abe"
-        ? preferAbeConditions(
-            parsed.conditions,
-            extractAbeConditionsFromText(fullText),
-          )
-        : null,
-    partCategory: category === "abe" ? parsed.partCategory : null,
-    notes: category === "abe" ? parsed.notes : null,
-    manufacturer:
-      category === "abe"
-        ? preferAbeManufacturer(parsed.manufacturer, fullText)
-        : null,
-    invoiceNumber: category === "abe" ? null : parsed.invoiceNumber,
-    mileageKm:
-      category === "abe" ? null : preferMileageKm(parsed.mileageKm, fullText),
-  });
-}
-
-/**
- * OCR (Read) → OCR JSON → Foundry structured parse.
- */
-export async function analyzeInvoiceDocument(input: {
+async function runDocumentOcr(input: {
   bytes: Buffer;
   contentType: string;
-}): Promise<{
-  fields: InvoiceTextParseResult;
-  rawText: string;
-  ocrJson: OcrJsonPayload;
-  modelId: string;
-}> {
+}): Promise<OcrJsonPayload> {
   const { endpoint, apiKey, isConfigured } = getDocumentIntelligenceEnv();
   if (!isConfigured) {
     throw new DocumentIntelligenceError(
       "Document Intelligence ist nicht konfiguriert (DOCUMENTINTELLIGENCE_ENDPOINT / DOCUMENTINTELLIGENCE_API_KEY).",
-    );
-  }
-
-  if (!isLlmConfigured()) {
-    throw new DocumentIntelligenceError(
-      "LLM API key fehlt (API_KEY) — OCR-JSON-Parse benötigt Foundry/OpenAI.",
     );
   }
 
@@ -333,16 +219,59 @@ export async function analyzeInvoiceDocument(input: {
     );
   }
 
-  // Compact JSON string is what we conceptually "send to the API".
+  return ocrJson;
+}
+
+function resolveParseKind(
+  kind: DocumentParseKind | undefined,
+  ocrText: string,
+): "invoice" | "abe" {
+  if (kind === "invoice" || kind === "abe") return kind;
+  return inferInvoiceCategory(ocrText) === "abe" ? "abe" : "invoice";
+}
+
+/**
+ * OCR (Read) → domain parse service (invoice XOR ABE).
+ */
+export async function analyzeDocument(input: {
+  bytes: Buffer;
+  contentType: string;
+  kind?: DocumentParseKind;
+}): Promise<AnalyzeDocumentResult> {
+  if (!isLlmConfigured()) {
+    throw new DocumentIntelligenceError(
+      "LLM API key fehlt (API_KEY) — OCR-JSON-Parse benötigt Foundry/OpenAI.",
+    );
+  }
+
+  const ocrJson = await runDocumentOcr(input);
+  const kind = resolveParseKind(input.kind, ocrJson.text);
   const ocrJsonForApi = JSON.stringify({
     headerLines: ocrJson.headerLines,
     text: ocrJson.text,
     pageCount: ocrJson.pageCount,
   });
 
-  let parsed: InvoiceTextParseResult;
   try {
-    parsed = await extractInvoiceFromText(ocrJsonForApi);
+    if (kind === "abe") {
+      const abe = await abeParseService.parseFromText(ocrJson.text);
+      return {
+        kind: "abe",
+        fields: abeParseService.toAnalyzeFields(abe, ocrJson.text),
+        rawText: ocrJson.text,
+        ocrJson,
+        modelId: MODEL_ID,
+      };
+    }
+
+    const parsed = await invoiceParseService.parseFromText(ocrJsonForApi);
+    return {
+      kind: "invoice",
+      fields: invoiceParseService.mergeWithOcr(parsed, ocrJson),
+      rawText: ocrJson.text,
+      ocrJson,
+      modelId: MODEL_ID,
+    };
   } catch (error) {
     const message =
       error instanceof TextParseError
@@ -352,13 +281,25 @@ export async function analyzeInvoiceDocument(input: {
           : "LLM parse failed.";
     throw new DocumentIntelligenceError(message);
   }
+}
 
-  const fields = mergeParsedFields(parsed, ocrJson);
-
+/**
+ * @deprecated Prefer {@link analyzeDocument} with `kind: "auto" | "invoice"`.
+ */
+export async function analyzeInvoiceDocument(input: {
+  bytes: Buffer;
+  contentType: string;
+}): Promise<{
+  fields: InvoiceTextParseResult;
+  rawText: string;
+  ocrJson: OcrJsonPayload;
+  modelId: string;
+}> {
+  const result = await analyzeDocument({ ...input, kind: "auto" });
   return {
-    fields,
-    rawText: ocrJson.text,
-    ocrJson,
-    modelId: MODEL_ID,
+    fields: result.fields,
+    rawText: result.rawText,
+    ocrJson: result.ocrJson,
+    modelId: result.modelId,
   };
 }

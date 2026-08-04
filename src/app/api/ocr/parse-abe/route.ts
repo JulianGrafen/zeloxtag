@@ -2,9 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import type { AbeCoreParseResult } from "@/lib/ocr/abe-parse-schema";
-import { extractAbeFromText } from "@/lib/ocr/extract-abe-from-text";
-import { TextParseError } from "@/lib/ocr/extract-from-text";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
+import { TextParseError } from "@/lib/ocr/parse-error";
+import { abeParseService } from "@/lib/ocr/services/abe-parse-service";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     let fields: AbeCoreParseResult;
     try {
-      fields = await extractAbeFromText(parsedBody.data.rawText);
+      fields = await abeParseService.parseFromText(parsedBody.data.rawText);
     } catch (error) {
       const message =
         error instanceof TextParseError

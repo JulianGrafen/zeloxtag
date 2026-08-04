@@ -5,6 +5,10 @@ import {
   parseStringList,
 } from "@/lib/documents/string-list";
 import { parseTechnicalSpecs } from "@/lib/documents/technical-specs";
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
@@ -23,6 +27,21 @@ function normalizeDocument(value: unknown): Document | null {
   if (!value || typeof value !== "object") return null;
   const doc = value as Document;
   if (typeof doc.id !== "string" || typeof doc.title !== "string") return null;
+  const amountRaw = (doc as { amount?: unknown }).amount;
+  const amount =
+    typeof amountRaw === "number" && Number.isFinite(amountRaw)
+      ? amountRaw
+      : typeof amountRaw === "string"
+        ? Number.parseFloat(amountRaw.replace(",", "."))
+        : NaN;
+  const mileageRaw = (doc as { mileage_km?: unknown }).mileage_km;
+  const mileageKm =
+    typeof mileageRaw === "number" && Number.isFinite(mileageRaw)
+      ? Math.round(mileageRaw)
+      : typeof mileageRaw === "string"
+        ? Number.parseInt(mileageRaw.replace(/[^\d]/g, ""), 10)
+        : NaN;
+
   return {
     ...doc,
     user_id: typeof doc.user_id === "string" ? doc.user_id : "",
@@ -41,8 +60,19 @@ function normalizeDocument(value: unknown): Document | null {
       typeof doc.manufacturer === "string" ? doc.manufacturer : null,
     invoice_number:
       typeof doc.invoice_number === "string" ? doc.invoice_number : null,
-    mileage_km: typeof doc.mileage_km === "number" ? doc.mileage_km : null,
+    amount: Number.isFinite(amount) ? amount : null,
+    mileage_km: Number.isFinite(mileageKm) ? mileageKm : null,
     technical_specs: parseTechnicalSpecs(doc.technical_specs),
+  };
+}
+
+function normalizeScanResult(data: TagScanResult): TagScanResult {
+  return {
+    tag: data.tag as Tag,
+    vehicle: (data.vehicle as Vehicle | null) ?? null,
+    documents: ((data.documents as unknown[]) ?? [])
+      .map(normalizeDocument)
+      .filter((doc): doc is Document => doc !== null),
   };
 }
 
@@ -65,14 +95,88 @@ function isDemoTagUuid(uuid: string): boolean {
 }
 
 /**
+ * Direct service-role lookup. Required when FORCE RLS is on and migration
+ * 00013 (`row_security = off` on the RPC) is not yet applied — SECURITY DEFINER
+ * alone cannot see vehicles/documents, which made post-claim redirects 404.
+ */
+async function resolveTagWithAdmin(
+  uuid: string,
+): Promise<TagScanResult | null> {
+  const supabase = createAdminClient();
+
+  const { data: tag, error: tagError } = await supabase
+    .from("tags")
+    .select("*")
+    .eq("uuid", uuid)
+    .maybeSingle();
+
+  if (tagError) {
+    throw new Error(`Failed to resolve tag: ${tagError.message}`);
+  }
+  if (!tag) return null;
+
+  if (tag.status === "active" && tag.vehicle_id) {
+    const [{ data: vehicle, error: vehicleError }, { data: documents, error: docsError }] =
+      await Promise.all([
+        supabase
+          .from("vehicles")
+          .select("*")
+          .eq("id", tag.vehicle_id)
+          .maybeSingle(),
+        supabase
+          .from("documents")
+          .select("*")
+          .eq("vehicle_id", tag.vehicle_id)
+          .order("created_at", { ascending: false }),
+      ]);
+
+    if (vehicleError) {
+      throw new Error(`Failed to resolve vehicle: ${vehicleError.message}`);
+    }
+    if (docsError) {
+      throw new Error(`Failed to resolve documents: ${docsError.message}`);
+    }
+
+    return normalizeScanResult({
+      tag: tag as Tag,
+      vehicle: (vehicle as Vehicle | null) ?? null,
+      documents: (documents as Document[] | null) ?? [],
+    });
+  }
+
+  return normalizeScanResult({
+    tag: tag as Tag,
+    vehicle: null,
+    documents: [],
+  });
+}
+
+async function resolveTagWithRpc(
+  uuid: string,
+): Promise<TagScanResult | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("resolve_tag_by_uuid", {
+    p_uuid: uuid,
+  });
+
+  if (error) {
+    throw new Error(`Failed to resolve tag: ${error.message}`);
+  }
+  if (data === null || data === undefined) {
+    return null;
+  }
+  if (!isTagScanResult(data)) {
+    throw new Error("Tag resolver returned an unexpected payload shape.");
+  }
+  return normalizeScanResult(data);
+}
+
+/**
  * Resolves a physical ZeloxTag QR UUID to tag + optional vehicle payload.
  *
- * Production path uses `resolve_tag_by_uuid` (SECURITY DEFINER) so anonymous
- * scanners can load an active digital twin without opening vehicles/documents
- * RLS to the world.
- *
- * Falls back to mock data when Supabase env is not configured, or for known
- * local demo UUIDs missing from the remote project.
+ * Prefers the service-role path so anonymous (and freshly claimed) scanners
+ * always receive the digital twin under FORCE RLS. Falls back to the
+ * SECURITY DEFINER RPC, then to mock data for local demo UUIDs.
  */
 export async function getTagByUuid(uuid: string): Promise<TagScanResult | null> {
   const normalized = uuid.trim();
@@ -83,35 +187,22 @@ export async function getTagByUuid(uuid: string): Promise<TagScanResult | null> 
     return resolveMockTag(normalized);
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("resolve_tag_by_uuid", {
-    p_uuid: normalized,
-  });
-
-  if (error) {
-    // Keep local demo tags usable if the project RPC/schema is incomplete.
-    if (isDemoTagUuid(normalized)) {
-      return resolveMockTag(normalized);
+  try {
+    if (isSupabaseAdminConfigured()) {
+      return await resolveTagWithAdmin(normalized);
     }
-    throw new Error(`Failed to resolve tag: ${error.message}`);
-  }
 
-  if (data === null || data === undefined) {
+    const viaRpc = await resolveTagWithRpc(normalized);
+    if (viaRpc) return viaRpc;
+
     if (isDemoTagUuid(normalized)) {
       return resolveMockTag(normalized);
     }
     return null;
+  } catch (error) {
+    if (isDemoTagUuid(normalized)) {
+      return resolveMockTag(normalized);
+    }
+    throw error;
   }
-
-  if (!isTagScanResult(data)) {
-    throw new Error("Tag resolver returned an unexpected payload shape.");
-  }
-
-  return {
-    tag: data.tag as Tag,
-    vehicle: (data.vehicle as Vehicle | null) ?? null,
-    documents: ((data.documents as unknown[]) ?? [])
-      .map(normalizeDocument)
-      .filter((doc): doc is Document => doc !== null),
-  };
 }

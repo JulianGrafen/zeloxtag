@@ -37,7 +37,13 @@ function sanitizeFilename(name: string): string {
 
 function parseAmount(raw: string | undefined): number | null {
   if (!raw?.trim()) return null;
-  const normalized = raw.replace(/\s/g, "").replace(",", ".");
+  let normalized = raw.replace(/\s/g, "").replace(/€|eur/gi, "");
+  // German: 1.234,56 → 1234.56; plain 428,90 → 428.90
+  if (/\d,\d{1,2}$/.test(normalized) && normalized.includes(".")) {
+    normalized = normalized.replace(/\./g, "").replace(",", ".");
+  } else if (/\d,\d{1,2}$/.test(normalized)) {
+    normalized = normalized.replace(",", ".");
+  }
   const value = Number.parseFloat(normalized);
   if (!Number.isFinite(value)) return null;
   return Math.round(value * 100) / 100;
@@ -267,6 +273,8 @@ export async function uploadDocument(
     manufacturer,
   };
 
+  // Keep amount (baseRow) + mileage_km on every attempt that still has room for
+  // optional columns — never drop KM just because an ABE-only column is missing.
   const insertAttempts = [
     {
       ...baseRow,
@@ -302,7 +310,7 @@ export async function uploadDocument(
       vendor,
       category,
       line_items: lineItems,
-      invoice_number: invoiceNumber,
+      mileage_km: mileageKm,
     },
     {
       ...baseRow,
@@ -311,6 +319,7 @@ export async function uploadDocument(
       line_items: lineItems,
       kba_number: kbaNumber,
       vehicle_approvals: vehicleApprovals,
+      mileage_km: mileageKm,
       ...abeDetail,
     },
     {
@@ -320,6 +329,7 @@ export async function uploadDocument(
       line_items: lineItems,
       kba_number: kbaNumber,
       vehicle_approvals: vehicleApprovals,
+      mileage_km: mileageKm,
       manufacturer,
     },
     {
@@ -329,10 +339,12 @@ export async function uploadDocument(
       line_items: lineItems,
       kba_number: kbaNumber,
       vehicle_approvals: vehicleApprovals,
+      mileage_km: mileageKm,
     },
-    { ...baseRow, vendor, category, line_items: lineItems },
-    { ...baseRow, vendor, category },
-    { ...baseRow, vendor },
+    { ...baseRow, vendor, category, line_items: lineItems, mileage_km: mileageKm },
+    { ...baseRow, vendor, category, mileage_km: mileageKm },
+    { ...baseRow, vendor, mileage_km: mileageKm },
+    { ...baseRow, mileage_km: mileageKm },
     baseRow,
   ];
 

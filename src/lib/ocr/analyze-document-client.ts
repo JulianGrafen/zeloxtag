@@ -2,6 +2,7 @@
  * Browser helper: send original PDF/image bytes to Document Intelligence.
  */
 
+import type { DocumentParseKind } from "./ocr-types";
 import type {
   InvoiceTextParseCategory,
   InvoiceTextParseResult,
@@ -9,9 +10,15 @@ import type {
 import { normalizeTextParseResult } from "./text-parse-schema";
 
 export type AnalyzeDocumentResult = {
+  kind: "invoice" | "abe";
   fields: InvoiceTextParseResult;
   rawText: string;
   modelId: string;
+};
+
+export type AnalyzeDocumentOptions = {
+  /** Force invoice or ABE parse service; default auto-detect after OCR. */
+  kind?: DocumentParseKind;
 };
 
 export class AnalyzeDocumentError extends Error {
@@ -21,9 +28,15 @@ export class AnalyzeDocumentError extends Error {
   }
 }
 
-async function analyzeOneFile(file: File): Promise<AnalyzeDocumentResult> {
+async function analyzeOneFile(
+  file: File,
+  kind: DocumentParseKind = "auto",
+): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
   formData.set("file", file);
+  if (kind !== "auto") {
+    formData.set("kind", kind);
+  }
 
   const response = await fetch("/api/documents/analyze", {
     method: "POST",
@@ -33,6 +46,7 @@ async function analyzeOneFile(file: File): Promise<AnalyzeDocumentResult> {
   const payload = (await response.json().catch(() => null)) as
     | {
         ok: true;
+        kind?: "invoice" | "abe";
         fields: InvoiceTextParseResult;
         rawText: string;
         modelId: string;
@@ -49,6 +63,9 @@ async function analyzeOneFile(file: File): Promise<AnalyzeDocumentResult> {
   }
 
   return {
+    kind:
+      payload.kind ??
+      (payload.fields.category === "abe" ? "abe" : "invoice"),
     fields: payload.fields,
     rawText: payload.rawText,
     modelId: payload.modelId,
@@ -123,24 +140,28 @@ function mergeFields(
 /**
  * Analyze one or more prepared files. Multi-page images are analyzed
  * page-by-page (each already A4-cropped + compressed at ingest).
+ * Pass `kind: "abe"` to force the ABE parse service (prefer a single combined PDF).
  */
 export async function analyzeDocumentFiles(
   files: File[],
   onPageProgress?: (page: number, totalPages: number) => void,
+  options: AnalyzeDocumentOptions = {},
 ): Promise<AnalyzeDocumentResult> {
   if (files.length === 0) {
     throw new AnalyzeDocumentError("Keine Datei für die Analyse vorhanden.");
   }
 
+  const kind = options.kind ?? "auto";
+
   if (files.length === 1) {
     onPageProgress?.(1, 1);
-    return analyzeOneFile(files[0]);
+    return analyzeOneFile(files[0], kind);
   }
 
   const results: AnalyzeDocumentResult[] = [];
   for (let index = 0; index < files.length; index += 1) {
     onPageProgress?.(index + 1, files.length);
-    results.push(await analyzeOneFile(files[index]));
+    results.push(await analyzeOneFile(files[index], kind));
   }
 
   const rawText = results
@@ -148,7 +169,12 @@ export async function analyzeDocumentFiles(
     .join("\n\n")
     .trim();
 
+  const mergedKind = results.some((result) => result.kind === "abe")
+    ? "abe"
+    : "invoice";
+
   return {
+    kind: mergedKind,
     fields: mergeFields(results),
     rawText,
     modelId: results[0]?.modelId ?? "prebuilt-read",
@@ -158,6 +184,7 @@ export async function analyzeDocumentFiles(
 /** @deprecated Prefer analyzeDocumentFiles — kept for single-file call sites. */
 export async function analyzeDocumentFile(
   file: File,
+  options?: AnalyzeDocumentOptions,
 ): Promise<AnalyzeDocumentResult> {
-  return analyzeDocumentFiles([file]);
+  return analyzeDocumentFiles([file], undefined, options);
 }

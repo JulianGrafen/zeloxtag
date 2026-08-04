@@ -122,46 +122,8 @@ function stripWrappingBackticks(value: string): string {
   return trimmed;
 }
 
-/** Fallback instructions aligned with the Foundry "Zeloxtag" agent. */
-export const ZELOXTAG_AGENT_INSTRUCTIONS = `Du bist ein präziser Parser für Kfz-Dokumente (Rechnungen, ABE, Teilegutachten). Analysiere den OCR-Text und extrahiere strikt JSON.
-Wenn ein Wert nicht auffindbar ist, setze ihn auf null.
-Schema:
-{
-  "vendor": "string | null",
-  "date": "YYYY-MM-DD | null",
-  "amount": "number | null",
-  "category": "tuning | service | tuev | repair | abe | other",
-  "summary": "3-6 Wörter | null",
-  "lineItems": [{ "label": "string", "amount": number }] | null,
-  "kbaNumber": "string | null",
-  "vehicleApprovals": ["string"] | null,
-  "authority": "string | null",
-  "conditions": ["string"] | null,
-  "partCategory": "string | null",
-  "notes": "string | null",
-  "manufacturer": "string | null",
-  "invoiceNumber": "string | null",
-  "mileageKm": "number | null"
-}
-vendor-Regeln:
-- Rechnung: Werkstatt-/Händlername.
-- ABE: Bauteilname (z.B. "Carbon Frontlippe"), nicht nur die Marke.
-invoiceNumber: nur Rechnungen (z.B. RE-2026-0312); sonst null.
-mileageKm: nur Rechnungen — Kilometerstand/Tachostand als ganze Zahl (z.B. 67210); sonst null.
-lineItems: nur Rechnungen — JEDE Position einzeln (Material, Arbeitslohn, MwSt.).
-  Niemals Materialien zusammenfassen (falsch: "Reifen und Sportfedern").
-  Richtig getrennte Einträge z.B. Reifen, Sportfedern, Felgen, Motoröl, Ölfilter.
-  amount = immer Gesamtpreis/Zeilensumme (Menge×Einzelpreis), NIE der Einzelpreis.
-  Beispiel: 4 × 120,00 → amount 480. Bei mehreren Beträgen in einer Zeile: letzter/rechter.
-  MwSt.-Zeile am Ende wenn ausgewiesen; sonst null.
-Ölwechsel-Rechnungen: category=service, summary mit 'Ölwechsel', lineItems inkl. Motoröl/Ölfilter, mileageKm wenn vorhanden.
-ABE-Regeln:
-- manufacturer: NUR Hersteller/Herstellerzeichen (AutoExe, Milltek, OZ, Tein) — NIEMALS Auftraggeber, Antragsteller, Besteller, Inverkehrbringer oder Importeur
-- kbaNumber, vehicleApprovals, authority (Behörde),
-- conditions: jede Auflage VOLLSTÄNDIG und wörtlich aus dem Dokument
-  (komplette Sätze, nicht kürzen, nicht zusammenfassen; ein Array-Eintrag pro Auflage),
-- partCategory (Aerodynamik/Räder/Fahrwerk/…),
-- notes (1-3 Sätze Freigabetext)
-- bei Nicht-ABE: alle ABE-Felder null
-Kategorie: abe | tuev | repair | service | tuning | other
-Keine Erklärungen, nur JSON.`;
+/**
+ * @deprecated Invoice prompts live in `invoice-parse-prompts.ts`.
+ * Kept as alias for any external Foundry-agent references.
+ */
+export { INVOICE_SYSTEM_PROMPT as ZELOXTAG_AGENT_INSTRUCTIONS } from "./invoice-parse-prompts";
