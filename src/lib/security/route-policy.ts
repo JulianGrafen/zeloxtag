@@ -30,6 +30,7 @@ const PUBLIC_API_GET = new Set([
  */
 const PUBLIC_API_POST = new Set([
   "/api/documents/analyze",
+  "/api/ocr/parse",
   "/api/ocr/parse-abe",
   "/api/ocr/parse-text",
 ]);

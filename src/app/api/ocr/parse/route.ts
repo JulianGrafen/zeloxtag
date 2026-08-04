@@ -7,15 +7,18 @@ import {
 } from "@/lib/ocr/document-intelligence";
 import { getDocumentIntelligenceEnv } from "@/lib/ocr/document-intelligence-env";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
-import type { DocumentParseKind, OcrDocumentType } from "@/lib/ocr/ocr-types";
-import { OCR_DOCUMENT_TYPES } from "@/lib/ocr/ocr-types";
-import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
+import { resolveParseModel } from "@/lib/ocr/model-routing";
+import { OCR_DOCUMENT_TYPES, type OcrDocumentType } from "@/lib/ocr/ocr-types";
+import {
+  invoiceTextParseSchema,
+  type InvoiceTextParseResult,
+} from "@/lib/ocr/text-parse-schema";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** High-fidelity invoice photos / multi-page PDFs (Azure S0 allows far more). */
+/** High-fidelity invoice photos / multi-page PDFs. */
 const MAX_BYTES = 25 * 1024 * 1024;
 
 const ALLOWED_MIME = new Set([
@@ -30,46 +33,50 @@ const ALLOWED_MIME = new Set([
   "application/octet-stream",
 ]);
 
-const optionalMetaSchema = z
-  .object({
-    vehicleId: z.string().uuid().optional(),
-    tagUuid: z.string().trim().min(1).max(128).optional(),
-  })
-  .strict();
+const documentTypeSchema = z.enum(OCR_DOCUMENT_TYPES);
 
-type AnalyzeSuccess = {
+type ParseSuccess = {
   ok: true;
-  kind: "invoice" | "abe";
   documentType: OcrDocumentType;
   parseModel: string;
+  contentFormat: "markdown" | "text";
   fields: InvoiceTextParseResult;
   rawText: string;
   modelId: string;
 };
 
-type AnalyzeError = {
+type ParseError = {
   ok: false;
   error: string;
-  code: "unauthorized" | "bad_request" | "config" | "analyze_failed" | "rate_limited";
+  code:
+    | "unauthorized"
+    | "bad_request"
+    | "config"
+    | "azure_unreachable"
+    | "parse_failed"
+    | "rate_limited";
 };
 
 function jsonError(
   status: number,
   error: string,
-  code: AnalyzeError["code"],
+  code: ParseError["code"],
 ) {
-  const body: AnalyzeError = { ok: false, error, code };
+  const body: ParseError = { ok: false, error, code };
   return NextResponse.json(body, { status });
 }
 
 /**
- * POST /api/documents/analyze
- * Compatibility wrapper around Markdown OCR + routed parse.
- * Prefer `/api/ocr/parse` with explicit `documentType` for new clients.
+ * POST /api/ocr/parse
+ *
+ * ZeloxTag OCR pipeline:
+ * 1) Azure Document Intelligence → Markdown (`outputContentFormat=markdown`)
+ * 2) Dynamic model routing by `documentType` (invoice vs abe/tuev)
+ * 3) Domain parse service + Zod validation before response
  */
 export async function POST(request: NextRequest) {
   try {
-    const limited = enforceRateLimit(request, "upload", "analyze");
+    const limited = enforceRateLimit(request, "ocr", "parse");
     if (limited) return limited;
 
     const { isConfigured } = getDocumentIntelligenceEnv();
@@ -84,7 +91,7 @@ export async function POST(request: NextRequest) {
     if (!isLlmConfigured()) {
       return jsonError(
         503,
-        "LLM API key fehlt (API_KEY) — benötigt für OCR-JSON-Parse.",
+        "LLM API key fehlt (API_KEY) — benötigt für Markdown → JSON Parse.",
         "config",
       );
     }
@@ -96,15 +103,16 @@ export async function POST(request: NextRequest) {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
 
-    const vehicleRaw = String(formData.get("vehicleId") ?? "").trim();
-    const tagRaw = String(formData.get("tagUuid") ?? "").trim();
-    const meta = optionalMetaSchema.safeParse({
-      ...(vehicleRaw ? { vehicleId: vehicleRaw } : {}),
-      ...(tagRaw ? { tagUuid: tagRaw } : {}),
-    });
-    if (!meta.success) {
-      return jsonError(400, "Invalid optional metadata fields.", "bad_request");
+    const documentTypeRaw = String(formData.get("documentType") ?? "").trim();
+    const documentTypeParsed = documentTypeSchema.safeParse(documentTypeRaw);
+    if (!documentTypeParsed.success) {
+      return jsonError(
+        400,
+        `documentType is required (one of: ${OCR_DOCUMENT_TYPES.join(", ")}).`,
+        "bad_request",
+      );
     }
+    const documentType = documentTypeParsed.data;
 
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
@@ -128,46 +136,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const kindRaw = String(formData.get("kind") ?? "auto").trim().toLowerCase();
-    const kind: DocumentParseKind =
-      kindRaw === "invoice" || kindRaw === "abe" || kindRaw === "auto"
-        ? kindRaw
-        : "auto";
-
-    const documentTypeRaw = String(formData.get("documentType") ?? "")
-      .trim()
-      .toLowerCase();
-    const documentType = (
-      OCR_DOCUMENT_TYPES as readonly string[]
-    ).includes(documentTypeRaw)
-      ? (documentTypeRaw as OcrDocumentType)
-      : undefined;
-
     const bytes = Buffer.from(await file.arrayBuffer());
     const result = await analyzeDocument({
       bytes,
       contentType,
-      kind,
       documentType,
+      kind: documentType === "abe" ? "abe" : "invoice",
     });
 
-    const body: AnalyzeSuccess = {
+    // Defense in depth: re-validate LLM-shaped fields before responding.
+    const validated = invoiceTextParseSchema.safeParse(result.fields);
+    if (!validated.success) {
+      return jsonError(
+        422,
+        "LLM output failed Zod schema validation.",
+        "parse_failed",
+      );
+    }
+
+    const body: ParseSuccess = {
       ok: true,
-      kind: result.kind,
       documentType: result.documentType,
-      parseModel: result.parseModel,
-      fields: result.fields,
+      parseModel: result.parseModel || resolveParseModel(documentType),
+      contentFormat: result.ocrJson.contentFormat,
+      fields: validated.data,
       rawText: result.rawText,
       modelId: result.modelId,
     };
     return NextResponse.json(body);
   } catch (error) {
     if (error instanceof DocumentIntelligenceError) {
-      return jsonError(502, error.message, "analyze_failed");
+      const unreachable = /unreachable/i.test(error.message);
+      return jsonError(
+        unreachable ? 503 : 502,
+        error.message,
+        unreachable ? "azure_unreachable" : "parse_failed",
+      );
     }
 
     const message =
-      error instanceof Error ? error.message : "Unexpected analyze error.";
-    return jsonError(500, message, "analyze_failed");
+      error instanceof Error ? error.message : "Unexpected OCR parse error.";
+    return jsonError(500, message, "parse_failed");
   }
 }

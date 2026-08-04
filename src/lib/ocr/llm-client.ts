@@ -8,6 +8,11 @@ export type LlmClientConfig = {
   provider: LlmProvider;
 };
 
+export type OcrLlmClientOptions = {
+  /** Explicit chat deployment (from model routing). */
+  model?: string;
+};
+
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
@@ -21,11 +26,22 @@ function readApiKey(): string | null {
   );
 }
 
+function defaultEconomyModel(): string {
+  return (
+    process.env.FOUNDRY_MODEL_ECONOMY?.trim() ||
+    process.env.FOUNDRY_MODEL_NAME?.trim() ||
+    process.env.AZURE_OPENAI_DEPLOYMENT?.trim() ||
+    process.env.OPENAI_MODEL?.trim() ||
+    "gpt-5.4-nano"
+  );
+}
+
 /**
  * Shared chat client for OCR domain parse services (invoice + ABE).
  * Prefers Azure AI Foundry project endpoint when configured.
+ * Pass `model` from {@link resolveParseModel} for cost/accuracy routing.
  */
-export function getOcrLlmClient(): LlmClientConfig {
+export function getOcrLlmClient(options: OcrLlmClientOptions = {}): LlmClientConfig {
   const apiKey = readApiKey();
   if (!apiKey) {
     throw new Error(
@@ -38,11 +54,7 @@ export function getOcrLlmClient(): LlmClientConfig {
     process.env.AZURE_AI_PROJECT_ENDPOINT?.trim() ||
     "";
 
-  const model =
-    process.env.FOUNDRY_MODEL_NAME?.trim() ||
-    process.env.AZURE_OPENAI_DEPLOYMENT?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
-    "gpt-5.4-nano";
+  const model = options.model?.trim() || defaultEconomyModel();
 
   if (foundryEndpoint) {
     const baseURL = `${trimTrailingSlash(foundryEndpoint)}/openai/v1`;
@@ -67,8 +79,8 @@ export function getOcrLlmClient(): LlmClientConfig {
 }
 
 /** @deprecated Use {@link getOcrLlmClient}. */
-export function getInvoiceLlmClient(): LlmClientConfig {
-  return getOcrLlmClient();
+export function getInvoiceLlmClient(options?: OcrLlmClientOptions): LlmClientConfig {
+  return getOcrLlmClient(options);
 }
 
 export function isLlmConfigured(): boolean {

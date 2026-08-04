@@ -249,10 +249,14 @@ export function InvoiceUploader({
         setProgress,
       );
 
-      const parseKind = isAbeUpload ? "abe" : "auto";
+      const documentType = isAbeUpload
+        ? "abe"
+        : lockCategory && initialCategory === "tuev"
+          ? "tuev"
+          : "invoice";
       // ABE: one combined PDF so Auflagen across pages stay in one AbeParseService call.
       const analyzeFiles =
-        parseKind === "abe" && processed.uploadFile
+        documentType === "abe" && processed.uploadFile
           ? [processed.uploadFile]
           : processed.analyzeFiles;
 
@@ -264,15 +268,15 @@ export function InvoiceUploader({
             label:
               totalPages > 1
                 ? `Seite ${page} von ${totalPages} wird analysiert…`
-                : parseKind === "abe"
+                : documentType === "abe"
                   ? "ABE wird analysiert…"
-                  : "A4-Seite wird analysiert…",
+                  : "Rechnung wird analysiert…",
             percent: Math.min(99, Math.round(70 + (page - 1) * span + span * 0.5)),
             page,
             totalPages,
           });
         },
-        { kind: parseKind },
+        { documentType },
       );
 
       setUploadFile(processed.uploadFile);

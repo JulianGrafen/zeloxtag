@@ -22,7 +22,7 @@ export function extractMileageKmFromText(rawText: string): number | null {
   const text = rawText.replace(/\r\n/g, "\n");
 
   const labeledPatterns = [
-    /(?:kilometerstand|km[-\s]?stand|tachostand|odometer|laufleistung)\s*[:.]?\s*([0-9][0-9.\s]{2,12})\s*(?:km)?/gi,
+    /(?:kilometerstand|km[-\s]?stand|tachostand|odometer|laufleistung|kilometer)\s*[:.]?\s*([0-9][0-9.\s]{2,12})\s*(?:km)?/gi,
     /(?:bei|aktuell(?:er)?|aktueller)?\s*(?:km|kilometer)\s*[:.]?\s*([0-9][0-9.\s]{2,12})/gi,
     /(?:^|\n)\s*km\s*[:.]?\s*([0-9][0-9.\s]{2,12})\b/gi,
     /\b([0-9]{1,3}(?:[.\s][0-9]{3})+)\s*km\b/gi,

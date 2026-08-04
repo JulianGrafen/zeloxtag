@@ -25,6 +25,8 @@ import {
 } from "@/lib/ocr/abe-technical-specs-from-text";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
+import { resolveParseModel } from "@/lib/ocr/model-routing";
+import type { OcrDocumentType } from "@/lib/ocr/ocr-types";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { resolveAbePartName } from "@/lib/ocr/part-from-text";
 import {
@@ -48,12 +50,22 @@ function prepareAbeTextForLlm(rawText: string): string {
  * ABE / Teilegutachten-only LLM parse service.
  * Does not extract invoice line items / amounts — use {@link InvoiceParseService}.
  */
+export type AbeParseOptions = {
+  /** Routing type — abe (default) or tuev both use the economy model. */
+  documentType?: Extract<OcrDocumentType, "abe" | "tuev">;
+  model?: string;
+};
+
 export class AbeParseService {
   /**
    * Specialized ABE extraction: core metadata + fully worded Auflagen.
    * LLM result is merged with heuristic Auflagen / Maße fallbacks.
+   * Uses the cost-efficient nano deployment via model routing.
    */
-  async parseFromText(rawText: string): Promise<AbeCoreParseResult> {
+  async parseFromText(
+    rawText: string,
+    options: AbeParseOptions = {},
+  ): Promise<AbeCoreParseResult> {
     const text = prepareAbeTextForLlm(rawText);
     const heuristicConditions =
       extractAbeConditionsFromText(text) ??
@@ -87,10 +99,14 @@ export class AbeParseService {
         heuristicManufacturer,
     );
 
+    const routedModel =
+      options.model ??
+      resolveParseModel(options.documentType ?? "abe");
+
     let client: OpenAI;
     let model: string;
     try {
-      ({ client, model } = getOcrLlmClient());
+      ({ client, model } = getOcrLlmClient({ model: routedModel }));
     } catch (error) {
       throw new TextParseError(
         error instanceof Error ? error.message : "LLM client is not configured.",
@@ -98,7 +114,7 @@ export class AbeParseService {
     }
 
     if (/^zeloxta/i.test(model)) {
-      model = "gpt-5.4-nano";
+      model = resolveParseModel("abe");
     }
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;

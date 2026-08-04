@@ -1,8 +1,8 @@
 /**
- * Browser helper: send original PDF/image bytes to Document Intelligence.
+ * Browser helper: Markdown OCR + routed LLM parse via `/api/ocr/parse`.
  */
 
-import type { DocumentParseKind } from "./ocr-types";
+import type { DocumentParseKind, OcrDocumentType } from "./ocr-types";
 import type {
   InvoiceTextParseCategory,
   InvoiceTextParseResult,
@@ -11,13 +11,17 @@ import { normalizeTextParseResult } from "./text-parse-schema";
 
 export type AnalyzeDocumentResult = {
   kind: "invoice" | "abe";
+  documentType: OcrDocumentType;
   fields: InvoiceTextParseResult;
   rawText: string;
   modelId: string;
+  parseModel?: string;
 };
 
 export type AnalyzeDocumentOptions = {
-  /** Force invoice or ABE parse service; default auto-detect after OCR. */
+  /** Explicit document type for model routing (preferred). */
+  documentType?: OcrDocumentType;
+  /** @deprecated Prefer `documentType`. Mapped to documentType when unset. */
   kind?: DocumentParseKind;
 };
 
@@ -28,17 +32,25 @@ export class AnalyzeDocumentError extends Error {
   }
 }
 
+function resolveDocumentType(
+  options: AnalyzeDocumentOptions,
+): OcrDocumentType {
+  if (options.documentType) return options.documentType;
+  if (options.kind === "abe") return "abe";
+  if (options.kind === "invoice") return "invoice";
+  // auto / unset → invoice routing (mid-tier); server may still classify fields.
+  return "invoice";
+}
+
 async function analyzeOneFile(
   file: File,
-  kind: DocumentParseKind = "auto",
+  documentType: OcrDocumentType,
 ): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
   formData.set("file", file);
-  if (kind !== "auto") {
-    formData.set("kind", kind);
-  }
+  formData.set("documentType", documentType);
 
-  const response = await fetch("/api/documents/analyze", {
+  const response = await fetch("/api/ocr/parse", {
     method: "POST",
     body: formData,
   });
@@ -46,7 +58,8 @@ async function analyzeOneFile(
   const payload = (await response.json().catch(() => null)) as
     | {
         ok: true;
-        kind?: "invoice" | "abe";
+        documentType: OcrDocumentType;
+        parseModel?: string;
         fields: InvoiceTextParseResult;
         rawText: string;
         modelId: string;
@@ -63,12 +76,12 @@ async function analyzeOneFile(
   }
 
   return {
-    kind:
-      payload.kind ??
-      (payload.fields.category === "abe" ? "abe" : "invoice"),
+    kind: payload.documentType === "abe" ? "abe" : "invoice",
+    documentType: payload.documentType,
     fields: payload.fields,
     rawText: payload.rawText,
     modelId: payload.modelId,
+    parseModel: payload.parseModel,
   };
 }
 
@@ -138,9 +151,7 @@ function mergeFields(
 }
 
 /**
- * Analyze one or more prepared files. Multi-page images are analyzed
- * page-by-page (each already A4-cropped + compressed at ingest).
- * Pass `kind: "abe"` to force the ABE parse service (prefer a single combined PDF).
+ * Analyze one or more prepared files via Markdown OCR + routed LLM parse.
  */
 export async function analyzeDocumentFiles(
   files: File[],
@@ -151,17 +162,17 @@ export async function analyzeDocumentFiles(
     throw new AnalyzeDocumentError("Keine Datei für die Analyse vorhanden.");
   }
 
-  const kind = options.kind ?? "auto";
+  const documentType = resolveDocumentType(options);
 
   if (files.length === 1) {
     onPageProgress?.(1, 1);
-    return analyzeOneFile(files[0], kind);
+    return analyzeOneFile(files[0], documentType);
   }
 
   const results: AnalyzeDocumentResult[] = [];
   for (let index = 0; index < files.length; index += 1) {
     onPageProgress?.(index + 1, files.length);
-    results.push(await analyzeOneFile(files[index], kind));
+    results.push(await analyzeOneFile(files[index], documentType));
   }
 
   const rawText = results
@@ -175,13 +186,15 @@ export async function analyzeDocumentFiles(
 
   return {
     kind: mergedKind,
+    documentType,
     fields: mergeFields(results),
     rawText,
-    modelId: results[0]?.modelId ?? "prebuilt-read",
+    modelId: results[0]?.modelId ?? "prebuilt-layout",
+    parseModel: results[0]?.parseModel,
   };
 }
 
-/** @deprecated Prefer analyzeDocumentFiles — kept for single-file call sites. */
+/** @deprecated Prefer analyzeDocumentFiles. */
 export async function analyzeDocumentFile(
   file: File,
   options?: AnalyzeDocumentOptions,

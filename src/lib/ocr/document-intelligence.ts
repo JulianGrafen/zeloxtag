@@ -1,31 +1,37 @@
 /**
  * Shared Azure Document Intelligence OCR + domain parse dispatch.
- * Invoice → {@link InvoiceParseService}
- * ABE → {@link AbeParseService}
+ * OCR returns Markdown (`outputContentFormat=markdown`) so LLMs see tables.
+ * Invoice → {@link InvoiceParseService} (mid-tier model)
+ * ABE → {@link AbeParseService} (economy model)
  */
 
 import { budgetAbeOcrText } from "./abe-from-text";
 import { getDocumentIntelligenceEnv } from "./document-intelligence-env";
 import { inferInvoiceCategory } from "./infer-invoice-category";
 import { isLlmConfigured } from "./llm-client";
-import type { DocumentParseKind, OcrJsonPayload } from "./ocr-types";
+import { documentTypeFromParseKind, resolveParseModel } from "./model-routing";
+import type {
+  DocumentParseKind,
+  OcrDocumentType,
+  OcrJsonPayload,
+} from "./ocr-types";
 import { TextParseError } from "./parse-error";
 import { abeParseService } from "./services/abe-parse-service";
 import { invoiceParseService } from "./services/invoice-parse-service";
 import type { InvoiceTextParseResult } from "./text-parse-schema";
 
-export type { DocumentParseKind, OcrJsonPayload } from "./ocr-types";
+export type { DocumentParseKind, OcrDocumentType, OcrJsonPayload } from "./ocr-types";
 
 const API_VERSION = "2024-11-30";
-/** Cheapest DI model suitable for full-page OCR. */
-const MODEL_ID = "prebuilt-read";
+/**
+ * Layout preserves table structure in Markdown better than prebuilt-read.
+ * Critical for invoice line-item extraction.
+ */
+const MODEL_ID = "prebuilt-layout";
 const LOCALE = "de-DE";
+const CONTENT_FORMAT = "markdown" as const;
 const POLL_INTERVAL_MS = 700;
 const POLL_TIMEOUT_MS = 60_000;
-/**
- * Multi-page ABEs often exceed 10k chars before Auflagen appear.
- * Budget keeps head metadata + Auflagen (see budgetAbeOcrText).
- */
 const MAX_OCR_TEXT_CHARS = 48_000;
 
 export class DocumentIntelligenceError extends Error {
@@ -50,16 +56,21 @@ type DiParagraph = {
 
 type DiAnalyzeResult = {
   content?: string;
+  contentFormat?: string;
   pages?: DiPage[];
   paragraphs?: DiParagraph[];
 };
 
 export type AnalyzeDocumentResult = {
   kind: "invoice" | "abe";
+  documentType: OcrDocumentType;
   fields: InvoiceTextParseResult;
   rawText: string;
   ocrJson: OcrJsonPayload;
+  /** Azure DI model id (layout / read). */
   modelId: string;
+  /** Chat deployment used for structured parse. */
+  parseModel: string;
 };
 
 function sleep(ms: number): Promise<void> {
@@ -72,6 +83,7 @@ function buildAnalyzeUrl(endpoint: string): string {
   const params = new URLSearchParams({
     "api-version": API_VERSION,
     locale: LOCALE,
+    outputContentFormat: CONTENT_FORMAT,
   });
   return (
     `${endpoint}documentintelligence/documentModels/${MODEL_ID}:analyze` +
@@ -85,14 +97,22 @@ async function startAnalyze(input: {
   bytes: Buffer;
   contentType: string;
 }): Promise<Response> {
-  return fetch(buildAnalyzeUrl(input.endpoint), {
-    method: "POST",
-    headers: {
-      "Ocp-Apim-Subscription-Key": input.apiKey,
-      "Content-Type": input.contentType || "application/octet-stream",
-    },
-    body: new Uint8Array(input.bytes),
-  });
+  try {
+    return await fetch(buildAnalyzeUrl(input.endpoint), {
+      method: "POST",
+      headers: {
+        "Ocp-Apim-Subscription-Key": input.apiKey,
+        "Content-Type": input.contentType || "application/octet-stream",
+      },
+      body: new Uint8Array(input.bytes),
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Network error talking to Azure.";
+    throw new DocumentIntelligenceError(
+      `Document Intelligence unreachable: ${message}`,
+    );
+  }
 }
 
 async function pollAnalyzeResult(
@@ -104,11 +124,20 @@ async function pollAnalyzeResult(
   while (Date.now() - startedAt < POLL_TIMEOUT_MS) {
     await sleep(POLL_INTERVAL_MS);
 
-    const pollResponse = await fetch(operationLocation, {
-      headers: {
-        "Ocp-Apim-Subscription-Key": apiKey,
-      },
-    });
+    let pollResponse: Response;
+    try {
+      pollResponse = await fetch(operationLocation, {
+        headers: {
+          "Ocp-Apim-Subscription-Key": apiKey,
+        },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Network error during poll.";
+      throw new DocumentIntelligenceError(
+        `Document Intelligence unreachable: ${message}`,
+      );
+    }
 
     if (!pollResponse.ok) {
       const detail = (await pollResponse.text()).slice(0, 400);
@@ -140,10 +169,12 @@ async function pollAnalyzeResult(
 }
 
 /**
- * Build a compact OCR JSON document from Read results.
+ * Prefer Azure Markdown `content` (tables as HTML/MD). Fall back to line OCR.
  */
 export function buildOcrJsonPayload(result: DiAnalyzeResult): OcrJsonPayload {
+  const markdown = (result.content ?? "").trim();
   const pages = result.pages ?? [];
+
   const pageBlocks = pages.map((page, index) => {
     const lines = (page.lines ?? [])
       .map((line) => line.content?.trim())
@@ -153,17 +184,17 @@ export function buildOcrJsonPayload(result: DiAnalyzeResult): OcrJsonPayload {
     return `--- Seite ${page.pageNumber ?? index + 1} ---\n${body}`;
   });
 
-  let text = pageBlocks.filter(Boolean).join("\n\n").trim();
-  if (text.length < 8) {
-    text = (result.content ?? "").trim();
-  }
-  if (text.length < 8) {
-    text = (result.paragraphs ?? [])
+  let plainFallback = pageBlocks.filter(Boolean).join("\n\n").trim();
+  if (plainFallback.length < 8) {
+    plainFallback = (result.paragraphs ?? [])
       .map((paragraph) => paragraph.content?.trim())
       .filter((value): value is string => Boolean(value))
       .join("\n")
       .trim();
   }
+
+  const useMarkdown = markdown.length >= 8;
+  const text = useMarkdown ? markdown : plainFallback;
 
   const firstPageLines = (pages[0]?.lines ?? [])
     .map((line) => line.content?.trim())
@@ -173,8 +204,9 @@ export function buildOcrJsonPayload(result: DiAnalyzeResult): OcrJsonPayload {
     modelId: MODEL_ID,
     locale: LOCALE,
     pageCount: Math.max(1, pages.length || 1),
-    text: budgetAbeOcrText(text, MAX_OCR_TEXT_CHARS),
+    text: text.slice(0, MAX_OCR_TEXT_CHARS),
     headerLines: firstPageLines.slice(0, 12),
+    contentFormat: useMarkdown ? "markdown" : "text",
   };
 }
 
@@ -222,21 +254,29 @@ async function runDocumentOcr(input: {
   return ocrJson;
 }
 
-function resolveParseKind(
-  kind: DocumentParseKind | undefined,
-  ocrText: string,
-): "invoice" | "abe" {
-  if (kind === "invoice" || kind === "abe") return kind;
-  return inferInvoiceCategory(ocrText) === "abe" ? "abe" : "invoice";
+function resolveDocumentType(input: {
+  documentType?: OcrDocumentType;
+  kind?: DocumentParseKind;
+  ocrText: string;
+}): OcrDocumentType {
+  if (input.documentType) return input.documentType;
+
+  const inferred = inferInvoiceCategory(input.ocrText);
+  const kind = input.kind ?? "auto";
+  return documentTypeFromParseKind(
+    kind === "abe" ? "abe" : kind === "invoice" ? "invoice" : "auto",
+    inferred,
+  );
 }
 
 /**
- * OCR (Read) → domain parse service (invoice XOR ABE).
+ * OCR (Markdown) → domain parse service with dynamic model routing.
  */
 export async function analyzeDocument(input: {
   bytes: Buffer;
   contentType: string;
   kind?: DocumentParseKind;
+  documentType?: OcrDocumentType;
 }): Promise<AnalyzeDocumentResult> {
   if (!isLlmConfigured()) {
     throw new DocumentIntelligenceError(
@@ -245,32 +285,64 @@ export async function analyzeDocument(input: {
   }
 
   const ocrJson = await runDocumentOcr(input);
-  const kind = resolveParseKind(input.kind, ocrJson.text);
+  const documentType = resolveDocumentType({
+    documentType: input.documentType,
+    kind: input.kind,
+    ocrText: ocrJson.text,
+  });
+  const parseModel = resolveParseModel(documentType);
+
+  // ABE: keep Auflagen budget helper; invoices keep full Markdown slice.
+  const textForParse =
+    documentType === "abe"
+      ? budgetAbeOcrText(ocrJson.text, MAX_OCR_TEXT_CHARS)
+      : ocrJson.text;
+
+  const ocrPayload: OcrJsonPayload = {
+    ...ocrJson,
+    text: textForParse,
+  };
+
   const ocrJsonForApi = JSON.stringify({
-    headerLines: ocrJson.headerLines,
-    text: ocrJson.text,
-    pageCount: ocrJson.pageCount,
+    headerLines: ocrPayload.headerLines,
+    text: ocrPayload.text,
+    pageCount: ocrPayload.pageCount,
+    contentFormat: ocrPayload.contentFormat,
   });
 
   try {
-    if (kind === "abe") {
-      const abe = await abeParseService.parseFromText(ocrJson.text);
+    if (documentType === "abe") {
+      const abe = await abeParseService.parseFromText(ocrPayload.text, {
+        documentType: "abe",
+        model: parseModel,
+      });
       return {
         kind: "abe",
-        fields: abeParseService.toAnalyzeFields(abe, ocrJson.text),
-        rawText: ocrJson.text,
-        ocrJson,
+        documentType,
+        fields: abeParseService.toAnalyzeFields(abe, ocrPayload.text),
+        rawText: ocrPayload.text,
+        ocrJson: ocrPayload,
         modelId: MODEL_ID,
+        parseModel,
       };
     }
 
-    const parsed = await invoiceParseService.parseFromText(ocrJsonForApi);
+    // invoice | tuev → invoice schema; tuev uses economy model via routing.
+    const parsed = await invoiceParseService.parseFromText(ocrJsonForApi, {
+      model: parseModel,
+    });
+    const fields = invoiceParseService.mergeWithOcr(parsed, ocrPayload);
     return {
       kind: "invoice",
-      fields: invoiceParseService.mergeWithOcr(parsed, ocrJson),
-      rawText: ocrJson.text,
-      ocrJson,
+      documentType,
+      fields:
+        documentType === "tuev"
+          ? { ...fields, category: "tuev", lineItems: fields.lineItems }
+          : fields,
+      rawText: ocrPayload.text,
+      ocrJson: ocrPayload,
       modelId: MODEL_ID,
+      parseModel,
     };
   } catch (error) {
     const message =
@@ -284,7 +356,7 @@ export async function analyzeDocument(input: {
 }
 
 /**
- * @deprecated Prefer {@link analyzeDocument} with `kind: "auto" | "invoice"`.
+ * @deprecated Prefer {@link analyzeDocument}.
  */
 export async function analyzeInvoiceDocument(input: {
   bytes: Buffer;

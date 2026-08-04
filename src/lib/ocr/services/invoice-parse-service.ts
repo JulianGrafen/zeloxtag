@@ -1,16 +1,13 @@
 import type OpenAI from "openai";
 
 import { preferAmount, extractAmountFromText } from "@/lib/ocr/amount-from-text";
-import {
-  getConfiguredFoundryAgentName,
-  loadFoundryAgentDefinition,
-} from "@/lib/ocr/foundry-agent";
+import { inferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   extractInvoiceLineItemsFromText,
   preferInvoiceLineItems,
 } from "@/lib/ocr/invoice-line-items-from-text";
 import {
-  INVOICE_SYSTEM_PROMPT,
+  buildInvoiceSystemPrompt,
   INVOICE_USER_PROMPT_LINES,
 } from "@/lib/ocr/invoice-parse-prompts";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
@@ -19,6 +16,8 @@ import {
   extractMileageKmFromText,
   preferMileageKm,
 } from "@/lib/ocr/mileage-from-text";
+import { resolveParseModel } from "@/lib/ocr/model-routing";
+import type { OcrJsonPayload } from "@/lib/ocr/ocr-types";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
   INVOICE_TEXT_PARSE_JSON_SCHEMA,
@@ -26,25 +25,28 @@ import {
   normalizeTextParseResult,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
-import { inferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import { resolveVendorName } from "@/lib/ocr/vendor-from-text";
-import type { OcrJsonPayload } from "@/lib/ocr/ocr-types";
 
-const PARSE_MAX_TOKENS = 2_400;
-const MAX_RAW_TEXT_CHARS = 16_000;
+/** Higher ceiling — invoice line-item arrays need room. */
+const PARSE_MAX_TOKENS = 3_600;
+/** Markdown tables are denser; keep enough context for multi-page invoices. */
+const MAX_MARKDOWN_CHARS = 28_000;
 
-function prepareInvoiceTextForLlm(rawText: string): string {
+/**
+ * Preserve Markdown structure (tables / headings). Do not collapse spaces
+ * inside lines — that destroys table cell alignment for the LLM.
+ */
+function prepareMarkdownForLlm(rawText: string): string {
   return rawText
     .replace(/\r\n/g, "\n")
-    .replace(/[^\S\n]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n{4,}/g, "\n\n\n")
     .trim()
-    .slice(0, MAX_RAW_TEXT_CHARS);
+    .slice(0, MAX_MARKDOWN_CHARS);
 }
 
 /**
- * analyzeDocument often passes stringified OCR JSON.
- * Prefer nested `text` (+ header lines) so newlines survive.
+ * analyzeDocument may pass stringified OCR JSON.
+ * Prefer nested `text` (+ header lines) so Markdown / newlines survive.
  */
 function resolveOcrPlainText(rawText: string): string {
   const trimmed = rawText.trim();
@@ -69,17 +71,27 @@ function resolveOcrPlainText(rawText: string): string {
   return rawText;
 }
 
+export type InvoiceParseOptions = {
+  /** Override routed model (tests / diagnostics). */
+  model?: string;
+};
+
 /**
  * Invoice-only LLM parse service.
- * Does not extract ABE/Teilegutachten fields — use {@link AbeParseService}.
+ * Uses mid-tier model routing + few-shot prompts for mileage / line items.
+ * Does not extract ABE fields — use {@link AbeParseService}.
  */
 export class InvoiceParseService {
   /**
-   * Parse OCR raw text / OCR JSON string into structured invoice fields.
+   * Parse OCR Markdown / text into structured invoice fields.
+   * Output is Zod-validated before return.
    */
-  async parseFromText(rawText: string): Promise<InvoiceTextParseResult> {
+  async parseFromText(
+    rawText: string,
+    options: InvoiceParseOptions = {},
+  ): Promise<InvoiceTextParseResult> {
     const plainText = resolveOcrPlainText(rawText);
-    const text = prepareInvoiceTextForLlm(plainText);
+    const text = prepareMarkdownForLlm(plainText);
     const heuristicLineItems = extractInvoiceLineItemsFromText(plainText);
     const heuristicMileageKm = extractMileageKmFromText(plainText);
     const heuristicAmount = preferAmount(null, plainText, heuristicLineItems);
@@ -116,34 +128,23 @@ export class InvoiceParseService {
       throw new TextParseError("OCR text is too short to parse.");
     }
 
+    const routedModel = options.model ?? resolveParseModel("invoice");
     let client: OpenAI;
-    let fallbackModel: string;
+    let model: string;
     try {
-      ({ client, model: fallbackModel } = getOcrLlmClient());
+      ({ client, model } = getOcrLlmClient({ model: routedModel }));
     } catch (error) {
       throw new TextParseError(
         error instanceof Error ? error.message : "LLM client is not configured.",
       );
     }
 
-    let systemInstructions = INVOICE_SYSTEM_PROMPT;
-    let model = fallbackModel;
-
-    try {
-      const agent = await loadFoundryAgentDefinition(
-        getConfiguredFoundryAgentName(),
-      );
-      // Only reuse the Foundry model deployment — prompts stay invoice-only.
-      if (agent?.model) {
-        model = agent.model;
-      }
-    } catch {
-      // Keep local invoice prompt + fallback model.
-    }
-
+    // Never send an agent name as the chat model.
     if (/^zeloxta/i.test(model)) {
-      model = fallbackModel === model ? "gpt-5.4-nano" : fallbackModel;
+      model = resolveParseModel("invoice");
     }
+
+    const systemInstructions = buildInvoiceSystemPrompt();
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
@@ -186,7 +187,12 @@ export class InvoiceParseService {
     const parsed = invoiceTextParseSchema.safeParse(parsedJson);
     if (!parsed.success) {
       if (hasHeuristicFallback) return heuristicOnlyPayload();
-      throw new TextParseError("Invoice parse payload failed schema validation.");
+      throw new TextParseError(
+        `Invoice parse payload failed schema validation: ${parsed.error.issues
+          .slice(0, 3)
+          .map((issue) => issue.message)
+          .join("; ")}`,
+      );
     }
 
     const normalized = this.nullAbeFields(
@@ -219,7 +225,7 @@ export class InvoiceParseService {
     const categorySeed = `${fullText}\n${parsed.summary ?? ""}\n${parsed.vendor ?? ""}`;
     const scored = inferInvoiceCategory(categorySeed);
 
-    let category: InvoiceTextParseResult["category"] =
+    const category: InvoiceTextParseResult["category"] =
       scored === "abe"
         ? parsed.category === "abe"
           ? "other"
