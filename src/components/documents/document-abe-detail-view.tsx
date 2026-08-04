@@ -8,11 +8,13 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
 import { DocumentViewer } from "@/components/documents/document-viewer";
 import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
+import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import {
   displayDocumentTitle,
   formatDocumentDate,
@@ -61,6 +63,7 @@ export function DocumentAbeDetailView({
     backHref ?? `/v/${tagUuid}/dokumente?type=abe`;
   const scannedLabel = formatDocumentDate(document.created_at.slice(0, 10));
   const fileName = fileNameFromUrl(document.file_url, partName);
+  const kindLabel = approvalKindLabel(document.approval_fields);
   const subtitle = [
     titleIncludesManufacturer ? null : manufacturer || null,
     vehicleLabel,
@@ -89,7 +92,7 @@ export function DocumentAbeDetailView({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-                ABE · PDF
+                {kindLabel} · PDF
               </p>
               <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
                 {partName}
@@ -120,6 +123,8 @@ export function DocumentAbeDetailView({
             </span>
           </div>
         </header>
+
+        <ApprovalFieldsSection approvalFields={document.approval_fields} />
 
         <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">

@@ -1,14 +1,18 @@
 /**
  * ZeloxTag Supabase database typings.
- * Keep in sync with `supabase/migrations/00001_initial_schema.sql`.
+ * Keep in sync with `supabase/migrations/`.
  *
  * Note: Interfaces use `type` aliases (not `interface`) so Row shapes remain
  * assignable to postgrest-js `Record<string, unknown>` constraints.
  */
 
+import type { ApprovalFields } from "@/lib/documents/approval-fields";
+
 export type TagStatus = "unclaimed" | "active";
 
 export type DocumentType = "abe" | "invoice" | "tuev" | "other";
+
+export type { ApprovalFields };
 
 /** Optional OCR classification (app-level; not a DB column in 00001). */
 export type InvoiceCategory = "tuning" | "service" | "repair" | "inspection";
@@ -80,6 +84,11 @@ export type Document = {
   mileage_km: number | null;
   /** ABE technical dimensions (ET, Breite, Durchmesser, …). */
   technical_specs: DocumentTechnicalSpec[] | null;
+  /**
+   * Structured Gutachten / TÜV payload (`00016`).
+   * Subtype discriminator — `type` stays abe|tuev.
+   */
+  approval_fields: ApprovalFields | null;
   amount: number | null;
   date: string | null;
   created_at: string;
@@ -180,6 +189,7 @@ export type Database = {
           invoice_number?: string | null;
           mileage_km?: number | null;
           technical_specs?: DocumentTechnicalSpec[] | null;
+          approval_fields?: ApprovalFields | null;
           amount?: number | null;
           date?: string | null;
           created_at?: string;
@@ -205,6 +215,7 @@ export type Database = {
           invoice_number?: string | null;
           mileage_km?: number | null;
           technical_specs?: DocumentTechnicalSpec[] | null;
+          approval_fields?: ApprovalFields | null;
           amount?: number | null;
           date?: string | null;
           created_at?: string;

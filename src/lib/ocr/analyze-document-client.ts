@@ -2,6 +2,9 @@
  * Browser helper: Markdown OCR + routed LLM parse via `/api/ocr/parse`.
  */
 
+import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import { parseApprovalFields } from "@/lib/documents/approval-fields";
+
 import type { DocumentParseKind, OcrDocumentType } from "./ocr-types";
 import type {
   InvoiceTextParseCategory,
@@ -13,6 +16,7 @@ export type AnalyzeDocumentResult = {
   kind: "invoice" | "abe";
   documentType: OcrDocumentType;
   fields: InvoiceTextParseResult;
+  approvalFields: ApprovalFields | null;
   rawText: string;
   modelId: string;
   parseModel?: string;
@@ -61,6 +65,7 @@ async function analyzeOneFile(
         documentType: OcrDocumentType;
         parseModel?: string;
         fields: InvoiceTextParseResult;
+        approvalFields?: ApprovalFields | null;
         rawText: string;
         modelId: string;
       }
@@ -79,6 +84,7 @@ async function analyzeOneFile(
     kind: payload.documentType === "abe" ? "abe" : "invoice",
     documentType: payload.documentType,
     fields: payload.fields,
+    approvalFields: parseApprovalFields(payload.approvalFields ?? null),
     rawText: payload.rawText,
     modelId: payload.modelId,
     parseModel: payload.parseModel,
@@ -188,6 +194,8 @@ export async function analyzeDocumentFiles(
     kind: mergedKind,
     documentType,
     fields: mergeFields(results),
+    approvalFields:
+      results.find((result) => result.approvalFields)?.approvalFields ?? null,
     rawText,
     modelId: results[0]?.modelId ?? "prebuilt-layout",
     parseModel: results[0]?.parseModel,

@@ -1,7 +1,7 @@
 /**
  * Score-based invoice category inference.
- * Especially separates TÜV/HU Prüfungen from Reparatur-Rechnungen,
- * and prevents parts invoices (with incidental "ABE"/"§19") from becoming ABE.
+ * Separates real HU/AU Prüfberichte from Werkstatt-Rechnungen that merely
+ * mention TÜV/DEKRA (brand, “inkl. TÜV-Abnahme”, etc.).
  */
 
 import type { InvoiceTextParseCategory } from "./text-parse-schema";
@@ -11,27 +11,40 @@ type WeightedPattern = {
   weight: number;
 };
 
-/** Strong signals for official inspection / Prüfbericht invoices. */
-const TUEV_PATTERNS: WeightedPattern[] = [
-  { pattern: /\bhauptuntersuchung\b/i, weight: 6 },
-  { pattern: /\buntersuchungsbericht\b/i, weight: 6 },
-  { pattern: /\bprüfbericht\b|\bpruefbericht\b/i, weight: 6 },
-  { pattern: /\b§\s*29\b|\bstvzo\b/i, weight: 5 },
-  { pattern: /\bhu\s*\/\s*au\b|\bau\s*\/\s*hu\b/i, weight: 5 },
-  { pattern: /\bhu\b.{0,12}\bau\b|\bau\b.{0,12}\bhu\b/i, weight: 5 },
-  { pattern: /\babgasuntersuchung\b/i, weight: 5 },
-  { pattern: /\bprüfplakette\b|\bpruefplakette\b|\bhu-?plakette\b/i, weight: 4 },
-  { pattern: /\bsicherheitsprüfung\b|\bsicherheitspruefung\b|\bspo\b/i, weight: 4 },
+/**
+ * Strong signals that the document itself IS a HU/AU / Prüfbericht.
+ * Brand names alone are NOT enough.
+ */
+const TUEV_STRONG_PATTERNS: WeightedPattern[] = [
+  { pattern: /\bhauptuntersuchung\b/i, weight: 8 },
+  { pattern: /\buntersuchungsbericht\b/i, weight: 8 },
+  { pattern: /\bprüfbericht\b|\bpruefbericht\b/i, weight: 7 },
+  { pattern: /\bhu\s*[\/+]\s*au\b|\bau\s*[\/+]\s*hu\b/i, weight: 7 },
+  { pattern: /\bhu\s*und\s*au\b|\bau\s*und\s*hu\b/i, weight: 7 },
+  { pattern: /\babgasuntersuchung\b/i, weight: 6 },
+  { pattern: /\b§\s*29\b/i, weight: 6 },
+  { pattern: /\bprüfplakette\b|\bpruefplakette\b|\bhu-?plakette\b/i, weight: 5 },
+  { pattern: /\bperiodische\s+untersuchung\b/i, weight: 5 },
+  { pattern: /\bmängelbericht\b|\bmaengelbericht\b/i, weight: 4 },
+  { pattern: /\bohne\s+(?:erhebliche\s+)?mängel\b|\bohne\s+maengel\b/i, weight: 4 },
+  { pattern: /\bnächste\s+hu\b|\bnaechste\s+hu\b|\bhu\s+fällig\b/i, weight: 4 },
+  { pattern: /\buntersucht\s+am\b|\buntersuchungstag\b/i, weight: 3 },
+  { pattern: /\bprüfingenieur\b|\bpruefingenieur\b|\bprüfstelle\b|\bpruefstelle\b/i, weight: 3 },
+];
+
+/**
+ * Weak / incidental signals — common on Werkstattrechnungen.
+ * Must not classify a commercial invoice as TÜV by themselves.
+ */
+const TUEV_WEAK_PATTERNS: WeightedPattern[] = [
   {
     pattern:
-      /\bt[üu]v\s*(s[üu]d|nord|rheinland|hessen|th[üu]ringen)?\b|\bdekra\b|\bk[üu]s\b|\bgt[üu]\b|\bgtue\b/i,
-    weight: 4,
+      /\bt[üu]v\s*(?:s[üu]d|nord|rheinland|hessen|th[üu]ringen)?\b|\bdekra\b|\bk[üu]s\b|\bgt[üu]\b|\bgtue\b/i,
+    weight: 2,
   },
-  { pattern: /\bprüfstelle\b|\bpruefstelle\b|\bprüfingenieur\b|\bpruefingenieur\b/i, weight: 4 },
-  { pattern: /\bperiodische\s+untersuchung\b/i, weight: 4 },
-  { pattern: /\bmängelbericht\b|\bmaengelbericht\b|\bohne\s+mängel\b/i, weight: 3 },
-  { pattern: /\buntersucht\s+am\b|\bnächste\s+hu\b|\bnaechste\s+hu\b/i, weight: 3 },
-  { pattern: /\bt[üu]v\b/i, weight: 2 },
+  { pattern: /\bt[üu]v[-\s]?(?:abnahme|eintragung|termin|bereit|fähig|faehig)\b/i, weight: 2 },
+  { pattern: /\binkl\.?\s*t[üu]v\b|\bmit\s*t[üu]v\b/i, weight: 1 },
+  { pattern: /\bsicherheitsprüfung\b|\bsicherheitspruefung\b/i, weight: 2 },
   { pattern: /(?:^|[^\p{L}])hu(?:[^\p{L}]|$)/iu, weight: 1 },
 ];
 
@@ -93,15 +106,16 @@ const SERVICE_PATTERNS: WeightedPattern[] = [
   { pattern: /\binspektion\s*plus\b|\bklein[es]?\s*service\b|\bgro[sß][es]?\s*service\b/i, weight: 3 },
 ];
 
-/** Commercial invoice signals — veto weak ABE classification. */
+/** Commercial invoice signals — veto weak TÜV / ABE classification. */
 const INVOICE_PATTERNS: WeightedPattern[] = [
-  { pattern: /\brechnung\b|\binvoice\b|\bquittung\b/i, weight: 6 },
+  { pattern: /\brechnung\b|\binvoice\b|\bquittung\b|\bkassenbon\b/i, weight: 6 },
   { pattern: /\brechnungs(?:nr|nummer)|beleg(?:nr|nummer)|re[-\s]?\d{2,}/i, weight: 5 },
   { pattern: /\bmwst\b|\bumssatzsteuer\b|\bm\.?\s*w\.?\s*st\.?\b/i, weight: 5 },
   { pattern: /\bnetto(?:betrag)?\b|\bbrutto(?:betrag)?\b|\brechnungsbetrag\b|\bzahlbetrag\b/i, weight: 4 },
   { pattern: /\beinzelpreis\b|\bgesamtpreis\b|\bpositions(?:preis|betrag)\b/i, weight: 3 },
   { pattern: /\barbeitslohn\b|\bwerkstatt\b|\bkunde(?:nnummer)?\b/i, weight: 2 },
   { pattern: /\b\d{1,3}(?:\.\d{3})*,\d{2}\s*€/i, weight: 2 },
+  { pattern: /\bposition(?:en)?\b|\bartikel\b|\bmenge\b/i, weight: 1 },
 ];
 
 function scorePatterns(text: string, patterns: WeightedPattern[]): number {
@@ -112,25 +126,50 @@ function scorePatterns(text: string, patterns: WeightedPattern[]): number {
   return score;
 }
 
-function looksLikeCommercialInvoice(text: string, invoiceScore: number): boolean {
-  if (invoiceScore >= 5) return true;
-  // Multiple money amounts typical for position lists.
+export function looksLikeCommercialInvoice(
+  text: string,
+  invoiceScore?: number,
+): boolean {
+  const score =
+    invoiceScore ?? scorePatterns(text.replace(/\s+/g, " ").trim(), INVOICE_PATTERNS);
+  if (score >= 5) return true;
   const moneyHits = text.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g) ?? [];
-  if (moneyHits.length >= 3 && invoiceScore >= 2) return true;
+  if (moneyHits.length >= 3 && score >= 2) return true;
+  if (moneyHits.length >= 2 && score >= 4) return true;
   return false;
+}
+
+/** True when the document is a real HU/AU Prüfbericht, not a workshop bill. */
+export function hasStrongTuevEvidence(text: string): boolean {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return scorePatterns(normalized, TUEV_STRONG_PATTERNS) >= 6;
+}
+
+function pickBestSpecialty(scores: {
+  tuning: number;
+  service: number;
+  repair: number;
+}): InvoiceTextParseCategory | null {
+  const ranked = [
+    { category: "tuning" as const, score: scores.tuning },
+    { category: "service" as const, score: scores.service },
+    { category: "repair" as const, score: scores.repair },
+  ].sort((a, b) => b.score - a.score);
+
+  if (ranked[0].score >= 2) return ranked[0].category;
+  return null;
 }
 
 /**
  * Classify invoice text into app categories.
- * TÜV vs Reparatur: inspection language wins when both appear weakly;
- * strong repair language can still win against a lone "TÜV" brand mention.
- * ABE requires a real gutachten document — not "inkl. ABE" on a parts bill.
+ * Commercial invoices with incidental TÜV/DEKRA mentions stay service/repair/tuning/other.
  */
 export function inferInvoiceCategory(text: string): InvoiceTextParseCategory {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return "other";
 
-  const tuev = scorePatterns(normalized, TUEV_PATTERNS);
+  const tuevStrong = scorePatterns(normalized, TUEV_STRONG_PATTERNS);
+  const tuevWeak = scorePatterns(normalized, TUEV_WEAK_PATTERNS);
   const repair = scorePatterns(normalized, REPAIR_PATTERNS);
   const tuning = scorePatterns(normalized, TUNING_PATTERNS);
   const service = scorePatterns(normalized, SERVICE_PATTERNS);
@@ -138,60 +177,75 @@ export function inferInvoiceCategory(text: string): InvoiceTextParseCategory {
   const abeWeak = scorePatterns(normalized, ABE_WEAK_PATTERNS);
   const invoice = scorePatterns(normalized, INVOICE_PATTERNS);
   const isInvoice = looksLikeCommercialInvoice(normalized, invoice);
+  const specialty = pickBestSpecialty({ tuning, service, repair });
 
-  // Real ABE/Teilegutachten document — only if not clearly a commercial invoice.
+  // Real ABE/Teilegutachten — never a commercial parts invoice.
   if (abeStrong >= 5 && !isInvoice) {
     return "abe";
   }
-  // Strong gutachten + weak invoice noise (e.g. a stamp) can still be ABE.
   if (abeStrong >= 8 && invoice < 6) {
     return "abe";
   }
-  // Weak "ABE"/"§19"/"KBA" alone must NEVER classify a Rechnung as ABE.
-  if (isInvoice || invoice >= 4) {
-    // fall through to invoice categories
-  } else if (abeStrong + abeWeak >= 6 && abeStrong >= 4) {
+  if (!(isInvoice || invoice >= 4) && abeStrong + abeWeak >= 6 && abeStrong >= 4) {
     return "abe";
   }
 
-  // Explicit head-to-head: Prüfbericht / HU+AU beats generic "Reparatur" noise.
-  if (tuev >= 4 && tuev >= repair) {
+  // Real HU/AU Prüfbericht: needs strong evidence. On commercial invoices,
+  // require even clearer Prüfbericht language so "TÜV-Abnahme" bills stay invoices.
+  const tuevThreshold = isInvoice ? 10 : 6;
+  if (tuevStrong >= tuevThreshold && tuevStrong >= repair + 2) {
     return "tuev";
   }
-  if (repair >= 4 && repair > tuev) {
-    return "repair";
+
+  // Weak TÜV/DEKRA brand noise on a Rechnung must never win.
+  if (isInvoice || invoice >= 4) {
+    if (specialty) return specialty;
+    if (repair >= 2) return "repair";
+    if (service >= 2) return "service";
+    if (tuning >= 2) return "tuning";
+    return "other";
   }
-  if (tuev > 0 && repair > 0) {
-    return tuev >= repair ? "tuev" : "repair";
-  }
-  if (tuev >= 2) return "tuev";
+
+  // Non-invoice documents (scanned Prüfberichte without MwSt).
+  if (tuevStrong >= 6) return "tuev";
+  if (tuevStrong + tuevWeak >= 8 && tuevStrong >= 4) return "tuev";
+
+  if (repair >= 4 && repair > tuevStrong) return "repair";
+  if (specialty) return specialty;
   if (repair >= 2) return "repair";
 
-  const ranked = (
-    [
-      { category: "tuning", score: tuning },
-      { category: "service", score: service },
-      { category: "tuev", score: tuev },
-      { category: "repair", score: repair },
-      // ABE only competes when strong signals exist and invoice is weak.
-      {
-        category: "abe",
-        score:
-          isInvoice || invoice >= 4
-            ? 0
-            : abeStrong >= 4
-              ? abeStrong + Math.min(abeWeak, 2)
-              : 0,
-      },
-    ] as Array<{ category: InvoiceTextParseCategory; score: number }>
-  ).sort((a, b) => b.score - a.score);
-
-  if (ranked[0].score >= 2) {
-    return ranked[0].category;
-  }
-
-  // Commercial bill without a clear specialty → other (invoice), never ABE.
-  if (isInvoice) return "other";
+  // Never let weak brand score alone (e.g. "TÜV" = 2) classify as tuev.
+  if (tuevStrong >= 4) return "tuev";
 
   return "other";
+}
+
+/**
+ * Merge LLM category with heuristics — never promote weak TÜV on Rechnungen.
+ */
+export function preferInvoiceCategory(
+  llmCategory: InvoiceTextParseCategory,
+  rawText: string,
+): InvoiceTextParseCategory {
+  const scored = inferInvoiceCategory(rawText);
+  const isInvoice = looksLikeCommercialInvoice(rawText);
+  const strongTuev = hasStrongTuevEvidence(rawText);
+
+  // Heuristic found a clear specialty / Prüfbericht.
+  if (scored === "tuev") return "tuev";
+  if (scored !== "other" && scored !== "abe") {
+    // Don't let LLM "tuev" override a commercial service/repair/tuning bill.
+    if (llmCategory === "tuev" && isInvoice && !strongTuev) {
+      return scored;
+    }
+    return scored;
+  }
+
+  // LLM said tuev but text is a Werkstattrechnung without Prüfbericht signals.
+  if (llmCategory === "tuev" && isInvoice && !strongTuev) {
+    return "other";
+  }
+
+  if (llmCategory === "abe") return "other";
+  return llmCategory;
 }

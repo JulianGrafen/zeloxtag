@@ -142,7 +142,7 @@ export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
         type: "string",
         enum: [...INVOICE_TEXT_PARSE_CATEGORIES],
         description:
-          "InvoiceParseService: tuning|service|tuev|repair|other (never abe). category=abe is set only by AbeParseService.",
+          "InvoiceParseService: tuning|service|tuev|repair|other (never abe). Use tuev ONLY for real HU/AU Prüfberichte — NOT for workshop invoices that merely mention TÜV/DEKRA. category=abe is set only by AbeParseService.",
       },
       summary: {
         type: ["string", "null"],

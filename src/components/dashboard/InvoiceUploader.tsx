@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
+import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { localDateIso } from "@/lib/documents/format";
 import {
   buildInvoiceDashboardTitle,
@@ -151,6 +152,9 @@ export function InvoiceUploader({
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [rawText, setRawText] = useState("");
+  const [approvalFields, setApprovalFields] = useState<ApprovalFields | null>(
+    null,
+  );
   const [fields, setFields] = useState<InvoiceTextParseResult>(
     emptyFields(initialCategory),
   );
@@ -188,6 +192,7 @@ export function InvoiceUploader({
     setUploadFile(null);
     setPageCount(0);
     setRawText("");
+    setApprovalFields(null);
     setFields(emptyFields(initialCategory));
     setTitle("");
     setError(null);
@@ -295,6 +300,7 @@ export function InvoiceUploader({
       setPreviewOwned(processed.previewUrlOwned);
       setPageCount(processed.pageCount);
       setRawText(analyzed.rawText);
+      setApprovalFields(analyzed.approvalFields);
 
       const oil = detectOilChangeInvoice({
         title: analyzed.fields.summary,
@@ -442,6 +448,10 @@ export function InvoiceUploader({
       formData.set("invoiceNumber", "");
       formData.set("mileageKm", "");
       formData.set("pageCount", String(pageCount || 1));
+      formData.set(
+        "approvalFields",
+        approvalFields ? JSON.stringify(approvalFields) : "",
+      );
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
@@ -820,6 +830,12 @@ export function InvoiceUploader({
                   : String(fields.mileageKm),
               );
               formData.set("pageCount", String(pageCount || 1));
+              formData.set(
+                "approvalFields",
+                category === "tuev" && approvalFields?.kind === "tuev"
+                  ? JSON.stringify(approvalFields)
+                  : "",
+              );
               formData.set("file", uploadFile);
 
               const result = await uploadDocument(formData);

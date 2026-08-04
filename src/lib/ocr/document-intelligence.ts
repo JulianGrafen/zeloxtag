@@ -5,8 +5,11 @@
  * ABE → {@link AbeParseService} (economy model)
  */
 
+import type { ApprovalFields } from "@/lib/documents/approval-fields";
+
 import { budgetAbeOcrText } from "./abe-from-text";
 import { getDocumentIntelligenceEnv } from "./document-intelligence-env";
+import { extractApprovalFieldsFromText } from "./extract-approval-fields";
 import { inferInvoiceCategory } from "./infer-invoice-category";
 import { isLlmConfigured } from "./llm-client";
 import { documentTypeFromParseKind, resolveParseModel } from "./model-routing";
@@ -66,6 +69,8 @@ export type AnalyzeDocumentResult = {
   kind: "invoice" | "abe";
   documentType: OcrDocumentType;
   fields: InvoiceTextParseResult;
+  /** Structured subtype payload for upload → `documents.approval_fields`. */
+  approvalFields: ApprovalFields | null;
   rawText: string;
   ocrJson: OcrJsonPayload;
   /** Azure DI model id (layout / read). */
@@ -318,10 +323,13 @@ export async function analyzeDocument(input: {
         documentType: "abe",
         model: parseModel,
       });
+      const approvalFields = extractApprovalFieldsFromText(ocrPayload.text);
       return {
         kind: "abe",
         documentType,
         fields: abeParseService.toAnalyzeFields(abe, ocrPayload.text),
+        approvalFields:
+          approvalFields.kind === "tuev" ? { kind: "abe" } : approvalFields,
         rawText: ocrPayload.text,
         ocrJson: ocrPayload,
         modelId: MODEL_ID,
@@ -329,18 +337,25 @@ export async function analyzeDocument(input: {
       };
     }
 
-    // invoice | tuev → invoice schema; tuev uses economy model via routing.
+    // invoice | tuev → same invoice schema; final category comes from merge heuristics.
     const parsed = await invoiceParseService.parseFromText(ocrJsonForApi, {
       model: parseModel,
     });
     const fields = invoiceParseService.mergeWithOcr(parsed, ocrPayload);
+    // Never force category=tuev from a weak early documentType guess — that
+    // mislabeled Werkstattrechnungen that merely mention TÜV/DEKRA.
+    const resolvedType: OcrDocumentType =
+      fields.category === "tuev" ? "tuev" : "invoice";
+    const approvalFields =
+      resolvedType === "tuev"
+        ? extractApprovalFieldsFromText(ocrPayload.text, "tuev")
+        : null;
     return {
       kind: "invoice",
-      documentType,
-      fields:
-        documentType === "tuev"
-          ? { ...fields, category: "tuev", lineItems: fields.lineItems }
-          : fields,
+      documentType: resolvedType,
+      fields,
+      approvalFields:
+        approvalFields?.kind === "tuev" ? approvalFields : null,
       rawText: ocrPayload.text,
       ocrJson: ocrPayload,
       modelId: MODEL_ID,

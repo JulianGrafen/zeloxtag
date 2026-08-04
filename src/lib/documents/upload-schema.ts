@@ -24,6 +24,8 @@ export const uploadDocumentMetaSchema = z
     invoiceNumber: z.string().trim().max(80).optional().default(""),
     mileageKm: z.string().trim().max(32).optional().default(""),
     pageCount: z.string().trim().max(8).optional().default(""),
+    /** JSON string for `documents.approval_fields` (discriminated union). */
+    approvalFields: z.string().max(100_000).optional().default(""),
     date: z
       .string()
       .trim()
@@ -56,6 +58,7 @@ export function metaFromFormData(formData: FormData): unknown {
     invoiceNumber: String(formData.get("invoiceNumber") ?? "").trim(),
     mileageKm: String(formData.get("mileageKm") ?? "").trim(),
     pageCount: String(formData.get("pageCount") ?? "").trim(),
+    approvalFields: String(formData.get("approvalFields") ?? ""),
     date: String(formData.get("date") ?? "").trim(),
     amount: String(formData.get("amount") ?? "").trim(),
   };

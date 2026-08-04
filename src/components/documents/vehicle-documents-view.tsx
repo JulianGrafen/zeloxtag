@@ -14,6 +14,7 @@ import {
 import { deleteDocument } from "@/actions/delete-document";
 import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-view";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import {
   displayDocumentTitle,
   documentTypeLabel,
@@ -279,9 +280,18 @@ function DocumentRow({
               : null
         : null;
 
+  const typeLabel =
+    document.type === "abe" &&
+    document.approval_fields &&
+    document.approval_fields.kind !== "abe"
+      ? approvalKindLabel(document.approval_fields)
+      : document.type === "tuev" && document.approval_fields?.kind === "tuev"
+        ? approvalKindLabel(document.approval_fields)
+        : documentTypeLabel(document.type);
+
   const meta = (
     <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
-      {documentTypeLabel(document.type)}
+      {typeLabel}
       {" · "}
       {formatDocumentDate(document.date)}
       {document.type === "invoice" && lineCount > 0

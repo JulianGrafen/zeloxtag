@@ -11,6 +11,7 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import type { Document } from "@/types/database";
 
+import { parseApprovalFields } from "./approval-fields";
 import { DOCUMENT_BUCKET } from "./constants";
 import { isPrimaryOilChange } from "./invoice-title";
 import { parseLineItems } from "./line-items";
@@ -109,6 +110,7 @@ export async function uploadDocument(
     Number.isFinite(pageCountParsed) && pageCountParsed > 0
       ? pageCountParsed
       : null;
+  const approvalFields = parseApprovalFields(meta.approvalFields);
 
   // Durable oil-change marker for Intervalle history (no raw OCR at read time).
   const oil = detectOilChangeInvoice({
@@ -171,6 +173,7 @@ export async function uploadDocument(
       invoice_number: invoiceNumber,
       mileage_km: mileageKm,
       technical_specs: technicalSpecs,
+      approval_fields: approvalFields,
       amount,
       date,
       created_at: now,
@@ -276,7 +279,18 @@ export async function uploadDocument(
       invoice_number: invoiceNumber,
       mileage_km: mileageKm,
       technical_specs: technicalSpecs,
+      approval_fields: approvalFields,
       ...abeDetail,
+    },
+    {
+      ...baseRow,
+      vendor,
+      category,
+      line_items: lineItems,
+      invoice_number: invoiceNumber,
+      mileage_km: mileageKm,
+      technical_specs: technicalSpecs,
+      approval_fields: approvalFields,
     },
     {
       ...baseRow,
@@ -397,6 +411,8 @@ export async function uploadDocument(
             : mileageKm,
         technical_specs:
           parseTechnicalSpecs(result.data.technical_specs) ?? technicalSpecs,
+        approval_fields:
+          parseApprovalFields(result.data.approval_fields) ?? approvalFields,
       };
       insertError = null;
       break;

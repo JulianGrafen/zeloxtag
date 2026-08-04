@@ -1,3 +1,4 @@
+import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import { parseLineItems } from "@/lib/documents/line-items";
 import { getMockUploadedDocuments } from "@/lib/documents/mock-uploads";
 import {
@@ -63,6 +64,7 @@ function normalizeDocument(value: unknown): Document | null {
     amount: Number.isFinite(amount) ? amount : null,
     mileage_km: Number.isFinite(mileageKm) ? mileageKm : null,
     technical_specs: parseTechnicalSpecs(doc.technical_specs),
+    approval_fields: parseApprovalFields(doc.approval_fields),
   };
 }
 

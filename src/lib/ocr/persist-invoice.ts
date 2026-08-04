@@ -104,6 +104,7 @@ export async function persistOcrInvoice(input: {
       invoice_number: null,
       mileage_km: null,
       technical_specs: null,
+      approval_fields: null,
       amount: input.ocr.amount,
       date: input.ocr.date,
     })
@@ -131,6 +132,7 @@ export async function persistOcrInvoice(input: {
     invoice_number: document.invoice_number ?? null,
     mileage_km: document.mileage_km ?? null,
     technical_specs: document.technical_specs ?? null,
+    approval_fields: document.approval_fields ?? null,
     category: input.ocr.category,
   };
 }

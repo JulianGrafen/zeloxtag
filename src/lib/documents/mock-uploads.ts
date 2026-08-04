@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 
 import type { Document } from "@/types/database";
 
+import { parseApprovalFields } from "./approval-fields";
 import { parseLineItems } from "./line-items";
 import { parseAbeConditions, parseStringList } from "./string-list";
 import { parseTechnicalSpecs } from "./technical-specs";
@@ -43,6 +44,7 @@ function normalizeDocument(document: Document): Document {
     mileage_km:
       typeof document.mileage_km === "number" ? document.mileage_km : null,
     technical_specs: parseTechnicalSpecs(document.technical_specs),
+    approval_fields: parseApprovalFields(document.approval_fields),
   };
 }
 

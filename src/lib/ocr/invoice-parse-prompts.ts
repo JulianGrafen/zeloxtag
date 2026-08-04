@@ -38,7 +38,10 @@ Regeln:
   Rabatt-/Skonto-Zeilen nur aufnehmen, wenn ein Euro-Betrag (z.B. -45,00) steht —
   dann amount = dieser Euro-Wert, nicht die Prozentzahl.
 - Ölwechsel: category=service, summary mit 'Ölwechsel', mileageKm wenn vorhanden
-- TÜV/HU: category=tuev; lineItems oft null
+- category=tuev NUR bei echten HU/AU-Prüfberichten (Hauptuntersuchung,
+  Untersuchungsbericht, Prüfplakette, §29). NICHT bei Werkstatt-Rechnungen,
+  die nur "TÜV", "DEKRA", "inkl. TÜV-Abnahme" oder "TÜV-Teile" erwähnen —
+  dann service|repair|tuning|other je nach Positionen.
 - ABE-Felder IMMER null — niemals category=abe
 
 Keine Erklärungen, nur JSON.`;
@@ -85,7 +88,8 @@ export const INVOICE_USER_PROMPT_LINES = [
   "Jede Position als eigenes lineItem.",
   "mileageKm PFLICHT wenn Laufleistung / km-Stand / Tachostand / … km lesbar.",
   "Ölwechsel/Motoröl/Ölfilter → category=service.",
-  "Bei TÜV/HU: category=tuev; lineItems = null wenn keine Positionen.",
+  "category=tuev NUR bei HU/AU-Prüfbericht — nie bei Rechnungen mit MwSt/Positionen,",
+  "auch wenn TÜV/DEKRA nur nebenbei genannt wird.",
 ] as const;
 
 /** System prompt used for invoice LLM calls (base + few-shot). */

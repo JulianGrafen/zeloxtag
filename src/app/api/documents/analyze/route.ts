@@ -9,6 +9,8 @@ import { getDocumentIntelligenceEnv } from "@/lib/ocr/document-intelligence-env"
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import type { DocumentParseKind, OcrDocumentType } from "@/lib/ocr/ocr-types";
 import { OCR_DOCUMENT_TYPES } from "@/lib/ocr/ocr-types";
+import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
@@ -34,6 +36,7 @@ type AnalyzeSuccess = {
   documentType: OcrDocumentType;
   parseModel: string;
   fields: InvoiceTextParseResult;
+  approvalFields: ApprovalFields | null;
   rawText: string;
   modelId: string;
 };
@@ -149,6 +152,7 @@ export async function POST(request: NextRequest) {
       documentType: result.documentType,
       parseModel: result.parseModel,
       fields: result.fields,
+      approvalFields: parseApprovalFields(result.approvalFields),
       rawText: result.rawText,
       modelId: result.modelId,
     };

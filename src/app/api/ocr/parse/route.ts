@@ -9,6 +9,8 @@ import { getDocumentIntelligenceEnv } from "@/lib/ocr/document-intelligence-env"
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { OCR_DOCUMENT_TYPES, type OcrDocumentType } from "@/lib/ocr/ocr-types";
+import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import {
   invoiceTextParseSchema,
   type InvoiceTextParseResult,
@@ -30,6 +32,7 @@ type ParseSuccess = {
   parseModel: string;
   contentFormat: "markdown" | "text";
   fields: InvoiceTextParseResult;
+  approvalFields: ApprovalFields | null;
   rawText: string;
   modelId: string;
 };
@@ -153,6 +156,7 @@ export async function POST(request: NextRequest) {
       parseModel: result.parseModel || resolveParseModel(documentType),
       contentFormat: result.ocrJson.contentFormat,
       fields: validated.data,
+      approvalFields: parseApprovalFields(result.approvalFields),
       rawText: result.rawText,
       modelId: result.modelId,
     };

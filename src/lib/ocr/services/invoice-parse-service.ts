@@ -1,7 +1,7 @@
 import type OpenAI from "openai";
 
 import { preferAmount, extractAmountFromText } from "@/lib/ocr/amount-from-text";
-import { inferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
+import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   extractInvoiceLineItemsFromText,
   preferInvoiceLineItems,
@@ -221,20 +221,7 @@ export class InvoiceParseService {
     const fullText = `${headerBlob}\n${ocr.text}`;
 
     const categorySeed = `${fullText}\n${parsed.summary ?? ""}\n${parsed.vendor ?? ""}`;
-    const scored = inferInvoiceCategory(categorySeed);
-
-    const category: InvoiceTextParseResult["category"] =
-      scored === "abe"
-        ? parsed.category === "abe"
-          ? "other"
-          : parsed.category !== "other"
-            ? parsed.category
-            : "other"
-        : scored !== "other"
-          ? scored
-          : parsed.category === "abe"
-            ? "other"
-            : parsed.category;
+    const category = preferInvoiceCategory(parsed.category, categorySeed);
 
     const vendor = resolveVendorName({
       structuredVendor: parsed.vendor,
