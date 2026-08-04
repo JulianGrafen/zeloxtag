@@ -64,12 +64,21 @@ export function NetworkMockQr() {
           uuid?: string | null;
           source?: QrSource;
           warning?: string;
+          missingEnv?: string[];
         } | null;
 
         if (payload?.ok && typeof payload.uuid === "string" && payload.uuid) {
           unclaimedUuid = payload.uuid;
           nextSource = payload.source ?? "supabase";
           nextWarning = payload.warning ?? null;
+          if (payload.missingEnv?.length) {
+            nextWarning = [
+              nextWarning,
+              `Fehlt: ${payload.missingEnv.join(", ")}`,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+          }
         }
       } catch {
         nextWarning = "API nicht erreichbar — Demo-UUID.";

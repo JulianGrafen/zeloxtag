@@ -5,7 +5,7 @@ import {
   createAdminClient,
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
-import { getSupabaseEnv } from "@/lib/supabase/env";
+import { getSupabaseEnvDiagnostics } from "@/lib/supabase/env";
 import { createUnclaimedTag } from "@/lib/tags/create-unclaimed-tag";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 
@@ -16,6 +16,7 @@ type NextUnclaimedBody = {
   uuid: string;
   source: "supabase" | "minted" | "mock" | "empty-fallback-mock";
   warning?: string;
+  missingEnv?: string[];
 };
 
 /**
@@ -31,15 +32,19 @@ export async function GET(request: NextRequest) {
   if (limited) return limited;
 
   const forceMint = request.nextUrl.searchParams.get("mint") === "1";
-  const { isConfigured } = getSupabaseEnv();
+  const diagnostics = getSupabaseEnvDiagnostics();
 
-  if (!isConfigured || !isSupabaseAdminConfigured()) {
+  if (!diagnostics.isAdminConfigured) {
+    const missing = diagnostics.missing;
     const body: NextUnclaimedBody = {
       ok: true,
       uuid: MOCK_TAG_UUIDS.unclaimed,
       source: "mock",
+      missingEnv: missing,
       warning:
-        "Supabase Admin fehlt — Demo-UUID. Auf Vercel SUPABASE_SERVICE_ROLE_KEY setzen.",
+        missing.length > 0
+          ? `Vercel Env fehlt: ${missing.join(", ")}. In Vercel → Settings → Environment Variables setzen (Production + Redeploy).`
+          : "Supabase Admin fehlt — Demo-UUID.",
     };
     return NextResponse.json(body);
   }

@@ -6,9 +6,17 @@ import { getSupabaseEnv } from "./env";
  * Service-role client (bypasses RLS). Server-only — never import in client code.
  * Untyped against generated Database to avoid supabase-js generic regressions.
  */
+function readServiceRoleKey(): string {
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.SUPABASE_SERVICE_KEY?.trim() ||
+    ""
+  );
+}
+
 export function createAdminClient(): SupabaseClient {
   const { url, isConfigured } = getSupabaseEnv();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
+  const serviceRoleKey = readServiceRoleKey();
 
   if (!isConfigured || !serviceRoleKey) {
     throw new Error(
@@ -26,5 +34,5 @@ export function createAdminClient(): SupabaseClient {
 
 export function isSupabaseAdminConfigured(): boolean {
   const { isConfigured } = getSupabaseEnv();
-  return isConfigured && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+  return isConfigured && Boolean(readServiceRoleKey());
 }
