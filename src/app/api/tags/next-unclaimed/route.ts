@@ -6,31 +6,55 @@ import {
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createUnclaimedTag } from "@/lib/tags/create-unclaimed-tag";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 
 export const runtime = "nodejs";
 
+type NextUnclaimedBody = {
+  ok: true;
+  uuid: string;
+  source: "supabase" | "minted" | "mock" | "empty-fallback-mock";
+  warning?: string;
+};
+
 /**
  * GET /api/tags/next-unclaimed
- * Latest unclaimed tag UUID for QR / inventory testing.
+ * Latest unclaimed tag UUID for the online QR generator (`/qr` on Vercel).
  *
- * Public (rate-limited): always falls back to the local mock UUID so `/qr`
- * keeps working without a session. Live Supabase lookup runs when configured.
+ * When the inventory is empty and the service role is configured, mints a
+ * fresh unclaimed tag so production QR generation never falls back to demo IDs.
+ * Pass `?mint=1` to always create a new plaque UUID (inventory tooling).
  */
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, "apiDefault", "next-unclaimed");
   if (limited) return limited;
 
+  const forceMint = request.nextUrl.searchParams.get("mint") === "1";
   const { isConfigured } = getSupabaseEnv();
+
   if (!isConfigured || !isSupabaseAdminConfigured()) {
-    return NextResponse.json({
+    const body: NextUnclaimedBody = {
       ok: true,
       uuid: MOCK_TAG_UUIDS.unclaimed,
       source: "mock",
-    });
+      warning:
+        "Supabase Admin fehlt — Demo-UUID. Auf Vercel SUPABASE_SERVICE_ROLE_KEY setzen.",
+    };
+    return NextResponse.json(body);
   }
 
   try {
+    if (forceMint) {
+      const minted = await createUnclaimedTag();
+      const body: NextUnclaimedBody = {
+        ok: true,
+        uuid: minted.uuid,
+        source: "minted",
+      };
+      return NextResponse.json(body);
+    }
+
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("tags")
@@ -42,33 +66,39 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({
+      const body: NextUnclaimedBody = {
         ok: true,
         uuid: MOCK_TAG_UUIDS.unclaimed,
         source: "mock",
         warning: error.message,
-      });
+      };
+      return NextResponse.json(body);
     }
 
-    if (!data?.uuid) {
-      return NextResponse.json({
+    if (data?.uuid) {
+      const body: NextUnclaimedBody = {
         ok: true,
-        uuid: MOCK_TAG_UUIDS.unclaimed,
-        source: "empty-fallback-mock",
-      });
+        uuid: data.uuid,
+        source: "supabase",
+      };
+      return NextResponse.json(body);
     }
 
-    return NextResponse.json({
+    // Empty inventory → mint so Vercel `/qr` always has a live target.
+    const minted = await createUnclaimedTag();
+    const body: NextUnclaimedBody = {
       ok: true,
-      uuid: data.uuid,
-      source: "supabase",
-    });
+      uuid: minted.uuid,
+      source: "minted",
+    };
+    return NextResponse.json(body);
   } catch (error) {
-    return NextResponse.json({
+    const body: NextUnclaimedBody = {
       ok: true,
       uuid: MOCK_TAG_UUIDS.unclaimed,
       source: "mock",
       warning: error instanceof Error ? error.message : "Lookup failed",
-    });
+    };
+    return NextResponse.json(body);
   }
 }
