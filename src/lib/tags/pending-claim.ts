@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 
 export const PENDING_CLAIM_COOKIE = "zt_pending_claim";
 
-/** Vehicle + tag payload stored while Magic Link auth completes. */
+/** Vehicle + tag payload stored while deferred auth completes. */
 export type PendingClaim = {
   tagUuid: string;
   make: string;

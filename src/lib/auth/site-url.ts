@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 
 /**
- * Absolute site origin for Magic Link redirects and production QR targets.
+ * Absolute site origin for auth redirects and production QR targets.
  * Prefer NEXT_PUBLIC_SITE_URL, then Vercel URL, then request host.
  */
 export async function getSiteUrl(): Promise<string> {

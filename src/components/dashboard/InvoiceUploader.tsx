@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import { localDateIso } from "@/lib/documents/format";
 import {
   buildInvoiceDashboardTitle,
@@ -132,10 +133,15 @@ export function InvoiceUploader({
   subheading,
 }: InvoiceUploaderProps) {
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/dokumente`;
+  const {
+    compressFile,
+    isCompressing,
+    statusLabel: compressionStatus,
+  } = useDocumentCompression();
   const [step, setStep] = useState<WizardStep>("compose");
   const [pages, setPages] = useState<CompressedPage[]>([]);
   const [nativePdf, setNativePdf] = useState<File | null>(null);
-  const [compressing, setCompressing] = useState(false);
+  const [pagePrepBusy, setPagePrepBusy] = useState(false);
   const [progress, setProgress] = useState<ProcessorProgress>({
     label: "Vorbereitung…",
     percent: 0,
@@ -175,7 +181,7 @@ export function InvoiceUploader({
     }
     setNativePdf(null);
     setStep("compose");
-    setCompressing(false);
+    setPagePrepBusy(false);
     setProgress({ label: "Vorbereitung…", percent: 0 });
     setPreviewUrl(null);
     setPreviewOwned(false);
@@ -189,25 +195,28 @@ export function InvoiceUploader({
 
   async function handleIncomingFile(file: File) {
     setError(null);
+    setPagePrepBusy(true);
 
-    if (isPdfFile(file)) {
-      clearPages();
-      setNativePdf(file);
-      return;
-    }
-
-    if (nativePdf) {
-      setNativePdf(null);
-    }
-
-    if (pages.length >= MAX_PAGES) {
-      setError(`Maximal ${MAX_PAGES} Seiten pro Beleg.`);
-      return;
-    }
-
-    setCompressing(true);
     try {
-      const compressed = await ingestImageFile(file);
+      // Cap 4K camera frames / huge PNGs before A4 crop + OCR.
+      const optimized = await compressFile(file);
+
+      if (optimized.kind === "pdf" || isPdfFile(optimized.file)) {
+        clearPages();
+        setNativePdf(optimized.file);
+        return;
+      }
+
+      if (nativePdf) {
+        setNativePdf(null);
+      }
+
+      if (pages.length >= MAX_PAGES) {
+        setError(`Maximal ${MAX_PAGES} Seiten pro Beleg.`);
+        return;
+      }
+
+      const compressed = await ingestImageFile(optimized.file);
       setPages((current) => [...current, compressed]);
     } catch (ingestError) {
       setError(
@@ -216,9 +225,11 @@ export function InvoiceUploader({
           : "Seite konnte nicht komprimiert werden.",
       );
     } finally {
-      setCompressing(false);
+      setPagePrepBusy(false);
     }
   }
+
+  const compressing = isCompressing || pagePrepBusy;
 
   function removePage(pageId: string) {
     setPages((current) => {
@@ -638,7 +649,7 @@ export function InvoiceUploader({
           {compressing ? (
             <p className="flex items-center justify-center gap-2 text-[0.82rem] text-[color:var(--vd-muted)]">
               <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
-              Seite wird komprimiert…
+              {compressionStatus ?? "Optimiere Dateien…"}
             </p>
           ) : null}
 

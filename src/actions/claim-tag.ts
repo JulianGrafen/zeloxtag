@@ -162,9 +162,29 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
 }
 
 /**
- * Completes a claim after Magic Link callback (optional path).
+ * Completes a claim after auth callback (optional path).
+ * Prefer {@link completePendingClaimForUser} from the auth callback when the
+ * session was just written onto the Route Handler response (not yet in
+ * `cookies()` from `next/headers`).
  */
 export async function completePendingClaim(): Promise<
+  | { status: "claimed"; tagUuid: string; nextTagUuid: string | null }
+  | { status: "error"; message: string }
+  | null
+> {
+  const user = await getCurrentUser();
+  if (!user) {
+    const pending = await getPendingClaim();
+    if (!pending) return null;
+    return { status: "error", message: "Sitzung nach Login nicht gefunden." };
+  }
+  return completePendingClaimForUser(user.id);
+}
+
+/** Complete a pending claim for a known user id (auth callback). */
+export async function completePendingClaimForUser(
+  ownerUserId: string,
+): Promise<
   | { status: "claimed"; tagUuid: string; nextTagUuid: string | null }
   | { status: "error"; message: string }
   | null
@@ -172,12 +192,7 @@ export async function completePendingClaim(): Promise<
   const pending = await getPendingClaim();
   if (!pending) return null;
 
-  const user = await getCurrentUser();
-  if (!user) {
-    return { status: "error", message: "Sitzung nach Login nicht gefunden." };
-  }
-
-  const result = await completeClaimForOwner(user.id, pending);
+  const result = await completeClaimForOwner(ownerUserId, pending);
   await clearPendingClaim();
   return result;
 }

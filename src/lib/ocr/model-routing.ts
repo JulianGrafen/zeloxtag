@@ -1,46 +1,38 @@
 /**
- * Cost vs. accuracy routing for OCR → LLM parse.
- *
- * Invoices need stronger table / line-item attention → mid-tier model.
- * ABE / TÜV stay on the cheap nano deployment.
+ * Foundry chat deployment for OCR → LLM parse.
+ * All document types (invoice, ABE, TÜV) use GPT-5.4.
  */
 
 import type { OcrDocumentType } from "./ocr-types";
 
-/** Default mid-tier deployment for invoice table extraction. */
-export const DEFAULT_INVOICE_MODEL = "gpt-5.5-instant";
+/** Single default deployment for every parse path. */
+export const DEFAULT_PARSE_MODEL = "gpt-5.4-nano";
 
-/** Default economy deployment for ABE / TÜV. */
-export const DEFAULT_ECONOMY_MODEL = "gpt-5.4-nano";
+/** @deprecated Use {@link DEFAULT_PARSE_MODEL}. */
+export const DEFAULT_INVOICE_MODEL = DEFAULT_PARSE_MODEL;
+
+/** @deprecated Use {@link DEFAULT_PARSE_MODEL}. */
+export const DEFAULT_ECONOMY_MODEL = DEFAULT_PARSE_MODEL;
 
 function readEnvModel(name: string): string {
   return process.env[name]?.trim() ?? "";
 }
 
 /**
- * Resolve the Foundry / OpenAI chat deployment for a document type.
- * Env overrides:
- * - FOUNDRY_MODEL_INVOICE (or FOUNDRY_MODEL_ACCURACY)
- * - FOUNDRY_MODEL_ECONOMY (or FOUNDRY_MODEL_NAME as legacy fallback)
+ * Resolve the Foundry / OpenAI chat deployment.
+ * Always GPT-5.4 — `documentType` is kept for call-site compatibility.
+ * Env: `FOUNDRY_MODEL_NAME` (preferred) or `FOUNDRY_MODEL_ECONOMY`.
  */
-export function resolveParseModel(documentType: OcrDocumentType): string {
-  if (documentType === "invoice") {
-    return (
-      readEnvModel("FOUNDRY_MODEL_INVOICE") ||
-      readEnvModel("FOUNDRY_MODEL_ACCURACY") ||
-      DEFAULT_INVOICE_MODEL
-    );
-  }
-
-  // abe | tuev → cost-efficient nano
+export function resolveParseModel(_documentType: OcrDocumentType): string {
   return (
-    readEnvModel("FOUNDRY_MODEL_ECONOMY") ||
     readEnvModel("FOUNDRY_MODEL_NAME") ||
-    DEFAULT_ECONOMY_MODEL
+    readEnvModel("FOUNDRY_MODEL_ECONOMY") ||
+    readEnvModel("FOUNDRY_MODEL_INVOICE") ||
+    DEFAULT_PARSE_MODEL
   );
 }
 
-/** Map UI / analyze kind onto OCR document types for routing. */
+/** Map UI / analyze kind onto OCR document types for service dispatch. */
 export function documentTypeFromParseKind(
   kind: "invoice" | "abe" | "auto",
   inferredCategory?: string,

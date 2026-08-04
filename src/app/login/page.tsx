@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
   title: "Anmelden · ZeloxTag",
-  description: "Sicher bei ZeloxTag anmelden (Passwort, Magic Link, MFA).",
+  description: "Sicher bei ZeloxTag anmelden (Passwort, MFA).",
 };
 
 interface LoginPageProps {

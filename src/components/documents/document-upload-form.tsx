@@ -2,13 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FileUp, Upload } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Upload } from "lucide-react";
 
-import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { DocumentUpload } from "@/components/dashboard/DocumentUpload";
+import {
+  PressableButton,
+  PressableLink,
+} from "@/components/vehicle-dashboard/Pressable";
 import {
   DOCUMENT_TYPE_LABELS,
   DOCUMENT_TYPE_OPTIONS,
-  MAX_DOCUMENT_BYTES,
 } from "@/lib/documents/constants";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import type { DocumentType } from "@/types/database";
@@ -20,7 +23,7 @@ interface DocumentUploadFormProps {
   defaultType?: DocumentType;
 }
 
-/** Manual PDF/file upload fallback (no Magic Link / no cloud OCR). */
+/** Manual PDF/file upload fallback (no cloud OCR). */
 export function DocumentUploadForm({
   vehicleId,
   tagUuid,
@@ -60,7 +63,7 @@ export function DocumentUploadForm({
             Datei hochladen
           </h1>
           <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel} · PDF oder Bild, max. 10 MB
+            {vehicleLabel} · PDF oder Bild (Bilder werden optimiert)
           </p>
         </div>
       </header>
@@ -173,42 +176,29 @@ export function DocumentUploadForm({
           </div>
         )}
 
-        <label className="block space-y-1.5">
-          <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
+        <div className="space-y-1.5">
+          <span className="block text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
             Datei
           </span>
-          <div className="relative">
-            <input
-              type="file"
-              required
-              accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
-              className="absolute inset-0 z-10 cursor-pointer opacity-0"
-              onChange={(event) => {
-                const next = event.target.files?.[0] ?? null;
-                setFile(next);
-                setFileName(next?.name ?? null);
-                if (next && next.size > MAX_DOCUMENT_BYTES) {
-                  setError("Datei zu groß (max. 10 MB).");
-                } else {
-                  setError(null);
-                }
-              }}
-            />
-            <div className="flex items-center gap-3 rounded-xl border border-dashed border-[color:var(--vd-border)] bg-white px-3 py-3.5">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 text-white">
-                <FileUp className="h-4 w-4" aria-hidden />
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-[0.9rem] font-medium text-[color:var(--vd-text)]">
-                  {fileName ?? "Datei wählen"}
-                </span>
-                <span className="block text-[0.75rem] text-[color:var(--vd-muted)]">
-                  Tippen zum Auswählen
-                </span>
-              </span>
-            </div>
-          </div>
-        </label>
+          <DocumentUpload
+            disabled={pending}
+            label={fileName ?? "Datei wählen"}
+            hint="PDF max. 10 MB · Bilder → Full HD JPEG"
+            onReady={(results) => {
+              const first = results[0];
+              if (!first) return;
+              setFile(first.file);
+              setFileName(first.file.name);
+              setError(null);
+            }}
+          />
+          {pending ? (
+            <p className="flex items-center gap-2 text-[0.78rem] text-[color:var(--vd-muted)]">
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              Wird hochgeladen…
+            </p>
+          ) : null}
+        </div>
 
         {error ? (
           <p
@@ -222,10 +212,10 @@ export function DocumentUploadForm({
         <PressableButton
           type="submit"
           variant="button"
-          disabled={pending}
-          className="claim-cta"
+          disabled={pending || !file}
+          className="claim-cta inline-flex w-full items-center justify-center gap-2 disabled:opacity-60"
         >
-          {pending ? "Hochladen…" : "Hochladen"}
+          Hochladen
         </PressableButton>
       </form>
     </section>

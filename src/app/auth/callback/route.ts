@@ -1,44 +1,84 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { completePendingClaimForUser } from "@/actions/claim-tag";
 import { getSupabaseEnv } from "@/lib/supabase/env";
-import { createClient } from "@/lib/supabase/server";
-import { completePendingClaim } from "@/actions/claim-tag";
+import { createRouteHandlerClient } from "@/lib/supabase/route";
+
+function mapAuthCallbackError(message: string): string {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("pkce") ||
+    lower.includes("code verifier") ||
+    lower.includes("verifier not found")
+  ) {
+    return (
+      "E-Mail-Bestätigung muss im selben Browser geöffnet werden, in dem du dich registriert hast. " +
+      "Bitte erneut in diesem Browser registrieren bzw. den Link hier öffnen."
+    );
+  }
+  return message;
+}
 
 /**
- * OAuth / Magic Link PKCE callback.
- * Exchanges `code` for a session, then completes any pending tag claim.
+ * Email-confirmation / OAuth PKCE callback.
+ * Exchanges `code` for a session using request/response cookies so the PKCE
+ * verifier and new session cookies travel with the redirect.
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
   const nextRaw = searchParams.get("next") ?? "/";
-  const next = nextRaw.startsWith("/") ? nextRaw : "/";
+  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/";
 
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {
-    return NextResponse.redirect(`${origin}${next}`);
+    return NextResponse.redirect(new URL(next, origin));
   }
 
-  if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (!code) {
+    return NextResponse.redirect(new URL(next, origin));
+  }
 
-    if (error) {
-      const loginUrl = new URL("/login", origin);
-      loginUrl.searchParams.set("error", error.message);
-      return NextResponse.redirect(loginUrl);
-    }
+  const redirectUrl = new URL(next, origin);
+  const response = NextResponse.redirect(redirectUrl);
+  const supabase = createRouteHandlerClient(request, response);
 
-    const claimResult = await completePendingClaim();
-    if (claimResult?.status === "claimed") {
-      return NextResponse.redirect(`${origin}/v/${claimResult.tagUuid}`);
-    }
-    if (claimResult?.status === "error") {
-      const loginUrl = new URL("/login", origin);
-      loginUrl.searchParams.set("error", claimResult.message);
-      return NextResponse.redirect(loginUrl);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    const loginUrl = new URL("/login", origin);
+    loginUrl.searchParams.set("error", mapAuthCallbackError(error.message));
+    loginUrl.searchParams.set("next", next);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  const userId = data.user?.id ?? data.session?.user?.id;
+  if (userId) {
+    try {
+      const claimResult = await completePendingClaimForUser(userId);
+      if (claimResult?.status === "claimed") {
+        // Preserve session cookies set during exchange on this response.
+        const claimed = NextResponse.redirect(
+          new URL(`/v/${claimResult.tagUuid}`, origin),
+        );
+        response.cookies.getAll().forEach((cookie) => {
+          claimed.cookies.set(cookie);
+        });
+        return claimed;
+      }
+      if (claimResult?.status === "error") {
+        const loginUrl = new URL("/login", origin);
+        loginUrl.searchParams.set("error", claimResult.message);
+        const failed = NextResponse.redirect(loginUrl);
+        response.cookies.getAll().forEach((cookie) => {
+          failed.cookies.set(cookie);
+        });
+        return failed;
+      }
+    } catch {
+      // Claim is optional on plain login — session cookies already on `response`.
     }
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  return response;
 }
