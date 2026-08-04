@@ -1073,7 +1073,7 @@ export function InvoiceUploader({
           ) : null}
 
           <Button type="submit" disabled={pending} className="claim-cta">
-            {pending ? "PDF wird gespeichert…" : "PDF in Supabase speichern"}
+            {pending ? "Wird gespeichert…" : "Speichern"}
           </Button>
         </form>
       ) : null}
