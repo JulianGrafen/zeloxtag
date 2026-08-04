@@ -10,6 +10,7 @@ import { getDocumentIntelligenceEnv } from "./document-intelligence-env";
 import { inferInvoiceCategory } from "./infer-invoice-category";
 import { isLlmConfigured } from "./llm-client";
 import { documentTypeFromParseKind, resolveParseModel } from "./model-routing";
+import { normalizeOcrMarkdown } from "./normalize-ocr-markdown";
 import type {
   DocumentParseKind,
   OcrDocumentType,
@@ -194,7 +195,8 @@ export function buildOcrJsonPayload(result: DiAnalyzeResult): OcrJsonPayload {
   }
 
   const useMarkdown = markdown.length >= 8;
-  const text = useMarkdown ? markdown : plainFallback;
+  // Convert Azure HTML <table>/<td> blocks to pipe rows so parsers never see tags.
+  const text = normalizeOcrMarkdown(useMarkdown ? markdown : plainFallback);
 
   const firstPageLines = (pages[0]?.lines ?? [])
     .map((line) => line.content?.trim())

@@ -8,6 +8,7 @@ import {
 } from "@/lib/documents/oil-changes";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
 import { deriveNextInspectionFromDocuments } from "@/lib/documents/tuev-schedule";
+import { resolveVehicleImage } from "@/lib/vehicles/vehicle-image";
 
 import { DashboardScanFab } from "./dashboard-scan-fab";
 
@@ -41,14 +42,16 @@ export function TagDashboardView({
   const shortTag = tagUuid.length > 12 ? `${tagUuid.slice(0, 12)}…` : tagUuid;
   const vehicleModel = `${vehicle.make} ${vehicle.model}`;
   const vinLabel = vehicle.vin ? `VIN ${vehicle.vin}` : "VIN nicht hinterlegt";
+  const cutout = resolveVehicleImage({
+    make: vehicle.make,
+    model: vehicle.model,
+  });
 
   const data = {
     ownerName: ownerName?.trim() || "Fahrer",
     vehicleModel: `${vehicleModel} · ${vehicle.year}`,
-    vehicleImage: vehicle.model.toLowerCase().includes("rx")
-      ? "/vehicles/rx8.png"
-      : undefined,
-    vehicleImageAlt: `${vehicleModel} (${vehicle.year})`,
+    vehicleImage: cutout?.src,
+    vehicleImageAlt: cutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
     statusLabel: `ZeloxTag · ${shortTag}`,
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),

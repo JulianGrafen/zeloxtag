@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  isHtmlDebrisLabel,
+  stripHtmlTags,
+} from "@/lib/ocr/normalize-ocr-markdown";
+
 /** Categories returned by text-only LLM extraction (hybrid OCR). */
 export const INVOICE_TEXT_PARSE_CATEGORIES = [
   "tuning",
@@ -218,10 +223,16 @@ function normalizeLineItems(
 
   const cleaned = items
     .map((item) => ({
-      label: item.label.trim().slice(0, 160),
+      label: stripHtmlTags(item.label).replace(/\s+/g, " ").trim().slice(0, 160),
       amount: Math.round(item.amount * 100) / 100,
     }))
-    .filter((item) => item.label.length > 0 && Number.isFinite(item.amount))
+    .filter(
+      (item) =>
+        item.label.length > 0 &&
+        Number.isFinite(item.amount) &&
+        !isHtmlDebrisLabel(item.label) &&
+        /[a-zäöüß]{2,}/i.test(item.label),
+    )
     .slice(0, 40);
 
   return cleaned.length > 0 ? cleaned : null;

@@ -52,11 +52,14 @@ FEW-SHOT — mileageKm:
 - If absent → mileageKm: null
 
 FEW-SHOT — lineItems (Markdown / HTML tables):
-- You are reading OCR Markdown. Extract EVERY billable row individually.
-- Do NOT group materials into one label.
+- You are reading OCR Markdown. Tables may appear as pipe rows OR HTML (<table>/<td>).
+- ALWAYS use the INNER TEXT of cells as label — NEVER output tags like "<td>", "</td>", "td", "th".
+- Extract EVERY billable row individually. Do NOT group materials into one label.
 - amount = row total (qty × unit). Never the unit price alone.
 - Example Markdown row: "| 4x | Reifen | 120,00 |"
   → { "label": "Reifen", "amount": 480 }
+- Example HTML: "<tr><td>1</td><td>Ölfilter</td><td>42,90</td></tr>"
+  → { "label": "Ölfilter", "amount": 42.9 }
 - Example: "| 1 | Arbeitslohn Ölwechsel | 89,00 |"
   → { "label": "Arbeitslohn Ölwechsel", "amount": 89 }
 - Example: "| 1 | Motoröl 5W-30 | 198,50 |" and "| 1 | Ölfilter | 42,90 |"
@@ -72,7 +75,8 @@ export const INVOICE_USER_PROMPT_LINES = [
   "vendor, invoiceNumber, amount, lineItems, mileageKm, date, category, summary.",
   "ABE-Felder (kbaNumber, conditions, manufacturer, …) IMMER null.",
   "category niemals 'abe'. Erlaubt: tuning | service | tuev | repair | other.",
-  "Lies Markdown-Tabellen zeilenweise — jede Position als eigenes lineItem.",
+  "Lies Tabellen zeilenweise (Pipe-Markdown oder HTML <td>) — label = Zelltext, nie Tags.",
+  "Jede Position als eigenes lineItem.",
   "mileageKm PFLICHT wenn Laufleistung / km-Stand / Tachostand / … km lesbar.",
   "Ölwechsel/Motoröl/Ölfilter → category=service.",
   "Bei TÜV/HU: category=tuev; lineItems = null wenn keine Positionen.",

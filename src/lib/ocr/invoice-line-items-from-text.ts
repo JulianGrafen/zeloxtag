@@ -3,6 +3,11 @@
  * Splits material / labor / VAT into separate positions when the LLM merges them.
  */
 
+import {
+  isHtmlDebrisLabel,
+  normalizeOcrMarkdown,
+  stripHtmlTags,
+} from "./normalize-ocr-markdown";
 import type { InvoiceLineItem } from "./text-parse-schema";
 
 const MAX_ITEMS = 40;
@@ -88,7 +93,8 @@ const LABOR_MARKERS = [
 ];
 
 function cleanLabel(value: string): string {
-  return value
+  return stripHtmlTags(value)
+    .replace(/\|/g, " ")
     .replace(/\s+/g, " ")
     .replace(/^[\d\s.\)\-•*]+/, "")
     .replace(/\s*(?:€|eur|euro)\s*$/i, "")
@@ -111,9 +117,12 @@ function parseGermanAmount(raw: string): number | null {
 
 function isPlausibleLabel(label: string): boolean {
   if (label.length < 2 || label.length > MAX_LABEL) return false;
+  if (isHtmlDebrisLabel(label)) return false;
   if (SKIP_LABEL.test(label)) return false;
   if (/^\d+([.,]\d+)?$/.test(label)) return false;
-  return /[a-zäöüß]/i.test(label);
+  // Require a real word — bare "td"/"th" from HTML tags must not pass.
+  if (!/[a-zäöüß]{2,}/i.test(label)) return false;
+  return true;
 }
 
 function pushItem(
@@ -198,7 +207,8 @@ export function lineTotalFromInvoiceRow(line: string): {
 export function extractInvoiceLineItemsFromText(
   rawText: string,
 ): InvoiceLineItem[] | null {
-  const text = rawText.replace(/\r\n/g, "\n");
+  // Azure Markdown often ships HTML <table>/<td> — convert before row parse.
+  const text = normalizeOcrMarkdown(rawText);
   const items: InvoiceLineItem[] = [];
   const seen = new Set<string>();
 

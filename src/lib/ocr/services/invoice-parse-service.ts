@@ -17,6 +17,7 @@ import {
   preferMileageKm,
 } from "@/lib/ocr/mileage-from-text";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
+import { normalizeOcrMarkdown } from "@/lib/ocr/normalize-ocr-markdown";
 import type { OcrJsonPayload } from "@/lib/ocr/ocr-types";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
@@ -33,14 +34,11 @@ const PARSE_MAX_TOKENS = 3_600;
 const MAX_MARKDOWN_CHARS = 28_000;
 
 /**
- * Preserve Markdown structure (tables / headings). Do not collapse spaces
- * inside lines — that destroys table cell alignment for the LLM.
+ * HTML tables → pipe Markdown, then keep structure for the LLM.
  */
 function prepareMarkdownForLlm(rawText: string): string {
-  return rawText
-    .replace(/\r\n/g, "\n")
+  return normalizeOcrMarkdown(rawText)
     .replace(/\n{4,}/g, "\n\n\n")
-    .trim()
     .slice(0, MAX_MARKDOWN_CHARS);
 }
 
