@@ -7,8 +7,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
 
 export const metadata: Metadata = {
-  title: "Einstellungen · ZeloxTag",
-  description: "Konto-Einstellungen und Zwei-Faktor-Authentifizierung.",
+  title: "2FA · ZeloxTag",
+  description: "Zwei-Faktor-Authentifizierung für dein ZeloxTag-Konto.",
 };
 
 export default async function SettingsPage() {
@@ -25,33 +25,20 @@ export default async function SettingsPage() {
             href="/dashboard"
             className="text-[0.8rem] font-medium text-[color:var(--vd-muted)]"
           >
-            ← Dashboard
+            ← Zurück zum Dashboard
           </Link>
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-[1.6rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            Einstellungen
+            2FA
           </h1>
           <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-            Konto & Sicherheit · angemeldet als{" "}
+            Zwei-Faktor-Authentifizierung ·{" "}
             <span className="font-medium text-[color:var(--vd-text)]">
               {user.email ?? user.id}
             </span>
           </p>
         </div>
 
-        <section aria-labelledby="settings-2fa-heading" className="space-y-3">
-          <div className="px-1">
-            <h2
-              id="settings-2fa-heading"
-              className="font-[family-name:var(--font-display)] text-[0.72rem] font-semibold tracking-[0.16em] text-[color:var(--vd-muted)] uppercase"
-            >
-              Sicherheit
-            </h2>
-            <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
-              Zwei-Faktor-Authentifizierung (2FA) für dein ZeloxTag-Konto.
-            </p>
-          </div>
-          <MfaSetupPanel />
-        </section>
+        <MfaSetupPanel />
       </section>
     </AppShell>
   );

@@ -213,9 +213,15 @@ async function completeClaimForOwner(
   const supabase = createAdminClient();
 
   const user = await getCurrentUser();
-  if (claim.name && user && !user.user_metadata?.name) {
-    const authed = await createClient();
-    await authed.auth.updateUser({ data: { name: claim.name } });
+  const authed = await createClient();
+  if (user) {
+    const meta: Record<string, string> = {
+      active_tag_uuid: claim.tagUuid,
+    };
+    if (claim.name && !user.user_metadata?.name) {
+      meta.name = claim.name;
+    }
+    await authed.auth.updateUser({ data: meta });
   }
 
   const { data: tag, error: tagError } = await supabase

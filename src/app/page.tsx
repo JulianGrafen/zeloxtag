@@ -21,7 +21,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <AppShell showNavbar={false}>
-      <LoginForm nextPath={next ?? "/dashboard"} initialError={error} />
+      <LoginForm nextPath={next && next !== "/" ? next : "/dashboard"} initialError={error} />
     </AppShell>
   );
 }

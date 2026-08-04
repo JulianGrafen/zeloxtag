@@ -1,9 +1,9 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
 import {
   clientIpFromHeaders,
   rateLimit,
@@ -19,7 +19,7 @@ export type MfaActionResult =
       qrCode: string;
       secret: string;
     }
-  | { status: "verified" }
+  | { status: "verified"; redirectTo?: string }
   | { status: "ok"; message?: string }
   | { status: "factors"; factors: Array<{ id: string; friendlyName: string | null }> }
   | { status: "error"; message: string }
@@ -183,8 +183,22 @@ export async function verifyMfaLogin(
     return { status: "error", message: verified.error.message };
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const next = nextPathSchema.safeParse(nextPath);
-  redirect(next.success ? next.data : "/dashboard");
+  const requested = next.success ? next.data : "/dashboard";
+  const redirectTo =
+    !user?.id ||
+    requested === "/" ||
+    requested === "/login" ||
+    requested === "/dashboard"
+      ? user?.id
+        ? await resolvePostLoginPath(user.id)
+        : "/dashboard"
+      : requested;
+
+  return { status: "verified", redirectTo };
 }
 
 export async function unenrollTotp(factorId: string): Promise<MfaActionResult> {

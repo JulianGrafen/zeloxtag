@@ -97,8 +97,7 @@ export function LoginForm({ nextPath = "/dashboard", initialError }: LoginFormPr
                 return;
               }
               if (result.status === "signed_in") {
-                router.push(nextPath || "/dashboard");
-                router.refresh();
+                window.location.assign(nextPath || "/dashboard");
                 return;
               }
               if (result.status === "error") {
@@ -107,11 +106,20 @@ export function LoginForm({ nextPath = "/dashboard", initialError }: LoginFormPr
               return;
             }
 
-            const result = await signInWithPassword(email, password, nextPath);
+            const result = await signInWithPassword(
+              email,
+              password,
+              nextPath || "/dashboard",
+            );
             if (result.status === "mfa_required") {
               router.push(
-                `/login/mfa?next=${encodeURIComponent(nextPath || "/dashboard")}`,
+                `/login/mfa?next=${encodeURIComponent("/dashboard")}`,
               );
+              return;
+            }
+            if (result.status === "ok") {
+              // Hard nav → vehicle tile dashboard when a tag exists.
+              window.location.assign(result.redirectTo || "/dashboard");
               return;
             }
             setMessage(mapAuthError(result));

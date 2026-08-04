@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
 import {
   clientIpFromHeaders,
   rateLimit,
@@ -13,7 +14,7 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
 export type AuthActionResult =
-  | { status: "ok"; message?: string }
+  | { status: "ok"; message?: string; redirectTo?: string }
   | { status: "mfa_required" }
   | { status: "error"; message: string }
   | { status: "unconfigured" }
@@ -85,11 +86,18 @@ export async function signInWithPassword(
     return { status: "mfa_required" };
   }
 
-  if (!data.session) {
+  if (!data.session?.user?.id) {
     return { status: "error", message: "Anmeldung fehlgeschlagen." };
   }
 
-  redirect(normalizeNext(nextPath));
+  // Prefer the vehicle twin; honour explicit deep-links except bare "/".
+  const requested = normalizeNext(nextPath);
+  const redirectTo =
+    requested === "/" || requested === "/login" || requested === "/dashboard"
+      ? await resolvePostLoginPath(data.session.user.id)
+      : requested;
+
+  return { status: "ok", redirectTo };
 }
 
 export async function signOut(): Promise<void> {
