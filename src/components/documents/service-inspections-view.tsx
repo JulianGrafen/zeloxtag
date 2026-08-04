@@ -58,10 +58,8 @@ export function ServiceInspectionsView({
         backHref={`/v/${tagUuid}/service`}
         backLabel="Service & Wartung"
         onBack={() => setScanning(false)}
-        initialCategory="service"
-        lockCategory
-        heading="Inspektion scannen"
-        subheading={`${vehicleLabel} · Servicebeleg einlesen`}
+        scanType="service"
+        successHref={`/v/${tagUuid}/service`}
       />
     );
   }

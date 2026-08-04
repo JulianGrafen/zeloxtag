@@ -159,7 +159,7 @@ export function VehicleInvoicesView({
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
           <div className="pointer-events-auto mx-auto max-w-lg">
             <PressableLink
-              href={`/v/${tagUuid}?scan=1`}
+              href={`/v/${tagUuid}?scan=1&type=invoice`}
               variant="button"
               className="claim-cta shadow-[var(--vd-shadow)]"
             >

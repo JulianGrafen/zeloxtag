@@ -27,6 +27,10 @@ import {
   isPrimaryOilChange,
 } from "@/lib/documents/invoice-title";
 import { detectOilChangeInvoice } from "@/lib/documents/oil-changes";
+import {
+  scanTypeDefinition,
+  type ScanType,
+} from "@/lib/documents/scan-types";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import {
   abePartCategoryLabel,
@@ -76,6 +80,8 @@ interface InvoiceUploaderProps {
   /** Prefill / lock OCR category (e.g. service for Inspektionen). */
   initialCategory?: InvoiceTextParseCategory;
   lockCategory?: boolean;
+  /** Explicit scan intent from type picker — drives OCR schema. */
+  scanType?: ScanType;
   /** After successful save (default: documents list for that type). */
   successHref?: string;
   heading?: string;
@@ -129,10 +135,18 @@ export function InvoiceUploader({
   onBack,
   initialCategory = "service",
   lockCategory = false,
+  scanType,
   successHref,
   heading = "Rechnung scannen",
   subheading,
 }: InvoiceUploaderProps) {
+  const scanDef = scanType ? scanTypeDefinition(scanType) : null;
+  const resolvedCategory = scanDef?.category ?? initialCategory;
+  const resolvedLockCategory = scanDef?.lockCategory ?? lockCategory;
+  const resolvedHeading = scanDef?.heading ?? heading;
+  const resolvedSubheading = scanDef
+    ? `${vehicleLabel} · ${scanDef.subheading}`
+    : subheading;
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/dokumente`;
   const {
     compressFile,
@@ -156,7 +170,7 @@ export function InvoiceUploader({
     null,
   );
   const [fields, setFields] = useState<InvoiceTextParseResult>(
-    emptyFields(initialCategory),
+    emptyFields(resolvedCategory),
   );
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -193,7 +207,7 @@ export function InvoiceUploader({
     setPageCount(0);
     setRawText("");
     setApprovalFields(null);
-    setFields(emptyFields(initialCategory));
+    setFields(emptyFields(resolvedCategory));
     setTitle("");
     setError(null);
   }
@@ -244,7 +258,13 @@ export function InvoiceUploader({
     });
   }
 
-  const isAbeUpload = lockCategory && initialCategory === "abe";
+  const isAbeUpload =
+    (scanDef?.ocrDocumentType ??
+      (resolvedLockCategory && resolvedCategory === "abe" ? "abe" : "invoice")) ===
+    "abe";
+  const isTuevUpload =
+    scanDef?.ocrDocumentType === "tuev" ||
+    (resolvedLockCategory && resolvedCategory === "tuev");
 
   async function runExtraction() {
     setError(null);
@@ -265,12 +285,14 @@ export function InvoiceUploader({
         setProgress,
       );
 
-      const documentType = isAbeUpload
-        ? "abe"
-        : lockCategory && initialCategory === "tuev"
-          ? "tuev"
-          : "invoice";
-      // ABE: one combined PDF so Auflagen across pages stay in one AbeParseService call.
+      const documentType = scanDef?.ocrDocumentType
+        ? scanDef.ocrDocumentType
+        : isAbeUpload
+          ? "abe"
+          : isTuevUpload
+            ? "tuev"
+            : "invoice";
+      // ABE family: one combined PDF so Auflagen across pages stay in one parse call.
       const analyzeFiles =
         documentType === "abe" && processed.uploadFile
           ? [processed.uploadFile]
@@ -285,14 +307,19 @@ export function InvoiceUploader({
               totalPages > 1
                 ? `Seite ${page} von ${totalPages} wird analysiert…`
                 : documentType === "abe"
-                  ? "ABE wird analysiert…"
-                  : "Rechnung wird analysiert…",
+                  ? `${scanDef?.title ?? "ABE"} wird analysiert…`
+                  : documentType === "tuev"
+                    ? "TÜV-Bericht wird analysiert…"
+                    : "Rechnung wird analysiert…",
             percent: Math.min(99, Math.round(70 + (page - 1) * span + span * 0.5)),
             page,
             totalPages,
           });
         },
-        { documentType },
+        {
+          documentType,
+          approvalKind: scanDef?.approvalKind ?? null,
+        },
       );
 
       setUploadFile(processed.uploadFile);
@@ -320,8 +347,8 @@ export function InvoiceUploader({
         oil,
       });
 
-      const baseFields = lockCategory
-        ? { ...analyzed.fields, category: initialCategory }
+      const baseFields = resolvedLockCategory
+        ? { ...analyzed.fields, category: resolvedCategory }
         : analyzed.fields;
 
       // Only promote to Service/Ölwechsel title when oil is the main job.
@@ -368,7 +395,10 @@ export function InvoiceUploader({
 
   const canProcess = Boolean(nativePdf) || pages.length > 0;
   const isAbeReview =
-    step === "review" && fields.category === "abe" && Boolean(previewUrl) && Boolean(uploadFile);
+    step === "review" &&
+    (fields.category === "abe" || isAbeUpload) &&
+    Boolean(previewUrl) &&
+    Boolean(uploadFile);
 
   async function startAbeAwareExtraction() {
     if (isAbeUpload && !nativePdf && pages.length === 1) {
@@ -448,9 +478,18 @@ export function InvoiceUploader({
       formData.set("invoiceNumber", "");
       formData.set("mileageKm", "");
       formData.set("pageCount", String(pageCount || 1));
+      const persistedApproval =
+        approvalFields &&
+        (!scanDef?.approvalKind ||
+          approvalFields.kind === scanDef.approvalKind ||
+          scanDef.approvalKind === "abe")
+          ? approvalFields
+          : scanDef?.approvalKind === "abe"
+            ? { kind: "abe" as const }
+            : approvalFields;
       formData.set(
         "approvalFields",
-        approvalFields ? JSON.stringify(approvalFields) : "",
+        persistedApproval ? JSON.stringify(persistedApproval) : "",
       );
       formData.set("file", uploadFile);
 
@@ -503,10 +542,10 @@ export function InvoiceUploader({
             Scanner
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            {heading}
+            {resolvedHeading}
           </h1>
           <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-            {subheading ?? `${vehicleLabel} · Beleg einlesen`}
+            {resolvedSubheading ?? `${vehicleLabel} · Beleg einlesen`}
           </p>
         </div>
       </header>
@@ -525,14 +564,14 @@ export function InvoiceUploader({
                 />
                 <div className="space-y-1.5">
                   <p className="font-semibold tracking-[-0.01em]">
-                    Eine ABE = ein Bauteil
+                    Ein {scanDef?.title ?? "Gutachten"} = ein Bauteil
                   </p>
                   <p>
-                    Lade nur die ABE für{" "}
+                    Lade nur das Dokument für{" "}
                     <span className="font-medium">ein einziges Bauteil</span>{" "}
                     hoch. Scanne bitte{" "}
-                    <span className="font-medium">alle Seiten</span> dieses
-                    Gutachtens — oder lade das komplette Mehrseiten-PDF.
+                    <span className="font-medium">alle Seiten</span> — oder lade
+                    das komplette Mehrseiten-PDF.
                   </p>
                 </div>
               </div>
@@ -545,8 +584,10 @@ export function InvoiceUploader({
               disabled={compressing}
               hint={
                 isAbeUpload
-                  ? "Alle Seiten der ABE fotografieren oder als PDF hochladen"
-                  : "Foto wird automatisch auf A4 zugeschnitten und für OCR komprimiert"
+                  ? `Alle Seiten von ${scanDef?.title ?? "ABE"} fotografieren oder als PDF hochladen`
+                  : isTuevUpload
+                    ? "TÜV-/HU-Bericht fotografieren oder als PDF hochladen"
+                    : "Foto wird automatisch auf A4 zugeschnitten und für OCR komprimiert"
               }
               onFileSelected={(file) => {
                 void handleIncomingFile(file);
@@ -923,7 +964,7 @@ export function InvoiceUploader({
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder={
-                  initialCategory === "service"
+                  resolvedCategory === "service"
                     ? "z. B. Inspektion 60.000 km"
                     : "z. B. Ölwechsel + Filter"
                 }
@@ -993,7 +1034,7 @@ export function InvoiceUploader({
               <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                 Kategorie
               </span>
-              {lockCategory ? (
+              {resolvedLockCategory ? (
                 <Input
                   readOnly
                   value={CATEGORY_LABELS[fields.category]}

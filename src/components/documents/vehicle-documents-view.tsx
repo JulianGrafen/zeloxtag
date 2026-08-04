@@ -223,15 +223,19 @@ export function VehicleDocumentsView({
           <div className="pointer-events-auto mx-auto max-w-lg">
             <PressableLink
               href={
-                filterType === "abe"
-                  ? `/v/${tagUuid}?scan=1&type=abe`
+                filterType === "tuev"
+                  ? `/v/${tagUuid}?scan=1&type=tuev`
                   : `/v/${tagUuid}?scan=1`
               }
               variant="button"
               className="claim-cta shadow-[var(--vd-shadow)]"
             >
               <Plus className="h-4 w-4" aria-hidden />
-              {filterType === "abe" ? "ABE scannen" : "Rechnung scannen"}
+              {filterType === "abe"
+                ? "Gutachten scannen"
+                : filterType === "tuev"
+                  ? "TÜV scannen"
+                  : "Dokument scannen"}
             </PressableLink>
           </div>
         </div>

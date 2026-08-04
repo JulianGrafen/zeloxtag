@@ -10,7 +10,10 @@ import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { OCR_DOCUMENT_TYPES, type OcrDocumentType } from "@/lib/ocr/ocr-types";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
-import { parseApprovalFields } from "@/lib/documents/approval-fields";
+import {
+  APPROVAL_FIELD_KINDS,
+  parseApprovalFields,
+} from "@/lib/documents/approval-fields";
 import {
   invoiceTextParseSchema,
   type InvoiceTextParseResult,
@@ -25,6 +28,7 @@ export const maxDuration = 60;
 const MAX_BYTES = 25 * 1024 * 1024;
 
 const documentTypeSchema = z.enum(OCR_DOCUMENT_TYPES);
+const approvalKindSchema = z.enum(APPROVAL_FIELD_KINDS);
 
 type ParseSuccess = {
   ok: true;
@@ -109,6 +113,21 @@ export async function POST(request: NextRequest) {
     }
     const documentType = documentTypeParsed.data;
 
+    const approvalKindRaw = String(formData.get("approvalKind") ?? "").trim();
+    const approvalKindParsed = approvalKindRaw
+      ? approvalKindSchema.safeParse(approvalKindRaw)
+      : null;
+    if (approvalKindRaw && !approvalKindParsed?.success) {
+      return jsonError(
+        400,
+        `approvalKind must be one of: ${APPROVAL_FIELD_KINDS.join(", ")}.`,
+        "bad_request",
+      );
+    }
+    const approvalKind = approvalKindParsed?.success
+      ? approvalKindParsed.data
+      : null;
+
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Document file is required.", "bad_request");
@@ -137,6 +156,7 @@ export async function POST(request: NextRequest) {
       bytes,
       contentType,
       documentType,
+      approvalKind,
       kind: documentType === "abe" ? "abe" : "invoice",
     });
 

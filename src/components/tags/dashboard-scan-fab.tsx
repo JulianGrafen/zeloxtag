@@ -25,16 +25,16 @@ export function DashboardScanFab({
             className="claim-cta shadow-[var(--vd-shadow)]"
           >
             <Plus className="h-4 w-4" aria-hidden />
-            Rechnung scannen
+            Dokument scannen
           </PressableButton>
         ) : (
           <PressableLink
-            href={`/v/${tagUuid}/hochladen`}
+            href={`/v/${tagUuid}?scan=1`}
             variant="button"
             className="claim-cta shadow-[var(--vd-shadow)]"
           >
             <Plus className="h-4 w-4" aria-hidden />
-            Rechnung scannen
+            Dokument scannen
           </PressableLink>
         )}
       </div>

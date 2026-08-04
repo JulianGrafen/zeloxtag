@@ -2,7 +2,10 @@
  * Browser helper: Markdown OCR + routed LLM parse via `/api/ocr/parse`.
  */
 
-import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import type {
+  ApprovalFieldKind,
+  ApprovalFields,
+} from "@/lib/documents/approval-fields";
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
 
 import type { DocumentParseKind, OcrDocumentType } from "./ocr-types";
@@ -25,6 +28,8 @@ export type AnalyzeDocumentResult = {
 export type AnalyzeDocumentOptions = {
   /** Explicit document type for model routing (preferred). */
   documentType?: OcrDocumentType;
+  /** Explicit Gutachten / TÜV subtype from scan picker. */
+  approvalKind?: ApprovalFieldKind | null;
   /** @deprecated Prefer `documentType`. Mapped to documentType when unset. */
   kind?: DocumentParseKind;
 };
@@ -49,10 +54,14 @@ function resolveDocumentType(
 async function analyzeOneFile(
   file: File,
   documentType: OcrDocumentType,
+  approvalKind?: ApprovalFieldKind | null,
 ): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
   formData.set("file", file);
   formData.set("documentType", documentType);
+  if (approvalKind) {
+    formData.set("approvalKind", approvalKind);
+  }
 
   const response = await fetch("/api/ocr/parse", {
     method: "POST",
@@ -170,15 +179,19 @@ export async function analyzeDocumentFiles(
 
   const documentType = resolveDocumentType(options);
 
+  const approvalKind = options.approvalKind ?? null;
+
   if (files.length === 1) {
     onPageProgress?.(1, 1);
-    return analyzeOneFile(files[0], documentType);
+    return analyzeOneFile(files[0], documentType, approvalKind);
   }
 
   const results: AnalyzeDocumentResult[] = [];
   for (let index = 0; index < files.length; index += 1) {
     onPageProgress?.(index + 1, files.length);
-    results.push(await analyzeOneFile(files[index], documentType));
+    results.push(
+      await analyzeOneFile(files[index], documentType, approvalKind),
+    );
   }
 
   const rawText = results

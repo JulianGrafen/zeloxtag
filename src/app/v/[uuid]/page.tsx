@@ -92,10 +92,8 @@ export default async function TagScanPage({
           ownerName={access.ownerName}
           isOwner
           sessionEmail={access.sessionEmail}
-          initialMode={openScanner ? "scanner" : "dashboard"}
-          initialScanType={
-            openScanner && scanType === "abe" ? "abe" : undefined
-          }
+          initialMode={openScanner ? "pick-scan" : "dashboard"}
+          initialScanType={openScanner ? (scanType ?? null) : null}
         />
       </AppShell>
     );

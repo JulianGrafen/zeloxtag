@@ -5,7 +5,10 @@
  * ABE → {@link AbeParseService} (economy model)
  */
 
-import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import type {
+  ApprovalFieldKind,
+  ApprovalFields,
+} from "@/lib/documents/approval-fields";
 
 import { budgetAbeOcrText } from "./abe-from-text";
 import { getDocumentIntelligenceEnv } from "./document-intelligence-env";
@@ -284,6 +287,8 @@ export async function analyzeDocument(input: {
   contentType: string;
   kind?: DocumentParseKind;
   documentType?: OcrDocumentType;
+  /** Explicit subtype from scan-type picker — skips OCR guessing. */
+  approvalKind?: ApprovalFieldKind | null;
 }): Promise<AnalyzeDocumentResult> {
   if (!isLlmConfigured()) {
     throw new DocumentIntelligenceError(
@@ -298,6 +303,7 @@ export async function analyzeDocument(input: {
     ocrText: ocrJson.text,
   });
   const parseModel = resolveParseModel(documentType);
+  const preferredApprovalKind = input.approvalKind ?? null;
 
   // ABE: keep Auflagen budget helper; invoices keep full Markdown slice.
   const textForParse =
@@ -323,7 +329,14 @@ export async function analyzeDocument(input: {
         documentType: "abe",
         model: parseModel,
       });
-      const approvalFields = extractApprovalFieldsFromText(ocrPayload.text);
+      const gutachtenKind =
+        preferredApprovalKind && preferredApprovalKind !== "tuev"
+          ? preferredApprovalKind
+          : undefined;
+      const approvalFields = extractApprovalFieldsFromText(
+        ocrPayload.text,
+        gutachtenKind,
+      );
       return {
         kind: "abe",
         documentType,
@@ -342,10 +355,15 @@ export async function analyzeDocument(input: {
       model: parseModel,
     });
     const fields = invoiceParseService.mergeWithOcr(parsed, ocrPayload);
-    // Never force category=tuev from a weak early documentType guess — that
-    // mislabeled Werkstattrechnungen that merely mention TÜV/DEKRA.
+    // Explicit scan type wins; otherwise never promote weak TÜV guesses on bills.
     const resolvedType: OcrDocumentType =
-      fields.category === "tuev" ? "tuev" : "invoice";
+      input.documentType === "tuev" || preferredApprovalKind === "tuev"
+        ? "tuev"
+        : input.documentType === "invoice"
+          ? "invoice"
+          : fields.category === "tuev"
+            ? "tuev"
+            : "invoice";
     const approvalFields =
       resolvedType === "tuev"
         ? extractApprovalFieldsFromText(ocrPayload.text, "tuev")
@@ -353,7 +371,8 @@ export async function analyzeDocument(input: {
     return {
       kind: "invoice",
       documentType: resolvedType,
-      fields,
+      fields:
+        resolvedType === "tuev" ? { ...fields, category: "tuev" } : fields,
       approvalFields:
         approvalFields?.kind === "tuev" ? approvalFields : null,
       rawText: ocrPayload.text,
