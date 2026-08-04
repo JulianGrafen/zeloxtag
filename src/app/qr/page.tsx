@@ -26,9 +26,13 @@ export default function QrPage() {
             Unclaimed QR
           </h1>
           <p className="text-[0.9rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Läuft auf Vercel. Der Unclaimed-QR zeigt den nächsten freien Tag aus
-            Supabase — mit dem Handy scannen, Claim starten, fertig. Nach jedem
-            Claim erscheint automatisch der nächste Tag (oder „Neuen Tag minten“).
+            Erzeugt echte Supabase-Tags (UUID) für physische Plaques. Scannen →
+            Claim → Fahrzeug. Keine Demo-QR. Nach jedem Claim aktualisieren oder
+            „Neuen Tag minten“. App-Host:{" "}
+            <span className="font-mono text-[color:var(--vd-text)]">
+              zeloxtag.vercel.app
+            </span>
+            , nicht der Shopify-Shop.
           </p>
         </header>
 

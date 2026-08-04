@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 
-import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
-
 interface TagNotFoundProps {
   uuid: string;
 }
@@ -32,30 +30,13 @@ export function TagNotFound({ uuid }: TagNotFoundProps) {
         </p>
 
         <Link
-          href="/"
+          href="/qr"
           className="mt-6 inline-flex items-center gap-2 text-[0.88rem] font-semibold text-[color:var(--vd-text)]"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          Zur Startseite
+          Zum QR-Generator
         </Link>
       </div>
-
-      <p className="px-1 text-center text-[0.75rem] text-[color:var(--vd-muted)]">
-        Demo:{" "}
-        <Link
-          href={`/v/${MOCK_TAG_UUIDS.unclaimed}`}
-          className="underline underline-offset-2"
-        >
-          unclaimed
-        </Link>
-        {" · "}
-        <Link
-          href={`/v/${MOCK_TAG_UUIDS.active}`}
-          className="underline underline-offset-2"
-        >
-          active
-        </Link>
-      </p>
     </section>
   );
 }

@@ -4,17 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { RefreshCw, Sparkles } from "lucide-react";
 
-import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 
-type QrSource = "supabase" | "minted" | "mock" | "empty-fallback-mock";
+type QrSource = "supabase" | "minted";
 
 type QrTarget = {
   id: string;
   label: string;
   description: string;
   path: string;
-  source?: QrSource;
+  source: QrSource;
+  uuid: string;
 };
 
 function resolvePublicOrigin(): string {
@@ -23,16 +23,26 @@ function resolvePublicOrigin(): string {
     return configured || "";
   }
   // Prefer explicit production URL when set (custom domain / Vercel).
-  // Fall back to the host that serves this page.
-  if (configured && !configured.includes("localhost")) {
+  // Never prefer Shopify storefront domains for physical plaque URLs.
+  if (
+    configured &&
+    !configured.includes("localhost") &&
+    !configured.includes("zeloxtag.de")
+  ) {
     return configured;
   }
   return window.location.origin;
 }
 
+function isRealTagUuid(uuid: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    uuid,
+  );
+}
+
 /**
  * Online QR generator for Vercel / production.
- * Unclaimed QR always targets the newest (or freshly minted) Supabase tag.
+ * Only emits real Supabase unclaimed tag UUIDs — never demo mock IDs.
  */
 export function NetworkMockQr() {
   const [origin, setOrigin] = useState<string>("");
@@ -48,55 +58,65 @@ export function NetworkMockQr() {
     setOrigin(nextOrigin);
     setLoading(true);
     setError(null);
+    setWarning(null);
+    setTargets([]);
+    setCodes({});
+    setSource(null);
 
     try {
-      let unclaimedUuid: string = MOCK_TAG_UUIDS.unclaimed;
-      let nextSource: QrSource = "mock";
-      let nextWarning: string | null = null;
+      const endpoint = opts?.mint
+        ? "/api/tags/next-unclaimed?mint=1"
+        : "/api/tags/next-unclaimed";
+      const response = await fetch(endpoint, { cache: "no-store" });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        uuid?: string | null;
+        source?: string;
+        warning?: string;
+        missingEnv?: string[];
+        error?: string;
+      } | null;
 
-      try {
-        const endpoint = opts?.mint
-          ? "/api/tags/next-unclaimed?mint=1"
-          : "/api/tags/next-unclaimed";
-        const response = await fetch(endpoint, { cache: "no-store" });
-        const payload = (await response.json().catch(() => null)) as {
-          ok?: boolean;
-          uuid?: string | null;
-          source?: QrSource;
-          warning?: string;
-          missingEnv?: string[];
-        } | null;
-
-        if (payload?.ok && typeof payload.uuid === "string" && payload.uuid) {
-          unclaimedUuid = payload.uuid;
-          nextSource = payload.source ?? "supabase";
-          nextWarning = payload.warning ?? null;
-          if (payload.missingEnv?.length) {
-            nextWarning = [
-              nextWarning,
-              `Fehlt: ${payload.missingEnv.join(", ")}`,
-            ]
-              .filter(Boolean)
-              .join(" · ");
-          }
-        }
-      } catch {
-        nextWarning = "API nicht erreichbar — Demo-UUID.";
+      if (!response.ok || !payload?.ok || !payload.uuid) {
+        const missing = payload?.missingEnv?.length
+          ? ` Fehlende Env: ${payload.missingEnv.join(", ")}.`
+          : "";
+        throw new Error(
+          payload?.error ||
+            payload?.warning ||
+            `Echter Tag konnte nicht geladen werden.${missing}`,
+        );
       }
 
+      if (
+        payload.source === "mock" ||
+        payload.source === "empty-fallback-mock" ||
+        !isRealTagUuid(payload.uuid)
+      ) {
+        const missing = payload.missingEnv?.length
+          ? ` Setze in Vercel: ${payload.missingEnv.join(", ")} (Production) und redeploy.`
+          : "";
+        throw new Error(
+          `${payload.warning ?? "Demo-Fallback aktiv — keine echten QR-Codes."}${missing}`,
+        );
+      }
+
+      if (payload.source !== "supabase" && payload.source !== "minted") {
+        throw new Error("Unerwartete Tag-Quelle — Abbruch ohne Demo-UUID.");
+      }
+
+      const nextSource = payload.source;
       const nextTargets: QrTarget[] = [
         {
           id: "unclaimed",
-          label: "Nächster Unclaimed Tag",
-          description: "Claim-Flow · online (Vercel)",
-          path: `/v/${unclaimedUuid}`,
+          label: "Unclaimed ZeloxTag",
+          description:
+            nextSource === "minted"
+              ? "Frisch gemintet · Claim-Flow"
+              : "Nächster freier Tag · Claim-Flow",
+          path: `/v/${payload.uuid}`,
           source: nextSource,
-        },
-        {
-          id: "active",
-          label: "Demo Active Tag",
-          description: "Öffnet das Fahrzeug-Dashboard",
-          path: `/v/${MOCK_TAG_UUIDS.active}`,
+          uuid: payload.uuid,
         },
       ];
 
@@ -116,7 +136,7 @@ export function NetworkMockQr() {
       setTargets(nextTargets);
       setCodes(Object.fromEntries(entries));
       setSource(nextSource);
-      setWarning(nextWarning);
+      setWarning(payload.warning ?? null);
     } catch (buildError) {
       setError(
         buildError instanceof Error
@@ -138,19 +158,19 @@ export function NetworkMockQr() {
     origin.includes("vercel.app") ||
     Boolean(
       process.env.NEXT_PUBLIC_SITE_URL &&
-        !process.env.NEXT_PUBLIC_SITE_URL.includes("localhost"),
+        !process.env.NEXT_PUBLIC_SITE_URL.includes("localhost") &&
+        !process.env.NEXT_PUBLIC_SITE_URL.includes("zeloxtag.de"),
     );
 
   return (
     <div className="flex w-full flex-col gap-5">
       {isLocalhost ? (
         <div className="rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-[0.82rem] leading-relaxed text-amber-950">
-          Lokal verbunden. Für echte Online-QR{" "}
-          <span className="font-semibold">NEXT_PUBLIC_SITE_URL</span> auf deine
-          Vercel-Domain setzen (z. B.{" "}
-          <span className="font-mono">https://zeloxtag.vercel.app</span>) oder
-          die deployte{" "}
-          <span className="font-mono">/qr</span>-Seite öffnen.
+          Lokal verbunden. Für physische Plaques die deployte{" "}
+          <span className="font-mono">/qr</span>-Seite öffnen (
+          <span className="font-mono">https://zeloxtag.vercel.app/qr</span>
+          ). <span className="font-semibold">zeloxtag.de</span> ist der Shopify-Shop
+          — nicht die App.
         </div>
       ) : null}
 
@@ -164,13 +184,14 @@ export function NetworkMockQr() {
           </p>
           {isVercelHost || (!isLocalhost && origin) ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-              Online
+              Live
             </span>
           ) : null}
         </div>
         <p className="mt-1">
-          Unclaimed-QR zeigt den nächsten freien Tag aus Supabase. Nach einem
-          Claim neu laden oder einen frischen Tag minten.
+          Jeder QR zeigt eine echte Supabase-UUID unter{" "}
+          <span className="font-mono text-[color:var(--vd-text)]">/v/…</span>.
+          Nach Claim aktualisieren oder „Neuen Tag minten“.
         </p>
         {source ? (
           <p className="mt-1 font-mono text-[0.72rem] text-[color:var(--vd-text)]">
@@ -229,6 +250,9 @@ export function NetworkMockQr() {
               <p className="mt-2 break-all font-mono text-[0.72rem] text-[color:var(--vd-muted)]">
                 {url}
               </p>
+              <p className="mt-1 break-all font-mono text-[0.68rem] text-[color:var(--vd-text)]">
+                UUID: {target.uuid}
+              </p>
 
               <div className="mt-4 flex justify-center rounded-2xl bg-white p-4">
                 {dataUrl ? (
@@ -250,7 +274,7 @@ export function NetworkMockQr() {
               {dataUrl ? (
                 <a
                   href={dataUrl}
-                  download={`zeloxtag-${target.id}.png`}
+                  download={`zeloxtag-${target.uuid}.png`}
                   className="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-[color:var(--vd-border)] bg-white px-4 py-3 text-[0.85rem] font-semibold text-[color:var(--vd-text)]"
                 >
                   PNG speichern

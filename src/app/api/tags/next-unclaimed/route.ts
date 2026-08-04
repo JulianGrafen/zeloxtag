@@ -1,30 +1,32 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { enforceRateLimit } from "@/lib/security/api-guard";
-import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseEnvDiagnostics } from "@/lib/supabase/env";
 import { createUnclaimedTag } from "@/lib/tags/create-unclaimed-tag";
-import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 
 export const runtime = "nodejs";
 
-type NextUnclaimedBody = {
+type NextUnclaimedOk = {
   ok: true;
   uuid: string;
-  source: "supabase" | "minted" | "mock" | "empty-fallback-mock";
+  source: "supabase" | "minted";
   warning?: string;
+};
+
+type NextUnclaimedErr = {
+  ok: false;
+  error: string;
+  source: "config" | "supabase";
   missingEnv?: string[];
+  warning?: string;
 };
 
 /**
  * GET /api/tags/next-unclaimed
  * Latest unclaimed tag UUID for the online QR generator (`/qr` on Vercel).
  *
- * When the inventory is empty and the service role is configured, mints a
- * fresh unclaimed tag so production QR generation never falls back to demo IDs.
+ * Never returns demo/mock UUIDs. Missing admin env or DB errors → 503/500.
  * Pass `?mint=1` to always create a new plaque UUID (inventory tooling).
  */
 export async function GET(request: NextRequest) {
@@ -35,24 +37,22 @@ export async function GET(request: NextRequest) {
   const diagnostics = getSupabaseEnvDiagnostics();
 
   if (!diagnostics.isAdminConfigured) {
-    const missing = diagnostics.missing;
-    const body: NextUnclaimedBody = {
-      ok: true,
-      uuid: MOCK_TAG_UUIDS.unclaimed,
-      source: "mock",
-      missingEnv: missing,
-      warning:
-        missing.length > 0
-          ? `Vercel Env fehlt: ${missing.join(", ")}. In Vercel → Settings → Environment Variables setzen (Production + Redeploy).`
-          : "Supabase Admin fehlt — Demo-UUID.",
+    const body: NextUnclaimedErr = {
+      ok: false,
+      source: "config",
+      missingEnv: diagnostics.missing,
+      error:
+        diagnostics.missing.length > 0
+          ? `Vercel Env fehlt: ${diagnostics.missing.join(", ")}. In Vercel → Settings → Environment Variables setzen (Production) und Redeploy.`
+          : "Supabase Admin fehlt — echte QR-Codes sind nicht möglich.",
     };
-    return NextResponse.json(body);
+    return NextResponse.json(body, { status: 503 });
   }
 
   try {
     if (forceMint) {
       const minted = await createUnclaimedTag();
-      const body: NextUnclaimedBody = {
+      const body: NextUnclaimedOk = {
         ok: true,
         uuid: minted.uuid,
         source: "minted",
@@ -71,17 +71,17 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      const body: NextUnclaimedBody = {
-        ok: true,
-        uuid: MOCK_TAG_UUIDS.unclaimed,
-        source: "mock",
+      const body: NextUnclaimedErr = {
+        ok: false,
+        source: "supabase",
+        error: `Tag-Lookup fehlgeschlagen: ${error.message}`,
         warning: error.message,
       };
-      return NextResponse.json(body);
+      return NextResponse.json(body, { status: 500 });
     }
 
     if (data?.uuid) {
-      const body: NextUnclaimedBody = {
+      const body: NextUnclaimedOk = {
         ok: true,
         uuid: data.uuid,
         source: "supabase",
@@ -91,19 +91,21 @@ export async function GET(request: NextRequest) {
 
     // Empty inventory → mint so Vercel `/qr` always has a live target.
     const minted = await createUnclaimedTag();
-    const body: NextUnclaimedBody = {
+    const body: NextUnclaimedOk = {
       ok: true,
       uuid: minted.uuid,
       source: "minted",
     };
     return NextResponse.json(body);
   } catch (error) {
-    const body: NextUnclaimedBody = {
-      ok: true,
-      uuid: MOCK_TAG_UUIDS.unclaimed,
-      source: "mock",
-      warning: error instanceof Error ? error.message : "Lookup failed",
+    const body: NextUnclaimedErr = {
+      ok: false,
+      source: "supabase",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Tag konnte nicht erzeugt werden.",
     };
-    return NextResponse.json(body);
+    return NextResponse.json(body, { status: 500 });
   }
 }
