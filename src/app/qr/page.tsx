@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NetworkMockQr } from "@/components/qr/network-mock-qr";
 
 export const metadata: Metadata = {
@@ -32,6 +33,8 @@ export default function QrPage() {
         </header>
 
         <NetworkMockQr />
+
+        <SignOutButton />
 
         <div className="flex flex-col gap-2 text-center text-[0.82rem]">
           <Link

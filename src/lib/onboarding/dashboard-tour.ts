@@ -111,7 +111,7 @@ const OWNER_STEPS: DashboardTourStep[] = [
     id: "settings",
     target: "[data-tour='tile-settings']",
     title: "Konto & Sicherheit",
-    body: "Zwei-Faktor-Authentifizierung und Kontoeinstellungen — empfohlen für den Schutz deiner Fahrzeugakte.",
+    body: "Hier aktivierst du die Zwei-Faktor-Authentifizierung und meldest dich wieder ab.",
     placement: "top",
   },
   {

@@ -148,11 +148,11 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "settings",
-      title: "2FA",
-      description: "Konto schützen",
+      title: "Konto",
+      description: "2FA & Abmelden",
       icon: "settings",
       meta: {
-        subtitle: "Zwei-Faktor-Authentifizierung",
+        subtitle: "Sicherheit und Sitzung",
         href: "/settings",
       },
     },

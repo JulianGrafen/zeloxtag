@@ -5,10 +5,11 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { AppShell } from "@/components/layout/app-shell";
 import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export const metadata: Metadata = {
-  title: "2FA · ZeloxTag",
-  description: "Zwei-Faktor-Authentifizierung für dein ZeloxTag-Konto.",
+  title: "Konto · ZeloxTag",
+  description: "Konto, Sicherheit und Abmelden für ZeloxTag.",
 };
 
 export default async function SettingsPage() {
@@ -28,10 +29,10 @@ export default async function SettingsPage() {
             ← Zurück zum Dashboard
           </Link>
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-[1.6rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            2FA
+            Konto
           </h1>
           <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-            Zwei-Faktor-Authentifizierung ·{" "}
+            Sicherheit & Sitzung ·{" "}
             <span className="font-medium text-[color:var(--vd-text)]">
               {user.email ?? user.id}
             </span>
@@ -39,6 +40,21 @@ export default async function SettingsPage() {
         </div>
 
         <MfaSetupPanel />
+
+        <section
+          aria-label="Sitzung"
+          className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+        >
+          <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+            Sitzung
+          </h2>
+          <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
+            Melde dich ab, wenn du dieses Gerät nicht mehr nutzen willst.
+          </p>
+          <div className="mt-4">
+            <SignOutButton />
+          </div>
+        </section>
       </section>
     </AppShell>
   );

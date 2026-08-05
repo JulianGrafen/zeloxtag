@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { signOut } from "@/lib/auth/actions";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 import { AppShell } from "@/components/layout/app-shell";
-import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 
 export const metadata: Metadata = {
   title: "Dashboard · ZeloxTag",
@@ -56,10 +55,10 @@ export default async function DashboardPage() {
             className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
           >
             <span className="block text-[0.9rem] font-semibold text-[color:var(--vd-text)]">
-              2FA
+              Konto
             </span>
             <span className="mt-1 block text-[0.78rem] font-normal text-[color:var(--vd-muted)]">
-              Zwei-Faktor aktivieren
+              2FA & Abmelden
             </span>
           </Link>
           <Link
@@ -75,15 +74,7 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
-        <form action={signOut}>
-          <PressableButton
-            type="submit"
-            variant="button"
-            className="inline-flex w-full justify-center rounded-2xl border border-[color:var(--vd-border)] bg-white px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)]"
-          >
-            Abmelden
-          </PressableButton>
-        </form>
+        <SignOutButton />
       </section>
     </AppShell>
   );
