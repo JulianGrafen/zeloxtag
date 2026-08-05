@@ -57,8 +57,8 @@ export function buildContentSecurityPolicy(): string {
   const directives: string[] = [
     "default-src 'self'",
     // Next.js hydration still relies on inline script in many setups.
-    // `wasm-unsafe-eval` is required for onnxruntime-web / IMG.LY cutout WASM.
-    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
+    // onnxruntime-web needs both `unsafe-eval` (JS glue) and `wasm-unsafe-eval`.
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:",
     "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
     `img-src ${img}`,
@@ -112,6 +112,12 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
     {
       key: "Cross-Origin-Opener-Policy",
       value: "same-origin",
+    },
+    // Required for SharedArrayBuffer / multi-threaded ONNX WASM (vehicle cutout).
+    // `credentialless` is less brittle than `require-corp` for third-party assets.
+    {
+      key: "Cross-Origin-Embedder-Policy",
+      value: "credentialless",
     },
     {
       key: "Cross-Origin-Resource-Policy",

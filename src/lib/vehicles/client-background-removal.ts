@@ -11,7 +11,7 @@ export type CutoutProgress = {
   progress: number | null;
 };
 
-const LOCAL_REMOVAL_TIMEOUT_MS = 120_000;
+const LOCAL_REMOVAL_TIMEOUT_MS = 180_000;
 
 export function cutoutProgressLabel(
   key: string,
@@ -31,7 +31,7 @@ export function cutoutProgressLabel(
     return {
       label:
         percent == null ? "Lade KI-Modell…" : `Lade KI-Modell (${percent}%)`,
-      progress: percent,
+      progress: percent == null ? 12 : 12 + Math.round((percent / 100) * 58),
     };
   }
 
@@ -41,7 +41,7 @@ export function cutoutProgressLabel(
         percent == null
           ? "Stelle Fahrzeug frei…"
           : `Stelle Fahrzeug frei (${percent}%)`,
-      progress: percent,
+      progress: percent == null ? 75 : 70 + Math.round((percent / 100) * 28),
     };
   }
 
@@ -50,7 +50,7 @@ export function cutoutProgressLabel(
       percent == null
         ? "Bereite KI-Freistellung vor…"
         : `Lade Freistellung (${percent}%)`,
-    progress: percent,
+    progress: percent == null ? 20 : Math.max(15, percent),
   };
 }
 
@@ -63,14 +63,27 @@ function timeoutAfter(ms: number): Promise<never> {
   });
 }
 
+function assertCutoutRuntimeSupport(): void {
+  if (typeof WebAssembly === "undefined") {
+    throw new Error("Dieses Gerät unterstützt kein WebAssembly.");
+  }
+  // IMG.LY / onnxruntime-web multi-threaded WASM needs SharedArrayBuffer.
+  // Without COOP+COEP the session creation fails before useful progress.
+  if (typeof SharedArrayBuffer === "undefined") {
+    throw new Error(
+      "SharedArrayBuffer fehlt (Seite nicht cross-origin isoliert). Bitte App neu laden.",
+    );
+  }
+}
+
 export type RemoveVehicleBackgroundOptions = {
   onProgress: (status: CutoutProgress) => void;
   timeoutMs?: number;
 };
 
 /**
- * Runs IMG.LY background removal in the main thread (no worker proxy).
- * Worker + missing Cross-Origin-Isolation often fails before any progress fires.
+ * Runs IMG.LY background removal on-device.
+ * Requires COOP + COEP so SharedArrayBuffer is available.
  */
 export async function removeVehicleBackground(
   image: Blob | File,
@@ -78,18 +91,22 @@ export async function removeVehicleBackground(
 ): Promise<Blob> {
   const { onProgress, timeoutMs = LOCAL_REMOVAL_TIMEOUT_MS } = options;
 
-  onProgress({ label: "Lade lokale KI-Freistellung…", progress: 2 });
+  onProgress({ label: "Prüfe Geräte-Unterstützung…", progress: 2 });
+  assertCutoutRuntimeSupport();
+
+  onProgress({ label: "Lade lokale KI-Freistellung…", progress: 5 });
 
   const { removeBackground } = await import("@imgly/background-removal");
 
-  onProgress({ label: "Starte Freistellung…", progress: 8 });
+  onProgress({ label: "Starte Freistellung…", progress: 10 });
 
   const config: Config = {
     model: "isnet_quint8",
     device: "cpu",
-    // Default in the library; keep explicit. Worker proxy needs COOP+COEP
-    // (SharedArrayBuffer) and often breaks under Next without isolation.
+    // Threaded WASM uses workers only when WebGPU path is active; keep false
+    // so CPU path stays on the main module with SharedArrayBuffer threads.
     proxyToWorker: false,
+    debug: process.env.NODE_ENV === "development",
     output: { format: "image/png", quality: 1 },
     progress: (key, current, total) => {
       onProgress(cutoutProgressLabel(key, current, total));

@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  // Ensure client cutout deps resolve correctly under App Router bundling.
+  transpilePackages: ["@imgly/background-removal", "onnxruntime-web"],
   allowedDevOrigins: ["127.0.0.1", "192.168.178.109", "localhost"],
   devIndicators: false,
   images: {

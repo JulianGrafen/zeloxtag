@@ -52,7 +52,8 @@ export async function compressSilhouetteImage(file: File): Promise<File> {
     const compressed = await imageCompression(file, {
       maxSizeMB: SILHOUETTE_CLIENT_MAX_SIZE_MB,
       maxWidthOrHeight: SILHOUETTE_CLIENT_MAX_EDGE_PX,
-      useWebWorker: true,
+      // Main-thread only: blob workers + COEP isolation are flaky on mobile Safari.
+      useWebWorker: false,
       fileType: "image/jpeg",
       initialQuality: 0.85,
     });
