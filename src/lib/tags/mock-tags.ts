@@ -15,6 +15,7 @@ const mockVehicle: Vehicle = {
   model: "RX-8",
   year: 2011,
   vin: "JM1FE173XB0300001",
+  silhouette_image_url: null,
   created_at: now,
   updated_at: now,
 };

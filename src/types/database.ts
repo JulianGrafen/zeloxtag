@@ -24,6 +24,8 @@ export type Vehicle = {
   model: string;
   year: number | null;
   vin: string | null;
+  /** Transparent side-profile PNG URL — see migration 00023. */
+  silhouette_image_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -148,6 +150,7 @@ export type Database = {
           model: string;
           year?: number | null;
           vin?: string | null;
+          silhouette_image_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -158,6 +161,7 @@ export type Database = {
           model?: string;
           year?: number | null;
           vin?: string | null;
+          silhouette_image_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -1,6 +1,6 @@
 /**
- * Map claimed vehicle make/model → side-profile cutout for the dashboard
- * entrance animation (slide-in + headlight flash).
+ * Map claimed vehicle → side-profile cutout for the dashboard roll-in.
+ * Preference: owner-uploaded silhouette → known-model catalog → SVG fallback.
  */
 
 export type VehicleImageMatch = {
@@ -18,13 +18,22 @@ function normalize(value: string): string {
 }
 
 /**
- * Resolve a transparent side-profile asset for known models.
- * Returns undefined → dashboard falls back to silhouette.
+ * Resolve a transparent side-profile asset.
+ * Returns undefined → dashboard falls back to generic SVG silhouette.
  */
 export function resolveVehicleImage(input: {
   make: string;
   model: string;
+  silhouetteImageUrl?: string | null;
 }): VehicleImageMatch | undefined {
+  const uploaded = input.silhouetteImageUrl?.trim();
+  if (uploaded) {
+    return {
+      src: uploaded,
+      alt: `${input.make} ${input.model}`.trim() || "Fahrzeug",
+    };
+  }
+
   const make = normalize(input.make);
   const model = normalize(input.model);
   const blob = `${make} ${model}`;

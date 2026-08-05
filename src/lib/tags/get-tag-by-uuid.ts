@@ -69,10 +69,34 @@ function normalizeDocument(value: unknown): Document | null {
   };
 }
 
+
+function normalizeVehicle(value: unknown): Vehicle | null {
+  if (!value || typeof value !== "object") return null;
+  const vehicle = value as Vehicle;
+  if (typeof vehicle.id !== "string" || typeof vehicle.make !== "string") {
+    return null;
+  }
+  return {
+    ...vehicle,
+    user_id: typeof vehicle.user_id === "string" ? vehicle.user_id : "",
+    model: typeof vehicle.model === "string" ? vehicle.model : "",
+    year: typeof vehicle.year === "number" ? vehicle.year : null,
+    vin: typeof vehicle.vin === "string" ? vehicle.vin : null,
+    silhouette_image_url:
+      typeof vehicle.silhouette_image_url === "string"
+        ? vehicle.silhouette_image_url
+        : null,
+    created_at:
+      typeof vehicle.created_at === "string" ? vehicle.created_at : "",
+    updated_at:
+      typeof vehicle.updated_at === "string" ? vehicle.updated_at : "",
+  };
+}
+
 function normalizeScanResult(data: TagScanResult): TagScanResult {
   return {
     tag: data.tag as Tag,
-    vehicle: (data.vehicle as Vehicle | null) ?? null,
+    vehicle: normalizeVehicle(data.vehicle),
     documents: ((data.documents as unknown[]) ?? [])
       .map(normalizeDocument)
       .filter((doc): doc is Document => doc !== null),

@@ -61,6 +61,7 @@ export function TagDashboardView({
   const cutout = resolveVehicleImage({
     make: vehicle.make,
     model: vehicle.model,
+    silhouetteImageUrl: vehicle.silhouette_image_url,
   });
 
   const data = {

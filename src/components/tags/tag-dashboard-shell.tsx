@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
+import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
 import {
   parseScanType,
@@ -14,6 +15,10 @@ import type { Document, Vehicle } from "@/types/database";
 
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
 import { TagDashboardView } from "./tag-dashboard-view";
+
+function silhouetteSkipKey(vehicleId: string): string {
+  return `zlx-silhouette-skip:${vehicleId}`;
+}
 
 type DashboardMode = "dashboard" | "pick-scan" | "scanner";
 
@@ -65,7 +70,23 @@ export function TagDashboardShell({
     return "dashboard";
   });
   const [scanType, setScanType] = useState<ScanType | null>(null);
+  const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
+
+  useEffect(() => {
+    if (!isOwner || vehicle.silhouette_image_url) {
+      setShowSilhouettePrompt(false);
+      return;
+    }
+    try {
+      const skipped = window.localStorage.getItem(
+        silhouetteSkipKey(vehicle.id),
+      );
+      setShowSilhouettePrompt(!skipped);
+    } catch {
+      setShowSilhouettePrompt(true);
+    }
+  }, [isOwner, vehicle.id, vehicle.silhouette_image_url]);
 
   if (!canWrite) {
     return null;
@@ -125,8 +146,28 @@ export function TagDashboardShell({
           setMode("pick-scan");
         }}
       />
+      {showSilhouettePrompt && mode === "dashboard" ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+          <VehicleSilhouetteUpload
+            vehicleId={vehicle.id}
+            tagUuid={tagUuid}
+            onUploaded={() => setShowSilhouettePrompt(false)}
+            onSkip={() => {
+              try {
+                window.localStorage.setItem(
+                  silhouetteSkipKey(vehicle.id),
+                  "1",
+                );
+              } catch {
+                /* ignore quota / private mode */
+              }
+              setShowSilhouettePrompt(false);
+            }}
+          />
+        </div>
+      ) : null}
       <DashboardOnboardingTour
-        enabled={mode === "dashboard"}
+        enabled={mode === "dashboard" && !showSilhouettePrompt}
         role={isOwner ? "owner" : "contributor"}
       />
     </>
