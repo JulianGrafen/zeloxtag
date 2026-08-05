@@ -21,6 +21,10 @@ import {
   displayDocumentTitle,
   formatDocumentDate,
 } from "@/lib/documents/format";
+import {
+  displayManualInvoiceNumber,
+  isManualVehicleEntry,
+} from "@/lib/documents/manual-entries";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
 
@@ -67,7 +71,8 @@ export function DocumentInvoiceDetailView({
   const title = displayDocumentTitle(document.title);
   const lineItems = document.line_items ?? [];
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
-  const canEditPositions = Boolean(document.vehicle_id);
+  const isManual = isManualVehicleEntry(document);
+  const canEditPositions = !isManual && Boolean(document.vehicle_id);
   const resolvedBack =
     backHref ?? `/v/${tagUuid}/dokumente?type=${document.type}`;
   const fileName = fileNameFromUrl(document.file_url, title);
@@ -78,14 +83,15 @@ export function DocumentInvoiceDetailView({
       ? `${document.mileage_km.toLocaleString("de-DE")} km`
       : null;
   const vendor = document.vendor?.trim() || title;
-  const category = document.category?.trim() || "Beleg";
+  const category = document.category?.trim() || (isManual ? "Eintrag" : "Beleg");
+  const invoiceNumberLabel = displayManualInvoiceNumber(document.invoice_number);
 
   async function handleShare() {
     const shareUrl =
       typeof window !== "undefined" ? window.location.href : "";
     const payload = {
       title,
-      text: [vendor, document.invoice_number, issuedLabel]
+      text: [vendor, invoiceNumberLabel, issuedLabel]
         .filter(Boolean)
         .join(" · "),
       url: shareUrl || undefined,
@@ -125,7 +131,7 @@ export function DocumentInvoiceDetailView({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-                {category} · Beleg
+                {category} · {isManual ? "Eigener Eintrag" : "Beleg"}
               </p>
               <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
                 {title}
@@ -144,7 +150,7 @@ export function DocumentInvoiceDetailView({
             <div className="flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-700">
                 <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                bezahlt
+                {isManual ? "dokumentiert" : "bezahlt"}
               </span>
               {issuedLabel ? (
                 <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-muted)]">
@@ -164,7 +170,7 @@ export function DocumentInvoiceDetailView({
 
         <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Belegdaten
+            {isManual ? "Eintrag" : "Belegdaten"}
           </h2>
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
@@ -172,7 +178,7 @@ export function DocumentInvoiceDetailView({
                 Nummer
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {document.invoice_number?.trim() || "—"}
+                {invoiceNumberLabel || "—"}
               </dd>
             </div>
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
@@ -247,8 +253,10 @@ export function DocumentInvoiceDetailView({
               {fileName}
             </p>
             <p className="text-[0.7rem] text-[color:var(--vd-muted)]">
-              Original-PDF
-              {scannedLabel ? ` · gescannt ${scannedLabel}` : ""}
+              {isManual ? "Fotodoku" : "Original-PDF"}
+              {scannedLabel
+                ? ` · ${isManual ? "erstellt" : "gescannt"} ${scannedLabel}`
+                : ""}
             </p>
           </div>
           <div className="p-4">
@@ -260,11 +268,13 @@ export function DocumentInvoiceDetailView({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
               >
                 <FileText className="h-4 w-4" aria-hidden />
-                Original öffnen
+                {isManual ? "Fotos öffnen" : "Original öffnen"}
               </PressableButton>
             ) : (
               <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
-                Für diesen Demo-Beleg liegt keine Datei vor.
+                {isManual
+                  ? "Für diesen Eintrag liegt kein Foto vor."
+                  : "Für diesen Demo-Beleg liegt keine Datei vor."}
               </p>
             )}
           </div>

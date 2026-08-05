@@ -16,11 +16,13 @@ export type PdfPageRaster = {
 
 let workerConfigured = false;
 
+/** Same-origin worker — CSP (`script-src 'self'`) blocks unpkg/CDN. */
+const PDFJS_WORKER_SRC = "/pdfjs/pdf.worker.min.mjs";
+
 async function getPdfJs() {
   const pdfjs = await import("pdfjs-dist");
   if (!workerConfigured) {
-    // CDN worker avoids Turbopack bundling issues with .mjs workers.
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
     workerConfigured = true;
   }
   return pdfjs;

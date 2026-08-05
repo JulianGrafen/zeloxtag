@@ -142,6 +142,24 @@ function isAllowedMime(value: string): value is AllowedDocumentMimeType {
 }
 
 /**
+ * True for browser `File` or Node/Server-Action file-like Blobs with a name.
+ * (`instanceof File` alone is unreliable across some SSR serialization paths.)
+ */
+export function isUploadFile(value: unknown): value is File {
+  if (value instanceof File) return value.size > 0;
+  if (typeof Blob !== "undefined" && value instanceof Blob) {
+    const named = value as Blob & { name?: unknown };
+    return (
+      value.size > 0 &&
+      typeof named.name === "string" &&
+      named.name.length > 0 &&
+      typeof value.arrayBuffer === "function"
+    );
+  }
+  return false;
+}
+
+/**
  * Validate an uploaded File (or File-like) before Storage / OCR.
  */
 export async function validateDocumentUpload(
@@ -154,7 +172,7 @@ export async function validateDocumentUpload(
 ): Promise<FileValidationSuccess | FileValidationFailure> {
   const maxBytes = options?.maxBytes ?? MAX_DOCUMENT_BYTES;
 
-  if (!(file instanceof File) || file.size <= 0) {
+  if (!isUploadFile(file)) {
     return { ok: false, error: "Datei fehlt oder ist leer." };
   }
 

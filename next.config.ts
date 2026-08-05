@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   experimental: {
     viewTransition: true,
+    // Manual-entry photos + multi-page PDFs exceed the 1MB default.
+    serverActions: {
+      bodySizeLimit: "12mb",
+    },
   },
   async headers() {
     return [

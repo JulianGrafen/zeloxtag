@@ -8,7 +8,10 @@ import {
   contributorMayWriteDocumentType,
   getVehicleWriteAccess,
 } from "@/lib/auth/vehicle-write-access";
-import { validateDocumentUpload } from "@/lib/security/file-upload";
+import {
+  isUploadFile,
+  validateDocumentUpload,
+} from "@/lib/security/file-upload";
 import { parseStrictBody } from "@/lib/security/parse-body";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -83,7 +86,7 @@ export async function uploadDocument(
 
   const meta = metaParsed.data;
   const file = formData.get("file");
-  if (!(file instanceof File)) {
+  if (!isUploadFile(file)) {
     return { status: "error", message: "Bitte eine Datei auswählen." };
   }
 

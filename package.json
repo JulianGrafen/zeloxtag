@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:extraction": "vitest run src/lib/ocr/extraction-quality.test.ts src/services/documents/document-services.test.ts",
     "predeploy": "npm run test:extraction",
-    "db:seed-demo": "node --env-file=.env scripts/seed-demo-vehicle.mjs"
+    "db:seed-demo": "node --env-file=.env scripts/seed-demo-vehicle.mjs",
+    "postinstall": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Camera,
+  ImagePlus,
   NotebookPen,
   Plus,
   Trash2,
   Wrench,
+  X,
 } from "lucide-react";
 
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
@@ -16,6 +19,7 @@ import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
+import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import {
   displayDocumentTitle,
   formatDocumentAmount,
@@ -25,8 +29,15 @@ import {
   filterManualVehicleEntries,
   MANUAL_ENTRY_CATEGORIES,
   MANUAL_ENTRY_CATEGORY_LABELS,
+  MANUAL_ENTRY_MAX_PHOTOS,
   type ManualEntryCategory,
 } from "@/lib/documents/manual-entries";
+import {
+  documentMediaKind,
+  inlineDocumentProxyUrl,
+  isViewableDocumentUrl,
+} from "@/lib/documents/viewable-url";
+import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { Document } from "@/types/database";
 
 interface ManualEntryViewProps {
@@ -36,6 +47,12 @@ interface ManualEntryViewProps {
   documents: Document[];
 }
 
+type PhotoDraft = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
+
 export function ManualEntryView({
   tagUuid,
   vehicleId,
@@ -43,6 +60,8 @@ export function ManualEntryView({
   documents,
 }: ManualEntryViewProps) {
   const router = useRouter();
+  const { compressFile, isCompressing, statusLabel, error: compressError } =
+    useDocumentCompression();
   const [showForm, setShowForm] = useState(false);
   const [category, setCategory] = useState<ManualEntryCategory>("service");
   const [title, setTitle] = useState("");
@@ -51,46 +70,134 @@ export function ManualEntryView({
   const [vendor, setVendor] = useState("");
   const [mileageKm, setMileageKm] = useState("");
   const [notes, setNotes] = useState("");
+  const [photos, setPhotos] = useState<PhotoDraft[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const entries = filterManualVehicleEntries(documents);
 
+  useEffect(() => {
+    return () => {
+      photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+    };
+    // Only revoke on unmount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, []);
+
   function resetForm() {
+    photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
     setTitle("");
     setDate("");
     setAmount("");
     setVendor("");
     setMileageKm("");
     setNotes("");
+    setPhotos([]);
     setCategory("service");
     setError(null);
+  }
+
+  async function addPhotoFiles(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    setError(null);
+    const remaining = MANUAL_ENTRY_MAX_PHOTOS - photos.length;
+    if (remaining <= 0) {
+      setError(`Maximal ${MANUAL_ENTRY_MAX_PHOTOS} Fotos pro Eintrag.`);
+      return;
+    }
+
+    const selected = Array.from(fileList).slice(0, remaining);
+    const next: PhotoDraft[] = [];
+    let rejectReason: string | null = null;
+
+    try {
+      for (const raw of selected) {
+        // iOS often sends an empty MIME type — fall back to extension.
+        const looksLikeImage =
+          raw.type.startsWith("image/") ||
+          /\.(jpe?g|png|webp|heic|heif|bmp|tiff?)$/i.test(raw.name);
+        if (!looksLikeImage) {
+          rejectReason = "Nur Bilder (Foto / Galerie) sind erlaubt.";
+          continue;
+        }
+        const compressed = await compressFile(raw);
+        next.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          file: compressed.file,
+          previewUrl: URL.createObjectURL(compressed.file),
+        });
+      }
+      if (next.length > 0) {
+        setPhotos((prev) => [...prev, ...next].slice(0, MANUAL_ENTRY_MAX_PHOTOS));
+      } else {
+        setError(rejectReason ?? "Kein Foto konnte hinzugefügt werden.");
+      }
+    } catch (photoError) {
+      setError(
+        photoError instanceof Error
+          ? photoError.message
+          : "Foto konnte nicht vorbereitet werden.",
+      );
+    }
+  }
+
+  function removePhoto(id: string) {
+    setPhotos((prev) => {
+      const target = prev.find((photo) => photo.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((photo) => photo.id !== id);
+    });
   }
 
   function handleCreate() {
     setError(null);
     startTransition(async () => {
-      const result = await createManualVehicleEntry({
-        vehicleId,
-        tagUuid,
-        category,
-        title:
+      try {
+        const formData = new FormData();
+        formData.set("vehicleId", vehicleId);
+        formData.set("tagUuid", tagUuid);
+        formData.set("category", category);
+        formData.set(
+          "title",
           title.trim() ||
-          (category === "tuning" ? "Tuning-Eintrag" : "Wartungseintrag"),
-        date,
-        amount,
-        vendor,
-        mileageKm,
-        notes,
-      });
-      if (result.status === "error") {
-        setError(result.message);
-        return;
+            (category === "tuning" ? "Tuning-Eintrag" : "Wartungseintrag"),
+        );
+        formData.set("date", date);
+        formData.set("amount", amount);
+        formData.set("vendor", vendor);
+        formData.set("mileageKm", mileageKm);
+        formData.set("notes", notes);
+
+        if (photos.length === 1) {
+          formData.set("photo", photos[0].file, photos[0].file.name);
+        } else if (photos.length > 1) {
+          const pdf = await convertImagesToPdf(
+            photos.map((photo) => photo.file),
+            {
+              fileName: "eintrag-fotos",
+              fullBleed: true,
+            },
+          );
+          formData.set("photo", pdf.file, pdf.file.name);
+          formData.set("pageCount", String(pdf.pageCount));
+        }
+
+        const result = await createManualVehicleEntry(formData);
+        if (result.status === "error") {
+          setError(result.message);
+          return;
+        }
+        resetForm();
+        setShowForm(false);
+        router.refresh();
+      } catch (createError) {
+        setError(
+          createError instanceof Error
+            ? createError.message
+            : "Eintrag konnte nicht gespeichert werden.",
+        );
       }
-      resetForm();
-      setShowForm(false);
-      router.refresh();
     });
   }
 
@@ -111,6 +218,8 @@ export function ManualEntryView({
       router.refresh();
     });
   }
+
+  const busy = pending || isCompressing;
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -135,23 +244,23 @@ export function ManualEntryView({
               <NotebookPen className="h-5 w-5" aria-hidden />
             </div>
             <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              Ohne Beleg
+              Eigene Doku
             </p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
               Wartung & Tuning
             </h1>
             <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {vehicleLabel} · eigene Einträge ohne Scan
+              {vehicleLabel} · Einträge mit optionalen Fotos
             </p>
           </div>
         </header>
 
-        {error ? (
+        {error || compressError ? (
           <p
             role="alert"
             className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
           >
-            {error}
+            {error || compressError}
           </p>
         ) : null}
 
@@ -266,11 +375,88 @@ export function ManualEntryView({
               />
             </label>
 
+            <div className="space-y-2">
+              <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                Fotos{" "}
+                <span className="normal-case tracking-normal text-[color:var(--vd-muted)]">
+                  (optional, max. {MANUAL_ENTRY_MAX_PHOTOS})
+                </span>
+              </p>
+
+              {photos.length > 0 ? (
+                <ul className="grid grid-cols-3 gap-2">
+                  {photos.map((photo) => (
+                    <li
+                      key={photo.id}
+                      className="relative aspect-square overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-neutral-100"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.previewUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Foto entfernen"
+                        disabled={busy}
+                        onClick={() => removePhoto(photo.id)}
+                        className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-neutral-950/75 text-white"
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              {photos.length < MANUAL_ENTRY_MAX_PHOTOS ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="claim-back relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden">
+                    <input
+                      type="file"
+                      accept="image/*,.heic,.heif"
+                      capture="environment"
+                      disabled={busy}
+                      className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                      onChange={(event) => {
+                        void addPhotoFiles(event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                    <Camera className="h-4 w-4" aria-hidden />
+                    Kamera
+                  </label>
+                  <label className="claim-back relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden">
+                    <input
+                      type="file"
+                      accept="image/*,.heic,.heif"
+                      multiple
+                      disabled={busy}
+                      className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                      onChange={(event) => {
+                        void addPhotoFiles(event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                    <ImagePlus className="h-4 w-4" aria-hidden />
+                    Galerie
+                  </label>
+                </div>
+              ) : null}
+
+              {statusLabel ? (
+                <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+                  {statusLabel}
+                </p>
+              ) : null}
+            </div>
+
             <div className="flex gap-2 pt-1">
               <PressableButton
                 type="button"
                 variant="button"
-                disabled={pending}
+                disabled={busy}
                 onClick={() => {
                   resetForm();
                   setShowForm(false);
@@ -282,10 +468,10 @@ export function ManualEntryView({
               <PressableButton
                 type="submit"
                 variant="button"
-                disabled={pending || title.trim().length < 2}
+                disabled={busy || title.trim().length < 2}
                 className="claim-cta flex-1 disabled:opacity-60"
               >
-                {pending ? "Speichern…" : "Eintrag speichern"}
+                {busy ? "Speichern…" : "Eintrag speichern"}
               </PressableButton>
             </div>
           </form>
@@ -301,8 +487,8 @@ export function ManualEntryView({
                 Noch keine eigenen Einträge
               </p>
               <p className="mt-1">
-                Trage Wartungen oder Tuning-Arbeiten ein, für die du keinen
-                Beleg scannen willst.
+                Trage Wartungen oder Tuning-Arbeiten ein und dokumentiere sie
+                optional mit Fotos.
               </p>
             </div>
           ) : (
@@ -313,6 +499,13 @@ export function ManualEntryView({
                     ? MANUAL_ENTRY_CATEGORY_LABELS.tuning
                     : MANUAL_ENTRY_CATEGORY_LABELS.service;
                 const amountLabel = formatDocumentAmount(doc.amount);
+                const hasPhoto = isViewableDocumentUrl(doc.file_url);
+                const thumbSrc = hasPhoto
+                  ? inlineDocumentProxyUrl(doc.file_url)
+                  : null;
+                const isImage =
+                  hasPhoto && documentMediaKind(doc.file_url) === "image";
+
                 return (
                   <li
                     key={doc.id}
@@ -323,8 +516,17 @@ export function ManualEntryView({
                       variant="row"
                       className="vd-pressable vd-pressable--row group flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left"
                     >
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                        <NotebookPen className="h-5 w-5" aria-hidden />
+                      <span className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
+                        {thumbSrc && isImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={thumbSrc}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <NotebookPen className="h-5 w-5" aria-hidden />
+                        )}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
@@ -335,6 +537,7 @@ export function ManualEntryView({
                           {" · "}
                           {formatDocumentDate(doc.date)}
                           {amountLabel ? ` · ${amountLabel}` : ""}
+                          {hasPhoto ? " · Foto" : ""}
                         </span>
                       </span>
                     </PressableLink>

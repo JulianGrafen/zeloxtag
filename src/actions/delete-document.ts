@@ -53,6 +53,7 @@ export async function deleteDocument(input: {
     revalidatePath(`/v/${tagUuid}`);
     revalidatePath(`/v/${tagUuid}/dokumente`);
     revalidatePath(`/v/${tagUuid}/service`);
+    revalidatePath(`/v/${tagUuid}/eintrag`);
     return { status: "deleted", documentId };
   }
 
@@ -95,5 +96,6 @@ export async function deleteDocument(input: {
   revalidatePath(`/v/${tagUuid}`);
   revalidatePath(`/v/${tagUuid}/dokumente`);
   revalidatePath(`/v/${tagUuid}/service`);
+  revalidatePath(`/v/${tagUuid}/eintrag`);
   return { status: "deleted", documentId };
 }
