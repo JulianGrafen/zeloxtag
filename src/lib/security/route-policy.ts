@@ -19,6 +19,7 @@ const PUBLIC_EXACT = new Set([
 const PUBLIC_PREFIXES = [
   "/v/", // physical QR scan surface
   "/einladung/", // Schrauber invite landing (accept requires auth)
+  "/abe", // mock ABE showcase (Verwendungsbereich highlight demo)
   "/_next/",
 ];
 
@@ -75,9 +76,8 @@ export function isProtectedPagePath(pathname: string): boolean {
   if (pathname === "/settings" || pathname.startsWith("/settings/")) {
     return true;
   }
-  // Legacy owner hubs (not QR-scoped)
+  // Legacy owner hubs (not QR-scoped). /abe is public mock showcase.
   if (
-    pathname.startsWith("/abe") ||
     pathname.startsWith("/rechnungen") ||
     pathname.startsWith("/intervalle")
   ) {
