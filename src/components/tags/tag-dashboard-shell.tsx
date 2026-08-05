@@ -12,6 +12,7 @@ import {
 } from "@/lib/documents/scan-types";
 import type { Document, Vehicle } from "@/types/database";
 
+import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
 import { TagDashboardView } from "./tag-dashboard-view";
 
 type DashboardMode = "dashboard" | "pick-scan" | "scanner";
@@ -110,18 +111,24 @@ export function TagDashboardShell({
   }
 
   return (
-    <TagDashboardView
-      vehicle={vehicle}
-      documents={documents}
-      tagUuid={tagUuid}
-      ownerName={ownerName}
-      canScan
-      isOwner={isOwner}
-      isContributor={isContributor}
-      onOpenScanner={() => {
-        setScanType(null);
-        setMode("pick-scan");
-      }}
-    />
+    <>
+      <TagDashboardView
+        vehicle={vehicle}
+        documents={documents}
+        tagUuid={tagUuid}
+        ownerName={ownerName}
+        canScan
+        isOwner={isOwner}
+        isContributor={isContributor}
+        onOpenScanner={() => {
+          setScanType(null);
+          setMode("pick-scan");
+        }}
+      />
+      <DashboardOnboardingTour
+        enabled={mode === "dashboard"}
+        role={isOwner ? "owner" : "contributor"}
+      />
+    </>
   );
 }

@@ -15,7 +15,10 @@ export function DashboardScanFab({
   onOpenScanner,
 }: DashboardScanFabProps) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5">
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5"
+      data-tour="scan-fab"
+    >
       <div className="pointer-events-auto mx-auto max-w-lg">
         {onOpenScanner ? (
           <PressableButton

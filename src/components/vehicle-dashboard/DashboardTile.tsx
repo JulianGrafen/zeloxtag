@@ -101,6 +101,8 @@ export function DashboardTile({ tile, onClick }: DashboardTileProps) {
     .filter(Boolean)
     .join(" ");
 
+  const tourAnchor = { "data-tour": `tile-${tile.id}` } as const;
+
   if (href) {
     return (
       <PressableLink
@@ -108,6 +110,7 @@ export function DashboardTile({ tile, onClick }: DashboardTileProps) {
         variant="tile"
         className={className}
         aria-label={tile.title}
+        {...tourAnchor}
       >
         {content}
       </PressableLink>
@@ -120,6 +123,7 @@ export function DashboardTile({ tile, onClick }: DashboardTileProps) {
       className={className}
       onClick={() => onClick?.(tile.id)}
       aria-label={tile.title}
+      {...tourAnchor}
     >
       {content}
     </PressableButton>
