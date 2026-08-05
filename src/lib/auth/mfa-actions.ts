@@ -204,6 +204,21 @@ export async function unenrollTotp(factorId: string): Promise<MfaActionResult> {
   if (!isConfigured) return { status: "unconfigured" };
 
   const supabase = await createClient();
+
+  // Step-up: only AAL2 sessions may remove TOTP (stolen AAL1 cookie ≠ enough).
+  const { data: aal, error: aalError } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aalError) {
+    return { status: "error", message: aalError.message };
+  }
+  if (aal?.currentLevel !== "aal2") {
+    return {
+      status: "error",
+      message:
+        "MFA-Bestätigung erforderlich, bevor der Faktor entfernt werden kann.",
+    };
+  }
+
   const { error } = await supabase.auth.mfa.unenroll({ factorId });
   if (error) return { status: "error", message: error.message };
   return { status: "ok", message: "MFA-Faktor entfernt." };

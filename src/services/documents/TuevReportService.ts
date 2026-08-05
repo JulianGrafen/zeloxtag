@@ -230,7 +230,11 @@ export class TuevReportService extends BaseDocumentService<"tuev"> {
       return super.parseAndValidate(sanitized);
     } catch (error) {
       if (error instanceof DocumentValidationError) {
-        console.error("[TuevReportService] validation failed", error.toJSON());
+        console.error(
+          "[TuevReportService] validation failed",
+          error.documentType,
+          error.issues.map((issue) => issue.path).join(","),
+        );
       }
       throw error;
     }

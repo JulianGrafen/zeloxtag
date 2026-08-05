@@ -26,8 +26,9 @@ const UUID_RE =
  * Proxy document bytes with Content-Disposition: inline.
  *
  * Authorization (fail closed):
- * - Authenticated owner of the vehicle folder only.
- * Guests / foreign accounts never receive invoice or ABE PDF bytes via QR UUID.
+ * - Vehicle owner: any document under the vehicle folder.
+ * - Active Schrauber: invoice documents only.
+ * Guests / foreign accounts never receive PDF bytes via QR UUID.
  */
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, "apiDefault", "documents-file");
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
     }
 
     const admin = createAdminClient();
-    const allowed = await authorizeOwnerDocumentRead(admin, vehicleId);
+    const allowed = await authorizeDocumentRead(admin, vehicleId, storagePath);
     if (!allowed) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -110,9 +111,20 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function authorizeOwnerDocumentRead(
+function documentIdFromStoragePath(storagePath: string): string | null {
+  const slash = storagePath.indexOf("/");
+  if (slash < 0) return null;
+  const rest = storagePath.slice(slash + 1);
+  // `{documentId}-{safeName}` — UUID is exactly 36 chars before the next `-`.
+  const candidate = rest.slice(0, 36);
+  if (!UUID_RE.test(candidate) || rest.charAt(36) !== "-") return null;
+  return candidate;
+}
+
+async function authorizeDocumentRead(
   admin: ReturnType<typeof createAdminClient>,
   vehicleId: string,
+  storagePath: string,
 ): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;
@@ -134,7 +146,20 @@ async function authorizeOwnerDocumentRead(
     .eq("status", "active")
     .maybeSingle();
 
-  return Boolean(grant);
+  if (!grant) return false;
+
+  const documentId = documentIdFromStoragePath(storagePath);
+  if (!documentId) return false;
+
+  const { data: document } = await admin
+    .from("documents")
+    .select("id, type")
+    .eq("id", documentId)
+    .eq("vehicle_id", vehicleId)
+    .eq("type", "invoice")
+    .maybeSingle();
+
+  return Boolean(document);
 }
 
 async function proxyInline(

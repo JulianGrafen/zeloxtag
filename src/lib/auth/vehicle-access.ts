@@ -94,6 +94,11 @@ export async function getVehicleAccess(
     };
   }
 
+  // Guests / foreign sessions must not learn the owner's email or display name.
+  if (!isOwner && !isContributor) {
+    return { ...base, ownerName: "Eigentümer" };
+  }
+
   if (!vehicleUserId) {
     return { ...base, ownerName };
   }

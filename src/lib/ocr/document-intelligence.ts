@@ -149,9 +149,10 @@ async function pollAnalyzeResult(
     }
 
     if (!pollResponse.ok) {
-      const detail = (await pollResponse.text()).slice(0, 400);
+      // Never reflect Azure error bodies to clients (may include request metadata).
+      void (await pollResponse.text().catch(() => ""));
       throw new DocumentIntelligenceError(
-        `Dokumentanalyse fehlgeschlagen (${pollResponse.status}): ${detail}`,
+        `Dokumentanalyse fehlgeschlagen (${pollResponse.status}).`,
       );
     }
 
@@ -239,9 +240,9 @@ async function runDocumentOcr(input: {
   });
 
   if (!startResponse.ok) {
-    const detail = (await startResponse.text()).slice(0, 400);
+    void (await startResponse.text().catch(() => ""));
     throw new DocumentIntelligenceError(
-      `Dokumentanalyse fehlgeschlagen (${startResponse.status}): ${detail}`,
+      `Dokumentanalyse fehlgeschlagen (${startResponse.status}).`,
     );
   }
 

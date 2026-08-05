@@ -24,14 +24,18 @@ export default async function ServiceInspectionsPage({
 }: ServicePageProps) {
   const { uuid } = await params;
   const { scan } = await searchParams;
-  const { result } = await requireTagWriter(uuid);
+  const { result, access } = await requireTagWriter(uuid);
+  const documents =
+    access.isContributor && !access.isOwner
+      ? result.documents.filter((doc) => doc.type === "invoice")
+      : result.documents;
 
   return (
     <ServiceInspectionsView
       tagUuid={result.tag.uuid}
       vehicleId={result.vehicle!.id}
       vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
-      documents={result.documents}
+      documents={documents}
       initialScan={scan === "1"}
     />
   );

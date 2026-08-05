@@ -234,9 +234,11 @@ export function extractApprovalFieldsFromText(
     };
   } catch (error) {
     if (isDocumentValidationError(error)) {
+      // Do not log OCR field values / PII — type + issue paths only.
       console.error(
         "[extractApprovalFieldsFromText] validation failed",
-        error.toJSON(),
+        error.documentType,
+        error.issues.map((issue) => issue.path).join(","),
       );
     }
     // Soft fallback: keep classic ABE columns; subtype data omitted.

@@ -20,9 +20,17 @@ function supabaseHosts(): string[] {
 
 /** True only for real HTTPS deployments — not local / LAN `next dev`. */
 export function isHttpsDeployment(): boolean {
+  if (process.env.FORCE_HTTPS_SECURITY === "1") return true;
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (site?.startsWith("https://")) return true;
-  if (process.env.FORCE_HTTPS_SECURITY === "1") return true;
+  // Vercel production always terminates TLS even if SITE_URL is mis-set.
+  if (
+    process.env.VERCEL === "1" &&
+    process.env.NODE_ENV === "production" &&
+    process.env.VERCEL_ENV === "production"
+  ) {
+    return true;
+  }
   return false;
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
+import { requireOperator } from "@/lib/auth/require-operator";
+import { enforceRateLimit } from "@/lib/security/api-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseEnvDiagnostics } from "@/lib/supabase/env";
 import { createUnclaimedTag } from "@/lib/tags/create-unclaimed-tag";
@@ -21,15 +22,22 @@ type NextUnclaimedErr = {
 
 /**
  * GET /api/tags/next-unclaimed
- * Inventory helper for authenticated operators only (service-role mint).
+ * Inventory helper — operator allowlist only (`ZELOXTAG_OPERATOR_EMAILS`).
  * Pass `?mint=1` to always create a new plaque UUID.
  */
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, "auth", "next-unclaimed");
   if (limited) return limited;
 
-  const auth = await requireApiUser();
-  if (!auth.ok) return auth.response;
+  const operator = await requireOperator();
+  if (!operator.ok) {
+    const body: NextUnclaimedErr = {
+      ok: false,
+      source: "unauthorized",
+      error: operator.message,
+    };
+    return NextResponse.json(body, { status: operator.status });
+  }
 
   const forceMint = request.nextUrl.searchParams.get("mint") === "1";
   const diagnostics = getSupabaseEnvDiagnostics();

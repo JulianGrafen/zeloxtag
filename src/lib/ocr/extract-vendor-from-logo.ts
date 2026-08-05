@@ -103,7 +103,10 @@ export async function extractVendorFromLogoImage(input: {
     if (!content) return null;
     return parseVendorResponse(content);
   } catch (error) {
-    console.error("Logo vision vendor extract failed:", error);
+    console.error(
+      "Logo vision vendor extract failed:",
+      error instanceof Error ? error.name : "unknown",
+    );
     return null;
   }
 }

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     if (!isLlmConfigured()) {
       return jsonError(
         503,
-        "LLM API key is not configured (API_KEY / AZURE_API_KEY / OPENAI_API_KEY).",
+        "LLM API key is not configured.",
         "config",
       );
     }
