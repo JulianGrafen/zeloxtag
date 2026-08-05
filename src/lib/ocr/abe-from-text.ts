@@ -5,7 +5,10 @@
 import {
   ABE_CONDITION_MAX_ITEMS,
   ABE_CONDITION_MAX_LENGTH,
+  ABE_VEHICLE_APPROVAL_MAX_ITEMS,
+  isPlausibleVehicleApproval,
   normalizeAbeDate,
+  normalizeAbeVehicleApprovals,
 } from "./abe-parse-schema";
 
 const KBA_PATTERNS = [
@@ -15,7 +18,7 @@ const KBA_PATTERNS = [
 ];
 
 const VEHICLE_LINE =
-  /(?:^|\n)\s*(?:fahrzeug(?:e|typ(?:en)?)?|freigabe(?:n)?|geeignet\s+für|gilt\s+für|anwendbar\s+für|typliste|fahrzeugliste)\s*[:.]?\s*(.+)/gi;
+  /(?:^|\n)\s*(?:verwendungsbereich(?:\s*\/\s*freigaben?)?|fahrzeug(?:e|typ(?:en)?)?|freigabe(?:n)?|geeignet\s+für|gilt\s+für|anwendbar\s+für|typliste|fahrzeugliste)\s*[:.]?\s*(.+)/gi;
 
 const LOOKS_LIKE_VEHICLE =
   /\b(mazda|bmw|audi|mercedes|vw|volkswagen|porsche|toyota|honda|nissan|ford|opel|skoda|seat|hyundai|kia|volvo|subaru|mitsubishi|lexus|mini|alfa|fiat|peugeot|citroen|renault|cupra|tesla|rx-?\d|m\d|e\d{2}|f\d{2}|g\d{2}|a\d{1,2}|s\d{1,2}|golf|passat|polo|caddy|transporter)\b/i;
@@ -48,35 +51,45 @@ export function extractKbaNumber(rawText: string): string | null {
 }
 
 export function extractVehicleApprovals(rawText: string): string[] | null {
-  const found = new Set<string>();
+  const found: string[] = [];
 
   for (const match of rawText.matchAll(VEHICLE_LINE)) {
     const chunk = match[1];
     if (!chunk) continue;
     for (const part of chunk.split(/[,;|/]/)) {
       const value = clean(part).replace(/\.$/, "");
-      if (value.length < 3 || value.length > 120) continue;
-      if (LOOKS_LIKE_VEHICLE.test(value) || /\b\d{3,4}\b/.test(value)) {
-        found.add(value.slice(0, 120));
-      }
+      // Require a recognizable make/model — never bare numbers / type codes.
+      if (!LOOKS_LIKE_VEHICLE.test(value)) continue;
+      if (!isPlausibleVehicleApproval(value)) continue;
+      found.push(value.slice(0, 120));
     }
   }
 
   // Fallback: collect short lines that look like vehicle models.
-  if (found.size === 0) {
+  if (found.length === 0) {
     for (const line of rawText.split(/\n+/).map(clean).filter(Boolean)) {
       if (line.length > 80) continue;
       if (!LOOKS_LIKE_VEHICLE.test(line)) continue;
+      if (!isPlausibleVehicleApproval(line)) continue;
       if (/betriebserlaubnis|teilegutachten|auflage|hinweis/i.test(line)) {
         continue;
       }
-      found.add(line.slice(0, 120));
-      if (found.size >= 12) break;
+      found.push(line.slice(0, 120));
+      if (found.length >= 12) break;
     }
   }
 
-  const list = [...found].slice(0, 40);
-  return list.length > 0 ? list : null;
+  return normalizeAbeVehicleApprovals(found);
+}
+
+/** Prefer LLM Freigabe; fall back to heuristic make/model lines. */
+export function preferAbeVehicleApprovals(
+  primary: string[] | null | undefined,
+  fallback: string[] | null | undefined,
+): string[] | null {
+  const fromLlm = normalizeAbeVehicleApprovals(primary);
+  if (fromLlm?.length) return fromLlm.slice(0, ABE_VEHICLE_APPROVAL_MAX_ITEMS);
+  return normalizeAbeVehicleApprovals(fallback);
 }
 
 /**
@@ -101,32 +114,48 @@ export function stripAbeFitmentSections(rawText: string): string {
 }
 
 /**
- * Keep OCR text under a char budget without chopping off Auflagen.
- * Prefer: strip fitment → keep head metadata + Auflagen section / document tail.
+ * Keep OCR text under a char budget for the LLM.
+ * Preserves head metadata + Verwendungsbereich excerpt + Auflagen
+ * (Freigabe needs fitment text — do not drop it entirely).
  */
 export function budgetAbeOcrText(rawText: string, maxChars: number): string {
   const normalized = rawText.replace(/\r\n/g, "\n").trim();
   if (normalized.length <= maxChars) return normalized;
 
-  const stripped = stripAbeFitmentSections(normalized);
-  if (stripped.length <= maxChars) return stripped;
+  const fitmentStart = normalized.search(/verwendungsbereich|freigabe(?:n)?\b/i);
+  const auflagenAt = normalized.search(AUFLAGEN_HEADING);
 
-  const headingAt = stripped.search(AUFLAGEN_HEADING);
-  if (headingAt >= 0) {
-    const headBudget = Math.min(
-      Math.floor(maxChars * 0.4),
-      Math.max(800, headingAt),
-    );
-    const head = stripped.slice(0, Math.min(headBudget, headingAt)).trimEnd();
-    const tailBudget = maxChars - head.length - 8;
-    const tail = stripped.slice(headingAt, headingAt + Math.max(tailBudget, 0));
-    return `${head}\n\n…\n\n${tail}`.trim().slice(0, maxChars);
+  const headEnd =
+    fitmentStart >= 0
+      ? fitmentStart
+      : auflagenAt >= 0
+        ? auflagenAt
+        : Math.floor(maxChars * 0.3);
+  const headBudget = Math.min(Math.floor(maxChars * 0.28), Math.max(700, headEnd));
+  const head = normalized.slice(0, headBudget).trimEnd();
+
+  let fitment = "";
+  if (fitmentStart >= 0) {
+    const fitmentBudget = Math.floor(maxChars * 0.34);
+    const naturalEnd =
+      auflagenAt > fitmentStart ? auflagenAt : fitmentStart + fitmentBudget;
+    fitment = normalized
+      .slice(fitmentStart, Math.min(naturalEnd, fitmentStart + fitmentBudget))
+      .trim();
   }
 
-  // No heading found — keep head (KBA/manufacturer) + tail (often Auflagen).
-  const headBudget = Math.floor(maxChars * 0.45);
-  const tailBudget = maxChars - headBudget - 8;
-  return `${stripped.slice(0, headBudget)}\n\n…\n\n${stripped.slice(-tailBudget)}`
+  let auflagen = "";
+  const used = head.length + fitment.length + 20;
+  const remaining = Math.max(600, maxChars - used);
+  if (auflagenAt >= 0) {
+    auflagen = normalized.slice(auflagenAt, auflagenAt + remaining).trim();
+  } else {
+    auflagen = normalized.slice(-remaining).trim();
+  }
+
+  return [head, fitment, auflagen]
+    .filter(Boolean)
+    .join("\n\n…\n\n")
     .trim()
     .slice(0, maxChars);
 }
@@ -270,17 +299,14 @@ export function resolveAbeFields(input: {
     input.structuredKba?.trim().slice(0, 80) ||
     extractKbaNumber(input.rawText);
 
-  const vehicleApprovals =
-    input.structuredApprovals && input.structuredApprovals.length > 0
-      ? input.structuredApprovals.map((v) => v.trim().slice(0, 120)).filter(Boolean)
-      : extractVehicleApprovals(input.rawText);
+  const vehicleApprovals = preferAbeVehicleApprovals(
+    input.structuredApprovals,
+    extractVehicleApprovals(input.rawText),
+  );
 
   return {
     kbaNumber: kbaNumber || null,
-    vehicleApprovals:
-      vehicleApprovals && vehicleApprovals.length > 0
-        ? vehicleApprovals.slice(0, 40)
-        : null,
+    vehicleApprovals,
   };
 }
 
@@ -402,21 +428,29 @@ export function preferAbeDate(
   return normalizeAbeDate(structured) ?? extractAbeDateFromText(rawText);
 }
 
-/** Labels that identify the part manufacturer / mark (Herstellerzeichen). */
+/**
+ * Labels that identify the part manufacturer / mark / ABE holder.
+ * Value may sit on the same line or the next non-empty line.
+ */
 const MANUFACTURER_LABEL =
-  /(?:^|\n)\s*(?:hersteller(?:zeichen)?|hersteller\s*(?:\/|,|und)\s*marke|fabrikant|fertiger(?:werk)?)\s*[:.]?\s*([^\n]{2,120})/gi;
+  /(?:^|\n)\s*(?:hersteller(?:zeichen)?(?:\s+des?\s+(?:teils?|bauteils?|bauteile))?|teilehersteller|bauteilhersteller|hersteller\s*(?:\/|,|und)\s*marke|fabrik(?:ant|marke)|fertiger(?:werk)?|genehmigungsinhaber|inhaber\s+der\s+(?:allgemeinen\s+)?betriebserlaubnis|inhaber\s+der\s+abe|abe[-\s]?inhaber|marke(?:nname)?)\s*[:.]?\s*([^\n]*)/gi;
 
 /**
  * Labels that look similar but are NOT the manufacturer
  * (Auftraggeber, Antragsteller, Importeur, …).
  */
 const NON_MANUFACTURER_LABEL =
-  /(?:^|\n)\s*(?:auftraggeber|antragsteller|besteller|inverkehrbringer|importeur|vertreiber|vertrieb|händler|haendler|kunde|antragssteller)\s*[:.]?\s*([^\n]{2,120})/gi;
+  /(?:^|\n)\s*(?:auftraggeber|antragsteller|besteller|inverkehrbringer|importeur|vertreiber|vertrieb|händler|haendler|kunde|antragssteller)\s*[:.]?\s*([^\n]*)/gi;
+
+const FOLLOWING_FIELD_LABEL =
+  /^(auftraggeber|antragsteller|besteller|verwendungsbereich|auflage|auflagen|hinweis|genehmigungszeichen|typ|bezeichnung|anschrift|straße|strasse|plz|tel|fax|datum|kba|abe)\b/i;
 
 function normalizeManufacturerName(value: string): string {
   return clean(value)
     .replace(/^["'„“]+|["'„“]+$/g, "")
     .replace(/\s*[;,]\s*$/, "")
+    // Drop trailing address fragments glued onto the company line.
+    .replace(/\s+\d{5}\s+[A-ZÄÖÜ].*$/u, "")
     .slice(0, 120);
 }
 
@@ -424,37 +458,75 @@ function manufacturerKey(value: string): string {
   return normalizeManufacturerName(value).toLowerCase();
 }
 
+function isPlausibleManufacturerName(value: string): boolean {
+  const trimmed = normalizeManufacturerName(value);
+  if (trimmed.length < 2 || trimmed.length > 120) return false;
+  if (/^(seite|page|tel|fax|datum|kba|abe|nr\.?|nummer)$/i.test(trimmed)) {
+    return false;
+  }
+  if (FOLLOWING_FIELD_LABEL.test(trimmed)) return false;
+  // Need letters — pure numeric codes are not manufacturer names.
+  if (!/[a-zäöüß]/i.test(trimmed)) return false;
+  return true;
+}
+
+/**
+ * Read value after a label; if empty on the same line, take the next
+ * non-empty content line (common in ABE / Teilegutachten layouts).
+ */
+function labelValueOrNextLine(
+  text: string,
+  matchIndex: number,
+  fullMatch: string,
+  sameLineValue: string,
+): string | null {
+  const same = normalizeManufacturerName(sameLineValue);
+  if (isPlausibleManufacturerName(same)) return same;
+
+  const lineEnd = text.indexOf("\n", matchIndex);
+  const from =
+    lineEnd >= 0 ? lineEnd + 1 : matchIndex + Math.max(fullMatch.length, 1);
+  for (const line of text.slice(from).split("\n").slice(0, 4)) {
+    const candidate = normalizeManufacturerName(line);
+    if (!candidate) continue;
+    if (FOLLOWING_FIELD_LABEL.test(candidate)) break;
+    if (isPlausibleManufacturerName(candidate)) return candidate;
+  }
+  return null;
+}
+
 /** Collect names printed under Auftraggeber / Antragsteller / … */
 export function extractAbeNonManufacturerNames(rawText: string): string[] {
   const text = rawText.replace(/\r\n/g, "\n");
   const found: string[] = [];
   for (const match of text.matchAll(NON_MANUFACTURER_LABEL)) {
-    const value = normalizeManufacturerName(match[1] ?? "");
-    if (value.length < 2) continue;
-    if (/^(seite|page|tel|fax|datum)$/i.test(value)) continue;
+    const value = labelValueOrNextLine(
+      text,
+      match.index ?? 0,
+      match[0] ?? "",
+      match[1] ?? "",
+    );
+    if (!value) continue;
     found.push(value);
   }
   return found;
 }
 
 /**
- * Extract Hersteller / Herstellerzeichen — never Auftraggeber.
+ * Extract Hersteller / Herstellerzeichen / Genehmigungsinhaber.
+ * Same company as Auftraggeber is allowed (very common on ABEs).
  */
 export function extractAbeManufacturerFromText(rawText: string): string | null {
   const text = rawText.replace(/\r\n/g, "\n");
-  const rejected = new Set(
-    extractAbeNonManufacturerNames(text).map(manufacturerKey),
-  );
 
   for (const match of text.matchAll(MANUFACTURER_LABEL)) {
-    const value = normalizeManufacturerName(match[1] ?? "");
-    if (value.length < 2 || value.length > 120) continue;
-    if (/^(seite|page|tel|fax|datum|kba|abe)$/i.test(value)) continue;
-    if (rejected.has(manufacturerKey(value))) continue;
-    // Avoid grabbing a following field label as the value.
-    if (/^(auftraggeber|antragsteller|verwendungsbereich|auflage)/i.test(value)) {
-      continue;
-    }
+    const value = labelValueOrNextLine(
+      text,
+      match.index ?? 0,
+      match[0] ?? "",
+      match[1] ?? "",
+    );
+    if (!value) continue;
     return value;
   }
 
@@ -462,42 +534,40 @@ export function extractAbeManufacturerFromText(rawText: string): string | null {
 }
 
 /**
- * Prefer a structured manufacturer only if it is not an Auftraggeber value.
- * Heuristic Hersteller-/Herstellerzeichen labels win over mistaken LLM values.
+ * Prefer explicit Hersteller label; otherwise keep LLM value.
+ * Only drop an LLM value when it is clearly just the Auftraggeber
+ * and a different Hersteller label exists.
  */
 export function preferAbeManufacturer(
   structured: string | null | undefined,
   rawText: string,
 ): string | null {
   const heuristic = extractAbeManufacturerFromText(rawText);
-  const rejected = new Set(
+  const auftraggeber = new Set(
     extractAbeNonManufacturerNames(rawText).map(manufacturerKey),
   );
 
-  const structuredClean = structured
-    ? normalizeManufacturerName(structured)
-    : null;
+  const structuredClean =
+    structured && isPlausibleManufacturerName(structured)
+      ? normalizeManufacturerName(structured)
+      : null;
 
-  if (structuredClean && rejected.has(manufacturerKey(structuredClean))) {
-    return heuristic;
-  }
-
-  // Explicit Hersteller label in the document is authoritative.
+  // Explicit Hersteller / Herstellerzeichen / Inhaber wins.
   if (heuristic) {
-    if (
-      !structuredClean ||
-      manufacturerKey(structuredClean) === manufacturerKey(heuristic) ||
-      rejected.has(manufacturerKey(structuredClean))
-    ) {
-      return heuristic;
-    }
-    // Both present and different — keep Hersteller label.
     return heuristic;
   }
 
-  if (structuredClean && !rejected.has(manufacturerKey(structuredClean))) {
+  if (!structuredClean) return null;
+
+  // No Hersteller label — keep LLM unless it is ONLY known as Auftraggeber
+  // and we want to avoid mis-labeling. If LLM equals Auftraggeber with no
+  // other Hersteller signal, still keep it: many ABEs list one company twice.
+  if (
+    auftraggeber.has(manufacturerKey(structuredClean)) &&
+    auftraggeber.size > 0
+  ) {
     return structuredClean;
   }
 
-  return null;
+  return structuredClean;
 }

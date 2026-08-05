@@ -33,16 +33,17 @@ import {
   type ScanType,
 } from "@/lib/documents/scan-types";
 import { uploadDocument } from "@/lib/documents/upload-document";
-import {
-  abePartCategoryLabel,
-  coerceAbePartCategory,
-  type AbeCoreParseResult,
-} from "@/lib/ocr/abe-parse-schema";
 import { analyzeDocumentFiles } from "@/lib/ocr/analyze-document-client";
 import {
   documentTypeForTextCategory,
   titleFromAbeFields,
 } from "@/lib/ocr/category-map";
+import {
+  formatAbeKbaDisplay,
+  normalizeAbeKbaDigits,
+  type AbeMinimal,
+  type AbeVehicleContext,
+} from "@/lib/validations/abeSchema";
 import type { CompressedPage } from "@/lib/ocr/compress-page";
 import {
   ingestImageFile,
@@ -73,6 +74,13 @@ interface InvoiceUploaderProps {
   vehicleId: string;
   tagUuid: string;
   vehicleLabel: string;
+  /** Garage make — enables ABE Verwendungsbereich match when set with model. */
+  vehicleMake?: string | null;
+  /** Garage model — enables ABE Verwendungsbereich match when set with make. */
+  vehicleModel?: string | null;
+  /** Optional type code / EG-BE for tighter ABE matching. */
+  vehicleTypeCode?: string | null;
+  vehicleEgBe?: string | null;
   /** Override back navigation target (default: documents list). */
   backHref?: string;
   backLabel?: string;
@@ -127,10 +135,33 @@ function formatBytes(bytes: number): string {
 /**
  * Document upload wizard: prepare PDF locally, extract fields, review & save.
  */
+function buildVehicleContext(input: {
+  make?: string | null;
+  model?: string | null;
+  typeCode?: string | null;
+  egBe?: string | null;
+}): AbeVehicleContext | null {
+  const brand = input.make?.trim() ?? "";
+  const model = input.model?.trim() ?? "";
+  if (!brand || !model) return null;
+  return {
+    brand,
+    model,
+    ...(input.typeCode?.trim()
+      ? { type: input.typeCode.trim() }
+      : {}),
+    ...(input.egBe?.trim() ? { egBe: input.egBe.trim() } : {}),
+  };
+}
+
 export function InvoiceUploader({
   vehicleId,
   tagUuid,
   vehicleLabel,
+  vehicleMake = null,
+  vehicleModel = null,
+  vehicleTypeCode = null,
+  vehicleEgBe = null,
   backHref,
   backLabel = "Zurück",
   onBack,
@@ -141,6 +172,16 @@ export function InvoiceUploader({
   heading = "Rechnung scannen",
   subheading,
 }: InvoiceUploaderProps) {
+  const vehicleContext = useMemo(
+    () =>
+      buildVehicleContext({
+        make: vehicleMake,
+        model: vehicleModel,
+        typeCode: vehicleTypeCode,
+        egBe: vehicleEgBe,
+      }),
+    [vehicleMake, vehicleModel, vehicleTypeCode, vehicleEgBe],
+  );
   const scanDef = scanTypeDefinition(scanType);
   const resolvedCategory = scanDef.category ?? initialCategory;
   const resolvedLockCategory = scanDef.lockCategory ?? lockCategory;
@@ -318,6 +359,8 @@ export function InvoiceUploader({
         {
           documentType,
           approvalKind: scanDef?.approvalKind ?? null,
+          vehicleContext:
+            documentType === "abe" ? vehicleContext : null,
         },
       );
 
@@ -409,28 +452,35 @@ export function InvoiceUploader({
     await runExtraction();
   }
 
-  const abeInitialFields = useMemo(
-    () => ({
-      kbaNumber: fields.kbaNumber,
+  const abeInitialFields = useMemo((): Partial<AbeMinimal> => {
+    const statusFromNotes = fields.notes?.match(
+      /Fahrzeug-Check:\s*(verified|not_found|needs_manual_check)/i,
+    )?.[1] as AbeMinimal["userVehicleMatchStatus"] | undefined;
+    const rowFromNotes = fields.notes?.match(/Trefferzeile:\s*(.+)/i)?.[1]?.trim();
+    return {
+      kbaNumber: normalizeAbeKbaDigits(fields.kbaNumber),
+      testingOrganization: fields.authority,
       manufacturer: fields.manufacturer,
-      partCategory: coerceAbePartCategory(fields.partCategory),
+      partCategory: fields.partCategory,
       partType: fields.vendor ?? fields.summary,
-      // ABE document date = scan day (not Ausstellungsdatum from the PDF).
-      date: localDateIso(),
-      conditions: fields.conditions,
-      technicalSpecs: null,
-    }),
-    [
-      fields.kbaNumber,
-      fields.manufacturer,
-      fields.partCategory,
-      fields.vendor,
-      fields.summary,
-      fields.conditions,
-    ],
-  );
+      userVehicleMatchStatus: statusFromNotes ?? null,
+      matchedConditions: fields.conditions,
+      matchedVehicleRow:
+        rowFromNotes || fields.vehicleApprovals?.[0] || null,
+    };
+  }, [
+    fields.kbaNumber,
+    fields.authority,
+    fields.manufacturer,
+    fields.partCategory,
+    fields.vendor,
+    fields.summary,
+    fields.notes,
+    fields.conditions,
+    fields.vehicleApprovals,
+  ]);
 
-  function saveAbeDocument(abe: AbeCoreParseResult) {
+  function saveAbeDocument(abe: AbeMinimal) {
     if (!uploadFile) {
       setError("Keine Datei zum Speichern vorhanden.");
       return;
@@ -439,7 +489,12 @@ export function InvoiceUploader({
     setError(null);
     const partType = abe.partType?.trim() || null;
     const manufacturer = abe.manufacturer?.trim() || null;
-    const storedTitle = titleFromAbeFields({ manufacturer, partType });
+    const storedTitle = titleFromAbeFields({
+      manufacturer,
+      partType: partType || abe.partCategory,
+    });
+    const kbaStored =
+      formatAbeKbaDisplay(abe.kbaNumber) ?? abe.kbaNumber?.trim() ?? "";
 
     startTransition(async () => {
       const formData = new FormData();
@@ -450,29 +505,39 @@ export function InvoiceUploader({
       formData.set("category", "abe");
       // Keep Bauteil/Modell in vendor; list title is manufacturer + model.
       formData.set("vendor", partType ?? storedTitle);
-      formData.set("date", abe.date?.trim() || localDateIso());
+      formData.set("date", localDateIso());
       formData.set("amount", "");
       formData.set("lineItems", "");
-      formData.set("kbaNumber", abe.kbaNumber?.trim() ?? "");
+      formData.set("kbaNumber", kbaStored);
       formData.set(
         "vehicleApprovals",
-        fields.vehicleApprovals?.length
-          ? JSON.stringify(fields.vehicleApprovals)
+        abe.matchedVehicleRow
+          ? JSON.stringify([abe.matchedVehicleRow])
           : "",
       );
-      formData.set("authority", fields.authority?.trim() ?? "");
+      formData.set(
+        "authority",
+        abe.testingOrganization?.trim() || fields.authority?.trim() || "",
+      );
       formData.set(
         "conditions",
-        abe.conditions?.length ? JSON.stringify(abe.conditions) : "",
-      );
-      formData.set(
-        "technicalSpecs",
-        abe.technicalSpecs?.length
-          ? JSON.stringify(abe.technicalSpecs)
+        abe.matchedConditions?.length
+          ? JSON.stringify(abe.matchedConditions)
           : "",
       );
-      formData.set("partCategory", abePartCategoryLabel(abe.partCategory));
-      formData.set("notes", fields.notes?.trim() ?? "");
+      formData.set("technicalSpecs", "");
+      formData.set("partCategory", abe.partCategory?.trim() ?? "");
+      const matchNotes = [
+        abe.userVehicleMatchStatus
+          ? `Fahrzeug-Check: ${abe.userVehicleMatchStatus}`
+          : null,
+        abe.matchedVehicleRow
+          ? `Trefferzeile: ${abe.matchedVehicleRow}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      formData.set("notes", matchNotes || fields.notes?.trim() || "");
       formData.set("manufacturer", manufacturer ?? "");
       formData.set("invoiceNumber", "");
       formData.set("mileageKm", "");
@@ -775,7 +840,7 @@ export function InvoiceUploader({
           pageCount={pageCount}
           rawText={rawText}
           initialFields={abeInitialFields}
-          // Soft refine (no skeleton flicker) so Auflagen are filled completely.
+          vehicleContext={vehicleContext}
           autoExtract
           isSaving={pending}
           saveError={error}

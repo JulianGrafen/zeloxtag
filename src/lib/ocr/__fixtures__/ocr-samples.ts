@@ -75,6 +75,10 @@ Genehmigungsgegenstand: LED Scheinwerfer
 Allgemeine Betriebserlaubnis
 ABE KBA 91234
 Herstellerzeichen: AutoExe
+Verwendungsbereich / Freigaben:
+Mazda RX-8 (SE3P), BMW 3er (E90), VW Golf VII
+184
+HSN 0005
 Auflagen:
 1. Montage nur nach Einbauanleitung.
 2. Sichtprüfung nach dem Einbau.

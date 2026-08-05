@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -12,20 +12,59 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { CompatibilityTable } from "@/components/dashboard/CompatibilityTable";
+import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
+import { matchCompatibilityTable } from "@/services/ocr/TableMatchingService";
+
 import type { AbeDocument } from "./abeDocuments";
 import { PressableButton, PressableLink } from "./Pressable";
 
 interface AbeDocumentDetailViewProps {
   document: AbeDocument;
   vehicleModel: string;
+  /** Optional garage context for Verwendungsbereich row highlighting. */
+  vehicleContext?: AbeVehicleContext | null;
+}
+
+function inferVehicleContext(
+  vehicleModel: string,
+  explicit?: AbeVehicleContext | null,
+): AbeVehicleContext | null {
+  if (explicit) return explicit;
+  const trimmed = vehicleModel.trim();
+  if (!trimmed) return null;
+  // Demo pages pass "RX-8" — pair with Mazda from typical fitment docs.
+  if (/^rx-?8\b/i.test(trimmed)) {
+    return { brand: "Mazda", model: "RX-8", type: "SE" };
+  }
+  const parts = trimmed.split(/\s+/);
+  if (parts.length >= 2) {
+    return {
+      brand: parts[0] ?? trimmed,
+      model: parts.slice(1).join(" "),
+    };
+  }
+  return { brand: trimmed, model: trimmed };
 }
 
 export function AbeDocumentDetailView({
   document,
   vehicleModel,
+  vehicleContext = null,
 }: AbeDocumentDetailViewProps) {
   const [page, setPage] = useState(1);
   const totalPages = document.pages;
+  const resolvedContext = useMemo(
+    () => inferVehicleContext(vehicleModel, vehicleContext),
+    [vehicleModel, vehicleContext],
+  );
+  const compatibilityTable = useMemo(() => {
+    if (!document.compatibilityTable) return null;
+    return matchCompatibilityTable(
+      document.compatibilityTable,
+      resolvedContext,
+    );
+  }, [document.compatibilityTable, resolvedContext]);
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -130,6 +169,10 @@ export function AbeDocumentDetailView({
             {document.summary}
           </p>
         </section>
+
+        {compatibilityTable ? (
+          <CompatibilityTable table={compatibilityTable} />
+        ) : null}
 
         {/* Conditions */}
         <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">

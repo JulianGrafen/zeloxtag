@@ -8,6 +8,8 @@ import type {
 } from "@/lib/documents/approval-fields";
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
 
+import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
+
 import type { DocumentParseKind, OcrDocumentType } from "./ocr-types";
 import type {
   InvoiceTextParseCategory,
@@ -30,6 +32,8 @@ export type AnalyzeDocumentOptions = {
   documentType?: OcrDocumentType;
   /** Explicit Gutachten / TÜV subtype from scan picker. */
   approvalKind?: ApprovalFieldKind | null;
+  /** Garage vehicle for ABE Verwendungsbereich match. */
+  vehicleContext?: AbeVehicleContext | null;
   /** @deprecated Prefer `documentType`. Mapped to documentType when unset. */
   kind?: DocumentParseKind;
 };
@@ -55,12 +59,16 @@ async function analyzeOneFile(
   file: File,
   documentType: OcrDocumentType,
   approvalKind?: ApprovalFieldKind | null,
+  vehicleContext?: AbeVehicleContext | null,
 ): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
   formData.set("file", file);
   formData.set("documentType", documentType);
   if (approvalKind) {
     formData.set("approvalKind", approvalKind);
+  }
+  if (vehicleContext) {
+    formData.set("vehicleContext", JSON.stringify(vehicleContext));
   }
 
   const response = await fetch("/api/ocr/parse", {
@@ -180,17 +188,28 @@ export async function analyzeDocumentFiles(
   const documentType = resolveDocumentType(options);
 
   const approvalKind = options.approvalKind ?? null;
+  const vehicleContext = options.vehicleContext ?? null;
 
   if (files.length === 1) {
     onPageProgress?.(1, 1);
-    return analyzeOneFile(files[0], documentType, approvalKind);
+    return analyzeOneFile(
+      files[0],
+      documentType,
+      approvalKind,
+      vehicleContext,
+    );
   }
 
   const results: AnalyzeDocumentResult[] = [];
   for (let index = 0; index < files.length; index += 1) {
     onPageProgress?.(index + 1, files.length);
     results.push(
-      await analyzeOneFile(files[index], documentType, approvalKind),
+      await analyzeOneFile(
+        files[index],
+        documentType,
+        approvalKind,
+        vehicleContext,
+      ),
     );
   }
 

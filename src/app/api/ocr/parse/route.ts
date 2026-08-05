@@ -24,6 +24,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
+import { AbeVehicleContextSchema } from "@/lib/validations/abeSchema";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -134,6 +135,30 @@ export async function POST(request: NextRequest) {
       ? approvalKindParsed.data
       : null;
 
+    const vehicleContextRaw = String(formData.get("vehicleContext") ?? "").trim();
+    let vehicleContext: z.infer<typeof AbeVehicleContextSchema> | null = null;
+    if (vehicleContextRaw) {
+      let parsedJson: unknown;
+      try {
+        parsedJson = JSON.parse(vehicleContextRaw);
+      } catch {
+        return jsonError(
+          400,
+          "vehicleContext must be valid JSON.",
+          "bad_request",
+        );
+      }
+      const vehicleParsed = AbeVehicleContextSchema.safeParse(parsedJson);
+      if (!vehicleParsed.success) {
+        return jsonError(
+          400,
+          "vehicleContext invalid (expected { brand, model, type?, egBe? }).",
+          "bad_request",
+        );
+      }
+      vehicleContext = vehicleParsed.data;
+    }
+
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Document file is required.", "bad_request");
@@ -163,6 +188,7 @@ export async function POST(request: NextRequest) {
       contentType,
       documentType,
       approvalKind,
+      vehicleContext,
       kind: documentType === "abe" ? "abe" : "invoice",
     });
 

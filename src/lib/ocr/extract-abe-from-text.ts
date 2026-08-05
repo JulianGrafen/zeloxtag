@@ -1,17 +1,15 @@
 /**
- * Back-compat entry for ABE text parsing.
- * Implementation lives in {@link AbeParseService}.
+ * @deprecated Prefer {@link abeExtractionService.extractFromText}.
  */
 
-export { stripAbeFitmentSections } from "./abe-from-text";
-export { abeParseService } from "./services/abe-parse-service";
+import { abeExtractionService } from "@/services/ocr/AbeExtractionService";
+import type { AbeMinimal } from "@/lib/validations/abeSchema";
 
-import { abeParseService } from "./services/abe-parse-service";
-import type { AbeCoreParseResult } from "./abe-parse-schema";
-
-/** @deprecated Prefer `abeParseService.parseFromText`. */
-export async function extractAbeFromText(
+/** @deprecated Prefer `abeExtractionService.extractFromText`. */
+export async function extractAbeFieldsFromText(
   rawText: string,
-): Promise<AbeCoreParseResult> {
-  return abeParseService.parseFromText(rawText);
+): Promise<AbeMinimal> {
+  return abeExtractionService.extractFromText(rawText);
 }
+
+export { truncateAbeCoverPages } from "@/services/ocr/AbeExtractionService";

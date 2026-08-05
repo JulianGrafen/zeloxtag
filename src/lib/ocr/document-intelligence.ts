@@ -10,7 +10,6 @@ import type {
   ApprovalFields,
 } from "@/lib/documents/approval-fields";
 
-import { budgetAbeOcrText } from "./abe-from-text";
 import { getDocumentIntelligenceEnv } from "./document-intelligence-env";
 import { extractApprovalFieldsFromText } from "./extract-approval-fields";
 import { inferInvoiceCategory } from "./infer-invoice-category";
@@ -23,9 +22,22 @@ import type {
   OcrJsonPayload,
 } from "./ocr-types";
 import { TextParseError } from "./parse-error";
-import { abeParseService } from "./services/abe-parse-service";
 import { invoiceParseService } from "./services/invoice-parse-service";
-import type { InvoiceTextParseResult } from "./text-parse-schema";
+import {
+  normalizeTextParseResult,
+  type InvoiceTextParseResult,
+} from "./text-parse-schema";
+import {
+  abeExtractionService,
+  coverTextFromPageBlocks,
+  resolveAbeContextModel,
+  truncateAbeCoverPages,
+} from "@/services/ocr/AbeExtractionService";
+import {
+  formatAbeKbaDisplay,
+  type AbeMinimal,
+  type AbeVehicleContext,
+} from "@/lib/validations/abeSchema";
 
 export type { DocumentParseKind, OcrDocumentType, OcrJsonPayload } from "./ocr-types";
 
@@ -185,13 +197,17 @@ export function buildOcrJsonPayload(result: DiAnalyzeResult): OcrJsonPayload {
   const markdown = (result.content ?? "").trim();
   const pages = result.pages ?? [];
 
-  const pageBlocks = pages.map((page, index) => {
-    const lines = (page.lines ?? [])
+  const rawPageBodies = pages.map((page) =>
+    (page.lines ?? [])
       .map((line) => line.content?.trim())
-      .filter((value): value is string => Boolean(value));
-    const body = lines.join("\n");
+      .filter((value): value is string => Boolean(value))
+      .join("\n"),
+  );
+
+  const pageBlocks = rawPageBodies.map((body, index) => {
+    if (!body) return "";
     if (pages.length <= 1) return body;
-    return `--- Seite ${page.pageNumber ?? index + 1} ---\n${body}`;
+    return `--- Seite ${pages[index]?.pageNumber ?? index + 1} ---\n${body}`;
   });
 
   let plainFallback = pageBlocks.filter(Boolean).join("\n\n").trim();
@@ -211,14 +227,59 @@ export function buildOcrJsonPayload(result: DiAnalyzeResult): OcrJsonPayload {
     .map((line) => line.content?.trim())
     .filter((value): value is string => Boolean(value));
 
+  const coverFromPages = coverTextFromPageBlocks(rawPageBodies, 2);
+  const coverText =
+    coverFromPages.length >= 8
+      ? coverFromPages
+      : truncateAbeCoverPages(text, 2);
+
   return {
     modelId: MODEL_ID,
     locale: LOCALE,
     pageCount: Math.max(1, pages.length || 1),
     text: text.slice(0, MAX_OCR_TEXT_CHARS),
+    coverText,
     headerLines: firstPageLines.slice(0, 12),
     contentFormat: useMarkdown ? "markdown" : "text",
   };
+}
+
+/** Map minimal extract → analyze API shape (summary + optional vehicle match). */
+export function abeMinimalToAnalyzeFields(
+  abe: AbeMinimal,
+): InvoiceTextParseResult {
+  const kbaDisplay = formatAbeKbaDisplay(abe.kbaNumber);
+  const partLabel =
+    [abe.partCategory, abe.partType].filter(Boolean).join(" · ") || null;
+
+  const matchNotes = [
+    abe.userVehicleMatchStatus
+      ? `Fahrzeug-Check: ${abe.userVehicleMatchStatus}`
+      : null,
+    abe.matchedVehicleRow
+      ? `Trefferzeile: ${abe.matchedVehicleRow}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return normalizeTextParseResult({
+    vendor: abe.partType ?? abe.partCategory,
+    date: null,
+    amount: null,
+    category: "abe",
+    summary: partLabel?.slice(0, 80) ?? null,
+    lineItems: null,
+    kbaNumber: kbaDisplay,
+    vehicleApprovals: abe.matchedVehicleRow ? [abe.matchedVehicleRow] : null,
+    authority: abe.testingOrganization,
+    conditions: abe.matchedConditions,
+    partCategory: abe.partCategory,
+    notes: matchNotes || null,
+    manufacturer: abe.manufacturer,
+    invoiceNumber: null,
+    mileageKm: null,
+  });
 }
 
 async function runDocumentOcr(input: {
@@ -290,6 +351,11 @@ export async function analyzeDocument(input: {
   documentType?: OcrDocumentType;
   /** Explicit subtype from scan-type picker — skips OCR guessing. */
   approvalKind?: ApprovalFieldKind | null;
+  /**
+   * Garage vehicle for ABE Verwendungsbereich match.
+   * When omitted, only cover-page base metadata is extracted.
+   */
+  vehicleContext?: AbeVehicleContext | null;
 }): Promise<AnalyzeDocumentResult> {
   if (!isLlmConfigured()) {
     throw new DocumentIntelligenceError(
@@ -303,19 +369,10 @@ export async function analyzeDocument(input: {
     kind: input.kind,
     ocrText: ocrJson.text,
   });
-  const parseModel = resolveParseModel(documentType);
   const preferredApprovalKind = input.approvalKind ?? null;
+  const vehicleContext = input.vehicleContext ?? null;
 
-  // ABE: keep Auflagen budget helper; invoices keep full Markdown slice.
-  const textForParse =
-    documentType === "abe"
-      ? budgetAbeOcrText(ocrJson.text, MAX_OCR_TEXT_CHARS)
-      : ocrJson.text;
-
-  const ocrPayload: OcrJsonPayload = {
-    ...ocrJson,
-    text: textForParse,
-  };
+  const ocrPayload: OcrJsonPayload = ocrJson;
 
   const ocrJsonForApi = JSON.stringify({
     headerLines: ocrPayload.headerLines,
@@ -326,32 +383,45 @@ export async function analyzeDocument(input: {
 
   try {
     if (documentType === "abe") {
-      const abe = await abeParseService.parseFromText(ocrPayload.text, {
-        documentType: "abe",
-        model: parseModel,
+      // No vehicle → cover only (nano). With vehicle → wider window + context model.
+      const textSource = vehicleContext
+        ? ocrPayload.text
+        : ocrPayload.coverText.trim().length >= 8
+          ? ocrPayload.coverText
+          : ocrPayload.text;
+      const abe = await abeExtractionService.extractFromText(textSource, {
+        vehicleContext,
       });
       const gutachtenKind =
         preferredApprovalKind && preferredApprovalKind !== "tuev"
           ? preferredApprovalKind
           : undefined;
       const approvalFields = extractApprovalFieldsFromText(
-        ocrPayload.text,
+        textSource,
         gutachtenKind,
       );
       return {
         kind: "abe",
         documentType,
-        fields: abeParseService.toAnalyzeFields(abe, ocrPayload.text),
+        fields: abeMinimalToAnalyzeFields(abe),
         approvalFields:
           approvalFields.kind === "tuev" ? { kind: "abe" } : approvalFields,
-        rawText: ocrPayload.text,
-        ocrJson: ocrPayload,
+        rawText: textSource,
+        ocrJson: {
+          ...ocrPayload,
+          text: textSource,
+        },
         modelId: MODEL_ID,
-        parseModel,
+        parseModel: vehicleContext
+          ? resolveAbeContextModel()
+          : resolveParseModel("abe"),
       };
     }
 
     // invoice | tuev → same invoice schema; final category comes from merge heuristics.
+    const parseModel = resolveParseModel(
+      documentType === "tuev" ? "tuev" : "invoice",
+    );
     const parsed = await invoiceParseService.parseFromText(ocrJsonForApi, {
       model: parseModel,
     });

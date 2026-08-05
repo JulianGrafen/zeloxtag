@@ -9,11 +9,11 @@ import {
 } from "react";
 
 import {
-  emptyAbeCoreFields,
-  normalizeAbeCoreParseResult,
-  type AbeCoreParseResult,
-  type AbePartCategory,
-} from "@/lib/ocr/abe-parse-schema";
+  emptyAbeMinimal,
+  normalizeAbeMinimal,
+  type AbeMinimal,
+  type AbeVehicleContext,
+} from "@/lib/validations/abeSchema";
 
 export type AbeExtractionStatus =
   | "idle"
@@ -24,7 +24,7 @@ export type AbeExtractionStatus =
 
 type ParseAbeApiSuccess = {
   ok: true;
-  fields: AbeCoreParseResult;
+  fields: AbeMinimal;
 };
 
 type ParseAbeApiError = {
@@ -33,61 +33,82 @@ type ParseAbeApiError = {
   code?: string;
 };
 
+/** Cover refine stays small; context-aware scans need Verwendungsbereich pages. */
+const COVER_RAW_TEXT_LIMIT = 12_000;
+const CONTEXT_RAW_TEXT_LIMIT = 48_000;
+
 export type UseAbeExtractionOptions = {
-  /** Azure OCR raw text; triggers extract when autoExtract is true. */
+  /** Azure OCR cover / window text; triggers extract when autoExtract is true. */
   rawText?: string;
   /** Optimistic seed while / before specialized parse completes. */
-  initialFields?: Partial<AbeCoreParseResult>;
+  initialFields?: Partial<AbeMinimal>;
   /** Call `/api/ocr/parse-abe` when rawText is available (default true). */
   autoExtract?: boolean;
+  /**
+   * Garage vehicle for Verwendungsbereich match.
+   * When omitted, the API skips the vehicle check.
+   */
+  vehicleContext?: AbeVehicleContext | null;
 };
 
 function mergeFields(
-  base: AbeCoreParseResult,
-  patch?: Partial<AbeCoreParseResult>,
-): AbeCoreParseResult {
+  base: AbeMinimal,
+  patch?: Partial<AbeMinimal>,
+): AbeMinimal {
   if (!patch) return base;
-  return normalizeAbeCoreParseResult({
+  return normalizeAbeMinimal({
     kbaNumber: patch.kbaNumber !== undefined ? patch.kbaNumber : base.kbaNumber,
+    testingOrganization:
+      patch.testingOrganization !== undefined
+        ? patch.testingOrganization
+        : base.testingOrganization,
     manufacturer:
       patch.manufacturer !== undefined ? patch.manufacturer : base.manufacturer,
     partCategory:
       patch.partCategory !== undefined ? patch.partCategory : base.partCategory,
     partType: patch.partType !== undefined ? patch.partType : base.partType,
-    date: patch.date !== undefined ? patch.date : base.date,
-    conditions:
-      patch.conditions !== undefined ? patch.conditions : base.conditions,
-    technicalSpecs:
-      patch.technicalSpecs !== undefined
-        ? patch.technicalSpecs
-        : base.technicalSpecs,
+    userVehicleMatchStatus:
+      patch.userVehicleMatchStatus !== undefined
+        ? patch.userVehicleMatchStatus
+        : base.userVehicleMatchStatus,
+    matchedConditions:
+      patch.matchedConditions !== undefined
+        ? patch.matchedConditions
+        : base.matchedConditions,
+    matchedVehicleRow:
+      patch.matchedVehicleRow !== undefined
+        ? patch.matchedVehicleRow
+        : base.matchedVehicleRow,
+    compatibilityTable:
+      patch.compatibilityTable !== undefined
+        ? patch.compatibilityTable
+        : base.compatibilityTable,
   });
 }
 
-function hasUsableSeed(fields: AbeCoreParseResult): boolean {
-  // Date alone (always scan date) does not count as extracted content.
+function hasUsableSeed(fields: AbeMinimal): boolean {
   return Boolean(
     fields.kbaNumber?.trim() ||
+      fields.testingOrganization?.trim() ||
       fields.manufacturer?.trim() ||
-      fields.partType?.trim() ||
-      (fields.conditions?.length ?? 0) > 0 ||
-      (fields.technicalSpecs?.length ?? 0) > 0,
+      fields.partCategory?.trim() ||
+      fields.partType?.trim(),
   );
 }
 
 /**
- * Client-side ABE extraction state + `/api/ocr/parse-abe` calls.
- * Keeps fetch/error logic out of presentational components.
+ * Client-side ABE cover extract state + `/api/ocr/parse-abe` calls.
  */
 export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
   const {
     rawText = "",
     initialFields,
     autoExtract = true,
+    vehicleContext = null,
   } = options;
 
-  const seeded = mergeFields(emptyAbeCoreFields(), initialFields);
-  const [fields, setFields] = useState<AbeCoreParseResult>(() => seeded);
+  const seeded = mergeFields(emptyAbeMinimal(), initialFields);
+  const [fields, setFields] = useState<AbeMinimal>(() => seeded);
   const [status, setStatus] = useState<AbeExtractionStatus>(() =>
     hasUsableSeed(seeded) ? "ready" : "idle",
   );
@@ -95,15 +116,19 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const requestIdRef = useRef(0);
-  const extractedForTextRef = useRef<string | null>(null);
+  const extractedForKeyRef = useRef<string | null>(null);
   const fieldsRef = useRef(fields);
   fieldsRef.current = fields;
   const initialFieldsRef = useRef(initialFields);
   initialFieldsRef.current = initialFields;
+  const vehicleContextRef = useRef(vehicleContext);
+  vehicleContextRef.current = vehicleContext;
 
   const extract = useCallback(async (text?: string) => {
     const payload = (text ?? rawText).trim();
     const requestId = ++requestIdRef.current;
+    const context = vehicleContextRef.current ?? null;
+    const charLimit = context ? CONTEXT_RAW_TEXT_LIMIT : COVER_RAW_TEXT_LIMIT;
 
     if (payload.length < 8) {
       setStatus("empty_text");
@@ -114,11 +139,10 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
       return null;
     }
 
-    extractedForTextRef.current = payload;
+    extractedForKeyRef.current = `${payload}\0${JSON.stringify(context)}`;
     const keepVisible = hasUsableSeed(fieldsRef.current);
 
     if (keepVisible) {
-      // Soft refine — keep current values on screen (no skeleton flicker).
       setIsRefreshing(true);
       setStatus("ready");
     } else {
@@ -131,7 +155,10 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
       const response = await fetch("/api/ocr/parse-abe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rawText: payload.slice(0, 48_000) }),
+        body: JSON.stringify({
+          rawText: payload.slice(0, charLimit),
+          vehicleContext: context,
+        }),
       });
 
       const json = (await response.json()) as
@@ -139,7 +166,6 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
         | ParseAbeApiError;
 
       if (requestId !== requestIdRef.current) {
-        // Superseded — do not touch UI state owned by the newer request.
         return null;
       }
 
@@ -154,23 +180,25 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
         return null;
       }
 
-      const normalized = normalizeAbeCoreParseResult(json.fields);
-      setFields((current) => {
-        // Keep previously seeded values if the refine pass returns none.
-        // Date is always the scan date — never replace with document issue date.
-        return {
-          ...normalized,
-          date: current.date ?? normalized.date,
-          conditions:
-            normalized.conditions?.length
-              ? normalized.conditions
-              : current.conditions,
-          technicalSpecs:
-            normalized.technicalSpecs?.length
-              ? normalized.technicalSpecs
-              : current.technicalSpecs,
-        };
-      });
+      const normalized = normalizeAbeMinimal(json.fields);
+      setFields((current) => ({
+        ...normalized,
+        // Keep seeded values if refine returns nulls.
+        kbaNumber: normalized.kbaNumber ?? current.kbaNumber,
+        testingOrganization:
+          normalized.testingOrganization ?? current.testingOrganization,
+        manufacturer: normalized.manufacturer ?? current.manufacturer,
+        partCategory: normalized.partCategory ?? current.partCategory,
+        partType: normalized.partType ?? current.partType,
+        userVehicleMatchStatus:
+          normalized.userVehicleMatchStatus ?? current.userVehicleMatchStatus,
+        matchedConditions:
+          normalized.matchedConditions ?? current.matchedConditions,
+        matchedVehicleRow:
+          normalized.matchedVehicleRow ?? current.matchedVehicleRow,
+        compatibilityTable:
+          normalized.compatibilityTable ?? current.compatibilityTable,
+      }));
       setStatus("ready");
       setIsRefreshing(false);
       setError(
@@ -196,8 +224,8 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
 
   const onAutoExtract = useEffectEvent((text: string) => {
     const trimmed = text.trim();
-    // Prevent Strict Mode / remount double-fetch flicker for the same OCR text.
-    if (extractedForTextRef.current === trimmed) return;
+    const key = `${trimmed}\0${JSON.stringify(vehicleContextRef.current)}`;
+    if (extractedForKeyRef.current === key) return;
     void extract(trimmed);
   });
 
@@ -205,68 +233,21 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
     if (!autoExtract) return;
     if (rawText.trim().length < 8) return;
     onAutoExtract(rawText);
-  }, [autoExtract, rawText, onAutoExtract]);
+  }, [autoExtract, rawText, vehicleContext, onAutoExtract]);
 
   const updateField = useCallback(
-    <K extends keyof AbeCoreParseResult>(
-      key: K,
-      value: AbeCoreParseResult[K],
-    ) => {
+    <K extends keyof AbeMinimal>(key: K, value: AbeMinimal[K]) => {
       setFields((current) =>
-        normalizeAbeCoreParseResult({ ...current, [key]: value }),
+        normalizeAbeMinimal({ ...current, [key]: value }),
       );
     },
     [],
   );
 
-  const updatePartCategory = useCallback((value: AbePartCategory) => {
-    setFields((current) =>
-      normalizeAbeCoreParseResult({ ...current, partCategory: value }),
-    );
-  }, []);
-
-  const updateConditionsText = useCallback((text: string) => {
-    const next = text
-      .split(/\n+/)
-      .map((line) => line.replace(/^\d+[\).\s]+/, "").trim())
-      .filter(Boolean);
-    setFields((current) =>
-      normalizeAbeCoreParseResult({
-        ...current,
-        conditions: next.length > 0 ? next : null,
-      }),
-    );
-  }, []);
-
-  /** Edit technical specs as `Label: Wert` lines. */
-  const updateTechnicalSpecsText = useCallback((text: string) => {
-    const next = text
-      .split(/\n+/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const splitAt = line.indexOf(":");
-        if (splitAt <= 0) {
-          return { label: "Maß", value: line };
-        }
-        return {
-          label: line.slice(0, splitAt).trim(),
-          value: line.slice(splitAt + 1).trim(),
-        };
-      })
-      .filter((item) => item.label && item.value);
-    setFields((current) =>
-      normalizeAbeCoreParseResult({
-        ...current,
-        technicalSpecs: next.length > 0 ? next : null,
-      }),
-    );
-  }, []);
-
   const reset = useCallback(() => {
     requestIdRef.current += 1;
-    extractedForTextRef.current = null;
-    const next = mergeFields(emptyAbeCoreFields(), initialFieldsRef.current);
+    extractedForKeyRef.current = null;
+    const next = mergeFields(emptyAbeMinimal(), initialFieldsRef.current);
     setFields(next);
     setStatus(hasUsableSeed(next) ? "ready" : "idle");
     setIsRefreshing(false);
@@ -285,9 +266,6 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
     setIsEditing,
     setFields,
     updateField,
-    updatePartCategory,
-    updateConditionsText,
-    updateTechnicalSpecsText,
     extract,
     reset,
   };

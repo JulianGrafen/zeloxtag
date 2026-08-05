@@ -1,30 +1,35 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import type { AbeCoreParseResult } from "@/lib/ocr/abe-parse-schema";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
-import { abeParseService } from "@/lib/ocr/services/abe-parse-service";
 import {
   enforceRateLimit,
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
+import {
+  AbeVehicleContextSchema,
+  type AbeMinimal,
+} from "@/lib/validations/abeSchema";
+import { abeExtractionService } from "@/services/ocr/AbeExtractionService";
 
 export const runtime = "nodejs";
 
+/** Wider limit when vehicleContext requires Verwendungsbereich pages. */
 const MAX_RAW_TEXT_CHARS = 48_000;
 
 const requestSchema = z
   .object({
     rawText: z.string().trim().min(8).max(MAX_RAW_TEXT_CHARS),
+    vehicleContext: AbeVehicleContextSchema.optional().nullable(),
   })
   .strict();
 
 type ParseAbeSuccess = {
   ok: true;
-  fields: AbeCoreParseResult;
+  fields: AbeMinimal;
 };
 
 type ParseAbeError = {
@@ -44,8 +49,7 @@ function jsonError(
 
 /**
  * POST /api/ocr/parse-abe
- * Specialized ABE step: core metadata + fully worded Auflagen from Azure OCR text.
- * Public for QR scan UX (rate-limited); keys stay server-side.
+ * Cover extract, or context-aware Verwendungsbereich match when vehicleContext set.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -74,14 +78,17 @@ export async function POST(request: NextRequest) {
     if (!parsedBody.ok) {
       return jsonError(
         400,
-        "rawText is required (min 8 characters). PDF ohne Textschicht oder leerer OCR-Text.",
+        "rawText is required; vehicleContext must be { brand, model, type?, egBe? } when set.",
         "bad_request",
       );
     }
 
-    let fields: AbeCoreParseResult;
+    let fields: AbeMinimal;
     try {
-      fields = await abeParseService.parseFromText(parsedBody.data.rawText);
+      fields = await abeExtractionService.extractFromText(
+        parsedBody.data.rawText,
+        { vehicleContext: parsedBody.data.vehicleContext ?? null },
+      );
     } catch (error) {
       const message =
         error instanceof TextParseError

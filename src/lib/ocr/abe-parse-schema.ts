@@ -1,9 +1,12 @@
 import { z } from "zod";
 
 /**
- * Core ABE metadata — lean (no Verwendungsbereich / fitment tables).
- * Includes fully worded Auflagen. Keep Zod + OpenAI JSON Schema in sync.
+ * Core ABE metadata including Freigabe (vehicle makes/models).
+ * Keep Zod + OpenAI JSON Schema in sync.
  */
+
+export const ABE_VEHICLE_APPROVAL_MAX_LENGTH = 120;
+export const ABE_VEHICLE_APPROVAL_MAX_ITEMS = 40;
 
 export const ABE_PART_CATEGORIES = [
   "suspension",
@@ -76,6 +79,14 @@ export const abeCoreParseSchema = z.object({
     .nullable(),
   /** Technical dimensions / Maße from the ABE (ET, width, diameter, …). */
   technicalSpecs: z.array(abeTechnicalSpecSchema).max(40).nullable(),
+  /**
+   * Freigabe / Verwendungsbereich — vehicle manufacturer + model names.
+   * Never bare type codes, HSN/TSN, or page numbers alone.
+   */
+  vehicleApprovals: z
+    .array(z.string().trim().min(2).max(ABE_VEHICLE_APPROVAL_MAX_LENGTH))
+    .max(ABE_VEHICLE_APPROVAL_MAX_ITEMS)
+    .nullable(),
 });
 
 export type AbeCoreParseResult = z.infer<typeof abeCoreParseSchema>;
@@ -94,6 +105,7 @@ export const ABE_CORE_PARSE_JSON_SCHEMA = {
       "date",
       "conditions",
       "technicalSpecs",
+      "vehicleApprovals",
     ],
     properties: {
       kbaNumber: {
@@ -104,7 +116,7 @@ export const ABE_CORE_PARSE_JSON_SCHEMA = {
       manufacturer: {
         type: ["string", "null"],
         description:
-          "Part manufacturer / Herstellerzeichen only (e.g. AutoExe, Milltek, OZ). NEVER Auftraggeber, Antragsteller, Besteller, Inverkehrbringer, Importeur, or Vertreiber — those are different parties. Not the vehicle make. Null if only Auftraggeber is readable.",
+          "Part manufacturer / Herstellerzeichen / Genehmigungsinhaber / Marke (e.g. AutoExe, Milltek, OZ, H&R). Short mark codes are valid. If Hersteller and Auftraggeber are the same company, still return that name. Not the vehicle make, not a street address. Null only if no Hersteller/Marke/Inhaber is readable.",
       },
       partCategory: {
         type: "string",
@@ -148,6 +160,12 @@ export const ABE_CORE_PARSE_JSON_SCHEMA = {
             },
           },
         },
+      },
+      vehicleApprovals: {
+        type: ["array", "null"],
+        description:
+          "Freigabe / Verwendungsbereich: vehicle MANUFACTURER + MODEL names only (e.g. 'Mazda RX-8', 'BMW 3er (E90)', 'VW Golf VII'). NEVER bare numbers, HSN/TSN, EG type codes alone, page numbers, or chassis-number fragments. Prefer 'Make Model' per entry. Null if none readable.",
+        items: { type: "string" },
       },
     },
   },
@@ -207,6 +225,45 @@ export function normalizeAbeTechnicalSpecs(
   return cleaned.length > 0 ? cleaned : null;
 }
 
+/** Freigabe entries must name a vehicle make/model — not bare codes/numbers. */
+export function isPlausibleVehicleApproval(value: string): boolean {
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  if (
+    trimmed.length < 3 ||
+    trimmed.length > ABE_VEHICLE_APPROVAL_MAX_LENGTH
+  ) {
+    return false;
+  }
+  // Bare numbers / numeric codes (HSN, page, typ indices).
+  if (/^\d{1,6}([./\-]\d{1,6})?$/.test(trimmed)) return false;
+  if (/^(seite|page|nr\.?|hsn|tsn|eg|e\d)\b/i.test(trimmed)) return false;
+  // Need real letters (manufacturer / model words), not only typ codes.
+  if (!/[a-zäöüß]{2,}/i.test(trimmed)) return false;
+  // Reject pure short alphanumeric type codes without a make word.
+  if (/^[A-Z0-9][A-Z0-9.\-/]{1,10}$/.test(trimmed) && trimmed.length <= 8) {
+    return false;
+  }
+  return true;
+}
+
+export function normalizeAbeVehicleApprovals(
+  values: string[] | null | undefined,
+): string[] | null {
+  if (!values?.length) return null;
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+  for (const raw of values) {
+    const value = raw.trim().replace(/\s+/g, " ").slice(0, ABE_VEHICLE_APPROVAL_MAX_LENGTH);
+    if (!isPlausibleVehicleApproval(value)) continue;
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(value);
+    if (cleaned.length >= ABE_VEHICLE_APPROVAL_MAX_ITEMS) break;
+  }
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 /** Normalize to YYYY-MM-DD or null. */
 export function normalizeAbeDate(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -230,6 +287,7 @@ export function normalizeAbeCoreParseResult(
     date: normalizeAbeDate(fields.date),
     conditions: normalizeAbeConditions(fields.conditions),
     technicalSpecs: normalizeAbeTechnicalSpecs(fields.technicalSpecs),
+    vehicleApprovals: normalizeAbeVehicleApprovals(fields.vehicleApprovals),
   };
 }
 
@@ -242,5 +300,6 @@ export function emptyAbeCoreFields(): AbeCoreParseResult {
     date: null,
     conditions: null,
     technicalSpecs: null,
+    vehicleApprovals: null,
   };
 }

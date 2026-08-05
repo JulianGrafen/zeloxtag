@@ -3,10 +3,11 @@ import type OpenAI from "openai";
 import {
   budgetAbeOcrText,
   extractAbeConditionsFromText,
+  extractVehicleApprovals,
   preferAbeConditions,
   preferAbeManufacturer,
+  preferAbeVehicleApprovals,
   resolveAbeFields,
-  stripAbeFitmentSections,
 } from "@/lib/ocr/abe-from-text";
 import {
   ABE_PART_CATEGORY_LABELS,
@@ -34,12 +35,13 @@ import {
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
 
-const PARSE_MAX_TOKENS = 2_200;
-/** Larger budget — Auflagen sit late in multi-page ABEs. */
-const MAX_RAW_TEXT_CHARS = 48_000;
+const PARSE_MAX_TOKENS = 2_800;
+/** Larger budget — Auflagen + Verwendungsbereich (Freigabe) for the LLM. */
+const MAX_RAW_TEXT_CHARS = 56_000;
 
 function prepareAbeTextForLlm(rawText: string): string {
-  const prepared = stripAbeFitmentSections(rawText)
+  // Keep Verwendungsbereich — Freigabe is LLM-extracted from it.
+  const prepared = rawText
     .replace(/[^\S\n]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -58,9 +60,8 @@ export type AbeParseOptions = {
 
 export class AbeParseService {
   /**
-   * Specialized ABE extraction: core metadata + fully worded Auflagen.
-   * LLM result is merged with heuristic Auflagen / Maße fallbacks.
-   * Uses the cost-efficient nano deployment via model routing.
+   * Specialized ABE extraction: core metadata + Freigabe + Auflagen.
+   * LLM result is merged with heuristic Auflagen / Maße / Freigabe fallbacks.
    */
   async parseFromText(
     rawText: string,
@@ -73,6 +74,8 @@ export class AbeParseService {
     const heuristicTechnicalSpecs =
       extractAbeTechnicalSpecsFromText(text) ??
       extractAbeTechnicalSpecsFromText(rawText);
+    const heuristicApprovals =
+      extractVehicleApprovals(text) ?? extractVehicleApprovals(rawText);
 
     if (text.length < 8) {
       throw new TextParseError(
@@ -91,12 +94,14 @@ export class AbeParseService {
         date: null,
         conditions: heuristicConditions,
         technicalSpecs: heuristicTechnicalSpecs,
+        vehicleApprovals: heuristicApprovals,
       });
 
     const hasHeuristicFallback = Boolean(
       heuristicConditions?.length ||
         heuristicTechnicalSpecs?.length ||
-        heuristicManufacturer,
+        heuristicManufacturer ||
+        heuristicApprovals?.length,
     );
 
     const routedModel =
@@ -174,6 +179,10 @@ export class AbeParseService {
         normalized.technicalSpecs,
         heuristicTechnicalSpecs,
       ),
+      vehicleApprovals: preferAbeVehicleApprovals(
+        normalized.vehicleApprovals,
+        heuristicApprovals,
+      ),
     };
   }
 
@@ -191,7 +200,7 @@ export class AbeParseService {
     });
     const resolved = resolveAbeFields({
       structuredKba: abe.kbaNumber,
-      structuredApprovals: null,
+      structuredApprovals: abe.vehicleApprovals,
       rawText,
     });
 

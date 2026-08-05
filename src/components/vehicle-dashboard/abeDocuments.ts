@@ -1,3 +1,5 @@
+import type { TableData } from "@/lib/validations/abeSchema";
+
 export interface AbeDocument {
   id: string;
   partName: string;
@@ -15,6 +17,8 @@ export interface AbeDocument {
   fileSize: string;
   pages: number;
   scannedAt: string;
+  /** Optional Verwendungsbereich table for row highlighting demos. */
+  compatibilityTable?: TableData;
 }
 
 export const ABE_DOCUMENTS: AbeDocument[] = [
@@ -40,6 +44,36 @@ export const ABE_DOCUMENTS: AbeDocument[] = [
     fileSize: "1,8 MB",
     pages: 3,
     scannedAt: "16.01.2025",
+    compatibilityTable: {
+      caption: "Verwendungsbereich",
+      headers: ["Hersteller", "Modell", "Typ", "EG-BE", "Auflage"],
+      rows: [
+        {
+          id: "row-mx5",
+          cells: ["Mazda", "MX-5", "NC", "e11*2001/116*0262", "A1"],
+          isUserVehicleMatch: false,
+          matchReason: null,
+        },
+        {
+          id: "row-rx8",
+          cells: ["Mazda", "RX-8", "SE", "e11*98/14*0182", "A1 / A2"],
+          isUserVehicleMatch: false,
+          matchReason: null,
+        },
+        {
+          id: "row-rx8-spirit",
+          cells: ["Mazda", "RX-8 Spirit R", "SE", "e11*98/14*0182", "A1"],
+          isUserVehicleMatch: false,
+          matchReason: null,
+        },
+        {
+          id: "row-3",
+          cells: ["Mazda", "3", "BL", "e11*2007/46*0018", "A3"],
+          isUserVehicleMatch: false,
+          matchReason: null,
+        },
+      ],
+    },
   },
   {
     id: "rays-felgen",
