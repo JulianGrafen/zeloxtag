@@ -11,6 +11,7 @@ import {
 
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
 import { DocumentViewer } from "@/components/documents/document-viewer";
+import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import {
   PressableButton,
   PressableLink,
@@ -66,6 +67,7 @@ export function DocumentInvoiceDetailView({
   const title = displayDocumentTitle(document.title);
   const lineItems = document.line_items ?? [];
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
+  const canEditPositions = Boolean(document.vehicle_id);
   const resolvedBack =
     backHref ?? `/v/${tagUuid}/dokumente?type=${document.type}`;
   const fileName = fileNameFromUrl(document.file_url, title);
@@ -192,42 +194,52 @@ export function DocumentInvoiceDetailView({
           </dl>
         </section>
 
-        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Positionen
-          </h2>
-          {lineItems.length === 0 ? (
-            <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
-              Keine Positionen erkannt. Original-PDF unten öffnen.
-            </p>
-          ) : (
-            <ul className="space-y-2.5">
-              {lineItems.map((item, index) => (
-                <li
-                  key={`${item.label}-${index}`}
-                  className="flex items-start justify-between gap-3 text-[0.88rem]"
-                >
-                  <span className="whitespace-pre-line text-[color:var(--vd-text)]">
-                    {item.label}
-                  </span>
-                  <span className="shrink-0 font-semibold tabular-nums text-[color:var(--vd-text)]">
-                    {formatEur(item.amount)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {document.amount !== null ? (
-            <div className="mt-5 flex items-center justify-between border-t border-[color:var(--vd-border)] pt-3">
-              <span className="text-[0.95rem] font-bold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                Gesamt
-              </span>
-              <span className="text-[1.05rem] font-bold tracking-[-0.02em] tabular-nums text-[color:var(--vd-text)]">
-                {formatEur(document.amount)}
-              </span>
-            </div>
-          ) : null}
-        </section>
+        {canEditPositions ? (
+          <EditableLineItemsSection
+            items={lineItems}
+            documentId={document.id}
+            vehicleId={document.vehicle_id}
+            tagUuid={tagUuid}
+            totalAmount={document.amount}
+          />
+        ) : (
+          <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+            <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+              Positionen
+            </h2>
+            {lineItems.length === 0 ? (
+              <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
+                Keine Positionen erkannt. Original-PDF unten öffnen.
+              </p>
+            ) : (
+              <ul className="space-y-2.5">
+                {lineItems.map((item, index) => (
+                  <li
+                    key={`${item.label}-${index}`}
+                    className="flex items-start justify-between gap-3 text-[0.88rem]"
+                  >
+                    <span className="whitespace-pre-line text-[color:var(--vd-text)]">
+                      {item.label}
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums text-[color:var(--vd-text)]">
+                      {formatEur(item.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {document.amount !== null ? (
+              <div className="mt-5 flex items-center justify-between border-t border-[color:var(--vd-border)] pt-3">
+                <span className="text-[0.95rem] font-bold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                  Gesamt
+                </span>
+                <span className="text-[1.05rem] font-bold tracking-[-0.02em] tabular-nums text-[color:var(--vd-text)]">
+                  {formatEur(document.amount)}
+                </span>
+              </div>
+            ) : null}
+          </section>
+        )}
 
         <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
           <div className="border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">

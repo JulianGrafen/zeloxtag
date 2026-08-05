@@ -7,6 +7,7 @@ import { ScanTypePicker } from "@/components/documents/scan-type-picker";
 import {
   parseScanType,
   scanTypeDefinition,
+  SCHRAUBER_SCAN_TYPES,
   type ScanType,
 } from "@/lib/documents/scan-types";
 import type { Document, Vehicle } from "@/types/database";
@@ -20,8 +21,10 @@ interface TagDashboardShellProps {
   documents: Document[];
   tagUuid: string;
   ownerName?: string | null;
-  /** Only the vehicle owner may open the scanner / upload. */
+  /** Vehicle owner — full dashboard. */
   isOwner?: boolean;
+  /** Active Schrauber — repair/service/invoice only. */
+  isContributor?: boolean;
   sessionEmail?: string | null;
   initialMode?: DashboardMode;
   /** Deep-link scan type from `?scan=1&type=…`. */
@@ -29,7 +32,7 @@ interface TagDashboardShellProps {
 }
 
 /**
- * Owner-only active-tag surface (scan picker + scanner + document dashboard).
+ * Active-tag surface for owners and invited Schrauber.
  * Guests never reach this component — see PrivateTwinGate.
  */
 export function TagDashboardShell({
@@ -38,24 +41,34 @@ export function TagDashboardShell({
   tagUuid,
   ownerName,
   isOwner = false,
+  isContributor = false,
   initialMode = "dashboard",
   initialScanType,
 }: TagDashboardShellProps) {
+  const canWrite = isOwner || isContributor;
+  const role = isOwner ? "owner" : "contributor";
   const parsedInitial = parseScanType(initialScanType ?? undefined);
+  const allowedInitial =
+    parsedInitial &&
+    (isOwner ||
+      (SCHRAUBER_SCAN_TYPES as readonly string[]).includes(parsedInitial))
+      ? parsedInitial
+      : null;
+
   const [mode, setMode] = useState<DashboardMode>(() => {
-    if (!isOwner) return "dashboard";
-    if (parsedInitial) return "scanner";
+    if (!canWrite) return "dashboard";
+    if (allowedInitial) return "scanner";
     if (initialMode === "pick-scan" || initialMode === "scanner") {
       return "pick-scan";
     }
     return "dashboard";
   });
   const [scanType, setScanType] = useState<ScanType | null>(
-    isOwner ? parsedInitial : null,
+    canWrite ? allowedInitial : null,
   );
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
 
-  if (!isOwner) {
+  if (!canWrite) {
     return null;
   }
 
@@ -64,6 +77,7 @@ export function TagDashboardShell({
       <ScanTypePicker
         vehicleLabel={vehicleLabel}
         backHref={`/v/${tagUuid}`}
+        role={role}
         onBack={() => {
           setScanType(null);
           setMode("dashboard");
@@ -101,6 +115,8 @@ export function TagDashboardShell({
       tagUuid={tagUuid}
       ownerName={ownerName}
       canScan
+      isOwner={isOwner}
+      isContributor={isContributor}
       onOpenScanner={() => {
         setScanType(null);
         setMode("pick-scan");

@@ -16,7 +16,7 @@ function normalizeNext(nextPath: string): string {
   if (nextPath.startsWith("/") && !nextPath.startsWith("//")) {
     return nextPath.slice(0, 512);
   }
-  return "/dashboard";
+  return "/auth/continue";
 }
 
 function callbackUrl(nextPath: string): string {
@@ -31,7 +31,7 @@ function callbackUrl(nextPath: string): string {
 export async function signUpWithPasswordBrowser(
   emailRaw: string,
   passwordRaw: string,
-  nextPath = "/dashboard",
+  nextPath = "/auth/continue",
 ): Promise<BrowserAuthResult> {
   const emailParsed = emailSchema.safeParse(emailRaw);
   const passwordParsed = passwordSchema.safeParse(passwordRaw);

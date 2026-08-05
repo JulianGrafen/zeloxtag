@@ -16,6 +16,7 @@ import { ABEOverview } from "@/components/dashboard/ABEOverview";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
@@ -1107,6 +1108,18 @@ export function InvoiceUploader({
                 />
               </Label>
             </div>
+
+            <EditableLineItemsSection
+              items={fields.lineItems ?? []}
+              totalAmount={fields.amount}
+              emptyHint="Keine Positionen erkannt — über Bearbeiten manuell ergänzen."
+              onChange={(lineItems) =>
+                setFields((current) => ({
+                  ...current,
+                  lineItems: lineItems.length ? lineItems : null,
+                }))
+              }
+            />
 
             {rawText ? (
               <details className="rounded-xl bg-neutral-50 px-3 py-2 text-left">

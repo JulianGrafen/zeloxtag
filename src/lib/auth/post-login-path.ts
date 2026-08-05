@@ -7,11 +7,29 @@ import { createClient } from "@/lib/supabase/server";
 
 const FALLBACK = "/dashboard";
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 type VehicleRow = { id?: string | null };
 
+function vehiclePath(tagUuid: string): string {
+  return `/v/${tagUuid}`;
+}
+
+/** True when `next` is a generic post-login target (not a deep link). */
+export function isGenericPostLoginNext(path: string): boolean {
+  return (
+    path === "/" ||
+    path === "/login" ||
+    path === "/login/mfa" ||
+    path === "/dashboard" ||
+    path === "/auth/continue"
+  );
+}
+
 /**
- * Destination after successful login / MFA.
- * Prefer the owner's active ZeloxTag vehicle dashboard when one exists.
+ * Destination after successful login / MFA / auth callback.
+ * Prefer the owner's active ZeloxTag vehicle dashboard (`/v/{uuid}`).
  */
 export async function resolvePostLoginPath(userId: string): Promise<string> {
   const { isConfigured } = getSupabaseEnv();
@@ -21,11 +39,18 @@ export async function resolvePostLoginPath(userId: string): Promise<string> {
     const fromMeta = await resolveViaUserMetadata(userId);
     if (fromMeta) return fromMeta;
 
+    // Admin first: reliable after cookie races on the login action itself.
     const fromAdmin = await resolveViaAdmin(userId);
-    if (fromAdmin) return fromAdmin;
+    if (fromAdmin) {
+      void rememberActiveTag(fromAdmin);
+      return fromAdmin;
+    }
 
     const fromSession = await resolveViaSessionUser(userId);
-    if (fromSession) return fromSession;
+    if (fromSession) {
+      void rememberActiveTag(fromSession);
+      return fromSession;
+    }
   } catch {
     // Fall through to account hub.
   }
@@ -43,28 +68,39 @@ async function resolveViaUserMetadata(userId: string): Promise<string | null> {
   const raw = user.user_metadata?.active_tag_uuid;
   if (typeof raw !== "string" || !raw.trim()) return null;
   const tagUuid = raw.trim();
+  if (!UUID_RE.test(tagUuid)) return null;
 
-  if (!isSupabaseAdminConfigured()) return null;
+  if (isSupabaseAdminConfigured()) {
+    const admin = createAdminClient();
+    const { data: tag } = await admin
+      .from("tags")
+      .select("uuid, vehicle_id, status")
+      .eq("uuid", tagUuid)
+      .eq("status", "active")
+      .maybeSingle();
 
-  const admin = createAdminClient();
-  const { data: tag } = await admin
+    if (!tag?.uuid || !tag.vehicle_id) return null;
+
+    const { data: vehicle } = await admin
+      .from("vehicles")
+      .select("id")
+      .eq("id", tag.vehicle_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!vehicle) return null;
+    return vehiclePath(tag.uuid);
+  }
+
+  // RLS: tags_select_own only returns the row if the vehicle belongs to auth.uid().
+  const { data: tag } = await supabase
     .from("tags")
-    .select("uuid, vehicle_id, status")
+    .select("uuid")
     .eq("uuid", tagUuid)
     .eq("status", "active")
     .maybeSingle();
 
-  if (!tag?.uuid || !tag.vehicle_id) return null;
-
-  const { data: vehicle } = await admin
-    .from("vehicles")
-    .select("id")
-    .eq("id", tag.vehicle_id)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (!vehicle) return null;
-  return `/v/${tag.uuid}`;
+  return tag?.uuid ? vehiclePath(tag.uuid) : null;
 }
 
 async function resolveViaAdmin(userId: string): Promise<string | null> {
@@ -75,7 +111,7 @@ async function resolveViaAdmin(userId: string): Promise<string | null> {
     .from("vehicles")
     .select("id")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: true })
     .limit(10);
 
   if (vehicleError || !vehicles?.length) return null;
@@ -87,11 +123,12 @@ async function resolveViaAdmin(userId: string): Promise<string | null> {
       .select("uuid")
       .eq("vehicle_id", vehicle.id)
       .eq("status", "active")
+      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
 
     if (tag?.uuid && typeof tag.uuid === "string") {
-      return `/v/${tag.uuid}`;
+      return vehiclePath(tag.uuid);
     }
   }
 
@@ -104,7 +141,7 @@ async function resolveViaSessionUser(userId: string): Promise<string | null> {
     .from("vehicles")
     .select("id")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: true })
     .limit(10);
 
   if (error || !vehicles?.length) return null;
@@ -116,13 +153,28 @@ async function resolveViaSessionUser(userId: string): Promise<string | null> {
       .select("uuid")
       .eq("vehicle_id", vehicle.id)
       .eq("status", "active")
+      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
 
     if (tag?.uuid && typeof tag.uuid === "string") {
-      return `/v/${tag.uuid}`;
+      return vehiclePath(tag.uuid);
     }
   }
 
   return null;
+}
+
+/** Cache tag on the auth user so the next login skips the DB round-trip. */
+async function rememberActiveTag(path: string): Promise<void> {
+  const tagUuid = path.startsWith("/v/") ? path.slice(3) : null;
+  if (!tagUuid || !UUID_RE.test(tagUuid)) return;
+  try {
+    const supabase = await createClient();
+    await supabase.auth.updateUser({
+      data: { active_tag_uuid: tagUuid },
+    });
+  } catch {
+    /* non-fatal */
+  }
 }

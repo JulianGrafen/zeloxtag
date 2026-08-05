@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ServiceInspectionsView } from "@/components/documents/service-inspections-view";
-import { requireTagOwner } from "@/lib/auth/require-tag-owner";
+import { requireTagWriter } from "@/lib/auth/require-tag-access";
 
 interface ServicePageProps {
   params: Promise<{ uuid: string }>;
@@ -24,7 +24,7 @@ export default async function ServiceInspectionsPage({
 }: ServicePageProps) {
   const { uuid } = await params;
   const { scan } = await searchParams;
-  const { result } = await requireTagOwner(uuid);
+  const { result } = await requireTagWriter(uuid);
 
   return (
     <ServiceInspectionsView

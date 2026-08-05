@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DocumentServiceFactory,
+  EGBEService,
   isDocumentValidationError,
   isUnsupportedDocumentTypeError,
 } from "@/services/documents";
@@ -55,7 +56,7 @@ describe("DocumentServiceFactory", () => {
   });
 
   it("validates a minimal EG-BE payload", () => {
-    const data = DocumentServiceFactory.parseAndValidate("egbe", {
+    const data = new EGBEService().parseAndValidate({
       eMark: "e1*2007/46*0123",
       componentGroup: "Beleuchtung",
     });

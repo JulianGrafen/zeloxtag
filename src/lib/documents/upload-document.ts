@@ -4,6 +4,10 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
+import {
+  contributorMayWriteDocumentType,
+  getVehicleWriteAccess,
+} from "@/lib/auth/vehicle-write-access";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import { parseStrictBody } from "@/lib/security/parse-body";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
@@ -156,6 +160,7 @@ export async function uploadDocument(
       id: documentId,
       vehicle_id: vehicleId,
       user_id: "user_demo",
+      created_by: "user_demo",
       title,
       type: typeRaw,
       file_url: `mock://upload/${documentId}/${safeName}`,
@@ -206,27 +211,28 @@ export async function uploadDocument(
   // so accounts never write into each other's vehicles.
   const supabase = createAdminClient();
 
-  const { data: vehicle, error: vehicleError } = await supabase
-    .from("vehicles")
-    .select("id, user_id")
-    .eq("id", vehicleId)
-    .maybeSingle();
-
-  if (vehicleError) {
-    return { status: "error", message: vehicleError.message };
-  }
-  if (!vehicle) {
-    return { status: "error", message: "Fahrzeug nicht gefunden." };
-  }
-  if (vehicle.user_id !== user.id) {
+  const writeAccess = await getVehicleWriteAccess(vehicleId, user.id);
+  if (!writeAccess.ok || !writeAccess.ownerUserId) {
     return {
       status: "error",
       message:
-        "Dieses Fahrzeug gehört zu einem anderen Konto. Bitte abmelden und mit dem richtigen Konto anmelden.",
+        "Kein Schreibzugriff auf dieses Fahrzeug. Eigentümer oder eingeladener Schrauber erforderlich.",
+    };
+  }
+  if (
+    !contributorMayWriteDocumentType(
+      writeAccess.isContributor,
+      writeAccess.isOwner,
+      typeRaw,
+    )
+  ) {
+    return {
+      status: "error",
+      message: "Schrauber können nur Rechnungen, Reparaturen und Service eintragen.",
     };
   }
 
-  const ownerUserId = user.id;
+  const ownerUserId = writeAccess.ownerUserId;
 
   const storagePath = `${vehicleId}/${documentId}-${safeName}`;
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -250,6 +256,7 @@ export async function uploadDocument(
     id: documentId,
     vehicle_id: vehicleId,
     user_id: ownerUserId,
+    created_by: user.id,
     title,
     type: typeRaw,
     file_url: publicUrl,
@@ -350,7 +357,13 @@ export async function uploadDocument(
     { ...baseRow, vendor, mileage_km: mileageKm },
     { ...baseRow, mileage_km: mileageKm },
     baseRow,
-  ];
+  ].flatMap((row) => {
+    // Graceful if migration 00017 (created_by) is not applied yet.
+    const { created_by: _createdBy, ...withoutCreatedBy } = row as typeof row & {
+      created_by?: string;
+    };
+    return [row, withoutCreatedBy];
+  });
 
   let document: Document | null = null;
   let insertError: { message: string } | null = null;

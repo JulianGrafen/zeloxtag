@@ -27,7 +27,10 @@ function mapAuthError(result: AuthActionResult): string | null {
   return null;
 }
 
-export function LoginForm({ nextPath = "/dashboard", initialError }: LoginFormProps) {
+export function LoginForm({
+  nextPath = "/auth/continue",
+  initialError,
+}: LoginFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<AuthTab>("password");
   const [email, setEmail] = useState("");
@@ -97,7 +100,8 @@ export function LoginForm({ nextPath = "/dashboard", initialError }: LoginFormPr
                 return;
               }
               if (result.status === "signed_in") {
-                window.location.assign(nextPath || "/dashboard");
+                // Continue resolves to /v/{uuid} for owners with a claimed tag.
+                window.location.assign("/auth/continue");
                 return;
               }
               if (result.status === "error") {
@@ -109,17 +113,19 @@ export function LoginForm({ nextPath = "/dashboard", initialError }: LoginFormPr
             const result = await signInWithPassword(
               email,
               password,
-              nextPath || "/dashboard",
+              nextPath || "/auth/continue",
             );
             if (result.status === "mfa_required") {
               router.push(
-                `/login/mfa?next=${encodeURIComponent("/dashboard")}`,
+                `/login/mfa?next=${encodeURIComponent("/auth/continue")}`,
               );
               return;
             }
             if (result.status === "ok") {
-              // Hard nav → vehicle tile dashboard when a tag exists.
-              window.location.assign(result.redirectTo || "/dashboard");
+              // Hard nav → /auth/continue → /v/{uuid} for owners.
+              window.location.assign(
+                result.redirectTo || "/auth/continue",
+              );
               return;
             }
             setMessage(mapAuthError(result));
@@ -184,6 +190,19 @@ export function LoginForm({ nextPath = "/dashboard", initialError }: LoginFormPr
 
       <p className="text-center text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
         Neuer Tag? Scanne den QR-Code am Fahrzeug, um ihn zu beanspruchen.
+      </p>
+
+      <p className="text-center text-[0.78rem] text-[color:var(--vd-muted)]">
+        <a
+          href="/demo"
+          className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4 transition hover:decoration-neutral-900"
+        >
+          Demo ansehen
+        </a>
+        <span className="text-[color:var(--vd-muted)]">
+          {" "}
+          · Mazda RX-8 Showcase
+        </span>
       </p>
     </section>
   );

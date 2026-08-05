@@ -111,6 +111,13 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       meta: { subtitle: "Belege scannen" },
     },
     {
+      id: "schrauber",
+      title: "Schrauber",
+      description: "Werkstatt-Zugang teilen",
+      icon: "users",
+      meta: { subtitle: "Reparaturen eintragen lassen" },
+    },
+    {
       id: "modifications",
       title: "Umbau-Bilder",
       description: "Historie der Umbauten",

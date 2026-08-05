@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 
-import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
+import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
 import {
   clientIpFromHeaders,
   rateLimit,
@@ -187,15 +187,10 @@ export async function verifyMfaLogin(
     data: { user },
   } = await supabase.auth.getUser();
   const next = nextPathSchema.safeParse(nextPath);
-  const requested = next.success ? next.data : "/dashboard";
+  const requested = next.success ? next.data : "/auth/continue";
   const redirectTo =
-    !user?.id ||
-    requested === "/" ||
-    requested === "/login" ||
-    requested === "/dashboard"
-      ? user?.id
-        ? await resolvePostLoginPath(user.id)
-        : "/dashboard"
+    !user?.id || isGenericPostLoginNext(requested)
+      ? "/auth/continue"
       : requested;
 
   return { status: "verified", redirectTo };

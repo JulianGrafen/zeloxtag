@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
+import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
 import {
   clientIpFromHeaders,
   rateLimit,
@@ -45,14 +45,14 @@ async function enforceAuthRateLimit(scope: string): Promise<AuthActionResult | n
 }
 
 function normalizeNext(nextPath: string): string {
-  const parsed = nextPathSchema.safeParse(nextPath || "/dashboard");
-  return parsed.success ? parsed.data : "/dashboard";
+  const parsed = nextPathSchema.safeParse(nextPath || "/auth/continue");
+  return parsed.success ? parsed.data : "/auth/continue";
 }
 
 export async function signInWithPassword(
   emailRaw: string,
   passwordRaw: string,
-  nextPath = "/dashboard",
+  nextPath = "/auth/continue",
 ): Promise<AuthActionResult> {
   const limited = await enforceAuthRateLimit("password-login");
   if (limited) return limited;
@@ -90,12 +90,12 @@ export async function signInWithPassword(
     return { status: "error", message: "Anmeldung fehlgeschlagen." };
   }
 
-  // Prefer the vehicle twin; honour explicit deep-links except bare "/".
+  // Generic login → /auth/continue (fresh request, cookies committed).
+  // Deep links (settings, claim, …) keep their explicit next path.
   const requested = normalizeNext(nextPath);
-  const redirectTo =
-    requested === "/" || requested === "/login" || requested === "/dashboard"
-      ? await resolvePostLoginPath(data.session.user.id)
-      : requested;
+  const redirectTo = isGenericPostLoginNext(requested)
+    ? "/auth/continue"
+    : requested;
 
   return { status: "ok", redirectTo };
 }
@@ -112,7 +112,7 @@ export async function signOut(): Promise<void> {
 }
 
 /** Sign out, then open login (for switching mixed sessions on a shared device). */
-export async function signOutToLogin(nextPath = "/dashboard"): Promise<void> {
+export async function signOutToLogin(nextPath = "/auth/continue"): Promise<void> {
   const safeNext = normalizeNext(nextPath);
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {
@@ -126,6 +126,6 @@ export async function signOutToLogin(nextPath = "/dashboard"): Promise<void> {
 
 /** Form-action wrapper: reads `next` from FormData. */
 export async function signOutToLoginForm(formData: FormData): Promise<void> {
-  const next = String(formData.get("next") ?? "/dashboard");
+  const next = String(formData.get("next") ?? "/auth/continue");
   await signOutToLogin(next);
 }

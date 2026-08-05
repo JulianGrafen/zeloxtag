@@ -5,7 +5,7 @@ import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { AppShell } from "@/components/layout/app-shell";
 import { DocumentUploadForm } from "@/components/documents/document-upload-form";
 import { InvoiceScannerForm } from "@/components/documents/invoice-scanner-form";
-import { requireTagOwner } from "@/lib/auth/require-tag-owner";
+import { requireTagWriter } from "@/lib/auth/require-tag-access";
 import type { DocumentType } from "@/types/database";
 
 interface UploadPageProps {
@@ -26,7 +26,10 @@ export default async function UploadDocumentPage({
 }: UploadPageProps) {
   const { uuid } = await params;
   const { type: typeRaw, mode } = await searchParams;
-  const { result } = await requireTagOwner(uuid);
+  const { result, access } = await requireTagWriter(uuid);
+  if (access.isContributor && !access.isOwner && typeRaw === "abe") {
+    redirect(`/v/${uuid}?scan=1&type=repair`);
+  }
 
   // Default scanner lives on the dashboard — keep legacy modes for manual/perspective.
   if (!mode) {

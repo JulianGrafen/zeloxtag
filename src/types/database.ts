@@ -48,11 +48,31 @@ export type DocumentTechnicalSpec = {
   value: string;
 };
 
+export type VehicleContributorRole = "schrauber";
+export type VehicleContributorStatus = "invited" | "active" | "revoked";
+
+export type VehicleContributor = {
+  id: string;
+  vehicle_id: string;
+  user_id: string | null;
+  role: VehicleContributorRole;
+  status: VehicleContributorStatus;
+  invite_token: string;
+  label: string | null;
+  invited_by: string;
+  created_at: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  expires_at: string | null;
+};
+
 export type Document = {
   id: string;
   vehicle_id: string;
   /** Owner; kept in sync with vehicles.user_id (see migration 00012). */
   user_id: string;
+  /** Uploader (owner or Schrauber); see migration 00017. */
+  created_by: string | null;
   title: string;
   type: DocumentType;
   file_url: string;
@@ -166,12 +186,52 @@ export type Database = {
           },
         ];
       };
+      vehicle_contributors: {
+        Row: VehicleContributor;
+        Insert: {
+          id?: string;
+          vehicle_id: string;
+          user_id?: string | null;
+          role?: VehicleContributorRole;
+          status?: VehicleContributorStatus;
+          invite_token: string;
+          label?: string | null;
+          invited_by: string;
+          created_at?: string;
+          accepted_at?: string | null;
+          revoked_at?: string | null;
+          expires_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          vehicle_id?: string;
+          user_id?: string | null;
+          role?: VehicleContributorRole;
+          status?: VehicleContributorStatus;
+          invite_token?: string;
+          label?: string | null;
+          invited_by?: string;
+          created_at?: string;
+          accepted_at?: string | null;
+          revoked_at?: string | null;
+          expires_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_contributors_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       documents: {
         Row: Document;
         Insert: {
           id?: string;
           vehicle_id: string;
           user_id?: string;
+          created_by?: string | null;
           title: string;
           type?: DocumentType;
           file_url: string;
@@ -198,6 +258,7 @@ export type Database = {
           id?: string;
           vehicle_id?: string;
           user_id?: string;
+          created_by?: string | null;
           title?: string;
           type?: DocumentType;
           file_url?: string;

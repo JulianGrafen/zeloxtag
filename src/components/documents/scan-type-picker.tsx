@@ -3,6 +3,7 @@
 import {
   ArrowLeft,
   FileText,
+  Hammer,
   ShieldCheck,
   Stamp,
   Wrench,
@@ -12,12 +13,14 @@ import type { LucideIcon } from "lucide-react";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import {
   SCAN_TYPE_OPTIONS,
+  scanTypeOptionsForRole,
   type ScanType,
   type ScanTypeDefinition,
 } from "@/lib/documents/scan-types";
 
 const SCAN_ICONS: Record<ScanType, LucideIcon> = {
   invoice: FileText,
+  repair: Hammer,
   service: Wrench,
   abe: Stamp,
   teilegutachten: Stamp,
@@ -31,6 +34,8 @@ interface ScanTypePickerProps {
   backHref: string;
   onBack?: () => void;
   onSelect: (type: ScanType) => void;
+  /** Owner sees all types; Schrauber only repair/service/invoice. */
+  role?: "owner" | "contributor";
 }
 
 function ScanTile({
@@ -71,7 +76,11 @@ export function ScanTypePicker({
   backHref,
   onBack,
   onSelect,
+  role = "owner",
 }: ScanTypePickerProps) {
+  const options =
+    role === "owner" ? SCAN_TYPE_OPTIONS : scanTypeOptionsForRole(role);
+
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
       <div
@@ -103,19 +112,20 @@ export function ScanTypePicker({
 
         <header className="space-y-2">
           <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            Dokument scannen
+            {role === "contributor" ? "Schrauber-Eintrag" : "Dokument scannen"}
           </p>
           <h1 className="font-[family-name:var(--font-display)] text-[1.65rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)]">
             Was liegt vor?
           </h1>
           <p className="text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Wähle den Dokumenttyp — die Extraktion nutzt dann genau die passenden
-            Felder für {vehicleLabel}.
+            {role === "contributor"
+              ? `Trage Reparatur, Service oder Rechnung für ${vehicleLabel} ein.`
+              : `Wähle den Dokumenttyp — die Extraktion nutzt dann genau die passenden Felder für ${vehicleLabel}.`}
           </p>
         </header>
 
         <div className="grid gap-3">
-          {SCAN_TYPE_OPTIONS.map((option) => (
+          {options.map((option) => (
             <ScanTile key={option.id} option={option} onSelect={onSelect} />
           ))}
         </div>

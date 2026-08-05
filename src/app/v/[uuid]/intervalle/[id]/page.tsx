@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { OilIntervalDetailView } from "@/components/vehicle-dashboard";
-import { requireTagOwner } from "@/lib/auth/require-tag-owner";
+import { requireTagWriter } from "@/lib/auth/require-tag-access";
 import { oilChangeRecordsFromDocuments } from "@/lib/documents/oil-changes";
 
 interface OilIntervalDetailPageProps {
@@ -23,7 +23,7 @@ export default async function VehicleOilIntervalDetailPage({
   params,
 }: OilIntervalDetailPageProps) {
   const { uuid, id } = await params;
-  const { result } = await requireTagOwner(uuid);
+  const { result } = await requireTagWriter(uuid);
 
   const records = oilChangeRecordsFromDocuments(result.documents);
   const record = records.find((entry) => entry.id === id);

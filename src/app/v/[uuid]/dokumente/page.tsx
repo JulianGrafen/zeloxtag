@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { VehicleDocumentsView } from "@/components/documents/vehicle-documents-view";
-import { requireTagOwner } from "@/lib/auth/require-tag-owner";
+import { requireTagWriter } from "@/lib/auth/require-tag-access";
 import type { DocumentType } from "@/types/database";
 
 interface DocumentsPageProps {
@@ -33,12 +33,21 @@ export default async function VehicleDocumentsPage({
 }: DocumentsPageProps) {
   const { uuid } = await params;
   const { type: typeRaw } = await searchParams;
-  const { result } = await requireTagOwner(uuid);
+  const { result, access } = await requireTagWriter(uuid);
+  // Schrauber: invoice list only (no ABE / TÜV browsing).
+  const contributorLocked =
+    access.isContributor && !access.isOwner
+      ? ("invoice" as const)
+      : null;
 
-  const filterType =
+  const requested =
     typeRaw && VALID_TYPES.has(typeRaw as DocumentType | "all")
       ? (typeRaw as DocumentType | "all")
       : "all";
+  const filterType = contributorLocked ?? requested;
+  const documents = contributorLocked
+    ? result.documents.filter((doc) => doc.type === "invoice")
+    : result.documents;
 
   return (
     <VehicleDocumentsView
@@ -46,7 +55,7 @@ export default async function VehicleDocumentsPage({
       vehicleId={result.vehicle!.id}
       vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
       vehicleModel={result.vehicle!.model}
-      documents={result.documents}
+      documents={documents}
       filterType={filterType}
       canWrite
     />

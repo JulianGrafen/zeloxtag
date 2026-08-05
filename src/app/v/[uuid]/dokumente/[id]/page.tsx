@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { DocumentAbeDetailView } from "@/components/documents/document-abe-detail-view";
 import { DocumentInvoiceDetailView } from "@/components/documents/document-invoice-detail-view";
-import { requireTagOwner } from "@/lib/auth/require-tag-owner";
+import { requireTagWriter } from "@/lib/auth/require-tag-access";
 
 interface DocumentDetailPageProps {
   params: Promise<{ uuid: string; id: string }>;
@@ -23,11 +23,20 @@ export default async function DocumentDetailPage({
   params,
 }: DocumentDetailPageProps) {
   const { uuid, id } = await params;
-  const { result } = await requireTagOwner(uuid);
+  const { result, access } = await requireTagWriter(uuid);
 
   const document = result.documents.find((doc) => doc.id === id);
   if (!document) {
     notFound();
+  }
+
+  // Schrauber may open invoices only.
+  if (
+    access.isContributor &&
+    !access.isOwner &&
+    document.type !== "invoice"
+  ) {
+    redirect(`/v/${uuid}/dokumente?type=invoice`);
   }
 
   const vehicleLabel = `${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`;

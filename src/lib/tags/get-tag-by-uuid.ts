@@ -46,6 +46,7 @@ function normalizeDocument(value: unknown): Document | null {
   return {
     ...doc,
     user_id: typeof doc.user_id === "string" ? doc.user_id : "",
+    created_by: typeof doc.created_by === "string" ? doc.created_by : null,
     vendor: typeof doc.vendor === "string" ? doc.vendor : null,
     category: typeof doc.category === "string" ? doc.category : null,
     line_items: parseLineItems(doc.line_items),
@@ -192,7 +193,13 @@ export async function getTagByUuid(uuid: string): Promise<TagScanResult | null> 
 
   try {
     if (isSupabaseAdminConfigured()) {
-      return await resolveTagWithAdmin(normalized);
+      const viaAdmin = await resolveTagWithAdmin(normalized);
+      if (viaAdmin) return viaAdmin;
+      // Local showcase UUIDs are not in prod DB — fall back to mock twin.
+      if (isDemoTagUuid(normalized)) {
+        return resolveMockTag(normalized);
+      }
+      return null;
     }
 
     const viaRpc = await resolveTagWithRpc(normalized);

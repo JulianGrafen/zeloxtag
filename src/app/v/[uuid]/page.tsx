@@ -4,10 +4,12 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ClaimFlow } from "@/components/tags/claim-flow";
 import { PrivateTwinGate } from "@/components/tags/private-twin-gate";
 import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
+import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { TagNotFound } from "@/components/tags/tag-not-found";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
+import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { toOwnerClientTagScanResult } from "@/lib/tags/public-tag-dto";
 
 interface TagScanPageProps {
@@ -67,7 +69,23 @@ export default async function TagScanPage({
   if (tag.status === "active" && vehicle) {
     const access = await getTagVehicleAccess(tag.uuid, vehicle.user_id);
 
-    if (!access.isOwner) {
+    if (!access.isOwner && !access.isContributor) {
+      // Public mock twin for the optional /demo showcase links.
+      if (tag.uuid === MOCK_TAG_UUIDS.active) {
+        return (
+          <AppShell showNavbar={false}>
+            <TagDashboardView
+              vehicle={vehicle}
+              documents={result.documents}
+              tagUuid={tag.uuid}
+              ownerName="Demo"
+              canScan={false}
+              demoMode
+            />
+          </AppShell>
+        );
+      }
+
       return (
         <AppShell showNavbar={false}>
           <PrivateTwinGate
@@ -90,7 +108,8 @@ export default async function TagScanPage({
           documents={ownerTwin.documents}
           tagUuid={tag.uuid}
           ownerName={access.ownerName}
-          isOwner
+          isOwner={access.isOwner}
+          isContributor={access.isContributor}
           sessionEmail={access.sessionEmail}
           initialMode={openScanner ? "pick-scan" : "dashboard"}
           initialScanType={openScanner ? (scanType ?? null) : null}

@@ -46,7 +46,7 @@ export async function proxy(request: NextRequest) {
     userId &&
     needsMfa &&
     pathname !== "/login/mfa" &&
-    !pathname.startsWith("/auth/") &&
+    pathname !== "/auth/callback" &&
     (requiresAuth || pathname.startsWith("/dashboard"))
   ) {
     if (pathname.startsWith("/api/")) {
@@ -62,25 +62,27 @@ export async function proxy(request: NextRequest) {
     const mfaUrl = new URL("/login/mfa", origin);
     mfaUrl.searchParams.set(
       "next",
-      `${pathname}${search}`.startsWith("/") ? `${pathname}${search}` : "/dashboard",
+      `${pathname}${search}`.startsWith("/")
+        ? `${pathname}${search}`
+        : "/auth/continue",
     );
     return NextResponse.redirect(mfaUrl);
   }
 
   // Password session at AAL1 with enrolled TOTP → MFA challenge UI.
-  if (userId && needsMfa && pathname === "/login") {
+  if (userId && needsMfa && (pathname === "/" || pathname === "/login")) {
     const mfaUrl = new URL("/login/mfa", origin);
-    mfaUrl.searchParams.set("next", "/dashboard");
+    mfaUrl.searchParams.set("next", "/auth/continue");
     return NextResponse.redirect(mfaUrl);
   }
 
-  // Authenticated users who finished MFA leave the login screens.
+  // Authenticated users who finished MFA → own vehicle dashboard (via continue).
   if (
     userId &&
     !needsMfa &&
     (pathname === "/" || pathname === "/login" || pathname === "/login/mfa")
   ) {
-    return NextResponse.redirect(new URL("/dashboard", origin));
+    return NextResponse.redirect(new URL("/auth/continue", origin));
   }
 
   return response;

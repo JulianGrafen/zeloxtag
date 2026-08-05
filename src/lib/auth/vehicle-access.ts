@@ -8,6 +8,12 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 export type VehicleAccess = {
   /** Session user owns this vehicle. */
   isOwner: boolean;
+  /** Active Schrauber / contributor on this vehicle. */
+  isContributor: boolean;
+  /** Owner or Schrauber may add invoices / repairs. */
+  canWriteInvoices: boolean;
+  /** Only the owner manages invites. */
+  canManageContributors: boolean;
   /** Display name of the vehicle owner (never the wrong session user). */
   ownerName: string;
   /** Email of the current session, if any. */
@@ -31,11 +37,32 @@ function displayNameFromUser(user: {
   return "Fahrer";
 }
 
+async function sessionIsActiveContributor(
+  vehicleId: string,
+  sessionUserId: string,
+): Promise<boolean> {
+  if (!isSupabaseAdminConfigured()) return false;
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("vehicle_contributors")
+      .select("id")
+      .eq("vehicle_id", vehicleId)
+      .eq("user_id", sessionUserId)
+      .eq("status", "active")
+      .maybeSingle();
+    return Boolean(data);
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Resolves owner vs guest access for a claimed vehicle / QR digital twin.
+ * Resolves owner vs Schrauber vs guest access for a claimed vehicle.
  */
 export async function getVehicleAccess(
   vehicleUserId: string,
+  vehicleId?: string | null,
 ): Promise<VehicleAccess> {
   const session = await getCurrentUser();
   const sessionUserId = session?.id ?? null;
@@ -44,19 +71,31 @@ export async function getVehicleAccess(
     sessionUserId && vehicleUserId && sessionUserId === vehicleUserId,
   );
 
+  let isContributor = false;
+  if (!isOwner && sessionUserId && vehicleId) {
+    isContributor = await sessionIsActiveContributor(vehicleId, sessionUserId);
+  }
+
+  const base = {
+    isOwner,
+    isContributor,
+    canWriteInvoices: isOwner || isContributor,
+    canManageContributors: isOwner,
+    sessionEmail,
+    sessionUserId,
+  };
+
   let ownerName = "Fahrer";
 
   if (isOwner && session) {
     return {
-      isOwner,
+      ...base,
       ownerName: displayNameFromUser(session),
-      sessionEmail,
-      sessionUserId,
     };
   }
 
   if (!vehicleUserId) {
-    return { isOwner: false, ownerName, sessionEmail, sessionUserId };
+    return { ...base, ownerName };
   }
 
   const { isConfigured } = getSupabaseEnv();
@@ -72,7 +111,7 @@ export async function getVehicleAccess(
     }
   }
 
-  return { isOwner, ownerName, sessionEmail, sessionUserId };
+  return { ...base, ownerName };
 }
 
 /**
@@ -81,10 +120,10 @@ export async function getVehicleAccess(
 export async function sessionOwnsTagVehicle(
   tagUuid: string,
   sessionUserId: string,
-): Promise<boolean> {
+): Promise<{ isOwner: boolean; vehicleId: string | null }> {
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured || !isSupabaseAdminConfigured()) {
-    return false;
+    return { isOwner: false, vehicleId: null };
   }
 
   const admin = createAdminClient();
@@ -95,7 +134,7 @@ export async function sessionOwnsTagVehicle(
     .maybeSingle();
 
   if (!tag?.vehicle_id || tag.status !== "active") {
-    return false;
+    return { isOwner: false, vehicleId: null };
   }
 
   const { data: vehicle } = await admin
@@ -105,7 +144,10 @@ export async function sessionOwnsTagVehicle(
     .eq("user_id", sessionUserId)
     .maybeSingle();
 
-  return Boolean(vehicle);
+  return {
+    isOwner: Boolean(vehicle),
+    vehicleId: tag.vehicle_id,
+  };
 }
 
 /**
@@ -116,25 +158,67 @@ export async function getTagVehicleAccess(
   tagUuid: string,
   vehicleUserId: string | null | undefined,
 ): Promise<VehicleAccess> {
-  if (vehicleUserId) {
-    return getVehicleAccess(vehicleUserId);
-  }
-
   const session = await getCurrentUser();
   const sessionUserId = session?.id ?? null;
   const sessionEmail = session?.email ?? null;
 
-  if (sessionUserId && (await sessionOwnsTagVehicle(tagUuid, sessionUserId))) {
-    return {
-      isOwner: true,
-      ownerName: displayNameFromUser(session!),
-      sessionEmail,
-      sessionUserId,
-    };
+  let vehicleId: string | null = null;
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const admin = createAdminClient();
+      const { data: tag } = await admin
+        .from("tags")
+        .select("vehicle_id")
+        .eq("uuid", tagUuid)
+        .maybeSingle();
+      vehicleId = tag?.vehicle_id ?? null;
+    } catch {
+      vehicleId = null;
+    }
+  }
+
+  if (vehicleUserId) {
+    return getVehicleAccess(vehicleUserId, vehicleId);
+  }
+
+  if (sessionUserId) {
+    const owned = await sessionOwnsTagVehicle(tagUuid, sessionUserId);
+    if (owned.isOwner) {
+      return {
+        isOwner: true,
+        isContributor: false,
+        canWriteInvoices: true,
+        canManageContributors: true,
+        ownerName: displayNameFromUser(session!),
+        sessionEmail,
+        sessionUserId,
+      };
+    }
+
+    if (owned.vehicleId) {
+      const isContributor = await sessionIsActiveContributor(
+        owned.vehicleId,
+        sessionUserId,
+      );
+      if (isContributor) {
+        return {
+          isOwner: false,
+          isContributor: true,
+          canWriteInvoices: true,
+          canManageContributors: false,
+          ownerName: "Fahrer",
+          sessionEmail,
+          sessionUserId,
+        };
+      }
+    }
   }
 
   return {
     isOwner: false,
+    isContributor: false,
+    canWriteInvoices: false,
+    canManageContributors: false,
     ownerName: "Fahrer",
     sessionEmail,
     sessionUserId,

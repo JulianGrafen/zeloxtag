@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { completePendingClaimForUser } from "@/actions/claim-tag";
+import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createRouteHandlerClient } from "@/lib/supabase/route";
@@ -33,8 +34,11 @@ export async function GET(request: NextRequest) {
 
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
-  const nextRaw = searchParams.get("next") ?? "/";
-  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/";
+  const nextRaw = searchParams.get("next") ?? "/auth/continue";
+  const next =
+    nextRaw.startsWith("/") && !nextRaw.startsWith("//")
+      ? nextRaw
+      : "/auth/continue";
 
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {
@@ -45,8 +49,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(next, origin));
   }
 
-  const redirectUrl = new URL(next, origin);
-  const response = NextResponse.redirect(redirectUrl);
+  // Temporary redirect target; may be replaced after session + claim resolve.
+  let response = NextResponse.redirect(new URL(next, origin));
   const supabase = createRouteHandlerClient(request, response);
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -58,31 +62,37 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  const copyCookies = (target: NextResponse) => {
+    response.cookies.getAll().forEach((cookie) => {
+      target.cookies.set(cookie);
+    });
+    return target;
+  };
+
   const userId = data.user?.id ?? data.session?.user?.id;
   if (userId) {
     try {
       const claimResult = await completePendingClaimForUser(userId);
       if (claimResult?.status === "claimed") {
-        // Preserve session cookies set during exchange on this response.
-        const claimed = NextResponse.redirect(
-          new URL(`/v/${claimResult.tagUuid}`, origin),
+        return copyCookies(
+          NextResponse.redirect(new URL(`/v/${claimResult.tagUuid}`, origin)),
         );
-        response.cookies.getAll().forEach((cookie) => {
-          claimed.cookies.set(cookie);
-        });
-        return claimed;
       }
       if (claimResult?.status === "error") {
         const loginUrl = new URL("/login", origin);
         loginUrl.searchParams.set("error", claimResult.message);
-        const failed = NextResponse.redirect(loginUrl);
-        response.cookies.getAll().forEach((cookie) => {
-          failed.cookies.set(cookie);
-        });
-        return failed;
+        return copyCookies(NextResponse.redirect(loginUrl));
       }
     } catch {
       // Claim is optional on plain login — session cookies already on `response`.
+    }
+
+    if (isGenericPostLoginNext(next)) {
+      // Cookie-bearing hop; continue resolves /v/{uuid} for owners.
+      response = copyCookies(
+        NextResponse.redirect(new URL("/auth/continue", origin)),
+      );
+      return response;
     }
   }
 

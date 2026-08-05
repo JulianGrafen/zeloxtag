@@ -1,7 +1,14 @@
 import { randomUUID } from "crypto";
 
+import {
+  contributorMayWriteDocumentType,
+  getVehicleWriteAccess,
+} from "@/lib/auth/vehicle-write-access";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
-import { createClient } from "@/lib/supabase/server";
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 import type { Document, DocumentType } from "@/types/database";
 
 import type { InvoiceOcrCategory, InvoiceOcrFields } from "./types";
@@ -42,18 +49,15 @@ export async function persistOcrInvoice(input: {
   originalName: string;
   ocr: InvoiceOcrFields;
 }): Promise<PersistedOcrDocument> {
-  const supabase = await createClient();
-
-  const { data: vehicle, error: vehicleError } = await supabase
-    .from("vehicles")
-    .select("id, user_id")
-    .eq("id", input.vehicleId)
-    .maybeSingle();
-
-  if (vehicleError) {
-    throw new OcrPersistError(vehicleError.message);
+  if (!isSupabaseAdminConfigured()) {
+    throw new OcrPersistError("SUPABASE_SERVICE_ROLE_KEY fehlt.");
   }
-  if (!vehicle || vehicle.user_id !== input.userId) {
+
+  const writeAccess = await getVehicleWriteAccess(
+    input.vehicleId,
+    input.userId,
+  );
+  if (!writeAccess.ok || !writeAccess.ownerUserId) {
     throw new OcrPersistError("No write access to this vehicle.");
   }
 
@@ -61,6 +65,20 @@ export async function persistOcrInvoice(input: {
   const safeName = sanitizeFilename(input.originalName || "invoice.jpg");
   const storagePath = `${input.vehicleId}/${documentId}-${safeName}`;
   const docType = documentTypeForCategory(input.ocr.category);
+
+  if (
+    !contributorMayWriteDocumentType(
+      writeAccess.isContributor,
+      writeAccess.isOwner,
+      docType,
+    )
+  ) {
+    throw new OcrPersistError(
+      "Schrauber können nur Rechnungen und Service-Belege speichern.",
+    );
+  }
+
+  const supabase = createAdminClient();
 
   const { error: storageError } = await supabase.storage
     .from(DOCUMENT_BUCKET)
@@ -81,35 +99,60 @@ export async function persistOcrInvoice(input: {
   const title = (vendor || "Rechnung").slice(0, 160);
   const category = input.ocr.category;
 
-  const { data: document, error: insertError } = await supabase
-    .from("documents")
-    .insert({
-      id: documentId,
-      vehicle_id: input.vehicleId,
-      user_id: input.userId,
-      title,
-      type: docType,
-      file_url: publicUrl,
-      vendor,
-      category,
-      line_items: null,
-      kba_number: null,
-      vehicle_approvals: null,
-      authority: null,
-      conditions: null,
-      part_category: null,
-      notes: null,
-      page_count: null,
-      manufacturer: null,
-      invoice_number: null,
-      mileage_km: null,
-      technical_specs: null,
-      approval_fields: null,
-      amount: input.ocr.amount,
-      date: input.ocr.date,
-    })
-    .select("*")
-    .single();
+  const row = {
+    id: documentId,
+    vehicle_id: input.vehicleId,
+    user_id: writeAccess.ownerUserId,
+    created_by: input.userId,
+    title,
+    type: docType,
+    file_url: publicUrl,
+    vendor,
+    category,
+    line_items: null,
+    kba_number: null,
+    vehicle_approvals: null,
+    authority: null,
+    conditions: null,
+    part_category: null,
+    notes: null,
+    page_count: null,
+    manufacturer: null,
+    invoice_number: null,
+    mileage_km: null,
+    technical_specs: null,
+    approval_fields: null,
+    amount: input.ocr.amount,
+    date: input.ocr.date,
+  };
+
+  let document = null;
+  let insertError: { message: string } | null = null;
+  for (const attempt of [
+    row,
+    (() => {
+      const { created_by: _c, ...rest } = row;
+      return rest;
+    })(),
+  ]) {
+    const result = await supabase
+      .from("documents")
+      .insert(attempt)
+      .select("*")
+      .single();
+    if (!result.error && result.data) {
+      document = result.data;
+      insertError = null;
+      break;
+    }
+    insertError = result.error;
+    if (
+      !result.error?.message?.includes("does not exist") &&
+      !result.error?.message?.includes("schema cache")
+    ) {
+      break;
+    }
+  }
 
   if (insertError || !document) {
     await supabase.storage.from(DOCUMENT_BUCKET).remove([storagePath]);

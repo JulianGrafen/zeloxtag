@@ -124,7 +124,17 @@ async function authorizeOwnerDocumentRead(
     .eq("user_id", user.id)
     .maybeSingle();
 
-  return Boolean(vehicle);
+  if (vehicle) return true;
+
+  const { data: grant } = await admin
+    .from("vehicle_contributors")
+    .select("id")
+    .eq("vehicle_id", vehicleId)
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  return Boolean(grant);
 }
 
 async function proxyInline(

@@ -19,6 +19,13 @@ interface TagDashboardViewProps {
   ownerName?: string | null;
   /** When false, hide the scan FAB (guest / wrong account). */
   canScan?: boolean;
+  isOwner?: boolean;
+  isContributor?: boolean;
+  /**
+   * Showcase mode: show counts/subtitles but disable owner-only deep links
+   * (demo page is public; document routes require login).
+   */
+  demoMode?: boolean;
   onOpenScanner?: () => void;
 }
 
@@ -31,6 +38,9 @@ export function TagDashboardView({
   tagUuid,
   ownerName,
   canScan = true,
+  isOwner = true,
+  isContributor = false,
+  demoMode = false,
   onOpenScanner,
 }: TagDashboardViewProps) {
   const invoiceCount = documents.filter((doc) => doc.type === "invoice").length;
@@ -132,6 +142,17 @@ export function TagDashboardView({
       };
     }
 
+    if (tile.id === "schrauber") {
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: `/v/${tagUuid}/schrauber`,
+          subtitle: "Einladen & verwalten",
+        },
+      };
+    }
+
     if (tile.id === "specs") {
       return {
         ...tile,
@@ -143,10 +164,30 @@ export function TagDashboardView({
       };
     }
 
+    if (demoMode && tile.meta?.href) {
+      // Keep the tile visual; owner routes stay behind login.
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: undefined,
+        },
+      };
+    }
+
     return tile;
   }).filter((tile) => {
     // Account settings (2FA) only for the vehicle owner — not public twin guests.
-    if (tile.id === "settings") return canScan;
+    if (tile.id === "settings") return isOwner && canScan && !demoMode;
+    if (tile.id === "schrauber") return isOwner && !demoMode;
+    // Schrauber: focused write surface (invoices + service + scan).
+    if (isContributor && !isOwner) {
+      return (
+        tile.id === "invoices" ||
+        tile.id === "service" ||
+        tile.id === "oil-change"
+      );
+    }
     return true;
   });
 

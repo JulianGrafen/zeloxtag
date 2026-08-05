@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Stamp,
   TriangleAlert,
+  Users,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -28,4 +29,5 @@ export const DASHBOARD_ICONS: Record<DashboardIconName, LucideIcon> = {
   info: Info,
   "triangle-alert": TriangleAlert,
   settings: Settings,
+  users: Users,
 };

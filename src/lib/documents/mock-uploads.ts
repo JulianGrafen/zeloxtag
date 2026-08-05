@@ -17,6 +17,8 @@ type MockUploadStore = Record<string, Document[]>;
 function normalizeDocument(document: Document): Document {
   return {
     ...document,
+    created_by:
+      typeof document.created_by === "string" ? document.created_by : null,
     vendor: typeof document.vendor === "string" ? document.vendor : null,
     category: typeof document.category === "string" ? document.category : null,
     line_items: parseLineItems(document.line_items),
@@ -62,6 +64,21 @@ export async function appendMockUploadedDocument(
   const existing = store[document.vehicle_id] ?? [];
   store[document.vehicle_id] = [document, ...existing].slice(0, 40);
   await writeStore(store);
+}
+
+export async function updateMockUploadedDocument(
+  vehicleId: string,
+  documentId: string,
+  patch: Partial<Document>,
+): Promise<boolean> {
+  const store = await readStore();
+  const existing = store[vehicleId] ?? [];
+  const index = existing.findIndex((doc) => doc.id === documentId);
+  if (index < 0) return false;
+  existing[index] = normalizeDocument({ ...existing[index], ...patch });
+  store[vehicleId] = existing;
+  await writeStore(store);
+  return true;
 }
 
 export async function removeMockUploadedDocument(

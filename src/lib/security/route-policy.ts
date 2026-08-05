@@ -8,12 +8,14 @@ const PUBLIC_EXACT = new Set([
   "/login",
   "/login/mfa",
   "/auth/callback",
-  "/demo", // redirects to login — keep public
+  "/demo", // optional RX-8 showcase (not the landing page)
   // /qr requires auth — inventory mint must not be anonymous
+  // /auth/continue is protected — resolves owner dashboard after login
 ]);
 
 const PUBLIC_PREFIXES = [
   "/v/", // physical QR scan surface
+  "/einladung/", // Schrauber invite landing (accept requires auth)
   "/_next/",
 ];
 
@@ -58,6 +60,9 @@ export function isProtectedApiPath(pathname: string, method: string): boolean {
 }
 
 export function isProtectedPagePath(pathname: string): boolean {
+  if (pathname === "/auth/continue") {
+    return true;
+  }
   if (pathname === "/qr" || pathname.startsWith("/qr/")) {
     return true;
   }
@@ -81,6 +86,9 @@ export function isProtectedPagePath(pathname: string): boolean {
 export function loginRedirectUrl(origin: string, pathname: string, search: string): string {
   const next = `${pathname}${search}`;
   const url = new URL("/login", origin);
-  url.searchParams.set("next", next.startsWith("/") ? next : "/dashboard");
+  url.searchParams.set(
+    "next",
+    next.startsWith("/") ? next : "/auth/continue",
+  );
   return url.toString();
 }

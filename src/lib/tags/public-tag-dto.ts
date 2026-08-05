@@ -67,5 +67,6 @@ function toOwnerClientDocument(doc: Document): Document {
   return {
     ...doc,
     user_id: "",
+    created_by: null,
   };
 }

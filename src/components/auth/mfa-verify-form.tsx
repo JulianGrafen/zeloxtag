@@ -36,13 +36,16 @@ export function MfaVerifyForm({ nextPath = "/dashboard" }: MfaVerifyFormProps) {
           event.preventDefault();
           setMessage(null);
           startTransition(async () => {
-            const result = await verifyMfaLogin(code, nextPath || "/dashboard");
+            const result = await verifyMfaLogin(
+              code,
+              nextPath || "/auth/continue",
+            );
             if (result.status === "rate_limited") {
               setMessage(`Zu viele Versuche. Bitte in ${result.retryAfterSec}s warten.`);
               return;
             }
             if (result.status === "verified") {
-              window.location.assign(result.redirectTo || "/dashboard");
+              window.location.assign("/auth/continue");
               return;
             }
             if (result.status === "error") {

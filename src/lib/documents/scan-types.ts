@@ -10,6 +10,7 @@ import type { DocumentType } from "@/types/database";
 
 export const SCAN_TYPES = [
   "invoice",
+  "repair",
   "service",
   "abe",
   "teilegutachten",
@@ -19,6 +20,13 @@ export const SCAN_TYPES = [
 ] as const;
 
 export type ScanType = (typeof SCAN_TYPES)[number];
+
+/** Scan intents Schrauber may use (no ABE / TÜV). */
+export const SCHRAUBER_SCAN_TYPES: readonly ScanType[] = [
+  "repair",
+  "service",
+  "invoice",
+];
 
 export type ScanTypeDefinition = {
   id: ScanType;
@@ -50,6 +58,19 @@ export const SCAN_TYPE_DEFINITIONS: Record<ScanType, ScanTypeDefinition> = {
     documentType: "invoice",
     heading: "Rechnung scannen",
     subheading: "Beleg mit Betrag und Positionen",
+    successTypeQuery: "invoice",
+  },
+  repair: {
+    id: "repair",
+    title: "Reparatur",
+    description: "Instandsetzung, Verschleiß, Schaden",
+    ocrDocumentType: "invoice",
+    category: "repair",
+    lockCategory: true,
+    approvalKind: null,
+    documentType: "invoice",
+    heading: "Reparatur scannen",
+    subheading: "Werkstattbeleg für eine Reparatur",
     successTypeQuery: "invoice",
   },
   service: {
@@ -135,6 +156,7 @@ export const SCAN_TYPE_DEFINITIONS: Record<ScanType, ScanTypeDefinition> = {
 /** Ordered for the picker UI. */
 export const SCAN_TYPE_OPTIONS: ScanTypeDefinition[] = [
   SCAN_TYPE_DEFINITIONS.invoice,
+  SCAN_TYPE_DEFINITIONS.repair,
   SCAN_TYPE_DEFINITIONS.service,
   SCAN_TYPE_DEFINITIONS.abe,
   SCAN_TYPE_DEFINITIONS.teilegutachten,
@@ -142,6 +164,13 @@ export const SCAN_TYPE_OPTIONS: ScanTypeDefinition[] = [
   SCAN_TYPE_DEFINITIONS.egbe,
   SCAN_TYPE_DEFINITIONS.tuev,
 ];
+
+export function scanTypeOptionsForRole(
+  role: "owner" | "contributor",
+): ScanTypeDefinition[] {
+  if (role === "owner") return SCAN_TYPE_OPTIONS;
+  return SCHRAUBER_SCAN_TYPES.map((id) => SCAN_TYPE_DEFINITIONS[id]);
+}
 
 export function parseScanType(value: string | null | undefined): ScanType | null {
   if (!value) return null;
