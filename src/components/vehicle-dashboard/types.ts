@@ -5,7 +5,6 @@ export type DashboardTileId =
   | "tuv"
   | "service"
   | "modifications"
-  | "roadside"
   | "tuning-history"
   | "specs"
   | "settings"
@@ -21,7 +20,6 @@ export type DashboardIconName =
   | "wrench"
   | "images"
   | "info"
-  | "triangle-alert"
   | "settings"
   | "users";
 
@@ -36,7 +34,7 @@ export interface DashboardTileMeta {
   subtitle?: string;
   /** Highlight badge text (e.g. "Due soon") */
   badge?: string;
-  /** Direct action URL (e.g. tel:+491701234567 for roadside) */
+  /** Direct action URL for the tile */
   href?: string;
 }
 
@@ -68,7 +66,6 @@ export interface VehicleDashboardData {
   /** ISO-Datum des letzten Ölwechsels */
   lastOilChange?: string;
   nextInspection?: VehicleInspectionInfo;
-  roadsidePhone?: string;
   /** Override or extend the default tile set */
   tiles?: DashboardTileConfig[];
 }

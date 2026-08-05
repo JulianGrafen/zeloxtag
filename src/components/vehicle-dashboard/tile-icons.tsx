@@ -9,7 +9,6 @@ import {
   Settings,
   ShieldCheck,
   Stamp,
-  TriangleAlert,
   Users,
   Wrench,
   type LucideIcon,
@@ -27,7 +26,6 @@ export const DASHBOARD_ICONS: Record<DashboardIconName, LucideIcon> = {
   wrench: Wrench,
   images: Images,
   info: Info,
-  "triangle-alert": TriangleAlert,
   settings: Settings,
   users: Users,
 };

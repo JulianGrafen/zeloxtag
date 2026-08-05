@@ -131,22 +131,6 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       icon: "info",
     },
     {
-      id: "roadside",
-      title: "Pannenhilfe",
-      description: "Sofortige Unterstützung",
-      icon: "triangle-alert",
-      tone: "critical",
-      meta: {
-        subtitle: data.roadsidePhone
-          ? `Anrufen ${data.roadsidePhone}`
-          : "Tippen zum Anrufen",
-        href: data.roadsidePhone
-          ? `tel:${data.roadsidePhone.replace(/\s+/g, "")}`
-          : undefined,
-        badge: "SOS",
-      },
-    },
-    {
       id: "settings",
       title: "Konto",
       description: "2FA & Abmelden",

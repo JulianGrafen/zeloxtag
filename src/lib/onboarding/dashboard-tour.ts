@@ -101,13 +101,6 @@ const OWNER_STEPS: DashboardTourStep[] = [
     placement: "top",
   },
   {
-    id: "roadside",
-    target: "[data-tour='tile-roadside']",
-    title: "Pannenhilfe",
-    body: "Im Notfall schnell die hinterlegte Nummer anrufen.",
-    placement: "top",
-  },
-  {
     id: "settings",
     target: "[data-tour='tile-settings']",
     title: "Konto & Sicherheit",

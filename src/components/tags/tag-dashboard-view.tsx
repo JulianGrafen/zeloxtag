@@ -75,7 +75,6 @@ export function TagDashboardView({
     statusLabel: `ZeloxTag · ${shortTag}`,
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),
-    roadsidePhone: "+49 170 1234567",
   };
 
   const tiles = buildDefaultTiles(data).map((tile) => {
