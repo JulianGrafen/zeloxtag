@@ -166,7 +166,7 @@ export function NetworkMockQr() {
         <div className="rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-[0.82rem] leading-relaxed text-amber-950">
           Lokal verbunden. Für physische Plaques die deployte{" "}
           <span className="font-mono">/qr</span>-Seite öffnen (
-          <span className="font-mono">https://zeloxtag.vercel.app/qr</span>
+          <span className="font-mono">https://app.zeloxtag.de/qr</span>
           ). <span className="font-semibold">zeloxtag.de</span> ist der Shopify-Shop
           — nicht die App.
         </div>
