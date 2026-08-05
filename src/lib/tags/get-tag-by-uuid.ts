@@ -12,6 +12,7 @@ import {
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
 import { getMockTagScan, MOCK_TAG_UUIDS } from "./mock-tags";
@@ -82,6 +83,7 @@ function normalizeVehicle(value: unknown): Vehicle | null {
     model: typeof vehicle.model === "string" ? vehicle.model : "",
     year: typeof vehicle.year === "number" ? vehicle.year : null,
     vin: typeof vehicle.vin === "string" ? vehicle.vin : null,
+    tech_specs: parseVehicleTechSpecs(vehicle.tech_specs),
     silhouette_image_url:
       typeof vehicle.silhouette_image_url === "string"
         ? vehicle.silhouette_image_url

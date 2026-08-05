@@ -7,12 +7,14 @@
  */
 
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import type { VehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 
 export type TagStatus = "unclaimed" | "active";
 
 export type DocumentType = "abe" | "invoice" | "tuev" | "other";
 
 export type { ApprovalFields };
+export type { VehicleTechSpecs };
 
 /** Optional OCR classification (app-level; not a DB column in 00001). */
 export type InvoiceCategory = "tuning" | "service" | "repair" | "inspection";
@@ -24,6 +26,8 @@ export type Vehicle = {
   model: string;
   year: number | null;
   vin: string | null;
+  /** Antrieb / Fahrwerk — see migration 00024. */
+  tech_specs: VehicleTechSpecs | Record<string, unknown> | null;
   /** Transparent side-profile PNG URL — see migration 00023. */
   silhouette_image_url: string | null;
   created_at: string;
@@ -150,6 +154,7 @@ export type Database = {
           model: string;
           year?: number | null;
           vin?: string | null;
+          tech_specs?: VehicleTechSpecs | Record<string, unknown> | null;
           silhouette_image_url?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -161,6 +166,7 @@ export type Database = {
           model?: string;
           year?: number | null;
           vin?: string | null;
+          tech_specs?: VehicleTechSpecs | Record<string, unknown> | null;
           silhouette_image_url?: string | null;
           created_at?: string;
           updated_at?: string;

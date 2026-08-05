@@ -16,6 +16,7 @@
 --   supabase/migrations/00016_documents_approval_fields.sql
 --   supabase/migrations/00022_contributor_read_history.sql
 --   supabase/migrations/00023_vehicle_silhouette.sql
+--   supabase/migrations/00024_vehicles_tech_specs.sql
 --
 -- Apply with Supabase CLI:
 --   supabase db push

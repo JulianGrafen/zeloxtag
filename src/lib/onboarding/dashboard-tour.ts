@@ -97,7 +97,7 @@ const OWNER_STEPS: DashboardTourStep[] = [
     id: "specs",
     target: "[data-tour='tile-specs']",
     title: "Technische Daten",
-    body: "Marke, Modell, Baujahr und VIN — die Stammdaten deines Fahrzeugs.",
+    body: "Marke, Modell, VIN sowie Antrieb und Fahrwerk hinterlegen — jederzeit bearbeitbar.",
     placement: "top",
   },
   {

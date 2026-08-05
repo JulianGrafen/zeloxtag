@@ -58,6 +58,7 @@ function toGuestClientVehicle(vehicle: Vehicle): Vehicle {
     model: vehicle.model,
     year: vehicle.year,
     vin: null,
+    tech_specs: vehicle.tech_specs ?? null,
     silhouette_image_url: vehicle.silhouette_image_url ?? null,
     created_at: vehicle.created_at,
     updated_at: vehicle.updated_at,

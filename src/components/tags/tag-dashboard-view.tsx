@@ -9,6 +9,10 @@ import {
 import { filterManualVehicleEntries } from "@/lib/documents/manual-entries";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
 import { deriveNextInspectionFromDocuments } from "@/lib/documents/tuev-schedule";
+import {
+  countFilledTechSpecs,
+  parseVehicleTechSpecs,
+} from "@/lib/vehicles/tech-specs";
 import { resolveVehicleImage } from "@/lib/vehicles/vehicle-image";
 
 import { DashboardScanFab } from "./dashboard-scan-fab";
@@ -193,12 +197,19 @@ export function TagDashboardView({
     }
 
     if (tile.id === "specs") {
+      const filledSpecs = countFilledTechSpecs(
+        parseVehicleTechSpecs(vehicle.tech_specs),
+      );
       return {
         ...tile,
         description: `${vehicle.make} · ${vehicle.year}`,
         meta: {
           ...tile.meta,
-          subtitle: vinLabel,
+          href: `/v/${tagUuid}/daten`,
+          subtitle:
+            filledSpecs > 0
+              ? `${filledSpecs} technische Angaben`
+              : "Stammdaten & Antrieb hinterlegen",
         },
       };
     }
