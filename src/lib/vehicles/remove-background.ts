@@ -126,6 +126,8 @@ async function removeWithRemoveBg(
   const form = new FormData();
   form.append("size", "auto");
   form.append("format", "png");
+  form.append("type", "car");
+  form.append("crop", "true");
   form.append(
     "image_file",
     new Blob([Uint8Array.from(imageBytes)], { type: mime }),

@@ -16,6 +16,10 @@ import {
   RemoveBackgroundError,
 } from "@/lib/vehicles/remove-background";
 import {
+  CutoutNormalizeError,
+  normalizeVehicleCutout,
+} from "@/lib/vehicles/normalize-vehicle-cutout";
+import {
   MAX_SILHOUETTE_UPLOAD_BYTES,
   SILHOUETTE_BUCKET,
   silhouetteObjectPath,
@@ -124,14 +128,14 @@ export async function POST(request: NextRequest) {
       return jsonError(403, "Not allowed for this vehicle.", "forbidden");
     }
 
-    let pngBytes: Uint8Array;
+    let cutoutPng: Buffer;
     try {
       const result = await removeImageBackground({
         bytes,
         mime: sniffed,
         filename: sanitizeUploadFilename(file.name) || "vehicle-side.jpg",
       });
-      pngBytes = result.pngBytes;
+      cutoutPng = await normalizeVehicleCutout(result.pngBytes);
     } catch (error) {
       if (error instanceof RemoveBackgroundError) {
         const status =
@@ -142,13 +146,16 @@ export async function POST(request: NextRequest) {
               : 502;
         return jsonError(status, error.message, error.code);
       }
+      if (error instanceof CutoutNormalizeError) {
+        return jsonError(422, error.message, "normalize_failed");
+      }
       throw error;
     }
 
     const objectPath = silhouetteObjectPath(vehicleId);
     const { error: uploadError } = await admin.storage
       .from(SILHOUETTE_BUCKET)
-      .upload(objectPath, Buffer.from(pngBytes), {
+      .upload(objectPath, cutoutPng, {
         contentType: "image/png",
         upsert: true,
         cacheControl: "3600",
