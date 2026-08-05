@@ -30,7 +30,7 @@ export default async function DocumentDetailPage({
     notFound();
   }
 
-  // Schrauber may open invoices only.
+  // Schrauber may open invoices only (history already filtered in requireTagWriter).
   if (
     access.isContributor &&
     !access.isOwner &&

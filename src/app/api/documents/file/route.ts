@@ -138,7 +138,7 @@ async function authorizeDocumentRead(
 
   const { data: grant } = await supabase
     .from("vehicle_contributors")
-    .select("id")
+    .select("id, can_read_history")
     .eq("vehicle_id", vehicleId)
     .eq("user_id", user.id)
     .eq("status", "active")
@@ -149,14 +149,23 @@ async function authorizeDocumentRead(
   const documentId = documentIdFromStoragePath(storagePath);
   if (!documentId) return false;
 
-  // Contributor SELECT policy is invoice-only — RLS enforces the type filter.
-  const { data: document } = await supabase
+  // Contributor SELECT policy is invoice-only (+ history toggle via RLS).
+  let query = supabase
     .from("documents")
     .select("id")
     .eq("id", documentId)
     .eq("vehicle_id", vehicleId)
-    .eq("type", "invoice")
-    .maybeSingle();
+    .eq("type", "invoice");
+
+  const canReadHistory =
+    typeof grant.can_read_history === "boolean"
+      ? grant.can_read_history
+      : true;
+  if (!canReadHistory) {
+    query = query.eq("created_by", user.id);
+  }
+
+  const { data: document } = await query.maybeSingle();
 
   return Boolean(document);
 }

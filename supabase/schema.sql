@@ -14,6 +14,7 @@
 --   supabase/migrations/00010_documents_mileage_km.sql
 --   supabase/migrations/00011_documents_technical_specs.sql
 --   supabase/migrations/00016_documents_approval_fields.sql
+--   supabase/migrations/00022_contributor_read_history.sql
 --
 -- Apply with Supabase CLI:
 --   supabase db push

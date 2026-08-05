@@ -60,6 +60,8 @@ export type VehicleContributor = {
   invite_token: string;
   label: string | null;
   invited_by: string;
+  /** When false, Schrauber only sees own uploads (scan-only). */
+  can_read_history: boolean;
   created_at: string;
   accepted_at: string | null;
   revoked_at: string | null;
@@ -206,6 +208,7 @@ export type Database = {
           invite_token: string;
           label?: string | null;
           invited_by: string;
+          can_read_history?: boolean;
           created_at?: string;
           accepted_at?: string | null;
           revoked_at?: string | null;
@@ -220,6 +223,7 @@ export type Database = {
           invite_token?: string;
           label?: string | null;
           invited_by?: string;
+          can_read_history?: boolean;
           created_at?: string;
           accepted_at?: string | null;
           revoked_at?: string | null;

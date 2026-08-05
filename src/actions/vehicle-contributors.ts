@@ -21,6 +21,8 @@ export type ContributorRow = {
   role: "schrauber";
   inviteToken: string | null;
   userEmail: string | null;
+  /** Owner toggle: browse existing invoices vs scan-only. */
+  canReadHistory: boolean;
   createdAt: string;
   acceptedAt: string | null;
   expiresAt: string | null;
@@ -71,6 +73,7 @@ async function mapContributorRows(
     role: string;
     invite_token: string;
     user_id: string | null;
+    can_read_history?: boolean | null;
     created_at: string;
     accepted_at: string | null;
     expires_at: string | null;
@@ -96,6 +99,8 @@ async function mapContributorRows(
       role: "schrauber",
       inviteToken: row.status === "invited" ? row.invite_token : null,
       userEmail,
+      canReadHistory:
+        typeof row.can_read_history === "boolean" ? row.can_read_history : true,
       createdAt: row.created_at,
       acceptedAt: row.accepted_at,
       expiresAt: row.expires_at,
@@ -118,7 +123,7 @@ export async function listVehicleContributors(
   const { data, error } = await admin
     .from("vehicle_contributors")
     .select(
-      "id, label, status, role, invite_token, user_id, created_at, accepted_at, expires_at",
+      "id, label, status, role, invite_token, user_id, can_read_history, created_at, accepted_at, expires_at",
     )
     .eq("vehicle_id", vehicleId)
     .neq("status", "revoked")
@@ -133,6 +138,7 @@ export async function listVehicleContributors(
 export async function createSchrauberInvite(
   vehicleId: string,
   labelRaw?: string,
+  canReadHistory = false,
 ): Promise<ContributorActionResult> {
   const user = await getCurrentUser();
   if (!user) return { status: "error", message: "Nicht angemeldet." };
@@ -171,10 +177,23 @@ export async function createSchrauberInvite(
     invite_token: token,
     label,
     invited_by: user.id,
+    can_read_history: Boolean(canReadHistory),
     expires_at: expiresAt,
   });
 
-  if (error) return { status: "error", message: error.message };
+  if (error) {
+    if (
+      error.message.includes("can_read_history") ||
+      error.code === "PGRST204"
+    ) {
+      return {
+        status: "error",
+        message:
+          "Datenbank-Migration fehlt: bitte 00022_contributor_read_history.sql in Supabase ausführen.",
+      };
+    }
+    return { status: "error", message: error.message };
+  }
 
   if (owned.tagUuid) {
     revalidatePath(`/v/${owned.tagUuid}`);
@@ -182,6 +201,48 @@ export async function createSchrauberInvite(
   }
 
   return { status: "ok", inviteUrl: invitePath(token) };
+}
+
+export async function setSchrauberReadHistory(
+  vehicleId: string,
+  contributorId: string,
+  canReadHistory: boolean,
+): Promise<ContributorActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "Nicht angemeldet." };
+
+  const owned = await assertOwnerOfVehicle(vehicleId, user.id);
+  if ("error" in owned) return { status: "error", message: owned.error };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("vehicle_contributors")
+    .update({ can_read_history: Boolean(canReadHistory) })
+    .eq("id", contributorId)
+    .eq("vehicle_id", vehicleId)
+    .neq("status", "revoked");
+
+  if (error) {
+    if (
+      error.message.includes("can_read_history") ||
+      error.code === "PGRST204"
+    ) {
+      return {
+        status: "error",
+        message:
+          "Datenbank-Migration fehlt: bitte 00022_contributor_read_history.sql in Supabase ausführen.",
+      };
+    }
+    return { status: "error", message: error.message };
+  }
+
+  if (owned.tagUuid) {
+    revalidatePath(`/v/${owned.tagUuid}`);
+    revalidatePath(`/v/${owned.tagUuid}/schrauber`);
+  }
+
+  const listed = await listVehicleContributors(vehicleId);
+  return listed;
 }
 
 export async function revokeSchrauberInvite(

@@ -13,6 +13,11 @@ export type VehicleAccess = {
   isContributor: boolean;
   /** Owner or Schrauber may add invoices / repairs. */
   canWriteInvoices: boolean;
+  /**
+   * Schrauber may browse existing invoices (owner toggle).
+   * Owners always true; guests false.
+   */
+  canReadHistory: boolean;
   /** Only the owner manages invites. */
   canManageContributors: boolean;
   /** Display name of the vehicle owner (never the wrong session user). */
@@ -38,22 +43,33 @@ function displayNameFromUser(user: {
   return "Fahrer";
 }
 
-async function sessionIsActiveContributor(
+async function loadContributorGrant(
   vehicleId: string,
   sessionUserId: string,
-): Promise<boolean> {
+): Promise<{ active: boolean; canReadHistory: boolean }> {
   try {
     const supabase = await createClient();
     const { data } = await supabase
       .from("vehicle_contributors")
-      .select("id")
+      .select("id, can_read_history")
       .eq("vehicle_id", vehicleId)
       .eq("user_id", sessionUserId)
       .eq("status", "active")
       .maybeSingle();
-    return Boolean(data);
+
+    if (!data) {
+      return { active: false, canReadHistory: false };
+    }
+
+    // Column missing before migration → treat as full history (legacy).
+    const canReadHistory =
+      typeof data.can_read_history === "boolean"
+        ? data.can_read_history
+        : true;
+
+    return { active: true, canReadHistory };
   } catch {
-    return false;
+    return { active: false, canReadHistory: false };
   }
 }
 
@@ -72,14 +88,18 @@ export async function getVehicleAccess(
   );
 
   let isContributor = false;
+  let canReadHistory = isOwner;
   if (!isOwner && sessionUserId && vehicleId) {
-    isContributor = await sessionIsActiveContributor(vehicleId, sessionUserId);
+    const grant = await loadContributorGrant(vehicleId, sessionUserId);
+    isContributor = grant.active;
+    canReadHistory = grant.active ? grant.canReadHistory : false;
   }
 
   const base = {
     isOwner,
     isContributor,
     canWriteInvoices: isOwner || isContributor,
+    canReadHistory,
     canManageContributors: isOwner,
     sessionEmail,
     sessionUserId,
@@ -193,6 +213,7 @@ export async function getTagVehicleAccess(
         isOwner: true,
         isContributor: false,
         canWriteInvoices: true,
+        canReadHistory: true,
         canManageContributors: true,
         ownerName: displayNameFromUser(session!),
         sessionEmail,
@@ -201,15 +222,13 @@ export async function getTagVehicleAccess(
     }
 
     if (owned.vehicleId) {
-      const isContributor = await sessionIsActiveContributor(
-        owned.vehicleId,
-        sessionUserId,
-      );
-      if (isContributor) {
+      const grant = await loadContributorGrant(owned.vehicleId, sessionUserId);
+      if (grant.active) {
         return {
           isOwner: false,
           isContributor: true,
           canWriteInvoices: true,
+          canReadHistory: grant.canReadHistory,
           canManageContributors: false,
           ownerName: "Fahrer",
           sessionEmail,
@@ -223,6 +242,7 @@ export async function getTagVehicleAccess(
     isOwner: false,
     isContributor: false,
     canWriteInvoices: false,
+    canReadHistory: false,
     canManageContributors: false,
     ownerName: "Fahrer",
     sessionEmail,

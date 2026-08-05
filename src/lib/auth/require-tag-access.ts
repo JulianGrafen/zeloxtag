@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
 import {
   getTagVehicleAccess,
   type VehicleAccess,
@@ -14,6 +15,7 @@ export type TagAccessContext = {
 
 /**
  * Owner or active Schrauber — for invoice/document write surfaces.
+ * Documents are already scoped for Schrauber history permissions.
  */
 export async function requireTagWriter(
   tagUuid: string,
@@ -33,7 +35,17 @@ export async function requireTagWriter(
     redirect(`/v/${result.tag.uuid}`);
   }
 
-  return { result, access };
+  const documents = filterDocumentsForContributorAccess(result.documents, {
+    isOwner: access.isOwner,
+    isContributor: access.isContributor,
+    canReadHistory: access.canReadHistory,
+    sessionUserId: access.sessionUserId,
+  });
+
+  return {
+    result: { ...result, documents },
+    access,
+  };
 }
 
 /**

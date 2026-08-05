@@ -6,6 +6,7 @@ import { PrivateTwinGate } from "@/components/tags/private-twin-gate";
 import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { TagNotFound } from "@/components/tags/tag-not-found";
+import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
@@ -99,7 +100,20 @@ export default async function TagScanPage({
     }
 
     const openScanner = scan === "1";
-    const ownerTwin = toOwnerClientTagScanResult(result);
+    // Filter before DTO — created_by is stripped for the client.
+    const visibleDocuments = filterDocumentsForContributorAccess(
+      result.documents,
+      {
+        isOwner: access.isOwner,
+        isContributor: access.isContributor,
+        canReadHistory: access.canReadHistory,
+        sessionUserId: access.sessionUserId,
+      },
+    );
+    const ownerTwin = toOwnerClientTagScanResult({
+      ...result,
+      documents: visibleDocuments,
+    });
 
     return (
       <AppShell showNavbar={false}>
