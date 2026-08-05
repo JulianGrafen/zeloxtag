@@ -1,8 +1,8 @@
 /**
  * Distributed sliding-window rate limiter.
- * Uses Upstash Redis when configured; falls back to in-memory for local/dev.
- * Production (Vercel production) fails closed without Redis — set
- * UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN.
+ * Uses Upstash Redis when configured; otherwise in-memory (per instance).
+ * Prefer UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN on Vercel so
+ * limits stay accurate across cold starts / multiple instances.
  */
 
 import { Ratelimit } from "@upstash/ratelimit";
@@ -24,6 +24,7 @@ const MAX_KEYS = 10_000;
 
 const upstashLimiters = new Map<string, Ratelimit>();
 let warnedMissingRedis = false;
+let warnedUpstashError = false;
 
 function prune(bucket: Bucket, windowMs: number, now: number) {
   bucket.timestamps = bucket.timestamps.filter((ts) => now - ts < windowMs);
@@ -34,11 +35,6 @@ function isUpstashConfigured(): boolean {
     process.env.UPSTASH_REDIS_REST_URL?.trim() &&
       process.env.UPSTASH_REDIS_REST_TOKEN?.trim(),
   );
-}
-
-function isProductionDeploy(): boolean {
-  // Fail closed only on real production — preview/dev may use memory fallback.
-  return process.env.VERCEL_ENV === "production";
 }
 
 function windowToUpstashDuration(windowMs: number): `${number} ms` {
@@ -101,6 +97,22 @@ function memoryRateLimit(input: {
   };
 }
 
+function warnMemoryFallback(reason: string) {
+  if (process.env.VERCEL_ENV !== "production") return;
+  if (reason === "missing" && !warnedMissingRedis) {
+    warnedMissingRedis = true;
+    console.warn(
+      "[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN missing — using in-memory limits (weaker on multi-instance).",
+    );
+  }
+  if (reason === "error" && !warnedUpstashError) {
+    warnedUpstashError = true;
+    console.warn(
+      "[rate-limit] Upstash error — falling back to in-memory limits for this request.",
+    );
+  }
+}
+
 /**
  * Consume one request from the named bucket for `key`.
  * Prefer awaiting this everywhere — Redis path is async.
@@ -125,31 +137,13 @@ export async function rateLimit(input: {
         retryAfterSec,
       };
     } catch (error) {
-      console.error("[rate-limit] Upstash error — failing closed", error);
-      return {
-        ok: false,
-        remaining: 0,
-        resetAt: Date.now() + input.windowMs,
-        retryAfterSec: 30,
-      };
+      console.error("[rate-limit] Upstash error", error);
+      warnMemoryFallback("error");
+      return memoryRateLimit(input);
     }
   }
 
-  if (isProductionDeploy()) {
-    if (!warnedMissingRedis) {
-      warnedMissingRedis = true;
-      console.error(
-        "[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN missing in production — denying requests.",
-      );
-    }
-    return {
-      ok: false,
-      remaining: 0,
-      resetAt: Date.now() + 60_000,
-      retryAfterSec: 60,
-    };
-  }
-
+  warnMemoryFallback("missing");
   return memoryRateLimit(input);
 }
 
