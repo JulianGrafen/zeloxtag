@@ -26,7 +26,15 @@ const IMAGE_MIME = new Set([
 ]);
 
 function isImageFile(file: File): boolean {
-  if (file.type && IMAGE_MIME.has(file.type.toLowerCase())) return true;
+  const mime = file.type.toLowerCase();
+  // iOS Photos often sends empty MIME or generic image/* from the gallery.
+  if (!mime || mime === "application/octet-stream") {
+    return (
+      /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name) || file.size > 0
+    );
+  }
+  if (mime.startsWith("image/")) return true;
+  if (IMAGE_MIME.has(mime)) return true;
   return /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
 }
 

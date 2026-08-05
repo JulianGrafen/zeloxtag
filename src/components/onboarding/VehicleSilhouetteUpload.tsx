@@ -6,6 +6,7 @@ import {
   useState,
   type ChangeEvent,
   type DragEvent,
+  type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, ImagePlus, Loader2, SkipForward } from "lucide-react";
@@ -29,8 +30,42 @@ export type VehicleSilhouetteUploadProps = {
 
 type UploadState = "idle" | "compressing" | "uploading" | "done";
 
+/** Broad image accept — iOS gallery needs `image/*` for Photos/HEIC. */
+const IMAGE_ACCEPT = "image/*,.heic,.heif,.jpg,.jpeg,.png,.webp";
+
+function FilePickLabel({
+  disabled,
+  capture,
+  onChange,
+  className,
+  children,
+}: {
+  disabled: boolean;
+  capture?: boolean;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <label
+      className={`${className} ${disabled ? "pointer-events-none opacity-60" : "cursor-pointer"}`}
+    >
+      <input
+        type="file"
+        accept={IMAGE_ACCEPT}
+        {...(capture ? { capture: "environment" as const } : {})}
+        disabled={disabled}
+        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+        onChange={onChange}
+      />
+      {children}
+    </label>
+  );
+}
+
 /**
  * Side-profile capture with guide overlay + client compression → remove-bg API.
+ * Gallery and camera use separate inputs — `capture` must not block the gallery.
  */
 export function VehicleSilhouetteUpload({
   vehicleId,
@@ -40,7 +75,7 @@ export function VehicleSilhouetteUpload({
   className = "",
 }: VehicleSilhouetteUploadProps) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -142,11 +177,11 @@ export function VehicleSilhouetteUpload({
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            if (!busy) inputRef.current?.click();
+            if (!busy) galleryInputRef.current?.click();
           }
         }}
         onClick={() => {
-          if (!busy) inputRef.current?.click();
+          if (!busy) galleryInputRef.current?.click();
         }}
         onDragOver={(event) => {
           event.preventDefault();
@@ -160,7 +195,6 @@ export function VehicleSilhouetteUpload({
             : "border-[color:var(--vd-border)] bg-[color:var(--vd-bg)]"
         } ${busy ? "pointer-events-none opacity-70" : ""}`}
       >
-        {/* Guide: subtle side-profile outline */}
         <VehicleSilhouette
           aria-hidden
           className="pointer-events-none absolute inset-x-6 top-1/2 h-20 -translate-y-1/2 text-[color:var(--vd-muted)] opacity-[0.18] sm:h-24"
@@ -183,7 +217,7 @@ export function VehicleSilhouetteUpload({
               Foto wählen oder hierher ziehen
             </p>
             <p className="text-[0.75rem] text-[color:var(--vd-muted)]">
-              Seitenansicht · JPEG / PNG / WebP
+              Seitenansicht · Galerie oder Kamera
             </p>
           </div>
         )}
@@ -200,40 +234,51 @@ export function VehicleSilhouetteUpload({
         ) : null}
       </div>
 
+      {/* Hidden gallery input for drop-zone / keyboard — no `capture`. */}
       <input
-        ref={inputRef}
+        ref={galleryInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic"
-        capture="environment"
+        accept={IMAGE_ACCEPT}
         className="sr-only"
+        tabIndex={-1}
         onChange={onInputChange}
       />
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <FilePickLabel
+          disabled={busy}
+          onChange={onInputChange}
+          className="relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white"
+        >
+          <ImagePlus className="relative z-0 h-4 w-4" aria-hidden />
+          <span className="relative z-0">
+            {previewUrl ? "Anderes aus Galerie" : "Galerie"}
+          </span>
+        </FilePickLabel>
+
+        <FilePickLabel
+          disabled={busy}
+          capture
+          onChange={onInputChange}
+          className="relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-4 py-3.5 text-[0.88rem] font-medium text-[color:var(--vd-text)]"
+        >
+          <Camera className="relative z-0 h-4 w-4" aria-hidden />
+          <span className="relative z-0">Kamera</span>
+        </FilePickLabel>
+      </div>
+
+      {onSkip ? (
         <PressableButton
           type="button"
           variant="button"
           disabled={busy}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white disabled:opacity-60"
-          onClick={() => inputRef.current?.click()}
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-4 py-3 text-[0.88rem] font-medium text-[color:var(--vd-muted)] disabled:opacity-60"
+          onClick={onSkip}
         >
-          <Camera className="h-4 w-4" aria-hidden />
-          {previewUrl ? "Anderes Foto" : "Foto aufnehmen / wählen"}
+          <SkipForward className="h-4 w-4" aria-hidden />
+          Später
         </PressableButton>
-
-        {onSkip ? (
-          <PressableButton
-            type="button"
-            variant="button"
-            disabled={busy}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-4 py-3.5 text-[0.88rem] font-medium text-[color:var(--vd-muted)] disabled:opacity-60"
-            onClick={onSkip}
-          >
-            <SkipForward className="h-4 w-4" aria-hidden />
-            Später
-          </PressableButton>
-        ) : null}
-      </div>
+      ) : null}
 
       {error ? (
         <p className="mt-3 text-[0.85rem] text-red-700" role="alert">
