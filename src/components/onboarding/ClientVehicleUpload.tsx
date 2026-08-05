@@ -10,10 +10,13 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, ImagePlus, Loader2, SkipForward } from "lucide-react";
-import type { Config } from "@imgly/background-removal";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhouette";
+import {
+  removeVehicleBackground,
+  type CutoutProgress,
+} from "@/lib/vehicles/client-background-removal";
 import {
   compressSilhouetteImage,
   SilhouetteCompressionError,
@@ -32,13 +35,7 @@ export type ClientVehicleUploadProps = {
 
 type UploadState = "idle" | "compressing" | "removing" | "uploading" | "done";
 
-type RemovalStatus = {
-  label: string;
-  progress: number | null;
-};
-
 const IMAGE_ACCEPT = "image/*,.heic,.heif,.jpg,.jpeg,.png,.webp";
-const LOCAL_REMOVAL_TIMEOUT_MS = 120_000;
 
 function FilePickLabel({
   disabled,
@@ -70,33 +67,6 @@ function FilePickLabel({
   );
 }
 
-function progressLabel(key: string, current: number, total: number): RemovalStatus {
-  const percent =
-    total > 0 ? Math.min(100, Math.round((current / total) * 100)) : null;
-  const normalizedKey = key.toLowerCase();
-
-  if (normalizedKey.includes("model") || normalizedKey.includes("isnet")) {
-    return {
-      label: percent == null ? "Lade KI-Modell…" : `Lade KI-Modell (${percent}%)`,
-      progress: percent,
-    };
-  }
-
-  return {
-    label: percent == null ? "Bereite KI-Freistellung vor…" : `Lade Freistellung (${percent}%)`,
-    progress: percent,
-  };
-}
-
-function timeoutAfter(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    window.setTimeout(
-      () => reject(new Error("Lokale Freistellung hat zu lange gedauert.")),
-      ms,
-    );
-  });
-}
-
 /**
  * Privacy-first vehicle upload: `@imgly/background-removal` runs as WASM in
  * the browser. The source image is not sent to any background-removal API.
@@ -118,9 +88,9 @@ export function ClientVehicleUpload({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [state, setState] = useState<UploadState>("idle");
-  const [removalStatus, setRemovalStatus] = useState<RemovalStatus>({
+  const [removalStatus, setRemovalStatus] = useState<CutoutProgress>({
     label: "Stelle Fahrzeug frei…",
-    progress: null,
+    progress: 0,
   });
 
   const busy =
@@ -146,31 +116,15 @@ export function ClientVehicleUpload({
       }
 
       setState("removing");
-      setRemovalStatus({ label: "Lade lokale KI-Freistellung…", progress: 0 });
+      setRemovalStatus({ label: "Lade lokale KI-Freistellung…", progress: 2 });
 
       let uploadFile: File = compressed;
       let backgroundRemoved = false;
 
       try {
-        const { removeBackground: imglyRemoveBackground } = await import(
-          "@imgly/background-removal"
-        );
-
-        const config: Config = {
-          model: "isnet_quint8",
-          device: "cpu",
-          proxyToWorker: true,
-          output: { format: "image/png", quality: 1 },
-          progress: (key, current, total) => {
-            setRemovalStatus(progressLabel(key, current, total));
-          },
-        };
-
-        setRemovalStatus({ label: "Stelle Fahrzeug lokal frei…", progress: 100 });
-        const cutout = await Promise.race([
-          imglyRemoveBackground(compressed, config),
-          timeoutAfter(LOCAL_REMOVAL_TIMEOUT_MS),
-        ]);
+        const cutout = await removeVehicleBackground(compressed, {
+          onProgress: setRemovalStatus,
+        });
 
         uploadFile = new File(
           [cutout],
@@ -178,7 +132,8 @@ export function ClientVehicleUpload({
           { type: "image/png", lastModified: Date.now() },
         );
         backgroundRemoved = true;
-      } catch {
+      } catch (removalError) {
+        console.error("[vehicle-cutout] local removal failed", removalError);
         setNotice(
           "Die lokale Freistellung war auf diesem Gerät nicht möglich. Das Originalbild wird stattdessen gespeichert.",
         );
@@ -312,11 +267,13 @@ export function ClientVehicleUpload({
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               {loadingText}
             </p>
-            {state === "removing" && removalStatus.progress != null ? (
+            {state === "removing" ? (
               <div className="h-1.5 w-48 overflow-hidden rounded-full bg-black/10">
                 <div
-                  className="h-full rounded-full bg-neutral-900 transition-[width]"
-                  style={{ width: `${removalStatus.progress}%` }}
+                  className="h-full min-w-[8%] rounded-full bg-neutral-900 transition-[width] duration-300"
+                  style={{
+                    width: `${Math.max(8, removalStatus.progress ?? 8)}%`,
+                  }}
                 />
               </div>
             ) : null}

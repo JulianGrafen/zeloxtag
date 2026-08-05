@@ -39,9 +39,14 @@ export function isHttpsDeployment(): boolean {
  * `'unsafe-inline'` remains for Next.js bootstrap / CSS-in-JS until a nonce
  * pipeline exists. `'unsafe-eval'` is intentionally omitted.
  */
+/** CDN for @imgly/background-removal ONNX/WASM assets (client-side cutout). */
+const IMGLY_ASSET_ORIGIN = "https://staticimgly.com";
+
 export function buildContentSecurityPolicy(): string {
   const supabase = supabaseHosts();
-  const connect = ["'self'", ...supabase].join(" ");
+  const connect = ["'self'", "blob:", "data:", IMGLY_ASSET_ORIGIN, ...supabase].join(
+    " ",
+  );
   const img = [
     "'self'",
     "data:",
@@ -52,7 +57,8 @@ export function buildContentSecurityPolicy(): string {
   const directives: string[] = [
     "default-src 'self'",
     // Next.js hydration still relies on inline script in many setups.
-    "script-src 'self' 'unsafe-inline'",
+    // `wasm-unsafe-eval` is required for onnxruntime-web / IMG.LY cutout WASM.
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
     "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
     `img-src ${img}`,
