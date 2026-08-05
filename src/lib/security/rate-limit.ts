@@ -37,8 +37,9 @@ function isUpstashConfigured(): boolean {
   );
 }
 
-function windowToUpstashDuration(windowMs: number): `${number} ms` {
-  return `${Math.max(1, Math.floor(windowMs))} ms`;
+function windowToUpstashDuration(windowMs: number): `${number} s` {
+  const seconds = Math.max(1, Math.ceil(windowMs / 1000));
+  return `${seconds} s`;
 }
 
 function getUpstashLimiter(limit: number, windowMs: number): Ratelimit {
@@ -51,6 +52,7 @@ function getUpstashLimiter(limit: number, windowMs: number): Ratelimit {
     limiter: Ratelimit.slidingWindow(limit, windowToUpstashDuration(windowMs)),
     prefix: "zeloxtag:rl",
     analytics: false,
+    ephemeralCache: new Map(),
   });
   upstashLimiters.set(key, limiter);
   return limiter;
