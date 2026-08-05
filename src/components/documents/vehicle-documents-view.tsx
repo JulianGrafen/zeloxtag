@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { deleteDocument } from "@/actions/delete-document";
+import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-view";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
@@ -23,8 +24,15 @@ import {
   formatDocumentDate,
   sumInvoiceAmounts,
 } from "@/lib/documents/format";
+import type { InvoiceListCategory } from "@/lib/documents/invoice-categories";
+import {
+  collectFilterValues,
+  matchesSearchQuery,
+} from "@/lib/documents/list-search";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import type { Document, DocumentType } from "@/types/database";
+
+const ALL_PART_CATEGORY = "all";
 
 interface VehicleDocumentsViewProps {
   tagUuid: string;
@@ -36,6 +44,8 @@ interface VehicleDocumentsViewProps {
   filterType?: DocumentType | "all";
   /** Owner-only scan / delete actions. */
   canWrite?: boolean;
+  /** Prefill invoice category chip when showing Belege. */
+  invoiceCategory?: InvoiceListCategory | "all";
 }
 
 const FILTERS: Array<{ id: DocumentType | "all"; label: string }> = [
@@ -54,11 +64,63 @@ export function VehicleDocumentsView({
   documents,
   filterType = "all",
   canWrite = false,
+  invoiceCategory = "all",
 }: VehicleDocumentsViewProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [partCategoryId, setPartCategoryId] = useState(ALL_PART_CATEGORY);
+
+  const typed = useMemo(
+    () => filterDocumentsByType(documents, filterType),
+    [documents, filterType],
+  );
+
+  const partCategoryChips = useMemo(() => {
+    if (filterType !== "abe") return [];
+    return [
+      { id: ALL_PART_CATEGORY, label: "Alle", count: typed.length },
+      ...collectFilterValues(typed.map((doc) => doc.part_category)),
+    ];
+  }, [filterType, typed]);
+
+  const filtered = useMemo(() => {
+    return typed.filter((doc) => {
+      if (
+        filterType === "abe" &&
+        partCategoryId !== ALL_PART_CATEGORY &&
+        (doc.part_category?.trim() || "") !== partCategoryId
+      ) {
+        return false;
+      }
+      return matchesSearchQuery(
+        query,
+        doc.title,
+        doc.manufacturer,
+        doc.vendor,
+        doc.part_category,
+        doc.kba_number,
+        doc.authority,
+        doc.notes,
+        doc.category,
+        documentTypeLabel(doc.type),
+        ...(doc.vehicle_approvals ?? []),
+      );
+    });
+  }, [typed, filterType, partCategoryId, query]);
+
+  const invoiceSum = sumInvoiceAmounts(
+    filterType === "all"
+      ? documents.filter((doc) => doc.type === "invoice")
+      : [],
+  );
+
+  const searchResultLabel =
+    filtered.length === typed.length
+      ? undefined
+      : `${filtered.length} von ${typed.length} Treffern`;
 
   if (filterType === "invoice") {
     return (
@@ -67,16 +129,10 @@ export function VehicleDocumentsView({
         vehicleModel={vehicleModel?.trim() || vehicleLabel.split("·")[0]?.trim() || vehicleLabel}
         documents={documents}
         canWrite={canWrite}
+        initialCategory={invoiceCategory}
       />
     );
   }
-
-  const filtered = filterDocumentsByType(documents, filterType);
-  const invoiceSum = sumInvoiceAmounts(
-    filterType === "all"
-      ? documents.filter((doc) => doc.type === "invoice")
-      : [],
-  );
 
   function handleDelete(documentId: string) {
     if (!canWrite) return;
@@ -178,10 +234,28 @@ export function VehicleDocumentsView({
           </p>
         ) : null}
 
+        <ListSearchControls
+          query={query}
+          onQueryChange={setQuery}
+          placeholder={
+            filterType === "abe"
+              ? "Teil, Hersteller, KBA, Freigabe…"
+              : filterType === "tuev"
+                ? "Prüfstelle, Titel, Notiz…"
+                : "Titel, Hersteller, Kategorie…"
+          }
+          chips={filterType === "abe" ? partCategoryChips : undefined}
+          activeChipId={partCategoryId}
+          onChipChange={filterType === "abe" ? setPartCategoryId : undefined}
+          resultLabel={searchResultLabel}
+        />
+
         <section aria-label="Dokumentliste" className="space-y-2">
           {filtered.length === 0 ? (
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
-              {filterType === "abe" ? (
+              {typed.length > 0 && (query.trim() || partCategoryId !== ALL_PART_CATEGORY) ? (
+                "Keine Treffer für diese Suche / Filter."
+              ) : filterType === "abe" ? (
                 <div className="space-y-2">
                   <p>Noch keine ABE in dieser Kategorie.</p>
                   <p className="text-[0.82rem] leading-relaxed">

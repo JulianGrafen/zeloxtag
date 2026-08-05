@@ -1,6 +1,10 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { ArrowLeft, ChevronRight, Droplet, Plus } from "lucide-react";
+
+import { ListSearchControls } from "@/components/documents/list-search-controls";
+import { matchesSearchQuery } from "@/lib/documents/list-search";
 
 import {
   getLatestOilChange,
@@ -27,7 +31,28 @@ export function OilIntervalsView({
   basePath = "/intervalle",
   scanHref,
 }: OilIntervalsViewProps) {
+  const [query, setQuery] = useState("");
   const latest = getLatestOilChange(records);
+
+  const visibleRecords = useMemo(() => {
+    return records.filter((record) =>
+      matchesSearchQuery(
+        query,
+        record.date,
+        record.workshop,
+        record.oilSpec,
+        record.notes,
+        record.status,
+        record.invoiceRef,
+        String(record.mileageKm),
+      ),
+    );
+  }, [records, query]);
+
+  const searchResultLabel =
+    visibleRecords.length === records.length
+      ? undefined
+      : `${visibleRecords.length} von ${records.length} Einträgen`;
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -67,7 +92,7 @@ export function OilIntervalsView({
               Intervalle
             </h1>
             <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {vehicleModel} · {records.length} Einträge
+              {vehicleModel} · {visibleRecords.length} Einträge
             </p>
 
             {latest ? (
@@ -99,6 +124,15 @@ export function OilIntervalsView({
           </div>
         </header>
 
+        {records.length > 0 ? (
+          <ListSearchControls
+            query={query}
+            onQueryChange={setQuery}
+            placeholder="Werkstatt, Öl, km, Notiz…"
+            resultLabel={searchResultLabel}
+          />
+        ) : null}
+
         <section aria-label="Ölwechsel Historie" className="space-y-2">
           <h2 className="px-1 font-[family-name:var(--font-display)] text-[0.72rem] font-semibold tracking-[0.16em] text-[color:var(--vd-muted)] uppercase">
             Historie
@@ -111,9 +145,15 @@ export function OilIntervalsView({
                 Ölfilter — sie wird automatisch hier eingetragen.
               </p>
             </div>
+          ) : visibleRecords.length === 0 ? (
+            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-6 text-center shadow-[var(--vd-shadow-sm)]">
+              <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
+                Keine Treffer für diese Suche.
+              </p>
+            </div>
           ) : (
           <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-            {records.map((record, index) => (
+            {visibleRecords.map((record, index) => (
               <li key={record.id}>
                 <PressableLink
                   href={`${basePath}/${record.id}`}
@@ -147,7 +187,7 @@ export function OilIntervalsView({
                   />
                 </PressableLink>
 
-                {index < records.length - 1 ? (
+                {index < visibleRecords.length - 1 ? (
                   <div
                     aria-hidden
                     className="mx-4 border-t border-[color:var(--vd-border)]"

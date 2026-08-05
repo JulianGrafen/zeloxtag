@@ -48,7 +48,11 @@ export function TagDashboardView({
   const abeCount = documents.filter((doc) => doc.type === "abe").length;
   const tuevCount = documents.filter((doc) => doc.type === "tuev").length;
   const serviceCount = filterServiceInspectionDocuments(documents).length;
-  const manualEntryCount = filterManualVehicleEntries(documents).length;
+  const manualEntries = filterManualVehicleEntries(documents);
+  const manualEntryCount = manualEntries.length;
+  const umbauCount = manualEntries.filter(
+    (doc) => doc.category === "tuning",
+  ).length;
   const oilChangeCount = filterOilChangeDocuments(documents).length;
   const lastOilChange = latestOilChangeIsoDate(documents);
   const shortTag = tagUuid.length > 12 ? `${tagUuid.slice(0, 12)}…` : tagUuid;
@@ -139,6 +143,21 @@ export function TagDashboardView({
               ? `${manualEntryCount} eigene Einträge`
               : "Wartung oder Tuning notieren",
           badge: manualEntryCount > 0 ? String(manualEntryCount) : undefined,
+        },
+      };
+    }
+
+    if (tile.id === "modifications") {
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: `/v/${tagUuid}/umbauten`,
+          subtitle:
+            umbauCount > 0
+              ? `${umbauCount} Umbauten`
+              : "Umbauten & Fotos suchen",
+          badge: umbauCount > 0 ? String(umbauCount) : undefined,
         },
       };
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
 
 import { deleteDocument } from "@/actions/delete-document";
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
+import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
 import {
   PressableButton,
@@ -23,6 +24,7 @@ import {
   formatDocumentAmount,
   formatDocumentDate,
 } from "@/lib/documents/format";
+import { matchesSearchQuery } from "@/lib/documents/list-search";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
 import {
   scanTypeDefinition,
@@ -56,8 +58,30 @@ export function ServiceInspectionsView({
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
 
-  const inspections = filterServiceInspectionDocuments(documents);
+  const inspections = useMemo(
+    () => filterServiceInspectionDocuments(documents),
+    [documents],
+  );
+
+  const visibleInspections = useMemo(() => {
+    return inspections.filter((doc) =>
+      matchesSearchQuery(
+        query,
+        doc.title,
+        doc.vendor,
+        doc.notes,
+        doc.category,
+        doc.invoice_number,
+      ),
+    );
+  }, [inspections, query]);
+
+  const searchResultLabel =
+    visibleInspections.length === inspections.length
+      ? undefined
+      : `${visibleInspections.length} von ${inspections.length} Einträgen`;
 
   if (mode === "pick-scan" || (mode === "scanner" && !scanType)) {
     return (
@@ -146,11 +170,20 @@ export function ServiceInspectionsView({
               Inspektionen
             </h1>
             <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {vehicleLabel} · {inspections.length}{" "}
-              {inspections.length === 1 ? "Eintrag" : "Einträge"}
+              {vehicleLabel} · {visibleInspections.length}{" "}
+              {visibleInspections.length === 1 ? "Eintrag" : "Einträge"}
             </p>
           </div>
         </header>
+
+        {inspections.length > 0 ? (
+          <ListSearchControls
+            query={query}
+            onQueryChange={setQuery}
+            placeholder="Werkstatt, Titel, Notiz…"
+            resultLabel={searchResultLabel}
+          />
+        ) : null}
 
         {error ? (
           <p
@@ -175,9 +208,13 @@ export function ServiceInspectionsView({
                 Werkstatt, Datum und Betrag werden automatisch erkannt.
               </p>
             </div>
+          ) : visibleInspections.length === 0 ? (
+            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+              Keine Treffer für diese Suche.
+            </div>
           ) : (
             <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-              {inspections.map((doc) => {
+              {visibleInspections.map((doc) => {
                 const amount = formatDocumentAmount(doc.amount);
                 const workshop = doc.vendor?.trim() || null;
                 const isMock = doc.file_url.startsWith("mock://");

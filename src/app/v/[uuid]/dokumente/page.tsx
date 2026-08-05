@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 
 import { VehicleDocumentsView } from "@/components/documents/vehicle-documents-view";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { parseInvoiceListCategory } from "@/lib/documents/invoice-categories";
 import type { DocumentType } from "@/types/database";
 
 interface DocumentsPageProps {
   params: Promise<{ uuid: string }>;
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; category?: string }>;
 }
 
 const VALID_TYPES = new Set<DocumentType | "all">([
@@ -32,7 +33,7 @@ export default async function VehicleDocumentsPage({
   searchParams,
 }: DocumentsPageProps) {
   const { uuid } = await params;
-  const { type: typeRaw } = await searchParams;
+  const { type: typeRaw, category: categoryRaw } = await searchParams;
   const { result, access } = await requireTagWriter(uuid);
   // Schrauber: invoice list only (no ABE / TÜV browsing).
   const contributorLocked =
@@ -48,6 +49,7 @@ export default async function VehicleDocumentsPage({
   const documents = contributorLocked
     ? result.documents.filter((doc) => doc.type === "invoice")
     : result.documents;
+  const invoiceCategory = parseInvoiceListCategory(categoryRaw) ?? "all";
 
   return (
     <VehicleDocumentsView
@@ -57,6 +59,7 @@ export default async function VehicleDocumentsPage({
       vehicleModel={result.vehicle!.model}
       documents={documents}
       filterType={filterType}
+      invoiceCategory={invoiceCategory}
       canWrite
     />
   );

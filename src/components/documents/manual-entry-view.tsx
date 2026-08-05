@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
 
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
 import { deleteDocument } from "@/actions/delete-document";
+import { ListSearchControls } from "@/components/documents/list-search-controls";
 import {
   PressableButton,
   PressableLink,
@@ -25,6 +26,7 @@ import {
   formatDocumentAmount,
   formatDocumentDate,
 } from "@/lib/documents/format";
+import { matchesSearchQuery } from "@/lib/documents/list-search";
 import {
   filterManualVehicleEntries,
   MANUAL_ENTRY_CATEGORIES,
@@ -40,11 +42,18 @@ import {
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { Document } from "@/types/database";
 
+export type ManualListFilter = "all" | ManualEntryCategory | "photos";
+
 interface ManualEntryViewProps {
   tagUuid: string;
   vehicleId: string;
   vehicleLabel: string;
   documents: Document[];
+  /** Prefill list filter (e.g. "tuning" for Umbau-Bilder). */
+  initialListFilter?: ManualListFilter;
+  /** Override page heading for Umbauten surface. */
+  heading?: string;
+  subheading?: string;
 }
 
 type PhotoDraft = {
@@ -58,12 +67,22 @@ export function ManualEntryView({
   vehicleId,
   vehicleLabel,
   documents,
+  initialListFilter = "all",
+  heading = "Wartung & Tuning",
+  subheading = "Einträge mit optionalen Fotos",
 }: ManualEntryViewProps) {
   const router = useRouter();
   const { compressFile, isCompressing, statusLabel, error: compressError } =
     useDocumentCompression();
   const [showForm, setShowForm] = useState(false);
-  const [category, setCategory] = useState<ManualEntryCategory>("service");
+  const [category, setCategory] = useState<ManualEntryCategory>(
+    initialListFilter === "tuning" || initialListFilter === "service"
+      ? initialListFilter
+      : "service",
+  );
+  const [listFilter, setListFilter] =
+    useState<ManualListFilter>(initialListFilter);
+  const [query, setQuery] = useState("");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [amount, setAmount] = useState("");
@@ -76,6 +95,50 @@ export function ManualEntryView({
   const [pending, startTransition] = useTransition();
 
   const entries = filterManualVehicleEntries(documents);
+
+  const listChips = useMemo(() => {
+    const withPhoto = entries.filter((doc) =>
+      isViewableDocumentUrl(doc.file_url),
+    ).length;
+    const serviceCount = entries.filter(
+      (doc) => doc.category === "service",
+    ).length;
+    const tuningCount = entries.filter(
+      (doc) => doc.category === "tuning",
+    ).length;
+    return [
+      { id: "all", label: "Alle", count: entries.length },
+      { id: "tuning", label: "Umbau / Tuning", count: tuningCount },
+      { id: "service", label: "Wartung", count: serviceCount },
+      { id: "photos", label: "Mit Foto", count: withPhoto },
+    ];
+  }, [entries]);
+
+  const visibleEntries = useMemo(() => {
+    return entries.filter((doc) => {
+      if (listFilter === "service" || listFilter === "tuning") {
+        if (doc.category !== listFilter) return false;
+      }
+      if (listFilter === "photos" && !isViewableDocumentUrl(doc.file_url)) {
+        return false;
+      }
+      return matchesSearchQuery(
+        query,
+        doc.title,
+        doc.vendor,
+        doc.notes,
+        doc.category,
+        MANUAL_ENTRY_CATEGORY_LABELS[
+          doc.category === "tuning" ? "tuning" : "service"
+        ],
+      );
+    });
+  }, [entries, listFilter, query]);
+
+  const searchResultLabel =
+    visibleEntries.length === entries.length
+      ? undefined
+      : `${visibleEntries.length} von ${entries.length} Einträgen`;
 
   useEffect(() => {
     return () => {
@@ -247,13 +310,25 @@ export function ManualEntryView({
               Eigene Doku
             </p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-              Wartung & Tuning
+              {heading}
             </h1>
             <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {vehicleLabel} · Einträge mit optionalen Fotos
+              {vehicleLabel} · {subheading}
             </p>
           </div>
         </header>
+
+        {!showForm ? (
+          <ListSearchControls
+            query={query}
+            onQueryChange={setQuery}
+            placeholder="Titel, Notiz, Werkstatt…"
+            chips={listChips}
+            activeChipId={listFilter}
+            onChipChange={(id) => setListFilter(id as ManualListFilter)}
+            resultLabel={searchResultLabel}
+          />
+        ) : null}
 
         {error || compressError ? (
           <p
@@ -491,9 +566,13 @@ export function ManualEntryView({
                 optional mit Fotos.
               </p>
             </div>
+          ) : visibleEntries.length === 0 ? (
+            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+              Keine Treffer für diese Suche / Filter.
+            </div>
           ) : (
             <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-              {entries.map((doc) => {
+              {visibleEntries.map((doc) => {
                 const kind =
                   doc.category === "tuning"
                     ? MANUAL_ENTRY_CATEGORY_LABELS.tuning

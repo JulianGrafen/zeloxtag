@@ -1,6 +1,13 @@
--"use client";
+"use client";
 
+import { useMemo, useState } from "react";
 import { ArrowLeft, ChevronRight, FileText } from "lucide-react";
+
+import { ListSearchControls } from "@/components/documents/list-search-controls";
+import {
+  collectFilterValues,
+  matchesSearchQuery,
+} from "@/lib/documents/list-search";
 
 import { ABE_DOCUMENTS, type AbeDocument } from "./abeDocuments";
 import { PressableLink } from "./Pressable";
@@ -10,10 +17,57 @@ interface AbeDocumentsViewProps {
   documents?: AbeDocument[];
 }
 
+const ALL_CHIP = "all";
+const ALL_STATUS = "all-status";
+
 export function AbeDocumentsView({
   vehicleModel,
   documents = ABE_DOCUMENTS,
 }: AbeDocumentsViewProps) {
+  const [query, setQuery] = useState("");
+  const [categoryId, setCategoryId] = useState(ALL_CHIP);
+  const [statusId, setStatusId] = useState(ALL_STATUS);
+
+  const categoryChips = useMemo(
+    () => [
+      { id: ALL_CHIP, label: "Alle", count: documents.length },
+      ...collectFilterValues(documents.map((doc) => doc.category)),
+    ],
+    [documents],
+  );
+
+  const statusChips = useMemo(
+    () => [
+      { id: ALL_STATUS, label: "Alle Status", count: documents.length },
+      ...collectFilterValues(documents.map((doc) => doc.status)),
+    ],
+    [documents],
+  );
+
+  const visible = useMemo(() => {
+    return documents.filter((doc) => {
+      if (categoryId !== ALL_CHIP && doc.category !== categoryId) return false;
+      if (statusId !== ALL_STATUS && doc.status !== statusId) return false;
+      return matchesSearchQuery(
+        query,
+        doc.partName,
+        doc.manufacturer,
+        doc.category,
+        doc.approvalNumber,
+        doc.authority,
+        doc.documentLabel,
+        doc.summary,
+        doc.status,
+        ...(doc.vehicleFitment ?? []),
+      );
+    });
+  }, [documents, query, categoryId, statusId]);
+
+  const resultLabel =
+    visible.length === documents.length
+      ? `${visible.length} Dokumente`
+      : `${visible.length} von ${documents.length} Dokumenten`;
+
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
       <div
@@ -45,51 +99,97 @@ export function AbeDocumentsView({
           </div>
         </header>
 
+        <ListSearchControls
+          query={query}
+          onQueryChange={setQuery}
+          placeholder="Teil, Hersteller, KBA, Kategorie…"
+          chips={categoryChips}
+          activeChipId={categoryId}
+          onChipChange={setCategoryId}
+          resultLabel={resultLabel}
+        />
+
+        <div
+          role="toolbar"
+          aria-label="Statusfilter"
+          className="flex gap-2 overflow-x-auto pb-0.5"
+        >
+          {statusChips.map((chip) => {
+            const active = statusId === chip.id;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => setStatusId(chip.id)}
+                className={[
+                  "shrink-0 rounded-full px-3 py-1.5 text-[0.72rem] font-semibold",
+                  active
+                    ? "bg-emerald-600 text-white"
+                    : "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-muted)]",
+                ].join(" ")}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+
         <section aria-label="ABE Dokumente" className="space-y-2">
           <h2 className="px-1 font-[family-name:var(--font-display)] text-[0.72rem] font-semibold tracking-[0.16em] text-[color:var(--vd-muted)] uppercase">
             Teileliste
           </h2>
 
-          <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-            {documents.map((doc, index) => (
-              <li key={doc.id}>
-                <PressableLink
-                  href={`/abe/${doc.id}`}
-                  variant="row"
-                  className="group flex w-full items-center gap-3 px-4 py-3.5 text-left"
-                >
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                    <FileText className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-                  </span>
-
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                      {doc.partName}
+          {visible.length === 0 ? (
+            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+              Keine Treffer für diese Suche / Filter.
+            </div>
+          ) : (
+            <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+              {visible.map((doc, index) => (
+                <li key={doc.id}>
+                  <PressableLink
+                    href={`/abe/${doc.id}`}
+                    variant="row"
+                    className="group flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                  >
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
+                      <FileText
+                        className="h-5 w-5"
+                        strokeWidth={1.75}
+                        aria-hidden
+                      />
                     </span>
-                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.75rem] text-[color:var(--vd-muted)]">
-                      <span>{doc.documentLabel}</span>
-                      <span>· {doc.issuedAt}</span>
-                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
-                        {doc.status}
+
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                        {doc.partName}
+                      </span>
+                      <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.75rem] text-[color:var(--vd-muted)]">
+                        <span>{doc.manufacturer}</span>
+                        <span>· {doc.category}</span>
+                        <span>· {doc.issuedAt}</span>
+                        <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
+                          {doc.status}
+                        </span>
                       </span>
                     </span>
-                  </span>
 
-                  <ChevronRight
-                    className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
-                    aria-hidden
-                  />
-                </PressableLink>
+                    <ChevronRight
+                      className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
+                      aria-hidden
+                    />
+                  </PressableLink>
 
-                {index < documents.length - 1 ? (
-                  <div
-                    aria-hidden
-                    className="mx-4 border-t border-[color:var(--vd-border)]"
-                  />
-                ) : null}
-              </li>
-            ))}
-          </ul>
+                  {index < visible.length - 1 ? (
+                    <div
+                      aria-hidden
+                      className="mx-4 border-t border-[color:var(--vd-border)]"
+                    />
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </div>
