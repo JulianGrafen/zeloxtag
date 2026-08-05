@@ -18,6 +18,6 @@ describe("buildContentSecurityPolicy", () => {
     const byKey = Object.fromEntries(headers.map((h) => [h.key, h.value]));
 
     expect(byKey["Cross-Origin-Opener-Policy"]).toBe("same-origin");
-    expect(byKey["Cross-Origin-Embedder-Policy"]).toBe("credentialless");
+    expect(byKey["Cross-Origin-Embedder-Policy"]).toBe("require-corp");
   });
 });

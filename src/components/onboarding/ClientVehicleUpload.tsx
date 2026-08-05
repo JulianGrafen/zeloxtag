@@ -141,7 +141,7 @@ export function ClientVehicleUpload({
           detail.includes("cross-origin");
         setNotice(
           needsReload
-            ? "Freistellung braucht einen frischen App-Laden (Sicherheit/WASM). Bitte Seite neu laden und erneut versuchen — sonst speichern wir das Originalbild."
+            ? "Freistellung ist auf diesem Browser noch nicht freigeschaltet. Bitte die App einmal komplett schließen und https://app.zeloxtag.de neu öffnen — sonst speichern wir das Originalbild."
             : "Die lokale Freistellung war auf diesem Gerät nicht möglich. Das Originalbild wird stattdessen gespeichert.",
         );
       }

@@ -67,9 +67,9 @@ function assertCutoutRuntimeSupport(): void {
   if (typeof WebAssembly === "undefined") {
     throw new Error("Dieses Gerät unterstützt kein WebAssembly.");
   }
-  // IMG.LY / onnxruntime-web multi-threaded WASM needs SharedArrayBuffer.
-  // Without COOP+COEP the session creation fails before useful progress.
-  if (typeof SharedArrayBuffer === "undefined") {
+  // IMG.LY / onnxruntime-web needs SharedArrayBuffer (COOP + COEP require-corp).
+  // Safari ignores COEP:credentialless — isolation only works with require-corp.
+  if (typeof SharedArrayBuffer === "undefined" || !crossOriginIsolated) {
     throw new Error(
       "SharedArrayBuffer fehlt (Seite nicht cross-origin isoliert). Bitte App neu laden.",
     );

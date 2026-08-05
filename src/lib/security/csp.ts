@@ -114,10 +114,10 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
       value: "same-origin",
     },
     // Required for SharedArrayBuffer / multi-threaded ONNX WASM (vehicle cutout).
-    // `credentialless` is less brittle than `require-corp` for third-party assets.
+    // Safari/iOS only honors `require-corp` (not `credentialless`) for isolation.
     {
       key: "Cross-Origin-Embedder-Policy",
-      value: "credentialless",
+      value: "require-corp",
     },
     {
       key: "Cross-Origin-Resource-Policy",

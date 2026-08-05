@@ -51,7 +51,9 @@ export function AnimatedVehicleHeader({
           priority
           sizes="(max-width: 768px) 8rem, 12rem"
           className="object-contain object-right drop-shadow-[0_10px_18px_rgba(0,0,0,0.18)]"
-          unoptimized={src.startsWith("data:") || src.includes("supabase.co")}
+          // data: stays local; remote URLs go through /_next/image (same-origin)
+          // so COEP require-corp / Safari SharedArrayBuffer stays happy.
+          unoptimized={src.startsWith("data:")}
         />
       ) : (
         <VehicleSilhouette
