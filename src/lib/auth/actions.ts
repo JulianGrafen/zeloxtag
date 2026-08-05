@@ -8,7 +8,7 @@ import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { isResendConfigured, sendPasswordResetEmail } from "@/lib/email/resend";
 import {
-  clientIpFromHeaders,
+  authClientKeyFromHeaders,
   rateLimit,
   RATE_LIMITS,
 } from "@/lib/security/rate-limit";
@@ -36,18 +36,26 @@ const nextPathSchema = z
   });
 
 async function enforceAuthRateLimit(scope: string): Promise<AuthActionResult | null> {
-  const headerStore = await headers();
-  const ip = clientIpFromHeaders(headerStore);
-  const cfg = RATE_LIMITS.auth;
-  const result = await rateLimit({
-    key: `auth:${scope}:${ip}`,
-    limit: cfg.limit,
-    windowMs: cfg.windowMs,
-  });
-  if (!result.ok) {
-    return { status: "rate_limited", retryAfterSec: result.retryAfterSec };
+  try {
+    const headerStore = await headers();
+    const clientKey = authClientKeyFromHeaders(headerStore);
+    const cfg = RATE_LIMITS.auth;
+    const result = await rateLimit({
+      key: `auth:${scope}:${clientKey}`,
+      limit: cfg.limit,
+      windowMs: cfg.windowMs,
+      // Never let Upstash/Redis misconfig block login or password reset.
+      memoryOnly: true,
+    });
+    if (!result.ok) {
+      return { status: "rate_limited", retryAfterSec: result.retryAfterSec };
+    }
+    return null;
+  } catch (error) {
+    // Fail open — auth must remain reachable.
+    console.error("[auth] rate limit skipped", error);
+    return null;
   }
-  return null;
 }
 
 function normalizeNext(nextPath: string): string {

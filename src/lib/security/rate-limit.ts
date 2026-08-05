@@ -1,9 +1,12 @@
 /**
- * Distributed sliding-window rate limiter.
- * Uses Upstash Redis when configured; otherwise in-memory (per instance).
- * Prefer UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN on Vercel so
- * limits stay accurate across cold starts / multiple instances.
+ * Rate limiter for ZeloxTag.
+ *
+ * Auth (login / signup / reset / MFA) uses in-memory limits only so a missing
+ * or misconfigured Upstash Redis can never lock users out.
+ * OCR / upload / API routes prefer Upstash when configured, else memory.
  */
+
+import { createHash } from "crypto";
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
@@ -52,7 +55,6 @@ function getUpstashLimiter(limit: number, windowMs: number): Ratelimit {
     limiter: Ratelimit.slidingWindow(limit, windowToUpstashDuration(windowMs)),
     prefix: "zeloxtag:rl",
     analytics: false,
-    ephemeralCache: new Map(),
   });
   upstashLimiters.set(key, limiter);
   return limiter;
@@ -104,27 +106,29 @@ function warnMemoryFallback(reason: string) {
   if (reason === "missing" && !warnedMissingRedis) {
     warnedMissingRedis = true;
     console.warn(
-      "[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN missing — using in-memory limits (weaker on multi-instance).",
+      "[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN missing — using in-memory limits.",
     );
   }
   if (reason === "error" && !warnedUpstashError) {
     warnedUpstashError = true;
     console.warn(
-      "[rate-limit] Upstash error — falling back to in-memory limits for this request.",
+      "[rate-limit] Upstash error — falling back to in-memory limits.",
     );
   }
 }
 
 /**
  * Consume one request from the named bucket for `key`.
- * Prefer awaiting this everywhere — Redis path is async.
+ * Set `memoryOnly: true` for auth so Redis misconfig cannot block logins.
  */
 export async function rateLimit(input: {
   key: string;
   limit: number;
   windowMs: number;
+  /** Skip Upstash — used for login / reset / MFA. */
+  memoryOnly?: boolean;
 }): Promise<RateLimitResult> {
-  if (isUpstashConfigured()) {
+  if (!input.memoryOnly && isUpstashConfigured()) {
     try {
       const limiter = getUpstashLimiter(input.limit, input.windowMs);
       const result = await limiter.limit(input.key);
@@ -145,7 +149,9 @@ export async function rateLimit(input: {
     }
   }
 
-  warnMemoryFallback("missing");
+  if (!input.memoryOnly) {
+    warnMemoryFallback("missing");
+  }
   return memoryRateLimit(input);
 }
 
@@ -163,9 +169,26 @@ export function clientIpFromHeaders(headers: Headers): string {
   return "unknown";
 }
 
+/**
+ * Stable client key for auth rate limits.
+ * Avoids locking every user behind a shared `unknown` IP when headers are missing.
+ */
+export function authClientKeyFromHeaders(headers: Headers): string {
+  const ip = clientIpFromHeaders(headers);
+  if (ip !== "unknown") return ip;
+
+  const ua = headers.get("user-agent")?.trim() ?? "";
+  const al = headers.get("accept-language")?.trim() ?? "";
+  const digest = createHash("sha256")
+    .update(`${ua}|${al}`)
+    .digest("hex")
+    .slice(0, 16);
+  return `anon:${digest}`;
+}
+
 export const RATE_LIMITS = {
-  /** Login / MFA / password reset — brute-force resistance. */
-  auth: { limit: 20, windowMs: 60_000 },
+  /** Login / MFA / password reset — memory-only, generous. */
+  auth: { limit: 30, windowMs: 60_000 },
   /** Expensive Document Intelligence + LLM parse. */
   ocr: { limit: 12, windowMs: 60_000 },
   /** Multipart analyze / storage-bound uploads. */

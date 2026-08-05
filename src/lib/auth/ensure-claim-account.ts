@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import {
-  clientIpFromHeaders,
+  authClientKeyFromHeaders,
   rateLimit,
   RATE_LIMITS,
 } from "@/lib/security/rate-limit";
@@ -41,18 +41,23 @@ export async function ensureClaimAccount(input: {
   password: string;
   name?: string | null;
 }): Promise<EnsureClaimAccountResult> {
-  const headerStore = await headers();
-  const ip = clientIpFromHeaders(headerStore);
-  const limited = await rateLimit({
-    key: `auth:claim-account:${ip}`,
-    limit: RATE_LIMITS.auth.limit,
-    windowMs: RATE_LIMITS.auth.windowMs,
-  });
-  if (!limited.ok) {
-    return {
-      ok: false,
-      message: `Zu viele Versuche. Bitte in ${limited.retryAfterSec}s erneut versuchen.`,
-    };
+  try {
+    const headerStore = await headers();
+    const clientKey = authClientKeyFromHeaders(headerStore);
+    const limited = await rateLimit({
+      key: `auth:claim-account:${clientKey}`,
+      limit: RATE_LIMITS.auth.limit,
+      windowMs: RATE_LIMITS.auth.windowMs,
+      memoryOnly: true,
+    });
+    if (!limited.ok) {
+      return {
+        ok: false,
+        message: `Zu viele Versuche. Bitte in ${limited.retryAfterSec}s erneut versuchen.`,
+      };
+    }
+  } catch {
+    // Fail open — claim onboarding must stay reachable.
   }
 
   const emailParsed = emailSchema.safeParse(input.email);

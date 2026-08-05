@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import {
+  authClientKeyFromHeaders,
   clientIpFromHeaders,
   rateLimit,
   RATE_LIMITS,
@@ -35,15 +36,24 @@ export async function enforceRateLimit(
   bucket: RateBucket,
   scope: string,
 ): Promise<NextResponse | null> {
-  const ip = clientIpFromHeaders(request.headers);
-  const cfg = RATE_LIMITS[bucket];
-  const result = await rateLimit({
-    key: `${bucket}:${scope}:${ip}`,
-    limit: cfg.limit,
-    windowMs: cfg.windowMs,
-  });
-  if (!result.ok) return rateLimitResponse(result);
-  return null;
+  try {
+    const cfg = RATE_LIMITS[bucket];
+    const memoryOnly = bucket === "auth";
+    const clientKey = memoryOnly
+      ? authClientKeyFromHeaders(request.headers)
+      : clientIpFromHeaders(request.headers);
+    const result = await rateLimit({
+      key: `${bucket}:${scope}:${clientKey}`,
+      limit: cfg.limit,
+      windowMs: cfg.windowMs,
+      memoryOnly,
+    });
+    if (!result.ok) return rateLimitResponse(result);
+    return null;
+  } catch (error) {
+    console.error("[api-guard] rate limit skipped", error);
+    return null;
+  }
 }
 
 /**

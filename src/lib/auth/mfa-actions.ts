@@ -12,7 +12,7 @@ import {
   replaceRecoveryCodesForUser,
 } from "@/lib/auth/mfa-recovery";
 import {
-  clientIpFromHeaders,
+  authClientKeyFromHeaders,
   rateLimit,
   RATE_LIMITS,
 } from "@/lib/security/rate-limit";
@@ -66,18 +66,24 @@ const nextPathSchema = z
   .refine((value) => value.startsWith("/") && !value.startsWith("//"));
 
 async function enforceMfaRateLimit(scope: string): Promise<MfaActionResult | null> {
-  const headerStore = await headers();
-  const ip = clientIpFromHeaders(headerStore);
-  const cfg = RATE_LIMITS.auth;
-  const result = await rateLimit({
-    key: `mfa:${scope}:${ip}`,
-    limit: cfg.limit,
-    windowMs: cfg.windowMs,
-  });
-  if (!result.ok) {
-    return { status: "rate_limited", retryAfterSec: result.retryAfterSec };
+  try {
+    const headerStore = await headers();
+    const clientKey = authClientKeyFromHeaders(headerStore);
+    const cfg = RATE_LIMITS.auth;
+    const result = await rateLimit({
+      key: `mfa:${scope}:${clientKey}`,
+      limit: cfg.limit,
+      windowMs: cfg.windowMs,
+      memoryOnly: true,
+    });
+    if (!result.ok) {
+      return { status: "rate_limited", retryAfterSec: result.retryAfterSec };
+    }
+    return null;
+  } catch (error) {
+    console.error("[mfa] rate limit skipped", error);
+    return null;
   }
-  return null;
 }
 
 export async function listMfaFactors(): Promise<MfaActionResult> {
