@@ -149,21 +149,23 @@ export async function rateLimit(input: {
   return memoryRateLimit(input);
 }
 
-/** Client IP best-effort (proxy / edge headers). */
+/** Client IP best-effort (Vercel / proxy / CDN headers). */
 export function clientIpFromHeaders(headers: Headers): string {
-  const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first.slice(0, 64);
+  const candidates = [
+    headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+    headers.get("x-real-ip")?.trim(),
+    headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
+    headers.get("cf-connecting-ip")?.trim(),
+  ];
+  for (const candidate of candidates) {
+    if (candidate) return candidate.slice(0, 64);
   }
-  const realIp = headers.get("x-real-ip")?.trim();
-  if (realIp) return realIp.slice(0, 64);
   return "unknown";
 }
 
 export const RATE_LIMITS = {
-  /** Login / MFA / auth callback — brute-force resistance. */
-  auth: { limit: 6, windowMs: 60_000 },
+  /** Login / MFA / password reset — brute-force resistance. */
+  auth: { limit: 20, windowMs: 60_000 },
   /** Expensive Document Intelligence + LLM parse. */
   ocr: { limit: 12, windowMs: 60_000 },
   /** Multipart analyze / storage-bound uploads. */
