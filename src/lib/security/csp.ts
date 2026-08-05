@@ -64,9 +64,9 @@ export function buildContentSecurityPolicy(): string {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    // Same-origin only — DocumentViewer embeds PDFs via `/api/documents/file`.
-    "frame-src 'self'",
-    "child-src 'self'",
+    // Same-origin proxy + blob: previews (scan review / local object URLs).
+    "frame-src 'self' blob:",
+    "child-src 'self' blob:",
     "manifest-src 'self'",
   ];
 
@@ -125,8 +125,12 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
 
 /**
  * Headers for `/api/documents/file` — must be frameable by the same-origin
- * DocumentViewer iframe. Global `X-Frame-Options: DENY` / `frame-ancestors 'none'`
- * would blank the PDF preview.
+ * DocumentViewer iframe.
+ *
+ * Do NOT set `default-src 'none'`: Chrome’s built-in PDF viewer needs to run
+ * inside the iframe and shows “Dieser Inhalt ist blockiert” otherwise.
+ * Global DENY / frame-ancestors 'none' must not apply to this route
+ * (see next.config.ts exclude pattern).
  */
 export function documentFileSecurityHeaderEntries(): Array<{
   key: string;
@@ -135,7 +139,7 @@ export function documentFileSecurityHeaderEntries(): Array<{
   return [
     {
       key: "Content-Security-Policy",
-      value: "default-src 'none'; frame-ancestors 'self'",
+      value: "frame-ancestors 'self'",
     },
     {
       key: "X-Frame-Options",

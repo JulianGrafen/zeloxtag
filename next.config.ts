@@ -20,11 +20,12 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Exclude the document proxy — global DENY / frame-ancestors 'none'
+      // would merge with SAMEORIGIN and blank PDF iframes in Chrome.
       {
-        source: "/:path*",
+        source: "/((?!api/documents/file$).*)",
         headers: securityHeaderEntries(),
       },
-      // Later entries override conflicting keys for the document proxy.
       {
         source: "/api/documents/file",
         headers: documentFileSecurityHeaderEntries(),

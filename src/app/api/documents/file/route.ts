@@ -100,14 +100,7 @@ export async function GET(request: NextRequest) {
 
     return new NextResponse(buffer, {
       status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Content-Disposition": `inline; filename="${filename}"`,
-        "Cache-Control": "private, max-age=300",
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "SAMEORIGIN",
-        "Content-Security-Policy": "default-src 'none'; frame-ancestors 'self'",
-      },
+      headers: inlineDocumentHeaders(contentType, filename),
     });
   } catch {
     return NextResponse.json({ error: "Invalid src" }, { status: 400 });
@@ -186,15 +179,26 @@ async function proxyInline(
 
   return new NextResponse(upstream.body, {
     status: 200,
-    headers: {
-      "Content-Type": contentType,
-      "Content-Disposition": `inline; filename="${filename}"`,
-      "Cache-Control": "private, max-age=300",
-      "X-Content-Type-Options": "nosniff",
-      "X-Frame-Options": "SAMEORIGIN",
-      "Content-Security-Policy": "default-src 'none'; frame-ancestors 'self'",
-    },
+    headers: inlineDocumentHeaders(contentType, filename),
   });
+}
+
+/**
+ * Framing allowed for same-origin DocumentViewer.
+ * Avoid `default-src 'none'` — it blanks Chrome’s PDF iframe viewer.
+ */
+function inlineDocumentHeaders(
+  contentType: string,
+  filename: string,
+): Record<string, string> {
+  return {
+    "Content-Type": contentType,
+    "Content-Disposition": `inline; filename="${filename}"`,
+    "Cache-Control": "private, max-age=300",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "SAMEORIGIN",
+    "Content-Security-Policy": "frame-ancestors 'self'",
+  };
 }
 
 function filenameFromPath(url: string): string {
