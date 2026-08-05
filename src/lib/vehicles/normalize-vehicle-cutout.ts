@@ -64,6 +64,13 @@ function findOpaqueBounds(
   return { minX, minY, maxX, maxY };
 }
 
+function hasTransparentBackground(data: Buffer): boolean {
+  for (let index = 3; index < data.length; index += 4) {
+    if (data[index] < 250) return true;
+  }
+  return false;
+}
+
 /**
  * Soft under-car shadows from removers → fully transparent.
  * Also snap weak fringe alpha to 0 for a catalog-clean edge.
@@ -166,7 +173,10 @@ function flipHorizontal(
  */
 export async function normalizeVehicleCutout(
   pngBytes: Uint8Array | Buffer,
+  options: { requireTransparentBackground?: boolean } = {},
 ): Promise<Buffer> {
+  const requireTransparentBackground =
+    options.requireTransparentBackground ?? true;
   const input = Buffer.from(pngBytes);
 
   let pipeline = sharp(input).ensureAlpha().rotate(); // honor EXIF
@@ -193,6 +203,11 @@ export async function normalizeVehicleCutout(
   }
 
   const pixels = Buffer.from(data);
+  if (requireTransparentBackground && !hasTransparentBackground(pixels)) {
+    throw new CutoutNormalizeError(
+      "Die hochgeladene Datei hat keinen transparenten Hintergrund.",
+    );
+  }
   cleanAlphaAndShadows(pixels, info.width, info.height);
 
   let bounds = findOpaqueBounds(
