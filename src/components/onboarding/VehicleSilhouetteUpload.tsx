@@ -23,8 +23,11 @@ export type VehicleSilhouetteUploadProps = {
   tagUuid: string;
   /** Called after a successful upload (URL already persisted). */
   onUploaded?: (silhouetteImageUrl: string) => void;
-  /** Optional skip for onboarding surfaces. */
+  /** Optional skip / dismiss for onboarding or change sheet. */
   onSkip?: () => void;
+  skipLabel?: string;
+  title?: string;
+  description?: string;
   className?: string;
 };
 
@@ -72,6 +75,9 @@ export function VehicleSilhouetteUpload({
   tagUuid,
   onUploaded,
   onSkip,
+  skipLabel = "Später",
+  title = "Fahrzeug-Silhouette",
+  description = "Bitte fotografiere dein Fahrzeug exakt von der Seite, damit die Animation im Dashboard gut aussieht.",
   className = "",
 }: VehicleSilhouetteUploadProps) {
   const router = useRouter();
@@ -164,11 +170,10 @@ export function VehicleSilhouetteUpload({
       className={`rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim()}
     >
       <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-        Fahrzeug-Silhouette
+        {title}
       </h2>
       <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Bitte fotografiere dein Fahrzeug exakt von der Seite, damit die
-        Animation im Dashboard gut aussieht.
+        {description}
       </p>
 
       <div
@@ -276,7 +281,7 @@ export function VehicleSilhouetteUpload({
           onClick={onSkip}
         >
           <SkipForward className="h-4 w-4" aria-hidden />
-          Später
+          {skipLabel}
         </PressableButton>
       ) : null}
 

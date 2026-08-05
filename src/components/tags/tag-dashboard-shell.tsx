@@ -71,6 +71,7 @@ export function TagDashboardShell({
   });
   const [scanType, setScanType] = useState<ScanType | null>(null);
   const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
+  const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
 
   useEffect(() => {
@@ -145,8 +146,16 @@ export function TagDashboardShell({
           setScanType(null);
           setMode("pick-scan");
         }}
+        onEditVehicleImage={
+          isOwner
+            ? () => {
+                setShowSilhouettePrompt(false);
+                setShowSilhouetteEditor(true);
+              }
+            : undefined
+        }
       />
-      {showSilhouettePrompt && mode === "dashboard" ? (
+      {showSilhouettePrompt && mode === "dashboard" && !showSilhouetteEditor ? (
         <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
           <VehicleSilhouetteUpload
             vehicleId={vehicle.id}
@@ -166,8 +175,33 @@ export function TagDashboardShell({
           />
         </div>
       ) : null}
+      {showSilhouetteEditor ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center">
+          <button
+            type="button"
+            aria-label="Schließen"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setShowSilhouetteEditor(false)}
+          />
+          <div className="relative z-10 w-full max-w-lg">
+            <VehicleSilhouetteUpload
+              vehicleId={vehicle.id}
+              tagUuid={tagUuid}
+              title="Fahrzeugbild ändern"
+              description="Lade ein neues Seitenfoto hoch — Galerie oder Kamera. Exakt von der Seite für die beste Dashboard-Animation."
+              skipLabel="Schließen"
+              onUploaded={() => setShowSilhouetteEditor(false)}
+              onSkip={() => setShowSilhouetteEditor(false)}
+            />
+          </div>
+        </div>
+      ) : null}
       <DashboardOnboardingTour
-        enabled={mode === "dashboard" && !showSilhouettePrompt}
+        enabled={
+          mode === "dashboard" &&
+          !showSilhouettePrompt &&
+          !showSilhouetteEditor
+        }
         role={isOwner ? "owner" : "contributor"}
       />
     </>

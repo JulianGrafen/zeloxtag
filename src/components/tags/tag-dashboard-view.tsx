@@ -28,6 +28,8 @@ interface TagDashboardViewProps {
    */
   demoMode?: boolean;
   onOpenScanner?: () => void;
+  /** Owner: tap header cutout to change silhouette. */
+  onEditVehicleImage?: () => void;
 }
 
 /**
@@ -43,6 +45,7 @@ export function TagDashboardView({
   isContributor = false,
   demoMode = false,
   onOpenScanner,
+  onEditVehicleImage,
 }: TagDashboardViewProps) {
   const invoiceCount = documents.filter((doc) => doc.type === "invoice").length;
   const abeCount = documents.filter((doc) => doc.type === "abe").length;
@@ -234,6 +237,9 @@ export function TagDashboardView({
       <VehicleDashboard
         data={{ ...data, tiles }}
         className={canScan ? "pb-24" : undefined}
+        onEditVehicleImage={
+          isOwner && !demoMode ? onEditVehicleImage : undefined
+        }
       />
       {canScan ? (
         <DashboardScanFab tagUuid={tagUuid} onOpenScanner={onOpenScanner} />

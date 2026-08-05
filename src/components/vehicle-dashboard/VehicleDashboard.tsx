@@ -8,6 +8,7 @@ import { VehicleDashboardHeader } from "./VehicleDashboardHeader";
 export function VehicleDashboard({
   data,
   onTileClick,
+  onEditVehicleImage,
   className = "",
 }: VehicleDashboardProps) {
   const tiles = data.tiles ?? buildDefaultTiles(data);
@@ -29,6 +30,7 @@ export function VehicleDashboard({
             vehicleImage={data.vehicleImage}
             vehicleImageAlt={data.vehicleImageAlt}
             statusLabel={data.statusLabel}
+            onEditVehicleImage={onEditVehicleImage}
           />
         </div>
 

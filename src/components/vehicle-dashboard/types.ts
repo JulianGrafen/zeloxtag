@@ -77,5 +77,7 @@ export interface VehicleDashboardProps {
   data: VehicleDashboardData;
   /** Called when a tile without href is activated */
   onTileClick?: (tileId: string) => void;
+  /** Owner tap on header cutout → change / upload silhouette */
+  onEditVehicleImage?: () => void;
   className?: string;
 }
