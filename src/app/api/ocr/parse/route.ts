@@ -18,7 +18,11 @@ import {
   invoiceTextParseSchema,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
-import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  requireApiUser,
+} from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 
 export const runtime = "nodejs";
@@ -72,7 +76,9 @@ function jsonError(
  */
 export async function POST(request: NextRequest) {
   try {
-    const limited = enforceRateLimit(request, "ocr", "parse");
+    const originBlocked = enforceSameOrigin(request);
+    if (originBlocked) return originBlocked;
+    const limited = await enforceRateLimit(request, "ocr", "parse");
     if (limited) return limited;
 
     const auth = await requireApiUser();

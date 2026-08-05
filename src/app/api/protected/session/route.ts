@@ -10,7 +10,11 @@ export const runtime = "nodejs";
  * Proxy rejects anonymous callers before this handler runs.
  */
 export async function GET(request: NextRequest) {
-  const limited = enforceRateLimit(request, "apiDefault", "protected-session");
+  const limited = await enforceRateLimit(
+    request,
+    "apiDefault",
+    "protected-session",
+  );
   if (limited) return limited;
 
   const auth = await requireApiUser();

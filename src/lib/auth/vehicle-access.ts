@@ -4,6 +4,7 @@ import {
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 
 export type VehicleAccess = {
   /** Session user owns this vehicle. */
@@ -41,10 +42,9 @@ async function sessionIsActiveContributor(
   vehicleId: string,
   sessionUserId: string,
 ): Promise<boolean> {
-  if (!isSupabaseAdminConfigured()) return false;
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
+    const supabase = await createClient();
+    const { data } = await supabase
       .from("vehicle_contributors")
       .select("id")
       .eq("vehicle_id", vehicleId)

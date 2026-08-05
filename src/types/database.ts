@@ -66,6 +66,15 @@ export type VehicleContributor = {
   expires_at: string | null;
 };
 
+/** Hashed MFA recovery codes (service-role only; see migration 00020). */
+export type MfaRecoveryCode = {
+  id: string;
+  user_id: string;
+  code_hash: string;
+  created_at: string;
+  used_at: string | null;
+};
+
 export type Document = {
   id: string;
   vehicle_id: string;
@@ -224,6 +233,24 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      mfa_recovery_codes: {
+        Row: MfaRecoveryCode;
+        Insert: {
+          id?: string;
+          user_id: string;
+          code_hash: string;
+          created_at?: string;
+          used_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          code_hash?: string;
+          created_at?: string;
+          used_at?: string | null;
+        };
+        Relationships: [];
       };
       documents: {
         Row: Document;

@@ -1,10 +1,12 @@
 /**
- * In-memory sliding-window rate limiter (single Node process).
- * For multi-instance production, replace with Upstash Redis / edge KV.
- *
- * Supabase Auth also enforces its own email/OTP rate limits server-side —
- * configure those in the Supabase dashboard (Auth → Rate Limits).
+ * Distributed sliding-window rate limiter.
+ * Uses Upstash Redis when configured; falls back to in-memory for local/dev.
+ * Production (Vercel production) fails closed without Redis — set
+ * UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN.
  */
+
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 export type RateLimitResult = {
   ok: boolean;
@@ -17,18 +19,48 @@ type Bucket = {
   timestamps: number[];
 };
 
-const store = new Map<string, Bucket>();
-
+const memoryStore = new Map<string, Bucket>();
 const MAX_KEYS = 10_000;
+
+const upstashLimiters = new Map<string, Ratelimit>();
+let warnedMissingRedis = false;
 
 function prune(bucket: Bucket, windowMs: number, now: number) {
   bucket.timestamps = bucket.timestamps.filter((ts) => now - ts < windowMs);
 }
 
-/**
- * Consume one request from the named bucket for `key`.
- */
-export function rateLimit(input: {
+function isUpstashConfigured(): boolean {
+  return Boolean(
+    process.env.UPSTASH_REDIS_REST_URL?.trim() &&
+      process.env.UPSTASH_REDIS_REST_TOKEN?.trim(),
+  );
+}
+
+function isProductionDeploy(): boolean {
+  // Fail closed only on real production — preview/dev may use memory fallback.
+  return process.env.VERCEL_ENV === "production";
+}
+
+function windowToUpstashDuration(windowMs: number): `${number} ms` {
+  return `${Math.max(1, Math.floor(windowMs))} ms`;
+}
+
+function getUpstashLimiter(limit: number, windowMs: number): Ratelimit {
+  const key = `${limit}:${windowMs}`;
+  const existing = upstashLimiters.get(key);
+  if (existing) return existing;
+
+  const limiter = new Ratelimit({
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(limit, windowToUpstashDuration(windowMs)),
+    prefix: "zeloxtag:rl",
+    analytics: false,
+  });
+  upstashLimiters.set(key, limiter);
+  return limiter;
+}
+
+function memoryRateLimit(input: {
   key: string;
   limit: number;
   windowMs: number;
@@ -36,16 +68,15 @@ export function rateLimit(input: {
   const now = Date.now();
   const bucketKey = input.key;
 
-  if (store.size > MAX_KEYS) {
-    // Drop oldest ~10% of keys under memory pressure.
-    const keys = [...store.keys()].slice(0, Math.ceil(MAX_KEYS * 0.1));
-    for (const key of keys) store.delete(key);
+  if (memoryStore.size > MAX_KEYS) {
+    const keys = [...memoryStore.keys()].slice(0, Math.ceil(MAX_KEYS * 0.1));
+    for (const key of keys) memoryStore.delete(key);
   }
 
-  let bucket = store.get(bucketKey);
+  let bucket = memoryStore.get(bucketKey);
   if (!bucket) {
     bucket = { timestamps: [] };
-    store.set(bucketKey, bucket);
+    memoryStore.set(bucketKey, bucket);
   }
 
   prune(bucket, input.windowMs, now);
@@ -68,6 +99,58 @@ export function rateLimit(input: {
     resetAt: now + input.windowMs,
     retryAfterSec: 0,
   };
+}
+
+/**
+ * Consume one request from the named bucket for `key`.
+ * Prefer awaiting this everywhere — Redis path is async.
+ */
+export async function rateLimit(input: {
+  key: string;
+  limit: number;
+  windowMs: number;
+}): Promise<RateLimitResult> {
+  if (isUpstashConfigured()) {
+    try {
+      const limiter = getUpstashLimiter(input.limit, input.windowMs);
+      const result = await limiter.limit(input.key);
+      const resetAt = result.reset;
+      const retryAfterSec = result.success
+        ? 0
+        : Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+      return {
+        ok: result.success,
+        remaining: result.remaining,
+        resetAt,
+        retryAfterSec,
+      };
+    } catch (error) {
+      console.error("[rate-limit] Upstash error — failing closed", error);
+      return {
+        ok: false,
+        remaining: 0,
+        resetAt: Date.now() + input.windowMs,
+        retryAfterSec: 30,
+      };
+    }
+  }
+
+  if (isProductionDeploy()) {
+    if (!warnedMissingRedis) {
+      warnedMissingRedis = true;
+      console.error(
+        "[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN missing in production — denying requests.",
+      );
+    }
+    return {
+      ok: false,
+      remaining: 0,
+      resetAt: Date.now() + 60_000,
+      retryAfterSec: 60,
+    };
+  }
+
+  return memoryRateLimit(input);
 }
 
 /** Client IP best-effort (proxy / edge headers). */

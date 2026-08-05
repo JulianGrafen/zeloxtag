@@ -1,29 +1,17 @@
-import { createBrowserClient } from "@supabase/ssr";
-
-import { authCookieOptions } from "@/lib/security/cookie-options";
-import type { Database } from "@/types/database";
-
-import { getSupabaseEnv } from "./env";
-
 /**
- * Browser Supabase client for Client Components.
- * Prefer Server Actions for auth mutations so HttpOnly session cookies stay server-set.
- * Call inside the component / event handler — not at module top level.
+ * Browser Supabase client is intentionally not provided.
+ *
+ * Auth sessions must be written only via Server Actions / Route Handlers /
+ * Proxy (`createServerClient` + `hardenCookieOptions`) so cookies stay
+ * HttpOnly. `createBrowserClient` falls back to `document.cookie`, which
+ * cannot set HttpOnly and would expose access/refresh tokens to XSS.
+ *
+ * Use `@/lib/supabase/server` (RSC / actions) or `@/lib/supabase/route`
+ * (Route Handlers) instead.
  */
-export function createClient() {
-  const { url, anonKey, isConfigured } = getSupabaseEnv();
 
-  if (!isConfigured) {
-    throw new Error(
-      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    );
-  }
-
-  return createBrowserClient<Database>(url, anonKey, {
-    cookieOptions: {
-      ...authCookieOptions(),
-      // Browser storage cannot set HttpOnly; server/proxy remains source of truth.
-      httpOnly: false,
-    },
-  });
+export function createClient(): never {
+  throw new Error(
+    "Browser Supabase client is disabled. Use server actions / route handlers so auth cookies remain HttpOnly.",
+  );
 }

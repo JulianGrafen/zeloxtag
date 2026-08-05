@@ -12,7 +12,11 @@ import { OCR_DOCUMENT_TYPES } from "@/lib/ocr/ocr-types";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
-import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  requireApiUser,
+} from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 
 export const runtime = "nodejs";
@@ -63,7 +67,9 @@ function jsonError(
  */
 export async function POST(request: NextRequest) {
   try {
-    const limited = enforceRateLimit(request, "upload", "analyze");
+    const originBlocked = enforceSameOrigin(request);
+    if (originBlocked) return originBlocked;
+    const limited = await enforceRateLimit(request, "upload", "analyze");
     if (limited) return limited;
 
     const auth = await requireApiUser();

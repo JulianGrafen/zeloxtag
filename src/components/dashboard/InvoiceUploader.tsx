@@ -81,8 +81,8 @@ interface InvoiceUploaderProps {
   /** Prefill / lock OCR category (e.g. service for Inspektionen). */
   initialCategory?: InvoiceTextParseCategory;
   lockCategory?: boolean;
-  /** Explicit scan intent from type picker — drives OCR schema. */
-  scanType?: ScanType;
+  /** Explicit scan intent from type picker — required before capture. */
+  scanType: ScanType;
   /** After successful save (default: documents list for that type). */
   successHref?: string;
   heading?: string;
@@ -141,13 +141,11 @@ export function InvoiceUploader({
   heading = "Rechnung scannen",
   subheading,
 }: InvoiceUploaderProps) {
-  const scanDef = scanType ? scanTypeDefinition(scanType) : null;
-  const resolvedCategory = scanDef?.category ?? initialCategory;
-  const resolvedLockCategory = scanDef?.lockCategory ?? lockCategory;
-  const resolvedHeading = scanDef?.heading ?? heading;
-  const resolvedSubheading = scanDef
-    ? `${vehicleLabel} · ${scanDef.subheading}`
-    : subheading;
+  const scanDef = scanTypeDefinition(scanType);
+  const resolvedCategory = scanDef.category ?? initialCategory;
+  const resolvedLockCategory = scanDef.lockCategory ?? lockCategory;
+  const resolvedHeading = scanDef.heading ?? heading;
+  const resolvedSubheading = `${vehicleLabel} · ${scanDef.subheading}`;
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/dokumente`;
   const {
     compressFile,

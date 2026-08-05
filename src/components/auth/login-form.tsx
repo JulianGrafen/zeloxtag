@@ -4,8 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, ShieldCheck } from "lucide-react";
 
-import { signInWithPassword, type AuthActionResult } from "@/lib/auth/actions";
-import { signUpWithPasswordBrowser } from "@/lib/auth/browser-auth";
+import {
+  signInWithPassword,
+  signUpWithPassword,
+  type AuthActionResult,
+} from "@/lib/auth/actions";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 
 type AuthTab = "password" | "signup";
@@ -13,6 +16,8 @@ type AuthTab = "password" | "signup";
 interface LoginFormProps {
   nextPath?: string;
   initialError?: string;
+  /** Shown after MFA recovery code disabled 2FA. */
+  recovered?: boolean;
 }
 
 function mapAuthError(result: AuthActionResult): string | null {
@@ -30,13 +35,18 @@ function mapAuthError(result: AuthActionResult): string | null {
 export function LoginForm({
   nextPath = "/auth/continue",
   initialError,
+  recovered = false,
 }: LoginFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<AuthTab>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(initialError ?? null);
-  const [info, setInfo] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(
+    recovered
+      ? "2FA wurde mit einem Recovery-Code deaktiviert. Melde dich an und richte 2FA unter Einstellungen neu ein."
+      : null,
+  );
   const [pending, startTransition] = useTransition();
 
   const tabs: Array<{ id: AuthTab; label: string; icon: typeof KeyRound }> = [
@@ -88,25 +98,24 @@ export function LoginForm({
           setInfo(null);
           startTransition(async () => {
             if (tab === "signup") {
-              const result = await signUpWithPasswordBrowser(
+              const result = await signUpWithPassword(
                 email,
                 password,
-                nextPath,
+                nextPath || "/auth/continue",
               );
-              if (result.status === "confirm_email") {
-                setInfo(
-                  "Konto erstellt. Bitte bestätige deine E-Mail — öffne den Link in diesem Browser.",
+              if (result.status === "mfa_required") {
+                router.push(
+                  `/login/mfa?next=${encodeURIComponent("/auth/continue")}`,
                 );
                 return;
               }
-              if (result.status === "signed_in") {
-                // Continue resolves to /v/{uuid} for owners with a claimed tag.
-                window.location.assign("/auth/continue");
+              if (result.status === "ok") {
+                window.location.assign(
+                  result.redirectTo || "/auth/continue",
+                );
                 return;
               }
-              if (result.status === "error") {
-                setMessage(result.message);
-              }
+              setMessage(mapAuthError(result));
               return;
             }
 
@@ -162,6 +171,17 @@ export function LoginForm({
             placeholder="Mindestens 10 Zeichen"
           />
         </label>
+
+        {tab === "password" ? (
+          <div className="flex justify-end">
+            <a
+              href="/login/reset"
+              className="text-[0.78rem] font-medium text-[color:var(--vd-muted)] underline-offset-2 hover:underline"
+            >
+              Passwort vergessen?
+            </a>
+          </div>
+        ) : null}
 
         {message ? (
           <p className="rounded-xl bg-red-50 px-3 py-2 text-[0.8rem] text-red-700">

@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * Comma-separated allowlist of operator emails for inventory minting.
@@ -23,8 +24,8 @@ export function isOperatorEmail(email: string | null | undefined): boolean {
 }
 
 /**
- * Inventory / QR mint surfaces — fail closed unless allowlist is configured
- * and the session email matches.
+ * Inventory / QR mint surfaces — fail closed unless allowlist is configured,
+ * the session email matches, and MFA is completed (AAL2).
  */
 export async function requireOperator(): Promise<
   | { ok: true; email: string; userId: string }
@@ -50,6 +51,25 @@ export async function requireOperator(): Promise<
       ok: false,
       status: 403,
       message: "Operator allowlist only — tag minting denied.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: aal, error: aalError } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aalError) {
+    return {
+      ok: false,
+      status: 403,
+      message: "MFA status unavailable — operator access denied.",
+    };
+  }
+  if (aal?.currentLevel !== "aal2") {
+    return {
+      ok: false,
+      status: 403,
+      message:
+        "Operator MFA required. Enable 2FA under Settings and complete the challenge.",
     };
   }
 

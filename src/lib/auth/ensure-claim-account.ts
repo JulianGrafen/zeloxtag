@@ -33,7 +33,7 @@ function looksLikeExistingUser(message: string): boolean {
 /**
  * Ensures the claiming user has a Supabase Auth session.
  * — Already signed in → reuse session
- * — New email → create account + sign in (admin-confirms email for QR onboarding)
+ * — New email → create account + sign in (admin marks email confirmed)
  * — Existing email → sign in with password
  */
 export async function ensureClaimAccount(input: {
@@ -43,7 +43,7 @@ export async function ensureClaimAccount(input: {
 }): Promise<EnsureClaimAccountResult> {
   const headerStore = await headers();
   const ip = clientIpFromHeaders(headerStore);
-  const limited = rateLimit({
+  const limited = await rateLimit({
     key: `auth:claim-account:${ip}`,
     limit: RATE_LIMITS.auth.limit,
     windowMs: RATE_LIMITS.auth.windowMs,
@@ -87,7 +87,7 @@ export async function ensureClaimAccount(input: {
     return { ok: true, userId: signedUp.session.user.id, created: true };
   }
 
-  // Email confirmation required — confirm via service role, then sign in.
+  // Email confirmation enabled in Supabase → confirm via service role, then sign in.
   if (signedUp.user && !signedUp.session && isSupabaseAdminConfigured()) {
     const admin = createAdminClient();
     const confirmed = await admin.auth.admin.updateUserById(signedUp.user.id, {
@@ -103,7 +103,8 @@ export async function ensureClaimAccount(input: {
     if (signInError || !signedIn.user) {
       return {
         ok: false,
-        message: signInError?.message ?? "Anmeldung nach Kontoanlage fehlgeschlagen.",
+        message:
+          signInError?.message ?? "Anmeldung nach Kontoanlage fehlgeschlagen.",
       };
     }
     return { ok: true, userId: signedIn.user.id, created: true };
@@ -160,7 +161,8 @@ export async function ensureClaimAccount(input: {
     if (signInError || !signedIn.user) {
       return {
         ok: false,
-        message: signInError?.message ?? "Anmeldung nach Kontoanlage fehlgeschlagen.",
+        message:
+          signInError?.message ?? "Anmeldung nach Kontoanlage fehlgeschlagen.",
       };
     }
     return { ok: true, userId: signedIn.user.id, created: true };
@@ -169,6 +171,6 @@ export async function ensureClaimAccount(input: {
   return {
     ok: false,
     message:
-      "Konto angelegt, aber E-Mail-Bestätigung ist aktiv. Bitte Postfach prüfen oder Service-Role für Auto-Confirm setzen.",
+      "Konto angelegt, aber keine Sitzung. SUPABASE_SERVICE_ROLE_KEY für Auto-Confirm setzen oder E-Mail-Confirm in Supabase deaktivieren.",
   };
 }

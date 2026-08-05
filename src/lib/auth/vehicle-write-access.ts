@@ -1,7 +1,4 @@
-import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export type VehicleWriteAccess = {
   ok: boolean;
@@ -16,6 +13,7 @@ const CONTRIBUTOR_INVOICE_TYPES = new Set(["invoice"]);
 
 /**
  * Whether the session user may write documents for this vehicle.
+ * Uses the user-scoped client + RLS (no service-role bypass).
  * Owners: full write. Active Schrauber: invoice rows only (enforced by callers).
  */
 export async function getVehicleWriteAccess(
@@ -30,12 +28,12 @@ export async function getVehicleWriteAccess(
     vehicleId: null,
   };
 
-  if (!vehicleId || !userId || !isSupabaseAdminConfigured()) {
+  if (!vehicleId || !userId) {
     return denied;
   }
 
-  const admin = createAdminClient();
-  const { data: vehicle } = await admin
+  const supabase = await createClient();
+  const { data: vehicle } = await supabase
     .from("vehicles")
     .select("id, user_id")
     .eq("id", vehicleId)
@@ -55,7 +53,7 @@ export async function getVehicleWriteAccess(
     };
   }
 
-  const { data: grant } = await admin
+  const { data: grant } = await supabase
     .from("vehicle_contributors")
     .select("id")
     .eq("vehicle_id", vehicle.id)

@@ -10,20 +10,21 @@ export const metadata: Metadata = {
 };
 
 interface HomePageProps {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; recovered?: string }>;
 }
 
 /**
  * Production landing: login / signup (replaces the public RX-8 demo dashboard).
  */
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const { next, error } = await searchParams;
+  const { next, error, recovered } = await searchParams;
 
   return (
     <AppShell showNavbar={false}>
       <LoginForm
         nextPath={next && next !== "/" ? next : "/auth/continue"}
         initialError={error}
+        recovered={recovered === "1"}
       />
     </AppShell>
   );

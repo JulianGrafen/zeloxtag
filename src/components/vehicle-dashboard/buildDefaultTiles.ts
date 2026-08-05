@@ -89,9 +89,10 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "tuning-history",
-      title: "Tuning Historie",
+      title: "Wartung & Tuning",
+      description: "Selbst eintragen ohne Beleg",
       icon: "history",
-      meta: { subtitle: "Fotodokumentation" },
+      meta: { subtitle: "Eigene Einträge" },
     },
     {
       id: "tuv",

@@ -170,26 +170,29 @@ export async function validateDocumentUpload(
   const declared = (file.type || "").toLowerCase().trim();
   const extMime = MIME_BY_EXT[extensionOf(file.name)];
 
-  const resolved =
-    sniffed ??
-    (isAllowedMime(declared) ? declared : null) ??
-    extMime ??
-    null;
-
-  if (!resolved || !isAllowedMime(resolved)) {
+  // Magic bytes are mandatory — never trust declared MIME / extension alone.
+  if (!sniffed || !isAllowedMime(sniffed)) {
     return {
       ok: false,
-      error: "Dateityp nicht erlaubt (PDF, JPEG, PNG, WebP, HEIC).",
+      error: "Dateityp nicht erkennbar oder nicht erlaubt (PDF, JPEG, PNG, WebP, HEIC).",
     };
   }
 
-  // When magic bytes are present, they win — reject MIME spoofing.
-  if (sniffed && declared && isAllowedMime(declared) && declared !== sniffed) {
+  if (declared && isAllowedMime(declared) && declared !== sniffed) {
     return {
       ok: false,
       error: "Dateityp stimmt nicht mit dem Dateiinhalt überein.",
     };
   }
+
+  if (extMime && extMime !== sniffed) {
+    return {
+      ok: false,
+      error: "Dateiendung stimmt nicht mit dem Dateiinhalt überein.",
+    };
+  }
+
+  const resolved = sniffed;
 
   if (options?.pdfOnly && resolved !== "application/pdf") {
     return { ok: false, error: "Nur PDF-Dateien können gespeichert werden." };

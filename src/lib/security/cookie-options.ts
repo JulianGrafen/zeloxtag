@@ -2,9 +2,11 @@ import type { CookieOptionsWithName } from "@supabase/ssr";
 
 /**
  * Session cookie defaults for `@supabase/ssr`.
- * HttpOnly is enforced on the server/proxy `setAll` path so tokens stay
- * out of `document.cookie`. SameSite=Lax mitigates CSRF on top-level navigations;
- * Secure is required in production (HTTPS).
+ *
+ * Always HttpOnly — `@supabase/ssr` defaults `httpOnly: false` so clients
+ * can use `document.cookie`; we override on every server/proxy/route `setAll`
+ * so access/refresh tokens are never readable from JavaScript.
+ * SameSite=Lax mitigates CSRF on top-level navigations; Secure in production.
  */
 export function authCookieOptions(): CookieOptionsWithName {
   const isProd = process.env.NODE_ENV === "production";
@@ -26,6 +28,6 @@ export function hardenCookieOptions<T extends Record<string, unknown>>(
     path: hardened.path,
     sameSite: hardened.sameSite,
     secure: hardened.secure,
-    httpOnly: hardened.httpOnly,
+    httpOnly: true,
   };
 }

@@ -30,6 +30,7 @@ function isSupabaseDocumentObjectPath(pathname: string): boolean {
  */
 export function isViewableDocumentUrl(fileUrl: string): boolean {
   if (!fileUrl || fileUrl.startsWith("mock://")) return false;
+  if (fileUrl.startsWith("manual://")) return false;
   if (fileUrl.startsWith("/demo/")) return true;
   try {
     const url = new URL(fileUrl);

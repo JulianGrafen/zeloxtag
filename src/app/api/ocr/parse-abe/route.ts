@@ -5,7 +5,11 @@ import type { AbeCoreParseResult } from "@/lib/ocr/abe-parse-schema";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { abeParseService } from "@/lib/ocr/services/abe-parse-service";
-import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  requireApiUser,
+} from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
 
 export const runtime = "nodejs";
@@ -45,7 +49,9 @@ function jsonError(
  */
 export async function POST(request: NextRequest) {
   try {
-    const limited = enforceRateLimit(request, "ocr", "parse-abe");
+    const originBlocked = enforceSameOrigin(request);
+    if (originBlocked) return originBlocked;
+    const limited = await enforceRateLimit(request, "ocr", "parse-abe");
     if (limited) return limited;
 
     const auth = await requireApiUser();

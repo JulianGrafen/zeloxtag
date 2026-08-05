@@ -41,12 +41,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginRedirectUrl(origin, pathname, search));
   }
 
+  // Password-recovery session must reach update-password before MFA step-up.
+  const mfaExemptPath =
+    pathname === "/login/mfa" ||
+    pathname === "/login/update-password" ||
+    pathname === "/login/reset" ||
+    pathname === "/auth/callback" ||
+    pathname === "/auth/confirm";
+
   // MFA enrolled → finish TOTP challenge before accessing protected surfaces.
   if (
     userId &&
     needsMfa &&
-    pathname !== "/login/mfa" &&
-    pathname !== "/auth/callback" &&
+    !mfaExemptPath &&
     (requiresAuth || pathname.startsWith("/dashboard"))
   ) {
     if (pathname.startsWith("/api/")) {
@@ -77,6 +84,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Authenticated users who finished MFA → own vehicle dashboard (via continue).
+  // Keep reset / update-password reachable during recovery.
   if (
     userId &&
     !needsMfa &&

@@ -7,15 +7,16 @@ export const metadata: Metadata = {
 };
 
 interface LoginPageProps {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; recovered?: string }>;
 }
 
 /** Legacy `/login` → canonical home login, keeping query params. */
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const { next, error } = await searchParams;
+  const { next, error, recovered } = await searchParams;
   const params = new URLSearchParams();
   if (next) params.set("next", next);
   if (error) params.set("error", error);
+  if (recovered) params.set("recovered", recovered);
   const qs = params.toString();
   redirect(qs ? `/?${qs}` : "/");
 }

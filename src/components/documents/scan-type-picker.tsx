@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   FileText,
   Hammer,
+  NotebookPen,
   ShieldCheck,
   Stamp,
   Wrench,
@@ -36,14 +37,18 @@ interface ScanTypePickerProps {
   onSelect: (type: ScanType) => void;
   /** Owner sees all types; Schrauber only repair/service/invoice. */
   role?: "owner" | "contributor";
+  /** Optional hint from deep link — still requires an explicit tap. */
+  suggestedType?: ScanType | null;
 }
 
 function ScanTile({
   option,
   onSelect,
+  suggested,
 }: {
   option: ScanTypeDefinition;
   onSelect: (type: ScanType) => void;
+  suggested?: boolean;
 }) {
   const Icon = SCAN_ICONS[option.id];
   return (
@@ -51,14 +56,25 @@ function ScanTile({
       type="button"
       variant="button"
       onClick={() => onSelect(option.id)}
-      className="flex w-full items-start gap-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 text-left shadow-[var(--vd-shadow-sm)]"
+      className={`flex w-full items-start gap-3 rounded-[1.35rem] border p-4 text-left shadow-[var(--vd-shadow-sm)] ${
+        suggested
+          ? "border-neutral-900 bg-[color:var(--vd-surface)] ring-2 ring-neutral-900/15"
+          : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]"
+      }`}
     >
       <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white">
         <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-          {option.title}
+        <span className="flex items-center gap-2">
+          <span className="block font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+            {option.title}
+          </span>
+          {suggested ? (
+            <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-white">
+              Vorschlag
+            </span>
+          ) : null}
         </span>
         <span className="mt-0.5 block text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
           {option.description}
@@ -66,6 +82,11 @@ function ScanTile({
       </span>
     </PressableButton>
   );
+}
+
+function manualEntryHrefFromBack(backHref: string): string {
+  const match = backHref.match(/^(\/v\/[^/?#]+)/);
+  return match ? `${match[1]}/eintrag` : "/";
 }
 
 /**
@@ -77,6 +98,7 @@ export function ScanTypePicker({
   onBack,
   onSelect,
   role = "owner",
+  suggestedType = null,
 }: ScanTypePickerProps) {
   const options =
     role === "owner" ? SCAN_TYPE_OPTIONS : scanTypeOptionsForRole(role);
@@ -119,16 +141,39 @@ export function ScanTypePicker({
           </h1>
           <p className="text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
             {role === "contributor"
-              ? `Trage Reparatur, Service oder Rechnung für ${vehicleLabel} ein.`
-              : `Wähle den Dokumenttyp — die Extraktion nutzt dann genau die passenden Felder für ${vehicleLabel}.`}
+              ? `Vor jedem Scan: Wähle Reparatur, Service oder Rechnung für ${vehicleLabel}.`
+              : `Vor jedem Scan: Wähle den Dokumenttyp — die Extraktion nutzt dann die passenden Felder für ${vehicleLabel}.`}
           </p>
         </header>
 
         <div className="grid gap-3">
           {options.map((option) => (
-            <ScanTile key={option.id} option={option} onSelect={onSelect} />
+            <ScanTile
+              key={option.id}
+              option={option}
+              onSelect={onSelect}
+              suggested={suggestedType === option.id}
+            />
           ))}
         </div>
+
+        <PressableLink
+          href={manualEntryHrefFromBack(backHref)}
+          variant="button"
+          className="flex w-full items-start gap-3 rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/80 p-4 text-left"
+        >
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[color:var(--vd-border)] bg-white text-[color:var(--vd-text)]">
+            <NotebookPen className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+              Ohne Beleg eintragen
+            </span>
+            <span className="mt-0.5 block text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
+              Eigene Wartung oder Tuning notieren
+            </span>
+          </span>
+        </PressableLink>
       </div>
     </div>
   );

@@ -35,8 +35,9 @@ export function isHttpsDeployment(): boolean {
 }
 
 /**
- * Build a production-leaning CSP. `'unsafe-inline'` is required for Next.js
- * inline bootstrapping / styled-jsx until a nonce pipeline is wired.
+ * Build a production-leaning CSP.
+ * `'unsafe-inline'` remains for Next.js bootstrap / CSS-in-JS until a nonce
+ * pipeline exists. `'unsafe-eval'` is intentionally omitted.
  */
 export function buildContentSecurityPolicy(): string {
   const supabase = supabaseHosts();
@@ -51,7 +52,8 @@ export function buildContentSecurityPolicy(): string {
   const directives: string[] = [
     "default-src 'self'",
     // Next.js hydration still relies on inline script in many setups.
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self' 'unsafe-inline'",
+    "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
     `img-src ${img}`,
     "font-src 'self' data:",

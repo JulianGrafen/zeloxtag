@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { User } from "@supabase/supabase-js";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import {
@@ -8,7 +9,6 @@ import {
   type RateLimitResult,
 } from "@/lib/security/rate-limit";
 import { getSupabaseEnv } from "@/lib/supabase/env";
-import type { User } from "@supabase/supabase-js";
 
 type RateBucket = keyof typeof RATE_LIMITS;
 
@@ -30,20 +30,68 @@ export function rateLimitResponse(result: RateLimitResult): NextResponse {
   );
 }
 
-export function enforceRateLimit(
+export async function enforceRateLimit(
   request: NextRequest,
   bucket: RateBucket,
   scope: string,
-): NextResponse | null {
+): Promise<NextResponse | null> {
   const ip = clientIpFromHeaders(request.headers);
   const cfg = RATE_LIMITS[bucket];
-  const result = rateLimit({
+  const result = await rateLimit({
     key: `${bucket}:${scope}:${ip}`,
     limit: cfg.limit,
     windowMs: cfg.windowMs,
   });
   if (!result.ok) return rateLimitResponse(result);
   return null;
+}
+
+/**
+ * CSRF defense-in-depth for browser-initiated mutating API routes.
+ * Allows missing Origin for same-site non-browser clients only when
+ * Sec-Fetch-Site is `same-origin` / `none` or Host matches.
+ */
+export function enforceSameOrigin(
+  request: NextRequest,
+): NextResponse | null {
+  const method = request.method.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+    return null;
+  }
+
+  const origin = request.headers.get("origin");
+  const allowed = new Set<string>();
+  allowed.add(request.nextUrl.origin);
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  if (site) {
+    try {
+      allowed.add(new URL(site).origin);
+    } catch {
+      /* ignore bad SITE_URL */
+    }
+  }
+
+  if (origin) {
+    if (!allowed.has(origin)) {
+      return NextResponse.json(
+        { ok: false, error: "Origin not allowed.", code: "forbidden_origin" },
+        { status: 403 },
+      );
+    }
+    return null;
+  }
+
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (fetchSite === "same-origin" || fetchSite === "none") {
+    return null;
+  }
+
+  // No Origin and not clearly same-origin — reject mutating calls.
+  return NextResponse.json(
+    { ok: false, error: "Origin required.", code: "forbidden_origin" },
+    { status: 403 },
+  );
 }
 
 export type ApiAuthResult =

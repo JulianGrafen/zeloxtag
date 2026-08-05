@@ -55,17 +55,15 @@ export function TagDashboardShell({
       ? parsedInitial
       : null;
 
+  // Always ask for document type before capture — never skip via `?type=`.
   const [mode, setMode] = useState<DashboardMode>(() => {
     if (!canWrite) return "dashboard";
-    if (allowedInitial) return "scanner";
     if (initialMode === "pick-scan" || initialMode === "scanner") {
       return "pick-scan";
     }
     return "dashboard";
   });
-  const [scanType, setScanType] = useState<ScanType | null>(
-    canWrite ? allowedInitial : null,
-  );
+  const [scanType, setScanType] = useState<ScanType | null>(null);
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
 
   if (!canWrite) {
@@ -78,6 +76,7 @@ export function TagDashboardShell({
         vehicleLabel={vehicleLabel}
         backHref={`/v/${tagUuid}`}
         role={role}
+        suggestedType={allowedInitial}
         onBack={() => {
           setScanType(null);
           setMode("dashboard");

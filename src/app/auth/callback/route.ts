@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { completePendingClaimForUser } from "@/actions/claim-tag";
 import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
 import { enforceRateLimit } from "@/lib/security/api-guard";
+import { hardenCookieOptions } from "@/lib/security/cookie-options";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createRouteHandlerClient } from "@/lib/supabase/route";
 
@@ -27,7 +28,7 @@ function mapAuthCallbackError(message: string): string {
  * verifier and new session cookies travel with the redirect.
  */
 export async function GET(request: NextRequest) {
-  const limited = enforceRateLimit(request, "auth", "auth-callback");
+  const limited = await enforceRateLimit(request, "auth", "auth-callback");
   if (limited) {
     return NextResponse.redirect(new URL("/login?error=rate_limited", request.nextUrl.origin));
   }
@@ -64,7 +65,8 @@ export async function GET(request: NextRequest) {
 
   const copyCookies = (target: NextResponse) => {
     response.cookies.getAll().forEach((cookie) => {
-      target.cookies.set(cookie);
+      const { name, value, ...options } = cookie;
+      target.cookies.set(name, value, hardenCookieOptions(options));
     });
     return target;
   };

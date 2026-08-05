@@ -6,7 +6,11 @@ import { extractInvoiceFromImage, OcrExtractionError } from "@/lib/ocr/extract-i
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { OcrPersistError, persistOcrInvoice } from "@/lib/ocr/persist-invoice";
 import type { OcrApiError, OcrApiSuccess } from "@/lib/ocr/types";
-import { enforceRateLimit, requireApiUser } from "@/lib/security/api-guard";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  requireApiUser,
+} from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
@@ -47,7 +51,9 @@ function jsonError(
  */
 export async function POST(request: NextRequest) {
   try {
-    const limited = enforceRateLimit(request, "ocr", "vision");
+    const originBlocked = enforceSameOrigin(request);
+    if (originBlocked) return originBlocked;
+    const limited = await enforceRateLimit(request, "ocr", "vision");
     if (limited) return limited;
 
     const { isConfigured } = getSupabaseEnv();

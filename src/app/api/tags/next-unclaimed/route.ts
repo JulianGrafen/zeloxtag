@@ -26,7 +26,7 @@ type NextUnclaimedErr = {
  * Pass `?mint=1` to always create a new plaque UUID.
  */
 export async function GET(request: NextRequest) {
-  const limited = enforceRateLimit(request, "auth", "next-unclaimed");
+  const limited = await enforceRateLimit(request, "auth", "next-unclaimed");
   if (limited) return limited;
 
   const operator = await requireOperator();

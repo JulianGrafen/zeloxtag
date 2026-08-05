@@ -10,6 +10,7 @@ import {
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ const UUID_RE =
  * Guests / foreign accounts never receive PDF bytes via QR UUID.
  */
 export async function GET(request: NextRequest) {
-  const limited = enforceRateLimit(request, "apiDefault", "documents-file");
+  const limited = await enforceRateLimit(request, "apiDefault", "documents-file");
   if (limited) return limited;
 
   const parsed = querySchema.safeParse({
@@ -76,12 +77,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
     }
 
-    const admin = createAdminClient();
-    const allowed = await authorizeDocumentRead(admin, vehicleId, storagePath);
+    // AuthZ via user session + RLS; Storage download may still need service
+    // role for Schrauber (bucket policies are owner-only).
+    const allowed = await authorizeDocumentRead(vehicleId, storagePath);
     if (!allowed) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const admin = createAdminClient();
     const { data, error } = await admin.storage
       .from(DOCUMENT_BUCKET)
       .download(storagePath);
@@ -122,23 +125,25 @@ function documentIdFromStoragePath(storagePath: string): string | null {
 }
 
 async function authorizeDocumentRead(
-  admin: ReturnType<typeof createAdminClient>,
   vehicleId: string,
   storagePath: string,
 ): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;
 
-  const { data: vehicle } = await admin
+  const supabase = await createClient();
+
+  const { data: ownedVehicle } = await supabase
     .from("vehicles")
-    .select("id")
+    .select("id, user_id")
     .eq("id", vehicleId)
-    .eq("user_id", user.id)
     .maybeSingle();
 
-  if (vehicle) return true;
+  if (!ownedVehicle) return false;
 
-  const { data: grant } = await admin
+  if (ownedVehicle.user_id === user.id) return true;
+
+  const { data: grant } = await supabase
     .from("vehicle_contributors")
     .select("id")
     .eq("vehicle_id", vehicleId)
@@ -151,9 +156,10 @@ async function authorizeDocumentRead(
   const documentId = documentIdFromStoragePath(storagePath);
   if (!documentId) return false;
 
-  const { data: document } = await admin
+  // Contributor SELECT policy is invoice-only — RLS enforces the type filter.
+  const { data: document } = await supabase
     .from("documents")
-    .select("id, type")
+    .select("id")
     .eq("id", documentId)
     .eq("vehicle_id", vehicleId)
     .eq("type", "invoice")

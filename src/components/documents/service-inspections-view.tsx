@@ -13,6 +13,7 @@ import {
 
 import { deleteDocument } from "@/actions/delete-document";
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
+import { ScanTypePicker } from "@/components/documents/scan-type-picker";
 import {
   PressableButton,
   PressableLink,
@@ -23,6 +24,10 @@ import {
   formatDocumentDate,
 } from "@/lib/documents/format";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
+import {
+  scanTypeDefinition,
+  type ScanType,
+} from "@/lib/documents/scan-types";
 import type { Document } from "@/types/database";
 
 interface ServiceInspectionsViewProps {
@@ -30,9 +35,11 @@ interface ServiceInspectionsViewProps {
   vehicleId: string;
   vehicleLabel: string;
   documents: Document[];
-  /** Open scanner immediately. */
+  /** Open type picker immediately. */
   initialScan?: boolean;
 }
+
+type ServiceScanMode = "list" | "pick-scan" | "scanner";
 
 export function ServiceInspectionsView({
   tagUuid,
@@ -42,14 +49,36 @@ export function ServiceInspectionsView({
   initialScan = false,
 }: ServiceInspectionsViewProps) {
   const router = useRouter();
-  const [scanning, setScanning] = useState(initialScan);
+  const [mode, setMode] = useState<ServiceScanMode>(
+    initialScan ? "pick-scan" : "list",
+  );
+  const [scanType, setScanType] = useState<ScanType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const inspections = filterServiceInspectionDocuments(documents);
 
-  if (scanning) {
+  if (mode === "pick-scan" || (mode === "scanner" && !scanType)) {
+    return (
+      <ScanTypePicker
+        vehicleLabel={vehicleLabel}
+        backHref={`/v/${tagUuid}/service`}
+        suggestedType="service"
+        onBack={() => {
+          setScanType(null);
+          setMode("list");
+        }}
+        onSelect={(type) => {
+          setScanType(type);
+          setMode("scanner");
+        }}
+      />
+    );
+  }
+
+  if (mode === "scanner" && scanType) {
+    const def = scanTypeDefinition(scanType);
     return (
       <InvoiceUploader
         vehicleId={vehicleId}
@@ -57,9 +86,15 @@ export function ServiceInspectionsView({
         vehicleLabel={vehicleLabel}
         backHref={`/v/${tagUuid}/service`}
         backLabel="Service & Wartung"
-        onBack={() => setScanning(false)}
-        scanType="service"
-        successHref={`/v/${tagUuid}/service`}
+        onBack={() => {
+          setMode("pick-scan");
+        }}
+        scanType={scanType}
+        successHref={
+          scanType === "service"
+            ? `/v/${tagUuid}/service`
+            : `/v/${tagUuid}/dokumente?type=${def.successTypeQuery}`
+        }
       />
     );
   }
@@ -193,7 +228,10 @@ export function ServiceInspectionsView({
           <PressableButton
             type="button"
             variant="button"
-            onClick={() => setScanning(true)}
+            onClick={() => {
+              setScanType(null);
+              setMode("pick-scan");
+            }}
             className="claim-cta inline-flex w-full items-center justify-center gap-2"
           >
             <Plus className="h-4 w-4" aria-hidden />

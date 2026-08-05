@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { AppShell } from "@/components/layout/app-shell";
 import { DocumentUploadForm } from "@/components/documents/document-upload-form";
-import { InvoiceScannerForm } from "@/components/documents/invoice-scanner-form";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
 import type { DocumentType } from "@/types/database";
 
@@ -31,9 +29,14 @@ export default async function UploadDocumentPage({
     redirect(`/v/${uuid}?scan=1&type=repair`);
   }
 
-  // Default scanner lives on the dashboard — keep legacy modes for manual/perspective.
-  if (!mode) {
-    redirect(`/v/${uuid}?scan=1`);
+  // Camera / OCR scans always go through the type picker on the dashboard.
+  if (!mode || mode === "scan") {
+    const suggested =
+      typeRaw && VALID_TYPES.has(typeRaw as DocumentType) ? typeRaw : null;
+    const qs = suggested
+      ? `?scan=1&type=${encodeURIComponent(suggested)}`
+      : "?scan=1";
+    redirect(`/v/${uuid}${qs}`);
   }
 
   const defaultType =
@@ -43,33 +46,16 @@ export default async function UploadDocumentPage({
 
   const vehicle = result.vehicle!;
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
-  const useManual = mode === "manual";
-  const usePerspectiveScan = mode === "scan";
 
+  // Manual upload still asks for type inside DocumentUploadForm.
   return (
     <AppShell showNavbar={false}>
-      {useManual ? (
-        <DocumentUploadForm
-          vehicleId={vehicle.id}
-          tagUuid={result.tag.uuid}
-          vehicleLabel={vehicleLabel}
-          defaultType={defaultType}
-        />
-      ) : usePerspectiveScan ? (
-        <InvoiceScannerForm
-          vehicleId={vehicle.id}
-          tagUuid={result.tag.uuid}
-          vehicleLabel={vehicleLabel}
-        />
-      ) : (
-        <InvoiceUploader
-          vehicleId={vehicle.id}
-          tagUuid={result.tag.uuid}
-          vehicleLabel={vehicleLabel}
-          backHref={`/v/${uuid}`}
-          backLabel="Dashboard"
-        />
-      )}
+      <DocumentUploadForm
+        vehicleId={vehicle.id}
+        tagUuid={result.tag.uuid}
+        vehicleLabel={vehicleLabel}
+        defaultType={defaultType}
+      />
     </AppShell>
   );
 }

@@ -6,6 +6,7 @@ import {
   filterOilChangeDocuments,
   latestOilChangeIsoDate,
 } from "@/lib/documents/oil-changes";
+import { filterManualVehicleEntries } from "@/lib/documents/manual-entries";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
 import { deriveNextInspectionFromDocuments } from "@/lib/documents/tuev-schedule";
 import { resolveVehicleImage } from "@/lib/vehicles/vehicle-image";
@@ -47,6 +48,7 @@ export function TagDashboardView({
   const abeCount = documents.filter((doc) => doc.type === "abe").length;
   const tuevCount = documents.filter((doc) => doc.type === "tuev").length;
   const serviceCount = filterServiceInspectionDocuments(documents).length;
+  const manualEntryCount = filterManualVehicleEntries(documents).length;
   const oilChangeCount = filterOilChangeDocuments(documents).length;
   const lastOilChange = latestOilChangeIsoDate(documents);
   const shortTag = tagUuid.length > 12 ? `${tagUuid.slice(0, 12)}…` : tagUuid;
@@ -126,6 +128,21 @@ export function TagDashboardView({
       };
     }
 
+    if (tile.id === "tuning-history") {
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: `/v/${tagUuid}/eintrag`,
+          subtitle:
+            manualEntryCount > 0
+              ? `${manualEntryCount} eigene Einträge`
+              : "Wartung oder Tuning notieren",
+          badge: manualEntryCount > 0 ? String(manualEntryCount) : undefined,
+        },
+      };
+    }
+
     if (tile.id === "oil-change") {
       return {
         ...tile,
@@ -185,7 +202,8 @@ export function TagDashboardView({
       return (
         tile.id === "invoices" ||
         tile.id === "service" ||
-        tile.id === "oil-change"
+        tile.id === "oil-change" ||
+        tile.id === "tuning-history"
       );
     }
     return true;

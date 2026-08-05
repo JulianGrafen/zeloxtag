@@ -2,9 +2,12 @@
 
 import { useEffect, useState, useTransition } from "react";
 
+import { MfaRecoveryCodesPanel } from "@/components/auth/mfa-recovery-codes-panel";
 import {
   enrollTotp,
+  getMfaRecoveryStatus,
   listMfaFactors,
+  regenerateMfaRecoveryCodes,
   unenrollTotp,
   verifyTotpEnrollment,
 } from "@/lib/auth/mfa-actions";
@@ -18,21 +21,31 @@ export function MfaSetupPanel() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [code, setCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [unusedRecoveryCount, setUnusedRecoveryCount] = useState<number | null>(
+    null,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const refreshFactors = () => {
+  const refreshStatus = () => {
     startTransition(async () => {
-      const result = await listMfaFactors();
-      if (result.status === "factors") {
-        setFactors(result.factors);
+      const [factorsResult, recoveryResult] = await Promise.all([
+        listMfaFactors(),
+        getMfaRecoveryStatus(),
+      ]);
+      if (factorsResult.status === "factors") {
+        setFactors(factorsResult.factors);
+      }
+      if (recoveryResult.status === "recovery_status") {
+        setUnusedRecoveryCount(recoveryResult.unusedCount);
       }
     });
   };
 
   useEffect(() => {
-    refreshFactors();
+    refreshStatus();
   }, []);
 
   return (
@@ -44,7 +57,8 @@ export function MfaSetupPanel() {
         <p className="mt-2 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
           Optional: Schütze dein Konto mit einem Authenticator (Google Authenticator,
           1Password, Authy, …). Nach der Aktivierung brauchst du bei jedem Login
-          zusätzlich einen 6-stelligen Code.
+          zusätzlich einen 6-stelligen Code — oder einen Recovery-Code, falls die
+          App verloren geht.
         </p>
 
         {factors.length > 0 ? (
@@ -68,7 +82,8 @@ export function MfaSetupPanel() {
                       const result = await unenrollTotp(factor.id);
                       if (result.status === "ok") {
                         setMessage(result.message ?? "Entfernt.");
-                        refreshFactors();
+                        setRecoveryCodes(null);
+                        refreshStatus();
                         return;
                       }
                       setError(
@@ -90,6 +105,41 @@ export function MfaSetupPanel() {
             2FA ist noch nicht aktiviert.
           </p>
         )}
+
+        {factors.length > 0 && unusedRecoveryCount !== null ? (
+          <div className="mt-4 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-3">
+            <p className="text-[0.82rem] text-[color:var(--vd-text)]">
+              Recovery-Codes übrig:{" "}
+              <span className="font-semibold">{unusedRecoveryCount}</span>
+            </p>
+            <PressableButton
+              type="button"
+              variant="button"
+              disabled={pending}
+              className="mt-2 inline-flex rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]"
+              onClick={() => {
+                setError(null);
+                setMessage(null);
+                startTransition(async () => {
+                  const result = await regenerateMfaRecoveryCodes();
+                  if (result.status === "ok" && result.recoveryCodes) {
+                    setRecoveryCodes(result.recoveryCodes);
+                    setMessage(result.message ?? "Neue Codes erzeugt.");
+                    refreshStatus();
+                    return;
+                  }
+                  setError(
+                    result.status === "error"
+                      ? result.message
+                      : "Erneuern fehlgeschlagen.",
+                  );
+                });
+              }}
+            >
+              Neue Recovery-Codes erzeugen
+            </PressableButton>
+          </div>
+        ) : null}
 
         {!qrCode ? (
           <PressableButton
@@ -114,7 +164,7 @@ export function MfaSetupPanel() {
             }}
             className="mt-4 inline-flex rounded-2xl bg-neutral-900 px-4 py-3 text-[0.85rem] font-semibold text-white"
           >
-            2FA aktivieren
+            {factors.length > 0 ? "Weiteren Authenticator hinzufügen" : "2FA aktivieren"}
           </PressableButton>
         ) : null}
       </div>
@@ -147,7 +197,10 @@ export function MfaSetupPanel() {
                   setSecret(null);
                   setFactorId(null);
                   setCode("");
-                  refreshFactors();
+                  if (result.recoveryCodes?.length) {
+                    setRecoveryCodes(result.recoveryCodes);
+                  }
+                  refreshStatus();
                   return;
                 }
                 setError(
@@ -179,6 +232,13 @@ export function MfaSetupPanel() {
             </PressableButton>
           </form>
         </div>
+      ) : null}
+
+      {recoveryCodes ? (
+        <MfaRecoveryCodesPanel
+          codes={recoveryCodes}
+          onDismiss={() => setRecoveryCodes(null)}
+        />
       ) : null}
 
       {message ? (

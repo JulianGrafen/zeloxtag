@@ -44,7 +44,7 @@ export function DocumentUploadForm({
     <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
       <header className="vd-anim-header space-y-4">
         <PressableLink
-          href={`/v/${tagUuid}/hochladen`}
+          href={`/v/${tagUuid}?scan=1`}
           variant="pill"
           className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
         >
