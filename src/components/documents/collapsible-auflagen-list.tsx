@@ -4,12 +4,16 @@ import { ChevronDown } from "lucide-react";
 
 import {
   groupTeilegutachtenAuflagen,
+  isIvStructuredAuflagen,
   splitAuflageHeading,
 } from "@/lib/validations/teilegutachten-auflagen";
 
 function summarizeAuflagen(conditions: string[]): string {
   const grouped = groupTeilegutachtenAuflagen(conditions);
   if (grouped.length === 0) return "Keine Auflagen";
+  if (isIvStructuredAuflagen(grouped)) {
+    return `IV. Hinweise und Auflagen · ${grouped.length} Abschnitte`;
+  }
   if (grouped.length === 1) {
     const { heading } = splitAuflageHeading(grouped[0] ?? "");
     if (heading) return heading;
@@ -22,6 +26,14 @@ type CollapsibleAuflagenListProps = {
   conditions: string[];
   defaultOpen?: boolean;
 };
+
+function AuflageBody({ text }: { text: string }) {
+  return (
+    <p className="whitespace-pre-wrap text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]">
+      {text}
+    </p>
+  );
+}
 
 /**
  * Compact, expandable Auflagen list — default collapsed for long TGA boilerplate.
@@ -40,6 +52,8 @@ export function CollapsibleAuflagenList({
     );
   }
 
+  const ivStructured = isIvStructuredAuflagen(grouped);
+
   return (
     <details
       open={defaultOpen}
@@ -52,33 +66,55 @@ export function CollapsibleAuflagenList({
           aria-hidden
         />
       </summary>
-      <ol className="space-y-3 border-t border-[color:var(--vd-border)] px-3 py-3">
-        {grouped.map((condition, index) => {
-          const { heading, body } = splitAuflageHeading(condition);
-          return (
-            <li
-              key={`${index}-${condition.slice(0, 48)}`}
-              className="flex gap-3 rounded-xl bg-[color:var(--vd-surface)] p-3 text-[0.88rem]"
-            >
-              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[0.7rem] font-semibold text-white">
-                {index + 1}
-              </span>
-              <div className="min-w-0 pt-0.5 leading-relaxed text-[color:var(--vd-text)]">
-                {heading ? (
-                  <p className="font-semibold tracking-[-0.02em]">{heading}</p>
-                ) : null}
-                <p
-                  className={
-                    heading ? "mt-1 whitespace-pre-wrap" : "whitespace-pre-wrap"
-                  }
-                >
-                  {heading ? body : condition}
-                </p>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+
+      {ivStructured ? (
+        <div className="space-y-2 border-t border-[color:var(--vd-border)] px-3 py-3">
+          {grouped.map((condition, index) => {
+            const { heading, body } = splitAuflageHeading(condition);
+            return (
+              <details
+                key={`${index}-${condition.slice(0, 48)}`}
+                className="group/iv rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-[0.84rem] font-medium text-[color:var(--vd-text)] [&::-webkit-details-marker]:hidden">
+                  <span className="min-w-0 text-left">{heading ?? `Abschnitt ${index + 1}`}</span>
+                  <ChevronDown
+                    className="h-3.5 w-3.5 shrink-0 text-[color:var(--vd-muted)] transition-transform group-open/iv:rotate-180"
+                    aria-hidden
+                  />
+                </summary>
+                <div className="border-t border-[color:var(--vd-border)] px-3 py-3">
+                  <AuflageBody text={body || "—"} />
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      ) : (
+        <ol className="space-y-3 border-t border-[color:var(--vd-border)] px-3 py-3">
+          {grouped.map((condition, index) => {
+            const { heading, body } = splitAuflageHeading(condition);
+            return (
+              <li
+                key={`${index}-${condition.slice(0, 48)}`}
+                className="flex gap-3 rounded-xl bg-[color:var(--vd-surface)] p-3 text-[0.88rem]"
+              >
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[0.7rem] font-semibold text-white">
+                  {index + 1}
+                </span>
+                <div className="min-w-0 pt-0.5 leading-relaxed text-[color:var(--vd-text)]">
+                  {heading ? (
+                    <p className="font-semibold tracking-[-0.02em]">{heading}</p>
+                  ) : null}
+                  <div className={heading ? "mt-1" : undefined}>
+                    <AuflageBody text={heading ? body : condition} />
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </details>
   );
 }

@@ -7,6 +7,7 @@ import {
   extractTeilegutachtenAuflagenFromText,
   mergeTeilegutachtenAuflagen,
 } from "@/lib/ocr/teilegutachten-auflagen-from-text";
+import { extractTeilegutachtenCompatibilityTableFromText } from "@/lib/ocr/teilegutachten-compatibility-from-text";
 import {
   extractTeilegutachtenOwnerNotesFromText,
   mergeTeilegutachtenOwnerNotes,
@@ -21,6 +22,7 @@ import {
   TeilegutachtenLlmPayloadSchema,
   type TeilegutachtenExtraction,
 } from "@/lib/validations/teilegutachtenSchema";
+import { mergeTeilegutachtenCompatibilityTables } from "@/lib/validations/teilegutachten-compatibility-table";
 import {
   ABE_CONTEXT_MAX_CHARS,
   resolveAbeContextModel,
@@ -64,13 +66,13 @@ export function buildTeilegutachtenSystemPrompt(
     '- "requiresPhysicalInspection" — always true (TGA mandates Anbauabnahme).',
     "",
     "VERWENDUNGSBEREICH section (critical):",
-    '- "compatibilityTable" — when Verwendungsbereich is tabular, extract ONLY these columns per row:',
-    "  Fahrzeughersteller, Fahrzeugtyp, Handelsbezeichnung.",
-    "  Do NOT include Achslasten, ABE-Nr, Ausführungen, footnotes, or section headings as cells.",
+    '- "compatibilityTable" — copy the Verwendungsbereich table 1:1 from the document.',
+    "  Preserve ALL original column headers and every cell exactly (Ausführungen, Achslasten, ABE-Nr., footnotes, etc.).",
+    "  Do NOT drop columns or summarize cell text.",
     '- "verwendungsbereich" — null when compatibilityTable is filled; otherwise a short plain-text summary.',
-    '- "auflagen" — one array item per section: heading (ends with ":") plus all following paragraphs until the next heading.',
-    "  Example item: \"Berichtigung der Fahrzeugpapiere:\\nDie Berichtigung … zu beantragen.\\nWeitere Festlegungen …\"",
-    "  Do NOT split headings and body into separate array entries.",
+    '- "auflagen" — Section IV / "Hinweise und Auflagen".',
+    "  When subsections IV.1, IV.2, … exist: ONE array item per subsection with heading line plus full verbatim body (keep numbered lists 1., 2., …).",
+    "  Otherwise: ONE array item per colon-heading section with all following paragraphs until the next heading.",
     "  Do NOT include Section III Hinweise here — those belong in ownerNotes.",
     "",
     "OWNER NOTES (critical):",
@@ -111,11 +113,11 @@ export function buildTeilegutachtenSystemPrompt(
     `TARGET VEHICLE CHECK: The user drives a ${target}.${extras ? ` ${extras}.` : ""}`,
     "Scan the 'Verwendungsbereich' (compatibility table) specifically for THIS vehicle.",
     "- If you find a match, set 'userVehicleMatchStatus' to 'verified' and extract the matched row into 'matchedVehicleRow' as 'Hersteller · Typ · Modell'.",
-    "- Fill 'compatibilityTable' with vehicle columns only; set 'verwendungsbereich' to null when the table is present.",
+    "- Fill 'compatibilityTable' with the full Verwendungsbereich table (all columns, verbatim cells); set 'verwendungsbereich' to null when the table is present.",
     "- Extract ALL Auflagen into 'auflagen', especially those applying to the matched vehicle row.",
     "- If you do not find this exact vehicle, set status to 'not_found' but still extract compatibilityTable and auflagen when readable.",
     "- If the table is too complex or unreadable, set status to 'needs_manual_check'.",
-    "When the Verwendungsbereich is tabular, also fill 'compatibilityTable' with headers + rows",
+    "When the Verwendungsbereich is tabular, fill 'compatibilityTable' with all headers + rows verbatim",
     "(isUserVehicleMatch=false, matchReason=null for every row). Otherwise set compatibilityTable to null.",
     "Return ONLY valid JSON matching the schema.",
   ].join(" ");
@@ -221,6 +223,8 @@ export class TeilegutachtenExtractionService {
     const heuristicAuflagen = extractTeilegutachtenAuflagenFromText(markdownText);
     const heuristicOwnerNotes =
       extractTeilegutachtenOwnerNotesFromText(markdownText);
+    const heuristicCompatibilityTable =
+      extractTeilegutachtenCompatibilityTableFromText(markdownText);
     const normalized = normalizeTeilegutachtenExtraction({
       ...parsed.data,
       auflagen: mergeTeilegutachtenAuflagen(
@@ -232,46 +236,55 @@ export class TeilegutachtenExtractionService {
         heuristicOwnerNotes,
       ),
     });
+    const compatibilityTable = mergeTeilegutachtenCompatibilityTables(
+      normalized.compatibilityTable,
+      heuristicCompatibilityTable,
+    );
+    const withCompatibilityTable: TeilegutachtenExtraction = {
+      ...normalized,
+      compatibilityTable,
+      verwendungsbereich: compatibilityTable ? null : normalized.verwendungsbereich,
+    };
 
     if (!withContext) {
       return {
-        ...normalized,
+        ...withCompatibilityTable,
         userVehicleMatchStatus: null,
         matchedVehicleRow: null,
-        compatibilityTable: normalized.compatibilityTable
+        compatibilityTable: withCompatibilityTable.compatibilityTable
           ? tableMatchingService.matchTable(
-              normalized.compatibilityTable,
+              withCompatibilityTable.compatibilityTable,
               null,
             ).table
           : null,
       };
     }
 
-    if (!normalized.compatibilityTable) {
-      return normalized;
+    if (!withCompatibilityTable.compatibilityTable) {
+      return withCompatibilityTable;
     }
 
     const { table: matchedTable, matchedRowIds } =
       tableMatchingService.matchTable(
-        normalized.compatibilityTable,
+        withCompatibilityTable.compatibilityTable,
         vehicleContext,
       );
 
     const matchedRow = matchedTable.rows.find((row) => row.isUserVehicleMatch);
     const shouldPromoteMatch =
       matchedRowIds.length > 0 &&
-      normalized.userVehicleMatchStatus !== "needs_manual_check";
+      withCompatibilityTable.userVehicleMatchStatus !== "needs_manual_check";
 
     return {
-      ...normalized,
+      ...withCompatibilityTable,
       compatibilityTable: matchedTable,
       userVehicleMatchStatus: shouldPromoteMatch
         ? "verified"
-        : normalized.userVehicleMatchStatus,
+        : withCompatibilityTable.userVehicleMatchStatus,
       matchedVehicleRow: shouldPromoteMatch
         ? matchedRow?.cells.filter(Boolean).join(" · ") ||
-          normalized.matchedVehicleRow
-        : normalized.matchedVehicleRow,
+          withCompatibilityTable.matchedVehicleRow
+        : withCompatibilityTable.matchedVehicleRow,
     };
   }
 }

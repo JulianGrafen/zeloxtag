@@ -1,5 +1,18 @@
+export function isIvSubsectionHeading(line: string): boolean {
+  return /^IV\.\d+\.\s+.+/.test(line.trim());
+}
+
+export function isIvMainSectionHeading(line: string): boolean {
+  const trimmed = line.trim();
+  return (
+    /^IV\.\s+(?:Hinweise\s+und\s+)?Auflagen/i.test(trimmed) &&
+    !/^IV\.\d/.test(trimmed)
+  );
+}
+
 export function isAuflageSectionHeading(line: string): boolean {
   const trimmed = line.trim();
+  if (isIvSubsectionHeading(trimmed)) return true;
   if (!trimmed.endsWith(":")) return false;
   if ((trimmed.match(/:/g) ?? []).length !== 1) return false;
 
@@ -26,10 +39,44 @@ export function flattenAuflagenInput(values: string[]): string[] {
 }
 
 /**
- * Merge TGA Auflagen headings (ending with ":") with their following paragraphs.
- * "Berichtigung der Fahrzeugpapiere:" + body → one item, not two list entries.
+ * Parse IV.1–IV.n blocks — preserves numbered list lines verbatim.
  */
-export function groupTeilegutachtenAuflagen(items: string[]): string[] {
+export function parseIvSubsectionsFromSectionBody(sectionBody: string): string[] {
+  const lines = sectionBody.replace(/\r\n/g, "\n").split("\n");
+  const subsections: string[] = [];
+  let currentHeading: string | null = null;
+  const bodyLines: string[] = [];
+
+  const flush = () => {
+    if (!currentHeading) return;
+    const body = bodyLines.join("\n").replace(/\n+$/, "");
+    subsections.push(body ? `${currentHeading}\n${body}` : currentHeading);
+    currentHeading = null;
+    bodyLines.length = 0;
+  };
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      if (currentHeading) bodyLines.push("");
+      continue;
+    }
+    if (isIvSubsectionHeading(trimmed)) {
+      flush();
+      currentHeading = trimmed;
+      continue;
+    }
+    if (isIvMainSectionHeading(trimmed)) continue;
+    if (currentHeading) {
+      bodyLines.push(trimmed);
+    }
+  }
+
+  flush();
+  return subsections;
+}
+
+function groupColonHeadingAuflagen(items: string[]): string[] {
   const lines = flattenAuflagenInput(items);
   if (lines.length === 0) return [];
 
@@ -49,6 +96,12 @@ export function groupTeilegutachtenAuflagen(items: string[]): string[] {
   };
 
   for (const line of lines) {
+    if (isIvSubsectionHeading(line)) {
+      flush();
+      grouped.push(line);
+      continue;
+    }
+
     if (isAuflageSectionHeading(line)) {
       flush();
       currentHeading = line;
@@ -77,6 +130,48 @@ export function groupTeilegutachtenAuflagen(items: string[]): string[] {
   return grouped;
 }
 
+/**
+ * Merge TGA Auflagen headings (ending with ":") with their following paragraphs.
+ * "Berichtigung der Fahrzeugpapiere:" + body → one item, not two list entries.
+ */
+export function groupTeilegutachtenAuflagen(items: string[]): string[] {
+  if (items.length === 0) return [];
+
+  const joined = items.join("\n");
+  if (/^IV\.\d+\./m.test(joined)) {
+    const parsed = parseIvSubsectionsFromSectionBody(joined);
+    if (parsed.length > 0) return parsed;
+  }
+
+  const ivBlocks = items.filter((item) => {
+    const firstLine = item.trim().split("\n")[0] ?? "";
+    return isIvSubsectionHeading(firstLine);
+  });
+  if (ivBlocks.length > 0) {
+    const other = items.filter((item) => {
+      const firstLine = item.trim().split("\n")[0] ?? "";
+      return !isIvSubsectionHeading(firstLine);
+    });
+    return [
+      ...ivBlocks,
+      ...(other.length > 0 ? groupColonHeadingAuflagen(other) : []),
+    ];
+  }
+
+  return groupColonHeadingAuflagen(items);
+}
+
+export function isIvStructuredAuflagen(items: string[]): boolean {
+  const grouped = groupTeilegutachtenAuflagen(items);
+  return (
+    grouped.length > 0 &&
+    grouped.every((item) => {
+      const firstLine = item.trim().split("\n")[0] ?? "";
+      return isIvSubsectionHeading(firstLine);
+    })
+  );
+}
+
 export function splitAuflageHeading(text: string): {
   heading: string | null;
   body: string;
@@ -85,6 +180,9 @@ export function splitAuflageHeading(text: string): {
   if (firstLineBreak >= 0) {
     const firstLine = text.slice(0, firstLineBreak).trim();
     const rest = text.slice(firstLineBreak + 1).trim();
+    if (isIvSubsectionHeading(firstLine)) {
+      return { heading: firstLine, body: rest };
+    }
     if (isAuflageSectionHeading(firstLine)) {
       return {
         heading: firstLine.slice(0, -1).trim(),

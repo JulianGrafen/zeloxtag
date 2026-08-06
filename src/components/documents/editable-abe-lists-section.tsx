@@ -5,6 +5,7 @@ import { Pencil, ShieldCheck } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import { CollapsibleAuflagenList } from "@/components/documents/collapsible-auflagen-list";
+import { isIvStructuredAuflagen } from "@/lib/validations/teilegutachten-auflagen";
 import { VerwendungsbereichTable } from "@/components/documents/verwendungsbereich-table";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { TableData } from "@/lib/validations/abeSchema";
@@ -233,7 +234,9 @@ export function EditableAbeListsSection({
 
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
         <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          Auflagen
+          {isIvStructuredAuflagen(displayConditions)
+            ? "Hinweise und Auflagen (IV.)"
+            : "Auflagen"}
         </h2>
         {editing ? (
           <textarea

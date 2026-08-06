@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   FileText,
@@ -139,6 +140,22 @@ export function DocumentAbeDetailView({
             </span>
           </div>
         </header>
+
+        {isTeilegutachten ? (
+          <div
+            role="note"
+            className="flex gap-2.5 rounded-[1.35rem] border border-amber-300/70 bg-amber-50 px-4 py-3.5 text-[0.84rem] leading-relaxed text-amber-950 shadow-[var(--vd-shadow-sm)]"
+          >
+            <AlertTriangle
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-800"
+              aria-hidden
+            />
+            <p>
+              Teilegutachten allein nicht straßenverkehrsrechtlich gültig —
+              Anbauabnahme erforderlich
+            </p>
+          </div>
+        ) : null}
 
         <ApprovalFieldsSection approvalFields={document.approval_fields} />
 

@@ -782,7 +782,7 @@ export function InvoiceUploader({
     <section
       className={[
         "mx-auto flex w-full flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
-        isAbeReview || isEinzelabnahmeReview ? "max-w-5xl" : "max-w-lg",
+        isAbeReview || isEinzelabnahmeReview || isTeilegutachtenReview ? "max-w-5xl" : "max-w-lg",
       ].join(" ")}
     >
       <header className="vd-anim-header space-y-4">

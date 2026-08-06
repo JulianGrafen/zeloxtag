@@ -8,7 +8,7 @@ type VerwendungsbereichTableProps = {
 };
 
 /**
- * Read-only Verwendungsbereich / Fahrzeugfreigaben table (Hersteller · Typ · Modell).
+ * Read-only Verwendungsbereich / Fahrzeugfreigaben table (verbatim document copy).
  */
 export function VerwendungsbereichTable({
   table,
@@ -57,7 +57,7 @@ export function VerwendungsbereichTable({
                 {row.cells.map((cell, index) => (
                   <td
                     key={`${row.id}-${index}`}
-                    className="px-3 py-2.5 align-top leading-relaxed text-[color:var(--vd-text)]"
+                    className="px-3 py-2.5 align-top whitespace-pre-wrap leading-relaxed text-[color:var(--vd-text)]"
                   >
                     {cell.trim() || "—"}
                   </td>

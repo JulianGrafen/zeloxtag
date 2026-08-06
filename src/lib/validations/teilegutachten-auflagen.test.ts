@@ -55,6 +55,32 @@ describe("groupTeilegutachtenAuflagen", () => {
     expect(grouped[3]).toContain("Berichtigung der Fahrzeugpapiere:");
     expect(grouped[3]).toContain("Weitere Festlegungen sind");
   });
+
+  it("preserves IV.1–IV.n subsections with numbered lists verbatim", () => {
+    const body = `
+IV.1. Auflagen für den Hersteller / Einbaubetrieb:
+1. Die Scheinwerfereinstellung ist zu überprüfen.
+2. Die Federn müssen beim völligen Ausfedern des Fahrzeugs in axialer Richtung
+ spielfrei sein.
+IV.2. Hinweise und Auflagen zum Anbau: ./.
+IV.3. Hinweise und Auflagen für die Änderungsabnahme:
+1. Siehe IV.1.
+2. Die zulässige Hinterachslast ist auf 730 kg zu begrenzen.
+IV.4. Hinweise und Auflagen für den Fahrzeughalter:
+1. Die Verwendbarkeit von Schneeketten wurde nicht geprüft.
+2. Die verminderte Bodenfreiheit ist zu beachten.
+    `.trim();
+
+    const grouped = groupTeilegutachtenAuflagen([body]);
+
+    expect(grouped).toHaveLength(4);
+    expect(grouped[0]).toContain("IV.1.");
+    expect(grouped[0]).toContain("1. Die Scheinwerfereinstellung");
+    expect(grouped[0]).toContain("2. Die Federn müssen");
+    expect(grouped[1]).toContain("IV.2.");
+    expect(grouped[1]).toContain("./.");
+    expect(grouped[3]).toContain("Schneeketten");
+  });
 });
 
 describe("splitAuflageHeading", () => {

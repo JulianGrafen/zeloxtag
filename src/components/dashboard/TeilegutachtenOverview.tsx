@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { VerwendungsbereichTable } from "@/components/documents/verwendungsbereich-table";
+import { CollapsibleAuflagenList } from "@/components/documents/collapsible-auflagen-list";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import type {
   AbeUserVehicleMatchStatus,
@@ -451,14 +452,17 @@ export function TeilegutachtenOverview({
               className="claim-input min-h-[7rem] w-full resize-y text-[0.84rem] leading-relaxed whitespace-pre-wrap"
             />
           </Field>
-          <Field label="Auflagen">
-            <details className="group rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]">
+          <Field label="Hinweise und Auflagen (IV.)">
+            {review.auflagen?.length ? (
+              <CollapsibleAuflagenList conditions={review.auflagen} />
+            ) : (
+              <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
+                Keine Auflagen erkannt — siehe Original-PDF.
+              </p>
+            )}
+            <details className="group mt-3 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-[0.84rem] font-medium text-[color:var(--vd-text)] [&::-webkit-details-marker]:hidden">
-                <span>
-                  {review.auflagen?.length
-                    ? `${review.auflagen.length} Auflagen · bearbeiten`
-                    : "Auflagen bearbeiten"}
-                </span>
+                <span>Auflagen bearbeiten</span>
               </summary>
               <div className="border-t border-[color:var(--vd-border)] p-3">
                 <textarea
@@ -466,9 +470,9 @@ export function TeilegutachtenOverview({
                   onChange={(event) =>
                     patch("auflagen", parseAuflagenFromEdit(event.target.value))
                   }
-                  placeholder={"Unverzügliche Änderungsabnahme: …\nMitführen von Dokumenten: …"}
-                  rows={6}
-                  className="claim-input min-h-[7rem] w-full resize-y text-[0.84rem] leading-relaxed"
+                  placeholder={"IV.1. Auflagen für den Hersteller / Einbaubetrieb:\n1. …"}
+                  rows={8}
+                  className="claim-input min-h-[8rem] w-full resize-y text-[0.84rem] leading-relaxed whitespace-pre-wrap"
                 />
               </div>
             </details>

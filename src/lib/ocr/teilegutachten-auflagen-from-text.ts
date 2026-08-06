@@ -1,6 +1,8 @@
 import {
   groupTeilegutachtenAuflagen,
   isAuflageSectionHeading,
+  isIvStructuredAuflagen,
+  parseIvSubsectionsFromSectionBody,
 } from "@/lib/validations/teilegutachten-auflagen";
 import { TEILEGUTACHTEN_AUFLAGEN_MAX_LENGTH } from "@/lib/validations/teilegutachtenSchema";
 
@@ -66,6 +68,13 @@ function extractFromRomanSections(text: string): string[] {
     if (body.length >= 8) sections.push(body);
   }
 
+  for (const section of sections) {
+    if (/^IV\.\d+\./m.test(section)) {
+      const subsections = parseIvSubsectionsFromSectionBody(section);
+      if (subsections.length > 0) return subsections;
+    }
+  }
+
   return sections.flatMap((section) => linesFromSection(section));
 }
 
@@ -103,8 +112,14 @@ export function extractTeilegutachtenAuflagenFromText(
   const text = rawText.replace(/\r\n/g, "\n").trim();
   if (text.length < 8) return null;
 
+  const fromRoman = extractFromRomanSections(text);
+  if (fromRoman.some((item) => /^IV\.\d+\./.test(item.trim()))) {
+    const grouped = dedupeAuflagen(fromRoman);
+    return grouped.length > 0 ? grouped.slice(0, 40) : null;
+  }
+
   const rawLines = [
-    ...extractFromRomanSections(text),
+    ...fromRoman,
     ...extractFromInlineAuflagen(text),
     ...extractFromColonHeadings(text),
   ];
@@ -122,9 +137,13 @@ export function mergeTeilegutachtenAuflagen(
 ): string[] | null {
   if (!primary?.length && !fallback?.length) return null;
 
-  const grouped = dedupeAuflagen(
-    groupTeilegutachtenAuflagen([...(primary ?? []), ...(fallback ?? [])]),
-  );
+  const merged = [...(primary ?? []), ...(fallback ?? [])];
+  if (isIvStructuredAuflagen(merged)) {
+    const grouped = dedupeAuflagen(groupTeilegutachtenAuflagen(merged));
+    return grouped.length > 0 ? grouped.slice(0, 40) : null;
+  }
+
+  const grouped = dedupeAuflagen(groupTeilegutachtenAuflagen(merged));
 
   return grouped.length > 0 ? grouped.slice(0, 40) : null;
 }

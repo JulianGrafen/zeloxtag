@@ -20,6 +20,8 @@ import {
 import {
   looksLikeVerwendungsbereichTableDump,
   sanitizeTeilegutachtenCompatibilityTable,
+  TEILEGUTACHTEN_COMPATIBILITY_CELL_MAX,
+  TEILEGUTACHTEN_COMPATIBILITY_HEADER_MAX,
   vehicleApprovalsFromSanitizedTable,
 } from "@/lib/validations/teilegutachten-compatibility-table";
 import {
@@ -217,7 +219,7 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
       auflagen: {
         type: ["array", "null"],
         description:
-          "Auflagen sections. ONE array item per section: heading line ending with ':' plus all following paragraphs until the next heading. Never put headings and body text in separate items.",
+          'Section IV "Hinweise und Auflagen". When IV.1, IV.2, … subsections exist: one array item per subsection with heading plus verbatim numbered body. Otherwise one item per colon-heading section.',
         items: { type: "string" },
       },
       ownerNotes: {
@@ -235,7 +237,7 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["headers", "rows", "caption"],
         description:
-          "Structured Verwendungsbereich table. Include ONLY vehicle columns: Fahrzeughersteller, Fahrzeugtyp, Handelsbezeichnung. Omit Achslasten, ABE-Nr, Ausführungen, footnotes. Match flags are applied server-side.",
+          "Structured Verwendungsbereich table copied 1:1 from the document. Preserve ALL original headers and full cell text for every column (including Ausführungen, Achslasten, ABE-Nr., footnotes). Match flags are applied server-side.",
         properties: {
           headers: {
             type: "array",
@@ -330,10 +332,17 @@ function normalizeCompatibilityTable(
 ): TableData | null {
   if (!table) return null;
   const parsed = TableDataSchema.safeParse({
-    headers: table.headers.map((header) => header.trim().slice(0, 120)),
+    headers: table.headers.map((header) =>
+      header.trim().slice(0, TEILEGUTACHTEN_COMPATIBILITY_HEADER_MAX),
+    ),
     rows: table.rows.map((row) => ({
       id: row.id.trim().slice(0, 80),
-      cells: row.cells.map((cell) => cell.trim().slice(0, 500)),
+      cells: row.cells.map((cell) =>
+        cell
+          .replace(/\r\n/g, "\n")
+          .trimEnd()
+          .slice(0, TEILEGUTACHTEN_COMPATIBILITY_CELL_MAX),
+      ),
       isUserVehicleMatch: Boolean(row.isUserVehicleMatch),
       matchReason: row.matchReason?.trim().slice(0, 300) || null,
     })),

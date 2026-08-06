@@ -257,8 +257,13 @@ describe("teilegutachten mappers", () => {
     const approval = teilegutachtenToApprovalFields(extracted);
     expect(approval.data.compatibilityTable?.headers).toEqual([
       "Hersteller",
-      "Typ",
       "Modell",
+      "Typ",
+    ]);
+    expect(approval.data.compatibilityTable?.rows[0]?.cells).toEqual([
+      "Mazda",
+      "RX-8",
+      "SE3P",
     ]);
   });
 

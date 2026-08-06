@@ -40,6 +40,32 @@ Kennzeichnung:
 Aufdruck auf den Federwindungen
 `.trim();
 
+const IV_STRUCTURED_TGA = `
+Teilegutachten nach § 19 Abs. 3 StVZO
+
+III. Hinweise für den Fahrzeughalter
+Allgemeiner Hinweis.
+
+IV. Hinweise und Auflagen
+IV.1. Auflagen für den Hersteller / Einbaubetrieb:
+1. Die Scheinwerfereinstellung ist zu überprüfen.
+2. Die Federn müssen beim völligen Ausfedern des Fahrzeugs in axialer Richtung
+ spielfrei sein.
+3. Nach erfolgter Umrüstung sind die Fahrzeuge zu vermessen.
+4. Bei Fahrzeugen mit lastabhängigem Bremsdruckregler ist dieser auf das Leerniveau
+ neu einzustellen (gemäß Herstellerangabe).
+IV.2. Hinweise und Auflagen zum Anbau: ./.
+IV.3. Hinweise und Auflagen für die Änderungsabnahme:
+1. Siehe IV.1.
+2. Die zulässige Hinterachslast ist auf 730 kg zu begrenzen.
+IV.4. Hinweise und Auflagen für den Fahrzeughalter:
+1. Die Verwendbarkeit von Schneeketten wurde nicht geprüft.
+2. Die verminderte Bodenfreiheit ist zu beachten.
+
+Kennzeichnung:
+Aufdruck
+`.trim();
+
 describe("extractTeilegutachtenAuflagenFromText", () => {
   it("extracts all IV. Auflagen sections with headings and body text", () => {
     const auflagen = extractTeilegutachtenAuflagenFromText(ROVER_LIKE_TGA);
@@ -55,6 +81,19 @@ describe("extractTeilegutachtenAuflagenFromText", () => {
     expect(auflagen!.some((item) => item.includes("Weitere Festlegungen sind"))).toBe(
       true,
     );
+  });
+
+  it("extracts IV. Hinweise und Auflagen subsections verbatim", () => {
+    const auflagen = extractTeilegutachtenAuflagenFromText(IV_STRUCTURED_TGA);
+
+    expect(auflagen).toHaveLength(4);
+    expect(auflagen![0]).toContain("IV.1.");
+    expect(auflagen![0]).toContain("1. Die Scheinwerfereinstellung");
+    expect(auflagen![0]).toContain("4. Bei Fahrzeugen mit lastabhängigem Bremsdruckregler");
+    expect(auflagen![1]).toContain("IV.2.");
+    expect(auflagen![1]).toContain("./.");
+    expect(auflagen![3]).toContain("IV.4.");
+    expect(auflagen![3]).toContain("Schneeketten");
   });
 
   it("extracts simple inline Auflagen lines", () => {
