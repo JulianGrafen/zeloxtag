@@ -112,10 +112,10 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
       key: "Cross-Origin-Opener-Policy",
       value: "same-origin",
     },
-    // Safari needs require-corp for SharedArrayBuffer / on-device cutout WASM.
+    // credentialless: SharedArrayBuffer + WASM cutout without breaking dashboard images.
     {
       key: "Cross-Origin-Embedder-Policy",
-      value: "require-corp",
+      value: "credentialless",
     },
     {
       key: "Cross-Origin-Resource-Policy",

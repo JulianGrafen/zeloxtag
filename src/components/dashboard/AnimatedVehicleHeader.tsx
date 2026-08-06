@@ -70,6 +70,7 @@ export function AnimatedVehicleHeader({
           key={activeSrc}
           src={activeSrc}
           alt={alt}
+          crossOrigin="anonymous"
           onError={handleImageError}
           className="absolute inset-0 h-full w-full object-contain object-right drop-shadow-[0_10px_18px_rgba(0,0,0,0.18)]"
         />

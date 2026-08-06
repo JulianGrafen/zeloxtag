@@ -13,6 +13,10 @@ export type VehicleImageMatch = {
   alt: string;
 };
 
+export function vehicleCatalogImageUrl(filename: string): string {
+  return `/api/vehicle/catalog/${filename}`;
+}
+
 function normalize(value: string): string {
   return value
     .toLowerCase()
@@ -68,7 +72,7 @@ export function resolveVehicleCatalogImage(
     (/\btoyota\b/.test(blob) && /\ba80\b|\bjza80\b/.test(blob))
   ) {
     return {
-      src: "/vehicles/supra-a80.png",
+      src: vehicleCatalogImageUrl("supra-a80.png"),
       alt: "Toyota Supra",
     };
   }
@@ -76,7 +80,7 @@ export function resolveVehicleCatalogImage(
   // BMW 530d Touring (F11 side cutout + dashboard slide-in)
   if (/\b530d\b/.test(blob) || (/\bbmw\b/.test(blob) && /\b530\b/.test(blob))) {
     return {
-      src: "/vehicles/bmw-530d.png",
+      src: vehicleCatalogImageUrl("bmw-530d.png"),
       alt: "BMW 530d Touring",
     };
   }
@@ -84,7 +88,7 @@ export function resolveVehicleCatalogImage(
   // Mazda RX-8
   if (/\brx\s*8\b/.test(blob) || (/\bmazda\b/.test(blob) && /\brx\b/.test(blob))) {
     return {
-      src: "/vehicles/rx8.png",
+      src: vehicleCatalogImageUrl("rx8.png"),
       alt: "Mazda RX-8",
     };
   }
@@ -92,7 +96,7 @@ export function resolveVehicleCatalogImage(
   // BMW M3 F82 (existing asset)
   if (/\bm3\b/.test(blob) && (/\bf82\b/.test(blob) || /\bbmw\b/.test(blob))) {
     return {
-      src: "/vehicles/m3-f82-transparent.png",
+      src: vehicleCatalogImageUrl("m3-f82-transparent.png"),
       alt: "BMW M3",
     };
   }
@@ -100,7 +104,7 @@ export function resolveVehicleCatalogImage(
   // Mercedes-AMG C63 W205 (existing asset)
   if (/\bc\s*63\b/.test(blob) || /\bc63\b/.test(blob)) {
     return {
-      src: "/vehicles/c63-w205.png",
+      src: vehicleCatalogImageUrl("c63-w205.png"),
       alt: "Mercedes-AMG C 63",
     };
   }

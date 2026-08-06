@@ -24,7 +24,7 @@ describe("resolveVehicleImage", () => {
       model: "530d",
       silhouetteImageUrl: "https://example.com/cutout.png",
     });
-    expect(match?.src).toBe("/vehicles/bmw-530d.png");
+    expect(match?.src).toBe("/api/vehicle/catalog/bmw-530d.png");
   });
 
   it("falls back to catalog when silhouette is empty", () => {
@@ -33,12 +33,12 @@ describe("resolveVehicleImage", () => {
       model: "530d",
       silhouetteImageUrl: "  ",
     });
-    expect(match?.src).toBe("/vehicles/bmw-530d.png");
+    expect(match?.src).toBe("/api/vehicle/catalog/bmw-530d.png");
   });
 
   it("resolveVehicleCatalogImage maps BMW 530d", () => {
     const match = resolveVehicleCatalogImage("BMW", "530d");
-    expect(match?.src).toBe("/vehicles/bmw-530d.png");
+    expect(match?.src).toBe("/api/vehicle/catalog/bmw-530d.png");
   });
 
   it("returns undefined when nothing matches", () => {
@@ -57,7 +57,7 @@ describe("resolveVehicleImage", () => {
       model: "Supra",
     });
     expect(match).toEqual({
-      src: "/vehicles/supra-a80.png",
+      src: "/api/vehicle/catalog/supra-a80.png",
       alt: "Toyota Supra",
     });
   });

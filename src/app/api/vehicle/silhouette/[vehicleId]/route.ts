@@ -57,7 +57,8 @@ export async function GET(
     headers: {
       "Content-Type": "image/png",
       "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
-      "Cross-Origin-Resource-Policy": "same-origin",
+      "Cross-Origin-Resource-Policy": "cross-origin",
+      "Access-Control-Allow-Origin": "*",
     },
   });
 }
