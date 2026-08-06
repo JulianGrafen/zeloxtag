@@ -76,9 +76,10 @@ export function TagDashboardShell({
     null,
   );
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
+  const hasSilhouette = Boolean(vehicle.silhouette_image_url || vehicleImageOverride);
 
   useEffect(() => {
-    if (!isOwner || vehicle.silhouette_image_url) {
+    if (!isOwner || hasSilhouette) {
       setShowSilhouettePrompt(false);
       return;
     }
@@ -90,7 +91,7 @@ export function TagDashboardShell({
     } catch {
       setShowSilhouettePrompt(true);
     }
-  }, [isOwner, vehicle.id, vehicle.silhouette_image_url]);
+  }, [isOwner, vehicle.id, hasSilhouette]);
 
   if (!canWrite) {
     return null;
@@ -198,9 +199,9 @@ export function TagDashboardShell({
               description="Lade ein neues Seitenfoto hoch — Galerie oder Kamera. Exakt von der Seite für die beste Dashboard-Animation."
               skipLabel="Schließen"
               onUploaded={(displayUrl) => {
-              setVehicleImageOverride(displayUrl);
-              setShowSilhouetteEditor(false);
-            }}
+                setVehicleImageOverride(displayUrl);
+                setShowSilhouetteEditor(false);
+              }}
               onSkip={() => setShowSilhouetteEditor(false)}
             />
           </div>

@@ -16,6 +16,7 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhouette";
 import {
   isCrossOriginIsolated,
+  isLocalCutoutSupported,
   preloadVehicleBackgroundRemoval,
   removeVehicleBackground,
   type CutoutProgress,
@@ -79,45 +80,77 @@ type UploadApiPayload = {
   backgroundRemoved?: boolean;
 };
 
-function uploadWithProgress(
+function uploadSilhouette(
   url: string,
   body: FormData,
-  onProgress: (percent: number) => void,
 ): Promise<{ ok: boolean; status: number; payload: UploadApiPayload | null }> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", url);
-    xhr.withCredentials = true;
-    xhr.responseType = "text";
-
-    xhr.upload.onprogress = (event) => {
-      if (!event.lengthComputable || event.total <= 0) return;
-      onProgress(Math.min(95, Math.max(5, Math.round((event.loaded / event.total) * 95))));
-    };
-
-    xhr.onload = () => {
+  return fetch(url, {
+    method: "POST",
+    body,
+    credentials: "include",
+  })
+    .then(async (response) => {
       let payload: UploadApiPayload | null = null;
       try {
-        payload = JSON.parse(xhr.responseText) as UploadApiPayload;
+        payload = (await response.json()) as UploadApiPayload;
       } catch {
         payload = null;
       }
-      resolve({
-        ok: xhr.status >= 200 && xhr.status < 300,
-        status: xhr.status,
+      return {
+        ok: response.ok,
+        status: response.status,
         payload,
-      });
-    };
+      };
+    })
+    .catch(() => ({
+      ok: false,
+      status: 0,
+      payload: null,
+    }));
+}
 
-    xhr.onerror = () => reject(new Error("Netzwerkfehler beim Upload."));
-    xhr.ontimeout = () => reject(new Error("Upload ist abgelaufen."));
-    xhr.timeout = 120_000;
-    xhr.send(body);
+function mapUploadError(
+  payload: UploadApiPayload | null,
+  status: number,
+): string {
+  const message = payload?.error?.trim();
+  if (message === "Origin required." || message === "Origin not allowed.") {
+    return "Upload blockiert — bitte Seite neu laden und erneut versuchen.";
+  }
+  if (message === "Authentication required.") {
+    return "Sitzung abgelaufen — bitte erneut anmelden und Upload wiederholen.";
+  }
+  if (message === "Image file is required.") {
+    return "Datei konnte nicht gelesen werden — bitte anderes Foto wählen.";
+  }
+  if (message) return message;
+  if (status === 0) {
+    return "Netzwerkfehler beim Upload — bitte Verbindung prüfen.";
+  }
+  if (status === 401) {
+    return "Sitzung abgelaufen — bitte erneut anmelden und Upload wiederholen.";
+  }
+  if (status === 403) {
+    return "Upload nicht erlaubt — bitte Seite neu laden.";
+  }
+  if (status >= 500) {
+    return "Serverfehler beim Speichern — bitte später erneut versuchen.";
+  }
+  return `Upload fehlgeschlagen (${status || "netzwerk"}).`;
+}
+
+async function materializeUploadFile(file: File): Promise<File> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.byteLength < 32) {
+    throw new Error("Datei ist leer — bitte anderes Foto wählen.");
+  }
+  return new File([bytes], file.name || "vehicle-side.jpg", {
+    type: file.type || "application/octet-stream",
+    lastModified: Date.now(),
   });
 }
 
 async function toPngFile(blob: Blob, baseName: string): Promise<File> {
-  // Materialize bytes — some iOS/WebKit paths upload empty Files from live Blobs.
   const bytes = new Uint8Array(await blob.arrayBuffer());
   if (bytes.byteLength < 32) {
     throw new Error("Freistellung lieferte eine leere Datei.");
@@ -154,6 +187,7 @@ export function ClientVehicleUpload({
     progress: 0,
   });
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [preloadReady, setPreloadReady] = useState(false);
 
   const busy =
     state === "compressing" || state === "removing" || state === "uploading";
@@ -173,8 +207,6 @@ export function ClientVehicleUpload({
       : state === "removing"
         ? removalStatus.label
         : "Bild wird gespeichert…";
-
-  const [preloadReady, setPreloadReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,74 +250,75 @@ export function ClientVehicleUpload({
         return compressPreview;
       });
 
-      setState("removing");
-      setRemovalStatus({ label: "Lade lokale KI-Freistellung…", progress: 6 });
-
       let uploadFile: File = compressed;
       let backgroundRemoved = false;
 
-      try {
-        const cutout = await removeVehicleBackground(compressed, {
-          onProgress: setRemovalStatus,
-        });
+      if (isLocalCutoutSupported()) {
+        setState("removing");
+        setRemovalStatus({ label: "Lade lokale KI-Freistellung…", progress: 6 });
+        try {
+          const cutout = await removeVehicleBackground(compressed, {
+            onProgress: setRemovalStatus,
+          });
 
-        const baseName = compressed.name.replace(/\.[^.]+$/, "") || "vehicle-side";
-        uploadFile = await shrinkCutoutPng(
-          await toPngFile(cutout, baseName),
-        );
-        backgroundRemoved = true;
+          const baseName =
+            compressed.name.replace(/\.[^.]+$/, "") || "vehicle-side";
+          uploadFile = await shrinkCutoutPng(
+            await toPngFile(cutout, baseName),
+          );
+          backgroundRemoved = true;
 
-        const cutoutPreview = URL.createObjectURL(uploadFile);
-        setPreviewUrl((previous) => {
-          if (previous) URL.revokeObjectURL(previous);
-          return cutoutPreview;
-        });
-      } catch (removalError) {
-        console.error("[vehicle-cutout] local removal failed", removalError);
-        const reason =
-          removalError instanceof Error ? removalError.message : null;
-        const isolationHint = !isCrossOriginIsolated()
-          ? " Seite muss über HTTPS mit Cross-Origin-Isolation laufen."
-          : "";
+          const cutoutPreview = URL.createObjectURL(uploadFile);
+          setPreviewUrl((previous) => {
+            if (previous) URL.revokeObjectURL(previous);
+            return cutoutPreview;
+          });
+        } catch (removalError) {
+          console.error("[vehicle-cutout] local removal failed", removalError);
+          const reason =
+            removalError instanceof Error ? removalError.message : null;
+          const isolationHint = !isCrossOriginIsolated()
+            ? " Seite muss über HTTPS mit Cross-Origin-Isolation laufen."
+            : "";
+          setNotice(
+            reason
+              ? `Freistellung fehlgeschlagen: ${reason}${isolationHint} Originalbild wird gespeichert.`
+              : `Lokale Freistellung nicht möglich — Originalbild wird gespeichert.${isolationHint}`,
+          );
+        }
+      } else {
         setNotice(
-          reason
-            ? `Freistellung fehlgeschlagen: ${reason}${isolationHint} Originalbild wird gespeichert.`
-            : `Lokale Freistellung nicht möglich — Originalbild wird gespeichert.${isolationHint}`,
+          "Freistellung auf diesem Gerät nicht verfügbar — Seitenfoto wird gerahmt gespeichert.",
         );
       }
 
       setState("uploading");
-      setUploadProgress(8);
+      setUploadProgress(45);
       try {
+        uploadFile = await materializeUploadFile(uploadFile);
         const body = new FormData();
         body.append("vehicleId", vehicleId);
         body.append("tagUuid", tagUuid);
         body.append("backgroundRemoved", String(backgroundRemoved));
         body.append("file", uploadFile, uploadFile.name || "vehicle-side.png");
 
-        const { ok, status, payload } = await uploadWithProgress(
+        const { ok, status, payload } = await uploadSilhouette(
           "/api/vehicle/remove-bg",
           body,
-          setUploadProgress,
         );
 
         if (!ok || !payload?.ok || !payload.silhouetteImageUrl) {
-          throw new Error(
-            payload?.error ??
-              `Upload fehlgeschlagen (${status || "netzwerk"}).`,
-          );
+          throw new Error(mapUploadError(payload, status));
         }
 
         setUploadProgress(100);
-        const preview =
+        const displayUrl =
           payload.silhouetteDisplayUrl ?? payload.silhouetteImageUrl;
         setPreviewUrl((previous) => {
           if (previous?.startsWith("blob:")) URL.revokeObjectURL(previous);
-          return preview ?? previous;
+          return displayUrl ?? previous;
         });
         setState("done");
-        const displayUrl =
-          payload.silhouetteDisplayUrl ?? payload.silhouetteImageUrl;
         if (displayUrl) {
           onUploaded?.(displayUrl);
         }

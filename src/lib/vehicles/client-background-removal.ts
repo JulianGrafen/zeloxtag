@@ -22,6 +22,12 @@ export function isCrossOriginIsolated(): boolean {
   return window.crossOriginIsolated === true;
 }
 
+/** onnxruntime-web needs crossOriginIsolated (COOP + COEP) for SharedArrayBuffer. */
+export function isLocalCutoutSupported(): boolean {
+  if (typeof WebAssembly === "undefined") return false;
+  return isCrossOriginIsolated();
+}
+
 /** Same-origin WASM/ONNX path when postinstall copied assets into /public. */
 export function resolveBackgroundRemovalPublicPath(): string {
   if (typeof window === "undefined") return CDN_PUBLIC_PATH;
@@ -92,6 +98,7 @@ export async function preloadVehicleBackgroundRemoval(
   onProgress?: (status: CutoutProgress) => void,
 ): Promise<void> {
   if (typeof window === "undefined") return;
+  if (!isLocalCutoutSupported()) return;
   if (preloadPromise) {
     await preloadPromise;
     return;
@@ -130,13 +137,9 @@ export async function removeVehicleBackground(
 
   onProgress({ label: "Lade lokale KI-Freistellung…", progress: 4 });
 
-  if (typeof WebAssembly === "undefined") {
-    throw new Error("Dieses Gerät unterstützt kein WebAssembly.");
-  }
-
-  if (!isCrossOriginIsolated()) {
+  if (!isLocalCutoutSupported()) {
     throw new Error(
-      "KI-Freistellung benötigt eine sichere HTTPS-Verbindung mit Cross-Origin-Isolation. Bitte über https:// öffnen (nicht LAN-HTTP).",
+      "Lokale Freistellung ist auf diesem Gerät nicht verfügbar.",
     );
   }
 

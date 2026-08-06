@@ -72,6 +72,7 @@ export function enforceSameOrigin(
   const origin = request.headers.get("origin");
   const allowed = new Set<string>();
   allowed.add(request.nextUrl.origin);
+  allowed.add("https://app.zeloxtag.de");
 
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
   if (site) {
@@ -94,6 +95,23 @@ export function enforceSameOrigin(
 
   const fetchSite = request.headers.get("sec-fetch-site");
   if (fetchSite === "same-origin" || fetchSite === "none") {
+    return null;
+  }
+
+  // iOS Safari / WebViews sometimes omit Origin on same-site XHR — allow matching Referer.
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      if (allowed.has(new URL(referer).origin)) {
+        return null;
+      }
+    } catch {
+      /* ignore malformed referer */
+    }
+  }
+
+  const host = request.headers.get("host");
+  if (host && host === request.nextUrl.host && fetchSite === "same-site") {
     return null;
   }
 
