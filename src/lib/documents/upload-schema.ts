@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+/** Persisted caps — keep in sync with {@link uploadDocumentMetaSchema}. */
+export const UPLOAD_NOTES_MAX = 4_000;
+export const UPLOAD_KBA_NUMBER_MAX = 120;
+export const UPLOAD_AUTHORITY_MAX = 200;
+export const UPLOAD_PART_CATEGORY_MAX = 120;
+
 /**
  * Strict metadata schema for document upload FormData (excluding the file).
  * Unknown keys must never be silently accepted at the action boundary.
@@ -13,15 +19,20 @@ export const uploadDocumentMetaSchema = z
     vendor: z.string().trim().max(160).optional().default(""),
     category: z.string().trim().max(40).optional().default(""),
     lineItems: z.string().max(100_000).optional().default(""),
-    kbaNumber: z.string().trim().max(80).optional().default(""),
+    kbaNumber: z.string().trim().max(UPLOAD_KBA_NUMBER_MAX).optional().default(""),
     vehicleApprovals: z.string().max(20_000).optional().default(""),
-    authority: z.string().trim().max(120).optional().default(""),
+    authority: z.string().trim().max(UPLOAD_AUTHORITY_MAX).optional().default(""),
     conditions: z.string().max(80_000).optional().default(""),
     technicalSpecs: z.string().max(40_000).optional().default(""),
-    partCategory: z.string().trim().max(60).optional().default(""),
-    notes: z.string().trim().max(500).optional().default(""),
+    partCategory: z
+      .string()
+      .trim()
+      .max(UPLOAD_PART_CATEGORY_MAX)
+      .optional()
+      .default(""),
+    notes: z.string().trim().max(UPLOAD_NOTES_MAX).optional().default(""),
     manufacturer: z.string().trim().max(120).optional().default(""),
-    invoiceNumber: z.string().trim().max(80).optional().default(""),
+    invoiceNumber: z.string().trim().max(UPLOAD_KBA_NUMBER_MAX).optional().default(""),
     mileageKm: z.string().trim().max(32).optional().default(""),
     pageCount: z.string().trim().max(8).optional().default(""),
     /** JSON string for `documents.approval_fields` (discriminated union). */

@@ -29,7 +29,14 @@ import {
 } from "./oil-changes";
 import { parseAbeConditions, parseStringList } from "./string-list";
 import { parseTechnicalSpecs } from "./technical-specs";
-import { metaFromFormData, uploadDocumentMetaSchema } from "./upload-schema";
+import {
+  metaFromFormData,
+  UPLOAD_AUTHORITY_MAX,
+  UPLOAD_KBA_NUMBER_MAX,
+  UPLOAD_NOTES_MAX,
+  UPLOAD_PART_CATEGORY_MAX,
+  uploadDocumentMetaSchema,
+} from "./upload-schema";
 
 export type UploadDocumentResult =
   | { status: "uploaded"; document: Document; tagUuid: string }
@@ -78,9 +85,10 @@ export async function uploadDocument(
     metaFromFormData(formData),
   );
   if (!metaParsed.ok) {
+    const field = metaParsed.issues[0]?.path.join(".") ?? "Metadaten";
     return {
       status: "error",
-      message: "Ungültige Upload-Daten.",
+      message: `Ungültige Upload-Daten (${field}).`,
     };
   }
 
@@ -102,15 +110,17 @@ export async function uploadDocument(
   const vendor = meta.vendor.slice(0, 160) || null;
   let category = meta.category.slice(0, 40) || null;
   const lineItems = parseLineItems(meta.lineItems);
-  const kbaNumber = meta.kbaNumber.slice(0, 80) || null;
+  const kbaNumber = meta.kbaNumber.slice(0, UPLOAD_KBA_NUMBER_MAX) || null;
   const vehicleApprovals = parseStringList(meta.vehicleApprovals);
-  const authority = meta.authority.slice(0, 120) || null;
+  const authority = meta.authority.slice(0, UPLOAD_AUTHORITY_MAX) || null;
   const conditions = parseAbeConditions(meta.conditions);
   const technicalSpecs = parseTechnicalSpecs(meta.technicalSpecs);
-  const partCategory = meta.partCategory.slice(0, 60) || null;
-  let notes = meta.notes.slice(0, 500) || null;
+  const partCategory =
+    meta.partCategory.slice(0, UPLOAD_PART_CATEGORY_MAX) || null;
+  let notes = meta.notes.slice(0, UPLOAD_NOTES_MAX) || null;
   const manufacturer = meta.manufacturer.slice(0, 120) || null;
-  const invoiceNumber = meta.invoiceNumber.slice(0, 80) || null;
+  const invoiceNumber =
+    meta.invoiceNumber.slice(0, UPLOAD_KBA_NUMBER_MAX) || null;
   const mileageKm = parseMileageKm(meta.mileageKm);
   const pageCountParsed = Number.parseInt(meta.pageCount, 10);
   const pageCount =

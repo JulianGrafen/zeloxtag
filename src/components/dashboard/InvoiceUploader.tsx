@@ -618,15 +618,13 @@ export function InvoiceUploader({
     const { review, approvalFields: approval, title: storedTitle } = payload;
     const certificateNumber = review.certificateNumber?.trim() ?? "";
 
+    // Verwendungsbereich + Auflagen live in approval_fields / vehicle_approvals — keep notes short.
     const notes = [
       review.userVehicleMatchStatus
         ? `Fahrzeug-Check: ${review.userVehicleMatchStatus}`
         : null,
       review.matchedVehicleRow
         ? `Trefferzeile: ${review.matchedVehicleRow}`
-        : null,
-      review.verwendungsbereich
-        ? `Verwendungsbereich:\n${review.verwendungsbereich}`
         : null,
       review.physicalMarking
         ? `Kennzeichnung: ${review.physicalMarking}`
