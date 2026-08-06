@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import {
+  isPlausibleVehicleApproval,
+  normalizeAbeVehicleApprovals,
+} from "@/lib/ocr/abe-parse-schema";
 import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import {
@@ -241,7 +245,13 @@ function normalizeVerwendungsbereich(
   value: string | null | undefined,
 ): string | null {
   if (!value) return null;
-  const trimmed = value.trim().replace(/\s+/g, " ").slice(0, 2_000);
+  const trimmed = value
+    .trim()
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, 2_000);
   return trimmed.length > 0 ? trimmed : null;
 }
 
@@ -321,6 +331,130 @@ function mapTestingOrganization(
     : "other";
 }
 
+function normalizeTableHeader(header: string): string {
+  return header
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function tableColumnIndex(headers: string[], needles: string[]): number {
+  const normalized = headers.map(normalizeTableHeader);
+  for (const needle of needles) {
+    const token = normalizeTableHeader(needle);
+    const index = normalized.findIndex(
+      (header) => header === token || header.includes(token),
+    );
+    if (index >= 0) return index;
+  }
+  return -1;
+}
+
+function tableCellValue(
+  row: { cells: string[] },
+  index: number,
+): string {
+  if (index < 0 || index >= row.cells.length) return "";
+  return row.cells[index]?.trim() ?? "";
+}
+
+/** Map structured Verwendungsbereich rows → Freigabe strings. */
+export function vehicleApprovalsFromCompatibilityTable(
+  table: TableData,
+): string[] | null {
+  if (!table.rows.length) return null;
+
+  const brandIdx = tableColumnIndex(table.headers, [
+    "hersteller",
+    "marke",
+    "brand",
+    "fahrzeughersteller",
+  ]);
+  const modelIdx = tableColumnIndex(table.headers, [
+    "modell",
+    "fahrzeug",
+    "handelsbezeichnung",
+  ]);
+  const typeIdx = tableColumnIndex(table.headers, [
+    "typ",
+    "type",
+    "typschlüssel",
+    "typschlussel",
+    "fahrzeugtyp",
+  ]);
+
+  const raw: string[] = [];
+  for (const row of table.rows) {
+    const brand = tableCellValue(row, brandIdx);
+    const model = tableCellValue(row, modelIdx);
+    const type = tableCellValue(row, typeIdx);
+
+    let label: string | null = null;
+    if (brand && model) {
+      const typeSuffix =
+        type &&
+        !model.includes(type) &&
+        !`${brand} ${model}`.includes(type)
+          ? ` (${type})`
+          : "";
+      label = `${brand} ${model}${typeSuffix}`.trim();
+    } else {
+      const cells = row.cells.map((cell) => cell.trim()).filter(Boolean);
+      if (cells.length === 1) {
+        label = cells[0] ?? null;
+      } else if (cells.length >= 2) {
+        label = `${cells[0]} ${cells[1]}`.trim();
+      }
+    }
+
+    if (label) raw.push(label.slice(0, 120));
+  }
+
+  return normalizeAbeVehicleApprovals(raw);
+}
+
+function vehicleApprovalsFromVerwendungsbereich(
+  text: string | null | undefined,
+): string[] | null {
+  if (!text?.trim()) return null;
+
+  const raw: string[] = [];
+  for (const line of text.split(/\n+/)) {
+    const trimmed = line.trim().replace(/^[-•*]\s*/, "").replace(/\.$/, "");
+    if (!trimmed) continue;
+    if (isPlausibleVehicleApproval(trimmed)) {
+      raw.push(trimmed);
+      continue;
+    }
+    for (const part of trimmed.split(/[,;|/]/)) {
+      const piece = part.trim();
+      if (piece && isPlausibleVehicleApproval(piece)) raw.push(piece);
+    }
+  }
+
+  return normalizeAbeVehicleApprovals(raw);
+}
+
+/** All Fahrzeugfreigaben from TGA extract (table → Verwendungsbereich → Trefferzeile). */
+export function teilegutachtenVehicleApprovals(
+  extracted: TeilegutachtenExtraction,
+): string[] | null {
+  const fromTable = extracted.compatibilityTable
+    ? vehicleApprovalsFromCompatibilityTable(extracted.compatibilityTable)
+    : null;
+  if (fromTable?.length) return fromTable;
+
+  const fromText = vehicleApprovalsFromVerwendungsbereich(
+    extracted.verwendungsbereich,
+  );
+  if (fromText?.length) return fromText;
+
+  return extracted.matchedVehicleRow
+    ? normalizeAbeVehicleApprovals([extracted.matchedVehicleRow])
+    : null;
+}
+
 function buildValidityArea(extracted: TeilegutachtenExtraction): string {
   const parts = [
     extracted.verwendungsbereich,
@@ -396,9 +530,7 @@ export function teilegutachtenToAnalyzeFields(
         : "Teilegutachten §19.3",
     lineItems: null,
     kbaNumber: extracted.certificateNumber,
-    vehicleApprovals: extracted.matchedVehicleRow
-      ? [extracted.matchedVehicleRow]
-      : null,
+    vehicleApprovals: teilegutachtenVehicleApprovals(extracted),
     authority: extracted.testingOrganization,
     conditions: extracted.auflagen,
     partCategory: extracted.partCategory,

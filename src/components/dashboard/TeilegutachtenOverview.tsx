@@ -28,6 +28,8 @@ export type TeilegutachtenReviewFields = {
   testingOrganization: string | null;
   userVehicleMatchStatus: AbeUserVehicleMatchStatus | null;
   matchedVehicleRow: string | null;
+  /** Fahrzeugfreigaben — one entry per compatible vehicle / row. */
+  vehicleApprovals: string[] | null;
   verwendungsbereich: string | null;
   auflagen: string[] | null;
 };
@@ -111,6 +113,18 @@ function parseFromValidityArea(validityArea: string | null | undefined): {
   };
 }
 
+function formatLinesForEdit(values: string[] | null | undefined): string {
+  return values?.join("\n") ?? "";
+}
+
+function parseLinesFromEdit(value: string): string[] | null {
+  const lines = value
+    .split("\n")
+    .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+    .filter(Boolean);
+  return lines.length > 0 ? lines : null;
+}
+
 function formatAuflagenForEdit(auflagen: string[] | null | undefined): string {
   return auflagen?.join("\n") ?? "";
 }
@@ -166,6 +180,9 @@ export function fieldsToTeilegutachtenReview(
       parseMatchedRowFromNotes(fields.notes) ||
       fields.vehicleApprovals?.[0]?.trim() ||
       null,
+    vehicleApprovals: fields.vehicleApprovals?.length
+      ? [...fields.vehicleApprovals]
+      : null,
     verwendungsbereich:
       parseVerwendungsbereichFromNotes(fields.notes) ||
       fromValidity.verwendungsbereich,
@@ -358,6 +375,17 @@ export function TeilegutachtenOverview({
                 patch("physicalMarking", event.target.value || null)
               }
               placeholder='z. B. "Aufdruck auf den Federwindungen"'
+            />
+          </Field>
+          <Field label="Fahrzeugfreigaben (eine pro Zeile)">
+            <textarea
+              value={formatLinesForEdit(review.vehicleApprovals)}
+              onChange={(event) =>
+                patch("vehicleApprovals", parseLinesFromEdit(event.target.value))
+              }
+              placeholder={"Mazda RX-8 (SE3P)\nBMW 3er (E90)"}
+              rows={4}
+              className="claim-input min-h-[5.5rem] w-full resize-y text-[0.88rem]"
             />
           </Field>
           <Field label="Verwendungsbereich">

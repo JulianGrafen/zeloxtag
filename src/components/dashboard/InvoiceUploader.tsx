@@ -650,9 +650,11 @@ export function InvoiceUploader({
       formData.set("kbaNumber", certificateNumber);
       formData.set(
         "vehicleApprovals",
-        review.matchedVehicleRow
-          ? JSON.stringify([review.matchedVehicleRow])
-          : "",
+        review.vehicleApprovals?.length
+          ? JSON.stringify(review.vehicleApprovals)
+          : review.matchedVehicleRow
+            ? JSON.stringify([review.matchedVehicleRow])
+            : "",
       );
       formData.set("authority", review.testingOrganization?.trim() ?? "");
       formData.set(

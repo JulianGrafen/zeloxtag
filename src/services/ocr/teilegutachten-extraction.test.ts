@@ -5,6 +5,8 @@ import {
   normalizeTeilegutachtenExtraction,
   teilegutachtenToAnalyzeFields,
   teilegutachtenToApprovalFields,
+  teilegutachtenVehicleApprovals,
+  vehicleApprovalsFromCompatibilityTable,
 } from "@/lib/validations/teilegutachtenSchema";
 import { buildTeilegutachtenSystemPrompt } from "@/services/ocr/TeilegutachtenExtractionService";
 import { fieldsToTeilegutachtenReview } from "@/components/dashboard/TeilegutachtenOverview";
@@ -137,7 +139,36 @@ describe("fieldsToTeilegutachtenReview", () => {
     expect(review.certificateNumber).toBe("14-00123-CP-GBM");
     expect(review.physicalMarking).toContain("Aufdruck");
     expect(review.verwendungsbereich).toContain("Mazda RX-8");
+    expect(review.vehicleApprovals).toEqual(["Mazda RX-8 (SE3P)"]);
     expect(review.auflagen).toEqual(["Sichtprüfung"]);
+  });
+
+  it("preserves multiple Fahrzeugfreigaben from analyze fields", () => {
+    const review = fieldsToTeilegutachtenReview(
+      {
+        vendor: "Eibach 21-85-041-01-VA",
+        date: null,
+        amount: null,
+        category: "abe",
+        summary: "Teilegutachten · Sonderfahrwerksfedern",
+        lineItems: null,
+        kbaNumber: "14-00123-CP-GBM",
+        vehicleApprovals: ["Mazda RX-8 (SE3P)", "BMW 3er (E90)"],
+        authority: "TÜV Süd",
+        conditions: null,
+        partCategory: "Sonderfahrwerksfedern",
+        notes: null,
+        manufacturer: "Eibach",
+        invoiceNumber: "14-00123-CP-GBM",
+        mileageKm: null,
+      },
+      null,
+    );
+
+    expect(review.vehicleApprovals).toEqual([
+      "Mazda RX-8 (SE3P)",
+      "BMW 3er (E90)",
+    ]);
   });
 });
 
@@ -177,5 +208,81 @@ describe("teilegutachten mappers", () => {
     expect(parsed.notes).toContain("Verwendungsbereich");
     expect(parsed.notes).toContain("Kennzeichnung");
     expect(parsed.conditions).toEqual(["Achsvermessung erforderlich"]);
+    expect(parsed.vehicleApprovals).toEqual(["Mazda RX-8 (SE3P)"]);
+  });
+
+  it("maps compatibility table rows to all vehicleApprovals", () => {
+    const extracted = normalizeTeilegutachtenExtraction({
+      documentType: "Teilegutachten",
+      certificateNumber: "TG-9001",
+      manufacturer: "Eibach",
+      partCategory: "Federn",
+      partType: "21-85-041",
+      physicalMarking: null,
+      requiresPhysicalInspection: true,
+      testingOrganization: "TÜV",
+      userVehicleMatchStatus: "verified",
+      verwendungsbereich: "Siehe Tabelle",
+      auflagen: null,
+      matchedVehicleRow: "Mazda RX-8 (SE3P)",
+      compatibilityTable: {
+        caption: "Verwendungsbereich",
+        headers: ["Hersteller", "Modell", "Typ"],
+        rows: [
+          {
+            id: "row-1",
+            cells: ["Mazda", "RX-8", "SE3P"],
+            isUserVehicleMatch: true,
+            matchReason: null,
+          },
+          {
+            id: "row-2",
+            cells: ["BMW", "3er", "E90"],
+            isUserVehicleMatch: false,
+            matchReason: null,
+          },
+        ],
+      },
+    });
+
+    expect(teilegutachtenVehicleApprovals(extracted)).toEqual([
+      "Mazda RX-8 (SE3P)",
+      "BMW 3er (E90)",
+    ]);
+
+    const fields = teilegutachtenToAnalyzeFields(extracted);
+    expect(fields.vehicleApprovals).toEqual([
+      "Mazda RX-8 (SE3P)",
+      "BMW 3er (E90)",
+    ]);
+  });
+
+  it("falls back to Verwendungsbereich lines when no table", () => {
+    const extracted = normalizeTeilegutachtenExtraction({
+      documentType: "Teilegutachten",
+      certificateNumber: "TG-9002",
+      manufacturer: null,
+      partCategory: null,
+      partType: null,
+      physicalMarking: null,
+      requiresPhysicalInspection: true,
+      testingOrganization: null,
+      userVehicleMatchStatus: null,
+      verwendungsbereich: "Mazda RX-8 (SE3P)\nBMW 3er (E90)",
+      auflagen: null,
+      matchedVehicleRow: null,
+      compatibilityTable: null,
+    });
+
+    expect(vehicleApprovalsFromCompatibilityTable({
+      caption: null,
+      headers: ["Fahrzeug"],
+      rows: [{ id: "r1", cells: ["Mazda RX-8 (SE3P)"], isUserVehicleMatch: false, matchReason: null }],
+    })).toEqual(["Mazda RX-8 (SE3P)"]);
+
+    expect(teilegutachtenVehicleApprovals(extracted)).toEqual([
+      "Mazda RX-8 (SE3P)",
+      "BMW 3er (E90)",
+    ]);
   });
 });
