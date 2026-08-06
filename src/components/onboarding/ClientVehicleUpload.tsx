@@ -14,7 +14,7 @@ import { Camera, ImagePlus, Loader2, SkipForward } from "lucide-react";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhouette";
 import {
-  isCrossOriginIsolated,
+  getLocalCutoutBlockReason,
   isLocalCutoutSupported,
   preloadVehicleBackgroundRemoval,
   removeVehicleBackground,
@@ -284,18 +284,18 @@ export function ClientVehicleUpload({
           console.error("[vehicle-cutout] local removal failed", removalError);
           const reason =
             removalError instanceof Error ? removalError.message : null;
-          const isolationHint = !isCrossOriginIsolated()
-            ? " Seite muss über HTTPS mit Cross-Origin-Isolation laufen."
-            : "";
           setNotice(
             reason
-              ? `Freistellung fehlgeschlagen: ${reason}${isolationHint} Originalbild wird gespeichert.`
-              : `Lokale Freistellung nicht möglich — Originalbild wird gespeichert.${isolationHint}`,
+              ? `Freistellung fehlgeschlagen: ${reason} Originalbild wird gespeichert.`
+              : "Lokale Freistellung nicht möglich — Originalbild wird gespeichert.",
           );
         }
       } else {
+        const blockReason = getLocalCutoutBlockReason();
         setNotice(
-          "Freistellung auf diesem Gerät nicht verfügbar — Seitenfoto wird gerahmt gespeichert.",
+          blockReason
+            ? `${blockReason} Seitenfoto wird gerahmt gespeichert.`
+            : "Freistellung auf diesem Gerät nicht verfügbar — Seitenfoto wird gerahmt gespeichert.",
         );
       }
 

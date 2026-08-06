@@ -112,10 +112,11 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
       key: "Cross-Origin-Opener-Policy",
       value: "same-origin",
     },
-    // credentialless: SharedArrayBuffer + WASM cutout without breaking dashboard images.
+    // require-corp: Safari/iOS does not enable crossOriginIsolated with credentialless.
+    // Vehicle images and WASM assets are same-origin or CORP-opted-in (proxy/CDN).
     {
       key: "Cross-Origin-Embedder-Policy",
-      value: "credentialless",
+      value: "require-corp",
     },
     {
       key: "Cross-Origin-Resource-Policy",
