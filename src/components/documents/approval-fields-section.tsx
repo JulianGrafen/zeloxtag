@@ -77,6 +77,14 @@ export function ApprovalFieldsSection({
             label="Sofortige Abnahme erforderlich"
             value={approvalFields.data.immediateInspectionRequired}
           />
+          {approvalFields.data.ownerNotes ? (
+            <div className="sm:col-span-2">
+              <Fact
+                label="Hinweise für den Fahrzeughalter"
+                value={approvalFields.data.ownerNotes}
+              />
+            </div>
+          ) : null}
         </dl>
       ) : null}
 

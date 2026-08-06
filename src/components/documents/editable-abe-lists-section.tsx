@@ -22,6 +22,8 @@ type EditableAbeListsSectionProps = {
   compatibilityTable?: TableData | null;
   /** Teilegutachten Technische Daten table — replaces Maße list when present. */
   technicalDataTable?: TableData | null;
+  /** Teilegutachten section III — Hinweise für den Fahrzeughalter. */
+  ownerNotes?: string | null;
 };
 
 function specsToText(specs: DocumentTechnicalSpec[]): string {
@@ -69,6 +71,7 @@ export function EditableAbeListsSection({
   notes,
   compatibilityTable = null,
   technicalDataTable = null,
+  ownerNotes = null,
 }: EditableAbeListsSectionProps) {
   const [editing, setEditing] = useState(false);
   const [approvalsText, setApprovalsText] = useState(
@@ -216,6 +219,17 @@ export function EditableAbeListsSection({
           </dl>
         )}
       </section>
+
+      {ownerNotes ? (
+        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+            Hinweise für den Fahrzeughalter
+          </h2>
+          <p className="whitespace-pre-wrap text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]">
+            {ownerNotes}
+          </p>
+        </section>
+      ) : null}
 
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
         <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">

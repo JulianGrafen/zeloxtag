@@ -149,35 +149,7 @@ export function ABEOverview({
   ]);
 
   return (
-    <div className="vd-anim-header grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start">
-      <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-        <div className="flex items-center justify-between gap-2 border-b border-[color:var(--vd-border)] px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-2 text-[0.78rem] text-[color:var(--vd-muted)]">
-            <FileText className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate">
-              Dokumentvorschau · {pageCount}{" "}
-              {pageCount === 1 ? "Seite" : "Seiten"}
-            </span>
-          </div>
-        </div>
-        <div className="max-h-[min(62vh,560px)] min-h-[240px] overflow-auto bg-neutral-100">
-          {previewKind === "pdf" ? (
-            <iframe
-              title="ABE Vorschau"
-              src={previewUrl}
-              className="h-[min(62vh,560px)] w-full border-0 bg-white"
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={previewUrl}
-              alt="ABE Dokumentvorschau"
-              className="mx-auto block w-full object-contain"
-            />
-          )}
-        </div>
-      </section>
-
+    <div className="vd-anim-header flex flex-col gap-4">
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)] sm:p-5">
         <header className="flex items-start justify-between gap-3">
           <div>
@@ -409,6 +381,34 @@ export function ABEOverview({
               Ohne OCR-Text bitte manuell bearbeiten und speichern.
             </p>
           ) : null}
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+        <div className="flex items-center justify-between gap-2 border-b border-[color:var(--vd-border)] px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2 text-[0.78rem] text-[color:var(--vd-muted)]">
+            <FileText className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="truncate">
+              Dokumentvorschau · {pageCount}{" "}
+              {pageCount === 1 ? "Seite" : "Seiten"}
+            </span>
+          </div>
+        </div>
+        <div className="max-h-[min(62vh,560px)] min-h-[240px] overflow-auto bg-neutral-100">
+          {previewKind === "pdf" ? (
+            <iframe
+              title="ABE Vorschau"
+              src={previewUrl}
+              className="h-[min(62vh,560px)] w-full border-0 bg-white"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt="ABE Dokumentvorschau"
+              className="mx-auto block w-full object-contain"
+            />
+          )}
         </div>
       </section>
     </div>

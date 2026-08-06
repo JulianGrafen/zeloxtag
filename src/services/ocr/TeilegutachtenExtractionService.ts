@@ -4,6 +4,14 @@ import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
+  extractTeilegutachtenAuflagenFromText,
+  mergeTeilegutachtenAuflagen,
+} from "@/lib/ocr/teilegutachten-auflagen-from-text";
+import {
+  extractTeilegutachtenOwnerNotesFromText,
+  mergeTeilegutachtenOwnerNotes,
+} from "@/lib/ocr/teilegutachten-owner-notes-from-text";
+import {
   formatAbeVehicleContextLabel,
   type AbeVehicleContext,
 } from "@/lib/validations/abeSchema";
@@ -63,6 +71,11 @@ export function buildTeilegutachtenSystemPrompt(
     '- "auflagen" — one array item per section: heading (ends with ":") plus all following paragraphs until the next heading.',
     "  Example item: \"Berichtigung der Fahrzeugpapiere:\\nDie Berichtigung … zu beantragen.\\nWeitere Festlegungen …\"",
     "  Do NOT split headings and body into separate array entries.",
+    "  Do NOT include Section III Hinweise here — those belong in ownerNotes.",
+    "",
+    "OWNER NOTES (critical):",
+    '- "ownerNotes" — Section III / "Hinweise für den Fahrzeughalter".',
+    "  Copy the full text verbatim from the document (preserve line breaks). Do NOT summarize.",
     "",
     "TECHNISCHE DATEN section (critical):",
     '- "technicalDataTable" — extract Section II / Technische Daten as a structured table.',
@@ -149,14 +162,14 @@ export class TeilegutachtenExtractionService {
           "German Teilegutachten § 19 Abs. 3 OCR (Markdown).",
           `TARGET VEHICLE: ${formatAbeVehicleContextLabel(vehicleContext!)}`,
           "Extract certificateNumber, part fields, Kennzeichnung (physicalMarking),",
-          "Verwendungsbereich (verwendungsbereich), Auflagen (auflagen), Technische Daten (technicalDataTable), match status, matchedVehicleRow.",
+          "Verwendungsbereich (verwendungsbereich), Auflagen (auflagen), Hinweise für den Fahrzeughalter (ownerNotes), Technische Daten (technicalDataTable), match status, matchedVehicleRow.",
           "",
           windowText,
         ]
       : [
           "German Teilegutachten § 19 Abs. 3 OCR (Markdown).",
           "Extract certificateNumber, manufacturer, partCategory, partType, physicalMarking (Kennzeichnung),",
-          "testingOrganization, verwendungsbereich, auflagen, technicalDataTable.",
+          "testingOrganization, verwendungsbereich, auflagen, ownerNotes, technicalDataTable.",
           "Set userVehicleMatchStatus and matchedVehicleRow to null.",
           "",
           windowText,
@@ -205,7 +218,20 @@ export class TeilegutachtenExtractionService {
       );
     }
 
-    const normalized = normalizeTeilegutachtenExtraction(parsed.data);
+    const heuristicAuflagen = extractTeilegutachtenAuflagenFromText(markdownText);
+    const heuristicOwnerNotes =
+      extractTeilegutachtenOwnerNotesFromText(markdownText);
+    const normalized = normalizeTeilegutachtenExtraction({
+      ...parsed.data,
+      auflagen: mergeTeilegutachtenAuflagen(
+        parsed.data.auflagen ?? parsed.data.matchedConditions,
+        heuristicAuflagen,
+      ),
+      ownerNotes: mergeTeilegutachtenOwnerNotes(
+        parsed.data.ownerNotes,
+        heuristicOwnerNotes,
+      ),
+    });
 
     if (!withContext) {
       return {

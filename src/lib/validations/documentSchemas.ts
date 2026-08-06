@@ -58,6 +58,8 @@ export const TeilegutachtenSchema = z
     compatibilityTable: TableDataSchema.nullable().optional(),
     /** Section II — Technische Daten. */
     technicalDataTable: TableDataSchema.nullable().optional(),
+    /** Section III — Hinweise für den Fahrzeughalter (verbatim). */
+    ownerNotes: z.string().trim().min(1).max(8_000).nullable().optional(),
   })
   .strict();
 

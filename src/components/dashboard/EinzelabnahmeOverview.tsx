@@ -172,35 +172,7 @@ export function EinzelabnahmeOverview({
   }
 
   return (
-    <div className="vd-anim-header grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start">
-      <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-        <div className="flex items-center justify-between gap-2 border-b border-[color:var(--vd-border)] px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-2 text-[0.78rem] text-[color:var(--vd-muted)]">
-            <FileText className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate">
-              Dokumentvorschau · {pageCount}{" "}
-              {pageCount === 1 ? "Seite" : "Seiten"}
-            </span>
-          </div>
-        </div>
-        <div className="max-h-[min(62vh,560px)] min-h-[240px] overflow-auto bg-neutral-100">
-          {previewKind === "pdf" ? (
-            <iframe
-              title="Einzelabnahme Vorschau"
-              src={previewUrl}
-              className="h-[min(62vh,560px)] w-full border-0 bg-white"
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={previewUrl}
-              alt="Einzelabnahme Dokumentvorschau"
-              className="mx-auto block w-full object-contain"
-            />
-          )}
-        </div>
-      </section>
-
+    <div className="vd-anim-header flex flex-col gap-4">
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)] sm:p-5">
         <header>
           <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
@@ -357,6 +329,34 @@ export function EinzelabnahmeOverview({
               Abbrechen
             </Button>
           ) : null}
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+        <div className="flex items-center justify-between gap-2 border-b border-[color:var(--vd-border)] px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2 text-[0.78rem] text-[color:var(--vd-muted)]">
+            <FileText className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="truncate">
+              Dokumentvorschau · {pageCount}{" "}
+              {pageCount === 1 ? "Seite" : "Seiten"}
+            </span>
+          </div>
+        </div>
+        <div className="max-h-[min(62vh,560px)] min-h-[240px] overflow-auto bg-neutral-100">
+          {previewKind === "pdf" ? (
+            <iframe
+              title="Einzelabnahme Vorschau"
+              src={previewUrl}
+              className="h-[min(62vh,560px)] w-full border-0 bg-white"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt="Einzelabnahme Dokumentvorschau"
+              className="mx-auto block w-full object-contain"
+            />
+          )}
         </div>
       </section>
     </div>

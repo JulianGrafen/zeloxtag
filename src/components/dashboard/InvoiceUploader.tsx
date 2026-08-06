@@ -1265,29 +1265,6 @@ export function InvoiceUploader({
             });
           }}
         >
-          <div className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Dokumentvorschau"
-              className="max-h-[36vh] w-full object-contain bg-neutral-100"
-            />
-            <div className="flex items-center justify-between gap-3 border-t border-[color:var(--vd-border)] px-3 py-2.5 text-[0.75rem] text-[color:var(--vd-muted)]">
-              <span>
-                {pageCount > 1 ? `${pageCount} Seiten` : "1 Seite"} ·{" "}
-                {formatBytes(uploadFile.size)}
-              </span>
-              <button
-                type="button"
-                onClick={resetWizard}
-                className="inline-flex items-center gap-1 font-medium text-[color:var(--vd-text)]"
-              >
-                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-                Neu
-              </button>
-            </div>
-          </div>
-
           <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
             {(() => {
               const oil = detectOilChangeInvoice({
@@ -1501,6 +1478,29 @@ export function InvoiceUploader({
                 </p>
               </details>
             ) : null}
+          </div>
+
+          <div className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt="Dokumentvorschau"
+              className="max-h-[36vh] w-full object-contain bg-neutral-100"
+            />
+            <div className="flex items-center justify-between gap-3 border-t border-[color:var(--vd-border)] px-3 py-2.5 text-[0.75rem] text-[color:var(--vd-muted)]">
+              <span>
+                {pageCount > 1 ? `${pageCount} Seiten` : "1 Seite"} ·{" "}
+                {formatBytes(uploadFile.size)}
+              </span>
+              <button
+                type="button"
+                onClick={resetWizard}
+                className="inline-flex items-center gap-1 font-medium text-[color:var(--vd-text)]"
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                Neu
+              </button>
+            </div>
           </div>
 
           {error ? (

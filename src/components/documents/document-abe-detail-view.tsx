@@ -68,6 +68,10 @@ export function DocumentAbeDetailView({
     document.approval_fields?.kind === "teilegutachten"
       ? document.approval_fields.data.technicalDataTable ?? null
       : null;
+  const tgOwnerNotes =
+    document.approval_fields?.kind === "teilegutachten"
+      ? document.approval_fields.data.ownerNotes ?? null
+      : null;
   const conditions = document.conditions ?? [];
   const technicalSpecs = document.technical_specs ?? [];
   const pages = document.page_count && document.page_count > 0 ? document.page_count : 1;
@@ -199,6 +203,7 @@ export function DocumentAbeDetailView({
             notes={document.notes}
             compatibilityTable={isTeilegutachten ? tgTable : null}
             technicalDataTable={isTeilegutachten ? tgTechnicalTable : null}
+            ownerNotes={isTeilegutachten ? tgOwnerNotes : null}
           />
         ) : null}
 

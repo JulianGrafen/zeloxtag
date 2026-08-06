@@ -27,6 +27,10 @@ import {
   technicalSpecsFromTeilegutachtenTable,
 } from "@/lib/validations/teilegutachten-technical-data";
 import { groupTeilegutachtenAuflagen } from "@/lib/validations/teilegutachten-auflagen";
+import {
+  normalizeTeilegutachtenOwnerNotes,
+  TEILEGUTACHTEN_OWNER_NOTES_MAX_LENGTH,
+} from "@/lib/ocr/teilegutachten-owner-notes-from-text";
 
 export const TEILEGUTACHTEN_AUFLAGEN_MAX_LENGTH = 2_400;
 
@@ -82,6 +86,13 @@ export const TeilegutachtenLlmPayloadSchema = z
     compatibilityTable: TableDataSchema.nullable().optional(),
     /** Section II / Technische Daten — structured table. */
     technicalDataTable: TableDataSchema.nullable().optional(),
+    /** Section III — Hinweise für den Fahrzeughalter (verbatim). */
+    ownerNotes: z
+      .string()
+      .trim()
+      .min(1)
+      .max(TEILEGUTACHTEN_OWNER_NOTES_MAX_LENGTH)
+      .nullable(),
   })
   .strict();
 
@@ -113,6 +124,13 @@ export const TeilegutachtenExtractionSchema = z
     compatibilityTable: TableDataSchema.nullable().optional(),
     /** Section II / Technische Daten — structured table. */
     technicalDataTable: TableDataSchema.nullable().optional(),
+    /** Section III — Hinweise für den Fahrzeughalter (verbatim). */
+    ownerNotes: z
+      .string()
+      .trim()
+      .min(1)
+      .max(TEILEGUTACHTEN_OWNER_NOTES_MAX_LENGTH)
+      .nullable(),
   })
   .strict();
 
@@ -139,6 +157,7 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
       "userVehicleMatchStatus",
       "verwendungsbereich",
       "auflagen",
+      "ownerNotes",
       "matchedVehicleRow",
       "compatibilityTable",
       "technicalDataTable",
@@ -200,6 +219,11 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
         description:
           "Auflagen sections. ONE array item per section: heading line ending with ':' plus all following paragraphs until the next heading. Never put headings and body text in separate items.",
         items: { type: "string" },
+      },
+      ownerNotes: {
+        type: ["string", "null"],
+        description:
+          'Section III / "Hinweise für den Fahrzeughalter" — copy verbatim from the document. Preserve line breaks and full sentences. Do NOT summarize. Null if absent.',
       },
       matchedVehicleRow: {
         type: ["string", "null"],
@@ -342,6 +366,7 @@ export function normalizeTeilegutachtenExtraction(
     technicalDataTable: sanitizeTeilegutachtenTechnicalTable(
       normalizeCompatibilityTable(fields.technicalDataTable),
     ),
+    ownerNotes: normalizeTeilegutachtenOwnerNotes(fields.ownerNotes),
   };
 
   return TeilegutachtenExtractionSchema.parse(normalized);
@@ -360,6 +385,7 @@ export function emptyTeilegutachtenLlmPayload(): TeilegutachtenLlmPayload {
     userVehicleMatchStatus: null,
     verwendungsbereich: null,
     auflagen: null,
+    ownerNotes: null,
     matchedVehicleRow: null,
     compatibilityTable: null,
     technicalDataTable: null,
@@ -467,6 +493,7 @@ export function teilegutachtenToApprovalFields(
     immediateInspectionRequired: true,
     compatibilityTable: extracted.compatibilityTable ?? null,
     technicalDataTable: extracted.technicalDataTable ?? null,
+    ownerNotes: extracted.ownerNotes ?? null,
   };
   return { kind: "teilegutachten", data };
 }
