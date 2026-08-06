@@ -23,6 +23,14 @@ export {
 } from "./Paragraph21ExtractionService";
 
 export {
+  TeilegutachtenExtractionService,
+  teilegutachtenExtractionService,
+  buildTeilegutachtenSystemPrompt,
+  TEILEGUTACHTEN_MAX_CHARS,
+  type TeilegutachtenExtractionOptions,
+} from "./TeilegutachtenExtractionService";
+
+export {
   TableMatchingService,
   matchCompatibilityTable,
   normalizeMatchToken,

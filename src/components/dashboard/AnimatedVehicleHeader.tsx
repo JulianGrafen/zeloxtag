@@ -11,6 +11,8 @@ import { isOwnerSilhouetteSrc } from "@/lib/vehicles/silhouette-display-url";
 type AnimatedVehicleHeaderProps = {
   /** Transparent PNG (or catalog cutout). Null → SVG fallback. */
   silhouetteImageUrl?: string | null;
+  /** Session data URL / blob when proxy fails — owner uploads only. */
+  previewFallbackUrl?: string | null;
   /** Catalog cutout when owner upload / proxy fails. */
   fallbackImageUrl?: string | null;
   /** When true, never swap to generic SVG on load errors (owner upload). */
@@ -20,6 +22,8 @@ type AnimatedVehicleHeaderProps = {
   /** Owner can tap the cutout to replace / upload a side photo. */
   onEdit?: () => void;
   editLabel?: string;
+  /** Called when the primary src loads successfully (proxy confirmed). */
+  onPrimaryLoad?: () => void;
 };
 
 const SPRING = {
@@ -34,32 +38,37 @@ const SPRING = {
  */
 export function AnimatedVehicleHeader({
   silhouetteImageUrl,
+  previewFallbackUrl,
   fallbackImageUrl,
   lockOwnerSilhouette = false,
   alt,
   className = "",
   onEdit,
   editLabel = "Fahrzeugbild ändern",
+  onPrimaryLoad,
 }: AnimatedVehicleHeaderProps) {
   const primary = silhouetteImageUrl?.trim() || null;
+  const previewFallback = previewFallbackUrl?.trim() || null;
   const fallback = fallbackImageUrl?.trim() || null;
   const ownerLocked =
     lockOwnerSilhouette || isOwnerSilhouetteSrc(primary);
   const [activeSrc, setActiveSrc] = useState<string | null>(primary);
   const [showSvgFallback, setShowSvgFallback] = useState(false);
   const [proxyRetries, setProxyRetries] = useState(0);
+  const [usedPreviewFallback, setUsedPreviewFallback] = useState(false);
 
   useEffect(() => {
     setActiveSrc(primary);
     setShowSvgFallback(false);
     setProxyRetries(0);
+    setUsedPreviewFallback(false);
   }, [primary]);
 
   const editable = typeof onEdit === "function";
 
   function handleImageError() {
-    // Blob previews may outlive revoke — ignore transient load errors.
-    if (activeSrc?.startsWith("blob:")) {
+    // Blob / data URLs may outlive revoke — ignore transient load errors.
+    if (activeSrc?.startsWith("blob:") || activeSrc?.startsWith("data:image/")) {
       return;
     }
     if (
@@ -71,6 +80,16 @@ export function AnimatedVehicleHeader({
       setActiveSrc(bumpSilhouetteCacheUrl(activeSrc!));
       return;
     }
+    if (
+      (ownerLocked || isOwnerSilhouetteSrc(activeSrc)) &&
+      previewFallback &&
+      !usedPreviewFallback &&
+      activeSrc !== previewFallback
+    ) {
+      setUsedPreviewFallback(true);
+      setActiveSrc(previewFallback);
+      return;
+    }
     // Never revert to catalog art or generic SVG when an owner silhouette was requested.
     if (ownerLocked || isOwnerSilhouetteSrc(activeSrc)) {
       return;
@@ -80,6 +99,16 @@ export function AnimatedVehicleHeader({
       return;
     }
     setShowSvgFallback(true);
+  }
+
+  function handleImageLoad() {
+    if (
+      isOwnerSilhouetteSrc(activeSrc) &&
+      !activeSrc?.startsWith("blob:") &&
+      !activeSrc?.startsWith("data:image/")
+    ) {
+      onPrimaryLoad?.();
+    }
   }
 
   const showImage = Boolean(activeSrc) && (!showSvgFallback || ownerLocked);
@@ -98,6 +127,7 @@ export function AnimatedVehicleHeader({
           key={activeSrc}
           src={activeSrc!}
           alt={alt}
+          onLoad={handleImageLoad}
           onError={handleImageError}
           className="absolute inset-0 h-full w-full object-contain object-right drop-shadow-[0_10px_18px_rgba(0,0,0,0.18)]"
         />

@@ -59,7 +59,7 @@ export function ApprovalFieldsSection({
             value={approvalFields.data.testingOrganization}
           />
           <Fact
-            label="Dokumentnummer"
+            label="Teilegutachten-Nr."
             value={approvalFields.data.documentNumber}
           />
           <div className="sm:col-span-2">

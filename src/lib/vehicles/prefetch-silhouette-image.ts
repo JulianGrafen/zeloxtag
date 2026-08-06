@@ -1,29 +1,63 @@
+import { isLikelyImageResponse } from "@/lib/vehicles/silhouette-bytes";
+
 /**
- * Client-side: verify a silhouette URL loads before swapping the dashboard header.
+ * Client-side: verify a silhouette URL returns PNG bytes before swapping the header.
+ * Uses fetch (not Image) so JSON error bodies from the proxy are detected reliably.
  */
-export function prefetchSilhouetteImage(
+export async function prefetchSilhouetteImage(
   url: string,
-  timeoutMs = 8_000,
+  options?: { timeoutMs?: number; attempts?: number },
 ): Promise<boolean> {
   if (typeof window === "undefined" || !url.trim()) {
-    return Promise.resolve(false);
+    return false;
   }
 
-  return new Promise((resolve) => {
-    const img = new Image();
-    let settled = false;
+  const timeoutMs = options?.timeoutMs ?? 8_000;
+  const attempts = options?.attempts ?? 3;
 
-    const finish = (ok: boolean) => {
-      if (settled) return;
-      settled = true;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const target =
+      attempt === 0 ? url.trim() : bumpSilhouetteCacheUrl(url.trim());
+
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+      const response = await fetch(target, {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: controller.signal,
+      });
       window.clearTimeout(timer);
-      resolve(ok);
-    };
 
-    const timer = window.setTimeout(() => finish(false), timeoutMs);
-    img.onload = () => finish(true);
-    img.onerror = () => finish(false);
-    img.src = url;
+      if (!response.ok) {
+        if (attempt < attempts - 1) {
+          await sleep(350 * (attempt + 1));
+          continue;
+        }
+        return false;
+      }
+
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const contentType = response.headers.get("content-type") ?? "";
+      if (isLikelyImageResponse(contentType, bytes)) {
+        return true;
+      }
+    } catch {
+      /* retry */
+    }
+
+    if (attempt < attempts - 1) {
+      await sleep(350 * (attempt + 1));
+    }
+  }
+
+  return false;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
   });
 }
 

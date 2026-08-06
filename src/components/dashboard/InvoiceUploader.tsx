@@ -14,6 +14,8 @@ import {
 
 import { ABEOverview } from "@/components/dashboard/ABEOverview";
 import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverview";
+import { TeilegutachtenOverview } from "@/components/dashboard/TeilegutachtenOverview";
+import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -307,7 +309,11 @@ export function InvoiceUploader({
       (resolvedLockCategory && resolvedCategory === "abe" ? "abe" : "invoice")) ===
     "abe";
   const isEinzelabnahmeUpload = scanDef?.approvalKind === "einzelabnahme";
-  const isGutachtenFamilyUpload = isAbeUpload && !isEinzelabnahmeUpload;
+  const isTeilegutachtenUpload = scanDef?.approvalKind === "teilegutachten";
+  const isGutachtenFamilyUpload =
+    isAbeUpload && !isEinzelabnahmeUpload && !isTeilegutachtenUpload;
+  const isMultiPageGutachtenUpload =
+    isGutachtenFamilyUpload || isTeilegutachtenUpload;
   const isTuevUpload =
     scanDef?.ocrDocumentType === "tuev" ||
     (resolvedLockCategory && resolvedCategory === "tuev");
@@ -352,10 +358,12 @@ export function InvoiceUploader({
             label:
               totalPages > 1
                 ? `Seite ${page} von ${totalPages} wird analysiert…`
-                :                 documentType === "abe"
+                : documentType === "abe"
                   ? isEinzelabnahmeUpload
                     ? "Einzelabnahme wird analysiert…"
-                    : `${scanDef?.title ?? "Gutachten"} wird analysiert…`
+                    : isTeilegutachtenUpload
+                      ? "Teilegutachten wird analysiert…"
+                      : `${scanDef?.title ?? "Gutachten"} wird analysiert…`
                   : documentType === "tuev"
                     ? "TÜV-Bericht wird analysiert…"
                     : "Rechnung wird analysiert…",
@@ -453,17 +461,26 @@ export function InvoiceUploader({
     isEinzelabnahmeUpload &&
     Boolean(previewUrl) &&
     Boolean(uploadFile);
+  const isTeilegutachtenReview =
+    step === "review" &&
+    isTeilegutachtenUpload &&
+    Boolean(previewUrl) &&
+    Boolean(uploadFile);
   const isAbeReview =
     step === "review" &&
     !isEinzelabnahmeUpload &&
+    !isTeilegutachtenUpload &&
     (fields.category === "abe" || isGutachtenFamilyUpload) &&
     Boolean(previewUrl) &&
     Boolean(uploadFile);
 
   async function startAbeAwareExtraction() {
-    if (isGutachtenFamilyUpload && !nativePdf && pages.length === 1) {
+    if (isMultiPageGutachtenUpload && !nativePdf && pages.length === 1) {
+      const docLabel = isTeilegutachtenUpload
+        ? "Teilegutachten"
+        : (scanDef?.title ?? "Gutachten");
       const confirmed = window.confirm(
-        "Du hast nur 1 Seite erfasst. Gutachten haben oft mehrere Seiten.\n\nBitte alle Seiten dieses Dokuments scannen.\nTrotzdem mit einer Seite fortfahren?",
+        `Du hast nur 1 Seite erfasst. ${docLabel} haben oft mehrere Seiten.\n\nBitte alle Seiten dieses Dokuments scannen.\nTrotzdem mit einer Seite fortfahren?`,
       );
       if (!confirmed) return;
     }
@@ -570,6 +587,83 @@ export function InvoiceUploader({
       formData.set("notes", notes);
       formData.set("manufacturer", review.manufacturer?.trim() ?? "");
       formData.set("invoiceNumber", review.documentNumber?.trim() ?? "");
+      formData.set("mileageKm", "");
+      formData.set("pageCount", String(pageCount || 1));
+      formData.set("approvalFields", JSON.stringify(approval));
+      formData.set("file", uploadFile);
+
+      const result = await uploadDocument(formData);
+      if (result.status === "error") {
+        setError(result.message);
+        return;
+      }
+
+      const href =
+        successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      window.location.assign(href);
+    });
+  }
+
+  function saveTeilegutachtenDocument(payload: {
+    review: TeilegutachtenReviewFields;
+    approvalFields: Extract<ApprovalFields, { kind: "teilegutachten" }>;
+    title: string;
+  }) {
+    if (!uploadFile) {
+      setError("Keine Datei zum Speichern vorhanden.");
+      return;
+    }
+
+    setError(null);
+    const { review, approvalFields: approval, title: storedTitle } = payload;
+    const certificateNumber = review.certificateNumber?.trim() ?? "";
+
+    const notes = [
+      review.userVehicleMatchStatus
+        ? `Fahrzeug-Check: ${review.userVehicleMatchStatus}`
+        : null,
+      review.matchedVehicleRow
+        ? `Trefferzeile: ${review.matchedVehicleRow}`
+        : null,
+      review.verwendungsbereich
+        ? `Verwendungsbereich:\n${review.verwendungsbereich}`
+        : null,
+      review.physicalMarking
+        ? `Kennzeichnung: ${review.physicalMarking}`
+        : null,
+      "Hinweis: Teilegutachten allein nicht straßenverkehrsrechtlich gültig — Anbauabnahme erforderlich.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("vehicleId", vehicleId);
+      formData.set("tagUuid", tagUuid);
+      formData.set("title", storedTitle);
+      formData.set("type", "abe");
+      formData.set("category", "abe");
+      formData.set("vendor", review.partType?.trim() ?? storedTitle);
+      formData.set("date", localDateIso());
+      formData.set("amount", "");
+      formData.set("lineItems", "");
+      formData.set("kbaNumber", certificateNumber);
+      formData.set(
+        "vehicleApprovals",
+        review.matchedVehicleRow
+          ? JSON.stringify([review.matchedVehicleRow])
+          : "",
+      );
+      formData.set("authority", review.testingOrganization?.trim() ?? "");
+      formData.set(
+        "conditions",
+        review.auflagen?.length ? JSON.stringify(review.auflagen) : "",
+      );
+      formData.set("technicalSpecs", "");
+      formData.set("partCategory", review.partCategory?.trim() ?? "");
+      formData.set("notes", notes);
+      formData.set("manufacturer", review.manufacturer?.trim() ?? "");
+      formData.set("invoiceNumber", certificateNumber);
       formData.set("mileageKm", "");
       formData.set("pageCount", String(pageCount || 1));
       formData.set("approvalFields", JSON.stringify(approval));
@@ -750,6 +844,32 @@ export function InvoiceUploader({
             </div>
           ) : null}
 
+          {isTeilegutachtenUpload ? (
+            <div
+              role="note"
+              className="rounded-[1.35rem] border border-amber-300/70 bg-amber-50 px-4 py-3.5 text-[0.84rem] leading-relaxed text-amber-950 shadow-[var(--vd-shadow-sm)]"
+            >
+              <div className="flex items-start gap-2.5">
+                <Info
+                  className="mt-0.5 h-4 w-4 shrink-0 text-amber-800"
+                  aria-hidden
+                />
+                <div className="space-y-1.5">
+                  <p className="font-semibold tracking-[-0.01em]">
+                    Teilegutachten — Gutachtennummer, nicht KBA
+                  </p>
+                  <p>
+                    Wir lesen die{" "}
+                    <span className="font-medium">Teilegutachten-Nr.</span>,
+                    Kennzeichnung und den Verwendungsbereich. Bitte{" "}
+                    <span className="font-medium">alle Seiten</span> scannen.
+                    Für die Straße brauchst du zusätzlich eine Anbauabnahme.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {isGutachtenFamilyUpload ? (
             <div
               role="note"
@@ -783,7 +903,9 @@ export function InvoiceUploader({
               hint={
                 isEinzelabnahmeUpload
                   ? "Einzelabnahme fotografieren oder als PDF hochladen"
-                  : isGutachtenFamilyUpload
+                  : isTeilegutachtenUpload
+                    ? "Teilegutachten fotografieren oder als PDF hochladen"
+                    : isGutachtenFamilyUpload
                   ? `Alle Seiten von ${scanDef?.title ?? "Gutachten"} fotografieren oder als PDF hochladen`
                   : isTuevUpload
                     ? "TÜV-/HU-Bericht fotografieren oder als PDF hochladen"
@@ -871,7 +993,9 @@ export function InvoiceUploader({
                     hint={
                       isEinzelabnahmeUpload
                         ? "Nächste Seite derselben Einzelabnahme hinzufügen"
-                        : isGutachtenFamilyUpload
+                        : isTeilegutachtenUpload
+                          ? "Nächste Seite desselben Teilegutachtens hinzufügen"
+                          : isGutachtenFamilyUpload
                         ? "Nächste Seite desselben Gutachtens hinzufügen"
                         : "Nächste Seite fotografieren oder aus der Galerie wählen"
                     }
@@ -885,7 +1009,9 @@ export function InvoiceUploader({
                     <Plus className="mr-1 inline h-3.5 w-3.5" aria-hidden />
                     {isEinzelabnahmeUpload
                       ? `Weitere Seite derselben Einzelabnahme · max. ${MAX_PAGES}`
-                      : isGutachtenFamilyUpload
+                      : isTeilegutachtenUpload
+                        ? `Weitere Seite desselben Teilegutachtens · max. ${MAX_PAGES}`
+                        : isGutachtenFamilyUpload
                       ? `Weitere Seite desselben Gutachtens · max. ${MAX_PAGES}`
                       : `Weitere Seite hinzufügen · max. ${MAX_PAGES}`}
                   </p>
@@ -896,6 +1022,13 @@ export function InvoiceUploader({
                 <p className="rounded-xl bg-sky-50 px-3 py-2 text-[0.78rem] text-sky-950">
                   Nur 1 Seite erfasst — fehlen noch Seiten inkl. Feld 22? Bitte
                   alle Seiten der Einzelabnahme hinzufügen.
+                </p>
+              ) : null}
+
+              {isTeilegutachtenUpload && pages.length === 1 ? (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-[0.78rem] text-amber-950">
+                  Nur 1 Seite erfasst — fehlen noch Seiten dieses Teilegutachtens?
+                  Bitte alle Seiten hinzufügen.
                 </p>
               ) : null}
 
@@ -936,15 +1069,6 @@ export function InvoiceUploader({
               {error}
             </p>
           ) : null}
-
-          <PressableLink
-            href={`/v/${tagUuid}/hochladen?mode=scan`}
-            variant="pill"
-            nav="none"
-            className="block text-center text-[0.82rem] font-medium text-[color:var(--vd-muted)]"
-          >
-            Ohne OCR · Perspektiv-Zuschnitt
-          </PressableLink>
         </div>
       ) : null}
 
@@ -992,6 +1116,20 @@ export function InvoiceUploader({
           saveError={error}
           onCancel={resetWizard}
           onSave={saveEinzelabnahmeDocument}
+        />
+      ) : null}
+
+      {isTeilegutachtenReview && previewUrl && uploadFile ? (
+        <TeilegutachtenOverview
+          previewUrl={previewUrl}
+          previewKind={isPdfFile(uploadFile) ? "pdf" : "image"}
+          pageCount={pageCount}
+          fields={fields}
+          approvalFields={approvalFields}
+          isSaving={pending}
+          saveError={error}
+          onCancel={resetWizard}
+          onSave={saveTeilegutachtenDocument}
         />
       ) : null}
 

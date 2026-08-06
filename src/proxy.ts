@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   isProtectedApiPath,
   isProtectedPagePath,
+  isPublicVehicleImagePath,
   loginRedirectUrl,
 } from "@/lib/security/route-policy";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -26,6 +27,12 @@ export async function proxy(request: NextRequest) {
   }
 
   const method = request.method.toUpperCase();
+
+  // Vehicle PNG proxies — public digital-twin imagery (never auth-gated).
+  if (isPublicVehicleImagePath(pathname, method)) {
+    return response;
+  }
+
   const requiresAuth =
     isProtectedPagePath(pathname) ||
     isProtectedApiPath(pathname, method) ||

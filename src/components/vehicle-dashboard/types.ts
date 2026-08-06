@@ -61,6 +61,8 @@ export interface VehicleDashboardData {
   /** Optional real photo; falls back to silhouette */
   vehicleImage?: string;
   vehicleImageFallback?: string;
+  /** Data URL when proxy fails (owner upload session). */
+  vehicleImagePreviewFallback?: string;
   vehicleImageAlt?: string;
   /** Accent label under the greeting, e.g. "QR Tag · Active" */
   statusLabel?: string;
@@ -77,5 +79,6 @@ export interface VehicleDashboardProps {
   onTileClick?: (tileId: string) => void;
   /** Owner tap on header cutout → change / upload silhouette */
   onEditVehicleImage?: () => void;
+  onSilhouetteProxyLoad?: () => void;
   className?: string;
 }

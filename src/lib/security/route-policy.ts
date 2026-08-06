@@ -41,6 +41,14 @@ const PUBLIC_API_GET_PREFIXES = [
   "/api/vehicle/catalog/",
 ];
 
+export function isPublicVehicleImagePath(
+  pathname: string,
+  method: string,
+): boolean {
+  if (method !== "GET" && method !== "HEAD") return false;
+  return PUBLIC_API_GET_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 /**
  * No unauthenticated OCR/LLM POST routes — prevents cost abuse + PII extraction.
  * Scan UI runs only for authenticated vehicle owners.

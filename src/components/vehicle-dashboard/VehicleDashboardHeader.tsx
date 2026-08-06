@@ -8,9 +8,11 @@ interface VehicleDashboardHeaderProps {
   vehicleModel: string;
   vehicleImage?: string;
   vehicleImageFallback?: string;
+  vehicleImagePreviewFallback?: string;
   vehicleImageAlt?: string;
   statusLabel?: string;
   onEditVehicleImage?: () => void;
+  onSilhouetteProxyLoad?: () => void;
 }
 
 export function VehicleDashboardHeader({
@@ -18,9 +20,11 @@ export function VehicleDashboardHeader({
   vehicleModel,
   vehicleImage,
   vehicleImageFallback,
+  vehicleImagePreviewFallback,
   vehicleImageAlt,
   statusLabel = "ZeloxTag · Verbunden",
   onEditVehicleImage,
+  onSilhouetteProxyLoad,
 }: VehicleDashboardHeaderProps) {
   const greeting = `${ownerName}s ${vehicleModel}`;
 
@@ -52,10 +56,12 @@ export function VehicleDashboardHeader({
 
         <AnimatedVehicleHeader
           silhouetteImageUrl={vehicleImage}
+          previewFallbackUrl={vehicleImagePreviewFallback}
           fallbackImageUrl={vehicleImageFallback}
           lockOwnerSilhouette={isOwnerSilhouetteSrc(vehicleImage)}
           alt={vehicleImageAlt ?? greeting}
           onEdit={onEditVehicleImage}
+          onPrimaryLoad={onSilhouetteProxyLoad}
         />
       </div>
     </header>

@@ -30,8 +30,7 @@ export async function GET(
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
-        "Cross-Origin-Resource-Policy": "cross-origin",
-        "Access-Control-Allow-Origin": "*",
+        "Cross-Origin-Resource-Policy": "same-origin",
       },
     });
   } catch {

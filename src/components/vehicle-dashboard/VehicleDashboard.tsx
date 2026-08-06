@@ -9,6 +9,7 @@ export function VehicleDashboard({
   data,
   onTileClick,
   onEditVehicleImage,
+  onSilhouetteProxyLoad,
   className = "",
 }: VehicleDashboardProps) {
   const tiles = data.tiles ?? buildDefaultTiles(data);
@@ -29,9 +30,11 @@ export function VehicleDashboard({
             vehicleModel={data.vehicleModel}
             vehicleImage={data.vehicleImage}
             vehicleImageFallback={data.vehicleImageFallback}
+            vehicleImagePreviewFallback={data.vehicleImagePreviewFallback}
             vehicleImageAlt={data.vehicleImageAlt}
             statusLabel={data.statusLabel}
             onEditVehicleImage={onEditVehicleImage}
+            onSilhouetteProxyLoad={onSilhouetteProxyLoad}
           />
         </div>
 

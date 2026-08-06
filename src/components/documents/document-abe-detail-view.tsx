@@ -49,6 +49,7 @@ export function DocumentAbeDetailView({
   const [viewerOpen, setViewerOpen] = useState(false);
   const kindLabel = approvalKindLabel(document.approval_fields);
   const isEinzelabnahme = document.approval_fields?.kind === "einzelabnahme";
+  const isTeilegutachten = document.approval_fields?.kind === "teilegutachten";
   const title = displayDocumentTitle(document.title);
   const partName = title || document.vendor?.trim() || kindLabel;
   const vinFromApprovals = document.vehicle_approvals?.[0]
@@ -136,7 +137,11 @@ export function DocumentAbeDetailView({
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                {isEinzelabnahme ? "Dokumentnummer" : "Nummer"}
+                {isEinzelabnahme
+                  ? "Dokumentnummer"
+                  : isTeilegutachten
+                    ? "Teilegutachten-Nr."
+                    : "Nummer"}
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                 {document.kba_number ?? "—"}

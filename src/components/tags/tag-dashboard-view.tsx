@@ -36,6 +36,9 @@ interface TagDashboardViewProps {
   onEditVehicleImage?: () => void;
   /** Immediate header refresh after silhouette upload (same-origin display URL). */
   vehicleImageOverride?: string | null;
+  /** Data URL / blob fallback when proxy fails to load. */
+  previewFallbackUrl?: string | null;
+  onSilhouetteProxyLoad?: () => void;
 }
 
 /**
@@ -53,6 +56,8 @@ export function TagDashboardView({
   onOpenScanner,
   onEditVehicleImage,
   vehicleImageOverride,
+  previewFallbackUrl,
+  onSilhouetteProxyLoad,
 }: TagDashboardViewProps) {
   const invoiceCount = documents.filter((doc) => doc.type === "invoice").length;
   const abeCount = documents.filter((doc) => doc.type === "abe").length;
@@ -84,6 +89,7 @@ export function TagDashboardView({
     vehicleModel: `${vehicleModel} · ${vehicle.year}`,
     vehicleImage: vehicleImageOverride ?? cutout?.src,
     vehicleImageFallback: hasOwnerSilhouette ? undefined : catalogCutout?.src,
+    vehicleImagePreviewFallback: previewFallbackUrl ?? undefined,
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
     statusLabel: `ZeloxTag · ${shortTag}`,
     lastOilChange: lastOilChange ?? undefined,
@@ -249,6 +255,7 @@ export function TagDashboardView({
         onEditVehicleImage={
           isOwner && !demoMode ? onEditVehicleImage : undefined
         }
+        onSilhouetteProxyLoad={onSilhouetteProxyLoad}
       />
       {canScan ? (
         <DashboardScanFab tagUuid={tagUuid} onOpenScanner={onOpenScanner} />

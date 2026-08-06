@@ -26,6 +26,7 @@ import {
   SilhouetteCompressionError,
 } from "@/lib/vehicles/compress-silhouette-image";
 import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
+import { fileToPreviewDataUrl } from "@/lib/vehicles/silhouette-preview-session";
 
 export type SilhouetteUploadResult = {
   /** Supabase public URL with cache-bust (DB source of truth). */
@@ -34,6 +35,8 @@ export type SilhouetteUploadResult = {
   displayUrl: string;
   /** Local blob URL for instant header preview until the proxy is shown. */
   previewUrl?: string;
+  /** Inline data URL — survives blob revoke under COEP. */
+  previewDataUrl?: string;
 };
 
 export type ClientVehicleUploadProps = {
@@ -324,31 +327,36 @@ export function ClientVehicleUpload({
           payload.silhouetteDisplayUrl?.trim() ||
           storageUrl;
 
-        const proxyReady = displayUrl.startsWith("/api/vehicle/silhouette/")
-          ? await prefetchSilhouetteImage(displayUrl)
-          : true;
-
-        if (!proxyReady) {
-          throw new Error(
-            "Silhouette gespeichert, aber Vorschau noch nicht ladbar — bitte Seite neu laden.",
-          );
-        }
-
         const previewUrl = URL.createObjectURL(uploadFile);
+        const previewDataUrl = await fileToPreviewDataUrl(uploadFile);
 
         setUploadProgress(100);
         setPreviewUrl((previous) => {
           if (previous?.startsWith("blob:")) {
             URL.revokeObjectURL(previous);
           }
-          return displayUrl;
+          return previewUrl;
         });
         setState("done");
         onUploaded?.({
           storageUrl,
           displayUrl,
           previewUrl,
+          previewDataUrl: previewDataUrl ?? undefined,
         });
+
+        // Best-effort proxy warm-up — never blocks a successful upload.
+        if (displayUrl.startsWith("/api/vehicle/silhouette/")) {
+          void prefetchSilhouetteImage(displayUrl, { attempts: 4 }).then(
+            (ready) => {
+              if (!ready) {
+                setNotice(
+                  "Silhouette gespeichert — Vorschau über lokale Kopie, bis der Server bereit ist.",
+                );
+              }
+            },
+          );
+        }
       } catch (error) {
         setState("idle");
         setError(

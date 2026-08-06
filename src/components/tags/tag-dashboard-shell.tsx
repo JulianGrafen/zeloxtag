@@ -14,6 +14,10 @@ import {
 } from "@/lib/documents/scan-types";
 import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
 import {
+  readSilhouettePreviewFromSession,
+  writeSilhouettePreviewToSession,
+} from "@/lib/vehicles/silhouette-preview-session";
+import {
   cacheBustFromSilhouetteUrl,
   silhouetteCacheBustEqual,
   silhouetteDisplayUrl,
@@ -45,6 +49,15 @@ function proxyUrlForStorage(
   const bust =
     cacheBustFromSilhouetteUrl(storageUrl) ?? Date.now().toString();
   return silhouetteDisplayUrl(vehicleId, bust);
+}
+
+function initialVehicleImageOverride(
+  vehicleId: string,
+  storageUrl: string | null | undefined,
+): string | null {
+  const preview = readSilhouettePreviewFromSession(vehicleId);
+  if (preview) return preview;
+  return proxyUrlForStorage(vehicleId, storageUrl);
 }
 
 type DashboardMode = "dashboard" | "pick-scan" | "scanner";
@@ -100,7 +113,14 @@ export function TagDashboardShell({
     () => initialSilhouetteStorageUrl(vehicle),
   );
   const [vehicleImageOverride, setVehicleImageOverride] = useState<string | null>(
-    () => proxyUrlForStorage(vehicle.id, initialSilhouetteStorageUrl(vehicle)),
+    () =>
+      initialVehicleImageOverride(
+        vehicle.id,
+        initialSilhouetteStorageUrl(vehicle),
+      ),
+  );
+  const [previewFallbackUrl, setPreviewFallbackUrl] = useState<string | null>(
+    () => readSilhouettePreviewFromSession(vehicle.id),
   );
   const previewBlobRef = useRef<string | null>(null);
 
@@ -150,23 +170,55 @@ export function TagDashboardShell({
     setSilhouetteStorageUrl(result.storageUrl);
     writeSilhouetteToSession(vehicle.id, result.storageUrl);
 
+    const previewDataUrl = result.previewDataUrl?.trim();
+    if (previewDataUrl?.startsWith("data:image/")) {
+      writeSilhouettePreviewToSession(vehicle.id, previewDataUrl);
+      setPreviewFallbackUrl(previewDataUrl);
+    }
+
     revokePreviewBlob();
     const preview = result.previewUrl?.trim();
+    const immediateSrc =
+      previewDataUrl?.startsWith("data:image/")
+        ? previewDataUrl
+        : preview?.startsWith("blob:")
+          ? preview
+          : result.displayUrl;
+
     if (preview?.startsWith("blob:")) {
       previewBlobRef.current = preview;
-      setVehicleImageOverride(preview);
-      void prefetchSilhouetteImage(result.displayUrl).then((ready) => {
-        if (!ready) return;
-        setVehicleImageOverride((current) => {
-          if (current !== preview) return current;
-          revokePreviewBlob();
-          return result.displayUrl;
-        });
-      });
-    } else {
-      setVehicleImageOverride(result.displayUrl);
     }
+
+    setVehicleImageOverride(immediateSrc);
+
+    void prefetchSilhouetteImage(result.displayUrl).then((ready) => {
+      if (!ready) return;
+      setVehicleImageOverride((current) => {
+        if (current !== immediateSrc && current !== preview) return current;
+        return result.displayUrl;
+      });
+    });
   }
+
+  function handleSilhouetteProxyLoad() {
+    revokePreviewBlob();
+  }
+
+  useEffect(() => {
+    const storage = silhouetteStorageUrl?.trim();
+    if (!storage) return;
+    const proxy = proxyUrlForStorage(vehicle.id, storage);
+    if (!proxy) return;
+
+    void prefetchSilhouetteImage(proxy).then((ready) => {
+      if (!ready) return;
+      setVehicleImageOverride((value) => {
+        const src = value?.trim() ?? "";
+        if (src.startsWith("/api/vehicle/silhouette/")) return value;
+        return proxy;
+      });
+    });
+  }, [vehicle.id, silhouetteStorageUrl]);
 
   useEffect(() => {
     if (!isOwner || hasSilhouette) {
@@ -250,6 +302,8 @@ export function TagDashboardShell({
             : undefined
         }
         vehicleImageOverride={vehicleImageOverride}
+        previewFallbackUrl={previewFallbackUrl}
+        onSilhouetteProxyLoad={handleSilhouetteProxyLoad}
       />
       {showSilhouettePrompt && mode === "dashboard" && !showSilhouetteEditor ? (
         <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">

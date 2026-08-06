@@ -7,6 +7,10 @@ import {
   SILHOUETTE_BUCKET,
   silhouetteObjectPath,
 } from "@/lib/vehicles/silhouette-constants";
+import {
+  isLikelyImageResponse,
+  isPngBytes,
+} from "@/lib/vehicles/silhouette-bytes";
 
 export const runtime = "nodejs";
 
@@ -15,8 +19,8 @@ const vehicleIdSchema = z.string().uuid();
 const SILHOUETTE_IMAGE_HEADERS: Record<string, string> = {
   "Content-Type": "image/png",
   "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
-  "Cross-Origin-Resource-Policy": "cross-origin",
-  "Access-Control-Allow-Origin": "*",
+  // Same-origin dashboard <img> under COEP require-corp.
+  "Cross-Origin-Resource-Policy": "same-origin",
 };
 
 async function fetchRemoteSilhouetteBytes(
@@ -25,9 +29,10 @@ async function fetchRemoteSilhouetteBytes(
   try {
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
     const contentType = response.headers.get("content-type") ?? "";
-    if (!contentType.includes("image")) return null;
-    return new Uint8Array(await response.arrayBuffer());
+    if (!isLikelyImageResponse(contentType, bytes)) return null;
+    return bytes;
   } catch {
     return null;
   }
@@ -61,16 +66,35 @@ export async function GET(
 
   const admin = createAdminClient();
   const objectPath = silhouetteObjectPath(parsed.data);
+
+  async function respondWithBytes(bytes: Uint8Array): Promise<NextResponse> {
+    return new NextResponse(Buffer.from(bytes), {
+      status: 200,
+      headers: SILHOUETTE_IMAGE_HEADERS,
+    });
+  }
+
   const { data, error } = await admin.storage
     .from(SILHOUETTE_BUCKET)
     .download(objectPath);
 
   if (!error && data) {
     const bytes = new Uint8Array(await data.arrayBuffer());
-    return new NextResponse(bytes, {
-      status: 200,
-      headers: SILHOUETTE_IMAGE_HEADERS,
-    });
+    if (isPngBytes(bytes)) {
+      return respondWithBytes(bytes);
+    }
+  }
+
+  // Signed URL fallback when download() fails but the object exists.
+  const { data: signed, error: signedError } = await admin.storage
+    .from(SILHOUETTE_BUCKET)
+    .createSignedUrl(objectPath, 120);
+
+  if (!signedError && signed?.signedUrl) {
+    const signedBytes = await fetchRemoteSilhouetteBytes(signed.signedUrl);
+    if (signedBytes && isPngBytes(signedBytes)) {
+      return respondWithBytes(signedBytes);
+    }
   }
 
   // Fallback: stream the stored public URL (handles bucket propagation delay).

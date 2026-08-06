@@ -34,6 +34,7 @@ import {
   truncateAbeCoverPages,
 } from "@/services/ocr/AbeExtractionService";
 import { paragraph21ExtractionService } from "@/services/ocr/Paragraph21ExtractionService";
+import { teilegutachtenExtractionService } from "@/services/ocr/TeilegutachtenExtractionService";
 import {
   formatAbeKbaDisplay,
   type AbeMinimal,
@@ -44,6 +45,10 @@ import {
   paragraph21ToAnalyzeFields,
   paragraph21ToApprovalFields,
 } from "@/lib/validations/paragraph21Schema";
+import {
+  teilegutachtenToAnalyzeFields,
+  teilegutachtenToApprovalFields,
+} from "@/lib/validations/teilegutachtenSchema";
 
 export type { DocumentParseKind, OcrDocumentType, OcrJsonPayload } from "./ocr-types";
 
@@ -417,7 +422,29 @@ export async function analyzeDocument(input: {
         };
       }
 
-      // ABE / Teilegutachten / EG-BE — cover or context-aware table scan.
+      // § 19 Abs. 3 Teilegutachten — dedicated extractor (Kennzeichnung + Anbauabnahme flag).
+      if (preferredApprovalKind === "teilegutachten") {
+        const teilegutachten =
+          await teilegutachtenExtractionService.extractTeilegutachten(
+            textSource,
+            { vehicleContext },
+          );
+        return {
+          kind: "abe",
+          documentType,
+          fields: teilegutachtenToAnalyzeFields(teilegutachten),
+          approvalFields: teilegutachtenToApprovalFields(teilegutachten),
+          rawText: textSource,
+          ocrJson: {
+            ...ocrPayload,
+            text: textSource,
+          },
+          modelId: MODEL_ID,
+          parseModel: resolveAbeContextModel(),
+        };
+      }
+
+      // ABE / EG-BE — cover or context-aware table scan.
       const abeTextSource = vehicleContext
         ? textSource
         : ocrPayload.coverText.trim().length >= 8
