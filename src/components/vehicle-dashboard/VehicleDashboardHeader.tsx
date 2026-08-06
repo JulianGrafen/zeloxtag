@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatedVehicleHeader } from "@/components/dashboard/AnimatedVehicleHeader";
+import { isOwnerSilhouetteSrc } from "@/lib/vehicles/silhouette-display-url";
 
 interface VehicleDashboardHeaderProps {
   ownerName: string;
@@ -52,6 +53,7 @@ export function VehicleDashboardHeader({
         <AnimatedVehicleHeader
           silhouetteImageUrl={vehicleImage}
           fallbackImageUrl={vehicleImageFallback}
+          lockOwnerSilhouette={isOwnerSilhouetteSrc(vehicleImage)}
           alt={vehicleImageAlt ?? greeting}
           onEdit={onEditVehicleImage}
         />

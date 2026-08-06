@@ -32,6 +32,8 @@ export type SilhouetteUploadResult = {
   storageUrl: string;
   /** Same-origin proxy URL — use this in the dashboard header. */
   displayUrl: string;
+  /** Local blob URL for instant header preview until the proxy is shown. */
+  previewUrl?: string;
 };
 
 export type ClientVehicleUploadProps = {
@@ -332,6 +334,8 @@ export function ClientVehicleUpload({
           );
         }
 
+        const previewUrl = URL.createObjectURL(uploadFile);
+
         setUploadProgress(100);
         setPreviewUrl((previous) => {
           if (previous?.startsWith("blob:")) {
@@ -343,6 +347,7 @@ export function ClientVehicleUpload({
         onUploaded?.({
           storageUrl,
           displayUrl,
+          previewUrl,
         });
       } catch (error) {
         setState("idle");

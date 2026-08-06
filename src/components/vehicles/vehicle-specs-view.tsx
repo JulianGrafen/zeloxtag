@@ -6,10 +6,12 @@ import { ArrowLeft, Gauge, Save } from "lucide-react";
 
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
+import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
 import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
+import { writeSilhouetteToSession } from "@/lib/vehicles/silhouette-session";
 import {
   parseVehicleTechSpecs,
   type VehicleTechSpecs,
@@ -169,7 +171,8 @@ export function VehicleSpecsView({
           <VehicleSilhouetteUpload
             vehicleId={vehicle.id}
             tagUuid={tagUuid}
-            onUploaded={() => {
+            onUploaded={(result: SilhouetteUploadResult) => {
+              writeSilhouetteToSession(vehicle.id, result.storageUrl);
               router.refresh();
             }}
           />

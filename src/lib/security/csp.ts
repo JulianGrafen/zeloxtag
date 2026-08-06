@@ -143,6 +143,31 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
  * Global DENY / frame-ancestors 'none' must not apply to this route
  * (see next.config.ts exclude pattern).
  */
+/**
+ * Headers for COEP-safe vehicle PNG routes (`/api/vehicle/silhouette/*`,
+ * `/api/vehicle/catalog/*`). Excluded from global COEP/CORP so route handlers
+ * can emit embeddable PNG responses without conflicting CORP values.
+ */
+export function vehicleImageSecurityHeaderEntries(): Array<{
+  key: string;
+  value: string;
+}> {
+  return [
+    {
+      key: "X-Content-Type-Options",
+      value: "nosniff",
+    },
+    {
+      key: "Cross-Origin-Resource-Policy",
+      value: "cross-origin",
+    },
+    {
+      key: "Referrer-Policy",
+      value: "strict-origin-when-cross-origin",
+    },
+  ];
+}
+
 export function documentFileSecurityHeaderEntries(): Array<{
   key: string;
   value: string;

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
@@ -13,6 +12,7 @@ import {
   SCHRAUBER_SCAN_TYPES,
   type ScanType,
 } from "@/lib/documents/scan-types";
+import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
 import {
   cacheBustFromSilhouetteUrl,
   silhouetteCacheBustEqual,
@@ -75,7 +75,6 @@ export function TagDashboardShell({
   initialMode = "dashboard",
   initialScanType,
 }: TagDashboardShellProps) {
-  const router = useRouter();
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
   const parsedInitial = parseScanType(initialScanType ?? undefined);
@@ -103,6 +102,7 @@ export function TagDashboardShell({
   const [vehicleImageOverride, setVehicleImageOverride] = useState<string | null>(
     () => proxyUrlForStorage(vehicle.id, initialSilhouetteStorageUrl(vehicle)),
   );
+  const previewBlobRef = useRef<string | null>(null);
 
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
   const displayVehicle = {
@@ -123,14 +123,49 @@ export function TagDashboardShell({
     setSilhouetteStorageUrl(serverUrl);
     writeSilhouetteToSession(vehicle.id, serverUrl);
     const proxy = proxyUrlForStorage(vehicle.id, serverUrl);
-    if (proxy) setVehicleImageOverride(proxy);
+    if (proxy) {
+      setVehicleImageOverride((current) => {
+        if (current?.startsWith("blob:")) return current;
+        return proxy;
+      });
+    }
   }, [vehicle.id, vehicle.silhouette_image_url, silhouetteStorageUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (previewBlobRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(previewBlobRef.current);
+      }
+    };
+  }, []);
+
+  function revokePreviewBlob() {
+    if (previewBlobRef.current?.startsWith("blob:")) {
+      URL.revokeObjectURL(previewBlobRef.current);
+      previewBlobRef.current = null;
+    }
+  }
 
   function handleSilhouetteUploaded(result: SilhouetteUploadResult) {
     setSilhouetteStorageUrl(result.storageUrl);
-    setVehicleImageOverride(result.displayUrl);
     writeSilhouetteToSession(vehicle.id, result.storageUrl);
-    router.refresh();
+
+    revokePreviewBlob();
+    const preview = result.previewUrl?.trim();
+    if (preview?.startsWith("blob:")) {
+      previewBlobRef.current = preview;
+      setVehicleImageOverride(preview);
+      void prefetchSilhouetteImage(result.displayUrl).then((ready) => {
+        if (!ready) return;
+        setVehicleImageOverride((current) => {
+          if (current !== preview) return current;
+          revokePreviewBlob();
+          return result.displayUrl;
+        });
+      });
+    } else {
+      setVehicleImageOverride(result.displayUrl);
+    }
   }
 
   useEffect(() => {

@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 import {
   documentFileSecurityHeaderEntries,
   securityHeaderEntries,
+  vehicleImageSecurityHeaderEntries,
 } from "./src/lib/security/csp";
 
 function supabaseImageRemotePattern():
@@ -53,15 +54,24 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
-      // Exclude the document proxy — global DENY / frame-ancestors 'none'
-      // would merge with SAMEORIGIN and blank PDF iframes in Chrome.
+      // Exclude document + vehicle PNG proxies — global COEP/CORP/DENY would
+      // conflict with embeddable same-origin image responses under COEP pages.
       {
-        source: "/((?!api/documents/file$).*)",
+        source:
+          "/((?!api/documents/file$|api/vehicle/silhouette/|api/vehicle/catalog/).*)",
         headers: securityHeaderEntries(),
       },
       {
         source: "/api/documents/file",
         headers: documentFileSecurityHeaderEntries(),
+      },
+      {
+        source: "/api/vehicle/silhouette/:path*",
+        headers: vehicleImageSecurityHeaderEntries(),
+      },
+      {
+        source: "/api/vehicle/catalog/:path*",
+        headers: vehicleImageSecurityHeaderEntries(),
       },
     ];
   },

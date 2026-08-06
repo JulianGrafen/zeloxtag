@@ -35,6 +35,12 @@ const PROTECTED_API_PREFIXES = ["/api/protected"];
  */
 const PUBLIC_API_GET = new Set<string>();
 
+/** COEP-safe vehicle imagery — no session required (digital twin surface). */
+const PUBLIC_API_GET_PREFIXES = [
+  "/api/vehicle/silhouette/",
+  "/api/vehicle/catalog/",
+];
+
 /**
  * No unauthenticated OCR/LLM POST routes — prevents cost abuse + PII extraction.
  * Scan UI runs only for authenticated vehicle owners.
@@ -55,11 +61,13 @@ export function isProtectedApiPath(pathname: string, method: string): boolean {
   }
 
   // HEAD probes (devtools / some browsers) must match the public GET allowlist.
-  if (
-    (method === "GET" || method === "HEAD") &&
-    PUBLIC_API_GET.has(pathname)
-  ) {
-    return false;
+  if (method === "GET" || method === "HEAD") {
+    if (PUBLIC_API_GET.has(pathname)) return false;
+    if (
+      PUBLIC_API_GET_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    ) {
+      return false;
+    }
   }
   if (method === "POST" && PUBLIC_API_POST.has(pathname)) return false;
   return true;

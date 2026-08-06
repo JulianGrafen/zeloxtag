@@ -13,6 +13,8 @@ type AnimatedVehicleHeaderProps = {
   silhouetteImageUrl?: string | null;
   /** Catalog cutout when owner upload / proxy fails. */
   fallbackImageUrl?: string | null;
+  /** When true, never swap to generic SVG on load errors (owner upload). */
+  lockOwnerSilhouette?: boolean;
   alt: string;
   className?: string;
   /** Owner can tap the cutout to replace / upload a side photo. */
@@ -33,6 +35,7 @@ const SPRING = {
 export function AnimatedVehicleHeader({
   silhouetteImageUrl,
   fallbackImageUrl,
+  lockOwnerSilhouette = false,
   alt,
   className = "",
   onEdit,
@@ -40,6 +43,8 @@ export function AnimatedVehicleHeader({
 }: AnimatedVehicleHeaderProps) {
   const primary = silhouetteImageUrl?.trim() || null;
   const fallback = fallbackImageUrl?.trim() || null;
+  const ownerLocked =
+    lockOwnerSilhouette || isOwnerSilhouetteSrc(primary);
   const [activeSrc, setActiveSrc] = useState<string | null>(primary);
   const [showSvgFallback, setShowSvgFallback] = useState(false);
   const [proxyRetries, setProxyRetries] = useState(0);
@@ -53,22 +58,21 @@ export function AnimatedVehicleHeader({
   const editable = typeof onEdit === "function";
 
   function handleImageError() {
-    // Blob previews are revoked after proxy prefetch — ignore transient load errors.
+    // Blob previews may outlive revoke — ignore transient load errors.
     if (activeSrc?.startsWith("blob:")) {
       return;
     }
     if (
       isOwnerSilhouetteSrc(activeSrc) &&
-      proxyRetries < 3 &&
+      proxyRetries < 6 &&
       typeof window !== "undefined"
     ) {
       setProxyRetries((count) => count + 1);
       setActiveSrc(bumpSilhouetteCacheUrl(activeSrc!));
       return;
     }
-    // Never revert to catalog art when an owner silhouette was requested.
-    if (isOwnerSilhouetteSrc(activeSrc)) {
-      setShowSvgFallback(true);
+    // Never revert to catalog art or generic SVG when an owner silhouette was requested.
+    if (ownerLocked || isOwnerSilhouetteSrc(activeSrc)) {
       return;
     }
     if (fallback && activeSrc !== fallback) {
@@ -78,6 +82,8 @@ export function AnimatedVehicleHeader({
     setShowSvgFallback(true);
   }
 
+  const showImage = Boolean(activeSrc) && (!showSvgFallback || ownerLocked);
+
   const stage = (
     <motion.div
       className="relative h-[4.75rem] w-full sm:h-28"
@@ -85,12 +91,12 @@ export function AnimatedVehicleHeader({
       animate={{ x: 0, opacity: 1 }}
       transition={SPRING}
     >
-      {activeSrc && !showSvgFallback ? (
+      {showImage ? (
         // Same-origin proxy/catalog — omit crossOrigin so COEP pages don't CORS-fail.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={activeSrc}
-          src={activeSrc}
+          src={activeSrc!}
           alt={alt}
           onError={handleImageError}
           className="absolute inset-0 h-full w-full object-contain object-right drop-shadow-[0_10px_18px_rgba(0,0,0,0.18)]"
