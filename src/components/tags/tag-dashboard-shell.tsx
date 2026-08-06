@@ -18,6 +18,7 @@ import {
 } from "@/lib/vehicles/prefetch-silhouette-image";
 import {
   cacheBustFromSilhouetteUrl,
+  isOwnerSilhouetteDisplayUrl,
   silhouetteDisplayUrl,
 } from "@/lib/vehicles/silhouette-display-url";
 import type { Document, Vehicle } from "@/types/database";
@@ -118,6 +119,8 @@ export function TagDashboardShell({
     },
   );
   const blobPreviewRef = useRef<string | null>(null);
+  const vehicleImageOverrideRef = useRef<string | null>(vehicleImageOverride);
+  vehicleImageOverrideRef.current = vehicleImageOverride;
 
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
   const displayVehicle = {
@@ -128,16 +131,25 @@ export function TagDashboardShell({
 
   useEffect(() => {
     if (!vehicle.silhouette_image_url) return;
+
     setSilhouetteStorageUrl(vehicle.silhouette_image_url);
     const bust =
       cacheBustFromSilhouetteUrl(vehicle.silhouette_image_url) ??
       Date.now().toString();
-    setVehicleImageOverride(silhouetteDisplayUrl(vehicle.id, bust));
-    try {
-      sessionStorage.removeItem(silhouetteStorageKey(vehicle.id));
-    } catch {
-      /* ignore */
+    const proxyUrl = silhouetteDisplayUrl(vehicle.id, bust);
+    const current = vehicleImageOverrideRef.current;
+
+    // Keep a live blob preview until the same-origin proxy actually loads.
+    if (current?.startsWith("blob:")) {
+      promoteProxyDisplayUrl(proxyUrl, current);
+      return;
     }
+
+    if (isOwnerSilhouetteDisplayUrl(current)) {
+      return;
+    }
+
+    setVehicleImageOverride(proxyUrl);
   }, [vehicle.id, vehicle.silhouette_image_url]);
 
   useEffect(() => {
@@ -153,6 +165,11 @@ export function TagDashboardShell({
       const ok = await prefetchSilhouetteImage(url);
       if (ok) {
         setVehicleImageOverride(url);
+        try {
+          sessionStorage.removeItem(silhouetteStorageKey(vehicle.id));
+        } catch {
+          /* ignore */
+        }
         if (blobToRevoke?.startsWith("blob:")) {
           URL.revokeObjectURL(blobToRevoke);
           if (blobPreviewRef.current === blobToRevoke) {
