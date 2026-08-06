@@ -75,8 +75,27 @@ export function TagDashboardShell({
   const [vehicleImageOverride, setVehicleImageOverride] = useState<string | null>(
     null,
   );
+  const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
+    vehicle.silhouette_image_url,
+  );
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
-  const hasSilhouette = Boolean(vehicle.silhouette_image_url || vehicleImageOverride);
+  const displayVehicle = {
+    ...vehicle,
+    silhouette_image_url: silhouetteStorageUrl,
+  };
+  const hasSilhouette = Boolean(silhouetteStorageUrl || vehicleImageOverride);
+
+  useEffect(() => {
+    setSilhouetteStorageUrl(vehicle.silhouette_image_url);
+  }, [vehicle.silhouette_image_url]);
+
+  function handleSilhouetteUploaded(result: {
+    displayUrl: string;
+    storageUrl: string;
+  }) {
+    setVehicleImageOverride(result.displayUrl);
+    setSilhouetteStorageUrl(result.storageUrl);
+  }
 
   useEffect(() => {
     if (!isOwner || hasSilhouette) {
@@ -139,7 +158,7 @@ export function TagDashboardShell({
   return (
     <>
       <TagDashboardView
-        vehicle={vehicle}
+        vehicle={displayVehicle}
         documents={documents}
         tagUuid={tagUuid}
         ownerName={ownerName}
@@ -165,8 +184,8 @@ export function TagDashboardShell({
           <VehicleSilhouetteUpload
             vehicleId={vehicle.id}
             tagUuid={tagUuid}
-            onUploaded={(displayUrl) => {
-              setVehicleImageOverride(displayUrl);
+            onUploaded={(result) => {
+              handleSilhouetteUploaded(result);
               setShowSilhouettePrompt(false);
             }}
             onSkip={() => {
@@ -198,8 +217,8 @@ export function TagDashboardShell({
               title="Fahrzeugbild ändern"
               description="Lade ein neues Seitenfoto hoch — Galerie oder Kamera. Exakt von der Seite für die beste Dashboard-Animation."
               skipLabel="Schließen"
-              onUploaded={(displayUrl) => {
-                setVehicleImageOverride(displayUrl);
+              onUploaded={(result) => {
+                handleSilhouetteUploaded(result);
                 setShowSilhouetteEditor(false);
               }}
               onSkip={() => setShowSilhouetteEditor(false)}

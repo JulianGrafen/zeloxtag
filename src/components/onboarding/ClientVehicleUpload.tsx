@@ -27,10 +27,17 @@ import {
   SilhouetteCompressionError,
 } from "@/lib/vehicles/compress-silhouette-image";
 
+export type SilhouetteUploadResult = {
+  /** Same-origin proxy for COEP-safe dashboard header. */
+  displayUrl: string;
+  /** Stored Supabase public URL (for resolveVehicleImage after refresh). */
+  storageUrl: string;
+};
+
 export type ClientVehicleUploadProps = {
   vehicleId: string;
   tagUuid: string;
-  onUploaded?: (silhouetteDisplayUrl: string) => void;
+  onUploaded?: (result: SilhouetteUploadResult) => void;
   onSkip?: () => void;
   skipLabel?: string;
   title?: string;
@@ -320,7 +327,10 @@ export function ClientVehicleUpload({
         });
         setState("done");
         if (displayUrl) {
-          onUploaded?.(displayUrl);
+          onUploaded?.({
+            displayUrl,
+            storageUrl: payload.silhouetteImageUrl,
+          });
         }
         router.refresh();
       } catch (error) {

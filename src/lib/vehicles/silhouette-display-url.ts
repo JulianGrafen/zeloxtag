@@ -3,6 +3,13 @@
  * Supabase public URLs are blocked as no-cors embeds without CORP.
  */
 
+/** True when the dashboard should show an owner upload, not catalog art. */
+export function isOwnerSilhouetteDisplayUrl(url: string | null | undefined): boolean {
+  const trimmed = url?.trim();
+  if (!trimmed) return false;
+  return trimmed.startsWith("/api/vehicle/silhouette/");
+}
+
 export function silhouetteDisplayUrl(
   vehicleId: string,
   cacheBust?: string | number | null,

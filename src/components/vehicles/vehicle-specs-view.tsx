@@ -169,6 +169,9 @@ export function VehicleSpecsView({
           <VehicleSilhouetteUpload
             vehicleId={vehicle.id}
             tagUuid={tagUuid}
+            onUploaded={() => {
+              router.refresh();
+            }}
           />
         ) : null}
 

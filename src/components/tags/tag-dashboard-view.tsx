@@ -75,12 +75,15 @@ export function TagDashboardView({
     silhouetteImageUrl: vehicle.silhouette_image_url,
   });
   const catalogCutout = resolveVehicleCatalogImage(vehicle.make, vehicle.model);
+  const hasOwnerSilhouette = Boolean(
+    vehicleImageOverride || vehicle.silhouette_image_url?.trim(),
+  );
 
   const data = {
     ownerName: ownerName?.trim() || "Fahrer",
     vehicleModel: `${vehicleModel} · ${vehicle.year}`,
     vehicleImage: vehicleImageOverride ?? cutout?.src,
-    vehicleImageFallback: catalogCutout?.src,
+    vehicleImageFallback: hasOwnerSilhouette ? undefined : catalogCutout?.src,
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
     statusLabel: `ZeloxTag · ${shortTag}`,
     lastOilChange: lastOilChange ?? undefined,

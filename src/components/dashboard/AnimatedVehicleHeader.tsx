@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Camera } from "lucide-react";
 
 import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhouette";
+import { isOwnerSilhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 
 type AnimatedVehicleHeaderProps = {
   /** Transparent PNG (or catalog cutout). Null → SVG fallback. */
@@ -49,6 +50,11 @@ export function AnimatedVehicleHeader({
   const editable = typeof onEdit === "function";
 
   function handleImageError() {
+    // Never revert to catalog art when an owner silhouette was requested.
+    if (isOwnerSilhouetteDisplayUrl(activeSrc)) {
+      setShowSvgFallback(true);
+      return;
+    }
     if (fallback && activeSrc !== fallback) {
       setActiveSrc(fallback);
       return;
@@ -64,13 +70,12 @@ export function AnimatedVehicleHeader({
       transition={SPRING}
     >
       {activeSrc && !showSvgFallback ? (
-        // Same-origin (catalog or /api/vehicle/silhouette/…) — COEP-safe.
+        // Same-origin proxy/catalog — omit crossOrigin so COEP pages don't CORS-fail.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={activeSrc}
           src={activeSrc}
           alt={alt}
-          crossOrigin="anonymous"
           onError={handleImageError}
           className="absolute inset-0 h-full w-full object-contain object-right drop-shadow-[0_10px_18px_rgba(0,0,0,0.18)]"
         />
