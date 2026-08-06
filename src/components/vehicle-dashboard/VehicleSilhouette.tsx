@@ -7,7 +7,7 @@ type VehicleSilhouetteProps = SVGProps<SVGSVGElement> & {
 
 /**
  * Stilisierte Coupé-Silhouette, falls kein Fahrzeugfoto vorhanden ist.
- * Neutral genug für RX-8 und vergleichbare Sportwagen.
+ * Neutral genug für GR Supra und vergleichbare Sportwagen.
  */
 export function VehicleSilhouette({
   label = "Fahrzeug-Silhouette",

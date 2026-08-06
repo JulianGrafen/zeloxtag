@@ -10,7 +10,7 @@ const PUBLIC_EXACT = new Set([
   "/login/reset",
   "/auth/callback",
   "/auth/confirm",
-  "/demo", // optional RX-8 showcase (not the landing page)
+  "/demo", // optional GR Supra showcase (not the landing page)
   // /login/update-password requires a recovery session (checked in page)
   // /qr requires auth — inventory mint must not be anonymous
   // /auth/continue is protected — resolves owner dashboard after login

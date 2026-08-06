@@ -216,14 +216,14 @@ export function ClaimFlow({
                 label="Marke"
                 value={make}
                 onChange={setMake}
-                placeholder="Mazda"
+                placeholder="Toyota"
                 required
               />
               <Field
                 label="Modell"
                 value={model}
                 onChange={setModel}
-                placeholder="RX-8"
+                placeholder="GR Supra"
                 required
               />
             </div>

@@ -39,6 +39,18 @@ describe("resolveVehicleImage", () => {
     expect(match?.src).toBe("/vehicles/bmw-530d.png");
   });
 
+  it("maps Toyota GR Supra to catalog cutout", () => {
+    const match = resolveVehicleImage({
+      make: "Toyota",
+      model: "GR Supra",
+      silhouetteImageUrl: null,
+    });
+    expect(match).toEqual({
+      src: "/vehicles/supra.png",
+      alt: "Toyota GR Supra",
+    });
+  });
+
   it("returns undefined when nothing matches", () => {
     expect(
       resolveVehicleImage({

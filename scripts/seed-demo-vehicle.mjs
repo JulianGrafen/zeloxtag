@@ -107,10 +107,10 @@ async function upsertVehicle(userId) {
       body: JSON.stringify({
         id: DEMO_VEHICLE_ID,
         user_id: userId,
-        make: "Mazda",
-        model: "RX-8",
-        year: 2011,
-        vin: "JM1FE173X00123456",
+        make: "Toyota",
+        model: "GR Supra",
+        year: 2021,
+        vin: "JTMYFEFM8M0123456",
       }),
     }),
   );

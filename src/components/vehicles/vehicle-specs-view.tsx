@@ -194,7 +194,7 @@ export function VehicleSpecsView({
                       setSaved(false);
                     }}
                     className="claim-input w-full"
-                    placeholder="Mazda"
+                    placeholder="Toyota"
                   />
                 </Field>
                 <Field label="Modell">
@@ -206,7 +206,7 @@ export function VehicleSpecsView({
                       setSaved(false);
                     }}
                     className="claim-input w-full"
-                    placeholder="RX-8"
+                    placeholder="GR Supra"
                   />
                 </Field>
               </div>

@@ -12,7 +12,7 @@ import {
 export const metadata: Metadata = {
   title: "Demo · ZeloxTag",
   description:
-    "Öffentliche Demo des ZeloxTag Fahrzeug-Dashboards (Mazda RX-8).",
+    "Öffentliche Demo des ZeloxTag Fahrzeug-Dashboards (Toyota GR Supra).",
 };
 
 /**
@@ -38,7 +38,7 @@ export default function DemoPage() {
               Anmelden
             </Link>
             <p className="truncate text-[0.72rem] font-medium text-[color:var(--vd-muted)]">
-              Demo · Mazda RX-8
+              Demo · Toyota GR Supra
             </p>
             <Link
               href="/"

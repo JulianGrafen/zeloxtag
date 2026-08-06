@@ -61,11 +61,14 @@ export function resolveVehicleImage(input: {
     };
   }
 
-  // Mazda RX-8
-  if (/\brx\s*8\b/.test(blob) || (/\bmazda\b/.test(blob) && /\brx\b/.test(blob))) {
+  // Toyota GR Supra
+  if (
+    /\bgr\s*supra\b/.test(blob) ||
+    (/\btoyota\b/.test(blob) && /\bsupra\b/.test(blob))
+  ) {
     return {
-      src: "/vehicles/rx8.png",
-      alt: "Mazda RX-8",
+      src: "/vehicles/supra.png",
+      alt: "Toyota GR Supra",
     };
   }
 

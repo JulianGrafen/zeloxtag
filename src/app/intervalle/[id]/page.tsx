@@ -18,6 +18,6 @@ export default async function OilIntervalDetailPage({
   }
 
   return (
-    <OilIntervalDetailView record={record} vehicleModel="RX-8" />
+    <OilIntervalDetailView record={record} vehicleModel="GR Supra" />
   );
 }

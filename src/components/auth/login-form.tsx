@@ -221,7 +221,7 @@ export function LoginForm({
         </a>
         <span className="text-[color:var(--vd-muted)]">
           {" "}
-          · Mazda RX-8 Showcase
+          · Toyota GR Supra Showcase
         </span>
       </p>
     </section>
