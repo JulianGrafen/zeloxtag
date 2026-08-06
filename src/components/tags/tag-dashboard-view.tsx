@@ -13,7 +13,6 @@ import {
   countFilledTechSpecs,
   parseVehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
-import { demoShowcaseHrefForTile } from "@/lib/tags/demo-showcase";
 import { resolveVehicleImage } from "@/lib/vehicles/vehicle-image";
 
 import { DashboardScanFab } from "./dashboard-scan-fab";
@@ -28,8 +27,8 @@ interface TagDashboardViewProps {
   isOwner?: boolean;
   isContributor?: boolean;
   /**
-   * Showcase mode: link invoices/ABE/intervals to public demo routes;
-   * owner-only tiles stay non-navigable.
+   * Showcase mode: all dashboard tiles link to tag routes; sub-pages load via
+   * demo showcase access (read-only, no login).
    */
   demoMode?: boolean;
   onOpenScanner?: () => void;
@@ -216,34 +215,12 @@ export function TagDashboardView({
       };
     }
 
-    if (demoMode) {
-      const showcaseHref = demoShowcaseHrefForTile(tile.id);
-      if (showcaseHref) {
-        return {
-          ...tile,
-          meta: {
-            ...tile.meta,
-            href: showcaseHref,
-          },
-        };
-      }
-      if (tile.meta?.href) {
-        // Owner-only surfaces stay disabled in the public showcase.
-        return {
-          ...tile,
-          meta: {
-            ...tile.meta,
-            href: undefined,
-          },
-        };
-      }
-    }
-
     return tile;
   }).filter((tile) => {
-    // Account settings (2FA) only for the vehicle owner — not public twin guests.
+    // Account settings (2FA) require a real session — hide in public demo.
     if (tile.id === "settings") return isOwner && canScan && !demoMode;
-    if (tile.id === "schrauber") return isOwner && !demoMode;
+    // Schrauber: owner feature, but visible in the public showcase.
+    if (tile.id === "schrauber") return isOwner || demoMode;
     // Schrauber: focused write surface (invoices + service + scan).
     if (isContributor && !isOwner) {
       return (

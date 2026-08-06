@@ -24,6 +24,8 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 type SchrauberManagePanelProps = {
   vehicleId: string;
   tagUuid: string;
+  /** Demo showcase — UI only, no invites or API writes. */
+  readOnly?: boolean;
 };
 
 function HistoryAccessToggle({
@@ -91,6 +93,7 @@ async function buildInviteQrDataUrl(url: string): Promise<string> {
 export function SchrauberManagePanel({
   vehicleId,
   tagUuid,
+  readOnly = false,
 }: SchrauberManagePanelProps) {
   const [label, setLabel] = useState("");
   const [inviteCanReadHistory, setInviteCanReadHistory] = useState(false);
@@ -102,13 +105,14 @@ export function SchrauberManagePanel({
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
+    if (readOnly) return;
     startTransition(async () => {
       const result = await listVehicleContributors(vehicleId);
       if (result.status === "ok" && result.contributors) {
         setRows(result.contributors);
       }
     });
-  }, [vehicleId]);
+  }, [vehicleId, readOnly]);
 
   useEffect(() => {
     if (!inviteUrl) {
@@ -135,6 +139,11 @@ export function SchrauberManagePanel({
 
   return (
     <div className="space-y-5">
+      {readOnly ? (
+        <p className="rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3 text-[0.85rem] text-[color:var(--vd-muted)]">
+          Demo — Einladungen und Schrauber-Verwaltung sind hier nur zur Ansicht.
+        </p>
+      ) : null}
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
         <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
           Schrauber einladen
@@ -152,7 +161,8 @@ export function SchrauberManagePanel({
             value={label}
             onChange={(event) => setLabel(event.target.value)}
             placeholder="z. B. Garage Nord"
-            className="w-full rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-3 py-3 text-[0.92rem] text-[color:var(--vd-text)] outline-none focus:border-neutral-400"
+            disabled={readOnly}
+            className="w-full rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-3 py-3 text-[0.92rem] text-[color:var(--vd-text)] outline-none focus:border-neutral-400 disabled:opacity-60"
           />
         </label>
 
@@ -169,7 +179,7 @@ export function SchrauberManagePanel({
           <HistoryAccessToggle
             id="invite-read-history"
             checked={inviteCanReadHistory}
-            disabled={pending}
+            disabled={readOnly || pending}
             onChange={setInviteCanReadHistory}
           />
         </div>
@@ -177,7 +187,7 @@ export function SchrauberManagePanel({
         <PressableButton
           type="button"
           variant="button"
-          disabled={pending}
+          disabled={readOnly || pending}
           className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white disabled:opacity-60"
           onClick={() => {
             setMessage(null);

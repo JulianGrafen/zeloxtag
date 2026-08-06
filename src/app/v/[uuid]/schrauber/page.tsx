@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { SchrauberManagePanel } from "@/components/contributors/schrauber-manage-panel";
 import { AppShell } from "@/components/layout/app-shell";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
+import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 
 interface SchrauberPageProps {
   params: Promise<{ uuid: string }>;
@@ -50,7 +51,11 @@ export default async function SchrauberPage({ params }: SchrauberPageProps) {
           </p>
         </header>
 
-        <SchrauberManagePanel vehicleId={vehicle.id} tagUuid={uuid} />
+        <SchrauberManagePanel
+          vehicleId={vehicle.id}
+          tagUuid={uuid}
+          readOnly={isDemoActiveTag(uuid)}
+        />
       </section>
     </AppShell>
   );

@@ -34,7 +34,7 @@ export default async function VehicleDocumentsPage({
 }: DocumentsPageProps) {
   const { uuid } = await params;
   const { type: typeRaw, category: categoryRaw } = await searchParams;
-  const { result, access } = await requireTagWriter(uuid);
+  const { result, access, isDemoShowcase } = await requireTagWriter(uuid);
   // Schrauber: invoice list only (no ABE / TÜV browsing).
   const contributorLocked =
     access.isContributor && !access.isOwner
@@ -60,7 +60,7 @@ export default async function VehicleDocumentsPage({
       documents={documents}
       filterType={filterType}
       invoiceCategory={invoiceCategory}
-      canWrite
+      canWrite={!isDemoShowcase && access.canWriteInvoices}
     />
   );
 }

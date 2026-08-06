@@ -5,6 +5,7 @@ import { VehicleSpecsView } from "@/components/vehicles/vehicle-specs-view";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
+import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 
 interface VehicleSpecsPageProps {
@@ -32,14 +33,14 @@ export default async function VehicleSpecsPage({
   }
 
   const user = await getCurrentUser();
-  if (!user) {
+  const demoShowcase = isDemoActiveTag(uuid);
+  if (!user && !demoShowcase) {
     redirect(`/?next=${encodeURIComponent(`/v/${uuid}/daten`)}`);
   }
 
-  const access = await getTagVehicleAccess(
-    result.tag.uuid,
-    result.vehicle.user_id,
-  );
+  const access = demoShowcase
+    ? { isOwner: false, isContributor: false }
+    : await getTagVehicleAccess(result.tag.uuid, result.vehicle.user_id);
 
   const vehicle = {
     ...result.vehicle,

@@ -1,26 +1,31 @@
+import type { VehicleAccess } from "@/lib/auth/vehicle-access";
+
 import { MOCK_TAG_UUIDS } from "./mock-tags";
 
 /** Canonical QR entry for the public Supra showcase twin. */
 export const DEMO_SHOWCASE_BACK_HREF = `/v/${MOCK_TAG_UUIDS.active}`;
 
-/** Public read-only demo routes (no auth) for invoices, ABEs, and oil intervals. */
+/** Legacy public list routes (still reachable directly). */
 export const DEMO_SHOWCASE_ROUTES = {
   invoices: "/rechnungen",
   abe: "/abe",
   intervals: "/intervalle",
 } as const;
 
-export function demoShowcaseHrefForTile(
-  tileId: string,
-): string | undefined {
-  switch (tileId) {
-    case "invoices":
-      return DEMO_SHOWCASE_ROUTES.invoices;
-    case "abe":
-      return DEMO_SHOWCASE_ROUTES.abe;
-    case "oil-change":
-      return DEMO_SHOWCASE_ROUTES.intervals;
-    default:
-      return undefined;
-  }
+export function isDemoActiveTag(tagUuid: string): boolean {
+  return tagUuid.trim() === MOCK_TAG_UUIDS.active;
+}
+
+/** Guest access for the public Supra showcase — browse all surfaces, no writes. */
+export function demoShowcaseAccess(): VehicleAccess {
+  return {
+    isOwner: false,
+    isContributor: false,
+    canWriteInvoices: false,
+    canReadHistory: true,
+    canManageContributors: false,
+    ownerName: "Demo",
+    sessionEmail: null,
+    sessionUserId: null,
+  };
 }

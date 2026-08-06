@@ -6,11 +6,17 @@ import {
   type VehicleAccess,
 } from "@/lib/auth/vehicle-access";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
+import {
+  demoShowcaseAccess,
+  isDemoActiveTag,
+} from "@/lib/tags/demo-showcase";
 import type { TagScanResult } from "@/types/database";
 
 export type TagAccessContext = {
   result: TagScanResult;
   access: VehicleAccess;
+  /** Public Supra showcase — all tag surfaces browsable without login. */
+  isDemoShowcase?: boolean;
 };
 
 /**
@@ -24,6 +30,14 @@ export async function requireTagWriter(
 
   if (!result?.vehicle || result.tag.status !== "active") {
     notFound();
+  }
+
+  if (isDemoActiveTag(result.tag.uuid)) {
+    return {
+      result,
+      access: demoShowcaseAccess(),
+      isDemoShowcase: true,
+    };
   }
 
   const access = await getTagVehicleAccess(
@@ -58,6 +72,14 @@ export async function requireTagOwner(
 
   if (!result?.vehicle || result.tag.status !== "active") {
     notFound();
+  }
+
+  if (isDemoActiveTag(result.tag.uuid)) {
+    return {
+      result,
+      access: demoShowcaseAccess(),
+      isDemoShowcase: true,
+    };
   }
 
   const access = await getTagVehicleAccess(
