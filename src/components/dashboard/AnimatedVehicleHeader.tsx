@@ -6,7 +6,7 @@ import { Camera } from "lucide-react";
 
 import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhouette";
 import { bumpSilhouetteCacheUrl } from "@/lib/vehicles/prefetch-silhouette-image";
-import { isOwnerSilhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
+import { isOwnerSilhouetteSrc } from "@/lib/vehicles/silhouette-display-url";
 
 type AnimatedVehicleHeaderProps = {
   /** Transparent PNG (or catalog cutout). Null → SVG fallback. */
@@ -53,8 +53,12 @@ export function AnimatedVehicleHeader({
   const editable = typeof onEdit === "function";
 
   function handleImageError() {
+    // Blob previews are revoked after proxy prefetch — ignore transient load errors.
+    if (activeSrc?.startsWith("blob:")) {
+      return;
+    }
     if (
-      isOwnerSilhouetteDisplayUrl(activeSrc) &&
+      isOwnerSilhouetteSrc(activeSrc) &&
       proxyRetries < 3 &&
       typeof window !== "undefined"
     ) {
@@ -63,7 +67,7 @@ export function AnimatedVehicleHeader({
       return;
     }
     // Never revert to catalog art when an owner silhouette was requested.
-    if (isOwnerSilhouetteDisplayUrl(activeSrc)) {
+    if (isOwnerSilhouetteSrc(activeSrc)) {
       setShowSvgFallback(true);
       return;
     }

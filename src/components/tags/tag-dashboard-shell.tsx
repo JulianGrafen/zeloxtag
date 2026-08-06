@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
@@ -13,7 +13,12 @@ import {
   type ScanType,
 } from "@/lib/documents/scan-types";
 import {
+  bumpSilhouetteCacheUrl,
+  prefetchSilhouetteImage,
+} from "@/lib/vehicles/prefetch-silhouette-image";
+import {
   cacheBustFromSilhouetteUrl,
+  isOwnerSilhouetteDisplayUrl,
   silhouetteDisplayUrl,
 } from "@/lib/vehicles/silhouette-display-url";
 import type { Document, Vehicle } from "@/types/database";
@@ -23,6 +28,10 @@ import { TagDashboardView } from "./tag-dashboard-view";
 
 function silhouetteSkipKey(vehicleId: string): string {
   return `zlx-silhouette-skip:${vehicleId}`;
+}
+
+function silhouetteStorageKey(vehicleId: string): string {
+  return `zlx-silhouette-storage:${vehicleId}`;
 }
 
 type DashboardMode = "dashboard" | "pick-scan" | "scanner";
@@ -40,16 +49,6 @@ interface TagDashboardShellProps {
   initialMode?: DashboardMode;
   /** Deep-link scan type from `?scan=1&type=…`. */
   initialScanType?: string | null;
-}
-
-function resolveSilhouetteDisplayUrl(
-  vehicleId: string,
-  storageUrl: string | null | undefined,
-): string | null {
-  if (!storageUrl?.trim()) return null;
-  const bust =
-    cacheBustFromSilhouetteUrl(storageUrl) ?? Date.now().toString();
-  return silhouetteDisplayUrl(vehicleId, bust);
 }
 
 /**
@@ -87,12 +86,41 @@ export function TagDashboardShell({
   const [scanType, setScanType] = useState<ScanType | null>(null);
   const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
-  const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
-    () => vehicle.silhouette_image_url,
+  const [vehicleImageOverride, setVehicleImageOverride] = useState<string | null>(
+    () => {
+      if (vehicle.silhouette_image_url) {
+        const bust =
+          cacheBustFromSilhouetteUrl(vehicle.silhouette_image_url) ??
+          Date.now().toString();
+        return silhouetteDisplayUrl(vehicle.id, bust);
+      }
+      try {
+        const stored = sessionStorage.getItem(
+          silhouetteStorageKey(vehicle.id),
+        );
+        if (stored) {
+          const bust = cacheBustFromSilhouetteUrl(stored) ?? Date.now().toString();
+          return silhouetteDisplayUrl(vehicle.id, bust);
+        }
+      } catch {
+        /* private mode */
+      }
+      return null;
+    },
   );
-  const [vehicleImageOverride, setVehicleImageOverride] = useState<
-    string | null
-  >(() => resolveSilhouetteDisplayUrl(vehicle.id, vehicle.silhouette_image_url));
+  const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
+    () => {
+      if (vehicle.silhouette_image_url) return vehicle.silhouette_image_url;
+      try {
+        return sessionStorage.getItem(silhouetteStorageKey(vehicle.id));
+      } catch {
+        return null;
+      }
+    },
+  );
+  const blobPreviewRef = useRef<string | null>(null);
+  const vehicleImageOverrideRef = useRef<string | null>(vehicleImageOverride);
+  vehicleImageOverrideRef.current = vehicleImageOverride;
 
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
   const displayVehicle = {
@@ -101,18 +129,97 @@ export function TagDashboardShell({
   };
   const hasSilhouette = Boolean(silhouetteStorageUrl || vehicleImageOverride);
 
+  function scheduleRevokeBlob(blobToRevoke: string) {
+    // Revoke after React commits the proxy URL — sync revoke races img onError.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        URL.revokeObjectURL(blobToRevoke);
+        if (blobPreviewRef.current === blobToRevoke) {
+          blobPreviewRef.current = null;
+        }
+      });
+    });
+  }
+
+  function promoteProxyDisplayUrl(proxyUrl: string, blobToRevoke?: string) {
+    const tryLoad = async (url: string, attempt: number): Promise<void> => {
+      const ok = await prefetchSilhouetteImage(url);
+      if (ok) {
+        setVehicleImageOverride(url);
+        try {
+          sessionStorage.removeItem(silhouetteStorageKey(vehicle.id));
+        } catch {
+          /* ignore */
+        }
+        if (blobToRevoke?.startsWith("blob:")) {
+          scheduleRevokeBlob(blobToRevoke);
+        }
+        return;
+      }
+      if (attempt < 4) {
+        window.setTimeout(() => {
+          void tryLoad(bumpSilhouetteCacheUrl(url), attempt + 1);
+        }, 400 * attempt);
+      }
+    };
+
+    void tryLoad(proxyUrl, 1);
+  }
+
   useEffect(() => {
     if (!vehicle.silhouette_image_url) return;
 
     setSilhouetteStorageUrl(vehicle.silhouette_image_url);
-    setVehicleImageOverride(
-      resolveSilhouetteDisplayUrl(vehicle.id, vehicle.silhouette_image_url),
-    );
+    const bust =
+      cacheBustFromSilhouetteUrl(vehicle.silhouette_image_url) ??
+      Date.now().toString();
+    const proxyUrl = silhouetteDisplayUrl(vehicle.id, bust);
+    const current = vehicleImageOverrideRef.current;
+
+    // Keep a live blob preview until the same-origin proxy actually loads.
+    if (current?.startsWith("blob:")) {
+      promoteProxyDisplayUrl(proxyUrl, current);
+      return;
+    }
+
+    if (isOwnerSilhouetteDisplayUrl(current)) {
+      return;
+    }
+
+    const pendingBlob = blobPreviewRef.current?.startsWith("blob:")
+      ? blobPreviewRef.current
+      : undefined;
+    promoteProxyDisplayUrl(proxyUrl, pendingBlob);
   }, [vehicle.id, vehicle.silhouette_image_url]);
 
+  useEffect(() => {
+    return () => {
+      if (blobPreviewRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(blobPreviewRef.current);
+      }
+    };
+  }, []);
+
   function handleSilhouetteUploaded(result: SilhouetteUploadResult) {
-    setSilhouetteStorageUrl(result.storageUrl);
+    if (result.displayUrl.startsWith("blob:")) {
+      blobPreviewRef.current = result.displayUrl;
+    }
     setVehicleImageOverride(result.displayUrl);
+    setSilhouetteStorageUrl(result.storageUrl);
+    try {
+      sessionStorage.setItem(
+        silhouetteStorageKey(vehicle.id),
+        result.storageUrl,
+      );
+    } catch {
+      /* quota / private mode */
+    }
+    if (result.proxyDisplayUrl) {
+      promoteProxyDisplayUrl(
+        result.proxyDisplayUrl,
+        result.displayUrl.startsWith("blob:") ? result.displayUrl : undefined,
+      );
+    }
   }
 
   useEffect(() => {

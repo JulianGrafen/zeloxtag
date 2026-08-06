@@ -10,6 +10,14 @@ export function isOwnerSilhouetteDisplayUrl(url: string | null | undefined): boo
   return trimmed.startsWith("/api/vehicle/silhouette/");
 }
 
+/** Owner upload preview — blob (pre-proxy) or same-origin proxy. */
+export function isOwnerSilhouetteSrc(url: string | null | undefined): boolean {
+  const trimmed = url?.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("blob:")) return true;
+  return isOwnerSilhouetteDisplayUrl(trimmed);
+}
+
 export function silhouetteDisplayUrl(
   vehicleId: string,
   cacheBust?: string | number | null,
