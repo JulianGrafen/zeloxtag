@@ -2,6 +2,21 @@ import type { Document, DocumentType } from "@/types/database";
 
 import { DOCUMENT_TYPE_LABELS } from "./constants";
 
+/** TÜV next-HU month (YYYY-MM) → e.g. "Mai 2028". */
+export function formatTuevYearMonth(ym: string | null): string {
+  if (!ym?.trim()) return "—";
+  if (!/^\d{4}-\d{2}$/.test(ym)) return ym;
+  const [yearStr, monthStr] = ym.split("-");
+  const year = Number.parseInt(yearStr!, 10);
+  const month = Number.parseInt(monthStr!, 10);
+  if (!year || month < 1 || month > 12) return ym;
+  const label = new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString(
+    "de-DE",
+    { month: "long", year: "numeric", timeZone: "UTC" },
+  );
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export function formatDocumentDate(isoDate: string | null): string {
   if (!isoDate) return "Ohne Datum";
   const date = new Date(isoDate);

@@ -15,7 +15,9 @@ import {
 import { ABEOverview } from "@/components/dashboard/ABEOverview";
 import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverview";
 import { TeilegutachtenOverview } from "@/components/dashboard/TeilegutachtenOverview";
+import { TuevOverview } from "@/components/dashboard/TuevOverview";
 import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
+import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { Button } from "@/components/ui/button";
@@ -467,6 +469,11 @@ export function InvoiceUploader({
     isTeilegutachtenUpload &&
     Boolean(previewUrl) &&
     Boolean(uploadFile);
+  const isTuevReview =
+    step === "review" &&
+    isTuevUpload &&
+    Boolean(previewUrl) &&
+    Boolean(uploadFile);
   const isAbeReview =
     step === "review" &&
     !isEinzelabnahmeUpload &&
@@ -688,6 +695,66 @@ export function InvoiceUploader({
     });
   }
 
+  function saveTuevDocument(payload: {
+    review: TuevReviewFields;
+    approvalFields: Extract<ApprovalFields, { kind: "tuev" }>;
+    title: string;
+  }) {
+    if (!uploadFile) {
+      setError("Keine Datei zum Speichern vorhanden.");
+      return;
+    }
+
+    setError(null);
+    const { review, approvalFields: approval, title: storedTitle } = payload;
+    const orgLabel =
+      review.testingOrganization === "other"
+        ? "Prüforganisation"
+        : review.testingOrganization;
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("vehicleId", vehicleId);
+      formData.set("tagUuid", tagUuid);
+      formData.set("title", storedTitle);
+      formData.set("type", "tuev");
+      formData.set("category", "tuev");
+      formData.set("vendor", orgLabel);
+      formData.set("date", review.testDate?.trim() ?? localDateIso());
+      formData.set("amount", "");
+      formData.set("lineItems", "");
+      formData.set("kbaNumber", "");
+      formData.set("vehicleApprovals", "");
+      formData.set("authority", review.testingOrganization);
+      formData.set("conditions", "");
+      formData.set("technicalSpecs", "");
+      formData.set("partCategory", "");
+      formData.set("notes", "");
+      formData.set("manufacturer", "");
+      formData.set(
+        "invoiceNumber",
+        review.documentNumber?.trim() ?? "",
+      );
+      formData.set(
+        "mileageKm",
+        review.mileageKm === null ? "" : String(review.mileageKm),
+      );
+      formData.set("pageCount", String(pageCount || 1));
+      formData.set("approvalFields", JSON.stringify(approval));
+      formData.set("file", uploadFile);
+
+      const result = await uploadDocument(formData);
+      if (result.status === "error") {
+        setError(result.message);
+        return;
+      }
+
+      const href =
+        successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      window.location.assign(href);
+    });
+  }
+
   function saveAbeDocument(abe: AbeMinimal) {
     if (!uploadFile) {
       setError("Keine Datei zum Speichern vorhanden.");
@@ -782,7 +849,7 @@ export function InvoiceUploader({
     <section
       className={[
         "mx-auto flex w-full flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
-        isAbeReview || isEinzelabnahmeReview || isTeilegutachtenReview ? "max-w-5xl" : "max-w-lg",
+        isAbeReview || isEinzelabnahmeReview || isTeilegutachtenReview || isTuevReview ? "max-w-5xl" : "max-w-lg",
       ].join(" ")}
     >
       <header className="vd-anim-header space-y-4">
@@ -1140,6 +1207,20 @@ export function InvoiceUploader({
         />
       ) : null}
 
+      {isTuevReview && previewUrl && uploadFile ? (
+        <TuevOverview
+          previewUrl={previewUrl}
+          previewKind={isPdfFile(uploadFile) ? "pdf" : "image"}
+          pageCount={pageCount}
+          fields={fields}
+          approvalFields={approvalFields}
+          isSaving={pending}
+          saveError={error}
+          onCancel={resetWizard}
+          onSave={saveTuevDocument}
+        />
+      ) : null}
+
       {isAbeReview && previewUrl && uploadFile ? (
         <ABEOverview
           previewUrl={previewUrl}
@@ -1156,7 +1237,11 @@ export function InvoiceUploader({
         />
       ) : null}
 
-      {step === "review" && previewUrl && uploadFile && fields.category !== "abe" ? (
+      {step === "review" &&
+      previewUrl &&
+      uploadFile &&
+      fields.category !== "abe" &&
+      !isTuevReview ? (
         <form
           className="vd-anim-header space-y-4"
           onSubmit={(event) => {

@@ -2,8 +2,9 @@ import {
   APPROVAL_KIND_LABELS,
   type ApprovalFields,
 } from "@/lib/documents/approval-fields";
-import { formatDocumentDate } from "@/lib/documents/format";
+import { formatDocumentDate, formatTuevYearMonth } from "@/lib/documents/format";
 import { stripAuflagenFromValidityArea } from "@/lib/validations/teilegutachtenSchema";
+import { TuevDefectsTable } from "@/components/documents/tuev-defects-table";
 
 const TUEV_RESULT_LABELS: Record<string, string> = {
   no_defects: "Ohne Mängel",
@@ -38,8 +39,11 @@ function Fact({
  */
 export function ApprovalFieldsSection({
   approvalFields,
+  hideNextHu = false,
 }: {
   approvalFields: ApprovalFields | null | undefined;
+  /** When an editable HU block is shown elsewhere on the page. */
+  hideNextHu?: boolean;
 }) {
   if (!approvalFields || approvalFields.kind === "abe") {
     return null;
@@ -141,7 +145,13 @@ export function ApprovalFieldsSection({
             />
             <Fact
               label="Nächste HU"
-              value={approvalFields.data.nextInspectionDate}
+              value={
+                hideNextHu
+                  ? null
+                  : formatTuevYearMonth(
+                      approvalFields.data.nextInspectionDate,
+                    )
+              }
             />
             <Fact
               label="Kilometerstand"
@@ -156,7 +166,14 @@ export function ApprovalFieldsSection({
               value={approvalFields.data.documentNumber}
             />
           </dl>
-          {approvalFields.data.defectsList?.length ? (
+          {approvalFields.data.defectsTable?.length ? (
+            <div className="mt-4">
+              <p className="mb-2 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                Festgestellte Mängel
+              </p>
+              <TuevDefectsTable defects={approvalFields.data.defectsTable} />
+            </div>
+          ) : approvalFields.data.defectsList?.length ? (
             <div className="mt-4">
               <p className="mb-2 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                 Festgestellte Mängel

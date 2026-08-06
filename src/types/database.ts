@@ -7,6 +7,7 @@
  */
 
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import type { TimelineEventCategory } from "@/lib/validations/timelineSchema";
 import type { VehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 
 export type TagStatus = "unclaimed" | "active";
@@ -15,6 +16,22 @@ export type DocumentType = "abe" | "invoice" | "tuev" | "other";
 
 export type { ApprovalFields };
 export type { VehicleTechSpecs };
+export type { TimelineEventCategory };
+
+/** Mileage-ordered Service Timeline row (`00029_vehicle_events`). */
+export type VehicleEvent = {
+  id: string;
+  vehicle_id: string;
+  mileage: number;
+  date: string;
+  category: TimelineEventCategory;
+  title: string;
+  description: string | null;
+  cost: number | null;
+  document_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 /** Optional OCR classification (app-level; not a DB column in 00001). */
 export type InvoiceCategory = "tuning" | "service" | "repair" | "inspection";
@@ -327,6 +344,49 @@ export type Database = {
             foreignKeyName: "documents_vehicle_id_fkey";
             columns: ["vehicle_id"];
             referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      vehicle_events: {
+        Row: VehicleEvent;
+        Insert: {
+          id?: string;
+          vehicle_id: string;
+          mileage: number;
+          date: string;
+          category: TimelineEventCategory;
+          title: string;
+          description?: string | null;
+          cost?: number | null;
+          document_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          vehicle_id?: string;
+          mileage?: number;
+          date?: string;
+          category?: TimelineEventCategory;
+          title?: string;
+          description?: string | null;
+          cost?: number | null;
+          document_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_events_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "vehicle_events_document_id_fkey";
+            columns: ["document_id"];
+            referencedRelation: "documents";
             referencedColumns: ["id"];
           },
         ];

@@ -17,6 +17,11 @@ import {
 import type { TestingOrganization } from "@/lib/validations/documentSchemas";
 
 import { detectApprovalKind } from "./detect-approval-kind";
+import {
+  extractTuevDefectsFromText,
+  defectsListFromTuevDefectRows,
+} from "./tuev-defects-from-text";
+import { extractTuevNextInspectionFromText } from "./tuev-next-inspection-from-text";
 
 function detectOrganization(text: string): TestingOrganization {
   const folded = text
@@ -121,9 +126,7 @@ function extractTuevCandidate(text: string): unknown {
   const testDateMatch = text.match(
     /(?:Untersuchungs(?:tag|datum)|geprüft am|Datum)\s*[:\s]\s*(\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}-\d{2}-\d{2})/i,
   );
-  const nextMatch = text.match(
-    /(?:nächste\s+HU|HU\s+fällig|gültig bis)\s*[:\s]\s*(\d{1,2}[./-]\d{4}|\d{4}-\d{2})/i,
-  );
+  const nextInspectionDate = extractTuevNextInspectionFromText(text);
   const mileageMatch = text.match(
     /(?:km[-\s]?stand|kilometerstand|odometer)\s*[:\s]\s*([\d.\s]{3,12})\s*km?/i,
   );
@@ -145,33 +148,18 @@ function extractTuevCandidate(text: string): unknown {
     result = "no_defects";
   }
 
-  const defects: string[] = [];
-  // Require an explicit list heading — not "ohne … Mängel".
-  const defectSection = text.match(
-    /(?:festgestellte\s+mängel|mängelliste|mängel\s*:)\s*[:\n]\s*([\s\S]{5,2000}?)(?:\n\s*(?:Hinweise|Ergebnis|Unterschrift|Seite|nächste)\b|$)/i,
-  );
-  if (defectSection?.[1]) {
-    for (const line of defectSection[1].split(/\n|;|•/)) {
-      const trimmed = line.replace(/^\d+[.)]\s*/, "").trim();
-      if (
-        trimmed.length >= 8 &&
-        trimmed.length <= 500 &&
-        !/^(?:kilometerstand|nächste\s+hu|vorgangs)/i.test(trimmed)
-      ) {
-        defects.push(trimmed);
-      }
-      if (defects.length >= 40) break;
-    }
-  }
+  const defectsTable = extractTuevDefectsFromText(text);
+  const defectsList = defectsListFromTuevDefectRows(defectsTable);
 
   return {
     testingOrganization: detectOrganization(text),
     testDate: testDateMatch?.[1] ?? null,
     result,
     mileageKm: mileageMatch?.[1] ?? null,
-    nextInspectionDate: nextMatch?.[1] ?? null,
+    nextInspectionDate,
     documentNumber,
-    defectsList: defects.length > 0 ? defects : null,
+    defectsTable,
+    defectsList,
   };
 }
 

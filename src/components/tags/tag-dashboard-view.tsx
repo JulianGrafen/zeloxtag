@@ -9,6 +9,7 @@ import {
 import { filterManualVehicleEntries } from "@/lib/documents/manual-entries";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
 import { deriveNextInspectionFromDocuments } from "@/lib/documents/tuev-schedule";
+import { buildTimelineFromDocuments } from "@/services/timeline";
 import {
   countFilledTechSpecs,
   parseVehicleTechSpecs,
@@ -69,6 +70,7 @@ export function TagDashboardView({
     (doc) => doc.category === "tuning",
   ).length;
   const oilChangeCount = filterOilChangeDocuments(documents).length;
+  const timelineEventCount = buildTimelineFromDocuments(documents).length;
   const lastOilChange = latestOilChangeIsoDate(documents);
   const shortTag = tagUuid.length > 12 ? `${tagUuid.slice(0, 12)}…` : tagUuid;
   const vehicleModel = `${vehicle.make} ${vehicle.model}`;
@@ -154,6 +156,22 @@ export function TagDashboardView({
               ? `${serviceCount} Inspektionen`
               : "Inspektion scannen",
           badge: serviceCount > 0 ? String(serviceCount) : undefined,
+        },
+      };
+    }
+
+    if (tile.id === "timeline") {
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: `/v/${tagUuid}/historie`,
+          subtitle:
+            timelineEventCount > 0
+              ? `${timelineEventCount} Meilensteine`
+              : "Nach KM-Stand",
+          badge:
+            timelineEventCount > 0 ? String(timelineEventCount) : undefined,
         },
       };
     }
@@ -245,6 +263,7 @@ export function TagDashboardView({
         tile.id === "invoices" ||
         tile.id === "service" ||
         tile.id === "oil-change" ||
+        tile.id === "timeline" ||
         tile.id === "tuning-history"
       );
     }

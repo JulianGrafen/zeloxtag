@@ -56,6 +56,7 @@ export default async function DocumentDetailPage({
       tagUuid={result.tag.uuid}
       vehicleLabel={vehicleLabel}
       document={document}
+      canEdit={access.isOwner}
     />
   );
 }

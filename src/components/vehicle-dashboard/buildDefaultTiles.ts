@@ -112,6 +112,14 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       meta: { subtitle: "Belege scannen" },
     },
     {
+      id: "timeline",
+      title: "Service Timeline",
+      description: "Historie nach KM-Stand",
+      icon: "history",
+      featured: true,
+      meta: { subtitle: "Öl · Reparatur · TÜV" },
+    },
+    {
       id: "schrauber",
       title: "Schrauber",
       description: "Werkstatt-Zugang teilen",

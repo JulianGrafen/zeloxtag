@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
+import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
 import { DocumentViewer } from "@/components/documents/document-viewer";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import {
@@ -33,6 +34,7 @@ interface DocumentInvoiceDetailViewProps {
   vehicleLabel: string;
   document: Document;
   backHref?: string;
+  canEdit?: boolean;
 }
 
 function fileNameFromUrl(fileUrl: string, fallback: string): string {
@@ -66,6 +68,7 @@ export function DocumentInvoiceDetailView({
   vehicleLabel,
   document,
   backHref,
+  canEdit = false,
 }: DocumentInvoiceDetailViewProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const title = displayDocumentTitle(document.title);
@@ -85,6 +88,12 @@ export function DocumentInvoiceDetailView({
   const vendor = document.vendor?.trim() || title;
   const category = document.category?.trim() || (isManual ? "Eintrag" : "Beleg");
   const invoiceNumberLabel = displayManualInvoiceNumber(document.invoice_number);
+
+  const tuevApprovalFields =
+    document.approval_fields?.kind === "tuev"
+      ? document.approval_fields
+      : null;
+  const isTuevDocument = Boolean(tuevApprovalFields);
 
   async function handleShare() {
     const shareUrl =
@@ -166,7 +175,19 @@ export function DocumentInvoiceDetailView({
           </div>
         </header>
 
-        <ApprovalFieldsSection approvalFields={document.approval_fields} />
+        <ApprovalFieldsSection
+          approvalFields={document.approval_fields}
+          hideNextHu={canEdit && isTuevDocument}
+        />
+
+        {canEdit && tuevApprovalFields ? (
+          <EditableTuevHuSection
+            approvalFields={tuevApprovalFields}
+            documentId={document.id}
+            vehicleId={document.vehicle_id}
+            tagUuid={tagUuid}
+          />
+        ) : null}
 
         <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">

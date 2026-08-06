@@ -36,6 +36,19 @@ export const TUEV_RESULTS = [
 
 export type TuevResult = (typeof TUEV_RESULTS)[number];
 
+export const TUEV_DEFECT_SEVERITIES = ["EM", "GM"] as const;
+export type TuevDefectSeverity = (typeof TUEV_DEFECT_SEVERITIES)[number];
+
+export const TuevDefectRowSchema = z
+  .object({
+    checkpoint: z.string().trim().min(1).max(24).nullable(),
+    description: z.string().trim().min(1).max(500),
+    severity: z.enum(TUEV_DEFECT_SEVERITIES).nullable(),
+  })
+  .strict();
+
+export type TuevDefectRow = z.infer<typeof TuevDefectRowSchema>;
+
 const nonEmpty = (max: number) => z.string().trim().min(1).max(max);
 const isoDate = z
   .string()
@@ -105,6 +118,7 @@ export const TuevReportSchema = z
     mileageKm: z.number().int().nonnegative().max(9_999_999).nullable(),
     nextInspectionDate: yearMonth.nullable(),
     documentNumber: z.string().trim().min(1).max(120).nullable(),
+    defectsTable: z.array(TuevDefectRowSchema).max(80).nullable(),
     defectsList: z
       .array(z.string().trim().min(1).max(500))
       .max(80)

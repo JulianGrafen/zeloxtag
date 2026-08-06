@@ -4,6 +4,7 @@ export type DashboardTileId =
   | "abe"
   | "tuv"
   | "service"
+  | "timeline"
   | "modifications"
   | "tuning-history"
   | "specs"

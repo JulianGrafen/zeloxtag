@@ -1,11 +1,17 @@
 import {
   TESTING_ORGANIZATIONS,
   TUEV_RESULTS,
+  TuevDefectRowSchema,
   TuevReportSchema,
   type TestingOrganization,
+  type TuevDefectRow,
   type TuevReport,
   type TuevResult,
 } from "@/lib/validations/documentSchemas";
+import {
+  defectsListFromTuevDefectRows,
+  extractTuevDefectsFromText,
+} from "@/lib/ocr/tuev-defects-from-text";
 
 import { BaseDocumentService } from "./BaseDocumentService";
 import { DocumentValidationError } from "./DocumentValidationError";
@@ -185,6 +191,60 @@ function normalizeDefectsList(value: unknown): string[] | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
+function normalizeDefectsTable(value: unknown): TuevDefectRow[] | null {
+  if (value == null) return null;
+  if (!Array.isArray(value)) return null;
+
+  const rows: TuevDefectRow[] = [];
+  for (const item of value) {
+    const parsed = TuevDefectRowSchema.safeParse(item);
+    if (!parsed.success) continue;
+    rows.push(parsed.data);
+    if (rows.length >= MAX_DEFECTS) break;
+  }
+
+  return rows.length > 0 ? rows : null;
+}
+
+function resolveTuevDefects(
+  defectsTable: unknown,
+  defectsList: unknown,
+): { defectsTable: TuevDefectRow[] | null; defectsList: string[] | null } {
+  const table = normalizeDefectsTable(defectsTable);
+  if (table?.length) {
+    return {
+      defectsTable: table,
+      defectsList:
+        normalizeDefectsList(defectsList) ??
+        defectsListFromTuevDefectRows(table),
+    };
+  }
+
+  const list = normalizeDefectsList(defectsList);
+  if (!list?.length) {
+    return { defectsTable: null, defectsList: null };
+  }
+
+  const joined = list.join("\n");
+  const hasStructuredMarkers =
+    /\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?/.test(joined) ||
+    /\([EG]M\)/.test(joined) ||
+    /folgende\s+mängel\s+auf/i.test(joined);
+
+  const parsedTable = hasStructuredMarkers
+    ? extractTuevDefectsFromText(`Festgestellte Mängel:\n${joined}`)
+    : list.map((description) => ({
+        checkpoint: null,
+        description,
+        severity: null,
+      }));
+
+  return {
+    defectsTable: parsedTable?.length ? parsedTable : null,
+    defectsList: list,
+  };
+}
+
 /**
  * Normalize noisy OCR / LLM payloads before Zod validation.
  * Non-objects are passed through so Zod reports a clear root error.
@@ -195,6 +255,11 @@ export function sanitizeTuevPayload(rawJson: unknown): unknown {
     return rawJson;
   }
 
+  const defects = resolveTuevDefects(
+    rawJson.defectsTable,
+    rawJson.defectsList,
+  );
+
   return {
     testingOrganization: normalizeTestingOrganization(
       rawJson.testingOrganization,
@@ -204,7 +269,8 @@ export function sanitizeTuevPayload(rawJson: unknown): unknown {
     mileageKm: normalizeMileageKm(rawJson.mileageKm),
     nextInspectionDate: normalizeYearMonth(rawJson.nextInspectionDate),
     documentNumber: normalizeDocumentNumber(rawJson.documentNumber),
-    defectsList: normalizeDefectsList(rawJson.defectsList),
+    defectsTable: defects.defectsTable,
+    defectsList: defects.defectsList,
   };
 }
 
