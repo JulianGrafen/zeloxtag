@@ -53,7 +53,7 @@ function asImageBlob(
   value: FormDataEntryValue | null,
 ): { blob: Blob; filename: string } | null {
   if (value instanceof File && value.size > 0) {
-    return { blob: value, filename: value.name || "vehicle-photo.jpg" };
+    return { blob: value, filename: value.name || "vehicle-photo.png" };
   }
   if (typeof Blob !== "undefined" && value instanceof Blob && value.size > 0) {
     const named = value as Blob & { name?: string };
@@ -62,7 +62,7 @@ function asImageBlob(
       filename:
         typeof named.name === "string" && named.name.length > 0
           ? named.name
-          : "vehicle-photo.jpg",
+          : "vehicle-photo.png",
     };
   }
   return null;

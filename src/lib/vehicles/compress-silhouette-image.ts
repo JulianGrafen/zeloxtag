@@ -1,5 +1,5 @@
 /**
- * Client-side compression for vehicle photo uploads.
+ * Client-side prep for vehicle photo uploads: resize + JPEG/HEIC → PNG.
  */
 
 import imageCompression from "browser-image-compression";
@@ -37,13 +37,59 @@ function isImageFile(file: File): boolean {
   return /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
 }
 
-/** Shrink photos before POST /api/vehicle/photo. */
+async function rasterToPngFile(file: File, baseName: string): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const maxEdge = SILHOUETTE_CLIENT_MAX_EDGE_PX;
+  const scale = Math.min(
+    1,
+    maxEdge / Math.max(bitmap.width, bitmap.height, 1),
+  );
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    bitmap.close();
+    throw new SilhouetteCompressionError(
+      "Foto konnte nicht vorbereitet werden.",
+    );
+  }
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const pngBlob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/png", 0.92);
+  });
+
+  if (!pngBlob || pngBlob.size < 32) {
+    throw new SilhouetteCompressionError(
+      "Foto konnte nicht als PNG gespeichert werden.",
+    );
+  }
+
+  return new File([pngBlob], `${baseName}.png`, {
+    type: "image/png",
+    lastModified: Date.now(),
+  });
+}
+
+/**
+ * Shrink photos and convert JPEG/HEIC/WebP → PNG before POST /api/vehicle/photo.
+ */
 export async function compressSilhouetteImage(file: File): Promise<File> {
   if (!isImageFile(file)) {
     throw new SilhouetteCompressionError(
       "Bitte ein Foto (JPEG, PNG oder WebP) wählen.",
     );
   }
+
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "vehicle-photo";
 
   try {
     const compressed = await imageCompression(file, {
@@ -54,12 +100,15 @@ export async function compressSilhouetteImage(file: File): Promise<File> {
       initialQuality: 0.85,
     });
 
-    const name = file.name.replace(/\.[^.]+$/, "") || "vehicle-photo";
-    return new File([compressed], `${name}.jpg`, {
-      type: "image/jpeg",
-      lastModified: Date.now(),
-    });
-  } catch {
+    return await rasterToPngFile(
+      new File([compressed], `${baseName}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
+      }),
+      baseName,
+    );
+  } catch (error) {
+    if (error instanceof SilhouetteCompressionError) throw error;
     throw new SilhouetteCompressionError(
       "Bild konnte nicht komprimiert werden.",
     );

@@ -165,7 +165,7 @@ async function materializeUploadFile(file: File): Promise<File> {
   if (bytes.byteLength < 32) {
     throw new Error("Datei ist leer — bitte anderes Foto wählen.");
   }
-  return new File([bytes], file.name || "vehicle-side.jpg", {
+  return new File([bytes], file.name || "vehicle-photo.png", {
     type: file.type || "application/octet-stream",
     lastModified: Date.now(),
   });
@@ -274,7 +274,7 @@ export function ClientVehicleUpload({
         const body = new FormData();
         body.append("vehicleId", vehicleId);
         body.append("tagUuid", tagUuid);
-        body.append("file", uploadFile, uploadFile.name || "vehicle-photo.jpg");
+        body.append("file", uploadFile, uploadFile.name || "vehicle-photo.png");
 
         const { ok, status, payload } = await uploadSilhouette(
           "/api/vehicle/photo",
