@@ -48,7 +48,6 @@ export async function ensureClaimAccount(input: {
       key: `auth:claim-account:${clientKey}`,
       limit: RATE_LIMITS.auth.limit,
       windowMs: RATE_LIMITS.auth.windowMs,
-      memoryOnly: true,
     });
     if (!limited.ok) {
       return {

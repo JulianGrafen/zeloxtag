@@ -38,15 +38,14 @@ export async function enforceRateLimit(
 ): Promise<NextResponse | null> {
   try {
     const cfg = RATE_LIMITS[bucket];
-    const memoryOnly = bucket === "auth";
-    const clientKey = memoryOnly
-      ? authClientKeyFromHeaders(request.headers)
-      : clientIpFromHeaders(request.headers);
+    const clientKey =
+      bucket === "auth"
+        ? authClientKeyFromHeaders(request.headers)
+        : clientIpFromHeaders(request.headers);
     const result = await rateLimit({
       key: `${bucket}:${scope}:${clientKey}`,
       limit: cfg.limit,
       windowMs: cfg.windowMs,
-      memoryOnly,
     });
     if (!result.ok) return rateLimitResponse(result);
     return null;

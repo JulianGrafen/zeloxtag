@@ -74,7 +74,6 @@ async function enforceMfaRateLimit(scope: string): Promise<MfaActionResult | nul
       key: `mfa:${scope}:${clientKey}`,
       limit: cfg.limit,
       windowMs: cfg.windowMs,
-      memoryOnly: true,
     });
     if (!result.ok) {
       return { status: "rate_limited", retryAfterSec: result.retryAfterSec };
