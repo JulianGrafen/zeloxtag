@@ -71,6 +71,7 @@ type UploadApiPayload = {
   ok?: boolean;
   error?: string;
   silhouetteImageUrl?: string;
+  silhouetteDisplayUrl?: string;
   backgroundRemoved?: boolean;
 };
 
@@ -232,9 +233,11 @@ export function ClientVehicleUpload({
         }
 
         setUploadProgress(100);
+        const preview =
+          payload.silhouetteDisplayUrl ?? payload.silhouetteImageUrl;
         setPreviewUrl((previous) => {
           if (previous?.startsWith("blob:")) URL.revokeObjectURL(previous);
-          return payload.silhouetteImageUrl ?? previous;
+          return preview ?? previous;
         });
         setState("done");
         onUploaded?.(payload.silhouetteImageUrl);

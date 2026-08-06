@@ -19,6 +19,7 @@ import {
   SILHOUETTE_BUCKET,
   silhouetteObjectPath,
 } from "@/lib/vehicles/silhouette-constants";
+import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -148,7 +149,9 @@ export async function POST(request: NextRequest) {
       data: { publicUrl },
     } = admin.storage.from(SILHOUETTE_BUCKET).getPublicUrl(objectPath);
 
-    const silhouetteUrl = `${publicUrl}?v=${Date.now()}`;
+    const cacheBust = Date.now();
+    const silhouetteUrl = `${publicUrl}?v=${cacheBust}`;
+    const displayUrl = silhouetteDisplayUrl(vehicleId, cacheBust);
 
     const { error: updateError } = await admin
       .from("vehicles")
@@ -172,6 +175,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ok: true as const,
       silhouetteImageUrl: silhouetteUrl,
+      /** Same-origin URL for immediate COEP-safe preview in the client. */
+      silhouetteDisplayUrl: displayUrl,
       backgroundRemoved: backgroundRemoved === "true",
     });
   } catch (error) {

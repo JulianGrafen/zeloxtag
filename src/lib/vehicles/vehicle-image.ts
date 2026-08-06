@@ -3,6 +3,11 @@
  * Preference: owner-uploaded silhouette → known-model catalog → SVG fallback.
  */
 
+import {
+  cacheBustFromSilhouetteUrl,
+  silhouetteDisplayUrl,
+} from "./silhouette-display-url";
+
 export type VehicleImageMatch = {
   src: string;
   alt: string;
@@ -24,10 +29,20 @@ function normalize(value: string): string {
 export function resolveVehicleImage(input: {
   make: string;
   model: string;
+  vehicleId?: string | null;
   silhouetteImageUrl?: string | null;
 }): VehicleImageMatch | undefined {
   const uploaded = input.silhouetteImageUrl?.trim();
+  const vehicleId = input.vehicleId?.trim();
+  if (uploaded && vehicleId) {
+    return {
+      // Same-origin proxy — required when the app is COEP-isolated for WASM cutout.
+      src: silhouetteDisplayUrl(vehicleId, cacheBustFromSilhouetteUrl(uploaded)),
+      alt: `${input.make} ${input.model}`.trim() || "Fahrzeug",
+    };
+  }
   if (uploaded) {
+    // Fallback when vehicle id is unavailable (should be rare).
     return {
       src: uploaded,
       alt: `${input.make} ${input.model}`.trim() || "Fahrzeug",

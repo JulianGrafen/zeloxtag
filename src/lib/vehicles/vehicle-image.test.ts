@@ -3,7 +3,22 @@ import { describe, expect, it } from "vitest";
 import { resolveVehicleImage } from "./vehicle-image";
 
 describe("resolveVehicleImage", () => {
-  it("prefers uploaded silhouette over catalog cutouts", () => {
+  it("maps uploaded silhouettes to the same-origin proxy when vehicleId is set", () => {
+    const vehicleId = "11111111-1111-4111-8111-111111111111";
+    const match = resolveVehicleImage({
+      make: "BMW",
+      model: "530d",
+      vehicleId,
+      silhouetteImageUrl:
+        "https://example.supabase.co/storage/v1/object/public/vehicle-silhouettes/x/silhouette.png?v=99",
+    });
+    expect(match).toEqual({
+      src: `/api/vehicle/silhouette/${vehicleId}?v=99`,
+      alt: "BMW 530d",
+    });
+  });
+
+  it("keeps remote URL when vehicleId is missing", () => {
     const match = resolveVehicleImage({
       make: "BMW",
       model: "530d",

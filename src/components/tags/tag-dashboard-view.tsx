@@ -68,6 +68,7 @@ export function TagDashboardView({
   const cutout = resolveVehicleImage({
     make: vehicle.make,
     model: vehicle.model,
+    vehicleId: vehicle.id,
     silhouetteImageUrl: vehicle.silhouette_image_url,
   });
 
@@ -162,8 +163,8 @@ export function TagDashboardView({
           href: `/v/${tagUuid}/umbauten`,
           subtitle:
             umbauCount > 0
-              ? `${umbauCount} Umbauten`
-              : "Umbauten & Fotos suchen",
+              ? `${umbauCount} Umbau-Fotos`
+              : "Umbau fotografieren",
           badge: umbauCount > 0 ? String(umbauCount) : undefined,
         },
       };
@@ -209,7 +210,7 @@ export function TagDashboardView({
           subtitle:
             filledSpecs > 0
               ? `${filledSpecs} technische Angaben`
-              : "Stammdaten & Antrieb hinterlegen",
+              : vinLabel,
         },
       };
     }

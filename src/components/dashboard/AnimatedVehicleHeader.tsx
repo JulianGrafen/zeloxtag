@@ -34,7 +34,6 @@ export function AnimatedVehicleHeader({
 }: AnimatedVehicleHeaderProps) {
   const src = silhouetteImageUrl?.trim() || null;
   const editable = typeof onEdit === "function";
-  const isRemote = Boolean(src && /^https?:\/\//i.test(src));
 
   const stage = (
     <motion.div
@@ -44,12 +43,11 @@ export function AnimatedVehicleHeader({
       transition={SPRING}
     >
       {src ? (
-        // Plain <img>: avoids next/image + COEP edge cases with Supabase URLs.
+        // Same-origin (catalog or /api/vehicle/silhouette/…) — COEP-safe.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={src}
           alt={alt}
-          {...(isRemote ? { crossOrigin: "anonymous" as const } : {})}
           className="absolute inset-0 h-full w-full object-contain object-right drop-shadow-[0_10px_18px_rgba(0,0,0,0.18)]"
         />
       ) : (

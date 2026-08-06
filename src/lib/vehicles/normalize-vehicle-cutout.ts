@@ -208,16 +208,26 @@ export async function normalizeVehicleCutout(
       "Die hochgeladene Datei hat keinen transparenten Hintergrund.",
     );
   }
-  cleanAlphaAndShadows(pixels, info.width, info.height);
+
+  // Opaque phone photos: keep all pixels. Cutouts: clean fringe / ground shadow.
+  if (requireTransparentBackground) {
+    cleanAlphaAndShadows(pixels, info.width, info.height);
+  }
 
   let bounds = findOpaqueBounds(
     pixels,
     info.width,
     info.height,
-    ALPHA_HARD_CUTOFF,
+    requireTransparentBackground ? ALPHA_HARD_CUTOFF : 1,
   );
   if (!bounds) {
-    throw new CutoutNormalizeError("No vehicle pixels found after cleanup.");
+    // Last resort for fully-opaque uploads — use the whole frame.
+    bounds = {
+      minX: 0,
+      minY: 0,
+      maxX: info.width - 1,
+      maxY: info.height - 1,
+    };
   }
 
   let working: Buffer = pixels;
