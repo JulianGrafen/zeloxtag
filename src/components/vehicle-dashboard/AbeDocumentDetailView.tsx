@@ -33,9 +33,9 @@ function inferVehicleContext(
   if (explicit) return explicit;
   const trimmed = vehicleModel.trim();
   if (!trimmed) return null;
-  // Demo pages pass "RX-8" — pair with Mazda from typical fitment docs.
-  if (/^rx-?8\b/i.test(trimmed)) {
-    return { brand: "Mazda", model: "RX-8", type: "SE" };
+  // Demo pages pass "Supra" — pair with Toyota from typical fitment docs.
+  if (/^supra\b/i.test(trimmed)) {
+    return { brand: "Toyota", model: "Supra", type: "A80" };
   }
   const parts = trimmed.split(/\s+/);
   if (parts.length >= 2) {

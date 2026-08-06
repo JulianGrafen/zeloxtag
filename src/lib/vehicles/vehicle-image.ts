@@ -34,15 +34,14 @@ export function resolveVehicleImage(input: {
 }): VehicleImageMatch | undefined {
   const uploaded = input.silhouetteImageUrl?.trim();
   const vehicleId = input.vehicleId?.trim();
-  if (uploaded && vehicleId) {
+  // Only proxy absolute remote Storage URLs (COEP). Local /vehicles/* stay as-is.
+  if (uploaded && vehicleId && /^https?:\/\//i.test(uploaded)) {
     return {
-      // Same-origin proxy — required when the app is COEP-isolated for WASM cutout.
       src: silhouetteDisplayUrl(vehicleId, cacheBustFromSilhouetteUrl(uploaded)),
       alt: `${input.make} ${input.model}`.trim() || "Fahrzeug",
     };
   }
   if (uploaded) {
-    // Fallback when vehicle id is unavailable (should be rare).
     return {
       src: uploaded,
       alt: `${input.make} ${input.model}`.trim() || "Fahrzeug",
@@ -52,6 +51,17 @@ export function resolveVehicleImage(input: {
   const make = normalize(input.make);
   const model = normalize(input.model);
   const blob = `${make} ${model}`;
+
+  // Toyota Supra A80 (demo showcase cutout)
+  if (
+    /\bsupra\b/.test(blob) ||
+    (/\btoyota\b/.test(blob) && /\ba80\b|\bjza80\b/.test(blob))
+  ) {
+    return {
+      src: "/vehicles/supra-a80.png",
+      alt: "Toyota Supra",
+    };
+  }
 
   // BMW 530d Touring (F11 side cutout + dashboard slide-in)
   if (/\b530d\b/.test(blob) || (/\bbmw\b/.test(blob) && /\b530\b/.test(blob))) {

@@ -14,7 +14,7 @@ interface HomePageProps {
 }
 
 /**
- * Production landing: login / signup (replaces the public RX-8 demo dashboard).
+ * Production landing: login / signup (replaces the public Supra demo dashboard).
  */
 function mapLoginQueryError(error: string | undefined): string | undefined {
   if (!error) return undefined;

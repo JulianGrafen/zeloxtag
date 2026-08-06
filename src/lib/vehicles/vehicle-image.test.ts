@@ -48,4 +48,15 @@ describe("resolveVehicleImage", () => {
       }),
     ).toBeUndefined();
   });
+
+  it("maps Toyota Supra to the A80 showcase cutout", () => {
+    const match = resolveVehicleImage({
+      make: "Toyota",
+      model: "Supra",
+    });
+    expect(match).toEqual({
+      src: "/vehicles/supra-a80.png",
+      alt: "Toyota Supra",
+    });
+  });
 });

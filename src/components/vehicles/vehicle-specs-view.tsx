@@ -194,7 +194,7 @@ export function VehicleSpecsView({
                       setSaved(false);
                     }}
                     className="claim-input w-full"
-                    placeholder="Mazda"
+                    placeholder="Toyota"
                   />
                 </Field>
                 <Field label="Modell">
@@ -206,7 +206,7 @@ export function VehicleSpecsView({
                       setSaved(false);
                     }}
                     className="claim-input w-full"
-                    placeholder="RX-8"
+                    placeholder="Supra"
                   />
                 </Field>
               </div>
@@ -248,7 +248,7 @@ export function VehicleSpecsView({
                   value={specs.engine ?? ""}
                   onChange={(event) => patchSpec("engine", event.target.value)}
                   className="claim-input w-full"
-                  placeholder="z. B. 1.3 Renesis"
+                  placeholder="z. B. 3.0 Twin-Turbo (2JZ-GTE)"
                 />
               </Field>
               <div className="grid grid-cols-3 gap-3">

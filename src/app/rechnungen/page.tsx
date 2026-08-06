@@ -1,5 +1,5 @@
 import { InvoicesView } from "@/components/vehicle-dashboard";
 
 export default function RechnungenPage() {
-  return <InvoicesView vehicleModel="RX-8" />;
+  return <InvoicesView vehicleModel="Supra" />;
 }

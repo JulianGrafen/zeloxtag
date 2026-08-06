@@ -1,5 +1,5 @@
 import { OilIntervalsView } from "@/components/vehicle-dashboard";
 
 export default function IntervallePage() {
-  return <OilIntervalsView vehicleModel="RX-8" />;
+  return <OilIntervalsView vehicleModel="Supra" />;
 }

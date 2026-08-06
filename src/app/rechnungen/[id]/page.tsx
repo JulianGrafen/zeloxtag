@@ -18,6 +18,6 @@ export default async function InvoiceDetailPage({
   }
 
   return (
-    <InvoiceDetailView document={document} vehicleModel="RX-8" />
+    <InvoiceDetailView document={document} vehicleModel="Supra" />
   );
 }
