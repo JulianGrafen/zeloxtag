@@ -10,7 +10,7 @@ const PUBLIC_EXACT = new Set([
   "/login/reset",
   "/auth/callback",
   "/auth/confirm",
-  "/demo", // optional RX-8 showcase (not the landing page)
+  "/demo", // optional Supra showcase (not the landing page)
   // /login/update-password requires a recovery session (checked in page)
   // /qr requires auth — inventory mint must not be anonymous
   // /auth/continue is protected — resolves owner dashboard after login
@@ -20,6 +20,8 @@ const PUBLIC_PREFIXES = [
   "/v/", // physical QR scan surface
   "/einladung/", // Schrauber invite landing (accept requires auth)
   "/abe", // mock ABE showcase (Verwendungsbereich highlight demo)
+  "/rechnungen", // mock invoice showcase
+  "/intervalle", // mock oil-interval showcase
   "/_next/",
 ];
 
@@ -74,13 +76,6 @@ export function isProtectedPagePath(pathname: string): boolean {
     return true;
   }
   if (pathname === "/settings" || pathname.startsWith("/settings/")) {
-    return true;
-  }
-  // Legacy owner hubs (not QR-scoped). /abe is public mock showcase.
-  if (
-    pathname.startsWith("/rechnungen") ||
-    pathname.startsWith("/intervalle")
-  ) {
     return true;
   }
   return false;

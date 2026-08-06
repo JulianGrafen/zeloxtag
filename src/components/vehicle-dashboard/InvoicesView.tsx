@@ -17,6 +17,7 @@ import { PressableLink } from "./Pressable";
 interface InvoicesViewProps {
   vehicleModel: string;
   documents?: InvoiceDocument[];
+  backHref?: string;
 }
 
 const ALL_CHIP = "all";
@@ -24,6 +25,7 @@ const ALL_CHIP = "all";
 export function InvoicesView({
   vehicleModel,
   documents = INVOICE_DOCUMENTS,
+  backHref = "/",
 }: InvoicesViewProps) {
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState(ALL_CHIP);
@@ -68,7 +70,7 @@ export function InvoicesView({
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <header className="vd-anim-header space-y-4">
           <PressableLink
-            href="/"
+            href={backHref}
             variant="pill"
             className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
           >
