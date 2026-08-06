@@ -25,14 +25,13 @@ import {
   shrinkCutoutPng,
   SilhouetteCompressionError,
 } from "@/lib/vehicles/compress-silhouette-image";
+import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
 
 export type SilhouetteUploadResult = {
-  /** Immediate preview (usually blob:) — shown in header before proxy is ready. */
-  displayUrl: string;
-  /** Stored Supabase public URL (for resolveVehicleImage after refresh). */
+  /** Supabase public URL with cache-bust (DB source of truth). */
   storageUrl: string;
-  /** Same-origin proxy URL once storage has the PNG. */
-  proxyDisplayUrl?: string;
+  /** Same-origin proxy URL — use this in the dashboard header. */
+  displayUrl: string;
 };
 
 export type ClientVehicleUploadProps = {
@@ -318,21 +317,32 @@ export function ClientVehicleUpload({
           throw new Error(mapUploadError(payload, status));
         }
 
+        const storageUrl = payload.silhouetteImageUrl.trim();
+        const displayUrl =
+          payload.silhouetteDisplayUrl?.trim() ||
+          storageUrl;
+
+        const proxyReady = displayUrl.startsWith("/api/vehicle/silhouette/")
+          ? await prefetchSilhouetteImage(displayUrl)
+          : true;
+
+        if (!proxyReady) {
+          throw new Error(
+            "Silhouette gespeichert, aber Vorschau noch nicht ladbar — bitte Seite neu laden.",
+          );
+        }
+
         setUploadProgress(100);
-        const proxyDisplayUrl =
-          payload.silhouetteDisplayUrl ?? undefined;
-        const immediatePreview = URL.createObjectURL(uploadFile);
         setPreviewUrl((previous) => {
-          if (previous?.startsWith("blob:") && previous !== immediatePreview) {
+          if (previous?.startsWith("blob:")) {
             URL.revokeObjectURL(previous);
           }
-          return immediatePreview;
+          return displayUrl;
         });
         setState("done");
         onUploaded?.({
-          displayUrl: immediatePreview,
-          storageUrl: payload.silhouetteImageUrl,
-          proxyDisplayUrl,
+          storageUrl,
+          displayUrl,
         });
       } catch (error) {
         setState("idle");

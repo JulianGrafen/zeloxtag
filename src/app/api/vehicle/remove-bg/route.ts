@@ -20,6 +20,7 @@ import {
   silhouetteObjectPath,
 } from "@/lib/vehicles/silhouette-constants";
 import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
+import { verifySilhouetteInStorage } from "@/lib/vehicles/verify-silhouette-storage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -214,6 +215,16 @@ export async function POST(request: NextRequest) {
         500,
         `Could not save silhouette URL: ${updateError.message}`,
         "db_error",
+      );
+    }
+
+    const storageReady = await verifySilhouetteInStorage(admin, vehicleId);
+    if (!storageReady) {
+      console.error("[remove-bg] silhouette not readable after upload", vehicleId);
+      return jsonError(
+        503,
+        "Silhouette gespeichert, aber noch nicht lesbar — bitte kurz warten und erneut versuchen.",
+        "storage_propagation",
       );
     }
 

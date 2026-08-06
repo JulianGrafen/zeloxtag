@@ -29,6 +29,17 @@ export function silhouetteDisplayUrl(
   return `/api/vehicle/silhouette/${vehicleId}?v=${encodeURIComponent(version)}`;
 }
 
+/** Compare cache-busters on two Supabase silhouette URLs. */
+export function silhouetteCacheBustEqual(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  const left = a?.trim();
+  const right = b?.trim();
+  if (!left || !right) return false;
+  return cacheBustFromSilhouetteUrl(left) === cacheBustFromSilhouetteUrl(right);
+}
+
 /** Extract `v` cache-buster from a stored Supabase silhouette URL when present. */
 export function cacheBustFromSilhouetteUrl(url: string): string | null {
   try {

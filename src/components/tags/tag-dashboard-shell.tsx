@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
@@ -13,14 +14,14 @@ import {
   type ScanType,
 } from "@/lib/documents/scan-types";
 import {
-  bumpSilhouetteCacheUrl,
-  prefetchSilhouetteImage,
-} from "@/lib/vehicles/prefetch-silhouette-image";
-import {
   cacheBustFromSilhouetteUrl,
-  isOwnerSilhouetteDisplayUrl,
+  silhouetteCacheBustEqual,
   silhouetteDisplayUrl,
 } from "@/lib/vehicles/silhouette-display-url";
+import {
+  readSilhouetteFromSession,
+  writeSilhouetteToSession,
+} from "@/lib/vehicles/silhouette-session";
 import type { Document, Vehicle } from "@/types/database";
 
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
@@ -30,8 +31,20 @@ function silhouetteSkipKey(vehicleId: string): string {
   return `zlx-silhouette-skip:${vehicleId}`;
 }
 
-function silhouetteStorageKey(vehicleId: string): string {
-  return `zlx-silhouette-storage:${vehicleId}`;
+function initialSilhouetteStorageUrl(vehicle: Vehicle): string | null {
+  const fromServer = vehicle.silhouette_image_url?.trim();
+  if (fromServer) return fromServer;
+  return readSilhouetteFromSession(vehicle.id);
+}
+
+function proxyUrlForStorage(
+  vehicleId: string,
+  storageUrl: string | null | undefined,
+): string | null {
+  if (!storageUrl?.trim()) return null;
+  const bust =
+    cacheBustFromSilhouetteUrl(storageUrl) ?? Date.now().toString();
+  return silhouetteDisplayUrl(vehicleId, bust);
 }
 
 type DashboardMode = "dashboard" | "pick-scan" | "scanner";
@@ -41,19 +54,16 @@ interface TagDashboardShellProps {
   documents: Document[];
   tagUuid: string;
   ownerName?: string | null;
-  /** Vehicle owner — full dashboard. */
   isOwner?: boolean;
-  /** Active Schrauber — repair/service/invoice only. */
   isContributor?: boolean;
   sessionEmail?: string | null;
   initialMode?: DashboardMode;
-  /** Deep-link scan type from `?scan=1&type=…`. */
   initialScanType?: string | null;
 }
 
 /**
  * Active-tag surface for owners and invited Schrauber.
- * Guests never reach this component — see PrivateTwinGate.
+ * Silhouette: Supabase Storage URL in DB → same-origin proxy for display.
  */
 export function TagDashboardShell({
   vehicle,
@@ -65,6 +75,7 @@ export function TagDashboardShell({
   initialMode = "dashboard",
   initialScanType,
 }: TagDashboardShellProps) {
+  const router = useRouter();
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
   const parsedInitial = parseScanType(initialScanType ?? undefined);
@@ -75,7 +86,6 @@ export function TagDashboardShell({
       ? parsedInitial
       : null;
 
-  // Always ask for document type before capture — never skip via `?type=`.
   const [mode, setMode] = useState<DashboardMode>(() => {
     if (!canWrite) return "dashboard";
     if (initialMode === "pick-scan" || initialMode === "scanner") {
@@ -86,140 +96,41 @@ export function TagDashboardShell({
   const [scanType, setScanType] = useState<ScanType | null>(null);
   const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
-  const [vehicleImageOverride, setVehicleImageOverride] = useState<string | null>(
-    () => {
-      if (vehicle.silhouette_image_url) {
-        const bust =
-          cacheBustFromSilhouetteUrl(vehicle.silhouette_image_url) ??
-          Date.now().toString();
-        return silhouetteDisplayUrl(vehicle.id, bust);
-      }
-      try {
-        const stored = sessionStorage.getItem(
-          silhouetteStorageKey(vehicle.id),
-        );
-        if (stored) {
-          const bust = cacheBustFromSilhouetteUrl(stored) ?? Date.now().toString();
-          return silhouetteDisplayUrl(vehicle.id, bust);
-        }
-      } catch {
-        /* private mode */
-      }
-      return null;
-    },
-  );
+
   const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
-    () => {
-      if (vehicle.silhouette_image_url) return vehicle.silhouette_image_url;
-      try {
-        return sessionStorage.getItem(silhouetteStorageKey(vehicle.id));
-      } catch {
-        return null;
-      }
-    },
+    () => initialSilhouetteStorageUrl(vehicle),
   );
-  const blobPreviewRef = useRef<string | null>(null);
-  const vehicleImageOverrideRef = useRef<string | null>(vehicleImageOverride);
-  vehicleImageOverrideRef.current = vehicleImageOverride;
+  const [vehicleImageOverride, setVehicleImageOverride] = useState<string | null>(
+    () => proxyUrlForStorage(vehicle.id, initialSilhouetteStorageUrl(vehicle)),
+  );
 
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
   const displayVehicle = {
     ...vehicle,
     silhouette_image_url: silhouetteStorageUrl,
   };
-  const hasSilhouette = Boolean(silhouetteStorageUrl || vehicleImageOverride);
+  const hasSilhouette = Boolean(silhouetteStorageUrl?.trim());
 
-  function scheduleRevokeBlob(blobToRevoke: string) {
-    // Revoke after React commits the proxy URL — sync revoke races img onError.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        URL.revokeObjectURL(blobToRevoke);
-        if (blobPreviewRef.current === blobToRevoke) {
-          blobPreviewRef.current = null;
-        }
-      });
-    });
-  }
-
-  function promoteProxyDisplayUrl(proxyUrl: string, blobToRevoke?: string) {
-    const tryLoad = async (url: string, attempt: number): Promise<void> => {
-      const ok = await prefetchSilhouetteImage(url);
-      if (ok) {
-        setVehicleImageOverride(url);
-        try {
-          sessionStorage.removeItem(silhouetteStorageKey(vehicle.id));
-        } catch {
-          /* ignore */
-        }
-        if (blobToRevoke?.startsWith("blob:")) {
-          scheduleRevokeBlob(blobToRevoke);
-        }
-        return;
-      }
-      if (attempt < 4) {
-        window.setTimeout(() => {
-          void tryLoad(bumpSilhouetteCacheUrl(url), attempt + 1);
-        }, 400 * attempt);
-      }
-    };
-
-    void tryLoad(proxyUrl, 1);
-  }
-
+  /**
+   * Sync from server only when the stored Supabase URL actually changed
+   * (e.g. another tab or hard refresh). Never fight an in-session upload.
+   */
   useEffect(() => {
-    if (!vehicle.silhouette_image_url) return;
+    const serverUrl = vehicle.silhouette_image_url?.trim();
+    if (!serverUrl) return;
+    if (silhouetteCacheBustEqual(serverUrl, silhouetteStorageUrl)) return;
 
-    setSilhouetteStorageUrl(vehicle.silhouette_image_url);
-    const bust =
-      cacheBustFromSilhouetteUrl(vehicle.silhouette_image_url) ??
-      Date.now().toString();
-    const proxyUrl = silhouetteDisplayUrl(vehicle.id, bust);
-    const current = vehicleImageOverrideRef.current;
-
-    // Keep a live blob preview until the same-origin proxy actually loads.
-    if (current?.startsWith("blob:")) {
-      promoteProxyDisplayUrl(proxyUrl, current);
-      return;
-    }
-
-    if (isOwnerSilhouetteDisplayUrl(current)) {
-      return;
-    }
-
-    const pendingBlob = blobPreviewRef.current?.startsWith("blob:")
-      ? blobPreviewRef.current
-      : undefined;
-    promoteProxyDisplayUrl(proxyUrl, pendingBlob);
-  }, [vehicle.id, vehicle.silhouette_image_url]);
-
-  useEffect(() => {
-    return () => {
-      if (blobPreviewRef.current?.startsWith("blob:")) {
-        URL.revokeObjectURL(blobPreviewRef.current);
-      }
-    };
-  }, []);
+    setSilhouetteStorageUrl(serverUrl);
+    writeSilhouetteToSession(vehicle.id, serverUrl);
+    const proxy = proxyUrlForStorage(vehicle.id, serverUrl);
+    if (proxy) setVehicleImageOverride(proxy);
+  }, [vehicle.id, vehicle.silhouette_image_url, silhouetteStorageUrl]);
 
   function handleSilhouetteUploaded(result: SilhouetteUploadResult) {
-    if (result.displayUrl.startsWith("blob:")) {
-      blobPreviewRef.current = result.displayUrl;
-    }
-    setVehicleImageOverride(result.displayUrl);
     setSilhouetteStorageUrl(result.storageUrl);
-    try {
-      sessionStorage.setItem(
-        silhouetteStorageKey(vehicle.id),
-        result.storageUrl,
-      );
-    } catch {
-      /* quota / private mode */
-    }
-    if (result.proxyDisplayUrl) {
-      promoteProxyDisplayUrl(
-        result.proxyDisplayUrl,
-        result.displayUrl.startsWith("blob:") ? result.displayUrl : undefined,
-      );
-    }
+    setVehicleImageOverride(result.displayUrl);
+    writeSilhouetteToSession(vehicle.id, result.storageUrl);
+    router.refresh();
   }
 
   useEffect(() => {
