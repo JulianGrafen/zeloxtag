@@ -1,9 +1,10 @@
 import { z } from "zod";
 
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
-import type { Einzelabnahme } from "@/lib/validations/documentSchemas";
+import { normalizeAbeDate } from "@/lib/ocr/abe-parse-schema";
 import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
+import type { Einzelabnahme } from "@/lib/validations/documentSchemas";
 
 /**
  * § 21 StVZO Einzelbetriebserlaubnis — fields for police traffic-stop checks.
@@ -182,7 +183,7 @@ export function paragraph21ToApprovalFields(
   extracted: Paragraph21Extraction,
 ): Extract<ApprovalFields, { kind: "einzelabnahme" }> {
   const data: Einzelabnahme = {
-    officialExpert: extracted.manufacturer ?? "Siehe Dokument",
+    officialExpert: "Siehe Originaldokument",
     reportNumber: extracted.documentNumber ?? extracted.vin,
     field22Text:
       extracted.modificationsField22 ??
@@ -222,7 +223,7 @@ export function paragraph21ToAnalyzeFields(
 
   return normalizeTextParseResult({
     vendor: extracted.manufacturer,
-    date: extracted.issueDate,
+    date: normalizeAbeDate(extracted.issueDate),
     amount: null,
     category: "abe",
     summary:

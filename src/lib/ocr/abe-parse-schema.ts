@@ -264,16 +264,42 @@ export function normalizeAbeVehicleApprovals(
   return cleaned.length > 0 ? cleaned : null;
 }
 
-/** Normalize to YYYY-MM-DD or null. */
+function isValidIsoDateParts(year: number, month: number, day: number): boolean {
+  if (!year || !month || !day) return false;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  if (year < 1980 || year > 2100) return false;
+  return true;
+}
+
+function toIsoDateString(year: number, month: number, day: number): string | null {
+  if (!isValidIsoDateParts(year, month, day)) return null;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** Normalize printed dates (ISO or German DD.MM.YYYY) to YYYY-MM-DD or null. */
 export function normalizeAbeDate(value: string | null | undefined): string | null {
   if (!value) return null;
   const trimmed = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
-  const [year, month, day] = trimmed.split("-").map(Number);
-  if (!year || !month || !day) return null;
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  if (year < 1980 || year > 2100) return null;
-  return trimmed;
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return toIsoDateString(
+      Number(isoMatch[1]),
+      Number(isoMatch[2]),
+      Number(isoMatch[3]),
+    );
+  }
+
+  const germanMatch = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/);
+  if (germanMatch) {
+    const day = Number(germanMatch[1]);
+    const month = Number(germanMatch[2]);
+    let year = Number(germanMatch[3]);
+    if (year < 100) year += year >= 70 ? 1900 : 2000;
+    return toIsoDateString(year, month, day);
+  }
+
+  return null;
 }
 
 export function normalizeAbeCoreParseResult(

@@ -121,8 +121,9 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     {
       id: "modifications",
       title: "Umbau-Bilder",
-      description: "Historie der Umbauten",
+      description: "Umbauten mit Fotos",
       icon: "images",
+      meta: { subtitle: "Galerie" },
     },
     {
       id: "specs",

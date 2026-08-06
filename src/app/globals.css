@@ -355,6 +355,21 @@ nextjs-portal {
   transition: box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
+/* Icon + clear button insets — must beat the shorthand padding above. */
+.claim-input.claim-input--search {
+  padding-left: 2.75rem;
+  padding-right: 2.75rem;
+}
+
+.claim-input.claim-input--search::-webkit-search-decoration,
+.claim-input.claim-input--search::-webkit-search-cancel-button,
+.claim-input.claim-input--search::-webkit-search-results-button,
+.claim-input.claim-input--search::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
 .claim-input::placeholder {
   color: rgba(10, 10, 10, 0.32);
 }

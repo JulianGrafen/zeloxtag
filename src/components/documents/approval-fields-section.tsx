@@ -78,15 +78,18 @@ export function ApprovalFieldsSection({
       {approvalFields.kind === "einzelabnahme" ? (
         <dl className="grid grid-cols-1 gap-3 text-[0.85rem] sm:grid-cols-2">
           <Fact
+            label="Dokumentnummer"
+            value={approvalFields.data.reportNumber}
+          />
+          <Fact
             label="Amtlich anerkannter Sachverständiger"
             value={approvalFields.data.officialExpert}
           />
-          <Fact
-            label="Berichtsnummer"
-            value={approvalFields.data.reportNumber}
-          />
           <div className="sm:col-span-2">
-            <Fact label="Feld 22" value={approvalFields.data.field22Text} />
+            <Fact
+              label="Feld 22 · Bemerkungen / Änderungen"
+              value={approvalFields.data.field22Text}
+            />
           </div>
         </dl>
       ) : null}

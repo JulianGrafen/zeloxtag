@@ -187,21 +187,12 @@ function normalizeDefectsList(value: unknown): string[] | null {
 
 /**
  * Normalize noisy OCR / LLM payloads before Zod validation.
+ * Non-objects are passed through so Zod reports a clear root error.
  * Missing optional fields become `null` instead of crashing later.
  */
-export function sanitizeTuevPayload(
-  rawJson: unknown,
-): Record<string, unknown> {
+export function sanitizeTuevPayload(rawJson: unknown): unknown {
   if (!isRecord(rawJson)) {
-    return {
-      testingOrganization: "other",
-      testDate: null,
-      result: null,
-      mileageKm: null,
-      nextInspectionDate: null,
-      documentNumber: null,
-      defectsList: null,
-    };
+    return rawJson;
   }
 
   return {

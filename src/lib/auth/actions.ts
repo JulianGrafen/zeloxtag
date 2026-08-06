@@ -44,8 +44,6 @@ async function enforceAuthRateLimit(scope: string): Promise<AuthActionResult | n
       key: `auth:${scope}:${clientKey}`,
       limit: cfg.limit,
       windowMs: cfg.windowMs,
-      // Never let Upstash/Redis misconfig block login or password reset.
-      memoryOnly: true,
     });
     if (!result.ok) {
       return { status: "rate_limited", retryAfterSec: result.retryAfterSec };
@@ -286,8 +284,13 @@ export async function requestPasswordReset(
     });
 
     if (!sent.ok) {
-      // Log only — same generic response prevents account enumeration via send errors.
       console.error("[password-reset] Resend failed:", sent.message);
+      // Surface provider/config errors so ops can fix FROM/domain/API key.
+      // (Unknown emails never reach send — they already returned GENERIC_RESET_OK.)
+      return {
+        status: "error",
+        message: `E-Mail-Versand fehlgeschlagen: ${sent.message}`,
+      };
     }
 
     return { status: "ok", message: GENERIC_RESET_OK };

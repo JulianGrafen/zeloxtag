@@ -103,6 +103,7 @@ function collectPhotoFiles(formData: FormData): File[] {
 function revalidateManualPaths(tagUuid: string) {
   revalidatePath(`/v/${tagUuid}`);
   revalidatePath(`/v/${tagUuid}/eintrag`);
+  revalidatePath(`/v/${tagUuid}/umbauten`);
   revalidatePath(`/v/${tagUuid}/service`);
   revalidatePath(`/v/${tagUuid}/dokumente`);
   revalidatePath(`/v/${tagUuid}/intervalle`);

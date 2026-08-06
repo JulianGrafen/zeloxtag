@@ -35,7 +35,7 @@ export function ListSearchControls({
       <label className="relative block">
         <span className="sr-only">Suchen</span>
         <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--vd-muted)]"
+          className="pointer-events-none absolute left-3.5 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[color:var(--vd-muted)]"
           aria-hidden
         />
         <input
@@ -45,14 +45,14 @@ export function ListSearchControls({
           placeholder={placeholder}
           autoComplete="off"
           enterKeyHint="search"
-          className="claim-input w-full pl-10 pr-10"
+          className="claim-input claim-input--search w-full"
         />
         {query ? (
           <button
             type="button"
             aria-label="Suche leeren"
             onClick={() => onQueryChange("")}
-            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[color:var(--vd-muted)]"
+            className="absolute right-2 top-1/2 z-[1] inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[color:var(--vd-muted)]"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>

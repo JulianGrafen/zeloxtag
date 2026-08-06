@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { invoiceTextParseSchema } from "@/lib/ocr/text-parse-schema";
 import {
   MissingVinError,
   normalizeParagraph21Extraction,
@@ -88,7 +89,13 @@ describe("paragraph21 mappers", () => {
   it("maps to analyze fields with VIN match note", () => {
     const fields = paragraph21ToAnalyzeFields(sample, false);
     expect(fields.category).toBe("abe");
+    expect(fields.date).toBe("2019-04-12");
     expect(fields.vehicleApprovals).toEqual(["VIN 2TM000104"]);
     expect(fields.notes).toContain("stimmt NICHT");
+  });
+
+  it("maps to invoiceTextParseSchema-compatible analyze fields", () => {
+    const fields = paragraph21ToAnalyzeFields(sample, true);
+    expect(invoiceTextParseSchema.safeParse(fields).success).toBe(true);
   });
 });

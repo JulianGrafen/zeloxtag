@@ -47,9 +47,13 @@ export function DocumentAbeDetailView({
   backHref,
 }: DocumentAbeDetailViewProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
+  const kindLabel = approvalKindLabel(document.approval_fields);
+  const isEinzelabnahme = document.approval_fields?.kind === "einzelabnahme";
   const title = displayDocumentTitle(document.title);
-  // Prefer stored title ("BBS Superleggera") over vendor-only model name.
-  const partName = title || document.vendor?.trim() || "ABE";
+  const partName = title || document.vendor?.trim() || kindLabel;
+  const vinFromApprovals = document.vehicle_approvals?.[0]
+    ?.replace(/^VIN\s+/i, "")
+    .trim();
   const manufacturer = document.manufacturer?.trim() || "";
   const titleIncludesManufacturer =
     manufacturer.length > 0 &&
@@ -63,7 +67,6 @@ export function DocumentAbeDetailView({
     backHref ?? `/v/${tagUuid}/dokumente?type=abe`;
   const scannedLabel = formatDocumentDate(document.created_at.slice(0, 10));
   const fileName = fileNameFromUrl(document.file_url, partName);
-  const kindLabel = approvalKindLabel(document.approval_fields);
   const subtitle = [
     titleIncludesManufacturer ? null : manufacturer || null,
     vehicleLabel,
@@ -133,7 +136,7 @@ export function DocumentAbeDetailView({
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                Nummer
+                {isEinzelabnahme ? "Dokumentnummer" : "Nummer"}
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                 {document.kba_number ?? "—"}
@@ -141,15 +144,17 @@ export function DocumentAbeDetailView({
             </div>
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                Behörde
+                {isEinzelabnahme ? "Feld E · VIN" : "Behörde"}
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {document.authority ?? "—"}
+                {isEinzelabnahme
+                  ? vinFromApprovals || "—"
+                  : document.authority ?? "—"}
               </dd>
             </div>
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                Scandatum
+                {isEinzelabnahme ? "Ausstellungsdatum" : "Scandatum"}
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                 {document.date
@@ -157,10 +162,20 @@ export function DocumentAbeDetailView({
                   : scannedLabel}
               </dd>
             </div>
+            {isEinzelabnahme && manufacturer ? (
+              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                  Feld 2 · Hersteller
+                </dt>
+                <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                  {manufacturer}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         </section>
 
-        {document.vehicle_id ? (
+        {document.vehicle_id && !isEinzelabnahme ? (
           <EditableAbeListsSection
             documentId={document.id}
             vehicleId={document.vehicle_id}

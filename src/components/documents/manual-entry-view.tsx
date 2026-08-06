@@ -44,6 +44,8 @@ import type { Document } from "@/types/database";
 
 export type ManualListFilter = "all" | ManualEntryCategory | "photos";
 
+type ManualEntryVariant = "default" | "umbau";
+
 interface ManualEntryViewProps {
   tagUuid: string;
   vehicleId: string;
@@ -54,6 +56,10 @@ interface ManualEntryViewProps {
   /** Override page heading for Umbauten surface. */
   heading?: string;
   subheading?: string;
+  /**
+   * `umbau` = photo-first Umbau-Bilder surface (tuning only, photo required).
+   */
+  variant?: ManualEntryVariant;
 }
 
 type PhotoDraft = {
@@ -70,18 +76,23 @@ export function ManualEntryView({
   initialListFilter = "all",
   heading = "Wartung & Tuning",
   subheading = "Einträge mit optionalen Fotos",
+  variant = "default",
 }: ManualEntryViewProps) {
   const router = useRouter();
+  const isUmbau = variant === "umbau";
   const { compressFile, isCompressing, statusLabel, error: compressError } =
     useDocumentCompression();
   const [showForm, setShowForm] = useState(false);
   const [category, setCategory] = useState<ManualEntryCategory>(
-    initialListFilter === "tuning" || initialListFilter === "service"
-      ? initialListFilter
-      : "service",
+    isUmbau
+      ? "tuning"
+      : initialListFilter === "tuning" || initialListFilter === "service"
+        ? initialListFilter
+        : "service",
   );
-  const [listFilter, setListFilter] =
-    useState<ManualListFilter>(initialListFilter);
+  const [listFilter, setListFilter] = useState<ManualListFilter>(
+    isUmbau ? "all" : initialListFilter,
+  );
   const [query, setQuery] = useState("");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
@@ -94,12 +105,23 @@ export function ManualEntryView({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const entries = filterManualVehicleEntries(documents);
+  const entries = useMemo(() => {
+    const all = filterManualVehicleEntries(documents);
+    if (!isUmbau) return all;
+    // Umbau-Bilder: only tuning / Umbau rows (never Wartung).
+    return all.filter((doc) => doc.category === "tuning");
+  }, [documents, isUmbau]);
 
   const listChips = useMemo(() => {
     const withPhoto = entries.filter((doc) =>
       isViewableDocumentUrl(doc.file_url),
     ).length;
+    if (isUmbau) {
+      return [
+        { id: "all", label: "Alle", count: entries.length },
+        { id: "photos", label: "Mit Foto", count: withPhoto },
+      ];
+    }
     const serviceCount = entries.filter(
       (doc) => doc.category === "service",
     ).length;
@@ -112,7 +134,7 @@ export function ManualEntryView({
       { id: "service", label: "Wartung", count: serviceCount },
       { id: "photos", label: "Mit Foto", count: withPhoto },
     ];
-  }, [entries]);
+  }, [entries, isUmbau]);
 
   const visibleEntries = useMemo(() => {
     return entries.filter((doc) => {
@@ -140,6 +162,18 @@ export function ManualEntryView({
       ? undefined
       : `${visibleEntries.length} von ${entries.length} Einträgen`;
 
+  const emptyCopy = isUmbau
+    ? {
+        title: "Noch keine Umbau-Bilder",
+        body: "Fotografiere Felgen, Fahrwerk, Aerodynamik oder andere Umbauten — so bleibt die Historie nachvollziehbar.",
+        cta: "Umbau mit Foto hinzufügen",
+      }
+    : {
+        title: "Noch keine eigenen Einträge",
+        body: "Trage Wartungen oder Tuning-Arbeiten ein und dokumentiere sie optional mit Fotos.",
+        cta: "Eintrag hinzufügen",
+      };
+
   useEffect(() => {
     return () => {
       photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
@@ -157,7 +191,7 @@ export function ManualEntryView({
     setMileageKm("");
     setNotes("");
     setPhotos([]);
-    setCategory("service");
+    setCategory(isUmbau ? "tuning" : "service");
     setError(null);
   }
 
@@ -217,15 +251,55 @@ export function ManualEntryView({
     setError(null);
     startTransition(async () => {
       try {
+        if (isUmbau && photos.length === 0) {
+          setError("Bitte mindestens ein Foto vom Umbau hinzufügen.");
+          return;
+        }
+
+        const baseTitle =
+          title.trim() ||
+          (isUmbau || category === "tuning"
+            ? "Umbau / Tuning"
+            : "Wartungseintrag");
+
+        // Umbau-Bilder: one document per photo so thumbnails stay images.
+        if (isUmbau && photos.length > 0) {
+          for (let index = 0; index < photos.length; index += 1) {
+            const photo = photos[index];
+            const formData = new FormData();
+            formData.set("vehicleId", vehicleId);
+            formData.set("tagUuid", tagUuid);
+            formData.set("category", "tuning");
+            formData.set(
+              "title",
+              photos.length > 1
+                ? `${baseTitle} (${index + 1}/${photos.length})`
+                : baseTitle,
+            );
+            formData.set("date", date);
+            formData.set("amount", amount);
+            formData.set("vendor", vendor);
+            formData.set("mileageKm", mileageKm);
+            formData.set("notes", notes);
+            formData.set("photo", photo.file, photo.file.name);
+
+            const result = await createManualVehicleEntry(formData);
+            if (result.status === "error") {
+              setError(result.message);
+              return;
+            }
+          }
+          resetForm();
+          setShowForm(false);
+          router.refresh();
+          return;
+        }
+
         const formData = new FormData();
         formData.set("vehicleId", vehicleId);
         formData.set("tagUuid", tagUuid);
         formData.set("category", category);
-        formData.set(
-          "title",
-          title.trim() ||
-            (category === "tuning" ? "Tuning-Eintrag" : "Wartungseintrag"),
-        );
+        formData.set("title", baseTitle);
         formData.set("date", date);
         formData.set("amount", amount);
         formData.set("vendor", vendor);
@@ -304,10 +378,14 @@ export function ManualEntryView({
 
           <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
             <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-              <NotebookPen className="h-5 w-5" aria-hidden />
+              {isUmbau ? (
+                <ImagePlus className="h-5 w-5" aria-hidden />
+              ) : (
+                <NotebookPen className="h-5 w-5" aria-hidden />
+              )}
             </div>
             <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              Eigene Doku
+              {isUmbau ? "Umbau-Historie" : "Eigene Doku"}
             </p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
               {heading}
@@ -347,26 +425,30 @@ export function ManualEntryView({
               handleCreate();
             }}
           >
-            <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Art
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {MANUAL_ENTRY_CATEGORIES.map((id) => (
-                <PressableButton
-                  key={id}
-                  type="button"
-                  variant="button"
-                  onClick={() => setCategory(id)}
-                  className={`rounded-xl border px-3 py-3 text-left text-[0.85rem] font-semibold ${
-                    category === id
-                      ? "border-neutral-900 bg-neutral-900 text-white"
-                      : "border-[color:var(--vd-border)] bg-white text-[color:var(--vd-text)]"
-                  }`}
-                >
-                  {MANUAL_ENTRY_CATEGORY_LABELS[id]}
-                </PressableButton>
-              ))}
-            </div>
+            {!isUmbau ? (
+              <>
+                <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Art
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {MANUAL_ENTRY_CATEGORIES.map((id) => (
+                    <PressableButton
+                      key={id}
+                      type="button"
+                      variant="button"
+                      onClick={() => setCategory(id)}
+                      className={`rounded-xl border px-3 py-3 text-left text-[0.85rem] font-semibold ${
+                        category === id
+                          ? "border-neutral-900 bg-neutral-900 text-white"
+                          : "border-[color:var(--vd-border)] bg-white text-[color:var(--vd-text)]"
+                      }`}
+                    >
+                      {MANUAL_ENTRY_CATEGORY_LABELS[id]}
+                    </PressableButton>
+                  ))}
+                </div>
+              </>
+            ) : null}
 
             <label className="block space-y-1.5">
               <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
@@ -379,8 +461,8 @@ export function ManualEntryView({
                 onChange={(event) => setTitle(event.target.value)}
                 className="claim-input w-full"
                 placeholder={
-                  category === "tuning"
-                    ? "z. B. Fahrwerk eingebaut"
+                  isUmbau || category === "tuning"
+                    ? "z. B. KW V3 Fahrwerk"
                     : "z. B. Ölwechsel selbst gemacht"
                 }
               />
@@ -454,7 +536,9 @@ export function ManualEntryView({
               <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                 Fotos{" "}
                 <span className="normal-case tracking-normal text-[color:var(--vd-muted)]">
-                  (optional, max. {MANUAL_ENTRY_MAX_PHOTOS})
+                  {isUmbau
+                    ? `(mindestens 1, max. ${MANUAL_ENTRY_MAX_PHOTOS})`
+                    : `(optional, max. ${MANUAL_ENTRY_MAX_PHOTOS})`}
                 </span>
               </p>
 
@@ -543,33 +627,97 @@ export function ManualEntryView({
               <PressableButton
                 type="submit"
                 variant="button"
-                disabled={busy || title.trim().length < 2}
+                disabled={
+                  busy ||
+                  title.trim().length < 2 ||
+                  (isUmbau && photos.length === 0)
+                }
                 className="claim-cta flex-1 disabled:opacity-60"
               >
-                {busy ? "Speichern…" : "Eintrag speichern"}
+                {busy ? "Speichern…" : isUmbau ? "Fotos speichern" : "Eintrag speichern"}
               </PressableButton>
             </div>
           </form>
         ) : null}
 
-        <section aria-label="Eigene Einträge" className="space-y-2">
+        <section
+          aria-label={isUmbau ? "Umbau-Bilder" : "Eigene Einträge"}
+          className="space-y-2"
+        >
           {entries.length === 0 ? (
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                <Wrench className="h-5 w-5" aria-hidden />
+                {isUmbau ? (
+                  <ImagePlus className="h-5 w-5" aria-hidden />
+                ) : (
+                  <Wrench className="h-5 w-5" aria-hidden />
+                )}
               </div>
               <p className="font-medium text-[color:var(--vd-text)]">
-                Noch keine eigenen Einträge
+                {emptyCopy.title}
               </p>
-              <p className="mt-1">
-                Trage Wartungen oder Tuning-Arbeiten ein und dokumentiere sie
-                optional mit Fotos.
-              </p>
+              <p className="mt-1">{emptyCopy.body}</p>
             </div>
           ) : visibleEntries.length === 0 ? (
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
-              Keine Treffer für diese Suche / Filter.
+              {query.trim() || listFilter !== "all"
+                ? "Keine Treffer für diese Suche / Filter."
+                : emptyCopy.title}
             </div>
+          ) : isUmbau ? (
+            <ul className="grid grid-cols-2 gap-3">
+              {visibleEntries.map((doc) => {
+                const hasPhoto = isViewableDocumentUrl(doc.file_url);
+                const thumbSrc = hasPhoto
+                  ? inlineDocumentProxyUrl(doc.file_url)
+                  : null;
+                const isImage =
+                  hasPhoto && documentMediaKind(doc.file_url) === "image";
+
+                return (
+                  <li key={doc.id} className="relative">
+                    <PressableLink
+                      href={`/v/${tagUuid}/dokumente/${doc.id}`}
+                      variant="tile"
+                      className="group flex flex-col overflow-hidden rounded-[1.25rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]"
+                    >
+                      <span className="relative aspect-square w-full overflow-hidden bg-[color:var(--vd-surface-elevated)]">
+                        {thumbSrc && isImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={thumbSrc}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-[color:var(--vd-muted)]">
+                            <ImagePlus className="h-8 w-8" aria-hidden />
+                          </span>
+                        )}
+                      </span>
+                      <span className="space-y-0.5 p-3">
+                        <span className="block truncate font-[family-name:var(--font-display)] text-[0.88rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                          {displayDocumentTitle(doc.title)}
+                        </span>
+                        <span className="block text-[0.72rem] text-[color:var(--vd-muted)]">
+                          {formatDocumentDate(doc.date)}
+                        </span>
+                      </span>
+                    </PressableLink>
+                    <PressableButton
+                      type="button"
+                      variant="button"
+                      aria-label={`Löschen: ${displayDocumentTitle(doc.title)}`}
+                      disabled={pending && pendingId === doc.id}
+                      onClick={() => handleDelete(doc.id)}
+                      className="absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-white/95 text-red-600 shadow-sm disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    </PressableButton>
+                  </li>
+                );
+              })}
+            </ul>
           ) : (
             <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
               {visibleEntries.map((doc) => {
@@ -648,7 +796,7 @@ export function ManualEntryView({
               className="claim-cta inline-flex w-full items-center justify-center gap-2"
             >
               <Plus className="h-4 w-4" aria-hidden />
-              Eintrag hinzufügen
+              {emptyCopy.cta}
             </PressableButton>
           </div>
         </div>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { ABEOverview } from "@/components/dashboard/ABEOverview";
+import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverview";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -305,6 +306,8 @@ export function InvoiceUploader({
     (scanDef?.ocrDocumentType ??
       (resolvedLockCategory && resolvedCategory === "abe" ? "abe" : "invoice")) ===
     "abe";
+  const isEinzelabnahmeUpload = scanDef?.approvalKind === "einzelabnahme";
+  const isGutachtenFamilyUpload = isAbeUpload && !isEinzelabnahmeUpload;
   const isTuevUpload =
     scanDef?.ocrDocumentType === "tuev" ||
     (resolvedLockCategory && resolvedCategory === "tuev");
@@ -349,8 +352,10 @@ export function InvoiceUploader({
             label:
               totalPages > 1
                 ? `Seite ${page} von ${totalPages} wird analysiert…`
-                : documentType === "abe"
-                  ? `${scanDef?.title ?? "ABE"} wird analysiert…`
+                :                 documentType === "abe"
+                  ? isEinzelabnahmeUpload
+                    ? "Einzelabnahme wird analysiert…"
+                    : `${scanDef?.title ?? "Gutachten"} wird analysiert…`
                   : documentType === "tuev"
                     ? "TÜV-Bericht wird analysiert…"
                     : "Rechnung wird analysiert…",
@@ -443,16 +448,28 @@ export function InvoiceUploader({
   }
 
   const canProcess = Boolean(nativePdf) || pages.length > 0;
+  const isEinzelabnahmeReview =
+    step === "review" &&
+    isEinzelabnahmeUpload &&
+    Boolean(previewUrl) &&
+    Boolean(uploadFile);
   const isAbeReview =
     step === "review" &&
-    (fields.category === "abe" || isAbeUpload) &&
+    !isEinzelabnahmeUpload &&
+    (fields.category === "abe" || isGutachtenFamilyUpload) &&
     Boolean(previewUrl) &&
     Boolean(uploadFile);
 
   async function startAbeAwareExtraction() {
-    if (isAbeUpload && !nativePdf && pages.length === 1) {
+    if (isGutachtenFamilyUpload && !nativePdf && pages.length === 1) {
       const confirmed = window.confirm(
-        "Du hast nur 1 Seite erfasst. ABEs haben oft mehrere Seiten.\n\nBitte alle Seiten dieses einen Bauteils scannen.\nTrotzdem mit einer Seite fortfahren?",
+        "Du hast nur 1 Seite erfasst. Gutachten haben oft mehrere Seiten.\n\nBitte alle Seiten dieses Dokuments scannen.\nTrotzdem mit einer Seite fortfahren?",
+      );
+      if (!confirmed) return;
+    }
+    if (isEinzelabnahmeUpload && !nativePdf && pages.length === 1) {
+      const confirmed = window.confirm(
+        "Du hast nur 1 Seite erfasst. Einzelabnahmen enthalten oft mehrere Seiten inkl. Feld 22.\n\nTrotzdem mit einer Seite fortfahren?",
       );
       if (!confirmed) return;
     }
@@ -486,6 +503,89 @@ export function InvoiceUploader({
     fields.conditions,
     fields.vehicleApprovals,
   ]);
+
+  function saveEinzelabnahmeDocument(payload: {
+    review: {
+      documentNumber: string | null;
+      issueDate: string | null;
+      vin: string | null;
+      manufacturer: string | null;
+      model: string | null;
+      modificationsField22: string | null;
+      additionalRemarks: string | null;
+      vinMatchesGarage: boolean | null;
+    };
+    approvalFields: Extract<ApprovalFields, { kind: "einzelabnahme" }>;
+    title: string;
+  }) {
+    if (!uploadFile) {
+      setError("Keine Datei zum Speichern vorhanden.");
+      return;
+    }
+
+    setError(null);
+    const { review, approvalFields: approval, title: storedTitle } = payload;
+
+    const notes = [
+      review.modificationsField22
+        ? `Feld 22:\n${review.modificationsField22}`
+        : null,
+      review.additionalRemarks
+        ? `Zusätzliche Bemerkungen:\n${review.additionalRemarks}`
+        : null,
+      review.vinMatchesGarage === true
+        ? "VIN (Feld E) stimmt mit Garage-Fahrzeug überein."
+        : review.vinMatchesGarage === false
+          ? "WARNUNG: VIN (Feld E) stimmt NICHT mit Garage-Fahrzeug überein."
+          : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("vehicleId", vehicleId);
+      formData.set("tagUuid", tagUuid);
+      formData.set("title", storedTitle);
+      formData.set("type", "abe");
+      formData.set("category", "abe");
+      formData.set("vendor", review.model?.trim() ?? storedTitle);
+      formData.set("date", review.issueDate?.trim() ?? localDateIso());
+      formData.set("amount", "");
+      formData.set("lineItems", "");
+      formData.set("kbaNumber", review.documentNumber?.trim() ?? "");
+      formData.set(
+        "vehicleApprovals",
+        review.vin?.trim() ? JSON.stringify([`VIN ${review.vin.trim()}`]) : "",
+      );
+      formData.set("authority", "");
+      formData.set(
+        "conditions",
+        review.modificationsField22?.trim()
+          ? JSON.stringify([review.modificationsField22.trim().slice(0, 800)])
+          : "",
+      );
+      formData.set("technicalSpecs", "");
+      formData.set("partCategory", "");
+      formData.set("notes", notes);
+      formData.set("manufacturer", review.manufacturer?.trim() ?? "");
+      formData.set("invoiceNumber", review.documentNumber?.trim() ?? "");
+      formData.set("mileageKm", "");
+      formData.set("pageCount", String(pageCount || 1));
+      formData.set("approvalFields", JSON.stringify(approval));
+      formData.set("file", uploadFile);
+
+      const result = await uploadDocument(formData);
+      if (result.status === "error") {
+        setError(result.message);
+        return;
+      }
+
+      const href =
+        successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      window.location.assign(href);
+    });
+  }
 
   function saveAbeDocument(abe: AbeMinimal) {
     if (!uploadFile) {
@@ -581,7 +681,7 @@ export function InvoiceUploader({
     <section
       className={[
         "mx-auto flex w-full flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
-        isAbeReview ? "max-w-5xl" : "max-w-lg",
+        isAbeReview || isEinzelabnahmeReview ? "max-w-5xl" : "max-w-lg",
       ].join(" ")}
     >
       <header className="vd-anim-header space-y-4">
@@ -623,7 +723,34 @@ export function InvoiceUploader({
 
       {step === "compose" ? (
         <div className="vd-anim-header space-y-3">
-          {isAbeUpload ? (
+          {isEinzelabnahmeUpload ? (
+            <div
+              role="note"
+              className="rounded-[1.35rem] border border-sky-300/70 bg-sky-50 px-4 py-3.5 text-[0.84rem] leading-relaxed text-sky-950 shadow-[var(--vd-shadow-sm)]"
+            >
+              <div className="flex items-start gap-2.5">
+                <Info
+                  className="mt-0.5 h-4 w-4 shrink-0 text-sky-800"
+                  aria-hidden
+                />
+                <div className="space-y-1.5">
+                  <p className="font-semibold tracking-[-0.01em]">
+                    Einzelbetriebserlaubnis § 21 — nur für dieses Fahrzeug
+                  </p>
+                  <p>
+                    Das Dokument ist an die{" "}
+                    <span className="font-medium">Fahrgestellnummer (Feld E)</span>{" "}
+                    gebunden. Bitte{" "}
+                    <span className="font-medium">alle Seiten</span> scannen —
+                    besonders{" "}
+                    <span className="font-medium">Feld 22 (Bemerkungen)</span>.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {isGutachtenFamilyUpload ? (
             <div
               role="note"
               className="rounded-[1.35rem] border border-amber-300/70 bg-amber-50 px-4 py-3.5 text-[0.84rem] leading-relaxed text-amber-950 shadow-[var(--vd-shadow-sm)]"
@@ -654,8 +781,10 @@ export function InvoiceUploader({
               allowPdf
               disabled={compressing}
               hint={
-                isAbeUpload
-                  ? `Alle Seiten von ${scanDef?.title ?? "ABE"} fotografieren oder als PDF hochladen`
+                isEinzelabnahmeUpload
+                  ? "Einzelabnahme fotografieren oder als PDF hochladen"
+                  : isGutachtenFamilyUpload
+                  ? `Alle Seiten von ${scanDef?.title ?? "Gutachten"} fotografieren oder als PDF hochladen`
                   : isTuevUpload
                     ? "TÜV-/HU-Bericht fotografieren oder als PDF hochladen"
                     : "Foto wird automatisch auf A4 zugeschnitten und für OCR komprimiert"
@@ -740,8 +869,10 @@ export function InvoiceUploader({
                     disabled={compressing}
                     label="Weitere Seite"
                     hint={
-                      isAbeUpload
-                        ? "Nächste Seite derselben ABE hinzufügen"
+                      isEinzelabnahmeUpload
+                        ? "Nächste Seite derselben Einzelabnahme hinzufügen"
+                        : isGutachtenFamilyUpload
+                        ? "Nächste Seite desselben Gutachtens hinzufügen"
                         : "Nächste Seite fotografieren oder aus der Galerie wählen"
                     }
                     imageButtonLabel="Bild hinzufügen"
@@ -752,17 +883,26 @@ export function InvoiceUploader({
                   />
                   <p className="text-center text-[0.75rem] text-[color:var(--vd-muted)]">
                     <Plus className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-                    {isAbeUpload
-                      ? `Weitere Seite derselben ABE · max. ${MAX_PAGES}`
+                    {isEinzelabnahmeUpload
+                      ? `Weitere Seite derselben Einzelabnahme · max. ${MAX_PAGES}`
+                      : isGutachtenFamilyUpload
+                      ? `Weitere Seite desselben Gutachtens · max. ${MAX_PAGES}`
                       : `Weitere Seite hinzufügen · max. ${MAX_PAGES}`}
                   </p>
                 </div>
               ) : null}
 
-              {isAbeUpload && pages.length === 1 ? (
+              {isEinzelabnahmeUpload && pages.length === 1 ? (
+                <p className="rounded-xl bg-sky-50 px-3 py-2 text-[0.78rem] text-sky-950">
+                  Nur 1 Seite erfasst — fehlen noch Seiten inkl. Feld 22? Bitte
+                  alle Seiten der Einzelabnahme hinzufügen.
+                </p>
+              ) : null}
+
+              {isGutachtenFamilyUpload && pages.length === 1 ? (
                 <p className="rounded-xl bg-amber-50 px-3 py-2 text-[0.78rem] text-amber-950">
-                  Nur 1 Seite erfasst — fehlen noch Seiten dieser ABE? Bitte
-                  alle Seiten dieses Bauteils hinzufügen.
+                  Nur 1 Seite erfasst — fehlen noch Seiten dieses Gutachtens?
+                  Bitte alle Seiten hinzufügen.
                 </p>
               ) : null}
             </div>
@@ -838,6 +978,21 @@ export function InvoiceUploader({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {isEinzelabnahmeReview && previewUrl && uploadFile ? (
+        <EinzelabnahmeOverview
+          previewUrl={previewUrl}
+          previewKind={isPdfFile(uploadFile) ? "pdf" : "image"}
+          pageCount={pageCount}
+          fields={fields}
+          approvalFields={approvalFields}
+          garageVin={vehicleVin}
+          isSaving={pending}
+          saveError={error}
+          onCancel={resetWizard}
+          onSave={saveEinzelabnahmeDocument}
+        />
       ) : null}
 
       {isAbeReview && previewUrl && uploadFile ? (

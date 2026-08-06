@@ -9,7 +9,6 @@ import {
   type DragEvent,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
 import { Camera, ImagePlus, Loader2, SkipForward } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
@@ -28,10 +27,12 @@ import {
 } from "@/lib/vehicles/compress-silhouette-image";
 
 export type SilhouetteUploadResult = {
-  /** Same-origin proxy for COEP-safe dashboard header. */
+  /** Immediate preview (usually blob:) — shown in header before proxy is ready. */
   displayUrl: string;
   /** Stored Supabase public URL (for resolveVehicleImage after refresh). */
   storageUrl: string;
+  /** Same-origin proxy URL once storage has the PNG. */
+  proxyDisplayUrl?: string;
 };
 
 export type ClientVehicleUploadProps = {
@@ -182,7 +183,6 @@ export function ClientVehicleUpload({
   description = "Bitte fotografiere dein Fahrzeug exakt von der Seite, damit die Animation im Dashboard gut aussieht.",
   className = "",
 }: ClientVehicleUploadProps) {
-  const router = useRouter();
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -319,20 +319,21 @@ export function ClientVehicleUpload({
         }
 
         setUploadProgress(100);
-        const displayUrl =
-          payload.silhouetteDisplayUrl ?? payload.silhouetteImageUrl;
+        const proxyDisplayUrl =
+          payload.silhouetteDisplayUrl ?? undefined;
+        const immediatePreview = URL.createObjectURL(uploadFile);
         setPreviewUrl((previous) => {
-          if (previous?.startsWith("blob:")) URL.revokeObjectURL(previous);
-          return displayUrl ?? previous;
+          if (previous?.startsWith("blob:") && previous !== immediatePreview) {
+            URL.revokeObjectURL(previous);
+          }
+          return immediatePreview;
         });
         setState("done");
-        if (displayUrl) {
-          onUploaded?.({
-            displayUrl,
-            storageUrl: payload.silhouetteImageUrl,
-          });
-        }
-        router.refresh();
+        onUploaded?.({
+          displayUrl: immediatePreview,
+          storageUrl: payload.silhouetteImageUrl,
+          proxyDisplayUrl,
+        });
       } catch (error) {
         setState("idle");
         setError(
@@ -342,7 +343,7 @@ export function ClientVehicleUpload({
         );
       }
     },
-    [onUploaded, router, tagUuid, vehicleId],
+    [onUploaded, tagUuid, vehicleId],
   );
 
   function onInputChange(event: ChangeEvent<HTMLInputElement>) {

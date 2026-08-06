@@ -153,7 +153,7 @@ export const SCAN_TYPE_DEFINITIONS: Record<ScanType, ScanTypeDefinition> = {
   },
 };
 
-/** Ordered for the picker UI. */
+/** Ordered for the upload/scan picker UI (excludes legacy-only types like egbe). */
 export const SCAN_TYPE_OPTIONS: ScanTypeDefinition[] = [
   SCAN_TYPE_DEFINITIONS.invoice,
   SCAN_TYPE_DEFINITIONS.repair,
@@ -161,7 +161,6 @@ export const SCAN_TYPE_OPTIONS: ScanTypeDefinition[] = [
   SCAN_TYPE_DEFINITIONS.abe,
   SCAN_TYPE_DEFINITIONS.teilegutachten,
   SCAN_TYPE_DEFINITIONS.einzelabnahme,
-  SCAN_TYPE_DEFINITIONS.egbe,
   SCAN_TYPE_DEFINITIONS.tuev,
 ];
 

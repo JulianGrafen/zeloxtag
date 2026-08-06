@@ -31,9 +31,9 @@ export default async function UmbautenPage({ params }: UmbautenPageProps) {
       vehicleId={result.vehicle!.id}
       vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
       documents={documents}
-      initialListFilter="tuning"
+      variant="umbau"
       heading="Umbau-Bilder"
-      subheading="Tuning & Umbauten mit optionalen Fotos"
+      subheading="Fotos von Tuning & Umbauten"
     />
   );
 }

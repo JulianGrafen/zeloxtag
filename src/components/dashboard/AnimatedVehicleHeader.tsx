@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Camera } from "lucide-react";
 
 import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhouette";
+import { bumpSilhouetteCacheUrl } from "@/lib/vehicles/prefetch-silhouette-image";
 import { isOwnerSilhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 
 type AnimatedVehicleHeaderProps = {
@@ -41,15 +42,26 @@ export function AnimatedVehicleHeader({
   const fallback = fallbackImageUrl?.trim() || null;
   const [activeSrc, setActiveSrc] = useState<string | null>(primary);
   const [showSvgFallback, setShowSvgFallback] = useState(false);
+  const [proxyRetries, setProxyRetries] = useState(0);
 
   useEffect(() => {
     setActiveSrc(primary);
     setShowSvgFallback(false);
+    setProxyRetries(0);
   }, [primary]);
 
   const editable = typeof onEdit === "function";
 
   function handleImageError() {
+    if (
+      isOwnerSilhouetteDisplayUrl(activeSrc) &&
+      proxyRetries < 3 &&
+      typeof window !== "undefined"
+    ) {
+      setProxyRetries((count) => count + 1);
+      setActiveSrc(bumpSilhouetteCacheUrl(activeSrc!));
+      return;
+    }
     // Never revert to catalog art when an owner silhouette was requested.
     if (isOwnerSilhouetteDisplayUrl(activeSrc)) {
       setShowSvgFallback(true);

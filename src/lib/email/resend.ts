@@ -4,11 +4,44 @@ function readResendApiKey(): string {
   return process.env.RESEND_API_KEY?.trim() ?? "";
 }
 
+/** Strip accidental wrapping quotes from dashboard / .env pastes. */
+function stripEnvQuotes(value: string): string {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
+/**
+ * From address for Resend.
+ * Prefer plain email + optional name (Vercel-safe):
+ *   RESEND_FROM_EMAIL=noreply@yourdomain.com
+ *   RESEND_FROM_NAME=ZeloxTag
+ * Or full RFC form:
+ *   RESEND_FROM_EMAIL=ZeloxTag <noreply@yourdomain.com>
+ */
 function readFromAddress(): string {
-  return (
-    process.env.RESEND_FROM_EMAIL?.trim() ||
-    "ZeloxTag <onboarding@resend.dev>"
-  );
+  const raw = stripEnvQuotes(process.env.RESEND_FROM_EMAIL ?? "");
+  if (!raw) {
+    return "ZeloxTag <onboarding@resend.dev>";
+  }
+
+  // Already "Name <email>" or bare email with angle brackets.
+  if (raw.includes("<") && raw.includes(">")) {
+    return raw;
+  }
+
+  const name = stripEnvQuotes(process.env.RESEND_FROM_NAME ?? "") || "ZeloxTag";
+  // Bare email → add display name.
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+    return `${name} <${raw}>`;
+  }
+
+  return raw;
 }
 
 export function isResendConfigured(): boolean {
@@ -34,10 +67,12 @@ export async function sendPasswordResetEmail(input: {
     };
   }
 
+  const from = readFromAddress();
+
   try {
     const resend = getResendClient();
     const { error } = await resend.emails.send({
-      from: readFromAddress(),
+      from,
       to: input.to,
       subject: "Passwort zurücksetzen · ZeloxTag",
       html: buildPasswordResetHtml(input.resetUrl),
@@ -52,7 +87,10 @@ export async function sendPasswordResetEmail(input: {
     });
 
     if (error) {
-      return { ok: false, message: error.message };
+      return {
+        ok: false,
+        message: `${error.message} (from: ${from})`,
+      };
     }
     return { ok: true };
   } catch (error) {
@@ -60,8 +98,8 @@ export async function sendPasswordResetEmail(input: {
       ok: false,
       message:
         error instanceof Error
-          ? error.message
-          : "E-Mail konnte nicht gesendet werden.",
+          ? `${error.message} (from: ${from})`
+          : `E-Mail konnte nicht gesendet werden. (from: ${from})`,
     };
   }
 }

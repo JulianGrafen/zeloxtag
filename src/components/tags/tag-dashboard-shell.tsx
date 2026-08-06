@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
+import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
 import {
   parseScanType,
@@ -11,6 +12,14 @@ import {
   SCHRAUBER_SCAN_TYPES,
   type ScanType,
 } from "@/lib/documents/scan-types";
+import {
+  bumpSilhouetteCacheUrl,
+  prefetchSilhouetteImage,
+} from "@/lib/vehicles/prefetch-silhouette-image";
+import {
+  cacheBustFromSilhouetteUrl,
+  silhouetteDisplayUrl,
+} from "@/lib/vehicles/silhouette-display-url";
 import type { Document, Vehicle } from "@/types/database";
 
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
@@ -18,6 +27,10 @@ import { TagDashboardView } from "./tag-dashboard-view";
 
 function silhouetteSkipKey(vehicleId: string): string {
   return `zlx-silhouette-skip:${vehicleId}`;
+}
+
+function silhouetteStorageKey(vehicleId: string): string {
+  return `zlx-silhouette-storage:${vehicleId}`;
 }
 
 type DashboardMode = "dashboard" | "pick-scan" | "scanner";
@@ -73,11 +86,39 @@ export function TagDashboardShell({
   const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
   const [vehicleImageOverride, setVehicleImageOverride] = useState<string | null>(
-    null,
+    () => {
+      if (vehicle.silhouette_image_url) {
+        const bust =
+          cacheBustFromSilhouetteUrl(vehicle.silhouette_image_url) ??
+          Date.now().toString();
+        return silhouetteDisplayUrl(vehicle.id, bust);
+      }
+      try {
+        const stored = sessionStorage.getItem(
+          silhouetteStorageKey(vehicle.id),
+        );
+        if (stored) {
+          const bust = cacheBustFromSilhouetteUrl(stored) ?? Date.now().toString();
+          return silhouetteDisplayUrl(vehicle.id, bust);
+        }
+      } catch {
+        /* private mode */
+      }
+      return null;
+    },
   );
   const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
-    vehicle.silhouette_image_url,
+    () => {
+      if (vehicle.silhouette_image_url) return vehicle.silhouette_image_url;
+      try {
+        return sessionStorage.getItem(silhouetteStorageKey(vehicle.id));
+      } catch {
+        return null;
+      }
+    },
   );
+  const blobPreviewRef = useRef<string | null>(null);
+
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
   const displayVehicle = {
     ...vehicle,
@@ -86,15 +127,70 @@ export function TagDashboardShell({
   const hasSilhouette = Boolean(silhouetteStorageUrl || vehicleImageOverride);
 
   useEffect(() => {
+    if (!vehicle.silhouette_image_url) return;
     setSilhouetteStorageUrl(vehicle.silhouette_image_url);
-  }, [vehicle.silhouette_image_url]);
+    const bust =
+      cacheBustFromSilhouetteUrl(vehicle.silhouette_image_url) ??
+      Date.now().toString();
+    setVehicleImageOverride(silhouetteDisplayUrl(vehicle.id, bust));
+    try {
+      sessionStorage.removeItem(silhouetteStorageKey(vehicle.id));
+    } catch {
+      /* ignore */
+    }
+  }, [vehicle.id, vehicle.silhouette_image_url]);
 
-  function handleSilhouetteUploaded(result: {
-    displayUrl: string;
-    storageUrl: string;
-  }) {
+  useEffect(() => {
+    return () => {
+      if (blobPreviewRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(blobPreviewRef.current);
+      }
+    };
+  }, []);
+
+  function promoteProxyDisplayUrl(proxyUrl: string, blobToRevoke?: string) {
+    const tryLoad = async (url: string, attempt: number): Promise<void> => {
+      const ok = await prefetchSilhouetteImage(url);
+      if (ok) {
+        setVehicleImageOverride(url);
+        if (blobToRevoke?.startsWith("blob:")) {
+          URL.revokeObjectURL(blobToRevoke);
+          if (blobPreviewRef.current === blobToRevoke) {
+            blobPreviewRef.current = null;
+          }
+        }
+        return;
+      }
+      if (attempt < 4) {
+        window.setTimeout(() => {
+          void tryLoad(bumpSilhouetteCacheUrl(url), attempt + 1);
+        }, 400 * attempt);
+      }
+    };
+
+    void tryLoad(proxyUrl, 1);
+  }
+
+  function handleSilhouetteUploaded(result: SilhouetteUploadResult) {
+    if (result.displayUrl.startsWith("blob:")) {
+      blobPreviewRef.current = result.displayUrl;
+    }
     setVehicleImageOverride(result.displayUrl);
     setSilhouetteStorageUrl(result.storageUrl);
+    try {
+      sessionStorage.setItem(
+        silhouetteStorageKey(vehicle.id),
+        result.storageUrl,
+      );
+    } catch {
+      /* quota / private mode */
+    }
+    if (result.proxyDisplayUrl) {
+      promoteProxyDisplayUrl(
+        result.proxyDisplayUrl,
+        result.displayUrl.startsWith("blob:") ? result.displayUrl : undefined,
+      );
+    }
   }
 
   useEffect(() => {

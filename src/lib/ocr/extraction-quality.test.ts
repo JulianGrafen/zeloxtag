@@ -7,7 +7,11 @@
 import { describe, expect, it } from "vitest";
 
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
-import { parseScanType, scanTypeDefinition } from "@/lib/documents/scan-types";
+import {
+  parseScanType,
+  SCAN_TYPE_OPTIONS,
+  scanTypeDefinition,
+} from "@/lib/documents/scan-types";
 import { extractAmountFromText, preferAmount } from "@/lib/ocr/amount-from-text";
 import { detectApprovalKind } from "@/lib/ocr/detect-approval-kind";
 import { extractApprovalFieldsFromText } from "@/lib/ocr/extract-approval-fields";
@@ -182,21 +186,19 @@ describe("pre-deploy extraction quality · TuevReportService sanitize", () => {
 });
 
 describe("pre-deploy extraction quality · scan type catalog", () => {
-  it("maps every picker type to a stable OCR route", () => {
-    for (const id of [
-      "invoice",
-      "service",
-      "abe",
-      "teilegutachten",
-      "einzelabnahme",
-      "egbe",
-      "tuev",
-    ] as const) {
+  it("maps every upload picker type to a stable OCR route", () => {
+    for (const { id } of SCAN_TYPE_OPTIONS) {
       expect(parseScanType(id)).toBe(id);
       const def = scanTypeDefinition(id);
       expect(def.ocrDocumentType).toMatch(/^(invoice|abe|tuev)$/);
       expect(def.heading.length).toBeGreaterThan(3);
     }
+    expect(SCAN_TYPE_OPTIONS.some((opt) => opt.id === "egbe")).toBe(false);
+  });
+
+  it("keeps egbe defined for existing documents and OCR", () => {
+    expect(parseScanType("egbe")).toBe("egbe");
+    expect(scanTypeDefinition("egbe").approvalKind).toBe("egbe");
   });
 
   it("routes gutachten subtypes through ABE OCR bucket", () => {
