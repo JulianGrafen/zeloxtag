@@ -44,6 +44,26 @@ function jsonError(status: number, error: string, code: string) {
   return NextResponse.json({ ok: false as const, error, code }, { status });
 }
 
+function asImageBlob(
+  value: FormDataEntryValue | null,
+): { blob: Blob; filename: string } | null {
+  if (value instanceof File && value.size > 0) {
+    return { blob: value, filename: value.name || "vehicle-side.png" };
+  }
+  // Some runtimes expose multipart parts as Blob (not File).
+  if (typeof Blob !== "undefined" && value instanceof Blob && value.size > 0) {
+    const named = value as Blob & { name?: string };
+    return {
+      blob: value,
+      filename:
+        typeof named.name === "string" && named.name.length > 0
+          ? named.name
+          : "vehicle-side.png",
+    };
+  }
+  return null;
+}
+
 /**
  * POST /api/vehicle/remove-bg
  * Auth → store owner-supplied image (client already removed BG when possible).
@@ -87,15 +107,15 @@ export async function POST(request: NextRequest) {
     }
     const { vehicleId, tagUuid, backgroundRemoved } = metaParsed.data;
 
-    const file = formData.get("file");
-    if (!(file instanceof File) || file.size <= 0) {
+    const upload = asImageBlob(formData.get("file"));
+    if (!upload) {
       return jsonError(400, "Image file is required.", "bad_request");
     }
-    if (file.size > MAX_SILHOUETTE_UPLOAD_BYTES) {
+    if (upload.blob.size > MAX_SILHOUETTE_UPLOAD_BYTES) {
       return jsonError(413, "Image exceeds 8 MB limit.", "payload_too_large");
     }
 
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    const bytes = new Uint8Array(await upload.blob.arrayBuffer());
     const sniffed = sniffAllowedMime(bytes);
     if (!sniffed || !ALLOWED_INPUT_MIME.has(sniffed)) {
       return jsonError(
@@ -120,15 +140,37 @@ export async function POST(request: NextRequest) {
     }
 
     let cutoutPng: Buffer;
+    let storedAsCutout = backgroundRemoved === "true";
     try {
       cutoutPng = await normalizeVehicleCutout(bytes, {
-        requireTransparentBackground: backgroundRemoved === "true",
+        requireTransparentBackground: storedAsCutout,
       });
     } catch (error) {
-      if (error instanceof CutoutNormalizeError) {
+      // Never drop a successful client cutout on strict normalize — frame it as opaque.
+      if (
+        storedAsCutout &&
+        error instanceof CutoutNormalizeError
+      ) {
+        console.warn(
+          "[remove-bg] strict cutout normalize failed, retrying framed",
+          error.message,
+        );
+        try {
+          cutoutPng = await normalizeVehicleCutout(bytes, {
+            requireTransparentBackground: false,
+          });
+          storedAsCutout = false;
+        } catch (retryError) {
+          if (retryError instanceof CutoutNormalizeError) {
+            return jsonError(422, retryError.message, "normalize_failed");
+          }
+          throw retryError;
+        }
+      } else if (error instanceof CutoutNormalizeError) {
         return jsonError(422, error.message, "normalize_failed");
+      } else {
+        throw error;
       }
-      throw error;
     }
 
     const objectPath = silhouetteObjectPath(vehicleId);
@@ -142,7 +184,11 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error("[remove-bg] storage upload failed", uploadError);
-      return jsonError(500, "Could not store silhouette image.", "storage_error");
+      return jsonError(
+        500,
+        `Could not store silhouette image: ${uploadError.message}`,
+        "storage_error",
+      );
     }
 
     const {
@@ -164,7 +210,11 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error("[remove-bg] vehicle update failed", updateError);
-      return jsonError(500, "Could not save silhouette URL.", "db_error");
+      return jsonError(
+        500,
+        `Could not save silhouette URL: ${updateError.message}`,
+        "db_error",
+      );
     }
 
     if (tagUuid) {
@@ -175,12 +225,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ok: true as const,
       silhouetteImageUrl: silhouetteUrl,
-      /** Same-origin URL for immediate COEP-safe preview in the client. */
       silhouetteDisplayUrl: displayUrl,
-      backgroundRemoved: backgroundRemoved === "true",
+      backgroundRemoved: storedAsCutout,
     });
   } catch (error) {
     console.error("[remove-bg] unexpected", error);
-    return jsonError(500, "Unexpected server error.", "internal");
+    return jsonError(
+      500,
+      error instanceof Error ? error.message : "Unexpected server error.",
+      "internal",
+    );
   }
 }

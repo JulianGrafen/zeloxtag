@@ -79,10 +79,11 @@ function uploadWithProgress(
   url: string,
   body: FormData,
   onProgress: (percent: number) => void,
-): Promise<{ ok: boolean; payload: UploadApiPayload | null }> {
+): Promise<{ ok: boolean; status: number; payload: UploadApiPayload | null }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
+    xhr.withCredentials = true;
     xhr.responseType = "text";
 
     xhr.upload.onprogress = (event) => {
@@ -99,6 +100,7 @@ function uploadWithProgress(
       }
       resolve({
         ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
         payload,
       });
     };
@@ -107,6 +109,18 @@ function uploadWithProgress(
     xhr.ontimeout = () => reject(new Error("Upload ist abgelaufen."));
     xhr.timeout = 90_000;
     xhr.send(body);
+  });
+}
+
+async function toPngFile(blob: Blob, baseName: string): Promise<File> {
+  // Materialize bytes — some iOS/WebKit paths upload empty Files from live Blobs.
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  if (bytes.byteLength < 32) {
+    throw new Error("Freistellung lieferte eine leere Datei.");
+  }
+  return new File([bytes], `${baseName}-cutout.png`, {
+    type: "image/png",
+    lastModified: Date.now(),
   });
 }
 
@@ -194,11 +208,8 @@ export function ClientVehicleUpload({
           onProgress: setRemovalStatus,
         });
 
-        uploadFile = new File(
-          [cutout],
-          `${compressed.name.replace(/\.[^.]+$/, "")}-cutout.png`,
-          { type: "image/png", lastModified: Date.now() },
-        );
+        const baseName = compressed.name.replace(/\.[^.]+$/, "") || "vehicle-side";
+        uploadFile = await toPngFile(cutout, baseName);
         backgroundRemoved = true;
 
         const cutoutPreview = URL.createObjectURL(uploadFile);
@@ -217,19 +228,22 @@ export function ClientVehicleUpload({
       setUploadProgress(8);
       try {
         const body = new FormData();
-        body.set("vehicleId", vehicleId);
-        body.set("tagUuid", tagUuid);
-        body.set("backgroundRemoved", String(backgroundRemoved));
-        body.set("file", uploadFile);
+        body.append("vehicleId", vehicleId);
+        body.append("tagUuid", tagUuid);
+        body.append("backgroundRemoved", String(backgroundRemoved));
+        body.append("file", uploadFile, uploadFile.name || "vehicle-side.png");
 
-        const { ok, payload } = await uploadWithProgress(
+        const { ok, status, payload } = await uploadWithProgress(
           "/api/vehicle/remove-bg",
           body,
           setUploadProgress,
         );
 
         if (!ok || !payload?.ok || !payload.silhouetteImageUrl) {
-          throw new Error(payload?.error ?? "Upload fehlgeschlagen.");
+          throw new Error(
+            payload?.error ??
+              `Upload fehlgeschlagen (${status || "netzwerk"}).`,
+          );
         }
 
         setUploadProgress(100);
