@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -14,11 +15,14 @@ import { Camera, ImagePlus, Loader2, SkipForward } from "lucide-react";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhouette";
 import {
+  isCrossOriginIsolated,
+  preloadVehicleBackgroundRemoval,
   removeVehicleBackground,
   type CutoutProgress,
 } from "@/lib/vehicles/client-background-removal";
 import {
   compressSilhouetteImage,
+  shrinkCutoutPng,
   SilhouetteCompressionError,
 } from "@/lib/vehicles/compress-silhouette-image";
 
@@ -107,7 +111,7 @@ function uploadWithProgress(
 
     xhr.onerror = () => reject(new Error("Netzwerkfehler beim Upload."));
     xhr.ontimeout = () => reject(new Error("Upload ist abgelaufen."));
-    xhr.timeout = 90_000;
+    xhr.timeout = 120_000;
     xhr.send(body);
   });
 }
@@ -170,6 +174,23 @@ export function ClientVehicleUpload({
         ? removalStatus.label
         : "Bild wird gespeichert…";
 
+  const [preloadReady, setPreloadReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void preloadVehicleBackgroundRemoval()
+      .then(() => {
+        if (!cancelled) setPreloadReady(true);
+      })
+      .catch((error) => {
+        console.warn("[vehicle-cutout] preload failed", error);
+        if (!cancelled) setPreloadReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const processFile = useCallback(
     async (file: File) => {
       setError(null);
@@ -209,7 +230,9 @@ export function ClientVehicleUpload({
         });
 
         const baseName = compressed.name.replace(/\.[^.]+$/, "") || "vehicle-side";
-        uploadFile = await toPngFile(cutout, baseName);
+        uploadFile = await shrinkCutoutPng(
+          await toPngFile(cutout, baseName),
+        );
         backgroundRemoved = true;
 
         const cutoutPreview = URL.createObjectURL(uploadFile);
@@ -219,8 +242,15 @@ export function ClientVehicleUpload({
         });
       } catch (removalError) {
         console.error("[vehicle-cutout] local removal failed", removalError);
+        const reason =
+          removalError instanceof Error ? removalError.message : null;
+        const isolationHint = !isCrossOriginIsolated()
+          ? " Seite muss über HTTPS mit Cross-Origin-Isolation laufen."
+          : "";
         setNotice(
-          "Lokale Freistellung nicht möglich — Originalbild wird gespeichert.",
+          reason
+            ? `Freistellung fehlgeschlagen: ${reason}${isolationHint} Originalbild wird gespeichert.`
+            : `Lokale Freistellung nicht möglich — Originalbild wird gespeichert.${isolationHint}`,
         );
       }
 
@@ -290,6 +320,11 @@ export function ClientVehicleUpload({
       </h2>
       <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
         {description}
+        {!preloadReady ? (
+          <span className="mt-1 block text-[0.78rem]">
+            KI-Modell wird vorbereitet…
+          </span>
+        ) : null}
       </p>
 
       <div

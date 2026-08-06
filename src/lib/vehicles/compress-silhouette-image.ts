@@ -39,6 +39,45 @@ function isImageFile(file: File): boolean {
 }
 
 /**
+ * Shrink transparent cutout PNGs before POST /api/vehicle/remove-bg.
+ */
+export async function shrinkCutoutPng(file: File): Promise<File> {
+  if (typeof window === "undefined") return file;
+
+  const bitmap = await createImageBitmap(file);
+  const maxEdge = 1200;
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height, 1));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    bitmap.close();
+    return file;
+  }
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/png");
+  });
+  if (!blob || blob.size < 32) {
+    return file;
+  }
+
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "vehicle-side";
+  return new File([blob], `${baseName}-cutout.png`, {
+    type: "image/png",
+    lastModified: Date.now(),
+  });
+}
+
+/**
  * Shrink side-profile photos before POST /api/vehicle/remove-bg.
  */
 export async function compressSilhouetteImage(file: File): Promise<File> {

@@ -48,6 +48,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "12mb",
     },
+    // Silhouette uploads pass through Next.js Proxy — avoid truncated multipart bodies.
+    proxyClientMaxBodySize: "12mb",
   },
   async headers() {
     return [

@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# Generated at postinstall — do not commit (~54MB ONNX/WASM bundle).
+/public/background-removal-data/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

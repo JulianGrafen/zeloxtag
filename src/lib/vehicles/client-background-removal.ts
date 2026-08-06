@@ -11,7 +11,22 @@ export type CutoutProgress = {
   progress: number;
 };
 
+const PACKAGE_VERSION = "1.7.0";
+const LOCAL_PUBLIC_PATH = `/background-removal-data/${PACKAGE_VERSION}/dist/`;
+const CDN_PUBLIC_PATH = `https://staticimgly.com/@imgly/background-removal-data/${PACKAGE_VERSION}/dist/`;
+
 const LOCAL_REMOVAL_TIMEOUT_MS = 180_000;
+
+export function isCrossOriginIsolated(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.crossOriginIsolated === true;
+}
+
+/** Same-origin WASM/ONNX path when postinstall copied assets into /public. */
+export function resolveBackgroundRemovalPublicPath(): string {
+  if (typeof window === "undefined") return CDN_PUBLIC_PATH;
+  return new URL(LOCAL_PUBLIC_PATH, window.location.origin).href;
+}
 
 export function cutoutProgressLabel(
   key: string,
@@ -68,6 +83,41 @@ export type RemoveVehicleBackgroundOptions = {
   timeoutMs?: number;
 };
 
+let preloadPromise: Promise<void> | null = null;
+
+/**
+ * Warm ONNX/WASM assets (same-origin or CDN) before the user picks a photo.
+ */
+export async function preloadVehicleBackgroundRemoval(
+  onProgress?: (status: CutoutProgress) => void,
+): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (preloadPromise) {
+    await preloadPromise;
+    return;
+  }
+
+  preloadPromise = (async () => {
+    const { preload } = await import("@imgly/background-removal");
+    const publicPath = resolveBackgroundRemovalPublicPath();
+    onProgress?.({ label: "Bereite KI-Freistellung vor…", progress: 2 });
+    await preload({
+      publicPath,
+      model: "isnet_quint8",
+      device: "cpu",
+      proxyToWorker: false,
+      progress: (key, current, total) => {
+        onProgress?.(cutoutProgressLabel(key, current, total));
+      },
+    });
+  })().catch((error) => {
+    preloadPromise = null;
+    throw error;
+  });
+
+  await preloadPromise;
+}
+
 /**
  * Runs IMG.LY background removal on-device (CPU WASM).
  * Needs COOP + COEP (require-corp) so SharedArrayBuffer is available on Safari.
@@ -84,11 +134,20 @@ export async function removeVehicleBackground(
     throw new Error("Dieses Gerät unterstützt kein WebAssembly.");
   }
 
+  if (!isCrossOriginIsolated()) {
+    throw new Error(
+      "KI-Freistellung benötigt eine sichere HTTPS-Verbindung mit Cross-Origin-Isolation. Bitte über https:// öffnen (nicht LAN-HTTP).",
+    );
+  }
+
   const { removeBackground } = await import("@imgly/background-removal");
 
   onProgress({ label: "Starte Freistellung…", progress: 8 });
 
+  const publicPath = resolveBackgroundRemovalPublicPath();
+
   const config: Config = {
+    publicPath,
     model: "isnet_quint8",
     device: "cpu",
     proxyToWorker: false,
