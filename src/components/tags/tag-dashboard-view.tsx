@@ -88,7 +88,11 @@ export function TagDashboardView({
     ownerName: ownerName?.trim() || "Fahrer",
     vehicleModel: `${vehicleModel} · ${vehicle.year}`,
     vehicleImage: vehicleImageOverride ?? cutout?.src,
-    vehicleImageFallback: hasOwnerSilhouette ? undefined : catalogCutout?.src,
+    vehicleImageFallback: hasOwnerSilhouette
+      ? undefined
+      : demoMode
+        ? catalogCutout?.src
+        : undefined,
     vehicleImagePreviewFallback: previewFallbackUrl ?? undefined,
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
     statusLabel: `ZeloxTag · ${shortTag}`,

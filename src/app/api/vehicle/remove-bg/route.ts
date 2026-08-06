@@ -11,9 +11,9 @@ import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
-  CutoutNormalizeError,
-  normalizeVehicleCutout,
-} from "@/lib/vehicles/normalize-vehicle-cutout";
+  HeaderPhotoNormalizeError,
+  normalizeVehicleHeaderPhoto,
+} from "@/lib/vehicles/normalize-vehicle-header-photo";
 import {
   MAX_SILHOUETTE_UPLOAD_BYTES,
   SILHOUETTE_BUCKET,
@@ -67,8 +67,7 @@ function asImageBlob(
 
 /**
  * POST /api/vehicle/remove-bg
- * Auth → store owner-supplied image (client already removed BG when possible).
- * No third-party removal API — cutout happens in the browser.
+ * Auth → store owner vehicle photo for the dashboard header frame.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -106,7 +105,7 @@ export async function POST(request: NextRequest) {
     if (!metaParsed.success) {
       return jsonError(400, "Invalid vehicleId.", "bad_request");
     }
-    const { vehicleId, tagUuid, backgroundRemoved } = metaParsed.data;
+    const { vehicleId, tagUuid } = metaParsed.data;
 
     const upload = asImageBlob(formData.get("file"));
     if (!upload) {
@@ -140,44 +139,20 @@ export async function POST(request: NextRequest) {
       return jsonError(403, "Not allowed for this vehicle.", "forbidden");
     }
 
-    let cutoutPng: Buffer;
-    let storedAsCutout = backgroundRemoved === "true";
+    let photoPng: Buffer;
     try {
-      cutoutPng = await normalizeVehicleCutout(bytes, {
-        requireTransparentBackground: storedAsCutout,
-      });
+      photoPng = await normalizeVehicleHeaderPhoto(bytes);
     } catch (error) {
-      // Never drop a successful client cutout on strict normalize — frame it as opaque.
-      if (
-        storedAsCutout &&
-        error instanceof CutoutNormalizeError
-      ) {
-        console.warn(
-          "[remove-bg] strict cutout normalize failed, retrying framed",
-          error.message,
-        );
-        try {
-          cutoutPng = await normalizeVehicleCutout(bytes, {
-            requireTransparentBackground: false,
-          });
-          storedAsCutout = false;
-        } catch (retryError) {
-          if (retryError instanceof CutoutNormalizeError) {
-            return jsonError(422, retryError.message, "normalize_failed");
-          }
-          throw retryError;
-        }
-      } else if (error instanceof CutoutNormalizeError) {
+      if (error instanceof HeaderPhotoNormalizeError) {
         return jsonError(422, error.message, "normalize_failed");
-      } else {
-        throw error;
       }
+      throw error;
     }
 
     const objectPath = silhouetteObjectPath(vehicleId);
     const { error: uploadError } = await admin.storage
       .from(SILHOUETTE_BUCKET)
-      .upload(objectPath, cutoutPng, {
+      .upload(objectPath, photoPng, {
         contentType: "image/png",
         upsert: true,
         cacheControl: "3600",
@@ -237,7 +212,7 @@ export async function POST(request: NextRequest) {
       ok: true as const,
       silhouetteImageUrl: silhouetteUrl,
       silhouetteDisplayUrl: displayUrl,
-      backgroundRemoved: storedAsCutout,
+      backgroundRemoved: false,
     });
   } catch (error) {
     console.error("[remove-bg] unexpected", error);

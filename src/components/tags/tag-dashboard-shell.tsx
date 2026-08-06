@@ -340,8 +340,8 @@ export function TagDashboardShell({
             <VehicleSilhouetteUpload
               vehicleId={vehicle.id}
               tagUuid={tagUuid}
-              title="Fahrzeugbild ändern"
-              description="Lade ein neues Seitenfoto hoch — Galerie oder Kamera. Exakt von der Seite für die beste Dashboard-Animation."
+              title="Fahrzeugfoto ändern"
+              description="Neues Foto aus Galerie oder Kamera — es erscheint oben rechts in deinem Dashboard."
               skipLabel="Schließen"
               onUploaded={(result) => {
                 handleSilhouetteUploaded(result);

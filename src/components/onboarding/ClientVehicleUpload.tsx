@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -12,17 +11,8 @@ import {
 import { Camera, ImagePlus, Loader2, SkipForward } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
-import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhouette";
-import {
-  getLocalCutoutBlockReason,
-  isLocalCutoutSupported,
-  preloadVehicleBackgroundRemoval,
-  removeVehicleBackground,
-  type CutoutProgress,
-} from "@/lib/vehicles/client-background-removal";
 import {
   compressSilhouetteImage,
-  shrinkCutoutPng,
   SilhouetteCompressionError,
 } from "@/lib/vehicles/compress-silhouette-image";
 import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
@@ -50,7 +40,7 @@ export type ClientVehicleUploadProps = {
   className?: string;
 };
 
-type UploadState = "idle" | "compressing" | "removing" | "uploading" | "done";
+type UploadState = "idle" | "compressing" | "uploading" | "done";
 
 const IMAGE_ACCEPT = "image/*,.heic,.heif,.jpg,.jpeg,.png,.webp";
 
@@ -89,7 +79,6 @@ type UploadApiPayload = {
   error?: string;
   silhouetteImageUrl?: string;
   silhouetteDisplayUrl?: string;
-  backgroundRemoved?: boolean;
 };
 
 function uploadSilhouette(
@@ -162,20 +151,46 @@ async function materializeUploadFile(file: File): Promise<File> {
   });
 }
 
-async function toPngFile(blob: Blob, baseName: string): Promise<File> {
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  if (bytes.byteLength < 32) {
-    throw new Error("Freistellung lieferte eine leere Datei.");
-  }
-  return new File([bytes], `${baseName}-cutout.png`, {
-    type: "image/png",
-    lastModified: Date.now(),
-  });
+function PreviewFrame({
+  previewUrl,
+  emptyLabel = "Foto wählen",
+}: {
+  previewUrl: string | null;
+  emptyLabel?: string;
+}) {
+  return (
+    <div className="relative mx-auto aspect-[4/3] w-full max-w-[14rem] overflow-hidden rounded-[1.1rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] shadow-[var(--vd-shadow-sm)] ring-1 ring-inset ring-white/50">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-3 top-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/70 to-transparent"
+      />
+      {previewUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={previewUrl}
+          alt="Vorschau Fahrzeugfoto"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full flex-col items-center justify-center gap-2 bg-[radial-gradient(ellipse_at_center,var(--vd-glow-soft)_0%,transparent_70%)] px-4 text-center">
+          <ImagePlus
+            className="h-7 w-7 text-[color:var(--vd-muted)]"
+            aria-hidden
+          />
+          <p className="text-[0.78rem] font-medium text-[color:var(--vd-text)]">
+            {emptyLabel}
+          </p>
+          <p className="text-[0.7rem] text-[color:var(--vd-muted)]">
+            Galerie oder Kamera
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
- * Privacy-first vehicle upload: `@imgly/background-removal` runs as WASM in
- * the browser. The source image is not sent to any background-removal API.
+ * Simple vehicle photo upload for the dashboard header (no background removal).
  */
 export function ClientVehicleUpload({
   vehicleId,
@@ -183,135 +198,64 @@ export function ClientVehicleUpload({
   onUploaded,
   onSkip,
   skipLabel = "Später",
-  title = "Fahrzeug-Silhouette",
-  description = "Bitte fotografiere dein Fahrzeug exakt von der Seite, damit die Animation im Dashboard gut aussieht.",
+  title = "Fahrzeugfoto",
+  description = "Lade ein Foto deines Autos hoch — es erscheint oben rechts in deinem Dashboard.",
   className = "",
 }: ClientVehicleUploadProps) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [state, setState] = useState<UploadState>("idle");
-  const [removalStatus, setRemovalStatus] = useState<CutoutProgress>({
-    label: "Stelle Fahrzeug frei…",
-    progress: 0,
-  });
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [preloadReady, setPreloadReady] = useState(false);
 
-  const busy =
-    state === "compressing" || state === "removing" || state === "uploading";
+  const busy = state === "compressing" || state === "uploading";
 
   const barProgress =
     state === "compressing"
-      ? 8
-      : state === "removing"
-        ? Math.max(8, removalStatus.progress)
-        : state === "uploading"
-          ? Math.max(8, uploadProgress)
-          : 0;
+      ? 12
+      : state === "uploading"
+        ? Math.max(12, uploadProgress)
+        : 0;
 
   const loadingText =
-    state === "compressing"
-      ? "Bild wird vorbereitet…"
-      : state === "removing"
-        ? removalStatus.label
-        : "Bild wird gespeichert…";
-
-  useEffect(() => {
-    let cancelled = false;
-    void preloadVehicleBackgroundRemoval()
-      .then(() => {
-        if (!cancelled) setPreloadReady(true);
-      })
-      .catch((error) => {
-        console.warn("[vehicle-cutout] preload failed", error);
-        if (!cancelled) setPreloadReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    state === "compressing" ? "Foto wird vorbereitet…" : "Foto wird gespeichert…";
 
   const processFile = useCallback(
     async (file: File) => {
       setError(null);
-      setNotice(null);
       setState("compressing");
-      setRemovalStatus({ label: "Bild wird vorbereitet…", progress: 4 });
       setUploadProgress(0);
 
       let compressed: File;
       try {
         compressed = await compressSilhouetteImage(file);
-      } catch (error) {
+      } catch (compressError) {
         setState("idle");
         setError(
-          error instanceof SilhouetteCompressionError
-            ? error.message
-            : "Bild konnte nicht vorbereitet werden.",
+          compressError instanceof SilhouetteCompressionError
+            ? compressError.message
+            : "Foto konnte nicht vorbereitet werden.",
         );
         return;
       }
 
-      const compressPreview = URL.createObjectURL(compressed);
+      const localPreview = URL.createObjectURL(compressed);
       setPreviewUrl((previous) => {
-        if (previous) URL.revokeObjectURL(previous);
-        return compressPreview;
+        if (previous?.startsWith("blob:")) URL.revokeObjectURL(previous);
+        return localPreview;
       });
-
-      let uploadFile: File = compressed;
-      let backgroundRemoved = false;
-
-      if (isLocalCutoutSupported()) {
-        setState("removing");
-        setRemovalStatus({ label: "Lade lokale KI-Freistellung…", progress: 6 });
-        try {
-          const cutout = await removeVehicleBackground(compressed, {
-            onProgress: setRemovalStatus,
-          });
-
-          const baseName =
-            compressed.name.replace(/\.[^.]+$/, "") || "vehicle-side";
-          uploadFile = await shrinkCutoutPng(
-            await toPngFile(cutout, baseName),
-          );
-          backgroundRemoved = true;
-
-          const cutoutPreview = URL.createObjectURL(uploadFile);
-          setPreviewUrl((previous) => {
-            if (previous) URL.revokeObjectURL(previous);
-            return cutoutPreview;
-          });
-        } catch (removalError) {
-          console.error("[vehicle-cutout] local removal failed", removalError);
-          const reason =
-            removalError instanceof Error ? removalError.message : null;
-          setNotice(
-            reason
-              ? `Freistellung fehlgeschlagen: ${reason} Originalbild wird gespeichert.`
-              : "Lokale Freistellung nicht möglich — Originalbild wird gespeichert.",
-          );
-        }
-      } else {
-        const blockReason = getLocalCutoutBlockReason();
-        setNotice(
-          blockReason
-            ? `${blockReason} Seitenfoto wird gerahmt gespeichert.`
-            : "Freistellung auf diesem Gerät nicht verfügbar — Seitenfoto wird gerahmt gespeichert.",
-        );
-      }
 
       setState("uploading");
       setUploadProgress(45);
+
       try {
-        uploadFile = await materializeUploadFile(uploadFile);
+        const uploadFile = await materializeUploadFile(compressed);
         const body = new FormData();
         body.append("vehicleId", vehicleId);
         body.append("tagUuid", tagUuid);
-        body.append("backgroundRemoved", String(backgroundRemoved));
-        body.append("file", uploadFile, uploadFile.name || "vehicle-side.png");
+        body.append("backgroundRemoved", "false");
+        body.append("file", uploadFile, uploadFile.name || "vehicle-photo.jpg");
 
         const { ok, status, payload } = await uploadSilhouette(
           "/api/vehicle/remove-bg",
@@ -324,10 +268,9 @@ export function ClientVehicleUpload({
 
         const storageUrl = payload.silhouetteImageUrl.trim();
         const displayUrl =
-          payload.silhouetteDisplayUrl?.trim() ||
-          storageUrl;
+          payload.silhouetteDisplayUrl?.trim() || storageUrl;
 
-        const previewUrl = URL.createObjectURL(uploadFile);
+        const previewBlobUrl = URL.createObjectURL(uploadFile);
         const previewDataUrl = await fileToPreviewDataUrl(uploadFile);
 
         setUploadProgress(100);
@@ -335,33 +278,24 @@ export function ClientVehicleUpload({
           if (previous?.startsWith("blob:")) {
             URL.revokeObjectURL(previous);
           }
-          return previewUrl;
+          return previewBlobUrl;
         });
         setState("done");
         onUploaded?.({
           storageUrl,
           displayUrl,
-          previewUrl,
+          previewUrl: previewBlobUrl,
           previewDataUrl: previewDataUrl ?? undefined,
         });
 
-        // Best-effort proxy warm-up — never blocks a successful upload.
         if (displayUrl.startsWith("/api/vehicle/silhouette/")) {
-          void prefetchSilhouetteImage(displayUrl, { attempts: 4 }).then(
-            (ready) => {
-              if (!ready) {
-                setNotice(
-                  "Silhouette gespeichert — Vorschau über lokale Kopie, bis der Server bereit ist.",
-                );
-              }
-            },
-          );
+          void prefetchSilhouetteImage(displayUrl, { attempts: 4 });
         }
-      } catch (error) {
+      } catch (uploadError) {
         setState("idle");
         setError(
-          error instanceof Error
-            ? error.message
+          uploadError instanceof Error
+            ? uploadError.message
             : "Upload fehlgeschlagen. Bitte erneut versuchen.",
         );
       }
@@ -391,11 +325,6 @@ export function ClientVehicleUpload({
       </h2>
       <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
         {description}
-        {!preloadReady ? (
-          <span className="mt-1 block text-[0.78rem]">
-            KI-Modell wird vorbereitet…
-          </span>
-        ) : null}
       </p>
 
       <div
@@ -416,38 +345,16 @@ export function ClientVehicleUpload({
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`relative mt-4 flex min-h-[11rem] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed px-4 py-6 transition-colors ${
+        className={`relative mt-4 cursor-pointer rounded-2xl border border-dashed px-4 py-5 transition-colors ${
           dragOver
             ? "border-neutral-900 bg-neutral-900/[0.04]"
             : "border-[color:var(--vd-border)] bg-[color:var(--vd-bg)]"
         } ${busy ? "pointer-events-none opacity-70" : ""}`}
       >
-        <VehicleSilhouette
-          aria-hidden
-          className="pointer-events-none absolute inset-x-6 top-1/2 h-20 -translate-y-1/2 text-[color:var(--vd-muted)] opacity-[0.18] sm:h-24"
-        />
-
-        {previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewUrl}
-            alt="Vorschau Seitenansicht"
-            className="relative z-[1] max-h-28 w-auto object-contain"
-          />
-        ) : (
-          <div className="relative z-[1] flex flex-col items-center gap-2 text-center">
-            <ImagePlus className="h-6 w-6 text-[color:var(--vd-muted)]" aria-hidden />
-            <p className="text-[0.85rem] font-medium text-[color:var(--vd-text)]">
-              Foto wählen oder hierher ziehen
-            </p>
-            <p className="text-[0.75rem] text-[color:var(--vd-muted)]">
-              Seitenansicht · Galerie oder Kamera
-            </p>
-          </div>
-        )}
+        <PreviewFrame previewUrl={previewUrl} />
 
         {busy ? (
-          <div className="absolute inset-0 z-[2] flex flex-col items-center justify-center gap-2 bg-[color:var(--vd-surface)]/80 px-5 text-center">
+          <div className="absolute inset-0 z-[2] flex flex-col items-center justify-center gap-2 rounded-2xl bg-[color:var(--vd-surface)]/85 px-5 text-center backdrop-blur-[2px]">
             <p className="inline-flex items-center gap-2 text-[0.85rem] font-medium text-[color:var(--vd-text)]">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               {loadingText}
@@ -458,11 +365,6 @@ export function ClientVehicleUpload({
                 style={{ width: `${barProgress}%` }}
               />
             </div>
-            {state === "removing" ? (
-              <p className="text-[0.72rem] text-[color:var(--vd-muted)]">
-                KI läuft auf diesem Gerät — dein Foto wird nicht an einen Freistellungsdienst gesendet.
-              </p>
-            ) : null}
           </div>
         ) : null}
       </div>
@@ -484,7 +386,7 @@ export function ClientVehicleUpload({
         >
           <ImagePlus className="relative z-0 h-4 w-4" aria-hidden />
           <span className="relative z-0">
-            {previewUrl ? "Anderes aus Galerie" : "Galerie"}
+            {previewUrl ? "Anderes Foto" : "Galerie"}
           </span>
         </FilePickLabel>
         <FilePickLabel
@@ -511,11 +413,6 @@ export function ClientVehicleUpload({
         </PressableButton>
       ) : null}
 
-      {notice ? (
-        <p className="mt-3 text-[0.85rem] text-amber-800" role="status">
-          {notice}
-        </p>
-      ) : null}
       {error ? (
         <p className="mt-3 text-[0.85rem] text-red-700" role="alert">
           {error}
@@ -523,7 +420,7 @@ export function ClientVehicleUpload({
       ) : null}
       {state === "done" ? (
         <p className="mt-3 text-[0.85rem] text-emerald-700" role="status">
-          Silhouette gespeichert — sie rollt im Dashboard ein.
+          Fahrzeugfoto gespeichert — es erscheint oben rechts im Dashboard.
         </p>
       ) : null}
     </section>
