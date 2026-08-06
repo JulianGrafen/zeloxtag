@@ -1,0 +1,17 @@
+{
+  "name": "zeloxtag",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "Next.js",
+      "command": "npm run dev",
+      "description": "Next.js App Router dev server on port 3000 (0.0.0.0) for ZeloxTag UI/API checks"
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 3000
+    }
+  ]
+}
