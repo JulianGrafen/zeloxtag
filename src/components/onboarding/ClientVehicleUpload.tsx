@@ -14,10 +14,6 @@ import { Camera, ImagePlus, Loader2, SkipForward } from "lucide-react";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhouette";
 import {
-  removeVehicleBackground,
-  type CutoutProgress,
-} from "@/lib/vehicles/client-background-removal";
-import {
   compressSilhouetteImage,
   SilhouetteCompressionError,
 } from "@/lib/vehicles/compress-silhouette-image";
@@ -33,7 +29,7 @@ export type ClientVehicleUploadProps = {
   className?: string;
 };
 
-type UploadState = "idle" | "compressing" | "removing" | "uploading" | "done";
+type UploadState = "idle" | "compressing" | "uploading" | "done";
 
 const IMAGE_ACCEPT = "image/*,.heic,.heif,.jpg,.jpeg,.png,.webp";
 
@@ -67,9 +63,62 @@ function FilePickLabel({
   );
 }
 
+type UploadApiPayload = {
+  ok?: boolean;
+  error?: string;
+  silhouetteImageUrl?: string;
+  backgroundRemoved?: boolean;
+};
+
+function uploadWithProgress(
+  url: string,
+  body: FormData,
+  onProgress: (percent: number, phase: "upload" | "processing") => void,
+): Promise<{
+  ok: boolean;
+  status: number;
+  payload: UploadApiPayload | null;
+}> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.responseType = "text";
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || event.total <= 0) return;
+      // Reserve 0–55% for bytes on the wire; server cutout uses the rest.
+      const uploadPercent = Math.round((event.loaded / event.total) * 55);
+      onProgress(Math.min(55, Math.max(8, uploadPercent)), "upload");
+    };
+
+    xhr.upload.onload = () => {
+      onProgress(56, "processing");
+    };
+
+    xhr.onload = () => {
+      let payload: UploadApiPayload | null = null;
+      try {
+        payload = JSON.parse(xhr.responseText) as UploadApiPayload;
+      } catch {
+        payload = null;
+      }
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        payload,
+      });
+    };
+
+    xhr.onerror = () => reject(new Error("Netzwerkfehler beim Upload."));
+    xhr.ontimeout = () => reject(new Error("Upload ist abgelaufen."));
+    xhr.timeout = 90_000;
+    xhr.send(body);
+  });
+}
+
 /**
- * Privacy-first vehicle upload: `@imgly/background-removal` runs as WASM in
- * the browser. The source image is not sent to any background-removal API.
+ * Vehicle side-photo upload. Compression runs on-device; background removal
+ * happens on the server (Photoroom / remove.bg) so mobile Safari works.
  */
 export function ClientVehicleUpload({
   vehicleId,
@@ -88,25 +137,26 @@ export function ClientVehicleUpload({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [state, setState] = useState<UploadState>("idle");
-  const [removalStatus, setRemovalStatus] = useState<CutoutProgress>({
-    label: "Stelle Fahrzeug frei…",
-    progress: 0,
-  });
+  const [progress, setProgress] = useState(0);
+  const [statusLabel, setStatusLabel] = useState("Bild wird vorbereitet…");
 
-  const busy =
-    state === "compressing" || state === "removing" || state === "uploading";
+  const busy = state === "compressing" || state === "uploading";
 
   const processFile = useCallback(
     async (file: File) => {
       setError(null);
       setNotice(null);
       setState("compressing");
+      setProgress(4);
+      setStatusLabel("Bild wird vorbereitet…");
 
       let compressed: File;
       try {
         compressed = await compressSilhouetteImage(file);
+        setProgress(12);
       } catch (error) {
         setState("idle");
+        setProgress(0);
         setError(
           error instanceof SilhouetteCompressionError
             ? error.message
@@ -115,75 +165,83 @@ export function ClientVehicleUpload({
         return;
       }
 
-      setState("removing");
-      setRemovalStatus({ label: "Lade lokale KI-Freistellung…", progress: 2 });
-
-      let uploadFile: File = compressed;
-      let backgroundRemoved = false;
-
-      try {
-        const cutout = await removeVehicleBackground(compressed, {
-          onProgress: setRemovalStatus,
-        });
-
-        uploadFile = new File(
-          [cutout],
-          `${compressed.name.replace(/\.[^.]+$/, "")}-cutout.png`,
-          { type: "image/png", lastModified: Date.now() },
-        );
-        backgroundRemoved = true;
-      } catch (removalError) {
-        console.error("[vehicle-cutout] local removal failed", removalError);
-        const detail =
-          removalError instanceof Error ? removalError.message : "";
-        const needsReload =
-          detail.includes("SharedArrayBuffer") ||
-          detail.includes("cross-origin");
-        setNotice(
-          needsReload
-            ? "Freistellung ist auf diesem Browser noch nicht freigeschaltet. Bitte die App einmal komplett schließen und https://app.zeloxtag.de neu öffnen — sonst speichern wir das Originalbild."
-            : "Die lokale Freistellung war auf diesem Gerät nicht möglich. Das Originalbild wird stattdessen gespeichert.",
-        );
-      }
-
-      const localPreview = URL.createObjectURL(uploadFile);
+      const localPreview = URL.createObjectURL(compressed);
       setPreviewUrl((previous) => {
         if (previous) URL.revokeObjectURL(previous);
         return localPreview;
       });
 
       setState("uploading");
+      setStatusLabel("Lade Foto hoch…");
+      setProgress(16);
+
+      let pulse = 56;
+      let pulseTimer: number | null = null;
+      const startProcessingPulse = () => {
+        if (pulseTimer != null) return;
+        setStatusLabel("Stelle Fahrzeug frei…");
+        pulseTimer = window.setInterval(() => {
+          pulse = Math.min(92, pulse + 2);
+          setProgress(pulse);
+          setStatusLabel(
+            pulse < 70
+              ? "Stelle Fahrzeug frei…"
+              : pulse < 85
+                ? "Optimiere Silhouette…"
+                : "Speichere Bild…",
+          );
+        }, 700);
+      };
+
       try {
         const body = new FormData();
         body.set("vehicleId", vehicleId);
         body.set("tagUuid", tagUuid);
-        body.set("backgroundRemoved", String(backgroundRemoved));
-        body.set("file", uploadFile);
+        body.set("file", compressed);
 
-        const response = await fetch("/api/vehicle/remove-bg", {
-          method: "POST",
+        const { ok, payload } = await uploadWithProgress(
+          "/api/vehicle/remove-bg",
           body,
-        });
-        const payload = (await response.json().catch(() => null)) as {
-          ok?: boolean;
-          error?: string;
-          silhouetteImageUrl?: string;
-        } | null;
+          (percent, phase) => {
+            if (phase === "upload") {
+              setProgress(percent);
+              setStatusLabel("Lade Foto hoch…");
+              return;
+            }
+            setProgress(Math.max(percent, 56));
+            startProcessingPulse();
+          },
+        );
 
-        if (!response.ok || !payload?.ok || !payload.silhouetteImageUrl) {
+        if (!ok || !payload?.ok || !payload.silhouetteImageUrl) {
           throw new Error(payload?.error ?? "Upload fehlgeschlagen.");
         }
 
+        if (payload.backgroundRemoved === false) {
+          setNotice(
+            "Bild gespeichert. Freistellung ist serverseitig nicht konfiguriert — Originalfoto wird angezeigt.",
+          );
+        }
+
+        setProgress(100);
+        setStatusLabel("Fertig");
+        setPreviewUrl((previous) => {
+          if (previous) URL.revokeObjectURL(previous);
+          return payload.silhouetteImageUrl ?? previous;
+        });
         setState("done");
         onUploaded?.(payload.silhouetteImageUrl);
         router.refresh();
       } catch (error) {
         setState("idle");
+        setProgress(0);
         setError(
           error instanceof Error
             ? error.message
             : "Upload fehlgeschlagen. Bitte erneut versuchen.",
         );
+      } finally {
+        if (pulseTimer != null) window.clearInterval(pulseTimer);
       }
     },
     [onUploaded, router, tagUuid, vehicleId],
@@ -201,13 +259,6 @@ export function ClientVehicleUpload({
     const file = event.dataTransfer.files?.[0];
     if (file) void processFile(file);
   }
-
-  const loadingText =
-    state === "compressing"
-      ? "Bild wird vorbereitet…"
-      : state === "removing"
-        ? removalStatus.label
-        : "Bild wird sicher gespeichert…";
 
   return (
     <section
@@ -272,23 +323,17 @@ export function ClientVehicleUpload({
           <div className="absolute inset-0 z-[2] flex flex-col items-center justify-center gap-2 bg-[color:var(--vd-surface)]/80 px-5 text-center">
             <p className="inline-flex items-center gap-2 text-[0.85rem] font-medium text-[color:var(--vd-text)]">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              {loadingText}
+              {statusLabel}
             </p>
-            {state === "removing" ? (
-              <div className="h-1.5 w-48 overflow-hidden rounded-full bg-black/10">
-                <div
-                  className="h-full min-w-[8%] rounded-full bg-neutral-900 transition-[width] duration-300"
-                  style={{
-                    width: `${Math.max(8, removalStatus.progress ?? 8)}%`,
-                  }}
-                />
-              </div>
-            ) : null}
-            {state === "removing" ? (
-              <p className="text-[0.72rem] text-[color:var(--vd-muted)]">
-                KI läuft auf diesem Gerät — dein Foto wird nicht an einen Freistellungsdienst gesendet.
-              </p>
-            ) : null}
+            <div className="h-1.5 w-48 overflow-hidden rounded-full bg-black/10">
+              <div
+                className="h-full min-w-[8%] rounded-full bg-neutral-900 transition-[width] duration-300"
+                style={{ width: `${Math.max(8, progress)}%` }}
+              />
+            </div>
+            <p className="text-[0.72rem] text-[color:var(--vd-muted)]">
+              Freistellung läuft auf dem Server — kurz warten.
+            </p>
           </div>
         ) : null}
       </div>

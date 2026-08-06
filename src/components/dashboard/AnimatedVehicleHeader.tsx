@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { Camera } from "lucide-react";
 
@@ -35,6 +34,7 @@ export function AnimatedVehicleHeader({
 }: AnimatedVehicleHeaderProps) {
   const src = silhouetteImageUrl?.trim() || null;
   const editable = typeof onEdit === "function";
+  const isRemote = Boolean(src && /^https?:\/\//i.test(src));
 
   const stage = (
     <motion.div
@@ -44,16 +44,13 @@ export function AnimatedVehicleHeader({
       transition={SPRING}
     >
       {src ? (
-        <Image
+        // Plain <img>: avoids next/image + COEP edge cases with Supabase URLs.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
           src={src}
           alt={alt}
-          fill
-          priority
-          sizes="(max-width: 768px) 8rem, 12rem"
-          className="object-contain object-right drop-shadow-[0_10px_18px_rgba(0,0,0,0.18)]"
-          // data: stays local; remote URLs go through /_next/image (same-origin)
-          // so COEP require-corp / Safari SharedArrayBuffer stays happy.
-          unoptimized={src.startsWith("data:")}
+          {...(isRemote ? { crossOrigin: "anonymous" as const } : {})}
+          className="absolute inset-0 h-full w-full object-contain object-right drop-shadow-[0_10px_18px_rgba(0,0,0,0.18)]"
         />
       ) : (
         <VehicleSilhouette
