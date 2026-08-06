@@ -70,7 +70,6 @@ function normalizeDocument(value: unknown): Document | null {
   };
 }
 
-
 function normalizeVehicle(value: unknown): Vehicle | null {
   if (!value || typeof value !== "object") return null;
   const vehicle = value as Vehicle;
@@ -212,33 +211,22 @@ export async function getTagByUuid(uuid: string): Promise<TagScanResult | null> 
   const normalized = uuid.trim();
   if (!normalized) return null;
 
+  // Showcase UUIDs always use the in-repo mock twin (Toyota Supra A80) so
+  // /v/demo-active-tag stays consistent even when the same uuid exists in prod DB.
+  if (isDemoTagUuid(normalized)) {
+    return resolveMockTag(normalized);
+  }
+
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {
     return resolveMockTag(normalized);
   }
 
-  try {
-    if (isSupabaseAdminConfigured()) {
-      const viaAdmin = await resolveTagWithAdmin(normalized);
-      if (viaAdmin) return viaAdmin;
-      // Local showcase UUIDs are not in prod DB — fall back to mock twin.
-      if (isDemoTagUuid(normalized)) {
-        return resolveMockTag(normalized);
-      }
-      return null;
-    }
-
-    const viaRpc = await resolveTagWithRpc(normalized);
-    if (viaRpc) return viaRpc;
-
-    if (isDemoTagUuid(normalized)) {
-      return resolveMockTag(normalized);
-    }
+  if (isSupabaseAdminConfigured()) {
+    const viaAdmin = await resolveTagWithAdmin(normalized);
+    if (viaAdmin) return viaAdmin;
     return null;
-  } catch (error) {
-    if (isDemoTagUuid(normalized)) {
-      return resolveMockTag(normalized);
-    }
-    throw error;
   }
+
+  return resolveTagWithRpc(normalized);
 }
