@@ -144,6 +144,7 @@ export function TagDashboardShell({
         vehicleLabel={vehicleLabel}
         vehicleMake={vehicle.make}
         vehicleModel={vehicle.model}
+        vehicleVin={vehicle.vin}
         backHref={`/v/${tagUuid}`}
         backLabel="Dashboard"
         onBack={() => {

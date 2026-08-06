@@ -33,11 +33,17 @@ import {
   resolveAbeContextModel,
   truncateAbeCoverPages,
 } from "@/services/ocr/AbeExtractionService";
+import { paragraph21ExtractionService } from "@/services/ocr/Paragraph21ExtractionService";
 import {
   formatAbeKbaDisplay,
   type AbeMinimal,
   type AbeVehicleContext,
 } from "@/lib/validations/abeSchema";
+import { MissingVinError } from "@/lib/validations/paragraph21Schema";
+import {
+  paragraph21ToAnalyzeFields,
+  paragraph21ToApprovalFields,
+} from "@/lib/validations/paragraph21Schema";
 
 export type { DocumentParseKind, OcrDocumentType, OcrJsonPayload } from "./ocr-types";
 
@@ -356,6 +362,8 @@ export async function analyzeDocument(input: {
    * When omitted, only cover-page base metadata is extracted.
    */
   vehicleContext?: AbeVehicleContext | null;
+  /** Garage twin VIN — required for §21 Einzelabnahme Field E verification. */
+  garageVin?: string | null;
 }): Promise<AnalyzeDocumentResult> {
   if (!isLlmConfigured()) {
     throw new DocumentIntelligenceError(
@@ -383,13 +391,39 @@ export async function analyzeDocument(input: {
 
   try {
     if (documentType === "abe") {
-      // No vehicle → cover only (nano). With vehicle → wider window + context model.
-      const textSource = vehicleContext
-        ? ocrPayload.text
+      const textSource = ocrPayload.text;
+
+      // §21 Einzelabnahme — dedicated extractor (VIN-bound, Field 22 verbatim).
+      if (preferredApprovalKind === "einzelabnahme") {
+        const paragraph21 =
+          await paragraph21ExtractionService.extractParagraph21(textSource, {
+            garageVin: input.garageVin ?? null,
+          });
+        return {
+          kind: "abe",
+          documentType,
+          fields: paragraph21ToAnalyzeFields(
+            paragraph21,
+            paragraph21.vinMatchesGarage,
+          ),
+          approvalFields: paragraph21ToApprovalFields(paragraph21),
+          rawText: textSource,
+          ocrJson: {
+            ...ocrPayload,
+            text: textSource,
+          },
+          modelId: MODEL_ID,
+          parseModel: resolveAbeContextModel(),
+        };
+      }
+
+      // ABE / Teilegutachten / EG-BE — cover or context-aware table scan.
+      const abeTextSource = vehicleContext
+        ? textSource
         : ocrPayload.coverText.trim().length >= 8
           ? ocrPayload.coverText
-          : ocrPayload.text;
-      const abe = await abeExtractionService.extractFromText(textSource, {
+          : textSource;
+      const abe = await abeExtractionService.extractFromText(abeTextSource, {
         vehicleContext,
       });
       const gutachtenKind =
@@ -397,7 +431,7 @@ export async function analyzeDocument(input: {
           ? preferredApprovalKind
           : undefined;
       const approvalFields = extractApprovalFieldsFromText(
-        textSource,
+        abeTextSource,
         gutachtenKind,
       );
       return {
@@ -406,10 +440,10 @@ export async function analyzeDocument(input: {
         fields: abeMinimalToAnalyzeFields(abe),
         approvalFields:
           approvalFields.kind === "tuev" ? { kind: "abe" } : approvalFields,
-        rawText: textSource,
+        rawText: abeTextSource,
         ocrJson: {
           ...ocrPayload,
-          text: textSource,
+          text: abeTextSource,
         },
         modelId: MODEL_ID,
         parseModel: vehicleContext
@@ -452,6 +486,9 @@ export async function analyzeDocument(input: {
       parseModel,
     };
   } catch (error) {
+    if (error instanceof MissingVinError) {
+      throw new DocumentIntelligenceError(error.message);
+    }
     const message =
       error instanceof TextParseError
         ? error.message

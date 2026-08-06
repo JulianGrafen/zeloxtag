@@ -14,6 +14,15 @@ export {
 } from "./AbeExtractionService";
 
 export {
+  Paragraph21ExtractionService,
+  paragraph21ExtractionService,
+  buildParagraph21SystemPrompt,
+  PARAGRAPH_21_MAX_CHARS,
+  type Paragraph21ExtractionOptions,
+  type Paragraph21ExtractionResult,
+} from "./Paragraph21ExtractionService";
+
+export {
   TableMatchingService,
   matchCompatibilityTable,
   normalizeMatchToken,

@@ -159,6 +159,9 @@ export async function POST(request: NextRequest) {
       vehicleContext = vehicleParsed.data;
     }
 
+    const garageVinRaw = String(formData.get("garageVin") ?? "").trim();
+    const garageVin = garageVinRaw.length > 0 ? garageVinRaw.slice(0, 32) : null;
+
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Document file is required.", "bad_request");
@@ -189,6 +192,7 @@ export async function POST(request: NextRequest) {
       documentType,
       approvalKind,
       vehicleContext,
+      garageVin,
       kind: documentType === "abe" ? "abe" : "invoice",
     });
 

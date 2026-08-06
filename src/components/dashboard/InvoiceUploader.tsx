@@ -81,6 +81,8 @@ interface InvoiceUploaderProps {
   /** Optional type code / EG-BE for tighter ABE matching. */
   vehicleTypeCode?: string | null;
   vehicleEgBe?: string | null;
+  /** Garage VIN — §21 Einzelabnahme Field E verification. */
+  vehicleVin?: string | null;
   /** Override back navigation target (default: documents list). */
   backHref?: string;
   backLabel?: string;
@@ -162,6 +164,7 @@ export function InvoiceUploader({
   vehicleModel = null,
   vehicleTypeCode = null,
   vehicleEgBe = null,
+  vehicleVin = null,
   backHref,
   backLabel = "Zurück",
   onBack,
@@ -361,6 +364,10 @@ export function InvoiceUploader({
           approvalKind: scanDef?.approvalKind ?? null,
           vehicleContext:
             documentType === "abe" ? vehicleContext : null,
+          garageVin:
+            scanDef?.approvalKind === "einzelabnahme"
+              ? vehicleVin ?? null
+              : null,
         },
       );
 

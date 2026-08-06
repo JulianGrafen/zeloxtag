@@ -34,6 +34,8 @@ export type AnalyzeDocumentOptions = {
   approvalKind?: ApprovalFieldKind | null;
   /** Garage vehicle for ABE Verwendungsbereich match. */
   vehicleContext?: AbeVehicleContext | null;
+  /** Garage twin VIN for §21 Einzelabnahme Field E verification. */
+  garageVin?: string | null;
   /** @deprecated Prefer `documentType`. Mapped to documentType when unset. */
   kind?: DocumentParseKind;
 };
@@ -60,6 +62,7 @@ async function analyzeOneFile(
   documentType: OcrDocumentType,
   approvalKind?: ApprovalFieldKind | null,
   vehicleContext?: AbeVehicleContext | null,
+  garageVin?: string | null,
 ): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
   formData.set("file", file);
@@ -69,6 +72,9 @@ async function analyzeOneFile(
   }
   if (vehicleContext) {
     formData.set("vehicleContext", JSON.stringify(vehicleContext));
+  }
+  if (garageVin) {
+    formData.set("garageVin", garageVin);
   }
 
   const response = await fetch("/api/ocr/parse", {
@@ -189,6 +195,7 @@ export async function analyzeDocumentFiles(
 
   const approvalKind = options.approvalKind ?? null;
   const vehicleContext = options.vehicleContext ?? null;
+  const garageVin = options.garageVin ?? null;
 
   if (files.length === 1) {
     onPageProgress?.(1, 1);
@@ -197,6 +204,7 @@ export async function analyzeDocumentFiles(
       documentType,
       approvalKind,
       vehicleContext,
+      garageVin,
     );
   }
 
@@ -209,6 +217,7 @@ export async function analyzeDocumentFiles(
         documentType,
         approvalKind,
         vehicleContext,
+        garageVin,
       ),
     );
   }
