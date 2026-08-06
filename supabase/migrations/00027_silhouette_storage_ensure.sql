@@ -17,7 +17,7 @@ values (
   'vehicle-silhouettes',
   true,
   8388608,
-  array['image/png']::text[]
+  array['image/png', 'image/jpeg', 'image/webp']::text[]
 )
 on conflict (id) do update
 set

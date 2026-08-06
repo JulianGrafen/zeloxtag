@@ -11,6 +11,10 @@ import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
+  ensureVehicleSilhouetteBucket,
+  isStorageMimeRejected,
+} from "@/lib/vehicles/ensure-silhouette-bucket";
+import {
   HeaderPhotoNormalizeError,
   normalizeVehicleHeaderPhoto,
 } from "@/lib/vehicles/normalize-vehicle-header-photo";
@@ -20,6 +24,7 @@ import {
   vehiclePhotoObjectPath,
 } from "@/lib/vehicles/silhouette-constants";
 import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
+import { isPngBytes } from "@/lib/vehicles/silhouette-bytes";
 import { verifySilhouetteInStorage } from "@/lib/vehicles/verify-silhouette-storage";
 
 export const runtime = "nodejs";
@@ -168,22 +173,46 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    const objectPath = vehiclePhotoObjectPath(vehicleId);
-    const { error: uploadError } = await admin.storage
-      .from(SILHOUETTE_BUCKET)
-      .upload(objectPath, photoPng, {
-        contentType: "image/png",
-        upsert: true,
-        cacheControl: "3600",
-      });
-
-    if (uploadError) {
-      console.error("[vehicle-photo] storage upload failed", uploadError);
+    const pngBytes = new Uint8Array(photoPng);
+    if (!isPngBytes(pngBytes)) {
+      console.error("[vehicle-photo] normalize did not produce PNG bytes");
       return jsonError(
         500,
-        `Could not store vehicle photo: ${uploadError.message}`,
-        "storage_error",
+        "Foto konnte nicht verarbeitet werden — bitte anderes Bild wählen.",
+        "normalize_failed",
       );
+    }
+
+    await ensureVehicleSilhouetteBucket(admin);
+
+    const objectPath = vehiclePhotoObjectPath(vehicleId);
+
+    async function storePhoto(): Promise<string | null> {
+      const { error: uploadError } = await admin.storage
+        .from(SILHOUETTE_BUCKET)
+        .upload(objectPath, photoPng, {
+          contentType: "image/png",
+          upsert: true,
+          cacheControl: "3600",
+        });
+
+      if (!uploadError) return null;
+
+      console.error("[vehicle-photo] storage upload failed", uploadError);
+      return uploadError.message;
+    }
+
+    let storageError = await storePhoto();
+    if (storageError && isStorageMimeRejected(storageError)) {
+      await ensureVehicleSilhouetteBucket(admin);
+      storageError = await storePhoto();
+    }
+
+    if (storageError) {
+      const friendly = isStorageMimeRejected(storageError)
+        ? "Speicher lehnt das Foto-Format ab — bitte in 1 Minute erneut versuchen."
+        : `Could not store vehicle photo: ${storageError}`;
+      return jsonError(500, friendly, "storage_error");
     }
 
     const {

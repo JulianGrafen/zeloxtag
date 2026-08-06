@@ -124,7 +124,12 @@ function mapUploadError(
   if (message === "Multi-factor authentication required.") {
     return "Bitte zuerst Zwei-Faktor-Authentifizierung abschließen.";
   }
-  if (message) return message;
+  if (message) {
+    if (/jpeg.*not supported|mime type.*not supported/i.test(message)) {
+      return "Foto konnte nicht gespeichert werden — bitte kurz warten und erneut versuchen.";
+    }
+    return message;
+  }
   if (status === 0) {
     return "Netzwerkfehler beim Upload — bitte Verbindung prüfen.";
   }
