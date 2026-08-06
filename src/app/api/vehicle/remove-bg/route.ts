@@ -7,14 +7,9 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
-import { sanitizeUploadFilename, sniffAllowedMime } from "@/lib/security/file-upload";
+import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
-import {
-  isRemoveBackgroundConfigured,
-  removeImageBackground,
-  RemoveBackgroundError,
-} from "@/lib/vehicles/remove-background";
 import {
   CutoutNormalizeError,
   normalizeVehicleCutout,
@@ -32,6 +27,7 @@ const metaSchema = z
   .object({
     vehicleId: z.string().uuid(),
     tagUuid: z.string().trim().min(1).max(128).optional(),
+    backgroundRemoved: z.enum(["true", "false"]).default("false"),
   })
   .strict();
 
@@ -49,8 +45,8 @@ function jsonError(status: number, error: string, code: string) {
 
 /**
  * POST /api/vehicle/remove-bg
- * Auth → validate ownership → server BG removal → Storage PNG → vehicles row.
- * Falls back to framed original when no removal API key is configured.
+ * Auth → store owner-supplied image (client already removed BG when possible).
+ * No third-party removal API — cutout happens in the browser.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -83,11 +79,12 @@ export async function POST(request: NextRequest) {
     const metaParsed = metaSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
       tagUuid: formData.get("tagUuid") || undefined,
+      backgroundRemoved: formData.get("backgroundRemoved") || "false",
     });
     if (!metaParsed.success) {
       return jsonError(400, "Invalid vehicleId.", "bad_request");
     }
-    const { vehicleId, tagUuid } = metaParsed.data;
+    const { vehicleId, tagUuid, backgroundRemoved } = metaParsed.data;
 
     const file = formData.get("file");
     if (!(file instanceof File) || file.size <= 0) {
@@ -122,34 +119,11 @@ export async function POST(request: NextRequest) {
     }
 
     let cutoutPng: Buffer;
-    let backgroundRemoved = false;
     try {
-      if (isRemoveBackgroundConfigured()) {
-        const result = await removeImageBackground({
-          bytes,
-          mime: sniffed,
-          filename: sanitizeUploadFilename(file.name) || "vehicle-side.jpg",
-        });
-        cutoutPng = await normalizeVehicleCutout(result.pngBytes, {
-          requireTransparentBackground: true,
-        });
-        backgroundRemoved = true;
-      } else {
-        // Still persist a dashboard-ready frame when no API key is set.
-        cutoutPng = await normalizeVehicleCutout(bytes, {
-          requireTransparentBackground: false,
-        });
-      }
+      cutoutPng = await normalizeVehicleCutout(bytes, {
+        requireTransparentBackground: backgroundRemoved === "true",
+      });
     } catch (error) {
-      if (error instanceof RemoveBackgroundError) {
-        const status =
-          error.code === "config"
-            ? 503
-            : error.code === "timeout"
-              ? 504
-              : 502;
-        return jsonError(status, error.message, error.code);
-      }
       if (error instanceof CutoutNormalizeError) {
         return jsonError(422, error.message, "normalize_failed");
       }
@@ -174,7 +148,6 @@ export async function POST(request: NextRequest) {
       data: { publicUrl },
     } = admin.storage.from(SILHOUETTE_BUCKET).getPublicUrl(objectPath);
 
-    // Cache-bust so the dashboard shows the latest cutout immediately.
     const silhouetteUrl = `${publicUrl}?v=${Date.now()}`;
 
     const { error: updateError } = await admin
@@ -199,7 +172,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ok: true as const,
       silhouetteImageUrl: silhouetteUrl,
-      backgroundRemoved,
+      backgroundRemoved: backgroundRemoved === "true",
     });
   } catch (error) {
     console.error("[remove-bg] unexpected", error);

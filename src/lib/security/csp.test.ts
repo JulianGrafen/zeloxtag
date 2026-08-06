@@ -3,19 +3,20 @@ import { describe, expect, it } from "vitest";
 import { buildContentSecurityPolicy, securityHeaderEntries } from "./csp";
 
 describe("buildContentSecurityPolicy", () => {
-  it("keeps a strict script policy without eval", () => {
+  it("allows IMG.LY cutout CDN fetches and WASM eval", () => {
     const csp = buildContentSecurityPolicy();
 
-    expect(csp).toMatch(/script-src 'self' 'unsafe-inline'/);
-    expect(csp).not.toContain("unsafe-eval");
+    expect(csp).toContain("https://staticimgly.com");
+    expect(csp).toMatch(/script-src[^;]*'unsafe-eval'/);
+    expect(csp).toMatch(/script-src[^;]*'wasm-unsafe-eval'/);
     expect(csp).toMatch(/connect-src[^;]*blob:/);
   });
 
-  it("does not force COEP (no longer required for cutouts)", () => {
+  it("enables cross-origin isolation for SharedArrayBuffer cutout", () => {
     const headers = securityHeaderEntries();
     const byKey = Object.fromEntries(headers.map((h) => [h.key, h.value]));
 
     expect(byKey["Cross-Origin-Opener-Policy"]).toBe("same-origin");
-    expect(byKey["Cross-Origin-Embedder-Policy"]).toBeUndefined();
+    expect(byKey["Cross-Origin-Embedder-Policy"]).toBe("require-corp");
   });
 });
