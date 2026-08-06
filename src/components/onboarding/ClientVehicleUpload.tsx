@@ -27,12 +27,10 @@ import {
 } from "@/lib/vehicles/compress-silhouette-image";
 
 export type SilhouetteUploadResult = {
-  /** Immediate preview (usually blob:) — shown in header before proxy is ready. */
+  /** Same-origin proxy URL — COEP-safe display after Supabase upload. */
   displayUrl: string;
-  /** Stored Supabase public URL (for resolveVehicleImage after refresh). */
+  /** Persisted Supabase public URL (vehicles.silhouette_image_url). */
   storageUrl: string;
-  /** Same-origin proxy URL once storage has the PNG. */
-  proxyDisplayUrl?: string;
 };
 
 export type ClientVehicleUploadProps = {
@@ -319,20 +317,19 @@ export function ClientVehicleUpload({
         }
 
         setUploadProgress(100);
-        const proxyDisplayUrl =
-          payload.silhouetteDisplayUrl ?? undefined;
-        const immediatePreview = URL.createObjectURL(uploadFile);
+        const displayUrl =
+          payload.silhouetteDisplayUrl?.trim() ||
+          payload.silhouetteImageUrl;
         setPreviewUrl((previous) => {
-          if (previous?.startsWith("blob:") && previous !== immediatePreview) {
+          if (previous?.startsWith("blob:")) {
             URL.revokeObjectURL(previous);
           }
-          return immediatePreview;
+          return displayUrl;
         });
         setState("done");
         onUploaded?.({
-          displayUrl: immediatePreview,
+          displayUrl,
           storageUrl: payload.silhouetteImageUrl,
-          proxyDisplayUrl,
         });
       } catch (error) {
         setState("idle");
