@@ -17,7 +17,7 @@ import {
 import {
   MAX_SILHOUETTE_UPLOAD_BYTES,
   SILHOUETTE_BUCKET,
-  silhouetteObjectPath,
+  vehiclePhotoObjectPath,
 } from "@/lib/vehicles/silhouette-constants";
 import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 import { verifySilhouetteInStorage } from "@/lib/vehicles/verify-silhouette-storage";
@@ -29,7 +29,6 @@ const metaSchema = z
   .object({
     vehicleId: z.string().uuid(),
     tagUuid: z.string().trim().min(1).max(128).optional(),
-    backgroundRemoved: z.enum(["true", "false"]).default("false"),
   })
   .strict();
 
@@ -49,9 +48,8 @@ function asImageBlob(
   value: FormDataEntryValue | null,
 ): { blob: Blob; filename: string } | null {
   if (value instanceof File && value.size > 0) {
-    return { blob: value, filename: value.name || "vehicle-side.png" };
+    return { blob: value, filename: value.name || "vehicle-photo.jpg" };
   }
-  // Some runtimes expose multipart parts as Blob (not File).
   if (typeof Blob !== "undefined" && value instanceof Blob && value.size > 0) {
     const named = value as Blob & { name?: string };
     return {
@@ -59,29 +57,29 @@ function asImageBlob(
       filename:
         typeof named.name === "string" && named.name.length > 0
           ? named.name
-          : "vehicle-side.png",
+          : "vehicle-photo.jpg",
     };
   }
   return null;
 }
 
 /**
- * POST /api/vehicle/remove-bg
- * Auth → store owner vehicle photo for the dashboard header frame.
+ * POST /api/vehicle/photo
+ * Auth → store owner vehicle photo for the dashboard header.
  */
 export async function POST(request: NextRequest) {
   try {
     const originBlocked = enforceSameOrigin(request);
     if (originBlocked) return originBlocked;
 
-    const limited = await enforceRateLimit(request, "upload", "remove-bg");
+    const limited = await enforceRateLimit(request, "upload", "vehicle-photo");
     if (limited) return limited;
 
     const { isConfigured } = getSupabaseEnv();
     if (!isConfigured || !isSupabaseAdminConfigured()) {
       return jsonError(
         503,
-        "Supabase is not configured for silhouette uploads.",
+        "Supabase is not configured for vehicle photo uploads.",
         "config",
       );
     }
@@ -100,7 +98,6 @@ export async function POST(request: NextRequest) {
     const metaParsed = metaSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
       tagUuid: formData.get("tagUuid") || undefined,
-      backgroundRemoved: formData.get("backgroundRemoved") || "false",
     });
     if (!metaParsed.success) {
       return jsonError(400, "Invalid vehicleId.", "bad_request");
@@ -139,9 +136,9 @@ export async function POST(request: NextRequest) {
       return jsonError(403, "Not allowed for this vehicle.", "forbidden");
     }
 
-    let photoPng: Buffer;
+    let photoJpeg: Buffer;
     try {
-      photoPng = await normalizeVehicleHeaderPhoto(bytes);
+      photoJpeg = await normalizeVehicleHeaderPhoto(bytes);
     } catch (error) {
       if (error instanceof HeaderPhotoNormalizeError) {
         return jsonError(422, error.message, "normalize_failed");
@@ -149,20 +146,20 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    const objectPath = silhouetteObjectPath(vehicleId);
+    const objectPath = vehiclePhotoObjectPath(vehicleId);
     const { error: uploadError } = await admin.storage
       .from(SILHOUETTE_BUCKET)
-      .upload(objectPath, photoPng, {
-        contentType: "image/png",
+      .upload(objectPath, photoJpeg, {
+        contentType: "image/jpeg",
         upsert: true,
         cacheControl: "3600",
       });
 
     if (uploadError) {
-      console.error("[remove-bg] storage upload failed", uploadError);
+      console.error("[vehicle-photo] storage upload failed", uploadError);
       return jsonError(
         500,
-        `Could not store silhouette image: ${uploadError.message}`,
+        `Could not store vehicle photo: ${uploadError.message}`,
         "storage_error",
       );
     }
@@ -185,21 +182,19 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id);
 
     if (updateError) {
-      console.error("[remove-bg] vehicle update failed", updateError);
+      console.error("[vehicle-photo] vehicle update failed", updateError);
       return jsonError(
         500,
-        `Could not save silhouette URL: ${updateError.message}`,
+        `Could not save vehicle photo URL: ${updateError.message}`,
         "db_error",
       );
     }
 
     const storageReady = await verifySilhouetteInStorage(admin, vehicleId);
     if (!storageReady) {
-      console.error("[remove-bg] silhouette not readable after upload", vehicleId);
-      return jsonError(
-        503,
-        "Silhouette gespeichert, aber noch nicht lesbar — bitte kurz warten und erneut versuchen.",
-        "storage_propagation",
+      console.warn(
+        "[vehicle-photo] photo not readable immediately after upload",
+        vehicleId,
       );
     }
 
@@ -212,10 +207,9 @@ export async function POST(request: NextRequest) {
       ok: true as const,
       silhouetteImageUrl: silhouetteUrl,
       silhouetteDisplayUrl: displayUrl,
-      backgroundRemoved: false,
     });
   } catch (error) {
-    console.error("[remove-bg] unexpected", error);
+    console.error("[vehicle-photo] unexpected", error);
     return jsonError(
       500,
       error instanceof Error ? error.message : "Unexpected server error.",

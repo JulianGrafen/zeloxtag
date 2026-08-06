@@ -254,11 +254,10 @@ export function ClientVehicleUpload({
         const body = new FormData();
         body.append("vehicleId", vehicleId);
         body.append("tagUuid", tagUuid);
-        body.append("backgroundRemoved", "false");
         body.append("file", uploadFile, uploadFile.name || "vehicle-photo.jpg");
 
         const { ok, status, payload } = await uploadSilhouette(
-          "/api/vehicle/remove-bg",
+          "/api/vehicle/photo",
           body,
         );
 

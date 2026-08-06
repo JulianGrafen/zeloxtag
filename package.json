@@ -12,10 +12,9 @@
     "test:extraction": "vitest run src/lib/ocr/extraction-quality.test.ts src/services/documents/document-services.test.ts",
     "predeploy": "npm run test:extraction",
     "db:seed-demo": "node --env-file=.env scripts/seed-demo-vehicle.mjs",
-    "postinstall": "node scripts/copy-pdf-worker.mjs && node scripts/copy-background-removal-data.mjs"
+    "postinstall": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
-    "@imgly/background-removal": "1.7.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.109.0",
     "browser-image-compression": "^2.0.2",
@@ -23,7 +22,6 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^1.27.0",
     "next": "16.2.12",
-    "onnxruntime-web": "1.21.0",
     "openai": "^6.49.0",
     "pdfjs-dist": "^5.6.205",
     "qrcode": "^1.5.4",

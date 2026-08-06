@@ -3,16 +3,14 @@ import { describe, expect, it } from "vitest";
 import { buildContentSecurityPolicy, securityHeaderEntries } from "./csp";
 
 describe("buildContentSecurityPolicy", () => {
-  it("allows IMG.LY cutout CDN fetches and WASM eval", () => {
+  it("allows blob previews and same-origin fetches", () => {
     const csp = buildContentSecurityPolicy();
 
-    expect(csp).toContain("https://staticimgly.com");
-    expect(csp).toMatch(/script-src[^;]*'unsafe-eval'/);
-    expect(csp).toMatch(/script-src[^;]*'wasm-unsafe-eval'/);
     expect(csp).toMatch(/connect-src[^;]*blob:/);
+    expect(csp).toMatch(/script-src[^;]*'unsafe-eval'/);
   });
 
-  it("enables cross-origin isolation for SharedArrayBuffer cutout", () => {
+  it("enables cross-origin isolation for secure embeds", () => {
     const headers = securityHeaderEntries();
     const byKey = Object.fromEntries(headers.map((h) => [h.key, h.value]));
 

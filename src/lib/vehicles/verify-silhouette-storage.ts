@@ -1,9 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { SILHOUETTE_BUCKET, silhouetteObjectPath } from "./silhouette-constants";
+import {
+  legacySilhouetteObjectPath,
+  SILHOUETTE_BUCKET,
+  vehiclePhotoObjectPath,
+} from "./silhouette-constants";
 
-const DEFAULT_ATTEMPTS = 8;
-const DEFAULT_DELAY_MS = 250;
+const DEFAULT_ATTEMPTS = 6;
+const DEFAULT_DELAY_MS = 200;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -11,8 +15,19 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
+async function objectReadable(
+  admin: SupabaseClient,
+  objectPath: string,
+): Promise<boolean> {
+  const { data, error } = await admin.storage
+    .from(SILHOUETTE_BUCKET)
+    .download(objectPath);
+
+  return !error && data && data.size > 32;
+}
+
 /**
- * Poll storage until the silhouette PNG is readable (handles propagation delay).
+ * Poll storage until the vehicle photo is readable (handles propagation delay).
  */
 export async function verifySilhouetteInStorage(
   admin: SupabaseClient,
@@ -21,15 +36,16 @@ export async function verifySilhouetteInStorage(
 ): Promise<boolean> {
   const attempts = options?.attempts ?? DEFAULT_ATTEMPTS;
   const delayMs = options?.delayMs ?? DEFAULT_DELAY_MS;
-  const objectPath = silhouetteObjectPath(vehicleId);
+  const paths = [
+    vehiclePhotoObjectPath(vehicleId),
+    legacySilhouetteObjectPath(vehicleId),
+  ];
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const { data, error } = await admin.storage
-      .from(SILHOUETTE_BUCKET)
-      .download(objectPath);
-
-    if (!error && data && data.size > 32) {
-      return true;
+    for (const objectPath of paths) {
+      if (await objectReadable(admin, objectPath)) {
+        return true;
+      }
     }
 
     if (attempt < attempts - 1) {

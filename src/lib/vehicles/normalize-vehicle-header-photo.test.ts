@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 import sharp from "sharp";
 
 import {
-  HEADER_PHOTO,
+  HEADER_PHOTO_MAX_EDGE,
   normalizeVehicleHeaderPhoto,
 } from "./normalize-vehicle-header-photo";
 
 describe("normalizeVehicleHeaderPhoto", () => {
-  it("crops to the header frame dimensions", async () => {
+  it("resizes large photos to JPEG without upscaling", async () => {
     const source = await sharp({
       create: {
-        width: 1200,
-        height: 800,
+        width: 2400,
+        height: 1600,
         channels: 3,
         background: { r: 40, g: 80, b: 120 },
       },
@@ -22,8 +22,8 @@ describe("normalizeVehicleHeaderPhoto", () => {
     const output = await normalizeVehicleHeaderPhoto(source);
     const meta = await sharp(output).metadata();
 
-    expect(meta.width).toBe(HEADER_PHOTO.width);
-    expect(meta.height).toBe(HEADER_PHOTO.height);
-    expect(meta.format).toBe("png");
+    expect(meta.width).toBeLessThanOrEqual(HEADER_PHOTO_MAX_EDGE);
+    expect(meta.height).toBeLessThanOrEqual(HEADER_PHOTO_MAX_EDGE);
+    expect(meta.format).toBe("jpeg");
   });
 });

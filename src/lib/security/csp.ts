@@ -34,8 +34,7 @@ export function isHttpsDeployment(): boolean {
   return false;
 }
 
-/** CDN for @imgly/background-removal ONNX/WASM assets (client-side cutout). */
-const IMGLY_ASSET_ORIGIN = "https://staticimgly.com";
+/** CDN origins removed — vehicle photos no longer use client-side cutout. */
 
 /**
  * Build a production-leaning CSP.
@@ -44,9 +43,7 @@ const IMGLY_ASSET_ORIGIN = "https://staticimgly.com";
  */
 export function buildContentSecurityPolicy(): string {
   const supabase = supabaseHosts();
-  const connect = ["'self'", "blob:", "data:", IMGLY_ASSET_ORIGIN, ...supabase].join(
-    " ",
-  );
+  const connect = ["'self'", "blob:", "data:", ...supabase].join(" ");
   const img = [
     "'self'",
     "data:",
@@ -56,8 +53,7 @@ export function buildContentSecurityPolicy(): string {
 
   const directives: string[] = [
     "default-src 'self'",
-    // Next.js hydration + onnxruntime-web WASM glue for on-device cutout.
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
     "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
     `img-src ${img}`,

@@ -1,9 +1,19 @@
-/** Supabase Storage bucket for transparent vehicle side-profiles. */
+/** Supabase Storage bucket for owner vehicle header photos. */
 export const SILHOUETTE_BUCKET = "vehicle-silhouettes" as const;
 
-/** Object path inside the bucket — one cutout per vehicle. */
-export function silhouetteObjectPath(vehicleId: string): string {
+/** Current object path — JPEG photo for the dashboard header frame. */
+export function vehiclePhotoObjectPath(vehicleId: string): string {
+  return `${vehicleId}/photo.jpg`;
+}
+
+/** Legacy transparent cutout path (read fallback only). */
+export function legacySilhouetteObjectPath(vehicleId: string): string {
   return `${vehicleId}/silhouette.png`;
+}
+
+/** @deprecated Use vehiclePhotoObjectPath — kept for older tooling references. */
+export function silhouetteObjectPath(vehicleId: string): string {
+  return vehiclePhotoObjectPath(vehicleId);
 }
 
 /** Hard server-side cap for inbound photos (pre-compression). */

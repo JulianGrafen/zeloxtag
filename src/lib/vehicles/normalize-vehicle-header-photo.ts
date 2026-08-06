@@ -1,14 +1,11 @@
 /**
- * Normalize owner vehicle photos for the dashboard header frame (cover crop).
+ * Light server-side prep for owner vehicle photos (rotate + resize, no cutout).
  */
 
 import sharp from "sharp";
 
-/** Matches the header frame aspect (4:3). */
-export const HEADER_PHOTO = {
-  width: 480,
-  height: 360,
-} as const;
+/** Max edge before JPEG encode — keeps uploads fast on mobile. */
+export const HEADER_PHOTO_MAX_EDGE = 1600;
 
 export class HeaderPhotoNormalizeError extends Error {
   constructor(message: string) {
@@ -23,13 +20,12 @@ export async function normalizeVehicleHeaderPhoto(
   try {
     return await sharp(Buffer.from(bytes))
       .rotate()
-      .resize(HEADER_PHOTO.width, HEADER_PHOTO.height, {
-        fit: "cover",
-        position: "centre",
+      .resize(HEADER_PHOTO_MAX_EDGE, HEADER_PHOTO_MAX_EDGE, {
+        fit: "inside",
+        withoutEnlargement: true,
         kernel: sharp.kernel.lanczos3,
       })
-      .modulate({ brightness: 1.02, saturation: 1.05 })
-      .png({ compressionLevel: 8, effort: 6 })
+      .jpeg({ quality: 88, mozjpeg: true })
       .toBuffer();
   } catch {
     throw new HeaderPhotoNormalizeError(

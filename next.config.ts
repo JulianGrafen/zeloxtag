@@ -30,7 +30,6 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  transpilePackages: ["@imgly/background-removal", "onnxruntime-web"],
   allowedDevOrigins: ["127.0.0.1", "192.168.178.109", "localhost"],
   devIndicators: false,
   images: {

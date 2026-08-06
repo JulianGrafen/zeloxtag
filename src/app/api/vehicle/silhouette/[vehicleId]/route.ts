@@ -4,24 +4,19 @@ import { z } from "zod";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
-  SILHOUETTE_BUCKET,
-  silhouetteObjectPath,
-} from "@/lib/vehicles/silhouette-constants";
-import {
+  imageContentTypeFromBytes,
+  isLikelyImageBytes,
   isLikelyImageResponse,
-  isPngBytes,
 } from "@/lib/vehicles/silhouette-bytes";
+import {
+  legacySilhouetteObjectPath,
+  SILHOUETTE_BUCKET,
+  vehiclePhotoObjectPath,
+} from "@/lib/vehicles/silhouette-constants";
 
 export const runtime = "nodejs";
 
 const vehicleIdSchema = z.string().uuid();
-
-const SILHOUETTE_IMAGE_HEADERS: Record<string, string> = {
-  "Content-Type": "image/png",
-  "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
-  // Same-origin dashboard <img> under COEP require-corp.
-  "Cross-Origin-Resource-Policy": "same-origin",
-};
 
 async function fetchRemoteSilhouetteBytes(
   url: string,
@@ -38,10 +33,21 @@ async function fetchRemoteSilhouetteBytes(
   }
 }
 
+function imageResponse(bytes: Uint8Array): NextResponse {
+  const contentType = imageContentTypeFromBytes(bytes);
+  return new NextResponse(Buffer.from(bytes), {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+      "Cross-Origin-Resource-Policy": "same-origin",
+    },
+  });
+}
+
 /**
  * GET /api/vehicle/silhouette/[vehicleId]
- * Same-origin PNG stream for dashboard headers under COEP.
- * Public: silhouettes are part of the digital twin surface.
+ * Same-origin image stream for dashboard headers under COEP.
  */
 export async function GET(
   _request: NextRequest,
@@ -65,39 +71,37 @@ export async function GET(
   }
 
   const admin = createAdminClient();
-  const objectPath = silhouetteObjectPath(parsed.data);
+  const objectPaths = [
+    vehiclePhotoObjectPath(parsed.data),
+    legacySilhouetteObjectPath(parsed.data),
+  ];
 
-  async function respondWithBytes(bytes: Uint8Array): Promise<NextResponse> {
-    return new NextResponse(Buffer.from(bytes), {
-      status: 200,
-      headers: SILHOUETTE_IMAGE_HEADERS,
-    });
-  }
+  for (const objectPath of objectPaths) {
+    const { data, error } = await admin.storage
+      .from(SILHOUETTE_BUCKET)
+      .download(objectPath);
 
-  const { data, error } = await admin.storage
-    .from(SILHOUETTE_BUCKET)
-    .download(objectPath);
-
-  if (!error && data) {
-    const bytes = new Uint8Array(await data.arrayBuffer());
-    if (isPngBytes(bytes)) {
-      return respondWithBytes(bytes);
+    if (!error && data) {
+      const bytes = new Uint8Array(await data.arrayBuffer());
+      if (isLikelyImageBytes(bytes)) {
+        return imageResponse(bytes);
+      }
     }
   }
 
-  // Signed URL fallback when download() fails but the object exists.
-  const { data: signed, error: signedError } = await admin.storage
-    .from(SILHOUETTE_BUCKET)
-    .createSignedUrl(objectPath, 120);
+  for (const objectPath of objectPaths) {
+    const { data: signed, error: signedError } = await admin.storage
+      .from(SILHOUETTE_BUCKET)
+      .createSignedUrl(objectPath, 120);
 
-  if (!signedError && signed?.signedUrl) {
-    const signedBytes = await fetchRemoteSilhouetteBytes(signed.signedUrl);
-    if (signedBytes && isPngBytes(signedBytes)) {
-      return respondWithBytes(signedBytes);
+    if (!signedError && signed?.signedUrl) {
+      const signedBytes = await fetchRemoteSilhouetteBytes(signed.signedUrl);
+      if (signedBytes && isLikelyImageBytes(signedBytes)) {
+        return imageResponse(signedBytes);
+      }
     }
   }
 
-  // Fallback: stream the stored public URL (handles bucket propagation delay).
   const { data: vehicle, error: vehicleError } = await admin
     .from("vehicles")
     .select("silhouette_image_url")
@@ -106,7 +110,7 @@ export async function GET(
 
   if (vehicleError || !vehicle?.silhouette_image_url) {
     return NextResponse.json(
-      { ok: false, error: "Silhouette not found." },
+      { ok: false, error: "Vehicle photo not found." },
       { status: 404 },
     );
   }
@@ -116,13 +120,10 @@ export async function GET(
   );
   if (!remoteBytes) {
     return NextResponse.json(
-      { ok: false, error: "Silhouette not found." },
+      { ok: false, error: "Vehicle photo not found." },
       { status: 404 },
     );
   }
 
-  return new NextResponse(Buffer.from(remoteBytes), {
-    status: 200,
-    headers: SILHOUETTE_IMAGE_HEADERS,
-  });
+  return imageResponse(remoteBytes);
 }
