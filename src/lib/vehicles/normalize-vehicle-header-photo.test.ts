@@ -7,7 +7,7 @@ import {
 } from "./normalize-vehicle-header-photo";
 
 describe("normalizeVehicleHeaderPhoto", () => {
-  it("resizes large photos to JPEG without upscaling", async () => {
+  it("resizes large photos to PNG without upscaling", async () => {
     const source = await sharp({
       create: {
         width: 2400,
@@ -24,6 +24,6 @@ describe("normalizeVehicleHeaderPhoto", () => {
 
     expect(meta.width).toBeLessThanOrEqual(HEADER_PHOTO_MAX_EDGE);
     expect(meta.height).toBeLessThanOrEqual(HEADER_PHOTO_MAX_EDGE);
-    expect(meta.format).toBe("jpeg");
+    expect(meta.format).toBe("png");
   });
 });

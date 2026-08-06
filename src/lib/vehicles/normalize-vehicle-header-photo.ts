@@ -1,10 +1,11 @@
 /**
  * Light server-side prep for owner vehicle photos (rotate + resize, no cutout).
+ * Output PNG — vehicle-silhouettes bucket allows PNG on all hosted projects.
  */
 
 import sharp from "sharp";
 
-/** Max edge before JPEG encode — keeps uploads fast on mobile. */
+/** Max edge before encode — keeps uploads fast on mobile. */
 export const HEADER_PHOTO_MAX_EDGE = 1600;
 
 export class HeaderPhotoNormalizeError extends Error {
@@ -25,7 +26,7 @@ export async function normalizeVehicleHeaderPhoto(
         withoutEnlargement: true,
         kernel: sharp.kernel.lanczos3,
       })
-      .jpeg({ quality: 88, mozjpeg: true })
+      .png({ compressionLevel: 8, effort: 6 })
       .toBuffer();
   } catch {
     throw new HeaderPhotoNormalizeError(

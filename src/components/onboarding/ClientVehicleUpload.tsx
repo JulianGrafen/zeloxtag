@@ -121,8 +121,8 @@ function mapUploadError(
   if (message === "Authentication required.") {
     return "Sitzung abgelaufen — bitte erneut anmelden und Upload wiederholen.";
   }
-  if (message === "Image file is required.") {
-    return "Datei konnte nicht gelesen werden — bitte anderes Foto wählen.";
+  if (message === "Multi-factor authentication required.") {
+    return "Bitte zuerst Zwei-Faktor-Authentifizierung abschließen.";
   }
   if (message) return message;
   if (status === 0) {
@@ -134,10 +134,25 @@ function mapUploadError(
   if (status === 403) {
     return "Upload nicht erlaubt — bitte Seite neu laden.";
   }
+  if (status === 404) {
+    return "Upload-Dienst nicht erreichbar — bitte Seite neu laden (Cache leeren).";
+  }
+  if (status === 413) {
+    return "Foto ist zu groß — bitte ein kleineres Bild wählen.";
+  }
+  if (status === 415 || status === 422) {
+    return "Dateiformat nicht unterstützt — bitte JPEG oder PNG verwenden.";
+  }
+  if (status === 429) {
+    return "Zu viele Versuche — bitte kurz warten und erneut versuchen.";
+  }
   if (status >= 500) {
     return "Serverfehler beim Speichern — bitte später erneut versuchen.";
   }
-  return `Upload fehlgeschlagen (${status || "netzwerk"}).`;
+  if (status === 400) {
+    return "Upload fehlgeschlagen — bitte Seite neu laden und erneut versuchen.";
+  }
+  return `Upload fehlgeschlagen (Fehler ${status}).`;
 }
 
 async function materializeUploadFile(file: File): Promise<File> {

@@ -91,22 +91,44 @@ export async function POST(request: NextRequest) {
     let formData: FormData;
     try {
       formData = await request.formData();
-    } catch {
-      return jsonError(400, "Invalid multipart body.", "bad_request");
+    } catch (error) {
+      console.error("[vehicle-photo] formData parse failed", error);
+      return jsonError(
+        400,
+        "Upload konnte nicht gelesen werden — bitte kleineres Foto wählen oder Seite neu laden.",
+        "bad_request",
+      );
     }
 
+    const rawVehicleId = formData.get("vehicleId");
+    const rawTagUuid = formData.get("tagUuid");
     const metaParsed = metaSchema.safeParse({
-      vehicleId: formData.get("vehicleId"),
-      tagUuid: formData.get("tagUuid") || undefined,
+      vehicleId:
+        typeof rawVehicleId === "string" ? rawVehicleId.trim() : rawVehicleId,
+      tagUuid:
+        typeof rawTagUuid === "string" && rawTagUuid.trim()
+          ? rawTagUuid.trim()
+          : undefined,
     });
     if (!metaParsed.success) {
-      return jsonError(400, "Invalid vehicleId.", "bad_request");
+      return jsonError(
+        400,
+        "Fahrzeug konnte nicht erkannt werden — bitte Seite neu laden.",
+        "bad_request",
+      );
     }
     const { vehicleId, tagUuid } = metaParsed.data;
 
-    const upload = asImageBlob(formData.get("file"));
+    const upload =
+      asImageBlob(formData.get("file")) ??
+      asImageBlob(formData.get("image")) ??
+      asImageBlob(formData.get("photo"));
     if (!upload) {
-      return jsonError(400, "Image file is required.", "bad_request");
+      return jsonError(
+        400,
+        "Keine Bilddatei erhalten — bitte erneut aus Galerie oder Kamera wählen.",
+        "bad_request",
+      );
     }
     if (upload.blob.size > MAX_SILHOUETTE_UPLOAD_BYTES) {
       return jsonError(413, "Image exceeds 8 MB limit.", "payload_too_large");
@@ -136,9 +158,9 @@ export async function POST(request: NextRequest) {
       return jsonError(403, "Not allowed for this vehicle.", "forbidden");
     }
 
-    let photoJpeg: Buffer;
+    let photoPng: Buffer;
     try {
-      photoJpeg = await normalizeVehicleHeaderPhoto(bytes);
+      photoPng = await normalizeVehicleHeaderPhoto(bytes);
     } catch (error) {
       if (error instanceof HeaderPhotoNormalizeError) {
         return jsonError(422, error.message, "normalize_failed");
@@ -149,8 +171,8 @@ export async function POST(request: NextRequest) {
     const objectPath = vehiclePhotoObjectPath(vehicleId);
     const { error: uploadError } = await admin.storage
       .from(SILHOUETTE_BUCKET)
-      .upload(objectPath, photoJpeg, {
-        contentType: "image/jpeg",
+      .upload(objectPath, photoPng, {
+        contentType: "image/png",
         upsert: true,
         cacheControl: "3600",
       });
