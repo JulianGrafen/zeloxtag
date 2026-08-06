@@ -2,7 +2,7 @@ import type { DocumentTechnicalSpec } from "@/types/database";
 
 export const TECHNICAL_SPEC_MAX_ITEMS = 40;
 export const TECHNICAL_SPEC_LABEL_MAX = 80;
-export const TECHNICAL_SPEC_VALUE_MAX = 160;
+export const TECHNICAL_SPEC_VALUE_MAX = 800;
 
 /**
  * Parse technical_specs from FormData / JSONB / unknown RPC payloads.

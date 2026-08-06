@@ -3,6 +3,7 @@ import {
   type ApprovalFields,
 } from "@/lib/documents/approval-fields";
 import { formatDocumentDate } from "@/lib/documents/format";
+import { stripAuflagenFromValidityArea } from "@/lib/validations/teilegutachtenSchema";
 
 const TUEV_RESULT_LABELS: Record<string, string> = {
   no_defects: "Ohne Mängel",
@@ -65,7 +66,11 @@ export function ApprovalFieldsSection({
           <div className="sm:col-span-2">
             <Fact
               label="Verwendungsbereich"
-              value={approvalFields.data.validityArea}
+              value={
+                stripAuflagenFromValidityArea(
+                  approvalFields.data.validityArea,
+                ) ?? approvalFields.data.validityArea
+              }
             />
           </div>
           <Fact

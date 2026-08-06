@@ -17,6 +17,18 @@ import {
   type Teilegutachten,
   type TestingOrganization,
 } from "@/lib/validations/documentSchemas";
+import {
+  looksLikeVerwendungsbereichTableDump,
+  sanitizeTeilegutachtenCompatibilityTable,
+  vehicleApprovalsFromSanitizedTable,
+} from "@/lib/validations/teilegutachten-compatibility-table";
+import {
+  sanitizeTeilegutachtenTechnicalTable,
+  technicalSpecsFromTeilegutachtenTable,
+} from "@/lib/validations/teilegutachten-technical-data";
+import { groupTeilegutachtenAuflagen } from "@/lib/validations/teilegutachten-auflagen";
+
+export const TEILEGUTACHTEN_AUFLAGEN_MAX_LENGTH = 2_400;
 
 /**
  * Teilegutachten (§ 19 Abs. 3 StVZO) — LLM extraction schema.
@@ -57,17 +69,19 @@ export const TeilegutachtenLlmPayloadSchema = z
     verwendungsbereich: z.string().trim().min(1).max(2_000).nullable(),
     /** Auflagen under Verwendungsbereich — one item per bullet. */
     auflagen: z
-      .array(z.string().trim().min(1).max(800))
+      .array(z.string().trim().min(1).max(TEILEGUTACHTEN_AUFLAGEN_MAX_LENGTH))
       .max(40)
       .nullable(),
     /** @deprecated LLM alias — mapped to {@link auflagen}. */
     matchedConditions: z
-      .array(z.string().trim().min(1).max(800))
+      .array(z.string().trim().min(1).max(TEILEGUTACHTEN_AUFLAGEN_MAX_LENGTH))
       .max(40)
       .nullable()
       .optional(),
     matchedVehicleRow: z.string().trim().min(1).max(500).nullable(),
     compatibilityTable: TableDataSchema.nullable().optional(),
+    /** Section II / Technische Daten — structured table. */
+    technicalDataTable: TableDataSchema.nullable().optional(),
   })
   .strict();
 
@@ -92,11 +106,13 @@ export const TeilegutachtenExtractionSchema = z
       .nullable(),
     verwendungsbereich: z.string().trim().min(1).max(2_000).nullable(),
     auflagen: z
-      .array(z.string().trim().min(1).max(800))
+      .array(z.string().trim().min(1).max(TEILEGUTACHTEN_AUFLAGEN_MAX_LENGTH))
       .max(40)
       .nullable(),
     matchedVehicleRow: z.string().trim().min(1).max(500).nullable(),
     compatibilityTable: TableDataSchema.nullable().optional(),
+    /** Section II / Technische Daten — structured table. */
+    technicalDataTable: TableDataSchema.nullable().optional(),
   })
   .strict();
 
@@ -125,6 +141,7 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
       "auflagen",
       "matchedVehicleRow",
       "compatibilityTable",
+      "technicalDataTable",
     ],
     properties: {
       documentType: {
@@ -176,12 +193,12 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
       verwendungsbereich: {
         type: ["string", "null"],
         description:
-          'Full "Verwendungsbereich" section — vehicle applicability text. Extract verbatim where readable.',
+          "Optional short Verwendungsbereich summary when NO compatibilityTable is filled. Null when compatibilityTable is present — do NOT paste pipe/markdown table text here.",
       },
       auflagen: {
         type: ["array", "null"],
         description:
-          'Auflagen / Bedingungen / Hinweise under Verwendungsbereich. One array item per bullet or numbered condition. Extract ALL listed Auflagen verbatim.',
+          "Auflagen sections. ONE array item per section: heading line ending with ':' plus all following paragraphs until the next heading. Never put headings and body text in separate items.",
         items: { type: "string" },
       },
       matchedVehicleRow: {
@@ -194,7 +211,35 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["headers", "rows", "caption"],
         description:
-          "Structured Verwendungsbereich table when readable; otherwise null. Match flags are applied server-side.",
+          "Structured Verwendungsbereich table. Include ONLY vehicle columns: Fahrzeughersteller, Fahrzeugtyp, Handelsbezeichnung. Omit Achslasten, ABE-Nr, Ausführungen, footnotes. Match flags are applied server-side.",
+        properties: {
+          headers: {
+            type: "array",
+            items: { type: "string" },
+          },
+          rows: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["id", "cells", "isUserVehicleMatch", "matchReason"],
+              properties: {
+                id: { type: "string" },
+                cells: { type: "array", items: { type: "string" } },
+                isUserVehicleMatch: { type: "boolean" },
+                matchReason: { type: ["string", "null"] },
+              },
+            },
+          },
+          caption: { type: ["string", "null"] },
+        },
+      },
+      technicalDataTable: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: ["headers", "rows", "caption"],
+        description:
+          "Section II / Technische Daten as a structured table. Preserve full cell text (dimensions, part numbers, test values). Do NOT merge into Auflagen or Verwendungsbereich.",
         properties: {
           headers: {
             type: "array",
@@ -234,17 +279,18 @@ function normalizeAuflagen(
   values: string[] | null | undefined,
 ): string[] | null {
   if (!values?.length) return null;
-  const cleaned = values
-    .map((value) => value.trim().replace(/\s+/g, " ").slice(0, 800))
+  const grouped = groupTeilegutachtenAuflagen(values)
+    .map((value) => value.trim().slice(0, TEILEGUTACHTEN_AUFLAGEN_MAX_LENGTH))
     .filter(Boolean)
     .slice(0, 40);
-  return cleaned.length > 0 ? cleaned : null;
+  return grouped.length > 0 ? grouped : null;
 }
 
 function normalizeVerwendungsbereich(
   value: string | null | undefined,
 ): string | null {
   if (!value) return null;
+  if (looksLikeVerwendungsbereichTableDump(value)) return null;
   const trimmed = value
     .trim()
     .split(/\n+/)
@@ -290,7 +336,12 @@ export function normalizeTeilegutachtenExtraction(
     verwendungsbereich: normalizeVerwendungsbereich(fields.verwendungsbereich),
     auflagen: normalizeAuflagen(fields.auflagen ?? fields.matchedConditions),
     matchedVehicleRow: fields.matchedVehicleRow?.trim().slice(0, 500) || null,
-    compatibilityTable: normalizeCompatibilityTable(fields.compatibilityTable),
+    compatibilityTable: sanitizeTeilegutachtenCompatibilityTable(
+      normalizeCompatibilityTable(fields.compatibilityTable),
+    ),
+    technicalDataTable: sanitizeTeilegutachtenTechnicalTable(
+      normalizeCompatibilityTable(fields.technicalDataTable),
+    ),
   };
 
   return TeilegutachtenExtractionSchema.parse(normalized);
@@ -311,6 +362,7 @@ export function emptyTeilegutachtenLlmPayload(): TeilegutachtenLlmPayload {
     auflagen: null,
     matchedVehicleRow: null,
     compatibilityTable: null,
+    technicalDataTable: null,
   };
 }
 
@@ -331,118 +383,37 @@ function mapTestingOrganization(
     : "other";
 }
 
-function normalizeTableHeader(header: string): string {
-  return header
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
-function tableColumnIndex(headers: string[], needles: string[]): number {
-  const normalized = headers.map(normalizeTableHeader);
-  for (const needle of needles) {
-    const token = normalizeTableHeader(needle);
-    const index = normalized.findIndex(
-      (header) => header === token || header.includes(token),
-    );
-    if (index >= 0) return index;
-  }
-  return -1;
-}
-
-function tableCellValue(
-  row: { cells: string[] },
-  index: number,
-): string {
-  if (index < 0 || index >= row.cells.length) return "";
-  return row.cells[index]?.trim() ?? "";
-}
-
-/** Map structured Verwendungsbereich rows → Freigabe strings. */
-export function vehicleApprovalsFromCompatibilityTable(
-  table: TableData,
-): string[] | null {
-  if (!table.rows.length) return null;
-
-  const brandIdx = tableColumnIndex(table.headers, [
-    "hersteller",
-    "marke",
-    "brand",
-    "fahrzeughersteller",
-  ]);
-  const modelIdx = tableColumnIndex(table.headers, [
-    "modell",
-    "fahrzeug",
-    "handelsbezeichnung",
-  ]);
-  const typeIdx = tableColumnIndex(table.headers, [
-    "typ",
-    "type",
-    "typschlüssel",
-    "typschlussel",
-    "fahrzeugtyp",
-  ]);
-
-  const raw: string[] = [];
-  for (const row of table.rows) {
-    const brand = tableCellValue(row, brandIdx);
-    const model = tableCellValue(row, modelIdx);
-    const type = tableCellValue(row, typeIdx);
-
-    let label: string | null = null;
-    if (brand && model) {
-      const typeSuffix =
-        type &&
-        !model.includes(type) &&
-        !`${brand} ${model}`.includes(type)
-          ? ` (${type})`
-          : "";
-      label = `${brand} ${model}${typeSuffix}`.trim();
-    } else {
-      const cells = row.cells.map((cell) => cell.trim()).filter(Boolean);
-      if (cells.length === 1) {
-        label = cells[0] ?? null;
-      } else if (cells.length >= 2) {
-        label = `${cells[0]} ${cells[1]}`.trim();
-      }
-    }
-
-    if (label) raw.push(label.slice(0, 120));
-  }
-
-  return normalizeAbeVehicleApprovals(raw);
-}
-
 function vehicleApprovalsFromVerwendungsbereich(
   text: string | null | undefined,
 ): string[] | null {
-  if (!text?.trim()) return null;
+  if (!text?.trim() || looksLikeVerwendungsbereichTableDump(text)) return null;
 
   const raw: string[] = [];
   for (const line of text.split(/\n+/)) {
     const trimmed = line.trim().replace(/^[-•*]\s*/, "").replace(/\.$/, "");
-    if (!trimmed) continue;
+    if (!trimmed || looksLikeVerwendungsbereichTableDump(trimmed)) continue;
     if (isPlausibleVehicleApproval(trimmed)) {
       raw.push(trimmed);
-      continue;
-    }
-    for (const part of trimmed.split(/[,;|/]/)) {
-      const piece = part.trim();
-      if (piece && isPlausibleVehicleApproval(piece)) raw.push(piece);
     }
   }
 
   return normalizeAbeVehicleApprovals(raw);
 }
 
-/** All Fahrzeugfreigaben from TGA extract (table → Verwendungsbereich → Trefferzeile). */
+/** @deprecated Use {@link vehicleApprovalsFromSanitizedTable}. */
+export function vehicleApprovalsFromCompatibilityTable(
+  table: TableData,
+): string[] | null {
+  return vehicleApprovalsFromSanitizedTable(table);
+}
+
+/** All Fahrzeugfreigaben from TGA extract (table → clean lines → Trefferzeile). */
 export function teilegutachtenVehicleApprovals(
   extracted: TeilegutachtenExtraction,
 ): string[] | null {
-  const fromTable = extracted.compatibilityTable
-    ? vehicleApprovalsFromCompatibilityTable(extracted.compatibilityTable)
-    : null;
+  const fromTable = vehicleApprovalsFromSanitizedTable(
+    extracted.compatibilityTable,
+  );
   if (fromTable?.length) return fromTable;
 
   const fromText = vehicleApprovalsFromVerwendungsbereich(
@@ -457,13 +428,12 @@ export function teilegutachtenVehicleApprovals(
 
 function buildValidityArea(extracted: TeilegutachtenExtraction): string {
   const parts = [
-    extracted.verwendungsbereich,
+    extracted.compatibilityTable?.rows.length
+      ? "Fahrzeugfreigaben siehe Tabelle."
+      : extracted.verwendungsbereich,
     extracted.matchedVehicleRow &&
     extracted.matchedVehicleRow !== extracted.verwendungsbereich
       ? `Fahrzeugzeile: ${extracted.matchedVehicleRow}`
-      : null,
-    extracted.auflagen?.length
-      ? `Auflagen:\n${extracted.auflagen.join("\n")}`
       : null,
     extracted.physicalMarking
       ? `Kennzeichnung: ${extracted.physicalMarking}`
@@ -477,6 +447,15 @@ function buildValidityArea(extracted: TeilegutachtenExtraction): string {
   return parts.join("\n\n").slice(0, 2_000);
 }
 
+/** Strip legacy embedded Auflagen blocks from stored validityArea text. */
+export function stripAuflagenFromValidityArea(
+  validityArea: string | null | undefined,
+): string | null {
+  if (!validityArea?.trim()) return null;
+  const stripped = validityArea.replace(/\n\nAuflagen:[\s\S]*/i, "").trim();
+  return stripped.length > 0 ? stripped : null;
+}
+
 /** Map TGA extract → stored `approval_fields` (Teilegutachten subtype). */
 export function teilegutachtenToApprovalFields(
   extracted: TeilegutachtenExtraction,
@@ -486,8 +465,17 @@ export function teilegutachtenToApprovalFields(
     documentNumber: extracted.certificateNumber ?? "unbekannt",
     validityArea: buildValidityArea(extracted),
     immediateInspectionRequired: true,
+    compatibilityTable: extracted.compatibilityTable ?? null,
+    technicalDataTable: extracted.technicalDataTable ?? null,
   };
   return { kind: "teilegutachten", data };
+}
+
+/** Map TGA Technische Daten table → `documents.technical_specs`. */
+export function teilegutachtenTechnicalSpecs(
+  extracted: TeilegutachtenExtraction,
+) {
+  return technicalSpecsFromTeilegutachtenTable(extracted.technicalDataTable);
 }
 
 /** Map TGA extract → analyze API / dashboard summary fields. */
@@ -508,7 +496,8 @@ export function teilegutachtenToAnalyzeFields(
     extracted.matchedVehicleRow
       ? `Trefferzeile: ${extracted.matchedVehicleRow}`
       : null,
-    extracted.verwendungsbereich
+    extracted.verwendungsbereich &&
+    !looksLikeVerwendungsbereichTableDump(extracted.verwendungsbereich)
       ? `Verwendungsbereich:\n${extracted.verwendungsbereich}`
       : null,
     extracted.physicalMarking

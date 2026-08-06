@@ -4,7 +4,10 @@ import { useState, useTransition } from "react";
 import { Pencil, ShieldCheck } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
+import { CollapsibleAuflagenList } from "@/components/documents/collapsible-auflagen-list";
+import { VerwendungsbereichTable } from "@/components/documents/verwendungsbereich-table";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import type { TableData } from "@/lib/validations/abeSchema";
 import type { DocumentTechnicalSpec } from "@/types/database";
 
 type EditableAbeListsSectionProps = {
@@ -15,6 +18,10 @@ type EditableAbeListsSectionProps = {
   technicalSpecs: DocumentTechnicalSpec[];
   conditions: string[];
   notes?: string | null;
+  /** Teilegutachten Verwendungsbereich table — replaces list when present. */
+  compatibilityTable?: TableData | null;
+  /** Teilegutachten Technische Daten table — replaces Maße list when present. */
+  technicalDataTable?: TableData | null;
 };
 
 function specsToText(specs: DocumentTechnicalSpec[]): string {
@@ -28,11 +35,11 @@ function textToSpecs(raw: string): DocumentTechnicalSpec[] {
     if (!trimmed) continue;
     const colon = trimmed.indexOf(":");
     if (colon <= 0) {
-      out.push({ label: "Maß", value: trimmed.slice(0, 120) });
+      out.push({ label: "Maß", value: trimmed.slice(0, 800) });
     } else {
       out.push({
         label: trimmed.slice(0, colon).trim().slice(0, 80) || "Maß",
-        value: trimmed.slice(colon + 1).trim().slice(0, 120),
+        value: trimmed.slice(colon + 1).trim().slice(0, 800),
       });
     }
     if (out.length >= 40) break;
@@ -45,7 +52,7 @@ function textToLines(raw: string): string[] {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => line.slice(0, 1200))
+    .map((line) => line.slice(0, 2400))
     .slice(0, 40);
 }
 
@@ -60,6 +67,8 @@ export function EditableAbeListsSection({
   technicalSpecs,
   conditions,
   notes,
+  compatibilityTable = null,
+  technicalDataTable = null,
 }: EditableAbeListsSectionProps) {
   const [editing, setEditing] = useState(false);
   const [approvalsText, setApprovalsText] = useState(
@@ -141,6 +150,8 @@ export function EditableAbeListsSection({
             placeholder="Ein Fahrzeug / Variante pro Zeile"
             className="w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 text-[0.88rem] leading-relaxed text-[color:var(--vd-text)] outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
           />
+        ) : compatibilityTable?.rows.length ? (
+          <VerwendungsbereichTable table={compatibilityTable} />
         ) : displayApprovals.length === 0 ? (
           <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
             Keine Fahrzeugfreigaben erkannt.
@@ -170,19 +181,24 @@ export function EditableAbeListsSection({
 
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
         <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          Technische Maße
+          Technische Daten
         </h2>
         {editing ? (
           <textarea
             value={specsText}
             onChange={(event) => setSpecsText(event.target.value)}
-            rows={Math.min(6, Math.max(3, displaySpecs.length || 3))}
-            placeholder={"Einpresstiefe (ET): 35 mm\nFelgengröße: 8,5 J x 18"}
+            rows={Math.min(8, Math.max(3, displaySpecs.length || 3))}
+            placeholder={"Bezeichnung: Wert\nEinpresstiefe (ET): 35 mm"}
             className="w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 font-mono text-[0.82rem] leading-relaxed text-[color:var(--vd-text)] outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+          />
+        ) : technicalDataTable?.rows.length ? (
+          <VerwendungsbereichTable
+            table={technicalDataTable}
+            highlightMatches={false}
           />
         ) : displaySpecs.length === 0 ? (
           <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
-            Keine technischen Maße erkannt.
+            Keine technischen Daten erkannt.
           </p>
         ) : (
           <dl className="grid gap-2.5 text-[0.88rem]">
@@ -192,7 +208,7 @@ export function EditableAbeListsSection({
                 className="flex items-start justify-between gap-3 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3"
               >
                 <dt className="text-[color:var(--vd-muted)]">{spec.label}</dt>
-                <dd className="shrink-0 font-semibold tabular-nums tracking-[-0.02em] text-[color:var(--vd-text)]">
+                <dd className="min-w-0 flex-1 text-right font-semibold tracking-[-0.02em] whitespace-pre-wrap text-[color:var(--vd-text)]">
                   {spec.value}
                 </dd>
               </div>
@@ -210,29 +226,11 @@ export function EditableAbeListsSection({
             value={conditionsText}
             onChange={(event) => setConditionsText(event.target.value)}
             rows={Math.min(8, Math.max(3, displayConditions.length || 3))}
-            placeholder="Eine vollständige Auflage pro Zeile"
+            placeholder="Eine vollständige Auflage pro Abschnitt"
             className="w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 text-[0.88rem] leading-relaxed text-[color:var(--vd-text)] outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
           />
-        ) : displayConditions.length === 0 ? (
-          <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
-            Keine Auflagen erkannt.
-          </p>
         ) : (
-          <ol className="space-y-3">
-            {displayConditions.map((condition, index) => (
-              <li
-                key={`${index}-${condition.slice(0, 48)}`}
-                className="flex gap-3 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3 text-[0.88rem]"
-              >
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[0.7rem] font-semibold text-white">
-                  {index + 1}
-                </span>
-                <span className="whitespace-pre-wrap pt-0.5 leading-relaxed text-[color:var(--vd-text)]">
-                  {condition}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <CollapsibleAuflagenList conditions={displayConditions} />
         )}
       </section>
 

@@ -111,7 +111,7 @@ export function AnimatedVehicleHeader({
 
   const frame = (
     <motion.div
-      className="relative aspect-[4/3] w-[5.25rem] sm:w-[6.75rem]"
+      className="relative aspect-[4/3] w-[6.75rem] sm:w-[8.5rem]"
       initial={{ opacity: 0, scale: 0.94, y: 6 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={ENTRANCE}

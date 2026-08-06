@@ -195,8 +195,7 @@ describe("teilegutachten mappers", () => {
     expect(approval.data.immediateInspectionRequired).toBe(true);
     expect(approval.data.documentNumber).toBe("14-00123-CP-GBM");
     expect(approval.data.validityArea).toContain("Mazda RX-8");
-    expect(approval.data.validityArea).toContain("Auflagen:");
-    expect(approval.data.validityArea).toContain("Achsvermessung");
+    expect(approval.data.validityArea).not.toContain("Auflagen:");
     expect(approval.data.validityArea).toContain("Kennzeichnung");
   });
 
@@ -246,14 +245,20 @@ describe("teilegutachten mappers", () => {
     });
 
     expect(teilegutachtenVehicleApprovals(extracted)).toEqual([
-      "Mazda RX-8 (SE3P)",
-      "BMW 3er (E90)",
+      "Mazda · SE3P · RX-8",
+      "BMW · E90 · 3er",
     ]);
 
     const fields = teilegutachtenToAnalyzeFields(extracted);
     expect(fields.vehicleApprovals).toEqual([
-      "Mazda RX-8 (SE3P)",
-      "BMW 3er (E90)",
+      "Mazda · SE3P · RX-8",
+      "BMW · E90 · 3er",
+    ]);
+    const approval = teilegutachtenToApprovalFields(extracted);
+    expect(approval.data.compatibilityTable?.headers).toEqual([
+      "Hersteller",
+      "Typ",
+      "Modell",
     ]);
   });
 
@@ -276,9 +281,16 @@ describe("teilegutachten mappers", () => {
 
     expect(vehicleApprovalsFromCompatibilityTable({
       caption: null,
-      headers: ["Fahrzeug"],
-      rows: [{ id: "r1", cells: ["Mazda RX-8 (SE3P)"], isUserVehicleMatch: false, matchReason: null }],
-    })).toEqual(["Mazda RX-8 (SE3P)"]);
+      headers: ["Hersteller", "Modell", "Typ"],
+      rows: [
+        {
+          id: "r1",
+          cells: ["Mazda", "RX-8", "SE3P"],
+          isUserVehicleMatch: false,
+          matchReason: null,
+        },
+      ],
+    })).toEqual(["Mazda · SE3P · RX-8"]);
 
     expect(teilegutachtenVehicleApprovals(extracted)).toEqual([
       "Mazda RX-8 (SE3P)",

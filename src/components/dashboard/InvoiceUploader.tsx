@@ -16,6 +16,7 @@ import { ABEOverview } from "@/components/dashboard/ABEOverview";
 import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverview";
 import { TeilegutachtenOverview } from "@/components/dashboard/TeilegutachtenOverview";
 import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
+import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -659,7 +660,13 @@ export function InvoiceUploader({
         "conditions",
         review.auflagen?.length ? JSON.stringify(review.auflagen) : "",
       );
-      formData.set("technicalSpecs", "");
+      const technicalSpecs = technicalSpecsFromTeilegutachtenTable(
+        approval.data.technicalDataTable,
+      );
+      formData.set(
+        "technicalSpecs",
+        technicalSpecs?.length ? JSON.stringify(technicalSpecs) : "",
+      );
       formData.set("partCategory", review.partCategory?.trim() ?? "");
       formData.set("notes", notes);
       formData.set("manufacturer", review.manufacturer?.trim() ?? "");

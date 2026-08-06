@@ -5,8 +5,8 @@ export type ParseStringListOptions = {
   maxItems?: number;
 };
 
-/** Longer limit for fully worded ABE Auflagen. */
-export const ABE_CONDITION_MAX_LENGTH = 1_200;
+/** Longer limit for fully worded ABE / Teilegutachten Auflagen. */
+export const ABE_CONDITION_MAX_LENGTH = 2_400;
 export const ABE_CONDITION_MAX_ITEMS = 40;
 
 /**

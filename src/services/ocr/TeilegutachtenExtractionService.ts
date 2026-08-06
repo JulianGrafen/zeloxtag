@@ -21,7 +21,7 @@ import {
 import { tableMatchingService } from "@/services/ocr/TableMatchingService";
 
 export const TEILEGUTACHTEN_MAX_CHARS = ABE_CONTEXT_MAX_CHARS;
-const TEILEGUTACHTEN_MAX_TOKENS = 2_400;
+const TEILEGUTACHTEN_MAX_TOKENS = 3_200;
 
 export type TeilegutachtenExtractionOptions = {
   /** Garage vehicle for Verwendungsbereich match. */
@@ -56,9 +56,18 @@ export function buildTeilegutachtenSystemPrompt(
     '- "requiresPhysicalInspection" — always true (TGA mandates Anbauabnahme).',
     "",
     "VERWENDUNGSBEREICH section (critical):",
-    '- "verwendungsbereich" — extract the full Verwendungsbereich / Gültigkeitsbereich text verbatim.',
-    '- "auflagen" — extract EVERY Auflage, Bedingung, Hinweis listed under or near Verwendungsbereich.',
-    "  Each bullet, numbered item, or separate condition = one array entry. Do NOT summarize.",
+    '- "compatibilityTable" — when Verwendungsbereich is tabular, extract ONLY these columns per row:',
+    "  Fahrzeughersteller, Fahrzeugtyp, Handelsbezeichnung.",
+    "  Do NOT include Achslasten, ABE-Nr, Ausführungen, footnotes, or section headings as cells.",
+    '- "verwendungsbereich" — null when compatibilityTable is filled; otherwise a short plain-text summary.',
+    '- "auflagen" — one array item per section: heading (ends with ":") plus all following paragraphs until the next heading.',
+    "  Example item: \"Berichtigung der Fahrzeugpapiere:\\nDie Berichtigung … zu beantragen.\\nWeitere Festlegungen …\"",
+    "  Do NOT split headings and body into separate array entries.",
+    "",
+    "TECHNISCHE DATEN section (critical):",
+    '- "technicalDataTable" — extract Section II / Technische Daten as a structured table.',
+    "  Preserve complete cell text (dimensions, part ids, test values).",
+    "  Do NOT put technical values into auflagen or Verwendungsbereich.",
     "",
     "Locate the Kennzeichnung / Markierung section carefully — police checks verify",
     "that the installed part matches this physical marking during Anbauabnahme.",
@@ -69,8 +78,8 @@ export function buildTeilegutachtenSystemPrompt(
       ...base,
       "",
       "No target vehicle was provided.",
-      "Still extract verwendungsbereich and auflagen from the document when present.",
-      "Set userVehicleMatchStatus, matchedVehicleRow, and compatibilityTable to null.",
+      "Still extract compatibilityTable (vehicle columns only) and auflagen when present.",
+      "Set userVehicleMatchStatus and matchedVehicleRow to null.",
       "Return ONLY valid JSON matching the schema.",
     ].join(" ");
   }
@@ -88,10 +97,10 @@ export function buildTeilegutachtenSystemPrompt(
     "",
     `TARGET VEHICLE CHECK: The user drives a ${target}.${extras ? ` ${extras}.` : ""}`,
     "Scan the 'Verwendungsbereich' (compatibility table) specifically for THIS vehicle.",
-    "- If you find a match, set 'userVehicleMatchStatus' to 'verified' and extract the exact row into 'matchedVehicleRow'.",
-    "- Always extract the full Verwendungsbereich text into 'verwendungsbereich' and ALL Auflagen into 'auflagen',",
-    "  especially those applying to the matched vehicle row or listed under Auflagen/Bedingungen/Hinweise.",
-    "- If you do not find this exact vehicle, set status to 'not_found' but still extract verwendungsbereich and auflagen when readable.",
+    "- If you find a match, set 'userVehicleMatchStatus' to 'verified' and extract the matched row into 'matchedVehicleRow' as 'Hersteller · Typ · Modell'.",
+    "- Fill 'compatibilityTable' with vehicle columns only; set 'verwendungsbereich' to null when the table is present.",
+    "- Extract ALL Auflagen into 'auflagen', especially those applying to the matched vehicle row.",
+    "- If you do not find this exact vehicle, set status to 'not_found' but still extract compatibilityTable and auflagen when readable.",
     "- If the table is too complex or unreadable, set status to 'needs_manual_check'.",
     "When the Verwendungsbereich is tabular, also fill 'compatibilityTable' with headers + rows",
     "(isUserVehicleMatch=false, matchReason=null for every row). Otherwise set compatibilityTable to null.",
@@ -140,14 +149,14 @@ export class TeilegutachtenExtractionService {
           "German Teilegutachten § 19 Abs. 3 OCR (Markdown).",
           `TARGET VEHICLE: ${formatAbeVehicleContextLabel(vehicleContext!)}`,
           "Extract certificateNumber, part fields, Kennzeichnung (physicalMarking),",
-          "Verwendungsbereich (verwendungsbereich), Auflagen (auflagen), match status, matchedVehicleRow.",
+          "Verwendungsbereich (verwendungsbereich), Auflagen (auflagen), Technische Daten (technicalDataTable), match status, matchedVehicleRow.",
           "",
           windowText,
         ]
       : [
           "German Teilegutachten § 19 Abs. 3 OCR (Markdown).",
           "Extract certificateNumber, manufacturer, partCategory, partType, physicalMarking (Kennzeichnung),",
-          "testingOrganization, verwendungsbereich, auflagen.",
+          "testingOrganization, verwendungsbereich, auflagen, technicalDataTable.",
           "Set userVehicleMatchStatus and matchedVehicleRow to null.",
           "",
           windowText,

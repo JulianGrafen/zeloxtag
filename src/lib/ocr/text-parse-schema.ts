@@ -76,7 +76,7 @@ export const invoiceTextParseSchema = z.object({
   /** Issuing authority, e.g. KBA / Hersteller. */
   authority: z.string().trim().min(1).max(120).nullable(),
   /** ABE Auflagen / conditions — full wording, not summaries. */
-  conditions: z.array(z.string().trim().min(1).max(1200)).max(40).nullable(),
+  conditions: z.array(z.string().trim().min(1).max(2400)).max(40).nullable(),
   /** Part family label: Aerodynamik, Räder, Fahrwerk, Abgasanlage, … */
   partCategory: z.string().trim().min(1).max(120).nullable(),
   /** Longer freigabe description for ABE detail. */

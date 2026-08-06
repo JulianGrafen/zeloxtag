@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { TableDataSchema } from "@/lib/validations/abeSchema";
+
 /**
  * Strict Zod schemas for German automotive approval documents.
  * Used by Strategy services in `@/services/documents`.
@@ -52,6 +54,10 @@ export const TeilegutachtenSchema = z
     documentNumber: nonEmpty(120),
     validityArea: nonEmpty(2_000),
     immediateInspectionRequired: z.boolean(),
+    /** Structured Verwendungsbereich — Hersteller · Typ · Modell only. */
+    compatibilityTable: TableDataSchema.nullable().optional(),
+    /** Section II — Technische Daten. */
+    technicalDataTable: TableDataSchema.nullable().optional(),
   })
   .strict();
 

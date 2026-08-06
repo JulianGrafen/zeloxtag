@@ -12,12 +12,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import { VerwendungsbereichTable } from "@/components/documents/verwendungsbereich-table";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
+import type {
+  AbeUserVehicleMatchStatus,
+  TableData,
+} from "@/lib/validations/abeSchema";
+import {
+  groupTeilegutachtenAuflagen,
+} from "@/lib/validations/teilegutachten-auflagen";
 import {
   teilegutachtenToApprovalFields,
+  teilegutachtenVehicleApprovals,
   type TeilegutachtenExtraction,
 } from "@/lib/validations/teilegutachtenSchema";
-import type { AbeUserVehicleMatchStatus } from "@/lib/validations/abeSchema";
 
 export type TeilegutachtenReviewFields = {
   certificateNumber: string | null;
@@ -30,6 +38,10 @@ export type TeilegutachtenReviewFields = {
   matchedVehicleRow: string | null;
   /** Fahrzeugfreigaben — one entry per compatible vehicle / row. */
   vehicleApprovals: string[] | null;
+  /** Structured Verwendungsbereich table (Hersteller · Typ · Modell). */
+  compatibilityTable: TableData | null;
+  /** Section II — Technische Daten. */
+  technicalDataTable: TableData | null;
   verwendungsbereich: string | null;
   auflagen: string[] | null;
 };
@@ -126,15 +138,30 @@ function parseLinesFromEdit(value: string): string[] | null {
 }
 
 function formatAuflagenForEdit(auflagen: string[] | null | undefined): string {
-  return auflagen?.join("\n") ?? "";
+  const grouped = groupTeilegutachtenAuflagen(auflagen ?? []);
+  return grouped.join("\n\n") ?? "";
 }
 
 function parseAuflagenFromEdit(value: string): string[] | null {
-  const lines = value
-    .split("\n")
-    .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+  const blocks = value
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
     .filter(Boolean);
-  return lines.length > 0 ? lines : null;
+  const lines =
+    blocks.length > 0
+      ? blocks.flatMap((block) =>
+          block
+            .split("\n")
+            .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+            .filter(Boolean),
+        )
+      : value
+          .split("\n")
+          .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+          .filter(Boolean);
+
+  const grouped = groupTeilegutachtenAuflagen(lines);
+  return grouped.length > 0 ? grouped : null;
 }
 
 function parsePhysicalMarkingFromNotes(
@@ -183,11 +210,19 @@ export function fieldsToTeilegutachtenReview(
     vehicleApprovals: fields.vehicleApprovals?.length
       ? [...fields.vehicleApprovals]
       : null,
+    compatibilityTable:
+      approvalFields?.kind === "teilegutachten"
+        ? approvalFields.data.compatibilityTable ?? null
+        : null,
+    technicalDataTable:
+      approvalFields?.kind === "teilegutachten"
+        ? approvalFields.data.technicalDataTable ?? null
+        : null,
     verwendungsbereich:
       parseVerwendungsbereichFromNotes(fields.notes) ||
       fromValidity.verwendungsbereich,
     auflagen: fields.conditions?.length
-      ? fields.conditions
+      ? groupTeilegutachtenAuflagen(fields.conditions)
       : fromValidity.auflagen,
   };
 }
@@ -208,7 +243,8 @@ function reviewToExtraction(
     verwendungsbereich: review.verwendungsbereich?.trim() || null,
     auflagen: review.auflagen,
     matchedVehicleRow: review.matchedVehicleRow?.trim() || null,
-    compatibilityTable: null,
+    compatibilityTable: review.compatibilityTable,
+    technicalDataTable: review.technicalDataTable,
   };
 }
 
@@ -248,8 +284,13 @@ export function TeilegutachtenOverview({
       review.partType || review.partCategory,
     ].filter(Boolean);
     const title = titleParts.join(" · ").slice(0, 120);
-    const approval = teilegutachtenToApprovalFields(reviewToExtraction(review));
-    void onSave({ review, approvalFields: approval, title });
+    const extraction = reviewToExtraction(review);
+    const approval = teilegutachtenToApprovalFields(extraction);
+    const syncedReview = {
+      ...review,
+      vehicleApprovals: teilegutachtenVehicleApprovals(extraction),
+    };
+    void onSave({ review: syncedReview, approvalFields: approval, title });
   }
 
   return (
@@ -377,38 +418,70 @@ export function TeilegutachtenOverview({
               placeholder='z. B. "Aufdruck auf den Federwindungen"'
             />
           </Field>
-          <Field label="Fahrzeugfreigaben (eine pro Zeile)">
-            <textarea
-              value={formatLinesForEdit(review.vehicleApprovals)}
-              onChange={(event) =>
-                patch("vehicleApprovals", parseLinesFromEdit(event.target.value))
-              }
-              placeholder={"Mazda RX-8 (SE3P)\nBMW 3er (E90)"}
-              rows={4}
-              className="claim-input min-h-[5.5rem] w-full resize-y text-[0.88rem]"
-            />
+          <Field label="Fahrzeugfreigaben">
+            {review.compatibilityTable?.rows.length ? (
+              <VerwendungsbereichTable table={review.compatibilityTable} />
+            ) : (
+              <textarea
+                value={formatLinesForEdit(review.vehicleApprovals)}
+                onChange={(event) =>
+                  patch(
+                    "vehicleApprovals",
+                    parseLinesFromEdit(event.target.value),
+                  )
+                }
+                placeholder={"Mazda RX-8 · SE3P\nBMW 3er · E90"}
+                rows={4}
+                className="claim-input min-h-[5.5rem] w-full resize-y text-[0.88rem]"
+              />
+            )}
           </Field>
-          <Field label="Verwendungsbereich">
-            <textarea
-              value={review.verwendungsbereich ?? ""}
-              onChange={(event) =>
-                patch("verwendungsbereich", event.target.value || null)
-              }
-              placeholder="Für welche Fahrzeuge / Konfigurationen gilt das Teilegutachten?"
-              rows={4}
-              className="claim-input min-h-[5.5rem] w-full resize-y text-[0.88rem]"
-            />
+          {!review.compatibilityTable?.rows.length ? (
+            <Field label="Verwendungsbereich">
+              <textarea
+                value={review.verwendungsbereich ?? ""}
+                onChange={(event) =>
+                  patch("verwendungsbereich", event.target.value || null)
+                }
+                placeholder="Kurzbeschreibung, wenn keine Tabelle erkannt wurde"
+                rows={4}
+                className="claim-input min-h-[5.5rem] w-full resize-y text-[0.88rem]"
+              />
+            </Field>
+          ) : null}
+          <Field label="Technische Daten">
+            {review.technicalDataTable?.rows.length ? (
+              <VerwendungsbereichTable
+                table={review.technicalDataTable}
+                highlightMatches={false}
+              />
+            ) : (
+              <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
+                Keine technischen Daten erkannt — siehe Original-PDF.
+              </p>
+            )}
           </Field>
-          <Field label="Auflagen (eine pro Zeile)">
-            <textarea
-              value={formatAuflagenForEdit(review.auflagen)}
-              onChange={(event) =>
-                patch("auflagen", parseAuflagenFromEdit(event.target.value))
-              }
-              placeholder={"Sichtprüfung der Befestigungspunkte\nAchsvermessung erforderlich"}
-              rows={5}
-              className="claim-input min-h-[6.5rem] w-full resize-y font-mono text-[0.84rem] leading-relaxed"
-            />
+          <Field label="Auflagen">
+            <details className="group rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-[0.84rem] font-medium text-[color:var(--vd-text)] [&::-webkit-details-marker]:hidden">
+                <span>
+                  {review.auflagen?.length
+                    ? `${review.auflagen.length} Auflagen · bearbeiten`
+                    : "Auflagen bearbeiten"}
+                </span>
+              </summary>
+              <div className="border-t border-[color:var(--vd-border)] p-3">
+                <textarea
+                  value={formatAuflagenForEdit(review.auflagen)}
+                  onChange={(event) =>
+                    patch("auflagen", parseAuflagenFromEdit(event.target.value))
+                  }
+                  placeholder={"Unverzügliche Änderungsabnahme: …\nMitführen von Dokumenten: …"}
+                  rows={6}
+                  className="claim-input min-h-[7rem] w-full resize-y text-[0.84rem] leading-relaxed"
+                />
+              </div>
+            </details>
           </Field>
         </div>
 

@@ -60,6 +60,14 @@ export function DocumentAbeDetailView({
     manufacturer.length > 0 &&
     partName.toLowerCase().startsWith(manufacturer.toLowerCase());
   const approvals = document.vehicle_approvals ?? [];
+  const tgTable =
+    document.approval_fields?.kind === "teilegutachten"
+      ? document.approval_fields.data.compatibilityTable ?? null
+      : null;
+  const tgTechnicalTable =
+    document.approval_fields?.kind === "teilegutachten"
+      ? document.approval_fields.data.technicalDataTable ?? null
+      : null;
   const conditions = document.conditions ?? [];
   const technicalSpecs = document.technical_specs ?? [];
   const pages = document.page_count && document.page_count > 0 ? document.page_count : 1;
@@ -189,6 +197,8 @@ export function DocumentAbeDetailView({
             technicalSpecs={technicalSpecs}
             conditions={conditions}
             notes={document.notes}
+            compatibilityTable={isTeilegutachten ? tgTable : null}
+            technicalDataTable={isTeilegutachten ? tgTechnicalTable : null}
           />
         ) : null}
 

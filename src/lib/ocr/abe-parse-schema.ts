@@ -57,7 +57,7 @@ export const ABE_CONDITION_MAX_ITEMS = 40;
 
 export const abeTechnicalSpecSchema = z.object({
   label: z.string().trim().min(1).max(80),
-  value: z.string().trim().min(1).max(160),
+  value: z.string().trim().min(1).max(800),
 });
 
 export type AbeTechnicalSpec = z.infer<typeof abeTechnicalSpecSchema>;
