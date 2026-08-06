@@ -34,23 +34,33 @@ export function resolveVehicleImage(input: {
 }): VehicleImageMatch | undefined {
   const uploaded = input.silhouetteImageUrl?.trim();
   const vehicleId = input.vehicleId?.trim();
-  // Only proxy absolute remote Storage URLs (COEP). Local /vehicles/* stay as-is.
-  if (uploaded && vehicleId && /^https?:\/\//i.test(uploaded)) {
+
+  // Owner uploads: always same-origin proxy (COEP blocks direct Supabase URLs).
+  if (uploaded && vehicleId) {
+    const bust =
+      cacheBustFromSilhouetteUrl(uploaded) ?? Date.now().toString();
     return {
-      src: silhouetteDisplayUrl(vehicleId, cacheBustFromSilhouetteUrl(uploaded)),
+      src: silhouetteDisplayUrl(vehicleId, bust),
       alt: `${input.make} ${input.model}`.trim() || "Fahrzeug",
     };
   }
-  if (uploaded) {
+
+  if (uploaded?.startsWith("/")) {
     return {
       src: uploaded,
       alt: `${input.make} ${input.model}`.trim() || "Fahrzeug",
     };
   }
 
-  const make = normalize(input.make);
-  const model = normalize(input.model);
-  const blob = `${make} ${model}`;
+  return resolveVehicleCatalogImage(input.make, input.model);
+}
+
+/** Catalog cutout only — used when owner upload fails to load. */
+export function resolveVehicleCatalogImage(
+  make: string,
+  model: string,
+): VehicleImageMatch | undefined {
+  const blob = `${normalize(make)} ${normalize(model)}`;
 
   // Toyota Supra A80 (demo showcase cutout)
   if (

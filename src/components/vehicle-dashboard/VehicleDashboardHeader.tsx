@@ -6,6 +6,7 @@ interface VehicleDashboardHeaderProps {
   ownerName: string;
   vehicleModel: string;
   vehicleImage?: string;
+  vehicleImageFallback?: string;
   vehicleImageAlt?: string;
   statusLabel?: string;
   onEditVehicleImage?: () => void;
@@ -15,6 +16,7 @@ export function VehicleDashboardHeader({
   ownerName,
   vehicleModel,
   vehicleImage,
+  vehicleImageFallback,
   vehicleImageAlt,
   statusLabel = "ZeloxTag · Verbunden",
   onEditVehicleImage,
@@ -49,6 +51,7 @@ export function VehicleDashboardHeader({
 
         <AnimatedVehicleHeader
           silhouetteImageUrl={vehicleImage}
+          fallbackImageUrl={vehicleImageFallback}
           alt={vehicleImageAlt ?? greeting}
           onEdit={onEditVehicleImage}
         />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveVehicleImage } from "./vehicle-image";
+import { resolveVehicleCatalogImage, resolveVehicleImage } from "./vehicle-image";
 
 describe("resolveVehicleImage", () => {
   it("maps uploaded silhouettes to the same-origin proxy when vehicleId is set", () => {
@@ -18,16 +18,13 @@ describe("resolveVehicleImage", () => {
     });
   });
 
-  it("keeps remote URL when vehicleId is missing", () => {
+  it("ignores remote URL without vehicleId and uses catalog", () => {
     const match = resolveVehicleImage({
       make: "BMW",
       model: "530d",
       silhouetteImageUrl: "https://example.com/cutout.png",
     });
-    expect(match).toEqual({
-      src: "https://example.com/cutout.png",
-      alt: "BMW 530d",
-    });
+    expect(match?.src).toBe("/vehicles/bmw-530d.png");
   });
 
   it("falls back to catalog when silhouette is empty", () => {
@@ -36,6 +33,11 @@ describe("resolveVehicleImage", () => {
       model: "530d",
       silhouetteImageUrl: "  ",
     });
+    expect(match?.src).toBe("/vehicles/bmw-530d.png");
+  });
+
+  it("resolveVehicleCatalogImage maps BMW 530d", () => {
+    const match = resolveVehicleCatalogImage("BMW", "530d");
     expect(match?.src).toBe("/vehicles/bmw-530d.png");
   });
 

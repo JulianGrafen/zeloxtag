@@ -218,8 +218,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (tagUuid) {
-      revalidatePath(`/v/${tagUuid}`);
-      revalidatePath(`/v/${tagUuid}/daten`);
+      revalidatePath(`/v/${tagUuid}`, "page");
+      revalidatePath(`/v/${tagUuid}/daten`, "page");
     }
 
     return NextResponse.json({

@@ -29,7 +29,7 @@ import {
 export type ClientVehicleUploadProps = {
   vehicleId: string;
   tagUuid: string;
-  onUploaded?: (silhouetteImageUrl: string) => void;
+  onUploaded?: (silhouetteDisplayUrl: string) => void;
   onSkip?: () => void;
   skipLabel?: string;
   title?: string;
@@ -284,7 +284,11 @@ export function ClientVehicleUpload({
           return preview ?? previous;
         });
         setState("done");
-        onUploaded?.(payload.silhouetteImageUrl);
+        const displayUrl =
+          payload.silhouetteDisplayUrl ?? payload.silhouetteImageUrl;
+        if (displayUrl) {
+          onUploaded?.(displayUrl);
+        }
         router.refresh();
       } catch (error) {
         setState("idle");

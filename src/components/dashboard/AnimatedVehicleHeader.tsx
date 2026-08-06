@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Camera } from "lucide-react";
 
@@ -8,6 +9,8 @@ import { VehicleSilhouette } from "@/components/vehicle-dashboard/VehicleSilhoue
 type AnimatedVehicleHeaderProps = {
   /** Transparent PNG (or catalog cutout). Null → SVG fallback. */
   silhouetteImageUrl?: string | null;
+  /** Catalog cutout when owner upload / proxy fails. */
+  fallbackImageUrl?: string | null;
   alt: string;
   className?: string;
   /** Owner can tap the cutout to replace / upload a side photo. */
@@ -23,17 +26,35 @@ const SPRING = {
 
 /**
  * Dashboard roll-in: car enters from the right with a spring stop.
- * Falls back to the generic SVG silhouette when no URL is set.
+ * Falls back to catalog cutout or generic SVG when the primary src fails.
  */
 export function AnimatedVehicleHeader({
   silhouetteImageUrl,
+  fallbackImageUrl,
   alt,
   className = "",
   onEdit,
   editLabel = "Fahrzeugbild ändern",
 }: AnimatedVehicleHeaderProps) {
-  const src = silhouetteImageUrl?.trim() || null;
+  const primary = silhouetteImageUrl?.trim() || null;
+  const fallback = fallbackImageUrl?.trim() || null;
+  const [activeSrc, setActiveSrc] = useState<string | null>(primary);
+  const [showSvgFallback, setShowSvgFallback] = useState(false);
+
+  useEffect(() => {
+    setActiveSrc(primary);
+    setShowSvgFallback(false);
+  }, [primary]);
+
   const editable = typeof onEdit === "function";
+
+  function handleImageError() {
+    if (fallback && activeSrc !== fallback) {
+      setActiveSrc(fallback);
+      return;
+    }
+    setShowSvgFallback(true);
+  }
 
   const stage = (
     <motion.div
@@ -42,12 +63,14 @@ export function AnimatedVehicleHeader({
       animate={{ x: 0, opacity: 1 }}
       transition={SPRING}
     >
-      {src ? (
+      {activeSrc && !showSvgFallback ? (
         // Same-origin (catalog or /api/vehicle/silhouette/…) — COEP-safe.
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={src}
+          key={activeSrc}
+          src={activeSrc}
           alt={alt}
+          onError={handleImageError}
           className="absolute inset-0 h-full w-full object-contain object-right drop-shadow-[0_10px_18px_rgba(0,0,0,0.18)]"
         />
       ) : (

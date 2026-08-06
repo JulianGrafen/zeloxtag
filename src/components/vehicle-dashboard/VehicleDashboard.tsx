@@ -28,6 +28,7 @@ export function VehicleDashboard({
             ownerName={data.ownerName}
             vehicleModel={data.vehicleModel}
             vehicleImage={data.vehicleImage}
+            vehicleImageFallback={data.vehicleImageFallback}
             vehicleImageAlt={data.vehicleImageAlt}
             statusLabel={data.statusLabel}
             onEditVehicleImage={onEditVehicleImage}

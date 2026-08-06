@@ -60,6 +60,7 @@ export interface VehicleDashboardData {
   vehicleModel: string;
   /** Optional real photo; falls back to silhouette */
   vehicleImage?: string;
+  vehicleImageFallback?: string;
   vehicleImageAlt?: string;
   /** Accent label under the greeting, e.g. "QR Tag · Active" */
   statusLabel?: string;

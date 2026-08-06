@@ -72,6 +72,9 @@ export function TagDashboardShell({
   const [scanType, setScanType] = useState<ScanType | null>(null);
   const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
+  const [vehicleImageOverride, setVehicleImageOverride] = useState<string | null>(
+    null,
+  );
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
 
   useEffect(() => {
@@ -154,13 +157,17 @@ export function TagDashboardShell({
               }
             : undefined
         }
+        vehicleImageOverride={vehicleImageOverride}
       />
       {showSilhouettePrompt && mode === "dashboard" && !showSilhouetteEditor ? (
         <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
           <VehicleSilhouetteUpload
             vehicleId={vehicle.id}
             tagUuid={tagUuid}
-            onUploaded={() => setShowSilhouettePrompt(false)}
+            onUploaded={(displayUrl) => {
+              setVehicleImageOverride(displayUrl);
+              setShowSilhouettePrompt(false);
+            }}
             onSkip={() => {
               try {
                 window.localStorage.setItem(
@@ -190,7 +197,10 @@ export function TagDashboardShell({
               title="Fahrzeugbild ändern"
               description="Lade ein neues Seitenfoto hoch — Galerie oder Kamera. Exakt von der Seite für die beste Dashboard-Animation."
               skipLabel="Schließen"
-              onUploaded={() => setShowSilhouetteEditor(false)}
+              onUploaded={(displayUrl) => {
+              setVehicleImageOverride(displayUrl);
+              setShowSilhouetteEditor(false);
+            }}
               onSkip={() => setShowSilhouetteEditor(false)}
             />
           </div>

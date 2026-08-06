@@ -13,7 +13,7 @@ import {
   countFilledTechSpecs,
   parseVehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
-import { resolveVehicleImage } from "@/lib/vehicles/vehicle-image";
+import { resolveVehicleCatalogImage, resolveVehicleImage } from "@/lib/vehicles/vehicle-image";
 
 import { DashboardScanFab } from "./dashboard-scan-fab";
 
@@ -34,6 +34,8 @@ interface TagDashboardViewProps {
   onOpenScanner?: () => void;
   /** Owner: tap header cutout to change silhouette. */
   onEditVehicleImage?: () => void;
+  /** Immediate header refresh after silhouette upload (same-origin display URL). */
+  vehicleImageOverride?: string | null;
 }
 
 /**
@@ -50,6 +52,7 @@ export function TagDashboardView({
   demoMode = false,
   onOpenScanner,
   onEditVehicleImage,
+  vehicleImageOverride,
 }: TagDashboardViewProps) {
   const invoiceCount = documents.filter((doc) => doc.type === "invoice").length;
   const abeCount = documents.filter((doc) => doc.type === "abe").length;
@@ -71,12 +74,14 @@ export function TagDashboardView({
     vehicleId: vehicle.id,
     silhouetteImageUrl: vehicle.silhouette_image_url,
   });
+  const catalogCutout = resolveVehicleCatalogImage(vehicle.make, vehicle.model);
 
   const data = {
     ownerName: ownerName?.trim() || "Fahrer",
     vehicleModel: `${vehicleModel} · ${vehicle.year}`,
-    vehicleImage: cutout?.src,
-    vehicleImageAlt: cutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
+    vehicleImage: vehicleImageOverride ?? cutout?.src,
+    vehicleImageFallback: catalogCutout?.src,
+    vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
     statusLabel: `ZeloxTag · ${shortTag}`,
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),
