@@ -163,6 +163,26 @@ describe("sanitizeTuevPayload · LLM vision output", () => {
 
 describe("TuevOverview · review & display mapping", () => {
   it("fieldsToTuevReview merges LLM approval data with cost fields", () => {
+    const approvalFields = {
+      kind: "tuev" as const,
+      data: {
+        testingOrganization: "TÜV" as const,
+        testDate: "2026-03-12",
+        result: "minor_defects" as const,
+        mileageKm: 85_400,
+        nextInspectionDate: "2028-05",
+        documentNumber: "HU-2026-991",
+        defectsTable: [
+          {
+            checkpoint: "4.2.1a",
+            description: "Scheinwerfer einstellen",
+            severity: "GM" as const,
+          },
+        ],
+        defectsList: ["[4.2.1a] Scheinwerfer einstellen (GM)"],
+      },
+    };
+
     const review = fieldsToTuevReview(
       emptyInvoiceFields({
         vendor: "TÜV Süd · München",
@@ -171,25 +191,7 @@ describe("TuevOverview · review & display mapping", () => {
         date: "2026-03-12",
         mileageKm: 85_400,
       }),
-      {
-        kind: "tuev",
-        data: {
-          testingOrganization: "TÜV",
-          testDate: "2026-03-12",
-          result: "minor_defects",
-          mileageKm: 85_400,
-          nextInspectionDate: "2028-05",
-          documentNumber: "HU-2026-991",
-          defectsTable: [
-            {
-              checkpoint: "4.2.1a",
-              description: "Scheinwerfer einstellen",
-              severity: "GM",
-            },
-          ],
-          defectsList: ["[4.2.1a] Scheinwerfer einstellen (GM)"],
-        },
-      },
+      approvalFields,
     );
 
     expect(review.amount).toBe(118.5);
@@ -197,8 +199,10 @@ describe("TuevOverview · review & display mapping", () => {
     expect(review.testDate).toBe("2026-03-12");
     expect(review.nextInspectionDate).toBe("2028-05");
     expect(review.workshopName).toBe("TÜV Süd · München");
-    expect(review.defectsTable).toHaveLength(1);
-    expect(review.defectsTable?.[0]?.severity).toBe("GM");
+
+    const defects = tuevDefectsForDisplay(approvalFields);
+    expect(defects).toHaveLength(1);
+    expect(defects?.[0]?.severity).toBe("GM");
   });
 
   it("tuevDefectsForDisplay prefers defectsTable over defectsList", () => {
