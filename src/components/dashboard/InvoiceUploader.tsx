@@ -16,6 +16,7 @@ import { ABEOverview } from "@/components/dashboard/ABEOverview";
 import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverview";
 import { TeilegutachtenOverview } from "@/components/dashboard/TeilegutachtenOverview";
 import { TuevOverview } from "@/components/dashboard/TuevOverview";
+import { AbeUploadWizard } from "@/components/documents/AbeUploadWizard";
 import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
 import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
@@ -327,6 +328,22 @@ export function InvoiceUploader({
   if (isTuevUpload) {
     return (
       <TuevUploadWizard
+        vehicleId={vehicleId}
+        tagUuid={tagUuid}
+        vehicleLabel={vehicleLabel}
+        successHref={successHref}
+        onBack={onBack}
+        backHref={resolvedBackHref}
+        backLabel={backLabel}
+      />
+    );
+  }
+
+  // Plain ABE uploads use a 3-step guided wizard (Deckblatt → Hauptseite → Fahrzeugtabelle).
+  // Teilegutachten / Einzelabnahme / EG-BE keep the generic multi-page scanner.
+  if (isGutachtenFamilyUpload) {
+    return (
+      <AbeUploadWizard
         vehicleId={vehicleId}
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}

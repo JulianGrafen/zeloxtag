@@ -16,6 +16,17 @@ import {
   type AbeMinimal,
   type AbeVehicleContext,
 } from "@/lib/validations/abeSchema";
+import {
+  ABE_WIZARD_COVER_JSON_SCHEMA,
+  ABE_WIZARD_MAIN_JSON_SCHEMA,
+  ABE_WIZARD_VEHICLES_JSON_SCHEMA,
+  AbeWizardCoverSchema,
+  AbeWizardMainSchema,
+  AbeWizardVehiclesSchema,
+  type AbeWizardCoverExtraction,
+  type AbeWizardMainExtraction,
+  type AbeWizardVehiclesExtraction,
+} from "@/lib/validations/abeWizardSchemas";
 import { tableMatchingService } from "@/services/ocr/TableMatchingService";
 
 /** Cover-only extract (no garage vehicle). */
@@ -375,6 +386,159 @@ export class AbeExtractionService {
           normalized.matchedVehicleRow
         : normalized.matchedVehicleRow,
     };
+  }
+
+  // ─── Guided wizard step extractions ─────────────────────────────────────────
+
+  /**
+   * Step 1 of the ABE wizard — extract cover-page fields (KBA, design, dimensions,
+   * article numbers, manufacturer brand) from a single Deckblatt image.
+   */
+  async extractCoverFromDocument(
+    input: DocumentBytesInput,
+  ): Promise<AbeWizardCoverExtraction> {
+    return this.runWizardStep<AbeWizardCoverExtraction>(
+      input,
+      [
+        "You are a precise data extractor for German wheel-approval (ABE) cover pages.",
+        "Extract: kbaNumber (digits only, no prefix), abeNumber (Rad-Gutachten-Nr or article number),",
+        "manufacturer (brand printed on the Deckblatt, e.g. 'Alcar Deutschland GmbH'),",
+        "designType (e.g. 'Valencia / Valencia dark'), dimensions (Größe field, e.g. '8J x 18H2 LK 5x120 ET 30'),",
+        "and articleNumbers (all ZU RAD-ARTIKEL-NR. values as an array).",
+        "Copy all values verbatim — do NOT translate, infer or abbreviate.",
+        "Return ONLY valid JSON matching the schema.",
+      ],
+      [
+        "ABE Deckblatt (German wheel-approval cover page). Extract all fields verbatim.",
+        "Key fields: KBA (e.g. 48185), ABE/Rad-Gutachten-Nr., DESIGN, GRÖSSE, ZU RAD-ARTIKEL-NR.",
+        "Example: kbaNumber='48185', abeNumber='AVAG9HA30', manufacturer='Alcar Deutschland GmbH',",
+        "designType='Valencia / Valencia dark', dimensions='8J x 18H2 LK 5x120 ET 30',",
+        "articleNumbers=['AVAG9HA30','AVAG9BP30']",
+      ],
+      ABE_WIZARD_COVER_JSON_SCHEMA,
+      AbeWizardCoverSchema,
+      600,
+      "cover",
+    );
+  }
+
+  /**
+   * Step 2 of the ABE wizard — extract main ABE certificate fields (full ABE
+   * number with suffix, legal manufacturer name, issuing authority).
+   */
+  async extractMainFromDocument(
+    input: DocumentBytesInput,
+  ): Promise<AbeWizardMainExtraction> {
+    return this.runWizardStep<AbeWizardMainExtraction>(
+      input,
+      [
+        "You are a precise data extractor for German ABE (Allgemeine Betriebserlaubnis) certificates.",
+        "Extract: abeNumber (full official number incl. suffix, e.g. '48185*08'),",
+        "manufacturer (full legal name, e.g. 'Alcar Leichtmetallräder GmbH'),",
+        "testingOrganization (issuing authority, e.g. 'Kraftfahrt-Bundesamt' or 'TÜV SÜD').",
+        "Return ONLY valid JSON matching the schema.",
+      ],
+      [
+        "ABE Hauptseite (German type-approval main certificate page).",
+        "Extract the official ABE number (often in format NNNNN*NN), the full legal",
+        "manufacturer name, and the name of the issuing authority/Prüforganisation.",
+      ],
+      ABE_WIZARD_MAIN_JSON_SCHEMA,
+      AbeWizardMainSchema,
+      400,
+      "main",
+    );
+  }
+
+  /**
+   * Step 3 of the ABE wizard — extract the full vehicle compatibility table
+   * (Verwendungsbereich) with tyre sizes and Auflagen codes per model row.
+   */
+  async extractVehiclesFromDocument(
+    input: DocumentBytesInput,
+  ): Promise<AbeWizardVehiclesExtraction> {
+    return this.runWizardStep<AbeWizardVehiclesExtraction>(
+      input,
+      [
+        "You are a precise data extractor for German ABE vehicle-compatibility tables (Verwendungsbereich).",
+        "Extract EVERY row from the table as a vehicleMatches entry.",
+        "Each row must include: model (vehicle name), typeApproval (type-approval code, e.g. e1*2007/46*...),",
+        "driveType (e.g. Allradantrieb / Heckantrieb / Frontantrieb), tireSizes (all listed tyre sizes),",
+        "and auflagenCodes (ALL condition codes — both letter+digit codes like '10B' and plain numbers like '245').",
+        "Do NOT summarize or skip rows. Copy all values verbatim.",
+        "Return ONLY valid JSON matching the schema.",
+      ],
+      [
+        "ABE Fahrzeug- und Auflagen-Tabelle (vehicle compatibility / Verwendungsbereich page).",
+        "Extract every vehicle model row. For each row record the exact vehicle name,",
+        "all type-approval numbers, drive type, all tyre sizes, and all Auflagen/condition codes.",
+        "Include numeric codes as strings. Do not drop rows or merge rows.",
+      ],
+      ABE_WIZARD_VEHICLES_JSON_SCHEMA,
+      AbeWizardVehiclesSchema,
+      2000,
+      "vehicles",
+    );
+  }
+
+  /** Shared LLM call pattern for all three wizard steps. */
+  private async runWizardStep<T>(
+    input: DocumentBytesInput,
+    systemLines: string[],
+    instructionLines: string[],
+    jsonSchema: (typeof ABE_WIZARD_COVER_JSON_SCHEMA | typeof ABE_WIZARD_MAIN_JSON_SCHEMA | typeof ABE_WIZARD_VEHICLES_JSON_SCHEMA),
+    zodSchema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false } },
+    maxTokens: number,
+    stepLabel: string,
+  ): Promise<T> {
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model: DEFAULT_PARSE_MODEL }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const userContent = buildDocumentUserMessage(instructionLines, input);
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: maxTokens,
+        response_format: {
+          type: "json_schema",
+          json_schema: jsonSchema,
+        },
+        messages: [
+          { role: "system", content: systemLines.join(" ") },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(`ABE wizard ${stepLabel} extract failed: ${message}`);
+    }
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new TextParseError(`ABE wizard ${stepLabel} returned an empty response.`);
+    }
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = extractJsonObject(content);
+    } catch {
+      throw new TextParseError(`ABE wizard ${stepLabel} returned invalid JSON.`);
+    }
+
+    const parsed = zodSchema.safeParse(parsedJson);
+    if (!parsed.success) {
+      throw new TextParseError(`ABE wizard ${stepLabel} payload failed schema validation.`);
+    }
+    return parsed.data;
   }
 }
 
