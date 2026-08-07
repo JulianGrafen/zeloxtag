@@ -6,6 +6,7 @@ import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { buildTuevDocumentUserMessage } from "@/lib/ocr/tuev-document-content";
 import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
+import type { PreprocessedTuevDocument } from "@/services/documents/PdfPreprocessor";
 import {
   normalizeTextParseResult,
   type InvoiceLineItem,
@@ -672,6 +673,64 @@ export class TuevExtractionService {
       vendor,
       amount,
       lineItems,
+      requiresManualReview,
+    };
+  }
+
+  /**
+   * Single-shot extraction from pre-processed pages (one-click upload flow).
+   *
+   * - Single page / image → runs full extraction via `extractFromDocument`.
+   * - Multi-page → runs header extraction on page 1 + defects extraction on
+   *   page 2 in parallel, then merges into a single `TuevVisionExtraction`.
+   */
+  async extractFromPreprocessedDocument(
+    preprocessed: PreprocessedTuevDocument,
+    options: TuevExtractionOptions = {},
+  ): Promise<TuevVisionExtraction> {
+    const headerInput: DocumentBytesInput = {
+      bytes: preprocessed.headerPage,
+      contentType: "image/png",
+    };
+
+    if (!preprocessed.defectsPage) {
+      // Single-page document or image — full extraction on the one page.
+      return this.extractFromDocument(headerInput, options);
+    }
+
+    // Multi-page — run both step extractions in parallel for speed.
+    const defectsInput: DocumentBytesInput = {
+      bytes: preprocessed.defectsPage,
+      contentType: "image/png",
+    };
+
+    const [headerResult, defectsResult] = await Promise.all([
+      this.extractHeaderFromDocument(headerInput, options),
+      this.extractDefectsFromDocument(defectsInput, options).catch(
+        (): TuevDefectsExtraction => ({ defectsTable: null, defectsList: null }),
+      ),
+    ]);
+
+    const requiresManualReview =
+      headerResult.requiresManualReview || !headerResult.testDate;
+
+    const report: TuevReport = {
+      testingOrganization: headerResult.testingOrganization,
+      testDate: headerResult.testDate,
+      result: headerResult.result,
+      mileageKm: headerResult.mileageKm,
+      nextInspectionDate: headerResult.nextInspectionDate,
+      documentNumber: headerResult.documentNumber,
+      defectsTable: defectsResult.defectsTable,
+      defectsList: defectsResult.defectsList,
+      requiresManualReview: requiresManualReview || undefined,
+    };
+
+    return {
+      report,
+      vendor: headerResult.vendor,
+      amount: headerResult.amount,
+      lineItems: headerResult.lineItems,
       requiresManualReview,
     };
   }

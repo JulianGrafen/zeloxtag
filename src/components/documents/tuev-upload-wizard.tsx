@@ -21,6 +21,7 @@ import {
 import { TuevOverview } from "@/components/dashboard/TuevOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
+import { SingleClickTuevUpload } from "@/components/documents/single-click-tuev-upload";
 import { Button } from "@/components/ui/button";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { localDateIso } from "@/lib/documents/format";
@@ -44,6 +45,8 @@ import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type WizardPhase =
+  | "mode-select"
+  | "single-click"
   | "step1-camera"
   | "step1-analyzing"
   | "step2-prompt"
@@ -314,7 +317,7 @@ export function TuevUploadWizard({
   backLabel = "Zurück",
 }: TuevUploadWizardProps) {
   const [state, setState] = useState<WizardState>({
-    phase: "step1-camera",
+    phase: "mode-select",
     headerFile: null,
     defectsFile: null,
     headerExtraction: null,
@@ -349,7 +352,7 @@ export function TuevUploadWizard({
   function resetToStart() {
     setPreviewUrl(null, false);
     setState({
-      phase: "step1-camera",
+      phase: "mode-select",
       headerFile: null,
       defectsFile: null,
       headerExtraction: null,
@@ -530,6 +533,139 @@ export function TuevUploadWizard({
   // ─── Render ────────────────────────────────────────────────────────────────
 
   const { phase, headerExtraction, defectsExtraction, error } = state;
+
+  // ── Mode selector ────────────────────────────────────────────────────────────
+
+  if (phase === "mode-select") {
+    return (
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
+        {/* Back */}
+        <header>
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {backLabel}
+            </button>
+          ) : backHref ? (
+            <PressableLink
+              href={backHref}
+              variant="pill"
+              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {backLabel}
+            </PressableLink>
+          ) : null}
+        </header>
+
+        {/* Heading card */}
+        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+            <ScanLine className="h-5 w-5" />
+          </div>
+          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+            TÜV / HU · Upload
+          </p>
+          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+            Wie möchtest du scannen?
+          </h1>
+          <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
+            {vehicleLabel}
+          </p>
+        </div>
+
+        {/* Option 1: Guided Wizard (recommended) */}
+        <button
+          type="button"
+          onClick={() =>
+            setState((prev) => ({ ...prev, phase: "step1-camera" }))
+          }
+          className="group relative w-full rounded-[1.35rem] border-2 border-neutral-900 bg-neutral-900 p-5 text-left text-white shadow-[var(--vd-shadow)] transition-opacity active:opacity-80"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-white/50">
+                Empfohlen
+              </p>
+              <p className="mt-1 text-[1rem] font-semibold">Geführter Scan</p>
+              <p className="mt-1 text-[0.82rem] leading-relaxed text-white/65">
+                In-Browser-Kamera · Schritt für Schritt · maximale Genauigkeit
+              </p>
+            </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10">
+              <ArrowRight className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <span className="rounded-lg bg-white/10 px-2.5 py-1 text-[0.7rem] font-medium">
+              2 Schritte
+            </span>
+            <span className="rounded-lg bg-white/10 px-2.5 py-1 text-[0.7rem] font-medium">
+              ~60 Sek.
+            </span>
+            <span className="rounded-lg bg-emerald-400/20 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-300">
+              100 % Genauigkeit
+            </span>
+          </div>
+        </button>
+
+        {/* Option 2: Single-click (with accuracy warning) */}
+        <button
+          type="button"
+          onClick={() =>
+            setState((prev) => ({ ...prev, phase: "single-click" }))
+          }
+          className="group w-full rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-left shadow-[var(--vd-shadow-sm)] transition-colors hover:border-neutral-300 active:bg-neutral-50"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+                Schnell-Upload
+              </p>
+              <p className="mt-1 text-[1rem] font-semibold text-[color:var(--vd-text)]">
+                PDF oder Foto hochladen
+              </p>
+              <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+                Direkt aus der Galerie — kein Kamera-Flow nötig
+              </p>
+            </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)]">
+              <ArrowRight className="h-5 w-5 text-[color:var(--vd-muted)]" />
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <span className="rounded-lg border border-[color:var(--vd-border)] bg-neutral-100 px-2.5 py-1 text-[0.7rem] font-medium text-neutral-600">
+              1 Schritt
+            </span>
+            <span className="rounded-lg border border-[color:var(--vd-border)] bg-neutral-100 px-2.5 py-1 text-[0.7rem] font-medium text-neutral-600">
+              ~15 Sek.
+            </span>
+            <span className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[0.7rem] font-medium text-amber-700">
+              Weniger genau
+            </span>
+          </div>
+        </button>
+      </section>
+    );
+  }
+
+  // ── Single-click mode ────────────────────────────────────────────────────────
+
+  if (phase === "single-click") {
+    return (
+      <SingleClickTuevUpload
+        vehicleId={vehicleId}
+        tagUuid={tagUuid}
+        vehicleLabel={vehicleLabel}
+        successHref={successHref}
+        onBack={() => setState((prev) => ({ ...prev, phase: "mode-select" }))}
+      />
+    );
+  }
 
   // Camera views are full-screen — render outside the normal page shell.
   if (phase === "step1-camera") {
