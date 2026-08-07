@@ -8,6 +8,8 @@ import {
   type TuevReport,
   type TuevResult,
 } from "@/lib/validations/documentSchemas";
+import { mergeTuevDefectsHybrid } from "@/lib/ocr/tuev-hybrid-merge";
+import { preferTuevHeaderMileageKm } from "@/lib/ocr/mileage-from-text";
 import { defectsListFromTuevDefectRows } from "@/lib/ocr/tuev-defects-from-text";
 
 import { BaseDocumentService } from "./BaseDocumentService";
@@ -203,7 +205,7 @@ function normalizeDefectsTable(value: unknown): TuevDefectRow[] | null {
   return rows.length > 0 ? rows : null;
 }
 
-function resolveTuevDefects(
+function resolveLlmOnlyDefects(
   defectsTable: unknown,
   defectsList: unknown,
 ): { defectsTable: TuevDefectRow[] | null; defectsList: string[] | null } {
@@ -222,7 +224,6 @@ function resolveTuevDefects(
     return { defectsTable: null, defectsList: null };
   }
 
-  // LLM-only: plain-text Mängel → rows without OCR/heuristic re-parsing.
   const parsedTable = list.map((description) => ({
     checkpoint: null,
     description,
@@ -235,19 +236,48 @@ function resolveTuevDefects(
   };
 }
 
+function resolveTuevDefects(
+  defectsTable: unknown,
+  defectsList: unknown,
+  ocrText?: string,
+): { defectsTable: TuevDefectRow[] | null; defectsList: string[] | null } {
+  const llmOnly = resolveLlmOnlyDefects(defectsTable, defectsList);
+  const text = ocrText?.trim() ?? "";
+  if (text.length < 8) return llmOnly;
+
+  return mergeTuevDefectsHybrid(
+    {
+      defectsTable: llmOnly.defectsTable,
+      defectsList: llmOnly.defectsList,
+    },
+    text,
+  );
+}
+
 /**
  * Normalize noisy OCR / LLM payloads before Zod validation.
  * Non-objects are passed through so Zod reports a clear root error.
  * Missing optional fields become `null` instead of crashing later.
  */
-export function sanitizeTuevPayload(rawJson: unknown): unknown {
+export type SanitizeTuevPayloadOptions = {
+  /** OCR text for hybrid KM / Punkt-6 anti-hallucination merge. */
+  ocrText?: string;
+};
+
+export function sanitizeTuevPayload(
+  rawJson: unknown,
+  options: SanitizeTuevPayloadOptions = {},
+): unknown {
   if (!isRecord(rawJson)) {
     return rawJson;
   }
 
+  const ocrText = options.ocrText?.trim() ?? "";
+  const normalizedMileage = normalizeMileageKm(rawJson.mileageKm);
   const defects = resolveTuevDefects(
     rawJson.defectsTable,
     rawJson.defectsList,
+    ocrText.length >= 8 ? ocrText : undefined,
   );
 
   return {
@@ -256,7 +286,10 @@ export function sanitizeTuevPayload(rawJson: unknown): unknown {
     ),
     testDate: normalizeIsoDate(rawJson.testDate),
     result: normalizeResult(rawJson.result),
-    mileageKm: normalizeMileageKm(rawJson.mileageKm),
+    mileageKm:
+      ocrText.length >= 8
+        ? preferTuevHeaderMileageKm(normalizedMileage, ocrText)
+        : normalizedMileage,
     nextInspectionDate: normalizeYearMonth(rawJson.nextInspectionDate),
     documentNumber: normalizeDocumentNumber(rawJson.documentNumber),
     defectsTable: defects.defectsTable,

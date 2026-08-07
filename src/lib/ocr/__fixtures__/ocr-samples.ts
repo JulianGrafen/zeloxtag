@@ -119,6 +119,18 @@ Prüforganisation: TÜV Süd
 Ergebnis: ohne Mängel
 `.trim(),
 
+  tuevReportMangelfreiPunkt6: `
+Untersuchungsbericht nach § 29 StVZO
+Hauptuntersuchung HU/AU
+Prüforganisation: TÜV Rheinland
+Untersuchungsdatum: 12.03.2026
+Kilometerstand: 85.400 km
+6. Festgestellte Mängel
+mangelfrei
+Ergebnis: ohne erhebliche Mängel
+nächste HU: 05/2028
+`.trim(),
+
   percentSkontoTrap: `
 Rechnung RE-99
 Arbeitslohn                       200,00 €

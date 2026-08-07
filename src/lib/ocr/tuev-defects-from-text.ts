@@ -196,6 +196,11 @@ function dedupeDefects(rows: TuevDefectRow[]): TuevDefectRow[] {
   return unique;
 }
 
+/** Whether OCR text contains an explicit Punkt-6 / Festgestellte Mängel section. */
+export function hasTuevPunkt6Section(rawText: string): boolean {
+  return sliceDefectsSection(rawText.replace(/\r\n/g, "\n")) !== null;
+}
+
 /** Use the last explicit Mängel header (footer/legal text often precedes the real list). */
 function sliceDefectsSection(text: string): string | null {
   let lastIndex: number | null = null;

@@ -5,6 +5,7 @@ import {
   tuevDefectsForDisplay,
 } from "@/components/dashboard/TuevOverview";
 import { TUEV_COST_USER_PROMPT_LINES } from "@/lib/ocr/invoice-parse-prompts";
+import { OCR_SAMPLES } from "@/lib/ocr/__fixtures__/ocr-samples";
 import { buildInvoiceTextParseJsonSchema } from "@/lib/ocr/text-parse-schema";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { sanitizeTuevPayload } from "@/services/documents/TuevReportService";
@@ -89,6 +90,53 @@ describe("TuevExtractionService prompts & schema", () => {
     expect(String(schema.schema.properties.invoiceNumber.description)).toMatch(
       /Vorgangs/i,
     );
+  });
+});
+
+describe("sanitizeTuevPayload · hybrid OCR merge", () => {
+  it("discards hallucinated LLM defects when Punkt 6 OCR is empty", () => {
+    const sanitized = sanitizeTuevPayload(
+      {
+        testingOrganization: "TÜV",
+        testDate: "2026-03-12",
+        result: "minor_defects",
+        mileageKm: 85_400,
+        nextInspectionDate: "2028-05",
+        documentNumber: "HU-2026-991",
+        defectsTable: [
+          {
+            checkpoint: "4.2.1a",
+            description: "Halluzinierter Mangel",
+            severity: "GM",
+          },
+        ],
+        defectsList: null,
+      },
+      { ocrText: OCR_SAMPLES.tuevReportMangelfreiPunkt6 },
+    );
+
+    const parsed = new TuevReportService().parseAndValidate(sanitized);
+    expect(parsed.defectsTable).toBeNull();
+    expect(parsed.defectsList).toBeNull();
+  });
+
+  it("prefers OCR header KM-Stand over wrong LLM mileage via ocrText", () => {
+    const sanitized = sanitizeTuevPayload(
+      {
+        testingOrganization: "TÜV",
+        testDate: "2026-04-15",
+        result: "no_defects",
+        mileageKm: 12_345,
+        nextInspectionDate: null,
+        documentNumber: null,
+        defectsTable: null,
+        defectsList: null,
+      },
+      { ocrText: OCR_SAMPLES.tuevReportHeaderKmStand },
+    );
+
+    const parsed = new TuevReportService().parseAndValidate(sanitized);
+    expect(parsed.mileageKm).toBe(142_350);
   });
 });
 

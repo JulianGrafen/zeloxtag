@@ -1,5 +1,5 @@
 /**
- * Azure Document Intelligence env helpers.
+ * Azure Document Intelligence env helpers (TÜV hybrid OCR).
  */
 
 function trimTrailingSlash(value: string): string {

@@ -68,3 +68,23 @@ export function preferMileageKm(
   }
   return extractMileageKmFromText(rawText);
 }
+
+/** TÜV header KM: prefer OCR heuristic over vision LLM (LLM often misses Kopf). */
+export function preferTuevHeaderMileageKm(
+  llmKm: number | null | undefined,
+  rawText: string,
+): number | null {
+  const heuristic = extractMileageKmFromText(rawText);
+  if (heuristic !== null) return heuristic;
+
+  if (
+    typeof llmKm === "number" &&
+    Number.isFinite(llmKm) &&
+    llmKm >= MIN_PLAUSIBLE_KM &&
+    llmKm <= MAX_KM
+  ) {
+    return Math.round(llmKm);
+  }
+
+  return null;
+}
