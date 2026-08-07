@@ -347,6 +347,7 @@ export function InvoiceUploader({
         vehicleId={vehicleId}
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
+        vehicleContext={vehicleContext}
         successHref={successHref}
         onBack={onBack}
         backHref={resolvedBackHref}

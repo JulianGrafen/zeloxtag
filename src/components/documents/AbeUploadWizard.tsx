@@ -16,13 +16,21 @@ import {
   AbeKbaHero,
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
+import { AbeVehicleMatchPicker } from "@/components/documents/abe-vehicle-match-picker";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import { localDateIso } from "@/lib/documents/format";
+import {
+  auflagenForAbeVehicleMatch,
+  formatAbeVehicleApprovalLine,
+  resolveInitialAbeVehicleMatchIndex,
+  selectedVehicleMatchPayload,
+} from "@/lib/ocr/abe-wizard-vehicle-match";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import {
   mergeAbeWizardSteps,
   type AbeWizardCoverExtraction,
@@ -57,6 +65,7 @@ export interface AbeUploadWizardProps {
   vehicleId: string;
   tagUuid: string;
   vehicleLabel: string;
+  vehicleContext?: AbeVehicleContext | null;
   successHref?: string;
   onBack?: () => void;
   backHref?: string;
@@ -73,16 +82,16 @@ const CAPTURE_STEPS: Array<{
   {
     phase: "capture-cover",
     stepNumber: 1,
-    title: "Deckblatt fotografieren",
-    hint: "Schritt 1 von 3 · Scanne die erste Seite — dort stehen KBA-Nummer, Design und Modell-Typ",
-    guideLabel: "Deckblatt im DIN-A4-Rahmen ausrichten",
+    title: "Schritt 1 von 3 · Erste Seite",
+    hint: "Scanne die erste Seite — dort stehen KBA-Nummer, Design und Modell-Typ.",
+    guideLabel: "KBA-Nummer · Design · Modell-Typ",
   },
   {
     phase: "capture-main",
     stepNumber: 2,
-    title: "ABE-Hauptseite fotografieren",
-    hint: "Schritt 2 von 3 · Scanne das Deckblatt der ABE — Seite mit „Kraftfahrt-Bundesamt“ und Überschrift „Allgemeine Betriebserlaubnis“",
-    guideLabel: "Kraftfahrt-Bundesamt · Allgemeine Betriebserlaubnis sichtbar",
+    title: "Schritt 2 von 3 · ABE-Hauptseite",
+    hint: "Scanne das Deckblatt der ABE — die Seite mit „Kraftfahrt-Bundesamt“ und der Überschrift „Allgemeine Betriebserlaubnis“.",
+    guideLabel: "Kraftfahrt-Bundesamt · Allgemeine Betriebserlaubnis",
   },
   {
     phase: "capture-vehicles",
@@ -242,11 +251,17 @@ function reportToFormState(report: AbeWizardReport): ReviewFormState {
   };
 }
 
+interface ReviewSavePayload {
+  form: ReviewFormState;
+  selectedMatchIndex: number | null;
+}
+
 function ReviewSection({
   report,
   previewUrl,
   pageCount,
   vehicleLabel,
+  vehicleContext,
   onSave,
   onRescan,
   isSaving,
@@ -256,7 +271,8 @@ function ReviewSection({
   previewUrl: string | null;
   pageCount: number;
   vehicleLabel: string;
-  onSave: (form: ReviewFormState) => void;
+  vehicleContext?: AbeVehicleContext | null;
+  onSave: (payload: ReviewSavePayload) => void;
   onRescan: () => void;
   isSaving: boolean;
   saveError: string | null;
@@ -265,6 +281,10 @@ function ReviewSection({
     reportToFormState(report),
   );
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedMatchIndex, setSelectedMatchIndex] = useState<number | null>(
+    () => resolveInitialAbeVehicleMatchIndex(report.vehicleMatches, vehicleContext),
+  );
+  const [selectionError, setSelectionError] = useState<string | null>(null);
 
   const set =
     (key: keyof ReviewFormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -372,32 +392,17 @@ function ReviewSection({
           )}
 
           {report.vehicleMatches.length > 0 ? (
-            <div className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3">
-              <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-                Fahrzeugfreigaben ({report.vehicleMatches.length})
-              </p>
-              <ul className="mt-2 space-y-2">
-                {report.vehicleMatches.map((match, i) => (
-                  <li
-                    key={`${match.model}-${i}`}
-                    className="text-[0.78rem] leading-relaxed text-[color:var(--vd-text)]"
-                  >
-                    <span className="font-medium">{match.model}</span>
-                    {match.driveType ? (
-                      <span className="text-[color:var(--vd-muted)]">
-                        {" "}
-                        · {match.driveType}
-                      </span>
-                    ) : null}
-                    {match.tireSizes.length > 0 ? (
-                      <span className="block text-[color:var(--vd-muted)]">
-                        {match.tireSizes.join(", ")}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <AbeVehicleMatchPicker
+              matches={report.vehicleMatches}
+              selectedIndex={selectedMatchIndex}
+              onSelect={(index) => {
+                setSelectedMatchIndex(index);
+                setSelectionError(null);
+              }}
+              vehicleContext={vehicleContext}
+              vehicleLabel={vehicleLabel}
+              selectionError={selectionError}
+            />
           ) : null}
         </div>
 
@@ -415,7 +420,19 @@ function ReviewSection({
           <Button
             type="button"
             disabled={isSaving}
-            onClick={() => onSave(form)}
+            onClick={() => {
+              if (
+                report.vehicleMatches.length > 0 &&
+                selectedMatchIndex === null
+              ) {
+                setSelectionError(
+                  "Bitte wähle dein Fahrzeug aus der Fahrzeugtabelle.",
+                );
+                return;
+              }
+              setSelectionError(null);
+              onSave({ form, selectedMatchIndex });
+            }}
           >
             {isSaving ? (
               <span className="inline-flex items-center gap-2">
@@ -472,6 +489,7 @@ export function AbeUploadWizard({
   vehicleId,
   tagUuid,
   vehicleLabel,
+  vehicleContext = null,
   successHref,
   onBack,
   backHref,
@@ -601,13 +619,26 @@ export function AbeUploadWizard({
     }
   }
 
-  function handleSave(form: ReviewFormState) {
+  function handleSave({ form, selectedMatchIndex }: ReviewSavePayload) {
     if (!state.uploadFile || !state.report) {
       setSaveError("Keine Datei zum Speichern vorhanden.");
       return;
     }
 
+    if (
+      state.report.vehicleMatches.length > 0 &&
+      selectedMatchIndex === null
+    ) {
+      setSaveError("Bitte wähle dein Fahrzeug aus der Fahrzeugtabelle.");
+      return;
+    }
+
     setSaveError(null);
+
+    const selectedMatch =
+      selectedMatchIndex !== null
+        ? state.report.vehicleMatches[selectedMatchIndex] ?? null
+        : null;
 
     const kbaDisplay = form.kbaNumber.trim()
       ? `KBA ${form.kbaNumber.trim()}`
@@ -624,14 +655,10 @@ export function AbeUploadWizard({
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const vehicleApprovals = state.report.vehicleMatches.map(
-      (m) =>
-        `${m.model}${m.driveType ? ` (${m.driveType})` : ""}${m.tireSizes.length ? ` – ${m.tireSizes.join(", ")}` : ""}`,
-    );
-
-    const allAuflagen = Array.from(
-      new Set(state.report.vehicleMatches.flatMap((m) => m.auflagenCodes)),
-    );
+    const vehicleApprovals = selectedMatch
+      ? [formatAbeVehicleApprovalLine(selectedMatch)]
+      : [];
+    const filteredAuflagen = auflagenForAbeVehicleMatch(selectedMatch);
 
     const technicalSpecs = [
       form.abeNumber.trim()
@@ -662,7 +689,7 @@ export function AbeUploadWizard({
       formData.set("kbaNumber", form.kbaNumber.trim());
       formData.set("vehicleApprovals", JSON.stringify(vehicleApprovals));
       formData.set("authority", form.testingOrganization.trim());
-      formData.set("conditions", JSON.stringify(allAuflagen));
+      formData.set("conditions", JSON.stringify(filteredAuflagen));
       formData.set("technicalSpecs", JSON.stringify(technicalSpecs));
       formData.set("partCategory", kbaDisplay ?? "");
       formData.set("notes", "");
@@ -676,6 +703,9 @@ export function AbeUploadWizard({
           kind: "abe",
           data: {
             abeHolder: form.abeHolder.trim() || null,
+            selectedVehicleMatch: selectedMatch
+              ? selectedVehicleMatchPayload(selectedMatch)
+              : null,
           },
         }),
       );
@@ -787,6 +817,7 @@ export function AbeUploadWizard({
           previewUrl={previewUrl}
           pageCount={pageCount || 1}
           vehicleLabel={vehicleLabel}
+          vehicleContext={vehicleContext}
           onSave={handleSave}
           onRescan={resetWizard}
           isSaving={isSaving}

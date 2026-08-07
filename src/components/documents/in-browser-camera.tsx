@@ -234,11 +234,8 @@ export function InBrowserCamera({
           <X className="h-5 w-5" />
         </button>
 
-        <div className="absolute left-1/2 -translate-x-1/2 text-center">
+        <div className="absolute left-1/2 top-1/2 w-[min(72vw,20rem)] -translate-x-1/2 -translate-y-1/2 text-center">
           <p className="text-sm font-semibold text-white">{title}</p>
-          {hint ? (
-            <p className="text-[0.72rem] text-white/55">{hint}</p>
-          ) : null}
         </div>
 
         {/* Gallery / file fallback */}
@@ -259,6 +256,14 @@ export function InBrowserCamera({
           )}
         </label>
       </div>
+
+      {hint ? (
+        <div className="border-b border-white/10 bg-black/35 px-5 py-3 backdrop-blur-sm">
+          <p className="mx-auto max-w-lg text-center text-[0.82rem] leading-relaxed text-white/85">
+            {hint}
+          </p>
+        </div>
+      ) : null}
 
       {/* ── Viewfinder ───────────────────────────────────────────── */}
       <div className="relative flex-1 overflow-hidden">

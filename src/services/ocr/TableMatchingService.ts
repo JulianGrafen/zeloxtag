@@ -28,6 +28,8 @@ function compactAlnum(value: string): string {
   return normalizeMatchToken(value).replace(/[^a-z0-9]/g, "");
 }
 
+export { compactAlnum };
+
 function headerIndex(headers: string[], candidates: string[]): number {
   const normalizedHeaders = headers.map((header) => normalizeMatchToken(header));
   for (const candidate of candidates) {
