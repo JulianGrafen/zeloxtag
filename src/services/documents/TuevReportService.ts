@@ -213,6 +213,64 @@ function normalizeDefectRow(row: TuevDefectRow): TuevDefectRow {
   return { ...row, checkpoint: null };
 }
 
+/**
+ * Checks whether `candidate` checkpoint is a likely OCR misread of `canonical`.
+ * Handles the specific failure mode where one digit gets dropped from a segment
+ * (e.g. '1.1.3a' is a misread of '1.1.13a' because '1' was dropped from '13').
+ */
+function isLikelyMisreadCheckpoint(candidate: string, canonical: string): boolean {
+  const parseCheckpoint = (cp: string) => {
+    const match = cp.match(/^(D)?(\d+(?:\.\d+)*)([a-d])?$/i);
+    if (!match) return null;
+    return {
+      prefix: match[1] ?? "",
+      segments: match[2]!.split("."),
+      suffix: match[3]?.toLowerCase() ?? "",
+    };
+  };
+
+  const cand = parseCheckpoint(candidate);
+  const canon = parseCheckpoint(canonical);
+  if (!cand || !canon) return false;
+  if (cand.prefix !== canon.prefix || cand.suffix !== canon.suffix) return false;
+  if (cand.segments.length !== canon.segments.length) return false;
+
+  let diffCount = 0;
+  for (let i = 0; i < cand.segments.length; i++) {
+    const cs = cand.segments[i]!;
+    const ks = canon.segments[i]!;
+    if (cs === ks) continue;
+    diffCount++;
+    // Candidate segment must be a digit-truncated suffix of the canonical segment
+    // e.g. cs='3', ks='13' → '13'.endsWith('3') and len(13) > len(3)
+    if (!ks.endsWith(cs) || ks.length <= cs.length) return false;
+  }
+
+  return diffCount === 1;
+}
+
+/**
+ * Remove checkpoint rows that are duplicates caused by an OCR misread — specifically
+ * when a shorter checkpoint is a truncated version of a longer one in the same set.
+ */
+function removeMisreadDuplicates(rows: TuevDefectRow[]): TuevDefectRow[] {
+  const checkpoints = [
+    ...new Set(rows.map((r) => r.checkpoint).filter(Boolean) as string[]),
+  ];
+
+  const shadowed = new Set<string>();
+  for (const candidate of checkpoints) {
+    for (const canonical of checkpoints) {
+      if (candidate !== canonical && isLikelyMisreadCheckpoint(candidate, canonical)) {
+        shadowed.add(candidate);
+      }
+    }
+  }
+
+  if (shadowed.size === 0) return rows;
+  return rows.filter((r) => !r.checkpoint || !shadowed.has(r.checkpoint));
+}
+
 function normalizeDefectsTable(value: unknown): TuevDefectRow[] | null {
   if (value == null) return null;
   if (!Array.isArray(value)) return null;
@@ -225,7 +283,8 @@ function normalizeDefectsTable(value: unknown): TuevDefectRow[] | null {
     if (rows.length >= MAX_DEFECTS) break;
   }
 
-  return rows.length > 0 ? rows : null;
+  const deduped = removeMisreadDuplicates(rows);
+  return deduped.length > 0 ? deduped : null;
 }
 
 function resolveTuevDefects(
@@ -234,11 +293,11 @@ function resolveTuevDefects(
 ): { defectsTable: TuevDefectRow[] | null; defectsList: string[] | null } {
   const table = normalizeDefectsTable(defectsTable);
   if (table?.length) {
+    // Always regenerate the plain-text list from the deduplicated table so
+    // misread checkpoints removed from the table are also absent from the list.
     return {
       defectsTable: table,
-      defectsList:
-        normalizeDefectsList(defectsList) ??
-        defectsListFromTuevDefectRows(table),
+      defectsList: defectsListFromTuevDefectRows(table),
     };
   }
 

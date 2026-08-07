@@ -31,21 +31,69 @@ const TUEV_MAX_TOKENS = 2_400;
 export const TUEV_PUNKT6_DEFECTS_GUIDANCE =
   'Festgestellte Mängel stehen IMMER unter Punkt 6 / Abschnitt 6 (z. B. "6. Festgestellte Mängel", "6 Festgestellte Mängel", "(6) Ihr Fahrzeug weist folgende Mängel auf"). Extrahiere Mängel NUR aus Punkt 6 — andere Abschnitte ignorieren.';
 
-/** Prüfpunkt numbers in Punkt 6 are ALWAYS dot-separated — preserve verbatim (e.g. 4.2.1, 1.3.2a). */
+/**
+ * Checkpoint number rules — strictly verbatim, D-prefix preserved.
+ *
+ * Key observations from real TÜV/DEKRA reports:
+ * - Checkpoints can have 2-4 dot-separated segments: "1.1.13a", "5.3.1b", "2.6d"
+ * - Some checkpoints are prefixed with capital 'D': "D5.2.3a", "D5.2.3c"
+ * - A space before the letter suffix is a printing artefact: "5.3.1 b" → "5.3.1b"
+ */
 export const TUEV_PRUEFPUNKT_DOT_GUIDANCE =
-  "Prüfpunkt-Nummern in Punkt 6 sind IMMER punktgetrennt (z. B. 4.2.1, 1.3.2a, 6.1.4, 4.7.1b). " +
-  "Im checkpoint-Feld exakt so übernehmen — Punkte beibehalten, Ziffern nie zusammenziehen.";
+  "PRÜFPUNKT CHECKPOINT RULES (critical — read carefully):\n" +
+  "1. Copy the checkpoint number EXACTLY as printed — count every digit and dot: '1.1.13a' has 2 dots and 4 parts.\n" +
+  "2. Some checkpoints have a capital 'D' prefix (e.g. 'D5.2.3a', 'D5.2.3c'). The 'D' is MANDATORY — never drop it.\n" +
+  "3. DO NOT confuse the capital 'D' prefix with a lowercase 'd' letter suffix: 'D5.2.3c' ≠ '5.2.3d'.\n" +
+  "4. If a letter (a/b/c/d) follows the last digit with a space (e.g. '5.3.1 b'), strip the space → '5.3.1b'.\n" +
+  "5. NEVER add, remove, or merge digits — '1.1.13a' stays '1.1.13a', not '1.13a' or '1.1.1.13a'.";
 
 /** Kilometerstand is under Punkt 4 / Feld 4, also sometimes in the document header. */
 export const TUEV_PUNKT4_MILEAGE_GUIDANCE =
-  'Kilometerstand (mileageKm) steht unter Punkt 4 / Feld 4 / (4) — z. B. "4. Kilometerstand", "4 KM-Stand", "(4) Kilometerstand". ' +
-  'Alternativ im Dokumentkopf (Kopf): "KM-Stand", "Kilometerstand", "Tachostand". ' +
-  'Beispiel: "142.350 km" → 142350. Tausenderpunkte entfernen.';
+  "KILOMETERSTAND (mileageKm): Look for field label '(4)', 'Punkt 4', 'Feld 4', 'Stand Wegstreckenzähler', " +
+  "'KM-Stand', 'Km-St.', 'Kilometerstand', 'Tachostand'. " +
+  "In TÜV Rheinland/FSP reports the label is '(4) Stand Wegstreckenzähler'. " +
+  "In DEKRA reports the label is '(4)Km-St.' in a small table column. " +
+  "Read the 6–7 digit number VERY carefully — every digit matters. Remove thousand separators (. or space). " +
+  "Example: '294.683 km' → 294683, '178 605 km' → 178605.";
+
+/**
+ * testDate = Prüfdatum — ALWAYS from Punkt 3 / Feld 3 / (3) Prüftermin only.
+ * Must NOT be confused with Erstzulassung, Letzte HU, or nächste HU.
+ */
+export const TUEV_PUNKT3_PRUEFDATUM_GUIDANCE =
+  "PRÜFDATUM (testDate): IMMER ausschließlich aus Punkt 3 / Feld 3 / (3) Prüftermin extrahieren.\n" +
+  "Das ist die EINZIGE erlaubte Quelle — keine Fallbacks, keine anderen Datumsfelder.\n" +
+  "Labels: '3. Prüftermin', 'Punkt 3', 'Feld 3', '(3) Prüftermin', '(3)Prüftermin'.\n" +
+  "  TÜV Rheinland/FSP: '(3) Prüftermin: 26.01.2026, 10:21 Uhr' → 2026-01-26\n" +
+  "  DEKRA: '(3)Prüftermin: Mechernich, 23.03.2021' → 2021-03-23\n" +
+  "NIEMALS verwenden (auch wenn lesbar):\n" +
+  "  - 'Erstzulassung' / 'EZ' / 'Erstzulassungsdatum'\n" +
+  "  - 'Letzte HU' / 'Dat.letzt.HU' / 'zuletzt geprüft'\n" +
+  "  - 'nächste HU' / 'Nächste Untersuchung' / 'spätestens bis' / 'Nachuntersuchung bis'\n" +
+  "  - 'Hauptuntersuchung vom', 'Leistungsdatum', 'HU-Datum', Fußzeilen-/Stempeldaten\n" +
+  "  - Dokumenttitel, Formularversion, Fristen aus Punkt 8\n" +
+  "Output: YYYY-MM-DD. Wenn Punkt 3 nicht lesbar → null (nicht raten).";
+
+/** @deprecated Use TUEV_PUNKT3_PRUEFDATUM_GUIDANCE */
+export const TUEV_PRUEFTERMIN_GUIDANCE = TUEV_PUNKT3_PRUEFDATUM_GUIDANCE;
 
 export const TUEV_PUNKT6_TABLE_GUIDANCE =
-  "Punkt 6 Mängel often appear as dense tables or markdown-like rows (Prüfpunkt | Mangel | EM/GM). " +
-  "If the table spans multiple rows or uses compact formatting, extract EVERY row sequentially into defectsTable. " +
-  "Do not truncate, merge, or summarize defects. When unsure about a row, include it rather than omit it.";
+  "MÄNGEL TABLE FORMATS:\n" +
+  "Format A (TÜV Rheinland/FSP): single line per entry: 'checkpoint – EM/GM – description'\n" +
+  "  e.g. '1.1.13a – EM – Bremsbelag 2. Achse rechts verschlissen'\n" +
+  "Format B (DEKRA): TWO lines per entry:\n" +
+  "  Line 1: '-[checkpoint] ([severity])' e.g. '-D5.2.3c (EM)'\n" +
+  "  Line 2: description e.g. 'M+S Reifen Geschwindigkeitsschild fehlt'\n" +
+  "  → Extract: checkpoint='D5.2.3c' (strip hyphen and parentheses!), severity='EM', description=line2.\n" +
+  "  CRITICAL: The '(EM)' or '(GM)' on the checkpoint line is the severity — do NOT include it in checkpoint string.\n" +
+  "Extract EVERY row sequentially. Do not truncate or summarize.";
+
+export const TUEV_PREIS_GUIDANCE =
+  "PRÜFGEBÜHR (amount): Extract the TOTAL fee including VAT. " +
+  "Look for: 'Gesamt', 'Gesamtbetrag', 'Gesamtbetrag inkl. MwSt', 'Prüfungsentgelt gesamt', 'Gesamtbetrag inkl. 19 % MwSt'. " +
+  "Use the bottom-line total — NOT individual line items like 'Hauptuntersuchung' or 'Vorgaben'. " +
+  "Example: 'Gesamt: 171,90 inkl. USt.' → 171.9, 'Gesamtbetrag inkl. MwSt: 125,00 EUR' → 125.0. " +
+  "Comma is decimal separator in German. Return null only when the fee section is completely invisible.";
 
 export const TUEV_ANTI_HALLUCINATION_GUIDANCE =
   "Wenn Punkt 6 leer ist, mangelfrei, oder das Ergebnis ohne Mängel ist: defectsTable und defectsList MÜSSEN null sein. " +
@@ -77,7 +125,9 @@ export const TUEV_JSON_SCHEMA = {
       },
       testDate: {
         type: ["string", "null"],
-        description: "Untersuchungsdatum as YYYY-MM-DD.",
+        description:
+          "Prüfdatum as YYYY-MM-DD — ALWAYS from Punkt 3 / Feld 3 / (3) Prüftermin only. " +
+          "No other date fields. Null when Punkt 3 is unreadable.",
       },
       result: {
         type: "string",
@@ -111,8 +161,11 @@ export const TUEV_JSON_SCHEMA = {
             checkpoint: {
               type: ["string", "null"],
               description:
-                "Dot-separated Prüfpunkt from Punkt 6 exactly as printed (e.g. 4.2.1, 1.3.2a, 4.7.1b, DF6.2.6). " +
-                "Always preserve dots; null only when no Prüfpunkt number is shown.",
+                "Prüfpunkt number from Punkt 6 — COPY VERBATIM including every digit and dot. " +
+                "Examples: '1.1.13a', '1.1.14a', '5.3.1b', '5.3.1d', 'D5.2.3a', 'D5.2.3c', '2.6b', '2.6d'. " +
+                "Capital 'D' prefix MUST be kept (D5.2.3a ≠ 5.2.3a). " +
+                "Strip spaces before letter suffix (e.g. '5.3.1 b' → '5.3.1b'). " +
+                "NEVER add or remove digits. Null only when truly absent.",
             },
             description: {
               type: "string",
@@ -140,7 +193,12 @@ export const TUEV_JSON_SCHEMA = {
       },
       amount: {
         type: ["number", "null"],
-        description: "Gesamt-Prüfgebühr in EUR (HU/AU).",
+        description:
+          "The TOTAL inspection fee in EUR — always the bottom-line sum including VAT. " +
+          "Preferred source labels: 'Gesamt', 'Gesamtbetrag inkl. MwSt', 'Gesamtbetrag inkl. 19 % MwSt', 'Prüfungsentgelt gesamt'. " +
+          "Examples: 'Gesamt: 171,90 inkl. USt.' → 171.9; 'Gesamtbetrag inkl. MwSt: 125,00 EUR' → 125.0. " +
+          "NEVER use line-item prices like 'Hauptuntersuchung 123,81' — those are partial fees. " +
+          "German decimal: comma = decimal point (125,00 → 125.0). Null only when fee section is not visible.",
       },
       lineItems: {
         type: ["array", "null"],
@@ -233,7 +291,9 @@ const TUEV_HEADER_JSON_SCHEMA = {
       testingOrganization: { type: "string", enum: [...TESTING_ORGANIZATIONS] },
       testDate: {
         type: ["string", "null"],
-        description: "Untersuchungsdatum as YYYY-MM-DD.",
+        description:
+          "Prüfdatum as YYYY-MM-DD — ALWAYS from Punkt 3 / Feld 3 / (3) Prüftermin only. " +
+          "No other date fields. Null when Punkt 3 is unreadable.",
       },
       result: { type: "string", enum: [...TUEV_RESULTS] },
       mileageKm: {
@@ -289,7 +349,10 @@ const TUEV_DEFECTS_ONLY_JSON_SCHEMA = {
           properties: {
             checkpoint: {
               type: ["string", "null"],
-              description: "Dot-separated Prüfpunkt exactly as printed.",
+              description:
+                "Prüfpunkt number EXACTLY as printed — copy verbatim, including all digits, dots, and capital 'D' prefix. " +
+                "Examples: '1.1.13a', '1.1.14a', '5.3.1b', '5.3.1d', 'D5.2.3a', 'D5.2.3c'. " +
+                "Strip spaces before letter suffix. NEVER add or remove digits.",
             },
             description: {
               type: "string",
@@ -386,23 +449,34 @@ export function buildTuevSystemPrompt(): string {
   return [
     "You are a strict data extractor for German HU/AU inspection reports (TÜV, DEKRA, GTÜ, KÜS).",
     "Read the uploaded document (PDF or scan) directly — no OCR preprocessing.",
+    "",
+    TUEV_PUNKT3_PRUEFDATUM_GUIDANCE,
+    "",
     TUEV_PUNKT4_MILEAGE_GUIDANCE,
+    "",
+    TUEV_PREIS_GUIDANCE,
+    "",
     TUEV_PUNKT6_DEFECTS_GUIDANCE,
     TUEV_PUNKT6_TABLE_GUIDANCE,
+    "",
     TUEV_PRUEFPUNKT_DOT_GUIDANCE,
+    "NOTE: Checkpoint number segments CAN be 2+ digits (e.g. '1.1.13a' — third segment is '13', not '3').",
+    "      Read every digit carefully. '1.1.13a' has the sequence: 1 → 1 → 13 → a.",
+    "",
     TUEV_ANTI_HALLUCINATION_GUIDANCE,
-    "Extract testingOrganization, testDate (YYYY-MM-DD), result, mileageKm, nextInspectionDate (YYYY-MM),",
-    "documentNumber, defectsTable, defectsList, vendor (Prüfstelle), amount (Gesamtgebühr EUR), lineItems (HU/AU fees).",
-    "For each Punkt-6 defect: dot-separated checkpoint (e.g. 4.2.1, 1.3.2a), description (verbatim), severity EM or GM when shown.",
-    "Optional fields (documentNumber, testDate, mileageKm, nextInspectionDate) → null when unreadable — never guess.",
-    "Map German result wording:",
-    '- "ohne Mängel" / "mangelfrei" → no_defects',
-    '- "geringfügige Mängel" → minor_defects',
-    '- "erhebliche Mängel" → major_defects',
-    '- "gefährliche Mängel" → dangerous_defects',
-    '- "nicht bestanden" → failed',
+    "",
+    "Extract: testingOrganization, testDate from Punkt 3 only (YYYY-MM-DD), result, mileageKm, nextInspectionDate (YYYY-MM),",
+    "documentNumber, defectsTable, defectsList, vendor (Prüfstelle name), amount (Gesamtgebühr EUR), lineItems (HU/AU fee rows).",
+    "",
+    "Result mapping:",
+    '  "ohne Mängel" / "mangelfrei" → no_defects',
+    '  "geringfügige Mängel" → minor_defects',
+    '  "erhebliche Mängel" → major_defects',
+    '  "gefährliche Mängel" → dangerous_defects',
+    '  "nicht bestanden" → failed',
+    "",
     "Return ONLY valid JSON matching the schema.",
-  ].join(" ");
+  ].join("\n");
 }
 
 export type TuevExtractionOptions = {
@@ -430,18 +504,27 @@ export class TuevExtractionService {
     const systemPrompt = [
       "You are a strict data extractor for German HU/AU inspection reports (TÜV, DEKRA, GTÜ, KÜS).",
       "Focus ONLY on the document HEADER and result section — do NOT extract Punkt 6 defects.",
+      "",
+      TUEV_PUNKT3_PRUEFDATUM_GUIDANCE,
+      "",
       TUEV_PUNKT4_MILEAGE_GUIDANCE,
-      "Extract: testingOrganization, testDate (YYYY-MM-DD), result (map German wording below),",
-      "mileageKm, nextInspectionDate (YYYY-MM), documentNumber, vendor (Prüfstelle), amount (Gesamtgebühr EUR), lineItems.",
-      'Map result: "ohne Mängel"/"mangelfrei" → no_defects, "geringfügige Mängel" → minor_defects,',
+      "",
+      TUEV_PREIS_GUIDANCE,
+      "",
+      "Extract: testingOrganization, testDate from Punkt 3 only (YYYY-MM-DD), result, mileageKm, nextInspectionDate (YYYY-MM),",
+      "documentNumber, vendor (Prüfstelle name), amount (Gesamtgebühr EUR total incl. VAT), lineItems.",
+      "",
+      'Result mapping: "ohne Mängel"/"mangelfrei" → no_defects, "geringfügige Mängel" → minor_defects,',
       '"erhebliche Mängel" → major_defects, "gefährliche Mängel" → dangerous_defects, "nicht bestanden" → failed.',
+      "",
       "Optional fields → null when unreadable — never guess. Return ONLY valid JSON.",
-    ].join(" ");
+    ].join("\n");
 
     const userContent = await buildTuevDocumentUserMessage(
       [
         "TÜV/HU inspection report — extract HEADER fields only.",
-        "Focus: Kopf (top), Punkt 1–4 (Ergebnis, Datum, Kilometerstand, Nächste HU).",
+        "Prüfdatum (testDate): ALWAYS from Punkt 3 / (3) Prüftermin — no other date source.",
+        "Focus: Kopf (top), Punkt 3 (Prüfdatum), Punkt 4 (KM-Stand), Ergebnis, Nächste HU.",
         "Ignore Punkt 6 (Mängel) — leave defects for a separate scan.",
       ],
       input,
@@ -574,7 +657,7 @@ export class TuevExtractionService {
       TUEV_ANTI_HALLUCINATION_GUIDANCE,
       "Extract every defect row sequentially — do not truncate or summarize.",
       "Return ONLY valid JSON.",
-    ].join(" ");
+    ].join("\n");
 
     const userContent = await buildTuevDocumentUserMessage(
       [
@@ -654,10 +737,24 @@ export class TuevExtractionService {
     const userContent = await buildTuevDocumentUserMessage(
       [
         "German HU/AU inspection report (TÜV-Bericht). Read the document directly.",
-        "Focus on page 1 (and page 2 if Punkt 6 continues): Kopf, Punkt 4 (KM-Stand), Punkt 6 (Mängel table row-by-row).",
+        "Prüfdatum (testDate): ALWAYS from Punkt 3 / (3) Prüftermin — never Erstzulassung, Letzte HU, or Nachuntersuchung.",
+        "Focus on page 1 (and page 2 if Punkt 6 continues): Kopf, Punkt 3 (Prüfdatum), Punkt 4 (KM-Stand), Punkt 6 (Mängel row-by-row).",
         "If Punkt 6 uses a dense table, extract every row sequentially — do not truncate.",
-        "Extract Prüforganisation, Prüfdatum, Ergebnis, nächste HU, Vorgangsnummer, Prüfgebühren (amount, lineItems), Prüfstelle (vendor).",
-        "Prüfpunkte punktgetrennt (4.2.1, 1.3.2a). Keine Mängel erfinden.",
+        "Extract Prüforganisation, Prüfdatum (Punkt 3), Ergebnis, nächste HU, Vorgangsnummer, Prüfgebühren (amount, lineItems), Prüfstelle (vendor).",
+        "",
+        "CHECKPOINT EXAMPLES — copy each VERBATIM:",
+        "  TÜV format '1.1.13a – EM – Bremsbelag 2. Achse rechts ...' → checkpoint='1.1.13a'",
+        "    (third segment is THIRTEEN = 13, two digits; NOT '3' or '1'. Both '1.1.13a' Achse-rechts and Achse-links use '1.1.13a'.)",
+        "  TÜV format '1.1.14a – EM – Bremsscheibe ...' → checkpoint='1.1.14a' (FOURTEEN = 14)",
+        "  TÜV format '5.3.1b – EM – Feder ...' → checkpoint='5.3.1b' (letter 'b', may appear as '5.3.1 b' with space → strip space)",
+        "  TÜV format '5.3.1d – EM – Feder ...' → checkpoint='5.3.1d' (letter 'd')",
+        "  TÜV format 'D5.2.3a – GM – Reifen ...' → checkpoint='D5.2.3a' (capital D is prefix, NOT suffix — 'a' is suffix)",
+        "  DEKRA format '-D5.2.3c (EM)' on line 1, 'M+S Reifen Geschwindigkeitsschild fehlt' on line 2:",
+        "    → checkpoint='D5.2.3c' (capital D prefix, final letter is lowercase 'c' — NOT 'd'), severity='EM', description='M+S Reifen...'",
+        "    CRITICAL: 'c' and 'd' look similar in print — 'D5.2.3c' ends with 'c' when the description mentions 'Geschwindigkeitsschild'.",
+        "  DEKRA format '-5.2.3d (EM)' → checkpoint='5.2.3d' (no D prefix, lowercase 'd' suffix, Reifen Alterungsrisse)",
+        "",
+        "Keine Mängel erfinden.",
       ],
       input,
     );

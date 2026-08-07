@@ -12,6 +12,7 @@ import {
   TUEV_ANTI_HALLUCINATION_GUIDANCE,
   TUEV_JSON_SCHEMA,
   TUEV_PRUEFPUNKT_DOT_GUIDANCE,
+  TUEV_PUNKT3_PRUEFDATUM_GUIDANCE,
   TUEV_PUNKT4_MILEAGE_GUIDANCE,
   TUEV_PUNKT6_DEFECTS_GUIDANCE,
   TUEV_PUNKT6_TABLE_GUIDANCE,
@@ -52,7 +53,9 @@ describe("TuevExtractionService prompts & schema", () => {
     expect(prompt).toContain(TUEV_PUNKT6_TABLE_GUIDANCE);
     expect(prompt).toContain(TUEV_PRUEFPUNKT_DOT_GUIDANCE);
     expect(prompt).toContain(TUEV_PUNKT4_MILEAGE_GUIDANCE);
+    expect(prompt).toContain(TUEV_PUNKT3_PRUEFDATUM_GUIDANCE);
     expect(prompt).toContain(TUEV_ANTI_HALLUCINATION_GUIDANCE);
+    expect(prompt).toMatch(/Punkt 3|\(3\)\s*Prüftermin/i);
     expect(prompt).toMatch(/Punkt 4|Feld 4/i);
   });
 
@@ -74,6 +77,14 @@ describe("TuevExtractionService prompts & schema", () => {
     expect(TUEV_JSON_SCHEMA.schema.required).toEqual(
       expect.arrayContaining(["vendor", "amount", "lineItems"]),
     );
+  });
+
+  it("JSON schema testDate references Punkt 3 only", () => {
+    const testDateDesc = String(
+      TUEV_JSON_SCHEMA.schema.properties.testDate.description,
+    );
+    expect(testDateDesc).toMatch(/Punkt 3|\(3\)/i);
+    expect(testDateDesc).not.toMatch(/HU-Datum/i);
   });
 
   it("JSON schema mileageKm references Punkt 4", () => {
@@ -163,7 +174,7 @@ describe("sanitizeTuevPayload · LLM vision output", () => {
       TUEV_JSON_SCHEMA.schema.properties.defectsTable.items.properties
         .checkpoint.description,
     );
-    expect(checkpointDesc).toMatch(/dot-separated|4\.2\.1/i);
+    expect(checkpointDesc).toMatch(/COPY VERBATIM|1\.1\.13a/i);
   });
 
   it("maps plain defectsList to rows without text heuristics", () => {
