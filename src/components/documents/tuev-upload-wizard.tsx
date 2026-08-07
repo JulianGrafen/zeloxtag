@@ -28,6 +28,7 @@ import { localDateIso } from "@/lib/documents/format";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { InvoiceLineItem, InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
+import { resolveTuevTotalAmount } from "@/lib/ocr/tuev-amount";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import {
   TESTING_ORGANIZATIONS,
@@ -180,10 +181,13 @@ function buildAnalyzeFields(
         ? header.testingOrganization
         : null;
 
-  // Prefer overview for vendor + fee (full-doc photo shows these more reliably).
+  // Prefer overview for vendor + fee (full-doc photo shows footer more reliably).
   const vendor = overview?.vendor ?? header.vendor;
-  const amount = overview?.amount ?? header.amount;
   const lineItems = overview?.lineItems ?? header.lineItems;
+  const amount = resolveTuevTotalAmount(
+    overview?.amount ?? header.amount,
+    lineItems,
+  );
 
   return normalizeTextParseResult({
     vendor,

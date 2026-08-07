@@ -5,6 +5,11 @@ import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { buildTuevDocumentUserMessage } from "@/lib/ocr/tuev-document-content";
+import {
+  normalizeTuevLineItems,
+  parseTuevAmountValue,
+  resolveTuevTotalAmount,
+} from "@/lib/ocr/tuev-amount";
 import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
 import type { PreprocessedTuevDocument } from "@/services/documents/PdfPreprocessor";
 import {
@@ -89,11 +94,15 @@ export const TUEV_PUNKT6_TABLE_GUIDANCE =
   "Extract EVERY row sequentially. Do not truncate or summarize.";
 
 export const TUEV_PREIS_GUIDANCE =
-  "PRÜFGEBÜHR (amount): Extract the TOTAL fee including VAT. " +
-  "Look for: 'Gesamt', 'Gesamtbetrag', 'Gesamtbetrag inkl. MwSt', 'Prüfungsentgelt gesamt', 'Gesamtbetrag inkl. 19 % MwSt'. " +
-  "Use the bottom-line total — NOT individual line items like 'Hauptuntersuchung' or 'Vorgaben'. " +
-  "Example: 'Gesamt: 171,90 inkl. USt.' → 171.9, 'Gesamtbetrag inkl. MwSt: 125,00 EUR' → 125.0. " +
-  "Comma is decimal separator in German. Return null only when the fee section is completely invisible.";
+  "PRÜFGEBÜHR (amount): Extract the TOTAL fee the customer pays — bottom line including VAT.\n" +
+  "WHERE TO LOOK (document footer / Entgeltinformation / Rechnungsfuß):\n" +
+  "  TÜV Rheinland/FSP: table 'Entgeltinformation' → 'Gesamt: 171,90 inkl. USt.' → amount=171.9\n" +
+  "    NOT the 'Prüfungsentgelt' row alone (165,71) — that excludes Vorgaben/Vergütung.\n" +
+  "  DEKRA: bottom-right 'Gesamtbetrag inkl. MwSt: 125,00 EUR' → amount=125.0\n" +
+  "    NOT 'Hauptuntersuchung' 123,81 alone — add Sonstiges/Vorgaben (1,19).\n" +
+  "  GTÜ/KÜS: 'Gesamt', 'Summe', 'Gesamtbetrag', 'zu zahlen'.\n" +
+  "When lineItems (fee breakdown) are visible: list every row AND set amount to the Gesamt total.\n" +
+  "German decimal: comma = decimal point (125,00 → 125.0). Null only when fee section is invisible.";
 
 export const TUEV_ANTI_HALLUCINATION_GUIDANCE =
   "Wenn Punkt 6 leer ist, mangelfrei, oder das Ergebnis ohne Mängel ist: defectsTable und defectsList MÜSSEN null sein. " +
@@ -315,7 +324,8 @@ const TUEV_HEADER_JSON_SCHEMA = {
       },
       amount: {
         type: ["number", "null"],
-        description: "Gesamt-Prüfgebühr EUR.",
+        description:
+          "TOTAL Prüfgebühr in EUR incl. VAT — Gesamtbetrag / Gesamt row only, not HU line item alone.",
       },
       lineItems: {
         type: ["array", "null"],
@@ -402,7 +412,9 @@ const TUEV_OVERVIEW_JSON_SCHEMA = {
       amount: {
         type: ["number", "null"],
         description:
-          "Total Prüfgebühr / Gesamtbetrag in EUR as a decimal number. Null when not visible.",
+          "TOTAL Prüfgebühr in EUR incl. VAT — bottom-line Gesamtbetrag only. " +
+          "TÜV: 'Gesamt … inkl. USt.' in Entgeltinformation. DEKRA: 'Gesamtbetrag inkl. MwSt'. " +
+          "Never return a single line-item fee when Gesamt is visible. Null if fee section missing.",
       },
       lineItems: {
         type: ["array", "null"],
@@ -413,6 +425,18 @@ const TUEV_OVERVIEW_JSON_SCHEMA = {
     },
   },
 } as const;
+
+function finalizeTuevFeeFields(
+  amountRaw: unknown,
+  lineItemsRaw: unknown,
+): { amount: number | null; lineItems: InvoiceLineItem[] | null } {
+  const lineItems = normalizeTuevLineItems(lineItemsRaw);
+  const amount = resolveTuevTotalAmount(
+    parseTuevAmountValue(amountRaw),
+    lineItems,
+  );
+  return { amount, lineItems };
+}
 
 /** Map single vision-LLM TÜV extract → analyze API fields. */
 export function tuevVisionToAnalyzeFields(
@@ -608,14 +632,10 @@ export class TuevExtractionService {
         ? record.vendor.trim().slice(0, 160)
         : null;
 
-    const amount =
-      typeof record.amount === "number" && Number.isFinite(record.amount)
-        ? record.amount
-        : null;
-
-    const lineItems = Array.isArray(record.lineItems)
-      ? (record.lineItems as InvoiceLineItem[])
-      : null;
+    const { amount, lineItems } = finalizeTuevFeeFields(
+      record.amount,
+      record.lineItems,
+    );
 
     return {
       testingOrganization: testingOrg,
@@ -741,6 +761,7 @@ export class TuevExtractionService {
         "Focus on page 1 (and page 2 if Punkt 6 continues): Kopf, Punkt 3 (Prüfdatum), Punkt 4 (KM-Stand), Punkt 6 (Mängel row-by-row).",
         "If Punkt 6 uses a dense table, extract every row sequentially — do not truncate.",
         "Extract Prüforganisation, Prüfdatum (Punkt 3), Ergebnis, nächste HU, Vorgangsnummer, Prüfgebühren (amount, lineItems), Prüfstelle (vendor).",
+        "Prüfgebühr: footer Entgeltinformation / Gesamtbetrag inkl. MwSt — Gesamt-Summe, nicht Einzelposition.",
         "",
         "CHECKPOINT EXAMPLES — copy each VERBATIM:",
         "  TÜV format '1.1.13a – EM – Bremsbelag 2. Achse rechts ...' → checkpoint='1.1.13a'",
@@ -803,13 +824,10 @@ export class TuevExtractionService {
       typeof record.vendor === "string" && record.vendor.trim()
         ? record.vendor.trim().slice(0, 160)
         : null;
-    const amount =
-      typeof record.amount === "number" && Number.isFinite(record.amount)
-        ? record.amount
-        : null;
-    const lineItems = Array.isArray(record.lineItems)
-      ? (record.lineItems as InvoiceLineItem[])
-      : null;
+    const { amount, lineItems } = finalizeTuevFeeFields(
+      record.amount,
+      record.lineItems,
+    );
 
     return {
       report: {
@@ -849,18 +867,23 @@ export class TuevExtractionService {
     const systemPrompt = [
       "You extract testing organization and Prüfgebühr from a German HU/AU vehicle inspection report photo.",
       "",
-      "LOOK FOR:",
-      "1. testingOrganization — the brand on the letterhead or logo (TÜV, DEKRA, GTÜ, KÜS, or 'other').",
-      "2. vendor — exact printed name of the testing station / Prüfstelle (e.g. 'TÜV Süd Service-Center München').",
-      "3. amount — the total Prüfgebühr / Gesamtbetrag in EUR (look for 'Gesamtbetrag', 'Summe', 'Prüfgebühr', 'Gesamt').",
-      "4. lineItems — individual fee rows if a breakdown is printed (label + amount).",
+      TUEV_PREIS_GUIDANCE,
       "",
-      "IGNORE: dates, mileage, defects, test results, vehicle VIN — these are extracted separately.",
-      "NEVER hallucinate. Return null for any field you cannot read clearly.",
+      "ALSO EXTRACT:",
+      "1. testingOrganization — brand on letterhead/logo (TÜV, DEKRA, GTÜ, KÜS, or 'other').",
+      "2. vendor — exact printed Prüfstelle name.",
+      "3. lineItems — every fee row in the breakdown when visible.",
+      "",
+      "IGNORE: dates, mileage, defects, test results, VIN.",
+      "NEVER hallucinate. Return null for unreadable fields.",
     ].join("\n");
 
     const userContent = await buildTuevDocumentUserMessage(
-      ["Please extract the testing organization and Prüfgebühr from this full document photo."],
+      [
+        "Extract testing organization and Prüfgebühr from this full document photo.",
+        "Focus on the footer: Entgeltinformation (TÜV) or Gesamtbetrag inkl. MwSt (DEKRA).",
+        "amount must be the Gesamt total — not a single HU line item.",
+      ],
       input,
     );
 
@@ -903,13 +926,7 @@ export class TuevExtractionService {
 
     const vendor =
       typeof vendorRaw === "string" && vendorRaw.trim() ? vendorRaw.trim() : null;
-    const amount =
-      typeof amountRaw === "number" && Number.isFinite(amountRaw) && amountRaw > 0
-        ? amountRaw
-        : null;
-    const lineItems = Array.isArray(lineItemsRaw)
-      ? (lineItemsRaw as InvoiceLineItem[])
-      : null;
+    const { amount, lineItems } = finalizeTuevFeeFields(amountRaw, lineItemsRaw);
 
     return { testingOrganization, vendor, amount, lineItems };
   }
