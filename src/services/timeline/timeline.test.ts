@@ -133,11 +133,12 @@ describe("deriveTimelineEventsFromDocuments", () => {
     const events = deriveTimelineEventsFromDocuments([
       stubDocument({
         id: "d1",
-        title: "Ölwechsel Castrol",
+        title: "rourviverTTreparatur++ · Ölwechsel · CASTROL",
+        vendor: "Auto Meister GmbH",
         category: "service",
         mileage_km: 67_210,
         amount: 220,
-        notes: "Ölwechsel inkl. Filter",
+        notes: "Ölwechsel · CASTROL MAGNATEC 5W-40 · Filter unklar",
         line_items: [{ label: "Ölwechsel", amount: 220 }],
       }),
       stubDocument({
@@ -151,14 +152,21 @@ describe("deriveTimelineEventsFromDocuments", () => {
         type: "tuev",
         category: "tuev",
         mileage_km: 70_000,
+        vendor: "TÜV Süd",
+        notes: "ind · Kreissp DE64. When nach 50Km nachziehen lassen !",
       }),
     ]);
 
     expect(events).toHaveLength(2);
-    expect(events.find((e) => e.documentId === "d1")?.category).toBe(
-      "oil_change",
-    );
-    expect(events.find((e) => e.documentId === "d3")?.category).toBe("tuev");
+    const oil = events.find((e) => e.documentId === "d1");
+    expect(oil?.category).toBe("oil_change");
+    expect(oil?.title).toBe("Ölwechsel");
+    expect(oil?.description).toBe("Auto Meister GmbH");
+
+    const tuev = events.find((e) => e.documentId === "d3");
+    expect(tuev?.category).toBe("tuev");
+    expect(tuev?.title).toBe("TÜV / HU");
+    expect(tuev?.description).toBe("TÜV Süd");
   });
 });
 

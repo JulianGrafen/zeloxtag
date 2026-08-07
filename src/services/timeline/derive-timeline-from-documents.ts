@@ -1,9 +1,9 @@
-import { displayDocumentTitle } from "@/lib/documents/format";
 import { isOilChangeDocument } from "@/lib/documents/oil-changes";
 import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
-import type {
-  TimelineEvent,
-  TimelineEventCategory,
+import {
+  TIMELINE_CATEGORY_LABELS,
+  type TimelineEvent,
+  type TimelineEventCategory,
 } from "@/lib/validations/timelineSchema";
 import type { Document } from "@/types/database";
 
@@ -55,13 +55,11 @@ function resolveEventDate(document: Document): string {
   return "1970-01-01";
 }
 
-function buildDescription(document: Document): string | null {
-  const parts = [
-    document.vendor?.trim() || null,
-    document.notes?.trim() || null,
-  ].filter((part): part is string => Boolean(part));
-  if (parts.length === 0) return null;
-  return parts.join(" · ").slice(0, 4_000);
+/** Secondary line: workshop name only — never OCR notes / oil specs. */
+function buildWorkshopLabel(document: Document): string | null {
+  const vendor = document.vendor?.trim();
+  if (!vendor) return null;
+  return vendor.slice(0, 200);
 }
 
 /**
@@ -79,17 +77,16 @@ export function deriveTimelineEventsFromDocuments(
       continue;
     }
 
-    const title = displayDocumentTitle(document.title).slice(0, 200);
-    if (!title) continue;
+    const category = timelineCategoryFromDocument(document);
 
     events.push({
       id: `doc-${document.id}`,
       vehicleId: document.vehicle_id,
       mileage: Math.round(mileage),
       date: resolveEventDate(document),
-      category: timelineCategoryFromDocument(document),
-      title,
-      description: buildDescription(document),
+      category,
+      title: TIMELINE_CATEGORY_LABELS[category],
+      description: buildWorkshopLabel(document),
       cost:
         typeof document.amount === "number" && Number.isFinite(document.amount)
           ? document.amount
