@@ -732,8 +732,14 @@ export function InvoiceUploader({
       formData.set("category", "tuev");
       formData.set("vendor", vendorLabel);
       formData.set("date", review.testDate?.trim() ?? localDateIso());
-      formData.set("amount", "");
-      formData.set("lineItems", "");
+      formData.set(
+        "amount",
+        review.amount === null ? "" : String(review.amount),
+      );
+      formData.set(
+        "lineItems",
+        review.lineItems?.length ? JSON.stringify(review.lineItems) : "",
+      );
       formData.set("kbaNumber", "");
       formData.set("vehicleApprovals", "");
       formData.set("authority", review.testingOrganization);

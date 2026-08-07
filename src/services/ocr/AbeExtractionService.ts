@@ -1,6 +1,10 @@
 import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
+import {
+  buildDocumentUserMessage,
+  type DocumentBytesInput,
+} from "@/lib/ocr/llm-document-content";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { DEFAULT_PARSE_MODEL } from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
@@ -157,6 +161,71 @@ export type AbeExtractionOptions = {
  * ABE extractor — cover-only (nano) or context-aware table scan (mid-tier).
  */
 export class AbeExtractionService {
+  async extractFromDocument(
+    input: DocumentBytesInput,
+    options: AbeExtractionOptions = {},
+  ): Promise<AbeMinimal> {
+    const vehicleContext = options.vehicleContext ?? null;
+    const withContext = Boolean(vehicleContext);
+
+    const model =
+      options.model?.trim() ||
+      (withContext ? resolveAbeContextModel() : DEFAULT_PARSE_MODEL);
+
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const systemPrompt = buildAbeSystemPrompt(vehicleContext);
+    const instructionLines = withContext
+      ? [
+          "German ABE / Teilegutachten document (cover + Verwendungsbereich).",
+          `TARGET VEHICLE: ${formatAbeVehicleContextLabel(vehicleContext!)}`,
+          "Extract base fields + userVehicleMatchStatus / matchedVehicleRow / matchedConditions.",
+        ]
+      : [
+          "German ABE / Teilegutachten cover page.",
+          "Extract: kbaNumber (digits only), testingOrganization, manufacturer, partCategory, partType.",
+          "Set userVehicleMatchStatus, matchedConditions, matchedVehicleRow to null.",
+        ];
+
+    const userContent = buildDocumentUserMessage(instructionLines, input);
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: withContext
+          ? CONTEXT_PARSE_MAX_TOKENS
+          : COVER_PARSE_MAX_TOKENS,
+        response_format: {
+          type: "json_schema",
+          json_schema: ABE_MINIMAL_JSON_SCHEMA,
+        },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(`ABE extract failed: ${message}`);
+    }
+
+    return this.normalizeExtracted(
+      completion,
+      withContext,
+      vehicleContext,
+    );
+  }
+
   async extractFromText(
     rawText: string,
     options: AbeExtractionOptions = {},
@@ -232,6 +301,18 @@ export class AbeExtractionService {
       throw new TextParseError(`ABE extract failed: ${message}`);
     }
 
+    return this.normalizeExtracted(
+      completion,
+      withContext,
+      vehicleContext,
+    );
+  }
+
+  private normalizeExtracted(
+    completion: OpenAI.Chat.Completions.ChatCompletion,
+    withContext: boolean,
+    vehicleContext: AbeVehicleContext | null,
+  ): AbeMinimal {
     const content = completion.choices[0]?.message?.content;
     if (!content) {
       throw new TextParseError("ABE extract returned an empty response.");
@@ -253,7 +334,6 @@ export class AbeExtractionService {
 
     const normalized = normalizeAbeMinimal(parsed.data);
 
-    // Defensive: never invent a match when no vehicle was provided.
     if (!withContext) {
       return {
         ...normalized,
@@ -273,7 +353,6 @@ export class AbeExtractionService {
       return normalized;
     }
 
-    // Deterministic row highlight — separate from LLM extraction.
     const { table: matchedTable, matchedRowIds } =
       tableMatchingService.matchTable(
         normalized.compatibilityTable,

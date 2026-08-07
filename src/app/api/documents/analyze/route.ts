@@ -5,7 +5,6 @@ import {
   analyzeDocument,
   DocumentIntelligenceError,
 } from "@/lib/ocr/document-intelligence";
-import { getDocumentIntelligenceEnv } from "@/lib/ocr/document-intelligence-env";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import type { DocumentParseKind, OcrDocumentType } from "@/lib/ocr/ocr-types";
 import { OCR_DOCUMENT_TYPES } from "@/lib/ocr/ocr-types";
@@ -74,15 +73,6 @@ export async function POST(request: NextRequest) {
 
     const auth = await requireApiUser();
     if (!auth.ok) return auth.response;
-
-    const { isConfigured } = getDocumentIntelligenceEnv();
-    if (!isConfigured) {
-      return jsonError(
-        503,
-        "Dokumentanalyse ist nicht konfiguriert.",
-        "config",
-      );
-    }
 
     if (!isLlmConfigured()) {
       return jsonError(

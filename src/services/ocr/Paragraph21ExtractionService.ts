@@ -1,6 +1,10 @@
 import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
+import {
+  buildDocumentUserMessage,
+  type DocumentBytesInput,
+} from "@/lib/ocr/llm-document-content";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { resolveAbeContextModel } from "@/services/ocr/AbeExtractionService";
 import { TextParseError } from "@/lib/ocr/parse-error";
@@ -63,6 +67,53 @@ export function buildParagraph21SystemPrompt(): string {
  * Dedicated §21 StVZO extractor — vehicle-bound Individual Approval documents.
  */
 export class Paragraph21ExtractionService {
+  async extractFromDocument(
+    input: DocumentBytesInput,
+    options: Paragraph21ExtractionOptions = {},
+  ): Promise<Paragraph21ExtractionResult> {
+    const model = options.model?.trim() || resolveAbeContextModel();
+
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const userContent = buildDocumentUserMessage(
+      [
+        "German §21 Einzelbetriebserlaubnis document.",
+        "Extract Field E (vin), Field 2, Field D.3, Field 22 verbatim, documentNumber, issueDate, additionalRemarks.",
+      ],
+      input,
+    );
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: PARAGRAPH_21_MAX_TOKENS,
+        response_format: {
+          type: "json_schema",
+          json_schema: PARAGRAPH_21_JSON_SCHEMA,
+        },
+        messages: [
+          { role: "system", content: buildParagraph21SystemPrompt() },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(`§21 extract failed: ${message}`);
+    }
+
+    return this.normalizeExtracted(completion, options.garageVin ?? null);
+  }
+
   async extractParagraph21(
     markdownText: string,
     options: Paragraph21ExtractionOptions = {},
@@ -119,6 +170,13 @@ export class Paragraph21ExtractionService {
       throw new TextParseError(`§21 extract failed: ${message}`);
     }
 
+    return this.normalizeExtracted(completion, options.garageVin ?? null);
+  }
+
+  private normalizeExtracted(
+    completion: OpenAI.Chat.Completions.ChatCompletion,
+    garageVin: string | null,
+  ): Paragraph21ExtractionResult {
     const content = completion.choices[0]?.message?.content;
     if (!content) {
       throw new TextParseError("§21 extract returned an empty response.");
@@ -150,9 +208,9 @@ export class Paragraph21ExtractionService {
       );
     }
 
-    const garageVin = options.garageVin?.trim();
-    const vinMatchesGarage = garageVin
-      ? verifyVehicleMatch(extracted.vin, garageVin)
+    const trimmedGarageVin = garageVin?.trim();
+    const vinMatchesGarage = trimmedGarageVin
+      ? verifyVehicleMatch(extracted.vin, trimmedGarageVin)
       : null;
 
     return {

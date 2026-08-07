@@ -1,5 +1,5 @@
 /**
- * Browser helper: Markdown OCR + routed LLM parse via `/api/ocr/parse`.
+ * Browser helper: vision LLM document parse via `/api/ocr/parse`.
  */
 
 import type {

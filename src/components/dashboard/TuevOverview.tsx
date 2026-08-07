@@ -13,11 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
-import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
+import type { InvoiceLineItem, InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import {
   TESTING_ORGANIZATIONS,
   TUEV_RESULTS,
   type TestingOrganization,
+  type TuevDefectRow,
   type TuevResult,
 } from "@/lib/validations/documentSchemas";
 import { TuevReportService } from "@/services/documents";
@@ -31,6 +32,10 @@ export type TuevReviewFields = {
   testingOrganization: TestingOrganization;
   /** Free-text workshop / branch name → `documents.vendor`. */
   workshopName: string | null;
+  /** Prüfgebühr / Gesamtbetrag → `documents.amount`. */
+  amount: number | null;
+  /** Fee line items (HU, AU, …) → `documents.line_items`. */
+  lineItems: InvoiceLineItem[] | null;
 };
 
 export type TuevOverviewProps = {
@@ -124,6 +129,8 @@ export function fieldsToTuevReview(
       tuevData.testingOrganization !== "other"
         ? tuevData.testingOrganization
         : null),
+    amount: fields.amount ?? null,
+    lineItems: fields.lineItems ?? null,
   };
 }
 
@@ -149,6 +156,21 @@ function reviewToApprovalPayload(
   return { kind: "tuev", data };
 }
 
+/** Prefer structured defectsTable; fall back to plain defectsList from LLM. */
+export function tuevDefectsForDisplay(
+  approvalFields: ApprovalFields | null,
+): TuevDefectRow[] | null {
+  if (approvalFields?.kind !== "tuev") return null;
+  const { defectsTable, defectsList } = approvalFields.data;
+  if (defectsTable?.length) return defectsTable;
+  if (!defectsList?.length) return null;
+  return defectsList.map((description) => ({
+    checkpoint: null,
+    description,
+    severity: null,
+  }));
+}
+
 /**
  * HU/AU Prüfbericht review — Prüfdatum, nächste HU, Ergebnis, Mängel.
  */
@@ -169,10 +191,10 @@ export function TuevOverview({
   );
   const [review, setReview] = useState<TuevReviewFields>(initial);
 
-  const defectsTable =
-    approvalFields?.kind === "tuev"
-      ? approvalFields.data.defectsTable
-      : null;
+  const displayDefects = useMemo(
+    () => tuevDefectsForDisplay(approvalFields),
+    [approvalFields],
+  );
   const nextHuMissing = !review.nextInspectionDate?.trim();
 
   function patch<K extends keyof TuevReviewFields>(
@@ -320,14 +342,34 @@ export function TuevOverview({
               maxLength={160}
             />
           </FieldBlock>
+          <FieldBlock label="Kosten (€)">
+            <Input
+              inputMode="decimal"
+              value={review.amount === null ? "" : String(review.amount)}
+              onChange={(event) => {
+                const raw = event.target.value.trim();
+                if (!raw) {
+                  patch("amount", null);
+                  return;
+                }
+                const normalized = raw.replace(",", ".");
+                const value = Number.parseFloat(normalized);
+                patch(
+                  "amount",
+                  Number.isFinite(value) ? value : review.amount,
+                );
+              }}
+              placeholder="z. B. 118,50"
+            />
+          </FieldBlock>
         </div>
 
-        {defectsTable?.length ? (
+        {displayDefects?.length ? (
           <div className="mt-4">
             <p className="mb-2 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
               Festgestellte Mängel
             </p>
-            <TuevDefectsTable defects={defectsTable} />
+            <TuevDefectsTable defects={displayDefects} />
           </div>
         ) : null}
 

@@ -76,6 +76,17 @@ FEW-SHOT — lineItems (Markdown / HTML tables):
 - Keep MwSt. as its own lineItem when present.
 `.trim();
 
+/** Vision LLM user instructions for HU/AU Prüfberichte (costs + metadata). */
+export const TUEV_COST_USER_PROMPT_LINES = [
+  "Deutsches HU/AU-Prüfprotokoll (TÜV, DEKRA, GTÜ, KÜS).",
+  "Extrahiere Prüfgebühren / Kosten als amount (Gesamtbetrag in EUR).",
+  "lineItems = einzelne Posten (HU, AU, Abgasuntersuchung, Gebühren) wenn ausgewiesen.",
+  "vendor = Prüfstelle / Filiale; invoiceNumber = Vorgangs-/Belegnummer wenn vorhanden.",
+  "mileageKm = Kilometerstand; date = Untersuchungsdatum (YYYY-MM-DD).",
+  "category immer tuev. ABE-Felder (kbaNumber, conditions, …) IMMER null.",
+  "Nur echte €-Summen — keine Prozentwerte als amount.",
+] as const;
+
 /** Per-request user instructions appended before OCR Markdown. */
 export const INVOICE_USER_PROMPT_LINES = [
   "Nachfolgend OCR-MARKDOWN einer Kfz-RECHNUNG / eines Servicebelegs",

@@ -1,6 +1,10 @@
 import type OpenAI from "openai";
 
 import { preferAmount, extractAmountFromText } from "@/lib/ocr/amount-from-text";
+import {
+  buildDocumentUserMessage,
+  type DocumentBytesInput,
+} from "@/lib/ocr/llm-document-content";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   extractInvoiceLineItemsFromText,
@@ -9,6 +13,7 @@ import {
 import {
   buildInvoiceSystemPrompt,
   INVOICE_USER_PROMPT_LINES,
+  TUEV_COST_USER_PROMPT_LINES,
 } from "@/lib/ocr/invoice-parse-prompts";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
@@ -74,12 +79,102 @@ export type InvoiceParseOptions = {
   model?: string;
 };
 
+export type InvoiceDocumentParseOptions = InvoiceParseOptions & {
+  /** Hint for invoice vs TÜV report routing in the prompt. */
+  documentType?: "invoice" | "tuev";
+};
+
 /**
  * Invoice-only LLM parse service.
  * Uses mid-tier model routing + few-shot prompts for mileage / line items.
  * Does not extract ABE fields — use {@link AbeParseService}.
  */
 export class InvoiceParseService {
+  /**
+   * Parse document bytes (PDF/image) via vision LLM.
+   */
+  async parseFromDocument(
+    input: DocumentBytesInput,
+    options: InvoiceDocumentParseOptions = {},
+  ): Promise<InvoiceTextParseResult> {
+    const routedModel = options.model ?? resolveParseModel(
+      options.documentType === "tuev" ? "tuev" : "invoice",
+    );
+    let client: OpenAI;
+    let model: string;
+    try {
+      ({ client, model } = getOcrLlmClient({ model: routedModel }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    if (/^zeloxta/i.test(model)) {
+      model = resolveParseModel("invoice");
+    }
+
+    const isTuevReport = options.documentType === "tuev";
+    const docHint = isTuevReport
+      ? "This is a German HU/AU inspection report (TÜV-Bericht)."
+      : "This is a German vehicle invoice, workshop receipt, or service bill.";
+    const userLines = isTuevReport
+      ? TUEV_COST_USER_PROMPT_LINES
+      : INVOICE_USER_PROMPT_LINES;
+
+    const userContent = buildDocumentUserMessage([docHint, ...userLines], input);
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model,
+        max_completion_tokens: PARSE_MAX_TOKENS,
+        response_format: {
+          type: "json_schema",
+          json_schema: INVOICE_TEXT_PARSE_JSON_SCHEMA,
+        },
+        messages: [
+          {
+            role: "system",
+            content: buildInvoiceSystemPrompt().replace(
+              /OCR-Input ist Markdown/g,
+              "Lies das hochgeladene Dokument",
+            ),
+          },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(`Invoice parse request failed: ${message}`);
+    }
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new TextParseError("Invoice parse returned an empty response.");
+    }
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = extractJsonObject(content);
+    } catch {
+      throw new TextParseError("Invoice parse returned invalid JSON.");
+    }
+
+    const parsed = invoiceTextParseSchema.safeParse(parsedJson);
+    if (!parsed.success) {
+      throw new TextParseError(
+        `Invoice parse payload failed schema validation: ${parsed.error.issues
+          .slice(0, 3)
+          .map((issue) => issue.message)
+          .join("; ")}`,
+      );
+    }
+
+    return this.nullAbeFields(normalizeTextParseResult(parsed.data));
+  }
+
   /**
    * Parse OCR Markdown / text into structured invoice fields.
    * Output is Zod-validated before return.

@@ -5,7 +5,6 @@ import {
   analyzeDocument,
   DocumentIntelligenceError,
 } from "@/lib/ocr/document-intelligence";
-import { getDocumentIntelligenceEnv } from "@/lib/ocr/document-intelligence-env";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { OCR_DOCUMENT_TYPES, type OcrDocumentType } from "@/lib/ocr/ocr-types";
@@ -70,8 +69,8 @@ function jsonError(
 /**
  * POST /api/ocr/parse
  *
- * ZeloxTag OCR pipeline:
- * 1) Azure Document Intelligence → Markdown (`outputContentFormat=markdown`)
+ * ZeloxTag document parse pipeline:
+ * 1) Vision LLM on PDF/image bytes (no Azure OCR)
  * 2) Dynamic model routing by `documentType` (invoice vs abe/tuev)
  * 3) Domain parse service + Zod validation before response
  */
@@ -84,15 +83,6 @@ export async function POST(request: NextRequest) {
 
     const auth = await requireApiUser();
     if (!auth.ok) return auth.response;
-
-    const { isConfigured } = getDocumentIntelligenceEnv();
-    if (!isConfigured) {
-      return jsonError(
-        503,
-        "Dokumentanalyse ist nicht konfiguriert.",
-        "config",
-      );
-    }
 
     if (!isLlmConfigured()) {
       return jsonError(
@@ -219,12 +209,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(body);
   } catch (error) {
     if (error instanceof DocumentIntelligenceError) {
-      const unreachable = /unreachable/i.test(error.message);
-      return jsonError(
-        unreachable ? 503 : 502,
-        error.message,
-        unreachable ? "azure_unreachable" : "parse_failed",
-      );
+      return jsonError(502, error.message, "parse_failed");
     }
 
     const message =

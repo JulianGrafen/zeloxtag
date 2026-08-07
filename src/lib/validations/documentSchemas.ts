@@ -113,6 +113,7 @@ export type EGBE = z.infer<typeof EGBESchema>;
 /**
  * HU / AU inspection report (Haupt- und Abgasuntersuchung / TÜV-Bericht).
  * Nullable fields tolerate missing OCR; organization + result are required.
+ * Festgestellte Mängel are always under Punkt 6 / Abschnitt 6 of the report.
  */
 export const TuevReportSchema = z
   .object({
@@ -122,7 +123,9 @@ export const TuevReportSchema = z
     mileageKm: z.number().int().nonnegative().max(9_999_999).nullable(),
     nextInspectionDate: yearMonth.nullable(),
     documentNumber: z.string().trim().min(1).max(120).nullable(),
+    /** Structured Mängel from Punkt 6 (Prüfpunkt + description + EM/GM). */
     defectsTable: z.array(TuevDefectRowSchema).max(80).nullable(),
+    /** Plain-text Mängel from Punkt 6 — legacy / display fallback. */
     defectsList: z
       .array(z.string().trim().min(1).max(500))
       .max(80)

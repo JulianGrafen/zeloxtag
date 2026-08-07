@@ -1,8 +1,6 @@
 /**
- * Shared Azure Document Intelligence OCR + domain parse dispatch.
- * OCR returns Markdown (`outputContentFormat=markdown`) so LLMs see tables.
- * Invoice → {@link InvoiceParseService} (mid-tier model)
- * ABE → {@link AbeParseService} (economy model)
+ * Document parse dispatch — vision LLM only (no Azure Document Intelligence).
+ * PDFs/images are sent directly to the LLM with strict JSON schemas.
  */
 
 import type {
@@ -10,12 +8,12 @@ import type {
   ApprovalFields,
 } from "@/lib/documents/approval-fields";
 
-import { getDocumentIntelligenceEnv } from "./document-intelligence-env";
-import { extractApprovalFieldsFromText } from "./extract-approval-fields";
-import { inferInvoiceCategory } from "./infer-invoice-category";
 import { isLlmConfigured } from "./llm-client";
+import {
+  buildStubOcrPayload,
+  LLM_VISION_PARSE_MODEL_ID,
+} from "./llm-document-content";
 import { documentTypeFromParseKind, resolveParseModel } from "./model-routing";
-import { normalizeOcrMarkdown } from "./normalize-ocr-markdown";
 import type {
   DocumentParseKind,
   OcrDocumentType,
@@ -29,12 +27,12 @@ import {
 } from "./text-parse-schema";
 import {
   abeExtractionService,
-  coverTextFromPageBlocks,
   resolveAbeContextModel,
-  truncateAbeCoverPages,
 } from "@/services/ocr/AbeExtractionService";
+import { egbeExtractionService } from "@/services/ocr/EgbeExtractionService";
 import { paragraph21ExtractionService } from "@/services/ocr/Paragraph21ExtractionService";
 import { teilegutachtenExtractionService } from "@/services/ocr/TeilegutachtenExtractionService";
+import { tuevExtractionService } from "@/services/ocr/TuevExtractionService";
 import {
   formatAbeKbaDisplay,
   type AbeMinimal,
@@ -52,44 +50,12 @@ import {
 
 export type { DocumentParseKind, OcrDocumentType, OcrJsonPayload } from "./ocr-types";
 
-const API_VERSION = "2024-11-30";
-/**
- * Layout preserves table structure in Markdown better than prebuilt-read.
- * Critical for invoice line-item extraction.
- */
-const MODEL_ID = "prebuilt-layout";
-const LOCALE = "de-DE";
-const CONTENT_FORMAT = "markdown" as const;
-const POLL_INTERVAL_MS = 700;
-const POLL_TIMEOUT_MS = 60_000;
-const MAX_OCR_TEXT_CHARS = 48_000;
-
 export class DocumentIntelligenceError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "DocumentIntelligenceError";
   }
 }
-
-type DiLine = {
-  content?: string;
-};
-
-type DiPage = {
-  pageNumber?: number;
-  lines?: DiLine[];
-};
-
-type DiParagraph = {
-  content?: string;
-};
-
-type DiAnalyzeResult = {
-  content?: string;
-  contentFormat?: string;
-  pages?: DiPage[];
-  paragraphs?: DiParagraph[];
-};
 
 export type AnalyzeDocumentResult = {
   kind: "invoice" | "abe";
@@ -99,161 +65,11 @@ export type AnalyzeDocumentResult = {
   approvalFields: ApprovalFields | null;
   rawText: string;
   ocrJson: OcrJsonPayload;
-  /** Azure DI model id (layout / read). */
+  /** Parse source id returned to clients (`llm-vision`). */
   modelId: string;
   /** Chat deployment used for structured parse. */
   parseModel: string;
 };
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-function buildAnalyzeUrl(endpoint: string): string {
-  const params = new URLSearchParams({
-    "api-version": API_VERSION,
-    locale: LOCALE,
-    outputContentFormat: CONTENT_FORMAT,
-  });
-  return (
-    `${endpoint}documentintelligence/documentModels/${MODEL_ID}:analyze` +
-    `?${params.toString()}`
-  );
-}
-
-async function startAnalyze(input: {
-  endpoint: string;
-  apiKey: string;
-  bytes: Buffer;
-  contentType: string;
-}): Promise<Response> {
-  try {
-    return await fetch(buildAnalyzeUrl(input.endpoint), {
-      method: "POST",
-      headers: {
-        "Ocp-Apim-Subscription-Key": input.apiKey,
-        "Content-Type": input.contentType || "application/octet-stream",
-      },
-      body: new Uint8Array(input.bytes),
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Netzwerkfehler.";
-    throw new DocumentIntelligenceError(
-      `Dokumentanalyse nicht erreichbar: ${message}`,
-    );
-  }
-}
-
-async function pollAnalyzeResult(
-  operationLocation: string,
-  apiKey: string,
-): Promise<DiAnalyzeResult> {
-  const startedAt = Date.now();
-
-  while (Date.now() - startedAt < POLL_TIMEOUT_MS) {
-    await sleep(POLL_INTERVAL_MS);
-
-    let pollResponse: Response;
-    try {
-      pollResponse = await fetch(operationLocation, {
-        headers: {
-          "Ocp-Apim-Subscription-Key": apiKey,
-        },
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Netzwerkfehler.";
-      throw new DocumentIntelligenceError(
-        `Dokumentanalyse nicht erreichbar: ${message}`,
-      );
-    }
-
-    if (!pollResponse.ok) {
-      // Never reflect Azure error bodies to clients (may include request metadata).
-      void (await pollResponse.text().catch(() => ""));
-      throw new DocumentIntelligenceError(
-        `Dokumentanalyse fehlgeschlagen (${pollResponse.status}).`,
-      );
-    }
-
-    const payload = (await pollResponse.json()) as {
-      status?: string;
-      analyzeResult?: DiAnalyzeResult;
-      error?: { message?: string };
-    };
-
-    if (payload.status === "succeeded" && payload.analyzeResult) {
-      return payload.analyzeResult;
-    }
-
-    if (payload.status === "failed") {
-      throw new DocumentIntelligenceError(
-        payload.error?.message || "Dokumentanalyse fehlgeschlagen.",
-      );
-    }
-  }
-
-  throw new DocumentIntelligenceError(
-    "Analyse dauert zu lange — bitte erneut versuchen.",
-  );
-}
-
-/**
- * Prefer Azure Markdown `content` (tables as HTML/MD). Fall back to line OCR.
- */
-export function buildOcrJsonPayload(result: DiAnalyzeResult): OcrJsonPayload {
-  const markdown = (result.content ?? "").trim();
-  const pages = result.pages ?? [];
-
-  const rawPageBodies = pages.map((page) =>
-    (page.lines ?? [])
-      .map((line) => line.content?.trim())
-      .filter((value): value is string => Boolean(value))
-      .join("\n"),
-  );
-
-  const pageBlocks = rawPageBodies.map((body, index) => {
-    if (!body) return "";
-    if (pages.length <= 1) return body;
-    return `--- Seite ${pages[index]?.pageNumber ?? index + 1} ---\n${body}`;
-  });
-
-  let plainFallback = pageBlocks.filter(Boolean).join("\n\n").trim();
-  if (plainFallback.length < 8) {
-    plainFallback = (result.paragraphs ?? [])
-      .map((paragraph) => paragraph.content?.trim())
-      .filter((value): value is string => Boolean(value))
-      .join("\n")
-      .trim();
-  }
-
-  const useMarkdown = markdown.length >= 8;
-  // Convert Azure HTML <table>/<td> blocks to pipe rows so parsers never see tags.
-  const text = normalizeOcrMarkdown(useMarkdown ? markdown : plainFallback);
-
-  const firstPageLines = (pages[0]?.lines ?? [])
-    .map((line) => line.content?.trim())
-    .filter((value): value is string => Boolean(value));
-
-  const coverFromPages = coverTextFromPageBlocks(rawPageBodies, 2);
-  const coverText =
-    coverFromPages.length >= 8
-      ? coverFromPages
-      : truncateAbeCoverPages(text, 2);
-
-  return {
-    modelId: MODEL_ID,
-    locale: LOCALE,
-    pageCount: Math.max(1, pages.length || 1),
-    text: text.slice(0, MAX_OCR_TEXT_CHARS),
-    coverText,
-    headerLines: firstPageLines.slice(0, 12),
-    contentFormat: useMarkdown ? "markdown" : "text",
-  };
-}
 
 /** Map minimal extract → analyze API shape (summary + optional vehicle match). */
 export function abeMinimalToAnalyzeFields(
@@ -293,67 +109,20 @@ export function abeMinimalToAnalyzeFields(
   });
 }
 
-async function runDocumentOcr(input: {
-  bytes: Buffer;
-  contentType: string;
-}): Promise<OcrJsonPayload> {
-  const { endpoint, apiKey, isConfigured } = getDocumentIntelligenceEnv();
-  if (!isConfigured) {
-    throw new DocumentIntelligenceError(
-      "Dokumentanalyse ist nicht konfiguriert.",
-    );
-  }
-
-  const startResponse = await startAnalyze({
-    endpoint,
-    apiKey,
-    bytes: input.bytes,
-    contentType: input.contentType,
-  });
-
-  if (!startResponse.ok) {
-    void (await startResponse.text().catch(() => ""));
-    throw new DocumentIntelligenceError(
-      `Dokumentanalyse fehlgeschlagen (${startResponse.status}).`,
-    );
-  }
-
-  const operationLocation = startResponse.headers.get("operation-location");
-  if (!operationLocation) {
-    throw new DocumentIntelligenceError(
-      "Dokumentanalyse konnte nicht gestartet werden.",
-    );
-  }
-
-  const analyzeResult = await pollAnalyzeResult(operationLocation, apiKey);
-  const ocrJson = buildOcrJsonPayload(analyzeResult);
-
-  if (ocrJson.text.length < 8) {
-    throw new DocumentIntelligenceError(
-      "Zu wenig Text erkannt. Bitte schärferes, gut ausgeleuchtetes Foto versuchen.",
-    );
-  }
-
-  return ocrJson;
-}
-
 function resolveDocumentType(input: {
   documentType?: OcrDocumentType;
   kind?: DocumentParseKind;
-  ocrText: string;
 }): OcrDocumentType {
   if (input.documentType) return input.documentType;
-
-  const inferred = inferInvoiceCategory(input.ocrText);
   const kind = input.kind ?? "auto";
   return documentTypeFromParseKind(
     kind === "abe" ? "abe" : kind === "invoice" ? "invoice" : "auto",
-    inferred,
+    "other",
   );
 }
 
 /**
- * OCR (Markdown) → domain parse service with dynamic model routing.
+ * Vision LLM → domain parse service with dynamic model routing.
  */
 export async function analyzeDocument(input: {
   bytes: Buffer;
@@ -376,32 +145,23 @@ export async function analyzeDocument(input: {
     );
   }
 
-  const ocrJson = await runDocumentOcr(input);
   const documentType = resolveDocumentType({
     documentType: input.documentType,
     kind: input.kind,
-    ocrText: ocrJson.text,
   });
   const preferredApprovalKind = input.approvalKind ?? null;
   const vehicleContext = input.vehicleContext ?? null;
-
-  const ocrPayload: OcrJsonPayload = ocrJson;
-
-  const ocrJsonForApi = JSON.stringify({
-    headerLines: ocrPayload.headerLines,
-    text: ocrPayload.text,
-    pageCount: ocrPayload.pageCount,
-    contentFormat: ocrPayload.contentFormat,
-  });
+  const ocrPayload = buildStubOcrPayload(input.contentType);
+  const documentInput = {
+    bytes: input.bytes,
+    contentType: input.contentType,
+  };
 
   try {
     if (documentType === "abe") {
-      const textSource = ocrPayload.text;
-
-      // §21 Einzelabnahme — dedicated extractor (VIN-bound, Field 22 verbatim).
       if (preferredApprovalKind === "einzelabnahme") {
         const paragraph21 =
-          await paragraph21ExtractionService.extractParagraph21(textSource, {
+          await paragraph21ExtractionService.extractFromDocument(documentInput, {
             garageVin: input.garageVin ?? null,
           });
         return {
@@ -412,21 +172,17 @@ export async function analyzeDocument(input: {
             paragraph21.vinMatchesGarage,
           ),
           approvalFields: paragraph21ToApprovalFields(paragraph21),
-          rawText: textSource,
-          ocrJson: {
-            ...ocrPayload,
-            text: textSource,
-          },
-          modelId: MODEL_ID,
+          rawText: "",
+          ocrJson: ocrPayload,
+          modelId: LLM_VISION_PARSE_MODEL_ID,
           parseModel: resolveAbeContextModel(),
         };
       }
 
-      // § 19 Abs. 3 Teilegutachten — dedicated extractor (Kennzeichnung + Anbauabnahme flag).
       if (preferredApprovalKind === "teilegutachten") {
         const teilegutachten =
-          await teilegutachtenExtractionService.extractTeilegutachten(
-            textSource,
+          await teilegutachtenExtractionService.extractFromDocument(
+            documentInput,
             { vehicleContext },
           );
         return {
@@ -434,82 +190,91 @@ export async function analyzeDocument(input: {
           documentType,
           fields: teilegutachtenToAnalyzeFields(teilegutachten),
           approvalFields: teilegutachtenToApprovalFields(teilegutachten),
-          rawText: textSource,
-          ocrJson: {
-            ...ocrPayload,
-            text: textSource,
-          },
-          modelId: MODEL_ID,
+          rawText: "",
+          ocrJson: ocrPayload,
+          modelId: LLM_VISION_PARSE_MODEL_ID,
           parseModel: resolveAbeContextModel(),
         };
       }
 
-      // ABE / EG-BE — cover or context-aware table scan.
-      const abeTextSource = vehicleContext
-        ? textSource
-        : ocrPayload.coverText.trim().length >= 8
-          ? ocrPayload.coverText
-          : textSource;
-      const abe = await abeExtractionService.extractFromText(abeTextSource, {
+      if (preferredApprovalKind === "egbe") {
+        const [abe, egbe] = await Promise.all([
+          abeExtractionService.extractFromDocument(documentInput, {
+            vehicleContext,
+          }),
+          egbeExtractionService.extractFromDocument(documentInput),
+        ]);
+        return {
+          kind: "abe",
+          documentType,
+          fields: abeMinimalToAnalyzeFields(abe),
+          approvalFields: { kind: "egbe", data: egbe },
+          rawText: "",
+          ocrJson: ocrPayload,
+          modelId: LLM_VISION_PARSE_MODEL_ID,
+          parseModel: vehicleContext
+            ? resolveAbeContextModel()
+            : resolveParseModel("abe"),
+        };
+      }
+
+      const abe = await abeExtractionService.extractFromDocument(documentInput, {
         vehicleContext,
       });
-      const gutachtenKind =
-        preferredApprovalKind && preferredApprovalKind !== "tuev"
-          ? preferredApprovalKind
-          : undefined;
-      const approvalFields = extractApprovalFieldsFromText(
-        abeTextSource,
-        gutachtenKind,
-      );
       return {
         kind: "abe",
         documentType,
         fields: abeMinimalToAnalyzeFields(abe),
-        approvalFields:
-          approvalFields.kind === "tuev" ? { kind: "abe" } : approvalFields,
-        rawText: abeTextSource,
-        ocrJson: {
-          ...ocrPayload,
-          text: abeTextSource,
-        },
-        modelId: MODEL_ID,
+        approvalFields: { kind: "abe" },
+        rawText: "",
+        ocrJson: ocrPayload,
+        modelId: LLM_VISION_PARSE_MODEL_ID,
         parseModel: vehicleContext
           ? resolveAbeContextModel()
           : resolveParseModel("abe"),
       };
     }
 
-    // invoice | tuev → same invoice schema; final category comes from merge heuristics.
-    const parseModel = resolveParseModel(
-      documentType === "tuev" ? "tuev" : "invoice",
-    );
-    const parsed = await invoiceParseService.parseFromText(ocrJsonForApi, {
-      model: parseModel,
-    });
-    const fields = invoiceParseService.mergeWithOcr(parsed, ocrPayload);
-    // Explicit scan type wins; otherwise never promote weak TÜV guesses on bills.
     const resolvedType: OcrDocumentType =
       input.documentType === "tuev" || preferredApprovalKind === "tuev"
         ? "tuev"
-        : input.documentType === "invoice"
-          ? "invoice"
-          : fields.category === "tuev"
-            ? "tuev"
-            : "invoice";
-    const approvalFields =
-      resolvedType === "tuev"
-        ? extractApprovalFieldsFromText(ocrPayload.text, "tuev")
-        : null;
+        : "invoice";
+    const parseModel = resolveParseModel(resolvedType);
+
+    if (resolvedType === "tuev") {
+      const [fields, tuevReport] = await Promise.all([
+        invoiceParseService.parseFromDocument(documentInput, {
+          model: parseModel,
+          documentType: "tuev",
+        }),
+        tuevExtractionService.extractFromDocument(documentInput, {
+          model: parseModel,
+        }),
+      ]);
+      return {
+        kind: "invoice",
+        documentType: "tuev",
+        fields: { ...fields, category: "tuev" },
+        approvalFields: { kind: "tuev", data: tuevReport },
+        rawText: "",
+        ocrJson: ocrPayload,
+        modelId: LLM_VISION_PARSE_MODEL_ID,
+        parseModel,
+      };
+    }
+
+    const fields = await invoiceParseService.parseFromDocument(documentInput, {
+      model: parseModel,
+      documentType: "invoice",
+    });
     return {
       kind: "invoice",
-      documentType: resolvedType,
-      fields:
-        resolvedType === "tuev" ? { ...fields, category: "tuev" } : fields,
-      approvalFields:
-        approvalFields?.kind === "tuev" ? approvalFields : null,
-      rawText: ocrPayload.text,
+      documentType: "invoice",
+      fields,
+      approvalFields: null,
+      rawText: "",
       ocrJson: ocrPayload,
-      modelId: MODEL_ID,
+      modelId: LLM_VISION_PARSE_MODEL_ID,
       parseModel,
     };
   } catch (error) {

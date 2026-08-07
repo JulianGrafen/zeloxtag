@@ -1,6 +1,10 @@
 import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
+import {
+  buildDocumentUserMessage,
+  type DocumentBytesInput,
+} from "@/lib/ocr/llm-document-content";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
@@ -121,6 +125,64 @@ export function buildTeilegutachtenSystemPrompt(
  * Dedicated § 19 Abs. 3 Teilegutachten extractor — part approval requiring Anbauabnahme.
  */
 export class TeilegutachtenExtractionService {
+  async extractFromDocument(
+    input: DocumentBytesInput,
+    options: TeilegutachtenExtractionOptions = {},
+  ): Promise<TeilegutachtenExtraction> {
+    const vehicleContext = options.vehicleContext ?? null;
+    const withContext = Boolean(vehicleContext);
+    const model = options.model?.trim() || resolveAbeContextModel();
+
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const systemPrompt = buildTeilegutachtenSystemPrompt(vehicleContext);
+    const instructionLines = withContext
+      ? [
+          "German Teilegutachten § 19 Abs. 3 document.",
+          `TARGET VEHICLE: ${formatAbeVehicleContextLabel(vehicleContext!)}`,
+          "Extract certificateNumber, part fields, markingType, markingNumber,",
+          "Verwendungsbereich (compatibilityTable), Auflagen, ownerNotes, technicalDataTable, match status.",
+        ]
+      : [
+          "German Teilegutachten § 19 Abs. 3 document.",
+          "Extract certificateNumber, manufacturer, modificationType, partCategory, partType,",
+          "markingType, markingNumber, testingOrganization, compatibilityTable, auflagen, ownerNotes, technicalDataTable.",
+          "Set userVehicleMatchStatus and matchedVehicleRow to null.",
+        ];
+
+    const userContent = buildDocumentUserMessage(instructionLines, input);
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: TEILEGUTACHTEN_MAX_TOKENS,
+        response_format: {
+          type: "json_schema",
+          json_schema: TEILEGUTACHTEN_JSON_SCHEMA,
+        },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(`Teilegutachten extract failed: ${message}`);
+    }
+
+    return this.normalizeExtracted(completion, withContext, vehicleContext);
+  }
+
   async extractTeilegutachten(
     markdownText: string,
     options: TeilegutachtenExtractionOptions = {},
@@ -192,6 +254,14 @@ export class TeilegutachtenExtractionService {
       throw new TextParseError(`Teilegutachten extract failed: ${message}`);
     }
 
+    return this.normalizeExtracted(completion, withContext, vehicleContext);
+  }
+
+  private normalizeExtracted(
+    completion: OpenAI.Chat.Completions.ChatCompletion,
+    withContext: boolean,
+    vehicleContext: AbeVehicleContext | null,
+  ): TeilegutachtenExtraction {
     const content = completion.choices[0]?.message?.content;
     if (!content) {
       throw new TextParseError(

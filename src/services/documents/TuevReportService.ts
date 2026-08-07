@@ -8,10 +8,7 @@ import {
   type TuevReport,
   type TuevResult,
 } from "@/lib/validations/documentSchemas";
-import {
-  defectsListFromTuevDefectRows,
-  extractTuevDefectsFromText,
-} from "@/lib/ocr/tuev-defects-from-text";
+import { defectsListFromTuevDefectRows } from "@/lib/ocr/tuev-defects-from-text";
 
 import { BaseDocumentService } from "./BaseDocumentService";
 import { DocumentValidationError } from "./DocumentValidationError";
@@ -225,22 +222,15 @@ function resolveTuevDefects(
     return { defectsTable: null, defectsList: null };
   }
 
-  const joined = list.join("\n");
-  const hasStructuredMarkers =
-    /\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?/.test(joined) ||
-    /\([EG]M\)/.test(joined) ||
-    /folgende\s+mängel\s+auf/i.test(joined);
-
-  const parsedTable = hasStructuredMarkers
-    ? extractTuevDefectsFromText(`Festgestellte Mängel:\n${joined}`)
-    : list.map((description) => ({
-        checkpoint: null,
-        description,
-        severity: null,
-      }));
+  // LLM-only: plain-text Mängel → rows without OCR/heuristic re-parsing.
+  const parsedTable = list.map((description) => ({
+    checkpoint: null,
+    description,
+    severity: null,
+  }));
 
   return {
-    defectsTable: parsedTable?.length ? parsedTable : null,
+    defectsTable: parsedTable.length > 0 ? parsedTable : null,
     defectsList: list,
   };
 }
