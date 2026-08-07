@@ -120,6 +120,13 @@ export function abeVehicleMatchRowId(index: number): string {
   return `abe-match-${index}`;
 }
 
+export function abeVehicleMatchKey(
+  match: AbeVehicleMatch,
+  index: number,
+): string {
+  return `${abeVehicleMatchRowId(index)}-${match.model}-${match.driveType ?? ""}-${match.typeApproval ?? ""}`;
+}
+
 export function abeVehicleMatchIndexFromRowId(rowId: string): number | null {
   const match = /^abe-match-(\d+)$/.exec(rowId.trim());
   if (!match) return null;

@@ -14,8 +14,6 @@ import {
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 
-export { abeVehicleMatchKey };
-
 interface AbeVehicleMatchPickerProps {
   matches: AbeVehicleMatch[];
   selectedIndex: number | null;
