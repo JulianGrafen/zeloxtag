@@ -4,7 +4,7 @@ import {
 } from "@/lib/documents/approval-fields";
 import { formatDocumentDate, formatTuevYearMonth } from "@/lib/documents/format";
 import { stripAuflagenFromValidityArea } from "@/lib/validations/teilegutachtenSchema";
-import { TuevDefectsTable } from "@/components/documents/tuev-defects-table";
+import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
 
 const TUEV_RESULT_LABELS: Record<string, string> = {
   no_defects: "Ohne Mängel",
@@ -40,10 +40,13 @@ function Fact({
 export function ApprovalFieldsSection({
   approvalFields,
   hideNextHu = false,
+  hideDefects = false,
 }: {
   approvalFields: ApprovalFields | null | undefined;
   /** When an editable HU block is shown elsewhere on the page. */
   hideNextHu?: boolean;
+  /** When defects are shown in a dedicated section (e.g. detail view). */
+  hideDefects?: boolean;
 }) {
   if (!approvalFields || approvalFields.kind === "abe") {
     return null;
@@ -166,33 +169,17 @@ export function ApprovalFieldsSection({
               value={approvalFields.data.documentNumber}
             />
           </dl>
-          {approvalFields.data.defectsTable?.length ? (
+          {!hideDefects &&
+          (approvalFields.data.defectsTable?.length ||
+            approvalFields.data.defectsList?.length) ? (
             <div className="mt-4">
               <p className="mb-2 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                 Festgestellte Mängel
               </p>
-              <TuevDefectsTable defects={approvalFields.data.defectsTable} />
-            </div>
-          ) : approvalFields.data.defectsList?.length ? (
-            <div className="mt-4">
-              <p className="mb-2 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Festgestellte Mängel
-              </p>
-              <ol className="space-y-2">
-                {approvalFields.data.defectsList.map((defect, index) => (
-                  <li
-                    key={`${index}-${defect.slice(0, 32)}`}
-                    className="flex gap-3 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3 text-[0.88rem]"
-                  >
-                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[0.7rem] font-semibold text-white">
-                      {index + 1}
-                    </span>
-                    <span className="pt-0.5 leading-relaxed text-[color:var(--vd-text)]">
-                      {defect}
-                    </span>
-                  </li>
-                ))}
-              </ol>
+              <TuevDefectsSection
+                data={approvalFields.data}
+                asSection={false}
+              />
             </div>
           ) : null}
         </>

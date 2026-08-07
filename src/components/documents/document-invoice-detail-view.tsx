@@ -14,6 +14,7 @@ import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-s
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
 import { DocumentViewer } from "@/components/documents/document-viewer";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
+import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
 import {
   PressableButton,
   PressableLink,
@@ -100,7 +101,8 @@ export function DocumentInvoiceDetailView({
     document.approval_fields?.kind === "tuev"
       ? document.approval_fields
       : null;
-  const isTuevDocument = Boolean(tuevApprovalFields);
+  const isTuevDocument =
+    document.type === "tuev" || Boolean(tuevApprovalFields);
 
   async function handleShare() {
     const shareUrl =
@@ -185,6 +187,7 @@ export function DocumentInvoiceDetailView({
         <ApprovalFieldsSection
           approvalFields={document.approval_fields}
           hideNextHu={canEdit && isTuevDocument}
+          hideDefects={isTuevDocument}
         />
 
         {canEdit && tuevApprovalFields ? (
@@ -260,7 +263,16 @@ export function DocumentInvoiceDetailView({
           </dl>
         </section>
 
-        {canEditPositions ? (
+        {isTuevDocument ? (
+          <TuevDefectsSection
+            data={
+              tuevApprovalFields?.data ?? {
+                defectsTable: null,
+                defectsList: null,
+              }
+            }
+          />
+        ) : canEditPositions ? (
           <EditableLineItemsSection
             items={lineItems}
             documentId={document.id}
