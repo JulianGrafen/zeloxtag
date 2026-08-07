@@ -17,7 +17,7 @@ export function groupAbeVehicleMatches(
   const byKey = new Map<string, AbeVehicleMatch[]>();
 
   for (const match of matches) {
-    const key = match.verkaufsbezeichnung.trim();
+    const key = (match.verkaufsbezeichnung ?? "").trim();
     if (!key) continue;
     if (!byKey.has(key)) order.push(key);
     const rows = byKey.get(key) ?? [];

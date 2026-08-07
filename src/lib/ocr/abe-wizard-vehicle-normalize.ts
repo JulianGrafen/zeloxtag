@@ -59,7 +59,10 @@ export function looksLikeVerkaufsbezeichnung(value: string): boolean {
   return false;
 }
 
-export function stripVerkaufsbezeichnungLabel(value: string): string {
+export function stripVerkaufsbezeichnungLabel(
+  value: string | null | undefined,
+): string {
+  if (!value) return "";
   return value
     .replace(/^verkaufsbezeichnung\s*:\s*/i, "")
     .trim();

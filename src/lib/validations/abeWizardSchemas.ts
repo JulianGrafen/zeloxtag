@@ -8,22 +8,45 @@ const FROM_DOCUMENT =
 
 export const AbeVehicleMatchSchema = z
   .object({
-    /** Verkaufsbezeichnung section header — same for all rows in one table group */
-    verkaufsbezeichnung: z.string().trim().min(1).max(200),
-    /** Fahrzeugtyp column cell (short code), if visible */
-    fahrzeugtyp: z.string().trim().min(1).max(40).nullable(),
-    /** Betriebserlaubnis / type-approval cell */
-    typeApproval: z.string().trim().min(1).max(300).nullable(),
-    /** Drive type from Auflagen column when present */
-    driveType: z.string().trim().min(1).max(100).nullable(),
-    /** Reifen column values for this row */
-    tireSizes: z.array(z.string().trim().min(1).max(40)).max(20),
-    /** Auflagen / condition codes for this row */
-    auflagenCodes: z.array(z.string().trim().min(1).max(40)).max(60),
+    verkaufsbezeichnung: z.string().trim().max(200).optional(),
+    /** @deprecated Legacy LLM field — coerced into verkaufsbezeichnung */
+    model: z.string().trim().max(200).optional(),
+    fahrzeugtyp: z.string().trim().max(40).nullable().optional(),
+    typeApproval: z.string().trim().max(300).nullable().optional(),
+    driveType: z.string().trim().max(100).nullable().optional(),
+    tireSizes: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+    auflagenCodes: z.array(z.string().trim().min(1).max(40)).max(60).optional(),
   })
-  .strict();
+  .strict()
+  .transform(
+    (row): {
+      verkaufsbezeichnung: string;
+      fahrzeugtyp: string | null;
+      typeApproval: string | null;
+      driveType: string | null;
+      tireSizes: string[];
+      auflagenCodes: string[];
+    } => {
+      const verkaufsbezeichnung = (
+        row.verkaufsbezeichnung ??
+        row.model ??
+        ""
+      ).trim();
+      if (!verkaufsbezeichnung) {
+        throw new Error("Row missing verkaufsbezeichnung");
+      }
+      return {
+        verkaufsbezeichnung,
+        fahrzeugtyp: row.fahrzeugtyp?.trim() || null,
+        typeApproval: row.typeApproval?.trim() || null,
+        driveType: row.driveType?.trim() || null,
+        tireSizes: row.tireSizes ?? [],
+        auflagenCodes: row.auflagenCodes ?? [],
+      };
+    },
+  );
 
-export type AbeVehicleMatch = z.infer<typeof AbeVehicleMatchSchema>;
+export type AbeVehicleMatch = z.output<typeof AbeVehicleMatchSchema>;
 
 // ─── Step extractions ──────────────────────────────────────────────────────────
 
@@ -56,7 +79,17 @@ export type AbeWizardMainExtraction = z.infer<typeof AbeWizardMainSchema>;
 /** Step 3 — Fahrzeug- & Auflagen-Tabelle. */
 export const AbeWizardVehiclesSchema = z
   .object({
-    vehicleMatches: z.array(AbeVehicleMatchSchema).max(100),
+    vehicleMatches: z
+      .array(z.unknown())
+      .max(100)
+      .transform((rows) => {
+        const parsed: AbeVehicleMatch[] = [];
+        for (const row of rows) {
+          const result = AbeVehicleMatchSchema.safeParse(row);
+          if (result.success) parsed.push(result.data);
+        }
+        return parsed;
+      }),
   })
   .strict();
 

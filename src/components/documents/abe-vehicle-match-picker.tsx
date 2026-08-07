@@ -35,7 +35,11 @@ export function AbeVehicleMatchPicker({
 
   const suggestedIndex = findBestAbeVehicleGroupIndex(groups, vehicleContext);
   const selectedGroup: AbeVehicleGroup | null =
-    selectedGroupIndex !== null ? groups[selectedGroupIndex] ?? null : null;
+    selectedGroupIndex !== null &&
+    selectedGroupIndex >= 0 &&
+    selectedGroupIndex < groups.length
+      ? groups[selectedGroupIndex] ?? null
+      : null;
 
   return (
     <section className="space-y-4 rounded-[1.35rem] border border-emerald-500/25 bg-emerald-500/5 p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">

@@ -286,9 +286,17 @@ function ReviewSection({
     [report.vehicleMatches],
   );
   const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | null>(
-    () => resolveInitialAbeVehicleGroupIndex(vehicleGroups, vehicleContext),
+    null,
   );
   const [selectionError, setSelectionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedGroupIndex((current) => {
+      if (vehicleGroups.length === 0) return null;
+      if (current !== null && current < vehicleGroups.length) return current;
+      return resolveInitialAbeVehicleGroupIndex(vehicleGroups, vehicleContext);
+    });
+  }, [vehicleGroups, vehicleContext]);
 
   const set =
     (key: keyof ReviewFormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -602,13 +610,11 @@ export function AbeUploadWizard({
     mainFile: File | null,
   ) {
     try {
-      const [coverResult, mainResult, vehiclesResult, uploadFile] =
-        await Promise.all([
-          fetchCoverExtraction(coverFile),
-          mainFile ? fetchMainExtraction(mainFile) : Promise.resolve(null),
-          fetchVehiclesExtraction(vehiclesFile),
-          buildUploadFile(coverFile, mainFile, vehiclesFile),
-        ]);
+      const [coverResult, mainResult, vehiclesResult] = await Promise.all([
+        fetchCoverExtraction(coverFile),
+        mainFile ? fetchMainExtraction(mainFile) : Promise.resolve(null),
+        fetchVehiclesExtraction(vehiclesFile),
+      ]);
 
       const report = mergeAbeWizardSteps(coverResult, mainResult, vehiclesResult);
 
@@ -619,7 +625,7 @@ export function AbeUploadWizard({
         mainExtraction: mainResult,
         vehiclesExtraction: vehiclesResult,
         report,
-        uploadFile,
+        uploadFile: null,
         error: null,
       }));
     } catch (err) {
@@ -635,8 +641,8 @@ export function AbeUploadWizard({
   }
 
   function handleSave({ form, selectedGroupIndex }: ReviewSavePayload) {
-    if (!state.uploadFile || !state.report) {
-      setSaveError("Keine Datei zum Speichern vorhanden.");
+    if (!state.report) {
+      setSaveError("Keine Daten zum Speichern vorhanden.");
       return;
     }
 
@@ -688,6 +694,23 @@ export function AbeUploadWizard({
     ].filter((item): item is { label: string; value: string } => item !== null);
 
     startSaveTransition(async () => {
+      let uploadFile = state.uploadFile;
+      if (!uploadFile) {
+        try {
+          uploadFile = await buildUploadFile(
+            state.coverFile,
+            state.mainFile,
+            state.vehiclesFile,
+          );
+        } catch {
+          uploadFile = null;
+        }
+      }
+      if (!uploadFile) {
+        setSaveError("PDF konnte nicht erstellt werden. Bitte erneut scannen.");
+        return;
+      }
+
       const formData = new FormData();
       formData.set("vehicleId", vehicleId);
       formData.set("tagUuid", tagUuid);
@@ -721,7 +744,7 @@ export function AbeUploadWizard({
           },
         }),
       );
-      formData.set("file", state.uploadFile!);
+      formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
       if (result.status === "error") {
