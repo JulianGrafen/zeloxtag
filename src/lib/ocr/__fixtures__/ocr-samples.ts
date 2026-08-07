@@ -103,9 +103,9 @@ DEKRA Automobil GmbH
 Datum: 01.07.2026
 km-Stand: 120.500 km
 geringfügige Mängel
-Festgestellte Mängel:
-Bremsbelag nahe Verschleißgrenze
-Scheibenwischer vorne abgenutzt
+(6) Ihr Fahrzeug weist folgende Mängel auf:
+4.2.1a Bremsbelag nahe Verschleißgrenze (GM)
+4.3.2b Scheibenwischer vorne abgenutzt (GM)
 nächste HU: 07/2028
 `.trim(),
 
