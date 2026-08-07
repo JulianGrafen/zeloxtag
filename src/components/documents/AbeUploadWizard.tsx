@@ -23,10 +23,10 @@ import { Input } from "@/components/ui/input";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import { localDateIso } from "@/lib/documents/format";
 import {
-  auflagenForAbeVehicleMatch,
-  formatAbeVehicleApprovalLine,
-  resolveInitialAbeVehicleMatchIndex,
-  selectedVehicleMatchPayload,
+  auflagenForAbeVehicleGroup,
+  groupAbeVehicleMatches,
+  resolveInitialAbeVehicleGroupIndex,
+  selectedVerkaufsbezeichnungPayload,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
@@ -97,8 +97,8 @@ const CAPTURE_STEPS: Array<{
     phase: "capture-vehicles",
     stepNumber: 3,
     title: "Fahrzeugtabelle",
-    hint: "Suche in der Tabelle dein Fahrzeug heraus und scanne diesen Abschnitt.",
-    guideLabel: "Deine Fahrzeugzeile im Rahmen ausrichten",
+    hint: "Scanne den Tabellenabschnitt mit der Verkaufsbezeichnung und allen Zeilen darunter.",
+    guideLabel: "Verkaufsbezeichnung · komplette Tabelle",
   },
 ];
 
@@ -253,7 +253,7 @@ function reportToFormState(report: AbeWizardReport): ReviewFormState {
 
 interface ReviewSavePayload {
   form: ReviewFormState;
-  selectedMatchIndex: number | null;
+  selectedGroupIndex: number | null;
 }
 
 function ReviewSection({
@@ -281,8 +281,12 @@ function ReviewSection({
     reportToFormState(report),
   );
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedMatchIndex, setSelectedMatchIndex] = useState<number | null>(
-    () => resolveInitialAbeVehicleMatchIndex(report.vehicleMatches, vehicleContext),
+  const vehicleGroups = useMemo(
+    () => groupAbeVehicleMatches(report.vehicleMatches),
+    [report.vehicleMatches],
+  );
+  const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | null>(
+    () => resolveInitialAbeVehicleGroupIndex(vehicleGroups, vehicleContext),
   );
   const [selectionError, setSelectionError] = useState<string | null>(null);
 
@@ -292,12 +296,12 @@ function ReviewSection({
 
   return (
     <div className="vd-anim-header flex flex-col gap-4">
-      {report.vehicleMatches.length > 0 ? (
+      {vehicleGroups.length > 0 ? (
         <AbeVehicleMatchPicker
           matches={report.vehicleMatches}
-          selectedIndex={selectedMatchIndex}
-          onSelect={(index) => {
-            setSelectedMatchIndex(index);
+          selectedGroupIndex={selectedGroupIndex}
+          onSelectGroup={(index) => {
+            setSelectedGroupIndex(index);
             setSelectionError(null);
           }}
           vehicleContext={vehicleContext}
@@ -308,8 +312,8 @@ function ReviewSection({
         <section className="rounded-[1.35rem] border border-amber-300/70 bg-amber-50 px-4 py-4 text-[0.88rem] leading-relaxed text-amber-950 shadow-[var(--vd-shadow-sm)]">
           <p className="font-semibold">Keine Fahrzeugtabelle erkannt</p>
           <p className="mt-1">
-            Scanne in Schritt 3 die Seite mit der Fahrzeug- und Auflagen-Tabelle
-            erneut — ohne diese Zeilen kann kein Fahrzeug zugeordnet werden.
+            Scanne in Schritt 3 die Seite mit Verkaufsbezeichnung und
+            Fahrzeug- und Auflagen-Tabelle erneut.
           </p>
         </section>
       )}
@@ -430,19 +434,19 @@ function ReviewSection({
             type="button"
             disabled={isSaving}
             onClick={() => {
-              if (report.vehicleMatches.length === 0) {
+              if (vehicleGroups.length === 0) {
                 setSelectionError(null);
-                onSave({ form, selectedMatchIndex: null });
+                onSave({ form, selectedGroupIndex: null });
                 return;
               }
-              if (selectedMatchIndex === null) {
+              if (selectedGroupIndex === null) {
                 setSelectionError(
-                  "Bitte wähle dein Fahrzeug aus der Fahrzeugtabelle.",
+                  "Bitte wähle die passende Verkaufsbezeichnung.",
                 );
                 return;
               }
               setSelectionError(null);
-              onSave({ form, selectedMatchIndex });
+              onSave({ form, selectedGroupIndex });
             }}
           >
             {isSaving ? (
@@ -630,26 +634,23 @@ export function AbeUploadWizard({
     }
   }
 
-  function handleSave({ form, selectedMatchIndex }: ReviewSavePayload) {
+  function handleSave({ form, selectedGroupIndex }: ReviewSavePayload) {
     if (!state.uploadFile || !state.report) {
       setSaveError("Keine Datei zum Speichern vorhanden.");
       return;
     }
 
-    if (
-      state.report.vehicleMatches.length > 0 &&
-      selectedMatchIndex === null
-    ) {
-      setSaveError("Bitte wähle dein Fahrzeug aus der Fahrzeugtabelle.");
+    const groups = groupAbeVehicleMatches(state.report.vehicleMatches);
+
+    if (groups.length > 0 && selectedGroupIndex === null) {
+      setSaveError("Bitte wähle die passende Verkaufsbezeichnung.");
       return;
     }
 
     setSaveError(null);
 
-    const selectedMatch =
-      selectedMatchIndex !== null
-        ? state.report.vehicleMatches[selectedMatchIndex] ?? null
-        : null;
+    const selectedGroup =
+      selectedGroupIndex !== null ? groups[selectedGroupIndex] ?? null : null;
 
     const kbaDisplay = form.kbaNumber.trim()
       ? `KBA ${form.kbaNumber.trim()}`
@@ -666,10 +667,10 @@ export function AbeUploadWizard({
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const vehicleApprovals = selectedMatch
-      ? [formatAbeVehicleApprovalLine(selectedMatch)]
+    const vehicleApprovals = selectedGroup
+      ? [selectedGroup.verkaufsbezeichnung]
       : [];
-    const filteredAuflagen = auflagenForAbeVehicleMatch(selectedMatch);
+    const filteredAuflagen = auflagenForAbeVehicleGroup(selectedGroup);
 
     const technicalSpecs = [
       form.abeNumber.trim()
@@ -714,9 +715,9 @@ export function AbeUploadWizard({
           kind: "abe",
           data: {
             abeHolder: form.abeHolder.trim() || null,
-            selectedVehicleMatch: selectedMatch
-              ? selectedVehicleMatchPayload(selectedMatch)
-              : null,
+            ...(selectedGroup
+              ? selectedVerkaufsbezeichnungPayload(selectedGroup)
+              : {}),
           },
         }),
       );

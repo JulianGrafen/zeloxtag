@@ -4,20 +4,19 @@ import { CheckCircle2 } from "lucide-react";
 
 import { CompatibilityTable } from "@/components/dashboard/CompatibilityTable";
 import {
-  abeVehicleMatchIndexFromRowId,
-  abeVehicleMatchKey,
-  abeVehicleMatchRowId,
-  findBestAbeVehicleMatchIndex,
-  formatAbeVehicleMatchLabel,
-  vehicleMatchesToTableData,
+  abeVehicleGroupKey,
+  findBestAbeVehicleGroupIndex,
+  groupAbeVehicleMatches,
+  vehicleGroupRowsToTableData,
+  type AbeVehicleGroup,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 
 interface AbeVehicleMatchPickerProps {
   matches: AbeVehicleMatch[];
-  selectedIndex: number | null;
-  onSelect: (index: number) => void;
+  selectedGroupIndex: number | null;
+  onSelectGroup: (index: number) => void;
   vehicleContext?: AbeVehicleContext | null;
   vehicleLabel?: string | null;
   selectionError?: string | null;
@@ -25,36 +24,30 @@ interface AbeVehicleMatchPickerProps {
 
 export function AbeVehicleMatchPicker({
   matches,
-  selectedIndex,
-  onSelect,
+  selectedGroupIndex,
+  onSelectGroup,
   vehicleContext = null,
   vehicleLabel = null,
   selectionError = null,
 }: AbeVehicleMatchPickerProps) {
-  if (matches.length === 0) return null;
+  const groups = groupAbeVehicleMatches(matches);
+  if (groups.length === 0) return null;
 
-  const suggestedIndex = findBestAbeVehicleMatchIndex(matches, vehicleContext);
-  const selectedMatch =
-    selectedIndex !== null ? matches[selectedIndex] ?? null : null;
-  const table = vehicleMatchesToTableData(
-    matches,
-    selectedIndex,
-    vehicleContext,
-  );
-  const selectedRowId =
-    selectedIndex !== null ? abeVehicleMatchRowId(selectedIndex) : null;
+  const suggestedIndex = findBestAbeVehicleGroupIndex(groups, vehicleContext);
+  const selectedGroup: AbeVehicleGroup | null =
+    selectedGroupIndex !== null ? groups[selectedGroupIndex] ?? null : null;
 
   return (
     <section className="space-y-4 rounded-[1.35rem] border border-emerald-500/25 bg-emerald-500/5 p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
       <div>
         <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-emerald-800">
-          Dein Fahrzeug wählen
+          Verkaufsbezeichnung wählen
         </p>
         <p className="mt-1 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
-          Tippe dein exaktes Modell aus der Auflagen-Spalte an
+          Wähle die Überschrift deiner Fahrzeugtabelle
         </p>
         <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Das Modell steht am Anfang der Auflagen-Zeile — danach folgen nur Codes wie 744, A77, 20B.
+          Die komplette Tabelle unter dieser Verkaufsbezeichnung wird übernommen.
         </p>
         {vehicleLabel ? (
           <p className="mt-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]">
@@ -63,34 +56,22 @@ export function AbeVehicleMatchPicker({
         ) : null}
       </div>
 
-      <CompatibilityTable
-        table={table}
-        title="Extrahierte Fahrzeugfreigaben"
-        selectedRowId={selectedRowId}
-        onSelectRow={(rowId) => {
-          const index = abeVehicleMatchIndexFromRowId(rowId);
-          if (index !== null) onSelect(index);
-        }}
-        className="hidden border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-none md:block"
-      />
-
       <div
-        className="space-y-2 md:hidden"
+        className="space-y-2"
         role="radiogroup"
-        aria-label="Fahrzeug aus der ABE-Tabelle wählen"
+        aria-label="Verkaufsbezeichnung aus der ABE-Tabelle wählen"
       >
-        {matches.map((match, index) => {
-          const selected = selectedIndex === index;
+        {groups.map((group, index) => {
+          const selected = selectedGroupIndex === index;
           const suggested = suggestedIndex === index;
-          const label = formatAbeVehicleMatchLabel(match);
 
           return (
             <button
-              key={abeVehicleMatchKey(match, index)}
+              key={abeVehicleGroupKey(group, index)}
               type="button"
               role="radio"
               aria-checked={selected}
-              onClick={() => onSelect(index)}
+              onClick={() => onSelectGroup(index)}
               className={[
                 "w-full rounded-2xl border px-4 py-3.5 text-left transition-colors touch-manipulation",
                 selected
@@ -101,13 +82,13 @@ export function AbeVehicleMatchPicker({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium text-[color:var(--vd-text)]">
-                    {label}
+                    {group.verkaufsbezeichnung}
                   </p>
-                  {match.typeApproval ? (
-                    <p className="mt-1 break-all text-[0.72rem] text-[color:var(--vd-muted)]">
-                      {match.typeApproval}
-                    </p>
-                  ) : null}
+                  <p className="mt-1 text-[0.72rem] text-[color:var(--vd-muted)]">
+                    {group.rows.length}{" "}
+                    {group.rows.length === 1 ? "Zeile" : "Zeilen"} in der
+                    Tabelle
+                  </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
                   {suggested ? (
@@ -139,31 +120,20 @@ export function AbeVehicleMatchPicker({
         </p>
       ) : null}
 
-      {selectedMatch ? (
-        <div className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3">
+      {selectedGroup ? (
+        <div className="space-y-3">
           <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Ausgewählt: {formatAbeVehicleMatchLabel(selectedMatch)}
+            Übernommene Tabelle · {selectedGroup.verkaufsbezeichnung}
           </p>
-          {selectedMatch.auflagenCodes.length > 0 ? (
-            <p className="mt-2 flex flex-wrap gap-1.5">
-              {selectedMatch.auflagenCodes.map((code) => (
-                <span
-                  key={code}
-                  className="rounded-full bg-neutral-900/5 px-2 py-0.5 font-mono text-[0.72rem] text-[color:var(--vd-text)]"
-                >
-                  {code}
-                </span>
-              ))}
-            </p>
-          ) : (
-            <p className="mt-2 text-[0.78rem] text-[color:var(--vd-muted)]">
-              Keine Auflagen-Codes in dieser Zeile.
-            </p>
-          )}
+          <CompatibilityTable
+            table={vehicleGroupRowsToTableData(selectedGroup)}
+            title="Fahrzeug- und Auflagen-Tabelle"
+            className="border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-none"
+          />
         </div>
       ) : (
         <p className="text-[0.78rem] font-medium text-amber-800">
-          Bitte eine Zeile auswählen, bevor du speicherst.
+          Bitte eine Verkaufsbezeichnung wählen, bevor du speicherst.
         </p>
       )}
     </section>

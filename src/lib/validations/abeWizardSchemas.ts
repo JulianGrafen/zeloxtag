@@ -8,8 +8,10 @@ const FROM_DOCUMENT =
 
 export const AbeVehicleMatchSchema = z
   .object({
-    /** Exact vehicle model from the start of the Auflagen column for this row */
-    model: z.string().trim().min(1).max(200),
+    /** Verkaufsbezeichnung section header — same for all rows in one table group */
+    verkaufsbezeichnung: z.string().trim().min(1).max(200),
+    /** Fahrzeugtyp column cell (short code), if visible */
+    fahrzeugtyp: z.string().trim().min(1).max(40).nullable(),
     /** Betriebserlaubnis / type-approval cell */
     typeApproval: z.string().trim().min(1).max(300).nullable(),
     /** Drive type from Auflagen column when present */
@@ -187,18 +189,25 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
           type: "object",
           additionalProperties: false,
           required: [
-            "model",
+            "verkaufsbezeichnung",
+            "fahrzeugtyp",
             "typeApproval",
             "driveType",
             "tireSizes",
             "auflagenCodes",
           ],
           properties: {
-            model: {
+            verkaufsbezeichnung: {
               type: "string",
               description:
                 FROM_DOCUMENT +
-                "Exact vehicle model at the beginning of the Auflagen cell for this row. NEVER the Fahrzeugtyp column or the Verkaufsbezeichnung group header.",
+                "Verkaufsbezeichnung section header above this row group — copy verbatim from 'Verkaufsbezeichnung:' label. Same value for every row in the group.",
+            },
+            fahrzeugtyp: {
+              type: ["string", "null"],
+              description:
+                FROM_DOCUMENT +
+                "Fahrzeugtyp column cell for this row (short code). Null if not visible.",
             },
             typeApproval: {
               type: ["string", "null"],
@@ -223,7 +232,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_DOCUMENT +
-                "Short Auflagen condition codes after the model text in the same cell (numeric or alphanumeric codes only). Exclude the model name and drive-type words.",
+                "Short Auflagen condition codes for this row (numeric or alphanumeric only). Exclude drive-type words.",
             },
           },
         },

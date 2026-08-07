@@ -74,6 +74,10 @@ export function DocumentAbeDetailView({
     document.approval_fields?.kind === "teilegutachten"
       ? document.approval_fields.data.compatibilityTable ?? null
       : null;
+  const abeVehicleTable =
+    document.approval_fields?.kind === "abe"
+      ? document.approval_fields.data?.vehicleTable ?? null
+      : null;
   const tgTechnicalTable =
     document.approval_fields?.kind === "teilegutachten"
       ? document.approval_fields.data.technicalDataTable ?? null
@@ -293,7 +297,9 @@ export function DocumentAbeDetailView({
             technicalSpecs={technicalSpecs}
             conditions={conditions}
             notes={document.notes}
-            compatibilityTable={isTeilegutachten ? tgTable : null}
+            compatibilityTable={
+              isTeilegutachten ? tgTable : isPlainAbe ? abeVehicleTable : null
+            }
             technicalDataTable={isTeilegutachten ? tgTechnicalTable : null}
             ownerNotes={isTeilegutachten ? tgOwnerNotes : null}
           />

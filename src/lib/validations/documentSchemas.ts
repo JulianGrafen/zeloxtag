@@ -117,7 +117,11 @@ export const AbeApprovalDataSchema = z
   .object({
     /** Legal holder on the ABE certificate (Inhaber der ABE). */
     abeHolder: z.string().trim().min(1).max(200).nullable().optional(),
-    /** Vehicle row chosen from the Fahrzeugtabelle at upload time. */
+    /** Verkaufsbezeichnung section chosen at upload time. */
+    verkaufsbezeichnung: z.string().trim().min(1).max(200).nullable().optional(),
+    /** Full Fahrzeug- und Auflagen-Tabelle for the chosen section. */
+    vehicleTable: TableDataSchema.nullable().optional(),
+    /** @deprecated Legacy single-row selection. */
     selectedVehicleMatch: z
       .object({
         model: z.string().trim().min(1).max(200),
