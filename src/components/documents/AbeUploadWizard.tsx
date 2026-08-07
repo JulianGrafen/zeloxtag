@@ -82,21 +82,21 @@ const CAPTURE_STEPS: Array<{
   {
     phase: "capture-cover",
     stepNumber: 1,
-    title: "Schritt 1 von 3 · Erste Seite",
+    title: "Erste Seite",
     hint: "Scanne die erste Seite. Dort wo die KBA-Nummer, Design und Modell-Typ stehen.",
     guideLabel: "KBA-Nummer · Design · Modell-Typ",
   },
   {
     phase: "capture-main",
     stepNumber: 2,
-    title: "Schritt 2 von 3 · ABE-Deckblatt",
+    title: "ABE-Deckblatt",
     hint: "Scanne das Deckblatt der ABE. Die Seite, auf der Kraftfahrt-Bundesamt steht mit der Überschrift Allgemeine Betriebserlaubnis.",
     guideLabel: "Kraftfahrt-Bundesamt · Allgemeine Betriebserlaubnis",
   },
   {
     phase: "capture-vehicles",
     stepNumber: 3,
-    title: "Schritt 3 von 3 · Fahrzeugtabelle",
+    title: "Fahrzeugtabelle",
     hint: "Suche in der Tabelle dein Fahrzeug heraus und scanne diesen Abschnitt.",
     guideLabel: "Deine Fahrzeugzeile im Rahmen ausrichten",
   },
@@ -738,7 +738,7 @@ export function AbeUploadWizard({
   const currentCaptureStep = CAPTURE_STEPS.find((s) => s.phase === state.phase);
 
   if (currentCaptureStep) {
-    const { title, hint, guideLabel, phase } = currentCaptureStep;
+    const { title, hint, guideLabel, phase, stepNumber } = currentCaptureStep;
 
     return (
       <>
@@ -748,13 +748,14 @@ export function AbeUploadWizard({
           </div>
         ) : null}
         <InBrowserCamera
-          key={phase}
           title={title}
           hint={hint}
           guideLabel={guideLabel}
           guideFrame="a4"
           allowPdf={false}
           showBriefing={false}
+          continuousCapture
+          captureStep={{ current: stepNumber, total: CAPTURE_STEPS.length }}
           onCapture={
             phase === "capture-cover"
               ? handleCoverCapture

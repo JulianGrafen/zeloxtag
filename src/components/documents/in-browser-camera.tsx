@@ -32,6 +32,10 @@ export interface InBrowserCameraProps {
   allowPdf?: boolean;
   /** Full-screen briefing card before the viewfinder. Default: true. */
   showBriefing?: boolean;
+  /** Keep the live stream open between captures; brief flash instead of remounting. */
+  continuousCapture?: boolean;
+  /** Optional step indicator, e.g. { current: 2, total: 3 }. */
+  captureStep?: { current: number; total: number };
 }
 
 type FacingMode = "environment" | "user";
@@ -94,6 +98,8 @@ export function InBrowserCamera({
   guideSectionAnchor = "center",
   allowPdf = false,
   showBriefing = true,
+  continuousCapture = false,
+  captureStep,
 }: InBrowserCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -103,12 +109,17 @@ export function InBrowserCamera({
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [instructionsOpen, setInstructionsOpen] = useState(
-    Boolean(hint && showBriefing),
+    Boolean(hint && showBriefing && !continuousCapture),
   );
+  const [captureFlash, setCaptureFlash] = useState(false);
 
   useEffect(() => {
+    if (continuousCapture) {
+      setInstructionsOpen(false);
+      return;
+    }
     setInstructionsOpen(Boolean(hint && showBriefing));
-  }, [title, hint, showBriefing]);
+  }, [title, hint, showBriefing, continuousCapture]);
 
   async function startCamera(facing: FacingMode) {
     stopStream(streamRef.current);
@@ -208,11 +219,15 @@ export function InBrowserCamera({
       canvas.width = 0;
       canvas.height = 0;
 
-      const file = new File([blob], `tuev-scan-${Date.now()}.jpg`, {
+      const file = new File([blob], `scan-${Date.now()}.jpg`, {
         type: "image/jpeg",
         lastModified: Date.now(),
       });
       onCapture(file);
+      if (continuousCapture) {
+        setCaptureFlash(true);
+        window.setTimeout(() => setCaptureFlash(false), 140);
+      }
     } catch (error) {
       setCameraError(
         error instanceof Error ? error.message : "Aufnahme fehlgeschlagen.",
@@ -246,6 +261,11 @@ export function InBrowserCamera({
         </button>
 
         <div className="absolute left-1/2 top-1/2 w-[min(72vw,20rem)] -translate-x-1/2 -translate-y-1/2 text-center">
+          {captureStep ? (
+            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/70">
+              Schritt {captureStep.current} von {captureStep.total}
+            </p>
+          ) : null}
           <p className="text-sm font-semibold text-white">{title}</p>
         </div>
 
@@ -374,6 +394,10 @@ export function InBrowserCamera({
                   </div>
                 </div>
               )
+            ) : null}
+
+            {captureFlash ? (
+              <div className="pointer-events-none absolute inset-0 z-30 bg-white/70 transition-opacity duration-150" />
             ) : null}
 
             {hint && instructionsOpen ? (

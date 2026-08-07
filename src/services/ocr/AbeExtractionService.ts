@@ -27,6 +27,7 @@ import {
   type AbeWizardMainExtraction,
   type AbeWizardVehiclesExtraction,
 } from "@/lib/validations/abeWizardSchemas";
+import { normalizeAbeVehicleMatches } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import { tableMatchingService } from "@/services/ocr/TableMatchingService";
 
 /** Cover-only extract (no garage vehicle). */
@@ -461,24 +462,29 @@ export class AbeExtractionService {
   async extractVehiclesFromDocument(
     input: DocumentBytesInput,
   ): Promise<AbeWizardVehiclesExtraction> {
-    return this.runWizardStep<AbeWizardVehiclesExtraction>(
+    const raw = await this.runWizardStep<AbeWizardVehiclesExtraction>(
       input,
       [
         AbeExtractionService.WIZARD_IMAGE_ONLY_GUARD,
         "You extract German ABE Fahrzeug- und Auflagen-Tabelle pages.",
         "Create one vehicleMatches entry for every visible table row in the photograph.",
         "If no compatibility table is visible, return vehicleMatches: [].",
+        "CRITICAL — model field is the Verkaufsbezeichnung (sales designation), NEVER the Fahrzeugtyp column.",
+        "Verkaufsbezeichnung appears as a bold section header above row groups ('Verkaufsbezeichnung: …')",
+        "or as longer vehicle-name text in the right Auflagen column — not short codes like 3k-N1, 5L, K-N1.",
         "Column mapping:",
-        "- model: Verkaufsbezeichnung group header text for that row (verbatim). Do NOT use Fahrzeugtyp codes.",
+        "- model: Verkaufsbezeichnung for the row group (same text for all rows under that header). NEVER Fahrzeugtyp.",
         "- typeApproval: Betriebserlaubnis cell verbatim.",
         "- driveType: first drive-type word in Auflagen column only (Allradantrieb / Heckantrieb / Frontantrieb), else null.",
         "- tireSizes: all tyre sizes from Reifen column; strip leading kW ranges.",
-        "- auflagenCodes: all codes and short notes from Auflagen column except drive-type words.",
+        "- auflagenCodes: short condition codes from Auflagen column only — not Verkaufsbezeichnung text, not drive-type words.",
         "Do not merge rows. Do not skip rows. Do not add rows that are not visible.",
         "Return ONLY valid JSON matching the schema.",
       ],
       [
         "Extract every visible row from the Fahrzeug- und Auflagen-Tabelle in this photograph.",
+        "The left Fahrzeugtyp column contains short codes (e.g. 3k-N1) — ignore these for model.",
+        "Copy the Verkaufsbezeichnung header above each group into model for every row in that group.",
         "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen zu Reifen | Auflagen.",
         "Use only text you can read on this image. If the table is missing or unreadable, return an empty array.",
       ],
@@ -488,6 +494,10 @@ export class AbeExtractionService {
       "vehicles",
       { model: resolveAbeContextModel() },
     );
+
+    return {
+      vehicleMatches: normalizeAbeVehicleMatches(raw.vehicleMatches),
+    };
   }
 
   /** Shared LLM call pattern for all three wizard steps. */

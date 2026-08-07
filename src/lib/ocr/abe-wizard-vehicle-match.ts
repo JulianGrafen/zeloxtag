@@ -144,7 +144,7 @@ export function vehicleMatchesToTableData(
 
   return {
     caption: "Fahrzeugtabelle aus dem Scan",
-    headers: ["Modell", "Typgenehmigung", "Antrieb", "Reifen", "Auflagen"],
+    headers: ["Verkaufsbezeichnung", "Typgenehmigung", "Antrieb", "Reifen", "Auflagen"],
     rows: matches.map((match, index) => {
       const selected = selectedIndex === index;
       const suggested = suggestedIndex === index;

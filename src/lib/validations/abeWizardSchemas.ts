@@ -198,7 +198,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               type: "string",
               description:
                 FROM_DOCUMENT +
-                "Verkaufsbezeichnung group label for this row, verbatim.",
+                "Verkaufsbezeichnung sales designation for this row group — the section header above the rows or vehicle name in Auflagen. NEVER the Fahrzeugtyp column (short codes like 3k-N1, 5L, K-N1).",
             },
             typeApproval: {
               type: ["string", "null"],
@@ -223,7 +223,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_DOCUMENT +
-                "All condition codes and short notes from Auflagen column for this row.",
+                "Short Auflagen condition codes only. Exclude Verkaufsbezeichnung text and drive-type words.",
             },
           },
         },
