@@ -68,6 +68,16 @@ describe("pre-deploy extraction quality · amounts", () => {
   it("extracts mileage from oil-change invoice", () => {
     expect(extractMileageKmFromText(OCR_SAMPLES.oilChangeInvoice)).toBe(67_210);
   });
+
+  it("extracts KM-Stand from TÜV report header", () => {
+    expect(extractMileageKmFromText(OCR_SAMPLES.tuevReportHeaderKmStand)).toBe(
+      142_350,
+    );
+    expect(extractMileageKmFromText(OCR_SAMPLES.tuevReportPass)).toBe(85_400);
+    expect(extractMileageKmFromText(OCR_SAMPLES.tuevReportMinorDefects)).toBe(
+      120_500,
+    );
+  });
 });
 
 describe("pre-deploy extraction quality · approval kind detection", () => {
@@ -135,6 +145,17 @@ describe("pre-deploy extraction quality · structured approval fields", () => {
     expect(fields.data.nextInspectionDate).toBe("2028-05");
     expect(fields.data.testDate).toBe("2026-03-12");
     expect(fields.data.documentNumber).toMatch(/HU-2026-991/i);
+  });
+
+  it("extracts KM-Stand from TÜV document header (Kopf)", () => {
+    const fields = extractApprovalFieldsFromText(
+      OCR_SAMPLES.tuevReportHeaderKmStand,
+      "tuev",
+    );
+    expect(fields.kind).toBe("tuev");
+    if (fields.kind !== "tuev") return;
+    expect(fields.data.mileageKm).toBe(142_350);
+    expect(fields.data.testDate).toBe("2026-04-15");
   });
 
   it("maps geringfügige Mängel + defect list", () => {

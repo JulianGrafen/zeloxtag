@@ -12,6 +12,7 @@ import {
 } from "@/lib/ocr/invoice-line-items-from-text";
 import {
   buildInvoiceSystemPrompt,
+  buildTuevCostSystemPrompt,
   INVOICE_USER_PROMPT_LINES,
   TUEV_COST_USER_PROMPT_LINES,
 } from "@/lib/ocr/invoice-parse-prompts";
@@ -26,6 +27,7 @@ import { normalizeOcrMarkdown } from "@/lib/ocr/normalize-ocr-markdown";
 import type { OcrJsonPayload } from "@/lib/ocr/ocr-types";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
+  buildInvoiceTextParseJsonSchema,
   INVOICE_TEXT_PARSE_JSON_SCHEMA,
   invoiceTextParseSchema,
   normalizeTextParseResult,
@@ -123,6 +125,12 @@ export class InvoiceParseService {
       : INVOICE_USER_PROMPT_LINES;
 
     const userContent = buildDocumentUserMessage([docHint, ...userLines], input);
+    const jsonSchema = buildInvoiceTextParseJsonSchema({
+      documentType: isTuevReport ? "tuev" : "invoice",
+    });
+    const systemPrompt = (
+      isTuevReport ? buildTuevCostSystemPrompt() : buildInvoiceSystemPrompt()
+    ).replace(/OCR-Input ist Markdown/g, "Lies das hochgeladene Dokument");
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
@@ -131,15 +139,12 @@ export class InvoiceParseService {
         max_completion_tokens: PARSE_MAX_TOKENS,
         response_format: {
           type: "json_schema",
-          json_schema: INVOICE_TEXT_PARSE_JSON_SCHEMA,
+          json_schema: jsonSchema,
         },
         messages: [
           {
             role: "system",
-            content: buildInvoiceSystemPrompt().replace(
-              /OCR-Input ist Markdown/g,
-              "Lies das hochgeladene Dokument",
-            ),
+            content: systemPrompt,
           },
           { role: "user", content: userContent },
         ],

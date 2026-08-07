@@ -95,11 +95,7 @@ export const invoiceTextParseSchema = z.object({
 
 export type InvoiceTextParseResult = z.infer<typeof invoiceTextParseSchema>;
 
-/**
- * OpenAI Structured Outputs JSON Schema (strict).
- * Keep in sync with `invoiceTextParseSchema`.
- */
-export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
+const INVOICE_TEXT_PARSE_JSON_SCHEMA_BASE = {
   name: "vehicle_invoice_text_parse",
   strict: true,
   schema: {
@@ -219,6 +215,60 @@ export const INVOICE_TEXT_PARSE_JSON_SCHEMA = {
     },
   },
 } as const;
+
+export type InvoiceTextParseJsonSchemaOptions = {
+  /** HU/AU Prüfbericht — enables header mileage + Vorgangsnummer in schema hints. */
+  documentType?: "invoice" | "tuev";
+};
+
+type InvoiceTextParseJsonSchema = {
+  name: string;
+  strict: true;
+  schema: Record<string, unknown>;
+};
+
+/**
+ * OpenAI Structured Outputs JSON Schema (strict).
+ * Keep in sync with `invoiceTextParseSchema`.
+ */
+export const INVOICE_TEXT_PARSE_JSON_SCHEMA = INVOICE_TEXT_PARSE_JSON_SCHEMA_BASE;
+
+/** TÜV cost/metadata parse uses the same shape but must not suppress header fields. */
+export function buildInvoiceTextParseJsonSchema(
+  options: InvoiceTextParseJsonSchemaOptions = {},
+): InvoiceTextParseJsonSchema {
+  if (options.documentType !== "tuev") {
+    return INVOICE_TEXT_PARSE_JSON_SCHEMA;
+  }
+
+  return {
+    ...INVOICE_TEXT_PARSE_JSON_SCHEMA_BASE,
+    name: "tuev_report_cost_parse",
+    schema: {
+      ...INVOICE_TEXT_PARSE_JSON_SCHEMA_BASE.schema,
+      properties: {
+        ...INVOICE_TEXT_PARSE_JSON_SCHEMA_BASE.schema.properties,
+        amount: {
+          type: ["number", "null"],
+          description:
+            "HU/AU Prüfgebühren / Gesamtbetrag in EUR. Never a percentage. Null if not shown.",
+        },
+        invoiceNumber: {
+          type: ["string", "null"],
+          description:
+            "Vorgangs-/Beleg-/Berichtsnummer from the report header (e.g. HU-2026-991). Null if absent.",
+        },
+        mileageKm: {
+          type: ["integer", "null"],
+          description:
+            "Kilometerstand from the document header (Kopf, top of page 1) as integer km. " +
+            "Look for KM-Stand, Kilometerstand, km-Stand, Tachostand near Kennzeichen / Fahrgestellnummer / Prüfdatum. " +
+            "Strip thousand separators (142.350 → 142350). Required when visible in the header.",
+        },
+      },
+    },
+  };
+}
 
 /**
  * True when the line amount is just a restated percentage from the label

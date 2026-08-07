@@ -254,7 +254,11 @@ export async function analyzeDocument(input: {
       return {
         kind: "invoice",
         documentType: "tuev",
-        fields: { ...fields, category: "tuev" },
+        fields: {
+          ...fields,
+          category: "tuev",
+          mileageKm: tuevReport.mileageKm ?? fields.mileageKm ?? null,
+        },
         approvalFields: { kind: "tuev", data: tuevReport },
         rawText: "",
         ocrJson: ocrPayload,

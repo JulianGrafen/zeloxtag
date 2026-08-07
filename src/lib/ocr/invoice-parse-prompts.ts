@@ -76,13 +76,26 @@ FEW-SHOT — lineItems (Markdown / HTML tables):
 - Keep MwSt. as its own lineItem when present.
 `.trim();
 
+/** Few-shot block for HU/AU header mileage (Kopf / Seite 1). */
+export const TUEV_HEADER_MILEAGE_FEW_SHOT = `
+FEW-SHOT — mileageKm (HU/AU Dokumentkopf / Header):
+- Kilometerstand steht im Kopf des Dokuments (obere Seite 1), oft neben Kennzeichen, Fahrgestellnummer, Prüfdatum.
+- Synonyme: "KM-Stand", "Km-Stand", "Kilometerstand", "km-Stand", "Tachostand", "Laufleistung".
+- Beispiel Kopf: "KM-Stand: 142.350 km" → mileageKm: 142350
+- Beispiel Kopf: "Kilometerstand 142350" → mileageKm: 142350
+- Beispiel Kopf: "km-Stand 67.210" → mileageKm: 67210
+- Tausenderpunkte/Leerzeichen entfernen; ganze Zahl zurückgeben. Wenn nicht lesbar → null
+`.trim();
+
 /** Vision LLM user instructions for HU/AU Prüfberichte (costs + metadata). */
 export const TUEV_COST_USER_PROMPT_LINES = [
   "Deutsches HU/AU-Prüfprotokoll (TÜV, DEKRA, GTÜ, KÜS).",
+  "Lies zuerst den Dokumentkopf (Kopf / Header oben auf Seite 1): Kennzeichen, Fahrgestellnummer, KM-Stand, Prüfdatum.",
   "Extrahiere Prüfgebühren / Kosten als amount (Gesamtbetrag in EUR).",
   "lineItems = einzelne Posten (HU, AU, Abgasuntersuchung, Gebühren) wenn ausgewiesen.",
   "vendor = Prüfstelle / Filiale; invoiceNumber = Vorgangs-/Belegnummer wenn vorhanden.",
-  "mileageKm = Kilometerstand; date = Untersuchungsdatum (YYYY-MM-DD).",
+  "mileageKm PFLICHT aus dem Kopf/Header wenn KM-Stand / Kilometerstand / km-Stand / Tachostand lesbar.",
+  "date = Untersuchungsdatum (YYYY-MM-DD).",
   "category immer tuev. ABE-Felder (kbaNumber, conditions, …) IMMER null.",
   "Nur echte €-Summen — keine Prozentwerte als amount.",
 ] as const;
@@ -106,4 +119,9 @@ export const INVOICE_USER_PROMPT_LINES = [
 /** System prompt used for invoice LLM calls (base + few-shot). */
 export function buildInvoiceSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string {
   return `${base}\n\n${INVOICE_FEW_SHOT_PROMPT}`;
+}
+
+/** System prompt for HU/AU cost/metadata vision parse (header mileage emphasis). */
+export function buildTuevCostSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string {
+  return `${buildInvoiceSystemPrompt(base)}\n\n${TUEV_HEADER_MILEAGE_FEW_SHOT}`;
 }

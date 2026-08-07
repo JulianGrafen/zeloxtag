@@ -5,10 +5,12 @@ import {
   tuevDefectsForDisplay,
 } from "@/components/dashboard/TuevOverview";
 import { TUEV_COST_USER_PROMPT_LINES } from "@/lib/ocr/invoice-parse-prompts";
+import { buildInvoiceTextParseJsonSchema } from "@/lib/ocr/text-parse-schema";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { sanitizeTuevPayload } from "@/services/documents/TuevReportService";
 import {
   buildTuevSystemPrompt,
+  TUEV_HEADER_MILEAGE_GUIDANCE,
   TUEV_JSON_SCHEMA,
   TUEV_PUNKT6_DEFECTS_GUIDANCE,
 } from "@/services/ocr/TuevExtractionService";
@@ -45,6 +47,8 @@ describe("TuevExtractionService prompts & schema", () => {
     expect(prompt).toContain("EM/GM");
     expect(prompt).toContain("Mängel");
     expect(prompt).toContain(TUEV_PUNKT6_DEFECTS_GUIDANCE);
+    expect(prompt).toContain(TUEV_HEADER_MILEAGE_GUIDANCE);
+    expect(prompt).toMatch(/Kopf|Header/i);
   });
 
   it("JSON schema requires defects fields and references Punkt 6", () => {
@@ -61,9 +65,30 @@ describe("TuevExtractionService prompts & schema", () => {
     expect(listDesc).toMatch(/Punkt 6/i);
   });
 
-  it("cost prompt lines target Prüfgebühren for vision parse", () => {
-    expect(TUEV_COST_USER_PROMPT_LINES.join(" ")).toMatch(/Prüfgebühr|Kosten/i);
-    expect(TUEV_COST_USER_PROMPT_LINES.join(" ")).toContain("category immer tuev");
+  it("JSON schema mileageKm references document header", () => {
+    const mileageDesc = String(
+      TUEV_JSON_SCHEMA.schema.properties.mileageKm.description,
+    );
+    expect(mileageDesc).toMatch(/Kopf|Header/i);
+    expect(mileageDesc).toMatch(/KM-Stand|Kilometerstand/i);
+  });
+
+  it("cost prompt lines target header KM-Stand for vision parse", () => {
+    const joined = TUEV_COST_USER_PROMPT_LINES.join(" ");
+    expect(joined).toMatch(/Prüfgebühr|Kosten/i);
+    expect(joined).toContain("category immer tuev");
+    expect(joined).toMatch(/Kopf|Header/i);
+    expect(joined).toMatch(/KM-Stand|Kilometerstand|mileageKm PFLICHT/i);
+  });
+
+  it("TÜV invoice JSON schema requires header mileage extraction", () => {
+    const schema = buildInvoiceTextParseJsonSchema({ documentType: "tuev" });
+    const mileageDesc = String(schema.schema.properties.mileageKm.description);
+    expect(mileageDesc).toMatch(/Kopf|Header/i);
+    expect(mileageDesc).not.toMatch(/Null if absent or for ABE\/TÜV/i);
+    expect(String(schema.schema.properties.invoiceNumber.description)).toMatch(
+      /Vorgangs/i,
+    );
   });
 });
 

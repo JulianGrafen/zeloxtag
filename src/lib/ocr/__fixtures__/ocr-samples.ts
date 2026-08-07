@@ -109,6 +109,16 @@ geringfügige Mängel
 nächste HU: 07/2028
 `.trim(),
 
+  tuevReportHeaderKmStand: `
+Untersuchungsbericht nach § 29 StVZO
+Kennzeichen: M-AB 1234
+Fahrgestellnummer: WVWZZZ1JZ3W386752
+KM-Stand: 142.350 km
+Prüfdatum: 15.04.2026
+Prüforganisation: TÜV Süd
+Ergebnis: ohne Mängel
+`.trim(),
+
   percentSkontoTrap: `
 Rechnung RE-99
 Arbeitslohn                       200,00 €
