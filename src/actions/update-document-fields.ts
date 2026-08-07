@@ -33,13 +33,25 @@ type UpdatePayload = {
   vehicleApprovals?: string[] | null;
   technicalSpecs?: DocumentTechnicalSpec[] | null;
   conditions?: string[] | null;
+  vendor?: string | null;
 };
+
+const MAX_VENDOR_LENGTH = 160;
+
+function parseVendor(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().slice(0, MAX_VENDOR_LENGTH);
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 function revalidateDocumentPaths(tagUuid: string, documentId: string) {
   revalidatePath(`/v/${tagUuid}`);
   revalidatePath(`/v/${tagUuid}/dokumente`);
   revalidatePath(`/v/${tagUuid}/dokumente/${documentId}`);
   revalidatePath(`/v/${tagUuid}/service`);
+  revalidatePath(`/v/${tagUuid}/historie`);
 }
 
 /**
@@ -60,8 +72,9 @@ export async function updateDocumentFields(
   const hasApprovals = input.vehicleApprovals !== undefined;
   const hasSpecs = input.technicalSpecs !== undefined;
   const hasConditions = input.conditions !== undefined;
+  const hasVendor = input.vendor !== undefined;
 
-  if (!hasLineItems && !hasApprovals && !hasSpecs && !hasConditions) {
+  if (!hasLineItems && !hasApprovals && !hasSpecs && !hasConditions && !hasVendor) {
     return { status: "error", message: "Keine Änderungen übergeben." };
   }
 
@@ -91,6 +104,7 @@ export async function updateDocumentFields(
         ? []
         : null)
     : undefined;
+  const vendor = hasVendor ? parseVendor(input.vendor) : undefined;
 
   const { isConfigured } = getSupabaseEnv();
 
@@ -112,6 +126,7 @@ export async function updateDocumentFields(
         ? { technical_specs: technicalSpecs }
         : {}),
       ...(conditions !== undefined ? { conditions } : {}),
+      ...(vendor !== undefined ? { vendor } : {}),
     });
     revalidateDocumentPaths(tagUuid, documentId);
     return { status: "ok" };
@@ -188,6 +203,9 @@ export async function updateDocumentFields(
   if (conditions !== undefined) {
     patch.conditions =
       conditions && conditions.length > 0 ? conditions : null;
+  }
+  if (vendor !== undefined) {
+    patch.vendor = vendor;
   }
 
   const { error: updateError } = await admin

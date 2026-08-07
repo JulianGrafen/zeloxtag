@@ -707,10 +707,11 @@ export function InvoiceUploader({
 
     setError(null);
     const { review, approvalFields: approval, title: storedTitle } = payload;
-    const orgLabel =
-      review.testingOrganization === "other"
+    const vendorLabel =
+      review.workshopName?.trim() ||
+      (review.testingOrganization === "other"
         ? "Prüforganisation"
-        : review.testingOrganization;
+        : review.testingOrganization);
 
     startTransition(async () => {
       const formData = new FormData();
@@ -719,7 +720,7 @@ export function InvoiceUploader({
       formData.set("title", storedTitle);
       formData.set("type", "tuev");
       formData.set("category", "tuev");
-      formData.set("vendor", orgLabel);
+      formData.set("vendor", vendorLabel);
       formData.set("date", review.testDate?.trim() ?? localDateIso());
       formData.set("amount", "");
       formData.set("lineItems", "");

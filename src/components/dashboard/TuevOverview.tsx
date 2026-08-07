@@ -29,6 +29,8 @@ export type TuevReviewFields = {
   mileageKm: number | null;
   documentNumber: string | null;
   testingOrganization: TestingOrganization;
+  /** Free-text workshop / branch name → `documents.vendor`. */
+  workshopName: string | null;
 };
 
 export type TuevOverviewProps = {
@@ -116,6 +118,12 @@ export function fieldsToTuevReview(
         fields.authority ??
         fields.vendor,
     ),
+    workshopName:
+      fields.vendor?.trim() ||
+      (tuevData?.testingOrganization &&
+      tuevData.testingOrganization !== "other"
+        ? tuevData.testingOrganization
+        : null),
   };
 }
 
@@ -175,11 +183,12 @@ export function TuevOverview({
   }
 
   function handleSave() {
-    const orgLabel =
-      review.testingOrganization === "other"
-        ? "TÜV"
-        : review.testingOrganization;
-    const title = [`TÜV / HU`, orgLabel].filter(Boolean).join(" · ").slice(0, 120);
+    const workshop =
+      review.workshopName?.trim() ||
+      (review.testingOrganization === "other"
+        ? "Prüforganisation"
+        : review.testingOrganization);
+    const title = [`TÜV / HU`, workshop].filter(Boolean).join(" · ").slice(0, 120);
     const approval = reviewToApprovalPayload(review, approvalFields);
     void onSave({ review, approvalFields: approval, title });
   }
@@ -283,7 +292,7 @@ export function TuevOverview({
               placeholder="z. B. HU-2024-12345"
             />
           </FieldBlock>
-          <FieldBlock label="Prüforganisation" className="sm:col-span-2">
+          <FieldBlock label="Prüforganisation">
             <select
               value={review.testingOrganization}
               onChange={(event) =>
@@ -300,6 +309,16 @@ export function TuevOverview({
                 </option>
               ))}
             </select>
+          </FieldBlock>
+          <FieldBlock label="Werkstatt / Prüfstelle" className="sm:col-span-2">
+            <Input
+              value={review.workshopName ?? ""}
+              onChange={(event) =>
+                patch("workshopName", event.target.value || null)
+              }
+              placeholder="z. B. TÜV Süd · GTÜ Ingenieurbüro Härtwig"
+              maxLength={160}
+            />
           </FieldBlock>
         </div>
 

@@ -11,6 +11,7 @@ import {
 
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
 import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
+import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
 import { DocumentViewer } from "@/components/documents/document-viewer";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import {
@@ -71,11 +72,17 @@ export function DocumentInvoiceDetailView({
   canEdit = false,
 }: DocumentInvoiceDetailViewProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [vendorLabel, setVendorLabel] = useState(
+    () => document.vendor?.trim() || displayDocumentTitle(document.title),
+  );
   const title = displayDocumentTitle(document.title);
   const lineItems = document.line_items ?? [];
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
   const isManual = isManualVehicleEntry(document);
-  const canEditPositions = !isManual && Boolean(document.vehicle_id);
+  const canEditVendor =
+    canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
+  const canEditPositions =
+    canEdit && !isManual && Boolean(document.vehicle_id);
   const resolvedBack =
     backHref ?? `/v/${tagUuid}/dokumente?type=${document.type}`;
   const fileName = fileNameFromUrl(document.file_url, title);
@@ -85,7 +92,7 @@ export function DocumentInvoiceDetailView({
     typeof document.mileage_km === "number"
       ? `${document.mileage_km.toLocaleString("de-DE")} km`
       : null;
-  const vendor = document.vendor?.trim() || title;
+  const vendor = vendorLabel.trim() || title;
   const category = document.category?.trim() || (isManual ? "Eintrag" : "Beleg");
   const invoiceNumberLabel = displayManualInvoiceNumber(document.invoice_number);
 
@@ -193,7 +200,39 @@ export function DocumentInvoiceDetailView({
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             {isManual ? "Eintrag" : "Belegdaten"}
           </h2>
-          <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
+
+          {canEditVendor ? (
+            <EditableVendorSection
+              documentId={document.id}
+              vehicleId={document.vehicle_id}
+              tagUuid={tagUuid}
+              vendor={document.vendor}
+              label="Werkstatt"
+              placeholder="z. B. Auto Meister GmbH"
+              onSaved={(nextVendor) =>
+                setVendorLabel(nextVendor?.trim() || title)
+              }
+            />
+          ) : null}
+
+          <dl
+            className={[
+              "grid grid-cols-2 gap-3 text-[0.85rem]",
+              canEditVendor ? "mt-4" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {!canEditVendor && document.type === "invoice" ? (
+              <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                  Werkstatt
+                </dt>
+                <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                  {vendor}
+                </dd>
+              </div>
+            ) : null}
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
                 Nummer

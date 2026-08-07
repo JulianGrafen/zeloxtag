@@ -35,6 +35,7 @@ function revalidateDocumentPaths(tagUuid: string, documentId: string) {
   revalidatePath(`/v/${tagUuid}/dokumente`);
   revalidatePath(`/v/${tagUuid}/dokumente/${documentId}`);
   revalidatePath(`/v/${tagUuid}/service`);
+  revalidatePath(`/v/${tagUuid}/historie`);
 }
 
 /**

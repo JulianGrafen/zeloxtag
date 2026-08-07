@@ -56,7 +56,10 @@ export default async function DocumentDetailPage({
       tagUuid={result.tag.uuid}
       vehicleLabel={vehicleLabel}
       document={document}
-      canEdit={access.isOwner}
+      canEdit={
+        access.isOwner ||
+        (access.isContributor && document.type === "invoice")
+      }
     />
   );
 }
