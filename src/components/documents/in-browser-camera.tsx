@@ -7,6 +7,7 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { Camera, FileUp, FlipHorizontal2, ImagePlus, X } from "lucide-react";
 
 export type GuideFrameType = "a4" | "section";
@@ -98,6 +99,11 @@ export function InBrowserCamera({
   const [capturing, setCapturing] = useState(false);
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+  const [instructionsOpen, setInstructionsOpen] = useState(Boolean(hint));
+
+  useEffect(() => {
+    setInstructionsOpen(Boolean(hint));
+  }, [title, hint]);
 
   async function startCamera(facing: FacingMode) {
     stopStream(streamRef.current);
@@ -221,10 +227,10 @@ export function InBrowserCamera({
 
   const fileAccept = allowPdf ? PDF_ACCEPT : IMAGE_ACCEPT;
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black">
+  const overlay = (
+    <div className="fixed inset-0 z-[9999] flex flex-col bg-black">
       {/* ── Top bar ──────────────────────────────────────────────── */}
-      <div className="relative flex items-center justify-between px-4 pt-6 pb-3">
+      <div className="relative flex items-center justify-between px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-3">
         <button
           type="button"
           onClick={onClose}
@@ -257,9 +263,9 @@ export function InBrowserCamera({
         </label>
       </div>
 
-      {hint ? (
-        <div className="border-b border-white/10 bg-black/35 px-5 py-3 backdrop-blur-sm">
-          <p className="mx-auto max-w-lg text-center text-[0.82rem] leading-relaxed text-white/85">
+      {hint && !instructionsOpen ? (
+        <div className="border-b border-white/10 bg-white px-5 py-3.5 shadow-lg">
+          <p className="mx-auto max-w-lg text-center text-[0.88rem] font-medium leading-relaxed text-neutral-900">
             {hint}
           </p>
         </div>
@@ -276,6 +282,16 @@ export function InBrowserCamera({
             <p className="text-sm leading-relaxed text-white/60">
               {cameraError}
             </p>
+            {hint ? (
+              <div className="rounded-2xl bg-white px-5 py-4 text-left shadow-lg">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                  Scan-Hinweis
+                </p>
+                <p className="mt-2 text-[0.9rem] font-medium leading-relaxed text-neutral-900">
+                  {hint}
+                </p>
+              </div>
+            ) : null}
             <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-semibold text-black">
               <input
                 type="file"
@@ -322,8 +338,8 @@ export function InBrowserCamera({
                       DIN A4
                     </div>
                     {guideLabel ? (
-                      <div className="absolute inset-x-0 bottom-3 flex justify-center">
-                        <span className="rounded-lg bg-black/50 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
+                      <div className="absolute inset-x-2 bottom-3 flex justify-center">
+                        <span className="rounded-xl bg-white/95 px-3 py-2 text-center text-[0.78rem] font-semibold leading-snug text-neutral-900 shadow-lg">
                           {guideLabel}
                         </span>
                       </div>
@@ -344,8 +360,8 @@ export function InBrowserCamera({
                   >
                     <GuideFrameCorners sharp />
                     {guideLabel ? (
-                      <div className="absolute inset-x-0 bottom-3 flex justify-center">
-                        <span className="rounded-lg bg-black/50 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
+                      <div className="absolute inset-x-2 bottom-3 flex justify-center">
+                        <span className="rounded-xl bg-white/95 px-3 py-2 text-center text-[0.78rem] font-semibold leading-snug text-neutral-900 shadow-lg">
                           {guideLabel}
                         </span>
                       </div>
@@ -354,13 +370,41 @@ export function InBrowserCamera({
                 </div>
               )
             ) : null}
+
+            {hint && instructionsOpen ? (
+              <div className="absolute inset-0 z-20 flex items-end justify-center bg-black/70 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-sm">
+                <div className="w-full max-w-md rounded-[1.5rem] bg-white p-6 shadow-2xl">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                    Scan-Hinweis
+                  </p>
+                  <p className="mt-2 text-[1.05rem] font-semibold leading-snug text-neutral-900">
+                    {title}
+                  </p>
+                  <p className="mt-3 text-[0.92rem] leading-relaxed text-neutral-700">
+                    {hint}
+                  </p>
+                  {guideLabel ? (
+                    <p className="mt-4 rounded-xl bg-neutral-100 px-3 py-2 text-[0.82rem] font-medium text-neutral-800">
+                      Im Rahmen sichtbar: {guideLabel}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setInstructionsOpen(false)}
+                    className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.92rem] font-semibold text-white transition-opacity active:opacity-80"
+                  >
+                    Verstanden — Kamera öffnen
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </>
         )}
       </div>
 
       {/* ── Bottom controls ───────────────────────────────────────── */}
-      {!cameraError ? (
-        <div className="flex items-center justify-center gap-8 py-8">
+      {!cameraError && !instructionsOpen ? (
+        <div className="flex items-center justify-center gap-8 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
           {/* Camera flip (only when multiple cameras detected) */}
           {hasMultipleCameras ? (
             <button
@@ -392,4 +436,10 @@ export function InBrowserCamera({
       ) : null}
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return overlay;
+  }
+
+  return createPortal(overlay, document.body);
 }

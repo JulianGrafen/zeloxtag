@@ -2,19 +2,19 @@
 
 import { CheckCircle2 } from "lucide-react";
 
+import { CompatibilityTable } from "@/components/dashboard/CompatibilityTable";
 import {
+  abeVehicleMatchIndexFromRowId,
+  abeVehicleMatchKey,
+  abeVehicleMatchRowId,
   findBestAbeVehicleMatchIndex,
   formatAbeVehicleMatchLabel,
+  vehicleMatchesToTableData,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 
-export function abeVehicleMatchKey(
-  match: AbeVehicleMatch,
-  index: number,
-): string {
-  return `${index}-${match.model}-${match.driveType ?? ""}-${match.typeApproval ?? ""}`;
-}
+export { abeVehicleMatchKey };
 
 interface AbeVehicleMatchPickerProps {
   matches: AbeVehicleMatch[];
@@ -38,26 +38,46 @@ export function AbeVehicleMatchPicker({
   const suggestedIndex = findBestAbeVehicleMatchIndex(matches, vehicleContext);
   const selectedMatch =
     selectedIndex !== null ? matches[selectedIndex] ?? null : null;
+  const table = vehicleMatchesToTableData(
+    matches,
+    selectedIndex,
+    vehicleContext,
+  );
+  const selectedRowId =
+    selectedIndex !== null ? abeVehicleMatchRowId(selectedIndex) : null;
 
   return (
-    <div className="space-y-3">
+    <section className="space-y-4 rounded-[1.35rem] border border-emerald-500/25 bg-emerald-500/5 p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
       <div>
-        <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          Dein Fahrzeug
+        <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-emerald-800">
+          Dein Fahrzeug wählen
+        </p>
+        <p className="mt-1 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
+          Tippe die passende Zeile aus der extrahierten Fahrzeugtabelle an
         </p>
         <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Wähle die passende Zeile aus der Fahrzeugtabelle — die Auflagen werden
-          danach gefiltert.
+          Nur die Auflagen der gewählten Zeile werden gespeichert.
         </p>
         {vehicleLabel ? (
-          <p className="mt-1 text-[0.78rem] font-medium text-[color:var(--vd-text)]">
+          <p className="mt-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]">
             Garage: {vehicleLabel}
           </p>
         ) : null}
       </div>
 
+      <CompatibilityTable
+        table={table}
+        title="Extrahierte Fahrzeugfreigaben"
+        selectedRowId={selectedRowId}
+        onSelectRow={(rowId) => {
+          const index = abeVehicleMatchIndexFromRowId(rowId);
+          if (index !== null) onSelect(index);
+        }}
+        className="hidden border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-none md:block"
+      />
+
       <div
-        className="space-y-2"
+        className="space-y-2 md:hidden"
         role="radiogroup"
         aria-label="Fahrzeug aus der ABE-Tabelle wählen"
       >
@@ -74,9 +94,9 @@ export function AbeVehicleMatchPicker({
               aria-checked={selected}
               onClick={() => onSelect(index)}
               className={[
-                "w-full rounded-2xl border px-4 py-3 text-left transition-colors",
+                "w-full rounded-2xl border px-4 py-3.5 text-left transition-colors touch-manipulation",
                 selected
-                  ? "border-emerald-500/40 bg-emerald-500/10"
+                  ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/20"
                   : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] active:bg-neutral-100",
               ].join(" ")}
             >
@@ -88,16 +108,6 @@ export function AbeVehicleMatchPicker({
                   {match.typeApproval ? (
                     <p className="mt-1 break-all text-[0.72rem] text-[color:var(--vd-muted)]">
                       {match.typeApproval}
-                    </p>
-                  ) : null}
-                  {match.tireSizes.length > 0 ? (
-                    <p className="mt-1 text-[0.75rem] text-[color:var(--vd-muted)]">
-                      Reifen: {match.tireSizes.join(", ")}
-                    </p>
-                  ) : null}
-                  {match.auflagenCodes.length > 0 ? (
-                    <p className="mt-1 text-[0.72rem] text-[color:var(--vd-muted)]">
-                      {match.auflagenCodes.length} Auflagen-Codes
                     </p>
                   ) : null}
                 </div>
@@ -126,26 +136,38 @@ export function AbeVehicleMatchPicker({
       </div>
 
       {selectionError ? (
-        <p className="text-[0.78rem] text-amber-800">{selectionError}</p>
+        <p className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.82rem] text-amber-900">
+          {selectionError}
+        </p>
       ) : null}
 
-      {selectedMatch && selectedMatch.auflagenCodes.length > 0 ? (
+      {selectedMatch ? (
         <div className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3">
           <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Auflagen für deine Auswahl ({selectedMatch.auflagenCodes.length})
+            Ausgewählt: {formatAbeVehicleMatchLabel(selectedMatch)}
           </p>
-          <p className="mt-2 flex flex-wrap gap-1.5">
-            {selectedMatch.auflagenCodes.map((code) => (
-              <span
-                key={code}
-                className="rounded-full bg-neutral-900/5 px-2 py-0.5 font-mono text-[0.72rem] text-[color:var(--vd-text)]"
-              >
-                {code}
-              </span>
-            ))}
-          </p>
+          {selectedMatch.auflagenCodes.length > 0 ? (
+            <p className="mt-2 flex flex-wrap gap-1.5">
+              {selectedMatch.auflagenCodes.map((code) => (
+                <span
+                  key={code}
+                  className="rounded-full bg-neutral-900/5 px-2 py-0.5 font-mono text-[0.72rem] text-[color:var(--vd-text)]"
+                >
+                  {code}
+                </span>
+              ))}
+            </p>
+          ) : (
+            <p className="mt-2 text-[0.78rem] text-[color:var(--vd-muted)]">
+              Keine Auflagen-Codes in dieser Zeile.
+            </p>
+          )}
         </div>
-      ) : null}
-    </div>
+      ) : (
+        <p className="text-[0.78rem] font-medium text-amber-800">
+          Bitte eine Zeile auswählen, bevor du speicherst.
+        </p>
+      )}
+    </section>
   );
 }

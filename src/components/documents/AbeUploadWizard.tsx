@@ -17,6 +17,7 @@ import {
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
 import { AbeVehicleMatchPicker } from "@/components/documents/abe-vehicle-match-picker";
+import { AbeScanInstruction } from "@/components/documents/abe-scan-instruction";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,14 +84,14 @@ const CAPTURE_STEPS: Array<{
     phase: "capture-cover",
     stepNumber: 1,
     title: "Schritt 1 von 3 · Erste Seite",
-    hint: "Scanne die erste Seite — dort stehen KBA-Nummer, Design und Modell-Typ.",
+    hint: "Scanne die erste Seite. Dort wo die KBA-Nummer, Design und Modell-Typ stehen.",
     guideLabel: "KBA-Nummer · Design · Modell-Typ",
   },
   {
     phase: "capture-main",
     stepNumber: 2,
-    title: "Schritt 2 von 3 · ABE-Hauptseite",
-    hint: "Scanne das Deckblatt der ABE — die Seite mit „Kraftfahrt-Bundesamt“ und der Überschrift „Allgemeine Betriebserlaubnis“.",
+    title: "Schritt 2 von 3 · ABE-Deckblatt",
+    hint: "Scanne das Deckblatt der ABE. Die Seite, auf der Kraftfahrt-Bundesamt steht mit der Überschrift Allgemeine Betriebserlaubnis.",
     guideLabel: "Kraftfahrt-Bundesamt · Allgemeine Betriebserlaubnis",
   },
   {
@@ -292,6 +293,28 @@ function ReviewSection({
 
   return (
     <div className="vd-anim-header flex flex-col gap-4">
+      {report.vehicleMatches.length > 0 ? (
+        <AbeVehicleMatchPicker
+          matches={report.vehicleMatches}
+          selectedIndex={selectedMatchIndex}
+          onSelect={(index) => {
+            setSelectedMatchIndex(index);
+            setSelectionError(null);
+          }}
+          vehicleContext={vehicleContext}
+          vehicleLabel={vehicleLabel}
+          selectionError={selectionError}
+        />
+      ) : (
+        <section className="rounded-[1.35rem] border border-amber-300/70 bg-amber-50 px-4 py-4 text-[0.88rem] leading-relaxed text-amber-950 shadow-[var(--vd-shadow-sm)]">
+          <p className="font-semibold">Keine Fahrzeugtabelle erkannt</p>
+          <p className="mt-1">
+            Scanne in Schritt 3 die Seite mit der Fahrzeug- und Auflagen-Tabelle
+            erneut — ohne diese Zeilen kann kein Fahrzeug zugeordnet werden.
+          </p>
+        </section>
+      )}
+
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)] sm:p-5">
         <header className="flex items-start justify-between gap-3">
           <div>
@@ -391,19 +414,6 @@ function ReviewSection({
             </dl>
           )}
 
-          {report.vehicleMatches.length > 0 ? (
-            <AbeVehicleMatchPicker
-              matches={report.vehicleMatches}
-              selectedIndex={selectedMatchIndex}
-              onSelect={(index) => {
-                setSelectedMatchIndex(index);
-                setSelectionError(null);
-              }}
-              vehicleContext={vehicleContext}
-              vehicleLabel={vehicleLabel}
-              selectionError={selectionError}
-            />
-          ) : null}
         </div>
 
         {saveError ? (
@@ -421,10 +431,12 @@ function ReviewSection({
             type="button"
             disabled={isSaving}
             onClick={() => {
-              if (
-                report.vehicleMatches.length > 0 &&
-                selectedMatchIndex === null
-              ) {
+              if (report.vehicleMatches.length === 0) {
+                setSelectionError(null);
+                onSave({ form, selectedMatchIndex: null });
+                return;
+              }
+              if (selectedMatchIndex === null) {
                 setSelectionError(
                   "Bitte wähle dein Fahrzeug aus der Fahrzeugtabelle.",
                 );
@@ -511,6 +523,7 @@ export function AbeUploadWizard({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, startSaveTransition] = useTransition();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const pageCount = useMemo(
     () =>
@@ -518,6 +531,10 @@ export function AbeUploadWizard({
         .length,
     [state.coverFile, state.mainFile, state.vehiclesFile],
   );
+
+  useEffect(() => {
+    setCameraOpen(false);
+  }, [state.phase]);
 
   useEffect(() => {
     const source = state.coverFile ?? state.mainFile ?? state.vehiclesFile;
@@ -536,6 +553,7 @@ export function AbeUploadWizard({
   }
 
   function resetWizard() {
+    setCameraOpen(false);
     setState({
       phase: "capture-cover",
       coverFile: null,
@@ -727,7 +745,30 @@ export function AbeUploadWizard({
   const currentCaptureStep = CAPTURE_STEPS.find((s) => s.phase === state.phase);
 
   if (currentCaptureStep) {
-    const { title, hint, guideLabel, phase } = currentCaptureStep;
+    const { title, hint, guideLabel, phase, stepNumber } = currentCaptureStep;
+
+    if (!cameraOpen) {
+      return (
+        <AbeScanInstruction
+          stepNumber={stepNumber}
+          title={title}
+          hint={hint}
+          guideLabel={guideLabel}
+          vehicleLabel={vehicleLabel}
+          onStart={() => setCameraOpen(true)}
+          onBack={() => {
+            if (phase === "capture-cover") goBack();
+            else if (phase === "capture-main") {
+              setState((prev) => ({ ...prev, phase: "capture-cover" }));
+            } else {
+              setState((prev) => ({ ...prev, phase: "capture-main" }));
+            }
+          }}
+          backHref={phase === "capture-cover" ? backHref : undefined}
+          backLabel={backLabel}
+        />
+      );
+    }
 
     return (
       <>
@@ -749,14 +790,7 @@ export function AbeUploadWizard({
                 ? handleMainCapture
                 : handleVehiclesCapture
           }
-          onClose={() => {
-            if (phase === "capture-cover") goBack();
-            else if (phase === "capture-main") {
-              setState((prev) => ({ ...prev, phase: "capture-cover" }));
-            } else {
-              setState((prev) => ({ ...prev, phase: "capture-main" }));
-            }
-          }}
+          onClose={() => setCameraOpen(false)}
         />
       </>
     );

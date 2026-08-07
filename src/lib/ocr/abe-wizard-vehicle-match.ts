@@ -1,4 +1,4 @@
-import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
+import type { AbeVehicleContext, TableData } from "@/lib/validations/abeSchema";
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 import {
   compactAlnum,
@@ -113,5 +113,56 @@ export function selectedVehicleMatchPayload(match: AbeVehicleMatch) {
     driveType: match.driveType,
     typeApproval: match.typeApproval,
     tireSizes: match.tireSizes,
+  };
+}
+
+export function abeVehicleMatchRowId(index: number): string {
+  return `abe-match-${index}`;
+}
+
+export function abeVehicleMatchIndexFromRowId(rowId: string): number | null {
+  const match = /^abe-match-(\d+)$/.exec(rowId.trim());
+  if (!match) return null;
+  const index = Number.parseInt(match[1] ?? "", 10);
+  return Number.isFinite(index) ? index : null;
+}
+
+/** Render extracted wizard rows as a selectable compatibility-style table. */
+export function vehicleMatchesToTableData(
+  matches: AbeVehicleMatch[],
+  selectedIndex: number | null,
+  vehicle: AbeVehicleContext | null | undefined,
+): TableData {
+  const suggestedIndex = findBestAbeVehicleMatchIndex(matches, vehicle);
+
+  return {
+    caption: "Fahrzeugtabelle aus dem Scan",
+    headers: ["Modell", "Typgenehmigung", "Antrieb", "Reifen", "Auflagen"],
+    rows: matches.map((match, index) => {
+      const selected = selectedIndex === index;
+      const suggested = suggestedIndex === index;
+      const auflagenPreview =
+        match.auflagenCodes.length > 0
+          ? match.auflagenCodes.slice(0, 10).join(", ") +
+            (match.auflagenCodes.length > 10 ? " …" : "")
+          : "—";
+
+      return {
+        id: abeVehicleMatchRowId(index),
+        cells: [
+          match.model,
+          match.typeApproval?.trim() || "—",
+          match.driveType?.trim() || "—",
+          match.tireSizes.length > 0 ? match.tireSizes.join(", ") : "—",
+          auflagenPreview,
+        ],
+        isUserVehicleMatch: selected || (!selected && suggested && selectedIndex === null),
+        matchReason: selected
+          ? "Deine Auswahl"
+          : suggested
+            ? "Garagen-Vorschlag"
+            : null,
+      };
+    }),
   };
 }

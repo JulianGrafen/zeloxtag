@@ -299,7 +299,9 @@ export function VehicleDocumentsView({
               href={
                 filterType === "tuev"
                   ? `/v/${tagUuid}?scan=1&type=tuev`
-                  : `/v/${tagUuid}?scan=1`
+                  : filterType === "abe"
+                    ? `/v/${tagUuid}?scan=1&type=abe`
+                    : `/v/${tagUuid}?scan=1`
               }
               variant="button"
               className="claim-cta shadow-[var(--vd-shadow)]"

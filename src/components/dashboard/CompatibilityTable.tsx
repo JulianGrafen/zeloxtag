@@ -1,5 +1,7 @@
 "use client";
 
+import type { KeyboardEvent } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import type { TableData } from "@/lib/validations/abeSchema";
 
@@ -8,6 +10,9 @@ export type CompatibilityTableProps = {
   /** Optional heading above the table (defaults to caption or Verwendungsbereich). */
   title?: string;
   className?: string;
+  /** When set, rows become tappable and this row is highlighted. */
+  selectedRowId?: string | null;
+  onSelectRow?: (rowId: string) => void;
 };
 
 /**
@@ -18,7 +23,10 @@ export function CompatibilityTable({
   table,
   title,
   className = "",
+  selectedRowId = null,
+  onSelectRow,
 }: CompatibilityTableProps) {
+  const selectable = Boolean(onSelectRow);
   const heading = title ?? table.caption ?? "Verwendungsbereich";
   const columnCount = Math.max(
     table.headers.length,
@@ -68,22 +76,41 @@ export function CompatibilityTable({
           </thead>
           <tbody>
             {table.rows.map((row, rowIndex) => {
-              const matched = row.isUserVehicleMatch;
+              const selected = selectable && selectedRowId === row.id;
+              const matched = selected || (!selectable && row.isUserVehicleMatch);
+              const rowClassName = [
+                "border-b border-[color:var(--vd-border)] last:border-b-0",
+                matched
+                  ? "border-l-4 border-l-emerald-600 bg-emerald-500/10 text-emerald-950 dark:border-l-emerald-400 dark:bg-emerald-950/30 dark:text-emerald-50"
+                  : [
+                      rowIndex % 2 === 0
+                        ? "bg-[color:var(--vd-surface)]"
+                        : "bg-[color:var(--vd-surface-elevated)]/60",
+                      selectable
+                        ? "cursor-pointer active:bg-neutral-100"
+                        : "hover:bg-[color:var(--vd-surface-elevated)]",
+                    ].join(" "),
+              ].join(" ");
+
               return (
                 <tr
                   key={row.id}
-                  className={[
-                    "border-b border-[color:var(--vd-border)] last:border-b-0",
-                    matched
-                      ? "border-l-4 border-l-emerald-600 bg-emerald-500/10 text-emerald-950 dark:border-l-emerald-400 dark:bg-emerald-950/30 dark:text-emerald-50"
-                      : [
-                          rowIndex % 2 === 0
-                            ? "bg-[color:var(--vd-surface)]"
-                            : "bg-[color:var(--vd-surface-elevated)]/60",
-                          "hover:bg-[color:var(--vd-surface-elevated)]",
-                        ].join(" "),
-                  ].join(" ")}
+                  className={rowClassName}
                   aria-current={matched ? "true" : undefined}
+                  {...(selectable
+                    ? {
+                        role: "radio" as const,
+                        "aria-checked": selected,
+                        tabIndex: 0,
+                        onClick: () => onSelectRow?.(row.id),
+                        onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onSelectRow?.(row.id);
+                          }
+                        },
+                      }
+                    : {})}
                 >
                   {headers.map((_, cellIndex) => {
                     const value = row.cells[cellIndex]?.trim() || "—";
@@ -100,7 +127,13 @@ export function CompatibilityTable({
                       >
                         {isFirst && matched ? (
                           <span className="flex flex-wrap items-center gap-2">
-                            <Badge variant="success">Dein Fahrzeug</Badge>
+                            <Badge variant="success">
+                              {selected
+                                ? "Ausgewählt"
+                                : row.matchReason === "Garagen-Vorschlag"
+                                  ? "Vorschlag"
+                                  : "Dein Fahrzeug"}
+                            </Badge>
                             <span>{value}</span>
                           </span>
                         ) : (

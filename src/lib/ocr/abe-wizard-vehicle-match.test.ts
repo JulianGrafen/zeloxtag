@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  abeVehicleMatchIndexFromRowId,
   findBestAbeVehicleMatchIndex,
   formatAbeVehicleApprovalLine,
   resolveInitialAbeVehicleMatchIndex,
   scoreAbeVehicleMatch,
+  vehicleMatchesToTableData,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 
@@ -54,5 +56,15 @@ describe("abe-wizard-vehicle-match", () => {
     expect(formatAbeVehicleApprovalLine(MATCHES[1]!)).toBe(
       "5ER REIHE (Heckantrieb) – 225/50R18",
     );
+  });
+
+  it("maps wizard matches to selectable table rows", () => {
+    const table = vehicleMatchesToTableData(MATCHES, 1, {
+      brand: "BMW",
+      model: "5er",
+    });
+    expect(table.rows).toHaveLength(3);
+    expect(table.rows[1]?.isUserVehicleMatch).toBe(true);
+    expect(abeVehicleMatchIndexFromRowId("abe-match-2")).toBe(2);
   });
 });
