@@ -1,7 +1,6 @@
 /**
- * Document parse dispatch — vision LLM for most types.
- * TÜV uses a hybrid: Azure DI OCR text for KM-Stand + Punkt-6 Mängel heuristics,
- * vision LLM for costs, dates, and metadata.
+ * Document parse dispatch — vision LLM only (no Azure Document Intelligence).
+ * PDFs/images are sent directly to the LLM with strict JSON schemas.
  */
 
 import type {
@@ -9,12 +8,7 @@ import type {
   ApprovalFields,
 } from "@/lib/documents/approval-fields";
 
-import {
-  buildFullOcrPlainText,
-  runTuevDocumentOcr,
-} from "./azure-document-ocr";
 import { isLlmConfigured } from "./llm-client";
-import { mergeTuevHybridReport } from "./tuev-hybrid-merge";
 import {
   buildStubOcrPayload,
   LLM_VISION_PARSE_MODEL_ID,
@@ -248,7 +242,7 @@ export async function analyzeDocument(input: {
     const parseModel = resolveParseModel(resolvedType);
 
     if (resolvedType === "tuev") {
-      const [fields, tuevReport, ocrPayloadResult] = await Promise.all([
+      const [fields, tuevReport] = await Promise.all([
         invoiceParseService.parseFromDocument(documentInput, {
           model: parseModel,
           documentType: "tuev",
@@ -256,29 +250,19 @@ export async function analyzeDocument(input: {
         tuevExtractionService.extractFromDocument(documentInput, {
           model: parseModel,
         }),
-        runTuevDocumentOcr(documentInput),
       ]);
-
-      const ocrText = ocrPayloadResult
-        ? buildFullOcrPlainText(ocrPayloadResult)
-        : "";
-      const mergedTuev =
-        ocrText.length >= 8
-          ? mergeTuevHybridReport(tuevReport, ocrText)
-          : tuevReport;
-
       return {
         kind: "invoice",
         documentType: "tuev",
         fields: {
           ...fields,
           category: "tuev",
-          mileageKm: mergedTuev.mileageKm ?? fields.mileageKm ?? null,
+          mileageKm: tuevReport.mileageKm ?? fields.mileageKm ?? null,
         },
-        approvalFields: { kind: "tuev", data: mergedTuev },
-        rawText: ocrText,
-        ocrJson: ocrPayloadResult ?? ocrPayload,
-        modelId: ocrPayloadResult?.modelId ?? LLM_VISION_PARSE_MODEL_ID,
+        approvalFields: { kind: "tuev", data: tuevReport },
+        rawText: "",
+        ocrJson: ocrPayload,
+        modelId: LLM_VISION_PARSE_MODEL_ID,
         parseModel,
       };
     }
