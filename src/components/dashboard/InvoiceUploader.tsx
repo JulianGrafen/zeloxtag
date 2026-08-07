@@ -16,6 +16,7 @@ import { ABEOverview } from "@/components/dashboard/ABEOverview";
 import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverview";
 import { TeilegutachtenOverview } from "@/components/dashboard/TeilegutachtenOverview";
 import { TuevOverview } from "@/components/dashboard/TuevOverview";
+import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
 import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
@@ -320,6 +321,22 @@ export function InvoiceUploader({
   const isTuevUpload =
     scanDef?.ocrDocumentType === "tuev" ||
     (resolvedLockCategory && resolvedCategory === "tuev");
+
+  // TÜV uploads use a dedicated guided wizard — render it in place of the
+  // generic scanner so users are led through header + defect captures.
+  if (isTuevUpload) {
+    return (
+      <TuevUploadWizard
+        vehicleId={vehicleId}
+        tagUuid={tagUuid}
+        vehicleLabel={vehicleLabel}
+        successHref={successHref}
+        onBack={onBack}
+        backHref={resolvedBackHref}
+        backLabel={backLabel}
+      />
+    );
+  }
 
   async function runExtraction() {
     setError(null);

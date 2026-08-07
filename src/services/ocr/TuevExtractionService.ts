@@ -14,7 +14,10 @@ import {
 import {
   TUEV_RESULTS,
   TESTING_ORGANIZATIONS,
+  type TestingOrganization,
+  type TuevDefectRow,
   type TuevReport,
+  type TuevResult,
 } from "@/lib/validations/documentSchemas";
 import {
   parseTuevReportLenient,
@@ -163,6 +166,141 @@ export type TuevVisionExtraction = {
   requiresManualReview: boolean;
 };
 
+/** Step 1 extraction: header fields only (no defects). */
+export type TuevHeaderExtraction = {
+  testingOrganization: TestingOrganization;
+  testDate: string | null;
+  result: TuevResult;
+  mileageKm: number | null;
+  nextInspectionDate: string | null;
+  documentNumber: string | null;
+  vendor: string | null;
+  amount: number | null;
+  lineItems: InvoiceLineItem[] | null;
+  requiresManualReview: boolean;
+};
+
+/** Step 2 extraction: Punkt-6 defects only. */
+export type TuevDefectsExtraction = {
+  defectsTable: TuevDefectRow[] | null;
+  defectsList: string[] | null;
+};
+
+const TUEV_LINE_ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["label", "amount"],
+  properties: {
+    label: { type: "string" },
+    amount: { type: "number" },
+  },
+} as const;
+
+/**
+ * Header-only schema for wizard Step 1.
+ * Deliberately omits defectsTable/defectsList so the LLM focuses on the header.
+ */
+const TUEV_HEADER_JSON_SCHEMA = {
+  name: "tuev_header_extraction",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "testingOrganization",
+      "testDate",
+      "result",
+      "mileageKm",
+      "nextInspectionDate",
+      "documentNumber",
+      "vendor",
+      "amount",
+      "lineItems",
+    ],
+    properties: {
+      testingOrganization: { type: "string", enum: [...TESTING_ORGANIZATIONS] },
+      testDate: {
+        type: ["string", "null"],
+        description: "Untersuchungsdatum as YYYY-MM-DD.",
+      },
+      result: { type: "string", enum: [...TUEV_RESULTS] },
+      mileageKm: {
+        type: ["integer", "null"],
+        description:
+          "Kilometerstand from Punkt 4 / Feld 4 / (4) or document header as whole number.",
+      },
+      nextInspectionDate: {
+        type: ["string", "null"],
+        description: "Nächste HU as YYYY-MM.",
+      },
+      documentNumber: {
+        type: ["string", "null"],
+        description: "Vorgangsnummer.",
+      },
+      vendor: {
+        type: ["string", "null"],
+        description: "Prüfstelle / Filiale name.",
+      },
+      amount: {
+        type: ["number", "null"],
+        description: "Gesamt-Prüfgebühr EUR.",
+      },
+      lineItems: {
+        type: ["array", "null"],
+        description: "Einzelne Gebührenposten (HU, AU, …).",
+        items: TUEV_LINE_ITEM_SCHEMA,
+      },
+    },
+  },
+} as const;
+
+/**
+ * Defects-only schema for wizard Step 2.
+ * Focused exclusively on Punkt 6 — no other fields.
+ */
+const TUEV_DEFECTS_ONLY_JSON_SCHEMA = {
+  name: "tuev_defects_extraction",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["defectsTable", "defectsList"],
+    properties: {
+      defectsTable: {
+        type: ["array", "null"],
+        description:
+          "All Mängel rows from Punkt 6 — checkpoint (dot-separated, e.g. 4.2.1, 1.3.2a), description (verbatim), severity EM/GM. Null when no defects.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["checkpoint", "description", "severity"],
+          properties: {
+            checkpoint: {
+              type: ["string", "null"],
+              description: "Dot-separated Prüfpunkt exactly as printed.",
+            },
+            description: {
+              type: "string",
+              description: "Verbatim Mangel description.",
+            },
+            severity: {
+              type: ["string", "null"],
+              enum: ["EM", "GM", null],
+              description: "EM or GM when shown; null otherwise.",
+            },
+          },
+        },
+      },
+      defectsList: {
+        type: ["array", "null"],
+        description:
+          "Plain-text list of all defects from Punkt 6. Null when no defects.",
+        items: { type: "string" },
+      },
+    },
+  },
+} as const;
+
 /** Map single vision-LLM TÜV extract → analyze API fields. */
 export function tuevVisionToAnalyzeFields(
   extraction: TuevVisionExtraction,
@@ -222,6 +360,231 @@ export type TuevExtractionOptions = {
 };
 
 export class TuevExtractionService {
+  /** Step 1: extract header fields only (no defects). Used by the guided wizard. */
+  async extractHeaderFromDocument(
+    input: DocumentBytesInput,
+    options: TuevExtractionOptions = {},
+  ): Promise<TuevHeaderExtraction> {
+    const model = options.model?.trim() || resolveParseModel("tuev");
+
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const systemPrompt = [
+      "You are a strict data extractor for German HU/AU inspection reports (TÜV, DEKRA, GTÜ, KÜS).",
+      "Focus ONLY on the document HEADER and result section — do NOT extract Punkt 6 defects.",
+      TUEV_PUNKT4_MILEAGE_GUIDANCE,
+      "Extract: testingOrganization, testDate (YYYY-MM-DD), result (map German wording below),",
+      "mileageKm, nextInspectionDate (YYYY-MM), documentNumber, vendor (Prüfstelle), amount (Gesamtgebühr EUR), lineItems.",
+      'Map result: "ohne Mängel"/"mangelfrei" → no_defects, "geringfügige Mängel" → minor_defects,',
+      '"erhebliche Mängel" → major_defects, "gefährliche Mängel" → dangerous_defects, "nicht bestanden" → failed.',
+      "Optional fields → null when unreadable — never guess. Return ONLY valid JSON.",
+    ].join(" ");
+
+    const userContent = await buildTuevDocumentUserMessage(
+      [
+        "TÜV/HU inspection report — extract HEADER fields only.",
+        "Focus: Kopf (top), Punkt 1–4 (Ergebnis, Datum, Kilometerstand, Nächste HU).",
+        "Ignore Punkt 6 (Mängel) — leave defects for a separate scan.",
+      ],
+      input,
+    );
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: 800,
+        response_format: {
+          type: "json_schema",
+          json_schema: TUEV_HEADER_JSON_SCHEMA,
+        },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(`TÜV header extract failed: ${message}`);
+    }
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new TextParseError("TÜV header extract returned an empty response.");
+    }
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = extractJsonObject(content);
+    } catch {
+      throw new TextParseError("TÜV header extract returned invalid JSON.");
+    }
+
+    const record =
+      typeof parsedJson === "object" && parsedJson !== null
+        ? (parsedJson as Record<string, unknown>)
+        : {};
+
+    const testingOrg = (TESTING_ORGANIZATIONS as readonly string[]).includes(
+      String(record.testingOrganization),
+    )
+      ? (record.testingOrganization as TestingOrganization)
+      : "other";
+
+    const result = (TUEV_RESULTS as readonly string[]).includes(
+      String(record.result),
+    )
+      ? (record.result as TuevResult)
+      : "no_defects";
+
+    const testDate =
+      typeof record.testDate === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(record.testDate)
+        ? record.testDate
+        : null;
+
+    const mileageKm =
+      typeof record.mileageKm === "number" &&
+      Number.isFinite(record.mileageKm) &&
+      record.mileageKm >= 0
+        ? Math.round(record.mileageKm)
+        : null;
+
+    const nextInspectionDate =
+      typeof record.nextInspectionDate === "string" &&
+      /^\d{4}-\d{2}$/.test(record.nextInspectionDate)
+        ? record.nextInspectionDate
+        : null;
+
+    const documentNumber =
+      typeof record.documentNumber === "string" && record.documentNumber.trim()
+        ? record.documentNumber.trim().slice(0, 120)
+        : null;
+
+    const vendor =
+      typeof record.vendor === "string" && record.vendor.trim()
+        ? record.vendor.trim().slice(0, 160)
+        : null;
+
+    const amount =
+      typeof record.amount === "number" && Number.isFinite(record.amount)
+        ? record.amount
+        : null;
+
+    const lineItems = Array.isArray(record.lineItems)
+      ? (record.lineItems as InvoiceLineItem[])
+      : null;
+
+    return {
+      testingOrganization: testingOrg,
+      testDate,
+      result,
+      mileageKm,
+      nextInspectionDate,
+      documentNumber,
+      vendor,
+      amount,
+      lineItems,
+      requiresManualReview: !testDate || !mileageKm,
+    };
+  }
+
+  /** Step 2: extract Punkt-6 defects only. Used by the guided wizard. */
+  async extractDefectsFromDocument(
+    input: DocumentBytesInput,
+    options: TuevExtractionOptions = {},
+  ): Promise<TuevDefectsExtraction> {
+    const model = options.model?.trim() || resolveParseModel("tuev");
+
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const systemPrompt = [
+      "You are a strict data extractor for German HU/AU inspection reports.",
+      "Focus EXCLUSIVELY on Punkt 6 / Abschnitt 6 (Festgestellte Mängel) of this document.",
+      TUEV_PUNKT6_DEFECTS_GUIDANCE,
+      TUEV_PUNKT6_TABLE_GUIDANCE,
+      TUEV_PRUEFPUNKT_DOT_GUIDANCE,
+      TUEV_ANTI_HALLUCINATION_GUIDANCE,
+      "Extract every defect row sequentially — do not truncate or summarize.",
+      "Return ONLY valid JSON.",
+    ].join(" ");
+
+    const userContent = await buildTuevDocumentUserMessage(
+      [
+        "TÜV/HU inspection report — extract DEFECTS only from Punkt 6.",
+        "Look for 'Festgestellte Mängel', 'Abschnitt 6', numbered Prüfpunkt rows.",
+        "If no defects are listed (mangelfrei), return null for both fields.",
+      ],
+      input,
+    );
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: 1_800,
+        response_format: {
+          type: "json_schema",
+          json_schema: TUEV_DEFECTS_ONLY_JSON_SCHEMA,
+        },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(`TÜV defects extract failed: ${message}`);
+    }
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new TextParseError("TÜV defects extract returned an empty response.");
+    }
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = extractJsonObject(content);
+    } catch {
+      throw new TextParseError("TÜV defects extract returned invalid JSON.");
+    }
+
+    const record =
+      typeof parsedJson === "object" && parsedJson !== null
+        ? (parsedJson as Record<string, unknown>)
+        : {};
+
+    const defectsTable =
+      Array.isArray(record.defectsTable) && record.defectsTable.length > 0
+        ? (record.defectsTable as TuevDefectRow[])
+        : null;
+
+    const defectsList =
+      Array.isArray(record.defectsList) && record.defectsList.length > 0
+        ? (record.defectsList as string[])
+        : null;
+
+    return { defectsTable, defectsList };
+  }
+
   async extractFromDocument(
     input: DocumentBytesInput,
     options: TuevExtractionOptions = {},
