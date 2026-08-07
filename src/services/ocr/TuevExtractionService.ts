@@ -9,6 +9,11 @@ import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
+  normalizeTextParseResult,
+  type InvoiceLineItem,
+  type InvoiceTextParseResult,
+} from "@/lib/ocr/text-parse-schema";
+import {
   TUEV_RESULTS,
   TESTING_ORGANIZATIONS,
   TuevReportSchema,
@@ -16,7 +21,7 @@ import {
 } from "@/lib/validations/documentSchemas";
 import { sanitizeTuevPayload } from "@/services/documents/TuevReportService";
 
-const TUEV_MAX_TOKENS = 2_400;
+const TUEV_MAX_TOKENS = 3_600;
 
 /** German HU/AU reports list Mängel under numbered section 6 (Punkt 6). */
 export const TUEV_PUNKT6_DEFECTS_GUIDANCE =
@@ -27,11 +32,15 @@ export const TUEV_PRUEFPUNKT_DOT_GUIDANCE =
   "Prüfpunkt-Nummern in Punkt 6 sind IMMER punktgetrennt (z. B. 4.2.1, 1.3.2a, 6.1.4, 4.7.1b). " +
   "Im checkpoint-Feld exakt so übernehmen — Punkte beibehalten, Ziffern nie zusammenziehen.";
 
-/** Kilometerstand appears in the document header (Kopf), not in Punkt 6. */
-export const TUEV_HEADER_MILEAGE_GUIDANCE =
-  'Kilometerstand (mileageKm) steht im Dokumentkopf / Header oben auf Seite 1 — neben Kennzeichen, Fahrgestellnummer, Prüfdatum. ' +
-  'Suche "KM-Stand", "Km-Stand", "Kilometerstand", "km-Stand", "Tachostand". ' +
-  'Beispiel: "KM-Stand: 142.350 km" → 142350. Tausenderpunkte entfernen.';
+/** Kilometerstand is under Punkt 4 / Feld 4, also sometimes in the document header. */
+export const TUEV_PUNKT4_MILEAGE_GUIDANCE =
+  'Kilometerstand (mileageKm) steht unter Punkt 4 / Feld 4 / (4) — z. B. "4. Kilometerstand", "4 KM-Stand", "(4) Kilometerstand". ' +
+  'Alternativ im Dokumentkopf (Kopf): "KM-Stand", "Kilometerstand", "Tachostand". ' +
+  'Beispiel: "142.350 km" → 142350. Tausenderpunkte entfernen.';
+
+export const TUEV_ANTI_HALLUCINATION_GUIDANCE =
+  "Wenn Punkt 6 leer ist, mangelfrei, oder das Ergebnis ohne Mängel ist: defectsTable und defectsList MÜSSEN null sein. " +
+  "Erfinde NIEMALS Mängel — nur explizit in Punkt 6 gelistete Einträge extrahieren.";
 
 export const TUEV_JSON_SCHEMA = {
   name: "tuev_report_extraction",
@@ -48,6 +57,9 @@ export const TUEV_JSON_SCHEMA = {
       "documentNumber",
       "defectsTable",
       "defectsList",
+      "vendor",
+      "amount",
+      "lineItems",
     ],
     properties: {
       testingOrganization: {
@@ -65,8 +77,8 @@ export const TUEV_JSON_SCHEMA = {
       mileageKm: {
         type: ["integer", "null"],
         description:
-          "Kilometerstand from document header (Kopf, top of page 1) as whole number. " +
-          "Labels: KM-Stand, Kilometerstand, km-Stand, Tachostand near Kennzeichen / Fahrgestellnummer.",
+          "Kilometerstand from Punkt 4 / Feld 4 / (4) or document header (Kopf) as whole number. " +
+          'Labels: "4. Kilometerstand", KM-Stand, Kilometerstand, Tachostand.',
       },
       nextInspectionDate: {
         type: ["string", "null"],
@@ -113,21 +125,78 @@ export const TUEV_JSON_SCHEMA = {
           "Null when Punkt 6 is empty or mangelfrei.",
         items: { type: "string" },
       },
+      vendor: {
+        type: ["string", "null"],
+        description: "Prüfstelle / Filiale / Werkstatt name.",
+      },
+      amount: {
+        type: ["number", "null"],
+        description: "Gesamt-Prüfgebühr in EUR (HU/AU).",
+      },
+      lineItems: {
+        type: ["array", "null"],
+        description: "Einzelne Gebührenposten (HU, AU, …) wenn ausgewiesen.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["label", "amount"],
+          properties: {
+            label: { type: "string" },
+            amount: { type: "number" },
+          },
+        },
+      },
     },
   },
 } as const;
 
+export type TuevVisionExtraction = {
+  report: TuevReport;
+  vendor: string | null;
+  amount: number | null;
+  lineItems: InvoiceLineItem[] | null;
+};
+
+/** Map single vision-LLM TÜV extract → analyze API fields. */
+export function tuevVisionToAnalyzeFields(
+  extraction: TuevVisionExtraction,
+): InvoiceTextParseResult {
+  const { report, vendor, amount, lineItems } = extraction;
+  const orgLabel =
+    report.testingOrganization !== "other"
+      ? report.testingOrganization
+      : null;
+
+  return normalizeTextParseResult({
+    vendor,
+    date: report.testDate,
+    amount,
+    category: "tuev",
+    summary: "HU / AU Prüfbericht",
+    lineItems,
+    kbaNumber: null,
+    vehicleApprovals: null,
+    authority: orgLabel,
+    conditions: null,
+    partCategory: null,
+    notes: null,
+    manufacturer: null,
+    invoiceNumber: report.documentNumber,
+    mileageKm: report.mileageKm,
+  });
+}
+
 export function buildTuevSystemPrompt(): string {
   return [
     "You are a strict data extractor for German HU/AU inspection reports (TÜV, DEKRA, GTÜ, KÜS).",
-    "Read the uploaded document (PDF or scan).",
-    TUEV_HEADER_MILEAGE_GUIDANCE,
+    "Read the uploaded document (PDF or scan) directly — no OCR preprocessing.",
+    TUEV_PUNKT4_MILEAGE_GUIDANCE,
     TUEV_PUNKT6_DEFECTS_GUIDANCE,
     TUEV_PRUEFPUNKT_DOT_GUIDANCE,
+    TUEV_ANTI_HALLUCINATION_GUIDANCE,
     "Extract testingOrganization, testDate (YYYY-MM-DD), result, mileageKm, nextInspectionDate (YYYY-MM),",
-    "documentNumber, defectsTable (Prüfpunkte with EM/GM severity), and defectsList (plain-text Mängel).",
-    "For each Punkt-6 defect: dot-separated checkpoint (e.g. 4.2.1, 1.3.2a, 4.7.1b), description (verbatim), severity EM or GM when shown.",
-    "Extract ALL Mängel listed under Punkt 6 — do not summarize, omit rows, or pull defects from other sections.",
+    "documentNumber, defectsTable, defectsList, vendor (Prüfstelle), amount (Gesamtgebühr EUR), lineItems (HU/AU fees).",
+    "For each Punkt-6 defect: dot-separated checkpoint (e.g. 4.2.1, 1.3.2a), description (verbatim), severity EM or GM when shown.",
     "Map German result wording:",
     '- "ohne Mängel" / "mangelfrei" → no_defects',
     '- "geringfügige Mängel" → minor_defects',
@@ -146,7 +215,7 @@ export class TuevExtractionService {
   async extractFromDocument(
     input: DocumentBytesInput,
     options: TuevExtractionOptions = {},
-  ): Promise<TuevReport> {
+  ): Promise<TuevVisionExtraction> {
     const model = options.model?.trim() || resolveParseModel("tuev");
 
     let client: OpenAI;
@@ -161,12 +230,11 @@ export class TuevExtractionService {
 
     const userContent = buildDocumentUserMessage(
       [
-        "German HU/AU inspection report (TÜV-Bericht).",
-        "Read the document header (Kopf, top of page 1) first: Kennzeichen, Fahrgestellnummer, KM-Stand, Prüfdatum.",
-        "Extract organization, test date, result, mileageKm from the header, next HU date, and document number.",
-        "Extract ALL Mängel from Punkt 6 / Abschnitt 6 (Festgestellte Mängel) into defectsTable and defectsList.",
-        "Typical Punkt-6 headers: \"6. Festgestellte Mängel\", \"6 Festgestellte Mängel\", \"(6) Ihr Fahrzeug weist folgende Mängel auf\".",
-        "Include dot-separated Prüfpunkte (e.g. 4.2.1, 1.3.2a) and (EM)/(GM) severity markers when present.",
+        "German HU/AU inspection report (TÜV-Bericht). Read the document directly.",
+        "Punkt 4 / Feld 4 / (4): Kilometerstand → mileageKm.",
+        "Punkt 6 / Abschnitt 6: Festgestellte Mängel → defectsTable + defectsList (null wenn mangelfrei).",
+        "Extract Prüforganisation, Prüfdatum, Ergebnis, nächste HU, Vorgangsnummer, Prüfgebühren (amount, lineItems), Prüfstelle (vendor).",
+        "Prüfpunkte punktgetrennt (4.2.1, 1.3.2a). Keine Mängel erfinden.",
       ],
       input,
     );
@@ -203,7 +271,12 @@ export class TuevExtractionService {
       throw new TextParseError("TÜV extract returned invalid JSON.");
     }
 
-    const sanitized = sanitizeTuevPayload(parsedJson);
+    const record =
+      typeof parsedJson === "object" && parsedJson !== null
+        ? (parsedJson as Record<string, unknown>)
+        : {};
+
+    const sanitized = sanitizeTuevPayload(record);
     const parsed = TuevReportSchema.safeParse(sanitized);
     if (!parsed.success) {
       throw new TextParseError(
@@ -211,7 +284,24 @@ export class TuevExtractionService {
       );
     }
 
-    return parsed.data;
+    const vendor =
+      typeof record.vendor === "string" && record.vendor.trim()
+        ? record.vendor.trim().slice(0, 160)
+        : null;
+    const amount =
+      typeof record.amount === "number" && Number.isFinite(record.amount)
+        ? record.amount
+        : null;
+    const lineItems = Array.isArray(record.lineItems)
+      ? (record.lineItems as InvoiceLineItem[])
+      : null;
+
+    return {
+      report: parsed.data,
+      vendor,
+      amount,
+      lineItems,
+    };
   }
 }
 

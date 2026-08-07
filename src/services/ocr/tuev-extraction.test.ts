@@ -4,15 +4,15 @@ import {
   fieldsToTuevReview,
   tuevDefectsForDisplay,
 } from "@/components/dashboard/TuevOverview";
-import { TUEV_COST_USER_PROMPT_LINES } from "@/lib/ocr/invoice-parse-prompts";
-import { buildInvoiceTextParseJsonSchema } from "@/lib/ocr/text-parse-schema";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { sanitizeTuevPayload } from "@/services/documents/TuevReportService";
 import {
   buildTuevSystemPrompt,
-  TUEV_HEADER_MILEAGE_GUIDANCE,
+  tuevVisionToAnalyzeFields,
+  TUEV_ANTI_HALLUCINATION_GUIDANCE,
   TUEV_JSON_SCHEMA,
   TUEV_PRUEFPUNKT_DOT_GUIDANCE,
+  TUEV_PUNKT4_MILEAGE_GUIDANCE,
   TUEV_PUNKT6_DEFECTS_GUIDANCE,
 } from "@/services/ocr/TuevExtractionService";
 import { TuevReportService } from "@/services/documents";
@@ -45,12 +45,13 @@ describe("TuevExtractionService prompts & schema", () => {
     const prompt = buildTuevSystemPrompt();
     expect(prompt).toContain("Punkt 6");
     expect(prompt).toContain("defectsTable");
-    expect(prompt).toContain("EM/GM");
+    expect(prompt).toMatch(/EM.*GM/);
     expect(prompt).toContain("Mängel");
     expect(prompt).toContain(TUEV_PUNKT6_DEFECTS_GUIDANCE);
     expect(prompt).toContain(TUEV_PRUEFPUNKT_DOT_GUIDANCE);
-    expect(prompt).toContain(TUEV_HEADER_MILEAGE_GUIDANCE);
-    expect(prompt).toMatch(/Kopf|Header/i);
+    expect(prompt).toContain(TUEV_PUNKT4_MILEAGE_GUIDANCE);
+    expect(prompt).toContain(TUEV_ANTI_HALLUCINATION_GUIDANCE);
+    expect(prompt).toMatch(/Punkt 4|Feld 4/i);
   });
 
   it("JSON schema requires defects fields and references Punkt 6", () => {
@@ -67,30 +68,17 @@ describe("TuevExtractionService prompts & schema", () => {
     expect(listDesc).toMatch(/Punkt 6/i);
   });
 
-  it("JSON schema mileageKm references document header", () => {
+  it("JSON schema requires vendor, amount, and lineItems for single vision call", () => {
+    expect(TUEV_JSON_SCHEMA.schema.required).toEqual(
+      expect.arrayContaining(["vendor", "amount", "lineItems"]),
+    );
+  });
+
+  it("JSON schema mileageKm references Punkt 4", () => {
     const mileageDesc = String(
       TUEV_JSON_SCHEMA.schema.properties.mileageKm.description,
     );
-    expect(mileageDesc).toMatch(/Kopf|Header/i);
-    expect(mileageDesc).toMatch(/KM-Stand|Kilometerstand/i);
-  });
-
-  it("cost prompt lines target header KM-Stand for vision parse", () => {
-    const joined = TUEV_COST_USER_PROMPT_LINES.join(" ");
-    expect(joined).toMatch(/Prüfgebühr|Kosten/i);
-    expect(joined).toContain("category immer tuev");
-    expect(joined).toMatch(/Kopf|Header/i);
-    expect(joined).toMatch(/KM-Stand|Kilometerstand|mileageKm PFLICHT/i);
-  });
-
-  it("TÜV invoice JSON schema requires header mileage extraction", () => {
-    const schema = buildInvoiceTextParseJsonSchema({ documentType: "tuev" });
-    const mileageDesc = String(schema.schema.properties.mileageKm.description);
-    expect(mileageDesc).toMatch(/Kopf|Header/i);
-    expect(mileageDesc).not.toMatch(/Null if absent or for ABE\/TÜV/i);
-    expect(String(schema.schema.properties.invoiceNumber.description)).toMatch(
-      /Vorgangs/i,
-    );
+    expect(mileageDesc).toMatch(/Punkt 4|Feld 4|\(4\)/i);
   });
 });
 
@@ -231,30 +219,52 @@ describe("sanitizeTuevPayload · LLM vision output", () => {
     ]);
   });
 
-  it("extracts dot-separated checkpoint from description when LLM omits checkpoint field", () => {
+  it("clears defects when result is no_defects (anti-hallucination)", () => {
     const sanitized = sanitizeTuevPayload({
-      testingOrganization: "DEKRA",
-      testDate: "2026-04-15",
-      result: "minor_defects",
-      mileageKm: 92_100,
-      nextInspectionDate: "2028-04",
+      testingOrganization: "TÜV",
+      testDate: "2026-03-12",
+      result: "no_defects",
+      mileageKm: 85_400,
+      nextInspectionDate: "2028-05",
       documentNumber: null,
       defectsTable: [
         {
-          checkpoint: null,
-          description: "4.2.1 Bremsbelag nahe Verschleißgrenze",
+          checkpoint: "4.2.1",
+          description: "Halluzinierter Mangel",
           severity: "GM",
         },
       ],
-      defectsList: null,
+      defectsList: ["Fake defect"],
     });
 
     const parsed = new TuevReportService().parseAndValidate(sanitized);
-    expect(parsed.defectsTable?.[0]).toMatchObject({
-      checkpoint: "4.2.1",
-      description: "Bremsbelag nahe Verschleißgrenze",
-      severity: "GM",
+    expect(parsed.result).toBe("no_defects");
+    expect(parsed.defectsTable).toBeNull();
+    expect(parsed.defectsList).toBeNull();
+  });
+
+  it("tuevVisionToAnalyzeFields maps single LLM extract to analyze fields", () => {
+    const fields = tuevVisionToAnalyzeFields({
+      report: {
+        testingOrganization: "TÜV",
+        testDate: "2026-03-12",
+        result: "minor_defects",
+        mileageKm: 142_350,
+        nextInspectionDate: "2028-03",
+        documentNumber: "HU-2026-991",
+        defectsTable: null,
+        defectsList: null,
+      },
+      vendor: "TÜV Süd · München",
+      amount: 118.5,
+      lineItems: [{ label: "HU", amount: 88.5 }],
     });
+
+    expect(fields.category).toBe("tuev");
+    expect(fields.mileageKm).toBe(142_350);
+    expect(fields.amount).toBe(118.5);
+    expect(fields.vendor).toBe("TÜV Süd · München");
+    expect(fields.invoiceNumber).toBe("HU-2026-991");
   });
 });
 

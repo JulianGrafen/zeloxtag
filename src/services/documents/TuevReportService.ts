@@ -288,17 +288,23 @@ export function sanitizeTuevPayload(rawJson: unknown): unknown {
     rawJson.defectsList,
   );
 
+  const result = normalizeResult(rawJson.result);
+  const clearedDefects =
+    result === "no_defects"
+      ? { defectsTable: null, defectsList: null }
+      : defects;
+
   return {
     testingOrganization: normalizeTestingOrganization(
       rawJson.testingOrganization,
     ),
     testDate: normalizeIsoDate(rawJson.testDate),
-    result: normalizeResult(rawJson.result),
+    result,
     mileageKm: normalizeMileageKm(rawJson.mileageKm),
     nextInspectionDate: normalizeYearMonth(rawJson.nextInspectionDate),
     documentNumber: normalizeDocumentNumber(rawJson.documentNumber),
-    defectsTable: defects.defectsTable,
-    defectsList: defects.defectsList,
+    defectsTable: clearedDefects.defectsTable,
+    defectsList: clearedDefects.defectsList,
   };
 }
 

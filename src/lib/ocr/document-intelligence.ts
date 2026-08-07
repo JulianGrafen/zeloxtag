@@ -32,7 +32,7 @@ import {
 import { egbeExtractionService } from "@/services/ocr/EgbeExtractionService";
 import { paragraph21ExtractionService } from "@/services/ocr/Paragraph21ExtractionService";
 import { teilegutachtenExtractionService } from "@/services/ocr/TeilegutachtenExtractionService";
-import { tuevExtractionService } from "@/services/ocr/TuevExtractionService";
+import { tuevExtractionService, tuevVisionToAnalyzeFields } from "@/services/ocr/TuevExtractionService";
 import {
   formatAbeKbaDisplay,
   type AbeMinimal,
@@ -242,24 +242,15 @@ export async function analyzeDocument(input: {
     const parseModel = resolveParseModel(resolvedType);
 
     if (resolvedType === "tuev") {
-      const [fields, tuevReport] = await Promise.all([
-        invoiceParseService.parseFromDocument(documentInput, {
-          model: parseModel,
-          documentType: "tuev",
-        }),
-        tuevExtractionService.extractFromDocument(documentInput, {
-          model: parseModel,
-        }),
-      ]);
+      const tuevVision = await tuevExtractionService.extractFromDocument(
+        documentInput,
+        { model: parseModel },
+      );
       return {
         kind: "invoice",
         documentType: "tuev",
-        fields: {
-          ...fields,
-          category: "tuev",
-          mileageKm: tuevReport.mileageKm ?? fields.mileageKm ?? null,
-        },
-        approvalFields: { kind: "tuev", data: tuevReport },
+        fields: tuevVisionToAnalyzeFields(tuevVision),
+        approvalFields: { kind: "tuev", data: tuevVision.report },
         rawText: "",
         ocrJson: ocrPayload,
         modelId: LLM_VISION_PARSE_MODEL_ID,

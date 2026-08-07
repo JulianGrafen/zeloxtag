@@ -180,7 +180,7 @@ function mergeFields(
 }
 
 /**
- * Analyze one or more prepared files via Markdown OCR + routed LLM parse.
+ * Analyze one or more prepared files via vision LLM parse.
  */
 export async function analyzeDocumentFiles(
   files: File[],

@@ -201,7 +201,8 @@ describe("pre-deploy extraction quality · TuevReportService sanitize", () => {
       mileageKm: 85_400,
       nextInspectionDate: "2028-05",
       documentNumber: null,
-      defectsList: ["Bremsbelag nahe Verschleißgrenze"],
+      defectsList: null,
+      defectsTable: null,
     });
   });
 });

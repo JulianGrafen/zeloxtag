@@ -87,22 +87,8 @@ describe("TuevReportService", () => {
       mileageKm: 85400,
       nextInspectionDate: "2028-05",
       documentNumber: "HU-2026-991",
-      defectsTable: [
-        {
-          checkpoint: null,
-          description: "Bremsbelag nahe Verschleißgrenze",
-          severity: null,
-        },
-        {
-          checkpoint: null,
-          description: "Scheibenwischer vorne",
-          severity: null,
-        },
-      ],
-      defectsList: [
-        "Bremsbelag nahe Verschleißgrenze",
-        "Scheibenwischer vorne",
-      ],
+      defectsTable: null,
+      defectsList: null,
     });
   });
 
