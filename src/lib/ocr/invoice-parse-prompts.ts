@@ -76,14 +76,13 @@ FEW-SHOT — lineItems (Markdown / HTML tables):
 - Keep MwSt. as its own lineItem when present.
 `.trim();
 
-/** Few-shot block for HU/AU mileage (Punkt 4 / Feld 4 + Kopf / Seite 1). */
+/** Few-shot block for HU/AU header mileage (Kopf / Seite 1). */
 export const TUEV_HEADER_MILEAGE_FEW_SHOT = `
-FEW-SHOT — mileageKm (HU/AU Punkt 4 + Dokumentkopf):
-- Kilometerstand steht IMMER unter Punkt 4 / Feld 4 / (4) — z. B. "4. Kilometerstand", "4 KM-Stand", "(4) Kilometerstand", "Feld 4".
-- Zusätzlich oft im Kopf (obere Seite 1), neben Kennzeichen, Fahrgestellnummer, Prüfdatum.
+FEW-SHOT — mileageKm (HU/AU Dokumentkopf / Header):
+- Kilometerstand steht im Kopf des Dokuments (obere Seite 1), oft neben Kennzeichen, Fahrgestellnummer, Prüfdatum.
 - Synonyme: "KM-Stand", "Km-Stand", "Kilometerstand", "km-Stand", "Tachostand", "Laufleistung".
-- Beispiel Punkt 4: "(4) Kilometerstand\\n142.350 km" → mileageKm: 142350
 - Beispiel Kopf: "KM-Stand: 142.350 km" → mileageKm: 142350
+- Beispiel Kopf: "Kilometerstand 142350" → mileageKm: 142350
 - Beispiel Kopf: "km-Stand 67.210" → mileageKm: 67210
 - Tausenderpunkte/Leerzeichen entfernen; ganze Zahl zurückgeben. Wenn nicht lesbar → null
 `.trim();
@@ -91,12 +90,11 @@ FEW-SHOT — mileageKm (HU/AU Punkt 4 + Dokumentkopf):
 /** Vision LLM user instructions for HU/AU Prüfberichte (costs + metadata). */
 export const TUEV_COST_USER_PROMPT_LINES = [
   "Deutsches HU/AU-Prüfprotokoll (TÜV, DEKRA, GTÜ, KÜS).",
-  "Lies zuerst Punkt 4 / Feld 4 / (4) für Kilometerstand (KM-Stand).",
-  "Dann Dokumentkopf (Kopf / Header oben auf Seite 1): Kennzeichen, Fahrgestellnummer, KM-Stand, Prüfdatum.",
+  "Lies zuerst den Dokumentkopf (Kopf / Header oben auf Seite 1): Kennzeichen, Fahrgestellnummer, KM-Stand, Prüfdatum.",
   "Extrahiere Prüfgebühren / Kosten als amount (Gesamtbetrag in EUR).",
   "lineItems = einzelne Posten (HU, AU, Abgasuntersuchung, Gebühren) wenn ausgewiesen.",
   "vendor = Prüfstelle / Filiale; invoiceNumber = Vorgangs-/Belegnummer wenn vorhanden.",
-  "mileageKm PFLICHT aus Punkt 4 / Feld 4 oder Kopf/Header wenn KM-Stand / Kilometerstand / km-Stand / Tachostand lesbar.",
+  "mileageKm PFLICHT aus dem Kopf/Header wenn KM-Stand / Kilometerstand / km-Stand / Tachostand lesbar.",
   "date = Untersuchungsdatum (YYYY-MM-DD).",
   "category immer tuev. ABE-Felder (kbaNumber, conditions, …) IMMER null.",
   "Nur echte €-Summen — keine Prozentwerte als amount.",

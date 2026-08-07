@@ -261,9 +261,9 @@ export function buildInvoiceTextParseJsonSchema(
         mileageKm: {
           type: ["integer", "null"],
           description:
-            "Kilometerstand as integer km. Primary: Punkt 4 / Feld 4 / (4) — e.g. '4. Kilometerstand', '4 KM-Stand', 'Feld 4'. " +
-            "Secondary: document header (Kopf, top of page 1) near Kennzeichen / Fahrgestellnummer / Prüfdatum. " +
-            "Look for KM-Stand, Kilometerstand, km-Stand, Tachostand. Strip thousand separators (142.350 → 142350). Required when visible.",
+            "Kilometerstand from the document header (Kopf, top of page 1) as integer km. " +
+            "Look for KM-Stand, Kilometerstand, km-Stand, Tachostand near Kennzeichen / Fahrgestellnummer / Prüfdatum. " +
+            "Strip thousand separators (142.350 → 142350). Required when visible in the header.",
         },
       },
     },

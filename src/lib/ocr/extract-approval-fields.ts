@@ -18,12 +18,8 @@ import type { TestingOrganization } from "@/lib/validations/documentSchemas";
 
 import { detectApprovalKind } from "./detect-approval-kind";
 import {
-  extractMileageKmFromText,
-  extractTuevPunkt4MileageKm,
-} from "./mileage-from-text";
-import {
-  defectsListFromTuevDefectRows,
   extractTuevDefectsFromText,
+  defectsListFromTuevDefectRows,
 } from "./tuev-defects-from-text";
 import { extractTuevNextInspectionFromText } from "./tuev-next-inspection-from-text";
 
@@ -131,8 +127,9 @@ function extractTuevCandidate(text: string): unknown {
     /(?:Untersuchungs(?:tag|datum)|geprüft am|Datum)\s*[:\s]\s*(\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}-\d{2}-\d{2})/i,
   );
   const nextInspectionDate = extractTuevNextInspectionFromText(text);
-  const mileageKm =
-    extractTuevPunkt4MileageKm(text) ?? extractMileageKmFromText(text);
+  const mileageMatch = text.match(
+    /(?:km[-\s]?stand|kilometerstand|odometer)\s*[:\s]\s*([\d.\s]{3,12})\s*km?/i,
+  );
   const documentNumber = labeledValue(
     text,
     /(?:Vorgangs?[-\s]?Nr\.?|Bericht[-\s]?Nr\.?|Nr\.?)\s*[:\s]\s*([A-Z0-9][A-Z0-9/.\-]{3,80})/i,
@@ -158,7 +155,7 @@ function extractTuevCandidate(text: string): unknown {
     testingOrganization: detectOrganization(text),
     testDate: testDateMatch?.[1] ?? null,
     result,
-    mileageKm: mileageKm ?? null,
+    mileageKm: mileageMatch?.[1] ?? null,
     nextInspectionDate,
     documentNumber,
     defectsTable,

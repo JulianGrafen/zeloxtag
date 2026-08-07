@@ -44,14 +44,12 @@ describe("TuevExtractionService prompts & schema", () => {
   it("system prompt targets Punkt 6 HU/AU defects with EM/GM severity", () => {
     const prompt = buildTuevSystemPrompt();
     expect(prompt).toContain("Punkt 6");
-    expect(prompt).toContain("Punkt 4");
     expect(prompt).toContain("defectsTable");
     expect(prompt).toContain("EM/GM");
     expect(prompt).toContain("Mängel");
     expect(prompt).toContain(TUEV_PUNKT6_DEFECTS_GUIDANCE);
     expect(prompt).toContain(TUEV_HEADER_MILEAGE_GUIDANCE);
     expect(prompt).toMatch(/Kopf|Header/i);
-    expect(prompt).toMatch(/Feld 4|\(4\)/);
   });
 
   it("JSON schema requires defects fields and references Punkt 6", () => {
@@ -68,28 +66,25 @@ describe("TuevExtractionService prompts & schema", () => {
     expect(listDesc).toMatch(/Punkt 6/i);
   });
 
-  it("JSON schema mileageKm references Punkt 4 and document header", () => {
+  it("JSON schema mileageKm references document header", () => {
     const mileageDesc = String(
       TUEV_JSON_SCHEMA.schema.properties.mileageKm.description,
     );
-    expect(mileageDesc).toMatch(/Punkt 4|Feld 4|\(4\)/i);
     expect(mileageDesc).toMatch(/Kopf|Header/i);
     expect(mileageDesc).toMatch(/KM-Stand|Kilometerstand/i);
   });
 
-  it("cost prompt lines target Punkt 4 and header KM-Stand for vision parse", () => {
+  it("cost prompt lines target header KM-Stand for vision parse", () => {
     const joined = TUEV_COST_USER_PROMPT_LINES.join(" ");
     expect(joined).toMatch(/Prüfgebühr|Kosten/i);
     expect(joined).toContain("category immer tuev");
-    expect(joined).toMatch(/Punkt 4|Feld 4|\(4\)/i);
     expect(joined).toMatch(/Kopf|Header/i);
     expect(joined).toMatch(/KM-Stand|Kilometerstand|mileageKm PFLICHT/i);
   });
 
-  it("TÜV invoice JSON schema requires Punkt 4 and header mileage extraction", () => {
+  it("TÜV invoice JSON schema requires header mileage extraction", () => {
     const schema = buildInvoiceTextParseJsonSchema({ documentType: "tuev" });
     const mileageDesc = String(schema.schema.properties.mileageKm.description);
-    expect(mileageDesc).toMatch(/Punkt 4|Feld 4|\(4\)/i);
     expect(mileageDesc).toMatch(/Kopf|Header/i);
     expect(mileageDesc).not.toMatch(/Null if absent or for ABE\/TÜV/i);
     expect(String(schema.schema.properties.invoiceNumber.description)).toMatch(
@@ -123,25 +118,6 @@ describe("sanitizeTuevPayload · hybrid OCR merge", () => {
     const parsed = new TuevReportService().parseAndValidate(sanitized);
     expect(parsed.defectsTable).toBeNull();
     expect(parsed.defectsList).toBeNull();
-  });
-
-  it("prefers Punkt 4 OCR KM-Stand over wrong header and LLM mileage via ocrText", () => {
-    const sanitized = sanitizeTuevPayload(
-      {
-        testingOrganization: "DEKRA",
-        testDate: "2026-05-20",
-        result: "no_defects",
-        mileageKm: 12_345,
-        nextInspectionDate: null,
-        documentNumber: null,
-        defectsTable: null,
-        defectsList: null,
-      },
-      { ocrText: OCR_SAMPLES.tuevReportPunkt4KmStand },
-    );
-
-    const parsed = new TuevReportService().parseAndValidate(sanitized);
-    expect(parsed.mileageKm).toBe(156_800);
   });
 
   it("prefers OCR header KM-Stand over wrong LLM mileage via ocrText", () => {

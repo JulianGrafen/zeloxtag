@@ -1,5 +1,5 @@
 /**
- * Hybrid TÜV merge: OCR/text heuristics for Punkt-4 KM-Stand + Punkt-6 Mängel,
+ * Hybrid TÜV merge: OCR/text heuristics for KM-Stand + Punkt-6 Mängel,
  * vision LLM for metadata/costs. Anti-hallucination guard on defects.
  */
 
