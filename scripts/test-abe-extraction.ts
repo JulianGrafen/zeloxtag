@@ -166,12 +166,16 @@ async function testVehicles() {
   check("minRows", rowOk, `${rowCount} rows (expected ≥ ${EXPECTED_VEHICLES.minRows})`);
   if (rowOk) passed++;
 
-  // Model names
-  const allModels = result.vehicleMatches.map((m) => m.model).join(" | ");
+  // Verkaufsbezeichnung headers
+  const allVerkaufsbezeichnungen = [
+    ...new Set(result.vehicleMatches.map((m) => m.verkaufsbezeichnung)),
+  ].join(" | ");
   for (const pattern of EXPECTED_VEHICLES.expectedModels) {
     total++;
-    const found = result.vehicleMatches.some((m) => pattern.test(m.model));
-    check(`model matches ${pattern}`, found, allModels);
+    const found = result.vehicleMatches.some((m) =>
+      pattern.test(m.verkaufsbezeichnung),
+    );
+    check(`verkaufsbezeichnung matches ${pattern}`, found, allVerkaufsbezeichnungen);
     if (found) passed++;
   }
 
