@@ -13,6 +13,7 @@ import {
   type ScanType,
 } from "@/lib/documents/scan-types";
 import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
+import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import {
   readSilhouettePreviewFromSession,
   writeSilhouettePreviewToSession,
@@ -90,6 +91,7 @@ export function TagDashboardShell({
 }: TagDashboardShellProps) {
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
+  const demoShowcase = isDemoActiveTag(tagUuid);
   const parsedInitial = parseScanType(initialScanType ?? undefined);
   const allowedInitial =
     parsedInitial &&
@@ -221,7 +223,7 @@ export function TagDashboardShell({
   }, [vehicle.id, silhouetteStorageUrl]);
 
   useEffect(() => {
-    if (!isOwner || hasSilhouette) {
+    if (!isOwner || hasSilhouette || demoShowcase) {
       setShowSilhouettePrompt(false);
       return;
     }
@@ -233,7 +235,7 @@ export function TagDashboardShell({
     } catch {
       setShowSilhouettePrompt(true);
     }
-  }, [isOwner, vehicle.id, hasSilhouette]);
+  }, [isOwner, vehicle.id, hasSilhouette, demoShowcase]);
 
   if (!canWrite) {
     return null;
@@ -294,7 +296,7 @@ export function TagDashboardShell({
           setMode("pick-scan");
         }}
         onEditVehicleImage={
-          isOwner
+          isOwner && !demoShowcase
             ? () => {
                 setShowSilhouettePrompt(false);
                 setShowSilhouetteEditor(true);

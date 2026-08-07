@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
-  FileImage,
+  FileText,
   LoaderCircle,
   RotateCcw,
   ScanLine,
+  ShieldCheck,
 } from "lucide-react";
 
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
@@ -30,11 +31,11 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type WizardPhase =
-  | "capture-cover"       // Step 1/3: photograph Deckblatt
-  | "capture-main"        // Step 2/3: photograph ABE Hauptseite
-  | "capture-vehicles"    // Step 3/3: photograph Fahrzeug- & Auflagen-Tabelle
-  | "analyzing"           // All 3 LLM calls fire in parallel here
-  | "review";             // User confirms extracted data + saves
+  | "capture-cover"
+  | "capture-main"
+  | "capture-vehicles"
+  | "analyzing"
+  | "review";
 
 interface WizardState {
   phase: WizardPhase;
@@ -59,8 +60,6 @@ export interface AbeUploadWizardProps {
   backLabel?: string;
 }
 
-// ─── Capture step definitions ─────────────────────────────────────────────────
-
 const CAPTURE_STEPS: Array<{
   phase: Extract<WizardPhase, `capture-${string}`>;
   stepNumber: number;
@@ -72,21 +71,21 @@ const CAPTURE_STEPS: Array<{
     phase: "capture-cover",
     stepNumber: 1,
     title: "Deckblatt fotografieren",
-    hint: "Lade das Deckblatt hoch (Hier stehen KBA-Nummer, Design & Technische Daten wie 8J x 18 ET30).",
+    hint: "Schritt 1 von 3 · Deckblatt",
     guideLabel: "Deckblatt im DIN-A4-Rahmen ausrichten",
   },
   {
     phase: "capture-main",
     stepNumber: 2,
     title: "ABE-Hauptseite fotografieren",
-    hint: "Lade die ABE-Hauptseite hoch (Hier stehen die ABE-Nummer und der Hersteller wie Alcar).",
+    hint: "Schritt 2 von 3 · Hauptseite",
     guideLabel: "ABE-Hauptseite im DIN-A4-Rahmen ausrichten",
   },
   {
     phase: "capture-vehicles",
     stepNumber: 3,
-    title: "Fahrzeug- & Auflagen-Tabelle fotografieren",
-    hint: "Lade genau die Seite hoch, auf der dein Fahrzeug (z.B. BMW 5er Touring) und deine Reifengröße aufgelistet sind.",
+    title: "Fahrzeugtabelle fotografieren",
+    hint: "Schritt 3 von 3 · Fahrzeug- & Auflagen-Tabelle",
     guideLabel: "Fahrzeugtabelle im DIN-A4-Rahmen ausrichten",
   },
 ];
@@ -130,8 +129,6 @@ const fetchMainExtraction = (f: File) =>
 const fetchVehiclesExtraction = (f: File) =>
   callAbeStep<AbeWizardVehiclesExtraction>(f, "vehicles", "Fahrzeugtabellen-Analyse");
 
-// ─── Build upload file ────────────────────────────────────────────────────────
-
 async function buildUploadFile(
   coverFile: File | null,
   mainFile: File | null,
@@ -159,68 +156,81 @@ async function buildUploadFile(
 
 function WizardProgress({
   currentStep,
-  totalSteps = 3,
+  totalSteps,
 }: {
   currentStep: number;
-  totalSteps?: number;
+  totalSteps: number;
 }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-3">
-      {Array.from({ length: totalSteps }, (_, i) => {
-        const step = i + 1;
-        const done = step < currentStep;
-        const active = step === currentStep;
-        return (
-          <div key={step} className="flex items-center gap-2">
-            <div
-              className={[
-                "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                done
-                  ? "bg-green-600 text-white"
-                  : active
-                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                    : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
-              ].join(" ")}
-            >
-              {done ? <CheckCircle2 className="h-4 w-4" /> : step}
-            </div>
-            {i < totalSteps - 1 && (
-              <div
-                className={[
-                  "h-px w-8 transition-colors",
-                  done ? "bg-green-600" : "bg-zinc-200 dark:bg-zinc-700",
-                ].join(" ")}
-              />
-            )}
-          </div>
-        );
-      })}
+    <div
+      className="flex items-center gap-2"
+      aria-label={`Schritt ${currentStep} von ${totalSteps}`}
+    >
+      {Array.from({ length: totalSteps }, (_, i) => (
+        <div
+          key={i}
+          className={[
+            "h-1.5 flex-1 rounded-full transition-colors duration-300",
+            i < currentStep ? "bg-neutral-900" : "bg-neutral-200",
+          ].join(" ")}
+        />
+      ))}
     </div>
   );
 }
 
-function CapturePreview({ file, label }: { file: File; label: string }) {
-  const url = URL.createObjectURL(file);
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-900 dark:bg-green-950/40">
-      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
-      <span className="truncate text-sm font-medium text-green-800 dark:text-green-300">
-        {label}: {file.name}
-      </span>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="ml-auto shrink-0 text-xs text-green-700 underline dark:text-green-400"
-        onClick={() => setTimeout(() => URL.revokeObjectURL(url), 5000)}
+function WizardBackButton({
+  onBack,
+  backHref,
+  backLabel,
+}: {
+  onBack?: () => void;
+  backHref?: string;
+  backLabel: string;
+}) {
+  if (onBack) {
+    return (
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
       >
-        Vorschau
-      </a>
-    </div>
-  );
+        <ArrowLeft className="h-4 w-4" />
+        {backLabel}
+      </button>
+    );
+  }
+  if (backHref) {
+    return (
+      <PressableLink
+        href={backHref}
+        variant="pill"
+        className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {backLabel}
+      </PressableLink>
+    );
+  }
+  return null;
 }
 
-// ─── Review form ──────────────────────────────────────────────────────────────
+function FieldLabel({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Label className="block space-y-1.5">
+      <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+        {label}
+      </span>
+      {children}
+    </Label>
+  );
+}
 
 interface ReviewFormState {
   kbaNumber: string;
@@ -244,155 +254,251 @@ function reportToFormState(report: AbeWizardReport): ReviewFormState {
   };
 }
 
-function ReviewForm({
+function ReviewSection({
   report,
+  previewUrl,
+  pageCount,
   onSave,
+  onRescan,
   isSaving,
   saveError,
 }: {
   report: AbeWizardReport;
+  previewUrl: string | null;
+  pageCount: number;
   onSave: (form: ReviewFormState) => void;
+  onRescan: () => void;
   isSaving: boolean;
   saveError: string | null;
 }) {
   const [form, setForm] = useState<ReviewFormState>(() =>
     reportToFormState(report),
   );
+  const [isEditing, setIsEditing] = useState(false);
 
-  const set = (key: keyof ReviewFormState) =>
-    (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set =
+    (key: keyof ReviewFormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
+  const kbaDisplay = form.kbaNumber.trim()
+    ? `KBA ${form.kbaNumber.trim()}`
+    : "— nicht erkannt —";
+
   return (
-    <div className="flex flex-col gap-6 p-4">
-      <div className="flex flex-col gap-1">
-        <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-          ABE-Daten bestätigen
-        </p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Prüfe die extrahierten Felder und korrigiere sie bei Bedarf.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="kbaNumber">KBA-Nummer</Label>
-          <Input
-            id="kbaNumber"
-            value={form.kbaNumber}
-            onChange={set("kbaNumber")}
-            placeholder="z.B. 48185"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="abeNumber">ABE-Nummer</Label>
-          <Input
-            id="abeNumber"
-            value={form.abeNumber}
-            onChange={set("abeNumber")}
-            placeholder="z.B. 48185*08"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="manufacturer">Hersteller</Label>
-          <Input
-            id="manufacturer"
-            value={form.manufacturer}
-            onChange={set("manufacturer")}
-            placeholder="z.B. Alcar Leichtmetallräder GmbH"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="testingOrganization">Prüforganisation</Label>
-          <Input
-            id="testingOrganization"
-            value={form.testingOrganization}
-            onChange={set("testingOrganization")}
-            placeholder="z.B. Kraftfahrt-Bundesamt"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="designType">Design</Label>
-          <Input
-            id="designType"
-            value={form.designType}
-            onChange={set("designType")}
-            placeholder="z.B. Valencia / Valencia dark"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="dimensions">Maße</Label>
-          <Input
-            id="dimensions"
-            value={form.dimensions}
-            onChange={set("dimensions")}
-            placeholder="z.B. 8J x 18H2 LK 5x120 ET 30"
-          />
-        </div>
-        <div className="col-span-full flex flex-col gap-1.5">
-          <Label htmlFor="articleNumbers">Artikel-Nummern</Label>
-          <Input
-            id="articleNumbers"
-            value={form.articleNumbers}
-            onChange={set("articleNumbers")}
-            placeholder="z.B. AVAG9HA30, AVAG9BP30"
-          />
-        </div>
-      </div>
-
-      {report.vehicleMatches.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Fahrzeugfreigaben ({report.vehicleMatches.length})
-          </p>
-          <div className="flex flex-col gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/50">
-            {report.vehicleMatches.map((match, i) => (
-              <div key={i} className="text-xs text-zinc-600 dark:text-zinc-400">
-                <span className="font-medium text-zinc-900 dark:text-white">
-                  {match.model}
-                </span>
-                {match.driveType && (
-                  <span className="ml-1 text-zinc-500">· {match.driveType}</span>
-                )}
-                {match.tireSizes.length > 0 && (
-                  <span className="ml-1">· {match.tireSizes.join(", ")}</span>
-                )}
-                {match.auflagenCodes.length > 0 && (
-                  <span className="ml-1 text-zinc-400">
-                    [{match.auflagenCodes.join(", ")}]
-                  </span>
-                )}
-              </div>
-            ))}
+    <div className="vd-anim-header flex flex-col gap-4">
+      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)] sm:p-5">
+        <header className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+              Summary
+            </p>
+            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[1.2rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+              ABE Kern­daten
+            </h2>
+            <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
+              Geführter Scan · {pageCount} {pageCount === 1 ? "Seite" : "Seiten"}
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsEditing((value) => !value)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-1.5 text-[0.72rem] font-medium text-[color:var(--vd-text)]"
+          >
+            {isEditing ? "Ansicht" : "Bearbeiten"}
+          </button>
+        </header>
+
+        <div className="mt-4 space-y-4">
+          <div
+            className={[
+              "rounded-2xl border px-4 py-3",
+              form.kbaNumber.trim()
+                ? "border-emerald-500/25 bg-emerald-500/8"
+                : "border-amber-300/80 bg-amber-50",
+            ].join(" ")}
+          >
+            <div className="flex items-center gap-2 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+              KBA-Nummer
+            </div>
+            {isEditing ? (
+              <Input
+                value={form.kbaNumber}
+                onChange={set("kbaNumber")}
+                placeholder="z. B. 48185"
+                className="mt-2 font-mono text-[1.05rem] font-semibold tracking-wide"
+                autoComplete="off"
+              />
+            ) : (
+              <p className="mt-1 font-mono text-[1.45rem] font-semibold tracking-wide text-[color:var(--vd-text)]">
+                {kbaDisplay}
+              </p>
+            )}
+          </div>
+
+          {isEditing ? (
+            <div className="space-y-3">
+              <FieldLabel label="ABE-Nummer">
+                <Input
+                  value={form.abeNumber}
+                  onChange={set("abeNumber")}
+                  placeholder="z. B. 48185*08"
+                />
+              </FieldLabel>
+              <FieldLabel label="Hersteller">
+                <Input
+                  value={form.manufacturer}
+                  onChange={set("manufacturer")}
+                  placeholder="z. B. Alcar Leichtmetallräder GmbH"
+                />
+              </FieldLabel>
+              <FieldLabel label="Prüforganisation">
+                <Input
+                  value={form.testingOrganization}
+                  onChange={set("testingOrganization")}
+                  placeholder="z. B. Kraftfahrt-Bundesamt"
+                />
+              </FieldLabel>
+              <FieldLabel label="Design">
+                <Input
+                  value={form.designType}
+                  onChange={set("designType")}
+                  placeholder="z. B. Valencia / Valencia dark"
+                />
+              </FieldLabel>
+              <FieldLabel label="Maße">
+                <Input
+                  value={form.dimensions}
+                  onChange={set("dimensions")}
+                  placeholder="z. B. 8J x 18H2 LK 5x120 ET 30"
+                />
+              </FieldLabel>
+              <FieldLabel label="Artikel-Nummern">
+                <Input
+                  value={form.articleNumbers}
+                  onChange={set("articleNumbers")}
+                  placeholder="z. B. AVAG9HA30, AVAG9BP30"
+                />
+              </FieldLabel>
+            </div>
+          ) : (
+            <dl className="grid gap-2.5 text-[0.88rem]">
+              <SummaryRow label="ABE-Nummer" value={form.abeNumber} />
+              <SummaryRow label="Hersteller" value={form.manufacturer} />
+              <SummaryRow
+                label="Prüforganisation"
+                value={form.testingOrganization}
+              />
+              <SummaryRow label="Design" value={form.designType} />
+              <SummaryRow label="Maße" value={form.dimensions} />
+              <SummaryRow label="Artikel-Nr." value={form.articleNumbers} />
+            </dl>
+          )}
+
+          {report.vehicleMatches.length > 0 ? (
+            <div className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3">
+              <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+                Fahrzeugfreigaben ({report.vehicleMatches.length})
+              </p>
+              <ul className="mt-2 space-y-2">
+                {report.vehicleMatches.map((match, i) => (
+                  <li
+                    key={`${match.model}-${i}`}
+                    className="text-[0.78rem] leading-relaxed text-[color:var(--vd-text)]"
+                  >
+                    <span className="font-medium">{match.model}</span>
+                    {match.driveType ? (
+                      <span className="text-[color:var(--vd-muted)]">
+                        {" "}
+                        · {match.driveType}
+                      </span>
+                    ) : null}
+                    {match.tireSizes.length > 0 ? (
+                      <span className="block text-[color:var(--vd-muted)]">
+                        {match.tireSizes.join(", ")}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
-      )}
 
-      {saveError && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
-          {saveError}
-        </p>
-      )}
+        {saveError ? (
+          <p
+            role="alert"
+            className="mt-4 flex items-start gap-2 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] text-amber-950"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <span>{saveError}</span>
+          </p>
+        ) : null}
 
-      <Button
-        onClick={() => onSave(form)}
-        disabled={isSaving}
-        className="w-full"
-      >
-        {isSaving ? (
-          <>
-            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-            Wird gespeichert…
-          </>
-        ) : (
-          "ABE speichern"
-        )}
-      </Button>
+        <div className="mt-5 flex flex-col gap-2">
+          <Button
+            type="button"
+            disabled={isSaving}
+            onClick={() => onSave(form)}
+          >
+            {isSaving ? (
+              <span className="inline-flex items-center gap-2">
+                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+                Speichern…
+              </span>
+            ) : (
+              "ABE speichern"
+            )}
+          </Button>
+          <Button type="button" variant="ghost" disabled={isSaving} onClick={onRescan}>
+            <RotateCcw className="h-4 w-4" />
+            Neu scannen
+          </Button>
+        </div>
+      </section>
+
+      {previewUrl ? (
+        <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+          <div className="flex items-center justify-between gap-2 border-b border-[color:var(--vd-border)] px-3 py-2.5">
+            <div className="flex min-w-0 items-center gap-2 text-[0.78rem] text-[color:var(--vd-muted)]">
+              <FileText className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">
+                Dokumentvorschau · {pageCount}{" "}
+                {pageCount === 1 ? "Seite" : "Seiten"}
+              </span>
+            </div>
+          </div>
+          <div className="max-h-[min(62vh,560px)] min-h-[240px] overflow-auto bg-neutral-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt="ABE Scan Vorschau"
+              className="mx-auto w-full max-w-full object-contain"
+            />
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
 
-// ─── Main wizard component ────────────────────────────────────────────────────
+function SummaryRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  const display = value?.trim() || "—";
+  return (
+    <div className="grid grid-cols-[minmax(0,38%)_1fr] gap-2 border-b border-[color:var(--vd-border)]/60 pb-2 last:border-0 last:pb-0">
+      <dt className="text-[color:var(--vd-muted)]">{label}</dt>
+      <dd className="font-medium text-[color:var(--vd-text)]">{display}</dd>
+    </div>
+  );
+}
+
+// ─── Main wizard ──────────────────────────────────────────────────────────────
 
 export function AbeUploadWizard({
   vehicleId,
@@ -417,11 +523,47 @@ export function AbeUploadWizard({
   });
 
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [, startSaveTransition] = useTransition();
+  const [isSaving, startSaveTransition] = useTransition();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const previewUrlRef = useRef<string | null>(null);
+  const pageCount = useMemo(
+    () =>
+      [state.coverFile, state.mainFile, state.vehiclesFile].filter(Boolean)
+        .length,
+    [state.coverFile, state.mainFile, state.vehiclesFile],
+  );
 
-  // ── Capture handlers ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const source = state.coverFile ?? state.mainFile ?? state.vehiclesFile;
+    if (!source) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(source);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [state.coverFile, state.mainFile, state.vehiclesFile]);
+
+  function goBack() {
+    if (onBack) onBack();
+    else if (backHref) window.location.href = backHref;
+  }
+
+  function resetWizard() {
+    setState({
+      phase: "capture-cover",
+      coverFile: null,
+      mainFile: null,
+      vehiclesFile: null,
+      coverExtraction: null,
+      mainExtraction: null,
+      vehiclesExtraction: null,
+      report: null,
+      uploadFile: null,
+      error: null,
+    });
+    setSaveError(null);
+  }
 
   function handleCoverCapture(file: File) {
     setState((prev) => ({
@@ -442,11 +584,16 @@ export function AbeUploadWizard({
   }
 
   function handleVehiclesCapture(file: File) {
-    setState((prev) => ({ ...prev, vehiclesFile: file, phase: "analyzing", error: null }));
-    runAnalysis(state.coverFile!, file, state.mainFile);
+    setState((prev) => {
+      void runAnalysis(prev.coverFile!, file, prev.mainFile);
+      return {
+        ...prev,
+        vehiclesFile: file,
+        phase: "analyzing",
+        error: null,
+      };
+    });
   }
-
-  // ── Analysis ─────────────────────────────────────────────────────────────────
 
   async function runAnalysis(
     coverFile: File,
@@ -463,10 +610,6 @@ export function AbeUploadWizard({
         ]);
 
       const report = mergeAbeWizardSteps(coverResult, mainResult, vehiclesResult);
-
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
 
       setState((prev) => ({
         ...prev,
@@ -490,15 +633,9 @@ export function AbeUploadWizard({
     }
   }
 
-  // ── Save ─────────────────────────────────────────────────────────────────────
-
   function handleSave(form: ReviewFormState) {
-    if (!state.uploadFile) {
+    if (!state.uploadFile || !state.report) {
       setSaveError("Keine Datei zum Speichern vorhanden.");
-      return;
-    }
-    if (!state.report) {
-      setSaveError("Keine Extraktionsdaten vorhanden.");
       return;
     }
 
@@ -525,9 +662,7 @@ export function AbeUploadWizard({
     );
 
     const allAuflagen = Array.from(
-      new Set(
-        state.report.vehicleMatches.flatMap((m) => m.auflagenCodes),
-      ),
+      new Set(state.report.vehicleMatches.flatMap((m) => m.auflagenCodes)),
     );
 
     const technicalSpecs = [
@@ -544,10 +679,6 @@ export function AbeUploadWizard({
         ? { label: "Artikel-Nr.", value: articleList.join(", ") }
         : null,
     ].filter((item): item is { label: string; value: string } => item !== null);
-
-    const pageCount = [state.coverFile, state.mainFile, state.vehiclesFile].filter(
-      Boolean,
-    ).length;
 
     startSaveTransition(async () => {
       const formData = new FormData();
@@ -580,217 +711,134 @@ export function AbeUploadWizard({
         return;
       }
 
-      if (successHref) {
-        window.location.href = successHref;
-      } else if (result.tagUuid) {
+      if (successHref) window.location.href = successHref;
+      else if (result.tagUuid) {
         window.location.href = `/v/${result.tagUuid}/dokumente?type=abe`;
       }
     });
   }
 
-  // ── Back navigation ───────────────────────────────────────────────────────────
-
-  function goBack() {
-    if (onBack) {
-      onBack();
-    } else if (backHref) {
-      window.location.href = backHref;
-    }
-  }
-
-  // ── Camera close / step back ──────────────────────────────────────────────────
-
-  function handleCameraClose() {
-    goBack();
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────────
-
   const currentCaptureStep = CAPTURE_STEPS.find((s) => s.phase === state.phase);
 
-  // Camera capture phases
   if (currentCaptureStep) {
-    const { stepNumber, title, hint, guideLabel, phase } = currentCaptureStep;
+    const { title, hint, guideLabel, phase } = currentCaptureStep;
 
     return (
-      <div className="flex min-h-screen flex-col bg-zinc-950">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-3">
-          <button
-            onClick={goBack}
-            className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </button>
-          <div className="flex flex-col items-center">
-            <span className="text-sm font-semibold text-white">{title}</span>
-            <span className="text-xs text-zinc-500">{vehicleLabel}</span>
-          </div>
-          <div className="w-16" />
-        </div>
-
-        {/* Progress */}
-        <div className="flex justify-center border-b border-zinc-800 bg-zinc-900">
-          <WizardProgress currentStep={stepNumber} />
-        </div>
-
-        {/* Hint banner */}
-        <div className="border-b border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-center">
-          <p className="text-xs text-zinc-400">{hint}</p>
-          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">
-            <ScanLine className="h-3 w-3" />
-            Schritt {stepNumber} von 3 · genauer
-          </span>
-        </div>
-
-        {/* Error */}
-        {state.error && (
-          <div className="mx-4 mt-3 rounded-lg bg-red-900/40 px-3 py-2 text-sm text-red-300">
+      <>
+        {state.error ? (
+          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
             {state.error}
           </div>
-        )}
-
-        {/* Captured pages summary (shows previously captured images) */}
-        {(state.coverFile || state.mainFile) && (
-          <div className="flex flex-col gap-1.5 bg-zinc-900 px-4 py-2">
-            {state.coverFile && phase !== "capture-cover" && (
-              <CapturePreview file={state.coverFile} label="Deckblatt" />
-            )}
-            {state.mainFile && phase === "capture-vehicles" && (
-              <CapturePreview file={state.mainFile} label="Hauptseite" />
-            )}
-          </div>
-        )}
-
-        {/* Camera */}
-        <div className="flex-1">
-          <InBrowserCamera
-            title={title}
-            hint={hint}
-            guideLabel={guideLabel}
-            guideFrame="a4"
-            allowPdf={false}
-            onCapture={
-              phase === "capture-cover"
-                ? handleCoverCapture
-                : phase === "capture-main"
-                  ? handleMainCapture
-                  : handleVehiclesCapture
+        ) : null}
+        <InBrowserCamera
+          title={title}
+          hint={hint}
+          guideLabel={guideLabel}
+          guideFrame="a4"
+          allowPdf={false}
+          onCapture={
+            phase === "capture-cover"
+              ? handleCoverCapture
+              : phase === "capture-main"
+                ? handleMainCapture
+                : handleVehiclesCapture
+          }
+          onClose={() => {
+            if (phase === "capture-cover") goBack();
+            else if (phase === "capture-main") {
+              setState((prev) => ({ ...prev, phase: "capture-cover" }));
+            } else {
+              setState((prev) => ({ ...prev, phase: "capture-main" }));
             }
-            onClose={handleCameraClose}
-          />
-        </div>
-      </div>
+          }}
+        />
+      </>
     );
   }
 
-  // Analyzing phase
   if (state.phase === "analyzing") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-zinc-950 px-4">
-        <div className="flex flex-col items-center gap-3">
-          <LoaderCircle className="h-10 w-10 animate-spin text-zinc-300" />
-          <p className="text-lg font-semibold text-white">ABE wird analysiert…</p>
-          <p className="max-w-xs text-center text-sm text-zinc-400">
-            KBA-Nummer, Maße, Hersteller und Fahrzeugfreigaben werden ausgelesen.
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col items-center justify-center gap-8 px-4 py-6 text-center">
+        <div className="relative flex h-24 w-24 items-center justify-center">
+          <div className="absolute inset-0 animate-spin rounded-full border-4 border-neutral-100 border-t-neutral-900" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
+            <ScanLine className="h-7 w-7 text-white" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-[1rem] font-semibold text-[color:var(--vd-text)]">
+            ABE wird analysiert…
+          </p>
+          <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
+            KBA · Maße · Hersteller · Fahrzeugfreigaben
+          </p>
+          <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+            Dauert etwa 15–30 Sekunden
           </p>
         </div>
-
-        <div className="flex w-full max-w-xs flex-col gap-2">
-          {state.coverFile && (
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
-              <FileImage className="h-3.5 w-3.5" />
-              <span>Deckblatt · {state.coverFile.name}</span>
+        <div className="flex flex-wrap justify-center gap-2">
+          {["Deckblatt", "Hauptseite", "Fahrzeugtabelle"].map((label, i) => (
+            <div
+              key={label}
+              className="flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1"
+            >
+              <LoaderCircle
+                className="h-3 w-3 animate-spin text-neutral-500"
+                style={{ animationDelay: `${i * 300}ms` }}
+              />
+              <span className="text-[0.68rem] font-medium text-neutral-600">
+                {label}
+              </span>
             </div>
-          )}
-          {state.mainFile && (
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
-              <FileImage className="h-3.5 w-3.5" />
-              <span>Hauptseite · {state.mainFile.name}</span>
-            </div>
-          )}
-          {state.vehiclesFile && (
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
-              <FileImage className="h-3.5 w-3.5" />
-              <span>Fahrzeugtabelle · {state.vehiclesFile.name}</span>
-            </div>
-          )}
+          ))}
         </div>
-      </div>
+      </section>
     );
   }
 
-  // Review phase
   if (state.phase === "review" && state.report) {
     return (
-      <div className="flex min-h-screen flex-col bg-white dark:bg-zinc-950">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
-          <button
-            onClick={() =>
-              setState((prev) => ({
-                ...prev,
-                phase: "capture-cover",
-                coverFile: null,
-                mainFile: null,
-                vehiclesFile: null,
-                report: null,
-                uploadFile: null,
-                error: null,
-              }))
-            }
-            className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Neu scannen
-          </button>
-          <div className="flex flex-col items-center">
-            <span className="text-sm font-semibold text-zinc-900 dark:text-white">
-              ABE prüfen
-            </span>
-            <span className="text-xs text-zinc-500">{vehicleLabel}</span>
-          </div>
-          <div className="w-20" />
-        </div>
-
-        {/* Progress */}
-        <div className="flex justify-center border-b border-zinc-200 dark:border-zinc-800">
-          <WizardProgress currentStep={4} />
-        </div>
-
-        {/* Captured thumbnails row */}
-        <div className="flex gap-2 overflow-x-auto bg-zinc-50 px-4 py-3 dark:bg-zinc-900/50">
-          {[
-            { file: state.coverFile, label: "Deckblatt" },
-            { file: state.mainFile, label: "Hauptseite" },
-            { file: state.vehiclesFile, label: "Fahrzeugtabelle" },
-          ]
-            .filter((item): item is { file: File; label: string } => item.file !== null)
-            .map(({ file, label }) => (
-              <div key={label} className="flex shrink-0 flex-col items-center gap-1">
-                <div className="h-16 w-12 overflow-hidden rounded border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800">
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={label}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <span className="text-xs text-zinc-500">{label}</span>
-              </div>
-            ))}
-        </div>
-
-        {/* Review form */}
-        <div className="flex-1 overflow-auto">
-          <ReviewForm
-            report={state.report}
-            onSave={handleSave}
-            isSaving={false}
-            saveError={saveError}
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-6 px-4 py-6">
+        <header className="space-y-4">
+          <WizardBackButton
+            onBack={onBack}
+            backHref={backHref}
+            backLabel={backLabel}
           />
-        </div>
-      </div>
+          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+              ABE · Guided Scan
+            </p>
+            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+              Scan prüfen
+            </h1>
+            <p className="mt-1 text-[0.88rem] text-[color:var(--vd-muted)]">
+              {vehicleLabel}
+            </p>
+          </div>
+          <WizardProgress currentStep={3} totalSteps={3} />
+        </header>
+
+        {state.error ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[0.82rem] text-amber-900">
+            <AlertTriangle className="mr-1.5 inline h-3.5 w-3.5" />
+            {state.error}
+          </div>
+        ) : null}
+
+        <ReviewSection
+          report={state.report}
+          previewUrl={previewUrl}
+          pageCount={pageCount || 1}
+          onSave={handleSave}
+          onRescan={resetWizard}
+          isSaving={isSaving}
+          saveError={saveError}
+        />
+      </section>
     );
   }
 

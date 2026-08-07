@@ -65,6 +65,8 @@ export interface VehicleDashboardData {
   /** Data URL when proxy fails (owner upload session). */
   vehicleImagePreviewFallback?: string;
   vehicleImageAlt?: string;
+  /** Show catalog cutout PNG without the rounded header frame (demo showcase). */
+  vehicleImageFrameless?: boolean;
   /** Accent label under the greeting, e.g. "QR Tag · Active" */
   statusLabel?: string;
   /** ISO-Datum des letzten Ölwechsels */

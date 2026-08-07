@@ -1,4 +1,5 @@
 import type { VehicleAccess } from "@/lib/auth/vehicle-access";
+import { vehicleCatalogImageUrl } from "@/lib/vehicles/vehicle-image";
 
 import { MOCK_TAG_UUIDS } from "./mock-tags";
 
@@ -15,6 +16,11 @@ export const DEMO_SHOWCASE_ROUTES = {
 export function isDemoActiveTag(tagUuid: string): boolean {
   return tagUuid.trim() === MOCK_TAG_UUIDS.active;
 }
+
+/** Side-profile cutout for the public Supra showcase — no UI photo frame. */
+export const DEMO_SHOWCASE_VEHICLE_IMAGE = vehicleCatalogImageUrl(
+  "supra-a80.png",
+);
 
 /** Guest access for the public Supra showcase — browse all surfaces, no writes. */
 export function demoShowcaseAccess(): VehicleAccess {

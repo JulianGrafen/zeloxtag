@@ -16,6 +16,8 @@ type AnimatedVehicleHeaderProps = {
   fallbackImageUrl?: string | null;
   /** When true, never swap to generic SVG on load errors (owner upload). */
   lockOwnerSilhouette?: boolean;
+  /** Render side-profile PNG without the rounded 4:3 photo frame. */
+  frameless?: boolean;
   alt: string;
   className?: string;
   onEdit?: () => void;
@@ -38,6 +40,7 @@ export function AnimatedVehicleHeader({
   previewFallbackUrl,
   fallbackImageUrl,
   lockOwnerSilhouette = false,
+  frameless = false,
   alt,
   className = "",
   onEdit,
@@ -107,6 +110,53 @@ export function AnimatedVehicleHeader({
     ) {
       onPrimaryLoad?.();
     }
+  }
+
+  if (frameless) {
+    const cutout = (
+      <motion.div
+        className="relative w-[7.5rem] shrink-0 sm:w-[9.5rem]"
+        initial={{ opacity: 0, scale: 0.96, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={ENTRANCE}
+      >
+        {activeSrc && !showPlaceholder ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={activeSrc}
+            src={activeSrc}
+            alt={alt}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+            className="h-auto w-full object-contain drop-shadow-[0_8px_18px_rgba(15,23,42,0.18)]"
+          />
+        ) : (
+          <div className="flex aspect-[8/3] items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[0.62rem] text-[color:var(--vd-muted)]">
+            Kein Foto
+          </div>
+        )}
+      </motion.div>
+    );
+
+    return (
+      <div
+        className={`relative flex shrink-0 items-center justify-end ${className}`.trim()}
+      >
+        {editable ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={editLabel}
+            title={editLabel}
+            className="rounded-xl outline-none transition active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-neutral-900/25"
+          >
+            {cutout}
+          </button>
+        ) : (
+          cutout
+        )}
+      </div>
+    );
   }
 
   const frame = (

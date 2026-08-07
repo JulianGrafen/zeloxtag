@@ -15,6 +15,10 @@ import {
   parseVehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
 import { resolveVehicleCatalogImage, resolveVehicleImage } from "@/lib/vehicles/vehicle-image";
+import {
+  DEMO_SHOWCASE_VEHICLE_IMAGE,
+  isDemoActiveTag,
+} from "@/lib/tags/demo-showcase";
 
 import { DashboardScanFab } from "./dashboard-scan-fab";
 
@@ -75,6 +79,7 @@ export function TagDashboardView({
   const shortTag = tagUuid.length > 12 ? `${tagUuid.slice(0, 12)}…` : tagUuid;
   const vehicleModel = `${vehicle.make} ${vehicle.model}`;
   const vinLabel = vehicle.vin ? `VIN ${vehicle.vin}` : "VIN nicht hinterlegt";
+  const demoShowcase = isDemoActiveTag(tagUuid);
   const cutout = resolveVehicleImage({
     make: vehicle.make,
     model: vehicle.model,
@@ -83,19 +88,25 @@ export function TagDashboardView({
   });
   const catalogCutout = resolveVehicleCatalogImage(vehicle.make, vehicle.model);
   const hasOwnerSilhouette = Boolean(
-    vehicleImageOverride || vehicle.silhouette_image_url?.trim(),
+    !demoShowcase &&
+      (vehicleImageOverride || vehicle.silhouette_image_url?.trim()),
   );
 
   const data = {
     ownerName: ownerName?.trim() || "Fahrer",
     vehicleModel: `${vehicleModel} · ${vehicle.year}`,
-    vehicleImage: vehicleImageOverride ?? cutout?.src,
+    vehicleImage: demoShowcase
+      ? DEMO_SHOWCASE_VEHICLE_IMAGE
+      : vehicleImageOverride ?? cutout?.src,
     vehicleImageFallback: hasOwnerSilhouette
       ? undefined
       : demoMode
         ? catalogCutout?.src
         : undefined,
-    vehicleImagePreviewFallback: previewFallbackUrl ?? undefined,
+    vehicleImagePreviewFallback: demoShowcase
+      ? undefined
+      : previewFallbackUrl ?? undefined,
+    vehicleImageFrameless: demoShowcase,
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
     statusLabel: `ZeloxTag · ${shortTag}`,
     lastOilChange: lastOilChange ?? undefined,
@@ -276,7 +287,7 @@ export function TagDashboardView({
         data={{ ...data, tiles }}
         className={canScan ? "pb-24" : undefined}
         onEditVehicleImage={
-          isOwner && !demoMode ? onEditVehicleImage : undefined
+          isOwner && !demoMode && !demoShowcase ? onEditVehicleImage : undefined
         }
         onSilhouetteProxyLoad={onSilhouetteProxyLoad}
       />

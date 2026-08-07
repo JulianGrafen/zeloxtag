@@ -32,6 +32,7 @@ export function VehicleDashboard({
             vehicleImageFallback={data.vehicleImageFallback}
             vehicleImagePreviewFallback={data.vehicleImagePreviewFallback}
             vehicleImageAlt={data.vehicleImageAlt}
+            vehicleImageFrameless={data.vehicleImageFrameless}
             statusLabel={data.statusLabel}
             onEditVehicleImage={onEditVehicleImage}
             onSilhouetteProxyLoad={onSilhouetteProxyLoad}

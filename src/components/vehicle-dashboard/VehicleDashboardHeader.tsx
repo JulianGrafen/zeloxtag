@@ -10,6 +10,7 @@ interface VehicleDashboardHeaderProps {
   vehicleImageFallback?: string;
   vehicleImagePreviewFallback?: string;
   vehicleImageAlt?: string;
+  vehicleImageFrameless?: boolean;
   statusLabel?: string;
   onEditVehicleImage?: () => void;
   onSilhouetteProxyLoad?: () => void;
@@ -22,6 +23,7 @@ export function VehicleDashboardHeader({
   vehicleImageFallback,
   vehicleImagePreviewFallback,
   vehicleImageAlt,
+  vehicleImageFrameless = false,
   statusLabel = "ZeloxTag · Verbunden",
   onEditVehicleImage,
   onSilhouetteProxyLoad,
@@ -59,6 +61,7 @@ export function VehicleDashboardHeader({
           previewFallbackUrl={vehicleImagePreviewFallback}
           fallbackImageUrl={vehicleImageFallback}
           lockOwnerSilhouette={isOwnerSilhouetteSrc(vehicleImage)}
+          frameless={vehicleImageFrameless}
           alt={vehicleImageAlt ?? greeting}
           onEdit={onEditVehicleImage}
           onPrimaryLoad={onSilhouetteProxyLoad}
