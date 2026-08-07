@@ -176,12 +176,18 @@ describe("TuevOverview · review & display mapping", () => {
         data: {
           testingOrganization: "TÜV",
           testDate: "2026-03-12",
-          result: "no_defects",
+          result: "minor_defects",
           mileageKm: 85_400,
           nextInspectionDate: "2028-05",
           documentNumber: "HU-2026-991",
-          defectsTable: null,
-          defectsList: null,
+          defectsTable: [
+            {
+              checkpoint: "4.2.1a",
+              description: "Scheinwerfer einstellen",
+              severity: "GM",
+            },
+          ],
+          defectsList: ["[4.2.1a] Scheinwerfer einstellen (GM)"],
         },
       },
     );
@@ -191,6 +197,8 @@ describe("TuevOverview · review & display mapping", () => {
     expect(review.testDate).toBe("2026-03-12");
     expect(review.nextInspectionDate).toBe("2028-05");
     expect(review.workshopName).toBe("TÜV Süd · München");
+    expect(review.defectsTable).toHaveLength(1);
+    expect(review.defectsTable?.[0]?.severity).toBe("GM");
   });
 
   it("tuevDefectsForDisplay prefers defectsTable over defectsList", () => {
