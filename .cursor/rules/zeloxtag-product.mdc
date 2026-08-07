@@ -1,0 +1,32 @@
+---
+description: ZeloxTag product vision, stack, data model, flows, and engineering rules
+alwaysApply: true
+---
+
+# ZeloxTag
+
+Hybrid Hardware/SaaS: laser-engraved stainless QR tags on cars → digital vehicle document & history dashboard (ABEs, TÜV, invoices). Physical Web, mobile-first, outdoor scan UX.
+
+## Stack
+- Next.js App Router + TypeScript (Server Components by default)
+- Tailwind CSS, shadcn/ui, Lucide
+- Supabase: Postgres, RLS, Storage, Magic Link/Email Auth
+- Deploy: Vercel
+
+## Domain model
+- `users` (Supabase Auth)
+- `vehicles` (id, user_id, make, model, year, vin, created_at)
+- `tags` (id, uuid, vehicle_id, status: unclaimed | active, created_at)
+- `documents` (id, vehicle_id, title, type: abe | invoice | tuev | other, file_url, amount, date)
+
+## Routes & flows
+- QR entry: `/v/[uuid]`
+- `unclaimed` → auth + vehicle claim → link tag, set `active`
+- `active` → dashboard; owner R/W, third party read-only via RLS
+
+## Engineering rules
+- Production-ready, readable, strictly typed, DRY, modular, futureproof
+- Client components only when interactivity requires it
+- Mobile-first: contrast, large tap targets, fast
+- Never bypass RLS; scope data access correctly
+- Proper loading/error fallbacks; no messy inline logic
