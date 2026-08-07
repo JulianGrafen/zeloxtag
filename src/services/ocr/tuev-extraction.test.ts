@@ -5,7 +5,7 @@ import {
   tuevDefectsForDisplay,
 } from "@/components/dashboard/TuevOverview";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
-import { sanitizeTuevPayload } from "@/services/documents/TuevReportService";
+import { sanitizeTuevPayload, parseTuevReportLenient } from "@/services/documents/TuevReportService";
 import {
   buildTuevSystemPrompt,
   tuevVisionToAnalyzeFields,
@@ -14,6 +14,7 @@ import {
   TUEV_PRUEFPUNKT_DOT_GUIDANCE,
   TUEV_PUNKT4_MILEAGE_GUIDANCE,
   TUEV_PUNKT6_DEFECTS_GUIDANCE,
+  TUEV_PUNKT6_TABLE_GUIDANCE,
 } from "@/services/ocr/TuevExtractionService";
 import { TuevReportService } from "@/services/documents";
 
@@ -48,6 +49,7 @@ describe("TuevExtractionService prompts & schema", () => {
     expect(prompt).toMatch(/EM.*GM/);
     expect(prompt).toContain("Mängel");
     expect(prompt).toContain(TUEV_PUNKT6_DEFECTS_GUIDANCE);
+    expect(prompt).toContain(TUEV_PUNKT6_TABLE_GUIDANCE);
     expect(prompt).toContain(TUEV_PRUEFPUNKT_DOT_GUIDANCE);
     expect(prompt).toContain(TUEV_PUNKT4_MILEAGE_GUIDANCE);
     expect(prompt).toContain(TUEV_ANTI_HALLUCINATION_GUIDANCE);
@@ -258,6 +260,7 @@ describe("sanitizeTuevPayload · LLM vision output", () => {
       vendor: "TÜV Süd · München",
       amount: 118.5,
       lineItems: [{ label: "HU", amount: 88.5 }],
+      requiresManualReview: false,
     });
 
     expect(fields.category).toBe("tuev");
@@ -265,6 +268,47 @@ describe("sanitizeTuevPayload · LLM vision output", () => {
     expect(fields.amount).toBe(118.5);
     expect(fields.vendor).toBe("TÜV Süd · München");
     expect(fields.invoiceNumber).toBe("HU-2026-991");
+  });
+
+  it("parseTuevReportLenient recovers partial payload when result is unreadable", () => {
+    const sanitized = sanitizeTuevPayload({
+      testingOrganization: "TÜV",
+      testDate: "invalid-date",
+      result: "unleserlich",
+      mileageKm: 85_400,
+      nextInspectionDate: null,
+      documentNumber: null,
+      defectsTable: null,
+      defectsList: null,
+    });
+
+    const { report, requiresManualReview } = parseTuevReportLenient(sanitized);
+    expect(requiresManualReview).toBe(true);
+    expect(report.testingOrganization).toBe("TÜV");
+    expect(report.mileageKm).toBe(85_400);
+    expect(report.result).toBe("no_defects");
+    expect(report.testDate).toBeNull();
+  });
+
+  it("tuevVisionToAnalyzeFields surfaces manual review in notes", () => {
+    const fields = tuevVisionToAnalyzeFields({
+      report: {
+        testingOrganization: "TÜV",
+        testDate: null,
+        result: "no_defects",
+        mileageKm: null,
+        nextInspectionDate: null,
+        documentNumber: null,
+        defectsTable: null,
+        defectsList: null,
+        requiresManualReview: true,
+      },
+      vendor: null,
+      amount: null,
+      lineItems: null,
+      requiresManualReview: true,
+    });
+    expect(fields.notes).toMatch(/Manuelle Prüfung/i);
   });
 });
 

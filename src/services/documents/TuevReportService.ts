@@ -299,12 +299,81 @@ export function sanitizeTuevPayload(rawJson: unknown): unknown {
       rawJson.testingOrganization,
     ),
     testDate: normalizeIsoDate(rawJson.testDate),
-    result,
+    result: normalizeResult(rawJson.result),
     mileageKm: normalizeMileageKm(rawJson.mileageKm),
     nextInspectionDate: normalizeYearMonth(rawJson.nextInspectionDate),
     documentNumber: normalizeDocumentNumber(rawJson.documentNumber),
     defectsTable: clearedDefects.defectsTable,
     defectsList: clearedDefects.defectsList,
+  };
+}
+
+const EMPTY_TUEV_REPORT: TuevReport = {
+  testingOrganization: "other",
+  testDate: null,
+  result: "no_defects",
+  mileageKm: null,
+  nextInspectionDate: null,
+  documentNumber: null,
+  defectsTable: null,
+  defectsList: null,
+};
+
+export type TuevReportParseResult = {
+  report: TuevReport;
+  requiresManualReview: boolean;
+};
+
+/**
+ * Parse sanitized LLM output with graceful degradation — never blocks the review UI
+ * when optional fields are missing or partially invalid.
+ */
+export function parseTuevReportLenient(
+  sanitized: unknown,
+): TuevReportParseResult {
+  const strict = TuevReportSchema.safeParse(sanitized);
+  if (strict.success) {
+    return { report: strict.data, requiresManualReview: false };
+  }
+
+  const record = isRecord(sanitized) ? sanitized : {};
+  const resolvedDefects = resolveTuevDefects(
+    record.defectsTable,
+    record.defectsList,
+  );
+  const resolvedResult = normalizeResult(record.result) ?? "no_defects";
+  const clearedDefects =
+    resolvedResult === "no_defects"
+      ? { defectsTable: null, defectsList: null }
+      : resolvedDefects;
+
+  const fallback = {
+    ...EMPTY_TUEV_REPORT,
+    testingOrganization: normalizeTestingOrganization(
+      record.testingOrganization,
+    ),
+    testDate: normalizeIsoDate(record.testDate),
+    result: resolvedResult,
+    mileageKm: normalizeMileageKm(record.mileageKm),
+    nextInspectionDate: normalizeYearMonth(record.nextInspectionDate),
+    documentNumber: normalizeDocumentNumber(record.documentNumber),
+    defectsTable: clearedDefects.defectsTable,
+    defectsList: clearedDefects.defectsList,
+    requiresManualReview: true,
+  };
+
+  const recovered = TuevReportSchema.safeParse(fallback);
+  if (recovered.success) {
+    return { report: recovered.data, requiresManualReview: true };
+  }
+
+  return {
+    report: {
+      ...EMPTY_TUEV_REPORT,
+      testingOrganization: fallback.testingOrganization,
+      requiresManualReview: true,
+    },
+    requiresManualReview: true,
   };
 }
 

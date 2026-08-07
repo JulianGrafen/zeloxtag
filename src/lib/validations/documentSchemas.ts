@@ -41,9 +41,26 @@ export type TuevDefectSeverity = (typeof TUEV_DEFECT_SEVERITIES)[number];
 
 export const TuevDefectRowSchema = z
   .object({
-    checkpoint: z.string().trim().min(1).max(24).nullable(),
-    description: z.string().trim().min(1).max(500),
-    severity: z.enum(TUEV_DEFECT_SEVERITIES).nullable(),
+    checkpoint: z
+      .preprocess(
+        (value) => (typeof value === "string" ? value.trim() : value),
+        z.string().min(1).max(24).nullable(),
+      ),
+    description: z.preprocess(
+      (value) => {
+        if (typeof value === "string") return value.trim();
+        if (value == null) return "";
+        return String(value).trim();
+      },
+      z.string().min(1).max(500),
+    ),
+    severity: z.preprocess(
+      (value) => {
+        if (value === "EM" || value === "GM") return value;
+        return null;
+      },
+      z.enum(TUEV_DEFECT_SEVERITIES).nullable(),
+    ),
   })
   .strict();
 
@@ -110,26 +127,67 @@ export const EGBESchema = z
 
 export type EGBE = z.infer<typeof EGBESchema>;
 
+const looseIsoDate = z.preprocess(
+  (value) => (value === "" || value === undefined ? null : value),
+  isoDate.nullable(),
+);
+const looseYearMonth = z.preprocess(
+  (value) => (value === "" || value === undefined ? null : value),
+  yearMonth.nullable(),
+);
+const looseMileageKm = z.preprocess(
+  (value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.round(value);
+    }
+    return value;
+  },
+  z.number().int().nonnegative().max(9_999_999).nullable(),
+);
+
 /**
  * HU / AU inspection report (Haupt- und Abgasuntersuchung / TÜV-Bericht).
- * Nullable fields tolerate missing OCR; organization + result are required.
+ * Nullable fields tolerate missing reads; organization + result are required.
  * Festgestellte Mängel are always under Punkt 6 / Abschnitt 6 of the report.
  */
 export const TuevReportSchema = z
   .object({
     testingOrganization: z.enum(TESTING_ORGANIZATIONS),
-    testDate: isoDate.nullable(),
+    testDate: looseIsoDate,
     result: z.enum(TUEV_RESULTS),
-    mileageKm: z.number().int().nonnegative().max(9_999_999).nullable(),
-    nextInspectionDate: yearMonth.nullable(),
-    documentNumber: z.string().trim().min(1).max(120).nullable(),
+    mileageKm: looseMileageKm,
+    nextInspectionDate: looseYearMonth,
+    documentNumber: z
+      .preprocess(
+        (value) => {
+          if (value == null || value === "") return null;
+          if (typeof value !== "string") return null;
+          const trimmed = value.trim();
+          return trimmed.length > 0 ? trimmed.slice(0, 120) : null;
+        },
+        z.string().min(1).max(120).nullable(),
+      ),
     /** Structured Mängel from Punkt 6 (Prüfpunkt + description + EM/GM). */
-    defectsTable: z.array(TuevDefectRowSchema).max(80).nullable(),
+    defectsTable: z
+      .preprocess(
+        (value) => (Array.isArray(value) && value.length === 0 ? null : value),
+        z.array(TuevDefectRowSchema).max(80).nullable(),
+      ),
     /** Plain-text Mängel from Punkt 6 — legacy / display fallback. */
-    defectsList: z
-      .array(z.string().trim().min(1).max(500))
-      .max(80)
-      .nullable(),
+    defectsList: z.preprocess(
+      (value) => {
+        if (value == null) return null;
+        if (Array.isArray(value) && value.length === 0) return null;
+        return value;
+      },
+      z
+        .array(z.string().trim().min(1).max(500))
+        .max(80)
+        .nullable(),
+    ),
+    /** Set when LLM payload needed manual review after lenient recovery. */
+    requiresManualReview: z.boolean().optional(),
   })
   .strict();
 

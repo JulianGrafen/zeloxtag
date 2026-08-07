@@ -200,6 +200,9 @@ export function TuevOverview({
     () => tuevDefectsForDisplay(approvalFields),
     [approvalFields],
   );
+  const requiresManualReview =
+    approvalFields?.kind === "tuev" &&
+    approvalFields.data.requiresManualReview === true;
   const nextHuMissing = !review.nextInspectionDate?.trim();
 
   function patch<K extends keyof TuevReviewFields>(
@@ -234,6 +237,16 @@ export function TuevOverview({
             Prüfdatum, nächste HU und Ergebnis vor dem Speichern prüfen
           </p>
         </header>
+
+        {requiresManualReview ? (
+          <p
+            role="status"
+            className="mt-4 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] text-amber-950"
+          >
+            Manuelle Prüfung empfohlen — einige Felder konnten nicht zuverlässig
+            gelesen werden. Bitte alle Werte gegen das PDF prüfen.
+          </p>
+        ) : null}
 
         <div
           className={[

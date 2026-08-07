@@ -1,13 +1,11 @@
 import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
-import {
-  buildDocumentUserMessage,
-  type DocumentBytesInput,
-} from "@/lib/ocr/llm-document-content";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
+import { buildTuevDocumentUserMessage } from "@/lib/ocr/tuev-document-content";
+import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
 import {
   normalizeTextParseResult,
   type InvoiceLineItem,
@@ -16,12 +14,14 @@ import {
 import {
   TUEV_RESULTS,
   TESTING_ORGANIZATIONS,
-  TuevReportSchema,
   type TuevReport,
 } from "@/lib/validations/documentSchemas";
-import { sanitizeTuevPayload } from "@/services/documents/TuevReportService";
+import {
+  parseTuevReportLenient,
+  sanitizeTuevPayload,
+} from "@/services/documents/TuevReportService";
 
-const TUEV_MAX_TOKENS = 3_600;
+const TUEV_MAX_TOKENS = 2_400;
 
 /** German HU/AU reports list Mängel under numbered section 6 (Punkt 6). */
 export const TUEV_PUNKT6_DEFECTS_GUIDANCE =
@@ -37,6 +37,11 @@ export const TUEV_PUNKT4_MILEAGE_GUIDANCE =
   'Kilometerstand (mileageKm) steht unter Punkt 4 / Feld 4 / (4) — z. B. "4. Kilometerstand", "4 KM-Stand", "(4) Kilometerstand". ' +
   'Alternativ im Dokumentkopf (Kopf): "KM-Stand", "Kilometerstand", "Tachostand". ' +
   'Beispiel: "142.350 km" → 142350. Tausenderpunkte entfernen.';
+
+export const TUEV_PUNKT6_TABLE_GUIDANCE =
+  "Punkt 6 Mängel often appear as dense tables or markdown-like rows (Prüfpunkt | Mangel | EM/GM). " +
+  "If the table spans multiple rows or uses compact formatting, extract EVERY row sequentially into defectsTable. " +
+  "Do not truncate, merge, or summarize defects. When unsure about a row, include it rather than omit it.";
 
 export const TUEV_ANTI_HALLUCINATION_GUIDANCE =
   "Wenn Punkt 6 leer ist, mangelfrei, oder das Ergebnis ohne Mängel ist: defectsTable und defectsList MÜSSEN null sein. " +
@@ -155,6 +160,7 @@ export type TuevVisionExtraction = {
   vendor: string | null;
   amount: number | null;
   lineItems: InvoiceLineItem[] | null;
+  requiresManualReview: boolean;
 };
 
 /** Map single vision-LLM TÜV extract → analyze API fields. */
@@ -179,7 +185,9 @@ export function tuevVisionToAnalyzeFields(
     authority: orgLabel,
     conditions: null,
     partCategory: null,
-    notes: null,
+    notes: extraction.requiresManualReview
+      ? "Manuelle Prüfung empfohlen — einige Felder konnten nicht zuverlässig gelesen werden."
+      : null,
     manufacturer: null,
     invoiceNumber: report.documentNumber,
     mileageKm: report.mileageKm,
@@ -192,11 +200,13 @@ export function buildTuevSystemPrompt(): string {
     "Read the uploaded document (PDF or scan) directly — no OCR preprocessing.",
     TUEV_PUNKT4_MILEAGE_GUIDANCE,
     TUEV_PUNKT6_DEFECTS_GUIDANCE,
+    TUEV_PUNKT6_TABLE_GUIDANCE,
     TUEV_PRUEFPUNKT_DOT_GUIDANCE,
     TUEV_ANTI_HALLUCINATION_GUIDANCE,
     "Extract testingOrganization, testDate (YYYY-MM-DD), result, mileageKm, nextInspectionDate (YYYY-MM),",
     "documentNumber, defectsTable, defectsList, vendor (Prüfstelle), amount (Gesamtgebühr EUR), lineItems (HU/AU fees).",
     "For each Punkt-6 defect: dot-separated checkpoint (e.g. 4.2.1, 1.3.2a), description (verbatim), severity EM or GM when shown.",
+    "Optional fields (documentNumber, testDate, mileageKm, nextInspectionDate) → null when unreadable — never guess.",
     "Map German result wording:",
     '- "ohne Mängel" / "mangelfrei" → no_defects',
     '- "geringfügige Mängel" → minor_defects',
@@ -228,11 +238,11 @@ export class TuevExtractionService {
       );
     }
 
-    const userContent = buildDocumentUserMessage(
+    const userContent = await buildTuevDocumentUserMessage(
       [
         "German HU/AU inspection report (TÜV-Bericht). Read the document directly.",
-        "Punkt 4 / Feld 4 / (4): Kilometerstand → mileageKm.",
-        "Punkt 6 / Abschnitt 6: Festgestellte Mängel → defectsTable + defectsList (null wenn mangelfrei).",
+        "Focus on page 1 (and page 2 if Punkt 6 continues): Kopf, Punkt 4 (KM-Stand), Punkt 6 (Mängel table row-by-row).",
+        "If Punkt 6 uses a dense table, extract every row sequentially — do not truncate.",
         "Extract Prüforganisation, Prüfdatum, Ergebnis, nächste HU, Vorgangsnummer, Prüfgebühren (amount, lineItems), Prüfstelle (vendor).",
         "Prüfpunkte punktgetrennt (4.2.1, 1.3.2a). Keine Mängel erfinden.",
       ],
@@ -277,12 +287,7 @@ export class TuevExtractionService {
         : {};
 
     const sanitized = sanitizeTuevPayload(record);
-    const parsed = TuevReportSchema.safeParse(sanitized);
-    if (!parsed.success) {
-      throw new TextParseError(
-        "TÜV extract payload failed schema validation.",
-      );
-    }
+    const { report, requiresManualReview } = parseTuevReportLenient(sanitized);
 
     const vendor =
       typeof record.vendor === "string" && record.vendor.trim()
@@ -297,10 +302,14 @@ export class TuevExtractionService {
       : null;
 
     return {
-      report: parsed.data,
+      report: {
+        ...report,
+        requiresManualReview: requiresManualReview || undefined,
+      },
       vendor,
       amount,
       lineItems,
+      requiresManualReview,
     };
   }
 }
