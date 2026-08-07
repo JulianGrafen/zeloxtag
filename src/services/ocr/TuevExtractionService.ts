@@ -915,11 +915,10 @@ export class TuevExtractionService {
   }
 
   /**
-   * Single-shot extraction from pre-processed pages (one-click upload flow).
+   * Single-shot extraction from pre-processed pages.
    *
-   * - Single page / image → runs full extraction via `extractFromDocument`.
-   * - Multi-page → runs header extraction on page 1 + defects extraction on
-   *   page 2 in parallel, then merges into a single `TuevVisionExtraction`.
+   * @deprecated Prefer wizard step APIs or `extractFromDocument` for one-shot.
+   * Kept for potential internal tooling — not used by Single-Click upload.
    */
   async extractFromPreprocessedDocument(
     preprocessed: PreprocessedTuevDocument,

@@ -7,7 +7,6 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
-import { preprocessTuevDocument } from "@/services/documents/PdfPreprocessor";
 import {
   tuevExtractionService,
   type TuevVisionExtraction,
@@ -46,11 +45,8 @@ function jsonError(
  * POST /api/ocr/tuev/single
  *
  * One-shot TÜV extraction for the Single-Click Upload experience.
- * Automatically pre-processes the document (PDF or image) and runs
- * focused step-based LLM extraction for maximum accuracy.
- *
- * For multi-page PDFs: header + defects are extracted in parallel.
- * For single-page / images: runs full extraction on the one page.
+ * Sends the full document directly to the vision LLM in a single call —
+ * no OCR, no page splitting, no wizard-style step extraction.
  *
  * FormData: { file: File }
  */
@@ -59,7 +55,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const originBlocked = enforceSameOrigin(request);
     if (originBlocked) return originBlocked;
 
-    // Use the "ocr" bucket — single upload is two LLM calls (≈ twice the cost).
+    // Use the "ocr" bucket — single full-document LLM vision call.
     const limited = await enforceRateLimit(request, "ocr", "tuev-single");
     if (limited) return limited;
 
@@ -104,12 +100,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Pre-process: split into focused page buffers.
-    const preprocessed = await preprocessTuevDocument(bytes, sniffed);
-
-    // Extract — parallel for multi-page, single call for one-pagers.
-    const extraction =
-      await tuevExtractionService.extractFromPreprocessedDocument(preprocessed);
+    // Single vision-LLM call on the full document (PDF/image as-is).
+    const extraction = await tuevExtractionService.extractFromDocument({
+      bytes,
+      contentType: sniffed,
+    });
 
     const body: SingleSuccess = { ok: true, extraction };
     return NextResponse.json(body);

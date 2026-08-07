@@ -713,7 +713,7 @@ export function TuevUploadWizard({
           hint="Schritt 2 von 3 · Kopf-Abschnitt"
           guideFrame="section"
           guideSectionAnchor="top"
-          guideLabel="Kopf mit KM-Stand, FIN und Prüfergebnis"
+          guideLabel="Kopf mit KM-Stand, Datum und FIN"
           allowPdf
           onCapture={handleHeaderCapture}
           onClose={() => setState((prev) => ({ ...prev, phase: "capture-overview" }))}

@@ -39,25 +39,34 @@ const PDF_ACCEPT = "image/*,application/pdf,.pdf";
 /** DIN A4 portrait ratio (210 × 297 mm). */
 const A4_ASPECT_RATIO = "210 / 297";
 
-function GuideFrameCorners() {
+/** Landscape crop ratios for guided section scans. */
+const SECTION_ASPECT_RATIOS: Record<GuideSectionAnchor, string> = {
+  top: "5 / 2", // document header band
+  center: "4 / 3", // Punkt 6 defects block
+  bottom: "4 / 3",
+};
+
+function GuideFrameCorners({ sharp = false }: { sharp?: boolean }) {
+  const radius = sharp ? "rounded-sm" : "rounded-xl";
+  const corner = sharp ? "h-5 w-5" : "h-6 w-6";
   return (
     <>
-      <span className="absolute -left-px -top-px h-6 w-6 rounded-tl-xl border-l-4 border-t-4 border-white" />
-      <span className="absolute -right-px -top-px h-6 w-6 rounded-tr-xl border-r-4 border-t-4 border-white" />
-      <span className="absolute -bottom-px -left-px h-6 w-6 rounded-bl-xl border-b-4 border-l-4 border-white" />
-      <span className="absolute -bottom-px -right-px h-6 w-6 rounded-br-xl border-b-4 border-r-4 border-white" />
+      <span className={`absolute -left-px -top-px ${corner} ${radius} border-l-4 border-t-4 border-white`} />
+      <span className={`absolute -right-px -top-px ${corner} ${radius} border-r-4 border-t-4 border-white`} />
+      <span className={`absolute -bottom-px -left-px ${corner} ${radius} border-b-4 border-l-4 border-white`} />
+      <span className={`absolute -bottom-px -right-px ${corner} ${radius} border-b-4 border-r-4 border-white`} />
     </>
   );
 }
 
-function sectionFramePositionClass(anchor: GuideSectionAnchor): string {
+function sectionFrameLayoutClass(anchor: GuideSectionAnchor): string {
   switch (anchor) {
     case "top":
-      return "top-[14%]";
+      return "items-start justify-center pt-[13%]";
     case "bottom":
-      return "bottom-[18%]";
+      return "items-end justify-center pb-[18%]";
     default:
-      return "top-1/2 -translate-y-1/2";
+      return "items-center justify-center";
   }
 }
 
@@ -319,19 +328,24 @@ export function InBrowserCamera({
               ) : (
                 <div
                   className={[
-                    "pointer-events-none absolute inset-x-10 h-[34%] rounded-xl border-2 border-white/45 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]",
-                    sectionFramePositionClass(guideSectionAnchor),
+                    "pointer-events-none absolute inset-0 flex px-6 py-4",
+                    sectionFrameLayoutClass(guideSectionAnchor),
                   ].join(" ")}
-                  aria-hidden
                 >
-                  <GuideFrameCorners />
-                  {guideLabel ? (
-                    <div className="absolute inset-x-0 bottom-3 flex justify-center">
-                      <span className="rounded-lg bg-black/50 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
-                        {guideLabel}
-                      </span>
-                    </div>
-                  ) : null}
+                  <div
+                    className="relative w-full max-w-[min(90vw,520px)] rounded-md border-2 border-white/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
+                    style={{ aspectRatio: SECTION_ASPECT_RATIOS[guideSectionAnchor] }}
+                    aria-hidden
+                  >
+                    <GuideFrameCorners sharp />
+                    {guideLabel ? (
+                      <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                        <span className="rounded-lg bg-black/50 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
+                          {guideLabel}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               )
             ) : null}

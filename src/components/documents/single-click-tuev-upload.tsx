@@ -54,10 +54,10 @@ const RESULT_COLOR: Record<TuevResult, string> = {
 };
 
 const PROCESSING_MESSAGES = [
-  "Dokumentenseiten werden aufbereitet…",
+  "Dokument wird an die KI übergeben…",
   "Fahrzeugdaten & KM-Stand werden ausgelesen…",
   "Prüfergebnis & nächste HU werden erkannt…",
-  "Mängel-Nachweis wird analysiert…",
+  "Mängel werden erkannt…",
   "Finalisierung…",
 ];
 
@@ -245,7 +245,7 @@ export function SingleClickTuevUpload({
     setPhase("processing");
 
     try {
-      // 1. Call server-side preprocessor + LLM extraction.
+      // 1. Single vision-LLM extraction (full document, no wizard split).
       const body = new FormData();
       body.set("file", file);
 

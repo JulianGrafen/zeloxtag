@@ -52,11 +52,12 @@ function jsonError(
 /**
  * POST /api/ocr/tuev
  *
- * Guided TÜV wizard extraction — processes one document section per call.
+ * Guided TÜV wizard extraction — hybrid multi-step LLM pipeline.
+ * Processes one captured section per call (overview / header / defects).
  *
  * FormData fields:
  *   file  – image or PDF of the document section
- *   step  – "header" (Kopf + Ergebnis) | "defects" (Punkt 6)
+ *   step  – "overview" | "header" | "defects"
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
