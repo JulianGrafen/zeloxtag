@@ -12,6 +12,7 @@ import {
   tuevExtractionService,
   type TuevDefectsExtraction,
   type TuevHeaderExtraction,
+  type TuevOverviewExtraction,
 } from "@/services/ocr/TuevExtractionService";
 
 export const runtime = "nodejs";
@@ -19,12 +20,13 @@ export const maxDuration = 60;
 
 const MAX_BYTES = 25 * 1024 * 1024;
 
-const TUEV_WIZARD_STEPS = ["header", "defects"] as const;
+const TUEV_WIZARD_STEPS = ["overview", "header", "defects"] as const;
 type TuevWizardStep = (typeof TUEV_WIZARD_STEPS)[number];
 
 const stepSchema = z.enum(TUEV_WIZARD_STEPS);
 
 type StepSuccess =
+  | { ok: true; step: "overview"; extraction: TuevOverviewExtraction }
   | { ok: true; step: "header"; extraction: TuevHeaderExtraction }
   | { ok: true; step: "defects"; extraction: TuevDefectsExtraction };
 
@@ -117,6 +119,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const input = { bytes, contentType: sniffed };
+
+    if (step === "overview") {
+      const extraction = await tuevExtractionService.extractOverviewFromDocument(input);
+      const body: StepSuccess = { ok: true, step: "overview", extraction };
+      return NextResponse.json(body);
+    }
 
     if (step === "header") {
       const extraction = await tuevExtractionService.extractHeaderFromDocument(input);

@@ -39,6 +39,7 @@ import {
 import type {
   TuevDefectsExtraction,
   TuevHeaderExtraction,
+  TuevOverviewExtraction,
 } from "@/services/ocr/TuevExtractionService";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
@@ -47,17 +48,21 @@ import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 type WizardPhase =
   | "mode-select"
   | "single-click"
-  | "step1-camera"
-  | "step1-analyzing"
-  | "step2-prompt"
-  | "step2-camera"
-  | "step2-analyzing"
-  | "review";
+  // ── Capture phases (no LLM calls — user just takes photos) ────────────────
+  | "capture-overview"         // Step 1/3: photograph the entire document
+  | "capture-header"           // Step 2/3: photograph Dokumentenkopf
+  | "capture-defects-prompt"   // Step 3/3: ask if defects present
+  | "capture-defects"          // Step 3/3: photograph Mängel section
+  // ── Post-capture ──────────────────────────────────────────────────────────
+  | "analyzing"                // All LLM extractions run here in parallel
+  | "review";                  // TuevOverview edit + save
 
 interface WizardState {
   phase: WizardPhase;
+  overviewFile: File | null;
   headerFile: File | null;
   defectsFile: File | null;
+  overviewExtraction: TuevOverviewExtraction | null;
   headerExtraction: TuevHeaderExtraction | null;
   defectsExtraction: TuevDefectsExtraction | null;
   uploadFile: File | null;
@@ -102,16 +107,14 @@ class TuevApiError extends Error {
   }
 }
 
-async function fetchHeaderExtraction(
-  file: File,
-): Promise<TuevHeaderExtraction> {
+async function callTuevStep<T>(file: File, step: string, label: string): Promise<T> {
   const body = new FormData();
   body.set("file", file);
-  body.set("step", "header");
+  body.set("step", step);
 
   const response = await fetch("/api/ocr/tuev", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
-    | { ok: true; extraction: TuevHeaderExtraction }
+    | { ok: true; extraction: T }
     | { ok: false; error?: string }
     | null;
 
@@ -119,43 +122,41 @@ async function fetchHeaderExtraction(
     throw new TuevApiError(
       payload && "error" in payload && payload.error
         ? payload.error
-        : `Analyse fehlgeschlagen (${response.status}).`,
+        : `${label} fehlgeschlagen (${response.status}).`,
     );
   }
-  return payload.extraction;
+  return (payload as { ok: true; extraction: T }).extraction;
 }
 
-async function fetchDefectsExtraction(
-  file: File,
-): Promise<TuevDefectsExtraction> {
-  const body = new FormData();
-  body.set("file", file);
-  body.set("step", "defects");
+const fetchOverviewExtraction = (f: File) =>
+  callTuevStep<TuevOverviewExtraction>(f, "overview", "Übersicht-Analyse");
 
-  const response = await fetch("/api/ocr/tuev", { method: "POST", body });
-  const payload = (await response.json().catch(() => null)) as
-    | { ok: true; extraction: TuevDefectsExtraction }
-    | { ok: false; error?: string }
-    | null;
+const fetchHeaderExtraction = (f: File) =>
+  callTuevStep<TuevHeaderExtraction>(f, "header", "Kopf-Analyse");
 
-  if (!response.ok || !payload || payload.ok !== true) {
-    throw new TuevApiError(
-      payload && "error" in payload && payload.error
-        ? payload.error
-        : `Mängel-Analyse fehlgeschlagen (${response.status}).`,
-    );
-  }
-  return payload.extraction;
-}
+const fetchDefectsExtraction = (f: File) =>
+  callTuevStep<TuevDefectsExtraction>(f, "defects", "Mängel-Analyse");
 
 // ─── Merge extraction results → TuevReport ────────────────────────────────────
 
+/**
+ * Merge overview + header + defects extractions into a single TuevReport.
+ * Precedence: header wins for core inspection fields; overview wins for
+ * organization brand and fee (overview photo shows logo + bottom clearly).
+ */
 function buildTuevReport(
+  overview: TuevOverviewExtraction | null,
   header: TuevHeaderExtraction,
   defects: TuevDefectsExtraction | null,
 ): TuevReport {
+  // Organization: use overview brand if it's more specific than "other".
+  const testingOrganization =
+    overview && overview.testingOrganization !== "other"
+      ? overview.testingOrganization
+      : header.testingOrganization;
+
   return {
-    testingOrganization: header.testingOrganization,
+    testingOrganization,
     testDate: header.testDate,
     result: header.result,
     mileageKm: header.mileageKm,
@@ -168,24 +169,32 @@ function buildTuevReport(
 }
 
 function buildAnalyzeFields(
+  overview: TuevOverviewExtraction | null,
   header: TuevHeaderExtraction,
   defects: TuevDefectsExtraction | null,
 ): InvoiceTextParseResult {
-  const orgLabel =
-    header.testingOrganization !== "other"
-      ? header.testingOrganization
-      : null;
+  const org =
+    overview && overview.testingOrganization !== "other"
+      ? overview.testingOrganization
+      : header.testingOrganization !== "other"
+        ? header.testingOrganization
+        : null;
+
+  // Prefer overview for vendor + fee (full-doc photo shows these more reliably).
+  const vendor = overview?.vendor ?? header.vendor;
+  const amount = overview?.amount ?? header.amount;
+  const lineItems = overview?.lineItems ?? header.lineItems;
 
   return normalizeTextParseResult({
-    vendor: header.vendor,
+    vendor,
     date: header.testDate,
-    amount: header.amount,
+    amount,
     category: "tuev",
     summary: "HU / AU Prüfbericht",
-    lineItems: header.lineItems,
+    lineItems,
     kbaNumber: null,
     vehicleApprovals: null,
-    authority: orgLabel,
+    authority: org,
     conditions: null,
     partCategory: null,
     notes: header.requiresManualReview
@@ -197,34 +206,34 @@ function buildAnalyzeFields(
   });
 }
 
-// ─── Build upload file (header image or combined PDF) ─────────────────────────
+// ─── Build upload file (all captured images → combined PDF) ───────────────────
 
+/**
+ * Combine all captured pages into a single PDF for Supabase storage.
+ * Page order: overview → header → defects (matching wizard capture order).
+ */
 async function buildUploadFile(
-  headerFile: File,
+  overviewFile: File | null,
+  headerFile: File | null,
   defectsFile: File | null,
-): Promise<File> {
-  if (!defectsFile) {
-    // Single-page: use header file as-is (PDF or image).
-    if (
-      headerFile.type === "application/pdf" ||
-      headerFile.name.toLowerCase().endsWith(".pdf")
-    ) {
-      return headerFile;
-    }
-    return headerFile;
-  }
+): Promise<File | null> {
+  const pages = [overviewFile, headerFile, defectsFile].filter(
+    (f): f is File => f !== null,
+  );
 
-  // Two images → combine into a 2-page PDF for storage.
+  if (pages.length === 0) return null;
+  if (pages.length === 1 && pages[0]!.type === "application/pdf") return pages[0]!;
+
   try {
-    const result = await convertImagesToPdf([headerFile, defectsFile], {
+    const result = await convertImagesToPdf(pages, {
       fileName: `tuev-scan-${Date.now()}`,
       fullBleed: true,
       imageCompression: "MEDIUM",
     });
     return result.file;
   } catch {
-    // Fallback: just use the header image.
-    return headerFile;
+    // Fallback: first available file.
+    return pages[0]!;
   }
 }
 
@@ -318,8 +327,10 @@ export function TuevUploadWizard({
 }: TuevUploadWizardProps) {
   const [state, setState] = useState<WizardState>({
     phase: "mode-select",
+    overviewFile: null,
     headerFile: null,
     defectsFile: null,
+    overviewExtraction: null,
     headerExtraction: null,
     defectsExtraction: null,
     uploadFile: null,
@@ -353,8 +364,10 @@ export function TuevUploadWizard({
     setPreviewUrl(null, false);
     setState({
       phase: "mode-select",
+      overviewFile: null,
       headerFile: null,
       defectsFile: null,
+      overviewExtraction: null,
       headerExtraction: null,
       defectsExtraction: null,
       uploadFile: null,
@@ -365,103 +378,99 @@ export function TuevUploadWizard({
     setSaveError(null);
   }
 
-  // ── Step 1: user captured header image ──────────────────────────────────────
+  // ── Capture handlers (image collection only — no LLM calls) ─────────────────
 
-  async function handleHeaderCapture(file: File) {
+  function handleOverviewCapture(file: File) {
     setState((prev) => ({
       ...prev,
-      phase: "step1-analyzing",
-      headerFile: file,
+      overviewFile: file,
+      phase: "capture-header",
       error: null,
     }));
-
-    // Create preview URL for the review step (TuevOverview needs it).
-    const owned = !file.type.includes("pdf");
-    const previewUrl = owned ? URL.createObjectURL(file) : `/api/placeholder-pdf`;
-    if (owned) {
-      setPreviewUrl(URL.createObjectURL(file), true);
-    }
-
-    try {
-      const extraction = await fetchHeaderExtraction(file);
-
-      // Build upload file (may be just the header image initially).
-      const uploadFile = await buildUploadFile(file, null);
-      const finalPreviewUrl = owned ? URL.createObjectURL(file) : null;
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = finalPreviewUrl;
-
-      // Auto-skip step 2 when no defects.
-      const nextPhase = RESULT_HAS_DEFECTS.has(extraction.result)
-        ? "step2-prompt"
-        : "review";
-
-      setState((prev) => ({
-        ...prev,
-        phase: nextPhase,
-        headerExtraction: extraction,
-        uploadFile,
-        previewUrl: finalPreviewUrl,
-        previewOwned: owned,
-        error: null,
-      }));
-    } catch (error) {
-      setState((prev) => ({
-        ...prev,
-        phase: "step1-camera",
-        error:
-          error instanceof Error
-            ? error.message
-            : "Analyse fehlgeschlagen. Bitte erneut versuchen.",
-      }));
-    }
   }
 
-  // ── Step 2: user captured defects image ─────────────────────────────────────
-
-  async function handleDefectsCapture(file: File) {
+  function handleHeaderCapture(file: File) {
     setState((prev) => ({
       ...prev,
-      phase: "step2-analyzing",
-      defectsFile: file,
+      headerFile: file,
+      phase: "capture-defects-prompt",
       error: null,
     }));
+  }
 
-    try {
-      const extraction = await fetchDefectsExtraction(file);
-
-      // Rebuild upload file combining header + defects images.
-      const headerFile = state.headerFile!;
-      const uploadFile = await buildUploadFile(headerFile, file);
-
-      setState((prev) => ({
-        ...prev,
-        phase: "review",
-        defectsExtraction: extraction,
-        uploadFile,
-        error: null,
-      }));
-    } catch (error) {
-      // Step 2 failure is non-fatal — keep header extraction, go to review.
-      setState((prev) => ({
-        ...prev,
-        phase: "review",
-        defectsExtraction: null,
-        error:
-          error instanceof Error
-            ? `Mängel konnten nicht gelesen werden (${error.message}). Bitte manuell prüfen.`
-            : "Mängel-Analyse fehlgeschlagen — bitte manuell prüfen.",
-      }));
-    }
+  function handleDefectsCapture(file: File) {
+    const { overviewFile, headerFile } = state;
+    setState((prev) => ({
+      ...prev,
+      defectsFile: file,
+      phase: "analyzing",
+      error: null,
+    }));
+    void runAnalysis(overviewFile, headerFile, file);
   }
 
   function skipDefects() {
-    setState((prev) => ({
-      ...prev,
-      phase: "review",
-      defectsExtraction: null,
-      error: null,
-    }));
+    const { overviewFile, headerFile } = state;
+    setState((prev) => ({ ...prev, phase: "analyzing", error: null }));
+    void runAnalysis(overviewFile, headerFile, null);
+  }
+
+  // ── Single analysis pass — all LLM calls in parallel ─────────────────────────
+
+  async function runAnalysis(
+    overviewFile: File | null,
+    headerFile: File | null,
+    defectsFile: File | null,
+  ) {
+    try {
+      const [overviewResult, headerResult, defectsResult] = await Promise.all([
+        overviewFile ? fetchOverviewExtraction(overviewFile) : Promise.resolve(null),
+        headerFile ? fetchHeaderExtraction(headerFile) : Promise.resolve(null),
+        defectsFile
+          ? fetchDefectsExtraction(defectsFile).catch(
+              (): TuevDefectsExtraction => ({
+                defectsTable: null,
+                defectsList: null,
+              }),
+            )
+          : Promise.resolve(null),
+      ]);
+
+      if (!headerResult) {
+        throw new TuevApiError("Kein Dokumentenkopf-Bild vorhanden.");
+      }
+
+      // Build the upload PDF and preview URL from the header photo.
+      const uploadFile = await buildUploadFile(overviewFile, headerFile, defectsFile);
+      const previewSource = headerFile ?? overviewFile;
+      const owned = previewSource !== null && !previewSource.type.includes("pdf");
+      const previewUrl = owned && previewSource
+        ? URL.createObjectURL(previewSource)
+        : null;
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = previewUrl;
+
+      setState((prev) => ({
+        ...prev,
+        phase: "review",
+        overviewExtraction: overviewResult,
+        headerExtraction: headerResult,
+        defectsExtraction: defectsResult,
+        uploadFile,
+        previewUrl,
+        previewOwned: owned,
+        error: null,
+      }));
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        phase: "capture-header",
+        error:
+          err instanceof Error
+            ? err.message
+            : "Analyse fehlgeschlagen. Bitte erneut versuchen.",
+      }));
+    }
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────────
@@ -514,7 +523,9 @@ export function TuevUploadWizard({
         "mileageKm",
         review.mileageKm === null ? "" : String(review.mileageKm),
       );
-      formData.set("pageCount", state.defectsFile ? "2" : "1");
+      const pageCount = [state.overviewFile, state.headerFile, state.defectsFile]
+        .filter(Boolean).length;
+      formData.set("pageCount", String(pageCount || 1));
       formData.set("approvalFields", JSON.stringify(approval));
       formData.set("file", state.uploadFile!);
 
@@ -532,7 +543,7 @@ export function TuevUploadWizard({
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  const { phase, headerExtraction, defectsExtraction, error } = state;
+  const { phase, overviewExtraction, headerExtraction, defectsExtraction, error } = state;
 
   // ── Mode selector ────────────────────────────────────────────────────────────
 
@@ -582,7 +593,7 @@ export function TuevUploadWizard({
         <button
           type="button"
           onClick={() =>
-            setState((prev) => ({ ...prev, phase: "step1-camera" }))
+            setState((prev) => ({ ...prev, phase: "capture-overview" }))
           }
           className="group relative w-full rounded-[1.35rem] border-2 border-neutral-900 bg-neutral-900 p-5 text-left text-white shadow-[var(--vd-shadow)] transition-opacity active:opacity-80"
         >
@@ -602,7 +613,7 @@ export function TuevUploadWizard({
           </div>
           <div className="mt-4 flex gap-2">
             <span className="rounded-lg bg-white/10 px-2.5 py-1 text-[0.7rem] font-medium">
-              2 Schritte
+              3 Schritte
             </span>
             <span className="rounded-lg bg-white/10 px-2.5 py-1 text-[0.7rem] font-medium">
               ~60 Sek.
@@ -668,7 +679,27 @@ export function TuevUploadWizard({
   }
 
   // Camera views are full-screen — render outside the normal page shell.
-  if (phase === "step1-camera") {
+  if (phase === "capture-overview") {
+    return (
+      <>
+        {error ? (
+          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
+            {error}
+          </div>
+        ) : null}
+        <InBrowserCamera
+          title="Gesamten Bericht fotografieren"
+          hint="Schritt 1 von 3 · Übersicht"
+          guideLabel="Gesamter Bericht — Kopf, Ergebnis und Gebühren sichtbar"
+          allowPdf
+          onCapture={handleOverviewCapture}
+          onClose={() => setState((prev) => ({ ...prev, phase: "mode-select" }))}
+        />
+      </>
+    );
+  }
+
+  if (phase === "capture-header") {
     return (
       <>
         {error ? (
@@ -678,17 +709,17 @@ export function TuevUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Dokumentenkopf fotografieren"
-          hint="Schritt 1 von 2"
-          guideLabel="Kopf mit KM-Stand, FIN und Ergebnis"
+          hint="Schritt 2 von 3 · Kopf-Abschnitt"
+          guideLabel="Kopf mit KM-Stand, FIN und Prüfergebnis"
           allowPdf
-          onCapture={(file) => void handleHeaderCapture(file)}
-          onClose={onBack ?? (() => window.history.back())}
+          onCapture={handleHeaderCapture}
+          onClose={() => setState((prev) => ({ ...prev, phase: "capture-overview" }))}
         />
       </>
     );
   }
 
-  if (phase === "step2-camera") {
+  if (phase === "capture-defects") {
     return (
       <>
         {error ? (
@@ -698,32 +729,69 @@ export function TuevUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Mängel-Nachweis fotografieren"
-          hint="Schritt 2 von 2 · Abschnitt 6"
+          hint="Schritt 3 von 3 · Abschnitt 6"
           guideLabel="Punkt 6 — Festgestellte Mängel"
-          onCapture={(file) => void handleDefectsCapture(file)}
+          onCapture={handleDefectsCapture}
           onClose={() =>
-            setState((prev) => ({ ...prev, phase: "step2-prompt" }))
+            setState((prev) => ({ ...prev, phase: "capture-defects-prompt" }))
           }
         />
       </>
     );
   }
 
-  // Page-shell views.
-  const showTotalSteps = phase === "step2-prompt" || phase === "step2-analyzing" || phase === "review"
-    ? 2
-    : 1;
-  const showCurrentStep =
-    phase === "step1-analyzing" || phase === "step2-prompt" ? 1
-    : phase === "step2-analyzing" ? 2
-    : phase === "review" ? showTotalSteps
-    : 1;
+  // ── Analyzing — full-screen loading while all LLM calls run ─────────────────
+
+  if (phase === "analyzing") {
+    return (
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col items-center justify-center gap-8 px-4 py-6 text-center">
+        <div className="relative flex h-24 w-24 items-center justify-center">
+          <div className="absolute inset-0 animate-spin rounded-full border-4 border-neutral-100 border-t-neutral-900" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
+            <ScanLine className="h-7 w-7 text-white" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-[1rem] font-semibold text-[color:var(--vd-text)]">
+            Alle Abschnitte werden analysiert…
+          </p>
+          <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
+            KM-Stand · Ergebnis · nächste HU · Mängel · Prüfgebühr
+          </p>
+          <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+            Dauert etwa 15–30 Sekunden
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {["Übersicht", "Kopf", "Mängel"].map((label, i) => (
+            <div
+              key={label}
+              className="flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1"
+            >
+              <LoaderCircle className="h-3 w-3 animate-spin text-neutral-500" style={{ animationDelay: `${i * 300}ms` }} />
+              <span className="text-[0.68rem] font-medium text-neutral-600">{label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // Page-shell views: progress bar covers the 3 capture steps.
+  const captureStepMap: Partial<Record<WizardPhase, number>> = {
+    "capture-overview": 1,
+    "capture-header": 2,
+    "capture-defects-prompt": 3,
+    "capture-defects": 3,
+  };
+  const showCurrentStep = captureStepMap[phase] ?? 0;
+  const showTotalSteps = 3;
 
   const isReview = phase === "review" && !!headerExtraction;
 
-  if (isReview && state.previewUrl && state.uploadFile) {
-    const mergedReport = buildTuevReport(headerExtraction!, defectsExtraction);
-    const mergedFields = buildAnalyzeFields(headerExtraction!, defectsExtraction);
+  if (isReview && state.uploadFile) {
+    const mergedReport = buildTuevReport(overviewExtraction, headerExtraction!, defectsExtraction);
+    const mergedFields = buildAnalyzeFields(overviewExtraction, headerExtraction!, defectsExtraction);
     const approvalFields: ApprovalFields = { kind: "tuev", data: mergedReport };
     const isPdf =
       state.uploadFile.type === "application/pdf" ||
@@ -738,9 +806,9 @@ export function TuevUploadWizard({
           </div>
         ) : null}
         <TuevOverview
-          previewUrl={state.previewUrl}
+          previewUrl={state.previewUrl ?? ""}
           previewKind={isPdf ? "pdf" : "image"}
-          pageCount={state.defectsFile ? 2 : 1}
+          pageCount={[state.overviewFile, state.headerFile, state.defectsFile].filter(Boolean).length || 1}
           fields={mergedFields}
           approvalFields={approvalFields}
           isSaving={saving}
@@ -785,102 +853,37 @@ export function TuevUploadWizard({
             TÜV / HU · Guided Scan
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-            {phase === "step1-analyzing"
-              ? "Kopf wird analysiert…"
-              : phase === "step2-prompt"
-                ? "Mängel-Nachweis"
-                : phase === "step2-analyzing"
-                  ? "Mängel werden analysiert…"
-                  : "TÜV-Bericht scannen"}
+            {phase === "capture-defects-prompt"
+              ? "Mängel vorhanden?"
+              : "TÜV-Bericht scannen"}
           </h1>
           <p className="mt-1 text-[0.88rem] text-[color:var(--vd-muted)]">
             {vehicleLabel}
           </p>
         </div>
 
-        {/* Progress bar */}
-        <WizardProgress
-          currentStep={showCurrentStep}
-          totalSteps={showTotalSteps}
-        />
+        {/* Progress bar — only during capture phases */}
+        {showCurrentStep > 0 ? (
+          <WizardProgress
+            currentStep={showCurrentStep}
+            totalSteps={showTotalSteps}
+          />
+        ) : null}
       </header>
 
-      {/* ── Step 1 analyzing ─────────────────────────────────────── */}
-      {phase === "step1-analyzing" ? (
-        <AnalyzingOverlay label="Dokumentenkopf wird ausgelesen…" />
-      ) : null}
-
-      {/* ── Step 2 prompt ────────────────────────────────────────── */}
-      {phase === "step2-prompt" && headerExtraction ? (
-        <div className="space-y-4">
-          {/* Header result summary */}
-          <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white px-4 py-2 shadow-[var(--vd-shadow-sm)]">
-            <p className="py-2 text-[0.7rem] font-medium uppercase tracking-[0.15em] text-[color:var(--vd-muted)]">
-              Schritt 1 · Ergebnis
-            </p>
-            <div className="divide-y divide-[color:var(--vd-border)]">
-              <HeaderResultRow
-                label="Organisation"
-                value={
-                  headerExtraction.testingOrganization !== "other"
-                    ? headerExtraction.testingOrganization
-                    : "Sonstige"
-                }
-              />
-              <HeaderResultRow
-                label="Prüfdatum"
-                value={headerExtraction.testDate ?? null}
-              />
-              <HeaderResultRow
-                label="Kilometerstand"
-                value={
-                  headerExtraction.mileageKm !== null
-                    ? `${headerExtraction.mileageKm.toLocaleString("de-DE")} km`
-                    : null
-                }
-              />
-              <HeaderResultRow
-                label="Ergebnis"
-                value={
-                  <span
-                    className={
-                      RESULT_HAS_DEFECTS.has(headerExtraction.result)
-                        ? "font-semibold text-amber-700"
-                        : "font-semibold text-emerald-700"
-                    }
-                  >
-                    {TUEV_RESULT_LABELS[headerExtraction.result]}
-                  </span>
-                }
-              />
-              <HeaderResultRow
-                label="Nächste HU"
-                value={headerExtraction.nextInspectionDate ?? null}
-              />
-            </div>
-          </div>
-
-          {/* Defects prompt */}
-          <div className="rounded-[1.35rem] border border-amber-200 bg-amber-50 px-4 py-4">
-            <div className="flex gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-              <div>
-                <p className="text-[0.88rem] font-semibold text-amber-900">
-                  Mängel festgestellt
-                </p>
-                <p className="mt-1 text-[0.8rem] leading-relaxed text-amber-800">
-                  Fotografiere jetzt Abschnitt 6 des Berichts — dort stehen die
-                  festgestellten Mängel (Prüfpunkte).
-                </p>
-              </div>
-            </div>
-          </div>
+      {/* ── Defects prompt (Step 3/3) ─────────────────────────────── */}
+      {phase === "capture-defects-prompt" ? (
+        <div className="space-y-3">
+          <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+            Hat der Bericht festgestellte Mängel? Falls ja, fotografiere jetzt
+            Abschnitt&nbsp;6 — sonst weiter ohne Mängel-Scan.
+          </p>
 
           <Button
             type="button"
             className="claim-cta w-full"
             onClick={() =>
-              setState((prev) => ({ ...prev, phase: "step2-camera" }))
+              setState((prev) => ({ ...prev, phase: "capture-defects" }))
             }
           >
             <ScanLine className="h-4 w-4" />
@@ -894,14 +897,9 @@ export function TuevUploadWizard({
             onClick={skipDefects}
           >
             <SkipForward className="h-3.5 w-3.5" />
-            Überspringen — ohne Mängel-Scan
+            Weiter — kein Mängel-Abschnitt
           </button>
         </div>
-      ) : null}
-
-      {/* ── Step 2 analyzing ─────────────────────────────────────── */}
-      {phase === "step2-analyzing" ? (
-        <AnalyzingOverlay label="Mängel werden ausgelesen…" />
       ) : null}
 
       {/* ── Error display (non-camera phases) ────────────────────── */}

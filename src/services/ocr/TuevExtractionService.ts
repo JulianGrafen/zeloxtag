@@ -187,6 +187,17 @@ export type TuevDefectsExtraction = {
   defectsList: string[] | null;
 };
 
+/**
+ * Overview extraction: testing organization and Prüfgebühr from a full-doc photo.
+ * Extracted separately so the LLM can focus on letterhead + fee table.
+ */
+export type TuevOverviewExtraction = {
+  testingOrganization: TestingOrganization;
+  vendor: string | null;
+  amount: number | null;
+  lineItems: InvoiceLineItem[] | null;
+};
+
 const TUEV_LINE_ITEM_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -297,6 +308,44 @@ const TUEV_DEFECTS_ONLY_JSON_SCHEMA = {
         description:
           "Plain-text list of all defects from Punkt 6. Null when no defects.",
         items: { type: "string" },
+      },
+    },
+  },
+} as const;
+
+/**
+ * Overview schema: organization + Prüfgebühr only.
+ * Used for the full-document photo captured in wizard Step 1.
+ */
+const TUEV_OVERVIEW_JSON_SCHEMA = {
+  name: "tuev_overview_extraction",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["testingOrganization", "vendor", "amount", "lineItems"],
+    properties: {
+      testingOrganization: {
+        type: "string",
+        enum: ["TÜV", "DEKRA", "GTÜ", "KÜS", "other"],
+        description:
+          "Brand shown on letterhead or logo. Use 'other' when none match.",
+      },
+      vendor: {
+        type: ["string", "null"],
+        description:
+          "Exact printed name of the testing station / Prüfstelle / Prüfbetrieb. Null when not readable.",
+      },
+      amount: {
+        type: ["number", "null"],
+        description:
+          "Total Prüfgebühr / Gesamtbetrag in EUR as a decimal number. Null when not visible.",
+      },
+      lineItems: {
+        type: ["array", "null"],
+        description:
+          "Individual fee positions if a fee breakdown is shown. Null otherwise.",
+        items: TUEV_LINE_ITEM_SCHEMA,
       },
     },
   },
@@ -675,6 +724,97 @@ export class TuevExtractionService {
       lineItems,
       requiresManualReview,
     };
+  }
+
+  /**
+   * Overview extraction: testing organization + Prüfgebühr from a full-document photo.
+   *
+   * Used as wizard Step 1 — the user photographs the entire report so the LLM
+   * can read the letterhead logo and the fee table at the bottom without having
+   * to parse the dense header section at the same time.
+   */
+  async extractOverviewFromDocument(
+    input: DocumentBytesInput,
+    options: TuevExtractionOptions = {},
+  ): Promise<TuevOverviewExtraction> {
+    const model = options.model?.trim() || resolveParseModel("tuev");
+
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const systemPrompt = [
+      "You extract testing organization and Prüfgebühr from a German HU/AU vehicle inspection report photo.",
+      "",
+      "LOOK FOR:",
+      "1. testingOrganization — the brand on the letterhead or logo (TÜV, DEKRA, GTÜ, KÜS, or 'other').",
+      "2. vendor — exact printed name of the testing station / Prüfstelle (e.g. 'TÜV Süd Service-Center München').",
+      "3. amount — the total Prüfgebühr / Gesamtbetrag in EUR (look for 'Gesamtbetrag', 'Summe', 'Prüfgebühr', 'Gesamt').",
+      "4. lineItems — individual fee rows if a breakdown is printed (label + amount).",
+      "",
+      "IGNORE: dates, mileage, defects, test results, vehicle VIN — these are extracted separately.",
+      "NEVER hallucinate. Return null for any field you cannot read clearly.",
+    ].join("\n");
+
+    const userContent = await buildTuevDocumentUserMessage(
+      ["Please extract the testing organization and Prüfgebühr from this full document photo."],
+      input,
+    );
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: 600,
+        response_format: {
+          type: "json_schema",
+          json_schema: TUEV_OVERVIEW_JSON_SCHEMA,
+        },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(`TÜV overview extract failed: ${message}`);
+    }
+
+    const raw = extractJsonObject(completion.choices[0]?.message?.content ?? "");
+    if (!raw) throw new TextParseError("LLM returned no JSON for overview extraction.");
+
+    const isRecord = (v: unknown): v is Record<string, unknown> =>
+      typeof v === "object" && v !== null && !Array.isArray(v);
+
+    const org = isRecord(raw) ? raw["testingOrganization"] : undefined;
+    const vendorRaw = isRecord(raw) ? (raw["vendor"] as string | null) : null;
+    const amountRaw = isRecord(raw) ? raw["amount"] : null;
+    const lineItemsRaw = isRecord(raw) ? raw["lineItems"] : null;
+
+    const validOrgs = ["TÜV", "DEKRA", "GTÜ", "KÜS", "other"] as const;
+    const testingOrganization: TestingOrganization =
+      validOrgs.includes(org as (typeof validOrgs)[number])
+        ? (org as TestingOrganization)
+        : "other";
+
+    const vendor =
+      typeof vendorRaw === "string" && vendorRaw.trim() ? vendorRaw.trim() : null;
+    const amount =
+      typeof amountRaw === "number" && Number.isFinite(amountRaw) && amountRaw > 0
+        ? amountRaw
+        : null;
+    const lineItems = Array.isArray(lineItemsRaw)
+      ? (lineItemsRaw as InvoiceLineItem[])
+      : null;
+
+    return { testingOrganization, vendor, amount, lineItems };
   }
 
   /**
