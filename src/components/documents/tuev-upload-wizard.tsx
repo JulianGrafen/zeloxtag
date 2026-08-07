@@ -604,7 +604,7 @@ export function TuevUploadWizard({
               </p>
               <p className="mt-1 text-[1rem] font-semibold">Geführter Scan</p>
               <p className="mt-1 text-[0.82rem] leading-relaxed text-white/65">
-                In-Browser-Kamera · Schritt für Schritt · maximale Genauigkeit
+                In-Browser-Kamera · Schritt für Schritt · genauer
               </p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10">
@@ -619,7 +619,7 @@ export function TuevUploadWizard({
               ~60 Sek.
             </span>
             <span className="rounded-lg bg-emerald-400/20 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-300">
-              100 % Genauigkeit
+              Genauer
             </span>
           </div>
         </button>
@@ -690,7 +690,8 @@ export function TuevUploadWizard({
         <InBrowserCamera
           title="Gesamten Bericht fotografieren"
           hint="Schritt 1 von 3 · Übersicht"
-          guideLabel="Gesamter Bericht — Kopf, Ergebnis und Gebühren sichtbar"
+          guideFrame="a4"
+          guideLabel="Gesamtes Blatt im DIN-A4-Rahmen ausrichten"
           allowPdf
           onCapture={handleOverviewCapture}
           onClose={() => setState((prev) => ({ ...prev, phase: "mode-select" }))}
@@ -710,6 +711,8 @@ export function TuevUploadWizard({
         <InBrowserCamera
           title="Dokumentenkopf fotografieren"
           hint="Schritt 2 von 3 · Kopf-Abschnitt"
+          guideFrame="section"
+          guideSectionAnchor="top"
           guideLabel="Kopf mit KM-Stand, FIN und Prüfergebnis"
           allowPdf
           onCapture={handleHeaderCapture}
@@ -730,6 +733,8 @@ export function TuevUploadWizard({
         <InBrowserCamera
           title="Mängel-Nachweis fotografieren"
           hint="Schritt 3 von 3 · Abschnitt 6"
+          guideFrame="section"
+          guideSectionAnchor="center"
           guideLabel="Punkt 6 — Festgestellte Mängel"
           onCapture={handleDefectsCapture}
           onClose={() =>

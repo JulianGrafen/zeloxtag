@@ -9,6 +9,9 @@ import {
 } from "react";
 import { Camera, FileUp, FlipHorizontal2, ImagePlus, X } from "lucide-react";
 
+export type GuideFrameType = "a4" | "section";
+export type GuideSectionAnchor = "top" | "center" | "bottom";
+
 export interface InBrowserCameraProps {
   /** Shown in the top bar. */
   title: string;
@@ -20,6 +23,10 @@ export interface InBrowserCameraProps {
   onClose: () => void;
   /** Overlay message shown inside the viewfinder guide box. */
   guideLabel?: ReactNode;
+  /** Viewfinder guide shape. `a4` = full DIN A4 sheet; `section` = smaller crop frame. */
+  guideFrame?: GuideFrameType;
+  /** Vertical anchor for section frames. Ignored for `a4`. Default: center. */
+  guideSectionAnchor?: GuideSectionAnchor;
   /** Allow PDF files in the gallery fallback picker. Default: false. */
   allowPdf?: boolean;
 }
@@ -28,6 +35,31 @@ type FacingMode = "environment" | "user";
 
 const IMAGE_ACCEPT = "image/*";
 const PDF_ACCEPT = "image/*,application/pdf,.pdf";
+
+/** DIN A4 portrait ratio (210 × 297 mm). */
+const A4_ASPECT_RATIO = "210 / 297";
+
+function GuideFrameCorners() {
+  return (
+    <>
+      <span className="absolute -left-px -top-px h-6 w-6 rounded-tl-xl border-l-4 border-t-4 border-white" />
+      <span className="absolute -right-px -top-px h-6 w-6 rounded-tr-xl border-r-4 border-t-4 border-white" />
+      <span className="absolute -bottom-px -left-px h-6 w-6 rounded-bl-xl border-b-4 border-l-4 border-white" />
+      <span className="absolute -bottom-px -right-px h-6 w-6 rounded-br-xl border-b-4 border-r-4 border-white" />
+    </>
+  );
+}
+
+function sectionFramePositionClass(anchor: GuideSectionAnchor): string {
+  switch (anchor) {
+    case "top":
+      return "top-[14%]";
+    case "bottom":
+      return "bottom-[18%]";
+    default:
+      return "top-1/2 -translate-y-1/2";
+  }
+}
 
 function stopStream(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => track.stop());
@@ -46,6 +78,8 @@ export function InBrowserCamera({
   onCapture,
   onClose,
   guideLabel,
+  guideFrame = "section",
+  guideSectionAnchor = "center",
   allowPdf = false,
 }: InBrowserCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -260,27 +294,46 @@ export function InBrowserCamera({
               </div>
             ) : null}
 
-            {/* A4 document guide frame */}
+            {/* Document guide frame */}
             {cameraReady ? (
-              <div
-                className="pointer-events-none absolute inset-x-8 rounded-xl border-2 border-white/40"
-                style={{ top: "12%", bottom: "12%" }}
-                aria-hidden
-              >
-                {/* Corner accents */}
-                <span className="absolute -left-px -top-px h-6 w-6 rounded-tl-xl border-l-4 border-t-4 border-white" />
-                <span className="absolute -right-px -top-px h-6 w-6 rounded-tr-xl border-r-4 border-t-4 border-white" />
-                <span className="absolute -bottom-px -left-px h-6 w-6 rounded-bl-xl border-b-4 border-l-4 border-white" />
-                <span className="absolute -bottom-px -right-px h-6 w-6 rounded-br-xl border-b-4 border-r-4 border-white" />
-
-                {guideLabel ? (
-                  <div className="absolute inset-x-0 bottom-3 flex justify-center">
-                    <span className="rounded-lg bg-black/50 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
-                      {guideLabel}
-                    </span>
+              guideFrame === "a4" ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-5 py-4">
+                  <div
+                    className="relative w-full max-w-[min(92vw,calc((100dvh-220px)*210/297))] rounded-xl border-2 border-white/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
+                    style={{ aspectRatio: A4_ASPECT_RATIO }}
+                    aria-hidden
+                  >
+                    <GuideFrameCorners />
+                    <div className="absolute left-3 top-3 rounded-md bg-black/45 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/85 backdrop-blur-sm">
+                      DIN A4
+                    </div>
+                    {guideLabel ? (
+                      <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                        <span className="rounded-lg bg-black/50 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
+                          {guideLabel}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
+                </div>
+              ) : (
+                <div
+                  className={[
+                    "pointer-events-none absolute inset-x-10 h-[34%] rounded-xl border-2 border-white/45 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]",
+                    sectionFramePositionClass(guideSectionAnchor),
+                  ].join(" ")}
+                  aria-hidden
+                >
+                  <GuideFrameCorners />
+                  {guideLabel ? (
+                    <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                      <span className="rounded-lg bg-black/50 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
+                        {guideLabel}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              )
             ) : null}
           </>
         )}
