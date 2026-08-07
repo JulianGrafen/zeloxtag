@@ -30,6 +30,8 @@ export interface InBrowserCameraProps {
   guideSectionAnchor?: GuideSectionAnchor;
   /** Allow PDF files in the gallery fallback picker. Default: false. */
   allowPdf?: boolean;
+  /** Full-screen briefing card before the viewfinder. Default: true. */
+  showBriefing?: boolean;
 }
 
 type FacingMode = "environment" | "user";
@@ -91,6 +93,7 @@ export function InBrowserCamera({
   guideFrame = "section",
   guideSectionAnchor = "center",
   allowPdf = false,
+  showBriefing = true,
 }: InBrowserCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -99,11 +102,13 @@ export function InBrowserCamera({
   const [capturing, setCapturing] = useState(false);
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
-  const [instructionsOpen, setInstructionsOpen] = useState(Boolean(hint));
+  const [instructionsOpen, setInstructionsOpen] = useState(
+    Boolean(hint && showBriefing),
+  );
 
   useEffect(() => {
-    setInstructionsOpen(Boolean(hint));
-  }, [title, hint]);
+    setInstructionsOpen(Boolean(hint && showBriefing));
+  }, [title, hint, showBriefing]);
 
   async function startCamera(facing: FacingMode) {
     stopStream(streamRef.current);

@@ -52,7 +52,7 @@ export function AbeKbaHero({
   value,
   isEditing = false,
   onChange,
-  placeholder = "z. B. 48185",
+  placeholder = "KBA-Nummer",
 }: {
   value: string;
   isEditing?: boolean;

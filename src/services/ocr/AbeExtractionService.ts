@@ -390,9 +390,13 @@ export class AbeExtractionService {
 
   // ─── Guided wizard step extractions ─────────────────────────────────────────
 
+  private static readonly WIZARD_IMAGE_ONLY_GUARD =
+    "CRITICAL: Read ONLY the attached photograph. Extract values visibly printed on THIS page. " +
+    "Never invent data or reuse example values from these instructions. " +
+    "If a field or table is not visible, use null or an empty array.";
+
   /**
-   * Step 1 of the ABE wizard — extract cover-page fields (KBA, design, dimensions,
-   * article numbers, manufacturer brand) from a single Deckblatt image.
+   * Step 1 of the ABE wizard — extract cover-page fields from the photographed page.
    */
   async extractCoverFromDocument(
     input: DocumentBytesInput,
@@ -400,32 +404,22 @@ export class AbeExtractionService {
     const raw = await this.runWizardStep<AbeWizardCoverExtraction>(
       input,
       [
-        "You are a precise data extractor for German wheel-approval (ABE / Rad-Gutachten) cover pages.",
-        "Field rules:",
-        "- kbaNumber: digits only from the 'KBA' field. Example: '48185'.",
-        "- abeNumber: the ABE Rad-Gutachten number (labeled 'ABE RAD-GUTACHTEN NR.'). Copy verbatim.",
-        "- manufacturer: the company/brand name printed at the top or bottom of the Deckblatt (e.g. 'Alcar Deutschland GmbH').",
-        "- designType: the DESIGN field value. If multiple lines, join with ' / ' (e.g. 'Valencia / Valencia dark').",
-        "- dimensions: the GRÖSSE field value verbatim (e.g. '8J x 18H2 LK 5x120 ET 30').",
-        "- articleNumbers: all values from the 'ZU RAD-ARTIKEL-NR.' field as separate array entries.",
-        "Do NOT add the prefix 'KBA' to kbaNumber. Copy all values verbatim.",
+        AbeExtractionService.WIZARD_IMAGE_ONLY_GUARD,
+        "You extract German wheel-approval (ABE / Rad-Gutachten) cover pages.",
+        "Fields: kbaNumber (digits only, no 'KBA' prefix), abeNumber, manufacturer, designType, dimensions, articleNumbers.",
+        "designType: join multiple DESIGN lines with ' / '. articleNumbers: every printed article code as separate entries.",
         "Return ONLY valid JSON matching the schema.",
       ],
       [
-        "ABE Deckblatt (German wheel-approval cover page). Extract all fields verbatim.",
-        "Key fields on this page: KBA number, ABE/Rad-Gutachten-Nr., DESIGN (one or more lines — join with ' / '),",
-        "GRÖSSE (wheel dimensions), ZU RAD-ARTIKEL-NR. (article numbers, one per line).",
-        "Real example from KBA 48185 / Alcar / Valencia:",
-        "  kbaNumber='48185', abeNumber='AVAG9HA30', manufacturer='Alcar Deutschland GmbH',",
-        "  designType='Valencia / Valencia dark', dimensions='8J x 18H2 LK 5x120 ET 30',",
-        "  articleNumbers=['AVAG9HA30','AVAG9BP30']",
+        "Extract the cover page fields from this photograph only.",
+        "Look for printed labels such as KBA, ABE/Rad-Gutachten-Nr., DESIGN, GRÖSSE, ZU RAD-ARTIKEL-NR.",
       ],
       ABE_WIZARD_COVER_JSON_SCHEMA,
       AbeWizardCoverSchema,
       600,
       "cover",
+      { model: resolveAbeContextModel() },
     );
-    // Normalize multiline design names: "Valencia\nValencia dark" → "Valencia / Valencia dark"
     return {
       ...raw,
       designType: raw.designType
@@ -435,8 +429,7 @@ export class AbeExtractionService {
   }
 
   /**
-   * Step 2 of the ABE wizard — extract main ABE certificate fields (full ABE
-   * number with suffix, legal manufacturer name, issuing authority).
+   * Step 2 of the ABE wizard — extract main ABE certificate fields.
    */
   async extractMainFromDocument(
     input: DocumentBytesInput,
@@ -444,43 +437,26 @@ export class AbeExtractionService {
     return this.runWizardStep<AbeWizardMainExtraction>(
       input,
       [
-        "You are a precise data extractor for German ABE (Allgemeine Betriebserlaubnis) certificates.",
-        "Field rules:",
-        "- abeNumber: the value next to 'Nummer der ABE:' — includes the asterisk suffix (e.g. '48185*08').",
-        "- abeHolder: the company next to 'Inhaber der ABE:' (e.g. 'Alcar Leichtmetallräder GmbH').",
-        "- manufacturer: the company next to 'Hersteller:' when shown separately.",
-        "  If the label is combined ('Inhaber der ABE und Hersteller:'), set BOTH abeHolder and manufacturer to that same value.",
-        "- testingOrganization: the issuing authority at the top of the page (e.g. 'Kraftfahrt-Bundesamt').",
+        AbeExtractionService.WIZARD_IMAGE_ONLY_GUARD,
+        "You extract German ABE certificate main pages.",
+        "Fields: abeNumber (incl. suffix after *), abeHolder, manufacturer, testingOrganization.",
+        "If the label is combined ('Inhaber der ABE und Hersteller:'), set both abeHolder and manufacturer.",
         "Return ONLY valid JSON matching the schema.",
       ],
       [
-        "ABE Hauptseite (German ABE main certificate from Kraftfahrt-Bundesamt or similar).",
-        "Look for: 'Nummer der ABE:' → abeNumber (e.g. '48185*08'),",
-        "'Inhaber der ABE' / 'Inhaber der ABE und Hersteller' → abeHolder (e.g. 'Alcar Leichtmetallräder GmbH'),",
-        "'Hersteller' → manufacturer (same value when only one combined label),",
-        "issuing authority name at top → testingOrganization (e.g. 'Kraftfahrt-Bundesamt').",
+        "Extract the main ABE page from this photograph only.",
+        "Look for 'Nummer der ABE:', 'Inhaber der ABE', 'Hersteller', and the issuing authority at the top.",
       ],
       ABE_WIZARD_MAIN_JSON_SCHEMA,
       AbeWizardMainSchema,
       400,
       "main",
+      { model: resolveAbeContextModel() },
     );
   }
 
   /**
-   * Step 3 of the ABE wizard — extract the full vehicle compatibility table
-   * (Fahrzeug- und Auflagen-Tabelle / Verwendungsbereich) with per-row data.
-   *
-   * Table structure per row:
-   *   Verkaufsbezeichnung (group) | Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen zu Reifen | Auflagen
-   *
-   * Mapping:
-   *   model         = Verkaufsbezeichnung group label (e.g. "5ER REIHE ,GRAN TURISMO")
-   *   typeApproval  = Betriebserlaubnis column (e.g. "e1*2007/46*0508*...")
-   *   driveType     = first drive-type word from Auflagen column: Allradantrieb / Heckantrieb / Frontantrieb
-   *   tireSizes     = Reifen column values WITHOUT the kW range prefix (strip e.g. "120-280" at start)
-   *   auflagenCodes = ALL short codes from the Auflagen column (after removing drive-type word)
-   *                   plus any special notes like "Nur BMW 5er Touring"; also include numeric codes like "245", "721"
+   * Step 3 of the ABE wizard — extract vehicle compatibility table rows from the photo.
    */
   async extractVehiclesFromDocument(
     input: DocumentBytesInput,
@@ -488,38 +464,29 @@ export class AbeExtractionService {
     return this.runWizardStep<AbeWizardVehiclesExtraction>(
       input,
       [
-        "You are a precise data extractor for German ABE Fahrzeug- und Auflagen-Tabelle pages.",
-        "The table has these columns (left to right): Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen zu Reifen | Auflagen.",
-        "Groups of rows are preceded by a bold 'Verkaufsbezeichnung:' section header line. Read it VERBATIM.",
-        "Do NOT infer the model name from Fahrzeugtyp codes or Auflagen text. Read only the Verkaufsbezeichnung header.",
-        "FIELD MAPPING:",
-        "- model: VERBATIM text after 'Verkaufsbezeichnung:' (e.g. '5ER REIHE', '5ER REIHE ,GRAN TURISMO', '6ER REIHE'). Same for all rows in that group.",
-        "- typeApproval: Betriebserlaubnis column verbatim (e.g. 'e1*2007/46*0508*...').",
-        "- driveType: the FIRST drive-type noun in the Auflagen column only: 'Allradantrieb', 'Heckantrieb', or 'Frontantrieb'. Do NOT read from kW.",
-        "  Each group typically has ONE Allradantrieb row AND ONE Heckantrieb row — extract BOTH.",
-        "- tireSizes: Reifen column ONLY. Strip any leading kW-range prefix (e.g. '100-330 255/45R18 99' → '255/45R18 99'). Keep load index and speed rating.",
-        "- auflagenCodes: ALL short codes from the Auflagen column: e.g. '10B','11B','11G','11H','51A','7BD','71C','71K','721','725','73C','74C','75I','76O','BEN','4DA','52J','245'. Also include text notes like 'Nur BMW 5er Touring'. Do NOT include 'Allradantrieb'/'Heckantrieb'.",
-        "Do NOT merge rows. Do NOT skip Heckantrieb rows. Extract ALL rows from ALL groups.",
+        AbeExtractionService.WIZARD_IMAGE_ONLY_GUARD,
+        "You extract German ABE Fahrzeug- und Auflagen-Tabelle pages.",
+        "Create one vehicleMatches entry for every visible table row in the photograph.",
+        "If no compatibility table is visible, return vehicleMatches: [].",
+        "Column mapping:",
+        "- model: Verkaufsbezeichnung group header text for that row (verbatim). Do NOT use Fahrzeugtyp codes.",
+        "- typeApproval: Betriebserlaubnis cell verbatim.",
+        "- driveType: first drive-type word in Auflagen column only (Allradantrieb / Heckantrieb / Frontantrieb), else null.",
+        "- tireSizes: all tyre sizes from Reifen column; strip leading kW ranges.",
+        "- auflagenCodes: all codes and short notes from Auflagen column except drive-type words.",
+        "Do not merge rows. Do not skip rows. Do not add rows that are not visible.",
         "Return ONLY valid JSON matching the schema.",
       ],
       [
-        "ABE Fahrzeug- und Auflagen-Tabelle page (vehicle compatibility table).",
-        "Table columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen zu Reifen | Auflagen.",
-        "CRITICAL — model name: copy the 'Verkaufsbezeichnung:' header text VERBATIM. Do NOT use Fahrzeugtyp codes (like '5L', '6C', 'K-N1').",
-        "  Example headers: 'Verkaufsbezeichnung: 5ER REIHE' → model='5ER REIHE';",
-        "  'Verkaufsbezeichnung: 5ER REIHE ,GRAN TURISMO' → model='5ER REIHE ,GRAN TURISMO';",
-        "  'Verkaufsbezeichnung: 6ER REIHE' → model='6ER REIHE'. The 6ER REIHE section exists at the BOTTOM of the table.",
-        "CRITICAL — driveType: read from Auflagen column. 'Allradantrieb' or 'Heckantrieb' only. Not from kW range.",
-        "CRITICAL — tireSizes: strip leading kW prefix. '100-330 255/45R18 99' → '255/45R18 99'.",
-        "CRITICAL — auflagenCodes: codes like '10B','11B','11G','11H','51A','7BD','71C','71K','721','725','73C','74C','75I','76O','BEN','4DA'.",
-        "Each Verkaufsbezeichnung group has an Allradantrieb row and a Heckantrieb row — extract both rows.",
-        "Example (5ER REIHE Heck row): model='5ER REIHE', driveType='Heckantrieb', tireSizes=['225/50R18 95Y','245/45R18','255/45R18 99'],",
-        "  auflagenCodes=['10B','11B','11G','11H','51A','7BD','71C','71K','721','725','73C','74C','BEN','4DA']",
+        "Extract every visible row from the Fahrzeug- und Auflagen-Tabelle in this photograph.",
+        "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen zu Reifen | Auflagen.",
+        "Use only text you can read on this image. If the table is missing or unreadable, return an empty array.",
       ],
       ABE_WIZARD_VEHICLES_JSON_SCHEMA,
       AbeWizardVehiclesSchema,
-      3000,
+      4000,
       "vehicles",
+      { model: resolveAbeContextModel() },
     );
   }
 
@@ -532,11 +499,14 @@ export class AbeExtractionService {
     zodSchema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false } },
     maxTokens: number,
     stepLabel: string,
+    options?: { model?: string },
   ): Promise<T> {
     let client: OpenAI;
     let resolvedModel: string;
     try {
-      ({ client, model: resolvedModel } = getOcrLlmClient({ model: DEFAULT_PARSE_MODEL }));
+      ({ client, model: resolvedModel } = getOcrLlmClient({
+        model: options?.model ?? resolveAbeContextModel(),
+      }));
     } catch (error) {
       throw new TextParseError(
         error instanceof Error ? error.message : "LLM client is not configured.",

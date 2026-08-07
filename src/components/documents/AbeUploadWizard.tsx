@@ -17,7 +17,6 @@ import {
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
 import { AbeVehicleMatchPicker } from "@/components/documents/abe-vehicle-match-picker";
-import { AbeScanInstruction } from "@/components/documents/abe-scan-instruction";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,9 +96,9 @@ const CAPTURE_STEPS: Array<{
   {
     phase: "capture-vehicles",
     stepNumber: 3,
-    title: "Fahrzeugtabelle fotografieren",
-    hint: "Schritt 3 von 3 · Fahrzeug- & Auflagen-Tabelle",
-    guideLabel: "Fahrzeugtabelle im DIN-A4-Rahmen ausrichten",
+    title: "Schritt 3 von 3 · Fahrzeugtabelle",
+    hint: "Suche in der Tabelle dein Fahrzeug heraus und scanne diesen Abschnitt.",
+    guideLabel: "Deine Fahrzeugzeile im Rahmen ausrichten",
   },
 ];
 
@@ -353,49 +352,49 @@ function ReviewSection({
                 <Input
                   value={form.abeNumber}
                   onChange={set("abeNumber")}
-                  placeholder="z. B. 48185*08"
+                  placeholder="ABE-Nummer"
                 />
               </AbeFieldLabel>
               <AbeFieldLabel label="Inhaber der ABE">
                 <Input
                   value={form.abeHolder}
                   onChange={set("abeHolder")}
-                  placeholder="z. B. Alcar Leichtmetallräder GmbH"
+                  placeholder="Inhaber laut Dokument"
                 />
               </AbeFieldLabel>
               <AbeFieldLabel label="Hersteller">
                 <Input
                   value={form.manufacturer}
                   onChange={set("manufacturer")}
-                  placeholder="z. B. Alcar Deutschland GmbH"
+                  placeholder="Hersteller laut Dokument"
                 />
               </AbeFieldLabel>
               <AbeFieldLabel label="Prüforganisation">
                 <Input
                   value={form.testingOrganization}
                   onChange={set("testingOrganization")}
-                  placeholder="z. B. Kraftfahrt-Bundesamt"
+                  placeholder="Prüforganisation laut Dokument"
                 />
               </AbeFieldLabel>
               <AbeFieldLabel label="Design">
                 <Input
                   value={form.designType}
                   onChange={set("designType")}
-                  placeholder="z. B. Valencia / Valencia dark"
+                  placeholder="Design laut Deckblatt"
                 />
               </AbeFieldLabel>
               <AbeFieldLabel label="Maße">
                 <Input
                   value={form.dimensions}
                   onChange={set("dimensions")}
-                  placeholder="z. B. 8J x 18H2 LK 5x120 ET 30"
+                  placeholder="Maße laut Deckblatt"
                 />
               </AbeFieldLabel>
               <AbeFieldLabel label="Artikel-Nummern">
                 <Input
                   value={form.articleNumbers}
                   onChange={set("articleNumbers")}
-                  placeholder="z. B. AVAG9HA30, AVAG9BP30"
+                  placeholder="Artikelnummern, kommagetrennt"
                 />
               </AbeFieldLabel>
             </div>
@@ -523,7 +522,6 @@ export function AbeUploadWizard({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, startSaveTransition] = useTransition();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [cameraOpen, setCameraOpen] = useState(false);
 
   const pageCount = useMemo(
     () =>
@@ -531,10 +529,6 @@ export function AbeUploadWizard({
         .length,
     [state.coverFile, state.mainFile, state.vehiclesFile],
   );
-
-  useEffect(() => {
-    setCameraOpen(false);
-  }, [state.phase]);
 
   useEffect(() => {
     const source = state.coverFile ?? state.mainFile ?? state.vehiclesFile;
@@ -553,7 +547,6 @@ export function AbeUploadWizard({
   }
 
   function resetWizard() {
-    setCameraOpen(false);
     setState({
       phase: "capture-cover",
       coverFile: null,
@@ -745,30 +738,7 @@ export function AbeUploadWizard({
   const currentCaptureStep = CAPTURE_STEPS.find((s) => s.phase === state.phase);
 
   if (currentCaptureStep) {
-    const { title, hint, guideLabel, phase, stepNumber } = currentCaptureStep;
-
-    if (!cameraOpen) {
-      return (
-        <AbeScanInstruction
-          stepNumber={stepNumber}
-          title={title}
-          hint={hint}
-          guideLabel={guideLabel}
-          vehicleLabel={vehicleLabel}
-          onStart={() => setCameraOpen(true)}
-          onBack={() => {
-            if (phase === "capture-cover") goBack();
-            else if (phase === "capture-main") {
-              setState((prev) => ({ ...prev, phase: "capture-cover" }));
-            } else {
-              setState((prev) => ({ ...prev, phase: "capture-main" }));
-            }
-          }}
-          backHref={phase === "capture-cover" ? backHref : undefined}
-          backLabel={backLabel}
-        />
-      );
-    }
+    const { title, hint, guideLabel, phase } = currentCaptureStep;
 
     return (
       <>
@@ -778,11 +748,13 @@ export function AbeUploadWizard({
           </div>
         ) : null}
         <InBrowserCamera
+          key={phase}
           title={title}
           hint={hint}
           guideLabel={guideLabel}
           guideFrame="a4"
           allowPdf={false}
+          showBriefing={false}
           onCapture={
             phase === "capture-cover"
               ? handleCoverCapture
@@ -790,7 +762,14 @@ export function AbeUploadWizard({
                 ? handleMainCapture
                 : handleVehiclesCapture
           }
-          onClose={() => setCameraOpen(false)}
+          onClose={() => {
+            if (phase === "capture-cover") goBack();
+            else if (phase === "capture-main") {
+              setState((prev) => ({ ...prev, phase: "capture-cover" }));
+            } else {
+              setState((prev) => ({ ...prev, phase: "capture-main" }));
+            }
+          }}
         />
       </>
     );
