@@ -6,137 +6,150 @@ const DRIVE_TYPES = new Set([
   "frontantrieb",
 ]);
 
-/** Short Betriebserlaubnis / type codes in the Fahrzeugtyp column — not sales names. */
+/** Short Betriebserlaubnis / type codes in the Fahrzeugtyp column — not selectable models. */
 const FAHRZEUGTYP_PATTERN =
   /^(?:\d{1,2}[a-zA-Z]?-\w+|\d{1,2}[a-zA-Z]?|[a-zA-Z]-\w+|[a-zA-Z]\d{1,2})$/;
 
-/** Typical Auflagen short codes (10B, 721, BEN, 4DA). */
-const AUFLAgen_CODE_PATTERN =
-  /^(?:[0-9]{1,3}[A-ZÄÖÜ]{0,2}|[A-ZÄÖÜ]{2,4}|[0-9]{2,3})$/i;
+/** Auflagen condition codes such as 744, A77, 20B (uppercase / digits, no lowercase). */
+const STRICT_AUFlagen_CODE_PATTERN =
+  /^(?:\d{2,3}|\d{1,2}[A-Z]{1,2}|[A-Z]\d{2,3})$/;
 
-const VERKAUFSBEZEICHNUNG_HINT =
-  /\b(REIHE|TOURING|COUP[EÉ]|CABRIO|LIMOUSINE|SPORTBACK|GRAN\s+TURISMO|MODELL|SERIE)\b/i;
+const LETTER_AUFlagen_CODE_PATTERN = /^[A-Z]{2,3}$/;
 
 export function looksLikeFahrzeugtypCode(value: string): boolean {
   const trimmed = value.trim();
-  if (!trimmed) return false;
-  if (trimmed.includes(" ")) return false;
+  if (!trimmed || trimmed.includes(" ")) return false;
   if (trimmed.length > 10) return false;
-  if (VERKAUFSBEZEICHNUNG_HINT.test(trimmed)) return false;
   return FAHRZEUGTYP_PATTERN.test(trimmed);
 }
 
-export function looksLikeAuflagenCode(value: string): boolean {
+export function looksLikeStrictAuflagenCode(value: string): boolean {
   const trimmed = value.trim();
-  if (!trimmed) return false;
+  if (!trimmed || /[a-zäöü]/.test(trimmed)) return false;
   if (DRIVE_TYPES.has(trimmed.toLowerCase())) return false;
-  return AUFLAgen_CODE_PATTERN.test(trimmed);
+  if (trimmed.length > 5) return false;
+  return STRICT_AUFlagen_CODE_PATTERN.test(trimmed);
 }
 
-export function looksLikeVerkaufsbezeichnung(value: string): boolean {
+export function looksLikeLetterAuflagenCode(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || /[a-zäöü]/.test(trimmed)) return false;
+  if (DRIVE_TYPES.has(trimmed.toLowerCase())) return false;
+  return LETTER_AUFlagen_CODE_PATTERN.test(trimmed);
+}
+
+export function looksLikeAuflagenCode(value: string): boolean {
+  return (
+    looksLikeStrictAuflagenCode(value) ||
+    looksLikeLetterAuflagenCode(value)
+  );
+}
+
+function tokenizeAuflagenColumn(items: readonly string[]): string[] {
+  return items
+    .flatMap((item) => item.trim().split(/\s+/))
+    .map((token) => token.replace(/[,;]+$/g, "").trim())
+    .filter(Boolean);
+}
+
+/**
+ * Split one Auflagen cell into the exact model (leading text) and condition codes.
+ * The model always starts the cell; codes such as 744 / A77 / 20B follow.
+ */
+export function parseAuflagenColumn(
+  auflagenItems: readonly string[],
+  existingDriveType: string | null = null,
+): { model: string | null; codes: string[]; driveType: string | null } {
+  const tokens = tokenizeAuflagenColumn(auflagenItems);
+  const modelParts: string[] = [];
+  const codes: string[] = [];
+  let driveType = existingDriveType;
+  let codeSectionStarted = false;
+
+  let firstStrictCodeIndex = -1;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]!;
+    if (DRIVE_TYPES.has(token.toLowerCase())) continue;
+    if (looksLikeStrictAuflagenCode(token)) {
+      firstStrictCodeIndex = index;
+      break;
+    }
+  }
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]!;
+    const lower = token.toLowerCase();
+
+    if (DRIVE_TYPES.has(lower)) {
+      driveType ??= token;
+      continue;
+    }
+
+    if (firstStrictCodeIndex >= 0) {
+      if (index < firstStrictCodeIndex) {
+        modelParts.push(token);
+        continue;
+      }
+
+      codeSectionStarted = true;
+      if (looksLikeAuflagenCode(token)) {
+        codes.push(token);
+      }
+      continue;
+    }
+
+    if (!codeSectionStarted && looksLikeLetterAuflagenCode(token)) {
+      codeSectionStarted = true;
+      codes.push(token);
+      continue;
+    }
+
+    if (codeSectionStarted) {
+      if (looksLikeAuflagenCode(token)) codes.push(token);
+      continue;
+    }
+
+    modelParts.push(token);
+  }
+
+  return {
+    model: modelParts.join(" ").trim() || null,
+    codes,
+    driveType,
+  };
+}
+
+function isUsableExtractedModel(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) return false;
   if (looksLikeFahrzeugtypCode(trimmed)) return false;
   if (looksLikeAuflagenCode(trimmed)) return false;
-  if (DRIVE_TYPES.has(trimmed.toLowerCase())) return false;
-
-  if (VERKAUFSBEZEICHNUNG_HINT.test(trimmed)) return true;
-  if (trimmed.includes(" ") && trimmed.length >= 6) return true;
-  if (trimmed.length >= 10 && /[A-Za-zÄÖÜäöü]{4,}/.test(trimmed)) return true;
-
-  return false;
-}
-
-function stripVerkaufsbezeichnungLabel(value: string): string {
-  return value
-    .replace(/^verkaufsbezeichnung\s*:\s*/i, "")
-    .replace(/^nur\s+/i, "")
-    .trim();
-}
-
-function pickVerkaufsbezeichnungFromAuflagen(
-  auflagenCodes: readonly string[],
-): string | null {
-  for (const raw of auflagenCodes) {
-    const candidate = stripVerkaufsbezeichnungLabel(raw);
-    if (looksLikeVerkaufsbezeichnung(candidate)) {
-      return candidate;
-    }
-  }
-  return null;
-}
-
-function splitAuflagenCodes(auflagenCodes: readonly string[]): {
-  codes: string[];
-  vehicleName: string | null;
-} {
-  const codes: string[] = [];
-  let vehicleName: string | null = null;
-
-  for (const raw of auflagenCodes) {
-    const trimmed = raw.trim();
-    if (!trimmed) continue;
-
-    const lower = trimmed.toLowerCase();
-    if (DRIVE_TYPES.has(lower)) continue;
-
-    const candidate = stripVerkaufsbezeichnungLabel(trimmed);
-    if (looksLikeVerkaufsbezeichnung(candidate)) {
-      vehicleName ??= candidate;
-      continue;
-    }
-
-    if (looksLikeAuflagenCode(trimmed) || looksLikeFahrzeugtypCode(trimmed)) {
-      codes.push(trimmed);
-      continue;
-    }
-
-    if (candidate.length >= 6) {
-      vehicleName ??= candidate;
-      continue;
-    }
-
-    codes.push(trimmed);
-  }
-
-  return { codes, vehicleName };
+  return true;
 }
 
 /**
- * Fix LLM rows that used Fahrzeugtyp codes (e.g. 3k-N1) instead of
- * Verkaufsbezeichnung headers / Auflagen vehicle names.
+ * Normalize vehicle rows: selectable model from the start of Auflagen,
+ * condition codes separated (744, A77, 20B, …).
  */
 export function normalizeAbeVehicleMatches(
   matches: AbeVehicleMatch[],
 ): AbeVehicleMatch[] {
-  let currentGroupLabel: string | null = null;
-
   return matches.map((match) => {
-    const rawModel = match.model.trim();
-    const { codes: cleanedAuflagen, vehicleName: nameFromAuflagen } =
-      splitAuflagenCodes(match.auflagenCodes);
+    const parsed = parseAuflagenColumn(
+      match.auflagenCodes,
+      match.driveType,
+    );
 
-    let model = stripVerkaufsbezeichnungLabel(rawModel);
-
-    if (looksLikeVerkaufsbezeichnung(model)) {
-      currentGroupLabel = model;
-    } else if (looksLikeFahrzeugtypCode(model) || looksLikeFahrzeugtypCode(rawModel)) {
-      model =
-        nameFromAuflagen ??
-        pickVerkaufsbezeichnungFromAuflagen(match.auflagenCodes) ??
-        currentGroupLabel ??
-        rawModel;
-    } else if (nameFromAuflagen) {
-      model = nameFromAuflagen;
-      currentGroupLabel = nameFromAuflagen;
-    } else if (currentGroupLabel) {
-      model = currentGroupLabel;
-    }
+    const modelFromAuflagen = parsed.model;
+    const fallbackModel = isUsableExtractedModel(match.model)
+      ? match.model.trim()
+      : null;
 
     return {
       ...match,
-      model,
-      auflagenCodes: cleanedAuflagen,
+      model: modelFromAuflagen ?? fallbackModel ?? match.model.trim(),
+      driveType: parsed.driveType,
+      auflagenCodes: parsed.codes,
     };
   });
 }

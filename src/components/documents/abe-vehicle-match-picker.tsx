@@ -51,10 +51,10 @@ export function AbeVehicleMatchPicker({
           Dein Fahrzeug wählen
         </p>
         <p className="mt-1 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
-          Tippe die passende Zeile aus der extrahierten Fahrzeugtabelle an
+          Tippe dein exaktes Modell aus der Auflagen-Spalte an
         </p>
         <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Nur die Auflagen der gewählten Zeile werden gespeichert.
+          Das Modell steht am Anfang der Auflagen-Zeile — danach folgen nur Codes wie 744, A77, 20B.
         </p>
         {vehicleLabel ? (
           <p className="mt-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]">

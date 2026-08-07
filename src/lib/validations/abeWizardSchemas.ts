@@ -8,7 +8,7 @@ const FROM_DOCUMENT =
 
 export const AbeVehicleMatchSchema = z
   .object({
-    /** Verkaufsbezeichnung / model group label from the table row */
+    /** Exact vehicle model from the start of the Auflagen column for this row */
     model: z.string().trim().min(1).max(200),
     /** Betriebserlaubnis / type-approval cell */
     typeApproval: z.string().trim().min(1).max(300).nullable(),
@@ -198,7 +198,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               type: "string",
               description:
                 FROM_DOCUMENT +
-                "Verkaufsbezeichnung sales designation for this row group — the section header above the rows or vehicle name in Auflagen. NEVER the Fahrzeugtyp column (short codes like 3k-N1, 5L, K-N1).",
+                "Exact vehicle model at the beginning of the Auflagen cell for this row. NEVER the Fahrzeugtyp column or the Verkaufsbezeichnung group header.",
             },
             typeApproval: {
               type: ["string", "null"],
@@ -223,7 +223,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_DOCUMENT +
-                "Short Auflagen condition codes only. Exclude Verkaufsbezeichnung text and drive-type words.",
+                "Short Auflagen condition codes after the model text in the same cell (numeric or alphanumeric codes only). Exclude the model name and drive-type words.",
             },
           },
         },
