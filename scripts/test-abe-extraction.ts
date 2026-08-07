@@ -38,6 +38,7 @@ const EXPECTED_COVER = {
 
 const EXPECTED_MAIN = {
   abeNumber: "48185*08",
+  abeHolder: /alcar leichtmetallr/i,
   manufacturer: /alcar leichtmetallr/i,
   testingOrganization: /kraftfahrt-bundesamt/i,
 };
@@ -132,6 +133,7 @@ async function testMain() {
 
   const fields: Array<[string, string | null | undefined, string | RegExp]> = [
     ["abeNumber", result.abeNumber, EXPECTED_MAIN.abeNumber],
+    ["abeHolder", result.abeHolder, EXPECTED_MAIN.abeHolder],
     ["manufacturer", result.manufacturer, EXPECTED_MAIN.manufacturer],
     ["testingOrganization", result.testingOrganization, EXPECTED_MAIN.testingOrganization],
   ];

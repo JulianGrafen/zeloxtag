@@ -4,18 +4,21 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
-  CheckCircle2,
   FileText,
   LoaderCircle,
+  Pencil,
   RotateCcw,
   ScanLine,
-  ShieldCheck,
 } from "lucide-react";
 
+import {
+  AbeFieldLabel,
+  AbeKbaHero,
+  AbeSummaryRow,
+} from "@/components/documents/abe-review-ui";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import { localDateIso } from "@/lib/documents/format";
 import { uploadDocument } from "@/lib/documents/upload-document";
@@ -71,15 +74,15 @@ const CAPTURE_STEPS: Array<{
     phase: "capture-cover",
     stepNumber: 1,
     title: "Deckblatt fotografieren",
-    hint: "Schritt 1 von 3 · Deckblatt",
+    hint: "Schritt 1 von 3 · Scanne die erste Seite — dort stehen KBA-Nummer, Design und Modell-Typ",
     guideLabel: "Deckblatt im DIN-A4-Rahmen ausrichten",
   },
   {
     phase: "capture-main",
     stepNumber: 2,
     title: "ABE-Hauptseite fotografieren",
-    hint: "Schritt 2 von 3 · Hauptseite",
-    guideLabel: "ABE-Hauptseite im DIN-A4-Rahmen ausrichten",
+    hint: "Schritt 2 von 3 · Scanne das Deckblatt der ABE — Seite mit „Kraftfahrt-Bundesamt“ und Überschrift „Allgemeine Betriebserlaubnis“",
+    guideLabel: "Kraftfahrt-Bundesamt · Allgemeine Betriebserlaubnis sichtbar",
   },
   {
     phase: "capture-vehicles",
@@ -215,26 +218,10 @@ function WizardBackButton({
   return null;
 }
 
-function FieldLabel({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Label className="block space-y-1.5">
-      <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-        {label}
-      </span>
-      {children}
-    </Label>
-  );
-}
-
 interface ReviewFormState {
   kbaNumber: string;
   abeNumber: string;
+  abeHolder: string;
   manufacturer: string;
   testingOrganization: string;
   designType: string;
@@ -246,6 +233,7 @@ function reportToFormState(report: AbeWizardReport): ReviewFormState {
   return {
     kbaNumber: report.kbaNumber ?? "",
     abeNumber: report.abeNumber ?? "",
+    abeHolder: report.abeHolder ?? "",
     manufacturer: report.manufacturer ?? "",
     testingOrganization: report.testingOrganization ?? "",
     designType: report.designType ?? "",
@@ -258,6 +246,7 @@ function ReviewSection({
   report,
   previewUrl,
   pageCount,
+  vehicleLabel,
   onSave,
   onRescan,
   isSaving,
@@ -266,6 +255,7 @@ function ReviewSection({
   report: AbeWizardReport;
   previewUrl: string | null;
   pageCount: number;
+  vehicleLabel: string;
   onSave: (form: ReviewFormState) => void;
   onRescan: () => void;
   isSaving: boolean;
@@ -280,10 +270,6 @@ function ReviewSection({
     (key: keyof ReviewFormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const kbaDisplay = form.kbaNumber.trim()
-    ? `KBA ${form.kbaNumber.trim()}`
-    : "— nicht erkannt —";
-
   return (
     <div className="vd-anim-header flex flex-col gap-4">
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)] sm:p-5">
@@ -296,7 +282,9 @@ function ReviewSection({
               ABE Kern­daten
             </h2>
             <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
-              Geführter Scan · {pageCount} {pageCount === 1 ? "Seite" : "Seiten"}
+              {vehicleLabel
+                ? `Geführter Scan · ${vehicleLabel}`
+                : `Geführter Scan · ${pageCount} ${pageCount === 1 ? "Seite" : "Seiten"}`}
             </p>
           </div>
           <button
@@ -304,94 +292,82 @@ function ReviewSection({
             onClick={() => setIsEditing((value) => !value)}
             className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-1.5 text-[0.72rem] font-medium text-[color:var(--vd-text)]"
           >
+            <Pencil className="h-3.5 w-3.5" aria-hidden />
             {isEditing ? "Ansicht" : "Bearbeiten"}
           </button>
         </header>
 
         <div className="mt-4 space-y-4">
-          <div
-            className={[
-              "rounded-2xl border px-4 py-3",
-              form.kbaNumber.trim()
-                ? "border-emerald-500/25 bg-emerald-500/8"
-                : "border-amber-300/80 bg-amber-50",
-            ].join(" ")}
-          >
-            <div className="flex items-center gap-2 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-              KBA-Nummer
-            </div>
-            {isEditing ? (
-              <Input
-                value={form.kbaNumber}
-                onChange={set("kbaNumber")}
-                placeholder="z. B. 48185"
-                className="mt-2 font-mono text-[1.05rem] font-semibold tracking-wide"
-                autoComplete="off"
-              />
-            ) : (
-              <p className="mt-1 font-mono text-[1.45rem] font-semibold tracking-wide text-[color:var(--vd-text)]">
-                {kbaDisplay}
-              </p>
-            )}
-          </div>
+          <AbeKbaHero
+            value={form.kbaNumber}
+            isEditing={isEditing}
+            onChange={set("kbaNumber")}
+          />
 
           {isEditing ? (
             <div className="space-y-3">
-              <FieldLabel label="ABE-Nummer">
+              <AbeFieldLabel label="ABE-Nummer">
                 <Input
                   value={form.abeNumber}
                   onChange={set("abeNumber")}
                   placeholder="z. B. 48185*08"
                 />
-              </FieldLabel>
-              <FieldLabel label="Hersteller">
+              </AbeFieldLabel>
+              <AbeFieldLabel label="Inhaber der ABE">
+                <Input
+                  value={form.abeHolder}
+                  onChange={set("abeHolder")}
+                  placeholder="z. B. Alcar Leichtmetallräder GmbH"
+                />
+              </AbeFieldLabel>
+              <AbeFieldLabel label="Hersteller">
                 <Input
                   value={form.manufacturer}
                   onChange={set("manufacturer")}
-                  placeholder="z. B. Alcar Leichtmetallräder GmbH"
+                  placeholder="z. B. Alcar Deutschland GmbH"
                 />
-              </FieldLabel>
-              <FieldLabel label="Prüforganisation">
+              </AbeFieldLabel>
+              <AbeFieldLabel label="Prüforganisation">
                 <Input
                   value={form.testingOrganization}
                   onChange={set("testingOrganization")}
                   placeholder="z. B. Kraftfahrt-Bundesamt"
                 />
-              </FieldLabel>
-              <FieldLabel label="Design">
+              </AbeFieldLabel>
+              <AbeFieldLabel label="Design">
                 <Input
                   value={form.designType}
                   onChange={set("designType")}
                   placeholder="z. B. Valencia / Valencia dark"
                 />
-              </FieldLabel>
-              <FieldLabel label="Maße">
+              </AbeFieldLabel>
+              <AbeFieldLabel label="Maße">
                 <Input
                   value={form.dimensions}
                   onChange={set("dimensions")}
                   placeholder="z. B. 8J x 18H2 LK 5x120 ET 30"
                 />
-              </FieldLabel>
-              <FieldLabel label="Artikel-Nummern">
+              </AbeFieldLabel>
+              <AbeFieldLabel label="Artikel-Nummern">
                 <Input
                   value={form.articleNumbers}
                   onChange={set("articleNumbers")}
                   placeholder="z. B. AVAG9HA30, AVAG9BP30"
                 />
-              </FieldLabel>
+              </AbeFieldLabel>
             </div>
           ) : (
             <dl className="grid gap-2.5 text-[0.88rem]">
-              <SummaryRow label="ABE-Nummer" value={form.abeNumber} />
-              <SummaryRow label="Hersteller" value={form.manufacturer} />
-              <SummaryRow
+              <AbeSummaryRow label="ABE-Nummer" value={form.abeNumber} />
+              <AbeSummaryRow label="Inhaber der ABE" value={form.abeHolder} />
+              <AbeSummaryRow label="Hersteller" value={form.manufacturer} />
+              <AbeSummaryRow
                 label="Prüforganisation"
                 value={form.testingOrganization}
               />
-              <SummaryRow label="Design" value={form.designType} />
-              <SummaryRow label="Maße" value={form.dimensions} />
-              <SummaryRow label="Artikel-Nr." value={form.articleNumbers} />
+              <AbeSummaryRow label="Design" value={form.designType} />
+              <AbeSummaryRow label="Maße" value={form.dimensions} />
+              <AbeSummaryRow label="Artikel-Nr." value={form.articleNumbers} />
             </dl>
           )}
 
@@ -450,10 +426,18 @@ function ReviewSection({
               "ABE speichern"
             )}
           </Button>
-          <Button type="button" variant="ghost" disabled={isSaving} onClick={onRescan}>
-            <RotateCcw className="h-4 w-4" />
-            Neu scannen
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSaving}
+              onClick={onRescan}
+            >
+              <RotateCcw className="h-4 w-4" />
+              Neu scannen
+            </Button>
+            <span />
+          </div>
         </div>
       </section>
 
@@ -478,22 +462,6 @@ function ReviewSection({
           </div>
         </section>
       ) : null}
-    </div>
-  );
-}
-
-function SummaryRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  const display = value?.trim() || "—";
-  return (
-    <div className="grid grid-cols-[minmax(0,38%)_1fr] gap-2 border-b border-[color:var(--vd-border)]/60 pb-2 last:border-0 last:pb-0">
-      <dt className="text-[color:var(--vd-muted)]">{label}</dt>
-      <dd className="font-medium text-[color:var(--vd-text)]">{display}</dd>
     </div>
   );
 }
@@ -645,7 +613,7 @@ export function AbeUploadWizard({
       ? `KBA ${form.kbaNumber.trim()}`
       : null;
     const titleParts = [
-      form.manufacturer.trim() || "ABE",
+      form.manufacturer.trim() || form.abeHolder.trim() || "ABE",
       form.designType.trim(),
       form.dimensions.trim(),
     ].filter(Boolean);
@@ -687,7 +655,7 @@ export function AbeUploadWizard({
       formData.set("title", title);
       formData.set("type", "abe");
       formData.set("category", "abe");
-      formData.set("vendor", form.manufacturer.trim() || "");
+      formData.set("vendor", form.designType.trim() || "");
       formData.set("date", localDateIso());
       formData.set("amount", "");
       formData.set("lineItems", "");
@@ -702,7 +670,15 @@ export function AbeUploadWizard({
       formData.set("invoiceNumber", form.abeNumber.trim());
       formData.set("mileageKm", "");
       formData.set("pageCount", String(pageCount || 1));
-      formData.set("approvalFields", JSON.stringify({ kind: "abe" }));
+      formData.set(
+        "approvalFields",
+        JSON.stringify({
+          kind: "abe",
+          data: {
+            abeHolder: form.abeHolder.trim() || null,
+          },
+        }),
+      );
       formData.set("file", state.uploadFile!);
 
       const result = await uploadDocument(formData);
@@ -799,29 +775,6 @@ export function AbeUploadWizard({
   if (state.phase === "review" && state.report) {
     return (
       <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-6 px-4 py-6">
-        <header className="space-y-4">
-          <WizardBackButton
-            onBack={onBack}
-            backHref={backHref}
-            backLabel={backLabel}
-          />
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              ABE · Guided Scan
-            </p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-              Scan prüfen
-            </h1>
-            <p className="mt-1 text-[0.88rem] text-[color:var(--vd-muted)]">
-              {vehicleLabel}
-            </p>
-          </div>
-          <WizardProgress currentStep={3} totalSteps={3} />
-        </header>
-
         {state.error ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[0.82rem] text-amber-900">
             <AlertTriangle className="mr-1.5 inline h-3.5 w-3.5" />
@@ -833,6 +786,7 @@ export function AbeUploadWizard({
           report={state.report}
           previewUrl={previewUrl}
           pageCount={pageCount || 1}
+          vehicleLabel={vehicleLabel}
           onSave={handleSave}
           onRescan={resetWizard}
           isSaving={isSaving}

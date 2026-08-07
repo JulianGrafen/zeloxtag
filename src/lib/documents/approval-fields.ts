@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 import {
+  AbeApprovalDataSchema,
   EGBESchema,
   EinzelabnahmeSchema,
   TeilegutachtenSchema,
   TuevReportSchema,
+  type AbeApprovalData,
   type EGBE,
   type Einzelabnahme,
   type Teilegutachten,
@@ -26,7 +28,7 @@ export const APPROVAL_FIELD_KINDS = [
 export type ApprovalFieldKind = (typeof APPROVAL_FIELD_KINDS)[number];
 
 export type ApprovalFields =
-  | { kind: "abe" }
+  | { kind: "abe"; data?: AbeApprovalData }
   | { kind: "teilegutachten"; data: Teilegutachten }
   | { kind: "einzelabnahme"; data: Einzelabnahme }
   | { kind: "egbe"; data: EGBE }
@@ -35,7 +37,12 @@ export type ApprovalFields =
 export const approvalFieldsSchema: z.ZodType<ApprovalFields> = z.discriminatedUnion(
   "kind",
   [
-    z.object({ kind: z.literal("abe") }).strict(),
+    z
+      .object({
+        kind: z.literal("abe"),
+        data: AbeApprovalDataSchema.optional(),
+      })
+      .strict(),
     z
       .object({
         kind: z.literal("teilegutachten"),

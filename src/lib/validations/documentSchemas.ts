@@ -112,6 +112,27 @@ export const EinzelabnahmeSchema = z
 
 export type Einzelabnahme = z.infer<typeof EinzelabnahmeSchema>;
 
+/** Optional structured payload for plain ABE documents. */
+export const AbeApprovalDataSchema = z
+  .object({
+    /** Legal holder on the ABE certificate (Inhaber der ABE). */
+    abeHolder: z.string().trim().min(1).max(200).nullable().optional(),
+    /** Vehicle row chosen from the Fahrzeugtabelle at upload time. */
+    selectedVehicleMatch: z
+      .object({
+        model: z.string().trim().min(1).max(200),
+        driveType: z.string().trim().min(1).max(100).nullable().optional(),
+        typeApproval: z.string().trim().min(1).max(300).nullable().optional(),
+        tireSizes: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
+  })
+  .strict();
+
+export type AbeApprovalData = z.infer<typeof AbeApprovalDataSchema>;
+
 /**
  * EG / ECE type approval (E-Prüfzeichen).
  */

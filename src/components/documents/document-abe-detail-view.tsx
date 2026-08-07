@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
+import {
+  AbeKbaHero,
+  AbeSummaryRow,
+} from "@/components/documents/abe-review-ui";
 import { DocumentViewer } from "@/components/documents/document-viewer";
 import { EditableAbeListsSection } from "@/components/documents/editable-abe-lists-section";
 import {
@@ -57,6 +61,11 @@ export function DocumentAbeDetailView({
     ?.replace(/^VIN\s+/i, "")
     .trim();
   const manufacturer = document.manufacturer?.trim() || "";
+  const abeHolder =
+    document.approval_fields?.kind === "abe"
+      ? document.approval_fields.data?.abeHolder?.trim() || ""
+      : "";
+  const isPlainAbe = !isEinzelabnahme && !isTeilegutachten;
   const titleIncludesManufacturer =
     manufacturer.length > 0 &&
     partName.toLowerCase().startsWith(manufacturer.toLowerCase());
@@ -75,6 +84,9 @@ export function DocumentAbeDetailView({
       : null;
   const conditions = document.conditions ?? [];
   const technicalSpecs = document.technical_specs ?? [];
+  const plainAbeSpecs = technicalSpecs.filter(
+    (spec) => spec.label !== "ABE-Nummer",
+  );
   const pages = document.page_count && document.page_count > 0 ? document.page_count : 1;
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
   const resolvedBack =
@@ -159,18 +171,46 @@ export function DocumentAbeDetailView({
 
         <ApprovalFieldsSection approvalFields={document.approval_fields} />
 
-        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
-          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+          <h2 className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Dokumentdaten
           </h2>
+
+          {isPlainAbe ? (
+            <div className="space-y-4">
+              <AbeKbaHero value={document.kba_number ?? ""} />
+              <dl className="grid gap-2.5 text-[0.88rem]">
+                <AbeSummaryRow label="Inhaber der ABE" value={abeHolder} />
+                <AbeSummaryRow label="Hersteller" value={manufacturer} />
+                <AbeSummaryRow label="Behörde" value={document.authority} />
+                <AbeSummaryRow
+                  label="ABE-Nummer"
+                  value={document.invoice_number}
+                />
+                {plainAbeSpecs.map((spec) => (
+                  <AbeSummaryRow
+                    key={`${spec.label}-${spec.value}`}
+                    label={spec.label}
+                    value={spec.value}
+                  />
+                ))}
+                <AbeSummaryRow
+                  label="Scandatum"
+                  value={
+                    document.date
+                      ? formatDocumentDate(document.date)
+                      : scannedLabel
+                  }
+                />
+              </dl>
+            </div>
+          ) : (
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
                 {isEinzelabnahme
                   ? "Dokumentnummer"
-                  : isTeilegutachten
-                    ? "Teilegutachten-Nr."
-                    : "Nummer"}
+                  : "Teilegutachten-Nr."}
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                 {document.kba_number ?? "—"}
@@ -241,6 +281,7 @@ export function DocumentAbeDetailView({
               </div>
             ) : null}
           </dl>
+          )}
         </section>
 
         {document.vehicle_id && !isEinzelabnahme ? (

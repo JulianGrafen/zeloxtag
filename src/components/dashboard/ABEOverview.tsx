@@ -1,22 +1,24 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 import {
   AlertTriangle,
   FileText,
   LoaderCircle,
   Pencil,
-  ShieldCheck,
 } from "lucide-react";
 
 import { CompatibilityTable } from "@/components/dashboard/CompatibilityTable";
+import {
+  AbeFieldLabel,
+  AbeKbaHero,
+  AbeSummaryRow,
+} from "@/components/documents/abe-review-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAbeExtraction } from "@/hooks/use-abe-extraction";
 import {
-  formatAbeKbaDisplay,
   formatAbeVehicleContextLabel,
   type AbeMinimal,
   type AbeUserVehicleMatchStatus,
@@ -99,11 +101,6 @@ export function ABEOverview({
   });
 
   const bannerError = saveError ?? extractError;
-  const kbaMissing = !fields.kbaNumber?.trim();
-  const kbaDisplay = useMemo(
-    () => formatAbeKbaDisplay(fields.kbaNumber) ?? "— nicht erkannt —",
-    [fields.kbaNumber],
-  );
   const vehicleLabel = vehicleContext
     ? formatAbeVehicleContextLabel(vehicleContext)
     : null;
@@ -189,40 +186,17 @@ export function ABEOverview({
                 Felder werden gelesen…
               </p>
             ) : null}
-            <div
-              className={[
-                "rounded-2xl border px-4 py-3",
-                kbaMissing
-                  ? "border-amber-300/80 bg-amber-50"
-                  : "border-emerald-500/25 bg-emerald-500/8",
-              ].join(" ")}
-            >
-              <div className="flex items-center gap-2 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-                <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-                KBA-Nummer
-              </div>
-              {isEditing ? (
-                <Label className="mt-2 block">
-                  <Input
-                    value={fields.kbaNumber ?? ""}
-                    onChange={(event) =>
-                      updateField("kbaNumber", event.target.value || null)
-                    }
-                    placeholder="z. B. 39577"
-                    className="font-mono text-[1.05rem] font-semibold tracking-wide"
-                    autoComplete="off"
-                  />
-                </Label>
-              ) : (
-                <p className="mt-1 font-mono text-[1.45rem] font-semibold tracking-wide text-[color:var(--vd-text)]">
-                  {kbaDisplay}
-                </p>
-              )}
-            </div>
+            <AbeKbaHero
+              value={fields.kbaNumber ?? ""}
+              isEditing={isEditing}
+              onChange={(event) =>
+                updateField("kbaNumber", event.target.value || null)
+              }
+            />
 
             {isEditing ? (
               <div className="space-y-3">
-                <FieldLabel label="Hersteller">
+                <AbeFieldLabel label="Hersteller">
                   <Input
                     value={fields.manufacturer ?? ""}
                     onChange={(event) =>
@@ -230,8 +204,8 @@ export function ABEOverview({
                     }
                     placeholder="z. B. MS Design"
                   />
-                </FieldLabel>
-                <FieldLabel label="Prüforganisation">
+                </AbeFieldLabel>
+                <AbeFieldLabel label="Prüforganisation">
                   <Input
                     value={fields.testingOrganization ?? ""}
                     onChange={(event) =>
@@ -242,8 +216,8 @@ export function ABEOverview({
                     }
                     placeholder="z. B. TÜV SÜD Automotive GmbH"
                   />
-                </FieldLabel>
-                <FieldLabel label="Kategorie">
+                </AbeFieldLabel>
+                <AbeFieldLabel label="Kategorie">
                   <Input
                     value={fields.partCategory ?? ""}
                     onChange={(event) =>
@@ -251,8 +225,8 @@ export function ABEOverview({
                     }
                     placeholder="z. B. Frontspoiler"
                   />
-                </FieldLabel>
-                <FieldLabel label="Typ / Modell">
+                </AbeFieldLabel>
+                <AbeFieldLabel label="Typ / Modell">
                   <Input
                     value={fields.partType ?? ""}
                     onChange={(event) =>
@@ -260,17 +234,17 @@ export function ABEOverview({
                     }
                     placeholder="z. B. 3C5 071 609"
                   />
-                </FieldLabel>
+                </AbeFieldLabel>
               </div>
             ) : (
               <dl className="grid gap-2.5 text-[0.88rem]">
-                <SummaryRow label="Hersteller" value={fields.manufacturer} />
-                <SummaryRow
+                <AbeSummaryRow label="Hersteller" value={fields.manufacturer} />
+                <AbeSummaryRow
                   label="Prüforganisation"
                   value={fields.testingOrganization}
                 />
-                <SummaryRow label="Kategorie" value={fields.partCategory} />
-                <SummaryRow label="Typ / Modell" value={fields.partType} />
+                <AbeSummaryRow label="Kategorie" value={fields.partCategory} />
+                <AbeSummaryRow label="Typ / Modell" value={fields.partType} />
               </dl>
             )}
 
@@ -411,40 +385,6 @@ export function ABEOverview({
           )}
         </div>
       </section>
-    </div>
-  );
-}
-
-function FieldLabel({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <Label>
-      <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-        {label}
-      </span>
-      {children}
-    </Label>
-  );
-}
-
-function SummaryRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3 rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
-      <dt className="text-[0.78rem] text-[color:var(--vd-muted)]">{label}</dt>
-      <dd className="max-w-[60%] text-right text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-        {value?.trim() || "—"}
-      </dd>
     </div>
   );
 }

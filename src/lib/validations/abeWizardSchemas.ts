@@ -52,7 +52,9 @@ export const AbeWizardMainSchema = z
   .object({
     /** Official ABE number incl. suffix, e.g. "48185*08" */
     abeNumber: z.string().trim().min(1).max(80).nullable(),
-    /** Full manufacturer name, e.g. "Alcar Leichtmetallräder GmbH" */
+    /** Inhaber der ABE, e.g. "Alcar Leichtmetallräder GmbH" */
+    abeHolder: z.string().trim().min(1).max(200).nullable(),
+    /** Hersteller on the certificate, e.g. "Alcar Leichtmetallräder GmbH" */
     manufacturer: z.string().trim().min(1).max(200).nullable(),
     /** Issuing authority, e.g. "Kraftfahrt-Bundesamt" */
     testingOrganization: z.string().trim().min(1).max(200).nullable(),
@@ -85,6 +87,7 @@ export const AbeWizardReportSchema = z
   .object({
     kbaNumber: z.string().trim().min(1).max(32).nullable(),
     abeNumber: z.string().trim().min(1).max(80).nullable(),
+    abeHolder: z.string().trim().min(1).max(200).nullable(),
     manufacturer: z.string().trim().min(1).max(200).nullable(),
     testingOrganization: z.string().trim().min(1).max(200).nullable(),
     designType: z.string().trim().min(1).max(200).nullable(),
@@ -154,17 +157,22 @@ export const ABE_WIZARD_MAIN_JSON_SCHEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["abeNumber", "manufacturer", "testingOrganization"],
+    required: ["abeNumber", "abeHolder", "manufacturer", "testingOrganization"],
     properties: {
       abeNumber: {
         type: ["string", "null"],
         description:
           'Official ABE number with suffix if present, e.g. "48185*08". Null if not visible.',
       },
+      abeHolder: {
+        type: ["string", "null"],
+        description:
+          'Value next to "Inhaber der ABE" (or combined label). e.g. "Alcar Leichtmetallräder GmbH".',
+      },
       manufacturer: {
         type: ["string", "null"],
         description:
-          'Full manufacturer name on this page, e.g. "Alcar Leichtmetallräder GmbH".',
+          'Value next to "Hersteller" on this page. If only one combined label, same as abeHolder.',
       },
       testingOrganization: {
         type: ["string", "null"],
@@ -236,7 +244,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
 
 /**
  * Merge the three step extractions into a single `AbeWizardReport`.
- * Main page wins for `abeNumber` and `manufacturer` when more specific.
+ * Main page wins for `abeNumber`, `abeHolder`, and `manufacturer` when more specific.
  */
 export function mergeAbeWizardSteps(
   cover: AbeWizardCoverExtraction,
@@ -245,12 +253,16 @@ export function mergeAbeWizardSteps(
 ): AbeWizardReport {
   // Main page typically has the full ABE number incl. suffix; prefer it.
   const abeNumber = main?.abeNumber ?? cover.abeNumber;
-  // Main page has the legal entity name; cover often has brand short form.
-  const manufacturer = main?.manufacturer ?? cover.manufacturer;
+  const abeHolder =
+    main?.abeHolder ?? main?.manufacturer ?? cover.manufacturer ?? null;
+  // Cover brand name; main page Hersteller when present.
+  const manufacturer =
+    cover.manufacturer ?? main?.manufacturer ?? main?.abeHolder ?? null;
 
   return {
     kbaNumber: cover.kbaNumber,
     abeNumber,
+    abeHolder,
     manufacturer,
     testingOrganization: main?.testingOrganization ?? null,
     designType: cover.designType,

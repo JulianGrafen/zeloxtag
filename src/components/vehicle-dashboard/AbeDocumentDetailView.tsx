@@ -123,7 +123,7 @@ export function AbeDocumentDetailView({
           </h2>
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">Nummer</dt>
+              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">KBA-Nummer</dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                 {document.approvalNumber}
               </dd>
