@@ -83,6 +83,14 @@ describe("mergeTuevDefectsHybrid · anti-hallucination", () => {
 });
 
 describe("mergeTuevHybridReport · KM-Stand", () => {
+  it("prefers Punkt 4 Kilometerstand over header and wrong LLM mileage", () => {
+    const llm = baseLlmReport({ mileageKm: 12_345 });
+
+    const merged = mergeTuevHybridReport(llm, OCR_SAMPLES.tuevReportPunkt4KmStand);
+
+    expect(merged.mileageKm).toBe(156_800);
+  });
+
   it("prefers OCR header KM-Stand over wrong LLM mileage", () => {
     const llm = baseLlmReport({ mileageKm: 12_345 });
 

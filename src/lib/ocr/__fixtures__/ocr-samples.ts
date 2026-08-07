@@ -119,6 +119,20 @@ Prüforganisation: TÜV Süd
 Ergebnis: ohne Mängel
 `.trim(),
 
+  tuevReportPunkt4KmStand: `
+Untersuchungsbericht nach § 29 StVZO
+Hauptuntersuchung HU/AU
+Kennzeichen: M-AB 5678
+Prüfdatum: 20.05.2026
+Prüforganisation: DEKRA
+KM-Stand: 99.999 km
+(4) Kilometerstand
+156.800 km
+(6) Festgestellte Mängel
+mangelfrei
+Ergebnis: ohne Mängel
+`.trim(),
+
   tuevReportMangelfreiPunkt6: `
 Untersuchungsbericht nach § 29 StVZO
 Hauptuntersuchung HU/AU

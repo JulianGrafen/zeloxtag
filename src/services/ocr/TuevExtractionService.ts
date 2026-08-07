@@ -22,11 +22,12 @@ const TUEV_MAX_TOKENS = 2_400;
 export const TUEV_PUNKT6_DEFECTS_GUIDANCE =
   'Festgestellte Mängel stehen IMMER unter Punkt 6 / Abschnitt 6 (z. B. "6. Festgestellte Mängel", "6 Festgestellte Mängel", "(6) Ihr Fahrzeug weist folgende Mängel auf"). Extrahiere Mängel NUR aus Punkt 6 — andere Abschnitte ignorieren.';
 
-/** Kilometerstand appears in the document header (Kopf), not in Punkt 6. */
+/** Kilometerstand appears under Punkt 4 / Feld 4; may also appear in the document header (Kopf). */
 export const TUEV_HEADER_MILEAGE_GUIDANCE =
-  'Kilometerstand (mileageKm) steht im Dokumentkopf / Header oben auf Seite 1 — neben Kennzeichen, Fahrgestellnummer, Prüfdatum. ' +
+  'Kilometerstand (mileageKm) steht IMMER unter Punkt 4 / Feld 4 / (4) — z. B. "4. Kilometerstand", "4 KM-Stand", "(4) Kilometerstand", "Feld 4". ' +
+  'Zusätzlich oft im Dokumentkopf / Header oben auf Seite 1 — neben Kennzeichen, Fahrgestellnummer, Prüfdatum. ' +
   'Suche "KM-Stand", "Km-Stand", "Kilometerstand", "km-Stand", "Tachostand". ' +
-  'Beispiel: "KM-Stand: 142.350 km" → 142350. Tausenderpunkte entfernen.';
+  'Beispiel Punkt 4: "4. Kilometerstand: 142.350 km" → 142350. Tausenderpunkte entfernen.';
 
 export const TUEV_JSON_SCHEMA = {
   name: "tuev_report_extraction",
@@ -60,8 +61,9 @@ export const TUEV_JSON_SCHEMA = {
       mileageKm: {
         type: ["integer", "null"],
         description:
-          "Kilometerstand from document header (Kopf, top of page 1) as whole number. " +
-          "Labels: KM-Stand, Kilometerstand, km-Stand, Tachostand near Kennzeichen / Fahrgestellnummer.",
+          "Kilometerstand as whole number. Primary: Punkt 4 / Feld 4 / (4) — e.g. '4. Kilometerstand', '4 KM-Stand', 'Feld 4'. " +
+          "Secondary: document header (Kopf, top of page 1) near Kennzeichen / Fahrgestellnummer. " +
+          "Labels: KM-Stand, Kilometerstand, km-Stand, Tachostand.",
       },
       nextInspectionDate: {
         type: ["string", "null"],
@@ -155,8 +157,9 @@ export class TuevExtractionService {
     const userContent = buildDocumentUserMessage(
       [
         "German HU/AU inspection report (TÜV-Bericht).",
-        "Read the document header (Kopf, top of page 1) first: Kennzeichen, Fahrgestellnummer, KM-Stand, Prüfdatum.",
-        "Extract organization, test date, result, mileageKm from the header, next HU date, and document number.",
+        "Read Punkt 4 / Feld 4 / (4) first for Kilometerstand (KM-Stand).",
+        "Also read the document header (Kopf, top of page 1): Kennzeichen, Fahrgestellnummer, KM-Stand, Prüfdatum.",
+        "Extract organization, test date, result, mileageKm from Punkt 4 or header, next HU date, and document number.",
         "Extract ALL Mängel from Punkt 6 / Abschnitt 6 (Festgestellte Mängel) into defectsTable and defectsList.",
         "Typical Punkt-6 headers: \"6. Festgestellte Mängel\", \"6 Festgestellte Mängel\", \"(6) Ihr Fahrzeug weist folgende Mängel auf\".",
         "Include Prüfpunkte and (EM)/(GM) severity markers when present.",
