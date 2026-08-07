@@ -26,8 +26,9 @@ import {
   type AbeWizardCoverExtraction,
   type AbeWizardMainExtraction,
   type AbeWizardVehiclesExtraction,
+  type AbeWizardVehiclesRaw,
 } from "@/lib/validations/abeWizardSchemas";
-import { normalizeAbeVehicleMatches } from "@/lib/ocr/abe-wizard-vehicle-normalize";
+import { parseAbeVehicleRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import { tableMatchingService } from "@/services/ocr/TableMatchingService";
 
 /** Cover-only extract (no garage vehicle). */
@@ -462,15 +463,39 @@ export class AbeExtractionService {
   async extractVehiclesFromDocument(
     input: DocumentBytesInput,
   ): Promise<AbeWizardVehiclesExtraction> {
-    const raw = await this.runWizardStep<AbeWizardVehiclesExtraction>(
+    const vehicleMatches = await this.extractVehicleRowsWithRetry(input);
+    return { vehicleMatches };
+  }
+
+  private async extractVehicleRowsWithRetry(
+    input: DocumentBytesInput,
+  ): Promise<AbeWizardVehiclesExtraction["vehicleMatches"]> {
+    const primary = await this.runVehicleTableWizardStep(input, "primary");
+    let vehicleMatches = parseAbeVehicleRows(primary.vehicleMatches);
+    if (vehicleMatches.length > 0) return vehicleMatches;
+
+    const retry = await this.runVehicleTableWizardStep(input, "retry");
+    vehicleMatches = parseAbeVehicleRows(retry.vehicleMatches);
+    return vehicleMatches;
+  }
+
+  private runVehicleTableWizardStep(
+    input: DocumentBytesInput,
+    pass: "primary" | "retry",
+  ): Promise<AbeWizardVehiclesRaw> {
+    const isRetry = pass === "retry";
+    return this.runWizardStep<AbeWizardVehiclesRaw>(
       input,
       [
         AbeExtractionService.WIZARD_IMAGE_ONLY_GUARD,
         "You extract German ABE Fahrzeug- und Auflagen-Tabelle pages.",
         "Create one vehicleMatches entry for every visible table row in the photograph.",
-        "If no compatibility table is visible, return vehicleMatches: [].",
+        isRetry
+          ? "The photograph contains a grid-style compatibility table — do NOT return an empty array."
+          : "Only return vehicleMatches: [] when the image clearly has no grid table at all (e.g. cover letter text only).",
         "CRITICAL — each row belongs to a Verkaufsbezeichnung section header above the row group.",
-        "Copy the Verkaufsbezeichnung verbatim from 'Verkaufsbezeichnung:' into every row of that group.",
+        "Copy the Verkaufsbezeichnung header text onto EVERY row in that group — never leave it empty on data rows.",
+        "If the header appears once above the table, repeat that same text on each extracted row.",
         "NEVER put Fahrzeugtyp codes into verkaufsbezeichnung.",
         "Column mapping:",
         "- verkaufsbezeichnung: section header label for this row's group (same text for all rows under one header).",
@@ -482,23 +507,26 @@ export class AbeExtractionService {
         "Do not merge rows. Do not skip rows. Do not add rows that are not visible.",
         "Return ONLY valid JSON matching the schema.",
       ],
-      [
-        "Extract every visible row from the Fahrzeug- und Auflagen-Tabelle in this photograph.",
-        "Read the Verkaufsbezeichnung header above each group and repeat it on every row in that group.",
-        "Extract all table rows under the scanned Verkaufsbezeichnung section(s).",
-        "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen zu Reifen | Auflagen.",
-        "Use only text you can read on this image. If the table is missing or unreadable, return an empty array.",
-      ],
+      isRetry
+        ? [
+            "This image shows a Fahrzeug- und Auflagen-Tabelle with columns like Fahrzeugtyp, Betriebserlaubnis, kW, Reifen, Auflagen.",
+            "Look for the bold 'Verkaufsbezeichnung:' header above each table block.",
+            "Extract EVERY visible data row from ALL table blocks on this page.",
+            "Repeat the Verkaufsbezeichnung text on each row even when it only appears once above the group.",
+          ]
+        : [
+            "Extract every visible row from the Fahrzeug- und Auflagen-Tabelle in this photograph.",
+            "The page must show a grid table — not the ABE cover or plain legal text.",
+            "Read the Verkaufsbezeichnung header above each group and repeat it on every row in that group.",
+            "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen zu Reifen | Auflagen.",
+            "Use only text you can read on this image.",
+          ],
       ABE_WIZARD_VEHICLES_JSON_SCHEMA,
       AbeWizardVehiclesSchema,
       4000,
-      "vehicles",
+      isRetry ? "vehicles-retry" : "vehicles",
       { model: resolveAbeContextModel() },
     );
-
-    return {
-      vehicleMatches: normalizeAbeVehicleMatches(raw.vehicleMatches),
-    };
   }
 
   /** Shared LLM call pattern for all three wizard steps. */

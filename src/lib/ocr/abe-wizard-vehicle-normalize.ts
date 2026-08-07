@@ -17,6 +17,13 @@ const LETTER_AUFlagen_CODE_PATTERN = /^[A-Z]{2,3}$/;
 const VERKAUFSBEZEICHNUNG_HINT =
   /\b(REIHE|TOURING|COUP[EÉ]|CABRIO|LIMOUSINE|SPORTBACK|GRAN\s+TURISMO|MODELL|SERIE)\b/i;
 
+const GROUP_FIELD_KEYS = [
+  "verkaufsbezeichnung",
+  "model",
+  "sectionHeader",
+  "group",
+] as const;
+
 export function looksLikeFahrzeugtypCode(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed || trimmed.includes(" ")) return false;
@@ -55,6 +62,12 @@ export function looksLikeVerkaufsbezeichnung(value: string): boolean {
   if (DRIVE_TYPES.has(trimmed.toLowerCase())) return false;
   if (VERKAUFSBEZEICHNUNG_HINT.test(trimmed)) return true;
   if (trimmed.includes(" ") && trimmed.length >= 6) return true;
+  if (
+    /^[A-Z0-9ÄÖÜ][A-Z0-9ÄÖÜ\s,.-]{4,}$/.test(trimmed) &&
+    !looksLikeFahrzeugtypCode(trimmed)
+  ) {
+    return true;
+  }
   if (trimmed.length >= 8 && /[A-Za-zÄÖÜäöü]{4,}/.test(trimmed)) return true;
   return false;
 }
@@ -97,15 +110,156 @@ export function parseAuflagenCodes(
   return { codes, driveType };
 }
 
+function readString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function readRowRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function readGroupLabel(row: Record<string, unknown>): string | null {
+  for (const key of GROUP_FIELD_KEYS) {
+    const raw = readString(row[key]);
+    if (!raw) continue;
+    const stripped = stripVerkaufsbezeichnungLabel(raw);
+    if (looksLikeVerkaufsbezeichnung(stripped)) return stripped;
+    if (
+      stripped.length >= 4 &&
+      !looksLikeFahrzeugtypCode(stripped) &&
+      !looksLikeAuflagenCode(stripped)
+    ) {
+      return stripped;
+    }
+  }
+  return null;
+}
+
+function rowHasTableData(match: AbeVehicleMatch): boolean {
+  return Boolean(
+    match.fahrzeugtyp ||
+      match.typeApproval ||
+      match.driveType ||
+      match.tireSizes.length > 0 ||
+      match.auflagenCodes.length > 0,
+  );
+}
+
 function resolveVerkaufsbezeichnung(
   raw: string,
   currentGroup: string | null,
 ): string | null {
   const stripped = stripVerkaufsbezeichnungLabel(raw);
+  if (!stripped) return currentGroup;
   if (looksLikeVerkaufsbezeichnung(stripped)) return stripped;
   if (looksLikeFahrzeugtypCode(stripped)) return currentGroup;
   if (stripped.length >= 4 && !looksLikeAuflagenCode(stripped)) return stripped;
   return currentGroup;
+}
+
+function inferDefaultGroupLabel(rawRows: unknown[]): string | null {
+  for (const raw of rawRows) {
+    const row = readRowRecord(raw);
+    if (!row) continue;
+    const label = readGroupLabel(row);
+    if (label) return label;
+  }
+
+  for (const raw of rawRows) {
+    const row = readRowRecord(raw);
+    if (!row) continue;
+    for (const value of Object.values(row)) {
+      if (typeof value !== "string") continue;
+      const match = /verkaufsbezeichnung\s*:\s*([^\n]+)/i.exec(value);
+      if (!match?.[1]) continue;
+      const label = stripVerkaufsbezeichnungLabel(match[1]);
+      if (label && !looksLikeFahrzeugtypCode(label)) return label;
+    }
+  }
+
+  return null;
+}
+
+const FALLBACK_VERKAUFSBEZEICHNUNG = "Fahrzeugtabelle";
+
+function applyFallbackGroupLabel(matches: AbeVehicleMatch[]): AbeVehicleMatch[] {
+  const withData = matches.filter((match) => rowHasTableData(match));
+  if (withData.length === 0) return [];
+
+  const labeled = withData.filter((match) => match.verkaufsbezeichnung.trim());
+  if (labeled.length > 0) {
+    return labeled;
+  }
+
+  return withData.map((match) => ({
+    ...match,
+    verkaufsbezeichnung: FALLBACK_VERKAUFSBEZEICHNUNG,
+  }));
+}
+
+/**
+ * Leniently parse raw LLM rows, carry section headers forward, then normalize.
+ */
+export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
+  let currentVerkaufsbezeichnung = inferDefaultGroupLabel(rawRows);
+  const drafts: AbeVehicleMatch[] = [];
+
+  for (const raw of rawRows) {
+    const row = readRowRecord(raw);
+    if (!row) continue;
+
+    const explicitGroup = readGroupLabel(row);
+    if (explicitGroup) {
+      currentVerkaufsbezeichnung = explicitGroup;
+    }
+
+    const rawGroupCandidate =
+      readString(row.verkaufsbezeichnung) ??
+      readString(row.model) ??
+      readString(row.sectionHeader) ??
+      readString(row.group);
+
+    const fahrzeugtyp =
+      readString(row.fahrzeugtyp) ??
+      (rawGroupCandidate && looksLikeFahrzeugtypCode(rawGroupCandidate)
+        ? rawGroupCandidate
+        : null);
+
+    const parsedAuflagen = parseAuflagenCodes(readStringArray(row.auflagenCodes));
+    const draft: AbeVehicleMatch = {
+      verkaufsbezeichnung:
+        explicitGroup ??
+        currentVerkaufsbezeichnung ??
+        (rawGroupCandidate && !looksLikeFahrzeugtypCode(rawGroupCandidate)
+          ? stripVerkaufsbezeichnungLabel(rawGroupCandidate)
+          : ""),
+      fahrzeugtyp,
+      typeApproval: readString(row.typeApproval),
+      driveType: readString(row.driveType) ?? parsedAuflagen.driveType,
+      tireSizes: readStringArray(row.tireSizes),
+      auflagenCodes: parsedAuflagen.codes,
+    };
+
+    if (!rowHasTableData(draft) && !draft.verkaufsbezeichnung.trim()) {
+      continue;
+    }
+
+    drafts.push(draft);
+  }
+
+  const normalized = normalizeAbeVehicleMatches(drafts);
+  return applyFallbackGroupLabel(normalized);
 }
 
 /**
@@ -134,12 +288,14 @@ export function normalizeAbeVehicleMatches(
         ? match.verkaufsbezeichnung.trim()
         : null);
 
+    const verkaufsbezeichnung =
+      resolvedGroup ??
+      currentVerkaufsbezeichnung ??
+      stripVerkaufsbezeichnungLabel(match.verkaufsbezeichnung);
+
     return {
       ...match,
-      verkaufsbezeichnung:
-        resolvedGroup ??
-        currentVerkaufsbezeichnung ??
-        stripVerkaufsbezeichnungLabel(match.verkaufsbezeichnung),
+      verkaufsbezeichnung,
       fahrzeugtyp,
       driveType: match.driveType ?? parsedAuflagen.driveType,
       auflagenCodes: parsedAuflagen.codes,

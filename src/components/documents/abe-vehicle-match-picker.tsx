@@ -7,6 +7,7 @@ import {
   abeVehicleGroupKey,
   findBestAbeVehicleGroupIndex,
   groupAbeVehicleMatches,
+  requiresAbeVehicleGroupSelection,
   vehicleGroupRowsToTableData,
   type AbeVehicleGroup,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
@@ -33,6 +34,7 @@ export function AbeVehicleMatchPicker({
   const groups = groupAbeVehicleMatches(matches);
   if (groups.length === 0) return null;
 
+  const requiresSelection = requiresAbeVehicleGroupSelection(groups);
   const suggestedIndex = findBestAbeVehicleGroupIndex(groups, vehicleContext);
   const selectedGroup: AbeVehicleGroup | null =
     selectedGroupIndex !== null &&
@@ -41,6 +43,31 @@ export function AbeVehicleMatchPicker({
       ? groups[selectedGroupIndex] ?? null
       : null;
 
+  if (!requiresSelection) {
+    const group = groups[0]!;
+    return (
+      <section className="space-y-4 rounded-[1.35rem] border border-emerald-500/25 bg-emerald-500/5 p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+        <div>
+          <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-emerald-800">
+            Fahrzeugtabelle
+          </p>
+          <p className="mt-1 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
+            {group.verkaufsbezeichnung}
+          </p>
+          <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+            {group.rows.length}{" "}
+            {group.rows.length === 1 ? "Zeile" : "Zeilen"} werden übernommen.
+          </p>
+        </div>
+        <CompatibilityTable
+          table={vehicleGroupRowsToTableData(group)}
+          title="Fahrzeug- und Auflagen-Tabelle"
+          className="border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-none"
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-4 rounded-[1.35rem] border border-emerald-500/25 bg-emerald-500/5 p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
       <div>
@@ -48,10 +75,11 @@ export function AbeVehicleMatchPicker({
           Verkaufsbezeichnung wählen
         </p>
         <p className="mt-1 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
-          Wähle die Überschrift deiner Fahrzeugtabelle
+          {groups.length} Verkaufsbezeichnungen erkannt
         </p>
         <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Die komplette Tabelle unter dieser Verkaufsbezeichnung wird übernommen.
+          Wähle die Überschrift, die zu deinem Fahrzeug passt. Es wird nur die
+          Tabelle unter dieser Verkaufsbezeichnung gespeichert.
         </p>
         {vehicleLabel ? (
           <p className="mt-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]">
@@ -119,7 +147,10 @@ export function AbeVehicleMatchPicker({
       </div>
 
       {selectionError ? (
-        <p className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.82rem] text-amber-900">
+        <p
+          role="alert"
+          className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.82rem] text-amber-900"
+        >
           {selectionError}
         </p>
       ) : null}
@@ -127,7 +158,7 @@ export function AbeVehicleMatchPicker({
       {selectedGroup ? (
         <div className="space-y-3">
           <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Übernommene Tabelle · {selectedGroup.verkaufsbezeichnung}
+            Vorschau · {selectedGroup.verkaufsbezeichnung}
           </p>
           <CompatibilityTable
             table={vehicleGroupRowsToTableData(selectedGroup)}
@@ -137,7 +168,8 @@ export function AbeVehicleMatchPicker({
         </div>
       ) : (
         <p className="text-[0.78rem] font-medium text-amber-800">
-          Bitte eine Verkaufsbezeichnung wählen, bevor du speicherst.
+          Tippe auf eine Verkaufsbezeichnung, um die Tabelle zu sehen und zu
+          speichern.
         </p>
       )}
     </section>

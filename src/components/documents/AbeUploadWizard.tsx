@@ -25,6 +25,7 @@ import { localDateIso } from "@/lib/documents/format";
 import {
   auflagenForAbeVehicleGroup,
   groupAbeVehicleMatches,
+  requiresAbeVehicleGroupSelection,
   resolveInitialAbeVehicleGroupIndex,
   selectedVerkaufsbezeichnungPayload,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
@@ -97,8 +98,8 @@ const CAPTURE_STEPS: Array<{
     phase: "capture-vehicles",
     stepNumber: 3,
     title: "Fahrzeugtabelle",
-    hint: "Scanne den Tabellenabschnitt mit der Verkaufsbezeichnung und allen Zeilen darunter.",
-    guideLabel: "Verkaufsbezeichnung · komplette Tabelle",
+    hint: "Scanne die Seite mit der Raster-Tabelle: oben steht „Verkaufsbezeichnung:“ — darunter Spalten wie Fahrzeugtyp, Betriebserlaubnis, Reifen, Auflagen. Nicht das ABE-Deckblatt oder Fließtext.",
+    guideLabel: "Verkaufsbezeichnung · Tabellenzeilen",
   },
 ];
 
@@ -259,21 +260,25 @@ interface ReviewSavePayload {
 function ReviewSection({
   report,
   previewUrl,
+  vehiclesPreviewUrl,
   pageCount,
   vehicleLabel,
   vehicleContext,
   onSave,
   onRescan,
+  onRescanVehicles,
   isSaving,
   saveError,
 }: {
   report: AbeWizardReport;
   previewUrl: string | null;
+  vehiclesPreviewUrl: string | null;
   pageCount: number;
   vehicleLabel: string;
   vehicleContext?: AbeVehicleContext | null;
   onSave: (payload: ReviewSavePayload) => void;
   onRescan: () => void;
+  onRescanVehicles: () => void;
   isSaving: boolean;
   saveError: string | null;
 }) {
@@ -294,9 +299,9 @@ function ReviewSection({
     setSelectedGroupIndex((current) => {
       if (vehicleGroups.length === 0) return null;
       if (current !== null && current < vehicleGroups.length) return current;
-      return resolveInitialAbeVehicleGroupIndex(vehicleGroups, vehicleContext);
+      return resolveInitialAbeVehicleGroupIndex(vehicleGroups);
     });
-  }, [vehicleGroups, vehicleContext]);
+  }, [vehicleGroups]);
 
   const set =
     (key: keyof ReviewFormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -320,9 +325,32 @@ function ReviewSection({
         <section className="rounded-[1.35rem] border border-amber-300/70 bg-amber-50 px-4 py-4 text-[0.88rem] leading-relaxed text-amber-950 shadow-[var(--vd-shadow-sm)]">
           <p className="font-semibold">Keine Fahrzeugtabelle erkannt</p>
           <p className="mt-1">
-            Scanne in Schritt 3 die Seite mit Verkaufsbezeichnung und
-            Fahrzeug- und Auflagen-Tabelle erneut.
+            Auf dem Foto in Schritt 3 wurde keine Tabelle mit
+            „Verkaufsbezeichnung:“ und Tabellenzeilen erkannt. Häufig wird
+            versehentlich das ABE-Deckblatt oder eine Textseite gescannt.
           </p>
+          {vehiclesPreviewUrl ? (
+            <div className="mt-3 overflow-hidden rounded-xl border border-amber-200 bg-white">
+              <p className="border-b border-amber-100 px-3 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-amber-900">
+                Dein Scan · Schritt 3
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={vehiclesPreviewUrl}
+                alt="Gescannte Fahrzeugtabelle"
+                className="max-h-52 w-full object-contain bg-neutral-100"
+              />
+            </div>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 w-full border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
+            onClick={onRescanVehicles}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Schritt 3 erneut scannen
+          </Button>
         </section>
       )}
 
@@ -447,14 +475,20 @@ function ReviewSection({
                 onSave({ form, selectedGroupIndex: null });
                 return;
               }
-              if (selectedGroupIndex === null) {
+              const needsSelection = requiresAbeVehicleGroupSelection(
+                vehicleGroups,
+              );
+              const resolvedIndex = needsSelection
+                ? selectedGroupIndex
+                : (selectedGroupIndex ?? 0);
+              if (resolvedIndex === null) {
                 setSelectionError(
                   "Bitte wähle die passende Verkaufsbezeichnung.",
                 );
                 return;
               }
               setSelectionError(null);
-              onSave({ form, selectedGroupIndex });
+              onSave({ form, selectedGroupIndex: resolvedIndex });
             }}
           >
             {isSaving ? (
@@ -534,6 +568,9 @@ export function AbeUploadWizard({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, startSaveTransition] = useTransition();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [vehiclesPreviewUrl, setVehiclesPreviewUrl] = useState<string | null>(
+    null,
+  );
 
   const pageCount = useMemo(
     () =>
@@ -553,6 +590,16 @@ export function AbeUploadWizard({
     return () => URL.revokeObjectURL(url);
   }, [state.coverFile, state.mainFile, state.vehiclesFile]);
 
+  useEffect(() => {
+    if (!state.vehiclesFile) {
+      setVehiclesPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(state.vehiclesFile);
+    setVehiclesPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [state.vehiclesFile]);
+
   function goBack() {
     if (onBack) onBack();
     else if (backHref) window.location.href = backHref;
@@ -571,6 +618,15 @@ export function AbeUploadWizard({
       uploadFile: null,
       error: null,
     });
+    setSaveError(null);
+  }
+
+  function rescanVehiclesStep() {
+    setState((prev) => ({
+      ...prev,
+      phase: "capture-vehicles",
+      error: null,
+    }));
     setSaveError(null);
   }
 
@@ -594,7 +650,13 @@ export function AbeUploadWizard({
 
   function handleVehiclesCapture(file: File) {
     setState((prev) => {
-      void runAnalysis(prev.coverFile!, file, prev.mainFile);
+      void runAnalysis({
+        coverFile: prev.coverFile!,
+        vehiclesFile: file,
+        mainFile: prev.mainFile,
+        reuseCover: prev.coverExtraction,
+        reuseMain: prev.mainExtraction,
+      });
       return {
         ...prev,
         vehiclesFile: file,
@@ -604,15 +666,29 @@ export function AbeUploadWizard({
     });
   }
 
-  async function runAnalysis(
-    coverFile: File,
-    vehiclesFile: File,
-    mainFile: File | null,
-  ) {
+  async function runAnalysis({
+    coverFile,
+    vehiclesFile,
+    mainFile,
+    reuseCover = null,
+    reuseMain = null,
+  }: {
+    coverFile: File;
+    vehiclesFile: File;
+    mainFile: File | null;
+    reuseCover?: AbeWizardCoverExtraction | null;
+    reuseMain?: AbeWizardMainExtraction | null;
+  }) {
     try {
       const [coverResult, mainResult, vehiclesResult] = await Promise.all([
-        fetchCoverExtraction(coverFile),
-        mainFile ? fetchMainExtraction(mainFile) : Promise.resolve(null),
+        reuseCover
+          ? Promise.resolve(reuseCover)
+          : fetchCoverExtraction(coverFile),
+        reuseMain !== null
+          ? Promise.resolve(reuseMain)
+          : mainFile
+            ? fetchMainExtraction(mainFile)
+            : Promise.resolve(null),
         fetchVehiclesExtraction(vehiclesFile),
       ]);
 
@@ -647,8 +723,12 @@ export function AbeUploadWizard({
     }
 
     const groups = groupAbeVehicleMatches(state.report.vehicleMatches);
+    const needsSelection = requiresAbeVehicleGroupSelection(groups);
+    const resolvedIndex = needsSelection
+      ? selectedGroupIndex
+      : (selectedGroupIndex ?? 0);
 
-    if (groups.length > 0 && selectedGroupIndex === null) {
+    if (groups.length > 0 && resolvedIndex === null) {
       setSaveError("Bitte wähle die passende Verkaufsbezeichnung.");
       return;
     }
@@ -656,7 +736,7 @@ export function AbeUploadWizard({
     setSaveError(null);
 
     const selectedGroup =
-      selectedGroupIndex !== null ? groups[selectedGroupIndex] ?? null : null;
+      resolvedIndex !== null ? groups[resolvedIndex] ?? null : null;
 
     const kbaDisplay = form.kbaNumber.trim()
       ? `KBA ${form.kbaNumber.trim()}`
@@ -853,11 +933,13 @@ export function AbeUploadWizard({
         <ReviewSection
           report={state.report}
           previewUrl={previewUrl}
+          vehiclesPreviewUrl={vehiclesPreviewUrl}
           pageCount={pageCount || 1}
           vehicleLabel={vehicleLabel}
           vehicleContext={vehicleContext}
           onSave={handleSave}
           onRescan={resetWizard}
+          onRescanVehicles={rescanVehiclesStep}
           isSaving={isSaving}
           saveError={saveError}
         />

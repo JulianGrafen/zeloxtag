@@ -4,6 +4,7 @@ import {
   findBestAbeVehicleGroupIndex,
   formatAbeVehicleApprovalLine,
   groupAbeVehicleMatches,
+  requiresAbeVehicleGroupSelection,
   resolveInitialAbeVehicleGroupIndex,
   scoreAbeVehicleGroup,
   vehicleGroupRowsToTableData,
@@ -62,7 +63,29 @@ describe("abe-wizard-vehicle-match", () => {
 
   it("auto-selects when only one group exists", () => {
     const groups = groupAbeVehicleMatches([MATCHES[0]!]);
-    expect(resolveInitialAbeVehicleGroupIndex(groups, null)).toBe(0);
+    expect(resolveInitialAbeVehicleGroupIndex(groups)).toBe(0);
+  });
+
+  it("requires explicit selection when multiple groups exist", () => {
+    const groups = groupAbeVehicleMatches(MATCHES);
+    expect(resolveInitialAbeVehicleGroupIndex(groups)).toBeNull();
+    expect(requiresAbeVehicleGroupSelection(groups)).toBe(true);
+  });
+
+  it("merges Verkaufsbezeichnung variants with different comma spacing", () => {
+    const groups = groupAbeVehicleMatches([
+      {
+        ...MATCHES[0]!,
+        verkaufsbezeichnung: "5ER REIHE, GRAN TURISMO",
+      },
+      {
+        ...MATCHES[1]!,
+        verkaufsbezeichnung: "5ER REIHE,GRAN TURISMO",
+      },
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.verkaufsbezeichnung).toBe("5ER REIHE, GRAN TURISMO");
+    expect(groups[0]?.rows).toHaveLength(2);
   });
 
   it("maps a group to a full table", () => {

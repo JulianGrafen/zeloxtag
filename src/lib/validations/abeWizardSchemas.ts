@@ -8,45 +8,16 @@ const FROM_DOCUMENT =
 
 export const AbeVehicleMatchSchema = z
   .object({
-    verkaufsbezeichnung: z.string().trim().max(200).optional(),
-    /** @deprecated Legacy LLM field — coerced into verkaufsbezeichnung */
-    model: z.string().trim().max(200).optional(),
-    fahrzeugtyp: z.string().trim().max(40).nullable().optional(),
-    typeApproval: z.string().trim().max(300).nullable().optional(),
-    driveType: z.string().trim().max(100).nullable().optional(),
-    tireSizes: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
-    auflagenCodes: z.array(z.string().trim().min(1).max(40)).max(60).optional(),
+    verkaufsbezeichnung: z.string().trim().min(1).max(200),
+    fahrzeugtyp: z.string().trim().max(40).nullable(),
+    typeApproval: z.string().trim().max(300).nullable(),
+    driveType: z.string().trim().max(100).nullable(),
+    tireSizes: z.array(z.string().trim().max(40)).max(20),
+    auflagenCodes: z.array(z.string().trim().max(40)).max(60),
   })
-  .strict()
-  .transform(
-    (row): {
-      verkaufsbezeichnung: string;
-      fahrzeugtyp: string | null;
-      typeApproval: string | null;
-      driveType: string | null;
-      tireSizes: string[];
-      auflagenCodes: string[];
-    } => {
-      const verkaufsbezeichnung = (
-        row.verkaufsbezeichnung ??
-        row.model ??
-        ""
-      ).trim();
-      if (!verkaufsbezeichnung) {
-        throw new Error("Row missing verkaufsbezeichnung");
-      }
-      return {
-        verkaufsbezeichnung,
-        fahrzeugtyp: row.fahrzeugtyp?.trim() || null,
-        typeApproval: row.typeApproval?.trim() || null,
-        driveType: row.driveType?.trim() || null,
-        tireSizes: row.tireSizes ?? [],
-        auflagenCodes: row.auflagenCodes ?? [],
-      };
-    },
-  );
+  .strict();
 
-export type AbeVehicleMatch = z.output<typeof AbeVehicleMatchSchema>;
+export type AbeVehicleMatch = z.infer<typeof AbeVehicleMatchSchema>;
 
 // ─── Step extractions ──────────────────────────────────────────────────────────
 
@@ -76,26 +47,18 @@ export const AbeWizardMainSchema = z
 
 export type AbeWizardMainExtraction = z.infer<typeof AbeWizardMainSchema>;
 
-/** Step 3 — Fahrzeug- & Auflagen-Tabelle. */
+/** Step 3 — Fahrzeug- & Auflagen-Tabelle (raw LLM payload before normalization). */
 export const AbeWizardVehiclesSchema = z
   .object({
-    vehicleMatches: z
-      .array(z.unknown())
-      .max(100)
-      .transform((rows) => {
-        const parsed: AbeVehicleMatch[] = [];
-        for (const row of rows) {
-          const result = AbeVehicleMatchSchema.safeParse(row);
-          if (result.success) parsed.push(result.data);
-        }
-        return parsed;
-      }),
+    vehicleMatches: z.array(z.unknown()).max(100),
   })
   .strict();
 
-export type AbeWizardVehiclesExtraction = z.infer<
-  typeof AbeWizardVehiclesSchema
->;
+export type AbeWizardVehiclesRaw = z.infer<typeof AbeWizardVehiclesSchema>;
+
+export type AbeWizardVehiclesExtraction = {
+  vehicleMatches: AbeVehicleMatch[];
+};
 
 // ─── Merged report ─────────────────────────────────────────────────────────────
 
@@ -234,7 +197,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               type: "string",
               description:
                 FROM_DOCUMENT +
-                "Verkaufsbezeichnung section header above this row group — copy verbatim from 'Verkaufsbezeichnung:' label. Same value for every row in the group.",
+                "Verkaufsbezeichnung section header for this row group. Repeat the exact header text from 'Verkaufsbezeichnung:' on EVERY row in the group, even continuation rows.",
             },
             fahrzeugtyp: {
               type: ["string", "null"],

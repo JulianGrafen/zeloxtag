@@ -10,6 +10,15 @@ export type AbeVehicleGroup = {
   rows: AbeVehicleMatch[];
 };
 
+/** Canonical label for grouping rows under the same section header. */
+export function normalizeVerkaufsbezeichnungKey(value: string): string {
+  return value
+    .replace(/^verkaufsbezeichnung\s*:\s*/i, "")
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function groupAbeVehicleMatches(
   matches: AbeVehicleMatch[],
 ): AbeVehicleGroup[] {
@@ -17,11 +26,11 @@ export function groupAbeVehicleMatches(
   const byKey = new Map<string, AbeVehicleMatch[]>();
 
   for (const match of matches) {
-    const key = (match.verkaufsbezeichnung ?? "").trim();
+    const key = normalizeVerkaufsbezeichnungKey(match.verkaufsbezeichnung ?? "");
     if (!key) continue;
     if (!byKey.has(key)) order.push(key);
     const rows = byKey.get(key) ?? [];
-    rows.push(match);
+    rows.push({ ...match, verkaufsbezeichnung: key });
     byKey.set(key, rows);
   }
 
@@ -92,11 +101,16 @@ export function findBestAbeVehicleGroupIndex(
 
 export function resolveInitialAbeVehicleGroupIndex(
   groups: AbeVehicleGroup[],
-  vehicle: AbeVehicleContext | null | undefined,
 ): number | null {
   if (groups.length === 0) return null;
   if (groups.length === 1) return 0;
-  return findBestAbeVehicleGroupIndex(groups, vehicle);
+  return null;
+}
+
+export function requiresAbeVehicleGroupSelection(
+  groups: AbeVehicleGroup[],
+): boolean {
+  return groups.length > 1;
 }
 
 export function abeVehicleGroupKey(group: AbeVehicleGroup, index: number): string {

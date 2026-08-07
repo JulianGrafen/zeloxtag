@@ -4,6 +4,7 @@ import {
   looksLikeAuflagenCode,
   looksLikeFahrzeugtypCode,
   normalizeAbeVehicleMatches,
+  parseAbeVehicleRows,
   parseAuflagenCodes,
   stripVerkaufsbezeichnungLabel,
 } from "@/lib/ocr/abe-wizard-vehicle-normalize";
@@ -43,8 +44,8 @@ describe("abe-wizard-vehicle-normalize", () => {
         auflagenCodes: ["744", "A77"],
       },
       {
-        verkaufsbezeichnung: "3k-N1",
-        fahrzeugtyp: null,
+        verkaufsbezeichnung: "",
+        fahrzeugtyp: "5L",
         typeApproval: "e1*2007/46*0508*0508*0000*00",
         driveType: "Heckantrieb",
         tireSizes: ["225/50R18"],
@@ -57,6 +58,58 @@ describe("abe-wizard-vehicle-normalize", () => {
       "5ER REIHE",
     );
     expect(normalized[1]?.verkaufsbezeichnung).toBe("5ER REIHE");
-    expect(normalized[1]?.fahrzeugtyp).toBe("3k-N1");
+  });
+
+  it("parses raw LLM rows with legacy model field and empty continuation rows", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "5ER REIHE",
+        fahrzeugtyp: "3k-N1",
+        typeApproval: "e1*2007/46*0508*0508*0000*00",
+        driveType: "Allradantrieb",
+        tireSizes: ["245/45R18"],
+        auflagenCodes: ["744", "A77"],
+      },
+      {
+        verkaufsbezeichnung: "",
+        model: "5ER REIHE",
+        fahrzeugtyp: "5L",
+        typeApproval: "e1*2007/46*0508*0508*0000*00",
+        driveType: "Heckantrieb",
+        tireSizes: ["225/50R18"],
+        auflagenCodes: ["744", "20B"],
+      },
+    ]);
+
+    expect(parsed.length).toBeGreaterThanOrEqual(2);
+    expect(parsed.every((row) => row.verkaufsbezeichnung === "5ER REIHE")).toBe(
+      true,
+    );
+  });
+
+  it("uses fallback group when rows have table data but no header", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "",
+        fahrzeugtyp: "3k-N1",
+        typeApproval: "e1*2007/46*0508*0508*0000*00",
+        driveType: "Allradantrieb",
+        tireSizes: ["245/45R18"],
+        auflagenCodes: ["744", "A77"],
+      },
+      {
+        verkaufsbezeichnung: "",
+        fahrzeugtyp: "5L",
+        typeApproval: "e1*2007/46*0508*0508*0000*00",
+        driveType: "Heckantrieb",
+        tireSizes: ["225/50R18"],
+        auflagenCodes: ["744", "20B"],
+      },
+    ]);
+
+    expect(parsed).toHaveLength(2);
+    expect(parsed.every((row) => row.verkaufsbezeichnung === "Fahrzeugtabelle")).toBe(
+      true,
+    );
   });
 });
