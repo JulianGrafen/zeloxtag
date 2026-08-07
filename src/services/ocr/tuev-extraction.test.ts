@@ -12,6 +12,7 @@ import {
   buildTuevSystemPrompt,
   TUEV_HEADER_MILEAGE_GUIDANCE,
   TUEV_JSON_SCHEMA,
+  TUEV_PRUEFPUNKT_DOT_GUIDANCE,
   TUEV_PUNKT6_DEFECTS_GUIDANCE,
 } from "@/services/ocr/TuevExtractionService";
 import { TuevReportService } from "@/services/documents";
@@ -47,6 +48,7 @@ describe("TuevExtractionService prompts & schema", () => {
     expect(prompt).toContain("EM/GM");
     expect(prompt).toContain("Mängel");
     expect(prompt).toContain(TUEV_PUNKT6_DEFECTS_GUIDANCE);
+    expect(prompt).toContain(TUEV_PRUEFPUNKT_DOT_GUIDANCE);
     expect(prompt).toContain(TUEV_HEADER_MILEAGE_GUIDANCE);
     expect(prompt).toMatch(/Kopf|Header/i);
   });
@@ -166,6 +168,14 @@ describe("sanitizeTuevPayload · LLM vision output", () => {
     });
   });
 
+  it("JSON schema checkpoint field requires dot-separated Prüfpunkte", () => {
+    const checkpointDesc = String(
+      TUEV_JSON_SCHEMA.schema.properties.defectsTable.items.properties
+        .checkpoint.description,
+    );
+    expect(checkpointDesc).toMatch(/dot-separated|4\.2\.1/i);
+  });
+
   it("maps plain defectsList to rows without text heuristics", () => {
     const sanitized = sanitizeTuevPayload({
       testingOrganization: "TÜV",
@@ -183,6 +193,68 @@ describe("sanitizeTuevPayload · LLM vision output", () => {
       { checkpoint: null, description: "Scheinwerfer einstellen", severity: null },
       { checkpoint: null, description: "Kennzeichenleuchte defekt", severity: null },
     ]);
+  });
+
+  it("parses dot-separated Prüfpunkte from defectsList when defectsTable is null", () => {
+    const sanitized = sanitizeTuevPayload({
+      testingOrganization: "TÜV",
+      testDate: "2026-03-12",
+      result: "minor_defects",
+      mileageKm: 85_400,
+      nextInspectionDate: "2028-05",
+      documentNumber: null,
+      defectsTable: null,
+      defectsList: [
+        "4.2.1 Bremsbelag (GM)",
+        "1.3.2a Reifenprofil (EM)",
+        "[6.1.4] Scheinwerfer einstellen (GM)",
+      ],
+    });
+
+    const parsed = new TuevReportService().parseAndValidate(sanitized);
+    expect(parsed.defectsTable).toEqual([
+      {
+        checkpoint: "4.2.1",
+        description: "Bremsbelag",
+        severity: "GM",
+      },
+      {
+        checkpoint: "1.3.2a",
+        description: "Reifenprofil",
+        severity: "EM",
+      },
+      {
+        checkpoint: "6.1.4",
+        description: "Scheinwerfer einstellen",
+        severity: "GM",
+      },
+    ]);
+  });
+
+  it("extracts dot-separated checkpoint from description when LLM omits checkpoint field", () => {
+    const sanitized = sanitizeTuevPayload({
+      testingOrganization: "DEKRA",
+      testDate: "2026-04-15",
+      result: "minor_defects",
+      mileageKm: 92_100,
+      nextInspectionDate: "2028-04",
+      documentNumber: null,
+      defectsTable: [
+        {
+          checkpoint: null,
+          description: "4.2.1 Bremsbelag nahe Verschleißgrenze",
+          severity: "GM",
+        },
+      ],
+      defectsList: null,
+    });
+
+    const parsed = new TuevReportService().parseAndValidate(sanitized);
+    expect(parsed.defectsTable?.[0]).toMatchObject({
+      checkpoint: "4.2.1",
+      description: "Bremsbelag nahe Verschleißgrenze",
+      severity: "GM",
+    });
   });
 });
 
@@ -266,6 +338,26 @@ describe("TuevOverview · review & display mapping", () => {
     });
     expect(table).toEqual([
       { checkpoint: null, description: "Bremsflüssigkeit niedrig", severity: null },
+    ]);
+  });
+
+  it("tuevDefectsForDisplay parses dot-separated Prüfpunkte from defectsList", () => {
+    const table = tuevDefectsForDisplay({
+      kind: "tuev",
+      data: {
+        testingOrganization: "TÜV",
+        testDate: null,
+        result: "minor_defects",
+        mileageKm: null,
+        nextInspectionDate: null,
+        documentNumber: null,
+        defectsTable: null,
+        defectsList: ["4.2.1 Bremsbelag (GM)", "1.3.2a Reifenprofil (EM)"],
+      },
+    });
+    expect(table).toEqual([
+      { checkpoint: "4.2.1", description: "Bremsbelag", severity: "GM" },
+      { checkpoint: "1.3.2a", description: "Reifenprofil", severity: "EM" },
     ]);
   });
 });

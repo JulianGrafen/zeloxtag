@@ -8,7 +8,11 @@ import {
   type TuevReport,
   type TuevResult,
 } from "@/lib/validations/documentSchemas";
-import { defectsListFromTuevDefectRows } from "@/lib/ocr/tuev-defects-from-text";
+import {
+  defectsListFromTuevDefectRows,
+  normalizeCheckpoint,
+  parseTuevDefectLine,
+} from "@/lib/ocr/tuev-defects-from-text";
 
 import { BaseDocumentService } from "./BaseDocumentService";
 import { DocumentValidationError } from "./DocumentValidationError";
@@ -188,6 +192,27 @@ function normalizeDefectsList(value: unknown): string[] | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
+function normalizeDefectRow(row: TuevDefectRow): TuevDefectRow {
+  const checkpoint = row.checkpoint
+    ? normalizeCheckpoint(row.checkpoint)
+    : null;
+
+  if (checkpoint) {
+    return { ...row, checkpoint };
+  }
+
+  const parsed = parseTuevDefectLine(row.description);
+  if (parsed?.checkpoint) {
+    return {
+      checkpoint: parsed.checkpoint,
+      description: parsed.description,
+      severity: row.severity ?? parsed.severity,
+    };
+  }
+
+  return { ...row, checkpoint: null };
+}
+
 function normalizeDefectsTable(value: unknown): TuevDefectRow[] | null {
   if (value == null) return null;
   if (!Array.isArray(value)) return null;
@@ -196,7 +221,7 @@ function normalizeDefectsTable(value: unknown): TuevDefectRow[] | null {
   for (const item of value) {
     const parsed = TuevDefectRowSchema.safeParse(item);
     if (!parsed.success) continue;
-    rows.push(parsed.data);
+    rows.push(normalizeDefectRow(parsed.data));
     if (rows.length >= MAX_DEFECTS) break;
   }
 
@@ -222,15 +247,28 @@ function resolveTuevDefects(
     return { defectsTable: null, defectsList: null };
   }
 
-  // LLM-only: plain-text Mängel → rows without OCR/heuristic re-parsing.
-  const parsedTable = list.map((description) => ({
+  const parsedTable = list
+    .map((entry) => parseTuevDefectLine(entry))
+    .filter((row): row is TuevDefectRow => row != null);
+
+  if (parsedTable.length > 0) {
+    return {
+      defectsTable: parsedTable,
+      defectsList:
+        normalizeDefectsList(defectsList) ??
+        defectsListFromTuevDefectRows(parsedTable),
+    };
+  }
+
+  // Plain-text Mängel without Prüfpunkt numbers.
+  const plainTable = list.map((description) => ({
     checkpoint: null,
     description,
     severity: null,
   }));
 
   return {
-    defectsTable: parsedTable.length > 0 ? parsedTable : null,
+    defectsTable: plainTable.length > 0 ? plainTable : null,
     defectsList: list,
   };
 }

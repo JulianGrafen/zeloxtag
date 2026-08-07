@@ -21,6 +21,7 @@ import {
   type TuevDefectRow,
   type TuevResult,
 } from "@/lib/validations/documentSchemas";
+import { parseTuevDefectLine } from "@/lib/ocr/tuev-defects-from-text";
 import { TuevReportService } from "@/services/documents";
 
 export type TuevReviewFields = {
@@ -164,11 +165,15 @@ export function tuevDefectsForDisplay(
   const { defectsTable, defectsList } = approvalFields.data;
   if (defectsTable?.length) return defectsTable;
   if (!defectsList?.length) return null;
-  return defectsList.map((description) => ({
-    checkpoint: null,
-    description,
-    severity: null,
-  }));
+  return defectsList.map((entry) => {
+    const parsed = parseTuevDefectLine(entry);
+    if (parsed) return parsed;
+    return {
+      checkpoint: null,
+      description: entry,
+      severity: null,
+    };
+  });
 }
 
 /**

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   defectsListFromTuevDefectRows,
   extractTuevDefectsFromText,
+  parseTuevDefectLine,
 } from "@/lib/ocr/tuev-defects-from-text";
 
 const DENSE_DEFECTS_SAMPLE = `
@@ -187,6 +188,50 @@ Mängelliste:
     expect(rows![0]).toMatchObject({
       checkpoint: "4.2.1a",
       severity: "GM",
+    });
+  });
+
+  it("extracts dot-separated Prüfpunkte with parentheses or colon separator", () => {
+    const rows = extractTuevDefectsFromText(`
+Festgestellte Mängel:
+(4.2.1) Bremsbelag (GM)
+1.3.2a: Reifenprofil (EM)
+6.1.4 Scheinwerfer einstellen (GM)
+    `);
+
+    expect(rows).not.toBeNull();
+    expect(rows).toHaveLength(3);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkpoint: "4.2.1",
+          description: "Bremsbelag",
+          severity: "GM",
+        }),
+        expect.objectContaining({
+          checkpoint: "1.3.2a",
+          description: "Reifenprofil",
+          severity: "EM",
+        }),
+        expect.objectContaining({
+          checkpoint: "6.1.4",
+          description: "Scheinwerfer einstellen",
+          severity: "GM",
+        }),
+      ]),
+    );
+  });
+
+  it("parseTuevDefectLine extracts bracket-form dot-separated Prüfpunkte", () => {
+    expect(parseTuevDefectLine("[4.2.1] Bremsbelag (GM)")).toMatchObject({
+      checkpoint: "4.2.1",
+      description: "Bremsbelag",
+      severity: "GM",
+    });
+    expect(parseTuevDefectLine("1.3.2a Reifenprofil (EM)")).toMatchObject({
+      checkpoint: "1.3.2a",
+      description: "Reifenprofil",
+      severity: "EM",
     });
   });
 

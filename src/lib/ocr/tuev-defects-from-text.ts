@@ -1,9 +1,24 @@
 import type { TuevDefectRow } from "@/lib/validations/documentSchemas";
 
-/** HU/AU Prüfpunkt (e.g. 4.7.1b, DF6.2.6, D7.1.1a). */
-export const TUEV_CHECKPOINT_PATTERN = /\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?/;
+/**
+ * HU/AU Prüfpunkt core — always dot-separated (e.g. 4.2.1, 1.3.2a, 4.7.1b, DF6.2.6).
+ * Two or more numeric segments joined by dots; optional letter suffix.
+ */
+export const TUEV_CHECKPOINT_CORE = /(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?/;
 
-const CHECKPOINT_GLOBAL = /\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?/g;
+/** Prüfpunkt with optional leading * or wrapping ( ) / [ ]. */
+export const TUEV_CHECKPOINT_PATTERN = new RegExp(
+  `\\*?(?:\\(|\\[)?${TUEV_CHECKPOINT_CORE.source}(?:\\)|\\])?`,
+);
+
+const CHECKPOINT_LINE_START = new RegExp(
+  `^\\[?(\\*?(?:\\(|\\[)?${TUEV_CHECKPOINT_CORE.source}(?:\\)|\\])?)\\]?\\s*:?\\s*`,
+);
+
+const CHECKPOINT_GLOBAL = new RegExp(
+  `\\*?(?:\\(|\\[)?${TUEV_CHECKPOINT_CORE.source}(?:\\)|\\])?`,
+  "g",
+);
 
 /**
  * Punkt 6 / Abschnitt 6 headers for Festgestellte Mängel on HU/AU reports.
@@ -23,8 +38,63 @@ const SKIP_DEFECT_LINE =
 const BOILERPLATE_DEFECT_LINE =
   /(?:Bitte beachten Sie|§\s*\d+\s*StV|verantwortlich sind|Lassen Sie bitte|festgestellten Mängel|Nachprüfung der Beseitigung|Bitte legen Sie|Wir bedanken uns|begrüßen zu dürfen|Im Auftrag der|GTÜ mbH|Ingenieurbüro|Dipl\.?\s*-?\s*Ing|Tel\s*:|Untersuchung des Motormanagement|Motormanagement\/Abgasreinigung|\(UMA\)|Sehr geehrte|wir haben Ihr Fahrzeug|Kontrollnummer\s*:|^\d{6,}\s*$|^\|\s*\|)/i;
 
-function normalizeCheckpoint(value: string): string {
-  return value.replace(/^\*/, "").trim();
+export function normalizeCheckpoint(value: string): string {
+  return value
+    .replace(/^\*/, "")
+    .replace(/^[\(\[]+/, "")
+    .replace(/[\)\]]+$/, "")
+    .trim();
+}
+
+function extractSeverity(
+  text: string,
+): { body: string; severity: "EM" | "GM" | null } {
+  const match = text.match(/^(.*?)\s*\((EM|GM)\)\s*$/);
+  if (!match) return { body: text.trim(), severity: null };
+  return {
+    body: match[1]!.trim(),
+    severity: match[2] as "EM" | "GM",
+  };
+}
+
+/**
+ * Parse a single Mängel line (defectsList entry or description with embedded Prüfpunkt).
+ * Handles dot-separated Prüfpunkte at line start, bracket form `[4.2.1]`, and (EM)/(GM).
+ */
+export function parseTuevDefectLine(text: string): TuevDefectRow | null {
+  const trimmed = text.trim();
+  if (!trimmed || isBoilerplateLine(trimmed)) return null;
+
+  const { body, severity } = extractSeverity(trimmed);
+  const bracketMatch = body.match(
+    /^\[(\*?(?:\(?)(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?(?:\)?))\]\s*(.*)$/,
+  );
+  if (bracketMatch) {
+    const description = bracketMatch[2]!.trim();
+    if (!description || description.length < 3) return null;
+    return {
+      checkpoint: normalizeCheckpoint(bracketMatch[1]!),
+      description: description.slice(0, 500),
+      severity,
+    };
+  }
+
+  const lineMatch = body.match(CHECKPOINT_LINE_START);
+  if (lineMatch) {
+    const description = body.slice(lineMatch[0].length).trim();
+    if (!description || description.length < 3) return null;
+    return {
+      checkpoint: normalizeCheckpoint(lineMatch[1]!),
+      description: description.slice(0, 500),
+      severity,
+    };
+  }
+
+  if (severity) {
+    return parsePlainDefectLine(body, severity);
+  }
+
+  return null;
 }
 
 function normalizeDefectLine(rawLine: string): string {
@@ -68,11 +138,12 @@ function parseCheckpointChunk(text: string): TuevDefectRow | null {
   if (!trimmed || isBoilerplateLine(trimmed)) return null;
 
   const match = trimmed.match(
-    /^(\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?)\s*([\s\S]*)$/,
+    /^[\(\[]?(\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?)[\)\]]?\s*:?\s*([\s\S]*)$/,
   );
   if (!match) return null;
 
   const description = (match[2]?.trim() ?? "")
+    .replace(/^[\)\]:]+\s*/, "")
     .replace(/\s*\((EM|GM)\)\s*$/, "")
     .trim();
   if (!description || description.length < 3) return null;
@@ -149,7 +220,7 @@ function parseMultilineDefects(body: string): TuevDefectRow[] {
 
     if (TUEV_CHECKPOINT_PATTERN.test(line) && !/\([EG]M\)/.test(line)) {
       const onlyCheckpoint = line.match(
-        /^(\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?)\s*$/,
+        /^[\(\[]?(\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?)[\)\]]?\s*$/,
       );
       if (onlyCheckpoint) {
         pendingCheckpoint = normalizeCheckpoint(onlyCheckpoint[1]!);

@@ -22,6 +22,11 @@ const TUEV_MAX_TOKENS = 2_400;
 export const TUEV_PUNKT6_DEFECTS_GUIDANCE =
   'Festgestellte Mängel stehen IMMER unter Punkt 6 / Abschnitt 6 (z. B. "6. Festgestellte Mängel", "6 Festgestellte Mängel", "(6) Ihr Fahrzeug weist folgende Mängel auf"). Extrahiere Mängel NUR aus Punkt 6 — andere Abschnitte ignorieren.';
 
+/** Prüfpunkt numbers in Punkt 6 are ALWAYS dot-separated — preserve verbatim (e.g. 4.2.1, 1.3.2a). */
+export const TUEV_PRUEFPUNKT_DOT_GUIDANCE =
+  "Prüfpunkt-Nummern in Punkt 6 sind IMMER punktgetrennt (z. B. 4.2.1, 1.3.2a, 6.1.4, 4.7.1b). " +
+  "Im checkpoint-Feld exakt so übernehmen — Punkte beibehalten, Ziffern nie zusammenziehen.";
+
 /** Kilometerstand appears in the document header (Kopf), not in Punkt 6. */
 export const TUEV_HEADER_MILEAGE_GUIDANCE =
   'Kilometerstand (mileageKm) steht im Dokumentkopf / Header oben auf Seite 1 — neben Kennzeichen, Fahrgestellnummer, Prüfdatum. ' +
@@ -85,7 +90,8 @@ export const TUEV_JSON_SCHEMA = {
             checkpoint: {
               type: ["string", "null"],
               description:
-                "Prüfpunkt number from Punkt 6 (e.g. 1.3.2, 4.7.1b, DF6.2.6). Null when absent.",
+                "Dot-separated Prüfpunkt from Punkt 6 exactly as printed (e.g. 4.2.1, 1.3.2a, 4.7.1b, DF6.2.6). " +
+                "Always preserve dots; null only when no Prüfpunkt number is shown.",
             },
             description: {
               type: "string",
@@ -117,9 +123,10 @@ export function buildTuevSystemPrompt(): string {
     "Read the uploaded document (PDF or scan).",
     TUEV_HEADER_MILEAGE_GUIDANCE,
     TUEV_PUNKT6_DEFECTS_GUIDANCE,
+    TUEV_PRUEFPUNKT_DOT_GUIDANCE,
     "Extract testingOrganization, testDate (YYYY-MM-DD), result, mileageKm, nextInspectionDate (YYYY-MM),",
     "documentNumber, defectsTable (Prüfpunkte with EM/GM severity), and defectsList (plain-text Mängel).",
-    "For each Punkt-6 defect: checkpoint (e.g. 1.2.3, 4.7.1b), description (verbatim), severity EM or GM when shown.",
+    "For each Punkt-6 defect: dot-separated checkpoint (e.g. 4.2.1, 1.3.2a, 4.7.1b), description (verbatim), severity EM or GM when shown.",
     "Extract ALL Mängel listed under Punkt 6 — do not summarize, omit rows, or pull defects from other sections.",
     "Map German result wording:",
     '- "ohne Mängel" / "mangelfrei" → no_defects',
@@ -159,7 +166,7 @@ export class TuevExtractionService {
         "Extract organization, test date, result, mileageKm from the header, next HU date, and document number.",
         "Extract ALL Mängel from Punkt 6 / Abschnitt 6 (Festgestellte Mängel) into defectsTable and defectsList.",
         "Typical Punkt-6 headers: \"6. Festgestellte Mängel\", \"6 Festgestellte Mängel\", \"(6) Ihr Fahrzeug weist folgende Mängel auf\".",
-        "Include Prüfpunkte and (EM)/(GM) severity markers when present.",
+        "Include dot-separated Prüfpunkte (e.g. 4.2.1, 1.3.2a) and (EM)/(GM) severity markers when present.",
       ],
       input,
     );
