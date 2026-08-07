@@ -10,14 +10,14 @@ const CHECKPOINT_GLOBAL = /\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?/g;
  * Mängel are always listed under section 6 — never bare "Mängel" (matches legal boilerplate).
  */
 const DEFECTS_SECTION_HEADER =
-  /(?:\(?6\)?[\.)]?\s*)?(?:Ihr Fahrzeug(?:[\s|]+)*weist folgende Mängel auf|(?:6[\.)]\s*)?Festgestellte\s+Mängel\s*:|Mängelliste\s*:)/gi;
+  /(?:\(?6\)?[\.)]?\s+)?(?:Ihr Fahrzeug(?:[\s|]+)*weist folgende Mängel auf|Festgestellte\s+Mängel|Mängelliste)\s*:?/gi;
 
 /** Stop parsing before footers, UMA blocks, greetings, or result lines. */
 const DEFECTS_SECTION_END =
   /\n\s*(?:Hinweise|Ergebnis|Unterschrift|Seite\s+\d|n[aäe]{0,2}chste\s+(?:hu|untersuchung|hauptuntersuchung)|HU\s+fällig|prüfplakette\s+erteilt|ohne\s+(?:erhebliche\s+)?mängel|Bitte beachten Sie|Lassen Sie bitte|Die Nachprüfung|Bitte legen Sie|Wir bedanken uns|begrüßen zu dürfen|Im Auftrag der|Untersuchung des Motormanagement|Motormanagement\/Abgasreinigung|\(UMA\)|Sehr geehrte|wir haben Ihr Fahrzeug|verantwortlich sind|Ingenieurbüro|Dipl\.?\s*-?\s*Ing|Tel\s*:|(?:Dechant|Straße|Strasse)\b)/i;
 
 const SKIP_DEFECT_LINE =
-  /^(?:\(?6\)?[\.)]?\s*)?(?:Ihr Fahrzeug(?:[\s|]+)*weist folgende Mängel auf|(?:6[\.)]\s*)?Festgestellte\s+Mängel\s*:?|Mängelliste\s*:?)\s*$/i;
+  /^(?:\(?6\)?[\.)]?\s+)?(?:Ihr Fahrzeug(?:[\s|]+)*weist folgende Mängel auf|Festgestellte\s+Mängel|Mängelliste)\s*:?\s*$/i;
 
 /** Lines that must never become defect rows (legal text, addresses, OCR noise). */
 const BOILERPLATE_DEFECT_LINE =

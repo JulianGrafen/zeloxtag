@@ -124,6 +124,32 @@ describe("extractTuevDefectsFromText", () => {
     ).toBe(true);
   });
 
+  it("extracts Mängel under Punkt 6 header (6. Festgestellte Mängel)", () => {
+    const rows = extractTuevDefectsFromText(`
+6. Festgestellte Mängel
+Bremsbelag nahe Verschleißgrenze (GM)
+Scheibenwischer vorne abgenutzt (GM)
+Ergebnis: geringfügige Mängel
+    `);
+
+    expect(rows).not.toBeNull();
+    expect(rows).toHaveLength(2);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkpoint: null,
+          description: "Bremsbelag nahe Verschleißgrenze",
+          severity: "GM",
+        }),
+        expect.objectContaining({
+          checkpoint: null,
+          description: "Scheibenwischer vorne abgenutzt",
+          severity: "GM",
+        }),
+      ]),
+    );
+  });
+
   it("extracts Mängel with EM/GM but without Prüfpunkt numbers", () => {
     const rows = extractTuevDefectsFromText(`
 Festgestellte Mängel:
