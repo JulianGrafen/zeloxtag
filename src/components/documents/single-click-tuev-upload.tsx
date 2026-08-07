@@ -31,6 +31,7 @@ import {
   type TuevResult,
 } from "@/lib/validations/documentSchemas";
 import { Button } from "@/components/ui/button";
+import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -458,8 +459,12 @@ export function SingleClickTuevUpload({
 
   if (phase === "confirm" && state) {
     const { report, vendor, amount } = state.extraction;
-    const defectCount = report.defectsTable?.length ?? report.defectsList?.length ?? 0;
     const needsReview = state.extraction.requiresManualReview;
+    const hasDefectDetails =
+      (report.defectsTable?.length ?? 0) > 0 ||
+      (report.defectsList?.length ?? 0) > 0;
+    const showDefectsSection =
+      hasDefectDetails || report.result !== "no_defects";
 
     return (
       <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
@@ -531,17 +536,15 @@ export function SingleClickTuevUpload({
                 value={`${amount.toFixed(2).replace(".", ",")} €`}
               />
             ) : null}
-            <SummaryRow
-              label="Mängel"
-              value={
-                defectCount > 0
-                  ? `${defectCount} Prüfpunkt${defectCount !== 1 ? "e" : ""}`
-                  : "Keine"
-              }
-              highlight={defectCount > 0 ? "text-amber-700 font-semibold" : undefined}
-            />
           </div>
         </div>
+
+        {showDefectsSection ? (
+          <TuevDefectsSection
+            data={report}
+            emptyHint="Keine einzelnen Prüfpunkte erkannt — bitte nach dem Speichern im Dashboard prüfen."
+          />
+        ) : null}
 
         {/* Save action */}
         <Button
