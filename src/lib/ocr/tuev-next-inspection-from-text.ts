@@ -36,21 +36,37 @@ const EXCLUDE_NEAR_LABEL =
   /(?:nachprüfung|nachpruefung|beseitigung(?:\s+aller)?\s+mängel|spätestens|spaetestens|begrüßen|begruessen|zur\s+nächsten\s+untersuchung\s+erneut)/i;
 
 /**
+ * OCR-tolerant inspection-type suffix (HU, Hauptuntersuchung, Untersuchung).
+ * `unter(?:t)?suchung` matches Untertsuchung; `unlersuchung` matches l/t OCR swaps.
+ */
+const INSPECTION_LABEL =
+  "(?:hu|hauptuntersuchung|unter(?:t)?suchung|unlersuchung)";
+
+/**
  * OCR-tolerant next-HU labels (priority order — first match wins).
  * `n[aäe]{0,2}chste` matches nächste / naechste / nachste / nchste.
  */
 const NEXT_HU_LABEL_PATTERNS: readonly RegExp[] = [
-  /(?:termin\s+(?:der\s+)?n[aäe]{0,2}chsten?\s+(?:hu|hauptuntersuchung))/gi,
-  /(?:datum\s+(?:der\s+)?n[aäe]{0,2}chsten?\s+(?:hu|hauptuntersuchung))/gi,
-  /(?:f[aäe]lligkeit(?:stermin)?(?:\s+(?:der\s+)?n[aäe]{0,2}chsten?\s+hu)?)/gi,
-  /(?:n[aäe]{0,2}chsten?\s+(?:hu|hauptuntersuchung))/gi,
+  new RegExp(
+    `(?:termin\\s+(?:der\\s+)?n[aäe]{0,2}chsten?\\s+${INSPECTION_LABEL})`,
+    "gi",
+  ),
+  new RegExp(
+    `(?:datum\\s+(?:der\\s+)?n[aäe]{0,2}chsten?\\s+${INSPECTION_LABEL})`,
+    "gi",
+  ),
+  /(?:f[aäe]lligkeit(?:stermin)?(?:\s+(?:der\s+)?n[aäe]{0,2}chsten?\s+(?:hu|unter(?:t)?suchung|unlersuchung))?)/gi,
+  new RegExp(`(?:n[aäe]{0,2}chsten?\\s+${INSPECTION_LABEL})`, "gi"),
+  /(?:f[aäe]llige?\s+unter(?:t)?suchung)/gi,
   /(?:hu[\s-]*termin|hu[\s-]*f[aäe]llig)/gi,
   /(?:(?:prüf|pruef)?plakette\s+g[uüe]{0,2}ltig\s+bis)/gi,
   /(?:g[uüe]{0,2}ltig\s+bis)/gi,
 ];
 
-const NEXT_HU_LINE_LABEL =
-  /(?:termin\s+(?:der\s+)?n[aäe]{0,2}chsten?\s+(?:hu|hauptuntersuchung)|n[aäe]{0,2}chsten?\s+(?:hu|hauptuntersuchung)|hu[\s-]*(?:termin|f[aäe]llig)|f[aäe]lligkeit(?:stermin)?|(?:prüf|pruef)?plakette\s+g[uüe]{0,2}ltig\s+bis|g[uüe]{0,2}ltig\s+bis)/i;
+const NEXT_HU_LINE_LABEL = new RegExp(
+  `(?:termin\\s+(?:der\\s+)?n[aäe]{0,2}chsten?\\s+${INSPECTION_LABEL}|n[aäe]{0,2}chsten?\\s+${INSPECTION_LABEL}|f[aäe]llige?\\s+unter(?:t)?suchung|hu[\\s-]*(?:termin|f[aäe]llig)|f[aäe]lligkeit(?:stermin)?|(?:prüf|pruef)?plakette\\s+g[uüe]{0,2}ltig\\s+bis|g[uüe]{0,2}ltig\\s+bis)`,
+  "i",
+);
 
 const NUMERIC_DATE =
   /(\d{1,2}\s*[./-]\s*\d{4}|\d{4}\s*-\s*\d{2}|\d{1,2}\s*[./]\s*\d{1,2}\s*[./]\s*\d{4})/;

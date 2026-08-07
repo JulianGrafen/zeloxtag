@@ -4,15 +4,6 @@ import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
-  extractTeilegutachtenAuflagenFromText,
-  mergeTeilegutachtenAuflagen,
-} from "@/lib/ocr/teilegutachten-auflagen-from-text";
-import { extractTeilegutachtenCompatibilityTableFromText } from "@/lib/ocr/teilegutachten-compatibility-from-text";
-import {
-  extractTeilegutachtenOwnerNotesFromText,
-  mergeTeilegutachtenOwnerNotes,
-} from "@/lib/ocr/teilegutachten-owner-notes-from-text";
-import {
   formatAbeVehicleContextLabel,
   type AbeVehicleContext,
 } from "@/lib/validations/abeSchema";
@@ -22,9 +13,10 @@ import {
   TeilegutachtenLlmPayloadSchema,
   type TeilegutachtenExtraction,
 } from "@/lib/validations/teilegutachtenSchema";
-import { mergeTeilegutachtenCompatibilityTables } from "@/lib/validations/teilegutachten-compatibility-table";
+import { formatMatchedVehicleRowFromTable } from "@/lib/validations/teilegutachten-compatibility-table";
 import {
   ABE_CONTEXT_MAX_CHARS,
+  ABE_CONTEXT_MAX_PAGES,
   resolveAbeContextModel,
   truncateAbeCoverPages,
 } from "@/services/ocr/AbeExtractionService";
@@ -58,10 +50,12 @@ export function buildTeilegutachtenSystemPrompt(
     "Extract these fields:",
     '- "certificateNumber" — Gutachtennummer, e.g. "14-00123-CP-GBM".',
     '- "manufacturer" — part manufacturer / Herstellerzeichen.',
-    '- "partCategory" — part family, e.g. "Sonderfahrwerksfedern".',
+    '- "modificationType" — Art der Umrüstung from the document header (verbatim).',
+    '- "partCategory" — optional Bauteil / Bezeichnung when separate from Art der Umrüstung.',
     '- "partType" — exact part model / type id.',
-    '- "physicalMarking" — Kennzeichnung section: how the part is physically marked',
-    '  (e.g. "Aufdruck auf den Federwindungen", "Eingegossen", "Typenschild"). CRITICAL.',
+    '- "markingType" — Art der Kennzeichnung, verbatim (e.g. "Aufdruck", "Eingegossen"). CRITICAL.',
+    '- "markingNumber" — Kennzeichnungsnummer / Nummer on the part (e.g. "e1*47656"). CRITICAL.',
+    '- "physicalMarking" — legacy combined Kennzeichnung text; prefer markingType + markingNumber.',
     '- "testingOrganization" — Prüforganisation / issuer.',
     '- "requiresPhysicalInspection" — always true (TGA mandates Anbauabnahme).',
     "",
@@ -136,7 +130,7 @@ export class TeilegutachtenExtractionService {
 
     const windowText = truncateAbeCoverPages(
       markdownText.replace(/\r\n/g, "\n").trim(),
-      withContext ? 12 : 4,
+      ABE_CONTEXT_MAX_PAGES,
       options.maxChars ?? TEILEGUTACHTEN_MAX_CHARS,
     );
 
@@ -163,15 +157,16 @@ export class TeilegutachtenExtractionService {
       ? [
           "German Teilegutachten § 19 Abs. 3 OCR (Markdown).",
           `TARGET VEHICLE: ${formatAbeVehicleContextLabel(vehicleContext!)}`,
-          "Extract certificateNumber, part fields, Kennzeichnung (physicalMarking),",
-          "Verwendungsbereich (verwendungsbereich), Auflagen (auflagen), Hinweise für den Fahrzeughalter (ownerNotes), Technische Daten (technicalDataTable), match status, matchedVehicleRow.",
+          "Extract certificateNumber, part fields, markingType (Art der Kennzeichnung), markingNumber (Kennzeichnungsnummer),",
+          "Verwendungsbereich (compatibilityTable / verwendungsbereich), Auflagen (auflagen), Hinweise für den Fahrzeughalter (ownerNotes), Technische Daten (technicalDataTable), match status, matchedVehicleRow.",
           "",
           windowText,
         ]
       : [
           "German Teilegutachten § 19 Abs. 3 OCR (Markdown).",
-          "Extract certificateNumber, manufacturer, partCategory, partType, physicalMarking (Kennzeichnung),",
-          "testingOrganization, verwendungsbereich, auflagen, ownerNotes, technicalDataTable.",
+          "Extract certificateNumber, manufacturer, modificationType (Art der Umrüstung), partCategory, partType,",
+          "markingType (Art der Kennzeichnung), markingNumber (Kennzeichnungsnummer), testingOrganization,",
+          "compatibilityTable, verwendungsbereich, auflagen, ownerNotes, technicalDataTable.",
           "Set userVehicleMatchStatus and matchedVehicleRow to null.",
           "",
           windowText,
@@ -220,71 +215,54 @@ export class TeilegutachtenExtractionService {
       );
     }
 
-    const heuristicAuflagen = extractTeilegutachtenAuflagenFromText(markdownText);
-    const heuristicOwnerNotes =
-      extractTeilegutachtenOwnerNotesFromText(markdownText);
-    const heuristicCompatibilityTable =
-      extractTeilegutachtenCompatibilityTableFromText(markdownText);
-    const normalized = normalizeTeilegutachtenExtraction({
-      ...parsed.data,
-      auflagen: mergeTeilegutachtenAuflagen(
-        parsed.data.auflagen ?? parsed.data.matchedConditions,
-        heuristicAuflagen,
-      ),
-      ownerNotes: mergeTeilegutachtenOwnerNotes(
-        parsed.data.ownerNotes,
-        heuristicOwnerNotes,
-      ),
-    });
-    const compatibilityTable = mergeTeilegutachtenCompatibilityTables(
-      normalized.compatibilityTable,
-      heuristicCompatibilityTable,
-    );
-    const withCompatibilityTable: TeilegutachtenExtraction = {
-      ...normalized,
-      compatibilityTable,
-      verwendungsbereich: compatibilityTable ? null : normalized.verwendungsbereich,
-    };
+    const normalized = normalizeTeilegutachtenExtraction(parsed.data);
+    const extracted: TeilegutachtenExtraction = normalized.compatibilityTable
+      ? { ...normalized, verwendungsbereich: null }
+      : normalized;
 
     if (!withContext) {
+      const table = extracted.compatibilityTable
+        ? tableMatchingService.matchTable(extracted.compatibilityTable, null)
+            .table
+        : null;
+
       return {
-        ...withCompatibilityTable,
+        ...extracted,
         userVehicleMatchStatus: null,
-        matchedVehicleRow: null,
-        compatibilityTable: withCompatibilityTable.compatibilityTable
-          ? tableMatchingService.matchTable(
-              withCompatibilityTable.compatibilityTable,
-              null,
-            ).table
-          : null,
+        matchedVehicleRow: formatMatchedVehicleRowFromTable(table),
+        compatibilityTable: table,
       };
     }
 
-    if (!withCompatibilityTable.compatibilityTable) {
-      return withCompatibilityTable;
+    if (!extracted.compatibilityTable) {
+      return extracted;
     }
 
     const { table: matchedTable, matchedRowIds } =
       tableMatchingService.matchTable(
-        withCompatibilityTable.compatibilityTable,
+        extracted.compatibilityTable,
         vehicleContext,
       );
 
     const matchedRow = matchedTable.rows.find((row) => row.isUserVehicleMatch);
     const shouldPromoteMatch =
       matchedRowIds.length > 0 &&
-      withCompatibilityTable.userVehicleMatchStatus !== "needs_manual_check";
+      extracted.userVehicleMatchStatus !== "needs_manual_check";
+    const matchedVehicleRow =
+      (shouldPromoteMatch
+        ? formatMatchedVehicleRowFromTable(matchedTable) ??
+          matchedRow?.cells.filter(Boolean).join(" · ") ??
+          extracted.matchedVehicleRow
+        : extracted.matchedVehicleRow) ??
+      formatMatchedVehicleRowFromTable(matchedTable);
 
     return {
-      ...withCompatibilityTable,
+      ...extracted,
       compatibilityTable: matchedTable,
       userVehicleMatchStatus: shouldPromoteMatch
         ? "verified"
-        : withCompatibilityTable.userVehicleMatchStatus,
-      matchedVehicleRow: shouldPromoteMatch
-        ? matchedRow?.cells.filter(Boolean).join(" · ") ||
-          withCompatibilityTable.matchedVehicleRow
-        : withCompatibilityTable.matchedVehicleRow,
+        : extracted.userVehicleMatchStatus,
+      matchedVehicleRow,
     };
   }
 }

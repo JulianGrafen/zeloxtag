@@ -11,6 +11,30 @@ describe("extractTuevNextInspectionFromText", () => {
     ).toBe("2028-05");
   });
 
+  it("parses nächste Untersuchung and OCR label variants", () => {
+    expect(
+      extractTuevNextInspectionFromText("nächste Untersuchung: 05/2028"),
+    ).toBe("2028-05");
+    expect(
+      extractTuevNextInspectionFromText("Nächste Untertsuchung: 09/2028"),
+    ).toBe("2028-09");
+    expect(
+      extractTuevNextInspectionFromText(
+        "Termin der nächsten Untersuchung: 08/2029",
+      ),
+    ).toBe("2029-08");
+    expect(
+      extractTuevNextInspectionFromText("fällige Untersuchung: 03.2027"),
+    ).toBe("2027-03");
+    expect(
+      extractTuevNextInspectionFromText(`
+Ergebnis: ohne Mängel
+Nächste Untersuchung
+07/2028
+      `),
+    ).toBe("2028-07");
+  });
+
   it("parses from OCR fixture sample", () => {
     expect(extractTuevNextInspectionFromText(OCR_SAMPLES.tuevReportPass)).toBe(
       "2028-05",
@@ -100,6 +124,15 @@ Vorgangs-Nr.: HU-991
       extractTuevNextInspectionFromText(`
 Die Nachprüfung der Beseitigung aller Mängel kann bis spätestens 27.04.2025 erfolgen.
 Bitte legen Sie dafür diesen Untersuchungsbericht wieder vor.
+      `),
+    ).toBeNull();
+  });
+
+  it("ignores closing letter boilerplate with nächste Untersuchung", () => {
+    expect(
+      extractTuevNextInspectionFromText(`
+Wir bedanken uns für Ihr in uns gesetztes Vertrauen und freuen uns darauf,
+Sie zur nächsten Untersuchung erneut begrüßen zu dürfen.
       `),
     ).toBeNull();
   });

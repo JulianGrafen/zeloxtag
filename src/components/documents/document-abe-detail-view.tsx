@@ -196,6 +196,40 @@ export function DocumentAbeDetailView({
                   : scannedLabel}
               </dd>
             </div>
+            {isTeilegutachten && document.approval_fields?.kind === "teilegutachten" ? (
+              <>
+                {document.approval_fields.data.markingType ? (
+                  <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                    <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                      Art der Kennzeichnung
+                    </dt>
+                    <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                      {document.approval_fields.data.markingType}
+                    </dd>
+                  </div>
+                ) : null}
+                {document.approval_fields.data.markingNumber ? (
+                  <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                    <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                      Kennzeichnungsnummer
+                    </dt>
+                    <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                      {document.approval_fields.data.markingNumber}
+                    </dd>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            {isTeilegutachten && document.part_category ? (
+              <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                  Art der Umrüstung
+                </dt>
+                <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                  {document.part_category}
+                </dd>
+              </div>
+            ) : null}
             {isEinzelabnahme && manufacturer ? (
               <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
                 <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">

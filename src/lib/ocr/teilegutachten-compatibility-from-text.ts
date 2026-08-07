@@ -1,5 +1,9 @@
 import type { TableData } from "@/lib/validations/abeSchema";
-import { sanitizeTeilegutachtenCompatibilityTable } from "@/lib/validations/teilegutachten-compatibility-table";
+import { isPlausibleVehicleApproval } from "@/lib/ocr/abe-parse-schema";
+import {
+  looksLikeVerwendungsbereichTableDump,
+  sanitizeTeilegutachtenCompatibilityTable,
+} from "@/lib/validations/teilegutachten-compatibility-table";
 
 const VERWENDUNGSBEREICH_HEADING =
   /(?:^|\n)\s*(?:I+\.\s*)?Verwendungsbereich\b[^\n|]*/i;
@@ -128,4 +132,41 @@ export function extractTeilegutachtenCompatibilityTableFromText(
   };
 
   return sanitizeTeilegutachtenCompatibilityTable(table);
+}
+
+/**
+ * Plain-text Verwendungsbereich lines (no pipe table) → Freigabe list text.
+ */
+export function extractTeilegutachtenVerwendungsbereichFromText(
+  rawText: string,
+): string | null {
+  const text = rawText.replace(/\r\n/g, "\n").trim();
+  if (text.length < 8) return null;
+
+  const sectionStart = text.search(
+    /(?:^|\n)\s*(?:I+\.\s*)?Verwendungsbereich\b/i,
+  );
+  if (sectionStart < 0) return null;
+
+  const tail = text.slice(sectionStart);
+  const endAt = tail.search(TABLE_SECTION_END);
+  const section = endAt >= 0 ? tail.slice(0, endAt) : tail.slice(0, 8_000);
+
+  if (section.includes("|")) return null;
+
+  const lines: string[] = [];
+  for (const line of section.split("\n")) {
+    const trimmed = line
+      .trim()
+      .replace(/^[-•*]\s*/, "")
+      .replace(/\.$/, "");
+    if (!trimmed) continue;
+    if (/^(?:I+\.\s*)?Verwendungsbereich\b/i.test(trimmed)) continue;
+    if (looksLikeVerwendungsbereichTableDump(trimmed)) continue;
+    if (isPlausibleVehicleApproval(trimmed)) {
+      lines.push(trimmed);
+    }
+  }
+
+  return lines.length > 0 ? lines.join("\n").slice(0, 2_000) : null;
 }

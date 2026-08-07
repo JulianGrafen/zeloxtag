@@ -20,7 +20,8 @@ describe("buildTeilegutachtenSystemPrompt", () => {
     expect(prompt).toContain("NOT a");
     expect(prompt).toContain("Einzelabnahme");
     expect(prompt).toContain("Kennzeichnung");
-    expect(prompt).toContain("physicalMarking");
+    expect(prompt).toContain("modificationType");
+    expect(prompt).toContain("Art der Umrüstung");
     expect(prompt).toContain("auflagen");
     expect(prompt).toContain("verwendungsbereich");
   });
@@ -38,6 +39,53 @@ describe("buildTeilegutachtenSystemPrompt", () => {
 });
 
 describe("normalizeTeilegutachtenExtraction", () => {
+  it("maps modificationType to analyze partCategory", () => {
+    const extracted = normalizeTeilegutachtenExtraction({
+      documentType: "Teilegutachten",
+      certificateNumber: "TG-9010",
+      manufacturer: "Eibach",
+      partCategory: "Tieferlegungsfedern VA",
+      modificationType: "Sonderfahrwerksfedern",
+      partType: "21-85-041-01-VA",
+      physicalMarking: null,
+      requiresPhysicalInspection: true,
+      testingOrganization: "TÜV",
+      userVehicleMatchStatus: null,
+      verwendungsbereich: "Mazda RX-8 (SE3P)",
+      auflagen: null,
+      matchedVehicleRow: null,
+      compatibilityTable: null,
+    });
+
+    const fields = teilegutachtenToAnalyzeFields(extracted);
+    expect(fields.partCategory).toBe("Sonderfahrwerksfedern");
+  });
+
+  it("maps markingType and markingNumber to analyze notes", () => {
+    const extracted = normalizeTeilegutachtenExtraction({
+      documentType: "Teilegutachten",
+      certificateNumber: "TG-9011",
+      manufacturer: "Eibach",
+      partCategory: null,
+      modificationType: null,
+      partType: "21-85-041",
+      physicalMarking: null,
+      markingType: "Aufdruck auf den Federwindungen",
+      markingNumber: "e1*47656",
+      requiresPhysicalInspection: true,
+      testingOrganization: "TÜV",
+      userVehicleMatchStatus: null,
+      verwendungsbereich: null,
+      auflagen: null,
+      matchedVehicleRow: null,
+      compatibilityTable: null,
+    });
+
+    const fields = teilegutachtenToAnalyzeFields(extracted);
+    expect(fields.notes).toContain("Art der Kennzeichnung: Aufdruck");
+    expect(fields.notes).toContain("Kennzeichnungsnummer: e1*47656");
+  });
+
   it("forces requiresPhysicalInspection to true and maps auflagen", () => {
     const result = normalizeTeilegutachtenExtraction({
       documentType: "Teilegutachten",
@@ -141,6 +189,85 @@ describe("fieldsToTeilegutachtenReview", () => {
     expect(review.verwendungsbereich).toContain("Mazda RX-8");
     expect(review.vehicleApprovals).toEqual(["Mazda RX-8 (SE3P)"]);
     expect(review.auflagen).toEqual(["Sichtprüfung"]);
+  });
+
+  it("derives Art der Umrüstung in review from analyze fields", () => {
+    const review = fieldsToTeilegutachtenReview(
+      {
+        vendor: "Eibach 21-85-041-01-VA",
+        date: null,
+        amount: null,
+        category: "abe",
+        summary: "Teilegutachten · Sonderfahrwerksfedern",
+        lineItems: null,
+        kbaNumber: "14-00123-CP-GBM",
+        vehicleApprovals: null,
+        authority: "TÜV Süd",
+        conditions: null,
+        partCategory: "Sonderfahrwerksfedern",
+        notes: null,
+        manufacturer: "Eibach",
+        invoiceNumber: "14-00123-CP-GBM",
+        mileageKm: null,
+      },
+      null,
+    );
+
+    expect(review.modificationType).toBe("Sonderfahrwerksfedern");
+  });
+
+  it("derives Fahrzeugfreigaben from compatibility table when analyze fields are empty", () => {
+    const review = fieldsToTeilegutachtenReview(
+      {
+        vendor: "Eibach 21-85-041-01-VA",
+        date: null,
+        amount: null,
+        category: "abe",
+        summary: "Teilegutachten · Federn",
+        lineItems: null,
+        kbaNumber: "TG-9001",
+        vehicleApprovals: null,
+        authority: "TÜV",
+        conditions: null,
+        partCategory: "Federn",
+        notes: null,
+        manufacturer: "Eibach",
+        invoiceNumber: "TG-9001",
+        mileageKm: null,
+      },
+      {
+        kind: "teilegutachten",
+        data: {
+          testingOrganization: "TÜV",
+          documentNumber: "TG-9001",
+          validityArea: "Fahrzeugfreigaben siehe Tabelle.",
+          immediateInspectionRequired: true,
+          compatibilityTable: {
+            caption: "Verwendungsbereich",
+            headers: ["Hersteller", "Modell", "Typ"],
+            rows: [
+              {
+                id: "row-1",
+                cells: ["Mazda", "RX-8", "SE3P"],
+                isUserVehicleMatch: false,
+                matchReason: null,
+              },
+              {
+                id: "row-2",
+                cells: ["BMW", "3er", "E90"],
+                isUserVehicleMatch: false,
+                matchReason: null,
+              },
+            ],
+          },
+        },
+      },
+    );
+
+    expect(review.vehicleApprovals).toEqual([
+      "Mazda · SE3P · RX-8",
+      "BMW · E90 · 3er",
+    ]);
   });
 
   it("preserves multiple Fahrzeugfreigaben from analyze fields", () => {

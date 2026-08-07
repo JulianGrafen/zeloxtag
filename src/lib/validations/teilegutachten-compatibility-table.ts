@@ -1,4 +1,7 @@
-import { isPlausibleVehicleApproval } from "@/lib/ocr/abe-parse-schema";
+import {
+  isPlausibleVehicleApproval,
+  normalizeAbeVehicleApprovals,
+} from "@/lib/ocr/abe-parse-schema";
 import type { TableData } from "@/lib/validations/abeSchema";
 
 export const TEILEGUTACHTEN_COMPATIBILITY_CELL_MAX = 1_200;
@@ -215,6 +218,52 @@ export function sanitizeTeilegutachtenCompatibilityTable(
   };
 }
 
+function labelFromCompatibilityRow(
+  row: TableData["rows"][number],
+  columns: Record<ColumnRole, number>,
+  lastBrand: string,
+): { label: string | null; lastBrand: string } {
+  let brand = compactCellValue(row, columns.brand);
+  if (!looksLikeBrandCell(brand)) {
+    brand = lastBrand;
+  } else {
+    lastBrand = brand;
+  }
+
+  const type = compactCellValue(row, columns.type);
+  const model = compactCellValue(row, columns.model);
+
+  const structured = formatFreigabeLabel({ brand, type, model });
+  if (structured && isPlausibleVehicleApproval(structured)) {
+    return { label: structured, lastBrand };
+  }
+
+  const joined = [brand, type, model]
+    .filter((value, index, values) => value && values.indexOf(value) === index)
+    .join(" · ");
+  if (joined && isPlausibleVehicleApproval(joined)) {
+    return { label: joined.slice(0, 120), lastBrand };
+  }
+
+  for (const cell of row.cells) {
+    const trimmed = cell.trim().replace(/\s+/g, " ");
+    if (trimmed && isPlausibleVehicleApproval(trimmed)) {
+      return { label: trimmed.slice(0, 120), lastBrand };
+    }
+  }
+
+  const chunk = row.cells
+    .map((cell) => cell.trim().replace(/\s+/g, " "))
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(" · ");
+  if (chunk && isPlausibleVehicleApproval(chunk)) {
+    return { label: chunk.slice(0, 120), lastBrand };
+  }
+
+  return { label: null, lastBrand };
+}
+
 function compactVehicleLabelsFromTable(table: TableData): string[] {
   const columns = resolveColumnsWithFallback(table.headers);
   if (columns.brand < 0 && columns.type < 0 && columns.model < 0) {
@@ -225,18 +274,10 @@ function compactVehicleLabelsFromTable(table: TableData): string[] {
   const labels: string[] = [];
 
   for (const row of table.rows) {
-    let brand = compactCellValue(row, columns.brand);
-    if (!looksLikeBrandCell(brand)) {
-      brand = lastBrand;
-    } else {
-      lastBrand = brand;
-    }
-
-    const type = compactCellValue(row, columns.type);
-    const model = compactCellValue(row, columns.model);
-    const label = formatFreigabeLabel({ brand, type, model });
-    if (label && isPlausibleVehicleApproval(label)) {
-      labels.push(label);
+    const resolved = labelFromCompatibilityRow(row, columns, lastBrand);
+    lastBrand = resolved.lastBrand;
+    if (resolved.label) {
+      labels.push(resolved.label);
     }
   }
 
@@ -251,7 +292,7 @@ export function vehicleApprovalsFromSanitizedTable(
   if (!preserved?.rows.length) return null;
 
   const labels = compactVehicleLabelsFromTable(preserved);
-  return labels.length > 0 ? labels : null;
+  return normalizeAbeVehicleApprovals(labels);
 }
 
 export function formatMatchedVehicleRowFromTable(

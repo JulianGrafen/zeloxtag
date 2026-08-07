@@ -87,12 +87,12 @@ describe("extractTuevDefectsFromText", () => {
     );
 
     for (const row of rows!) {
-      expect(row.checkpoint).toBeTruthy();
+      expect(row.description.length).toBeGreaterThan(2);
     }
 
     expect(
       rows!.some((row) => row.description.includes("Kennzeichenbeleuchtung")),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("ignores legal footer and address boilerplate after the Mängel list", () => {
@@ -124,11 +124,51 @@ describe("extractTuevDefectsFromText", () => {
     ).toBe(true);
   });
 
-  it("does not treat bare Festgestellte Mängel lines without Prüfpunkt as defects", () => {
+  it("extracts Mängel with EM/GM but without Prüfpunkt numbers", () => {
     const rows = extractTuevDefectsFromText(`
 Festgestellte Mängel:
 Bremsbelag nahe Verschleißgrenze (GM)
 Scheibenwischer vorne abgenutzt (GM)
+Ergebnis: geringfügige Mängel
+    `);
+
+    expect(rows).not.toBeNull();
+    expect(rows).toHaveLength(2);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkpoint: null,
+          description: "Bremsbelag nahe Verschleißgrenze",
+          severity: "GM",
+        }),
+        expect.objectContaining({
+          checkpoint: null,
+          description: "Scheibenwischer vorne abgenutzt",
+          severity: "GM",
+        }),
+      ]),
+    );
+  });
+
+  it("extracts Mängelliste header with numbered Prüfpunkte", () => {
+    const rows = extractTuevDefectsFromText(`
+Mängelliste:
+4.2.1a Bremsbelag nahe Verschleißgrenze (GM)
+    `);
+
+    expect(rows).not.toBeNull();
+    expect(rows).toHaveLength(1);
+    expect(rows![0]).toMatchObject({
+      checkpoint: "4.2.1a",
+      severity: "GM",
+    });
+  });
+
+  it("does not treat bare Festgestellte Mängel lines without Prüfpunkt or EM/GM as defects", () => {
+    const rows = extractTuevDefectsFromText(`
+Festgestellte Mängel:
+Bremsbelag nahe Verschleißgrenze
+Scheibenwischer vorne abgenutzt
 Ergebnis: geringfügige Mängel
     `);
 

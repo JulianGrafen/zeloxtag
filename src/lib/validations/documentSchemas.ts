@@ -73,6 +73,10 @@ export const TeilegutachtenSchema = z
     technicalDataTable: TableDataSchema.nullable().optional(),
     /** Section III — Hinweise für den Fahrzeughalter (verbatim). */
     ownerNotes: z.string().trim().min(1).max(8_000).nullable().optional(),
+    /** Art der Kennzeichnung am Bauteil. */
+    markingType: z.string().trim().min(1).max(200).nullable().optional(),
+    /** Kennzeichnungsnummer / Nummer am Bauteil. */
+    markingNumber: z.string().trim().min(1).max(120).nullable().optional(),
   })
   .strict();
 

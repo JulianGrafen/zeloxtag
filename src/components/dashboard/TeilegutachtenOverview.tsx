@@ -23,16 +23,24 @@ import {
   groupTeilegutachtenAuflagen,
 } from "@/lib/validations/teilegutachten-auflagen";
 import {
+  normalizeTeilegutachtenMarking,
+} from "@/lib/ocr/teilegutachten-marking-from-text";
+import {
+  resolveTeilegutachtenReviewVehicleApprovals,
+  teilegutachtenReviewToExtraction,
   teilegutachtenToApprovalFields,
   teilegutachtenVehicleApprovals,
-  type TeilegutachtenExtraction,
 } from "@/lib/validations/teilegutachtenSchema";
 
 export type TeilegutachtenReviewFields = {
   certificateNumber: string | null;
   manufacturer: string | null;
+  /** Art der Umrüstung — stored in documents.part_category. */
+  modificationType: string | null;
   partCategory: string | null;
   partType: string | null;
+  markingType: string | null;
+  markingNumber: string | null;
   physicalMarking: string | null;
   testingOrganization: string | null;
   userVehicleMatchStatus: AbeUserVehicleMatchStatus | null;
@@ -167,10 +175,38 @@ function parseAuflagenFromEdit(value: string): string[] | null {
   return grouped.length > 0 ? grouped : null;
 }
 
+function parseMarkingTypeFromNotes(
+  notes: string | null | undefined,
+): string | null {
+  return (
+    notes?.match(/Art der Kennzeichnung:\s*(.+)/i)?.[1]?.trim() ||
+    notes?.match(/Kennzeichnung:\s*Art:\s*(.+?)(?:\s·\s|\sNummer\s*:|$)/i)?.[1]?.trim() ||
+    null
+  );
+}
+
+function parseMarkingNumberFromNotes(
+  notes: string | null | undefined,
+): string | null {
+  return (
+    notes?.match(/Kennzeichnungsnummer:\s*(.+)/i)?.[1]?.trim() ||
+    notes?.match(/Nummer:\s*(.+)/i)?.[1]?.trim() ||
+    null
+  );
+}
+
 function parsePhysicalMarkingFromNotes(
   notes: string | null | undefined,
 ): string | null {
   return notes?.match(/Kennzeichnung:\s*(.+)/i)?.[1]?.trim() || null;
+}
+
+function resolveReviewMarking(input: {
+  markingType: string | null;
+  markingNumber: string | null;
+  physicalMarking: string | null;
+}) {
+  return normalizeTeilegutachtenMarking(input);
 }
 
 function parsePartTypeFromSummary(
@@ -189,20 +225,34 @@ export function fieldsToTeilegutachtenReview(
     approvalFields?.kind === "teilegutachten" ? approvalFields.data : null;
 
   const fromValidity = parseFromValidityArea(tgData?.validityArea);
+  const marking = resolveReviewMarking({
+    markingType:
+      tgData?.markingType?.trim() ||
+      parseMarkingTypeFromNotes(fields.notes) ||
+      null,
+    markingNumber:
+      tgData?.markingNumber?.trim() ||
+      parseMarkingNumberFromNotes(fields.notes) ||
+      null,
+    physicalMarking: parsePhysicalMarkingFromNotes(fields.notes),
+  });
 
-  return {
+  return withResolvedVehicleApprovals({
     certificateNumber:
       fields.kbaNumber?.trim() ||
       fields.invoiceNumber?.trim() ||
       tgData?.documentNumber?.trim() ||
       null,
     manufacturer: fields.manufacturer?.trim() || null,
-    partCategory: fields.partCategory?.trim() || null,
+    modificationType: fields.partCategory?.trim() || null,
+    partCategory: null,
     partType:
       fields.vendor?.trim() ||
       parsePartTypeFromSummary(fields.summary) ||
       null,
-    physicalMarking: parsePhysicalMarkingFromNotes(fields.notes),
+    markingType: marking.markingType,
+    markingNumber: marking.markingNumber,
+    physicalMarking: marking.physicalMarking,
     testingOrganization:
       fields.authority?.trim() || tgData?.testingOrganization || null,
     userVehicleMatchStatus: parseMatchStatusFromNotes(fields.notes),
@@ -231,28 +281,20 @@ export function fieldsToTeilegutachtenReview(
     auflagen: fields.conditions?.length
       ? groupTeilegutachtenAuflagen(fields.conditions)
       : fromValidity.auflagen,
-  };
+  });
 }
 
-function reviewToExtraction(
+function withResolvedVehicleApprovals(
   review: TeilegutachtenReviewFields,
-): TeilegutachtenExtraction {
+): TeilegutachtenReviewFields {
+  const vehicleApprovals = resolveTeilegutachtenReviewVehicleApprovals(review);
   return {
-    documentType: "Teilegutachten",
-    certificateNumber: review.certificateNumber?.trim() || null,
-    manufacturer: review.manufacturer?.trim() || null,
-    partCategory: review.partCategory?.trim() || null,
-    partType: review.partType?.trim() || null,
-    physicalMarking: review.physicalMarking?.trim() || null,
-    requiresPhysicalInspection: true,
-    testingOrganization: review.testingOrganization?.trim() || null,
-    userVehicleMatchStatus: review.userVehicleMatchStatus,
-    verwendungsbereich: review.verwendungsbereich?.trim() || null,
-    auflagen: review.auflagen,
-    matchedVehicleRow: review.matchedVehicleRow?.trim() || null,
-    compatibilityTable: review.compatibilityTable,
-    technicalDataTable: review.technicalDataTable,
-    ownerNotes: review.ownerNotes?.trim() || null,
+    ...review,
+    vehicleApprovals,
+    matchedVehicleRow:
+      review.matchedVehicleRow?.trim() ||
+      vehicleApprovals?.[0]?.trim() ||
+      null,
   };
 }
 
@@ -289,10 +331,10 @@ export function TeilegutachtenOverview({
     const titleParts = [
       "Teilegutachten",
       review.manufacturer,
-      review.partType || review.partCategory,
+      review.partType || review.modificationType || review.partCategory,
     ].filter(Boolean);
     const title = titleParts.join(" · ").slice(0, 120);
-    const extraction = reviewToExtraction(review);
+    const extraction = teilegutachtenReviewToExtraction(review);
     const approval = teilegutachtenToApprovalFields(extraction);
     const syncedReview = {
       ...review,
@@ -371,13 +413,22 @@ export function TeilegutachtenOverview({
               placeholder="z. B. TÜV SÜD"
             />
           </Field>
-          <Field label="Bauteil / Kategorie">
+          <Field label="Art der Umrüstung">
+            <Input
+              value={review.modificationType ?? ""}
+              onChange={(event) =>
+                patch("modificationType", event.target.value || null)
+              }
+              placeholder="z. B. Sonderfahrwerksfedern, Sportfahrwerk"
+            />
+          </Field>
+          <Field label="Bauteil / Bezeichnung">
             <Input
               value={review.partCategory ?? ""}
               onChange={(event) =>
                 patch("partCategory", event.target.value || null)
               }
-              placeholder="z. B. Sonderfahrwerksfedern"
+              placeholder="z. B. Tieferlegungsfedern VA"
             />
           </Field>
           <Field label="Typ / Modell">
@@ -389,18 +440,38 @@ export function TeilegutachtenOverview({
               placeholder="z. B. Eibach 21-85-041-01-VA"
             />
           </Field>
-          <Field label="Kennzeichnung am Bauteil">
+          <Field label="Art der Kennzeichnung">
             <Input
-              value={review.physicalMarking ?? ""}
+              value={review.markingType ?? ""}
               onChange={(event) =>
-                patch("physicalMarking", event.target.value || null)
+                patch("markingType", event.target.value || null)
               }
-              placeholder='z. B. "Aufdruck auf den Federwindungen"'
+              placeholder='z. B. "Aufdruck", "Eingegossen", "Typenschild"'
+            />
+          </Field>
+          <Field label="Kennzeichnungsnummer">
+            <Input
+              value={review.markingNumber ?? ""}
+              onChange={(event) =>
+                patch("markingNumber", event.target.value || null)
+              }
+              placeholder='z. B. "e1*47656", "14-00123-CP-GBM"'
             />
           </Field>
           <Field label="Fahrzeugfreigaben">
             {review.compatibilityTable?.rows.length ? (
-              <VerwendungsbereichTable table={review.compatibilityTable} />
+              <div className="space-y-2">
+                <VerwendungsbereichTable table={review.compatibilityTable} />
+                {review.vehicleApprovals?.length ? (
+                  <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+                    {review.vehicleApprovals.length}{" "}
+                    {review.vehicleApprovals.length === 1
+                      ? "Fahrzeugfreigabe"
+                      : "Fahrzeugfreigaben"}{" "}
+                    erkannt
+                  </p>
+                ) : null}
+              </div>
             ) : (
               <textarea
                 value={formatLinesForEdit(review.vehicleApprovals)}

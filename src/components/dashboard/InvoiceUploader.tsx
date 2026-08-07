@@ -634,8 +634,13 @@ export function InvoiceUploader({
       review.matchedVehicleRow
         ? `Trefferzeile: ${review.matchedVehicleRow}`
         : null,
-      review.physicalMarking
-        ? `Kennzeichnung: ${review.physicalMarking}`
+      review.markingType
+        ? `Art der Kennzeichnung: ${review.markingType}`
+        : review.physicalMarking
+          ? `Kennzeichnung: ${review.physicalMarking}`
+          : null,
+      review.markingNumber
+        ? `Kennzeichnungsnummer: ${review.markingNumber}`
         : null,
       "Hinweis: Teilegutachten allein nicht straßenverkehrsrechtlich gültig — Anbauabnahme erforderlich.",
     ]
@@ -674,7 +679,12 @@ export function InvoiceUploader({
         "technicalSpecs",
         technicalSpecs?.length ? JSON.stringify(technicalSpecs) : "",
       );
-      formData.set("partCategory", review.partCategory?.trim() ?? "");
+      formData.set(
+        "partCategory",
+        review.modificationType?.trim() ??
+          review.partCategory?.trim() ??
+          "",
+      );
       formData.set("notes", notes);
       formData.set("manufacturer", review.manufacturer?.trim() ?? "");
       formData.set("invoiceNumber", certificateNumber);

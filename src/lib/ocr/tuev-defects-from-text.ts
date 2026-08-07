@@ -9,11 +9,11 @@ const CHECKPOINT_GLOBAL = /\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?/g;
  * Explicit Mängel list headers only — never bare "Mängel" (matches legal boilerplate).
  */
 const DEFECTS_SECTION_HEADER =
-  /(?:\(\d+\)\s*)?(?:Ihr Fahrzeug(?:[\s|]+)*weist folgende Mängel auf|Festgestellte\s+Mängel\s*:)/gi;
+  /(?:\(\d+\)\s*)?(?:Ihr Fahrzeug(?:[\s|]+)*weist folgende Mängel auf|Festgestellte\s+Mängel\s*:|Mängelliste\s*:)/gi;
 
 /** Stop parsing before footers, UMA blocks, greetings, or result lines. */
 const DEFECTS_SECTION_END =
-  /\n\s*(?:Hinweise|Ergebnis|Unterschrift|Seite\s+\d|nächste\s+hu|HU\s+fällig|prüfplakette\s+erteilt|ohne\s+(?:erhebliche\s+)?mängel|Bitte beachten Sie|Lassen Sie bitte|Die Nachprüfung|Bitte legen Sie|Wir bedanken uns|begrüßen zu dürfen|Im Auftrag der|Untersuchung des Motormanagement|Motormanagement\/Abgasreinigung|\(UMA\)|Sehr geehrte|wir haben Ihr Fahrzeug|verantwortlich sind|Ingenieurbüro|Dipl\.?\s*-?\s*Ing|Tel\s*:|(?:Dechant|Straße|Strasse)\b)/i;
+  /\n\s*(?:Hinweise|Ergebnis|Unterschrift|Seite\s+\d|n[aäe]{0,2}chste\s+(?:hu|untersuchung|hauptuntersuchung)|HU\s+fällig|prüfplakette\s+erteilt|ohne\s+(?:erhebliche\s+)?mängel|Bitte beachten Sie|Lassen Sie bitte|Die Nachprüfung|Bitte legen Sie|Wir bedanken uns|begrüßen zu dürfen|Im Auftrag der|Untersuchung des Motormanagement|Motormanagement\/Abgasreinigung|\(UMA\)|Sehr geehrte|wir haben Ihr Fahrzeug|verantwortlich sind|Ingenieurbüro|Dipl\.?\s*-?\s*Ing|Tel\s*:|(?:Dechant|Straße|Strasse)\b)/i;
 
 const SKIP_DEFECT_LINE =
   /^(?:\(\d+\)\s*)?(?:Ihr Fahrzeug(?:[\s|]+)*weist folgende Mängel auf|Festgestellte\s+Mängel\s*:?|Mängelliste\s*:?)\s*$/i;
@@ -39,6 +39,27 @@ function isBoilerplateLine(line: string): boolean {
   if (!trimmed || trimmed === "—" || trimmed === "|") return true;
   if (SKIP_DEFECT_LINE.test(trimmed)) return true;
   return BOILERPLATE_DEFECT_LINE.test(trimmed);
+}
+
+/** Description-only Mängel row — requires EM/GM to avoid legal-text false positives. */
+function parsePlainDefectLine(
+  text: string,
+  severity: "EM" | "GM" | null,
+): TuevDefectRow | null {
+  if (!severity) return null;
+
+  const trimmed = text.trim();
+  if (!trimmed || isBoilerplateLine(trimmed)) return null;
+  if (TUEV_CHECKPOINT_PATTERN.test(trimmed)) return null;
+
+  const description = trimmed.replace(/\s*\((EM|GM)\)\s*$/, "").trim();
+  if (description.length < 6 || isBoilerplateLine(description)) return null;
+
+  return {
+    checkpoint: null,
+    description: description.slice(0, 500),
+    severity,
+  };
 }
 
 function parseCheckpointChunk(text: string): TuevDefectRow | null {
@@ -93,6 +114,12 @@ function parseInlineDefects(body: string): TuevDefectRow[] {
     const severity =
       severityRaw === "EM" || severityRaw === "GM" ? severityRaw : null;
     const subChunks = splitChunkByCheckpoints(chunk);
+
+    if (subChunks.length === 0) {
+      const plain = parsePlainDefectLine(chunk, severity);
+      if (plain) defects.push(plain);
+      continue;
+    }
 
     subChunks.forEach((subChunk, subIndex) => {
       const row = parseCheckpointChunk(subChunk);
@@ -154,9 +181,8 @@ function dedupeDefects(rows: TuevDefectRow[]): TuevDefectRow[] {
   const unique: TuevDefectRow[] = [];
 
   for (const row of rows) {
-    if (!row.checkpoint) continue;
     const key = [
-      row.checkpoint,
+      row.checkpoint ?? "",
       row.description.toLowerCase(),
       row.severity ?? "",
     ].join("|");
@@ -194,7 +220,7 @@ function sliceDefectsSection(text: string): string | null {
   return section.length >= 4 ? section : null;
 }
 
-/** Extract HU/AU Mängel — only numbered Prüfpunkte under the Mängel section. */
+/** Extract HU/AU Mängel under an explicit Mängel section (Prüfpunkt and/or EM/GM lines). */
 export function extractTuevDefectsFromText(
   rawText: string,
 ): TuevDefectRow[] | null {

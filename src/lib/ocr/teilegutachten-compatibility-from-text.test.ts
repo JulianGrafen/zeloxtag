@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { extractTeilegutachtenCompatibilityTableFromText } from "@/lib/ocr/teilegutachten-compatibility-from-text";
+import {
+  extractTeilegutachtenCompatibilityTableFromText,
+  extractTeilegutachtenVerwendungsbereichFromText,
+} from "@/lib/ocr/teilegutachten-compatibility-from-text";
 import { vehicleApprovalsFromSanitizedTable } from "@/lib/validations/teilegutachten-compatibility-table";
 
 describe("extractTeilegutachtenCompatibilityTableFromText", () => {
@@ -67,5 +70,20 @@ IV. Auflagen
         "Verwendungsbereich:\nMazda RX-8 (SE3P)",
       ),
     ).toBeNull();
+  });
+});
+
+describe("extractTeilegutachtenVerwendungsbereichFromText", () => {
+  it("parses plain-text vehicle lines without a pipe table", () => {
+    const text = `
+I. Verwendungsbereich
+Mazda RX-8 (SE3P)
+BMW 3er (E90)
+II. Technische Daten
+`;
+
+    expect(extractTeilegutachtenVerwendungsbereichFromText(text)).toBe(
+      "Mazda RX-8 (SE3P)\nBMW 3er (E90)",
+    );
   });
 });

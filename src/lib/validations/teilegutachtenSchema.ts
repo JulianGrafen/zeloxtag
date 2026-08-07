@@ -33,6 +33,7 @@ import {
   normalizeTeilegutachtenOwnerNotes,
   TEILEGUTACHTEN_OWNER_NOTES_MAX_LENGTH,
 } from "@/lib/ocr/teilegutachten-owner-notes-from-text";
+import { normalizeTeilegutachtenMarking } from "@/lib/ocr/teilegutachten-marking-from-text";
 
 export const TEILEGUTACHTEN_AUFLAGEN_MAX_LENGTH = 2_400;
 
@@ -58,13 +59,20 @@ export const TeilegutachtenLlmPayloadSchema = z
     manufacturer: z.string().trim().min(1).max(120).nullable(),
     /** Part family, e.g. "Sonderfahrwerksfedern". */
     partCategory: z.string().trim().min(1).max(120).nullable(),
+    /** Art der Umrüstung — document header field, e.g. "Sportfahrwerk". */
+    modificationType: z.string().trim().min(1).max(120).nullable(),
     /** Exact part type / model id, e.g. "Eibach 21-85-041-01-VA". */
     partType: z.string().trim().min(1).max(160).nullable(),
     /**
      * Kennzeichnung — how the part is physically marked on the component.
      * CRITICAL for the mandatory Anbauabnahme inspection.
+     * @deprecated Prefer {@link markingType} + {@link markingNumber}; kept for LLM fallback.
      */
     physicalMarking: z.string().trim().min(1).max(500).nullable(),
+    /** Art der Kennzeichnung, e.g. "Aufdruck", "Eingegossen", "Typenschild". */
+    markingType: z.string().trim().min(1).max(200).nullable(),
+    /** Kennzeichnungsnummer / Nummer on the part, e.g. "e1*47656". */
+    markingNumber: z.string().trim().min(1).max(120).nullable(),
     requiresPhysicalInspection: z.boolean().optional(),
     /** Prüforganisation / issuer, e.g. "TÜV SÜD Automotive GmbH". */
     testingOrganization: z.string().trim().min(1).max(200).nullable(),
@@ -109,8 +117,11 @@ export const TeilegutachtenExtractionSchema = z
     certificateNumber: z.string().trim().min(1).max(120).nullable(),
     manufacturer: z.string().trim().min(1).max(120).nullable(),
     partCategory: z.string().trim().min(1).max(120).nullable(),
+    modificationType: z.string().trim().min(1).max(120).nullable(),
     partType: z.string().trim().min(1).max(160).nullable(),
     physicalMarking: z.string().trim().min(1).max(500).nullable(),
+    markingType: z.string().trim().min(1).max(200).nullable(),
+    markingNumber: z.string().trim().min(1).max(120).nullable(),
     /** Always true — legal requirement under § 19 Abs. 3 StVZO. */
     requiresPhysicalInspection: z.literal(true),
     testingOrganization: z.string().trim().min(1).max(200).nullable(),
@@ -152,8 +163,11 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
       "certificateNumber",
       "manufacturer",
       "partCategory",
+      "modificationType",
       "partType",
       "physicalMarking",
+      "markingType",
+      "markingNumber",
       "requiresPhysicalInspection",
       "testingOrganization",
       "userVehicleMatchStatus",
@@ -183,7 +197,12 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
       partCategory: {
         type: ["string", "null"],
         description:
-          'Part category in German, e.g. "Sonderfahrwerksfedern", "Frontspoiler".',
+          'Optional Bauteil / Bezeichnung, e.g. "Frontspoiler", "Sportauspuff".',
+      },
+      modificationType: {
+        type: ["string", "null"],
+        description:
+          'Art der Umrüstung from the document header — verbatim, e.g. "Sonderfahrwerksfedern", "Abgasanlage", "Sportfahrwerk".',
       },
       partType: {
         type: ["string", "null"],
@@ -193,7 +212,17 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
       physicalMarking: {
         type: ["string", "null"],
         description:
-          'Kennzeichnung — how the part is marked physically, e.g. "Aufdruck auf den Federwindungen", "Eingegossen". CRITICAL.',
+          'Legacy combined Kennzeichnung text. Prefer markingType + markingNumber.',
+      },
+      markingType: {
+        type: ["string", "null"],
+        description:
+          'Art der Kennzeichnung — verbatim, e.g. "Aufdruck", "Eingegossen", "Typenschild", "Aufdruck auf den Federwindungen". CRITICAL.',
+      },
+      markingNumber: {
+        type: ["string", "null"],
+        description:
+          'Kennzeichnungsnummer / Nummer on the part, e.g. "e1*47656", "14-00123-CP-GBM". CRITICAL.',
       },
       requiresPhysicalInspection: {
         type: "boolean",
@@ -355,14 +384,22 @@ export function normalizeTeilegutachtenExtraction(
   fields: TeilegutachtenLlmPayload,
 ): TeilegutachtenExtraction {
   const status = fields.userVehicleMatchStatus;
+  const marking = normalizeTeilegutachtenMarking({
+    markingType: fields.markingType,
+    markingNumber: fields.markingNumber,
+    physicalMarking: fields.physicalMarking,
+  });
 
   const normalized: TeilegutachtenExtraction = {
     documentType: "Teilegutachten",
     certificateNumber: normalizeOptionalText(fields.certificateNumber, 120),
     manufacturer: normalizeOptionalText(fields.manufacturer, 120),
     partCategory: normalizeOptionalText(fields.partCategory, 120),
+    modificationType: normalizeOptionalText(fields.modificationType, 120),
     partType: normalizeOptionalText(fields.partType, 160),
-    physicalMarking: normalizeOptionalText(fields.physicalMarking, 500),
+    markingType: marking.markingType,
+    markingNumber: marking.markingNumber,
+    physicalMarking: marking.physicalMarking,
     requiresPhysicalInspection: true,
     testingOrganization: normalizeOptionalText(fields.testingOrganization, 200),
     userVehicleMatchStatus: status ?? null,
@@ -387,8 +424,11 @@ export function emptyTeilegutachtenLlmPayload(): TeilegutachtenLlmPayload {
     certificateNumber: null,
     manufacturer: null,
     partCategory: null,
+    modificationType: null,
     partType: null,
     physicalMarking: null,
+    markingType: null,
+    markingNumber: null,
     requiresPhysicalInspection: true,
     testingOrganization: null,
     userVehicleMatchStatus: null,
@@ -461,6 +501,87 @@ export function teilegutachtenVehicleApprovals(
     : null;
 }
 
+/** Review form state → extraction shape (for syncing Freigaben from tables). */
+export type TeilegutachtenReviewSource = {
+  certificateNumber: string | null;
+  manufacturer: string | null;
+  partCategory: string | null;
+  modificationType: string | null;
+  partType: string | null;
+  markingType: string | null;
+  markingNumber: string | null;
+  physicalMarking: string | null;
+  testingOrganization: string | null;
+  userVehicleMatchStatus: TeilegutachtenExtraction["userVehicleMatchStatus"];
+  matchedVehicleRow: string | null;
+  compatibilityTable: TableData | null;
+  technicalDataTable: TableData | null;
+  ownerNotes: string | null;
+  verwendungsbereich: string | null;
+  auflagen: string[] | null;
+};
+
+export function teilegutachtenReviewToExtraction(
+  review: TeilegutachtenReviewSource,
+): TeilegutachtenExtraction {
+  const marking = normalizeTeilegutachtenMarking({
+    markingType: review.markingType,
+    markingNumber: review.markingNumber,
+    physicalMarking: review.physicalMarking,
+  });
+
+  return {
+    documentType: "Teilegutachten",
+    certificateNumber: review.certificateNumber?.trim() || null,
+    manufacturer: review.manufacturer?.trim() || null,
+    partCategory: review.partCategory?.trim() || null,
+    modificationType: review.modificationType?.trim() || null,
+    partType: review.partType?.trim() || null,
+    markingType: marking.markingType,
+    markingNumber: marking.markingNumber,
+    physicalMarking: marking.physicalMarking,
+    requiresPhysicalInspection: true,
+    testingOrganization: review.testingOrganization?.trim() || null,
+    userVehicleMatchStatus: review.userVehicleMatchStatus,
+    verwendungsbereich: review.verwendungsbereich?.trim() || null,
+    auflagen: review.auflagen,
+    matchedVehicleRow: review.matchedVehicleRow?.trim() || null,
+    compatibilityTable: review.compatibilityTable,
+    technicalDataTable: review.technicalDataTable,
+    ownerNotes: review.ownerNotes?.trim() || null,
+  };
+}
+
+export function resolveTeilegutachtenReviewVehicleApprovals(
+  review: TeilegutachtenReviewSource & {
+    vehicleApprovals?: string[] | null;
+  },
+): string[] | null {
+  if (review.vehicleApprovals?.length) {
+    return normalizeAbeVehicleApprovals(review.vehicleApprovals);
+  }
+  return teilegutachtenVehicleApprovals(teilegutachtenReviewToExtraction(review));
+}
+
+function formatMarkingSummary(extracted: TeilegutachtenExtraction): string | null {
+  if (extracted.markingType || extracted.markingNumber) {
+    return [
+      extracted.markingType
+        ? `Art der Kennzeichnung: ${extracted.markingType}`
+        : null,
+      extracted.markingNumber
+        ? `Kennzeichnungsnummer: ${extracted.markingNumber}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return extracted.physicalMarking
+    ? `Kennzeichnung: ${extracted.physicalMarking}`
+    : null;
+}
+
 function buildValidityArea(extracted: TeilegutachtenExtraction): string {
   const parts = [
     extracted.compatibilityTable?.rows.length
@@ -470,9 +591,7 @@ function buildValidityArea(extracted: TeilegutachtenExtraction): string {
     extracted.matchedVehicleRow !== extracted.verwendungsbereich
       ? `Fahrzeugzeile: ${extracted.matchedVehicleRow}`
       : null,
-    extracted.physicalMarking
-      ? `Kennzeichnung: ${extracted.physicalMarking}`
-      : null,
+    formatMarkingSummary(extracted),
   ].filter(Boolean);
 
   if (parts.length === 0) {
@@ -503,6 +622,8 @@ export function teilegutachtenToApprovalFields(
     compatibilityTable: extracted.compatibilityTable ?? null,
     technicalDataTable: extracted.technicalDataTable ?? null,
     ownerNotes: extracted.ownerNotes ?? null,
+    markingType: extracted.markingType,
+    markingNumber: extracted.markingNumber,
   };
   return { kind: "teilegutachten", data };
 }
@@ -519,8 +640,13 @@ export function teilegutachtenToAnalyzeFields(
   extracted: TeilegutachtenExtraction,
 ): InvoiceTextParseResult {
   const partLabel =
-    [extracted.partCategory, extracted.partType].filter(Boolean).join(" · ") ||
-    null;
+    [
+      extracted.modificationType,
+      extracted.partCategory,
+      extracted.partType,
+    ]
+      .filter(Boolean)
+      .join(" · ") || null;
 
   const inspectionNote =
     "Hinweis: Teilegutachten allein nicht straßenverkehrsrechtlich gültig — Anbauabnahme erforderlich.";
@@ -536,9 +662,7 @@ export function teilegutachtenToAnalyzeFields(
     !looksLikeVerwendungsbereichTableDump(extracted.verwendungsbereich)
       ? `Verwendungsbereich:\n${extracted.verwendungsbereich}`
       : null,
-    extracted.physicalMarking
-      ? `Kennzeichnung: ${extracted.physicalMarking}`
-      : null,
+    formatMarkingSummary(extracted),
     inspectionNote,
   ]
     .filter(Boolean)
@@ -558,7 +682,8 @@ export function teilegutachtenToAnalyzeFields(
     vehicleApprovals: teilegutachtenVehicleApprovals(extracted),
     authority: extracted.testingOrganization,
     conditions: extracted.auflagen,
-    partCategory: extracted.partCategory,
+    partCategory:
+      extracted.modificationType ?? extracted.partCategory ?? null,
     notes: matchNotes || null,
     manufacturer: extracted.manufacturer,
     invoiceNumber: extracted.certificateNumber,
