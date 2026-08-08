@@ -12,7 +12,6 @@ import {
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
 import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
-import { DocumentViewer } from "@/components/documents/document-viewer";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
 import {
@@ -28,7 +27,10 @@ import {
   displayManualInvoiceNumber,
   isManualVehicleEntry,
 } from "@/lib/documents/manual-entries";
-import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
+import {
+  isViewableDocumentUrl,
+  openDocumentOriginal,
+} from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
 
 interface DocumentInvoiceDetailViewProps {
@@ -72,7 +74,6 @@ export function DocumentInvoiceDetailView({
   backHref,
   canEdit = false,
 }: DocumentInvoiceDetailViewProps) {
-  const [viewerOpen, setViewerOpen] = useState(false);
   const [vendorLabel, setVendorLabel] = useState(
     () => document.vendor?.trim() || displayDocumentTitle(document.title),
   );
@@ -336,7 +337,7 @@ export function DocumentInvoiceDetailView({
               <PressableButton
                 type="button"
                 variant="button"
-                onClick={() => setViewerOpen(true)}
+                onClick={() => openDocumentOriginal(document.file_url)}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
               >
                 <FileText className="h-4 w-4" aria-hidden />
@@ -368,14 +369,6 @@ export function DocumentInvoiceDetailView({
           </PressableButton>
         </div>
       </div>
-
-      {viewerOpen && canOpenOriginal ? (
-        <DocumentViewer
-          title={title}
-          fileUrl={document.file_url}
-          onClose={() => setViewerOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }

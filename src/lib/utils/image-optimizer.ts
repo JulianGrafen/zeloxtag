@@ -189,6 +189,38 @@ export function optimizeDocumentCanvas(
 }
 
 /**
+ * Resize a flattened document canvas without scan/contrast filtering.
+ * Used for archival PDFs that should keep natural photo colors.
+ */
+export function resizeDocumentCanvas(
+  source: HTMLCanvasElement,
+  maxWidth = OPTIMIZER_MAX_WIDTH_PX,
+): HTMLCanvasElement {
+  const { width, height } = computeTargetSize(
+    source.width,
+    source.height,
+    maxWidth,
+  );
+
+  if (width === source.width && height === source.height) {
+    return source;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Canvas ist in diesem Browser nicht verfügbar.");
+  }
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(source, 0, 0, width, height);
+  return canvas;
+}
+
+/**
  * Optimize a raw camera / gallery image (no perspective crop).
  */
 export async function optimizeDocumentImage(

@@ -267,3 +267,48 @@ export async function buildScanPdfFile(
   const { file } = await convertImageToPdf(source, { fileName: baseName });
   return file;
 }
+
+/**
+ * Render the first page of a PDF to a canvas (client-side, pdf.js).
+ */
+export async function rasterizePdfFirstPage(
+  file: File | Blob,
+  maxWidth = 1600,
+): Promise<HTMLCanvasElement> {
+  if (typeof document === "undefined") {
+    throw new Error("PDF-Rasterisierung ist nur im Browser verfügbar.");
+  }
+
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
+
+  const bytes = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+  const page = await pdf.getPage(1);
+  const baseViewport = page.getViewport({ scale: 1 });
+  const scale = Math.min(2.5, maxWidth / Math.max(1, baseViewport.width));
+  const viewport = page.getViewport({ scale });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(viewport.width));
+  canvas.height = Math.max(1, Math.round(viewport.height));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Canvas ist in diesem Browser nicht verfügbar.");
+  }
+
+  await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+  return canvas;
+}
+
+/**
+ * Normalize wizard pages (PDF or image) into sources for multi-page PDF assembly.
+ */
+export async function normalizePageForPdfMerge(
+  file: File,
+): Promise<PdfImageSource> {
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+    return rasterizePdfFirstPage(file);
+  }
+  return file;
+}

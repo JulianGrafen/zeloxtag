@@ -4,22 +4,22 @@
  */
 
 import { computeA4CropRect } from "@/lib/ocr/compress-page";
+import { detectDocumentQuad } from "@/lib/utils/document-auto-detect";
 import { loadImageFromFile } from "@/lib/utils/image-loader";
 import {
   A4_ASPECT,
   optimizeDocumentCanvas,
+  resizeDocumentCanvas,
 } from "@/lib/utils/image-optimizer";
 import {
   convertImageToPdf,
   type PdfConversionResult,
 } from "@/lib/utils/pdf-converter";
 import {
-  defaultDocumentCorners,
   type QuadPoints,
   warpPerspectiveAsync,
   WARP_MAX_WIDTH_PX,
 } from "@/lib/utils/perspective";
-import { buildScanFromCorners } from "@/lib/utils/scan-pipeline";
 
 export type ContainerRect = {
   left: number;
@@ -150,17 +150,46 @@ async function warpOptimizeA4(
   return optimized.canvas;
 }
 
+async function warpToNaturalA4Canvas(
+  source: HTMLCanvasElement,
+  corners: QuadPoints,
+): Promise<HTMLCanvasElement> {
+  const warped = await warpPerspectiveAsync(source, corners, {
+    maxWidth: WARP_MAX_WIDTH_PX,
+    forceAspect: A4_ASPECT,
+  });
+  return resizeDocumentCanvas(warped, WARP_MAX_WIDTH_PX);
+}
+
 async function warpAndBuildA4Pdf(
   source: HTMLCanvasElement,
   corners: QuadPoints,
   fileName: string,
 ): Promise<PdfConversionResult> {
-  const result = await buildScanFromCorners(source, corners);
-  const renamed = new File([result.pdf.file], `${fileName}.pdf`, {
+  const canvas = await warpToNaturalA4Canvas(source, corners);
+
+  const pdf = await convertImageToPdf(canvas, {
+    fileName: fileName.replace(/\.pdf$/i, ""),
+    marginMm: 0,
+    imageCompression: "MEDIUM",
+  });
+
+  const renamed = new File([pdf.file], `${fileName.replace(/\.pdf$/i, "")}.pdf`, {
     type: "application/pdf",
     lastModified: Date.now(),
   });
-  return { ...result.pdf, file: renamed };
+  return { ...pdf, file: renamed };
+}
+
+function detectInvoiceCorners(
+  canvas: HTMLCanvasElement,
+  fallbackInsetRatio = 0.015,
+): QuadPoints {
+  return detectDocumentQuad(canvas, {
+    minAreaRatio: 0.14,
+    insetRatio: 0.008,
+    fallbackInsetRatio,
+  });
 }
 
 /**
@@ -173,7 +202,7 @@ export async function buildA4ImageFromGuideCapture(
   fileName = `${A4_SCAN_IMAGE_PREFIX}${Date.now()}`,
 ): Promise<File> {
   const cropped = cropCanvasRegion(fullCapture, crop);
-  const corners = defaultDocumentCorners(cropped.width, cropped.height, 0.025);
+  const corners = detectInvoiceCorners(cropped);
   const canvas = await warpOptimizeA4(cropped, corners);
   return canvasToJpegFile(canvas, fileName);
 }
@@ -187,7 +216,7 @@ export async function buildA4PdfFromGuideCapture(
   fileName = `${WIZARD_OVERVIEW_PDF_PREFIX}${Date.now()}`,
 ): Promise<PdfConversionResult> {
   const cropped = cropCanvasRegion(fullCapture, crop);
-  const corners = defaultDocumentCorners(cropped.width, cropped.height, 0.025);
+  const corners = detectInvoiceCorners(cropped);
   return warpAndBuildA4Pdf(cropped, corners, fileName.replace(/\.pdf$/i, ""));
 }
 
@@ -219,7 +248,7 @@ export async function buildA4ImageFromPhotoFile(
     sh: crop.sh,
   });
 
-  const corners = defaultDocumentCorners(cropped.width, cropped.height, 0.04);
+  const corners = detectInvoiceCorners(cropped, 0.02);
   const canvas = await warpOptimizeA4(cropped, corners);
   return canvasToJpegFile(canvas, fileName);
 }
@@ -252,18 +281,13 @@ export async function buildA4PdfFromPhotoFile(
     sh: crop.sh,
   });
 
-  const corners = defaultDocumentCorners(cropped.width, cropped.height, 0.04);
-  const warped = await warpPerspectiveAsync(cropped, corners, {
-    maxWidth: WARP_MAX_WIDTH_PX,
-    forceAspect: A4_ASPECT,
-  });
-  const optimized = optimizeDocumentCanvas(warped, {
-    maxWidth: WARP_MAX_WIDTH_PX,
-  });
+  const corners = detectInvoiceCorners(cropped, 0.02);
+  const canvas = await warpToNaturalA4Canvas(cropped, corners);
 
-  const pdf = await convertImageToPdf(optimized.canvas, {
+  const pdf = await convertImageToPdf(canvas, {
     fileName: fileName.replace(/\.pdf$/i, ""),
-    marginMm: 6,
+    marginMm: 0,
+    imageCompression: "MEDIUM",
   });
 
   return pdf.file;

@@ -13,6 +13,8 @@ import { Camera, FileUp, FlipHorizontal2, ImagePlus, X } from "lucide-react";
 import {
   buildA4ImageFromGuideCapture,
   buildA4ImageFromPhotoFile,
+  buildA4PdfFromGuideCapture,
+  buildA4PdfFromPhotoFile,
   mapContainerRectToVideoCrop,
 } from "@/lib/utils/a4-auto-scan";
 
@@ -38,9 +40,11 @@ export interface InBrowserCameraProps {
   guideFrameDimOutside?: boolean;
   /**
    * With `guideFrame="a4"`: crop the guide frame from the capture,
-   * auto-straighten and return an A4 JPEG (default: on for full-page scans).
+   * auto-straighten and return an A4 JPEG (default) or PDF.
    */
   a4AutoCrop?: boolean;
+  /** Output format for A4 auto-crop captures. Default: jpeg. */
+  a4OutputFormat?: "jpeg" | "pdf";
   /** Vertical anchor for section frames. Ignored for `a4`. Default: center. */
   guideSectionAnchor?: GuideSectionAnchor;
   /** Allow PDF files in the gallery fallback picker. Default: false. */
@@ -127,6 +131,7 @@ export function InBrowserCamera({
   guideFrame = "section",
   guideFrameDimOutside = false,
   a4AutoCrop = true,
+  a4OutputFormat = "jpeg",
   guideSectionAnchor = "center",
   allowPdf = false,
   showBriefing = true,
@@ -266,7 +271,11 @@ export function InBrowserCamera({
       );
     }
 
-    return buildA4ImageFromGuideCapture(fullCapture, crop);
+    return a4OutputFormat === "pdf"
+      ? (
+          await buildA4PdfFromGuideCapture(fullCapture, crop)
+        ).file
+      : buildA4ImageFromGuideCapture(fullCapture, crop);
   }
 
   function readA4CaptureLayout():
@@ -370,8 +379,11 @@ export function InBrowserCamera({
     ) {
       setProcessingCapture(true);
       try {
-        const a4File = await buildA4ImageFromPhotoFile(file);
-        await deliverCaptureFile(a4File);
+        const outputFile =
+          a4OutputFormat === "pdf"
+            ? await buildA4PdfFromPhotoFile(file)
+            : await buildA4ImageFromPhotoFile(file);
+        await deliverCaptureFile(outputFile);
       } catch (error) {
         setCameraError(
           error instanceof Error
@@ -619,10 +631,10 @@ export function InBrowserCamera({
               <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black/55 px-6 text-center backdrop-blur-[2px]">
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
                 <p className="text-[0.9rem] font-semibold text-white">
-                  A4-Autozoom…
+                  {a4OutputFormat === "pdf" ? "A4-Zuschnitt & PDF…" : "A4-Autozoom…"}
                 </p>
                 <p className="text-[0.75rem] text-white/80">
-                  Seite wird zugeschnitten und gerade gerückt
+                  Rechnung wird auf den Papierbereich zugeschnitten
                 </p>
               </div>
             ) : null}

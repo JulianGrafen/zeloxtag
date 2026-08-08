@@ -36,7 +36,7 @@ import {
   type InvoiceTextParseCategory,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
-import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
+import { convertImagesToPdf, normalizePageForPdfMerge } from "@/lib/utils/pdf-converter";
 import { isWizardOverviewScanPdf } from "@/lib/utils/a4-auto-scan";
 import {
   mergeInvoiceWizardExtractions,
@@ -144,15 +144,26 @@ async function callInvoiceStep<T>(
 
 async function buildUploadFile(
   overviewFile: File | null,
-  headerFile: File | null,
   lineItemsFiles: File[],
 ): Promise<File | null> {
-  const pages = [overviewFile, headerFile, ...lineItemsFiles].filter(
+  /** Stored PDF: full-page overview + optional line-item blocks only (no header crop). */
+  const pages = [overviewFile, ...lineItemsFiles].filter(
     (file): file is File => file !== null,
   );
 
   if (pages.length === 0) return null;
-  if (pages.length === 1 && isPdfFile(pages[0]!)) return pages[0]!;
+
+  if (
+    pages.length === 1 &&
+    isPdfFile(pages[0]!) &&
+    !isWizardOverviewScanPdf(pages[0]!)
+  ) {
+    return pages[0]!;
+  }
+
+  if (pages.length === 1 && isWizardOverviewScanPdf(pages[0]!)) {
+    return pages[0]!;
+  }
 
   const unique = pages.filter(
     (file, index) =>
@@ -162,10 +173,13 @@ async function buildUploadFile(
       ) === index,
   );
 
-  if (unique.length === 1 && isPdfFile(unique[0]!)) return unique[0]!;
+  if (unique.length === 1) {
+    return unique[0]!;
+  }
 
   try {
-    const result = await convertImagesToPdf(unique, {
+    const sources = await Promise.all(unique.map(normalizePageForPdfMerge));
+    const result = await convertImagesToPdf(sources, {
       fileName: `invoice-scan-${Date.now()}`,
       fullBleed: true,
       imageCompression: "MEDIUM",
@@ -432,11 +446,7 @@ export function InvoiceUploadWizard({
         { lockedCategory },
       );
 
-      const uploadFile = await buildUploadFile(
-        overviewFile,
-        headerFile,
-        lineItemsFiles,
-      );
+      const uploadFile = await buildUploadFile(overviewFile, lineItemsFiles);
       const previewSource =
         lineItemsFiles[lineItemsFiles.length - 1] ??
         headerFile ??
@@ -599,6 +609,7 @@ export function InvoiceUploadWizard({
           title={resolvedHeading}
           hint="Schritt 1 von 3 · Gesamte Rechnung ins DIN-A4-Feld halten"
           guideFrame="a4"
+          a4OutputFormat="pdf"
           guideLabel="Gesamte Rechnung im Rahmen ausrichten"
           showBriefing={false}
           allowPdf

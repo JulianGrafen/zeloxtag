@@ -47,3 +47,10 @@ export function inlineDocumentProxyUrl(fileUrl: string): string {
   const params = new URLSearchParams({ src: fileUrl });
   return `/api/documents/file?${params.toString()}`;
 }
+
+/** Open the document inline in the system browser / PDF viewer. */
+export function openDocumentOriginal(fileUrl: string): void {
+  if (typeof window === "undefined") return;
+  const url = inlineDocumentProxyUrl(fileUrl);
+  window.open(url, "_blank", "noopener,noreferrer");
+}
