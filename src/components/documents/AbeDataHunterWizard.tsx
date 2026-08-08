@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import {
   AlertTriangle,
+  Camera,
   ChevronLeft,
   ChevronRight,
   FileUp,
@@ -60,7 +61,8 @@ export interface AbeDataHunterWizardProps {
   backLabel?: string;
 }
 
-type WizardPhase = "hunt" | "review";
+type WizardPhase = "choose" | "hunt" | "review";
+type HuntMode = "camera" | "pdf";
 
 type ReviewFormState = {
   kbaNumber: string;
@@ -153,7 +155,6 @@ function HuntProgressOverlay({
   captureSummary,
   lastFound,
   onOpenReview,
-  onUploadPdf,
   onClose,
 }: {
   report: AbeDataHunterReport;
@@ -163,7 +164,6 @@ function HuntProgressOverlay({
   captureSummary: string | null;
   lastFound: string[];
   onOpenReview: () => void;
-  onUploadPdf: (file: File) => void;
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -277,21 +277,6 @@ function HuntProgressOverlay({
           ) : null}
         </div>
 
-        <label className="relative mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-[0.78rem] font-semibold text-white">
-          <input
-            type="file"
-            accept="application/pdf,.pdf"
-            className="absolute inset-0 cursor-pointer opacity-0"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) onUploadPdf(file);
-              event.target.value = "";
-            }}
-          />
-          <FileUp className="h-4 w-4" />
-          PDF hochladen
-        </label>
-
         <div className="mt-2 flex items-center gap-1 px-1">
           {REQUIRED_ORDER.map((key, index) => {
             const done = !missing.includes(key);
@@ -334,31 +319,74 @@ function HuntProgressOverlay({
   );
 }
 
-/** Fixed PDF picker above the camera shutter — always visible. */
-function PdfUploadFab({ onUpload }: { onUpload: (file: File) => void }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+function HuntEntryChooser({
+  vehicleLabel,
+  onBack,
+  onChooseCamera,
+  onChoosePdf,
+}: {
+  vehicleLabel: string;
+  onBack: () => void;
+  onChooseCamera: () => void;
+  onChoosePdf: (file: File) => void;
+}) {
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
-  if (!mounted || typeof document === "undefined") return null;
+  return (
+    <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col px-4 py-6">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex w-fit items-center gap-1.5 text-[0.82rem] font-medium text-[color:var(--vd-muted)]"
+      >
+        Zurück
+      </button>
 
-  return createPortal(
-    <label className="relative fixed bottom-[max(7.25rem,calc(env(safe-area-inset-bottom)+5.5rem))] left-4 z-[10050] flex cursor-pointer items-center gap-2 rounded-full border border-white/25 bg-black/60 px-4 py-2.5 text-[0.78rem] font-semibold text-white shadow-lg backdrop-blur-md">
-      <input
-        type="file"
-        accept="application/pdf,.pdf"
-        className="absolute inset-0 cursor-pointer opacity-0"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) onUpload(file);
-          event.target.value = "";
-        }}
-      />
-      <FileUp className="h-4 w-4" />
-      PDF
-    </label>,
-    document.body,
+      <header className="mt-6">
+        <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+          ABE erfassen
+        </p>
+        <h1 className="mt-2 text-[1.35rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+          Wie möchtest du starten?
+        </h1>
+        <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+          {vehicleLabel} · Fotografiere fehlende Angaben nacheinander oder lade
+          ein komplettes PDF hoch.
+        </p>
+      </header>
+
+      <div className="mt-10 grid gap-3">
+        <Button
+          type="button"
+          className="h-14 justify-center gap-2 text-[0.95rem]"
+          onClick={onChooseCamera}
+        >
+          <Camera className="h-5 w-5" />
+          Fotografieren
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="h-14 justify-center gap-2 text-[0.95rem]"
+          onClick={() => pdfInputRef.current?.click()}
+        >
+          <FileUp className="h-5 w-5" />
+          PDF hochladen
+        </Button>
+        <input
+          ref={pdfInputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) onChoosePdf(file);
+            event.target.value = "";
+          }}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -605,7 +633,8 @@ export function AbeDataHunterWizard({
   onBack,
   backHref,
 }: AbeDataHunterWizardProps) {
-  const [phase, setPhase] = useState<WizardPhase>("hunt");
+  const [phase, setPhase] = useState<WizardPhase>("choose");
+  const [huntMode, setHuntMode] = useState<HuntMode | null>(null);
   const [report, setReport] = useState<AbeDataHunterReport>(() =>
     emptyAbeDataHunterReport(),
   );
@@ -648,10 +677,31 @@ export function AbeDataHunterWizard({
     else if (backHref) window.location.href = backHref;
   }
 
+  function returnToChooser() {
+    setHuntMode(null);
+    setPhase("choose");
+  }
+
+  function startCameraHunt() {
+    setHuntMode("camera");
+    setPhase("hunt");
+  }
+
+  function startPdfHunt(file: File) {
+    if (!isPdfFile(file)) {
+      setHuntError("Bitte eine PDF-Datei wählen.");
+      return;
+    }
+    setHuntMode("pdf");
+    setPhase("hunt");
+    enqueueFile(file);
+  }
+
   function restart() {
     queueRef.current = [];
     drainingRef.current = false;
-    setPhase("hunt");
+    setPhase("choose");
+    setHuntMode(null);
     setReport(emptyAbeDataHunterReport());
     setPhotos([]);
     setSourcePdf(null);
@@ -875,6 +925,16 @@ export function AbeDataHunterWizard({
     });
   }
 
+  const errorBanner =
+    huntError && typeof document !== "undefined"
+      ? createPortal(
+          <div className="fixed bottom-4 left-4 right-4 z-[10060] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
+            {huntError}
+          </div>,
+          document.body,
+        )
+      : null;
+
   if (phase === "review") {
     return (
       <ReviewPanel
@@ -891,44 +951,82 @@ export function AbeDataHunterWizard({
     );
   }
 
-  const errorBanner =
-    huntError && typeof document !== "undefined"
-      ? createPortal(
+  if (phase === "choose") {
+    return (
+      <>
+        {huntError ? (
           <div className="fixed bottom-4 left-4 right-4 z-[10060] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
             {huntError}
+          </div>
+        ) : null}
+        <HuntEntryChooser
+          vehicleLabel={vehicleLabel}
+          onBack={goBack}
+          onChooseCamera={startCameraHunt}
+          onChoosePdf={startPdfHunt}
+        />
+      </>
+    );
+  }
+
+  const progressOverlay = (
+    <HuntProgressOverlay
+      report={report}
+      analyzing={analyzing}
+      analyzingPdf={analyzingPdf}
+      queuedCount={queuedCount}
+      captureSummary={captureSummary}
+      lastFound={lastFound}
+      onOpenReview={() => setPhase("review")}
+      onClose={returnToChooser}
+    />
+  );
+
+  const switchToCameraButton =
+    huntMode === "pdf" &&
+    !complete &&
+    !analyzing &&
+    typeof document !== "undefined"
+      ? createPortal(
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[10050] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              onClick={() => setHuntMode("camera")}
+              className="pointer-events-auto mx-auto flex w-full max-w-[440px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-black/70 px-4 py-3.5 text-[0.88rem] font-semibold text-white backdrop-blur-md"
+            >
+              <Camera className="h-4 w-4" />
+              Fehlende Angaben fotografieren
+            </button>
           </div>,
           document.body,
         )
       : null;
 
+  if (phase === "hunt" && huntMode === "pdf") {
+    return (
+      <>
+        {errorBanner}
+        <div className="fixed inset-0 bg-neutral-950" aria-hidden />
+        {progressOverlay}
+        {switchToCameraButton}
+      </>
+    );
+  }
+
   return (
     <>
       {errorBanner}
-
-      <HuntProgressOverlay
-        report={report}
-        analyzing={analyzing}
-        analyzingPdf={analyzingPdf}
-        queuedCount={queuedCount}
-        captureSummary={captureSummary}
-        lastFound={lastFound}
-        onOpenReview={() => setPhase("review")}
-        onUploadPdf={enqueueFile}
-        onClose={goBack}
-      />
-
-      <PdfUploadFab onUpload={enqueueFile} />
-
+      {progressOverlay}
       <InBrowserCamera
         title="ABE scannen"
-        hint="Fotografieren oder PDF hochladen — fehlende Punkte in der Leiste oben."
+        hint="Fotografiere die offenen Punkte in der Leiste oben."
         guideLabel="Weiter fotografieren, bis alles grün ist"
         guideFrame="a4"
-        allowPdf
+        allowPdf={false}
         showBriefing={false}
         continuousCapture
         onCapture={enqueueFile}
-        onClose={goBack}
+        onClose={returnToChooser}
       />
     </>
   );
