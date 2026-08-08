@@ -81,24 +81,24 @@ const CAPTURE_STEPS: Array<{
   guideLabel: string;
 }> = [
   {
-    phase: "capture-cover",
+    phase: "capture-main",
     stepNumber: 1,
-    title: "Erste Seite",
-    hint: "Scanne die erste Seite. Dort wo die KBA-Nummer, Design und Modell-Typ stehen.",
-    guideLabel: "KBA-Nummer · Design · Modell-Typ",
+    title: "Erste Seite der ABE",
+    hint: "Scanne die erste Seite der ABE — das Blatt mit der Überschrift „Kraftfahrt-Bundesamt“ und dem Titel „Allgemeine Betriebserlaubnis“.",
+    guideLabel: "Kraftfahrt-Bundesamt · Allgemeine Betriebserlaubnis",
   },
   {
-    phase: "capture-main",
+    phase: "capture-cover",
     stepNumber: 2,
-    title: "ABE-Deckblatt",
-    hint: "Scanne das Deckblatt der ABE. Die Seite, auf der Kraftfahrt-Bundesamt steht mit der Überschrift Allgemeine Betriebserlaubnis.",
-    guideLabel: "Kraftfahrt-Bundesamt · Allgemeine Betriebserlaubnis",
+    title: "Hersteller-Deckblatt",
+    hint: "Scanne das Hersteller-Deckblatt des Bauteils — z. B. Rad-Gutachten, Spoiler, Spurverbreiterung oder anderer ABE-Anhang. Suche KBA-Nummer, Genehmigungsnummer, Typ/Design und Maße.",
+    guideLabel: "KBA · Genehmigungsnummer · Typ · Maße",
   },
   {
     phase: "capture-vehicles",
     stepNumber: 3,
     title: "Fahrzeugtabelle",
-    hint: "Scanne die Seite mit der Raster-Tabelle: oben steht „Verkaufsbezeichnung:“ — darunter Spalten wie Fahrzeugtyp, Betriebserlaubnis, Reifen, Auflagen. Nicht das ABE-Deckblatt oder Fließtext.",
+    hint: "Scanne die Verwendungs- bzw. Fahrzeugtabelle mit „Verkaufsbezeichnung:“ und den Tabellenzeilen darunter (Fahrzeugtyp, Betriebserlaubnis, ggf. Reifen, Auflagen).",
     guideLabel: "Verkaufsbezeichnung · Tabellenzeilen",
   },
 ];
@@ -147,7 +147,7 @@ async function buildUploadFile(
   mainFile: File | null,
   vehiclesFile: File | null,
 ): Promise<File | null> {
-  const pages = [coverFile, mainFile, vehiclesFile].filter(
+  const pages = [mainFile, coverFile, vehiclesFile].filter(
     (f): f is File => f !== null,
   );
   if (pages.length === 0) return null;
@@ -230,6 +230,7 @@ function WizardBackButton({
 
 interface ReviewFormState {
   kbaNumber: string;
+  approvalNumber: string;
   abeNumber: string;
   abeHolder: string;
   manufacturer: string;
@@ -242,6 +243,7 @@ interface ReviewFormState {
 function reportToFormState(report: AbeWizardReport): ReviewFormState {
   return {
     kbaNumber: report.kbaNumber ?? "",
+    approvalNumber: report.approvalNumber ?? "",
     abeNumber: report.abeNumber ?? "",
     abeHolder: report.abeHolder ?? "",
     manufacturer: report.manufacturer ?? "",
@@ -386,9 +388,27 @@ function ReviewSection({
             onChange={set("kbaNumber")}
           />
 
+          {!form.kbaNumber.trim() && form.approvalNumber.trim() && !isEditing ? (
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/8 px-4 py-3">
+              <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+                Genehmigungsnummer
+              </p>
+              <p className="mt-1 font-mono text-[1.2rem] font-semibold tracking-wide text-[color:var(--vd-text)]">
+                {form.approvalNumber.trim()}
+              </p>
+            </div>
+          ) : null}
+
           {isEditing ? (
             <div className="space-y-3">
-              <AbeFieldLabel label="ABE-Nummer">
+              <AbeFieldLabel label="Genehmigungsnummer">
+                <Input
+                  value={form.approvalNumber}
+                  onChange={set("approvalNumber")}
+                  placeholder="Genehmigungsnummer / Gutachten-Nr."
+                />
+              </AbeFieldLabel>
+              <AbeFieldLabel label="ABE-Nummer (KBA-Deckblatt)">
                 <Input
                   value={form.abeNumber}
                   onChange={set("abeNumber")}
@@ -416,14 +436,14 @@ function ReviewSection({
                   placeholder="Prüforganisation laut Dokument"
                 />
               </AbeFieldLabel>
-              <AbeFieldLabel label="Design">
+              <AbeFieldLabel label="Typ / Design">
                 <Input
                   value={form.designType}
                   onChange={set("designType")}
-                  placeholder="Design laut Deckblatt"
+                  placeholder="Typ oder Design laut Deckblatt"
                 />
               </AbeFieldLabel>
-              <AbeFieldLabel label="Maße">
+              <AbeFieldLabel label="Maße / Abmessungen">
                 <Input
                   value={form.dimensions}
                   onChange={set("dimensions")}
@@ -440,6 +460,12 @@ function ReviewSection({
             </div>
           ) : (
             <dl className="grid gap-2.5 text-[0.88rem]">
+              {form.approvalNumber.trim() ? (
+                <AbeSummaryRow
+                  label="Genehmigungsnummer"
+                  value={form.approvalNumber}
+                />
+              ) : null}
               <AbeSummaryRow label="ABE-Nummer" value={form.abeNumber} />
               <AbeSummaryRow label="Inhaber der ABE" value={form.abeHolder} />
               <AbeSummaryRow label="Hersteller" value={form.manufacturer} />
@@ -447,7 +473,7 @@ function ReviewSection({
                 label="Prüforganisation"
                 value={form.testingOrganization}
               />
-              <AbeSummaryRow label="Design" value={form.designType} />
+              <AbeSummaryRow label="Typ / Design" value={form.designType} />
               <AbeSummaryRow label="Maße" value={form.dimensions} />
               <AbeSummaryRow label="Artikel-Nr." value={form.articleNumbers} />
             </dl>
@@ -553,7 +579,7 @@ export function AbeUploadWizard({
   backLabel = "Zurück",
 }: AbeUploadWizardProps) {
   const [state, setState] = useState<WizardState>({
-    phase: "capture-cover",
+    phase: "capture-main",
     coverFile: null,
     mainFile: null,
     vehiclesFile: null,
@@ -580,7 +606,7 @@ export function AbeUploadWizard({
   );
 
   useEffect(() => {
-    const source = state.coverFile ?? state.mainFile ?? state.vehiclesFile;
+    const source = state.mainFile ?? state.coverFile ?? state.vehiclesFile;
     if (!source) {
       setPreviewUrl(null);
       return;
@@ -607,7 +633,7 @@ export function AbeUploadWizard({
 
   function resetWizard() {
     setState({
-      phase: "capture-cover",
+      phase: "capture-main",
       coverFile: null,
       mainFile: null,
       vehiclesFile: null,
@@ -630,19 +656,19 @@ export function AbeUploadWizard({
     setSaveError(null);
   }
 
-  function handleCoverCapture(file: File) {
-    setState((prev) => ({
-      ...prev,
-      coverFile: file,
-      phase: "capture-main",
-      error: null,
-    }));
-  }
-
   function handleMainCapture(file: File) {
     setState((prev) => ({
       ...prev,
       mainFile: file,
+      phase: "capture-cover",
+      error: null,
+    }));
+  }
+
+  function handleCoverCapture(file: File) {
+    setState((prev) => ({
+      ...prev,
+      coverFile: file,
       phase: "capture-vehicles",
       error: null,
     }));
@@ -759,11 +785,14 @@ export function AbeUploadWizard({
     const filteredAuflagen = auflagenForAbeVehicleGroup(selectedGroup);
 
     const technicalSpecs = [
+      form.approvalNumber.trim()
+        ? { label: "Genehmigungsnummer", value: form.approvalNumber.trim() }
+        : null,
       form.abeNumber.trim()
         ? { label: "ABE-Nummer", value: form.abeNumber.trim() }
         : null,
       form.designType.trim()
-        ? { label: "Design", value: form.designType.trim() }
+        ? { label: "Typ / Design", value: form.designType.trim() }
         : null,
       form.dimensions.trim()
         ? { label: "Maße", value: form.dimensions.trim() }
@@ -809,7 +838,7 @@ export function AbeUploadWizard({
       formData.set("partCategory", kbaDisplay ?? "");
       formData.set("notes", "");
       formData.set("manufacturer", form.manufacturer.trim());
-      formData.set("invoiceNumber", form.abeNumber.trim());
+      formData.set("invoiceNumber", form.abeNumber.trim() || form.approvalNumber.trim());
       formData.set("mileageKm", "");
       formData.set("pageCount", String(pageCount || 1));
       formData.set(
@@ -868,11 +897,11 @@ export function AbeUploadWizard({
                 : handleVehiclesCapture
           }
           onClose={() => {
-            if (phase === "capture-cover") goBack();
-            else if (phase === "capture-main") {
-              setState((prev) => ({ ...prev, phase: "capture-cover" }));
-            } else {
+            if (phase === "capture-main") goBack();
+            else if (phase === "capture-cover") {
               setState((prev) => ({ ...prev, phase: "capture-main" }));
+            } else {
+              setState((prev) => ({ ...prev, phase: "capture-cover" }));
             }
           }}
         />
@@ -901,7 +930,7 @@ export function AbeUploadWizard({
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
-          {["Deckblatt", "Hauptseite", "Fahrzeugtabelle"].map((label, i) => (
+          {["ABE-Deckblatt", "Hersteller-Deckblatt", "Fahrzeugtabelle"].map((label, i) => (
             <div
               key={label}
               className="flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1"

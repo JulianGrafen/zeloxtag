@@ -29,7 +29,7 @@ const VEHICLES_FILE = "/Users/julian/Downloads/IMG_6986.jpg";
 
 const EXPECTED_COVER = {
   kbaNumber: "48185",
-  abeNumber: /AVAG9/i,           // partial match – full number partially obscured
+  approvalNumber: /AVAG9/i,
   manufacturer: /alcar/i,
   designType: /valencia/i,
   dimensions: /8J.*18H2.*5x120.*ET.*30/i,
@@ -91,7 +91,7 @@ async function testCover() {
 
   const fields: Array<[string, string | null | undefined, string | RegExp]> = [
     ["kbaNumber", result.kbaNumber, EXPECTED_COVER.kbaNumber],
-    ["abeNumber", result.abeNumber, EXPECTED_COVER.abeNumber],
+    ["approvalNumber", result.approvalNumber, EXPECTED_COVER.approvalNumber],
     ["manufacturer", result.manufacturer, EXPECTED_COVER.manufacturer],
     ["designType", result.designType, EXPECTED_COVER.designType],
     ["dimensions", result.dimensions, EXPECTED_COVER.dimensions],

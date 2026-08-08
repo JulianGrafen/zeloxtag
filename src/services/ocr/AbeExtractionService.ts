@@ -29,6 +29,7 @@ import {
   type AbeWizardVehiclesRaw,
 } from "@/lib/validations/abeWizardSchemas";
 import { parseAbeVehicleRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
+import { normalizeAbeWizardCoverExtraction } from "@/lib/ocr/abe-wizard-cover-normalize";
 import { tableMatchingService } from "@/services/ocr/TableMatchingService";
 
 /** Cover-only extract (no garage vehicle). */
@@ -407,14 +408,19 @@ export class AbeExtractionService {
       input,
       [
         AbeExtractionService.WIZARD_IMAGE_ONLY_GUARD,
-        "You extract German wheel-approval (ABE / Rad-Gutachten) cover pages.",
-        "Fields: kbaNumber (digits only, no 'KBA' prefix), abeNumber, manufacturer, designType, dimensions, articleNumbers.",
-        "designType: join multiple DESIGN lines with ' / '. articleNumbers: every printed article code as separate entries.",
+        "You extract German ABE manufacturer cover pages for any approved part type (wheels, spoilers, wheel spacers, body kits, etc.).",
+        "Extract kbaNumber when a KBA field is visible (digits only, no 'KBA' prefix).",
+        "Extract approvalNumber (Genehmigungsnummer) from Gutachten-Nr., Genehmigungsnummer, ABE … NR., Rad-Gutachten-Nr., or similar labels.",
+        "When KBA is visible, extract BOTH kbaNumber and approvalNumber.",
+        "When KBA is NOT visible, still extract approvalNumber if any approval reference is printed.",
+        "Also extract manufacturer, designType (typ/design/bezeichnung), dimensions (maße/größe/abmessungen), articleNumbers when visible.",
+        "designType: join multiple lines with ' / '. articleNumbers: every printed part/article code as separate entries.",
         "Return ONLY valid JSON matching the schema.",
       ],
       [
-        "Extract the cover page fields from this photograph only.",
-        "Look for printed labels such as KBA, ABE/Rad-Gutachten-Nr., DESIGN, GRÖSSE, ZU RAD-ARTIKEL-NR.",
+        "Extract the manufacturer cover page from this photograph only.",
+        "Part type may be wheels, spoiler, spacers, or other ABE component — read labels on THIS page only.",
+        "Look for KBA, Genehmigungsnummer, Typ/Design, Maße, Artikel-Nr.",
       ],
       ABE_WIZARD_COVER_JSON_SCHEMA,
       AbeWizardCoverSchema,
@@ -422,12 +428,7 @@ export class AbeExtractionService {
       "cover",
       { model: resolveAbeContextModel() },
     );
-    return {
-      ...raw,
-      designType: raw.designType
-        ? raw.designType.replace(/\s*\n\s*/g, " / ").trim()
-        : null,
-    };
+    return normalizeAbeWizardCoverExtraction(raw);
   }
 
   /**
@@ -502,14 +503,15 @@ export class AbeExtractionService {
         "- fahrzeugtyp: Fahrzeugtyp column cell for this row only.",
         "- typeApproval: Betriebserlaubnis cell verbatim.",
         "- driveType: drive-type word in Auflagen (Allradantrieb / Heckantrieb / Frontantrieb), else null.",
-        "- tireSizes: all tyre sizes from Reifen column; strip leading kW ranges.",
+        "- tireSizes: tyre sizes from Reifen column if present; empty array when column is missing (e.g. spoiler, spacer).",
         "- auflagenCodes: short condition codes from Auflagen column only.",
         "Do not merge rows. Do not skip rows. Do not add rows that are not visible.",
         "Return ONLY valid JSON matching the schema.",
       ],
       isRetry
         ? [
-            "This image shows a Fahrzeug- und Auflagen-Tabelle with columns like Fahrzeugtyp, Betriebserlaubnis, kW, Reifen, Auflagen.",
+            "This image shows a Verwendungs- or Fahrzeug-Tabelle (wheels, spoiler, spacers, etc.).",
+            "Typical columns: Fahrzeugtyp, Betriebserlaubnis, kW, Reifen (optional), Auflagen.",
             "Look for the bold 'Verkaufsbezeichnung:' header above each table block.",
             "Extract EVERY visible data row from ALL table blocks on this page.",
             "Repeat the Verkaufsbezeichnung text on each row even when it only appears once above the group.",
@@ -518,7 +520,7 @@ export class AbeExtractionService {
             "Extract every visible row from the Fahrzeug- und Auflagen-Tabelle in this photograph.",
             "The page must show a grid table — not the ABE cover or plain legal text.",
             "Read the Verkaufsbezeichnung header above each group and repeat it on every row in that group.",
-            "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen zu Reifen | Auflagen.",
+            "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen (if applicable) | Auflagen.",
             "Use only text you can read on this image.",
           ],
       ABE_WIZARD_VEHICLES_JSON_SCHEMA,

@@ -25,7 +25,8 @@ export type AbeVehicleMatch = z.infer<typeof AbeVehicleMatchSchema>;
 export const AbeWizardCoverSchema = z
   .object({
     kbaNumber: z.string().trim().min(1).max(32).nullable(),
-    abeNumber: z.string().trim().min(1).max(80).nullable(),
+    /** Genehmigungsnummer / Gutachten-Nr. from the manufacturer cover page. */
+    approvalNumber: z.string().trim().min(1).max(80).nullable(),
     manufacturer: z.string().trim().min(1).max(200).nullable(),
     designType: z.string().trim().min(1).max(200).nullable(),
     dimensions: z.string().trim().min(1).max(200).nullable(),
@@ -65,6 +66,7 @@ export type AbeWizardVehiclesExtraction = {
 export const AbeWizardReportSchema = z
   .object({
     kbaNumber: z.string().trim().min(1).max(32).nullable(),
+    approvalNumber: z.string().trim().min(1).max(80).nullable(),
     abeNumber: z.string().trim().min(1).max(80).nullable(),
     abeHolder: z.string().trim().min(1).max(200).nullable(),
     manufacturer: z.string().trim().min(1).max(200).nullable(),
@@ -88,7 +90,7 @@ export const ABE_WIZARD_COVER_JSON_SCHEMA = {
     additionalProperties: false,
     required: [
       "kbaNumber",
-      "abeNumber",
+      "approvalNumber",
       "manufacturer",
       "designType",
       "dimensions",
@@ -99,12 +101,13 @@ export const ABE_WIZARD_COVER_JSON_SCHEMA = {
         type: ["string", "null"],
         description:
           FROM_DOCUMENT +
-          'KBA number digits only. Strip any "KBA" prefix.',
+          'KBA number digits only when a KBA field is visible. Strip any "KBA" prefix. Null if no KBA is printed on this page.',
       },
-      abeNumber: {
+      approvalNumber: {
         type: ["string", "null"],
         description:
-          FROM_DOCUMENT + "ABE / Rad-Gutachten number printed on the cover.",
+          FROM_DOCUMENT +
+          "Genehmigungsnummer from this manufacturer cover: Gutachten-Nr., Genehmigungsnummer, ABE … NR., Rad-Gutachten-Nr., or similar. Works for wheels, spoilers, spacers, and other ABE parts. Always extract when visible — even when KBA is also present.",
       },
       manufacturer: {
         type: ["string", "null"],
@@ -115,19 +118,20 @@ export const ABE_WIZARD_COVER_JSON_SCHEMA = {
         type: ["string", "null"],
         description:
           FROM_DOCUMENT +
-          "Design / model name from the DESIGN field. Join multiple lines with ' / '.",
+          "Product type or design name (DESIGN, TYP, Bezeichnung, Modell). Join multiple lines with ' / '.",
       },
       dimensions: {
         type: ["string", "null"],
         description:
-          FROM_DOCUMENT + "Wheel dimensions from the GRÖSSE field.",
+          FROM_DOCUMENT +
+          "Key dimensions or size specs (GRÖSSE, Maße, Abmessungen, Spurverbreiterung mm, etc.).",
       },
       articleNumbers: {
         type: "array",
         items: { type: "string" },
         description:
           FROM_DOCUMENT +
-          "All article numbers from ZU RAD-ARTIKEL-NR. Empty array if none.",
+          "All article / part numbers on the cover (Artikel-Nr., ZU RAD-ARTIKEL-NR., Sachnummer, etc.). Empty array if none.",
       },
     },
   },
@@ -221,7 +225,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_DOCUMENT +
-                "All tyre sizes from Reifen column for this row.",
+                "Tyre sizes from Reifen column when present. Empty array if no Reifen column (e.g. spoiler, spacer).",
             },
             auflagenCodes: {
               type: "array",
@@ -248,7 +252,7 @@ export function mergeAbeWizardSteps(
   main: AbeWizardMainExtraction | null,
   vehicles: AbeWizardVehiclesExtraction | null,
 ): AbeWizardReport {
-  const abeNumber = main?.abeNumber ?? cover.abeNumber;
+  const abeNumber = main?.abeNumber ?? null;
   const abeHolder =
     main?.abeHolder ?? main?.manufacturer ?? cover.manufacturer ?? null;
   const manufacturer =
@@ -256,6 +260,7 @@ export function mergeAbeWizardSteps(
 
   return {
     kbaNumber: cover.kbaNumber,
+    approvalNumber: cover.approvalNumber,
     abeNumber,
     abeHolder,
     manufacturer,

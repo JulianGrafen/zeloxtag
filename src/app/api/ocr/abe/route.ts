@@ -9,10 +9,18 @@ import {
 } from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 import type {
+  AbeHuntAuflagenExtraction,
+  AbeHuntMarkingExtraction,
+  AbeHuntStammdatenExtraction,
+  AbeHuntStepResult,
+  AbeHuntVehicleExtraction,
+} from "@/lib/validations/abeDataHunterSchemas";
+import type {
   AbeWizardCoverExtraction,
   AbeWizardMainExtraction,
   AbeWizardVehiclesExtraction,
 } from "@/lib/validations/abeWizardSchemas";
+import { abeDataHunterExtractionService } from "@/services/documents/AbeExtractionService";
 import { abeExtractionService } from "@/services/ocr/AbeExtractionService";
 
 export const runtime = "nodejs";
@@ -20,15 +28,56 @@ export const maxDuration = 60;
 
 const MAX_BYTES = 25 * 1024 * 1024;
 
-const ABE_WIZARD_STEPS = ["cover", "main", "vehicles"] as const;
+const LEGACY_STEPS = ["cover", "main", "vehicles"] as const;
+const HUNT_STEPS = [
+  "hunt-stammdaten",
+  "hunt-kba", // alias → stammdaten
+  "hunt-marking",
+  "hunt-vehicle",
+  "hunt-auflagen",
+] as const;
+
+const ABE_WIZARD_STEPS = [...LEGACY_STEPS, ...HUNT_STEPS] as const;
 type AbeWizardStep = (typeof ABE_WIZARD_STEPS)[number];
 
 const stepSchema = z.enum(ABE_WIZARD_STEPS);
 
-type StepSuccess =
+type LegacySuccess =
   | { ok: true; step: "cover"; extraction: AbeWizardCoverExtraction }
   | { ok: true; step: "main"; extraction: AbeWizardMainExtraction }
   | { ok: true; step: "vehicles"; extraction: AbeWizardVehiclesExtraction };
+
+type HuntSuccess =
+  | {
+      ok: true;
+      step: "hunt-stammdaten" | "hunt-kba";
+      status: AbeHuntStepResult<AbeHuntStammdatenExtraction>["status"];
+      extraction: AbeHuntStammdatenExtraction;
+      reason?: string;
+    }
+  | {
+      ok: true;
+      step: "hunt-marking";
+      status: AbeHuntStepResult<AbeHuntMarkingExtraction>["status"];
+      extraction: AbeHuntMarkingExtraction;
+      reason?: string;
+    }
+  | {
+      ok: true;
+      step: "hunt-vehicle";
+      status: AbeHuntStepResult<AbeHuntVehicleExtraction>["status"];
+      extraction: AbeHuntVehicleExtraction;
+      reason?: string;
+    }
+  | {
+      ok: true;
+      step: "hunt-auflagen";
+      status: AbeHuntStepResult<AbeHuntAuflagenExtraction>["status"];
+      extraction: AbeHuntAuflagenExtraction;
+      reason?: string;
+    };
+
+type StepSuccess = LegacySuccess | HuntSuccess;
 
 type StepError = {
   ok: false;
@@ -52,16 +101,8 @@ function jsonError(
 /**
  * POST /api/ocr/abe
  *
- * Guided ABE wizard extraction — processes one photographed page per call.
- *
- * FormData fields:
- *   file  – image of the document page
- *   step  – "cover" | "main" | "vehicles"
- *
- * Responses:
- *   cover    → AbeWizardCoverExtraction (KBA, design, dimensions, article numbers)
- *   main     → AbeWizardMainExtraction (official ABE number, manufacturer, org)
- *   vehicles → AbeWizardVehiclesExtraction (compatibility table rows)
+ * Data-hunter steps never fail the request on Zod/completeness misses —
+ * they return `{ status: "needs_manual", extraction }` for HITL entry.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -126,20 +167,80 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const input = { bytes, contentType: sniffed };
 
     if (step === "cover") {
-      const extraction = await abeExtractionService.extractCoverFromDocument(input);
-      const body: StepSuccess = { ok: true, step: "cover", extraction };
-      return NextResponse.json(body);
+      const extraction =
+        await abeExtractionService.extractCoverFromDocument(input);
+      return NextResponse.json({
+        ok: true,
+        step: "cover",
+        extraction,
+      } satisfies LegacySuccess);
     }
 
     if (step === "main") {
-      const extraction = await abeExtractionService.extractMainFromDocument(input);
-      const body: StepSuccess = { ok: true, step: "main", extraction };
-      return NextResponse.json(body);
+      const extraction =
+        await abeExtractionService.extractMainFromDocument(input);
+      return NextResponse.json({
+        ok: true,
+        step: "main",
+        extraction,
+      } satisfies LegacySuccess);
     }
 
-    const extraction = await abeExtractionService.extractVehiclesFromDocument(input);
-    const body: StepSuccess = { ok: true, step: "vehicles", extraction };
-    return NextResponse.json(body);
+    if (step === "vehicles") {
+      const extraction =
+        await abeExtractionService.extractVehiclesFromDocument(input);
+      return NextResponse.json({
+        ok: true,
+        step: "vehicles",
+        extraction,
+      } satisfies LegacySuccess);
+    }
+
+    if (step === "hunt-stammdaten" || step === "hunt-kba") {
+      const result =
+        await abeDataHunterExtractionService.extractStammdatenSnippet(input);
+      return NextResponse.json({
+        ok: true,
+        step,
+        status: result.status,
+        extraction: result.extraction,
+        reason: result.reason,
+      } satisfies HuntSuccess);
+    }
+
+    if (step === "hunt-marking") {
+      const result =
+        await abeDataHunterExtractionService.extractMarkingSnippet(input);
+      return NextResponse.json({
+        ok: true,
+        step: "hunt-marking",
+        status: result.status,
+        extraction: result.extraction,
+        reason: result.reason,
+      } satisfies HuntSuccess);
+    }
+
+    if (step === "hunt-vehicle") {
+      const result =
+        await abeDataHunterExtractionService.extractVehicleSnippet(input);
+      return NextResponse.json({
+        ok: true,
+        step: "hunt-vehicle",
+        status: result.status,
+        extraction: result.extraction,
+        reason: result.reason,
+      } satisfies HuntSuccess);
+    }
+
+    const result =
+      await abeDataHunterExtractionService.extractAuflagenSnippet(input);
+    return NextResponse.json({
+      ok: true,
+      step: "hunt-auflagen",
+      status: result.status,
+      extraction: result.extraction,
+      reason: result.reason,
+    } satisfies HuntSuccess);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unexpected extraction error.";
