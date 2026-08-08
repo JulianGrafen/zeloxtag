@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import {
+  coerceGermanMoneyAmount,
+  sanitizeLlmMoneyAmount,
+} from "@/lib/ocr/parse-german-money";
+import {
   isHtmlDebrisLabel,
   stripHtmlTags,
 } from "@/lib/ocr/normalize-ocr-markdown";
@@ -45,14 +49,17 @@ export function coerceLooseNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function looseNumberSchema(max = Number.POSITIVE_INFINITY) {
-  return z.preprocess((value) => coerceLooseNumber(value), z.number().finite().max(max).nullable());
+function looseMoneySchema(max = Number.POSITIVE_INFINITY) {
+  return z.preprocess(
+    (value) => coerceGermanMoneyAmount(value, "conservative"),
+    z.number().finite().max(max).nullable(),
+  );
 }
 
 export const invoiceLineItemSchema = z.object({
   label: z.string().trim().min(1).max(160),
   amount: z.preprocess(
-    (value) => coerceLooseNumber(value) ?? value,
+    (value) => coerceGermanMoneyAmount(value, "aggressive") ?? value,
     z.number().finite(),
   ),
 });
@@ -65,7 +72,7 @@ export const invoiceTextParseSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
     .nullable(),
-  amount: looseNumberSchema(250_000),
+  amount: looseMoneySchema(250_000),
   category: z.enum(INVOICE_TEXT_PARSE_CATEGORIES),
   summary: z.string().trim().min(1).max(80).nullable(),
   lineItems: z.array(invoiceLineItemSchema).max(60).nullable(),
@@ -303,7 +310,7 @@ export function normalizeLineItemsList(
   const cleaned = items
     .map((item) => ({
       label: stripHtmlTags(item.label).replace(/\s+/g, " ").trim().slice(0, 160),
-      amount: Math.round(item.amount * 100) / 100,
+      amount: sanitizeLlmMoneyAmount(item.amount, "aggressive"),
     }))
     .filter(
       (item) =>
@@ -339,7 +346,7 @@ export function normalizeTextParseResult(
     date: fields.date,
     amount:
       typeof fields.amount === "number"
-        ? Math.round(fields.amount * 100) / 100
+        ? sanitizeLlmMoneyAmount(fields.amount, "conservative")
         : null,
     category: fields.category,
     summary: fields.summary?.trim().slice(0, 80) || null,

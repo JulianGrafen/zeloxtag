@@ -12,6 +12,7 @@ import {
   isPercentRestatedAsAmount,
   type InvoiceLineItem,
 } from "./text-parse-schema";
+import { parseGermanMoneyAmount } from "./parse-german-money";
 
 const MAX_ITEMS = 60;
 const MAX_LABEL = 160;
@@ -115,14 +116,7 @@ function isPercentToken(text: string, index: number, raw: string): boolean {
 }
 
 function parseGermanAmount(raw: string): number | null {
-  if (/%/.test(raw)) return null;
-  const normalized = raw
-    .replace(/\s/g, "")
-    .replace(/\.(?=\d{3}(?:[.,]|$))/g, "")
-    .replace(",", ".");
-  const value = Number.parseFloat(normalized);
-  if (!Number.isFinite(value)) return null;
-  return Math.round(value * 100) / 100;
+  return parseGermanMoneyAmount(raw);
 }
 
 function isPlausibleLabel(label: string): boolean {

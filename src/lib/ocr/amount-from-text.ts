@@ -1,4 +1,5 @@
 import { sumLineItems } from "@/lib/documents/line-items";
+import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import type { DocumentLineItem } from "@/types/database";
 
 /**
@@ -9,29 +10,7 @@ const MAX_AMOUNT = 250_000;
 const MIN_AMOUNT = 1;
 
 function parseEurAmount(raw: string): number | null {
-  if (/%/.test(raw)) return null;
-
-  const cleaned = raw
-    .replace(/\s/g, "")
-    .replace(/€|eur/gi, "")
-    .trim();
-  if (!cleaned) return null;
-
-  // 1.234,56 / 1234,56 / 1,234.56 / 1234.56
-  let normalized = cleaned;
-  if (/\d,\d{2}$/.test(cleaned) && cleaned.includes(".")) {
-    normalized = cleaned.replace(/\./g, "").replace(",", ".");
-  } else if (/\d,\d{2}$/.test(cleaned)) {
-    normalized = cleaned.replace(",", ".");
-  } else if (/\d\.\d{2}$/.test(cleaned) && cleaned.includes(",")) {
-    normalized = cleaned.replace(/,/g, "");
-  }
-
-  const value = Number.parseFloat(normalized);
-  if (!Number.isFinite(value) || value < MIN_AMOUNT || value > MAX_AMOUNT) {
-    return null;
-  }
-  return Math.round(value * 100) / 100;
+  return parseGermanMoneyAmount(raw);
 }
 
 /** Skip captures that are percentage rates ("15%", "- 15 %"). */

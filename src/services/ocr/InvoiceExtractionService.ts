@@ -20,6 +20,7 @@ import {
   extractMileageKmFromText,
 } from "@/lib/ocr/mileage-from-text";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
+import { coerceGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
   INVOICE_TEXT_PARSE_CATEGORIES,
@@ -422,7 +423,7 @@ export class InvoiceExtractionService {
     return {
       vendor: parseNullableString(record.vendor, 160),
       date: parseIsoDate(record.date),
-      amount: coerceLooseNumber(record.amount),
+      amount: coerceGermanMoneyAmount(record.amount, "conservative"),
       category: category === "abe" ? "other" : category,
       summary: parseNullableString(record.summary, 80),
     };
@@ -470,7 +471,7 @@ export class InvoiceExtractionService {
 
     return {
       lineItems: parseLineItemsRaw(record.lineItems),
-      amount: coerceLooseNumber(record.amount),
+      amount: coerceGermanMoneyAmount(record.amount, "conservative"),
     };
   }
 }
