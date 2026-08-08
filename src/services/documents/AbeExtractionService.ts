@@ -9,7 +9,10 @@ import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { parseAbeVehicleRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import { coerceAbeMarkingText } from "@/lib/ocr/abe-marking-from-text";
-import { normalizeAbeKbaDigits } from "@/lib/validations/abeSchema";
+import {
+  normalizeAbeKbaDigits,
+  normalizeAbeNumberDigits,
+} from "@/lib/validations/abeSchema";
 import {
   ABE_HUNT_ALL_JSON_SCHEMA,
   ABE_HUNT_AUFLAGEN_JSON_SCHEMA,
@@ -72,7 +75,8 @@ export class AbeDataHunterExtractionService {
         input,
         [
           IMAGE_ONLY_GUARD,
-          "Extract ABE master data: kbaNumber, abeNumber (Nummer der ABE), abeHolder (Inhaber der ABE), manufacturer (Hersteller), partDesignation (Bezeichnung des Bauteils).",
+          "Extract ABE master data: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber der ABE), manufacturer (Hersteller), partDesignation (Bezeichnung des Bauteils).",
+          "Never put Gutachten-Nr. or Genehmigungsnummer with letters into kbaNumber or abeNumber.",
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer to that value.",
         ],
         [
@@ -97,6 +101,7 @@ export class AbeDataHunterExtractionService {
       const extraction: AbeHuntStammdatenExtraction = {
         ...parsed.data,
         kbaNumber: normalizeAbeKbaDigits(parsed.data.kbaNumber) || null,
+        abeNumber: normalizeAbeNumberDigits(parsed.data.abeNumber) || null,
       };
 
       if (!isAbeHuntStammdatenComplete(extraction)) {
@@ -252,7 +257,8 @@ export class AbeDataHunterExtractionService {
         input,
         [
           FREESTYLE_GUARD,
-          "Fields: kbaNumber, abeNumber (Nummer der ABE), abeHolder (Inhaber), manufacturer (Hersteller), partDesignation (Bauteilbezeichnung), markingText (Kennzeichnung), vehicleMatches (Fahrzeugtabelle with Verkaufsbezeichnung), auflagenCodes.",
+          "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber), manufacturer (Hersteller), partDesignation (Bauteilbezeichnung), markingText (Kennzeichnung), vehicleMatches (Fahrzeugtabelle with Verkaufsbezeichnung), auflagenCodes.",
+          "Never use Gutachten-Nr. or Genehmigungsnummer with letters for kbaNumber or abeNumber.",
           'For markingText: transcribe the full Kennzeichnung section verbatim — exact text after the heading, including table rows (Art der Kennzeichnung, Nummer). No summary.',
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer.",
           "Copy Auflagen-Kürzel from the table row and from any Auflagen list visible on this photo.",
@@ -301,7 +307,7 @@ export class AbeDataHunterExtractionService {
         const extraction: AbeDataHunterReport = {
           ...empty,
           kbaNumber: normalizeAbeKbaDigits(asText(record.kbaNumber)) || null,
-          abeNumber: asText(record.abeNumber),
+          abeNumber: normalizeAbeNumberDigits(asText(record.abeNumber)) || null,
           abeHolder: asText(record.abeHolder),
           manufacturer: asText(record.manufacturer),
           partDesignation: asText(record.partDesignation),
@@ -327,6 +333,7 @@ export class AbeDataHunterExtractionService {
       const extraction: AbeDataHunterReport = {
         ...parsed.data,
         kbaNumber: normalizeAbeKbaDigits(parsed.data.kbaNumber) || null,
+        abeNumber: normalizeAbeNumberDigits(parsed.data.abeNumber) || null,
         markingText: coerceAbeMarkingText(parsed.data.markingText),
       };
 

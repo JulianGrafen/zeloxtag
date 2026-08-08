@@ -9,6 +9,7 @@ import {
 } from "@/services/ocr/AbeExtractionService";
 import {
   normalizeAbeKbaDigits,
+  normalizeAbeNumberDigits,
   normalizeAbeMinimal,
 } from "@/lib/validations/abeSchema";
 
@@ -88,6 +89,18 @@ describe("AbeMinimal normalize", () => {
   it("strips KBA prefix to digits", () => {
     expect(normalizeAbeKbaDigits("KBA 39577")).toBe("39577");
     expect(normalizeAbeKbaDigits("39577")).toBe("39577");
+  });
+
+  it("rejects KBA values with letters instead of returning them", () => {
+    expect(normalizeAbeKbaDigits("Gutachten-Nr. ABC")).toBeNull();
+    expect(normalizeAbeKbaDigits("AB")).toBeNull();
+  });
+
+  it("normalizes Nummer der ABE to digits with optional star suffix", () => {
+    expect(normalizeAbeNumberDigits("48185*08")).toBe("48185*08");
+    expect(normalizeAbeNumberDigits("48185*08ABC")).toBe("48185*08");
+    expect(normalizeAbeNumberDigits("Rad-Gutachten 48185*08")).toBe("48185*08");
+    expect(normalizeAbeNumberDigits("TG-9001")).toBeNull();
   });
 
   it("normalizes a full minimal payload", () => {

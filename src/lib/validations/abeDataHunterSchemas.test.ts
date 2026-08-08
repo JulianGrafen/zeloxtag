@@ -111,7 +111,7 @@ describe("abeDataHunterSchemas required fields", () => {
     const incoming = mergeAbeDataHunterSteps(
       {
         kbaNumber: "99999",
-        abeNumber: "48185*08",
+        abeNumber: "48185*08ABC",
         abeHolder: "Alcar",
         manufacturer: "Alcar",
         partDesignation: "Spoiler",

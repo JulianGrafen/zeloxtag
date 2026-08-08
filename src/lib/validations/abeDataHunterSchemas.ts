@@ -5,6 +5,12 @@ import {
   ABE_MARKING_TEXT_MAX,
   mergeAbeMarkingText,
 } from "@/lib/ocr/abe-marking-from-text";
+import {
+  ABE_KBA_LLM_DIGITS_ONLY,
+  ABE_NUMBER_LLM_DIGITS_ONLY,
+  normalizeAbeKbaDigits,
+  normalizeAbeNumberDigits,
+} from "@/lib/validations/abeSchema";
 import { AbeVehicleMatchSchema } from "@/lib/validations/abeWizardSchemas";
 
 /** Prefix for OpenAI JSON schema field descriptions (legacy crop steps). */
@@ -225,8 +231,14 @@ export function fillAbeDataHunterReport(
   }
 
   return {
-    kbaNumber: keepFilled(current.kbaNumber, incoming.kbaNumber),
-    abeNumber: keepFilled(current.abeNumber, incoming.abeNumber),
+    kbaNumber: keepFilled(
+      current.kbaNumber,
+      normalizeAbeKbaDigits(incoming.kbaNumber),
+    ),
+    abeNumber: keepFilled(
+      current.abeNumber,
+      normalizeAbeNumberDigits(incoming.abeNumber),
+    ),
     abeHolder: keepFilled(current.abeHolder, incoming.abeHolder),
     manufacturer: keepFilled(current.manufacturer, incoming.manufacturer),
     partDesignation: keepFilled(
@@ -312,15 +324,11 @@ export const ABE_HUNT_STAMMDATEN_JSON_SCHEMA = {
     properties: {
       kbaNumber: {
         type: ["string", "null"],
-        description:
-          FROM_CROP +
-          'KBA number digits only. Strip any "KBA" prefix. Null if not visible.',
+        description: FROM_CROP + ABE_KBA_LLM_DIGITS_ONLY,
       },
       abeNumber: {
         type: ["string", "null"],
-        description:
-          FROM_CROP +
-          'Nummer der ABE next to "Nummer der ABE:" including any *suffix.',
+        description: FROM_CROP + ABE_NUMBER_LLM_DIGITS_ONLY,
       },
       abeHolder: {
         type: ["string", "null"],
@@ -478,15 +486,11 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
     properties: {
       kbaNumber: {
         type: ["string", "null"],
-        description:
-          FROM_PHOTO +
-          'KBA number digits only. Strip any "KBA" prefix. Null if not visible.',
+        description: FROM_PHOTO + ABE_KBA_LLM_DIGITS_ONLY,
       },
       abeNumber: {
         type: ["string", "null"],
-        description:
-          FROM_PHOTO +
-          'Nummer der ABE next to "Nummer der ABE:" including any *suffix.',
+        description: FROM_PHOTO + ABE_NUMBER_LLM_DIGITS_ONLY,
       },
       abeHolder: {
         type: ["string", "null"],

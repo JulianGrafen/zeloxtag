@@ -34,6 +34,10 @@ import {
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import {
+  normalizeAbeKbaDigits,
+  normalizeAbeNumberDigits,
+} from "@/lib/validations/abeSchema";
+import {
   ABE_REQUIRED_FIELD_LABELS,
   emptyAbeDataHunterReport,
   fillAbeDataHunterReport,
@@ -736,8 +740,8 @@ export function AbeDataHunterWizard({
 
     const draft: AbeDataHunterReport = {
       ...report,
-      kbaNumber: reviewForm.kbaNumber.trim() || null,
-      abeNumber: reviewForm.abeNumber.trim() || null,
+      kbaNumber: normalizeAbeKbaDigits(reviewForm.kbaNumber.trim()) || null,
+      abeNumber: normalizeAbeNumberDigits(reviewForm.abeNumber.trim()) || null,
       abeHolder: reviewForm.abeHolder.trim() || null,
       manufacturer: reviewForm.manufacturer.trim() || null,
       partDesignation: reviewForm.partDesignation.trim() || null,

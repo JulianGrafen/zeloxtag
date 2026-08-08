@@ -202,17 +202,64 @@ export const ABE_MINIMAL_JSON_SCHEMA = {
   },
 } as const;
 
-/** Normalize KBA to digits-only (strip "KBA", spaces, punctuation). */
+/** Common OCR letter→digit fixes inside numeric tokens (after labels stripped). */
+function fixOcrDigitConfusions(value: string): string {
+  return value
+    .replace(/[Oo]/g, "0")
+    .replace(/[Il|]/g, "1")
+    .replace(/[Ss]/g, "5")
+    .replace(/[Zz]/g, "2");
+}
+
+/** LLM hint: KBA is digits-only. */
+export const ABE_KBA_LLM_DIGITS_ONLY =
+  "Digits 0-9 only — never letters. Strip any KBA prefix. Not the Genehmigungsnummer / Gutachten-Nr.";
+
+/** LLM hint: Nummer der ABE is digits-only (optional * between groups). */
+export const ABE_NUMBER_LLM_DIGITS_ONLY =
+  'From the "Nummer der ABE" label only — digits 0-9, optional * suffix (e.g. 48185*08). Never letters. Not Gutachten-Nr. or Genehmigungsnummer with letters.';
+
+/** Normalize KBA to digits-only (strip "KBA", spaces, punctuation, letters). */
 export function normalizeAbeKbaDigits(
   value: string | null | undefined,
 ): string | null {
-  if (!value) return null;
-  const digits = value.replace(/\D/g, "");
-  if (digits.length < 3 || digits.length > 12) {
-    const trimmed = value.trim().slice(0, 32);
-    return trimmed.length > 0 ? trimmed : null;
-  }
+  if (!value?.trim()) return null;
+  const raw = fixOcrDigitConfusions(
+    value.trim().replace(/^kba\s*/i, "").trim(),
+  );
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 3 || digits.length > 12) return null;
   return digits;
+}
+
+/**
+ * Nummer der ABE: digits only, optional * between groups (e.g. 48185*08).
+ * Strips letters and never returns alphabetic characters.
+ */
+export function normalizeAbeNumberDigits(
+  value: string | null | undefined,
+): string | null {
+  if (!value?.trim()) return null;
+
+  const withoutKbaPrefix = value.trim().replace(/^kba\s*/i, "").trim();
+  if (/^tg[\s\-.]/i.test(withoutKbaPrefix)) return null;
+
+  const embedded = withoutKbaPrefix.match(/\d{4,6}(?:\*\d{1,3})?/g);
+  if (!embedded?.length) return null;
+
+  const candidate =
+    embedded.find((token) => token.includes("*")) ??
+    embedded.sort((a, b) => b.length - a.length)[0] ??
+    null;
+  if (!candidate) return null;
+
+  let raw = fixOcrDigitConfusions(candidate);
+  raw = raw.replace(/[^\d*]/g, "");
+  raw = raw.replace(/\*+/g, "*").replace(/^\*|\*$/g, "");
+
+  if (!/^\d+(\*\d+)?$/.test(raw)) return null;
+  if (raw.replace(/\*/g, "").length < 4) return null;
+  return raw.slice(0, 32);
 }
 
 function normalizeMatchedConditions(
