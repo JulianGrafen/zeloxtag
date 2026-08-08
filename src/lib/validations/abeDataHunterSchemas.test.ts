@@ -139,4 +139,21 @@ describe("abeDataHunterSchemas required fields", () => {
     expect(merged.auflagenCodes).toEqual(["744", "A77"]);
     expect(merged.vehicleMatches).toHaveLength(1);
   });
+
+  it("keeps the longer Kennzeichnung text when merging photos", () => {
+    const current = {
+      ...emptyAbeDataHunterReport(),
+      markingText: "Prüfplakette",
+    };
+    const incoming = {
+      ...emptyAbeDataHunterReport(),
+      markingText:
+        "Art der Kennzeichnung: Prüfplakette\nNummer: e1*47656",
+    };
+
+    const merged = fillAbeDataHunterReport(current, incoming);
+    expect(merged.markingText).toBe(
+      "Art der Kennzeichnung: Prüfplakette\nNummer: e1*47656",
+    );
+  });
 });

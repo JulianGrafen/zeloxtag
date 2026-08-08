@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  ABE_MARKING_LLM_INSTRUCTION,
+  ABE_MARKING_TEXT_MAX,
+  mergeAbeMarkingText,
+} from "@/lib/ocr/abe-marking-from-text";
 import { AbeVehicleMatchSchema } from "@/lib/validations/abeWizardSchemas";
 
 /** Prefix for OpenAI JSON schema field descriptions (legacy crop steps). */
@@ -62,7 +67,7 @@ export type AbeHuntKbaExtraction = AbeHuntStammdatenExtraction;
 export const AbeHuntMarkingSchema = z
   .object({
     /** How/where the KBA number is marked on the physical part. */
-    markingText: z.string().trim().min(1).max(1_200).nullable(),
+    markingText: z.string().trim().min(1).max(ABE_MARKING_TEXT_MAX).nullable(),
   })
   .strict();
 
@@ -93,7 +98,7 @@ export const AbeDataHunterReportSchema = z
     abeHolder: z.string().trim().min(1).max(200).nullable(),
     manufacturer: z.string().trim().min(1).max(200).nullable(),
     partDesignation: z.string().trim().min(1).max(200).nullable(),
-    markingText: z.string().trim().min(1).max(1_200).nullable(),
+    markingText: z.string().trim().min(1).max(ABE_MARKING_TEXT_MAX).nullable(),
     vehicleMatches: z.array(AbeVehicleMatchSchema).max(100),
     auflagenCodes: z.array(z.string().trim().min(1).max(40)).max(80),
     auflagenNotes: z.string().trim().min(1).max(1_200).nullable(),
@@ -228,7 +233,10 @@ export function fillAbeDataHunterReport(
       current.partDesignation,
       incoming.partDesignation,
     ),
-    markingText: keepFilled(current.markingText, incoming.markingText),
+    markingText: mergeAbeMarkingText(
+      current.markingText,
+      incoming.markingText,
+    ),
     vehicleMatches,
     auflagenCodes: mergeUniqueCodes(
       current.auflagenCodes,
@@ -349,9 +357,7 @@ export const ABE_HUNT_MARKING_JSON_SCHEMA = {
     properties: {
       markingText: {
         type: ["string", "null"],
-        description:
-          FROM_CROP +
-          "Kennzeichnung: how and where the KBA number / approval mark is found on the physical part. Copy the description verbatim.",
+        description: FROM_CROP + ABE_MARKING_LLM_INSTRUCTION,
       },
     },
   },
@@ -502,9 +508,7 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
       },
       markingText: {
         type: ["string", "null"],
-        description:
-          FROM_PHOTO +
-          "Kennzeichnung: how and where the KBA number / approval mark is found on the physical part.",
+        description: FROM_PHOTO + ABE_MARKING_LLM_INSTRUCTION,
       },
       vehicleMatches: {
         type: "array",

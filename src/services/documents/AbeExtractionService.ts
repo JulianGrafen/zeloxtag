@@ -8,6 +8,7 @@ import {
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { parseAbeVehicleRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
+import { coerceAbeMarkingText } from "@/lib/ocr/abe-marking-from-text";
 import { normalizeAbeKbaDigits } from "@/lib/validations/abeSchema";
 import {
   ABE_HUNT_ALL_JSON_SCHEMA,
@@ -133,18 +134,26 @@ export class AbeDataHunterExtractionService {
         input,
         [
           IMAGE_ONLY_GUARD,
-          "Extract only the Kennzeichnung description: how and where the KBA number / approval mark is found on the physical part.",
+          'Transcribe the Kennzeichnung section verbatim after the "Kennzeichnung" heading.',
+          "Include every line and table row (Art der Kennzeichnung, Nummer, etc.) as Label: Value lines.",
+          "Never summarize or paraphrase.",
         ],
         [
-          "Extract only the requested data point from this cropped image.",
-          "Copy the Kennzeichnung text that explains where/how the KBA number appears on the part.",
+          "Extract only the Kennzeichnung block from this image.",
+          "Copy the exact text behind the Kennzeichnung heading, including any table.",
         ],
         ABE_HUNT_MARKING_JSON_SCHEMA,
         "hunt-marking",
-        800,
+        1_500,
       );
 
-      const parsed = AbeHuntMarkingSchema.safeParse(raw);
+      const parsed = AbeHuntMarkingSchema.safeParse({
+        markingText: coerceAbeMarkingText(
+          typeof raw === "object" && raw && "markingText" in raw
+            ? (raw as { markingText: unknown }).markingText
+            : raw,
+        ),
+      });
       if (!parsed.success) {
         return {
           status: "needs_manual",
@@ -243,6 +252,7 @@ export class AbeDataHunterExtractionService {
         [
           FREESTYLE_GUARD,
           "Fields: kbaNumber, abeNumber (Nummer der ABE), abeHolder (Inhaber), manufacturer (Hersteller), partDesignation (Bauteilbezeichnung), markingText (Kennzeichnung), vehicleMatches (Fahrzeugtabelle with Verkaufsbezeichnung), auflagenCodes.",
+          'For markingText: transcribe the full Kennzeichnung section verbatim — exact text after the heading, including table rows (Art der Kennzeichnung, Nummer). No summary.',
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer.",
           "Copy Auflagen-Kürzel from the table row and from any Auflagen list visible on this photo.",
         ],
@@ -277,6 +287,9 @@ export class AbeDataHunterExtractionService {
         const asText = (value: unknown): string | null =>
           typeof value === "string" && value.trim() ? value.trim() : null;
 
+        const asMarking = (value: unknown): string | null =>
+          coerceAbeMarkingText(value);
+
         const extraction: AbeDataHunterReport = {
           ...empty,
           kbaNumber: normalizeAbeKbaDigits(asText(record.kbaNumber)) || null,
@@ -284,7 +297,7 @@ export class AbeDataHunterExtractionService {
           abeHolder: asText(record.abeHolder),
           manufacturer: asText(record.manufacturer),
           partDesignation: asText(record.partDesignation),
-          markingText: asText(record.markingText),
+          markingText: asMarking(record.markingText),
           vehicleMatches: Array.isArray(record.vehicleMatches)
             ? parseAbeVehicleRows(record.vehicleMatches)
             : [],
@@ -306,6 +319,7 @@ export class AbeDataHunterExtractionService {
       const extraction: AbeDataHunterReport = {
         ...parsed.data,
         kbaNumber: normalizeAbeKbaDigits(parsed.data.kbaNumber) || null,
+        markingText: coerceAbeMarkingText(parsed.data.markingText),
       };
 
       const hasAnything =
