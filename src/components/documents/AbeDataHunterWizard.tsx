@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertTriangle,
   Check,
@@ -35,14 +35,8 @@ import {
   emptyAbeDataHunterReport,
   fillAbeDataHunterReport,
   isAbeDataHunterReportComplete,
-  mergeAbeDataHunterSteps,
   missingAbeRequiredFields,
   type AbeDataHunterReport,
-  type AbeDataHunterStep,
-  type AbeHuntAuflagenExtraction,
-  type AbeHuntMarkingExtraction,
-  type AbeHuntStammdatenExtraction,
-  type AbeHuntVehicleExtraction,
   type AbeRequiredFieldKey,
 } from "@/lib/validations/abeDataHunterSchemas";
 
@@ -82,20 +76,6 @@ const REQUIRED_ORDER: AbeRequiredFieldKey[] = [
   "auflagenCodes",
 ];
 
-const NEXT_HINT: Record<AbeRequiredFieldKey, string> = {
-  kbaNumber: "Finde und fotografiere die KBA-Nummer.",
-  abeNumber: "Finde und fotografiere die Nummer der ABE.",
-  abeHolder: "Finde und fotografiere den Inhaber der ABE.",
-  manufacturer: "Finde und fotografiere den Hersteller.",
-  partDesignation: "Finde und fotografiere die Bezeichnung des Bauteils.",
-  markingText:
-    "Finde und fotografiere die Kennzeichnung (wo/wie die KBA am Bauteil steht).",
-  verkaufsbezeichnung:
-    "Finde und fotografiere die Fahrzeugtabelle mit der Verkaufsbezeichnung.",
-  auflagenCodes:
-    "Finde und fotografiere die Auflagen-Kürzel zu deinem Fahrzeug.",
-};
-
 // ─── API ───────────────────────────────────────────────────────────────────────
 
 class HuntApiError extends Error {
@@ -105,17 +85,14 @@ class HuntApiError extends Error {
   }
 }
 
-async function callHuntStep<T>(
-  file: File,
-  step: AbeDataHunterStep,
-): Promise<T> {
+async function extractAllFromFile(file: File): Promise<AbeDataHunterReport> {
   const body = new FormData();
   body.set("file", file);
-  body.set("step", `hunt-${step}`);
+  body.set("step", "hunt-all");
 
   const response = await fetch("/api/ocr/abe", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
-    | { ok: true; extraction: T }
+    | { ok: true; extraction: AbeDataHunterReport; reason?: string }
     | { ok: false; error?: string }
     | null;
 
@@ -128,18 +105,6 @@ async function callHuntStep<T>(
   }
 
   return payload.extraction;
-}
-
-async function extractEverythingFromFile(
-  file: File,
-): Promise<AbeDataHunterReport> {
-  const [stammdaten, marking, vehicle, auflagen] = await Promise.all([
-    callHuntStep<AbeHuntStammdatenExtraction>(file, "stammdaten"),
-    callHuntStep<AbeHuntMarkingExtraction>(file, "marking"),
-    callHuntStep<AbeHuntVehicleExtraction>(file, "vehicle"),
-    callHuntStep<AbeHuntAuflagenExtraction>(file, "auflagen"),
-  ]);
-  return mergeAbeDataHunterSteps(stammdaten, marking, vehicle, auflagen);
 }
 
 function parseCodes(raw: string): string[] {
@@ -160,37 +125,53 @@ function isPdfFile(file: File): boolean {
   );
 }
 
+function newlyFilledLabels(
+  before: AbeDataHunterReport,
+  after: AbeDataHunterReport,
+): string[] {
+  const beforeMissing = new Set(missingAbeRequiredFields(before));
+  const afterMissing = new Set(missingAbeRequiredFields(after));
+  return REQUIRED_ORDER.filter(
+    (key) => beforeMissing.has(key) && !afterMissing.has(key),
+  ).map((key) => ABE_REQUIRED_FIELD_LABELS[key]);
+}
+
 // ─── Progress overlay ──────────────────────────────────────────────────────────
 
 function HuntProgressOverlay({
   report,
   analyzing,
+  queuedCount,
+  photoCount,
   lastFound,
   onOpenReview,
   onUploadPdf,
 }: {
   report: AbeDataHunterReport;
   analyzing: boolean;
+  queuedCount: number;
+  photoCount: number;
   lastFound: string[];
   onOpenReview: () => void;
   onUploadPdf: (file: File) => void;
 }) {
   const missing = missingAbeRequiredFields(report);
   const filledCount = REQUIRED_ORDER.length - missing.length;
-  const nextMissing = missing[0];
   const complete = missing.length === 0;
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-[10000] px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/15 bg-black/70 px-3 py-3 text-white shadow-lg backdrop-blur-md">
+      <div className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/15 bg-black/75 px-3 py-3 text-white shadow-lg backdrop-blur-md">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/70">
             {filledCount} / {REQUIRED_ORDER.length} erfasst
+            {photoCount > 0 ? ` · ${photoCount} Foto${photoCount === 1 ? "" : "s"}` : ""}
           </p>
           {analyzing ? (
-            <span className="inline-flex items-center gap-1.5 text-[0.72rem] text-white/80">
+            <span className="inline-flex items-center gap-1.5 text-[0.72rem] text-amber-200">
               <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
               Analysiert…
+              {queuedCount > 0 ? ` (+${queuedCount})` : ""}
             </span>
           ) : null}
         </div>
@@ -230,13 +211,22 @@ function HuntProgressOverlay({
           </p>
         ) : null}
 
-        <p className="mt-2 text-[0.84rem] font-medium leading-snug text-white">
-          {complete
-            ? "Alles erfasst — zur Prüfung."
-            : nextMissing
-              ? NEXT_HINT[nextMissing]
-              : "Fotografiere die fehlenden Angaben."}
-        </p>
+        {complete ? (
+          <p className="mt-2 text-[0.84rem] font-medium leading-snug text-white">
+            Alles erfasst — zur Prüfung.
+          </p>
+        ) : (
+          <div className="mt-2">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white/55">
+              Noch fotografieren
+            </p>
+            <ul className="mt-1 space-y-0.5 text-[0.8rem] leading-snug text-white/90">
+              {missing.map((key) => (
+                <li key={key}>• {ABE_REQUIRED_FIELD_LABELS[key]}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="mt-3 flex gap-2">
           <label className="relative inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 text-[0.78rem] font-semibold">
@@ -244,7 +234,6 @@ function HuntProgressOverlay({
               type="file"
               accept="application/pdf,.pdf"
               className="absolute inset-0 cursor-pointer opacity-0"
-              disabled={analyzing}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) onUploadPdf(file);
@@ -512,12 +501,13 @@ export function AbeDataHunterWizard({
   backHref,
 }: AbeDataHunterWizardProps) {
   const [phase, setPhase] = useState<WizardPhase>("hunt");
-  const [report, setReport] = useState<AbeDataHunterReport>(
-    emptyAbeDataHunterReport,
+  const [report, setReport] = useState<AbeDataHunterReport>(() =>
+    emptyAbeDataHunterReport(),
   );
   const [photos, setPhotos] = useState<File[]>([]);
   const [sourcePdf, setSourcePdf] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [queuedCount, setQueuedCount] = useState(0);
   const [lastFound, setLastFound] = useState<string[]>([]);
   const [huntError, setHuntError] = useState<string | null>(null);
   const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | null>(
@@ -526,9 +516,13 @@ export function AbeDataHunterWizard({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, startSaveTransition] = useTransition();
 
-  const missing = missingAbeRequiredFields(report);
-  const nextMissing = missing[0];
+  const queueRef = useRef<File[]>([]);
+  const drainingRef = useRef(false);
+  const reportRef = useRef(report);
+  reportRef.current = report;
+
   const complete = isAbeDataHunterReportComplete(report);
+  const photoCount = sourcePdf ? 1 : photos.length;
 
   useEffect(() => {
     if (!complete) return;
@@ -545,52 +539,73 @@ export function AbeDataHunterWizard({
   }
 
   function restart() {
+    queueRef.current = [];
+    drainingRef.current = false;
     setPhase("hunt");
     setReport(emptyAbeDataHunterReport());
     setPhotos([]);
     setSourcePdf(null);
     setLastFound([]);
     setHuntError(null);
+    setQueuedCount(0);
+    setAnalyzing(false);
     setSelectedGroupIndex(null);
     setSaveError(null);
   }
 
-  async function ingestFile(file: File) {
-    if (analyzing) return;
+  async function drainQueue() {
+    if (drainingRef.current) return;
+    drainingRef.current = true;
     setAnalyzing(true);
-    setHuntError(null);
-    setLastFound([]);
 
-    try {
-      const extracted = await extractEverythingFromFile(file);
-      const beforeMissing = new Set(missingAbeRequiredFields(report));
-      const merged = fillAbeDataHunterReport(report, extracted);
-      const afterMissing = new Set(missingAbeRequiredFields(merged));
-      const newlyFilled = REQUIRED_ORDER.filter(
-        (key) => beforeMissing.has(key) && !afterMissing.has(key),
-      ).map((key) => ABE_REQUIRED_FIELD_LABELS[key]);
+    while (queueRef.current.length > 0) {
+      const file = queueRef.current.shift()!;
+      setQueuedCount(queueRef.current.length);
 
-      setReport(merged);
-      setLastFound(newlyFilled);
+      try {
+        const extracted = await extractAllFromFile(file);
+        const before = reportRef.current;
+        const merged = fillAbeDataHunterReport(before, extracted);
+        const found = newlyFilledLabels(before, merged);
 
-      if (isPdfFile(file)) {
-        setSourcePdf(file);
-      } else {
-        setPhotos((prev) => [...prev, file]);
+        reportRef.current = merged;
+        setReport(merged);
+        setLastFound(found);
+        setHuntError(null);
+
+        if (isAbeDataHunterReportComplete(merged)) {
+          const groups = groupAbeVehicleMatches(merged.vehicleMatches);
+          setSelectedGroupIndex(resolveInitialAbeVehicleGroupIndex(groups));
+          // Finish remaining queue? Drop — we already have everything.
+          queueRef.current = [];
+          setQueuedCount(0);
+          window.setTimeout(() => setPhase("review"), 400);
+          break;
+        }
+      } catch (err) {
+        setHuntError(
+          err instanceof Error ? err.message : "Analyse fehlgeschlagen.",
+        );
       }
-
-      if (isAbeDataHunterReportComplete(merged)) {
-        const groups = groupAbeVehicleMatches(merged.vehicleMatches);
-        setSelectedGroupIndex(resolveInitialAbeVehicleGroupIndex(groups));
-        window.setTimeout(() => setPhase("review"), 450);
-      }
-    } catch (err) {
-      setHuntError(
-        err instanceof Error ? err.message : "Analyse fehlgeschlagen.",
-      );
-    } finally {
-      setAnalyzing(false);
     }
+
+    drainingRef.current = false;
+    setAnalyzing(false);
+    setQueuedCount(0);
+  }
+
+  function enqueueFile(file: File) {
+    // Accept the shot immediately — never block the shutter on OCR.
+    if (isPdfFile(file)) {
+      setSourcePdf(file);
+    } else {
+      setPhotos((prev) => [...prev, file]);
+    }
+
+    queueRef.current.push(file);
+    setQueuedCount(queueRef.current.length);
+    setHuntError(null);
+    void drainQueue();
   }
 
   function handleSave(reviewForm: ReviewFormState) {
@@ -766,24 +781,22 @@ export function AbeDataHunterWizard({
       <HuntProgressOverlay
         report={report}
         analyzing={analyzing}
+        queuedCount={queuedCount}
+        photoCount={photoCount}
         lastFound={lastFound}
         onOpenReview={() => setPhase("review")}
-        onUploadPdf={(file) => void ingestFile(file)}
+        onUploadPdf={enqueueFile}
       />
 
       <InBrowserCamera
         title="ABE scannen"
-        hint={
-          nextMissing
-            ? NEXT_HINT[nextMissing]
-            : "Alles erfasst — tippe auf Zur Prüfung."
-        }
-        guideLabel="Fotografiere fehlende Angaben"
+        hint="Fotografiere alle offenen Punkte — die Checkliste oben zeigt, was noch fehlt."
+        guideLabel="Weiter fotografieren, bis alles grün ist"
         guideFrame="a4"
         allowPdf
         showBriefing={false}
         continuousCapture
-        onCapture={(file) => void ingestFile(file)}
+        onCapture={enqueueFile}
         onClose={goBack}
       />
     </>

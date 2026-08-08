@@ -9,6 +9,7 @@ import {
 } from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 import type {
+  AbeDataHunterReport,
   AbeHuntAuflagenExtraction,
   AbeHuntMarkingExtraction,
   AbeHuntStammdatenExtraction,
@@ -30,6 +31,7 @@ const MAX_BYTES = 25 * 1024 * 1024;
 
 const LEGACY_STEPS = ["cover", "main", "vehicles"] as const;
 const HUNT_STEPS = [
+  "hunt-all", // freestyle: every visible field from one photo
   "hunt-stammdaten",
   "hunt-kba", // alias → stammdaten
   "hunt-marking",
@@ -48,6 +50,13 @@ type LegacySuccess =
   | { ok: true; step: "vehicles"; extraction: AbeWizardVehiclesExtraction };
 
 type HuntSuccess =
+  | {
+      ok: true;
+      step: "hunt-all";
+      status: AbeHuntStepResult<AbeDataHunterReport>["status"];
+      extraction: AbeDataHunterReport;
+      reason?: string;
+    }
   | {
       ok: true;
       step: "hunt-stammdaten" | "hunt-kba";
@@ -194,6 +203,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         step: "vehicles",
         extraction,
       } satisfies LegacySuccess);
+    }
+
+    if (step === "hunt-all") {
+      const result =
+        await abeDataHunterExtractionService.extractAllFromPhoto(input);
+      return NextResponse.json({
+        ok: true,
+        step: "hunt-all",
+        status: result.status,
+        extraction: result.extraction,
+        reason: result.reason,
+      } satisfies HuntSuccess);
     }
 
     if (step === "hunt-stammdaten" || step === "hunt-kba") {

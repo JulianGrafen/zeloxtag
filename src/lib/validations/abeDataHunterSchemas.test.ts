@@ -106,6 +106,7 @@ describe("abeDataHunterSchemas required fields", () => {
     const current = {
       ...emptyAbeDataHunterReport(),
       kbaNumber: "48185",
+      auflagenCodes: ["744"],
     };
     const incoming = mergeAbeDataHunterSteps(
       {
@@ -116,13 +117,26 @@ describe("abeDataHunterSchemas required fields", () => {
         partDesignation: "Spoiler",
       },
       { markingText: null },
-      { vehicleMatches: [] },
-      { auflagenCodes: [], auflagenNotes: null },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "5ER REIHE",
+            fahrzeugtyp: "5L",
+            typeApproval: null,
+            driveType: null,
+            tireSizes: [],
+            auflagenCodes: ["A77"],
+          },
+        ],
+      },
+      { auflagenCodes: ["A77", "744"], auflagenNotes: null },
     );
 
     const merged = fillAbeDataHunterReport(current, incoming);
     expect(merged.kbaNumber).toBe("48185");
     expect(merged.abeNumber).toBe("48185*08");
     expect(merged.partDesignation).toBe("Spoiler");
+    expect(merged.auflagenCodes).toEqual(["744", "A77"]);
+    expect(merged.vehicleMatches).toHaveLength(1);
   });
 });

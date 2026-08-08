@@ -2,9 +2,13 @@ import { z } from "zod";
 
 import { AbeVehicleMatchSchema } from "@/lib/validations/abeWizardSchemas";
 
-/** Prefix for OpenAI JSON schema field descriptions. */
+/** Prefix for OpenAI JSON schema field descriptions (legacy crop steps). */
 const FROM_CROP =
   "Extract only from the attached cropped photograph. Copy verbatim. Null or empty if not visible. ";
+
+/** Prefix for freestyle full-page photographs. */
+const FROM_PHOTO =
+  "Extract only from the attached photograph. Copy verbatim. Null or empty if not visible on this photo. ";
 
 /**
  * Data-hunter steps map 1:1 to required ABE facts:
@@ -172,14 +176,49 @@ function keepFilled(
   return next || null;
 }
 
+function mergeUniqueCodes(a: string[], b: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const code of [...a, ...b]) {
+    const trimmed = code.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toUpperCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+function vehicleRowKey(row: {
+  verkaufsbezeichnung: string;
+  fahrzeugtyp: string | null;
+  typeApproval: string | null;
+}): string {
+  return [
+    row.verkaufsbezeichnung.trim().toUpperCase(),
+    (row.fahrzeugtyp ?? "").trim().toUpperCase(),
+    (row.typeApproval ?? "").trim().toUpperCase(),
+  ].join("|");
+}
+
 /**
  * Merge a new photo/PDF extraction into the accumulating report.
- * Already-filled fields win; empty slots take newly found values.
+ * Already-filled scalar fields win; vehicle rows and Auflagen codes accumulate.
  */
 export function fillAbeDataHunterReport(
   current: AbeDataHunterReport,
   incoming: AbeDataHunterReport,
 ): AbeDataHunterReport {
+  const seenRows = new Set(current.vehicleMatches.map(vehicleRowKey));
+  const vehicleMatches = [...current.vehicleMatches];
+  for (const row of incoming.vehicleMatches) {
+    const key = vehicleRowKey(row);
+    if (seenRows.has(key)) continue;
+    seenRows.add(key);
+    vehicleMatches.push(row);
+  }
+
   return {
     kbaNumber: keepFilled(current.kbaNumber, incoming.kbaNumber),
     abeNumber: keepFilled(current.abeNumber, incoming.abeNumber),
@@ -190,14 +229,11 @@ export function fillAbeDataHunterReport(
       incoming.partDesignation,
     ),
     markingText: keepFilled(current.markingText, incoming.markingText),
-    vehicleMatches:
-      current.vehicleMatches.length > 0
-        ? current.vehicleMatches
-        : incoming.vehicleMatches,
-    auflagenCodes:
-      current.auflagenCodes.length > 0
-        ? current.auflagenCodes
-        : incoming.auflagenCodes,
+    vehicleMatches,
+    auflagenCodes: mergeUniqueCodes(
+      current.auflagenCodes,
+      incoming.auflagenCodes,
+    ),
     auflagenNotes: keepFilled(current.auflagenNotes, incoming.auflagenNotes),
   };
 }
@@ -406,6 +442,135 @@ export const ABE_HUNT_AUFLAGEN_JSON_SCHEMA = {
         type: ["string", "null"],
         description:
           FROM_CROP +
+          "Optional free-text notes next to the codes. Null if none.",
+      },
+    },
+  },
+} as const;
+
+/**
+ * Single-shot freestyle extraction: pull every visible required ABE fact
+ * from one full photograph (no crop steps).
+ */
+export const ABE_HUNT_ALL_JSON_SCHEMA = {
+  name: "abe_hunt_all",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "kbaNumber",
+      "abeNumber",
+      "abeHolder",
+      "manufacturer",
+      "partDesignation",
+      "markingText",
+      "vehicleMatches",
+      "auflagenCodes",
+      "auflagenNotes",
+    ],
+    properties: {
+      kbaNumber: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          'KBA number digits only. Strip any "KBA" prefix. Null if not visible.',
+      },
+      abeNumber: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          'Nummer der ABE next to "Nummer der ABE:" including any *suffix.',
+      },
+      abeHolder: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          'Inhaber der ABE. If combined "Inhaber der ABE und Hersteller", put the same company in both fields.',
+      },
+      manufacturer: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          "Hersteller. If only a combined holder/manufacturer label exists, copy that value here too.",
+      },
+      partDesignation: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          "Bezeichnung des Bauteils (Gerät, Typ, Design, Spoiler, Spurverbreiterung, Radtyp, etc.).",
+      },
+      markingText: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          "Kennzeichnung: how and where the KBA number / approval mark is found on the physical part.",
+      },
+      vehicleMatches: {
+        type: "array",
+        description:
+          FROM_PHOTO +
+          "One entry per visible table row for the Verkaufsbezeichnung / vehicle approval section. Empty if no table is visible.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "verkaufsbezeichnung",
+            "fahrzeugtyp",
+            "typeApproval",
+            "driveType",
+            "tireSizes",
+            "auflagenCodes",
+          ],
+          properties: {
+            verkaufsbezeichnung: {
+              type: "string",
+              description:
+                FROM_PHOTO +
+                "Verkaufsbezeichnung / model section header for this row group.",
+            },
+            fahrzeugtyp: {
+              type: ["string", "null"],
+              description: FROM_PHOTO + "Fahrzeugtyp cell.",
+            },
+            typeApproval: {
+              type: ["string", "null"],
+              description:
+                FROM_PHOTO + "Betriebserlaubnis / Typgenehmigung cell.",
+            },
+            driveType: {
+              type: ["string", "null"],
+              description:
+                FROM_PHOTO +
+                "Allradantrieb / Heckantrieb / Frontantrieb if present.",
+            },
+            tireSizes: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                FROM_PHOTO + "Tyre sizes if present; empty array otherwise.",
+            },
+            auflagenCodes: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                FROM_PHOTO +
+                "Short Auflagen codes on this row only (may be empty).",
+            },
+          },
+        },
+      },
+      auflagenCodes: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          FROM_PHOTO +
+          "Short Auflagen-Kürzel visible on this photo (e.g. 744, A77, 12A). Empty if none.",
+      },
+      auflagenNotes: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
           "Optional free-text notes next to the codes. Null if none.",
       },
     },

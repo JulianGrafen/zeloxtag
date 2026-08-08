@@ -10,17 +10,21 @@ import { TextParseError } from "@/lib/ocr/parse-error";
 import { parseAbeVehicleRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import { normalizeAbeKbaDigits } from "@/lib/validations/abeSchema";
 import {
+  ABE_HUNT_ALL_JSON_SCHEMA,
   ABE_HUNT_AUFLAGEN_JSON_SCHEMA,
   ABE_HUNT_MARKING_JSON_SCHEMA,
   ABE_HUNT_STAMMDATEN_JSON_SCHEMA,
   ABE_HUNT_VEHICLE_JSON_SCHEMA,
+  AbeDataHunterReportSchema,
   AbeHuntAuflagenSchema,
   AbeHuntMarkingSchema,
   AbeHuntStammdatenSchema,
+  emptyAbeDataHunterReport,
   isAbeHuntAuflagenComplete,
   isAbeHuntMarkingComplete,
   isAbeHuntStammdatenComplete,
   isAbeHuntVehicleComplete,
+  type AbeDataHunterReport,
   type AbeHuntAuflagenExtraction,
   type AbeHuntMarkingExtraction,
   type AbeHuntStammdatenExtraction,
@@ -34,11 +38,17 @@ const IMAGE_ONLY_GUARD =
   "Extract only the requested data points. Never invent values. " +
   "If a requested field is not visible, use null or an empty array.";
 
+const FREESTYLE_GUARD =
+  "CRITICAL: Read ONLY the attached photograph of an ABE / Gutachten page. " +
+  "Extract every requested field that is clearly visible. Never invent values. " +
+  "If a field is not on this photo, use null or an empty array. Partial results are expected.";
+
 type JsonSchema =
   | typeof ABE_HUNT_STAMMDATEN_JSON_SCHEMA
   | typeof ABE_HUNT_MARKING_JSON_SCHEMA
   | typeof ABE_HUNT_VEHICLE_JSON_SCHEMA
-  | typeof ABE_HUNT_AUFLAGEN_JSON_SCHEMA;
+  | typeof ABE_HUNT_AUFLAGEN_JSON_SCHEMA
+  | typeof ABE_HUNT_ALL_JSON_SCHEMA;
 
 const EMPTY_STAMMDATEN: AbeHuntStammdatenExtraction = {
   kbaNumber: null,
@@ -214,6 +224,112 @@ export class AbeDataHunterExtractionService {
         extraction: empty,
         reason:
           "Fahrzeugfreigabe konnte nicht gelesen werden — bitte manuell eintragen.",
+      };
+    }
+  }
+
+  /**
+   * Freestyle: one LLM call extracts every visible required ABE fact from a photo.
+   * Always returns an extraction object (partial OK) — never throws to the route.
+   */
+  async extractAllFromPhoto(
+    input: DocumentBytesInput,
+  ): Promise<AbeHuntStepResult<AbeDataHunterReport>> {
+    const empty = emptyAbeDataHunterReport();
+
+    try {
+      const raw = await this.runSnippetStep(
+        input,
+        [
+          FREESTYLE_GUARD,
+          "Fields: kbaNumber, abeNumber (Nummer der ABE), abeHolder (Inhaber), manufacturer (Hersteller), partDesignation (Bauteilbezeichnung), markingText (Kennzeichnung), vehicleMatches (Fahrzeugtabelle with Verkaufsbezeichnung), auflagenCodes.",
+          "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer.",
+          "Copy Auflagen-Kürzel from the table row and from any Auflagen list visible on this photo.",
+        ],
+        [
+          "Extract every visible ABE data point from this photograph.",
+          "Leave fields null/empty when not visible — the user will take more photos.",
+        ],
+        ABE_HUNT_ALL_JSON_SCHEMA,
+        "hunt-all",
+        4_000,
+      );
+
+      const rawRows =
+        typeof raw === "object" &&
+        raw &&
+        "vehicleMatches" in raw &&
+        Array.isArray((raw as { vehicleMatches: unknown }).vehicleMatches)
+          ? (raw as { vehicleMatches: unknown[] }).vehicleMatches
+          : [];
+
+      const candidate = {
+        ...(typeof raw === "object" && raw ? raw : {}),
+        vehicleMatches: parseAbeVehicleRows(rawRows),
+      };
+
+      const parsed = AbeDataHunterReportSchema.safeParse(candidate);
+      if (!parsed.success) {
+        const record =
+          typeof candidate === "object" && candidate
+            ? (candidate as Record<string, unknown>)
+            : {};
+        const asText = (value: unknown): string | null =>
+          typeof value === "string" && value.trim() ? value.trim() : null;
+
+        const extraction: AbeDataHunterReport = {
+          ...empty,
+          kbaNumber: normalizeAbeKbaDigits(asText(record.kbaNumber)) || null,
+          abeNumber: asText(record.abeNumber),
+          abeHolder: asText(record.abeHolder),
+          manufacturer: asText(record.manufacturer),
+          partDesignation: asText(record.partDesignation),
+          markingText: asText(record.markingText),
+          vehicleMatches: Array.isArray(record.vehicleMatches)
+            ? parseAbeVehicleRows(record.vehicleMatches)
+            : [],
+          auflagenCodes: Array.isArray(record.auflagenCodes)
+            ? record.auflagenCodes.filter(
+                (code): code is string =>
+                  typeof code === "string" && code.trim().length > 0,
+              )
+            : [],
+          auflagenNotes: asText(record.auflagenNotes),
+        };
+        return {
+          status: "needs_manual",
+          extraction,
+          reason: "Teilweise erkannt — weitere Fotos oder manuelle Ergänzung.",
+        };
+      }
+
+      const extraction: AbeDataHunterReport = {
+        ...parsed.data,
+        kbaNumber: normalizeAbeKbaDigits(parsed.data.kbaNumber) || null,
+      };
+
+      const hasAnything =
+        Boolean(extraction.kbaNumber) ||
+        Boolean(extraction.abeNumber) ||
+        Boolean(extraction.abeHolder) ||
+        Boolean(extraction.manufacturer) ||
+        Boolean(extraction.partDesignation) ||
+        Boolean(extraction.markingText) ||
+        extraction.vehicleMatches.length > 0 ||
+        extraction.auflagenCodes.length > 0;
+
+      return {
+        status: hasAnything ? "ok" : "needs_manual",
+        extraction,
+        reason: hasAnything
+          ? undefined
+          : "Keine ABE-Daten auf diesem Foto erkannt.",
+      };
+    } catch {
+      return {
+        status: "needs_manual",
+        extraction: empty,
+        reason: "Foto konnte nicht gelesen werden — bitte erneut fotografieren.",
       };
     }
   }
