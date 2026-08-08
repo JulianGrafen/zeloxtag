@@ -144,8 +144,9 @@ function newlyFilledLabels(
 function HuntProgressOverlay({
   report,
   analyzing,
+  analyzingPdf,
   queuedCount,
-  photoCount,
+  captureSummary,
   lastFound,
   onOpenReview,
   onUploadPdf,
@@ -153,8 +154,9 @@ function HuntProgressOverlay({
 }: {
   report: AbeDataHunterReport;
   analyzing: boolean;
+  analyzingPdf: boolean;
   queuedCount: number;
-  photoCount: number;
+  captureSummary: string | null;
   lastFound: string[];
   onOpenReview: () => void;
   onUploadPdf: (file: File) => void;
@@ -231,7 +233,7 @@ function HuntProgressOverlay({
           <div className="min-w-0 flex-1 px-1 text-center">
             <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/60">
               {focusIndex + 1} / {REQUIRED_ORDER.length}
-              {photoCount > 0 ? ` · ${photoCount} Foto${photoCount === 1 ? "" : "s"}` : ""}
+              {captureSummary ? ` · ${captureSummary}` : ""}
             </p>
             <p className="truncate text-[0.88rem] font-semibold leading-tight">
               {ABE_REQUIRED_FIELD_LABELS[currentKey]}
@@ -259,21 +261,6 @@ function HuntProgressOverlay({
             <ChevronRight className="h-4 w-4" />
           </button>
 
-          <label className="relative flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/10">
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              className="absolute inset-0 cursor-pointer opacity-0"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) onUploadPdf(file);
-                event.target.value = "";
-              }}
-            />
-            <FileUp className="h-3.5 w-3.5" />
-            <span className="sr-only">PDF hochladen</span>
-          </label>
-
           {complete ? (
             <button
               type="button"
@@ -285,6 +272,21 @@ function HuntProgressOverlay({
             </button>
           ) : null}
         </div>
+
+        <label className="relative mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-[0.78rem] font-semibold text-white">
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            className="absolute inset-0 cursor-pointer opacity-0"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) onUploadPdf(file);
+              event.target.value = "";
+            }}
+          />
+          <FileUp className="h-4 w-4" />
+          PDF hochladen
+        </label>
 
         <div className="mt-2 flex items-center gap-1 px-1">
           {REQUIRED_ORDER.map((key, index) => {
@@ -311,7 +313,7 @@ function HuntProgressOverlay({
             {analyzing ? (
               <span className="inline-flex items-center gap-1 text-amber-200">
                 <LoaderCircle className="h-3 w-3 animate-spin" />
-                Analysiert…
+                {analyzingPdf ? "PDF wird analysiert…" : "Analysiert…"}
                 {queuedCount > 0 ? `(+${queuedCount})` : ""}
               </span>
             ) : null}
@@ -324,6 +326,34 @@ function HuntProgressOverlay({
         ) : null}
       </div>
     </div>,
+    document.body,
+  );
+}
+
+/** Fixed PDF picker above the camera shutter — always visible. */
+function PdfUploadFab({ onUpload }: { onUpload: (file: File) => void }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(
+    <label className="relative fixed bottom-[max(7.25rem,calc(env(safe-area-inset-bottom)+5.5rem))] left-4 z-[10050] flex cursor-pointer items-center gap-2 rounded-full border border-white/25 bg-black/60 px-4 py-2.5 text-[0.78rem] font-semibold text-white shadow-lg backdrop-blur-md">
+      <input
+        type="file"
+        accept="application/pdf,.pdf"
+        className="absolute inset-0 cursor-pointer opacity-0"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onUpload(file);
+          event.target.value = "";
+        }}
+      />
+      <FileUp className="h-4 w-4" />
+      PDF
+    </label>,
     document.body,
   );
 }
@@ -578,6 +608,7 @@ export function AbeDataHunterWizard({
   const [photos, setPhotos] = useState<File[]>([]);
   const [sourcePdf, setSourcePdf] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzingPdf, setAnalyzingPdf] = useState(false);
   const [queuedCount, setQueuedCount] = useState(0);
   const [lastFound, setLastFound] = useState<string[]>([]);
   const [huntError, setHuntError] = useState<string | null>(null);
@@ -593,7 +624,11 @@ export function AbeDataHunterWizard({
   reportRef.current = report;
 
   const complete = isAbeDataHunterReportComplete(report);
-  const photoCount = sourcePdf ? 1 : photos.length;
+  const captureSummary = sourcePdf
+    ? "PDF"
+    : photos.length > 0
+      ? `${photos.length} Foto${photos.length === 1 ? "" : "s"}`
+      : null;
 
   useEffect(() => {
     if (!complete) return;
@@ -620,6 +655,7 @@ export function AbeDataHunterWizard({
     setHuntError(null);
     setQueuedCount(0);
     setAnalyzing(false);
+    setAnalyzingPdf(false);
     setSelectedGroupIndex(null);
     setSaveError(null);
   }
@@ -632,6 +668,7 @@ export function AbeDataHunterWizard({
     while (queueRef.current.length > 0) {
       const file = queueRef.current.shift()!;
       setQueuedCount(queueRef.current.length);
+      setAnalyzingPdf(isPdfFile(file));
 
       try {
         const extracted = await extractAllFromFile(file);
@@ -662,20 +699,29 @@ export function AbeDataHunterWizard({
 
     drainingRef.current = false;
     setAnalyzing(false);
+    setAnalyzingPdf(false);
     setQueuedCount(0);
   }
 
   function enqueueFile(file: File) {
-    // Accept the shot immediately — never block the shutter on OCR.
-    if (isPdfFile(file)) {
-      setSourcePdf(file);
-    } else {
-      setPhotos((prev) => [...prev, file]);
+    if (!isPdfFile(file) && !file.type.startsWith("image/")) {
+      setHuntError("Bitte ein Foto oder PDF wählen.");
+      return;
     }
 
-    queueRef.current.push(file);
-    setQueuedCount(queueRef.current.length);
     setHuntError(null);
+
+    if (isPdfFile(file)) {
+      setPhotos([]);
+      setSourcePdf(file);
+      queueRef.current = queueRef.current.filter((queued) => !isPdfFile(queued));
+      queueRef.current.push(file);
+    } else {
+      setPhotos((prev) => [...prev, file]);
+      queueRef.current.push(file);
+    }
+
+    setQueuedCount(queueRef.current.length);
     void drainQueue();
   }
 
@@ -858,16 +904,20 @@ export function AbeDataHunterWizard({
       <HuntProgressOverlay
         report={report}
         analyzing={analyzing}
+        analyzingPdf={analyzingPdf}
         queuedCount={queuedCount}
-        photoCount={photoCount}
+        captureSummary={captureSummary}
         lastFound={lastFound}
         onOpenReview={() => setPhase("review")}
         onUploadPdf={enqueueFile}
         onClose={goBack}
       />
 
+      <PdfUploadFab onUpload={enqueueFile} />
+
       <InBrowserCamera
         title="ABE scannen"
+        hint="Fotografieren oder PDF hochladen — fehlende Punkte in der Leiste oben."
         guideLabel="Weiter fotografieren, bis alles grün ist"
         guideFrame="a4"
         allowPdf

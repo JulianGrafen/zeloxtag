@@ -168,7 +168,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!sniffed) {
       return jsonError(
         400,
-        "Unsupported or spoofed file type (JPEG/PNG/WebP/HEIC required).",
+        "Unsupported or spoofed file type (PDF/JPEG/PNG/WebP/HEIC required).",
         "bad_request",
       );
     }

@@ -247,6 +247,7 @@ export class AbeDataHunterExtractionService {
     const empty = emptyAbeDataHunterReport();
 
     try {
+      const isPdf = input.contentType === "application/pdf";
       const raw = await this.runSnippetStep(
         input,
         [
@@ -255,14 +256,21 @@ export class AbeDataHunterExtractionService {
           'For markingText: transcribe the full Kennzeichnung section verbatim — exact text after the heading, including table rows (Art der Kennzeichnung, Nummer). No summary.',
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer.",
           "Copy Auflagen-Kürzel from the table row and from any Auflagen list visible on this photo.",
+          ...(isPdf
+            ? [
+                "The attachment is a PDF — read every page and merge all visible ABE fields from the full document.",
+              ]
+            : []),
         ],
         [
-          "Extract every visible ABE data point from this photograph.",
+          isPdf
+            ? "Extract every visible ABE data point from all pages of this PDF."
+            : "Extract every visible ABE data point from this photograph.",
           "Leave fields null/empty when not visible — the user will take more photos.",
         ],
         ABE_HUNT_ALL_JSON_SCHEMA,
         "hunt-all",
-        4_000,
+        isPdf ? 6_000 : 4_000,
       );
 
       const rawRows =
