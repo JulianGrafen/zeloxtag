@@ -167,12 +167,9 @@ export function CameraCapture({
           title={inBrowserA4Camera.title ?? label}
           hint={
             inBrowserA4Camera.hint ??
-            "Dokument ins DIN-A4-Feld halten — Foto wird automatisch zugeschnitten."
+            "Rechnung frei fotografieren — danach automatische Verarbeitung."
           }
-          guideLabel={
-            inBrowserA4Camera.guideLabel ?? "Rechnung im Rahmen ausrichten"
-          }
-          guideFrame="a4"
+          guideFrame="none"
           allowPdf={false}
           showBriefing={false}
           continuousCapture={inBrowserA4Camera.continuousCapture}

@@ -10,7 +10,7 @@ import {
 import { createPortal } from "react-dom";
 import { Camera, FileUp, FlipHorizontal2, ImagePlus, X } from "lucide-react";
 
-export type GuideFrameType = "a4" | "section";
+export type GuideFrameType = "a4" | "section" | "none";
 export type GuideSectionAnchor = "top" | "center" | "bottom";
 
 export interface InBrowserCameraProps {
@@ -24,7 +24,9 @@ export interface InBrowserCameraProps {
   onClose: () => void;
   /** Overlay message shown inside the viewfinder guide box. */
   guideLabel?: ReactNode;
-  /** Viewfinder guide shape. `a4` = full DIN A4 sheet; `section` = smaller crop frame. */
+  /** Semi-transparent example text centered in the guide frame. */
+  guideWatermark?: ReactNode;
+  /** Viewfinder guide shape. `none` = full-screen, no overlay frame. */
   guideFrame?: GuideFrameType;
   /** Vertical anchor for section frames. Ignored for `a4`. Default: center. */
   guideSectionAnchor?: GuideSectionAnchor;
@@ -52,6 +54,16 @@ const SECTION_ASPECT_RATIOS: Record<GuideSectionAnchor, string> = {
   center: "4 / 3", // Punkt 6 defects block
   bottom: "4 / 3",
 };
+
+function GuideFrameWatermark({ children }: { children: ReactNode }) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center px-6 py-10">
+      <p className="pointer-events-none select-none whitespace-pre-wrap text-center font-mono text-[clamp(1rem,4.8vw,1.65rem)] font-semibold leading-snug tracking-wide text-white/28 [text-shadow:0_1px_16px_rgba(0,0,0,0.55)]">
+        {children}
+      </p>
+    </div>
+  );
+}
 
 function GuideFrameCorners({ sharp = false }: { sharp?: boolean }) {
   const radius = sharp ? "rounded-sm" : "rounded-xl";
@@ -94,6 +106,7 @@ export function InBrowserCamera({
   onCapture,
   onClose,
   guideLabel,
+  guideWatermark,
   guideFrame = "section",
   guideSectionAnchor = "center",
   allowPdf = false,
@@ -247,9 +260,15 @@ export function InBrowserCamera({
 
   const fileAccept = allowPdf ? PDF_ACCEPT : IMAGE_ACCEPT;
 
+  const compactChrome = continuousCapture;
+  const a4FrameMaxWidth = compactChrome
+    ? "min(98vw, calc((100dvh - max(15.5rem, calc(env(safe-area-inset-top) + 14rem)) - max(6.5rem, calc(env(safe-area-inset-bottom) + 5.5rem))) * 210 / 297))"
+    : "min(96vw, calc((100dvh - 180px) * 210 / 297))";
+
   const overlay = (
     <div className="fixed inset-0 z-[9999] flex flex-col bg-black">
       {/* ── Top bar ──────────────────────────────────────────────── */}
+      {!compactChrome ? (
       <div className="relative flex items-center justify-between px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-3">
         <button
           type="button"
@@ -287,8 +306,9 @@ export function InBrowserCamera({
           )}
         </label>
       </div>
+      ) : null}
 
-      {hint && !instructionsOpen ? (
+      {hint && !instructionsOpen && !compactChrome ? (
         <div className="border-b border-white/10 bg-white px-5 py-3.5 shadow-lg">
           <p className="mx-auto max-w-lg text-center text-[0.88rem] font-medium leading-relaxed text-neutral-900">
             {hint}
@@ -349,19 +369,37 @@ export function InBrowserCamera({
               </div>
             ) : null}
 
-            {/* Document guide frame */}
-            {cameraReady ? (
+            {/* Document guide frame (optional) */}
+            {cameraReady && guideFrame !== "none" ? (
               guideFrame === "a4" ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-5 py-4">
+                <div
+                  className={[
+                    "pointer-events-none absolute inset-0 flex justify-center",
+                    compactChrome
+                      ? "items-stretch px-2 pt-[max(9rem,calc(env(safe-area-inset-top)+8rem))] pb-[max(6.25rem,calc(env(safe-area-inset-bottom)+5.25rem))]"
+                      : "items-center px-4 py-3",
+                  ].join(" ")}
+                >
                   <div
-                    className="relative w-full max-w-[min(92vw,calc((100dvh-220px)*210/297))] rounded-xl border-2 border-white/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
-                    style={{ aspectRatio: A4_ASPECT_RATIO }}
+                    className={[
+                      "relative rounded-xl border-2 border-white/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]",
+                      compactChrome
+                        ? "h-full w-auto max-w-[98vw]"
+                        : "w-full",
+                    ].join(" ")}
+                    style={{
+                      aspectRatio: A4_ASPECT_RATIO,
+                      maxWidth: compactChrome ? undefined : a4FrameMaxWidth,
+                    }}
                     aria-hidden
                   >
                     <GuideFrameCorners />
                     <div className="absolute left-3 top-3 rounded-md bg-black/45 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/85 backdrop-blur-sm">
                       DIN A4
                     </div>
+                    {guideWatermark ? (
+                      <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
+                    ) : null}
                     {guideLabel ? (
                       <div className="absolute inset-x-2 bottom-3 flex justify-center">
                         <span className="rounded-xl bg-white/95 px-3 py-2 text-center text-[0.78rem] font-semibold leading-snug text-neutral-900 shadow-lg">
@@ -384,6 +422,9 @@ export function InBrowserCamera({
                     aria-hidden
                   >
                     <GuideFrameCorners sharp />
+                    {guideWatermark ? (
+                      <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
+                    ) : null}
                     {guideLabel ? (
                       <div className="absolute inset-x-2 bottom-3 flex justify-center">
                         <span className="rounded-xl bg-white/95 px-3 py-2 text-center text-[0.78rem] font-semibold leading-snug text-neutral-900 shadow-lg">
@@ -433,9 +474,30 @@ export function InBrowserCamera({
 
       {/* ── Bottom controls ───────────────────────────────────────── */}
       {!cameraError && !instructionsOpen ? (
-        <div className="flex items-center justify-center gap-8 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
-          {/* Camera flip (only when multiple cameras detected) */}
-          {hasMultipleCameras ? (
+        <div
+          className={[
+            "flex items-center justify-center gap-8 pb-[max(1.5rem,env(safe-area-inset-bottom))]",
+            compactChrome ? "py-4" : "py-8 pb-[max(2rem,env(safe-area-inset-bottom))]",
+          ].join(" ")}
+        >
+          {compactChrome ? (
+            <label
+              className="relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-opacity active:opacity-60"
+              aria-label="Aus Galerie oder Datei wählen"
+            >
+              <input
+                type="file"
+                accept={fileAccept}
+                className="absolute inset-0 cursor-pointer opacity-0"
+                onChange={handleFileChange}
+              />
+              {allowPdf ? (
+                <FileUp className="h-5 w-5" />
+              ) : (
+                <ImagePlus className="h-5 w-5" />
+              )}
+            </label>
+          ) : hasMultipleCameras ? (
             <button
               type="button"
               onClick={() => void flipCamera()}
@@ -453,14 +515,32 @@ export function InBrowserCamera({
             type="button"
             onClick={() => void handleCapture()}
             disabled={!cameraReady || capturing}
-            className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white transition-transform active:scale-90 disabled:opacity-40"
+            className={[
+              "flex items-center justify-center rounded-full border-4 border-white transition-transform active:scale-90 disabled:opacity-40",
+              compactChrome ? "h-[4.75rem] w-[4.75rem]" : "h-20 w-20",
+            ].join(" ")}
             aria-label="Foto aufnehmen"
           >
-            <span className="h-14 w-14 rounded-full bg-white transition-transform active:scale-90" />
+            <span
+              className={[
+                "rounded-full bg-white transition-transform active:scale-90",
+                compactChrome ? "h-[3.35rem] w-[3.35rem]" : "h-14 w-14",
+              ].join(" ")}
+            />
           </button>
 
-          {/* Spacer mirror for flip button */}
-          <div className="h-12 w-12" aria-hidden />
+          {compactChrome && hasMultipleCameras ? (
+            <button
+              type="button"
+              onClick={() => void flipCamera()}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white transition-opacity active:opacity-60"
+              aria-label="Kamera wechseln"
+            >
+              <FlipHorizontal2 className="h-5 w-5" />
+            </button>
+          ) : (
+            <div className="h-12 w-12" aria-hidden />
+          )}
         </div>
       ) : null}
     </div>

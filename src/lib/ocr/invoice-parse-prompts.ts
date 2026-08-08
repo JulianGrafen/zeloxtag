@@ -2,6 +2,44 @@
  * Invoice-only prompts. ABE extraction uses `abe-parse-prompts.ts`.
  */
 
+/** Spalten-Regel: nur Gesamtpreis / rechte Summenspalte — nie Einzelpreis. */
+export const INVOICE_RIGHTMOST_PRICE_RULES = `
+PREIS-SPALTE (PFLICHT für amount und lineItems.amount):
+1. Identifiziere zuerst die Tabellenkopf-Zeile (Pos | Bezeichnung | Menge | Einzelpreis | Ges. Preis | …).
+2. amount = NUR der Wert aus der RECHTSTEN Geldbetrags-Spalte pro Zeile.
+3. Bevorzugte Spaltenüberschriften (von rechts nach links suchen):
+   "Ges. Preis", "Gesamtpreis", "Ges. Summe", "Gesamtbetrag", "Summe", "Betrag", "EUR", "Wert", "Total", "GP", "G-Preis", "Brutto".
+4. NIEMALS verwenden: "Einzelpreis", "EP", "Stückpreis", "Stk.", "Netto", "E-Preis", "Listenpreis", "VK", "Rabatt %", "MwSt %".
+5. Beispiel Zeile: Menge 4 | Einzelpreis 120,00 | Ges. Preis 480,00 → amount = 480 (NICHT 120).
+6. Beispiel Zeile: nur eine Geldbetrags-Spalte ganz rechts → genau diesen Wert nehmen.
+7. Steht in einer Zeile mehr als ein €-Betrag, IMMER den RECHTSTEN nehmen (Zeilensumme).
+8. Rechnungs-Gesamtbetrag (amount): nur "Zahlbetrag", "Rechnungsbetrag", "Gesamtbetrag", "Summe brutto", "Endbetrag" — nie Netto wenn Brutto/Zahlbetrag sichtbar.
+`.trim();
+
+/** Kilometerstand — Kopf der Rechnung, häufige LLM-Fehler vermeiden. */
+export const INVOICE_HEADER_MILEAGE_RULES = `
+KILOMETERSTAND (mileageKm) — nur aus explizitem KM-Feld im Kopf:
+- Synonyme: Kilometerstand, km-Stand, KM-Stand, Km-Stand, Tachostand, Laufleistung, "bei km", "aktueller km".
+- Format: ganze Zahl ohne Tausenderpunkte — "145.000 km" → 145000, "67.210" → 67210, "142350 km" → 142350.
+- NIEMALS als mileageKm: Rechnungsnummer, Telefon, PLZ, USt-IdNr, FIN/VIN, Beträge (€), Prozent, Positionsnummern.
+- NIEMALS Dezimal-km: 142,35 oder 142.35 ist KEIN Kilometerstand → null.
+- Steht kein explizites KM-Feld im Kopf → mileageKm: null (nicht raten).
+- Typische Kopfzeile: "KM-Stand: 142.350 km" neben Kennzeichen / Kundennummer / Datum.
+`.trim();
+
+/** Vollständigkeit — keine Positionen auslassen. */
+export const INVOICE_LINE_ITEMS_COMPLETENESS_RULES = `
+VOLLSTÄNDIGKEIT (lineItems):
+- Gehe JEDE sichtbare Datenzeile der Positionstabelle von oben nach unten durch — ohne Auslassen.
+- Jede Zeile mit Bezeichnung + Geldbetrag in der rechten Summenspalte = ein lineItem.
+- Auch: Arbeitslohn, Material, Kleinmaterial, Entsorgung, Altöl, Umweltgebühr, Rabatt (€), MwSt. (€) — jeweils eigene Zeile.
+- Tabellenkopf (Pos, Bezeichnung, Menge, …) und reine Summenzeilen (Zwischensumme, Netto gesamt) sind KEINE Positionen.
+- "Summe"/"Gesamt" am Tabellenende nur als lineItem wenn es eine ausgewiesene MwSt.- oder Gebührenzeile ist.
+- Fortsetzungstabelle auf nächster Seite: alle Zeilen mit erfassen.
+- Niemals mehrere Materialien in ein label packen (falsch: "Reifen und Federn").
+- Unleserliche Bezeichnung: trotzdem erfassen wenn Betrag in rechter Spalte lesbar ist.
+`.trim();
+
 /** Fallback system prompt when Foundry agent metadata is unavailable. */
 export const INVOICE_SYSTEM_PROMPT = `Du bist ein präziser Parser für Kfz-Rechnungen und Servicebelege.
 Der OCR-Input ist Markdown (inkl. Tabellen). Nutze Tabellenzeilen und Überschriften als Struktur.
@@ -29,51 +67,29 @@ Schema:
 Regeln:
 - vendor = Werkstatt-/Händlername
 - invoiceNumber = Beleg-/Rechnungsnummer (z.B. RE-2026-0312)
-- mileageKm = Kilometerstand als ganze Zahl ohne Tausenderpunkte (z.B. 145000)
-- lineItems = JEDE Tabellen-/Positionszeile einzeln (Material, Arbeitslohn, MwSt.)
-  Niemals Materialien zusammenfassen (falsch: "Reifen und Sportfedern")
-  amount = immer Gesamtpreis/Zeilensumme (Menge×Einzelpreis), NIE der Einzelpreis
-- Prozentwerte sind KEINE Euro-Beträge: "-15%", "15 %", "Skonto 2%", "MwSt. 19%"
-  niemals als amount oder lineItems.amount speichern. Nur echte €-Summen.
-  Rabatt-/Skonto-Zeilen nur aufnehmen, wenn ein Euro-Betrag (z.B. -45,00) steht —
-  dann amount = dieser Euro-Wert, nicht die Prozentzahl.
-- Ölwechsel: category=service, summary mit 'Ölwechsel', mileageKm wenn vorhanden
-- category=tuev NUR bei echten HU/AU-Prüfberichten (Hauptuntersuchung,
-  Untersuchungsbericht, Prüfplakette, §29). NICHT bei Werkstatt-Rechnungen,
-  die nur "TÜV", "DEKRA", "inkl. TÜV-Abnahme" oder "TÜV-Teile" erwähnen —
-  dann service|repair|tuning|other je nach Positionen.
+- mileageKm = Kilometerstand als GANZE Zahl (Integer km), Tausenderpunkte entfernen
+- lineItems = JEDE Tabellen-/Positionszeile einzeln — nichts überspringen
+  amount = NUR Ges. Preis / Gesamtpreis / rechte Summenspalte — NIE Einzelpreis/EP/Stückpreis
+- Prozentwerte sind KEINE Euro-Beträge
 - ABE-Felder IMMER null — niemals category=abe
 
 Keine Erklärungen, nur JSON.`;
 
 /**
  * Few-shot block injected for invoice parses (mileage + Markdown table rows).
- * Appended to the system prompt so the model keeps high attention on these fields.
  */
 export const INVOICE_FEW_SHOT_PROMPT = `
 FEW-SHOT — mileageKm:
-- Search synonyms: "Laufleistung", "Kilometerstand", "km-Stand", "Tachostand", "km".
-- Strip thousand separators; return an integer.
-- Example: Text "Laufleistung: 145.000 km" → mileageKm: 145000
-- Example: Text "km-Stand 67.210" → mileageKm: 67210
-- If absent → mileageKm: null
+- Synonyms: Laufleistung, Kilometerstand, km-Stand, Tachostand, KM-Stand.
+- "145.000 km" → 145000 | "67.210" → 67210 | never invoice # or € amounts
+- If no explicit km field → null
 
-FEW-SHOT — lineItems (Markdown / HTML tables):
-- You are reading OCR Markdown. Tables may appear as pipe rows OR HTML (<table>/<td>).
-- ALWAYS use the INNER TEXT of cells as label — NEVER output tags like "<td>", "</td>", "td", "th".
-- Extract EVERY billable row individually. Do NOT group materials into one label.
-- amount = row total (qty × unit). Never the unit price alone.
-- NEVER treat percentages as EUR: "-15%", "15 %", "Skonto 2%", "MwSt 19%" → skip
-  or use the € column only (e.g. "Rabatt 15% | -45,00" → amount -45, not 15).
-- Example Markdown row: "| 4x | Reifen | 120,00 |"
-  → { "label": "Reifen", "amount": 480 }
-- Example HTML: "<tr><td>1</td><td>Ölfilter</td><td>42,90</td></tr>"
-  → { "label": "Ölfilter", "amount": 42.9 }
-- Example: "| 1 | Arbeitslohn Ölwechsel | 89,00 |"
-  → { "label": "Arbeitslohn Ölwechsel", "amount": 89 }
-- Example: "| 1 | Motoröl 5W-30 | 198,50 |" and "| 1 | Ölfilter | 42,90 |"
-  → two separate lineItems, never one merged row
-- Keep MwSt. as its own lineItem when present.
+FEW-SHOT — lineItems (rightmost price column):
+- Extract EVERY data row — do not skip any row with a € total in the right column.
+- amount = RIGHTMOST money column (Ges. Preis / Gesamtpreis / Summe), NEVER Einzelpreis/EP.
+- Example: "| 4 | Reifen | 120,00 | 480,00 |" → { "label": "Reifen", "amount": 480 }
+- Example: "| 1 | Ölfilter | 42,90 |" → { "label": "Ölfilter", "amount": 42.9 }
+- Never merge rows. MwSt. as separate row when € amount visible.
 `.trim();
 
 /** Few-shot block for HU/AU header mileage (Kopf / Seite 1). */
@@ -103,22 +119,18 @@ export const TUEV_COST_USER_PROMPT_LINES = [
 /** Per-request user instructions appended before OCR Markdown. */
 export const INVOICE_USER_PROMPT_LINES = [
   "Nachfolgend OCR-MARKDOWN einer Kfz-RECHNUNG / eines Servicebelegs",
-  "(OCR-Markdown mit Tabellen).",
-  "Extrahiere nur Rechnungsfelder gemäß Schema.",
-  "vendor, invoiceNumber, amount, lineItems, mileageKm, date, category, summary.",
-  "ABE-Felder (kbaNumber, conditions, manufacturer, …) IMMER null.",
-  "category niemals 'abe'. Erlaubt: tuning | service | tuev | repair | other.",
-  "Lies Tabellen zeilenweise (Pipe-Markdown oder HTML <td>) — label = Zelltext, nie Tags.",
-  "Jede Position als eigenes lineItem.",
-  "mileageKm PFLICHT wenn Laufleistung / km-Stand / Tachostand / … km lesbar.",
-  "Ölwechsel/Motoröl/Ölfilter → category=service.",
-  "category=tuev NUR bei HU/AU-Prüfbericht — nie bei Rechnungen mit MwSt/Positionen,",
-  "auch wenn TÜV/DEKRA nur nebenbei genannt wird.",
+  "amount + lineItems.amount = NUR Ges. Preis / rechte Summenspalte — NIE Einzelpreis.",
+  "Jede Positionstabelle-Zeile einzeln — nichts überspringen.",
+  "mileageKm nur bei explizitem KM-Feld im Kopf — sonst null.",
 ] as const;
 
 /** System prompt used for invoice LLM calls (base + few-shot). */
 export function buildInvoiceSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string {
-  return `${base}\n\n${INVOICE_FEW_SHOT_PROMPT}`;
+  return [
+    base,
+    INVOICE_FEW_SHOT_PROMPT,
+    INVOICE_RIGHTMOST_PRICE_RULES,
+  ].join("\n\n");
 }
 
 /** System prompt for HU/AU cost/metadata vision parse (header mileage emphasis). */
@@ -126,43 +138,54 @@ export function buildTuevCostSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string 
   return `${buildInvoiceSystemPrompt(base)}\n\n${TUEV_HEADER_MILEAGE_FEW_SHOT}`;
 }
 
+/** Wizard — Rechnungskopf (KM, Belegnr., Datum). */
+export function buildInvoiceHeaderSystemPrompt(): string {
+  return [
+    "Du extrahierst NUR den Rechnungs-KOPF (oberer Bereich) einer deutschen Kfz-Werkstattrechnung.",
+    "Felder: vendor, invoiceNumber, date, mileageKm.",
+    "Keine Positionstabelle — keine lineItems.",
+    "Optional → null wenn nicht lesbar. Nicht raten.",
+    INVOICE_HEADER_MILEAGE_RULES,
+  ].join("\n\n");
+}
+
+/** Wizard — Positionsblock (dedizierter LLM-Pass). */
+export function buildInvoiceLineItemsSystemPrompt(): string {
+  return [
+    "Du extrahierst NUR Rechnungspositionen aus dem Tabellen-/Positionsbereich einer deutschen Kfz-Werkstattrechnung.",
+    "Deine einzige Aufgabe: lineItems vollständig erfassen + amount (Zahlbetrag falls sichtbar).",
+    INVOICE_RIGHTMOST_PRICE_RULES,
+    INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
+    "Antworte nur mit JSON.",
+  ].join("\n\n");
+}
+
 /** Guided wizard — full document overview (metadata, not line-item table). */
 export const INVOICE_OVERVIEW_USER_LINES = [
-  "Deutsche Kfz-Rechnung oder Servicebeleg — GESAMTDOKUMENT.",
-  "Extrahiere nur: vendor, date, amount (Gesamtbetrag/Zahlbetrag), category, summary.",
-  "Keine Positionsliste — die kommt aus einem separaten Scan.",
-  "category=tuev NUR bei echtem HU/AU-Prüfbericht — nie bei Werkstatt-Rechnungen.",
+  "Deutsche Kfz-Rechnung — GESAMTDOKUMENT.",
+  "Extrahiere nur: vendor, date, amount, category, summary.",
+  "amount = Zahlbetrag / Rechnungsbetrag / Gesamtbetrag brutto — nie Netto wenn Brutto sichtbar.",
+  "Keine Positionsliste — kommt aus separatem Scan.",
 ] as const;
 
 /** Guided wizard — document header band. */
 export const INVOICE_HEADER_USER_LINES = [
-  "Deutsche Kfz-Rechnung — nur der OBERE BEREICH (Kopf).",
-  "Werkstattname, Beleg-/Rechnungsnummer, Rechnungsdatum, Kilometerstand.",
-  "Synonyme km: Laufleistung, km-Stand, Tachostand, KM-Stand.",
-  "Tausenderpunkte entfernen — mileageKm als ganze Zahl.",
+  "Nur OBERER BEREICH (Kopf): Werkstattname, Belegnummer, Rechnungsdatum, Kilometerstand.",
+  "mileageKm NUR wenn explizit KM-Stand / Kilometerstand / Laufleistung / Tachostand im Kopf steht.",
+  "Keine Rechnungsnummer, Telefon oder €-Beträge als mileageKm.",
+  "145.000 km → 145000 (Integer, Tausenderpunkte entfernen).",
 ] as const;
 
 /** Guided wizard — positions table block (dedicated LLM pass). */
 export const INVOICE_LINE_ITEMS_USER_LINES = [
-  "Deutsche Kfz-Rechnung — nur der POSITIONS-/TABELLEN-BEREICH.",
-  "Extrahiere JEDE einzelne Rechnungsposition als eigenes lineItem.",
-  "Niemals Zeilen überspringen, zusammenfassen oder auslassen.",
-  "Material, Arbeitslohn, Entsorgung, Kleinmaterial, Rabatt (€), MwSt. — jeweils eigene Zeile.",
-  "amount = Gesamtpreis/Zeilensumme (Menge×Einzelpreis), NIE nur Einzelpreis.",
-  "Keine Prozentwerte als amount (-15%, MwSt 19% ohne €-Spalte → weglassen).",
-  "Tabellenkopfzeilen (Pos, Bezeichnung, Menge) sind KEINE Positionen.",
-  "Bei mehrspaltigen Tabellen: jede Datenzeile = ein lineItem.",
+  "Nur POSITIONS-/TABELLEN-BEREICH — jede sichtbare Datenzeile ein lineItem.",
+  "Schritt 1: Tabellenkopf lesen — welche Spalte ist Ges. Preis / Gesamtpreis / ganz rechts?",
+  "Schritt 2: Zeile für Zeile von oben nach unten — KEINE Zeile mit Betrag in der rechten Spalte auslassen.",
+  "amount pro lineItem = NUR Wert aus Ges. Preis / Gesamtpreis / rechter Summenspalte.",
+  "NIEMALS Einzelpreis, EP, Stückpreis, Netto-Einzelwert.",
+  "Mehrere €-Betrag in einer Zeile → immer den RECHTSTEN nehmen.",
+  "Fortsetzung der Tabelle (Seite 2): alle Zeilen mit erfassen.",
 ] as const;
 
-export const INVOICE_LINE_ITEMS_SYSTEM_PROMPT = `Du bist ein präziser Extraktor für Rechnungspositionen auf deutschen Kfz-Werkstattrechnungen.
-Deine EINZIGE Aufgabe: JEDE sichtbare Rechnungsposition als eigenes lineItem erfassen.
-
-KRITISCH:
-- Gehe die Tabelle ZEILE FÜR ZEILE von oben nach unten durch.
-- Überspringe KEINE Zeile mit einem Euro-Betrag.
-- Fasse NIEMALS mehrere Materialien zusammen (falsch: "Reifen und Sportfedern").
-- Arbeitslohn, Material, Entsorgungsgebühr, MwSt. — immer getrennte Einträge.
-- amount = Gesamtpreis der Zeile (rechte Summenspalte), nicht Stückpreis.
-- Prozentangaben ohne €-Betrag nicht als lineItem speichern.
-
-Antworte nur mit JSON.`.trim();
+/** @deprecated Use buildInvoiceLineItemsSystemPrompt() */
+export const INVOICE_LINE_ITEMS_SYSTEM_PROMPT = buildInvoiceLineItemsSystemPrompt();

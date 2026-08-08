@@ -11,8 +11,10 @@ import {
 import {
   ArrowLeft,
   LoaderCircle,
+  Plus,
   RotateCcw,
   ScanLine,
+  Trash2,
 } from "lucide-react";
 
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
@@ -36,6 +38,7 @@ import {
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import {
   mergeInvoiceWizardExtractions,
+  mergeLineItemsExtractions,
   type InvoiceHeaderExtraction,
   type InvoiceLineItemsExtraction,
   type InvoiceOverviewExtraction,
@@ -46,14 +49,17 @@ type WizardPhase =
   | "capture-overview"
   | "capture-header"
   | "capture-line-items"
+  | "line-items-hub"
   | "analyzing"
   | "review";
+
+const MAX_LINE_ITEM_BLOCKS = 8;
 
 interface WizardState {
   phase: WizardPhase;
   overviewFile: File | null;
   headerFile: File | null;
-  lineItemsFile: File | null;
+  lineItemsFiles: File[];
   overviewExtraction: InvoiceOverviewExtraction | null;
   headerExtraction: InvoiceHeaderExtraction | null;
   lineItemsExtraction: InvoiceLineItemsExtraction | null;
@@ -137,9 +143,9 @@ async function callInvoiceStep<T>(
 async function buildUploadFile(
   overviewFile: File | null,
   headerFile: File | null,
-  lineItemsFile: File | null,
+  lineItemsFiles: File[],
 ): Promise<File | null> {
-  const pages = [overviewFile, headerFile, lineItemsFile].filter(
+  const pages = [overviewFile, headerFile, ...lineItemsFiles].filter(
     (file): file is File => file !== null,
   );
 
@@ -222,7 +228,7 @@ export function InvoiceUploadWizard({
     phase: "capture-overview",
     overviewFile: null,
     headerFile: null,
-    lineItemsFile: null,
+    lineItemsFiles: [],
     overviewExtraction: null,
     headerExtraction: null,
     lineItemsExtraction: null,
@@ -236,14 +242,45 @@ export function InvoiceUploadWizard({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pending, startSaveTransition] = useTransition();
   const previewUrlRef = useRef<string | null>(null);
+  const lineItemPreviewUrlsRef = useRef<string[]>([]);
+  const [blockPreviewUrls, setBlockPreviewUrls] = useState<string[]>([]);
 
   useEffect(() => {
     return () => {
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
       }
+      for (const url of lineItemPreviewUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
     };
   }, []);
+
+  function revokeLineItemPreviewUrls() {
+    for (const url of lineItemPreviewUrlsRef.current) {
+      if (url) URL.revokeObjectURL(url);
+    }
+    lineItemPreviewUrlsRef.current = [];
+  }
+
+  useEffect(() => {
+    if (state.phase !== "line-items-hub") {
+      revokeLineItemPreviewUrls();
+      setBlockPreviewUrls([]);
+      return;
+    }
+
+    revokeLineItemPreviewUrls();
+    const urls = state.lineItemsFiles.map((file) =>
+      isPdfFile(file) ? "" : URL.createObjectURL(file),
+    );
+    lineItemPreviewUrlsRef.current = urls.filter(Boolean);
+    setBlockPreviewUrls(urls);
+
+    return () => {
+      revokeLineItemPreviewUrls();
+    };
+  }, [state.phase, state.lineItemsFiles]);
 
   function setPreviewUrl(url: string | null, owned: boolean) {
     if (previewUrlRef.current) {
@@ -255,11 +292,12 @@ export function InvoiceUploadWizard({
 
   function resetWizard() {
     setPreviewUrl(null, false);
+    revokeLineItemPreviewUrls();
     setState({
       phase: "capture-overview",
       overviewFile: null,
       headerFile: null,
-      lineItemsFile: null,
+      lineItemsFiles: [],
       overviewExtraction: null,
       headerExtraction: null,
       lineItemsExtraction: null,
@@ -279,11 +317,11 @@ export function InvoiceUploadWizard({
         ...prev,
         overviewFile: file,
         headerFile: file,
-        lineItemsFile: file,
+        lineItemsFiles: [file],
         phase: "analyzing",
         error: null,
       }));
-      void runAnalysis(file, file, file);
+      void runAnalysis(file, file, [file]);
       return;
     }
 
@@ -299,36 +337,64 @@ export function InvoiceUploadWizard({
     setState((prev) => ({
       ...prev,
       headerFile: file,
-      phase: "capture-line-items",
+      lineItemsFiles: [],
+      phase: "line-items-hub",
       error: null,
     }));
   }
 
   function handleLineItemsCapture(file: File) {
-    const { overviewFile, headerFile } = state;
+    setState((prev) => {
+      if (prev.lineItemsFiles.length >= MAX_LINE_ITEM_BLOCKS) {
+        return {
+          ...prev,
+          error: `Maximal ${MAX_LINE_ITEM_BLOCKS} Positions-Blöcke.`,
+        };
+      }
+      return {
+        ...prev,
+        lineItemsFiles: [...prev.lineItemsFiles, file],
+        phase: "line-items-hub",
+        error: null,
+      };
+    });
+  }
+
+  function removeLineItemsBlock(index: number) {
     setState((prev) => ({
       ...prev,
-      lineItemsFile: file,
-      phase: "analyzing",
+      lineItemsFiles: prev.lineItemsFiles.filter((_, i) => i !== index),
       error: null,
     }));
-    void runAnalysis(overviewFile, headerFile, file);
+  }
+
+  function startAnalysisFromHub() {
+    const { overviewFile, headerFile, lineItemsFiles } = state;
+    if (lineItemsFiles.length === 0) {
+      setState((prev) => ({
+        ...prev,
+        error: "Bitte mindestens einen Positions-Block fotografieren.",
+      }));
+      return;
+    }
+    setState((prev) => ({ ...prev, phase: "analyzing", error: null }));
+    void runAnalysis(overviewFile, headerFile, lineItemsFiles);
   }
 
   async function runAnalysis(
     overviewFile: File | null,
     headerFile: File | null,
-    lineItemsFile: File | null,
+    lineItemsFiles: File[],
   ) {
     try {
       if (!headerFile) {
         throw new InvoiceApiError("Kein Kopf-Bild vorhanden.");
       }
-      if (!lineItemsFile) {
+      if (lineItemsFiles.length === 0) {
         throw new InvoiceApiError("Kein Positions-Bild vorhanden.");
       }
 
-      const [overviewResult, headerResult, lineItemsResult] = await Promise.all([
+      const [overviewResult, headerResult, lineItemsResults] = await Promise.all([
         overviewFile
           ? callInvoiceStep<InvoiceOverviewExtraction>(
               overviewFile,
@@ -343,13 +409,19 @@ export function InvoiceUploadWizard({
           "Kopf-Analyse",
           lockedCategory,
         ),
-        callInvoiceStep<InvoiceLineItemsExtraction>(
-          lineItemsFile,
-          "line-items",
-          "Positions-Analyse",
-          lockedCategory,
+        Promise.all(
+          lineItemsFiles.map((file, index) =>
+            callInvoiceStep<InvoiceLineItemsExtraction>(
+              file,
+              "line-items",
+              `Positions-Analyse Block ${index + 1}`,
+              lockedCategory,
+            ),
+          ),
         ),
       ]);
+
+      const lineItemsResult = mergeLineItemsExtractions(lineItemsResults);
 
       const fields = mergeInvoiceWizardExtractions(
         overviewResult,
@@ -361,9 +433,12 @@ export function InvoiceUploadWizard({
       const uploadFile = await buildUploadFile(
         overviewFile,
         headerFile,
-        lineItemsFile,
+        lineItemsFiles,
       );
-      const previewSource = lineItemsFile ?? headerFile ?? overviewFile;
+      const previewSource =
+        lineItemsFiles[lineItemsFiles.length - 1] ??
+        headerFile ??
+        overviewFile;
       const owned =
         previewSource !== null && !previewSource.type.includes("pdf");
       const previewUrl =
@@ -393,7 +468,7 @@ export function InvoiceUploadWizard({
     } catch (err) {
       setState((prev) => ({
         ...prev,
-        phase: "capture-line-items",
+        phase: "line-items-hub",
         error:
           err instanceof Error
             ? err.message
@@ -487,7 +562,7 @@ export function InvoiceUploadWizard({
       const pageCount = [
         state.overviewFile,
         state.headerFile,
-        state.lineItemsFile,
+        ...state.lineItemsFiles,
       ].filter(Boolean).length;
       formData.set("pageCount", String(pageCount || 1));
       formData.set("approvalFields", "");
@@ -505,7 +580,8 @@ export function InvoiceUploadWizard({
     });
   }
 
-  const { phase, fields, uploadFile, previewUrl, title, error } = state;
+  const { phase, fields, uploadFile, previewUrl, title, error, lineItemsFiles } =
+    state;
 
   if (phase === "capture-overview") {
     return (
@@ -517,9 +593,8 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title={resolvedHeading}
-          hint="Schritt 1 von 3 · Gesamtes Blatt"
-          guideFrame="a4"
-          guideLabel="Gesamte Rechnung im DIN-A4-Rahmen"
+          hint="Schritt 1 von 3 · Gesamte Rechnung frei fotografieren"
+          guideFrame="none"
           allowPdf
           onCapture={handleOverviewCapture}
           onClose={() => {
@@ -546,10 +621,8 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Rechnungskopf fotografieren"
-          hint="Schritt 2 von 3 · Werkstatt, Datum, KM-Stand"
-          guideFrame="section"
-          guideSectionAnchor="top"
-          guideLabel="Kopf mit Werkstattname, Belegnr., km-Stand"
+          hint="Schritt 2 von 3 · Kopf mit Werkstatt, Datum, KM-Stand"
+          guideFrame="none"
           onCapture={handleHeaderCapture}
           onClose={() =>
             setState((prev) => ({ ...prev, phase: "capture-overview" }))
@@ -560,6 +633,7 @@ export function InvoiceUploadWizard({
   }
 
   if (phase === "capture-line-items") {
+    const blockNumber = lineItemsFiles.length + 1;
     return (
       <>
         {error ? (
@@ -569,16 +643,145 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Positionen fotografieren"
-          hint="Schritt 3 von 3 · Tabellenblock"
-          guideFrame="section"
-          guideSectionAnchor="center"
-          guideLabel="Alle Positionen / Tabellenzeilen im Rahmen"
+          hint={`Schritt 3 von 3 · Block ${blockNumber}${blockNumber > 1 ? " · nächste Seite" : ""} — frei fotografieren`}
+          guideFrame="none"
           onCapture={handleLineItemsCapture}
           onClose={() =>
-            setState((prev) => ({ ...prev, phase: "capture-header" }))
+            setState((prev) => ({
+              ...prev,
+              phase: prev.lineItemsFiles.length > 0 ? "line-items-hub" : "capture-header",
+              error: null,
+            }))
           }
         />
       </>
+    );
+  }
+
+  if (phase === "line-items-hub") {
+    const canAddMore = lineItemsFiles.length < MAX_LINE_ITEM_BLOCKS;
+
+    return (
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
+        <header className="space-y-3">
+          <button
+            type="button"
+            onClick={() =>
+              setState((prev) => ({ ...prev, phase: "capture-header", error: null }))
+            }
+            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Kopf erneut scannen
+          </button>
+
+          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+            <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+              Schritt 3 von 3 · Positionen
+            </p>
+            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.35rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+              Positions-Blöcke
+            </h1>
+            <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Mehrseitige Tabellen? Fotografiere jeden Block separat — z. B. Seite
+              1 und Fortsetzung auf Seite 2.
+            </p>
+            <div className="mt-4">
+              <WizardProgress currentStep={3} totalSteps={3} />
+            </div>
+          </div>
+        </header>
+
+        {lineItemsFiles.length > 0 ? (
+          <ul className="grid grid-cols-2 gap-2">
+            {lineItemsFiles.map((file, index) => (
+              <li
+                key={`${file.name}-${file.size}-${index}`}
+                className="relative overflow-hidden rounded-[1.1rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]"
+              >
+                {isPdfFile(file) ? (
+                  <div className="flex aspect-[4/3] items-center justify-center bg-neutral-100 px-3 text-center text-[0.75rem] font-medium text-[color:var(--vd-muted)]">
+                    PDF · Block {index + 1}
+                  </div>
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={blockPreviewUrls[index]}
+                    alt={`Positions-Block ${index + 1}`}
+                    className="aspect-[4/3] w-full object-cover"
+                  />
+                )}
+                <span className="absolute left-1.5 top-1.5 rounded-md bg-neutral-900/85 px-1.5 py-0.5 text-[0.65rem] font-semibold text-white">
+                  Block {index + 1}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Block ${index + 1} entfernen`}
+                  onClick={() => removeLineItemsBlock(index)}
+                  className="absolute bottom-1.5 right-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-neutral-800 shadow"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-white px-4 py-8 text-center">
+            <p className="text-[0.9rem] font-medium text-[color:var(--vd-text)]">
+              Noch kein Positions-Block
+            </p>
+            <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
+              Fotografiere den Tabellenbereich mit allen Positionen.
+            </p>
+          </div>
+        )}
+
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
+          >
+            {error}
+          </p>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-2">
+          {canAddMore ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="claim-back h-auto min-h-11 py-3"
+              onClick={() =>
+                setState((prev) => ({
+                  ...prev,
+                  phase: "capture-line-items",
+                  error: null,
+                }))
+              }
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              {lineItemsFiles.length === 0
+                ? "Positions-Block fotografieren"
+                : "Weiteren Block hinzufügen"}
+            </Button>
+          ) : (
+            <p className="text-center text-[0.75rem] text-[color:var(--vd-muted)]">
+              Maximal {MAX_LINE_ITEM_BLOCKS} Blöcke.
+            </p>
+          )}
+
+          <Button
+            type="button"
+            disabled={lineItemsFiles.length === 0}
+            className="claim-cta h-auto min-h-11 py-3"
+            onClick={startAnalysisFromHub}
+          >
+            {lineItemsFiles.length <= 1
+              ? "Analysieren"
+              : `${lineItemsFiles.length} Blöcke analysieren`}
+          </Button>
+        </div>
+      </section>
     );
   }
 

@@ -161,7 +161,7 @@ const INVOICE_TEXT_PARSE_JSON_SCHEMA_BASE = {
             amount: {
               type: "number",
               description:
-                "Gesamtpreis / Zeilensumme in EUR for this position (qty × unit). NEVER the Einzelpreis/Stückpreis alone. NEVER a percentage (15 from '-15%' / 'Skonto 2%' / 'MwSt 19%'). Example: 4×120 → amount 480, not 120.",
+                "NUR Ges. Preis / Gesamtpreis / Zeilensumme aus der RECHTSTEN Spalte. NIE Einzelpreis/EP/Stückpreis. Bei 4×120 und Ges.preis 480 → 480.",
             },
           },
         },

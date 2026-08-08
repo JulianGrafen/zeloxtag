@@ -8,16 +8,16 @@ import {
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   INVOICE_HEADER_USER_LINES,
-  INVOICE_LINE_ITEMS_SYSTEM_PROMPT,
   INVOICE_LINE_ITEMS_USER_LINES,
   INVOICE_OVERVIEW_USER_LINES,
+  buildInvoiceHeaderSystemPrompt,
+  buildInvoiceLineItemsSystemPrompt,
   buildInvoiceSystemPrompt,
 } from "@/lib/ocr/invoice-parse-prompts";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import {
   extractMileageKmFromText,
-  preferMileageKm,
 } from "@/lib/ocr/mileage-from-text";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
@@ -32,10 +32,12 @@ import {
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
 
-const LINE_ITEMS_MAX_TOKENS = 6_000;
-const HEADER_MAX_TOKENS = 1_200;
-const OVERVIEW_MAX_TOKENS = 1_200;
+const LINE_ITEMS_MAX_TOKENS = 8_192;
+const HEADER_MAX_TOKENS = 1_500;
+const OVERVIEW_MAX_TOKENS = 1_500;
 const LINE_ITEMS_MAX_COUNT = 60;
+const MIN_KM = 500;
+const MAX_KM = 9_999_999;
 
 const INVOICE_OVERVIEW_JSON_SCHEMA = {
   name: "invoice_wizard_overview",
@@ -55,7 +57,8 @@ const INVOICE_OVERVIEW_JSON_SCHEMA = {
       },
       amount: {
         type: ["number", "null"],
-        description: "Gesamtbetrag / Zahlbetrag in EUR",
+        description:
+          "Zahlbetrag / Rechnungsbetrag / Gesamtbetrag brutto in EUR — nie Netto wenn Brutto sichtbar",
       },
       category: {
         type: "string",
@@ -87,7 +90,8 @@ const INVOICE_HEADER_JSON_SCHEMA = {
       },
       mileageKm: {
         type: ["integer", "null"],
-        description: "Kilometerstand als ganze Zahl ohne Tausenderpunkte",
+        description:
+          "Kilometerstand aus explizitem KM-Feld im Kopf (Integer, z.B. 142350). Null wenn kein KM-Feld oder unsicher.",
       },
       date: {
         type: ["string", "null"],
@@ -120,7 +124,8 @@ const INVOICE_LINE_ITEMS_JSON_SCHEMA = {
             },
             amount: {
               type: "number",
-              description: "Gesamtpreis / Zeilensumme in EUR",
+              description:
+                "NUR Ges. Preis / Gesamtpreis / Wert aus der RECHTSTEN Summenspalte. NIE Einzelpreis/EP/Stückpreis. Bei mehreren €-Betrag den rechtesten.",
             },
           },
         },
@@ -153,11 +158,80 @@ export type InvoiceLineItemsExtraction = {
   amount: number | null;
 };
 
+/** Merge multiple position-block scans (multi-page invoices). */
+export function mergeLineItemsExtractions(
+  blocks: InvoiceLineItemsExtraction[],
+): InvoiceLineItemsExtraction {
+  if (blocks.length === 0) {
+    return { lineItems: null, amount: null };
+  }
+  if (blocks.length === 1) {
+    return blocks[0]!;
+  }
+
+  const seen = new Set<string>();
+  const merged: InvoiceLineItem[] = [];
+
+  for (const block of blocks) {
+    for (const item of block.lineItems ?? []) {
+      const key = `${item.label.trim().toLowerCase()}|${item.amount}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+    }
+  }
+
+  const lineItems = normalizeLineItemsList(merged, LINE_ITEMS_MAX_COUNT);
+  const amount =
+    blocks.map((block) => block.amount).find((value) => value !== null) ??
+    null;
+
+  return { lineItems, amount };
+}
+
 export type InvoiceExtractionOptions = {
   model?: string;
   /** Locked category from scan type picker (repair/service). */
   lockedCategory?: InvoiceTextParseCategory | null;
 };
+
+/** Reject common LLM mileage mistakes (decimals, invoice #, out of range). */
+export function sanitizeInvoiceMileageKm(
+  value: number | null | undefined,
+  invoiceNumber: string | null,
+): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+
+  const rounded = Math.round(value);
+  if (Math.abs(value - rounded) > 0.001) return null;
+  if (rounded < MIN_KM || rounded > MAX_KM) return null;
+
+  if (invoiceNumber) {
+    const invDigits = invoiceNumber.replace(/\D/g, "");
+    if (invDigits.length >= 4 && invDigits === String(rounded)) return null;
+  }
+
+  return rounded;
+}
+
+function parseHeaderMileage(
+  raw: unknown,
+  invoiceNumber: string | null,
+): number | null {
+  if (typeof raw === "string" && raw.trim()) {
+    const fromText = extractMileageKmFromText(raw);
+    const sanitized = sanitizeInvoiceMileageKm(fromText, invoiceNumber);
+    if (sanitized !== null) return sanitized;
+  }
+
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    const sanitized = sanitizeInvoiceMileageKm(raw, invoiceNumber);
+    if (sanitized !== null) return sanitized;
+  }
+
+  const coerced = coerceLooseNumber(raw);
+  return sanitizeInvoiceMileageKm(coerced, invoiceNumber);
+}
 
 function parseCategory(value: unknown): InvoiceTextParseCategory {
   if (
@@ -183,12 +257,6 @@ function parseIsoDate(value: unknown): string | null {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
     ? value
     : null;
-}
-
-function parseMileage(value: unknown): number | null {
-  const n = coerceLooseNumber(value);
-  if (n === null || n < 0) return null;
-  return Math.round(n);
 }
 
 function parseLineItemsRaw(value: unknown): InvoiceLineItem[] | null {
@@ -305,10 +373,9 @@ export function mergeInvoiceWizardExtractions(
     lineItems,
   );
 
-  const mileageHint = header.mileageKm?.toString() ?? "";
-  const mileageKm = preferMileageKm(
-    header.mileageKm,
-    mileageHint,
+  const mileageKm = sanitizeInvoiceMileageKm(
+    parseHeaderMileage(header.mileageKm, header.invoiceNumber),
+    header.invoiceNumber,
   );
 
   return normalizeTextParseResult({
@@ -366,12 +433,7 @@ export class InvoiceExtractionService {
     options: InvoiceExtractionOptions = {},
   ): Promise<InvoiceHeaderExtraction> {
     const record = await runVisionExtract<Record<string, unknown>>(
-      [
-        "Du extrahierst nur den Rechnungs-KOPF (oberer Bereich).",
-        "Werkstattname, Belegnummer, Datum, Kilometerstand.",
-        "Keine Positionstabelle — nur Kopfdaten.",
-        "Optional → null wenn nicht lesbar.",
-      ].join("\n"),
+      buildInvoiceHeaderSystemPrompt(),
       INVOICE_HEADER_USER_LINES,
       input,
       INVOICE_HEADER_JSON_SCHEMA,
@@ -380,13 +442,12 @@ export class InvoiceExtractionService {
       "Invoice header extract failed",
     );
 
-    const mileageKm =
-      parseMileage(record.mileageKm) ??
-      extractMileageKmFromText(String(record.mileageKm ?? ""));
+    const invoiceNumber = parseNullableString(record.invoiceNumber, 80);
+    const mileageKm = parseHeaderMileage(record.mileageKm, invoiceNumber);
 
     return {
       vendor: parseNullableString(record.vendor, 160),
-      invoiceNumber: parseNullableString(record.invoiceNumber, 80),
+      invoiceNumber,
       mileageKm,
       date: parseIsoDate(record.date),
     };
@@ -398,7 +459,7 @@ export class InvoiceExtractionService {
     options: InvoiceExtractionOptions = {},
   ): Promise<InvoiceLineItemsExtraction> {
     const record = await runVisionExtract<Record<string, unknown>>(
-      INVOICE_LINE_ITEMS_SYSTEM_PROMPT,
+      buildInvoiceLineItemsSystemPrompt(),
       INVOICE_LINE_ITEMS_USER_LINES,
       input,
       INVOICE_LINE_ITEMS_JSON_SCHEMA,

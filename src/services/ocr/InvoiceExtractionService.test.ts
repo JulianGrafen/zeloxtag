@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { mergeInvoiceWizardExtractions } from "@/services/ocr/InvoiceExtractionService";
+import {
+  mergeInvoiceWizardExtractions,
+  mergeLineItemsExtractions,
+  sanitizeInvoiceMileageKm,
+} from "@/services/ocr/InvoiceExtractionService";
 
 describe("mergeInvoiceWizardExtractions", () => {
   it("uses dedicated line-items scan as sole lineItems source", () => {
@@ -55,5 +59,42 @@ describe("mergeInvoiceWizardExtractions", () => {
     );
 
     expect(merged.category).toBe("repair");
+  });
+});
+
+describe("mergeLineItemsExtractions", () => {
+  it("concatenates blocks and dedupes identical rows", () => {
+    const merged = mergeLineItemsExtractions([
+      {
+        lineItems: [
+          { label: "Reifen", amount: 480 },
+          { label: "Arbeitslohn", amount: 120 },
+        ],
+        amount: null,
+      },
+      {
+        lineItems: [
+          { label: "Arbeitslohn", amount: 120 },
+          { label: "Motoröl", amount: 89 },
+        ],
+        amount: 689,
+      },
+    ]);
+
+    expect(merged.lineItems).toEqual([
+      { label: "Reifen", amount: 480 },
+      { label: "Arbeitslohn", amount: 120 },
+      { label: "Motoröl", amount: 89 },
+    ]);
+    expect(merged.amount).toBe(689);
+  });
+});
+
+describe("sanitizeInvoiceMileageKm", () => {
+  it("rejects decimals, out-of-range, and invoice-number collisions", () => {
+    expect(sanitizeInvoiceMileageKm(142.35, null)).toBeNull();
+    expect(sanitizeInvoiceMileageKm(120, null)).toBeNull();
+    expect(sanitizeInvoiceMileageKm(142350, "RE-142350")).toBeNull();
+    expect(sanitizeInvoiceMileageKm(142350, "RE-2026-0312")).toBe(142350);
   });
 });
