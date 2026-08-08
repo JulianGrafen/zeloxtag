@@ -1,6 +1,6 @@
 /**
  * Map the on-screen DIN A4 guide frame to video pixels (object-cover)
- * and build a perspective-corrected A4 PDF from the capture.
+ * and build a perspective-corrected A4 page (JPEG / PDF).
  */
 
 import { computeA4CropRect } from "@/lib/ocr/compress-page";
@@ -35,7 +35,10 @@ export type VideoCropRect = {
   sh: number;
 };
 
-/** Prefix for wizard overview PDFs (single-page A4 scan — not a native multi-page upload). */
+/** Prefix for auto-cropped A4 scan pages (JPEG). */
+export const A4_SCAN_IMAGE_PREFIX = "a4-scan-";
+
+/** Legacy prefix for wizard overview PDFs (single-page A4 scan). */
 export const WIZARD_OVERVIEW_PDF_PREFIX = "invoice-overview-";
 
 export function isWizardOverviewScanPdf(file: File): boolean {
@@ -110,6 +113,43 @@ export function cropCanvasRegion(
   return canvas;
 }
 
+async function canvasToJpegFile(
+  canvas: HTMLCanvasElement,
+  fileName: string,
+  quality = 0.92,
+): Promise<File> {
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) =>
+        result
+          ? resolve(result)
+          : reject(new Error("A4-Bild konnte nicht erzeugt werden.")),
+      "image/jpeg",
+      quality,
+    );
+  });
+
+  const base = fileName.replace(/\.(jpe?g|pdf)$/i, "");
+  return new File([blob], `${base}.jpg`, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
+
+async function warpOptimizeA4(
+  source: HTMLCanvasElement,
+  corners: QuadPoints,
+): Promise<HTMLCanvasElement> {
+  const warped = await warpPerspectiveAsync(source, corners, {
+    maxWidth: WARP_MAX_WIDTH_PX,
+    forceAspect: A4_ASPECT,
+  });
+  const optimized = optimizeDocumentCanvas(warped, {
+    maxWidth: WARP_MAX_WIDTH_PX,
+  });
+  return optimized.canvas;
+}
+
 async function warpAndBuildA4Pdf(
   source: HTMLCanvasElement,
   corners: QuadPoints,
@@ -124,7 +164,22 @@ async function warpAndBuildA4Pdf(
 }
 
 /**
- * Crop the guide frame from a full camera capture, auto-straighten, output A4 PDF.
+ * Crop the guide frame from a full camera capture, auto-straighten, output A4 JPEG.
+ * JPEG keeps multi-page wizards able to merge pages into one final PDF.
+ */
+export async function buildA4ImageFromGuideCapture(
+  fullCapture: HTMLCanvasElement,
+  crop: VideoCropRect,
+  fileName = `${A4_SCAN_IMAGE_PREFIX}${Date.now()}`,
+): Promise<File> {
+  const cropped = cropCanvasRegion(fullCapture, crop);
+  const corners = defaultDocumentCorners(cropped.width, cropped.height, 0.025);
+  const canvas = await warpOptimizeA4(cropped, corners);
+  return canvasToJpegFile(canvas, fileName);
+}
+
+/**
+ * Crop the guide frame and build a single-page A4 PDF (legacy / explicit PDF path).
  */
 export async function buildA4PdfFromGuideCapture(
   fullCapture: HTMLCanvasElement,
@@ -137,7 +192,40 @@ export async function buildA4PdfFromGuideCapture(
 }
 
 /**
- * Gallery fallback: center-crop to A4, enhance, build A4 PDF.
+ * Gallery fallback: center-crop to A4, enhance, return A4 JPEG.
+ */
+export async function buildA4ImageFromPhotoFile(
+  file: File,
+  fileName = `${A4_SCAN_IMAGE_PREFIX}${Date.now()}`,
+): Promise<File> {
+  const image = await loadImageFromFile(file);
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = sourceWidth;
+  sourceCanvas.height = sourceHeight;
+  const ctx = sourceCanvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Canvas ist in diesem Browser nicht verfügbar.");
+  }
+  ctx.drawImage(image, 0, 0);
+
+  const crop = computeA4CropRect(sourceWidth, sourceHeight);
+  const cropped = cropCanvasRegion(sourceCanvas, {
+    sx: crop.sx,
+    sy: crop.sy,
+    sw: crop.sw,
+    sh: crop.sh,
+  });
+
+  const corners = defaultDocumentCorners(cropped.width, cropped.height, 0.04);
+  const canvas = await warpOptimizeA4(cropped, corners);
+  return canvasToJpegFile(canvas, fileName);
+}
+
+/**
+ * @deprecated Prefer {@link buildA4ImageFromPhotoFile}; kept for PDF-only callers.
  */
 export async function buildA4PdfFromPhotoFile(
   file: File,

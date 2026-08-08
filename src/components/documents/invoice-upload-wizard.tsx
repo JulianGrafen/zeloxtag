@@ -599,7 +599,6 @@ export function InvoiceUploadWizard({
           title={resolvedHeading}
           hint="Schritt 1 von 3 · Gesamte Rechnung ins DIN-A4-Feld halten"
           guideFrame="a4"
-          a4AutoCrop
           guideLabel="Gesamte Rechnung im Rahmen ausrichten"
           showBriefing={false}
           allowPdf

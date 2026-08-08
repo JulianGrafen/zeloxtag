@@ -11,8 +11,8 @@ import { createPortal } from "react-dom";
 import { Camera, FileUp, FlipHorizontal2, ImagePlus, X } from "lucide-react";
 
 import {
-  buildA4PdfFromGuideCapture,
-  buildA4PdfFromPhotoFile,
+  buildA4ImageFromGuideCapture,
+  buildA4ImageFromPhotoFile,
   mapContainerRectToVideoCrop,
 } from "@/lib/utils/a4-auto-scan";
 
@@ -38,7 +38,7 @@ export interface InBrowserCameraProps {
   guideFrameDimOutside?: boolean;
   /**
    * With `guideFrame="a4"`: crop the guide frame from the capture,
-   * auto-straighten and return an A4 PDF instead of a raw JPEG.
+   * auto-straighten and return an A4 JPEG (default: on for full-page scans).
    */
   a4AutoCrop?: boolean;
   /** Vertical anchor for section frames. Ignored for `a4`. Default: center. */
@@ -126,7 +126,7 @@ export function InBrowserCamera({
   guideWatermark,
   guideFrame = "section",
   guideFrameDimOutside = false,
-  a4AutoCrop = false,
+  a4AutoCrop = true,
   guideSectionAnchor = "center",
   allowPdf = false,
   showBriefing = true,
@@ -236,40 +236,78 @@ export function InBrowserCamera({
 
   async function processA4GuideCapture(
     fullCapture: HTMLCanvasElement,
+    layout: {
+      videoWidth: number;
+      videoHeight: number;
+      container: DOMRect;
+      guide: DOMRect;
+    },
   ): Promise<File> {
-    const viewfinder = viewfinderRef.current;
-    const guide = guideFrameRef.current;
-    if (!viewfinder || !guide) {
-      throw new Error("A4-Rahmen nicht gefunden — bitte erneut versuchen.");
-    }
-
-    const containerRect = viewfinder.getBoundingClientRect();
-    const guideRect = guide.getBoundingClientRect();
     const crop = mapContainerRectToVideoCrop(
-      fullCapture.width,
-      fullCapture.height,
+      layout.videoWidth,
+      layout.videoHeight,
       {
-        left: containerRect.left,
-        top: containerRect.top,
-        width: containerRect.width,
-        height: containerRect.height,
+        left: layout.container.left,
+        top: layout.container.top,
+        width: layout.container.width,
+        height: layout.container.height,
       },
       {
-        left: guideRect.left,
-        top: guideRect.top,
-        width: guideRect.width,
-        height: guideRect.height,
+        left: layout.guide.left,
+        top: layout.guide.top,
+        width: layout.guide.width,
+        height: layout.guide.height,
       },
     );
 
-    const pdf = await buildA4PdfFromGuideCapture(fullCapture, crop);
-    return pdf.file;
+    if (crop.sw < 8 || crop.sh < 8) {
+      throw new Error(
+        "A4-Rahmen zu klein — bitte näher heran oder Rahmen neu ausrichten.",
+      );
+    }
+
+    return buildA4ImageFromGuideCapture(fullCapture, crop);
+  }
+
+  function readA4CaptureLayout():
+    | {
+        videoWidth: number;
+        videoHeight: number;
+        container: DOMRect;
+        guide: DOMRect;
+      }
+    | null {
+    const video = videoRef.current;
+    const viewfinder = viewfinderRef.current;
+    const guide = guideFrameRef.current;
+    if (!video || !viewfinder || !guide) return null;
+
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+    if (videoWidth < 1 || videoHeight < 1) return null;
+
+    return {
+      videoWidth,
+      videoHeight,
+      container: viewfinder.getBoundingClientRect(),
+      guide: guide.getBoundingClientRect(),
+    };
   }
 
   async function handleCapture() {
     if (!videoRef.current || capturing || processingCapture || !cameraReady) {
       return;
     }
+
+    const shouldA4Crop = a4AutoCrop && guideFrame === "a4";
+    const a4Layout = shouldA4Crop ? readA4CaptureLayout() : null;
+    if (shouldA4Crop && !a4Layout) {
+      setCameraError(
+        "A4-Rahmen nicht bereit — bitte kurz warten und erneut auslösen.",
+      );
+      return;
+    }
+
     setCapturing(true);
     try {
       const video = videoRef.current;
@@ -281,11 +319,11 @@ export function InBrowserCamera({
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      if (a4AutoCrop && guideFrame === "a4") {
+      if (shouldA4Crop && a4Layout) {
         setProcessingCapture(true);
         try {
-          const pdfFile = await processA4GuideCapture(canvas);
-          await deliverCaptureFile(pdfFile);
+          const a4File = await processA4GuideCapture(canvas, a4Layout);
+          await deliverCaptureFile(a4File);
         } finally {
           setProcessingCapture(false);
         }
@@ -332,8 +370,8 @@ export function InBrowserCamera({
     ) {
       setProcessingCapture(true);
       try {
-        const pdfFile = await buildA4PdfFromPhotoFile(file);
-        await deliverCaptureFile(pdfFile);
+        const a4File = await buildA4ImageFromPhotoFile(file);
+        await deliverCaptureFile(a4File);
       } catch (error) {
         setCameraError(
           error instanceof Error
@@ -351,32 +389,18 @@ export function InBrowserCamera({
 
   const fileAccept = allowPdf ? PDF_ACCEPT : IMAGE_ACCEPT;
 
-  const compactChrome = continuousCapture;
-  /** Full-bleed viewfinder for free capture (invoice) and hunt mode. */
-  const immersiveChrome = guideFrame === "none" || compactChrome;
   const frameOutsideShadow = guideFrameOutsideShadow(guideFrameDimOutside);
-  const a4FrameMaxWidth = compactChrome
-    ? "min(99vw, calc((100dvh - max(5rem, calc(env(safe-area-inset-top) + 3.5rem)) - max(5rem, calc(env(safe-area-inset-bottom) + 3.5rem))) * 210 / 297))"
-    : "min(98vw, calc((100dvh - max(7rem, calc(env(safe-area-inset-top) + 5rem)) - max(7rem, calc(env(safe-area-inset-bottom) + 5rem))) * 210 / 297))";
+  const chromeTopPad =
+    "max(3.25rem, calc(env(safe-area-inset-top) + 2.75rem))";
+  const chromeBottomPad =
+    "max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem))";
 
   const topBar = (
-    <div
-      className={[
-        "relative flex shrink-0 items-center justify-between px-3",
-        immersiveChrome
-          ? "pointer-events-auto pb-2 pt-[max(0.35rem,env(safe-area-inset-top))]"
-          : "px-4 pb-3 pt-[max(1.5rem,env(safe-area-inset-top))]",
-      ].join(" ")}
-    >
+    <div className="pointer-events-auto relative flex shrink-0 items-center justify-between px-3 pb-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
       <button
         type="button"
         onClick={onClose}
-        className={[
-          "flex h-10 w-10 items-center justify-center rounded-full text-white transition-opacity active:opacity-60",
-          immersiveChrome
-            ? "bg-black/25 backdrop-blur-[2px]"
-            : "bg-white/10 backdrop-blur-sm",
-        ].join(" ")}
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-[2px] transition-opacity active:opacity-60"
         aria-label="Schließen"
       >
         <X className="h-5 w-5" />
@@ -388,28 +412,18 @@ export function InBrowserCamera({
             Schritt {captureStep.current} von {captureStep.total}
           </p>
         ) : null}
-        <p
-          className={[
-            "font-semibold text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]",
-            immersiveChrome ? "text-[0.8rem] leading-snug" : "text-sm",
-          ].join(" ")}
-        >
+        <p className="text-[0.8rem] font-semibold leading-snug text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
           {title}
         </p>
-        {hint && immersiveChrome && !instructionsOpen ? (
-          <p className="mt-0.5 line-clamp-1 text-[0.65rem] leading-snug text-white/85 drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
+        {hint && !instructionsOpen ? (
+          <p className="mt-0.5 line-clamp-2 text-[0.65rem] leading-snug text-white/85 drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
             {hint}
           </p>
         ) : null}
       </div>
 
       <label
-        className={[
-          "relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-white transition-opacity active:opacity-60",
-          immersiveChrome
-            ? "bg-black/25 backdrop-blur-[2px]"
-            : "bg-white/10 backdrop-blur-sm",
-        ].join(" ")}
+        className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-[2px] transition-opacity active:opacity-60"
         aria-label="Aus Galerie oder Datei wählen"
       >
         <input
@@ -429,15 +443,8 @@ export function InBrowserCamera({
 
   const bottomControls =
     !cameraError && !instructionsOpen && !processingCapture ? (
-      <div
-        className={[
-          "flex shrink-0 items-center justify-center gap-6",
-          immersiveChrome
-            ? "pointer-events-auto px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
-            : "gap-8 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]",
-        ].join(" ")}
-      >
-        {immersiveChrome && hasMultipleCameras ? (
+      <div className="pointer-events-auto flex shrink-0 items-center justify-center gap-6 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+        {hasMultipleCameras ? (
           <button
             type="button"
             onClick={() => void flipCamera()}
@@ -446,40 +453,23 @@ export function InBrowserCamera({
           >
             <FlipHorizontal2 className="h-5 w-5" />
           </button>
-        ) : !immersiveChrome && hasMultipleCameras ? (
-          <button
-            type="button"
-            onClick={() => void flipCamera()}
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white transition-opacity active:opacity-60"
-            aria-label="Kamera wechseln"
-          >
-            <FlipHorizontal2 className="h-5 w-5" />
-          </button>
         ) : (
-          <div className={immersiveChrome ? "h-11 w-11" : "h-12 w-12"} aria-hidden />
+          <div className="h-11 w-11" aria-hidden />
         )}
 
         <button
           type="button"
           onClick={() => void handleCapture()}
           disabled={!cameraReady || capturing || processingCapture}
-          className={[
-            "flex items-center justify-center rounded-full border-4 border-white/95 shadow-[0_2px_18px_rgba(0,0,0,0.45)] transition-transform active:scale-90 disabled:opacity-40",
-            immersiveChrome ? "h-[4.75rem] w-[4.75rem]" : compactChrome ? "h-[4.75rem] w-[4.75rem]" : "h-20 w-20",
-          ].join(" ")}
+          className="flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full border-4 border-white/95 shadow-[0_2px_18px_rgba(0,0,0,0.45)] transition-transform active:scale-90 disabled:opacity-40"
           aria-label="Foto aufnehmen"
         >
-          <span
-            className={[
-              "rounded-full bg-white transition-transform active:scale-90",
-              immersiveChrome ? "h-[3.25rem] w-[3.25rem]" : compactChrome ? "h-[3.35rem] w-[3.35rem]" : "h-14 w-14",
-            ].join(" ")}
-          />
+          <span className="h-[3.25rem] w-[3.25rem] rounded-full bg-white transition-transform active:scale-90" />
         </button>
 
-        {compactChrome && !immersiveChrome ? (
+        {continuousCapture ? (
           <label
-            className="relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-opacity active:opacity-60"
+            className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-[2px] transition-opacity active:opacity-60"
             aria-label="Aus Galerie oder Datei wählen"
           >
             <input
@@ -495,36 +485,15 @@ export function InBrowserCamera({
             )}
           </label>
         ) : (
-          <div className={immersiveChrome ? "h-11 w-11" : "h-12 w-12"} aria-hidden />
+          <div className="h-11 w-11" aria-hidden />
         )}
       </div>
     ) : null;
 
   const overlay = (
-    <div
-      className={[
-        "fixed inset-0 z-[9999] flex flex-col",
-        immersiveChrome ? "h-[100dvh] w-screen bg-black" : "bg-black",
-      ].join(" ")}
-    >
-      {!immersiveChrome ? topBar : null}
-
-      {hint && !instructionsOpen && !immersiveChrome ? (
-        <div className="border-b border-white/10 bg-white px-5 py-3.5 shadow-lg">
-          <p className="mx-auto max-w-lg text-center text-[0.88rem] font-medium leading-relaxed text-neutral-900">
-            {hint}
-          </p>
-        </div>
-      ) : null}
-
-      {/* ── Viewfinder ───────────────────────────────────────────── */}
-      <div
-        ref={viewfinderRef}
-        className={[
-          "relative overflow-hidden",
-          immersiveChrome ? "absolute inset-0" : "flex-1",
-        ].join(" ")}
-      >
+    <div className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col bg-black">
+      {/* ── Viewfinder (full bleed) ──────────────────────────────────── */}
+      <div ref={viewfinderRef} className="absolute inset-0 overflow-hidden">
         {cameraError ? (
           /* Error state — show file picker only */
           <div className="flex h-full flex-col items-center justify-center gap-5 px-8 text-center">
@@ -580,30 +549,23 @@ export function InBrowserCamera({
             {cameraReady && guideFrame !== "none" ? (
               guideFrame === "a4" ? (
                 <div
-                  className={[
-                    "pointer-events-none absolute inset-0 flex justify-center",
-                    compactChrome
-                      ? "items-stretch px-1 pt-[max(3.25rem,calc(env(safe-area-inset-top)+2.75rem))] pb-[max(4.75rem,calc(env(safe-area-inset-bottom)+3.75rem))]"
-                      : "items-center px-2 py-1",
-                  ].join(" ")}
+                  className="pointer-events-none absolute inset-0 flex items-center justify-center px-2"
+                  style={{
+                    paddingTop: chromeTopPad,
+                    paddingBottom: chromeBottomPad,
+                  }}
                 >
                   <div
                     ref={guideFrameRef}
                     className={[
-                      "relative rounded-xl border-2 border-white/55",
+                      "relative h-full w-auto max-h-full max-w-[92vw] shrink-0 rounded-xl border-2 border-white/80",
                       frameOutsideShadow,
-                      compactChrome
-                        ? "h-full w-auto max-w-[99vw]"
-                        : "w-full",
                     ].join(" ")}
-                    style={{
-                      aspectRatio: A4_ASPECT_RATIO,
-                      maxWidth: compactChrome ? undefined : a4FrameMaxWidth,
-                    }}
+                    style={{ aspectRatio: A4_ASPECT_RATIO }}
                     aria-hidden
                   >
                     <GuideFrameCorners />
-                    <div className="absolute left-3 top-3 rounded-md bg-black/45 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/85 backdrop-blur-sm">
+                    <div className="absolute left-3 top-3 rounded-md bg-black/40 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/90">
                       DIN A4
                     </div>
                     {guideWatermark ? (
@@ -611,7 +573,7 @@ export function InBrowserCamera({
                     ) : null}
                     {guideLabel ? (
                       <div className="absolute inset-x-2 bottom-3 flex justify-center">
-                        <span className="rounded-xl bg-white/95 px-3 py-2 text-center text-[0.78rem] font-semibold leading-snug text-neutral-900 shadow-lg">
+                        <span className="rounded-lg bg-black/55 px-3 py-1.5 text-center text-[0.75rem] font-medium leading-snug text-white backdrop-blur-[2px]">
                           {guideLabel}
                         </span>
                       </div>
@@ -621,13 +583,17 @@ export function InBrowserCamera({
               ) : (
                 <div
                   className={[
-                    "pointer-events-none absolute inset-0 flex px-3 py-2",
+                    "pointer-events-none absolute inset-0 flex px-3",
                     sectionFrameLayoutClass(guideSectionAnchor),
                   ].join(" ")}
+                  style={{
+                    paddingTop: chromeTopPad,
+                    paddingBottom: chromeBottomPad,
+                  }}
                 >
                   <div
                     className={[
-                      "relative w-full max-w-[min(96vw,560px)] rounded-md border-2 border-white/55",
+                      "relative w-full max-w-[min(96vw,560px)] rounded-md border-2 border-white/75",
                       frameOutsideShadow,
                     ].join(" ")}
                     style={{ aspectRatio: SECTION_ASPECT_RATIOS[guideSectionAnchor] }}
@@ -639,7 +605,7 @@ export function InBrowserCamera({
                     ) : null}
                     {guideLabel ? (
                       <div className="absolute inset-x-2 bottom-3 flex justify-center">
-                        <span className="rounded-xl bg-white/95 px-3 py-2 text-center text-[0.78rem] font-semibold leading-snug text-neutral-900 shadow-lg">
+                        <span className="rounded-lg bg-black/55 px-3 py-1.5 text-center text-[0.75rem] font-medium leading-snug text-white backdrop-blur-[2px]">
                           {guideLabel}
                         </span>
                       </div>
@@ -653,10 +619,10 @@ export function InBrowserCamera({
               <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black/55 px-6 text-center backdrop-blur-[2px]">
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
                 <p className="text-[0.9rem] font-semibold text-white">
-                  A4-Zuschnitt & PDF…
+                  A4-Autozoom…
                 </p>
                 <p className="text-[0.75rem] text-white/80">
-                  Rechnung wird automatisch gerade gerückt
+                  Seite wird zugeschnitten und gerade gerückt
                 </p>
               </div>
             ) : null}
@@ -695,16 +661,12 @@ export function InBrowserCamera({
           </>
         )}
 
-        {immersiveChrome ? (
-          <div className="pointer-events-none absolute inset-0 z-20 flex flex-col">
-            {topBar}
-            <div className="flex-1" />
-            {bottomControls}
-          </div>
-        ) : null}
+        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col">
+          {topBar}
+          <div className="flex-1" />
+          {bottomControls}
+        </div>
       </div>
-
-      {!immersiveChrome ? bottomControls : null}
     </div>
   );
 
