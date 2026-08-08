@@ -8,7 +8,6 @@ import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilh
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
 import {
   parseScanType,
-  scanTypeDefinition,
   SCHRAUBER_SCAN_TYPES,
   type ScanType,
 } from "@/lib/documents/scan-types";
@@ -261,7 +260,6 @@ export function TagDashboardShell({
   }
 
   if (mode === "scanner" && scanType) {
-    const def = scanTypeDefinition(scanType);
     return (
       <InvoiceUploader
         vehicleId={vehicle.id}
@@ -276,7 +274,6 @@ export function TagDashboardShell({
           setMode("pick-scan");
         }}
         scanType={scanType}
-        successHref={`/v/${tagUuid}/dokumente?type=${def.successTypeQuery}`}
       />
     );
   }

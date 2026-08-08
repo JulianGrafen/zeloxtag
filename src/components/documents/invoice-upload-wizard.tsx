@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   ArrowLeft,
+  FileText,
   LoaderCircle,
   Plus,
   RotateCcw,
@@ -36,6 +37,7 @@ import {
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
+import { isWizardOverviewScanPdf } from "@/lib/utils/a4-auto-scan";
 import {
   mergeInvoiceWizardExtractions,
   mergeLineItemsExtractions,
@@ -312,7 +314,7 @@ export function InvoiceUploadWizard({
   }
 
   function handleOverviewCapture(file: File) {
-    if (isPdfFile(file)) {
+    if (isPdfFile(file) && !isWizardOverviewScanPdf(file)) {
       setState((prev) => ({
         ...prev,
         overviewFile: file,
@@ -574,8 +576,10 @@ export function InvoiceUploadWizard({
         return;
       }
 
-      const href =
-        successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      const href = oilPrimary
+        ? `/v/${result.tagUuid}/intervalle`
+        : (successHref ??
+          `/v/${result.tagUuid}/dokumente/${result.document.id}`);
       window.location.assign(href);
     });
   }
@@ -593,11 +597,24 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title={resolvedHeading}
-          hint="Schritt 1 von 3 · Gesamte Rechnung frei fotografieren"
-          guideFrame="none"
+          hint="Schritt 1 von 3 · Gesamte Rechnung ins DIN-A4-Feld halten"
+          guideFrame="a4"
+          a4AutoCrop
+          guideLabel="Gesamte Rechnung im Rahmen ausrichten"
+          showBriefing={false}
           allowPdf
           onCapture={handleOverviewCapture}
           onClose={() => {
+            const hasProgress =
+              state.overviewFile !== null ||
+              state.headerFile !== null ||
+              state.lineItemsFiles.length > 0;
+            if (
+              hasProgress &&
+              !window.confirm("Scan abbrechen? Erfasste Fotos gehen verloren.")
+            ) {
+              return;
+            }
             if (onBack) {
               onBack();
               return;
@@ -623,6 +640,7 @@ export function InvoiceUploadWizard({
           title="Rechnungskopf fotografieren"
           hint="Schritt 2 von 3 · Kopf mit Werkstatt, Datum, KM-Stand"
           guideFrame="none"
+          showBriefing={false}
           onCapture={handleHeaderCapture}
           onClose={() =>
             setState((prev) => ({ ...prev, phase: "capture-overview" }))
@@ -645,6 +663,7 @@ export function InvoiceUploadWizard({
           title="Positionen fotografieren"
           hint={`Schritt 3 von 3 · Block ${blockNumber}${blockNumber > 1 ? " · nächste Seite" : ""} — frei fotografieren`}
           guideFrame="none"
+          showBriefing={false}
           onCapture={handleLineItemsCapture}
           onClose={() =>
             setState((prev) => ({
@@ -825,6 +844,7 @@ export function InvoiceUploadWizard({
     "capture-line-items": 3,
   };
   const showCurrentStep = captureStepMap[phase] ?? 3;
+  const canReview = Boolean(state.fields && state.uploadFile);
 
   return (
     <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
@@ -865,7 +885,7 @@ export function InvoiceUploadWizard({
         </div>
       </header>
 
-      {fields && previewUrl && uploadFile ? (
+      {canReview && fields && uploadFile ? (
         <form className="space-y-4" onSubmit={handleSave}>
           <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white p-4 shadow-[var(--vd-shadow-sm)]">
             <Label>
@@ -1010,12 +1030,24 @@ export function InvoiceUploadWizard({
           </div>
 
           <div className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Dokumentvorschau"
-              className="max-h-[36vh] w-full bg-neutral-100 object-contain"
-            />
+            {previewUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={previewUrl}
+                alt="Dokumentvorschau"
+                className="max-h-[36vh] w-full bg-neutral-100 object-contain"
+              />
+            ) : isPdfFile(uploadFile) ? (
+              <div className="flex max-h-[36vh] flex-col items-center justify-center gap-2 bg-neutral-100 px-4 py-10 text-center">
+                <FileText className="h-10 w-10 text-neutral-400" aria-hidden />
+                <p className="text-[0.85rem] font-medium text-[color:var(--vd-text)]">
+                  {uploadFile.name}
+                </p>
+                <p className="text-[0.75rem] text-[color:var(--vd-muted)]">
+                  PDF bereit zum Speichern
+                </p>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between gap-3 border-t border-[color:var(--vd-border)] px-3 py-2.5 text-[0.75rem] text-[color:var(--vd-muted)]">
               <span>{formatBytes(uploadFile.size)}</span>
               <button
@@ -1039,10 +1071,29 @@ export function InvoiceUploadWizard({
           ) : null}
 
           <Button type="submit" disabled={pending} className="claim-cta">
-            {pending ? "Wird gespeichert…" : "Speichern"}
+            {pending ? "Wird gespeichert…" : "Speichern & fertig"}
           </Button>
         </form>
-      ) : null}
+      ) : (
+        <div
+          role="alert"
+          className="rounded-[1.35rem] border border-amber-300/70 bg-amber-50 px-4 py-4 text-[0.85rem] text-amber-950"
+        >
+          <p className="font-semibold">Review konnte nicht geladen werden</p>
+          <p className="mt-1 leading-relaxed">
+            {state.error ??
+              "Analyse oder Datei fehlt — bitte erneut scannen oder analysieren."}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="claim-back mt-4 w-full"
+            onClick={resetWizard}
+          >
+            Neu scannen
+          </Button>
+        </div>
+      )}
     </section>
   );
 }

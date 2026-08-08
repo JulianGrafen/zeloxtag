@@ -4,6 +4,7 @@ import {
   coerceGermanMoneyAmount,
   sanitizeLlmMoneyAmount,
 } from "@/lib/ocr/parse-german-money";
+import { dedupeInvoiceLineItemUnitPrices } from "@/lib/ocr/invoice-line-item-dedupe";
 import {
   isHtmlDebrisLabel,
   stripHtmlTags,
@@ -307,20 +308,21 @@ export function normalizeLineItemsList(
 ): InvoiceLineItem[] | null {
   if (!items?.length) return null;
 
-  const cleaned = items
-    .map((item) => ({
-      label: stripHtmlTags(item.label).replace(/\s+/g, " ").trim().slice(0, 160),
-      amount: sanitizeLlmMoneyAmount(item.amount, "aggressive"),
-    }))
-    .filter(
-      (item) =>
-        item.label.length > 0 &&
-        Number.isFinite(item.amount) &&
-        !isHtmlDebrisLabel(item.label) &&
-        /[a-zäöüß]{2,}/i.test(item.label) &&
-        !isPercentRestatedAsAmount(item.label, item.amount),
-    )
-    .slice(0, maxItems);
+  const cleaned = dedupeInvoiceLineItemUnitPrices(
+    items
+      .map((item) => ({
+        label: stripHtmlTags(item.label).replace(/\s+/g, " ").trim().slice(0, 160),
+        amount: sanitizeLlmMoneyAmount(item.amount, "aggressive"),
+      }))
+      .filter(
+        (item) =>
+          item.label.length > 0 &&
+          Number.isFinite(item.amount) &&
+          !isHtmlDebrisLabel(item.label) &&
+          /[a-zäöüß]{2,}/i.test(item.label) &&
+          !isPercentRestatedAsAmount(item.label, item.amount),
+      ),
+  ).slice(0, maxItems);
 
   return cleaned.length > 0 ? cleaned : null;
 }

@@ -9,11 +9,12 @@ PREIS-SPALTE (PFLICHT für amount und lineItems.amount):
 2. amount = NUR der Wert aus der RECHTSTEN Geldbetrags-Spalte pro Zeile.
 3. Bevorzugte Spaltenüberschriften (von rechts nach links suchen):
    "Ges. Preis", "Gesamtpreis", "Ges. Summe", "Gesamtbetrag", "Summe", "Betrag", "EUR", "Wert", "Total", "GP", "G-Preis", "Brutto".
-4. NIEMALS verwenden: "Einzelpreis", "EP", "Stückpreis", "Stk.", "Netto", "E-Preis", "Listenpreis", "VK", "Rabatt %", "MwSt %".
-5. Beispiel Zeile: Menge 4 | Einzelpreis 120,00 | Ges. Preis 480,00 → amount = 480 (NICHT 120).
-6. Beispiel Zeile: nur eine Geldbetrags-Spalte ganz rechts → genau diesen Wert nehmen.
-7. Steht in einer Zeile mehr als ein €-Betrag, IMMER den RECHTSTEN nehmen (Zeilensumme).
-8. Rechnungs-Gesamtbetrag (amount): nur "Zahlbetrag", "Rechnungsbetrag", "Gesamtbetrag", "Summe brutto", "Endbetrag" — nie Netto wenn Brutto/Zahlbetrag sichtbar.
+4. NIEMALS verwenden: "Einzelpreis", "EP", "Stückpreis", "Stk.", "Netto", "E-Preis", "E Preis", "Listenpreis", "VK", "Rabatt %", "MwSt %".
+5. Pro Tabellenzeile GENAU EIN lineItem — niemals Einzelpreis UND Ges. Preis als zwei separate Positionen.
+6. Beispiel Zeile: Menge 4 | Einzelpreis 120,00 | Ges. Preis 480,00 → amount = 480 (NICHT 120).
+7. Beispiel Zeile: nur eine Geldbetrags-Spalte ganz rechts → genau diesen Wert nehmen.
+8. Steht in einer Zeile mehr als ein €-Betrag, IMMER den RECHTSTEN nehmen (Zeilensumme).
+9. Rechnungs-Gesamtbetrag (amount): nur "Zahlbetrag", "Rechnungsbetrag", "Gesamtbetrag", "Summe brutto", "Endbetrag" — nie Netto wenn Brutto/Zahlbetrag sichtbar.
 `.trim();
 
 /** Kilometerstand — Kopf der Rechnung, häufige LLM-Fehler vermeiden. */
@@ -32,6 +33,7 @@ export const INVOICE_LINE_ITEMS_COMPLETENESS_RULES = `
 VOLLSTÄNDIGKEIT (lineItems):
 - Gehe JEDE sichtbare Datenzeile der Positionstabelle von oben nach unten durch — ohne Auslassen.
 - Jede Zeile mit Bezeichnung + Geldbetrag in der rechten Summenspalte = ein lineItem.
+- Pro Tabellenzeile höchstens EIN lineItem — E-Preis und Ges. Preis derselben Zeile nicht doppelt.
 - Auch: Arbeitslohn, Material, Kleinmaterial, Entsorgung, Altöl, Umweltgebühr, Rabatt (€), MwSt. (€) — jeweils eigene Zeile.
 - Tabellenkopf (Pos, Bezeichnung, Menge, …) und reine Summenzeilen (Zwischensumme, Netto gesamt) sind KEINE Positionen.
 - "Summe"/"Gesamt" am Tabellenende nur als lineItem wenn es eine ausgewiesene MwSt.- oder Gebührenzeile ist.
@@ -86,8 +88,9 @@ FEW-SHOT — mileageKm:
 
 FEW-SHOT — lineItems (rightmost price column):
 - Extract EVERY data row — do not skip any row with a € total in the right column.
-- amount = RIGHTMOST money column (Ges. Preis / Gesamtpreis / Summe), NEVER Einzelpreis/EP.
-- Example: "| 4 | Reifen | 120,00 | 480,00 |" → { "label": "Reifen", "amount": 480 }
+- amount = RIGHTMOST money column (Ges. Preis / Gesamtpreis / Summe), NEVER Einzelpreis/EP/E-Preis.
+- ONE lineItem per table row — never both unit price and line total as separate items.
+- Example: "| 4 | Reifen | 120,00 | 480,00 |" → { "label": "Reifen", "amount": 480 } only
 - Example: "| 1 | Ölfilter | 42,90 |" → { "label": "Ölfilter", "amount": 42.9 }
 - Never merge rows. MwSt. as separate row when € amount visible.
 `.trim();
@@ -182,7 +185,8 @@ export const INVOICE_LINE_ITEMS_USER_LINES = [
   "Schritt 1: Tabellenkopf lesen — welche Spalte ist Ges. Preis / Gesamtpreis / ganz rechts?",
   "Schritt 2: Zeile für Zeile von oben nach unten — KEINE Zeile mit Betrag in der rechten Spalte auslassen.",
   "amount pro lineItem = NUR Wert aus Ges. Preis / Gesamtpreis / rechter Summenspalte.",
-  "NIEMALS Einzelpreis, EP, Stückpreis, Netto-Einzelwert.",
+  "NIEMALS Einzelpreis, EP, E-Preis, Stückpreis, Netto-Einzelwert.",
+  "Pro Tabellenzeile GENAU EIN lineItem — nicht Einzelpreis und Ges. Preis getrennt listen.",
   "Mehrere €-Betrag in einer Zeile → immer den RECHTSTEN nehmen.",
   "Fortsetzung der Tabelle (Seite 2): alle Zeilen mit erfassen.",
 ] as const;
