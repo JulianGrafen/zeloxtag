@@ -3,6 +3,11 @@ import "server-only";
 import sharp from "sharp";
 
 import {
+  isPdfBuffer,
+  isProbablyRasterImage,
+  resolveDocumentContentType,
+} from "./document-bytes";
+import {
   buildDocumentUserMessage,
   type DocumentBytesInput,
   type DocumentUserMessagePart,
@@ -26,10 +31,7 @@ function pngImagePart(png: Buffer): DocumentUserMessagePart {
   };
 }
 
-/**
- * Boost contrast + sharpness for small invoice text / table numbers.
- */
-export async function enhanceDocumentImageForLlm(bytes: Buffer): Promise<Buffer> {
+async function normalizeRasterToPng(bytes: Buffer): Promise<Buffer> {
   return sharp(bytes, { failOn: "none" })
     .rotate()
     .resize({
@@ -38,11 +40,32 @@ export async function enhanceDocumentImageForLlm(bytes: Buffer): Promise<Buffer>
       fit: "inside",
       withoutEnlargement: false,
     })
-    .grayscale()
-    .normalize()
-    .sharpen({ sigma: 1.1, m1: 0.5, m2: 2.5 })
     .png({ compressionLevel: 6, adaptiveFiltering: true })
     .toBuffer();
+}
+
+/**
+ * Boost contrast + sharpness for small invoice text / table numbers.
+ */
+export async function enhanceDocumentImageForLlm(bytes: Buffer): Promise<Buffer> {
+  try {
+    return await sharp(bytes, { failOn: "none" })
+      .rotate()
+      .resize({
+        width: LLM_IMAGE_MAX_EDGE_PX,
+        height: LLM_IMAGE_MAX_EDGE_PX,
+        fit: "inside",
+        withoutEnlargement: false,
+      })
+      .grayscale()
+      .normalize()
+      .sharpen({ sigma: 1.1, m1: 0.5, m2: 2.5 })
+      .png({ compressionLevel: 6, adaptiveFiltering: true })
+      .toBuffer();
+  } catch (error) {
+    console.warn("[prepare-document-for-llm] enhanced pass failed, using plain PNG", error);
+    return normalizeRasterToPng(bytes);
+  }
 }
 
 export async function rasterizePdfPagesForLlm(
@@ -50,13 +73,13 @@ export async function rasterizePdfPagesForLlm(
   maxPages: number = LLM_INVOICE_MAX_PDF_PAGES,
   dpi: number = LLM_DOCUMENT_RASTER_DPI,
 ): Promise<Buffer[]> {
-  const meta = await sharp(bytes, { density: dpi }).metadata();
+  const meta = await sharp(bytes, { density: dpi, failOn: "none" }).metadata();
   const pageCount = Math.max(1, meta.pages ?? 1);
   const limit = Math.min(maxPages, pageCount);
 
   const pages: Buffer[] = [];
   for (let page = 0; page < limit; page += 1) {
-    const png = await sharp(bytes, { density: dpi, page })
+    const png = await sharp(bytes, { density: dpi, page, failOn: "none" })
       .png()
       .toBuffer();
     pages.push(await enhanceDocumentImageForLlm(png));
@@ -70,19 +93,41 @@ export type PrepareDocumentForLlmOptions = {
 
 /**
  * Rasterize PDFs and enhance images before vision LLM parsing.
+ * Falls back to the original PDF/image bytes when Sharp cannot decode input.
  */
 export async function prepareDocumentImagesForLlm(
   input: DocumentBytesInput,
   options: PrepareDocumentForLlmOptions = {},
 ): Promise<Buffer[]> {
-  if (input.contentType === "application/pdf") {
-    return rasterizePdfPagesForLlm(
-      input.bytes,
-      options.maxPdfPages ?? LLM_INVOICE_MAX_PDF_PAGES,
-    );
+  const contentType = resolveDocumentContentType(input.bytes, input.contentType);
+
+  if (contentType === "application/pdf" || isPdfBuffer(input.bytes)) {
+    try {
+      return await rasterizePdfPagesForLlm(
+        input.bytes,
+        options.maxPdfPages ?? LLM_INVOICE_MAX_PDF_PAGES,
+      );
+    } catch (error) {
+      console.warn("[prepare-document-for-llm] PDF rasterize failed", error);
+      return [];
+    }
   }
 
-  return [await enhanceDocumentImageForLlm(input.bytes)];
+  if (!isProbablyRasterImage(input.bytes)) {
+    return [];
+  }
+
+  try {
+    return [await enhanceDocumentImageForLlm(input.bytes)];
+  } catch (error) {
+    console.warn("[prepare-document-for-llm] image enhance failed", error);
+    try {
+      return [await normalizeRasterToPng(input.bytes)];
+    } catch (normalizeError) {
+      console.warn("[prepare-document-for-llm] image normalize failed", normalizeError);
+      return [];
+    }
+  }
 }
 
 /**
@@ -134,6 +179,7 @@ export async function buildPreparedDocumentUserMessage(
 export function buildEnhancedImageUserMessage(
   instructionLines: string[],
   enhancedPng: Buffer,
+  options: { rowSeparators?: boolean } = {},
 ): DocumentUserMessagePart[] {
   const parts: DocumentUserMessagePart[] = instructionLines
     .filter((line) => line.length > 0)
@@ -141,12 +187,31 @@ export function buildEnhancedImageUserMessage(
 
   parts.push({
     type: "text",
-    text:
-      "Kontrastverstärktes Dokumentbild folgt. " +
-      "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile.",
+    text: options.rowSeparators
+      ? "Kontrastverstärktes Dokumentbild mit horizontalen Trennlinien pro Tabellenzeile folgt. " +
+        "Bezeichnung und Betrag gehören zur gleichen Zeile (zwischen zwei Linien). " +
+        "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile."
+      : "Kontrastverstärktes Dokumentbild folgt. " +
+        "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile.",
   });
   parts.push(pngImagePart(enhancedPng));
   return parts;
+}
+
+/** Build vision user content from prepared OCR input (PNG or PDF fallback). */
+export function buildVisionUserMessage(
+  instructionLines: string[],
+  input: DocumentBytesInput,
+  options: { rowSeparators?: boolean } = {},
+): DocumentUserMessagePart[] {
+  if (input.contentType === "application/pdf" || isPdfBuffer(input.bytes)) {
+    return buildDocumentUserMessage(instructionLines, {
+      bytes: input.bytes,
+      contentType: "application/pdf",
+    });
+  }
+
+  return buildEnhancedImageUserMessage(instructionLines, input.bytes, options);
 }
 
 /** Single-page OCR/LLM input after prepareDocumentImagesForLlm. */
@@ -154,8 +219,15 @@ export async function prepareSinglePageOcrInput(
   input: DocumentBytesInput,
 ): Promise<DocumentBytesInput> {
   const pages = await prepareDocumentImagesForLlm(input, { maxPdfPages: 1 });
+  if (pages[0]?.byteLength) {
+    return {
+      bytes: pages[0],
+      contentType: "image/png",
+    };
+  }
+
   return {
-    bytes: pages[0] ?? input.bytes,
-    contentType: "image/png",
+    bytes: input.bytes,
+    contentType: resolveDocumentContentType(input.bytes, input.contentType),
   };
 }

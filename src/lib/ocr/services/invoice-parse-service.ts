@@ -2,7 +2,7 @@ import type OpenAI from "openai";
 
 import { preferAmount, extractAmountFromText } from "@/lib/ocr/amount-from-text";
 import {
-  buildEnhancedImageUserMessage,
+  buildVisionUserMessage,
   prepareSinglePageOcrInput,
   type DocumentBytesInput,
 } from "@/lib/ocr/prepare-document-for-llm";
@@ -11,6 +11,10 @@ import {
   buildOcrPayloadFromAzureLayout,
   isAzureDocumentIntelligenceConfigured,
 } from "@/lib/ocr/azure-document-intelligence";
+import {
+  canDrawRowSeparators,
+  drawInvoiceRowSeparatorsOnImage,
+} from "@/lib/ocr/draw-invoice-row-separators";
 import { buildStubOcrPayload } from "@/lib/ocr/llm-document-content";
 import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
 import {
@@ -146,23 +150,31 @@ export class InvoiceParseService {
       ? input
       : await prepareSinglePageOcrInput(input);
 
-    const userContentPromise = isTuevReport
-      ? buildTuevDocumentUserMessage([docHint, ...userLines], prepared)
-      : Promise.resolve(
-          buildEnhancedImageUserMessage(
-            [docHint, ...userLines],
-            prepared.bytes,
-          ),
-        );
+    let azureLayout = null;
+    let llmInput = prepared;
+    let rowSeparators = false;
 
-    const azureLayoutPromise = !isTuevReport && isAzureDocumentIntelligenceConfigured()
-      ? analyzeLayoutWithAzure(prepared.bytes, prepared.contentType)
-      : Promise.resolve(null);
+    if (!isTuevReport && isAzureDocumentIntelligenceConfigured()) {
+      azureLayout = await analyzeLayoutWithAzure(
+        prepared.bytes,
+        prepared.contentType,
+      );
+    }
 
-    const [userContent, azureLayout] = await Promise.all([
-      userContentPromise,
-      azureLayoutPromise,
-    ]);
+    if (!isTuevReport && canDrawRowSeparators(prepared.bytes, prepared.contentType)) {
+      const drawn = await drawInvoiceRowSeparatorsOnImage(
+        prepared.bytes,
+        azureLayout,
+      );
+      llmInput = { bytes: drawn.bytes, contentType: "image/png" };
+      rowSeparators = drawn.separatorsDrawn > 0;
+    }
+
+    const userContent = isTuevReport
+      ? await buildTuevDocumentUserMessage([docHint, ...userLines], prepared)
+      : buildVisionUserMessage([docHint, ...userLines], llmInput, {
+          rowSeparators,
+        });
     const jsonSchema = buildInvoiceTextParseJsonSchema({
       documentType: isTuevReport ? "tuev" : "invoice",
     });

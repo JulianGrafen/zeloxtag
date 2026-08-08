@@ -6,9 +6,90 @@
 import { getDocumentIntelligenceEnv } from "./document-intelligence-env";
 import type { OcrJsonPayload } from "./ocr-types";
 
-const ANALYZE_API_VERSION = "2024-11-30";
-const POLL_INTERVAL_MS = 1_000;
-const POLL_TIMEOUT_MS = 55_000;
+function parsePolygon(raw: unknown): AzurePolygon | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const polygon = raw.filter((value): value is number => typeof value === "number");
+  return polygon.length >= 4 ? polygon : undefined;
+}
+
+function parseBoundingRegions(raw: unknown): AzureLayoutBoundingRegion[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+
+  const regions: AzureLayoutBoundingRegion[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const record = entry as Record<string, unknown>;
+    const pageNumber =
+      typeof record.pageNumber === "number" ? record.pageNumber : null;
+    const polygon = parsePolygon(record.polygon);
+    if (pageNumber == null || !polygon) continue;
+    regions.push({ pageNumber, polygon });
+  }
+
+  return regions.length > 0 ? regions : undefined;
+}
+
+function parseAnalyzeResult(raw: unknown): AzureLayoutAnalyzeResult {
+  const result = (raw ?? {}) as Record<string, unknown>;
+
+  const pagesRaw = Array.isArray(result.pages) ? result.pages : [];
+  const pages: AzureLayoutPage[] = pagesRaw.map((pageRaw, index) => {
+    const page = (pageRaw ?? {}) as Record<string, unknown>;
+    const linesRaw = Array.isArray(page.lines) ? page.lines : [];
+    return {
+      pageNumber:
+        typeof page.pageNumber === "number" ? page.pageNumber : index + 1,
+      width: typeof page.width === "number" ? page.width : undefined,
+      height: typeof page.height === "number" ? page.height : undefined,
+      unit: typeof page.unit === "string" ? page.unit : undefined,
+      lines: linesRaw.map((lineRaw) => {
+        const line = (lineRaw ?? {}) as Record<string, unknown>;
+        return {
+          content: typeof line.content === "string" ? line.content : "",
+          polygon: parsePolygon(line.polygon),
+        };
+      }),
+    };
+  });
+
+  const tablesRaw = Array.isArray(result.tables) ? result.tables : [];
+  const tables: AzureLayoutTable[] = tablesRaw.map((tableRaw) => {
+    const table = (tableRaw ?? {}) as Record<string, unknown>;
+    const cellsRaw = Array.isArray(table.cells) ? table.cells : [];
+    return {
+      rowCount: typeof table.rowCount === "number" ? table.rowCount : 0,
+      columnCount: typeof table.columnCount === "number" ? table.columnCount : 0,
+      boundingRegions: parseBoundingRegions(table.boundingRegions),
+      cells: cellsRaw.map((cellRaw) => {
+        const cell = (cellRaw ?? {}) as Record<string, unknown>;
+        return {
+          kind: typeof cell.kind === "string" ? cell.kind : undefined,
+          rowIndex: typeof cell.rowIndex === "number" ? cell.rowIndex : 0,
+          columnIndex:
+            typeof cell.columnIndex === "number" ? cell.columnIndex : 0,
+          rowSpan: typeof cell.rowSpan === "number" ? cell.rowSpan : undefined,
+          columnSpan:
+            typeof cell.columnSpan === "number" ? cell.columnSpan : undefined,
+          content: typeof cell.content === "string" ? cell.content : "",
+          boundingRegions: parseBoundingRegions(cell.boundingRegions),
+        };
+      }),
+    };
+  });
+
+  return {
+    content: typeof result.content === "string" ? result.content.trim() : "",
+    pages,
+    tables,
+  };
+}
+
+export type AzurePolygon = number[];
+
+export type AzureLayoutBoundingRegion = {
+  pageNumber: number;
+  polygon: AzurePolygon;
+};
 
 export type AzureLayoutTableCell = {
   kind?: string;
@@ -17,20 +98,26 @@ export type AzureLayoutTableCell = {
   rowSpan?: number;
   columnSpan?: number;
   content: string;
+  boundingRegions?: AzureLayoutBoundingRegion[];
 };
 
 export type AzureLayoutTable = {
   rowCount: number;
   columnCount: number;
   cells: AzureLayoutTableCell[];
+  boundingRegions?: AzureLayoutBoundingRegion[];
 };
 
 export type AzureLayoutPageLine = {
   content: string;
+  polygon?: AzurePolygon;
 };
 
 export type AzureLayoutPage = {
   pageNumber: number;
+  width?: number;
+  height?: number;
+  unit?: string;
   lines?: AzureLayoutPageLine[];
 };
 
@@ -39,6 +126,10 @@ export type AzureLayoutAnalyzeResult = {
   pages: AzureLayoutPage[];
   tables: AzureLayoutTable[];
 };
+
+const ANALYZE_API_VERSION = "2024-11-30";
+const POLL_INTERVAL_MS = 1_000;
+const POLL_TIMEOUT_MS = 55_000;
 
 type AnalyzeOperationBody = {
   status: string;
@@ -139,11 +230,7 @@ export async function analyzeLayoutWithAzure(
         continue;
       }
 
-      return {
-        content: body.analyzeResult.content?.trim() ?? "",
-        pages: body.analyzeResult.pages ?? [],
-        tables: body.analyzeResult.tables ?? [],
-      };
+      return parseAnalyzeResult(body.analyzeResult);
     } catch (error) {
       console.warn("[azure-di] poll error", error);
       return null;

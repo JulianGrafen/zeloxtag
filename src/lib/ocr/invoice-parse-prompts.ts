@@ -45,6 +45,7 @@ VOLLSTÄNDIGKEIT (lineItems):
 /** Keep label + Ges. Preis on the same horizontal table row. */
 export const INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES = `
 ZEILEN-ZUORDNUNG (label ↔ amount):
+- Das Bild kann horizontale Trennlinien pro Tabellenzeile enthalten — dann gilt: alles ZWISCHEN zwei Linien ist EINE Position.
 - Bezeichnung und Ges. Preis gehören IMMER zur SELBEN Tabellenzeile — gleiche horizontale Höhe.
 - Umbrüche in der Bezeichnungsspalte erzeugen KEINE neue Position — der Betrag bleibt bei der Zeile, in der er rechts steht.
 - NIEMALS den Betrag einer Zeile der Bezeichnung darüber oder darunter zuordnen (typischer Fehler bei mehrzeiligen Bezeichnungen).

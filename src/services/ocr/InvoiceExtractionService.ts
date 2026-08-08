@@ -12,10 +12,11 @@ import {
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
 import {
-  buildEnhancedImageUserMessage,
+  buildVisionUserMessage,
   prepareSinglePageOcrInput,
   type DocumentBytesInput,
 } from "@/lib/ocr/prepare-document-for-llm";
+import { canDrawRowSeparators, drawInvoiceRowSeparatorsOnImage } from "@/lib/ocr/draw-invoice-row-separators";
 import type { DocumentUserMessagePart } from "@/lib/ocr/llm-document-content";
 import {
   INVOICE_HEADER_USER_LINES,
@@ -263,12 +264,12 @@ async function runVisionExtract<T>(
 
   const userContent =
     userMessageParts ??
-    buildEnhancedImageUserMessage(
+    buildVisionUserMessage(
       [
         "Deutsche Kfz-Rechnung oder Servicebeleg (PDF oder Scan).",
         ...userLines,
       ],
-      input.bytes,
+      input,
     );
 
   let completion: OpenAI.Chat.Completions.ChatCompletion;
@@ -371,35 +372,47 @@ export class InvoiceExtractionService {
     };
   }
 
-  /** Azure layout OCR + vision LLM merge for invoice positions. */
+  /** Azure layout OCR, row separators, then vision LLM merge for invoice positions. */
   async extractLineItemsFromDocument(
     input: DocumentBytesInput,
     options: InvoiceExtractionOptions = {},
   ): Promise<InvoiceLineItemsExtraction> {
     const prepared = await prepareSinglePageOcrInput(input);
-    const visionMessage = buildEnhancedImageUserMessage(
+
+    const azureLayout = isAzureDocumentIntelligenceConfigured()
+      ? await analyzeLayoutWithAzure(prepared.bytes, prepared.contentType)
+      : null;
+
+    let llmInput = prepared;
+    let rowSeparators = false;
+    if (canDrawRowSeparators(prepared.bytes, prepared.contentType)) {
+      const drawn = await drawInvoiceRowSeparatorsOnImage(
+        prepared.bytes,
+        azureLayout,
+      );
+      llmInput = { bytes: drawn.bytes, contentType: "image/png" };
+      rowSeparators = drawn.separatorsDrawn > 0;
+    }
+
+    const visionMessage = buildVisionUserMessage(
       [
         "Deutsche Kfz-Rechnung oder Servicebeleg (PDF oder Scan).",
         ...INVOICE_LINE_ITEMS_USER_LINES,
       ],
-      prepared.bytes,
+      llmInput,
+      { rowSeparators },
     );
 
-    const [azureLayout, record] = await Promise.all([
-      isAzureDocumentIntelligenceConfigured()
-        ? analyzeLayoutWithAzure(prepared.bytes, prepared.contentType)
-        : Promise.resolve(null),
-      runVisionExtract<Record<string, unknown>>(
-        buildInvoiceLineItemsSystemPrompt(),
-        INVOICE_LINE_ITEMS_USER_LINES,
-        prepared,
-        INVOICE_LINE_ITEMS_JSON_SCHEMA,
-        LINE_ITEMS_MAX_TOKENS,
-        options,
-        "Invoice line items extract failed",
-        visionMessage,
-      ),
-    ]);
+    const record = await runVisionExtract<Record<string, unknown>>(
+      buildInvoiceLineItemsSystemPrompt(),
+      INVOICE_LINE_ITEMS_USER_LINES,
+      prepared,
+      INVOICE_LINE_ITEMS_JSON_SCHEMA,
+      LINE_ITEMS_MAX_TOKENS,
+      options,
+      "Invoice line items extract failed",
+      visionMessage,
+    );
 
     const llmLineItems = parseLineItemsRaw(record.lineItems);
     const layoutLineItems = azureLayout
