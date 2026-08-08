@@ -1,37 +1,18 @@
 import type OpenAI from "openai";
-import sharp from "sharp";
 
 import type { DocumentBytesInput, DocumentUserMessagePart } from "./llm-document-content";
+import {
+  enhanceDocumentImageForLlm,
+  LLM_DOCUMENT_RASTER_DPI,
+  rasterizePdfPagesForLlm,
+} from "./prepare-document-for-llm";
 
 /** HU/AU reports: critical data on pages 1–2 (Kopf, Punkt 4, Punkt 6). */
 export const TUEV_LLM_MAX_PDF_PAGES = 2;
 /** Higher DPI → sharper Punkt-6 tables for vision models. */
-const TUEV_PDF_RASTER_DPI = 220;
+const TUEV_PDF_RASTER_DPI = LLM_DOCUMENT_RASTER_DPI;
 
-/**
- * Rasterize the first N PDF pages to PNG for high-detail vision input.
- * Falls back to an empty array when Sharp/poppler is unavailable.
- */
-export async function rasterizePdfPagesForLlm(
-  bytes: Buffer,
-  maxPages: number = TUEV_LLM_MAX_PDF_PAGES,
-): Promise<Buffer[]> {
-  const meta = await sharp(bytes, { density: TUEV_PDF_RASTER_DPI }).metadata();
-  const pageCount = Math.max(1, meta.pages ?? 1);
-  const limit = Math.min(maxPages, pageCount);
-
-  const pages: Buffer[] = [];
-  for (let page = 0; page < limit; page += 1) {
-    const png = await sharp(bytes, {
-      density: TUEV_PDF_RASTER_DPI,
-      page,
-    })
-      .png()
-      .toBuffer();
-    pages.push(png);
-  }
-  return pages;
-}
+export { rasterizePdfPagesForLlm };
 
 function pngPart(png: Buffer, label: string): DocumentUserMessagePart {
   return {
@@ -57,7 +38,11 @@ export async function buildTuevDocumentUserMessage(
 
   if (input.contentType === "application/pdf") {
     try {
-      const pageImages = await rasterizePdfPagesForLlm(input.bytes);
+      const pageImages = await rasterizePdfPagesForLlm(
+        input.bytes,
+        TUEV_LLM_MAX_PDF_PAGES,
+        TUEV_PDF_RASTER_DPI,
+      );
       if (pageImages.length > 0) {
         parts.push({
           type: "text",
@@ -86,12 +71,11 @@ export async function buildTuevDocumentUserMessage(
     return parts;
   }
 
-  parts.push({
-    type: "image_url",
-    image_url: {
-      url: `data:${input.contentType};base64,${input.bytes.toString("base64")}`,
-      detail: "high",
-    },
-  });
+  parts.push(
+    pngPart(
+      await enhanceDocumentImageForLlm(input.bytes),
+      "Dokument",
+    ),
+  );
   return parts;
 }

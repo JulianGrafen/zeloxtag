@@ -6,11 +6,7 @@
 import { computeA4CropRect } from "@/lib/ocr/compress-page";
 import { detectDocumentQuad } from "@/lib/utils/document-auto-detect";
 import { loadImageFromFile } from "@/lib/utils/image-loader";
-import {
-  A4_ASPECT,
-  optimizeDocumentCanvas,
-  resizeDocumentCanvas,
-} from "@/lib/utils/image-optimizer";
+import { A4_ASPECT, resizeDocumentCanvas } from "@/lib/utils/image-optimizer";
 import {
   convertImageToPdf,
   type PdfConversionResult,
@@ -136,21 +132,7 @@ async function canvasToJpegFile(
   });
 }
 
-async function warpOptimizeA4(
-  source: HTMLCanvasElement,
-  corners: QuadPoints,
-): Promise<HTMLCanvasElement> {
-  const warped = await warpPerspectiveAsync(source, corners, {
-    maxWidth: WARP_MAX_WIDTH_PX,
-    forceAspect: A4_ASPECT,
-  });
-  const optimized = optimizeDocumentCanvas(warped, {
-    maxWidth: WARP_MAX_WIDTH_PX,
-  });
-  return optimized.canvas;
-}
-
-async function warpToNaturalA4Canvas(
+async function warpResizeA4(
   source: HTMLCanvasElement,
   corners: QuadPoints,
 ): Promise<HTMLCanvasElement> {
@@ -166,7 +148,7 @@ async function warpAndBuildA4Pdf(
   corners: QuadPoints,
   fileName: string,
 ): Promise<PdfConversionResult> {
-  const canvas = await warpToNaturalA4Canvas(source, corners);
+  const canvas = await warpResizeA4(source, corners);
 
   const pdf = await convertImageToPdf(canvas, {
     fileName: fileName.replace(/\.pdf$/i, ""),
@@ -203,7 +185,7 @@ export async function buildA4ImageFromGuideCapture(
 ): Promise<File> {
   const cropped = cropCanvasRegion(fullCapture, crop);
   const corners = detectInvoiceCorners(cropped);
-  const canvas = await warpOptimizeA4(cropped, corners);
+  const canvas = await warpResizeA4(cropped, corners);
   return canvasToJpegFile(canvas, fileName);
 }
 
@@ -221,7 +203,7 @@ export async function buildA4PdfFromGuideCapture(
 }
 
 /**
- * Gallery fallback: center-crop to A4, enhance, return A4 JPEG.
+ * Gallery fallback: center-crop to A4, return A4 JPEG (natural colors).
  */
 export async function buildA4ImageFromPhotoFile(
   file: File,
@@ -249,7 +231,7 @@ export async function buildA4ImageFromPhotoFile(
   });
 
   const corners = detectInvoiceCorners(cropped, 0.02);
-  const canvas = await warpOptimizeA4(cropped, corners);
+  const canvas = await warpResizeA4(cropped, corners);
   return canvasToJpegFile(canvas, fileName);
 }
 
@@ -282,7 +264,7 @@ export async function buildA4PdfFromPhotoFile(
   });
 
   const corners = detectInvoiceCorners(cropped, 0.02);
-  const canvas = await warpToNaturalA4Canvas(cropped, corners);
+  const canvas = await warpResizeA4(cropped, corners);
 
   const pdf = await convertImageToPdf(canvas, {
     fileName: fileName.replace(/\.pdf$/i, ""),

@@ -51,6 +51,56 @@ export const ABE_REQUIRED_FIELD_LABELS = {
 
 export type AbeRequiredFieldKey = keyof typeof ABE_REQUIRED_FIELD_LABELS;
 
+/** Ghost examples shown inside the camera guide frame while hunting each field. */
+export const ABE_HUNT_FIELD_WATERMARKS: Record<AbeRequiredFieldKey, string> = {
+  kbaNumber: "KBA 123456",
+  abeNumber: "123456*8",
+  abeHolder: "Inhaber der ABE\nMuster GmbH",
+  manufacturer: "Hersteller\nAC Schnitzer",
+  partDesignation: "Leichtmetallfelge\n8,5 × 19",
+  markingText: "Kennzeichnung\nKBA 123456",
+  verkaufsbezeichnung: "Fahrzeugmodell\n5ER REIHE",
+  auflagenCodes: "A1 · A2 · A3",
+};
+
+/** User-facing checklist label (differs from internal OCR field names). */
+export function abeHuntFieldDisplayLabel(key: AbeRequiredFieldKey): string {
+  if (key === "verkaufsbezeichnung") return "Fahrzeugmodell";
+  return ABE_REQUIRED_FIELD_LABELS[key];
+}
+
+export type AbeHuntFieldScanHint = {
+  /** Short line under the checklist title while the field is open. */
+  scanAction?: string;
+  popupTitle?: string;
+  popupBody?: string;
+};
+
+/** Optional scan guidance and dismissible popups per hunt step. */
+export const ABE_HUNT_FIELD_SCAN_HINTS: Partial<
+  Record<AbeRequiredFieldKey, AbeHuntFieldScanHint>
+> = {
+  markingText: {
+    scanAction: "Fotografiere den Kennzeichnung-Abschnitt inkl. Tabellenzeilen.",
+    popupTitle: "Kennzeichnung",
+    popupBody:
+      "Fotografiere den kompletten Kennzeichnung-Abschnitt — auch Tabellenzeilen wie „Art der Kennzeichnung“ und „Nummer“.",
+  },
+  verkaufsbezeichnung: {
+    scanAction:
+      "Scanne den Tabellenabschnitt, in dem du dein Fahrzeug wiederfindest.",
+    popupTitle: "Fahrzeugmodell",
+    popupBody:
+      "Scanne jetzt aus der Tabelle den Abschnitt, in den du dein Fahrzeug wiederfindest. Die Verkaufsbezeichnung steht als Überschrift über der passenden Fahrzeugtabelle.",
+  },
+  auflagenCodes: {
+    scanAction: "Fotografiere die Auflagen zum passenden Fahrzeug.",
+    popupTitle: "Auflagen",
+    popupBody:
+      "Fotografiere die Auflagen-Kürzel in der Fahrzeugzeile oder in der Auflagen-Liste auf dem ABE-Dokument.",
+  },
+};
+
 // ─── Step extractions ───────────────────────────────────────────────────────────
 
 export const AbeHuntStammdatenSchema = z
@@ -361,11 +411,23 @@ export const ABE_HUNT_MARKING_JSON_SCHEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["markingText"],
+    required: ["markingText", "markingType", "markingNumber"],
     properties: {
       markingText: {
         type: ["string", "null"],
         description: FROM_CROP + ABE_MARKING_LLM_INSTRUCTION,
+      },
+      markingType: {
+        type: ["string", "null"],
+        description:
+          FROM_CROP +
+          'Art der Kennzeichnung verbatim (e.g. "Prüfplakette", "Eingegossen"). Null if not visible.',
+      },
+      markingNumber: {
+        type: ["string", "null"],
+        description:
+          FROM_CROP +
+          'Kennzeichnungsnummer / Nummer verbatim (e.g. "e1*47656"). Null if not visible.',
       },
     },
   },
@@ -479,6 +541,8 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
       "manufacturer",
       "partDesignation",
       "markingText",
+      "markingType",
+      "markingNumber",
       "vehicleMatches",
       "auflagenCodes",
       "auflagenNotes",
@@ -513,6 +577,18 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
       markingText: {
         type: ["string", "null"],
         description: FROM_PHOTO + ABE_MARKING_LLM_INSTRUCTION,
+      },
+      markingType: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          'Art der Kennzeichnung verbatim (e.g. "Prüfplakette", "Eingegossen"). Null if not visible.',
+      },
+      markingNumber: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          'Kennzeichnungsnummer / Nummer verbatim (e.g. "e1*47656"). Null if not visible.',
       },
       vehicleMatches: {
         type: "array",

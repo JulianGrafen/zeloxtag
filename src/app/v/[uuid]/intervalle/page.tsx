@@ -13,8 +13,8 @@ export async function generateMetadata({
 }: OilIntervalsPageProps): Promise<Metadata> {
   const { uuid } = await params;
   return {
-    title: `Ölwechsel-Intervalle · ${uuid}`,
-    description: "Ölwechsel-Historie und Intervalle für diesen ZeloxTag.",
+    title: `Öl-Wechsel · ${uuid}`,
+    description: "Ölwechsel-Historie für diesen ZeloxTag.",
   };
 }
 
@@ -34,6 +34,9 @@ export default async function VehicleOilIntervalsPage({
       backHref={`/v/${result.tag.uuid}`}
       basePath={`/v/${result.tag.uuid}/intervalle`}
       scanHref={`/v/${result.tag.uuid}?scan=1`}
+      tagUuid={result.tag.uuid}
+      vehicleId={result.vehicle!.id}
+      canAddManual
     />
   );
 }

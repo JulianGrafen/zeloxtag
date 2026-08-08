@@ -2,9 +2,21 @@ import type OpenAI from "openai";
 
 import { preferAmount, extractAmountFromText } from "@/lib/ocr/amount-from-text";
 import {
-  buildDocumentUserMessage,
+  buildEnhancedImageUserMessage,
+  prepareSinglePageOcrInput,
   type DocumentBytesInput,
-} from "@/lib/ocr/llm-document-content";
+} from "@/lib/ocr/prepare-document-for-llm";
+import {
+  analyzeLayoutWithAzure,
+  buildOcrPayloadFromAzureLayout,
+  isAzureDocumentIntelligenceConfigured,
+} from "@/lib/ocr/azure-document-intelligence";
+import { buildStubOcrPayload } from "@/lib/ocr/llm-document-content";
+import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import {
+  extractInvoiceLineItemsFromAzureLayout,
+  mergeLayoutAndLlmLineItems,
+} from "@/lib/ocr/invoice-line-items-from-layout";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   extractInvoiceLineItemsFromText,
@@ -23,6 +35,7 @@ import {
   preferMileageKm,
 } from "@/lib/ocr/mileage-from-text";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
+import { buildTuevDocumentUserMessage } from "@/lib/ocr/tuev-document-content";
 import { normalizeOcrMarkdown } from "@/lib/ocr/normalize-ocr-markdown";
 import type { OcrJsonPayload } from "@/lib/ocr/ocr-types";
 import { TextParseError } from "@/lib/ocr/parse-error";
@@ -86,6 +99,11 @@ export type InvoiceDocumentParseOptions = InvoiceParseOptions & {
   documentType?: "invoice" | "tuev";
 };
 
+export type InvoiceDocumentParseResult = {
+  fields: InvoiceTextParseResult;
+  ocrJson: OcrJsonPayload;
+};
+
 /**
  * Invoice-only LLM parse service.
  * Uses mid-tier model routing + few-shot prompts for mileage / line items.
@@ -98,7 +116,7 @@ export class InvoiceParseService {
   async parseFromDocument(
     input: DocumentBytesInput,
     options: InvoiceDocumentParseOptions = {},
-  ): Promise<InvoiceTextParseResult> {
+  ): Promise<InvoiceDocumentParseResult> {
     const routedModel = options.model ?? resolveParseModel(
       options.documentType === "tuev" ? "tuev" : "invoice",
     );
@@ -124,7 +142,27 @@ export class InvoiceParseService {
       ? TUEV_COST_USER_PROMPT_LINES
       : INVOICE_USER_PROMPT_LINES;
 
-    const userContent = buildDocumentUserMessage([docHint, ...userLines], input);
+    const prepared = isTuevReport
+      ? input
+      : await prepareSinglePageOcrInput(input);
+
+    const userContentPromise = isTuevReport
+      ? buildTuevDocumentUserMessage([docHint, ...userLines], prepared)
+      : Promise.resolve(
+          buildEnhancedImageUserMessage(
+            [docHint, ...userLines],
+            prepared.bytes,
+          ),
+        );
+
+    const azureLayoutPromise = !isTuevReport && isAzureDocumentIntelligenceConfigured()
+      ? analyzeLayoutWithAzure(prepared.bytes, prepared.contentType)
+      : Promise.resolve(null);
+
+    const [userContent, azureLayout] = await Promise.all([
+      userContentPromise,
+      azureLayoutPromise,
+    ]);
     const jsonSchema = buildInvoiceTextParseJsonSchema({
       documentType: isTuevReport ? "tuev" : "invoice",
     });
@@ -177,7 +215,48 @@ export class InvoiceParseService {
       );
     }
 
-    return this.nullAbeFields(normalizeTextParseResult(parsed.data));
+    const normalized = this.nullAbeFields(normalizeTextParseResult(parsed.data));
+
+    const ocrJson = azureLayout
+      ? buildOcrPayloadFromAzureLayout(azureLayout)
+      : buildStubOcrPayload(prepared.contentType);
+
+    if (isTuevReport || !azureLayout) {
+      return { fields: normalized, ocrJson };
+    }
+
+    const layoutLineItems = extractInvoiceLineItemsFromAzureLayout(azureLayout);
+    const amount = preferAmount(
+      normalized.amount,
+      azureLayout.content,
+      normalized.lineItems,
+    );
+    const lineItems = realignShiftedInvoiceLineItems(
+      mergeLayoutAndLlmLineItems(
+        normalized.lineItems,
+        layoutLineItems,
+        amount,
+      ),
+      amount,
+    );
+
+    return {
+      fields: {
+        ...normalized,
+        amount,
+        lineItems,
+        mileageKm: preferMileageKm(normalized.mileageKm, azureLayout.content),
+        vendor: resolveVendorName({
+          structuredVendor: normalized.vendor,
+          logoCandidates:
+            azureLayout.pages[0]?.lines
+              ?.map((line) => line.content)
+              .slice(0, 4) ?? [],
+          rawText: azureLayout.content,
+        }),
+      },
+      ocrJson,
+    };
   }
 
   /**
@@ -296,9 +375,9 @@ export class InvoiceParseService {
     const normalized = this.nullAbeFields(
       normalizeTextParseResult(parsed.data),
     );
-    const lineItems = preferInvoiceLineItems(
-      normalized.lineItems,
-      heuristicLineItems,
+    const lineItems = realignShiftedInvoiceLineItems(
+      preferInvoiceLineItems(normalized.lineItems, heuristicLineItems),
+      preferAmount(normalized.amount, plainText, normalized.lineItems),
     );
 
     return {
@@ -330,9 +409,17 @@ export class InvoiceParseService {
     });
 
     const heuristicLineItems = extractInvoiceLineItemsFromText(fullText);
-    const lineItems = preferInvoiceLineItems(
-      parsed.lineItems,
-      heuristicLineItems,
+    const layoutLineItems =
+      ocr.modelId === "azure-prebuilt-layout" && ocr.text
+        ? extractInvoiceLineItemsFromText(ocr.text)
+        : null;
+    const lineItems = realignShiftedInvoiceLineItems(
+      mergeLayoutAndLlmLineItems(
+        preferInvoiceLineItems(parsed.lineItems, heuristicLineItems),
+        layoutLineItems,
+        preferAmount(parsed.amount, fullText, parsed.lineItems),
+      ),
+      preferAmount(parsed.amount, fullText, parsed.lineItems),
     );
 
     return this.nullAbeFields(

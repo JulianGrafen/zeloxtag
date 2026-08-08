@@ -1,6 +1,6 @@
 /**
  * Client-side document prep for Azure Document Intelligence.
- * Images: A4-crop + compress for OCR; always assemble PDF for Supabase storage.
+ * Images: A4-crop + compress for storage; always assemble PDF for Supabase.
  */
 
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";

@@ -21,7 +21,6 @@ export function getDocumentIntelligenceEnv(): {
     process.env.DOCUMENTINTELLIGENCE_API_KEY?.trim() ||
     process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY?.trim() ||
     process.env.AZURE_FORM_RECOGNIZER_KEY?.trim() ||
-    process.env.API_KEY?.trim() ||
     "";
 
   const endpoint = endpointRaw ? `${trimTrailingSlash(endpointRaw)}/` : "";

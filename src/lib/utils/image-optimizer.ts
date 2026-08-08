@@ -1,7 +1,7 @@
 /**
- * Client-side invoice / document image optimization (no external APIs).
- * Produces a CamScanner-style monochrome page optimized for readability
- * and small PDF payloads.
+ * Client-side document image helpers (no external APIs).
+ * Archival/save paths use natural-color resize only; scan filters remain
+ * available for optional OCR-only preprocessing.
  */
 
 import { loadImageFromFile } from "./image-loader";
@@ -9,11 +9,11 @@ import { loadImageFromFile } from "./image-loader";
 /** A4 portrait aspect ratio (width / height). */
 export const A4_ASPECT = 210 / 297;
 
-export const OPTIMIZER_MAX_WIDTH_PX = 1600;
-export const OPTIMIZER_TARGET_MAX_BYTES = 300 * 1024;
+export const OPTIMIZER_MAX_WIDTH_PX = 2000;
+export const OPTIMIZER_TARGET_MAX_BYTES = 480 * 1024;
 
 export type OptimizedImageResult = {
-  /** Processed canvas (grayscale, contrast-boosted, resized). */
+  /** Processed canvas. */
   canvas: HTMLCanvasElement;
   /** JPEG data URL of the optimized image. */
   dataUrl: string;
@@ -134,11 +134,11 @@ function encodeOptimizedCanvas(
   canvas: HTMLCanvasElement,
   maxBytes: number,
 ): OptimizedImageResult {
-  let quality = 0.84;
+  let quality = 0.88;
   let dataUrl = canvasToJpegDataUrl(canvas, quality);
   let byteLength = dataUrlByteLength(dataUrl);
 
-  while (byteLength > maxBytes && quality > 0.42) {
+  while (byteLength > maxBytes && quality > 0.68) {
     quality -= 0.08;
     dataUrl = canvasToJpegDataUrl(canvas, quality);
     byteLength = dataUrlByteLength(dataUrl);
@@ -221,7 +221,43 @@ export function resizeDocumentCanvas(
 }
 
 /**
- * Optimize a raw camera / gallery image (no perspective crop).
+ * Resize a raw camera / gallery image without scan filtering (archival path).
+ */
+export async function resizeDocumentImage(
+  file: File,
+  options: Pick<OptimizeImageOptions, "maxWidth" | "maxBytes"> = {},
+): Promise<OptimizedImageResult> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Nur Bilddateien werden unterstützt.");
+  }
+
+  const image = await loadImageFromFile(file);
+  const { width, height } = computeTargetSize(
+    image.naturalWidth || image.width,
+    image.naturalHeight || image.height,
+    options.maxWidth ?? OPTIMIZER_MAX_WIDTH_PX,
+  );
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Canvas ist in diesem Browser nicht verfügbar.");
+  }
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+
+  return encodeOptimizedCanvas(
+    canvas,
+    options.maxBytes ?? OPTIMIZER_TARGET_MAX_BYTES,
+  );
+}
+
+/**
+ * Optimize a raw camera / gallery image with scan filter (OCR-only preprocessing).
  */
 export async function optimizeDocumentImage(
   file: File,

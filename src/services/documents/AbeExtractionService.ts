@@ -8,7 +8,7 @@ import {
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { parseAbeVehicleRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
-import { coerceAbeMarkingText } from "@/lib/ocr/abe-marking-from-text";
+import { resolveAbeMarkingText } from "@/lib/ocr/abe-marking-from-text";
 import {
   normalizeAbeKbaDigits,
   normalizeAbeNumberDigits,
@@ -153,10 +153,8 @@ export class AbeDataHunterExtractionService {
       );
 
       const parsed = AbeHuntMarkingSchema.safeParse({
-        markingText: coerceAbeMarkingText(
-          typeof raw === "object" && raw && "markingText" in raw
-            ? (raw as { markingText: unknown }).markingText
-            : raw,
+        markingText: resolveAbeMarkingText(
+          typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {},
         ),
       });
       if (!parsed.success) {
@@ -279,6 +277,10 @@ export class AbeDataHunterExtractionService {
         isPdf ? 6_000 : 4_000,
       );
 
+      const record =
+        typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
+      const resolvedMarking = resolveAbeMarkingText(record);
+
       const rawRows =
         typeof raw === "object" &&
         raw &&
@@ -294,15 +296,8 @@ export class AbeDataHunterExtractionService {
 
       const parsed = AbeDataHunterReportSchema.safeParse(candidate);
       if (!parsed.success) {
-        const record =
-          typeof candidate === "object" && candidate
-            ? (candidate as Record<string, unknown>)
-            : {};
         const asText = (value: unknown): string | null =>
           typeof value === "string" && value.trim() ? value.trim() : null;
-
-        const asMarking = (value: unknown): string | null =>
-          coerceAbeMarkingText(value);
 
         const extraction: AbeDataHunterReport = {
           ...empty,
@@ -311,7 +306,7 @@ export class AbeDataHunterExtractionService {
           abeHolder: asText(record.abeHolder),
           manufacturer: asText(record.manufacturer),
           partDesignation: asText(record.partDesignation),
-          markingText: asMarking(record.markingText),
+          markingText: resolvedMarking,
           vehicleMatches: Array.isArray(record.vehicleMatches)
             ? parseAbeVehicleRows(record.vehicleMatches)
             : [],
@@ -334,7 +329,12 @@ export class AbeDataHunterExtractionService {
         ...parsed.data,
         kbaNumber: normalizeAbeKbaDigits(parsed.data.kbaNumber) || null,
         abeNumber: normalizeAbeNumberDigits(parsed.data.abeNumber) || null,
-        markingText: coerceAbeMarkingText(parsed.data.markingText),
+        markingText: resolveAbeMarkingText({
+          ...record,
+          markingText: parsed.data.markingText,
+          markingType: record.markingType,
+          markingNumber: record.markingNumber,
+        }),
       };
 
       const hasAnything =

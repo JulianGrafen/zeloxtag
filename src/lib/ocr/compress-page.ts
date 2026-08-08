@@ -1,20 +1,19 @@
 /**
- * OCR page prep: center-crop to A4, downscale, JPEG-compress.
- * No contrast / scan filters — geometry + size only.
+ * Page prep: center-crop to A4, downscale, JPEG-compress (natural colors, no scan filter).
  */
 
 import { loadImageFromFile } from "@/lib/utils/image-loader";
 import { A4_ASPECT } from "@/lib/utils/image-optimizer";
 
-/** Long edge for A4 portrait OCR pages (≈150–160 DPI on A4). */
-export const PAGE_COMPRESS_MAX_WIDTH_PX = 1600;
-export const PAGE_COMPRESS_TARGET_BYTES = 280 * 1024;
-export const PAGE_JPEG_QUALITY = 0.82;
-export const PAGE_JPEG_QUALITY_FLOOR = 0.48;
+/** Long edge for A4 portrait OCR pages (~200 DPI on A4). */
+export const PAGE_COMPRESS_MAX_WIDTH_PX = 2000;
+export const PAGE_COMPRESS_TARGET_BYTES = 480 * 1024;
+export const PAGE_JPEG_QUALITY = 0.88;
+export const PAGE_JPEG_QUALITY_FLOOR = 0.68;
 
 export type CompressedPage = {
   id: string;
-  /** A4-cropped, compressed JPEG for OCR / PDF assembly. */
+  /** A4-cropped, compressed JPEG for PDF assembly / upload. */
   blob: Blob;
   /** Object URL for UI thumbnails (caller should revoke). */
   previewUrl: string;
@@ -115,7 +114,7 @@ export async function compressPageImage(
   const canvas = document.createElement("canvas");
   canvas.width = outWidth;
   canvas.height = outHeight;
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
     throw new Error("Canvas ist in diesem Browser nicht verfügbar.");
   }
@@ -135,7 +134,6 @@ export async function compressPageImage(
     outWidth,
     outHeight,
   );
-
   let quality = PAGE_JPEG_QUALITY;
   let blob = await canvasToJpegBlob(canvas, quality);
   while (blob.size > PAGE_COMPRESS_TARGET_BYTES && quality > PAGE_JPEG_QUALITY_FLOOR) {

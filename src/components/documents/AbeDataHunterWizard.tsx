@@ -24,6 +24,7 @@ import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { localDateIso } from "@/lib/documents/format";
+import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import {
   auflagenForAbeVehicleGroup,
@@ -39,7 +40,10 @@ import {
   normalizeAbeNumberDigits,
 } from "@/lib/validations/abeSchema";
 import {
+  ABE_HUNT_FIELD_SCAN_HINTS,
+  ABE_HUNT_FIELD_WATERMARKS,
   ABE_REQUIRED_FIELD_LABELS,
+  abeHuntFieldDisplayLabel,
   emptyAbeDataHunterReport,
   fillAbeDataHunterReport,
   isAbeDataHunterReportComplete,
@@ -147,6 +151,50 @@ function newlyFilledLabels(
 
 // ─── Progress overlay ──────────────────────────────────────────────────────────
 
+function HuntScanHintPopup({
+  title,
+  body,
+  onDismiss,
+}: {
+  title: string;
+  body: string;
+  onDismiss: () => void;
+}) {
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="pointer-events-none fixed inset-0 z-[10055] flex items-end justify-center bg-black/65 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-sm sm:items-center">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="hunt-scan-hint-title"
+        className="pointer-events-auto w-full max-w-md rounded-[1.5rem] bg-white p-6 shadow-2xl"
+      >
+        <p
+          id="hunt-scan-hint-title"
+          className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neutral-500"
+        >
+          Scan-Hinweis
+        </p>
+        <h2 className="mt-2 text-[1.05rem] font-semibold leading-snug text-neutral-900">
+          {title}
+        </h2>
+        <p className="mt-3 text-[0.92rem] leading-relaxed text-neutral-700">
+          {body}
+        </p>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.92rem] font-semibold text-white transition-opacity active:opacity-80"
+        >
+          Verstanden
+        </button>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function HuntProgressOverlay({
   report,
   analyzing,
@@ -154,6 +202,8 @@ function HuntProgressOverlay({
   queuedCount,
   captureSummary,
   lastFound,
+  focusIndex,
+  onFocusIndexChange,
   onOpenReview,
   onClose,
 }: {
@@ -163,11 +213,12 @@ function HuntProgressOverlay({
   queuedCount: number;
   captureSummary: string | null;
   lastFound: string[];
+  focusIndex: number;
+  onFocusIndexChange: (index: number) => void;
   onOpenReview: () => void;
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
-  const [focusIndex, setFocusIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
@@ -178,21 +229,21 @@ function HuntProgressOverlay({
   const complete = missing.length === 0;
   const currentKey = REQUIRED_ORDER[focusIndex] ?? REQUIRED_ORDER[0];
   const currentDone = !missing.includes(currentKey);
-
-  // Jump to first open item when something gets filled.
-  useEffect(() => {
-    const firstOpen = REQUIRED_ORDER.findIndex((key) => missing.includes(key));
-    if (firstOpen >= 0) setFocusIndex(firstOpen);
-  }, [missing.join("|")]);
+  const scanHint = ABE_HUNT_FIELD_SCAN_HINTS[currentKey];
+  const displayLabel = abeHuntFieldDisplayLabel(currentKey);
 
   function goPrev() {
-    setFocusIndex(
-      (index) => (index - 1 + REQUIRED_ORDER.length) % REQUIRED_ORDER.length,
+    onFocusIndexChange(
+      (focusIndex - 1 + REQUIRED_ORDER.length) % REQUIRED_ORDER.length,
     );
   }
 
   function goNext() {
-    setFocusIndex((index) => (index + 1) % REQUIRED_ORDER.length);
+    onFocusIndexChange((focusIndex + 1) % REQUIRED_ORDER.length);
+  }
+
+  function skipCurrent() {
+    goNext();
   }
 
   if (!mounted || typeof document === "undefined") return null;
@@ -240,19 +291,20 @@ function HuntProgressOverlay({
               {captureSummary ? ` · ${captureSummary}` : ""}
             </p>
             <p className="truncate text-[0.88rem] font-semibold leading-tight">
-              {ABE_REQUIRED_FIELD_LABELS[currentKey]}
+              {displayLabel}
             </p>
             <p
               className={[
-                "mt-0.5 truncate text-[0.72rem] font-medium",
+                "mt-0.5 text-[0.72rem] font-medium leading-snug",
                 currentDone ? "text-emerald-300" : "text-white/75",
+                scanHint?.scanAction && !currentDone ? "" : "truncate",
               ].join(" ")}
             >
               {currentDone
                 ? "Erfasst"
                 : complete
                   ? "Alles erfasst"
-                  : "Jetzt fotografieren"}
+                  : scanHint?.scanAction ?? "Jetzt fotografieren"}
             </p>
           </div>
 
@@ -282,20 +334,36 @@ function HuntProgressOverlay({
             const done = !missing.includes(key);
             const active = index === focusIndex;
             return (
-              <span
+              <button
                 key={key}
+                type="button"
+                onClick={() => onFocusIndexChange(index)}
                 className={[
-                  "h-1 flex-1 rounded-full transition-colors",
+                  "h-2 flex-1 rounded-full transition-colors",
                   done
                     ? "bg-emerald-400"
                     : active
                       ? "bg-white"
                       : "bg-white/25",
                 ].join(" ")}
+                aria-label={`${abeHuntFieldDisplayLabel(key)}${done ? ", erfasst" : active ? ", aktiv" : ", offen"}`}
+                aria-current={active ? "step" : undefined}
               />
             );
           })}
         </div>
+
+        {!complete && !currentDone ? (
+          <div className="mt-2 flex justify-center px-1">
+            <button
+              type="button"
+              onClick={skipCurrent}
+              className="rounded-full bg-white/10 px-3 py-1 text-[0.72rem] font-medium text-white/90 transition-opacity active:opacity-70"
+            >
+              Überspringen
+            </button>
+          </div>
+        ) : null}
 
         {analyzing || lastFound.length > 0 ? (
           <div className="mt-1.5 flex min-h-[1.1rem] items-center justify-center gap-1.5 px-1 text-[0.68rem]">
@@ -568,7 +636,7 @@ function ReviewPanel({
               />
               <AbeSummaryRow label="Kennzeichnung" value={form.markingText} />
               <AbeSummaryRow
-                label="Verkaufsbezeichnung"
+                label={ABE_VEHICLE_MODEL_DISPLAY_LABEL}
                 value={selectedVerkaufsbezeichnung}
               />
               <AbeSummaryRow label="Auflagen" value={form.auflagenCodes} />
@@ -649,6 +717,10 @@ export function AbeDataHunterWizard({
     null,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [huntFocusIndex, setHuntFocusIndex] = useState(0);
+  const [dismissedScanHints, setDismissedScanHints] = useState<
+    Set<AbeRequiredFieldKey>
+  >(() => new Set());
   const [isSaving, startSaveTransition] = useTransition();
 
   const queueRef = useRef<File[]>([]);
@@ -682,7 +754,13 @@ export function AbeDataHunterWizard({
     setPhase("choose");
   }
 
+  function dismissScanHint(key: AbeRequiredFieldKey) {
+    setDismissedScanHints((current) => new Set(current).add(key));
+  }
+
   function startCameraHunt() {
+    setHuntFocusIndex(0);
+    setDismissedScanHints(new Set());
     setHuntMode("camera");
     setPhase("hunt");
   }
@@ -712,6 +790,8 @@ export function AbeDataHunterWizard({
     setAnalyzingPdf(false);
     setSelectedGroupIndex(null);
     setSaveError(null);
+    setHuntFocusIndex(0);
+    setDismissedScanHints(new Set());
   }
 
   async function drainQueue() {
@@ -977,10 +1057,26 @@ export function AbeDataHunterWizard({
       queuedCount={queuedCount}
       captureSummary={captureSummary}
       lastFound={lastFound}
+      focusIndex={huntFocusIndex}
+      onFocusIndexChange={setHuntFocusIndex}
       onOpenReview={() => setPhase("review")}
       onClose={returnToChooser}
     />
   );
+
+  const huntFocusKey = REQUIRED_ORDER[huntFocusIndex] ?? "kbaNumber";
+  const guideWatermark = complete
+    ? undefined
+    : ABE_HUNT_FIELD_WATERMARKS[huntFocusKey];
+  const activeScanHint = ABE_HUNT_FIELD_SCAN_HINTS[huntFocusKey];
+  const missingFields = missingAbeRequiredFields(report);
+  const showScanHintPopup =
+    phase === "hunt" &&
+    huntMode === "camera" &&
+    !complete &&
+    Boolean(activeScanHint?.popupTitle && activeScanHint.popupBody) &&
+    missingFields.includes(huntFocusKey) &&
+    !dismissedScanHints.has(huntFocusKey);
 
   const switchToCameraButton =
     huntMode === "pdf" &&
@@ -1008,6 +1104,13 @@ export function AbeDataHunterWizard({
         {errorBanner}
         <div className="fixed inset-0 bg-neutral-950" aria-hidden />
         {progressOverlay}
+        {showScanHintPopup && activeScanHint?.popupTitle && activeScanHint.popupBody ? (
+          <HuntScanHintPopup
+            title={activeScanHint.popupTitle}
+            body={activeScanHint.popupBody}
+            onDismiss={() => dismissScanHint(huntFocusKey)}
+          />
+        ) : null}
         {switchToCameraButton}
       </>
     );
@@ -1017,10 +1120,17 @@ export function AbeDataHunterWizard({
     <>
       {errorBanner}
       {progressOverlay}
+      {showScanHintPopup && activeScanHint?.popupTitle && activeScanHint.popupBody ? (
+        <HuntScanHintPopup
+          title={activeScanHint.popupTitle}
+          body={activeScanHint.popupBody}
+          onDismiss={() => dismissScanHint(huntFocusKey)}
+        />
+      ) : null}
       <InBrowserCamera
         title="ABE scannen"
         hint="Fotografiere die offenen Punkte in der Leiste oben."
-        guideLabel="Weiter fotografieren, bis alles grün ist"
+        guideWatermark={guideWatermark}
         guideFrame="a4"
         allowPdf={false}
         showBriefing={false}

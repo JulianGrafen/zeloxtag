@@ -1,8 +1,8 @@
 /**
- * End-to-end client scan pipeline: warp → professional filter → A4 PDF.
+ * End-to-end client scan pipeline: warp → resize → A4 PDF (natural colors).
  */
 
-import { A4_ASPECT, optimizeDocumentCanvas } from "./image-optimizer";
+import { A4_ASPECT, resizeDocumentCanvas } from "./image-optimizer";
 import { convertImageToPdf, type PdfConversionResult } from "./pdf-converter";
 import {
   type QuadPoints,
@@ -19,7 +19,7 @@ export type ScanPipelineResult = {
 };
 
 /**
- * Perspective-correct the selected quad, apply scan filters, build A4 PDF.
+ * Perspective-correct the selected quad, resize, build A4 PDF.
  */
 export async function buildScanFromCorners(
   sourceCanvas: HTMLCanvasElement,
@@ -30,20 +30,22 @@ export async function buildScanFromCorners(
     forceAspect: A4_ASPECT,
   });
 
-  const optimized = optimizeDocumentCanvas(warped, {
-    maxWidth: WARP_MAX_WIDTH_PX,
-  });
+  const canvas = resizeDocumentCanvas(warped, WARP_MAX_WIDTH_PX);
+  const previewDataUrl = canvas.toDataURL("image/jpeg", 0.88);
+  const previewBytes = Math.floor(
+    (((previewDataUrl.split(",")[1] ?? "").length * 3) / 4),
+  );
 
-  const pdf = await convertImageToPdf(optimized.canvas, {
+  const pdf = await convertImageToPdf(canvas, {
     fileName: `scan-${Date.now()}`,
     marginMm: 6,
   });
 
   return {
-    previewDataUrl: optimized.dataUrl,
-    previewBytes: optimized.byteLength,
+    previewDataUrl,
+    previewBytes,
     pdf,
-    width: optimized.width,
-    height: optimized.height,
+    width: canvas.width,
+    height: canvas.height,
   };
 }

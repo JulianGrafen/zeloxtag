@@ -5,7 +5,7 @@ import { Pencil, ShieldCheck } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import {
-  isVerkaufsbezeichnungSpecLabel,
+  displaySpecForAbeDetailView,
   vehicleApprovalsForAbeDetailView,
 } from "@/lib/documents/abe-detail-display";
 import { CollapsibleAuflagenList } from "@/components/documents/collapsible-auflagen-list";
@@ -29,8 +29,7 @@ type EditableAbeListsSectionProps = {
   technicalDataTable?: TableData | null;
   /** Teilegutachten section III — Hinweise für den Fahrzeughalter. */
   ownerNotes?: string | null;
-  /** Omit Verkaufsbezeichnung header from read-only lists (detail view). */
-  hideVerkaufsbezeichnung?: boolean;
+  /** ABE `verkaufsbezeichnung` — used to dedupe Freigabe list vs. Fahrzeugmodell. */
   verkaufsbezeichnung?: string | null;
 };
 
@@ -80,7 +79,6 @@ export function EditableAbeListsSection({
   compatibilityTable = null,
   technicalDataTable = null,
   ownerNotes = null,
-  hideVerkaufsbezeichnung = false,
   verkaufsbezeichnung = null,
 }: EditableAbeListsSectionProps) {
   const [editing, setEditing] = useState(false);
@@ -94,15 +92,13 @@ export function EditableAbeListsSection({
   const [displayConditions, setDisplayConditions] = useState(conditions);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const visibleApprovals = hideVerkaufsbezeichnung
+  const visibleApprovals = verkaufsbezeichnung
     ? vehicleApprovalsForAbeDetailView(displayApprovals, {
         technicalSpecs: displaySpecs,
         verkaufsbezeichnung,
       })
     : displayApprovals;
-  const visibleSpecs = hideVerkaufsbezeichnung
-    ? displaySpecs.filter((spec) => !isVerkaufsbezeichnungSpecLabel(spec.label))
-    : displaySpecs;
+  const visibleSpecs = displaySpecs.map(displaySpecForAbeDetailView);
 
   function startEdit() {
     setError(null);

@@ -2,18 +2,17 @@ import type { DocumentTechnicalSpec } from "@/types/database";
 
 const VERKAUFSBEZEICHNUNG_LABEL = /^verkaufsbezeichnung\b/i;
 
+/** User-facing label for ABE `verkaufsbezeichnung` in document views. */
+export const ABE_VEHICLE_MODEL_DISPLAY_LABEL = "Fahrzeugmodell";
+
 export function isVerkaufsbezeichnungSpecLabel(label: string): boolean {
   return VERKAUFSBEZEICHNUNG_LABEL.test(label.trim());
 }
 
-/** Technical specs shown in the ABE detail view (excludes duplicate header fields). */
-export function technicalSpecsForAbeDetailView(
-  specs: DocumentTechnicalSpec[],
-): DocumentTechnicalSpec[] {
-  return specs.filter(
-    (spec) =>
-      spec.label !== "ABE-Nummer" && !isVerkaufsbezeichnungSpecLabel(spec.label),
-  );
+export function displayLabelForAbeSpecLabel(label: string): string {
+  return isVerkaufsbezeichnungSpecLabel(label)
+    ? ABE_VEHICLE_MODEL_DISPLAY_LABEL
+    : label;
 }
 
 function verkaufsbezeichnungValuesToHide(
@@ -33,7 +32,36 @@ function verkaufsbezeichnungValuesToHide(
   return hidden;
 }
 
-/** Vehicle approval lines without the Verkaufsbezeichnung section header. */
+/** Technical specs for the ABE detail view (relabeled for display). */
+export function technicalSpecsForAbeDetailView(
+  specs: DocumentTechnicalSpec[],
+  options?: { vehicleModel?: string | null },
+): DocumentTechnicalSpec[] {
+  const mapped = specs
+    .filter((spec) => spec.label !== "ABE-Nummer")
+    .map((spec) => ({
+      ...spec,
+      label: displayLabelForAbeSpecLabel(spec.label),
+    }));
+
+  const hasModel = mapped.some(
+    (spec) => spec.label === ABE_VEHICLE_MODEL_DISPLAY_LABEL,
+  );
+  const modelValue =
+    options?.vehicleModel?.trim() ||
+    specs.find((spec) => isVerkaufsbezeichnungSpecLabel(spec.label))?.value.trim();
+
+  if (!hasModel && modelValue) {
+    mapped.push({
+      label: ABE_VEHICLE_MODEL_DISPLAY_LABEL,
+      value: modelValue,
+    });
+  }
+
+  return mapped;
+}
+
+/** Vehicle approval lines without the duplicate Fahrzeugmodell header line. */
 export function vehicleApprovalsForAbeDetailView(
   approvals: string[],
   options: {
@@ -46,4 +74,13 @@ export function vehicleApprovalsForAbeDetailView(
     options.verkaufsbezeichnung,
   );
   return approvals.filter((item) => !hidden.has(item.trim()));
+}
+
+export function displaySpecForAbeDetailView(
+  spec: DocumentTechnicalSpec,
+): DocumentTechnicalSpec {
+  return {
+    ...spec,
+    label: displayLabelForAbeSpecLabel(spec.label),
+  };
 }

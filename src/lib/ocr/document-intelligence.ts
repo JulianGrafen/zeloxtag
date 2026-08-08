@@ -1,6 +1,6 @@
 /**
- * Document parse dispatch — vision LLM only (no Azure Document Intelligence).
- * PDFs/images are sent directly to the LLM with strict JSON schemas.
+ * Document parse dispatch — vision LLM + optional Azure Layout OCR for invoices.
+ * Invoice scans are contrast-enhanced once, then sent to Azure DI and the LLM in parallel.
  */
 
 import type {
@@ -151,11 +151,11 @@ export async function analyzeDocument(input: {
   });
   const preferredApprovalKind = input.approvalKind ?? null;
   const vehicleContext = input.vehicleContext ?? null;
-  const ocrPayload = buildStubOcrPayload(input.contentType);
   const documentInput = {
     bytes: input.bytes,
     contentType: input.contentType,
   };
+  const ocrPayload = buildStubOcrPayload(input.contentType);
 
   try {
     if (documentType === "abe") {
@@ -258,17 +258,20 @@ export async function analyzeDocument(input: {
       };
     }
 
-    const fields = await invoiceParseService.parseFromDocument(documentInput, {
-      model: parseModel,
-      documentType: "invoice",
-    });
+    const { fields, ocrJson } = await invoiceParseService.parseFromDocument(
+      documentInput,
+      {
+        model: parseModel,
+        documentType: "invoice",
+      },
+    );
     return {
       kind: "invoice",
       documentType: "invoice",
       fields,
       approvalFields: null,
-      rawText: "",
-      ocrJson: ocrPayload,
+      rawText: ocrJson.text,
+      ocrJson,
       modelId: LLM_VISION_PARSE_MODEL_ID,
       parseModel,
     };

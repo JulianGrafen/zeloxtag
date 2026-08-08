@@ -5,7 +5,7 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
 const MIN_EMBEDDED_TEXT_CHARS = 48;
-const RENDER_MAX_WIDTH_PX = 1280;
+const RENDER_MAX_WIDTH_PX = 2000;
 
 export type PdfPageRaster = {
   pageNumber: number;
@@ -111,7 +111,7 @@ export async function rasterizePdfPage(
     canvas,
   }).promise;
 
-  const blob = await canvasToJpegBlob(canvas, 0.7);
+  const blob = await canvasToJpegBlob(canvas, 0.88);
   const { width, height } = canvas;
 
   canvas.width = 0;

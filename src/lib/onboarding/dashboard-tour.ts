@@ -47,8 +47,8 @@ const OWNER_STEPS: DashboardTourStep[] = [
   {
     id: "oil",
     target: "[data-tour='tile-oil-change']",
-    title: "Intervalle",
-    body: "Ölwechsel und Wartungsintervalle im Blick — ideal für die nächste Werkstatt oder den TÜV.",
+    title: "Öl-Wechsel",
+    body: "Ölwechsel manuell eintragen oder per Rechnung scannen — Historie und nächster Termin im Blick.",
     placement: "bottom",
   },
   {

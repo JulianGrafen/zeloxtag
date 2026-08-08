@@ -1455,12 +1455,12 @@ export function InvoiceUploader({
                   {primary ? (
                     <>
                       Ölwechsel ist die Hauptarbeit — Titel & Speicherung unter{" "}
-                      <span className="font-semibold">Intervalle</span>.
+                      <span className="font-semibold">Öl-Wechsel</span>.
                     </>
                   ) : (
                     <>
                       Ölwechsel als Nebenposition erkannt — bleibt unter{" "}
-                      <span className="font-semibold">Intervalle</span>, Titel
+                      <span className="font-semibold">Öl-Wechsel</span>, Titel
                       beschreibt die Hauptarbeit.
                     </>
                   )}

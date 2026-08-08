@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -13,7 +12,6 @@ import {
   AbeKbaHero,
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
-import { DocumentViewer } from "@/components/documents/document-viewer";
 import { EditableAbeListsSection } from "@/components/documents/editable-abe-lists-section";
 import {
   PressableButton,
@@ -28,7 +26,10 @@ import {
   displayDocumentTitle,
   formatDocumentDate,
 } from "@/lib/documents/format";
-import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
+import {
+  isViewableDocumentUrl,
+  openDocumentOriginal,
+} from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
 
 interface DocumentAbeDetailViewProps {
@@ -55,7 +56,6 @@ export function DocumentAbeDetailView({
   document,
   backHref,
 }: DocumentAbeDetailViewProps) {
-  const [viewerOpen, setViewerOpen] = useState(false);
   const kindLabel = approvalKindLabel(document.approval_fields);
   const isEinzelabnahme = document.approval_fields?.kind === "einzelabnahme";
   const isTeilegutachten = document.approval_fields?.kind === "teilegutachten";
@@ -102,7 +102,9 @@ export function DocumentAbeDetailView({
       : null;
   const conditions = document.conditions ?? [];
   const technicalSpecs = document.technical_specs ?? [];
-  const plainAbeSpecs = technicalSpecsForAbeDetailView(technicalSpecs);
+  const plainAbeSpecs = technicalSpecsForAbeDetailView(technicalSpecs, {
+    vehicleModel: abeVerkaufsbezeichnung,
+  });
   const pages = document.page_count && document.page_count > 0 ? document.page_count : 1;
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
   const resolvedBack =
@@ -314,7 +316,6 @@ export function DocumentAbeDetailView({
             }
             technicalDataTable={isTeilegutachten ? tgTechnicalTable : null}
             ownerNotes={isTeilegutachten ? tgOwnerNotes : null}
-            hideVerkaufsbezeichnung={isPlainAbe}
             verkaufsbezeichnung={abeVerkaufsbezeichnung}
           />
         ) : null}
@@ -335,7 +336,7 @@ export function DocumentAbeDetailView({
               <PressableButton
                 type="button"
                 variant="button"
-                onClick={() => setViewerOpen(true)}
+                onClick={() => openDocumentOriginal(document.file_url)}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
               >
                 <FileText className="h-4 w-4" aria-hidden />
@@ -349,14 +350,6 @@ export function DocumentAbeDetailView({
           </div>
         </section>
       </div>
-
-      {viewerOpen && canOpenOriginal ? (
-        <DocumentViewer
-          title={partName}
-          fileUrl={document.file_url}
-          onClose={() => setViewerOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }

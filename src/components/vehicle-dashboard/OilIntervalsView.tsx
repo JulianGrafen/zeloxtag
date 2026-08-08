@@ -11,7 +11,8 @@ import {
   OIL_CHANGE_RECORDS,
   type OilChangeRecord,
 } from "./oilChangeRecords";
-import { PressableLink } from "./Pressable";
+import { OilChangeManualForm } from "./oil-change-manual-form";
+import { PressableButton, PressableLink } from "./Pressable";
 
 interface OilIntervalsViewProps {
   vehicleModel: string;
@@ -22,6 +23,9 @@ interface OilIntervalsViewProps {
   basePath?: string;
   /** Optional scan CTA for oil-change invoices. */
   scanHref?: string;
+  tagUuid?: string;
+  vehicleId?: string;
+  canAddManual?: boolean;
 }
 
 export function OilIntervalsView({
@@ -30,8 +34,12 @@ export function OilIntervalsView({
   backHref = "/",
   basePath = "/intervalle",
   scanHref,
+  tagUuid,
+  vehicleId,
+  canAddManual = false,
 }: OilIntervalsViewProps) {
   const [query, setQuery] = useState("");
+  const [showManualForm, setShowManualForm] = useState(false);
   const latest = getLatestOilChange(records);
 
   const visibleRecords = useMemo(() => {
@@ -72,16 +80,29 @@ export function OilIntervalsView({
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Zurück
             </PressableLink>
-            {scanHref ? (
-              <PressableLink
-                href={scanHref}
-                variant="pill"
-                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-2 text-[0.78rem] font-medium text-white"
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden />
-                Scannen
-              </PressableLink>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {canAddManual && tagUuid && vehicleId && !showManualForm ? (
+                <PressableButton
+                  type="button"
+                  variant="button"
+                  onClick={() => setShowManualForm(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Eintragen
+                </PressableButton>
+              ) : null}
+              {scanHref ? (
+                <PressableLink
+                  href={scanHref}
+                  variant="pill"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-2 text-[0.78rem] font-medium text-white"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Scannen
+                </PressableLink>
+              ) : null}
+            </div>
           </div>
 
           <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
@@ -89,7 +110,7 @@ export function OilIntervalsView({
               Ölwechsel
             </p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
-              Intervalle
+              Öl-Wechsel
             </h1>
             <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
               {vehicleModel} · {visibleRecords.length} Einträge
@@ -124,6 +145,14 @@ export function OilIntervalsView({
           </div>
         </header>
 
+        {showManualForm && tagUuid && vehicleId ? (
+          <OilChangeManualForm
+            tagUuid={tagUuid}
+            vehicleId={vehicleId}
+            onClose={() => setShowManualForm(false)}
+          />
+        ) : null}
+
         {records.length > 0 ? (
           <ListSearchControls
             query={query}
@@ -141,8 +170,8 @@ export function OilIntervalsView({
           {records.length === 0 ? (
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-6 text-center shadow-[var(--vd-shadow-sm)]">
               <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
-                Noch keine Ölwechsel. Scanne eine Rechnung mit Motoröl /
-                Ölfilter — sie wird automatisch hier eingetragen.
+                Noch kein Ölwechsel hinterlegt. Trage einen manuell ein oder
+                scanne eine Rechnung mit Motoröl / Ölfilter.
               </p>
             </div>
           ) : visibleRecords.length === 0 ? (

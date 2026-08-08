@@ -16,6 +16,10 @@ import {
   MANUAL_ENTRY_MAX_PHOTOS,
   type ManualEntryCategory,
 } from "@/lib/documents/manual-entries";
+import {
+  ensureOilChangeNotes,
+  detectOilChangeInvoice,
+} from "@/lib/documents/oil-changes";
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
 import {
   isUploadFile,
@@ -43,6 +47,10 @@ const fieldsSchema = z.object({
   vendor: z.string().trim().max(160).optional().default(""),
   mileageKm: z.string().trim().max(16).optional().default(""),
   notes: z.string().trim().max(500).optional().default(""),
+  entryType: z.enum(["default", "oil_change"]).optional().default("default"),
+  oilSpec: z.string().trim().max(120).optional().default(""),
+  oilAmountLiters: z.string().trim().max(16).optional().default(""),
+  filterChanged: z.enum(["true", "false", ""]).optional().default(""),
 });
 
 function parseAmount(raw: string | undefined): number | null {
@@ -73,16 +81,62 @@ function defaultTitle(category: ManualEntryCategory): string {
 }
 
 function fieldsFromFormData(formData: FormData) {
+  const categoryRaw = String(formData.get("category") ?? "");
   return {
     vehicleId: String(formData.get("vehicleId") ?? ""),
     tagUuid: String(formData.get("tagUuid") ?? ""),
-    category: String(formData.get("category") ?? ""),
+    category: categoryRaw || "service",
     title: String(formData.get("title") ?? ""),
     date: String(formData.get("date") ?? ""),
     amount: String(formData.get("amount") ?? ""),
     vendor: String(formData.get("vendor") ?? ""),
     mileageKm: String(formData.get("mileageKm") ?? ""),
     notes: String(formData.get("notes") ?? ""),
+    entryType: String(formData.get("entryType") ?? "default"),
+    oilSpec: String(formData.get("oilSpec") ?? ""),
+    oilAmountLiters: String(formData.get("oilAmountLiters") ?? ""),
+    filterChanged: String(formData.get("filterChanged") ?? ""),
+  };
+}
+
+function buildOilChangeManualFields(
+  data: z.infer<typeof fieldsSchema>,
+): {
+  category: ManualEntryCategory;
+  title: string;
+  notes: string | null;
+} {
+  const oilSpec = data.oilSpec?.trim() || null;
+  const litersRaw = data.oilAmountLiters?.trim() ?? "";
+  let oilAmountLiters: number | null = null;
+  if (litersRaw) {
+    const value = Number.parseFloat(litersRaw.replace(",", "."));
+    if (Number.isFinite(value) && value > 0 && value <= 20) {
+      oilAmountLiters = Math.round(value * 10) / 10;
+    }
+  }
+  const filterChanged = data.filterChanged === "true";
+  const userNotes = data.notes?.trim() ?? "";
+
+  const parts = ["Ölwechsel"];
+  if (oilSpec) parts.push(oilSpec);
+  if (oilAmountLiters) {
+    parts.push(`${oilAmountLiters.toLocaleString("de-DE")} l`);
+  }
+  parts.push(filterChanged ? "Filter gewechselt" : "Filter unklar");
+  if (userNotes) parts.push(userNotes);
+
+  const blob = parts.join(" · ");
+  const detected = detectOilChangeInvoice({
+    title: "Ölwechsel",
+    notes: blob,
+    category: "service",
+  });
+
+  return {
+    category: "service",
+    title: data.title.trim() || "Ölwechsel",
+    notes: ensureOilChangeNotes(blob, detected),
   };
 }
 
@@ -122,7 +176,12 @@ export async function createManualVehicleEntry(
   }
 
   const data = parsed.data;
-  const title = data.title.trim() || defaultTitle(data.category);
+  const isOilChangeEntry = data.entryType === "oil_change";
+  const oilFields = isOilChangeEntry ? buildOilChangeManualFields(data) : null;
+  const category = oilFields?.category ?? (data.category as ManualEntryCategory);
+  const title =
+    oilFields?.title ??
+    (data.title.trim() || defaultTitle(category));
   const dateRaw = data.date?.trim() || "";
   if (dateRaw && !/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
     return { status: "error", message: "Datum ungültig." };
@@ -130,7 +189,8 @@ export async function createManualVehicleEntry(
   const date = dateRaw || null;
   const amount = parseAmount(data.amount);
   const vendor = data.vendor?.trim().slice(0, 160) || null;
-  const notes = data.notes?.trim().slice(0, 500) || null;
+  const notes =
+    oilFields?.notes ?? (data.notes?.trim().slice(0, 500) || null);
   const mileageKm = parseMileageKm(data.mileageKm);
   const documentId = randomUUID();
   const now = new Date().toISOString();
@@ -161,7 +221,7 @@ export async function createManualVehicleEntry(
       type: "invoice",
       file_url: fileUrl,
       vendor,
-      category: data.category,
+      category,
       line_items: null,
       kba_number: null,
       vehicle_approvals: null,
@@ -273,7 +333,7 @@ export async function createManualVehicleEntry(
     type: "invoice" as const,
     file_url: fileUrl,
     vendor,
-    category: data.category,
+    category,
     notes,
     invoice_number: MANUAL_ENTRY_MARKER,
     mileage_km: mileageKm,

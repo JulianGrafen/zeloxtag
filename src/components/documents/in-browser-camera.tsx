@@ -17,6 +17,10 @@ import {
   buildA4PdfFromPhotoFile,
   mapContainerRectToVideoCrop,
 } from "@/lib/utils/a4-auto-scan";
+import {
+  resizeDocumentCanvas,
+  resizeDocumentImage,
+} from "@/lib/utils/image-optimizer";
 
 export type GuideFrameType = "a4" | "section" | "none";
 export type GuideSectionAnchor = "top" | "center" | "bottom";
@@ -71,6 +75,28 @@ const SECTION_ASPECT_RATIOS: Record<GuideSectionAnchor, string> = {
   center: "4 / 3", // Punkt 6 defects block
   bottom: "4 / 3",
 };
+
+async function canvasToCaptureFile(
+  canvas: HTMLCanvasElement,
+  fileName = `scan-${Date.now()}`,
+): Promise<File> {
+  const resized = resizeDocumentCanvas(canvas);
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    resized.toBlob(
+      (value) =>
+        value
+          ? resolve(value)
+          : reject(new Error("Aufnahme konnte nicht gespeichert werden.")),
+      "image/jpeg",
+      0.88,
+    );
+  });
+
+  return new File([blob], `${fileName}.jpg`, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
 
 function GuideFrameWatermark({ children }: { children: ReactNode }) {
   return (
@@ -337,22 +363,13 @@ export function InBrowserCamera({
           setProcessingCapture(false);
         }
       } else {
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(
-            (b) =>
-              b
-                ? resolve(b)
-                : reject(new Error("Aufnahme fehlgeschlagen.")),
-            "image/jpeg",
-            0.92,
-          );
-        });
-
-        const file = new File([blob], `scan-${Date.now()}.jpg`, {
-          type: "image/jpeg",
-          lastModified: Date.now(),
-        });
-        await deliverCaptureFile(file);
+        setProcessingCapture(true);
+        try {
+          const file = await canvasToCaptureFile(canvas);
+          await deliverCaptureFile(file);
+        } finally {
+          setProcessingCapture(false);
+        }
       }
 
       canvas.width = 0;
@@ -389,6 +406,35 @@ export function InBrowserCamera({
           error instanceof Error
             ? error.message
             : "Bild konnte nicht verarbeitet werden.",
+        );
+      } finally {
+        setProcessingCapture(false);
+      }
+      return;
+    }
+
+    if (
+      file.type.startsWith("image/") &&
+      !file.type.includes("pdf") &&
+      !file.name.toLowerCase().endsWith(".pdf")
+    ) {
+      setProcessingCapture(true);
+      try {
+        const resized = await resizeDocumentImage(file);
+        const blob = await fetch(resized.dataUrl).then((response) =>
+          response.blob(),
+        );
+        await deliverCaptureFile(
+          new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          }),
+        );
+      } catch (error) {
+        setCameraError(
+          error instanceof Error
+            ? error.message
+            : "Bild konnte nicht optimiert werden.",
         );
       } finally {
         setProcessingCapture(false);

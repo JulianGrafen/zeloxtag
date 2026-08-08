@@ -191,7 +191,7 @@ export function InvoiceScannerForm({
         <p className="vd-anim-header flex items-center justify-center gap-2 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white px-4 py-10 text-[0.9rem] text-[color:var(--vd-muted)]">
           <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
           {sourceCanvas
-            ? "Perspektivkorrektur & Scan-Filter…"
+            ? "Perspektivkorrektur & PDF wird erzeugt…"
             : "Bild wird geladen…"}
         </p>
       ) : null}

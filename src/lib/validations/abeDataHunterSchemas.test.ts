@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ABE_HUNT_FIELD_SCAN_HINTS,
+  ABE_HUNT_FIELD_WATERMARKS,
+  ABE_REQUIRED_FIELD_LABELS,
+  abeHuntFieldDisplayLabel,
   emptyAbeDataHunterReport,
   fillAbeDataHunterReport,
   isAbeHuntAuflagenComplete,
@@ -154,6 +158,24 @@ describe("abeDataHunterSchemas required fields", () => {
     const merged = fillAbeDataHunterReport(current, incoming);
     expect(merged.markingText).toBe(
       "Art der Kennzeichnung: Prüfplakette\nNummer: e1*47656",
+    );
+  });
+});
+
+describe("ABE_HUNT_FIELD_WATERMARKS", () => {
+  it("covers every required field with the KBA example first", () => {
+    expect(ABE_HUNT_FIELD_WATERMARKS.kbaNumber).toBe("KBA 123456");
+    expect(ABE_HUNT_FIELD_WATERMARKS.abeNumber).toBe("123456*8");
+    for (const key of Object.keys(ABE_REQUIRED_FIELD_LABELS)) {
+      expect(ABE_HUNT_FIELD_WATERMARKS[key as keyof typeof ABE_HUNT_FIELD_WATERMARKS].trim()).not.toBe("");
+    }
+  });
+
+  it("shows Fahrzeugmodell for verkaufsbezeichnung in the UI", () => {
+    expect(abeHuntFieldDisplayLabel("verkaufsbezeichnung")).toBe("Fahrzeugmodell");
+    expect(ABE_HUNT_FIELD_WATERMARKS.verkaufsbezeichnung).toContain("Fahrzeugmodell");
+    expect(ABE_HUNT_FIELD_SCAN_HINTS.verkaufsbezeichnung?.popupBody).toContain(
+      "Scanne jetzt aus der Tabelle",
     );
   });
 });

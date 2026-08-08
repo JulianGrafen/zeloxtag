@@ -42,6 +42,19 @@ VOLLSTÄNDIGKEIT (lineItems):
 - Unleserliche Bezeichnung: trotzdem erfassen wenn Betrag in rechter Spalte lesbar ist.
 `.trim();
 
+/** Keep label + Ges. Preis on the same horizontal table row. */
+export const INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES = `
+ZEILEN-ZUORDNUNG (label ↔ amount):
+- Bezeichnung und Ges. Preis gehören IMMER zur SELBEN Tabellenzeile — gleiche horizontale Höhe.
+- Umbrüche in der Bezeichnungsspalte erzeugen KEINE neue Position — der Betrag bleibt bei der Zeile, in der er rechts steht.
+- NIEMALS den Betrag einer Zeile der Bezeichnung darüber oder darunter zuordnen (typischer Fehler bei mehrzeiligen Bezeichnungen).
+- Tabellenkopf (Pos, Bezeichnung, Menge, …) ist KEINE Position — den ersten Datenbetrag nicht dem Kopf zuordnen.
+- Beispiel korrekt:
+  Zeile 1: "Sportfedern H&R" … 480,00 → { label: "Sportfedern H&R", amount: 480 }
+  Zeile 2: "Arbeitslohn" … 120,00 → { label: "Arbeitslohn", amount: 120 }
+- Beispiel falsch: "Arbeitslohn" mit 480,00 weil der Betrag visuell über der Zeile steht.
+`.trim();
+
 /** Fallback system prompt when Foundry agent metadata is unavailable. */
 export const INVOICE_SYSTEM_PROMPT = `Du bist ein präziser Parser für Kfz-Rechnungen und Servicebelege.
 Der OCR-Input ist Markdown (inkl. Tabellen). Nutze Tabellenzeilen und Überschriften als Struktur.
@@ -159,6 +172,7 @@ export function buildInvoiceLineItemsSystemPrompt(): string {
     "Deine einzige Aufgabe: lineItems vollständig erfassen + amount (Zahlbetrag falls sichtbar).",
     INVOICE_RIGHTMOST_PRICE_RULES,
     INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
+    INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES,
     "Antworte nur mit JSON.",
   ].join("\n\n");
 }
@@ -188,6 +202,8 @@ export const INVOICE_LINE_ITEMS_USER_LINES = [
   "NIEMALS Einzelpreis, EP, E-Preis, Stückpreis, Netto-Einzelwert.",
   "Pro Tabellenzeile GENAU EIN lineItem — nicht Einzelpreis und Ges. Preis getrennt listen.",
   "Mehrere €-Betrag in einer Zeile → immer den RECHTSTEN nehmen.",
+  "Bezeichnung und Betrag müssen zur gleichen Tabellenzeile gehören — nie eine Zeile höher oder tiefer zuordnen.",
+  "Mehrzeilige Bezeichnungen = ein lineItem; Betrag aus der Zeile mit der rechten Summenspalte.",
   "Fortsetzung der Tabelle (Seite 2): alle Zeilen mit erfassen.",
 ] as const;
 

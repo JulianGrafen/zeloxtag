@@ -8,7 +8,7 @@ export type Point2D = { x: number; y: number };
 /** Document corners in image space: TL → TR → BR → BL. */
 export type QuadPoints = [Point2D, Point2D, Point2D, Point2D];
 
-export const WARP_MAX_WIDTH_PX = 1600;
+export const WARP_MAX_WIDTH_PX = 2000;
 
 /** Default inset quad (~8%) so handles start near typical paper edges. */
 export function defaultDocumentCorners(

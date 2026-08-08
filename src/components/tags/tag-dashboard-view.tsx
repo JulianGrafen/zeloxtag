@@ -227,7 +227,7 @@ export function TagDashboardView({
             oilChangeCount > 0
               ? tile.meta?.subtitle ??
                 `${oilChangeCount} Ölwechsel`
-              : "Ölwechsel scannen",
+              : "Manuell eintragen oder scannen",
           badge: oilChangeCount > 0 ? String(oilChangeCount) : undefined,
         },
       };

@@ -75,7 +75,7 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "oil-change",
-      title: "Intervalle",
+      title: "Öl-Wechsel",
       icon: "droplet",
       meta: oilChangeMeta(data),
     },
@@ -105,19 +105,19 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       meta: inspectionMeta(data),
     },
     {
-      id: "service",
-      title: "Service & Wartung",
-      description: "Inspektionen einlesen",
-      icon: "wrench",
-      meta: { subtitle: "Belege scannen" },
-    },
-    {
       id: "timeline",
       title: "Service Timeline",
       description: "Historie nach KM-Stand",
       icon: "history",
       featured: true,
       meta: { subtitle: "Öl · Reparatur · TÜV" },
+    },
+    {
+      id: "service",
+      title: "Service & Wartung",
+      description: "Inspektionen einlesen",
+      icon: "wrench",
+      meta: { subtitle: "Belege scannen" },
     },
     {
       id: "schrauber",

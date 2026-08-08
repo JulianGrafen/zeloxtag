@@ -2,9 +2,20 @@ import type OpenAI from "openai";
 
 import { preferAmount } from "@/lib/ocr/amount-from-text";
 import {
-  buildDocumentUserMessage,
+  analyzeLayoutWithAzure,
+  isAzureDocumentIntelligenceConfigured,
+} from "@/lib/ocr/azure-document-intelligence";
+import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import {
+  extractInvoiceLineItemsFromAzureLayout,
+  mergeLayoutAndLlmLineItems,
+} from "@/lib/ocr/invoice-line-items-from-layout";
+import {
+  buildEnhancedImageUserMessage,
+  prepareSinglePageOcrInput,
   type DocumentBytesInput,
-} from "@/lib/ocr/llm-document-content";
+} from "@/lib/ocr/prepare-document-for-llm";
+import type { DocumentUserMessagePart } from "@/lib/ocr/llm-document-content";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   INVOICE_HEADER_USER_LINES,
@@ -187,7 +198,10 @@ export function mergeLineItemsExtractions(
     blocks.map((block) => block.amount).find((value) => value !== null) ??
     null;
 
-  return { lineItems, amount };
+  return {
+    lineItems: realignShiftedInvoiceLineItems(lineItems, amount),
+    amount,
+  };
 }
 
 export type InvoiceExtractionOptions = {
@@ -270,6 +284,13 @@ function parseLineItemsRaw(value: unknown): InvoiceLineItem[] | null {
   return normalizeLineItemsList(parsed, LINE_ITEMS_MAX_COUNT);
 }
 
+function sumLineItemAmounts(items: InvoiceLineItem[]): number | null {
+  if (items.length === 0) return null;
+  return (
+    Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100
+  );
+}
+
 async function runVisionExtract<T>(
   systemPrompt: string,
   userLines: readonly string[],
@@ -282,6 +303,7 @@ async function runVisionExtract<T>(
   maxTokens: number,
   options: InvoiceExtractionOptions,
   errorLabel: string,
+  userMessageParts?: DocumentUserMessagePart[],
 ): Promise<T> {
   const model = options.model?.trim() || resolveParseModel("invoice");
 
@@ -299,13 +321,15 @@ async function runVisionExtract<T>(
     resolvedModel = resolveParseModel("invoice");
   }
 
-  const userContent = buildDocumentUserMessage(
-    [
-      "Deutsche Kfz-Rechnung oder Servicebeleg (PDF oder Scan).",
-      ...userLines,
-    ],
-    input,
-  );
+  const userContent =
+    userMessageParts ??
+    buildEnhancedImageUserMessage(
+      [
+        "Deutsche Kfz-Rechnung oder Servicebeleg (PDF oder Scan).",
+        ...userLines,
+      ],
+      input.bytes,
+    );
 
   let completion: OpenAI.Chat.Completions.ChatCompletion;
   try {
@@ -403,13 +427,14 @@ export class InvoiceExtractionService {
     input: DocumentBytesInput,
     options: InvoiceExtractionOptions = {},
   ): Promise<InvoiceOverviewExtraction> {
+    const prepared = await prepareSinglePageOcrInput(input);
     const record = await runVisionExtract<Record<string, unknown>>(
       buildInvoiceSystemPrompt().replace(
         /lineItems = JEDE Tabellen/,
         "lineItems werden in einem separaten Scan erfasst — hier nicht extrahieren",
       ),
       INVOICE_OVERVIEW_USER_LINES,
-      input,
+      prepared,
       INVOICE_OVERVIEW_JSON_SCHEMA,
       OVERVIEW_MAX_TOKENS,
       options,
@@ -433,10 +458,15 @@ export class InvoiceExtractionService {
     input: DocumentBytesInput,
     options: InvoiceExtractionOptions = {},
   ): Promise<InvoiceHeaderExtraction> {
+    const prepared = await prepareSinglePageOcrInput(input);
+    const azureLayout = isAzureDocumentIntelligenceConfigured()
+      ? await analyzeLayoutWithAzure(prepared.bytes, prepared.contentType)
+      : null;
+
     const record = await runVisionExtract<Record<string, unknown>>(
       buildInvoiceHeaderSystemPrompt(),
       INVOICE_HEADER_USER_LINES,
-      input,
+      prepared,
       INVOICE_HEADER_JSON_SCHEMA,
       HEADER_MAX_TOKENS,
       options,
@@ -444,7 +474,13 @@ export class InvoiceExtractionService {
     );
 
     const invoiceNumber = parseNullableString(record.invoiceNumber, 80);
-    const mileageKm = parseHeaderMileage(record.mileageKm, invoiceNumber);
+    let mileageKm = parseHeaderMileage(record.mileageKm, invoiceNumber);
+    if (mileageKm == null && azureLayout?.content) {
+      mileageKm = sanitizeInvoiceMileageKm(
+        extractMileageKmFromText(azureLayout.content),
+        invoiceNumber,
+      );
+    }
 
     return {
       vendor: parseNullableString(record.vendor, 160),
@@ -454,25 +490,54 @@ export class InvoiceExtractionService {
     };
   }
 
-  /** Dedicated LLM pass for invoice line items — no heuristics, no skipping. */
+  /** Azure layout OCR + vision LLM merge for invoice positions. */
   async extractLineItemsFromDocument(
     input: DocumentBytesInput,
     options: InvoiceExtractionOptions = {},
   ): Promise<InvoiceLineItemsExtraction> {
-    const record = await runVisionExtract<Record<string, unknown>>(
-      buildInvoiceLineItemsSystemPrompt(),
-      INVOICE_LINE_ITEMS_USER_LINES,
-      input,
-      INVOICE_LINE_ITEMS_JSON_SCHEMA,
-      LINE_ITEMS_MAX_TOKENS,
-      options,
-      "Invoice line items extract failed",
+    const prepared = await prepareSinglePageOcrInput(input);
+    const visionMessage = buildEnhancedImageUserMessage(
+      [
+        "Deutsche Kfz-Rechnung oder Servicebeleg (PDF oder Scan).",
+        ...INVOICE_LINE_ITEMS_USER_LINES,
+      ],
+      prepared.bytes,
     );
 
-    return {
-      lineItems: parseLineItemsRaw(record.lineItems),
-      amount: coerceGermanMoneyAmount(record.amount, "conservative"),
-    };
+    const [azureLayout, record] = await Promise.all([
+      isAzureDocumentIntelligenceConfigured()
+        ? analyzeLayoutWithAzure(prepared.bytes, prepared.contentType)
+        : Promise.resolve(null),
+      runVisionExtract<Record<string, unknown>>(
+        buildInvoiceLineItemsSystemPrompt(),
+        INVOICE_LINE_ITEMS_USER_LINES,
+        prepared,
+        INVOICE_LINE_ITEMS_JSON_SCHEMA,
+        LINE_ITEMS_MAX_TOKENS,
+        options,
+        "Invoice line items extract failed",
+        visionMessage,
+      ),
+    ]);
+
+    const llmLineItems = parseLineItemsRaw(record.lineItems);
+    const layoutLineItems = azureLayout
+      ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
+      : null;
+    const amount =
+      coerceGermanMoneyAmount(record.amount, "conservative") ??
+      (layoutLineItems?.length
+        ? sumLineItemAmounts(layoutLineItems)
+        : null);
+
+    const merged = mergeLayoutAndLlmLineItems(
+      llmLineItems,
+      layoutLineItems,
+      amount,
+    );
+    const lineItems = realignShiftedInvoiceLineItems(merged, amount);
+
+    return { lineItems, amount };
   }
 }
 

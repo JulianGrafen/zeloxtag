@@ -4,6 +4,10 @@
  */
 
 import {
+  prejoinWrappedInvoiceLines,
+  realignShiftedInvoiceLineItems,
+} from "./invoice-line-item-alignment";
+import {
   isHtmlDebrisLabel,
   normalizeOcrMarkdown,
   stripHtmlTags,
@@ -215,7 +219,8 @@ export function extractInvoiceLineItemsFromText(
   rawText: string,
 ): InvoiceLineItem[] | null {
   // Azure Markdown often ships HTML <table>/<td> — convert before row parse.
-  const text = normalizeOcrMarkdown(rawText);
+  const normalized = normalizeOcrMarkdown(rawText);
+  const text = prejoinWrappedInvoiceLines(normalized);
   const items: InvoiceLineItem[] = [];
   const seen = new Set<string>();
 
