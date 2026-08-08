@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Check,
@@ -8,6 +9,7 @@ import {
   LoaderCircle,
   Pencil,
   RotateCcw,
+  X,
 } from "lucide-react";
 
 import { AbeVehicleMatchPicker } from "@/components/documents/abe-vehicle-match-picker";
@@ -146,6 +148,7 @@ function HuntProgressOverlay({
   lastFound,
   onOpenReview,
   onUploadPdf,
+  onClose,
 }: {
   report: AbeDataHunterReport;
   analyzing: boolean;
@@ -154,82 +157,103 @@ function HuntProgressOverlay({
   lastFound: string[];
   onOpenReview: () => void;
   onUploadPdf: (file: File) => void;
+  onClose: () => void;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const missing = missingAbeRequiredFields(report);
   const filledCount = REQUIRED_ORDER.length - missing.length;
   const complete = missing.length === 0;
 
-  return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10000] px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/15 bg-black/75 px-3 py-3 text-white shadow-lg backdrop-blur-md">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/70">
-            {filledCount} / {REQUIRED_ORDER.length} erfasst
-            {photoCount > 0 ? ` · ${photoCount} Foto${photoCount === 1 ? "" : "s"}` : ""}
-          </p>
-          {analyzing ? (
-            <span className="inline-flex items-center gap-1.5 text-[0.72rem] text-amber-200">
-              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-              Analysiert…
-              {queuedCount > 0 ? ` (+${queuedCount})` : ""}
-            </span>
-          ) : null}
+  if (!mounted || typeof document === "undefined") return null;
+
+  // Must portal above InBrowserCamera (body portal at z-9999), otherwise the
+  // checklist is trapped under the full-screen camera and invisible.
+  return createPortal(
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-3 pt-[max(0.6rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-auto mx-auto max-h-[min(52dvh,28rem)] max-w-[440px] overflow-y-auto rounded-2xl border border-neutral-200 bg-white px-3.5 py-3 text-neutral-900 shadow-2xl">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+              Checkliste · {filledCount}/{REQUIRED_ORDER.length}
+              {photoCount > 0
+                ? ` · ${photoCount} Foto${photoCount === 1 ? "" : "s"}`
+                : ""}
+            </p>
+            {analyzing ? (
+              <span className="mt-1 inline-flex items-center gap-1.5 text-[0.75rem] font-medium text-amber-700">
+                <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                Analysiert…
+                {queuedCount > 0 ? ` (+${queuedCount})` : ""}
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700"
+            aria-label="Schließen"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200">
           <div
-            className="h-full rounded-full bg-emerald-400 transition-all duration-300"
+            className="h-full rounded-full bg-emerald-500 transition-all duration-300"
             style={{
               width: `${(filledCount / REQUIRED_ORDER.length) * 100}%`,
             }}
           />
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <ul className="mt-2.5 space-y-1.5">
           {REQUIRED_ORDER.map((key) => {
             const done = !missing.includes(key);
             return (
-              <span
+              <li
                 key={key}
                 className={[
-                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.62rem] font-medium",
+                  "flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-[0.84rem] font-medium",
                   done
-                    ? "bg-emerald-500/25 text-emerald-100"
-                    : "bg-white/10 text-white/65",
+                    ? "bg-emerald-50 text-emerald-800"
+                    : "bg-neutral-100 text-neutral-800",
                 ].join(" ")}
               >
-                {done ? <Check className="h-3 w-3" /> : null}
+                <span
+                  className={[
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                    done
+                      ? "bg-emerald-500 text-white"
+                      : "border border-neutral-300 bg-white text-transparent",
+                  ].join(" ")}
+                  aria-hidden
+                >
+                  <Check className="h-3 w-3" />
+                </span>
                 {ABE_REQUIRED_FIELD_LABELS[key]}
-              </span>
+              </li>
             );
           })}
-        </div>
+        </ul>
 
         {lastFound.length > 0 && !analyzing ? (
-          <p className="mt-2 text-[0.75rem] text-emerald-200">
+          <p className="mt-2 text-[0.78rem] font-medium text-emerald-700">
             Neu: {lastFound.join(" · ")}
           </p>
         ) : null}
 
-        {complete ? (
-          <p className="mt-2 text-[0.84rem] font-medium leading-snug text-white">
-            Alles erfasst — zur Prüfung.
-          </p>
-        ) : (
-          <div className="mt-2">
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white/55">
-              Noch fotografieren
-            </p>
-            <ul className="mt-1 space-y-0.5 text-[0.8rem] leading-snug text-white/90">
-              {missing.map((key) => (
-                <li key={key}>• {ABE_REQUIRED_FIELD_LABELS[key]}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <p className="mt-2 text-[0.8rem] leading-snug text-neutral-600">
+          {complete
+            ? "Alles erfasst — zur Prüfung."
+            : "Fotografiere die offenen Punkte, bis alles grün ist."}
+        </p>
 
         <div className="mt-3 flex gap-2">
-          <label className="relative inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 text-[0.78rem] font-semibold">
+          <label className="relative inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-[0.78rem] font-semibold text-neutral-800">
             <input
               type="file"
               accept="application/pdf,.pdf"
@@ -247,13 +271,14 @@ function HuntProgressOverlay({
             type="button"
             disabled={!complete || analyzing}
             onClick={onOpenReview}
-            className="flex-[2] rounded-xl bg-white px-3 py-2.5 text-[0.78rem] font-semibold text-neutral-900 disabled:opacity-40"
+            className="flex-[2] rounded-xl bg-neutral-900 px-3 py-2.5 text-[0.78rem] font-semibold text-white disabled:opacity-40"
           >
             Zur Prüfung
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -770,13 +795,19 @@ export function AbeDataHunterWizard({
     );
   }
 
+  const errorBanner =
+    huntError && typeof document !== "undefined"
+      ? createPortal(
+          <div className="fixed bottom-4 left-4 right-4 z-[10060] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
+            {huntError}
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <>
-      {huntError ? (
-        <div className="fixed bottom-4 left-4 right-4 z-[10001] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
-          {huntError}
-        </div>
-      ) : null}
+      {errorBanner}
 
       <HuntProgressOverlay
         report={report}
@@ -786,11 +817,11 @@ export function AbeDataHunterWizard({
         lastFound={lastFound}
         onOpenReview={() => setPhase("review")}
         onUploadPdf={enqueueFile}
+        onClose={goBack}
       />
 
       <InBrowserCamera
         title="ABE scannen"
-        hint="Fotografiere alle offenen Punkte — die Checkliste oben zeigt, was noch fehlt."
         guideLabel="Weiter fotografieren, bis alles grün ist"
         guideFrame="a4"
         allowPdf
