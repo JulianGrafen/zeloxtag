@@ -125,3 +125,44 @@ export function buildInvoiceSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string {
 export function buildTuevCostSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string {
   return `${buildInvoiceSystemPrompt(base)}\n\n${TUEV_HEADER_MILEAGE_FEW_SHOT}`;
 }
+
+/** Guided wizard — full document overview (metadata, not line-item table). */
+export const INVOICE_OVERVIEW_USER_LINES = [
+  "Deutsche Kfz-Rechnung oder Servicebeleg — GESAMTDOKUMENT.",
+  "Extrahiere nur: vendor, date, amount (Gesamtbetrag/Zahlbetrag), category, summary.",
+  "Keine Positionsliste — die kommt aus einem separaten Scan.",
+  "category=tuev NUR bei echtem HU/AU-Prüfbericht — nie bei Werkstatt-Rechnungen.",
+] as const;
+
+/** Guided wizard — document header band. */
+export const INVOICE_HEADER_USER_LINES = [
+  "Deutsche Kfz-Rechnung — nur der OBERE BEREICH (Kopf).",
+  "Werkstattname, Beleg-/Rechnungsnummer, Rechnungsdatum, Kilometerstand.",
+  "Synonyme km: Laufleistung, km-Stand, Tachostand, KM-Stand.",
+  "Tausenderpunkte entfernen — mileageKm als ganze Zahl.",
+] as const;
+
+/** Guided wizard — positions table block (dedicated LLM pass). */
+export const INVOICE_LINE_ITEMS_USER_LINES = [
+  "Deutsche Kfz-Rechnung — nur der POSITIONS-/TABELLEN-BEREICH.",
+  "Extrahiere JEDE einzelne Rechnungsposition als eigenes lineItem.",
+  "Niemals Zeilen überspringen, zusammenfassen oder auslassen.",
+  "Material, Arbeitslohn, Entsorgung, Kleinmaterial, Rabatt (€), MwSt. — jeweils eigene Zeile.",
+  "amount = Gesamtpreis/Zeilensumme (Menge×Einzelpreis), NIE nur Einzelpreis.",
+  "Keine Prozentwerte als amount (-15%, MwSt 19% ohne €-Spalte → weglassen).",
+  "Tabellenkopfzeilen (Pos, Bezeichnung, Menge) sind KEINE Positionen.",
+  "Bei mehrspaltigen Tabellen: jede Datenzeile = ein lineItem.",
+] as const;
+
+export const INVOICE_LINE_ITEMS_SYSTEM_PROMPT = `Du bist ein präziser Extraktor für Rechnungspositionen auf deutschen Kfz-Werkstattrechnungen.
+Deine EINZIGE Aufgabe: JEDE sichtbare Rechnungsposition als eigenes lineItem erfassen.
+
+KRITISCH:
+- Gehe die Tabelle ZEILE FÜR ZEILE von oben nach unten durch.
+- Überspringe KEINE Zeile mit einem Euro-Betrag.
+- Fasse NIEMALS mehrere Materialien zusammen (falsch: "Reifen und Sportfedern").
+- Arbeitslohn, Material, Entsorgungsgebühr, MwSt. — immer getrennte Einträge.
+- amount = Gesamtpreis der Zeile (rechte Summenspalte), nicht Stückpreis.
+- Prozentangaben ohne €-Betrag nicht als lineItem speichern.
+
+Antworte nur mit JSON.`.trim();

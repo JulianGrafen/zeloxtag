@@ -68,7 +68,7 @@ export const invoiceTextParseSchema = z.object({
   amount: looseNumberSchema(250_000),
   category: z.enum(INVOICE_TEXT_PARSE_CATEGORIES),
   summary: z.string().trim().min(1).max(80).nullable(),
-  lineItems: z.array(invoiceLineItemSchema).max(40).nullable(),
+  lineItems: z.array(invoiceLineItemSchema).max(60).nullable(),
   /** ABE / Teilegutachten approval number (KBA, ABE-Nr., …). */
   kbaNumber: z.string().trim().min(1).max(80).nullable(),
   /** Vehicles / variants the part is approved for. */
@@ -294,8 +294,9 @@ export function isPercentRestatedAsAmount(
   );
 }
 
-function normalizeLineItems(
+export function normalizeLineItemsList(
   items: InvoiceLineItem[] | null | undefined,
+  maxItems = 40,
 ): InvoiceLineItem[] | null {
   if (!items?.length) return null;
 
@@ -312,7 +313,7 @@ function normalizeLineItems(
         /[a-zäöüß]{2,}/i.test(item.label) &&
         !isPercentRestatedAsAmount(item.label, item.amount),
     )
-    .slice(0, 40);
+    .slice(0, maxItems);
 
   return cleaned.length > 0 ? cleaned : null;
 }
@@ -342,7 +343,7 @@ export function normalizeTextParseResult(
         : null,
     category: fields.category,
     summary: fields.summary?.trim().slice(0, 80) || null,
-    lineItems: normalizeLineItems(fields.lineItems),
+    lineItems: normalizeLineItemsList(fields.lineItems, 60),
     kbaNumber: fields.kbaNumber?.trim().slice(0, 80) || null,
     vehicleApprovals: normalizeStringList(fields.vehicleApprovals, 120),
     authority: fields.authority?.trim().slice(0, 120) || null,

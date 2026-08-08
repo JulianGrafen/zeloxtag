@@ -164,6 +164,11 @@ export function InvoiceScannerForm({
       {step === "capture" ? (
         <div className="vd-anim-header">
           <CameraCapture
+            inBrowserA4Camera={{
+              title: "Rechnung scannen",
+              hint: "Rechnung ins DIN-A4-Feld halten — danach kannst du die Ecken anpassen.",
+              guideLabel: "Rechnung im Rahmen ausrichten",
+            }}
             onFileSelected={(file) => {
               void handleImageSelected(file);
             }}

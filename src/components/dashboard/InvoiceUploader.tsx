@@ -17,6 +17,7 @@ import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverv
 import { TeilegutachtenOverview } from "@/components/dashboard/TeilegutachtenOverview";
 import { TuevOverview } from "@/components/dashboard/TuevOverview";
 import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard";
+import { InvoiceUploadWizard } from "@/components/documents/invoice-upload-wizard";
 import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
 import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
@@ -322,6 +323,15 @@ export function InvoiceUploader({
   const isTuevUpload =
     scanDef?.ocrDocumentType === "tuev" ||
     (resolvedLockCategory && resolvedCategory === "tuev");
+  const isInvoiceFamilyScan = scanDef?.ocrDocumentType === "invoice";
+  const invoiceA4Camera = isInvoiceFamilyScan
+    ? {
+        title: resolvedHeading,
+        hint: `${scanDef?.title ?? "Beleg"} ins DIN-A4-Feld halten — Foto wird automatisch zugeschnitten.`,
+        guideLabel: `${scanDef?.title ?? "Beleg"} im Rahmen ausrichten`,
+        continuousCapture: true,
+      }
+    : undefined;
 
   // TÜV uploads use a dedicated guided wizard — render it in place of the
   // generic scanner so users are led through header + defect captures.
@@ -331,6 +341,22 @@ export function InvoiceUploader({
         vehicleId={vehicleId}
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
+        successHref={successHref}
+        onBack={onBack}
+        backHref={resolvedBackHref}
+        backLabel={backLabel}
+      />
+    );
+  }
+
+  // Invoice / repair / service use the guided 3-step wizard (A4 → Kopf → Positionen).
+  if (isInvoiceFamilyScan) {
+    return (
+      <InvoiceUploadWizard
+        vehicleId={vehicleId}
+        tagUuid={tagUuid}
+        vehicleLabel={vehicleLabel}
+        scanType={scanType}
         successHref={successHref}
         onBack={onBack}
         backHref={resolvedBackHref}
@@ -1026,6 +1052,7 @@ export function InvoiceUploader({
             <CameraCapture
               allowPdf
               disabled={compressing}
+              inBrowserA4Camera={invoiceA4Camera}
               hint={
                 isEinzelabnahmeUpload
                   ? "Einzelabnahme fotografieren oder als PDF hochladen"
@@ -1115,6 +1142,7 @@ export function InvoiceUploader({
                 <div className="grid grid-cols-1 gap-2">
                   <CameraCapture
                     disabled={compressing}
+                    inBrowserA4Camera={invoiceA4Camera}
                     label="Weitere Seite"
                     hint={
                       isEinzelabnahmeUpload

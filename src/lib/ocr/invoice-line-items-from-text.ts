@@ -13,7 +13,7 @@ import {
   type InvoiceLineItem,
 } from "./text-parse-schema";
 
-const MAX_ITEMS = 40;
+const MAX_ITEMS = 60;
 const MAX_LABEL = 160;
 
 /** Skip totals / headers that are not sellable positions. */

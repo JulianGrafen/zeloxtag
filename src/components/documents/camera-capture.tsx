@@ -1,7 +1,17 @@
 "use client";
 
-import type { ChangeEvent, ReactNode } from "react";
+import { useState, type ChangeEvent, type ReactNode } from "react";
 import { Camera, FileUp, ImagePlus } from "lucide-react";
+
+import { InBrowserCamera } from "@/components/documents/in-browser-camera";
+
+export interface InBrowserA4CameraOptions {
+  title?: string;
+  hint?: string;
+  guideLabel?: string;
+  /** Keep the live stream open between captures (multi-page scans). */
+  continuousCapture?: boolean;
+}
 
 interface CameraCaptureProps {
   disabled?: boolean;
@@ -14,6 +24,8 @@ interface CameraCaptureProps {
   imageButtonLabel?: string;
   cameraButtonLabel?: string;
   pdfButtonLabel?: string;
+  /** Opens InBrowserCamera with a DIN A4 viewfinder instead of the native camera app. */
+  inBrowserA4Camera?: InBrowserA4CameraOptions;
 }
 
 const IMAGE_ACCEPT = "image/*";
@@ -70,11 +82,21 @@ export function CameraCapture({
   imageButtonLabel = "Bild hochladen",
   cameraButtonLabel = "Kamera",
   pdfButtonLabel = "PDF hochladen",
+  inBrowserA4Camera,
 }: CameraCaptureProps) {
+  const [cameraOpen, setCameraOpen] = useState(false);
+
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (file) onFileSelected(file);
     event.target.value = "";
+  }
+
+  function handleInBrowserCapture(file: File) {
+    onFileSelected(file);
+    if (!inBrowserA4Camera?.continuousCapture) {
+      setCameraOpen(false);
+    }
   }
 
   return (
@@ -101,16 +123,31 @@ export function CameraCapture({
           <span className="relative z-0">{imageButtonLabel}</span>
         </CaptureLabel>
 
-        <CaptureLabel
-          disabled={disabled}
-          capture
-          accept={IMAGE_ACCEPT}
-          onChange={handleChange}
-          variant="secondary"
-        >
-          <Camera className="relative z-0 h-4 w-4" aria-hidden />
-          <span className="relative z-0">{cameraButtonLabel}</span>
-        </CaptureLabel>
+        {inBrowserA4Camera ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setCameraOpen(true)}
+            className={[
+              "claim-back inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden",
+              disabled ? "pointer-events-none opacity-50" : "",
+            ].join(" ")}
+          >
+            <Camera className="h-4 w-4" aria-hidden />
+            <span>{cameraButtonLabel}</span>
+          </button>
+        ) : (
+          <CaptureLabel
+            disabled={disabled}
+            capture
+            accept={IMAGE_ACCEPT}
+            onChange={handleChange}
+            variant="secondary"
+          >
+            <Camera className="relative z-0 h-4 w-4" aria-hidden />
+            <span className="relative z-0">{cameraButtonLabel}</span>
+          </CaptureLabel>
+        )}
 
         {allowPdf ? (
           <CaptureLabel
@@ -124,6 +161,25 @@ export function CameraCapture({
           </CaptureLabel>
         ) : null}
       </div>
+
+      {cameraOpen && inBrowserA4Camera ? (
+        <InBrowserCamera
+          title={inBrowserA4Camera.title ?? label}
+          hint={
+            inBrowserA4Camera.hint ??
+            "Dokument ins DIN-A4-Feld halten — Foto wird automatisch zugeschnitten."
+          }
+          guideLabel={
+            inBrowserA4Camera.guideLabel ?? "Rechnung im Rahmen ausrichten"
+          }
+          guideFrame="a4"
+          allowPdf={false}
+          showBriefing={false}
+          continuousCapture={inBrowserA4Camera.continuousCapture}
+          onCapture={handleInBrowserCapture}
+          onClose={() => setCameraOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
