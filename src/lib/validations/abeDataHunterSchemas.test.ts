@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  emptyAbeDataHunterReport,
+  fillAbeDataHunterReport,
   isAbeHuntAuflagenComplete,
   isAbeHuntMarkingComplete,
   isAbeHuntStammdatenComplete,
@@ -98,5 +100,29 @@ describe("abeDataHunterSchemas required fields", () => {
     );
 
     expect(missingAbeRequiredFields(report, "5ER REIHE")).toEqual([]);
+  });
+
+  it("fills only empty slots when merging photo results", () => {
+    const current = {
+      ...emptyAbeDataHunterReport(),
+      kbaNumber: "48185",
+    };
+    const incoming = mergeAbeDataHunterSteps(
+      {
+        kbaNumber: "99999",
+        abeNumber: "48185*08",
+        abeHolder: "Alcar",
+        manufacturer: "Alcar",
+        partDesignation: "Spoiler",
+      },
+      { markingText: null },
+      { vehicleMatches: [] },
+      { auflagenCodes: [], auflagenNotes: null },
+    );
+
+    const merged = fillAbeDataHunterReport(current, incoming);
+    expect(merged.kbaNumber).toBe("48185");
+    expect(merged.abeNumber).toBe("48185*08");
+    expect(merged.partDesignation).toBe("Spoiler");
   });
 });

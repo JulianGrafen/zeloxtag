@@ -162,6 +162,60 @@ export function mergeAbeDataHunterSteps(
   };
 }
 
+function keepFilled(
+  current: string | null | undefined,
+  incoming: string | null | undefined,
+): string | null {
+  const cur = current?.trim();
+  if (cur) return cur;
+  const next = incoming?.trim();
+  return next || null;
+}
+
+/**
+ * Merge a new photo/PDF extraction into the accumulating report.
+ * Already-filled fields win; empty slots take newly found values.
+ */
+export function fillAbeDataHunterReport(
+  current: AbeDataHunterReport,
+  incoming: AbeDataHunterReport,
+): AbeDataHunterReport {
+  return {
+    kbaNumber: keepFilled(current.kbaNumber, incoming.kbaNumber),
+    abeNumber: keepFilled(current.abeNumber, incoming.abeNumber),
+    abeHolder: keepFilled(current.abeHolder, incoming.abeHolder),
+    manufacturer: keepFilled(current.manufacturer, incoming.manufacturer),
+    partDesignation: keepFilled(
+      current.partDesignation,
+      incoming.partDesignation,
+    ),
+    markingText: keepFilled(current.markingText, incoming.markingText),
+    vehicleMatches:
+      current.vehicleMatches.length > 0
+        ? current.vehicleMatches
+        : incoming.vehicleMatches,
+    auflagenCodes:
+      current.auflagenCodes.length > 0
+        ? current.auflagenCodes
+        : incoming.auflagenCodes,
+    auflagenNotes: keepFilled(current.auflagenNotes, incoming.auflagenNotes),
+  };
+}
+
+export function emptyAbeDataHunterReport(): AbeDataHunterReport {
+  return {
+    kbaNumber: null,
+    abeNumber: null,
+    abeHolder: null,
+    manufacturer: null,
+    partDesignation: null,
+    markingText: null,
+    vehicleMatches: [],
+    auflagenCodes: [],
+    auflagenNotes: null,
+  };
+}
+
 /**
  * Returns human-readable labels of required fields that are still missing.
  * `verkaufsbezeichnung` is checked via the selected group / first match.

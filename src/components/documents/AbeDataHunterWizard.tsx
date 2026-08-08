@@ -1,21 +1,22 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   AlertTriangle,
-  CheckCircle2,
+  Check,
+  FileUp,
   LoaderCircle,
   Pencil,
   RotateCcw,
 } from "lucide-react";
 
-import { ImageCropCapture } from "@/components/documents/image-crop-capture";
 import { AbeVehicleMatchPicker } from "@/components/documents/abe-vehicle-match-picker";
 import {
   AbeFieldLabel,
   AbeKbaHero,
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
+import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { localDateIso } from "@/lib/documents/format";
@@ -31,10 +32,9 @@ import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import {
   ABE_REQUIRED_FIELD_LABELS,
-  isAbeHuntAuflagenComplete,
-  isAbeHuntMarkingComplete,
-  isAbeHuntStammdatenComplete,
-  isAbeHuntVehicleComplete,
+  emptyAbeDataHunterReport,
+  fillAbeDataHunterReport,
+  isAbeDataHunterReportComplete,
   mergeAbeDataHunterSteps,
   missingAbeRequiredFields,
   type AbeDataHunterReport,
@@ -43,8 +43,8 @@ import {
   type AbeHuntMarkingExtraction,
   type AbeHuntStammdatenExtraction,
   type AbeHuntVehicleExtraction,
+  type AbeRequiredFieldKey,
 } from "@/lib/validations/abeDataHunterSchemas";
-import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,73 +59,7 @@ export interface AbeDataHunterWizardProps {
   backLabel?: string;
 }
 
-type HuntStepDef = {
-  id: AbeDataHunterStep;
-  stepNumber: number;
-  title: string;
-  hint: string;
-  guideLabel: string;
-};
-
-const HUNT_STEPS: HuntStepDef[] = [
-  {
-    id: "stammdaten",
-    stepNumber: 1,
-    title: "Stammdaten",
-    hint: "Fotografiere den Abschnitt mit KBA-Nummer, Nummer der ABE, Inhaber der ABE, Hersteller und Bezeichnung des Bauteils.",
-    guideLabel: "KBA · ABE-Nr. · Inhaber · Hersteller · Bauteil",
-  },
-  {
-    id: "marking",
-    stepNumber: 2,
-    title: "Kennzeichnung",
-    hint: "Fotografiere den Abschnitt, der beschreibt, wie und wo am Bauteil die KBA-Nummer zu finden ist.",
-    guideLabel: "Kennzeichnung am Bauteil",
-  },
-  {
-    id: "vehicle",
-    stepNumber: 3,
-    title: "Fahrzeugfreigabe",
-    hint: "Fotografiere die Tabelle, in der dein genaues Fahrzeugmodell (Verkaufsbezeichnung) aufgelistet ist.",
-    guideLabel: "Verkaufsbezeichnung · erlaubte Fahrzeuge",
-  },
-  {
-    id: "auflagen",
-    stepNumber: 4,
-    title: "Auflagen",
-    hint: "Fotografiere die Liste der Auflagen-Kürzel, die für dein gewähltes Fahrzeug gelten.",
-    guideLabel: "Auflagen zum Fahrzeug",
-  },
-];
-
-type WizardPhase =
-  | { kind: "capture"; stepIndex: number }
-  | { kind: "confirm"; stepIndex: number }
-  | { kind: "review" };
-
-interface HuntState {
-  stammdaten: AbeHuntStammdatenExtraction;
-  marking: AbeHuntMarkingExtraction;
-  vehicle: AbeHuntVehicleExtraction;
-  auflagen: AbeHuntAuflagenExtraction;
-  crops: Partial<Record<AbeDataHunterStep, File>>;
-  manualReasons: Partial<Record<AbeDataHunterStep, string>>;
-}
-
-const EMPTY_STATE: HuntState = {
-  stammdaten: {
-    kbaNumber: null,
-    abeNumber: null,
-    abeHolder: null,
-    manufacturer: null,
-    partDesignation: null,
-  },
-  marking: { markingText: null },
-  vehicle: { vehicleMatches: [] },
-  auflagen: { auflagenCodes: [], auflagenNotes: null },
-  crops: {},
-  manualReasons: {},
-};
+type WizardPhase = "hunt" | "review";
 
 type ReviewFormState = {
   kbaNumber: string;
@@ -135,6 +69,31 @@ type ReviewFormState = {
   partDesignation: string;
   markingText: string;
   auflagenCodes: string;
+};
+
+const REQUIRED_ORDER: AbeRequiredFieldKey[] = [
+  "kbaNumber",
+  "abeNumber",
+  "abeHolder",
+  "manufacturer",
+  "partDesignation",
+  "markingText",
+  "verkaufsbezeichnung",
+  "auflagenCodes",
+];
+
+const NEXT_HINT: Record<AbeRequiredFieldKey, string> = {
+  kbaNumber: "Finde und fotografiere die KBA-Nummer.",
+  abeNumber: "Finde und fotografiere die Nummer der ABE.",
+  abeHolder: "Finde und fotografiere den Inhaber der ABE.",
+  manufacturer: "Finde und fotografiere den Hersteller.",
+  partDesignation: "Finde und fotografiere die Bezeichnung des Bauteils.",
+  markingText:
+    "Finde und fotografiere die Kennzeichnung (wo/wie die KBA am Bauteil steht).",
+  verkaufsbezeichnung:
+    "Finde und fotografiere die Fahrzeugtabelle mit der Verkaufsbezeichnung.",
+  auflagenCodes:
+    "Finde und fotografiere die Auflagen-Kürzel zu deinem Fahrzeug.",
 };
 
 // ─── API ───────────────────────────────────────────────────────────────────────
@@ -149,19 +108,14 @@ class HuntApiError extends Error {
 async function callHuntStep<T>(
   file: File,
   step: AbeDataHunterStep,
-): Promise<{ status: "ok" | "needs_manual"; extraction: T; reason?: string }> {
+): Promise<T> {
   const body = new FormData();
   body.set("file", file);
   body.set("step", `hunt-${step}`);
 
   const response = await fetch("/api/ocr/abe", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
-    | {
-        ok: true;
-        status: "ok" | "needs_manual";
-        extraction: T;
-        reason?: string;
-      }
+    | { ok: true; extraction: T }
     | { ok: false; error?: string }
     | null;
 
@@ -173,11 +127,19 @@ async function callHuntStep<T>(
     );
   }
 
-  return {
-    status: payload.status,
-    extraction: payload.extraction,
-    reason: payload.reason,
-  };
+  return payload.extraction;
+}
+
+async function extractEverythingFromFile(
+  file: File,
+): Promise<AbeDataHunterReport> {
+  const [stammdaten, marking, vehicle, auflagen] = await Promise.all([
+    callHuntStep<AbeHuntStammdatenExtraction>(file, "stammdaten"),
+    callHuntStep<AbeHuntMarkingExtraction>(file, "marking"),
+    callHuntStep<AbeHuntVehicleExtraction>(file, "vehicle"),
+    callHuntStep<AbeHuntAuflagenExtraction>(file, "auflagen"),
+  ]);
+  return mergeAbeDataHunterSteps(stammdaten, marking, vehicle, auflagen);
 }
 
 function parseCodes(raw: string): string[] {
@@ -191,311 +153,118 @@ function parseCodes(raw: string): string[] {
   );
 }
 
-// ─── Shared confirm shell ──────────────────────────────────────────────────────
-
-function ConfirmShell({
-  title,
-  reason,
-  needsManual,
-  children,
-  onConfirm,
-  onRescan,
-  canConfirm,
-}: {
-  title: string;
-  reason?: string;
-  needsManual: boolean;
-  children: React.ReactNode;
-  onConfirm: () => void;
-  onRescan: () => void;
-  canConfirm: boolean;
-}) {
+function isPdfFile(file: File): boolean {
   return (
-    <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
-      <div>
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          Ergebnis prüfen
-        </p>
-        <h2 className="mt-1 text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
-          {title}
-        </h2>
-      </div>
+    file.type === "application/pdf" ||
+    file.name.toLowerCase().endsWith(".pdf")
+  );
+}
 
-      {needsManual ? (
-        <div className="rounded-2xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-[0.84rem] leading-relaxed text-amber-950">
-          <p className="font-semibold">
-            Pflichtfeld fehlt — bitte manuell eintragen
+// ─── Progress overlay ──────────────────────────────────────────────────────────
+
+function HuntProgressOverlay({
+  report,
+  analyzing,
+  lastFound,
+  onOpenReview,
+  onUploadPdf,
+}: {
+  report: AbeDataHunterReport;
+  analyzing: boolean;
+  lastFound: string[];
+  onOpenReview: () => void;
+  onUploadPdf: (file: File) => void;
+}) {
+  const missing = missingAbeRequiredFields(report);
+  const filledCount = REQUIRED_ORDER.length - missing.length;
+  const nextMissing = missing[0];
+  const complete = missing.length === 0;
+
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10000] px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/15 bg-black/70 px-3 py-3 text-white shadow-lg backdrop-blur-md">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/70">
+            {filledCount} / {REQUIRED_ORDER.length} erfasst
           </p>
-          {reason ? <p className="mt-1">{reason}</p> : null}
+          {analyzing ? (
+            <span className="inline-flex items-center gap-1.5 text-[0.72rem] text-white/80">
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+              Analysiert…
+            </span>
+          ) : null}
         </div>
-      ) : (
-        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/8 px-4 py-3 text-[0.84rem] text-emerald-900">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          Erkannt — bitte kurz prüfen und bestätigen.
-        </div>
-      )}
 
-      <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4">
-        {children}
-      </div>
-
-      <div className="mt-auto grid gap-2">
-        <Button type="button" disabled={!canConfirm} onClick={onConfirm}>
-          Weiter
-        </Button>
-        <Button type="button" variant="outline" onClick={onRescan}>
-          <RotateCcw className="h-4 w-4" />
-          Abschnitt neu fotografieren
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-function StammdatenConfirmPanel({
-  value,
-  reason,
-  onChange,
-  onConfirm,
-  onRescan,
-}: {
-  value: AbeHuntStammdatenExtraction;
-  reason?: string;
-  onChange: (next: AbeHuntStammdatenExtraction) => void;
-  onConfirm: () => void;
-  onRescan: () => void;
-}) {
-  const complete = isAbeHuntStammdatenComplete(value);
-  return (
-    <ConfirmShell
-      title="Stammdaten prüfen"
-      reason={reason}
-      needsManual={Boolean(reason) || !complete}
-      onConfirm={onConfirm}
-      onRescan={onRescan}
-      canConfirm={complete}
-    >
-      <AbeFieldLabel label="KBA-Nummer *">
-        <Input
-          value={value.kbaNumber ?? ""}
-          onChange={(e) =>
-            onChange({ ...value, kbaNumber: e.target.value || null })
-          }
-          placeholder="z. B. 48185"
-          className="font-mono"
-        />
-      </AbeFieldLabel>
-      <AbeFieldLabel label="Nummer der ABE *">
-        <Input
-          value={value.abeNumber ?? ""}
-          onChange={(e) =>
-            onChange({ ...value, abeNumber: e.target.value || null })
-          }
-          placeholder="z. B. 48185*08"
-          className="font-mono"
-        />
-      </AbeFieldLabel>
-      <AbeFieldLabel label="Inhaber der ABE *">
-        <Input
-          value={value.abeHolder ?? ""}
-          onChange={(e) =>
-            onChange({ ...value, abeHolder: e.target.value || null })
-          }
-          placeholder="Inhaber laut ABE"
-        />
-      </AbeFieldLabel>
-      <AbeFieldLabel label="Hersteller *">
-        <Input
-          value={value.manufacturer ?? ""}
-          onChange={(e) =>
-            onChange({ ...value, manufacturer: e.target.value || null })
-          }
-          placeholder="Hersteller laut ABE"
-        />
-      </AbeFieldLabel>
-      <AbeFieldLabel label="Bezeichnung des Bauteils *">
-        <Input
-          value={value.partDesignation ?? ""}
-          onChange={(e) =>
-            onChange({ ...value, partDesignation: e.target.value || null })
-          }
-          placeholder="z. B. Sonderräder 8Jx18, Spoiler, Spurverbreiterung"
-        />
-      </AbeFieldLabel>
-    </ConfirmShell>
-  );
-}
-
-function MarkingConfirmPanel({
-  value,
-  reason,
-  onChange,
-  onConfirm,
-  onRescan,
-}: {
-  value: AbeHuntMarkingExtraction;
-  reason?: string;
-  onChange: (next: AbeHuntMarkingExtraction) => void;
-  onConfirm: () => void;
-  onRescan: () => void;
-}) {
-  const complete = isAbeHuntMarkingComplete(value);
-  return (
-    <ConfirmShell
-      title="Kennzeichnung prüfen"
-      reason={reason}
-      needsManual={Boolean(reason) || !complete}
-      onConfirm={onConfirm}
-      onRescan={onRescan}
-      canConfirm={complete}
-    >
-      <AbeFieldLabel label="Kennzeichnung *">
-        <textarea
-          value={value.markingText ?? ""}
-          onChange={(e) =>
-            onChange({ ...value, markingText: e.target.value || null })
-          }
-          placeholder="Wo und wie ist die KBA-Nummer am Bauteil zu finden?"
-          rows={5}
-          className="flex w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.92rem] text-[color:var(--vd-text)] outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
-        />
-      </AbeFieldLabel>
-      <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
-        Beschreibt, wie und wo am Bauteil die KBA-Nummer / das Genehmigungszeichen
-        zu finden ist.
-      </p>
-    </ConfirmShell>
-  );
-}
-
-function VehicleConfirmPanel({
-  value,
-  reason,
-  vehicleContext,
-  vehicleLabel,
-  selectedGroupIndex,
-  onSelectGroup,
-  onManualRows,
-  onConfirm,
-  onRescan,
-}: {
-  value: AbeHuntVehicleExtraction;
-  reason?: string;
-  vehicleContext?: AbeVehicleContext | null;
-  vehicleLabel: string;
-  selectedGroupIndex: number | null;
-  onSelectGroup: (index: number) => void;
-  onManualRows: (rows: AbeVehicleMatch[]) => void;
-  onConfirm: () => void;
-  onRescan: () => void;
-}) {
-  const groups = groupAbeVehicleMatches(value.vehicleMatches);
-  const needsManual = Boolean(reason) || !isAbeHuntVehicleComplete(value);
-  const [manualHeader, setManualHeader] = useState("");
-  const needsSelection = requiresAbeVehicleGroupSelection(groups);
-  const canConfirm =
-    groups.length > 0 && (!needsSelection || selectedGroupIndex !== null);
-
-  return (
-    <ConfirmShell
-      title="Fahrzeugfreigabe prüfen"
-      reason={reason}
-      needsManual={needsManual}
-      onConfirm={onConfirm}
-      onRescan={onRescan}
-      canConfirm={canConfirm}
-    >
-      {groups.length > 0 ? (
-        <AbeVehicleMatchPicker
-          matches={value.vehicleMatches}
-          selectedGroupIndex={selectedGroupIndex}
-          onSelectGroup={onSelectGroup}
-          vehicleContext={vehicleContext}
-          vehicleLabel={vehicleLabel}
-        />
-      ) : (
-        <div className="space-y-3">
-          <p className="text-[0.84rem] text-amber-900">
-            Verkaufsbezeichnung ist Pflicht — bitte manuell eintragen (z. B.
-            „5ER REIHE“).
-          </p>
-          <AbeFieldLabel label="Verkaufsbezeichnung *">
-            <Input
-              value={manualHeader}
-              onChange={(e) => setManualHeader(e.target.value)}
-              placeholder="Verkaufsbezeichnung"
-            />
-          </AbeFieldLabel>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!manualHeader.trim()}
-            onClick={() => {
-              const header = manualHeader.trim();
-              onManualRows([
-                {
-                  verkaufsbezeichnung: header,
-                  fahrzeugtyp: null,
-                  typeApproval: null,
-                  driveType: null,
-                  tireSizes: [],
-                  auflagenCodes: [],
-                },
-              ]);
-              onSelectGroup(0);
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
+          <div
+            className="h-full rounded-full bg-emerald-400 transition-all duration-300"
+            style={{
+              width: `${(filledCount / REQUIRED_ORDER.length) * 100}%`,
             }}
-          >
-            Übernehmen
-          </Button>
+          />
         </div>
-      )}
-    </ConfirmShell>
-  );
-}
 
-function AuflagenConfirmPanel({
-  value,
-  reason,
-  onChange,
-  onConfirm,
-  onRescan,
-}: {
-  value: AbeHuntAuflagenExtraction;
-  reason?: string;
-  onChange: (next: AbeHuntAuflagenExtraction) => void;
-  onConfirm: () => void;
-  onRescan: () => void;
-}) {
-  const complete = isAbeHuntAuflagenComplete(value);
-  return (
-    <ConfirmShell
-      title="Auflagen prüfen"
-      reason={reason}
-      needsManual={Boolean(reason) || !complete}
-      onConfirm={onConfirm}
-      onRescan={onRescan}
-      canConfirm={complete}
-    >
-      <AbeFieldLabel label="Auflagen-Kürzel zum Fahrzeug *">
-        <Input
-          value={value.auflagenCodes.join(" ")}
-          onChange={(e) =>
-            onChange({ ...value, auflagenCodes: parseCodes(e.target.value) })
-          }
-          placeholder="z. B. 744 A77 12A"
-          className="font-mono"
-        />
-      </AbeFieldLabel>
-      <AbeFieldLabel label="Hinweise (optional)">
-        <Input
-          value={value.auflagenNotes ?? ""}
-          onChange={(e) =>
-            onChange({ ...value, auflagenNotes: e.target.value || null })
-          }
-          placeholder="Freitext neben den Kürzeln"
-        />
-      </AbeFieldLabel>
-    </ConfirmShell>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {REQUIRED_ORDER.map((key) => {
+            const done = !missing.includes(key);
+            return (
+              <span
+                key={key}
+                className={[
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.62rem] font-medium",
+                  done
+                    ? "bg-emerald-500/25 text-emerald-100"
+                    : "bg-white/10 text-white/65",
+                ].join(" ")}
+              >
+                {done ? <Check className="h-3 w-3" /> : null}
+                {ABE_REQUIRED_FIELD_LABELS[key]}
+              </span>
+            );
+          })}
+        </div>
+
+        {lastFound.length > 0 && !analyzing ? (
+          <p className="mt-2 text-[0.75rem] text-emerald-200">
+            Neu: {lastFound.join(" · ")}
+          </p>
+        ) : null}
+
+        <p className="mt-2 text-[0.84rem] font-medium leading-snug text-white">
+          {complete
+            ? "Alles erfasst — zur Prüfung."
+            : nextMissing
+              ? NEXT_HINT[nextMissing]
+              : "Fotografiere die fehlenden Angaben."}
+        </p>
+
+        <div className="mt-3 flex gap-2">
+          <label className="relative inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 text-[0.78rem] font-semibold">
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              className="absolute inset-0 cursor-pointer opacity-0"
+              disabled={analyzing}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) onUploadPdf(file);
+                event.target.value = "";
+              }}
+            />
+            <FileUp className="h-3.5 w-3.5" />
+            PDF
+          </label>
+          <button
+            type="button"
+            disabled={!complete || analyzing}
+            onClick={onOpenReview}
+            className="flex-[2] rounded-xl bg-white px-3 py-2.5 text-[0.78rem] font-semibold text-neutral-900 disabled:opacity-40"
+          >
+            Zur Prüfung
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -742,18 +511,33 @@ export function AbeDataHunterWizard({
   onBack,
   backHref,
 }: AbeDataHunterWizardProps) {
-  const [phase, setPhase] = useState<WizardPhase>({
-    kind: "capture",
-    stepIndex: 0,
-  });
-  const [state, setState] = useState<HuntState>(EMPTY_STATE);
-  const [extracting, setExtracting] = useState(false);
-  const [captureError, setCaptureError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<WizardPhase>("hunt");
+  const [report, setReport] = useState<AbeDataHunterReport>(
+    emptyAbeDataHunterReport,
+  );
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [sourcePdf, setSourcePdf] = useState<File | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [lastFound, setLastFound] = useState<string[]>([]);
+  const [huntError, setHuntError] = useState<string | null>(null);
   const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | null>(
     null,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, startSaveTransition] = useTransition();
+
+  const missing = missingAbeRequiredFields(report);
+  const nextMissing = missing[0];
+  const complete = isAbeDataHunterReportComplete(report);
+
+  useEffect(() => {
+    if (!complete) return;
+    const groups = groupAbeVehicleMatches(report.vehicleMatches);
+    setSelectedGroupIndex((current) => {
+      if (current !== null && current < groups.length) return current;
+      return resolveInitialAbeVehicleGroupIndex(groups);
+    });
+  }, [complete, report.vehicleMatches]);
 
   function goBack() {
     if (onBack) onBack();
@@ -761,138 +545,53 @@ export function AbeDataHunterWizard({
   }
 
   function restart() {
-    setState(EMPTY_STATE);
+    setPhase("hunt");
+    setReport(emptyAbeDataHunterReport());
+    setPhotos([]);
+    setSourcePdf(null);
+    setLastFound([]);
+    setHuntError(null);
     setSelectedGroupIndex(null);
     setSaveError(null);
-    setCaptureError(null);
-    setPhase({ kind: "capture", stepIndex: 0 });
   }
 
-  async function handleCropped(file: File) {
-    if (phase.kind !== "capture") return;
-    const step = HUNT_STEPS[phase.stepIndex]!;
-    setExtracting(true);
-    setCaptureError(null);
+  async function ingestFile(file: File) {
+    if (analyzing) return;
+    setAnalyzing(true);
+    setHuntError(null);
+    setLastFound([]);
+
     try {
-      if (step.id === "stammdaten") {
-        const result = await callHuntStep<AbeHuntStammdatenExtraction>(
-          file,
-          "stammdaten",
-        );
-        setState((prev) => ({
-          ...prev,
-          stammdaten: result.extraction,
-          crops: { ...prev.crops, stammdaten: file },
-          manualReasons: {
-            ...prev.manualReasons,
-            stammdaten:
-              result.status === "needs_manual" ? result.reason : undefined,
-          },
-        }));
-      } else if (step.id === "marking") {
-        const result = await callHuntStep<AbeHuntMarkingExtraction>(
-          file,
-          "marking",
-        );
-        setState((prev) => ({
-          ...prev,
-          marking: result.extraction,
-          crops: { ...prev.crops, marking: file },
-          manualReasons: {
-            ...prev.manualReasons,
-            marking:
-              result.status === "needs_manual" ? result.reason : undefined,
-          },
-        }));
-      } else if (step.id === "vehicle") {
-        const result = await callHuntStep<AbeHuntVehicleExtraction>(
-          file,
-          "vehicle",
-        );
-        const groups = groupAbeVehicleMatches(result.extraction.vehicleMatches);
-        setSelectedGroupIndex(resolveInitialAbeVehicleGroupIndex(groups));
-        setState((prev) => ({
-          ...prev,
-          vehicle: result.extraction,
-          crops: { ...prev.crops, vehicle: file },
-          manualReasons: {
-            ...prev.manualReasons,
-            vehicle:
-              result.status === "needs_manual" ? result.reason : undefined,
-          },
-        }));
+      const extracted = await extractEverythingFromFile(file);
+      const beforeMissing = new Set(missingAbeRequiredFields(report));
+      const merged = fillAbeDataHunterReport(report, extracted);
+      const afterMissing = new Set(missingAbeRequiredFields(merged));
+      const newlyFilled = REQUIRED_ORDER.filter(
+        (key) => beforeMissing.has(key) && !afterMissing.has(key),
+      ).map((key) => ABE_REQUIRED_FIELD_LABELS[key]);
+
+      setReport(merged);
+      setLastFound(newlyFilled);
+
+      if (isPdfFile(file)) {
+        setSourcePdf(file);
       } else {
-        const result = await callHuntStep<AbeHuntAuflagenExtraction>(
-          file,
-          "auflagen",
-        );
-        setState((prev) => ({
-          ...prev,
-          auflagen: result.extraction,
-          crops: { ...prev.crops, auflagen: file },
-          manualReasons: {
-            ...prev.manualReasons,
-            auflagen:
-              result.status === "needs_manual" ? result.reason : undefined,
-          },
-        }));
+        setPhotos((prev) => [...prev, file]);
       }
 
-      setPhase({ kind: "confirm", stepIndex: phase.stepIndex });
+      if (isAbeDataHunterReportComplete(merged)) {
+        const groups = groupAbeVehicleMatches(merged.vehicleMatches);
+        setSelectedGroupIndex(resolveInitialAbeVehicleGroupIndex(groups));
+        window.setTimeout(() => setPhase("review"), 450);
+      }
     } catch (err) {
-      setCaptureError(
+      setHuntError(
         err instanceof Error ? err.message : "Analyse fehlgeschlagen.",
       );
     } finally {
-      setExtracting(false);
+      setAnalyzing(false);
     }
   }
-
-  function confirmStep(stepIndex: number) {
-    const step = HUNT_STEPS[stepIndex]!;
-    if (step.id === "stammdaten" && !isAbeHuntStammdatenComplete(state.stammdaten)) {
-      setCaptureError("Bitte alle Stammdaten-Pflichtfelder ausfüllen.");
-      return;
-    }
-    if (step.id === "marking" && !isAbeHuntMarkingComplete(state.marking)) {
-      setCaptureError("Bitte die Kennzeichnung eintragen.");
-      return;
-    }
-    if (step.id === "vehicle") {
-      const groups = groupAbeVehicleMatches(state.vehicle.vehicleMatches);
-      if (!isAbeHuntVehicleComplete(state.vehicle)) {
-        setCaptureError("Bitte eine Verkaufsbezeichnung wählen oder eintragen.");
-        return;
-      }
-      if (requiresAbeVehicleGroupSelection(groups) && selectedGroupIndex === null) {
-        setCaptureError("Bitte die passende Verkaufsbezeichnung wählen.");
-        return;
-      }
-      if (groups.length === 1) setSelectedGroupIndex(0);
-    }
-    if (step.id === "auflagen" && !isAbeHuntAuflagenComplete(state.auflagen)) {
-      setCaptureError("Bitte Auflagen-Kürzel zum Fahrzeug eintragen.");
-      return;
-    }
-
-    setCaptureError(null);
-    if (stepIndex >= HUNT_STEPS.length - 1) {
-      setPhase({ kind: "review" });
-      return;
-    }
-    setPhase({ kind: "capture", stepIndex: stepIndex + 1 });
-  }
-
-  const report = useMemo(
-    () =>
-      mergeAbeDataHunterSteps(
-        state.stammdaten,
-        state.marking,
-        state.vehicle,
-        state.auflagen,
-      ),
-    [state.stammdaten, state.marking, state.vehicle, state.auflagen],
-  );
 
   function handleSave(reviewForm: ReviewFormState) {
     const groups = groupAbeVehicleMatches(report.vehicleMatches);
@@ -900,29 +599,27 @@ export function AbeDataHunterWizard({
     const resolvedIndex = needsSelection
       ? selectedGroupIndex
       : (selectedGroupIndex ?? 0);
-
     const selectedGroup =
       resolvedIndex !== null ? groups[resolvedIndex] ?? null : null;
 
     const draft: AbeDataHunterReport = {
+      ...report,
       kbaNumber: reviewForm.kbaNumber.trim() || null,
       abeNumber: reviewForm.abeNumber.trim() || null,
       abeHolder: reviewForm.abeHolder.trim() || null,
       manufacturer: reviewForm.manufacturer.trim() || null,
       partDesignation: reviewForm.partDesignation.trim() || null,
       markingText: reviewForm.markingText.trim() || null,
-      vehicleMatches: report.vehicleMatches,
       auflagenCodes: parseCodes(reviewForm.auflagenCodes),
-      auflagenNotes: report.auflagenNotes,
     };
 
-    const missing = missingAbeRequiredFields(
+    const stillMissing = missingAbeRequiredFields(
       draft,
       selectedGroup?.verkaufsbezeichnung,
     );
-    if (missing.length > 0) {
+    if (stillMissing.length > 0) {
       setSaveError(
-        `Pflichtfelder fehlen: ${missing
+        `Pflichtfelder fehlen: ${stillMissing
           .map((key) => ABE_REQUIRED_FIELD_LABELS[key])
           .join(", ")}.`,
       );
@@ -932,7 +629,6 @@ export function AbeDataHunterWizard({
     const groupAuflagen = auflagenForAbeVehicleGroup(selectedGroup);
     const conditions =
       draft.auflagenCodes.length > 0 ? draft.auflagenCodes : groupAuflagen;
-
     const kbaDisplay = draft.kbaNumber ? `KBA ${draft.kbaNumber}` : null;
     const title =
       [draft.partDesignation || "ABE", draft.manufacturer]
@@ -942,23 +638,22 @@ export function AbeDataHunterWizard({
     setSaveError(null);
 
     startSaveTransition(async () => {
-      const cropFiles = HUNT_STEPS.map((step) => state.crops[step.id]).filter(
-        (file): file is File => Boolean(file),
-      );
-      let uploadFile: File | null = null;
-      try {
-        if (cropFiles.length === 0) {
-          setSaveError("Keine Fotos zum Speichern vorhanden.");
-          return;
+      let uploadFile: File | null = sourcePdf;
+      if (!uploadFile) {
+        try {
+          if (photos.length === 0) {
+            setSaveError("Keine Fotos zum Speichern vorhanden.");
+            return;
+          }
+          const pdf = await convertImagesToPdf(photos, {
+            fileName: `abe-hunt-${Date.now()}`,
+            fullBleed: true,
+            imageCompression: "MEDIUM",
+          });
+          uploadFile = pdf.file;
+        } catch {
+          uploadFile = photos[0] ?? null;
         }
-        const pdf = await convertImagesToPdf(cropFiles, {
-          fileName: `abe-hunt-${Date.now()}`,
-          fullBleed: true,
-          imageCompression: "MEDIUM",
-        });
-        uploadFile = pdf.file;
-      } catch {
-        uploadFile = cropFiles[0] ?? null;
       }
 
       if (!uploadFile) {
@@ -1017,7 +712,7 @@ export function AbeDataHunterWizard({
       formData.set("manufacturer", draft.manufacturer ?? "");
       formData.set("invoiceNumber", draft.abeNumber ?? "");
       formData.set("mileageKm", "");
-      formData.set("pageCount", String(cropFiles.length || 1));
+      formData.set("pageCount", String(sourcePdf ? 1 : photos.length || 1));
       formData.set(
         "approvalFields",
         JSON.stringify({
@@ -1044,109 +739,53 @@ export function AbeDataHunterWizard({
     });
   }
 
-  if (phase.kind === "capture") {
-    const step = HUNT_STEPS[phase.stepIndex]!;
+  if (phase === "review") {
     return (
-      <>
-        {captureError ? (
-          <div className="fixed bottom-4 left-4 right-4 z-[10000] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
-            {captureError}
-          </div>
-        ) : null}
-        <ImageCropCapture
-          title={step.title}
-          hint={step.hint}
-          guideLabel={step.guideLabel}
-          stepNumber={step.stepNumber}
-          totalSteps={HUNT_STEPS.length}
-          isBusy={extracting}
-          onCropped={(file) => void handleCropped(file)}
-          onClose={() => {
-            if (phase.stepIndex === 0) goBack();
-            else setPhase({ kind: "confirm", stepIndex: phase.stepIndex - 1 });
-          }}
-        />
-      </>
-    );
-  }
-
-  if (phase.kind === "confirm") {
-    const step = HUNT_STEPS[phase.stepIndex]!;
-    if (step.id === "stammdaten") {
-      return (
-        <StammdatenConfirmPanel
-          value={state.stammdaten}
-          reason={state.manualReasons.stammdaten}
-          onChange={(stammdaten) =>
-            setState((prev) => ({ ...prev, stammdaten }))
-          }
-          onConfirm={() => confirmStep(phase.stepIndex)}
-          onRescan={() =>
-            setPhase({ kind: "capture", stepIndex: phase.stepIndex })
-          }
-        />
-      );
-    }
-    if (step.id === "marking") {
-      return (
-        <MarkingConfirmPanel
-          value={state.marking}
-          reason={state.manualReasons.marking}
-          onChange={(marking) => setState((prev) => ({ ...prev, marking }))}
-          onConfirm={() => confirmStep(phase.stepIndex)}
-          onRescan={() =>
-            setPhase({ kind: "capture", stepIndex: phase.stepIndex })
-          }
-        />
-      );
-    }
-    if (step.id === "vehicle") {
-      return (
-        <VehicleConfirmPanel
-          value={state.vehicle}
-          reason={state.manualReasons.vehicle}
-          vehicleContext={vehicleContext}
-          vehicleLabel={vehicleLabel}
-          selectedGroupIndex={selectedGroupIndex}
-          onSelectGroup={setSelectedGroupIndex}
-          onManualRows={(rows) =>
-            setState((prev) => ({
-              ...prev,
-              vehicle: { vehicleMatches: rows },
-              manualReasons: { ...prev.manualReasons, vehicle: undefined },
-            }))
-          }
-          onConfirm={() => confirmStep(phase.stepIndex)}
-          onRescan={() =>
-            setPhase({ kind: "capture", stepIndex: phase.stepIndex })
-          }
-        />
-      );
-    }
-    return (
-      <AuflagenConfirmPanel
-        value={state.auflagen}
-        reason={state.manualReasons.auflagen}
-        onChange={(auflagen) => setState((prev) => ({ ...prev, auflagen }))}
-        onConfirm={() => confirmStep(phase.stepIndex)}
-        onRescan={() =>
-          setPhase({ kind: "capture", stepIndex: phase.stepIndex })
-        }
+      <ReviewPanel
+        report={report}
+        vehicleLabel={vehicleLabel}
+        vehicleContext={vehicleContext}
+        selectedGroupIndex={selectedGroupIndex}
+        onSelectGroup={setSelectedGroupIndex}
+        onSave={handleSave}
+        onRestart={restart}
+        isSaving={isSaving}
+        saveError={saveError}
       />
     );
   }
 
   return (
-    <ReviewPanel
-      report={report}
-      vehicleLabel={vehicleLabel}
-      vehicleContext={vehicleContext}
-      selectedGroupIndex={selectedGroupIndex}
-      onSelectGroup={setSelectedGroupIndex}
-      onSave={handleSave}
-      onRestart={restart}
-      isSaving={isSaving}
-      saveError={saveError}
-    />
+    <>
+      {huntError ? (
+        <div className="fixed bottom-4 left-4 right-4 z-[10001] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
+          {huntError}
+        </div>
+      ) : null}
+
+      <HuntProgressOverlay
+        report={report}
+        analyzing={analyzing}
+        lastFound={lastFound}
+        onOpenReview={() => setPhase("review")}
+        onUploadPdf={(file) => void ingestFile(file)}
+      />
+
+      <InBrowserCamera
+        title="ABE scannen"
+        hint={
+          nextMissing
+            ? NEXT_HINT[nextMissing]
+            : "Alles erfasst — tippe auf Zur Prüfung."
+        }
+        guideLabel="Fotografiere fehlende Angaben"
+        guideFrame="a4"
+        allowPdf
+        showBriefing={false}
+        continuousCapture
+        onCapture={(file) => void ingestFile(file)}
+        onClose={goBack}
+      />
+    </>
   );
 }
