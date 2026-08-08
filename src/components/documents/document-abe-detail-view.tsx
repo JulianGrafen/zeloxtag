@@ -19,6 +19,10 @@ import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
+import {
+  technicalSpecsForAbeDetailView,
+  vehicleApprovalsForAbeDetailView,
+} from "@/lib/documents/abe-detail-display";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import {
   displayDocumentTitle,
@@ -69,7 +73,17 @@ export function DocumentAbeDetailView({
   const titleIncludesManufacturer =
     manufacturer.length > 0 &&
     partName.toLowerCase().startsWith(manufacturer.toLowerCase());
-  const approvals = document.vehicle_approvals ?? [];
+  const abeVerkaufsbezeichnung =
+    document.approval_fields?.kind === "abe"
+      ? document.approval_fields.data?.verkaufsbezeichnung
+      : null;
+  const approvals = vehicleApprovalsForAbeDetailView(
+    document.vehicle_approvals ?? [],
+    {
+      technicalSpecs: document.technical_specs ?? [],
+      verkaufsbezeichnung: abeVerkaufsbezeichnung,
+    },
+  );
   const tgTable =
     document.approval_fields?.kind === "teilegutachten"
       ? document.approval_fields.data.compatibilityTable ?? null
@@ -88,9 +102,7 @@ export function DocumentAbeDetailView({
       : null;
   const conditions = document.conditions ?? [];
   const technicalSpecs = document.technical_specs ?? [];
-  const plainAbeSpecs = technicalSpecs.filter(
-    (spec) => spec.label !== "ABE-Nummer",
-  );
+  const plainAbeSpecs = technicalSpecsForAbeDetailView(technicalSpecs);
   const pages = document.page_count && document.page_count > 0 ? document.page_count : 1;
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
   const resolvedBack =
@@ -302,6 +314,8 @@ export function DocumentAbeDetailView({
             }
             technicalDataTable={isTeilegutachten ? tgTechnicalTable : null}
             ownerNotes={isTeilegutachten ? tgOwnerNotes : null}
+            hideVerkaufsbezeichnung={isPlainAbe}
+            verkaufsbezeichnung={abeVerkaufsbezeichnung}
           />
         ) : null}
 

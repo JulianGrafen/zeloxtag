@@ -4,6 +4,10 @@ import { useState, useTransition } from "react";
 import { Pencil, ShieldCheck } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
+import {
+  isVerkaufsbezeichnungSpecLabel,
+  vehicleApprovalsForAbeDetailView,
+} from "@/lib/documents/abe-detail-display";
 import { CollapsibleAuflagenList } from "@/components/documents/collapsible-auflagen-list";
 import { isIvStructuredAuflagen } from "@/lib/validations/teilegutachten-auflagen";
 import { VerwendungsbereichTable } from "@/components/documents/verwendungsbereich-table";
@@ -25,6 +29,9 @@ type EditableAbeListsSectionProps = {
   technicalDataTable?: TableData | null;
   /** Teilegutachten section III — Hinweise für den Fahrzeughalter. */
   ownerNotes?: string | null;
+  /** Omit Verkaufsbezeichnung header from read-only lists (detail view). */
+  hideVerkaufsbezeichnung?: boolean;
+  verkaufsbezeichnung?: string | null;
 };
 
 function specsToText(specs: DocumentTechnicalSpec[]): string {
@@ -73,6 +80,8 @@ export function EditableAbeListsSection({
   compatibilityTable = null,
   technicalDataTable = null,
   ownerNotes = null,
+  hideVerkaufsbezeichnung = false,
+  verkaufsbezeichnung = null,
 }: EditableAbeListsSectionProps) {
   const [editing, setEditing] = useState(false);
   const [approvalsText, setApprovalsText] = useState(
@@ -85,6 +94,15 @@ export function EditableAbeListsSection({
   const [displayConditions, setDisplayConditions] = useState(conditions);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const visibleApprovals = hideVerkaufsbezeichnung
+    ? vehicleApprovalsForAbeDetailView(displayApprovals, {
+        technicalSpecs: displaySpecs,
+        verkaufsbezeichnung,
+      })
+    : displayApprovals;
+  const visibleSpecs = hideVerkaufsbezeichnung
+    ? displaySpecs.filter((spec) => !isVerkaufsbezeichnungSpecLabel(spec.label))
+    : displaySpecs;
 
   function startEdit() {
     setError(null);
@@ -156,13 +174,13 @@ export function EditableAbeListsSection({
           />
         ) : compatibilityTable?.rows.length ? (
           <VerwendungsbereichTable table={compatibilityTable} />
-        ) : displayApprovals.length === 0 ? (
+        ) : visibleApprovals.length === 0 ? (
           <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
             Keine Fahrzeugfreigaben erkannt.
           </p>
         ) : (
           <ul className="space-y-2">
-            {displayApprovals.map((item) => (
+            {visibleApprovals.map((item) => (
               <li
                 key={item}
                 className="flex items-center gap-2 text-[0.88rem] font-medium text-[color:var(--vd-text)]"
@@ -200,13 +218,13 @@ export function EditableAbeListsSection({
             table={technicalDataTable}
             highlightMatches={false}
           />
-        ) : displaySpecs.length === 0 ? (
+        ) : visibleSpecs.length === 0 ? (
           <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
             Keine technischen Daten erkannt.
           </p>
         ) : (
           <dl className="grid gap-2.5 text-[0.88rem]">
-            {displaySpecs.map((spec, index) => (
+            {visibleSpecs.map((spec, index) => (
               <div
                 key={`${spec.label}-${index}`}
                 className="flex items-start justify-between gap-3 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3"
