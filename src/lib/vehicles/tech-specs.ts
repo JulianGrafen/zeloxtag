@@ -13,6 +13,8 @@ export type VehicleTechSpecs = {
   color: string | null;
   bodyType: string | null;
   notes: string | null;
+  /** Supabase Storage URL for dyno / Leistungsdiagramm PDF. */
+  dynoChartUrl: string | null;
 };
 
 export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
@@ -26,6 +28,7 @@ export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
   color: null,
   bodyType: null,
   notes: null,
+  dynoChartUrl: null,
 };
 
 function asTrimmedString(value: unknown): string | null {
@@ -62,6 +65,7 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
     color: asTrimmedString(record.color),
     bodyType: asTrimmedString(record.bodyType),
     notes: asTrimmedString(record.notes),
+    dynoChartUrl: asTrimmedString(record.dynoChartUrl),
   };
 }
 
@@ -80,6 +84,7 @@ export function serializeVehicleTechSpecs(
   if (specs.color) out.color = specs.color;
   if (specs.bodyType) out.bodyType = specs.bodyType;
   if (specs.notes) out.notes = specs.notes;
+  if (specs.dynoChartUrl) out.dynoChartUrl = specs.dynoChartUrl;
   return out;
 }
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
+import { isVehicleDynoChartStoragePath } from "@/lib/vehicles/dyno-chart-constants";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
 import {
@@ -135,6 +136,10 @@ async function authorizeDocumentRead(
   if (!ownedVehicle) return false;
 
   if (ownedVehicle.user_id === user.id) return true;
+
+  if (isVehicleDynoChartStoragePath(storagePath)) {
+    return true;
+  }
 
   const { data: grant } = await supabase
     .from("vehicle_contributors")

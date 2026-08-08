@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Gauge, Save } from "lucide-react";
 
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
+import { VehicleDynoChartUpload } from "@/components/vehicles/vehicle-dyno-chart-upload";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
 import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
 import {
@@ -177,6 +178,17 @@ export function VehicleSpecsView({
             }}
           />
         ) : null}
+
+        <VehicleDynoChartUpload
+          vehicleId={vehicle.id}
+          tagUuid={tagUuid}
+          dynoChartUrl={specs.dynoChartUrl}
+          canEdit={canEdit}
+          onUploaded={(url) => {
+            setSpecs((prev) => ({ ...prev, dynoChartUrl: url }));
+            router.refresh();
+          }}
+        />
 
         {canEdit ? (
           <form
