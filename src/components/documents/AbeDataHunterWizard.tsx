@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import {
   AlertTriangle,
-  Check,
+  ChevronLeft,
+  ChevronRight,
   FileUp,
   LoaderCircle,
   Pencil,
@@ -160,100 +161,105 @@ function HuntProgressOverlay({
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
+  const [focusIndex, setFocusIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const missing = missingAbeRequiredFields(report);
-  const filledCount = REQUIRED_ORDER.length - missing.length;
   const complete = missing.length === 0;
+  const currentKey = REQUIRED_ORDER[focusIndex] ?? REQUIRED_ORDER[0];
+  const currentDone = !missing.includes(currentKey);
+
+  // Jump to first open item when something gets filled.
+  useEffect(() => {
+    const firstOpen = REQUIRED_ORDER.findIndex((key) => missing.includes(key));
+    if (firstOpen >= 0) setFocusIndex(firstOpen);
+  }, [missing.join("|")]);
+
+  function goPrev() {
+    setFocusIndex(
+      (index) => (index - 1 + REQUIRED_ORDER.length) % REQUIRED_ORDER.length,
+    );
+  }
+
+  function goNext() {
+    setFocusIndex((index) => (index + 1) % REQUIRED_ORDER.length);
+  }
 
   if (!mounted || typeof document === "undefined") return null;
 
-  // Must portal above InBrowserCamera (body portal at z-9999), otherwise the
-  // checklist is trapped under the full-screen camera and invisible.
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-3 pt-[max(0.6rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-auto mx-auto max-h-[min(52dvh,28rem)] max-w-[440px] overflow-y-auto rounded-2xl border border-neutral-200 bg-white px-3.5 py-3 text-neutral-900 shadow-2xl">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-neutral-500">
-              Checkliste · {filledCount}/{REQUIRED_ORDER.length}
-              {photoCount > 0
-                ? ` · ${photoCount} Foto${photoCount === 1 ? "" : "s"}`
-                : ""}
-            </p>
-            {analyzing ? (
-              <span className="mt-1 inline-flex items-center gap-1.5 text-[0.75rem] font-medium text-amber-700">
-                <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                Analysiert…
-                {queuedCount > 0 ? ` (+${queuedCount})` : ""}
-              </span>
-            ) : null}
-          </div>
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div
+        className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/20 bg-black/55 px-2 py-2 text-white shadow-lg backdrop-blur-md"
+        onTouchStart={(event) => {
+          touchStartX.current = event.touches[0]?.clientX ?? null;
+        }}
+        onTouchEnd={(event) => {
+          const start = touchStartX.current;
+          touchStartX.current = null;
+          if (start === null) return;
+          const end = event.changedTouches[0]?.clientX ?? start;
+          const delta = end - start;
+          if (Math.abs(delta) < 40) return;
+          if (delta > 0) goPrev();
+          else goNext();
+        }}
+      >
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
             aria-label="Schließen"
           >
             <X className="h-4 w-4" />
           </button>
-        </div>
 
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200">
-          <div
-            className="h-full rounded-full bg-emerald-500 transition-all duration-300"
-            style={{
-              width: `${(filledCount / REQUIRED_ORDER.length) * 100}%`,
-            }}
-          />
-        </div>
+          <button
+            type="button"
+            onClick={goPrev}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
+            aria-label="Vorheriger Punkt"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
 
-        <ul className="mt-2.5 space-y-1.5">
-          {REQUIRED_ORDER.map((key) => {
-            const done = !missing.includes(key);
-            return (
-              <li
-                key={key}
-                className={[
-                  "flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-[0.84rem] font-medium",
-                  done
-                    ? "bg-emerald-50 text-emerald-800"
-                    : "bg-neutral-100 text-neutral-800",
-                ].join(" ")}
-              >
-                <span
-                  className={[
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                    done
-                      ? "bg-emerald-500 text-white"
-                      : "border border-neutral-300 bg-white text-transparent",
-                  ].join(" ")}
-                  aria-hidden
-                >
-                  <Check className="h-3 w-3" />
-                </span>
-                {ABE_REQUIRED_FIELD_LABELS[key]}
-              </li>
-            );
-          })}
-        </ul>
+          <div className="min-w-0 flex-1 px-1 text-center">
+            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/60">
+              {focusIndex + 1} / {REQUIRED_ORDER.length}
+              {photoCount > 0 ? ` · ${photoCount} Foto${photoCount === 1 ? "" : "s"}` : ""}
+            </p>
+            <p className="truncate text-[0.88rem] font-semibold leading-tight">
+              {ABE_REQUIRED_FIELD_LABELS[currentKey]}
+            </p>
+            <p
+              className={[
+                "mt-0.5 truncate text-[0.72rem] font-medium",
+                currentDone ? "text-emerald-300" : "text-white/75",
+              ].join(" ")}
+            >
+              {currentDone
+                ? "Erfasst"
+                : complete
+                  ? "Alles erfasst"
+                  : "Jetzt fotografieren"}
+            </p>
+          </div>
 
-        {lastFound.length > 0 && !analyzing ? (
-          <p className="mt-2 text-[0.78rem] font-medium text-emerald-700">
-            Neu: {lastFound.join(" · ")}
-          </p>
-        ) : null}
+          <button
+            type="button"
+            onClick={goNext}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
+            aria-label="Nächster Punkt"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
 
-        <p className="mt-2 text-[0.8rem] leading-snug text-neutral-600">
-          {complete
-            ? "Alles erfasst — zur Prüfung."
-            : "Fotografiere die offenen Punkte, bis alles grün ist."}
-        </p>
-
-        <div className="mt-3 flex gap-2">
-          <label className="relative inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-[0.78rem] font-semibold text-neutral-800">
+          <label className="relative flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/10">
             <input
               type="file"
               accept="application/pdf,.pdf"
@@ -265,17 +271,57 @@ function HuntProgressOverlay({
               }}
             />
             <FileUp className="h-3.5 w-3.5" />
-            PDF
+            <span className="sr-only">PDF hochladen</span>
           </label>
-          <button
-            type="button"
-            disabled={!complete || analyzing}
-            onClick={onOpenReview}
-            className="flex-[2] rounded-xl bg-neutral-900 px-3 py-2.5 text-[0.78rem] font-semibold text-white disabled:opacity-40"
-          >
-            Zur Prüfung
-          </button>
+
+          {complete ? (
+            <button
+              type="button"
+              disabled={analyzing}
+              onClick={onOpenReview}
+              className="flex h-8 shrink-0 items-center rounded-full bg-white px-3 text-[0.72rem] font-semibold text-neutral-900 disabled:opacity-40"
+            >
+              Prüfen
+            </button>
+          ) : null}
         </div>
+
+        <div className="mt-2 flex items-center gap-1 px-1">
+          {REQUIRED_ORDER.map((key, index) => {
+            const done = !missing.includes(key);
+            const active = index === focusIndex;
+            return (
+              <span
+                key={key}
+                className={[
+                  "h-1 flex-1 rounded-full transition-colors",
+                  done
+                    ? "bg-emerald-400"
+                    : active
+                      ? "bg-white"
+                      : "bg-white/25",
+                ].join(" ")}
+              />
+            );
+          })}
+        </div>
+
+        {analyzing || lastFound.length > 0 ? (
+          <div className="mt-1.5 flex min-h-[1.1rem] items-center justify-center gap-1.5 px-1 text-[0.68rem]">
+            {analyzing ? (
+              <span className="inline-flex items-center gap-1 text-amber-200">
+                <LoaderCircle className="h-3 w-3 animate-spin" />
+                Analysiert…
+                {queuedCount > 0 ? `(+${queuedCount})` : ""}
+              </span>
+            ) : null}
+            {!analyzing && lastFound.length > 0 ? (
+              <span className="truncate text-emerald-200">
+                Neu: {lastFound.join(" · ")}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>,
     document.body,
