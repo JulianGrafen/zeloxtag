@@ -1,6 +1,7 @@
+import "server-only";
+
 import type OpenAI from "openai";
 
-import { preferAmount } from "@/lib/ocr/amount-from-text";
 import {
   analyzeLayoutWithAzure,
   isAzureDocumentIntelligenceConfigured,
@@ -16,7 +17,6 @@ import {
   type DocumentBytesInput,
 } from "@/lib/ocr/prepare-document-for-llm";
 import type { DocumentUserMessagePart } from "@/lib/ocr/llm-document-content";
-import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   INVOICE_HEADER_USER_LINES,
   INVOICE_LINE_ITEMS_USER_LINES,
@@ -34,22 +34,35 @@ import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { coerceGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
+  sanitizeInvoiceMileageKm,
+  type InvoiceHeaderExtraction,
+  type InvoiceLineItemsExtraction,
+  type InvoiceOverviewExtraction,
+} from "@/lib/ocr/invoice-wizard-merge";
+import {
   INVOICE_TEXT_PARSE_CATEGORIES,
   coerceLooseNumber,
   invoiceLineItemSchema,
   normalizeLineItemsList,
-  normalizeTextParseResult,
   type InvoiceLineItem,
   type InvoiceTextParseCategory,
-  type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
+
+export type {
+  InvoiceHeaderExtraction,
+  InvoiceLineItemsExtraction,
+  InvoiceOverviewExtraction,
+} from "@/lib/ocr/invoice-wizard-merge";
+export {
+  mergeInvoiceWizardExtractions,
+  mergeLineItemsExtractions,
+  sanitizeInvoiceMileageKm,
+} from "@/lib/ocr/invoice-wizard-merge";
 
 const LINE_ITEMS_MAX_TOKENS = 8_192;
 const HEADER_MAX_TOKENS = 1_500;
 const OVERVIEW_MAX_TOKENS = 1_500;
 const LINE_ITEMS_MAX_COUNT = 60;
-const MIN_KM = 500;
-const MAX_KM = 9_999_999;
 
 const INVOICE_OVERVIEW_JSON_SCHEMA = {
   name: "invoice_wizard_overview",
@@ -150,84 +163,11 @@ const INVOICE_LINE_ITEMS_JSON_SCHEMA = {
   },
 };
 
-export type InvoiceOverviewExtraction = {
-  vendor: string | null;
-  date: string | null;
-  amount: number | null;
-  category: InvoiceTextParseCategory;
-  summary: string | null;
-};
-
-export type InvoiceHeaderExtraction = {
-  vendor: string | null;
-  invoiceNumber: string | null;
-  mileageKm: number | null;
-  date: string | null;
-};
-
-export type InvoiceLineItemsExtraction = {
-  lineItems: InvoiceLineItem[] | null;
-  amount: number | null;
-};
-
-/** Merge multiple position-block scans (multi-page invoices). */
-export function mergeLineItemsExtractions(
-  blocks: InvoiceLineItemsExtraction[],
-): InvoiceLineItemsExtraction {
-  if (blocks.length === 0) {
-    return { lineItems: null, amount: null };
-  }
-  if (blocks.length === 1) {
-    return blocks[0]!;
-  }
-
-  const seen = new Set<string>();
-  const merged: InvoiceLineItem[] = [];
-
-  for (const block of blocks) {
-    for (const item of block.lineItems ?? []) {
-      const key = `${item.label.trim().toLowerCase()}|${item.amount}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push(item);
-    }
-  }
-
-  const lineItems = normalizeLineItemsList(merged, LINE_ITEMS_MAX_COUNT);
-  const amount =
-    blocks.map((block) => block.amount).find((value) => value !== null) ??
-    null;
-
-  return {
-    lineItems: realignShiftedInvoiceLineItems(lineItems, amount),
-    amount,
-  };
-}
-
 export type InvoiceExtractionOptions = {
   model?: string;
   /** Locked category from scan type picker (repair/service). */
   lockedCategory?: InvoiceTextParseCategory | null;
 };
-
-/** Reject common LLM mileage mistakes (decimals, invoice #, out of range). */
-export function sanitizeInvoiceMileageKm(
-  value: number | null | undefined,
-  invoiceNumber: string | null,
-): number | null {
-  if (value == null || !Number.isFinite(value)) return null;
-
-  const rounded = Math.round(value);
-  if (Math.abs(value - rounded) > 0.001) return null;
-  if (rounded < MIN_KM || rounded > MAX_KM) return null;
-
-  if (invoiceNumber) {
-    const invDigits = invoiceNumber.replace(/\D/g, "");
-    if (invDigits.length >= 4 && invDigits === String(rounded)) return null;
-  }
-
-  return rounded;
-}
 
 function parseHeaderMileage(
   raw: unknown,
@@ -361,65 +301,6 @@ async function runVisionExtract<T>(
   } catch {
     throw new TextParseError(`${errorLabel}: invalid JSON.`);
   }
-}
-
-/**
- * Merge guided wizard extractions into a single review payload.
- * Line items come exclusively from the dedicated positions scan (LLM pass).
- */
-export function mergeInvoiceWizardExtractions(
-  overview: InvoiceOverviewExtraction | null,
-  header: InvoiceHeaderExtraction,
-  lineItemsBlock: InvoiceLineItemsExtraction,
-  options: { lockedCategory?: InvoiceTextParseCategory | null } = {},
-): InvoiceTextParseResult {
-  const vendor = header.vendor ?? overview?.vendor ?? null;
-  const date = header.date ?? overview?.date ?? null;
-  const lineItems = lineItemsBlock.lineItems;
-  const categorySeed = [
-    overview?.summary,
-    overview?.category,
-    vendor,
-    lineItems?.map((item) => item.label).join(" "),
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const category = options.lockedCategory
-    ? options.lockedCategory
-    : preferInvoiceCategory(
-        overview?.category ?? "other",
-        categorySeed,
-      );
-
-  const amount = preferAmount(
-    lineItemsBlock.amount ?? overview?.amount ?? null,
-    "",
-    lineItems,
-  );
-
-  const mileageKm = sanitizeInvoiceMileageKm(
-    parseHeaderMileage(header.mileageKm, header.invoiceNumber),
-    header.invoiceNumber,
-  );
-
-  return normalizeTextParseResult({
-    vendor,
-    date,
-    amount,
-    category: category === "abe" ? "other" : category,
-    summary: overview?.summary ?? null,
-    lineItems,
-    kbaNumber: null,
-    vehicleApprovals: null,
-    authority: null,
-    conditions: null,
-    partCategory: null,
-    notes: null,
-    manufacturer: null,
-    invoiceNumber: header.invoiceNumber,
-    mileageKm,
-  });
 }
 
 export class InvoiceExtractionService {

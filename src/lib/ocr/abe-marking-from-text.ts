@@ -270,7 +270,7 @@ export function resolveAbeMarkingText(
       : null,
   ];
 
-  return candidates.reduce(
+  return candidates.reduce<string | null>(
     (best, next) => mergeAbeMarkingText(best, next),
     null,
   );

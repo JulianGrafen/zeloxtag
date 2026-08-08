@@ -4,7 +4,7 @@ import {
   mergeInvoiceWizardExtractions,
   mergeLineItemsExtractions,
   sanitizeInvoiceMileageKm,
-} from "@/services/ocr/InvoiceExtractionService";
+} from "@/lib/ocr/invoice-wizard-merge";
 
 describe("mergeInvoiceWizardExtractions", () => {
   it("uses dedicated line-items scan as sole lineItems source", () => {

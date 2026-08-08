@@ -44,7 +44,7 @@ import {
   type InvoiceHeaderExtraction,
   type InvoiceLineItemsExtraction,
   type InvoiceOverviewExtraction,
-} from "@/services/ocr/InvoiceExtractionService";
+} from "@/lib/ocr/invoice-wizard-merge";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 type WizardPhase =
