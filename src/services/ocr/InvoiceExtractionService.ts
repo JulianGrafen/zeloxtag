@@ -12,7 +12,6 @@ import {
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
 import { reconcileLineItemAmountsWithOcrText } from "@/lib/ocr/invoice-line-items-from-text";
-import { parseLlmRawLineItems } from "@/lib/ocr/invoice-line-item-math";
 import { processLineItems } from "@/utils/invoiceMath";
 import {
   buildVisionUserMessage,
@@ -432,15 +431,22 @@ export class InvoiceExtractionService {
       visionMessage,
     );
 
-    // LLM outputs raw strings per column (menge, einzelpreis, gesamtpreis).
-    // processLineItems verifies/corrects totals; parseLlmRawLineItems adds
-    // Zod validation and maps to InvoiceLineItem for the rest of the pipeline.
-    const processedItems = Array.isArray(record.lineItems)
-      ? processLineItems(record.lineItems)
-      : [];
-    const llmLineItems = processedItems.length > 0
-      ? processedItems.map((item) => ({ label: item.label, amount: item.totalPrice }))
-      : parseLlmRawLineItems(record.lineItems);
+    // LLM outputs raw strings per column — run bulletproof math before merge/save.
+    const finalItems = processLineItems(
+      Array.isArray(record.lineItems) ? record.lineItems : [],
+    );
+    const llmLineItems: InvoiceLineItem[] = finalItems
+      .filter(
+        (item) =>
+          typeof item.label === "string" &&
+          item.label.trim().length > 0 &&
+          typeof item.gesamtpreis === "number" &&
+          item.gesamtpreis > 0,
+      )
+      .map((item) => ({
+        label: String(item.label).trim(),
+        amount: item.gesamtpreis,
+      }));
     const layoutLineItems = azureLayout
       ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
       : null;

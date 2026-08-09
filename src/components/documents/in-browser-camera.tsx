@@ -17,6 +17,8 @@ import {
   buildA4PdfFromPhotoFile,
   mapContainerRectToVideoCrop,
 } from "@/lib/utils/a4-auto-scan";
+import { useTopDownTilt } from "@/lib/hooks/use-top-down-tilt";
+import { TopDownLevelIndicator } from "@/components/documents/top-down-level-indicator";
 import {
   resizeDocumentCanvas,
   resizeDocumentImage,
@@ -59,6 +61,11 @@ export interface InBrowserCameraProps {
   continuousCapture?: boolean;
   /** Optional step indicator, e.g. { current: 2, total: 3 }. */
   captureStep?: { current: number; total: number };
+  /**
+   * Live overhead-level guide: helps the user hold the phone parallel above the
+   * document (bubble turns green when straight). Default: true.
+   */
+  showTopDownGuide?: boolean;
 }
 
 type FacingMode = "environment" | "user";
@@ -125,6 +132,15 @@ function guideFrameOutsideShadow(dimOutside: boolean): string {
   return dimOutside ? "shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" : "";
 }
 
+/** Default overhead-scan hint appended when no custom hint is provided. */
+const TOP_DOWN_SCAN_HINT =
+  "Handy senkrecht von oben halten — parallel zum Blatt, möglichst gerade.";
+
+function guideFrameBorderClass(isLevel: boolean): string {
+  if (isLevel) return "border-emerald-400/95 shadow-[0_0_0_2px_rgba(52,211,153,0.35)]";
+  return "border-white/80";
+}
+
 function sectionFrameLayoutClass(anchor: GuideSectionAnchor): string {
   switch (anchor) {
     case "top":
@@ -163,6 +179,7 @@ export function InBrowserCamera({
   showBriefing = true,
   continuousCapture = false,
   captureStep,
+  showTopDownGuide = true,
 }: InBrowserCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const viewfinderRef = useRef<HTMLDivElement>(null);
@@ -175,17 +192,22 @@ export function InBrowserCamera({
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [instructionsOpen, setInstructionsOpen] = useState(
-    Boolean(hint && showBriefing && !continuousCapture),
+    Boolean((hint ?? (showTopDownGuide ? TOP_DOWN_SCAN_HINT : undefined)) && showBriefing && !continuousCapture),
   );
   const [captureFlash, setCaptureFlash] = useState(false);
+
+  const topDownTilt = useTopDownTilt(showTopDownGuide && cameraReady && !instructionsOpen);
+  const resolvedHint = hint ?? (showTopDownGuide ? TOP_DOWN_SCAN_HINT : undefined);
+  const showLevelGuide =
+    showTopDownGuide && cameraReady && !instructionsOpen && !processingCapture && !cameraError;
 
   useEffect(() => {
     if (continuousCapture) {
       setInstructionsOpen(false);
       return;
     }
-    setInstructionsOpen(Boolean(hint && showBriefing));
-  }, [title, hint, showBriefing, continuousCapture]);
+    setInstructionsOpen(Boolean((hint ?? (showTopDownGuide ? TOP_DOWN_SCAN_HINT : undefined)) && showBriefing));
+  }, [title, hint, showBriefing, continuousCapture, showTopDownGuide]);
 
   async function startCamera(facing: FacingMode) {
     stopStream(streamRef.current);
@@ -473,9 +495,9 @@ export function InBrowserCamera({
         <p className="text-[0.8rem] font-semibold leading-snug text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
           {title}
         </p>
-        {hint && !instructionsOpen ? (
+        {resolvedHint && !instructionsOpen ? (
           <p className="mt-0.5 line-clamp-2 text-[0.65rem] leading-snug text-white/85 drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
-            {hint}
+            {resolvedHint}
           </p>
         ) : null}
       </div>
@@ -561,13 +583,13 @@ export function InBrowserCamera({
             <p className="text-sm leading-relaxed text-white/60">
               {cameraError}
             </p>
-            {hint ? (
+            {resolvedHint ? (
               <div className="rounded-2xl bg-white px-5 py-4 text-left shadow-lg">
                 <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-neutral-500">
                   Scan-Hinweis
                 </p>
                 <p className="mt-2 text-[0.9rem] font-medium leading-relaxed text-neutral-900">
-                  {hint}
+                  {resolvedHint}
                 </p>
               </div>
             ) : null}
@@ -616,7 +638,8 @@ export function InBrowserCamera({
                   <div
                     ref={guideFrameRef}
                     className={[
-                      "relative h-full w-auto max-h-full max-w-[92vw] shrink-0 rounded-xl border-2 border-white/80",
+                      "relative h-full w-auto max-h-full max-w-[92vw] shrink-0 rounded-xl border-2 transition-colors duration-200",
+                      guideFrameBorderClass(topDownTilt.isLevel),
                       frameOutsideShadow,
                     ].join(" ")}
                     style={{ aspectRatio: A4_ASPECT_RATIO }}
@@ -651,7 +674,8 @@ export function InBrowserCamera({
                 >
                   <div
                     className={[
-                      "relative w-full max-w-[min(96vw,560px)] rounded-md border-2 border-white/75",
+                      "relative w-full max-w-[min(96vw,560px)] rounded-md border-2 transition-colors duration-200",
+                      guideFrameBorderClass(topDownTilt.isLevel),
                       frameOutsideShadow,
                     ].join(" ")}
                     style={{ aspectRatio: SECTION_ASPECT_RATIOS[guideSectionAnchor] }}
@@ -673,6 +697,18 @@ export function InBrowserCamera({
               )
             ) : null}
 
+            {showLevelGuide ? (
+              <div
+                className="pointer-events-none absolute inset-x-0 z-10 flex justify-center"
+                style={{ bottom: chromeBottomPad }}
+              >
+                <TopDownLevelIndicator
+                  tilt={topDownTilt}
+                  onRequestPermission={() => void topDownTilt.requestPermission()}
+                />
+              </div>
+            ) : null}
+
             {processingCapture ? (
               <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black/55 px-6 text-center backdrop-blur-[2px]">
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
@@ -689,7 +725,7 @@ export function InBrowserCamera({
               <div className="pointer-events-none absolute inset-0 z-30 bg-white/70 transition-opacity duration-150" />
             ) : null}
 
-            {hint && instructionsOpen ? (
+            {resolvedHint && instructionsOpen ? (
               <div className="absolute inset-0 z-20 flex items-end justify-center bg-black/70 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-sm">
                 <div className="w-full max-w-md rounded-[1.5rem] bg-white p-6 shadow-2xl">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neutral-500">
@@ -699,8 +735,15 @@ export function InBrowserCamera({
                     {title}
                   </p>
                   <p className="mt-3 text-[0.92rem] leading-relaxed text-neutral-700">
-                    {hint}
+                    {resolvedHint}
                   </p>
+                  {showTopDownGuide ? (
+                    <ul className="mt-4 space-y-2 rounded-xl bg-neutral-100 px-3 py-3 text-[0.82rem] text-neutral-800">
+                      <li>• Handy direkt über das Blatt halten — nicht schräg von der Seite.</li>
+                      <li>• Kamera parallel zur Rechnung (Wasserwaage wird grün).</li>
+                      <li>• Kein Schatten, keine Reflexionen auf dem Papier.</li>
+                    </ul>
+                  ) : null}
                   {guideLabel ? (
                     <p className="mt-4 rounded-xl bg-neutral-100 px-3 py-2 text-[0.82rem] font-medium text-neutral-800">
                       Im Rahmen sichtbar: {guideLabel}

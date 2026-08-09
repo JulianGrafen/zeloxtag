@@ -22,9 +22,9 @@ describe("parseGermanNumber", () => {
       expect(parseGermanNumber("1.234.567,89")).toBe(1234567.89);
     });
 
-    it("parses German thousands-dot without decimal '1.000'", () => {
-      expect(parseGermanNumber("1.000")).toBe(1000);
-      expect(parseGermanNumber("10.000")).toBe(10000);
+    it("parses dot-only values via parseFloat (LLM US-style '1.000' → 1)", () => {
+      expect(parseGermanNumber("1.000")).toBe(1);
+      expect(parseGermanNumber("10.000")).toBe(10);
     });
   });
 
@@ -58,7 +58,8 @@ describe("parseGermanNumber", () => {
     it("returns null for empty string", () => expect(parseGermanNumber("")).toBeNull());
     it("returns null for whitespace", () => expect(parseGermanNumber("  ")).toBeNull());
     it("returns null for dash placeholder", () => expect(parseGermanNumber("-")).toBeNull());
-    it("returns null for percent-only strings", () => expect(parseGermanNumber("19%")).toBeNull()); // guard in utils/invoiceMath
+    it("strips percent sign and parses numeric part", () =>
+      expect(parseGermanNumber("19%")).toBe(19));
     it("returns null for undefined", () => expect(parseGermanNumber(undefined)).toBeNull());
   });
 

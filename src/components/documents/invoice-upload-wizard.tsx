@@ -607,10 +607,10 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title={resolvedHeading}
-          hint="Schritt 1 von 3 · Gesamte Rechnung ins DIN-A4-Feld halten"
+          hint="Schritt 1 von 3 · Gesamte Rechnung ins DIN-A4-Feld halten — senkrecht von oben, parallel zum Blatt"
           guideFrame="a4"
           a4OutputFormat="pdf"
-          guideLabel="Gesamte Rechnung im Rahmen ausrichten"
+          guideLabel="Rechnung parallel von oben im Rahmen ausrichten"
           showBriefing={false}
           allowPdf
           onCapture={handleOverviewCapture}
@@ -648,7 +648,7 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Rechnungskopf fotografieren"
-          hint="Schritt 2 von 3 · Kopf mit Werkstatt, Datum, KM-Stand"
+          hint="Schritt 2 von 3 · Kopf mit Werkstatt, Datum, KM — Handy parallel von oben halten"
           guideFrame="none"
           showBriefing={false}
           onCapture={handleHeaderCapture}
@@ -671,7 +671,7 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Rechnungsblock scannen"
-          hint={`Schritt 3 von 3 · Block ${blockNumber}${blockNumber > 1 ? " · nächste Seite" : ""} — frei fotografieren`}
+          hint={`Schritt 3 von 3 · Block ${blockNumber}${blockNumber > 1 ? " · nächste Seite" : ""} — parallel von oben fotografieren`}
           guideFrame="none"
           showBriefing={false}
           onCapture={handleLineItemsCapture}

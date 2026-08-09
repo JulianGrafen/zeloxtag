@@ -72,6 +72,37 @@ describe("extractRowLineTotalAmount", () => {
       ]),
     ).toBe(480);
   });
+
+  it("multiplies fractional labor hours (Blotzheim: 0,90 × 90,00)", () => {
+    expect(
+      extractRowLineTotalAmount([
+        { rowIndex: 5, columnIndex: 1, content: "Beide Bremsscheiben erneuern" },
+        { rowIndex: 5, columnIndex: 2, content: "0,90" },
+        { rowIndex: 5, columnIndex: 3, content: "90,00" },
+      ]),
+    ).toBe(81);
+  });
+
+  it("multiplies Liter quantity (Blotzheim: 7,00 Liter × 13,45)", () => {
+    expect(
+      extractRowLineTotalAmount([
+        { rowIndex: 14, columnIndex: 1, content: "Motoröl 5W30" },
+        { rowIndex: 14, columnIndex: 2, content: "7,00 Liter" },
+        { rowIndex: 14, columnIndex: 3, content: "13,45" },
+      ]),
+    ).toBe(94.15);
+  });
+
+  it("uses rightmost Ges. Preis when both E-Preis and Ges. Preis exist (2 × 165,99 → 331,98)", () => {
+    expect(
+      extractRowLineTotalAmount([
+        { rowIndex: 4, columnIndex: 1, content: "Bremsscheibe PRO+" },
+        { rowIndex: 4, columnIndex: 2, content: "2,00" },
+        { rowIndex: 4, columnIndex: 3, content: "165,99 €" },
+        { rowIndex: 4, columnIndex: 4, content: "331,98 €" },
+      ]),
+    ).toBe(331.98);
+  });
 });
 
 describe("mergeLayoutAndLlmLineItems", () => {

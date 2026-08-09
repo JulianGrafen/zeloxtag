@@ -14,6 +14,7 @@ import {
 } from "@/lib/ocr/invoice-line-items-from-text";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
+import { parseGermanNumber } from "@/utils/invoiceMath";
 
 import type {
   AzureLayoutAnalyzeResult,
@@ -39,7 +40,9 @@ function cleanCellText(value: string): string {
 function parseMoneyCell(value: string): number | null {
   const trimmed = cleanCellText(value);
   if (!trimmed || /%/.test(trimmed)) return null;
-  if (!/,\d{2}$/.test(trimmed) && !/\.\d{2}$/.test(trimmed)) return null;
+  // Fractional labor qty like "0,90" without € is Menge, not a price.
+  if (!/[€$]/.test(trimmed) && /^0[.,]\d{1,2}$/.test(trimmed)) return null;
+  if (!/,\d{2}/.test(trimmed) && !/\.\d{2}/.test(trimmed)) return null;
   return parseGermanMoneyAmount(trimmed);
 }
 
@@ -87,31 +90,77 @@ function tableScore(table: AzureLayoutTable): number {
   return table.cells.filter((cell) => cell.kind !== "columnHeader").length;
 }
 
+/** True when the cell is primarily a quantity (not a label like "Motoröl 5W30"). */
+function looksLikeQuantityCell(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || /[€$%]/.test(trimmed)) return false;
+  // "7,00 Liter", "0,90", "2,00", "4", "3 Stk."
+  return (
+    /^\d+(?:[.,]\d{1,3})?(?:\s*(?:liter|stk\.?|stück|std\.?|h|kg|l\.?))?$/i.test(
+      trimmed,
+    )
+  );
+}
+
+/**
+ * Parse Menge from a layout row (supports "2,00", "0,90", "7,00 Liter").
+ * Money cells with € are ignored. Labels with embedded digits (e.g. 5W30) are skipped.
+ */
 function parseRowQuantity(rowCells: AzureLayoutTableCell[]): number | null {
-  let bestQty: number | null = null;
+  let best: { qty: number; score: number } | null = null;
 
   for (const cell of rowCells) {
     const text = cleanCellText(cell.content);
-    if (!/^\d+$/.test(text)) continue;
+    if (!looksLikeQuantityCell(text)) continue;
 
-    const qty = Number.parseInt(text, 10);
-    if (!Number.isFinite(qty) || qty < 2 || qty > 100) continue;
+    const qty = parseGermanNumber(text);
+    if (qty == null || qty <= 0 || qty > 10_000) continue;
 
-    if (bestQty == null || qty > bestQty) {
-      bestQty = qty;
+    const hasUnit = /(?:liter|stk\.?|stück|std\.?|\bh\b|kg|\bl\b)/i.test(text);
+    const isDecimal = /^\d+[.,]\d{1,2}\b/i.test(text);
+
+    let score = 0;
+    if (hasUnit) {
+      score += 40;
+    } else if (isDecimal) {
+      // "0,90" / "2,00" are Menge; "42,90" / "120,00" without € are almost always prices.
+      if (qty > 20) continue;
+      score += 25;
+    } else if (/^\d+$/.test(text) && qty >= 2 && qty <= 100) {
+      score += 12;
+    } else if (/^\d+$/.test(text) && qty === 1) {
+      score += 2; // weak — often Pos
     }
+
+    if (score <= 0) continue;
+    if (!best || score > best.score) best = { qty, score };
   }
 
-  return bestQty;
+  return best?.qty ?? null;
 }
 
 /**
  * When a row has Einzelpreis + Ges. Preis, always take the rightmost € value.
+ * Menge cells (e.g. "2,00") are excluded from the money list so they are not
+ * mistaken for a price column.
  */
 export function extractRowLineTotalAmount(
   rowCells: AzureLayoutTableCell[],
 ): number | null {
+  const qty = parseRowQuantity(rowCells);
+  const qtyColumnIndexes = new Set(
+    rowCells
+      .filter((cell) => {
+        const text = cleanCellText(cell.content);
+        if (!looksLikeQuantityCell(text)) return false;
+        const parsed = parseGermanNumber(text);
+        return parsed != null && qty != null && Math.abs(parsed - qty) < 0.001;
+      })
+      .map((cell) => cell.columnIndex),
+  );
+
   const moneyCells = rowCells
+    .filter((cell) => !qtyColumnIndexes.has(cell.columnIndex))
     .map((cell) => ({
       columnIndex: cell.columnIndex,
       amount: parseMoneyCell(cell.content),
@@ -125,10 +174,9 @@ export function extractRowLineTotalAmount(
   if (moneyCells.length === 0) return null;
   if (moneyCells.length === 1) {
     const only = moneyCells[0]!.amount;
-    const qty = parseRowQuantity(rowCells);
-    if (qty != null && qty >= 2) {
-      const asTotal = Math.round(only * qty * 100) / 100;
-      if (asTotal > only + 0.01) return asTotal;
+    // Single money column often means only E-Preis is printed — compute Ges. Preis.
+    if (qty != null && Math.abs(qty - 1) > 0.001) {
+      return Math.round(only * qty * 100) / 100;
     }
     return only;
   }

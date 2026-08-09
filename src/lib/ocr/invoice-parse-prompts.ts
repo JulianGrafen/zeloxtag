@@ -32,28 +32,51 @@ KILOMETERSTAND (mileageKm) — nur aus explizitem KM-Feld im Kopf:
 export const INVOICE_LINE_ITEMS_COMPLETENESS_RULES = `
 VOLLSTÄNDIGKEIT (lineItems):
 - Gehe JEDE sichtbare Datenzeile der Positionstabelle von oben nach unten durch — ohne Auslassen.
-- Jede Zeile mit Bezeichnung + Geldbetrag in der rechten Summenspalte = ein lineItem.
+- Jede Zeile mit Bezeichnung + mind. einem Geldbetrag (E-Preis ODER Ges. Preis) = ein lineItem.
+- Auch wenn Menge und/oder Ges. Preis LEER sind: Zeile trotzdem erfassen (typisch Arbeitslohn) — menge/gesamtpreis = null.
 - Pro Tabellenzeile höchstens EIN lineItem — E-Preis und Ges. Preis derselben Zeile nicht doppelt.
-- Auch: Arbeitslohn, Material, Kleinmaterial, Entsorgung, Altöl, Umweltgebühr, Rabatt (€), MwSt. (€) — jeweils eigene Zeile.
+- Auch: Arbeitslohn, Material, Kleinmaterial, Entsorgung, Altöl, Umweltgebühr, TÜV-Gebühr, Rabatt (€), MwSt. (€) — jeweils eigene Zeile.
 - Tabellenkopf (Pos, Bezeichnung, Menge, …) und reine Summenzeilen (Zwischensumme, Netto gesamt) sind KEINE Positionen.
 - "Summe"/"Gesamt" am Tabellenende nur als lineItem wenn es eine ausgewiesene MwSt.- oder Gebührenzeile ist.
 - Fortsetzungstabelle auf nächster Seite: alle Zeilen mit erfassen.
 - Niemals mehrere Materialien in ein label packen (falsch: "Reifen und Federn").
-- Unleserliche Bezeichnung: trotzdem erfassen wenn Betrag in rechter Spalte lesbar ist.
+- Unleserliche Bezeichnung: trotzdem erfassen wenn Betrag lesbar ist.
 `.trim();
 
-/** Keep label + Ges. Preis on the same horizontal table row. */
+/** Keep label + price columns on the same horizontal table row. */
 export const INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES = `
-ZEILEN-ZUORDNUNG (label ↔ amount):
+ZEILEN-ZUORDNUNG (label ↔ menge / einzelpreis / gesamtpreis):
 - Das Bild kann horizontale Trennlinien pro Tabellenzeile enthalten — dann gilt: alles ZWISCHEN zwei Linien ist EINE Position.
-- Bezeichnung und Ges. Preis gehören IMMER zur SELBEN Tabellenzeile — gleiche horizontale Höhe.
-- Umbrüche in der Bezeichnungsspalte erzeugen KEINE neue Position — der Betrag bleibt bei der Zeile, in der er rechts steht.
-- NIEMALS den Betrag einer Zeile der Bezeichnung darüber oder darunter zuordnen (typischer Fehler bei mehrzeiligen Bezeichnungen).
-- Tabellenkopf (Pos, Bezeichnung, Menge, …) ist KEINE Position — den ersten Datenbetrag nicht dem Kopf zuordnen.
+- Bezeichnung und Beträge gehören IMMER zur SELBEN Tabellenzeile — gleiche horizontale Höhe.
+- Umbrüche in der Bezeichnungsspalte erzeugen KEINE neue Position (z.B. "Schraube, Einspritzdüsenhalter" + "ORIGINAL ERSATZTEIL GREENPARTS" = EIN lineItem).
+- NIEMALS Beträge einer Zeile der Bezeichnung darüber oder darunter zuordnen.
+- Tabellenkopf (Pos, Nummer, Bezeichnung, Menge, Einh., E-Preis, Ges. Preis, St.) ist KEINE Position.
 - Beispiel korrekt:
-  Zeile 1: "Sportfedern H&R" … 480,00 → { label: "Sportfedern H&R", amount: 480 }
-  Zeile 2: "Arbeitslohn" … 120,00 → { label: "Arbeitslohn", amount: 120 }
-- Beispiel falsch: "Arbeitslohn" mit 480,00 weil der Betrag visuell über der Zeile steht.
+  Zeile: "Bremsscheibe PRO+" | Menge "2,00" | E-Preis "165,99 €" | Ges. Preis "331,98 €"
+  → { label, menge: "2,00", einzelpreis: "165,99 €", gesamtpreis: "331,98 €" }
+- Beispiel Arbeitslohn (leere Zellen):
+  Zeile: "Bremsbeläge erneuern (Hinterachse)" | Menge leer | E-Preis "90,00 €" | Ges. Preis leer
+  → { label, menge: null, einzelpreis: "90,00 €", gesamtpreis: null }
+`.trim();
+
+/** Few-shot from real Blotzheim-style workshop invoice columns. */
+export const INVOICE_LINE_ITEMS_EXTRACT_COMPUTE_FEW_SHOT = `
+FEW-SHOT — Extract & Compute (deutsche Werkstattrechnung Pos | Nummer | Bezeichnung | Menge | Einh. | E-Preis | Ges. Preis):
+1. "Bremsbelagsatz, Scheibenbremse" | 1,00 | 141,46 € | 141,46 €
+   → menge "1,00", einzelpreis "141,46 €", gesamtpreis "141,46 €"
+2. "Bremsbeläge erneuern (Hinterachse)" | (leer) | 90,00 € | (leer)
+   → menge null, einzelpreis "90,00 €", gesamtpreis null  ← KEINE Zeile auslassen!
+3. "Bremsscheibe PRO+" | 2,00 | 165,99 € | 331,98 €
+   → menge "2,00", einzelpreis "165,99 €", gesamtpreis "331,98 €"  ← NIEMALS 165,99 als gesamtpreis
+4. "Beide Bremsscheiben erneuern (Hinterachse)" | 0,90 | 90,00 € | 81,00 €
+   → menge "0,90", einzelpreis "90,00 €", gesamtpreis "81,00 €"
+5. "Kühlerfrostschutz" | 3,00 Liter | 7,14 € | 21,42 €
+   → menge "3,00 Liter" (Einheit mitkopieren), einzelpreis "7,14 €", gesamtpreis "21,42 €"
+6. "Motoröl 5W30" | 7,00 Liter | 13,45 € | 94,15 €
+   → menge "7,00 Liter", einzelpreis "13,45 €", gesamtpreis "94,15 €"
+7. "Ventildeckeldichtung erneuern" | 4,00 | 90,00 € | 360,00 €
+   → gesamtpreis "360,00 €" — NICHT "90,00 €"
+NIEMALS rechnen. Leere Zellen = null. €-Zeichen und Kommas exakt abschreiben.
 `.trim();
 
 /** Fallback system prompt when Foundry agent metadata is unavailable. */
@@ -173,12 +196,13 @@ export function buildInvoiceLineItemsSystemPrompt(): string {
     `KRITISCH — Extract & Compute-Architektur:
 Du kopierst den RAW-TEXT aus jeder Spalte — du rechnest NIEMALS selbst.
 Für jede Datenzeile extrahierst du exakt:
-  • label       = Text aus der Bezeichnungsspalte
-  • menge       = exakter Text aus der Spalte Menge / Qty / Anzahl (z.B. "4", "7,00 Liter") — null wenn Zelle leer ist
-  • einzelpreis = exakter Text aus der Spalte Einzelpreis / E-Preis / EP (z.B. "120,00") — null wenn Zelle leer ist
-  • gesamtpreis = exakter Text aus der Spalte Ges. Preis / Gesamtpreis / GP (z.B. "480,00") — null wenn Zelle leer ist
-Zahlen IMMER exakt so wie gedruckt abschreiben, mit Komma. KEINE Umrechnung, KEINE Multiplikation.
-Wenn eine Spalte fehlt oder die Zelle leer ist → null ausgeben, nicht raten.`,
+  • label       = Text aus der Bezeichnungsspalte (mehrzeilig zusammenführen)
+  • menge       = exakter Text aus Menge inkl. Einheit (z.B. "4", "0,90", "7,00 Liter") — null wenn Zelle leer
+  • einzelpreis = exakter Text aus E-Preis / Einzelpreis / EP inkl. € (z.B. "141,46 €") — null wenn leer
+  • gesamtpreis = exakter Text aus Ges. Preis / Gesamtpreis / GP inkl. € (z.B. "331,98 €") — null wenn leer
+Zahlen IMMER exakt so wie gedruckt abschreiben, mit Komma und €. KEINE Umrechnung, KEINE Multiplikation.
+Leere Menge oder leerer Ges. Preis → null (nicht 1 und nicht den E-Preis raten).`,
+    INVOICE_LINE_ITEMS_EXTRACT_COMPUTE_FEW_SHOT,
     INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
     INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES,
     "amount (Zahlbetrag) = raw text des Rechnungsgesamtbetrags falls in diesem Abschnitt sichtbar — sonst null.",
@@ -205,15 +229,15 @@ export const INVOICE_HEADER_USER_LINES = [
 /** Guided wizard — positions table block (Extract & Compute pass). */
 export const INVOICE_LINE_ITEMS_USER_LINES = [
   "Nur POSITIONS-/TABELLEN-BEREICH einer deutschen Kfz-Rechnung.",
-  "Schritt 1: Tabellenkopf lesen — Spalten identifizieren: Menge | Einzelpreis | Ges. Preis (oder ähnliche Bezeichnungen).",
-  "Schritt 2: Jede Datenzeile von oben nach unten — KEINE Zeile auslassen.",
+  "Schritt 1: Tabellenkopf — Spalten: Pos | Nummer | Bezeichnung | Menge | Einh. | E-Preis | Ges. Preis | St.",
+  "Schritt 2: Jede Datenzeile von oben nach unten — KEINE Zeile auslassen (auch Arbeitslohn mit leerer Menge/Ges. Preis).",
   "CRITICAL: Kopiere den exakten Text aus JEDER Spalte. Führe KEINE Berechnungen durch.",
-  "menge = Text aus 'Menge'/'Qty'/'Anzahl'-Spalte — z.B. \"4\", \"7,00 Liter\". null wenn Zelle leer.",
-  "einzelpreis = Text aus 'E-Preis'/'Einzelpreis'/'EP'-Spalte — z.B. \"120,00\". null wenn Zelle leer.",
-  "gesamtpreis = Text aus 'Ges. Preis'/'Gesamtpreis'/'GP'-Spalte — z.B. \"480,00\". null wenn Zelle leer.",
-  "Pro Tabellenzeile GENAU EIN lineItem — niemals eine Zeile in zwei aufteilen.",
-  "Bezeichnung und Beträge müssen zur gleichen horizontalen Tabellenzeile gehören.",
-  "Mehrzeilige Bezeichnung = ein lineItem; Beträge aus der Zeile mit den Preisspalten.",
+  "menge = Text aus Menge inkl. Einheit — z.B. \"1,00\", \"0,90\", \"7,00 Liter\". null wenn Zelle leer.",
+  "einzelpreis = Text aus E-Preis inkl. € — z.B. \"141,46 €\". null wenn leer.",
+  "gesamtpreis = Text aus Ges. Preis inkl. € — z.B. \"331,98 €\". null wenn leer — NIEMALS E-Preis hierher kopieren.",
+  "Beispiel: Menge 2,00 | E-Preis 165,99 € | Ges. Preis 331,98 € → gesamtpreis \"331,98 €\" (nicht 165,99).",
+  "Beispiel: Menge leer | E-Preis 90,00 € | Ges. Preis leer → menge null, gesamtpreis null.",
+  "Pro Tabellenzeile GENAU EIN lineItem — mehrzeilige Bezeichnung = ein Item.",
   "Fortsetzung der Tabelle auf Seite 2: alle Zeilen mit erfassen.",
 ] as const;
 
