@@ -38,7 +38,8 @@ export function isUnitPriceAmountOfTotal(
 
   const ratio = large / small;
   const qty = Math.round(ratio);
-  return qty >= 2 && qty <= 100 && Math.abs(ratio - qty) < 0.06;
+  // Strict — 480/95 ≈ 5.05 must NOT count as qty×unit (false EP→GP upgrade).
+  return qty >= 2 && qty <= 100 && Math.abs(ratio - qty) < 0.025;
 }
 
 function isJunkColumnRow(item: InvoiceLineItem): boolean {

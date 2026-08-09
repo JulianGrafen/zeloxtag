@@ -134,6 +134,15 @@ describe("mergeLayoutAndLlmLineItems", () => {
       { label: "Arbeitslohn", amount: 95 },
     ]);
   });
+
+  it("CRITICAL: prefers LLM Ges. Preis when layout only captured E-Preis", () => {
+    const llm = [{ label: "Bremsscheibe PRO+", amount: 331.98 }];
+    const layout = [{ label: "Bremsscheibe PRO+", amount: 165.99 }];
+
+    expect(mergeLayoutAndLlmLineItems(llm, layout, null)).toEqual([
+      { label: "Bremsscheibe PRO+", amount: 331.98 },
+    ]);
+  });
 });
 
 describe("reconcileLineItemAmountsWithOcrText", () => {

@@ -126,10 +126,11 @@ function parseRowQuantity(rowCells: AzureLayoutTableCell[]): number | null {
       // "0,90" / "2,00" are Menge; "42,90" / "120,00" without € are almost always prices.
       if (qty > 20) continue;
       score += 25;
-    } else if (/^\d+$/.test(text) && qty >= 2 && qty <= 100) {
-      score += 12;
-    } else if (/^\d+$/.test(text) && qty === 1) {
-      score += 2; // weak — often Pos
+    } else if (/^\d+$/.test(text) && qty >= 2 && qty <= 20) {
+      // Bare integers are weak (often Pos / Artikel-Nr.). Prefer decimal Menge cells.
+      // Cap at 20 — Pos 19 "Tüv Gebühr" must not become qty=19.
+      if (cell.columnIndex === 0) continue; // almost always Pos
+      score += 8;
     }
 
     if (score <= 0) continue;
@@ -331,13 +332,13 @@ function preferLongerLabel(primary: string, secondary: string): string {
 }
 
 /**
- * Prefer Azure layout rows when they match totals better than LLM output.
- * Amounts always come from layout (rightmost Ges. Preis column); labels from LLM when clearer.
+ * Merge Azure layout rows with LLM Extract & Compute totals.
+ * Prefer Ges. Preis over E-Preis when the two disagree (never blindly trust layout).
  */
 export function mergeLayoutAndLlmLineItems(
   llmItems: InvoiceLineItem[] | null | undefined,
   layoutItems: InvoiceLineItem[] | null | undefined,
-  totalAmount: number | null,
+  _totalAmount: number | null,
 ): InvoiceLineItem[] | null {
   const layout = layoutItems ?? [];
   const llm = llmItems ?? [];
@@ -346,15 +347,36 @@ export function mergeLayoutAndLlmLineItems(
   if (llm.length === 0) return layout;
 
   const usedLlmIndexes = new Set<number>();
-  const merged: InvoiceLineItem[] = layout.map((layoutItem) => {
+  const merged: InvoiceLineItem[] = [];
+
+  for (const layoutItem of layout) {
     const llmMatch = findBestLlmMatch(layoutItem, llm, usedLlmIndexes);
-    return {
+    let amount = layoutItem.amount;
+
+    if (llmMatch) {
+      if (isUnitPriceAmountOfTotal(layoutItem.amount, llmMatch.amount)) {
+        // Layout = E-Preis, LLM = Ges. Preis → keep GP.
+        amount = llmMatch.amount;
+      } else if (isUnitPriceAmountOfTotal(llmMatch.amount, layoutItem.amount)) {
+        // LLM = E-Preis, layout = Ges. Preis → keep GP.
+        amount = layoutItem.amount;
+      } else {
+        // Prefer math-verified LLM unless that amount is already assigned
+        // to another row (shifted/duplicated totals).
+        const llmAmountAlreadyUsed = merged.some(
+          (existing) => Math.abs(existing.amount - llmMatch.amount) < 0.02,
+        );
+        amount = llmAmountAlreadyUsed ? layoutItem.amount : llmMatch.amount;
+      }
+    }
+
+    merged.push({
       label: llmMatch
         ? preferLongerLabel(layoutItem.label, llmMatch.label)
         : layoutItem.label,
-      amount: layoutItem.amount,
-    };
-  });
+      amount,
+    });
+  }
 
   for (let index = 0; index < llm.length; index += 1) {
     if (usedLlmIndexes.has(index)) continue;

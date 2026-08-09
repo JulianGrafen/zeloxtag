@@ -46,7 +46,7 @@ VOLLSTÄNDIGKEIT (lineItems):
 /** Keep label + price columns on the same horizontal table row. */
 export const INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES = `
 ZEILEN-ZUORDNUNG (label ↔ menge / einzelpreis / gesamtpreis):
-- Das Bild kann horizontale Trennlinien pro Tabellenzeile enthalten — dann gilt: alles ZWISCHEN zwei Linien ist EINE Position.
+- Das Bild kann Zebra-Markierung (abwechselnd gelb/blaue Zeilenstreifen) und horizontale Trennlinien pro Tabellenzeile enthalten — dann gilt: alles in EINEM Streifen bzw. ZWISCHEN zwei Linien ist EINE Position.
 - Bezeichnung und Beträge gehören IMMER zur SELBEN Tabellenzeile — gleiche horizontale Höhe.
 - Umbrüche in der Bezeichnungsspalte erzeugen KEINE neue Position (z.B. "Schraube, Einspritzdüsenhalter" + "ORIGINAL ERSATZTEIL GREENPARTS" = EIN lineItem).
 - NIEMALS Beträge einer Zeile der Bezeichnung darüber oder darunter zuordnen.

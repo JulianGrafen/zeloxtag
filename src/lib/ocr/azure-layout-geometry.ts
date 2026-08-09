@@ -18,6 +18,11 @@ export type HorizontalLineSegment = {
   x2: number;
 };
 
+export type RowZebraBand = AxisAlignedBounds & {
+  /** 0-based index among non-header data rows (drives alternating fill). */
+  dataRowIndex: number;
+};
+
 function polygonBounds(polygon: AzurePolygon): AxisAlignedBounds | null {
   if (!polygon || polygon.length < 4) return null;
 
@@ -105,6 +110,69 @@ function rowBounds(
   }
 
   return merged;
+}
+
+function isHeaderRow(table: AzureLayoutTable, rowIndex: number): boolean {
+  const rowCells = table.cells.filter((cell) => cell.rowIndex === rowIndex);
+  if (rowCells.length === 0) return true;
+  return rowCells.every((cell) => cell.kind === "columnHeader");
+}
+
+/**
+ * Alternating row bands for data rows (skips column-header rows).
+ * Coordinates are in Azure page space (pixels for raster images).
+ */
+export function computeTableRowZebraBands(
+  table: AzureLayoutTable,
+  pageNumber = 1,
+): RowZebraBand[] {
+  const tableBounds = boundsFromRegions(table.boundingRegions, pageNumber);
+  const bands: RowZebraBand[] = [];
+  let dataRowIndex = 0;
+
+  for (let rowIndex = 0; rowIndex < table.rowCount; rowIndex += 1) {
+    if (isHeaderRow(table, rowIndex)) continue;
+    const bounds = rowBounds(table, rowIndex, pageNumber);
+    if (!bounds) continue;
+
+    const minX = tableBounds?.minX ?? bounds.minX;
+    const maxX = tableBounds?.maxX ?? bounds.maxX;
+
+    bands.push({
+      minX: Math.max(0, Math.floor(minX)),
+      minY: Math.max(0, Math.floor(bounds.minY)),
+      maxX: Math.ceil(maxX),
+      maxY: Math.ceil(bounds.maxY),
+      dataRowIndex,
+    });
+    dataRowIndex += 1;
+  }
+
+  return bands;
+}
+
+export function computeInvoiceRowZebraBands(
+  result: AzureLayoutAnalyzeResult,
+  pageNumber = 1,
+): RowZebraBand[] {
+  const table = selectPrimaryInvoiceTable(result);
+  if (!table) return [];
+  return computeTableRowZebraBands(table, pageNumber);
+}
+
+export function scaleZebraBands(
+  bands: RowZebraBand[],
+  scaleX: number,
+  scaleY: number,
+): RowZebraBand[] {
+  if (scaleX === 1 && scaleY === 1) return bands;
+  return bands.map((band) => ({
+    ...band,
+    minX: Math.round(band.minX * scaleX),
+    minY: Math.round(band.minY * scaleY),
+    maxX: Math.round(band.maxX * scaleX),
+    maxY: Math.round(band.maxY * scaleY),
+  }));
 }
 
 /**
