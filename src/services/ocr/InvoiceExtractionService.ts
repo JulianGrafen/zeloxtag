@@ -408,7 +408,7 @@ export class InvoiceExtractionService {
         azureLayout,
       );
       llmInput = { bytes: drawn.bytes, contentType: "image/png" };
-      rowSeparators = drawn.separatorsDrawn > 0 || drawn.zebraBandsDrawn > 0;
+      rowSeparators = drawn.separatorsDrawn > 0;
     }
 
     const visionMessage = buildVisionUserMessage(
@@ -431,7 +431,7 @@ export class InvoiceExtractionService {
       visionMessage,
     );
 
-    // LLM outputs raw strings — processLineItems resolves Ges. Preis before merge.
+    // LLM outputs raw strings per column — run bulletproof math before merge/save.
     const finalItems = processLineItems(
       Array.isArray(record.lineItems) ? record.lineItems : [],
     );
@@ -450,12 +450,14 @@ export class InvoiceExtractionService {
     const layoutLineItems = azureLayout
       ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
       : null;
-    // Never fall back to sum(layout) — layout often contains E-Preis, which
-    // poisons realignShiftedInvoiceLineItems into keeping wrong unit prices.
-    const amount = coerceGermanMoneyAmount(record.amount, "conservative");
+    const amount =
+      coerceGermanMoneyAmount(record.amount, "conservative") ??
+      (layoutLineItems?.length
+        ? sumLineItemAmounts(layoutLineItems)
+        : null);
 
     const merged = mergeLayoutAndLlmLineItems(
-      llmLineItems.length > 0 ? llmLineItems : null,
+      llmLineItems,
       layoutLineItems,
       amount,
     );

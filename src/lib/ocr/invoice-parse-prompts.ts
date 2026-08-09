@@ -46,7 +46,7 @@ VOLLSTÄNDIGKEIT (lineItems):
 /** Keep label + price columns on the same horizontal table row. */
 export const INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES = `
 ZEILEN-ZUORDNUNG (label ↔ menge / einzelpreis / gesamtpreis):
-- Das Bild kann Zebra-Markierung (abwechselnd gelb/blaue Zeilenstreifen) und horizontale Trennlinien pro Tabellenzeile enthalten — dann gilt: alles in EINEM Streifen bzw. ZWISCHEN zwei Linien ist EINE Position.
+- Das Bild kann horizontale Trennlinien pro Tabellenzeile enthalten — dann gilt: alles ZWISCHEN zwei Linien ist EINE Position.
 - Bezeichnung und Beträge gehören IMMER zur SELBEN Tabellenzeile — gleiche horizontale Höhe.
 - Umbrüche in der Bezeichnungsspalte erzeugen KEINE neue Position (z.B. "Schraube, Einspritzdüsenhalter" + "ORIGINAL ERSATZTEIL GREENPARTS" = EIN lineItem).
 - NIEMALS Beträge einer Zeile der Bezeichnung darüber oder darunter zuordnen.
@@ -198,6 +198,7 @@ Du kopierst den RAW-TEXT aus jeder Spalte — du rechnest NIEMALS selbst.
 Für jede Datenzeile extrahierst du exakt:
   • label       = Text aus der Bezeichnungsspalte (mehrzeilig zusammenführen)
   • menge       = exakter Text aus Menge inkl. Einheit (z.B. "4", "0,90", "7,00 Liter") — null wenn Zelle leer
+  • Pos (1, 2, 3 … ganz links) ist KEINE Menge — niemals Pos-Wert in menge schreiben
   • einzelpreis = exakter Text aus E-Preis / Einzelpreis / EP inkl. € (z.B. "141,46 €") — null wenn leer
   • gesamtpreis = exakter Text aus Ges. Preis / Gesamtpreis / GP inkl. € (z.B. "331,98 €") — null wenn leer
 Zahlen IMMER exakt so wie gedruckt abschreiben, mit Komma und €. KEINE Umrechnung, KEINE Multiplikation.
@@ -233,6 +234,7 @@ export const INVOICE_LINE_ITEMS_USER_LINES = [
   "Schritt 2: Jede Datenzeile von oben nach unten — KEINE Zeile auslassen (auch Arbeitslohn mit leerer Menge/Ges. Preis).",
   "CRITICAL: Kopiere den exakten Text aus JEDER Spalte. Führe KEINE Berechnungen durch.",
   "menge = Text aus Menge inkl. Einheit — z.B. \"1,00\", \"0,90\", \"7,00 Liter\". null wenn Zelle leer.",
+  "Pos (Zeilennummer ganz links: 1, 2, 3 …) ist NICHT Menge — menge nur aus der Menge-Spalte.",
   "einzelpreis = Text aus E-Preis inkl. € — z.B. \"141,46 €\". null wenn leer.",
   "gesamtpreis = Text aus Ges. Preis inkl. € — z.B. \"331,98 €\". null wenn leer — NIEMALS E-Preis hierher kopieren.",
   "Beispiel: Menge 2,00 | E-Preis 165,99 € | Ges. Preis 331,98 € → gesamtpreis \"331,98 €\" (nicht 165,99).",

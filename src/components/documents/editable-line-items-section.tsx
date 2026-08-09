@@ -39,6 +39,12 @@ function toDraft(items: DocumentLineItem[]): DraftItem[] {
   }));
 }
 
+function zebraRowClass(index: number): string {
+  return index % 2 === 0
+    ? "bg-[color:var(--vd-surface)]"
+    : "bg-[color:var(--vd-surface-elevated)]/80";
+}
+
 function parseDraft(draft: DraftItem[]): DocumentLineItem[] {
   const items: DocumentLineItem[] = [];
   for (const row of draft) {
@@ -147,11 +153,15 @@ export function EditableLineItemsSection({
 
       {editing ? (
         <div className="space-y-3">
-          <ul className="space-y-2.5">
+          <ul className="overflow-hidden rounded-xl border border-[color:var(--vd-border)]">
             {draft.map((row, index) => (
               <li
                 key={row.key}
-                className="grid grid-cols-[1fr_6.5rem_auto] items-start gap-2"
+                className={[
+                  "grid grid-cols-[1fr_6.5rem_auto] items-start gap-2 px-2 py-2.5 sm:px-3",
+                  zebraRowClass(index),
+                  index > 0 ? "border-t border-[color:var(--vd-border)]/60" : "",
+                ].join(" ")}
               >
                 <input
                   value={row.label}
@@ -250,9 +260,8 @@ export function EditableLineItemsSection({
               key={`${item.label}-${index}`}
               className={[
                 "flex items-start justify-between gap-3 px-3 py-2.5 text-[0.88rem]",
-                index % 2 === 0
-                  ? "bg-[color:var(--vd-surface)]"
-                  : "bg-[color:var(--vd-surface-elevated)]/70",
+                zebraRowClass(index),
+                index > 0 ? "border-t border-[color:var(--vd-border)]/60" : "",
               ].join(" ")}
             >
               <span className="whitespace-pre-line text-[color:var(--vd-text)]">

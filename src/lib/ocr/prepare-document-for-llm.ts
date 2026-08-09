@@ -188,9 +188,8 @@ export function buildEnhancedImageUserMessage(
   parts.push({
     type: "text",
     text: options.rowSeparators
-      ? "Kontrastverstärktes Dokumentbild mit Zebra-Markierung und horizontalen Trennlinien pro Tabellenzeile folgt. " +
-        "Jede Position liegt in einem abwechselnd gelb/blau hinterlegten Streifen; cyanfarbene Linien trennen die Zeilen. " +
-        "Bezeichnung und Beträge gehören zur gleichen Zeile (ein Streifen / zwischen zwei Linien). " +
+      ? "Kontrastverstärktes Dokumentbild mit horizontalen Trennlinien pro Tabellenzeile folgt. " +
+        "Bezeichnung und Betrag gehören zur gleichen Zeile (zwischen zwei Linien). " +
         "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile."
       : "Kontrastverstärktes Dokumentbild folgt. " +
         "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile.",

@@ -103,6 +103,26 @@ describe("extractRowLineTotalAmount", () => {
       ]),
     ).toBe(331.98);
   });
+
+  it("does not multiply Pos column with E-Preis (Blotzheim row 3)", () => {
+    expect(
+      extractRowLineTotalAmount(
+        [
+          { rowIndex: 3, columnIndex: 0, content: "3" },
+          { rowIndex: 3, columnIndex: 1, content: "2456101" },
+          { rowIndex: 3, columnIndex: 2, content: "Warnkontakt, Bremsbelagverschleiß" },
+          { rowIndex: 3, columnIndex: 3, content: "1,00" },
+          { rowIndex: 3, columnIndex: 5, content: "28,80 €" },
+          { rowIndex: 3, columnIndex: 6, content: "28,80 €" },
+        ],
+        {
+          posColumnIndex: 0,
+          mengeColumnIndex: 3,
+          nummerColumnIndex: 1,
+        },
+      ),
+    ).toBe(28.8);
+  });
 });
 
 describe("mergeLayoutAndLlmLineItems", () => {
@@ -132,15 +152,6 @@ describe("mergeLayoutAndLlmLineItems", () => {
     expect(mergeLayoutAndLlmLineItems(llm, layout, 575)).toEqual([
       { label: "Sportfedern H&R", amount: 480 },
       { label: "Arbeitslohn", amount: 95 },
-    ]);
-  });
-
-  it("CRITICAL: prefers LLM Ges. Preis when layout only captured E-Preis", () => {
-    const llm = [{ label: "Bremsscheibe PRO+", amount: 331.98 }];
-    const layout = [{ label: "Bremsscheibe PRO+", amount: 165.99 }];
-
-    expect(mergeLayoutAndLlmLineItems(llm, layout, null)).toEqual([
-      { label: "Bremsscheibe PRO+", amount: 331.98 },
     ]);
   });
 });

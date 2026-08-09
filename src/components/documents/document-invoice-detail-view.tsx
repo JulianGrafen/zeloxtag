@@ -291,11 +291,17 @@ export function DocumentInvoiceDetailView({
                 Keine Positionen erkannt. Original-PDF unten öffnen.
               </p>
             ) : (
-              <ul className="space-y-2.5">
+              <ul className="overflow-hidden rounded-xl border border-[color:var(--vd-border)]">
                 {lineItems.map((item, index) => (
                   <li
                     key={`${item.label}-${index}`}
-                    className="flex items-start justify-between gap-3 text-[0.88rem]"
+                    className={[
+                      "flex items-start justify-between gap-3 px-3 py-2.5 text-[0.88rem]",
+                      index % 2 === 0
+                        ? "bg-[color:var(--vd-surface)]"
+                        : "bg-[color:var(--vd-surface-elevated)]/80",
+                      index > 0 ? "border-t border-[color:var(--vd-border)]/60" : "",
+                    ].join(" ")}
                   >
                     <span className="whitespace-pre-line text-[color:var(--vd-text)]">
                       {item.label}

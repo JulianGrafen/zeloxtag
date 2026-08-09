@@ -86,6 +86,86 @@ function detectLabelColumnIndex(
   return 0;
 }
 
+const POS_HEADER = /^pos\.?$/i;
+const MENGE_HEADER =
+  /(?:^|\b)(?:menge|anz\.?|anzahl|qty|me)(?:\b|$)/i;
+const NUMMER_HEADER =
+  /(?:^|\b)(?:nummer|nr\.?|art\.?-?nr|artikelnummer)(?:\b|$)/i;
+
+export type InvoiceTableColumnLayout = {
+  posColumnIndex: number | null;
+  mengeColumnIndex: number | null;
+  nummerColumnIndex: number | null;
+};
+
+const EMPTY_COLUMN_LAYOUT: InvoiceTableColumnLayout = {
+  posColumnIndex: null,
+  mengeColumnIndex: null,
+  nummerColumnIndex: null,
+};
+
+function detectPosColumnIndex(
+  headerCells: Array<{ columnIndex: number; content: string }>,
+): number | null {
+  for (const cell of headerCells) {
+    if (POS_HEADER.test(cleanCellText(cell.content))) {
+      return cell.columnIndex;
+    }
+  }
+  return null;
+}
+
+function detectMengeColumnIndex(
+  headerCells: Array<{ columnIndex: number; content: string }>,
+): number | null {
+  for (const cell of headerCells) {
+    if (MENGE_HEADER.test(cleanCellText(cell.content))) {
+      return cell.columnIndex;
+    }
+  }
+  return null;
+}
+
+function detectNummerColumnIndex(
+  headerCells: Array<{ columnIndex: number; content: string }>,
+): number | null {
+  for (const cell of headerCells) {
+    if (NUMMER_HEADER.test(cleanCellText(cell.content))) {
+      return cell.columnIndex;
+    }
+  }
+  return null;
+}
+
+function buildColumnLayout(
+  headerCells: Array<{ columnIndex: number; content: string }>,
+): InvoiceTableColumnLayout {
+  return {
+    posColumnIndex: detectPosColumnIndex(headerCells),
+    mengeColumnIndex: detectMengeColumnIndex(headerCells),
+    nummerColumnIndex: detectNummerColumnIndex(headerCells),
+  };
+}
+
+function isPosColumnCell(
+  cell: AzureLayoutTableCell,
+  rowCells: AzureLayoutTableCell[],
+  columns: InvoiceTableColumnLayout,
+): boolean {
+  if (
+    columns.posColumnIndex != null &&
+    cell.columnIndex === columns.posColumnIndex
+  ) {
+    return true;
+  }
+
+  // Pos is always the leftmost plain integer (1, 2, 3 …) without unit/decimal.
+  const text = cleanCellText(cell.content);
+  if (!/^\d{1,3}$/.test(text)) return false;
+  const leftmost = Math.min(...rowCells.map((entry) => entry.columnIndex));
+  return cell.columnIndex === leftmost;
+}
+
 function tableScore(table: AzureLayoutTable): number {
   return table.cells.filter((cell) => cell.kind !== "columnHeader").length;
 }
@@ -106,10 +186,28 @@ function looksLikeQuantityCell(text: string): boolean {
  * Parse Menge from a layout row (supports "2,00", "0,90", "7,00 Liter").
  * Money cells with € are ignored. Labels with embedded digits (e.g. 5W30) are skipped.
  */
-function parseRowQuantity(rowCells: AzureLayoutTableCell[]): number | null {
+function parseRowQuantity(
+  rowCells: AzureLayoutTableCell[],
+  columns: InvoiceTableColumnLayout = EMPTY_COLUMN_LAYOUT,
+): number | null {
+  if (columns.mengeColumnIndex != null) {
+    const cell = rowCells.find(
+      (entry) => entry.columnIndex === columns.mengeColumnIndex,
+    );
+    const text = cleanCellText(cell?.content ?? "");
+    if (!text || !looksLikeQuantityCell(text)) return null;
+    const qty = parseGermanNumber(text);
+    return qty != null && qty > 0 && qty <= 10_000 ? qty : null;
+  }
+
   let best: { qty: number; score: number } | null = null;
 
   for (const cell of rowCells) {
+    if (columns.nummerColumnIndex != null && cell.columnIndex === columns.nummerColumnIndex) {
+      continue;
+    }
+    if (isPosColumnCell(cell, rowCells, columns)) continue;
+
     const text = cleanCellText(cell.content);
     if (!looksLikeQuantityCell(text)) continue;
 
@@ -123,14 +221,13 @@ function parseRowQuantity(rowCells: AzureLayoutTableCell[]): number | null {
     if (hasUnit) {
       score += 40;
     } else if (isDecimal) {
-      // "0,90" / "2,00" are Menge; "42,90" / "120,00" without € are almost always prices.
       if (qty > 20) continue;
       score += 25;
-    } else if (/^\d+$/.test(text) && qty >= 2 && qty <= 20) {
-      // Bare integers are weak (often Pos / Artikel-Nr.). Prefer decimal Menge cells.
-      // Cap at 20 — Pos 19 "Tüv Gebühr" must not become qty=19.
-      if (cell.columnIndex === 0) continue; // almost always Pos
-      score += 8;
+    } else if (/^\d+$/.test(text) && qty >= 2 && qty <= 100) {
+      score += 12;
+    } else {
+      // Plain "1" without Menge column — too ambiguous (Pos vs qty).
+      continue;
     }
 
     if (score <= 0) continue;
@@ -147,11 +244,16 @@ function parseRowQuantity(rowCells: AzureLayoutTableCell[]): number | null {
  */
 export function extractRowLineTotalAmount(
   rowCells: AzureLayoutTableCell[],
+  columns: InvoiceTableColumnLayout = EMPTY_COLUMN_LAYOUT,
 ): number | null {
-  const qty = parseRowQuantity(rowCells);
+  const qty = parseRowQuantity(rowCells, columns);
   const qtyColumnIndexes = new Set(
     rowCells
       .filter((cell) => {
+        if (columns.nummerColumnIndex != null && cell.columnIndex === columns.nummerColumnIndex) {
+          return false;
+        }
+        if (isPosColumnCell(cell, rowCells, columns)) return false;
         const text = cleanCellText(cell.content);
         if (!looksLikeQuantityCell(text)) return false;
         const parsed = parseGermanNumber(text);
@@ -202,6 +304,7 @@ function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
     : Math.min(...table.cells.map((cell) => cell.rowIndex));
 
   const headerCells = table.cells.filter((cell) => cell.rowIndex === headerRowIndex);
+  const columnLayout = buildColumnLayout(headerCells);
 
   const amountColumnIndex = detectAmountColumnIndex(headerCells, table.columnCount);
   const labelColumnIndex = detectLabelColumnIndex(
@@ -226,7 +329,7 @@ function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
       label = cleanCellText(textCells.map((cell) => cell.content).join(" "));
     }
 
-    const amount = extractRowLineTotalAmount(rowCells);
+    const amount = extractRowLineTotalAmount(rowCells, columnLayout);
 
     if (amount == null || !label) continue;
     if (SKIP_ROW_LABEL.test(label)) continue;
@@ -332,13 +435,13 @@ function preferLongerLabel(primary: string, secondary: string): string {
 }
 
 /**
- * Merge Azure layout rows with LLM Extract & Compute totals.
- * Prefer Ges. Preis over E-Preis when the two disagree (never blindly trust layout).
+ * Prefer Azure layout rows when they match totals better than LLM output.
+ * Amounts always come from layout (rightmost Ges. Preis column); labels from LLM when clearer.
  */
 export function mergeLayoutAndLlmLineItems(
   llmItems: InvoiceLineItem[] | null | undefined,
   layoutItems: InvoiceLineItem[] | null | undefined,
-  _totalAmount: number | null,
+  totalAmount: number | null,
 ): InvoiceLineItem[] | null {
   const layout = layoutItems ?? [];
   const llm = llmItems ?? [];
@@ -347,36 +450,15 @@ export function mergeLayoutAndLlmLineItems(
   if (llm.length === 0) return layout;
 
   const usedLlmIndexes = new Set<number>();
-  const merged: InvoiceLineItem[] = [];
-
-  for (const layoutItem of layout) {
+  const merged: InvoiceLineItem[] = layout.map((layoutItem) => {
     const llmMatch = findBestLlmMatch(layoutItem, llm, usedLlmIndexes);
-    let amount = layoutItem.amount;
-
-    if (llmMatch) {
-      if (isUnitPriceAmountOfTotal(layoutItem.amount, llmMatch.amount)) {
-        // Layout = E-Preis, LLM = Ges. Preis → keep GP.
-        amount = llmMatch.amount;
-      } else if (isUnitPriceAmountOfTotal(llmMatch.amount, layoutItem.amount)) {
-        // LLM = E-Preis, layout = Ges. Preis → keep GP.
-        amount = layoutItem.amount;
-      } else {
-        // Prefer math-verified LLM unless that amount is already assigned
-        // to another row (shifted/duplicated totals).
-        const llmAmountAlreadyUsed = merged.some(
-          (existing) => Math.abs(existing.amount - llmMatch.amount) < 0.02,
-        );
-        amount = llmAmountAlreadyUsed ? layoutItem.amount : llmMatch.amount;
-      }
-    }
-
-    merged.push({
+    return {
       label: llmMatch
         ? preferLongerLabel(layoutItem.label, llmMatch.label)
         : layoutItem.label,
-      amount,
-    });
-  }
+      amount: layoutItem.amount,
+    };
+  });
 
   for (let index = 0; index < llm.length; index += 1) {
     if (usedLlmIndexes.has(index)) continue;

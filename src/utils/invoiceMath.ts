@@ -1,10 +1,10 @@
 export function parseGermanNumber(val: string | number | null | undefined): number | null {
   if (val === null || val === undefined || val === '') return null;
-  if (typeof val === 'number') return Number.isFinite(val) ? val : null;
-
+  if (typeof val === 'number') return val;
+  
   // Strip letters, currency symbols, and spaces
   let clean = String(val).replace(/[^0-9,\.-]/g, '');
-  if (!clean || clean === '-' || clean === '.' || clean === ',') return null;
+  if (!clean) return null;
 
   // Handle "1.000,50" vs "141,46"
   if (clean.includes(',') && clean.includes('.')) {
@@ -12,97 +12,62 @@ export function parseGermanNumber(val: string | number | null | undefined): numb
   } else if (clean.includes(',')) {
     clean = clean.replace(',', '.');
   }
-
+  
   const num = parseFloat(clean);
   return isNaN(num) ? null : num;
 }
 
-function roundMoney(value: number): number {
-  return parseFloat(value.toFixed(2));
+/** Plain integer without comma — often Pos column, not Menge ("4" vs "4,00"). */
+function looksLikePosInMengeField(val: unknown): boolean {
+  if (val === null || val === undefined) return false;
+  if (typeof val === "number") return Number.isInteger(val) && val >= 1 && val <= 999;
+  const trimmed = String(val).trim();
+  return /^\d{1,3}$/.test(trimmed) && !trimmed.includes(",");
 }
 
-/**
- * Bulletproof Ges. Preis resolution for German workshop invoices.
- *
- * Critical invariants (Blotzheim / real OCR):
- * - Never overwrite a printed Ges. Preis with E-Preis just because Menge was blank.
- * - Only trust menge × E-Preis when BOTH raw Menge and raw E-Preis were present.
- * - If Ges. Preis equals E-Preis but Menge > 1 → LLM copied the wrong column → use computed.
- */
 export function processLineItems(llmItems: any[]) {
   if (!Array.isArray(llmItems)) return [];
 
-  return llmItems.map((item) => {
-    const rawMenge = parseGermanNumber(item?.menge);
-    const rawEPreis = parseGermanNumber(item?.einzelpreis);
-    const rawGesPreis = parseGermanNumber(item?.gesamtpreis);
+  return llmItems.map(item => {
+    const rawMenge = parseGermanNumber(item.menge);
+    const rawEPreis = parseGermanNumber(item.einzelpreis);
+    const rawGesPreis = parseGermanNumber(item.gesamtpreis);
 
-    const mengeKnown = rawMenge !== null && rawMenge > 0;
-    const menge = mengeKnown ? rawMenge : 1;
-
-    let ePreis = rawEPreis;
+    // Rule 1: If Menge is missing, default to 1
+    let menge = rawMenge !== null ? rawMenge : 1;
+    
+    // Rule 2: If E-Preis is missing but GesPreis exists, use GesPreis as E-Preis (since menge is likely 1)
+    const ePreis = rawEPreis !== null ? rawEPreis : (rawGesPreis !== null ? rawGesPreis : 0);
+    
     let gesPreis = rawGesPreis;
 
-    // Both Menge and E-Preis known → compute and cross-check.
-    if (mengeKnown && rawEPreis !== null) {
-      const computedTotal = roundMoney(menge * rawEPreis);
+    // Pos column copied into menge: when GP and EP both exist, derive qty from GP ÷ EP
+    // if the LLM menge × EP does not match GP (e.g. Pos "4" × 28,80 ≠ 28,80).
+    if (rawGesPreis !== null && rawEPreis !== null && rawEPreis > 0) {
+      const fromRawMenge = parseFloat((menge * rawEPreis).toFixed(2));
+      const inferredMenge = parseFloat((rawGesPreis / rawEPreis).toFixed(2));
+      const fromInferred = parseFloat((inferredMenge * rawEPreis).toFixed(2));
+      const rawMatches = Math.abs(fromRawMenge - rawGesPreis) <= 0.05;
+      const inferredMatches = Math.abs(fromInferred - rawGesPreis) <= 0.05;
 
-      if (gesPreis === null) {
-        gesPreis = computedTotal;
-      } else if (Math.abs(gesPreis - computedTotal) > 0.05) {
-        // Typical LLM bug: copied E-Preis into Ges. Preis (e.g. 165,99 instead of 331,98).
-        gesPreis = computedTotal;
+      if (inferredMatches && !rawMatches && looksLikePosInMengeField(item.menge)) {
+        menge = inferredMenge;
       }
-      ePreis = rawEPreis;
-    } else if (gesPreis !== null && rawEPreis !== null) {
-      // Menge blank (Arbeitslohn / single piece). Keep printed Ges. Preis — do NOT
-      // replace it with 1 × E-Preis when they differ for any reason; prefer GP.
-      // If GP is missing-looking equal to EP, keep it (qty defaulted to 1).
-      ePreis = rawEPreis;
-      // gesPreis already set from document
-    } else if (gesPreis !== null && rawEPreis === null) {
-      // Only Ges. Preis printed.
-      ePreis = mengeKnown && menge > 0 ? roundMoney(gesPreis / menge) : gesPreis;
-    } else if (rawEPreis !== null) {
-      // Only E-Preis printed (blank Ges. Preis) → total = menge × EP (menge defaults to 1).
-      ePreis = rawEPreis;
-      gesPreis = roundMoney(menge * rawEPreis);
-    } else {
-      ePreis = 0;
-      gesPreis = 0;
+    }
+
+    // Rule 3: Math Checksum (Menge * E-Preis)
+    const computedTotal = parseFloat((menge * ePreis).toFixed(2));
+
+    // Rule 4: Overwrite if GesPreis is missing OR if the checksum deviates (e.g. LLM hallucinates)
+    if (gesPreis === null || Math.abs(gesPreis - computedTotal) > 0.05) {
+      gesPreis = computedTotal;
     }
 
     return {
       ...item,
       menge,
-      einzelpreis: ePreis ?? 0,
-      gesamtpreis: gesPreis ?? 0,
+      einzelpreis: ePreis,
+      gesamtpreis: gesPreis
     };
   });
-}
-
-/**
- * Pick the amount that is more likely a Ges. Preis (line total), not E-Preis.
- * Prefer the larger value when one is an integer multiple of the other.
- */
-export function preferLineTotalAmount(
-  a: number | null | undefined,
-  b: number | null | undefined,
-): number | null {
-  if (a == null && b == null) return null;
-  if (a == null) return b ?? null;
-  if (b == null) return a;
-
-  if (Math.abs(a - b) < 0.02) return a;
-
-  const smaller = Math.min(a, b);
-  const larger = Math.max(a, b);
-  const ratio = larger / smaller;
-  const qty = Math.round(ratio);
-  // Strict ratio — avoid false upgrades like 95 → 480 (ratio ≈ 5.05).
-  if (qty >= 2 && qty <= 100 && Math.abs(ratio - qty) < 0.02) {
-    return larger;
-  }
-
-  return larger;
 }
