@@ -58,7 +58,7 @@ describe("parseGermanNumber", () => {
     it("returns null for empty string", () => expect(parseGermanNumber("")).toBeNull());
     it("returns null for whitespace", () => expect(parseGermanNumber("  ")).toBeNull());
     it("returns null for dash placeholder", () => expect(parseGermanNumber("-")).toBeNull());
-    it("returns null for percent-only strings", () => expect(parseGermanNumber("19%")).toBeNull());
+    it("returns null for percent-only strings", () => expect(parseGermanNumber("19%")).toBeNull()); // guard in utils/invoiceMath
     it("returns null for undefined", () => expect(parseGermanNumber(undefined)).toBeNull());
   });
 

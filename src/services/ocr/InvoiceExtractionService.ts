@@ -13,6 +13,7 @@ import {
 } from "@/lib/ocr/invoice-line-items-from-layout";
 import { reconcileLineItemAmountsWithOcrText } from "@/lib/ocr/invoice-line-items-from-text";
 import { parseLlmRawLineItems } from "@/lib/ocr/invoice-line-item-math";
+import { processLineItems } from "@/utils/invoiceMath";
 import {
   buildVisionUserMessage,
   prepareSinglePageOcrInput,
@@ -431,8 +432,15 @@ export class InvoiceExtractionService {
       visionMessage,
     );
 
-    // LLM now outputs raw strings per column; TypeScript computes the totals.
-    const llmLineItems = parseLlmRawLineItems(record.lineItems);
+    // LLM outputs raw strings per column (menge, einzelpreis, gesamtpreis).
+    // processLineItems verifies/corrects totals; parseLlmRawLineItems adds
+    // Zod validation and maps to InvoiceLineItem for the rest of the pipeline.
+    const processedItems = Array.isArray(record.lineItems)
+      ? processLineItems(record.lineItems)
+      : [];
+    const llmLineItems = processedItems.length > 0
+      ? processedItems.map((item) => ({ label: item.label, amount: item.totalPrice }))
+      : parseLlmRawLineItems(record.lineItems);
     const layoutLineItems = azureLayout
       ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
       : null;

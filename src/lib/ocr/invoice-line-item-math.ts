@@ -1,15 +1,17 @@
 /**
- * "Extract & Compute" architecture for invoice line items.
+ * OCR-domain adapter for the "Extract & Compute" architecture.
  *
- * The LLM is instructed to output raw strings from each column (Menge,
- * Einzelpreis, Ges. Preis) — no math, no guessing. TypeScript then parses
- * German number formats and applies a strict checksum/fallback to produce a
- * reliable total price per item.
+ * Validates raw LLM output against `LlmLineItemSchema` (Zod), then delegates
+ * all number parsing and arithmetic to `@/utils/invoiceMath`.
  */
 
 import { z } from "zod";
 
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
+import { parseGermanNumber, processLineItems } from "@/utils/invoiceMath";
+
+// Re-export so existing call sites keep working without changes.
+export { parseGermanNumber, processLineItems } from "@/utils/invoiceMath";
 
 // ─── Zod schema for the raw LLM response ─────────────────────────────────────
 
@@ -29,64 +31,6 @@ export const LlmLineItemSchema = z.object({
 });
 
 export type LlmRawLineItem = z.infer<typeof LlmLineItemSchema>;
-
-// ─── Number parsing ───────────────────────────────────────────────────────────
-
-/**
- * Parse a German-formatted number string into a JS number.
- *
- * Handles:
- * - "1.234,56"  → 1234.56  (thousands dot + decimal comma)
- * - "141,46"    → 141.46   (decimal comma only)
- * - "1.000"     → 1000     (thousands dot, no decimal)
- * - "141.60"    → 141.6    (LLM US-style decimal dot)
- * - "7,00 Liter"→ 7.0      (trailing unit text stripped)
- * - "4 Stk."   → 4        (trailing unit text stripped)
- */
-export function parseGermanNumber(val: string | null | undefined): number | null {
-  if (!val?.trim()) return null;
-
-  // Strip trailing non-numeric unit text (e.g. " Liter", " Stk.", " h", " %").
-  const stripped = val.trim().replace(/\s+[a-zA-ZäöüÄÖÜß%][^\d,.\s]*$/, "").trim();
-  if (!stripped) return null;
-
-  // Remove currency symbols and non-breaking spaces.
-  const cleaned = stripped.replace(/[€$\u00a0]/g, "").trim();
-  if (!cleaned || cleaned === "-") return null;
-
-  // Reject pure percentage values (e.g. "19%", "7,7%").
-  if (/^-?\d+([.,]\d+)?%$/.test(cleaned)) return null;
-
-  const hasComma = cleaned.includes(",");
-  const hasDot = cleaned.includes(".");
-
-  let normalized: string;
-
-  if (hasComma && hasDot) {
-    // "1.234,56" → German: dot = thousands separator, comma = decimal.
-    normalized = cleaned.replace(/\./g, "").replace(",", ".");
-  } else if (hasComma) {
-    // "141,46" → comma is the decimal separator.
-    normalized = cleaned.replace(",", ".");
-  } else if (hasDot) {
-    // Ambiguous: "1.000" (German thousands) vs "1.60" (US decimal).
-    const dotParts = cleaned.split(".");
-    const afterDot = dotParts[dotParts.length - 1] ?? "";
-    if (afterDot.length === 3 && dotParts.length >= 2) {
-      // "1.000" or "1.234.567" — thousands separator(s), no decimal.
-      normalized = cleaned.replace(/\./g, "");
-    } else {
-      // "1.6" or "141.60" — US-style decimal.
-      normalized = cleaned;
-    }
-  } else {
-    // Plain integer: "4", "120".
-    normalized = cleaned;
-  }
-
-  const parsed = Number.parseFloat(normalized);
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100000) / 100000 : null;
-}
 
 // ─── Core checksum/fallback logic ─────────────────────────────────────────────
 
