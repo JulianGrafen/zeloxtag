@@ -36,8 +36,9 @@ VOLLSTÄNDIGKEIT (lineItems):
 - Auch wenn Menge und/oder Ges. Preis LEER sind: Zeile trotzdem erfassen (typisch Arbeitslohn) — menge/gesamtpreis = null.
 - Pro Tabellenzeile höchstens EIN lineItem — E-Preis und Ges. Preis derselben Zeile nicht doppelt.
 - Auch: Arbeitslohn, Material, Kleinmaterial, Entsorgung, Altöl, Umweltgebühr, TÜV-Gebühr, Rabatt (€), MwSt. (€) — jeweils eigene Zeile.
+- MwSt-Zeile (z. B. „MwSt 19%“ mit €-Betrag) IMMER als eigenes lineItem — nicht in Positionen summieren, nicht auslassen.
 - Tabellenkopf (Pos, Bezeichnung, Menge, …) und reine Summenzeilen (Zwischensumme, Netto gesamt) sind KEINE Positionen.
-- "Summe"/"Gesamt" am Tabellenende nur als lineItem wenn es eine ausgewiesene MwSt.- oder Gebührenzeile ist.
+- „Summe“/„Gesamt“ am Tabellenende nur als lineItem wenn es eine ausgewiesene MwSt.- oder Gebührenzeile ist.
 - Fortsetzungstabelle auf nächster Seite: alle Zeilen mit erfassen.
 - Niemals mehrere Materialien in ein label packen (falsch: "Reifen und Federn").
 - Unleserliche Bezeichnung: trotzdem erfassen wenn Betrag lesbar ist.
@@ -54,9 +55,12 @@ ZEILEN-ZUORDNUNG (label ↔ menge / einzelpreis / gesamtpreis):
 - Beispiel korrekt:
   Zeile: "Bremsscheibe PRO+" | Menge "2,00" | E-Preis "165,99 €" | Ges. Preis "331,98 €"
   → { label, menge: "2,00", einzelpreis: "165,99 €", gesamtpreis: "331,98 €" }
-- Beispiel Arbeitslohn (leere Zellen):
+- Beispiel Arbeitslohn (Stundensatz, nicht fakturiert):
   Zeile: "Bremsbeläge erneuern (Hinterachse)" | Menge leer | E-Preis "90,00 €" | Ges. Preis leer
-  → { label, menge: null, einzelpreis: "90,00 €", gesamtpreis: null }
+  → { label, menge: null, einzelpreis: "90,00 €", gesamtpreis: null } — nur E-Preis = kein Ges. Preis
+- Beispiel Arbeitslohn (fakturiert):
+  Zeile: "Beide Bremsscheiben erneuern" | Menge "0,90" | E-Preis "90,00 €" | Ges. Preis "81,00 €"
+  → menge "0,90", gesamtpreis "81,00 €"
 `.trim();
 
 /** Few-shot from real Blotzheim-style workshop invoice columns. */
@@ -65,7 +69,7 @@ FEW-SHOT — Extract & Compute (deutsche Werkstattrechnung Pos | Nummer | Bezeic
 1. "Bremsbelagsatz, Scheibenbremse" | 1,00 | 141,46 € | 141,46 €
    → menge "1,00", einzelpreis "141,46 €", gesamtpreis "141,46 €"
 2. "Bremsbeläge erneuern (Hinterachse)" | (leer) | 90,00 € | (leer)
-   → menge null, einzelpreis "90,00 €", gesamtpreis null  ← KEINE Zeile auslassen!
+   → menge null, einzelpreis "90,00 €", gesamtpreis null  ← Stundensatz, NICHT in Summe!
 3. "Bremsscheibe PRO+" | 2,00 | 165,99 € | 331,98 €
    → menge "2,00", einzelpreis "165,99 €", gesamtpreis "331,98 €"  ← NIEMALS 165,99 als gesamtpreis
 4. "Beide Bremsscheiben erneuern (Hinterachse)" | 0,90 | 90,00 € | 81,00 €
@@ -206,7 +210,7 @@ Leere Menge oder leerer Ges. Preis → null (nicht 1 und nicht den E-Preis raten
     INVOICE_LINE_ITEMS_EXTRACT_COMPUTE_FEW_SHOT,
     INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
     INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES,
-    "amount (Zahlbetrag) = raw text des Rechnungsgesamtbetrags falls in diesem Abschnitt sichtbar — sonst null.",
+    "amount (Zahlbetrag) = raw text des Rechnungsgesamtbetrags (brutto inkl. MwSt) falls sichtbar — sonst null.",
     "Antworte nur mit JSON.",
   ].join("\n\n");
 }
@@ -238,9 +242,11 @@ export const INVOICE_LINE_ITEMS_USER_LINES = [
   "einzelpreis = Text aus E-Preis inkl. € — z.B. \"141,46 €\". null wenn leer.",
   "gesamtpreis = Text aus Ges. Preis inkl. € — z.B. \"331,98 €\". null wenn leer — NIEMALS E-Preis hierher kopieren.",
   "Beispiel: Menge 2,00 | E-Preis 165,99 € | Ges. Preis 331,98 € → gesamtpreis \"331,98 €\" (nicht 165,99).",
-  "Beispiel: Menge leer | E-Preis 90,00 € | Ges. Preis leer → menge null, gesamtpreis null.",
+  "Beispiel: Menge leer | E-Preis 90,00 € | Ges. Preis leer → menge null, gesamtpreis null (nur E-Preis = Stundensatz, nicht addieren).",
+  "Beispiel: Menge 0,90 | E-Preis 90,00 € | Ges. Preis 81,00 € → gesamtpreis \"81,00 €\".",
   "Pro Tabellenzeile GENAU EIN lineItem — mehrzeilige Bezeichnung = ein Item.",
   "Fortsetzung der Tabelle auf Seite 2: alle Zeilen mit erfassen.",
+  "MwSt-Zeile (z. B. „MwSt 19%“ + €-Betrag) als eigenes lineItem — Gesamtbetrag ist brutto inkl. MwSt.",
 ] as const;
 
 /** @deprecated Use buildInvoiceLineItemsSystemPrompt() */

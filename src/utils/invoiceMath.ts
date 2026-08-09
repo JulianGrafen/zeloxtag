@@ -25,6 +25,26 @@ function looksLikePosInMengeField(val: unknown): boolean {
   return /^\d{1,3}$/.test(trimmed) && !trimmed.includes(",");
 }
 
+function hasMengeOrUnit(val: unknown): boolean {
+  if (val === null || val === undefined) return false;
+  return String(val).trim().length > 0;
+}
+
+/** E-Preis alone (no Menge/Einh., no Ges. Preis) is a rate — not billable. */
+function isRateOnlyRow(
+  rawMenge: number | null,
+  rawEPreis: number | null,
+  rawGesPreis: number | null,
+  mengeField: unknown,
+): boolean {
+  return (
+    rawGesPreis === null &&
+    rawEPreis !== null &&
+    rawMenge === null &&
+    !hasMengeOrUnit(mengeField)
+  );
+}
+
 export function processLineItems(llmItems: any[]) {
   if (!Array.isArray(llmItems)) return [];
 
@@ -33,7 +53,16 @@ export function processLineItems(llmItems: any[]) {
     const rawEPreis = parseGermanNumber(item.einzelpreis);
     const rawGesPreis = parseGermanNumber(item.gesamtpreis);
 
-    // Rule 1: If Menge is missing, default to 1
+    if (isRateOnlyRow(rawMenge, rawEPreis, rawGesPreis, item.menge)) {
+      return {
+        ...item,
+        menge: null,
+        einzelpreis: rawEPreis,
+        gesamtpreis: 0,
+      };
+    }
+
+    // Rule 1: If Menge is missing, default to 1 only when Ges. Preis or E-Preis needs computing
     let menge = rawMenge !== null ? rawMenge : 1;
     
     // Rule 2: If E-Preis is missing but GesPreis exists, use GesPreis as E-Preis (since menge is likely 1)

@@ -31,7 +31,14 @@ const TOTAL_PRICE_HEADER =
   /(?:^|\b)(?:ges\.?\s*preis|gesamtpreis|ges\.?\s*summe|gesamtbetrag|g-?preis|summe|betrag|wert|total|gp|brutto|eur)(?:\b|$)/i;
 
 const SKIP_ROW_LABEL =
-  /^(?:summe|gesamt(?:betrag)?|zwischensumme|netto(?:betrag)?|brutto(?:betrag)?|rechnungsbetrag|zahlbetrag|mwst|ust|position(?:en)?)$/i;
+  /^(?:summe|gesamt(?:betrag)?|zwischensumme|netto(?:betrag)?|brutto(?:betrag)?|rechnungsbetrag|zahlbetrag|position(?:en)?)$/i;
+
+function shouldSkipTableRow(label: string): boolean {
+  if (SKIP_ROW_LABEL.test(label)) return true;
+  // Rate-only cells like "MwSt 19%" without a € amount — not a billable row.
+  if (/^(?:mwst|ust)\.?\s*(?:19|7)?\s*%?\s*$/i.test(label.trim())) return true;
+  return false;
+}
 
 function cleanCellText(value: string): string {
   return value.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
@@ -277,11 +284,14 @@ export function extractRowLineTotalAmount(
   if (moneyCells.length === 0) return null;
   if (moneyCells.length === 1) {
     const only = moneyCells[0]!.amount;
-    // Single money column often means only E-Preis is printed — compute Ges. Preis.
-    if (qty != null && Math.abs(qty - 1) > 0.001) {
-      return Math.round(only * qty * 100) / 100;
+    if (qty != null) {
+      if (Math.abs(qty - 1) > 0.001) {
+        return Math.round(only * qty * 100) / 100;
+      }
+      return only;
     }
-    return only;
+    // Only E-Preis printed — no Menge/Einh. and no Ges. Preis → not billable.
+    return null;
   }
 
   const rightmost = moneyCells[0]!;
@@ -332,7 +342,7 @@ function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
     const amount = extractRowLineTotalAmount(rowCells, columnLayout);
 
     if (amount == null || !label) continue;
-    if (SKIP_ROW_LABEL.test(label)) continue;
+    if (shouldSkipTableRow(label)) continue;
 
     const candidate = { label, amount };
     if (isLikelyInvoiceTableHeaderRow(candidate)) continue;

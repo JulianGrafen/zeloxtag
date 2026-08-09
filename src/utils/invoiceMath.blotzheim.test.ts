@@ -26,20 +26,18 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
   it("maps to InvoiceLineItem amounts used for save/merge", () => {
     const lineItems = parseLlmRawLineItems(BLOTZHEIM_LLM_RAW_LINE_ITEMS);
     expect(lineItems).not.toBeNull();
-    expect(lineItems!).toHaveLength(20);
+    expect(lineItems!).toHaveLength(19);
 
-    for (let i = 0; i < BLOTZHEIM_EXPECTED_TOTALS.length; i += 1) {
-      expect(lineItems![i]!.amount).toBeCloseTo(
-        BLOTZHEIM_EXPECTED_TOTALS[i]!.amount,
-        2,
-      );
+    const billable = BLOTZHEIM_EXPECTED_TOTALS.filter((row) => row.amount > 0);
+    for (let i = 0; i < billable.length; i += 1) {
+      expect(lineItems![i]!.amount).toBeCloseTo(billable[i]!.amount, 2);
     }
 
     const sum = lineItems!.reduce((acc, item) => acc + item.amount, 0);
     expect(sum).toBeCloseTo(BLOTZHEIM_LINE_ITEMS_SUM, 2);
   });
 
-  it("blank Menge + blank Ges. Preis → uses E-Preis as total (Arbeitslohn-Zeile)", () => {
+  it("E-Preis-only row without Menge/Ges. Preis is excluded from totals", () => {
     const [item] = processLineItems([
       {
         label: "Bremsbeläge erneuern (Hinterachse)",
@@ -48,7 +46,7 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
         gesamtpreis: null,
       },
     ]);
-    expect(item).toMatchObject({ menge: 1, einzelpreis: 90, gesamtpreis: 90 });
+    expect(item.gesamtpreis).toBe(0);
   });
 
   it("fractional labor hours: 0,90 × 90,00 = 81,00", () => {
@@ -88,6 +86,6 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
     );
     expect(
       processed.find((i) => i.label.includes("Bremsbeläge erneuern"))!.gesamtpreis,
-    ).toBe(90);
+    ).toBe(0);
   });
 });

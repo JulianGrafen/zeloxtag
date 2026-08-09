@@ -36,11 +36,18 @@ describe("processLineItems", () => {
     expect(item).toMatchObject({ menge: 4, einzelpreis: 120, gesamtpreis: 480 });
   });
 
-  it("defaults menge to 1", () => {
+  it("defaults menge to 1 when gesamtpreis is present", () => {
     const [item] = processLineItems([
-      { label: "Ölfilter", menge: null, einzelpreis: "42,90", gesamtpreis: null },
+      { label: "Entsorgung", menge: null, einzelpreis: null, gesamtpreis: "12,00" },
     ]);
-    expect(item).toMatchObject({ menge: 1, einzelpreis: 42.9, gesamtpreis: 42.9 });
+    expect(item).toMatchObject({ menge: 1, einzelpreis: 12, gesamtpreis: 12 });
+  });
+
+  it("excludes E-Preis-only rows without Menge and Ges. Preis", () => {
+    const [item] = processLineItems([
+      { label: "Bremsbeläge erneuern", menge: null, einzelpreis: "90,00", gesamtpreis: null },
+    ]);
+    expect(item).toMatchObject({ einzelpreis: 90, gesamtpreis: 0 });
   });
 
   it("overrides wrong gesamtpreis with menge × e-preis", () => {

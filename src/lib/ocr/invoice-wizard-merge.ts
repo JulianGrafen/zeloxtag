@@ -1,6 +1,7 @@
 import { preferAmount } from "@/lib/ocr/amount-from-text";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import { ensureInvoiceVatAndGrossTotal } from "@/lib/ocr/invoice-vat";
 import { extractMileageKmFromText } from "@/lib/ocr/mileage-from-text";
 import {
   coerceLooseNumber,
@@ -143,6 +144,11 @@ export function mergeInvoiceWizardExtractions(
     lineItems,
   );
 
+  const withVat = ensureInvoiceVatAndGrossTotal({
+    lineItems,
+    amount,
+  });
+
   const mileageKm = sanitizeInvoiceMileageKm(
     parseHeaderMileage(header.mileageKm, header.invoiceNumber),
     header.invoiceNumber,
@@ -151,10 +157,10 @@ export function mergeInvoiceWizardExtractions(
   return normalizeTextParseResult({
     vendor,
     date,
-    amount,
+    amount: withVat.amount,
     category: category === "abe" ? "other" : category,
     summary: overview?.summary ?? null,
-    lineItems,
+    lineItems: withVat.lineItems,
     kbaNumber: null,
     vehicleApprovals: null,
     authority: null,

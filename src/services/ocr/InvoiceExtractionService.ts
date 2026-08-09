@@ -6,12 +6,14 @@ import {
   analyzeLayoutWithAzure,
   isAzureDocumentIntelligenceConfigured,
 } from "@/lib/ocr/azure-document-intelligence";
+import { sumLineItems } from "@/lib/documents/line-items";
 import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
 import {
   extractInvoiceLineItemsFromAzureLayout,
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
 import { reconcileLineItemAmountsWithOcrText } from "@/lib/ocr/invoice-line-items-from-text";
+import { ensureInvoiceVatAndGrossTotal } from "@/lib/ocr/invoice-vat";
 import { processLineItems } from "@/utils/invoiceMath";
 import {
   buildVisionUserMessage,
@@ -452,9 +454,7 @@ export class InvoiceExtractionService {
       : null;
     const amount =
       coerceGermanMoneyAmount(record.amount, "conservative") ??
-      (layoutLineItems?.length
-        ? sumLineItemAmounts(layoutLineItems)
-        : null);
+      (layoutLineItems?.length ? sumLineItems(layoutLineItems) : null);
 
     const merged = mergeLayoutAndLlmLineItems(
       llmLineItems,
@@ -464,12 +464,17 @@ export class InvoiceExtractionService {
     const reconciled = azureLayout?.content
       ? reconcileLineItemAmountsWithOcrText(merged, azureLayout.content)
       : merged;
-    const lineItems = normalizeLineItemsList(
+    const normalized = normalizeLineItemsList(
       realignShiftedInvoiceLineItems(reconciled, amount),
       LINE_ITEMS_MAX_COUNT,
     );
+    const withVat = ensureInvoiceVatAndGrossTotal({
+      lineItems: normalized,
+      amount,
+      ocrText: azureLayout?.content ?? "",
+    });
 
-    return { lineItems, amount };
+    return { lineItems: withVat.lineItems, amount: withVat.amount };
   }
 }
 

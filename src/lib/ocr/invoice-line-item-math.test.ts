@@ -94,11 +94,22 @@ describe("computeLineItemTotal", () => {
     ).toEqual({ label: "Reifen", amount: 480 });
   });
 
-  it("defaults menge to 1 when blank and computes from einzelpreis", () => {
+  it("excludes E-Preis-only rows without Menge and Ges. Preis", () => {
+    expect(
+      computeLineItemTotal({
+        label: "Stundensatz",
+        menge: null,
+        einzelpreis: "90,00",
+        gesamtpreis: null,
+      }),
+    ).toBeNull();
+  });
+
+  it("computes total when Menge is present without Ges. Preis", () => {
     expect(
       computeLineItemTotal({
         label: "Ölfilter",
-        menge: null,
+        menge: "1,00",
         einzelpreis: "42,90",
         gesamtpreis: null,
       }),
@@ -116,11 +127,11 @@ describe("computeLineItemTotal", () => {
     ).toEqual({ label: "Reifen", amount: 480 });
   });
 
-  it("overrides wrong gesamtpreis (Einzelpreis misread) with computed value", () => {
+  it("overrides wrong gesamtpreis with menge × e-preis", () => {
     expect(
       computeLineItemTotal({
         label: "Reifen",
-        menge: "4",
+        menge: "4,00",
         einzelpreis: "120,00",
         gesamtpreis: "120,00", // LLM returned EP instead of GP
       }),
@@ -161,12 +172,12 @@ describe("computeLineItemTotal", () => {
     ).toEqual({ label: "Motoröl", amount: 87.5 });
   });
 
-  it("handles missing menge field (undefined)", () => {
+  it("handles missing menge field when Ges. Preis is present", () => {
     expect(
       computeLineItemTotal({
         label: "Entsorgungsgebühr",
-        einzelpreis: "15,00",
-        gesamtpreis: null,
+        einzelpreis: null,
+        gesamtpreis: "15,00",
       }),
     ).toEqual({ label: "Entsorgungsgebühr", amount: 15 });
   });
@@ -189,9 +200,10 @@ describe("parseAndVerifyLineItems", () => {
     ]);
   });
 
-  it("drops items with no price data and keeps valid ones", () => {
+  it("drops E-Preis-only rows and keeps billable ones", () => {
     const result = parseAndVerifyLineItems([
-      { label: "Valide Position", menge: null, einzelpreis: "50,00", gesamtpreis: null },
+      { label: "Valide Position", menge: "1,00", einzelpreis: "50,00", gesamtpreis: null },
+      { label: "Nur Stundensatz", menge: null, einzelpreis: "90,00", gesamtpreis: null },
       { label: "Leere Zeile", menge: null, einzelpreis: null, gesamtpreis: null },
     ]);
 
@@ -200,8 +212,7 @@ describe("parseAndVerifyLineItems", () => {
 
   it("corrects LLM hallucination where gesamtpreis = einzelpreis (forgot menge)", () => {
     const result = parseAndVerifyLineItems([
-      // LLM reported Einzelpreis as Ges. Preis, but Menge is 4
-      { label: "Bremsbeläge", menge: "4", einzelpreis: "38,50", gesamtpreis: "38,50" },
+      { label: "Bremsbeläge", menge: "4,00", einzelpreis: "38,50", gesamtpreis: "38,50" },
     ]);
 
     expect(result).toEqual([{ label: "Bremsbeläge", amount: 154 }]);

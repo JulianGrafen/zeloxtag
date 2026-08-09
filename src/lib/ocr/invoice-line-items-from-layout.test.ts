@@ -53,10 +53,20 @@ describe("extractInvoiceLineItemsFromAzureLayout", () => {
 });
 
 describe("extractRowLineTotalAmount", () => {
-  it("returns the only amount when row has a single price", () => {
+  it("returns null for E-Preis-only row without Menge or Ges. Preis", () => {
+    expect(
+      extractRowLineTotalAmount([
+        { rowIndex: 2, columnIndex: 1, content: "Bremsbeläge erneuern" },
+        { rowIndex: 2, columnIndex: 3, content: "90,00 €" },
+      ]),
+    ).toBeNull();
+  });
+
+  it("returns amount when Menge is present with a single price column", () => {
     expect(
       extractRowLineTotalAmount([
         { rowIndex: 2, columnIndex: 1, content: "Ölfilter" },
+        { rowIndex: 2, columnIndex: 2, content: "1,00" },
         { rowIndex: 2, columnIndex: 3, content: "42,90" },
       ]),
     ).toBe(42.9);

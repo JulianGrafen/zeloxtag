@@ -4,7 +4,7 @@
  *
  * Columns on the paper: Menge | E-Preis | Ges. Preis
  * Row 2 ("Bremsbeläge erneuern") has blank Menge and blank Ges. Preis —
- * only E-Preis 90,00 € is printed → total must become 90,00.
+ * only E-Preis 90,00 € (Stundensatz) → not billable, excluded from totals.
  */
 
 export type BlotzheimRawLineItem = {
@@ -141,7 +141,7 @@ export const BLOTZHEIM_LLM_RAW_LINE_ITEMS: BlotzheimRawLineItem[] = [
 /** Expected Ges. Preis after processLineItems (amount stored on the document). */
 export const BLOTZHEIM_EXPECTED_TOTALS: Array<{ label: string; amount: number }> = [
   { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
-  { label: "Bremsbeläge erneuern (Hinterachse)", amount: 90 },
+  { label: "Bremsbeläge erneuern (Hinterachse)", amount: 0 },
   { label: "Warnkontakt, Bremsbelagverschleiß", amount: 28.8 },
   { label: "Bremsscheibe PRO+", amount: 331.98 },
   { label: "Beide Bremsscheiben erneuern (Hinterachse)", amount: 81 },
