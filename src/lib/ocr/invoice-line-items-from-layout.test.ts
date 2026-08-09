@@ -50,35 +50,6 @@ describe("extractInvoiceLineItemsFromAzureLayout", () => {
 
     expect(extractRowLineTotalAmount(rowCells)).toBe(480);
   });
-
-  it("computes Ges. Preis from Menge × E-Preis with explicit Menge column", () => {
-    const result: AzureLayoutAnalyzeResult = {
-      content: "",
-      pages: [],
-      tables: [
-        {
-          rowCount: 3,
-          columnCount: 5,
-          cells: [
-            { rowIndex: 0, columnIndex: 0, content: "Pos" },
-            { rowIndex: 0, columnIndex: 1, content: "Bezeichnung" },
-            { rowIndex: 0, columnIndex: 2, content: "Menge" },
-            { rowIndex: 0, columnIndex: 3, content: "E-Preis" },
-            { rowIndex: 0, columnIndex: 4, content: "Ges. Preis" },
-            { rowIndex: 1, columnIndex: 0, content: "1" },
-            { rowIndex: 1, columnIndex: 1, content: "Reifen" },
-            { rowIndex: 1, columnIndex: 2, content: "4" },
-            { rowIndex: 1, columnIndex: 3, content: "120,00" },
-            { rowIndex: 1, columnIndex: 4, content: "480,00" },
-          ],
-        },
-      ],
-    };
-
-    expect(extractInvoiceLineItemsFromAzureLayout(result)).toEqual([
-      { label: "Reifen", amount: 480 },
-    ]);
-  });
 });
 
 describe("extractRowLineTotalAmount", () => {

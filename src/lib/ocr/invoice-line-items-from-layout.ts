@@ -1,25 +1,17 @@
 /**
  * Invoice line items from Azure Document Intelligence layout tables.
- * Gesamtpreis = Menge × E-Preis (validated against Ges.-Spalte when present).
+ * Pairs label + Gesamtpreis per rowIndex (geometry-aware via table cells).
  */
 
-import { isLikelyInvoiceTableHeaderRow } from "@/lib/ocr/invoice-line-item-alignment";
 import {
   isUnitPriceAmountOfTotal,
   normalizedInvoiceLineLabelKey,
 } from "@/lib/ocr/invoice-line-item-dedupe";
+import { isLikelyInvoiceTableHeaderRow } from "@/lib/ocr/invoice-line-item-alignment";
 import {
   extractInvoiceLineItemsFromText,
   lineTotalFromInvoiceRow,
 } from "@/lib/ocr/invoice-line-items-from-text";
-import {
-  detectLineTotalColumnIndex,
-  detectQuantityColumnIndex,
-  detectUnitPriceColumnIndex,
-  parseInvoiceQuantityCell,
-  readQuantityFromRowCells,
-  resolveInvoiceLineTotalAmount,
-} from "@/lib/ocr/invoice-line-total";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 
@@ -30,6 +22,12 @@ import type {
 } from "./azure-document-intelligence";
 
 const MAX_ITEMS = 60;
+
+const UNIT_PRICE_HEADER =
+  /(?:^|\b)(?:e-?preis|einzelpreis|ep|stückpreis|stk\.?\s*preis|netto(?:preis)?|listenpreis)(?:\b|$)/i;
+
+const TOTAL_PRICE_HEADER =
+  /(?:^|\b)(?:ges\.?\s*preis|gesamtpreis|ges\.?\s*summe|gesamtbetrag|g-?preis|summe|betrag|wert|total|gp|brutto|eur)(?:\b|$)/i;
 
 const SKIP_ROW_LABEL =
   /^(?:summe|gesamt(?:betrag)?|zwischensumme|netto(?:betrag)?|brutto(?:betrag)?|rechnungsbetrag|zahlbetrag|mwst|ust|position(?:en)?)$/i;
@@ -43,6 +41,31 @@ function parseMoneyCell(value: string): number | null {
   if (!trimmed || /%/.test(trimmed)) return null;
   if (!/,\d{2}$/.test(trimmed) && !/\.\d{2}$/.test(trimmed)) return null;
   return parseGermanMoneyAmount(trimmed);
+}
+
+function detectAmountColumnIndex(
+  headerCells: Array<{ columnIndex: number; content: string }>,
+  columnCount: number,
+): number {
+  let bestIndex = columnCount - 1;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+    const header = headerCells.find((cell) => cell.columnIndex === columnIndex);
+    const label = cleanCellText(header?.content ?? "").toLowerCase();
+    let score = columnIndex * 2;
+
+    if (TOTAL_PRICE_HEADER.test(label)) score += 40;
+    if (UNIT_PRICE_HEADER.test(label)) score -= 50;
+    if (/^pos\.?$|^nr\.?$|^menge$|^anz|^stk/.test(label)) score -= 8;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = columnIndex;
+    }
+  }
+
+  return bestIndex;
 }
 
 function detectLabelColumnIndex(
@@ -64,62 +87,30 @@ function tableScore(table: AzureLayoutTable): number {
   return table.cells.filter((cell) => cell.kind !== "columnHeader").length;
 }
 
-type TableColumnMap = {
-  labelColumnIndex: number;
-  quantityColumnIndex: number | null;
-  unitColumnIndex: number | null;
-  totalColumnIndex: number | null;
-};
+function parseRowQuantity(rowCells: AzureLayoutTableCell[]): number | null {
+  let bestQty: number | null = null;
 
-function buildTableColumnMap(table: AzureLayoutTable): TableColumnMap {
-  const headerRowIndex = table.cells.some((cell) => cell.rowIndex === 0)
-    ? 0
-    : Math.min(...table.cells.map((cell) => cell.rowIndex));
-  const headerCells = table.cells.filter((cell) => cell.rowIndex === headerRowIndex);
+  for (const cell of rowCells) {
+    const text = cleanCellText(cell.content);
+    if (!/^\d+$/.test(text)) continue;
 
-  const totalColumnIndex = detectLineTotalColumnIndex(headerCells, table.columnCount);
-  const unitColumnIndex = detectUnitPriceColumnIndex(headerCells);
-  const labelColumnIndex = detectLabelColumnIndex(
-    headerCells,
-    totalColumnIndex ?? table.columnCount - 1,
-  );
-  const quantityColumnIndex = detectQuantityColumnIndex(
-    headerCells,
-    labelColumnIndex,
-    unitColumnIndex,
-    totalColumnIndex,
-    table.columnCount,
-  );
+    const qty = Number.parseInt(text, 10);
+    if (!Number.isFinite(qty) || qty < 2 || qty > 100) continue;
 
-  return {
-    labelColumnIndex,
-    quantityColumnIndex,
-    unitColumnIndex,
-    totalColumnIndex,
-  };
-}
-
-function readMoneyFromColumn(
-  rowCells: AzureLayoutTableCell[],
-  columnIndex: number | null,
-): number | null {
-  if (columnIndex == null) return null;
-  const cell = rowCells.find((entry) => entry.columnIndex === columnIndex);
-  return parseMoneyCell(cell?.content ?? "");
-}
-
-function inferUnitAndTotalFromMoneyCells(
-  rowCells: AzureLayoutTableCell[],
-  unitColumnIndex: number | null,
-  totalColumnIndex: number | null,
-): { unitPrice: number | null; statedTotal: number | null } {
-  const unitFromColumn = readMoneyFromColumn(rowCells, unitColumnIndex);
-  const totalFromColumn = readMoneyFromColumn(rowCells, totalColumnIndex);
-
-  if (unitFromColumn != null || totalFromColumn != null) {
-    return { unitPrice: unitFromColumn, statedTotal: totalFromColumn };
+    if (bestQty == null || qty > bestQty) {
+      bestQty = qty;
+    }
   }
 
+  return bestQty;
+}
+
+/**
+ * When a row has Einzelpreis + Ges. Preis, always take the rightmost € value.
+ */
+export function extractRowLineTotalAmount(
+  rowCells: AzureLayoutTableCell[],
+): number | null {
   const moneyCells = rowCells
     .map((cell) => ({
       columnIndex: cell.columnIndex,
@@ -129,102 +120,45 @@ function inferUnitAndTotalFromMoneyCells(
       (entry): entry is { columnIndex: number; amount: number } =>
         entry.amount != null,
     )
-    .sort((a, b) => a.columnIndex - b.columnIndex);
+    .sort((a, b) => b.columnIndex - a.columnIndex);
 
-  if (moneyCells.length === 0) {
-    return { unitPrice: null, statedTotal: null };
-  }
-
+  if (moneyCells.length === 0) return null;
   if (moneyCells.length === 1) {
-    return { unitPrice: moneyCells[0]!.amount, statedTotal: moneyCells[0]!.amount };
-  }
-
-  return {
-    unitPrice: moneyCells[moneyCells.length - 2]!.amount,
-    statedTotal: moneyCells[moneyCells.length - 1]!.amount,
-  };
-}
-
-/**
- * Resolve Gesamtpreis for one table row (Menge × E-Preis, validated against Ges.-Spalte).
- */
-export function extractRowLineTotalAmount(
-  rowCells: AzureLayoutTableCell[],
-  columns: TableColumnMap = inferColumnMapFromRow(rowCells),
-): number | null {
-  const quantity = readQuantityFromRowCells(
-    rowCells,
-    columns.quantityColumnIndex,
-    columns.labelColumnIndex,
-    columns.unitColumnIndex,
-    columns.totalColumnIndex,
-  );
-  let { unitPrice, statedTotal } = inferUnitAndTotalFromMoneyCells(
-    rowCells,
-    columns.unitColumnIndex,
-    columns.totalColumnIndex,
-  );
-
-  if (quantity != null && quantity > 1) {
-    if (unitPrice == null && statedTotal != null) {
-      unitPrice = statedTotal;
-      statedTotal = null;
-    } else if (
-      unitPrice != null &&
-      statedTotal != null &&
-      Math.abs(unitPrice - statedTotal) < 0.02
-    ) {
-      statedTotal = null;
+    const only = moneyCells[0]!.amount;
+    const qty = parseRowQuantity(rowCells);
+    if (qty != null && qty >= 2) {
+      const asTotal = Math.round(only * qty * 100) / 100;
+      if (asTotal > only + 0.01) return asTotal;
     }
+    return only;
   }
 
-  const resolved = resolveInvoiceLineTotalAmount({
-    quantity,
-    unitPrice,
-    statedTotal,
-  });
+  const rightmost = moneyCells[0]!;
+  const second = moneyCells[1]!;
 
-  if (resolved != null) return resolved;
+  if (rightmost.amount + 0.01 >= second.amount) {
+    return rightmost.amount;
+  }
 
-  // Last resort: rightmost money when parts could not be classified.
-  const moneyCells = rowCells
-    .map((cell) => parseMoneyCell(cell.content))
-    .filter((amount): amount is number => amount != null);
-  return moneyCells.at(-1) ?? null;
-}
+  if (isUnitPriceAmountOfTotal(rightmost.amount, second.amount)) {
+    return second.amount;
+  }
 
-function inferColumnMapFromRow(rowCells: AzureLayoutTableCell[]): TableColumnMap {
-  const labelColumnIndex =
-    rowCells.find((cell) => /[a-zäöüß]{3,}/i.test(cleanCellText(cell.content)))
-      ?.columnIndex ?? 1;
-
-  const moneyColumns = rowCells
-    .filter((cell) => parseMoneyCell(cell.content) != null)
-    .map((cell) => cell.columnIndex)
-    .sort((a, b) => a - b);
-
-  return {
-    labelColumnIndex,
-    quantityColumnIndex:
-      moneyColumns.length > 0
-        ? rowCells.find(
-            (cell) =>
-              cell.columnIndex > labelColumnIndex &&
-              cell.columnIndex < moneyColumns[0]! &&
-              parseInvoiceQuantityCell(cell.content) != null,
-          )?.columnIndex ?? null
-        : null,
-    unitColumnIndex:
-      moneyColumns.length >= 2 ? moneyColumns[moneyColumns.length - 2]! : null,
-    totalColumnIndex: moneyColumns.at(-1) ?? null,
-  };
+  return rightmost.amount;
 }
 
 function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
   const headerRowIndex = table.cells.some((cell) => cell.rowIndex === 0)
     ? 0
     : Math.min(...table.cells.map((cell) => cell.rowIndex));
-  const columns = buildTableColumnMap(table);
+
+  const headerCells = table.cells.filter((cell) => cell.rowIndex === headerRowIndex);
+
+  const amountColumnIndex = detectAmountColumnIndex(headerCells, table.columnCount);
+  const labelColumnIndex = detectLabelColumnIndex(
+    headerCells,
+    amountColumnIndex,
+  );
 
   const items: InvoiceLineItem[] = [];
   const seen = new Set<string>();
@@ -233,22 +167,17 @@ function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
     const rowCells = table.cells.filter((cell) => cell.rowIndex === rowIndex);
     if (rowCells.length === 0) continue;
 
-    const labelCell = rowCells.find(
-      (cell) => cell.columnIndex === columns.labelColumnIndex,
-    );
+    const labelCell = rowCells.find((cell) => cell.columnIndex === labelColumnIndex);
     let label = cleanCellText(labelCell?.content ?? "");
 
     if (!label) {
       const textCells = rowCells
-        .filter(
-          (cell) =>
-            cell.columnIndex < (columns.totalColumnIndex ?? table.columnCount),
-        )
+        .filter((cell) => cell.columnIndex < amountColumnIndex)
         .sort((a, b) => a.columnIndex - b.columnIndex);
       label = cleanCellText(textCells.map((cell) => cell.content).join(" "));
     }
 
-    const amount = extractRowLineTotalAmount(rowCells, columns);
+    const amount = extractRowLineTotalAmount(rowCells);
 
     if (amount == null || !label) continue;
     if (SKIP_ROW_LABEL.test(label)) continue;
@@ -355,7 +284,7 @@ function preferLongerLabel(primary: string, secondary: string): string {
 
 /**
  * Prefer Azure layout rows when they match totals better than LLM output.
- * Amounts always come from layout (Gesamtpreis); labels from LLM when clearer.
+ * Amounts always come from layout (rightmost Ges. Preis column); labels from LLM when clearer.
  */
 export function mergeLayoutAndLlmLineItems(
   llmItems: InvoiceLineItem[] | null | undefined,

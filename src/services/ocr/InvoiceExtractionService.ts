@@ -12,6 +12,7 @@ import {
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
 import { reconcileLineItemAmountsWithOcrText } from "@/lib/ocr/invoice-line-items-from-text";
+import { parseLlmRawLineItems } from "@/lib/ocr/invoice-line-item-math";
 import {
   buildVisionUserMessage,
   prepareSinglePageOcrInput,
@@ -128,6 +129,10 @@ const INVOICE_HEADER_JSON_SCHEMA = {
   },
 };
 
+/**
+ * "Extract & Compute" schema — LLM outputs raw column strings, never computes.
+ * TypeScript handles all arithmetic via `parseLlmRawLineItems`.
+ */
 const INVOICE_LINE_ITEMS_JSON_SCHEMA = {
   name: "invoice_wizard_line_items",
   strict: true as const,
@@ -139,27 +144,38 @@ const INVOICE_LINE_ITEMS_JSON_SCHEMA = {
       lineItems: {
         type: ["array", "null"],
         description:
-          "Jede Rechnungsposition einzeln — keine Zeile auslassen, nicht zusammenfassen.",
+          "Every position row. Output raw text from each column — never compute totals yourself.",
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["label", "amount"],
+          required: ["label", "menge", "einzelpreis", "gesamtpreis"],
           properties: {
             label: {
               type: "string",
-              description: "Positionsbezeichnung",
+              description: "Positionsbezeichnung — exact text from the description column.",
             },
-            amount: {
-              type: "number",
+            menge: {
+              type: ["string", "null"],
               description:
-                "NUR Ges. Preis / Gesamtpreis / Wert aus der RECHTSTEN Summenspalte. NIE Einzelpreis/EP/Stückpreis. Bei mehreren €-Betrag den rechtesten.",
+                "Exact text from the 'Menge' / 'Qty' / 'Anzahl' column, e.g. \"4\", \"7,00 Liter\". null when the cell is blank.",
+            },
+            einzelpreis: {
+              type: ["string", "null"],
+              description:
+                "Exact text from the 'Einzelpreis' / 'E-Preis' / 'EP' column, e.g. \"120,00\". null when the cell is blank.",
+            },
+            gesamtpreis: {
+              type: ["string", "null"],
+              description:
+                "Exact text from the 'Ges. Preis' / 'Gesamtpreis' / 'GP' / rightmost total column, e.g. \"480,00\". null when the cell is blank.",
             },
           },
         },
       },
       amount: {
-        type: ["number", "null"],
-        description: "Rechnungs-Gesamtbetrag wenn in diesem Abschnitt sichtbar",
+        type: ["string", "null"],
+        description:
+          "Raw text of the invoice total (Zahlbetrag / Rechnungsbetrag / Gesamtbetrag) if visible in this section. null otherwise.",
       },
     },
   },
@@ -415,7 +431,8 @@ export class InvoiceExtractionService {
       visionMessage,
     );
 
-    const llmLineItems = parseLineItemsRaw(record.lineItems);
+    // LLM now outputs raw strings per column; TypeScript computes the totals.
+    const llmLineItems = parseLlmRawLineItems(record.lineItems);
     const layoutLineItems = azureLayout
       ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
       : null;

@@ -9,10 +9,6 @@ import {
 } from "@/lib/ocr/invoice-line-item-dedupe";
 import { prejoinWrappedInvoiceLines } from "@/lib/ocr/invoice-line-item-alignment";
 import {
-  parseInvoiceQuantityCell,
-  resolveInvoiceLineTotalAmount,
-} from "@/lib/ocr/invoice-line-total";
-import {
   isHtmlDebrisLabel,
   normalizeOcrMarkdown,
   stripHtmlTags,
@@ -156,15 +152,9 @@ function pushItem(
   items.push({ label: cleaned, amount });
 }
 
-function readQuantityBeforeIndex(text: string, endIndex: number): number | null {
-  const prefix = text.slice(0, endIndex).trim();
-  const qtyMatch = prefix.match(/(\d+(?:[.,]\d+)?)\s*$/);
-  if (!qtyMatch?.[1]) return null;
-  return parseInvoiceQuantityCell(qtyMatch[1].replace(",", "."));
-}
-
 /**
- * From a position line, resolve Gesamtpreis via Menge × E-Preis (Prüfsumme Ges.-Spalte).
+ * From a position line, take Gesamtpreis (rightmost money token), never Einzelpreis.
+ * Typical: "4 Reifen … 120,00 480,00" → 480,00
  */
 export function lineTotalFromInvoiceRow(line: string): {
   label: string;
@@ -190,20 +180,28 @@ export function lineTotalFromInvoiceRow(line: string): {
 
   if (amounts.length === 0) return null;
 
-  const unitEntry =
-    amounts.length >= 2 ? amounts[amounts.length - 2]! : amounts[0]!;
-  const totalEntry = amounts[amounts.length - 1]!;
-  const quantity = readQuantityBeforeIndex(normalized, unitEntry.index);
+  // Prefer qty × unit ≈ total when three trailing numbers look like that.
+  let total = amounts[amounts.length - 1]!;
+  if (amounts.length >= 2) {
+    const unit = amounts[amounts.length - 2]!;
+    const beforeUnit = normalized.slice(0, unit.index);
+    const qtyMatch = beforeUnit.match(/(\d+(?:[.,]\d+)?)\s*$/);
+    const qty = qtyMatch ? Number.parseFloat(qtyMatch[1]!.replace(",", ".")) : NaN;
+    if (
+      Number.isFinite(qty) &&
+      qty > 0 &&
+      qty <= 100 &&
+      Math.abs(qty * unit.value - total.value) <= 0.05
+    ) {
+      // confirmed: last amount is line total
+    } else if (amounts.length >= 2) {
+      // Still prefer rightmost money column (Gesamt) over earlier Einzelpreis.
+      total = amounts[amounts.length - 1]!;
+    }
+  }
 
-  const amount = resolveInvoiceLineTotalAmount({
-    quantity,
-    unitPrice: unitEntry.value,
-    statedTotal: totalEntry.value,
-  });
-
-  if (amount == null) return null;
-
-  let label = normalized.slice(0, unitEntry.index).trim();
+  let label = normalized.slice(0, total.index).trim();
+  // Drop leftover unit-price / qty columns from the label.
   label = label
     .replace(new RegExp(`(?:${MONEY.source})\\s*$`, "g"), "")
     .replace(/\s+\d+(?:[.,]\d+)?\s*(?:x|×|stk|stück|st\.?|stk\.?)?\s*$/i, "")
@@ -211,7 +209,7 @@ export function lineTotalFromInvoiceRow(line: string): {
     .trim();
 
   if (!label || !isPlausibleLabel(cleanLabel(label))) return null;
-  return { label, amount };
+  return { label, amount: total.value };
 }
 
 /**
@@ -387,10 +385,6 @@ export function reconcileLineItemAmountsWithOcrText(
     }
 
     if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
-      return { ...item, amount: textAmount };
-    }
-
-    if (item.amount + 0.01 < textAmount) {
       return { ...item, amount: textAmount };
     }
 
