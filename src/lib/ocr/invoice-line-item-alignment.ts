@@ -10,6 +10,25 @@ const TABLE_HEADER_LABEL =
 const AMOUNT_ONLY_LINE =
   /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*(?:€|eur)?\s*$/i;
 
+const TABLE_HEADER_LINE =
+  /\b(?:bezeichnung|beschreibung|artikel)\b.*\b(?:einzelpreis|e-?preis|ep|ges\.?\s*preis|gesamtpreis|menge)\b/i;
+
+function isInvoiceTableHeaderLine(line: string): boolean {
+  if (TABLE_HEADER_LINE.test(line)) return true;
+  if (/^pos\.?\s+menge\b/i.test(line)) return true;
+  return /^(?:pos\.?\s+)?(?:bezeichnung|beschreibung)\b/i.test(line) &&
+    /einzelpreis|ges\.?\s*preis|gesamtpreis|menge/i.test(line);
+}
+
+function flushPendingLabel(
+  joined: string[],
+  pendingLabel: string | null,
+): string | null {
+  if (!pendingLabel) return null;
+  joined.push(pendingLabel);
+  return null;
+}
+
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -124,6 +143,9 @@ function scoreAlignment(
     if (isUnitPriceAmountOfTotal(current.amount, next.amount)) {
       score += 8;
     }
+    if (isUnitPriceAmountOfTotal(next.amount, current.amount)) {
+      score -= 12;
+    }
   }
 
   const sum = sumLineItems(items);
@@ -182,10 +204,22 @@ export function prejoinWrappedInvoiceLines(rawText: string): string {
     const line = rawLine.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
     if (!line) continue;
 
+    if (isInvoiceTableHeaderLine(line)) {
+      pendingLabel = flushPendingLabel(joined, pendingLabel);
+      joined.push(line);
+      continue;
+    }
+
     if (AMOUNT_ONLY_LINE.test(line)) {
       if (pendingLabel) {
-        joined.push(`${pendingLabel} ${line}`);
-        pendingLabel = null;
+        if (isInvoiceTableHeaderLine(pendingLabel)) {
+          joined.push(pendingLabel);
+          joined.push(line);
+          pendingLabel = null;
+        } else {
+          joined.push(`${pendingLabel} ${line}`);
+          pendingLabel = null;
+        }
       } else {
         joined.push(line);
       }
@@ -197,8 +231,14 @@ export function prejoinWrappedInvoiceLines(rawText: string): string {
     );
     if (trailingAmount?.[1]?.trim() && trailingAmount[2]) {
       if (pendingLabel) {
-        joined.push(`${pendingLabel} ${line}`);
-        pendingLabel = null;
+        if (isInvoiceTableHeaderLine(pendingLabel)) {
+          joined.push(pendingLabel);
+          joined.push(line);
+          pendingLabel = null;
+        } else {
+          joined.push(`${pendingLabel} ${line}`);
+          pendingLabel = null;
+        }
       } else {
         joined.push(line);
       }
@@ -206,7 +246,12 @@ export function prejoinWrappedInvoiceLines(rawText: string): string {
     }
 
     if (pendingLabel) {
-      pendingLabel = `${pendingLabel} ${line}`;
+      if (isInvoiceTableHeaderLine(pendingLabel)) {
+        joined.push(pendingLabel);
+        pendingLabel = line;
+      } else {
+        pendingLabel = `${pendingLabel} ${line}`;
+      }
       continue;
     }
 

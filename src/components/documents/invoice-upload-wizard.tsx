@@ -364,7 +364,7 @@ export function InvoiceUploadWizard({
       if (prev.lineItemsFiles.length >= MAX_LINE_ITEM_BLOCKS) {
         return {
           ...prev,
-          error: `Maximal ${MAX_LINE_ITEM_BLOCKS} Positions-Blöcke.`,
+          error: `Maximal ${MAX_LINE_ITEM_BLOCKS} Rechnungsblöcke.`,
         };
       }
       return {
@@ -389,7 +389,7 @@ export function InvoiceUploadWizard({
     if (lineItemsFiles.length === 0) {
       setState((prev) => ({
         ...prev,
-        error: "Bitte mindestens einen Positions-Block fotografieren.",
+        error: "Bitte mindestens einen Rechnungsblock scannen.",
       }));
       return;
     }
@@ -670,7 +670,7 @@ export function InvoiceUploadWizard({
           </div>
         ) : null}
         <InBrowserCamera
-          title="Positionen fotografieren"
+          title="Rechnungsblock scannen"
           hint={`Schritt 3 von 3 · Block ${blockNumber}${blockNumber > 1 ? " · nächste Seite" : ""} — frei fotografieren`}
           guideFrame="none"
           showBriefing={false}
@@ -706,10 +706,10 @@ export function InvoiceUploadWizard({
 
           <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
             <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              Schritt 3 von 3 · Positionen
+              Schritt 3 von 3 · Rechnungsblock
             </p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.35rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-              Positions-Blöcke
+              Rechnungsblöcke
             </h1>
             <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
               Mehrseitige Tabellen? Fotografiere jeden Block separat — z. B. Seite
@@ -736,7 +736,7 @@ export function InvoiceUploadWizard({
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={blockPreviewUrls[index]}
-                    alt={`Positions-Block ${index + 1}`}
+                    alt={`Rechnungsblock ${index + 1}`}
                     className="aspect-[4/3] w-full object-cover"
                   />
                 )}
@@ -757,10 +757,10 @@ export function InvoiceUploadWizard({
         ) : (
           <div className="rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-white px-4 py-8 text-center">
             <p className="text-[0.9rem] font-medium text-[color:var(--vd-text)]">
-              Noch kein Positions-Block
+              Noch kein Rechnungsblock
             </p>
             <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
-              Fotografiere den Tabellenbereich mit allen Positionen.
+              Scanne den Tabellenbereich mit allen Positionen.
             </p>
           </div>
         )}
@@ -790,7 +790,7 @@ export function InvoiceUploadWizard({
             >
               <Plus className="h-4 w-4" aria-hidden />
               {lineItemsFiles.length === 0
-                ? "Positions-Block fotografieren"
+                ? "Rechnungsblock scannen"
                 : "Weiteren Block hinzufügen"}
             </Button>
           ) : (

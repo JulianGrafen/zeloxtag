@@ -17,6 +17,20 @@ PREIS-SPALTE (PFLICHT für amount und lineItems.amount):
 9. Rechnungs-Gesamtbetrag (amount): nur "Zahlbetrag", "Rechnungsbetrag", "Gesamtbetrag", "Summe brutto", "Endbetrag" — nie Netto wenn Brutto/Zahlbetrag sichtbar.
 `.trim();
 
+/** Menge × E-Preis = Ges. Preis — Pflicht-Rechenlogik für lineItems.amount. */
+export const INVOICE_QTY_UNIT_TOTAL_RULES = `
+MENGE × E-PREIS = GES. PREIS (PFLICHT für lineItems.amount):
+1. Tabellenkopf lesen: Bezeichnung | Menge/Einheit | E-Preis/Einzelpreis | Ges. Preis/Gesamtpreis.
+2. lineItems.amount = IMMER der Gesamtpreis / Zeilensumme — NIE der Einzelpreis allein (außer Menge fehlt und nur ein Preis sichtbar).
+3. Rechenregel: Menge × E-Preis = Ges. Preis. Diese Formel ist die Prüfsumme.
+4. Beispiel: Menge 4 | E-Preis 120,00 | Ges. Preis 480,00 → amount = 480 (4 × 120).
+5. Beispiel: Menge 1 | E-Preis 95,00 | Ges. Preis 95,00 → amount = 95.
+6. Ist die Ges.-Spalte leer oder unleserlich: amount = Menge × E-Preis berechnen.
+7. Ist Menge/Einheit leer: amount = Ges. Preis; wenn auch Ges. Preis fehlt → E-Preis übernehmen.
+8. Stehen E-Preis und Ges. Preis in einer Zeile: Ges. Preis hat Vorrang — aber er MUSS ≈ Menge × E-Preis sein.
+9. Wenn du nur einen Wert siehst und Menge fehlt: diesen Wert als amount nehmen (typisch Einzelposition).
+`.trim();
+
 /** Kilometerstand — Kopf der Rechnung, häufige LLM-Fehler vermeiden. */
 export const INVOICE_HEADER_MILEAGE_RULES = `
 KILOMETERSTAND (mileageKm) — nur aus explizitem KM-Feld im Kopf:
@@ -100,12 +114,13 @@ FEW-SHOT — mileageKm:
 - "145.000 km" → 145000 | "67.210" → 67210 | never invoice # or € amounts
 - If no explicit km field → null
 
-FEW-SHOT — lineItems (rightmost price column):
+FEW-SHOT — lineItems (Gesamtpreis via Menge × E-Preis):
 - Extract EVERY data row — do not skip any row with a € total in the right column.
-- amount = RIGHTMOST money column (Ges. Preis / Gesamtpreis / Summe), NEVER Einzelpreis/EP/E-Preis.
-- ONE lineItem per table row — never both unit price and line total as separate items.
-- Example: "| 4 | Reifen | 120,00 | 480,00 |" → { "label": "Reifen", "amount": 480 } only
+- amount = Gesamtpreis = Menge × E-Preis (validate against Ges.-Spalte when visible).
+- NEVER return Einzelpreis when Menge > 1 and Ges. Preis = Menge × E-Preis.
+- Example: "| 4 | Reifen | 120,00 | 480,00 |" → { "label": "Reifen", "amount": 480 } (4×120)
 - Example: "| 1 | Ölfilter | 42,90 |" → { "label": "Ölfilter", "amount": 42.9 }
+- ONE lineItem per table row — never both unit price and line total as separate items.
 - Never merge rows. MwSt. as separate row when € amount visible.
 `.trim();
 
@@ -146,6 +161,7 @@ export function buildInvoiceSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string {
   return [
     base,
     INVOICE_FEW_SHOT_PROMPT,
+    INVOICE_QTY_UNIT_TOTAL_RULES,
     INVOICE_RIGHTMOST_PRICE_RULES,
   ].join("\n\n");
 }
@@ -171,6 +187,7 @@ export function buildInvoiceLineItemsSystemPrompt(): string {
   return [
     "Du extrahierst NUR Rechnungspositionen aus dem Tabellen-/Positionsbereich einer deutschen Kfz-Werkstattrechnung.",
     "Deine einzige Aufgabe: lineItems vollständig erfassen + amount (Zahlbetrag falls sichtbar).",
+    INVOICE_QTY_UNIT_TOTAL_RULES,
     INVOICE_RIGHTMOST_PRICE_RULES,
     INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
     INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES,
@@ -197,14 +214,14 @@ export const INVOICE_HEADER_USER_LINES = [
 /** Guided wizard — positions table block (dedicated LLM pass). */
 export const INVOICE_LINE_ITEMS_USER_LINES = [
   "Nur POSITIONS-/TABELLEN-BEREICH — jede sichtbare Datenzeile ein lineItem.",
-  "Schritt 1: Tabellenkopf lesen — welche Spalte ist Ges. Preis / Gesamtpreis / ganz rechts?",
-  "Schritt 2: Zeile für Zeile von oben nach unten — KEINE Zeile mit Betrag in der rechten Spalte auslassen.",
-  "amount pro lineItem = NUR Wert aus Ges. Preis / Gesamtpreis / rechter Summenspalte.",
-  "NIEMALS Einzelpreis, EP, E-Preis, Stückpreis, Netto-Einzelwert.",
+  "Schritt 1: Tabellenkopf — Spalten Menge/Einheit, E-Preis, Ges. Preis identifizieren.",
+  "Schritt 2: Pro Zeile Gesamtpreis = Menge × E-Preis (Ges.-Spalte als Prüfsumme).",
+  "Schritt 3: Zeile für Zeile von oben nach unten — KEINE Zeile mit Zeilensumme auslassen.",
+  "amount pro lineItem = NUR Gesamtpreis — berechnet via Menge × E-Preis wenn nötig.",
+  "NIEMALS Einzelpreis zurückgeben wenn Menge × E-Preis den Ges. Preis ergibt.",
+  "Menge leer → Ges. Preis; sonst E-Preis wenn nur ein Betrag sichtbar.",
   "Pro Tabellenzeile GENAU EIN lineItem — nicht Einzelpreis und Ges. Preis getrennt listen.",
-  "Mehrere €-Betrag in einer Zeile → immer den RECHTSTEN nehmen.",
-  "Bezeichnung und Betrag müssen zur gleichen Tabellenzeile gehören — nie eine Zeile höher oder tiefer zuordnen.",
-  "Mehrzeilige Bezeichnungen = ein lineItem; Betrag aus der Zeile mit der rechten Summenspalte.",
+  "Bezeichnung und Betrag müssen zur gleichen Tabellenzeile gehören.",
   "Fortsetzung der Tabelle (Seite 2): alle Zeilen mit erfassen.",
 ] as const;
 

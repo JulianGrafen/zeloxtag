@@ -96,13 +96,17 @@ export function mergeLineItemsExtractions(
     }
   }
 
-  const lineItems = normalizeLineItemsList(merged, LINE_ITEMS_MAX_COUNT);
   const amount =
     blocks.map((block) => block.amount).find((value) => value !== null) ??
     null;
 
+  const lineItems = normalizeLineItemsList(
+    realignShiftedInvoiceLineItems(merged, amount),
+    LINE_ITEMS_MAX_COUNT,
+  );
+
   return {
-    lineItems: realignShiftedInvoiceLineItems(lineItems, amount),
+    lineItems,
     amount,
   };
 }

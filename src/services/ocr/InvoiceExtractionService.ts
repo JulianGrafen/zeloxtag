@@ -11,6 +11,7 @@ import {
   extractInvoiceLineItemsFromAzureLayout,
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
+import { reconcileLineItemAmountsWithOcrText } from "@/lib/ocr/invoice-line-items-from-text";
 import {
   buildVisionUserMessage,
   prepareSinglePageOcrInput,
@@ -429,7 +430,13 @@ export class InvoiceExtractionService {
       layoutLineItems,
       amount,
     );
-    const lineItems = realignShiftedInvoiceLineItems(merged, amount);
+    const reconciled = azureLayout?.content
+      ? reconcileLineItemAmountsWithOcrText(merged, azureLayout.content)
+      : merged;
+    const lineItems = normalizeLineItemsList(
+      realignShiftedInvoiceLineItems(reconciled, amount),
+      LINE_ITEMS_MAX_COUNT,
+    );
 
     return { lineItems, amount };
   }

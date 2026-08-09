@@ -4,9 +4,14 @@
  */
 
 import {
-  prejoinWrappedInvoiceLines,
-  realignShiftedInvoiceLineItems,
-} from "./invoice-line-item-alignment";
+  isUnitPriceAmountOfTotal,
+  normalizedInvoiceLineLabelKey,
+} from "@/lib/ocr/invoice-line-item-dedupe";
+import { prejoinWrappedInvoiceLines } from "@/lib/ocr/invoice-line-item-alignment";
+import {
+  parseInvoiceQuantityCell,
+  resolveInvoiceLineTotalAmount,
+} from "@/lib/ocr/invoice-line-total";
 import {
   isHtmlDebrisLabel,
   normalizeOcrMarkdown,
@@ -151,9 +156,15 @@ function pushItem(
   items.push({ label: cleaned, amount });
 }
 
+function readQuantityBeforeIndex(text: string, endIndex: number): number | null {
+  const prefix = text.slice(0, endIndex).trim();
+  const qtyMatch = prefix.match(/(\d+(?:[.,]\d+)?)\s*$/);
+  if (!qtyMatch?.[1]) return null;
+  return parseInvoiceQuantityCell(qtyMatch[1].replace(",", "."));
+}
+
 /**
- * From a position line, take Gesamtpreis (rightmost money token), never Einzelpreis.
- * Typical: "4 Reifen … 120,00 480,00" → 480,00
+ * From a position line, resolve Gesamtpreis via Menge × E-Preis (Prüfsumme Ges.-Spalte).
  */
 export function lineTotalFromInvoiceRow(line: string): {
   label: string;
@@ -179,28 +190,20 @@ export function lineTotalFromInvoiceRow(line: string): {
 
   if (amounts.length === 0) return null;
 
-  // Prefer qty × unit ≈ total when three trailing numbers look like that.
-  let total = amounts[amounts.length - 1]!;
-  if (amounts.length >= 2) {
-    const unit = amounts[amounts.length - 2]!;
-    const beforeUnit = normalized.slice(0, unit.index);
-    const qtyMatch = beforeUnit.match(/(\d+(?:[.,]\d+)?)\s*$/);
-    const qty = qtyMatch ? Number.parseFloat(qtyMatch[1]!.replace(",", ".")) : NaN;
-    if (
-      Number.isFinite(qty) &&
-      qty > 0 &&
-      qty <= 100 &&
-      Math.abs(qty * unit.value - total.value) <= 0.05
-    ) {
-      // confirmed: last amount is line total
-    } else if (amounts.length >= 2) {
-      // Still prefer rightmost money column (Gesamt) over earlier Einzelpreis.
-      total = amounts[amounts.length - 1]!;
-    }
-  }
+  const unitEntry =
+    amounts.length >= 2 ? amounts[amounts.length - 2]! : amounts[0]!;
+  const totalEntry = amounts[amounts.length - 1]!;
+  const quantity = readQuantityBeforeIndex(normalized, unitEntry.index);
 
-  let label = normalized.slice(0, total.index).trim();
-  // Drop leftover unit-price / qty columns from the label.
+  const amount = resolveInvoiceLineTotalAmount({
+    quantity,
+    unitPrice: unitEntry.value,
+    statedTotal: totalEntry.value,
+  });
+
+  if (amount == null) return null;
+
+  let label = normalized.slice(0, unitEntry.index).trim();
   label = label
     .replace(new RegExp(`(?:${MONEY.source})\\s*$`, "g"), "")
     .replace(/\s+\d+(?:[.,]\d+)?\s*(?:x|×|stk|stück|st\.?|stk\.?)?\s*$/i, "")
@@ -208,7 +211,7 @@ export function lineTotalFromInvoiceRow(line: string): {
     .trim();
 
   if (!label || !isPlausibleLabel(cleanLabel(label))) return null;
-  return { label, amount: total.value };
+  return { label, amount };
 }
 
 /**
@@ -331,4 +334,68 @@ function mergeUnique(
     if (out.length >= MAX_ITEMS) break;
   }
   return out;
+}
+
+function labelMatchScoreForReconcile(a: string, b: string): number {
+  const keyA = normalizedInvoiceLineLabelKey(a);
+  const keyB = normalizedInvoiceLineLabelKey(b);
+  if (!keyA || !keyB) return 0;
+  if (keyA === keyB) return 100;
+  if (keyA.includes(keyB) || keyB.includes(keyA)) return 80;
+
+  const wordsA = new Set(keyA.split(" ").filter((word) => word.length >= 3));
+  const wordsB = keyB.split(" ").filter((word) => word.length >= 3);
+  const overlap = wordsB.filter((word) => wordsA.has(word)).length;
+  if (overlap >= 2) return 60;
+  if (overlap === 1) return 35;
+  return 0;
+}
+
+/**
+ * Replace LLM Einzelpreis with Ges. Preis from OCR text when the row has both values.
+ */
+export function reconcileLineItemAmountsWithOcrText(
+  items: InvoiceLineItem[] | null | undefined,
+  rawText: string,
+): InvoiceLineItem[] | null {
+  if (!items?.length || !rawText.trim()) return items ?? null;
+
+  const textItems = extractInvoiceLineItemsFromText(rawText);
+  if (!textItems?.length) return items;
+
+  const corrected = items.map((item) => {
+    let bestMatch: InvoiceLineItem | null = null;
+    let bestScore = 0;
+
+    for (const textItem of textItems) {
+      const score = labelMatchScoreForReconcile(item.label, textItem.label);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = textItem;
+      }
+    }
+
+    if (!bestMatch || bestScore < 35) return item;
+
+    const textAmount = bestMatch.amount;
+    if (Math.abs(textAmount - item.amount) < 0.011) return item;
+
+    if (textAmount > item.amount + 0.01) {
+      if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
+        return { ...item, amount: textAmount };
+      }
+    }
+
+    if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
+      return { ...item, amount: textAmount };
+    }
+
+    if (item.amount + 0.01 < textAmount) {
+      return { ...item, amount: textAmount };
+    }
+
+    return item;
+  });
+
+  return corrected;
 }

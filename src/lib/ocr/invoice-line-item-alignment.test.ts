@@ -49,4 +49,14 @@ describe("prejoinWrappedInvoiceLines", () => {
       "Sportfedern H&R Tieferlegung 480,00",
     );
   });
+
+  it("does not glue table header rows to the first data row", () => {
+    const text = [
+      "Pos Bezeichnung Menge Einzelpreis Ges. Preis",
+      "1 Sportfedern H&R 4 120,00 480,00",
+      "2 Arbeitslohn 1 95,00 95,00",
+    ].join("\n");
+
+    expect(prejoinWrappedInvoiceLines(text)).toBe(text);
+  });
 });

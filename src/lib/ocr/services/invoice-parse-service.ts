@@ -21,11 +21,12 @@ import {
   extractInvoiceLineItemsFromAzureLayout,
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
-import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   extractInvoiceLineItemsFromText,
   preferInvoiceLineItems,
+  reconcileLineItemAmountsWithOcrText,
 } from "@/lib/ocr/invoice-line-items-from-text";
+import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   buildInvoiceSystemPrompt,
   buildTuevCostSystemPrompt,
@@ -47,6 +48,7 @@ import {
   buildInvoiceTextParseJsonSchema,
   INVOICE_TEXT_PARSE_JSON_SCHEMA,
   invoiceTextParseSchema,
+  normalizeLineItemsList,
   normalizeTextParseResult,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
@@ -243,13 +245,19 @@ export class InvoiceParseService {
       azureLayout.content,
       normalized.lineItems,
     );
-    const lineItems = realignShiftedInvoiceLineItems(
-      mergeLayoutAndLlmLineItems(
-        normalized.lineItems,
-        layoutLineItems,
+    const lineItems = normalizeLineItemsList(
+      realignShiftedInvoiceLineItems(
+        reconcileLineItemAmountsWithOcrText(
+          mergeLayoutAndLlmLineItems(
+            normalized.lineItems,
+            layoutLineItems,
+            amount,
+          ),
+          azureLayout.content,
+        ),
         amount,
       ),
-      amount,
+      60,
     );
 
     return {
@@ -425,13 +433,20 @@ export class InvoiceParseService {
       ocr.modelId === "azure-prebuilt-layout" && ocr.text
         ? extractInvoiceLineItemsFromText(ocr.text)
         : null;
-    const lineItems = realignShiftedInvoiceLineItems(
-      mergeLayoutAndLlmLineItems(
-        preferInvoiceLineItems(parsed.lineItems, heuristicLineItems),
-        layoutLineItems,
-        preferAmount(parsed.amount, fullText, parsed.lineItems),
+    const totalAmount = preferAmount(parsed.amount, fullText, parsed.lineItems);
+    const lineItems = normalizeLineItemsList(
+      realignShiftedInvoiceLineItems(
+        reconcileLineItemAmountsWithOcrText(
+          mergeLayoutAndLlmLineItems(
+            preferInvoiceLineItems(parsed.lineItems, heuristicLineItems),
+            layoutLineItems,
+            totalAmount,
+          ),
+          fullText,
+        ),
+        totalAmount,
       ),
-      preferAmount(parsed.amount, fullText, parsed.lineItems),
+      60,
     );
 
     return this.nullAbeFields(
