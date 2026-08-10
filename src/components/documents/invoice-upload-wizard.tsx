@@ -5,12 +5,15 @@ import {
   useRef,
   useState,
   useTransition,
+  type ChangeEvent,
   type FormEvent,
   type ReactNode,
 } from "react";
 import {
   ArrowLeft,
+  Camera,
   FileText,
+  FileUp,
   LoaderCircle,
   Plus,
   RotateCcw,
@@ -54,6 +57,7 @@ import {
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 type WizardPhase =
+  | "choose-source"
   | "capture-overview"
   | "capture-header"
   | "capture-line-items"
@@ -239,7 +243,7 @@ export function InvoiceUploadWizard({
   const defaultReviewCategory = invoiceReviewCategoryFromScanType(scanType);
 
   const [state, setState] = useState<WizardState>({
-    phase: "capture-overview",
+    phase: "choose-source",
     overviewFile: null,
     headerFile: null,
     lineItemsFiles: [],
@@ -257,6 +261,7 @@ export function InvoiceUploadWizard({
   const [pending, startSaveTransition] = useTransition();
   const previewUrlRef = useRef<string | null>(null);
   const lineItemPreviewUrlsRef = useRef<string[]>([]);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [blockPreviewUrls, setBlockPreviewUrls] = useState<string[]>([]);
 
   useEffect(() => {
@@ -308,7 +313,7 @@ export function InvoiceUploadWizard({
     setPreviewUrl(null, false);
     revokeLineItemPreviewUrls();
     setState({
-      phase: "capture-overview",
+      phase: "choose-source",
       overviewFile: null,
       headerFile: null,
       lineItemsFiles: [],
@@ -323,6 +328,43 @@ export function InvoiceUploadWizard({
       error: null,
     });
     setSaveError(null);
+  }
+
+  function exitCaptureToSource() {
+    setPreviewUrl(null, false);
+    revokeLineItemPreviewUrls();
+    setState((prev) => ({
+      ...prev,
+      phase: "choose-source",
+      overviewFile: null,
+      headerFile: null,
+      lineItemsFiles: [],
+      overviewExtraction: null,
+      headerExtraction: null,
+      lineItemsExtraction: null,
+      fields: null,
+      uploadFile: null,
+      previewUrl: null,
+      previewOwned: false,
+      title: "",
+      error: null,
+    }));
+  }
+
+  function handlePdfSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!isPdfFile(file)) {
+      setState((prev) => ({
+        ...prev,
+        error: "Bitte eine PDF-Datei wählen.",
+      }));
+      return;
+    }
+
+    handleOverviewCapture(file);
   }
 
   function handleOverviewCapture(file: File) {
@@ -602,6 +644,125 @@ export function InvoiceUploadWizard({
   const { phase, fields, uploadFile, previewUrl, title, error, lineItemsFiles } =
     state;
 
+  if (phase === "choose-source") {
+    return (
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
+        <header>
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {backLabel}
+            </button>
+          ) : backHref ? (
+            <PressableLink
+              href={backHref}
+              variant="pill"
+              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {backLabel}
+            </PressableLink>
+          ) : null}
+        </header>
+
+        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+            <ScanLine className="h-5 w-5" />
+          </div>
+          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+            {scanDef.title} · Upload
+          </p>
+          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+            PDF oder Bilder?
+          </h1>
+          <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
+            {vehicleLabel}
+          </p>
+        </div>
+
+        {error ? (
+          <div className="rounded-xl bg-red-50 px-4 py-3 text-[0.85rem] text-red-700">
+            {error}
+          </div>
+        ) : null}
+
+        <input
+          ref={pdfInputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={handlePdfSelected}
+        />
+
+        <button
+          type="button"
+          onClick={() =>
+            setState((prev) => ({ ...prev, phase: "capture-overview", error: null }))
+          }
+          className="group relative w-full rounded-[1.35rem] border-2 border-neutral-900 bg-neutral-900 p-5 text-left text-white shadow-[var(--vd-shadow)] transition-opacity active:opacity-80"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-white/50">
+                Empfohlen
+              </p>
+              <p className="mt-1 text-[1rem] font-semibold">Bilder scannen</p>
+              <p className="mt-1 text-[0.82rem] leading-relaxed text-white/65">
+                In-Browser-Kamera · Schritt für Schritt · genauere Texterkennung
+              </p>
+            </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10">
+              <Camera className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <span className="rounded-lg bg-white/10 px-2.5 py-1 text-[0.7rem] font-medium">
+              3 Schritte
+            </span>
+            <span className="rounded-lg bg-emerald-400/20 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-300">
+              Genauer
+            </span>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => pdfInputRef.current?.click()}
+          className="group w-full rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-left shadow-[var(--vd-shadow-sm)] transition-colors hover:border-neutral-300 active:bg-neutral-50"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+                Datei-Upload
+              </p>
+              <p className="mt-1 text-[1rem] font-semibold text-[color:var(--vd-text)]">
+                PDF hochladen
+              </p>
+              <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+                Vorhandene Rechnung als PDF aus Dateien oder Cloud wählen
+              </p>
+            </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)]">
+              <FileUp className="h-5 w-5 text-[color:var(--vd-muted)]" />
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <span className="rounded-lg border border-[color:var(--vd-border)] bg-neutral-100 px-2.5 py-1 text-[0.7rem] font-medium text-neutral-600">
+              1 Schritt
+            </span>
+            <span className="rounded-lg border border-[color:var(--vd-border)] bg-neutral-100 px-2.5 py-1 text-[0.7rem] font-medium text-neutral-600">
+              Schnell
+            </span>
+          </div>
+        </button>
+      </section>
+    );
+  }
+
   if (phase === "capture-overview") {
     return (
       <>
@@ -617,7 +778,6 @@ export function InvoiceUploadWizard({
           guideFrame="a4"
           a4OutputFormat="pdf"
           guideLabel="Rechnung parallel von oben im Rahmen ausrichten"
-          allowPdf
           onCapture={handleOverviewCapture}
           onClose={() => {
             const hasProgress =
@@ -630,13 +790,7 @@ export function InvoiceUploadWizard({
             ) {
               return;
             }
-            if (onBack) {
-              onBack();
-              return;
-            }
-            if (backHref) {
-              window.location.assign(backHref);
-            }
+            exitCaptureToSource();
           }}
         />
       </>
