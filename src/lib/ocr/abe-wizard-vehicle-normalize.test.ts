@@ -20,6 +20,59 @@ describe("abe-wizard-vehicle-normalize", () => {
     expect(looksLikeAuflagenCode("744")).toBe(true);
     expect(looksLikeAuflagenCode("A77")).toBe(true);
     expect(looksLikeAuflagenCode("20B")).toBe(true);
+    expect(looksLikeAuflagenCode("F40")).toBe(true);
+    expect(looksLikeAuflagenCode("L04")).toBe(true);
+    expect(looksLikeAuflagenCode("B04A")).toBe(true);
+  });
+
+  it("parses lowercase and punctuated Auflagen tokens", () => {
+    expect(parseAuflagenCodes(["744, f40. L04"]).codes).toEqual([
+      "744",
+      "F40",
+      "L04",
+    ]);
+  });
+
+  it("promotes F40/L04 from Fahrzeugtyp to Auflagen when mis-assigned", () => {
+    const normalized = normalizeAbeVehicleMatches([
+      {
+        verkaufsbezeichnung: "5ER REIHE",
+        fahrzeugtyp: "F40",
+        typeApproval: "e1*2007/46*0508*0508*0000*00",
+        driveType: "Allradantrieb",
+        tireSizes: ["245/45R18"],
+        auflagenCodes: ["744"],
+      },
+      {
+        verkaufsbezeichnung: "5ER REIHE",
+        fahrzeugtyp: "L04",
+        typeApproval: "e1*2007/46*0508*0508*0000*00",
+        driveType: "Heckantrieb",
+        tireSizes: ["225/50R18"],
+        auflagenCodes: ["744"],
+      },
+    ]);
+
+    expect(normalized[0]?.fahrzeugtyp).toBeNull();
+    expect(normalized[0]?.auflagenCodes).toContain("F40");
+    expect(normalized[1]?.auflagenCodes).toContain("L04");
+    expect(normalized[1]?.fahrzeugtyp).toBeNull();
+  });
+
+  it("keeps short Fahrzeugtyp codes like 5L", () => {
+    const normalized = normalizeAbeVehicleMatches([
+      {
+        verkaufsbezeichnung: "5ER REIHE",
+        fahrzeugtyp: "5L",
+        typeApproval: "e1*2007/46*0508*0508*0000*00",
+        driveType: "Heckantrieb",
+        tireSizes: ["225/50R18"],
+        auflagenCodes: ["744"],
+      },
+    ]);
+
+    expect(normalized[0]?.fahrzeugtyp).toBe("5L");
+    expect(normalized[0]?.auflagenCodes).toEqual(["744"]);
   });
 
   it("parses Auflagen codes only", () => {

@@ -6,9 +6,15 @@ import { Pencil, ShieldCheck } from "lucide-react";
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import {
   displaySpecForAbeDetailView,
+  auflagenNotesFromTechnicalSpecs,
   vehicleApprovalsForAbeDetailView,
 } from "@/lib/documents/abe-detail-display";
+import { AbeAuflagenFoldList } from "@/components/documents/abe-auflagen-fold-list";
 import { CollapsibleAuflagenList } from "@/components/documents/collapsible-auflagen-list";
+import {
+  abeAuflagenKnownCodesFromConditions,
+  isAbeCodeStructuredConditions,
+} from "@/lib/ocr/abe-auflagen-from-text";
 import { isIvStructuredAuflagen } from "@/lib/validations/teilegutachten-auflagen";
 import { VerwendungsbereichTable } from "@/components/documents/verwendungsbereich-table";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
@@ -99,6 +105,11 @@ export function EditableAbeListsSection({
       })
     : displayApprovals;
   const visibleSpecs = displaySpecs.map(displaySpecForAbeDetailView);
+  const auflagenNotes = auflagenNotesFromTechnicalSpecs(displaySpecs);
+  const knownAuflagenCodes = abeAuflagenKnownCodesFromConditions(displayConditions);
+  const showAbeAuflagenFold =
+    isAbeCodeStructuredConditions(displayConditions) ||
+    Boolean(auflagenNotes?.trim());
 
   function startEdit() {
     setError(null);
@@ -259,6 +270,12 @@ export function EditableAbeListsSection({
             rows={Math.min(8, Math.max(3, displayConditions.length || 3))}
             placeholder="Eine vollständige Auflage pro Abschnitt"
             className="w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 text-[0.88rem] leading-relaxed text-[color:var(--vd-text)] outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
+          />
+        ) : showAbeAuflagenFold ? (
+          <AbeAuflagenFoldList
+            conditions={displayConditions}
+            notes={auflagenNotes}
+            knownCodes={knownAuflagenCodes}
           />
         ) : (
           <CollapsibleAuflagenList conditions={displayConditions} />

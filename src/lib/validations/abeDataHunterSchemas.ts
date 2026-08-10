@@ -15,6 +15,9 @@ import {
 import { AbeVehicleMatchSchema } from "@/lib/validations/abeWizardSchemas";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import {
+  missingAuflagenCodesInNotes,
+} from "@/lib/ocr/abe-auflagen-from-text";
+import {
   groupAbeVehicleMatches,
   resolveAuflagenCodesForReport,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
@@ -75,7 +78,6 @@ export const ABE_CORE_HUNT_FIELD_KEYS = [
   "partDesignation",
   "markingText",
   "verkaufsbezeichnung",
-  "auflagenCodes",
 ] as const satisfies readonly AbeRequiredFieldKey[];
 
 /** Ghost examples shown inside the camera guide frame while hunting each field. */
@@ -146,10 +148,10 @@ export const ABE_HUNT_FIELD_SCAN_HINTS: Partial<
   },
   verkaufsbezeichnung: {
     scanAction:
-      "Scanne den Tabellenabschnitt, in dem du dein Fahrzeug wiederfindest.",
+      "Fotografiere die Fahrzeugtabelle — deine Zeile inkl. Auflagen-Spalte, falls sichtbar.",
     popupTitle: "Fahrzeugmodell",
     popupBody:
-      "Scanne jetzt aus der Tabelle den Abschnitt, in den du dein Fahrzeug wiederfindest. Die Verkaufsbezeichnung steht als Überschrift über der passenden Fahrzeugtabelle.",
+      "Fotografiere den Tabellenabschnitt mit deinem Fahrzeug (Verkaufsbezeichnung + Zeile). Den Auflagen-Text scannst du im nächsten Schritt separat.",
   },
   auflagenCodes: {
     scanAction:
@@ -390,11 +392,6 @@ export function fillAbeDataHunterReport(
     vehicleMatches.push(row);
   }
 
-  const mergedTopLevelAuflagen = mergeUniqueCodes(
-    current.auflagenCodes,
-    incoming.auflagenCodes,
-  );
-
   return withInferredKba({
     kbaNumber: keepFilled(
       current.kbaNumber,
@@ -433,6 +430,21 @@ export function finalizeAbeDataHunterReport(
   report: AbeDataHunterReport,
 ): AbeDataHunterReport {
   return withInferredKba(report);
+}
+
+export function scopeAbeDataHunterReportAuflagen(
+  report: AbeDataHunterReport,
+  selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
+): AbeDataHunterReport {
+  const scoped = resolveAuflagenCodesForReport(report, {
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  });
+  if (scoped.join("|") === report.auflagenCodes.join("|")) {
+    return report;
+  }
+  return { ...report, auflagenCodes: scoped };
 }
 
 export function emptyAbeDataHunterReport(): AbeDataHunterReport {
@@ -482,12 +494,6 @@ export function missingAbeCoreHuntFields(
     missing.push("verkaufsbezeichnung");
   }
 
-  const auflagen = resolveAuflagenCodesForReport(report, {
-    selectedVerkaufsbezeichnung,
-    vehicleContext,
-  });
-  if (auflagen.length === 0) missing.push("auflagenCodes");
-
   return missing;
 }
 
@@ -519,7 +525,15 @@ export function missingAbeRequiredFields(
     selectedVerkaufsbezeichnung,
     vehicleContext,
   );
-  if (!report.auflagenNotes?.trim()) missing.push("auflagenNotes");
+  const targetCodes = resolveAuflagenCodesForReport(report, {
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  });
+  const notesMissing =
+    !report.auflagenNotes?.trim() ||
+    (targetCodes.length > 0 &&
+      missingAuflagenCodesInNotes(report.auflagenNotes, targetCodes).length > 0);
+  if (notesMissing) missing.push("auflagenNotes");
   return missing;
 }
 
@@ -667,7 +681,7 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_CROP +
-                "Short Auflagen codes on this row only (may be empty).",
+                "Every short Auflagen-Kürzel in this row's Auflagen column — list ALL visible codes (e.g. 744, A02, F40, L04, B04A). Do not omit any.",
             },
           },
         },
@@ -688,7 +702,7 @@ export const ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA = {
         type: "string",
         description:
           FROM_PHOTO +
-          "Transcribe the full Auflagen / conditions text verbatim from the photograph — including headings, numbers, and complete sentences for the target codes. No summary.",
+          "Transcribe each target Auflagen block as `CODE: full text` (e.g. `744: …`, `F40: …`, `L04: …`). Include EVERY target code listed in the request. Separate blocks with a blank line. Verbatim — no summary.",
       },
     },
   },

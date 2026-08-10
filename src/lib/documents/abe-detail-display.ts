@@ -1,6 +1,20 @@
 import type { DocumentTechnicalSpec } from "@/types/database";
 
 const VERKAUFSBEZEICHNUNG_LABEL = /^verkaufsbezeichnung\b/i;
+const AUFLAGEN_NOTES_SPEC_LABEL = /^auflagen\s*\(text\)/i;
+
+export const ABE_AUFLAGEN_NOTES_SPEC_LABEL = "Auflagen (Text)";
+
+export function isAuflagenNotesSpecLabel(label: string): boolean {
+  return AUFLAGEN_NOTES_SPEC_LABEL.test(label.trim());
+}
+
+export function auflagenNotesFromTechnicalSpecs(
+  specs: DocumentTechnicalSpec[],
+): string | null {
+  const match = specs.find((spec) => isAuflagenNotesSpecLabel(spec.label));
+  return match?.value.trim() || null;
+}
 
 /** User-facing label for ABE `verkaufsbezeichnung` in document views. */
 export const ABE_VEHICLE_MODEL_DISPLAY_LABEL = "Fahrzeugmodell";
@@ -38,7 +52,10 @@ export function technicalSpecsForAbeDetailView(
   options?: { vehicleModel?: string | null },
 ): DocumentTechnicalSpec[] {
   const mapped = specs
-    .filter((spec) => spec.label !== "ABE-Nummer")
+    .filter(
+      (spec) =>
+        spec.label !== "ABE-Nummer" && !isAuflagenNotesSpecLabel(spec.label),
+    )
     .map((spec) => ({
       ...spec,
       label: displayLabelForAbeSpecLabel(spec.label),

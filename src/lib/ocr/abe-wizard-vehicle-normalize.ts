@@ -10,7 +10,7 @@ const FAHRZEUGTYP_PATTERN =
   /^(?:\d{1,2}[a-zA-Z]?-\w+|\d{1,2}[a-zA-Z]?|[a-zA-Z]-\w+|[a-zA-Z]\d{1,2})$/;
 
 const STRICT_AUFlagen_CODE_PATTERN =
-  /^(?:\d{2,3}|\d{1,2}[A-Z]{1,2}|[A-Z]\d{2,3})$/;
+  /^(?:\d{2,3}|\d{1,2}[A-Z]{1,2}|[A-Z]\d{1,3}[A-Z]?|[A-Z]{2,4})$/;
 
 const LETTER_AUFlagen_CODE_PATTERN = /^[A-Z]{2,3}$/;
 
@@ -33,16 +33,70 @@ export function looksLikeFahrzeugtypCode(value: string): boolean {
 }
 
 export function looksLikeStrictAuflagenCode(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed || /[a-zäöü]/.test(trimmed)) return false;
+  const trimmed = normalizeAuflagenToken(value);
+  if (!trimmed) return false;
   if (DRIVE_TYPES.has(trimmed.toLowerCase())) return false;
-  if (trimmed.length > 5) return false;
+  if (trimmed.length > 6) return false;
   return STRICT_AUFlagen_CODE_PATTERN.test(trimmed);
 }
 
+function normalizeAuflagenToken(value: string): string {
+  return value
+    .trim()
+    .replace(/^[\(\[]+|[\)\].,:;]+$/g, "")
+    .toUpperCase();
+}
+
+/** F40 / L04 — often mis-OCR'd into the Fahrzeugtyp column (unlike 5L, 3k-N1). */
+export function isLikelyAuflagenMisplacedAsFahrzeugtyp(
+  value: string | null | undefined,
+): boolean {
+  const trimmed = normalizeAuflagenToken(value ?? "");
+  if (!trimmed) return false;
+  return /^[A-Z]\d{2,3}$/.test(trimmed) && looksLikeStrictAuflagenCode(trimmed);
+}
+
+function tokenizeAuflagenColumnWithRaw(
+  items: readonly string[],
+): { raw: string; normalized: string }[] {
+  return items
+    .flatMap((item) => item.trim().split(/[\s,/;]+/))
+    .map((token) => ({
+      raw: token.trim().replace(/^[\(\[]+|[\)\].,:;]+$/g, ""),
+      normalized: normalizeAuflagenToken(token),
+    }))
+    .filter((token) => token.normalized.length > 0);
+}
+
+function coalesceSplitAuflagenTokens(
+  tokens: { raw: string; normalized: string }[],
+): { raw: string; normalized: string }[] {
+  const out: { raw: string; normalized: string }[] = [];
+  let index = 0;
+
+  while (index < tokens.length) {
+    const current = tokens[index]!;
+    const next = tokens[index + 1];
+
+    if (/^[A-Z]$/i.test(current.normalized) && next) {
+      out.push({
+        raw: `${current.raw}${next.raw}`,
+        normalized: `${current.normalized}${next.normalized}`,
+      });
+      index += 2;
+      continue;
+    }
+
+    out.push(current);
+    index += 1;
+  }
+
+  return out;
+}
+
 export function looksLikeLetterAuflagenCode(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed || /[a-zäöü]/.test(trimmed)) return false;
+  const trimmed = normalizeAuflagenToken(value);
+  if (!trimmed) return false;
   if (DRIVE_TYPES.has(trimmed.toLowerCase())) return false;
   return LETTER_AUFlagen_CODE_PATTERN.test(trimmed);
 }
@@ -82,32 +136,43 @@ export function stripVerkaufsbezeichnungLabel(
 }
 
 function tokenizeAuflagenColumn(items: readonly string[]): string[] {
-  return items
-    .flatMap((item) => item.trim().split(/\s+/))
-    .map((token) => token.replace(/[,;]+$/g, "").trim())
-    .filter(Boolean);
+  return tokenizeAuflagenColumnWithRaw(items).map((token) => token.normalized);
+}
+
+function mergeUniqueAuflagenCodes(codes: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const code of codes) {
+    const normalized = normalizeAuflagenToken(code);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
 }
 
 /** Keep only short Auflagen codes; drop drive-type words and stray text. */
 export function parseAuflagenCodes(
   auflagenItems: readonly string[],
 ): { codes: string[]; driveType: string | null } {
-  const tokens = tokenizeAuflagenColumn(auflagenItems);
+  const tokens = coalesceSplitAuflagenTokens(
+    tokenizeAuflagenColumnWithRaw(auflagenItems),
+  );
   const codes: string[] = [];
   let driveType: string | null = null;
 
   for (const token of tokens) {
-    const lower = token.toLowerCase();
+    const lower = token.raw.toLowerCase();
     if (DRIVE_TYPES.has(lower)) {
-      driveType ??= token;
+      driveType ??= token.raw;
       continue;
     }
-    if (looksLikeAuflagenCode(token)) {
-      codes.push(token);
+    if (looksLikeAuflagenCode(token.normalized)) {
+      codes.push(token.normalized);
     }
   }
 
-  return { codes, driveType };
+  return { codes: mergeUniqueAuflagenCodes(codes), driveType };
 }
 
 function readString(value: unknown): string | null {
@@ -282,11 +347,22 @@ export function normalizeAbeVehicleMatches(
       currentVerkaufsbezeichnung = resolvedGroup;
     }
 
-    const fahrzeugtyp =
+    const fahrzeugtypRaw =
       match.fahrzeugtyp?.trim() ||
       (looksLikeFahrzeugtypCode(match.verkaufsbezeichnung)
         ? match.verkaufsbezeichnung.trim()
         : null);
+
+    let fahrzeugtyp = fahrzeugtypRaw;
+    let auflagenCodes = parsedAuflagen.codes;
+
+    if (fahrzeugtyp && isLikelyAuflagenMisplacedAsFahrzeugtyp(fahrzeugtyp)) {
+      auflagenCodes = mergeUniqueAuflagenCodes([
+        ...auflagenCodes,
+        fahrzeugtyp,
+      ]);
+      fahrzeugtyp = null;
+    }
 
     const verkaufsbezeichnung =
       resolvedGroup ??
@@ -298,7 +374,7 @@ export function normalizeAbeVehicleMatches(
       verkaufsbezeichnung,
       fahrzeugtyp,
       driveType: match.driveType ?? parsedAuflagen.driveType,
-      auflagenCodes: parsedAuflagen.codes,
+      auflagenCodes,
     };
   });
 }

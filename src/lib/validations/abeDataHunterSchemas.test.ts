@@ -81,7 +81,6 @@ describe("abeDataHunterSchemas required fields", () => {
     expect(missingAbeRequiredFields(report)).toEqual([
       "markingText",
       "verkaufsbezeichnung",
-      "auflagenCodes",
       "auflagenNotes",
     ]);
   });
@@ -102,10 +101,34 @@ describe("abeDataHunterSchemas required fields", () => {
           },
         ],
       },
-      { auflagenCodes: [], auflagenNotes: "Auflage 744: Montage nur mit …" },
+      { auflagenCodes: [], auflagenNotes: "744: Montage nur mit …\nA77: Weitere Bedingung" },
     );
 
     expect(missingAbeRequiredFields(report, "5ER REIHE")).toEqual([]);
+  });
+
+  it("keeps auflagenNotes missing until every table Kürzel has text", () => {
+    const report = mergeAbeDataHunterSteps(
+      completeStammdaten,
+      { markingText: "Kennzeichnung auf dem Bauteil" },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "5ER REIHE",
+            fahrzeugtyp: "5L",
+            typeApproval: null,
+            driveType: null,
+            tireSizes: [],
+            auflagenCodes: ["744", "F40", "L04"],
+          },
+        ],
+      },
+      { auflagenCodes: [], auflagenNotes: "744: Nur teilweise erfasst." },
+    );
+
+    expect(missingAbeRequiredFields(report, "5ER REIHE")).toEqual([
+      "auflagenNotes",
+    ]);
   });
 
   it("infers KBA from Nummer der ABE when kbaNumber was not extracted separately", () => {
@@ -145,7 +168,29 @@ describe("abeDataHunterSchemas required fields", () => {
     );
 
     expect(missingAbeCoreHuntFields(report)).not.toContain("verkaufsbezeichnung");
-    expect(missingAbeCoreHuntFields(report)).toContain("auflagenCodes");
+    expect(missingAbeCoreHuntFields(report)).not.toContain("auflagenCodes");
+  });
+
+  it("completes core hunt once vehicle table and stammdaten are present", () => {
+    const report = mergeAbeDataHunterSteps(
+      completeStammdaten,
+      { markingText: "Kennzeichnung auf dem Bauteil" },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "5ER REIHE",
+            fahrzeugtyp: "5L",
+            typeApproval: null,
+            driveType: null,
+            tireSizes: [],
+            auflagenCodes: [],
+          },
+        ],
+      },
+      { auflagenCodes: [], auflagenNotes: null },
+    );
+
+    expect(missingAbeCoreHuntFields(report, "5ER REIHE")).toEqual([]);
   });
 
   it("merges Auflagen codes into an existing vehicle row on follow-up photos", () => {
@@ -250,7 +295,7 @@ describe("ABE_HUNT_FIELD_WATERMARKS", () => {
     expect(abeHuntFieldDisplayLabel("verkaufsbezeichnung")).toBe("Fahrzeugmodell");
     expect(ABE_HUNT_FIELD_WATERMARKS.verkaufsbezeichnung).toContain("Fahrzeugmodell");
     expect(ABE_HUNT_FIELD_SCAN_HINTS.verkaufsbezeichnung?.popupBody).toContain(
-      "Scanne jetzt aus der Tabelle",
+      "Tabellenabschnitt",
     );
   });
 });

@@ -24,6 +24,13 @@ import { Input } from "@/components/ui/input";
 import { localDateIso } from "@/lib/documents/format";
 import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { parseAbeVehicleRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
+import {
+  abeAuflagenConditionsFromNotes,
+  auflagenCodesCoveredInNotes,
+  missingAuflagenCodesInNotes,
+} from "@/lib/ocr/abe-auflagen-from-text";
+import { AbeAuflagenFoldList } from "@/components/documents/abe-auflagen-fold-list";
 import {
   auflagenForAbeVehicleGroup,
   groupAbeVehicleMatches,
@@ -51,6 +58,7 @@ import {
   isAbeDataHunterReportComplete,
   missingAbeCoreHuntFields,
   missingAbeRequiredFields,
+  scopeAbeDataHunterReportAuflagen,
   type AbeDataHunterReport,
   type AbeRequiredFieldKey,
 } from "@/lib/validations/abeDataHunterSchemas";
@@ -146,28 +154,6 @@ function firstMissingFocusIndex(
   return Math.max(0, CORE_HUNT_ORDER.length - 1);
 }
 
-function nextMissingFocusIndex(
-  report: AbeDataHunterReport,
-  fromIndex: number,
-  selectedVerkaufsbezeichnung?: string | null,
-  vehicleContext?: AbeVehicleContext | null,
-): number {
-  const missing = missingCoreHuntFieldSet(
-    report,
-    selectedVerkaufsbezeichnung,
-    vehicleContext,
-  );
-  for (let index = fromIndex + 1; index < CORE_HUNT_ORDER.length; index++) {
-    const key = CORE_HUNT_ORDER[index];
-    if (key && missing.has(key)) return index;
-  }
-  for (let index = 0; index <= fromIndex; index++) {
-    const key = CORE_HUNT_ORDER[index];
-    if (key && missing.has(key)) return index;
-  }
-  return fromIndex;
-}
-
 function advanceHuntFocusAfterMerge(
   before: AbeDataHunterReport,
   after: AbeDataHunterReport,
@@ -185,23 +171,24 @@ function advanceHuntFocusAfterMerge(
     selectedVerkaufsbezeichnung,
     vehicleContext,
   );
-  const currentKey = CORE_HUNT_ORDER[currentFocusIndex];
 
-  if (
-    currentKey &&
-    missingBefore.has(currentKey) &&
-    !missingAfter.has(currentKey)
-  ) {
-    return nextMissingFocusIndex(
-      after,
-      currentFocusIndex,
-      selectedVerkaufsbezeichnung,
-      vehicleContext,
-    );
+  if (missingAfter.size === 0) {
+    return Math.max(0, CORE_HUNT_ORDER.length - 1);
   }
 
-  if (currentKey && missingAfter.has(currentKey)) {
-    return currentFocusIndex;
+  let filledAny = false;
+  for (const key of missingBefore) {
+    if (!missingAfter.has(key)) {
+      filledAny = true;
+      break;
+    }
+  }
+
+  if (!filledAny) {
+    const currentKey = CORE_HUNT_ORDER[currentFocusIndex];
+    if (currentKey && missingAfter.has(currentKey)) {
+      return currentFocusIndex;
+    }
   }
 
   return firstMissingFocusIndex(
@@ -278,6 +265,118 @@ async function extractAllFromFile(file: File): Promise<AbeDataHunterReport> {
   }
 
   return payload.extraction;
+}
+
+type HuntOcrStep =
+  | "hunt-all"
+  | "hunt-stammdaten"
+  | "hunt-marking"
+  | "hunt-vehicle";
+
+function huntOcrStepForFocus(focusKey: AbeRequiredFieldKey): HuntOcrStep {
+  switch (focusKey) {
+    case "markingText":
+      return "hunt-marking";
+    case "verkaufsbezeichnung":
+      return "hunt-vehicle";
+    case "kbaNumber":
+    case "abeNumber":
+    case "abeHolder":
+    case "manufacturer":
+    case "partDesignation":
+      return "hunt-stammdaten";
+    default:
+      return "hunt-all";
+  }
+}
+
+async function extractHuntStepFromFile(
+  file: File,
+  step: HuntOcrStep,
+): Promise<AbeDataHunterReport> {
+  const body = new FormData();
+  body.set("file", file);
+  body.set("step", step);
+
+  const response = await fetch("/api/ocr/abe", { method: "POST", body });
+  const payload = (await response.json().catch(() => null)) as
+    | { ok: true; extraction: Record<string, unknown>; reason?: string }
+    | { ok: false; error?: string }
+    | null;
+
+  if (!response.ok || !payload || payload.ok !== true) {
+    throw new HuntApiError(
+      payload && "error" in payload && payload.error
+        ? payload.error
+        : `Analyse fehlgeschlagen (${response.status}).`,
+    );
+  }
+
+  const empty = emptyAbeDataHunterReport();
+  const data = payload.extraction;
+
+  if (step === "hunt-marking") {
+    return {
+      ...empty,
+      markingText:
+        typeof data.markingText === "string" ? data.markingText : null,
+    };
+  }
+
+  if (step === "hunt-vehicle") {
+    const rawRows = Array.isArray(data.vehicleMatches) ? data.vehicleMatches : [];
+    return {
+      ...empty,
+      vehicleMatches: parseAbeVehicleRows(rawRows),
+    };
+  }
+
+  if (step === "hunt-stammdaten") {
+    return {
+      ...empty,
+      kbaNumber: typeof data.kbaNumber === "string" ? data.kbaNumber : null,
+      abeNumber: typeof data.abeNumber === "string" ? data.abeNumber : null,
+      abeHolder: typeof data.abeHolder === "string" ? data.abeHolder : null,
+      manufacturer:
+        typeof data.manufacturer === "string" ? data.manufacturer : null,
+      partDesignation:
+        typeof data.partDesignation === "string" ? data.partDesignation : null,
+    };
+  }
+
+  return data as AbeDataHunterReport;
+}
+
+async function extractForHuntFocus(
+  file: File,
+  focusKey: AbeRequiredFieldKey,
+): Promise<AbeDataHunterReport> {
+  if (isPdfFile(file)) {
+    return extractAllFromFile(file);
+  }
+  return extractHuntStepFromFile(file, huntOcrStepForFocus(focusKey));
+}
+
+function enrichAfterHuntMerge(
+  report: AbeDataHunterReport,
+  selectedGroupIndex: number | null,
+  vehicleContext?: AbeVehicleContext | null,
+) {
+  const { index, verkaufsbezeichnung } = huntGroupContext(
+    report,
+    selectedGroupIndex,
+    vehicleContext,
+  );
+  const scoped = scopeAbeDataHunterReportAuflagen(
+    report,
+    verkaufsbezeichnung,
+    vehicleContext,
+  );
+  return {
+    report: scoped,
+    groupIndex: index,
+    verkaufsbezeichnung,
+  };
 }
 
 function parseCodes(raw: string): string[] {
@@ -532,22 +631,28 @@ function HuntProgressOverlay({
 
 function AuflagenScanOverlay({
   targetCodes,
+  auflagenNotes,
   analyzing,
   queuedCount,
   captureSummary,
-  hasNotes,
   onOpenReview,
   onClose,
 }: {
   targetCodes: string[];
+  auflagenNotes: string | null;
   analyzing: boolean;
   queuedCount: number;
   captureSummary: string | null;
-  hasNotes: boolean;
   onOpenReview: () => void;
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
+  const missingCodes = missingAuflagenCodesInNotes(auflagenNotes, targetCodes);
+  const capturedCodes = auflagenCodesCoveredInNotes(auflagenNotes, targetCodes);
+  const canProceed =
+    targetCodes.length === 0
+      ? Boolean(auflagenNotes?.trim())
+      : missingCodes.length === 0 && Boolean(auflagenNotes?.trim());
 
   useEffect(() => {
     setMounted(true);
@@ -572,17 +677,22 @@ function AuflagenScanOverlay({
             <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/60">
               Schritt 2 · Auflagen-Text
               {captureSummary ? ` · ${captureSummary}` : ""}
+              {targetCodes.length > 0
+                ? ` · ${capturedCodes.length}/${targetCodes.length}`
+                : ""}
             </p>
             <p className="truncate text-[0.88rem] font-semibold leading-tight">
               {ABE_REQUIRED_FIELD_LABELS.auflagenNotes}
             </p>
             <p className="mt-0.5 text-[0.72rem] font-medium leading-snug text-white/75">
-              {ABE_HUNT_FIELD_SCAN_HINTS.auflagenNotes?.scanAction ??
-                "Fotografiere die Erklärungen zu den Auflagen-Nummern."}
+              {missingCodes.length > 0
+                ? `Noch fotografieren: ${missingCodes.join(", ")}`
+                : (ABE_HUNT_FIELD_SCAN_HINTS.auflagenNotes?.scanAction ??
+                  "Fotografiere die Erklärungen zu den Auflagen-Nummern.")}
             </p>
           </div>
 
-          {hasNotes ? (
+          {canProceed ? (
             <button
               type="button"
               disabled={analyzing}
@@ -597,17 +707,26 @@ function AuflagenScanOverlay({
         {targetCodes.length > 0 ? (
           <div className="mt-2.5 px-0.5">
             <p className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/50">
-              Diese Nummern aus der ABE fotografieren
+              Auflagen-Kürzel aus der Fahrzeugtabelle
             </p>
             <div className="mt-1.5 flex flex-wrap justify-center gap-1.5">
-              {targetCodes.map((code) => (
-                <span
-                  key={code}
-                  className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold"
-                >
-                  {code}
-                </span>
-              ))}
+              {targetCodes.map((code) => {
+                const captured = !missingCodes.some(
+                  (missing) => missing.toUpperCase() === code.toUpperCase(),
+                );
+                return (
+                  <span
+                    key={code}
+                    className={`rounded-full border px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold ${
+                      captured
+                        ? "border-emerald-300/50 bg-emerald-500/20 text-emerald-100"
+                        : "border-amber-300/60 bg-amber-500/20 text-amber-100"
+                    }`}
+                  >
+                    {code}
+                  </span>
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -1036,10 +1155,18 @@ function ReviewPanel({
                 value={selectedVerkaufsbezeichnung}
               />
               <AbeSummaryRow label="Auflagen" value={form.auflagenCodes} />
-              <AbeSummaryRow
-                label={ABE_REQUIRED_FIELD_LABELS.auflagenNotes}
-                value={form.auflagenNotes}
-              />
+              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
+                <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+                  {ABE_REQUIRED_FIELD_LABELS.auflagenNotes}
+                </p>
+                <div className="mt-2">
+                  <AbeAuflagenFoldList
+                    notes={form.auflagenNotes}
+                    knownCodes={scopedAuflagen}
+                    defaultOpenFirst
+                  />
+                </div>
+              </div>
             </dl>
           )}
         </div>
@@ -1196,12 +1323,12 @@ export function AbeDataHunterWizard({
         selectedGroupIndex,
         vehicleContext,
       );
-      const scoped = resolveAuflagenCodesForReport(prev, {
-        selectedVerkaufsbezeichnung: selectedVerk,
+      const next = scopeAbeDataHunterReportAuflagen(
+        prev,
+        selectedVerk,
         vehicleContext,
-      });
-      if (scoped.join("|") === prev.auflagenCodes.join("|")) return prev;
-      const next = { ...prev, auflagenCodes: scoped };
+      );
+      if (next === prev) return prev;
       reportRef.current = next;
       return next;
     });
@@ -1300,15 +1427,38 @@ export function AbeDataHunterWizard({
       setAnalyzingPdf(isPdfFile(file));
 
       try {
-        const extracted = await extractAllFromFile(file);
         const before = reportRef.current;
-        const merged = fillAbeDataHunterReport(before, extracted);
-        const { index: resolvedGroupIndex, verkaufsbezeichnung: verk } =
-          huntGroupContext(merged, selectedGroupIndex, vehicleContext);
+        const beforeContext = enrichAfterHuntMerge(
+          before,
+          selectedGroupIndex,
+          vehicleContext,
+        );
+        const focusKey =
+          CORE_HUNT_ORDER[
+            firstMissingFocusIndex(
+              beforeContext.report,
+              beforeContext.verkaufsbezeichnung,
+              vehicleContext,
+            )
+          ] ?? "kbaNumber";
+
+        const extracted = await extractForHuntFocus(file, focusKey);
+        const mergedRaw = fillAbeDataHunterReport(before, extracted);
+        const {
+          report: merged,
+          groupIndex: resolvedGroupIndex,
+          verkaufsbezeichnung: verk,
+        } = enrichAfterHuntMerge(mergedRaw, selectedGroupIndex, vehicleContext);
+
         if (resolvedGroupIndex !== selectedGroupIndex) {
           setSelectedGroupIndex(resolvedGroupIndex);
         }
-        const found = newlyFilledLabels(before, merged, verk, vehicleContext);
+        const found = newlyFilledLabels(
+          beforeContext.report,
+          merged,
+          verk,
+          vehicleContext,
+        );
 
         reportRef.current = merged;
         setReport(merged);
@@ -1316,7 +1466,7 @@ export function AbeDataHunterWizard({
         setHuntError(null);
         setHuntFocusIndex((current) =>
           advanceHuntFocusAfterMerge(
-            before,
+            beforeContext.report,
             merged,
             current,
             verk,
@@ -1473,8 +1623,18 @@ export function AbeDataHunterWizard({
     }
 
     const groupAuflagen = auflagenForAbeVehicleGroup(selectedGroup);
-    const conditions =
+    const knownAuflagenCodes =
       groupAuflagen.length > 0 ? groupAuflagen : draft.auflagenCodes;
+    const parsedConditions = abeAuflagenConditionsFromNotes(
+      draft.auflagenNotes,
+      knownAuflagenCodes,
+    );
+    const conditions =
+      parsedConditions.length > 0
+        ? parsedConditions
+        : knownAuflagenCodes.length > 0
+          ? knownAuflagenCodes
+          : draft.auflagenCodes;
     const kbaDisplay = draft.kbaNumber ? `KBA ${draft.kbaNumber}` : null;
     const title =
       [draft.partDesignation || "ABE", draft.manufacturer]
@@ -1546,12 +1706,6 @@ export function AbeDataHunterWizard({
               ? {
                   label: "Verkaufsbezeichnung",
                   value: selectedGroup.verkaufsbezeichnung,
-                }
-              : null,
-            draft.auflagenNotes
-              ? {
-                  label: ABE_REQUIRED_FIELD_LABELS.auflagenNotes,
-                  value: draft.auflagenNotes,
                 }
               : null,
           ].filter(
@@ -1658,10 +1812,10 @@ export function AbeDataHunterWizard({
         {errorBanner}
         <AuflagenScanOverlay
           targetCodes={targetAuflagenCodes}
+          auflagenNotes={report.auflagenNotes}
           analyzing={analyzing}
           queuedCount={queuedCount}
           captureSummary={captureSummary}
-          hasNotes={Boolean(report.auflagenNotes?.trim())}
           onOpenReview={goToReview}
           onClose={returnToAuflagenDetail}
         />
