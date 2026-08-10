@@ -115,14 +115,15 @@ export function VehicleShowcaseSettings({
         </h2>
       </div>
       <p className="mb-4 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Ideal fürs Tuningtreffen: Besucher scannen den Motorraum-QR und sehen
-        Specs, Fotos und Umbauten — ohne Login.
+        Ideal fürs Tuningtreffen: Beim QR-Scan am Motorraum-Tag sehen Besucher
+        sofort Specs, Fotos und Umbauten — ohne Login. Du erreichst dein
+        privates Dashboard über „Zum Dashboard“.
       </p>
 
       <div className="space-y-3">
         <ToggleRow
           label="Öffentliches Profil"
-          description="Gäste sehen das Showcase statt der gesperrten Privat-Ansicht."
+          description="Gäste sehen beim QR-Scan (/v/Tag-UUID) das öffentliche Showcase."
           checked={isPublic}
           disabled={!canEdit || pending}
           onChange={(value) => {

@@ -15,14 +15,14 @@ import {
   loadPublicShowcaseDocuments,
   resolvePublicVehicleEntry,
 } from "@/lib/vehicles/get-public-vehicle";
-import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
+import { buildPublicShowcasePayload, vehicleSupportsPublicShowcase } from "@/lib/vehicles/public-showcase-data";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { toOwnerClientTagScanResult } from "@/lib/tags/public-tag-dto";
 import type { Vehicle } from "@/types/database";
 
 interface TagScanPageProps {
   params: Promise<{ uuid: string }>;
-  searchParams: Promise<{ scan?: string; type?: string }>;
+  searchParams: Promise<{ scan?: string; type?: string; dashboard?: string }>;
 }
 
 function vehicleTitle(make: string, model: string, year: number | null): string {
@@ -63,13 +63,19 @@ export async function generateMetadata({
   };
 }
 
-async function renderPublicShowcase(vehicle: Vehicle) {
+async function renderPublicShowcase(
+  vehicle: Vehicle,
+  options: { dashboardHref?: string | null } = {},
+) {
   const documents = await loadPublicShowcaseDocuments(vehicle.id);
   const payload = buildPublicShowcasePayload(vehicle, documents);
 
   return (
     <AppShell showNavbar={false}>
-      <PublicShowcaseView data={payload} />
+      <PublicShowcaseView
+        data={payload}
+        dashboardHref={options.dashboardHref ?? null}
+      />
     </AppShell>
   );
 }
@@ -82,7 +88,8 @@ export default async function TagScanPage({
   searchParams,
 }: TagScanPageProps) {
   const { uuid: identifier } = await params;
-  const { scan, type: scanType } = await searchParams;
+  const { scan, type: scanType, dashboard } = await searchParams;
+  const wantsDashboard = dashboard === "1" || scan === "1";
   const entry = await resolvePublicVehicleEntry(identifier);
 
   if (!entry) {
@@ -125,12 +132,19 @@ export default async function TagScanPage({
 
   if (tag.status === "active" && vehicle) {
     const access = await getTagVehicleAccess(tag.uuid, vehicle.user_id);
+    const isPublicShowcase = vehicleSupportsPublicShowcase(vehicle);
+
+    // Physical QR scan → public showcase for everyone when enabled.
+    if (isPublicShowcase && !wantsDashboard) {
+      return renderPublicShowcase(vehicle, {
+        dashboardHref:
+          access.isOwner || access.isContributor
+            ? `/v/${tag.uuid}?dashboard=1`
+            : null,
+      });
+    }
 
     if (!access.isOwner && !access.isContributor) {
-      if (vehicle.is_public) {
-        return renderPublicShowcase(vehicle);
-      }
-
       if (tag.uuid === MOCK_TAG_UUIDS.active) {
         return (
           <AppShell showNavbar={false}>
