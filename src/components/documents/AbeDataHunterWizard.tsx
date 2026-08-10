@@ -25,18 +25,27 @@ import { localDateIso } from "@/lib/documents/format";
 import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import {
+  cropAuflagenSnippetsFromPhoto,
+  type NormalizedAuflagenRegion,
+} from "@/lib/ocr/auflagen-crop";
+import {
   abeAuflagenConditionsFromNotes,
+  abeAuflagenEntriesFromConditions,
+  parseAbeAuflagenNotes,
   auflagenCodesCoveredInNotes,
   missingAuflagenCodesInNotes,
 } from "@/lib/ocr/abe-auflagen-from-text";
 import {
   extractKuerzelRecordsFromOcrNotes,
+  normalizeAuflagenKuerzel,
   resolveAuflagenWithKuerzelDb,
 } from "@/lib/ocr/auflagen-kuerzel-db";
 import {
   buildClientAuflagenKuerzelDb,
+  buildClientAuflagenKuerzelImageMap,
   fetchServerAuflagenKuerzelRecords,
   learnAuflagenKuerzelRecords,
+  persistAuflagenKuerzelCrops,
 } from "@/lib/ocr/auflagen-kuerzel-client";
 import { AbeAuflagenFoldList } from "@/components/documents/abe-auflagen-fold-list";
 import {
@@ -310,7 +319,7 @@ class HuntApiError extends Error {
 async function extractAuflagenTextFromFile(
   file: File,
   targetCodes: string[],
-): Promise<string> {
+): Promise<{ notes: string; regions: NormalizedAuflagenRegion[] }> {
   const body = new FormData();
   body.set("file", file);
   body.set("step", "hunt-auflagen-text");
@@ -320,7 +329,10 @@ async function extractAuflagenTextFromFile(
   const payload = (await response.json().catch(() => null)) as
     | {
         ok: true;
-        extraction: { auflagenNotes: string | null };
+        extraction: {
+          auflagenNotes: string | null;
+          regions?: NormalizedAuflagenRegion[];
+        };
         reason?: string;
       }
     | { ok: false; error?: string }
@@ -342,7 +354,10 @@ async function extractAuflagenTextFromFile(
     );
   }
 
-  return notes;
+  return {
+    notes,
+    regions: payload.extraction.regions ?? [],
+  };
 }
 
 async function extractAllFromFile(file: File): Promise<AbeDataHunterReport> {
@@ -1012,6 +1027,7 @@ function ReviewPanel({
   vehicleContext,
   selectedGroupIndex,
   selectedRowId,
+  imageUrlsByCode,
   onSelectGroup,
   onSelectRow,
   onSave,
@@ -1024,6 +1040,7 @@ function ReviewPanel({
   vehicleContext?: AbeVehicleContext | null;
   selectedGroupIndex: number | null;
   selectedRowId: string | null;
+  imageUrlsByCode: Map<string, string>;
   onSelectGroup: (index: number) => void;
   onSelectRow: (rowId: string) => void;
   onSave: (form: ReviewFormState) => void;
@@ -1252,6 +1269,7 @@ function ReviewPanel({
                   <AbeAuflagenFoldList
                     notes={form.auflagenNotes}
                     knownCodes={scopedAuflagen}
+                    imageUrlsByCode={imageUrlsByCode}
                     defaultOpenFirst
                   />
                 </div>
@@ -1350,6 +1368,12 @@ export function AbeDataHunterWizard({
   selectedGroupIndexRef.current = selectedGroupIndex;
   const cameraGuideKeyRef = useRef<AbeRequiredFieldKey>("kbaNumber");
   const kuerzelDbRef = useRef<Map<string, string>>(buildClientAuflagenKuerzelDb());
+  const kuerzelImageUrlsRef = useRef<Map<string, string>>(
+    buildClientAuflagenKuerzelImageMap(),
+  );
+  const [kuerzelImageUrls, setKuerzelImageUrls] = useState<Map<string, string>>(
+    () => buildClientAuflagenKuerzelImageMap(),
+  );
 
   const huntGroup = huntGroupContext(
     report,
@@ -1445,10 +1469,14 @@ export function AbeDataHunterWizard({
         const serverRecords = await fetchServerAuflagenKuerzelRecords();
         if (!cancelled) {
           kuerzelDbRef.current = buildClientAuflagenKuerzelDb(serverRecords);
+          kuerzelImageUrlsRef.current =
+            buildClientAuflagenKuerzelImageMap(serverRecords);
+          setKuerzelImageUrls(new Map(kuerzelImageUrlsRef.current));
         }
       } catch {
         if (!cancelled) {
           kuerzelDbRef.current = localDb;
+          kuerzelImageUrlsRef.current = buildClientAuflagenKuerzelImageMap();
         }
       }
 
@@ -1847,7 +1875,7 @@ export function AbeDataHunterWizard({
           selectedGroupIndex,
           selectedRowId,
         );
-        const notes = await extractAuflagenTextFromFile(file, codes);
+        const { notes, regions } = await extractAuflagenTextFromFile(file, codes);
         const before = reportRef.current;
         const merged = fillAbeDataHunterReport(before, {
           ...emptyAbeDataHunterReport(),
@@ -1860,6 +1888,20 @@ export function AbeDataHunterWizard({
             learned,
             kuerzelDbRef.current,
           );
+        }
+
+        const crops = await cropAuflagenSnippetsFromPhoto(
+          file,
+          notes,
+          codes,
+          regions,
+        );
+        if (crops.size > 0) {
+          kuerzelImageUrlsRef.current = await persistAuflagenKuerzelCrops(
+            crops,
+            kuerzelImageUrlsRef.current,
+          );
+          setKuerzelImageUrls(new Map(kuerzelImageUrlsRef.current));
         }
 
         const enriched = enrichReportAuflagenFromKuerzelDb(
@@ -1984,6 +2026,17 @@ export function AbeDataHunterWizard({
       draft.auflagenNotes,
       knownAuflagenCodes,
     );
+    const auflagenEntries = parseAbeAuflagenNotes(
+      draft.auflagenNotes ?? "",
+      knownAuflagenCodes,
+    );
+    const auflagenSnippets = auflagenEntries.map((entry) => ({
+      code: entry.code,
+      text: entry.text,
+      imageUrl:
+        kuerzelImageUrlsRef.current.get(normalizeAuflagenKuerzel(entry.code)) ??
+        null,
+    }));
     const conditions =
       parsedConditions.length > 0
         ? parsedConditions
@@ -2080,6 +2133,7 @@ export function AbeDataHunterWizard({
           kind: "abe",
           data: {
             abeHolder: draft.abeHolder,
+            auflagenSnippets,
             ...(selectedGroup
               ? selectedVerkaufsbezeichnungPayload(
                   selectedGroup,
@@ -2116,19 +2170,20 @@ export function AbeDataHunterWizard({
 
   if (phase === "review") {
     return (
-      <ReviewPanel
-        report={report}
-        vehicleLabel={vehicleLabel}
-        vehicleContext={vehicleContext}
-        selectedGroupIndex={selectedGroupIndex}
-        selectedRowId={selectedRowId}
-        onSelectGroup={handleSelectGroup}
-        onSelectRow={handleSelectRow}
-        onSave={handleSave}
-        onRestart={restart}
-        isSaving={isSaving}
-        saveError={saveError}
-      />
+        <ReviewPanel
+          report={report}
+          vehicleLabel={vehicleLabel}
+          vehicleContext={vehicleContext}
+          selectedGroupIndex={selectedGroupIndex}
+          selectedRowId={selectedRowId}
+          imageUrlsByCode={kuerzelImageUrls}
+          onSelectGroup={handleSelectGroup}
+          onSelectRow={handleSelectRow}
+          onSave={handleSave}
+          onRestart={restart}
+          isSaving={isSaving}
+          saveError={saveError}
+        />
     );
   }
 

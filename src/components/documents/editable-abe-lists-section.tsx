@@ -19,6 +19,7 @@ import { isIvStructuredAuflagen } from "@/lib/validations/teilegutachten-auflage
 import { VerwendungsbereichTable } from "@/components/documents/verwendungsbereich-table";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { TableData } from "@/lib/validations/abeSchema";
+import type { AbeAuflagenSnippet } from "@/lib/validations/documentSchemas";
 import type { DocumentTechnicalSpec } from "@/types/database";
 
 type EditableAbeListsSectionProps = {
@@ -37,6 +38,8 @@ type EditableAbeListsSectionProps = {
   ownerNotes?: string | null;
   /** ABE `verkaufsbezeichnung` — used to dedupe Freigabe list vs. Fahrzeugmodell. */
   verkaufsbezeichnung?: string | null;
+  /** Cropped Auflagen snippets saved with the document. */
+  auflagenSnippets?: AbeAuflagenSnippet[];
 };
 
 function specsToText(specs: DocumentTechnicalSpec[]): string {
@@ -86,6 +89,7 @@ export function EditableAbeListsSection({
   technicalDataTable = null,
   ownerNotes = null,
   verkaufsbezeichnung = null,
+  auflagenSnippets = [],
 }: EditableAbeListsSectionProps) {
   const [editing, setEditing] = useState(false);
   const [approvalsText, setApprovalsText] = useState(
@@ -275,6 +279,7 @@ export function EditableAbeListsSection({
           <AbeAuflagenFoldList
             conditions={displayConditions}
             notes={auflagenNotes}
+            snippets={auflagenSnippets}
             knownCodes={knownAuflagenCodes}
           />
         ) : (

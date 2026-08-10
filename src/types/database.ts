@@ -112,8 +112,16 @@ export type AbeAuflagenKuerzel = {
   text: string;
   source: "seed" | "learned" | "manual";
   learned_by: string | null;
+  image_path: string | null;
   created_at: string;
   updated_at: string;
+};
+
+/** Per-Auflage snippet stored on ABE documents (text + optional scan crop). */
+export type AbeAuflagenSnippet = {
+  code: string;
+  text: string;
+  imageUrl?: string | null;
 };
 
 export type Document = {
@@ -314,6 +322,7 @@ export type Database = {
           text: string;
           source?: "seed" | "learned" | "manual";
           learned_by?: string | null;
+          image_path?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -322,6 +331,7 @@ export type Database = {
           text?: string;
           source?: "seed" | "learned" | "manual";
           learned_by?: string | null;
+          image_path?: string | null;
           created_at?: string;
           updated_at?: string;
         };

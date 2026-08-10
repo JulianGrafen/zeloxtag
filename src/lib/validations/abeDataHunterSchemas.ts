@@ -808,7 +808,7 @@ export const ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["auflagenNotes"],
+    required: ["auflagenNotes", "regions"],
     properties: {
       auflagenNotes: {
         type: "string",
@@ -816,9 +816,38 @@ export const ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA = {
           FROM_PHOTO +
           "Transcribe each target Auflagen block as `CODE: full text` (e.g. `744: …`, `F40: …`, `L04: …`). Include EVERY target code listed in the request. Separate blocks with a blank line. Verbatim — no summary.",
       },
+      regions: {
+        type: "array",
+        description:
+          FROM_PHOTO +
+          "Normalized bounding box (0–1) for each target code block on the photo. top/left/bottom/right relative to full image.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["code", "top", "left", "bottom", "right"],
+          properties: {
+            code: { type: "string" },
+            top: { type: "number" },
+            left: { type: "number" },
+            bottom: { type: "number" },
+            right: { type: "number" },
+          },
+        },
+      },
     },
   },
 } as const;
+
+export type AbeHuntAuflagenTextExtraction = {
+  auflagenNotes: string | null;
+  regions: Array<{
+    code: string;
+    top: number;
+    left: number;
+    bottom: number;
+    right: number;
+  }>;
+};
 
 export const ABE_HUNT_AUFLAGEN_JSON_SCHEMA = {
   name: "abe_hunt_auflagen",

@@ -8,6 +8,7 @@ import {
 export type AuflagenKuerzelRecord = {
   kuerzel: string;
   text: string;
+  imageUrl?: string | null;
 };
 
 export function normalizeAuflagenKuerzel(code: string): string {
@@ -28,8 +29,14 @@ export function parseAuflagenKuerzelRecords(
     );
     const text =
       typeof record.text === "string" ? record.text.trim().replace(/\s+/g, " ") : "";
+    const imageUrl =
+      typeof record.imageUrl === "string" && record.imageUrl.trim()
+        ? record.imageUrl.trim()
+        : typeof record.image_url === "string" && record.image_url.trim()
+          ? record.image_url.trim()
+          : null;
     if (!kuerzel || !text) continue;
-    out.push({ kuerzel, text });
+    out.push({ kuerzel, text, imageUrl });
   }
   return out;
 }
@@ -56,6 +63,23 @@ export function mergeAuflagenKuerzelMaps(
   return map;
 }
 
+export function mergeAuflagenKuerzelImageMap(
+  ...sources: AuflagenKuerzelRecord[][]
+): Map<string, string> {
+  const map = new Map<string, string>();
+
+  for (const records of sources) {
+    for (const { kuerzel, imageUrl } of records) {
+      const key = normalizeAuflagenKuerzel(kuerzel);
+      const url = imageUrl?.trim();
+      if (!key || !url) continue;
+      map.set(key, url);
+    }
+  }
+
+  return map;
+}
+
 export function lookupAuflagenKuerzelText(
   code: string,
   db: Map<string, string>,
@@ -67,9 +91,14 @@ export function lookupAuflagenKuerzelText(
 
 export function auflagenKuerzelMapToRecords(
   db: Map<string, string>,
+  imageUrls?: Map<string, string>,
 ): AuflagenKuerzelRecord[] {
   return [...db.entries()]
-    .map(([kuerzel, text]) => ({ kuerzel, text }))
+    .map(([kuerzel, text]) => ({
+      kuerzel,
+      text,
+      imageUrl: imageUrls?.get(kuerzel) ?? null,
+    }))
     .sort((a, b) => a.kuerzel.localeCompare(b.kuerzel, "de"));
 }
 

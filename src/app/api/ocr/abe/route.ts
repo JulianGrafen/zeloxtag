@@ -11,6 +11,7 @@ import { sniffAllowedMime } from "@/lib/security/file-upload";
 import type {
   AbeDataHunterReport,
   AbeHuntAuflagenExtraction,
+  AbeHuntAuflagenTextExtraction,
   AbeHuntMarkingExtraction,
   AbeHuntStammdatenExtraction,
   AbeHuntStepResult,
@@ -89,8 +90,8 @@ type HuntSuccess =
   | {
       ok: true;
       step: "hunt-auflagen-text";
-      status: AbeHuntStepResult<{ auflagenNotes: string | null }>["status"];
-      extraction: { auflagenNotes: string | null };
+      status: AbeHuntStepResult<AbeHuntAuflagenTextExtraction>["status"];
+      extraction: AbeHuntAuflagenTextExtraction;
       reason?: string;
     };
 

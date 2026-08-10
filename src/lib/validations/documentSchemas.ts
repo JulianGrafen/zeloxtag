@@ -113,6 +113,17 @@ export const EinzelabnahmeSchema = z
 export type Einzelabnahme = z.infer<typeof EinzelabnahmeSchema>;
 
 /** Optional structured payload for plain ABE documents. */
+export const AbeAuflagenSnippetSchema = z
+  .object({
+    code: z.string().trim().min(1).max(6),
+    text: z.string().trim().min(1).max(8000),
+    imageUrl: z.string().trim().url().max(2048).nullable().optional(),
+  })
+  .strict();
+
+export type AbeAuflagenSnippet = z.infer<typeof AbeAuflagenSnippetSchema>;
+
+/** Optional structured payload for plain ABE documents. */
 export const AbeApprovalDataSchema = z
   .object({
     /** Legal holder on the ABE certificate (Inhaber der ABE / Auftraggeber). */
@@ -121,6 +132,8 @@ export const AbeApprovalDataSchema = z
     verkaufsbezeichnung: z.string().trim().min(1).max(200).nullable().optional(),
     /** Full Fahrzeug- und Auflagen-Tabelle for the chosen section. */
     vehicleTable: TableDataSchema.nullable().optional(),
+    /** Cropped Auflagen snippets (code, text, optional reference image). */
+    auflagenSnippets: z.array(AbeAuflagenSnippetSchema).max(40).optional(),
     /** @deprecated Legacy single-row selection. */
     selectedVehicleMatch: z
       .object({

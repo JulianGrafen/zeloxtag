@@ -2,6 +2,9 @@ import type { DocumentType } from "@/types/database";
 
 export const DOCUMENT_BUCKET = "vehicle-documents";
 
+/** Crowd-sourced cropped Auflagen reference snippets (shared across users). */
+export const AUFLAGEN_KUERZEL_BUCKET = "abe-auflagen-kuerzel";
+
 /** Max upload size — room for high-fidelity invoice photos / multi-page PDFs. */
 export const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 

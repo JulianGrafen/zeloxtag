@@ -15,6 +15,9 @@ import {
   inferAbeKbaFromReport,
 } from "@/lib/validations/abeSchema";
 import {
+  parseAuflagenRegions,
+} from "@/lib/ocr/auflagen-crop";
+import {
   ABE_HUNT_ALL_JSON_SCHEMA,
   ABE_HUNT_AUFLAGEN_JSON_SCHEMA,
   ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA,
@@ -28,6 +31,7 @@ import {
   AbeHuntStammdatenSchema,
   emptyAbeDataHunterReport,
   finalizeAbeDataHunterReport,
+  type AbeHuntAuflagenTextExtraction,
   coalesceAbeHolderAndManufacturer,
   isAbeHuntAuflagenComplete,
   isAbeHuntMarkingComplete,
@@ -557,7 +561,7 @@ export class AbeDataHunterExtractionService {
   async extractAuflagenTextFromPhoto(
     input: DocumentBytesInput,
     targetCodes: string[],
-  ): Promise<AbeHuntStepResult<{ auflagenNotes: string | null }>> {
+  ): Promise<AbeHuntStepResult<AbeHuntAuflagenTextExtraction>> {
     const codesHint =
       targetCodes.length > 0
         ? `Target Auflagen codes from the vehicle table: ${targetCodes.join(", ")}.`
@@ -572,38 +576,43 @@ export class AbeDataHunterExtractionService {
           "Transcribe the full Auflagen / Bedingungen / Hinweise text verbatim.",
           "Include section headings and numbered items. Do not summarize.",
           "If multiple codes are visible, include every matching paragraph.",
+          "For each target code, also return a normalized bounding box (0–1) covering the printed paragraph for that code on the photo.",
         ],
         [
           "Extract the complete Auflagen text visible in this photograph.",
           "Copy wording exactly as printed on the ABE document.",
+          "Return one regions entry per visible target code block.",
         ],
         ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA,
         "hunt-auflagen-text",
-        2_000,
+        2_500,
       );
 
+      const record =
+        typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
       const notes =
-        typeof raw === "object" &&
-        raw &&
-        "auflagenNotes" in raw &&
-        typeof (raw as { auflagenNotes: unknown }).auflagenNotes === "string"
-          ? (raw as { auflagenNotes: string }).auflagenNotes.trim()
+        typeof record.auflagenNotes === "string"
+          ? record.auflagenNotes.trim()
           : "";
+      const regions = parseAuflagenRegions(record.regions);
 
       if (!notes) {
         return {
           status: "needs_manual",
-          extraction: { auflagenNotes: null },
+          extraction: { auflagenNotes: null, regions: [] },
           reason:
             "Kein Auflagen-Text erkannt — bitte den Abschnitt erneut fotografieren.",
         };
       }
 
-      return { status: "ok", extraction: { auflagenNotes: notes } };
+      return {
+        status: "ok",
+        extraction: { auflagenNotes: notes, regions },
+      };
     } catch {
       return {
         status: "needs_manual",
-        extraction: { auflagenNotes: null },
+        extraction: { auflagenNotes: null, regions: [] },
         reason:
           "Auflagen-Text konnte nicht gelesen werden — bitte erneut fotografieren.",
       };

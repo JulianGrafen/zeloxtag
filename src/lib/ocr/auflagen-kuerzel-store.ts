@@ -1,8 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { AUFLAGEN_KUERZEL_BUCKET } from "@/lib/documents/constants";
 import {
   mergeAuflagenKuerzelMaps,
+  mergeAuflagenKuerzelImageMap,
   normalizeAuflagenKuerzel,
   parseAuflagenKuerzelRecords,
   selectKuerzelRecordsToLearn,
@@ -13,6 +15,7 @@ import {
   createAdminClient,
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
+import { getSupabaseEnv } from "@/lib/supabase/env";
 
 const SEED_PATH = path.join(
   process.cwd(),
@@ -23,6 +26,14 @@ const LEARNED_PATH = path.join(
   process.cwd(),
   "data/auflagen-kuerzel.learned.json",
 );
+
+function publicUrlForKuerzelImage(imagePath: string | null | undefined): string | null {
+  const trimmed = imagePath?.trim();
+  if (!trimmed) return null;
+  const { url, isConfigured } = getSupabaseEnv();
+  if (!isConfigured) return null;
+  return `${url}/storage/v1/object/public/${AUFLAGEN_KUERZEL_BUCKET}/${trimmed}`;
+}
 
 async function readJsonArray(filePath: string): Promise<unknown> {
   try {
@@ -55,13 +66,17 @@ async function loadSupabaseKuerzelRecords(): Promise<AuflagenKuerzelRecord[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("abe_auflagen_kuerzel")
-    .select("kuerzel, text");
+    .select("kuerzel, text, image_path");
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return parseAuflagenKuerzelRecords(data);
+  return (data ?? []).map((row) => ({
+    kuerzel: normalizeAuflagenKuerzel(row.kuerzel),
+    text: row.text.trim(),
+    imageUrl: publicUrlForKuerzelImage(row.image_path),
+  }));
 }
 
 export async function loadAuflagenKuerzelDb(): Promise<Map<string, string>> {
@@ -74,6 +89,22 @@ export async function loadAuflagenKuerzelDb(): Promise<Map<string, string>> {
 
   const filesystemRecords = await loadFilesystemKuerzelRecords();
   return mergeAuflagenKuerzelMaps(filesystemRecords, supabaseRecords);
+}
+
+export async function loadAuflagenKuerzelRecordsWithImages(): Promise<
+  AuflagenKuerzelRecord[]
+> {
+  const filesystemRecords = await loadFilesystemKuerzelRecords();
+  let supabaseRecords: AuflagenKuerzelRecord[] = [];
+  try {
+    supabaseRecords = await loadSupabaseKuerzelRecords();
+  } catch (error) {
+    console.error("[auflagen-kuerzel] Supabase read failed", error);
+  }
+
+  const textMap = mergeAuflagenKuerzelMaps(filesystemRecords, supabaseRecords);
+  const imageMap = mergeAuflagenKuerzelImageMap(supabaseRecords);
+  return auflagenKuerzelMapToRecords(textMap, imageMap);
 }
 
 export async function loadLearnedAuflagenKuerzelRecords(): Promise<
@@ -145,6 +176,89 @@ async function appendSupabaseKuerzelRecords(
   return true;
 }
 
+export async function uploadAuflagenKuerzelImage(
+  kuerzel: string,
+  bytes: Buffer,
+  contentType: string,
+  learnedByUserId?: string | null,
+): Promise<{ imagePath: string; imageUrl: string }> {
+  if (!isSupabaseAdminConfigured()) {
+    throw new Error("Supabase admin is not configured.");
+  }
+
+  const code = normalizeAuflagenKuerzel(kuerzel);
+  if (!code) {
+    throw new Error("Ungültiges Kürzel.");
+  }
+
+  const ext = contentType.includes("png") ? "png" : "jpg";
+  const imagePath = `${code}.${ext}`;
+  const admin = createAdminClient();
+
+  const { error: uploadError } = await admin.storage
+    .from(AUFLAGEN_KUERZEL_BUCKET)
+    .upload(imagePath, bytes, {
+      upsert: true,
+      contentType: contentType.includes("png") ? "image/png" : "image/jpeg",
+    });
+
+  if (uploadError) {
+    throw new Error(uploadError.message);
+  }
+
+  const { data: existing, error: readError } = await admin
+    .from("abe_auflagen_kuerzel")
+    .select("text")
+    .eq("kuerzel", code)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(readError.message);
+  }
+
+  if (!existing?.text?.trim()) {
+    throw new Error(
+      `Kürzel ${code} muss zuerst mit Text gespeichert werden.`,
+    );
+  }
+
+  const { error: updateError } = await admin
+    .from("abe_auflagen_kuerzel")
+    .update({ image_path: imagePath })
+    .eq("kuerzel", code);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  const imageUrl = publicUrlForKuerzelImage(imagePath);
+  if (!imageUrl) {
+    throw new Error("Bild-URL konnte nicht erzeugt werden.");
+  }
+
+  return { imagePath, imageUrl };
+}
+
+export async function attachAuflagenKuerzelImagePath(
+  kuerzel: string,
+  imagePath: string,
+): Promise<string | null> {
+  if (!isSupabaseAdminConfigured()) return null;
+
+  const code = normalizeAuflagenKuerzel(kuerzel);
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("abe_auflagen_kuerzel")
+    .update({ image_path: imagePath })
+    .eq("kuerzel", code);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return publicUrlForKuerzelImage(imagePath);
+}
+
 export async function appendAuflagenKuerzelRecords(
   incoming: readonly AuflagenKuerzelRecord[],
   learnedByUserId?: string | null,
@@ -196,4 +310,21 @@ export async function appendAuflagenKuerzelRecords(
 
   const total = (await loadAuflagenKuerzelDb()).size;
   return { added: toLearn.length, total, persistedTo };
+}
+
+export async function upsertAuflagenKuerzelWithImage(
+  record: AuflagenKuerzelRecord,
+  imageBytes: Buffer,
+  contentType: string,
+  learnedByUserId?: string | null,
+): Promise<AuflagenKuerzelRecord> {
+  await appendAuflagenKuerzelRecords([record], learnedByUserId);
+  const { imagePath, imageUrl } = await uploadAuflagenKuerzelImage(
+    record.kuerzel,
+    imageBytes,
+    contentType,
+    learnedByUserId,
+  );
+  await attachAuflagenKuerzelImagePath(record.kuerzel, imagePath);
+  return { ...record, imageUrl };
 }

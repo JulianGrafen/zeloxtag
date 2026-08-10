@@ -78,6 +78,10 @@ export function DocumentAbeDetailView({
     document.approval_fields?.kind === "abe"
       ? document.approval_fields.data?.verkaufsbezeichnung
       : null;
+  const abeAuflagenSnippets =
+    document.approval_fields?.kind === "abe"
+      ? document.approval_fields.data?.auflagenSnippets ?? []
+      : [];
   const approvals = vehicleApprovalsForAbeDetailView(
     document.vehicle_approvals ?? [],
     {
@@ -318,6 +322,7 @@ export function DocumentAbeDetailView({
             technicalDataTable={isTeilegutachten ? tgTechnicalTable : null}
             ownerNotes={isTeilegutachten ? tgOwnerNotes : null}
             verkaufsbezeichnung={abeVerkaufsbezeichnung}
+            auflagenSnippets={abeAuflagenSnippets}
           />
         ) : null}
 

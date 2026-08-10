@@ -2,12 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import {
-  auflagenKuerzelMapToRecords,
   parseAuflagenKuerzelRecords,
 } from "@/lib/ocr/auflagen-kuerzel-db";
 import {
   appendAuflagenKuerzelRecords,
   loadAuflagenKuerzelDb,
+  loadAuflagenKuerzelRecordsWithImages,
 } from "@/lib/ocr/auflagen-kuerzel-store";
 import {
   enforceRateLimit,
@@ -30,7 +30,7 @@ const learnBodySchema = z
 
 type Success = {
   ok: true;
-  records: { kuerzel: string; text: string }[];
+  records: { kuerzel: string; text: string; imageUrl?: string | null }[];
   added?: number;
   total?: number;
 };
@@ -51,10 +51,10 @@ export async function GET(): Promise<NextResponse> {
     const auth = await requireApiUser();
     if (!auth.ok) return auth.response;
 
-    const db = await loadAuflagenKuerzelDb();
+    const records = await loadAuflagenKuerzelRecordsWithImages();
     const body: Success = {
       ok: true,
-      records: auflagenKuerzelMapToRecords(db),
+      records,
     };
     return NextResponse.json(body);
   } catch (err) {
@@ -94,13 +94,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       incoming,
       auth.user.id,
     );
-    const db = await loadAuflagenKuerzelDb();
-
     const body: Success = {
       ok: true,
       added,
       total,
-      records: auflagenKuerzelMapToRecords(db),
+      records: await loadAuflagenKuerzelRecordsWithImages(),
     };
     return NextResponse.json(body);
   } catch (err) {
