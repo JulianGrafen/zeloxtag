@@ -65,7 +65,7 @@ export async function GET(): Promise<NextResponse> {
   }
 }
 
-/** POST /api/abe/auflagen-kuerzel — learn new OCR entries into JSON store. */
+/** POST /api/abe/auflagen-kuerzel — learn new OCR entries into Supabase. */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const originBlocked = enforceSameOrigin(request);
@@ -90,7 +90,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const incoming = parseAuflagenKuerzelRecords(parsed.data.records);
-    const { added, total } = await appendAuflagenKuerzelRecords(incoming);
+    const { added, total } = await appendAuflagenKuerzelRecords(
+      incoming,
+      auth.user.id,
+    );
     const db = await loadAuflagenKuerzelDb();
 
     const body: Success = {

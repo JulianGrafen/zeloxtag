@@ -106,6 +106,16 @@ export type MfaRecoveryCode = {
   used_at: string | null;
 };
 
+/** Shared ABE Auflagen code dictionary (`00032_abe_auflagen_kuerzel`). */
+export type AbeAuflagenKuerzel = {
+  kuerzel: string;
+  text: string;
+  source: "seed" | "learned" | "manual";
+  learned_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Document = {
   id: string;
   vehicle_id: string;
@@ -294,6 +304,26 @@ export type Database = {
           code_hash?: string;
           created_at?: string;
           used_at?: string | null;
+        };
+        Relationships: [];
+      };
+      abe_auflagen_kuerzel: {
+        Row: AbeAuflagenKuerzel;
+        Insert: {
+          kuerzel: string;
+          text: string;
+          source?: "seed" | "learned" | "manual";
+          learned_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          kuerzel?: string;
+          text?: string;
+          source?: "seed" | "learned" | "manual";
+          learned_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
