@@ -12,11 +12,13 @@ import { resolveAbeMarkingText } from "@/lib/ocr/abe-marking-from-text";
 import {
   normalizeAbeKbaDigits,
   normalizeAbeNumberDigits,
+  inferAbeKbaFromReport,
 } from "@/lib/validations/abeSchema";
 import {
   ABE_HUNT_ALL_JSON_SCHEMA,
   ABE_HUNT_AUFLAGEN_JSON_SCHEMA,
   ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA,
+  ABE_HUNT_KBA_ONLY_JSON_SCHEMA,
   ABE_HUNT_MARKING_JSON_SCHEMA,
   ABE_HUNT_STAMMDATEN_JSON_SCHEMA,
   ABE_HUNT_VEHICLE_JSON_SCHEMA,
@@ -52,6 +54,7 @@ const FREESTYLE_GUARD =
 
 type JsonSchema =
   | typeof ABE_HUNT_STAMMDATEN_JSON_SCHEMA
+  | typeof ABE_HUNT_KBA_ONLY_JSON_SCHEMA
   | typeof ABE_HUNT_MARKING_JSON_SCHEMA
   | typeof ABE_HUNT_VEHICLE_JSON_SCHEMA
   | typeof ABE_HUNT_AUFLAGEN_JSON_SCHEMA
@@ -79,14 +82,14 @@ export class AbeDataHunterExtractionService {
         input,
         [
           IMAGE_ONLY_GUARD,
-          "Extract ABE master data: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber der ABE / Auftraggeber), manufacturer (Hersteller / Herstellerzeichen), partDesignation (Bezeichnung des Bauteils).",
+          "Extract ABE master data: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber der ABE / Auftraggeber), manufacturer (Hersteller in Prüfgegenstand — not Kennzeichnungen Herstellerzeichen), partDesignation (Prüfgegenstand / Bezeichnung des Bauteils).",
           "Never put Gutachten-Nr. or Genehmigungsnummer with letters into kbaNumber or abeNumber.",
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer to that value.",
           'Map "Auftraggeber" to abeHolder when no separate Inhaber der ABE label is shown.',
         ],
         [
           "Extract only the requested data points from this cropped image.",
-          "Look for KBA, Nummer der ABE, Inhaber der ABE, Auftraggeber, Hersteller, Herstellerzeichen, and the part designation (Gerät/Typ/Design).",
+          "Look for KBA, Nummer der ABE, Gutachten zur ABE Nr., Inhaber der ABE, Auftraggeber, Prüfgegenstand, Hersteller, and Radgröße / Typ.",
         ],
         ABE_HUNT_STAMMDATEN_JSON_SCHEMA,
         "hunt-stammdaten",
@@ -221,24 +224,24 @@ export class AbeDataHunterExtractionService {
         input,
         [
           IMAGE_ONLY_GUARD,
-          "Extract German ABE Fahrzeug- und Auflagen-Tabelle rows with Verkaufsbezeichnung (allowed vehicles).",
-          "Verkaufsbezeichnung is the vehicle model section header (e.g. Volkswagen GOLF GTI, BMW 3ER REIHE, Mercedes-Benz C-KLASSE) — not Hersteller, not Fahrzeugtyp.",
-          "Copy the exact Verkaufsbezeichnung onto every row of that section.",
+          "Extract German ABE / Gutachten Verwendungsbereich table rows (allowed vehicles).",
+          "Verkaufsbezeichnung / Handelsbezeichnung is the vehicle model line (e.g. BMW 3er-Reihe, BMW 3er-Compact, 5ER REIHE) — not Hersteller BMW in the table header, not Fahrzeugtyp codes.",
+          "Copy the Handelsbezeichnung onto every row of that vehicle block.",
           "Column mapping:",
-          "- fahrzeugtyp: Fahrzeugtyp column cell for this row only.",
-          "- typeApproval: Betriebserlaubnis / Typgenehmigung / EG-BE / technische Bezeichnung cell verbatim.",
-          "- driveType: Allradantrieb / Heckantrieb / Frontantrieb if present in Auflagen column, else null.",
-          '- tireSizes: Reifen / Radgröße column (e.g. "225/40 R18") — one entry per size; empty array when column missing.',
-          "- auflagenCodes: short Auflagen-Kürzel only in this row's Auflagen column — never merge codes from other sections.",
-          "Do not merge rows. Do not skip visible rows.",
+          "- fahrzeugtyp: Fahrzeugtyp / type code cell only (346L, 3/CG, 346K, 5L).",
+          "- typeApproval: ABE/EWG-Nr / Betriebserlaubnis / EG-BE cell verbatim.",
+          "- driveType: Allradantrieb / Heckantrieb / Frontantrieb if present, else null.",
+          '- tireSizes: Reifen column (e.g. "225/45R17") — one entry per size; empty array when column missing.',
+          "- auflagenCodes: ALL short codes from reifenbezogene Auflagen AND Auflagen und Hinweise columns for this row.",
+          "Do not merge rows. Do not skip visible rows. Extract every vehicle block visible on the photo.",
         ],
         [
-          "Extract every visible Fahrzeug-Tabelle row under the Verkaufsbezeichnung.",
-          "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen (optional) | Auflagen.",
+          "Extract every visible Verwendungsbereich row.",
+          "Typical Gutachten columns: Handelsbezeichnung | Fahrzeugtyp | ABE/EWG-Nr | kW | Reifen | Auflagen.",
         ],
         ABE_HUNT_VEHICLE_JSON_SCHEMA,
         "hunt-vehicle",
-        3_500,
+        5_000,
       );
 
       const rawRows =
@@ -273,6 +276,86 @@ export class AbeDataHunterExtractionService {
     }
   }
 
+  /** @deprecated Prefer extractKbaFromPhoto */
+  extractKbaSnippet(input: DocumentBytesInput) {
+    return this.extractKbaFromPhoto(input);
+  }
+
+  /**
+   * Step 1 of the data hunter: extract only KBA / Nummer der ABE from a photo or PDF.
+   */
+  async extractKbaFromPhoto(
+    input: DocumentBytesInput,
+  ): Promise<AbeHuntStepResult<AbeHuntStammdatenExtraction>> {
+    const empty = { ...EMPTY_STAMMDATEN };
+
+    try {
+      const isPdf = input.contentType === "application/pdf";
+      const raw = await this.runSnippetStep(
+        input,
+        [
+          FREESTYLE_GUARD,
+          "Extract ONLY the KBA approval number and optional Nummer der ABE from this document.",
+          'Look for: "KBA-Nummer", "KBA Nummer", "KBA-Nr.", Kennzeichnungen table KBA-Nummer row, "Gutachten zur ABE Nr.", "Nummer der ABE".',
+          "kbaNumber = digits only (e.g. 48571). Never use Gutachten-Nr. 55071011 or Genehmigungsnummer with letters.",
+          'abeNumber = "Nummer der ABE" when visible, digits with optional * (e.g. 48571*08). If only one number exists, set both kbaNumber and abeNumber to the same digits.',
+          ...(isPdf
+            ? ["The attachment is a PDF — scan all pages for the KBA / ABE number."]
+            : []),
+        ],
+        [
+          isPdf
+            ? "Find the KBA / ABE approval number anywhere in this PDF."
+            : "Find the KBA / ABE approval number on this photograph.",
+        ],
+        ABE_HUNT_KBA_ONLY_JSON_SCHEMA,
+        "hunt-kba",
+        isPdf ? 2_000 : 800,
+      );
+
+      const record =
+        typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
+      const asText = (value: unknown): string | null =>
+        typeof value === "string" && value.trim() ? value.trim() : null;
+
+      const extraction: AbeHuntStammdatenExtraction = {
+        ...empty,
+        kbaNumber: normalizeAbeKbaDigits(asText(record.kbaNumber)),
+        abeNumber: normalizeAbeNumberDigits(asText(record.abeNumber)),
+      };
+
+      const finalized = finalizeAbeDataHunterReport({
+        ...emptyAbeDataHunterReport(),
+        kbaNumber: extraction.kbaNumber,
+        abeNumber: extraction.abeNumber,
+      });
+
+      const resolved: AbeHuntStammdatenExtraction = {
+        ...empty,
+        kbaNumber: finalized.kbaNumber,
+        abeNumber: finalized.abeNumber,
+      };
+
+      if (!inferAbeKbaFromReport(finalized)) {
+        return {
+          status: "needs_manual",
+          extraction: resolved,
+          reason:
+            "KBA-Nummer nicht erkannt — bitte näher heran fotografieren oder manuell eintragen.",
+        };
+      }
+
+      return { status: "ok", extraction: resolved };
+    } catch {
+      return {
+        status: "needs_manual",
+        extraction: empty,
+        reason:
+          "KBA-Nummer konnte nicht gelesen werden — bitte erneut fotografieren oder manuell eintragen.",
+      };
+    }
+  }
+
   /**
    * Freestyle: one LLM call extracts every visible required ABE fact from a photo.
    * Always returns an extraction object (partial OK) — never throws to the route.
@@ -288,12 +371,17 @@ export class AbeDataHunterExtractionService {
         input,
         [
           FREESTYLE_GUARD,
-          "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber / Auftraggeber), manufacturer (Hersteller / Herstellerzeichen), partDesignation (Bauteilbezeichnung / technische Bezeichnung inkl. Felgenmaße), markingText (Kennzeichnung), vehicleMatches (Fahrzeugtabelle with Verkaufsbezeichnung), auflagenCodes.",
+          "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE / Gutachten zur ABE Nr., digits only), abeHolder (Inhaber / Auftraggeber), manufacturer (Hersteller in Prüfgegenstand block — not Kennzeichnungen Herstellerzeichen), partDesignation (Prüfgegenstand / Bauteilbezeichnung inkl. Radgröße), markingText (Kennzeichnungen block verbatim), vehicleMatches (Verwendungsbereich table), auflagenCodes.",
           "Never use Gutachten-Nr. or Genehmigungsnummer with letters for kbaNumber or abeNumber.",
-          'For markingText: transcribe the full Kennzeichnung section verbatim — exact text after the heading, including table rows (Art der Kennzeichnung, Nummer). No summary.',
+          'For partDesignation: copy the full Prüfgegenstand line (e.g. "PKW-Sonderrad 8Jx17EH2+ Typ TAM3325-8017").',
+          'For markingText: transcribe the Kennzeichnungen section verbatim — KBA-Nummer, Herstellerzeichen, Radtyp, Radgröße, Einpresstiefe. No summary.',
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer.",
           'Map "Auftraggeber" to abeHolder when no separate Inhaber der ABE label is shown.',
-          "When extracting vehicleMatches: fahrzeugtyp = Fahrzeugtyp column; typeApproval = Betriebserlaubnis / EG-BE / technische Bezeichnung; tireSizes = Reifen / Radgröße column.",
+          "Verwendungsbereich / Fahrzeugtabelle: Handelsbezeichnung → verkaufsbezeichnung; Fahrzeugtyp codes (346L, 3/CG, 346K) → fahrzeugtyp; ABE/EWG-Nr / EG-BE column → typeApproval; Reifen column → tireSizes.",
+          "TÜV Gutachten tables: ONE vehicleMatches row per Fahrzeugtyp code. kW-Bereich (e.g. 85-195) is NOT fahrzeugtyp. Reifen sizes (215/45R17) go ONLY in tireSizes, never in typeApproval.",
+          "If ONLY a Verwendungsbereich table is visible, extract EVERY readable row into vehicleMatches — do not return an empty array when table lines are visible.",
+          "Gutachten tables may list Handelsbezeichnung + Fahrzeugtyp + EG-BE in one block per vehicle — split into separate fields per row.",
+          "Merge reifenbezogene Auflagen and general Auflagen column codes into each row's auflagenCodes.",
           "When extracting vehicleMatches: put Auflagen-Kürzel ONLY in each row's auflagenCodes — never in the top-level auflagenCodes field.",
           "Do NOT copy Auflagen from rows above or below the target vehicle — each row gets only its own Auflagen column.",
           "Leave auflagenNotes empty — the user scans Auflagen prose in a dedicated follow-up step.",
@@ -311,7 +399,7 @@ export class AbeDataHunterExtractionService {
         ],
         ABE_HUNT_ALL_JSON_SCHEMA,
         "hunt-all",
-        isPdf ? 6_000 : 4_000,
+        isPdf ? 8_000 : 6_000,
       );
 
       const record =

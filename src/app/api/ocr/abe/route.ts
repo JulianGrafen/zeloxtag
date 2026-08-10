@@ -225,7 +225,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       } satisfies HuntSuccess);
     }
 
-    if (step === "hunt-stammdaten" || step === "hunt-kba") {
+    if (step === "hunt-kba") {
+      const result =
+        await abeDataHunterExtractionService.extractKbaFromPhoto(input);
+      return NextResponse.json({
+        ok: true,
+        step,
+        status: result.status,
+        extraction: result.extraction,
+        reason: result.reason,
+      } satisfies HuntSuccess);
+    }
+
+    if (step === "hunt-stammdaten") {
       const result =
         await abeDataHunterExtractionService.extractStammdatenSnippet(input);
       return NextResponse.json({

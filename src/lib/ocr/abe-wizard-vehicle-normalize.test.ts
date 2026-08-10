@@ -13,6 +13,8 @@ import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 describe("abe-wizard-vehicle-normalize", () => {
   it("detects Fahrzeugtyp codes", () => {
     expect(looksLikeFahrzeugtypCode("3k-N1")).toBe(true);
+    expect(looksLikeFahrzeugtypCode("346K")).toBe(true);
+    expect(looksLikeFahrzeugtypCode("3/CG")).toBe(true);
     expect(looksLikeFahrzeugtypCode("5ER REIHE")).toBe(false);
   });
 
@@ -83,6 +85,26 @@ describe("abe-wizard-vehicle-normalize", () => {
     ]);
     expect(parseAuflagenCodes(["744 A77 Allradantrieb"]).driveType).toBe(
       "Allradantrieb",
+    );
+  });
+
+  it("repairs Gutachten column mis-assignments (kW → fahrzeugtyp, Reifen → typeApproval)", () => {
+    const normalized = normalizeAbeVehicleMatches([
+      {
+        verkaufsbezeichnung: "BMW 3er-Reihe",
+        fahrzeugtyp: "85-195",
+        typeApproval: "225/45R17",
+        driveType: null,
+        tireSizes: ["K2b K41 K42 A01 A02"],
+        auflagenCodes: [],
+      },
+    ]);
+
+    expect(normalized[0]?.fahrzeugtyp).toBeNull();
+    expect(normalized[0]?.typeApproval).toBeNull();
+    expect(normalized[0]?.tireSizes).toContain("225/45R17");
+    expect(normalized[0]?.auflagenCodes).toEqual(
+      expect.arrayContaining(["K2B", "K41", "A01"]),
     );
   });
 

@@ -19,9 +19,12 @@ import {
 } from "@/lib/ocr/abe-auflagen-from-text";
 import {
   auflagenForUserVehicleSelection,
+  findBestAbeVehicleGroupIndex,
+  findBestAbeVehicleRowIndices,
   groupAbeVehicleMatches,
   resolveAuflagenCodesForReport,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
+import { isPlaceholderAbeVerkaufsbezeichnung } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 
 /** LLM hint: legal ABE holder may appear as Inhaber der ABE or Auftraggeber. */
 const ABE_HOLDER_LLM_DESCRIPTION =
@@ -29,7 +32,11 @@ const ABE_HOLDER_LLM_DESCRIPTION =
 
 /** LLM hint: part manufacturer may appear as Hersteller or Herstellerzeichen. */
 const ABE_MANUFACTURER_LLM_DESCRIPTION =
-  'Part manufacturer / brand: value next to "Hersteller", "Herstellerzeichen", "Marke", or combined holder/manufacturer label (copy to manufacturer too). Short mark codes are valid.';
+  'Part manufacturer: company next to "Hersteller" in the Prüfgegenstand / header block — NOT the "Herstellerzeichen" under Kennzeichnungen (that belongs in markingText). Also accept "Marke" or combined holder/manufacturer label (copy to manufacturer too).';
+
+/** LLM hint: part designation on Gutachten / ABE pages. */
+const ABE_PART_DESIGNATION_LLM_DESCRIPTION =
+  'Prüfgegenstand / Bezeichnung des Bauteils: full line including Radgröße and Typ (e.g. "PKW-Sonderrad 8Jx17EH2+ Typ TAM3325-8017", "Sonderräder 8 J x 18 H2 Typ AVAG"). Copy verbatim.';
 
 /** Prefix for OpenAI JSON schema field descriptions (legacy crop steps). */
 const FROM_CROP =
@@ -85,7 +92,7 @@ export const ABE_OPTIONAL_FIELD_KEYS = ["markingText"] as const satisfies readon
 
 /** Ghost examples shown inside the camera guide frame while hunting each field. */
 export const ABE_HUNT_FIELD_WATERMARKS: Record<AbeRequiredFieldKey, string> = {
-  kbaNumber: "KBA 123456",
+  kbaNumber: "Gutachten zur ABE Nr.\n48571\n\nKBA-Nummer:\n48571",
   abeNumber: "123456*8",
   abeHolder: "Inhaber der ABE\nAuftraggeber\nMuster GmbH",
   manufacturer: "Herstellerzeichen\nAC Schnitzer",
@@ -286,6 +293,34 @@ export function isAbeHuntVehicleTableCaptured(
       row.tireSizes.length > 0 ||
       row.auflagenCodes.length > 0,
   );
+}
+
+/**
+ * Hunt may proceed without a section header when the garage vehicle matches
+ * a concrete table row (fahrzeugtyp, EG-BE, Radgrößen, …).
+ */
+export function isAbeHuntVehicleModelResolved(
+  report: Pick<AbeDataHunterReport, "vehicleMatches">,
+  vehicleContext?: AbeVehicleContext | null,
+): boolean {
+  const groups = groupAbeVehicleMatches(report.vehicleMatches);
+  if (
+    groups.some(
+      (group) => !isPlaceholderAbeVerkaufsbezeichnung(group.verkaufsbezeichnung),
+    )
+  ) {
+    return true;
+  }
+
+  if (!vehicleContext || groups.length === 0) return false;
+
+  const groupIndex = findBestAbeVehicleGroupIndex(groups, vehicleContext);
+  if (groupIndex === null) return false;
+
+  const group = groups[groupIndex];
+  if (!group) return false;
+
+  return findBestAbeVehicleRowIndices(group, vehicleContext).length > 0;
 }
 
 export function isAbeHuntAuflagenComplete(
@@ -509,11 +544,21 @@ export function missingAbeCoreHuntFields(
   if (!report.manufacturer?.trim()) missing.push("manufacturer");
   if (!report.partDesignation?.trim()) missing.push("partDesignation");
 
-  const verkaufsbezeichnung =
-    selectedVerkaufsbezeichnung?.trim() ||
-    report.vehicleMatches.find((row) => row.verkaufsbezeichnung?.trim())
-      ?.verkaufsbezeichnung;
-  if (!verkaufsbezeichnung?.trim() && !isAbeHuntVehicleTableCaptured(report)) {
+  const rowVerkaufsbezeichnung = report.vehicleMatches.find((row) =>
+    Boolean(row.verkaufsbezeichnung?.trim()),
+  )?.verkaufsbezeichnung;
+  const verkaufsbezeichnung = [
+    selectedVerkaufsbezeichnung,
+    rowVerkaufsbezeichnung,
+  ]
+    .map((value) => value?.trim())
+    .find(
+      (value) => value && !isPlaceholderAbeVerkaufsbezeichnung(value),
+    );
+  if (
+    !verkaufsbezeichnung &&
+    !isAbeHuntVehicleModelResolved(report, vehicleContext)
+  ) {
     missing.push("verkaufsbezeichnung");
   }
 
@@ -625,9 +670,7 @@ export const ABE_HUNT_STAMMDATEN_JSON_SCHEMA = {
       },
       partDesignation: {
         type: ["string", "null"],
-        description:
-          FROM_CROP +
-          'Bezeichnung des Bauteils / technische Bezeichnung (Gerät, Typ, Design, Felge, Radtyp, Maße wie "8,5 × 19", Spoiler, Spurverbreiterung).',
+        description: FROM_CROP + ABE_PART_DESIGNATION_LLM_DESCRIPTION,
       },
     },
   },
@@ -635,6 +678,31 @@ export const ABE_HUNT_STAMMDATEN_JSON_SCHEMA = {
 
 /** @deprecated Use ABE_HUNT_STAMMDATEN_JSON_SCHEMA */
 export const ABE_HUNT_KBA_JSON_SCHEMA = ABE_HUNT_STAMMDATEN_JSON_SCHEMA;
+
+/** KBA-only extraction for the dedicated first wizard step. */
+export const ABE_HUNT_KBA_ONLY_JSON_SCHEMA = {
+  name: "abe_hunt_kba_only",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["kbaNumber", "abeNumber"],
+    properties: {
+      kbaNumber: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          'KBA approval digits only (e.g. "48571"). From "KBA-Nummer", "KBA Nummer", Kennzeichnungen block, or "Gutachten zur ABE Nr." — never Gutachten-Nr. with letters.',
+      },
+      abeNumber: {
+        type: ["string", "null"],
+        description:
+          FROM_PHOTO +
+          'Optional "Nummer der ABE" with optional * suffix (e.g. 48571*08). Same leading digits as kbaNumber on Gutachten documents.',
+      },
+    },
+  },
+} as const;
 
 export const ABE_HUNT_MARKING_JSON_SCHEMA = {
   name: "abe_hunt_marking",
@@ -693,11 +761,13 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
               type: "string",
               description:
                 FROM_CROP +
-                "Verkaufsbezeichnung section header for this table block — the allowed vehicle line exactly as printed (e.g. '3ER REIHE', 'GOLF GTI', 'C-KLASSE', '5ER REIHE, GRAN TURISMO'). Repeat on every row belonging to this section. Empty string only on continuation rows directly under the same header.",
+                "Verkaufsbezeichnung / Handelsbezeichnung for this row (e.g. BMW 3er-Reihe, 5ER REIHE) — repeat on every row in the same vehicle block.",
             },
             fahrzeugtyp: {
               type: ["string", "null"],
-              description: FROM_CROP + "Fahrzeugtyp cell.",
+              description:
+                FROM_CROP +
+                "Fahrzeugtyp / type code only (346L, 3/CG, 346K, 5L) — never the Handelsbezeichnung line.",
             },
             typeApproval: {
               type: ["string", "null"],
@@ -817,9 +887,7 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
       },
       partDesignation: {
         type: ["string", "null"],
-        description:
-          FROM_PHOTO +
-          'Bezeichnung des Bauteils / technische Bezeichnung (Gerät, Typ, Design, Felge, Radtyp, Maße wie "8,5 × 19", Spoiler, Spurverbreiterung).',
+        description: FROM_PHOTO + ABE_PART_DESIGNATION_LLM_DESCRIPTION,
       },
       markingText: {
         type: ["string", "null"],
@@ -858,11 +926,13 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
               type: "string",
               description:
                 FROM_PHOTO +
-                "Verkaufsbezeichnung / model section header for this row group.",
+                "Verkaufsbezeichnung / Handelsbezeichnung / Fahrzeugmodell line (e.g. BMW 3er-Reihe, 5ER REIHE) — NOT the Fahrzeugtyp code.",
             },
             fahrzeugtyp: {
               type: ["string", "null"],
-              description: FROM_PHOTO + "Fahrzeugtyp cell.",
+              description:
+                FROM_PHOTO +
+                "Fahrzeugtyp / type code cell only (e.g. 346L, 3/CG, 5L, 346K) — never the Handelsbezeichnung.",
             },
             typeApproval: {
               type: ["string", "null"],

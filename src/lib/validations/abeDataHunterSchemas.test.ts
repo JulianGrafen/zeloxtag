@@ -113,6 +113,28 @@ describe("abeDataHunterSchemas required fields", () => {
     );
   });
 
+  it("still requires Fahrzeugmodell when only placeholder group label exists", () => {
+    const report = mergeAbeDataHunterSteps(
+      completeStammdaten,
+      { markingText: null },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "Fahrzeugtabelle",
+            fahrzeugtyp: "5L",
+            typeApproval: null,
+            driveType: null,
+            tireSizes: [],
+            auflagenCodes: [],
+          },
+        ],
+      },
+      { auflagenCodes: [], auflagenNotes: null },
+    );
+
+    expect(missingAbeCoreHuntFields(report)).toContain("verkaufsbezeichnung");
+  });
+
   it("passes when all required facts are present", () => {
     const report = mergeAbeDataHunterSteps(
       completeStammdaten,
@@ -176,7 +198,7 @@ describe("abeDataHunterSchemas required fields", () => {
     expect(merged.kbaNumber).toBe("48185");
   });
 
-  it("treats vehicle table rows as captured Fahrzeugmodell for hunt progress", () => {
+  it("still requires Fahrzeugmodell when only table row data exists without section header", () => {
     const report = mergeAbeDataHunterSteps(
       completeStammdaten,
       { markingText: "Kennzeichnung auf dem Bauteil" },
@@ -195,8 +217,36 @@ describe("abeDataHunterSchemas required fields", () => {
       { auflagenCodes: [], auflagenNotes: null },
     );
 
-    expect(missingAbeCoreHuntFields(report)).not.toContain("verkaufsbezeichnung");
+    expect(missingAbeCoreHuntFields(report)).toContain("verkaufsbezeichnung");
     expect(missingAbeCoreHuntFields(report)).not.toContain("auflagenCodes");
+  });
+
+  it("accepts garage-matched vehicle table rows as resolved Fahrzeugmodell during hunt", () => {
+    const report = mergeAbeDataHunterSteps(
+      completeStammdaten,
+      { markingText: "Kennzeichnung auf dem Bauteil" },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "Fahrzeugtabelle",
+            fahrzeugtyp: "5L",
+            typeApproval: "e1*2007/46",
+            driveType: null,
+            tireSizes: ["225/45 R17"],
+            auflagenCodes: [],
+          },
+        ],
+      },
+      { auflagenCodes: [], auflagenNotes: null },
+    );
+
+    expect(
+      missingAbeCoreHuntFields(report, null, {
+        brand: "BMW",
+        model: "530d",
+        type: "5L",
+      }),
+    ).not.toContain("verkaufsbezeichnung");
   });
 
   it("completes core hunt once vehicle table and stammdaten are present", () => {
@@ -312,7 +362,7 @@ describe("abeDataHunterSchemas required fields", () => {
 
 describe("ABE_HUNT_FIELD_WATERMARKS", () => {
   it("covers every required field with the KBA example first", () => {
-    expect(ABE_HUNT_FIELD_WATERMARKS.kbaNumber).toBe("KBA 123456");
+    expect(ABE_HUNT_FIELD_WATERMARKS.kbaNumber).toContain("48571");
     expect(ABE_HUNT_FIELD_WATERMARKS.abeNumber).toBe("123456*8");
     for (const key of Object.keys(ABE_REQUIRED_FIELD_LABELS)) {
       expect(ABE_HUNT_FIELD_WATERMARKS[key as keyof typeof ABE_HUNT_FIELD_WATERMARKS].trim()).not.toBe("");
@@ -371,6 +421,22 @@ describe("inferAbeKbaFromReport", () => {
         markingText: "Art der Kennzeichnung: Prüfplakette\nNummer: 48185",
       }),
     ).toBe("48185");
+  });
+
+  it("infers KBA from Gutachten zur ABE Nr. heading", () => {
+    expect(
+      inferAbeKbaFromReport({
+        partDesignation: "Gutachten zur ABE Nr. 48571 nach §22 StVZO",
+      }),
+    ).toBe("48571");
+  });
+
+  it("infers KBA from KBA-Nummer label in Kennzeichnungen", () => {
+    expect(
+      inferAbeKbaFromReport({
+        markingText: "KBA-Nummer: 48571\nHerstellerzeichen: PLATIN GERMANY",
+      }),
+    ).toBe("48571");
   });
 
   it("clears kbaNumber from missing fields after merge via abeNumber", () => {

@@ -8,7 +8,7 @@ const DRIVE_TYPES = new Set([
 ]);
 
 const FAHRZEUGTYP_PATTERN =
-  /^(?:\d{1,2}[a-zA-Z]?-\w+|\d{1,2}[a-zA-Z]?|[a-zA-Z]-\w+|[a-zA-Z]\d{1,2})$/;
+  /^(?:\d{1,2}[a-zA-Z]?-\w+|\d{1,2}[a-zA-Z]?|\d{1,2}\/[A-Z]{1,3}|\d{3}[A-Z]?|[a-zA-Z]-\w+|[a-zA-Z]\d{1,2})$/;
 
 const STRICT_AUFlagen_CODE_PATTERN =
   /^(?:\d{2,3}|\d{1,2}[A-Z]{1,2}|[A-Z]\d{1,3}[A-Z]?|[A-Z]{2,4})$/;
@@ -16,10 +16,11 @@ const STRICT_AUFlagen_CODE_PATTERN =
 const LETTER_AUFlagen_CODE_PATTERN = /^[A-Z]{2,3}$/;
 
 const VERKAUFSBEZEICHNUNG_HINT =
-  /\b(REIHE|TOURING|COUP[EÉ]|CABRIO|LIMOUSINE|SPORTBACK|GRAN\s+TURISMO|MODELL|SERIE)\b/i;
+  /\b(REIHE|TOURING|COUP[EÉ]|CABRIO|LIMOUSINE|SPORTBACK|GRAN\s+TURISMO|MODELL|SERIE|COMPACT|ALLRAD)\b/i;
 
 const GROUP_FIELD_KEYS = [
   "verkaufsbezeichnung",
+  "handelsbezeichnung",
   "model",
   "sectionHeader",
   "group",
@@ -107,6 +108,116 @@ export function looksLikeAuflagenCode(value: string): boolean {
     looksLikeStrictAuflagenCode(value) ||
     looksLikeLetterAuflagenCode(value)
   );
+}
+
+export function looksLikeTireSize(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^\d{3}\/\d{2}\s*Z?R?\d{2}/i.test(trimmed);
+}
+
+function looksLikeKwRange(value: string): boolean {
+  return /^\d{2,3}\s*-\s*\d{2,3}$/.test(value.trim());
+}
+
+function coalesceTireSizeTokens(parts: string[]): string[] {
+  const tires: string[] = [];
+  let index = 0;
+
+  while (index < parts.length) {
+    const current = parts[index]!;
+    if (looksLikeTireSize(current)) {
+      tires.push(current);
+      index += 1;
+      continue;
+    }
+
+    const next = parts[index + 1];
+    if (/^\d{3}\/\d{2}$/.test(current) && next && /^Z?R?\d{2}$/i.test(next)) {
+      tires.push(`${current}${next.startsWith("R") || next.startsWith("r") ? " " : ""}${next}`);
+      index += 2;
+      continue;
+    }
+
+    index += 1;
+  }
+
+  return tires;
+}
+
+function splitMixedTireAndAuflagenTokens(items: readonly string[]): {
+  tireSizes: string[];
+  auflagenCodes: string[];
+} {
+  const tireSizes: string[] = [];
+  const auflagenCodes: string[] = [];
+
+  for (const item of items) {
+    const parts = item.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) continue;
+
+    if (parts.length === 1) {
+      if (looksLikeTireSize(parts[0]!)) {
+        tireSizes.push(parts[0]!);
+      } else {
+        auflagenCodes.push(...parseAuflagenCodes(parts).codes);
+      }
+      continue;
+    }
+
+    tireSizes.push(...coalesceTireSizeTokens(parts));
+
+    for (const part of parts) {
+      if (looksLikeTireSize(part)) continue;
+      if (/^\d{3}\/\d{2}$/.test(part)) continue;
+      if (/^Z?R?\d{2}$/i.test(part)) continue;
+      if (looksLikeAuflagenCode(part)) {
+        auflagenCodes.push(part);
+      }
+    }
+  }
+
+  return {
+    tireSizes: [...new Set(tireSizes.map((size) => size.trim()).filter(Boolean))],
+    auflagenCodes: mergeUniqueAuflagenCodes(auflagenCodes),
+  };
+}
+
+function repairMisassignedGutachtenFields(
+  match: AbeVehicleMatch,
+): AbeVehicleMatch {
+  let fahrzeugtyp = match.fahrzeugtyp;
+  let typeApproval = match.typeApproval;
+  let tireSizes = [...match.tireSizes];
+  let auflagenCodes = [...match.auflagenCodes];
+
+  if (fahrzeugtyp && looksLikeKwRange(fahrzeugtyp)) {
+    fahrzeugtyp = null;
+  }
+
+  if (typeApproval && looksLikeTireSize(typeApproval)) {
+    tireSizes.push(typeApproval);
+    typeApproval = null;
+  }
+
+  if (typeApproval && looksLikeKwRange(typeApproval)) {
+    typeApproval = null;
+  }
+
+  const splitTires = splitMixedTireAndAuflagenTokens(tireSizes);
+  tireSizes = splitTires.tireSizes;
+  auflagenCodes = mergeUniqueAuflagenCodes([
+    ...auflagenCodes,
+    ...splitTires.auflagenCodes,
+  ]);
+
+  return {
+    ...match,
+    fahrzeugtyp,
+    typeApproval,
+    tireSizes,
+    auflagenCodes,
+  };
 }
 
 export function looksLikeVerkaufsbezeichnung(value: string): boolean {
@@ -277,7 +388,9 @@ function inferDefaultGroupLabel(rawRows: unknown[]): string | null {
     if (!row) continue;
     for (const value of Object.values(row)) {
       if (typeof value !== "string") continue;
-      const match = /verkaufsbezeichnung\s*:\s*([^\n]+)/i.exec(value);
+      const match = /(?:verkaufsbezeichnung|handelsbezeichnung)\s*:\s*([^\n]+)/i.exec(
+        value,
+      );
       if (!match?.[1]) continue;
       const label = stripVerkaufsbezeichnungLabel(match[1]);
       if (label && !looksLikeFahrzeugtypCode(label)) return label;
@@ -287,7 +400,17 @@ function inferDefaultGroupLabel(rawRows: unknown[]): string | null {
   return null;
 }
 
-const FALLBACK_VERKAUFSBEZEICHNUNG = "Fahrzeugtabelle";
+export const ABE_FALLBACK_VERKAUFSBEZEICHNUNG = "Fahrzeugtabelle";
+
+export function isPlaceholderAbeVerkaufsbezeichnung(
+  value: string | null | undefined,
+): boolean {
+  const trimmed = value?.trim();
+  if (!trimmed) return true;
+  return (
+    trimmed.toUpperCase() === ABE_FALLBACK_VERKAUFSBEZEICHNUNG.toUpperCase()
+  );
+}
 
 function applyFallbackGroupLabel(matches: AbeVehicleMatch[]): AbeVehicleMatch[] {
   const withData = matches.filter((match) => rowHasTableData(match));
@@ -300,7 +423,7 @@ function applyFallbackGroupLabel(matches: AbeVehicleMatch[]): AbeVehicleMatch[] 
 
   return withData.map((match) => ({
     ...match,
-    verkaufsbezeichnung: FALLBACK_VERKAUFSBEZEICHNUNG,
+    verkaufsbezeichnung: ABE_FALLBACK_VERKAUFSBEZEICHNUNG,
   }));
 }
 
@@ -322,6 +445,7 @@ export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
 
     const rawGroupCandidate =
       readString(row.verkaufsbezeichnung) ??
+      readString(row.handelsbezeichnung) ??
       readString(row.model) ??
       readString(row.sectionHeader) ??
       readString(row.group);
@@ -411,12 +535,12 @@ export function normalizeAbeVehicleMatches(
       currentVerkaufsbezeichnung ??
       stripVerkaufsbezeichnungLabel(match.verkaufsbezeichnung);
 
-    return {
+    return repairMisassignedGutachtenFields({
       ...match,
       verkaufsbezeichnung,
       fahrzeugtyp,
       driveType: match.driveType ?? parsedAuflagen.driveType,
       auflagenCodes,
-    };
+    });
   });
 }

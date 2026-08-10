@@ -240,11 +240,27 @@ function inferAbeKbaFromFreeText(text: string | null | undefined): string | null
   if (!text?.trim()) return null;
 
   const kbaLabelMatch = text.match(
-    /\bKBA(?:[\s\-/]*(?:Nr\.?|Nummer))?\s*[:\-]?\s*(\d[\d\s]{2,10}\d|\d{4,6})\b/i,
+    /\bKBA[\s\-]*(?:Nr\.?|Nummer)?\s*[:\-]?\s*(\d[\d\s]{2,10}\d|\d{4,6})\b/i,
   );
   if (kbaLabelMatch?.[1]) {
     const fromLabel = normalizeAbeKbaDigits(kbaLabelMatch[1]);
     if (fromLabel) return fromLabel;
+  }
+
+  const gutachtenMatch = text.match(
+    /\b(?:Gutachten\s+(?:zur\s+)?)?ABE\s*(?:Nr\.?|Nummer)\s*[:\.]?\s*(\d{4,6})\b/i,
+  );
+  if (gutachtenMatch?.[1]) {
+    const fromGutachten = normalizeAbeKbaDigits(gutachtenMatch[1]);
+    if (fromGutachten) return fromGutachten;
+  }
+
+  const nummerDerAbeMatch = text.match(
+    /\bNummer\s+der\s+ABE\s*[:\-]?\s*(\d{4,6})/i,
+  );
+  if (nummerDerAbeMatch?.[1]) {
+    const fromNummerDerAbe = normalizeAbeKbaDigits(nummerDerAbeMatch[1]);
+    if (fromNummerDerAbe) return fromNummerDerAbe;
   }
 
   const nummerMatch = text.match(
@@ -271,14 +287,20 @@ export function inferAbeKbaFromReport(report: {
   const direct = normalizeAbeKbaDigits(report.kbaNumber);
   if (direct) return direct;
 
+  const haystack = [
+    report.kbaNumber,
+    report.abeNumber,
+    report.markingText,
+    report.partDesignation,
+  ]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join("\n");
+
+  const fromText = inferAbeKbaFromFreeText(haystack);
+  if (fromText) return fromText;
+
   const fromAbe = normalizeAbeKbaDigits(report.abeNumber);
   if (fromAbe) return fromAbe;
-
-  const fromMarking = inferAbeKbaFromFreeText(report.markingText);
-  if (fromMarking) return fromMarking;
-
-  const fromPart = inferAbeKbaFromFreeText(report.partDesignation);
-  if (fromPart) return fromPart;
 
   return null;
 }

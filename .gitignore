@@ -39,6 +39,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Learned Auflagen-Kürzel (built from OCR scans at runtime)
+/data/auflagen-kuerzel.learned.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
