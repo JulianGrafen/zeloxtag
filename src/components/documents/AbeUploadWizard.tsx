@@ -39,6 +39,7 @@ import {
   type AbeWizardReport,
   type AbeWizardVehiclesExtraction,
 } from "@/lib/validations/abeWizardSchemas";
+import { ABE_REQUIRED_FIELD_LABELS } from "@/lib/validations/abeDataHunterSchemas";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -415,18 +416,18 @@ function ReviewSection({
                   placeholder="ABE-Nummer"
                 />
               </AbeFieldLabel>
-              <AbeFieldLabel label="Inhaber der ABE">
+              <AbeFieldLabel label={ABE_REQUIRED_FIELD_LABELS.abeHolder}>
                 <Input
                   value={form.abeHolder}
                   onChange={set("abeHolder")}
                   placeholder="Inhaber laut Dokument"
                 />
               </AbeFieldLabel>
-              <AbeFieldLabel label="Hersteller">
+              <AbeFieldLabel label={ABE_REQUIRED_FIELD_LABELS.manufacturer}>
                 <Input
                   value={form.manufacturer}
                   onChange={set("manufacturer")}
-                  placeholder="Hersteller laut Dokument"
+                  placeholder="Hersteller / Herstellerzeichen laut Dokument"
                 />
               </AbeFieldLabel>
               <AbeFieldLabel label="Prüforganisation">
@@ -467,8 +468,8 @@ function ReviewSection({
                 />
               ) : null}
               <AbeSummaryRow label="ABE-Nummer" value={form.abeNumber} />
-              <AbeSummaryRow label="Inhaber der ABE" value={form.abeHolder} />
-              <AbeSummaryRow label="Hersteller" value={form.manufacturer} />
+              <AbeSummaryRow label={ABE_REQUIRED_FIELD_LABELS.abeHolder} value={form.abeHolder} />
+              <AbeSummaryRow label={ABE_REQUIRED_FIELD_LABELS.manufacturer} value={form.manufacturer} />
               <AbeSummaryRow
                 label="Prüforganisation"
                 value={form.testingOrganization}
@@ -881,6 +882,7 @@ export function AbeUploadWizard({
           </div>
         ) : null}
         <InBrowserCamera
+          key={state.phase}
           title={title}
           hint={hint}
           guideLabel={guideLabel}

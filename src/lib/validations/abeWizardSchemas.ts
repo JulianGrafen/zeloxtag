@@ -112,7 +112,8 @@ export const ABE_WIZARD_COVER_JSON_SCHEMA = {
       manufacturer: {
         type: ["string", "null"],
         description:
-          FROM_DOCUMENT + "Manufacturer or brand name printed on the cover.",
+          FROM_DOCUMENT +
+          'Manufacturer or brand on the cover: "Hersteller", "Herstellerzeichen", or "Marke". Short mark codes are valid.',
       },
       designType: {
         type: ["string", "null"],
@@ -155,13 +156,13 @@ export const ABE_WIZARD_MAIN_JSON_SCHEMA = {
         type: ["string", "null"],
         description:
           FROM_DOCUMENT +
-          'Value next to "Inhaber der ABE" or combined holder/manufacturer label.',
+          'Value next to "Inhaber der ABE", "Auftraggeber", or combined holder/manufacturer label.',
       },
       manufacturer: {
         type: ["string", "null"],
         description:
           FROM_DOCUMENT +
-          'Value next to "Hersteller:" when shown separately.',
+          'Value next to "Hersteller", "Herstellerzeichen", or "Marke" when shown separately.',
       },
       testingOrganization: {
         type: ["string", "null"],
@@ -232,7 +233,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_DOCUMENT +
-                "Short Auflagen condition codes for this row (numeric or alphanumeric only). Exclude drive-type words.",
+                "Short Auflagen condition codes from this row's Auflagen column only. Never copy codes from other rows or Verkaufsbezeichnung sections above/below.",
             },
           },
         },

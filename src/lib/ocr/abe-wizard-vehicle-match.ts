@@ -155,6 +155,57 @@ export function auflagenForAbeVehicleGroup(
   );
 }
 
+type ResolveAuflagenOptions = {
+  selectedVerkaufsbezeichnung?: string | null;
+  vehicleContext?: AbeVehicleContext | null;
+};
+
+/**
+ * Auflagen for save / completeness checks: scoped to the selected or matched
+ * vehicle group — never merged from other table sections above/below.
+ */
+export function resolveAuflagenCodesForReport(
+  report: {
+    auflagenCodes: string[];
+    vehicleMatches: AbeVehicleMatch[];
+  },
+  options: ResolveAuflagenOptions = {},
+): string[] {
+  const groups = groupAbeVehicleMatches(report.vehicleMatches);
+  if (groups.length === 0) {
+    return report.auflagenCodes;
+  }
+
+  const selectedKey = options.selectedVerkaufsbezeichnung
+    ? normalizeVerkaufsbezeichnungKey(options.selectedVerkaufsbezeichnung)
+    : null;
+
+  let group: AbeVehicleGroup | null = null;
+  if (selectedKey) {
+    group =
+      groups.find(
+        (candidate) =>
+          normalizeVerkaufsbezeichnungKey(candidate.verkaufsbezeichnung) ===
+          selectedKey,
+      ) ?? null;
+  }
+  if (!group && options.vehicleContext) {
+    const bestIndex = findBestAbeVehicleGroupIndex(
+      groups,
+      options.vehicleContext,
+    );
+    group = bestIndex !== null ? groups[bestIndex] ?? null : null;
+  }
+  if (!group && groups.length === 1) {
+    group = groups[0] ?? null;
+  }
+
+  const fromGroup = auflagenForAbeVehicleGroup(group);
+  if (fromGroup.length > 0) return fromGroup;
+
+  return report.auflagenCodes;
+}
+
 export function selectedVerkaufsbezeichnungPayload(
   group: AbeVehicleGroup,
 ): {

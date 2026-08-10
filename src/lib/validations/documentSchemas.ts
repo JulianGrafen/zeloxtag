@@ -115,7 +115,7 @@ export type Einzelabnahme = z.infer<typeof EinzelabnahmeSchema>;
 /** Optional structured payload for plain ABE documents. */
 export const AbeApprovalDataSchema = z
   .object({
-    /** Legal holder on the ABE certificate (Inhaber der ABE). */
+    /** Legal holder on the ABE certificate (Inhaber der ABE / Auftraggeber). */
     abeHolder: z.string().trim().min(1).max(200).nullable().optional(),
     /** Verkaufsbezeichnung section chosen at upload time. */
     verkaufsbezeichnung: z.string().trim().min(1).max(200).nullable().optional(),

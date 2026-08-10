@@ -37,6 +37,7 @@ const HUNT_STEPS = [
   "hunt-marking",
   "hunt-vehicle",
   "hunt-auflagen",
+  "hunt-auflagen-text",
 ] as const;
 
 const ABE_WIZARD_STEPS = [...LEGACY_STEPS, ...HUNT_STEPS] as const;
@@ -83,6 +84,13 @@ type HuntSuccess =
       step: "hunt-auflagen";
       status: AbeHuntStepResult<AbeHuntAuflagenExtraction>["status"];
       extraction: AbeHuntAuflagenExtraction;
+      reason?: string;
+    }
+  | {
+      ok: true;
+      step: "hunt-auflagen-text";
+      status: AbeHuntStepResult<{ auflagenNotes: string | null }>["status"];
+      extraction: { auflagenNotes: string | null };
       reason?: string;
     };
 
@@ -247,6 +255,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         ok: true,
         step: "hunt-vehicle",
+        status: result.status,
+        extraction: result.extraction,
+        reason: result.reason,
+      } satisfies HuntSuccess);
+    }
+
+    if (step === "hunt-auflagen-text") {
+      let targetCodes: string[] = [];
+      const rawCodes = formData.get("targetCodes");
+      if (typeof rawCodes === "string" && rawCodes.trim()) {
+        try {
+          const parsed = JSON.parse(rawCodes) as unknown;
+          if (Array.isArray(parsed)) {
+            targetCodes = parsed.filter(
+              (code): code is string =>
+                typeof code === "string" && code.trim().length > 0,
+            );
+          }
+        } catch {
+          targetCodes = [];
+        }
+      }
+
+      const result =
+        await abeDataHunterExtractionService.extractAuflagenTextFromPhoto(
+          input,
+          targetCodes,
+        );
+      return NextResponse.json({
+        ok: true,
+        step: "hunt-auflagen-text",
         status: result.status,
         extraction: result.extraction,
         reason: result.reason,

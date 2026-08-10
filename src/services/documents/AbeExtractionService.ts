@@ -16,6 +16,7 @@ import {
 import {
   ABE_HUNT_ALL_JSON_SCHEMA,
   ABE_HUNT_AUFLAGEN_JSON_SCHEMA,
+  ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA,
   ABE_HUNT_MARKING_JSON_SCHEMA,
   ABE_HUNT_STAMMDATEN_JSON_SCHEMA,
   ABE_HUNT_VEHICLE_JSON_SCHEMA,
@@ -52,6 +53,7 @@ type JsonSchema =
   | typeof ABE_HUNT_MARKING_JSON_SCHEMA
   | typeof ABE_HUNT_VEHICLE_JSON_SCHEMA
   | typeof ABE_HUNT_AUFLAGEN_JSON_SCHEMA
+  | typeof ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA
   | typeof ABE_HUNT_ALL_JSON_SCHEMA;
 
 const EMPTY_STAMMDATEN: AbeHuntStammdatenExtraction = {
@@ -75,13 +77,14 @@ export class AbeDataHunterExtractionService {
         input,
         [
           IMAGE_ONLY_GUARD,
-          "Extract ABE master data: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber der ABE), manufacturer (Hersteller), partDesignation (Bezeichnung des Bauteils).",
+          "Extract ABE master data: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber der ABE / Auftraggeber), manufacturer (Hersteller / Herstellerzeichen), partDesignation (Bezeichnung des Bauteils).",
           "Never put Gutachten-Nr. or Genehmigungsnummer with letters into kbaNumber or abeNumber.",
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer to that value.",
+          'Map "Auftraggeber" to abeHolder when no separate Inhaber der ABE label is shown.',
         ],
         [
           "Extract only the requested data points from this cropped image.",
-          "Look for KBA, Nummer der ABE, Inhaber der ABE, Hersteller, and the part designation (Gerät/Typ/Design).",
+          "Look for KBA, Nummer der ABE, Inhaber der ABE, Auftraggeber, Hersteller, Herstellerzeichen, and the part designation (Gerät/Typ/Design).",
         ],
         ABE_HUNT_STAMMDATEN_JSON_SCHEMA,
         "hunt-stammdaten",
@@ -255,11 +258,14 @@ export class AbeDataHunterExtractionService {
         input,
         [
           FREESTYLE_GUARD,
-          "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber), manufacturer (Hersteller), partDesignation (Bauteilbezeichnung), markingText (Kennzeichnung), vehicleMatches (Fahrzeugtabelle with Verkaufsbezeichnung), auflagenCodes.",
+          "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber / Auftraggeber), manufacturer (Hersteller / Herstellerzeichen), partDesignation (Bauteilbezeichnung), markingText (Kennzeichnung), vehicleMatches (Fahrzeugtabelle with Verkaufsbezeichnung), auflagenCodes.",
           "Never use Gutachten-Nr. or Genehmigungsnummer with letters for kbaNumber or abeNumber.",
           'For markingText: transcribe the full Kennzeichnung section verbatim — exact text after the heading, including table rows (Art der Kennzeichnung, Nummer). No summary.',
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer.",
-          "Copy Auflagen-Kürzel from the table row and from any Auflagen list visible on this photo.",
+          'Map "Auftraggeber" to abeHolder when no separate Inhaber der ABE label is shown.',
+          "When extracting vehicleMatches: put Auflagen-Kürzel ONLY in each row's auflagenCodes — never in the top-level auflagenCodes field.",
+          "Do NOT copy Auflagen from rows above or below the target vehicle — each row gets only its own Auflagen column.",
+          "Leave auflagenNotes empty — the user scans Auflagen prose in a dedicated follow-up step.",
           ...(isPdf
             ? [
                 "The attachment is a PDF — read every page and merge all visible ABE fields from the full document.",
@@ -376,7 +382,7 @@ export class AbeDataHunterExtractionService {
         input,
         [
           IMAGE_ONLY_GUARD,
-          "Extract only Auflagen-Kürzel that apply to the selected vehicle, plus optional notes.",
+          "Extract only Auflagen-Kürzel for the photographed vehicle row — not from other rows or sections above/below.",
         ],
         [
           "Extract only the requested data point from this cropped image.",
@@ -413,6 +419,62 @@ export class AbeDataHunterExtractionService {
         extraction: empty,
         reason:
           "Auflagen konnten nicht gelesen werden — bitte manuell eintragen.",
+      };
+    }
+  }
+
+  async extractAuflagenTextFromPhoto(
+    input: DocumentBytesInput,
+    targetCodes: string[],
+  ): Promise<AbeHuntStepResult<{ auflagenNotes: string | null }>> {
+    const codesHint =
+      targetCodes.length > 0
+        ? `Target Auflagen codes from the vehicle table: ${targetCodes.join(", ")}.`
+        : "Extract all visible Auflagen / conditions prose on this page.";
+
+    try {
+      const raw = await this.runSnippetStep(
+        input,
+        [
+          FREESTYLE_GUARD,
+          codesHint,
+          "Transcribe the full Auflagen / Bedingungen / Hinweise text verbatim.",
+          "Include section headings and numbered items. Do not summarize.",
+          "If multiple codes are visible, include every matching paragraph.",
+        ],
+        [
+          "Extract the complete Auflagen text visible in this photograph.",
+          "Copy wording exactly as printed on the ABE document.",
+        ],
+        ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA,
+        "hunt-auflagen-text",
+        2_000,
+      );
+
+      const notes =
+        typeof raw === "object" &&
+        raw &&
+        "auflagenNotes" in raw &&
+        typeof (raw as { auflagenNotes: unknown }).auflagenNotes === "string"
+          ? (raw as { auflagenNotes: string }).auflagenNotes.trim()
+          : "";
+
+      if (!notes) {
+        return {
+          status: "needs_manual",
+          extraction: { auflagenNotes: null },
+          reason:
+            "Kein Auflagen-Text erkannt — bitte den Abschnitt erneut fotografieren.",
+        };
+      }
+
+      return { status: "ok", extraction: { auflagenNotes: notes } };
+    } catch {
+      return {
+        status: "needs_manual",
+        extraction: { auflagenNotes: null },
+        reason:
+          "Auflagen-Text konnte nicht gelesen werden — bitte erneut fotografieren.",
       };
     }
   }

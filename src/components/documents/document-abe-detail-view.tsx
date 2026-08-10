@@ -21,6 +21,7 @@ import {
   technicalSpecsForAbeDetailView,
   vehicleApprovalsForAbeDetailView,
 } from "@/lib/documents/abe-detail-display";
+import { ABE_REQUIRED_FIELD_LABELS } from "@/lib/validations/abeDataHunterSchemas";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import {
   displayDocumentTitle,
@@ -198,7 +199,7 @@ export function DocumentAbeDetailView({
             <div className="space-y-4">
               <AbeKbaHero value={document.kba_number ?? ""} />
               <dl className="grid gap-2.5 text-[0.88rem]">
-                <AbeSummaryRow label="Inhaber der ABE" value={abeHolder} />
+                <AbeSummaryRow label={ABE_REQUIRED_FIELD_LABELS.abeHolder} value={abeHolder} />
                 <AbeSummaryRow label="Hersteller" value={manufacturer} />
                 <AbeSummaryRow label="Behörde" value={document.authority} />
                 <AbeSummaryRow

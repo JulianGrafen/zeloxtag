@@ -12,6 +12,19 @@ import {
   normalizeAbeNumberDigits,
 } from "@/lib/validations/abeSchema";
 import { AbeVehicleMatchSchema } from "@/lib/validations/abeWizardSchemas";
+import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
+import {
+  groupAbeVehicleMatches,
+  resolveAuflagenCodesForReport,
+} from "@/lib/ocr/abe-wizard-vehicle-match";
+
+/** LLM hint: legal ABE holder may appear as Inhaber der ABE or Auftraggeber. */
+const ABE_HOLDER_LLM_DESCRIPTION =
+  'Legal holder of the ABE: value next to "Inhaber der ABE", "Auftraggeber", or combined "Inhaber der ABE und Hersteller" (then set abeHolder and manufacturer to the same company).';
+
+/** LLM hint: part manufacturer may appear as Hersteller or Herstellerzeichen. */
+const ABE_MANUFACTURER_LLM_DESCRIPTION =
+  'Part manufacturer / brand: value next to "Hersteller", "Herstellerzeichen", "Marke", or combined holder/manufacturer label (copy to manufacturer too). Short mark codes are valid.';
 
 /** Prefix for OpenAI JSON schema field descriptions (legacy crop steps). */
 const FROM_CROP =
@@ -41,26 +54,40 @@ export type AbeDataHunterStep = (typeof ABE_DATA_HUNTER_STEPS)[number];
 export const ABE_REQUIRED_FIELD_LABELS = {
   kbaNumber: "KBA-Nummer",
   abeNumber: "Nummer der ABE",
-  abeHolder: "Inhaber der ABE",
-  manufacturer: "Hersteller",
+  abeHolder: "Inhaber der ABE / Auftraggeber",
+  manufacturer: "Hersteller / Herstellerzeichen",
   partDesignation: "Bezeichnung des Bauteils",
   markingText: "Kennzeichnung",
   verkaufsbezeichnung: "Verkaufsbezeichnung (Fahrzeugfreigabe)",
-  auflagenCodes: "Auflagen zum Fahrzeug",
+  auflagenCodes: "Auflagen-Kürzel (Tabelle)",
+  auflagenNotes: "Auflagen (Text)",
 } as const;
 
 export type AbeRequiredFieldKey = keyof typeof ABE_REQUIRED_FIELD_LABELS;
+
+/** Fields collected in the first camera hunt (before Auflagen text scan). */
+export const ABE_CORE_HUNT_FIELD_KEYS = [
+  "kbaNumber",
+  "abeNumber",
+  "abeHolder",
+  "manufacturer",
+  "partDesignation",
+  "markingText",
+  "verkaufsbezeichnung",
+  "auflagenCodes",
+] as const satisfies readonly AbeRequiredFieldKey[];
 
 /** Ghost examples shown inside the camera guide frame while hunting each field. */
 export const ABE_HUNT_FIELD_WATERMARKS: Record<AbeRequiredFieldKey, string> = {
   kbaNumber: "KBA 123456",
   abeNumber: "123456*8",
-  abeHolder: "Inhaber der ABE\nMuster GmbH",
-  manufacturer: "Hersteller\nAC Schnitzer",
+  abeHolder: "Inhaber der ABE\nAuftraggeber\nMuster GmbH",
+  manufacturer: "Herstellerzeichen\nAC Schnitzer",
   partDesignation: "Leichtmetallfelge\n8,5 × 19",
   markingText: "Kennzeichnung\nKBA 123456",
   verkaufsbezeichnung: "Fahrzeugmodell\n5ER REIHE",
   auflagenCodes: "A1 · A2 · A3",
+  auflagenNotes: "Auflage 744\nText wörtlich…",
 };
 
 /** User-facing checklist label (differs from internal OCR field names). */
@@ -94,10 +121,16 @@ export const ABE_HUNT_FIELD_SCAN_HINTS: Partial<
       "Scanne jetzt aus der Tabelle den Abschnitt, in den du dein Fahrzeug wiederfindest. Die Verkaufsbezeichnung steht als Überschrift über der passenden Fahrzeugtabelle.",
   },
   auflagenCodes: {
-    scanAction: "Fotografiere die Auflagen zum passenden Fahrzeug.",
-    popupTitle: "Auflagen",
+    scanAction: "Aus der Fahrzeugtabelle — Text folgt im nächsten Schritt.",
+    popupTitle: "Auflagen-Kürzel",
     popupBody:
-      "Fotografiere die Auflagen-Kürzel in der Fahrzeugzeile oder in der Auflagen-Liste auf dem ABE-Dokument.",
+      "Die Nummern (z. B. 744, A77) kommen aus deiner Fahrzeugzeile in der Tabelle. Den vollständigen Auflagen-Text fotografierst du danach separat.",
+  },
+  auflagenNotes: {
+    scanAction: "Fotografiere den Auflagen-Text zu den angezeigten Nummern.",
+    popupTitle: "Auflagen-Text",
+    popupBody:
+      "Fotografiere die Erklärungen zu den Auflagen-Nummern aus der ABE — Abschnitt „Auflagen“ oder nummerierte Liste. Wörtlich, ohne Kürzen.",
   },
 };
 
@@ -140,7 +173,7 @@ export type AbeHuntVehicleExtraction = z.infer<typeof AbeHuntVehicleSchema>;
 export const AbeHuntAuflagenSchema = z
   .object({
     auflagenCodes: z.array(z.string().trim().min(1).max(40)).max(80),
-    auflagenNotes: z.string().trim().min(1).max(1_200).nullable(),
+    auflagenNotes: z.string().trim().min(1).max(8_000).nullable(),
   })
   .strict();
 
@@ -157,7 +190,7 @@ export const AbeDataHunterReportSchema = z
     markingText: z.string().trim().min(1).max(ABE_MARKING_TEXT_MAX).nullable(),
     vehicleMatches: z.array(AbeVehicleMatchSchema).max(100),
     auflagenCodes: z.array(z.string().trim().min(1).max(40)).max(80),
-    auflagenNotes: z.string().trim().min(1).max(1_200).nullable(),
+    auflagenNotes: z.string().trim().min(1).max(8_000).nullable(),
   })
   .strict();
 
@@ -300,11 +333,11 @@ export function fillAbeDataHunterReport(
       incoming.markingText,
     ),
     vehicleMatches,
-    auflagenCodes: mergeUniqueCodes(
-      current.auflagenCodes,
-      incoming.auflagenCodes,
-    ),
-    auflagenNotes: keepFilled(current.auflagenNotes, incoming.auflagenNotes),
+    auflagenCodes:
+      vehicleMatches.length > 0
+        ? current.auflagenCodes
+        : mergeUniqueCodes(current.auflagenCodes, incoming.auflagenCodes),
+    auflagenNotes: mergeAuflagenNotes(current.auflagenNotes, incoming.auflagenNotes),
   };
 }
 
@@ -322,13 +355,22 @@ export function emptyAbeDataHunterReport(): AbeDataHunterReport {
   };
 }
 
-/**
- * Returns human-readable labels of required fields that are still missing.
- * `verkaufsbezeichnung` is checked via the selected group / first match.
- */
-export function missingAbeRequiredFields(
+function mergeAuflagenNotes(
+  current: string | null | undefined,
+  incoming: string | null | undefined,
+): string | null {
+  const next = incoming?.trim();
+  if (!next) return current?.trim() || null;
+  const prev = current?.trim();
+  if (!prev) return next;
+  if (prev.includes(next)) return prev;
+  return `${prev}\n\n${next}`;
+}
+
+export function missingAbeCoreHuntFields(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
 ): AbeRequiredFieldKey[] {
   const missing: AbeRequiredFieldKey[] = [];
   if (!report.kbaNumber?.trim()) missing.push("kbaNumber");
@@ -344,16 +386,59 @@ export function missingAbeRequiredFields(
       ?.verkaufsbezeichnung;
   if (!verkaufsbezeichnung?.trim()) missing.push("verkaufsbezeichnung");
 
-  if (report.auflagenCodes.length === 0) missing.push("auflagenCodes");
+  const auflagen = resolveAuflagenCodesForReport(report, {
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  });
+  if (auflagen.length === 0) missing.push("auflagenCodes");
 
+  return missing;
+}
+
+export function isAbeCoreHuntComplete(
+  report: AbeDataHunterReport,
+  selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
+): boolean {
+  return (
+    missingAbeCoreHuntFields(
+      report,
+      selectedVerkaufsbezeichnung,
+      vehicleContext,
+    ).length === 0
+  );
+}
+
+/**
+ * Returns human-readable labels of required fields that are still missing.
+ * `verkaufsbezeichnung` is checked via the selected group / first match.
+ */
+export function missingAbeRequiredFields(
+  report: AbeDataHunterReport,
+  selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
+): AbeRequiredFieldKey[] {
+  const missing = missingAbeCoreHuntFields(
+    report,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
+  if (!report.auflagenNotes?.trim()) missing.push("auflagenNotes");
   return missing;
 }
 
 export function isAbeDataHunterReportComplete(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
 ): boolean {
-  return missingAbeRequiredFields(report, selectedVerkaufsbezeichnung).length === 0;
+  return (
+    missingAbeRequiredFields(
+      report,
+      selectedVerkaufsbezeichnung,
+      vehicleContext,
+    ).length === 0
+  );
 }
 
 // ─── OpenAI JSON Schemas ───────────────────────────────────────────────────────
@@ -382,15 +467,11 @@ export const ABE_HUNT_STAMMDATEN_JSON_SCHEMA = {
       },
       abeHolder: {
         type: ["string", "null"],
-        description:
-          FROM_CROP +
-          'Inhaber der ABE. If combined "Inhaber der ABE und Hersteller", put the same company in both fields.',
+        description: FROM_CROP + ABE_HOLDER_LLM_DESCRIPTION,
       },
       manufacturer: {
         type: ["string", "null"],
-        description:
-          FROM_CROP +
-          "Hersteller. If only a combined holder/manufacturer label exists, copy that value here too.",
+        description: FROM_CROP + ABE_MANUFACTURER_LLM_DESCRIPTION,
       },
       partDesignation: {
         type: ["string", "null"],
@@ -499,6 +580,24 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
   },
 } as const;
 
+export const ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA = {
+  name: "abe_hunt_auflagen_text",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["auflagenNotes"],
+    properties: {
+      auflagenNotes: {
+        type: "string",
+        description:
+          FROM_PHOTO +
+          "Transcribe the full Auflagen / conditions text verbatim from the photograph — including headings, numbers, and complete sentences for the target codes. No summary.",
+      },
+    },
+  },
+} as const;
+
 export const ABE_HUNT_AUFLAGEN_JSON_SCHEMA = {
   name: "abe_hunt_auflagen",
   strict: true,
@@ -512,7 +611,7 @@ export const ABE_HUNT_AUFLAGEN_JSON_SCHEMA = {
         items: { type: "string" },
         description:
           FROM_CROP +
-          "Short Auflagen-Kürzel that apply to the selected vehicle (e.g. 744, A77, 12A).",
+          "Short Auflagen-Kürzel that apply to the selected vehicle row only — never codes from other rows or sections above/below (e.g. 744, A77, 12A).",
       },
       auflagenNotes: {
         type: ["string", "null"],
@@ -558,15 +657,11 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
       },
       abeHolder: {
         type: ["string", "null"],
-        description:
-          FROM_PHOTO +
-          'Inhaber der ABE. If combined "Inhaber der ABE und Hersteller", put the same company in both fields.',
+        description: FROM_PHOTO + ABE_HOLDER_LLM_DESCRIPTION,
       },
       manufacturer: {
         type: ["string", "null"],
-        description:
-          FROM_PHOTO +
-          "Hersteller. If only a combined holder/manufacturer label exists, copy that value here too.",
+        description: FROM_PHOTO + ABE_MANUFACTURER_LLM_DESCRIPTION,
       },
       partDesignation: {
         type: ["string", "null"],
@@ -639,7 +734,7 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_PHOTO +
-                "Short Auflagen codes on this row only (may be empty).",
+                "Short Auflagen codes from this row's Auflagen column only — never copy codes from other rows above or below.",
             },
           },
         },
@@ -649,7 +744,7 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
         items: { type: "string" },
         description:
           FROM_PHOTO +
-          "Short Auflagen-Kürzel visible on this photo (e.g. 744, A77, 12A). Empty if none.",
+          "Leave empty — Auflagen text is captured in a separate scan step. Put table Kürzel only in vehicleMatches[].auflagenCodes.",
       },
       auflagenNotes: {
         type: ["string", "null"],

@@ -81,6 +81,7 @@ describe("abeDataHunterSchemas required fields", () => {
       "markingText",
       "verkaufsbezeichnung",
       "auflagenCodes",
+      "auflagenNotes",
     ]);
   });
 
@@ -96,11 +97,11 @@ describe("abeDataHunterSchemas required fields", () => {
             typeApproval: null,
             driveType: null,
             tireSizes: [],
-            auflagenCodes: ["744"],
+            auflagenCodes: ["744", "A77"],
           },
         ],
       },
-      { auflagenCodes: ["744", "A77"], auflagenNotes: null },
+      { auflagenCodes: [], auflagenNotes: "Auflage 744: Montage nur mit …" },
     );
 
     expect(missingAbeRequiredFields(report, "5ER REIHE")).toEqual([]);
@@ -140,8 +141,8 @@ describe("abeDataHunterSchemas required fields", () => {
     expect(merged.kbaNumber).toBe("48185");
     expect(merged.abeNumber).toBe("48185*08");
     expect(merged.partDesignation).toBe("Spoiler");
-    expect(merged.auflagenCodes).toEqual(["744", "A77"]);
-    expect(merged.vehicleMatches).toHaveLength(1);
+    expect(merged.auflagenCodes).toEqual(["744"]);
+    expect(merged.vehicleMatches[0]?.auflagenCodes).toEqual(["A77"]);
   });
 
   it("keeps the longer Kennzeichnung text when merging photos", () => {

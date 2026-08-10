@@ -5,6 +5,7 @@ import {
   formatAbeVehicleApprovalLine,
   groupAbeVehicleMatches,
   requiresAbeVehicleGroupSelection,
+  resolveAuflagenCodesForReport,
   resolveInitialAbeVehicleGroupIndex,
   scoreAbeVehicleGroup,
   vehicleGroupRowsToTableData,
@@ -99,5 +100,24 @@ describe("abe-wizard-vehicle-match", () => {
     expect(formatAbeVehicleApprovalLine(MATCHES[1]!)).toBe(
       "5ER REIHE (Heckantrieb) – 225/50R18",
     );
+  });
+
+  it("returns Auflagen only for the selected vehicle group", () => {
+    const report = {
+      auflagenCodes: ["721", "744", "A77", "20B"],
+      vehicleMatches: MATCHES,
+    };
+
+    expect(
+      resolveAuflagenCodesForReport(report, {
+        selectedVerkaufsbezeichnung: "6ER REIHE",
+      }),
+    ).toEqual(["721"]);
+
+    expect(
+      resolveAuflagenCodesForReport(report, {
+        selectedVerkaufsbezeichnung: "5ER REIHE",
+      }),
+    ).toEqual(["744", "A77", "20B"]);
   });
 });
