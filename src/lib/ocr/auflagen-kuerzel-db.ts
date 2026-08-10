@@ -104,6 +104,33 @@ export function augmentAuflagenNotesWithKuerzelDb(
   return base ? `${base}\n\n${additions.join("\n\n")}` : additions.join("\n\n");
 }
 
+export function resolveAuflagenWithKuerzelDb(
+  existingNotes: string | null | undefined,
+  targetCodes: readonly string[],
+  db: Map<string, string>,
+): {
+  notes: string | null;
+  missingCodes: string[];
+  dbFilledCodes: string[];
+  allResolved: boolean;
+} {
+  const notes = augmentAuflagenNotesWithKuerzelDb(existingNotes, targetCodes, db);
+  const missingCodes = missingAuflagenCodesInNotes(notes, [...targetCodes]);
+  const missingSet = new Set(missingCodes.map((code) => code.toUpperCase()));
+
+  const dbFilledCodes = targetCodes.filter((code) => {
+    const normalized = normalizeAuflagenKuerzel(code);
+    return db.has(normalized) && !missingSet.has(normalized);
+  });
+
+  const allResolved =
+    targetCodes.length === 0
+      ? Boolean(notes?.trim())
+      : missingCodes.length === 0;
+
+  return { notes, missingCodes, dbFilledCodes, allResolved };
+}
+
 export function auflagenCodesResolvableFromKuerzelDb(
   targetCodes: readonly string[],
   db: Map<string, string>,

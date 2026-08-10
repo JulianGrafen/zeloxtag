@@ -30,8 +30,8 @@ import {
   missingAuflagenCodesInNotes,
 } from "@/lib/ocr/abe-auflagen-from-text";
 import {
-  augmentAuflagenNotesWithKuerzelDb,
   extractKuerzelRecordsFromOcrNotes,
+  resolveAuflagenWithKuerzelDb,
 } from "@/lib/ocr/auflagen-kuerzel-db";
 import {
   buildClientAuflagenKuerzelDb,
@@ -449,6 +449,30 @@ function isPdfFile(file: File): boolean {
   );
 }
 
+function enrichReportAuflagenFromKuerzelDb(
+  report: AbeDataHunterReport,
+  db: Map<string, string>,
+  selectedGroupIndex: number | null,
+  selectedRowId: string | null,
+) {
+  const targetCodes = auflagenForUserVehicleSelection(
+    report,
+    selectedGroupIndex,
+    selectedRowId,
+  );
+  const resolved = resolveAuflagenWithKuerzelDb(
+    report.auflagenNotes,
+    targetCodes,
+    db,
+  );
+  const nextReport =
+    resolved.notes === report.auflagenNotes
+      ? report
+      : { ...report, auflagenNotes: resolved.notes };
+
+  return { ...resolved, targetCodes, report: nextReport };
+}
+
 function newlyFilledLabels(
   before: AbeDataHunterReport,
   after: AbeDataHunterReport,
@@ -805,10 +829,11 @@ function AuflagenDetailPanel({
           <h1 className="mt-2 text-[1.35rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
             Fahrzeug wählen, Auflagen prüfen
           </h1>
-          <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-            {vehicleLabel} · Bekannte Kürzel werden automatisch aus der
-            Datenbank ergänzt. Nur fehlende Texte musst du noch fotografieren.
-          </p>
+            <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+              {allCodesKnown
+                ? "Alle Auflagen-Texte sind in der Datenbank — kein Scan nötig. Du kannst direkt speichern."
+                : `${vehicleLabel} · Bekannte Kürzel werden automatisch aus der Datenbank ergänzt. Nur fehlende Texte musst du noch fotografieren.`}
+            </p>
         </header>
 
         <dl className="mt-5 grid gap-2.5">
@@ -1037,6 +1062,26 @@ function ReviewPanel({
     );
   }, [scopedAuflagen.join(" ")]);
 
+  useEffect(() => {
+    const notes = report.auflagenNotes?.trim();
+    if (!notes) return;
+
+    setForm((prev) => {
+      const missingBefore = missingAuflagenCodesInNotes(
+        prev.auflagenNotes,
+        scopedAuflagen,
+      );
+      const missingAfter = missingAuflagenCodesInNotes(notes, scopedAuflagen);
+      if (
+        prev.auflagenNotes === notes ||
+        (missingAfter.length >= missingBefore.length &&
+          prev.auflagenNotes.trim().length >= notes.length)
+      ) {
+        return prev;
+      }
+      return { ...prev, auflagenNotes: notes };
+    });
+  }, [report.auflagenNotes, scopedAuflagen.join("|")]);
   const draftReport: AbeDataHunterReport = {
     ...report,
     kbaNumber: form.kbaNumber.trim() || null,
@@ -1331,25 +1376,56 @@ export function AbeDataHunterWizard({
   );
   const missingAuflagenAfterDb = useMemo(() => {
     if (!kuerzelDbReady) return targetAuflagenCodes;
-    const augmented = augmentAuflagenNotesWithKuerzelDb(
-      report.auflagenNotes,
-      targetAuflagenCodes,
+    return enrichReportAuflagenFromKuerzelDb(
+      report,
       kuerzelDbRef.current,
-    );
-    return missingAuflagenCodesInNotes(augmented, targetAuflagenCodes);
-  }, [kuerzelDbReady, report.auflagenNotes, targetAuflagenCodes]);
-  const dbResolvedAuflagenCodes = useMemo(() => {
-    if (!kuerzelDbReady) return [];
-    const missingSet = new Set(
-      missingAuflagenAfterDb.map((code) => code.toUpperCase()),
-    );
-    return targetAuflagenCodes.filter((code) => {
-      const normalized = code.toUpperCase();
-      return kuerzelDbRef.current.has(normalized) && !missingSet.has(normalized);
-    });
+      selectedGroupIndex,
+      selectedRowId,
+    ).missingCodes;
   }, [
     kuerzelDbReady,
-    missingAuflagenAfterDb,
+    report,
+    selectedGroupIndex,
+    selectedRowId,
+    targetAuflagenCodes,
+  ]);
+  const dbResolvedAuflagenCodes = useMemo(() => {
+    if (!kuerzelDbReady) return [];
+    return enrichReportAuflagenFromKuerzelDb(
+      report,
+      kuerzelDbRef.current,
+      selectedGroupIndex,
+      selectedRowId,
+    ).dbFilledCodes;
+  }, [
+    kuerzelDbReady,
+    report,
+    selectedGroupIndex,
+    selectedRowId,
+  ]);
+  const allAuflagenResolvedFromDb = useMemo(() => {
+    if (!kuerzelDbReady || targetAuflagenCodes.length === 0) return false;
+    const groups = groupAbeVehicleMatches(report.vehicleMatches);
+    if (
+      !isAbeVehicleTableSelectionReady(
+        groups,
+        selectedGroupIndex,
+        selectedRowId,
+      )
+    ) {
+      return false;
+    }
+    return enrichReportAuflagenFromKuerzelDb(
+      report,
+      kuerzelDbRef.current,
+      selectedGroupIndex,
+      selectedRowId,
+    ).allResolved;
+  }, [
+    kuerzelDbReady,
+    report,
+    selectedGroupIndex,
+    selectedRowId,
     targetAuflagenCodes,
   ]);
   const captureSummary = sourcePdf
@@ -1397,30 +1473,41 @@ export function AbeDataHunterWizard({
       return;
     }
 
-    const codes = auflagenForUserVehicleSelection(
+    const groups = groupAbeVehicleMatches(report.vehicleMatches);
+    if (
+      !isAbeVehicleTableSelectionReady(
+        groups,
+        selectedGroupIndex,
+        selectedRowId,
+      )
+    ) {
+      return;
+    }
+
+    const enriched = enrichReportAuflagenFromKuerzelDb(
       report,
+      kuerzelDbRef.current,
       selectedGroupIndex,
       selectedRowId,
     );
-    if (codes.length === 0) return;
 
-    const augmented = augmentAuflagenNotesWithKuerzelDb(
-      report.auflagenNotes,
-      codes,
-      kuerzelDbRef.current,
-    );
-    if (augmented === report.auflagenNotes) return;
+    if (enriched.report.auflagenNotes !== report.auflagenNotes) {
+      reportRef.current = enriched.report;
+      setReport(enriched.report);
+      return;
+    }
 
-    setReport((prev) => {
-      const next = { ...prev, auflagenNotes: augmented };
-      reportRef.current = next;
-      return next;
-    });
+    if (
+      enriched.allResolved &&
+      enriched.targetCodes.length > 0 &&
+      (phase === "auflagen-detail" || phase === "auflagen-scan")
+    ) {
+      setPhase("review");
+    }
   }, [
     kuerzelDbReady,
     phase,
-    report.auflagenNotes,
-    report.vehicleMatches,
+    report,
     selectedGroupIndex,
     selectedRowId,
   ]);
@@ -1491,6 +1578,10 @@ export function AbeDataHunterWizard({
   }
 
   function startAuflagenScan() {
+    if (allAuflagenResolvedFromDb) {
+      goToReview();
+      return;
+    }
     setHuntError(null);
     setPhase("auflagen-scan");
   }
@@ -1589,15 +1680,49 @@ export function AbeDataHunterWizard({
     setHuntSessionKey((current) => current + 1);
   }
 
-  function openAuflagenDetailFromHunt() {
-    const groups = groupAbeVehicleMatches(report.vehicleMatches);
+  function advanceAfterCoreHunt() {
+    const groups = groupAbeVehicleMatches(reportRef.current.vehicleMatches);
+    let groupIndex = selectedGroupIndexRef.current;
+    let rowId: string | null = null;
+
     if (groups.length === 1) {
+      groupIndex = 0;
+      rowId = defaultAbeRowIdForGroup(groups[0]!);
+      selectedGroupIndexRef.current = 0;
       setSelectedGroupIndex(0);
-      setSelectedRowId(defaultAbeRowIdForGroup(groups[0]!));
-    } else {
+      setSelectedRowId(rowId);
+    } else if (groups.length > 1) {
+      groupIndex = null;
+      rowId = null;
+      selectedGroupIndexRef.current = null;
       setSelectedGroupIndex(null);
       setSelectedRowId(null);
     }
+
+    const enriched = enrichReportAuflagenFromKuerzelDb(
+      reportRef.current,
+      kuerzelDbRef.current,
+      groupIndex,
+      rowId,
+    );
+    reportRef.current = enriched.report;
+    setReport(enriched.report);
+
+    const selectionReady = isAbeVehicleTableSelectionReady(
+      groups,
+      groupIndex,
+      rowId,
+    );
+
+    if (
+      selectionReady &&
+      enriched.targetCodes.length > 0 &&
+      enriched.allResolved
+    ) {
+      setPhase("review");
+      return;
+    }
+
     setPhase("auflagen-detail");
   }
 
@@ -1737,15 +1862,13 @@ export function AbeDataHunterWizard({
           );
         }
 
-        const enriched = augmentAuflagenNotesWithKuerzelDb(
-          merged.auflagenNotes,
-          codes,
+        const enriched = enrichReportAuflagenFromKuerzelDb(
+          merged,
           kuerzelDbRef.current,
+          selectedGroupIndex,
+          selectedRowId,
         );
-        const finalReport =
-          enriched === merged.auflagenNotes
-            ? merged
-            : { ...merged, auflagenNotes: enriched };
+        const finalReport = enriched.report;
 
         reportRef.current = finalReport;
         setReport(finalReport);
@@ -1819,6 +1942,16 @@ export function AbeDataHunterWizard({
 
   function handleSave(reviewForm: ReviewFormState) {
     const selectedGroup = selectedAbeVehicleGroup(report, selectedGroupIndex);
+    const knownAuflagenCodes = auflagenForUserVehicleSelection(
+      report,
+      selectedGroupIndex,
+      selectedRowId,
+    );
+    const resolvedNotes = resolveAuflagenWithKuerzelDb(
+      reviewForm.auflagenNotes.trim() || report.auflagenNotes,
+      knownAuflagenCodes,
+      kuerzelDbRef.current,
+    ).notes;
 
     const draft: AbeDataHunterReport = {
       ...report,
@@ -1829,7 +1962,7 @@ export function AbeDataHunterWizard({
       partDesignation: reviewForm.partDesignation.trim() || null,
       markingText: reviewForm.markingText.trim() || null,
       auflagenCodes: parseCodes(reviewForm.auflagenCodes),
-      auflagenNotes: reviewForm.auflagenNotes.trim() || null,
+      auflagenNotes: resolvedNotes,
     };
 
     const stillMissing = missingAbeRequiredFields(
@@ -1847,11 +1980,6 @@ export function AbeDataHunterWizard({
       return;
     }
 
-    const knownAuflagenCodes = auflagenForUserVehicleSelection(
-      draft,
-      selectedGroupIndex,
-      selectedRowId,
-    );
     const parsedConditions = abeAuflagenConditionsFromNotes(
       draft.auflagenNotes,
       knownAuflagenCodes,
@@ -2130,7 +2258,7 @@ export function AbeDataHunterWizard({
       queuedCount={queuedCount}
       captureSummary={captureSummary}
       lastFound={lastFound}
-      onOpenReview={openAuflagenDetailFromHunt}
+      onOpenReview={advanceAfterCoreHunt}
       onClose={returnToChooser}
       vehicleContext={vehicleContext}
     />

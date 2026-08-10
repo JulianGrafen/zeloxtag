@@ -5,6 +5,7 @@ import {
   auflagenCodesMissingAfterKuerzelDb,
   extractKuerzelRecordsFromOcrNotes,
   mergeAuflagenKuerzelMaps,
+  resolveAuflagenWithKuerzelDb,
   selectKuerzelRecordsToLearn,
 } from "@/lib/ocr/auflagen-kuerzel-db";
 
@@ -32,6 +33,15 @@ describe("auflagen-kuerzel-db", () => {
     expect(auflagenCodesMissingAfterKuerzelDb(["744", "A02"], db, null)).toEqual(
       [],
     );
+  });
+
+  it("resolves all target codes when every kuerzel is in the db", () => {
+    const resolved = resolveAuflagenWithKuerzelDb(null, ["744", "A02"], db);
+    expect(resolved.allResolved).toBe(true);
+    expect(resolved.missingCodes).toEqual([]);
+    expect(resolved.dbFilledCodes).toEqual(["744", "A02"]);
+    expect(resolved.notes).toContain("744:");
+    expect(resolved.notes).toContain("A02:");
   });
 
   it("extracts learnable records from OCR notes", () => {
