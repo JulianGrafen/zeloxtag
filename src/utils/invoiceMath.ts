@@ -72,6 +72,29 @@ export function processLineItems(llmItems: any[]) {
       };
     }
 
+    // Art column (1–9) mistaken for menge when EP looks like hours, not unit price.
+    if (
+      rawGesPreis !== null &&
+      rawEPreis !== null &&
+      rawEPreis > 0 &&
+      looksLikePosInMengeField(item.menge)
+    ) {
+      const posProduct = parseFloat(((rawMenge ?? 0) * rawEPreis).toFixed(2));
+      const epLooksLikeHours =
+        rawEPreis < 20 && rawEPreis < rawGesPreis / 5;
+      if (
+        epLooksLikeHours &&
+        Math.abs(posProduct - rawGesPreis) > 0.05
+      ) {
+        return {
+          ...item,
+          menge: rawMenge,
+          einzelpreis: null,
+          gesamtpreis: rawGesPreis,
+        };
+      }
+    }
+
     // Rule 1: If Menge is missing, default to 1 only when Ges. Preis or E-Preis needs computing
     let menge = rawMenge !== null ? rawMenge : 1;
     

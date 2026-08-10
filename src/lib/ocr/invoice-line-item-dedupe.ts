@@ -9,6 +9,21 @@ const COLUMN_HEADER_LABEL =
 const PRICE_ONLY_LABEL =
   /^(?:€|eur)?\s*-?\d{1,3}(?:\.\d{3})*,\d{2}\s*(?:€|eur)?$/i;
 
+/** Unit/column/footer tokens misread as position labels (common Azure column shift). */
+const JUNK_INVOICE_LINE_LABEL =
+  /^(?:stück|stk\.?|std\.?|einheit|anzahl|art\.?|pg\.?|pos\.?|menge|e-?preis|einzelpreis|ges\.?\s*preis|preis-?€|endpreis|endsummen|netto(?:\s+summe)?|positionssumme|zahlbar|brutto|endsumme|mechanik)$/i;
+
+export function isJunkInvoiceLineLabel(label: string): boolean {
+  const trimmed = label.trim();
+  if (JUNK_INVOICE_LINE_LABEL.test(trimmed)) return true;
+  if (isPriceOnlyLineLabel(trimmed)) return true;
+  if (UNIT_PRICE_LABEL.test(trimmed) || COLUMN_HEADER_LABEL.test(trimmed)) return true;
+  // Footer row captured as line item
+  if (/^endpreis\b/i.test(trimmed)) return true;
+  if (/^netto\s+summe\b/i.test(trimmed)) return true;
+  return false;
+}
+
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }

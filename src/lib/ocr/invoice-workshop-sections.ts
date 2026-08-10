@@ -4,6 +4,7 @@
  */
 
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
+import { isJunkInvoiceLineLabel } from "@/lib/ocr/invoice-line-item-dedupe";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 
 const MAX_ITEMS = 60;
@@ -13,8 +14,8 @@ const MONEY = /(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/;
 
 type WorkshopSection = "labor" | "parts" | "other" | "none";
 
-const SECTION_LABOR = /^arbeitswerte\b/i;
-const SECTION_PARTS = /^ersatzteile\b/i;
+const SECTION_LABOR = /^arbeits\s*werte\b/i;
+const SECTION_PARTS = /^ersatz\s*teile\b/i;
 const SECTION_OTHER = /^sonstige\s+kosten\b/i;
 const SECTION_STOP =
   /^(?:zwischensummen|endsummen|netto\s+summe|positionssumme|zahlbar|endsumme)\b/i;
@@ -39,7 +40,15 @@ function hasSectionHeaders(text: string): boolean {
   const hasLabor = lines.some((line) => SECTION_LABOR.test(line));
   const hasParts = lines.some((line) => SECTION_PARTS.test(line));
   const hasOther = lines.some((line) => SECTION_OTHER.test(line));
-  return hasLabor && (hasParts || hasOther);
+  // Also match section headers embedded in longer OCR lines.
+  const blob = text.toLowerCase();
+  const laborInBlob = /\barbeits\s*werte\b/.test(blob);
+  const partsInBlob = /\bersatz\s*teile\b/.test(blob);
+  const otherInBlob = /\bsonstige\s+kosten\b/.test(blob);
+  return (
+    (hasLabor || laborInBlob) &&
+    (hasParts || hasOther || partsInBlob || otherInBlob)
+  );
 }
 
 function trailingMoneyValues(line: string): number[] {
@@ -77,9 +86,9 @@ function parseLaborLine(line: string): { label: string; amount: number } | null 
   return { label, amount: total };
 }
 
-/** "1 Stück Wasserschlauch … 65,12 65,12" or discounted "… 41,04 28,73". */
+/** "1 Stück Wasserschlauch …" or "1 Sensor, Kühlmitteltemperatur …" */
 function parsePartsLine(line: string): { label: string; amount: number } | null {
-  const qtyMatch = line.match(/^(\d+)\s*(?:Stück|Stk\.?)\s+/i);
+  const qtyMatch = line.match(/^(\d+)\s*(?:Stück|Stk\.?)?\s+/i);
   if (!qtyMatch) return null;
 
   const amounts = trailingMoneyValues(line);
@@ -122,11 +131,116 @@ function parseOtherLine(line: string): { label: string; amount: number } | null 
 }
 
 function detectSection(line: string, current: WorkshopSection): WorkshopSection {
-  if (SECTION_LABOR.test(line)) return "labor";
-  if (SECTION_PARTS.test(line)) return "parts";
-  if (SECTION_OTHER.test(line)) return "other";
+  if (SECTION_LABOR.test(line) || /\barbeits\s*werte\b/i.test(line)) return "labor";
+  if (SECTION_PARTS.test(line) || /\bersatz\s*teile\b/i.test(line)) return "parts";
+  if (SECTION_OTHER.test(line) || /\bsonstige\s+kosten\b/i.test(line)) return "other";
   if (SECTION_STOP.test(line)) return "none";
   return current;
+}
+
+/** Score partial DMS/workshop signals when section headers are split across OCR lines. */
+export function detectWorkshopInvoiceSignals(rawText: string): number {
+  const lower = rawText.replace(/\r\n/g, "\n").toLowerCase();
+  let score = 0;
+  if (/\barbeits\s*werte\b/.test(lower)) score += 3;
+  if (/\bersatz\s*teile\b/.test(lower)) score += 2;
+  if (/\bsonstige\s+kosten\b/.test(lower)) score += 2;
+  if (/\bpreis-?\s*€\b/.test(lower)) score += 2;
+  if (/\bendsummen\b/.test(lower)) score += 2;
+  if (/\bpositionssumme\b/.test(lower)) score += 2;
+  if (/\bnetto\s+summe\b/.test(lower)) score += 1;
+  if (/\bendpreis\b/.test(lower)) score += 1;
+  if (/\bmechanik\b/.test(lower) && /\bstd\b/.test(lower)) score += 1;
+  return score;
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function sumItems(items: InvoiceLineItem[]): number {
+  return roundMoney(items.reduce((sum, item) => sum + item.amount, 0));
+}
+
+/** Net total from Positionssumme / Netto Summe (excludes MwSt). */
+export function extractWorkshopNetSum(rawText: string): number | null {
+  const text = rawText.replace(/\r\n/g, "\n");
+  const patterns = [
+    /positionssumme\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/gi,
+    /netto\s+summe\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/gi,
+  ];
+  const values: number[] = [];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      const parsed = parseMoney(match[1] ?? "");
+      if (parsed != null) values.push(parsed);
+    }
+  }
+  return values.length > 0 ? Math.max(...values) : null;
+}
+
+export function sanitizeWorkshopLineItems(
+  items: InvoiceLineItem[] | null | undefined,
+): InvoiceLineItem[] | null {
+  if (!items?.length) return null;
+  const cleaned = items.filter(
+    (item) =>
+      item.label.trim().length >= 2 &&
+      Number.isFinite(item.amount) &&
+      item.amount > 0 &&
+      !isJunkInvoiceLineLabel(item.label) &&
+      !/^(?:endpreis|endsummen|netto\s+summe|positionssumme)\b/i.test(item.label.trim()),
+  );
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+/** True when layout/LLM output shows classic column-shift garbage. */
+export function isGarbageWorkshopLineItems(items: InvoiceLineItem[]): boolean {
+  if (items.length === 0) return true;
+
+  const stückRows = items.filter((item) => /^stück$/i.test(item.label.trim()));
+  if (stückRows.length >= 2) return true;
+
+  const junkRows = items.filter((item) => isJunkInvoiceLineLabel(item.label));
+  if (junkRows.length >= 2) return true;
+
+  if (items.some((item) => /^endpreis\b/i.test(item.label.trim()))) return true;
+
+  const sum = sumItems(items);
+  if (sum > 700 && items.length <= 12) return true;
+
+  return false;
+}
+
+/**
+ * OCR-first resolver for section invoices: prefer section parser when net sum matches footer.
+ */
+export function resolveWorkshopLineItems(options: {
+  llmItems: InvoiceLineItem[] | null | undefined;
+  ocrText: string;
+}): InvoiceLineItem[] | null {
+  const llm = sanitizeWorkshopLineItems(options.llmItems) ?? [];
+  const ocrItems = sanitizeWorkshopLineItems(
+    extractWorkshopSectionLineItems(options.ocrText),
+  );
+  const netSum = extractWorkshopNetSum(options.ocrText);
+
+  const ocrMatchesNet =
+    ocrItems != null &&
+    ocrItems.length >= 3 &&
+    netSum != null &&
+    Math.abs(sumItems(ocrItems) - netSum) <= 1.5;
+
+  if (ocrMatchesNet) {
+    if (llm.length === 0 || isGarbageWorkshopLineItems(llm)) return ocrItems;
+    if (netSum != null && Math.abs(sumItems(llm) - netSum) > Math.max(5, netSum * 0.08)) {
+      return ocrItems;
+    }
+  }
+
+  if (isGarbageWorkshopLineItems(llm) && ocrItems?.length) return ocrItems;
+  if (llm.length > 0) return llm;
+  return ocrItems;
 }
 
 /**
@@ -136,7 +250,7 @@ export function extractWorkshopSectionLineItems(
   rawText: string,
 ): InvoiceLineItem[] | null {
   const normalized = rawText.replace(/\r\n/g, "\n");
-  if (!hasSectionHeaders(normalized)) return null;
+  if (!isWorkshopSectionInvoiceText(normalized)) return null;
 
   const items: InvoiceLineItem[] = [];
   const seen = new Set<string>();
@@ -146,7 +260,18 @@ export function extractWorkshopSectionLineItems(
     const line = rawLine.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
     if (!line) continue;
 
+    const prevSection = section;
     section = detectSection(line, section);
+    if (section !== prevSection) continue;
+
+    if (
+      SECTION_LABOR.test(line) ||
+      SECTION_PARTS.test(line) ||
+      SECTION_OTHER.test(line)
+    ) {
+      continue;
+    }
+
     if (section === "none") continue;
     if (SKIP_LINE.test(line)) continue;
     if (/^(?:\d+\s+)?(?:art|pg|std|preis|rab)/i.test(line)) continue;
@@ -161,7 +286,8 @@ export function extractWorkshopSectionLineItems(
       parsed = parseOtherLine(line) ?? parsePartsLine(line);
     }
 
-    if (!parsed) continue;
+    if (!parsed || isJunkInvoiceLineLabel(parsed.label)) continue;
+    if (parsed.label.length < 4 && section !== "other") continue;
 
     const key = `${parsed.label.toLowerCase()}|${parsed.amount}`;
     if (seen.has(key)) continue;
@@ -171,7 +297,8 @@ export function extractWorkshopSectionLineItems(
     if (items.length >= MAX_ITEMS) break;
   }
 
-  return items.length >= 3 ? items : null;
+  const sanitized = sanitizeWorkshopLineItems(items);
+  return sanitized != null && sanitized.length >= 3 ? sanitized : null;
 }
 
 /** Prefer Endpreis (brutto), then Netto Summe from Endsummen block. */
@@ -218,5 +345,68 @@ export function extractWorkshopInvoiceVatAmount(rawText: string): number | null 
 }
 
 export function isWorkshopSectionInvoiceText(rawText: string): boolean {
-  return hasSectionHeaders(rawText.replace(/\r\n/g, "\n"));
+  const text = rawText.replace(/\r\n/g, "\n");
+  if (hasSectionHeaders(text)) return true;
+  return detectWorkshopInvoiceSignals(text) >= 4;
+}
+
+function labelMatchScore(a: string, b: string): number {
+  const keyA = a.toLowerCase().replace(/\s+/g, " ").trim();
+  const keyB = b.toLowerCase().replace(/\s+/g, " ").trim();
+  if (!keyA || !keyB) return 0;
+  if (keyA === keyB) return 100;
+  if (keyA.includes(keyB) || keyB.includes(keyA)) return 80;
+  const wordsA = new Set(keyA.split(" ").filter((word) => word.length >= 3));
+  const overlap = keyB.split(" ").filter((word) => word.length >= 3 && wordsA.has(word)).length;
+  if (overlap >= 2) return 60;
+  if (overlap === 1) return 35;
+  return 0;
+}
+
+/**
+ * Prefer LLM items; fall back to OCR section parser when LLM output is sparse or wrong sum.
+ * @deprecated Prefer {@link resolveWorkshopLineItems} for production pipeline.
+ */
+export function preferWorkshopLineItems(
+  llmItems: InvoiceLineItem[] | null | undefined,
+  ocrItems: InvoiceLineItem[] | null | undefined,
+): InvoiceLineItem[] | null {
+  const llm = llmItems ?? [];
+  const ocr = ocrItems ?? [];
+  if (llm.length === 0) return ocr.length > 0 ? ocr : null;
+  if (ocr.length === 0) return llm;
+
+  const llmSum = llm.reduce((sum, item) => sum + item.amount, 0);
+  const ocrSum = ocr.reduce((sum, item) => sum + item.amount, 0);
+
+  if (llm.length < 3 && ocr.length >= 3) return ocr;
+  if (ocr.length >= llm.length + 2 && Math.abs(ocrSum - llmSum) > 50) return ocr;
+
+  return llm;
+}
+
+/** Conservative reconcile — only fix amounts when OCR section parser matches label. */
+export function reconcileWorkshopLineItemsWithOcrText(
+  items: InvoiceLineItem[] | null | undefined,
+  rawText: string,
+): InvoiceLineItem[] | null {
+  if (!items?.length || !rawText.trim()) return items ?? null;
+
+  const ocrItems = extractWorkshopSectionLineItems(rawText);
+  if (!ocrItems?.length) return items;
+
+  return items.map((item) => {
+    let best: InvoiceLineItem | null = null;
+    let bestScore = 0;
+    for (const ocrItem of ocrItems) {
+      const score = labelMatchScore(item.label, ocrItem.label);
+      if (score > bestScore) {
+        bestScore = score;
+        best = ocrItem;
+      }
+    }
+    if (!best || bestScore < 50) return item;
+    if (Math.abs(best.amount - item.amount) < 0.011) return item;
+    return { ...item, amount: best.amount };
+  });
 }

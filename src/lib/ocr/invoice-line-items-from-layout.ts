@@ -12,6 +12,7 @@ import {
   extractInvoiceLineItemsFromText,
   lineTotalFromInvoiceRow,
 } from "@/lib/ocr/invoice-line-items-from-text";
+import { isWorkshopSectionInvoiceText } from "@/lib/ocr/invoice-workshop-sections";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 import { parseGermanNumber } from "@/utils/invoiceMath";
@@ -364,6 +365,11 @@ function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
 export function extractInvoiceLineItemsFromAzureLayout(
   result: AzureLayoutAnalyzeResult,
 ): InvoiceLineItem[] | null {
+  if (result.content && isWorkshopSectionInvoiceText(result.content)) {
+    const fromSections = extractInvoiceLineItemsFromText(result.content);
+    return fromSections?.length ? fromSections : null;
+  }
+
   const tables = [...(result.tables ?? [])].sort(
     (a, b) => tableScore(b) - tableScore(a),
   );

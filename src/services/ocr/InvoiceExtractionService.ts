@@ -23,11 +23,24 @@ import {
 import { canDrawRowSeparators, drawInvoiceRowSeparatorsOnImage } from "@/lib/ocr/draw-invoice-row-separators";
 import type { DocumentUserMessagePart } from "@/lib/ocr/llm-document-content";
 import {
+  detectInvoiceTableFormat,
+  buildWorkshopOcrHint,
+  shouldDrawInvoiceRowSeparators,
+  shouldMergeAzureLayout,
+} from "@/lib/ocr/invoice-format-routing";
+import {
+  extractWorkshopInvoiceAmount,
+  reconcileWorkshopLineItemsWithOcrText,
+  resolveWorkshopLineItems,
+} from "@/lib/ocr/invoice-workshop-sections";
+import {
   INVOICE_HEADER_USER_LINES,
   INVOICE_LINE_ITEMS_USER_LINES,
   INVOICE_OVERVIEW_USER_LINES,
+  INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES,
   buildInvoiceHeaderSystemPrompt,
   buildInvoiceLineItemsSystemPrompt,
+  buildInvoiceWorkshopLineItemsSystemPrompt,
   buildInvoiceSystemPrompt,
 } from "@/lib/ocr/invoice-parse-prompts";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
@@ -402,9 +415,16 @@ export class InvoiceExtractionService {
       ? await analyzeLayoutWithAzure(prepared.bytes, prepared.contentType)
       : null;
 
+    const ocrText = azureLayout?.content ?? "";
+    const tableFormat = detectInvoiceTableFormat(ocrText);
+    const isWorkshopFormat = tableFormat === "workshop-sections";
+
     let llmInput = prepared;
     let rowSeparators = false;
-    if (canDrawRowSeparators(prepared.bytes, prepared.contentType)) {
+    if (
+      canDrawRowSeparators(prepared.bytes, prepared.contentType) &&
+      shouldDrawInvoiceRowSeparators(tableFormat)
+    ) {
       const drawn = await drawInvoiceRowSeparatorsOnImage(
         prepared.bytes,
         azureLayout,
@@ -413,18 +433,34 @@ export class InvoiceExtractionService {
       rowSeparators = drawn.separatorsDrawn > 0;
     }
 
+    const userLines = isWorkshopFormat
+      ? INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES
+      : INVOICE_LINE_ITEMS_USER_LINES;
+
+    const instructionLines: string[] = [
+      "Deutsche Kfz-Rechnung oder Servicebeleg (PDF oder Scan).",
+      ...userLines,
+    ];
+
+    if (isWorkshopFormat && ocrText.trim()) {
+      instructionLines.push(
+        "",
+        "Azure-OCR-Text (Struktur-Hinweis — Bild ist maßgeblich):",
+        buildWorkshopOcrHint(ocrText),
+      );
+    }
+
     const visionMessage = buildVisionUserMessage(
-      [
-        "Deutsche Kfz-Rechnung oder Servicebeleg (PDF oder Scan).",
-        ...INVOICE_LINE_ITEMS_USER_LINES,
-      ],
+      instructionLines,
       llmInput,
       { rowSeparators },
     );
 
     const record = await runVisionExtract<Record<string, unknown>>(
-      buildInvoiceLineItemsSystemPrompt(),
-      INVOICE_LINE_ITEMS_USER_LINES,
+      isWorkshopFormat
+        ? buildInvoiceWorkshopLineItemsSystemPrompt()
+        : buildInvoiceLineItemsSystemPrompt(),
+      userLines,
       prepared,
       INVOICE_LINE_ITEMS_JSON_SCHEMA,
       LINE_ITEMS_MAX_TOKENS,
@@ -437,7 +473,7 @@ export class InvoiceExtractionService {
     const finalItems = processLineItems(
       Array.isArray(record.lineItems) ? record.lineItems : [],
     );
-    const llmLineItems: InvoiceLineItem[] = finalItems
+    let llmLineItems: InvoiceLineItem[] = finalItems
       .filter(
         (item) =>
           typeof item.label === "string" &&
@@ -449,29 +485,50 @@ export class InvoiceExtractionService {
         label: String(item.label).trim(),
         amount: item.gesamtpreis,
       }));
-    const layoutLineItems = azureLayout
-      ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
+
+    const ocrSectionItems = isWorkshopFormat
+      ? extractWorkshopSectionLineItems(ocrText)
       : null;
+    llmLineItems =
+      isWorkshopFormat
+        ? (resolveWorkshopLineItems({ llmItems: llmLineItems, ocrText }) ??
+          llmLineItems)
+        : llmLineItems;
+
+    const layoutLineItems =
+      shouldMergeAzureLayout(tableFormat) && azureLayout
+        ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
+        : null;
+
     const amount =
       coerceGermanMoneyAmount(record.amount, "conservative") ??
+      (isWorkshopFormat
+        ? extractWorkshopInvoiceAmount(ocrText)
+        : null) ??
       (layoutLineItems?.length ? sumLineItems(layoutLineItems) : null);
 
-    const merged = mergeLayoutAndLlmLineItems(
-      llmLineItems,
-      layoutLineItems,
-      amount,
-    );
-    const reconciled = azureLayout?.content
-      ? reconcileLineItemAmountsWithOcrText(merged, azureLayout.content)
-      : merged;
-    const normalized = normalizeLineItemsList(
-      realignShiftedInvoiceLineItems(reconciled, amount),
-      LINE_ITEMS_MAX_COUNT,
-    );
+    const merged = shouldMergeAzureLayout(tableFormat)
+      ? mergeLayoutAndLlmLineItems(llmLineItems, layoutLineItems, amount)
+      : llmLineItems.length > 0
+        ? llmLineItems
+        : null;
+
+    const reconciled =
+      isWorkshopFormat && ocrText.trim()
+        ? reconcileWorkshopLineItemsWithOcrText(merged, ocrText)
+        : ocrText.trim()
+          ? reconcileLineItemAmountsWithOcrText(merged, ocrText)
+          : merged;
+
+    const aligned = isWorkshopFormat
+      ? reconciled
+      : realignShiftedInvoiceLineItems(reconciled, amount);
+
+    const normalized = normalizeLineItemsList(aligned, LINE_ITEMS_MAX_COUNT);
     const withVat = ensureInvoiceVatAndGrossTotal({
       lineItems: normalized,
       amount,
-      ocrText: azureLayout?.content ?? "",
+      ocrText,
     });
 
     return { lineItems: withVat.lineItems, amount: withVat.amount };

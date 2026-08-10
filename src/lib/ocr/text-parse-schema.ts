@@ -4,7 +4,7 @@ import {
   coerceGermanMoneyAmount,
   sanitizeLlmMoneyAmount,
 } from "@/lib/ocr/parse-german-money";
-import { dedupeInvoiceLineItemUnitPrices } from "@/lib/ocr/invoice-line-item-dedupe";
+import { dedupeInvoiceLineItemUnitPrices, isJunkInvoiceLineLabel } from "@/lib/ocr/invoice-line-item-dedupe";
 import {
   isHtmlDebrisLabel,
   stripHtmlTags,
@@ -319,6 +319,7 @@ export function normalizeLineItemsList(
           item.label.length > 0 &&
           Number.isFinite(item.amount) &&
           !isHtmlDebrisLabel(item.label) &&
+          !isJunkInvoiceLineLabel(item.label) &&
           /[a-zäöüß]{2,}/i.test(item.label) &&
           !isPercentRestatedAsAmount(item.label, item.amount),
       ),

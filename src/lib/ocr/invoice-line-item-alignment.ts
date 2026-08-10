@@ -5,7 +5,7 @@ import {
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 
 const TABLE_HEADER_LABEL =
-  /^(?:pos\.?|position|bezeichnung|beschreibung|artikel|menge|einzelpreis|e-?preis|ep|stückpreis|ges\.?\s*preis|gesamtpreis|ges\.?\s*summe|gp|betrag|summe|nr\.?|anz\.?|stk\.?|preis|wert|total)$/i;
+  /^(?:pos\.?|position|bezeichnung|beschreibung|artikel|menge|einzelpreis|e-?preis|ep|stückpreis|stück|stk\.?|std\.?|einheit|ges\.?\s*preis|gesamtpreis|ges\.?\s*summe|gp|betrag|summe|nr\.?|anz\.?|preis|wert|total|endpreis|netto|endsummen)$/i;
 
 const AMOUNT_ONLY_LINE =
   /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*(?:€|eur)?\s*$/i;

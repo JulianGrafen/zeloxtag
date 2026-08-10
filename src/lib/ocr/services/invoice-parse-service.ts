@@ -33,6 +33,16 @@ import {
   INVOICE_USER_PROMPT_LINES,
   TUEV_COST_USER_PROMPT_LINES,
 } from "@/lib/ocr/invoice-parse-prompts";
+import {
+  detectInvoiceTableFormat,
+  shouldDrawInvoiceRowSeparators,
+  shouldMergeAzureLayout,
+} from "@/lib/ocr/invoice-format-routing";
+import {
+  extractWorkshopInvoiceAmount,
+  reconcileWorkshopLineItemsWithOcrText,
+  resolveWorkshopLineItems,
+} from "@/lib/ocr/invoice-workshop-sections";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import {
@@ -163,7 +173,15 @@ export class InvoiceParseService {
       );
     }
 
-    if (!isTuevReport && canDrawRowSeparators(prepared.bytes, prepared.contentType)) {
+    const tableFormat = !isTuevReport
+      ? detectInvoiceTableFormat(azureLayout?.content ?? "")
+      : "column";
+
+    if (
+      !isTuevReport &&
+      canDrawRowSeparators(prepared.bytes, prepared.contentType) &&
+      shouldDrawInvoiceRowSeparators(tableFormat)
+    ) {
       const drawn = await drawInvoiceRowSeparatorsOnImage(
         prepared.bytes,
         azureLayout,
@@ -239,24 +257,36 @@ export class InvoiceParseService {
       return { fields: normalized, ocrJson };
     }
 
-    const layoutLineItems = extractInvoiceLineItemsFromAzureLayout(azureLayout);
-    const amount = preferAmount(
-      normalized.amount,
-      azureLayout.content,
-      normalized.lineItems,
-    );
+    const isWorkshopFormat = tableFormat === "workshop-sections";
+    const azureContent = azureLayout.content;
+
+    const llmItems =
+      isWorkshopFormat
+        ? (resolveWorkshopLineItems({
+            llmItems: normalized.lineItems,
+            ocrText: azureContent,
+          }) ?? normalized.lineItems)
+        : normalized.lineItems;
+
+    const layoutLineItems = shouldMergeAzureLayout(tableFormat)
+      ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
+      : null;
+
+    const amount =
+      preferAmount(normalized.amount, azureContent, llmItems) ??
+      (isWorkshopFormat ? extractWorkshopInvoiceAmount(azureContent) : null);
+
+    const merged = shouldMergeAzureLayout(tableFormat)
+      ? mergeLayoutAndLlmLineItems(llmItems, layoutLineItems, amount)
+      : llmItems;
+
+    const reconciled =
+      isWorkshopFormat
+        ? reconcileWorkshopLineItemsWithOcrText(merged, azureContent)
+        : reconcileLineItemAmountsWithOcrText(merged, azureContent);
+
     const lineItems = normalizeLineItemsList(
-      realignShiftedInvoiceLineItems(
-        reconcileLineItemAmountsWithOcrText(
-          mergeLayoutAndLlmLineItems(
-            normalized.lineItems,
-            layoutLineItems,
-            amount,
-          ),
-          azureLayout.content,
-        ),
-        amount,
-      ),
+      realignShiftedInvoiceLineItems(reconciled, amount),
       60,
     );
 

@@ -215,7 +215,7 @@ export function buildInvoiceHeaderSystemPrompt(): string {
   ].join("\n\n");
 }
 
-/** Wizard — Rechnungsblock (dedizierter LLM-Pass, Extract & Compute). */
+/** Wizard — Rechnungsblock Format A (Pos | Menge | E-Preis | Ges. Preis). */
 export function buildInvoiceLineItemsSystemPrompt(): string {
   return [
     "Du extrahierst NUR Rechnungspositionen aus dem Tabellen-/Positionsbereich einer deutschen Kfz-Werkstattrechnung.",
@@ -230,11 +230,38 @@ Für jede Datenzeile extrahierst du exakt:
 Zahlen IMMER exakt so wie gedruckt abschreiben, mit Komma und €. KEINE Umrechnung, KEINE Multiplikation.
 Leere Menge oder leerer Ges. Preis → null (nicht 1 und nicht den E-Preis raten).`,
     INVOICE_LINE_ITEMS_EXTRACT_COMPUTE_FEW_SHOT,
-    INVOICE_WORKSHOP_SECTIONS_FEW_SHOT,
-    `FORMAT-WAHL: Pos|Menge|E-Preis|Ges.-Preis-Tabelle (Format A) ODER Arbeitswerte/Ersatzteile/Sonstige Kosten (Format B).`,
     INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
     INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES,
     "amount (Zahlbetrag) = raw text des Rechnungsgesamtbetrags (brutto inkl. MwSt) falls sichtbar — sonst null.",
+    "Antworte nur mit JSON.",
+  ].join("\n\n");
+}
+
+/** Wizard — Rechnungsblock Format B (Arbeitswerte | Ersatzteile | Sonstige Kosten). */
+export function buildInvoiceWorkshopLineItemsSystemPrompt(): string {
+  return [
+    "Du extrahierst NUR Rechnungspositionen aus einer deutschen DMS-/Werkstattrechnung mit ABSCHNITTEN.",
+    "Diese Rechnung hat KEINE Pos-Spalte. Ignoriere jede Pos/Menge/E-Preis/Ges.-Preis-Logik aus Standardtabellen.",
+    `KRITISCH — Extract & Compute:
+Du kopierst RAW-TEXT — du rechnest NIEMALS selbst.
+Drei Blöcke nacheinander:
+  1. Arbeitswerte (Spalten: Beschreibung | Art | PG | Std. | Preis-€)
+  2. Ersatzteile (Spalten: Anzahl | Einheit | Beschreibung | Rab.% | Einzelpreis | Preis-€)
+  3. Sonstige Kosten (Spalten: Anzahl | Beschreibung | Einzelpreis | Preis-€)
+
+Pro fakturierter Zeile:
+  • label       = Beschreibungstext (ohne Art/PG/Std/Rabatt-Spalten)
+  • menge       = Std./Anzahl mit Einheit (z.B. "0,50 Std", "1 Stück", "4 Stück") — null wenn leer
+  • einzelpreis = Einzelpreis-Spalte — null bei Arbeitswerten ohne EP
+  • gesamtpreis = Preis-€ / rechte Summenspalte — PFLICHT wenn Zeile fakturiert
+
+Art (1–9) und PG sind KEINE menge — niemals in menge schreiben.
+Zeilen NUR mit Beschreibung ohne Preis-€ (z.B. Diagnose-Notizen) → KEIN lineItem.
+Zwischensummen, Netto Summe, Mechanik-Summen, Positionssumme → KEINE lineItems.
+MwSt-Zeile im Footer → KEIN lineItem (wird separat berechnet).
+Bei Rabatt: gesamtpreis = Preis NACH Rabatt (z.B. 28,73 — NICHT 41,04 Einzelpreis).`,
+    INVOICE_WORKSHOP_SECTIONS_FEW_SHOT,
+    "amount = raw text des Endpreis brutto (z.B. \"540,84 €\") — nicht Netto Summe / Positionssumme.",
     "Antworte nur mit JSON.",
   ].join("\n\n");
 }
@@ -255,11 +282,10 @@ export const INVOICE_HEADER_USER_LINES = [
   "145.000 km → 145000 (Integer, Tausenderpunkte entfernen).",
 ] as const;
 
-/** Guided wizard — positions table block (Extract & Compute pass). */
+/** Guided wizard — positions table block Format A. */
 export const INVOICE_LINE_ITEMS_USER_LINES = [
-  "Nur POSITIONS-/TABELLEN-BEREICH einer deutschen Kfz-Rechnung.",
+  "Nur POSITIONS-/TABELLEN-BEREICH einer deutschen Kfz-Rechnung (Spaltenformat Pos | Bezeichnung | Menge | E-Preis | Ges. Preis).",
   "Schritt 1: Tabellenkopf — Spalten: Pos | Nummer | Bezeichnung | Menge | Einh. | E-Preis | Ges. Preis | St.",
-  "ODER Abschnitts-Layout: Arbeitswerte | Ersatzteile | Sonstige Kosten (Preis-€ / Einzelpreis).",
   "Schritt 2: Jede Datenzeile von oben nach unten — KEINE Zeile auslassen (auch Arbeitslohn mit leerer Menge/Ges. Preis).",
   "CRITICAL: Kopiere den exakten Text aus JEDER Spalte. Führe KEINE Berechnungen durch.",
   "menge = Text aus Menge inkl. Einheit — z.B. \"1,00\", \"0,90\", \"7,00 Liter\". null wenn Zelle leer.",
@@ -272,7 +298,21 @@ export const INVOICE_LINE_ITEMS_USER_LINES = [
   "Pro Tabellenzeile GENAU EIN lineItem — mehrzeilige Bezeichnung = ein Item.",
   "Fortsetzung der Tabelle auf Seite 2: alle Zeilen mit erfassen.",
   "MwSt-Zeile (z. B. „MwSt 19%“ + €-Betrag) als eigenes lineItem — Gesamtbetrag ist brutto inkl. MwSt.",
-  "Bei Abschnitts-Rechnung: amount = Endpreis brutto, nicht Netto Summe.",
+] as const;
+
+/** Guided wizard — section-based workshop invoice (Format B). */
+export const INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES = [
+  "Abschnitts-Rechnung (DMS): Arbeitswerte → Ersatzteile → Sonstige Kosten.",
+  "Schritt 1: Block 'Arbeitswerte' — jede Zeile mit Preis-€ ist ein lineItem.",
+  "  Beschreibung ohne Preis (nur Diagnose-Text) → überspringen.",
+  "  gesamtpreis = Spalte Preis-€ (rechts). menge = Std.-Spalte (z.B. \"0,50 Std\", \"1,80\").",
+  "  Art/PG-Zahlen (1–9) NICHT als menge — null wenn nur Art sichtbar.",
+  "Schritt 2: Block 'Ersatzteile' — jede Teilezeile mit Preis-€.",
+  "  menge = \"N Stück\". einzelpreis = Einzelpreis-Spalte. gesamtpreis = Preis-€ (nach Rabatt!).",
+  "Schritt 3: Block 'Sonstige Kosten' — z.B. Fracht.",
+  "Schritt 4: Footer — amount = Endpreis brutto (540,84), NICHT Netto Summe (454,49).",
+  "Zwischensummen / Mechanik / Positionssumme sind KEINE Positionen.",
+  "CRITICAL: Kopiere exakten Spalten-Text. KEINE Berechnungen.",
 ] as const;
 
 /** @deprecated Use buildInvoiceLineItemsSystemPrompt() */

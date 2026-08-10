@@ -13,7 +13,9 @@ import {
   extractWorkshopInvoiceAmount,
   extractWorkshopInvoiceVatAmount,
   extractWorkshopSectionLineItems,
+  isGarbageWorkshopLineItems,
   isWorkshopSectionInvoiceText,
+  resolveWorkshopLineItems,
 } from "@/lib/ocr/invoice-workshop-sections";
 import { extractAmountFromText } from "@/lib/ocr/amount-from-text";
 import { processLineItems } from "@/utils/invoiceMath";
@@ -82,5 +84,41 @@ describe("Speedworkz section invoice", () => {
 
     const sum = processed.reduce((acc, row) => acc + row.gesamtpreis, 0);
     expect(sum).toBeCloseTo(SPEEDWORKZ_NET_SUM, 2);
+  });
+
+  it("ignores Art column when LLM copies it into menge with hours as einzelpreis", () => {
+    const [item] = processLineItems([
+      {
+        label: "Motor wird heiß lt. Kunde Thermost wurde erneuert",
+        menge: "4",
+        einzelpreis: "0,50",
+        gesamtpreis: "46,22 €",
+      },
+    ]);
+    expect(item!.gesamtpreis).toBeCloseTo(46.22, 2);
+  });
+
+  it("rejects production garbage (Stück labels) in favor of OCR section parser", () => {
+    const garbageLlm = [
+      { label: "Stück", amount: 169.0 },
+      { label: "Stück", amount: 70.83 },
+      { label: "Stück", amount: 65.12 },
+      { label: "Motor wird heiß lt. Kunde Thermost wurde erneuert", amount: 28.73 },
+      { label: "Thermostat und Wasserschlauch erneuern", amount: 23.11 },
+      { label: "Endpreis", amount: 41.04 },
+    ];
+
+    expect(isGarbageWorkshopLineItems(garbageLlm)).toBe(true);
+
+    const resolved = resolveWorkshopLineItems({
+      llmItems: garbageLlm,
+      ocrText: SPEEDWORKZ_OCR_TEXT,
+    });
+
+    expect(resolved).toHaveLength(8);
+    expect(resolved!.reduce((s, i) => s + i.amount, 0)).toBeCloseTo(
+      SPEEDWORKZ_NET_SUM,
+      2,
+    );
   });
 });

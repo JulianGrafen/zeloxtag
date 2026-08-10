@@ -1,5 +1,9 @@
 import { sumLineItems } from "@/lib/documents/line-items";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
+import {
+  extractWorkshopInvoiceVatAmount,
+  isWorkshopSectionInvoiceText,
+} from "@/lib/ocr/invoice-workshop-sections";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 
 const DEFAULT_VAT_RATE = 0.19;
@@ -118,7 +122,12 @@ export function ensureInvoiceVatAndGrossTotal(options: {
   }
 
   const fromText = ocrText ? extractVatLineFromText(ocrText) : null;
-  let vatAmount = fromText?.amount ?? null;
+  let vatAmount =
+    (ocrText && isWorkshopSectionInvoiceText(ocrText)
+      ? extractWorkshopInvoiceVatAmount(ocrText)
+      : null) ??
+    fromText?.amount ??
+    null;
 
   if (vatAmount == null && amount != null && amount > netSum + 0.05) {
     const diff = roundMoney(amount - netSum);

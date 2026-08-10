@@ -21,6 +21,7 @@ import { parseGermanMoneyAmount } from "./parse-german-money";
 import {
   extractWorkshopSectionLineItems,
   isWorkshopSectionInvoiceText,
+  reconcileWorkshopLineItemsWithOcrText,
 } from "./invoice-workshop-sections";
 
 const MAX_ITEMS = 60;
@@ -366,6 +367,10 @@ export function reconcileLineItemAmountsWithOcrText(
   rawText: string,
 ): InvoiceLineItem[] | null {
   if (!items?.length || !rawText.trim()) return items ?? null;
+
+  if (isWorkshopSectionInvoiceText(rawText)) {
+    return reconcileWorkshopLineItemsWithOcrText(items, rawText);
+  }
 
   const textItems = extractInvoiceLineItemsFromText(rawText);
   if (!textItems?.length) return items;
