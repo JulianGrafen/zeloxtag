@@ -191,13 +191,15 @@ export function InBrowserCamera({
   const [processingCapture, setProcessingCapture] = useState(false);
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
-  const [instructionsOpen, setInstructionsOpen] = useState(
-    Boolean((hint ?? (showTopDownGuide ? TOP_DOWN_SCAN_HINT : undefined)) && showBriefing && !continuousCapture),
-  );
   const [captureFlash, setCaptureFlash] = useState(false);
 
-  const topDownTilt = useTopDownTilt(showTopDownGuide && cameraReady && !instructionsOpen);
   const resolvedHint = hint ?? (showTopDownGuide ? TOP_DOWN_SCAN_HINT : undefined);
+  const shouldShowBriefing = Boolean(
+    resolvedHint && showBriefing && !continuousCapture && !captureStep,
+  );
+  const [instructionsOpen, setInstructionsOpen] = useState(shouldShowBriefing);
+
+  const topDownTilt = useTopDownTilt(showTopDownGuide && cameraReady && !instructionsOpen);
   const showLevelGuide =
     showTopDownGuide && cameraReady && !instructionsOpen && !processingCapture && !cameraError;
 
@@ -206,8 +208,8 @@ export function InBrowserCamera({
       setInstructionsOpen(false);
       return;
     }
-    setInstructionsOpen(Boolean((hint ?? (showTopDownGuide ? TOP_DOWN_SCAN_HINT : undefined)) && showBriefing));
-  }, [title, hint, showBriefing, continuousCapture, showTopDownGuide]);
+    setInstructionsOpen(shouldShowBriefing);
+  }, [shouldShowBriefing, continuousCapture]);
 
   async function startCamera(facing: FacingMode) {
     stopStream(streamRef.current);
@@ -477,7 +479,9 @@ export function InBrowserCamera({
   const chromeTopPad =
     "max(3.25rem, calc(env(safe-area-inset-top) + 2.75rem))";
   const chromeBottomPad =
-    "max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem))";
+    showTopDownGuide || captureStep || resolvedHint
+      ? "max(8.5rem, calc(env(safe-area-inset-bottom) + 7rem))"
+      : "max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem))";
 
   const topBar = (
     <div className="pointer-events-auto relative flex shrink-0 items-center justify-between px-3 pb-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
@@ -517,18 +521,27 @@ export function InBrowserCamera({
 
   const bottomControls =
     !cameraError && !instructionsOpen && !processingCapture ? (
-      <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-2 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+      <div className="pointer-events-auto relative z-30 flex shrink-0 flex-col items-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1">
+        {showLevelGuide ? (
+          <div className="mb-2">
+            <TopDownLevelIndicator
+              tilt={topDownTilt}
+              onRequestPermission={() => void topDownTilt.requestPermission()}
+            />
+          </div>
+        ) : null}
+
         {resolvedHint || captureStep ? (
-          <div className="w-full max-w-md rounded-xl bg-black/50 px-3 py-2.5 text-center backdrop-blur-[3px]">
+          <div className="mb-3 w-full max-w-md rounded-xl bg-black/70 px-3 py-2.5 text-center shadow-lg backdrop-blur-md">
             {captureStep ? (
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-white/90">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white">
                 Schritt {captureStep.current} von {captureStep.total}
               </p>
             ) : null}
             {resolvedHint ? (
               <p
                 className={[
-                  "text-[0.72rem] font-medium leading-snug text-white",
+                  "text-[0.75rem] font-medium leading-snug text-white",
                   captureStep ? "mt-1" : "",
                 ].join(" ")}
               >
@@ -713,18 +726,6 @@ export function InBrowserCamera({
               )
             ) : null}
 
-            {showLevelGuide ? (
-              <div
-                className="pointer-events-none absolute inset-x-0 z-10 flex justify-center"
-                style={{ bottom: chromeBottomPad }}
-              >
-                <TopDownLevelIndicator
-                  tilt={topDownTilt}
-                  onRequestPermission={() => void topDownTilt.requestPermission()}
-                />
-              </div>
-            ) : null}
-
             {processingCapture ? (
               <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black/55 px-6 text-center backdrop-blur-[2px]">
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
@@ -744,9 +745,15 @@ export function InBrowserCamera({
             {resolvedHint && instructionsOpen ? (
               <div className="absolute inset-0 z-20 flex items-end justify-center bg-black/70 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-sm">
                 <div className="w-full max-w-md rounded-[1.5rem] bg-white p-6 shadow-2xl">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neutral-500">
-                    Scan-Hinweis
-                  </p>
+                  {captureStep ? (
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                      Schritt {captureStep.current} von {captureStep.total}
+                    </p>
+                  ) : (
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                      Scan-Hinweis
+                    </p>
+                  )}
                   <p className="mt-2 text-[1.05rem] font-semibold leading-snug text-neutral-900">
                     {title}
                   </p>

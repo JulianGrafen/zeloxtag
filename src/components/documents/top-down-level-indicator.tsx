@@ -19,13 +19,28 @@ export function TopDownLevelIndicator({
 
   if (tilt.needsPermission && !tilt.active) {
     return (
-      <button
-        type="button"
-        onClick={onRequestPermission}
-        className="pointer-events-auto rounded-full bg-black/55 px-3 py-1.5 text-[0.72rem] font-medium text-white backdrop-blur-[2px] transition-opacity active:opacity-80"
-      >
-        Neigungssensor aktivieren
-      </button>
+      <div className="pointer-events-auto flex max-w-[17rem] flex-col items-center gap-2 text-center">
+        <p className="text-[0.68rem] font-medium leading-snug text-white/90">
+          Für bessere Bildqualität und Texterkennung: Handy parallel über das
+          Blatt halten.
+        </p>
+        <button
+          type="button"
+          onClick={onRequestPermission}
+          className="rounded-full bg-black/70 px-3.5 py-2 text-[0.72rem] font-semibold text-white shadow-lg backdrop-blur-md transition-opacity active:opacity-80"
+        >
+          Neigungssensor aktivieren
+        </button>
+      </div>
+    );
+  }
+
+  if (tilt.permissionDenied && !tilt.active) {
+    return (
+      <p className="max-w-[17rem] text-center text-[0.68rem] font-medium leading-snug text-white/75">
+        Neigungssensor nicht verfügbar — trotzdem möglichst gerade von oben
+        fotografieren.
+      </p>
     );
   }
 
