@@ -216,9 +216,12 @@ describe("pre-deploy extraction quality · scan type catalog", () => {
       expect(def.heading.length).toBeGreaterThan(3);
     }
     expect(SCAN_TYPE_OPTIONS.some((opt) => opt.id === "egbe")).toBe(false);
+    expect(SCAN_TYPE_OPTIONS.some((opt) => opt.id === "repair")).toBe(false);
   });
 
-  it("keeps egbe defined for existing documents and OCR", () => {
+  it("keeps repair defined for legacy deep links and OCR", () => {
+    expect(parseScanType("repair")).toBe("repair");
+    expect(scanTypeDefinition("repair").category).toBe("repair");
     expect(parseScanType("egbe")).toBe("egbe");
     expect(scanTypeDefinition("egbe").approvalKind).toBe("egbe");
   });

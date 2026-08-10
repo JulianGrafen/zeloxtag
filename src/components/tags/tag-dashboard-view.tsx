@@ -124,7 +124,6 @@ export function TagDashboardView({
             invoiceCount > 0
               ? `${invoiceCount} Belege`
               : "Noch keine Belege",
-          badge: invoiceCount > 0 ? String(invoiceCount) : undefined,
         },
       };
     }
@@ -137,7 +136,6 @@ export function TagDashboardView({
           href: `/v/${tagUuid}/dokumente?type=abe`,
           subtitle:
             abeCount > 0 ? `${abeCount} Dokumente` : "Noch keine ABEs",
-          badge: abeCount > 0 ? String(abeCount) : undefined,
         },
       };
     }
@@ -166,7 +164,6 @@ export function TagDashboardView({
             serviceCount > 0
               ? `${serviceCount} Inspektionen`
               : "Inspektion scannen",
-          badge: serviceCount > 0 ? String(serviceCount) : undefined,
         },
       };
     }
@@ -181,8 +178,6 @@ export function TagDashboardView({
             timelineEventCount > 0
               ? `${timelineEventCount} Meilensteine`
               : "Nach KM-Stand",
-          badge:
-            timelineEventCount > 0 ? String(timelineEventCount) : undefined,
         },
       };
     }
@@ -197,7 +192,6 @@ export function TagDashboardView({
             manualEntryCount > 0
               ? `${manualEntryCount} eigene Einträge`
               : "Wartung oder Tuning notieren",
-          badge: manualEntryCount > 0 ? String(manualEntryCount) : undefined,
         },
       };
     }
@@ -212,7 +206,6 @@ export function TagDashboardView({
             umbauCount > 0
               ? `${umbauCount} Umbau-Fotos`
               : "Umbau fotografieren",
-          badge: umbauCount > 0 ? String(umbauCount) : undefined,
         },
       };
     }
@@ -228,7 +221,6 @@ export function TagDashboardView({
               ? tile.meta?.subtitle ??
                 `${oilChangeCount} Ölwechsel`
               : "Manuell eintragen oder scannen",
-          badge: oilChangeCount > 0 ? String(oilChangeCount) : undefined,
         },
       };
     }

@@ -23,7 +23,6 @@ export type ScanType = (typeof SCAN_TYPES)[number];
 
 /** Scan intents Schrauber may use (no ABE / TÜV). */
 export const SCHRAUBER_SCAN_TYPES: readonly ScanType[] = [
-  "repair",
   "service",
   "invoice",
 ];
@@ -156,7 +155,6 @@ export const SCAN_TYPE_DEFINITIONS: Record<ScanType, ScanTypeDefinition> = {
 /** Ordered for the upload/scan picker UI (excludes legacy-only types like egbe). */
 export const SCAN_TYPE_OPTIONS: ScanTypeDefinition[] = [
   SCAN_TYPE_DEFINITIONS.invoice,
-  SCAN_TYPE_DEFINITIONS.repair,
   SCAN_TYPE_DEFINITIONS.service,
   SCAN_TYPE_DEFINITIONS.abe,
   SCAN_TYPE_DEFINITIONS.teilegutachten,

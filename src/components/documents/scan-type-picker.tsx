@@ -35,7 +35,7 @@ interface ScanTypePickerProps {
   backHref: string;
   onBack?: () => void;
   onSelect: (type: ScanType) => void;
-  /** Owner sees all types; Schrauber only repair/service/invoice. */
+  /** Owner sees all types; Schrauber only service/invoice. */
   role?: "owner" | "contributor";
   /** Optional hint from deep link — still requires an explicit tap. */
   suggestedType?: ScanType | null;
@@ -141,7 +141,7 @@ export function ScanTypePicker({
           </h1>
           <p className="text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
             {role === "contributor"
-              ? `Vor jedem Scan: Wähle Reparatur, Service oder Rechnung für ${vehicleLabel}.`
+              ? `Vor jedem Scan: Wähle Service oder Rechnung für ${vehicleLabel}.`
               : `Vor jedem Scan: Wähle den Dokumenttyp — die Extraktion nutzt dann die passenden Felder für ${vehicleLabel}.`}
           </p>
         </header>

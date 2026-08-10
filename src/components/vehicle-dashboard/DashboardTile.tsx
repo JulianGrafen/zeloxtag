@@ -15,27 +15,21 @@ const toneStyles: Record<
   DashboardTileTone,
   {
     iconWrap: string;
-    badge: string;
   }
 > = {
   default: {
     iconWrap:
       "bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]",
-    badge:
-      "bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-muted)] ring-1 ring-[color:var(--vd-border)]",
   },
   accent: {
     iconWrap: "bg-neutral-900 text-white ring-1 ring-neutral-900",
-    badge: "bg-neutral-900 text-white ring-1 ring-neutral-900",
   },
   warning: {
     iconWrap:
       "bg-neutral-200 text-neutral-900 ring-1 ring-neutral-300",
-    badge: "bg-neutral-900 text-white ring-1 ring-neutral-900",
   },
   critical: {
     iconWrap: "bg-neutral-900 text-white ring-1 ring-neutral-900",
-    badge: "bg-neutral-900 text-white ring-1 ring-neutral-900",
   },
 };
 
@@ -54,19 +48,10 @@ export function DashboardTile({ tile, onClick }: DashboardTileProps) {
           <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
         </span>
 
-        <div className="flex items-center gap-2">
-          {tile.meta?.badge ? (
-            <span
-              className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] ${styles.badge}`}
-            >
-              {tile.meta.badge}
-            </span>
-          ) : null}
-          <ChevronRight
-            className="h-4 w-4 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5 group-data-[pressed=true]:text-[color:var(--vd-accent)]"
-            aria-hidden
-          />
-        </div>
+        <ChevronRight
+          className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5 group-data-[pressed=true]:text-[color:var(--vd-accent)]"
+          aria-hidden
+        />
       </div>
 
       <div className="mt-4 space-y-1.5">

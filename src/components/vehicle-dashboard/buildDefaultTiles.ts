@@ -35,7 +35,6 @@ function inspectionMeta(data: VehicleDashboardData): DashboardTileConfig["meta"]
 
   return {
     subtitle: `${formatted} · ${countdown}`,
-    badge: days <= 30 ? (days < 0 ? "Überfällig" : "Bald") : undefined,
   };
 }
 
@@ -144,6 +143,7 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       title: "Konto",
       description: "2FA & Abmelden",
       icon: "settings",
+      featured: true,
       meta: {
         subtitle: "Sicherheit und Sitzung",
         href: "/settings",
