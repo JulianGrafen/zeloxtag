@@ -7,7 +7,7 @@ import {
   getVehicleWriteAccess,
 } from "@/lib/auth/vehicle-write-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { parseLineItems } from "@/lib/documents/line-items";
+import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import {
   getMockUploadedDocuments,
   updateMockUploadedDocument,
@@ -117,8 +117,16 @@ export async function updateDocumentFields(
         message: "Demo-Dokumente können nicht bearbeitet werden — nur eigene Uploads.",
       };
     }
+    const mockPatch: Record<string, unknown> = {};
+    if (lineItems !== undefined) {
+      mockPatch.line_items = lineItems;
+      const total = sumLineItems(lineItems);
+      if (total !== null && total > 0) {
+        mockPatch.amount = total;
+      }
+    }
     await updateMockUploadedDocument(vehicleId, documentId, {
-      ...(lineItems !== undefined ? { line_items: lineItems } : {}),
+      ...mockPatch,
       ...(vehicleApprovals !== undefined
         ? { vehicle_approvals: vehicleApprovals }
         : {}),
@@ -189,6 +197,10 @@ export async function updateDocumentFields(
   const patch: Record<string, unknown> = {};
   if (lineItems !== undefined) {
     patch.line_items = lineItems && lineItems.length > 0 ? lineItems : null;
+    const total = sumLineItems(lineItems);
+    if (total !== null && total > 0) {
+      patch.amount = total;
+    }
   }
   if (vehicleApprovals !== undefined) {
     patch.vehicle_approvals =

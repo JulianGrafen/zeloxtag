@@ -254,10 +254,25 @@ export function TagDashboardView({
       };
     }
 
+    if (tile.id === "vehicle-settings") {
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: `/v/${tagUuid}/einstellungen`,
+          subtitle: vehicle.is_public
+            ? "Showcase aktiv"
+            : "Showcase & PDF-Exposé",
+        },
+      };
+    }
+
     return tile;
   }).filter((tile) => {
     // Account settings (2FA) require a real session — hide in public demo.
     if (tile.id === "settings") return isOwner && canScan && !demoMode;
+    // Vehicle showcase & expose — owner-only; visible in public demo browse.
+    if (tile.id === "vehicle-settings") return isOwner || demoMode;
     // Schrauber: owner feature, but visible in the public showcase.
     if (tile.id === "schrauber") return isOwner || demoMode;
     // Schrauber: focused write surface (invoices + service + scan).

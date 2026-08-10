@@ -8,7 +8,13 @@ import {
   LoaderCircle,
 } from "lucide-react";
 
-import { TuevDefectsTable } from "@/components/documents/tuev-defects-table";
+import {
+  emptyDraftRow,
+  parseDraftRows,
+  toDraftRows,
+  TuevDefectsDraftEditor,
+  type DraftDefect,
+} from "@/components/documents/tuev-defects-draft-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +29,7 @@ import {
 } from "@/lib/validations/documentSchemas";
 import { parseTuevDefectLine } from "@/lib/ocr/tuev-defects-from-text";
 import { TuevReportService } from "@/services/documents";
+import { inferResultFromDefectRows } from "@/services/documents/TuevReportService";
 
 export type TuevReviewFields = {
   testDate: string | null;
@@ -138,20 +145,27 @@ export function fieldsToTuevReview(
 function reviewToApprovalPayload(
   review: TuevReviewFields,
   approvalFields: ApprovalFields | null,
+  defectsTable: TuevDefectRow[] | null,
 ): Extract<ApprovalFields, { kind: "tuev" }> {
   const existing =
     approvalFields?.kind === "tuev" ? approvalFields.data : null;
 
   const service = new TuevReportService();
+  const resolvedResult = inferResultFromDefectRows(
+    defectsTable,
+    review.result,
+  );
+
   const data = service.parseAndValidate({
     testingOrganization: review.testingOrganization,
     testDate: review.testDate,
-    result: review.result,
+    result: resolvedResult,
     mileageKm: review.mileageKm,
     nextInspectionDate: review.nextInspectionDate,
     documentNumber: review.documentNumber,
-    defectsTable: existing?.defectsTable ?? null,
-    defectsList: existing?.defectsList ?? null,
+    defectsTable,
+    defectsList: null,
+    requiresManualReview: existing?.requiresManualReview,
   });
 
   return { kind: "tuev", data };
@@ -195,10 +209,17 @@ export function TuevOverview({
     [fields, approvalFields],
   );
   const [review, setReview] = useState<TuevReviewFields>(initial);
+  const [defectsDraft, setDefectsDraft] = useState<DraftDefect[]>(() => {
+    if (approvalFields?.kind === "tuev") {
+      const rows = toDraftRows(approvalFields.data);
+      return rows.length > 0 ? rows : [emptyDraftRow()];
+    }
+    return [emptyDraftRow()];
+  });
 
   const displayDefects = useMemo(
-    () => tuevDefectsForDisplay(approvalFields),
-    [approvalFields],
+    () => parseDraftRows(defectsDraft),
+    [defectsDraft],
   );
   const requiresManualReview =
     approvalFields?.kind === "tuev" &&
@@ -219,7 +240,12 @@ export function TuevOverview({
         ? "Prüforganisation"
         : review.testingOrganization);
     const title = [`TÜV / HU`, workshop].filter(Boolean).join(" · ").slice(0, 120);
-    const approval = reviewToApprovalPayload(review, approvalFields);
+    const defectsTable = parseDraftRows(defectsDraft);
+    const approval = reviewToApprovalPayload(
+      review,
+      approvalFields,
+      defectsTable.length > 0 ? defectsTable : null,
+    );
     void onSave({ review, approvalFields: approval, title });
   }
 
@@ -382,14 +408,26 @@ export function TuevOverview({
           </FieldBlock>
         </div>
 
-        {displayDefects?.length ? (
-          <div className="mt-4">
-            <p className="mb-2 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Festgestellte Mängel
+        <div className="mt-4">
+          <p className="mb-2 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+            Festgestellte Mängel
+          </p>
+          <p className="mb-3 text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
+            Mängel aus dem Scan prüfen, korrigieren oder ergänzen — leere Zeilen
+            werden nicht gespeichert.
+          </p>
+          <TuevDefectsDraftEditor
+            draft={defectsDraft}
+            onChange={setDefectsDraft}
+            disabled={isSaving}
+          />
+          {displayDefects.length === 0 && review.result !== "no_defects" ? (
+            <p className="mt-2 text-[0.78rem] text-amber-800">
+              Ergebnis weist Mängel aus — bitte mindestens einen Eintrag erfassen
+              oder das Ergebnis anpassen.
             </p>
-            <TuevDefectsTable defects={displayDefects} />
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         {saveError ? (
           <p

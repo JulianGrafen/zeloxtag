@@ -3,9 +3,9 @@ import {
   parseManualEntryCategory,
 } from "@/lib/documents/manual-entries";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
-import { isVatLineItem } from "@/lib/ocr/invoice-vat";
 import { filterPublicShowcaseDocuments } from "@/lib/vehicles/public-showcase-documents";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
+import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
 import type { Document, Vehicle } from "@/types/database";
 
 export type PublicGalleryPhoto = {
@@ -51,12 +51,6 @@ export type PublicShowcasePayload = {
   photos: PublicGalleryPhoto[];
   modifications: PublicModification[];
 };
-
-const LABOR_LABEL =
-  /^(?:arbeitslohn|arbeitszeit|montage|demontage|kleinmaterial|entsorgung|material)$/i;
-
-const SKIP_INVOICE_LINE =
-  /^(?:summe|gesamt|netto|brutto|zwischensumme|position(?:en)?)$/i;
 
 function normalizeVehicleShowcaseFields(vehicle: Vehicle): {
   is_public: boolean;
@@ -125,69 +119,17 @@ function collectGalleryPhotos(
   return photos;
 }
 
-function shouldIncludeInvoiceLine(label: string): boolean {
-  const trimmed = label.trim();
-  if (trimmed.length < 2) return false;
-  if (isVatLineItem({ label: trimmed, amount: 0 })) return false;
-  if (LABOR_LABEL.test(trimmed)) return false;
-  if (SKIP_INVOICE_LINE.test(trimmed)) return false;
-  return true;
-}
-
-function extractModificationsFromInvoices(
-  documents: Document[],
-  hideFinancials: boolean,
+function mapModificationsToPublic(
+  modifications: ReturnType<typeof extractVehicleModifications>,
 ): PublicModification[] {
-  const mods: PublicModification[] = [];
-  const seen = new Set<string>();
-
-  const invoices = filterPublicShowcaseDocuments(documents)
-    .filter((doc) => doc.type === "invoice")
-    .sort((a, b) => (b.date ?? b.created_at).localeCompare(a.date ?? a.created_at));
-
-  for (const doc of invoices) {
-    for (const item of doc.line_items ?? []) {
-      if (!shouldIncludeInvoiceLine(item.label)) continue;
-      const key = item.label.trim().toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      mods.push({
-        id: `${doc.id}-${key.slice(0, 24)}`,
-        label: item.label.trim(),
-        date: doc.date,
-        vendor: doc.vendor,
-        amount: hideFinancials ? null : item.amount,
-        source: "invoice",
-      });
-    }
-  }
-
-  return mods;
-}
-
-function extractModificationsFromManualEntries(
-  documents: Document[],
-  hideFinancials: boolean,
-): PublicModification[] {
-  const mods: PublicModification[] = [];
-  const publicDocs = filterPublicShowcaseDocuments(documents);
-
-  for (const entry of filterManualVehicleEntries(publicDocs)) {
-    const category = parseManualEntryCategory(entry.category);
-    if (category !== "tuning") continue;
-
-    mods.push({
-      id: entry.id,
-      label: entry.title,
-      date: entry.date ?? entry.created_at.slice(0, 10),
-      vendor: entry.vendor,
-      amount: hideFinancials ? null : entry.amount,
-      source: "manual",
-    });
-  }
-
-  return mods;
+  return modifications.map((mod) => ({
+    id: mod.id,
+    label: mod.partName,
+    date: mod.date,
+    vendor: mod.manufacturer,
+    amount: mod.amount,
+    source: mod.source === "manual" ? "manual" : "invoice",
+  }));
 }
 
 /** Build the public showcase payload from a full server-side vehicle twin. */
@@ -203,11 +145,12 @@ export function buildPublicShowcasePayload(
     ? publicGalleryProxyUrl(vehicle.id, specs.dynoChartUrl)
     : null;
 
-  const invoiceMods = extractModificationsFromInvoices(documents, hide_financials);
-  const manualMods = extractModificationsFromManualEntries(documents, hide_financials);
-
-  const modifications = [...manualMods, ...invoiceMods].sort((a, b) =>
-    (b.date ?? "").localeCompare(a.date ?? ""),
+  const modifications = mapModificationsToPublic(
+    extractVehicleModifications(documents, {
+      hideFinancials: hide_financials,
+      documentFilter: (doc) =>
+        filterPublicShowcaseDocuments([doc]).length > 0,
+    }).filter((mod) => mod.source !== "abe"),
   );
 
   return {

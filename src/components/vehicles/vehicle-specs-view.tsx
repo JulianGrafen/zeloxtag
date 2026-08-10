@@ -6,8 +6,6 @@ import { ArrowLeft, Gauge, Save } from "lucide-react";
 
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
 import { VehicleDynoChartUpload } from "@/components/vehicles/vehicle-dyno-chart-upload";
-import { GenerateExposeButton } from "@/components/vehicles/GenerateExposeButton";
-import { VehicleShowcaseSettings } from "@/components/vehicles/vehicle-showcase-settings";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
 import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
 import {
@@ -19,12 +17,11 @@ import {
   parseVehicleTechSpecs,
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
-import type { Document, Vehicle } from "@/types/database";
+import type { Vehicle } from "@/types/database";
 
 type VehicleSpecsViewProps = {
   tagUuid: string;
   vehicle: Vehicle;
-  documents: Document[];
   canEdit: boolean;
 };
 
@@ -59,7 +56,6 @@ function ReadRow({ label, value }: { label: string; value: string }) {
 export function VehicleSpecsView({
   tagUuid,
   vehicle,
-  documents,
   canEdit,
 }: VehicleSpecsViewProps) {
   const router = useRouter();
@@ -444,25 +440,6 @@ export function VehicleSpecsView({
             ) : null}
           </section>
         )}
-
-        <VehicleShowcaseSettings
-          tagUuid={tagUuid}
-          vehicle={vehicle}
-          documents={documents}
-          canEdit={canEdit}
-        />
-
-        {canEdit ? (
-          <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
-            <h2 className="mb-3 text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-              Verkaufs-Exposé
-            </h2>
-            <GenerateExposeButton
-              vehicleId={vehicle.id}
-              vehicleLabel={`${vehicle.make} ${vehicle.model}`.trim()}
-            />
-          </section>
-        ) : null}
       </div>
     </div>
   );

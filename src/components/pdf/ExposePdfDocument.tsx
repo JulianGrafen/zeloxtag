@@ -169,8 +169,8 @@ function ModificationsPage({ data }: { data: ExposePdfData }) {
           Keine Umbauten oder Tuning-Teile hinterlegt.
         </Text>
       ) : (
-        <View style={styles.table} wrap={false}>
-          <View style={styles.tableHeader}>
+        <View style={styles.table}>
+          <View style={styles.tableHeader} wrap={false}>
             <Text style={[styles.tableHeaderCell, { width: "14%" }]}>Kategorie</Text>
             <Text style={[styles.tableHeaderCell, { width: "24%" }]}>Teil</Text>
             <Text style={[styles.tableHeaderCell, { width: "16%" }]}>Hersteller</Text>
@@ -182,7 +182,7 @@ function ModificationsPage({ data }: { data: ExposePdfData }) {
             ) : null}
           </View>
           {data.modifications.map((row, index) => (
-            <View key={`${row.partName}-${index}`} style={styles.tableRow}>
+            <View key={`${row.partName}-${index}`} style={styles.tableRow} wrap={false}>
               <Text style={[styles.tableCell, { width: "14%" }]}>{row.category}</Text>
               <Text style={[styles.tableCell, { width: "24%" }]}>{row.partName}</Text>
               <Text style={[styles.tableCell, { width: "16%" }]}>{row.manufacturer}</Text>

@@ -31,8 +31,16 @@ import {
   type TuevResult,
 } from "@/lib/validations/documentSchemas";
 import { Button } from "@/components/ui/button";
-import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
+import {
+  draftRowsToReportDefects,
+  emptyDraftRow,
+  parseDraftRows,
+  toDraftRows,
+  TuevDefectsDraftEditor,
+  type DraftDefect,
+} from "@/components/documents/tuev-defects-draft-editor";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { inferResultFromDefectRows } from "@/services/documents/TuevReportService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -235,6 +243,9 @@ export function SingleClickTuevUpload({
   const [isDragOver, setIsDragOver] = useState(false);
   const [savedDocumentId, setSavedDocumentId] = useState<string | null>(null);
   const [saving, startSaveTransition] = useTransition();
+  const [defectsDraft, setDefectsDraft] = useState<DraftDefect[]>([
+    emptyDraftRow(),
+  ]);
 
   const processingMessage = useProcessingMessage(phase === "processing");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -271,6 +282,8 @@ export function SingleClickTuevUpload({
       // 2. Ensure we have a PDF for Supabase storage.
       const uploadFile = await toUploadPdf(file);
 
+      const draft = toDraftRows(payload.extraction.report);
+      setDefectsDraft(draft.length > 0 ? draft : [emptyDraftRow()]);
       setState({ extraction: payload.extraction, uploadFile });
       setPhase("confirm");
     } catch (err) {
@@ -301,9 +314,24 @@ export function SingleClickTuevUpload({
   function handleSave() {
     if (!state) return;
 
-    const title = buildDocumentTitle(state.extraction);
+    const defectsTable = parseDraftRows(defectsDraft);
+    const reportWithDefects = {
+      ...state.extraction.report,
+      ...draftRowsToReportDefects(defectsDraft),
+      result: inferResultFromDefectRows(
+        defectsTable.length > 0 ? defectsTable : null,
+        state.extraction.report.result,
+      ),
+    };
+
+    const extraction = {
+      ...state.extraction,
+      report: reportWithDefects,
+    };
+
+    const title = buildDocumentTitle(extraction);
     const formData = buildSaveFormData(
-      state.extraction,
+      extraction,
       state.uploadFile,
       vehicleId,
       tagUuid,
@@ -325,6 +353,7 @@ export function SingleClickTuevUpload({
   function retry() {
     setError(null);
     setState(null);
+    setDefectsDraft([emptyDraftRow()]);
     setPhase("idle");
   }
 
@@ -460,11 +489,6 @@ export function SingleClickTuevUpload({
   if (phase === "confirm" && state) {
     const { report, vendor, amount } = state.extraction;
     const needsReview = state.extraction.requiresManualReview;
-    const hasDefectDetails =
-      (report.defectsTable?.length ?? 0) > 0 ||
-      (report.defectsList?.length ?? 0) > 0;
-    const showDefectsSection =
-      hasDefectDetails || report.result !== "no_defects";
 
     return (
       <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
@@ -539,12 +563,20 @@ export function SingleClickTuevUpload({
           </div>
         </div>
 
-        {showDefectsSection ? (
-          <TuevDefectsSection
-            data={report}
-            emptyHint="Keine einzelnen Prüfpunkte erkannt — bitte nach dem Speichern im Dashboard prüfen."
+        <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+          <h2 className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+            Festgestellte Mängel
+          </h2>
+          <p className="mb-3 text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
+            Mängel prüfen, korrigieren oder ergänzen — leere Zeilen werden nicht
+            gespeichert.
+          </p>
+          <TuevDefectsDraftEditor
+            draft={defectsDraft}
+            onChange={setDefectsDraft}
+            disabled={saving}
           />
-        ) : null}
+        </div>
 
         {/* Save action */}
         <Button
@@ -593,22 +625,6 @@ export function SingleClickTuevUpload({
         <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
           {vehicleLabel}
         </p>
-      </div>
-
-      {/* Accuracy warning */}
-      <div className="flex gap-3 rounded-[1.2rem] border border-neutral-200 bg-neutral-50 px-4 py-3.5">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" />
-        <div className="text-[0.8rem] text-neutral-700">
-          <p className="font-semibold text-neutral-900">
-            Hinweis: Geringere Genauigkeit
-          </p>
-          <p className="mt-0.5 leading-relaxed">
-            Der Schnell-Upload analysiert das Dokument in einem Schritt — bei
-            mehrseitigen Berichten oder schlechter Bildqualität können Felder
-            fehlen. Für 100&nbsp;% Genauigkeit den{" "}
-            <strong>Geführten Scan</strong> verwenden.
-          </p>
-        </div>
       </div>
 
       {/* Dropzone */}
@@ -668,6 +684,21 @@ export function SingleClickTuevUpload({
           </p>
           <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
             oder klicken · PDF, JPEG, PNG, WebP
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-3 rounded-[1.2rem] border border-neutral-200 bg-neutral-50 px-4 py-3.5">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" />
+        <div className="text-[0.8rem] text-neutral-700">
+          <p className="font-semibold text-neutral-900">
+            Hinweis: Geringere Genauigkeit
+          </p>
+          <p className="mt-0.5 leading-relaxed">
+            Der Schnell-Upload analysiert das Dokument in einem Schritt — bei
+            mehrseitigen Berichten oder schlechter Bildqualität können Felder
+            fehlen. Für 100&nbsp;% Genauigkeit den{" "}
+            <strong>Geführten Scan</strong> verwenden.
           </p>
         </div>
       </div>

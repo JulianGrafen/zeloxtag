@@ -125,4 +125,22 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.modifications).toHaveLength(0);
     expect(payload.profile.mileageKm).toBeNull();
   });
+
+  it("includes tuning invoice without line items via document fallback", () => {
+    const documents: Document[] = [
+      baseInvoice({
+        line_items: null,
+        title: "GReddy GT-Flügel",
+        amount: 2380,
+      }),
+    ];
+
+    const payload = buildPublicShowcasePayload(
+      { ...baseVehicle, hide_financials: false },
+      documents,
+    );
+    expect(payload.modifications).toHaveLength(1);
+    expect(payload.modifications[0]?.label).toBe("GReddy GT-Flügel");
+    expect(payload.modifications[0]?.amount).toBe(2380);
+  });
 });

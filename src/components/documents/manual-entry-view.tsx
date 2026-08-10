@@ -15,6 +15,7 @@ import {
 
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
 import { deleteDocument } from "@/actions/delete-document";
+import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import {
   PressableButton,
@@ -40,7 +41,7 @@ import {
   isViewableDocumentUrl,
 } from "@/lib/documents/viewable-url";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
-import type { Document } from "@/types/database";
+import type { Document, DocumentLineItem } from "@/types/database";
 
 export type ManualListFilter = "all" | ManualEntryCategory | "photos";
 
@@ -100,6 +101,7 @@ export function ManualEntryView({
   const [vendor, setVendor] = useState("");
   const [mileageKm, setMileageKm] = useState("");
   const [notes, setNotes] = useState("");
+  const [lineItems, setLineItems] = useState<DocumentLineItem[]>([]);
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -190,6 +192,7 @@ export function ManualEntryView({
     setVendor("");
     setMileageKm("");
     setNotes("");
+    setLineItems([]);
     setPhotos([]);
     setCategory(isUmbau ? "tuning" : "service");
     setError(null);
@@ -247,6 +250,21 @@ export function ManualEntryView({
     });
   }
 
+  function handleLineItemsChange(items: DocumentLineItem[]) {
+    setLineItems(items);
+    if (items.length === 0) return;
+    const total = items.reduce((sum, item) => sum + item.amount, 0);
+    if (total > 0) {
+      setAmount(total.toFixed(2).replace(".", ","));
+    }
+  }
+
+  function appendLineItemsToFormData(formData: FormData) {
+    if (lineItems.length > 0) {
+      formData.set("lineItems", JSON.stringify(lineItems));
+    }
+  }
+
   function handleCreate() {
     setError(null);
     startTransition(async () => {
@@ -281,6 +299,7 @@ export function ManualEntryView({
             formData.set("vendor", vendor);
             formData.set("mileageKm", mileageKm);
             formData.set("notes", notes);
+            appendLineItemsToFormData(formData);
             formData.set("photo", photo.file, photo.file.name);
 
             const result = await createManualVehicleEntry(formData);
@@ -305,6 +324,7 @@ export function ManualEntryView({
         formData.set("vendor", vendor);
         formData.set("mileageKm", mileageKm);
         formData.set("notes", notes);
+        appendLineItemsToFormData(formData);
 
         if (photos.length === 1) {
           formData.set("photo", photos[0].file, photos[0].file.name);
@@ -489,7 +509,9 @@ export function ManualEntryView({
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
                   className="claim-input w-full"
-                  placeholder="optional"
+                  placeholder={
+                    lineItems.length > 0 ? "aus Positionen" : "optional"
+                  }
                 />
               </label>
             </div>
@@ -518,6 +540,19 @@ export function ManualEntryView({
                 placeholder="optional"
               />
             </label>
+
+            {!isUmbau ? (
+              <EditableLineItemsSection
+                items={lineItems}
+                onChange={handleLineItemsChange}
+                totalAmount={
+                  lineItems.length > 0
+                    ? lineItems.reduce((sum, item) => sum + item.amount, 0)
+                    : null
+                }
+                emptyHint="Optional — Teile und Kosten wie bei einer Rechnung eintragen."
+              />
+            ) : null}
 
             <label className="block space-y-1.5">
               <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">

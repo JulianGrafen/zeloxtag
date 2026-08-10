@@ -20,6 +20,7 @@ import {
   ensureOilChangeNotes,
   detectOilChangeInvoice,
 } from "@/lib/documents/oil-changes";
+import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
 import {
   isUploadFile,
@@ -187,7 +188,9 @@ export async function createManualVehicleEntry(
     return { status: "error", message: "Datum ungültig." };
   }
   const date = dateRaw || null;
-  const amount = parseAmount(data.amount);
+  const lineItems = parseLineItems(formData.get("lineItems"));
+  const amountFromLines = sumLineItems(lineItems);
+  const amount = amountFromLines ?? parseAmount(data.amount);
   const vendor = data.vendor?.trim().slice(0, 160) || null;
   const notes =
     oilFields?.notes ?? (data.notes?.trim().slice(0, 500) || null);
@@ -222,7 +225,7 @@ export async function createManualVehicleEntry(
       file_url: fileUrl,
       vendor,
       category,
-      line_items: null,
+      line_items: lineItems,
       kba_number: null,
       vehicle_approvals: null,
       authority: null,
@@ -334,6 +337,7 @@ export async function createManualVehicleEntry(
     file_url: fileUrl,
     vendor,
     category,
+    line_items: lineItems && lineItems.length > 0 ? lineItems : null,
     notes,
     invoice_number: MANUAL_ENTRY_MARKER,
     mileage_km: mileageKm,

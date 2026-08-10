@@ -85,7 +85,7 @@ export function DocumentInvoiceDetailView({
   const canEditVendor =
     canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
   const canEditPositions =
-    canEdit && !isManual && Boolean(document.vehicle_id);
+    canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
   const resolvedBack =
     backHref ?? `/v/${tagUuid}/dokumente?type=${document.type}`;
   const fileName = fileNameFromUrl(document.file_url, title);
@@ -290,6 +290,11 @@ export function DocumentInvoiceDetailView({
             vehicleId={document.vehicle_id}
             tagUuid={tagUuid}
             totalAmount={document.amount}
+            emptyHint={
+              isManual
+                ? "Noch keine Positionen. Bearbeiten tippen, um Teile und Kosten einzutragen."
+                : "Keine Positionen erkannt. Original-PDF unten öffnen."
+            }
           />
         ) : !isTuevDocument ? (
           <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">

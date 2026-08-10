@@ -139,6 +139,14 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       icon: "info",
     },
     {
+      id: "vehicle-settings",
+      title: "Einstellungen",
+      description: "Showcase & Verkaufs-Exposé",
+      icon: "globe",
+      featured: true,
+      meta: { subtitle: "Öffentliches Profil" },
+    },
+    {
       id: "settings",
       title: "Konto",
       description: "2FA & Abmelden",

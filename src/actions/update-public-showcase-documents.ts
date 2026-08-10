@@ -128,6 +128,7 @@ export async function updatePublicShowcaseDocuments(
 
     revalidatePath(`/v/${tagUuid}`);
     revalidatePath(`/v/${tagUuid}/daten`);
+    revalidatePath(`/v/${tagUuid}/einstellungen`);
 
     const publicSlug =
       typeof vehicleRow?.public_slug === "string" ? vehicleRow.public_slug : null;

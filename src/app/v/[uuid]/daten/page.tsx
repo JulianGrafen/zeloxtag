@@ -51,7 +51,6 @@ export default async function VehicleSpecsPage({
     <VehicleSpecsView
       tagUuid={result.tag.uuid}
       vehicle={vehicle}
-      documents={result.documents}
       canEdit={access.isOwner}
     />
   );

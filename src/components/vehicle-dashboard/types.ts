@@ -9,6 +9,7 @@ export type DashboardTileId =
   | "tuning-history"
   | "specs"
   | "settings"
+  | "vehicle-settings"
   | "schrauber";
 
 /** Serializable icon keys (resolved to Lucide on the client). */
@@ -22,6 +23,7 @@ export type DashboardIconName =
   | "images"
   | "info"
   | "settings"
+  | "globe"
   | "users";
 
 export type DashboardTileTone =

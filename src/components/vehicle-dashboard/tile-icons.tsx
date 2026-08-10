@@ -3,6 +3,7 @@
 import {
   Droplet,
   FileText,
+  Globe,
   History,
   Images,
   Info,
@@ -27,5 +28,6 @@ export const DASHBOARD_ICONS: Record<DashboardIconName, LucideIcon> = {
   images: Images,
   info: Info,
   settings: Settings,
+  globe: Globe,
   users: Users,
 };

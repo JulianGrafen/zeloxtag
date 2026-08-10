@@ -969,6 +969,28 @@ export function InvoiceUploader({
 
       {step === "compose" ? (
         <div className="vd-anim-header space-y-3">
+          {!nativePdf && pages.length === 0 ? (
+            <CameraCapture
+              allowPdf
+              disabled={compressing}
+              inBrowserA4Camera={invoiceA4Camera}
+              hint={
+                isEinzelabnahmeUpload
+                  ? "Einzelabnahme fotografieren oder als PDF hochladen"
+                  : isTeilegutachtenUpload
+                    ? "Teilegutachten fotografieren oder als PDF hochladen"
+                    : isGutachtenFamilyUpload
+                  ? `Alle Seiten von ${scanDef?.title ?? "Gutachten"} fotografieren oder als PDF hochladen`
+                  : isTuevUpload
+                    ? "TÜV-/HU-Bericht fotografieren oder als PDF hochladen"
+                    : "Foto wird automatisch auf A4 zugeschnitten und für OCR komprimiert"
+              }
+              onFileSelected={(file) => {
+                void handleIncomingFile(file);
+              }}
+            />
+          ) : null}
+
           {isEinzelabnahmeUpload ? (
             <div
               role="note"
@@ -1046,28 +1068,6 @@ export function InvoiceUploader({
                 </div>
               </div>
             </div>
-          ) : null}
-
-          {!nativePdf && pages.length === 0 ? (
-            <CameraCapture
-              allowPdf
-              disabled={compressing}
-              inBrowserA4Camera={invoiceA4Camera}
-              hint={
-                isEinzelabnahmeUpload
-                  ? "Einzelabnahme fotografieren oder als PDF hochladen"
-                  : isTeilegutachtenUpload
-                    ? "Teilegutachten fotografieren oder als PDF hochladen"
-                    : isGutachtenFamilyUpload
-                  ? `Alle Seiten von ${scanDef?.title ?? "Gutachten"} fotografieren oder als PDF hochladen`
-                  : isTuevUpload
-                    ? "TÜV-/HU-Bericht fotografieren oder als PDF hochladen"
-                    : "Foto wird automatisch auf A4 zugeschnitten und für OCR komprimiert"
-              }
-              onFileSelected={(file) => {
-                void handleIncomingFile(file);
-              }}
-            />
           ) : null}
 
           {nativePdf ? (

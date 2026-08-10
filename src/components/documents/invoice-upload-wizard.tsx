@@ -607,11 +607,11 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title={resolvedHeading}
-          hint="Schritt 1 von 3 · Gesamte Rechnung ins DIN-A4-Feld halten — senkrecht von oben, parallel zum Blatt"
+          hint="Gesamte Rechnung ins DIN-A4-Feld halten — senkrecht von oben, parallel zum Blatt"
+          captureStep={{ current: 1, total: 3 }}
           guideFrame="a4"
           a4OutputFormat="pdf"
           guideLabel="Rechnung parallel von oben im Rahmen ausrichten"
-          showBriefing={false}
           allowPdf
           onCapture={handleOverviewCapture}
           onClose={() => {
@@ -648,9 +648,9 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Rechnungskopf fotografieren"
-          hint="Schritt 2 von 3 · Kopf mit Werkstatt, Datum, KM — Handy parallel von oben halten"
+          hint="Kopf mit Werkstatt, Datum, KM — Handy parallel von oben halten"
+          captureStep={{ current: 2, total: 3 }}
           guideFrame="none"
-          showBriefing={false}
           onCapture={handleHeaderCapture}
           onClose={() =>
             setState((prev) => ({ ...prev, phase: "capture-overview" }))
@@ -671,9 +671,9 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Rechnungsblock scannen"
-          hint={`Schritt 3 von 3 · Block ${blockNumber}${blockNumber > 1 ? " · nächste Seite" : ""} — parallel von oben fotografieren`}
+          hint={`Block ${blockNumber}${blockNumber > 1 ? " · nächste Seite" : ""} — parallel von oben fotografieren`}
+          captureStep={{ current: 3, total: 3 }}
           guideFrame="none"
-          showBriefing={false}
           onCapture={handleLineItemsCapture}
           onClose={() =>
             setState((prev) => ({
@@ -711,10 +711,6 @@ export function InvoiceUploadWizard({
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.35rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
               Rechnungsblöcke
             </h1>
-            <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Mehrseitige Tabellen? Fotografiere jeden Block separat — z. B. Seite
-              1 und Fortsetzung auf Seite 2.
-            </p>
             <div className="mt-4">
               <WizardProgress currentStep={3} totalSteps={3} />
             </div>
@@ -776,23 +772,29 @@ export function InvoiceUploadWizard({
 
         <div className="grid grid-cols-1 gap-2">
           {canAddMore ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="claim-back h-auto min-h-11 py-3"
-              onClick={() =>
-                setState((prev) => ({
-                  ...prev,
-                  phase: "capture-line-items",
-                  error: null,
-                }))
-              }
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              {lineItemsFiles.length === 0
-                ? "Rechnungsblock scannen"
-                : "Weiteren Block hinzufügen"}
-            </Button>
+            <>
+              <p className="px-1 text-center text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
+                Mehrseitige Tabellen? Fotografiere jeden Block separat — z. B. Seite
+                1 und Fortsetzung auf Seite 2.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="claim-back h-auto min-h-11 py-3"
+                onClick={() =>
+                  setState((prev) => ({
+                    ...prev,
+                    phase: "capture-line-items",
+                    error: null,
+                  }))
+                }
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                {lineItemsFiles.length === 0
+                  ? "Rechnungsblock scannen"
+                  : "Weiteren Block hinzufügen"}
+              </Button>
+            </>
           ) : (
             <p className="text-center text-[0.75rem] text-[color:var(--vd-muted)]">
               Maximal {MAX_LINE_ITEM_BLOCKS} Blöcke.

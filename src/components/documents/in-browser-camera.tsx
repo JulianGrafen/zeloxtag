@@ -263,20 +263,24 @@ export function InBrowserCamera({
   }
 
   useEffect(() => {
+    if (instructionsOpen) {
+      stopStream(streamRef.current);
+      streamRef.current = null;
+      setCameraReady(false);
+      return;
+    }
+
     void startCamera(facingMode);
     return () => {
       stopStream(streamRef.current);
       streamRef.current = null;
     };
-    // Intentionally only on mount — facingMode changes handled by flipCamera.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [instructionsOpen, facingMode]);
 
-  async function flipCamera() {
-    const next: FacingMode =
-      facingMode === "environment" ? "user" : "environment";
-    setFacingMode(next);
-    await startCamera(next);
+  function flipCamera() {
+    setFacingMode((current) =>
+      current === "environment" ? "user" : "environment",
+    );
   }
 
   async function deliverCaptureFile(file: File) {
@@ -487,19 +491,9 @@ export function InBrowserCamera({
       </button>
 
       <div className="absolute left-1/2 top-1/2 w-[min(84vw,24rem)] -translate-x-1/2 -translate-y-1/2 text-center">
-        {captureStep ? (
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/80 drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
-            Schritt {captureStep.current} von {captureStep.total}
-          </p>
-        ) : null}
         <p className="text-[0.8rem] font-semibold leading-snug text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
           {title}
         </p>
-        {resolvedHint && !instructionsOpen ? (
-          <p className="mt-0.5 line-clamp-2 text-[0.65rem] leading-snug text-white/85 drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
-            {resolvedHint}
-          </p>
-        ) : null}
       </div>
 
       <label
@@ -523,7 +517,28 @@ export function InBrowserCamera({
 
   const bottomControls =
     !cameraError && !instructionsOpen && !processingCapture ? (
-      <div className="pointer-events-auto flex shrink-0 items-center justify-center gap-6 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+      <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-2 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+        {resolvedHint || captureStep ? (
+          <div className="w-full max-w-md rounded-xl bg-black/50 px-3 py-2.5 text-center backdrop-blur-[3px]">
+            {captureStep ? (
+              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-white/90">
+                Schritt {captureStep.current} von {captureStep.total}
+              </p>
+            ) : null}
+            {resolvedHint ? (
+              <p
+                className={[
+                  "text-[0.72rem] font-medium leading-snug text-white",
+                  captureStep ? "mt-1" : "",
+                ].join(" ")}
+              >
+                {resolvedHint}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex w-full items-center justify-center gap-6">
         {hasMultipleCameras ? (
           <button
             type="button"
@@ -567,6 +582,7 @@ export function InBrowserCamera({
         ) : (
           <div className="h-11 w-11" aria-hidden />
         )}
+        </div>
       </div>
     ) : null;
 

@@ -112,6 +112,7 @@ export async function updateVehicleShowcaseSettings(
 
     revalidatePath(`/v/${tagUuid}`);
     revalidatePath(`/v/${tagUuid}/daten`);
+    revalidatePath(`/v/${tagUuid}/einstellungen`);
     if (publicSlug) {
       revalidatePath(publicShowcasePath(publicSlug));
     }

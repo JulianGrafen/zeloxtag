@@ -693,7 +693,8 @@ export function TuevUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Gesamten Bericht fotografieren"
-          hint="Schritt 1 von 3 · Übersicht"
+          hint="Gesamtes Blatt im DIN-A4-Rahmen ausrichten"
+          captureStep={{ current: 1, total: 3 }}
           guideFrame="a4"
           guideLabel="Gesamtes Blatt im DIN-A4-Rahmen ausrichten"
           allowPdf
@@ -714,7 +715,8 @@ export function TuevUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Dokumentenkopf fotografieren"
-          hint="Schritt 2 von 3 · Kopf-Abschnitt"
+          hint="Kopf mit KM-Stand, Datum und FIN"
+          captureStep={{ current: 2, total: 3 }}
           guideFrame="section"
           guideSectionAnchor="top"
           guideLabel="Kopf mit KM-Stand, Datum und FIN"
@@ -736,7 +738,8 @@ export function TuevUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Mängel-Nachweis fotografieren"
-          hint="Schritt 3 von 3 · Abschnitt 6"
+          hint="Punkt 6 — Festgestellte Mängel"
+          captureStep={{ current: 3, total: 3 }}
           guideFrame="section"
           guideSectionAnchor="center"
           guideLabel="Punkt 6 — Festgestellte Mängel"
@@ -883,7 +886,7 @@ export function TuevUploadWizard({
       {/* ── Defects prompt (Step 3/3) ─────────────────────────────── */}
       {phase === "capture-defects-prompt" ? (
         <div className="space-y-3">
-          <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+          <p className="text-center text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
             Hat der Bericht festgestellte Mängel? Falls ja, fotografiere jetzt
             Abschnitt&nbsp;6 — sonst weiter ohne Mängel-Scan.
           </p>

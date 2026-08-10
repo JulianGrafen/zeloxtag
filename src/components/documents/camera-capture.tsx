@@ -109,7 +109,6 @@ export function CameraCapture({
         <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
           {label}
         </p>
-        <p className="text-[0.78rem] text-[color:var(--vd-muted)]">{hint}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-2">
@@ -162,6 +161,12 @@ export function CameraCapture({
         ) : null}
       </div>
 
+      {hint ? (
+        <p className="text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
+          {hint}
+        </p>
+      ) : null}
+
       {cameraOpen && inBrowserA4Camera ? (
         <InBrowserCamera
           title={inBrowserA4Camera.title ?? label}
@@ -171,7 +176,6 @@ export function CameraCapture({
           }
           guideFrame="none"
           allowPdf={false}
-          showBriefing={false}
           continuousCapture={inBrowserA4Camera.continuousCapture}
           onCapture={handleInBrowserCapture}
           onClose={() => setCameraOpen(false)}
