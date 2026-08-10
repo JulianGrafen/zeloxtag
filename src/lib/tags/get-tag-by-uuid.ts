@@ -68,6 +68,7 @@ function normalizeDocument(value: unknown): Document | null {
     mileage_km: Number.isFinite(mileageKm) ? mileageKm : null,
     technical_specs: parseTechnicalSpecs(doc.technical_specs),
     approval_fields: parseApprovalFields(doc.approval_fields),
+    show_on_public_showcase: doc.show_on_public_showcase === true,
   };
 }
 

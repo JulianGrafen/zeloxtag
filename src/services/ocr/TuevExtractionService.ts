@@ -1,6 +1,10 @@
 import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
+import {
+  analyzeLayoutWithAzure,
+  isAzureDocumentIntelligenceConfigured,
+} from "@/lib/ocr/azure-document-intelligence";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
@@ -10,6 +14,12 @@ import {
   parseTuevAmountValue,
   resolveTuevTotalAmount,
 } from "@/lib/ocr/tuev-amount";
+import { preferTuevTotalAmount } from "@/lib/ocr/tuev-amount-from-text";
+import {
+  enrichTuevRecordFromOcrText,
+  enrichTuevSanitizedFromOcrText,
+} from "@/lib/ocr/tuev-enrichment";
+import { preferTuevMileageKm } from "@/lib/ocr/tuev-mileage-from-text";
 import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
 import type { PreprocessedTuevDocument } from "@/services/documents/PdfPreprocessor";
 import {
@@ -68,9 +78,9 @@ export const TUEV_PUNKT4_MILEAGE_GUIDANCE =
 export const TUEV_PUNKT3_PRUEFDATUM_GUIDANCE =
   "PRÜFDATUM (testDate): IMMER ausschließlich aus Punkt 3 / Feld 3 / (3) Prüftermin extrahieren.\n" +
   "Das ist die EINZIGE erlaubte Quelle — keine Fallbacks, keine anderen Datumsfelder.\n" +
-  "Labels: '3. Prüftermin', 'Punkt 3', 'Feld 3', '(3) Prüftermin', '(3)Prüftermin'.\n" +
+  "Labels: '3. Prüftermin', 'Punkt 3', 'Feld 3', '(3) Prüftermin', '(3)Prüftermin', '(3) Prüfort'.\n" +
   "  TÜV Rheinland/FSP: '(3) Prüftermin: 26.01.2026, 10:21 Uhr' → 2026-01-26\n" +
-  "  DEKRA: '(3)Prüftermin: Mechernich, 23.03.2021' → 2021-03-23\n" +
+  "  DEKRA: '(3)Prüfort: Mechernich, 23.03.2021' or '(3) Prüfort Mechernich, 23.03.2021' → 2021-03-23\n" +
   "NIEMALS verwenden (auch wenn lesbar):\n" +
   "  - 'Erstzulassung' / 'EZ' / 'Erstzulassungsdatum'\n" +
   "  - 'Letzte HU' / 'Dat.letzt.HU' / 'zuletzt geprüft'\n" +
@@ -429,13 +439,26 @@ const TUEV_OVERVIEW_JSON_SCHEMA = {
 function finalizeTuevFeeFields(
   amountRaw: unknown,
   lineItemsRaw: unknown,
+  ocrText?: string | null,
 ): { amount: number | null; lineItems: InvoiceLineItem[] | null } {
   const lineItems = normalizeTuevLineItems(lineItemsRaw);
-  const amount = resolveTuevTotalAmount(
-    parseTuevAmountValue(amountRaw),
-    lineItems,
-  );
+  const amount = ocrText?.trim()
+    ? preferTuevTotalAmount(parseTuevAmountValue(amountRaw), lineItems, ocrText)
+    : resolveTuevTotalAmount(parseTuevAmountValue(amountRaw), lineItems);
   return { amount, lineItems };
+}
+
+async function loadTuevOcrText(
+  input: DocumentBytesInput,
+): Promise<string | null> {
+  if (!isAzureDocumentIntelligenceConfigured()) return null;
+  try {
+    const layout = await analyzeLayoutWithAzure(input.bytes, input.contentType);
+    const content = layout?.content?.trim();
+    return content && content.length >= 20 ? content : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Map single vision-LLM TÜV extract → analyze API fields. */
@@ -549,10 +572,13 @@ export class TuevExtractionService {
         "TÜV/HU inspection report — extract HEADER fields only.",
         "Prüfdatum (testDate): ALWAYS from Punkt 3 / (3) Prüftermin — no other date source.",
         "Focus: Kopf (top), Punkt 3 (Prüfdatum), Punkt 4 (KM-Stand), Ergebnis, Nächste HU.",
+        "Punkt 4 KM: read every digit — labels include (4) Stand Wegstreckenzähler, (4)Km-St., KM-Stand.",
         "Ignore Punkt 6 (Mängel) — leave defects for a separate scan.",
       ],
       input,
     );
+
+    const ocrPromise = loadTuevOcrText(input);
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
@@ -578,6 +604,8 @@ export class TuevExtractionService {
     if (!content) {
       throw new TextParseError("TÜV header extract returned an empty response.");
     }
+
+    const ocrText = await ocrPromise;
 
     let parsedJson: unknown;
     try {
@@ -609,12 +637,14 @@ export class TuevExtractionService {
         ? record.testDate
         : null;
 
-    const mileageKm =
+    const mileageKm = preferTuevMileageKm(
       typeof record.mileageKm === "number" &&
-      Number.isFinite(record.mileageKm) &&
-      record.mileageKm >= 0
+        Number.isFinite(record.mileageKm) &&
+        record.mileageKm >= 0
         ? Math.round(record.mileageKm)
-        : null;
+        : null,
+      ocrText ?? "",
+    );
 
     const nextInspectionDate =
       typeof record.nextInspectionDate === "string" &&
@@ -635,6 +665,7 @@ export class TuevExtractionService {
     const { amount, lineItems } = finalizeTuevFeeFields(
       record.amount,
       record.lineItems,
+      ocrText,
     );
 
     return {
@@ -683,10 +714,14 @@ export class TuevExtractionService {
       [
         "TÜV/HU inspection report — extract DEFECTS only from Punkt 6.",
         "Look for 'Festgestellte Mängel', 'Abschnitt 6', numbered Prüfpunkt rows.",
+        "DEKRA: checkpoint on line 1 (-D5.2.3c (EM)), description on line 2.",
+        "TÜV Rheinland: '1.1.13a – EM – description' on one line.",
         "If no defects are listed (mangelfrei), return null for both fields.",
       ],
       input,
     );
+
+    const ocrPromise = loadTuevOcrText(input);
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
@@ -713,6 +748,8 @@ export class TuevExtractionService {
       throw new TextParseError("TÜV defects extract returned an empty response.");
     }
 
+    const ocrText = await ocrPromise;
+
     let parsedJson: unknown;
     try {
       parsedJson = extractJsonObject(content);
@@ -725,14 +762,16 @@ export class TuevExtractionService {
         ? (parsedJson as Record<string, unknown>)
         : {};
 
+    const enriched = enrichTuevRecordFromOcrText(record, ocrText);
+
     const defectsTable =
-      Array.isArray(record.defectsTable) && record.defectsTable.length > 0
-        ? (record.defectsTable as TuevDefectRow[])
+      Array.isArray(enriched.defectsTable) && enriched.defectsTable.length > 0
+        ? (enriched.defectsTable as TuevDefectRow[])
         : null;
 
     const defectsList =
-      Array.isArray(record.defectsList) && record.defectsList.length > 0
-        ? (record.defectsList as string[])
+      Array.isArray(enriched.defectsList) && enriched.defectsList.length > 0
+        ? (enriched.defectsList as string[])
         : null;
 
     return { defectsTable, defectsList };
@@ -780,6 +819,8 @@ export class TuevExtractionService {
       input,
     );
 
+    const ocrPromise = loadTuevOcrText(input);
+
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
       completion = await client.chat.completions.create({
@@ -805,6 +846,8 @@ export class TuevExtractionService {
       throw new TextParseError("TÜV extract returned an empty response.");
     }
 
+    const ocrText = await ocrPromise;
+
     let parsedJson: unknown;
     try {
       parsedJson = extractJsonObject(content);
@@ -817,7 +860,11 @@ export class TuevExtractionService {
         ? (parsedJson as Record<string, unknown>)
         : {};
 
-    const sanitized = sanitizeTuevPayload(record);
+    const enrichedRecord = enrichTuevRecordFromOcrText(record, ocrText);
+    const sanitized = enrichTuevSanitizedFromOcrText(
+      sanitizeTuevPayload(enrichedRecord),
+      ocrText,
+    );
     const { report, requiresManualReview } = parseTuevReportLenient(sanitized);
 
     const vendor =
@@ -825,19 +872,23 @@ export class TuevExtractionService {
         ? record.vendor.trim().slice(0, 160)
         : null;
     const { amount, lineItems } = finalizeTuevFeeFields(
-      record.amount,
-      record.lineItems,
+      enrichedRecord.amount,
+      enrichedRecord.lineItems,
+      ocrText,
     );
+
+    const needsReview =
+      requiresManualReview || !report.testDate || report.mileageKm == null;
 
     return {
       report: {
         ...report,
-        requiresManualReview: requiresManualReview || undefined,
+        requiresManualReview: needsReview || undefined,
       },
       vendor,
       amount,
       lineItems,
-      requiresManualReview,
+      requiresManualReview: needsReview,
     };
   }
 
@@ -887,6 +938,8 @@ export class TuevExtractionService {
       input,
     );
 
+    const ocrPromise = loadTuevOcrText(input);
+
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
       completion = await client.chat.completions.create({
@@ -910,6 +963,8 @@ export class TuevExtractionService {
     const raw = extractJsonObject(completion.choices[0]?.message?.content ?? "");
     if (!raw) throw new TextParseError("LLM returned no JSON for overview extraction.");
 
+    const ocrText = await ocrPromise;
+
     const isRecord = (v: unknown): v is Record<string, unknown> =>
       typeof v === "object" && v !== null && !Array.isArray(v);
 
@@ -926,7 +981,11 @@ export class TuevExtractionService {
 
     const vendor =
       typeof vendorRaw === "string" && vendorRaw.trim() ? vendorRaw.trim() : null;
-    const { amount, lineItems } = finalizeTuevFeeFields(amountRaw, lineItemsRaw);
+    const { amount, lineItems } = finalizeTuevFeeFields(
+      amountRaw,
+      lineItemsRaw,
+      ocrText,
+    );
 
     return { testingOrganization, vendor, amount, lineItems };
   }

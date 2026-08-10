@@ -1,7 +1,7 @@
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 
 const GESAMT_LABEL =
-  /gesamt(?:betrag)?|summe|total|endbetrag|zu\s*zahlen|prüfungsentgelt\s*gesamt/i;
+  /gesamt(?:betrag)?(?:\s+inkl\.?\s*(?:\d+\s*%?\s*)?(?:mwst|ust|u\.?\s*st\.?|eur)?)?|summe|total|endbetrag|endpreis|zu\s*zahlen|prüfungsentgelt\s*gesamt|entgelt\s*gesamt/i;
 
 function roundEuro(value: number): number {
   return Math.round(value * 100) / 100;

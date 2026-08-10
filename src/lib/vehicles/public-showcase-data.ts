@@ -4,6 +4,7 @@ import {
 } from "@/lib/documents/manual-entries";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { isVatLineItem } from "@/lib/ocr/invoice-vat";
+import { filterPublicShowcaseDocuments } from "@/lib/vehicles/public-showcase-documents";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, Vehicle } from "@/types/database";
 
@@ -29,7 +30,14 @@ export type PublicShowcaseProfile = {
   year: number | null;
   powerPs: number | null;
   powerKw: number | null;
+  torqueNm: number | null;
   engine: string | null;
+  displacementCc: number | null;
+  fuelType: string | null;
+  transmission: string | null;
+  drivetrain: string | null;
+  bodyType: string | null;
+  color: string | null;
   mileageKm: number | null;
   dynoChartUrl: string | null;
   heroImageSrc: string | null;
@@ -87,6 +95,7 @@ function collectGalleryPhotos(
 ): PublicGalleryPhoto[] {
   const photos: PublicGalleryPhoto[] = [];
   const seen = new Set<string>();
+  const publicDocs = filterPublicShowcaseDocuments(documents);
 
   const heroSrc = `/api/vehicle/silhouette/${vehicle.id}`;
   photos.push({
@@ -96,7 +105,7 @@ function collectGalleryPhotos(
   });
   seen.add(heroSrc);
 
-  for (const entry of filterManualVehicleEntries(documents)) {
+  for (const entry of filterManualVehicleEntries(publicDocs)) {
     const category = parseManualEntryCategory(entry.category);
     if (category !== "tuning") continue;
     if (documentMediaKind(entry.file_url) !== "image") continue;
@@ -131,20 +140,11 @@ function extractModificationsFromInvoices(
   const mods: PublicModification[] = [];
   const seen = new Set<string>();
 
-  const invoices = documents
+  const invoices = filterPublicShowcaseDocuments(documents)
     .filter((doc) => doc.type === "invoice")
     .sort((a, b) => (b.date ?? b.created_at).localeCompare(a.date ?? a.created_at));
 
   for (const doc of invoices) {
-    const category = doc.category?.toLowerCase() ?? "";
-    const tuningRelated =
-      category === "tuning" ||
-      category === "repair" ||
-      category === "service" ||
-      doc.line_items?.some((item) => /tuning|auspuff|fahrwerk|federn|reifen|chip/i.test(item.label));
-
-    if (!tuningRelated) continue;
-
     for (const item of doc.line_items ?? []) {
       if (!shouldIncludeInvoiceLine(item.label)) continue;
       const key = item.label.trim().toLowerCase();
@@ -170,8 +170,9 @@ function extractModificationsFromManualEntries(
   hideFinancials: boolean,
 ): PublicModification[] {
   const mods: PublicModification[] = [];
+  const publicDocs = filterPublicShowcaseDocuments(documents);
 
-  for (const entry of filterManualVehicleEntries(documents)) {
+  for (const entry of filterManualVehicleEntries(publicDocs)) {
     const category = parseManualEntryCategory(entry.category);
     if (category !== "tuning") continue;
 
@@ -195,6 +196,7 @@ export function buildPublicShowcasePayload(
 ): PublicShowcasePayload {
   const { hide_financials, public_slug } = normalizeVehicleShowcaseFields(vehicle);
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
+  const publicDocs = filterPublicShowcaseDocuments(documents);
 
   const dynoChartUrl = specs.dynoChartUrl
     ? publicGalleryProxyUrl(vehicle.id, specs.dynoChartUrl)
@@ -215,8 +217,15 @@ export function buildPublicShowcasePayload(
       year: vehicle.year,
       powerPs: specs.powerPs,
       powerKw: specs.powerKw,
+      torqueNm: specs.torqueNm,
       engine: specs.engine,
-      mileageKm: latestMileageKm(documents),
+      displacementCc: specs.displacementCc,
+      fuelType: specs.fuelType,
+      transmission: specs.transmission,
+      drivetrain: specs.drivetrain,
+      bodyType: specs.bodyType,
+      color: specs.color,
+      mileageKm: latestMileageKm(publicDocs),
       dynoChartUrl,
       heroImageSrc: `/api/vehicle/silhouette/${vehicle.id}`,
       hideFinancials: hide_financials,

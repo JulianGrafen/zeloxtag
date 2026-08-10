@@ -242,17 +242,29 @@ export async function analyzeDocument(input: {
     const parseModel = resolveParseModel(resolvedType);
 
     if (resolvedType === "tuev") {
-      const tuevVision = await tuevExtractionService.extractFromDocument(
-        documentInput,
-        { model: parseModel },
-      );
+      const { analyzeLayoutWithAzure, buildOcrPayloadFromAzureLayout, isAzureDocumentIntelligenceConfigured } =
+        await import("@/lib/ocr/azure-document-intelligence");
+
+      const [tuevVision, azureLayout] = await Promise.all([
+        tuevExtractionService.extractFromDocument(documentInput, {
+          model: parseModel,
+        }),
+        isAzureDocumentIntelligenceConfigured()
+          ? analyzeLayoutWithAzure(documentInput.bytes, documentInput.contentType)
+          : Promise.resolve(null),
+      ]);
+
+      const resolvedOcrJson = azureLayout
+        ? buildOcrPayloadFromAzureLayout(azureLayout)
+        : ocrPayload;
+
       return {
         kind: "invoice",
         documentType: "tuev",
         fields: tuevVisionToAnalyzeFields(tuevVision),
         approvalFields: { kind: "tuev", data: tuevVision.report },
-        rawText: "",
-        ocrJson: ocrPayload,
+        rawText: resolvedOcrJson.text,
+        ocrJson: resolvedOcrJson,
         modelId: LLM_VISION_PARSE_MODEL_ID,
         parseModel,
       };

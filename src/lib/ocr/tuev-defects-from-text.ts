@@ -12,7 +12,26 @@ export const TUEV_CHECKPOINT_PATTERN = new RegExp(
 );
 
 const CHECKPOINT_LINE_START = new RegExp(
-  `^\\[?(\\*?(?:\\(|\\[)?${TUEV_CHECKPOINT_CORE.source}(?:\\)|\\])?)\\]?\\s*:?\\s*`,
+  `^-?\\s*\\[?(\\*?(?:\\(|\\[)?${TUEV_CHECKPOINT_CORE.source}(?:\\)|\\])?)\\]?\\s*(?:\\((EM|GM)\\)\\s*)?(?:[–-]\\s*(?:EM|GM)\\s*[–-]\\s*)?:?\\s*`,
+  "i",
+);
+
+/** DEKRA: `-D5.2.3c (EM)` on its own line — description follows on next line(s). */
+const DEKRA_CHECKPOINT_ONLY = new RegExp(
+  `^-?\\s*[\\(\\[]?(\\*?(?:DF|D)?\\d+(?:\\.\\d+)+[a-zA-Z]?)[\\)\\]]?\\s*\\((EM|GM)\\)\\s*$`,
+  "i",
+);
+
+/** DEKRA: `-5.2.3d (EM) Reifen …` checkpoint + severity + description on one line. */
+const DEKRA_CHECKPOINT_INLINE = new RegExp(
+  `^-?\\s*[\\(\\[]?(\\*?(?:DF|D)?\\d+(?:\\.\\d+)+[a-zA-Z]?)[\\)\\]]?\\s*\\((EM|GM)\\)\\s+(.+)$`,
+  "i",
+);
+
+/** TÜV Rheinland single-line: `1.1.13a – EM – Bremsbelag …` */
+const RHEINLAND_DASH_ROW = new RegExp(
+  `^(\\*?(?:DF|D)?\\d+(?:\\.\\d+)+[a-zA-Z]?)\\s*[–-]\\s*(EM|GM)\\s*[–-]\\s*(.+)$`,
+  "i",
 );
 
 const CHECKPOINT_GLOBAL = new RegExp(
@@ -25,7 +44,7 @@ const CHECKPOINT_GLOBAL = new RegExp(
  * Mängel are always listed under section 6 — never bare "Mängel" (matches legal boilerplate).
  */
 const DEFECTS_SECTION_HEADER =
-  /(?:\(?6\)?[\.)]?\s+)?(?:Ihr Fahrzeug(?:[\s|]+)*weist folgende Mängel auf|Festgestellte\s+Mängel|Mängelliste)\s*:?/gi;
+  /(?:\(?6\)?[\.)]?\s*)?(?:Ihr Fahrzeug(?:[\s|]+)*weist folgende Mängel auf|Festgestellte\s+Mängel|Mängelliste|6\.\s*Festgestellte\s+Mängel)\s*:?/gi;
 
 /** Stop parsing before footers, UMA blocks, greetings, or result lines. */
 const DEFECTS_SECTION_END =
@@ -65,6 +84,17 @@ export function parseTuevDefectLine(text: string): TuevDefectRow | null {
   const trimmed = text.trim();
   if (!trimmed || isBoilerplateLine(trimmed)) return null;
 
+  const rheinland = trimmed.match(RHEINLAND_DASH_ROW);
+  if (rheinland) {
+    const description = rheinland[3]!.trim();
+    if (description.length < 3) return null;
+    return {
+      checkpoint: normalizeCheckpoint(rheinland[1]!),
+      description: description.slice(0, 500),
+      severity: rheinland[2]!.toUpperCase() as "EM" | "GM",
+    };
+  }
+
   const { body, severity } = extractSeverity(trimmed);
   const bracketMatch = body.match(
     /^\[(\*?(?:\(?)(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?(?:\)?))\]\s*(.*)$/,
@@ -83,10 +113,14 @@ export function parseTuevDefectLine(text: string): TuevDefectRow | null {
   if (lineMatch) {
     const description = body.slice(lineMatch[0].length).trim();
     if (!description || description.length < 3) return null;
+    const inlineSeverity = lineMatch[2]?.toUpperCase();
     return {
       checkpoint: normalizeCheckpoint(lineMatch[1]!),
       description: description.slice(0, 500),
-      severity,
+      severity:
+        inlineSeverity === "EM" || inlineSeverity === "GM"
+          ? inlineSeverity
+          : severity,
     };
   }
 
@@ -136,6 +170,15 @@ function parsePlainDefectLine(
 function parseCheckpointChunk(text: string): TuevDefectRow | null {
   const trimmed = text.trim();
   if (!trimmed || isBoilerplateLine(trimmed)) return null;
+
+  const rheinland = trimmed.match(RHEINLAND_DASH_ROW);
+  if (rheinland) {
+    return {
+      checkpoint: normalizeCheckpoint(rheinland[1]!),
+      description: rheinland[3]!.trim().slice(0, 500),
+      severity: rheinland[2]!.toUpperCase() as "EM" | "GM",
+    };
+  }
 
   const match = trimmed.match(
     /^[\(\[]?(\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?)[\)\]]?\s*:?\s*([\s\S]*)$/,
@@ -210,41 +253,120 @@ function parseInlineDefects(body: string): TuevDefectRow[] {
 function parseMultilineDefects(body: string): TuevDefectRow[] {
   const defects: TuevDefectRow[] = [];
   let pendingCheckpoint: string | null = null;
+  let pendingSeverity: "EM" | "GM" | null = null;
+  let pendingDescriptionLines: string[] = [];
+
+  function flushPendingDefect() {
+    if (!pendingCheckpoint || !pendingSeverity) {
+      pendingCheckpoint = null;
+      pendingSeverity = null;
+      pendingDescriptionLines = [];
+      return;
+    }
+
+    const description = pendingDescriptionLines.join(" ").replace(/\s+/g, " ").trim();
+    if (description.length >= 3 && !isBoilerplateLine(description)) {
+      defects.push({
+        checkpoint: pendingCheckpoint,
+        description: description.slice(0, 500),
+        severity: pendingSeverity,
+      });
+    }
+
+    pendingCheckpoint = null;
+    pendingSeverity = null;
+    pendingDescriptionLines = [];
+  }
 
   for (const rawLine of body.split(/\n/)) {
     const line = normalizeDefectLine(rawLine);
     if (!line || isBoilerplateLine(line)) {
-      pendingCheckpoint = null;
+      flushPendingDefect();
+      continue;
+    }
+
+    const dekraInline = line.match(DEKRA_CHECKPOINT_INLINE);
+    if (dekraInline) {
+      flushPendingDefect();
+      defects.push({
+        checkpoint: normalizeCheckpoint(dekraInline[1]!),
+        description: dekraInline[3]!.trim().slice(0, 500),
+        severity: dekraInline[2]!.toUpperCase() as "EM" | "GM",
+      });
+      continue;
+    }
+
+    const dekraOnly = line.match(DEKRA_CHECKPOINT_ONLY);
+    if (dekraOnly) {
+      flushPendingDefect();
+      pendingCheckpoint = normalizeCheckpoint(dekraOnly[1]!);
+      pendingSeverity = dekraOnly[2]!.toUpperCase() as "EM" | "GM";
+      continue;
+    }
+
+    if (pendingCheckpoint && pendingSeverity) {
+      pendingDescriptionLines.push(line);
+      continue;
+    }
+
+    if (pendingCheckpoint) {
+      const combined = [`*${pendingCheckpoint}`, ...pendingDescriptionLines, line]
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const row = parseCheckpointChunk(combined);
+      if (row?.checkpoint) {
+        defects.push(row);
+        flushPendingDefect();
+      } else {
+        pendingDescriptionLines.push(line);
+      }
       continue;
     }
 
     if (TUEV_CHECKPOINT_PATTERN.test(line) && !/\([EG]M\)/.test(line)) {
       const onlyCheckpoint = line.match(
-        /^[\(\[]?(\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?)[\)\]]?\s*$/,
+        /^-?[\(\[]?(\*?(?:DF|D)?\d+(?:\.\d+)+[a-zA-Z]?)[\)\]]?\s*$/,
       );
       if (onlyCheckpoint) {
+        flushPendingDefect();
         pendingCheckpoint = normalizeCheckpoint(onlyCheckpoint[1]!);
         continue;
       }
     }
 
     if (/\([EG]M\)/.test(line)) {
+      flushPendingDefect();
+
+      const rheinland = line.match(RHEINLAND_DASH_ROW);
+      if (rheinland) {
+        defects.push({
+          checkpoint: normalizeCheckpoint(rheinland[1]!),
+          description: rheinland[3]!.trim().slice(0, 500),
+          severity: rheinland[2]!.toUpperCase() as "EM" | "GM",
+        });
+        continue;
+      }
+
       defects.push(...parseInlineDefects(line));
-      pendingCheckpoint = null;
       continue;
     }
 
-    if (pendingCheckpoint) {
-      const row = parseCheckpointChunk(`${pendingCheckpoint} ${line}`);
-      if (row?.checkpoint) defects.push(row);
-      pendingCheckpoint = null;
+    const parsedLine = parseTuevDefectLine(line);
+    if (parsedLine) {
+      flushPendingDefect();
+      defects.push(parsedLine);
       continue;
     }
 
     const row = parseCheckpointChunk(line);
-    if (row?.checkpoint) defects.push(row);
+    if (row?.checkpoint) {
+      flushPendingDefect();
+      defects.push(row);
+    }
   }
 
+  flushPendingDefect();
   return defects;
 }
 
@@ -302,20 +424,21 @@ export function extractTuevDefectsFromText(
 
   const normalizedSection = normalizeSectionBody(section);
 
-  const lineCount = normalizedSection
+  const lines = normalizedSection
     .split(/\n/)
-    .filter((line) => line.trim()).length;
-  const parsed =
-    lineCount >= 4
-      ? parseMultilineDefects(normalizedSection)
-      : parseInlineDefects(normalizedSection.replace(/\n+/g, " "));
+    .map((line) => line.trim())
+    .filter(Boolean);
 
-  const merged =
-    lineCount >= 4 && parsed.length < 2
+  const multiline = parseMultilineDefects(normalizedSection);
+  const perLine = lines
+    .map((line) => parseTuevDefectLine(line))
+    .filter((row): row is TuevDefectRow => row != null);
+  const inline =
+    lines.length <= 1
       ? parseInlineDefects(normalizedSection.replace(/\n+/g, " "))
-      : parsed;
+      : [];
 
-  const deduped = dedupeDefects(merged);
+  const deduped = dedupeDefects([...multiline, ...perLine, ...inline]);
   return deduped.length > 0 ? deduped : null;
 }
 

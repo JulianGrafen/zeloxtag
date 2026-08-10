@@ -37,8 +37,8 @@ const CASES = [
     },
   },
   {
-    label: "IMG_6975 — DEKRA",
-    file: "/Users/julian/Downloads/IMG_6975.jpg",
+    label: "IMG_7036 — DEKRA Mechernich (workspace)",
+    file: "/Users/julian/.cursor/projects/Users-julian-cursor-ZeloxTag/assets/IMG_7036-8bf38be7-4539-4f93-b269-30ac6a74b827.png",
     expected: {
       mileageKm: 178605,
       testDate: "2021-03-23",
@@ -84,7 +84,9 @@ async function runCase(caseData: (typeof CASES)[number]) {
   console.log("═".repeat(60));
 
   const bytes = fs.readFileSync(caseData.file);
-  const contentType = "image/jpeg";
+  const contentType = caseData.file.endsWith(".png")
+    ? "image/png"
+    : "image/jpeg";
 
   console.log("\n🔍  Running extractFromDocument (full page)…");
   const start = Date.now();
@@ -163,7 +165,15 @@ async function runCase(caseData: (typeof CASES)[number]) {
 
 async function main() {
   console.log("🚀  TÜV Extraction Test\n");
-  for (const c of CASES) {
+  const only = process.argv[2];
+  const cases = only
+    ? CASES.filter((c) => c.label.includes(only) || c.file.includes(only))
+    : CASES;
+  if (cases.length === 0) {
+    console.error("No matching case for:", only);
+    process.exit(1);
+  }
+  for (const c of cases) {
     await runCase(c);
   }
   console.log(`\n${"═".repeat(60)}`);

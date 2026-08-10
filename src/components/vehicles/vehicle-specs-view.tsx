@@ -18,11 +18,12 @@ import {
   parseVehicleTechSpecs,
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
-import type { Vehicle } from "@/types/database";
+import type { Document, Vehicle } from "@/types/database";
 
 type VehicleSpecsViewProps = {
   tagUuid: string;
   vehicle: Vehicle;
+  documents: Document[];
   canEdit: boolean;
 };
 
@@ -57,6 +58,7 @@ function ReadRow({ label, value }: { label: string; value: string }) {
 export function VehicleSpecsView({
   tagUuid,
   vehicle,
+  documents,
   canEdit,
 }: VehicleSpecsViewProps) {
   const router = useRouter();
@@ -80,6 +82,7 @@ export function VehicleSpecsView({
       if (
         key === "powerPs" ||
         key === "powerKw" ||
+        key === "torqueNm" ||
         key === "displacementCc"
       ) {
         const digits = value.replace(/[^\d]/g, "");
@@ -270,7 +273,7 @@ export function VehicleSpecsView({
                   placeholder="z. B. 3.0 Twin-Turbo (2JZ-GTE)"
                 />
               </Field>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Field label="PS">
                   <input
                     inputMode="numeric"
@@ -291,6 +294,17 @@ export function VehicleSpecsView({
                     }
                     className="claim-input w-full"
                     placeholder="170"
+                  />
+                </Field>
+                <Field label="Nm">
+                  <input
+                    inputMode="numeric"
+                    value={specs.torqueNm ?? ""}
+                    onChange={(event) =>
+                      patchSpec("torqueNm", event.target.value)
+                    }
+                    className="claim-input w-full"
+                    placeholder="350"
                   />
                 </Field>
                 <Field label="ccm">
@@ -405,6 +419,9 @@ export function VehicleSpecsView({
                   .join(" · ")}
               />
             ) : null}
+            {specs.torqueNm != null ? (
+              <ReadRow label="Drehmoment" value={`${specs.torqueNm} Nm`} />
+            ) : null}
             {specs.displacementCc != null ? (
               <ReadRow label="Hubraum" value={`${specs.displacementCc} ccm`} />
             ) : null}
@@ -430,6 +447,7 @@ export function VehicleSpecsView({
         <VehicleShowcaseSettings
           tagUuid={tagUuid}
           vehicle={vehicle}
+          documents={documents}
           canEdit={canEdit}
         />
       </div>

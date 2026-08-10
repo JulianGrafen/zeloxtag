@@ -151,6 +151,8 @@ export type Document = {
   approval_fields: ApprovalFields | null;
   amount: number | null;
   date: string | null;
+  /** Owner opt-in: include mods/photos on public showcase (default false). */
+  show_on_public_showcase?: boolean;
   created_at: string;
 };
 
@@ -322,6 +324,7 @@ export type Database = {
           approval_fields?: ApprovalFields | null;
           amount?: number | null;
           date?: string | null;
+          show_on_public_showcase?: boolean;
           created_at?: string;
         };
         Update: {
@@ -349,6 +352,7 @@ export type Database = {
           approval_fields?: ApprovalFields | null;
           amount?: number | null;
           date?: string | null;
+          show_on_public_showcase?: boolean;
           created_at?: string;
         };
         Relationships: [

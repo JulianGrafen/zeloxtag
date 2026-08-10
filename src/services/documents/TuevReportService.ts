@@ -193,11 +193,19 @@ function normalizeDefectsList(value: unknown): string[] | null {
 }
 
 function normalizeDefectRow(row: TuevDefectRow): TuevDefectRow {
-  const checkpoint = row.checkpoint
-    ? normalizeCheckpoint(row.checkpoint)
+  let checkpoint = row.checkpoint
+    ? normalizeCheckpoint(row.checkpoint.replace(/^-+\s*/, ""))
     : null;
 
   if (checkpoint) {
+    const embeddedSeverity = row.checkpoint?.match(/\((EM|GM)\)\s*$/i);
+    if (embeddedSeverity && !row.severity) {
+      return {
+        ...row,
+        checkpoint,
+        severity: embeddedSeverity[1]!.toUpperCase() as "EM" | "GM",
+      };
+    }
     return { ...row, checkpoint };
   }
 
@@ -207,6 +215,17 @@ function normalizeDefectRow(row: TuevDefectRow): TuevDefectRow {
       checkpoint: parsed.checkpoint,
       description: parsed.description,
       severity: row.severity ?? parsed.severity,
+    };
+  }
+
+  const parsedCheckpoint = row.checkpoint
+    ? parseTuevDefectLine(row.checkpoint)
+    : null;
+  if (parsedCheckpoint?.checkpoint) {
+    return {
+      checkpoint: parsedCheckpoint.checkpoint,
+      description: row.description,
+      severity: row.severity ?? parsedCheckpoint.severity,
     };
   }
 

@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Copy, Globe, Shield } from "lucide-react";
 
+import { updatePublicShowcaseDocuments } from "@/actions/update-public-showcase-documents";
 import { updateVehicleShowcaseSettings } from "@/actions/update-vehicle-showcase-settings";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
-import type { Vehicle } from "@/types/database";
+import {
+  formatShowcaseDocumentLabel,
+  partitionShowcaseSelectableDocuments,
+} from "@/lib/vehicles/public-showcase-documents";
+import type { Document, Vehicle } from "@/types/database";
 
 type VehicleShowcaseSettingsProps = {
   tagUuid: string;
   vehicle: Vehicle;
+  documents: Document[];
   canEdit: boolean;
 };
 
@@ -47,23 +53,88 @@ function ToggleRow({
   );
 }
 
+function DocumentCheckboxRow({
+  label,
+  meta,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  meta?: string | null;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-3 rounded-lg border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2.5">
+      <span className="min-w-0">
+        <span className="block text-[0.84rem] font-medium text-[color:var(--vd-text)]">
+          {label}
+        </span>
+        {meta ? (
+          <span className="mt-0.5 block text-[0.74rem] text-[color:var(--vd-muted)]">
+            {meta}
+          </span>
+        ) : null}
+      </span>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-0.5 h-4 w-4 shrink-0 accent-[color:var(--vd-accent)]"
+      />
+    </label>
+  );
+}
+
+function formatDocumentMeta(doc: Document): string | null {
+  const parts: string[] = [];
+  if (doc.vendor) parts.push(doc.vendor);
+  if (doc.category) parts.push(doc.category);
+  if (doc.line_items?.length) {
+    parts.push(`${doc.line_items.length} Positionen`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 export function VehicleShowcaseSettings({
   tagUuid,
   vehicle,
+  documents,
   canEdit,
 }: VehicleShowcaseSettingsProps) {
+  const { invoices, modifications } = useMemo(
+    () => partitionShowcaseSelectableDocuments(documents),
+    [documents],
+  );
+
+  const initialSelected = useMemo(
+    () =>
+      new Set(
+        documents.filter((doc) => doc.show_on_public_showcase).map((doc) => doc.id),
+      ),
+    [documents],
+  );
+
   const [isPublic, setIsPublic] = useState(Boolean(vehicle.is_public));
   const [hideFinancials, setHideFinancials] = useState(
     vehicle.hide_financials !== false,
   );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(initialSelected);
   const [sharePath, setSharePath] = useState<string | null>(
     vehicle.is_public && vehicle.public_slug ? `/v/${vehicle.public_slug}` : null,
   );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [settingsPending, startSettingsTransition] = useTransition();
+  const [documentsPending, startDocumentsTransition] = useTransition();
 
-  function save(next: { isPublic?: boolean; hideFinancials?: boolean }) {
+  const pending = settingsPending || documentsPending;
+  const hasSelectableDocs = invoices.length > 0 || modifications.length > 0;
+
+  function saveSettings(next: { isPublic?: boolean; hideFinancials?: boolean }) {
     if (!canEdit) return;
 
     const payload = {
@@ -71,7 +142,7 @@ export function VehicleShowcaseSettings({
       hideFinancials: next.hideFinancials ?? hideFinancials,
     };
 
-    startTransition(async () => {
+    startSettingsTransition(async () => {
       setError(null);
       setMessage(null);
       const result = await updateVehicleShowcaseSettings({
@@ -92,6 +163,32 @@ export function VehicleShowcaseSettings({
           ? "Showcase ist öffentlich — Link kann geteilt werden."
           : "Showcase ist privat.",
       );
+    });
+  }
+
+  function toggleDocument(documentId: string, enabled: boolean) {
+    if (!canEdit) return;
+
+    const next = new Set(selectedIds);
+    if (enabled) next.add(documentId);
+    else next.delete(documentId);
+    setSelectedIds(next);
+
+    startDocumentsTransition(async () => {
+      setError(null);
+      const result = await updatePublicShowcaseDocuments({
+        vehicleId: vehicle.id,
+        tagUuid,
+        documentIds: [...next],
+      });
+
+      if (result.status === "error") {
+        setError(result.message);
+        setSelectedIds(selectedIds);
+        return;
+      }
+
+      setMessage("Öffentliche Inhalte aktualisiert.");
     });
   }
 
@@ -116,8 +213,7 @@ export function VehicleShowcaseSettings({
       </div>
       <p className="mb-4 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
         Ideal fürs Tuningtreffen: Beim QR-Scan am Motorraum-Tag sehen Besucher
-        sofort Specs, Fotos und Umbauten — ohne Login. Du erreichst dein
-        privates Dashboard über „Zum Dashboard“.
+        Specs (PS, Nm, …), Fotos und ausgewählte Umbauten — ohne Login.
       </p>
 
       <div className="space-y-3">
@@ -128,7 +224,7 @@ export function VehicleShowcaseSettings({
           disabled={!canEdit || pending}
           onChange={(value) => {
             setIsPublic(value);
-            save({ isPublic: value });
+            saveSettings({ isPublic: value });
           }}
         />
         <ToggleRow
@@ -138,10 +234,66 @@ export function VehicleShowcaseSettings({
           disabled={!canEdit || pending}
           onChange={(value) => {
             setHideFinancials(value);
-            save({ hideFinancials: value });
+            saveSettings({ hideFinancials: value });
           }}
         />
       </div>
+
+      {isPublic ? (
+        <div className="mt-5 space-y-4">
+          <div>
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+              Sichtbare Inhalte
+            </p>
+            <p className="mt-1 text-[0.8rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Wähle Rechnungen und Umbauten, die auf der öffentlichen Seite
+              erscheinen sollen.
+            </p>
+          </div>
+
+          {!hasSelectableDocs ? (
+            <p className="rounded-xl border border-dashed border-[color:var(--vd-border)] px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
+              Noch keine Rechnungen oder manuellen Umbauten vorhanden.
+            </p>
+          ) : null}
+
+          {modifications.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[0.78rem] font-medium text-[color:var(--vd-text)]">
+                Umbauten
+              </p>
+              {modifications.map((doc) => (
+                <DocumentCheckboxRow
+                  key={doc.id}
+                  label={formatShowcaseDocumentLabel(doc)}
+                  meta={doc.vendor ?? doc.date?.slice(0, 10) ?? null}
+                  checked={selectedIds.has(doc.id)}
+                  disabled={!canEdit || documentsPending}
+                  onChange={(value) => toggleDocument(doc.id, value)}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {invoices.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[0.78rem] font-medium text-[color:var(--vd-text)]">
+                Rechnungen
+              </p>
+              {invoices.map((doc) => (
+                <DocumentCheckboxRow
+                  key={doc.id}
+                  label={formatShowcaseDocumentLabel(doc)}
+                  meta={formatDocumentMeta(doc)}
+                  checked={selectedIds.has(doc.id)}
+                  disabled={!canEdit || documentsPending}
+                  onChange={(value) => toggleDocument(doc.id, value)}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {isPublic && sharePath ? (
         <div className="mt-4 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3">

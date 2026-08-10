@@ -191,6 +191,51 @@ Mängelliste:
     });
   });
 
+  it("extracts TÜV Rheinland dash format on one line", () => {
+    const rows = extractTuevDefectsFromText(`
+(6) Ihr Fahrzeug weist folgende Mängel auf:
+1.1.13a – EM – Bremsbelag 2. Achse rechts verschlissen
+5.3.1b – GM – Feder 2. Achse rechts gebrochen
+Ergebnis: erhebliche Mängel
+    `);
+
+    expect(rows).not.toBeNull();
+    expect(rows).toHaveLength(2);
+    expect(rows![0]).toMatchObject({
+      checkpoint: "1.1.13a",
+      severity: "EM",
+      description: expect.stringContaining("Bremsbelag"),
+    });
+  });
+
+  it("extracts DEKRA two-line checkpoint + description", () => {
+    const rows = extractTuevDefectsFromText(`
+(6) Ihr Fahrzeug weist folgende Mängel auf:
+-D5.2.3c (EM)
+M+S Reifen Geschwindigkeitsschild fehlt
+-5.2.3d (EM)
+Reifen mit Alterungsrisiken
+Ergebnis: erhebliche Mängel
+    `);
+
+    expect(rows).not.toBeNull();
+    expect(rows).toHaveLength(2);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkpoint: "D5.2.3c",
+          severity: "EM",
+          description: "M+S Reifen Geschwindigkeitsschild fehlt",
+        }),
+        expect.objectContaining({
+          checkpoint: "5.2.3d",
+          severity: "EM",
+          description: "Reifen mit Alterungsrisiken",
+        }),
+      ]),
+    );
+  });
+
   it("extracts dot-separated Prüfpunkte with parentheses or colon separator", () => {
     const rows = extractTuevDefectsFromText(`
 Festgestellte Mängel:

@@ -43,6 +43,7 @@ async function loadVehicleDocuments(vehicleId: string): Promise<Document[]> {
     .from("documents")
     .select("*")
     .eq("vehicle_id", vehicleId)
+    .eq("show_on_public_showcase", true)
     .order("created_at", { ascending: false });
 
   if (error) {

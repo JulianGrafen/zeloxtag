@@ -6,6 +6,7 @@ export type VehicleTechSpecs = {
   engine: string | null;
   powerPs: number | null;
   powerKw: number | null;
+  torqueNm: number | null;
   displacementCc: number | null;
   fuelType: string | null;
   transmission: string | null;
@@ -21,6 +22,7 @@ export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
   engine: null,
   powerPs: null,
   powerKw: null,
+  torqueNm: null,
   displacementCc: null,
   fuelType: null,
   transmission: null,
@@ -58,6 +60,7 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
     engine: asTrimmedString(record.engine),
     powerPs: asPositiveInt(record.powerPs),
     powerKw: asPositiveInt(record.powerKw),
+    torqueNm: asPositiveInt(record.torqueNm),
     displacementCc: asPositiveInt(record.displacementCc),
     fuelType: asTrimmedString(record.fuelType),
     transmission: asTrimmedString(record.transmission),
@@ -77,6 +80,7 @@ export function serializeVehicleTechSpecs(
   if (specs.engine) out.engine = specs.engine;
   if (specs.powerPs != null) out.powerPs = specs.powerPs;
   if (specs.powerKw != null) out.powerKw = specs.powerKw;
+  if (specs.torqueNm != null) out.torqueNm = specs.torqueNm;
   if (specs.displacementCc != null) out.displacementCc = specs.displacementCc;
   if (specs.fuelType) out.fuelType = specs.fuelType;
   if (specs.transmission) out.transmission = specs.transmission;
