@@ -152,11 +152,6 @@ export class AbeDataHunterExtractionService {
     }
   }
 
-  /** @deprecated Prefer extractStammdatenSnippet */
-  extractKbaSnippet(input: DocumentBytesInput) {
-    return this.extractStammdatenSnippet(input);
-  }
-
   async extractMarkingSnippet(
     input: DocumentBytesInput,
   ): Promise<AbeHuntStepResult<AbeHuntMarkingExtraction>> {
