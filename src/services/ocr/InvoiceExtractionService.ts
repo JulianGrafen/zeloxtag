@@ -486,9 +486,6 @@ export class InvoiceExtractionService {
         amount: item.gesamtpreis,
       }));
 
-    const ocrSectionItems = isWorkshopFormat
-      ? extractWorkshopSectionLineItems(ocrText)
-      : null;
     llmLineItems =
       isWorkshopFormat
         ? (resolveWorkshopLineItems({ llmItems: llmLineItems, ocrText }) ??

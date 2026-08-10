@@ -260,7 +260,7 @@ export function extractWorkshopSectionLineItems(
     const line = rawLine.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
     if (!line) continue;
 
-    const prevSection = section;
+    const prevSection: WorkshopSection = section;
     section = detectSection(line, section);
     if (section !== prevSection) continue;
 
