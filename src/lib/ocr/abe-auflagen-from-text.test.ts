@@ -78,6 +78,17 @@ A02: Typprüfung.`,
     ).toBe("744: Text\n\nA02: Mehr");
   });
 
+  it("corrects phantom CPO to CPE when parsing notes", () => {
+    const parsed = parseAbeAuflagenNotes(
+      "CPO: Montage nur mit Adapter.",
+      ["744", "CPE"],
+      { strict: true },
+    );
+    expect(parsed).toEqual([
+      { code: "CPE", text: "Montage nur mit Adapter." },
+    ]);
+  });
+
   it("reports missing target codes in OCR notes", () => {
     expect(
       missingAuflagenCodesInNotes("744: Nur mit Adapter.", ["744", "F40", "L04"]),

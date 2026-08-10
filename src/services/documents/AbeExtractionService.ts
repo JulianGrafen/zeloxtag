@@ -18,6 +18,7 @@ import {
   parseAuflagenRegions,
 } from "@/lib/ocr/auflagen-crop";
 import { sanitizeAuflagenNotesForTargetCodes } from "@/lib/ocr/abe-auflagen-from-text";
+import { correctAuflagenKuerzelOcr } from "@/lib/ocr/auflagen-kuerzel-ocr-correction";
 import {
   ABE_HUNT_ALL_JSON_SCHEMA,
   ABE_HUNT_AUFLAGEN_JSON_SCHEMA,
@@ -384,7 +385,8 @@ export class AbeDataHunterExtractionService {
           "Merge reifenbezogene Auflagen and general Auflagen column codes into each row's auflagenCodes.",
           "When extracting vehicleMatches: put Auflagen-Kürzel ONLY in each row's auflagenCodes — never in the top-level auflagenCodes field.",
           "Do NOT copy Auflagen from rows above or below the target vehicle — each row gets only its own Auflagen column.",
-          "Auflagen-Kürzel examples: 744, 166, A02, 11A, B04A — short codes from the Auflagen column only.",
+          "Auflagen-Kürzel examples: 744, 166, A02, 11A, B04A, CPE, CBO — short codes from the Auflagen column only.",
+          "CPO is NOT a valid Auflagen code — copy CPE and CBO exactly (O vs E, B vs P).",
           "NEVER put Fahrzeugtyp codes (F40, G20, K40, T67, 346L, 3/CG) into auflagenCodes — those belong in fahrzeugtyp only.",
           "If a token looks like a vehicle type code, it is NOT an Auflagen-Kürzel.",
           "Leave auflagenNotes empty — the user scans Auflagen prose in a dedicated follow-up step.",
@@ -581,6 +583,7 @@ export class AbeDataHunterExtractionService {
           "Include section headings and numbered items. Do not summarize.",
           "Format each code block as CODE: full paragraph text.",
           "Do NOT invent codes. Ignore Fahrzeugtyp codes (F40, G20, K40, T67) — they are not Auflagen.",
+          "CPO is invalid — if the document shows CPE or CBO, transcribe those letters exactly.",
           "If a code is not in the target list above, do not include it in auflagenNotes or regions.",
           "For each target code, also return a normalized bounding box (0–1) covering the printed paragraph for that code on the photo.",
         ],
@@ -603,9 +606,17 @@ export class AbeDataHunterExtractionService {
       const targetSet = new Set(
         targetCodes.map((code) => code.trim().toUpperCase()).filter(Boolean),
       );
-      const regions = parseAuflagenRegions(record.regions).filter((region) =>
-        targetSet.size === 0 ? true : targetSet.has(region.code),
-      );
+      const regions = parseAuflagenRegions(record.regions)
+        .map((region) => ({
+          ...region,
+          code: correctAuflagenKuerzelOcr(region.code, {
+            allowlist: targetCodes,
+            rawContext: notes,
+          }),
+        }))
+        .filter((region) =>
+          targetSet.size === 0 ? true : targetSet.has(region.code),
+        );
       const sanitizedNotes =
         targetSet.size > 0
           ? sanitizeAuflagenNotesForTargetCodes(notes, targetCodes) ?? notes

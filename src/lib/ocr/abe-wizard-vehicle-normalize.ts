@@ -1,5 +1,8 @@
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 import { normalizeVerkaufsbezeichnungKey } from "@/lib/ocr/abe-wizard-vehicle-match";
+import {
+  correctAuflagenKuerzelList,
+} from "@/lib/ocr/auflagen-kuerzel-ocr-correction";
 
 const DRIVE_TYPES = new Set([
   "allradantrieb",
@@ -301,6 +304,7 @@ export function filterAuflagenCodesAgainstFahrzeugtyp(
 export function parseAuflagenCodes(
   auflagenItems: readonly string[],
 ): { codes: string[]; driveType: string | null } {
+  const rawContext = auflagenItems.join(" ");
   const tokens = coalesceSplitAuflagenTokens(
     tokenizeAuflagenColumnWithRaw(auflagenItems),
   );
@@ -318,7 +322,12 @@ export function parseAuflagenCodes(
     }
   }
 
-  return { codes: mergeUniqueAuflagenCodes(codes), driveType };
+  return {
+    codes: correctAuflagenKuerzelList(mergeUniqueAuflagenCodes(codes), {
+      rawContext,
+    }),
+    driveType,
+  };
 }
 
 function readString(value: unknown): string | null {
@@ -580,11 +589,17 @@ export function normalizeAbeVehicleMatches(
 
     return {
       ...repaired,
-      auflagenCodes: filterAuflagenCodesAgainstFahrzeugtyp(
-        repaired.auflagenCodes,
-        repaired.fahrzeugtyp,
-        fahrzeugtypCodes,
-        promotedFromFahrzeugtyp,
+      auflagenCodes: correctAuflagenKuerzelList(
+        filterAuflagenCodesAgainstFahrzeugtyp(
+          repaired.auflagenCodes,
+          repaired.fahrzeugtyp,
+          fahrzeugtypCodes,
+          promotedFromFahrzeugtyp,
+        ),
+        {
+          allowlist: repaired.auflagenCodes,
+          rawContext: match.auflagenCodes.join(" "),
+        },
       ),
     };
   });

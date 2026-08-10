@@ -4,6 +4,7 @@ import {
   parseAbeAuflagenNotes,
   type AbeAuflageEntry,
 } from "@/lib/ocr/abe-auflagen-from-text";
+import { correctAuflagenKuerzelOcr } from "@/lib/ocr/auflagen-kuerzel-ocr-correction";
 
 export type AuflagenKuerzelRecord = {
   kuerzel: string;
@@ -189,12 +190,27 @@ export function extractKuerzelRecordsFromOcrNotes(
 ): AuflagenKuerzelRecord[] {
   if (targetCodes.length === 0) return [];
 
-  const allowed = new Set(targetCodes.map(normalizeAuflagenKuerzel));
+  const allowed = new Set(
+    targetCodes.map((code) =>
+      correctAuflagenKuerzelOcr(code, {
+        allowlist: targetCodes,
+        rawContext: notes,
+      }),
+    ),
+  );
   const entries = parseAbeAuflagenNotes(notes, [...targetCodes], {
     strict: true,
-  });
+  })
+    .map((entry) => ({
+      ...entry,
+      code: correctAuflagenKuerzelOcr(entry.code, {
+        allowlist: targetCodes,
+        rawContext: notes,
+      }),
+    }))
+    .filter((entry) => allowed.has(normalizeAuflagenKuerzel(entry.code)));
+
   return entries
-    .filter((entry) => allowed.has(normalizeAuflagenKuerzel(entry.code)))
     .map((entry) => ({
       kuerzel: normalizeAuflagenKuerzel(entry.code),
       text: entry.text.trim(),

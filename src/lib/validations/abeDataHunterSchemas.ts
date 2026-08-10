@@ -16,6 +16,7 @@ import { AbeVehicleMatchSchema } from "@/lib/validations/abeWizardSchemas";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import {
   missingAuflagenCodesInNotes,
+  requiredAuflagenCodes,
 } from "@/lib/ocr/abe-auflagen-from-text";
 import {
   auflagenForUserVehicleSelection,
@@ -592,6 +593,8 @@ export function missingAbeRequiredFields(
     selectedRowId?: string | null;
     /** User skipped Auflagen text scan — allow save without auflagenNotes. */
     auflagenScanSkipped?: boolean;
+    /** Individual Kürzel the user could not find on paper — not required in notes. */
+    skippedAuflagenCodes?: readonly string[];
   },
 ): AbeRequiredFieldKey[] {
   const missing = missingAbeCoreHuntFields(
@@ -614,11 +617,22 @@ export function missingAbeRequiredFields(
           selectedVerkaufsbezeichnung,
           vehicleContext,
         });
-  const notesMissing =
+  const skippedCodes = selection?.skippedAuflagenCodes ?? [];
+  const codesStillRequired = requiredAuflagenCodes(targetCodes, skippedCodes);
+  if (codesStillRequired.length === 0) {
+    return missing;
+  }
+  const codesStillMissing = missingAuflagenCodesInNotes(
+    report.auflagenNotes,
+    targetCodes,
+    skippedCodes,
+  );
+  if (
     !report.auflagenNotes?.trim() ||
-    (targetCodes.length > 0 &&
-      missingAuflagenCodesInNotes(report.auflagenNotes, targetCodes).length > 0);
-  if (notesMissing) missing.push("auflagenNotes");
+    codesStillMissing.length > 0
+  ) {
+    missing.push("auflagenNotes");
+  }
   return missing;
 }
 
@@ -630,6 +644,7 @@ export function isAbeDataHunterReportComplete(
     selectedGroupIndex?: number | null;
     selectedRowId?: string | null;
     auflagenScanSkipped?: boolean;
+    skippedAuflagenCodes?: readonly string[];
   },
 ): boolean {
   return (

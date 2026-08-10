@@ -251,68 +251,45 @@ function KbaHuntOverlay({
   if (!mounted || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/20 bg-black/55 px-3 py-3 text-white shadow-lg backdrop-blur-md">
-        <div className="flex items-start gap-2">
+    <div className={CAMERA_HUD_SHELL}>
+      <div className="pointer-events-auto mx-auto max-w-[min(100%,260px)] rounded-lg border border-white/10 bg-black/35 px-1 py-1 text-white shadow-sm backdrop-blur-[2px]">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onClose}
-            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10"
             aria-label="Schließen"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3 w-3" />
           </button>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/60">
-              Schritt 1 · KBA-Nummer
-              {captureSummary ? ` · ${captureSummary}` : ""}
-            </p>
-            <p className="mt-0.5 text-[0.95rem] font-semibold leading-tight">
-              {detectedKba ? `KBA ${detectedKba} erkannt` : "KBA-Nummer erfassen"}
-            </p>
-            <p className="mt-1 text-[0.74rem] font-medium leading-snug text-white/85">
-              {analyzing
-                ? "Foto wird ausgewertet…"
-                : "Fotografiere „Gutachten zur ABE Nr.“ oder „KBA-Nummer“ — oder tippe die Nummer ein."}
+            <p className="truncate text-[0.52rem] font-semibold text-white/85">
+              {detectedKba ? `KBA ${detectedKba}` : "KBA scannen"}
             </p>
           </div>
 
-          {detectedKba ? (
+          {analyzing ? (
+            <LoaderCircle className="h-3 w-3 shrink-0 animate-spin text-amber-200" />
+          ) : detectedKba ? (
             <button
               type="button"
-              disabled={analyzing}
               onClick={onContinue}
-              className="mt-0.5 flex h-8 shrink-0 items-center rounded-full bg-white px-3 text-[0.72rem] font-semibold text-neutral-900 disabled:opacity-40"
+              className="flex h-5 shrink-0 items-center rounded-full bg-white px-2 text-[0.55rem] font-semibold text-neutral-900"
             >
-              Weiter
+              →
             </button>
-          ) : (
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/20 text-[0.72rem] font-bold text-amber-100">
-              1
-            </div>
-          )}
+          ) : null}
         </div>
 
-        <div className="mt-3 px-0.5">
-          <label className="text-[0.68rem] font-medium uppercase tracking-[0.08em] text-white/60">
-            Manuell eingeben
-          </label>
+        {!detectedKba ? (
           <Input
             inputMode="numeric"
-            placeholder="z. B. 48571"
+            placeholder="KBA manuell"
             value={manualValue}
             onChange={(event) => onManualChange(event.target.value)}
-            className="mt-1.5 h-11 border-white/20 bg-white/10 text-[1rem] font-semibold text-white placeholder:text-white/40"
+            className="mt-1 h-7 border-white/15 bg-white/10 px-2 text-[0.78rem] font-semibold text-white placeholder:text-white/35"
           />
-        </div>
-
-        {analyzing ? (
-          <p className="mt-2 flex items-center justify-center gap-1.5 text-[0.68rem] text-amber-200">
-            <LoaderCircle className="h-3 w-3 animate-spin" />
-            {analyzingPdf ? "PDF wird analysiert…" : "Analysiert…"}
-            {queuedCount > 0 ? `(+${queuedCount})` : ""}
-          </p>
         ) : null}
       </div>
     </div>,
@@ -524,6 +501,11 @@ function newlyFilledLabels(
 
 // ─── Progress overlay ──────────────────────────────────────────────────────────
 
+const CAMERA_HUD_SHELL =
+  "pointer-events-none fixed inset-x-0 top-0 z-[10050] px-2 pt-[max(0.2rem,env(safe-area-inset-top))]";
+const CAMERA_HUD_BAR =
+  "pointer-events-auto mx-auto flex max-w-[min(100%,260px)] items-center gap-1 rounded-lg border border-white/10 bg-black/35 py-0.5 pl-0.5 pr-1 text-white shadow-sm backdrop-blur-[2px]";
+
 function HuntProgressOverlay({
   report,
   analyzing,
@@ -552,105 +534,96 @@ function HuntProgressOverlay({
   }, []);
 
   const missing = missingAbeCoreHuntFields(report, null, vehicleContext);
-  const missingSet = new Set(missing);
   const complete = missing.length === 0;
   const doneCount = countAbeCoreHuntFieldsDone(report, null, vehicleContext);
   const totalCount = CORE_HUNT_ORDER.length;
+  const missingLabels = missing
+    .map((key) => HUNT_FIELD_SHORT_LABELS[key])
+    .join(", ");
 
   if (!mounted || typeof document === "undefined") return null;
 
+  const showComplete = complete && !analyzing;
+
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-auto mx-auto max-w-[360px] rounded-xl border border-white/15 bg-black/50 px-2 py-1.5 text-white shadow-lg backdrop-blur-md">
-        <div className="flex items-center gap-1.5">
+    <div className={CAMERA_HUD_SHELL}>
+      <div
+        className={`${CAMERA_HUD_BAR} ${
+          showComplete ? "border-emerald-400/60 bg-emerald-950/40" : ""
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10"
+          aria-label="Schließen"
+        >
+          <X className="h-3 w-3" />
+        </button>
+
+        <div
+          className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-white/15"
+          role="progressbar"
+          aria-valuenow={doneCount}
+          aria-valuemin={0}
+          aria-valuemax={totalCount}
+          aria-label="Pflichtfelder-Fortschritt"
+        >
+          <div
+            className="h-full rounded-full bg-emerald-400/90 transition-[width] duration-300"
+            style={{ width: `${(doneCount / totalCount) * 100}%` }}
+          />
+        </div>
+
+        <span
+          className={`shrink-0 text-[0.52rem] font-semibold tabular-nums ${
+            showComplete ? "text-emerald-100" : "text-white/75"
+          }`}
+          title={missingLabels || "Alle Pflichtfelder erfasst"}
+        >
+          {showComplete ? "Fertig" : `${doneCount}/${totalCount}`}
+        </span>
+
+        {analyzing ? (
+          <LoaderCircle
+            className="h-3 w-3 shrink-0 animate-spin text-amber-200"
+            aria-label={
+              analyzingPdf
+                ? "PDF wird analysiert"
+                : `Analysiert${queuedCount > 0 ? ` (+${queuedCount})` : ""}`
+            }
+          />
+        ) : showComplete ? (
           <button
             type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10"
-            aria-label="Schließen"
+            disabled={analyzing}
+            onClick={onOpenReview}
+            className="flex h-5 shrink-0 items-center rounded-full bg-emerald-400 px-2 text-[0.55rem] font-semibold text-emerald-950 disabled:opacity-40"
+            aria-label="Weiter"
           >
-            <X className="h-3.5 w-3.5" />
+            →
           </button>
-
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-white/55">
-                ABE scannen · {doneCount}/{totalCount}
-                {captureSummary ? ` · ${captureSummary}` : ""}
-              </p>
-              {complete ? (
-                <button
-                  type="button"
-                  disabled={analyzing}
-                  onClick={onOpenReview}
-                  className="flex h-6 shrink-0 items-center rounded-full bg-white px-2.5 text-[0.62rem] font-semibold text-neutral-900 disabled:opacity-40"
-                >
-                  Weiter
-                </button>
-              ) : (
-                <span className="shrink-0 font-mono text-[0.6rem] font-bold text-amber-100/90">
-                  {missing.length} offen
-                </span>
-              )}
-            </div>
-            {!complete ? (
-              <div
-                className="mt-1 h-0.5 overflow-hidden rounded-full bg-white/15"
-                role="progressbar"
-                aria-valuenow={doneCount}
-                aria-valuemin={0}
-                aria-valuemax={totalCount}
-                aria-label="Pflichtfelder-Fortschritt"
-              >
-                <div
-                  className="h-full rounded-full bg-emerald-400/90 transition-[width] duration-300"
-                  style={{ width: `${(doneCount / totalCount) * 100}%` }}
-                />
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="mt-1 flex flex-wrap gap-1 px-0.5">
-          {CORE_HUNT_ORDER.map((key) => {
-            const done = !missingSet.has(key);
-            return (
-              <span
-                key={key}
-                title={abeHuntFieldDisplayLabel(key)}
-                className={[
-                  "inline-flex max-w-full items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.58rem] font-medium leading-none",
-                  done
-                    ? "bg-emerald-500/25 text-emerald-100"
-                    : "bg-white/10 text-white/70",
-                ].join(" ")}
-              >
-                <span aria-hidden className="text-[0.5rem]">
-                  {done ? "✓" : "○"}
-                </span>
-                <span className="truncate">{HUNT_FIELD_SHORT_LABELS[key]}</span>
-              </span>
-            );
-          })}
-        </div>
-
-        {analyzing || lastFound.length > 0 ? (
-          <div className="mt-1 flex min-h-[0.85rem] items-center justify-center gap-1 px-0.5 text-[0.58rem]">
-            {analyzing ? (
-              <span className="inline-flex items-center gap-1 text-amber-200">
-                <LoaderCircle className="h-2.5 w-2.5 animate-spin" />
-                {analyzingPdf ? "PDF wird analysiert…" : "Analysiert…"}
-                {queuedCount > 0 ? `(+${queuedCount})` : ""}
-              </span>
-            ) : null}
-            {!analyzing && lastFound.length > 0 ? (
-              <span className="truncate text-emerald-200">
-                + {lastFound.join(" · ")}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
+        ) : (
+          <span
+            className="min-w-[0.85rem] shrink-0 text-center text-[0.52rem] font-bold tabular-nums text-amber-100/90"
+            title={missingLabels}
+          >
+            {missing.length}
+          </span>
+        )}
       </div>
+
+      {!analyzing && lastFound.length > 0 ? (
+        <p className="mx-auto mt-0.5 max-w-[260px] truncate px-1 text-center text-[0.5rem] font-medium text-emerald-200/95">
+          {showComplete ? "✓ " : "+ "}
+          {lastFound.join(", ")}
+        </p>
+      ) : null}
+      {showComplete ? (
+        <p className="mx-auto mt-0.5 max-w-[260px] px-1 text-center text-[0.5rem] font-semibold text-emerald-200">
+          Alle Pflichtfelder erfasst
+        </p>
+      ) : null}
     </div>,
     document.body,
   );
@@ -659,29 +632,37 @@ function HuntProgressOverlay({
 function AuflagenScanOverlay({
   targetCodes,
   auflagenNotes,
+  skippedAuflagenCodes,
   analyzing,
   queuedCount,
-  captureSummary,
+  lastFound,
   onOpenReview,
   onSkip,
   onClose,
 }: {
   targetCodes: string[];
   auflagenNotes: string | null;
+  skippedAuflagenCodes: string[];
   analyzing: boolean;
   queuedCount: number;
-  captureSummary: string | null;
+  lastFound: string[];
   onOpenReview: () => void;
   onSkip: () => void;
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
-  const missingCodes = missingAuflagenCodesInNotes(auflagenNotes, targetCodes);
-  const capturedCodes = auflagenCodesCoveredInNotes(auflagenNotes, targetCodes);
-  const canProceed =
-    targetCodes.length === 0
-      ? Boolean(auflagenNotes?.trim())
-      : missingCodes.length === 0 && Boolean(auflagenNotes?.trim());
+  const missingCodes = missingAuflagenCodesInNotes(
+    auflagenNotes,
+    targetCodes,
+    skippedAuflagenCodes,
+  );
+  const capturedCodes = auflagenCodesCoveredInNotes(
+    auflagenNotes,
+    targetCodes,
+    skippedAuflagenCodes,
+  );
+  const canProceed = missingCodes.length === 0;
+  const showComplete = canProceed && !analyzing;
 
   useEffect(() => {
     setMounted(true);
@@ -689,84 +670,76 @@ function AuflagenScanOverlay({
 
   if (!mounted || typeof document === "undefined") return null;
 
+  const statusLabel =
+    missingCodes.length > 0
+      ? missingCodes.join(", ")
+      : "Alle erfasst";
+
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-auto mx-auto max-w-[360px] rounded-xl border border-white/15 bg-black/50 px-2 py-1.5 text-white shadow-lg backdrop-blur-md">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10"
-            aria-label="Schließen"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+    <div className={CAMERA_HUD_SHELL}>
+      <div
+        className={`${CAMERA_HUD_BAR} ${
+          showComplete ? "border-emerald-400/60 bg-emerald-950/40" : ""
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10"
+          aria-label="Schließen"
+        >
+          <X className="h-3 w-3" />
+        </button>
 
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-white/55">
-              Auflagen · {capturedCodes.length}/{targetCodes.length || 1}
-              {captureSummary ? ` · ${captureSummary}` : ""}
-            </p>
-            <p className="mt-0.5 truncate text-[0.68rem] font-medium leading-tight text-white/85">
-              {missingCodes.length > 0
-                ? `Noch: ${missingCodes.join(", ")}`
-                : "Alle Kürzel erfasst"}
-            </p>
-          </div>
-
-          {canProceed ? (
-            <button
-              type="button"
-              disabled={analyzing}
-              onClick={onOpenReview}
-              className="flex h-6 shrink-0 items-center rounded-full bg-white px-2.5 text-[0.62rem] font-semibold text-neutral-900 disabled:opacity-40"
-            >
-              Prüfen
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={analyzing}
-              onClick={onSkip}
-              className="shrink-0 text-[0.58rem] font-medium text-white/70 underline-offset-2 hover:text-white hover:underline disabled:opacity-40"
-            >
-              Überspringen
-            </button>
-          )}
-        </div>
-
-        {targetCodes.length > 0 ? (
-          <div className="mt-1 flex flex-wrap gap-1 px-0.5">
-            {targetCodes.map((code) => {
-              const captured = !missingCodes.some(
-                (missing) => missing.toUpperCase() === code.toUpperCase(),
-              );
-              return (
-                <span
-                  key={code}
-                  className={`rounded-md px-1.5 py-0.5 font-mono text-[0.6rem] font-semibold leading-none ${
-                    captured
-                      ? "bg-emerald-500/25 text-emerald-100"
-                      : "bg-amber-500/20 text-amber-100"
-                  }`}
-                >
-                  {code}
-                </span>
-              );
-            })}
-          </div>
-        ) : null}
+        <p
+          className={`min-w-0 flex-1 truncate text-[0.52rem] font-medium ${
+            showComplete ? "font-semibold text-emerald-100" : "text-white/85"
+          }`}
+          title={statusLabel}
+        >
+          {showComplete
+            ? "Alle Auflagen erfasst"
+            : `Aufl. ${capturedCodes.length}/${targetCodes.length || 1}${
+                missingCodes.length > 0 ? ` · ${statusLabel}` : ""
+              }`}
+        </p>
 
         {analyzing ? (
-          <div className="mt-1 flex min-h-[0.85rem] items-center justify-center gap-1 text-[0.58rem]">
-            <span className="inline-flex items-center gap-1 text-amber-200">
-              <LoaderCircle className="h-2.5 w-2.5 animate-spin" />
-              Auflagen-Text…
-              {queuedCount > 0 ? `(+${queuedCount})` : ""}
-            </span>
-          </div>
-        ) : null}
+          <LoaderCircle
+            className="h-3 w-3 shrink-0 animate-spin text-amber-200"
+            aria-label={`Auflagen-Text${queuedCount > 0 ? ` (+${queuedCount})` : ""}`}
+          />
+        ) : showComplete ? (
+          <button
+            type="button"
+            onClick={onOpenReview}
+            className="flex h-5 shrink-0 items-center rounded-full bg-emerald-400 px-2 text-[0.55rem] font-semibold text-emerald-950"
+            aria-label="Zur Prüfung"
+          >
+            →
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="flex h-5 shrink-0 items-center rounded-full border border-white/25 bg-white/10 px-2 text-[0.52rem] font-semibold text-white"
+          >
+            Überspr.
+          </button>
+        )}
       </div>
+
+      {!analyzing && lastFound.length > 0 ? (
+        <p className="mx-auto mt-0.5 max-w-[260px] truncate px-1 text-center text-[0.5rem] font-medium text-emerald-200/95">
+          {showComplete ? "✓ " : "+ "}
+          {lastFound.join(", ")}
+        </p>
+      ) : null}
+      {showComplete ? (
+        <p className="mx-auto mt-0.5 max-w-[260px] px-1 text-center text-[0.5rem] font-semibold text-emerald-200">
+          Weiter zur Prüfung …
+        </p>
+      ) : null}
     </div>,
     document.body,
   );
@@ -779,12 +752,14 @@ function AuflagenDetailPanel({
   selectedGroupIndex,
   selectedRowId,
   dbResolvedCodes,
-  missingCodes,
+  pendingCodes,
+  skippedAuflagenCodes,
   onSelectGroup,
   onSelectRow,
   onContinueToReview,
   onStartScan,
-  onSkipScan,
+  onSkipMissing,
+  onSkipAll,
   onBack,
 }: {
   report: AbeDataHunterReport;
@@ -793,12 +768,14 @@ function AuflagenDetailPanel({
   selectedGroupIndex: number | null;
   selectedRowId: string | null;
   dbResolvedCodes: string[];
-  missingCodes: string[];
+  pendingCodes: string[];
+  skippedAuflagenCodes: string[];
   onSelectGroup: (index: number) => void;
   onSelectRow: (rowId: string) => void;
   onContinueToReview: () => void;
   onStartScan: () => void;
-  onSkipScan: () => void;
+  onSkipMissing: () => void;
+  onSkipAll: () => void;
   onBack: () => void;
 }) {
   const groups = useMemo(
@@ -818,7 +795,10 @@ function AuflagenDetailPanel({
     selectedRowId,
   );
   const allCodesKnown =
-    targetCodes.length > 0 && missingCodes.length === 0;
+    targetCodes.length > 0 && pendingCodes.length === 0;
+  const skippedSet = new Set(
+    skippedAuflagenCodes.map((code) => code.toUpperCase()),
+  );
   const dbResolvedSet = new Set(
     dbResolvedCodes.map((code) => code.toUpperCase()),
   );
@@ -890,32 +870,41 @@ function AuflagenDetailPanel({
             <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-[color:var(--vd-muted)]">
               {allCodesKnown
                 ? "Alle Kürzel bekannt"
-                : missingCodes.length > 0
+                : pendingCodes.length > 0
                   ? "Noch scannen"
-                  : "Kürzel aus der Fahrzeugtabelle"}
+                  : skippedSet.size > 0
+                    ? "Übersprungen"
+                    : "Kürzel aus der Fahrzeugtabelle"}
             </p>
             <p className="mt-1.5 text-[0.82rem] leading-relaxed text-[color:var(--vd-text)]">
               {allCodesKnown
                 ? "Alle Auflagen-Texte sind vorhanden — du kannst direkt zur Prüfung."
-                : missingCodes.length > 0
-                  ? `Fotografiere noch: ${missingCodes.join(", ")}`
-                  : "Grün = aus Kürzel-Datenbank, Amber = noch scannen."}
+                : pendingCodes.length > 0
+                  ? `Fotografiere noch: ${pendingCodes.join(", ")}`
+                  : skippedSet.size > 0
+                    ? "Übersprungene Kürzel kannst du später im Dokument ergänzen."
+                    : "Grün = aus Kürzel-Datenbank, Amber = noch scannen."}
             </p>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {targetCodes.map((code) => {
                 const fromDb = dbResolvedSet.has(code.toUpperCase());
-                const captured = !missingCodes.some(
-                  (missing) => missing.toUpperCase() === code.toUpperCase(),
-                );
+                const skipped = skippedSet.has(code.toUpperCase());
+                const captured =
+                  skipped ||
+                  !pendingCodes.some(
+                    (pending) => pending.toUpperCase() === code.toUpperCase(),
+                  );
                 return (
                   <span
                     key={code}
                     className={`rounded-full border px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold ${
-                      captured
-                        ? fromDb
-                          ? "border-sky-300/70 bg-sky-500/15 text-sky-950"
-                          : "border-emerald-300/70 bg-emerald-500/15 text-emerald-950"
-                        : "border-amber-300/70 bg-amber-500/15 text-amber-950"
+                      skipped
+                        ? "border-neutral-300/70 bg-neutral-500/10 text-neutral-600 line-through"
+                        : captured
+                          ? fromDb
+                            ? "border-sky-300/70 bg-sky-500/15 text-sky-950"
+                            : "border-emerald-300/70 bg-emerald-500/15 text-emerald-950"
+                          : "border-amber-300/70 bg-amber-500/15 text-amber-950"
                     }`}
                   >
                     {code}
@@ -948,22 +937,31 @@ function AuflagenDetailPanel({
               onClick={onStartScan}
             >
               <Camera className="h-4 w-4" />
-              {missingCodes.length > 0
-                ? `Fehlende Auflagen scannen (${missingCodes.length})`
+              {pendingCodes.length > 0
+                ? `Fehlende Auflagen scannen (${pendingCodes.length})`
                 : "Auflagen scannen"}
             </Button>
+            {pendingCodes.length > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-2 h-11 w-full"
+                onClick={onSkipMissing}
+              >
+                Kürzel nicht auffindbar — überspringen ({pendingCodes.length})
+              </Button>
+            ) : null}
             <Button
               type="button"
-              variant="outline"
-              className="mt-2 h-11 w-full"
-              disabled={!vehicleSelectionReady}
-              onClick={onSkipScan}
+              variant="ghost"
+              className="mt-1 h-10 w-full text-[color:var(--vd-muted)]"
+              onClick={onSkipAll}
             >
-              Auflagen-Scan überspringen
+              Alle Auflagen-Texte überspringen
             </Button>
             <p className="mt-2 text-center text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Wenn die Kürzel auf dem Papier nicht auffindbar sind, kannst du den
-              Scan überspringen und später ergänzen.
+              Wenn die Kürzel auf dem Papier nicht auffindbar sind, kannst du sie
+              überspringen und später ergänzen.
             </p>
           </>
         )}
@@ -1053,8 +1051,12 @@ function ReviewPanel({
   selectedRowId,
   imageUrlsByCode,
   auflagenScanSkipped,
+  skippedAuflagenCodes,
+  showAllCapturedBanner,
   onSelectGroup,
   onSelectRow,
+  onSkipMissingAuflagen,
+  onSkipAllAuflagen,
   onSave,
   onRestart,
   isSaving,
@@ -1067,8 +1069,12 @@ function ReviewPanel({
   selectedRowId: string | null;
   imageUrlsByCode: Map<string, string>;
   auflagenScanSkipped: boolean;
+  skippedAuflagenCodes: string[];
+  showAllCapturedBanner: boolean;
   onSelectGroup: (index: number) => void;
   onSelectRow: (rowId: string) => void;
+  onSkipMissingAuflagen: () => void;
+  onSkipAllAuflagen: () => void;
   onSave: (form: ReviewFormState) => void;
   onRestart: () => void;
   isSaving: boolean;
@@ -1125,6 +1131,11 @@ function ReviewPanel({
       return { ...prev, auflagenNotes: notes };
     });
   }, [report.auflagenNotes, scopedAuflagen.join("|")]);
+  const pendingAuflagenCodes = missingAuflagenCodesInNotes(
+    form.auflagenNotes,
+    scopedAuflagen,
+    skippedAuflagenCodes,
+  );
   const draftReport: AbeDataHunterReport = {
     ...report,
     kbaNumber: form.kbaNumber.trim() || null,
@@ -1144,15 +1155,27 @@ function ReviewPanel({
       selectedGroupIndex,
       selectedRowId,
       auflagenScanSkipped,
+      skippedAuflagenCodes,
     },
   );
+  const auflagenNotesMissing = missing.includes("auflagenNotes");
 
   return (
     <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
+      {showAllCapturedBanner ? (
+        <div className="rounded-xl border border-emerald-300/70 bg-emerald-50 px-3 py-2.5 text-[0.82rem] font-medium text-emerald-950">
+          Alle Daten erfasst — bitte kurz prüfen und speichern.
+        </div>
+      ) : null}
       {auflagenScanSkipped ? (
         <div className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] text-amber-950">
           Auflagen-Text wurde übersprungen — du kannst die Texte später im
           Dokument ergänzen.
+        </div>
+      ) : skippedAuflagenCodes.length > 0 ? (
+        <div className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] text-amber-950">
+          Übersprungen: {skippedAuflagenCodes.join(", ")} — Texte kannst du später
+          ergänzen.
         </div>
       ) : null}
       {groups.length > 0 ? (
@@ -1322,6 +1345,29 @@ function ReviewPanel({
                 <li key={key}>{ABE_REQUIRED_FIELD_LABELS[key]}</li>
               ))}
             </ul>
+            {auflagenNotesMissing ? (
+              <div className="mt-3 grid gap-2">
+                {pendingAuflagenCodes.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 w-full border-amber-400/80 bg-white text-amber-950 hover:bg-amber-100/60"
+                    onClick={onSkipMissingAuflagen}
+                  >
+                    Kürzel nicht auffindbar — überspringen (
+                    {pendingAuflagenCodes.join(", ")})
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 w-full text-amber-900 hover:bg-amber-100/50"
+                  onClick={onSkipAllAuflagen}
+                >
+                  Alle Auflagen-Texte überspringen
+                </Button>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -1393,6 +1439,8 @@ export function AbeDataHunterWizard({
   const [manualKbaInput, setManualKbaInput] = useState("");
   const [kuerzelDbReady, setKuerzelDbReady] = useState(false);
   const [auflagenScanSkipped, setAuflagenScanSkipped] = useState(false);
+  const [skippedAuflagenCodes, setSkippedAuflagenCodes] = useState<string[]>([]);
+  const [showAllCapturedBanner, setShowAllCapturedBanner] = useState(false);
 
   const queueRef = useRef<File[]>([]);
   const auflagenQueueRef = useRef<File[]>([]);
@@ -1435,21 +1483,6 @@ export function AbeDataHunterWizard({
       ),
     [report, selectedGroupIndex, selectedRowId],
   );
-  const missingAuflagenAfterDb = useMemo(() => {
-    if (!kuerzelDbReady) return targetAuflagenCodes;
-    return enrichReportAuflagenFromKuerzelDb(
-      report,
-      kuerzelDbRef.current,
-      selectedGroupIndex,
-      selectedRowId,
-    ).missingCodes;
-  }, [
-    kuerzelDbReady,
-    report,
-    selectedGroupIndex,
-    selectedRowId,
-    targetAuflagenCodes,
-  ]);
   const dbResolvedAuflagenCodes = useMemo(() => {
     if (!kuerzelDbReady) return [];
     return enrichReportAuflagenFromKuerzelDb(
@@ -1464,6 +1497,29 @@ export function AbeDataHunterWizard({
     selectedGroupIndex,
     selectedRowId,
   ]);
+  const pendingAuflagenCodes = useMemo(
+    () =>
+      missingAuflagenCodesInNotes(
+        report.auflagenNotes,
+        targetAuflagenCodes,
+        skippedAuflagenCodes,
+      ),
+    [report.auflagenNotes, targetAuflagenCodes, skippedAuflagenCodes],
+  );
+  const wizardSelection = useMemo(
+    () => ({
+      selectedGroupIndex,
+      selectedRowId,
+      auflagenScanSkipped,
+      skippedAuflagenCodes,
+    }),
+    [
+      selectedGroupIndex,
+      selectedRowId,
+      auflagenScanSkipped,
+      skippedAuflagenCodes,
+    ],
+  );
   const allAuflagenResolvedFromDb = useMemo(() => {
     if (!kuerzelDbReady || targetAuflagenCodes.length === 0) return false;
     const groups = groupAbeVehicleMatches(report.vehicleMatches);
@@ -1494,6 +1550,12 @@ export function AbeDataHunterWizard({
     : photos.length > 0
       ? `${photos.length} Foto${photos.length === 1 ? "" : "s"}`
       : null;
+
+  useEffect(() => {
+    if (phase !== "review" || !showAllCapturedBanner) return;
+    const timer = window.setTimeout(() => setShowAllCapturedBanner(false), 8000);
+    return () => window.clearTimeout(timer);
+  }, [phase, showAllCapturedBanner]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1652,14 +1714,62 @@ export function AbeDataHunterWizard({
     setPhase("auflagen-scan");
   }
 
-  function skipAuflagenScan() {
-    setAuflagenScanSkipped(true);
+  function mergeSkippedAuflagenCodes(codes: readonly string[]) {
+    setSkippedAuflagenCodes((current) => {
+      const merged = new Set([
+        ...current.map((code) => normalizeAuflagenKuerzel(code)),
+        ...codes.map((code) => normalizeAuflagenKuerzel(code)),
+      ]);
+      return [...merged].filter(Boolean);
+    });
+  }
+
+  function skipPendingAuflagenCodes() {
+    mergeSkippedAuflagenCodes(pendingAuflagenCodes);
+    setAuflagenScanSkipped(false);
     setHuntError(null);
+    setSaveError(null);
     goToReview();
+  }
+
+  function skipAllAuflagenText() {
+    setAuflagenScanSkipped(true);
+    mergeSkippedAuflagenCodes(targetAuflagenCodes);
+    setHuntError(null);
+    setSaveError(null);
+    goToReview();
+  }
+
+  function skipAuflagenScan() {
+    skipPendingAuflagenCodes();
   }
 
   function goToReview() {
     setPhase("review");
+  }
+
+  function goToReviewFromAuflagenScan() {
+    const groups = groupAbeVehicleMatches(reportRef.current.vehicleMatches);
+    const selectedGroup = selectedAbeVehicleGroup(
+      reportRef.current,
+      selectedGroupIndex,
+    );
+    if (
+      isAbeDataHunterReportComplete(
+        reportRef.current,
+        selectedGroup?.verkaufsbezeichnung ?? null,
+        vehicleContext,
+        {
+          selectedGroupIndex,
+          selectedRowId,
+          auflagenScanSkipped,
+          skippedAuflagenCodes,
+        },
+      )
+    ) {
+      setShowAllCapturedBanner(true);
+    }
+    goToReview();
   }
 
   function returnToChooser() {
@@ -1750,6 +1860,8 @@ export function AbeDataHunterWizard({
     setSaveError(null);
     setManualKbaInput("");
     setAuflagenScanSkipped(false);
+    setSkippedAuflagenCodes([]);
+    setShowAllCapturedBanner(false);
     setHuntSessionKey((current) => current + 1);
   }
 
@@ -1961,7 +2073,34 @@ export function AbeDataHunterWizard({
 
         reportRef.current = finalReport;
         setReport(finalReport);
-        setLastFound([ABE_REQUIRED_FIELD_LABELS.auflagenNotes]);
+
+        const beforeMissing = missingAuflagenCodesInNotes(
+          before.auflagenNotes,
+          codes,
+          skippedAuflagenCodes,
+        );
+        const afterMissing = missingAuflagenCodesInNotes(
+          finalReport.auflagenNotes,
+          codes,
+          skippedAuflagenCodes,
+        );
+        const newlyCaptured = beforeMissing.filter(
+          (code) =>
+            !afterMissing.some(
+              (remaining) => remaining.toUpperCase() === code.toUpperCase(),
+            ),
+        );
+        if (afterMissing.length === 0) {
+          setLastFound(
+            newlyCaptured.length > 0
+              ? newlyCaptured
+              : ["Alle Auflagen erfasst"],
+          );
+        } else if (newlyCaptured.length > 0) {
+          setLastFound(newlyCaptured);
+        } else {
+          setLastFound([ABE_REQUIRED_FIELD_LABELS.auflagenNotes]);
+        }
         setHuntError(null);
 
         if (
@@ -1973,12 +2112,14 @@ export function AbeDataHunterWizard({
               vehicleContext,
             ),
             vehicleContext,
-            { selectedGroupIndex, selectedRowId },
+            wizardSelection,
           )
         ) {
           auflagenQueueRef.current = [];
           setQueuedCount(0);
-          window.setTimeout(() => goToReview(), 400);
+          setAnalyzing(false);
+          setShowAllCapturedBanner(true);
+          window.setTimeout(() => goToReview(), 1600);
           break;
         }
       } catch (err) {
@@ -2066,11 +2207,7 @@ export function AbeDataHunterWizard({
       draft,
       selectedGroup?.verkaufsbezeichnung,
       vehicleContext,
-      {
-        selectedGroupIndex,
-        selectedRowId,
-        auflagenScanSkipped,
-      },
+      wizardSelection,
     );
     if (stillMissing.length > 0) {
       setSaveError(
@@ -2238,8 +2375,12 @@ export function AbeDataHunterWizard({
           selectedRowId={selectedRowId}
           imageUrlsByCode={kuerzelImageUrls}
           auflagenScanSkipped={auflagenScanSkipped}
+          skippedAuflagenCodes={skippedAuflagenCodes}
+          showAllCapturedBanner={showAllCapturedBanner}
           onSelectGroup={handleSelectGroup}
           onSelectRow={handleSelectRow}
+          onSkipMissingAuflagen={skipPendingAuflagenCodes}
+          onSkipAllAuflagen={skipAllAuflagenText}
           onSave={handleSave}
           onRestart={restart}
           isSaving={isSaving}
@@ -2277,12 +2418,14 @@ export function AbeDataHunterWizard({
           selectedGroupIndex={selectedGroupIndex}
           selectedRowId={selectedRowId}
           dbResolvedCodes={dbResolvedAuflagenCodes}
-          missingCodes={missingAuflagenAfterDb}
+          pendingCodes={pendingAuflagenCodes}
+          skippedAuflagenCodes={skippedAuflagenCodes}
           onSelectGroup={handleSelectGroup}
           onSelectRow={handleSelectRow}
           onContinueToReview={goToReview}
           onStartScan={startAuflagenScan}
-          onSkipScan={skipAuflagenScan}
+          onSkipMissing={skipPendingAuflagenCodes}
+          onSkipAll={skipAllAuflagenText}
           onBack={returnToChooser}
         />
       </>
@@ -2296,10 +2439,11 @@ export function AbeDataHunterWizard({
         <AuflagenScanOverlay
           targetCodes={targetAuflagenCodes}
           auflagenNotes={report.auflagenNotes}
+          skippedAuflagenCodes={skippedAuflagenCodes}
           analyzing={analyzing}
           queuedCount={queuedCount}
-          captureSummary={captureSummary}
-          onOpenReview={goToReview}
+          lastFound={lastFound}
+          onOpenReview={goToReviewFromAuflagenScan}
           onSkip={skipAuflagenScan}
           onClose={returnToAuflagenDetail}
         />

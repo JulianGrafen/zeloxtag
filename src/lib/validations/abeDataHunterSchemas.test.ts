@@ -80,10 +80,7 @@ describe("abeDataHunterSchemas required fields", () => {
       { auflagenCodes: [], auflagenNotes: null },
     );
 
-    expect(missingAbeRequiredFields(report)).toEqual([
-      "verkaufsbezeichnung",
-      "auflagenNotes",
-    ]);
+    expect(missingAbeRequiredFields(report)).toEqual(["verkaufsbezeichnung"]);
   });
 
   it("does not require Kennzeichnung for core hunt or save", () => {
@@ -179,6 +176,58 @@ describe("abeDataHunterSchemas required fields", () => {
     expect(missingAbeRequiredFields(report, "5ER REIHE")).toEqual([
       "auflagenNotes",
     ]);
+  });
+
+  it("allows save when missing Kürzel were explicitly skipped", () => {
+    const report = mergeAbeDataHunterSteps(
+      completeStammdaten,
+      { markingText: "Kennzeichnung auf dem Bauteil" },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "5ER REIHE",
+            fahrzeugtyp: "5L",
+            typeApproval: null,
+            driveType: null,
+            tireSizes: [],
+            auflagenCodes: ["744", "F40", "L04"],
+          },
+        ],
+      },
+      { auflagenCodes: [], auflagenNotes: "744: Nur teilweise erfasst." },
+    );
+
+    expect(
+      missingAbeRequiredFields(report, "5ER REIHE", null, {
+        skippedAuflagenCodes: ["F40", "L04"],
+      }),
+    ).toEqual([]);
+  });
+
+  it("allows save when the entire Auflagen scan was skipped", () => {
+    const report = mergeAbeDataHunterSteps(
+      completeStammdaten,
+      { markingText: "Kennzeichnung auf dem Bauteil" },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "5ER REIHE",
+            fahrzeugtyp: "5L",
+            typeApproval: null,
+            driveType: null,
+            tireSizes: [],
+            auflagenCodes: ["744", "F40"],
+          },
+        ],
+      },
+      { auflagenCodes: [], auflagenNotes: null },
+    );
+
+    expect(
+      missingAbeRequiredFields(report, "5ER REIHE", null, {
+        auflagenScanSkipped: true,
+      }),
+    ).toEqual([]);
   });
 
   it("infers KBA from Nummer der ABE when kbaNumber was not extracted separately", () => {

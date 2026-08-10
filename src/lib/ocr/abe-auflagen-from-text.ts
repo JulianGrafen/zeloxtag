@@ -1,4 +1,5 @@
 import { looksLikeAuflagenCode } from "@/lib/ocr/abe-wizard-vehicle-normalize";
+import { correctAuflagenKuerzelOcr } from "@/lib/ocr/auflagen-kuerzel-ocr-correction";
 
 export type AbeAuflageEntry = {
   code: string;
@@ -36,6 +37,7 @@ function parseCodeLine(
   line: string,
   knownCodes: Set<string>,
   strict = false,
+  rawContext = "",
 ): { code: string; text: string } | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
@@ -58,7 +60,12 @@ function parseCodeLine(
   const match = CODE_LINE.exec(withoutPrefix);
   if (!match?.[1]) return null;
 
-  const code = normalizeCode(match[1]);
+  const code = normalizeCode(
+    correctAuflagenKuerzelOcr(match[1], {
+      allowlist: [...knownCodes],
+      rawContext,
+    }),
+  );
   if (!isAuflagenCodeToken(code, knownCodes, strict)) return null;
 
   return { code, text: (match[2] ?? "").trim() };
@@ -111,7 +118,7 @@ export function parseAbeAuflagenNotes(
   let current: AbeAuflageEntry | null = null;
 
   for (const line of lines) {
-    const parsed = parseCodeLine(line, known, strict);
+    const parsed = parseCodeLine(line, known, strict, text);
     if (parsed) {
       current = flushEntry(entries, current);
       current = parsed;
@@ -295,18 +302,29 @@ function auflagenCodeMentionedInNotes(
   return pattern.test(notes);
 }
 
+/** Target Kürzel still requiring text in OCR notes (excluding user-skipped codes). */
+export function requiredAuflagenCodes(
+  targetCodes: readonly string[],
+  skippedCodes: readonly string[] = [],
+): string[] {
+  const skipped = new Set(skippedCodes.map(normalizeCode));
+  return targetCodes.filter((code) => !skipped.has(normalizeCode(code)));
+}
+
 /** Target Kürzel from the vehicle table that still lack text in OCR notes. */
 export function missingAuflagenCodesInNotes(
   notes: string | null | undefined,
   targetCodes: string[],
+  skippedCodes: readonly string[] = [],
 ): string[] {
   const trimmedNotes = notes?.trim();
-  if (!trimmedNotes) return [...targetCodes];
-
+  const required = requiredAuflagenCodes(targetCodes, skippedCodes);
+  if (required.length === 0) return [];
+  if (!trimmedNotes) return [...required];
   const seen = new Set<string>();
   const missing: string[] = [];
 
-  for (const raw of targetCodes) {
+  for (const raw of required) {
     const code = normalizeCode(raw);
     if (!code || seen.has(code)) continue;
     seen.add(code);
@@ -321,10 +339,13 @@ export function missingAuflagenCodesInNotes(
 export function auflagenCodesCoveredInNotes(
   notes: string | null | undefined,
   targetCodes: string[],
+  skippedCodes: readonly string[] = [],
 ): string[] {
   if (targetCodes.length === 0) return [];
   const missing = new Set(
-    missingAuflagenCodesInNotes(notes, targetCodes).map(normalizeCode),
+    missingAuflagenCodesInNotes(notes, targetCodes, skippedCodes).map(
+      normalizeCode,
+    ),
   );
   return targetCodes
     .map(normalizeCode)

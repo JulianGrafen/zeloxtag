@@ -1,0 +1,58 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  auflagenKuerzelConfusionDistance,
+  correctAuflagenKuerzelList,
+  correctAuflagenKuerzelOcr,
+} from "@/lib/ocr/auflagen-kuerzel-ocr-correction";
+
+describe("auflagenKuerzelConfusionDistance", () => {
+  it("scores common OCR letter swaps as distance 1", () => {
+    expect(auflagenKuerzelConfusionDistance("CPO", "CPE")).toBe(1);
+    expect(auflagenKuerzelConfusionDistance("CPO", "CBO")).toBe(1);
+  });
+});
+
+describe("correctAuflagenKuerzelOcr", () => {
+  it("maps phantom CPO to CPE when allowlist contains CPE", () => {
+    expect(
+      correctAuflagenKuerzelOcr("CPO", {
+        allowlist: ["744", "CPE"],
+      }),
+    ).toBe("CPE");
+  });
+
+  it("maps phantom CPO to CBO when allowlist contains CBO", () => {
+    expect(
+      correctAuflagenKuerzelOcr("CPO", {
+        allowlist: ["744", "CBO"],
+      }),
+    ).toBe("CBO");
+  });
+
+  it("uses raw context to disambiguate CPE vs CBO", () => {
+    expect(
+      correctAuflagenKuerzelOcr("CPO", {
+        allowlist: ["CPO"],
+        rawContext: "744: Text\nCBO: Montagehinweis",
+      }),
+    ).toBe("CBO");
+  });
+
+  it("keeps valid codes unchanged", () => {
+    expect(correctAuflagenKuerzelOcr("744", { allowlist: ["744", "CPE"] })).toBe(
+      "744",
+    );
+    expect(correctAuflagenKuerzelOcr("CPE", { allowlist: ["CPE"] })).toBe("CPE");
+  });
+});
+
+describe("correctAuflagenKuerzelList", () => {
+  it("corrects a full row list with shared context", () => {
+    expect(
+      correctAuflagenKuerzelList(["744", "CPO"], {
+        rawContext: "744 und CPE laut ABE",
+      }),
+    ).toEqual(["744", "CPE"]);
+  });
+});
