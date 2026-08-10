@@ -28,11 +28,17 @@ import {
   isPrimaryOilChange,
 } from "@/lib/documents/invoice-title";
 import { detectOilChangeInvoice } from "@/lib/documents/oil-changes";
+import {
+  INVOICE_REVIEW_CATEGORIES,
+  INVOICE_REVIEW_CATEGORY_LABELS,
+  invoiceReviewCategoryFromScanType,
+  normalizeInvoiceReviewCategory,
+  type InvoiceReviewCategory,
+} from "@/lib/documents/invoice-review-categories";
 import { scanTypeDefinition, type ScanType } from "@/lib/documents/scan-types";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { documentTypeForTextCategory } from "@/lib/ocr/category-map";
 import {
-  INVOICE_TEXT_PARSE_CATEGORIES,
   type InvoiceTextParseCategory,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
@@ -83,15 +89,6 @@ export interface InvoiceUploadWizardProps {
   backHref?: string;
   backLabel?: string;
 }
-
-const CATEGORY_LABELS: Record<InvoiceTextParseCategory, string> = {
-  tuning: "Tuning",
-  service: "Service / Inspektion",
-  tuev: "TÜV / HU",
-  repair: "Reparatur",
-  abe: "ABE / Gutachten",
-  other: "Sonstiges",
-};
 
 class InvoiceApiError extends Error {
   constructor(message: string) {
@@ -239,6 +236,7 @@ export function InvoiceUploadWizard({
   const scanDef = scanTypeDefinition(scanType);
   const resolvedHeading = scanDef.heading;
   const lockedCategory = scanDef.lockCategory ? scanDef.category : null;
+  const defaultReviewCategory = invoiceReviewCategoryFromScanType(scanType);
 
   const [state, setState] = useState<WizardState>({
     phase: "capture-overview",
@@ -439,12 +437,19 @@ export function InvoiceUploadWizard({
 
       const lineItemsResult = mergeLineItemsExtractions(lineItemsResults);
 
-      const fields = mergeInvoiceWizardExtractions(
+      const merged = mergeInvoiceWizardExtractions(
         overviewResult,
         headerResult,
         lineItemsResult,
         { lockedCategory },
       );
+      const fields = {
+        ...merged,
+        category: normalizeInvoiceReviewCategory(
+          merged.category,
+          defaultReviewCategory,
+        ),
+      };
 
       const uploadFile = await buildUploadFile(overviewFile, lineItemsFiles);
       const previewSource =
@@ -923,40 +928,32 @@ export function InvoiceUploadWizard({
 
             <Label>
               <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Kategorie
+                Art der Rechnung
               </span>
-              {scanDef.lockCategory ? (
-                <p className="mt-1 text-[0.9rem] font-medium text-[color:var(--vd-text)]">
-                  {CATEGORY_LABELS[fields.category]}
-                </p>
-              ) : (
-                <select
-                  value={fields.category}
-                  onChange={(event) =>
-                    setState((prev) =>
-                      prev.fields
-                        ? {
-                            ...prev,
-                            fields: {
-                              ...prev.fields,
-                              category: event.target
-                                .value as InvoiceTextParseCategory,
-                            },
-                          }
-                        : prev,
-                    )
-                  }
-                  className="claim-input mt-1"
-                >
-                  {INVOICE_TEXT_PARSE_CATEGORIES.filter((c) => c !== "abe").map(
-                    (option) => (
-                      <option key={option} value={option}>
-                        {CATEGORY_LABELS[option]}
-                      </option>
-                    ),
-                  )}
-                </select>
-              )}
+              <select
+                value={fields.category}
+                onChange={(event) =>
+                  setState((prev) =>
+                    prev.fields
+                      ? {
+                          ...prev,
+                          fields: {
+                            ...prev.fields,
+                            category: event.target
+                              .value as InvoiceReviewCategory,
+                          },
+                        }
+                      : prev,
+                  )
+                }
+                className="claim-input mt-1"
+              >
+                {INVOICE_REVIEW_CATEGORIES.map((option) => (
+                  <option key={option} value={option}>
+                    {INVOICE_REVIEW_CATEGORY_LABELS[option]}
+                  </option>
+                ))}
+              </select>
             </Label>
 
             <div className="grid grid-cols-2 gap-3">

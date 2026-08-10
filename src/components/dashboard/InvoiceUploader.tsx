@@ -61,19 +61,17 @@ import {
   type ProcessorProgress,
 } from "@/lib/ocr/processor";
 import {
-  INVOICE_TEXT_PARSE_CATEGORIES,
   type InvoiceTextParseCategory,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
 
-const CATEGORY_LABELS: Record<InvoiceTextParseCategory, string> = {
-  tuning: "Tuning",
-  service: "Service / Inspektion",
-  tuev: "TÜV / HU",
-  repair: "Reparatur",
-  abe: "ABE / Gutachten",
-  other: "Sonstiges",
-};
+import {
+  INVOICE_REVIEW_CATEGORIES,
+  INVOICE_REVIEW_CATEGORY_LABELS,
+  invoiceReviewCategoryFromScanType,
+  normalizeInvoiceReviewCategory,
+  type InvoiceReviewCategory,
+} from "@/lib/documents/invoice-review-categories";
 
 const MAX_PAGES = 12;
 
@@ -197,6 +195,7 @@ export function InvoiceUploader({
   const scanDef = scanTypeDefinition(scanType);
   const resolvedCategory = scanDef.category ?? initialCategory;
   const resolvedLockCategory = scanDef.lockCategory ?? lockCategory;
+  const defaultReviewCategory = invoiceReviewCategoryFromScanType(scanType);
   const resolvedHeading = scanDef.heading ?? heading;
   const resolvedSubheading = `${vehicleLabel} · ${scanDef.subheading}`;
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/dokumente`;
@@ -473,9 +472,13 @@ export function InvoiceUploader({
         oil,
       });
 
-      const baseFields = resolvedLockCategory
-        ? { ...analyzed.fields, category: resolvedCategory }
-        : analyzed.fields;
+      const baseFields = {
+        ...analyzed.fields,
+        category: normalizeInvoiceReviewCategory(
+          resolvedLockCategory ? resolvedCategory : analyzed.fields.category,
+          defaultReviewCategory,
+        ),
+      };
 
       // Only promote to Service/Ölwechsel title when oil is the main job.
       const nextFields = {
@@ -1545,35 +1548,26 @@ export function InvoiceUploader({
 
             <Label>
               <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Kategorie
+                Art der Rechnung
               </span>
-              {resolvedLockCategory ? (
-                <Input
-                  readOnly
-                  value={CATEGORY_LABELS[fields.category]}
-                  className="bg-neutral-50"
-                />
-              ) : (
-                <select
-                  value={fields.category}
-                  onChange={(event) => {
-                    const category = event.target
-                      .value as InvoiceTextParseCategory;
-                    setFields((current) => ({
-                      ...current,
-                      category,
-                      amount: category === "abe" ? null : current.amount,
-                    }));
-                  }}
-                  className="claim-input"
-                >
-                  {INVOICE_TEXT_PARSE_CATEGORIES.map((option) => (
-                    <option key={option} value={option}>
-                      {CATEGORY_LABELS[option]}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <select
+                value={fields.category}
+                onChange={(event) => {
+                  const category = event.target
+                    .value as InvoiceReviewCategory;
+                  setFields((current) => ({
+                    ...current,
+                    category,
+                  }));
+                }}
+                className="claim-input"
+              >
+                {INVOICE_REVIEW_CATEGORIES.map((option) => (
+                  <option key={option} value={option}>
+                    {INVOICE_REVIEW_CATEGORY_LABELS[option]}
+                  </option>
+                ))}
+              </select>
             </Label>
 
             <div className="grid grid-cols-2 gap-3">
