@@ -165,4 +165,19 @@ describe("abe-wizard-vehicle-normalize", () => {
       true,
     );
   });
+
+  it("reads Reifen / Radgröße from alternate LLM keys", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "3ER REIHE",
+        fahrzeugtyp: "3k-N1",
+        technischeBezeichnung: "e1*2007/46*0508*0508*0000*00",
+        reifen: ["225/45 R17", "245/40 R18"],
+        auflagenCodes: ["744"],
+      },
+    ]);
+
+    expect(parsed[0]?.typeApproval).toBe("e1*2007/46*0508*0508*0000*00");
+    expect(parsed[0]?.tireSizes).toEqual(["225/45 R17", "245/40 R18"]);
+  });
 });

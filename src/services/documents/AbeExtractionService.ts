@@ -26,6 +26,7 @@ import {
   AbeHuntStammdatenSchema,
   emptyAbeDataHunterReport,
   finalizeAbeDataHunterReport,
+  coalesceAbeHolderAndManufacturer,
   isAbeHuntAuflagenComplete,
   isAbeHuntMarkingComplete,
   isAbeHuntStammdatenComplete,
@@ -108,16 +109,36 @@ export class AbeDataHunterExtractionService {
         abeNumber: normalizeAbeNumberDigits(parsed.data.abeNumber) || null,
       };
 
-      if (!isAbeHuntStammdatenComplete(extraction)) {
+      const coalesced = coalesceAbeHolderAndManufacturer({
+        ...emptyAbeDataHunterReport(),
+        ...extraction,
+      });
+
+      if (!isAbeHuntStammdatenComplete(coalesced)) {
         return {
           status: "needs_manual",
-          extraction,
+          extraction: {
+            kbaNumber: coalesced.kbaNumber,
+            abeNumber: coalesced.abeNumber,
+            abeHolder: coalesced.abeHolder,
+            manufacturer: coalesced.manufacturer,
+            partDesignation: coalesced.partDesignation,
+          },
           reason:
             "Nicht alle Stammdaten erkannt — fehlende Pflichtfelder bitte manuell ergänzen.",
         };
       }
 
-      return { status: "ok", extraction };
+      return {
+        status: "ok",
+        extraction: {
+          kbaNumber: coalesced.kbaNumber,
+          abeNumber: coalesced.abeNumber,
+          abeHolder: coalesced.abeHolder,
+          manufacturer: coalesced.manufacturer,
+          partDesignation: coalesced.partDesignation,
+        },
+      };
     } catch {
       return {
         status: "needs_manual",
@@ -200,12 +221,20 @@ export class AbeDataHunterExtractionService {
         input,
         [
           IMAGE_ONLY_GUARD,
-          "Extract only vehicle-table rows with Verkaufsbezeichnung (allowed vehicles).",
-          "Copy Verkaufsbezeichnung onto every row of that group.",
+          "Extract German ABE Fahrzeug- und Auflagen-Tabelle rows with Verkaufsbezeichnung (allowed vehicles).",
+          "Verkaufsbezeichnung is the vehicle model section header (e.g. Volkswagen GOLF GTI, BMW 3ER REIHE, Mercedes-Benz C-KLASSE) — not Hersteller, not Fahrzeugtyp.",
+          "Copy the exact Verkaufsbezeichnung onto every row of that section.",
+          "Column mapping:",
+          "- fahrzeugtyp: Fahrzeugtyp column cell for this row only.",
+          "- typeApproval: Betriebserlaubnis / Typgenehmigung / EG-BE / technische Bezeichnung cell verbatim.",
+          "- driveType: Allradantrieb / Heckantrieb / Frontantrieb if present in Auflagen column, else null.",
+          '- tireSizes: Reifen / Radgröße column (e.g. "225/40 R18") — one entry per size; empty array when column missing.',
+          "- auflagenCodes: short Auflagen-Kürzel only in this row's Auflagen column — never merge codes from other sections.",
+          "Do not merge rows. Do not skip visible rows.",
         ],
         [
-          "Extract only the requested data point from this cropped image.",
-          "Read every visible Fahrzeug-Tabelle row under the Verkaufsbezeichnung.",
+          "Extract every visible Fahrzeug-Tabelle row under the Verkaufsbezeichnung.",
+          "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen (optional) | Auflagen.",
         ],
         ABE_HUNT_VEHICLE_JSON_SCHEMA,
         "hunt-vehicle",
@@ -259,11 +288,12 @@ export class AbeDataHunterExtractionService {
         input,
         [
           FREESTYLE_GUARD,
-          "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber / Auftraggeber), manufacturer (Hersteller / Herstellerzeichen), partDesignation (Bauteilbezeichnung), markingText (Kennzeichnung), vehicleMatches (Fahrzeugtabelle with Verkaufsbezeichnung), auflagenCodes.",
+          "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber / Auftraggeber), manufacturer (Hersteller / Herstellerzeichen), partDesignation (Bauteilbezeichnung / technische Bezeichnung inkl. Felgenmaße), markingText (Kennzeichnung), vehicleMatches (Fahrzeugtabelle with Verkaufsbezeichnung), auflagenCodes.",
           "Never use Gutachten-Nr. or Genehmigungsnummer with letters for kbaNumber or abeNumber.",
           'For markingText: transcribe the full Kennzeichnung section verbatim — exact text after the heading, including table rows (Art der Kennzeichnung, Nummer). No summary.',
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer.",
           'Map "Auftraggeber" to abeHolder when no separate Inhaber der ABE label is shown.',
+          "When extracting vehicleMatches: fahrzeugtyp = Fahrzeugtyp column; typeApproval = Betriebserlaubnis / EG-BE / technische Bezeichnung; tireSizes = Reifen / Radgröße column.",
           "When extracting vehicleMatches: put Auflagen-Kürzel ONLY in each row's auflagenCodes — never in the top-level auflagenCodes field.",
           "Do NOT copy Auflagen from rows above or below the target vehicle — each row gets only its own Auflagen column.",
           "Leave auflagenNotes empty — the user scans Auflagen prose in a dedicated follow-up step.",

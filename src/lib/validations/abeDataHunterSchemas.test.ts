@@ -5,6 +5,7 @@ import {
   ABE_HUNT_FIELD_WATERMARKS,
   ABE_REQUIRED_FIELD_LABELS,
   abeHuntFieldDisplayLabel,
+  coalesceAbeHolderAndManufacturer,
   emptyAbeDataHunterReport,
   fillAbeDataHunterReport,
   isAbeHuntAuflagenComplete,
@@ -297,5 +298,33 @@ describe("ABE_HUNT_FIELD_WATERMARKS", () => {
     expect(ABE_HUNT_FIELD_SCAN_HINTS.verkaufsbezeichnung?.popupBody).toContain(
       "Tabellenabschnitt",
     );
+  });
+});
+
+describe("coalesceAbeHolderAndManufacturer", () => {
+  it("mirrors holder to manufacturer when combined on the ABE", () => {
+    const report = coalesceAbeHolderAndManufacturer({
+      ...emptyAbeDataHunterReport(),
+      abeHolder: "Alcar Leichtmetallräder GmbH",
+      manufacturer: null,
+    });
+    expect(report.manufacturer).toBe("Alcar Leichtmetallräder GmbH");
+  });
+
+  it("mirrors manufacturer to holder when only Hersteller was extracted", () => {
+    const report = coalesceAbeHolderAndManufacturer({
+      ...emptyAbeDataHunterReport(),
+      abeHolder: null,
+      manufacturer: "BBS Kraftfahrzeugtechnik AG",
+    });
+    expect(report.abeHolder).toBe("BBS Kraftfahrzeugtechnik AG");
+  });
+
+  it("applies during fillAbeDataHunterReport merge", () => {
+    const merged = fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
+      ...emptyAbeDataHunterReport(),
+      abeHolder: "Muster Tuning GmbH",
+    });
+    expect(merged.manufacturer).toBe("Muster Tuning GmbH");
   });
 });

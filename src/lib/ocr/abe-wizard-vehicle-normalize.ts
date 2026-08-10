@@ -1,4 +1,5 @@
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
+import { normalizeVerkaufsbezeichnungKey } from "@/lib/ocr/abe-wizard-vehicle-match";
 
 const DRIVE_TYPES = new Set([
   "allradantrieb",
@@ -189,6 +190,36 @@ function readStringArray(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function readTireSizes(row: Record<string, unknown>): string[] {
+  const fromArray = readStringArray(row.tireSizes);
+  if (fromArray.length > 0) return fromArray;
+
+  for (const key of ["reifen", "radSizes", "radgroesse", "radgroessen"] as const) {
+    const alt = row[key];
+    if (Array.isArray(alt)) {
+      const parsed = readStringArray(alt);
+      if (parsed.length > 0) return parsed;
+    }
+    if (typeof alt === "string" && alt.trim()) {
+      return alt
+        .split(/[,;/]+/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+}
+
+function readTypeApproval(row: Record<string, unknown>): string | null {
+  return (
+    readString(row.typeApproval) ??
+    readString(row.betriebserlaubnis) ??
+    readString(row.technischeBezeichnung) ??
+    readString(row.egBe)
+  );
+}
+
 function readRowRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
@@ -310,13 +341,24 @@ export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
           ? stripVerkaufsbezeichnungLabel(rawGroupCandidate)
           : ""),
       fahrzeugtyp,
-      typeApproval: readString(row.typeApproval),
+      typeApproval: readTypeApproval(row),
       driveType: readString(row.driveType) ?? parsedAuflagen.driveType,
-      tireSizes: readStringArray(row.tireSizes),
+      tireSizes: readTireSizes(row),
       auflagenCodes: parsedAuflagen.codes,
     };
 
     if (!rowHasTableData(draft) && !draft.verkaufsbezeichnung.trim()) {
+      continue;
+    }
+
+    if (
+      !rowHasTableData(draft) &&
+      draft.verkaufsbezeichnung.trim() &&
+      looksLikeVerkaufsbezeichnung(draft.verkaufsbezeichnung)
+    ) {
+      currentVerkaufsbezeichnung = normalizeVerkaufsbezeichnungKey(
+        draft.verkaufsbezeichnung,
+      );
       continue;
     }
 

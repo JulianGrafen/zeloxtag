@@ -1,13 +1,24 @@
 import type { AbeVehicleContext, TableData } from "@/lib/validations/abeSchema";
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
+import { scoreHaystackAgainstGarageVehicle } from "@/lib/ocr/abe-garage-vehicle-match";
 import {
   compactAlnum,
+  matchCompatibilityTable,
   normalizeMatchToken,
+  tableMatchingService,
 } from "@/services/ocr/TableMatchingService";
 
 export type AbeVehicleGroup = {
   verkaufsbezeichnung: string;
   rows: AbeVehicleMatch[];
+};
+
+export type AbeVehicleRowScopeOptions = {
+  vehicleContext?: AbeVehicleContext | null;
+  /** Explicit row index within the selected group. */
+  rowIndex?: number | null;
+  /** When true, use all rows of the selected group if no garage row match exists. */
+  fallbackToGroupRows?: boolean;
 };
 
 /** Canonical label for grouping rows under the same section header. */
@@ -40,40 +51,49 @@ export function groupAbeVehicleMatches(
   }));
 }
 
+function rowMatchHaystack(row: AbeVehicleMatch): string {
+  return [
+    row.verkaufsbezeichnung,
+    row.fahrzeugtyp ?? "",
+    row.typeApproval ?? "",
+    row.driveType ?? "",
+    row.tireSizes.join(" "),
+  ].join(" ");
+}
+
+export function scoreAbeVehicleRow(
+  row: AbeVehicleMatch,
+  vehicle: AbeVehicleContext,
+): number {
+  let score = scoreHaystackAgainstGarageVehicle(rowMatchHaystack(row), vehicle);
+
+  const type = vehicle.type ? normalizeMatchToken(vehicle.type) : "";
+  const egBe = vehicle.egBe ? normalizeMatchToken(vehicle.egBe) : "";
+  const egBeCompact = vehicle.egBe ? compactAlnum(vehicle.egBe) : "";
+  const rowHaystack = normalizeMatchToken(rowMatchHaystack(row));
+
+  if (type && rowHaystack.includes(type)) score += 4;
+  if (egBe && row.typeApproval) {
+    const approval = normalizeMatchToken(row.typeApproval);
+    if (
+      approval.includes(egBe) ||
+      compactAlnum(row.typeApproval).includes(egBeCompact)
+    ) {
+      score += 5;
+    }
+  }
+
+  return score;
+}
+
 export function scoreAbeVehicleGroup(
   group: AbeVehicleGroup,
   vehicle: AbeVehicleContext,
 ): number {
-  const haystack = normalizeMatchToken(group.verkaufsbezeichnung);
-  const brand = normalizeMatchToken(vehicle.brand);
-  const model = normalizeMatchToken(vehicle.model);
-
-  let score = 0;
-  if (brand && haystack.includes(brand)) score += 2;
-  if (model && haystack.includes(model)) score += 3;
-
-  for (const token of model.split(" ").filter((part) => part.length >= 2)) {
-    if (haystack.includes(token)) score += 1;
-  }
+  let score = scoreHaystackAgainstGarageVehicle(group.verkaufsbezeichnung, vehicle);
 
   for (const row of group.rows) {
-    const rowHaystack = normalizeMatchToken(
-      [row.typeApproval ?? "", row.fahrzeugtyp ?? ""].join(" "),
-    );
-    const type = vehicle.type ? normalizeMatchToken(vehicle.type) : "";
-    const egBe = vehicle.egBe ? normalizeMatchToken(vehicle.egBe) : "";
-    const egBeCompact = vehicle.egBe ? compactAlnum(vehicle.egBe) : "";
-
-    if (type && rowHaystack.includes(type)) score += 2;
-    if (egBe && row.typeApproval) {
-      const approval = normalizeMatchToken(row.typeApproval);
-      if (
-        approval.includes(egBe) ||
-        compactAlnum(row.typeApproval).includes(egBeCompact)
-      ) {
-        score += 3;
-      }
-    }
+    score = Math.max(score, scoreAbeVehicleRow(row, vehicle));
   }
 
   return score;
@@ -96,7 +116,33 @@ export function findBestAbeVehicleGroupIndex(
     }
   });
 
-  return bestScore >= 3 ? bestIndex : null;
+  return bestScore >= 2 ? bestIndex : null;
+}
+
+export function findBestAbeVehicleRowIndices(
+  group: AbeVehicleGroup,
+  vehicle: AbeVehicleContext | null | undefined,
+): number[] {
+  if (!vehicle || group.rows.length === 0) return [];
+
+  const table = vehicleGroupRowsToTableData(group);
+  const matched = tableMatchingService.matchTable(table, vehicle);
+  if (matched.matchedRowIds.length === 0) {
+    let bestIndex: number | null = null;
+    let bestScore = 0;
+    group.rows.forEach((row, index) => {
+      const score = scoreAbeVehicleRow(row, vehicle);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    });
+    return bestScore >= 2 && bestIndex !== null ? [bestIndex] : [];
+  }
+
+  return matched.matchedRowIds
+    .map((rowId) => Number.parseInt(rowId.replace(/^abe-row-/, ""), 10))
+    .filter((index) => Number.isFinite(index) && index >= 0);
 }
 
 export function resolveInitialAbeVehicleGroupIndex(
@@ -105,9 +151,7 @@ export function resolveInitialAbeVehicleGroupIndex(
 ): number | null {
   if (groups.length === 0) return null;
   if (groups.length === 1) return 0;
-  const best = findBestAbeVehicleGroupIndex(groups, vehicleContext);
-  if (best !== null) return best;
-  return 0;
+  return findBestAbeVehicleGroupIndex(groups, vehicleContext);
 }
 
 /** Pick the vehicle group for hunt / save when the user has not chosen manually. */
@@ -142,12 +186,88 @@ export function requiresAbeVehicleGroupSelection(
   return groups.length > 1;
 }
 
+export function isAbeVehicleTableSelectionReady(
+  groups: AbeVehicleGroup[],
+  selectedGroupIndex: number | null,
+  selectedRowId: string | null,
+): boolean {
+  if (groups.length === 0) return true;
+
+  const groupIndex =
+    selectedGroupIndex ?? (groups.length === 1 ? 0 : null);
+  if (groupIndex === null) return false;
+
+  const group = groups[groupIndex];
+  if (!group) return false;
+  if (group.rows.length <= 1) return true;
+
+  return selectedRowId !== null;
+}
+
+export function rowIndexFromAbeRowId(rowId: string | null | undefined): number | null {
+  if (!rowId) return null;
+  const match = /^abe-row-(\d+)$/.exec(rowId);
+  if (!match?.[1]) return null;
+  const index = Number.parseInt(match[1], 10);
+  return Number.isFinite(index) && index >= 0 ? index : null;
+}
+
+export function defaultAbeRowIdForGroup(group: AbeVehicleGroup): string | null {
+  if (group.rows.length !== 1) return null;
+  return "abe-row-0";
+}
+
+export function auflagenForUserVehicleSelection(
+  report: {
+    auflagenCodes: string[];
+    vehicleMatches: AbeVehicleMatch[];
+  },
+  selectedGroupIndex: number | null,
+  selectedRowId: string | null,
+): string[] {
+  const groups = groupAbeVehicleMatches(report.vehicleMatches);
+  if (groups.length === 0) {
+    return report.auflagenCodes;
+  }
+
+  const groupIndex =
+    selectedGroupIndex ?? (groups.length === 1 ? 0 : null);
+  if (groupIndex === null) return [];
+
+  const group = groups[groupIndex];
+  if (!group) return [];
+
+  const rowIndex = rowIndexFromAbeRowId(selectedRowId);
+  const effectiveRowIndex =
+    rowIndex ?? (group.rows.length === 1 ? 0 : null);
+  if (effectiveRowIndex === null) return [];
+
+  return auflagenForAbeVehicleGroup(group, {
+    rowIndex: effectiveRowIndex,
+  });
+}
+
+export function selectedAbeVehicleGroup(
+  report: { vehicleMatches: AbeVehicleMatch[] },
+  selectedGroupIndex: number | null,
+): AbeVehicleGroup | null {
+  const groups = groupAbeVehicleMatches(report.vehicleMatches);
+  if (groups.length === 0) return null;
+  const groupIndex =
+    selectedGroupIndex ?? (groups.length === 1 ? 0 : null);
+  if (groupIndex === null) return null;
+  return groups[groupIndex] ?? null;
+}
+
 export function abeVehicleGroupKey(group: AbeVehicleGroup, index: number): string {
   return `abe-group-${index}-${group.verkaufsbezeichnung}`;
 }
 
-export function vehicleGroupRowsToTableData(group: AbeVehicleGroup): TableData {
-  return {
+export function vehicleGroupRowsToTableData(
+  group: AbeVehicleGroup,
+  vehicleContext?: AbeVehicleContext | null,
+): TableData {
+  const base: TableData = {
     caption: group.verkaufsbezeichnung,
     headers: [
       "Fahrzeugtyp",
@@ -169,29 +289,73 @@ export function vehicleGroupRowsToTableData(group: AbeVehicleGroup): TableData {
       matchReason: null,
     })),
   };
+
+  return matchCompatibilityTable(base, vehicleContext);
+}
+
+function scopedRowsForGroup(
+  group: AbeVehicleGroup,
+  options: AbeVehicleRowScopeOptions = {},
+): AbeVehicleMatch[] {
+  if (group.rows.length === 0) return [];
+
+  if (
+    options.rowIndex !== null &&
+    options.rowIndex !== undefined &&
+    options.rowIndex >= 0 &&
+    options.rowIndex < group.rows.length
+  ) {
+    return [group.rows[options.rowIndex]!];
+  }
+
+  if (options.vehicleContext) {
+    const matchedIndices = findBestAbeVehicleRowIndices(
+      group,
+      options.vehicleContext,
+    );
+    if (matchedIndices.length > 0) {
+      return matchedIndices
+        .map((index) => group.rows[index])
+        .filter((row): row is AbeVehicleMatch => Boolean(row));
+    }
+  }
+
+  if (group.rows.length === 1) {
+    return group.rows;
+  }
+
+  if (options.fallbackToGroupRows) {
+    return group.rows;
+  }
+
+  return [];
 }
 
 export function auflagenForAbeVehicleGroup(
   group: AbeVehicleGroup | null | undefined,
+  options: AbeVehicleRowScopeOptions = {},
 ): string[] {
   if (!group) return [];
+
+  const rows = scopedRowsForGroup(group, options);
+  if (rows.length === 0) return [];
+
   return Array.from(
     new Set(
-      group.rows.flatMap((row) =>
+      rows.flatMap((row) =>
         row.auflagenCodes.map((code) => code.trim()).filter(Boolean),
       ),
     ),
   );
 }
 
-type ResolveAuflagenOptions = {
+type ResolveAuflagenOptions = AbeVehicleRowScopeOptions & {
   selectedVerkaufsbezeichnung?: string | null;
-  vehicleContext?: AbeVehicleContext | null;
 };
 
 /**
- * Auflagen for save / completeness checks: scoped to the selected or matched
- * vehicle group — never merged from other table sections above/below.
+ * Auflagen for save / completeness checks: scoped to the selected vehicle group
+ * and, when possible, the garage-matched table row only.
  */
 export function resolveAuflagenCodesForReport(
   report: {
@@ -229,21 +393,41 @@ export function resolveAuflagenCodesForReport(
     group = groups[0] ?? null;
   }
 
-  const fromGroup = auflagenForAbeVehicleGroup(group);
-  if (fromGroup.length > 0) return fromGroup;
+  if (!group) return [];
 
-  return report.auflagenCodes;
+  const scoped = auflagenForAbeVehicleGroup(group, {
+    vehicleContext: options.vehicleContext,
+    rowIndex: options.rowIndex,
+    fallbackToGroupRows: Boolean(selectedKey),
+  });
+  return scoped;
 }
 
 export function selectedVerkaufsbezeichnungPayload(
   group: AbeVehicleGroup,
+  vehicleContext?: AbeVehicleContext | null,
+  selectedRowId?: string | null,
 ): {
   verkaufsbezeichnung: string;
   vehicleTable: TableData;
 } {
+  const table = vehicleGroupRowsToTableData(group, vehicleContext);
+  const rowIndex = rowIndexFromAbeRowId(selectedRowId ?? null);
+  const selectedRow =
+    rowIndex !== null ? table.rows[rowIndex] ?? null : null;
+  const rowsToSave =
+    selectedRow !== null
+      ? [selectedRow]
+      : table.rows.length === 1
+        ? table.rows
+        : table.rows.filter((row) => row.isUserVehicleMatch);
+
   return {
     verkaufsbezeichnung: group.verkaufsbezeichnung,
-    vehicleTable: vehicleGroupRowsToTableData(group),
+    vehicleTable: {
+      ...table,
+      rows: rowsToSave.length > 0 ? rowsToSave : table.rows,
+    },
   };
 }
 

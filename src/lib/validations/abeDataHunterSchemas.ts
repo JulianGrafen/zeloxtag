@@ -18,6 +18,7 @@ import {
   missingAuflagenCodesInNotes,
 } from "@/lib/ocr/abe-auflagen-from-text";
 import {
+  auflagenForUserVehicleSelection,
   groupAbeVehicleMatches,
   resolveAuflagenCodesForReport,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
@@ -392,32 +393,37 @@ export function fillAbeDataHunterReport(
     vehicleMatches.push(row);
   }
 
-  return withInferredKba({
-    kbaNumber: keepFilled(
-      current.kbaNumber,
-      normalizeAbeKbaDigits(incoming.kbaNumber),
-    ),
-    abeNumber: keepFilled(
-      current.abeNumber,
-      normalizeAbeNumberDigits(incoming.abeNumber),
-    ),
-    abeHolder: keepFilled(current.abeHolder, incoming.abeHolder),
-    manufacturer: keepFilled(current.manufacturer, incoming.manufacturer),
-    partDesignation: keepFilled(
-      current.partDesignation,
-      incoming.partDesignation,
-    ),
-    markingText: mergeAbeMarkingText(
-      current.markingText,
-      incoming.markingText,
-    ),
-    vehicleMatches,
-    auflagenCodes:
-      vehicleMatches.length > 0
-        ? current.auflagenCodes
-        : mergeUniqueCodes(current.auflagenCodes, incoming.auflagenCodes),
-    auflagenNotes: mergeAuflagenNotes(current.auflagenNotes, incoming.auflagenNotes),
-  });
+  return coalesceAbeHolderAndManufacturer(
+    withInferredKba({
+      kbaNumber: keepFilled(
+        current.kbaNumber,
+        normalizeAbeKbaDigits(incoming.kbaNumber),
+      ),
+      abeNumber: keepFilled(
+        current.abeNumber,
+        normalizeAbeNumberDigits(incoming.abeNumber),
+      ),
+      abeHolder: keepFilled(current.abeHolder, incoming.abeHolder),
+      manufacturer: keepFilled(current.manufacturer, incoming.manufacturer),
+      partDesignation: keepFilled(
+        current.partDesignation,
+        incoming.partDesignation,
+      ),
+      markingText: mergeAbeMarkingText(
+        current.markingText,
+        incoming.markingText,
+      ),
+      vehicleMatches,
+      auflagenCodes:
+        vehicleMatches.length > 0
+          ? current.auflagenCodes
+          : mergeUniqueCodes(current.auflagenCodes, incoming.auflagenCodes),
+      auflagenNotes: mergeAuflagenNotes(
+        current.auflagenNotes,
+        incoming.auflagenNotes,
+      ),
+    }),
+  );
 }
 
 function withInferredKba(report: AbeDataHunterReport): AbeDataHunterReport {
@@ -426,10 +432,25 @@ function withInferredKba(report: AbeDataHunterReport): AbeDataHunterReport {
   return { ...report, kbaNumber };
 }
 
+/** Mirror holder ↔ manufacturer when ABE labels them as one company. */
+export function coalesceAbeHolderAndManufacturer(
+  report: AbeDataHunterReport,
+): AbeDataHunterReport {
+  const holder = report.abeHolder?.trim();
+  const manufacturer = report.manufacturer?.trim();
+  if (holder && !manufacturer) {
+    return { ...report, manufacturer: holder };
+  }
+  if (manufacturer && !holder) {
+    return { ...report, abeHolder: manufacturer };
+  }
+  return report;
+}
+
 export function finalizeAbeDataHunterReport(
   report: AbeDataHunterReport,
 ): AbeDataHunterReport {
-  return withInferredKba(report);
+  return coalesceAbeHolderAndManufacturer(withInferredKba(report));
 }
 
 export function scopeAbeDataHunterReportAuflagen(
@@ -519,16 +540,28 @@ export function missingAbeRequiredFields(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
+  selection?: {
+    selectedGroupIndex?: number | null;
+    selectedRowId?: string | null;
+  },
 ): AbeRequiredFieldKey[] {
   const missing = missingAbeCoreHuntFields(
     report,
     selectedVerkaufsbezeichnung,
     vehicleContext,
   );
-  const targetCodes = resolveAuflagenCodesForReport(report, {
-    selectedVerkaufsbezeichnung,
-    vehicleContext,
-  });
+  const groups = groupAbeVehicleMatches(report.vehicleMatches);
+  const targetCodes =
+    groups.length > 0
+      ? auflagenForUserVehicleSelection(
+          report,
+          selection?.selectedGroupIndex ?? null,
+          selection?.selectedRowId ?? null,
+        )
+      : resolveAuflagenCodesForReport(report, {
+          selectedVerkaufsbezeichnung,
+          vehicleContext,
+        });
   const notesMissing =
     !report.auflagenNotes?.trim() ||
     (targetCodes.length > 0 &&
@@ -541,12 +574,17 @@ export function isAbeDataHunterReportComplete(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
+  selection?: {
+    selectedGroupIndex?: number | null;
+    selectedRowId?: string | null;
+  },
 ): boolean {
   return (
     missingAbeRequiredFields(
       report,
       selectedVerkaufsbezeichnung,
       vehicleContext,
+      selection,
     ).length === 0
   );
 }
@@ -587,7 +625,7 @@ export const ABE_HUNT_STAMMDATEN_JSON_SCHEMA = {
         type: ["string", "null"],
         description:
           FROM_CROP +
-          "Bezeichnung des Bauteils (Gerät, Typ, Design, Spoiler, Spurverbreiterung, Radtyp, etc.).",
+          'Bezeichnung des Bauteils / technische Bezeichnung (Gerät, Typ, Design, Felge, Radtyp, Maße wie "8,5 × 19", Spoiler, Spurverbreiterung).',
       },
     },
   },
@@ -653,7 +691,7 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
               type: "string",
               description:
                 FROM_CROP +
-                "Verkaufsbezeichnung / model section header for this row group.",
+                "Verkaufsbezeichnung section header for this table block — the allowed vehicle line exactly as printed (e.g. '3ER REIHE', 'GOLF GTI', 'C-KLASSE', '5ER REIHE, GRAN TURISMO'). Repeat on every row belonging to this section. Empty string only on continuation rows directly under the same header.",
             },
             fahrzeugtyp: {
               type: ["string", "null"],
@@ -662,7 +700,8 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
             typeApproval: {
               type: ["string", "null"],
               description:
-                FROM_CROP + "Betriebserlaubnis / Typgenehmigung cell.",
+                FROM_CROP +
+                "Betriebserlaubnis / Typgenehmigung / EG-BE / technische Bezeichnung cell verbatim.",
             },
             driveType: {
               type: ["string", "null"],
@@ -674,7 +713,8 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
               type: "array",
               items: { type: "string" },
               description:
-                FROM_CROP + "Tyre sizes if present; empty array otherwise.",
+                FROM_CROP +
+                'Reifen / Radgröße column (e.g. "225/40 R18", "245/35 ZR19") — one string per size; empty array when column missing.',
             },
             auflagenCodes: {
               type: "array",
@@ -777,7 +817,7 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
         type: ["string", "null"],
         description:
           FROM_PHOTO +
-          "Bezeichnung des Bauteils (Gerät, Typ, Design, Spoiler, Spurverbreiterung, Radtyp, etc.).",
+          'Bezeichnung des Bauteils / technische Bezeichnung (Gerät, Typ, Design, Felge, Radtyp, Maße wie "8,5 × 19", Spoiler, Spurverbreiterung).',
       },
       markingText: {
         type: ["string", "null"],
@@ -825,7 +865,8 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
             typeApproval: {
               type: ["string", "null"],
               description:
-                FROM_PHOTO + "Betriebserlaubnis / Typgenehmigung cell.",
+                FROM_PHOTO +
+                "Betriebserlaubnis / Typgenehmigung / EG-BE / technische Bezeichnung cell verbatim.",
             },
             driveType: {
               type: ["string", "null"],
@@ -837,7 +878,8 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
               type: "array",
               items: { type: "string" },
               description:
-                FROM_PHOTO + "Tyre sizes if present; empty array otherwise.",
+                FROM_PHOTO +
+                'Reifen / Radgröße column (e.g. "225/40 R18", "245/35 ZR19") — one string per size; empty array when column missing.',
             },
             auflagenCodes: {
               type: "array",

@@ -4,6 +4,7 @@ import {
   findBestAbeVehicleGroupIndex,
   formatAbeVehicleApprovalLine,
   groupAbeVehicleMatches,
+  auflagenForUserVehicleSelection,
   requiresAbeVehicleGroupSelection,
   resolveAuflagenCodesForReport,
   resolveInitialAbeVehicleGroupIndex,
@@ -67,9 +68,9 @@ describe("abe-wizard-vehicle-match", () => {
     expect(resolveInitialAbeVehicleGroupIndex(groups)).toBe(0);
   });
 
-  it("falls back to the first group during hunt when multiple groups exist", () => {
+  it("falls back to the first group during hunt when multiple groups exist and no garage match", () => {
     const groups = groupAbeVehicleMatches(MATCHES);
-    expect(resolveInitialAbeVehicleGroupIndex(groups)).toBe(0);
+    expect(resolveInitialAbeVehicleGroupIndex(groups)).toBeNull();
     expect(requiresAbeVehicleGroupSelection(groups)).toBe(true);
   });
 
@@ -81,6 +82,16 @@ describe("abe-wizard-vehicle-match", () => {
         model: "6er",
       }),
     ).toBe(1);
+  });
+
+  it("auto-selects BMW 520d against 5ER REIHE", () => {
+    const groups = groupAbeVehicleMatches(MATCHES);
+    expect(
+      resolveInitialAbeVehicleGroupIndex(groups, {
+        brand: "BMW",
+        model: "520d",
+      }),
+    ).toBe(0);
   });
 
   it("merges Verkaufsbezeichnung variants with different comma spacing", () => {
@@ -129,5 +140,42 @@ describe("abe-wizard-vehicle-match", () => {
         selectedVerkaufsbezeichnung: "5ER REIHE",
       }),
     ).toEqual(["744", "A77", "20B"]);
+  });
+
+  it("scopes Auflagen to the garage-matched row within a group", () => {
+    const report = {
+      auflagenCodes: ["721", "744", "A77", "20B"],
+      vehicleMatches: MATCHES,
+    };
+
+    expect(
+      resolveAuflagenCodesForReport(report, {
+        selectedVerkaufsbezeichnung: "5ER REIHE",
+        vehicleContext: { brand: "BMW", model: "5er", type: "5L" },
+      }),
+    ).toEqual(["744", "20B"]);
+  });
+
+  it("returns Auflagen only for the user-selected table row", () => {
+    const report = {
+      auflagenCodes: ["721", "744", "A77", "20B"],
+      vehicleMatches: MATCHES,
+    };
+
+    expect(
+      auflagenForUserVehicleSelection(report, 0, "abe-row-1"),
+    ).toEqual(["744", "20B"]);
+    expect(
+      auflagenForUserVehicleSelection(report, 0, null),
+    ).toEqual([]);
+  });
+
+  it("does not return unscoped top-level Auflagen when groups exist", () => {
+    const report = {
+      auflagenCodes: ["999", "888"],
+      vehicleMatches: MATCHES,
+    };
+
+    expect(resolveAuflagenCodesForReport(report)).toEqual([]);
   });
 });

@@ -18,15 +18,57 @@ interface AbeVehicleMatchPickerProps {
   matches: AbeVehicleMatch[];
   selectedGroupIndex: number | null;
   onSelectGroup: (index: number) => void;
+  selectedRowId?: string | null;
+  onSelectRow?: (rowId: string) => void;
   vehicleContext?: AbeVehicleContext | null;
   vehicleLabel?: string | null;
   selectionError?: string | null;
+}
+
+function VehicleTableSection({
+  group,
+  vehicleContext,
+  selectedRowId,
+  onSelectRow,
+}: {
+  group: AbeVehicleGroup;
+  vehicleContext?: AbeVehicleContext | null;
+  selectedRowId?: string | null;
+  onSelectRow?: (rowId: string) => void;
+}) {
+  const table = vehicleGroupRowsToTableData(group, vehicleContext);
+  const selectableRows = group.rows.length > 1 && Boolean(onSelectRow);
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+          {selectableRows ? "Schritt 1 · Deine Fahrzeugzeile wählen" : "Fahrzeugtabelle"}
+        </p>
+        {selectableRows ? (
+          <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+            Tippe auf die Zeile, die zu deinem Fahrzeug passt. Danach kannst du
+            die Auflagen zu den Kürzeln scannen.
+          </p>
+        ) : null}
+      </div>
+      <CompatibilityTable
+        table={table}
+        title="Fahrzeug- und Auflagen-Tabelle"
+        className="border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-none"
+        selectedRowId={selectableRows ? selectedRowId : null}
+        onSelectRow={selectableRows ? onSelectRow : undefined}
+      />
+    </div>
+  );
 }
 
 export function AbeVehicleMatchPicker({
   matches,
   selectedGroupIndex,
   onSelectGroup,
+  selectedRowId = null,
+  onSelectRow,
   vehicleContext = null,
   vehicleLabel = null,
   selectionError = null,
@@ -49,20 +91,22 @@ export function AbeVehicleMatchPicker({
       <section className="space-y-4 rounded-[1.35rem] border border-emerald-500/25 bg-emerald-500/5 p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
         <div>
           <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-emerald-800">
-            Fahrzeugtabelle
+            Fahrzeug auswählen
           </p>
           <p className="mt-1 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
             {group.verkaufsbezeichnung}
           </p>
-          <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-            {group.rows.length}{" "}
-            {group.rows.length === 1 ? "Zeile" : "Zeilen"} werden übernommen.
-          </p>
+          {vehicleLabel ? (
+            <p className="mt-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]">
+              Garage: {vehicleLabel}
+            </p>
+          ) : null}
         </div>
-        <CompatibilityTable
-          table={vehicleGroupRowsToTableData(group)}
-          title="Fahrzeug- und Auflagen-Tabelle"
-          className="border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-none"
+        <VehicleTableSection
+          group={group}
+          vehicleContext={vehicleContext}
+          selectedRowId={selectedRowId}
+          onSelectRow={onSelectRow}
         />
       </section>
     );
@@ -72,14 +116,14 @@ export function AbeVehicleMatchPicker({
     <section className="space-y-4 rounded-[1.35rem] border border-emerald-500/25 bg-emerald-500/5 p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
       <div>
         <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-emerald-800">
-          Verkaufsbezeichnung wählen
+          Fahrzeug auswählen
         </p>
         <p className="mt-1 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
           {groups.length} Verkaufsbezeichnungen erkannt
         </p>
         <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Wähle die Überschrift, die zu deinem Fahrzeug passt. Es wird nur die
-          Tabelle unter dieser Verkaufsbezeichnung gespeichert.
+          Wähle zuerst die Verkaufsbezeichnung deines Fahrzeugs, dann die
+          passende Tabellenzeile.
         </p>
         {vehicleLabel ? (
           <p className="mt-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]">
@@ -156,20 +200,15 @@ export function AbeVehicleMatchPicker({
       ) : null}
 
       {selectedGroup ? (
-        <div className="space-y-3">
-          <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Vorschau · {selectedGroup.verkaufsbezeichnung}
-          </p>
-          <CompatibilityTable
-            table={vehicleGroupRowsToTableData(selectedGroup)}
-            title="Fahrzeug- und Auflagen-Tabelle"
-            className="border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-none"
-          />
-        </div>
+        <VehicleTableSection
+          group={selectedGroup}
+          vehicleContext={vehicleContext}
+          selectedRowId={selectedRowId}
+          onSelectRow={onSelectRow}
+        />
       ) : (
         <p className="text-[0.78rem] font-medium text-amber-800">
-          Tippe auf eine Verkaufsbezeichnung, um die Tabelle zu sehen und zu
-          speichern.
+          Tippe auf eine Verkaufsbezeichnung, um deine Fahrzeugzeile zu wählen.
         </p>
       )}
     </section>
