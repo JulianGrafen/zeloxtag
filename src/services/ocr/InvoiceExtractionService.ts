@@ -23,25 +23,26 @@ import {
 import { canDrawRowSeparators, drawInvoiceRowSeparatorsOnImage } from "@/lib/ocr/draw-invoice-row-separators";
 import type { DocumentUserMessagePart } from "@/lib/ocr/llm-document-content";
 import {
+  buildOcrHintForLlm,
   detectInvoiceTableFormat,
-  buildWorkshopOcrHint,
   shouldDrawInvoiceRowSeparators,
   shouldMergeAzureLayout,
+  shouldRealignLineItems,
+  shouldReconcileWithOcrHeuristics,
 } from "@/lib/ocr/invoice-format-routing";
 import {
   extractWorkshopInvoiceAmount,
   reconcileWorkshopLineItemsWithOcrText,
   resolveWorkshopLineItems,
 } from "@/lib/ocr/invoice-workshop-sections";
+import { extractAmountFromText } from "@/lib/ocr/amount-from-text";
 import {
   INVOICE_HEADER_USER_LINES,
-  INVOICE_LINE_ITEMS_USER_LINES,
   INVOICE_OVERVIEW_USER_LINES,
-  INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES,
   buildInvoiceHeaderSystemPrompt,
-  buildInvoiceLineItemsSystemPrompt,
-  buildInvoiceWorkshopLineItemsSystemPrompt,
+  buildInvoiceLineItemsSystemPromptForFormat,
   buildInvoiceSystemPrompt,
+  invoiceLineItemsUserLinesForFormat,
 } from "@/lib/ocr/invoice-parse-prompts";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
@@ -418,6 +419,7 @@ export class InvoiceExtractionService {
     const ocrText = azureLayout?.content ?? "";
     const tableFormat = detectInvoiceTableFormat(ocrText);
     const isWorkshopFormat = tableFormat === "workshop-sections";
+    const isLlmOnlyFormat = tableFormat === "unknown";
 
     let llmInput = prepared;
     let rowSeparators = false;
@@ -433,20 +435,18 @@ export class InvoiceExtractionService {
       rowSeparators = drawn.separatorsDrawn > 0;
     }
 
-    const userLines = isWorkshopFormat
-      ? INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES
-      : INVOICE_LINE_ITEMS_USER_LINES;
+    const userLines = invoiceLineItemsUserLinesForFormat(tableFormat);
 
     const instructionLines: string[] = [
       "Deutsche Kfz-Rechnung oder Servicebeleg (PDF oder Scan).",
       ...userLines,
     ];
 
-    if (isWorkshopFormat && ocrText.trim()) {
+    if ((isWorkshopFormat || isLlmOnlyFormat) && ocrText.trim()) {
       instructionLines.push(
         "",
         "Azure-OCR-Text (Struktur-Hinweis — Bild ist maßgeblich):",
-        buildWorkshopOcrHint(ocrText),
+        buildOcrHintForLlm(ocrText),
       );
     }
 
@@ -457,9 +457,7 @@ export class InvoiceExtractionService {
     );
 
     const record = await runVisionExtract<Record<string, unknown>>(
-      isWorkshopFormat
-        ? buildInvoiceWorkshopLineItemsSystemPrompt()
-        : buildInvoiceLineItemsSystemPrompt(),
+      buildInvoiceLineItemsSystemPromptForFormat(tableFormat),
       userLines,
       prepared,
       INVOICE_LINE_ITEMS_JSON_SCHEMA,
@@ -499,8 +497,9 @@ export class InvoiceExtractionService {
 
     const amount =
       coerceGermanMoneyAmount(record.amount, "conservative") ??
-      (isWorkshopFormat
-        ? extractWorkshopInvoiceAmount(ocrText)
+      (isWorkshopFormat ? extractWorkshopInvoiceAmount(ocrText) : null) ??
+      (isLlmOnlyFormat && ocrText.trim()
+        ? extractAmountFromText(ocrText)
         : null) ??
       (layoutLineItems?.length ? sumLineItems(layoutLineItems) : null);
 
@@ -511,15 +510,15 @@ export class InvoiceExtractionService {
         : null;
 
     const reconciled =
-      isWorkshopFormat && ocrText.trim()
-        ? reconcileWorkshopLineItemsWithOcrText(merged, ocrText)
-        : ocrText.trim()
-          ? reconcileLineItemAmountsWithOcrText(merged, ocrText)
-          : merged;
+      shouldReconcileWithOcrHeuristics(tableFormat) && ocrText.trim()
+        ? isWorkshopFormat
+          ? reconcileWorkshopLineItemsWithOcrText(merged, ocrText)
+          : reconcileLineItemAmountsWithOcrText(merged, ocrText)
+        : merged;
 
-    const aligned = isWorkshopFormat
-      ? reconciled
-      : realignShiftedInvoiceLineItems(reconciled, amount);
+    const aligned = shouldRealignLineItems(tableFormat)
+      ? realignShiftedInvoiceLineItems(reconciled, amount)
+      : reconciled;
 
     const normalized = normalizeLineItemsList(aligned, LINE_ITEMS_MAX_COUNT);
     const withVat = ensureInvoiceVatAndGrossTotal({

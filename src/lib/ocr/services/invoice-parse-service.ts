@@ -37,6 +37,8 @@ import {
   detectInvoiceTableFormat,
   shouldDrawInvoiceRowSeparators,
   shouldMergeAzureLayout,
+  shouldRealignLineItems,
+  shouldReconcileWithOcrHeuristics,
 } from "@/lib/ocr/invoice-format-routing";
 import {
   extractWorkshopInvoiceAmount,
@@ -175,7 +177,7 @@ export class InvoiceParseService {
 
     const tableFormat = !isTuevReport
       ? detectInvoiceTableFormat(azureLayout?.content ?? "")
-      : "column";
+      : ("column" as const);
 
     if (
       !isTuevReport &&
@@ -260,13 +262,14 @@ export class InvoiceParseService {
     const isWorkshopFormat = tableFormat === "workshop-sections";
     const azureContent = azureLayout.content;
 
-    const llmItems =
-      isWorkshopFormat
-        ? (resolveWorkshopLineItems({
-            llmItems: normalized.lineItems,
-            ocrText: azureContent,
-          }) ?? normalized.lineItems)
-        : normalized.lineItems;
+    let llmItems = normalized.lineItems;
+    if (isWorkshopFormat) {
+      llmItems =
+        resolveWorkshopLineItems({
+          llmItems: normalized.lineItems,
+          ocrText: azureContent,
+        }) ?? normalized.lineItems;
+    }
 
     const layoutLineItems = shouldMergeAzureLayout(tableFormat)
       ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
@@ -281,12 +284,16 @@ export class InvoiceParseService {
       : llmItems;
 
     const reconciled =
-      isWorkshopFormat
-        ? reconcileWorkshopLineItemsWithOcrText(merged, azureContent)
-        : reconcileLineItemAmountsWithOcrText(merged, azureContent);
+      shouldReconcileWithOcrHeuristics(tableFormat)
+        ? isWorkshopFormat
+          ? reconcileWorkshopLineItemsWithOcrText(merged, azureContent)
+          : reconcileLineItemAmountsWithOcrText(merged, azureContent)
+        : merged;
 
     const lineItems = normalizeLineItemsList(
-      realignShiftedInvoiceLineItems(reconciled, amount),
+      shouldRealignLineItems(tableFormat)
+        ? realignShiftedInvoiceLineItems(reconciled, amount)
+        : reconciled,
       60,
     );
 

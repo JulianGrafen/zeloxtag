@@ -315,5 +315,52 @@ export const INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES = [
   "CRITICAL: Kopiere exakten Spalten-Text. KEINE Berechnungen.",
 ] as const;
 
+/** Guided wizard — unbekanntes Layout → reines LLM-Vision ohne Regex/Layout-Merge. */
+export const INVOICE_GENERIC_LINE_ITEMS_USER_LINES = [
+  "Deutsche Kfz-Rechnung — Positionsbereich. Tabellenlayout ist NICHT vorgegeben.",
+  "Lies das Bild Zeile für Zeile: jede fakturierte Position mit Beschreibung + Zeilensumme.",
+  "Extrahiere pro Position: label, menge (falls sichtbar), einzelpreis (falls sichtbar), gesamtpreis (Pflicht wenn fakturiert).",
+  "gesamtpreis = RECHTESTER €-Betrag der Zeile (Zeilensumme) — nie Einzelpreis wenn beide Spalten existieren.",
+  "Keine Summenzeilen (Netto, Brutto, Zwischensumme, Endpreis) als lineItem — außer ausgewiesene MwSt-Zeile mit €-Betrag.",
+  "Keine Diagnose-/Notizzeilen ohne €-Betrag.",
+  "amount = Zahlbetrag / Endpreis / Rechnungsbetrag brutto falls sichtbar.",
+  "CRITICAL: Nur RAW-Text kopieren — KEINE Berechnungen.",
+] as const;
+
+/** Wizard — generisches Layout (LLM-only fallback). */
+export function buildInvoiceGenericLineItemsSystemPrompt(): string {
+  return [
+    "Du extrahierst Rechnungspositionen aus einer deutschen Kfz-Werkstattrechnung mit UNBEKANNTEM Layout.",
+    "Es gibt KEIN festes Spaltenschema — orientiere dich am sichtbaren Tabellen-/Positionsbereich im Bild.",
+    `Extract & Compute:
+  • label       = Positionsbezeichnung / Beschreibung
+  • menge       = Menge/Anzahl/Std. falls vorhanden — null wenn leer
+  • einzelpreis = Einzelpreis/Stückpreis falls vorhanden — null wenn leer
+  • gesamtpreis = Zeilensumme / fakturierter Betrag der Zeile — null nur wenn Zeile nicht fakturiert
+Du rechnest NIEMALS selbst. Kopiere exakt gedruckte Werte.`,
+    INVOICE_RIGHTMOST_PRICE_RULES,
+    INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
+    "Footer-Summen (Netto gesamt, Endpreis, Positionssumme) sind KEINE lineItems.",
+    "amount = brutto Zahlbetrag / Endpreis / Rechnungsbetrag als raw text — sonst null.",
+    "Antworte nur mit JSON.",
+  ].join("\n\n");
+}
+
+export function buildInvoiceLineItemsSystemPromptForFormat(
+  format: "column" | "workshop-sections" | "unknown",
+): string {
+  if (format === "workshop-sections") return buildInvoiceWorkshopLineItemsSystemPrompt();
+  if (format === "unknown") return buildInvoiceGenericLineItemsSystemPrompt();
+  return buildInvoiceLineItemsSystemPrompt();
+}
+
+export function invoiceLineItemsUserLinesForFormat(
+  format: "column" | "workshop-sections" | "unknown",
+): readonly string[] {
+  if (format === "workshop-sections") return INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES;
+  if (format === "unknown") return INVOICE_GENERIC_LINE_ITEMS_USER_LINES;
+  return INVOICE_LINE_ITEMS_USER_LINES;
+}
+
 /** @deprecated Use buildInvoiceLineItemsSystemPrompt() */
 export const INVOICE_LINE_ITEMS_SYSTEM_PROMPT = buildInvoiceLineItemsSystemPrompt();
