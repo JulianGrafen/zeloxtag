@@ -42,9 +42,9 @@ const FROM_PHOTO =
 /**
  * Data-hunter steps map 1:1 to required ABE facts:
  * 1 stammdaten → KBA, Nummer der ABE, Inhaber, Hersteller, Bauteilbezeichnung
- * 2 marking    → Kennzeichnung (wo/wie KBA am Bauteil)
- * 3 vehicle    → Verkaufsbezeichnung / Fahrzeugfreigabe
- * 4 auflagen   → Auflagen-Kürzel zum gewählten Fahrzeug
+ * 2 vehicle    → Verkaufsbezeichnung / Fahrzeugfreigabe
+ * 3 auflagen   → Auflagen-Kürzel zum gewählten Fahrzeug
+ * Kennzeichnung (markingText) is optional — not every ABE documents it.
  */
 export const ABE_DATA_HUNTER_STEPS = [
   "stammdaten",
@@ -77,9 +77,11 @@ export const ABE_CORE_HUNT_FIELD_KEYS = [
   "abeHolder",
   "manufacturer",
   "partDesignation",
-  "markingText",
   "verkaufsbezeichnung",
 ] as const satisfies readonly AbeRequiredFieldKey[];
+
+/** Optional facts — captured when visible (hunt-all merge) or entered in review. */
+export const ABE_OPTIONAL_FIELD_KEYS = ["markingText"] as const satisfies readonly AbeRequiredFieldKey[];
 
 /** Ghost examples shown inside the camera guide frame while hunting each field. */
 export const ABE_HUNT_FIELD_WATERMARKS: Record<AbeRequiredFieldKey, string> = {
@@ -142,10 +144,11 @@ export const ABE_HUNT_FIELD_SCAN_HINTS: Partial<
       "Fotografiere „Bezeichnung des Bauteils“ — z. B. Felge, Spoiler oder Kennzeichenhalter.",
   },
   markingText: {
-    scanAction: "Fotografiere den Kennzeichnung-Abschnitt inkl. Tabellenzeilen.",
-    popupTitle: "Kennzeichnung",
+    scanAction:
+      "Optional: Kennzeichnung am Bauteil fotografieren, falls vorhanden.",
+    popupTitle: "Kennzeichnung (optional)",
     popupBody:
-      "Fotografiere den kompletten Kennzeichnung-Abschnitt — auch Tabellenzeilen wie „Art der Kennzeichnung“ und „Nummer“.",
+      "Nicht jede ABE hat einen Kennzeichnung-Abschnitt. Falls vorhanden: Art der Kennzeichnung und Nummer wörtlich fotografieren — sonst überspringen.",
   },
   verkaufsbezeichnung: {
     scanAction:
@@ -505,7 +508,6 @@ export function missingAbeCoreHuntFields(
   if (!report.abeHolder?.trim()) missing.push("abeHolder");
   if (!report.manufacturer?.trim()) missing.push("manufacturer");
   if (!report.partDesignation?.trim()) missing.push("partDesignation");
-  if (!report.markingText?.trim()) missing.push("markingText");
 
   const verkaufsbezeichnung =
     selectedVerkaufsbezeichnung?.trim() ||

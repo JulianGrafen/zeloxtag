@@ -326,19 +326,34 @@ export class AbeDataHunterExtractionService {
           ? (raw as { vehicleMatches: unknown[] }).vehicleMatches
           : [];
 
+      const asText = (value: unknown): string | null =>
+        typeof value === "string" && value.trim() ? value.trim() : null;
+
       const candidate = {
-        ...(typeof raw === "object" && raw ? raw : {}),
+        kbaNumber: asText(record.kbaNumber),
+        abeNumber: asText(record.abeNumber),
+        abeHolder: asText(record.abeHolder),
+        manufacturer: asText(record.manufacturer),
+        partDesignation: asText(record.partDesignation),
+        markingText: resolvedMarking,
         vehicleMatches: parseAbeVehicleRows(rawRows),
+        auflagenCodes: Array.isArray(record.auflagenCodes)
+          ? record.auflagenCodes.filter(
+              (code): code is string =>
+                typeof code === "string" && code.trim().length > 0,
+            )
+          : [],
+        auflagenNotes: asText(record.auflagenNotes),
       };
 
       const parsed = AbeDataHunterReportSchema.safeParse(candidate);
       if (!parsed.success) {
-        const asText = (value: unknown): string | null =>
-          typeof value === "string" && value.trim() ? value.trim() : null;
-
         const extraction: AbeDataHunterReport = {
           ...empty,
-          kbaNumber: normalizeAbeKbaDigits(asText(record.kbaNumber)) || null,
+          kbaNumber:
+            normalizeAbeKbaDigits(asText(record.kbaNumber)) ||
+            normalizeAbeKbaDigits(asText(record.markingNumber)) ||
+            null,
           abeNumber: normalizeAbeNumberDigits(asText(record.abeNumber)) || null,
           abeHolder: asText(record.abeHolder),
           manufacturer: asText(record.manufacturer),

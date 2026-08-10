@@ -16,6 +16,7 @@ import {
   missingAbeCoreHuntFields,
   missingAbeRequiredFields,
 } from "@/lib/validations/abeDataHunterSchemas";
+import { inferAbeKbaFromReport } from "@/lib/validations/abeSchema";
 
 const completeStammdaten = {
   kbaNumber: "48185",
@@ -36,7 +37,7 @@ describe("abeDataHunterSchemas required fields", () => {
     expect(isAbeHuntStammdatenComplete(completeStammdaten)).toBe(true);
   });
 
-  it("requires Kennzeichnung, Verkaufsbezeichnung and Auflagen", () => {
+  it("requires Verkaufsbezeichnung and Auflagen for save; Kennzeichnung is optional", () => {
     expect(isAbeHuntMarkingComplete({ markingText: null })).toBe(false);
     expect(
       isAbeHuntMarkingComplete({
@@ -80,10 +81,36 @@ describe("abeDataHunterSchemas required fields", () => {
     );
 
     expect(missingAbeRequiredFields(report)).toEqual([
-      "markingText",
       "verkaufsbezeichnung",
       "auflagenNotes",
     ]);
+  });
+
+  it("does not require Kennzeichnung for core hunt or save", () => {
+    const report = mergeAbeDataHunterSteps(
+      completeStammdaten,
+      { markingText: null },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "5ER REIHE",
+            fahrzeugtyp: "5L",
+            typeApproval: null,
+            driveType: null,
+            tireSizes: [],
+            auflagenCodes: ["744"],
+          },
+        ],
+      },
+      { auflagenCodes: [], auflagenNotes: "744: Montage nur mit …" },
+    );
+
+    expect(missingAbeCoreHuntFields(report, "5ER REIHE")).not.toContain(
+      "markingText",
+    );
+    expect(missingAbeRequiredFields(report, "5ER REIHE")).not.toContain(
+      "markingText",
+    );
   });
 
   it("passes when all required facts are present", () => {
@@ -175,7 +202,7 @@ describe("abeDataHunterSchemas required fields", () => {
   it("completes core hunt once vehicle table and stammdaten are present", () => {
     const report = mergeAbeDataHunterSteps(
       completeStammdaten,
-      { markingText: "Kennzeichnung auf dem Bauteil" },
+      { markingText: null },
       {
         vehicleMatches: [
           {
@@ -326,5 +353,32 @@ describe("coalesceAbeHolderAndManufacturer", () => {
       abeHolder: "Muster Tuning GmbH",
     });
     expect(merged.manufacturer).toBe("Muster Tuning GmbH");
+  });
+});
+
+describe("inferAbeKbaFromReport", () => {
+  it("infers KBA digits from Nummer der ABE", () => {
+    expect(
+      inferAbeKbaFromReport({
+        abeNumber: "48185*08",
+      }),
+    ).toBe("48185");
+  });
+
+  it("infers KBA from Kennzeichnung Nummer line", () => {
+    expect(
+      inferAbeKbaFromReport({
+        markingText: "Art der Kennzeichnung: Prüfplakette\nNummer: 48185",
+      }),
+    ).toBe("48185");
+  });
+
+  it("clears kbaNumber from missing fields after merge via abeNumber", () => {
+    const merged = fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
+      ...emptyAbeDataHunterReport(),
+      abeNumber: "48185*08",
+    });
+    expect(merged.kbaNumber).toBe("48185");
+    expect(missingAbeCoreHuntFields(merged)).not.toContain("kbaNumber");
   });
 });

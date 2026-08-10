@@ -236,6 +236,28 @@ export function normalizeAbeKbaDigits(
   return digits;
 }
 
+function inferAbeKbaFromFreeText(text: string | null | undefined): string | null {
+  if (!text?.trim()) return null;
+
+  const kbaLabelMatch = text.match(
+    /\bKBA(?:[\s\-/]*(?:Nr\.?|Nummer))?\s*[:\-]?\s*(\d[\d\s]{2,10}\d|\d{4,6})\b/i,
+  );
+  if (kbaLabelMatch?.[1]) {
+    const fromLabel = normalizeAbeKbaDigits(kbaLabelMatch[1]);
+    if (fromLabel) return fromLabel;
+  }
+
+  const nummerMatch = text.match(
+    /\b(?:Nummer|Kennzeichnungs(?:nummer|nr\.?))\s*[:\-]\s*(\d{4,6})\b/i,
+  );
+  if (nummerMatch?.[1]) {
+    const fromNummer = normalizeAbeKbaDigits(nummerMatch[1]);
+    if (fromNummer) return fromNummer;
+  }
+
+  return null;
+}
+
 /**
  * Derive KBA digits from other ABE fields when OCR put the number elsewhere.
  * Common when the user photographs the header: LLM fills abeNumber but not kbaNumber.
@@ -252,23 +274,11 @@ export function inferAbeKbaFromReport(report: {
   const fromAbe = normalizeAbeKbaDigits(report.abeNumber);
   if (fromAbe) return fromAbe;
 
-  const marking = report.markingText;
-  if (marking) {
-    const kbaMatch = marking.match(/\bKBA\s*[:\-]?\s*(\d[\d\s]{1,10}\d)\b/i);
-    if (kbaMatch?.[1]) {
-      const fromMarking = normalizeAbeKbaDigits(kbaMatch[1]);
-      if (fromMarking) return fromMarking;
-    }
-  }
+  const fromMarking = inferAbeKbaFromFreeText(report.markingText);
+  if (fromMarking) return fromMarking;
 
-  const part = report.partDesignation;
-  if (part) {
-    const partMatch = part.match(/\bKBA\s*[:\-]?\s*(\d[\d\s]{1,10}\d)\b/i);
-    if (partMatch?.[1]) {
-      const fromPart = normalizeAbeKbaDigits(partMatch[1]);
-      if (fromPart) return fromPart;
-    }
-  }
+  const fromPart = inferAbeKbaFromFreeText(report.partDesignation);
+  if (fromPart) return fromPart;
 
   return null;
 }

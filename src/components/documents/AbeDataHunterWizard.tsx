@@ -54,6 +54,7 @@ import {
   abeHuntFieldDisplayLabel,
   emptyAbeDataHunterReport,
   fillAbeDataHunterReport,
+  finalizeAbeDataHunterReport,
   isAbeCoreHuntComplete,
   isAbeDataHunterReportComplete,
   missingAbeCoreHuntFields,
@@ -154,48 +155,30 @@ function firstMissingFocusIndex(
   return Math.max(0, CORE_HUNT_ORDER.length - 1);
 }
 
-function advanceHuntFocusAfterMerge(
-  before: AbeDataHunterReport,
-  after: AbeDataHunterReport,
-  currentFocusIndex: number,
+function countAbeCoreHuntFieldsDone(
+  report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
 ): number {
-  const missingBefore = missingCoreHuntFieldSet(
-    before,
+  const missing = missingCoreHuntFieldSet(
+    report,
     selectedVerkaufsbezeichnung,
     vehicleContext,
   );
-  const missingAfter = missingCoreHuntFieldSet(
-    after,
+  return CORE_HUNT_ORDER.length - missing.size;
+}
+
+function firstMissingFocusKey(
+  report: AbeDataHunterReport,
+  selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
+): AbeRequiredFieldKey {
+  const index = firstMissingFocusIndex(
+    report,
     selectedVerkaufsbezeichnung,
     vehicleContext,
   );
-
-  if (missingAfter.size === 0) {
-    return Math.max(0, CORE_HUNT_ORDER.length - 1);
-  }
-
-  let filledAny = false;
-  for (const key of missingBefore) {
-    if (!missingAfter.has(key)) {
-      filledAny = true;
-      break;
-    }
-  }
-
-  if (!filledAny) {
-    const currentKey = CORE_HUNT_ORDER[currentFocusIndex];
-    if (currentKey && missingAfter.has(currentKey)) {
-      return currentFocusIndex;
-    }
-  }
-
-  return firstMissingFocusIndex(
-    after,
-    selectedVerkaufsbezeichnung,
-    vehicleContext,
-  );
+  return CORE_HUNT_ORDER[index] ?? "kbaNumber";
 }
 
 // ─── API ───────────────────────────────────────────────────────────────────────
@@ -264,7 +247,7 @@ async function extractAllFromFile(file: File): Promise<AbeDataHunterReport> {
     );
   }
 
-  return payload.extraction;
+  return finalizeAbeDataHunterReport(payload.extraction);
 }
 
 async function extractForHuntFocus(
@@ -388,8 +371,6 @@ function HuntProgressOverlay({
   queuedCount,
   captureSummary,
   lastFound,
-  focusIndex,
-  onFocusIndexChange,
   onOpenReview,
   onClose,
   vehicleContext,
@@ -401,14 +382,13 @@ function HuntProgressOverlay({
   queuedCount: number;
   captureSummary: string | null;
   lastFound: string[];
-  focusIndex: number;
-  onFocusIndexChange: (index: number) => void;
   onOpenReview: () => void;
   onClose: () => void;
   vehicleContext?: AbeVehicleContext | null;
   selectedVerkaufsbezeichnung?: string | null;
 }) {
   const [mounted, setMounted] = useState(false);
+  const guideKeyRef = useRef<AbeRequiredFieldKey>("kbaNumber");
 
   useEffect(() => {
     setMounted(true);
@@ -421,23 +401,29 @@ function HuntProgressOverlay({
   );
   const missingSet = new Set(missing);
   const complete = missing.length === 0;
-  const targetIndex = firstMissingFocusIndex(
+  const doneCount = countAbeCoreHuntFieldsDone(
     report,
     selectedVerkaufsbezeichnung,
     vehicleContext,
   );
-  const currentKey = CORE_HUNT_ORDER[targetIndex] ?? CORE_HUNT_ORDER[0];
-  const scanHint = ABE_HUNT_FIELD_SCAN_HINTS[currentKey];
-  const displayLabel = abeHuntFieldDisplayLabel(currentKey);
-  const doneCount = CORE_HUNT_ORDER.length - missing.length;
-  const openCount = missing.length;
+  const totalCount = CORE_HUNT_ORDER.length;
+  const nextKey = firstMissingFocusKey(
+    report,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
 
-  useEffect(() => {
-    if (complete) return;
-    if (focusIndex !== targetIndex) {
-      onFocusIndexChange(targetIndex);
-    }
-  }, [complete, focusIndex, targetIndex, onFocusIndexChange]);
+  if (!analyzing && !complete) {
+    guideKeyRef.current = nextKey;
+  }
+
+  const guideKey = complete ? nextKey : guideKeyRef.current;
+  const scanHint = ABE_HUNT_FIELD_SCAN_HINTS[guideKey];
+  const displayLabel = abeHuntFieldDisplayLabel(guideKey);
+  const openCount = missing.length;
+  const remainingLabels = CORE_HUNT_ORDER.filter(
+    (key) => missingSet.has(key) && key !== guideKey,
+  ).map((key) => abeHuntFieldDisplayLabel(key));
 
   if (!mounted || typeof document === "undefined") return null;
 
@@ -457,21 +443,27 @@ function HuntProgressOverlay({
           <div className="min-w-0 flex-1 text-center">
             <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/60">
               {complete
-                ? `Schritt ${CORE_HUNT_ORDER.length} / ${CORE_HUNT_ORDER.length}`
-                : `Schritt ${targetIndex + 1} / ${CORE_HUNT_ORDER.length}`}
+                ? `${totalCount} / ${totalCount} Pflichtfelder`
+                : `${doneCount} / ${totalCount} Pflichtfelder`}
               {captureSummary ? ` · ${captureSummary}` : ""}
-              {!complete ? ` · ${doneCount} erfasst` : ""}
             </p>
             <p className="mt-0.5 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-amber-200">
-              {complete ? "Kern-Daten vollständig" : "Als Nächstes scannen"}
+              {complete
+                ? "Kern-Daten vollständig"
+                : analyzing
+                  ? "Foto wird ausgewertet…"
+                  : "Als Nächstes scannen"}
             </p>
             <p className="truncate text-[0.95rem] font-semibold leading-tight">
-              {displayLabel}
+              {complete ? "Weiter zu den Auflagen" : displayLabel}
             </p>
             <p className="mt-1 text-[0.74rem] font-medium leading-snug text-white/85">
               {complete
-                ? "Weiter zu den Auflagen."
-                : scanHint?.scanAction ?? "Halte den Abschnitt gut lesbar ins Rechteck."}
+                ? "Tippe auf Weiter oder fotografiere optional nach."
+                : analyzing
+                  ? "Bitte kurz warten — erkannte Felder werden gleich aktualisiert."
+                  : scanHint?.scanAction ??
+                    "Halte den Abschnitt gut lesbar ins Rechteck."}
             </p>
           </div>
 
@@ -492,14 +484,14 @@ function HuntProgressOverlay({
         </div>
 
         <div className="mt-2.5 flex items-center gap-1 px-0.5" aria-hidden>
-          {CORE_HUNT_ORDER.map((key, index) => {
+          {CORE_HUNT_ORDER.map((key) => {
             const done = !missingSet.has(key);
-            const active = index === targetIndex;
+            const active = !complete && !analyzing && key === guideKey;
             return (
               <div
                 key={key}
                 className={[
-                  "h-2 flex-1 rounded-full transition-colors",
+                  "h-2 flex-1 rounded-full transition-colors duration-300",
                   done
                     ? "bg-emerald-400"
                     : active
@@ -512,15 +504,11 @@ function HuntProgressOverlay({
           })}
         </div>
 
-        {!complete && missing.length > 1 ? (
+        {!complete && remainingLabels.length > 0 ? (
           <p className="mt-2 px-1 text-center text-[0.68rem] text-white/65">
             Danach noch:{" "}
-            {missing
-              .filter((key) => key !== currentKey)
-              .slice(0, 3)
-              .map((key) => abeHuntFieldDisplayLabel(key))
-              .join(" · ")}
-            {missing.length > 4 ? " …" : ""}
+            {remainingLabels.slice(0, 3).join(" · ")}
+            {remainingLabels.length > 3 ? " …" : ""}
           </p>
         ) : null}
 
@@ -1040,7 +1028,7 @@ function ReviewPanel({
                   }
                 />
               </AbeFieldLabel>
-              <AbeFieldLabel label="Kennzeichnung *">
+              <AbeFieldLabel label="Kennzeichnung (optional)">
                 <textarea
                   value={form.markingText}
                   onChange={(e) =>
@@ -1050,6 +1038,7 @@ function ReviewPanel({
                     }))
                   }
                   rows={4}
+                  placeholder="Nur falls auf der ABE angegeben — wo/wie das Bauteil gekennzeichnet ist."
                   className="flex w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.92rem] outline-none"
                 />
               </AbeFieldLabel>
@@ -1088,7 +1077,10 @@ function ReviewPanel({
                 label="Bezeichnung des Bauteils"
                 value={form.partDesignation}
               />
-              <AbeSummaryRow label="Kennzeichnung" value={form.markingText} />
+              <AbeSummaryRow
+                label="Kennzeichnung (optional)"
+                value={form.markingText || "—"}
+              />
               <AbeSummaryRow
                 label={ABE_VEHICLE_MODEL_DISPLAY_LABEL}
                 value={selectedVerkaufsbezeichnung}
@@ -1184,7 +1176,6 @@ export function AbeDataHunterWizard({
   );
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [huntFocusIndex, setHuntFocusIndex] = useState(0);
   const [dismissedScanHints, setDismissedScanHints] = useState<
     Set<AbeRequiredFieldKey>
   >(() => new Set());
@@ -1196,6 +1187,7 @@ export function AbeDataHunterWizard({
   const auflagenDrainingRef = useRef(false);
   const reportRef = useRef(report);
   reportRef.current = report;
+  const cameraGuideKeyRef = useRef<AbeRequiredFieldKey>("kbaNumber");
 
   const huntGroup = huntGroupContext(
     report,
@@ -1226,9 +1218,22 @@ export function AbeDataHunterWizard({
 
   useEffect(() => {
     if (phase !== "hunt" || !coreComplete) return;
-    const groups = groupAbeVehicleMatches(report.vehicleMatches);
-    if (groups.length !== 1) return;
-    setSelectedGroupIndex((current) => (current === null ? 0 : current));
+
+    const timer = window.setTimeout(() => {
+      const groups = groupAbeVehicleMatches(report.vehicleMatches);
+      if (groups.length === 1) {
+        setSelectedGroupIndex((current) => (current === null ? 0 : current));
+        setSelectedRowId(
+          (current) => current ?? defaultAbeRowIdForGroup(groups[0]!),
+        );
+      } else {
+        setSelectedGroupIndex(null);
+        setSelectedRowId(null);
+      }
+      setPhase("auflagen-detail");
+    }, 400);
+
+    return () => window.clearTimeout(timer);
   }, [phase, coreComplete, report.vehicleMatches]);
 
   useEffect(() => {
@@ -1298,15 +1303,6 @@ export function AbeDataHunterWizard({
     setSelectedRowId(rowId);
   }
 
-  function syncHuntFocusToFirstMissing(
-    nextReport: AbeDataHunterReport,
-    verkaufsbezeichnung?: string | null,
-  ) {
-    setHuntFocusIndex(
-      firstMissingFocusIndex(nextReport, verkaufsbezeichnung, vehicleContext),
-    );
-  }
-
   function goBack() {
     if (onBack) onBack();
     else if (backHref) window.location.href = backHref;
@@ -1343,8 +1339,8 @@ export function AbeDataHunterWizard({
   }
 
   function startCameraHunt() {
-    syncHuntFocusToFirstMissing(report, huntSelectedVerkaufsbezeichnung);
     setDismissedScanHints(new Set());
+    setLastFound([]);
     setHuntMode("camera");
     setPhase("hunt");
   }
@@ -1377,7 +1373,6 @@ export function AbeDataHunterWizard({
     setSelectedGroupIndex(null);
     setSelectedRowId(null);
     setSaveError(null);
-    setHuntFocusIndex(0);
     setDismissedScanHints(new Set());
   }
 
@@ -1424,20 +1419,37 @@ export function AbeDataHunterWizard({
           verk,
           vehicleContext,
         );
+        const filledKeys = CORE_HUNT_ORDER.filter((key) => {
+          const beforeMissing = missingCoreHuntFieldSet(
+            beforeContext.report,
+            verk,
+            vehicleContext,
+          );
+          const afterMissing = missingCoreHuntFieldSet(
+            merged,
+            verk,
+            vehicleContext,
+          );
+          return beforeMissing.has(key) && !afterMissing.has(key);
+        });
 
         reportRef.current = merged;
         setReport(merged);
         setLastFound(found);
-        setHuntError(null);
-        setHuntFocusIndex((current) =>
-          advanceHuntFocusAfterMerge(
-            beforeContext.report,
-            merged,
-            current,
-            verk,
-            vehicleContext,
-          ),
-        );
+        if (filledKeys.length > 0) {
+          setHuntError(null);
+          setDismissedScanHints((current) => {
+            const next = new Set(current);
+            for (const key of filledKeys) {
+              next.add(key);
+            }
+            return next;
+          });
+        } else if (!isAbeCoreHuntComplete(merged, verk, vehicleContext)) {
+          setHuntError(
+            `${ABE_REQUIRED_FIELD_LABELS[focusKey]} nicht erkannt — bitte näher heran oder erneut fotografieren.`,
+          );
+        }
 
         if (isAbeCoreHuntComplete(merged, verk, vehicleContext)) {
           const groups = groupAbeVehicleMatches(merged.vehicleMatches);
@@ -1450,7 +1462,6 @@ export function AbeDataHunterWizard({
           }
           queueRef.current = [];
           setQueuedCount(0);
-          window.setTimeout(() => setPhase("auflagen-detail"), 400);
           break;
         }
       } catch (err) {
@@ -1542,6 +1553,7 @@ export function AbeDataHunterWizard({
     }
 
     setHuntError(null);
+    setLastFound([]);
 
     if (isPdfFile(file)) {
       setPhotos([]);
@@ -1821,8 +1833,6 @@ export function AbeDataHunterWizard({
       queuedCount={queuedCount}
       captureSummary={captureSummary}
       lastFound={lastFound}
-      focusIndex={huntFocusIndex}
-      onFocusIndexChange={setHuntFocusIndex}
       onOpenReview={() => setPhase("auflagen-detail")}
       onClose={returnToChooser}
       vehicleContext={vehicleContext}
@@ -1830,30 +1840,39 @@ export function AbeDataHunterWizard({
     />
   );
 
-  const huntTargetIndex = firstMissingFocusIndex(
-    report,
-    huntSelectedVerkaufsbezeichnung,
-    vehicleContext,
-  );
-  const huntFocusKey = CORE_HUNT_ORDER[huntTargetIndex] ?? "kbaNumber";
+  const huntFocusKey = coreComplete
+    ? "verkaufsbezeichnung"
+    : firstMissingFocusKey(
+        report,
+        huntSelectedVerkaufsbezeichnung,
+        vehicleContext,
+      );
+
+  if (!analyzing && !coreComplete) {
+    cameraGuideKeyRef.current = huntFocusKey;
+  }
+
+  const cameraGuideKey = coreComplete ? huntFocusKey : cameraGuideKeyRef.current;
   const guideWatermark = coreComplete
     ? undefined
-    : ABE_HUNT_FIELD_WATERMARKS[huntFocusKey];
-  const activeScanHint = ABE_HUNT_FIELD_SCAN_HINTS[huntFocusKey];
+    : ABE_HUNT_FIELD_WATERMARKS[cameraGuideKey];
+  const activeScanHint = ABE_HUNT_FIELD_SCAN_HINTS[cameraGuideKey];
   const missingFields = missingAbeCoreHuntFields(
     report,
     huntSelectedVerkaufsbezeichnung,
     vehicleContext,
   );
-  const activeScanHintText =
-    activeScanHint?.scanAction ??
-    "Halte den angezeigten Abschnitt gut lesbar ins Rechteck.";
+  const activeScanHintText = analyzing
+    ? "Foto wird ausgewertet — bitte kurz warten."
+    : activeScanHint?.scanAction ??
+      "Halte den angezeigten Abschnitt gut lesbar ins Rechteck.";
   const showScanHintPopup =
     huntMode === "camera" &&
     !coreComplete &&
+    !analyzing &&
     Boolean(activeScanHint?.popupTitle && activeScanHint.popupBody) &&
-    missingFields.includes(huntFocusKey) &&
-    !dismissedScanHints.has(huntFocusKey);
+    missingFields.includes(cameraGuideKey) &&
+    !dismissedScanHints.has(cameraGuideKey);
 
   const switchToCameraButton =
     huntMode === "pdf" &&
@@ -1866,10 +1885,7 @@ export function AbeDataHunterWizard({
               type="button"
               onClick={() => {
                 setHuntMode("camera");
-                syncHuntFocusToFirstMissing(
-                  report,
-                  huntSelectedVerkaufsbezeichnung,
-                );
+                setLastFound([]);
               }}
               className="pointer-events-auto mx-auto flex w-full max-w-[440px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-black/70 px-4 py-3.5 text-[0.88rem] font-semibold text-white backdrop-blur-md"
             >
@@ -1891,7 +1907,7 @@ export function AbeDataHunterWizard({
           <HuntScanHintPopup
             title={activeScanHint.popupTitle}
             body={activeScanHint.popupBody}
-            onDismiss={() => dismissScanHint(huntFocusKey)}
+            onDismiss={() => dismissScanHint(cameraGuideKey)}
           />
         ) : null}
         {switchToCameraButton}
@@ -1907,7 +1923,7 @@ export function AbeDataHunterWizard({
         <HuntScanHintPopup
           title={activeScanHint.popupTitle}
           body={activeScanHint.popupBody}
-          onDismiss={() => dismissScanHint(huntFocusKey)}
+          onDismiss={() => dismissScanHint(cameraGuideKey)}
         />
       ) : null}
       <InBrowserCamera
