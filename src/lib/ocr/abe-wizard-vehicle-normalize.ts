@@ -263,6 +263,40 @@ function mergeUniqueAuflagenCodes(codes: string[]): string[] {
   return out;
 }
 
+/** Fahrzeugtyp codes (F40, K40, T67) must never appear as Auflagen-Kürzel. */
+export function collectFahrzeugtypCodes(
+  matches: readonly AbeVehicleMatch[],
+): Set<string> {
+  const out = new Set<string>();
+  for (const match of matches) {
+    const code = match.fahrzeugtyp?.trim();
+    if (code) out.add(normalizeAuflagenToken(code));
+  }
+  return out;
+}
+
+export function filterAuflagenCodesAgainstFahrzeugtyp(
+  codes: readonly string[],
+  rowFahrzeugtyp: string | null,
+  tableFahrzeugtypCodes: ReadonlySet<string>,
+  promotedCodes: ReadonlySet<string> = new Set(),
+): string[] {
+  const rowTyp = rowFahrzeugtyp
+    ? normalizeAuflagenToken(rowFahrzeugtyp)
+    : null;
+
+  return mergeUniqueAuflagenCodes(
+    codes.filter((code) => {
+      const normalized = normalizeAuflagenToken(code);
+      if (!normalized) return false;
+      if (promotedCodes.has(normalized)) return true;
+      if (rowTyp && normalized === rowTyp) return false;
+      if (tableFahrzeugtypCodes.has(normalized)) return false;
+      return true;
+    }),
+  );
+}
+
 /** Keep only short Auflagen codes; drop drive-type words and stray text. */
 export function parseAuflagenCodes(
   auflagenItems: readonly string[],
@@ -501,6 +535,7 @@ export function normalizeAbeVehicleMatches(
   matches: AbeVehicleMatch[],
 ): AbeVehicleMatch[] {
   let currentVerkaufsbezeichnung: string | null = null;
+  const fahrzeugtypCodes = collectFahrzeugtypCodes(matches);
 
   return matches.map((match) => {
     const parsedAuflagen = parseAuflagenCodes(match.auflagenCodes);
@@ -521,12 +556,12 @@ export function normalizeAbeVehicleMatches(
 
     let fahrzeugtyp = fahrzeugtypRaw;
     let auflagenCodes = parsedAuflagen.codes;
+    const promotedFromFahrzeugtyp = new Set<string>();
 
     if (fahrzeugtyp && isLikelyAuflagenMisplacedAsFahrzeugtyp(fahrzeugtyp)) {
-      auflagenCodes = mergeUniqueAuflagenCodes([
-        ...auflagenCodes,
-        fahrzeugtyp,
-      ]);
+      const promoted = normalizeAuflagenToken(fahrzeugtyp);
+      promotedFromFahrzeugtyp.add(promoted);
+      auflagenCodes = mergeUniqueAuflagenCodes([...auflagenCodes, promoted]);
       fahrzeugtyp = null;
     }
 
@@ -535,12 +570,22 @@ export function normalizeAbeVehicleMatches(
       currentVerkaufsbezeichnung ??
       stripVerkaufsbezeichnungLabel(match.verkaufsbezeichnung);
 
-    return repairMisassignedGutachtenFields({
+    const repaired = repairMisassignedGutachtenFields({
       ...match,
       verkaufsbezeichnung,
       fahrzeugtyp,
       driveType: match.driveType ?? parsedAuflagen.driveType,
       auflagenCodes,
     });
+
+    return {
+      ...repaired,
+      auflagenCodes: filterAuflagenCodesAgainstFahrzeugtyp(
+        repaired.auflagenCodes,
+        repaired.fahrzeugtyp,
+        fahrzeugtypCodes,
+        promotedFromFahrzeugtyp,
+      ),
+    };
   });
 }

@@ -187,8 +187,14 @@ export function extractKuerzelRecordsFromOcrNotes(
   notes: string,
   targetCodes: readonly string[],
 ): AuflagenKuerzelRecord[] {
-  const entries = parseAbeAuflagenNotes(notes, [...targetCodes]);
+  if (targetCodes.length === 0) return [];
+
+  const allowed = new Set(targetCodes.map(normalizeAuflagenKuerzel));
+  const entries = parseAbeAuflagenNotes(notes, [...targetCodes], {
+    strict: true,
+  });
   return entries
+    .filter((entry) => allowed.has(normalizeAuflagenKuerzel(entry.code)))
     .map((entry) => ({
       kuerzel: normalizeAuflagenKuerzel(entry.code),
       text: entry.text.trim(),

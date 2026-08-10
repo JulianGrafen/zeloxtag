@@ -32,6 +32,7 @@ import {
   abeAuflagenConditionsFromNotes,
   abeAuflagenEntriesFromConditions,
   parseAbeAuflagenNotes,
+  sanitizeAuflagenNotesForTargetCodes,
   auflagenCodesCoveredInNotes,
   missingAuflagenCodesInNotes,
 } from "@/lib/ocr/abe-auflagen-from-text";
@@ -117,6 +118,18 @@ type ReviewFormState = {
 };
 
 const CORE_HUNT_ORDER = ABE_CORE_HUNT_FIELD_KEYS;
+
+const HUNT_FIELD_SHORT_LABELS: Record<
+  (typeof ABE_CORE_HUNT_FIELD_KEYS)[number],
+  string
+> = {
+  kbaNumber: "KBA",
+  abeNumber: "ABE-Nr.",
+  abeHolder: "Inhaber",
+  manufacturer: "Hersteller",
+  partDesignation: "Bauteil",
+  verkaufsbezeichnung: "Modell",
+};
 
 function reportKbaDigits(report: AbeDataHunterReport): string | null {
   return inferAbeKbaFromReport(report);
@@ -547,93 +560,92 @@ function HuntProgressOverlay({
   if (!mounted || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/20 bg-black/55 px-3 py-2.5 text-white shadow-lg backdrop-blur-md">
-        <div className="flex items-start gap-2">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-auto mx-auto max-w-[360px] rounded-xl border border-white/15 bg-black/50 px-2 py-1.5 text-white shadow-lg backdrop-blur-md">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={onClose}
-            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10"
             aria-label="Schließen"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
 
-          <div className="min-w-0 flex-1 text-center">
-            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/60">
-              ABE scannen
-              {captureSummary ? ` · ${captureSummary}` : ""}
-            </p>
-            <p className="mt-0.5 text-[0.95rem] font-semibold leading-tight">
-              {complete
-                ? "Alle Pflichtfelder erfasst"
-                : `${doneCount} / ${totalCount} Pflichtfelder`}
-            </p>
-            <p className="mt-1 text-[0.74rem] font-medium leading-snug text-white/85">
-              {complete
-                ? "Tippe auf Weiter für die Auflagen."
-                : analyzing
-                  ? "Foto wird ausgewertet…"
-                  : "Fotografiere sichtbare Abschnitte — pro Foto können mehrere Felder erkannt werden."}
-            </p>
-          </div>
-
-          {complete ? (
-            <button
-              type="button"
-              disabled={analyzing}
-              onClick={onOpenReview}
-              className="mt-0.5 flex h-8 shrink-0 items-center rounded-full bg-white px-3 text-[0.72rem] font-semibold text-neutral-900 disabled:opacity-40"
-            >
-              Weiter
-            </button>
-          ) : (
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/20 font-mono text-[0.72rem] font-bold text-amber-100">
-              {missing.length}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-white/55">
+                ABE scannen · {doneCount}/{totalCount}
+                {captureSummary ? ` · ${captureSummary}` : ""}
+              </p>
+              {complete ? (
+                <button
+                  type="button"
+                  disabled={analyzing}
+                  onClick={onOpenReview}
+                  className="flex h-6 shrink-0 items-center rounded-full bg-white px-2.5 text-[0.62rem] font-semibold text-neutral-900 disabled:opacity-40"
+                >
+                  Weiter
+                </button>
+              ) : (
+                <span className="shrink-0 font-mono text-[0.6rem] font-bold text-amber-100/90">
+                  {missing.length} offen
+                </span>
+              )}
             </div>
-          )}
+            {!complete ? (
+              <div
+                className="mt-1 h-0.5 overflow-hidden rounded-full bg-white/15"
+                role="progressbar"
+                aria-valuenow={doneCount}
+                aria-valuemin={0}
+                aria-valuemax={totalCount}
+                aria-label="Pflichtfelder-Fortschritt"
+              >
+                <div
+                  className="h-full rounded-full bg-emerald-400/90 transition-[width] duration-300"
+                  style={{ width: `${(doneCount / totalCount) * 100}%` }}
+                />
+              </div>
+            ) : null}
+          </div>
         </div>
 
-        <ul className="mt-2.5 space-y-1 px-0.5">
+        <div className="mt-1 flex flex-wrap gap-1 px-0.5">
           {CORE_HUNT_ORDER.map((key) => {
             const done = !missingSet.has(key);
             return (
-              <li
+              <span
                 key={key}
+                title={abeHuntFieldDisplayLabel(key)}
                 className={[
-                  "flex items-center gap-2 rounded-lg px-2 py-1 text-[0.72rem]",
-                  done ? "text-emerald-100" : "text-white/75",
+                  "inline-flex max-w-full items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.58rem] font-medium leading-none",
+                  done
+                    ? "bg-emerald-500/25 text-emerald-100"
+                    : "bg-white/10 text-white/70",
                 ].join(" ")}
               >
-                <span
-                  className={[
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[0.58rem] font-bold",
-                    done
-                      ? "bg-emerald-400 text-emerald-950"
-                      : "border border-white/30 text-white/50",
-                  ].join(" ")}
-                  aria-hidden
-                >
-                  {done ? "✓" : ""}
+                <span aria-hidden className="text-[0.5rem]">
+                  {done ? "✓" : "○"}
                 </span>
-                <span className="truncate">{abeHuntFieldDisplayLabel(key)}</span>
-              </li>
+                <span className="truncate">{HUNT_FIELD_SHORT_LABELS[key]}</span>
+              </span>
             );
           })}
-        </ul>
+        </div>
 
         {analyzing || lastFound.length > 0 ? (
-          <div className="mt-1.5 flex min-h-[1.1rem] items-center justify-center gap-1.5 px-1 text-[0.68rem]">
+          <div className="mt-1 flex min-h-[0.85rem] items-center justify-center gap-1 px-0.5 text-[0.58rem]">
             {analyzing ? (
               <span className="inline-flex items-center gap-1 text-amber-200">
-                <LoaderCircle className="h-3 w-3 animate-spin" />
+                <LoaderCircle className="h-2.5 w-2.5 animate-spin" />
                 {analyzingPdf ? "PDF wird analysiert…" : "Analysiert…"}
                 {queuedCount > 0 ? `(+${queuedCount})` : ""}
               </span>
             ) : null}
             {!analyzing && lastFound.length > 0 ? (
               <span className="truncate text-emerald-200">
-                Neu erfasst: {lastFound.join(" · ")}
+                + {lastFound.join(" · ")}
               </span>
             ) : null}
           </div>
@@ -651,6 +663,7 @@ function AuflagenScanOverlay({
   queuedCount,
   captureSummary,
   onOpenReview,
+  onSkip,
   onClose,
 }: {
   targetCodes: string[];
@@ -659,6 +672,7 @@ function AuflagenScanOverlay({
   queuedCount: number;
   captureSummary: string | null;
   onOpenReview: () => void;
+  onSkip: () => void;
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -676,34 +690,27 @@ function AuflagenScanOverlay({
   if (!mounted || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/20 bg-black/55 px-3 py-2.5 text-white shadow-lg backdrop-blur-md">
-        <div className="flex items-center gap-2">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-auto mx-auto max-w-[360px] rounded-xl border border-white/15 bg-black/50 px-2 py-1.5 text-white shadow-lg backdrop-blur-md">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10"
             aria-label="Schließen"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
 
-          <div className="min-w-0 flex-1 text-center">
-            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/60">
-              Schritt 2 · Auflagen-Text
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-white/55">
+              Auflagen · {capturedCodes.length}/{targetCodes.length || 1}
               {captureSummary ? ` · ${captureSummary}` : ""}
-              {targetCodes.length > 0
-                ? ` · ${capturedCodes.length}/${targetCodes.length}`
-                : ""}
             </p>
-            <p className="truncate text-[0.88rem] font-semibold leading-tight">
-              {ABE_REQUIRED_FIELD_LABELS.auflagenNotes}
-            </p>
-            <p className="mt-0.5 text-[0.72rem] font-medium leading-snug text-white/75">
+            <p className="mt-0.5 truncate text-[0.68rem] font-medium leading-tight text-white/85">
               {missingCodes.length > 0
-                ? `Noch fotografieren: ${missingCodes.join(", ")}`
-                : (ABE_HUNT_FIELD_SCAN_HINTS.auflagenNotes?.scanAction ??
-                  "Fotografiere die Erklärungen zu den Auflagen-Nummern.")}
+                ? `Noch: ${missingCodes.join(", ")}`
+                : "Alle Kürzel erfasst"}
             </p>
           </div>
 
@@ -712,49 +719,49 @@ function AuflagenScanOverlay({
               type="button"
               disabled={analyzing}
               onClick={onOpenReview}
-              className="flex h-8 shrink-0 items-center rounded-full bg-white px-3 text-[0.72rem] font-semibold text-neutral-900 disabled:opacity-40"
+              className="flex h-6 shrink-0 items-center rounded-full bg-white px-2.5 text-[0.62rem] font-semibold text-neutral-900 disabled:opacity-40"
             >
               Prüfen
             </button>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              disabled={analyzing}
+              onClick={onSkip}
+              className="shrink-0 text-[0.58rem] font-medium text-white/70 underline-offset-2 hover:text-white hover:underline disabled:opacity-40"
+            >
+              Überspringen
+            </button>
+          )}
         </div>
 
         {targetCodes.length > 0 ? (
-          <div className="mt-2.5 px-0.5">
-            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-white/50">
-              Auflagen-Kürzel aus der Fahrzeugtabelle
-            </p>
-            <div className="mt-1.5 flex flex-wrap justify-center gap-1.5">
-              {targetCodes.map((code) => {
-                const captured = !missingCodes.some(
-                  (missing) => missing.toUpperCase() === code.toUpperCase(),
-                );
-                return (
-                  <span
-                    key={code}
-                    className={`rounded-full border px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold ${
-                      captured
-                        ? "border-emerald-300/50 bg-emerald-500/20 text-emerald-100"
-                        : "border-amber-300/60 bg-amber-500/20 text-amber-100"
-                    }`}
-                  >
-                    {code}
-                  </span>
-                );
-              })}
-            </div>
+          <div className="mt-1 flex flex-wrap gap-1 px-0.5">
+            {targetCodes.map((code) => {
+              const captured = !missingCodes.some(
+                (missing) => missing.toUpperCase() === code.toUpperCase(),
+              );
+              return (
+                <span
+                  key={code}
+                  className={`rounded-md px-1.5 py-0.5 font-mono text-[0.6rem] font-semibold leading-none ${
+                    captured
+                      ? "bg-emerald-500/25 text-emerald-100"
+                      : "bg-amber-500/20 text-amber-100"
+                  }`}
+                >
+                  {code}
+                </span>
+              );
+            })}
           </div>
-        ) : (
-          <p className="mt-2 px-1 text-center text-[0.72rem] text-white/70">
-            Fotografiere den Auflagen-Abschnitt der ABE wörtlich.
-          </p>
-        )}
+        ) : null}
 
         {analyzing ? (
-          <div className="mt-2 flex min-h-[1.1rem] items-center justify-center gap-1.5 text-[0.68rem]">
+          <div className="mt-1 flex min-h-[0.85rem] items-center justify-center gap-1 text-[0.58rem]">
             <span className="inline-flex items-center gap-1 text-amber-200">
-              <LoaderCircle className="h-3 w-3 animate-spin" />
-              Auflagen-Text wird erkannt…
+              <LoaderCircle className="h-2.5 w-2.5 animate-spin" />
+              Auflagen-Text…
               {queuedCount > 0 ? `(+${queuedCount})` : ""}
             </span>
           </div>
@@ -777,6 +784,7 @@ function AuflagenDetailPanel({
   onSelectRow,
   onContinueToReview,
   onStartScan,
+  onSkipScan,
   onBack,
 }: {
   report: AbeDataHunterReport;
@@ -790,6 +798,7 @@ function AuflagenDetailPanel({
   onSelectRow: (rowId: string) => void;
   onContinueToReview: () => void;
   onStartScan: () => void;
+  onSkipScan: () => void;
   onBack: () => void;
 }) {
   const groups = useMemo(
@@ -931,17 +940,32 @@ function AuflagenDetailPanel({
             Weiter zur Prüfung
           </Button>
         ) : (
-          <Button
-            type="button"
-            className="mt-5 h-12 w-full"
-            disabled={!vehicleSelectionReady || targetCodes.length === 0}
-            onClick={onStartScan}
-          >
-            <Camera className="h-4 w-4" />
-            {missingCodes.length > 0
-              ? `Fehlende Auflagen scannen (${missingCodes.length})`
-              : "Auflagen scannen"}
-          </Button>
+          <>
+            <Button
+              type="button"
+              className="mt-5 h-12 w-full"
+              disabled={!vehicleSelectionReady || targetCodes.length === 0}
+              onClick={onStartScan}
+            >
+              <Camera className="h-4 w-4" />
+              {missingCodes.length > 0
+                ? `Fehlende Auflagen scannen (${missingCodes.length})`
+                : "Auflagen scannen"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-2 h-11 w-full"
+              disabled={!vehicleSelectionReady}
+              onClick={onSkipScan}
+            >
+              Auflagen-Scan überspringen
+            </Button>
+            <p className="mt-2 text-center text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Wenn die Kürzel auf dem Papier nicht auffindbar sind, kannst du den
+              Scan überspringen und später ergänzen.
+            </p>
+          </>
         )}
       </section>
     </section>
@@ -1028,6 +1052,7 @@ function ReviewPanel({
   selectedGroupIndex,
   selectedRowId,
   imageUrlsByCode,
+  auflagenScanSkipped,
   onSelectGroup,
   onSelectRow,
   onSave,
@@ -1041,6 +1066,7 @@ function ReviewPanel({
   selectedGroupIndex: number | null;
   selectedRowId: string | null;
   imageUrlsByCode: Map<string, string>;
+  auflagenScanSkipped: boolean;
   onSelectGroup: (index: number) => void;
   onSelectRow: (rowId: string) => void;
   onSave: (form: ReviewFormState) => void;
@@ -1114,11 +1140,21 @@ function ReviewPanel({
     draftReport,
     selectedVerkaufsbezeichnung,
     vehicleContext,
-    { selectedGroupIndex, selectedRowId },
+    {
+      selectedGroupIndex,
+      selectedRowId,
+      auflagenScanSkipped,
+    },
   );
 
   return (
     <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
+      {auflagenScanSkipped ? (
+        <div className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] text-amber-950">
+          Auflagen-Text wurde übersprungen — du kannst die Texte später im
+          Dokument ergänzen.
+        </div>
+      ) : null}
       {groups.length > 0 ? (
         <AbeVehicleMatchPicker
           matches={report.vehicleMatches}
@@ -1356,6 +1392,7 @@ export function AbeDataHunterWizard({
   const [huntSessionKey, setHuntSessionKey] = useState(0);
   const [manualKbaInput, setManualKbaInput] = useState("");
   const [kuerzelDbReady, setKuerzelDbReady] = useState(false);
+  const [auflagenScanSkipped, setAuflagenScanSkipped] = useState(false);
 
   const queueRef = useRef<File[]>([]);
   const auflagenQueueRef = useRef<File[]>([]);
@@ -1610,8 +1647,15 @@ export function AbeDataHunterWizard({
       goToReview();
       return;
     }
+    setAuflagenScanSkipped(false);
     setHuntError(null);
     setPhase("auflagen-scan");
+  }
+
+  function skipAuflagenScan() {
+    setAuflagenScanSkipped(true);
+    setHuntError(null);
+    goToReview();
   }
 
   function goToReview() {
@@ -1705,6 +1749,7 @@ export function AbeDataHunterWizard({
     setSelectedRowId(null);
     setSaveError(null);
     setManualKbaInput("");
+    setAuflagenScanSkipped(false);
     setHuntSessionKey((current) => current + 1);
   }
 
@@ -1876,13 +1921,15 @@ export function AbeDataHunterWizard({
           selectedRowId,
         );
         const { notes, regions } = await extractAuflagenTextFromFile(file, codes);
+        const sanitizedNotes =
+          sanitizeAuflagenNotesForTargetCodes(notes, codes) ?? notes;
         const before = reportRef.current;
         const merged = fillAbeDataHunterReport(before, {
           ...emptyAbeDataHunterReport(),
-          auflagenNotes: notes,
+          auflagenNotes: sanitizedNotes,
         });
 
-        const learned = extractKuerzelRecordsFromOcrNotes(notes, codes);
+        const learned = extractKuerzelRecordsFromOcrNotes(sanitizedNotes, codes);
         if (learned.length > 0) {
           kuerzelDbRef.current = await learnAuflagenKuerzelRecords(
             learned,
@@ -1892,7 +1939,7 @@ export function AbeDataHunterWizard({
 
         const crops = await cropAuflagenSnippetsFromPhoto(
           file,
-          notes,
+          sanitizedNotes,
           codes,
           regions,
         );
@@ -1989,11 +2036,19 @@ export function AbeDataHunterWizard({
       selectedGroupIndex,
       selectedRowId,
     );
-    const resolvedNotes = resolveAuflagenWithKuerzelDb(
-      reviewForm.auflagenNotes.trim() || report.auflagenNotes,
-      knownAuflagenCodes,
-      kuerzelDbRef.current,
-    ).notes;
+    const sanitizedNotes = auflagenScanSkipped
+      ? null
+      : sanitizeAuflagenNotesForTargetCodes(
+          reviewForm.auflagenNotes.trim() || report.auflagenNotes,
+          knownAuflagenCodes,
+        );
+    const resolvedNotes = auflagenScanSkipped
+      ? null
+      : resolveAuflagenWithKuerzelDb(
+          sanitizedNotes,
+          knownAuflagenCodes,
+          kuerzelDbRef.current,
+        ).notes;
 
     const draft: AbeDataHunterReport = {
       ...report,
@@ -2003,7 +2058,7 @@ export function AbeDataHunterWizard({
       manufacturer: reviewForm.manufacturer.trim() || null,
       partDesignation: reviewForm.partDesignation.trim() || null,
       markingText: reviewForm.markingText.trim() || null,
-      auflagenCodes: parseCodes(reviewForm.auflagenCodes),
+      auflagenCodes: knownAuflagenCodes,
       auflagenNotes: resolvedNotes,
     };
 
@@ -2011,7 +2066,11 @@ export function AbeDataHunterWizard({
       draft,
       selectedGroup?.verkaufsbezeichnung,
       vehicleContext,
-      { selectedGroupIndex, selectedRowId },
+      {
+        selectedGroupIndex,
+        selectedRowId,
+        auflagenScanSkipped,
+      },
     );
     if (stillMissing.length > 0) {
       setSaveError(
@@ -2029,6 +2088,7 @@ export function AbeDataHunterWizard({
     const auflagenEntries = parseAbeAuflagenNotes(
       draft.auflagenNotes ?? "",
       knownAuflagenCodes,
+      { strict: true },
     );
     const auflagenSnippets = auflagenEntries.map((entry) => ({
       code: entry.code,
@@ -2177,6 +2237,7 @@ export function AbeDataHunterWizard({
           selectedGroupIndex={selectedGroupIndex}
           selectedRowId={selectedRowId}
           imageUrlsByCode={kuerzelImageUrls}
+          auflagenScanSkipped={auflagenScanSkipped}
           onSelectGroup={handleSelectGroup}
           onSelectRow={handleSelectRow}
           onSave={handleSave}
@@ -2221,6 +2282,7 @@ export function AbeDataHunterWizard({
           onSelectRow={handleSelectRow}
           onContinueToReview={goToReview}
           onStartScan={startAuflagenScan}
+          onSkipScan={skipAuflagenScan}
           onBack={returnToChooser}
         />
       </>
@@ -2238,6 +2300,7 @@ export function AbeDataHunterWizard({
           queuedCount={queuedCount}
           captureSummary={captureSummary}
           onOpenReview={goToReview}
+          onSkip={skipAuflagenScan}
           onClose={returnToAuflagenDetail}
         />
         <InBrowserCamera

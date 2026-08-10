@@ -17,6 +17,7 @@ import {
 import {
   parseAuflagenRegions,
 } from "@/lib/ocr/auflagen-crop";
+import { sanitizeAuflagenNotesForTargetCodes } from "@/lib/ocr/abe-auflagen-from-text";
 import {
   ABE_HUNT_ALL_JSON_SCHEMA,
   ABE_HUNT_AUFLAGEN_JSON_SCHEMA,
@@ -383,6 +384,9 @@ export class AbeDataHunterExtractionService {
           "Merge reifenbezogene Auflagen and general Auflagen column codes into each row's auflagenCodes.",
           "When extracting vehicleMatches: put Auflagen-Kürzel ONLY in each row's auflagenCodes — never in the top-level auflagenCodes field.",
           "Do NOT copy Auflagen from rows above or below the target vehicle — each row gets only its own Auflagen column.",
+          "Auflagen-Kürzel examples: 744, 166, A02, 11A, B04A — short codes from the Auflagen column only.",
+          "NEVER put Fahrzeugtyp codes (F40, G20, K40, T67, 346L, 3/CG) into auflagenCodes — those belong in fahrzeugtyp only.",
+          "If a token looks like a vehicle type code, it is NOT an Auflagen-Kürzel.",
           "Leave auflagenNotes empty — the user scans Auflagen prose in a dedicated follow-up step.",
           ...(isPdf
             ? [
@@ -564,7 +568,7 @@ export class AbeDataHunterExtractionService {
   ): Promise<AbeHuntStepResult<AbeHuntAuflagenTextExtraction>> {
     const codesHint =
       targetCodes.length > 0
-        ? `Target Auflagen codes from the vehicle table: ${targetCodes.join(", ")}.`
+        ? `ONLY these Auflagen codes apply — transcribe text for these codes and no others: ${targetCodes.join(", ")}.`
         : "Extract all visible Auflagen / conditions prose on this page.";
 
     try {
@@ -575,13 +579,15 @@ export class AbeDataHunterExtractionService {
           codesHint,
           "Transcribe the full Auflagen / Bedingungen / Hinweise text verbatim.",
           "Include section headings and numbered items. Do not summarize.",
-          "If multiple codes are visible, include every matching paragraph.",
+          "Format each code block as CODE: full paragraph text.",
+          "Do NOT invent codes. Ignore Fahrzeugtyp codes (F40, G20, K40, T67) — they are not Auflagen.",
+          "If a code is not in the target list above, do not include it in auflagenNotes or regions.",
           "For each target code, also return a normalized bounding box (0–1) covering the printed paragraph for that code on the photo.",
         ],
         [
           "Extract the complete Auflagen text visible in this photograph.",
           "Copy wording exactly as printed on the ABE document.",
-          "Return one regions entry per visible target code block.",
+          "Return one regions entry per target code block only.",
         ],
         ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA,
         "hunt-auflagen-text",
@@ -594,9 +600,18 @@ export class AbeDataHunterExtractionService {
         typeof record.auflagenNotes === "string"
           ? record.auflagenNotes.trim()
           : "";
-      const regions = parseAuflagenRegions(record.regions);
+      const targetSet = new Set(
+        targetCodes.map((code) => code.trim().toUpperCase()).filter(Boolean),
+      );
+      const regions = parseAuflagenRegions(record.regions).filter((region) =>
+        targetSet.size === 0 ? true : targetSet.has(region.code),
+      );
+      const sanitizedNotes =
+        targetSet.size > 0
+          ? sanitizeAuflagenNotesForTargetCodes(notes, targetCodes) ?? notes
+          : notes;
 
-      if (!notes) {
+      if (!sanitizedNotes) {
         return {
           status: "needs_manual",
           extraction: { auflagenNotes: null, regions: [] },
@@ -607,7 +622,7 @@ export class AbeDataHunterExtractionService {
 
       return {
         status: "ok",
-        extraction: { auflagenNotes: notes, regions },
+        extraction: { auflagenNotes: sanitizedNotes, regions },
       };
     } catch {
       return {

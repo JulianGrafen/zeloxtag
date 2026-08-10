@@ -15,16 +15,27 @@ function normalizeCode(raw: string): string {
   return raw.trim().toUpperCase();
 }
 
-function isAuflagenCodeToken(raw: string, knownCodes: Set<string>): boolean {
+export type ParseAbeAuflagenNotesOptions = {
+  /** When true and knownCodes is non-empty, ignore regex-only code matches. */
+  strict?: boolean;
+};
+
+function isAuflagenCodeToken(
+  raw: string,
+  knownCodes: Set<string>,
+  strict = false,
+): boolean {
   const code = normalizeCode(raw);
   if (!code || code.length > 6) return false;
   if (knownCodes.has(code)) return true;
+  if (strict && knownCodes.size > 0) return false;
   return looksLikeAuflagenCode(code);
 }
 
 function parseCodeLine(
   line: string,
   knownCodes: Set<string>,
+  strict = false,
 ): { code: string; text: string } | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
@@ -48,9 +59,26 @@ function parseCodeLine(
   if (!match?.[1]) return null;
 
   const code = normalizeCode(match[1]);
-  if (!isAuflagenCodeToken(code, knownCodes)) return null;
+  if (!isAuflagenCodeToken(code, knownCodes, strict)) return null;
 
   return { code, text: (match[2] ?? "").trim() };
+}
+
+function looksLikeRejectedCodeLine(
+  line: string,
+  knownCodes: Set<string>,
+  strict: boolean,
+): boolean {
+  if (!strict || knownCodes.size === 0) return false;
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+
+  const withoutPrefix = trimmed.replace(CODE_PREFIX, "").trim();
+  const match = CODE_LINE.exec(withoutPrefix);
+  if (!match?.[1]) return false;
+
+  const code = normalizeCode(match[1]);
+  return !knownCodes.has(code) && looksLikeAuflagenCode(code);
 }
 
 function flushEntry(
@@ -71,17 +99,19 @@ function flushEntry(
 export function parseAbeAuflagenNotes(
   raw: string,
   knownCodes: string[] = [],
+  options?: ParseAbeAuflagenNotesOptions,
 ): AbeAuflageEntry[] {
   const text = raw.replace(/\r\n/g, "\n").trim();
   if (!text) return [];
 
+  const strict = options?.strict === true;
   const known = new Set(knownCodes.map(normalizeCode));
   const lines = text.split("\n");
   const entries: AbeAuflageEntry[] = [];
   let current: AbeAuflageEntry | null = null;
 
   for (const line of lines) {
-    const parsed = parseCodeLine(line, known);
+    const parsed = parseCodeLine(line, known, strict);
     if (parsed) {
       current = flushEntry(entries, current);
       current = parsed;
@@ -89,6 +119,10 @@ export function parseAbeAuflagenNotes(
     }
 
     const trimmed = line.trim();
+    if (looksLikeRejectedCodeLine(trimmed, known, strict)) {
+      current = flushEntry(entries, current);
+      continue;
+    }
     if (!trimmed) {
       if (current?.text) {
         current.text = `${current.text}\n`;
@@ -110,6 +144,24 @@ export function parseAbeAuflagenNotes(
   }
 
   return splitAbeAuflagenByKnownCodes(text, knownCodes);
+}
+
+/** Keep only OCR sections for codes from the selected vehicle row. */
+export function sanitizeAuflagenNotesForTargetCodes(
+  notes: string | null | undefined,
+  targetCodes: readonly string[],
+): string | null {
+  const trimmed = notes?.trim();
+  if (!trimmed) return null;
+  if (targetCodes.length === 0) return trimmed;
+
+  const allowed = new Set(targetCodes.map(normalizeCode));
+  const entries = parseAbeAuflagenNotes(trimmed, [...targetCodes], {
+    strict: true,
+  }).filter((entry) => allowed.has(normalizeCode(entry.code)));
+
+  if (entries.length === 0) return null;
+  return abeAuflagenEntriesToConditions(entries).join("\n\n");
 }
 
 function splitAbeAuflagenByKnownCodes(

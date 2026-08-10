@@ -12,6 +12,8 @@
     "test:extraction": "vitest run src/lib/ocr/extraction-quality.test.ts src/services/documents/document-services.test.ts",
     "predeploy": "npm run test:extraction",
     "db:seed-demo": "node --env-file=.env scripts/seed-demo-vehicle.mjs",
+    "db:seed-kuerzel": "npx tsx scripts/seed-abe-auflagen-kuerzel.ts",
+    "db:generate-kuerzel-migration": "npx tsx scripts/generate-kuerzel-migration.ts",
     "postinstall": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {

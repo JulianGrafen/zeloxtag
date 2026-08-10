@@ -590,6 +590,8 @@ export function missingAbeRequiredFields(
   selection?: {
     selectedGroupIndex?: number | null;
     selectedRowId?: string | null;
+    /** User skipped Auflagen text scan — allow save without auflagenNotes. */
+    auflagenScanSkipped?: boolean;
   },
 ): AbeRequiredFieldKey[] {
   const missing = missingAbeCoreHuntFields(
@@ -597,6 +599,9 @@ export function missingAbeRequiredFields(
     selectedVerkaufsbezeichnung,
     vehicleContext,
   );
+  if (selection?.auflagenScanSkipped) {
+    return missing;
+  }
   const groups = groupAbeVehicleMatches(report.vehicleMatches);
   const targetCodes =
     groups.length > 0
@@ -624,6 +629,7 @@ export function isAbeDataHunterReportComplete(
   selection?: {
     selectedGroupIndex?: number | null;
     selectedRowId?: string | null;
+    auflagenScanSkipped?: boolean;
   },
 ): boolean {
   return (

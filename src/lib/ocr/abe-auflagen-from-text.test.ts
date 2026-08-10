@@ -5,6 +5,7 @@ import {
   isAbeCodeStructuredConditions,
   missingAuflagenCodesInNotes,
   parseAbeAuflagenNotes,
+  sanitizeAuflagenNotesForTargetCodes,
 } from "@/lib/ocr/abe-auflagen-from-text";
 
 describe("parseAbeAuflagenNotes", () => {
@@ -52,6 +53,29 @@ A02 Typprüfung erforderlich.`,
     expect(parsed).toHaveLength(2);
     expect(parsed[0]?.code).toBe("744");
     expect(parsed[1]?.code).toBe("A02");
+  });
+
+  it("ignores phantom codes in strict mode", () => {
+    const parsed = parseAbeAuflagenNotes(
+      `744: Gültiger Text.
+
+K40: Fahrzeugtyp-Bleed.
+
+A02: Typprüfung.`,
+      ["744", "A02"],
+      { strict: true },
+    );
+
+    expect(parsed.map((entry) => entry.code)).toEqual(["744", "A02"]);
+  });
+
+  it("sanitizes OCR notes to target codes only", () => {
+    expect(
+      sanitizeAuflagenNotesForTargetCodes(
+        "744: Text\nK40: Phantom\nA02: Mehr",
+        ["744", "A02"],
+      ),
+    ).toBe("744: Text\n\nA02: Mehr");
   });
 
   it("reports missing target codes in OCR notes", () => {

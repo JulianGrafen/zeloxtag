@@ -29,6 +29,9 @@ export function createAdminClient(): SupabaseClient {
       persistSession: false,
       autoRefreshToken: false,
     },
+    global: {
+      fetch,
+    },
   });
 }
 
