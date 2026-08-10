@@ -88,6 +88,8 @@ export const ABE_CORE_HUNT_FIELD_KEYS = [
   "verkaufsbezeichnung",
 ] as const satisfies readonly AbeRequiredFieldKey[];
 
+export type AbeCoreHuntFieldKey = (typeof ABE_CORE_HUNT_FIELD_KEYS)[number];
+
 /** Optional facts — captured when visible (hunt-all merge) or entered in review. */
 export const ABE_OPTIONAL_FIELD_KEYS = ["markingText"] as const satisfies readonly AbeRequiredFieldKey[];
 
@@ -537,8 +539,8 @@ export function missingAbeCoreHuntFields(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
-): AbeRequiredFieldKey[] {
-  const missing: AbeRequiredFieldKey[] = [];
+): AbeCoreHuntFieldKey[] {
+  const missing: AbeCoreHuntFieldKey[] = [];
   if (!inferAbeKbaFromReport(report)) missing.push("kbaNumber");
   if (!report.abeNumber?.trim()) missing.push("abeNumber");
   if (!report.abeHolder?.trim()) missing.push("abeHolder");
@@ -597,11 +599,13 @@ export function missingAbeRequiredFields(
     skippedAuflagenCodes?: readonly string[];
   },
 ): AbeRequiredFieldKey[] {
-  const missing = missingAbeCoreHuntFields(
-    report,
-    selectedVerkaufsbezeichnung,
-    vehicleContext,
-  );
+  const missing: AbeRequiredFieldKey[] = [
+    ...missingAbeCoreHuntFields(
+      report,
+      selectedVerkaufsbezeichnung,
+      vehicleContext,
+    ),
+  ];
   if (selection?.auflagenScanSkipped) {
     return missing;
   }
