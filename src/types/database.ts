@@ -47,6 +47,12 @@ export type Vehicle = {
   tech_specs: VehicleTechSpecs | Record<string, unknown> | null;
   /** Transparent side-profile PNG URL — see migration 00023. */
   silhouette_image_url: string | null;
+  /** Public showcase at meets / share links — migration 00030. */
+  is_public: boolean;
+  /** Hide prices on public profile (default true). */
+  hide_financials: boolean;
+  /** Share token for `/v/{public_slug}`. */
+  public_slug: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -173,6 +179,9 @@ export type Database = {
           vin?: string | null;
           tech_specs?: VehicleTechSpecs | Record<string, unknown> | null;
           silhouette_image_url?: string | null;
+          is_public?: boolean;
+          hide_financials?: boolean;
+          public_slug?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -185,6 +194,9 @@ export type Database = {
           vin?: string | null;
           tech_specs?: VehicleTechSpecs | Record<string, unknown> | null;
           silhouette_image_url?: string | null;
+          is_public?: boolean;
+          hide_financials?: boolean;
+          public_slug?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -396,6 +408,10 @@ export type Database = {
     Functions: {
       resolve_tag_by_uuid: {
         Args: { p_uuid: string };
+        Returns: Json;
+      };
+      resolve_public_vehicle_by_slug: {
+        Args: { p_slug: string };
         Returns: Json;
       };
     };

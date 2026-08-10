@@ -39,6 +39,7 @@ const PUBLIC_API_GET = new Set<string>();
 const PUBLIC_API_GET_PREFIXES = [
   "/api/vehicle/silhouette/",
   "/api/vehicle/catalog/",
+  "/api/public/vehicle/",
 ];
 
 export function isPublicVehicleImagePath(

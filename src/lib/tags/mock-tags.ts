@@ -28,6 +28,9 @@ const mockVehicle: Vehicle = {
     notes: "A80 · Widebody · GReddy Wing",
   },
   silhouette_image_url: null,
+  is_public: false,
+  hide_financials: true,
+  public_slug: null,
   created_at: now,
   updated_at: now,
 };

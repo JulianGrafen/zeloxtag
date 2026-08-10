@@ -12,6 +12,7 @@ import {
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { withDefaultShowcaseFields } from "@/lib/vehicles/public-showcase-data";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
@@ -76,7 +77,7 @@ function normalizeVehicle(value: unknown): Vehicle | null {
   if (typeof vehicle.id !== "string" || typeof vehicle.make !== "string") {
     return null;
   }
-  return {
+  return withDefaultShowcaseFields({
     ...vehicle,
     user_id: typeof vehicle.user_id === "string" ? vehicle.user_id : "",
     model: typeof vehicle.model === "string" ? vehicle.model : "",
@@ -91,7 +92,7 @@ function normalizeVehicle(value: unknown): Vehicle | null {
       typeof vehicle.created_at === "string" ? vehicle.created_at : "",
     updated_at:
       typeof vehicle.updated_at === "string" ? vehicle.updated_at : "",
-  };
+  });
 }
 
 function normalizeScanResult(data: TagScanResult): TagScanResult {
