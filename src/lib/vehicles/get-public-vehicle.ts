@@ -12,6 +12,16 @@ import type { Document, TagScanResult, Vehicle } from "@/types/database";
 
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 
+function isMissingShowcaseColumnError(error: {
+  message?: string;
+  code?: string;
+}): boolean {
+  return (
+    error.code === "PGRST204" ||
+    Boolean(error.message?.includes("show_on_public_showcase"))
+  );
+}
+
 function normalizeVehicle(value: unknown): Vehicle | null {
   if (!value || typeof value !== "object") return null;
   const vehicle = value as Vehicle;
@@ -47,6 +57,12 @@ async function loadVehicleDocuments(vehicleId: string): Promise<Document[]> {
     .order("created_at", { ascending: false });
 
   if (error) {
+    if (isMissingShowcaseColumnError(error)) {
+      console.warn(
+        "[public-showcase] documents.show_on_public_showcase missing — apply migration 00031_document_public_showcase.sql",
+      );
+      return [];
+    }
     throw new Error(`Failed to load public showcase documents: ${error.message}`);
   }
   return (data as Document[]) ?? [];

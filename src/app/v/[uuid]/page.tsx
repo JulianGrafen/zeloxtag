@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ClaimFlow } from "@/components/tags/claim-flow";
@@ -10,7 +11,8 @@ import { PublicProfilePrivate } from "@/components/public-showcase/PublicProfile
 import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
 import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
+import { getTagVehicleAccess, getVehicleAccess } from "@/lib/auth/vehicle-access";
+import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 import {
   loadPublicShowcaseDocuments,
   resolvePublicVehicleEntry,
@@ -63,21 +65,22 @@ export async function generateMetadata({
   };
 }
 
-async function renderPublicShowcase(
-  vehicle: Vehicle,
-  options: { dashboardHref?: string | null } = {},
-) {
+async function renderPublicShowcase(vehicle: Vehicle) {
   const documents = await loadPublicShowcaseDocuments(vehicle.id);
   const payload = buildPublicShowcasePayload(vehicle, documents);
 
   return (
     <AppShell showNavbar={false}>
-      <PublicShowcaseView
-        data={payload}
-        dashboardHref={options.dashboardHref ?? null}
-      />
+      <PublicShowcaseView data={payload} />
     </AppShell>
   );
+}
+
+function hasInsiderAccess(access: {
+  isOwner: boolean;
+  isContributor: boolean;
+}): boolean {
+  return access.isOwner || access.isContributor;
 }
 
 /**
@@ -111,6 +114,15 @@ export default async function TagScanPage({
         </AppShell>
       );
     }
+
+    const access = await getVehicleAccess(vehicle.user_id, vehicle.id);
+    if (hasInsiderAccess(access)) {
+      const tagUuid = await getActiveTagUuidForVehicle(vehicle.id);
+      if (tagUuid) {
+        redirect(`/v/${tagUuid}`);
+      }
+    }
+
     return renderPublicShowcase(vehicle);
   }
 
@@ -134,14 +146,13 @@ export default async function TagScanPage({
     const access = await getTagVehicleAccess(tag.uuid, vehicle.user_id);
     const isPublicShowcase = vehicleSupportsPublicShowcase(vehicle);
 
-    // Physical QR scan → public showcase for everyone when enabled.
-    if (isPublicShowcase && !wantsDashboard) {
-      return renderPublicShowcase(vehicle, {
-        dashboardHref:
-          access.isOwner || access.isContributor
-            ? `/v/${tag.uuid}?dashboard=1`
-            : null,
-      });
+    // Public showcase is guest-only; owner and Schrauber land in the private dashboard.
+    if (
+      isPublicShowcase &&
+      !wantsDashboard &&
+      !hasInsiderAccess(access)
+    ) {
+      return renderPublicShowcase(vehicle);
     }
 
     if (!access.isOwner && !access.isContributor) {
