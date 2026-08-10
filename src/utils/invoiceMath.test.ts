@@ -40,7 +40,7 @@ describe("processLineItems", () => {
     const [item] = processLineItems([
       { label: "Entsorgung", menge: null, einzelpreis: null, gesamtpreis: "12,00" },
     ]);
-    expect(item).toMatchObject({ menge: 1, einzelpreis: 12, gesamtpreis: 12 });
+    expect(item).toMatchObject({ menge: null, einzelpreis: null, gesamtpreis: 12 });
   });
 
   it("excludes E-Preis-only rows without Menge and Ges. Preis", () => {
@@ -57,11 +57,11 @@ describe("processLineItems", () => {
     expect(item.gesamtpreis).toBe(480);
   });
 
-  it("uses gesamtpreis as e-preis when einzelpreis is missing", () => {
+  it("keeps gesamtpreis when einzelpreis is missing (line total only)", () => {
     const [item] = processLineItems([
       { label: "Arbeitslohn", menge: null, einzelpreis: null, gesamtpreis: "95,00" },
     ]);
-    expect(item).toMatchObject({ menge: 1, einzelpreis: 95, gesamtpreis: 95 });
+    expect(item).toMatchObject({ menge: null, einzelpreis: null, gesamtpreis: 95 });
   });
 
   it("keeps matching gesamtpreis within tolerance", () => {
@@ -85,5 +85,17 @@ describe("processLineItems", () => {
       },
     ]);
     expect(item).toMatchObject({ menge: 1, gesamtpreis: 28.8 });
+  });
+
+  it("keeps discounted gesamtpreis when lower than menge × einzelpreis", () => {
+    const [item] = processLineItems([
+      {
+        label: "Sensor, Kühlmitteltemperatur",
+        menge: "1 Stück",
+        einzelpreis: "41,04 €",
+        gesamtpreis: "28,73 €",
+      },
+    ]);
+    expect(item.gesamtpreis).toBe(28.73);
   });
 });

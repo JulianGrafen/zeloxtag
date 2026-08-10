@@ -1,5 +1,9 @@
 import { sumLineItems } from "@/lib/documents/line-items";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
+import {
+  extractWorkshopInvoiceAmount,
+  isWorkshopSectionInvoiceText,
+} from "@/lib/ocr/invoice-workshop-sections";
 import type { DocumentLineItem } from "@/types/database";
 
 /**
@@ -26,6 +30,7 @@ export function extractAmountFromText(rawText: string): number | null {
   const text = rawText.replace(/\r\n/g, "\n");
 
   const labeledPatterns = [
+    /endpreis\s*[:.]?\s*(-?\s*[0-9][0-9.\s,]{0,14})\s*(?:€|eur)?/gi,
     /(?:rechnungsbetrag|zahlbetrag|gesamtbetrag|bruttobetrag|endbetrag|zu\s*zahlen|summe|gesamt|total|(?<![a-zäöüß])betrag)\s*[:.]?\s*(-?\s*[0-9][0-9.\s,]{0,14})\s*(?:€|eur)?/gi,
     /(?:€|eur)\s*(-?\s*[0-9][0-9.\s,]{0,14})\s*(?:gesamt|brutto|total)?/gi,
   ];
@@ -42,6 +47,11 @@ export function extractAmountFromText(rawText: string): number | null {
 
   if (candidates.length > 0) {
     return Math.max(...candidates);
+  }
+
+  if (isWorkshopSectionInvoiceText(text)) {
+    const workshopAmount = extractWorkshopInvoiceAmount(text);
+    if (workshopAmount != null) return workshopAmount;
   }
 
   // Fallback: rightmost plausible € amounts on "Summe/Gesamt" lines.

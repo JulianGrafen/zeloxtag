@@ -62,6 +62,16 @@ export function processLineItems(llmItems: any[]) {
       };
     }
 
+    // Printed line total without Einzelpreis (typical Arbeitswerte: Std + Preis-€).
+    if (rawEPreis === null && rawGesPreis !== null) {
+      return {
+        ...item,
+        menge: rawMenge,
+        einzelpreis: null,
+        gesamtpreis: rawGesPreis,
+      };
+    }
+
     // Rule 1: If Menge is missing, default to 1 only when Ges. Preis or E-Preis needs computing
     let menge = rawMenge !== null ? rawMenge : 1;
     
@@ -88,8 +98,17 @@ export function processLineItems(llmItems: any[]) {
     const computedTotal = parseFloat((menge * ePreis).toFixed(2));
 
     // Rule 4: Overwrite if GesPreis is missing OR if the checksum deviates (e.g. LLM hallucinates)
-    if (gesPreis === null || Math.abs(gesPreis - computedTotal) > 0.05) {
+    if (gesPreis === null) {
       gesPreis = computedTotal;
+    } else if (Math.abs(gesPreis - computedTotal) > 0.05) {
+      const looksLikeDiscount =
+        rawGesPreis !== null &&
+        rawEPreis !== null &&
+        rawGesPreis < computedTotal - 0.05 &&
+        Math.abs(rawGesPreis - rawEPreis) > 0.05;
+      if (!looksLikeDiscount) {
+        gesPreis = computedTotal;
+      }
     }
 
     return {

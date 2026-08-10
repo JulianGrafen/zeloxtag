@@ -83,6 +83,28 @@ FEW-SHOT — Extract & Compute (deutsche Werkstattrechnung Pos | Nummer | Bezeic
 NIEMALS rechnen. Leere Zellen = null. €-Zeichen und Kommas exakt abschreiben.
 `.trim();
 
+/** Few-shot — Abschnitts-Rechnung (Arbeitswerte | Ersatzteile | Sonstige Kosten). */
+export const INVOICE_WORKSHOP_SECTIONS_FEW_SHOT = `
+FORMAT B — Abschnitts-Werkstattrechnung (SPEEDWORKZ / DMS):
+Erkenne drei Blöcke: "Arbeitswerte", "Ersatzteile", "Sonstige Kosten".
+
+Arbeitswerte (Spalten: Beschreibung | Art | Std. | Preis-€):
+- "Motor wird heiß lt. Kunde …" | 0,50 Std | gesamtpreis "46,22 €"
+- Zeilen NUR mit Beschreibung ohne Preis (z.B. "Thermostat gebrochen") → KEIN lineItem
+- "Thermostat und Wasserschlauch erneuern" | menge "1,80 Std" | gesamtpreis "166,37 €"
+
+Ersatzteile (Spalten: Anzahl | Stück | Beschreibung | Einzelpreis | Preis-€):
+- "1 Stück Wasserschlauch" | einzelpreis "65,12 €" | gesamtpreis "65,12 €"
+- "4 Stück Kühlerfrostschutz Blau/Rot" | einzelpreis "6,50 €" | gesamtpreis "26,00 €"
+- Mit Rabatt: Einzelpreis "41,04 €" | gesamtpreis "28,73 €" (NIEMALS 41,04 als gesamtpreis)
+
+Sonstige Kosten:
+- "1 Fracht" | gesamtpreis "5,00 €"
+
+Footer (KEINE lineItems): Zwischensummen, Netto Summe, MwSt., Endpreis.
+amount = "Endpreis" brutto (z.B. "540,84 €") — nicht Netto Summe.
+`.trim();
+
 /** Fallback system prompt when Foundry agent metadata is unavailable. */
 export const INVOICE_SYSTEM_PROMPT = `Du bist ein präziser Parser für Kfz-Rechnungen und Servicebelege.
 Der OCR-Input ist Markdown (inkl. Tabellen). Nutze Tabellenzeilen und Überschriften als Struktur.
@@ -208,6 +230,8 @@ Für jede Datenzeile extrahierst du exakt:
 Zahlen IMMER exakt so wie gedruckt abschreiben, mit Komma und €. KEINE Umrechnung, KEINE Multiplikation.
 Leere Menge oder leerer Ges. Preis → null (nicht 1 und nicht den E-Preis raten).`,
     INVOICE_LINE_ITEMS_EXTRACT_COMPUTE_FEW_SHOT,
+    INVOICE_WORKSHOP_SECTIONS_FEW_SHOT,
+    `FORMAT-WAHL: Pos|Menge|E-Preis|Ges.-Preis-Tabelle (Format A) ODER Arbeitswerte/Ersatzteile/Sonstige Kosten (Format B).`,
     INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
     INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES,
     "amount (Zahlbetrag) = raw text des Rechnungsgesamtbetrags (brutto inkl. MwSt) falls sichtbar — sonst null.",
@@ -235,6 +259,7 @@ export const INVOICE_HEADER_USER_LINES = [
 export const INVOICE_LINE_ITEMS_USER_LINES = [
   "Nur POSITIONS-/TABELLEN-BEREICH einer deutschen Kfz-Rechnung.",
   "Schritt 1: Tabellenkopf — Spalten: Pos | Nummer | Bezeichnung | Menge | Einh. | E-Preis | Ges. Preis | St.",
+  "ODER Abschnitts-Layout: Arbeitswerte | Ersatzteile | Sonstige Kosten (Preis-€ / Einzelpreis).",
   "Schritt 2: Jede Datenzeile von oben nach unten — KEINE Zeile auslassen (auch Arbeitslohn mit leerer Menge/Ges. Preis).",
   "CRITICAL: Kopiere den exakten Text aus JEDER Spalte. Führe KEINE Berechnungen durch.",
   "menge = Text aus Menge inkl. Einheit — z.B. \"1,00\", \"0,90\", \"7,00 Liter\". null wenn Zelle leer.",
@@ -247,6 +272,7 @@ export const INVOICE_LINE_ITEMS_USER_LINES = [
   "Pro Tabellenzeile GENAU EIN lineItem — mehrzeilige Bezeichnung = ein Item.",
   "Fortsetzung der Tabelle auf Seite 2: alle Zeilen mit erfassen.",
   "MwSt-Zeile (z. B. „MwSt 19%“ + €-Betrag) als eigenes lineItem — Gesamtbetrag ist brutto inkl. MwSt.",
+  "Bei Abschnitts-Rechnung: amount = Endpreis brutto, nicht Netto Summe.",
 ] as const;
 
 /** @deprecated Use buildInvoiceLineItemsSystemPrompt() */

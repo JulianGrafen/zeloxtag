@@ -18,6 +18,10 @@ import {
   type InvoiceLineItem,
 } from "./text-parse-schema";
 import { parseGermanMoneyAmount } from "./parse-german-money";
+import {
+  extractWorkshopSectionLineItems,
+  isWorkshopSectionInvoiceText,
+} from "./invoice-workshop-sections";
 
 const MAX_ITEMS = 60;
 const MAX_LABEL = 160;
@@ -219,8 +223,13 @@ export function lineTotalFromInvoiceRow(line: string): {
 export function extractInvoiceLineItemsFromText(
   rawText: string,
 ): InvoiceLineItem[] | null {
-  // Azure Markdown often ships HTML <table>/<td> — convert before row parse.
   const normalized = normalizeOcrMarkdown(rawText);
+
+  if (isWorkshopSectionInvoiceText(normalized)) {
+    const sectionItems = extractWorkshopSectionLineItems(normalized);
+    if (sectionItems?.length) return sectionItems;
+  }
+
   const text = prejoinWrappedInvoiceLines(normalized);
   const items: InvoiceLineItem[] = [];
   const seen = new Set<string>();
