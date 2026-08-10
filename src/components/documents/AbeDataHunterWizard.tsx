@@ -5,8 +5,6 @@ import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Camera,
-  ChevronLeft,
-  ChevronRight,
   FileUp,
   LoaderCircle,
   Pencil,
@@ -31,8 +29,9 @@ import {
   groupAbeVehicleMatches,
   requiresAbeVehicleGroupSelection,
   resolveAuflagenCodesForReport,
-  resolveInitialAbeVehicleGroupIndex,
+  resolveAbeHuntGroupIndex,
   selectedVerkaufsbezeichnungPayload,
+  verkaufsbezeichnungForAbeHuntGroup,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
@@ -90,22 +89,56 @@ type ReviewFormState = {
 
 const CORE_HUNT_ORDER = ABE_CORE_HUNT_FIELD_KEYS;
 
+function huntGroupContext(
+  report: AbeDataHunterReport,
+  selectedGroupIndex: number | null,
+  vehicleContext?: AbeVehicleContext | null,
+) {
+  const groups = groupAbeVehicleMatches(report.vehicleMatches);
+  const index = resolveAbeHuntGroupIndex(
+    groups,
+    vehicleContext,
+    selectedGroupIndex,
+  );
+  return {
+    groups,
+    index,
+    verkaufsbezeichnung: verkaufsbezeichnungForAbeHuntGroup(groups, index),
+  };
+}
+
 function selectedVerkaufsbezeichnungForReport(
   report: AbeDataHunterReport,
   groupIndex: number | null,
+  vehicleContext?: AbeVehicleContext | null,
 ): string | null {
-  const groups = groupAbeVehicleMatches(report.vehicleMatches);
-  if (groupIndex !== null) {
-    return groups[groupIndex]?.verkaufsbezeichnung ?? null;
-  }
-  if (groups.length === 1) {
-    return groups[0]?.verkaufsbezeichnung ?? null;
-  }
-  return null;
+  return huntGroupContext(report, groupIndex, vehicleContext).verkaufsbezeichnung;
 }
 
-function firstMissingFocusIndex(report: AbeDataHunterReport): number {
-  const missing = new Set(missingAbeCoreHuntFields(report));
+function missingCoreHuntFieldSet(
+  report: AbeDataHunterReport,
+  selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
+): Set<AbeRequiredFieldKey> {
+  return new Set(
+    missingAbeCoreHuntFields(
+      report,
+      selectedVerkaufsbezeichnung,
+      vehicleContext,
+    ),
+  );
+}
+
+function firstMissingFocusIndex(
+  report: AbeDataHunterReport,
+  selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
+): number {
+  const missing = missingCoreHuntFieldSet(
+    report,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
   for (let index = 0; index < CORE_HUNT_ORDER.length; index++) {
     const key = CORE_HUNT_ORDER[index];
     if (key && missing.has(key)) return index;
@@ -116,8 +149,14 @@ function firstMissingFocusIndex(report: AbeDataHunterReport): number {
 function nextMissingFocusIndex(
   report: AbeDataHunterReport,
   fromIndex: number,
+  selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
 ): number {
-  const missing = new Set(missingAbeCoreHuntFields(report));
+  const missing = missingCoreHuntFieldSet(
+    report,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
   for (let index = fromIndex + 1; index < CORE_HUNT_ORDER.length; index++) {
     const key = CORE_HUNT_ORDER[index];
     if (key && missing.has(key)) return index;
@@ -127,6 +166,49 @@ function nextMissingFocusIndex(
     if (key && missing.has(key)) return index;
   }
   return fromIndex;
+}
+
+function advanceHuntFocusAfterMerge(
+  before: AbeDataHunterReport,
+  after: AbeDataHunterReport,
+  currentFocusIndex: number,
+  selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
+): number {
+  const missingBefore = missingCoreHuntFieldSet(
+    before,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
+  const missingAfter = missingCoreHuntFieldSet(
+    after,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
+  const currentKey = CORE_HUNT_ORDER[currentFocusIndex];
+
+  if (
+    currentKey &&
+    missingBefore.has(currentKey) &&
+    !missingAfter.has(currentKey)
+  ) {
+    return nextMissingFocusIndex(
+      after,
+      currentFocusIndex,
+      selectedVerkaufsbezeichnung,
+      vehicleContext,
+    );
+  }
+
+  if (currentKey && missingAfter.has(currentKey)) {
+    return currentFocusIndex;
+  }
+
+  return firstMissingFocusIndex(
+    after,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
 }
 
 // ─── API ───────────────────────────────────────────────────────────────────────
@@ -219,9 +301,19 @@ function isPdfFile(file: File): boolean {
 function newlyFilledLabels(
   before: AbeDataHunterReport,
   after: AbeDataHunterReport,
+  selectedVerkaufsbezeichnung?: string | null,
+  vehicleContext?: AbeVehicleContext | null,
 ): string[] {
-  const beforeMissing = new Set(missingAbeCoreHuntFields(before));
-  const afterMissing = new Set(missingAbeCoreHuntFields(after));
+  const beforeMissing = missingCoreHuntFieldSet(
+    before,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
+  const afterMissing = missingCoreHuntFieldSet(
+    after,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
   return CORE_HUNT_ORDER.filter(
     (key) => beforeMissing.has(key) && !afterMissing.has(key),
   ).map((key) => ABE_REQUIRED_FIELD_LABELS[key]);
@@ -301,7 +393,6 @@ function HuntProgressOverlay({
   selectedVerkaufsbezeichnung?: string | null;
 }) {
   const [mounted, setMounted] = useState(false);
-  const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -312,143 +403,109 @@ function HuntProgressOverlay({
     selectedVerkaufsbezeichnung,
     vehicleContext,
   );
+  const missingSet = new Set(missing);
   const complete = missing.length === 0;
-  const currentKey = CORE_HUNT_ORDER[focusIndex] ?? CORE_HUNT_ORDER[0];
-  const currentDone = !missing.includes(currentKey);
+  const targetIndex = firstMissingFocusIndex(
+    report,
+    selectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
+  const currentKey = CORE_HUNT_ORDER[targetIndex] ?? CORE_HUNT_ORDER[0];
   const scanHint = ABE_HUNT_FIELD_SCAN_HINTS[currentKey];
   const displayLabel = abeHuntFieldDisplayLabel(currentKey);
+  const doneCount = CORE_HUNT_ORDER.length - missing.length;
+  const openCount = missing.length;
 
-  function goPrev() {
-    onFocusIndexChange(
-      (focusIndex - 1 + CORE_HUNT_ORDER.length) % CORE_HUNT_ORDER.length,
-    );
-  }
-
-  function goNext() {
-    onFocusIndexChange(nextMissingFocusIndex(report, focusIndex));
-  }
-
-  function skipCurrent() {
-    goNext();
-  }
+  useEffect(() => {
+    if (complete) return;
+    if (focusIndex !== targetIndex) {
+      onFocusIndexChange(targetIndex);
+    }
+  }, [complete, focusIndex, targetIndex, onFocusIndexChange]);
 
   if (!mounted || typeof document === "undefined") return null;
 
   return createPortal(
     <div className="pointer-events-none fixed inset-x-0 top-0 z-[10050] px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-      <div
-        className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/20 bg-black/55 px-2 py-2 text-white shadow-lg backdrop-blur-md"
-        onTouchStart={(event) => {
-          touchStartX.current = event.touches[0]?.clientX ?? null;
-        }}
-        onTouchEnd={(event) => {
-          const start = touchStartX.current;
-          touchStartX.current = null;
-          if (start === null) return;
-          const end = event.changedTouches[0]?.clientX ?? start;
-          const delta = end - start;
-          if (Math.abs(delta) < 40) return;
-          if (delta > 0) goPrev();
-          else goNext();
-        }}
-      >
-        <div className="flex items-center gap-1.5">
+      <div className="pointer-events-auto mx-auto max-w-[440px] rounded-2xl border border-white/20 bg-black/55 px-3 py-2.5 text-white shadow-lg backdrop-blur-md">
+        <div className="flex items-start gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
+            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
             aria-label="Schließen"
           >
             <X className="h-4 w-4" />
           </button>
 
-          <button
-            type="button"
-            onClick={goPrev}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
-            aria-label="Vorheriger Punkt"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-
-          <div className="min-w-0 flex-1 px-1 text-center">
+          <div className="min-w-0 flex-1 text-center">
             <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/60">
-              {focusIndex + 1} / {CORE_HUNT_ORDER.length}
+              {complete
+                ? `Schritt ${CORE_HUNT_ORDER.length} / ${CORE_HUNT_ORDER.length}`
+                : `Schritt ${targetIndex + 1} / ${CORE_HUNT_ORDER.length}`}
               {captureSummary ? ` · ${captureSummary}` : ""}
+              {!complete ? ` · ${doneCount} erfasst` : ""}
             </p>
-            <p className="truncate text-[0.88rem] font-semibold leading-tight">
+            <p className="mt-0.5 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-amber-200">
+              {complete ? "Kern-Daten vollständig" : "Als Nächstes scannen"}
+            </p>
+            <p className="truncate text-[0.95rem] font-semibold leading-tight">
               {displayLabel}
             </p>
-            <p
-              className={[
-                "mt-0.5 text-[0.72rem] font-medium leading-snug",
-                currentDone ? "text-emerald-300" : "text-white/75",
-                scanHint?.scanAction && !currentDone ? "" : "truncate",
-              ].join(" ")}
-            >
-              {currentDone
-                ? "Erfasst"
-                : complete
-                  ? "Alles erfasst"
-                  : scanHint?.scanAction ?? "Jetzt fotografieren"}
+            <p className="mt-1 text-[0.74rem] font-medium leading-snug text-white/85">
+              {complete
+                ? "Weiter zu den Auflagen."
+                : scanHint?.scanAction ?? "Halte den Abschnitt gut lesbar ins Rechteck."}
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={goNext}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10"
-            aria-label="Nächster Punkt"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
 
           {complete ? (
             <button
               type="button"
               disabled={analyzing}
               onClick={onOpenReview}
-              className="flex h-8 shrink-0 items-center rounded-full bg-white px-3 text-[0.72rem] font-semibold text-neutral-900 disabled:opacity-40"
+              className="mt-0.5 flex h-8 shrink-0 items-center rounded-full bg-white px-3 text-[0.72rem] font-semibold text-neutral-900 disabled:opacity-40"
             >
               Weiter
             </button>
-          ) : null}
+          ) : (
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/20 font-mono text-[0.72rem] font-bold text-amber-100">
+              {openCount}
+            </div>
+          )}
         </div>
 
-        <div className="mt-2 flex items-center gap-1 px-1">
+        <div className="mt-2.5 flex items-center gap-1 px-0.5" aria-hidden>
           {CORE_HUNT_ORDER.map((key, index) => {
-            const done = !missing.includes(key);
-            const active = index === focusIndex;
+            const done = !missingSet.has(key);
+            const active = index === targetIndex;
             return (
-              <button
+              <div
                 key={key}
-                type="button"
-                onClick={() => onFocusIndexChange(index)}
                 className={[
                   "h-2 flex-1 rounded-full transition-colors",
                   done
                     ? "bg-emerald-400"
                     : active
-                      ? "bg-white"
+                      ? "bg-amber-300"
                       : "bg-white/25",
                 ].join(" ")}
-                aria-label={`${abeHuntFieldDisplayLabel(key)}${done ? ", erfasst" : active ? ", aktiv" : ", offen"}`}
-                aria-current={active ? "step" : undefined}
+                title={abeHuntFieldDisplayLabel(key)}
               />
             );
           })}
         </div>
 
-        {!complete && !currentDone ? (
-          <div className="mt-2 flex justify-center px-1">
-            <button
-              type="button"
-              onClick={skipCurrent}
-              className="rounded-full bg-white/10 px-3 py-1 text-[0.72rem] font-medium text-white/90 transition-opacity active:opacity-70"
-            >
-              Überspringen
-            </button>
-          </div>
+        {!complete && missing.length > 1 ? (
+          <p className="mt-2 px-1 text-center text-[0.68rem] text-white/65">
+            Danach noch:{" "}
+            {missing
+              .filter((key) => key !== currentKey)
+              .slice(0, 3)
+              .map((key) => abeHuntFieldDisplayLabel(key))
+              .join(" · ")}
+            {missing.length > 4 ? " …" : ""}
+          </p>
         ) : null}
 
         {analyzing || lastFound.length > 0 ? (
@@ -462,7 +519,7 @@ function HuntProgressOverlay({
             ) : null}
             {!analyzing && lastFound.length > 0 ? (
               <span className="truncate text-emerald-200">
-                Neu: {lastFound.join(" · ")}
+                Neu erfasst: {lastFound.join(" · ")}
               </span>
             ) : null}
           </div>
@@ -1073,16 +1130,12 @@ export function AbeDataHunterWizard({
   const reportRef = useRef(report);
   reportRef.current = report;
 
-  const huntGroups = useMemo(
-    () => groupAbeVehicleMatches(report.vehicleMatches),
-    [report.vehicleMatches],
+  const huntGroup = huntGroupContext(
+    report,
+    selectedGroupIndex,
+    vehicleContext,
   );
-  const huntSelectedVerkaufsbezeichnung =
-    selectedGroupIndex !== null
-      ? huntGroups[selectedGroupIndex]?.verkaufsbezeichnung
-      : huntGroups.length === 1
-        ? huntGroups[0]?.verkaufsbezeichnung
-        : null;
+  const huntSelectedVerkaufsbezeichnung = huntGroup.verkaufsbezeichnung;
 
   const coreComplete = isAbeCoreHuntComplete(
     report,
@@ -1105,12 +1158,27 @@ export function AbeDataHunterWizard({
 
   useEffect(() => {
     if (!coreComplete) return;
-    const groups = groupAbeVehicleMatches(report.vehicleMatches);
+    const { groups, index } = huntGroupContext(
+      report,
+      selectedGroupIndex,
+      vehicleContext,
+    );
     setSelectedGroupIndex((current) => {
       if (current !== null && current < groups.length) return current;
-      return resolveInitialAbeVehicleGroupIndex(groups);
+      return index;
     });
-  }, [coreComplete, report.vehicleMatches]);
+  }, [coreComplete, report.vehicleMatches, selectedGroupIndex, vehicleContext]);
+
+  useEffect(() => {
+    if (phase !== "hunt") return;
+    const { index } = huntGroupContext(
+      report,
+      selectedGroupIndex,
+      vehicleContext,
+    );
+    if (index === null || index === selectedGroupIndex) return;
+    setSelectedGroupIndex(index);
+  }, [phase, report.vehicleMatches, selectedGroupIndex, vehicleContext]);
 
   useEffect(() => {
     if (
@@ -1123,13 +1191,11 @@ export function AbeDataHunterWizard({
     }
 
     setReport((prev) => {
-      const groups = groupAbeVehicleMatches(prev.vehicleMatches);
-      const selectedVerk =
-        selectedGroupIndex !== null
-          ? groups[selectedGroupIndex]?.verkaufsbezeichnung
-          : groups.length === 1
-            ? groups[0]?.verkaufsbezeichnung
-            : null;
+      const { verkaufsbezeichnung: selectedVerk } = huntGroupContext(
+        prev,
+        selectedGroupIndex,
+        vehicleContext,
+      );
       const scoped = resolveAuflagenCodesForReport(prev, {
         selectedVerkaufsbezeichnung: selectedVerk,
         vehicleContext,
@@ -1141,8 +1207,13 @@ export function AbeDataHunterWizard({
     });
   }, [phase, report.vehicleMatches, selectedGroupIndex, vehicleContext]);
 
-  function syncHuntFocusToFirstMissing(nextReport: AbeDataHunterReport) {
-    setHuntFocusIndex(firstMissingFocusIndex(nextReport));
+  function syncHuntFocusToFirstMissing(
+    nextReport: AbeDataHunterReport,
+    verkaufsbezeichnung?: string | null,
+  ) {
+    setHuntFocusIndex(
+      firstMissingFocusIndex(nextReport, verkaufsbezeichnung, vehicleContext),
+    );
   }
 
   function goBack() {
@@ -1181,7 +1252,7 @@ export function AbeDataHunterWizard({
   }
 
   function startCameraHunt() {
-    syncHuntFocusToFirstMissing(report);
+    syncHuntFocusToFirstMissing(report, huntSelectedVerkaufsbezeichnung);
     setDismissedScanHints(new Set());
     setHuntMode("camera");
     setPhase("hunt");
@@ -1232,23 +1303,29 @@ export function AbeDataHunterWizard({
         const extracted = await extractAllFromFile(file);
         const before = reportRef.current;
         const merged = fillAbeDataHunterReport(before, extracted);
-        const found = newlyFilledLabels(before, merged);
+        const { index: resolvedGroupIndex, verkaufsbezeichnung: verk } =
+          huntGroupContext(merged, selectedGroupIndex, vehicleContext);
+        if (resolvedGroupIndex !== selectedGroupIndex) {
+          setSelectedGroupIndex(resolvedGroupIndex);
+        }
+        const found = newlyFilledLabels(before, merged, verk, vehicleContext);
 
         reportRef.current = merged;
         setReport(merged);
         setLastFound(found);
         setHuntError(null);
-        syncHuntFocusToFirstMissing(merged);
-
-        if (
-          isAbeCoreHuntComplete(
+        setHuntFocusIndex((current) =>
+          advanceHuntFocusAfterMerge(
+            before,
             merged,
-            selectedVerkaufsbezeichnungForReport(merged, selectedGroupIndex),
+            current,
+            verk,
             vehicleContext,
-          )
-        ) {
-          const groups = groupAbeVehicleMatches(merged.vehicleMatches);
-          setSelectedGroupIndex(resolveInitialAbeVehicleGroupIndex(groups));
+          ),
+        );
+
+        if (isAbeCoreHuntComplete(merged, verk, vehicleContext)) {
+          setSelectedGroupIndex(resolvedGroupIndex);
           queueRef.current = [];
           setQueuedCount(0);
           window.setTimeout(() => setPhase("auflagen-detail"), 400);
@@ -1281,6 +1358,7 @@ export function AbeDataHunterWizard({
           selectedVerkaufsbezeichnung: selectedVerkaufsbezeichnungForReport(
             reportRef.current,
             selectedGroupIndex,
+            vehicleContext,
           ),
           vehicleContext,
         });
@@ -1299,7 +1377,11 @@ export function AbeDataHunterWizard({
         if (
           isAbeDataHunterReportComplete(
             merged,
-            selectedVerkaufsbezeichnungForReport(merged, selectedGroupIndex),
+            selectedVerkaufsbezeichnungForReport(
+              merged,
+              selectedGroupIndex,
+              vehicleContext,
+            ),
             vehicleContext,
           )
         ) {
@@ -1619,7 +1701,12 @@ export function AbeDataHunterWizard({
     />
   );
 
-  const huntFocusKey = CORE_HUNT_ORDER[huntFocusIndex] ?? "kbaNumber";
+  const huntTargetIndex = firstMissingFocusIndex(
+    report,
+    huntSelectedVerkaufsbezeichnung,
+    vehicleContext,
+  );
+  const huntFocusKey = CORE_HUNT_ORDER[huntTargetIndex] ?? "kbaNumber";
   const guideWatermark = coreComplete
     ? undefined
     : ABE_HUNT_FIELD_WATERMARKS[huntFocusKey];
@@ -1629,6 +1716,9 @@ export function AbeDataHunterWizard({
     huntSelectedVerkaufsbezeichnung,
     vehicleContext,
   );
+  const activeScanHintText =
+    activeScanHint?.scanAction ??
+    "Halte den angezeigten Abschnitt gut lesbar ins Rechteck.";
   const showScanHintPopup =
     huntMode === "camera" &&
     !coreComplete &&
@@ -1647,7 +1737,10 @@ export function AbeDataHunterWizard({
               type="button"
               onClick={() => {
                 setHuntMode("camera");
-                syncHuntFocusToFirstMissing(report);
+                syncHuntFocusToFirstMissing(
+                  report,
+                  huntSelectedVerkaufsbezeichnung,
+                );
               }}
               className="pointer-events-auto mx-auto flex w-full max-w-[440px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-black/70 px-4 py-3.5 text-[0.88rem] font-semibold text-white backdrop-blur-md"
             >
@@ -1690,7 +1783,7 @@ export function AbeDataHunterWizard({
       ) : null}
       <InBrowserCamera
         title="ABE scannen"
-        hint="Fotografiere die offenen Punkte in der Leiste oben."
+        hint={activeScanHintText}
         guideWatermark={guideWatermark}
         guideFrame="a4"
         allowPdf={false}

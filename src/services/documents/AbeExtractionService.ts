@@ -25,6 +25,7 @@ import {
   AbeHuntMarkingSchema,
   AbeHuntStammdatenSchema,
   emptyAbeDataHunterReport,
+  finalizeAbeDataHunterReport,
   isAbeHuntAuflagenComplete,
   isAbeHuntMarkingComplete,
   isAbeHuntStammdatenComplete,
@@ -326,7 +327,7 @@ export class AbeDataHunterExtractionService {
         };
         return {
           status: "needs_manual",
-          extraction,
+          extraction: finalizeAbeDataHunterReport(extraction),
           reason: "Teilweise erkannt — weitere Fotos oder manuelle Ergänzung.",
         };
       }
@@ -343,19 +344,21 @@ export class AbeDataHunterExtractionService {
         }),
       };
 
+      const enriched = finalizeAbeDataHunterReport(extraction);
+
       const hasAnything =
-        Boolean(extraction.kbaNumber) ||
-        Boolean(extraction.abeNumber) ||
-        Boolean(extraction.abeHolder) ||
-        Boolean(extraction.manufacturer) ||
-        Boolean(extraction.partDesignation) ||
-        Boolean(extraction.markingText) ||
-        extraction.vehicleMatches.length > 0 ||
-        extraction.auflagenCodes.length > 0;
+        Boolean(enriched.kbaNumber) ||
+        Boolean(enriched.abeNumber) ||
+        Boolean(enriched.abeHolder) ||
+        Boolean(enriched.manufacturer) ||
+        Boolean(enriched.partDesignation) ||
+        Boolean(enriched.markingText) ||
+        enriched.vehicleMatches.length > 0 ||
+        enriched.auflagenCodes.length > 0;
 
       return {
         status: hasAnything ? "ok" : "needs_manual",
-        extraction,
+        extraction: enriched,
         reason: hasAnything
           ? undefined
           : "Keine ABE-Daten auf diesem Foto erkannt.",

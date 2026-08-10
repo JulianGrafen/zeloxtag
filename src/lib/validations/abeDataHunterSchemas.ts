@@ -8,6 +8,7 @@ import {
 import {
   ABE_KBA_LLM_DIGITS_ONLY,
   ABE_NUMBER_LLM_DIGITS_ONLY,
+  inferAbeKbaFromReport,
   normalizeAbeKbaDigits,
   normalizeAbeNumberDigits,
 } from "@/lib/validations/abeSchema";
@@ -107,6 +108,36 @@ export type AbeHuntFieldScanHint = {
 export const ABE_HUNT_FIELD_SCAN_HINTS: Partial<
   Record<AbeRequiredFieldKey, AbeHuntFieldScanHint>
 > = {
+  kbaNumber: {
+    scanAction: "Fotografiere die KBA-Nummer auf der ABE.",
+    popupTitle: "KBA-Nummer",
+    popupBody:
+      "Fotografiere die KBA-Nummer — meist oben auf der ABE neben „KBA“ oder in der Kennzeichnungstabelle.",
+  },
+  abeNumber: {
+    scanAction: "Fotografiere die Nummer der ABE (z. B. 48185*08).",
+    popupTitle: "Nummer der ABE",
+    popupBody:
+      "Fotografiere die ABE-Nummer unter „Nummer der allgemeinen Betriebserlaubnis“.",
+  },
+  abeHolder: {
+    scanAction: "Fotografiere Inhaber der ABE oder Auftraggeber.",
+    popupTitle: "Inhaber der ABE",
+    popupBody:
+      "Fotografiere den Abschnitt „Inhaber der allgemeinen Betriebserlaubnis“ oder „Auftraggeber“.",
+  },
+  manufacturer: {
+    scanAction: "Fotografiere Hersteller oder Herstellerzeichen.",
+    popupTitle: "Herstellerzeichen",
+    popupBody:
+      "Fotografiere „Hersteller“ oder „Herstellerzeichen“ — der Name des Bauteil-Herstellers.",
+  },
+  partDesignation: {
+    scanAction: "Fotografiere die Bezeichnung des Bauteils.",
+    popupTitle: "Bezeichnung des Bauteils",
+    popupBody:
+      "Fotografiere „Bezeichnung des Bauteils“ — z. B. Felge, Spoiler oder Kennzeichenhalter.",
+  },
   markingText: {
     scanAction: "Fotografiere den Kennzeichnung-Abschnitt inkl. Tabellenzeilen.",
     popupTitle: "Kennzeichnung",
@@ -121,10 +152,11 @@ export const ABE_HUNT_FIELD_SCAN_HINTS: Partial<
       "Scanne jetzt aus der Tabelle den Abschnitt, in den du dein Fahrzeug wiederfindest. Die Verkaufsbezeichnung steht als Überschrift über der passenden Fahrzeugtabelle.",
   },
   auflagenCodes: {
-    scanAction: "Aus der Fahrzeugtabelle — Text folgt im nächsten Schritt.",
+    scanAction:
+      "Fotografiere die Auflagen-Spalte in deiner Fahrzeugzeile (z. B. 744, A77).",
     popupTitle: "Auflagen-Kürzel",
     popupBody:
-      "Die Nummern (z. B. 744, A77) kommen aus deiner Fahrzeugzeile in der Tabelle. Den vollständigen Auflagen-Text fotografierst du danach separat.",
+      "Fotografiere die Auflagen-Spalte in deiner Fahrzeugzeile — nur die Kürzel/Nummern. Den vollständigen Auflagen-Text fotografierst du im nächsten Schritt danach.",
   },
   auflagenNotes: {
     scanAction: "Fotografiere den Auflagen-Text zu den angezeigten Nummern.",
@@ -235,6 +267,21 @@ export function isAbeHuntVehicleComplete(
   );
 }
 
+/** True when OCR captured at least one vehicle table row (even without section header). */
+export function isAbeHuntVehicleTableCaptured(
+  report: Pick<AbeDataHunterReport, "vehicleMatches">,
+): boolean {
+  return report.vehicleMatches.some(
+    (row) =>
+      Boolean(row.verkaufsbezeichnung?.trim()) ||
+      Boolean(row.fahrzeugtyp?.trim()) ||
+      Boolean(row.typeApproval?.trim()) ||
+      Boolean(row.driveType?.trim()) ||
+      row.tireSizes.length > 0 ||
+      row.auflagenCodes.length > 0,
+  );
+}
+
 export function isAbeHuntAuflagenComplete(
   data: AbeHuntAuflagenExtraction,
 ): boolean {
@@ -296,6 +343,26 @@ function vehicleRowKey(row: {
   ].join("|");
 }
 
+function mergeVehicleMatchRow(
+  current: AbeDataHunterReport["vehicleMatches"][number],
+  incoming: AbeDataHunterReport["vehicleMatches"][number],
+): AbeDataHunterReport["vehicleMatches"][number] {
+  return {
+    verkaufsbezeichnung:
+      current.verkaufsbezeichnung.trim() ||
+      incoming.verkaufsbezeichnung.trim() ||
+      current.verkaufsbezeichnung,
+    fahrzeugtyp: current.fahrzeugtyp ?? incoming.fahrzeugtyp,
+    typeApproval: current.typeApproval ?? incoming.typeApproval,
+    driveType: current.driveType ?? incoming.driveType,
+    tireSizes: mergeUniqueCodes(current.tireSizes, incoming.tireSizes),
+    auflagenCodes: mergeUniqueCodes(
+      current.auflagenCodes,
+      incoming.auflagenCodes,
+    ),
+  };
+}
+
 /**
  * Merge a new photo/PDF extraction into the accumulating report.
  * Already-filled scalar fields win; vehicle rows and Auflagen codes accumulate.
@@ -304,16 +371,31 @@ export function fillAbeDataHunterReport(
   current: AbeDataHunterReport,
   incoming: AbeDataHunterReport,
 ): AbeDataHunterReport {
-  const seenRows = new Set(current.vehicleMatches.map(vehicleRowKey));
+  const rowIndexByKey = new Map(
+    current.vehicleMatches.map((row, index) => [vehicleRowKey(row), index]),
+  );
   const vehicleMatches = [...current.vehicleMatches];
+
   for (const row of incoming.vehicleMatches) {
     const key = vehicleRowKey(row);
-    if (seenRows.has(key)) continue;
-    seenRows.add(key);
+    const existingIndex = rowIndexByKey.get(key);
+    if (existingIndex !== undefined) {
+      vehicleMatches[existingIndex] = mergeVehicleMatchRow(
+        vehicleMatches[existingIndex]!,
+        row,
+      );
+      continue;
+    }
+    rowIndexByKey.set(key, vehicleMatches.length);
     vehicleMatches.push(row);
   }
 
-  return {
+  const mergedTopLevelAuflagen = mergeUniqueCodes(
+    current.auflagenCodes,
+    incoming.auflagenCodes,
+  );
+
+  return withInferredKba({
     kbaNumber: keepFilled(
       current.kbaNumber,
       normalizeAbeKbaDigits(incoming.kbaNumber),
@@ -338,7 +420,19 @@ export function fillAbeDataHunterReport(
         ? current.auflagenCodes
         : mergeUniqueCodes(current.auflagenCodes, incoming.auflagenCodes),
     auflagenNotes: mergeAuflagenNotes(current.auflagenNotes, incoming.auflagenNotes),
-  };
+  });
+}
+
+function withInferredKba(report: AbeDataHunterReport): AbeDataHunterReport {
+  const kbaNumber = inferAbeKbaFromReport(report);
+  if (kbaNumber === report.kbaNumber) return report;
+  return { ...report, kbaNumber };
+}
+
+export function finalizeAbeDataHunterReport(
+  report: AbeDataHunterReport,
+): AbeDataHunterReport {
+  return withInferredKba(report);
 }
 
 export function emptyAbeDataHunterReport(): AbeDataHunterReport {
@@ -373,7 +467,7 @@ export function missingAbeCoreHuntFields(
   vehicleContext?: AbeVehicleContext | null,
 ): AbeRequiredFieldKey[] {
   const missing: AbeRequiredFieldKey[] = [];
-  if (!report.kbaNumber?.trim()) missing.push("kbaNumber");
+  if (!inferAbeKbaFromReport(report)) missing.push("kbaNumber");
   if (!report.abeNumber?.trim()) missing.push("abeNumber");
   if (!report.abeHolder?.trim()) missing.push("abeHolder");
   if (!report.manufacturer?.trim()) missing.push("manufacturer");
@@ -384,7 +478,9 @@ export function missingAbeCoreHuntFields(
     selectedVerkaufsbezeichnung?.trim() ||
     report.vehicleMatches.find((row) => row.verkaufsbezeichnung?.trim())
       ?.verkaufsbezeichnung;
-  if (!verkaufsbezeichnung?.trim()) missing.push("verkaufsbezeichnung");
+  if (!verkaufsbezeichnung?.trim() && !isAbeHuntVehicleTableCaptured(report)) {
+    missing.push("verkaufsbezeichnung");
+  }
 
   const auflagen = resolveAuflagenCodesForReport(report, {
     selectedVerkaufsbezeichnung,

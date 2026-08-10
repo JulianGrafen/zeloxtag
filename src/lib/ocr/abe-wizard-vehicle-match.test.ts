@@ -67,10 +67,20 @@ describe("abe-wizard-vehicle-match", () => {
     expect(resolveInitialAbeVehicleGroupIndex(groups)).toBe(0);
   });
 
-  it("requires explicit selection when multiple groups exist", () => {
+  it("falls back to the first group during hunt when multiple groups exist", () => {
     const groups = groupAbeVehicleMatches(MATCHES);
-    expect(resolveInitialAbeVehicleGroupIndex(groups)).toBeNull();
+    expect(resolveInitialAbeVehicleGroupIndex(groups)).toBe(0);
     expect(requiresAbeVehicleGroupSelection(groups)).toBe(true);
+  });
+
+  it("prefers the garage vehicle match when auto-selecting a group", () => {
+    const groups = groupAbeVehicleMatches(MATCHES);
+    expect(
+      resolveInitialAbeVehicleGroupIndex(groups, {
+        brand: "BMW",
+        model: "6er",
+      }),
+    ).toBe(1);
   });
 
   it("merges Verkaufsbezeichnung variants with different comma spacing", () => {

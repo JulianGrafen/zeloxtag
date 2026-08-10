@@ -101,10 +101,39 @@ export function findBestAbeVehicleGroupIndex(
 
 export function resolveInitialAbeVehicleGroupIndex(
   groups: AbeVehicleGroup[],
+  vehicleContext?: AbeVehicleContext | null,
 ): number | null {
   if (groups.length === 0) return null;
   if (groups.length === 1) return 0;
-  return null;
+  const best = findBestAbeVehicleGroupIndex(groups, vehicleContext);
+  if (best !== null) return best;
+  return 0;
+}
+
+/** Pick the vehicle group for hunt / save when the user has not chosen manually. */
+export function resolveAbeHuntGroupIndex(
+  groups: AbeVehicleGroup[],
+  vehicleContext?: AbeVehicleContext | null,
+  currentIndex?: number | null,
+): number | null {
+  if (groups.length === 0) return null;
+  if (
+    currentIndex !== null &&
+    currentIndex !== undefined &&
+    currentIndex >= 0 &&
+    currentIndex < groups.length
+  ) {
+    return currentIndex;
+  }
+  return resolveInitialAbeVehicleGroupIndex(groups, vehicleContext);
+}
+
+export function verkaufsbezeichnungForAbeHuntGroup(
+  groups: AbeVehicleGroup[],
+  groupIndex: number | null,
+): string | null {
+  if (groupIndex === null) return null;
+  return groups[groupIndex]?.verkaufsbezeichnung ?? null;
 }
 
 export function requiresAbeVehicleGroupSelection(

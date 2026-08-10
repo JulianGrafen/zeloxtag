@@ -224,12 +224,53 @@ export function normalizeAbeKbaDigits(
   value: string | null | undefined,
 ): string | null {
   if (!value?.trim()) return null;
-  const raw = fixOcrDigitConfusions(
+  let raw = fixOcrDigitConfusions(
     value.trim().replace(/^kba\s*/i, "").trim(),
   );
+  // Nummer der ABE format (48185*08) — KBA is the leading digit group only.
+  if (raw.includes("*")) {
+    raw = raw.split("*")[0] ?? raw;
+  }
   const digits = raw.replace(/\D/g, "");
   if (digits.length < 3 || digits.length > 12) return null;
   return digits;
+}
+
+/**
+ * Derive KBA digits from other ABE fields when OCR put the number elsewhere.
+ * Common when the user photographs the header: LLM fills abeNumber but not kbaNumber.
+ */
+export function inferAbeKbaFromReport(report: {
+  kbaNumber?: string | null;
+  abeNumber?: string | null;
+  markingText?: string | null;
+  partDesignation?: string | null;
+}): string | null {
+  const direct = normalizeAbeKbaDigits(report.kbaNumber);
+  if (direct) return direct;
+
+  const fromAbe = normalizeAbeKbaDigits(report.abeNumber);
+  if (fromAbe) return fromAbe;
+
+  const marking = report.markingText;
+  if (marking) {
+    const kbaMatch = marking.match(/\bKBA\s*[:\-]?\s*(\d[\d\s]{1,10}\d)\b/i);
+    if (kbaMatch?.[1]) {
+      const fromMarking = normalizeAbeKbaDigits(kbaMatch[1]);
+      if (fromMarking) return fromMarking;
+    }
+  }
+
+  const part = report.partDesignation;
+  if (part) {
+    const partMatch = part.match(/\bKBA\s*[:\-]?\s*(\d[\d\s]{1,10}\d)\b/i);
+    if (partMatch?.[1]) {
+      const fromPart = normalizeAbeKbaDigits(partMatch[1]);
+      if (fromPart) return fromPart;
+    }
+  }
+
+  return null;
 }
 
 /**

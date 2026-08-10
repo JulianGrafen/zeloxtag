@@ -12,6 +12,7 @@ import {
   isAbeHuntStammdatenComplete,
   isAbeHuntVehicleComplete,
   mergeAbeDataHunterSteps,
+  missingAbeCoreHuntFields,
   missingAbeRequiredFields,
 } from "@/lib/validations/abeDataHunterSchemas";
 
@@ -105,6 +106,79 @@ describe("abeDataHunterSchemas required fields", () => {
     );
 
     expect(missingAbeRequiredFields(report, "5ER REIHE")).toEqual([]);
+  });
+
+  it("infers KBA from Nummer der ABE when kbaNumber was not extracted separately", () => {
+    const merged = fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
+      ...emptyAbeDataHunterReport(),
+      abeNumber: "48185*08",
+    });
+    expect(merged.kbaNumber).toBe("48185");
+    expect(missingAbeCoreHuntFields(merged)).not.toContain("kbaNumber");
+  });
+
+  it("normalizes KBA when OCR returns ABE-style suffix in kbaNumber field", () => {
+    const merged = fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
+      ...emptyAbeDataHunterReport(),
+      kbaNumber: "48185*08",
+    });
+    expect(merged.kbaNumber).toBe("48185");
+  });
+
+  it("treats vehicle table rows as captured Fahrzeugmodell for hunt progress", () => {
+    const report = mergeAbeDataHunterSteps(
+      completeStammdaten,
+      { markingText: "Kennzeichnung auf dem Bauteil" },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "",
+            fahrzeugtyp: "5L",
+            typeApproval: "e1*2007/46",
+            driveType: null,
+            tireSizes: ["225/45 R17"],
+            auflagenCodes: [],
+          },
+        ],
+      },
+      { auflagenCodes: [], auflagenNotes: null },
+    );
+
+    expect(missingAbeCoreHuntFields(report)).not.toContain("verkaufsbezeichnung");
+    expect(missingAbeCoreHuntFields(report)).toContain("auflagenCodes");
+  });
+
+  it("merges Auflagen codes into an existing vehicle row on follow-up photos", () => {
+    const current = {
+      ...emptyAbeDataHunterReport(),
+      vehicleMatches: [
+        {
+          verkaufsbezeichnung: "5ER REIHE",
+          fahrzeugtyp: "5L",
+          typeApproval: null,
+          driveType: null,
+          tireSizes: [],
+          auflagenCodes: [],
+        },
+      ],
+    };
+    const incoming = {
+      ...emptyAbeDataHunterReport(),
+      vehicleMatches: [
+        {
+          verkaufsbezeichnung: "5ER REIHE",
+          fahrzeugtyp: "5L",
+          typeApproval: null,
+          driveType: null,
+          tireSizes: [],
+          auflagenCodes: ["744", "A77"],
+        },
+      ],
+    };
+
+    const merged = fillAbeDataHunterReport(current, incoming);
+    expect(merged.vehicleMatches).toHaveLength(1);
+    expect(merged.vehicleMatches[0]?.auflagenCodes).toEqual(["744", "A77"]);
   });
 
   it("fills only empty slots when merging photo results", () => {
