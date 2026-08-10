@@ -38,6 +38,7 @@ export type PublicShowcaseProfile = {
   drivetrain: string | null;
   bodyType: string | null;
   color: string | null;
+  notes: string | null;
   mileageKm: number | null;
   dynoChartUrl: string | null;
   heroImageSrc: string | null;
@@ -225,6 +226,7 @@ export function buildPublicShowcasePayload(
       drivetrain: specs.drivetrain,
       bodyType: specs.bodyType,
       color: specs.color,
+      notes: specs.notes?.trim() ? specs.notes.trim() : null,
       mileageKm: latestMileageKm(publicDocs),
       dynoChartUrl,
       heroImageSrc: `/api/vehicle/silhouette/${vehicle.id}`,

@@ -79,6 +79,24 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.profile.transmission).toBe("6-Gang manuell");
   });
 
+  it("includes tech spec notes on the public profile", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      tech_specs: {
+        ...((baseVehicle.tech_specs ?? {}) as Record<string, unknown>),
+        notes: "Stage 2 · Walnuss-Lenkrad · Originalmotor",
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.profile.notes).toBe("Stage 2 · Walnuss-Lenkrad · Originalmotor");
+  });
+
+  it("omits empty notes from the public profile", () => {
+    const payload = buildPublicShowcasePayload(baseVehicle, []);
+    expect(payload.profile.notes).toBeNull();
+  });
+
   it("shows amounts when hide_financials is false", () => {
     const vehicle = { ...baseVehicle, hide_financials: false };
     const documents: Document[] = [

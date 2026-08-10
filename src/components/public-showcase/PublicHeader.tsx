@@ -167,6 +167,17 @@ export function PublicHeader({ profile }: PublicHeaderProps) {
           </div>
         ) : null}
 
+        {profile.notes ? (
+          <div className="overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]">
+            <p className="border-b border-[color:var(--vd-border)] px-3 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+              Notizen
+            </p>
+            <p className="whitespace-pre-wrap px-3 py-3 text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]">
+              {profile.notes}
+            </p>
+          </div>
+        ) : null}
+
         {profile.dynoChartUrl ? (
           <div className="overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]">
             <p className="border-b border-[color:var(--vd-border)] px-3 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
