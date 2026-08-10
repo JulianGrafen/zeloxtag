@@ -3,6 +3,7 @@
  */
 
 import { extractMileageKmFromText } from "@/lib/ocr/mileage-from-text";
+import { normalizeTuevOcrText } from "@/lib/ocr/tuev-ocr-normalize";
 
 const MAX_KM = 9_999_999;
 const MIN_KM = 100;
@@ -21,6 +22,12 @@ const PUNKT4_LABEL =
 
 const PUNKT4_CAPTURE =
   /(?:(?:\(?4\)?[\.)]?\s*)?(?:Stand\s+Wegstreckenzähler|Wegstreckenzähler|Km-?St\.?|KM-?Stand|Kilometerstand|km-stand|Tachostand)|(?:Punkt|Feld)\s*4|4\.\s*(?:Kilometerstand|km-stand|Km-?St\.?))\s*[:\s]*([\d][\d.\s]{2,12})\s*(?:km\b)?/gi;
+
+/** Same line as label, or number on the next line (common in table OCR). */
+export function extractTuevPunkt4MileageKmFromText(rawText: string): number | null {
+  const text = normalizeTuevOcrText(rawText);
+  return extractFromPunkt4Block(text);
+}
 
 /** Same line as label, or number on the next line (common in table OCR). */
 function extractFromPunkt4Block(text: string): number | null {
@@ -57,25 +64,30 @@ function extractFromPunkt4Block(text: string): number | null {
  * Extract odometer from HU/AU report OCR — prefers Punkt 4, falls back to generic labels.
  */
 export function extractTuevMileageKmFromText(rawText: string): number | null {
-  const text = rawText.replace(/\r\n/g, "\n");
+  const text = normalizeTuevOcrText(rawText);
   const punkt4 = extractFromPunkt4Block(text);
   if (punkt4 !== null) return punkt4;
   return extractMileageKmFromText(text);
 }
 
-/** Prefer structured LLM mileage; fall back to Punkt-4-aware OCR heuristic. */
+/** Prefer Punkt-4 OCR mileage; LLM often drops digits on long odometer readings. */
 export function preferTuevMileageKm(
   structured: number | null | undefined,
   rawText: string,
 ): number | null {
-  if (
+  const llmKm =
     typeof structured === "number" &&
     Number.isFinite(structured) &&
     structured >= MIN_KM &&
     structured <= MAX_KM
-  ) {
-    return Math.round(structured);
-  }
-  if (!rawText.trim()) return null;
-  return extractTuevMileageKmFromText(rawText);
+      ? Math.round(structured)
+      : null;
+
+  if (!rawText.trim()) return llmKm;
+
+  const punkt4 = extractTuevPunkt4MileageKmFromText(rawText);
+  if (punkt4 !== null) return punkt4;
+
+  const fallback = extractTuevMileageKmFromText(rawText);
+  return fallback ?? llmKm;
 }

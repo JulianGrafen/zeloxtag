@@ -20,6 +20,9 @@ import {
   enrichTuevSanitizedFromOcrText,
 } from "@/lib/ocr/tuev-enrichment";
 import { preferTuevMileageKm } from "@/lib/ocr/tuev-mileage-from-text";
+import { preferTuevNextInspectionDate } from "@/lib/ocr/tuev-next-inspection-from-text";
+import { preferTuevTestDate } from "@/lib/ocr/tuev-test-date-from-text";
+import { normalizeTuevOcrText } from "@/lib/ocr/tuev-ocr-normalize";
 import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
 import type { PreprocessedTuevDocument } from "@/services/documents/PdfPreprocessor";
 import {
@@ -455,7 +458,8 @@ async function loadTuevOcrText(
   try {
     const layout = await analyzeLayoutWithAzure(input.bytes, input.contentType);
     const content = layout?.content?.trim();
-    return content && content.length >= 20 ? content : null;
+    if (!content || content.length < 20) return null;
+    return normalizeTuevOcrText(content);
   } catch {
     return null;
   }
@@ -631,11 +635,10 @@ export class TuevExtractionService {
       ? (record.result as TuevResult)
       : "no_defects";
 
-    const testDate =
-      typeof record.testDate === "string" &&
-      /^\d{4}-\d{2}-\d{2}$/.test(record.testDate)
-        ? record.testDate
-        : null;
+    const testDate = preferTuevTestDate(
+      typeof record.testDate === "string" ? record.testDate : null,
+      ocrText ?? "",
+    );
 
     const mileageKm = preferTuevMileageKm(
       typeof record.mileageKm === "number" &&
@@ -646,11 +649,12 @@ export class TuevExtractionService {
       ocrText ?? "",
     );
 
-    const nextInspectionDate =
-      typeof record.nextInspectionDate === "string" &&
-      /^\d{4}-\d{2}$/.test(record.nextInspectionDate)
+    const nextInspectionDate = preferTuevNextInspectionDate(
+      typeof record.nextInspectionDate === "string"
         ? record.nextInspectionDate
-        : null;
+        : null,
+      ocrText ?? "",
+    );
 
     const documentNumber =
       typeof record.documentNumber === "string" && record.documentNumber.trim()

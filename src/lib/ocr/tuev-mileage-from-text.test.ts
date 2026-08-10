@@ -43,7 +43,7 @@ describe("preferTuevMileageKm", () => {
     ).toBe(294683);
   });
 
-  it("keeps valid LLM mileage", () => {
-    expect(preferTuevMileageKm(178605, "(4)Km-St. 999999")).toBe(178605);
+  it("prefers OCR Punkt 4 over LLM mileage", () => {
+    expect(preferTuevMileageKm(17860, "(4)Km-St. 178605")).toBe(178605);
   });
 });

@@ -11,6 +11,7 @@ import {
 
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
 import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
+import { EditableTuevDefectsSection } from "@/components/documents/editable-tuev-defects-section";
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
@@ -264,7 +265,14 @@ export function DocumentInvoiceDetailView({
           </dl>
         </section>
 
-        {isTuevDocument ? (
+        {canEdit && tuevApprovalFields ? (
+          <EditableTuevDefectsSection
+            approvalFields={tuevApprovalFields}
+            documentId={document.id}
+            vehicleId={document.vehicle_id}
+            tagUuid={tagUuid}
+          />
+        ) : isTuevDocument ? (
           <TuevDefectsSection
             data={
               tuevApprovalFields?.data ?? {
@@ -273,7 +281,9 @@ export function DocumentInvoiceDetailView({
               }
             }
           />
-        ) : canEditPositions ? (
+        ) : null}
+
+        {!isTuevDocument && canEditPositions ? (
           <EditableLineItemsSection
             items={lineItems}
             documentId={document.id}
@@ -281,7 +291,7 @@ export function DocumentInvoiceDetailView({
             tagUuid={tagUuid}
             totalAmount={document.amount}
           />
-        ) : (
+        ) : !isTuevDocument ? (
           <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
             <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
               Positionen
@@ -324,7 +334,7 @@ export function DocumentInvoiceDetailView({
               </div>
             ) : null}
           </section>
-        )}
+        ) : null}
 
         <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
           <div className="border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">

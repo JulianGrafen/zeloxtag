@@ -456,6 +456,23 @@ export function parseTuevReportLenient(
 }
 
 /**
+ * Derive HU result from edited defect rows when the owner adjusts Mängel.
+ */
+export function inferResultFromDefectRows(
+  defectsTable: TuevDefectRow[] | null,
+  currentResult: TuevResult,
+): TuevResult {
+  if (!defectsTable?.length) return "no_defects";
+  if (currentResult === "failed" || currentResult === "dangerous_defects") {
+    return currentResult;
+  }
+  if (defectsTable.some((row) => row.severity === "EM")) {
+    return "major_defects";
+  }
+  return "minor_defects";
+}
+
+/**
  * Parser for HU / AU Prüfberichte (Haupt- und Abgasuntersuchung).
  */
 export class TuevReportService extends BaseDocumentService<"tuev"> {

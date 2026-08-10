@@ -1,5 +1,6 @@
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
+import { normalizeTuevOcrText } from "@/lib/ocr/tuev-ocr-normalize";
 import {
   parseTuevAmountValue,
   resolveTuevTotalAmount,
@@ -123,7 +124,7 @@ function sumPartialFeeRows(text: string): number | null {
  * Extract total Prüfgebühr (Endpreis / Gesamtbetrag) from HU/AU report OCR text.
  */
 export function extractTuevAmountFromText(rawText: string): number | null {
-  const text = rawText.replace(/\r\n/g, "\n");
+  const text = normalizeTuevOcrText(rawText);
 
   const entgeltMatch = text.match(ENTGELT_SECTION);
   if (entgeltMatch) {

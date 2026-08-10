@@ -3,6 +3,8 @@
  * Returns YYYY-MM or null.
  */
 
+import { normalizeTuevOcrText } from "@/lib/ocr/tuev-ocr-normalize";
+
 const GERMAN_MONTHS: Readonly<Record<string, number>> = {
   januar: 1,
   jan: 1,
@@ -211,10 +213,28 @@ function extractFromMultilineBlocks(text: string): string | null {
  * Find labeled next-HU date variants in OCR text and normalize to YYYY-MM.
  */
 export function extractTuevNextInspectionFromText(text: string): string | null {
-  const normalized = text.replace(/\r\n/g, "\n");
+  const normalized = normalizeTuevOcrText(text);
 
   return (
     extractFromLabelPatterns(normalized) ??
     extractFromMultilineBlocks(normalized)
   );
+}
+
+/** Prefer OCR next-HU label; LLM sometimes picks Nachprüfung deadlines. */
+export function preferTuevNextInspectionDate(
+  structured: string | null | undefined,
+  rawText: string,
+): string | null {
+  const ocrDate = rawText.trim()
+    ? extractTuevNextInspectionFromText(rawText)
+    : null;
+  if (ocrDate) return ocrDate;
+
+  const llmDate =
+    typeof structured === "string" && /^\d{4}-\d{2}$/.test(structured.trim())
+      ? structured.trim()
+      : null;
+
+  return llmDate;
 }

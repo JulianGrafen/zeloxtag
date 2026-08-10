@@ -100,7 +100,7 @@ Vorgangs-Nr.: HU-2026-991
 Untersuchungsbericht
 Hauptuntersuchung HU / AU
 DEKRA Automobil GmbH
-Datum: 01.07.2026
+(3) Prüfdatum: 01.07.2026
 km-Stand: 120.500 km
 geringfügige Mängel
 (6) Ihr Fahrzeug weist folgende Mängel auf:

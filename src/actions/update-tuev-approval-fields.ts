@@ -17,7 +17,11 @@ import {
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
-import { TuevReportService } from "@/services/documents";
+import type { TuevDefectRow, TuevReport } from "@/lib/validations/documentSchemas";
+import {
+  TuevReportService,
+  inferResultFromDefectRows,
+} from "@/services/documents";
 
 export type UpdateTuevApprovalFieldsResult =
   | { status: "ok" }
@@ -27,7 +31,8 @@ type UpdatePayload = {
   documentId: string;
   vehicleId: string;
   tagUuid: string;
-  nextInspectionDate: string | null;
+  nextInspectionDate?: string | null;
+  defectsTable?: TuevDefectRow[] | null;
 };
 
 function revalidateDocumentPaths(tagUuid: string, documentId: string) {
@@ -38,8 +43,33 @@ function revalidateDocumentPaths(tagUuid: string, documentId: string) {
   revalidatePath(`/v/${tagUuid}/historie`);
 }
 
+function buildUpdatedTuevData(
+  existing: TuevReport,
+  input: Pick<UpdatePayload, "nextInspectionDate" | "defectsTable">,
+): TuevReport {
+  const next: TuevReport = { ...existing };
+
+  if (input.nextInspectionDate !== undefined) {
+    next.nextInspectionDate = input.nextInspectionDate;
+  }
+
+  if (input.defectsTable !== undefined) {
+    next.defectsTable = input.defectsTable;
+    next.defectsList = null;
+    next.result = inferResultFromDefectRows(input.defectsTable, existing.result);
+  }
+
+  return next;
+}
+
+function hasPatch(input: UpdatePayload): boolean {
+  return (
+    input.nextInspectionDate !== undefined || input.defectsTable !== undefined
+  );
+}
+
 /**
- * Owner: patch `approval_fields.data.nextInspectionDate` on TÜV documents.
+ * Owner: patch TÜV `approval_fields` (next HU month, festgestellte Mängel, …).
  */
 export async function updateTuevApprovalFields(
   input: UpdatePayload,
@@ -48,7 +78,7 @@ export async function updateTuevApprovalFields(
   const vehicleId = input.vehicleId.trim();
   const tagUuid = input.tagUuid.trim();
 
-  if (!documentId || !vehicleId || !tagUuid) {
+  if (!documentId || !vehicleId || !tagUuid || !hasPatch(input)) {
     return { status: "error", message: "Ungültige Anfrage." };
   }
 
@@ -68,10 +98,20 @@ export async function updateTuevApprovalFields(
     }
 
     const service = new TuevReportService();
-    const data = service.parseAndValidate({
-      ...target.approval_fields.data,
-      nextInspectionDate: input.nextInspectionDate,
-    });
+    let data;
+    try {
+      data = service.parseAndValidate(
+        buildUpdatedTuevData(target.approval_fields.data, input),
+      );
+    } catch {
+      return {
+        status: "error",
+        message:
+          input.defectsTable !== undefined
+            ? "Mängel konnten nicht gespeichert werden."
+            : "Ungültiges Datum für die nächste HU.",
+      };
+    }
 
     await updateMockUploadedDocument(vehicleId, documentId, {
       approval_fields: { kind: "tuev", data },
@@ -89,7 +129,7 @@ export async function updateTuevApprovalFields(
   if (!writeAccess.ok || !writeAccess.isOwner) {
     return {
       status: "error",
-      message: "Nur der Eigentümer kann die nächste HU ändern.",
+      message: "Nur der Eigentümer kann TÜV-Daten ändern.",
     };
   }
 
@@ -133,14 +173,16 @@ export async function updateTuevApprovalFields(
   const service = new TuevReportService();
   let data;
   try {
-    data = service.parseAndValidate({
-      ...approvalFields.data,
-      nextInspectionDate: input.nextInspectionDate,
-    });
+    data = service.parseAndValidate(
+      buildUpdatedTuevData(approvalFields.data, input),
+    );
   } catch {
     return {
       status: "error",
-      message: "Ungültiges Datum für die nächste HU.",
+      message:
+        input.defectsTable !== undefined
+          ? "Mängel konnten nicht gespeichert werden."
+          : "Ungültiges Datum für die nächste HU.",
     };
   }
 

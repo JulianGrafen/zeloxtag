@@ -2,6 +2,8 @@
  * Prüfdatum extraction — Punkt 3 / (3) Prüftermin only.
  */
 
+import { normalizeTuevOcrText } from "@/lib/ocr/tuev-ocr-normalize";
+
 function isValidCalendarDate(iso: string): boolean {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return false;
@@ -21,14 +23,66 @@ function toIsoDate(day: number, month: number, year: number): string | null {
 }
 
 const PUNKT3_LABEL =
-  /(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüftag)|(?:Punkt|Feld)\s*3|3\.\s*Prüftermin/i;
+  /(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüftag|Untersuchungsdatum|Untersuchungstag)|(?:Punkt|Feld)\s*3|3\.\s*Prüftermin/i;
 
 const PUNKT3_CAPTURE =
-  /(?:(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüftag)|(?:Punkt|Feld)\s*3|3\.\s*Prüftermin)\s*[:\s]*(?:[^0-9]{0,60})?(\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}-\d{2}-\d{2})/gi;
+  /(?:(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüftag|Untersuchungsdatum|Untersuchungstag)|(?:Punkt|Feld)\s*3|3\.\s*Prüftermin)\s*[:\s]*(?:[^0-9]{0,60})?(\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}-\d{2}-\d{2})/gi;
+
+const FORBIDDEN_DATE_LABEL =
+  /Erstzulassung|\bEZ\b|Letzte\s+HU|Dat\.?\s*letzt\.?\s*HU|n[aä]chste\s+HU|Nachuntersuchung|Hauptuntersuchung\s+vom|Leistungsdatum|Frist\s+bis|sp[aä]testens\s+bis/i;
+
+function dateVariants(iso: string): string[] {
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return [iso];
+  const day = Number.parseInt(d, 10);
+  const month = Number.parseInt(m, 10);
+  return [
+    iso,
+    `${d}.${m}.${y}`,
+    `${day}.${month}.${y}`,
+    `${d.padStart(2, "0")}.${m}.${d.padStart(2, "0")}.${y}`,
+  ];
+}
+
+function lineContainsDate(line: string, iso: string): boolean {
+  return dateVariants(iso).some((variant) => line.includes(variant));
+}
+
+function dateNearForbiddenLabel(rawText: string, iso: string): boolean {
+  for (const line of rawText.replace(/\r\n/g, "\n").split(/\n/)) {
+    if (!FORBIDDEN_DATE_LABEL.test(line)) continue;
+    if (lineContainsDate(line, iso)) return true;
+  }
+  return false;
+}
+
+function dateOnPunkt3Line(rawText: string, iso: string): boolean {
+  for (const line of rawText.replace(/\r\n/g, "\n").split(/\n/)) {
+    if (!PUNKT3_LABEL.test(line)) continue;
+    if (lineContainsDate(line, iso)) return true;
+  }
+  return false;
+}
+
+function dateNearPunkt3Window(rawText: string, iso: string): boolean {
+  const text = normalizeTuevOcrText(rawText);
+  const punkt3Pattern =
+    /(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüftag|Untersuchungsdatum|Untersuchungstag)/gi;
+
+  for (const match of text.matchAll(punkt3Pattern)) {
+    if (match.index == null) continue;
+    const window = text.slice(match.index, match.index + 120);
+    if (dateVariants(iso).some((variant) => window.includes(variant))) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 /** Extract test date strictly from Punkt 3 labels. */
 export function extractTuevTestDateFromText(rawText: string): string | null {
-  const text = rawText.replace(/\r\n/g, "\n");
+  const text = normalizeTuevOcrText(rawText);
 
   for (const match of text.matchAll(PUNKT3_CAPTURE)) {
     const raw = match[1]?.trim();
@@ -64,6 +118,32 @@ export function extractTuevTestDateFromText(rawText: string): string | null {
     );
     if (iso) return iso;
   }
+
+  return null;
+}
+
+/**
+ * Prefer Punkt-3 OCR date over LLM vision. Reject LLM dates tied to forbidden
+ * fields (Erstzulassung, nächste HU, …) when OCR text is available.
+ */
+export function preferTuevTestDate(
+  structured: string | null | undefined,
+  rawText: string,
+): string | null {
+  const ocrDate = rawText.trim() ? extractTuevTestDateFromText(rawText) : null;
+  if (ocrDate) return ocrDate;
+
+  const llmDate =
+    typeof structured === "string" && /^\d{4}-\d{2}-\d{2}$/.test(structured.trim())
+      ? structured.trim()
+      : null;
+
+  if (!llmDate) return null;
+  if (!rawText.trim()) return llmDate;
+
+  if (dateNearForbiddenLabel(rawText, llmDate)) return null;
+  if (dateOnPunkt3Line(rawText, llmDate)) return llmDate;
+  if (dateNearPunkt3Window(rawText, llmDate)) return llmDate;
 
   return null;
 }

@@ -1,4 +1,5 @@
 import type { TuevDefectRow } from "@/lib/validations/documentSchemas";
+import { normalizeTuevOcrText } from "@/lib/ocr/tuev-ocr-normalize";
 
 /**
  * HU/AU Prüfpunkt core — always dot-separated (e.g. 4.2.1, 1.3.2a, 4.7.1b, DF6.2.6).
@@ -414,11 +415,17 @@ function sliceDefectsSection(text: string): string | null {
   return section.length >= 4 ? section : null;
 }
 
+/** Whether OCR text contains an explicit Punkt-6 / Festgestellte Mängel section. */
+export function hasTuevDefectsSectionInText(rawText: string): boolean {
+  const text = normalizeTuevOcrText(rawText);
+  return sliceDefectsSection(text) !== null;
+}
+
 /** Extract HU/AU Mängel under an explicit Mängel section (Prüfpunkt and/or EM/GM lines). */
 export function extractTuevDefectsFromText(
   rawText: string,
 ): TuevDefectRow[] | null {
-  const text = rawText.replace(/\r\n/g, "\n");
+  const text = normalizeTuevOcrText(rawText);
   const section = sliceDefectsSection(text);
   if (!section) return null;
 

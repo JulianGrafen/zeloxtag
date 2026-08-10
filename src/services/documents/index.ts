@@ -24,5 +24,6 @@ export { EinzelabnahmeService } from "./EinzelabnahmeService";
 export { TeilegutachtenService } from "./TeilegutachtenService";
 export {
   TuevReportService,
+  inferResultFromDefectRows,
   sanitizeTuevPayload,
 } from "./TuevReportService";

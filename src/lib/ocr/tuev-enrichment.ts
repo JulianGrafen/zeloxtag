@@ -1,18 +1,33 @@
 import {
   defectsListFromTuevDefectRows,
   extractTuevDefectsFromText,
+  hasTuevDefectsSectionInText,
+  normalizeCheckpoint,
 } from "@/lib/ocr/tuev-defects-from-text";
 import { preferTuevTotalAmount } from "@/lib/ocr/tuev-amount-from-text";
 import { preferTuevMileageKm } from "@/lib/ocr/tuev-mileage-from-text";
-import { extractTuevTestDateFromText } from "@/lib/ocr/tuev-test-date-from-text";
+import { preferTuevNextInspectionDate } from "@/lib/ocr/tuev-next-inspection-from-text";
+import { normalizeTuevOcrText } from "@/lib/ocr/tuev-ocr-normalize";
+import { preferTuevTestDate } from "@/lib/ocr/tuev-test-date-from-text";
 import {
   normalizeTuevLineItems,
   parseTuevAmountValue,
 } from "@/lib/ocr/tuev-amount";
-import type { TuevDefectRow } from "@/lib/validations/documentSchemas";
+import type { TuevDefectRow, TuevResult } from "@/lib/validations/documentSchemas";
+import { inferResultFromDefectRows } from "@/services/documents/TuevReportService";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function foldText(text: string): string {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+function normalizeOcrText(ocrText: string | null | undefined): string | null {
+  const trimmed = ocrText?.trim();
+  if (!trimmed) return null;
+  return normalizeTuevOcrText(trimmed);
 }
 
 function dedupeDefectRows(rows: TuevDefectRow[]): TuevDefectRow[] {
@@ -34,12 +49,82 @@ function dedupeDefectRows(rows: TuevDefectRow[]): TuevDefectRow[] {
   return unique;
 }
 
-function mergeDefectRows(
-  primary: TuevDefectRow[] | null | undefined,
-  secondary: TuevDefectRow[] | null | undefined,
+function sameDefectRow(a: TuevDefectRow, b: TuevDefectRow): boolean {
+  const cpA = (a.checkpoint ?? "").toLowerCase();
+  const cpB = (b.checkpoint ?? "").toLowerCase();
+  if (cpA && cpB && cpA === cpB) return true;
+  return foldText(a.description) === foldText(b.description);
+}
+
+function rowMatchesOcr(row: TuevDefectRow, ocrText: string): boolean {
+  const folded = foldText(ocrText);
+
+  if (row.checkpoint) {
+    const checkpoint = normalizeCheckpoint(row.checkpoint).toLowerCase();
+    if (checkpoint && folded.includes(checkpoint)) return true;
+  }
+
+  const description = foldText(row.description).replace(/\s+/g, " ");
+  if (description.length >= 12) {
+    const snippet = description.slice(0, Math.min(48, description.length));
+    if (folded.includes(snippet)) return true;
+  }
+
+  const words = description.split(/\s+/).filter((word) => word.length >= 4);
+  if (words.length === 0) return false;
+
+  const matches = words.filter((word) => folded.includes(word)).length;
+  return matches >= Math.min(2, words.length);
+}
+
+/**
+ * Reconcile LLM defects with OCR Punkt 6 — prevents invented Mängel.
+ * OCR parser wins when it finds rows; verified LLM rows can fill OCR gaps.
+ */
+export function reconcileTuevDefectRows(
+  llmTable: TuevDefectRow[] | null | undefined,
+  ocrText: string | null | undefined,
 ): TuevDefectRow[] | null {
-  const merged = dedupeDefectRows([...(primary ?? []), ...(secondary ?? [])]);
-  return merged.length > 0 ? merged : null;
+  const normalized = normalizeOcrText(ocrText);
+
+  if (!normalized) {
+    const llmOnly = dedupeDefectRows(llmTable ?? []);
+    return llmOnly.length > 0 ? llmOnly : null;
+  }
+
+  const ocrTable = extractTuevDefectsFromText(normalized);
+  if (ocrTable?.length) {
+    const extras = (llmTable ?? []).filter(
+      (row) =>
+        rowMatchesOcr(row, normalized) &&
+        !ocrTable.some((existing) => sameDefectRow(existing, row)),
+    );
+    const merged = dedupeDefectRows([...ocrTable, ...extras]);
+    return merged.length > 0 ? merged : null;
+  }
+
+  if (hasTuevDefectsSectionInText(normalized)) {
+    return null;
+  }
+
+  if (!llmTable?.length) return null;
+
+  const verified = llmTable.filter((row) => rowMatchesOcr(row, normalized));
+  const deduped = dedupeDefectRows(verified);
+  return deduped.length > 0 ? deduped : null;
+}
+
+function normalizeTuevResult(value: unknown): TuevResult {
+  const allowed: TuevResult[] = [
+    "no_defects",
+    "minor_defects",
+    "major_defects",
+    "dangerous_defects",
+    "failed",
+  ];
+  return typeof value === "string" && allowed.includes(value as TuevResult)
+    ? (value as TuevResult)
+    : "no_defects";
 }
 
 /**
@@ -49,46 +134,66 @@ export function enrichTuevRecordFromOcrText(
   record: Record<string, unknown>,
   ocrText: string | null | undefined,
 ): Record<string, unknown> {
-  if (!ocrText?.trim()) return record;
+  const normalized = normalizeOcrText(ocrText);
+  if (!normalized) return record;
 
   const mileageKm = preferTuevMileageKm(
     typeof record.mileageKm === "number" ? record.mileageKm : null,
-    ocrText,
+    normalized,
   );
 
-  const testDate =
-    (typeof record.testDate === "string" && record.testDate.trim()
-      ? record.testDate
-      : null) ?? extractTuevTestDateFromText(ocrText);
+  const testDate = preferTuevTestDate(
+    typeof record.testDate === "string" ? record.testDate : null,
+    normalized,
+  );
+
+  const nextInspectionDate = preferTuevNextInspectionDate(
+    typeof record.nextInspectionDate === "string"
+      ? record.nextInspectionDate
+      : null,
+    normalized,
+  );
 
   const lineItems = normalizeTuevLineItems(record.lineItems);
   const amount = preferTuevTotalAmount(
     parseTuevAmountValue(record.amount),
     lineItems,
-    ocrText,
+    normalized,
   );
 
   const llmTable = Array.isArray(record.defectsTable)
     ? (record.defectsTable as TuevDefectRow[])
     : null;
-  const ocrTable = extractTuevDefectsFromText(ocrText);
-  const defectsTable = mergeDefectRows(llmTable, ocrTable);
+  const defectsTable = reconcileTuevDefectRows(llmTable, normalized);
 
   const defectsList =
     defectsTable && defectsTable.length > 0
       ? defectsListFromTuevDefectRows(defectsTable)
-      : Array.isArray(record.defectsList) && record.defectsList.length > 0
-        ? record.defectsList
-        : null;
+      : null;
+
+  let result = normalizeTuevResult(record.result);
+  if (defectsTable?.length) {
+    result = inferResultFromDefectRows(defectsTable, result);
+  } else if (result !== "no_defects" && result !== "failed") {
+    const folded = foldText(normalized);
+    if (
+      /\bohne\s+(?:erhebliche\s+)?m[aä]ngel\b|\bmangelfrei\b/i.test(folded) &&
+      !/\([EG]M\)/i.test(normalized)
+    ) {
+      result = "no_defects";
+    }
+  }
 
   return {
     ...record,
     testDate,
+    nextInspectionDate,
     mileageKm,
     amount,
     lineItems,
     defectsTable,
     defectsList,
+    result,
   };
 }
 
@@ -96,21 +201,40 @@ export function enrichTuevSanitizedFromOcrText(
   sanitized: unknown,
   ocrText: string | null | undefined,
 ): unknown {
-  if (!ocrText?.trim() || !isRecord(sanitized)) return sanitized;
+  const normalized = normalizeOcrText(ocrText);
+  if (!normalized || !isRecord(sanitized)) return sanitized;
 
   const mileageKm = preferTuevMileageKm(
     typeof sanitized.mileageKm === "number" ? sanitized.mileageKm : null,
-    ocrText,
+    normalized,
   );
 
-  const testDate =
-    (typeof sanitized.testDate === "string" && sanitized.testDate.trim()
-      ? sanitized.testDate
-      : null) ?? extractTuevTestDateFromText(ocrText);
+  const testDate = preferTuevTestDate(
+    typeof sanitized.testDate === "string" ? sanitized.testDate : null,
+    normalized,
+  );
+
+  const nextInspectionDate = preferTuevNextInspectionDate(
+    typeof sanitized.nextInspectionDate === "string"
+      ? sanitized.nextInspectionDate
+      : null,
+    normalized,
+  );
+
+  const currentResult = normalizeTuevResult(sanitized.result);
+  const defectsTable = Array.isArray(sanitized.defectsTable)
+    ? (sanitized.defectsTable as TuevDefectRow[])
+    : null;
+  const result =
+    defectsTable?.length
+      ? inferResultFromDefectRows(defectsTable, currentResult)
+      : currentResult;
 
   return {
     ...sanitized,
     testDate,
+    nextInspectionDate,
     mileageKm,
+    result,
   };
 }

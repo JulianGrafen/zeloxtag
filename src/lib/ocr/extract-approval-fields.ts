@@ -22,7 +22,7 @@ import {
   defectsListFromTuevDefectRows,
 } from "./tuev-defects-from-text";
 import { extractTuevNextInspectionFromText } from "./tuev-next-inspection-from-text";
-import { extractTuevTestDateFromText } from "./tuev-test-date-from-text";
+import { preferTuevTestDate } from "./tuev-test-date-from-text";
 import { preferTuevMileageKm } from "./tuev-mileage-from-text";
 
 function detectOrganization(text: string): TestingOrganization {
@@ -125,12 +125,7 @@ function extractEgbeCandidate(text: string): unknown {
 }
 
 function extractTuevCandidate(text: string): unknown {
-  const testDate =
-    extractTuevTestDateFromText(text) ??
-    text.match(
-      /(?:Untersuchungs(?:tag|datum)|geprüft am|Datum)\s*[:\s]\s*(\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}-\d{2}-\d{2})/i,
-    )?.[1] ??
-    null;
+  const testDate = preferTuevTestDate(null, text);
   const nextInspectionDate = extractTuevNextInspectionFromText(text);
   const mileageKm = preferTuevMileageKm(null, text);
   const documentNumber = labeledValue(
@@ -138,21 +133,21 @@ function extractTuevCandidate(text: string): unknown {
     /(?:Vorgangs?[-\s]?Nr\.?|Bericht[-\s]?Nr\.?|Nr\.?)\s*[:\s]\s*([A-Z0-9][A-Z0-9/.\-]{3,80})/i,
   );
 
+  const defectsTable = extractTuevDefectsFromText(text);
+  const defectsList = defectsListFromTuevDefectRows(defectsTable);
+
   let result = "no_defects";
-  if (/\bnicht\s+bestanden\b|\bdurchgefallen\b/i.test(text)) {
+  if (defectsTable?.length) {
+    result = defectsTable.some((row) => row.severity === "EM")
+      ? "major_defects"
+      : "minor_defects";
+  } else if (/\bnicht\s+bestanden\b|\bdurchgefallen\b/i.test(text)) {
     result = "failed";
   } else if (/\bgefährliche\s+mängel\b/i.test(text)) {
     result = "dangerous_defects";
-  } else if (/\berhebliche\s+mängel\b/i.test(text) && !/\bohne\s+erhebliche/i.test(text)) {
-    result = "major_defects";
-  } else if (/\bgering(?:fügig)?e?\s+mängel\b/i.test(text)) {
-    result = "minor_defects";
   } else if (/\bohne\s+(?:erhebliche\s+)?mängel\b|\bmangelfrei\b/i.test(text)) {
     result = "no_defects";
   }
-
-  const defectsTable = extractTuevDefectsFromText(text);
-  const defectsList = defectsListFromTuevDefectRows(defectsTable);
 
   return {
     testingOrganization: detectOrganization(text),
