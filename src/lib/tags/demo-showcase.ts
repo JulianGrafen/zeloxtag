@@ -3,7 +3,7 @@ import { vehicleCatalogImageUrl } from "@/lib/vehicles/vehicle-image";
 
 import { MOCK_TAG_UUIDS } from "./mock-tags";
 
-/** Canonical QR entry for the public Supra showcase twin. */
+/** Canonical QR entry for the public BMW E36 showcase twin. */
 export const DEMO_SHOWCASE_BACK_HREF = `/v/${MOCK_TAG_UUIDS.active}`;
 
 /** Legacy public list routes (still reachable directly). */
@@ -17,12 +17,12 @@ export function isDemoActiveTag(tagUuid: string): boolean {
   return tagUuid.trim() === MOCK_TAG_UUIDS.active;
 }
 
-/** Side-profile cutout for the public Supra showcase — no UI photo frame. */
+/** Side-profile cutout for the public E36 showcase — no UI photo frame. */
 export const DEMO_SHOWCASE_VEHICLE_IMAGE = vehicleCatalogImageUrl(
-  "supra-a80.png",
+  "bmw-e36.png",
 );
 
-/** Guest access for the public Supra showcase — browse all surfaces, no writes. */
+/** Guest access for the public E36 showcase — browse all surfaces, no writes. */
 export function demoShowcaseAccess(): VehicleAccess {
   return {
     isOwner: false,

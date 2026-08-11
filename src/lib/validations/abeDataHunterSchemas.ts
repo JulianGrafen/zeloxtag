@@ -634,6 +634,7 @@ export function missingAbeRequiredFields(
           report,
           selection?.selectedGroupIndex ?? null,
           selection?.selectedRowId ?? null,
+          vehicleContext,
         )
       : resolveAuflagenCodesForReport(report, {
           selectedVerkaufsbezeichnung,

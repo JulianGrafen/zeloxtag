@@ -30,6 +30,103 @@ export function normalizeVerkaufsbezeichnungKey(value: string): string {
     .trim();
 }
 
+const VEHICLE_MODEL_BRAND_PREFIX =
+  /^(?:BMW|MINI|Mercedes-Benz|Mercedes|Audi|VW|Volkswagen|Porsche|Opel|Skoda|Seat|Cupra|Ford|Toyota|Honda|Hyundai|Kia|Mazda|Volvo|Peugeot|Citro[eë]n|Renault|Fiat|Alfa Romeo)\s+/i;
+
+/** Short model label for picker cards — e.g. "BMW 3er-Reihe" → "3er-Reihe". */
+export function displayAbeVehicleModelOptionLabel(
+  verkaufsbezeichnung: string,
+): string {
+  const key = normalizeVerkaufsbezeichnungKey(verkaufsbezeichnung);
+  const withoutBrand = key.replace(VEHICLE_MODEL_BRAND_PREFIX, "").trim();
+  return withoutBrand || key;
+}
+
+/** User-facing variant label — e.g. "BMW 3er-Reihe · 346L". */
+export function displayAbeVehicleVariantOptionLabel(
+  verkaufsbezeichnung: string,
+  row: AbeVehicleMatch,
+): string {
+  const model = normalizeVerkaufsbezeichnungKey(verkaufsbezeichnung);
+  const typ = row.fahrzeugtyp?.trim();
+  if (typ) return `${model} · ${typ}`;
+  return model;
+}
+
+export function abeVehicleRowId(rowIndex: number): string {
+  return `abe-row-${rowIndex}`;
+}
+
+export type AbeVehicleVariantOption = {
+  groupIndex: number;
+  rowIndex: number;
+  rowId: string;
+  label: string;
+  hint: string | null;
+  suggested: boolean;
+};
+
+export function countAbeVehicleVariants(groups: readonly AbeVehicleGroup[]): number {
+  return groups.reduce((total, group) => total + group.rows.length, 0);
+}
+
+export function findSuggestedAbeVehicleVariant(
+  matches: readonly AbeVehicleMatch[],
+  vehicleContext?: AbeVehicleContext | null,
+): { groupIndex: number; rowIndex: number } | null {
+  if (!vehicleContext) return null;
+
+  const groups = groupAbeVehicleMatches([...matches]);
+  let bestGroupIndex = -1;
+  let bestRowIndex = -1;
+  let bestScore = 0;
+
+  groups.forEach((group, groupIndex) => {
+    group.rows.forEach((row, rowIndex) => {
+      const score = scoreAbeVehicleRow(row, vehicleContext);
+      if (score >= 2 && score > bestScore) {
+        bestScore = score;
+        bestGroupIndex = groupIndex;
+        bestRowIndex = rowIndex;
+      }
+    });
+  });
+
+  if (bestScore < 2) return null;
+  return { groupIndex: bestGroupIndex, rowIndex: bestRowIndex };
+}
+
+/** Flat list of selectable vehicle rows (model + Fahrzeugtyp), one Auflagen block each. */
+export function listAbeVehicleVariantOptions(
+  matches: readonly AbeVehicleMatch[],
+  vehicleContext?: AbeVehicleContext | null,
+): AbeVehicleVariantOption[] {
+  const groups = groupAbeVehicleMatches([...matches]);
+  const suggested = findSuggestedAbeVehicleVariant(matches, vehicleContext);
+  const options: AbeVehicleVariantOption[] = [];
+
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+    const group = groups[groupIndex]!;
+    group.rows.forEach((row, rowIndex) => {
+      options.push({
+        groupIndex,
+        rowIndex,
+        rowId: abeVehicleRowId(rowIndex),
+        label: displayAbeVehicleVariantOptionLabel(
+          group.verkaufsbezeichnung,
+          row,
+        ),
+        hint: row.tireSizes[0]?.trim() || row.driveType?.trim() || null,
+        suggested:
+          suggested?.groupIndex === groupIndex &&
+          suggested.rowIndex === rowIndex,
+      });
+    });
+  }
+
+  return options;
+}
+
 export function groupAbeVehicleMatches(
   matches: AbeVehicleMatch[],
 ): AbeVehicleGroup[] {
@@ -192,6 +289,7 @@ export function isAbeVehicleTableSelectionReady(
   selectedRowId: string | null,
 ): boolean {
   if (groups.length === 0) return true;
+  if (countAbeVehicleVariants(groups) <= 1) return true;
 
   const groupIndex =
     selectedGroupIndex ?? (groups.length === 1 ? 0 : null);
@@ -224,6 +322,7 @@ export function auflagenForUserVehicleSelection(
   },
   selectedGroupIndex: number | null,
   selectedRowId: string | null,
+  _vehicleContext?: AbeVehicleContext | null,
 ): string[] {
   const groups = groupAbeVehicleMatches(report.vehicleMatches);
   if (groups.length === 0) {
@@ -415,12 +514,15 @@ export function selectedVerkaufsbezeichnungPayload(
   const rowIndex = rowIndexFromAbeRowId(selectedRowId ?? null);
   const selectedRow =
     rowIndex !== null ? table.rows[rowIndex] ?? null : null;
+  const garageMatchedRows = table.rows.filter((row) => row.isUserVehicleMatch);
   const rowsToSave =
     selectedRow !== null
       ? [selectedRow]
       : table.rows.length === 1
         ? table.rows
-        : table.rows.filter((row) => row.isUserVehicleMatch);
+        : garageMatchedRows.length > 0
+          ? garageMatchedRows
+          : table.rows;
 
   return {
     verkaufsbezeichnung: group.verkaufsbezeichnung,

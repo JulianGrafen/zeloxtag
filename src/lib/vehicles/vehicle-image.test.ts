@@ -51,6 +51,17 @@ describe("resolveVehicleImage", () => {
     ).toBeUndefined();
   });
 
+  it("maps BMW E36 328i to the E36 showcase cutout", () => {
+    const match = resolveVehicleImage({
+      make: "BMW",
+      model: "328i",
+    });
+    expect(match).toEqual({
+      src: "/api/vehicle/catalog/bmw-e36.png",
+      alt: "BMW E36",
+    });
+  });
+
   it("maps Toyota Supra to the A80 showcase cutout", () => {
     const match = resolveVehicleImage({
       make: "Toyota",

@@ -52,8 +52,10 @@ import {
 import { AbeAuflagenFoldList } from "@/components/documents/abe-auflagen-fold-list";
 import {
   auflagenForUserVehicleSelection,
-  defaultAbeRowIdForGroup,
+  displayAbeVehicleVariantOptionLabel,
   groupAbeVehicleMatches,
+  listAbeVehicleVariantOptions,
+  rowIndexFromAbeRowId,
   isAbeVehicleTableSelectionReady,
   resolveAbeHuntGroupIndex,
   selectedAbeVehicleGroup,
@@ -68,9 +70,11 @@ import {
   inferAbeKbaFromReport,
 } from "@/lib/validations/abeSchema";
 import {
+  ABE_HUNT_FIELD_SCAN_HINTS,
+  ABE_HUNT_FIELD_WATERMARKS,
   ABE_REQUIRED_FIELD_LABELS,
-  ABE_CORE_HUNT_FIELD_KEYS,
   abeHuntFieldDisplayLabel,
+  ABE_CORE_HUNT_FIELD_KEYS,
   emptyAbeDataHunterReport,
   fillAbeDataHunterReport,
   finalizeAbeDataHunterReport,
@@ -444,11 +448,13 @@ function enrichReportAuflagenFromKuerzelDb(
   db: Map<string, string>,
   selectedGroupIndex: number | null,
   selectedRowId: string | null,
+  vehicleContext?: AbeVehicleContext | null,
 ) {
   const targetCodes = auflagenForUserVehicleSelection(
     report,
     selectedGroupIndex,
     selectedRowId,
+    vehicleContext,
   );
   const resolved = resolveAuflagenWithKuerzelDb(
     report.auflagenNotes,
@@ -512,6 +518,7 @@ function ScanCompleteBanner({
 
 function AbeScanHud({
   status,
+  hint,
   analyzing,
   complete,
   onClose,
@@ -521,6 +528,7 @@ function AbeScanHud({
   progress,
 }: {
   status: string;
+  hint?: string;
   analyzing: boolean;
   complete: boolean;
   onClose: () => void;
@@ -540,6 +548,10 @@ function AbeScanHud({
   if (complete) {
     return null;
   }
+
+  const hintLine =
+    hint ??
+    (progress && status.trim().length > 0 ? status : undefined);
 
   return createPortal(
     <div className={CAMERA_HUD_SHELL}>
@@ -606,6 +618,14 @@ function AbeScanHud({
           </button>
         ) : null}
       </div>
+      {hintLine ? (
+        <p
+          className="pointer-events-none mx-auto mt-1 max-w-[min(100%,300px)] px-2 text-center text-[0.62rem] font-medium leading-snug text-white/90"
+          title={hintLine}
+        >
+          {hintLine}
+        </p>
+      ) : null}
     </div>,
     document.body,
   );
@@ -647,11 +667,18 @@ function HuntProgressOverlay({
           missing.length > 1 ? ` (+${missing.length - 1})` : ""
         }`
       : "ABE scannen";
+  const scanHint = analyzing
+    ? "Foto wird ausgewertet — bitte kurz warten."
+    : nextMissing != null
+      ? (ABE_HUNT_FIELD_SCAN_HINTS[nextMissing]?.scanAction ??
+        `Fotografiere: ${abeHuntFieldDisplayLabel(nextMissing)}`)
+      : "Weitere sichtbare ABE-Abschnitte fotografieren.";
 
   return (
     <>
       <AbeScanHud
         status={status}
+        hint={scanHint}
         analyzing={analyzing}
         complete={showComplete}
         onClose={onClose}
@@ -705,11 +732,17 @@ function AuflagenScanOverlay({
           missingCodes.length > 3 ? "…" : ""
         }`
       : "Auflagen scannen";
+  const scanHint = analyzing
+    ? "Foto wird ausgewertet — bitte kurz warten."
+    : missingCodes.length > 0
+      ? "Fotografiere den Auflagen-Text zu den Nummern oben."
+      : "Weitere Auflagen-Abschnitte fotografieren.";
 
   return (
     <>
       <AbeScanHud
         status={status}
+        hint={scanHint}
         analyzing={analyzing}
         complete={showComplete}
         onClose={onClose}
@@ -766,6 +799,21 @@ function AuflagenDetailPanel({
     [report.vehicleMatches],
   );
   const selectedGroup = selectedAbeVehicleGroup(report, selectedGroupIndex);
+  const selectedVariantLabel = useMemo(() => {
+    if (!selectedGroup) return null;
+    const rowIndex = rowIndexFromAbeRowId(selectedRowId);
+    const row =
+      rowIndex !== null
+        ? selectedGroup.rows[rowIndex]
+        : selectedGroup.rows.length === 1
+          ? selectedGroup.rows[0]
+          : null;
+    if (!row) return selectedGroup.verkaufsbezeichnung;
+    return displayAbeVehicleVariantOptionLabel(
+      selectedGroup.verkaufsbezeichnung,
+      row,
+    );
+  }, [selectedGroup, selectedRowId]);
   const selectedVerkaufsbezeichnung = selectedGroup?.verkaufsbezeichnung ?? null;
   const vehicleSelectionReady = isAbeVehicleTableSelectionReady(
     groups,
@@ -776,6 +824,7 @@ function AuflagenDetailPanel({
     report,
     selectedGroupIndex,
     selectedRowId,
+    vehicleContext,
   );
   const allCodesKnown =
     targetCodes.length > 0 && pendingCodes.length === 0;
@@ -840,7 +889,7 @@ function AuflagenDetailPanel({
           />
           <AbeSummaryRow
             label={ABE_VEHICLE_MODEL_DISPLAY_LABEL}
-            value={selectedVerkaufsbezeichnung}
+            value={selectedVariantLabel ?? selectedVerkaufsbezeichnung}
           />
           <AbeSummaryRow
             label="Auflagen-Kürzel"
@@ -1074,11 +1123,27 @@ function ReviewPanel({
     [report.vehicleMatches],
   );
   const selectedGroup = selectedAbeVehicleGroup(report, selectedGroupIndex);
+  const selectedVariantLabel = useMemo(() => {
+    if (!selectedGroup) return null;
+    const rowIndex = rowIndexFromAbeRowId(selectedRowId);
+    const row =
+      rowIndex !== null
+        ? selectedGroup.rows[rowIndex]
+        : selectedGroup.rows.length === 1
+          ? selectedGroup.rows[0]
+          : null;
+    if (!row) return selectedGroup.verkaufsbezeichnung;
+    return displayAbeVehicleVariantOptionLabel(
+      selectedGroup.verkaufsbezeichnung,
+      row,
+    );
+  }, [selectedGroup, selectedRowId]);
   const selectedVerkaufsbezeichnung = selectedGroup?.verkaufsbezeichnung ?? null;
   const scopedAuflagen = auflagenForUserVehicleSelection(
     report,
     selectedGroupIndex,
     selectedRowId,
+    vehicleContext,
   );
 
   const [form, setForm] = useState<ReviewFormState>(() => ({
@@ -1467,8 +1532,9 @@ export function AbeDataHunterWizard({
         report,
         selectedGroupIndex,
         selectedRowId,
+        vehicleContext,
       ),
-    [report, selectedGroupIndex, selectedRowId],
+    [report, selectedGroupIndex, selectedRowId, vehicleContext],
   );
   const dbResolvedAuflagenCodes = useMemo(() => {
     if (!kuerzelDbReady) return [];
@@ -1477,12 +1543,14 @@ export function AbeDataHunterWizard({
       kuerzelDbRef.current,
       selectedGroupIndex,
       selectedRowId,
+      vehicleContext,
     ).dbFilledCodes;
   }, [
     kuerzelDbReady,
     report,
     selectedGroupIndex,
     selectedRowId,
+    vehicleContext,
   ]);
   const pendingAuflagenCodes = useMemo(
     () =>
@@ -1524,6 +1592,7 @@ export function AbeDataHunterWizard({
       kuerzelDbRef.current,
       selectedGroupIndex,
       selectedRowId,
+      vehicleContext,
     ).allResolved;
   }, [
     kuerzelDbReady,
@@ -1531,6 +1600,7 @@ export function AbeDataHunterWizard({
     selectedGroupIndex,
     selectedRowId,
     targetAuflagenCodes,
+    vehicleContext,
   ]);
 
   useEffect(() => {
@@ -1598,6 +1668,7 @@ export function AbeDataHunterWizard({
       kuerzelDbRef.current,
       selectedGroupIndex,
       selectedRowId,
+      vehicleContext,
     );
 
     if (enriched.report.auflagenNotes !== report.auflagenNotes) {
@@ -1619,6 +1690,7 @@ export function AbeDataHunterWizard({
     report,
     selectedGroupIndex,
     selectedRowId,
+    vehicleContext,
   ]);
 
   useEffect(() => {
@@ -1635,6 +1707,7 @@ export function AbeDataHunterWizard({
         prev,
         selectedGroupIndex,
         selectedRowId,
+        vehicleContext,
       );
       if (codes.join("|") === prev.auflagenCodes.join("|")) {
         return prev;
@@ -1643,30 +1716,40 @@ export function AbeDataHunterWizard({
       reportRef.current = next;
       return next;
     });
-  }, [phase, report.vehicleMatches, selectedGroupIndex, selectedRowId]);
+  }, [phase, report.vehicleMatches, selectedGroupIndex, selectedRowId, vehicleContext]);
 
   useEffect(() => {
     if (phase !== "auflagen-detail" && phase !== "review") return;
-    const groups = groupAbeVehicleMatches(report.vehicleMatches);
-    if (groups.length === 1 && selectedGroupIndex === null) {
-      setSelectedGroupIndex(0);
+    const variants = listAbeVehicleVariantOptions(
+      report.vehicleMatches,
+      vehicleContext,
+    );
+    if (variants.length === 1) {
+      const only = variants[0]!;
+      setSelectedGroupIndex(only.groupIndex);
+      setSelectedRowId(only.rowId);
+      return;
     }
-  }, [phase, report.vehicleMatches, selectedGroupIndex]);
-
-  useEffect(() => {
-    if (phase !== "auflagen-detail" && phase !== "review") return;
-    const group = selectedAbeVehicleGroup(report, selectedGroupIndex);
-    if (!group) return;
-    if (group.rows.length === 1) {
-      setSelectedRowId((current) => current ?? defaultAbeRowIdForGroup(group));
+    const suggested = variants.find((option) => option.suggested);
+    if (
+      suggested &&
+      selectedGroupIndex === null &&
+      selectedRowId === null
+    ) {
+      setSelectedGroupIndex(suggested.groupIndex);
+      setSelectedRowId(suggested.rowId);
     }
-  }, [phase, report.vehicleMatches, selectedGroupIndex]);
+  }, [
+    phase,
+    report.vehicleMatches,
+    vehicleContext,
+    selectedGroupIndex,
+    selectedRowId,
+  ]);
 
   function handleSelectGroup(index: number) {
     setSelectedGroupIndex(index);
-    const groups = groupAbeVehicleMatches(report.vehicleMatches);
-    const group = groups[index] ?? null;
-    setSelectedRowId(group ? defaultAbeRowIdForGroup(group) : null);
+    setSelectedRowId(null);
   }
 
   function handleSelectRow(rowId: string) {
@@ -1850,16 +1933,21 @@ export function AbeDataHunterWizard({
 
   function advanceAfterCoreHunt() {
     const groups = groupAbeVehicleMatches(reportRef.current.vehicleMatches);
+    const variants = listAbeVehicleVariantOptions(
+      reportRef.current.vehicleMatches,
+      vehicleContext,
+    );
     let groupIndex = selectedGroupIndexRef.current;
     let rowId: string | null = null;
 
-    if (groups.length === 1) {
-      groupIndex = 0;
-      rowId = defaultAbeRowIdForGroup(groups[0]!);
-      selectedGroupIndexRef.current = 0;
-      setSelectedGroupIndex(0);
-      setSelectedRowId(rowId);
-    } else if (groups.length > 1) {
+    if (variants.length === 1) {
+      const only = variants[0]!;
+      groupIndex = only.groupIndex;
+      rowId = only.rowId;
+      selectedGroupIndexRef.current = only.groupIndex;
+      setSelectedGroupIndex(only.groupIndex);
+      setSelectedRowId(only.rowId);
+    } else {
       groupIndex = null;
       rowId = null;
       selectedGroupIndexRef.current = null;
@@ -1872,6 +1960,7 @@ export function AbeDataHunterWizard({
       kuerzelDbRef.current,
       groupIndex,
       rowId,
+      vehicleContext,
     );
     reportRef.current = enriched.report;
     setReport(enriched.report);
@@ -2006,6 +2095,7 @@ export function AbeDataHunterWizard({
           reportRef.current,
           selectedGroupIndex,
           selectedRowId,
+          vehicleContext,
         );
         const { notes, regions } = await extractAuflagenTextFromFile(file, codes);
         const sanitizedNotes =
@@ -2043,6 +2133,7 @@ export function AbeDataHunterWizard({
           kuerzelDbRef.current,
           selectedGroupIndex,
           selectedRowId,
+          vehicleContext,
         );
         const finalReport = enriched.report;
 
@@ -2132,6 +2223,7 @@ export function AbeDataHunterWizard({
       report,
       selectedGroupIndex,
       selectedRowId,
+      vehicleContext,
     );
     const sanitizedNotes = auflagenScanSkipped
       ? null
@@ -2461,6 +2553,13 @@ export function AbeDataHunterWizard({
     />
   );
 
+  const huntFocusKey = coreComplete
+    ? "verkaufsbezeichnung"
+    : firstMissingFocusKey(report, null, vehicleContext);
+  const guideWatermark = coreComplete
+    ? undefined
+    : ABE_HUNT_FIELD_WATERMARKS[huntFocusKey];
+
   const switchToCameraButton =
     huntMode === "pdf" &&
     !coreComplete &&
@@ -2500,6 +2599,7 @@ export function AbeDataHunterWizard({
       {progressOverlay}
       <InBrowserCamera
         {...ABE_CAMERA_PROPS}
+        guideWatermark={guideWatermark}
         onCapture={enqueueFile}
         onClose={returnToChooser}
       />

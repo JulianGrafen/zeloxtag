@@ -66,7 +66,7 @@ export function resolveVehicleCatalogImage(
 ): VehicleImageMatch | undefined {
   const blob = `${normalize(make)} ${normalize(model)}`;
 
-  // Toyota Supra A80 (demo showcase cutout)
+  // Toyota Supra A80 (legacy showcase cutout)
   if (
     /\bsupra\b/.test(blob) ||
     (/\btoyota\b/.test(blob) && /\ba80\b|\bjza80\b/.test(blob))
@@ -74,6 +74,18 @@ export function resolveVehicleCatalogImage(
     return {
       src: vehicleCatalogImageUrl("supra-a80.png"),
       alt: "Toyota Supra",
+    };
+  }
+
+  // BMW E36 (demo showcase cutout)
+  if (
+    /\be36\b/.test(blob) ||
+    (/\bbmw\b/.test(blob) &&
+      (/\b328i\b/.test(blob) || /\b325i\b/.test(blob) || /\b320i\b/.test(blob)))
+  ) {
+    return {
+      src: vehicleCatalogImageUrl("bmw-e36.png"),
+      alt: "BMW E36",
     };
   }
 

@@ -16,6 +16,6 @@ export default async function AbeDetailPage({ params }: AbeDetailPageProps) {
   }
 
   return (
-    <AbeDocumentDetailView document={document} vehicleModel="Supra" />
+    <AbeDocumentDetailView document={document} vehicleModel="328i" />
   );
 }

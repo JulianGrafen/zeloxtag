@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  displayAbeVehicleModelOptionLabel,
+  displayAbeVehicleVariantOptionLabel,
   findBestAbeVehicleGroupIndex,
+  listAbeVehicleVariantOptions,
   formatAbeVehicleApprovalLine,
   groupAbeVehicleMatches,
   auflagenForUserVehicleSelection,
@@ -156,7 +159,7 @@ describe("abe-wizard-vehicle-match", () => {
     ).toEqual(["744", "20B"]);
   });
 
-  it("returns Auflagen only for the user-selected table row", () => {
+  it("returns Auflagen only for the selected vehicle row", () => {
     const report = {
       auflagenCodes: ["721", "744", "A77", "20B"],
       vehicleMatches: MATCHES,
@@ -165,9 +168,26 @@ describe("abe-wizard-vehicle-match", () => {
     expect(
       auflagenForUserVehicleSelection(report, 0, "abe-row-1"),
     ).toEqual(["744", "20B"]);
-    expect(
-      auflagenForUserVehicleSelection(report, 0, null),
-    ).toEqual([]);
+    expect(auflagenForUserVehicleSelection(report, 0, null)).toEqual([]);
+  });
+
+  it("lists flat vehicle variant options with model and Fahrzeugtyp", () => {
+    const options = listAbeVehicleVariantOptions(MATCHES);
+    expect(options.length).toBe(3);
+    expect(options.some((option) => option.label.includes("346K"))).toBe(false);
+    expect(options.some((option) => option.label.includes("3k-N1"))).toBe(
+      true,
+    );
+    expect(displayAbeVehicleVariantOptionLabel("BMW 3er-Reihe", MATCHES[2]!)).toBe(
+      "BMW 3er-Reihe · 6C",
+    );
+  });
+
+  it("shows short model labels without manufacturer prefix", () => {
+    expect(displayAbeVehicleModelOptionLabel("BMW 3er-Reihe")).toBe(
+      "3er-Reihe",
+    );
+    expect(displayAbeVehicleModelOptionLabel("5ER REIHE")).toBe("5ER REIHE");
   });
 
   it("does not return unscoped top-level Auflagen when groups exist", () => {

@@ -2,14 +2,10 @@
 
 import { CheckCircle2 } from "lucide-react";
 
-import { CompatibilityTable } from "@/components/dashboard/CompatibilityTable";
+import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
 import {
-  abeVehicleGroupKey,
-  findBestAbeVehicleGroupIndex,
-  groupAbeVehicleMatches,
-  requiresAbeVehicleGroupSelection,
-  vehicleGroupRowsToTableData,
-  type AbeVehicleGroup,
+  listAbeVehicleVariantOptions,
+  type AbeVehicleVariantOption,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
@@ -25,41 +21,56 @@ interface AbeVehicleMatchPickerProps {
   selectionError?: string | null;
 }
 
-function VehicleTableSection({
-  group,
-  vehicleContext,
-  selectedRowId,
-  onSelectRow,
+function VariantOptionButton({
+  option,
+  selected,
+  onSelect,
 }: {
-  group: AbeVehicleGroup;
-  vehicleContext?: AbeVehicleContext | null;
-  selectedRowId?: string | null;
-  onSelectRow?: (rowId: string) => void;
+  option: AbeVehicleVariantOption;
+  selected: boolean;
+  onSelect: (option: AbeVehicleVariantOption) => void;
 }) {
-  const table = vehicleGroupRowsToTableData(group, vehicleContext);
-  const selectableRows = group.rows.length > 1 && Boolean(onSelectRow);
-
   return (
-    <div className="space-y-3">
-      <div>
-        <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          {selectableRows ? "Schritt 1 · Deine Fahrzeugzeile wählen" : "Fahrzeugtabelle"}
-        </p>
-        {selectableRows ? (
-          <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Tippe auf die Zeile, die zu deinem Fahrzeug passt. Danach kannst du
-            die Auflagen zu den Kürzeln scannen.
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={() => onSelect(option)}
+      className={[
+        "w-full rounded-2xl border px-4 py-3.5 text-left transition-colors touch-manipulation",
+        selected
+          ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/20"
+          : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] active:bg-neutral-100",
+      ].join(" ")}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-[color:var(--vd-text)]">
+            {option.label}
           </p>
-        ) : null}
+          {option.hint ? (
+            <p className="mt-0.5 truncate text-[0.72rem] text-[color:var(--vd-muted)]">
+              {option.hint}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {option.suggested ? (
+            <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-[0.62rem] font-medium text-white">
+              Vorschlag
+            </span>
+          ) : null}
+          {selected ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />
+          ) : (
+            <span
+              className="h-5 w-5 rounded-full border-2 border-[color:var(--vd-border)]"
+              aria-hidden
+            />
+          )}
+        </div>
       </div>
-      <CompatibilityTable
-        table={table}
-        title="Fahrzeug- und Auflagen-Tabelle"
-        className="border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-none"
-        selectedRowId={selectableRows ? selectedRowId : null}
-        onSelectRow={selectableRows ? onSelectRow : undefined}
-      />
-    </div>
+    </button>
   );
 }
 
@@ -73,28 +84,34 @@ export function AbeVehicleMatchPicker({
   vehicleLabel = null,
   selectionError = null,
 }: AbeVehicleMatchPickerProps) {
-  const groups = groupAbeVehicleMatches(matches);
-  if (groups.length === 0) return null;
+  const variants = listAbeVehicleVariantOptions(matches, vehicleContext);
+  if (variants.length === 0) return null;
 
-  const requiresSelection = requiresAbeVehicleGroupSelection(groups);
-  const suggestedIndex = findBestAbeVehicleGroupIndex(groups, vehicleContext);
-  const selectedGroup: AbeVehicleGroup | null =
-    selectedGroupIndex !== null &&
-    selectedGroupIndex >= 0 &&
-    selectedGroupIndex < groups.length
-      ? groups[selectedGroupIndex] ?? null
+  const selectedVariant =
+    selectedGroupIndex !== null && selectedRowId
+      ? variants.find(
+          (option) =>
+            option.groupIndex === selectedGroupIndex &&
+            option.rowId === selectedRowId,
+        ) ?? null
       : null;
 
-  if (!requiresSelection) {
-    const group = groups[0]!;
+  function handleSelect(option: AbeVehicleVariantOption) {
+    onSelectGroup(option.groupIndex);
+    onSelectRow?.(option.rowId);
+  }
+
+  if (variants.length === 1) {
+    const only = variants[0]!;
+
     return (
       <section className="space-y-4 rounded-[1.35rem] border border-emerald-500/25 bg-emerald-500/5 p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
         <div>
           <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-emerald-800">
-            Fahrzeug auswählen
+            {ABE_VEHICLE_MODEL_DISPLAY_LABEL}
           </p>
           <p className="mt-1 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
-            {group.verkaufsbezeichnung}
+            {only.label}
           </p>
           {vehicleLabel ? (
             <p className="mt-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]">
@@ -102,12 +119,6 @@ export function AbeVehicleMatchPicker({
             </p>
           ) : null}
         </div>
-        <VehicleTableSection
-          group={group}
-          vehicleContext={vehicleContext}
-          selectedRowId={selectedRowId}
-          onSelectRow={onSelectRow}
-        />
       </section>
     );
   }
@@ -116,14 +127,14 @@ export function AbeVehicleMatchPicker({
     <section className="space-y-4 rounded-[1.35rem] border border-emerald-500/25 bg-emerald-500/5 p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
       <div>
         <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-emerald-800">
-          Fahrzeug auswählen
+          Fahrzeugzeile wählen
         </p>
         <p className="mt-1 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
-          {groups.length} Verkaufsbezeichnungen erkannt
+          {variants.length} Varianten erkannt
         </p>
         <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Wähle zuerst die Verkaufsbezeichnung deines Fahrzeugs, dann die
-          passende Tabellenzeile.
+          Wähle deine Zeile aus der ABE-Tabelle — z. B. BMW 3er-Reihe · 346L.
+          Danach scannst du nur die Auflagen für genau diese Zeile.
         </p>
         {vehicleLabel ? (
           <p className="mt-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]">
@@ -135,59 +146,19 @@ export function AbeVehicleMatchPicker({
       <div
         className="space-y-2"
         role="radiogroup"
-        aria-label="Verkaufsbezeichnung aus der ABE-Tabelle wählen"
+        aria-label="Fahrzeugzeile aus der ABE-Tabelle wählen"
       >
-        {groups.map((group, index) => {
-          const selected = selectedGroupIndex === index;
-          const suggested = suggestedIndex === index;
-
-          return (
-            <button
-              key={abeVehicleGroupKey(group, index)}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              onClick={() => onSelectGroup(index)}
-              className={[
-                "w-full rounded-2xl border px-4 py-3.5 text-left transition-colors touch-manipulation",
-                selected
-                  ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/20"
-                  : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] active:bg-neutral-100",
-              ].join(" ")}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-[color:var(--vd-text)]">
-                    {group.verkaufsbezeichnung}
-                  </p>
-                  <p className="mt-1 text-[0.72rem] text-[color:var(--vd-muted)]">
-                    {group.rows.length}{" "}
-                    {group.rows.length === 1 ? "Zeile" : "Zeilen"} in der
-                    Tabelle
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1.5">
-                  {suggested ? (
-                    <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-[0.62rem] font-medium text-white">
-                      Vorschlag
-                    </span>
-                  ) : null}
-                  {selected ? (
-                    <CheckCircle2
-                      className="h-5 w-5 text-emerald-600"
-                      aria-hidden
-                    />
-                  ) : (
-                    <span
-                      className="h-5 w-5 rounded-full border-2 border-[color:var(--vd-border)]"
-                      aria-hidden
-                    />
-                  )}
-                </div>
-              </div>
-            </button>
-          );
-        })}
+        {variants.map((option) => (
+          <VariantOptionButton
+            key={`${option.groupIndex}-${option.rowId}`}
+            option={option}
+            selected={
+              selectedVariant?.groupIndex === option.groupIndex &&
+              selectedVariant.rowId === option.rowId
+            }
+            onSelect={handleSelect}
+          />
+        ))}
       </div>
 
       {selectionError ? (
@@ -199,18 +170,11 @@ export function AbeVehicleMatchPicker({
         </p>
       ) : null}
 
-      {selectedGroup ? (
-        <VehicleTableSection
-          group={selectedGroup}
-          vehicleContext={vehicleContext}
-          selectedRowId={selectedRowId}
-          onSelectRow={onSelectRow}
-        />
-      ) : (
+      {!selectedVariant ? (
         <p className="text-[0.78rem] font-medium text-amber-800">
-          Tippe auf eine Verkaufsbezeichnung, um deine Fahrzeugzeile zu wählen.
+          Tippe auf deine Fahrzeugzeile, um die passenden Auflagen zu scannen.
         </p>
-      )}
+      ) : null}
     </section>
   );
 }
