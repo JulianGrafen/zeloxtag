@@ -35,7 +35,7 @@ export function ocrTextUsesPosColumnTable(rawText: string): boolean {
  * Followed by Nummer (digits) or description text.
  */
 const POS_ROW_MARKER =
-  /(?:^|\s)(\d{1,2})(?=\s+(?:\d{4,}\s+|[A-Za-zÄÖÜäöüß§(]))/g;
+  /(?:^|\s)(\d{1,2})(?=\s+(?:\d[\d.]{3,}\s+|\d[A-Za-z][A-Za-z0-9.-]*\s+|\d{1,3}\s+[A-Za-zÄÖÜäöüß§(]|[A-Za-zÄÖÜäöüß§(]))/g;
 
 function markerStartIndex(line: string, match: RegExpMatchArray): number {
   const raw = match[0] ?? "";
@@ -90,6 +90,8 @@ export function splitLineByPosColumn(line: string): string[] {
 export function stripPosColumnPrefix(label: string): string {
   let trimmed = label.trim();
   trimmed = trimmed.replace(/^\d{1,2}\s+/, "");
-  trimmed = trimmed.replace(/^\d{4,9}\s+/, "");
+  // Artikelnummern may be plain digits (8566434) or dotted codes
+  // (7.10334.07.0); both are separate from the Bezeichnung column.
+  trimmed = trimmed.replace(/^\d[A-Za-z0-9.-]{3,14}\s+/, "");
   return trimmed.trim();
 }

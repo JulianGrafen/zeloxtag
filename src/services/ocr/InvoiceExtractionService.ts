@@ -529,7 +529,9 @@ export class InvoiceExtractionService {
       (layoutLineItems?.length ? sumLineItems(layoutLineItems) : null);
 
     const merged = shouldMergeAzureLayout(tableFormat)
-      ? mergeLayoutAndLlmLineItems(llmLineItems, layoutLineItems, amount)
+      ? mergeLayoutAndLlmLineItems(llmLineItems, layoutLineItems, amount, {
+          trustedNetTotal: footerNet,
+        })
       : llmLineItems.length > 0
         ? llmLineItems
         : null;

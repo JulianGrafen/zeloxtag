@@ -7,6 +7,10 @@ import {
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
 import { reconcileLineItemAmountsWithOcrText } from "@/lib/ocr/invoice-line-items-from-text";
+import {
+  BLOTZHEIM_27327_NET_SUM,
+  BLOTZHEIM_27327_POSITIONS,
+} from "@/lib/ocr/fixtures/blotzheim-27327-invoice";
 
 describe("extractInvoiceLineItemsFromAzureLayout", () => {
   it("pairs label and Ges. Preis by rowIndex", () => {
@@ -163,6 +167,24 @@ describe("mergeLayoutAndLlmLineItems", () => {
       { label: "Sportfedern H&R", amount: 480 },
       { label: "Arbeitslohn", amount: 95 },
     ]);
+  });
+
+  it("keeps only complete layout rows when they reconcile with Nettosumme", () => {
+    const incorrectLlmRows = [
+      { label: "AGR-Ventil", amount: 54 },
+      { label: "Abgasrückführungsventil erneuern", amount: 54 },
+      { label: "Winterräder montiert", amount: 20 },
+      { label: "Abgasrückführungsventil erneuern", amount: 130.8 },
+    ];
+
+    expect(
+      mergeLayoutAndLlmLineItems(
+        incorrectLlmRows,
+        [...BLOTZHEIM_27327_POSITIONS],
+        348.53,
+        { trustedNetTotal: BLOTZHEIM_27327_NET_SUM },
+      ),
+    ).toEqual(BLOTZHEIM_27327_POSITIONS);
   });
 });
 

@@ -292,6 +292,8 @@ export const INVOICE_LINE_ITEMS_USER_LINES = [
   "Pos (Zeilennummer ganz links: 1, 2, 3 …) ist NICHT Menge — menge nur aus der Menge-Spalte.",
   "einzelpreis = Text aus E-Preis inkl. € — z.B. \"141,46 €\". null wenn leer.",
   "gesamtpreis = Text aus Ges. Preis inkl. € — z.B. \"331,98 €\". null wenn leer — NIEMALS E-Preis hierher kopieren.",
+  "Harte Zeilenregel: Pos 1 erzeugt genau EIN Item für Pos 1, Pos 2 genau EIN Item für Pos 2 usw. Lies jede Pos-Zeile vollständig von links nach rechts und kopiere den Wert aus der ZELLE unter „Ges. Preis“ auf derselben horizontalen Zeile.",
+  "Niemals Betrag, Menge oder E-Preis aus einer Nachbarzeile übernehmen. Existiert für eine Pos-Zeile eine sichtbare Ges.-Preis-Zelle, ist genau dieser Wert maßgeblich — auch wenn E-Preis und Ges. Preis unterschiedlich sind.",
   "Beispiel: Menge 2,00 | E-Preis 165,99 € | Ges. Preis 331,98 € → gesamtpreis \"331,98 €\" (nicht 165,99).",
   "Beispiel: Menge leer | E-Preis 90,00 € | Ges. Preis leer → menge null, gesamtpreis null (nur E-Preis = Stundensatz, nicht addieren).",
   "Beispiel: Menge 0,90 | E-Preis 90,00 € | Ges. Preis 81,00 € → gesamtpreis \"81,00 €\".",

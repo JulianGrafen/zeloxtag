@@ -24,6 +24,7 @@ import type {
 } from "./azure-document-intelligence";
 
 const MAX_ITEMS = 60;
+const NET_TOTAL_TOLERANCE_EUR = 1.5;
 
 const UNIT_PRICE_HEADER =
   /(?:^|\b)(?:e-?preis|einzelpreis|ep|stückpreis|stk\.?\s*preis|netto(?:preis)?|listenpreis)(?:\b|$)/i;
@@ -462,12 +463,24 @@ export function mergeLayoutAndLlmLineItems(
   llmItems: InvoiceLineItem[] | null | undefined,
   layoutItems: InvoiceLineItem[] | null | undefined,
   totalAmount: number | null,
+  options: { trustedNetTotal?: number | null } = {},
 ): InvoiceLineItem[] | null {
   const layout = layoutItems ?? [];
   const llm = llmItems ?? [];
 
   if (layout.length === 0) return llm.length > 0 ? llm : null;
   if (llm.length === 0) return layout;
+
+  const layoutNetSum = layout.reduce((sum, item) => sum + item.amount, 0);
+  const trustedNetTotal = options.trustedNetTotal ?? null;
+  if (
+    trustedNetTotal != null &&
+    Math.abs(layoutNetSum - trustedNetTotal) <= NET_TOTAL_TOLERANCE_EUR
+  ) {
+    // The geometry-aware rows reconcile with the printed Nettosumme. Do not
+    // append unmatched LLM rows: they commonly stem from a shifted price column.
+    return layout;
+  }
 
   const usedLlmIndexes = new Set<number>();
   const merged: InvoiceLineItem[] = layout.map((layoutItem) => {

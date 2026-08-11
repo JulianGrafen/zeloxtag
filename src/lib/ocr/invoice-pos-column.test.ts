@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { OCR_SAMPLES } from "@/lib/ocr/__fixtures__/ocr-samples";
 import {
+  BLOTZHEIM_27327_NET_SUM,
+  BLOTZHEIM_27327_OCR_TEXT,
+  BLOTZHEIM_27327_POSITIONS,
+} from "@/lib/ocr/fixtures/blotzheim-27327-invoice";
+import {
   TM_MOTORSPORT_NET_SUM,
   TM_MOTORSPORT_OCR_TEXT,
 } from "@/lib/ocr/fixtures/tm-motorsport-invoice";
@@ -34,6 +39,17 @@ describe("invoice-pos-column", () => {
     expect(segments[1]).toMatch(/^2 Änderungsabnahme/);
   });
 
+  it("splits dotted, alphanumeric, and short Nummer codes by Pos", () => {
+    const glued =
+      "1 7.10334.07.0 AGR-Ventil 1,00 218,88 218,88 A 2 1G02 Abgasrückführungsventil erneuern 0,60 90,00 54,00 A 3 18 Winterräder montiert 1,00 20,00 20,00 A";
+
+    expect(splitLineByPosColumn(glued)).toEqual([
+      "1 7.10334.07.0 AGR-Ventil 1,00 218,88 218,88 A",
+      "2 1G02 Abgasrückführungsventil erneuern 0,60 90,00 54,00 A",
+      "3 18 Winterräder montiert 1,00 20,00 20,00 A",
+    ]);
+  });
+
   it("strips Pos and Nummer prefixes from labels", () => {
     expect(
       stripPosColumnPrefix(
@@ -42,6 +58,9 @@ describe("invoice-pos-column", () => {
     ).toBe("Fehlersuche Dynamic Drive System / Kabelverbindungen");
     expect(stripPosColumnPrefix("2 Änderungsabnahme gemäß §19")).toBe(
       "Änderungsabnahme gemäß §19",
+    );
+    expect(stripPosColumnPrefix("1 7.10334.07.0 AGR-Ventil")).toBe(
+      "AGR-Ventil",
     );
   });
 
@@ -55,6 +74,16 @@ describe("invoice-pos-column", () => {
 
     const sum = items!.reduce((acc, item) => acc + item.amount, 0);
     expect(sum).toBeCloseTo(TM_MOTORSPORT_NET_SUM, 2);
+  });
+
+  it("keeps each Blotzheim Pos row paired to its own Ges. Preis", () => {
+    const items = extractInvoiceLineItemsFromText(BLOTZHEIM_27327_OCR_TEXT);
+
+    expect(items).toEqual(BLOTZHEIM_27327_POSITIONS);
+    expect(items!.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
+      BLOTZHEIM_27327_NET_SUM,
+      2,
+    );
   });
 
   it("extracts simple workshop and oil-change invoices without Pos-column mode", () => {
