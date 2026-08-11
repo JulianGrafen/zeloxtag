@@ -5,8 +5,15 @@ import {
   buildDocumentUserMessage,
   type DocumentBytesInput,
 } from "@/lib/ocr/llm-document-content";
+import {
+  buildVisionUserMessage,
+  prepareAbeOcrInput,
+} from "@/lib/ocr/prepare-document-for-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
-import { DEFAULT_PARSE_MODEL } from "@/lib/ocr/model-routing";
+import {
+  DEFAULT_PARSE_MODEL,
+  resolveParseModel,
+} from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
   ABE_MINIMAL_JSON_SCHEMA,
@@ -48,13 +55,19 @@ export const ABE_CONTEXT_MAX_CHARS = 40_000;
 const COVER_PARSE_MAX_TOKENS = 500;
 const CONTEXT_PARSE_MAX_TOKENS = 1_200;
 
-/** Higher-context deployment for compatibility-table scans. */
+/** Economy deployment for ABE cover, Stammdaten, Kennzeichnung, Auflagen, etc. */
 export function resolveAbeContextModel(): string {
   return (
+    process.env.FOUNDRY_MODEL_ABE?.trim() || resolveParseModel("abe")
+  );
+}
+
+/** GPT-5.4 (or override) — reserved for Verwendungsbereich / Fahrzeugtabelle vision only. */
+export function resolveAbeTableExtractionModel(): string {
+  return (
+    process.env.FOUNDRY_MODEL_ABE_TABLE?.trim() ||
     process.env.FOUNDRY_MODEL_ABE_CONTEXT?.trim() ||
-    process.env.FOUNDRY_MODEL_NAME?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
-    "gpt-4o"
+    "gpt-5.4"
   );
 }
 
@@ -175,7 +188,8 @@ export type AbeExtractionOptions = {
 };
 
 /**
- * ABE extractor — cover-only (nano) or context-aware table scan (mid-tier).
+ * ABE extractor — cover-only (economy) or context-aware OCR window (economy).
+ * Dedicated table vision uses {@link resolveAbeTableExtractionModel} elsewhere.
  */
 export class AbeExtractionService {
   async extractFromDocument(
@@ -464,6 +478,7 @@ export class AbeExtractionService {
 
   /**
    * Step 3 of the ABE wizard — extract vehicle compatibility table rows from the photo.
+   * Uses {@link resolveAbeTableExtractionModel} (GPT-5.4 by default).
    */
   async extractVehiclesFromDocument(
     input: DocumentBytesInput,
@@ -537,7 +552,7 @@ export class AbeExtractionService {
       AbeWizardVehiclesSchema,
       4000,
       isRetry ? "vehicles-retry" : "vehicles",
-      { model: resolveAbeContextModel() },
+      { model: resolveAbeTableExtractionModel() },
     );
   }
 
@@ -564,7 +579,8 @@ export class AbeExtractionService {
       );
     }
 
-    const userContent = buildDocumentUserMessage(instructionLines, input);
+    const prepared = await prepareAbeOcrInput(input);
+    const userContent = buildVisionUserMessage(instructionLines, prepared);
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {

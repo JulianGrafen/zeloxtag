@@ -19,6 +19,8 @@ export type { DocumentBytesInput };
 export const LLM_DOCUMENT_RASTER_DPI = 220;
 /** Cap rasterized / uploaded image long edge before LLM. */
 export const LLM_IMAGE_MAX_EDGE_PX = 2200;
+/** ABE vision — slightly below invoice cap to limit token cost. */
+export const ABE_LLM_IMAGE_MAX_EDGE_PX = 1600;
 export const LLM_INVOICE_MAX_PDF_PAGES = 4;
 
 function pngImagePart(png: Buffer): DocumentUserMessagePart {
@@ -31,12 +33,15 @@ function pngImagePart(png: Buffer): DocumentUserMessagePart {
   };
 }
 
-async function normalizeRasterToPng(bytes: Buffer): Promise<Buffer> {
+async function normalizeRasterToPng(
+  bytes: Buffer,
+  maxEdgePx = LLM_IMAGE_MAX_EDGE_PX,
+): Promise<Buffer> {
   return sharp(bytes, { failOn: "none" })
     .rotate()
     .resize({
-      width: LLM_IMAGE_MAX_EDGE_PX,
-      height: LLM_IMAGE_MAX_EDGE_PX,
+      width: maxEdgePx,
+      height: maxEdgePx,
       fit: "inside",
       withoutEnlargement: false,
     })
@@ -47,13 +52,16 @@ async function normalizeRasterToPng(bytes: Buffer): Promise<Buffer> {
 /**
  * Boost contrast + sharpness for small invoice text / table numbers.
  */
-export async function enhanceDocumentImageForLlm(bytes: Buffer): Promise<Buffer> {
+export async function enhanceDocumentImageForLlm(
+  bytes: Buffer,
+  maxEdgePx = LLM_IMAGE_MAX_EDGE_PX,
+): Promise<Buffer> {
   try {
     return await sharp(bytes, { failOn: "none" })
       .rotate()
       .resize({
-        width: LLM_IMAGE_MAX_EDGE_PX,
-        height: LLM_IMAGE_MAX_EDGE_PX,
+        width: maxEdgePx,
+        height: maxEdgePx,
         fit: "inside",
         withoutEnlargement: false,
       })
@@ -64,7 +72,7 @@ export async function enhanceDocumentImageForLlm(bytes: Buffer): Promise<Buffer>
       .toBuffer();
   } catch (error) {
     console.warn("[prepare-document-for-llm] enhanced pass failed, using plain PNG", error);
-    return normalizeRasterToPng(bytes);
+    return normalizeRasterToPng(bytes, maxEdgePx);
   }
 }
 
@@ -89,6 +97,8 @@ export async function rasterizePdfPagesForLlm(
 
 export type PrepareDocumentForLlmOptions = {
   maxPdfPages?: number;
+  /** Long-edge cap for rasterized / enhanced images. */
+  maxEdgePx?: number;
 };
 
 /**
@@ -100,6 +110,7 @@ export async function prepareDocumentImagesForLlm(
   options: PrepareDocumentForLlmOptions = {},
 ): Promise<Buffer[]> {
   const contentType = resolveDocumentContentType(input.bytes, input.contentType);
+  const maxEdgePx = options.maxEdgePx ?? LLM_IMAGE_MAX_EDGE_PX;
 
   if (contentType === "application/pdf" || isPdfBuffer(input.bytes)) {
     try {
@@ -118,11 +129,11 @@ export async function prepareDocumentImagesForLlm(
   }
 
   try {
-    return [await enhanceDocumentImageForLlm(input.bytes)];
+    return [await enhanceDocumentImageForLlm(input.bytes, maxEdgePx)];
   } catch (error) {
     console.warn("[prepare-document-for-llm] image enhance failed", error);
     try {
-      return [await normalizeRasterToPng(input.bytes)];
+      return [await normalizeRasterToPng(input.bytes, maxEdgePx)];
     } catch (normalizeError) {
       console.warn("[prepare-document-for-llm] image normalize failed", normalizeError);
       return [];
@@ -217,8 +228,12 @@ export function buildVisionUserMessage(
 /** Single-page OCR/LLM input after prepareDocumentImagesForLlm. */
 export async function prepareSinglePageOcrInput(
   input: DocumentBytesInput,
+  options: PrepareDocumentForLlmOptions = {},
 ): Promise<DocumentBytesInput> {
-  const pages = await prepareDocumentImagesForLlm(input, { maxPdfPages: 1 });
+  const pages = await prepareDocumentImagesForLlm(input, {
+    maxPdfPages: 1,
+    ...options,
+  });
   if (pages[0]?.byteLength) {
     return {
       bytes: pages[0],
@@ -230,4 +245,14 @@ export async function prepareSinglePageOcrInput(
     bytes: input.bytes,
     contentType: resolveDocumentContentType(input.bytes, input.contentType),
   };
+}
+
+/** ABE hunt / table vision — contrast-enhanced PNG capped for LLM cost. */
+export async function prepareAbeOcrInput(
+  input: DocumentBytesInput,
+): Promise<DocumentBytesInput> {
+  return prepareSinglePageOcrInput(input, {
+    maxPdfPages: 1,
+    maxEdgePx: ABE_LLM_IMAGE_MAX_EDGE_PX,
+  });
 }

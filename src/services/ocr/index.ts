@@ -9,6 +9,7 @@ export {
   buildAbeSystemPrompt,
   coverTextFromPageBlocks,
   resolveAbeContextModel,
+  resolveAbeTableExtractionModel,
   truncateAbeCoverPages,
   type AbeExtractionOptions,
 } from "./AbeExtractionService";

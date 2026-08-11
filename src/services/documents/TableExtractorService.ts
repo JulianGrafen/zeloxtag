@@ -11,7 +11,8 @@ import {
   emptyAbeTableExtraction,
   normalizeAbeTableExtraction,
 } from "@/lib/validations/abeTableExtractionSchemas";
-import { resolveAbeContextModel } from "@/services/ocr/AbeExtractionService";
+import { prepareAbeOcrInput } from "@/lib/ocr/prepare-document-for-llm";
+import { resolveAbeTableExtractionModel } from "@/services/ocr/AbeExtractionService";
 import type { AbeTableExtraction } from "@/types/abe";
 
 import {
@@ -41,6 +42,10 @@ function buildTableImageUserContent(
   ];
 
   for (const page of pages) {
+    const prepared = await prepareAbeOcrInput({
+      bytes: page.bytes,
+      contentType: page.contentType,
+    });
     parts.push({
       type: "text",
       text: `Table image: ${page.sourceLabel}`,
@@ -48,7 +53,7 @@ function buildTableImageUserContent(
     parts.push({
       type: "image_url",
       image_url: {
-        url: `data:${page.contentType};base64,${page.bytes.toString("base64")}`,
+        url: `data:${prepared.contentType};base64,${prepared.bytes.toString("base64")}`,
         detail: "high",
       },
     });
@@ -58,7 +63,7 @@ function buildTableImageUserContent(
 }
 
 export class TableExtractorService {
-  constructor(private readonly model = resolveAbeContextModel()) {}
+  constructor(private readonly model = resolveAbeTableExtractionModel()) {}
 
   async extractFromPages(pages: IngestedPage[]): Promise<AbeTableExtraction> {
     if (pages.length === 0) return emptyAbeTableExtraction();

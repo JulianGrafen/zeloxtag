@@ -12,6 +12,11 @@ export const A4_ASPECT = 210 / 297;
 export const OPTIMIZER_MAX_WIDTH_PX = 2000;
 export const OPTIMIZER_TARGET_MAX_BYTES = 480 * 1024;
 
+/** ABE capture — moderate uplift without maxing LLM token cost. */
+export const ABE_CAPTURE_MAX_WIDTH_PX = 1600;
+export const ABE_CAPTURE_JPEG_QUALITY = 0.9;
+export const ABE_CAPTURE_MAX_BYTES = 520 * 1024;
+
 export type OptimizedImageResult = {
   /** Processed canvas. */
   canvas: HTMLCanvasElement;
@@ -133,12 +138,14 @@ function canvasToJpegDataUrl(
 function encodeOptimizedCanvas(
   canvas: HTMLCanvasElement,
   maxBytes: number,
+  initialQuality = 0.88,
+  qualityFloor = 0.68,
 ): OptimizedImageResult {
-  let quality = 0.88;
+  let quality = initialQuality;
   let dataUrl = canvasToJpegDataUrl(canvas, quality);
   let byteLength = dataUrlByteLength(dataUrl);
 
-  while (byteLength > maxBytes && quality > 0.68) {
+  while (byteLength > maxBytes && quality > qualityFloor) {
     quality -= 0.08;
     dataUrl = canvasToJpegDataUrl(canvas, quality);
     byteLength = dataUrlByteLength(dataUrl);
@@ -218,6 +225,19 @@ export function resizeDocumentCanvas(
   ctx.fillRect(0, 0, width, height);
   ctx.drawImage(source, 0, 0, width, height);
   return canvas;
+}
+
+/** Resize + encode for ABE camera captures (archival path, natural colors). */
+export function encodeAbeCaptureCanvas(
+  source: HTMLCanvasElement,
+): OptimizedImageResult {
+  const resized = resizeDocumentCanvas(source, ABE_CAPTURE_MAX_WIDTH_PX);
+  return encodeOptimizedCanvas(
+    resized,
+    ABE_CAPTURE_MAX_BYTES,
+    ABE_CAPTURE_JPEG_QUALITY,
+    0.78,
+  );
 }
 
 /**

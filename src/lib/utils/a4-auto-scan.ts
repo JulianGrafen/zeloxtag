@@ -132,15 +132,21 @@ async function canvasToJpegFile(
   });
 }
 
+export type A4CaptureEncodeOptions = {
+  jpegQuality?: number;
+  maxWidth?: number;
+};
+
 async function warpResizeA4(
   source: HTMLCanvasElement,
   corners: QuadPoints,
+  maxWidth = WARP_MAX_WIDTH_PX,
 ): Promise<HTMLCanvasElement> {
   const warped = await warpPerspectiveAsync(source, corners, {
-    maxWidth: WARP_MAX_WIDTH_PX,
+    maxWidth,
     forceAspect: A4_ASPECT,
   });
-  return resizeDocumentCanvas(warped, WARP_MAX_WIDTH_PX);
+  return resizeDocumentCanvas(warped, maxWidth);
 }
 
 async function warpAndBuildA4Pdf(
@@ -182,11 +188,14 @@ export async function buildA4ImageFromGuideCapture(
   fullCapture: HTMLCanvasElement,
   crop: VideoCropRect,
   fileName = `${A4_SCAN_IMAGE_PREFIX}${Date.now()}`,
+  options: A4CaptureEncodeOptions = {},
 ): Promise<File> {
+  const maxWidth = options.maxWidth ?? WARP_MAX_WIDTH_PX;
+  const jpegQuality = options.jpegQuality ?? 0.92;
   const cropped = cropCanvasRegion(fullCapture, crop);
   const corners = detectInvoiceCorners(cropped);
-  const canvas = await warpResizeA4(cropped, corners);
-  return canvasToJpegFile(canvas, fileName);
+  const canvas = await warpResizeA4(cropped, corners, maxWidth);
+  return canvasToJpegFile(canvas, fileName, jpegQuality);
 }
 
 /**

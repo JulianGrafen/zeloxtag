@@ -20,9 +20,17 @@ import {
 import { useTopDownTilt } from "@/lib/hooks/use-top-down-tilt";
 import { TopDownLevelIndicator } from "@/components/documents/top-down-level-indicator";
 import {
+  ABE_CAPTURE_JPEG_QUALITY,
+  ABE_CAPTURE_MAX_WIDTH_PX,
+  encodeAbeCaptureCanvas,
   resizeDocumentCanvas,
   resizeDocumentImage,
 } from "@/lib/utils/image-optimizer";
+import {
+  analyzeCaptureQuality,
+  captureQualityMessage,
+  type CaptureQualityMetrics,
+} from "@/lib/utils/capture-quality-gate";
 
 export type GuideFrameType = "a4" | "section" | "none";
 export type GuideSectionAnchor = "top" | "center" | "bottom";
@@ -71,6 +79,12 @@ export interface InBrowserCameraProps {
    * frame padding — progress/close live in the parent overlay.
    */
   compactChrome?: boolean;
+  /** Max long edge for JPEG capture (ABE uses ~1600px). */
+  captureMaxWidth?: number;
+  /** JPEG quality for captures (0–1). */
+  captureJpegQuality?: number;
+  /** Block upload when frame is blurry or too dark. */
+  enforceCaptureQuality?: boolean;
 }
 
 type FacingMode = "environment" | "user";
@@ -91,18 +105,25 @@ const SECTION_ASPECT_RATIOS: Record<GuideSectionAnchor, string> = {
 async function canvasToCaptureFile(
   canvas: HTMLCanvasElement,
   fileName = `scan-${Date.now()}`,
+  options: { maxWidth?: number; jpegQuality?: number; abeProfile?: boolean } = {},
 ): Promise<File> {
-  const resized = resizeDocumentCanvas(canvas);
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    resized.toBlob(
-      (value) =>
-        value
-          ? resolve(value)
-          : reject(new Error("Aufnahme konnte nicht gespeichert werden.")),
-      "image/jpeg",
-      0.88,
-    );
-  });
+  let blob: Blob;
+  if (options.abeProfile) {
+    const encoded = encodeAbeCaptureCanvas(canvas);
+    blob = await fetch(encoded.dataUrl).then((response) => response.blob());
+  } else {
+    const resized = resizeDocumentCanvas(canvas, options.maxWidth);
+    blob = await new Promise<Blob>((resolve, reject) => {
+      resized.toBlob(
+        (value) =>
+          value
+            ? resolve(value)
+            : reject(new Error("Aufnahme konnte nicht gespeichert werden.")),
+        "image/jpeg",
+        options.jpegQuality ?? 0.88,
+      );
+    });
+  }
 
   return new File([blob], `${fileName}.jpg`, {
     type: "image/jpeg",
@@ -141,8 +162,10 @@ function guideFrameOutsideShadow(dimOutside: boolean): string {
 const TOP_DOWN_SCAN_HINT =
   "Handy senkrecht von oben halten — parallel zum Blatt, möglichst gerade.";
 
-function guideFrameBorderClass(isLevel: boolean): string {
-  if (isLevel) return "border-emerald-400/95 shadow-[0_0_0_2px_rgba(52,211,153,0.35)]";
+function guideFrameBorderClass(isLevel: boolean, captureReady: boolean): string {
+  if (isLevel && captureReady) {
+    return "border-emerald-400/95 shadow-[0_0_0_2px_rgba(52,211,153,0.35)]";
+  }
   return "border-white/80";
 }
 
@@ -186,6 +209,9 @@ export function InBrowserCamera({
   captureStep,
   showTopDownGuide = true,
   compactChrome = false,
+  captureMaxWidth,
+  captureJpegQuality,
+  enforceCaptureQuality = false,
 }: InBrowserCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const viewfinderRef = useRef<HTMLDivElement>(null);
@@ -198,6 +224,17 @@ export function InBrowserCamera({
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [captureFlash, setCaptureFlash] = useState(false);
+  const [liveCaptureQuality, setLiveCaptureQuality] =
+    useState<CaptureQualityMetrics | null>(null);
+  const captureEncodeOptions = {
+    maxWidth: captureMaxWidth,
+    jpegQuality: captureJpegQuality,
+    abeProfile: captureMaxWidth != null || captureJpegQuality != null,
+  };
+  const a4EncodeOptions = {
+    maxWidth: captureMaxWidth ?? ABE_CAPTURE_MAX_WIDTH_PX,
+    jpegQuality: captureJpegQuality ?? ABE_CAPTURE_JPEG_QUALITY,
+  };
 
   const resolvedHint =
     compactChrome || hint === ""
@@ -209,7 +246,7 @@ export function InBrowserCamera({
   const [instructionsOpen, setInstructionsOpen] = useState(shouldShowBriefing);
 
   const topDownTilt = useTopDownTilt(
-    showTopDownGuide && !compactChrome && cameraReady && !instructionsOpen,
+    showTopDownGuide && cameraReady && !instructionsOpen,
   );
   const showLevelGuide =
     showTopDownGuide &&
@@ -218,6 +255,42 @@ export function InBrowserCamera({
     !instructionsOpen &&
     !processingCapture &&
     !cameraError;
+
+  const captureReady =
+    !enforceCaptureQuality || liveCaptureQuality?.isReady === true;
+  const frameReady =
+    (!showTopDownGuide || topDownTilt.isLevel) && captureReady;
+
+  useEffect(() => {
+    if (!enforceCaptureQuality || !cameraReady || instructionsOpen) {
+      setLiveCaptureQuality(null);
+      return;
+    }
+
+    let cancelled = false;
+    const sample = () => {
+      const video = videoRef.current;
+      if (!video || video.videoWidth < 8 || video.videoHeight < 8) return;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const quality = analyzeCaptureQuality(canvas);
+      canvas.width = 0;
+      canvas.height = 0;
+      if (!cancelled) setLiveCaptureQuality(quality);
+    };
+
+    sample();
+    const timer = window.setInterval(sample, 450);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [enforceCaptureQuality, cameraReady, instructionsOpen, facingMode]);
 
   useEffect(() => {
     if (continuousCapture) {
@@ -345,7 +418,7 @@ export function InBrowserCamera({
       ? (
           await buildA4PdfFromGuideCapture(fullCapture, crop)
         ).file
-      : buildA4ImageFromGuideCapture(fullCapture, crop);
+      : buildA4ImageFromGuideCapture(fullCapture, crop, undefined, a4EncodeOptions);
   }
 
   function readA4CaptureLayout():
@@ -373,6 +446,18 @@ export function InBrowserCamera({
     };
   }
 
+  async function validateCaptureCanvas(canvas: HTMLCanvasElement): Promise<boolean> {
+    if (!enforceCaptureQuality) return true;
+
+    const quality = analyzeCaptureQuality(canvas);
+    if (quality.isReady) return true;
+
+    setCameraError(
+      quality.issue ? captureQualityMessage(quality.issue) : captureQualityMessage("blur"),
+    );
+    return false;
+  }
+
   async function handleCapture() {
     if (!videoRef.current || capturing || processingCapture || !cameraReady) {
       return;
@@ -398,6 +483,12 @@ export function InBrowserCamera({
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+      if (!(await validateCaptureCanvas(canvas))) {
+        canvas.width = 0;
+        canvas.height = 0;
+        return;
+      }
+
       if (shouldA4Crop && a4Layout) {
         setProcessingCapture(true);
         try {
@@ -409,7 +500,7 @@ export function InBrowserCamera({
       } else {
         setProcessingCapture(true);
         try {
-          const file = await canvasToCaptureFile(canvas);
+          const file = await canvasToCaptureFile(canvas, undefined, captureEncodeOptions);
           await deliverCaptureFile(file);
         } finally {
           setProcessingCapture(false);
@@ -549,7 +640,7 @@ export function InBrowserCamera({
           </div>
         ) : null}
 
-        {!compactChrome && (resolvedHint || captureStep) ? (
+        {!compactChrome && (resolvedHint || captureStep || enforceCaptureQuality) ? (
           <div className="mb-3 w-full max-w-md rounded-xl bg-black/70 px-3 py-2.5 text-center shadow-lg backdrop-blur-md">
             {captureStep ? (
               <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white">
@@ -564,6 +655,17 @@ export function InBrowserCamera({
                 ].join(" ")}
               >
                 {resolvedHint}
+              </p>
+            ) : null}
+            {enforceCaptureQuality && liveCaptureQuality && !liveCaptureQuality.isReady ? (
+              <p className="mt-1 text-[0.72rem] font-medium text-amber-200">
+                {liveCaptureQuality.issue === "dark"
+                  ? "Zu dunkel — mehr Licht"
+                  : "Unscharf — ruhig halten"}
+              </p>
+            ) : enforceCaptureQuality && frameReady ? (
+              <p className="mt-1 text-[0.72rem] font-medium text-emerald-200">
+                Bereit — grüner Rahmen = auslösen
               </p>
             ) : null}
           </div>
@@ -586,8 +688,18 @@ export function InBrowserCamera({
         <button
           type="button"
           onClick={() => void handleCapture()}
-          disabled={!cameraReady || capturing || processingCapture}
-          className="flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full border-4 border-white/95 shadow-[0_2px_18px_rgba(0,0,0,0.45)] transition-transform active:scale-90 disabled:opacity-40"
+          disabled={
+            !cameraReady ||
+            capturing ||
+            processingCapture ||
+            (enforceCaptureQuality && !frameReady)
+          }
+          className={[
+            "flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full border-4 shadow-[0_2px_18px_rgba(0,0,0,0.45)] transition-transform active:scale-90 disabled:opacity-40",
+            frameReady && enforceCaptureQuality
+              ? "border-emerald-300/95"
+              : "border-white/95",
+          ].join(" ")}
           aria-label="Foto aufnehmen"
         >
           <span className="h-[3.25rem] w-[3.25rem] rounded-full bg-white transition-transform active:scale-90" />
@@ -686,7 +798,7 @@ export function InBrowserCamera({
                     ref={guideFrameRef}
                     className={[
                       "relative h-full w-auto max-h-full max-w-[92vw] shrink-0 rounded-xl border-2 transition-colors duration-200",
-                      guideFrameBorderClass(topDownTilt.isLevel),
+                      guideFrameBorderClass(topDownTilt.isLevel, frameReady),
                       frameOutsideShadow,
                     ].join(" ")}
                     style={{ aspectRatio: A4_ASPECT_RATIO }}
@@ -724,7 +836,7 @@ export function InBrowserCamera({
                   <div
                     className={[
                       "relative w-full max-w-[min(96vw,560px)] rounded-md border-2 transition-colors duration-200",
-                      guideFrameBorderClass(topDownTilt.isLevel),
+                      guideFrameBorderClass(topDownTilt.isLevel, frameReady),
                       frameOutsideShadow,
                     ].join(" ")}
                     style={{ aspectRatio: SECTION_ASPECT_RATIOS[guideSectionAnchor] }}

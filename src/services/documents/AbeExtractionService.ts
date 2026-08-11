@@ -2,9 +2,10 @@ import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import {
-  buildDocumentUserMessage,
-  type DocumentBytesInput,
-} from "@/lib/ocr/llm-document-content";
+  buildVisionUserMessage,
+  prepareAbeOcrInput,
+} from "@/lib/ocr/prepare-document-for-llm";
+import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { parseAbeVehicleRows, mergeAbeVehicleMatchRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
@@ -46,7 +47,10 @@ import {
   type AbeHuntStepResult,
   type AbeHuntVehicleExtraction,
 } from "@/lib/validations/abeDataHunterSchemas";
-import { resolveAbeContextModel } from "@/services/ocr/AbeExtractionService";
+import {
+  resolveAbeContextModel,
+  resolveAbeTableExtractionModel,
+} from "@/services/ocr/AbeExtractionService";
 
 const IMAGE_ONLY_GUARD =
   "CRITICAL: Read ONLY the attached cropped photograph. " +
@@ -252,6 +256,7 @@ export class AbeDataHunterExtractionService {
           ABE_HUNT_VEHICLE_JSON_SCHEMA,
           isRetry ? "hunt-vehicle-retry" : "hunt-vehicle",
           6_000,
+          resolveAbeTableExtractionModel(),
         );
 
         return typeof raw === "object" &&
@@ -673,12 +678,13 @@ export class AbeDataHunterExtractionService {
     jsonSchema: JsonSchema,
     stepLabel: string,
     maxTokens: number,
+    model: string = resolveAbeContextModel(),
   ): Promise<unknown> {
     let client: OpenAI;
     let resolvedModel: string;
     try {
       ({ client, model: resolvedModel } = getOcrLlmClient({
-        model: resolveAbeContextModel(),
+        model,
       }));
     } catch (error) {
       throw new TextParseError(
@@ -686,7 +692,8 @@ export class AbeDataHunterExtractionService {
       );
     }
 
-    const userContent = buildDocumentUserMessage(instructionLines, input);
+    const prepared = await prepareAbeOcrInput(input);
+    const userContent = buildVisionUserMessage(instructionLines, prepared);
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {

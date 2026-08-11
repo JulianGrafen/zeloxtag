@@ -18,7 +18,11 @@ import {
   AbeKbaHero,
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
-import { InBrowserCamera } from "@/components/documents/in-browser-camera";
+import { InBrowserCamera, type GuideFrameType } from "@/components/documents/in-browser-camera";
+import {
+  ABE_CAPTURE_JPEG_QUALITY,
+  ABE_CAPTURE_MAX_WIDTH_PX,
+} from "@/lib/utils/image-optimizer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { localDateIso } from "@/lib/documents/format";
@@ -682,11 +686,25 @@ const ABE_CAMERA_PROPS = {
   guideFrame: "a4" as const,
   allowPdf: false,
   showBriefing: false,
-  showTopDownGuide: false,
+  showTopDownGuide: true,
   continuousCapture: true,
   compactChrome: true,
   a4AutoCrop: true,
+  captureMaxWidth: ABE_CAPTURE_MAX_WIDTH_PX,
+  captureJpegQuality: ABE_CAPTURE_JPEG_QUALITY,
+  enforceCaptureQuality: true,
 };
+
+function abeGuideFrameForField(field: AbeRequiredFieldKey): GuideFrameType {
+  if (
+    field === "verkaufsbezeichnung" ||
+    field === "auflagenCodes" ||
+    field === "auflagenNotes"
+  ) {
+    return "section";
+  }
+  return "a4";
+}
 
 function HuntProgressOverlay({
   report,
@@ -2631,6 +2649,8 @@ export function AbeDataHunterWizard({
         />
         <InBrowserCamera
           {...ABE_CAMERA_PROPS}
+          guideFrame="section"
+          guideSectionAnchor="center"
           onCapture={enqueueAuflagenFile}
           onClose={returnToAuflagenDetail}
         />
@@ -2735,6 +2755,12 @@ export function AbeDataHunterWizard({
       {progressOverlay}
       <InBrowserCamera
         {...ABE_CAMERA_PROPS}
+        guideFrame={abeGuideFrameForField(huntFocusKey)}
+        guideSectionAnchor={
+          huntFocusKey === "auflagenNotes" || huntFocusKey === "auflagenCodes"
+            ? "center"
+            : "top"
+        }
         guideWatermark={guideWatermark}
         onCapture={enqueueFile}
         onClose={returnToChooser}
