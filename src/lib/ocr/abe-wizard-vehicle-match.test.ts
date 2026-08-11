@@ -183,6 +183,41 @@ describe("abe-wizard-vehicle-match", () => {
     );
   });
 
+  it("lists only rows with Fahrzeugtyp and merges fragment model headers", () => {
+    const options = listAbeVehicleVariantOptions([
+      {
+        verkaufsbezeichnung: "BMW 3er-Reihe",
+        fahrzeugtyp: "346L",
+        typeApproval: "e1*97/27*0097*",
+        driveType: null,
+        tireSizes: ["225/45R17"],
+        auflagenCodes: ["A01"],
+      },
+      {
+        verkaufsbezeichnung: "-Compact",
+        fahrzeugtyp: "346K",
+        typeApproval: "e1*98/14*0167*",
+        driveType: null,
+        tireSizes: ["215/45R17"],
+        auflagenCodes: ["A02"],
+      },
+      {
+        verkaufsbezeichnung: "BMW 1er-Reihe",
+        fahrzeugtyp: null,
+        typeApproval: "e1*2007/46*0001*",
+        driveType: null,
+        tireSizes: ["215/45R17"],
+        auflagenCodes: ["744"],
+      },
+    ]);
+
+    expect(options).toHaveLength(2);
+    expect(options.map((option) => option.label)).toEqual([
+      "BMW 3er-Reihe · 346L",
+      "BMW 3er-Compact · 346K",
+    ]);
+  });
+
   it("shows short model labels without manufacturer prefix", () => {
     expect(displayAbeVehicleModelOptionLabel("BMW 3er-Reihe")).toBe(
       "3er-Reihe",

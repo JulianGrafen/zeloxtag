@@ -18,6 +18,8 @@ type AbeAuflagenFoldListProps = {
   snippets?: Array<{ code: string; text: string; imageUrl?: string | null }>;
   /** Kürzel from vehicle table — improves splitting. */
   knownCodes?: string[];
+  /** Kürzel still missing text (not in DB / not yet scanned). */
+  pendingCodes?: string[];
   /** Global / session image lookup by code. */
   imageUrlsByCode?: Map<string, string> | ReadonlyMap<string, string>;
   /** First section open by default (review). */
@@ -66,12 +68,25 @@ export function AbeAuflagenFoldList({
   conditions,
   snippets,
   knownCodes = [],
+  pendingCodes = [],
   imageUrlsByCode,
   defaultOpenFirst = false,
 }: AbeAuflagenFoldListProps) {
   const entries = resolveEntries({ notes, conditions, snippets, knownCodes });
+  const pendingSet = new Set(
+    pendingCodes.map((code) => normalizeAuflagenKuerzel(code)).filter(Boolean),
+  );
+  const coveredCodes = new Set(
+    entries.map((entry) => normalizeAuflagenKuerzel(entry.code)),
+  );
 
-  if (entries.length === 0) {
+  for (const code of pendingSet) {
+    if (!coveredCodes.has(code)) {
+      entries.push({ code, text: "" });
+    }
+  }
+
+  if (entries.length === 0 && pendingSet.size === 0) {
     return (
       <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
         {notes?.trim() || "Noch keine Auflagen erfasst."}
@@ -91,15 +106,29 @@ export function AbeAuflagenFoldList({
     <div className="space-y-2">
       {entries.map((entry, index) => {
         const imageUrl = resolveImageUrl(entry.code, snippets, imageUrlsByCode);
+        const normalized = normalizeAuflagenKuerzel(entry.code);
+        const isPending = pendingSet.has(normalized) && !entry.text.trim();
         return (
           <details
             key={`${entry.code}-${index}`}
             open={defaultOpenFirst && index === 0}
-            className="group rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]"
+            className={[
+              "group rounded-xl border bg-[color:var(--vd-surface-elevated)]",
+              isPending
+                ? "border-amber-300/70"
+                : "border-[color:var(--vd-border)]",
+            ].join(" ")}
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
-              <span className="font-mono text-[0.88rem] font-semibold tracking-wide text-[color:var(--vd-text)]">
-                {entry.code}
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="font-mono text-[0.88rem] font-semibold tracking-wide text-[color:var(--vd-text)]">
+                  {entry.code}
+                </span>
+                {isPending ? (
+                  <span className="text-[0.72rem] font-normal text-amber-800">
+                    Noch nicht fotografiert
+                  </span>
+                ) : null}
               </span>
               <ChevronDown
                 className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform group-open:rotate-180"
@@ -107,20 +136,30 @@ export function AbeAuflagenFoldList({
               />
             </summary>
             <div className="border-t border-[color:var(--vd-border)] px-3 py-3">
-              {imageUrl ? (
-                <div className="mb-3 overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-white">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageUrl}
-                    alt={`Auflage ${entry.code} aus dem Papier`}
-                    className="max-h-72 w-full object-contain"
-                    loading="lazy"
-                  />
-                </div>
-              ) : null}
-              <p className="whitespace-pre-wrap text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]">
-                {entry.text.trim() || "—"}
-              </p>
+              {isPending ? (
+                <p className="text-[0.82rem] leading-relaxed text-amber-900">
+                  Dieses Kürzel ist nicht in der Datenbank. Bitte den
+                  Auflagen-Text auf deiner ABE fotografieren — Text und
+                  Ausschnitt werden gespeichert.
+                </p>
+              ) : (
+                <>
+                  {imageUrl ? (
+                    <div className="mb-3 overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-white">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imageUrl}
+                        alt={`Auflage ${entry.code} aus dem Papier`}
+                        className="max-h-72 w-full object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
+                  <p className="whitespace-pre-wrap text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]">
+                    {entry.text.trim() || "—"}
+                  </p>
+                </>
+              )}
             </div>
           </details>
         );

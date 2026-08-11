@@ -66,6 +66,8 @@ import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import {
   normalizeAbeKbaDigits,
   normalizeAbeNumberDigits,
+  normalizeManualAbeKbaDigits,
+  MIN_MANUAL_ABE_KBA_DIGITS,
   inferAbeKbaFromReport,
 } from "@/lib/validations/abeSchema";
 import {
@@ -220,6 +222,40 @@ function firstMissingFocusKey(
   return CORE_HUNT_ORDER[index] ?? "kbaNumber";
 }
 
+function HuntErrorBanner({
+  message,
+  onDismiss,
+}: {
+  message: string;
+  onDismiss: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      role="alert"
+      className="fixed bottom-4 left-4 right-4 z-[10060] rounded-xl border border-red-200 bg-red-50 py-3 pl-4 pr-12 text-[0.82rem] text-red-800 shadow-lg"
+    >
+      <p className="leading-relaxed">{message}</p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-red-700 hover:bg-red-100/80"
+        aria-label="Fehlermeldung schließen"
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </button>
+    </div>,
+    document.body,
+  );
+}
+
 // ─── KBA-first step ────────────────────────────────────────────────────────────
 
 function KbaHuntOverlay({
@@ -240,6 +276,11 @@ function KbaHuntOverlay({
   const [mounted, setMounted] = useState(false);
   const detectedKba = reportKbaDigits(report);
   const showComplete = Boolean(detectedKba) && !analyzing;
+  const manualDigitCount = manualValue.replace(/\D/g, "").length;
+  const manualTooShort =
+    manualDigitCount > 0 &&
+    manualDigitCount < MIN_MANUAL_ABE_KBA_DIGITS &&
+    !detectedKba;
 
   useEffect(() => {
     setMounted(true);
@@ -263,11 +304,17 @@ function KbaHuntOverlay({
                 <div className="pointer-events-none fixed inset-x-0 top-[calc(max(0.2rem,env(safe-area-inset-top))+2.1rem)] z-[10050] px-2">
                   <Input
                     inputMode="numeric"
-                    placeholder="KBA manuell eingeben"
+                    placeholder="KBA manuell (mind. 5 Ziffern)"
                     value={manualValue}
                     onChange={(event) => onManualChange(event.target.value)}
+                    aria-invalid={manualTooShort}
                     className="pointer-events-auto mx-auto h-8 max-w-[min(100%,260px)] border-white/15 bg-black/45 px-2.5 text-[0.78rem] font-semibold text-white placeholder:text-white/35 backdrop-blur-[2px]"
                   />
+                  {manualTooShort ? (
+                    <p className="pointer-events-none mx-auto mt-1 max-w-[min(100%,260px)] text-center text-[0.62rem] font-medium text-amber-200">
+                      Mindestens {MIN_MANUAL_ABE_KBA_DIGITS} Ziffern eingeben
+                    </p>
+                  ) : null}
                 </div>,
                 document.body,
               )
@@ -943,6 +990,16 @@ function AuflagenDetailPanel({
                 );
               })}
             </div>
+            {report.auflagenNotes?.trim() ? (
+              <div className="mt-3">
+                <AbeAuflagenFoldList
+                  notes={report.auflagenNotes}
+                  knownCodes={targetCodes}
+                  pendingCodes={pendingCodes}
+                  defaultOpenFirst
+                />
+              </div>
+            ) : null}
           </div>
         ) : vehicleSelectionReady ? null : (
           <p className="mt-4 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.82rem] text-amber-950">
@@ -1094,6 +1151,7 @@ function ReviewPanel({
   onSelectRow,
   onSkipMissingAuflagen,
   onSkipAllAuflagen,
+  onScanMissingAuflagen,
   onSave,
   onRestart,
   isSaving,
@@ -1112,6 +1170,7 @@ function ReviewPanel({
   onSelectRow: (rowId: string) => void;
   onSkipMissingAuflagen: () => void;
   onSkipAllAuflagen: () => void;
+  onScanMissingAuflagen: () => void;
   onSave: (form: ReviewFormState) => void;
   onRestart: () => void;
   isSaving: boolean;
@@ -1306,6 +1365,7 @@ function ReviewPanel({
                   <AbeAuflagenFoldList
                     notes={form.auflagenNotes}
                     knownCodes={scopedAuflagen}
+                    pendingCodes={pendingAuflagenCodes}
                     imageUrlsByCode={imageUrlsByCode}
                     defaultOpenFirst
                   />
@@ -1394,19 +1454,49 @@ function ReviewPanel({
                   className="font-mono"
                 />
               </AbeFieldLabel>
-              <AbeFieldLabel label={`${ABE_REQUIRED_FIELD_LABELS.auflagenNotes} *`}>
-                <textarea
-                  value={form.auflagenNotes}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      auflagenNotes: e.target.value,
-                    }))
-                  }
-                  rows={6}
-                  className="flex w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.92rem] outline-none"
-                />
-              </AbeFieldLabel>
+              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
+                <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+                  {ABE_REQUIRED_FIELD_LABELS.auflagenNotes}
+                </p>
+                <div className="mt-2">
+                  <AbeAuflagenFoldList
+                    notes={form.auflagenNotes}
+                    knownCodes={scopedAuflagen}
+                    pendingCodes={pendingAuflagenCodes}
+                    imageUrlsByCode={imageUrlsByCode}
+                    defaultOpenFirst
+                  />
+                </div>
+                {pendingAuflagenCodes.length > 0 ? (
+                  <Button
+                    type="button"
+                    className="mt-3 h-11 w-full"
+                    onClick={onScanMissingAuflagen}
+                  >
+                    <Camera className="h-4 w-4" />
+                    Fehlende Auflagen fotografieren (
+                    {pendingAuflagenCodes.join(", ")})
+                  </Button>
+                ) : null}
+                <details className="group mt-3 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]">
+                  <summary className="cursor-pointer list-none px-3 py-2.5 text-[0.78rem] font-medium text-[color:var(--vd-muted)] [&::-webkit-details-marker]:hidden">
+                    Text manuell korrigieren
+                  </summary>
+                  <div className="border-t border-[color:var(--vd-border)] px-3 py-3">
+                    <textarea
+                      value={form.auflagenNotes}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          auflagenNotes: e.target.value,
+                        }))
+                      }
+                      rows={6}
+                      className="flex w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.92rem] outline-none"
+                    />
+                  </div>
+                </details>
+              </div>
             </div>
           </div>
         )}
@@ -1421,6 +1511,17 @@ function ReviewPanel({
             </ul>
             {auflagenNotesMissing ? (
               <div className="mt-3 grid gap-2">
+                {pendingAuflagenCodes.length > 0 ? (
+                  <Button
+                    type="button"
+                    className="h-11 w-full"
+                    onClick={onScanMissingAuflagen}
+                  >
+                    <Camera className="h-4 w-4" />
+                    Fehlende Auflagen fotografieren (
+                    {pendingAuflagenCodes.join(", ")})
+                  </Button>
+                ) : null}
                 {pendingAuflagenCodes.length > 0 ? (
                   <Button
                     type="button"
@@ -1810,7 +1911,7 @@ export function AbeDataHunterWizard({
   }
 
   function startAuflagenScan() {
-    if (allAuflagenResolvedFromDb) {
+    if (allAuflagenResolvedFromDb && pendingAuflagenCodes.length === 0) {
       markAllCapturedAndGoToReview();
       return;
     }
@@ -1892,7 +1993,7 @@ export function AbeDataHunterWizard({
   }
 
   function applyManualKbaInput(raw: string) {
-    const digits = normalizeAbeKbaDigits(raw);
+    const digits = normalizeManualAbeKbaDigits(raw);
     if (!digits) return;
     setReport((prev) => {
       const next = finalizeAbeDataHunterReport({
@@ -1913,7 +2014,9 @@ export function AbeDataHunterWizard({
 
   function startMainHuntFromKba() {
     if (!reportKbaDigits(reportRef.current)) {
-      setHuntError("Bitte zuerst eine gültige KBA-Nummer eingeben oder fotografieren.");
+      setHuntError(
+        `Bitte zuerst eine gültige KBA-Nummer eingeben (mind. ${MIN_MANUAL_ABE_KBA_DIGITS} Ziffern) oder fotografieren.`,
+      );
       return;
     }
     queueModeRef.current = "all";
@@ -2443,15 +2546,11 @@ export function AbeDataHunterWizard({
     });
   }
 
-  const errorBanner =
-    huntError && typeof document !== "undefined"
-      ? createPortal(
-          <div className="fixed bottom-4 left-4 right-4 z-[10060] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
-            {huntError}
-          </div>,
-          document.body,
-        )
-      : null;
+  const dismissHuntError = () => setHuntError(null);
+
+  const errorBanner = huntError ? (
+    <HuntErrorBanner message={huntError} onDismiss={dismissHuntError} />
+  ) : null;
 
   if (phase === "review") {
     return (
@@ -2469,6 +2568,7 @@ export function AbeDataHunterWizard({
           onSelectRow={handleSelectRow}
           onSkipMissingAuflagen={skipPendingAuflagenCodes}
           onSkipAllAuflagen={skipAllAuflagenText}
+          onScanMissingAuflagen={startAuflagenScan}
           onSave={handleSave}
           onRestart={restart}
           isSaving={isSaving}
@@ -2480,11 +2580,7 @@ export function AbeDataHunterWizard({
   if (phase === "choose") {
     return (
       <>
-        {huntError ? (
-          <div className="fixed bottom-4 left-4 right-4 z-[10060] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
-            {huntError}
-          </div>
-        ) : null}
+        {errorBanner}
         <HuntEntryChooser
           vehicleLabel={vehicleLabel}
           onBack={goBack}

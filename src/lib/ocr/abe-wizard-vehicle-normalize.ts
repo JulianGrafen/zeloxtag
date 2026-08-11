@@ -1,5 +1,4 @@
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
-import { normalizeVerkaufsbezeichnungKey } from "@/lib/ocr/abe-wizard-vehicle-match";
 import {
   correctAuflagenKuerzelList,
   getKnownAuflagenKuerzelFromSeed,
@@ -21,6 +20,21 @@ const LETTER_AUFlagen_CODE_PATTERN = /^[A-Z]{2,3}$/;
 
 const VERKAUFSBEZEICHNUNG_HINT =
   /\b(REIHE|TOURING|COUP[EÉ]|CABRIO|LIMOUSINE|SPORTBACK|GRAN\s+TURISMO|MODELL|SERIE|COMPACT|ALLRAD)\b/i;
+
+const VERKAUFSBEZEICHNUNG_SUFFIX_FRAGMENT =
+  /^(?:REIHE|TOURING|COUP[EÉ]|CABRIO|LIMOUSINE|SPORTBACK|GRAN\s+TURISMO|COMPACT|ALLRAD)$/i;
+
+const VERKAUFSBEZEICHNUNG_MODEL_SUFFIX =
+  /(-(?:Reihe|Compact|Touring|Coupe|Cabrio|Limousine|Sportback)|\s+(?:REIHE|COMPACT|TOURING|COUP[EÉ]|CABRIO|LIMOUSINE|SPORTBACK|GRAN\s+TURISMO))/i;
+
+/** Canonical label for grouping rows under the same section header. */
+export function normalizeVerkaufsbezeichnungKey(value: string): string {
+  return value
+    .replace(/^verkaufsbezeichnung\s*:\s*/i, "")
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 const GROUP_FIELD_KEYS = [
   "verkaufsbezeichnung",
@@ -224,9 +238,112 @@ function repairMisassignedGutachtenFields(
   };
 }
 
+/** Split OCR headers like "-Reihe" / "-Compact" — not a standalone vehicle model. */
+export function isFragmentVerkaufsbezeichnung(value: string): boolean {
+  const trimmed = stripVerkaufsbezeichnungLabel(value);
+  if (!trimmed) return false;
+  if (/^-/.test(trimmed)) return true;
+  if (VERKAUFSBEZEICHNUNG_SUFFIX_FRAGMENT.test(trimmed)) return true;
+  return false;
+}
+
+/** Strip model suffix to get join base — "BMW 3er-Reihe" → "BMW 3er". */
+export function baseVerkaufsbezeichnungPrefix(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = stripVerkaufsbezeichnungLabel(value ?? "");
+  if (!trimmed) return null;
+
+  const suffixMatch = VERKAUFSBEZEICHNUNG_MODEL_SUFFIX.exec(trimmed);
+  if (suffixMatch?.index) {
+    return trimmed.slice(0, suffixMatch.index).trim() || null;
+  }
+
+  return trimmed;
+}
+
+/** Merge "BMW 3er" + "-Reihe" → "BMW 3er-Reihe". */
+export function joinVerkaufsbezeichnungFragment(
+  base: string | null | undefined,
+  fragment: string,
+): string {
+  const frag = stripVerkaufsbezeichnungLabel(fragment);
+  const baseTrimmed = base?.trim() ?? "";
+  if (!baseTrimmed) {
+    return frag.replace(/^-+/, "").trim();
+  }
+  if (frag.startsWith("-")) {
+    if (baseTrimmed.endsWith("-")) {
+      return `${baseTrimmed}${frag.slice(1)}`;
+    }
+    return `${baseTrimmed}${frag}`;
+  }
+  if (VERKAUFSBEZEICHNUNG_SUFFIX_FRAGMENT.test(frag)) {
+    const lowerSuffix =
+      frag.toLowerCase() === "gran turismo"
+        ? "Gran Turismo"
+        : `${frag.charAt(0).toUpperCase()}${frag.slice(1).toLowerCase()}`;
+    return `${baseTrimmed}-${lowerSuffix.replace(/\s+/g, "-")}`;
+  }
+  return `${baseTrimmed} ${frag}`.replace(/\s+/g, " ").trim();
+}
+
+function inferSharedModelPrefix(
+  matches: readonly AbeVehicleMatch[],
+): string | null {
+  const counts = new Map<string, number>();
+
+  for (const match of matches) {
+    const label = normalizeVerkaufsbezeichnungKey(match.verkaufsbezeichnung);
+    if (!label || isFragmentVerkaufsbezeichnung(label)) continue;
+
+    const prefixMatch = VERKAUFSBEZEICHNUNG_MODEL_SUFFIX.exec(label);
+    const prefix = prefixMatch?.index
+      ? label.slice(0, prefixMatch.index).trim()
+      : null;
+    if (!prefix) continue;
+
+    counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
+  }
+
+  let bestPrefix: string | null = null;
+  let bestCount = 0;
+  for (const [prefix, count] of counts) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestPrefix = prefix;
+    }
+  }
+
+  return bestPrefix;
+}
+
+/** Repair LLM rows that put "-Reihe" / "-Compact" on data lines instead of full model names. */
+export function repairAbeVehicleVerkaufsbezeichnungFragments(
+  matches: readonly AbeVehicleMatch[],
+): AbeVehicleMatch[] {
+  const sharedPrefix = inferSharedModelPrefix(matches);
+
+  return matches.map((match) => {
+    const label = stripVerkaufsbezeichnungLabel(match.verkaufsbezeichnung);
+    if (!isFragmentVerkaufsbezeichnung(label)) {
+      return match;
+    }
+
+    return {
+      ...match,
+      verkaufsbezeichnung: joinVerkaufsbezeichnungFragment(
+        sharedPrefix,
+        label,
+      ),
+    };
+  });
+}
+
 export function looksLikeVerkaufsbezeichnung(value: string): boolean {
   const trimmed = stripVerkaufsbezeichnungLabel(value);
   if (!trimmed) return false;
+  if (isFragmentVerkaufsbezeichnung(trimmed)) return false;
   if (looksLikeFahrzeugtypCode(trimmed)) return false;
   if (looksLikeAuflagenCode(trimmed)) return false;
   if (DRIVE_TYPES.has(trimmed.toLowerCase())) return false;
@@ -419,6 +536,7 @@ function readGroupLabel(row: Record<string, unknown>): string | null {
     const raw = readString(row[key]);
     if (!raw) continue;
     const stripped = stripVerkaufsbezeichnungLabel(raw);
+    if (isFragmentVerkaufsbezeichnung(stripped)) continue;
     if (looksLikeVerkaufsbezeichnung(stripped)) return stripped;
     if (
       stripped.length >= 4 &&
@@ -447,6 +565,13 @@ function resolveVerkaufsbezeichnung(
 ): string | null {
   const stripped = stripVerkaufsbezeichnungLabel(raw);
   if (!stripped) return currentGroup;
+  if (isFragmentVerkaufsbezeichnung(stripped)) {
+    const base =
+      baseVerkaufsbezeichnungPrefix(currentGroup) ?? currentGroup;
+    return base
+      ? joinVerkaufsbezeichnungFragment(base, stripped)
+      : currentGroup;
+  }
   if (looksLikeVerkaufsbezeichnung(stripped)) return stripped;
   if (looksLikeFahrzeugtypCode(stripped)) return currentGroup;
   if (stripped.length >= 4 && !looksLikeAuflagenCode(stripped)) return stripped;
@@ -697,6 +822,19 @@ export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
       readString(row.sectionHeader) ??
       readString(row.group);
 
+    const rawGroupStripped = rawGroupCandidate
+      ? stripVerkaufsbezeichnungLabel(rawGroupCandidate)
+      : null;
+    if (rawGroupStripped && isFragmentVerkaufsbezeichnung(rawGroupStripped)) {
+      const joinBase =
+        baseVerkaufsbezeichnungPrefix(currentVerkaufsbezeichnung) ??
+        currentVerkaufsbezeichnung;
+      currentVerkaufsbezeichnung = joinVerkaufsbezeichnungFragment(
+        joinBase,
+        rawGroupStripped,
+      );
+    }
+
     const fahrzeugtyp =
       readString(row.fahrzeugtyp) ??
       (rawGroupCandidate && looksLikeFahrzeugtypCode(rawGroupCandidate)
@@ -706,6 +844,9 @@ export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
     const parsedAuflagen = parseAuflagenCodes(readStringArray(row.auflagenCodes));
     const draft: AbeVehicleMatch = {
       verkaufsbezeichnung:
+        (rawGroupStripped && isFragmentVerkaufsbezeichnung(rawGroupStripped)
+          ? currentVerkaufsbezeichnung
+          : null) ??
         explicitGroup ??
         currentVerkaufsbezeichnung ??
         (rawGroupCandidate && !looksLikeFahrzeugtypCode(rawGroupCandidate)
@@ -738,7 +879,9 @@ export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
 
   const expanded = expandMultiFahrzeugtypRows(drafts);
   const normalized = normalizeAbeVehicleMatches(expanded);
-  const corrected = correctVehicleMatchDigitConfusions(normalized);
+  const repairedLabels = repairAbeVehicleVerkaufsbezeichnungFragments(normalized);
+  const relabeled = normalizeAbeVehicleMatches(repairedLabels);
+  const corrected = correctVehicleMatchDigitConfusions(relabeled);
   return applyFallbackGroupLabel(dropIncompleteVehicleTableRows(corrected));
 }
 

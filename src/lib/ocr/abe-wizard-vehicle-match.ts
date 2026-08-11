@@ -1,3 +1,7 @@
+import {
+  repairAbeVehicleVerkaufsbezeichnungFragments,
+  normalizeVerkaufsbezeichnungKey,
+} from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import type { AbeVehicleContext, TableData } from "@/lib/validations/abeSchema";
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 import { scoreHaystackAgainstGarageVehicle } from "@/lib/ocr/abe-garage-vehicle-match";
@@ -21,14 +25,8 @@ export type AbeVehicleRowScopeOptions = {
   fallbackToGroupRows?: boolean;
 };
 
-/** Canonical label for grouping rows under the same section header. */
-export function normalizeVerkaufsbezeichnungKey(value: string): string {
-  return value
-    .replace(/^verkaufsbezeichnung\s*:\s*/i, "")
-    .replace(/\s*,\s*/g, ", ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+/** @deprecated Import from abe-wizard-vehicle-normalize */
+export { normalizeVerkaufsbezeichnungKey } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 
 const VEHICLE_MODEL_BRAND_PREFIX =
   /^(?:BMW|MINI|Mercedes-Benz|Mercedes|Audi|VW|Volkswagen|Porsche|Opel|Skoda|Seat|Cupra|Ford|Toyota|Honda|Hyundai|Kia|Mazda|Volvo|Peugeot|Citro[eë]n|Renault|Fiat|Alfa Romeo)\s+/i;
@@ -67,7 +65,11 @@ export type AbeVehicleVariantOption = {
 };
 
 export function countAbeVehicleVariants(groups: readonly AbeVehicleGroup[]): number {
-  return groups.reduce((total, group) => total + group.rows.length, 0);
+  return groups.reduce(
+    (total, group) =>
+      total + group.rows.filter((row) => Boolean(row.fahrzeugtyp?.trim())).length,
+    0,
+  );
 }
 
 export function findSuggestedAbeVehicleVariant(
@@ -108,6 +110,7 @@ export function listAbeVehicleVariantOptions(
   for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
     const group = groups[groupIndex]!;
     group.rows.forEach((row, rowIndex) => {
+      if (!row.fahrzeugtyp?.trim()) return;
       options.push({
         groupIndex,
         rowIndex,
@@ -130,10 +133,11 @@ export function listAbeVehicleVariantOptions(
 export function groupAbeVehicleMatches(
   matches: AbeVehicleMatch[],
 ): AbeVehicleGroup[] {
+  const repaired = repairAbeVehicleVerkaufsbezeichnungFragments(matches);
   const order: string[] = [];
   const byKey = new Map<string, AbeVehicleMatch[]>();
 
-  for (const match of matches) {
+  for (const match of repaired) {
     const key = normalizeVerkaufsbezeichnungKey(match.verkaufsbezeichnung ?? "");
     if (!key) continue;
     if (!byKey.has(key)) order.push(key);

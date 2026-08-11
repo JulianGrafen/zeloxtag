@@ -321,4 +321,61 @@ describe("abe-wizard-vehicle-normalize", () => {
 
     expect(merged).toHaveLength(3);
   });
+
+  it("merges split OCR model headers like -Reihe and -Compact into full labels", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "BMW 3er-Reihe",
+        fahrzeugtyp: "346L",
+        technischeBezeichnung: "e1*97/27*0097*",
+        reifen: ["225/45R17"],
+        auflagenCodes: ["A01"],
+      },
+      {
+        verkaufsbezeichnung: "-Compact",
+        fahrzeugtyp: "346K",
+        technischeBezeichnung: "e1*98/14*0167*",
+        reifen: ["215/45R17"],
+        auflagenCodes: ["A02"],
+      },
+      {
+        verkaufsbezeichnung: "-Reihe",
+        fahrzeugtyp: "3/CG",
+        technischeBezeichnung: "e1*93/81*0017*",
+        reifen: ["205/50R17"],
+        auflagenCodes: ["A03"],
+      },
+    ]);
+
+    expect(parsed.map((row) => row.verkaufsbezeichnung)).toEqual([
+      "BMW 3er-Reihe",
+      "BMW 3er-Compact",
+      "BMW 3er-Reihe",
+    ]);
+    expect(parsed.map((row) => row.fahrzeugtyp)).toEqual(["346L", "346K", "3/CG"]);
+  });
+
+  it("carries BMW 3er prefix onto fragment headers in raw LLM output", () => {
+    const parsed = parseAbeVehicleRows([
+      { verkaufsbezeichnung: "BMW 3er", fahrzeugtyp: null, reifen: [] },
+      {
+        verkaufsbezeichnung: "-Reihe",
+        fahrzeugtyp: "346L",
+        technischeBezeichnung: "e1*97/27*0097*",
+        reifen: ["225/45R17"],
+        auflagenCodes: ["A01"],
+      },
+      {
+        verkaufsbezeichnung: "-Compact",
+        fahrzeugtyp: "346K",
+        technischeBezeichnung: "e1*98/14*0167*",
+        reifen: ["215/45R17"],
+        auflagenCodes: ["A02"],
+      },
+    ]);
+
+    expect(parsed).toHaveLength(2);
+    expect(parsed[0]?.verkaufsbezeichnung).toBe("BMW 3er-Reihe");
+    expect(parsed[1]?.verkaufsbezeichnung).toBe("BMW 3er-Compact");
+  });
 });

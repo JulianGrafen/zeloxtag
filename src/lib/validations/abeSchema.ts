@@ -236,6 +236,18 @@ export function normalizeAbeKbaDigits(
   return digits;
 }
 
+/** Minimum digit count when the user types KBA manually (not OCR). */
+export const MIN_MANUAL_ABE_KBA_DIGITS = 5;
+
+/** Manual KBA entry — stricter than OCR (typical German KBA: 4–5 digits). */
+export function normalizeManualAbeKbaDigits(
+  value: string | null | undefined,
+): string | null {
+  const digits = normalizeAbeKbaDigits(value);
+  if (!digits || digits.length < MIN_MANUAL_ABE_KBA_DIGITS) return null;
+  return digits;
+}
+
 function inferAbeKbaFromFreeText(text: string | null | undefined): string | null {
   if (!text?.trim()) return null;
 
