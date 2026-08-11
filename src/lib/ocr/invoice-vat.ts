@@ -38,6 +38,12 @@ function looksLikeVatAmount(vat: number, net: number): boolean {
   return Math.abs(vat - expected) <= Math.max(0.05, net * 0.02);
 }
 
+/** True when gross − net matches a typical 19% MwSt gap. */
+export function grossAmountLooksPlausible(netSum: number, gross: number): boolean {
+  if (gross <= netSum + 0.05) return false;
+  return looksLikeVatAmount(roundMoney(gross - netSum), netSum);
+}
+
 /** Parse € amount from a footer line like "MwSt 19% 114,00 €". */
 export function extractVatAmountFromText(rawText: string): number | null {
   const text = rawText.replace(/\r\n/g, "\n");
@@ -112,11 +118,16 @@ export function ensureInvoiceVatAndGrossTotal(options: {
   }
 
   if (vatItems.length > 0) {
-    const grossFromItems = roundMoney(
-      netSum + vatItems.reduce((sum, item) => sum + item.amount, 0),
-    );
+    const vatAmount =
+      vatItems.length === 1
+        ? vatItems[0]!.amount
+        : roundMoney(Math.max(...vatItems.map((item) => item.amount)));
+    const vatLabel =
+      vatItems.find((item) => item.label.trim().length >= 3)?.label ??
+      "MwSt 19%";
+    const grossFromItems = roundMoney(netSum + vatAmount);
     return {
-      lineItems,
+      lineItems: [...positions, { label: vatLabel, amount: vatAmount }],
       amount: resolveGrossAmount(amount, grossFromItems),
     };
   }

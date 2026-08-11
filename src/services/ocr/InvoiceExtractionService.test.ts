@@ -42,6 +42,38 @@ describe("mergeInvoiceWizardExtractions", () => {
     expect(merged.amount).toBe(500);
   });
 
+  it("uses overview brutto when line-items amount matches net sum only", () => {
+    const merged = mergeInvoiceWizardExtractions(
+      {
+        vendor: "Werkstatt",
+        date: "2026-01-01",
+        amount: 714,
+        category: "other",
+        summary: "Service",
+      },
+      {
+        vendor: "Werkstatt",
+        invoiceNumber: "RE-2",
+        mileageKm: null,
+        date: "2026-01-01",
+      },
+      {
+        lineItems: [
+          { label: "Arbeitslohn Sportfedern", amount: 120 },
+          { label: "Sportfedern H&R", amount: 480 },
+        ],
+        amount: 600,
+      },
+    );
+
+    expect(merged.amount).toBe(714);
+    expect(merged.lineItems).toMatchObject([
+      { label: "Arbeitslohn Sportfedern", amount: 120 },
+      { label: "Sportfedern H&R", amount: 480 },
+      { label: "MwSt 19%", amount: 114 },
+    ]);
+  });
+
   it("respects locked category from scan picker", () => {
     const merged = mergeInvoiceWizardExtractions(
       null,
@@ -84,6 +116,31 @@ describe("mergeLineItemsExtractions", () => {
     expect(merged.lineItems).toEqual([
       { label: "Reifen", amount: 480 },
       { label: "Arbeitslohn", amount: 120 },
+      { label: "Motoröl", amount: 89 },
+    ]);
+    expect(merged.amount).toBe(689);
+  });
+
+  it("strips MwSt rows from blocks and keeps footer amount from last block", () => {
+    const merged = mergeLineItemsExtractions([
+      {
+        lineItems: [
+          { label: "Reifen", amount: 480 },
+          { label: "MwSt 19%", amount: 91.2 },
+        ],
+        amount: 571.2,
+      },
+      {
+        lineItems: [
+          { label: "Motoröl", amount: 89 },
+          { label: "MwSt 19%", amount: 16.91 },
+        ],
+        amount: 689,
+      },
+    ]);
+
+    expect(merged.lineItems).toEqual([
+      { label: "Reifen", amount: 480 },
       { label: "Motoröl", amount: 89 },
     ]);
     expect(merged.amount).toBe(689);

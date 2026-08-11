@@ -22,15 +22,19 @@ describe("invoice format routing", () => {
     expect(detectInvoiceTableFormat(text)).toBe("column");
   });
 
-  it("routes unknown layouts to LLM-only (no regex/layout merge)", () => {
-    expect(detectInvoiceTableFormat("")).toBe("unknown");
+  it("defaults empty OCR to column prompts for camera-only scans", () => {
+    expect(detectInvoiceTableFormat("")).toBe("column");
+    expect(shouldMergeAzureLayout("column")).toBe(true);
+  });
+
+  it("routes unrecognized text to LLM-only (no layout merge)", () => {
     expect(detectInvoiceTableFormat("Rechnung Werkstatt Müller\nDatum 01.01.2026")).toBe(
       "unknown",
     );
 
     expect(shouldMergeAzureLayout("unknown")).toBe(false);
     expect(shouldDrawInvoiceRowSeparators("unknown")).toBe(false);
-    expect(shouldReconcileWithOcrHeuristics("unknown")).toBe(false);
+    expect(shouldReconcileWithOcrHeuristics("unknown")).toBe(true);
     expect(shouldRealignLineItems("unknown")).toBe(false);
   });
 

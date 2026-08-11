@@ -29,7 +29,7 @@ export function detectInvoiceTableFormat(
   rawText: string | null | undefined,
 ): InvoiceTableFormat {
   const text = rawText?.trim() ?? "";
-  if (!text) return "unknown";
+  if (!text) return "column";
   if (isWorkshopSectionInvoiceText(text)) return "workshop-sections";
   if (isColumnTableInvoiceText(text)) return "column";
   return "unknown";
@@ -52,7 +52,11 @@ export function shouldDrawInvoiceRowSeparators(
 export function shouldReconcileWithOcrHeuristics(
   format: InvoiceTableFormat,
 ): boolean {
-  return format === "column" || format === "workshop-sections";
+  return (
+    format === "column" ||
+    format === "workshop-sections" ||
+    format === "unknown"
+  );
 }
 
 export function shouldRealignLineItems(format: InvoiceTableFormat): boolean {

@@ -1,7 +1,12 @@
 import { preferAmount } from "@/lib/ocr/amount-from-text";
+import { sumLineItems } from "@/lib/documents/line-items";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
-import { ensureInvoiceVatAndGrossTotal } from "@/lib/ocr/invoice-vat";
+import {
+  ensureInvoiceVatAndGrossTotal,
+  grossAmountLooksPlausible,
+  isVatLineItem,
+} from "@/lib/ocr/invoice-vat";
 import { extractMileageKmFromText } from "@/lib/ocr/mileage-from-text";
 import {
   coerceLooseNumber,
@@ -74,6 +79,29 @@ function parseHeaderMileage(
   return sanitizeInvoiceMileageKm(coerced, invoiceNumber);
 }
 
+function resolveWizardGrossAmount(
+  lineItemsBlock: InvoiceLineItemsExtraction,
+  overview: InvoiceOverviewExtraction | null,
+  positions: InvoiceLineItem[],
+): number | null {
+  const blockAmount = lineItemsBlock.amount;
+  const overviewAmount = overview?.amount ?? null;
+  const netSum = sumLineItems(positions);
+
+  if (
+    blockAmount != null &&
+    overviewAmount != null &&
+    netSum != null &&
+    netSum > 0 &&
+    Math.abs(blockAmount - netSum) <= 0.05 &&
+    grossAmountLooksPlausible(netSum, overviewAmount)
+  ) {
+    return overviewAmount;
+  }
+
+  return blockAmount ?? overviewAmount;
+}
+
 /** Merge multiple position-block scans (multi-page invoices). */
 export function mergeLineItemsExtractions(
   blocks: InvoiceLineItemsExtraction[],
@@ -90,6 +118,7 @@ export function mergeLineItemsExtractions(
 
   for (const block of blocks) {
     for (const item of block.lineItems ?? []) {
+      if (isVatLineItem(item)) continue;
       const key = `${item.label.trim().toLowerCase()}|${item.amount}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -98,8 +127,10 @@ export function mergeLineItemsExtractions(
   }
 
   const amount =
-    blocks.map((block) => block.amount).find((value) => value !== null) ??
-    null;
+    [...blocks]
+      .reverse()
+      .map((block) => block.amount)
+      .find((value) => value !== null) ?? null;
 
   const lineItems = normalizeLineItemsList(
     realignShiftedInvoiceLineItems(merged, amount),
@@ -125,6 +156,8 @@ export function mergeInvoiceWizardExtractions(
   const vendor = header.vendor ?? overview?.vendor ?? null;
   const date = header.date ?? overview?.date ?? null;
   const lineItems = lineItemsBlock.lineItems;
+  const positions =
+    lineItems?.filter((item) => !isVatLineItem(item)) ?? [];
   const categorySeed = [
     overview?.summary,
     overview?.category,
@@ -139,7 +172,7 @@ export function mergeInvoiceWizardExtractions(
     : preferInvoiceCategory(overview?.category ?? "other", categorySeed);
 
   const amount = preferAmount(
-    lineItemsBlock.amount ?? overview?.amount ?? null,
+    resolveWizardGrossAmount(lineItemsBlock, overview, positions),
     "",
     lineItems,
   );

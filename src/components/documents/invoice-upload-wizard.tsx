@@ -772,12 +772,13 @@ export function InvoiceUploadWizard({
           </div>
         ) : null}
         <InBrowserCamera
-          title={resolvedHeading}
-          hint="Gesamte Rechnung ins DIN-A4-Feld halten — senkrecht von oben, parallel zum Blatt"
+          title="Gesamtseite"
+          hint=""
+          showBriefing={false}
+          showTopDownGuide={false}
           captureStep={{ current: 1, total: 3 }}
           guideFrame="a4"
           a4OutputFormat="pdf"
-          guideLabel="Rechnung parallel von oben im Rahmen ausrichten"
           onCapture={handleOverviewCapture}
           onClose={() => {
             const hasProgress =
@@ -806,8 +807,10 @@ export function InvoiceUploadWizard({
           </div>
         ) : null}
         <InBrowserCamera
-          title="Rechnungskopf fotografieren"
-          hint="Kopf mit Werkstatt, Datum, KM — Handy parallel von oben halten"
+          title="Kopf"
+          hint=""
+          showBriefing={false}
+          showTopDownGuide={false}
           captureStep={{ current: 2, total: 3 }}
           guideFrame="none"
           onCapture={handleHeaderCapture}
@@ -829,8 +832,10 @@ export function InvoiceUploadWizard({
           </div>
         ) : null}
         <InBrowserCamera
-          title="Rechnungsblock scannen"
-          hint={`Block ${blockNumber}${blockNumber > 1 ? " · nächste Seite" : ""} — parallel von oben fotografieren`}
+          title={blockNumber > 1 ? `Block ${blockNumber}` : "Positionen"}
+          hint=""
+          showBriefing={false}
+          showTopDownGuide={false}
           captureStep={{ current: 3, total: 3 }}
           guideFrame="none"
           onCapture={handleLineItemsCapture}

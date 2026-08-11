@@ -162,6 +162,15 @@ function guideFrameOutsideShadow(dimOutside: boolean): string {
 const TOP_DOWN_SCAN_HINT =
   "Handy senkrecht von oben halten — parallel zum Blatt, möglichst gerade.";
 
+function formatTopBarLabel(
+  title: string,
+  captureStep?: { current: number; total: number },
+): string {
+  if (!captureStep) return title;
+  const stepLabel = `${captureStep.current}/${captureStep.total}`;
+  return title ? `${stepLabel} · ${title}` : stepLabel;
+}
+
 function guideFrameBorderClass(isLevel: boolean, captureReady: boolean): string {
   if (isLevel && captureReady) {
     return "border-emerald-400/95 shadow-[0_0_0_2px_rgba(52,211,153,0.35)]";
@@ -243,7 +252,10 @@ export function InBrowserCamera({
   const resolvedHint =
     compactChrome || hint === ""
       ? undefined
-      : hint ?? (showTopDownGuide ? TOP_DOWN_SCAN_HINT : undefined);
+      : hint ?? (showTopDownGuide && !captureStep ? TOP_DOWN_SCAN_HINT : undefined);
+  const topBarLabel = formatTopBarLabel(title, captureStep);
+  const showBottomHintPanel =
+    !compactChrome && Boolean(resolvedHint || enforceCaptureQuality);
   const shouldShowBriefing = Boolean(
     resolvedHint && showBriefing && !continuousCapture && !captureStep,
   );
@@ -616,9 +628,11 @@ export function InBrowserCamera({
     : "max(3.25rem, calc(env(safe-area-inset-top) + 2.75rem))";
   const chromeBottomPad = compactChrome
     ? "max(5.5rem, calc(env(safe-area-inset-bottom) + 4.5rem))"
-    : showTopDownGuide || captureStep || resolvedHint
+    : showTopDownGuide || resolvedHint || enforceCaptureQuality
       ? "max(8.5rem, calc(env(safe-area-inset-bottom) + 7rem))"
-      : "max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem))";
+      : captureStep
+        ? "max(6rem, calc(env(safe-area-inset-bottom) + 5rem))"
+        : "max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem))";
 
   const topBar = compactChrome ? null : (
     <div className="pointer-events-auto relative flex shrink-0 items-center justify-between px-3 pb-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
@@ -633,7 +647,7 @@ export function InBrowserCamera({
 
       <div className="absolute left-1/2 top-1/2 w-[min(84vw,24rem)] -translate-x-1/2 -translate-y-1/2 text-center">
         <p className="text-[0.8rem] font-semibold leading-snug text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-          {title}
+          {topBarLabel}
         </p>
       </div>
 
@@ -674,33 +688,32 @@ export function InBrowserCamera({
               {captureRejectMessage}
             </p>
           </div>
-        ) : !compactChrome &&
-          (resolvedHint || captureStep || enforceCaptureQuality) ? (
+        ) : showBottomHintPanel ? (
           <div className="mb-3 w-full max-w-md rounded-xl bg-black/70 px-3 py-2.5 text-center shadow-lg backdrop-blur-md">
-            {captureStep ? (
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white">
-                Schritt {captureStep.current} von {captureStep.total}
-              </p>
-            ) : null}
             {resolvedHint ? (
-              <p
-                className={[
-                  "text-[0.75rem] font-medium leading-snug text-white",
-                  captureStep ? "mt-1" : "",
-                ].join(" ")}
-              >
+              <p className="text-[0.75rem] font-medium leading-snug text-white">
                 {resolvedHint}
               </p>
             ) : null}
             {enforceCaptureQuality && liveCaptureQuality && !liveCaptureQuality.isReady ? (
-              <p className="mt-1 text-[0.72rem] font-medium text-amber-200">
+              <p
+                className={[
+                  "text-[0.72rem] font-medium text-amber-200",
+                  resolvedHint ? "mt-1" : "",
+                ].join(" ")}
+              >
                 {liveCaptureQuality.issue === "dark"
                   ? "Zu dunkel — mehr Licht"
                   : "Unscharf — ruhig halten"}
               </p>
             ) : enforceCaptureQuality && frameReady ? (
-              <p className="mt-1 text-[0.72rem] font-medium text-emerald-200">
-                Bereit — grüner Rahmen = gute Qualität
+              <p
+                className={[
+                  "text-[0.72rem] font-medium text-emerald-200",
+                  resolvedHint ? "mt-1" : "",
+                ].join(" ")}
+              >
+                Bereit — grüner Rahmen
               </p>
             ) : null}
           </div>
@@ -847,7 +860,7 @@ export function InBrowserCamera({
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}
-                    {guideLabel ? (
+                    {guideLabel && !captureStep ? (
                       <div className="absolute inset-x-2 bottom-3 flex justify-center">
                         <span className="rounded-lg bg-black/55 px-3 py-1.5 text-center text-[0.75rem] font-medium leading-snug text-white backdrop-blur-[2px]">
                           {guideLabel}
@@ -880,7 +893,7 @@ export function InBrowserCamera({
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}
-                    {guideLabel ? (
+                    {guideLabel && !captureStep ? (
                       <div className="absolute inset-x-2 bottom-3 flex justify-center">
                         <span className="rounded-lg bg-black/55 px-3 py-1.5 text-center text-[0.75rem] font-medium leading-snug text-white backdrop-blur-[2px]">
                           {guideLabel}
@@ -896,10 +909,7 @@ export function InBrowserCamera({
               <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black/55 px-6 text-center backdrop-blur-[2px]">
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
                 <p className="text-[0.9rem] font-semibold text-white">
-                  {a4OutputFormat === "pdf" ? "A4-Zuschnitt & PDF…" : "A4-Autozoom…"}
-                </p>
-                <p className="text-[0.75rem] text-white/80">
-                  Rechnung wird auf den Papierbereich zugeschnitten
+                  Wird zugeschnitten…
                 </p>
               </div>
             ) : null}

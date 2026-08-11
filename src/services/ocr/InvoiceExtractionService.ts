@@ -12,8 +12,11 @@ import {
   extractInvoiceLineItemsFromAzureLayout,
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
-import { reconcileLineItemAmountsWithOcrText } from "@/lib/ocr/invoice-line-items-from-text";
-import { ensureInvoiceVatAndGrossTotal } from "@/lib/ocr/invoice-vat";
+import {
+  extractInvoiceLineItemsFromText,
+  preferInvoiceLineItems,
+  reconcileLineItemAmountsWithOcrText,
+} from "@/lib/ocr/invoice-line-items-from-text";
 import { processLineItems } from "@/utils/invoiceMath";
 import {
   buildVisionUserMessage,
@@ -509,25 +512,29 @@ export class InvoiceExtractionService {
         ? llmLineItems
         : null;
 
+    let workingItems = merged;
+    if (ocrText.trim()) {
+      const ocrHeuristicItems = extractInvoiceLineItemsFromText(ocrText);
+      workingItems = preferInvoiceLineItems(workingItems, ocrHeuristicItems);
+      if (!workingItems?.length && ocrHeuristicItems?.length) {
+        workingItems = ocrHeuristicItems;
+      }
+    }
+
     const reconciled =
       shouldReconcileWithOcrHeuristics(tableFormat) && ocrText.trim()
         ? isWorkshopFormat
-          ? reconcileWorkshopLineItemsWithOcrText(merged, ocrText)
-          : reconcileLineItemAmountsWithOcrText(merged, ocrText)
-        : merged;
+          ? reconcileWorkshopLineItemsWithOcrText(workingItems, ocrText)
+          : reconcileLineItemAmountsWithOcrText(workingItems, ocrText)
+        : workingItems;
 
     const aligned = shouldRealignLineItems(tableFormat)
       ? realignShiftedInvoiceLineItems(reconciled, amount)
       : reconciled;
 
     const normalized = normalizeLineItemsList(aligned, LINE_ITEMS_MAX_COUNT);
-    const withVat = ensureInvoiceVatAndGrossTotal({
-      lineItems: normalized,
-      amount,
-      ocrText,
-    });
 
-    return { lineItems: withVat.lineItems, amount: withVat.amount };
+    return { lineItems: normalized, amount };
   }
 }
 

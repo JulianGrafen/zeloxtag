@@ -301,7 +301,7 @@ export function extractWorkshopSectionLineItems(
   return sanitized != null && sanitized.length >= 3 ? sanitized : null;
 }
 
-/** Prefer Endpreis (brutto), then Netto Summe from Endsummen block. */
+/** Prefer Endpreis (brutto). Never treat Netto Summe as the payable document total. */
 export function extractWorkshopInvoiceAmount(rawText: string): number | null {
   const text = rawText.replace(/\r\n/g, "\n");
 
@@ -315,18 +315,6 @@ export function extractWorkshopInvoiceAmount(rawText: string): number | null {
 
   if (endpreis.length > 0) {
     return Math.max(...endpreis);
-  }
-
-  const netto = [
-    ...text.matchAll(
-      /netto\s+summe\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
-    ),
-  ]
-    .map((match) => parseMoney(match[1] ?? ""))
-    .filter((value): value is number => value != null);
-
-  if (netto.length > 0) {
-    return Math.max(...netto);
   }
 
   return null;

@@ -63,6 +63,23 @@ describe("invoice-vat", () => {
     expect(result.amount).toBe(181.48);
   });
 
+  it("dedupes duplicate MwSt rows from multi-block merges", () => {
+    const result = ensureInvoiceVatAndGrossTotal({
+      lineItems: [
+        { label: "Bremsbeläge", amount: 100 },
+        { label: "Arbeitslohn", amount: 50 },
+        { label: "MwSt 19%", amount: 28.5 },
+        { label: "MwSt 19%", amount: 28.5 },
+      ],
+      amount: 178.5,
+    });
+
+    expect(result.lineItems).toHaveLength(3);
+    expect(result.lineItems!.filter(isVatLineItem)).toHaveLength(1);
+    expect(result.lineItems!.find(isVatLineItem)!.amount).toBe(28.5);
+    expect(result.amount).toBe(178.5);
+  });
+
   it("leaves totals unchanged when amount already equals net sum", () => {
     const items = [{ label: "Pauschale", amount: 90 }];
 
