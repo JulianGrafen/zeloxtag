@@ -46,6 +46,15 @@ describe("correctAuflagenKuerzelOcr", () => {
     );
     expect(correctAuflagenKuerzelOcr("CPE", { allowlist: ["CPE"] })).toBe("CPE");
   });
+
+  it("maps OCR digit O misread 760 to dictionary 76O", () => {
+    expect(auflagenKuerzelConfusionDistance("760", "76O")).toBe(1);
+    expect(
+      correctAuflagenKuerzelOcr("760", {
+        allowlist: ["760", "744"],
+      }),
+    ).toBe("76O");
+  });
 });
 
 describe("correctAuflagenKuerzelList", () => {

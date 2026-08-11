@@ -224,6 +224,10 @@ export function InBrowserCamera({
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [captureFlash, setCaptureFlash] = useState(false);
+  const [captureRejectMessage, setCaptureRejectMessage] = useState<string | null>(
+    null,
+  );
+  const captureRejectTimerRef = useRef<number | null>(null);
   const [liveCaptureQuality, setLiveCaptureQuality] =
     useState<CaptureQualityMetrics | null>(null);
   const captureEncodeOptions = {
@@ -256,10 +260,23 @@ export function InBrowserCamera({
     !processingCapture &&
     !cameraError;
 
-  const captureReady =
+  const qualityReady =
     !enforceCaptureQuality || liveCaptureQuality?.isReady === true;
-  const frameReady =
-    (!showTopDownGuide || topDownTilt.isLevel) && captureReady;
+  const tiltReady =
+    !showTopDownGuide || !topDownTilt.active || topDownTilt.isLevel;
+  /** Visual only — shutter stays enabled; post-capture validation rejects bad frames. */
+  const frameReady = qualityReady && tiltReady;
+
+  function showCaptureRejectMessage(message: string) {
+    if (captureRejectTimerRef.current != null) {
+      window.clearTimeout(captureRejectTimerRef.current);
+    }
+    setCaptureRejectMessage(message);
+    captureRejectTimerRef.current = window.setTimeout(() => {
+      setCaptureRejectMessage(null);
+      captureRejectTimerRef.current = null;
+    }, 4500);
+  }
 
   useEffect(() => {
     if (!enforceCaptureQuality || !cameraReady || instructionsOpen) {
@@ -291,6 +308,15 @@ export function InBrowserCamera({
       window.clearInterval(timer);
     };
   }, [enforceCaptureQuality, cameraReady, instructionsOpen, facingMode]);
+
+  useEffect(
+    () => () => {
+      if (captureRejectTimerRef.current != null) {
+        window.clearTimeout(captureRejectTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (continuousCapture) {
@@ -452,8 +478,10 @@ export function InBrowserCamera({
     const quality = analyzeCaptureQuality(canvas);
     if (quality.isReady) return true;
 
-    setCameraError(
-      quality.issue ? captureQualityMessage(quality.issue) : captureQualityMessage("blur"),
+    showCaptureRejectMessage(
+      quality.issue
+        ? captureQualityMessage(quality.issue)
+        : captureQualityMessage("blur"),
     );
     return false;
   }
@@ -640,7 +668,14 @@ export function InBrowserCamera({
           </div>
         ) : null}
 
-        {!compactChrome && (resolvedHint || captureStep || enforceCaptureQuality) ? (
+        {captureRejectMessage ? (
+          <div className="mb-3 w-full max-w-md rounded-xl bg-red-950/85 px-3 py-2.5 text-center shadow-lg backdrop-blur-md">
+            <p className="text-[0.75rem] font-medium leading-snug text-red-100">
+              {captureRejectMessage}
+            </p>
+          </div>
+        ) : !compactChrome &&
+          (resolvedHint || captureStep || enforceCaptureQuality) ? (
           <div className="mb-3 w-full max-w-md rounded-xl bg-black/70 px-3 py-2.5 text-center shadow-lg backdrop-blur-md">
             {captureStep ? (
               <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white">
@@ -665,10 +700,14 @@ export function InBrowserCamera({
               </p>
             ) : enforceCaptureQuality && frameReady ? (
               <p className="mt-1 text-[0.72rem] font-medium text-emerald-200">
-                Bereit — grüner Rahmen = auslösen
+                Bereit — grüner Rahmen = gute Qualität
               </p>
             ) : null}
           </div>
+        ) : enforceCaptureQuality && captureRejectMessage === null && frameReady ? (
+          <p className="mb-2 text-[0.68rem] font-medium text-emerald-200">
+            Bereit — grüner Rahmen
+          </p>
         ) : null}
 
         <div className="flex w-full items-center justify-center gap-6">
@@ -688,12 +727,7 @@ export function InBrowserCamera({
         <button
           type="button"
           onClick={() => void handleCapture()}
-          disabled={
-            !cameraReady ||
-            capturing ||
-            processingCapture ||
-            (enforceCaptureQuality && !frameReady)
-          }
+          disabled={!cameraReady || capturing || processingCapture}
           className={[
             "flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full border-4 shadow-[0_2px_18px_rgba(0,0,0,0.45)] transition-transform active:scale-90 disabled:opacity-40",
             frameReady && enforceCaptureQuality

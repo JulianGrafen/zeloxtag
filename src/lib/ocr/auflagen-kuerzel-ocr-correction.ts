@@ -130,10 +130,6 @@ export function correctAuflagenKuerzelOcr(
     return code;
   }
 
-  if (allowlist.includes(code) && !PHANTOM_AUFlagen_KUERZEL.has(code)) {
-    return code;
-  }
-
   const pools: string[][] = [];
   if (allowlist.length > 0) {
     pools.push(allowlist.filter((entry) => known.has(entry)));
