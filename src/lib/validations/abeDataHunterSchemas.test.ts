@@ -446,6 +446,17 @@ describe("coalesceAbeHolderAndManufacturer", () => {
     expect(report.abeHolder).toBe("BBS Kraftfahrzeugtechnik AG");
   });
 
+  it("fills manufacturer from Herstellerzeichen in Kennzeichnungen text", () => {
+    const report = coalesceAbeHolderAndManufacturer({
+      ...emptyAbeDataHunterReport(),
+      abeHolder: null,
+      manufacturer: null,
+      markingText: "KBA-Nummer: 48571\nHerstellerzeichen: PLATIN GERMANY",
+    });
+    expect(report.manufacturer).toBe("PLATIN GERMANY");
+    expect(report.abeHolder).toBe("PLATIN GERMANY");
+  });
+
   it("applies during fillAbeDataHunterReport merge", () => {
     const merged = fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
       ...emptyAbeDataHunterReport(),

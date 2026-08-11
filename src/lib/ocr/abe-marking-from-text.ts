@@ -15,6 +15,11 @@ const MARKING_SECTION_END =
 const ART_INLINE =
   /Art\s+der\s+Kennzeichnung\s*[:\-|]\s*([^\n|]+)/i;
 
+const HERSTELLERZEICHEN_INLINE =
+  /(?:^|\n)\s*Herstellerzeichen\s*[:\-|]\s*([^\n|]+)/i;
+
+const HERSTELLERZEICHEN_PIPE = /^herstellerzeichen$/i;
+
 const NUMMER_INLINE =
   /(?:Kennzeichnungs(?:nummer|nr\.?)|Nummer\s+der\s+Kennzeichnung|(?<![A-Za-z0-9])Nummer)\s*[:\-|]\s*([^\n|]+)/i;
 
@@ -109,6 +114,9 @@ function parsePipeTableLine(line: string): string | null {
   if (/^art\s+der\s+kennzeichnung$/i.test(label)) {
     return `Art der Kennzeichnung: ${value}`;
   }
+  if (HERSTELLERZEICHEN_PIPE.test(label)) {
+    return `Herstellerzeichen: ${value}`;
+  }
   if (/^(?:nummer|kennzeichnungs(?:nummer|nr\.?))$/i.test(label)) {
     return `Nummer: ${value}`;
   }
@@ -158,6 +166,28 @@ function sliceAbeMarkingSection(rawText: string): string | null {
   return (endAt >= 0 ? tail.slice(0, endAt) : tail.slice(0, 1_500)).trim();
 }
 
+/** Extract the marking brand from Kennzeichnungen / marking text. */
+export function extractHerstellerzeichenFromText(
+  rawText: string | null | undefined,
+): string | null {
+  if (!rawText?.trim()) return null;
+
+  const inline = rawText.match(HERSTELLERZEICHEN_INLINE)?.[1]?.trim();
+  if (inline && inline.length >= 2) {
+    return inline.replace(/\s{2,}/g, " ").trim();
+  }
+
+  for (const rawLine of rawText.split("\n")) {
+    const pipeLine = parsePipeTableLine(rawLine.replace(/[ \t]+/g, " ").trim());
+    if (pipeLine?.startsWith("Herstellerzeichen:")) {
+      const value = pipeLine.slice("Herstellerzeichen:".length).trim();
+      if (value.length >= 2) return value;
+    }
+  }
+
+  return null;
+}
+
 /** Parse Kennzeichnung block from OCR / LLM plain text. */
 export function extractAbeMarkingFromText(
   rawText: string | null | undefined,
@@ -197,6 +227,8 @@ export function extractAbeMarkingFromTable(
     const value = cells.slice(1).join(" · ");
     if (/art\s+der\s+kennzeichnung|kennzeichnung\s+am\s+bauteil|^kennzeichnung$/i.test(label)) {
       pushLabelValue(lines, "Art der Kennzeichnung", value);
+    } else if (HERSTELLERZEICHEN_PIPE.test(label)) {
+      pushLabelValue(lines, "Herstellerzeichen", value);
     } else if (/kennzeichnungs(?:nummer|nr)|nummer\s+der\s+kennzeichnung|^nummer$/i.test(label)) {
       pushLabelValue(lines, "Nummer", value);
     } else if (/kennzeichnung/i.test(label)) {
@@ -225,6 +257,8 @@ export function coerceAbeMarkingText(raw: unknown): string | null {
 
   pushLabelValue(lines, "Art der Kennzeichnung", record.markingType);
   pushLabelValue(lines, "Art der Kennzeichnung", record.artDerKennzeichnung);
+  pushLabelValue(lines, "Herstellerzeichen", record.herstellerzeichen);
+  pushLabelValue(lines, "Herstellerzeichen", record.manufacturerMark);
   pushLabelValue(lines, "Nummer", record.markingNumber);
   pushLabelValue(lines, "Nummer", record.nummer);
   pushLabelValue(lines, "Nummer der Kennzeichnung", record.kennzeichnungsnummer);
@@ -279,6 +313,7 @@ export function resolveAbeMarkingText(
 /** Shared LLM instruction for ABE Kennzeichnung extraction. */
 export const ABE_MARKING_LLM_INSTRUCTION =
   'Kennzeichnung: Transcribe the full section verbatim after the "Kennzeichnung" / "Kennzeichnung am Bauteil" heading. ' +
-  "Include every line and table row (e.g. Art der Kennzeichnung, Nummer, Prüfplakette). " +
+  "Include every line and table row (e.g. Art der Kennzeichnung, Herstellerzeichen, KBA-Nummer, Nummer, Prüfplakette). " +
   "Put the full block in markingText as multi-line text (`Label: Value` per row). " +
+  "Also copy the Herstellerzeichen value into manufacturer when it is the part marking brand. " +
   "You may also set markingType and markingNumber when visible. Do not summarize. Null if not visible.";

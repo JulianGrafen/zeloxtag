@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   coerceAbeMarkingText,
   extractAbeMarkingFromText,
+  extractHerstellerzeichenFromText,
   mergeAbeMarkingText,
   normalizeAbeMarkingText,
   resolveAbeMarkingText,
@@ -80,5 +81,16 @@ BMW 5er
     ).toBe(
       "Die KBA-Nummer ist eingeprägt.\nArt der Kennzeichnung: Prüfplakette\nNummer: e1*47656",
     );
+  });
+
+  it("extracts Herstellerzeichen from Kennzeichnungen text", () => {
+    expect(
+      extractHerstellerzeichenFromText(
+        "KBA-Nummer: 48571\nHerstellerzeichen: PLATIN GERMANY",
+      ),
+    ).toBe("PLATIN GERMANY");
+    expect(
+      extractHerstellerzeichenFromText("| Herstellerzeichen | AC Schnitzer |"),
+    ).toBe("AC Schnitzer");
   });
 });

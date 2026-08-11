@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   ABE_MARKING_LLM_INSTRUCTION,
   ABE_MARKING_TEXT_MAX,
+  extractHerstellerzeichenFromText,
   mergeAbeMarkingText,
 } from "@/lib/ocr/abe-marking-from-text";
 import {
@@ -31,9 +32,9 @@ import { isPlaceholderAbeVerkaufsbezeichnung } from "@/lib/ocr/abe-wizard-vehicl
 const ABE_HOLDER_LLM_DESCRIPTION =
   'Legal holder of the ABE: value next to "Inhaber der ABE", "Auftraggeber", or combined "Inhaber der ABE und Hersteller" (then set abeHolder and manufacturer to the same company).';
 
-/** LLM hint: part manufacturer may appear as Hersteller or Herstellerzeichen. */
+/** LLM hint: part manufacturer / marking brand on the component. */
 const ABE_MANUFACTURER_LLM_DESCRIPTION =
-  'Part manufacturer: company next to "Hersteller" in the Prüfgegenstand / header block — NOT the "Herstellerzeichen" under Kennzeichnungen (that belongs in markingText). Also accept "Marke" or combined holder/manufacturer label (copy to manufacturer too).';
+  'Part manufacturer / Herstellerzeichen: copy verbatim from "Hersteller" in the Prüfgegenstand block OR from the "Herstellerzeichen" row in Kennzeichnungen / Kennzeichnung (e.g. "PLATIN GERMANY", "AC Schnitzer", "OZ Racing"). Prefer Kennzeichnungen Herstellerzeichen when visible. Also accept "Marke". Do NOT use Auftraggeber/Inhaber unless explicitly labeled as Hersteller.';
 
 /** LLM hint: part designation on Gutachten / ABE pages. */
 const ABE_PART_DESIGNATION_LLM_DESCRIPTION =
@@ -489,7 +490,11 @@ export function coalesceAbeHolderAndManufacturer(
   report: AbeDataHunterReport,
 ): AbeDataHunterReport {
   const holder = sanitizeAbePartyName(report.abeHolder);
-  const manufacturer = sanitizeAbePartyName(report.manufacturer);
+  const manufacturerFromMarking = extractHerstellerzeichenFromText(
+    report.markingText,
+  );
+  const manufacturer =
+    sanitizeAbePartyName(report.manufacturer) ?? manufacturerFromMarking;
   if (holder && !manufacturer) {
     return { ...report, abeHolder: holder, manufacturer: holder };
   }

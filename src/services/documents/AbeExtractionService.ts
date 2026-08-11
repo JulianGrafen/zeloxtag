@@ -92,7 +92,7 @@ export class AbeDataHunterExtractionService {
         input,
         [
           IMAGE_ONLY_GUARD,
-          "Extract ABE master data: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber der ABE / Auftraggeber), manufacturer (Hersteller in Prüfgegenstand — not Kennzeichnungen Herstellerzeichen), partDesignation (Prüfgegenstand / Bezeichnung des Bauteils).",
+          "Extract ABE master data: kbaNumber (digits only), abeNumber (Nummer der ABE, digits only), abeHolder (Inhaber der ABE / Auftraggeber), manufacturer (Hersteller / Herstellerzeichen from Prüfgegenstand or Kennzeichnungen table), partDesignation (Prüfgegenstand / Bezeichnung des Bauteils).",
           "Never put Gutachten-Nr. or Genehmigungsnummer with letters into kbaNumber or abeNumber.",
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer to that value.",
           'Map "Auftraggeber" to abeHolder when no separate Inhaber der ABE label is shown.',
@@ -393,7 +393,7 @@ export class AbeDataHunterExtractionService {
         input,
         [
           FREESTYLE_GUARD,
-          "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE / Gutachten zur ABE Nr., digits only), abeHolder (Inhaber / Auftraggeber), manufacturer (Hersteller in Prüfgegenstand block — not Kennzeichnungen Herstellerzeichen), partDesignation (Prüfgegenstand / Bauteilbezeichnung inkl. Radgröße), markingText (Kennzeichnungen block verbatim), vehicleMatches (Verwendungsbereich table), auflagenCodes.",
+          "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE / Gutachten zur ABE Nr., digits only), abeHolder (Inhaber / Auftraggeber), manufacturer (Hersteller / Herstellerzeichen — Prüfgegenstand or Kennzeichnungen row), partDesignation (Prüfgegenstand / Bauteilbezeichnung inkl. Radgröße), markingText (Kennzeichnungen block verbatim), vehicleMatches (Verwendungsbereich table), auflagenCodes.",
           "Never use Gutachten-Nr. or Genehmigungsnummer with letters for kbaNumber or abeNumber.",
           'For partDesignation: copy the full Prüfgegenstand line (e.g. "PKW-Sonderrad 8Jx17EH2+ Typ TAM3325-8017").',
           'For markingText: transcribe the Kennzeichnungen section verbatim — KBA-Nummer, Herstellerzeichen, Radtyp, Radgröße, Einpresstiefe. No summary.',

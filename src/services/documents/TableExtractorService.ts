@@ -29,9 +29,9 @@ export type TableExtractionResult = {
   model: string;
 };
 
-function buildTableImageUserContent(
+async function buildTableImageUserContent(
   pages: IngestedPage[],
-): OpenAI.Chat.Completions.ChatCompletionContentPart[] {
+): Promise<OpenAI.Chat.Completions.ChatCompletionContentPart[]> {
   const parts: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
     {
       type: "text",
@@ -71,6 +71,7 @@ export class TableExtractorService {
     const { client } = getOcrLlmClient({ model: this.model });
 
     try {
+      const userContent = await buildTableImageUserContent(pages);
       const completion = await client.chat.completions.create({
         model: this.model,
         temperature: 0,
@@ -81,7 +82,7 @@ export class TableExtractorService {
         },
         messages: [
           { role: "system", content: ABE_TABLE_EXTRACTION_SYSTEM_PROMPT },
-          { role: "user", content: buildTableImageUserContent(pages) },
+          { role: "user", content: userContent },
         ],
       });
 
