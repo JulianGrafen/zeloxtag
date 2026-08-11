@@ -1,9 +1,13 @@
+import { CheckCircle2 } from "lucide-react";
+
 import type { TableData } from "@/lib/validations/abeSchema";
 
 type VerwendungsbereichTableProps = {
   table: TableData;
   /** Highlight row matching the user's garage vehicle. */
   highlightMatches?: boolean;
+  /** Green checkmark on each row (Freigabe list). */
+  showApprovalCheck?: boolean;
   className?: string;
 };
 
@@ -13,6 +17,7 @@ type VerwendungsbereichTableProps = {
 export function VerwendungsbereichTable({
   table,
   highlightMatches = true,
+  showApprovalCheck = false,
   className = "",
 }: VerwendungsbereichTableProps) {
   if (!table.rows.length) return null;
@@ -54,14 +59,28 @@ export function VerwendungsbereichTable({
                   matched ? "bg-emerald-500/8" : "bg-[color:var(--vd-surface)]",
                 ].join(" ")}
               >
-                {row.cells.map((cell, index) => (
-                  <td
-                    key={`${row.id}-${index}`}
-                    className="px-3 py-2.5 align-top whitespace-pre-wrap leading-relaxed text-[color:var(--vd-text)]"
-                  >
-                    {cell.trim() || "—"}
-                  </td>
-                ))}
+                {row.cells.map((cell, index) => {
+                  const value = cell.trim() || "—";
+                  const showCheck = showApprovalCheck && index === 0;
+                  return (
+                    <td
+                      key={`${row.id}-${index}`}
+                      className="px-3 py-2.5 align-top whitespace-pre-wrap leading-relaxed text-[color:var(--vd-text)]"
+                    >
+                      {showCheck ? (
+                        <span className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700"
+                            aria-hidden
+                          />
+                          <span>{value}</span>
+                        </span>
+                      ) : (
+                        value
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             );
           })}

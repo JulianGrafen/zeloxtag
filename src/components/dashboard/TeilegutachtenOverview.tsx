@@ -461,7 +461,10 @@ export function TeilegutachtenOverview({
           <Field label="Fahrzeugfreigaben">
             {review.compatibilityTable?.rows.length ? (
               <div className="space-y-2">
-                <VerwendungsbereichTable table={review.compatibilityTable} />
+                <VerwendungsbereichTable
+                  table={review.compatibilityTable}
+                  showApprovalCheck
+                />
                 {review.vehicleApprovals?.length ? (
                   <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
                     {review.vehicleApprovals.length}{" "}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pencil, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Pencil } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import {
@@ -184,7 +184,10 @@ export function EditableAbeListsSection({
             className="w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 text-[0.88rem] leading-relaxed text-[color:var(--vd-text)] outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/15"
           />
         ) : compatibilityTable?.rows.length ? (
-          <VerwendungsbereichTable table={compatibilityTable} />
+          <VerwendungsbereichTable
+            table={compatibilityTable}
+            showApprovalCheck
+          />
         ) : visibleApprovals.length === 0 ? (
           <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
             Keine Fahrzeugfreigaben erkannt.
@@ -196,8 +199,8 @@ export function EditableAbeListsSection({
                 key={item}
                 className="flex items-center gap-2 text-[0.88rem] font-medium text-[color:var(--vd-text)]"
               >
-                <ShieldCheck
-                  className="h-4 w-4 shrink-0 text-emerald-600"
+                <CheckCircle2
+                  className="h-4 w-4 shrink-0 text-emerald-700"
                   aria-hidden
                 />
                 {item}

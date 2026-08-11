@@ -9,7 +9,6 @@ import {
   Download,
   FileText,
   Share2,
-  ShieldCheck,
 } from "lucide-react";
 
 import { CompatibilityTable } from "@/components/dashboard/CompatibilityTable";
@@ -160,7 +159,7 @@ export function AbeDocumentDetailView({
                 key={item}
                 className="flex items-center gap-2 text-[0.88rem] font-medium text-[color:var(--vd-text)]"
               >
-                <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden />
                 {item}
               </li>
             ))}
