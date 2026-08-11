@@ -8,7 +8,11 @@ const TABLE_HEADER_LABEL =
   /^(?:pos\.?|position|bezeichnung|beschreibung|artikel|menge|einzelpreis|e-?preis|ep|stückpreis|stück|stk\.?|std\.?|einheit|ges\.?\s*preis|gesamtpreis|ges\.?\s*summe|gp|betrag|summe|nr\.?|anz\.?|preis|wert|total|endpreis|netto|endsummen)$/i;
 
 const AMOUNT_ONLY_LINE =
-  /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*(?:€|eur)?\s*$/i;
+  /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s+[A-Z0-9]{1,2})?\s*(?:€|eur)?\s*$/i;
+
+/** Trailing Ges. Preis on a table row, optionally followed by tax column (A / 0). */
+const TRAILING_ROW_AMOUNT =
+  /^(.*?)(?:\s+)(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s+[A-Z0-9]{1,2})?\s*$/;
 
 const TABLE_HEADER_LINE =
   /\b(?:bezeichnung|beschreibung|artikel)\b.*\b(?:einzelpreis|e-?preis|ep|ges\.?\s*preis|gesamtpreis|menge)\b/i;
@@ -92,6 +96,14 @@ function shiftAmountsFromPreviousRow(items: InvoiceLineItem[]): InvoiceLineItem[
   }));
 }
 
+function permuteAmounts(items: InvoiceLineItem[]): InvoiceLineItem[] {
+  if (items.length !== 2) return items;
+  return [
+    { label: items[0]!.label, amount: items[1]!.amount },
+    { label: items[1]!.label, amount: items[0]!.amount },
+  ];
+}
+
 function buildAlignmentCandidates(items: InvoiceLineItem[]): AlignmentCandidate[] {
   const base = cloneItems(items);
   const withoutHeaders = dropLeadingHeaderRows(base);
@@ -109,6 +121,8 @@ function buildAlignmentCandidates(items: InvoiceLineItem[]): AlignmentCandidate[
       items: shiftAmountsFromPreviousRow(withoutHeaders),
       transform: "drop-headers+shift-prev",
     },
+    { items: permuteAmounts(base), transform: "swap-amounts" },
+    { items: permuteAmounts(withoutHeaders), transform: "drop-headers+swap-amounts" },
   ];
 
   return candidates.filter(
@@ -145,6 +159,28 @@ function scoreAlignment(
     }
     if (isUnitPriceAmountOfTotal(next.amount, current.amount)) {
       score -= 12;
+    }
+  }
+
+  if (items.length === 2) {
+    const [first, second] = items;
+    const firstIsAbnahme = /änderungsabnahme|abnahme|genehmigung|§\s*19/i.test(
+      first!.label,
+    );
+    const secondIsAbnahme = /änderungsabnahme|abnahme|genehmigung|§\s*19/i.test(
+      second!.label,
+    );
+    const firstIsDiag = /fehlersuche|diagnose|prüf|pruef|kabel/i.test(first!.label);
+    const secondIsDiag = /fehlersuche|diagnose|prüf|pruef|kabel/i.test(
+      second!.label,
+    );
+
+    if (firstIsAbnahme && secondIsDiag) {
+      if (first!.amount < second!.amount - 0.01) score += 30;
+      else if (first!.amount > second!.amount + 0.01) score -= 30;
+    } else if (secondIsAbnahme && firstIsDiag) {
+      if (second!.amount < first!.amount - 0.01) score += 30;
+      else if (second!.amount > first!.amount + 0.01) score -= 30;
     }
   }
 
@@ -226,9 +262,7 @@ export function prejoinWrappedInvoiceLines(rawText: string): string {
       continue;
     }
 
-    const trailingAmount = line.match(
-      /^(.*?)(?:\s+)(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*$/,
-    );
+    const trailingAmount = line.match(TRAILING_ROW_AMOUNT);
     if (trailingAmount?.[1]?.trim() && trailingAmount[2]) {
       if (pendingLabel) {
         if (isInvoiceTableHeaderLine(pendingLabel)) {

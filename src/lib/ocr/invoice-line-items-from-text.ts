@@ -5,8 +5,14 @@
 
 import {
   isUnitPriceAmountOfTotal,
+  isJunkInvoiceLineLabel,
   normalizedInvoiceLineLabelKey,
 } from "@/lib/ocr/invoice-line-item-dedupe";
+import {
+  isInvoiceFooterSummaryLabel,
+  stripNonPositionInvoiceRows,
+} from "@/lib/ocr/invoice-footer-totals";
+import { isPlausibleInvoiceVatAmount } from "@/lib/ocr/invoice-vat";
 import { prejoinWrappedInvoiceLines } from "@/lib/ocr/invoice-line-item-alignment";
 import {
   isHtmlDebrisLabel,
@@ -29,7 +35,7 @@ const MAX_LABEL = 160;
 
 /** Skip totals / headers that are not sellable positions. */
 const SKIP_LABEL =
-  /^(?:summe|gesamt(?:betrag)?|zwischensumme|netto(?:betrag)?|brutto(?:betrag)?|rechnungsbetrag|zahlbetrag|zu\s*zahlen|betrag|position(?:en)?|bezeichnung|menge|einzelpreis|gesamtpreis|artikel|pos\.?|nr\.?|seite|page|tel|fax|iban|bic|ust[- ]?id|steuer[- ]?nr)\b/i;
+  /^(?:summe|gesamt(?:betrag)?|nettosumme|netto\s*summe|zwischensumme|netto(?:betrag)?|brutto(?:betrag)?|rechnungsbetrag|zahlbetrag|zu\s*zahlen|betrag|position(?:en)?|bezeichnung|menge|einzelpreis|gesamtpreis|artikel|pos\.?|nr\.?|seite|page|tel|fax|iban|bic|ust[- ]?id|steuer[- ]?nr)\b/i;
 
 const VAT_LABEL = /\b(?:mwst|m\.?\s*w\.?\s*st\.?|ust\.?|umsatzsteuer|vat|steuer)\b/i;
 
@@ -133,6 +139,9 @@ function isPlausibleLabel(label: string): boolean {
   if (label.length < 2 || label.length > MAX_LABEL) return false;
   if (isHtmlDebrisLabel(label)) return false;
   if (SKIP_LABEL.test(label)) return false;
+  if (isInvoiceFooterSummaryLabel(label)) return false;
+  if (isJunkInvoiceLineLabel(label)) return false;
+  if (VAT_LABEL.test(label)) return false;
   if (/^\d+([.,]\d+)?$/.test(label)) return false;
   // Require a real word — bare "td"/"th" from HTML tags must not pass.
   if (!/[a-zäöüß]{2,}/i.test(label)) return false;
@@ -294,10 +303,33 @@ export function preferInvoiceLineItems(
   if (a.length === 0) return b.slice(0, MAX_ITEMS);
   if (b.length === 0) return a.slice(0, MAX_ITEMS);
 
+  const aClean = stripNonPositionInvoiceRows(a) ?? [];
+  const bClean = stripNonPositionInvoiceRows(b) ?? [];
+  const aHasFooterJunk = a.some((item) => isInvoiceFooterSummaryLabel(item.label));
+  const aSum = aClean.reduce((sum, item) => sum + item.amount, 0);
+  const bSum = bClean.reduce((sum, item) => sum + item.amount, 0);
+
   const aMerged = a.some((item) => looksMergedLineItem(item.label));
   const bHasMaterials = b.some((item) => materialHits(item.label).length > 0);
   const aHasVat = a.some((item) => VAT_LABEL.test(item.label));
   const bHasVat = b.some((item) => VAT_LABEL.test(item.label));
+
+  if (
+    bClean.length >= 2 &&
+    (aHasFooterJunk ||
+      bClean.length > aClean.length ||
+      (Math.abs(aSum - bSum) > 0.5 && bClean.length >= aClean.length))
+  ) {
+    const plausibleVat = a.filter(
+      (item) =>
+        VAT_LABEL.test(item.label) &&
+        isPlausibleInvoiceVatAmount(item.amount, bSum),
+    );
+    return mergeUnique(
+      bClean,
+      aHasVat && !bHasVat ? plausibleVat : [],
+    );
+  }
 
   if (aMerged && b.length >= a.length) {
     return mergeUnique(b, aHasVat && !bHasVat ? a.filter((i) => VAT_LABEL.test(i.label)) : []);
@@ -319,10 +351,10 @@ export function preferInvoiceLineItems(
   });
 
   if (missingMaterials.length > 0) {
-    return mergeUnique(a, missingMaterials);
+    return mergeUnique(aClean.length > 0 ? aClean : a, missingMaterials);
   }
 
-  return a.slice(0, MAX_ITEMS);
+  return (aClean.length > 0 ? aClean : a).slice(0, MAX_ITEMS);
 }
 
 function mergeUnique(
@@ -391,6 +423,10 @@ export function reconcileLineItemAmountsWithOcrText(
 
     const textAmount = bestMatch.amount;
     if (Math.abs(textAmount - item.amount) < 0.011) return item;
+
+    if (bestScore >= 60) {
+      return { ...item, amount: textAmount };
+    }
 
     if (textAmount > item.amount + 0.01) {
       if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {

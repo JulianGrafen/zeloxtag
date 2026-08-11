@@ -26,6 +26,7 @@ import {
   preferInvoiceLineItems,
   reconcileLineItemAmountsWithOcrText,
 } from "@/lib/ocr/invoice-line-items-from-text";
+import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   buildInvoiceSystemPrompt,
@@ -471,20 +472,18 @@ export class InvoiceParseService {
         ? extractInvoiceLineItemsFromText(ocr.text)
         : null;
     const totalAmount = preferAmount(parsed.amount, fullText, parsed.lineItems);
-    const lineItems = normalizeLineItemsList(
-      realignShiftedInvoiceLineItems(
-        reconcileLineItemAmountsWithOcrText(
-          mergeLayoutAndLlmLineItems(
-            preferInvoiceLineItems(parsed.lineItems, heuristicLineItems),
-            layoutLineItems,
-            totalAmount,
-          ),
-          fullText,
-        ),
-        totalAmount,
-      ),
-      60,
+    const mergedLineItems = mergeLayoutAndLlmLineItems(
+      preferInvoiceLineItems(parsed.lineItems, heuristicLineItems),
+      layoutLineItems,
+      totalAmount,
     );
+    const plausibility = reconcileInvoicePlausibility({
+      lineItems: mergedLineItems,
+      amount: totalAmount,
+      ocrText: fullText,
+      ocrHeuristicItems: heuristicLineItems,
+    });
+    const lineItems = normalizeLineItemsList(plausibility.lineItems, 60);
 
     return this.nullAbeFields(
       normalizeTextParseResult({
@@ -492,7 +491,7 @@ export class InvoiceParseService {
         vendor,
         category,
         summary: parsed.summary,
-        amount: preferAmount(parsed.amount, fullText, lineItems),
+        amount: preferAmount(plausibility.amount, fullText, lineItems),
         lineItems,
         invoiceNumber: parsed.invoiceNumber,
         mileageKm: preferMileageKm(parsed.mileageKm, fullText),

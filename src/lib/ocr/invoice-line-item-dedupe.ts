@@ -21,6 +21,8 @@ export function isJunkInvoiceLineLabel(label: string): boolean {
   // Footer row captured as line item
   if (/^endpreis\b/i.test(trimmed)) return true;
   if (/^netto\s+summe\b/i.test(trimmed)) return true;
+  if (/^gesamtbetrag\b/i.test(trimmed)) return true;
+  if (/^nettosumme\b/i.test(trimmed)) return true;
   return false;
 }
 

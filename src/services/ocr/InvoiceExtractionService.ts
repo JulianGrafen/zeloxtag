@@ -7,16 +7,20 @@ import {
   isAzureDocumentIntelligenceConfigured,
 } from "@/lib/ocr/azure-document-intelligence";
 import { sumLineItems } from "@/lib/documents/line-items";
-import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
 import {
   extractInvoiceLineItemsFromAzureLayout,
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
 import {
+  extractGrossTotalFromText,
+  extractNetSumFromText,
+  stripNonPositionInvoiceRows,
+} from "@/lib/ocr/invoice-footer-totals";
+import {
   extractInvoiceLineItemsFromText,
-  preferInvoiceLineItems,
-  reconcileLineItemAmountsWithOcrText,
 } from "@/lib/ocr/invoice-line-items-from-text";
+import { isPlausibleInvoiceVatAmount } from "@/lib/ocr/invoice-vat";
+import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import { processLineItems } from "@/utils/invoiceMath";
 import {
   buildVisionUserMessage,
@@ -498,12 +502,30 @@ export class InvoiceExtractionService {
         ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
         : null;
 
+    const footerNet = ocrText.trim() ? extractNetSumFromText(ocrText) : null;
+    const footerGross = ocrText.trim() ? extractGrossTotalFromText(ocrText) : null;
+
+    let structuredAmount = coerceGermanMoneyAmount(record.amount, "conservative");
+    if (
+      structuredAmount != null &&
+      footerGross != null &&
+      structuredAmount < footerGross - 0.05
+    ) {
+      if (footerNet != null && Math.abs(structuredAmount - footerNet) <= 0.05) {
+        structuredAmount = footerGross;
+      } else if (
+        footerNet != null &&
+        isPlausibleInvoiceVatAmount(structuredAmount, footerNet)
+      ) {
+        structuredAmount = footerGross;
+      }
+    }
+
     const amount =
-      coerceGermanMoneyAmount(record.amount, "conservative") ??
+      structuredAmount ??
+      footerGross ??
       (isWorkshopFormat ? extractWorkshopInvoiceAmount(ocrText) : null) ??
-      (isLlmOnlyFormat && ocrText.trim()
-        ? extractAmountFromText(ocrText)
-        : null) ??
+      (ocrText.trim() ? extractAmountFromText(ocrText) : null) ??
       (layoutLineItems?.length ? sumLineItems(layoutLineItems) : null);
 
     const merged = shouldMergeAzureLayout(tableFormat)
@@ -512,29 +534,38 @@ export class InvoiceExtractionService {
         ? llmLineItems
         : null;
 
-    let workingItems = merged;
-    if (ocrText.trim()) {
-      const ocrHeuristicItems = extractInvoiceLineItemsFromText(ocrText);
-      workingItems = preferInvoiceLineItems(workingItems, ocrHeuristicItems);
-      if (!workingItems?.length && ocrHeuristicItems?.length) {
-        workingItems = ocrHeuristicItems;
-      }
+    let baseItems = stripNonPositionInvoiceRows(merged);
+    if (
+      isWorkshopFormat &&
+      shouldReconcileWithOcrHeuristics(tableFormat) &&
+      ocrText.trim()
+    ) {
+      baseItems = reconcileWorkshopLineItemsWithOcrText(baseItems, ocrText);
     }
 
-    const reconciled =
-      shouldReconcileWithOcrHeuristics(tableFormat) && ocrText.trim()
-        ? isWorkshopFormat
-          ? reconcileWorkshopLineItemsWithOcrText(workingItems, ocrText)
-          : reconcileLineItemAmountsWithOcrText(workingItems, ocrText)
-        : workingItems;
+    const ocrHeuristicItems = ocrText.trim()
+      ? stripNonPositionInvoiceRows(extractInvoiceLineItemsFromText(ocrText))
+      : null;
 
-    const aligned = shouldRealignLineItems(tableFormat)
-      ? realignShiftedInvoiceLineItems(reconciled, amount)
-      : reconciled;
+    const plausibility = reconcileInvoicePlausibility({
+      lineItems: baseItems,
+      amount: footerGross ?? amount,
+      ocrText,
+      ocrHeuristicItems: isWorkshopFormat ? null : ocrHeuristicItems,
+      enableRealign: shouldRealignLineItems(tableFormat),
+      enableOcrReconcile:
+        shouldReconcileWithOcrHeuristics(tableFormat) && !isWorkshopFormat,
+    });
 
-    const normalized = normalizeLineItemsList(aligned, LINE_ITEMS_MAX_COUNT);
+    const normalized = normalizeLineItemsList(
+      plausibility.lineItems,
+      LINE_ITEMS_MAX_COUNT,
+    );
 
-    return { lineItems: normalized, amount };
+    return {
+      lineItems: normalized,
+      amount: plausibility.amount,
+    };
   }
 }
 

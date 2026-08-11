@@ -67,6 +67,16 @@ type WizardPhase =
 
 const MAX_LINE_ITEM_BLOCKS = 8;
 
+const INVOICE_SCAN_CAMERA_HINTS = {
+  overview:
+    "Gesamte Rechnung ins DIN-A4-Feld — senkrecht von oben, parallel zum Blatt",
+  header: "Kopf mit Werkstatt, Belegnummer, Datum und KM-Stand",
+  lineItems: (blockNumber: number) =>
+    blockNumber > 1
+      ? `Block ${blockNumber} — nächste Seite mit Positionen fotografieren`
+      : "Tabellenbereich mit allen Positionen — senkrecht von oben",
+} as const;
+
 interface WizardState {
   phase: WizardPhase;
   overviewFile: File | null;
@@ -773,9 +783,8 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Gesamtseite"
-          hint=""
-          showBriefing={false}
-          showTopDownGuide={false}
+          hint={INVOICE_SCAN_CAMERA_HINTS.overview}
+          showTopDownGuide
           captureStep={{ current: 1, total: 3 }}
           guideFrame="a4"
           a4OutputFormat="pdf"
@@ -808,9 +817,8 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title="Kopf"
-          hint=""
-          showBriefing={false}
-          showTopDownGuide={false}
+          hint={INVOICE_SCAN_CAMERA_HINTS.header}
+          showTopDownGuide
           captureStep={{ current: 2, total: 3 }}
           guideFrame="none"
           onCapture={handleHeaderCapture}
@@ -833,9 +841,8 @@ export function InvoiceUploadWizard({
         ) : null}
         <InBrowserCamera
           title={blockNumber > 1 ? `Block ${blockNumber}` : "Positionen"}
-          hint=""
-          showBriefing={false}
-          showTopDownGuide={false}
+          hint={INVOICE_SCAN_CAMERA_HINTS.lineItems(blockNumber)}
+          showTopDownGuide
           captureStep={{ current: 3, total: 3 }}
           guideFrame="none"
           onCapture={handleLineItemsCapture}

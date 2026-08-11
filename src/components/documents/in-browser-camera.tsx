@@ -255,7 +255,8 @@ export function InBrowserCamera({
       : hint ?? (showTopDownGuide && !captureStep ? TOP_DOWN_SCAN_HINT : undefined);
   const topBarLabel = formatTopBarLabel(title, captureStep);
   const showBottomHintPanel =
-    !compactChrome && Boolean(resolvedHint || enforceCaptureQuality);
+    !compactChrome &&
+    Boolean(resolvedHint || enforceCaptureQuality || captureStep);
   const shouldShowBriefing = Boolean(
     resolvedHint && showBriefing && !continuousCapture && !captureStep,
   );
@@ -690,6 +691,11 @@ export function InBrowserCamera({
           </div>
         ) : showBottomHintPanel ? (
           <div className="mb-3 w-full max-w-md rounded-xl bg-black/70 px-3 py-2.5 text-center shadow-lg backdrop-blur-md">
+            {captureStep && !resolvedHint && !enforceCaptureQuality ? (
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white">
+                Schritt {captureStep.current} von {captureStep.total}
+              </p>
+            ) : null}
             {resolvedHint ? (
               <p className="text-[0.75rem] font-medium leading-snug text-white">
                 {resolvedHint}

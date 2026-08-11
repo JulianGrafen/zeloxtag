@@ -2,6 +2,7 @@ import { preferAmount } from "@/lib/ocr/amount-from-text";
 import { sumLineItems } from "@/lib/documents/line-items";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import {
   ensureInvoiceVatAndGrossTotal,
   grossAmountLooksPlausible,
@@ -177,9 +178,14 @@ export function mergeInvoiceWizardExtractions(
     lineItems,
   );
 
-  const withVat = ensureInvoiceVatAndGrossTotal({
+  const plausibility = reconcileInvoicePlausibility({
     lineItems,
     amount,
+  });
+
+  const withVat = ensureInvoiceVatAndGrossTotal({
+    lineItems: plausibility.lineItems,
+    amount: plausibility.amount,
   });
 
   const mileageKm = sanitizeInvoiceMileageKm(
