@@ -9,11 +9,18 @@ import {
   normalizedInvoiceLineLabelKey,
 } from "@/lib/ocr/invoice-line-item-dedupe";
 import {
+  extractGrossTotalFromText,
+  extractNetSumFromText,
   isInvoiceFooterSummaryLabel,
   stripNonPositionInvoiceRows,
 } from "@/lib/ocr/invoice-footer-totals";
 import { isPlausibleInvoiceVatAmount } from "@/lib/ocr/invoice-vat";
 import { prejoinWrappedInvoiceLines } from "@/lib/ocr/invoice-line-item-alignment";
+import {
+  ocrTextUsesPosColumnTable,
+  splitLineByPosColumn,
+  stripPosColumnPrefix,
+} from "@/lib/ocr/invoice-pos-column";
 import {
   isHtmlDebrisLabel,
   normalizeOcrMarkdown,
@@ -125,6 +132,68 @@ function cleanLabel(value: string): string {
 const MONEY =
   /-?\d{1,3}(?:\.\d{3})*(?:,\d{2})|-?\d+,\d{2}/g;
 
+const INLINE_FOOTER_MARKER =
+  /\b(?:nettosumme|netto\s*summe|gesamtbetrag|mwst|m\.?\s*w\.?\s*st\.?|umsatzsteuer|vat)\b/i;
+
+/** Split glued table rows and drop inline footer fragments from one OCR line. */
+export function expandCompoundInvoiceTableLines(
+  line: string,
+  options: { usePosColumn?: boolean } = {},
+): string[] {
+  let trimmed = line.replace(/[^\S\n]+/g, " ").trim();
+  if (trimmed.length < 4) return [];
+
+  const footerIndex = trimmed.search(INLINE_FOOTER_MARKER);
+  if (footerIndex > 0) {
+    trimmed = trimmed.slice(0, footerIndex).trim();
+  }
+  if (!trimmed) return [];
+
+  if (options.usePosColumn) {
+    const posSegments = splitLineByPosColumn(trimmed);
+    if (posSegments.length > 1) return posSegments;
+  }
+
+  const segments = trimmed.split(
+    /\s(?=\d{1,2}\s+(?:\d{3,}\s+)?[A-Za-zÄÖÜäöüß§])/,
+  );
+  if (segments.length <= 1) return [trimmed];
+
+  return segments.map((segment) => segment.trim()).filter((segment) => segment.length >= 4);
+}
+
+/** A single table row must not carry the invoice brutto total when several positions exist. */
+export function isPlausiblePositionLineAmount(
+  amount: number,
+  options: {
+    footerGross?: number | null;
+    footerNet?: number | null;
+    multiPosition?: boolean;
+  } = {},
+): boolean {
+  const { footerGross = null, footerNet = null, multiPosition = false } = options;
+  if (!Number.isFinite(amount) || amount <= 0) return false;
+
+  if (
+    multiPosition &&
+    footerGross != null &&
+    Math.abs(amount - footerGross) <= 0.05
+  ) {
+    return false;
+  }
+
+  if (
+    footerNet != null &&
+    footerGross != null &&
+    Math.abs(amount - footerGross) <= 0.05 &&
+    Math.abs(amount - footerNet) > 0.05
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 /** True when a matched number is a percentage rate, not a EUR amount. */
 function isPercentToken(text: string, index: number, raw: string): boolean {
   const after = text.slice(index + raw.length);
@@ -170,7 +239,10 @@ function pushItem(
  * From a position line, take Gesamtpreis (rightmost money token), never Einzelpreis.
  * Typical: "4 Reifen … 120,00 480,00" → 480,00
  */
-export function lineTotalFromInvoiceRow(line: string): {
+export function lineTotalFromInvoiceRow(
+  line: string,
+  options: { stripPosPrefix?: boolean } = {},
+): {
   label: string;
   amount: number;
 } | null {
@@ -219,8 +291,13 @@ export function lineTotalFromInvoiceRow(line: string): {
   label = label
     .replace(new RegExp(`(?:${MONEY.source})\\s*$`, "g"), "")
     .replace(/\s+\d+(?:[.,]\d+)?\s*(?:x|×|stk|stück|st\.?|stk\.?)?\s*$/i, "")
+    .replace(/\s+[A-Z0-9]{1,2}\s*$/i, "")
     .replace(/\s+/g, " ")
     .trim();
+
+  if (options.stripPosPrefix) {
+    label = stripPosColumnPrefix(label);
+  }
 
   if (!label || !isPlausibleLabel(cleanLabel(label))) return null;
   return { label, amount: total.value };
@@ -241,22 +318,30 @@ export function extractInvoiceLineItemsFromText(
   }
 
   const text = prejoinWrappedInvoiceLines(normalized);
+  const usePosColumn = ocrTextUsesPosColumnTable(normalized);
   const items: InvoiceLineItem[] = [];
   const seen = new Set<string>();
 
   for (const rawLine of text.split("\n")) {
-    const parsed = lineTotalFromInvoiceRow(rawLine);
-    if (!parsed) continue;
+    for (const segment of expandCompoundInvoiceTableLines(rawLine, {
+      usePosColumn,
+    })) {
+      const parsed = lineTotalFromInvoiceRow(segment, {
+        stripPosPrefix: usePosColumn,
+      });
+      if (!parsed) continue;
 
-    // Ignore pure quantity × unit rows without a name.
-    if (
-      /^\d+\s*[x×]\s*\d/i.test(parsed.label) &&
-      !/[a-zäöüß]{3,}/i.test(parsed.label)
-    ) {
-      continue;
+      // Ignore pure quantity × unit rows without a name.
+      if (
+        /^\d+\s*[x×]\s*\d/i.test(parsed.label) &&
+        !/[a-zäöüß]{3,}/i.test(parsed.label)
+      ) {
+        continue;
+      }
+
+      pushItem(items, seen, parsed.label, parsed.amount);
+      if (items.length >= MAX_ITEMS) break;
     }
-
-    pushItem(items, seen, parsed.label, parsed.amount);
     if (items.length >= MAX_ITEMS) break;
   }
 
@@ -407,34 +492,55 @@ export function reconcileLineItemAmountsWithOcrText(
   const textItems = extractInvoiceLineItemsFromText(rawText);
   if (!textItems?.length) return items;
 
+  const footerGross = extractGrossTotalFromText(rawText);
+  const footerNet = extractNetSumFromText(rawText);
+  const multiPosition = items.length > 1;
+  const usedTextIndexes = new Set<number>();
+
   const corrected = items.map((item) => {
     let bestMatch: InvoiceLineItem | null = null;
     let bestScore = 0;
+    let bestIndex = -1;
 
-    for (const textItem of textItems) {
+    for (const [index, textItem] of textItems.entries()) {
+      if (usedTextIndexes.has(index)) continue;
       const score = labelMatchScoreForReconcile(item.label, textItem.label);
       if (score > bestScore) {
         bestScore = score;
         bestMatch = textItem;
+        bestIndex = index;
       }
     }
 
-    if (!bestMatch || bestScore < 35) return item;
+    if (!bestMatch || bestScore < 35 || bestIndex < 0) return item;
 
     const textAmount = bestMatch.amount;
     if (Math.abs(textAmount - item.amount) < 0.011) return item;
 
+    if (
+      !isPlausiblePositionLineAmount(textAmount, {
+        footerGross,
+        footerNet,
+        multiPosition,
+      })
+    ) {
+      return item;
+    }
+
     if (bestScore >= 60) {
+      usedTextIndexes.add(bestIndex);
       return { ...item, amount: textAmount };
     }
 
     if (textAmount > item.amount + 0.01) {
       if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
+        usedTextIndexes.add(bestIndex);
         return { ...item, amount: textAmount };
       }
     }
 
     if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
+      usedTextIndexes.add(bestIndex);
       return { ...item, amount: textAmount };
     }
 

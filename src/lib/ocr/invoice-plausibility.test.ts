@@ -48,6 +48,41 @@ describe("invoice-plausibility", () => {
     expect(sum).toBeCloseTo(TM_MOTORSPORT_NET_SUM, 2);
   });
 
+  it("rejects glued OCR rows that leak Gesamtbetrag into line items", () => {
+    const gluedOcr = `
+Pos Bezeichnung Menge E-Preis Ges. Preis St.
+1 Fehlersuche Dynamic Drive System 1,63 92,00 149,96 A 2 Änderungsabnahme gemäß §19 1,00 245,29 245,29 0 Gesamtbetrag 423,74
+Nettosumme 395,25
+MwSt (19 % (A)) 28,49
+Gesamtbetrag 423,74
+`.trim();
+
+    const llmGross = [
+      { label: "Fehlersuche Dynamic Drive System", amount: 423.74 },
+      { label: "Änderungsabnahme gemäß §19 Abs. 3", amount: 423.74 },
+    ];
+
+    const reconciled = reconcileInvoicePlausibility({
+      lineItems: llmGross,
+      amount: TM_MOTORSPORT_GROSS,
+      ocrText: gluedOcr,
+    });
+
+    expect(reconciled.lineItems).toHaveLength(2);
+    expect(reconciled.lineItems!.every((item) => item.amount < 300)).toBe(true);
+
+    const withVat = ensureInvoiceVatAndGrossTotal({
+      lineItems: reconciled.lineItems,
+      amount: reconciled.amount,
+      ocrText: gluedOcr,
+    });
+
+    expect(withVat.amount).toBe(TM_MOTORSPORT_GROSS);
+    expect(
+      withVat.lineItems!.find((item) => /mwst/i.test(item.label))!.amount,
+    ).toBeCloseTo(TM_MOTORSPORT_VAT, 2);
+  });
+
   it("passes through ensureInvoiceVatAndGrossTotal after reconciliation", () => {
     const reconciled = reconcileInvoicePlausibility({
       lineItems: [...TM_MOTORSPORT_BAD_LLM_ITEMS],

@@ -159,12 +159,22 @@ export function ensureInvoiceVatAndGrossTotal(options: {
 
   const positionsOnly = stripInvoiceFooterSummaryRows(lineItems) ?? lineItems;
   const { positions, vatItems } = splitVatLineItems(positionsOnly);
-  const netSum = sumLineItems(positions);
+  let netSum = sumLineItems(positions);
   if (netSum == null || netSum <= 0) return { lineItems, amount };
 
   const footerNet = ocrText ? extractNetSumFromText(ocrText) : null;
   const footerGross = ocrText ? extractGrossTotalFromText(ocrText) : null;
   const resolvedGross = amount ?? footerGross;
+
+  if (
+    resolvedGross != null &&
+    netSum > resolvedGross + 0.05 &&
+    footerNet != null
+  ) {
+    netSum = footerNet;
+  } else if (resolvedGross != null && netSum > resolvedGross + 0.05 && positions.length > 1) {
+    return { lineItems: positionsOnly, amount: roundMoney(resolvedGross) };
+  }
 
   if (
     resolvedGross != null &&

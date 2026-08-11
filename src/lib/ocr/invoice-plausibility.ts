@@ -8,6 +8,7 @@ import {
 } from "@/lib/ocr/invoice-footer-totals";
 import {
   extractInvoiceLineItemsFromText,
+  isPlausiblePositionLineAmount,
   preferInvoiceLineItems,
   reconcileLineItemAmountsWithOcrText,
 } from "@/lib/ocr/invoice-line-items-from-text";
@@ -29,7 +30,8 @@ export type InvoicePlausibilityIssue =
   | "gross_total_mismatch"
   | "vat_math_mismatch"
   | "implausible_vat_line"
-  | "footer_row_as_position";
+  | "footer_row_as_position"
+  | "position_uses_gross_total";
 
 export type InvoicePlausibilitySnapshot = {
   positionNetSum: number | null;
@@ -55,6 +57,8 @@ export type ReconcileInvoicePlausibilityOptions = {
   ocrHeuristicItems?: InvoiceLineItem[] | null;
   enableRealign?: boolean;
   enableOcrReconcile?: boolean;
+  /** Brutto reference when OCR footer is unavailable (wizard overview scan). */
+  expectedGross?: number | null;
 };
 
 function roundMoney(value: number): number {
@@ -72,6 +76,15 @@ function splitPositionsAndVat(items: InvoiceLineItem[]): {
     else positions.push(item);
   }
   return { positions, vatItems };
+}
+
+function positionsUseDocumentGross(
+  items: InvoiceLineItem[],
+  gross: number | null,
+): boolean {
+  if (!items.length || gross == null) return false;
+  if (items.length === 1) return false;
+  return items.every((item) => Math.abs(item.amount - gross) <= 0.05);
 }
 
 function positionsMatchFooterNet(
@@ -181,6 +194,25 @@ export function checkInvoicePlausibility(options: {
     }
   }
 
+  const positionRows = splitPositionsAndVat(cleaned).positions;
+  if (
+    snapshot.footerGross != null &&
+    positionRows.length > 1 &&
+    positionRows.some(
+      (item) => Math.abs(item.amount - snapshot.footerGross!) <= 0.05,
+    )
+  ) {
+    issues.push("position_uses_gross_total");
+  }
+
+  if (
+    snapshot.footerGross != null &&
+    snapshot.positionNetSum != null &&
+    snapshot.positionNetSum > snapshot.footerGross + GROSS_TOTAL_TOLERANCE_EUR
+  ) {
+    issues.push("positions_net_mismatch");
+  }
+
   if (
     snapshot.footerGross != null &&
     snapshot.resolvedGross != null &&
@@ -222,15 +254,44 @@ export function checkInvoicePlausibility(options: {
   };
 }
 
+function filterPlausibleOcrHeuristicItems(
+  items: InvoiceLineItem[] | null,
+  footerGross: number | null,
+  footerNet: number | null,
+): InvoiceLineItem[] | null {
+  if (!items?.length) return items;
+  const multiPosition = items.length > 1;
+  const filtered = items.filter(
+    (item) =>
+      !isInvoiceFooterSummaryLabel(item.label) &&
+      isPlausiblePositionLineAmount(item.amount, {
+        footerGross,
+        footerNet,
+        multiPosition,
+      }),
+  );
+  return filtered.length > 0 ? filtered : null;
+}
+
 function resolveHeuristicItems(
   ocrText: string,
   provided: InvoiceLineItem[] | null | undefined,
 ): InvoiceLineItem[] | null {
+  const footerGross = ocrText ? extractGrossTotalFromText(ocrText) : null;
+  const footerNet = ocrText ? extractNetSumFromText(ocrText) : null;
   if (provided?.length) {
-    return stripNonPositionInvoiceRows(provided);
+    return filterPlausibleOcrHeuristicItems(
+      stripNonPositionInvoiceRows(provided),
+      footerGross,
+      footerNet,
+    );
   }
   if (!ocrText.trim()) return null;
-  return stripNonPositionInvoiceRows(extractInvoiceLineItemsFromText(ocrText));
+  return filterPlausibleOcrHeuristicItems(
+    stripNonPositionInvoiceRows(extractInvoiceLineItemsFromText(ocrText)),
+    footerGross,
+    footerNet,
+  );
 }
 
 function pickBestPositionSet(options: {
@@ -334,10 +395,15 @@ export function reconcileInvoicePlausibility(
     ocrHeuristicItems,
     enableRealign = true,
     enableOcrReconcile = true,
+    expectedGross = null,
   } = options;
 
   const footerNet = ocrText ? extractNetSumFromText(ocrText) : null;
-  const footerGross = ocrText ? extractGrossTotalFromText(ocrText) : null;
+  const footerGross =
+    (ocrText ? extractGrossTotalFromText(ocrText) : null) ??
+    expectedGross ??
+    amount ??
+    null;
   const ocrHeuristic = resolveHeuristicItems(ocrText, ocrHeuristicItems);
 
   let resolvedItems = pickBestPositionSet({
@@ -348,6 +414,26 @@ export function reconcileInvoicePlausibility(
     enableOcrReconcile,
     enableRealign,
   });
+
+  if (
+    resolvedItems?.length &&
+    positionsUseDocumentGross(resolvedItems, footerGross) &&
+    ocrHeuristic?.length
+  ) {
+    resolvedItems = ocrHeuristic;
+  }
+
+  if (
+    resolvedItems?.length &&
+    positionsUseDocumentGross(resolvedItems, footerGross) &&
+    enableOcrReconcile &&
+    ocrText.trim()
+  ) {
+    resolvedItems =
+      stripNonPositionInvoiceRows(
+        reconcileLineItemAmountsWithOcrText(resolvedItems, ocrText),
+      ) ?? resolvedItems;
+  }
 
   if (!resolvedItems?.length && ocrHeuristic?.length) {
     resolvedItems = ocrHeuristic;

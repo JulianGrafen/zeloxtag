@@ -181,6 +181,7 @@ export function mergeInvoiceWizardExtractions(
   const plausibility = reconcileInvoicePlausibility({
     lineItems,
     amount,
+    expectedGross: overview?.amount ?? lineItemsBlock.amount,
   });
 
   const withVat = ensureInvoiceVatAndGrossTotal({
