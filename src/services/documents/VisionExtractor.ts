@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Vision-LLM ABE extraction — provider interface keeps the UI decoupled
  * from OpenAI / Azure Foundry / future Anthropic adapters.

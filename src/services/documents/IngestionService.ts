@@ -1,7 +1,4 @@
-/**
- * Universal ABE document ingestion — normalizes PDFs and images into
- * compressed JPEG pages ready for vision-LLM extraction.
- */
+import "server-only";
 
 import sharp from "sharp";
 
