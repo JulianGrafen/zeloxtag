@@ -17,6 +17,9 @@ export function isDemoActiveTag(tagUuid: string): boolean {
   return tagUuid.trim() === MOCK_TAG_UUIDS.active;
 }
 
+/** Display name in the public demo dashboard header. */
+export const DEMO_SHOWCASE_OWNER_NAME = "Julian";
+
 /** Side-profile cutout for the public E36 showcase — no UI photo frame. */
 export const DEMO_SHOWCASE_VEHICLE_IMAGE = vehicleCatalogImageUrl(
   "bmw-e36.png",
@@ -30,7 +33,7 @@ export function demoShowcaseAccess(): VehicleAccess {
     canWriteInvoices: false,
     canReadHistory: true,
     canManageContributors: false,
-    ownerName: "Demo",
+    ownerName: DEMO_SHOWCASE_OWNER_NAME,
     sessionEmail: null,
     sessionUserId: null,
   };

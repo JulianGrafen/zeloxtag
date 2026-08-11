@@ -68,7 +68,8 @@ export interface VehicleDashboardData {
   vehicleImagePreviewFallback?: string;
   vehicleImageAlt?: string;
   /** Show catalog cutout PNG without the rounded header frame (demo showcase). */
-  vehicleImageFrameless?: boolean;
+    /** Demo showcase: rounded photo frame in the header. */
+    vehicleImageFrameless?: boolean;
   /** Accent label under the greeting, e.g. "QR Tag · Active" */
   statusLabel?: string;
   /** ISO-Datum des letzten Ölwechsels */

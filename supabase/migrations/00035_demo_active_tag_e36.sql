@@ -9,13 +9,15 @@ SET
     'engine', '2.8 M52',
     'powerPs', 193,
     'powerKw', 142,
+    'torqueNm', 298,
     'displacementCc', 2793,
     'fuelType', 'Benzin',
     'transmission', '5-Gang manuell',
     'drivetrain', 'Heckantrieb',
     'color', 'Arctissilber Metallic',
     'bodyType', 'Coupé',
-    'notes', 'E36 · Widebody · GT-Flügel · KW V1 · BBS LM'
+    'notes', 'E36 · Widebody · GT-Flügel · KW V1 · BBS LM',
+    'dynoChartUrl', '/demo/dyno-e36.svg'
   ),
   updated_at = now()
 FROM public.tags t

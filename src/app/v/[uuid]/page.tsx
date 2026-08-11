@@ -18,6 +18,7 @@ import {
   resolvePublicVehicleEntry,
 } from "@/lib/vehicles/get-public-vehicle";
 import { buildPublicShowcasePayload, vehicleSupportsPublicShowcase } from "@/lib/vehicles/public-showcase-data";
+import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { toOwnerClientTagScanResult } from "@/lib/tags/public-tag-dto";
 import type { Vehicle } from "@/types/database";
@@ -163,7 +164,7 @@ export default async function TagScanPage({
               vehicle={vehicle}
               documents={result.documents}
               tagUuid={tag.uuid}
-              ownerName="Demo"
+              ownerName={DEMO_SHOWCASE_OWNER_NAME}
               canScan={false}
               demoMode
             />

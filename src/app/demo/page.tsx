@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
+import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import {
   getMockTagScan,
   MOCK_TAG_UUIDS,
@@ -54,7 +55,7 @@ export default function DemoPage() {
             vehicle={result.vehicle}
             documents={result.documents}
             tagUuid={result.tag.uuid}
-            ownerName="Demo"
+            ownerName={DEMO_SHOWCASE_OWNER_NAME}
             canScan={false}
             demoMode
           />

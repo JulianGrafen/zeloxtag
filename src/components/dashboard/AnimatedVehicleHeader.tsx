@@ -16,7 +16,7 @@ type AnimatedVehicleHeaderProps = {
   fallbackImageUrl?: string | null;
   /** When true, never swap to generic SVG on load errors (owner upload). */
   lockOwnerSilhouette?: boolean;
-  /** Render side-profile PNG without the rounded 4:3 photo frame. */
+  /** Demo showcase: full photo in a rounded frame (catalog cutouts use the 4:3 frame path). */
   frameless?: boolean;
   alt: string;
   className?: string;
@@ -113,28 +113,35 @@ export function AnimatedVehicleHeader({
   }
 
   if (frameless) {
-    const cutout = (
+    const showcasePhoto = (
       <motion.div
-        className="relative w-[7.5rem] shrink-0 sm:w-[9.5rem]"
+        className="relative aspect-[4/3] w-[9rem] shrink-0 sm:w-[11rem]"
         initial={{ opacity: 0, scale: 0.96, y: 6 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={ENTRANCE}
       >
-        {activeSrc && !showPlaceholder ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={activeSrc}
-            src={activeSrc}
-            alt={alt}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-            className="h-auto w-full object-contain drop-shadow-[0_8px_18px_rgba(15,23,42,0.18)]"
+        <div className="absolute inset-0 overflow-hidden rounded-[1.12rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] shadow-[var(--vd-shadow-sm)] ring-1 ring-inset ring-white/45">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-2.5 top-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/75 to-transparent"
           />
-        ) : (
-          <div className="flex aspect-[8/3] items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[0.62rem] text-[color:var(--vd-muted)]">
-            Kein Foto
-          </div>
-        )}
+
+          {activeSrc && !showPlaceholder ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={activeSrc}
+              src={activeSrc}
+              alt={alt}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              className="h-full w-full object-cover object-center"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-[color:var(--vd-surface-elevated)] text-[0.62rem] text-[color:var(--vd-muted)]">
+              Kein Foto
+            </div>
+          )}
+        </div>
       </motion.div>
     );
 
@@ -150,10 +157,10 @@ export function AnimatedVehicleHeader({
             title={editLabel}
             className="rounded-xl outline-none transition active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-neutral-900/25"
           >
-            {cutout}
+            {showcasePhoto}
           </button>
         ) : (
-          cutout
+          showcasePhoto
         )}
       </div>
     );

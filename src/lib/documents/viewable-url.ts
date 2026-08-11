@@ -10,7 +10,7 @@ export function documentMediaKind(fileUrl: string): DocumentMediaKind {
   if (lower.endsWith(".pdf") || lower.includes("application/pdf")) {
     return "pdf";
   }
-  if (/\.(jpe?g|png|webp|gif|heic|heif)$/.test(lower)) {
+  if (/\.(jpe?g|png|webp|gif|heic|heif|svg)$/.test(lower)) {
     return "image";
   }
   return "unknown";

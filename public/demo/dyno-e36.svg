@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" role="img" aria-label="Leistungsdiagramm BMW 328i E36">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#141820"/>
+      <stop offset="100%" stop-color="#0a0c10"/>
+    </linearGradient>
+    <linearGradient id="gridFade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="820" height="520" fill="url(#bg)"/>
+  <rect x="72" y="48" width="716" height="392" fill="#10141c" stroke="#2a3140" stroke-width="1" rx="8"/>
+
+  <!-- grid -->
+  <g stroke="#2a3140" stroke-width="1">
+    <line x1="72" y1="440" x2="788" y2="440"/>
+    <line x1="72" y1="392" x2="788" y2="392"/>
+    <line x1="72" y1="344" x2="788" y2="344"/>
+    <line x1="72" y1="296" x2="788" y2="296"/>
+    <line x1="72" y1="248" x2="788" y2="248"/>
+    <line x1="72" y1="200" x2="788" y2="200"/>
+    <line x1="72" y1="152" x2="788" y2="152"/>
+    <line x1="72" y1="104" x2="788" y2="104"/>
+    <line x1="72" y1="56" x2="788" y2="56"/>
+    <line x1="152" y1="48" x2="152" y2="440"/>
+    <line x1="272" y1="48" x2="272" y2="440"/>
+    <line x1="392" y1="48" x2="392" y2="440"/>
+    <line x1="512" y1="48" x2="512" y2="440"/>
+    <line x1="632" y1="48" x2="632" y2="440"/>
+    <line x1="752" y1="48" x2="752" y2="440"/>
+  </g>
+
+  <!-- torque (Nm)  blue -->
+  <path
+    fill="none"
+    stroke="#3b82f6"
+    stroke-width="3"
+    stroke-linecap="round"
+    d="M 92 392 C 140 360, 180 300, 220 240 C 260 190, 300 170, 360 158 C 420 148, 480 150, 540 162 C 600 176, 660 198, 720 230 L 752 248"
+  />
+
+  <!-- power (PS)  red -->
+  <path
+    fill="none"
+    stroke="#ef4444"
+    stroke-width="3"
+    stroke-linecap="round"
+    d="M 92 408 C 150 370, 210 310, 270 250 C 330 200, 390 175, 450 162 C 510 152, 570 155, 630 168 C 690 185, 730 205, 768 225"
+  />
+
+  <!-- peak markers -->
+  <circle cx="568" cy="158" r="5" fill="#3b82f6"/>
+  <circle cx="652" cy="162" r="5" fill="#ef4444"/>
+
+  <!-- labels -->
+  <text x="410" y="28" fill="#e5e7eb" font-family="system-ui, sans-serif" font-size="15" font-weight="600" text-anchor="middle">
+    BMW 328i Coupé · E36 · M52 · Prüfstand
+  </text>
+  <text x="410" y="472" fill="#9ca3af" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle">
+    Drehzahl [U/min]
+  </text>
+  <text x="24" y="250" fill="#9ca3af" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle" transform="rotate(-90 24 250)">
+    Leistung / Drehmoment
+  </text>
+
+  <text x="152" y="458" fill="#6b7280" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">1500</text>
+  <text x="272" y="458" fill="#6b7280" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">2500</text>
+  <text x="392" y="458" fill="#6b7280" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">3500</text>
+  <text x="512" y="458" fill="#6b7280" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">4500</text>
+  <text x="632" y="458" fill="#6b7280" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">5500</text>
+  <text x="752" y="458" fill="#6b7280" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">6500</text>
+
+  <!-- legend -->
+  <rect x="560" y="64" width="210" height="78" rx="8" fill="#0f131a" stroke="#2a3140"/>
+  <line x1="576" y1="88" x2="604" y2="88" stroke="#ef4444" stroke-width="3"/>
+  <text x="614" y="92" fill="#e5e7eb" font-family="system-ui, sans-serif" font-size="12">212 PS @ 5800 U/min</text>
+  <line x1="576" y1="112" x2="604" y2="112" stroke="#3b82f6" stroke-width="3"/>
+  <text x="614" y="116" fill="#e5e7eb" font-family="system-ui, sans-serif" font-size="12">298 Nm @ 4200 U/min</text>
+  <text x="576" y="136" fill="#9ca3af" font-family="system-ui, sans-serif" font-size="10">Remus · KW · 98 Oktan · 3. Lauf</text>
+
+  <text x="72" y="500" fill="#6b7280" font-family="system-ui, sans-serif" font-size="10">ZeloxTag Demo · fiktives Leistungsdiagramm</text>
+</svg>

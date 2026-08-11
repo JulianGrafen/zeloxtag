@@ -227,6 +227,7 @@ function filenameFromPath(url: string): string {
 
 function guessContentType(url: string): string {
   const lower = url.toLowerCase().split("?")[0] ?? "";
+  if (lower.endsWith(".svg")) return "image/svg+xml";
   if (lower.endsWith(".pdf")) return "application/pdf";
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".webp")) return "image/webp";

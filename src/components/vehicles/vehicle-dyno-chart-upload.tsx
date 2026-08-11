@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "reac
 import { ExternalLink, FileUp, Loader2 } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
-import { openDocumentOriginal } from "@/lib/documents/viewable-url";
+import {
+  documentMediaKind,
+  openDocumentOriginal,
+  inlineDocumentProxyUrl,
+} from "@/lib/documents/viewable-url";
 
 export type VehicleDynoChartUploadProps = {
   vehicleId: string;
@@ -68,6 +72,8 @@ export function VehicleDynoChartUpload({
 
   const busy = state === "uploading";
   const chartUrl = localUrl ?? dynoChartUrl;
+  const chartIsImage = chartUrl ? documentMediaKind(chartUrl) === "image" : false;
+  const chartPreviewSrc = chartUrl ? inlineDocumentProxyUrl(chartUrl) : null;
 
   const processFile = useCallback(
     async (file: File) => {
@@ -132,11 +138,21 @@ export function VehicleDynoChartUpload({
 
       {chartUrl ? (
         <div className="mt-4 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-4 py-4">
-          <p className="text-[0.85rem] font-medium text-[color:var(--vd-text)]">
+          {chartIsImage && chartPreviewSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={chartPreviewSrc}
+              alt="Leistungsdiagramm"
+              className="w-full rounded-xl border border-[color:var(--vd-border)] bg-neutral-950 object-contain"
+            />
+          ) : null}
+          <p className={`text-[0.85rem] font-medium text-[color:var(--vd-text)] ${chartIsImage ? "mt-3" : ""}`}>
             Leistungsdiagramm hinterlegt
           </p>
           <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
-            PDF wird inline im Browser geöffnet.
+            {chartIsImage
+              ? "Vorschau — Original im Browser öffnen."
+              : "PDF wird inline im Browser geöffnet."}
           </p>
           <PressableButton
             type="button"
