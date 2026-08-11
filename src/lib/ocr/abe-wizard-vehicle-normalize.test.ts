@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  correctFahrzeugtypDigitConfusions,
+  dropIncompleteVehicleTableRows,
+  expandMultiFahrzeugtypRows,
+  filterKnownAuflagenCodes,
   looksLikeAuflagenCode,
   looksLikeFahrzeugtypCode,
+  mergeAbeVehicleMatchRows,
   normalizeAbeVehicleMatches,
   parseAbeVehicleRows,
   parseAuflagenCodes,
@@ -78,10 +83,10 @@ describe("abe-wizard-vehicle-normalize", () => {
   });
 
   it("parses Auflagen codes only", () => {
-    expect(parseAuflagenCodes(["744 A77 20B Allradantrieb"]).codes).toEqual([
+    expect(parseAuflagenCodes(["744 K41 A01 Allradantrieb"]).codes).toEqual([
       "744",
-      "A77",
-      "20B",
+      "K41",
+      "A01",
     ]);
     expect(parseAuflagenCodes(["744 A77 Allradantrieb"]).driveType).toBe(
       "Allradantrieb",
@@ -201,5 +206,119 @@ describe("abe-wizard-vehicle-normalize", () => {
 
     expect(parsed[0]?.typeApproval).toBe("e1*2007/46*0508*0508*0000*00");
     expect(parsed[0]?.tireSizes).toEqual(["225/45 R17", "245/40 R18"]);
+  });
+
+  it("drops unknown OCR junk codes while keeping numeric Auflagen", () => {
+    expect(filterKnownAuflagenCodes(["744", "K7C", "K41", "A01"])).toEqual([
+      "744",
+      "K41",
+      "A01",
+    ]);
+  });
+
+  it("drops vehicle table rows without Fahrzeugtyp or EG-BE", () => {
+    const rows = dropIncompleteVehicleTableRows([
+      {
+        verkaufsbezeichnung: "BMW 1er-Reihe",
+        fahrzeugtyp: null,
+        typeApproval: null,
+        driveType: null,
+        tireSizes: ["215/45R17"],
+        auflagenCodes: ["A01"],
+      },
+      {
+        verkaufsbezeichnung: "BMW 3er-Compact",
+        fahrzeugtyp: "346K",
+        typeApproval: null,
+        driveType: null,
+        tireSizes: ["215/45R17"],
+        auflagenCodes: ["A01"],
+      },
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.fahrzeugtyp).toBe("346K");
+  });
+
+  it("corrects common 3↔8 OCR swaps in Fahrzeugtyp using peer rows", () => {
+    const peers = new Set(["346K", "346L", "3/CG"]);
+    expect(
+      correctFahrzeugtypDigitConfusions("846K", peers, "BMW 3er-Compact 346K"),
+    ).toBe("346K");
+    expect(
+      correctFahrzeugtypDigitConfusions("346K", peers, "BMW 3er-Compact 346K"),
+    ).toBe("346K");
+  });
+
+  it("splits comma-separated Fahrzeugtyp codes into separate rows", () => {
+    const expanded = expandMultiFahrzeugtypRows([
+      {
+        verkaufsbezeichnung: "BMW 3er-Reihe",
+        fahrzeugtyp: "346C, 346R",
+        typeApproval: "e1*98/14*0112*",
+        driveType: null,
+        tireSizes: ["215/45R17"],
+        auflagenCodes: ["A01"],
+      },
+    ]);
+
+    expect(expanded.map((row) => row.fahrzeugtyp)).toEqual(["346C", "346R"]);
+  });
+
+  it("parses combined Fahrzeugtyp lines from raw LLM output", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        handelsbezeichnung: "BMW 3er-Reihe",
+        fahrzeugtyp: "346C, 346R",
+        technischeBezeichnung: "e1*98/14*0112*",
+        reifen: ["215/45R17"],
+        auflagenCodes: ["A01"],
+      },
+      {
+        handelsbezeichnung: "BMW 3er-Reihe",
+        fahrzeugtyp: "846L",
+        technischeBezeichnung: "e1*97/27*0097*",
+        reifen: ["225/45R17"],
+        auflagenCodes: ["A02"],
+      },
+    ]);
+
+    expect(parsed.map((row) => row.fahrzeugtyp)).toEqual(
+      expect.arrayContaining(["346C", "346R", "346L"]),
+    );
+  });
+
+  it("merges vehicle rows from primary and retry passes", () => {
+    const merged = mergeAbeVehicleMatchRows(
+      [
+        {
+          verkaufsbezeichnung: "BMW 3er-Compact",
+          fahrzeugtyp: "346K",
+          typeApproval: "e1*98/14*0167*",
+          driveType: null,
+          tireSizes: ["215/45R17"],
+          auflagenCodes: ["A01"],
+        },
+      ],
+      [
+        {
+          verkaufsbezeichnung: "BMW 3er-Reihe",
+          fahrzeugtyp: "3/CG",
+          typeApproval: "e1*93/81*0017*",
+          driveType: null,
+          tireSizes: ["205/50R17"],
+          auflagenCodes: ["A02"],
+        },
+        {
+          verkaufsbezeichnung: "BMW 3er-Reihe",
+          fahrzeugtyp: "346L",
+          typeApproval: "e1*97/27*0097*",
+          driveType: null,
+          tireSizes: ["225/45R17"],
+          auflagenCodes: ["A03"],
+        },
+      ],
+    );
+
+    expect(merged).toHaveLength(3);
   });
 });

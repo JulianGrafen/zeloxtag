@@ -3,15 +3,18 @@ import { describe, expect, it } from "vitest";
 import {
   ABE_KBA_48571_EXPECTED_STAMMDATEN,
   ABE_KBA_48571_LLM_VEHICLE_ROWS,
+  ABE_KBA_48571_NOISY_LLM_ROWS,
 } from "@/lib/ocr/__fixtures__/abe-kba-48571-interpneu";
 import {
   looksLikeFahrzeugtypCode,
   parseAbeVehicleRows,
 } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import {
+  coalesceAbeHolderAndManufacturer,
   fillAbeDataHunterReport,
   isAbeCoreHuntComplete,
   missingAbeCoreHuntFields,
+  sanitizeAbePartyName,
 } from "@/lib/validations/abeDataHunterSchemas";
 
 describe("ABE KBA 48571 Interpneu / TAM3325-8017 fixture", () => {
@@ -25,7 +28,7 @@ describe("ABE KBA 48571 Interpneu / TAM3325-8017 fixture", () => {
   it("parses Handelsbezeichnung rows from simulated hunt-all output", () => {
     const parsed = parseAbeVehicleRows([...ABE_KBA_48571_LLM_VEHICLE_ROWS]);
 
-    expect(parsed.length).toBeGreaterThanOrEqual(3);
+    expect(parsed.length).toBeGreaterThanOrEqual(4);
     expect(parsed.some((row) => /3er-Compact/i.test(row.verkaufsbezeichnung))).toBe(
       true,
     );
@@ -40,6 +43,9 @@ describe("ABE KBA 48571 Interpneu / TAM3325-8017 fixture", () => {
 
     const cgRow = parsed.find((row) => row.fahrzeugtyp === "3/CG");
     expect(cgRow?.auflagenCodes).toContain("L02");
+
+    expect(parsed.some((row) => row.fahrzeugtyp === "346C")).toBe(true);
+    expect(parsed.some((row) => row.fahrzeugtyp === "346R")).toBe(true);
   });
 
   it("completes core hunt after merging stammdaten + vehicle table", () => {
@@ -74,5 +80,41 @@ describe("ABE KBA 48571 Interpneu / TAM3325-8017 fixture", () => {
     );
     expect(missingAbeCoreHuntFields(merged)).not.toContain("verkaufsbezeichnung");
     expect(isAbeCoreHuntComplete(merged)).toBe(true);
+  });
+
+  it("fixes common Handelgesellschaft OCR typo in party names", () => {
+    expect(
+      sanitizeAbePartyName("Interpneu Handelgesellschaft mbH"),
+    ).toBe("Interpneu Handelsgesellschaft mbH");
+    expect(
+      coalesceAbeHolderAndManufacturer({
+        kbaNumber: null,
+        abeNumber: null,
+        abeHolder: "Interpneu Handelgesellschaft mbH",
+        manufacturer: null,
+        partDesignation: null,
+        markingText: null,
+        vehicleMatches: [],
+        auflagenCodes: [],
+        auflagenNotes: null,
+      }).manufacturer,
+    ).toBe("Interpneu Handelsgesellschaft mbH");
+  });
+
+  it("filters noisy hunt-all rows without Fahrzeugtyp and phantom Kürzel", () => {
+    const parsed = parseAbeVehicleRows([...ABE_KBA_48571_NOISY_LLM_ROWS]);
+
+    expect(parsed.every((row) => row.fahrzeugtyp?.trim())).toBe(true);
+    expect(parsed.some((row) => row.fahrzeugtyp === "346K")).toBe(true);
+    expect(parsed.some((row) => row.fahrzeugtyp === "3/CG")).toBe(true);
+    expect(parsed.some((row) => /1er-Reihe/i.test(row.verkaufsbezeichnung))).toBe(
+      false,
+    );
+
+    const compact = parsed.find((row) => row.fahrzeugtyp === "346K");
+    expect(compact?.auflagenCodes).toEqual(
+      expect.arrayContaining(["K2B", "K41", "A01", "A02", "A04", "S01"]),
+    );
+    expect(compact?.auflagenCodes).not.toContain("K7C");
   });
 });

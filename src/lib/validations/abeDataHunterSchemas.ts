@@ -474,16 +474,34 @@ function withInferredKba(report: AbeDataHunterReport): AbeDataHunterReport {
 }
 
 /** Mirror holder ↔ manufacturer when ABE labels them as one company. */
+export function sanitizeAbePartyName(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return trimmed
+    .replace(/\bHandelgesellschaft\b/gi, "Handelsgesellschaft")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export function coalesceAbeHolderAndManufacturer(
   report: AbeDataHunterReport,
 ): AbeDataHunterReport {
-  const holder = report.abeHolder?.trim();
-  const manufacturer = report.manufacturer?.trim();
+  const holder = sanitizeAbePartyName(report.abeHolder);
+  const manufacturer = sanitizeAbePartyName(report.manufacturer);
   if (holder && !manufacturer) {
-    return { ...report, manufacturer: holder };
+    return { ...report, abeHolder: holder, manufacturer: holder };
   }
   if (manufacturer && !holder) {
-    return { ...report, abeHolder: manufacturer };
+    return { ...report, abeHolder: manufacturer, manufacturer };
+  }
+  if (holder || manufacturer) {
+    return {
+      ...report,
+      abeHolder: holder,
+      manufacturer: manufacturer,
+    };
   }
   return report;
 }

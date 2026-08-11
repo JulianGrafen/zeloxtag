@@ -7,7 +7,7 @@ import {
 } from "@/lib/ocr/llm-document-content";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
-import { parseAbeVehicleRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
+import { parseAbeVehicleRows, mergeAbeVehicleMatchRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import { resolveAbeMarkingText } from "@/lib/ocr/abe-marking-from-text";
 import {
   normalizeAbeKbaDigits,
@@ -221,41 +221,57 @@ export class AbeDataHunterExtractionService {
     const empty: AbeHuntVehicleExtraction = { vehicleMatches: [] };
 
     try {
-      const raw = await this.runSnippetStep(
-        input,
-        [
-          IMAGE_ONLY_GUARD,
-          "Extract German ABE / Gutachten Verwendungsbereich table rows (allowed vehicles).",
-          "Verkaufsbezeichnung / Handelsbezeichnung is the vehicle model line (e.g. BMW 3er-Reihe, BMW 3er-Compact, 5ER REIHE) — not Hersteller BMW in the table header, not Fahrzeugtyp codes.",
-          "Copy the Handelsbezeichnung onto every row of that vehicle block.",
-          "Column mapping:",
-          "- fahrzeugtyp: Fahrzeugtyp / type code cell only (346L, 3/CG, 346K, 5L).",
-          "- typeApproval: ABE/EWG-Nr / Betriebserlaubnis / EG-BE cell verbatim.",
-          "- driveType: Allradantrieb / Heckantrieb / Frontantrieb if present, else null.",
-          '- tireSizes: Reifen column (e.g. "225/45R17") — one entry per size; empty array when column missing.',
-          "- auflagenCodes: ALL short codes from reifenbezogene Auflagen AND Auflagen und Hinweise columns for this row.",
-          "Do not merge rows. Do not skip visible rows. Extract every vehicle block visible on the photo.",
-        ],
-        [
-          "Extract every visible Verwendungsbereich row.",
-          "Typical Gutachten columns: Handelsbezeichnung | Fahrzeugtyp | ABE/EWG-Nr | kW | Reifen | Auflagen.",
-        ],
-        ABE_HUNT_VEHICLE_JSON_SCHEMA,
-        "hunt-vehicle",
-        5_000,
-      );
+      const extractRows = async (isRetry: boolean) => {
+        const raw = await this.runSnippetStep(
+          input,
+          [
+            IMAGE_ONLY_GUARD,
+            "Extract German ABE / Gutachten Verwendungsbereich table rows (allowed vehicles).",
+            "Verkaufsbezeichnung / Handelsbezeichnung is the vehicle model line (e.g. BMW 3er-Reihe, BMW 3er-Compact, 5ER REIHE) — not Hersteller BMW in the table header, not Fahrzeugtyp codes.",
+            "Copy the Handelsbezeichnung onto every row of that vehicle block.",
+            "Column mapping:",
+            "- fahrzeugtyp: Fahrzeugtyp / type code cell only (346L, 3/CG, 346K, 5L).",
+            "- typeApproval: ABE/EWG-Nr / Betriebserlaubnis / EG-BE cell verbatim.",
+            "- driveType: Allradantrieb / Heckantrieb / Frontantrieb if present, else null.",
+            '- tireSizes: Reifen column (e.g. "225/45R17") — one entry per size; empty array when column missing.',
+            "- auflagenCodes: ALL short codes from reifenbezogene Auflagen AND Auflagen und Hinweise columns for this row.",
+            "Read digits 3 and 8 carefully in Fahrzeugtyp codes — common OCR confusion (346K not 846K).",
+            'When one table line lists multiple Fahrzeugtyp codes separated by comma (e.g. "346C, 346R"), emit ONE vehicleMatches row PER code with the same Handelsbezeichnung and EG-BE.',
+            "Do not merge rows. Do not skip visible rows. Extract every vehicle block visible on the photo.",
+            ...(isRetry
+              ? [
+                  "The table shows MULTIPLE Fahrzeugtyp rows under the same Handelsbezeichnung — return EVERY visible row, not just the first.",
+                  "Typical Gutachten layout: BMW 3er-Compact 346K … then BMW 3er-Reihe 3/CG … then 346L … — each is a separate row.",
+                ]
+              : []),
+          ],
+          [
+            "Extract every visible Verwendungsbereich row.",
+            "Typical Gutachten columns: Handelsbezeichnung | Fahrzeugtyp | ABE/EWG-Nr | kW | Reifen | Auflagen.",
+          ],
+          ABE_HUNT_VEHICLE_JSON_SCHEMA,
+          isRetry ? "hunt-vehicle-retry" : "hunt-vehicle",
+          6_000,
+        );
 
-      const rawRows =
-        typeof raw === "object" &&
-        raw &&
-        "vehicleMatches" in raw &&
-        Array.isArray((raw as { vehicleMatches: unknown }).vehicleMatches)
+        return typeof raw === "object" &&
+          raw &&
+          "vehicleMatches" in raw &&
+          Array.isArray((raw as { vehicleMatches: unknown }).vehicleMatches)
           ? (raw as { vehicleMatches: unknown[] }).vehicleMatches
           : [];
-
-      const extraction: AbeHuntVehicleExtraction = {
-        vehicleMatches: parseAbeVehicleRows(rawRows),
       };
+
+      const primaryRows = await extractRows(false);
+      let vehicleMatches = parseAbeVehicleRows(primaryRows);
+
+      if (vehicleMatches.length <= 1) {
+        const retryRows = await extractRows(true);
+        const retryMatches = parseAbeVehicleRows(retryRows);
+        vehicleMatches = mergeAbeVehicleMatchRows(vehicleMatches, retryMatches);
+      }
+
+      const extraction: AbeHuntVehicleExtraction = { vehicleMatches };
 
       if (!isAbeHuntVehicleComplete(extraction)) {
         return {
@@ -379,9 +395,14 @@ export class AbeDataHunterExtractionService {
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer.",
           'Map "Auftraggeber" to abeHolder when no separate Inhaber der ABE label is shown.',
           "Verwendungsbereich / Fahrzeugtabelle: Handelsbezeichnung → verkaufsbezeichnung; Fahrzeugtyp codes (346L, 3/CG, 346K) → fahrzeugtyp; ABE/EWG-Nr / EG-BE column → typeApproval; Reifen column → tireSizes.",
+          "Read digits 3 and 8 carefully in Fahrzeugtyp codes — common OCR confusion (346K not 846K).",
           "TÜV Gutachten tables: ONE vehicleMatches row per Fahrzeugtyp code. kW-Bereich (e.g. 85-195) is NOT fahrzeugtyp. Reifen sizes (215/45R17) go ONLY in tireSizes, never in typeApproval.",
+          'When one table line lists multiple Fahrzeugtyp codes (e.g. "346C, 346R"), emit ONE row PER code — same Handelsbezeichnung and EG-BE on each.',
           "If ONLY a Verwendungsbereich table is visible, extract EVERY readable row into vehicleMatches — do not return an empty array when table lines are visible.",
           "Gutachten tables may list Handelsbezeichnung + Fahrzeugtyp + EG-BE in one block per vehicle — split into separate fields per row.",
+          "Each vehicleMatches row must include a Fahrzeugtyp code OR an EG-BE/typeApproval value — do not invent rows from isolated Reifen sizes without Fahrzeugtyp.",
+          "When Reifen sizes and a Fahrzeugtyp appear on the same table line, extract that as one row with both fields.",
+          "Each row's auflagenCodes must come ONLY from that row's own Auflagen cells on the same table line — never merge codes from other rows or page headers.",
           "Merge reifenbezogene Auflagen and general Auflagen column codes into each row's auflagenCodes.",
           "When extracting vehicleMatches: put Auflagen-Kürzel ONLY in each row's auflagenCodes — never in the top-level auflagenCodes field.",
           "Do NOT copy Auflagen from rows above or below the target vehicle — each row gets only its own Auflagen column.",
@@ -404,7 +425,7 @@ export class AbeDataHunterExtractionService {
         ],
         ABE_HUNT_ALL_JSON_SCHEMA,
         "hunt-all",
-        isPdf ? 8_000 : 6_000,
+        isPdf ? 10_000 : 8_000,
       );
 
       const record =

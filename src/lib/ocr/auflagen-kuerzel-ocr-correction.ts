@@ -21,6 +21,8 @@ const CONFUSION_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ["6", "G"],
   ["Z", "2"],
   ["2", "Z"],
+  ["3", "8"],
+  ["8", "3"],
 ];
 
 const KNOWN_KUERZEL_FROM_SEED = new Set(

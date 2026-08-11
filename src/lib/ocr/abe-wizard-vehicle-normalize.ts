@@ -2,6 +2,7 @@ import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
 import { normalizeVerkaufsbezeichnungKey } from "@/lib/ocr/abe-wizard-vehicle-match";
 import {
   correctAuflagenKuerzelList,
+  getKnownAuflagenKuerzelFromSeed,
 } from "@/lib/ocr/auflagen-kuerzel-ocr-correction";
 
 const DRIVE_TYPES = new Set([
@@ -266,6 +267,38 @@ function mergeUniqueAuflagenCodes(codes: string[]): string[] {
   return out;
 }
 
+function filterAuflagenCodesToTrustedDictionary(
+  codes: readonly string[],
+): string[] {
+  const known = getKnownAuflagenKuerzelFromSeed();
+  return mergeUniqueAuflagenCodes(
+    codes.filter((code) => {
+      const normalized = normalizeAuflagenToken(code);
+      if (!normalized) return false;
+      if (known.has(normalized)) return true;
+      // Numeric Auflagen (744, 166) are valid even when not yet in the seed DB.
+      if (/^\d{2,3}$/.test(normalized)) return true;
+      return false;
+    }),
+  );
+}
+
+/** Drop tire-only LLM rows that lack Fahrzeugtyp and EG-BE — common table bleed. */
+export function dropIncompleteVehicleTableRows(
+  matches: readonly AbeVehicleMatch[],
+): AbeVehicleMatch[] {
+  return matches.filter(
+    (row) =>
+      Boolean(row.fahrzeugtyp?.trim()) ||
+      Boolean(row.typeApproval?.trim()),
+  );
+}
+
+/** Keep dictionary-backed codes plus numeric Auflagen; drop unknown OCR junk (K7C, …). */
+export function filterKnownAuflagenCodes(codes: readonly string[]): string[] {
+  return filterAuflagenCodesToTrustedDictionary(codes);
+}
+
 /** Fahrzeugtyp codes (F40, K40, T67) must never appear as Auflagen-Kürzel. */
 export function collectFahrzeugtypCodes(
   matches: readonly AbeVehicleMatch[],
@@ -323,9 +356,11 @@ export function parseAuflagenCodes(
   }
 
   return {
-    codes: correctAuflagenKuerzelList(mergeUniqueAuflagenCodes(codes), {
-      rawContext,
-    }),
+    codes: filterAuflagenCodesToTrustedDictionary(
+      correctAuflagenKuerzelList(mergeUniqueAuflagenCodes(codes), {
+        rawContext,
+      }),
+    ),
     driveType,
   };
 }
@@ -470,6 +505,175 @@ function applyFallbackGroupLabel(matches: AbeVehicleMatch[]): AbeVehicleMatch[] 
   }));
 }
 
+function vehicleRowDedupKey(row: AbeVehicleMatch): string {
+  return [
+    row.verkaufsbezeichnung.trim().toUpperCase(),
+    (row.fahrzeugtyp ?? "").trim().toUpperCase(),
+    (row.typeApproval ?? "").trim().toUpperCase(),
+  ].join("|");
+}
+
+/** Merge vehicle rows from multiple LLM passes (primary + retry). */
+export function mergeAbeVehicleMatchRows(
+  ...lists: readonly (readonly AbeVehicleMatch[])[]
+): AbeVehicleMatch[] {
+  const byKey = new Map<string, AbeVehicleMatch>();
+
+  for (const list of lists) {
+    for (const row of list) {
+      const key = vehicleRowDedupKey(row);
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, row);
+        continue;
+      }
+
+      byKey.set(key, {
+        ...existing,
+        verkaufsbezeichnung:
+          existing.verkaufsbezeichnung.trim() ||
+          row.verkaufsbezeichnung.trim() ||
+          existing.verkaufsbezeichnung,
+        fahrzeugtyp: existing.fahrzeugtyp ?? row.fahrzeugtyp,
+        typeApproval: existing.typeApproval ?? row.typeApproval,
+        driveType: existing.driveType ?? row.driveType,
+        tireSizes: [...new Set([...existing.tireSizes, ...row.tireSizes])],
+        auflagenCodes: mergeUniqueAuflagenCodes([
+          ...existing.auflagenCodes,
+          ...row.auflagenCodes,
+        ]),
+      });
+    }
+  }
+
+  return [...byKey.values()];
+}
+
+function fahrzeugtyp38Variants(code: string): string[] {
+  const variants = new Set<string>([code]);
+  for (let index = 0; index < code.length; index += 1) {
+    const ch = code[index];
+    if (ch !== "3" && ch !== "8") continue;
+    variants.add(
+      `${code.slice(0, index)}${ch === "3" ? "8" : "3"}${code.slice(index + 1)}`,
+    );
+  }
+  return [...variants];
+}
+
+function scoreFahrzeugtyp38Variant(
+  variant: string,
+  original: string,
+  peerCodes: ReadonlySet<string>,
+  context: string,
+): number {
+  if (variant === original) return 0;
+
+  const upper = variant.toUpperCase();
+  const contextUpper = context.toUpperCase();
+  let score = 0;
+
+  if (peerCodes.has(upper)) score += 20;
+  if (contextUpper.includes(upper)) score += 15;
+
+  const peerList = [...peerCodes];
+  if (/^346[A-Z]?$/i.test(variant) && peerList.some((peer) => /^346/i.test(peer))) {
+    score += 10;
+  }
+  if (
+    /^3\//i.test(variant) &&
+    peerList.some((peer) => /^3\//i.test(peer) || /^346/i.test(peer))
+  ) {
+    score += 8;
+  }
+
+  if (looksLikeFahrzeugtypCode(variant) && !looksLikeFahrzeugtypCode(original)) {
+    score += 5;
+  }
+
+  return score;
+}
+
+/** Fix common OCR 3↔8 swaps in Fahrzeugtyp codes using peer rows and raw context. */
+export function correctFahrzeugtypDigitConfusions(
+  code: string,
+  peerCodes: ReadonlySet<string> = new Set(),
+  rawContext = "",
+): string {
+  const trimmed = code.trim();
+  if (!trimmed || !/[38]/.test(trimmed)) return trimmed;
+
+  let best = trimmed;
+  let bestScore = 0;
+
+  for (const variant of fahrzeugtyp38Variants(trimmed)) {
+    const score = scoreFahrzeugtyp38Variant(
+      variant,
+      trimmed,
+      peerCodes,
+      rawContext,
+    );
+    if (score > bestScore) {
+      bestScore = score;
+      best = variant;
+    }
+  }
+
+  return bestScore >= 10 ? best : trimmed;
+}
+
+function splitFahrzeugtypTokens(value: string): string[] {
+  return value
+    .split(/[,;]+/)
+    .map((part) => part.trim())
+    .filter((part) => looksLikeFahrzeugtypCode(part));
+}
+
+/** One table line with "346C, 346R" becomes two vehicle rows. */
+export function expandMultiFahrzeugtypRows(
+  matches: readonly AbeVehicleMatch[],
+): AbeVehicleMatch[] {
+  const out: AbeVehicleMatch[] = [];
+
+  for (const match of matches) {
+    const rawTyp = match.fahrzeugtyp?.trim();
+    if (!rawTyp) {
+      out.push(match);
+      continue;
+    }
+
+    const codes = splitFahrzeugtypTokens(rawTyp);
+    if (codes.length <= 1) {
+      out.push(match);
+      continue;
+    }
+
+    for (const code of codes) {
+      out.push({ ...match, fahrzeugtyp: code });
+    }
+  }
+
+  return out;
+}
+
+function correctVehicleMatchDigitConfusions(
+  matches: readonly AbeVehicleMatch[],
+): AbeVehicleMatch[] {
+  const peerCodes = collectFahrzeugtypCodes(matches);
+  const context = matches
+    .map((row) =>
+      [row.verkaufsbezeichnung, row.fahrzeugtyp, row.typeApproval].join(" "),
+    )
+    .join("\n");
+
+  return matches.map((row) => ({
+    ...row,
+    fahrzeugtyp: row.fahrzeugtyp
+      ? correctFahrzeugtypDigitConfusions(row.fahrzeugtyp, peerCodes, context)
+      : null,
+  }));
+}
+
 /**
  * Leniently parse raw LLM rows, carry section headers forward, then normalize.
  */
@@ -532,8 +736,10 @@ export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
     drafts.push(draft);
   }
 
-  const normalized = normalizeAbeVehicleMatches(drafts);
-  return applyFallbackGroupLabel(normalized);
+  const expanded = expandMultiFahrzeugtypRows(drafts);
+  const normalized = normalizeAbeVehicleMatches(expanded);
+  const corrected = correctVehicleMatchDigitConfusions(normalized);
+  return applyFallbackGroupLabel(dropIncompleteVehicleTableRows(corrected));
 }
 
 /**

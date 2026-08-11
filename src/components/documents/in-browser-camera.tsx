@@ -66,6 +66,11 @@ export interface InBrowserCameraProps {
    * document (bubble turns green when straight). Default: true.
    */
   showTopDownGuide?: boolean;
+  /**
+   * Minimal chrome for wizard HUD overlays: no header bar, no hint box, tighter
+   * frame padding — progress/close live in the parent overlay.
+   */
+  compactChrome?: boolean;
 }
 
 type FacingMode = "environment" | "user";
@@ -180,6 +185,7 @@ export function InBrowserCamera({
   continuousCapture = false,
   captureStep,
   showTopDownGuide = true,
+  compactChrome = false,
 }: InBrowserCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const viewfinderRef = useRef<HTMLDivElement>(null);
@@ -193,15 +199,25 @@ export function InBrowserCamera({
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [captureFlash, setCaptureFlash] = useState(false);
 
-  const resolvedHint = hint ?? (showTopDownGuide ? TOP_DOWN_SCAN_HINT : undefined);
+  const resolvedHint =
+    compactChrome || hint === ""
+      ? undefined
+      : hint ?? (showTopDownGuide ? TOP_DOWN_SCAN_HINT : undefined);
   const shouldShowBriefing = Boolean(
     resolvedHint && showBriefing && !continuousCapture && !captureStep,
   );
   const [instructionsOpen, setInstructionsOpen] = useState(shouldShowBriefing);
 
-  const topDownTilt = useTopDownTilt(showTopDownGuide && cameraReady && !instructionsOpen);
+  const topDownTilt = useTopDownTilt(
+    showTopDownGuide && !compactChrome && cameraReady && !instructionsOpen,
+  );
   const showLevelGuide =
-    showTopDownGuide && cameraReady && !instructionsOpen && !processingCapture && !cameraError;
+    showTopDownGuide &&
+    !compactChrome &&
+    cameraReady &&
+    !instructionsOpen &&
+    !processingCapture &&
+    !cameraError;
 
   useEffect(() => {
     if (continuousCapture) {
@@ -476,14 +492,16 @@ export function InBrowserCamera({
   const fileAccept = allowPdf ? PDF_ACCEPT : IMAGE_ACCEPT;
 
   const frameOutsideShadow = guideFrameOutsideShadow(guideFrameDimOutside);
-  const chromeTopPad =
-    "max(3.25rem, calc(env(safe-area-inset-top) + 2.75rem))";
-  const chromeBottomPad =
-    showTopDownGuide || captureStep || resolvedHint
+  const chromeTopPad = compactChrome
+    ? "max(2.4rem, calc(env(safe-area-inset-top) + 2rem))"
+    : "max(3.25rem, calc(env(safe-area-inset-top) + 2.75rem))";
+  const chromeBottomPad = compactChrome
+    ? "max(5.5rem, calc(env(safe-area-inset-bottom) + 4.5rem))"
+    : showTopDownGuide || captureStep || resolvedHint
       ? "max(8.5rem, calc(env(safe-area-inset-bottom) + 7rem))"
       : "max(4.75rem, calc(env(safe-area-inset-bottom) + 3.75rem))";
 
-  const topBar = (
+  const topBar = compactChrome ? null : (
     <div className="pointer-events-auto relative flex shrink-0 items-center justify-between px-3 pb-2 pt-[max(0.35rem,env(safe-area-inset-top))]">
       <button
         type="button"
@@ -531,7 +549,7 @@ export function InBrowserCamera({
           </div>
         ) : null}
 
-        {resolvedHint || captureStep ? (
+        {!compactChrome && (resolvedHint || captureStep) ? (
           <div className="mb-3 w-full max-w-md rounded-xl bg-black/70 px-3 py-2.5 text-center shadow-lg backdrop-blur-md">
             {captureStep ? (
               <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white">
@@ -675,9 +693,11 @@ export function InBrowserCamera({
                     aria-hidden
                   >
                     <GuideFrameCorners />
-                    <div className="absolute left-3 top-3 rounded-md bg-black/40 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/90">
-                      DIN A4
-                    </div>
+                    {!compactChrome ? (
+                      <div className="absolute left-3 top-3 rounded-md bg-black/40 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/90">
+                        DIN A4
+                      </div>
+                    ) : null}
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}

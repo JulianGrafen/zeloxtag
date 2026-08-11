@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Camera,
+  CheckCircle2,
   FileUp,
   LoaderCircle,
   Pencil,
@@ -67,8 +68,6 @@ import {
   inferAbeKbaFromReport,
 } from "@/lib/validations/abeSchema";
 import {
-  ABE_HUNT_FIELD_SCAN_HINTS,
-  ABE_HUNT_FIELD_WATERMARKS,
   ABE_REQUIRED_FIELD_LABELS,
   ABE_CORE_HUNT_FIELD_KEYS,
   abeHuntFieldDisplayLabel,
@@ -224,9 +223,6 @@ function KbaHuntOverlay({
   report,
   manualValue,
   analyzing,
-  analyzingPdf,
-  queuedCount,
-  captureSummary,
   onManualChange,
   onContinue,
   onClose,
@@ -234,15 +230,13 @@ function KbaHuntOverlay({
   report: AbeDataHunterReport;
   manualValue: string;
   analyzing: boolean;
-  analyzingPdf: boolean;
-  queuedCount: number;
-  captureSummary: string | null;
   onManualChange: (value: string) => void;
   onContinue: () => void;
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
   const detectedKba = reportKbaDigits(report);
+  const showComplete = Boolean(detectedKba) && !analyzing;
 
   useEffect(() => {
     setMounted(true);
@@ -250,50 +244,41 @@ function KbaHuntOverlay({
 
   if (!mounted || typeof document === "undefined") return null;
 
-  return createPortal(
-    <div className={CAMERA_HUD_SHELL}>
-      <div className="pointer-events-auto mx-auto max-w-[min(100%,260px)] rounded-lg border border-white/10 bg-black/35 px-1 py-1 text-white shadow-sm backdrop-blur-[2px]">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10"
-            aria-label="Schließen"
-          >
-            <X className="h-3 w-3" />
-          </button>
-
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.52rem] font-semibold text-white/85">
-              {detectedKba ? `KBA ${detectedKba}` : "KBA scannen"}
-            </p>
-          </div>
-
-          {analyzing ? (
-            <LoaderCircle className="h-3 w-3 shrink-0 animate-spin text-amber-200" />
-          ) : detectedKba ? (
-            <button
-              type="button"
-              onClick={onContinue}
-              className="flex h-5 shrink-0 items-center rounded-full bg-white px-2 text-[0.55rem] font-semibold text-neutral-900"
-            >
-              →
-            </button>
-          ) : null}
-        </div>
-
-        {!detectedKba ? (
-          <Input
-            inputMode="numeric"
-            placeholder="KBA manuell"
-            value={manualValue}
-            onChange={(event) => onManualChange(event.target.value)}
-            className="mt-1 h-7 border-white/15 bg-white/10 px-2 text-[0.78rem] font-semibold text-white placeholder:text-white/35"
+  return (
+    <>
+      {!showComplete ? (
+        <>
+          <AbeScanHud
+            status={detectedKba ? `KBA ${detectedKba}` : "KBA scannen"}
+            analyzing={analyzing}
+            complete={false}
+            onClose={onClose}
+            onContinue={detectedKba ? onContinue : undefined}
           />
-        ) : null}
-      </div>
-    </div>,
-    document.body,
+          {!detectedKba
+            ? createPortal(
+                <div className="pointer-events-none fixed inset-x-0 top-[calc(max(0.2rem,env(safe-area-inset-top))+2.1rem)] z-[10050] px-2">
+                  <Input
+                    inputMode="numeric"
+                    placeholder="KBA manuell eingeben"
+                    value={manualValue}
+                    onChange={(event) => onManualChange(event.target.value)}
+                    className="pointer-events-auto mx-auto h-8 max-w-[min(100%,260px)] border-white/15 bg-black/45 px-2.5 text-[0.78rem] font-semibold text-white placeholder:text-white/35 backdrop-blur-[2px]"
+                  />
+                </div>,
+                document.body,
+              )
+            : null}
+        </>
+      ) : null}
+      {showComplete ? (
+        <ScanCompleteBanner
+          title="KBA erfasst"
+          actionLabel="Weiter"
+          onAction={onContinue}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -478,27 +463,6 @@ function enrichReportAuflagenFromKuerzelDb(
   return { ...resolved, targetCodes, report: nextReport };
 }
 
-function newlyFilledLabels(
-  before: AbeDataHunterReport,
-  after: AbeDataHunterReport,
-  selectedVerkaufsbezeichnung?: string | null,
-  vehicleContext?: AbeVehicleContext | null,
-): string[] {
-  const beforeMissing = missingCoreHuntFieldSet(
-    before,
-    selectedVerkaufsbezeichnung,
-    vehicleContext,
-  );
-  const afterMissing = missingCoreHuntFieldSet(
-    after,
-    selectedVerkaufsbezeichnung,
-    vehicleContext,
-  );
-  return CORE_HUNT_ORDER.filter(
-    (key) => beforeMissing.has(key) && !afterMissing.has(key),
-  ).map((key) => ABE_REQUIRED_FIELD_LABELS[key]);
-}
-
 // ─── Progress overlay ──────────────────────────────────────────────────────────
 
 const CAMERA_HUD_SHELL =
@@ -506,26 +470,64 @@ const CAMERA_HUD_SHELL =
 const CAMERA_HUD_BAR =
   "pointer-events-auto mx-auto flex max-w-[min(100%,260px)] items-center gap-1 rounded-lg border border-white/10 bg-black/35 py-0.5 pl-0.5 pr-1 text-white shadow-sm backdrop-blur-[2px]";
 
-function HuntProgressOverlay({
-  report,
-  analyzing,
-  analyzingPdf,
-  queuedCount,
-  captureSummary,
-  lastFound,
-  onOpenReview,
-  onClose,
-  vehicleContext,
+function ScanCompleteBanner({
+  title,
+  subtitle,
+  actionLabel = "Weiter",
+  onAction,
 }: {
-  report: AbeDataHunterReport;
+  title: string;
+  subtitle?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return createPortal(
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[10060] px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div
+        role="status"
+        aria-live="polite"
+        className="pointer-events-auto mx-auto flex max-w-[440px] items-center gap-2.5 rounded-xl border border-emerald-300/50 bg-emerald-600/95 px-3 py-2.5 text-white shadow-lg backdrop-blur-sm"
+      >
+        <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[0.84rem] font-semibold">{title}</p>
+          {subtitle ? (
+            <p className="truncate text-[0.68rem] text-emerald-50/90">{subtitle}</p>
+          ) : null}
+        </div>
+        {onAction ? (
+          <button
+            type="button"
+            onClick={onAction}
+            className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-emerald-900"
+          >
+            {actionLabel}
+          </button>
+        ) : null}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function AbeScanHud({
+  status,
+  analyzing,
+  complete,
+  onClose,
+  onContinue,
+  onSkip,
+  skipLabel = "Überspr.",
+  progress,
+}: {
+  status: string;
   analyzing: boolean;
-  analyzingPdf: boolean;
-  queuedCount: number;
-  captureSummary: string | null;
-  lastFound: string[];
-  onOpenReview: () => void;
+  complete: boolean;
   onClose: () => void;
-  vehicleContext?: AbeVehicleContext | null;
+  onContinue?: () => void;
+  onSkip?: () => void;
+  skipLabel?: string;
+  progress?: { done: number; total: number };
 }) {
   const [mounted, setMounted] = useState(false);
 
@@ -533,25 +535,15 @@ function HuntProgressOverlay({
     setMounted(true);
   }, []);
 
-  const missing = missingAbeCoreHuntFields(report, null, vehicleContext);
-  const complete = missing.length === 0;
-  const doneCount = countAbeCoreHuntFieldsDone(report, null, vehicleContext);
-  const totalCount = CORE_HUNT_ORDER.length;
-  const missingLabels = missing
-    .map((key) => HUNT_FIELD_SHORT_LABELS[key])
-    .join(", ");
-
   if (!mounted || typeof document === "undefined") return null;
 
-  const showComplete = complete && !analyzing;
+  if (complete) {
+    return null;
+  }
 
   return createPortal(
     <div className={CAMERA_HUD_SHELL}>
-      <div
-        className={`${CAMERA_HUD_BAR} ${
-          showComplete ? "border-emerald-400/60 bg-emerald-950/40" : ""
-        }`}
-      >
+      <div className={CAMERA_HUD_BAR}>
         <button
           type="button"
           onClick={onClose}
@@ -561,71 +553,119 @@ function HuntProgressOverlay({
           <X className="h-3 w-3" />
         </button>
 
-        <div
-          className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-white/15"
-          role="progressbar"
-          aria-valuenow={doneCount}
-          aria-valuemin={0}
-          aria-valuemax={totalCount}
-          aria-label="Pflichtfelder-Fortschritt"
-        >
-          <div
-            className="h-full rounded-full bg-emerald-400/90 transition-[width] duration-300"
-            style={{ width: `${(doneCount / totalCount) * 100}%` }}
-          />
-        </div>
-
-        <span
-          className={`shrink-0 text-[0.52rem] font-semibold tabular-nums ${
-            showComplete ? "text-emerald-100" : "text-white/75"
-          }`}
-          title={missingLabels || "Alle Pflichtfelder erfasst"}
-        >
-          {showComplete ? "Fertig" : `${doneCount}/${totalCount}`}
-        </span>
+        {progress ? (
+          <>
+            <div
+              className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-white/15"
+              role="progressbar"
+              aria-valuenow={progress.done}
+              aria-valuemin={0}
+              aria-valuemax={progress.total}
+            >
+              <div
+                className="h-full rounded-full bg-emerald-400/90 transition-[width] duration-300"
+                style={{
+                  width: `${(progress.done / progress.total) * 100}%`,
+                }}
+              />
+            </div>
+            <span className="shrink-0 text-[0.52rem] font-semibold tabular-nums text-white/80">
+              {progress.done}/{progress.total}
+            </span>
+          </>
+        ) : (
+          <p
+            className="min-w-0 flex-1 truncate text-[0.62rem] font-medium text-white/90"
+            title={status}
+          >
+            {status}
+          </p>
+        )}
 
         {analyzing ? (
           <LoaderCircle
             className="h-3 w-3 shrink-0 animate-spin text-amber-200"
-            aria-label={
-              analyzingPdf
-                ? "PDF wird analysiert"
-                : `Analysiert${queuedCount > 0 ? ` (+${queuedCount})` : ""}`
-            }
+            aria-label="Analysiert"
           />
-        ) : showComplete ? (
+        ) : onContinue ? (
           <button
             type="button"
-            disabled={analyzing}
-            onClick={onOpenReview}
-            className="flex h-5 shrink-0 items-center rounded-full bg-emerald-400 px-2 text-[0.55rem] font-semibold text-emerald-950 disabled:opacity-40"
+            onClick={onContinue}
+            className="flex h-5 shrink-0 items-center rounded-full bg-emerald-400 px-2 text-[0.55rem] font-semibold text-emerald-950"
             aria-label="Weiter"
           >
             →
           </button>
-        ) : (
-          <span
-            className="min-w-[0.85rem] shrink-0 text-center text-[0.52rem] font-bold tabular-nums text-amber-100/90"
-            title={missingLabels}
+        ) : onSkip ? (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="shrink-0 rounded-full border border-white/20 px-2 py-0.5 text-[0.5rem] font-medium text-white/80"
           >
-            {missing.length}
-          </span>
-        )}
+            {skipLabel}
+          </button>
+        ) : null}
       </div>
-
-      {!analyzing && lastFound.length > 0 ? (
-        <p className="mx-auto mt-0.5 max-w-[260px] truncate px-1 text-center text-[0.5rem] font-medium text-emerald-200/95">
-          {showComplete ? "✓ " : "+ "}
-          {lastFound.join(", ")}
-        </p>
-      ) : null}
-      {showComplete ? (
-        <p className="mx-auto mt-0.5 max-w-[260px] px-1 text-center text-[0.5rem] font-semibold text-emerald-200">
-          Alle Pflichtfelder erfasst
-        </p>
-      ) : null}
     </div>,
     document.body,
+  );
+}
+
+const ABE_CAMERA_PROPS = {
+  title: "",
+  guideFrame: "a4" as const,
+  allowPdf: false,
+  showBriefing: false,
+  showTopDownGuide: false,
+  continuousCapture: true,
+  compactChrome: true,
+  a4AutoCrop: true,
+};
+
+function HuntProgressOverlay({
+  report,
+  analyzing,
+  onOpenReview,
+  onClose,
+  vehicleContext,
+}: {
+  report: AbeDataHunterReport;
+  analyzing: boolean;
+  onOpenReview: () => void;
+  onClose: () => void;
+  vehicleContext?: AbeVehicleContext | null;
+}) {
+  const missing = missingAbeCoreHuntFields(report, null, vehicleContext);
+  const complete = missing.length === 0;
+  const doneCount = countAbeCoreHuntFieldsDone(report, null, vehicleContext);
+  const totalCount = CORE_HUNT_ORDER.length;
+  const showComplete = complete && !analyzing;
+  const nextMissing = missing[0];
+  const status =
+    nextMissing != null
+      ? `Noch: ${HUNT_FIELD_SHORT_LABELS[nextMissing]}${
+          missing.length > 1 ? ` (+${missing.length - 1})` : ""
+        }`
+      : "ABE scannen";
+
+  return (
+    <>
+      <AbeScanHud
+        status={status}
+        analyzing={analyzing}
+        complete={showComplete}
+        onClose={onClose}
+        onContinue={showComplete ? onOpenReview : undefined}
+        progress={{ done: doneCount, total: totalCount }}
+      />
+      {showComplete ? (
+        <ScanCompleteBanner
+          title="Alle Pflichtfelder erfasst"
+          actionLabel="Weiter"
+          onAction={onOpenReview}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -634,8 +674,6 @@ function AuflagenScanOverlay({
   auflagenNotes,
   skippedAuflagenCodes,
   analyzing,
-  queuedCount,
-  lastFound,
   onOpenReview,
   onSkip,
   onClose,
@@ -644,13 +682,10 @@ function AuflagenScanOverlay({
   auflagenNotes: string | null;
   skippedAuflagenCodes: string[];
   analyzing: boolean;
-  queuedCount: number;
-  lastFound: string[];
   onOpenReview: () => void;
   onSkip: () => void;
   onClose: () => void;
 }) {
-  const [mounted, setMounted] = useState(false);
   const missingCodes = missingAuflagenCodesInNotes(
     auflagenNotes,
     targetCodes,
@@ -663,85 +698,33 @@ function AuflagenScanOverlay({
   );
   const canProceed = missingCodes.length === 0;
   const showComplete = canProceed && !analyzing;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || typeof document === "undefined") return null;
-
-  const statusLabel =
+  const total = targetCodes.length || 1;
+  const status =
     missingCodes.length > 0
-      ? missingCodes.join(", ")
-      : "Alle erfasst";
+      ? `Noch: ${missingCodes.slice(0, 3).join(", ")}${
+          missingCodes.length > 3 ? "…" : ""
+        }`
+      : "Auflagen scannen";
 
-  return createPortal(
-    <div className={CAMERA_HUD_SHELL}>
-      <div
-        className={`${CAMERA_HUD_BAR} ${
-          showComplete ? "border-emerald-400/60 bg-emerald-950/40" : ""
-        }`}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10"
-          aria-label="Schließen"
-        >
-          <X className="h-3 w-3" />
-        </button>
-
-        <p
-          className={`min-w-0 flex-1 truncate text-[0.52rem] font-medium ${
-            showComplete ? "font-semibold text-emerald-100" : "text-white/85"
-          }`}
-          title={statusLabel}
-        >
-          {showComplete
-            ? "Alle Auflagen erfasst"
-            : `Aufl. ${capturedCodes.length}/${targetCodes.length || 1}${
-                missingCodes.length > 0 ? ` · ${statusLabel}` : ""
-              }`}
-        </p>
-
-        {analyzing ? (
-          <LoaderCircle
-            className="h-3 w-3 shrink-0 animate-spin text-amber-200"
-            aria-label={`Auflagen-Text${queuedCount > 0 ? ` (+${queuedCount})` : ""}`}
-          />
-        ) : showComplete ? (
-          <button
-            type="button"
-            onClick={onOpenReview}
-            className="flex h-5 shrink-0 items-center rounded-full bg-emerald-400 px-2 text-[0.55rem] font-semibold text-emerald-950"
-            aria-label="Zur Prüfung"
-          >
-            →
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onSkip}
-            className="flex h-5 shrink-0 items-center rounded-full border border-white/25 bg-white/10 px-2 text-[0.52rem] font-semibold text-white"
-          >
-            Überspr.
-          </button>
-        )}
-      </div>
-
-      {!analyzing && lastFound.length > 0 ? (
-        <p className="mx-auto mt-0.5 max-w-[260px] truncate px-1 text-center text-[0.5rem] font-medium text-emerald-200/95">
-          {showComplete ? "✓ " : "+ "}
-          {lastFound.join(", ")}
-        </p>
-      ) : null}
+  return (
+    <>
+      <AbeScanHud
+        status={status}
+        analyzing={analyzing}
+        complete={showComplete}
+        onClose={onClose}
+        onContinue={showComplete ? onOpenReview : undefined}
+        onSkip={showComplete ? undefined : onSkip}
+        progress={{ done: capturedCodes.length, total }}
+      />
       {showComplete ? (
-        <p className="mx-auto mt-0.5 max-w-[260px] px-1 text-center text-[0.5rem] font-semibold text-emerald-200">
-          Weiter zur Prüfung …
-        </p>
+        <ScanCompleteBanner
+          title="Alle Auflagen erfasst"
+          actionLabel="Prüfen"
+          onAction={onOpenReview}
+        />
       ) : null}
-    </div>,
-    document.body,
+    </>
   );
 }
 
@@ -921,13 +904,19 @@ function AuflagenDetailPanel({
         )}
 
         {allCodesKnown ? (
-          <Button
-            type="button"
-            className="mt-5 h-12 w-full"
-            onClick={onContinueToReview}
-          >
-            Weiter zur Prüfung
-          </Button>
+          <>
+            <div className="mt-4 rounded-xl border border-emerald-300/70 bg-emerald-50 px-3 py-2.5 text-[0.82rem] font-medium text-emerald-950">
+              Alle Auflagen erfasst — du kannst zur Prüfung wechseln und
+              speichern.
+            </div>
+            <Button
+              type="button"
+              className="mt-3 h-12 w-full"
+              onClick={onContinueToReview}
+            >
+              Weiter zur Prüfung
+            </Button>
+          </>
         ) : (
           <>
             <Button
@@ -1427,7 +1416,6 @@ export function AbeDataHunterWizard({
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzingPdf, setAnalyzingPdf] = useState(false);
   const [queuedCount, setQueuedCount] = useState(0);
-  const [lastFound, setLastFound] = useState<string[]>([]);
   const [huntError, setHuntError] = useState<string | null>(null);
   const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | null>(
     null,
@@ -1451,7 +1439,6 @@ export function AbeDataHunterWizard({
   reportRef.current = report;
   const selectedGroupIndexRef = useRef(selectedGroupIndex);
   selectedGroupIndexRef.current = selectedGroupIndex;
-  const cameraGuideKeyRef = useRef<AbeRequiredFieldKey>("kbaNumber");
   const kuerzelDbRef = useRef<Map<string, string>>(buildClientAuflagenKuerzelDb());
   const kuerzelImageUrlsRef = useRef<Map<string, string>>(
     buildClientAuflagenKuerzelImageMap(),
@@ -1545,11 +1532,6 @@ export function AbeDataHunterWizard({
     selectedRowId,
     targetAuflagenCodes,
   ]);
-  const captureSummary = sourcePdf
-    ? "PDF"
-    : photos.length > 0
-      ? `${photos.length} Foto${photos.length === 1 ? "" : "s"}`
-      : null;
 
   useEffect(() => {
     if (phase !== "review" || !showAllCapturedBanner) return;
@@ -1706,7 +1688,7 @@ export function AbeDataHunterWizard({
 
   function startAuflagenScan() {
     if (allAuflagenResolvedFromDb) {
-      goToReview();
+      markAllCapturedAndGoToReview();
       return;
     }
     setAuflagenScanSkipped(false);
@@ -1742,6 +1724,11 @@ export function AbeDataHunterWizard({
 
   function skipAuflagenScan() {
     skipPendingAuflagenCodes();
+  }
+
+  function markAllCapturedAndGoToReview() {
+    setShowAllCapturedBanner(true);
+    goToReview();
   }
 
   function goToReview() {
@@ -1808,7 +1795,6 @@ export function AbeDataHunterWizard({
     }
     queueModeRef.current = "all";
     setHuntError(null);
-    setLastFound([]);
     setHuntSessionKey((current) => current + 1);
     setPhase("hunt");
     if (huntMode === "pdf" && sourcePdf) {
@@ -1817,10 +1803,8 @@ export function AbeDataHunterWizard({
   }
 
   function startCameraHunt() {
-    setLastFound([]);
     setManualKbaInput("");
     setHuntSessionKey((current) => current + 1);
-    cameraGuideKeyRef.current = "kbaNumber";
     queueModeRef.current = "kba";
     setHuntMode("camera");
     setPhase("kba-hunt");
@@ -1850,7 +1834,6 @@ export function AbeDataHunterWizard({
     setReport(emptyAbeDataHunterReport());
     setPhotos([]);
     setSourcePdf(null);
-    setLastFound([]);
     setHuntError(null);
     setQueuedCount(0);
     setAnalyzing(false);
@@ -1904,7 +1887,7 @@ export function AbeDataHunterWizard({
       enriched.targetCodes.length > 0 &&
       enriched.allResolved
     ) {
-      setPhase("review");
+      markAllCapturedAndGoToReview();
       return;
     }
 
@@ -1933,7 +1916,6 @@ export function AbeDataHunterWizard({
           if (kba) {
             setManualKbaInput(kba);
             setHuntError(null);
-            setLastFound([ABE_REQUIRED_FIELD_LABELS.kbaNumber]);
           } else {
             setHuntError(
               "KBA-Nummer nicht erkannt — bitte näher heran, erneut fotografieren oder manuell eintragen.",
@@ -1968,12 +1950,6 @@ export function AbeDataHunterWizard({
           selectedGroupIndexRef.current = resolvedGroupIndex;
           setSelectedGroupIndex(resolvedGroupIndex);
         }
-        const found = newlyFilledLabels(
-          beforeContext.report,
-          merged,
-          null,
-          vehicleContext,
-        );
         const filledKeys = CORE_HUNT_ORDER.filter((key) => {
           const beforeMissing = missingCoreHuntFieldSet(
             beforeContext.report,
@@ -1990,7 +1966,6 @@ export function AbeDataHunterWizard({
 
         reportRef.current = merged;
         setReport(merged);
-        setLastFound(found);
         if (filledKeys.length > 0) {
           setHuntError(null);
         } else if (!isAbeCoreHuntComplete(merged, null, vehicleContext)) {
@@ -2073,34 +2048,6 @@ export function AbeDataHunterWizard({
 
         reportRef.current = finalReport;
         setReport(finalReport);
-
-        const beforeMissing = missingAuflagenCodesInNotes(
-          before.auflagenNotes,
-          codes,
-          skippedAuflagenCodes,
-        );
-        const afterMissing = missingAuflagenCodesInNotes(
-          finalReport.auflagenNotes,
-          codes,
-          skippedAuflagenCodes,
-        );
-        const newlyCaptured = beforeMissing.filter(
-          (code) =>
-            !afterMissing.some(
-              (remaining) => remaining.toUpperCase() === code.toUpperCase(),
-            ),
-        );
-        if (afterMissing.length === 0) {
-          setLastFound(
-            newlyCaptured.length > 0
-              ? newlyCaptured
-              : ["Alle Auflagen erfasst"],
-          );
-        } else if (newlyCaptured.length > 0) {
-          setLastFound(newlyCaptured);
-        } else {
-          setLastFound([ABE_REQUIRED_FIELD_LABELS.auflagenNotes]);
-        }
         setHuntError(null);
 
         if (
@@ -2119,8 +2066,18 @@ export function AbeDataHunterWizard({
           setQueuedCount(0);
           setAnalyzing(false);
           setShowAllCapturedBanner(true);
-          window.setTimeout(() => goToReview(), 1600);
+          window.setTimeout(() => goToReviewFromAuflagenScan(), 3500);
           break;
+        }
+
+        if (
+          missingAuflagenCodesInNotes(
+            finalReport.auflagenNotes,
+            codes,
+            skippedAuflagenCodes,
+          ).length === 0
+        ) {
+          setAnalyzing(false);
         }
       } catch (err) {
         setHuntError(
@@ -2154,7 +2111,6 @@ export function AbeDataHunterWizard({
     }
 
     setHuntError(null);
-    setLastFound([]);
 
     if (isPdfFile(file)) {
       setPhotos([]);
@@ -2422,7 +2378,7 @@ export function AbeDataHunterWizard({
           skippedAuflagenCodes={skippedAuflagenCodes}
           onSelectGroup={handleSelectGroup}
           onSelectRow={handleSelectRow}
-          onContinueToReview={goToReview}
+          onContinueToReview={markAllCapturedAndGoToReview}
           onStartScan={startAuflagenScan}
           onSkipMissing={skipPendingAuflagenCodes}
           onSkipAll={skipAllAuflagenText}
@@ -2441,20 +2397,12 @@ export function AbeDataHunterWizard({
           auflagenNotes={report.auflagenNotes}
           skippedAuflagenCodes={skippedAuflagenCodes}
           analyzing={analyzing}
-          queuedCount={queuedCount}
-          lastFound={lastFound}
           onOpenReview={goToReviewFromAuflagenScan}
           onSkip={skipAuflagenScan}
           onClose={returnToAuflagenDetail}
         />
         <InBrowserCamera
-          title="Auflagen scannen"
-          hint="Fotografiere den Auflagen-Text zu den Nummern oben."
-          guideWatermark={ABE_HUNT_FIELD_WATERMARKS.auflagenNotes}
-          guideFrame="a4"
-          allowPdf={false}
-          showBriefing={false}
-          continuousCapture
+          {...ABE_CAMERA_PROPS}
           onCapture={enqueueAuflagenFile}
           onClose={returnToAuflagenDetail}
         />
@@ -2469,9 +2417,6 @@ export function AbeDataHunterWizard({
         report={report}
         manualValue={manualKbaInput}
         analyzing={analyzing}
-        analyzingPdf={analyzingPdf}
-        queuedCount={queuedCount}
-        captureSummary={captureSummary}
         onManualChange={handleManualKbaChange}
         onContinue={startMainHuntFromKba}
         onClose={returnToChooser}
@@ -2493,13 +2438,7 @@ export function AbeDataHunterWizard({
         {errorBanner}
         {kbaOverlay}
         <InBrowserCamera
-          title="KBA-Nummer scannen"
-          hint="Halte „Gutachten zur ABE Nr.“ oder „KBA-Nummer“ gut lesbar ins Rechteck."
-          guideWatermark={ABE_HUNT_FIELD_WATERMARKS.kbaNumber}
-          guideFrame="a4"
-          allowPdf={false}
-          showBriefing={false}
-          continuousCapture
+          {...ABE_CAMERA_PROPS}
           onCapture={enqueueFile}
           onClose={returnToChooser}
         />
@@ -2516,31 +2455,11 @@ export function AbeDataHunterWizard({
       key={huntSessionKey}
       report={report}
       analyzing={analyzing}
-      analyzingPdf={analyzingPdf}
-      queuedCount={queuedCount}
-      captureSummary={captureSummary}
-      lastFound={lastFound}
       onOpenReview={advanceAfterCoreHunt}
       onClose={returnToChooser}
       vehicleContext={vehicleContext}
     />
   );
-
-  const huntFocusKey = coreComplete
-    ? "verkaufsbezeichnung"
-    : firstMissingFocusKey(report, null, vehicleContext);
-
-  if (!analyzing && !coreComplete) {
-    cameraGuideKeyRef.current = huntFocusKey;
-  }
-
-  const cameraGuideKey = coreComplete ? huntFocusKey : cameraGuideKeyRef.current;
-  const guideWatermark = coreComplete
-    ? undefined
-    : ABE_HUNT_FIELD_WATERMARKS[cameraGuideKey];
-  const activeScanHintText = analyzing
-    ? "Foto wird ausgewertet — bitte kurz warten."
-    : "Fotografiere sichtbare Abschnitte — mehrere Felder pro Foto sind möglich.";
 
   const switchToCameraButton =
     huntMode === "pdf" &&
@@ -2553,7 +2472,6 @@ export function AbeDataHunterWizard({
               type="button"
               onClick={() => {
                 setHuntMode("camera");
-                setLastFound([]);
               }}
               className="pointer-events-auto mx-auto flex w-full max-w-[440px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-black/70 px-4 py-3.5 text-[0.88rem] font-semibold text-white backdrop-blur-md"
             >
@@ -2581,13 +2499,7 @@ export function AbeDataHunterWizard({
       {errorBanner}
       {progressOverlay}
       <InBrowserCamera
-        title="ABE scannen"
-        hint={activeScanHintText}
-        guideWatermark={guideWatermark}
-        guideFrame="a4"
-        allowPdf={false}
-        showBriefing={false}
-        continuousCapture
+        {...ABE_CAMERA_PROPS}
         onCapture={enqueueFile}
         onClose={returnToChooser}
       />

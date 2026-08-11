@@ -7,9 +7,10 @@ import {
 } from "@/lib/ocr/auflagen-kuerzel-ocr-correction";
 
 describe("auflagenKuerzelConfusionDistance", () => {
-  it("scores common OCR letter swaps as distance 1", () => {
+  it("scores common OCR letter and digit swaps as distance 1", () => {
     expect(auflagenKuerzelConfusionDistance("CPO", "CPE")).toBe(1);
     expect(auflagenKuerzelConfusionDistance("CPO", "CBO")).toBe(1);
+    expect(auflagenKuerzelConfusionDistance("K3A", "K8A")).toBe(1);
   });
 });
 

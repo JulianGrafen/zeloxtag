@@ -51,6 +51,13 @@ export const ABE_KBA_48571_LLM_VEHICLE_ROWS = [
     reifen: ["225/45R17", "235/40R17"],
     auflagenCodes: ["K2c", "K42", "A01", "A02", "A04", "A12", "V17", "S01"],
   },
+  {
+    handelsbezeichnung: "BMW 3er-Reihe",
+    fahrzeugtyp: "346C, 346R",
+    technischeBezeichnung: "e1*98/14, 2001/116* 0112, 0146*",
+    reifen: ["215/45R17"],
+    auflagenCodes: ["K2b", "A01", "A02"],
+  },
 ] as const;
 
 export const ABE_KBA_48571_FIXTURE_IMAGES = {
@@ -61,3 +68,38 @@ export const ABE_KBA_48571_FIXTURE_IMAGES = {
   auflagenText:
     "/Users/julian/.cursor/projects/Users-julian-cursor-ZeloxTag/assets/IMG_7043-083e7548-6d8d-4968-b34c-208be177fcb4.png",
 } as const;
+
+/** Noisy hunt-all output captured from IMG_7042 — regression for post-processing filters. */
+export const ABE_KBA_48571_NOISY_LLM_ROWS = [
+  {
+    verkaufsbezeichnung: "BMW 1er-Reihe",
+    fahrzeugtyp: null,
+    tireSizes: ["215/45R17"],
+    auflagenCodes: ["K1C", "K2B", "K41", "T87", "T89", "K7C", "A01", "A02"],
+  },
+  {
+    verkaufsbezeichnung: "BMW 1er-Reihe",
+    fahrzeugtyp: null,
+    tireSizes: ["225/45R17"],
+    auflagenCodes: ["K2B", "K41", "T87", "K7B", "A01", "A02"],
+  },
+  {
+    verkaufsbezeichnung: "BMW 3er-Compact",
+    fahrzeugtyp: "346K",
+    tireSizes: ["215/45R17"],
+    auflagenCodes: ["K2B", "K41", "A01", "A02", "A04", "V17", "S01", "K7C", "T87"],
+  },
+  {
+    verkaufsbezeichnung: "BMW 3er-Reihe",
+    fahrzeugtyp: "3/CG",
+    tireSizes: ["215/45R17"],
+    auflagenCodes: ["K1C", "K2B", "K41", "L02", "A01", "A02", "A04", "V17", "S01"],
+  },
+  {
+    verkaufsbezeichnung: "BMW 3er-Reihe",
+    fahrzeugtyp: "346L",
+    technischeBezeichnung: "e1*97/27*0097*..",
+    tireSizes: ["225/45R17"],
+    auflagenCodes: ["K2C", "K42", "A01", "A02", "A04", "A12", "V17", "S01"],
+  },
+] as const;

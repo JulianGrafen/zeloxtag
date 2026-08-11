@@ -28,7 +28,10 @@ import {
   type AbeWizardVehiclesExtraction,
   type AbeWizardVehiclesRaw,
 } from "@/lib/validations/abeWizardSchemas";
-import { parseAbeVehicleRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
+import {
+  mergeAbeVehicleMatchRows,
+  parseAbeVehicleRows,
+} from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import { normalizeAbeWizardCoverExtraction } from "@/lib/ocr/abe-wizard-cover-normalize";
 import { tableMatchingService } from "@/services/ocr/TableMatchingService";
 
@@ -474,11 +477,15 @@ export class AbeExtractionService {
   ): Promise<AbeWizardVehiclesExtraction["vehicleMatches"]> {
     const primary = await this.runVehicleTableWizardStep(input, "primary");
     let vehicleMatches = parseAbeVehicleRows(primary.vehicleMatches);
-    if (vehicleMatches.length > 0) return vehicleMatches;
+    if (vehicleMatches.length > 1) return vehicleMatches;
 
     const retry = await this.runVehicleTableWizardStep(input, "retry");
-    vehicleMatches = parseAbeVehicleRows(retry.vehicleMatches);
-    return vehicleMatches;
+    const retryMatches = parseAbeVehicleRows(retry.vehicleMatches);
+    if (retryMatches.length > vehicleMatches.length) {
+      return retryMatches;
+    }
+
+    return mergeAbeVehicleMatchRows(vehicleMatches, retryMatches);
   }
 
   private runVehicleTableWizardStep(
@@ -493,7 +500,7 @@ export class AbeExtractionService {
         "You extract German ABE Fahrzeug- und Auflagen-Tabelle pages.",
         "Create one vehicleMatches entry for every visible table row in the photograph.",
         isRetry
-          ? "The photograph contains a grid-style compatibility table — do NOT return an empty array."
+          ? "The photograph contains a grid-style compatibility table — do NOT return an empty array or only the first row."
           : "Only return vehicleMatches: [] when the image clearly has no grid table at all (e.g. cover letter text only).",
         "CRITICAL — each row belongs to a Verkaufsbezeichnung section header above the row group.",
         "Copy the Verkaufsbezeichnung header text onto EVERY row in that group — never leave it empty on data rows.",
@@ -506,6 +513,8 @@ export class AbeExtractionService {
         "- driveType: drive-type word in Auflagen (Allradantrieb / Heckantrieb / Frontantrieb), else null.",
         "- tireSizes: tyre sizes from Reifen column if present; empty array when column is missing (e.g. spoiler, spacer).",
         "- auflagenCodes: short condition codes from this row's Auflagen column only — never from other rows above or below.",
+        "Read digits 3 and 8 carefully in Fahrzeugtyp codes — common OCR confusion (346K not 846K).",
+        'When one table line lists multiple Fahrzeugtyp codes (e.g. "346C, 346R"), emit ONE row PER code.',
         "Do not merge rows. Do not skip rows. Do not add rows that are not visible.",
         "Return ONLY valid JSON matching the schema.",
       ],
