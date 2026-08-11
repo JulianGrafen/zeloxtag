@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   FileUp,
   LoaderCircle,
-  Pencil,
   RotateCcw,
   X,
 } from "lucide-react";
@@ -1156,7 +1155,7 @@ function ReviewPanel({
     auflagenCodes: scopedAuflagen.join(" "),
     auflagenNotes: report.auflagenNotes ?? "",
   }));
-  const [isEditing, setIsEditing] = useState(false);
+  const [saveStep, setSaveStep] = useState<"edit" | "confirm">("edit");
 
   useEffect(() => {
     const next = scopedAuflagen.join(" ");
@@ -1214,11 +1213,18 @@ function ReviewPanel({
   );
   const auflagenNotesMissing = missing.includes("auflagenNotes");
 
+  useEffect(() => {
+    if (saveStep === "confirm" && missing.length > 0) {
+      setSaveStep("edit");
+    }
+  }, [saveStep, missing.length]);
+
   return (
     <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
       {showAllCapturedBanner ? (
         <div className="rounded-xl border border-emerald-300/70 bg-emerald-50 px-3 py-2.5 text-[0.82rem] font-medium text-emerald-950">
-          Alle Daten erfasst — bitte kurz prüfen und speichern.
+          Alle Daten erfasst — bitte prüfen, bei Bedarf korrigieren und
+          speichern.
         </div>
       ) : null}
       {auflagenScanSkipped ? (
@@ -1245,37 +1251,77 @@ function ReviewPanel({
       ) : null}
 
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)]">
-        <header className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              Pflichtfelder
-            </p>
-            <h2 className="mt-1 text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
-              ABE Kern­daten
-            </h2>
-            <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
-              Data-Hunter · {vehicleLabel}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsEditing((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] px-3 py-1.5 text-[0.72rem] font-medium"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            {isEditing ? "Ansicht" : "Bearbeiten"}
-          </button>
+        <header>
+          <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+            Pflichtfelder
+          </p>
+          <h2 className="mt-1 text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
+            {saveStep === "confirm" ? "Alles korrekt?" : "ABE Kern­daten"}
+          </h2>
+          <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
+            {saveStep === "confirm"
+              ? "Bitte die extrahierten Werte noch einmal gegen die ABE prüfen."
+              : `Extrahierte Werte kannst du hier korrigieren · ${vehicleLabel}`}
+          </p>
         </header>
 
-        <div className="mt-4 space-y-3">
-          <AbeKbaHero
-            value={form.kbaNumber}
-            isEditing={isEditing}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, kbaNumber: e.target.value }))
-            }
-          />
-          {isEditing ? (
+        {saveStep === "confirm" ? (
+          <div className="mt-4 space-y-3">
+            <div
+              role="status"
+              className="rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.78rem] text-[color:var(--vd-muted)]"
+            >
+              Stimmen KBA, Inhaber, Bauteil und Auflagen mit deiner ABE
+              überein?
+            </div>
+            <AbeKbaHero value={form.kbaNumber} />
+            <dl className="grid gap-2.5">
+              <AbeSummaryRow label="Nummer der ABE" value={form.abeNumber} />
+              <AbeSummaryRow
+                label={ABE_REQUIRED_FIELD_LABELS.abeHolder}
+                value={form.abeHolder}
+              />
+              <AbeSummaryRow
+                label={ABE_REQUIRED_FIELD_LABELS.manufacturer}
+                value={form.manufacturer}
+              />
+              <AbeSummaryRow
+                label="Bezeichnung des Bauteils"
+                value={form.partDesignation}
+              />
+              <AbeSummaryRow
+                label="Kennzeichnung (optional)"
+                value={form.markingText || "—"}
+              />
+              <AbeSummaryRow
+                label={ABE_VEHICLE_MODEL_DISPLAY_LABEL}
+                value={selectedVariantLabel ?? selectedVerkaufsbezeichnung}
+              />
+              <AbeSummaryRow label="Auflagen" value={form.auflagenCodes} />
+              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
+                <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+                  {ABE_REQUIRED_FIELD_LABELS.auflagenNotes}
+                </p>
+                <div className="mt-2">
+                  <AbeAuflagenFoldList
+                    notes={form.auflagenNotes}
+                    knownCodes={scopedAuflagen}
+                    imageUrlsByCode={imageUrlsByCode}
+                    defaultOpenFirst
+                  />
+                </div>
+              </div>
+            </dl>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <AbeKbaHero
+              value={form.kbaNumber}
+              isEditing
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, kbaNumber: e.target.value }))
+              }
+            />
             <div className="space-y-3">
               <AbeFieldLabel label="Nummer der ABE *">
                 <Input
@@ -1330,6 +1376,12 @@ function ReviewPanel({
                   className="flex w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.92rem] outline-none"
                 />
               </AbeFieldLabel>
+              {selectedVariantLabel ?? selectedVerkaufsbezeichnung ? (
+                <AbeSummaryRow
+                  label={ABE_VEHICLE_MODEL_DISPLAY_LABEL}
+                  value={selectedVariantLabel ?? selectedVerkaufsbezeichnung}
+                />
+              ) : null}
               <AbeFieldLabel label="Auflagen zum Fahrzeug *">
                 <Input
                   value={form.auflagenCodes}
@@ -1356,40 +1408,8 @@ function ReviewPanel({
                 />
               </AbeFieldLabel>
             </div>
-          ) : (
-            <dl className="grid gap-2.5">
-              <AbeSummaryRow label="Nummer der ABE" value={form.abeNumber} />
-              <AbeSummaryRow label={ABE_REQUIRED_FIELD_LABELS.abeHolder} value={form.abeHolder} />
-              <AbeSummaryRow label={ABE_REQUIRED_FIELD_LABELS.manufacturer} value={form.manufacturer} />
-              <AbeSummaryRow
-                label="Bezeichnung des Bauteils"
-                value={form.partDesignation}
-              />
-              <AbeSummaryRow
-                label="Kennzeichnung (optional)"
-                value={form.markingText || "—"}
-              />
-              <AbeSummaryRow
-                label={ABE_VEHICLE_MODEL_DISPLAY_LABEL}
-                value={selectedVerkaufsbezeichnung}
-              />
-              <AbeSummaryRow label="Auflagen" value={form.auflagenCodes} />
-              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
-                <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
-                  {ABE_REQUIRED_FIELD_LABELS.auflagenNotes}
-                </p>
-                <div className="mt-2">
-                  <AbeAuflagenFoldList
-                    notes={form.auflagenNotes}
-                    knownCodes={scopedAuflagen}
-                    imageUrlsByCode={imageUrlsByCode}
-                    defaultOpenFirst
-                  />
-                </div>
-              </div>
-            </dl>
-          )}
-        </div>
+          </div>
+        )}
 
         {missing.length > 0 ? (
           <div className="mt-4 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] text-amber-950">
@@ -1436,20 +1456,40 @@ function ReviewPanel({
         ) : null}
 
         <div className="mt-5 grid gap-2">
-          <Button
-            type="button"
-            disabled={isSaving || missing.length > 0}
-            onClick={() => onSave(form)}
-          >
-            {isSaving ? (
-              <span className="inline-flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-                Speichern…
-              </span>
-            ) : (
-              "ABE speichern"
-            )}
-          </Button>
+          {saveStep === "confirm" ? (
+            <>
+              <Button
+                type="button"
+                disabled={isSaving}
+                onClick={() => onSave(form)}
+              >
+                {isSaving ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                    Speichern…
+                  </span>
+                ) : (
+                  "Ja, alles korrekt — ABE speichern"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSaving}
+                onClick={() => setSaveStep("edit")}
+              >
+                Zurück & bearbeiten
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              disabled={missing.length > 0}
+              onClick={() => setSaveStep("confirm")}
+            >
+              Weiter zur Bestätigung
+            </Button>
+          )}
           <Button type="button" variant="outline" onClick={onRestart}>
             <RotateCcw className="h-4 w-4" />
             Neu starten

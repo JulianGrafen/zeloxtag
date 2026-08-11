@@ -27,3 +27,16 @@ export {
   inferResultFromDefectRows,
   sanitizeTuevPayload,
 } from "./TuevReportService";
+export {
+  ingestAbeDocument,
+  selectAbePdfPageIndices,
+  type IngestedPage,
+  type IngestionInput,
+} from "./IngestionService";
+export {
+  AbeVisionExtractor,
+  OpenAiVisionExtractionProvider,
+  abeVisionExtractor,
+  type VisionExtractionProvider,
+  type VisionExtractionResult,
+} from "./VisionExtractor";
