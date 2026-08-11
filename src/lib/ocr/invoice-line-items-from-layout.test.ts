@@ -11,6 +11,10 @@ import {
   BLOTZHEIM_27327_NET_SUM,
   BLOTZHEIM_27327_POSITIONS,
 } from "@/lib/ocr/fixtures/blotzheim-27327-invoice";
+import {
+  BLOTZHEIM_EXPECTED_TOTALS,
+  BLOTZHEIM_LLM_RAW_LINE_ITEMS,
+} from "@/lib/ocr/fixtures/blotzheim-invoice-line-items";
 
 describe("extractInvoiceLineItemsFromAzureLayout", () => {
   it("pairs label and Ges. Preis by rowIndex", () => {
@@ -43,6 +47,45 @@ describe("extractInvoiceLineItemsFromAzureLayout", () => {
       { label: "Sportfedern H&R", amount: 480 },
       { label: "Arbeitslohn", amount: 95 },
     ]);
+  });
+
+  it("keeps the printed row order and Ges. Preis for a full Pos table", () => {
+    const result: AzureLayoutAnalyzeResult = {
+      content: "",
+      pages: [],
+      tables: [
+        {
+          rowCount: BLOTZHEIM_LLM_RAW_LINE_ITEMS.length + 1,
+          columnCount: 5,
+          cells: [
+            { rowIndex: 0, columnIndex: 0, content: "Pos" },
+            { rowIndex: 0, columnIndex: 1, content: "Bezeichnung" },
+            { rowIndex: 0, columnIndex: 2, content: "Menge" },
+            { rowIndex: 0, columnIndex: 3, content: "E-Preis" },
+            { rowIndex: 0, columnIndex: 4, content: "Ges. Preis" },
+            ...BLOTZHEIM_LLM_RAW_LINE_ITEMS.flatMap((item, index) => [
+              { rowIndex: index + 1, columnIndex: 0, content: String(index + 1) },
+              { rowIndex: index + 1, columnIndex: 1, content: item.label },
+              { rowIndex: index + 1, columnIndex: 2, content: item.menge ?? "" },
+              {
+                rowIndex: index + 1,
+                columnIndex: 3,
+                content: item.einzelpreis ?? "",
+              },
+              {
+                rowIndex: index + 1,
+                columnIndex: 4,
+                content: item.gesamtpreis ?? "",
+              },
+            ]),
+          ],
+        },
+      ],
+    };
+
+    expect(extractInvoiceLineItemsFromAzureLayout(result)).toEqual(
+      BLOTZHEIM_EXPECTED_TOTALS.filter((item) => item.amount > 0),
+    );
   });
 
   it("uses rightmost money column when row has Einzelpreis and Ges. Preis", () => {
@@ -118,6 +161,17 @@ describe("extractRowLineTotalAmount", () => {
     ).toBe(331.98);
   });
 
+  it("uses the printed rightmost Ges. Preis for discounted labor rows", () => {
+    expect(
+      extractRowLineTotalAmount([
+        { rowIndex: 12, columnIndex: 1, content: "Motoröl und Filter wechseln" },
+        { rowIndex: 12, columnIndex: 2, content: "0,50" },
+        { rowIndex: 12, columnIndex: 3, content: "90,00 €" },
+        { rowIndex: 12, columnIndex: 4, content: "45,00 €" },
+      ]),
+    ).toBe(45);
+  });
+
   it("does not multiply Pos column with E-Preis (Blotzheim row 3)", () => {
     expect(
       extractRowLineTotalAmount(
@@ -167,6 +221,25 @@ describe("mergeLayoutAndLlmLineItems", () => {
       { label: "Sportfedern H&R", amount: 480 },
       { label: "Arbeitslohn", amount: 95 },
     ]);
+  });
+
+  it("keeps complete Pos layout rows even without a footer on this page", () => {
+    const incorrectLlmRows = [
+      { label: "Bremsscheibe PRO+", amount: 360 },
+      { label: "Beide Bremsscheiben erneuern", amount: 90 },
+      { label: "Beide Schraubenfedern erneuern", amount: 5.4 },
+    ];
+    const layoutRows = [
+      { label: "Bremsscheibe PRO+", amount: 331.98 },
+      { label: "Beide Bremsscheiben erneuern", amount: 81 },
+      { label: "Beide Schraubenfedern erneuern", amount: 225 },
+    ];
+
+    expect(
+      mergeLayoutAndLlmLineItems(incorrectLlmRows, layoutRows, null, {
+        preferLayoutRows: true,
+      }),
+    ).toEqual(layoutRows);
   });
 
   it("keeps only complete layout rows when they reconcile with Nettosumme", () => {

@@ -296,18 +296,11 @@ export function extractRowLineTotalAmount(
     return null;
   }
 
-  const rightmost = moneyCells[0]!;
-  const second = moneyCells[1]!;
-
-  if (rightmost.amount + 0.01 >= second.amount) {
-    return rightmost.amount;
-  }
-
-  if (isUnitPriceAmountOfTotal(rightmost.amount, second.amount)) {
-    return second.amount;
-  }
-
-  return rightmost.amount;
+  // The column geometry is authoritative: when the table provides both
+  // E-Preis and Ges. Preis, the rightmost money cell is the printed
+  // Zeilensumme. Do not infer a replacement from their numeric ratio — a
+  // discounted line can legitimately have Ges. Preis < E-Preis.
+  return moneyCells[0]!.amount;
 }
 
 function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
@@ -463,7 +456,11 @@ export function mergeLayoutAndLlmLineItems(
   llmItems: InvoiceLineItem[] | null | undefined,
   layoutItems: InvoiceLineItem[] | null | undefined,
   totalAmount: number | null,
-  options: { trustedNetTotal?: number | null } = {},
+  options: {
+    trustedNetTotal?: number | null;
+    /** A complete Pos table was detected, even when its footer is on page 2. */
+    preferLayoutRows?: boolean;
+  } = {},
 ): InvoiceLineItem[] | null {
   const layout = layoutItems ?? [];
   const llm = llmItems ?? [];
@@ -474,8 +471,9 @@ export function mergeLayoutAndLlmLineItems(
   const layoutNetSum = layout.reduce((sum, item) => sum + item.amount, 0);
   const trustedNetTotal = options.trustedNetTotal ?? null;
   if (
-    trustedNetTotal != null &&
-    Math.abs(layoutNetSum - trustedNetTotal) <= NET_TOTAL_TOLERANCE_EUR
+    options.preferLayoutRows ||
+    (trustedNetTotal != null &&
+      Math.abs(layoutNetSum - trustedNetTotal) <= NET_TOTAL_TOLERANCE_EUR)
   ) {
     // The geometry-aware rows reconcile with the printed Nettosumme. Do not
     // append unmatched LLM rows: they commonly stem from a shifted price column.

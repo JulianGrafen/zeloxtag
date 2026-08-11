@@ -528,9 +528,14 @@ export class InvoiceExtractionService {
       (ocrText.trim() ? extractAmountFromText(ocrText) : null) ??
       (layoutLineItems?.length ? sumLineItems(layoutLineItems) : null);
 
+    const hasUsableColumnLayout =
+      shouldMergeAzureLayout(tableFormat) &&
+      (layoutLineItems?.length ?? 0) >= 3;
+
     const merged = shouldMergeAzureLayout(tableFormat)
       ? mergeLayoutAndLlmLineItems(llmLineItems, layoutLineItems, amount, {
           trustedNetTotal: footerNet,
+          preferLayoutRows: hasUsableColumnLayout,
         })
       : llmLineItems.length > 0
         ? llmLineItems
