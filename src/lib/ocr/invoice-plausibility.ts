@@ -12,6 +12,7 @@ import {
   preferInvoiceLineItems,
   reconcileLineItemAmountsWithOcrText,
 } from "@/lib/ocr/invoice-line-items-from-text";
+import { ocrTextUsesPosColumnTable } from "@/lib/ocr/invoice-pos-column";
 import {
   extractVatAmountFromText,
   grossAmountLooksPlausible,
@@ -316,7 +317,11 @@ function pickBestPositionSet(options: {
     working = preferInvoiceLineItems(working, ocrHeuristic);
   }
 
-  if (footerNet != null && ocrHeuristic?.length) {
+  if (
+    footerNet != null &&
+    ocrHeuristic?.length &&
+    ocrTextUsesPosColumnTable(ocrText)
+  ) {
     const currentSum = sumLineItems(working);
     const ocrSum = sumLineItems(ocrHeuristic);
     if (
@@ -328,7 +333,7 @@ function pickBestPositionSet(options: {
     }
   }
 
-  if (enableOcrReconcile && ocrText.trim()) {
+  if (enableOcrReconcile && ocrText.trim() && ocrTextUsesPosColumnTable(ocrText)) {
     working = reconcileLineItemAmountsWithOcrText(working, ocrText);
   }
 
@@ -427,7 +432,8 @@ export function reconcileInvoicePlausibility(
     resolvedItems?.length &&
     positionsUseDocumentGross(resolvedItems, footerGross) &&
     enableOcrReconcile &&
-    ocrText.trim()
+    ocrText.trim() &&
+    ocrTextUsesPosColumnTable(ocrText)
   ) {
     resolvedItems =
       stripNonPositionInvoiceRows(

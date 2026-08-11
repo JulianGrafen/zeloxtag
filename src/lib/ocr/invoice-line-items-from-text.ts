@@ -399,12 +399,7 @@ export function preferInvoiceLineItems(
   const aHasVat = a.some((item) => VAT_LABEL.test(item.label));
   const bHasVat = b.some((item) => VAT_LABEL.test(item.label));
 
-  if (
-    bClean.length >= 2 &&
-    (aHasFooterJunk ||
-      bClean.length > aClean.length ||
-      (Math.abs(aSum - bSum) > 0.5 && bClean.length >= aClean.length))
-  ) {
+  if (aHasFooterJunk && bClean.length >= 2 && bClean.length >= aClean.length) {
     const plausibleVat = a.filter(
       (item) =>
         VAT_LABEL.test(item.label) &&

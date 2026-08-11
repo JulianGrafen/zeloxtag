@@ -10,9 +10,9 @@ const TABLE_HEADER_LABEL =
 const AMOUNT_ONLY_LINE =
   /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s+[A-Z0-9]{1,2})?\s*(?:€|eur)?\s*$/i;
 
-/** Trailing Ges. Preis on a table row, optionally followed by tax column (A / 0). */
+/** Trailing Ges. Preis on a table row, optionally followed by tax column (A / 0) or €. */
 const TRAILING_ROW_AMOUNT =
-  /^(.*?)(?:\s+)(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s+[A-Z0-9]{1,2})?\s*$/;
+  /^(.*?)(?:\s+)(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s+[A-Z0-9]{1,2})?(?:\s*(?:€|eur))?\s*$/i;
 
 const TABLE_HEADER_LINE =
   /\b(?:bezeichnung|beschreibung|artikel)\b.*\b(?:einzelpreis|e-?preis|ep|ges\.?\s*preis|gesamtpreis|menge)\b/i;

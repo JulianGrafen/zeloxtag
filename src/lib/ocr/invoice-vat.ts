@@ -4,6 +4,7 @@ import {
   extractNetSumFromText,
   stripInvoiceFooterSummaryRows,
 } from "@/lib/ocr/invoice-footer-totals";
+import { ocrTextUsesPosColumnTable } from "@/lib/ocr/invoice-pos-column";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import {
   extractWorkshopInvoiceVatAmount,
@@ -169,7 +170,8 @@ export function ensureInvoiceVatAndGrossTotal(options: {
   if (
     resolvedGross != null &&
     netSum > resolvedGross + 0.05 &&
-    footerNet != null
+    footerNet != null &&
+    ocrTextUsesPosColumnTable(ocrText)
   ) {
     netSum = footerNet;
   } else if (resolvedGross != null && netSum > resolvedGross + 0.05 && positions.length > 1) {

@@ -1,19 +1,33 @@
 /**
- * Pos-column anchors for German workshop invoice tables (Pos 1, 2, 3 …).
- * Used when OCR glues multiple rows into one line.
+ * Pos-column anchors for DMS column tables (Pos | Nummer | Bezeichnung | Menge | E-Preis | Ges. Preis).
+ * Not used for simple Pos | Beschreibung | Betrag layouts.
  */
 
-const POS_TABLE_HEADER =
-  /\bpos\.?\b[\s\S]{0,120}\b(?:bezeichnung|beschreibung|nummer|menge|ges\.?\s*preis)\b/i;
-
-/** True when OCR shows a classic Pos | Nummer | Bezeichnung table. */
+/**
+ * True for multi-column workshop tables with Pos + price columns — not simple Pos/Betrag lists.
+ */
 export function ocrTextUsesPosColumnTable(rawText: string): boolean {
   const text = rawText.replace(/\r\n/g, "\n");
-  if (POS_TABLE_HEADER.test(text)) return true;
-  return (
-    /\bpos\.?\s+nummer\b/i.test(text) ||
-    /\bpos\.?\s+bezeichnung\b/i.test(text)
-  );
+  const hasPos = /\bpos\.?\b/i.test(text);
+  const hasDescription = /\b(?:bezeichnung|beschreibung)\b/i.test(text);
+  const hasPriceColumn =
+    /\b(?:ges\.?\s*preis|gesamtpreis|e-?preis|einzelpreis)\b/i.test(text);
+  const hasQtyColumn = /\b(?:menge|einh\.?|anz\.?)\b/i.test(text);
+
+  if (
+    hasPos &&
+    /\bpos\.?\s+nummer\b/i.test(text) &&
+    hasDescription &&
+    hasPriceColumn
+  ) {
+    return true;
+  }
+
+  if (hasPos && hasDescription && hasPriceColumn && hasQtyColumn) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
