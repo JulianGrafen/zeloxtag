@@ -165,11 +165,37 @@ export const BLOTZHEIM_EXPECTED_TOTALS: Array<{ label: string; amount: number }>
   { label: "Mutter", amount: 3.32 },
 ];
 
-/** Sum of all Ges. Preis values (for sanity checks). */
+/** Sum of billable Ges. Preis values (excludes rate-only rows). */
 export const BLOTZHEIM_LINE_ITEMS_SUM = BLOTZHEIM_EXPECTED_TOTALS.reduce(
   (sum, item) => sum + item.amount,
   0,
 );
+
+export const BLOTZHEIM_NET_SUM = 1867.73;
+
+/**
+ * Row-shifted LLM failure on Rechnung 27646 — correct Menge/E-Preis but wrong Ges. Preis
+ * (E-Preis copied to Ges. Preis or amounts from adjacent rows).
+ */
+export const BLOTZHEIM_LLM_SHIFTED_LINE_ITEMS: BlotzheimRawLineItem[] =
+  BLOTZHEIM_LLM_RAW_LINE_ITEMS.map((row) => {
+    if (row.label.startsWith("Bremsscheibe PRO+")) {
+      return { ...row, gesamtpreis: "360,00 €" };
+    }
+    if (row.label.startsWith("Beide Bremsscheiben erneuern")) {
+      return { ...row, gesamtpreis: "90,00 €" };
+    }
+    if (row.label.startsWith("Beide Schraubenfedern erneuern")) {
+      return { ...row, gesamtpreis: "5,40 €" };
+    }
+    if (row.label.startsWith("Kühlerfrostschutz")) {
+      return { ...row, gesamtpreis: "135,00 €" };
+    }
+    if (row.label.startsWith("Ölfilter")) {
+      return { ...row, gesamtpreis: "45,00 €" };
+    }
+    return row;
+  });
 
 /**
  * Common LLM failure mode on this invoice: copies E-Preis into Ges. Preis

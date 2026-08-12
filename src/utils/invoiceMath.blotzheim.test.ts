@@ -5,8 +5,13 @@ import {
   BLOTZHEIM_LINE_ITEMS_SUM,
   BLOTZHEIM_LLM_HALLUCINATED_LINE_ITEMS,
   BLOTZHEIM_LLM_RAW_LINE_ITEMS,
+  BLOTZHEIM_LLM_SHIFTED_LINE_ITEMS,
 } from "@/lib/ocr/fixtures/blotzheim-invoice-line-items";
 import { parseLlmRawLineItems } from "@/lib/ocr/invoice-line-item-math";
+import {
+  normalizeVisionLineItemRow,
+  normalizeVisionLineItemsPayload,
+} from "@/lib/validations/invoiceExtractionSchema";
 import { processLineItems } from "@/utils/invoiceMath";
 
 describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => {
@@ -87,5 +92,46 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
     expect(
       processed.find((i) => i.label.includes("Bremsbeläge erneuern"))!.gesamtpreis,
     ).toBe(0);
+  });
+
+  it("corrects shifted Ges. Preis when Menge and E-Preis are present", () => {
+    const processed = processLineItems(BLOTZHEIM_LLM_SHIFTED_LINE_ITEMS);
+
+    expect(
+      processed.find((i) => i.label.includes("Bremsscheibe PRO+"))!.gesamtpreis,
+    ).toBe(331.98);
+    expect(
+      processed.find((i) => i.label.includes("Beide Bremsscheiben erneuern"))!
+        .gesamtpreis,
+    ).toBe(81);
+    expect(
+      processed.find((i) => i.label.includes("Beide Schraubenfedern erneuern"))!
+        .gesamtpreis,
+    ).toBe(225);
+    expect(processed.find((i) => i.label.includes("Kühlerfrostschutz"))!.gesamtpreis).toBe(
+      21.42,
+    );
+    expect(processed.find((i) => i.label.includes("Ölfilter"))!.gesamtpreis).toBe(23.86);
+  });
+
+  it("maps English vision schema fields to processLineItems", () => {
+    const normalized = normalizeVisionLineItemsPayload({
+      line_items: [
+        {
+          description: "Bremsscheibe PRO+",
+          quantity: "2,00",
+          unit_price: "165,99 €",
+          total_price: "331,98 €",
+        },
+      ],
+      total_amount: "2.764,60 €",
+    });
+    expect(normalized).toHaveLength(1);
+    expect(normalizeVisionLineItemRow(normalized[0])).toMatchObject({
+      label: "Bremsscheibe PRO+",
+      menge: "2,00",
+    });
+    const [item] = processLineItems(normalized);
+    expect(item.gesamtpreis).toBe(331.98);
   });
 });

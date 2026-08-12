@@ -120,7 +120,7 @@ export function processLineItems(llmItems: any[]) {
     // Rule 3: Math Checksum (Menge * E-Preis)
     const computedTotal = parseFloat((menge * ePreis).toFixed(2));
 
-    // Rule 4: Overwrite if GesPreis is missing OR if the checksum deviates (e.g. LLM hallucinates)
+    // Rule 4: Overwrite if GesPreis is missing OR checksum deviates (LLM row-shift / EP→GP copy).
     if (gesPreis === null) {
       gesPreis = computedTotal;
     } else if (Math.abs(gesPreis - computedTotal) > 0.05) {
@@ -128,8 +128,23 @@ export function processLineItems(llmItems: any[]) {
         rawGesPreis !== null &&
         rawEPreis !== null &&
         rawGesPreis < computedTotal - 0.05 &&
-        Math.abs(rawGesPreis - rawEPreis) > 0.05;
-      if (!looksLikeDiscount) {
+        Math.abs(rawGesPreis - rawEPreis) > 0.05 &&
+        rawGesPreis >= computedTotal * 0.5;
+      const epCopiedIntoGp =
+        rawGesPreis !== null &&
+        rawEPreis !== null &&
+        Math.abs(rawGesPreis - rawEPreis) <= 0.05 &&
+        rawMenge !== null &&
+        rawMenge > 1.001;
+      const laborEpUsedAsGp =
+        rawGesPreis !== null &&
+        rawEPreis !== null &&
+        rawMenge !== null &&
+        rawMenge > 0 &&
+        rawMenge < 10 &&
+        Math.abs(rawGesPreis - rawEPreis) <= 0.05 &&
+        Math.abs(computedTotal - rawGesPreis) > 0.05;
+      if (!looksLikeDiscount && (epCopiedIntoGp || laborEpUsedAsGp || rawEPreis !== null)) {
         gesPreis = computedTotal;
       }
     }

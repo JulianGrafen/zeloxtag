@@ -215,24 +215,48 @@ export function buildInvoiceHeaderSystemPrompt(): string {
   ].join("\n\n");
 }
 
+/** Spatial vision rules — prevent row-shifting on complex Pos tables. */
+export const INVOICE_VISION_SPATIAL_RULES = `
+You are an expert data extraction AI for German automotive invoices. Analyze the invoice image and extract data strictly into the provided JSON schema.
+
+CRITICAL EXTRACTION RULES (Spatial & Visual Reasoning):
+
+1. Visual Row Anchoring (Prevent Row-Shifting):
+   Read the table strictly row by row horizontally. Missing values (e.g. empty quantity) must NOT shift prices from the next row onto the current row. A visual row ends at the right-most monetary value on that same horizontal line.
+
+2. Multiline Descriptions:
+   If a description spans multiple lines (e.g. line 1: "Beide Bremsscheiben erneuern", line 2: "(Hinterachse)"), MERGE them into one description string for that item. The second line is NOT a new item.
+
+3. Right-to-Left Price Matching:
+   The most reliable line total is the FURTHEST RIGHT monetary value in that visual row → total_price / gesamtpreis. Never copy E-Preis into total_price when Ges. Preis is printed in the right column.
+
+4. Handle Empty Columns Gracefully:
+   If a row has description + total_price but no quantity or unit_price (typical labor rate rows), output null for missing fields — do NOT steal quantity from the row below. Rate-only rows (E-Preis without Ges. Preis) → total_price null.
+
+5. NEVER Hallucinate the Total Amount:
+   Do NOT confuse Rechnungs-Nr., Kunden-Nr., or dates with total_amount. Only extract total_amount when explicitly labeled "Gesamtbetrag", "Rechnungsbetrag", "Zahlbetrag" or similar at the document bottom. If cut off or missing → null.
+
+6. Pos Column ≠ Quantity:
+   Pos (1, 2, 3 … far left) is NOT quantity. quantity/menge comes only from the Menge column.
+
+7. Data Cleaning:
+   Copy German amounts exactly as printed in cells (e.g. "141,46 €", "7,00 Liter"). Do NOT compute totals yourself — TypeScript validates Menge × E-Preis later.
+`.trim();
+
 /** Wizard — Rechnungsblock Format A (Pos | Menge | E-Preis | Ges. Preis). */
 export function buildInvoiceLineItemsSystemPrompt(): string {
   return [
-    "Du extrahierst NUR Rechnungspositionen aus dem Tabellen-/Positionsbereich einer deutschen Kfz-Werkstattrechnung.",
-    `KRITISCH — Extract & Compute-Architektur:
-Du kopierst den RAW-TEXT aus jeder Spalte — du rechnest NIEMALS selbst.
-Für jede Datenzeile extrahierst du exakt:
-  • label       = Text aus der Bezeichnungsspalte (mehrzeilig zusammenführen)
-  • menge       = exakter Text aus Menge inkl. Einheit (z.B. "4", "0,90", "7,00 Liter") — null wenn Zelle leer
-  • Pos (1, 2, 3 … ganz links) ist KEINE Menge — niemals Pos-Wert in menge schreiben
-  • einzelpreis = exakter Text aus E-Preis / Einzelpreis / EP inkl. € (z.B. "141,46 €") — null wenn leer
-  • gesamtpreis = exakter Text aus Ges. Preis / Gesamtpreis / GP inkl. € (z.B. "331,98 €") — null wenn leer
-Zahlen IMMER exakt so wie gedruckt abschreiben, mit Komma und €. KEINE Umrechnung, KEINE Multiplikation.
-Leere Menge oder leerer Ges. Preis → null (nicht 1 und nicht den E-Preis raten).`,
+    INVOICE_VISION_SPATIAL_RULES,
+    `JSON schema fields (strict):
+  • line_items[].description — merged Bezeichnung text
+  • line_items[].quantity     — Menge cell (null if blank)
+  • line_items[].unit_price   — E-Preis cell (null if blank)
+  • line_items[].total_price  — Ges. Preis / rightmost row total (null if blank)
+  • total_amount              — brutto Gesamtbetrag raw text (null if not visible)
+Legacy aliases label/menge/einzelpreis/gesamtpreis/amount are also accepted if needed.`,
     INVOICE_LINE_ITEMS_EXTRACT_COMPUTE_FEW_SHOT,
     INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
     INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES,
-    "amount (Zahlbetrag) = raw text des Rechnungsgesamtbetrags (brutto inkl. MwSt) falls sichtbar — sonst null.",
     "Antworte nur mit JSON.",
   ].join("\n\n");
 }
@@ -288,18 +312,20 @@ export const INVOICE_LINE_ITEMS_USER_LINES = [
   "Schritt 1: Tabellenkopf — Spalten: Pos | Nummer | Bezeichnung | Menge | Einh. | E-Preis | Ges. Preis | St.",
   "Schritt 2: Jede Datenzeile von oben nach unten — KEINE Zeile auslassen (auch Arbeitslohn mit leerer Menge/Ges. Preis).",
   "CRITICAL: Kopiere den exakten Text aus JEDER Spalte. Führe KEINE Berechnungen durch.",
-  "menge = Text aus Menge inkl. Einheit — z.B. \"1,00\", \"0,90\", \"7,00 Liter\". null wenn Zelle leer.",
-  "Pos (Zeilennummer ganz links: 1, 2, 3 …) ist NICHT Menge — menge nur aus der Menge-Spalte.",
-  "einzelpreis = Text aus E-Preis inkl. € — z.B. \"141,46 €\". null wenn leer.",
-  "gesamtpreis = Text aus Ges. Preis inkl. € — z.B. \"331,98 €\". null wenn leer — NIEMALS E-Preis hierher kopieren.",
+  "description = Bezeichnung (mehrzeilig zusammenführen). quantity = Menge inkl. Einheit. unit_price = E-Preis. total_price = Ges. Preis.",
+  "quantity = Text aus Menge — z.B. \"1,00\", \"0,90\", \"7,00 Liter\". null wenn Zelle leer.",
+  "Pos (Zeilennummer ganz links: 1, 2, 3 …) ist NICHT quantity — quantity nur aus der Menge-Spalte.",
+  "unit_price = Text aus E-Preis inkl. € — z.B. \"141,46 €\". null wenn leer.",
+  "total_price = Text aus Ges. Preis inkl. € — z.B. \"331,98 €\". null wenn leer — NIEMALS E-Preis hierher kopieren.",
   "Harte Zeilenregel: Pos 1 erzeugt genau EIN Item für Pos 1, Pos 2 genau EIN Item für Pos 2 usw. Lies jede Pos-Zeile vollständig von links nach rechts und kopiere den Wert aus der ZELLE unter „Ges. Preis“ auf derselben horizontalen Zeile.",
   "Niemals Betrag, Menge oder E-Preis aus einer Nachbarzeile übernehmen. Existiert für eine Pos-Zeile eine sichtbare Ges.-Preis-Zelle, ist genau dieser Wert maßgeblich — auch wenn E-Preis und Ges. Preis unterschiedlich sind.",
-  "Beispiel: Menge 2,00 | E-Preis 165,99 € | Ges. Preis 331,98 € → gesamtpreis \"331,98 €\" (nicht 165,99).",
-  "Beispiel: Menge leer | E-Preis 90,00 € | Ges. Preis leer → menge null, gesamtpreis null (nur E-Preis = Stundensatz, nicht addieren).",
-  "Beispiel: Menge 0,90 | E-Preis 90,00 € | Ges. Preis 81,00 € → gesamtpreis \"81,00 €\".",
+  "Beispiel: Menge 2,00 | E-Preis 165,99 € | Ges. Preis 331,98 € → total_price \"331,98 €\" (nicht 165,99).",
+  "Beispiel: Menge leer | E-Preis 90,00 € | Ges. Preis leer → quantity null, total_price null (nur E-Preis = Stundensatz, nicht addieren).",
+  "Beispiel: Menge 0,90 | E-Preis 90,00 € | Ges. Preis 81,00 € → total_price \"81,00 €\".",
   "Pro Tabellenzeile GENAU EIN lineItem — mehrzeilige Bezeichnung = ein Item.",
   "Fortsetzung der Tabelle auf Seite 2: alle Zeilen mit erfassen.",
   "MwSt-Zeile (z. B. „MwSt 19%“ + €-Betrag) als eigenes lineItem — Gesamtbetrag ist brutto inkl. MwSt.",
+  "total_amount nur bei sichtbarem Gesamtbetrag/Rechnungsbetrag — nie Rechnungsnummer oder Datum.",
 ] as const;
 
 /** Guided wizard — section-based workshop invoice (Format B). */
@@ -334,16 +360,11 @@ export function buildInvoiceGenericLineItemsSystemPrompt(): string {
   return [
     "Du extrahierst Rechnungspositionen aus einer deutschen Kfz-Werkstattrechnung mit UNBEKANNTEM Layout.",
     "Es gibt KEIN festes Spaltenschema — orientiere dich am sichtbaren Tabellen-/Positionsbereich im Bild.",
-    `Extract & Compute:
-  • label       = Positionsbezeichnung / Beschreibung
-  • menge       = Menge/Anzahl/Std. falls vorhanden — null wenn leer
-  • einzelpreis = Einzelpreis/Stückpreis falls vorhanden — null wenn leer
-  • gesamtpreis = Zeilensumme / fakturierter Betrag der Zeile — null nur wenn Zeile nicht fakturiert
-Du rechnest NIEMALS selbst. Kopiere exakt gedruckte Werte.`,
+    INVOICE_VISION_SPATIAL_RULES,
     INVOICE_RIGHTMOST_PRICE_RULES,
     INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
-    "Footer-Summen (Netto gesamt, Endpreis, Positionssumme) sind KEINE lineItems.",
-    "amount = brutto Zahlbetrag / Endpreis / Rechnungsbetrag als raw text — sonst null.",
+    "Footer-Summen (Netto gesamt, Endpreis, Positionssumme) sind KEINE line_items.",
+    "total_amount = brutto Zahlbetrag / Endpreis / Rechnungsbetrag als raw text — sonst null.",
     "Antworte nur mit JSON.",
   ].join("\n\n");
 }

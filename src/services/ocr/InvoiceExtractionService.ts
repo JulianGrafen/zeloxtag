@@ -23,6 +23,10 @@ import { isPlausibleInvoiceVatAmount } from "@/lib/ocr/invoice-vat";
 import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import { processLineItems } from "@/utils/invoiceMath";
 import {
+  normalizeVisionLineItemsPayload,
+  readVisionTotalAmountRaw,
+} from "@/lib/validations/invoiceExtractionSchema";
+import {
   buildVisionUserMessage,
   prepareSinglePageOcrInput,
   type DocumentBytesInput,
@@ -153,8 +157,8 @@ const INVOICE_HEADER_JSON_SCHEMA = {
 };
 
 /**
- * "Extract & Compute" schema — LLM outputs raw column strings, never computes.
- * TypeScript handles all arithmetic via `parseLlmRawLineItems`.
+ * Vision schema — English field names (spatial row extraction).
+ * Legacy German aliases are normalized in {@link normalizeVisionLineItemsPayload}.
  */
 const INVOICE_LINE_ITEMS_JSON_SCHEMA = {
   name: "invoice_wizard_line_items",
@@ -162,43 +166,44 @@ const INVOICE_LINE_ITEMS_JSON_SCHEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["lineItems", "amount"],
+    required: ["line_items", "total_amount"],
     properties: {
-      lineItems: {
+      line_items: {
         type: ["array", "null"],
         description:
-          "Every position row. Output raw text from each column — never compute totals yourself.",
+          "Every position row left-to-right. Copy raw cell text — never compute totals.",
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["label", "menge", "einzelpreis", "gesamtpreis"],
+          required: ["description", "quantity", "unit_price", "total_price"],
           properties: {
-            label: {
+            description: {
               type: "string",
-              description: "Positionsbezeichnung — exact text from the description column.",
+              description:
+                "Merged description / Bezeichnung for this horizontal row.",
             },
-            menge: {
+            quantity: {
               type: ["string", "null"],
               description:
-                "Exact text from the 'Menge' / 'Qty' / 'Anzahl' column, e.g. \"4\", \"7,00 Liter\". null when the cell is blank.",
+                "Menge cell — e.g. \"1,00\", \"0,90\", \"7,00 Liter\". null if blank.",
             },
-            einzelpreis: {
+            unit_price: {
               type: ["string", "null"],
               description:
-                "Exact text from the 'Einzelpreis' / 'E-Preis' / 'EP' column, e.g. \"120,00\". null when the cell is blank.",
+                "E-Preis / Einzelpreis cell — e.g. \"141,46 €\". null if blank.",
             },
-            gesamtpreis: {
+            total_price: {
               type: ["string", "null"],
               description:
-                "Exact text from the 'Ges. Preis' / 'Gesamtpreis' / 'GP' / rightmost total column, e.g. \"480,00\". null when the cell is blank.",
+                "Ges. Preis / rightmost row total — e.g. \"331,98 €\". null if blank.",
             },
           },
         },
       },
-      amount: {
+      total_amount: {
         type: ["string", "null"],
         description:
-          "Raw text of the invoice total (Zahlbetrag / Rechnungsbetrag / Gesamtbetrag) if visible in this section. null otherwise.",
+          "Raw brutto Gesamtbetrag / Rechnungsbetrag if visible — never invoice number.",
       },
     },
   },
@@ -475,9 +480,7 @@ export class InvoiceExtractionService {
     );
 
     // LLM outputs raw strings per column — run bulletproof math before merge/save.
-    const finalItems = processLineItems(
-      Array.isArray(record.lineItems) ? record.lineItems : [],
-    );
+    const finalItems = processLineItems(normalizeVisionLineItemsPayload(record));
     let llmLineItems: InvoiceLineItem[] = finalItems
       .filter(
         (item) =>
@@ -505,7 +508,10 @@ export class InvoiceExtractionService {
     const footerNet = ocrText.trim() ? extractNetSumFromText(ocrText) : null;
     const footerGross = ocrText.trim() ? extractGrossTotalFromText(ocrText) : null;
 
-    let structuredAmount = coerceGermanMoneyAmount(record.amount, "conservative");
+    let structuredAmount = coerceGermanMoneyAmount(
+      readVisionTotalAmountRaw(record),
+      "conservative",
+    );
     if (
       structuredAmount != null &&
       footerGross != null &&
@@ -532,10 +538,21 @@ export class InvoiceExtractionService {
       shouldMergeAzureLayout(tableFormat) &&
       (layoutLineItems?.length ?? 0) >= 3;
 
+    const llmNetSum = sumLineItems(llmLineItems);
+    const layoutNetSum = layoutLineItems?.length
+      ? layoutLineItems.reduce((sum, item) => sum + item.amount, 0)
+      : null;
+    const preferLayoutRows =
+      hasUsableColumnLayout &&
+      (footerNet == null ||
+        layoutNetSum == null ||
+        Math.abs(layoutNetSum - footerNet) <=
+          Math.abs((llmNetSum ?? 0) - footerNet));
+
     const merged = shouldMergeAzureLayout(tableFormat)
       ? mergeLayoutAndLlmLineItems(llmLineItems, layoutLineItems, amount, {
           trustedNetTotal: footerNet,
-          preferLayoutRows: hasUsableColumnLayout,
+          preferLayoutRows,
         })
       : llmLineItems.length > 0
         ? llmLineItems
