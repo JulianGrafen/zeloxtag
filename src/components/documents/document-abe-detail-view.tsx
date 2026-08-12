@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
+import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import {
   AbeKbaHero,
   AbeSummaryRow,
@@ -355,6 +356,8 @@ export function DocumentAbeDetailView({
             )}
           </div>
         </section>
+
+        <VehicleDataDisclaimer />
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
+import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
 import { EditableTuevDefectsSection } from "@/components/documents/editable-tuev-defects-section";
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
@@ -373,6 +374,8 @@ export function DocumentInvoiceDetailView({
             )}
           </div>
         </section>
+
+        <VehicleDataDisclaimer />
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">

@@ -13,6 +13,7 @@ import {
 
 import { deleteDocument } from "@/actions/delete-document";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
+import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-view";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
@@ -290,6 +291,8 @@ export function VehicleDocumentsView({
             </ul>
           )}
         </section>
+
+        <VehicleDataDisclaimer />
       </div>
 
       {canWrite ? (

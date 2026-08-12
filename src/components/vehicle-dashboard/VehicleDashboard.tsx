@@ -1,5 +1,7 @@
 "use client";
 
+import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
+
 import { buildDefaultTiles } from "./buildDefaultTiles";
 import { DashboardTile } from "./DashboardTile";
 import type { VehicleDashboardProps } from "./types";
@@ -59,6 +61,8 @@ export function VehicleDashboard({
             ))}
           </div>
         </section>
+
+        <VehicleDataDisclaimer className="vd-anim-header" />
       </div>
     </div>
   );

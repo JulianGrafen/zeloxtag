@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, ChevronRight, Plus, Receipt } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
+import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
@@ -239,6 +240,8 @@ export function VehicleInvoicesView({
             </ul>
           )}
         </section>
+
+        <VehicleDataDisclaimer />
       </div>
 
       {canWrite ? (
