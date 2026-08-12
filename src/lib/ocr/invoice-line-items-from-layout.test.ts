@@ -161,6 +161,37 @@ describe("extractRowLineTotalAmount", () => {
     ).toBe(331.98);
   });
 
+  it("recomputes Ges. Preis from Menge × E-Preis when OCR garbles the total", () => {
+    expect(
+      extractRowLineTotalAmount([
+        { rowIndex: 1, columnIndex: 1, content: "Bremsbelagsatz, Scheibenbremse" },
+        { rowIndex: 1, columnIndex: 2, content: "1,00" },
+        { rowIndex: 1, columnIndex: 3, content: "141,46 €" },
+        { rowIndex: 1, columnIndex: 4, content: "1,47 €" },
+      ]),
+    ).toBe(141.46);
+
+    expect(
+      extractRowLineTotalAmount([
+        { rowIndex: 4, columnIndex: 1, content: "Bremsscheibe PRO+" },
+        { rowIndex: 4, columnIndex: 2, content: "2,00" },
+        { rowIndex: 4, columnIndex: 3, content: "165,99 €" },
+        { rowIndex: 4, columnIndex: 4, content: "301,33 €" },
+      ]),
+    ).toBe(331.98);
+  });
+
+  it("keeps genuine qty=1 line discounts below E-Preis", () => {
+    expect(
+      extractRowLineTotalAmount([
+        { rowIndex: 8, columnIndex: 1, content: "Wasserpumpe" },
+        { rowIndex: 8, columnIndex: 2, content: "1,00" },
+        { rowIndex: 8, columnIndex: 3, content: "41,04 €" },
+        { rowIndex: 8, columnIndex: 4, content: "28,73 €" },
+      ]),
+    ).toBe(28.73);
+  });
+
   it("uses the printed rightmost Ges. Preis for discounted labor rows", () => {
     expect(
       extractRowLineTotalAmount([
@@ -240,6 +271,42 @@ describe("mergeLayoutAndLlmLineItems", () => {
         preferLayoutRows: true,
       }),
     ).toEqual(layoutRows);
+  });
+
+  it("prefers LLM rows when layout OCR totals are garbled", () => {
+    const llmRows = [
+      { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
+      { label: "Bremsscheibe PRO+", amount: 331.98 },
+      { label: "Beide Bremsscheiben erneuern", amount: 81 },
+    ];
+    const garbledLayout = [
+      { label: "Bremsbelagsatz, Scheibenbremse", amount: 1.47 },
+      { label: "Bremsscheibe PRO+", amount: 301.33 },
+    ];
+
+    expect(
+      mergeLayoutAndLlmLineItems(llmRows, garbledLayout, null, {
+        preferLlmRows: true,
+      }),
+    ).toEqual(llmRows);
+  });
+
+  it("hybrid merge upgrades digit-dropped layout amounts and appends missing LLM rows", () => {
+    const llmRows = [
+      { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
+      { label: "Bremsscheibe PRO+", amount: 331.98 },
+      { label: "Beide Bremsscheiben erneuern", amount: 81 },
+    ];
+    const garbledLayout = [
+      { label: "Bremsbelagsatz, Scheibenbremse", amount: 1.47 },
+      { label: "Bremsscheibe PRO+", amount: 331.98 },
+    ];
+
+    expect(mergeLayoutAndLlmLineItems(llmRows, garbledLayout, null)).toEqual([
+      { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
+      { label: "Bremsscheibe PRO+", amount: 331.98 },
+      { label: "Beide Bremsscheiben erneuern", amount: 81 },
+    ]);
   });
 
   it("keeps only complete layout rows when they reconcile with Nettosumme", () => {

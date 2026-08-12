@@ -45,6 +45,39 @@ function isRateOnlyRow(
   );
 }
 
+/**
+ * Resolve Ges. Preis from Menge × E-Preis when the printed total is missing
+ * or OCR-garbled. Keeps genuine qty≈1 line discounts (GP clearly below EP).
+ */
+export function resolveInvoiceRowGesamtpreis(options: {
+  menge: number | null;
+  einzelpreis: number | null;
+  gesamtpreis: number | null;
+}): number | null {
+  const rawMenge = options.menge;
+  const rawEPreis = options.einzelpreis;
+  const rawGesPreis = options.gesamtpreis;
+
+  if (rawEPreis === null && rawGesPreis === null) return null;
+  if (rawEPreis === null) return rawGesPreis;
+
+  const menge = rawMenge !== null ? rawMenge : 1;
+  const computedTotal = parseFloat((menge * rawEPreis).toFixed(2));
+
+  if (rawGesPreis === null) return computedTotal;
+  if (Math.abs(rawGesPreis - computedTotal) <= 0.05) return rawGesPreis;
+
+  // Genuine workshop discount: Menge ≈ 1 and GP is a plausible fraction of EP.
+  const looksLikeDiscount =
+    rawMenge !== null &&
+    Math.abs(rawMenge - 1) <= 0.001 &&
+    rawGesPreis < rawEPreis - 0.05 &&
+    rawGesPreis >= rawEPreis * 0.4;
+
+  if (looksLikeDiscount) return rawGesPreis;
+  return computedTotal;
+}
+
 export function processLineItems(llmItems: any[]) {
   if (!Array.isArray(llmItems)) return [];
 
@@ -101,8 +134,6 @@ export function processLineItems(llmItems: any[]) {
     // Rule 2: If E-Preis is missing but GesPreis exists, use GesPreis as E-Preis (since menge is likely 1)
     const ePreis = rawEPreis !== null ? rawEPreis : (rawGesPreis !== null ? rawGesPreis : 0);
     
-    let gesPreis = rawGesPreis;
-
     // Pos column copied into menge: when GP and EP both exist, derive qty from GP ÷ EP
     // if the LLM menge × EP does not match GP (e.g. Pos "4" × 28,80 ≠ 28,80).
     if (rawGesPreis !== null && rawEPreis !== null && rawEPreis > 0) {
@@ -117,37 +148,11 @@ export function processLineItems(llmItems: any[]) {
       }
     }
 
-    // Rule 3: Math Checksum (Menge * E-Preis)
-    const computedTotal = parseFloat((menge * ePreis).toFixed(2));
-
-    // Rule 4: Overwrite if GesPreis is missing OR checksum deviates (LLM row-shift / EP→GP copy).
-    if (gesPreis === null) {
-      gesPreis = computedTotal;
-    } else if (Math.abs(gesPreis - computedTotal) > 0.05) {
-      const looksLikeDiscount =
-        rawGesPreis !== null &&
-        rawEPreis !== null &&
-        rawGesPreis < computedTotal - 0.05 &&
-        Math.abs(rawGesPreis - rawEPreis) > 0.05 &&
-        rawGesPreis >= computedTotal * 0.5;
-      const epCopiedIntoGp =
-        rawGesPreis !== null &&
-        rawEPreis !== null &&
-        Math.abs(rawGesPreis - rawEPreis) <= 0.05 &&
-        rawMenge !== null &&
-        rawMenge > 1.001;
-      const laborEpUsedAsGp =
-        rawGesPreis !== null &&
-        rawEPreis !== null &&
-        rawMenge !== null &&
-        rawMenge > 0 &&
-        rawMenge < 10 &&
-        Math.abs(rawGesPreis - rawEPreis) <= 0.05 &&
-        Math.abs(computedTotal - rawGesPreis) > 0.05;
-      if (!looksLikeDiscount && (epCopiedIntoGp || laborEpUsedAsGp || rawEPreis !== null)) {
-        gesPreis = computedTotal;
-      }
-    }
+    const gesPreis = resolveInvoiceRowGesamtpreis({
+      menge,
+      einzelpreis: ePreis,
+      gesamtpreis: rawGesPreis,
+    });
 
     return {
       ...item,

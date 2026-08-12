@@ -542,17 +542,43 @@ export class InvoiceExtractionService {
     const layoutNetSum = layoutLineItems?.length
       ? layoutLineItems.reduce((sum, item) => sum + item.amount, 0)
       : null;
-    const preferLayoutRows =
-      hasUsableColumnLayout &&
-      (footerNet == null ||
-        layoutNetSum == null ||
-        Math.abs(layoutNetSum - footerNet) <=
-          Math.abs((llmNetSum ?? 0) - footerNet));
+
+    // Only trust a source exclusively when it reconciles with Nettosumme.
+    // Never prefer garbled Azure OCR just because a footer is missing.
+    const LAYOUT_NET_TOLERANCE_EUR = 1.5;
+    const layoutDelta =
+      footerNet != null && layoutNetSum != null
+        ? Math.abs(layoutNetSum - footerNet)
+        : null;
+    const llmDelta =
+      footerNet != null && llmNetSum != null
+        ? Math.abs(llmNetSum - footerNet)
+        : null;
+    const layoutTrusted =
+      layoutDelta != null && layoutDelta <= LAYOUT_NET_TOLERANCE_EUR;
+    const llmTrusted =
+      llmDelta != null && llmDelta <= LAYOUT_NET_TOLERANCE_EUR;
+
+    let preferLayoutRows = false;
+    let preferLlmRows = false;
+    if (hasUsableColumnLayout) {
+      if (layoutTrusted && !llmTrusted) {
+        preferLayoutRows = true;
+      } else if (llmTrusted && !layoutTrusted) {
+        preferLlmRows = true;
+      } else if (layoutTrusted && llmTrusted) {
+        preferLayoutRows = true;
+      } else if (layoutDelta != null && llmDelta != null) {
+        if (layoutDelta + 0.05 < llmDelta) preferLayoutRows = true;
+        else if (llmDelta + 0.05 < layoutDelta) preferLlmRows = true;
+      }
+    }
 
     const merged = shouldMergeAzureLayout(tableFormat)
       ? mergeLayoutAndLlmLineItems(llmLineItems, layoutLineItems, amount, {
           trustedNetTotal: footerNet,
           preferLayoutRows,
+          preferLlmRows,
         })
       : llmLineItems.length > 0
         ? llmLineItems

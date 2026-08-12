@@ -15,7 +15,10 @@ import {
 import { detectInvoiceTableFormat } from "@/lib/ocr/invoice-format-routing";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
-import { parseGermanNumber } from "@/utils/invoiceMath";
+import {
+  parseGermanNumber,
+  resolveInvoiceRowGesamtpreis,
+} from "@/utils/invoiceMath";
 
 import type {
   AzureLayoutAnalyzeResult,
@@ -296,11 +299,18 @@ export function extractRowLineTotalAmount(
     return null;
   }
 
-  // The column geometry is authoritative: when the table provides both
-  // E-Preis and Ges. Preis, the rightmost money cell is the printed
-  // Zeilensumme. Do not infer a replacement from their numeric ratio — a
-  // discounted line can legitimately have Ges. Preis < E-Preis.
-  return moneyCells[0]!.amount;
+  // Rightmost = Ges. Preis, second-from-right = E-Preis. Recompute when OCR
+  // garbled the printed total (e.g. 141,46 → 1,47) but Menge × E-Preis is clear.
+  const gesPreis = moneyCells[0]!.amount;
+  const einzelpreis = moneyCells[1]!.amount;
+  if (qty == null) return gesPreis;
+  return (
+    resolveInvoiceRowGesamtpreis({
+      menge: qty,
+      einzelpreis,
+      gesamtpreis: gesPreis,
+    }) ?? gesPreis
+  );
 }
 
 function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
@@ -448,9 +458,23 @@ function preferLongerLabel(primary: string, secondary: string): string {
   return a;
 }
 
+function pickMergedRowAmount(
+  layoutAmount: number,
+  llmAmount: number | null,
+): number {
+  if (llmAmount == null) return layoutAmount;
+  if (Math.abs(llmAmount - layoutAmount) < 0.02) return layoutAmount;
+  // LLM captured E-Preis while layout has Ges. Preis — keep layout.
+  if (isUnitPriceAmountOfTotal(llmAmount, layoutAmount)) return layoutAmount;
+  // Severe OCR digit-drop on layout (e.g. 1,47 vs 141,46) — not mild mismatches.
+  if (layoutAmount < llmAmount * 0.15 && llmAmount >= 10) return llmAmount;
+  // Default: trust Azure row geometry over potentially row-shifted LLM amounts.
+  return layoutAmount;
+}
+
 /**
  * Prefer Azure layout rows when they match totals better than LLM output.
- * Amounts always come from layout (rightmost Ges. Preis column); labels from LLM when clearer.
+ * Otherwise hybrid-merge: layout order + best amount per matched row.
  */
 export function mergeLayoutAndLlmLineItems(
   llmItems: InvoiceLineItem[] | null | undefined,
@@ -458,8 +482,10 @@ export function mergeLayoutAndLlmLineItems(
   totalAmount: number | null,
   options: {
     trustedNetTotal?: number | null;
-    /** A complete Pos table was detected, even when its footer is on page 2. */
+    /** Layout rows reconcile with Nettosumme — trust geometry exclusively. */
     preferLayoutRows?: boolean;
+    /** LLM rows reconcile with Nettosumme better — trust LLM exclusively. */
+    preferLlmRows?: boolean;
   } = {},
 ): InvoiceLineItem[] | null {
   const layout = layoutItems ?? [];
@@ -467,6 +493,10 @@ export function mergeLayoutAndLlmLineItems(
 
   if (layout.length === 0) return llm.length > 0 ? llm : null;
   if (llm.length === 0) return layout;
+
+  if (options.preferLlmRows) {
+    return llm;
+  }
 
   const layoutNetSum = layout.reduce((sum, item) => sum + item.amount, 0);
   const trustedNetTotal = options.trustedNetTotal ?? null;
@@ -487,7 +517,10 @@ export function mergeLayoutAndLlmLineItems(
       label: llmMatch
         ? preferLongerLabel(layoutItem.label, llmMatch.label)
         : layoutItem.label,
-      amount: layoutItem.amount,
+      amount: pickMergedRowAmount(
+        layoutItem.amount,
+        llmMatch?.amount ?? null,
+      ),
     };
   });
 

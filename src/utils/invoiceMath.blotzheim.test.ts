@@ -114,6 +114,33 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
     expect(processed.find((i) => i.label.includes("Ölfilter"))!.gesamtpreis).toBe(23.86);
   });
 
+  it("recomputes OCR-garbled Ges. Preis from Menge × E-Preis", () => {
+    const processed = processLineItems([
+      {
+        label: "Bremsbelagsatz, Scheibenbremse",
+        menge: "1,00",
+        einzelpreis: "141,46 €",
+        gesamtpreis: "1,47 €",
+      },
+      {
+        label: "Bremsscheibe PRO+",
+        menge: "2,00",
+        einzelpreis: "165,99 €",
+        gesamtpreis: "301,33 €",
+      },
+      {
+        label: "Wasserpumpe (Rabatt)",
+        menge: "1,00",
+        einzelpreis: "41,04 €",
+        gesamtpreis: "28,73 €",
+      },
+    ]);
+
+    expect(processed[0]!.gesamtpreis).toBe(141.46);
+    expect(processed[1]!.gesamtpreis).toBe(331.98);
+    expect(processed[2]!.gesamtpreis).toBe(28.73);
+  });
+
   it("maps English vision schema fields to processLineItems", () => {
     const normalized = normalizeVisionLineItemsPayload({
       line_items: [
