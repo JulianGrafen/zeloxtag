@@ -540,9 +540,21 @@ function reconcileColumnTableLineItemsWithOcrText(
     let bestIndex = -1;
     let bestPos = -1;
 
+    const expectedPos = itemIndex + 1;
+    if (posKeyed.has(expectedPos)) {
+      const posItem = posKeyed.get(expectedPos)!;
+      const score = labelMatchScoreForReconcile(item.label, posItem.label);
+      if (score >= 25) {
+        bestMatch = posItem;
+        bestScore = Math.max(score, 55);
+        bestPos = expectedPos;
+      }
+    }
+
     if (posKeyed.size > 0) {
       for (const [pos, textItem] of posKeyed) {
         if (usedPosNumbers.has(pos)) continue;
+        if (pos === bestPos) continue;
         const score = labelMatchScoreForReconcile(item.label, textItem.label);
         if (score > bestScore) {
           bestScore = score;

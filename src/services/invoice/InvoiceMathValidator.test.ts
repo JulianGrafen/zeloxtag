@@ -57,17 +57,32 @@ describe("validateAndFixLineItems", () => {
     expect(fixed!.is_math_valid).toBe(true);
   });
 
-  it("marks row invalid when math drifts beyond tolerance", () => {
+  it("corrects shifted Ges. Preis from Menge × E-Preis", () => {
     const [fixed] = validateAndFixLineItems([
       {
-        description: "Shifted row",
-        quantity: 1,
+        description: "Beide Bremsscheiben erneuern (Hinterachse)",
+        quantity: 0.9,
         unit_price: 90,
         total_price: 360,
       },
     ]);
 
-    expect(fixed!.is_math_valid).toBe(false);
+    expect(fixed!.total_price).toBe(81);
+    expect(fixed!.is_math_valid).toBe(true);
+  });
+
+  it("marks row invalid when total cannot be derived from columns", () => {
+    const [fixed] = validateAndFixLineItems([
+      {
+        description: "Unknown part",
+        quantity: 1,
+        unit_price: null,
+        total_price: 360,
+      },
+    ]);
+
+    expect(fixed!.is_math_valid).toBe(true);
+    expect(fixed!.unit_price).toBe(360);
   });
 
   it("accepts fractional labor quantities (Blotzheim: 0.90 × 90 = 81)", () => {

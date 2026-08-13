@@ -4,6 +4,7 @@ import type {
   InvoiceTotalReconciliation,
   ParsedInvoice,
 } from "@/types/invoice";
+import { resolveInvoiceRowGesamtpreis } from "@/utils/invoiceMath";
 
 /** Allowed rounding drift for Menge × E-Preis vs Ges. Preis (EUR). */
 export const INVOICE_LINE_MATH_TOLERANCE_EUR = 0.05;
@@ -40,16 +41,28 @@ export function validateAndFixLineItems(
       unitPrice = roundMoney(totalPrice / quantity);
     }
 
-    const unitForCheck = unitPrice ?? totalPrice;
+    let fixedTotal = totalPrice;
+    if (unitPrice != null && isValidQuantity(quantity)) {
+      const resolved = resolveInvoiceRowGesamtpreis({
+        menge: quantity,
+        einzelpreis: unitPrice,
+        gesamtpreis: totalPrice,
+      });
+      if (resolved != null) {
+        fixedTotal = roundMoney(resolved);
+      }
+    }
+
+    const unitForCheck = unitPrice ?? fixedTotal;
     const expectedTotal = roundMoney(quantity * unitForCheck);
     const isMathValid =
-      Math.abs(expectedTotal - totalPrice) < INVOICE_LINE_MATH_TOLERANCE_EUR;
+      Math.abs(expectedTotal - fixedTotal) < INVOICE_LINE_MATH_TOLERANCE_EUR;
 
     return {
       description: item.description.trim(),
       quantity,
       unit_price: unitPrice,
-      total_price: totalPrice,
+      total_price: fixedTotal,
       is_math_valid: isMathValid,
     };
   });

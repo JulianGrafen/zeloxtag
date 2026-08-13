@@ -4,6 +4,8 @@
  * without touching {@link HybridInvoiceService}.
  */
 
+import type { AzureLayoutAnalyzeResult } from "@/lib/ocr/azure-document-intelligence";
+
 export type DocumentParseInput = {
   bytes: Buffer;
   contentType: string;
@@ -14,6 +16,8 @@ export type DocumentParseResult = {
   markdown: string;
   pageCount: number;
   tableCount: number;
+  /** Full Azure layout payload for geometry-based line-item correction. */
+  layout: AzureLayoutAnalyzeResult;
 };
 
 export interface IDocumentParser {

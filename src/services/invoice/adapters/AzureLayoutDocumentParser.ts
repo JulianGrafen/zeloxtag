@@ -35,6 +35,7 @@ export class AzureLayoutDocumentParser implements IDocumentParser {
       markdown,
       pageCount: Math.max(1, result.pages.length),
       tableCount: result.tables.length,
+      layout: result,
     };
   }
 }

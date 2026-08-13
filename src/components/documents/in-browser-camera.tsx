@@ -31,6 +31,10 @@ import {
   captureQualityMessage,
   type CaptureQualityMetrics,
 } from "@/lib/utils/capture-quality-gate";
+import {
+  analyzeInvoiceCaptureFraming,
+  type InvoiceFramingMetrics,
+} from "@/lib/utils/invoice-capture-framing";
 
 export type GuideFrameType = "a4" | "section" | "none";
 export type GuideSectionAnchor = "top" | "center" | "bottom";
@@ -85,6 +89,13 @@ export interface InBrowserCameraProps {
   captureJpegQuality?: number;
   /** Block upload when frame is blurry or too dark. */
   enforceCaptureQuality?: boolean;
+  /**
+   * Live distance/zoom hints from A4 guide fill ratio (invoice scans).
+   * Requires `guideFrame="a4"`.
+   */
+  showFramingGuide?: boolean;
+  /** Show pinch-style zoom slider when the camera supports optical zoom. */
+  allowOpticalZoom?: boolean;
 }
 
 type FacingMode = "environment" | "user";
@@ -221,6 +232,8 @@ export function InBrowserCamera({
   captureMaxWidth,
   captureJpegQuality,
   enforceCaptureQuality = false,
+  showFramingGuide = false,
+  allowOpticalZoom = false,
 }: InBrowserCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const viewfinderRef = useRef<HTMLDivElement>(null);
@@ -239,6 +252,14 @@ export function InBrowserCamera({
   const captureRejectTimerRef = useRef<number | null>(null);
   const [liveCaptureQuality, setLiveCaptureQuality] =
     useState<CaptureQualityMetrics | null>(null);
+  const [liveFraming, setLiveFraming] =
+    useState<InvoiceFramingMetrics | null>(null);
+  const [opticalZoom, setOpticalZoom] = useState<{
+    min: number;
+    max: number;
+    step: number;
+    value: number;
+  } | null>(null);
   const captureEncodeOptions = {
     maxWidth: captureMaxWidth,
     jpegQuality: captureJpegQuality,
@@ -256,7 +277,12 @@ export function InBrowserCamera({
   const topBarLabel = formatTopBarLabel(title, captureStep);
   const showBottomHintPanel =
     !compactChrome &&
-    Boolean(resolvedHint || enforceCaptureQuality || captureStep);
+    Boolean(
+      resolvedHint ||
+        enforceCaptureQuality ||
+        showFramingGuide ||
+        captureStep,
+    );
   const shouldShowBriefing = Boolean(
     resolvedHint && showBriefing && !continuousCapture && !captureStep,
   );
@@ -321,6 +347,87 @@ export function InBrowserCamera({
       window.clearInterval(timer);
     };
   }, [enforceCaptureQuality, cameraReady, instructionsOpen, facingMode]);
+
+  useEffect(() => {
+    if (
+      !showFramingGuide ||
+      guideFrame !== "a4" ||
+      !cameraReady ||
+      instructionsOpen
+    ) {
+      setLiveFraming(null);
+      return;
+    }
+
+    let cancelled = false;
+    const sample = () => {
+      const guide = guideFrameRef.current;
+      const viewfinder = viewfinderRef.current;
+      if (!guide || !viewfinder) return;
+      const framing = analyzeInvoiceCaptureFraming(
+        guide.getBoundingClientRect().height,
+        viewfinder.getBoundingClientRect().height,
+      );
+      if (!cancelled) setLiveFraming(framing);
+    };
+
+    sample();
+    const timer = window.setInterval(sample, 350);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [showFramingGuide, guideFrame, cameraReady, instructionsOpen, facingMode]);
+
+  useEffect(() => {
+    if (!allowOpticalZoom || !cameraReady) {
+      setOpticalZoom(null);
+      return;
+    }
+
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track?.getCapabilities) {
+      setOpticalZoom(null);
+      return;
+    }
+
+    const caps = track.getCapabilities() as MediaTrackCapabilities & {
+      zoom?: { min?: number; max?: number; step?: number };
+    };
+    const zoomCaps = caps.zoom;
+    if (
+      zoomCaps?.min == null ||
+      zoomCaps.max == null ||
+      zoomCaps.max <= zoomCaps.min
+    ) {
+      setOpticalZoom(null);
+      return;
+    }
+
+    setOpticalZoom({
+      min: zoomCaps.min,
+      max: zoomCaps.max,
+      step: zoomCaps.step ?? 0.1,
+      value: zoomCaps.min,
+    });
+  }, [allowOpticalZoom, cameraReady, facingMode]);
+
+  async function handleOpticalZoomChange(nextValue: number) {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+
+    setOpticalZoom((current) =>
+      current ? { ...current, value: nextValue } : current,
+    );
+
+    try {
+      await track.applyConstraints({
+        advanced: [{ zoom: nextValue } as MediaTrackConstraintSet],
+      });
+    } catch {
+      // Non-critical — slider still gives a visual zoom hint on some devices.
+    }
+  }
 
   useEffect(
     () => () => {
@@ -683,6 +790,27 @@ export function InBrowserCamera({
           </div>
         ) : null}
 
+        {opticalZoom ? (
+          <div className="mb-3 w-full max-w-md rounded-xl bg-black/70 px-3 py-2.5 shadow-lg backdrop-blur-md">
+            <div className="mb-1.5 flex items-center justify-between text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white/80">
+              <span>Zoom</span>
+              <span>{opticalZoom.value.toFixed(1)}×</span>
+            </div>
+            <input
+              type="range"
+              min={opticalZoom.min}
+              max={opticalZoom.max}
+              step={opticalZoom.step}
+              value={opticalZoom.value}
+              onChange={(event) => {
+                void handleOpticalZoomChange(Number(event.target.value));
+              }}
+              className="h-2 w-full accent-emerald-300"
+              aria-label="Kamera-Zoom"
+            />
+          </div>
+        ) : null}
+
         {captureRejectMessage ? (
           <div className="mb-3 w-full max-w-md rounded-xl bg-red-950/85 px-3 py-2.5 text-center shadow-lg backdrop-blur-md">
             <p className="text-[0.75rem] font-medium leading-snug text-red-100">
@@ -701,11 +829,24 @@ export function InBrowserCamera({
                 {resolvedHint}
               </p>
             ) : null}
+            {showFramingGuide &&
+            liveFraming &&
+            liveFraming.status !== "good" &&
+            liveFraming.status !== "unknown" ? (
+              <p
+                className={[
+                  "text-[0.72rem] font-medium text-sky-200",
+                  resolvedHint ? "mt-1" : "",
+                ].join(" ")}
+              >
+                {liveFraming.message}
+              </p>
+            ) : null}
             {enforceCaptureQuality && liveCaptureQuality && !liveCaptureQuality.isReady ? (
               <p
                 className={[
                   "text-[0.72rem] font-medium text-amber-200",
-                  resolvedHint ? "mt-1" : "",
+                  resolvedHint || showFramingGuide ? "mt-1" : "",
                 ].join(" ")}
               >
                 {liveCaptureQuality.issue === "dark"
@@ -716,10 +857,19 @@ export function InBrowserCamera({
               <p
                 className={[
                   "text-[0.72rem] font-medium text-emerald-200",
-                  resolvedHint ? "mt-1" : "",
+                  resolvedHint || showFramingGuide ? "mt-1" : "",
                 ].join(" ")}
               >
                 Bereit — grüner Rahmen
+              </p>
+            ) : showFramingGuide && liveFraming?.status === "good" && frameReady ? (
+              <p
+                className={[
+                  "text-[0.72rem] font-medium text-emerald-200",
+                  resolvedHint ? "mt-1" : "",
+                ].join(" ")}
+              >
+                {liveFraming.message}
               </p>
             ) : null}
           </div>

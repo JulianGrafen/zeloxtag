@@ -22,6 +22,7 @@ import type { TeilegutachtenReviewFields } from "@/components/dashboard/Teilegut
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import { CameraCapture } from "@/components/documents/camera-capture";
+import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
@@ -322,14 +323,6 @@ export function InvoiceUploader({
     scanDef?.ocrDocumentType === "tuev" ||
     (resolvedLockCategory && resolvedCategory === "tuev");
   const isInvoiceFamilyScan = scanDef?.ocrDocumentType === "invoice";
-  const invoiceA4Camera = isInvoiceFamilyScan
-    ? {
-        title: resolvedHeading,
-        hint: `${scanDef?.title ?? "Beleg"} ins DIN-A4-Feld halten — Foto wird automatisch zugeschnitten.`,
-        guideLabel: `${scanDef?.title ?? "Beleg"} im Rahmen ausrichten`,
-        continuousCapture: true,
-      }
-    : undefined;
 
   // TÜV uploads use a dedicated guided wizard — render it in place of the
   // generic scanner so users are led through header + defect captures.
@@ -961,25 +954,40 @@ export function InvoiceUploader({
       {step === "compose" ? (
         <div className="vd-anim-header space-y-3">
           {!nativePdf && pages.length === 0 ? (
-            <CameraCapture
-              allowPdf
-              disabled={compressing}
-              inBrowserA4Camera={invoiceA4Camera}
-              hint={
-                isEinzelabnahmeUpload
-                  ? "Einzelabnahme fotografieren oder als PDF hochladen"
-                  : isTeilegutachtenUpload
-                    ? "Teilegutachten fotografieren oder als PDF hochladen"
-                    : isGutachtenFamilyUpload
-                  ? `Alle Seiten von ${scanDef?.title ?? "Gutachten"} fotografieren oder als PDF hochladen`
-                  : isTuevUpload
-                    ? "TÜV-/HU-Bericht fotografieren oder als PDF hochladen"
-                    : "Foto wird automatisch auf A4 zugeschnitten und für OCR komprimiert"
-              }
-              onFileSelected={(file) => {
-                void handleIncomingFile(file);
-              }}
-            />
+            isInvoiceFamilyScan ? (
+              <InvoiceCaptureWizard
+                title={resolvedHeading}
+                scanLabel={scanDef?.title ?? "Beleg"}
+                allowPdf
+                disabled={compressing}
+                onComplete={(files) => {
+                  void (async () => {
+                    for (const file of files) {
+                      await handleIncomingFile(file);
+                    }
+                  })();
+                }}
+              />
+            ) : (
+              <CameraCapture
+                allowPdf
+                disabled={compressing}
+                hint={
+                  isEinzelabnahmeUpload
+                    ? "Einzelabnahme fotografieren oder als PDF hochladen"
+                    : isTeilegutachtenUpload
+                      ? "Teilegutachten fotografieren oder als PDF hochladen"
+                      : isGutachtenFamilyUpload
+                        ? `Alle Seiten von ${scanDef?.title ?? "Gutachten"} fotografieren oder als PDF hochladen`
+                        : isTuevUpload
+                          ? "TÜV-/HU-Bericht fotografieren oder als PDF hochladen"
+                          : "Foto wird automatisch auf A4 zugeschnitten und für OCR komprimiert"
+                }
+                onFileSelected={(file) => {
+                  void handleIncomingFile(file);
+                }}
+              />
+            )
           ) : null}
 
           {isEinzelabnahmeUpload ? (
@@ -1131,25 +1139,38 @@ export function InvoiceUploader({
 
               {pages.length < MAX_PAGES ? (
                 <div className="grid grid-cols-1 gap-2">
-                  <CameraCapture
-                    disabled={compressing}
-                    inBrowserA4Camera={invoiceA4Camera}
-                    label="Weitere Seite"
-                    hint={
-                      isEinzelabnahmeUpload
-                        ? "Nächste Seite derselben Einzelabnahme hinzufügen"
-                        : isTeilegutachtenUpload
-                          ? "Nächste Seite desselben Teilegutachtens hinzufügen"
-                          : isGutachtenFamilyUpload
-                        ? "Nächste Seite desselben Gutachtens hinzufügen"
-                        : "Nächste Seite fotografieren oder aus der Galerie wählen"
-                    }
-                    imageButtonLabel="Bild hinzufügen"
-                    cameraButtonLabel="Kamera · Seite hinzufügen"
-                    onFileSelected={(file) => {
-                      void handleIncomingFile(file);
-                    }}
-                  />
+                  {isInvoiceFamilyScan ? (
+                    <InvoiceCaptureWizard
+                      variant="add-page"
+                      title={resolvedHeading}
+                      scanLabel={scanDef?.title ?? "Beleg"}
+                      disabled={compressing}
+                      imageButtonLabel="Bild hinzufügen"
+                      cameraButtonLabel="Rechnungsblock · Kamera"
+                      onFileSelected={(file) => {
+                        void handleIncomingFile(file);
+                      }}
+                    />
+                  ) : (
+                    <CameraCapture
+                      disabled={compressing}
+                      label="Weitere Seite"
+                      hint={
+                        isEinzelabnahmeUpload
+                          ? "Nächste Seite derselben Einzelabnahme hinzufügen"
+                          : isTeilegutachtenUpload
+                            ? "Nächste Seite desselben Teilegutachtens hinzufügen"
+                            : isGutachtenFamilyUpload
+                              ? "Nächste Seite desselben Gutachtens hinzufügen"
+                              : "Nächste Seite fotografieren oder aus der Galerie wählen"
+                      }
+                      imageButtonLabel="Bild hinzufügen"
+                      cameraButtonLabel="Kamera · Seite hinzufügen"
+                      onFileSelected={(file) => {
+                        void handleIncomingFile(file);
+                      }}
+                    />
+                  )}
                   <p className="text-center text-[0.75rem] text-[color:var(--vd-muted)]">
                     <Plus className="mr-1 inline h-3.5 w-3.5" aria-hidden />
                     {isEinzelabnahmeUpload

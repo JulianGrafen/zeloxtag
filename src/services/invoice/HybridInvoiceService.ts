@@ -13,8 +13,8 @@ import type {
 } from "@/services/invoice/interfaces";
 import {
   reconcileInvoiceTotals,
-  validateAndFixLineItems,
 } from "@/services/invoice/InvoiceMathValidator";
+import { reconcileHybridInvoiceLineItems } from "@/services/invoice/reconcile-hybrid-line-items";
 import {
   parseHybridInvoiceLlmResponse,
   type HybridInvoiceLlmResponse,
@@ -70,8 +70,11 @@ export class HybridInvoiceService {
     const azureInput = resolveAzureLayoutInput(input, input);
 
     let markdown: string;
+    let fullMarkdown: string;
     let pageCount = 1;
     let tableCount = 0;
+    let layoutResult: Awaited<ReturnType<IDocumentParser["parse"]>>["layout"] | null =
+      null;
     try {
       const layout = await this.documentParser.parse({
         bytes: azureInput.bytes,
@@ -79,6 +82,8 @@ export class HybridInvoiceService {
       });
       pageCount = layout.pageCount;
       tableCount = layout.tableCount;
+      layoutResult = layout.layout;
+      fullMarkdown = layout.markdown;
       markdown = layout.markdown.slice(0, this.maxMarkdownChars);
       console.info(
         `[HybridInvoiceService] layout OCR: ${layout.pageCount} page(s), ${layout.tableCount} table(s), ${markdown.length} chars`,
@@ -113,11 +118,16 @@ export class HybridInvoiceService {
 
     try {
       const parsed = parseHybridInvoiceLlmResponse(llmRaw);
-      const withLineMath = {
+      const correctedLineItems = reconcileHybridInvoiceLineItems({
+        draftItems: parsed.line_items,
+        markdown: fullMarkdown,
+        layout: layoutResult,
+        grossAmount: parsed.totals.gross_amount,
+      });
+      const reconciled = reconcileInvoiceTotals({
         ...parsed,
-        line_items: validateAndFixLineItems(parsed.line_items),
-      };
-      const reconciled = reconcileInvoiceTotals(withLineMath);
+        line_items: correctedLineItems,
+      });
 
       console.info(
         `[HybridInvoiceService] total reconciliation: positions=${reconciled.reconciliation.line_items_net_sum} net_delta=${reconciled.reconciliation.net_delta} gross_delta=${reconciled.reconciliation.gross_delta} net_ok=${reconciled.reconciliation.net_reconciled}`,
