@@ -181,7 +181,23 @@ function isPosColumnCell(
 }
 
 function tableScore(table: AzureLayoutTable): number {
-  return table.cells.filter((cell) => cell.kind !== "columnHeader").length;
+  const dataCells = table.cells.filter((cell) => cell.kind !== "columnHeader").length;
+
+  // Prefer tables on later pages. On multi-page invoices Azure Layout often
+  // generates a duplicate table per page; the last page has the most complete
+  // Ges.-Preis values (the first page's rightmost column may be truncated by
+  // the scanner edge). A page-number bonus of 10 000 per page dominates any
+  // cell-count tie between otherwise identical tables.
+  const maxPage = Math.max(
+    0,
+    ...(table.boundingRegions ?? []).map((region) => region.pageNumber),
+  );
+
+  // € count: prefer tables whose price cells carry the currency symbol,
+  // which indicates complete (non-truncated) OCR values.
+  const euroCount = table.cells.filter((cell) => /€/.test(cell.content)).length;
+
+  return dataCells + maxPage * 10_000 + euroCount;
 }
 
 /** True when the cell is primarily a quantity (not a label like "Motoröl 5W30"). */

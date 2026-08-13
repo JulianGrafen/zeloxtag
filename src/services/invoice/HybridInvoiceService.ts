@@ -1,5 +1,6 @@
 import "server-only";
 
+import { deduplicateInvoiceItemTable } from "@/lib/ocr/markdown-page-dedup";
 import { resolveAzureLayoutInput } from "@/lib/ocr/prepare-document-for-llm";
 import type { DocumentBytesInput } from "@/lib/ocr/prepare-document-for-llm";
 
@@ -84,7 +85,10 @@ export class HybridInvoiceService {
       tableCount = layout.tableCount;
       layoutResult = layout.layout;
       fullMarkdown = layout.markdown;
-      markdown = layout.markdown.slice(0, this.maxMarkdownChars);
+      // Deduplicate before slicing: remove earlier (truncated) copies of the
+      // invoice items table that Azure Layout emits once per physical page.
+      const dedupedMarkdown = deduplicateInvoiceItemTable(layout.markdown);
+      markdown = dedupedMarkdown.slice(0, this.maxMarkdownChars);
       console.info(
         `[HybridInvoiceService] layout OCR: ${layout.pageCount} page(s), ${layout.tableCount} table(s), ${markdown.length} chars`,
       );
