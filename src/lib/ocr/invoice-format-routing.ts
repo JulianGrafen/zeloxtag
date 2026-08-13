@@ -21,19 +21,43 @@ export function detectColumnTableSignals(rawText: string): number {
   return score;
 }
 
+/**
+ * Returns true when the text contains an explicit "Ges. Preis" / "Gesamtpreis"
+ * column header.  This is the strongest signal for a proper column-table invoice
+ * — section-based workshop invoices (Arbeitswerte/Ersatzteile) never use it.
+ */
+export function hasGesPreisColumn(rawText: string): boolean {
+  const lower = rawText.replace(/\r\n/g, "\n").toLowerCase();
+  return /\bges\.?\s*preis\b|\bgesamtpreis\b|\bg-?preis\b/.test(lower);
+}
+
 export function isColumnTableInvoiceText(rawText: string): boolean {
   return detectColumnTableSignals(rawText) >= 4;
 }
 
 /**
  * Column table vs Arbeitswerte/Ersatzteile sections vs unbekannt → LLM-only.
+ *
+ * An explicit "Ges. Preis" / "Gesamtpreis" column header is the strongest
+ * signal for a proper column-table invoice and takes priority over workshop
+ * section labels.  Many German workshops use BOTH structures on the same
+ * invoice; routing them through the column pipeline (layout trust + geometry
+ * correction) matches the proven 54d78144 behaviour where all invoices ran
+ * through that path unconditionally.
+ *
+ * Section-only invoices that lack "Ges. Preis" (e.g. Speedworkz) still route
+ * to the workshop path.
  */
 export function detectInvoiceTableFormat(
   rawText: string | null | undefined,
 ): InvoiceTableFormat {
   const text = rawText?.trim() ?? "";
   if (!text) return "column";
+  // Explicit Ges.-Preis column → always the tabular pipeline.
+  if (hasGesPreisColumn(text)) return "column";
+  // Section-based layout (Arbeitswerte / Ersatzteile) without Ges.-Preis.
   if (isWorkshopSectionInvoiceText(text)) return "workshop-sections";
+  // Generic column table (score ≥ 4 but no explicit Ges.-Preis).
   if (isColumnTableInvoiceText(text)) return "column";
   return "unknown";
 }
