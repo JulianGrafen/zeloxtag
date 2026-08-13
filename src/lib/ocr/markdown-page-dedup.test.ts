@@ -1,102 +1,166 @@
 import { describe, expect, it } from "vitest";
 import { deduplicateInvoiceItemTable } from "./markdown-page-dedup";
 
-const ITEMS_TABLE_PAGE1 = `
+// ─── HTML table fixtures ─────────────────────────────────────────────────────
+
+function buildHtmlInvoiceTable(rows: number, complete: boolean): string {
+  const headerLabel = complete ? "Ges. Preis St." : "Ges. Prei";
+  const priceFormat = (i: number) =>
+    complete ? `${i * 10},00 € A` : `${i * 10},0`; // truncated on page 1
+
+  const dataRows = Array.from(
+    { length: rows },
+    (_, i) => `
+<tr>
+<td>${i + 1}</td>
+<td>Artikel ${i + 1}</td>
+<td>${i + 1},00</td>
+<td>${(i + 1) * 5},00 €</td>
+<td>${priceFormat(i + 1)}</td>
+</tr>`,
+  ).join("");
+
+  return `
 <table>
 <tr>
 <th>Pos</th>
 <th>Bezeichnung/Beschreibung</th>
 <th>Menge</th>
 <th>E-Preis</th>
-<th>Ges. Prei</th>
+<th>${headerLabel}</th>
 </tr>
-<tr>
-<td>4</td>
-<td>Bremsscheibe PRO+</td>
-<td>2,00</td>
-<td>165,99 €</td>
-<td>331,98</td>
-</tr>
-<tr>
-<td>10</td>
-<td>Kühlerfrostschutz</td>
-<td>3,00 Liter</td>
-<td>7,14 €</td>
-<td>21,4</td>
-</tr>
-</table>
-`.trim();
+${dataRows}
+</table>`.trim();
+}
 
-const ITEMS_TABLE_PAGE2 = `
-<table>
-<tr>
-<th>Pos</th>
-<th>Bezeichnung/Beschreibung</th>
-<th>Menge</th>
-<th>E-Preis</th>
-<th>Ges. Preis St.</th>
-</tr>
-<tr>
-<td>4</td>
-<td>Bremsscheibe PRO+</td>
-<td>2,00</td>
-<td>165,99 €</td>
-<td>331,98 € A</td>
-</tr>
-<tr>
-<td>10</td>
-<td>Kühlerfrostschutz</td>
-<td>3,00 Liter</td>
-<td>7,14 €</td>
-<td>21,42 € A</td>
-</tr>
-</table>
-`.trim();
-
-// Small metadata table (Marke/Modell etc.) — must NOT be touched.
+// Metadata table — 2 columns, must never be removed.
 const HEADER_TABLE = `
 <table>
 <tr>
 <td>Marke:</td>
 <td>BMW</td>
 </tr>
-</table>
-`.trim();
+<tr>
+<td>Modell:</td>
+<td>5er</td>
+</tr>
+</table>`.trim();
+
+// ─── Pipe table fixture ──────────────────────────────────────────────────────
+
+function buildPipeInvoiceTable(rows: number, complete: boolean): string {
+  const priceFormat = (i: number) => (complete ? `${i * 10},00 €` : `${i * 10},`);
+  const header = "| Pos | Bezeichnung | Menge | E-Preis | Ges. Preis |";
+  const sep = "|-----|-------------|-------|---------|------------|";
+  const dataRows = Array.from(
+    { length: rows },
+    (_, i) => `| ${i + 1} | Artikel ${i + 1} | ${i + 1},00 | ${(i + 1) * 5},00 € | ${priceFormat(i + 1)} |`,
+  );
+  return [header, sep, ...dataRows].join("\n");
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("deduplicateInvoiceItemTable", () => {
-  it("removes the invoice items table from page 1 when it also appears on page 2", () => {
-    const markdown = [
-      `Header info\n${HEADER_TABLE}\n${ITEMS_TABLE_PAGE1}`,
-      `Header info\n${HEADER_TABLE}\n${ITEMS_TABLE_PAGE2}`,
-    ].join("\n<!-- PageBreak -->\n");
+  describe("HTML tables", () => {
+    it("removes the items table from page 1 when a complete copy exists on page 2", () => {
+      const page1 = `${HEADER_TABLE}\n${buildHtmlInvoiceTable(8, false)}`;
+      const page2 = `${HEADER_TABLE}\n${buildHtmlInvoiceTable(8, true)}`;
+      const markdown = [page1, page2].join("\n<!-- PageBreak -->\n");
 
-    const result = deduplicateInvoiceItemTable(markdown);
+      const result = deduplicateInvoiceItemTable(markdown);
 
-    // Page 2's complete table is preserved
-    expect(result).toContain("331,98 € A");
-    expect(result).toContain("21,42 € A");
+      // Complete page-2 table preserved
+      expect(result).toContain("Ges. Preis St.");
+      expect(result).toContain("80,00 € A");
 
-    // Page 1's truncated table is removed
-    expect(result).not.toContain("Ges. Prei</th>");
-    expect(result).not.toContain("<td>21,4</td>");
+      // Truncated page-1 table removed
+      expect(result).not.toContain("Ges. Prei</th>");
 
-    // Metadata tables on page 1 are kept
-    expect(result).toContain("Marke:");
-    expect(result).toContain("<!-- PageBreak -->");
+      // Metadata tables on both pages kept
+      expect(result.match(/Marke:/g)?.length).toBe(2);
+      expect(result).toContain("<!-- PageBreak -->");
+    });
+
+    it("is a no-op on a single-page invoice", () => {
+      const markdown = buildHtmlInvoiceTable(10, true);
+      expect(deduplicateInvoiceItemTable(markdown)).toBe(markdown);
+    });
+
+    it("does NOT deduplicate when page 2 has significantly fewer rows (split table)", () => {
+      const page1 = buildHtmlInvoiceTable(12, true); // rows 1-12
+      const page2 = buildHtmlInvoiceTable(6, true);  // rows 13-18 (continuation)
+      const markdown = [page1, page2].join("\n<!-- PageBreak -->\n");
+
+      const result = deduplicateInvoiceItemTable(markdown);
+
+      // Both tables preserved — page 2 is only 50 % of page 1 (< 80 % threshold)
+      expect(result.match(/<table>/g)?.length).toBe(2);
+    });
+
+    it("does not remove small metadata tables (< 4 columns)", () => {
+      const page1 = `${HEADER_TABLE}\n${buildHtmlInvoiceTable(8, false)}`;
+      const page2 = `${HEADER_TABLE}\n${buildHtmlInvoiceTable(8, true)}`;
+      const markdown = [page1, page2].join("\n<!-- PageBreak -->\n");
+
+      const result = deduplicateInvoiceItemTable(markdown);
+      expect(result.match(/Marke:/g)?.length).toBe(2);
+    });
+
+    it("works without a Pos column (4-column invoice: Bezeichnung/Menge/E-Preis/Ges.Preis)", () => {
+      function buildNoPos(rows: number, complete: boolean): string {
+        const priceFormat = (i: number) => (complete ? `${i * 10},00 € A` : `${i * 10},0`);
+        const dataRows = Array.from(
+          { length: rows },
+          (_, i) => `<tr><td>Artikel ${i + 1}</td><td>${i + 1},00</td><td>${(i + 1) * 5},00 €</td><td>${priceFormat(i + 1)}</td></tr>`,
+        ).join("");
+        return `<table><tr><th>Bezeichnung</th><th>Menge</th><th>E-Preis</th><th>Ges. Preis</th></tr>${dataRows}</table>`;
+      }
+
+      const page1 = buildNoPos(8, false);
+      const page2 = buildNoPos(8, true);
+      const markdown = [page1, page2].join("\n<!-- PageBreak -->\n");
+
+      const result = deduplicateInvoiceItemTable(markdown);
+
+      expect(result).toContain("80,00 € A"); // complete version kept
+      expect(result.match(/<table>/g)?.length).toBe(1); // only one table remains
+    });
+
+    it("handles three-page invoice where only the last table is complete", () => {
+      const page1 = `${HEADER_TABLE}\n${buildHtmlInvoiceTable(8, false)}`;
+      const page2 = `${HEADER_TABLE}\n${buildHtmlInvoiceTable(8, false)}`;
+      const page3 = `${HEADER_TABLE}\n${buildHtmlInvoiceTable(8, true)}`;
+      const markdown = [page1, page2, page3].join("\n<!-- PageBreak -->\n");
+
+      const result = deduplicateInvoiceItemTable(markdown);
+
+      // Only one items table remains (from page 3)
+      const tableMatches = result.match(/<table>[\s\S]*?<\/table>/gi) ?? [];
+      const itemsTables = tableMatches.filter((t) =>
+        t.includes("Ges. Preis St."),
+      );
+      expect(itemsTables).toHaveLength(1);
+
+      // Metadata tables on all three pages preserved
+      expect(result.match(/Marke:/g)?.length).toBe(3);
+    });
   });
 
-  it("is a no-op when the table appears only once (single-page invoice)", () => {
-    const markdown = `Header\n${ITEMS_TABLE_PAGE2}`;
-    expect(deduplicateInvoiceItemTable(markdown)).toBe(markdown);
-  });
+  describe("Pipe tables", () => {
+    it("deduplicates pipe-format invoice tables across pages", () => {
+      const page1 = buildPipeInvoiceTable(8, false);
+      const page2 = buildPipeInvoiceTable(8, true);
+      const markdown = [page1, page2].join("\n<!-- PageBreak -->\n");
 
-  it("is a no-op when there is no invoice items table at all", () => {
-    const markdown = `Header\n${HEADER_TABLE}\n<!-- PageBreak -->\nPage 2`;
-    expect(deduplicateInvoiceItemTable(markdown)).toBe(markdown);
-  });
+      const result = deduplicateInvoiceItemTable(markdown);
 
-  it("does not touch non-invoice tables (no <th>Pos</th>)", () => {
-    const markdown = `${HEADER_TABLE}\n<!-- PageBreak -->\n${HEADER_TABLE}`;
-    expect(deduplicateInvoiceItemTable(markdown)).toBe(markdown);
+      // Complete page-2 pipe table preserved
+      expect(result).toContain("80,00 €");
+
+      // Truncated page-1 table removed
+      const pipeTableCount = (result.match(/\| Pos \|/g) ?? []).length;
+      expect(pipeTableCount).toBe(1);
+    });
   });
 });
