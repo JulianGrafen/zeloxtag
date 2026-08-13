@@ -29,6 +29,7 @@ import {
   readVisionTotalAmountRaw,
 } from "@/lib/validations/invoiceExtractionSchema";
 import {
+  buildVisionUserMessage,
   prepareSinglePageOcrInput,
   resolveAzureLayoutInput,
   type DocumentBytesInput,
