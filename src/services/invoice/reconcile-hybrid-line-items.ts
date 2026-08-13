@@ -60,10 +60,26 @@ function mapCorrectedRowsToInvoiceLineItems(
         draftValidated[index] ??
         null;
 
+      const qty = draft?.quantity ?? 1;
+      const draftUnitPrice = draft?.unit_price ?? null;
+      const draftTotal = draft?.total_price ?? null;
+
+      // Guard: if the pipeline (layout trust) changed the amount, check whether
+      // the draft's qty × unit_price is self-consistent with the OLD (wrong) total.
+      // When it is, both values were read from the wrong row — supplying unit_price
+      // would cause validateAndFixLineItems to revert row.amount back to qty×unit_price.
+      // Clearing unit_price lets the validator derive it from row.amount / qty instead,
+      // keeping the layout-corrected total intact.
+      const pipelineDelta = draftTotal != null ? Math.abs(row.amount - draftTotal) : 0;
+      const draftSelfConsistentWithOldTotal =
+        draftUnitPrice != null &&
+        Math.abs(qty * draftUnitPrice - (draftTotal ?? row.amount)) < 0.06;
+      const layoutOverrodeAmount = pipelineDelta > 0.10 && draftSelfConsistentWithOldTotal;
+
       return {
         description: row.label,
-        quantity: draft?.quantity ?? 1,
-        unit_price: draft?.unit_price ?? null,
+        quantity: qty,
+        unit_price: layoutOverrodeAmount ? null : draftUnitPrice,
         total_price: row.amount,
       } satisfies InvoiceLineItemDraft;
     }),
