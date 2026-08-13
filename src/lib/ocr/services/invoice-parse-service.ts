@@ -48,6 +48,7 @@ import {
   reconcileWorkshopLineItemsWithOcrText,
   resolveWorkshopLineItems,
 } from "@/lib/ocr/invoice-workshop-sections";
+import { deduplicateInvoiceItemTable } from "@/lib/ocr/markdown-page-dedup";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import {
@@ -270,16 +271,21 @@ export class InvoiceParseService {
 
     const isWorkshopFormat = tableFormat === "workshop-sections";
     const azureContent = azureLayout.content;
+    // For multi-page PDFs, Azure Layout generates duplicate item tables across
+    // pages (page 1 often has truncated Ges.-Preis, page 2 is complete).
+    // Use the deduplicated text for reconciliation so OCR search never picks
+    // up the shorter, wrong page-1 values.
+    const dedupedOcrText = deduplicateInvoiceItemTable(azureContent);
 
     if (tableFormat === "column") {
       const layoutLineItems = extractInvoiceLineItemsFromAzureLayout(azureLayout);
       const amount =
-        preferAmount(normalized.amount, azureContent, normalized.lineItems) ??
+        preferAmount(normalized.amount, dedupedOcrText, normalized.lineItems) ??
         null;
       const columnResult = finalizeColumnFormatLineItems({
         llmItems: normalized.lineItems,
         layoutItems: layoutLineItems,
-        ocrText: azureContent,
+        ocrText: dedupedOcrText,
         grossAmount: amount,
       });
 
@@ -307,7 +313,7 @@ export class InvoiceParseService {
       llmItems =
         resolveWorkshopLineItems({
           llmItems: normalized.lineItems,
-          ocrText: azureContent,
+          ocrText: dedupedOcrText,
         }) ?? normalized.lineItems;
     }
 
@@ -316,8 +322,8 @@ export class InvoiceParseService {
       : null;
 
     const amount =
-      preferAmount(normalized.amount, azureContent, llmItems) ??
-      (isWorkshopFormat ? extractWorkshopInvoiceAmount(azureContent) : null);
+      preferAmount(normalized.amount, dedupedOcrText, llmItems) ??
+      (isWorkshopFormat ? extractWorkshopInvoiceAmount(dedupedOcrText) : null);
 
     const merged = shouldMergeAzureLayout(tableFormat)
       ? mergeLayoutAndLlmLineItems(llmItems, layoutLineItems, amount)
@@ -326,8 +332,8 @@ export class InvoiceParseService {
     const reconciled =
       shouldReconcileWithOcrHeuristics(tableFormat)
         ? isWorkshopFormat
-          ? reconcileWorkshopLineItemsWithOcrText(merged, azureContent)
-          : reconcileLineItemAmountsWithOcrText(merged, azureContent)
+          ? reconcileWorkshopLineItemsWithOcrText(merged, dedupedOcrText)
+          : reconcileLineItemAmountsWithOcrText(merged, dedupedOcrText)
         : merged;
 
     const lineItems = normalizeLineItemsList(

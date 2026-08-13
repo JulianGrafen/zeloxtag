@@ -134,6 +134,53 @@ describe("finalizeColumnFormatLineItems", () => {
     ).toBeCloseTo(BLOTZHEIM_NET_SUM, 2);
   });
 
+  it("self-trusts layout rows when no Nettosumme is in the OCR text (Blotzheim truncated-page case)", () => {
+    // Simulates the Blotzheim 27646 PDF scenario:
+    //   • Vision LLM read page 1 (truncated Ges.-Preis column) → wrong amounts
+    //   • Layout comes from page 2 (complete values) → correct amounts
+    //   • OCR text has no "Nettosumme" → footerNet is null
+    // Expected: layout rows used unconditionally (self-trust), no realignment.
+    const layoutRows = [
+      { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
+      { label: "Warnkontakt, Bremsbelagverschleiß", amount: 28.80 },
+      { label: "Bremsscheibe PRO+", amount: 331.98 },
+      { label: "Beide Bremsscheiben erneuern (Hinterachse)", amount: 81.00 },
+      { label: "Kühlerfrostschutz", amount: 21.42 },
+      { label: "Ölfilter", amount: 23.86 },
+    ];
+    const shiftedLlm = [
+      { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
+      { label: "Warnkontakt, Bremsbelagverschleiß", amount: 28.80 },
+      { label: "Bremsscheibe PRO+", amount: 360.00 },  // wrong — off by a row
+      { label: "Beide Bremsscheiben erneuern (Hinterachse)", amount: 81.00 },
+      { label: "Kühlerfrostschutz", amount: 135.00 },  // wrong
+      { label: "Ölfilter", amount: 45.00 },             // wrong
+    ];
+    // OCR text intentionally omits any "Nettosumme" line.
+    const ocrTextWithoutNetto = "Pos Bezeichnung Menge E-Preis Ges. Preis\nGesamt 1.896,53 €";
+
+    const result = finalizeColumnFormatLineItems({
+      llmItems: shiftedLlm,
+      layoutItems: layoutRows,
+      ocrText: ocrTextWithoutNetto,
+      grossAmount: null,
+    });
+
+    const bremsscheibe = result.lineItems?.find((item) =>
+      item.label.includes("Bremsscheibe PRO+"),
+    );
+    const kuehlerfrost = result.lineItems?.find((item) =>
+      item.label.includes("Kühlerfrostschutz"),
+    );
+    const oelfilter = result.lineItems?.find((item) =>
+      item.label.includes("Ölfilter"),
+    );
+
+    expect(bremsscheibe?.amount).toBe(331.98);  // layout value, not LLM's 360.00
+    expect(kuehlerfrost?.amount).toBe(21.42);   // layout value, not LLM's 135.00
+    expect(oelfilter?.amount).toBe(23.86);      // layout value, not LLM's 45.00
+  });
+
   it("does not append shifted LLM rows in strict column merge", () => {
     const layoutRows = [
       { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },

@@ -46,9 +46,24 @@ function resolveColumnSourceTrust(options: {
   const llmDelta =
     footerNet != null && llmNetSum != null ? Math.abs(llmNetSum - footerNet) : null;
 
-  const layoutTrusted =
+  const layoutVerified =
     layoutDelta != null && layoutDelta <= INVOICE_NET_TOTAL_TOLERANCE_EUR;
   const llmTrusted = llmDelta != null && llmDelta <= INVOICE_NET_TOTAL_TOLERANCE_EUR;
+
+  // When the invoice footer carries no explicit Nettosumme (footerNet == null),
+  // fall back to trusting Azure Layout geometry directly.  Azure's structural
+  // table parser identifies the Ges.-Preis column from the table header and
+  // reads each cell precisely — more reliably than a vision LLM reading a
+  // page-1 image whose rightmost column may be truncated at the scanner edge.
+  // Guard: require ≥ 3 items with a non-trivial total to avoid trusting
+  // accidental metadata table extractions.
+  const layoutSelfTrusted =
+    footerNet == null &&
+    layout.length >= 3 &&
+    layoutNetSum != null &&
+    layoutNetSum > 5;
+
+  const layoutTrusted = layoutVerified || layoutSelfTrusted;
 
   let preferLayoutRows = false;
   let preferLlmRows = false;

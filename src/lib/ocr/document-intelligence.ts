@@ -1,7 +1,8 @@
 /**
- * Document parse dispatch — vision LLM (+ Azure row guides) for invoices.
- * Invoice scans: contrast-enhanced image with row separators → vision LLM;
- * hybrid layout+text is fallback only.
+ * Document parse dispatch — adaptive routing for invoices:
+ *   • PDFs   → hybrid layout+text first (all pages in markdown, deduplication)
+ *   • Images → vision LLM first (Azure row guides / Z-markers on the image)
+ * Each path falls back to the other on failure.
  */
 
 import type {
@@ -9,6 +10,7 @@ import type {
   ApprovalFields,
 } from "@/lib/documents/approval-fields";
 
+import { isPdfBuffer } from "./document-bytes";
 import { isLlmConfigured } from "./llm-client";
 import {
   buildStubOcrPayload,
@@ -114,26 +116,50 @@ async function analyzeInvoiceOneShot(input: {
     contentType: input.contentType,
   };
 
-  // Vision path with Azure layout + row separators / Z-markers (proven at
-  // 54d78144…). Hybrid markdown-only stays as fallback when vision fails.
-  try {
+  // PDFs contain multiple pages. The vision path rasterises only page 1 and
+  // can miss a complete Ges.-Preis column that only appears fully on page 2.
+  // The hybrid path feeds all pages (after deduplication) as markdown, so the
+  // LLM always sees the most complete table.
+  //
+  // Images (camera scans) are single-frame — the vision path with Azure row
+  // guides / Z-markers anchors each row precisely and works best.
+  const isPdf = isPdfBuffer(input.bytes) || input.contentType === "application/pdf";
+  const canHybrid = isAzureDocumentIntelligenceConfigured();
+
+  const runHybrid = async (): Promise<AnalyzeDocumentResult> => {
+    const hybrid = await hybridInvoiceService.extract(documentInput);
+    const ocrJson = buildOcrPayloadFromMarkdown(hybrid.markdown, hybrid.pageCount);
+    const fields = mapParsedInvoiceToTextParseResult(hybrid.invoice, {
+      rawMarkdown: hybrid.markdown,
+      lockedCategory: input.lockedCategory,
+    });
+    console.info(
+      `[analyzeDocument] hybrid invoice: pages=${hybrid.pageCount} tables=${hybrid.tableCount} positions=${fields.lineItems?.length ?? 0}`,
+    );
+    return {
+      kind: "invoice",
+      documentType: "invoice",
+      fields,
+      approvalFields: null,
+      rawText: hybrid.markdown,
+      ocrJson,
+      modelId: HYBRID_INVOICE_MODEL_ID,
+      parseModel: input.parseModel,
+    };
+  };
+
+  const runVision = async (): Promise<AnalyzeDocumentResult> => {
     const { fields, ocrJson } = await invoiceParseService.parseFromDocument(
       documentInput,
-      {
-        model: input.parseModel,
-        documentType: "invoice",
-      },
+      { model: input.parseModel, documentType: "invoice" },
     );
-
     const withCategory =
       input.lockedCategory != null
         ? { ...fields, category: input.lockedCategory }
         : fields;
-
     console.info(
       `[analyzeDocument] vision invoice (row guides): positions=${withCategory.lineItems?.length ?? 0}`,
     );
-
     return {
       kind: "invoice",
       documentType: "invoice",
@@ -144,41 +170,30 @@ async function analyzeInvoiceOneShot(input: {
       modelId: LLM_VISION_PARSE_MODEL_ID,
       parseModel: input.parseModel,
     };
-  } catch (visionError) {
-    console.warn(
-      "[analyzeDocument] vision invoice failed — trying hybrid layout+text",
-      visionError,
-    );
+  };
+
+  if (isPdf && canHybrid) {
+    // PDF: hybrid first (all pages, deduplication), vision as fallback.
+    try {
+      return await runHybrid();
+    } catch (hybridError) {
+      console.warn("[analyzeDocument] hybrid failed for PDF, falling back to vision", hybridError);
+    }
+    return runVision();
   }
 
-  if (isAzureDocumentIntelligenceConfigured()) {
+  // Image: vision first (row guides anchor each row), hybrid as fallback.
+  try {
+    return await runVision();
+  } catch (visionError) {
+    console.warn("[analyzeDocument] vision failed, trying hybrid layout+text", visionError);
+  }
+
+  if (canHybrid) {
     try {
-      const hybrid = await hybridInvoiceService.extract(documentInput);
-      const ocrJson = buildOcrPayloadFromMarkdown(
-        hybrid.markdown,
-        hybrid.pageCount,
-      );
-      const fields = mapParsedInvoiceToTextParseResult(hybrid.invoice, {
-        rawMarkdown: hybrid.markdown,
-        lockedCategory: input.lockedCategory,
-      });
-
-      console.info(
-        `[analyzeDocument] hybrid fallback invoice: pages=${hybrid.pageCount} tables=${hybrid.tableCount} positions=${fields.lineItems?.length ?? 0}`,
-      );
-
-      return {
-        kind: "invoice",
-        documentType: "invoice",
-        fields,
-        approvalFields: null,
-        rawText: hybrid.markdown,
-        ocrJson,
-        modelId: HYBRID_INVOICE_MODEL_ID,
-        parseModel: input.parseModel,
-      };
+      return await runHybrid();
     } catch (error) {
-      console.error("[analyzeDocument] hybrid invoice fallback also failed", error);
+      console.error("[analyzeDocument] hybrid fallback also failed", error);
       throw error;
     }
   }
