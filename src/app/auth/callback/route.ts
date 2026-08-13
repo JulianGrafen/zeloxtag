@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { completePendingClaimForUser } from "@/actions/claim-tag";
-import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
+import { isGenericPostLoginNext, normalizeAuthCallbackNext } from "@/lib/auth/post-login-path";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { hardenCookieOptions } from "@/lib/security/cookie-options";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -35,11 +35,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
-  const nextRaw = searchParams.get("next") ?? "/auth/continue";
-  const next =
-    nextRaw.startsWith("/") && !nextRaw.startsWith("//")
-      ? nextRaw
-      : "/auth/continue";
+  const next = normalizeAuthCallbackNext(searchParams.get("next") ?? "/auth/continue");
 
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {

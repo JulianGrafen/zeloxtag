@@ -6,6 +6,7 @@ export {
   createDefaultHybridInvoiceService,
   hybridInvoiceService,
   type HybridInvoiceExtractInput,
+  type HybridInvoiceExtractResult,
   type HybridInvoiceServiceOptions,
 } from "@/services/invoice/HybridInvoiceService";
 export { HYBRID_INVOICE_JSON_SCHEMA } from "@/services/invoice/hybrid-invoice-json-schema";
@@ -25,6 +26,10 @@ export {
   sumBillableLineItemTotals,
   validateAndFixLineItems,
 } from "@/services/invoice/InvoiceMathValidator";
+export {
+  mapParsedInvoiceToTextParseResult,
+  type MapParsedInvoiceOptions,
+} from "@/services/invoice/map-parsed-invoice-to-text-parse";
 export {
   HybridInvoiceParseError,
   hybridInvoiceLlmResponseSchema,

@@ -4,8 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
 import { getSiteUrl } from "@/lib/auth/site-url";
+import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
 import { isResendConfigured, sendPasswordResetEmail } from "@/lib/email/resend";
 import {
   authClientKeyFromHeaders,
@@ -109,7 +109,7 @@ export async function signInWithPassword(
     ? "/auth/continue"
     : requested;
 
-  return { status: "ok", redirectTo };
+  redirect(redirectTo);
 }
 
 /**
@@ -142,11 +142,15 @@ export async function signUpWithPassword(
   const email = emailParsed.data.toLowerCase();
   const password = passwordParsed.data;
   const next = normalizeNext(nextPath);
+  const siteUrl = await getSiteUrl();
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent("/auth/continue")}`,
+    },
   });
 
   if (error) {
@@ -190,7 +194,7 @@ export async function signUpWithPassword(
     ? "/auth/continue"
     : next;
 
-  return { status: "ok", redirectTo };
+  redirect(redirectTo);
 }
 
 export async function signOut(): Promise<void> {

@@ -1,6 +1,6 @@
 /**
- * Document parse dispatch — vision LLM + optional Azure Layout OCR for invoices.
- * Invoice scans are contrast-enhanced once, then sent to Azure DI and the LLM in parallel.
+ * Document parse dispatch — hybrid layout+text or vision LLM for invoices.
+ * Invoice scans: Azure Layout Markdown → text LLM (one shot), vision fallback.
  */
 
 import type {
@@ -23,8 +23,16 @@ import { TextParseError } from "./parse-error";
 import { invoiceParseService } from "./services/invoice-parse-service";
 import {
   normalizeTextParseResult,
+  type InvoiceTextParseCategory,
   type InvoiceTextParseResult,
 } from "./text-parse-schema";
+import {
+  isAzureDocumentIntelligenceConfigured,
+} from "./azure-document-intelligence";
+import {
+  hybridInvoiceService,
+} from "@/services/invoice/HybridInvoiceService";
+import { mapParsedInvoiceToTextParseResult } from "@/services/invoice/map-parsed-invoice-to-text-parse";
 import {
   abeExtractionService,
   resolveAbeContextModel,
@@ -65,11 +73,98 @@ export type AnalyzeDocumentResult = {
   approvalFields: ApprovalFields | null;
   rawText: string;
   ocrJson: OcrJsonPayload;
-  /** Parse source id returned to clients (`llm-vision`). */
+  /** Parse source id returned to clients (`llm-vision` | `hybrid-layout-text`). */
   modelId: string;
   /** Chat deployment used for structured parse. */
   parseModel: string;
 };
+
+const HYBRID_INVOICE_MODEL_ID = "hybrid-layout-text";
+
+function buildOcrPayloadFromMarkdown(
+  markdown: string,
+  pageCount: number,
+): OcrJsonPayload {
+  const headerLines = markdown
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+
+  return {
+    modelId: "azure-prebuilt-layout",
+    locale: "de-DE",
+    pageCount: Math.max(1, pageCount),
+    text: markdown,
+    coverText: markdown.slice(0, 4_000),
+    headerLines,
+    contentFormat: "markdown",
+  };
+}
+
+async function analyzeInvoiceOneShot(input: {
+  bytes: Buffer;
+  contentType: string;
+  parseModel: string;
+  lockedCategory?: InvoiceTextParseCategory | null;
+}): Promise<AnalyzeDocumentResult> {
+  const documentInput = {
+    bytes: input.bytes,
+    contentType: input.contentType,
+  };
+
+  if (isAzureDocumentIntelligenceConfigured()) {
+    try {
+      const hybrid = await hybridInvoiceService.extract(documentInput);
+      const ocrJson = buildOcrPayloadFromMarkdown(
+        hybrid.markdown,
+        hybrid.pageCount,
+      );
+      const fields = mapParsedInvoiceToTextParseResult(hybrid.invoice, {
+        rawMarkdown: hybrid.markdown,
+        lockedCategory: input.lockedCategory,
+      });
+
+      console.info(
+        `[analyzeDocument] hybrid one-shot invoice: pages=${hybrid.pageCount} tables=${hybrid.tableCount} positions=${fields.lineItems?.length ?? 0}`,
+      );
+
+      return {
+        kind: "invoice",
+        documentType: "invoice",
+        fields,
+        approvalFields: null,
+        rawText: hybrid.markdown,
+        ocrJson,
+        modelId: HYBRID_INVOICE_MODEL_ID,
+        parseModel: input.parseModel,
+      };
+    } catch (error) {
+      console.warn(
+        "[analyzeDocument] hybrid invoice failed — falling back to vision parse",
+        error,
+      );
+    }
+  }
+
+  const { fields, ocrJson } = await invoiceParseService.parseFromDocument(
+    documentInput,
+    {
+      model: input.parseModel,
+      documentType: "invoice",
+    },
+  );
+  return {
+    kind: "invoice",
+    documentType: "invoice",
+    fields,
+    approvalFields: null,
+    rawText: ocrJson.text,
+    ocrJson,
+    modelId: LLM_VISION_PARSE_MODEL_ID,
+    parseModel: input.parseModel,
+  };
+}
 
 /** Map minimal extract → analyze API shape (summary + optional vehicle match). */
 export function abeMinimalToAnalyzeFields(
@@ -138,6 +233,8 @@ export async function analyzeDocument(input: {
   vehicleContext?: AbeVehicleContext | null;
   /** Garage twin VIN — required for §21 Einzelabnahme Field E verification. */
   garageVin?: string | null;
+  /** Locked invoice category from scan picker (repair/service/tuning). */
+  invoiceCategory?: InvoiceTextParseCategory | null;
 }): Promise<AnalyzeDocumentResult> {
   if (!isLlmConfigured()) {
     throw new DocumentIntelligenceError(
@@ -273,23 +370,12 @@ export async function analyzeDocument(input: {
       };
     }
 
-    const { fields, ocrJson } = await invoiceParseService.parseFromDocument(
-      documentInput,
-      {
-        model: parseModel,
-        documentType: "invoice",
-      },
-    );
-    return {
-      kind: "invoice",
-      documentType: "invoice",
-      fields,
-      approvalFields: null,
-      rawText: ocrJson.text,
-      ocrJson,
-      modelId: LLM_VISION_PARSE_MODEL_ID,
+    return analyzeInvoiceOneShot({
+      bytes: input.bytes,
+      contentType: input.contentType,
       parseModel,
-    };
+      lockedCategory: input.invoiceCategory ?? null,
+    });
   } catch (error) {
     if (error instanceof MissingVinError) {
       throw new DocumentIntelligenceError(error.message);

@@ -14,6 +14,7 @@
     "test:abe-hunt": "tsx scripts/test-abe-hunt-extraction.ts",
     "predeploy": "npm run test:extraction",
     "db:seed-demo": "node --env-file=.env scripts/seed-demo-vehicle.mjs",
+    "db:mint-tag": "node --env-file=.env scripts/mint-unclaimed-tag.mjs --qr",
     "db:seed-kuerzel": "npx tsx scripts/seed-abe-auflagen-kuerzel.ts",
     "db:generate-kuerzel-migration": "npx tsx scripts/generate-kuerzel-migration.ts",
     "postinstall": "node scripts/copy-pdf-worker.mjs"

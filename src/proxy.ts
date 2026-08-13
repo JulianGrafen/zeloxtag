@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
+  isDemoOrShowcasePath,
+} from "@/lib/auth/post-login-path";
+import {
   isProtectedApiPath,
   isProtectedPagePath,
   isPublicVehicleImagePath,
@@ -100,8 +103,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/continue", origin));
   }
 
-  // Logged-in users should never land on the public demo showcase.
-  if (userId && !needsMfa && pathname === "/demo") {
+  // Logged-in users should never browse public showcase surfaces.
+  if (userId && !needsMfa && isDemoOrShowcasePath(pathname)) {
     return NextResponse.redirect(new URL("/auth/continue", origin));
   }
 

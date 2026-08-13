@@ -4,7 +4,10 @@ import {
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import {
+  DEMO_SHOWCASE_ROUTES,
+  isDemoActiveTag,
+} from "@/lib/tags/demo-showcase";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 
 const FALLBACK = "/dashboard";
@@ -26,6 +29,19 @@ export function isDemoOrShowcasePath(path: string): boolean {
   const trimmed = path.trim();
   if (trimmed === "/demo" || trimmed.startsWith("/demo/")) return true;
 
+  const showcaseRoots = [
+    DEMO_SHOWCASE_ROUTES.invoices,
+    DEMO_SHOWCASE_ROUTES.abe,
+    DEMO_SHOWCASE_ROUTES.intervals,
+  ];
+  if (
+    showcaseRoots.some(
+      (root) => trimmed === root || trimmed.startsWith(`${root}/`),
+    )
+  ) {
+    return true;
+  }
+
   const tagMatch = trimmed.match(/^\/v\/([^/?#]+)/);
   const tagUuid = tagMatch?.[1]?.trim();
   if (!tagUuid) return false;
@@ -33,6 +49,29 @@ export function isDemoOrShowcasePath(path: string): boolean {
   return (
     isDemoActiveTag(tagUuid) || tagUuid === MOCK_TAG_UUIDS.unclaimed
   );
+}
+
+/** Never send authenticated users to public showcase surfaces. */
+export function sanitizePostLoginPath(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
+    return FALLBACK;
+  }
+  if (isDemoOrShowcasePath(trimmed)) {
+    return FALLBACK;
+  }
+  return trimmed;
+}
+
+/** Normalize `next` on `/auth/callback` — demo/showcase → `/auth/continue`. */
+export function normalizeAuthCallbackNext(nextRaw: string): string {
+  const trimmed = nextRaw.trim();
+  const path =
+    trimmed.startsWith("/") && !trimmed.startsWith("//")
+      ? trimmed
+      : "/auth/continue";
+  if (isGenericPostLoginNext(path)) return "/auth/continue";
+  return sanitizePostLoginPath(path);
 }
 
 /** True when `next` is a generic post-login target (not a deep link). */
@@ -58,19 +97,19 @@ export async function resolvePostLoginPath(userId: string): Promise<string> {
 
   try {
     const fromMeta = await resolveViaUserMetadata(userId);
-    if (fromMeta) return fromMeta;
+    if (fromMeta) return sanitizePostLoginPath(fromMeta);
 
     // Admin first: reliable after cookie races on the login action itself.
     const fromAdmin = await resolveViaAdmin(userId);
     if (fromAdmin) {
       void rememberActiveTag(fromAdmin);
-      return fromAdmin;
+      return sanitizePostLoginPath(fromAdmin);
     }
 
     const fromSession = await resolveViaSessionUser(userId);
     if (fromSession) {
       void rememberActiveTag(fromSession);
-      return fromSession;
+      return sanitizePostLoginPath(fromSession);
     }
   } catch {
     // Fall through to account hub.

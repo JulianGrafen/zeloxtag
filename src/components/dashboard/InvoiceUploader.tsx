@@ -17,7 +17,6 @@ import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverv
 import { TeilegutachtenOverview } from "@/components/dashboard/TeilegutachtenOverview";
 import { TuevOverview } from "@/components/dashboard/TuevOverview";
 import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard";
-import { InvoiceUploadWizard } from "@/components/documents/invoice-upload-wizard";
 import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
 import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
@@ -348,22 +347,6 @@ export function InvoiceUploader({
     );
   }
 
-  // Invoice / repair / service use the guided 3-step wizard (A4 → Kopf → Positionen).
-  if (isInvoiceFamilyScan) {
-    return (
-      <InvoiceUploadWizard
-        vehicleId={vehicleId}
-        tagUuid={tagUuid}
-        vehicleLabel={vehicleLabel}
-        scanType={scanType}
-        successHref={successHref}
-        onBack={onBack}
-        backHref={resolvedBackHref}
-        backLabel={backLabel}
-      />
-    );
-  }
-
   // Plain ABE uploads use the data-hunter wizard (crop targeted sections).
   // Teilegutachten / Einzelabnahme / EG-BE keep the generic multi-page scanner.
   if (isGutachtenFamilyUpload) {
@@ -407,9 +390,10 @@ export function InvoiceUploader({
           : isTuevUpload
             ? "tuev"
             : "invoice";
-      // ABE family: one combined PDF so Auflagen across pages stay in one parse call.
+      // Invoice + ABE: one combined PDF keeps multi-page tables in a single parse call.
       const analyzeFiles =
-        documentType === "abe" && processed.uploadFile
+        processed.uploadFile &&
+        (documentType === "abe" || documentType === "invoice")
           ? [processed.uploadFile]
           : processed.analyzeFiles;
 
@@ -443,6 +427,10 @@ export function InvoiceUploader({
           garageVin:
             scanDef?.approvalKind === "einzelabnahme"
               ? vehicleVin ?? null
+              : null,
+          invoiceCategory:
+            isInvoiceFamilyScan && resolvedLockCategory
+              ? resolvedCategory
               : null,
         },
       );

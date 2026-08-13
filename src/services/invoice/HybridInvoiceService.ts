@@ -23,6 +23,13 @@ import type { ParsedInvoice } from "@/types/invoice";
 
 export type HybridInvoiceExtractInput = DocumentBytesInput;
 
+export type HybridInvoiceExtractResult = {
+  invoice: ParsedInvoice;
+  markdown: string;
+  pageCount: number;
+  tableCount: number;
+};
+
 export type HybridInvoiceServiceOptions = {
   /** Override LLM deployment (defaults to {@link resolveInvoiceParseModel}). */
   model?: string;
@@ -59,15 +66,19 @@ export class HybridInvoiceService {
     this.maxMarkdownChars = options.maxMarkdownChars ?? 28_000;
   }
 
-  async extract(input: HybridInvoiceExtractInput): Promise<ParsedInvoice> {
+  async extract(input: HybridInvoiceExtractInput): Promise<HybridInvoiceExtractResult> {
     const azureInput = resolveAzureLayoutInput(input, input);
 
     let markdown: string;
+    let pageCount = 1;
+    let tableCount = 0;
     try {
       const layout = await this.documentParser.parse({
         bytes: azureInput.bytes,
         contentType: azureInput.contentType,
       });
+      pageCount = layout.pageCount;
+      tableCount = layout.tableCount;
       markdown = layout.markdown.slice(0, this.maxMarkdownChars);
       console.info(
         `[HybridInvoiceService] layout OCR: ${layout.pageCount} page(s), ${layout.tableCount} table(s), ${markdown.length} chars`,
@@ -119,7 +130,12 @@ export class HybridInvoiceService {
         );
       }
 
-      return reconciled;
+      return {
+        invoice: reconciled,
+        markdown,
+        pageCount,
+        tableCount,
+      };
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Response validation failed.";

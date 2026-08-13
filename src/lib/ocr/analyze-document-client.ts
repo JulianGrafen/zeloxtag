@@ -36,6 +36,8 @@ export type AnalyzeDocumentOptions = {
   vehicleContext?: AbeVehicleContext | null;
   /** Garage twin VIN for §21 Einzelabnahme Field E verification. */
   garageVin?: string | null;
+  /** Locked invoice category from scan picker (repair/service/tuning). */
+  invoiceCategory?: InvoiceTextParseCategory | null;
   /** @deprecated Prefer `documentType`. Mapped to documentType when unset. */
   kind?: DocumentParseKind;
 };
@@ -63,6 +65,7 @@ async function analyzeOneFile(
   approvalKind?: ApprovalFieldKind | null,
   vehicleContext?: AbeVehicleContext | null,
   garageVin?: string | null,
+  invoiceCategory?: InvoiceTextParseCategory | null,
 ): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
   formData.set("file", file);
@@ -75,6 +78,9 @@ async function analyzeOneFile(
   }
   if (garageVin) {
     formData.set("garageVin", garageVin);
+  }
+  if (invoiceCategory) {
+    formData.set("invoiceCategory", invoiceCategory);
   }
 
   const response = await fetch("/api/ocr/parse", {
@@ -196,6 +202,7 @@ export async function analyzeDocumentFiles(
   const approvalKind = options.approvalKind ?? null;
   const vehicleContext = options.vehicleContext ?? null;
   const garageVin = options.garageVin ?? null;
+  const invoiceCategory = options.invoiceCategory ?? null;
 
   if (files.length === 1) {
     onPageProgress?.(1, 1);
@@ -205,6 +212,7 @@ export async function analyzeDocumentFiles(
       approvalKind,
       vehicleContext,
       garageVin,
+      invoiceCategory,
     );
   }
 
@@ -218,6 +226,7 @@ export async function analyzeDocumentFiles(
         approvalKind,
         vehicleContext,
         garageVin,
+        invoiceCategory,
       ),
     );
   }

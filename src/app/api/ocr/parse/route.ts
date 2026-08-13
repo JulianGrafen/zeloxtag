@@ -14,6 +14,7 @@ import {
   parseApprovalFields,
 } from "@/lib/documents/approval-fields";
 import {
+  INVOICE_TEXT_PARSE_CATEGORIES,
   invoiceTextParseSchema,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
@@ -33,6 +34,7 @@ const MAX_BYTES = 25 * 1024 * 1024;
 
 const documentTypeSchema = z.enum(OCR_DOCUMENT_TYPES);
 const approvalKindSchema = z.enum(APPROVAL_FIELD_KINDS);
+const invoiceCategorySchema = z.enum(INVOICE_TEXT_PARSE_CATEGORIES);
 
 type ParseSuccess = {
   ok: true;
@@ -71,7 +73,7 @@ function jsonError(
  * POST /api/ocr/parse
  *
  * ZeloxTag document parse pipeline:
- * 1) Vision LLM on PDF/image bytes (no Azure OCR)
+ * 1) Hybrid layout OCR + text LLM for invoices (one shot), vision fallback
  * 2) Dynamic model routing by `documentType` (invoice vs abe/tuev)
  * 3) Domain parse service + Zod validation before response
  */
@@ -153,6 +155,21 @@ export async function POST(request: NextRequest) {
     const garageVinRaw = String(formData.get("garageVin") ?? "").trim();
     const garageVin = garageVinRaw.length > 0 ? garageVinRaw.slice(0, 32) : null;
 
+    const invoiceCategoryRaw = String(formData.get("invoiceCategory") ?? "").trim();
+    const invoiceCategoryParsed = invoiceCategoryRaw
+      ? invoiceCategorySchema.safeParse(invoiceCategoryRaw)
+      : null;
+    if (invoiceCategoryRaw && !invoiceCategoryParsed?.success) {
+      return jsonError(
+        400,
+        `invoiceCategory must be one of: ${INVOICE_TEXT_PARSE_CATEGORIES.join(", ")}.`,
+        "bad_request",
+      );
+    }
+    const invoiceCategory = invoiceCategoryParsed?.success
+      ? invoiceCategoryParsed.data
+      : null;
+
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Document file is required.", "bad_request");
@@ -184,6 +201,7 @@ export async function POST(request: NextRequest) {
       approvalKind,
       vehicleContext,
       garageVin,
+      invoiceCategory,
       kind: documentType === "abe" ? "abe" : "invoice",
     });
 
