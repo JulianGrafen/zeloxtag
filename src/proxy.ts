@@ -100,6 +100,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/continue", origin));
   }
 
+  // Logged-in users should never land on the public demo showcase.
+  if (userId && !needsMfa && pathname === "/demo") {
+    return NextResponse.redirect(new URL("/auth/continue", origin));
+  }
+
   return response;
 }
 

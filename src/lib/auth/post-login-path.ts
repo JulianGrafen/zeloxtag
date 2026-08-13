@@ -4,6 +4,8 @@ import {
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 
 const FALLBACK = "/dashboard";
 
@@ -12,12 +14,31 @@ const UUID_RE =
 
 type VehicleRow = { id?: string | null };
 
-function vehiclePath(tagUuid: string): string {
+function vehiclePath(tagUuid: string): string | null {
+  if (isDemoActiveTag(tagUuid) || tagUuid === MOCK_TAG_UUIDS.unclaimed) {
+    return null;
+  }
   return `/v/${tagUuid}`;
+}
+
+/** Public showcase routes — never a post-auth destination for real accounts. */
+export function isDemoOrShowcasePath(path: string): boolean {
+  const trimmed = path.trim();
+  if (trimmed === "/demo" || trimmed.startsWith("/demo/")) return true;
+
+  const tagMatch = trimmed.match(/^\/v\/([^/?#]+)/);
+  const tagUuid = tagMatch?.[1]?.trim();
+  if (!tagUuid) return false;
+
+  return (
+    isDemoActiveTag(tagUuid) || tagUuid === MOCK_TAG_UUIDS.unclaimed
+  );
 }
 
 /** True when `next` is a generic post-login target (not a deep link). */
 export function isGenericPostLoginNext(path: string): boolean {
+  if (isDemoOrShowcasePath(path)) return true;
+
   return (
     path === "/" ||
     path === "/login" ||
@@ -168,7 +189,7 @@ async function resolveViaSessionUser(userId: string): Promise<string | null> {
 /** Cache tag on the auth user so the next login skips the DB round-trip. */
 async function rememberActiveTag(path: string): Promise<void> {
   const tagUuid = path.startsWith("/v/") ? path.slice(3) : null;
-  if (!tagUuid || !UUID_RE.test(tagUuid)) return;
+  if (!tagUuid || !UUID_RE.test(tagUuid) || isDemoActiveTag(tagUuid)) return;
   try {
     const supabase = await createClient();
     await supabase.auth.updateUser({

@@ -21,6 +21,9 @@ function mapLoginQueryError(error: string | undefined): string | undefined {
   if (error === "rate_limited") {
     return "Zu viele Versuche. Bitte kurz warten und erneut anmelden.";
   }
+  if (error === "session") {
+    return "Sitzung konnte nicht geladen werden. Bitte erneut anmelden.";
+  }
   return error;
 }
 

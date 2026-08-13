@@ -78,6 +78,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  if (typeRaw === "signup") {
+    return copyCookies(
+      NextResponse.redirect(new URL("/auth/continue", origin)),
+    );
+  }
+
   const userId = data.user?.id ?? data.session?.user?.id;
   if (userId) {
     try {

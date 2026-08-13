@@ -101,7 +101,7 @@ export function LoginForm({
               const result = await signUpWithPassword(
                 email,
                 password,
-                nextPath || "/auth/continue",
+                "/auth/continue",
               );
               if (result.status === "mfa_required") {
                 router.push(

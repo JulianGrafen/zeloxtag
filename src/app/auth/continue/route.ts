@@ -15,8 +15,9 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const login = new URL("/", request.url);
-    login.searchParams.set("error", "auth");
+    const login = new URL("/login", request.url);
+    login.searchParams.set("next", "/auth/continue");
+    login.searchParams.set("error", "session");
     return NextResponse.redirect(login);
   }
 
