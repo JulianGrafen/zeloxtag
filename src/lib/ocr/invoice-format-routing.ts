@@ -1,12 +1,15 @@
 /**
  * Detect invoice table layout and route parsing (column vs section-based vs LLM-only).
+ *
+ * Routing uses only structural OCR signals (table headers, section titles) — never
+ * vendor names, customer names, or line-item descriptions from the invoice body.
  */
 
 import { isWorkshopSectionInvoiceText } from "@/lib/ocr/invoice-workshop-sections";
 
 export type InvoiceTableFormat = "column" | "workshop-sections" | "unknown";
 
-/** Pos | Menge | E-Preis | Ges. Preis style (e.g. Blotzheim). */
+/** Pos | Menge | E-Preis | Ges. Preis column-table headers. */
 export function detectColumnTableSignals(rawText: string): number {
   const lower = rawText.replace(/\r\n/g, "\n").toLowerCase();
   let score = 0;

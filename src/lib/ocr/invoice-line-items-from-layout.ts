@@ -507,8 +507,15 @@ export function mergeLayoutAndLlmLineItems(
   }
 
   const usedLlmIndexes = new Set<number>();
-  const merged: InvoiceLineItem[] = layout.map((layoutItem) => {
-    const llmMatch = findBestLlmMatch(layoutItem, llm, usedLlmIndexes);
+  const merged: InvoiceLineItem[] = layout.map((layoutItem, layoutIndex) => {
+    // Pos tables preserve row order — match by index first, not by description text.
+    let llmMatch: InvoiceLineItem | null = null;
+    if (layoutIndex < llm.length && !usedLlmIndexes.has(layoutIndex)) {
+      llmMatch = llm[layoutIndex]!;
+      usedLlmIndexes.add(layoutIndex);
+    } else {
+      llmMatch = findBestLlmMatch(layoutItem, llm, usedLlmIndexes);
+    }
     return {
       label: llmMatch
         ? preferLongerLabel(layoutItem.label, llmMatch.label)

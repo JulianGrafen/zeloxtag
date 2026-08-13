@@ -65,7 +65,7 @@ ZEILEN-ZUORDNUNG (label ↔ menge / einzelpreis / gesamtpreis):
   → menge "0,90", gesamtpreis "81,00 €"
 `.trim();
 
-/** Few-shot from real Blotzheim-style workshop invoice columns. */
+/** Few-shot for Pos | Menge | E-Preis | Ges. Preis column tables. */
 export const INVOICE_LINE_ITEMS_EXTRACT_COMPUTE_FEW_SHOT = `
 FEW-SHOT — Extract & Compute (deutsche Werkstattrechnung Pos | Nummer | Bezeichnung | Menge | Einh. | E-Preis | Ges. Preis):
 1. "Bremsbelagsatz, Scheibenbremse" | 1,00 | 141,46 € | 141,46 €

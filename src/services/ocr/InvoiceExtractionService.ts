@@ -545,7 +545,7 @@ export class InvoiceExtractionService {
       (layoutLineItems?.length ?? 0) >= 3;
 
     if (tableFormat === "column") {
-      // Proven Pos-table path (Blotzheim): merge → OCR reconcile → realign → VAT.
+      // Pos column-table path: merge → OCR reconcile → realign → VAT.
       const merged = mergeLayoutAndLlmLineItems(
         llmLineItems,
         layoutLineItems,
