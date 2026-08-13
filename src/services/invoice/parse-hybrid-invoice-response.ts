@@ -32,9 +32,11 @@ export const hybridInvoiceLlmResponseSchema = z.object({
   line_items: z.array(
     z.object({
       description: z.string().trim().min(1),
-      quantity: z.number().finite(),
+      // null when the Menge cell is empty
+      quantity: z.number().finite().nullable(),
       unit_price: z.number().finite().nullable(),
-      total_price: z.number().finite(),
+      // null when the Ges.-Preis cell is empty but the row is otherwise real
+      total_price: z.number().finite().nullable(),
     }),
   ),
 });
@@ -97,11 +99,27 @@ export function parseHybridInvoiceLlmResponse(raw: unknown): ParsedInvoiceDraft 
       vat_amount: data.totals.vat_amount,
       gross_amount: resolveGrossAmount(data.totals),
     },
-    line_items: data.line_items.map((item) => ({
-      description: sanitizeTextField(item.description) ?? item.description.trim(),
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total_price: item.total_price,
-    })),
+    line_items: data.line_items.flatMap((item) => {
+      // Derive total from qty × unit_price when the Ges.-Preis cell was empty.
+      const derivedTotal =
+        item.total_price ??
+        (item.quantity != null && item.unit_price != null
+          ? Math.round(item.quantity * item.unit_price * 100) / 100
+          : null);
+
+      // Skip genuine rate-only rows (no Ges.-Preis AND no computable total).
+      // Every other row is included — the layout pipeline corrects amounts later.
+      if (derivedTotal == null) return [];
+
+      return [
+        {
+          description:
+            sanitizeTextField(item.description) ?? item.description.trim(),
+          quantity: item.quantity ?? 1,
+          unit_price: item.unit_price,
+          total_price: derivedTotal,
+        },
+      ];
+    }),
   };
 }

@@ -51,9 +51,11 @@ export const HYBRID_INVOICE_JSON_SCHEMA: JsonSchemaDefinition = {
           required: ["description", "quantity", "unit_price", "total_price"],
           properties: {
             description: { type: "string" },
-            quantity: { type: "number" },
+            // null when the Menge cell is empty (e.g. multi-line continuation rows)
+            quantity: { type: ["number", "null"] },
             unit_price: { type: ["number", "null"] },
-            total_price: { type: "number" },
+            // null when the Ges.-Preis cell is empty but the row is otherwise real
+            total_price: { type: ["number", "null"] },
           },
         },
       },
