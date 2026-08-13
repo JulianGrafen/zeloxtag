@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { rasterizePdfPagesForLlm } from "@/lib/ocr/prepare-document-for-llm";
+import {
+  rasterizePdfPagesForLlm,
+  resolveAzureLayoutInput,
+} from "@/lib/ocr/prepare-document-for-llm";
 
 /** Minimal valid single-page PDF (blank A4). */
 const MINIMAL_PDF = Buffer.from(
@@ -20,6 +23,28 @@ startxref
 %%EOF`,
   "utf8",
 );
+
+describe("resolveAzureLayoutInput", () => {
+  it("keeps original PDF bytes for Azure Layout while vision uses prepared PNG", () => {
+    const pdf = Buffer.from("%PDF-1.4\n% mock", "utf8");
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+    const azureInput = resolveAzureLayoutInput(
+      { bytes: pdf, contentType: "application/pdf" },
+      { bytes: png, contentType: "image/png" },
+    );
+
+    expect(azureInput.bytes).toBe(pdf);
+    expect(azureInput.contentType).toBe("application/pdf");
+  });
+
+  it("uses prepared raster for photo uploads", () => {
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0x00]);
+    const prepared = { bytes: jpeg, contentType: "image/jpeg" as const };
+
+    expect(resolveAzureLayoutInput(prepared, prepared)).toEqual(prepared);
+  });
+});
 
 describe("rasterizePdfPagesForLlm", () => {
   it("rasterizes a PDF via pdf.js when Sharp cannot decode PDF input", async () => {

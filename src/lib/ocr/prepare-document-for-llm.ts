@@ -15,6 +15,23 @@ import {
 
 export type { DocumentBytesInput };
 
+/**
+ * Azure Layout reads vector PDFs more reliably than rasterized PNG previews.
+ * Keep enhanced PNG/JPEG for vision LLM, send original PDF bytes to Document Intelligence.
+ */
+export function resolveAzureLayoutInput(
+  original: DocumentBytesInput,
+  prepared: DocumentBytesInput,
+): DocumentBytesInput {
+  if (isPdfBuffer(original.bytes) || original.contentType === "application/pdf") {
+    return {
+      bytes: original.bytes,
+      contentType: resolveDocumentContentType(original.bytes, original.contentType),
+    };
+  }
+  return prepared;
+}
+
 /** ~220 DPI on A4 width — matches TÜV rasterization. */
 export const LLM_DOCUMENT_RASTER_DPI = 220;
 /** Cap rasterized / uploaded image long edge before LLM. */

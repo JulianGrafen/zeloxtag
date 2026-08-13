@@ -4,6 +4,7 @@ import { preferAmount, extractAmountFromText } from "@/lib/ocr/amount-from-text"
 import {
   buildVisionUserMessage,
   prepareSinglePageOcrInput,
+  resolveAzureLayoutInput,
   type DocumentBytesInput,
 } from "@/lib/ocr/prepare-document-for-llm";
 import {
@@ -167,6 +168,7 @@ export class InvoiceParseService {
     const prepared = isTuevReport
       ? input
       : await prepareSinglePageOcrInput(input);
+    const azureInput = isTuevReport ? input : resolveAzureLayoutInput(input, prepared);
 
     let azureLayout = null;
     let llmInput = prepared;
@@ -175,8 +177,8 @@ export class InvoiceParseService {
 
     if (!isTuevReport && isAzureDocumentIntelligenceConfigured()) {
       azureLayout = await analyzeLayoutWithAzure(
-        prepared.bytes,
-        prepared.contentType,
+        azureInput.bytes,
+        azureInput.contentType,
       );
     }
 

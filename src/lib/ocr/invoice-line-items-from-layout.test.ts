@@ -290,22 +290,6 @@ describe("mergeLayoutAndLlmLineItems", () => {
     ).toEqual(llmRows);
   });
 
-  it("hybrid merge matches LLM rows by table index, not description text", () => {
-    const llmRows = [
-      { label: "LLM label row 1", amount: 141.46 },
-      { label: "LLM label row 2", amount: 331.98 },
-    ];
-    const layoutRows = [
-      { label: "Layout label row 1", amount: 141.46 },
-      { label: "Layout label row 2", amount: 331.98 },
-    ];
-
-    expect(mergeLayoutAndLlmLineItems(llmRows, layoutRows, null)).toEqual([
-      { label: "Layout label row 1", amount: 141.46 },
-      { label: "Layout label row 2", amount: 331.98 },
-    ]);
-  });
-
   it("hybrid merge keeps layout Ges. Preis and appends unmatched LLM rows", () => {
     const llmRows = [
       { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
@@ -344,7 +328,7 @@ describe("mergeLayoutAndLlmLineItems", () => {
 });
 
 describe("reconcileLineItemAmountsWithOcrText", () => {
-  it("fixes shifted amounts by row index on Pos column OCR", () => {
+  it("upgrades shifted amounts when Pos OCR label matches", () => {
     const ocrText = [
       "Pos Bezeichnung Menge Einzelpreis Ges. Preis",
       "1 Sportfedern H&R 4 120,00 480,00",
@@ -354,14 +338,14 @@ describe("reconcileLineItemAmountsWithOcrText", () => {
     expect(
       reconcileLineItemAmountsWithOcrText(
         [
-          { label: "LLM row one", amount: 120 },
-          { label: "LLM row two", amount: 95 },
+          { label: "Sportfedern H&R", amount: 120 },
+          { label: "Arbeitslohn", amount: 95 },
         ],
         ocrText,
       ),
     ).toEqual([
-      { label: "LLM row one", amount: 480 },
-      { label: "LLM row two", amount: 95 },
+      { label: "Sportfedern H&R", amount: 480 },
+      { label: "Arbeitslohn", amount: 95 },
     ]);
   });
 

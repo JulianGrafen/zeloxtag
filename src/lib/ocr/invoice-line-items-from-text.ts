@@ -39,11 +39,6 @@ import {
 
 const MAX_ITEMS = 60;
 const MAX_LABEL = 160;
-const NET_TOTAL_TOLERANCE_EUR = 1.5;
-
-function sumLineItemAmounts(items: InvoiceLineItem[]): number {
-  return Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100;
-}
 
 /** Skip totals / headers that are not sellable positions. */
 const SKIP_LABEL =
@@ -476,7 +471,7 @@ function labelMatchScoreForReconcile(a: string, b: string): number {
   return 0;
 }
 
-/** Pos tables: align OCR Ges. Preis by row index, not description text. */
+/** Pos tables: prefer label match; use row index only as a tie-breaker. */
 function reconcileColumnTableLineItemsWithOcrText(
   items: InvoiceLineItem[],
   rawText: string,
@@ -487,12 +482,28 @@ function reconcileColumnTableLineItemsWithOcrText(
   const footerGross = extractGrossTotalFromText(rawText);
   const footerNet = extractNetSumFromText(rawText);
   const multiPosition = items.length > 1;
+  const usedTextIndexes = new Set<number>();
 
-  return items.map((item, index) => {
-    const textItem = textItems[index];
-    if (!textItem) return item;
+  return items.map((item, itemIndex) => {
+    let bestMatch: InvoiceLineItem | null = null;
+    let bestScore = 0;
+    let bestIndex = -1;
 
-    const textAmount = textItem.amount;
+    for (const [index, textItem] of textItems.entries()) {
+      if (usedTextIndexes.has(index)) continue;
+      let score = labelMatchScoreForReconcile(item.label, textItem.label);
+      if (index === itemIndex) score += 12;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = textItem;
+        bestIndex = index;
+      }
+    }
+
+    if (!bestMatch || bestScore < 35 || bestIndex < 0) return item;
+
+    const textAmount = bestMatch.amount;
     if (Math.abs(textAmount - item.amount) < 0.011) return item;
 
     if (
@@ -505,11 +516,20 @@ function reconcileColumnTableLineItemsWithOcrText(
       return item;
     }
 
-    if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
+    if (bestScore >= 60) {
+      usedTextIndexes.add(bestIndex);
       return { ...item, amount: textAmount };
     }
 
     if (textAmount > item.amount + 0.01) {
+      if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
+        usedTextIndexes.add(bestIndex);
+        return { ...item, amount: textAmount };
+      }
+    }
+
+    if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
+      usedTextIndexes.add(bestIndex);
       return { ...item, amount: textAmount };
     }
 
@@ -530,14 +550,6 @@ export function reconcileLineItemAmountsWithOcrText(
     return reconcileWorkshopLineItemsWithOcrText(items, rawText);
   }
 
-  const footerNet = extractNetSumFromText(rawText);
-  if (
-    footerNet != null &&
-    Math.abs(sumLineItemAmounts(items) - footerNet) <= NET_TOTAL_TOLERANCE_EUR
-  ) {
-    return items;
-  }
-
   if (ocrTextUsesPosColumnTable(rawText)) {
     return reconcileColumnTableLineItemsWithOcrText(items, rawText);
   }
@@ -546,6 +558,7 @@ export function reconcileLineItemAmountsWithOcrText(
   if (!textItems?.length) return items;
 
   const footerGross = extractGrossTotalFromText(rawText);
+  const footerNet = extractNetSumFromText(rawText);
   const multiPosition = items.length > 1;
   const usedTextIndexes = new Set<number>();
 

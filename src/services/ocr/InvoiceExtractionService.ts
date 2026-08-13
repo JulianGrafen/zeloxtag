@@ -29,8 +29,8 @@ import {
   readVisionTotalAmountRaw,
 } from "@/lib/validations/invoiceExtractionSchema";
 import {
-  buildVisionUserMessage,
   prepareSinglePageOcrInput,
+  resolveAzureLayoutInput,
   type DocumentBytesInput,
 } from "@/lib/ocr/prepare-document-for-llm";
 import { canDrawRowSeparators, drawInvoiceRowSeparatorsOnImage } from "@/lib/ocr/draw-invoice-row-separators";
@@ -388,8 +388,9 @@ export class InvoiceExtractionService {
     options: InvoiceExtractionOptions = {},
   ): Promise<InvoiceHeaderExtraction> {
     const prepared = await prepareSinglePageOcrInput(input);
+    const azureInput = resolveAzureLayoutInput(input, prepared);
     const azureLayout = isAzureDocumentIntelligenceConfigured()
-      ? await analyzeLayoutWithAzure(prepared.bytes, prepared.contentType)
+      ? await analyzeLayoutWithAzure(azureInput.bytes, azureInput.contentType)
       : null;
 
     const record = await runVisionExtract<Record<string, unknown>>(
@@ -425,9 +426,10 @@ export class InvoiceExtractionService {
     options: InvoiceExtractionOptions = {},
   ): Promise<InvoiceLineItemsExtraction> {
     const prepared = await prepareSinglePageOcrInput(input);
+    const azureInput = resolveAzureLayoutInput(input, prepared);
 
     const azureLayout = isAzureDocumentIntelligenceConfigured()
-      ? await analyzeLayoutWithAzure(prepared.bytes, prepared.contentType)
+      ? await analyzeLayoutWithAzure(azureInput.bytes, azureInput.contentType)
       : null;
 
     const ocrText = azureLayout?.content ?? "";
