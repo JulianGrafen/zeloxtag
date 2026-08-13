@@ -1,6 +1,6 @@
 import "server-only";
 
-import sharp from "sharp";
+import sharp, { type OverlayOptions } from "sharp";
 
 import type { AzureLayoutAnalyzeResult } from "./azure-document-intelligence";
 import {
@@ -214,7 +214,7 @@ export async function drawInvoiceRowSeparatorsOnImage(
     const bands = scaleZebraBands(rawBands, scaleX, scaleY);
     const markers = scaleRowLeftMarkers(rawMarkers, scaleX, scaleY);
 
-    const composites: sharp.OverlayOptions[] = [];
+    const composites: OverlayOptions[] = [];
 
     const highlightOverlay = await buildRowHighlightOverlayPng(
       imageWidth,
