@@ -50,14 +50,14 @@ describe("invoice format routing", () => {
     );
 
     expect(shouldMergeAzureLayout("unknown")).toBe(false);
-    expect(shouldDrawInvoiceRowSeparators("unknown")).toBe(false);
+    expect(shouldDrawInvoiceRowSeparators("unknown")).toBe(true);
     expect(shouldReconcileWithOcrHeuristics("unknown")).toBe(true);
     expect(shouldRealignLineItems("unknown")).toBe(false);
   });
 
-  it("skips layout merge and row separators for workshop format", () => {
+  it("draws row separators for all formats; skips layout merge for workshop", () => {
     expect(shouldMergeAzureLayout("workshop-sections")).toBe(false);
-    expect(shouldDrawInvoiceRowSeparators("workshop-sections")).toBe(false);
+    expect(shouldDrawInvoiceRowSeparators("workshop-sections")).toBe(true);
     expect(shouldMergeAzureLayout("column")).toBe(true);
     expect(shouldDrawInvoiceRowSeparators("column")).toBe(true);
   });

@@ -1,6 +1,7 @@
 /**
- * Document parse dispatch — hybrid layout+text or vision LLM for invoices.
- * Invoice scans: Azure Layout Markdown → text LLM (one shot), vision fallback.
+ * Document parse dispatch — vision LLM (+ Azure row guides) for invoices.
+ * Invoice scans: contrast-enhanced image with row separators → vision LLM;
+ * hybrid layout+text is fallback only.
  */
 
 import type {
@@ -113,6 +114,43 @@ async function analyzeInvoiceOneShot(input: {
     contentType: input.contentType,
   };
 
+  // Vision path with Azure layout + row separators / Z-markers (proven at
+  // 54d78144…). Hybrid markdown-only stays as fallback when vision fails.
+  try {
+    const { fields, ocrJson } = await invoiceParseService.parseFromDocument(
+      documentInput,
+      {
+        model: input.parseModel,
+        documentType: "invoice",
+      },
+    );
+
+    const withCategory =
+      input.lockedCategory != null
+        ? { ...fields, category: input.lockedCategory }
+        : fields;
+
+    console.info(
+      `[analyzeDocument] vision invoice (row guides): positions=${withCategory.lineItems?.length ?? 0}`,
+    );
+
+    return {
+      kind: "invoice",
+      documentType: "invoice",
+      fields: withCategory,
+      approvalFields: null,
+      rawText: ocrJson.text,
+      ocrJson,
+      modelId: LLM_VISION_PARSE_MODEL_ID,
+      parseModel: input.parseModel,
+    };
+  } catch (visionError) {
+    console.warn(
+      "[analyzeDocument] vision invoice failed — trying hybrid layout+text",
+      visionError,
+    );
+  }
+
   if (isAzureDocumentIntelligenceConfigured()) {
     try {
       const hybrid = await hybridInvoiceService.extract(documentInput);
@@ -126,7 +164,7 @@ async function analyzeInvoiceOneShot(input: {
       });
 
       console.info(
-        `[analyzeDocument] hybrid one-shot invoice: pages=${hybrid.pageCount} tables=${hybrid.tableCount} positions=${fields.lineItems?.length ?? 0}`,
+        `[analyzeDocument] hybrid fallback invoice: pages=${hybrid.pageCount} tables=${hybrid.tableCount} positions=${fields.lineItems?.length ?? 0}`,
       );
 
       return {
@@ -140,30 +178,14 @@ async function analyzeInvoiceOneShot(input: {
         parseModel: input.parseModel,
       };
     } catch (error) {
-      console.warn(
-        "[analyzeDocument] hybrid invoice failed — falling back to vision parse",
-        error,
-      );
+      console.error("[analyzeDocument] hybrid invoice fallback also failed", error);
+      throw error;
     }
   }
 
-  const { fields, ocrJson } = await invoiceParseService.parseFromDocument(
-    documentInput,
-    {
-      model: input.parseModel,
-      documentType: "invoice",
-    },
+  throw new TextParseError(
+    "Invoice parse failed: vision unavailable and Azure Layout is not configured for hybrid fallback.",
   );
-  return {
-    kind: "invoice",
-    documentType: "invoice",
-    fields,
-    approvalFields: null,
-    rawText: ocrJson.text,
-    ocrJson,
-    modelId: LLM_VISION_PARSE_MODEL_ID,
-    parseModel: input.parseModel,
-  };
 }
 
 /** Map minimal extract → analyze API shape (summary + optional vehicle match). */

@@ -46,10 +46,15 @@ export function shouldMergeAzureLayout(format: InvoiceTableFormat): boolean {
   return format === "column";
 }
 
+/**
+ * Always draw row guides when geometry exists — same as the proven path at
+ * 54d78144 (vision LLM + horizontal separators). Format gating previously
+ * skipped overlays for workshop/unknown layouts and caused row-shift regressions.
+ */
 export function shouldDrawInvoiceRowSeparators(
-  format: InvoiceTableFormat,
+  _format: InvoiceTableFormat,
 ): boolean {
-  return format === "column";
+  return true;
 }
 
 export function shouldReconcileWithOcrHeuristics(
