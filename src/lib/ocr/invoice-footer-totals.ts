@@ -60,6 +60,27 @@ export function extractGrossTotalFromText(rawText: string): number | null {
   );
 }
 
+export const INVOICE_NET_TOTAL_TOLERANCE_EUR = 1.5;
+
+export function sumInvoiceLineItems(
+  items: InvoiceLineItem[] | null | undefined,
+): number | null {
+  if (!items?.length) return null;
+  return Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100;
+}
+
+/** True when billable rows reconcile with a printed Nettosumme (± tolerance). */
+export function invoiceLineItemsMatchNetTotal(
+  items: InvoiceLineItem[] | null | undefined,
+  netTotal: number | null | undefined,
+  tolerance = INVOICE_NET_TOTAL_TOLERANCE_EUR,
+): boolean {
+  if (!items?.length || netTotal == null) return false;
+  const sum = sumInvoiceLineItems(items);
+  if (sum == null) return false;
+  return Math.abs(sum - netTotal) <= tolerance;
+}
+
 /** Drop footer rows and VAT lines before net-position reconciliation. */
 export function stripNonPositionInvoiceRows(
   items: InvoiceLineItem[] | null | undefined,

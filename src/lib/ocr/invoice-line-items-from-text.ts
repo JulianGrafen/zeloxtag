@@ -471,40 +471,110 @@ function labelMatchScoreForReconcile(a: string, b: string): number {
   return 0;
 }
 
-/** Pos tables: prefer label match; use row index only as a tie-breaker. */
+/** Pos → line item from OCR text (stable row anchors for column reconcile). */
+function buildPosKeyedOcrLineItems(rawText: string): Map<number, InvoiceLineItem> {
+  const normalized = normalizeOcrMarkdown(rawText);
+  if (!ocrTextUsesPosColumnTable(normalized)) return new Map();
+
+  const text = prejoinWrappedInvoiceLines(normalized);
+  const posMap = new Map<number, InvoiceLineItem>();
+
+  for (const rawLine of text.split("\n")) {
+    for (const segment of expandCompoundInvoiceTableLines(rawLine, {
+      usePosColumn: true,
+    })) {
+      const posMatch = segment.trim().match(/^(\d{1,2})\s+/);
+      if (!posMatch) continue;
+
+      const pos = Number.parseInt(posMatch[1] ?? "", 10);
+      if (!Number.isFinite(pos) || pos < 1 || pos > 60) continue;
+
+      const parsed = lineTotalFromInvoiceRow(segment, { stripPosPrefix: true });
+      if (!parsed) continue;
+
+      posMap.set(pos, {
+        label: parsed.label,
+        amount: Math.round(parsed.amount * 100) / 100,
+      });
+    }
+  }
+
+  return posMap;
+}
+
+function shouldUpgradeAmountFromOcrMatch(options: {
+  itemAmount: number;
+  textAmount: number;
+  labelScore: number;
+}): boolean {
+  if (Math.abs(options.textAmount - options.itemAmount) < 0.011) return false;
+  if (options.labelScore >= 75) return true;
+  if (isUnitPriceAmountOfTotal(options.itemAmount, options.textAmount)) return true;
+  if (
+    options.textAmount > options.itemAmount + 0.01 &&
+    isUnitPriceAmountOfTotal(options.itemAmount, options.textAmount)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Pos tables: label match with Pos-keyed OCR rows; index only as tie-breaker. */
 function reconcileColumnTableLineItemsWithOcrText(
   items: InvoiceLineItem[],
   rawText: string,
 ): InvoiceLineItem[] {
   const textItems = extractInvoiceLineItemsFromText(rawText);
-  if (!textItems?.length) return items;
+  const posKeyed = buildPosKeyedOcrLineItems(rawText);
+  if (!textItems?.length && posKeyed.size === 0) return items;
 
   const footerGross = extractGrossTotalFromText(rawText);
   const footerNet = extractNetSumFromText(rawText);
   const multiPosition = items.length > 1;
   const usedTextIndexes = new Set<number>();
+  const usedPosNumbers = new Set<number>();
 
   return items.map((item, itemIndex) => {
     let bestMatch: InvoiceLineItem | null = null;
     let bestScore = 0;
     let bestIndex = -1;
+    let bestPos = -1;
 
-    for (const [index, textItem] of textItems.entries()) {
-      if (usedTextIndexes.has(index)) continue;
-      let score = labelMatchScoreForReconcile(item.label, textItem.label);
-      if (index === itemIndex) score += 12;
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = textItem;
-        bestIndex = index;
+    if (posKeyed.size > 0) {
+      for (const [pos, textItem] of posKeyed) {
+        if (usedPosNumbers.has(pos)) continue;
+        const score = labelMatchScoreForReconcile(item.label, textItem.label);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = textItem;
+          bestPos = pos;
+        }
       }
     }
 
-    if (!bestMatch || bestScore < 35 || bestIndex < 0) return item;
+    if (!bestMatch || bestScore < 35) {
+      for (const [index, textItem] of (textItems ?? []).entries()) {
+        if (usedTextIndexes.has(index)) continue;
+        let score = labelMatchScoreForReconcile(item.label, textItem.label);
+        if (index === itemIndex) score += 12;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = textItem;
+          bestIndex = index;
+          bestPos = -1;
+        }
+      }
+    }
+
+    if (!bestMatch || bestScore < 35) return item;
 
     const textAmount = bestMatch.amount;
-    if (Math.abs(textAmount - item.amount) < 0.011) return item;
+    if (Math.abs(textAmount - item.amount) < 0.011) {
+      if (bestPos > 0) usedPosNumbers.add(bestPos);
+      else if (bestIndex >= 0) usedTextIndexes.add(bestIndex);
+      return item;
+    }
 
     if (
       !isPlausiblePositionLineAmount(textAmount, {
@@ -516,24 +586,19 @@ function reconcileColumnTableLineItemsWithOcrText(
       return item;
     }
 
-    if (bestScore >= 60) {
-      usedTextIndexes.add(bestIndex);
-      return { ...item, amount: textAmount };
+    if (
+      !shouldUpgradeAmountFromOcrMatch({
+        itemAmount: item.amount,
+        textAmount,
+        labelScore: bestScore,
+      })
+    ) {
+      return item;
     }
 
-    if (textAmount > item.amount + 0.01) {
-      if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
-        usedTextIndexes.add(bestIndex);
-        return { ...item, amount: textAmount };
-      }
-    }
-
-    if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
-      usedTextIndexes.add(bestIndex);
-      return { ...item, amount: textAmount };
-    }
-
-    return item;
+    if (bestPos > 0) usedPosNumbers.add(bestPos);
+    else if (bestIndex >= 0) usedTextIndexes.add(bestIndex);
+    return { ...item, amount: textAmount };
   });
 }
 

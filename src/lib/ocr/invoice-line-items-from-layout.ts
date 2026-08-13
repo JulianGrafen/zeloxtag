@@ -26,8 +26,10 @@ import type {
   AzureLayoutTableCell,
 } from "./azure-document-intelligence";
 
+import { INVOICE_NET_TOTAL_TOLERANCE_EUR, sumInvoiceLineItems } from "@/lib/ocr/invoice-footer-totals";
+
 const MAX_ITEMS = 60;
-const NET_TOTAL_TOLERANCE_EUR = 1.5;
+const NET_TOTAL_TOLERANCE_EUR = INVOICE_NET_TOTAL_TOLERANCE_EUR;
 
 const UNIT_PRICE_HEADER =
   /(?:^|\b)(?:e-?preis|einzelpreis|ep|stückpreis|stk\.?\s*preis|netto(?:preis)?|listenpreis)(?:\b|$)/i;
@@ -371,7 +373,6 @@ export function extractInvoiceLineItemsFromAzureLayout(
 ): InvoiceLineItem[] | null {
   if (result.content) {
     const format = detectInvoiceTableFormat(result.content);
-    if (format === "unknown") return null;
     if (format === "workshop-sections") {
       const fromSections = extractInvoiceLineItemsFromText(result.content);
       return fromSections?.length ? fromSections : null;
@@ -482,6 +483,8 @@ export function mergeLayoutAndLlmLineItems(
     preferLayoutRows?: boolean;
     /** LLM rows reconcile with Nettosumme better — trust LLM exclusively. */
     preferLlmRows?: boolean;
+    /** Pos column tables: never append unmatched LLM rows (shifted-column pollution). */
+    strictColumnMerge?: boolean;
   } = {},
 ): InvoiceLineItem[] | null {
   const layout = layoutItems ?? [];
@@ -494,7 +497,7 @@ export function mergeLayoutAndLlmLineItems(
     return llm;
   }
 
-  const layoutNetSum = layout.reduce((sum, item) => sum + item.amount, 0);
+  const layoutNetSum = sumInvoiceLineItems(layout) ?? 0;
   const trustedNetTotal = options.trustedNetTotal ?? null;
   if (
     options.preferLayoutRows ||
@@ -519,6 +522,10 @@ export function mergeLayoutAndLlmLineItems(
       ),
     };
   });
+
+  if (options.strictColumnMerge) {
+    return merged;
+  }
 
   for (let index = 0; index < llm.length; index += 1) {
     if (usedLlmIndexes.has(index)) continue;
