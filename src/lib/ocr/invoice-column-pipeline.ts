@@ -20,11 +20,18 @@ const DEFAULT_MAX_ITEMS = 60;
 function resolveColumnSourceTrust(options: {
   llmItems: InvoiceLineItem[] | null | undefined;
   layoutItems: InvoiceLineItem[] | null | undefined;
+  /** Net total extracted directly from OCR text (Nettosumme label). */
   footerNet: number | null;
+  /**
+   * Authoritative net total from the LLM's totals extraction — used as
+   * fallback when footerNet is null (e.g. Nettosumme lives on a later page).
+   */
+  hintNetAmount?: number | null;
 }): { preferLayoutRows: boolean; preferLlmRows: boolean; layoutTrusted: boolean } {
   const layout = options.layoutItems ?? [];
   const llm = options.llmItems ?? [];
-  const footerNet = options.footerNet;
+  // Prefer the OCR-extracted label value; fall back to the LLM totals hint.
+  const footerNet = options.footerNet ?? options.hintNetAmount ?? null;
 
   if (layout.length < 3) {
     return { preferLayoutRows: false, preferLlmRows: false, layoutTrusted: false };
@@ -63,12 +70,16 @@ function resolveColumnSourceTrust(options: {
 /**
  * Pos | Menge | E-Preis | Ges. Preis pipeline shared by wizard + single-shot parse.
  * Layout geometry is authoritative when it reconciles with Nettosumme.
+ *
+ * @param hintNetAmount - authoritative net total from the LLM's totals block;
+ *   used when Nettosumme cannot be found in the OCR text (multi-page invoices).
  */
 export function finalizeColumnFormatLineItems(options: {
   llmItems: InvoiceLineItem[] | null | undefined;
   layoutItems: InvoiceLineItem[] | null | undefined;
   ocrText: string;
   grossAmount: number | null;
+  hintNetAmount?: number | null;
   maxItems?: number;
 }): { lineItems: InvoiceLineItem[] | null; amount: number | null } {
   const maxItems = options.maxItems ?? DEFAULT_MAX_ITEMS;
@@ -81,26 +92,30 @@ export function finalizeColumnFormatLineItems(options: {
     llmItems: options.llmItems,
     layoutItems: options.layoutItems,
     footerNet,
+    hintNetAmount: options.hintNetAmount,
   });
+
+  // Use OCR-extracted Nettosumme when available; fall back to LLM totals hint.
+  const effectiveNet = footerNet ?? options.hintNetAmount ?? null;
 
   const merged = mergeLayoutAndLlmLineItems(
     options.llmItems,
     options.layoutItems,
     amount,
     {
-      trustedNetTotal: footerNet,
+      trustedNetTotal: effectiveNet,
       preferLayoutRows: trust.preferLayoutRows,
       preferLlmRows: trust.preferLlmRows,
       strictColumnMerge: true,
     },
   );
 
-  const mergedMatchesNet = invoiceLineItemsMatchNetTotal(merged, footerNet);
+  const mergedMatchesNet = invoiceLineItemsMatchNetTotal(merged, effectiveNet);
   const layoutTrusted =
     trust.layoutTrusted ||
     trust.preferLayoutRows ||
     (mergedMatchesNet &&
-      invoiceLineItemsMatchNetTotal(options.layoutItems, footerNet));
+      invoiceLineItemsMatchNetTotal(options.layoutItems, effectiveNet));
 
   let workingItems = merged;
   if (!layoutTrusted && ocrText && merged) {
@@ -110,7 +125,7 @@ export function finalizeColumnFormatLineItems(options: {
   const stripped = stripNonPositionInvoiceRows(workingItems);
   const realigned = layoutTrusted
     ? stripped
-    : realignShiftedInvoiceLineItems(stripped, footerNet);
+    : realignShiftedInvoiceLineItems(stripped, effectiveNet);
 
   const normalized = normalizeLineItemsList(realigned, maxItems);
   const withVat = ensureInvoiceVatAndGrossTotal({

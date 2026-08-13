@@ -73,12 +73,16 @@ function mapCorrectedRowsToInvoiceLineItems(
 /**
  * Applies the shared column pipeline (layout trust, Pos OCR reconcile, realign)
  * to hybrid LLM line items — same correction path as the wizard / vision flow.
+ *
+ * @param netAmount - LLM-extracted Nettosumme; used as layout-trust hint when
+ *   Nettosumme is on a later page and not found in the OCR text directly.
  */
 export function reconcileHybridInvoiceLineItems(options: {
   draftItems: InvoiceLineItemDraft[];
   markdown: string;
   layout: AzureLayoutAnalyzeResult | null;
   grossAmount: number | null;
+  netAmount?: number | null;
 }): InvoiceLineItem[] {
   const draftValidated = validateAndFixLineItems(options.draftItems);
 
@@ -96,6 +100,7 @@ export function reconcileHybridInvoiceLineItems(options: {
     layoutItems,
     ocrText: options.markdown,
     grossAmount: options.grossAmount,
+    hintNetAmount: options.netAmount,
   });
 
   if (!corrected?.length) {

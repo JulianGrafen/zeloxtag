@@ -123,6 +123,7 @@ export class HybridInvoiceService {
         markdown: fullMarkdown,
         layout: layoutResult,
         grossAmount: parsed.totals.gross_amount,
+        netAmount: parsed.totals.net_amount,
       });
       const reconciled = reconcileInvoiceTotals({
         ...parsed,
