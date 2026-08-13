@@ -17,6 +17,7 @@ import {
 } from "@/lib/ocr/draw-invoice-row-separators";
 import { buildStubOcrPayload } from "@/lib/ocr/llm-document-content";
 import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import { finalizeColumnFormatLineItems } from "@/lib/ocr/invoice-column-pipeline";
 import {
   extractInvoiceLineItemsFromAzureLayout,
   mergeLayoutAndLlmLineItems,
@@ -265,6 +266,37 @@ export class InvoiceParseService {
 
     const isWorkshopFormat = tableFormat === "workshop-sections";
     const azureContent = azureLayout.content;
+
+    if (tableFormat === "column") {
+      const layoutLineItems = extractInvoiceLineItemsFromAzureLayout(azureLayout);
+      const amount =
+        preferAmount(normalized.amount, azureContent, normalized.lineItems) ??
+        null;
+      const columnResult = finalizeColumnFormatLineItems({
+        llmItems: normalized.lineItems,
+        layoutItems: layoutLineItems,
+        ocrText: azureContent,
+        grossAmount: amount,
+      });
+
+      return {
+        fields: {
+          ...normalized,
+          amount: columnResult.amount,
+          lineItems: columnResult.lineItems,
+          mileageKm: preferMileageKm(normalized.mileageKm, azureLayout.content),
+          vendor: resolveVendorName({
+            structuredVendor: normalized.vendor,
+            logoCandidates:
+              azureLayout.pages[0]?.lines
+                ?.map((line) => line.content)
+                .slice(0, 4) ?? [],
+            rawText: azureLayout.content,
+          }),
+        },
+        ocrJson,
+      };
+    }
 
     let llmItems = normalized.lineItems;
     if (isWorkshopFormat) {

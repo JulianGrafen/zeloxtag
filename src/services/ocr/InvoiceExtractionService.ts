@@ -9,8 +9,8 @@ import {
 import { sumLineItems } from "@/lib/documents/line-items";
 import {
   extractInvoiceLineItemsFromAzureLayout,
-  mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
+import { finalizeColumnFormatLineItems } from "@/lib/ocr/invoice-column-pipeline";
 import {
   extractGrossTotalFromText,
   extractNetSumFromText,
@@ -18,10 +18,9 @@ import {
 } from "@/lib/ocr/invoice-footer-totals";
 import {
   extractInvoiceLineItemsFromText,
-  reconcileLineItemAmountsWithOcrText,
 } from "@/lib/ocr/invoice-line-items-from-text";
 import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
-import { ensureInvoiceVatAndGrossTotal, isPlausibleInvoiceVatAmount } from "@/lib/ocr/invoice-vat";
+import { isPlausibleInvoiceVatAmount } from "@/lib/ocr/invoice-vat";
 import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import { processLineItems } from "@/utils/invoiceMath";
 import {
@@ -545,30 +544,16 @@ export class InvoiceExtractionService {
       (layoutLineItems?.length ?? 0) >= 3;
 
     if (tableFormat === "column") {
-      // Pos column-table path: merge → OCR reconcile → realign → VAT.
-      const merged = mergeLayoutAndLlmLineItems(
-        llmLineItems,
-        layoutLineItems,
-        amount,
-        { trustedNetTotal: footerNet },
-      );
-      const reconciled =
-        ocrText.trim() && merged
-          ? reconcileLineItemAmountsWithOcrText(merged, ocrText)
-          : merged;
-      const realigned = realignShiftedInvoiceLineItems(
-        stripNonPositionInvoiceRows(reconciled),
-        footerNet ?? amount,
-      );
-      const normalized = normalizeLineItemsList(realigned, LINE_ITEMS_MAX_COUNT);
-      const withVat = ensureInvoiceVatAndGrossTotal({
-        lineItems: normalized,
-        amount: footerGross ?? amount,
+      const columnResult = finalizeColumnFormatLineItems({
+        llmItems: llmLineItems,
+        layoutItems: layoutLineItems,
         ocrText,
+        grossAmount: footerGross ?? amount,
+        maxItems: LINE_ITEMS_MAX_COUNT,
       });
       return {
-        lineItems: withVat.lineItems,
-        amount: withVat.amount,
+        lineItems: columnResult.lineItems,
+        amount: columnResult.amount,
       };
     }
 

@@ -344,6 +344,27 @@ describe("mergeLayoutAndLlmLineItems", () => {
 });
 
 describe("reconcileLineItemAmountsWithOcrText", () => {
+  it("fixes shifted amounts by row index on Pos column OCR", () => {
+    const ocrText = [
+      "Pos Bezeichnung Menge Einzelpreis Ges. Preis",
+      "1 Sportfedern H&R 4 120,00 480,00",
+      "2 Arbeitslohn 1 95,00 95,00",
+    ].join("\n");
+
+    expect(
+      reconcileLineItemAmountsWithOcrText(
+        [
+          { label: "LLM row one", amount: 120 },
+          { label: "LLM row two", amount: 95 },
+        ],
+        ocrText,
+      ),
+    ).toEqual([
+      { label: "LLM row one", amount: 480 },
+      { label: "LLM row two", amount: 95 },
+    ]);
+  });
+
   it("upgrades LLM Einzelpreis to OCR Ges. Preis for the same row", () => {
     const ocrText = [
       "Pos Bezeichnung Menge Einzelpreis Ges. Preis",

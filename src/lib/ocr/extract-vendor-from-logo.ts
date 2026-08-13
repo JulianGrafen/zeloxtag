@@ -4,6 +4,7 @@
  */
 
 import { getInvoiceLlmClient, isLlmConfigured } from "./llm-client";
+import { resolveParseModel } from "./model-routing";
 
 const IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -66,10 +67,12 @@ export async function extractVendorFromLogoImage(input: {
   if (input.bytes.length > 4.5 * 1024 * 1024) return null;
 
   try {
-    const { client, model: fallbackModel } = getInvoiceLlmClient();
+    const { client, model: fallbackModel } = getInvoiceLlmClient({
+      model: resolveParseModel("invoice"),
+    });
     let model = fallbackModel;
     if (/^zeloxta/i.test(model)) {
-      model = "gpt-5.4-nano";
+      model = resolveParseModel("invoice");
     }
 
     const completion = await client.chat.completions.create({

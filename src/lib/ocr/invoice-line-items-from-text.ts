@@ -39,6 +39,11 @@ import {
 
 const MAX_ITEMS = 60;
 const MAX_LABEL = 160;
+const NET_TOTAL_TOLERANCE_EUR = 1.5;
+
+function sumLineItemAmounts(items: InvoiceLineItem[]): number {
+  return Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100;
+}
 
 /** Skip totals / headers that are not sellable positions. */
 const SKIP_LABEL =
@@ -471,6 +476,47 @@ function labelMatchScoreForReconcile(a: string, b: string): number {
   return 0;
 }
 
+/** Pos tables: align OCR Ges. Preis by row index, not description text. */
+function reconcileColumnTableLineItemsWithOcrText(
+  items: InvoiceLineItem[],
+  rawText: string,
+): InvoiceLineItem[] {
+  const textItems = extractInvoiceLineItemsFromText(rawText);
+  if (!textItems?.length) return items;
+
+  const footerGross = extractGrossTotalFromText(rawText);
+  const footerNet = extractNetSumFromText(rawText);
+  const multiPosition = items.length > 1;
+
+  return items.map((item, index) => {
+    const textItem = textItems[index];
+    if (!textItem) return item;
+
+    const textAmount = textItem.amount;
+    if (Math.abs(textAmount - item.amount) < 0.011) return item;
+
+    if (
+      !isPlausiblePositionLineAmount(textAmount, {
+        footerGross,
+        footerNet,
+        multiPosition,
+      })
+    ) {
+      return item;
+    }
+
+    if (isUnitPriceAmountOfTotal(item.amount, textAmount)) {
+      return { ...item, amount: textAmount };
+    }
+
+    if (textAmount > item.amount + 0.01) {
+      return { ...item, amount: textAmount };
+    }
+
+    return item;
+  });
+}
+
 /**
  * Replace LLM Einzelpreis with Ges. Preis from OCR text when the row has both values.
  */
@@ -484,11 +530,22 @@ export function reconcileLineItemAmountsWithOcrText(
     return reconcileWorkshopLineItemsWithOcrText(items, rawText);
   }
 
+  const footerNet = extractNetSumFromText(rawText);
+  if (
+    footerNet != null &&
+    Math.abs(sumLineItemAmounts(items) - footerNet) <= NET_TOTAL_TOLERANCE_EUR
+  ) {
+    return items;
+  }
+
+  if (ocrTextUsesPosColumnTable(rawText)) {
+    return reconcileColumnTableLineItemsWithOcrText(items, rawText);
+  }
+
   const textItems = extractInvoiceLineItemsFromText(rawText);
   if (!textItems?.length) return items;
 
   const footerGross = extractGrossTotalFromText(rawText);
-  const footerNet = extractNetSumFromText(rawText);
   const multiPosition = items.length > 1;
   const usedTextIndexes = new Set<number>();
 

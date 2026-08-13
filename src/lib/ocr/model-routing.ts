@@ -1,15 +1,18 @@
 /**
  * Foundry chat deployment for OCR → LLM parse.
- * All document types (invoice, ABE, TÜV) use GPT-5.4.
+ * Invoices use GPT-5.4; ABE/TÜV default to GPT-5.4-nano unless overridden.
  */
 
 import type { OcrDocumentType } from "./ocr-types";
 
-/** Single default deployment for every parse path. */
+/** Default for ABE, TÜV, and other non-invoice parse paths. */
 export const DEFAULT_PARSE_MODEL = "gpt-5.4-nano";
 
-/** @deprecated Use {@link DEFAULT_PARSE_MODEL}. */
-export const DEFAULT_INVOICE_MODEL = DEFAULT_PARSE_MODEL;
+/** Default for invoice extraction (wizard, upload, line items). */
+export const DEFAULT_INVOICE_PARSE_MODEL = "gpt-5.4";
+
+/** @deprecated Use {@link DEFAULT_INVOICE_PARSE_MODEL} for invoices. */
+export const DEFAULT_INVOICE_MODEL = DEFAULT_INVOICE_PARSE_MODEL;
 
 /** @deprecated Use {@link DEFAULT_PARSE_MODEL}. */
 export const DEFAULT_ECONOMY_MODEL = DEFAULT_PARSE_MODEL;
@@ -19,15 +22,19 @@ function readEnvModel(name: string): string {
 }
 
 /**
- * Resolve the Foundry / OpenAI chat deployment.
- * Always GPT-5.4 — `documentType` is kept for call-site compatibility.
- * Env: `FOUNDRY_MODEL_NAME` (preferred) or `FOUNDRY_MODEL_ECONOMY`.
+ * Resolve the Foundry / OpenAI chat deployment for a document type.
+ *
+ * Invoice: `FOUNDRY_MODEL_INVOICE` → `gpt-5.4`
+ * Other: `FOUNDRY_MODEL_NAME` → `FOUNDRY_MODEL_ECONOMY` → `gpt-5.4-nano`
  */
-export function resolveParseModel(_documentType: OcrDocumentType): string {
+export function resolveParseModel(documentType: OcrDocumentType): string {
+  if (documentType === "invoice") {
+    return readEnvModel("FOUNDRY_MODEL_INVOICE") || DEFAULT_INVOICE_PARSE_MODEL;
+  }
+
   return (
     readEnvModel("FOUNDRY_MODEL_NAME") ||
     readEnvModel("FOUNDRY_MODEL_ECONOMY") ||
-    readEnvModel("FOUNDRY_MODEL_INVOICE") ||
     DEFAULT_PARSE_MODEL
   );
 }
