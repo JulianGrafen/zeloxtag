@@ -1,6 +1,13 @@
 import { z } from "zod";
 
 import type { ParsedInvoiceDraft } from "@/types/invoice";
+import { stripHtmlTags } from "@/lib/ocr/normalize-ocr-markdown";
+
+function sanitizeTextField(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  const cleaned = stripHtmlTags(value).replace(/\s+/g, " ").trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
 
 const isoDateSchema = z
   .string()
@@ -73,13 +80,13 @@ export function parseHybridInvoiceLlmResponse(raw: unknown): ParsedInvoiceDraft 
   const data = parsed.data;
 
   return {
-    vendor_name: data.vendor_name,
-    invoice_number: data.invoice_number,
+    vendor_name: sanitizeTextField(data.vendor_name),
+    invoice_number: sanitizeTextField(data.invoice_number),
     invoice_date: data.invoice_date,
     vehicle: {
-      vin: data.vehicle.vin,
-      hsn_tsn: data.vehicle.hsn_tsn,
-      license_plate: data.vehicle.license_plate,
+      vin: sanitizeTextField(data.vehicle.vin),
+      hsn_tsn: sanitizeTextField(data.vehicle.hsn_tsn),
+      license_plate: sanitizeTextField(data.vehicle.license_plate),
       mileage:
         data.vehicle.mileage != null
           ? Math.round(data.vehicle.mileage)
@@ -91,7 +98,7 @@ export function parseHybridInvoiceLlmResponse(raw: unknown): ParsedInvoiceDraft 
       gross_amount: resolveGrossAmount(data.totals),
     },
     line_items: data.line_items.map((item) => ({
-      description: item.description,
+      description: sanitizeTextField(item.description) ?? item.description.trim(),
       quantity: item.quantity,
       unit_price: item.unit_price,
       total_price: item.total_price,

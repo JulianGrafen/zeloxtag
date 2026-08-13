@@ -344,8 +344,13 @@ function normalizeStringList(
 export function normalizeTextParseResult(
   fields: InvoiceTextParseResult,
 ): InvoiceTextParseResult {
+  const vendorRaw = fields.vendor?.trim();
+  const vendor = vendorRaw
+    ? stripHtmlTags(vendorRaw).replace(/\s+/g, " ").trim().slice(0, 160) || null
+    : null;
+
   return {
-    vendor: fields.vendor?.trim().slice(0, 160) || null,
+    vendor,
     date: fields.date,
     amount:
       typeof fields.amount === "number"

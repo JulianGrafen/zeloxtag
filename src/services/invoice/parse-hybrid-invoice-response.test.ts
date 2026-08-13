@@ -43,4 +43,34 @@ describe("parseHybridInvoiceLlmResponse", () => {
     expect(reconciled.reconciliation.line_items_net_sum).toBe(141.46);
     expect(reconciled.reconciliation.net_reconciled).toBe(true);
   });
+
+  it("strips HTML tags from vendor and line item text", () => {
+    const draft = parseHybridInvoiceLlmResponse({
+      vendor_name: "<figure><span>Blotzheim Performance GmbH</span></figure>",
+      invoice_number: "27646",
+      invoice_date: "2026-02-05",
+      vehicle: {
+        vin: null,
+        hsn_tsn: null,
+        license_plate: null,
+        mileage: null,
+      },
+      totals: {
+        net_amount: 100,
+        vat_amount: 19,
+        gross_amount: 119,
+      },
+      line_items: [
+        {
+          description: "<td>Bremsscheibe PRO+</td>",
+          quantity: 1,
+          unit_price: 100,
+          total_price: 100,
+        },
+      ],
+    });
+
+    expect(draft.vendor_name).toBe("Blotzheim Performance GmbH");
+    expect(draft.line_items[0]!.description).toBe("Bremsscheibe PRO+");
+  });
 });

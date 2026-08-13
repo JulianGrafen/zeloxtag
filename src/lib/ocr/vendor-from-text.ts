@@ -3,6 +3,8 @@
  * Logos often OCR as the first short lines at the top of page 1.
  */
 
+import { stripHtmlTags } from "@/lib/ocr/normalize-ocr-markdown";
+
 const SKIP_LINE =
   /^(rechnung|invoice|quittung|beleg|kassenbon|lieferschein|gutschrift|tax|mwst|ust\.?|datum|date|seite|page|tel\.?|fax|mobil|email|e-mail|www\.|http|iban|bic|ust-?id|steuer|kunde|customer|bill\s*to|ship\s*to|zahlungsziel|fällig|netto|brutto|summe|gesamt|total|zwischensumme|pos\.?|artikel|beschreibung|menge|einzeln|eur|€|\$)/i;
 
@@ -16,7 +18,7 @@ const COMPANY_HINT =
   /\b(gmbh|gbr|ag|kg|ug|e\.?\s?k\.?|ltd|llc|inc|co\.|werkstatt|garage|motorsport|tuning|autoservice|kfz|service|parts|performance)\b/i;
 
 function cleanLine(line: string): string {
-  return line.replace(/\s+/g, " ").trim();
+  return stripHtmlTags(line).replace(/\s+/g, " ").trim();
 }
 
 export function isPlausibleVendorLine(line: string): boolean {
@@ -65,19 +67,19 @@ export function resolveVendorName(input: {
 }): string | null {
   const vision = input.visionVendor?.trim() || null;
   if (vision && isPlausibleVendorLine(vision)) {
-    return vision.slice(0, 160);
+    return cleanLine(vision).slice(0, 160);
   }
 
   for (const candidate of input.logoCandidates) {
     const value = candidate?.trim();
     if (value && isPlausibleVendorLine(value)) {
-      return value.slice(0, 160);
+      return cleanLine(value).slice(0, 160);
     }
   }
 
   const structured = input.structuredVendor?.trim() || null;
   if (structured && isPlausibleVendorLine(structured)) {
-    return structured.slice(0, 160);
+    return cleanLine(structured).slice(0, 160);
   }
 
   return inferVendorFromHeaderText(input.rawText);

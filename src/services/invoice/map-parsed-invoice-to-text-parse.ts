@@ -9,6 +9,7 @@ import {
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
 import { resolveVendorName } from "@/lib/ocr/vendor-from-text";
+import { stripHtmlTags } from "@/lib/ocr/normalize-ocr-markdown";
 import type { ParsedInvoice } from "@/types/invoice";
 
 export type MapParsedInvoiceOptions = {
@@ -20,7 +21,7 @@ export type MapParsedInvoiceOptions = {
 function headerLinesFromMarkdown(markdown: string): string[] {
   return markdown
     .split("\n")
-    .map((line) => line.trim())
+    .map((line) => stripHtmlTags(line).replace(/\s+/g, " ").trim())
     .filter(Boolean)
     .slice(0, 12);
 }
