@@ -153,12 +153,17 @@ export function processLineItems(llmItems: any[]) {
       einzelpreis: ePreis,
       gesamtpreis: rawGesPreis,
     });
+    const computedTotal = parseFloat((menge * ePreis).toFixed(2));
+    const resolvedGesPreis =
+      gesPreis === null || Math.abs(gesPreis - computedTotal) > 0.05
+        ? computedTotal
+        : gesPreis;
 
     return {
       ...item,
       menge,
       einzelpreis: ePreis,
-      gesamtpreis: gesPreis
+      gesamtpreis: resolvedGesPreis,
     };
   });
 }

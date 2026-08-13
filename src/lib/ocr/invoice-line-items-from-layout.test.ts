@@ -277,7 +277,6 @@ describe("mergeLayoutAndLlmLineItems", () => {
     const llmRows = [
       { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
       { label: "Bremsscheibe PRO+", amount: 331.98 },
-      { label: "Beide Bremsscheiben erneuern", amount: 81 },
     ];
     const garbledLayout = [
       { label: "Bremsbelagsatz, Scheibenbremse", amount: 1.47 },
@@ -291,18 +290,18 @@ describe("mergeLayoutAndLlmLineItems", () => {
     ).toEqual(llmRows);
   });
 
-  it("hybrid merge upgrades digit-dropped layout amounts and appends missing LLM rows", () => {
+  it("hybrid merge keeps layout Ges. Preis and appends unmatched LLM rows", () => {
     const llmRows = [
       { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
       { label: "Bremsscheibe PRO+", amount: 331.98 },
       { label: "Beide Bremsscheiben erneuern", amount: 81 },
     ];
-    const garbledLayout = [
-      { label: "Bremsbelagsatz, Scheibenbremse", amount: 1.47 },
+    const layoutRows = [
+      { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
       { label: "Bremsscheibe PRO+", amount: 331.98 },
     ];
 
-    expect(mergeLayoutAndLlmLineItems(llmRows, garbledLayout, null)).toEqual([
+    expect(mergeLayoutAndLlmLineItems(llmRows, layoutRows, null)).toEqual([
       { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
       { label: "Bremsscheibe PRO+", amount: 331.98 },
       { label: "Beide Bremsscheiben erneuern", amount: 81 },

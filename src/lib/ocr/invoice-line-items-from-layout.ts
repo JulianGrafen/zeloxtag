@@ -464,11 +464,7 @@ function pickMergedRowAmount(
 ): number {
   if (llmAmount == null) return layoutAmount;
   if (Math.abs(llmAmount - layoutAmount) < 0.02) return layoutAmount;
-  // LLM captured E-Preis while layout has Ges. Preis — keep layout.
   if (isUnitPriceAmountOfTotal(llmAmount, layoutAmount)) return layoutAmount;
-  // Severe OCR digit-drop on layout (e.g. 1,47 vs 141,46) — not mild mismatches.
-  if (layoutAmount < llmAmount * 0.15 && llmAmount >= 10) return llmAmount;
-  // Default: trust Azure row geometry over potentially row-shifted LLM amounts.
   return layoutAmount;
 }
 

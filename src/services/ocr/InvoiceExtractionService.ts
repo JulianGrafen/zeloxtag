@@ -18,8 +18,10 @@ import {
 } from "@/lib/ocr/invoice-footer-totals";
 import {
   extractInvoiceLineItemsFromText,
+  reconcileLineItemAmountsWithOcrText,
 } from "@/lib/ocr/invoice-line-items-from-text";
-import { isPlausibleInvoiceVatAmount } from "@/lib/ocr/invoice-vat";
+import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import { ensureInvoiceVatAndGrossTotal, isPlausibleInvoiceVatAmount } from "@/lib/ocr/invoice-vat";
 import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import { processLineItems } from "@/utils/invoiceMath";
 import {
@@ -157,8 +159,8 @@ const INVOICE_HEADER_JSON_SCHEMA = {
 };
 
 /**
- * Vision schema — English field names (spatial row extraction).
- * Legacy German aliases are normalized in {@link normalizeVisionLineItemsPayload}.
+ * Vision schema — German column fields (proven on Pos tables).
+ * English aliases are normalized in {@link normalizeVisionLineItemsPayload}.
  */
 const INVOICE_LINE_ITEMS_JSON_SCHEMA = {
   name: "invoice_wizard_line_items",
@@ -166,33 +168,33 @@ const INVOICE_LINE_ITEMS_JSON_SCHEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["line_items", "total_amount"],
+    required: ["lineItems", "amount"],
     properties: {
-      line_items: {
+      lineItems: {
         type: ["array", "null"],
         description:
           "Every position row left-to-right. Copy raw cell text — never compute totals.",
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["description", "quantity", "unit_price", "total_price"],
+          required: ["label", "menge", "einzelpreis", "gesamtpreis"],
           properties: {
-            description: {
+            label: {
               type: "string",
               description:
                 "Merged description / Bezeichnung for this horizontal row.",
             },
-            quantity: {
+            menge: {
               type: ["string", "null"],
               description:
                 "Menge cell — e.g. \"1,00\", \"0,90\", \"7,00 Liter\". null if blank.",
             },
-            unit_price: {
+            einzelpreis: {
               type: ["string", "null"],
               description:
                 "E-Preis / Einzelpreis cell — e.g. \"141,46 €\". null if blank.",
             },
-            total_price: {
+            gesamtpreis: {
               type: ["string", "null"],
               description:
                 "Ges. Preis / rightmost row total — e.g. \"331,98 €\". null if blank.",
@@ -200,7 +202,7 @@ const INVOICE_LINE_ITEMS_JSON_SCHEMA = {
           },
         },
       },
-      total_amount: {
+      amount: {
         type: ["string", "null"],
         description:
           "Raw brutto Gesamtbetrag / Rechnungsbetrag if visible — never invoice number.",
@@ -539,6 +541,33 @@ export class InvoiceExtractionService {
     const hasUsableColumnLayout =
       shouldMergeAzureLayout(tableFormat) &&
       (layoutLineItems?.length ?? 0) >= 3;
+
+    if (tableFormat === "column") {
+      const merged = mergeLayoutAndLlmLineItems(
+        llmLineItems,
+        layoutLineItems,
+        amount,
+        { trustedNetTotal: footerNet },
+      );
+      const reconciled =
+        ocrText.trim() && merged
+          ? reconcileLineItemAmountsWithOcrText(merged, ocrText)
+          : merged;
+      const realigned = realignShiftedInvoiceLineItems(
+        stripNonPositionInvoiceRows(reconciled),
+        footerNet ?? amount,
+      );
+      const normalized = normalizeLineItemsList(realigned, LINE_ITEMS_MAX_COUNT);
+      const withVat = ensureInvoiceVatAndGrossTotal({
+        lineItems: normalized,
+        amount: footerGross ?? amount,
+        ocrText,
+      });
+      return {
+        lineItems: withVat.lineItems,
+        amount: withVat.amount,
+      };
+    }
 
     const llmNetSum = sumLineItems(llmLineItems);
     const layoutNetSum = layoutLineItems?.length

@@ -52,11 +52,11 @@ export function normalizeVisionLineItemRow(row: unknown): LlmRawLineItem | null 
   };
 }
 
-/** Accept `line_items` (new) or `lineItems` (legacy) from vision JSON. */
+/** Accept `lineItems` / `line_items` and map English ↔ German vision fields. */
 export function normalizeVisionLineItemsPayload(
   record: Record<string, unknown>,
 ): LlmRawLineItem[] {
-  const raw = record.line_items ?? record.lineItems;
+  const raw = record.lineItems ?? record.line_items;
   if (!Array.isArray(raw)) return [];
 
   return raw
@@ -64,9 +64,9 @@ export function normalizeVisionLineItemsPayload(
     .filter((row): row is LlmRawLineItem => row !== null);
 }
 
-/** Read brutto total from vision JSON (`total_amount` or legacy `amount`). */
+/** Read brutto total from vision JSON (`amount`, `total_amount`). */
 export function readVisionTotalAmountRaw(
   record: Record<string, unknown>,
 ): unknown {
-  return record.total_amount ?? record.amount ?? null;
+  return record.amount ?? record.total_amount ?? null;
 }
