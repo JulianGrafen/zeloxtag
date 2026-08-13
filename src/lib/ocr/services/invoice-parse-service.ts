@@ -53,7 +53,7 @@ import {
   extractMileageKmFromText,
   preferMileageKm,
 } from "@/lib/ocr/mileage-from-text";
-import { resolveParseModel } from "@/lib/ocr/model-routing";
+import { resolveInvoiceParseModel, resolveParseModel } from "@/lib/ocr/model-routing";
 import { buildTuevDocumentUserMessage } from "@/lib/ocr/tuev-document-content";
 import { normalizeOcrMarkdown } from "@/lib/ocr/normalize-ocr-markdown";
 import type { OcrJsonPayload } from "@/lib/ocr/ocr-types";
@@ -137,9 +137,11 @@ export class InvoiceParseService {
     input: DocumentBytesInput,
     options: InvoiceDocumentParseOptions = {},
   ): Promise<InvoiceDocumentParseResult> {
-    const routedModel = options.model ?? resolveParseModel(
-      options.documentType === "tuev" ? "tuev" : "invoice",
-    );
+    const routedModel =
+      options.model ??
+      (options.documentType === "tuev"
+        ? resolveParseModel("tuev")
+        : resolveInvoiceParseModel());
     let client: OpenAI;
     let model: string;
     try {
@@ -151,7 +153,7 @@ export class InvoiceParseService {
     }
 
     if (/^zeloxta/i.test(model)) {
-      model = resolveParseModel("invoice");
+      model = resolveInvoiceParseModel();
     }
 
     const isTuevReport = options.documentType === "tuev";
@@ -398,7 +400,7 @@ export class InvoiceParseService {
       throw new TextParseError("OCR text is too short to parse.");
     }
 
-    const routedModel = options.model ?? resolveParseModel("invoice");
+    const routedModel = options.model ?? resolveInvoiceParseModel();
     let client: OpenAI;
     let model: string;
     try {
@@ -411,7 +413,7 @@ export class InvoiceParseService {
 
     // Never send an agent name as the chat model.
     if (/^zeloxta/i.test(model)) {
-      model = resolveParseModel("invoice");
+      model = resolveInvoiceParseModel();
     }
 
     const systemInstructions = buildInvoiceSystemPrompt();

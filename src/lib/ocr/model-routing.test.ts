@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_INVOICE_PARSE_MODEL,
   DEFAULT_PARSE_MODEL,
+  resolveInvoiceParseModel,
   resolveParseModel,
 } from "@/lib/ocr/model-routing";
 
@@ -15,12 +16,18 @@ describe("resolveParseModel", () => {
 
   it("routes invoices to GPT-5.4 by default", () => {
     expect(resolveParseModel("invoice")).toBe(DEFAULT_INVOICE_PARSE_MODEL);
+    expect(resolveInvoiceParseModel()).toBe(DEFAULT_INVOICE_PARSE_MODEL);
     expect(DEFAULT_INVOICE_PARSE_MODEL).toBe("gpt-5.4");
   });
 
-  it("respects FOUNDRY_MODEL_INVOICE for invoices", () => {
+  it("respects FOUNDRY_MODEL_INVOICE when set to a full model", () => {
     process.env.FOUNDRY_MODEL_INVOICE = "custom-invoice-model";
     expect(resolveParseModel("invoice")).toBe("custom-invoice-model");
+  });
+
+  it("ignores legacy FOUNDRY_MODEL_INVOICE nano override", () => {
+    process.env.FOUNDRY_MODEL_INVOICE = "gpt-5.4-nano";
+    expect(resolveParseModel("invoice")).toBe("gpt-5.4");
   });
 
   it("does not let global economy model override invoice default", () => {

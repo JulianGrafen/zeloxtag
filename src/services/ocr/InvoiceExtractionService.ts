@@ -62,7 +62,7 @@ import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import {
   extractMileageKmFromText,
 } from "@/lib/ocr/mileage-from-text";
-import { resolveParseModel } from "@/lib/ocr/model-routing";
+import { resolveInvoiceParseModel, resolveParseModel } from "@/lib/ocr/model-routing";
 import { coerceGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
@@ -293,7 +293,7 @@ async function runVisionExtract<T>(
   errorLabel: string,
   userMessageParts?: DocumentUserMessagePart[],
 ): Promise<T> {
-  const model = options.model?.trim() || resolveParseModel("invoice");
+  const model = options.model?.trim() || resolveInvoiceParseModel();
 
   let client: OpenAI;
   let resolvedModel: string;
@@ -306,7 +306,7 @@ async function runVisionExtract<T>(
   }
 
   if (/^zeloxta/i.test(resolvedModel)) {
-    resolvedModel = resolveParseModel("invoice");
+    resolvedModel = resolveInvoiceParseModel();
   }
 
   const userContent =

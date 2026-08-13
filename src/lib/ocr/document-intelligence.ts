@@ -13,7 +13,7 @@ import {
   buildStubOcrPayload,
   LLM_VISION_PARSE_MODEL_ID,
 } from "./llm-document-content";
-import { documentTypeFromParseKind, resolveParseModel } from "./model-routing";
+import { documentTypeFromParseKind, resolveInvoiceParseModel, resolveParseModel } from "./model-routing";
 import type {
   DocumentParseKind,
   OcrDocumentType,
@@ -239,7 +239,10 @@ export async function analyzeDocument(input: {
       input.documentType === "tuev" || preferredApprovalKind === "tuev"
         ? "tuev"
         : "invoice";
-    const parseModel = resolveParseModel(resolvedType);
+    const parseModel =
+      resolvedType === "invoice"
+        ? resolveInvoiceParseModel()
+        : resolveParseModel(resolvedType);
 
     if (resolvedType === "tuev") {
       const { analyzeLayoutWithAzure, buildOcrPayloadFromAzureLayout, isAzureDocumentIntelligenceConfigured } =

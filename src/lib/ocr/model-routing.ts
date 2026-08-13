@@ -21,15 +21,31 @@ function readEnvModel(name: string): string {
   return process.env[name]?.trim() ?? "";
 }
 
+function isEconomyNanoModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  return (
+    normalized === DEFAULT_PARSE_MODEL.toLowerCase() ||
+    normalized.endsWith("-nano") ||
+    normalized.includes(".nano")
+  );
+}
+
+/** Full-capability model for invoice vision extraction — never nano. */
+export function resolveInvoiceParseModel(): string {
+  const env = readEnvModel("FOUNDRY_MODEL_INVOICE");
+  if (env && !isEconomyNanoModel(env)) return env;
+  return DEFAULT_INVOICE_PARSE_MODEL;
+}
+
 /**
  * Resolve the Foundry / OpenAI chat deployment for a document type.
  *
- * Invoice: `FOUNDRY_MODEL_INVOICE` → `gpt-5.4`
+ * Invoice: {@link resolveInvoiceParseModel} → `gpt-5.4` (ignores legacy nano env)
  * Other: `FOUNDRY_MODEL_NAME` → `FOUNDRY_MODEL_ECONOMY` → `gpt-5.4-nano`
  */
 export function resolveParseModel(documentType: OcrDocumentType): string {
   if (documentType === "invoice") {
-    return readEnvModel("FOUNDRY_MODEL_INVOICE") || DEFAULT_INVOICE_PARSE_MODEL;
+    return resolveInvoiceParseModel();
   }
 
   return (
