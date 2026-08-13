@@ -76,10 +76,10 @@ export async function enhanceDocumentImageForLlm(
   }
 }
 
-export async function rasterizePdfPagesForLlm(
+async function rasterizePdfPagesWithSharp(
   bytes: Buffer,
-  maxPages: number = LLM_INVOICE_MAX_PDF_PAGES,
-  dpi: number = LLM_DOCUMENT_RASTER_DPI,
+  maxPages: number,
+  dpi: number,
 ): Promise<Buffer[]> {
   const meta = await sharp(bytes, { density: dpi, failOn: "none" }).metadata();
   const pageCount = Math.max(1, meta.pages ?? 1);
@@ -93,6 +93,34 @@ export async function rasterizePdfPagesForLlm(
     pages.push(await enhanceDocumentImageForLlm(png));
   }
   return pages;
+}
+
+export async function rasterizePdfPagesForLlm(
+  bytes: Buffer,
+  maxPages: number = LLM_INVOICE_MAX_PDF_PAGES,
+  dpi: number = LLM_DOCUMENT_RASTER_DPI,
+): Promise<Buffer[]> {
+  try {
+    return await rasterizePdfPagesWithSharp(bytes, maxPages, dpi);
+  } catch (sharpError) {
+    console.warn(
+      "[prepare-document-for-llm] Sharp PDF rasterize failed, trying pdf.js",
+      sharpError,
+    );
+  }
+
+  try {
+    const { rasterizePdfPagesWithPdfJs } = await import("./pdf-rasterize-server");
+    const rawPages = await rasterizePdfPagesWithPdfJs(bytes, maxPages, dpi);
+    const pages: Buffer[] = [];
+    for (const png of rawPages) {
+      pages.push(await enhanceDocumentImageForLlm(png));
+    }
+    return pages;
+  } catch (pdfJsError) {
+    console.warn("[prepare-document-for-llm] pdf.js PDF rasterize failed", pdfJsError);
+    throw pdfJsError;
+  }
 }
 
 export type PrepareDocumentForLlmOptions = {

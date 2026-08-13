@@ -27,6 +27,7 @@ function supabaseImageRemotePattern():
 const supabasePattern = supabaseImageRemotePattern();
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist"],
   turbopack: {
     root: process.cwd(),
   },
