@@ -16,7 +16,9 @@ import { processLineItems } from "@/utils/invoiceMath";
 
 describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => {
   it("produces correct Ges. Preis for all 20 positions from raw LLM strings", () => {
-    const processed = processLineItems(BLOTZHEIM_LLM_RAW_LINE_ITEMS);
+    const processed = processLineItems(BLOTZHEIM_LLM_RAW_LINE_ITEMS, {
+      checksumMode: "column",
+    });
 
     expect(processed).toHaveLength(20);
 
@@ -55,31 +57,39 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
   });
 
   it("fractional labor hours: 0,90 × 90,00 = 81,00", () => {
-    const [item] = processLineItems([
-      {
-        label: "Beide Bremsscheiben erneuern (Hinterachse)",
-        menge: "0,90",
-        einzelpreis: "90,00 €",
-        gesamtpreis: "81,00 €",
-      },
-    ]);
+    const [item] = processLineItems(
+      [
+        {
+          label: "Beide Bremsscheiben erneuern (Hinterachse)",
+          menge: "0,90",
+          einzelpreis: "90,00 €",
+          gesamtpreis: "81,00 €",
+        },
+      ],
+      { checksumMode: "column" },
+    );
     expect(item.gesamtpreis).toBe(81);
   });
 
   it("Liter quantity: 7,00 Liter × 13,45 = 94,15", () => {
-    const [item] = processLineItems([
-      {
-        label: "Motoröl 5W30",
-        menge: "7,00 Liter",
-        einzelpreis: "13,45 €",
-        gesamtpreis: "94,15 €",
-      },
-    ]);
+    const [item] = processLineItems(
+      [
+        {
+          label: "Motoröl 5W30",
+          menge: "7,00 Liter",
+          einzelpreis: "13,45 €",
+          gesamtpreis: "94,15 €",
+        },
+      ],
+      { checksumMode: "column" },
+    );
     expect(item).toMatchObject({ menge: 7, einzelpreis: 13.45, gesamtpreis: 94.15 });
   });
 
   it("corrects LLM EP→GP hallucinations on multi-qty rows", () => {
-    const processed = processLineItems(BLOTZHEIM_LLM_HALLUCINATED_LINE_ITEMS);
+    const processed = processLineItems(BLOTZHEIM_LLM_HALLUCINATED_LINE_ITEMS, {
+      checksumMode: "column",
+    });
     expect(processed.find((i) => i.label.includes("Bremsscheibe"))!.gesamtpreis).toBe(
       331.98,
     );
@@ -95,7 +105,9 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
   });
 
   it("corrects shifted Ges. Preis when Menge and E-Preis are present", () => {
-    const processed = processLineItems(BLOTZHEIM_LLM_SHIFTED_LINE_ITEMS);
+    const processed = processLineItems(BLOTZHEIM_LLM_SHIFTED_LINE_ITEMS, {
+      checksumMode: "column",
+    });
 
     expect(
       processed.find((i) => i.label.includes("Bremsscheibe PRO+"))!.gesamtpreis,
@@ -115,20 +127,23 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
   });
 
   it("recomputes OCR-garbled Ges. Preis from Menge × E-Preis", () => {
-    const processed = processLineItems([
-      {
-        label: "Bremsbelagsatz, Scheibenbremse",
-        menge: "1,00",
-        einzelpreis: "141,46 €",
-        gesamtpreis: "1,47 €",
-      },
-      {
-        label: "Bremsscheibe PRO+",
-        menge: "2,00",
-        einzelpreis: "165,99 €",
-        gesamtpreis: "301,33 €",
-      },
-    ]);
+    const processed = processLineItems(
+      [
+        {
+          label: "Bremsbelagsatz, Scheibenbremse",
+          menge: "1,00",
+          einzelpreis: "141,46 €",
+          gesamtpreis: "1,47 €",
+        },
+        {
+          label: "Bremsscheibe PRO+",
+          menge: "2,00",
+          einzelpreis: "165,99 €",
+          gesamtpreis: "301,33 €",
+        },
+      ],
+      { checksumMode: "column" },
+    );
 
     expect(processed[0]!.gesamtpreis).toBe(141.46);
     expect(processed[1]!.gesamtpreis).toBe(331.98);
@@ -151,7 +166,7 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
       label: "Bremsscheibe PRO+",
       menge: "2,00",
     });
-    const [item] = processLineItems(normalized);
+    const [item] = processLineItems(normalized, { checksumMode: "column" });
     expect(item.gesamtpreis).toBe(331.98);
   });
 });

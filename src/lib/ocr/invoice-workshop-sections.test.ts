@@ -72,7 +72,9 @@ describe("Speedworkz section invoice", () => {
   });
 
   it("processes LLM raw strings for Speedworkz layout", () => {
-    const processed = processLineItems(SPEEDWORKZ_LLM_RAW_LINE_ITEMS);
+    const processed = processLineItems(SPEEDWORKZ_LLM_RAW_LINE_ITEMS, {
+      checksumMode: "standard",
+    });
     expect(processed).toHaveLength(8);
 
     for (let i = 0; i < SPEEDWORKZ_EXPECTED_LINE_ITEMS.length; i += 1) {

@@ -78,7 +78,19 @@ export function resolveInvoiceRowGesamtpreis(options: {
   return computedTotal;
 }
 
-export function processLineItems(llmItems: any[]) {
+export type ProcessLineItemsOptions = {
+  /**
+   * `column` — Pos tables (Menge/E-Preis/Ges. Preis): always reconcile GP with Menge×EP.
+   * `standard` — workshop/unknown: keep printed discounts (GP < EP).
+   */
+  checksumMode?: "column" | "standard";
+};
+
+export function processLineItems(
+  llmItems: any[],
+  options: ProcessLineItemsOptions = {},
+) {
+  const checksumMode = options.checksumMode ?? "standard";
   if (!Array.isArray(llmItems)) return [];
 
   return llmItems.map(item => {
@@ -148,22 +160,24 @@ export function processLineItems(llmItems: any[]) {
       }
     }
 
-    const gesPreis = resolveInvoiceRowGesamtpreis({
+    const gesPreisFromColumns = resolveInvoiceRowGesamtpreis({
       menge,
       einzelpreis: ePreis,
       gesamtpreis: rawGesPreis,
     });
     const computedTotal = parseFloat((menge * ePreis).toFixed(2));
-    const resolvedGesPreis =
-      gesPreis === null || Math.abs(gesPreis - computedTotal) > 0.05
-        ? computedTotal
-        : gesPreis;
+    let gesPreis = gesPreisFromColumns;
+    if (checksumMode === "column") {
+      if (gesPreis === null || Math.abs(gesPreis - computedTotal) > 0.05) {
+        gesPreis = computedTotal;
+      }
+    }
 
     return {
       ...item,
       menge,
       einzelpreis: ePreis,
-      gesamtpreis: resolvedGesPreis,
+      gesamtpreis: gesPreis,
     };
   });
 }

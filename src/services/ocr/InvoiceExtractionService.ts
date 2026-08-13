@@ -484,7 +484,9 @@ export class InvoiceExtractionService {
     );
 
     // LLM outputs raw strings per column — run bulletproof math before merge/save.
-    const finalItems = processLineItems(normalizeVisionLineItemsPayload(record));
+    const finalItems = processLineItems(normalizeVisionLineItemsPayload(record), {
+      checksumMode: tableFormat === "column" ? "column" : "standard",
+    });
     let llmLineItems: InvoiceLineItem[] = finalItems
       .filter(
         (item) =>
@@ -543,6 +545,7 @@ export class InvoiceExtractionService {
       (layoutLineItems?.length ?? 0) >= 3;
 
     if (tableFormat === "column") {
+      // Proven Pos-table path (Blotzheim): merge → OCR reconcile → realign → VAT.
       const merged = mergeLayoutAndLlmLineItems(
         llmLineItems,
         layoutLineItems,
@@ -569,6 +572,7 @@ export class InvoiceExtractionService {
       };
     }
 
+    // workshop-sections + unknown: modern pipeline (plausibility, section parser, OCR heuristics).
     const llmNetSum = sumLineItems(llmLineItems);
     const layoutNetSum = layoutLineItems?.length
       ? layoutLineItems.reduce((sum, item) => sum + item.amount, 0)

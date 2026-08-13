@@ -69,7 +69,7 @@ function buildBlotzheim27646Layout(): AzureLayoutAnalyzeResult {
 
 describe("column invoice extraction pipeline (Blotzheim 27646)", () => {
   it("restores row totals via processLineItems → merge → realign", () => {
-    const llmLineItems = processLineItems(SHIFTED_LLM_RAW)
+    const llmLineItems = processLineItems(SHIFTED_LLM_RAW, { checksumMode: "column" })
       .filter((item) => item.gesamtpreis > 0)
       .map((item) => ({
         label: String(item.label).trim(),
@@ -116,7 +116,7 @@ describe("column invoice extraction pipeline (Blotzheim 27646)", () => {
         `${index + 1} ${row.label} ${row.menge ?? ""} ${row.einzelpreis ?? ""} ${row.gesamtpreis ?? ""}`,
     ).join("\n");
 
-    const shifted = processLineItems(SHIFTED_LLM_RAW)
+    const shifted = processLineItems(SHIFTED_LLM_RAW, { checksumMode: "column" })
       .filter((item) => item.gesamtpreis > 0)
       .map((item) => ({
         label: String(item.label).trim(),
