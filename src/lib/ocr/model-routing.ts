@@ -21,6 +21,11 @@ function readEnvModel(name: string): string {
   return process.env[name]?.trim() ?? "";
 }
 
+function isTruthyEnv(name: string): boolean {
+  const value = process.env[name]?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes";
+}
+
 function isEconomyNanoModel(model: string): boolean {
   const normalized = model.trim().toLowerCase();
   return (
@@ -30,17 +35,26 @@ function isEconomyNanoModel(model: string): boolean {
   );
 }
 
-/** Full-capability model for invoice vision extraction — never nano. */
+/**
+ * When `INVOICE_USE_NANO=true`, invoices route to {@link DEFAULT_PARSE_MODEL}
+ * for cost/quality A/B tests. Production default remains GPT-5.4.
+ */
+export function isInvoiceNanoTestMode(): boolean {
+  return isTruthyEnv("INVOICE_USE_NANO");
+}
+
+/** Full-capability model for invoice vision extraction — never nano unless test flag. */
 export function resolveInvoiceParseModel(): string {
   const env = readEnvModel("FOUNDRY_MODEL_INVOICE");
   if (env && !isEconomyNanoModel(env)) return env;
+  if (isInvoiceNanoTestMode()) return DEFAULT_PARSE_MODEL;
   return DEFAULT_INVOICE_PARSE_MODEL;
 }
 
 /**
  * Resolve the Foundry / OpenAI chat deployment for a document type.
  *
- * Invoice: {@link resolveInvoiceParseModel} → `gpt-5.4` (ignores legacy nano env)
+ * Invoice: {@link resolveInvoiceParseModel} → `gpt-5.4` (or nano when `INVOICE_USE_NANO=true`)
  * Other: `FOUNDRY_MODEL_NAME` → `FOUNDRY_MODEL_ECONOMY` → `gpt-5.4-nano`
  */
 export function resolveParseModel(documentType: OcrDocumentType): string {

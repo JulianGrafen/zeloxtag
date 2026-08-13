@@ -2,6 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
+import {
+  isInvoiceNanoTestMode,
+  resolveInvoiceParseModel,
+} from "@/lib/ocr/model-routing";
 import type { InvoiceTextParseCategory } from "@/lib/ocr/text-parse-schema";
 import {
   enforceRateLimit,
@@ -31,9 +35,27 @@ const lockedCategorySchema = z
   .optional();
 
 type StepSuccess =
-  | { ok: true; step: "overview"; extraction: InvoiceOverviewExtraction }
-  | { ok: true; step: "header"; extraction: InvoiceHeaderExtraction }
-  | { ok: true; step: "line-items"; extraction: InvoiceLineItemsExtraction };
+  | {
+      ok: true;
+      step: "overview";
+      extraction: InvoiceOverviewExtraction;
+      parseModel: string;
+      invoiceNanoTestMode: boolean;
+    }
+  | {
+      ok: true;
+      step: "header";
+      extraction: InvoiceHeaderExtraction;
+      parseModel: string;
+      invoiceNanoTestMode: boolean;
+    }
+  | {
+      ok: true;
+      step: "line-items";
+      extraction: InvoiceLineItemsExtraction;
+      parseModel: string;
+      invoiceNanoTestMode: boolean;
+    };
 
 type StepError = {
   ok: false;
@@ -134,6 +156,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const input = { bytes, contentType: sniffed };
     const options = { lockedCategory };
+    const parseModel = resolveInvoiceParseModel();
+    const invoiceNanoTestMode = isInvoiceNanoTestMode();
+
+    if (invoiceNanoTestMode) {
+      console.warn(
+        "[api/ocr/invoice] INVOICE_USE_NANO=true — using economy model for quality/cost test",
+        { parseModel },
+      );
+    }
 
     if (step === "overview") {
       const extraction =
@@ -141,20 +172,38 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           input,
           options,
         );
-      const body: StepSuccess = { ok: true, step: "overview", extraction };
+      const body: StepSuccess = {
+        ok: true,
+        step: "overview",
+        extraction,
+        parseModel,
+        invoiceNanoTestMode,
+      };
       return NextResponse.json(body);
     }
 
     if (step === "header") {
       const extraction =
         await invoiceExtractionService.extractHeaderFromDocument(input, options);
-      const body: StepSuccess = { ok: true, step: "header", extraction };
+      const body: StepSuccess = {
+        ok: true,
+        step: "header",
+        extraction,
+        parseModel,
+        invoiceNanoTestMode,
+      };
       return NextResponse.json(body);
     }
 
     const extraction =
       await invoiceExtractionService.extractLineItemsFromDocument(input, options);
-    const body: StepSuccess = { ok: true, step: "line-items", extraction };
+    const body: StepSuccess = {
+      ok: true,
+      step: "line-items",
+      extraction,
+      parseModel,
+      invoiceNanoTestMode,
+    };
     return NextResponse.json(body);
   } catch (error) {
     const message =

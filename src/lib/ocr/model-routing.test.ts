@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_INVOICE_PARSE_MODEL,
   DEFAULT_PARSE_MODEL,
+  isInvoiceNanoTestMode,
   resolveInvoiceParseModel,
   resolveParseModel,
 } from "@/lib/ocr/model-routing";
@@ -12,6 +13,7 @@ describe("resolveParseModel", () => {
     delete process.env.FOUNDRY_MODEL_INVOICE;
     delete process.env.FOUNDRY_MODEL_NAME;
     delete process.env.FOUNDRY_MODEL_ECONOMY;
+    delete process.env.INVOICE_USE_NANO;
   });
 
   it("routes invoices to GPT-5.4 by default", () => {
@@ -27,6 +29,19 @@ describe("resolveParseModel", () => {
 
   it("ignores legacy FOUNDRY_MODEL_INVOICE nano override", () => {
     process.env.FOUNDRY_MODEL_INVOICE = "gpt-5.4-nano";
+    expect(resolveParseModel("invoice")).toBe("gpt-5.4");
+  });
+
+  it("routes invoices to nano when INVOICE_USE_NANO=true", () => {
+    process.env.INVOICE_USE_NANO = "true";
+    expect(isInvoiceNanoTestMode()).toBe(true);
+    expect(resolveParseModel("invoice")).toBe(DEFAULT_PARSE_MODEL);
+    expect(resolveInvoiceParseModel()).toBe("gpt-5.4-nano");
+  });
+
+  it("prefers explicit FOUNDRY_MODEL_INVOICE over INVOICE_USE_NANO", () => {
+    process.env.INVOICE_USE_NANO = "true";
+    process.env.FOUNDRY_MODEL_INVOICE = "gpt-5.4";
     expect(resolveParseModel("invoice")).toBe("gpt-5.4");
   });
 

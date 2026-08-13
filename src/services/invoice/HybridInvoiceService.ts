@@ -11,7 +11,10 @@ import type {
   IDocumentParser,
   IModelEngine,
 } from "@/services/invoice/interfaces";
-import { validateAndFixLineItems } from "@/services/invoice/InvoiceMathValidator";
+import {
+  reconcileInvoiceTotals,
+  validateAndFixLineItems,
+} from "@/services/invoice/InvoiceMathValidator";
 import {
   parseHybridInvoiceLlmResponse,
   type HybridInvoiceLlmResponse,
@@ -97,21 +100,32 @@ export class HybridInvoiceService {
       throw new HybridInvoiceExtractionError("llm", message, { cause: error });
     }
 
-    let draft: ParsedInvoice;
     try {
       const parsed = parseHybridInvoiceLlmResponse(llmRaw);
-      draft = {
+      const withLineMath = {
         ...parsed,
         line_items: validateAndFixLineItems(parsed.line_items),
       };
+      const reconciled = reconcileInvoiceTotals(withLineMath);
+
+      console.info(
+        `[HybridInvoiceService] total reconciliation: positions=${reconciled.reconciliation.line_items_net_sum} net_delta=${reconciled.reconciliation.net_delta} gross_delta=${reconciled.reconciliation.gross_delta} net_ok=${reconciled.reconciliation.net_reconciled}`,
+      );
+
+      if (!reconciled.reconciliation.net_reconciled) {
+        console.warn(
+          "[HybridInvoiceService] Positions-Summe weicht von Nettosumme ab",
+          reconciled.reconciliation,
+        );
+      }
+
+      return reconciled;
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Response validation failed.";
       console.error("[HybridInvoiceService] parse stage failed", error);
       throw new HybridInvoiceExtractionError("parse", message, { cause: error });
     }
-
-    return draft;
   }
 }
 

@@ -20,6 +20,9 @@ export type {
 } from "@/services/invoice/interfaces";
 export {
   INVOICE_LINE_MATH_TOLERANCE_EUR,
+  INVOICE_TOTAL_TOLERANCE_EUR,
+  reconcileInvoiceTotals,
+  sumBillableLineItemTotals,
   validateAndFixLineItems,
 } from "@/services/invoice/InvoiceMathValidator";
 export {
@@ -32,6 +35,7 @@ export {
 export type {
   InvoiceLineItem,
   InvoiceLineItemDraft,
+  InvoiceTotalReconciliation,
   InvoiceTotals,
   InvoiceVehicleData,
   ParsedInvoice,

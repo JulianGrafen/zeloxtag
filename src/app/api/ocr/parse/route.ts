@@ -6,7 +6,7 @@ import {
   DocumentIntelligenceError,
 } from "@/lib/ocr/document-intelligence";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
-import { resolveParseModel } from "@/lib/ocr/model-routing";
+import { resolveParseModel, isInvoiceNanoTestMode } from "@/lib/ocr/model-routing";
 import { OCR_DOCUMENT_TYPES, type OcrDocumentType } from "@/lib/ocr/ocr-types";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import {
@@ -38,6 +38,7 @@ type ParseSuccess = {
   ok: true;
   documentType: OcrDocumentType;
   parseModel: string;
+  invoiceNanoTestMode?: boolean;
   contentFormat: "markdown" | "text";
   fields: InvoiceTextParseResult;
   approvalFields: ApprovalFields | null;
@@ -200,6 +201,10 @@ export async function POST(request: NextRequest) {
       ok: true,
       documentType: result.documentType,
       parseModel: result.parseModel || resolveParseModel(documentType),
+      invoiceNanoTestMode:
+        documentType === "invoice" && isInvoiceNanoTestMode()
+          ? true
+          : undefined,
       contentFormat: result.ocrJson.contentFormat,
       fields: validated.data,
       approvalFields: parseApprovalFields(result.approvalFields),

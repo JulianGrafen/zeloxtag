@@ -32,6 +32,22 @@ export interface InvoiceTotals {
   gross_amount: number;
 }
 
+/** Total-Rechnung: Summe aller Positionen vs. Netto/Brutto/MwSt. */
+export interface InvoiceTotalReconciliation {
+  /** Summe aller fakturierbaren Positionen (ohne MwSt-Zeilen). */
+  line_items_net_sum: number;
+  line_items_count: number;
+  /** |Summe Positionen − Nettosumme| (null wenn Netto unbekannt). */
+  net_delta: number | null;
+  /** |Summe Positionen + MwSt − Brutto| (null wenn unvollständig). */
+  gross_delta: number | null;
+  /** |Netto + MwSt − Brutto| aus Footer-Werten. */
+  vat_delta: number | null;
+  net_reconciled: boolean;
+  gross_reconciled: boolean;
+  vat_reconciled: boolean;
+}
+
 export interface ParsedInvoice {
   vendor_name: string | null;
   invoice_number: string | null;
@@ -40,11 +56,15 @@ export interface ParsedInvoice {
   vehicle: InvoiceVehicleData;
   totals: InvoiceTotals;
   line_items: InvoiceLineItem[];
+  reconciliation: InvoiceTotalReconciliation;
 }
 
 /** Raw LLM payload before math validation (no is_math_valid yet). */
 export type InvoiceLineItemDraft = Omit<InvoiceLineItem, "is_math_valid">;
 
-export type ParsedInvoiceDraft = Omit<ParsedInvoice, "line_items"> & {
+export type ParsedInvoiceDraft = Omit<
+  ParsedInvoice,
+  "line_items" | "reconciliation"
+> & {
   line_items: InvoiceLineItemDraft[];
 };
