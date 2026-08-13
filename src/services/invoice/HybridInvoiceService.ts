@@ -1,5 +1,6 @@
 import "server-only";
 
+import { annotateInvoiceTableRows } from "@/lib/ocr/annotate-invoice-table-rows";
 import { deduplicateInvoiceItemTable } from "@/lib/ocr/markdown-page-dedup";
 import { resolveAzureLayoutInput } from "@/lib/ocr/prepare-document-for-llm";
 import type { DocumentBytesInput } from "@/lib/ocr/prepare-document-for-llm";
@@ -85,12 +86,15 @@ export class HybridInvoiceService {
       tableCount = layout.tableCount;
       layoutResult = layout.layout;
       fullMarkdown = layout.markdown;
-      // Deduplicate before slicing: remove earlier (truncated) copies of the
-      // invoice items table that Azure Layout emits once per physical page.
-      const dedupedMarkdown = deduplicateInvoiceItemTable(layout.markdown);
-      markdown = dedupedMarkdown.slice(0, this.maxMarkdownChars);
+      // 1) Drop earlier truncated duplicate item tables (multi-page reprints).
+      // 2) Annotate remaining item rows with Z01/Z02… — text equivalent of the
+      //    vision zebra/left-marker overlays, so the LLM cannot row-shift.
+      const preparedMarkdown = annotateInvoiceTableRows(
+        deduplicateInvoiceItemTable(layout.markdown),
+      );
+      markdown = preparedMarkdown.slice(0, this.maxMarkdownChars);
       console.info(
-        `[HybridInvoiceService] layout OCR: ${layout.pageCount} page(s), ${layout.tableCount} table(s), ${markdown.length} chars`,
+        `[HybridInvoiceService] layout OCR: ${layout.pageCount} page(s), ${layout.tableCount} table(s), ${markdown.length} chars (Z-row markers applied)`,
       );
     } catch (error) {
       const message =
@@ -106,7 +110,9 @@ export class HybridInvoiceService {
           systemPrompt: HYBRID_INVOICE_SYSTEM_PROMPT,
           userContent: [
             "Extract structured invoice data from this layout OCR markdown.",
-            "Merge wrapped description lines into the row above (no row shifting).",
+            "Rows are anchored with Z01, Z02, Z03 … markers in the leftmost column.",
+            "Each Znn = exactly ONE line_item — copy Bezeichnung, Menge, E-Preis, Ges. Preis from that same row only.",
+            "Never move prices from Znn to Z(n±1). Merge wrapped description lines into the row above.",
             "",
             markdown,
           ].join("\n"),

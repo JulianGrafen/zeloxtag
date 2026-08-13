@@ -14,9 +14,17 @@ RULE 1 — VEHICLE METADATA
 - "mileage": KM-Stand / Kilometerstand — pure integer, strip "km".
 
 ═══════════════════════════════════════════════════════════════
-RULE 2 — TABLE COLUMN ORDER (CRITICAL — READ CAREFULLY)
+RULE 2 — ROW ANCHORS (Z01, Z02, …) + TABLE COLUMN ORDER
 ═══════════════════════════════════════════════════════════════
-German workshop invoices use this column order:
+The markdown may contain an extra leftmost column "Z" with markers Z01, Z02, Z03 …
+These are row anchors (same role as visual zebra markers on scanned images).
+
+  • Each Znn = exactly ONE line_item.
+  • Copy Bezeichnung, Menge, E-Preis, Ges. Preis ONLY from the same Znn row.
+  • NEVER move a Ges. Preis from Z04 onto Z05 (or any other Znn).
+  • The "Z" / "Znn" column itself is NOT a billable field — ignore it in output JSON.
+
+German workshop invoices use this column order (after the optional Z column):
   Pos | Artikelnr. | Bezeichnung/Beschreibung | Menge | Einh. | E-Preis | Ges. Preis
 
 DEFINITIONS:
@@ -24,8 +32,8 @@ DEFINITIONS:
   • "unit_price"  = E-Preis column (Einzelpreis — price PER unit)
   • "total_price" = Ges. Preis column (RIGHTMOST monetary column — total for that row)
 
-GOLDEN RULE: total_price is ALWAYS the value in the Ges.-Preis cell of EXACTLY THAT ROW.
-NEVER borrow a price from a different row. Each Ges. Preis belongs to one and only one row.
+GOLDEN RULE: total_price is ALWAYS the value in the Ges.-Preis cell of EXACTLY THAT Znn ROW.
+NEVER borrow a price from a different row. Each Ges. Preis belongs to one and only one Znn.
 
 VERIFICATION (mandatory before output):
   For every line item: verify quantity × unit_price ≈ total_price (within ±0.10 €).
