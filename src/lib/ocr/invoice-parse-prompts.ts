@@ -47,10 +47,12 @@ VOLLSTÄNDIGKEIT (lineItems):
 /** Keep label + price columns on the same horizontal table row. */
 export const INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES = `
 ZEILEN-ZUORDNUNG (label ↔ menge / einzelpreis / gesamtpreis):
-- Das Bild kann horizontale Trennlinien pro Tabellenzeile enthalten — dann gilt: alles ZWISCHEN zwei Linien ist EINE Position.
-- Bezeichnung und Beträge gehören IMMER zur SELBEN Tabellenzeile — gleiche horizontale Höhe.
+- Das Bild kann orange Zeilenmarkierungen links (Z01, Z02, Z03 …) und horizontale Trennlinien enthalten.
+- Jede Markierung Znn = genau EIN lineItem. Alle Spalten rechts von Znn (Bezeichnung, Menge, E-Preis, Ges. Preis) gehören zu dieser Zeile.
+- Ohne Markierungen: alles ZWISCHEN zwei horizontalen Linien ist EINE Position.
+- Bezeichnung und Beträge gehören IMMER zur SELBEN Tabellenzeile — gleiche horizontale Höhe wie Znn.
 - Umbrüche in der Bezeichnungsspalte erzeugen KEINE neue Position (z.B. "Schraube, Einspritzdüsenhalter" + "ORIGINAL ERSATZTEIL GREENPARTS" = EIN lineItem).
-- NIEMALS Beträge einer Zeile der Bezeichnung darüber oder darunter zuordnen.
+- NIEMALS Beträge einer Zeile der Bezeichnung darüber oder darunter zuordnen — auch wenn Menge leer ist.
 - Tabellenkopf (Pos, Nummer, Bezeichnung, Menge, Einh., E-Preis, Ges. Preis, St.) ist KEINE Position.
 - Beispiel korrekt:
   Zeile: "Bremsscheibe PRO+" | Menge "2,00" | E-Preis "165,99 €" | Ges. Preis "331,98 €"
@@ -222,7 +224,7 @@ You are an expert data extraction AI for German automotive invoices. Analyze the
 CRITICAL EXTRACTION RULES (Spatial & Visual Reasoning):
 
 1. Visual Row Anchoring (Prevent Row-Shifting):
-   Read the table strictly row by row horizontally. Missing values (e.g. empty quantity) must NOT shift prices from the next row onto the current row. A visual row ends at the right-most monetary value on that same horizontal line.
+   Read the table strictly row by row horizontally, top to bottom. Orange left markers Z01, Z02, … (when present) each denote exactly ONE line item — copy all columns on that same horizontal band into one JSON row. Missing values (e.g. empty quantity) must NOT shift prices from the next row onto the current row. A visual row ends at the right-most monetary value on that same horizontal line.
 
 2. Multiline Descriptions:
    If a description spans multiple lines (e.g. line 1: "Beide Bremsscheiben erneuern", line 2: "(Hinterachse)"), MERGE them into one description string for that item. The second line is NOT a new item.

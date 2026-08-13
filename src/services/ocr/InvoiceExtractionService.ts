@@ -435,6 +435,7 @@ export class InvoiceExtractionService {
 
     let llmInput = prepared;
     let rowSeparators = false;
+    let rowMarkersLeft = false;
     if (
       canDrawRowSeparators(prepared.bytes, prepared.contentType) &&
       shouldDrawInvoiceRowSeparators(tableFormat)
@@ -445,6 +446,7 @@ export class InvoiceExtractionService {
       );
       llmInput = { bytes: drawn.bytes, contentType: "image/png" };
       rowSeparators = drawn.separatorsDrawn > 0;
+      rowMarkersLeft = drawn.rowMarkersDrawn > 0;
     }
 
     const userLines = invoiceLineItemsUserLinesForFormat(tableFormat);
@@ -465,7 +467,7 @@ export class InvoiceExtractionService {
     const visionMessage = buildVisionUserMessage(
       instructionLines,
       llmInput,
-      { rowSeparators },
+      { rowSeparators, rowMarkersLeft },
     );
 
     const record = await runVisionExtract<Record<string, unknown>>(

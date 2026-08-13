@@ -190,21 +190,34 @@ export async function buildPreparedDocumentUserMessage(
 export function buildEnhancedImageUserMessage(
   instructionLines: string[],
   enhancedPng: Buffer,
-  options: { rowSeparators?: boolean } = {},
+  options: { rowSeparators?: boolean; rowMarkersLeft?: boolean } = {},
 ): DocumentUserMessagePart[] {
   const parts: DocumentUserMessagePart[] = instructionLines
     .filter((line) => line.length > 0)
     .map((text) => ({ type: "text" as const, text }));
 
-  parts.push({
-    type: "text",
-    text: options.rowSeparators
-      ? "Kontrastverstärktes Dokumentbild mit horizontalen Trennlinien pro Tabellenzeile folgt. " +
-        "Bezeichnung und Betrag gehören zur gleichen Zeile (zwischen zwei Linien). " +
-        "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile."
-      : "Kontrastverstärktes Dokumentbild folgt. " +
-        "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile.",
-  });
+  let imageHint =
+    "Kontrastverstärktes Dokumentbild folgt. " +
+    "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile.";
+
+  if (options.rowMarkersLeft && options.rowSeparators) {
+    imageHint =
+      "Kontrastverstärktes Dokumentbild mit nummerierten Tabellenzeilen (orange Z01, Z02, … links) " +
+      "und horizontalen Trennlinien folgt. " +
+      "Jede orange Markierung Znn = genau EINE Position — alle Spalten rechts davon (Bezeichnung, Menge, E-Preis, Ges. Preis) gehören zu Znn. " +
+      "Pos-Spalte (1, 2, 3 …) ist NICHT quantity. Lies jede Zeile vollständig von links nach rechts.";
+  } else if (options.rowSeparators) {
+    imageHint =
+      "Kontrastverstärktes Dokumentbild mit horizontalen Trennlinien pro Tabellenzeile folgt. " +
+      "Bezeichnung und Betrag gehören zur gleichen Zeile (zwischen zwei Linien). " +
+      "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile.";
+  } else if (options.rowMarkersLeft) {
+    imageHint =
+      "Kontrastverstärktes Dokumentbild mit nummerierten Tabellenzeilen (orange Z01, Z02, … links) folgt. " +
+      "Jede Markierung Znn = genau EINE Position — alle Spalten rechts davon gehören zu Znn.";
+  }
+
+  parts.push({ type: "text", text: imageHint });
   parts.push(pngImagePart(enhancedPng));
   return parts;
 }
@@ -213,7 +226,7 @@ export function buildEnhancedImageUserMessage(
 export function buildVisionUserMessage(
   instructionLines: string[],
   input: DocumentBytesInput,
-  options: { rowSeparators?: boolean } = {},
+  options: { rowSeparators?: boolean; rowMarkersLeft?: boolean } = {},
 ): DocumentUserMessagePart[] {
   if (input.contentType === "application/pdf" || isPdfBuffer(input.bytes)) {
     return buildDocumentUserMessage(instructionLines, {

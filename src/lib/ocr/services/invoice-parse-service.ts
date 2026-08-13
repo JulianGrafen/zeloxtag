@@ -168,6 +168,7 @@ export class InvoiceParseService {
     let azureLayout = null;
     let llmInput = prepared;
     let rowSeparators = false;
+    let rowMarkersLeft = false;
 
     if (!isTuevReport && isAzureDocumentIntelligenceConfigured()) {
       azureLayout = await analyzeLayoutWithAzure(
@@ -191,12 +192,14 @@ export class InvoiceParseService {
       );
       llmInput = { bytes: drawn.bytes, contentType: "image/png" };
       rowSeparators = drawn.separatorsDrawn > 0;
+      rowMarkersLeft = drawn.rowMarkersDrawn > 0;
     }
 
     const userContent = isTuevReport
       ? await buildTuevDocumentUserMessage([docHint, ...userLines], prepared)
       : buildVisionUserMessage([docHint, ...userLines], llmInput, {
           rowSeparators,
+          rowMarkersLeft,
         });
     const jsonSchema = buildInvoiceTextParseJsonSchema({
       documentType: isTuevReport ? "tuev" : "invoice",
