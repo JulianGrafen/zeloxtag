@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
   FileText,
   Receipt,
   Share2,
+  Trash2,
 } from "lucide-react";
+
+import { deleteDocument } from "@/actions/delete-document";
 
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
 import { EditableTuevDefectsSection } from "@/components/documents/editable-tuev-defects-section";
+import { EditableTitleSection } from "@/components/documents/editable-title-section";
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
@@ -41,6 +46,7 @@ interface DocumentInvoiceDetailViewProps {
   document: Document;
   backHref?: string;
   canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 function fileNameFromUrl(fileUrl: string, fallback: string): string {
@@ -75,20 +81,52 @@ export function DocumentInvoiceDetailView({
   document,
   backHref,
   canEdit = false,
+  canDelete = false,
 }: DocumentInvoiceDetailViewProps) {
+  const router = useRouter();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, startDelete] = useTransition();
   const [vendorLabel, setVendorLabel] = useState(
     () => document.vendor?.trim() || displayDocumentTitle(document.title),
   );
-  const title = displayDocumentTitle(document.title);
+  const [title, setTitle] = useState(() => displayDocumentTitle(document.title));
   const lineItems = document.line_items ?? [];
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
   const isManual = isManualVehicleEntry(document);
-  const canEditVendor =
+  const canEditInvoice =
     canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
-  const canEditPositions =
-    canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
+  const canEditVendor = canEditInvoice;
+  const canEditPositions = canEditInvoice;
+  const canDeleteInvoice =
+    canDelete &&
+    Boolean(document.vehicle_id) &&
+    (document.file_url.startsWith("mock://") ||
+      !document.file_url.startsWith("/demo/"));
   const resolvedBack =
     backHref ?? `/v/${tagUuid}/dokumente?type=${document.type}`;
+
+  function handleDeleteInvoice() {
+    if (!canDeleteInvoice) return;
+    const confirmed = window.confirm(
+      `Rechnung „${title}“ wirklich löschen? Das lässt sich nicht rückgängig machen.`,
+    );
+    if (!confirmed) return;
+
+    setDeleteError(null);
+    startDelete(async () => {
+      const result = await deleteDocument({
+        documentId: document.id,
+        vehicleId: document.vehicle_id,
+        tagUuid,
+      });
+      if (result.status === "error") {
+        setDeleteError(result.message);
+        return;
+      }
+      router.push(resolvedBack);
+      router.refresh();
+    });
+  }
   const fileName = fileNameFromUrl(document.file_url, title);
   const issuedLabel = formatCompactDate(document.date);
   const scannedLabel = formatCompactDate(document.created_at);
@@ -154,9 +192,21 @@ export function DocumentInvoiceDetailView({
               <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
                 {category} · {isManual ? "Eigener Eintrag" : "Beleg"}
               </p>
-              <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
-                {title}
-              </h1>
+              {canEditInvoice ? (
+                <div className="mt-2">
+                  <EditableTitleSection
+                    documentId={document.id}
+                    vehicleId={document.vehicle_id}
+                    tagUuid={tagUuid}
+                    title={title}
+                    onSaved={setTitle}
+                  />
+                </div>
+              ) : (
+                <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
+                  {title}
+                </h1>
+              )}
               <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
                 {vendor}
                 {vehicleLabel ? ` · ${vehicleLabel}` : ""}
@@ -374,6 +424,29 @@ export function DocumentInvoiceDetailView({
             )}
           </div>
         </section>
+
+        {canDeleteInvoice ? (
+          <div className="space-y-2">
+            <PressableButton
+              type="button"
+              variant="button"
+              disabled={deleting}
+              onClick={handleDeleteInvoice}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-[0.88rem] font-semibold text-red-700 disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+              {deleting ? "Wird gelöscht…" : "Rechnung löschen"}
+            </PressableButton>
+            {deleteError ? (
+              <p
+                role="alert"
+                className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
+              >
+                {deleteError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <VehicleDataDisclaimer />
       </div>

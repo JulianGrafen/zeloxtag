@@ -60,6 +60,7 @@ export default async function DocumentDetailPage({
         access.isOwner ||
         (access.isContributor && document.type === "invoice")
       }
+      canDelete={access.isOwner}
     />
   );
 }

@@ -299,6 +299,59 @@ export function InvoiceUploader({
     }
   }
 
+  async function completeInvoiceScan(files: File[]) {
+    setError(null);
+    setPagePrepBusy(true);
+    setStep("extracting");
+    setProgress({ label: "Vorbereitung…", percent: 4 });
+
+    try {
+      const ingestedPages: CompressedPage[] = [];
+      let pdf: File | null = null;
+
+      for (const file of files) {
+        const optimized = await compressFile(file);
+        if (optimized.kind === "pdf" || isPdfFile(optimized.file)) {
+          pdf = optimized.file;
+          break;
+        }
+        if (ingestedPages.length >= MAX_PAGES) {
+          setError(`Maximal ${MAX_PAGES} Seiten pro Beleg.`);
+          setStep("compose");
+          return;
+        }
+        ingestedPages.push(await ingestImageFile(optimized.file));
+      }
+
+      if (pdf) {
+        clearPages();
+        setNativePdf(pdf);
+        await runExtraction({ nativePdf: pdf, pages: [] });
+        return;
+      }
+
+      if (ingestedPages.length === 0) {
+        setError("Bitte mindestens eine Seite oder ein PDF hinzufügen.");
+        setStep("compose");
+        return;
+      }
+
+      if (nativePdf) setNativePdf(null);
+      clearPages();
+      setPages(ingestedPages);
+      await runExtraction({ nativePdf: null, pages: ingestedPages });
+    } catch (ingestError) {
+      setStep("compose");
+      setError(
+        ingestError instanceof Error
+          ? ingestError.message
+          : "Seite konnte nicht komprimiert werden.",
+      );
+    } finally {
+      setPagePrepBusy(false);
+    }
+  }
+
   const compressing = isCompressing || pagePrepBusy;
 
   function removePage(pageId: string) {
@@ -357,10 +410,16 @@ export function InvoiceUploader({
     );
   }
 
-  async function runExtraction() {
+  async function runExtraction(source?: {
+    nativePdf?: File | null;
+    pages?: CompressedPage[];
+  }) {
+    const pdf = source?.nativePdf !== undefined ? source.nativePdf : nativePdf;
+    const imagePages = source?.pages ?? pages;
+
     setError(null);
 
-    if (!nativePdf && pages.length === 0) {
+    if (!pdf && imagePages.length === 0) {
       setError("Bitte mindestens eine Seite oder ein PDF hinzufügen.");
       return;
     }
@@ -370,9 +429,9 @@ export function InvoiceUploader({
 
     try {
       const processed = await processInvoiceDocuments(
-        nativePdf
-          ? { kind: "pdf", file: nativePdf }
-          : { kind: "images", pages },
+        pdf
+          ? { kind: "pdf", file: pdf }
+          : { kind: "images", pages: imagePages },
         setProgress,
       );
 
@@ -972,11 +1031,7 @@ export function InvoiceUploader({
                 allowPdf
                 disabled={compressing}
                 onComplete={(files) => {
-                  void (async () => {
-                    for (const file of files) {
-                      await handleIncomingFile(file);
-                    }
-                  })();
+                  void completeInvoiceScan(files);
                 }}
               />
             ) : (
@@ -1377,14 +1432,7 @@ export function InvoiceUploader({
               });
 
               const category = oilPrimary ? "service" : fields.category;
-              const storedTitle = buildInvoiceDashboardTitle({
-                summary: resolvedTitle,
-                vendor: fields.vendor,
-                category,
-                lineItems: fields.lineItems,
-                rawText,
-                oil,
-              });
+              const storedTitle = resolvedTitle.slice(0, 160);
 
               const formData = new FormData();
               formData.set("vehicleId", vehicleId);

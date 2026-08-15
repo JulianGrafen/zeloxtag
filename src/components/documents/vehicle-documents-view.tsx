@@ -127,6 +127,7 @@ export function VehicleDocumentsView({
     return (
       <VehicleInvoicesView
         tagUuid={tagUuid}
+        vehicleId={vehicleId}
         vehicleModel={vehicleModel?.trim() || vehicleLabel.split("·")[0]?.trim() || vehicleLabel}
         documents={documents}
         canWrite={canWrite}

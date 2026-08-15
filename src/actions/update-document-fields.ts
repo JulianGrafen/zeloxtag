@@ -34,15 +34,24 @@ type UpdatePayload = {
   technicalSpecs?: DocumentTechnicalSpec[] | null;
   conditions?: string[] | null;
   vendor?: string | null;
+  title?: string | null;
 };
 
 const MAX_VENDOR_LENGTH = 160;
+const MAX_TITLE_LENGTH = 160;
 
 function parseVendor(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
   if (typeof value !== "string") return null;
   const trimmed = value.trim().slice(0, MAX_VENDOR_LENGTH);
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseTitle(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || typeof value !== "string") return null;
+  const trimmed = value.trim().slice(0, MAX_TITLE_LENGTH);
   return trimmed.length > 0 ? trimmed : null;
 }
 
@@ -73,8 +82,16 @@ export async function updateDocumentFields(
   const hasSpecs = input.technicalSpecs !== undefined;
   const hasConditions = input.conditions !== undefined;
   const hasVendor = input.vendor !== undefined;
+  const hasTitle = input.title !== undefined;
 
-  if (!hasLineItems && !hasApprovals && !hasSpecs && !hasConditions && !hasVendor) {
+  if (
+    !hasLineItems &&
+    !hasApprovals &&
+    !hasSpecs &&
+    !hasConditions &&
+    !hasVendor &&
+    !hasTitle
+  ) {
     return { status: "error", message: "Keine Änderungen übergeben." };
   }
 
@@ -105,6 +122,11 @@ export async function updateDocumentFields(
         : null)
     : undefined;
   const vendor = hasVendor ? parseVendor(input.vendor) : undefined;
+  const title = hasTitle ? parseTitle(input.title) : undefined;
+
+  if (hasTitle && !title) {
+    return { status: "error", message: "Titel ist erforderlich." };
+  }
 
   const { isConfigured } = getSupabaseEnv();
 
@@ -135,6 +157,7 @@ export async function updateDocumentFields(
         : {}),
       ...(conditions !== undefined ? { conditions } : {}),
       ...(vendor !== undefined ? { vendor } : {}),
+      ...(title !== undefined ? { title } : {}),
     });
     revalidateDocumentPaths(tagUuid, documentId);
     return { status: "ok" };
@@ -218,6 +241,9 @@ export async function updateDocumentFields(
   }
   if (vendor !== undefined) {
     patch.vendor = vendor;
+  }
+  if (title !== undefined) {
+    patch.title = title;
   }
 
   const { error: updateError } = await admin
