@@ -935,20 +935,31 @@ export function InvoiceUploader({
           </PressableLink>
         )}
 
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-            <FileText className="h-5 w-5" aria-hidden />
+        {isInvoiceFamilyScan ? (
+          <div className="px-1">
+            <h1 className="font-[family-name:var(--font-display)] text-[1.25rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+              {resolvedHeading}
+            </h1>
+            <p className="mt-0.5 text-[0.8rem] text-[color:var(--vd-muted)]">
+              {resolvedSubheading ?? vehicleLabel}
+            </p>
           </div>
-          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            Scanner
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            {resolvedHeading}
-          </h1>
-          <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-            {resolvedSubheading ?? `${vehicleLabel} · Beleg einlesen`}
-          </p>
-        </div>
+        ) : (
+          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+              <FileText className="h-5 w-5" aria-hidden />
+            </div>
+            <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+              Scanner
+            </p>
+            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
+              {resolvedHeading}
+            </h1>
+            <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
+              {resolvedSubheading ?? `${vehicleLabel} · Beleg einlesen`}
+            </p>
+          </div>
+        )}
       </header>
 
       {step === "compose" ? (

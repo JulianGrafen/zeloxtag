@@ -791,11 +791,10 @@ export function InBrowserCamera({
         ) : null}
 
         {opticalZoom ? (
-          <div className="mb-3 w-full max-w-md rounded-xl bg-black/70 px-3 py-2.5 shadow-lg backdrop-blur-md">
-            <div className="mb-1.5 flex items-center justify-between text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white/80">
-              <span>Zoom</span>
-              <span>{opticalZoom.value.toFixed(1)}×</span>
-            </div>
+          <div className="mb-2 flex w-full max-w-xs items-center gap-2">
+            <span className="w-8 shrink-0 text-right text-[0.68rem] font-medium text-white/80">
+              {opticalZoom.value.toFixed(1)}×
+            </span>
             <input
               type="range"
               min={opticalZoom.min}
@@ -805,7 +804,7 @@ export function InBrowserCamera({
               onChange={(event) => {
                 void handleOpticalZoomChange(Number(event.target.value));
               }}
-              className="h-2 w-full accent-emerald-300"
+              className="h-1.5 w-full accent-emerald-300"
               aria-label="Kamera-Zoom"
             />
           </div>

@@ -6,12 +6,8 @@ import {
   Camera,
   Check,
   FileUp,
-  Focus,
   ImagePlus,
-  Lightbulb,
   Plus,
-  Smartphone,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 
@@ -23,31 +19,12 @@ const MAX_POSITION_BLOCKS = 8;
 const TOTAL_CAPTURE_STEPS = 2;
 
 export const INVOICE_CAPTURE_HINTS = {
-  overview:
-    "Gesamte Rechnung ins DIN-A4-Feld — senkrecht von oben, parallel zum Blatt",
+  overview: "Ganze Seite ins A4-Feld",
   positions: (blockNumber: number) =>
     blockNumber > 1
-      ? `Block ${blockNumber} — nächste Positionstabelle oder Fortsetzung`
-      : "Rechnungsblock: Tabellenbereich mit Pos, Menge und Preisen",
+      ? `Block ${blockNumber} — nächste Tabelle`
+      : "Pos · Menge · Preise im Rahmen",
 } as const;
-
-const CAPTURE_TIPS = [
-  {
-    icon: Focus,
-    title: "Zwei Fotos",
-    body: "1) Ganze Seite im DIN-A4-Rahmen · 2) Rechnungsblock mit allen Positionen.",
-  },
-  {
-    icon: Smartphone,
-    title: "Parallel halten",
-    body: "Handy senkrecht über dem Blatt — die Wasserwaage wird grün, wenn die Kamera parallel ist.",
-  },
-  {
-    icon: Lightbulb,
-    title: "Gutes Licht",
-    body: "Keine harten Schatten oder Reflexionen — bei grünem Rahmen und scharfem Bild auslösen.",
-  },
-] as const;
 
 type CapturePhase =
   | "intro"
@@ -152,13 +129,14 @@ function PositionsCamera({
 }) {
   return (
     <InBrowserCamera
-      title={blockNumber > 1 ? `Rechnungsblock ${blockNumber}` : "Rechnungsblock"}
+      title={blockNumber > 1 ? `Block ${blockNumber}` : "Rechnungsblock"}
       hint={INVOICE_CAPTURE_HINTS.positions(blockNumber)}
-      guideLabel="Pos · Menge · Preise im Rahmen"
+      guideLabel="Pos · Menge · Preise"
       guideFrame="section"
       guideSectionAnchor="center"
       guideFrameDimOutside
       showTopDownGuide
+      showBriefing={false}
       enforceCaptureQuality
       allowOpticalZoom
       captureStep={{ current: 2, total: TOTAL_CAPTURE_STEPS }}
@@ -177,9 +155,9 @@ export function InvoiceCaptureWizard({
   onFileSelected,
   variant = "initial",
   imageButtonLabel = "Bild hochladen",
-  cameraButtonLabel = "Guided Scan starten",
-  pdfButtonLabel = "PDF hochladen",
-  hint = "Zwei Fotos: ganze Seite (A4) + Rechnungsblock mit Positionen",
+  cameraButtonLabel = "Scannen",
+  pdfButtonLabel = "PDF",
+  hint,
 }: InvoiceCaptureWizardProps) {
   const [phase, setPhase] = useState<CapturePhase>("intro");
   const [overviewFile, setOverviewFile] = useState<File | null>(null);
@@ -310,17 +288,17 @@ export function InvoiceCaptureWizard({
       <InBrowserCamera
         title="Gesamtseite"
         hint={INVOICE_CAPTURE_HINTS.overview}
-        guideLabel={`${scanLabel} im DIN-A4-Rahmen`}
+        guideLabel={`${scanLabel} · A4`}
         guideFrame="a4"
         guideFrameDimOutside
         a4AutoCrop
         a4OutputFormat="jpeg"
         showTopDownGuide
         showFramingGuide
+        showBriefing={false}
         allowOpticalZoom
         enforceCaptureQuality
         captureStep={{ current: 1, total: TOTAL_CAPTURE_STEPS }}
-        showBriefing
         onCapture={handleOverviewCapture}
         onClose={() => {
           if (overviewFile || positionFiles.length > 0) {
@@ -357,17 +335,12 @@ export function InvoiceCaptureWizard({
     const canAddMore = positionFiles.length < MAX_POSITION_BLOCKS;
 
     return (
-      <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white p-4 shadow-[var(--vd-shadow-sm)]">
+      <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white p-3">
         <div className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-              Scan bereit
-            </p>
-            <p className="mt-0.5 text-[0.9rem] font-semibold text-[color:var(--vd-text)]">
-              Gesamtseite + {positionFiles.length}{" "}
-              {positionFiles.length === 1 ? "Block" : "Blöcke"}
-            </p>
-          </div>
+          <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
+            A4 + {positionFiles.length}{" "}
+            {positionFiles.length === 1 ? "Block" : "Blöcke"}
+          </p>
           <StepProgress current={TOTAL_CAPTURE_STEPS + 1} />
         </div>
 
@@ -420,7 +393,7 @@ export function InvoiceCaptureWizard({
             className="claim-back inline-flex w-full items-center justify-center gap-2"
           >
             <Plus className="h-4 w-4" aria-hidden />
-            Weiteren Rechnungsblock
+            Weiterer Block
           </button>
         ) : null}
 
@@ -431,7 +404,7 @@ export function InvoiceCaptureWizard({
           className="claim-cta inline-flex w-full items-center justify-center gap-2 disabled:opacity-50"
         >
           <Check className="h-4 w-4" aria-hidden />
-          Fertig — Text erkennen
+          Erkennen
         </button>
 
         <button
@@ -447,46 +420,13 @@ export function InvoiceCaptureWizard({
   }
 
   return (
-    <div className="space-y-3 rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-white px-4 py-6 text-center">
-      <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-        <Sparkles className="h-6 w-6" aria-hidden />
-      </span>
+    <div className="space-y-3 rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-white px-4 py-4">
+      <h2 className="sr-only">{title}</h2>
+      <p className="text-center text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
+        {hint ?? "Zwei Fotos: ganze Seite, dann der Positionsblock."}
+      </p>
 
-      <div className="space-y-1">
-        <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-          {title}
-        </p>
-        <p className="text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Schritt 1: ganze Rechnung (DIN A4) · Schritt 2: Rechnungsblock mit
-          Positionen
-        </p>
-        <div className="pt-2">
-          <StepProgress current={1} />
-        </div>
-      </div>
-
-      <ul className="space-y-2 text-left">
-        {CAPTURE_TIPS.map((tip) => (
-          <li
-            key={tip.title}
-            className="flex items-start gap-3 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2.5"
-          >
-            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white">
-              <tip.icon className="h-4 w-4" aria-hidden />
-            </span>
-            <div>
-              <p className="text-[0.82rem] font-semibold text-[color:var(--vd-text)]">
-                {tip.title}
-              </p>
-              <p className="mt-0.5 text-[0.76rem] leading-relaxed text-[color:var(--vd-muted)]">
-                {tip.body}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className="grid grid-cols-1 gap-2">
+      <div className={allowPdf ? "grid grid-cols-2 gap-2" : "grid grid-cols-1"}>
         <button
           type="button"
           disabled={disabled}
@@ -512,12 +452,6 @@ export function InvoiceCaptureWizard({
           </FilePickerLabel>
         ) : null}
       </div>
-
-      {hint ? (
-        <p className="text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-          {hint}
-        </p>
-      ) : null}
     </div>
   );
 }
