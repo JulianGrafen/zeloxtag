@@ -157,7 +157,7 @@ export async function updateDocumentFields(
         : {}),
       ...(conditions !== undefined ? { conditions } : {}),
       ...(vendor !== undefined ? { vendor } : {}),
-      ...(title !== undefined ? { title } : {}),
+      ...(typeof title === "string" ? { title } : {}),
     });
     revalidateDocumentPaths(tagUuid, documentId);
     return { status: "ok" };
