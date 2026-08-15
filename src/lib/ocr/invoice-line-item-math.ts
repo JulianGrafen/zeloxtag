@@ -3,7 +3,11 @@
  * via `@/utils/invoiceMath.processLineItems`.
  */
 
-import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
+import {
+  isMonetaryDiscountLabel,
+  signedInvoiceLineAmount,
+  type InvoiceLineItem,
+} from "@/lib/ocr/text-parse-schema";
 import type { LlmRawLineItem } from "@/lib/validations/invoiceSchemas";
 import { processLineItems } from "@/utils/invoiceMath";
 
@@ -12,16 +16,19 @@ export { parseGermanNumber, processLineItems } from "@/utils/invoiceMath";
 
 function toInvoiceLineItems(processed: ReturnType<typeof processLineItems>): InvoiceLineItem[] {
   return processed
-    .filter(
-      (item) =>
-        typeof item.label === "string" &&
-        item.label.trim().length > 0 &&
-        typeof item.gesamtpreis === "number" &&
-        item.gesamtpreis > 0,
-    )
+    .filter((item) => {
+      if (typeof item.label !== "string" || item.label.trim().length === 0) {
+        return false;
+      }
+      if (typeof item.gesamtpreis !== "number" || !Number.isFinite(item.gesamtpreis)) {
+        return false;
+      }
+      if (item.gesamtpreis > 0) return true;
+      return item.gesamtpreis < 0 && isMonetaryDiscountLabel(item.label);
+    })
     .map((item) => ({
       label: String(item.label).trim(),
-      amount: item.gesamtpreis,
+      amount: signedInvoiceLineAmount(String(item.label).trim(), item.gesamtpreis),
     }));
 }
 

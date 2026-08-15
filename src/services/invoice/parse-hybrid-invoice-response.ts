@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { ParsedInvoiceDraft } from "@/types/invoice";
 import { stripHtmlTags } from "@/lib/ocr/normalize-ocr-markdown";
+import { signedInvoiceLineAmount } from "@/lib/ocr/text-parse-schema";
 
 function sanitizeTextField(value: string | null | undefined): string | null {
   if (value == null) return null;
@@ -111,13 +112,15 @@ export function parseHybridInvoiceLlmResponse(raw: unknown): ParsedInvoiceDraft 
       // Every other row is included — the layout pipeline corrects amounts later.
       if (derivedTotal == null) return [];
 
+      const description =
+        sanitizeTextField(item.description) ?? item.description.trim();
+
       return [
         {
-          description:
-            sanitizeTextField(item.description) ?? item.description.trim(),
+          description,
           quantity: item.quantity ?? 1,
           unit_price: item.unit_price,
-          total_price: derivedTotal,
+          total_price: signedInvoiceLineAmount(description, derivedTotal),
         },
       ];
     }),

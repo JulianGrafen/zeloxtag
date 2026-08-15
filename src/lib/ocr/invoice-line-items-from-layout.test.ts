@@ -170,7 +170,9 @@ describe("extractRowLineTotalAmount", () => {
         { rowIndex: 1, columnIndex: 4, content: "1,47 €" },
       ]),
     ).toBe(141.46);
+  });
 
+  it("keeps printed Ges. Preis when it is a line discount on qty > 1", () => {
     expect(
       extractRowLineTotalAmount([
         { rowIndex: 4, columnIndex: 1, content: "Bremsscheibe PRO+" },
@@ -178,7 +180,26 @@ describe("extractRowLineTotalAmount", () => {
         { rowIndex: 4, columnIndex: 3, content: "165,99 €" },
         { rowIndex: 4, columnIndex: 4, content: "301,33 €" },
       ]),
-    ).toBe(331.98);
+    ).toBe(301.33);
+  });
+
+  it("applies Rabatt-% when Ges. Preis is empty", () => {
+    expect(
+      extractRowLineTotalAmount(
+        [
+          { rowIndex: 8, columnIndex: 1, content: "Sensor, Kühlmitteltemperatur" },
+          { rowIndex: 8, columnIndex: 2, content: "1,00" },
+          { rowIndex: 8, columnIndex: 3, content: "41,04 €" },
+          { rowIndex: 8, columnIndex: 4, content: "30,00" },
+        ],
+        {
+          posColumnIndex: null,
+          mengeColumnIndex: 2,
+          nummerColumnIndex: null,
+          rabattColumnIndex: 4,
+        },
+      ),
+    ).toBe(28.73);
   });
 
   it("keeps genuine qty=1 line discounts below E-Preis", () => {

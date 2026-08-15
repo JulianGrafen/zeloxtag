@@ -135,6 +135,16 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
           einzelpreis: "141,46 €",
           gesamtpreis: "1,47 €",
         },
+      ],
+      { checksumMode: "column" },
+    );
+
+    expect(processed[0]!.gesamtpreis).toBe(141.46);
+  });
+
+  it("keeps a printed line discount instead of recomputing qty × EP", () => {
+    const processed = processLineItems(
+      [
         {
           label: "Bremsscheibe PRO+",
           menge: "2,00",
@@ -145,8 +155,7 @@ describe("Blotzheim Rechnung 27646 — Extract & Compute golden fixture", () => 
       { checksumMode: "column" },
     );
 
-    expect(processed[0]!.gesamtpreis).toBe(141.46);
-    expect(processed[1]!.gesamtpreis).toBe(331.98);
+    expect(processed[0]!.gesamtpreis).toBe(301.33);
   });
 
   it("maps English vision schema fields to processLineItems", () => {

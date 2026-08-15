@@ -105,17 +105,21 @@ const MENGE_HEADER =
   /(?:^|\b)(?:menge|anz\.?|anzahl|qty|me)(?:\b|$)/i;
 const NUMMER_HEADER =
   /(?:^|\b)(?:nummer|nr\.?|art\.?-?nr|artikelnummer)(?:\b|$)/i;
+const RABATT_HEADER =
+  /(?:^|\b)(?:rab\.?|rabatt|nachlass|discount)(?:\b|$)|^%+$/i;
 
 export type InvoiceTableColumnLayout = {
   posColumnIndex: number | null;
   mengeColumnIndex: number | null;
   nummerColumnIndex: number | null;
+  rabattColumnIndex?: number | null;
 };
 
 const EMPTY_COLUMN_LAYOUT: InvoiceTableColumnLayout = {
   posColumnIndex: null,
   mengeColumnIndex: null,
   nummerColumnIndex: null,
+  rabattColumnIndex: null,
 };
 
 function detectPosColumnIndex(
@@ -151,6 +155,17 @@ function detectNummerColumnIndex(
   return null;
 }
 
+function detectRabattColumnIndex(
+  headerCells: Array<{ columnIndex: number; content: string }>,
+): number | null {
+  for (const cell of headerCells) {
+    const label = cleanCellText(cell.content);
+    if (/mwst|ust|vat/i.test(label)) continue;
+    if (RABATT_HEADER.test(label)) return cell.columnIndex;
+  }
+  return null;
+}
+
 function buildColumnLayout(
   headerCells: Array<{ columnIndex: number; content: string }>,
 ): InvoiceTableColumnLayout {
@@ -158,7 +173,29 @@ function buildColumnLayout(
     posColumnIndex: detectPosColumnIndex(headerCells),
     mengeColumnIndex: detectMengeColumnIndex(headerCells),
     nummerColumnIndex: detectNummerColumnIndex(headerCells),
+    rabattColumnIndex: detectRabattColumnIndex(headerCells),
   };
+}
+
+function parseRabattPercent(text: string): number | null {
+  const trimmed = cleanCellText(text);
+  if (!trimmed || /[€$]/.test(trimmed)) return null;
+  const match = trimmed.match(/(-?\d+(?:[.,]\d+)?)\s*%?/);
+  if (!match?.[1]) return null;
+  const value = parseGermanNumber(match[1]);
+  if (value == null || Math.abs(value) > 100) return null;
+  return Math.abs(value);
+}
+
+function parseRowRabattPercent(
+  rowCells: AzureLayoutTableCell[],
+  columns: InvoiceTableColumnLayout,
+): number | null {
+  if (columns.rabattColumnIndex == null) return null;
+  const cell = rowCells.find(
+    (entry) => entry.columnIndex === columns.rabattColumnIndex,
+  );
+  return parseRabattPercent(cell?.content ?? "");
 }
 
 function isPosColumnCell(
@@ -292,8 +329,19 @@ export function extractRowLineTotalAmount(
       .map((cell) => cell.columnIndex),
   );
 
+  const rabattPercent = parseRowRabattPercent(rowCells, columns);
+
   const moneyCells = rowCells
-    .filter((cell) => !qtyColumnIndexes.has(cell.columnIndex))
+    .filter((cell) => {
+      if (qtyColumnIndexes.has(cell.columnIndex)) return false;
+      if (
+        columns.rabattColumnIndex != null &&
+        cell.columnIndex === columns.rabattColumnIndex
+      ) {
+        return false;
+      }
+      return true;
+    })
     .map((cell) => ({
       columnIndex: cell.columnIndex,
       amount: parseMoneyCell(cell.content),
@@ -308,10 +356,14 @@ export function extractRowLineTotalAmount(
   if (moneyCells.length === 1) {
     const only = moneyCells[0]!.amount;
     if (qty != null) {
-      if (Math.abs(qty - 1) > 0.001) {
-        return Math.round(only * qty * 100) / 100;
-      }
-      return only;
+      return (
+        resolveInvoiceRowGesamtpreis({
+          menge: qty,
+          einzelpreis: only,
+          gesamtpreis: null,
+          rabattPercent,
+        }) ?? Math.round(only * qty * 100) / 100
+      );
     }
     // Only E-Preis printed — no Menge/Einh. and no Ges. Preis → not billable.
     return null;
@@ -327,6 +379,7 @@ export function extractRowLineTotalAmount(
       menge: qty,
       einzelpreis,
       gesamtpreis: gesPreis,
+      rabattPercent,
     }) ?? gesPreis
   );
 }

@@ -82,6 +82,8 @@ FEW-SHOT — Extract & Compute (deutsche Werkstattrechnung Pos | Nummer | Bezeic
    → menge "7,00 Liter", einzelpreis "13,45 €", gesamtpreis "94,15 €"
 7. "Ventildeckeldichtung erneuern" | 4,00 | 90,00 € | 360,00 €
    → gesamtpreis "360,00 €" — NICHT "90,00 €"
+8. "Sensor, Kühlmitteltemperatur" | 1,00 | 41,04 € | Rabatt 30 % | 28,73 €
+   → gesamtpreis "28,73 €" — Rabatt ist schon abgezogen, NICHT 41,04
 NIEMALS rechnen. Leere Zellen = null. €-Zeichen und Kommas exakt abschreiben.
 `.trim();
 
@@ -98,7 +100,7 @@ Arbeitswerte (Spalten: Beschreibung | Art | Std. | Preis-€):
 Ersatzteile (Spalten: Anzahl | Stück | Beschreibung | Einzelpreis | Preis-€):
 - "1 Stück Wasserschlauch" | einzelpreis "65,12 €" | gesamtpreis "65,12 €"
 - "4 Stück Kühlerfrostschutz Blau/Rot" | einzelpreis "6,50 €" | gesamtpreis "26,00 €"
-- Mit Rabatt: Einzelpreis "41,04 €" | gesamtpreis "28,73 €" (NIEMALS 41,04 als gesamtpreis)
+- Mit Rabatt: Einzelpreis "41,04 €" | Rab. % "30,00" | gesamtpreis "28,73 €" (NIEMALS 41,04 als gesamtpreis; Rabatt NICHT als eigene Position)
 
 Sonstige Kosten:
 - "1 Fracht" | gesamtpreis "5,00 €"

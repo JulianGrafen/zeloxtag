@@ -98,4 +98,44 @@ describe("processLineItems", () => {
     ]);
     expect(item.gesamtpreis).toBe(28.73);
   });
+
+  it("keeps multi-qty line discounts in column checksum mode", () => {
+    const [item] = processLineItems(
+      [
+        {
+          label: "Bremsscheibe PRO+",
+          menge: "2,00",
+          einzelpreis: "165,99 €",
+          gesamtpreis: "301,33 €",
+        },
+      ],
+      { checksumMode: "column" },
+    );
+    expect(item.gesamtpreis).toBe(301.33);
+  });
+
+  it("applies rabatt percent when gesamtpreis is missing", () => {
+    const [item] = processLineItems([
+      {
+        label: "Sensor, Kühlmitteltemperatur",
+        menge: "1,00",
+        einzelpreis: "41,04 €",
+        gesamtpreis: null,
+        rabatt: "30,00",
+      },
+    ]);
+    expect(item.gesamtpreis).toBe(28.73);
+  });
+
+  it("stores standalone Rabatt rows as a negative amount", () => {
+    const [item] = processLineItems([
+      {
+        label: "Kundenrabatt 10%",
+        menge: "1,00",
+        einzelpreis: null,
+        gesamtpreis: "10,00 €",
+      },
+    ]);
+    expect(item.gesamtpreis).toBe(-10);
+  });
 });

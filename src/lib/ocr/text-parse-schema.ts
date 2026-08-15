@@ -278,9 +278,22 @@ export function buildInvoiceTextParseJsonSchema(
   };
 }
 
+/** Standalone monetary discount row (must be subtracted, never dropped). */
+export function isMonetaryDiscountLabel(label: string): boolean {
+  return /rabatt|skonto|nachlass|gutschrift/i.test(label);
+}
+
+/** Positive Rabatt/Skonto amounts are stored as negatives so they reduce the sum. */
+export function signedInvoiceLineAmount(label: string, amount: number): number {
+  if (!Number.isFinite(amount) || amount < 0) return amount;
+  if (isMonetaryDiscountLabel(label)) return -Math.abs(amount);
+  return amount;
+}
+
 /**
  * True when the line amount is just a restated percentage from the label
- * (e.g. label "Rabatt -15%", amount 15 / -15) — never a EUR position.
+ * (e.g. label "MwSt 19%", amount 19) — never a EUR position.
+ * Rabatt/Skonto/Nachlass rows are monetary and must not be filtered here.
  */
 export function isPercentRestatedAsAmount(
   label: string,
@@ -288,6 +301,7 @@ export function isPercentRestatedAsAmount(
 ): boolean {
   if (!Number.isFinite(amount)) return false;
   if (/(?:€|eur)\b/i.test(label)) return false;
+  if (isMonetaryDiscountLabel(label)) return false;
 
   const percentMatch = label.match(/(-?\d+(?:[.,]\d+)?)\s*%/);
   if (!percentMatch?.[1]) return false;
@@ -310,10 +324,16 @@ export function normalizeLineItemsList(
 
   const cleaned = dedupeInvoiceLineItemUnitPrices(
     items
-      .map((item) => ({
-        label: stripHtmlTags(item.label).replace(/\s+/g, " ").trim().slice(0, 160),
-        amount: sanitizeLlmMoneyAmount(item.amount, "aggressive"),
-      }))
+      .map((item) => {
+        const label = stripHtmlTags(item.label).replace(/\s+/g, " ").trim().slice(0, 160);
+        return {
+          label,
+          amount: signedInvoiceLineAmount(
+            label,
+            sanitizeLlmMoneyAmount(item.amount, "aggressive"),
+          ),
+        };
+      })
       .filter(
         (item) =>
           item.label.length > 0 &&

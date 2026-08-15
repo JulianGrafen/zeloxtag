@@ -42,7 +42,13 @@ NEVER borrow a price from a different row. Each Ges. Preis belongs to one and on
 VERIFICATION (mandatory before output):
   For every line item where all three are present:
   verify quantity × unit_price ≈ total_price (within ±0.10 €).
-  If they disagree, PREFER the computed value (quantity × unit_price) over the raw Ges. Preis cell.
+  If total_price is LOWER than quantity × unit_price, KEEP the printed Ges. Preis —
+  that is a line discount (Rabatt %). Do NOT replace it with quantity × unit_price.
+  If total_price is HIGHER than quantity × unit_price, the Ges.-Preis cell was
+  likely read from the wrong row — then prefer quantity × unit_price.
+  A dedicated "Rabatt" / "Rab. %" / "%" column is NOT a line item. Apply it to
+  that row's Ges. Preis only. A standalone "Rabatt" / "Skonto" / "Nachlass" row
+  with a € amount IS a line item (negative total_price).
 
 ═══════════════════════════════════════════════════════════════
 RULE 3 — DO NOT SKIP ROWS / EMPTY CELLS

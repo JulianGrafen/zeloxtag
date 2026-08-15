@@ -45,37 +45,77 @@ function isRateOnlyRow(
   );
 }
 
+/** OCR dropped leading digits (1,47 vs 141,46) or scaled by 10/100. */
+function looksLikeTruncatedTotal(printed: number, computed: number): boolean {
+  if (printed <= 0 || computed <= 0) return false;
+  if (printed >= computed * 0.25) return false;
+
+  const printedCents = String(Math.round(printed * 100));
+  const computedCents = String(Math.round(computed * 100));
+  if (computedCents.endsWith(printedCents)) return true;
+  if (Math.abs(printed * 10 - computed) < 0.15) return true;
+  if (Math.abs(printed * 100 - computed) < 0.15) return true;
+  return printed < computed * 0.2;
+}
+
 /**
  * Resolve Ges. Preis from Menge × E-Preis when the printed total is missing
- * or OCR-garbled. Keeps genuine qty≈1 line discounts (GP clearly below EP).
+ * or OCR-garbled. Keeps genuine line discounts (printed GP below qty×EP).
  */
 export function resolveInvoiceRowGesamtpreis(options: {
   menge: number | null;
   einzelpreis: number | null;
   gesamtpreis: number | null;
+  /** Rabatt-% from a dedicated column (10 = 10 % off). */
+  rabattPercent?: number | null;
 }): number | null {
   const rawMenge = options.menge;
   const rawEPreis = options.einzelpreis;
   const rawGesPreis = options.gesamtpreis;
+  const rabattPercent = options.rabattPercent;
 
   if (rawEPreis === null && rawGesPreis === null) return null;
   if (rawEPreis === null) return rawGesPreis;
 
   const menge = rawMenge !== null ? rawMenge : 1;
   const computedTotal = parseFloat((menge * rawEPreis).toFixed(2));
+  const discountedFromPercent =
+    rabattPercent != null && Number.isFinite(rabattPercent)
+      ? parseFloat((computedTotal * (1 - rabattPercent / 100)).toFixed(2))
+      : null;
 
-  if (rawGesPreis === null) return computedTotal;
+  if (rawGesPreis === null) {
+    return discountedFromPercent ?? computedTotal;
+  }
   if (Math.abs(rawGesPreis - computedTotal) <= 0.05) return rawGesPreis;
+  if (
+    discountedFromPercent != null &&
+    Math.abs(rawGesPreis - discountedFromPercent) <= 0.08
+  ) {
+    return rawGesPreis;
+  }
 
-  // Genuine workshop discount: Menge ≈ 1 and GP is a plausible fraction of EP.
-  const looksLikeDiscount =
-    rawMenge !== null &&
-    Math.abs(rawMenge - 1) <= 0.001 &&
-    rawGesPreis < rawEPreis - 0.05 &&
-    rawGesPreis >= rawEPreis * 0.4;
+  // Printed total higher than qty×EP → shifted/wrong cell, not a discount.
+  if (rawGesPreis > computedTotal + 0.05) {
+    return computedTotal;
+  }
 
-  if (looksLikeDiscount) return rawGesPreis;
-  return computedTotal;
+  // EP copied into Ges. Preis on multi-qty rows (not a 1/qty "discount").
+  const qtyNotOne = Math.abs(menge - 1) > 0.001;
+  if (qtyNotOne && Math.abs(rawGesPreis - rawEPreis) <= 0.05) {
+    return discountedFromPercent ?? computedTotal;
+  }
+
+  if (looksLikeTruncatedTotal(rawGesPreis, computedTotal)) {
+    return computedTotal;
+  }
+
+  // Genuine line discount: printed GP is a plausible fraction of qty×EP.
+  if (rawGesPreis >= computedTotal * 0.25) {
+    return rawGesPreis;
+  }
+
+  return discountedFromPercent ?? computedTotal;
 }
 
 export type ProcessLineItemsOptions = {
@@ -94,6 +134,18 @@ export function processLineItems(
   if (!Array.isArray(llmItems)) return [];
 
   return llmItems.map(item => {
+    const signDiscount = (gesamtpreis: number | null) => {
+      if (
+        gesamtpreis != null &&
+        gesamtpreis > 0 &&
+        typeof item.label === "string" &&
+        /rabatt|skonto|nachlass|gutschrift/i.test(item.label)
+      ) {
+        return -gesamtpreis;
+      }
+      return gesamtpreis;
+    };
+
     const rawMenge = parseGermanNumber(item.menge);
     const rawEPreis = parseGermanNumber(item.einzelpreis);
     const rawGesPreis = parseGermanNumber(item.gesamtpreis);
@@ -113,7 +165,7 @@ export function processLineItems(
         ...item,
         menge: rawMenge,
         einzelpreis: null,
-        gesamtpreis: rawGesPreis,
+        gesamtpreis: signDiscount(rawGesPreis),
       };
     }
 
@@ -135,7 +187,7 @@ export function processLineItems(
           ...item,
           menge: rawMenge,
           einzelpreis: null,
-          gesamtpreis: rawGesPreis,
+          gesamtpreis: signDiscount(rawGesPreis),
         };
       }
     }
@@ -160,24 +212,29 @@ export function processLineItems(
       }
     }
 
+    const rabattPercent = parseGermanNumber(item.rabatt ?? item.rabatt_percent);
     const gesPreisFromColumns = resolveInvoiceRowGesamtpreis({
       menge,
       einzelpreis: ePreis,
       gesamtpreis: rawGesPreis,
+      rabattPercent:
+        rabattPercent != null && Math.abs(rabattPercent) <= 100
+          ? Math.abs(rabattPercent)
+          : null,
     });
     const computedTotal = parseFloat((menge * ePreis).toFixed(2));
     let gesPreis = gesPreisFromColumns;
-    if (checksumMode === "column") {
-      if (gesPreis === null || Math.abs(gesPreis - computedTotal) > 0.05) {
-        gesPreis = computedTotal;
-      }
+    // Column mode still recomputes missing/garbled totals via resolveInvoiceRowGesamtpreis.
+    // Do not force qty×EP here — that would wipe printed line discounts.
+    if (checksumMode === "column" && gesPreis == null) {
+      gesPreis = computedTotal;
     }
 
     return {
       ...item,
       menge,
       einzelpreis: ePreis,
-      gesamtpreis: gesPreis,
+      gesamtpreis: signDiscount(gesPreis),
     };
   });
 }
