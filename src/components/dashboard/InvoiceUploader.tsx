@@ -887,7 +887,8 @@ export function InvoiceUploader({
     const manufacturer = abe.manufacturer?.trim() || null;
     const storedTitle = titleFromAbeFields({
       manufacturer,
-      partType: partType || abe.partCategory,
+      partType,
+      partCategory: abe.partCategory,
     });
     const kbaStored =
       formatAbeKbaDisplay(abe.kbaNumber) ?? abe.kbaNumber?.trim() ?? "";

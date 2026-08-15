@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { abePartArtLabel, titleFromAbeFields } from "@/lib/documents/abe-title";
 import { localDateIso } from "@/lib/documents/format";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import {
@@ -30,7 +31,7 @@ import {
   normalizeAuflagenKuerzel,
   type AuflagenKuerzelRecord,
 } from "@/lib/ocr/auflagen-kuerzel-db";
-import { formatAbeKbaDisplay, normalizeAbeKbaDigits } from "@/lib/validations/abeSchema";
+import { normalizeAbeKbaDigits } from "@/lib/validations/abeSchema";
 import {
   emptyAbeExtractionFormValues,
   formValuesFromVisionExtraction,
@@ -226,10 +227,11 @@ export function ExtractionWizard({
 
     const codes = parseAuflagenCodeInput(form.auflagenCodes);
     const conditions = conditionsFromCodes(codes, auflagenCatalog);
-    const partType = form.partType.trim() || "ABE";
-    const title = [partType, formatAbeKbaDisplay(kbaDigits)]
-      .filter(Boolean)
-      .join(" · ");
+    const partType = form.partType.trim();
+    const title = titleFromAbeFields({
+      partType,
+      partCategory: partType,
+    });
 
     setSaveError(null);
 
@@ -263,7 +265,7 @@ export function ExtractionWizard({
       formData.set("title", title);
       formData.set("type", "abe");
       formData.set("category", "abe");
-      formData.set("vendor", partType);
+      formData.set("vendor", partType || title);
       formData.set("date", localDateIso());
       formData.set("amount", "");
       formData.set("lineItems", "");
@@ -277,7 +279,7 @@ export function ExtractionWizard({
           partType ? [{ label: "Prüfgegenstand", value: partType }] : [],
         ),
       );
-      formData.set("partCategory", formatAbeKbaDisplay(kbaDigits) ?? "");
+      formData.set("partCategory", abePartArtLabel(partType) ?? "");
       formData.set("notes", "");
       formData.set("manufacturer", "");
       formData.set("invoiceNumber", "");

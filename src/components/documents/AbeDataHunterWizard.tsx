@@ -25,6 +25,11 @@ import {
 } from "@/lib/utils/image-optimizer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  abePartArtLabel,
+  extractAbeModelFromDesignation,
+  titleFromAbeFields,
+} from "@/lib/documents/abe-title";
 import { localDateIso } from "@/lib/documents/format";
 import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
 import { uploadDocument } from "@/lib/documents/upload-document";
@@ -2449,11 +2454,13 @@ export function AbeDataHunterWizard({
         : knownAuflagenCodes.length > 0
           ? knownAuflagenCodes
           : draft.auflagenCodes;
-    const kbaDisplay = draft.kbaNumber ? `KBA ${draft.kbaNumber}` : null;
-    const title =
-      [draft.partDesignation || "ABE", draft.manufacturer]
-        .filter(Boolean)
-        .join(" · ") || "ABE";
+    const modelName = extractAbeModelFromDesignation(draft.partDesignation);
+    const partArt = abePartArtLabel(draft.partDesignation);
+    const title = titleFromAbeFields({
+      manufacturer: draft.manufacturer,
+      partType: modelName,
+      partCategory: draft.partDesignation,
+    });
 
     setSaveError(null);
 
@@ -2487,7 +2494,7 @@ export function AbeDataHunterWizard({
       formData.set("title", title);
       formData.set("type", "abe");
       formData.set("category", "abe");
-      formData.set("vendor", draft.partDesignation ?? "");
+      formData.set("vendor", modelName ?? draft.manufacturer ?? title);
       formData.set("date", localDateIso());
       formData.set("amount", "");
       formData.set("lineItems", "");
@@ -2527,7 +2534,7 @@ export function AbeDataHunterWizard({
           ),
         ),
       );
-      formData.set("partCategory", kbaDisplay ?? draft.partDesignation ?? "");
+      formData.set("partCategory", partArt ?? "");
       formData.set("notes", draft.markingText ?? "");
       formData.set("manufacturer", draft.manufacturer ?? "");
       formData.set("invoiceNumber", draft.abeNumber ?? "");

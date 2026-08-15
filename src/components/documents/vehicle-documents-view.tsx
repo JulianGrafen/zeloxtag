@@ -17,6 +17,7 @@ import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-discl
 import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-view";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
+import { displayAbeDocumentTitle } from "@/lib/documents/abe-title";
 import {
   displayDocumentTitle,
   documentTypeLabel,
@@ -127,7 +128,6 @@ export function VehicleDocumentsView({
     return (
       <VehicleInvoicesView
         tagUuid={tagUuid}
-        vehicleId={vehicleId}
         vehicleModel={vehicleModel?.trim() || vehicleLabel.split("·")[0]?.trim() || vehicleLabel}
         documents={documents}
         canWrite={canWrite}
@@ -347,7 +347,10 @@ function DocumentRow({
   const lineCount = document.line_items?.length ?? 0;
   const approvalCount = document.vehicle_approvals?.length ?? 0;
 
-  const listTitle = displayDocumentTitle(document.title);
+  const listTitle =
+    document.type === "abe"
+      ? displayAbeDocumentTitle(document)
+      : displayDocumentTitle(document.title);
   const manufacturer = document.manufacturer?.trim() || "";
   const model = document.vendor?.trim() || "";
   const subtitle =
@@ -439,7 +442,7 @@ function DocumentRow({
         <PressableButton
           type="button"
           variant="button"
-          aria-label={`Löschen: ${displayDocumentTitle(document.title)}`}
+          aria-label={`Löschen: ${listTitle}`}
           disabled={deleting}
           onClick={onDelete}
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-red-600 disabled:opacity-50"

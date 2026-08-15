@@ -21,6 +21,7 @@ import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
+import { titleFromAbeFields } from "@/lib/documents/abe-title";
 import { localDateIso } from "@/lib/documents/format";
 import {
   auflagenForAbeVehicleGroup,
@@ -765,15 +766,10 @@ export function AbeUploadWizard({
     const selectedGroup =
       resolvedIndex !== null ? groups[resolvedIndex] ?? null : null;
 
-    const kbaDisplay = form.kbaNumber.trim()
-      ? `KBA ${form.kbaNumber.trim()}`
-      : null;
-    const titleParts = [
-      form.manufacturer.trim() || form.abeHolder.trim() || "ABE",
-      form.designType.trim(),
-      form.dimensions.trim(),
-    ].filter(Boolean);
-    const title = titleParts.join(" · ") || "ABE";
+    const title = titleFromAbeFields({
+      manufacturer: form.manufacturer.trim() || form.abeHolder.trim(),
+      partType: form.designType.trim(),
+    });
 
     const articleList = form.articleNumbers
       .split(/[,;\s]+/)
@@ -836,7 +832,7 @@ export function AbeUploadWizard({
       formData.set("authority", form.testingOrganization.trim());
       formData.set("conditions", JSON.stringify(filteredAuflagen));
       formData.set("technicalSpecs", JSON.stringify(technicalSpecs));
-      formData.set("partCategory", kbaDisplay ?? "");
+      formData.set("partCategory", "");
       formData.set("notes", "");
       formData.set("manufacturer", form.manufacturer.trim());
       formData.set("invoiceNumber", form.abeNumber.trim() || form.approvalNumber.trim());

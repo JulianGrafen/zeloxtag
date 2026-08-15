@@ -24,10 +24,8 @@ import {
 } from "@/lib/documents/abe-detail-display";
 import { ABE_REQUIRED_FIELD_LABELS } from "@/lib/validations/abeDataHunterSchemas";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
-import {
-  displayDocumentTitle,
-  formatDocumentDate,
-} from "@/lib/documents/format";
+import { displayAbeDocumentTitle } from "@/lib/documents/abe-title";
+import { formatDocumentDate } from "@/lib/documents/format";
 import {
   isViewableDocumentUrl,
   openDocumentOriginal,
@@ -61,7 +59,7 @@ export function DocumentAbeDetailView({
   const kindLabel = approvalKindLabel(document.approval_fields);
   const isEinzelabnahme = document.approval_fields?.kind === "einzelabnahme";
   const isTeilegutachten = document.approval_fields?.kind === "teilegutachten";
-  const title = displayDocumentTitle(document.title);
+  const title = displayAbeDocumentTitle(document);
   const partName = title || document.vendor?.trim() || kindLabel;
   const vinFromApprovals = document.vehicle_approvals?.[0]
     ?.replace(/^VIN\s+/i, "")

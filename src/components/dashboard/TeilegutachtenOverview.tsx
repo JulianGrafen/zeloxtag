@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { titleFromAbeFields } from "@/lib/documents/abe-title";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { VerwendungsbereichTable } from "@/components/documents/verwendungsbereich-table";
 import { CollapsibleAuflagenList } from "@/components/documents/collapsible-auflagen-list";
@@ -328,12 +329,11 @@ export function TeilegutachtenOverview({
   }
 
   function handleSave() {
-    const titleParts = [
-      "Teilegutachten",
-      review.manufacturer,
-      review.partType || review.modificationType || review.partCategory,
-    ].filter(Boolean);
-    const title = titleParts.join(" · ").slice(0, 120);
+    const title = titleFromAbeFields({
+      manufacturer: review.manufacturer,
+      partType: review.partType,
+      partCategory: review.partCategory || review.modificationType,
+    });
     const extraction = teilegutachtenReviewToExtraction(review);
     const approval = teilegutachtenToApprovalFields(extraction);
     const syncedReview = {

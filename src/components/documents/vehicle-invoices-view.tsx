@@ -1,13 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight, Plus, Receipt, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, ChevronRight, Plus, Receipt } from "lucide-react";
 
-import { deleteDocument } from "@/actions/delete-document";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
-import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
   displayDocumentTitle,
@@ -25,7 +23,6 @@ import type { Document } from "@/types/database";
 
 interface VehicleInvoicesViewProps {
   tagUuid: string;
-  vehicleId: string;
   vehicleModel: string;
   documents: Document[];
   canWrite?: boolean;
@@ -51,42 +48,13 @@ function formatCompactDate(iso: string | null): string {
  */
 export function VehicleInvoicesView({
   tagUuid,
-  vehicleId,
   vehicleModel,
   documents,
   canWrite = false,
   initialCategory = "all",
 }: VehicleInvoicesViewProps) {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string>(initialCategory);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function handleDelete(documentId: string, title: string) {
-    if (!canWrite) return;
-    const confirmed = window.confirm(
-      `Rechnung „${title}“ wirklich löschen? Das lässt sich nicht rückgängig machen.`,
-    );
-    if (!confirmed) return;
-
-    setError(null);
-    setPendingId(documentId);
-    startTransition(async () => {
-      const result = await deleteDocument({
-        documentId,
-        vehicleId,
-        tagUuid,
-      });
-      setPendingId(null);
-      if (result.status === "error") {
-        setError(result.message);
-        return;
-      }
-      router.refresh();
-    });
-  }
 
   const invoices = useMemo(
     () =>
@@ -192,15 +160,6 @@ export function VehicleInvoicesView({
           resultLabel={searchResultLabel}
         />
 
-        {error ? (
-          <p
-            role="alert"
-            className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-          >
-            {error}
-          </p>
-        ) : null}
-
         <section aria-label="Belegliste" className="space-y-2">
           <h2 className="px-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Belegliste
@@ -226,19 +185,12 @@ export function VehicleInvoicesView({
                     resolveInvoiceListCategory(doc.category)
                   ];
 
-                const listTitle = displayDocumentTitle(doc.title);
-                const canDelete =
-                  canWrite &&
-                  (doc.file_url.startsWith("mock://") ||
-                    !doc.file_url.startsWith("/demo/"));
-
                 return (
                   <li key={doc.id}>
-                    <div className="flex w-full items-start gap-1 px-2 py-2 sm:px-3">
                     <PressableLink
                       href={`/v/${tagUuid}/dokumente/${doc.id}`}
                       variant="row"
-                      className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-1.5 text-left"
+                      className="group flex w-full items-start gap-3 px-4 py-3.5 text-left"
                     >
                       <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
                         <Receipt
@@ -251,7 +203,7 @@ export function VehicleInvoicesView({
                       <span className="min-w-0 flex-1">
                         <span className="flex items-start justify-between gap-3">
                           <span className="font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                            {listTitle}
+                            {displayDocumentTitle(doc.title)}
                           </span>
                           {amount ? (
                             <span className="shrink-0 text-[0.88rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
@@ -275,20 +227,6 @@ export function VehicleInvoicesView({
                         </span>
                       </span>
                     </PressableLink>
-
-                    {canDelete ? (
-                      <PressableButton
-                        type="button"
-                        variant="button"
-                        aria-label={`Löschen: ${listTitle}`}
-                        disabled={pending && pendingId === doc.id}
-                        onClick={() => handleDelete(doc.id, listTitle)}
-                        className="mt-1.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-red-600 disabled:opacity-50"
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      </PressableButton>
-                    ) : null}
-                    </div>
 
                     {index < visible.length - 1 ? (
                       <div
