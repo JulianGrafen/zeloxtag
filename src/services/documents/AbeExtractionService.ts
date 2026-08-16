@@ -3,7 +3,9 @@ import type OpenAI from "openai";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import {
   buildVisionUserMessage,
+  LLM_IMAGE_MAX_EDGE_PX,
   prepareAbeOcrInput,
+  type PrepareDocumentForLlmOptions,
 } from "@/lib/ocr/prepare-document-for-llm";
 import { isPdfBuffer } from "@/lib/ocr/document-bytes";
 import {
@@ -22,7 +24,10 @@ import {
 import {
   parseAuflagenRegions,
 } from "@/lib/ocr/auflagen-crop";
-import { sanitizeAuflagenNotesForTargetCodes } from "@/lib/ocr/abe-auflagen-from-text";
+import {
+  attributeAuflagenScanNotes,
+  sanitizeAuflagenNotesForTargetCodes,
+} from "@/lib/ocr/abe-auflagen-from-text";
 import { correctAuflagenKuerzelOcr } from "@/lib/ocr/auflagen-kuerzel-ocr-correction";
 import {
   ABE_HUNT_ALL_JSON_SCHEMA,
@@ -605,7 +610,7 @@ export class AbeDataHunterExtractionService {
   ): Promise<AbeHuntStepResult<AbeHuntAuflagenTextExtraction>> {
     const codesHint =
       targetCodes.length > 0
-        ? `ONLY these Auflagen codes apply — transcribe text for these codes and no others: ${targetCodes.join(", ")}.`
+        ? `Target Auflagen codes for this scan (first code is the one the user is photographing now): ${targetCodes.join(", ")}. Transcribe every target code that is visible. If the photo is a long condition paragraph without a printed Kürzel, assign the full verbatim text to the first target code.`
         : "Extract all visible Auflagen / conditions prose on this page.";
 
     try {
@@ -614,22 +619,23 @@ export class AbeDataHunterExtractionService {
         [
           FREESTYLE_GUARD,
           codesHint,
-          "Transcribe the full Auflagen / Bedingungen / Hinweise text verbatim.",
-          "Include section headings and numbered items. Do not summarize.",
+          "Transcribe the full Auflagen / Bedingungen / Hinweise text verbatim, including long paragraphs and numbered items. Do not summarize.",
           "Format each code block as CODE: full paragraph text.",
-          "Do NOT invent codes. Ignore Fahrzeugtyp codes (F40, G20, K40, T67) — they are not Auflagen.",
+          "Do NOT invent codes. Fahrzeugtyp codes (G20, K40, T67, …) are not Auflagen unless they appear in the target list.",
           "CPO is invalid — if the document shows CPE or CBO, transcribe those letters exactly.",
           "If a code is not in the target list above, do not include it in auflagenNotes or regions.",
-          "For each target code, also return a normalized bounding box (0–1) covering the printed paragraph for that code on the photo.",
+          "For each transcribed code, also return a normalized bounding box (0–1) covering that printed paragraph.",
         ],
         [
-          "Extract the complete Auflagen text visible in this photograph.",
+          "Extract the complete Auflagen text visible in this photograph — including large text blocks.",
           "Copy wording exactly as printed on the ABE document.",
-          "Return one regions entry per target code block only.",
+          "Return one regions entry per transcribed code block only.",
         ],
         ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA,
         "hunt-auflagen-text",
-        2_500,
+        8_000,
+        resolveAbeContextModel(),
+        { maxEdgePx: LLM_IMAGE_MAX_EDGE_PX },
       );
 
       const record =
@@ -652,10 +658,15 @@ export class AbeDataHunterExtractionService {
         .filter((region) =>
           targetSet.size === 0 ? true : targetSet.has(region.code),
         );
+      const attributedNotes =
+        targetSet.size > 0
+          ? attributeAuflagenScanNotes(notes, targetCodes) ?? notes
+          : notes;
       const sanitizedNotes =
         targetSet.size > 0
-          ? sanitizeAuflagenNotesForTargetCodes(notes, targetCodes) ?? notes
-          : notes;
+          ? sanitizeAuflagenNotesForTargetCodes(attributedNotes, targetCodes) ??
+            attributedNotes
+          : attributedNotes;
 
       if (!sanitizedNotes) {
         return {
@@ -688,6 +699,7 @@ export class AbeDataHunterExtractionService {
     stepLabel: string,
     maxTokens: number,
     model: string = resolveAbeContextModel(),
+    prepareOptions?: PrepareDocumentForLlmOptions,
   ): Promise<unknown> {
     let client: OpenAI;
     let resolvedModel: string;
@@ -710,7 +722,7 @@ export class AbeDataHunterExtractionService {
         })
       : buildVisionUserMessage(
           instructionLines,
-          await prepareAbeOcrInput(input),
+          await prepareAbeOcrInput(input, prepareOptions),
         );
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;

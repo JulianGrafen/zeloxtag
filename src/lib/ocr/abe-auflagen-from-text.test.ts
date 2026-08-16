@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   abeAuflagenConditionsFromNotes,
+  attributeAuflagenScanNotes,
   isAbeCodeStructuredConditions,
   missingAuflagenCodesInNotes,
   parseAbeAuflagenNotes,
@@ -99,5 +100,50 @@ A02: Typprüfung.`,
         ["744", "F40", "L04"],
       ),
     ).toEqual([]);
+  });
+
+  it("keeps large German prose under the printed code instead of splitting on Die/Wird", () => {
+    const parsed = parseAbeAuflagenNotes(
+      `744
+Die Verwendung von Sonderrädern ist nur an den im Verwendungsbereich aufgeführten Fahrzeugen zulässig.
+
+1. Die mindestens erforderlichen Anzugsmomente der Befestigungselemente sind einzuhalten.
+2. Wird das serienmäßige Ersatzrad verwendet, soll mit mäßiger Geschwindigkeit gefahren werden.`,
+      ["744", "F40"],
+      { strict: true },
+    );
+
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]?.code).toBe("744");
+    expect(parsed[0]?.text).toContain("Die Verwendung von Sonderrädern");
+    expect(parsed[0]?.text).toContain("1. Die mindestens erforderlichen");
+    expect(parsed[0]?.text).toContain("2. Wird das serienmäßige Ersatzrad");
+  });
+
+  it("attributes a large unprefixed Auflagen block to the current scan code", () => {
+    const notes = attributeAuflagenScanNotes(
+      "Die mindestens erforderlichen Geschwindigkeitsbereiche der zu verwendenden Reifen sind unter Berücksichtigung der Loadindexe den Fahrzeugpapieren zu entnehmen.",
+      ["744", "F40", "L04"],
+    );
+
+    expect(notes).toMatch(/^744:/);
+    expect(notes).toContain("Geschwindigkeitsbereiche");
+    expect(missingAuflagenCodesInNotes(notes, ["744", "F40", "L04"])).toEqual([
+      "F40",
+      "L04",
+    ]);
+  });
+
+  it("attributes preamble prose before a later CODE block to the first missing Kürzel", () => {
+    const notes = attributeAuflagenScanNotes(
+      `Die Verwendung von Schneeketten ist nicht möglich.
+
+A02: Typprüfung erforderlich.`,
+      ["744", "A02"],
+    );
+
+    expect(notes).toContain("744: Die Verwendung von Schneeketten");
+    expect(notes).toContain("A02: Typprüfung erforderlich.");
+    expect(missingAuflagenCodesInNotes(notes, ["744", "A02"])).toEqual([]);
   });
 });

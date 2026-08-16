@@ -308,9 +308,11 @@ export async function prepareSinglePageOcrInput(
 /** ABE hunt / table vision — contrast-enhanced PNG capped for LLM cost. */
 export async function prepareAbeOcrInput(
   input: DocumentBytesInput,
+  options: PrepareDocumentForLlmOptions = {},
 ): Promise<DocumentBytesInput> {
   return prepareSinglePageOcrInput(input, {
     maxPdfPages: 1,
     maxEdgePx: ABE_LLM_IMAGE_MAX_EDGE_PX,
+    ...options,
   });
 }

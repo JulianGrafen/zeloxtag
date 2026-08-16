@@ -73,11 +73,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    const textRaw = formData.get("text");
+    const text =
+      typeof textRaw === "string" && textRaw.trim().length >= 8
+        ? textRaw.trim()
+        : null;
+
     const { imagePath, imageUrl } = await uploadAuflagenKuerzelImage(
       kuerzel,
       bytes,
       mime,
       auth.user.id,
+      text,
     );
 
     return NextResponse.json({

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import {
@@ -39,6 +40,24 @@ function resolveImageUrl(
     (snippet) => normalizeAuflagenKuerzel(snippet.code) === normalized,
   )?.imageUrl;
   return fromSnippet?.trim() || null;
+}
+
+function AuflagePaperImage({ src, code }: { src: string; code: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+
+  return (
+    <div className="mb-3 overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-neutral-100">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`Auflage ${code} aus dem Papier`}
+        className="max-h-72 w-full object-contain"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
 }
 
 function resolveEntries({
@@ -145,15 +164,7 @@ export function AbeAuflagenFoldList({
               ) : (
                 <>
                   {imageUrl ? (
-                    <div className="mb-3 overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-white">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imageUrl}
-                        alt={`Auflage ${entry.code} aus dem Papier`}
-                        className="max-h-72 w-full object-contain"
-                        loading="lazy"
-                      />
-                    </div>
+                    <AuflagePaperImage src={imageUrl} code={entry.code} />
                   ) : null}
                   <p className="whitespace-pre-wrap text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]">
                     {entry.text.trim() || "—"}

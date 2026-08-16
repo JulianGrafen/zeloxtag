@@ -94,10 +94,12 @@ export async function fetchServerAuflagenKuerzelRecords(): Promise<
 export async function uploadAuflagenKuerzelImageClient(
   kuerzel: string,
   file: File,
+  text?: string,
 ): Promise<string> {
   const body = new FormData();
   body.set("kuerzel", normalizeAuflagenKuerzel(kuerzel));
   body.set("file", file);
+  if (text?.trim()) body.set("text", text.trim());
 
   const response = await fetch("/api/abe/auflagen-kuerzel/image", {
     method: "POST",
@@ -163,24 +165,35 @@ export async function learnAuflagenKuerzelRecords(
 export async function persistAuflagenKuerzelCrops(
   crops: ReadonlyMap<string, File>,
   currentImages: Map<string, string>,
+  texts: ReadonlyMap<string, string> = new Map(),
 ): Promise<Map<string, string>> {
   const nextImages = new Map(currentImages);
 
   for (const [code, file] of crops) {
+    const key = normalizeAuflagenKuerzel(code);
+    const localUrl = URL.createObjectURL(file);
+    nextImages.set(key, localUrl);
+
     try {
-      const imageUrl = await uploadAuflagenKuerzelImageClient(code, file);
-      nextImages.set(normalizeAuflagenKuerzel(code), imageUrl);
+      const imageUrl = await uploadAuflagenKuerzelImageClient(
+        code,
+        file,
+        texts.get(key) ?? texts.get(code),
+      );
+      nextImages.set(key, imageUrl);
     } catch (error) {
       console.error("[auflagen-kuerzel] image upload failed", code, error);
     }
   }
 
   writeLocalImageRecords(
-    [...nextImages.entries()].map(([kuerzel, imageUrl]) => ({
-      kuerzel,
-      text: "",
-      imageUrl,
-    })),
+    [...nextImages.entries()]
+      .filter(([, imageUrl]) => !imageUrl.startsWith("blob:"))
+      .map(([kuerzel, imageUrl]) => ({
+        kuerzel,
+        text: texts.get(kuerzel) ?? "",
+        imageUrl,
+      })),
   );
 
   return nextImages;

@@ -12,6 +12,98 @@ const CODE_PREFIX =
 const CODE_LINE =
   /^([A-Z0-9]{2,6})\s*(?:[:\-–—\.]|)\s*(.*)$/i;
 
+const NUMBERED_LIST_ITEM = /^(\d{1,2})\.\s+\S/;
+
+/**
+ * German/English function words that match the 2–4 letter Kürzel shape.
+ * Official ABE prose often starts with these ("Die Verwendung…", "Wird eine…").
+ */
+const PROSE_FALSE_POSITIVE_CODES = new Set([
+  "DIE",
+  "DER",
+  "DAS",
+  "DEN",
+  "DEM",
+  "DES",
+  "EIN",
+  "EINE",
+  "NUR",
+  "BEI",
+  "MIT",
+  "FUR",
+  "UND",
+  "IST",
+  "AUF",
+  "VON",
+  "VOR",
+  "AUS",
+  "ZUM",
+  "ZUR",
+  "ALS",
+  "OB",
+  "ES",
+  "ER",
+  "SIE",
+  "WIR",
+  "IHR",
+  "WIE",
+  "WAS",
+  "WO",
+  "WER",
+  "IM",
+  "AM",
+  "AN",
+  "SO",
+  "JA",
+  "THE",
+  "AND",
+  "FOR",
+  "NOT",
+  "ALL",
+  "ANY",
+  "OR",
+  "TO",
+  "IN",
+  "MAX",
+  "MIN",
+  "ETC",
+  "BZW",
+  "NR",
+  "OHNE",
+  "NACH",
+  "AUCH",
+  "SIND",
+  "WIRD",
+  "MUSS",
+  "KANN",
+  "SOLL",
+  "DARF",
+  "HIER",
+  "DORT",
+  "WENN",
+  "DANN",
+  "ODER",
+  "KEIN",
+  "MEHR",
+  "ALLE",
+  "JEDE",
+  "SOWIE",
+  "NICHT",
+  "DURCH",
+  "UNTER",
+  "UEBER",
+  "UBER",
+  "KEINE",
+  "DIESE",
+  "EINER",
+  "EINEM",
+  "EINES",
+  "SONST",
+]);
+
+/** Long enough that a scan is a real paragraph, not shutter noise. */
+const MIN_UNSTRUCTURED_AUFLAGEN_CHARS = 40;
+
 function normalizeCode(raw: string): string {
   return raw.trim().toUpperCase();
 }
@@ -21,6 +113,19 @@ export type ParseAbeAuflagenNotesOptions = {
   strict?: boolean;
 };
 
+export function isProseFalsePositiveAuflagenCode(raw: string): boolean {
+  return PROSE_FALSE_POSITIVE_CODES.has(normalizeCode(raw));
+}
+
+function looksLikeNumberedListItem(
+  line: string,
+  knownCodes: Set<string>,
+): boolean {
+  const match = NUMBERED_LIST_ITEM.exec(line.trim());
+  if (!match?.[1]) return false;
+  return !knownCodes.has(normalizeCode(match[1]));
+}
+
 function isAuflagenCodeToken(
   raw: string,
   knownCodes: Set<string>,
@@ -29,6 +134,7 @@ function isAuflagenCodeToken(
   const code = normalizeCode(raw);
   if (!code || code.length > 6) return false;
   if (knownCodes.has(code)) return true;
+  if (isProseFalsePositiveAuflagenCode(code)) return false;
   if (strict && knownCodes.size > 0) return false;
   return looksLikeAuflagenCode(code);
 }
@@ -41,6 +147,7 @@ function parseCodeLine(
 ): { code: string; text: string } | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
+  if (looksLikeNumberedListItem(trimmed, knownCodes)) return null;
 
   const withoutPrefix = trimmed.replace(CODE_PREFIX, "").trim();
 
@@ -79,12 +186,17 @@ function looksLikeRejectedCodeLine(
   if (!strict || knownCodes.size === 0) return false;
   const trimmed = line.trim();
   if (!trimmed) return false;
+  if (looksLikeNumberedListItem(trimmed, knownCodes)) return false;
+  if (isProseFalsePositiveAuflagenCode(trimmed.split(/\s+/)[0] ?? "")) {
+    return false;
+  }
 
   const withoutPrefix = trimmed.replace(CODE_PREFIX, "").trim();
   const match = CODE_LINE.exec(withoutPrefix);
   if (!match?.[1]) return false;
 
   const code = normalizeCode(match[1]);
+  if (isProseFalsePositiveAuflagenCode(code)) return false;
   return !knownCodes.has(code) && looksLikeAuflagenCode(code);
 }
 
@@ -100,21 +212,19 @@ function flushEntry(
   return null;
 }
 
-/**
- * Split flat OCR Auflagen prose into per-code sections (744, A02, B04A, …).
- */
-export function parseAbeAuflagenNotes(
+function parseAbeAuflagenNotesWithMeta(
   raw: string,
   knownCodes: string[] = [],
   options?: ParseAbeAuflagenNotesOptions,
-): AbeAuflageEntry[] {
+): { entries: AbeAuflageEntry[]; preamble: string } {
   const text = raw.replace(/\r\n/g, "\n").trim();
-  if (!text) return [];
+  if (!text) return { entries: [], preamble: "" };
 
   const strict = options?.strict === true;
   const known = new Set(knownCodes.map(normalizeCode));
   const lines = text.split("\n");
   const entries: AbeAuflageEntry[] = [];
+  const preambleLines: string[] = [];
   let current: AbeAuflageEntry | null = null;
 
   for (const line of lines) {
@@ -133,6 +243,8 @@ export function parseAbeAuflagenNotes(
     if (!trimmed) {
       if (current?.text) {
         current.text = `${current.text}\n`;
+      } else if (preambleLines.length > 0) {
+        preambleLines.push("");
       }
       continue;
     }
@@ -141,16 +253,34 @@ export function parseAbeAuflagenNotes(
       current.text = current.text
         ? `${current.text}\n${trimmed}`
         : trimmed;
+      continue;
     }
+
+    preambleLines.push(trimmed);
   }
 
   flushEntry(entries, current);
 
   if (entries.length > 0) {
-    return entries;
+    return { entries, preamble: preambleLines.join("\n").trim() };
   }
 
-  return splitAbeAuflagenByKnownCodes(text, knownCodes);
+  const split = splitAbeAuflagenByKnownCodes(text, knownCodes);
+  return {
+    entries: split,
+    preamble: split.length > 0 ? "" : preambleLines.join("\n").trim(),
+  };
+}
+
+/**
+ * Split flat OCR Auflagen prose into per-code sections (744, A02, B04A, …).
+ */
+export function parseAbeAuflagenNotes(
+  raw: string,
+  knownCodes: string[] = [],
+  options?: ParseAbeAuflagenNotesOptions,
+): AbeAuflageEntry[] {
+  return parseAbeAuflagenNotesWithMeta(raw, knownCodes, options).entries;
 }
 
 /** Keep only OCR sections for codes from the selected vehicle row. */
@@ -169,6 +299,62 @@ export function sanitizeAuflagenNotesForTargetCodes(
 
   if (entries.length === 0) return null;
   return abeAuflagenEntriesToConditions(entries).join("\n\n");
+}
+
+function shouldAttributeUnstructuredProse(
+  text: string,
+  targetCount: number,
+): boolean {
+  if (!text.trim()) return false;
+  if (targetCount === 1) return true;
+  return text.trim().length >= MIN_UNSTRUCTURED_AUFLAGEN_CHARS;
+}
+
+/**
+ * When a scan is a large condition paragraph without a printed `CODE:` heading,
+ * attach that prose to the first still-missing target Kürzel (the one on the
+ * camera watermark).
+ */
+export function attributeAuflagenScanNotes(
+  notes: string | null | undefined,
+  targetCodes: readonly string[],
+): string | null {
+  const trimmed = notes?.trim();
+  if (!trimmed) return null;
+  if (targetCodes.length === 0) return trimmed;
+
+  const allowed = [
+    ...new Set(targetCodes.map(normalizeCode).filter(Boolean)),
+  ];
+  const { entries, preamble } = parseAbeAuflagenNotesWithMeta(
+    trimmed,
+    allowed,
+    { strict: true },
+  );
+  const kept = entries.filter((entry) =>
+    allowed.includes(normalizeCode(entry.code)),
+  );
+  const covered = new Set(kept.map((entry) => normalizeCode(entry.code)));
+  const firstMissing = allowed.find((code) => !covered.has(code));
+
+  if (
+    firstMissing &&
+    shouldAttributeUnstructuredProse(preamble, allowed.length)
+  ) {
+    kept.unshift({ code: firstMissing, text: preamble.trim() });
+  }
+
+  if (kept.length === 0) {
+    if (
+      firstMissing &&
+      shouldAttributeUnstructuredProse(trimmed, allowed.length)
+    ) {
+      return `${firstMissing}: ${trimmed}`;
+    }
+    return null;
+  }
+
+  return abeAuflagenEntriesToConditions(kept).join("\n\n");
 }
 
 function splitAbeAuflagenByKnownCodes(

@@ -13,8 +13,10 @@ export async function cropImageToJpegFile(
     throw new Error("Ausschnitt ist zu klein.");
   }
 
-  const scaleX = image.naturalWidth / image.width;
-  const scaleY = image.naturalHeight / image.height;
+  const displayWidth = image.width || image.naturalWidth;
+  const displayHeight = image.height || image.naturalHeight;
+  const scaleX = displayWidth > 0 ? image.naturalWidth / displayWidth : 1;
+  const scaleY = displayHeight > 0 ? image.naturalHeight / displayHeight : 1;
 
   const width = Math.max(1, Math.round(crop.width * scaleX));
   const height = Math.max(1, Math.round(crop.height * scaleY));

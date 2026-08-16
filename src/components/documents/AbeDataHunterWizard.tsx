@@ -41,6 +41,7 @@ import {
 import {
   abeAuflagenConditionsFromNotes,
   abeAuflagenEntriesFromConditions,
+  attributeAuflagenScanNotes,
   parseAbeAuflagenNotes,
   sanitizeAuflagenNotesForTargetCodes,
   auflagenCodesCoveredInNotes,
@@ -925,6 +926,7 @@ function AuflagenDetailPanel({
   dbResolvedCodes,
   pendingCodes,
   skippedAuflagenCodes,
+  imageUrlsByCode,
   onSelectGroup,
   onSelectRow,
   onContinueToReview,
@@ -943,6 +945,7 @@ function AuflagenDetailPanel({
   dbResolvedCodes: string[];
   pendingCodes: string[];
   skippedAuflagenCodes: string[];
+  imageUrlsByCode?: Map<string, string>;
   onSelectGroup: (index: number) => void;
   onSelectRow: (rowId: string) => void;
   onContinueToReview: () => void;
@@ -1127,6 +1130,7 @@ function AuflagenDetailPanel({
                   notes={report.auflagenNotes}
                   knownCodes={targetCodes}
                   pendingCodes={pendingCodes}
+                  imageUrlsByCode={imageUrlsByCode}
                   defaultOpenFirst
                 />
               </div>
@@ -2400,15 +2404,24 @@ export function AbeDataHunterWizard({
       setQueuedCount(auflagenQueueRef.current.length);
 
       try {
-        const codes = auflagenForUserVehicleSelection(
+        const allCodes = auflagenForUserVehicleSelection(
           reportRef.current,
           selectedGroupIndex,
           selectedRowId,
           vehicleContext,
         );
+        const pendingCodes = missingAuflagenCodesInNotes(
+          reportRef.current.auflagenNotes,
+          allCodes,
+          skippedAuflagenCodes,
+        );
+        const codes = pendingCodes.length > 0 ? pendingCodes : allCodes;
         const { notes, regions } = await extractAuflagenTextFromFile(file, codes);
+        const attributedNotes =
+          attributeAuflagenScanNotes(notes, codes) ?? notes;
         const sanitizedNotes =
-          sanitizeAuflagenNotesForTargetCodes(notes, codes) ?? notes;
+          sanitizeAuflagenNotesForTargetCodes(attributedNotes, allCodes) ??
+          attributedNotes;
         const before = reportRef.current;
         const merged = fillAbeDataHunterReport(before, {
           ...emptyAbeDataHunterReport(),
@@ -2430,9 +2443,18 @@ export function AbeDataHunterWizard({
           regions,
         );
         if (crops.size > 0) {
+          const cropTexts = new Map(
+            parseAbeAuflagenNotes(sanitizedNotes, codes, { strict: true }).map(
+              (entry) => [
+                normalizeAuflagenKuerzel(entry.code),
+                entry.text.trim(),
+              ],
+            ),
+          );
           kuerzelImageUrlsRef.current = await persistAuflagenKuerzelCrops(
             crops,
             kuerzelImageUrlsRef.current,
+            cropTexts,
           );
           setKuerzelImageUrls(new Map(kuerzelImageUrlsRef.current));
         }
@@ -2773,6 +2795,7 @@ export function AbeDataHunterWizard({
           dbResolvedCodes={dbResolvedAuflagenCodes}
           pendingCodes={pendingAuflagenCodes}
           skippedAuflagenCodes={skippedAuflagenCodes}
+          imageUrlsByCode={kuerzelImageUrls}
           onSelectGroup={handleSelectGroup}
           onSelectRow={handleSelectRow}
           onContinueToReview={markAllCapturedAndGoToReview}

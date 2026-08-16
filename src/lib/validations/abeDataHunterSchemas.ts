@@ -892,7 +892,7 @@ export const ABE_HUNT_AUFLAGEN_TEXT_JSON_SCHEMA = {
         type: "string",
         description:
           FROM_PHOTO +
-          "Transcribe each target Auflagen block as `CODE: full text` (e.g. `744: …`, `F40: …`, `L04: …`). Include EVERY target code listed in the request. Separate blocks with a blank line. Verbatim — no summary.",
+          "Transcribe each visible target Auflagen block as `CODE: full text` (e.g. `744: …`, `F40: …`, `L04: …`). If the photo is a long condition paragraph without a printed Kürzel, return it as the first listed target code. Do not invent text for codes that are not on this photo. Separate blocks with a blank line. Verbatim — no summary.",
       },
       regions: {
         type: "array",

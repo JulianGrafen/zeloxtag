@@ -36,7 +36,7 @@ export function parseAuflagenKuerzelRecords(
         : typeof record.image_url === "string" && record.image_url.trim()
           ? record.image_url.trim()
           : null;
-    if (!kuerzel || !text) continue;
+    if (!kuerzel || (!text && !imageUrl)) continue;
     out.push({ kuerzel, text, imageUrl });
   }
   return out;

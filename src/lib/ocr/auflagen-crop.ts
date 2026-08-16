@@ -20,6 +20,23 @@ function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
+/** LLM boxes around just the Kürzel number are too small for a paper snippet. */
+export function isUsableAuflagenRegion(region: NormalizedAuflagenRegion): boolean {
+  const width = region.right - region.left;
+  const height = region.bottom - region.top;
+  return width >= 0.35 && height >= 0.18 && width * height >= 0.1;
+}
+
+function fullBleedCrop(image: HTMLImageElement): PixelCrop {
+  return {
+    unit: "px",
+    x: Math.round(image.naturalWidth * 0.02),
+    y: Math.round(image.naturalHeight * 0.02),
+    width: Math.max(1, Math.round(image.naturalWidth * 0.96)),
+    height: Math.max(1, Math.round(image.naturalHeight * 0.96)),
+  };
+}
+
 export function parseAuflagenRegions(raw: unknown): NormalizedAuflagenRegion[] {
   if (!Array.isArray(raw)) return [];
 
@@ -126,15 +143,38 @@ export async function cropAuflagenSnippetsFromPhoto(
 ): Promise<Map<string, File>> {
   const image = await loadImageFromFile(file);
   const entries = parseAbeAuflagenNotes(notes, [...targetCodes]);
-  const targetSet = new Set(targetCodes.map(normalizeAuflagenKuerzel));
+  const notedCodes = new Set(
+    entries.map((entry) => normalizeAuflagenKuerzel(entry.code)).filter(Boolean),
+  );
+  const targetSet = new Set(
+    targetCodes
+      .map((code) => normalizeAuflagenKuerzel(code))
+      .filter((code) => notedCodes.size === 0 || notedCodes.has(code)),
+  );
   const crops = new Map<string, File>();
+
+  if (entries.length === 1) {
+    const only = normalizeAuflagenKuerzel(entries[0]!.code);
+    if (targetSet.has(only) || notedCodes.has(only)) {
+      crops.set(
+        only,
+        await cropImageToJpegFile(
+          image,
+          fullBleedCrop(image),
+          `auflage-${only}.jpg`,
+        ),
+      );
+      return crops;
+    }
+  }
 
   for (const region of regions) {
     if (!targetSet.has(region.code)) continue;
     if (crops.has(region.code)) continue;
+    if (!isUsableAuflagenRegion(region)) continue;
 
     const pixelCrop = normalizedRegionToPixelCrop(image, region);
-    if (pixelCrop.width < 8 || pixelCrop.height < 8) continue;
+    if (pixelCrop.width < 48 || pixelCrop.height < 48) continue;
 
     crops.set(
       region.code,
@@ -159,27 +199,24 @@ export async function cropAuflagenSnippetsFromPhoto(
 
   for (const code of missingCodes) {
     const crop = proportional.get(code);
-    if (!crop || crop.width < 8 || crop.height < 8) continue;
+    if (!crop || crop.width < 48 || crop.height < 48) continue;
     crops.set(
       code,
       await cropImageToJpegFile(image, crop, `auflage-${code}.jpg`),
     );
   }
 
-  if (crops.size === 0 && entries.length === 1) {
-    const only = normalizeAuflagenKuerzel(entries[0]!.code);
-    if (targetSet.has(only)) {
+  if (crops.size === 0 && (entries.length === 1 || missingCodes.length === 1)) {
+    const only =
+      entries.length === 1
+        ? normalizeAuflagenKuerzel(entries[0]!.code)
+        : missingCodes[0]!;
+    if (only && (targetSet.has(only) || notedCodes.has(only))) {
       crops.set(
         only,
         await cropImageToJpegFile(
           image,
-          {
-            unit: "px",
-            x: Math.round(image.naturalWidth * 0.03),
-            y: Math.round(image.naturalHeight * 0.03),
-            width: Math.round(image.naturalWidth * 0.94),
-            height: Math.round(image.naturalHeight * 0.94),
-          },
+          fullBleedCrop(image),
           `auflage-${only}.jpg`,
         ),
       );

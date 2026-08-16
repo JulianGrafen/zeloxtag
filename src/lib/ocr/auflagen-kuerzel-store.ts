@@ -181,6 +181,7 @@ export async function uploadAuflagenKuerzelImage(
   bytes: Buffer,
   contentType: string,
   learnedByUserId?: string | null,
+  text?: string | null,
 ): Promise<{ imagePath: string; imageUrl: string }> {
   if (!isSupabaseAdminConfigured()) {
     throw new Error("Supabase admin is not configured.");
@@ -216,16 +217,28 @@ export async function uploadAuflagenKuerzelImage(
     throw new Error(readError.message);
   }
 
-  if (!existing?.text?.trim()) {
+  const nextText = existing?.text?.trim() || text?.trim() || "";
+  if (nextText.length < 8) {
     throw new Error(
       `Kürzel ${code} muss zuerst mit Text gespeichert werden.`,
     );
   }
 
-  const { error: updateError } = await admin
-    .from("abe_auflagen_kuerzel")
-    .update({ image_path: imagePath })
-    .eq("kuerzel", code);
+  const { error: updateError } = existing?.text?.trim()
+    ? await admin
+        .from("abe_auflagen_kuerzel")
+        .update({ image_path: imagePath })
+        .eq("kuerzel", code)
+    : await admin.from("abe_auflagen_kuerzel").upsert(
+        {
+          kuerzel: code,
+          text: nextText,
+          image_path: imagePath,
+          source: "learned",
+          learned_by: learnedByUserId ?? null,
+        },
+        { onConflict: "kuerzel" },
+      );
 
   if (updateError) {
     throw new Error(updateError.message);
