@@ -736,12 +736,16 @@ function coreHuntScanHint(
 
 function auflagenTextScanHint(
   analyzing: boolean,
-  hasMissingCodes: boolean,
+  nextCode: string | null,
 ): string {
   if (analyzing) return ANALYZING_SCAN_HINT;
-  return hasMissingCodes
-    ? "Fotografiere den Auflagen-Text zu den angezeigten Nummern."
-    : "Weitere Auflagen-Abschnitte fotografieren.";
+  if (nextCode) return `Fotografiere den Auflagen-Text zu ${nextCode}.`;
+  return "Weitere Auflagen-Abschnitte fotografieren.";
+}
+
+function auflagenScanWatermark(nextCode: string | null): string {
+  if (!nextCode) return "Auflagen-Text\nwörtlich…";
+  return `Auflage\n${nextCode}`;
 }
 
 const ABE_CAMERA_PROPS = {
@@ -2784,6 +2788,13 @@ export function AbeDataHunterWizard({
   }
 
   if (phase === "auflagen-scan") {
+    const nextAuflagenCode =
+      missingAuflagenCodesInNotes(
+        report.auflagenNotes,
+        targetAuflagenCodes,
+        skippedAuflagenCodes,
+      )[0] ?? null;
+
     return (
       <>
         {errorBanner}
@@ -2798,17 +2809,10 @@ export function AbeDataHunterWizard({
         />
         <InBrowserCamera
           {...ABE_CAMERA_PROPS}
-          hint={auflagenTextScanHint(
-            analyzing,
-            missingAuflagenCodesInNotes(
-              report.auflagenNotes,
-              targetAuflagenCodes,
-              skippedAuflagenCodes,
-            ).length > 0,
-          )}
+          hint={auflagenTextScanHint(analyzing, nextAuflagenCode)}
           guideFrame="section"
           guideSectionAnchor="center"
-          guideWatermark={ABE_HUNT_FIELD_WATERMARKS.auflagenNotes}
+          guideWatermark={auflagenScanWatermark(nextAuflagenCode)}
           onCapture={enqueueAuflagenFile}
           onClose={returnToAuflagenDetail}
         />

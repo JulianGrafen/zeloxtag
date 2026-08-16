@@ -106,7 +106,7 @@ export const ABE_HUNT_FIELD_WATERMARKS: Record<AbeRequiredFieldKey, string> = {
   verkaufsbezeichnung:
     "Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen",
   auflagenCodes: "A1 · A2 · A3",
-  auflagenNotes: "Auflage 744\nText wörtlich…",
+  auflagenNotes: "Auflage\nKürzel",
 };
 
 /** User-facing checklist label (differs from internal OCR field names). */
