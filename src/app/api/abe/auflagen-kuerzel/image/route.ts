@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { normalizeAuflagenKuerzel } from "@/lib/ocr/auflagen-kuerzel-db";
-import { uploadAuflagenKuerzelImage } from "@/lib/ocr/auflagen-kuerzel-store";
+import {
+  downloadAuflagenKuerzelImage,
+  uploadAuflagenKuerzelImage,
+} from "@/lib/ocr/auflagen-kuerzel-store";
 import {
   enforceRateLimit,
   enforceSameOrigin,
@@ -12,6 +15,47 @@ import { sniffAllowedMime } from "@/lib/security/file-upload";
 export const runtime = "nodejs";
 
 const MAX_BYTES = 5 * 1024 * 1024;
+
+/** GET /api/abe/auflagen-kuerzel/image?kuerzel=744 — paper snippet bytes. */
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  try {
+    const limited = await enforceRateLimit(
+      request,
+      "apiDefault",
+      "auflagen-kuerzel-image-read",
+    );
+    if (limited) return limited;
+
+    const kuerzel = normalizeAuflagenKuerzel(
+      request.nextUrl.searchParams.get("kuerzel") ?? "",
+    );
+    if (!kuerzel) {
+      return NextResponse.json(
+        { ok: false, error: "Kürzel fehlt." },
+        { status: 400 },
+      );
+    }
+
+    const image = await downloadAuflagenKuerzelImage(kuerzel);
+    if (!image) {
+      return new NextResponse(null, { status: 404 });
+    }
+
+    return new NextResponse(new Uint8Array(image.bytes), {
+      status: 200,
+      headers: {
+        "Content-Type": image.contentType,
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+      },
+    });
+  } catch (err) {
+    console.error("[auflagen-kuerzel/image] read failed", err);
+    return NextResponse.json(
+      { ok: false, error: "Auflagen-Bild nicht lesbar." },
+      { status: 500 },
+    );
+  }
+}
 
 /** POST /api/abe/auflagen-kuerzel/image — upload cropped Auflagen snippet. */
 export async function POST(request: NextRequest): Promise<NextResponse> {

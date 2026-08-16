@@ -32,14 +32,40 @@ export async function cropImageToJpegFile(
   ctx.drawImage(image, sx, sy, width, height, 0, 0, width, height);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (result) =>
-        result
-          ? resolve(result)
-          : reject(new Error("Ausschnitt konnte nicht gespeichert werden.")),
-      "image/jpeg",
-      quality,
-    );
+    const finish = (result: Blob | null) => {
+      if (result && result.size > 0) {
+        resolve(result);
+        return;
+      }
+      try {
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        const comma = dataUrl.indexOf(",");
+        const payload = comma >= 0 ? dataUrl.slice(comma + 1) : "";
+        if (!payload) {
+          reject(new Error("Ausschnitt konnte nicht gespeichert werden."));
+          return;
+        }
+        const binary = atob(payload);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) {
+          bytes[index] = binary.charCodeAt(index);
+        }
+        resolve(new Blob([bytes], { type: "image/jpeg" }));
+      } catch {
+        reject(new Error("Ausschnitt konnte nicht gespeichert werden."));
+      }
+    };
+
+    if (typeof canvas.toBlob !== "function") {
+      finish(null);
+      return;
+    }
+
+    try {
+      canvas.toBlob(finish, "image/jpeg", quality);
+    } catch {
+      finish(null);
+    }
   });
 
   canvas.width = 0;

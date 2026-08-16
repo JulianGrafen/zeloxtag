@@ -133,10 +133,11 @@ export const ABE_HUNT_FIELD_SCAN_HINTS: Partial<
       "Fotografiere die KBA-Nummer — meist oben auf der ABE neben „KBA“ oder in der Kennzeichnungstabelle.",
   },
   abeNumber: {
-    scanAction: "Fotografiere die Nummer der ABE (z. B. 48185*08).",
+    scanAction:
+      "Fotografiere die Nummer der ABE (z. B. 48185*08) — oder überspringen, falls nicht auf dem Papier.",
     popupTitle: "Nummer der ABE",
     popupBody:
-      "Fotografiere die ABE-Nummer unter „Nummer der allgemeinen Betriebserlaubnis“.",
+      "Fotografiere die ABE-Nummer unter „Nummer der allgemeinen Betriebserlaubnis“. Fehlt sie auf dem Blatt, kannst du sie überspringen.",
   },
   abeHolder: {
     scanAction: "Fotografiere Inhaber der ABE oder Auftraggeber.",
@@ -586,14 +587,22 @@ function mergeAuflagenNotes(
   return `${prev}\n\n${next}`;
 }
 
+export type AbeCoreHuntSkip = {
+  /** User could not find „Nummer der ABE“ on paper. */
+  skippedAbeNumber?: boolean;
+};
+
 export function missingAbeCoreHuntFields(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
+  skip?: AbeCoreHuntSkip | null,
 ): AbeCoreHuntFieldKey[] {
   const missing: AbeCoreHuntFieldKey[] = [];
   if (!inferAbeKbaFromReport(report)) missing.push("kbaNumber");
-  if (!report.abeNumber?.trim()) missing.push("abeNumber");
+  if (!report.abeNumber?.trim() && !skip?.skippedAbeNumber) {
+    missing.push("abeNumber");
+  }
   if (!report.abeHolder?.trim()) missing.push("abeHolder");
   if (!report.manufacturer?.trim()) missing.push("manufacturer");
   if (!report.partDesignation?.trim()) missing.push("partDesignation");
@@ -623,12 +632,14 @@ export function isAbeCoreHuntComplete(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
+  skip?: AbeCoreHuntSkip | null,
 ): boolean {
   return (
     missingAbeCoreHuntFields(
       report,
       selectedVerkaufsbezeichnung,
       vehicleContext,
+      skip,
     ).length === 0
   );
 }
@@ -648,6 +659,8 @@ export function missingAbeRequiredFields(
     auflagenScanSkipped?: boolean;
     /** Individual Kürzel the user could not find on paper — not required in notes. */
     skippedAuflagenCodes?: readonly string[];
+    /** User skipped „Nummer der ABE“ during the core hunt. */
+    skippedAbeNumber?: boolean;
   },
 ): AbeRequiredFieldKey[] {
   const missing: AbeRequiredFieldKey[] = [
@@ -655,6 +668,7 @@ export function missingAbeRequiredFields(
       report,
       selectedVerkaufsbezeichnung,
       vehicleContext,
+      { skippedAbeNumber: selection?.skippedAbeNumber },
     ),
   ];
   if (selection?.auflagenScanSkipped) {
@@ -701,6 +715,7 @@ export function isAbeDataHunterReportComplete(
     selectedRowId?: string | null;
     auflagenScanSkipped?: boolean;
     skippedAuflagenCodes?: readonly string[];
+    skippedAbeNumber?: boolean;
   },
 ): boolean {
   return (

@@ -52,8 +52,8 @@ function AuflagePaperImage({ src, code }: { src: string; code: string }) {
       <img
         src={src}
         alt={`Auflage ${code} aus dem Papier`}
-        className="max-h-72 w-full object-contain"
-        loading="lazy"
+        className="max-h-72 w-full bg-white object-contain"
+        loading="eager"
         onError={() => setFailed(true)}
       />
     </div>

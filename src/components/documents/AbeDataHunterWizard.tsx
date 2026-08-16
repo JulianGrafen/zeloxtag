@@ -48,6 +48,7 @@ import {
   missingAuflagenCodesInNotes,
 } from "@/lib/ocr/abe-auflagen-from-text";
 import {
+  auflagenKuerzelImageSrc,
   extractKuerzelRecordsFromOcrNotes,
   normalizeAuflagenKuerzel,
   resolveAuflagenWithKuerzelDb,
@@ -60,6 +61,10 @@ import {
   persistAuflagenKuerzelCrops,
 } from "@/lib/ocr/auflagen-kuerzel-client";
 import { AbeAuflagenFoldList } from "@/components/documents/abe-auflagen-fold-list";
+import {
+  ABE_SAVE_CONFIRM_ACK,
+  ABE_SAVE_ORIGINAL_PAPERS_NOTICE,
+} from "@/lib/legal/vehicle-data-disclaimer";
 import {
   auflagenForUserVehicleSelection,
   displayAbeVehicleVariantOptionLabel,
@@ -95,6 +100,7 @@ import {
   missingAbeCoreHuntFields,
   missingAbeRequiredFields,
   scopeAbeDataHunterReportAuflagen,
+  type AbeCoreHuntSkip,
   type AbeDataHunterReport,
   type AbeRequiredFieldKey,
 } from "@/lib/validations/abeDataHunterSchemas";
@@ -180,12 +186,14 @@ function missingCoreHuntFieldSet(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
+  skip?: AbeCoreHuntSkip | null,
 ): Set<AbeRequiredFieldKey> {
   return new Set(
     missingAbeCoreHuntFields(
       report,
       selectedVerkaufsbezeichnung,
       vehicleContext,
+      skip,
     ),
   );
 }
@@ -194,11 +202,13 @@ function firstMissingFocusIndex(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
+  skip?: AbeCoreHuntSkip | null,
 ): number {
   const missing = missingCoreHuntFieldSet(
     report,
     selectedVerkaufsbezeichnung,
     vehicleContext,
+    skip,
   );
   for (let index = 0; index < CORE_HUNT_ORDER.length; index++) {
     const key = CORE_HUNT_ORDER[index];
@@ -211,11 +221,13 @@ function countAbeCoreHuntFieldsDone(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
+  skip?: AbeCoreHuntSkip | null,
 ): number {
   const missing = missingCoreHuntFieldSet(
     report,
     selectedVerkaufsbezeichnung,
     vehicleContext,
+    skip,
   );
   return CORE_HUNT_ORDER.length - missing.size;
 }
@@ -224,11 +236,13 @@ function firstMissingFocusKey(
   report: AbeDataHunterReport,
   selectedVerkaufsbezeichnung?: string | null,
   vehicleContext?: AbeVehicleContext | null,
+  skip?: AbeCoreHuntSkip | null,
 ): AbeRequiredFieldKey {
   const index = firstMissingFocusIndex(
     report,
     selectedVerkaufsbezeichnung,
     vehicleContext,
+    skip,
   );
   return CORE_HUNT_ORDER[index] ?? "kbaNumber";
 }
@@ -775,21 +789,32 @@ function HuntProgressOverlay({
   report,
   analyzing,
   onOpenReview,
+  onSkipAbeNumber,
   onClose,
   vehicleContext,
+  skippedAbeNumber = false,
 }: {
   report: AbeDataHunterReport;
   analyzing: boolean;
   onOpenReview: () => void;
+  onSkipAbeNumber: () => void;
   onClose: () => void;
   vehicleContext?: AbeVehicleContext | null;
+  skippedAbeNumber?: boolean;
 }) {
-  const missing = missingAbeCoreHuntFields(report, null, vehicleContext);
+  const skip: AbeCoreHuntSkip = { skippedAbeNumber };
+  const missing = missingAbeCoreHuntFields(report, null, vehicleContext, skip);
   const complete = missing.length === 0;
-  const doneCount = countAbeCoreHuntFieldsDone(report, null, vehicleContext);
+  const doneCount = countAbeCoreHuntFieldsDone(
+    report,
+    null,
+    vehicleContext,
+    skip,
+  );
   const totalCount = CORE_HUNT_ORDER.length;
   const showComplete = complete && !analyzing;
   const nextMissing = missing[0];
+  const canSkipAbeNumber = nextMissing === "abeNumber" && !analyzing;
   const status =
     nextMissing != null
       ? `Noch: ${HUNT_FIELD_SHORT_LABELS[nextMissing]}${
@@ -805,6 +830,8 @@ function HuntProgressOverlay({
         complete={showComplete}
         onClose={onClose}
         onContinue={showComplete ? onOpenReview : undefined}
+        onSkip={canSkipAbeNumber ? onSkipAbeNumber : undefined}
+        skipLabel="Überspr. ABE-Nr."
         progress={{ done: doneCount, total: totalCount }}
       />
       {showComplete ? (
@@ -1281,6 +1308,7 @@ function ReviewPanel({
   imageUrlsByCode,
   auflagenScanSkipped,
   skippedAuflagenCodes,
+  skippedAbeNumber,
   showAllCapturedBanner,
   onSelectGroup,
   onSelectRow,
@@ -1301,6 +1329,7 @@ function ReviewPanel({
   imageUrlsByCode: Map<string, string>;
   auflagenScanSkipped: boolean;
   skippedAuflagenCodes: string[];
+  skippedAbeNumber: boolean;
   showAllCapturedBanner: boolean;
   onSelectGroup: (index: number) => void;
   onSelectRow: (rowId: string) => void;
@@ -1352,6 +1381,7 @@ function ReviewPanel({
     auflagenNotes: report.auflagenNotes ?? "",
   }));
   const [saveStep, setSaveStep] = useState<"edit" | "confirm">("edit");
+  const [saveAcked, setSaveAcked] = useState(false);
 
   useEffect(() => {
     const next = scopedAuflagen.join(" ");
@@ -1405,6 +1435,7 @@ function ReviewPanel({
       selectedRowId,
       auflagenScanSkipped,
       skippedAuflagenCodes,
+      skippedAbeNumber,
     },
   );
   const auflagenNotesMissing = missing.includes("auflagenNotes");
@@ -1421,6 +1452,11 @@ function ReviewPanel({
         <div className="rounded-xl border border-emerald-300/70 bg-emerald-50 px-3 py-2.5 text-[0.82rem] font-medium text-emerald-950">
           Alle Daten erfasst — bitte prüfen, bei Bedarf korrigieren und
           speichern.
+        </div>
+      ) : null}
+      {skippedAbeNumber && !form.abeNumber.trim() ? (
+        <div className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] text-amber-950">
+          Nummer der ABE wurde übersprungen — du kannst sie hier nachtragen.
         </div>
       ) : null}
       {auflagenScanSkipped ? (
@@ -1456,7 +1492,7 @@ function ReviewPanel({
           </h2>
           <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
             {saveStep === "confirm"
-              ? "Bitte die extrahierten Werte noch einmal gegen die ABE prüfen."
+              ? "Bitte prüfe KBA, Inhaber, Bauteil und Auflagen noch einmal gegen deine ABE."
               : `Extrahierte Werte kannst du hier korrigieren · ${vehicleLabel}`}
           </p>
         </header>
@@ -1464,15 +1500,24 @@ function ReviewPanel({
         {saveStep === "confirm" ? (
           <div className="mt-4 space-y-3">
             <div
-              role="status"
-              className="rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.78rem] text-[color:var(--vd-muted)]"
+              role="note"
+              className="flex gap-2.5 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] leading-relaxed text-amber-950"
             >
-              Stimmen KBA, Inhaber, Bauteil und Auflagen mit deiner ABE
-              überein?
+              <AlertTriangle
+                className="mt-0.5 h-4 w-4 shrink-0 text-amber-800"
+                aria-hidden
+              />
+              <p>{ABE_SAVE_ORIGINAL_PAPERS_NOTICE}</p>
             </div>
             <AbeKbaHero value={form.kbaNumber} />
             <dl className="grid gap-2.5">
-              <AbeSummaryRow label="Nummer der ABE" value={form.abeNumber} />
+              <AbeSummaryRow
+                label="Nummer der ABE"
+                value={
+                  form.abeNumber.trim() ||
+                  (skippedAbeNumber ? "übersprungen" : form.abeNumber)
+                }
+              />
               <AbeSummaryRow
                 label={ABE_REQUIRED_FIELD_LABELS.abeHolder}
                 value={form.abeHolder}
@@ -1520,7 +1565,13 @@ function ReviewPanel({
               }
             />
             <div className="space-y-3">
-              <AbeFieldLabel label="Nummer der ABE *">
+              <AbeFieldLabel
+                label={
+                  skippedAbeNumber && !form.abeNumber.trim()
+                    ? "Nummer der ABE (übersprungen)"
+                    : "Nummer der ABE *"
+                }
+              >
                 <Input
                   value={form.abeNumber}
                   onChange={(e) =>
@@ -1707,9 +1758,18 @@ function ReviewPanel({
         <div className="mt-5 grid gap-2">
           {saveStep === "confirm" ? (
             <>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-text)]">
+                <input
+                  type="checkbox"
+                  checked={saveAcked}
+                  onChange={(event) => setSaveAcked(event.target.checked)}
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-[color:var(--vd-border)] accent-neutral-900"
+                />
+                <span>{ABE_SAVE_CONFIRM_ACK}</span>
+              </label>
               <Button
                 type="button"
-                disabled={isSaving}
+                disabled={isSaving || !saveAcked}
                 onClick={() => onSave(form)}
               >
                 {isSaving ? (
@@ -1725,7 +1785,10 @@ function ReviewPanel({
                 type="button"
                 variant="outline"
                 disabled={isSaving}
-                onClick={() => setSaveStep("edit")}
+                onClick={() => {
+                  setSaveAcked(false);
+                  setSaveStep("edit");
+                }}
               >
                 Zurück & bearbeiten
               </Button>
@@ -1734,7 +1797,10 @@ function ReviewPanel({
             <Button
               type="button"
               disabled={missing.length > 0}
-              onClick={() => setSaveStep("confirm")}
+              onClick={() => {
+                setSaveAcked(false);
+                setSaveStep("confirm");
+              }}
             >
               Weiter zur Bestätigung
             </Button>
@@ -1782,6 +1848,9 @@ export function AbeDataHunterWizard({
   const [kuerzelDbReady, setKuerzelDbReady] = useState(false);
   const [auflagenScanSkipped, setAuflagenScanSkipped] = useState(false);
   const [skippedAuflagenCodes, setSkippedAuflagenCodes] = useState<string[]>([]);
+  const [skippedAbeNumber, setSkippedAbeNumber] = useState(false);
+  const skippedAbeNumberRef = useRef(false);
+  skippedAbeNumberRef.current = skippedAbeNumber;
   const [showAllCapturedBanner, setShowAllCapturedBanner] = useState(false);
 
   const queueRef = useRef<File[]>([]);
@@ -1808,12 +1877,14 @@ export function AbeDataHunterWizard({
   );
   const huntSelectedVerkaufsbezeichnung = huntGroup.verkaufsbezeichnung;
 
+  const coreHuntSkip: AbeCoreHuntSkip = { skippedAbeNumber };
   const coreComplete = isAbeCoreHuntComplete(
     report,
     phase === "hunt" || phase === "kba-hunt"
       ? null
       : huntSelectedVerkaufsbezeichnung,
     vehicleContext,
+    coreHuntSkip,
   );
   const targetAuflagenCodes = useMemo(
     () =>
@@ -1856,12 +1927,14 @@ export function AbeDataHunterWizard({
       selectedRowId,
       auflagenScanSkipped,
       skippedAuflagenCodes,
+      skippedAbeNumber,
     }),
     [
       selectedGroupIndex,
       selectedRowId,
       auflagenScanSkipped,
       skippedAuflagenCodes,
+      skippedAbeNumber,
     ],
   );
   const allAuflagenResolvedFromDb = useMemo(() => {
@@ -1909,14 +1982,21 @@ export function AbeDataHunterWizard({
         const serverRecords = await fetchServerAuflagenKuerzelRecords();
         if (!cancelled) {
           kuerzelDbRef.current = buildClientAuflagenKuerzelDb(serverRecords);
-          kuerzelImageUrlsRef.current =
-            buildClientAuflagenKuerzelImageMap(serverRecords);
-          setKuerzelImageUrls(new Map(kuerzelImageUrlsRef.current));
+          const nextImages = buildClientAuflagenKuerzelImageMap(serverRecords);
+          for (const [code, url] of kuerzelImageUrlsRef.current) {
+            if (url.startsWith("blob:")) nextImages.set(code, url);
+          }
+          kuerzelImageUrlsRef.current = nextImages;
+          setKuerzelImageUrls(new Map(nextImages));
         }
       } catch {
         if (!cancelled) {
           kuerzelDbRef.current = localDb;
-          kuerzelImageUrlsRef.current = buildClientAuflagenKuerzelImageMap();
+          const nextImages = buildClientAuflagenKuerzelImageMap();
+          for (const [code, url] of kuerzelImageUrlsRef.current) {
+            if (url.startsWith("blob:")) nextImages.set(code, url);
+          }
+          kuerzelImageUrlsRef.current = nextImages;
         }
       }
 
@@ -2094,6 +2174,23 @@ export function AbeDataHunterWizard({
     goToReview();
   }
 
+  function skipAbeNumber() {
+    skippedAbeNumberRef.current = true;
+    setSkippedAbeNumber(true);
+    setHuntError(null);
+    const skip: AbeCoreHuntSkip = { skippedAbeNumber: true };
+    if (
+      isAbeCoreHuntComplete(
+        reportRef.current,
+        null,
+        vehicleContext,
+        skip,
+      )
+    ) {
+      advanceAfterCoreHunt();
+    }
+  }
+
   function skipOneAuflagenCode(code: string, goToReviewIfDone = false) {
     const normalized = normalizeAuflagenKuerzel(code);
     if (!normalized) return;
@@ -2145,6 +2242,7 @@ export function AbeDataHunterWizard({
           selectedRowId,
           auflagenScanSkipped,
           skippedAuflagenCodes,
+          skippedAbeNumber: skippedAbeNumberRef.current,
         },
       )
     ) {
@@ -2240,6 +2338,8 @@ export function AbeDataHunterWizard({
     setManualKbaInput("");
     setAuflagenScanSkipped(false);
     setSkippedAuflagenCodes([]);
+    skippedAbeNumberRef.current = false;
+    setSkippedAbeNumber(false);
     setShowAllCapturedBanner(false);
     setHuntSessionKey((current) => current + 1);
   }
@@ -2332,12 +2432,16 @@ export function AbeDataHunterWizard({
           groupIndex,
           vehicleContext,
         );
+        const huntSkip: AbeCoreHuntSkip = {
+          skippedAbeNumber: skippedAbeNumberRef.current,
+        };
         const focusKey =
           CORE_HUNT_ORDER[
             firstMissingFocusIndex(
               beforeContext.report,
               null,
               vehicleContext,
+              huntSkip,
             )
           ] ?? "kbaNumber";
 
@@ -2357,11 +2461,13 @@ export function AbeDataHunterWizard({
             beforeContext.report,
             null,
             vehicleContext,
+            huntSkip,
           );
           const afterMissing = missingCoreHuntFieldSet(
             merged,
             null,
             vehicleContext,
+            huntSkip,
           );
           return beforeMissing.has(key) && !afterMissing.has(key);
         });
@@ -2370,13 +2476,13 @@ export function AbeDataHunterWizard({
         setReport(merged);
         if (filledKeys.length > 0) {
           setHuntError(null);
-        } else if (!isAbeCoreHuntComplete(merged, null, vehicleContext)) {
+        } else if (!isAbeCoreHuntComplete(merged, null, vehicleContext, huntSkip)) {
           setHuntError(
             `${ABE_REQUIRED_FIELD_LABELS[focusKey]} nicht erkannt — bitte näher heran oder erneut fotografieren.`,
           );
         }
 
-        if (isAbeCoreHuntComplete(merged, null, vehicleContext)) {
+        if (isAbeCoreHuntComplete(merged, null, vehicleContext, huntSkip)) {
           queueRef.current = [];
           setQueuedCount(0);
           break;
@@ -2422,6 +2528,22 @@ export function AbeDataHunterWizard({
         const sanitizedNotes =
           sanitizeAuflagenNotesForTargetCodes(attributedNotes, allCodes) ??
           attributedNotes;
+        const coveredCodes = auflagenCodesCoveredInNotes(
+          sanitizedNotes,
+          codes,
+          skippedAuflagenCodes,
+        );
+        if (coveredCodes.length > 0) {
+          const previewUrl = URL.createObjectURL(file);
+          for (const code of coveredCodes) {
+            kuerzelImageUrlsRef.current.set(
+              normalizeAuflagenKuerzel(code),
+              previewUrl,
+            );
+          }
+          setKuerzelImageUrls(new Map(kuerzelImageUrlsRef.current));
+        }
+
         const before = reportRef.current;
         const merged = fillAbeDataHunterReport(before, {
           ...emptyAbeDataHunterReport(),
@@ -2436,27 +2558,31 @@ export function AbeDataHunterWizard({
           );
         }
 
-        const crops = await cropAuflagenSnippetsFromPhoto(
-          file,
-          sanitizedNotes,
-          codes,
-          regions,
-        );
-        if (crops.size > 0) {
-          const cropTexts = new Map(
-            parseAbeAuflagenNotes(sanitizedNotes, codes, { strict: true }).map(
-              (entry) => [
+        try {
+          const crops = await cropAuflagenSnippetsFromPhoto(
+            file,
+            sanitizedNotes,
+            codes,
+            regions,
+          );
+          if (crops.size > 0) {
+            const cropTexts = new Map(
+              parseAbeAuflagenNotes(sanitizedNotes, codes, {
+                strict: true,
+              }).map((entry) => [
                 normalizeAuflagenKuerzel(entry.code),
                 entry.text.trim(),
-              ],
-            ),
-          );
-          kuerzelImageUrlsRef.current = await persistAuflagenKuerzelCrops(
-            crops,
-            kuerzelImageUrlsRef.current,
-            cropTexts,
-          );
-          setKuerzelImageUrls(new Map(kuerzelImageUrlsRef.current));
+              ]),
+            );
+            kuerzelImageUrlsRef.current = await persistAuflagenKuerzelCrops(
+              crops,
+              kuerzelImageUrlsRef.current,
+              cropTexts,
+            );
+            setKuerzelImageUrls(new Map(kuerzelImageUrlsRef.current));
+          }
+        } catch (cropError) {
+          console.error("[abe-hunt] auflagen crop failed", cropError);
         }
 
         const enriched = enrichReportAuflagenFromKuerzelDb(
@@ -2606,13 +2732,19 @@ export function AbeDataHunterWizard({
       knownAuflagenCodes,
       { strict: true },
     );
-    const auflagenSnippets = auflagenEntries.map((entry) => ({
-      code: entry.code,
-      text: entry.text,
-      imageUrl:
-        kuerzelImageUrlsRef.current.get(normalizeAuflagenKuerzel(entry.code)) ??
-        null,
-    }));
+    const auflagenSnippets = auflagenEntries.map((entry) => {
+      const key = normalizeAuflagenKuerzel(entry.code);
+      const stored = kuerzelImageUrlsRef.current.get(key);
+      return {
+        code: entry.code,
+        text: entry.text,
+        imageUrl: stored
+          ? stored.startsWith("blob:")
+            ? auflagenKuerzelImageSrc(key)
+            : stored
+          : null,
+      };
+    });
     const conditions =
       parsedConditions.length > 0
         ? parsedConditions
@@ -2753,6 +2885,7 @@ export function AbeDataHunterWizard({
           imageUrlsByCode={kuerzelImageUrls}
           auflagenScanSkipped={auflagenScanSkipped}
           skippedAuflagenCodes={skippedAuflagenCodes}
+          skippedAbeNumber={skippedAbeNumber}
           showAllCapturedBanner={showAllCapturedBanner}
           onSelectGroup={handleSelectGroup}
           onSelectRow={handleSelectRow}
@@ -2891,14 +3024,16 @@ export function AbeDataHunterWizard({
       report={report}
       analyzing={analyzing}
       onOpenReview={advanceAfterCoreHunt}
+      onSkipAbeNumber={skipAbeNumber}
       onClose={returnToChooser}
       vehicleContext={vehicleContext}
+      skippedAbeNumber={skippedAbeNumber}
     />
   );
 
   const huntFocusKey = coreComplete
     ? "verkaufsbezeichnung"
-    : firstMissingFocusKey(report, null, vehicleContext);
+    : firstMissingFocusKey(report, null, vehicleContext, coreHuntSkip);
   const guideWatermark =
     huntFocusKey === "verkaufsbezeichnung" ? (
       <AbeVehicleTableWatermark vehicleContext={vehicleContext} />

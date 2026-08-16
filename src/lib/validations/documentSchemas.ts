@@ -117,7 +117,13 @@ export const AbeAuflagenSnippetSchema = z
   .object({
     code: z.string().trim().min(1).max(6),
     text: z.string().trim().min(1).max(8000),
-    imageUrl: z.string().trim().url().max(2048).nullable().optional(),
+    imageUrl: z
+      .string()
+      .trim()
+      .min(1)
+      .max(2048)
+      .nullable()
+      .optional(),
   })
   .strict();
 

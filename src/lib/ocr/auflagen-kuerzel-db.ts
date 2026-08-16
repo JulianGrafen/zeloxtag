@@ -16,6 +16,13 @@ export function normalizeAuflagenKuerzel(code: string): string {
   return code.trim().toUpperCase();
 }
 
+/** Same-origin paper-snippet URL — works without a public Storage bucket. */
+export function auflagenKuerzelImageSrc(kuerzel: string): string {
+  const code = normalizeAuflagenKuerzel(kuerzel);
+  if (!code) return "";
+  return `/api/abe/auflagen-kuerzel/image?kuerzel=${encodeURIComponent(code)}`;
+}
+
 export function parseAuflagenKuerzelRecords(
   raw: unknown,
 ): AuflagenKuerzelRecord[] {

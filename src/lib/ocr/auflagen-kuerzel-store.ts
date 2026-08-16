@@ -15,7 +15,6 @@ import {
   createAdminClient,
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
-import { getSupabaseEnv } from "@/lib/supabase/env";
 
 const SEED_PATH = path.join(
   process.cwd(),
@@ -30,9 +29,55 @@ const LEARNED_PATH = path.join(
 function publicUrlForKuerzelImage(imagePath: string | null | undefined): string | null {
   const trimmed = imagePath?.trim();
   if (!trimmed) return null;
-  const { url, isConfigured } = getSupabaseEnv();
-  if (!isConfigured) return null;
-  return `${url}/storage/v1/object/public/${AUFLAGEN_KUERZEL_BUCKET}/${trimmed}`;
+  const code = normalizeAuflagenKuerzel(trimmed.replace(/\.[a-z0-9]+$/i, ""));
+  if (!code) return null;
+  return `/api/abe/auflagen-kuerzel/image?kuerzel=${encodeURIComponent(code)}`;
+}
+
+export async function downloadAuflagenKuerzelImage(
+  kuerzel: string,
+): Promise<{ bytes: Buffer; contentType: string } | null> {
+  if (!isSupabaseAdminConfigured()) return null;
+
+  const code = normalizeAuflagenKuerzel(kuerzel);
+  if (!code) return null;
+
+  const admin = createAdminClient();
+  const { data: row } = await admin
+    .from("abe_auflagen_kuerzel")
+    .select("image_path")
+    .eq("kuerzel", code)
+    .maybeSingle();
+
+  const candidates = [
+    row?.image_path?.trim(),
+    `${code}.jpg`,
+    `${code}.jpeg`,
+    `${code}.png`,
+    `${code}.webp`,
+  ].filter((path): path is string => Boolean(path));
+
+  for (const imagePath of candidates) {
+    const { data, error } = await admin.storage
+      .from(AUFLAGEN_KUERZEL_BUCKET)
+      .download(imagePath);
+    if (error || !data) continue;
+
+    const bytes = Buffer.from(await data.arrayBuffer());
+    if (bytes.byteLength < 32) continue;
+
+    const contentType =
+      data.type && data.type.startsWith("image/")
+        ? data.type
+        : imagePath.endsWith(".png")
+          ? "image/png"
+          : imagePath.endsWith(".webp")
+            ? "image/webp"
+            : "image/jpeg";
+    return { bytes, contentType };
+  }
+
+  return null;
 }
 
 async function readJsonArray(filePath: string): Promise<unknown> {

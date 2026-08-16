@@ -6,6 +6,7 @@ import {
   parseAuflagenKuerzelRecords,
   selectKuerzelRecordsToLearn,
   auflagenKuerzelMapToRecords,
+  auflagenKuerzelImageSrc,
   type AuflagenKuerzelRecord,
 } from "@/lib/ocr/auflagen-kuerzel-db";
 
@@ -175,25 +176,24 @@ export async function persistAuflagenKuerzelCrops(
     nextImages.set(key, localUrl);
 
     try {
-      const imageUrl = await uploadAuflagenKuerzelImageClient(
+      await uploadAuflagenKuerzelImageClient(
         code,
         file,
         texts.get(key) ?? texts.get(code),
       );
-      nextImages.set(key, imageUrl);
     } catch (error) {
       console.error("[auflagen-kuerzel] image upload failed", code, error);
     }
   }
 
   writeLocalImageRecords(
-    [...nextImages.entries()]
-      .filter(([, imageUrl]) => !imageUrl.startsWith("blob:"))
-      .map(([kuerzel, imageUrl]) => ({
-        kuerzel,
-        text: texts.get(kuerzel) ?? "",
-        imageUrl,
-      })),
+    [...nextImages.entries()].map(([kuerzel, imageUrl]) => ({
+      kuerzel,
+      text: texts.get(kuerzel) ?? "",
+      imageUrl: imageUrl.startsWith("blob:")
+        ? auflagenKuerzelImageSrc(kuerzel)
+        : imageUrl,
+    })),
   );
 
   return nextImages;

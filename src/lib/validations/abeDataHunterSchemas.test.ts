@@ -204,6 +204,38 @@ describe("abeDataHunterSchemas required fields", () => {
     ).toEqual([]);
   });
 
+  it("allows core hunt and save when Nummer der ABE was skipped", () => {
+    const report = mergeAbeDataHunterSteps(
+      { ...completeStammdaten, abeNumber: null },
+      { markingText: null },
+      {
+        vehicleMatches: [
+          {
+            verkaufsbezeichnung: "5ER REIHE",
+            fahrzeugtyp: "5L",
+            typeApproval: null,
+            driveType: null,
+            tireSizes: [],
+            auflagenCodes: ["744"],
+          },
+        ],
+      },
+      { auflagenCodes: [], auflagenNotes: "744: Montage nur mit …" },
+    );
+
+    expect(missingAbeCoreHuntFields(report, "5ER REIHE")).toEqual(["abeNumber"]);
+    expect(
+      missingAbeCoreHuntFields(report, "5ER REIHE", null, {
+        skippedAbeNumber: true,
+      }),
+    ).toEqual([]);
+    expect(
+      missingAbeRequiredFields(report, "5ER REIHE", null, {
+        skippedAbeNumber: true,
+      }),
+    ).toEqual([]);
+  });
+
   it("allows save when the entire Auflagen scan was skipped", () => {
     const report = mergeAbeDataHunterSteps(
       completeStammdaten,
