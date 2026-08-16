@@ -346,9 +346,7 @@ export async function analyzeDocument(input: {
           rawText: "",
           ocrJson: ocrPayload,
           modelId: LLM_VISION_PARSE_MODEL_ID,
-          parseModel: vehicleContext
-            ? resolveAbeContextModel()
-            : resolveParseModel("abe"),
+          parseModel: resolveAbeContextModel(),
         };
       }
 
@@ -363,9 +361,7 @@ export async function analyzeDocument(input: {
         rawText: "",
         ocrJson: ocrPayload,
         modelId: LLM_VISION_PARSE_MODEL_ID,
-        parseModel: vehicleContext
-          ? resolveAbeContextModel()
-          : resolveParseModel("abe"),
+        parseModel: resolveAbeContextModel(),
       };
     }
 

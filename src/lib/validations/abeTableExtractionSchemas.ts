@@ -52,7 +52,7 @@ export const ABE_TABLE_EXTRACTION_JSON_SCHEMA = {
             model_name: {
               type: "string",
               description:
-                "Commercial vehicle name from Handelsbezeichnung only (e.g. BMW 3er-Reihe). No type codes or EG-BE.",
+                "Commercial vehicle name from the printed Handelsbezeichnung only. Copy verbatim. No type codes or EG-BE. Never invent a model.",
             },
             configurations: {
               type: "array",
@@ -90,7 +90,7 @@ Analyze the provided table image and extract the data strictly into the provided
 
 RULES FOR EXTRACTION:
 
-'model_name': Look at the first column ('Handelsbezeichnung'). Extract ONLY the commercial vehicle name (e.g., 'BMW 1er-Reihe', 'Golf'). Completely ignore and remove internal type codes (e.g., '182, 1C') and approval numbers (e.g., 'e12001/116...').
+'model_name': Look at the first column ('Handelsbezeichnung'). Extract ONLY the commercial vehicle name printed there. Completely ignore and remove internal type codes and approval numbers. Never invent a model that is not on the image.
 
 Grouping (Row Spans): A vehicle name in the first column applies to ALL subsequent rows to its right and below it, until a NEW vehicle name appears in the first column. Group all 'kW-Bereich', 'Reifen', and 'Auflagen' under that single vehicle.
 

@@ -5,7 +5,11 @@ import {
   buildVisionUserMessage,
   prepareAbeOcrInput,
 } from "@/lib/ocr/prepare-document-for-llm";
-import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
+import { isPdfBuffer } from "@/lib/ocr/document-bytes";
+import {
+  buildDocumentUserMessage,
+  type DocumentBytesInput,
+} from "@/lib/ocr/llm-document-content";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { parseAbeVehicleRows, mergeAbeVehicleMatchRows } from "@/lib/ocr/abe-wizard-vehicle-normalize";
@@ -231,27 +235,30 @@ export class AbeDataHunterExtractionService {
           [
             IMAGE_ONLY_GUARD,
             "Extract German ABE / Gutachten Verwendungsbereich table rows (allowed vehicles).",
-            "Verkaufsbezeichnung / Handelsbezeichnung is the vehicle model line (e.g. BMW 3er-Reihe, BMW 3er-Compact, 5ER REIHE) — not Hersteller BMW in the table header, not Fahrzeugtyp codes.",
-            "Copy the Handelsbezeichnung onto every row of that vehicle block.",
-            "Column mapping:",
-            "- fahrzeugtyp: Fahrzeugtyp / type code cell only (346L, 3/CG, 346K, 5L).",
-            "- typeApproval: ABE/EWG-Nr / Betriebserlaubnis / EG-BE cell verbatim.",
+            "Copy ONLY text that is readable on this photograph. Never invent a model, type code, or EG-BE. Never reuse sample vehicles from these instructions.",
+            "Cropped photos usually show 5 columns: Fahrzeugtyp | Betriebserlaubnis / EG-BE | kW | Reifen | Auflagen.",
+            "Verkaufsbezeichnung / Handelsbezeichnung is the vehicle model HEADER ABOVE the table — not a table column, not the manufacturer word alone, not a Fahrzeugtyp code.",
+            "Copy that printed header onto every row of that vehicle block. If no header is readable, use an empty string — do not guess a model name.",
+            "Column mapping for the cropped 5-col table:",
+            "- fahrzeugtyp: FIRST data column — the printed type code only. Required when the cell is visible. Never leave null if a type code is readable. Never invent a code.",
+            "- typeApproval: SECOND column — Betriebserlaubnis / EG-BE / ABE/EWG-Nr verbatim. Never put type codes here.",
+            "- kW ranges are NOT fahrzeugtyp and NOT typeApproval — ignore that column.",
             "- driveType: Allradantrieb / Heckantrieb / Frontantrieb if present, else null.",
-            '- tireSizes: Reifen column (e.g. "225/45R17") — one entry per size; empty array when column missing.',
-            "- auflagenCodes: ALL short codes from reifenbezogene Auflagen AND Auflagen und Hinweise columns for this row. Letter suffixes stay letters (22B not 228, 11A not 114). Do not omit any visible Kürzel.",
-            "Read digits 3 and 8 carefully in Fahrzeugtyp codes — common OCR confusion (346K not 846K).",
-            'When one table line lists multiple Fahrzeugtyp codes separated by comma (e.g. "346C, 346R"), emit ONE vehicleMatches row PER code with the same Handelsbezeichnung and EG-BE.',
+            "- tireSizes: Reifen column — one entry per printed size; empty array when column missing.",
+            "- auflagenCodes: ALL short codes from reifenbezogene Auflagen AND Auflagen und Hinweise columns for this row. Letter suffixes stay letters. Do not omit any visible Kürzel.",
+            "Read digits 3 and 8 carefully in Fahrzeugtyp codes — they are often confused.",
+            "When one table line lists multiple Fahrzeugtyp codes separated by comma, emit ONE vehicleMatches row PER printed code with the same header and EG-BE.",
             "Do not merge rows. Do not skip visible rows. Extract every vehicle block visible on the photo.",
             ...(isRetry
               ? [
                   "The table shows MULTIPLE Fahrzeugtyp rows under the same Handelsbezeichnung — return EVERY visible row, not just the first.",
-                  "Typical Gutachten layout: BMW 3er-Compact 346K … then BMW 3er-Reihe 3/CG … then 346L … — each is a separate row.",
+                  "Each printed type-code line is a separate row. Do not invent extra models.",
                 ]
               : []),
           ],
           [
             "Extract every visible Verwendungsbereich row.",
-            "Typical Gutachten columns: Handelsbezeichnung | Fahrzeugtyp | ABE/EWG-Nr | kW | Reifen | Auflagen.",
+            "Typical cropped columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen. Model name is the header above, not a column.",
           ],
           ABE_HUNT_VEHICLE_JSON_SCHEMA,
           isRetry ? "hunt-vehicle-retry" : "hunt-vehicle",
@@ -399,10 +406,11 @@ export class AbeDataHunterExtractionService {
           'For markingText: transcribe the Kennzeichnungen section verbatim — KBA-Nummer, Herstellerzeichen, Radtyp, Radgröße, Einpresstiefe. No summary.',
           "If 'Inhaber der ABE und Hersteller' is combined, set both abeHolder and manufacturer.",
           'Map "Auftraggeber" to abeHolder when no separate Inhaber der ABE label is shown.',
-          "Verwendungsbereich / Fahrzeugtabelle: Handelsbezeichnung → verkaufsbezeichnung; Fahrzeugtyp codes (346L, 3/CG, 346K) → fahrzeugtyp; ABE/EWG-Nr / EG-BE column → typeApproval; Reifen column → tireSizes.",
-          "Read digits 3 and 8 carefully in Fahrzeugtyp codes — common OCR confusion (346K not 846K).",
-          "TÜV Gutachten tables: ONE vehicleMatches row per Fahrzeugtyp code. kW-Bereich (e.g. 85-195) is NOT fahrzeugtyp. Reifen sizes (215/45R17) go ONLY in tireSizes, never in typeApproval.",
-          'When one table line lists multiple Fahrzeugtyp codes (e.g. "346C, 346R"), emit ONE row PER code — same Handelsbezeichnung and EG-BE on each.',
+          "Verwendungsbereich / Fahrzeugtabelle: copy ONLY printed text. Model header above the table → verkaufsbezeichnung; FIRST data column → fahrzeugtyp (never null when visible, never invent); Betriebserlaubnis / EG-BE → typeApproval; Reifen → tireSizes. Cropped photos are often 5 columns without a Handelsbezeichnung column.",
+          "Never output a vehicle model or type code that is not readable on this photo.",
+          "Read digits 3 and 8 carefully in Fahrzeugtyp codes — they are often confused.",
+          "TÜV Gutachten tables: ONE vehicleMatches row per printed Fahrzeugtyp code. kW-Bereich is NOT fahrzeugtyp. Reifen sizes go ONLY in tireSizes, never in typeApproval.",
+          "When one table line lists multiple Fahrzeugtyp codes, emit ONE row PER printed code — same header and EG-BE on each.",
           "If ONLY a Verwendungsbereich table is visible, extract EVERY readable row into vehicleMatches — do not return an empty array when table lines are visible.",
           "Gutachten tables may list Handelsbezeichnung + Fahrzeugtyp + EG-BE in one block per vehicle — split into separate fields per row.",
           "Each vehicleMatches row must include a Fahrzeugtyp code OR an EG-BE/typeApproval value — do not invent rows from isolated Reifen sizes without Fahrzeugtyp.",
@@ -414,7 +422,7 @@ export class AbeDataHunterExtractionService {
           "Auflagen-Kürzel examples: 744, 166, A02, 11A, 20B, 22B, B04A, CPE, CBO — every short code from BOTH Auflagen columns on that row.",
           "Letter suffixes are letters, not digits: 22B not 228, 11A not 114, 22I not 221, 10B not 108. Copy every visible Kürzel — do not stop after the first two.",
           "CPO is NOT a valid Auflagen code — copy CPE and CBO exactly (O vs E, B vs P).",
-          "NEVER put Fahrzeugtyp codes (F40, G20, K40, T67, 346L, 3/CG) into auflagenCodes — those belong in fahrzeugtyp only.",
+          "NEVER put Fahrzeugtyp codes into auflagenCodes — those belong in fahrzeugtyp only.",
           "If a token looks like a vehicle type code, it is NOT an Auflagen-Kürzel.",
           "Leave auflagenNotes empty — the user scans Auflagen prose in a dedicated follow-up step.",
           ...(isPdf
@@ -693,8 +701,17 @@ export class AbeDataHunterExtractionService {
       );
     }
 
-    const prepared = await prepareAbeOcrInput(input);
-    const userContent = buildVisionUserMessage(instructionLines, prepared);
+    const sendOriginalPdf =
+      input.contentType === "application/pdf" || isPdfBuffer(input.bytes);
+    const userContent = sendOriginalPdf
+      ? buildDocumentUserMessage(instructionLines, {
+          bytes: input.bytes,
+          contentType: "application/pdf",
+        })
+      : buildVisionUserMessage(
+          instructionLines,
+          await prepareAbeOcrInput(input),
+        );
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {

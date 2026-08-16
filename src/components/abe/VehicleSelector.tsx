@@ -176,7 +176,7 @@ export function VehicleSelector({
             Welches Modell steht in deiner ABE?
           </p>
           <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Wähle die Handelsbezeichnung aus der Tabelle — z. B. BMW 3er-Reihe.
+            Wähle die Handelsbezeichnung, die in der Tabelle steht.
           </p>
         </div>
 

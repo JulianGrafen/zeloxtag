@@ -512,4 +512,40 @@ describe("inferAbeKbaFromReport", () => {
     expect(merged.kbaNumber).toBe("48185");
     expect(missingAbeCoreHuntFields(merged)).not.toContain("kbaNumber");
   });
+
+  it("replaces vehicle rows when a dedicated table scan arrives", () => {
+    const current = fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
+      ...emptyAbeDataHunterReport(),
+      kbaNumber: "48571",
+      vehicleMatches: [
+        {
+          verkaufsbezeichnung: "BMW 3er-Reihe",
+          fahrzeugtyp: "346L",
+          typeApproval: "e1*97/27*0097*",
+          driveType: null,
+          tireSizes: ["225/45R17"],
+          auflagenCodes: ["A01"],
+        },
+      ],
+    });
+
+    const merged = fillAbeDataHunterReport(current, {
+      ...emptyAbeDataHunterReport(),
+      vehicleMatches: [
+        {
+          verkaufsbezeichnung: "Golf",
+          fahrzeugtyp: "1K",
+          typeApproval: "e1*2001/116*0242*",
+          driveType: null,
+          tireSizes: ["205/55R16"],
+          auflagenCodes: ["744"],
+        },
+      ],
+    });
+
+    expect(merged.kbaNumber).toBe("48571");
+    expect(merged.vehicleMatches).toHaveLength(1);
+    expect(merged.vehicleMatches[0]?.verkaufsbezeichnung).toBe("Golf");
+    expect(merged.vehicleMatches[0]?.fahrzeugtyp).toBe("1K");
+  });
 });

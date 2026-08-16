@@ -7,6 +7,10 @@ import {
   resolveInvoiceParseModel,
   resolveParseModel,
 } from "@/lib/ocr/model-routing";
+import {
+  resolveAbeContextModel,
+  resolveAbeTableExtractionModel,
+} from "@/services/ocr/AbeExtractionService";
 
 describe("resolveParseModel", () => {
   afterEach(() => {
@@ -14,6 +18,9 @@ describe("resolveParseModel", () => {
     delete process.env.FOUNDRY_MODEL_NAME;
     delete process.env.FOUNDRY_MODEL_ECONOMY;
     delete process.env.INVOICE_USE_NANO;
+    delete process.env.FOUNDRY_MODEL_ABE;
+    delete process.env.FOUNDRY_MODEL_ABE_TABLE;
+    delete process.env.FOUNDRY_MODEL_ABE_CONTEXT;
   });
 
   it("routes invoices to GPT-5.4 by default", () => {
@@ -56,5 +63,11 @@ describe("resolveParseModel", () => {
 
     process.env.FOUNDRY_MODEL_NAME = "gpt-5.4-nano";
     expect(resolveParseModel("abe")).toBe("gpt-5.4-nano");
+  });
+
+  it("sends only the ABE table to GPT-5.4", () => {
+    process.env.FOUNDRY_MODEL_NAME = "gpt-5.4-nano";
+    expect(resolveAbeContextModel()).toBe("gpt-5.4-nano");
+    expect(resolveAbeTableExtractionModel()).toBe("gpt-5.4");
   });
 });

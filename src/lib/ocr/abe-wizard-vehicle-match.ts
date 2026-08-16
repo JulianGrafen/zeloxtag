@@ -64,12 +64,39 @@ export type AbeVehicleVariantOption = {
   suggested: boolean;
 };
 
+function rowHasSelectableVariant(row: AbeVehicleMatch): boolean {
+  return Boolean(row.fahrzeugtyp?.trim() || row.typeApproval?.trim());
+}
+
 export function countAbeVehicleVariants(groups: readonly AbeVehicleGroup[]): number {
   return groups.reduce(
     (total, group) =>
-      total + group.rows.filter((row) => Boolean(row.fahrzeugtyp?.trim())).length,
+      total + group.rows.filter(rowHasSelectableVariant).length,
     0,
   );
+}
+
+function rowMatchesGarageIdentity(
+  row: AbeVehicleMatch,
+  vehicle: AbeVehicleContext,
+): boolean {
+  const type = vehicle.type ? normalizeMatchToken(vehicle.type) : "";
+  const egBe = vehicle.egBe ? normalizeMatchToken(vehicle.egBe) : "";
+  const egBeCompact = vehicle.egBe ? compactAlnum(vehicle.egBe) : "";
+
+  if (type && normalizeMatchToken(row.fahrzeugtyp ?? "") === type) {
+    return true;
+  }
+  if (egBe && row.typeApproval) {
+    const approval = normalizeMatchToken(row.typeApproval);
+    if (
+      approval.includes(egBe) ||
+      compactAlnum(row.typeApproval).includes(egBeCompact)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function findSuggestedAbeVehicleVariant(
@@ -79,12 +106,18 @@ export function findSuggestedAbeVehicleVariant(
   if (!vehicleContext) return null;
 
   const groups = groupAbeVehicleMatches([...matches]);
+  const requiresIdentity = Boolean(
+    vehicleContext.type?.trim() || vehicleContext.egBe?.trim(),
+  );
   let bestGroupIndex = -1;
   let bestRowIndex = -1;
   let bestScore = 0;
 
   groups.forEach((group, groupIndex) => {
     group.rows.forEach((row, rowIndex) => {
+      if (requiresIdentity && !rowMatchesGarageIdentity(row, vehicleContext)) {
+        return;
+      }
       const score = scoreAbeVehicleRow(row, vehicleContext);
       if (score >= 2 && score > bestScore) {
         bestScore = score;
@@ -110,7 +143,7 @@ export function listAbeVehicleVariantOptions(
   for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
     const group = groups[groupIndex]!;
     group.rows.forEach((row, rowIndex) => {
-      if (!row.fahrzeugtyp?.trim()) return;
+      if (!rowHasSelectableVariant(row)) return;
       options.push({
         groupIndex,
         rowIndex,

@@ -155,6 +155,12 @@ function looksLikeKwRange(value: string): boolean {
   return /^\d{2,3}\s*-\s*\d{2,3}$/.test(value.trim());
 }
 
+export function looksLikeEgBeApproval(value: string | null | undefined): boolean {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return false;
+  return /^(?:e\d{1,2}\*|[eE]\d{1,2}\s)/.test(trimmed) || /e\d{1,2}\*\d/.test(trimmed);
+}
+
 function coalesceTireSizeTokens(parts: string[]): string[] {
   const tires: string[] = [];
   let index = 0;
@@ -218,13 +224,90 @@ function splitMixedTireAndAuflagenTokens(items: readonly string[]): {
   };
 }
 
+/**
+ * Cropped 5-column tables often shift Fahrzeugtyp into EG-BE / Handelsbezeichnung.
+ * Recover the type code before the picker drops rows without `fahrzeugtyp`.
+ */
+export function recoverFahrzeugtypFromShiftedColumns(
+  match: AbeVehicleMatch,
+): AbeVehicleMatch {
+  let fahrzeugtyp = match.fahrzeugtyp?.trim() || null;
+  let typeApproval = match.typeApproval?.trim() || null;
+  let auflagenCodes = [...match.auflagenCodes];
+  const verkaufsbezeichnung = match.verkaufsbezeichnung.trim();
+
+  if (
+    fahrzeugtyp &&
+    looksLikeEgBeApproval(fahrzeugtyp) &&
+    typeApproval &&
+    looksLikeFahrzeugtypCode(typeApproval)
+  ) {
+    return { ...match, fahrzeugtyp: typeApproval, typeApproval: fahrzeugtyp };
+  }
+
+  if (
+    fahrzeugtyp &&
+    looksLikeEgBeApproval(fahrzeugtyp) &&
+    looksLikeFahrzeugtypCode(verkaufsbezeichnung)
+  ) {
+    return {
+      ...match,
+      fahrzeugtyp: verkaufsbezeichnung,
+      typeApproval: typeApproval ?? fahrzeugtyp,
+    };
+  }
+
+  if (
+    fahrzeugtyp &&
+    (looksLikeEgBeApproval(fahrzeugtyp) || fahrzeugtyp.length > 40) &&
+    !typeApproval
+  ) {
+    typeApproval = fahrzeugtyp;
+    fahrzeugtyp = null;
+  }
+
+  if (
+    !fahrzeugtyp &&
+    typeApproval &&
+    looksLikeFahrzeugtypCode(typeApproval) &&
+    !looksLikeEgBeApproval(typeApproval)
+  ) {
+    fahrzeugtyp = typeApproval;
+    typeApproval = null;
+  }
+
+  if (!fahrzeugtyp && looksLikeFahrzeugtypCode(verkaufsbezeichnung)) {
+    fahrzeugtyp = verkaufsbezeichnung;
+  }
+
+  if (!fahrzeugtyp) {
+    const promoted = auflagenCodes.find(
+      (code) =>
+        looksLikeFahrzeugtypCode(code) &&
+        !isLikelyAuflagenMisplacedAsFahrzeugtyp(code),
+    );
+    if (promoted) {
+      fahrzeugtyp = promoted;
+      auflagenCodes = auflagenCodes.filter((code) => code !== promoted);
+    }
+  }
+
+  return {
+    ...match,
+    fahrzeugtyp,
+    typeApproval,
+    auflagenCodes,
+  };
+}
+
 function repairMisassignedGutachtenFields(
   match: AbeVehicleMatch,
 ): AbeVehicleMatch {
-  let fahrzeugtyp = match.fahrzeugtyp;
-  let typeApproval = match.typeApproval;
-  let tireSizes = [...match.tireSizes];
-  let auflagenCodes = [...match.auflagenCodes];
+  const recovered = recoverFahrzeugtypFromShiftedColumns(match);
+  let fahrzeugtyp = recovered.fahrzeugtyp;
+  let typeApproval = recovered.typeApproval;
+  let tireSizes = [...recovered.tireSizes];
+  let auflagenCodes = [...recovered.auflagenCodes];
 
   if (fahrzeugtyp && looksLikeKwRange(fahrzeugtyp)) {
     fahrzeugtyp = null;
@@ -247,7 +330,7 @@ function repairMisassignedGutachtenFields(
   ]);
 
   return {
-    ...match,
+    ...recovered,
     fahrzeugtyp,
     typeApproval,
     tireSizes,
@@ -720,17 +803,6 @@ function scoreFahrzeugtyp38Variant(
   if (peerCodes.has(upper)) score += 20;
   if (contextUpper.includes(upper)) score += 15;
 
-  const peerList = [...peerCodes];
-  if (/^346[A-Z]?$/i.test(variant) && peerList.some((peer) => /^346/i.test(peer))) {
-    score += 10;
-  }
-  if (
-    /^3\//i.test(variant) &&
-    peerList.some((peer) => /^3\//i.test(peer) || /^346/i.test(peer))
-  ) {
-    score += 8;
-  }
-
   if (looksLikeFahrzeugtypCode(variant) && !looksLikeFahrzeugtypCode(original)) {
     score += 5;
   }
@@ -854,11 +926,23 @@ export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
       );
     }
 
+    const rawAuflagenTokens = readStringArray(row.auflagenCodes)
+      .flatMap((item) => item.split(/[\s,/;]+/))
+      .map((token) => token.trim())
+      .filter(Boolean);
+    const typFromAuflagen = rawAuflagenTokens.find(
+      (token) =>
+        looksLikeFahrzeugtypCode(token) &&
+        !isLikelyAuflagenMisplacedAsFahrzeugtyp(token),
+    );
+
     const fahrzeugtyp =
       readString(row.fahrzeugtyp) ??
       (rawGroupCandidate && looksLikeFahrzeugtypCode(rawGroupCandidate)
         ? rawGroupCandidate
-        : null);
+        : null) ??
+      typFromAuflagen ??
+      null;
 
     const parsedAuflagen = parseAuflagenCodes(readStringArray(row.auflagenCodes));
     const draft: AbeVehicleMatch = {
@@ -931,8 +1015,21 @@ export function normalizeAbeVehicleMatches(
         ? match.verkaufsbezeichnung.trim()
         : null);
 
-    let fahrzeugtyp = fahrzeugtypRaw;
-    let auflagenCodes = parsedAuflagen.codes;
+    const verkaufsbezeichnung =
+      resolvedGroup ??
+      currentVerkaufsbezeichnung ??
+      stripVerkaufsbezeichnungLabel(match.verkaufsbezeichnung);
+
+    const repaired = repairMisassignedGutachtenFields({
+      ...match,
+      verkaufsbezeichnung,
+      fahrzeugtyp: fahrzeugtypRaw,
+      driveType: match.driveType ?? parsedAuflagen.driveType,
+      auflagenCodes: parsedAuflagen.codes,
+    });
+
+    let fahrzeugtyp = repaired.fahrzeugtyp;
+    let auflagenCodes = repaired.auflagenCodes;
     const promotedFromFahrzeugtyp = new Set<string>();
 
     if (fahrzeugtyp && isLikelyAuflagenMisplacedAsFahrzeugtyp(fahrzeugtyp)) {
@@ -942,30 +1039,18 @@ export function normalizeAbeVehicleMatches(
       fahrzeugtyp = null;
     }
 
-    const verkaufsbezeichnung =
-      resolvedGroup ??
-      currentVerkaufsbezeichnung ??
-      stripVerkaufsbezeichnungLabel(match.verkaufsbezeichnung);
-
-    const repaired = repairMisassignedGutachtenFields({
-      ...match,
-      verkaufsbezeichnung,
-      fahrzeugtyp,
-      driveType: match.driveType ?? parsedAuflagen.driveType,
-      auflagenCodes,
-    });
-
     return {
       ...repaired,
+      fahrzeugtyp,
       auflagenCodes: correctAuflagenKuerzelList(
         filterAuflagenCodesAgainstFahrzeugtyp(
-          repaired.auflagenCodes,
-          repaired.fahrzeugtyp,
+          auflagenCodes,
+          fahrzeugtyp,
           fahrzeugtypCodes,
           promotedFromFahrzeugtyp,
         ),
         {
-          allowlist: repaired.auflagenCodes,
+          allowlist: auflagenCodes,
           rawContext: match.auflagenCodes.join(" "),
         },
       ),

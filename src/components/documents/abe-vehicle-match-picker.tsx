@@ -133,8 +133,9 @@ export function AbeVehicleMatchPicker({
           {variants.length} Varianten erkannt
         </p>
         <p className="mt-1 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Wähle deine Zeile aus der ABE-Tabelle — z. B. BMW 3er-Reihe · 346L.
-          Danach scannst du nur die Auflagen für genau diese Zeile.
+          Wähle die Zeile, die auf dem Foto steht — Modell und Fahrzeugtyp
+          wie in der Tabelle. Danach scannst du nur die Auflagen für genau
+          diese Zeile.
         </p>
         {vehicleLabel ? (
           <p className="mt-2 text-[0.78rem] font-medium text-[color:var(--vd-text)]">

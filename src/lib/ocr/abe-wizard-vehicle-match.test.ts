@@ -4,6 +4,7 @@ import {
   displayAbeVehicleModelOptionLabel,
   displayAbeVehicleVariantOptionLabel,
   findBestAbeVehicleGroupIndex,
+  findSuggestedAbeVehicleVariant,
   listAbeVehicleVariantOptions,
   formatAbeVehicleApprovalLine,
   groupAbeVehicleMatches,
@@ -183,7 +184,7 @@ describe("abe-wizard-vehicle-match", () => {
     );
   });
 
-  it("lists only rows with Fahrzeugtyp and merges fragment model headers", () => {
+  it("lists rows with Fahrzeugtyp or EG-BE and merges fragment model headers", () => {
     const options = listAbeVehicleVariantOptions([
       {
         verkaufsbezeichnung: "BMW 3er-Reihe",
@@ -211,10 +212,11 @@ describe("abe-wizard-vehicle-match", () => {
       },
     ]);
 
-    expect(options).toHaveLength(2);
+    expect(options).toHaveLength(3);
     expect(options.map((option) => option.label)).toEqual([
       "BMW 3er-Reihe · 346L",
       "BMW 3er-Compact · 346K",
+      "BMW 1er-Reihe",
     ]);
   });
 
@@ -223,6 +225,50 @@ describe("abe-wizard-vehicle-match", () => {
       "3er-Reihe",
     );
     expect(displayAbeVehicleModelOptionLabel("5ER REIHE")).toBe("5ER REIHE");
+  });
+
+  it("does not suggest a 3er type just because the garage is a BMW 3er", () => {
+    const suggested = findSuggestedAbeVehicleVariant(
+      [
+        {
+          verkaufsbezeichnung: "BMW 3er-Reihe",
+          fahrzeugtyp: "346L",
+          typeApproval: "e1*97/27*0097*",
+          driveType: null,
+          tireSizes: ["225/45R17"],
+          auflagenCodes: ["A01"],
+        },
+        {
+          verkaufsbezeichnung: "Golf",
+          fahrzeugtyp: "1K",
+          typeApproval: "e1*2001/116*0242*",
+          driveType: null,
+          tireSizes: ["205/55R16"],
+          auflagenCodes: ["744"],
+        },
+      ],
+      { brand: "BMW", model: "320d", type: "1K" },
+    );
+
+    expect(suggested).toEqual({ groupIndex: 1, rowIndex: 0 });
+  });
+
+  it("does not auto-suggest when the garage type is not in the table", () => {
+    expect(
+      findSuggestedAbeVehicleVariant(
+        [
+          {
+            verkaufsbezeichnung: "BMW 3er-Reihe",
+            fahrzeugtyp: "346L",
+            typeApproval: "e1*97/27*0097*",
+            driveType: null,
+            tireSizes: ["225/45R17"],
+            auflagenCodes: ["A01"],
+          },
+        ],
+        { brand: "BMW", model: "320d", type: "390" },
+      ),
+    ).toBeNull();
   });
 
   it("does not return unscoped top-level Auflagen when groups exist", () => {

@@ -410,20 +410,30 @@ function mergeVehicleMatchRow(
   };
 }
 
-/**
- * Merge a new photo/PDF extraction into the accumulating report.
- * Already-filled scalar fields win; vehicle rows and Auflagen codes accumulate.
- */
-export function fillAbeDataHunterReport(
-  current: AbeDataHunterReport,
-  incoming: AbeDataHunterReport,
-): AbeDataHunterReport {
-  const rowIndexByKey = new Map(
-    current.vehicleMatches.map((row, index) => [vehicleRowKey(row), index]),
+function isVehicleTableOnlyIncoming(incoming: AbeDataHunterReport): boolean {
+  return (
+    incoming.vehicleMatches.length > 0 &&
+    !incoming.kbaNumber?.trim() &&
+    !incoming.abeNumber?.trim() &&
+    !incoming.abeHolder?.trim() &&
+    !incoming.manufacturer?.trim() &&
+    !incoming.partDesignation?.trim() &&
+    !incoming.markingText?.trim() &&
+    incoming.auflagenCodes.length === 0 &&
+    !incoming.auflagenNotes?.trim()
   );
-  const vehicleMatches = [...current.vehicleMatches];
+}
 
-  for (const row of incoming.vehicleMatches) {
+function mergeIncomingVehicleMatches(
+  current: AbeDataHunterReport["vehicleMatches"],
+  incoming: AbeDataHunterReport["vehicleMatches"],
+): AbeDataHunterReport["vehicleMatches"] {
+  const rowIndexByKey = new Map(
+    current.map((row, index) => [vehicleRowKey(row), index]),
+  );
+  const vehicleMatches = [...current];
+
+  for (const row of incoming) {
     const key = vehicleRowKey(row);
     const existingIndex = rowIndexByKey.get(key);
     if (existingIndex !== undefined) {
@@ -436,6 +446,22 @@ export function fillAbeDataHunterReport(
     rowIndexByKey.set(key, vehicleMatches.length);
     vehicleMatches.push(row);
   }
+
+  return vehicleMatches;
+}
+
+/**
+ * Merge a new photo/PDF extraction into the accumulating report.
+ * Already-filled scalar fields win. A dedicated table scan replaces vehicle
+ * rows so a previous hallucinated model does not stay in the picker.
+ */
+export function fillAbeDataHunterReport(
+  current: AbeDataHunterReport,
+  incoming: AbeDataHunterReport,
+): AbeDataHunterReport {
+  const vehicleMatches = isVehicleTableOnlyIncoming(incoming)
+    ? [...incoming.vehicleMatches]
+    : mergeIncomingVehicleMatches(current.vehicleMatches, incoming.vehicleMatches);
 
   return coalesceAbeHolderAndManufacturer(
     withInferredKba({
@@ -812,19 +838,19 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
               type: "string",
               description:
                 FROM_CROP +
-                "Verkaufsbezeichnung / Handelsbezeichnung for this row (e.g. BMW 3er-Reihe, 5ER REIHE) — repeat on every row in the same vehicle block.",
+                "Verkaufsbezeichnung / Handelsbezeichnung HEADER printed ABOVE the table — repeat on every row in the same vehicle block. Copy verbatim. Empty if unreadable. Never a Fahrzeugtyp code from the first column. Never invent a model.",
             },
             fahrzeugtyp: {
               type: ["string", "null"],
               description:
                 FROM_CROP +
-                "Fahrzeugtyp / type code only (346L, 3/CG, 346K, 5L) — never the Handelsbezeichnung line.",
+                "FIRST data column: the printed Fahrzeugtyp / type code only. Required when visible. Never invent a code. Never the model header, never EG-BE, never kW.",
             },
             typeApproval: {
               type: ["string", "null"],
               description:
                 FROM_CROP +
-                "Betriebserlaubnis / Typgenehmigung / EG-BE / technische Bezeichnung cell verbatim.",
+                "SECOND data column: Betriebserlaubnis / Typgenehmigung / EG-BE / technische Bezeichnung cell verbatim (e1*…). Never a Fahrzeugtyp code.",
             },
             driveType: {
               type: ["string", "null"],
@@ -1008,19 +1034,19 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
               type: "string",
               description:
                 FROM_PHOTO +
-                "Verkaufsbezeichnung / Handelsbezeichnung / Fahrzeugmodell line (e.g. BMW 3er-Reihe, 5ER REIHE) — NOT the Fahrzeugtyp code.",
+                "Verkaufsbezeichnung / Handelsbezeichnung HEADER printed ABOVE the table — NOT the first-column Fahrzeugtyp code. Copy verbatim. Never invent a model.",
             },
             fahrzeugtyp: {
               type: ["string", "null"],
               description:
                 FROM_PHOTO +
-                "Fahrzeugtyp / type code cell only (e.g. 346L, 3/CG, 5L, 346K) — never the Handelsbezeichnung.",
+                "FIRST data column: the printed Fahrzeugtyp / type code only. Required when visible. Never invent a code. Never the model header, never EG-BE.",
             },
             typeApproval: {
               type: ["string", "null"],
               description:
                 FROM_PHOTO +
-                "Betriebserlaubnis / Typgenehmigung / EG-BE / technische Bezeichnung cell verbatim.",
+                "Betriebserlaubnis / Typgenehmigung / EG-BE cell verbatim (e1*…). Never a Fahrzeugtyp code.",
             },
             driveType: {
               type: ["string", "null"],

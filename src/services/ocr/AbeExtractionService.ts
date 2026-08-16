@@ -10,10 +10,7 @@ import {
   prepareAbeOcrInput,
 } from "@/lib/ocr/prepare-document-for-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
-import {
-  DEFAULT_PARSE_MODEL,
-  resolveParseModel,
-} from "@/lib/ocr/model-routing";
+import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
   ABE_MINIMAL_JSON_SCHEMA,
@@ -48,21 +45,19 @@ export const ABE_COVER_MAX_CHARS = 6_000;
 
 /**
  * With vehicle context we must reach Verwendungsbereich tables —
- * larger window + mid-tier model.
+ * larger OCR window. Table vision uses GPT-5.4 separately.
  */
 export const ABE_CONTEXT_MAX_PAGES = 12;
 export const ABE_CONTEXT_MAX_CHARS = 40_000;
 const COVER_PARSE_MAX_TOKENS = 500;
 const CONTEXT_PARSE_MAX_TOKENS = 1_200;
 
-/** Economy deployment for ABE cover, Stammdaten, Kennzeichnung, Auflagen, etc. */
+/** Economy model for ABE cover, Stammdaten, Kennzeichnung, Auflagen. */
 export function resolveAbeContextModel(): string {
-  return (
-    process.env.FOUNDRY_MODEL_ABE?.trim() || resolveParseModel("abe")
-  );
+  return process.env.FOUNDRY_MODEL_ABE?.trim() || resolveParseModel("abe");
 }
 
-/** GPT-5.4 (or override) — reserved for Verwendungsbereich / Fahrzeugtabelle vision only. */
+/** GPT-5.4 only for Verwendungsbereich / Fahrzeugtabelle vision. */
 export function resolveAbeTableExtractionModel(): string {
   return (
     process.env.FOUNDRY_MODEL_ABE_TABLE?.trim() ||
@@ -188,7 +183,7 @@ export type AbeExtractionOptions = {
 };
 
 /**
- * ABE extractor — cover-only (economy) or context-aware OCR window (economy).
+ * ABE extractor — sends the original PDF/photo to GPT-5.4.
  * Dedicated table vision uses {@link resolveAbeTableExtractionModel} elsewhere.
  */
 export class AbeExtractionService {
@@ -199,9 +194,7 @@ export class AbeExtractionService {
     const vehicleContext = options.vehicleContext ?? null;
     const withContext = Boolean(vehicleContext);
 
-    const model =
-      options.model?.trim() ||
-      (withContext ? resolveAbeContextModel() : DEFAULT_PARSE_MODEL);
+    const model = options.model?.trim() || resolveAbeContextModel();
 
     let client: OpenAI;
     let resolvedModel: string;
@@ -279,9 +272,7 @@ export class AbeExtractionService {
       );
     }
 
-    const model =
-      options.model?.trim() ||
-      (withContext ? resolveAbeContextModel() : DEFAULT_PARSE_MODEL);
+    const model = options.model?.trim() || resolveAbeContextModel();
 
     let client: OpenAI;
     let resolvedModel: string;
@@ -528,9 +519,9 @@ export class AbeExtractionService {
         "- driveType: drive-type word in Auflagen (Allradantrieb / Heckantrieb / Frontantrieb), else null.",
         "- tireSizes: tyre sizes from Reifen column if present; empty array when column is missing (e.g. spoiler, spacer).",
         "- auflagenCodes: EVERY short condition code from this row's Auflagen columns (reifenbezogen AND Hinweise) — never from other rows. Letter suffixes stay letters (22B not 228).",
-        "Read digits 3 and 8 carefully in Fahrzeugtyp codes — common OCR confusion (346K not 846K).",
-        'When one table line lists multiple Fahrzeugtyp codes (e.g. "346C, 346R"), emit ONE row PER code.',
-        "Do not merge rows. Do not skip rows. Do not add rows that are not visible.",
+        "Read digits 3 and 8 carefully in Fahrzeugtyp codes — they are often confused.",
+        "When one table line lists multiple Fahrzeugtyp codes, emit ONE row PER printed code.",
+        "Do not merge rows. Do not skip rows. Do not add rows that are not visible. Never invent a model or type code.",
         "Return ONLY valid JSON matching the schema.",
       ],
       isRetry

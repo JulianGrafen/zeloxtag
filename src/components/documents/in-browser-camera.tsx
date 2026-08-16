@@ -43,7 +43,10 @@ export type GuideSectionAnchor = "top" | "center" | "bottom";
 export interface InBrowserCameraProps {
   /** Shown in the top bar. */
   title: string;
-  /** Optional sub-hint shown below the title. */
+  /**
+   * What to scan — always rendered directly above the shutter.
+   * Compact chrome still shows this (parent HUDs must not duplicate it).
+   */
   hint?: string;
   /** Called with the captured JPEG or selected file. */
   onCapture: (file: File) => void;
@@ -151,13 +154,13 @@ function GuideFrameWatermark({ children }: { children: ReactNode }) {
     typeof children === "string" || typeof children === "number";
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center px-2 py-3">
+    <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-4">
       {isPlainText ? (
-        <p className="pointer-events-none select-none whitespace-pre-wrap text-center font-mono text-[clamp(1rem,4.8vw,1.65rem)] font-semibold leading-snug tracking-wide text-white/28 [text-shadow:0_1px_16px_rgba(0,0,0,0.55)]">
+        <p className="pointer-events-none max-w-[92%] select-none whitespace-pre-wrap rounded-2xl bg-black/50 px-4 py-3 text-center font-mono text-[clamp(1.05rem,5vw,1.75rem)] font-semibold leading-snug tracking-wide text-white/90 shadow-[0_8px_28px_rgba(0,0,0,0.4)] backdrop-blur-[2px]">
           {children}
         </p>
       ) : (
-        <div className="pointer-events-none w-full max-w-full select-none px-1">
+        <div className="pointer-events-none w-full max-w-full select-none rounded-xl bg-black/45 px-2 py-2 backdrop-blur-[2px]">
           {children}
         </div>
       )}
@@ -283,10 +286,16 @@ export function InBrowserCamera({
     jpegQuality: captureJpegQuality ?? ABE_CAPTURE_JPEG_QUALITY,
   };
 
-  const resolvedHint =
-    compactChrome || hint === ""
+  const shutterHint =
+    hint === ""
       ? undefined
-      : hint ?? (showTopDownGuide && !captureStep ? TOP_DOWN_SCAN_HINT : undefined);
+      : hint ??
+        (compactChrome
+          ? undefined
+          : showTopDownGuide && !captureStep
+            ? TOP_DOWN_SCAN_HINT
+            : undefined);
+  const resolvedHint = compactChrome ? undefined : shutterHint;
   const topBarLabel = formatTopBarLabel(title, captureStep);
   const showBottomHintPanel =
     !compactChrome &&
@@ -792,7 +801,9 @@ export function InBrowserCamera({
     ? "max(2.4rem, calc(env(safe-area-inset-top) + 2rem))"
     : "max(3.25rem, calc(env(safe-area-inset-top) + 2.75rem))";
   const chromeBottomPad = compactChrome
-    ? "max(8.25rem, calc(env(safe-area-inset-bottom) + 7.25rem))"
+    ? shutterHint
+      ? "max(12.5rem, calc(env(safe-area-inset-bottom) + 11.5rem))"
+      : "max(8.25rem, calc(env(safe-area-inset-bottom) + 7.25rem))"
     : showTopDownGuide || resolvedHint || enforceCaptureQuality
       ? "max(8.5rem, calc(env(safe-area-inset-bottom) + 7rem))"
       : captureStep
@@ -932,6 +943,12 @@ export function InBrowserCamera({
         ) : enforceCaptureQuality && captureRejectMessage === null && frameReady ? (
           <p className="mb-2 text-[0.68rem] font-medium text-emerald-200">
             Bereit — grüner Rahmen
+          </p>
+        ) : null}
+
+        {compactChrome && shutterHint ? (
+          <p className="mb-3 max-w-[min(100%,22rem)] rounded-xl bg-black/70 px-3 py-2 text-center text-[0.78rem] font-medium leading-snug text-white shadow-lg backdrop-blur-md">
+            {shutterHint}
           </p>
         ) : null}
 

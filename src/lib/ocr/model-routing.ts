@@ -1,11 +1,12 @@
 /**
  * Foundry chat deployment for OCR → LLM parse.
  * Invoices use GPT-5.4; ABE/TÜV default to GPT-5.4-nano unless overridden.
+ * ABE Verwendungsbereich table vision uses GPT-5.4 (FOUNDRY_MODEL_ABE_TABLE).
  */
 
 import type { OcrDocumentType } from "./ocr-types";
 
-/** Default for ABE, TÜV, and other non-invoice parse paths. */
+/** Default for ABE (non-table), TÜV, and other non-invoice parse paths. */
 export const DEFAULT_PARSE_MODEL = "gpt-5.4-nano";
 
 /** Default for invoice extraction (wizard, upload, line items). */

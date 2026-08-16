@@ -304,11 +304,6 @@ function KbaHuntOverlay({
         <>
           <AbeScanHud
             status={detectedKba ? `KBA ${detectedKba}` : "KBA scannen"}
-            hint={
-              analyzing
-                ? "Foto wird ausgewertet — bitte kurz warten."
-                : ABE_HUNT_FIELD_SCAN_HINTS.kbaNumber?.scanAction
-            }
             analyzing={analyzing}
             complete={false}
             onClose={onClose}
@@ -457,10 +452,46 @@ async function extractKbaFromFile(file: File): Promise<AbeDataHunterReport> {
   );
 }
 
+async function extractVehicleFromFile(
+  file: File,
+): Promise<AbeDataHunterReport> {
+  const body = new FormData();
+  body.set("file", file);
+  body.set("step", "hunt-vehicle");
+
+  const response = await fetch("/api/ocr/abe", { method: "POST", body });
+  const payload = (await response.json().catch(() => null)) as
+    | {
+        ok: true;
+        extraction: { vehicleMatches: AbeDataHunterReport["vehicleMatches"] };
+        reason?: string;
+      }
+    | { ok: false; error?: string }
+    | null;
+
+  if (!response.ok || !payload || payload.ok !== true) {
+    throw new HuntApiError(
+      payload && "error" in payload && payload.error
+        ? payload.error
+        : `Fahrzeugtabelle fehlgeschlagen (${response.status}).`,
+    );
+  }
+
+  return finalizeAbeDataHunterReport(
+    fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
+      ...emptyAbeDataHunterReport(),
+      vehicleMatches: payload.extraction.vehicleMatches ?? [],
+    }),
+  );
+}
+
 async function extractForHuntFocus(
   file: File,
-  _focusKey: AbeRequiredFieldKey,
+  focusKey: AbeRequiredFieldKey,
 ): Promise<AbeDataHunterReport> {
+  if (focusKey === "verkaufsbezeichnung") {
+    return extractVehicleFromFile(file);
+  }
   return extractAllFromFile(file);
 }
 
@@ -536,10 +567,6 @@ const CAMERA_HUD_SHELL =
   "pointer-events-none fixed inset-x-0 top-0 z-[10050] px-2 pt-[max(0.2rem,env(safe-area-inset-top))]";
 const CAMERA_HUD_BAR =
   "pointer-events-auto mx-auto flex max-w-[min(100%,260px)] items-center gap-1 rounded-lg border border-white/10 bg-black/35 py-0.5 pl-0.5 pr-1 text-white shadow-sm backdrop-blur-[2px]";
-/** Clears the shutter row in `InBrowserCamera` compact chrome. */
-const CAMERA_HINT_ABOVE_SHUTTER =
-  "pointer-events-none fixed inset-x-0 z-[10050] px-4 bottom-[max(6.15rem,calc(env(safe-area-inset-bottom)+5.65rem))]";
-
 function ScanCompleteBanner({
   title,
   subtitle,
@@ -582,7 +609,6 @@ function ScanCompleteBanner({
 
 function AbeScanHud({
   status,
-  hint,
   analyzing,
   complete,
   onClose,
@@ -592,7 +618,6 @@ function AbeScanHud({
   progress,
 }: {
   status: string;
-  hint?: string;
   analyzing: boolean;
   complete: boolean;
   onClose: () => void;
@@ -612,10 +637,6 @@ function AbeScanHud({
   if (complete) {
     return null;
   }
-
-  const hintLine =
-    hint ??
-    (progress && status.trim().length > 0 ? status : undefined);
 
   return createPortal(
     <>
@@ -684,19 +705,43 @@ function AbeScanHud({
           ) : null}
         </div>
       </div>
-      {hintLine ? (
-        <div className={CAMERA_HINT_ABOVE_SHUTTER}>
-          <p
-            className="mx-auto max-w-[min(100%,22rem)] rounded-xl bg-black/70 px-3 py-2 text-center text-[0.78rem] font-medium leading-snug text-white shadow-lg backdrop-blur-md"
-            title={hintLine}
-          >
-            {hintLine}
-          </p>
-        </div>
-      ) : null}
     </>,
     document.body,
   );
+}
+
+const ANALYZING_SCAN_HINT = "Foto wird ausgewertet — bitte kurz warten.";
+
+function kbaScanHint(analyzing: boolean): string {
+  if (analyzing) return ANALYZING_SCAN_HINT;
+  return (
+    ABE_HUNT_FIELD_SCAN_HINTS.kbaNumber?.scanAction ??
+    "Fotografiere die KBA-Nummer auf der ABE."
+  );
+}
+
+function coreHuntScanHint(
+  analyzing: boolean,
+  nextMissing: AbeRequiredFieldKey | undefined,
+): string {
+  if (analyzing) return ANALYZING_SCAN_HINT;
+  if (nextMissing != null) {
+    return (
+      ABE_HUNT_FIELD_SCAN_HINTS[nextMissing]?.scanAction ??
+      `Fotografiere: ${abeHuntFieldDisplayLabel(nextMissing)}`
+    );
+  }
+  return "Weitere sichtbare ABE-Abschnitte fotografieren.";
+}
+
+function auflagenTextScanHint(
+  analyzing: boolean,
+  hasMissingCodes: boolean,
+): string {
+  if (analyzing) return ANALYZING_SCAN_HINT;
+  return hasMissingCodes
+    ? "Fotografiere den Auflagen-Text zu den angezeigten Nummern."
+    : "Weitere Auflagen-Abschnitte fotografieren.";
 }
 
 const ABE_CAMERA_PROPS = {
@@ -746,18 +791,11 @@ function HuntProgressOverlay({
           missing.length > 1 ? ` (+${missing.length - 1})` : ""
         }`
       : "ABE scannen";
-  const scanHint = analyzing
-    ? "Foto wird ausgewertet — bitte kurz warten."
-    : nextMissing != null
-      ? (ABE_HUNT_FIELD_SCAN_HINTS[nextMissing]?.scanAction ??
-        `Fotografiere: ${abeHuntFieldDisplayLabel(nextMissing)}`)
-      : "Weitere sichtbare ABE-Abschnitte fotografieren.";
 
   return (
     <>
       <AbeScanHud
         status={status}
-        hint={scanHint}
         analyzing={analyzing}
         complete={showComplete}
         onClose={onClose}
@@ -811,17 +849,11 @@ function AuflagenScanOverlay({
           missingCodes.length > 3 ? "…" : ""
         }`
       : "Auflagen scannen";
-  const scanHint = analyzing
-    ? "Foto wird ausgewertet — bitte kurz warten."
-    : missingCodes.length > 0
-      ? "Fotografiere den Auflagen-Text zu den Nummern oben."
-      : "Weitere Auflagen-Abschnitte fotografieren.";
 
   return (
     <>
       <AbeScanHud
         status={status}
-        hint={scanHint}
         analyzing={analyzing}
         complete={showComplete}
         onClose={onClose}
@@ -2666,8 +2698,17 @@ export function AbeDataHunterWizard({
         />
         <InBrowserCamera
           {...ABE_CAMERA_PROPS}
+          hint={auflagenTextScanHint(
+            analyzing,
+            missingAuflagenCodesInNotes(
+              report.auflagenNotes,
+              targetAuflagenCodes,
+              skippedAuflagenCodes,
+            ).length > 0,
+          )}
           guideFrame="section"
           guideSectionAnchor="center"
+          guideWatermark={ABE_HUNT_FIELD_WATERMARKS.auflagenNotes}
           onCapture={enqueueAuflagenFile}
           onClose={returnToAuflagenDetail}
         />
@@ -2704,6 +2745,8 @@ export function AbeDataHunterWizard({
         {kbaOverlay}
         <InBrowserCamera
           {...ABE_CAMERA_PROPS}
+          hint={kbaScanHint(analyzing)}
+          guideWatermark={ABE_HUNT_FIELD_WATERMARKS.kbaNumber}
           onCapture={enqueueFile}
           onClose={returnToChooser}
         />
@@ -2775,6 +2818,10 @@ export function AbeDataHunterWizard({
       {progressOverlay}
       <InBrowserCamera
         {...ABE_CAMERA_PROPS}
+        hint={coreHuntScanHint(
+          analyzing,
+          coreComplete ? undefined : huntFocusKey,
+        )}
         guideFrame={abeGuideFrameForField(huntFocusKey)}
         guideSectionAnchor={
           huntFocusKey === "auflagenNotes" || huntFocusKey === "auflagenCodes"

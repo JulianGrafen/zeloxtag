@@ -6,11 +6,13 @@ import {
   expandMultiFahrzeugtypRows,
   filterKnownAuflagenCodes,
   looksLikeAuflagenCode,
+  looksLikeEgBeApproval,
   looksLikeFahrzeugtypCode,
   mergeAbeVehicleMatchRows,
   normalizeAbeVehicleMatches,
   parseAbeVehicleRows,
   parseAuflagenCodes,
+  recoverFahrzeugtypFromShiftedColumns,
   stripVerkaufsbezeichnungLabel,
 } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import type { AbeVehicleMatch } from "@/lib/validations/abeWizardSchemas";
@@ -64,6 +66,92 @@ describe("abe-wizard-vehicle-normalize", () => {
     expect(normalized[0]?.auflagenCodes).toContain("F40");
     expect(normalized[1]?.auflagenCodes).toContain("L04");
     expect(normalized[1]?.fahrzeugtyp).toBeNull();
+  });
+
+  it("detects EG-BE approvals without treating type codes as EG-BE", () => {
+    expect(looksLikeEgBeApproval("e1*2007/46*0508*0000*00")).toBe(true);
+    expect(looksLikeEgBeApproval("e1*97/27*0097*")).toBe(true);
+    expect(looksLikeEgBeApproval("346L")).toBe(false);
+    expect(looksLikeEgBeApproval("3/CG")).toBe(false);
+    expect(looksLikeEgBeApproval("5L")).toBe(false);
+  });
+
+  it("recovers Fahrzeugtyp when the 5-column crop swaps type and EG-BE", () => {
+    const recovered = recoverFahrzeugtypFromShiftedColumns({
+      verkaufsbezeichnung: "BMW 3er-Reihe",
+      fahrzeugtyp: "e1*97/27*0097*",
+      typeApproval: "346L",
+      driveType: null,
+      tireSizes: ["225/45R17"],
+      auflagenCodes: ["A01"],
+    });
+
+    expect(recovered.fahrzeugtyp).toBe("346L");
+    expect(recovered.typeApproval).toBe("e1*97/27*0097*");
+  });
+
+  it("recovers Fahrzeugtyp from the model field or Auflagen when the type column is empty", () => {
+    expect(
+      recoverFahrzeugtypFromShiftedColumns({
+        verkaufsbezeichnung: "346L",
+        fahrzeugtyp: "e1*97/27*0097*",
+        typeApproval: null,
+        driveType: null,
+        tireSizes: ["225/45R17"],
+        auflagenCodes: ["A01"],
+      }).fahrzeugtyp,
+    ).toBe("346L");
+
+    expect(
+      recoverFahrzeugtypFromShiftedColumns({
+        verkaufsbezeichnung: "BMW 3er-Reihe",
+        fahrzeugtyp: null,
+        typeApproval: "e1*97/27*0097*",
+        driveType: null,
+        tireSizes: ["225/45R17"],
+        auflagenCodes: ["346L", "A01"],
+      }).fahrzeugtyp,
+    ).toBe("346L");
+  });
+
+  it("parses a cropped 5-column table that put Fahrzeugtyp into EG-BE", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "BMW 3er-Reihe",
+        fahrzeugtyp: "e1*97/27*0097*",
+        typeApproval: "346L",
+        tireSizes: ["225/45R17"],
+        auflagenCodes: ["A01"],
+      },
+      {
+        verkaufsbezeichnung: "BMW 3er-Reihe",
+        fahrzeugtyp: "e1*93/81*0017*",
+        typeApproval: "3/CG",
+        tireSizes: ["205/50R17"],
+        auflagenCodes: ["A02"],
+      },
+      {
+        verkaufsbezeichnung: "5ER REIHE",
+        fahrzeugtyp: null,
+        typeApproval: "e1*2007/46*0508*0000*00",
+        tireSizes: ["225/50R18"],
+        auflagenCodes: ["5L", "744"],
+      },
+      {
+        verkaufsbezeichnung: "BMW 3er-Compact",
+        fahrzeugtyp: null,
+        typeApproval: "e1*98/14*0167*",
+        tireSizes: ["215/45R17"],
+        auflagenCodes: ["346K", "A02"],
+      },
+    ]);
+
+    expect(parsed.map((row) => row.fahrzeugtyp)).toEqual([
+      "346L",
+      "3/CG",
+      "5L",
+      "346K",
+    ]);
   });
 
   it("keeps short Fahrzeugtyp codes like 5L", () => {
@@ -304,7 +392,7 @@ describe("abe-wizard-vehicle-normalize", () => {
     ]);
 
     expect(parsed.map((row) => row.fahrzeugtyp)).toEqual(
-      expect.arrayContaining(["346C", "346R", "346L"]),
+      expect.arrayContaining(["346C", "346R", "846L"]),
     );
   });
 
