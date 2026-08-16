@@ -132,14 +132,37 @@ async function canvasToCaptureFile(
   } else {
     const resized = resizeDocumentCanvas(canvas, options.maxWidth);
     blob = await new Promise<Blob>((resolve, reject) => {
-      resized.toBlob(
-        (value) =>
-          value
-            ? resolve(value)
-            : reject(new Error("Aufnahme konnte nicht gespeichert werden.")),
-        "image/jpeg",
-        options.jpegQuality ?? 0.88,
-      );
+      const finish = (value: Blob | null) => {
+        if (value && value.size > 0) {
+          resolve(value);
+          return;
+        }
+        try {
+          const dataUrl = resized.toDataURL(
+            "image/jpeg",
+            options.jpegQuality ?? 0.88,
+          );
+          void fetch(dataUrl)
+            .then((response) => response.blob())
+            .then(resolve)
+            .catch(() =>
+              reject(new Error("Aufnahme konnte nicht gespeichert werden.")),
+            );
+        } catch {
+          reject(new Error("Aufnahme konnte nicht gespeichert werden."));
+        }
+      };
+
+      if (typeof resized.toBlob !== "function") {
+        finish(null);
+        return;
+      }
+
+      try {
+        resized.toBlob(finish, "image/jpeg", options.jpegQuality ?? 0.88);
+      } catch {
+        finish(null);
+      }
     });
   }
 
@@ -154,13 +177,13 @@ function GuideFrameWatermark({ children }: { children: ReactNode }) {
     typeof children === "string" || typeof children === "number";
 
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-4">
+    <div className="absolute inset-0 z-10 flex items-center justify-center px-2 py-3">
       {isPlainText ? (
-        <p className="pointer-events-none max-w-[92%] select-none whitespace-pre-wrap rounded-2xl bg-black/50 px-4 py-3 text-center font-mono text-[clamp(1.05rem,5vw,1.75rem)] font-semibold leading-snug tracking-wide text-white/90 shadow-[0_8px_28px_rgba(0,0,0,0.4)] backdrop-blur-[2px]">
+        <p className="pointer-events-none max-w-[92%] select-none whitespace-pre-wrap text-center font-mono text-[clamp(1rem,4.8vw,1.65rem)] font-semibold leading-snug tracking-wide text-white/40 [text-shadow:0_1px_10px_rgba(0,0,0,0.55)]">
           {children}
         </p>
       ) : (
-        <div className="pointer-events-none w-full max-w-full select-none rounded-xl bg-black/45 px-2 py-2 backdrop-blur-[2px]">
+        <div className="pointer-events-none w-full max-w-full select-none px-1">
           {children}
         </div>
       )}
@@ -703,11 +726,20 @@ export function InBrowserCamera({
       if (shouldGuideCrop && guideLayout) {
         setProcessingCapture(true);
         try {
-          const croppedFile =
-            guideFrame === "table"
-              ? await processTableGuideCapture(canvas, guideLayout)
-              : await processA4GuideCapture(canvas, guideLayout);
-          await deliverCaptureFile(croppedFile);
+          try {
+            const croppedFile =
+              guideFrame === "table"
+                ? await processTableGuideCapture(canvas, guideLayout)
+                : await processA4GuideCapture(canvas, guideLayout);
+            await deliverCaptureFile(croppedFile);
+          } catch {
+            const file = await canvasToCaptureFile(
+              canvas,
+              undefined,
+              captureEncodeOptions,
+            );
+            await deliverCaptureFile(file);
+          }
         } finally {
           setProcessingCapture(false);
         }
@@ -1075,7 +1107,7 @@ export function InBrowserCamera({
                     className={[
                       "relative w-full max-w-[min(96vw,560px)] rounded-md border-2 transition-colors duration-200",
                       guideFrameBorderClass(topDownTilt.isLevel, frameReady),
-                      guideFrameOutsideShadow(true),
+                      frameOutsideShadow,
                     ].join(" ")}
                     style={{ aspectRatio: TABLE_ASPECT_RATIO }}
                     aria-hidden

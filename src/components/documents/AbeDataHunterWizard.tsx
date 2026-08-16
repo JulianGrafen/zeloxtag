@@ -813,13 +813,33 @@ function HuntProgressOverlay({
   );
 }
 
+function AuflagenKuerzelSkipChip({
+  code,
+  onSkip,
+}: {
+  code: string;
+  onSkip: (code: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSkip(code)}
+      className="inline-flex items-center gap-1 rounded-full border border-amber-300/80 bg-amber-500/20 px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold text-amber-950"
+      aria-label={`${code} überspringen`}
+    >
+      {code}
+      <X className="h-3 w-3" aria-hidden />
+    </button>
+  );
+}
+
 function AuflagenScanOverlay({
   targetCodes,
   auflagenNotes,
   skippedAuflagenCodes,
   analyzing,
   onOpenReview,
-  onSkip,
+  onSkipCode,
   onClose,
 }: {
   targetCodes: string[];
@@ -827,7 +847,7 @@ function AuflagenScanOverlay({
   skippedAuflagenCodes: string[];
   analyzing: boolean;
   onOpenReview: () => void;
-  onSkip: () => void;
+  onSkipCode: (code: string) => void;
   onClose: () => void;
 }) {
   const missingCodes = missingAuflagenCodesInNotes(
@@ -858,9 +878,29 @@ function AuflagenScanOverlay({
         complete={showComplete}
         onClose={onClose}
         onContinue={showComplete ? onOpenReview : undefined}
-        onSkip={showComplete ? undefined : onSkip}
+        onSkip={
+          showComplete || missingCodes.length === 0
+            ? undefined
+            : () => onSkipCode(missingCodes[0]!)
+        }
+        skipLabel={
+          missingCodes[0] ? `Überspr. ${missingCodes[0]}` : "Überspr."
+        }
         progress={{ done: capturedCodes.length, total }}
       />
+      {!showComplete && missingCodes.length > 0 ? (
+        <div className="pointer-events-none fixed inset-x-0 top-[max(2.55rem,calc(env(safe-area-inset-top)+2.15rem))] z-[10050] px-3">
+          <div className="pointer-events-auto mx-auto flex max-w-[min(100%,22rem)] flex-wrap justify-center gap-1.5">
+            {missingCodes.map((code) => (
+              <AuflagenKuerzelSkipChip
+                key={code}
+                code={code}
+                onSkip={onSkipCode}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
       {showComplete ? (
         <ScanCompleteBanner
           title="Alle Auflagen erfasst"
@@ -887,6 +927,8 @@ function AuflagenDetailPanel({
   onStartScan,
   onSkipMissing,
   onSkipAll,
+  onSkipCode,
+  onUnskipCode,
   onBack,
 }: {
   report: AbeDataHunterReport;
@@ -903,6 +945,8 @@ function AuflagenDetailPanel({
   onStartScan: () => void;
   onSkipMissing: () => void;
   onSkipAll: () => void;
+  onSkipCode: (code: string) => void;
+  onUnskipCode: (code: string) => void;
   onBack: () => void;
 }) {
   const groups = useMemo(
@@ -1026,7 +1070,7 @@ function AuflagenDetailPanel({
                   ? `Fotografiere noch: ${pendingCodes.join(", ")}`
                   : skippedSet.size > 0
                     ? "Übersprungene Kürzel kannst du später im Dokument ergänzen."
-                    : "Grün = aus Kürzel-Datenbank, Amber = noch scannen."}
+                    : "Tippe ein gelbes Kürzel, um es einzeln zu überspringen."}
             </p>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {targetCodes.map((code) => {
@@ -1037,17 +1081,35 @@ function AuflagenDetailPanel({
                   !pendingCodes.some(
                     (pending) => pending.toUpperCase() === code.toUpperCase(),
                   );
+                if (skipped) {
+                  return (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => onUnskipCode(code)}
+                      className="rounded-full border border-neutral-300/70 bg-neutral-500/10 px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold text-neutral-600 line-through"
+                      aria-label={`${code} wieder scannen`}
+                    >
+                      {code}
+                    </button>
+                  );
+                }
+                if (!captured) {
+                  return (
+                    <AuflagenKuerzelSkipChip
+                      key={code}
+                      code={code}
+                      onSkip={onSkipCode}
+                    />
+                  );
+                }
                 return (
                   <span
                     key={code}
                     className={`rounded-full border px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold ${
-                      skipped
-                        ? "border-neutral-300/70 bg-neutral-500/10 text-neutral-600 line-through"
-                        : captured
-                          ? fromDb
-                            ? "border-sky-300/70 bg-sky-500/15 text-sky-950"
-                            : "border-emerald-300/70 bg-emerald-500/15 text-emerald-950"
-                          : "border-amber-300/70 bg-amber-500/15 text-amber-950"
+                      fromDb
+                        ? "border-sky-300/70 bg-sky-500/15 text-sky-950"
+                        : "border-emerald-300/70 bg-emerald-500/15 text-emerald-950"
                     }`}
                   >
                     {code}
@@ -1107,7 +1169,7 @@ function AuflagenDetailPanel({
                 className="mt-2 h-11 w-full"
                 onClick={onSkipMissing}
               >
-                Kürzel nicht auffindbar — überspringen ({pendingCodes.length})
+                Alle restlichen Kürzel überspringen ({pendingCodes.length})
               </Button>
             ) : null}
             <Button
@@ -1119,8 +1181,8 @@ function AuflagenDetailPanel({
               Alle Auflagen-Texte überspringen
             </Button>
             <p className="mt-2 text-center text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Wenn die Kürzel auf dem Papier nicht auffindbar sind, kannst du sie
-              überspringen und später ergänzen.
+              Tippe ein Kürzel, um nur dieses zu überspringen. Restliche Texte
+              kannst du weiter fotografieren.
             </p>
           </>
         )}
@@ -1216,6 +1278,7 @@ function ReviewPanel({
   onSelectRow,
   onSkipMissingAuflagen,
   onSkipAllAuflagen,
+  onSkipAuflagenCode,
   onScanMissingAuflagen,
   onSave,
   onRestart,
@@ -1235,6 +1298,7 @@ function ReviewPanel({
   onSelectRow: (rowId: string) => void;
   onSkipMissingAuflagen: () => void;
   onSkipAllAuflagen: () => void;
+  onSkipAuflagenCode: (code: string) => void;
   onScanMissingAuflagen: () => void;
   onSave: (form: ReviewFormState) => void;
   onRestart: () => void;
@@ -1577,6 +1641,17 @@ function ReviewPanel({
             {auflagenNotesMissing ? (
               <div className="mt-3 grid gap-2">
                 {pendingAuflagenCodes.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {pendingAuflagenCodes.map((code) => (
+                      <AuflagenKuerzelSkipChip
+                        key={code}
+                        code={code}
+                        onSkip={onSkipAuflagenCode}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+                {pendingAuflagenCodes.length > 0 ? (
                   <Button
                     type="button"
                     className="h-11 w-full"
@@ -1594,7 +1669,7 @@ function ReviewPanel({
                     className="h-10 w-full border-amber-400/80 bg-white text-amber-950 hover:bg-amber-100/60"
                     onClick={onSkipMissingAuflagen}
                   >
-                    Kürzel nicht auffindbar — überspringen (
+                    Alle restlichen Kürzel überspringen (
                     {pendingAuflagenCodes.join(", ")})
                   </Button>
                 ) : null}
@@ -2011,8 +2086,30 @@ export function AbeDataHunterWizard({
     goToReview();
   }
 
-  function skipAuflagenScan() {
-    skipPendingAuflagenCodes();
+  function skipOneAuflagenCode(code: string, goToReviewIfDone = false) {
+    const normalized = normalizeAuflagenKuerzel(code);
+    if (!normalized) return;
+
+    const remaining = pendingAuflagenCodes.filter(
+      (pending) => normalizeAuflagenKuerzel(pending) !== normalized,
+    );
+    mergeSkippedAuflagenCodes([normalized]);
+    setAuflagenScanSkipped(false);
+    setHuntError(null);
+    setSaveError(null);
+
+    if (goToReviewIfDone && remaining.length === 0) {
+      goToReview();
+    }
+  }
+
+  function unskipAuflagenCode(code: string) {
+    const normalized = normalizeAuflagenKuerzel(code);
+    if (!normalized) return;
+    setSkippedAuflagenCodes((current) =>
+      current.filter((item) => normalizeAuflagenKuerzel(item) !== normalized),
+    );
+    setAuflagenScanSkipped(false);
   }
 
   function markAllCapturedAndGoToReview() {
@@ -2635,6 +2732,7 @@ export function AbeDataHunterWizard({
           onSelectRow={handleSelectRow}
           onSkipMissingAuflagen={skipPendingAuflagenCodes}
           onSkipAllAuflagen={skipAllAuflagenText}
+          onSkipAuflagenCode={(code) => skipOneAuflagenCode(code)}
           onScanMissingAuflagen={startAuflagenScan}
           onSave={handleSave}
           onRestart={restart}
@@ -2677,6 +2775,8 @@ export function AbeDataHunterWizard({
           onStartScan={startAuflagenScan}
           onSkipMissing={skipPendingAuflagenCodes}
           onSkipAll={skipAllAuflagenText}
+          onSkipCode={(code) => skipOneAuflagenCode(code)}
+          onUnskipCode={unskipAuflagenCode}
           onBack={returnToChooser}
         />
       </>
@@ -2693,7 +2793,7 @@ export function AbeDataHunterWizard({
           skippedAuflagenCodes={skippedAuflagenCodes}
           analyzing={analyzing}
           onOpenReview={goToReviewFromAuflagenScan}
-          onSkip={skipAuflagenScan}
+          onSkipCode={(code) => skipOneAuflagenCode(code, true)}
           onClose={returnToAuflagenDetail}
         />
         <InBrowserCamera

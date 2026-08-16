@@ -73,21 +73,13 @@ export function AbeVehicleTableWatermark({
 
   return (
     <div
-      className="pointer-events-none w-full select-none text-white/80"
+      className="pointer-events-none w-full select-none text-white/42 [text-shadow:0_1px_10px_rgba(0,0,0,0.5)]"
       aria-hidden
     >
       <p className="mb-1 text-center text-[clamp(0.55rem,2.3vw,0.75rem)] font-semibold uppercase tracking-[0.12em]">
         {caption}
       </p>
       <div className="relative overflow-hidden rounded-md">
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-5 bg-gradient-to-b from-black/55 to-transparent"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-5 bg-gradient-to-t from-black/55 to-transparent"
-          aria-hidden
-        />
         <table className="w-full table-fixed border-collapse">
           <thead>
             <tr>
@@ -112,11 +104,11 @@ export function AbeVehicleTableWatermark({
                 </td>
               ))}
             </tr>
-            <tr className="bg-white/10">
+            <tr>
               {excerptRow.map((cell, index) => (
                 <td
                   key={`excerpt-${ABE_VEHICLE_TABLE_WATERMARK_COLUMNS[index]}`}
-                  className={`${CELL} text-[clamp(0.42rem,1.75vw,0.6rem)] font-semibold text-white`}
+                  className={`${CELL} text-[clamp(0.42rem,1.75vw,0.6rem)] font-semibold text-white/55`}
                 >
                   {cell}
                 </td>

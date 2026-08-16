@@ -109,22 +109,63 @@ export function cropCanvasRegion(
   return canvas;
 }
 
+function cloneCanvasForEncode(source: HTMLCanvasElement): HTMLCanvasElement {
+  if (source.width < 1 || source.height < 1) {
+    throw new Error("A4-Bild konnte nicht erzeugt werden.");
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = source.width;
+  canvas.height = source.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Canvas ist in diesem Browser nicht verfügbar.");
+  }
+  ctx.drawImage(source, 0, 0);
+  return canvas;
+}
+
+function jpegBlobFromDataUrl(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(",");
+  const payload = comma >= 0 ? dataUrl.slice(comma + 1) : "";
+  if (!payload) {
+    throw new Error("A4-Bild konnte nicht erzeugt werden.");
+  }
+
+  const binary = atob(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: "image/jpeg" });
+}
+
+async function canvasToJpegBlob(
+  source: HTMLCanvasElement,
+  quality = 0.92,
+): Promise<Blob> {
+  const canvas = cloneCanvasForEncode(source);
+
+  if (typeof canvas.toBlob === "function") {
+    const blob = await new Promise<Blob | null>((resolve) => {
+      try {
+        canvas.toBlob(resolve, "image/jpeg", quality);
+      } catch {
+        resolve(null);
+      }
+    });
+    if (blob && blob.size > 0) return blob;
+  }
+
+  return jpegBlobFromDataUrl(canvas.toDataURL("image/jpeg", quality));
+}
+
 async function canvasToJpegFile(
   canvas: HTMLCanvasElement,
   fileName: string,
   quality = 0.92,
 ): Promise<File> {
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (result) =>
-        result
-          ? resolve(result)
-          : reject(new Error("A4-Bild konnte nicht erzeugt werden.")),
-      "image/jpeg",
-      quality,
-    );
-  });
-
+  const blob = await canvasToJpegBlob(canvas, quality);
   const base = fileName.replace(/\.(jpe?g|pdf)$/i, "");
   return new File([blob], `${base}.jpg`, {
     type: "image/jpeg",
@@ -193,9 +234,15 @@ export async function buildA4ImageFromGuideCapture(
   const maxWidth = options.maxWidth ?? WARP_MAX_WIDTH_PX;
   const jpegQuality = options.jpegQuality ?? 0.92;
   const cropped = cropCanvasRegion(fullCapture, crop);
-  const corners = detectInvoiceCorners(cropped);
-  const canvas = await warpResizeA4(cropped, corners, maxWidth);
-  return canvasToJpegFile(canvas, fileName, jpegQuality);
+
+  try {
+    const corners = detectInvoiceCorners(cropped);
+    const canvas = await warpResizeA4(cropped, corners, maxWidth);
+    return await canvasToJpegFile(canvas, fileName, jpegQuality);
+  } catch {
+    const canvas = resizeDocumentCanvas(cropped, maxWidth);
+    return canvasToJpegFile(canvas, fileName, jpegQuality);
+  }
 }
 
 /** Crop the guide frame and keep its aspect — no A4 warp (table excerpts). */
