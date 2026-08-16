@@ -153,7 +153,7 @@ export function ClaimFlow({
           </div>
 
           <div className="vd-anim-stack mt-8 space-y-3.5">
-            <SteelTagPlate uuid={tagUuid} />
+            <SteelTagPlate />
             {isAuthenticated && userEmail ? (
               <p className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
                 Angemeldet als{" "}
@@ -382,9 +382,9 @@ function ClaimShell({ children }: { children: ReactNode }) {
   );
 }
 
-function SteelTagPlate({ uuid }: { uuid: string }) {
+function SteelTagPlate() {
   return (
-    <div className="claim-steel" aria-label={`Tag ${uuid}`}>
+    <div className="claim-steel" aria-label="ZeloxTag">
       <div className="claim-steel__grain" aria-hidden />
       <div className="relative z-10 flex items-center gap-4">
         <div className="claim-steel__qr" aria-hidden>
@@ -397,8 +397,8 @@ function SteelTagPlate({ uuid }: { uuid: string }) {
           <p className="text-[0.65rem] font-semibold tracking-[0.2em] text-white/55 uppercase">
             Unclaimed
           </p>
-          <p className="mt-1 truncate font-mono text-[0.82rem] tracking-wide text-white/90">
-            {uuid}
+          <p className="mt-1 text-[0.82rem] tracking-wide text-white/90">
+            ZeloxTag
           </p>
         </div>
       </div>

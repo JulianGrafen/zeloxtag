@@ -13,12 +13,9 @@ interface HistoriePageProps {
   params: Promise<{ uuid: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: HistoriePageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Timeline · ${uuid}`,
+    title: "Timeline · ZeloxTag",
     description:
       "Service- & Wartungshistorie nach Kilometerstand für diesen ZeloxTag.",
   };

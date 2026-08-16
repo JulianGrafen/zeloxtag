@@ -9,12 +9,9 @@ interface OilIntervalDetailPageProps {
   params: Promise<{ uuid: string; id: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: OilIntervalDetailPageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Ölwechsel · ${uuid}`,
+    title: "Ölwechsel · ZeloxTag",
     description: "Ölwechsel-Details für diesen ZeloxTag.",
   };
 }

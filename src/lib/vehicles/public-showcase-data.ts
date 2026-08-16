@@ -1,8 +1,9 @@
 import {
   filterManualVehicleEntries,
-  parseManualEntryCategory,
+  isTuningLikeCategory,
 } from "@/lib/documents/manual-entries";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
+import { publicVehicleDynoChartPath } from "@/lib/vehicles/dyno-chart-constants";
 import { filterPublicShowcaseDocuments } from "@/lib/vehicles/public-showcase-documents";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
@@ -47,6 +48,7 @@ export type PublicShowcaseProfile = {
   instagramHandle: string | null;
   mileageKm: number | null;
   dynoChartUrl: string | null;
+  dynoChartIsImage: boolean;
   heroImageSrc: string | null;
   hideFinancials: boolean;
   publicSlug: string | null;
@@ -95,6 +97,23 @@ function publicGalleryProxyUrl(vehicleId: string, src: string): string {
   return `/api/public/vehicle/${vehicleId}/file?${params.toString()}`;
 }
 
+function resolvePublicDynoChart(vehicleId: string, storedUrl: string | null): {
+  href: string | null;
+  isImage: boolean;
+} {
+  if (!storedUrl) return { href: null, isImage: false };
+  if (storedUrl.startsWith("/demo/") || storedUrl.startsWith("/")) {
+    return {
+      href: storedUrl,
+      isImage: documentMediaKind(storedUrl) === "image",
+    };
+  }
+  return {
+    href: publicVehicleDynoChartPath(vehicleId),
+    isImage: documentMediaKind(storedUrl) === "image",
+  };
+}
+
 function collectGalleryPhotos(
   vehicle: Vehicle,
   documents: Document[],
@@ -112,8 +131,7 @@ function collectGalleryPhotos(
   seen.add(heroSrc);
 
   for (const entry of filterManualVehicleEntries(publicDocs)) {
-    const category = parseManualEntryCategory(entry.category);
-    if (category !== "tuning") continue;
+    if (!isTuningLikeCategory(entry.category)) continue;
     if (documentMediaKind(entry.file_url) !== "image") continue;
     if (!entry.file_url.startsWith("http")) continue;
 
@@ -184,15 +202,12 @@ export function buildPublicShowcasePayload(
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
   const publicDocs = filterPublicShowcaseDocuments(documents);
 
-  const dynoChartUrl = specs.dynoChartUrl
-    ? publicGalleryProxyUrl(vehicle.id, specs.dynoChartUrl)
-    : null;
+  const dyno = resolvePublicDynoChart(vehicle.id, specs.dynoChartUrl);
 
   const modifications = mapModificationsToPublic(
-    extractVehicleModifications(documents, {
+    extractVehicleModifications(publicDocs, {
       hideFinancials: true,
-      documentFilter: (doc) =>
-        filterPublicShowcaseDocuments([doc]).length > 0,
+      includeOptedInInvoices: true,
     }).filter((mod) => mod.source !== "abe"),
   );
 
@@ -218,7 +233,8 @@ export function buildPublicShowcasePayload(
       notes: specs.notes?.trim() ? specs.notes.trim() : null,
       instagramHandle: specs.instagramHandle,
       mileageKm: latestMileageKm(publicDocs),
-      dynoChartUrl,
+      dynoChartUrl: dyno.href,
+      dynoChartIsImage: dyno.isImage,
       heroImageSrc: heroFromGallery?.src ?? `/api/vehicle/silhouette/${vehicle.id}`,
       hideFinancials: hide_financials,
       publicSlug: public_slug,

@@ -5,12 +5,9 @@ interface ReparaturenPageProps {
   params: Promise<{ uuid: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: ReparaturenPageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Reparaturen · ${uuid}`,
+    title: "Reparaturen · ZeloxTag",
     description: "Reparatur-Belege suchen und filtern.",
   };
 }

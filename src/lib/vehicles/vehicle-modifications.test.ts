@@ -166,6 +166,40 @@ describe("extractVehicleModifications", () => {
     expect(mods[0]?.partName).toBe("Coilovers TEIN");
   });
 
+  it("includes opted-in invoices that are not categorized as tuning", () => {
+    const mods = extractVehicleModifications(
+      [
+        baseDoc({
+          category: "repair",
+          title: "KW Gewindefahrwerk",
+          line_items: null,
+        }),
+      ],
+      { hideFinancials: true, includeOptedInInvoices: true },
+    );
+
+    expect(mods).toHaveLength(1);
+    expect(mods[0]?.partName).toBe("KW Gewindefahrwerk");
+    expect(mods[0]?.source).toBe("invoice");
+  });
+
+  it("treats Umbau-Bilder as a single manual modification, not a duplicate invoice", () => {
+    const mods = extractVehicleModifications(
+      [
+        baseDoc({
+          title: "Work Emotion CR Kiwami",
+          invoice_number: "__manual__",
+          line_items: null,
+        }),
+      ],
+      { hideFinancials: true, includeOptedInInvoices: true },
+    );
+
+    expect(mods).toHaveLength(1);
+    expect(mods[0]?.source).toBe("manual");
+    expect(mods[0]?.partName).toBe("Work Emotion CR Kiwami");
+  });
+
   it("respects documentFilter for public showcase scope", () => {
     const mods = extractVehicleModifications(
       [baseDoc({ show_on_public_showcase: false })],

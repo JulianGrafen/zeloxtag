@@ -10,12 +10,9 @@ interface DocumentDetailPageProps {
   params: Promise<{ uuid: string; id: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: DocumentDetailPageProps): Promise<Metadata> {
-  const { id } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Dokument · ${id}`,
+    title: "Dokument · ZeloxTag",
     description: "Detailansicht mit extrahierten Feldern und Original-PDF.",
   };
 }

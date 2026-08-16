@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
 import { publicShowcasePath } from "@/lib/vehicles/public-slug";
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -52,7 +56,15 @@ export async function updatePublicShowcaseDocuments(
       };
     }
 
+    if (!isSupabaseAdminConfigured()) {
+      return {
+        status: "error",
+        message: "SUPABASE_SERVICE_ROLE_KEY fehlt.",
+      };
+    }
+
     const supabase = await createClient();
+    const admin = createAdminClient();
 
     const { data: vehicleRow, error: vehicleError } = await supabase
       .from("vehicles")
@@ -68,24 +80,12 @@ export async function updatePublicShowcaseDocuments(
       };
     }
 
-    const { data: docs, error: docsError } = await supabase
+    const { data: docs, error: docsError } = await admin
       .from("documents")
       .select("id")
       .eq("vehicle_id", vehicleId);
 
     if (docsError) {
-      const missingColumn =
-        docsError.message.includes("show_on_public_showcase") ||
-        docsError.code === "PGRST204";
-
-      if (missingColumn) {
-        return {
-          status: "error",
-          message:
-            "Dokument-Auswahl braucht Migration 00031_document_public_showcase.sql in Supabase.",
-        };
-      }
-
       return {
         status: "error",
         message: `Dokumente konnten nicht geladen werden: ${docsError.message}`,
@@ -97,31 +97,37 @@ export async function updatePublicShowcaseDocuments(
     const toDisable = docIds.filter((id) => !selected.has(id));
 
     if (toDisable.length > 0) {
-      const { error } = await supabase
+      const { error } = await admin
         .from("documents")
         .update({ show_on_public_showcase: false })
         .eq("vehicle_id", vehicleId)
         .in("id", toDisable);
 
       if (error) {
+        const missingColumn = error.message.includes("show_on_public_showcase");
         return {
           status: "error",
-          message: `Speichern fehlgeschlagen: ${error.message}`,
+          message: missingColumn
+            ? "Dokument-Auswahl braucht Migration 00031_document_public_showcase.sql in Supabase."
+            : `Speichern fehlgeschlagen: ${error.message}`,
         };
       }
     }
 
     if (toEnable.length > 0) {
-      const { error } = await supabase
+      const { error } = await admin
         .from("documents")
         .update({ show_on_public_showcase: true })
         .eq("vehicle_id", vehicleId)
         .in("id", toEnable);
 
       if (error) {
+        const missingColumn = error.message.includes("show_on_public_showcase");
         return {
           status: "error",
-          message: `Speichern fehlgeschlagen: ${error.message}`,
+          message: missingColumn
+            ? "Dokument-Auswahl braucht Migration 00031_document_public_showcase.sql in Supabase."
+            : `Speichern fehlgeschlagen: ${error.message}`,
         };
       }
     }

@@ -11,12 +11,9 @@ interface SchrauberPageProps {
   params: Promise<{ uuid: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: SchrauberPageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Schrauber · ${uuid}`,
+    title: "Schrauber · ZeloxTag",
     description: "Werkstatt-Zugang für Reparatur-Einträge verwalten.",
   };
 }

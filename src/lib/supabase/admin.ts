@@ -30,7 +30,12 @@ export function createAdminClient(): SupabaseClient {
       autoRefreshToken: false,
     },
     global: {
-      fetch,
+      // Next.js patches global fetch and may cache GET (PostgREST selects).
+      fetch: (input, init) =>
+        fetch(input, {
+          ...init,
+          cache: "no-store",
+        }),
     },
   });
 }

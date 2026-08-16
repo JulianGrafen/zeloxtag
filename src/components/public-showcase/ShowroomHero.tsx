@@ -1,11 +1,12 @@
 import Image from "next/image";
-import { AtSign } from "lucide-react";
 
 import {
   instagramHandleLabel,
   instagramProfileUrl,
 } from "@/lib/vehicles/instagram-handle";
 import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
+
+import { InstagramGlyph } from "./InstagramGlyph";
 
 type ShowroomHeroProps = {
   profile: PublicShowcaseProfile;
@@ -65,7 +66,7 @@ export function ShowroomHero({
             rel="noopener noreferrer"
             className="mt-5 inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 text-[0.82rem] font-semibold text-white backdrop-blur-md"
           >
-            <AtSign className="h-4 w-4" aria-hidden />
+            <InstagramGlyph className="h-4 w-4 text-white" />
             {instagramHandleLabel(profile.instagramHandle)}
           </a>
         ) : null}

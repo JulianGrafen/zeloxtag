@@ -7,12 +7,9 @@ interface UmbautenPageProps {
   params: Promise<{ uuid: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: UmbautenPageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Umbauten · ${uuid}`,
+    title: "Umbauten · ZeloxTag",
     description: "Umbau- und Tuning-Historie mit Fotos durchsuchen.",
   };
 }

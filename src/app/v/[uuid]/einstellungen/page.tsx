@@ -12,12 +12,9 @@ interface VehicleSettingsPageProps {
   params: Promise<{ uuid: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: VehicleSettingsPageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Einstellungen · ${uuid}`,
+    title: "Einstellungen · ZeloxTag",
     description: "Öffentlicher Showcase und Verkaufs-Exposé verwalten.",
   };
 }

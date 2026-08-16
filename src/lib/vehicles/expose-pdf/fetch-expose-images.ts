@@ -1,9 +1,7 @@
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import { filterManualVehicleEntries } from "@/lib/documents/manual-entries";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
-import {
-  vehicleDynoChartObjectPath,
-} from "@/lib/vehicles/dyno-chart-constants";
+import { vehicleDynoChartCandidatePaths } from "@/lib/vehicles/dyno-chart-constants";
 import {
   legacySilhouetteObjectPath,
   SILHOUETTE_BUCKET,
@@ -125,8 +123,11 @@ export type DynoChartFetchResult = {
 export async function fetchDynoChartImage(
   vehicleId: string,
 ): Promise<DynoChartFetchResult> {
-  const objectPath = vehicleDynoChartObjectPath(vehicleId);
-  const bytes = await downloadStorageObject(DOCUMENT_BUCKET, objectPath);
+  let bytes: Uint8Array | null = null;
+  for (const objectPath of vehicleDynoChartCandidatePaths(vehicleId)) {
+    bytes = await downloadStorageObject(DOCUMENT_BUCKET, objectPath);
+    if (bytes) break;
+  }
   if (!bytes) {
     return { image: null, pdfNote: null };
   }

@@ -1,7 +1,6 @@
 import {
-  filterManualVehicleEntries,
   isManualVehicleEntry,
-  parseManualEntryCategory,
+  isTuningLikeCategory,
 } from "@/lib/documents/manual-entries";
 import type { Document } from "@/types/database";
 
@@ -13,18 +12,21 @@ export function filterPublicShowcaseDocuments(documents: Document[]): Document[]
   return documents.filter(isPublicShowcaseDocument);
 }
 
+/**
+ * Umbau-Bilder are stored as `type: "invoice"` + `__manual__`.
+ * Settings and the public showroom must treat them as modifications, not Rechnungen.
+ */
+export function isShowcaseModificationDocument(doc: Document): boolean {
+  return isManualVehicleEntry(doc) && isTuningLikeCategory(doc.category);
+}
+
 /** Invoices + manual tuning entries the owner can opt into the public profile. */
 export function listShowcaseSelectableDocuments(documents: Document[]): Document[] {
   const selectable: Document[] = [];
 
   for (const doc of documents) {
-    if (doc.type === "invoice") {
+    if (isShowcaseModificationDocument(doc) || doc.type === "invoice") {
       selectable.push(doc);
-      continue;
-    }
-    if (isManualVehicleEntry(doc)) {
-      const category = parseManualEntryCategory(doc.category);
-      if (category === "tuning") selectable.push(doc);
     }
   }
 
@@ -41,10 +43,10 @@ export function partitionShowcaseSelectableDocuments(documents: Document[]): {
   const modifications: Document[] = [];
 
   for (const doc of listShowcaseSelectableDocuments(documents)) {
-    if (doc.type === "invoice") {
-      invoices.push(doc);
-    } else {
+    if (isShowcaseModificationDocument(doc)) {
       modifications.push(doc);
+    } else {
+      invoices.push(doc);
     }
   }
 

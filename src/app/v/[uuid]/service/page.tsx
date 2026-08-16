@@ -8,12 +8,9 @@ interface ServicePageProps {
   searchParams: Promise<{ scan?: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: ServicePageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Service & Wartung · ${uuid}`,
+    title: "Service & Wartung · ZeloxTag",
     description: "Inspektionen und Servicebelege für diesen ZeloxTag.",
   };
 }

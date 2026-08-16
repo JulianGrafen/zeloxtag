@@ -76,7 +76,6 @@ export function TagDashboardView({
   const oilChangeCount = filterOilChangeDocuments(documents).length;
   const timelineEventCount = buildTimelineFromDocuments(documents).length;
   const lastOilChange = latestOilChangeIsoDate(documents);
-  const shortTag = tagUuid.length > 12 ? `${tagUuid.slice(0, 12)}…` : tagUuid;
   const vehicleModel = `${vehicle.make} ${vehicle.model}`;
   const vinLabel = vehicle.vin ? `VIN ${vehicle.vin}` : "VIN nicht hinterlegt";
   const demoShowcase = isDemoActiveTag(tagUuid);
@@ -108,7 +107,7 @@ export function TagDashboardView({
       : previewFallbackUrl ?? undefined,
     vehicleImageFrameless: demoShowcase,
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
-    statusLabel: `ZeloxTag · ${shortTag}`,
+    statusLabel: "ZeloxTag · Verbunden",
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),
   };

@@ -16,6 +16,7 @@ import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/adm
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
   DYNO_CHART_BUCKET,
+  vehicleDynoChartCandidatePaths,
   vehicleDynoChartObjectPath,
 } from "@/lib/vehicles/dyno-chart-constants";
 import {
@@ -37,9 +38,32 @@ function jsonError(status: number, error: string, code: string) {
   return NextResponse.json({ ok: false as const, error, code }, { status });
 }
 
+async function normalizeDynoUpload(
+  mime: string,
+  bytes: Buffer,
+): Promise<
+  | { ok: true; mime: string; bytes: Buffer }
+  | { ok: false; error: string }
+> {
+  if (mime !== "image/heic" && mime !== "image/heif") {
+    return { ok: true, mime, bytes };
+  }
+
+  try {
+    const sharp = (await import("sharp")).default;
+    const jpeg = await sharp(bytes).rotate().jpeg({ quality: 85 }).toBuffer();
+    return { ok: true, mime: "image/jpeg", bytes: jpeg };
+  } catch {
+    return {
+      ok: false,
+      error: "HEIC konnte nicht gelesen werden. Bitte JPEG, PNG oder PDF wählen.",
+    };
+  }
+}
+
 /**
  * POST /api/vehicle/dyno-chart
- * Owner uploads a dyno / Leistungsdiagramm PDF into vehicle tech specs.
+ * Owner uploads a dyno / Leistungsdiagramm as PDF or image.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -73,7 +97,7 @@ export async function POST(request: NextRequest) {
       console.error("[vehicle-dyno-chart] formData parse failed", error);
       return jsonError(
         400,
-        "Upload konnte nicht gelesen werden — bitte kleinere PDF wählen oder Seite neu laden.",
+        "Upload konnte nicht gelesen werden — bitte kleinere Datei wählen oder Seite neu laden.",
         "bad_request",
       );
     }
@@ -101,12 +125,12 @@ export async function POST(request: NextRequest) {
     if (!isUploadFile(file)) {
       return jsonError(
         400,
-        "Keine PDF-Datei erhalten — bitte erneut auswählen.",
+        "Keine Datei erhalten — bitte Foto oder PDF erneut auswählen.",
         "bad_request",
       );
     }
 
-    const fileCheck = await validateDocumentUpload(file, { pdfOnly: true });
+    const fileCheck = await validateDocumentUpload(file);
     if (!fileCheck.ok) {
       return jsonError(415, fileCheck.error, "unsupported_media");
     }
@@ -114,7 +138,7 @@ export async function POST(request: NextRequest) {
     if (fileCheck.size > MAX_DOCUMENT_BYTES) {
       return jsonError(
         413,
-        `PDF zu groß (max. ${Math.round(MAX_DOCUMENT_BYTES / (1024 * 1024))} MB).`,
+        `Datei zu groß (max. ${Math.round(MAX_DOCUMENT_BYTES / (1024 * 1024))} MB).`,
         "payload_too_large",
       );
     }
@@ -122,7 +146,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
     const { data: vehicle, error: vehicleError } = await admin
       .from("vehicles")
-      .select("id, user_id, tech_specs")
+      .select("id, user_id, tech_specs, public_slug")
       .eq("id", vehicleId)
       .maybeSingle();
 
@@ -133,13 +157,18 @@ export async function POST(request: NextRequest) {
       return jsonError(403, "Nur der Fahrzeughalter darf hochladen.", "forbidden");
     }
 
-    const objectPath = vehicleDynoChartObjectPath(vehicleId);
-    const pdfBytes = Buffer.from(await file.arrayBuffer());
+    const rawBytes = Buffer.from(await file.arrayBuffer());
+    const normalized = await normalizeDynoUpload(fileCheck.mime, rawBytes);
+    if (!normalized.ok) {
+      return jsonError(415, normalized.error, "unsupported_media");
+    }
+
+    const objectPath = vehicleDynoChartObjectPath(vehicleId, normalized.mime);
 
     const { error: uploadError } = await admin.storage
       .from(DYNO_CHART_BUCKET)
-      .upload(objectPath, pdfBytes, {
-        contentType: "application/pdf",
+      .upload(objectPath, normalized.bytes, {
+        contentType: normalized.mime,
         upsert: true,
         cacheControl: "3600",
       });
@@ -156,6 +185,16 @@ export async function POST(request: NextRequest) {
     const {
       data: { publicUrl },
     } = admin.storage.from(DYNO_CHART_BUCKET).getPublicUrl(objectPath);
+
+    const stalePaths = vehicleDynoChartCandidatePaths(vehicleId).filter(
+      (path) => path !== objectPath,
+    );
+    if (stalePaths.length > 0) {
+      await admin.storage
+        .from(DYNO_CHART_BUCKET)
+        .remove(stalePaths)
+        .catch(() => undefined);
+    }
 
     const cacheBust = Date.now();
     const dynoChartUrl = `${publicUrl}?v=${cacheBust}`;
@@ -186,6 +225,11 @@ export async function POST(request: NextRequest) {
     if (tagUuid) {
       revalidatePath(`/v/${tagUuid}`, "page");
       revalidatePath(`/v/${tagUuid}/daten`, "page");
+    }
+    const publicSlug =
+      typeof vehicle.public_slug === "string" ? vehicle.public_slug.trim() : "";
+    if (publicSlug) {
+      revalidatePath(`/v/${publicSlug}`, "page");
     }
 
     return NextResponse.json({

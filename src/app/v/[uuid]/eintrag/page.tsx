@@ -7,12 +7,9 @@ interface ManualEntryPageProps {
   params: Promise<{ uuid: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: ManualEntryPageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Wartung & Tuning · ${uuid}`,
+    title: "Wartung & Tuning · ZeloxTag",
     description: "Eigene Wartungs- und Tuning-Einträge ohne Beleg.",
   };
 }

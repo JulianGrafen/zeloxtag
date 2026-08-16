@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "reac
 import { ExternalLink, FileUp, Loader2 } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import {
   documentMediaKind,
   openDocumentOriginal,
@@ -21,7 +22,8 @@ export type VehicleDynoChartUploadProps = {
 
 type UploadState = "idle" | "uploading" | "done";
 
-const PDF_ACCEPT = "application/pdf,.pdf";
+const DYNO_ACCEPT =
+  "application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif";
 
 type UploadApiPayload = {
   ok?: boolean;
@@ -45,10 +47,10 @@ function mapUploadError(
     return "Upload nicht erlaubt — nur der Fahrzeughalter darf hochladen.";
   }
   if (status === 413) {
-    return "PDF ist zu groß — bitte kleinere Datei wählen.";
+    return "Datei ist zu groß — bitte kleineres Foto oder PDF wählen.";
   }
   if (status === 415 || status === 422) {
-    return "Nur PDF-Dateien werden unterstützt.";
+    return "Nur Foto (JPEG, PNG, WebP) oder PDF wird unterstützt.";
   }
   return `Upload fehlgeschlagen (Fehler ${status}).`;
 }
@@ -62,6 +64,8 @@ export function VehicleDynoChartUpload({
   className = "",
 }: VehicleDynoChartUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { compressFile, isCompressing, statusLabel, error: compressError } =
+    useDocumentCompression();
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<UploadState>("idle");
   const [localUrl, setLocalUrl] = useState<string | null>(dynoChartUrl);
@@ -70,7 +74,7 @@ export function VehicleDynoChartUpload({
     setLocalUrl(dynoChartUrl);
   }, [dynoChartUrl]);
 
-  const busy = state === "uploading";
+  const busy = state === "uploading" || isCompressing;
   const chartUrl = localUrl ?? dynoChartUrl;
   const chartIsImage = chartUrl ? documentMediaKind(chartUrl) === "image" : false;
   const chartPreviewSrc = chartUrl ? inlineDocumentProxyUrl(chartUrl) : null;
@@ -84,7 +88,12 @@ export function VehicleDynoChartUpload({
         const body = new FormData();
         body.append("vehicleId", vehicleId);
         body.append("tagUuid", tagUuid);
-        body.append("file", file, file.name || "leistungsdiagramm.pdf");
+        const prepared = await compressFile(file);
+        body.append(
+          "file",
+          prepared.file,
+          prepared.file.name || file.name || "leistungsdiagramm",
+        );
 
         const response = await fetch("/api/vehicle/dyno-chart", {
           method: "POST",
@@ -116,7 +125,7 @@ export function VehicleDynoChartUpload({
         );
       }
     },
-    [onUploaded, tagUuid, vehicleId],
+    [compressFile, onUploaded, tagUuid, vehicleId],
   );
 
   function onInputChange(event: ChangeEvent<HTMLInputElement>) {
@@ -133,7 +142,8 @@ export function VehicleDynoChartUpload({
         Leistungsdiagramm
       </h2>
       <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Dyno- oder Leistungsdiagramm als PDF — z. B. vom Prüfstand oder Tuner.
+        Dyno- oder Leistungsdiagramm als Foto oder PDF — z. B. vom Prüfstand
+        oder Tuner.
       </p>
 
       {chartUrl ? (
@@ -181,7 +191,7 @@ export function VehicleDynoChartUpload({
           <input
             ref={inputRef}
             type="file"
-            accept={PDF_ACCEPT}
+            accept={DYNO_ACCEPT}
             className="sr-only"
             tabIndex={-1}
             disabled={busy}
@@ -197,21 +207,21 @@ export function VehicleDynoChartUpload({
             {busy ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                PDF wird hochgeladen…
+                {statusLabel ?? "Wird hochgeladen…"}
               </>
             ) : (
               <>
                 <FileUp className="h-4 w-4" aria-hidden />
-                {chartUrl ? "PDF ersetzen" : "PDF hochladen"}
+                {chartUrl ? "Foto oder PDF ersetzen" : "Foto oder PDF hochladen"}
               </>
             )}
           </PressableButton>
         </>
       ) : null}
 
-      {error ? (
+      {error || compressError ? (
         <p className="mt-3 text-[0.85rem] text-red-700" role="alert">
-          {error}
+          {error || compressError}
         </p>
       ) : null}
       {state === "done" ? (

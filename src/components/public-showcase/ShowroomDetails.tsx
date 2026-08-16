@@ -31,7 +31,7 @@ function buildRows(profile: PublicShowcaseProfile): DetailRow[] {
 
 export function ShowroomDetails({ profile }: ShowroomDetailsProps) {
   const rows = buildRows(profile);
-  if (rows.length === 0 && !profile.notes && !profile.dynoChartUrl) {
+  if (rows.length === 0 && !profile.notes) {
     return null;
   }
 
@@ -66,19 +66,6 @@ export function ShowroomDetails({ profile }: ShowroomDetailsProps) {
           <p className="mt-2 whitespace-pre-wrap text-[0.88rem] leading-relaxed text-zinc-200">
             {profile.notes}
           </p>
-        </div>
-      ) : null}
-
-      {profile.dynoChartUrl ? (
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
-          <p className="border-b border-white/10 px-4 py-2.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Leistungsdiagramm
-          </p>
-          <iframe
-            title="Leistungsdiagramm"
-            src={profile.dynoChartUrl}
-            className="aspect-[4/3] w-full bg-zinc-900"
-          />
         </div>
       ) : null}
     </section>

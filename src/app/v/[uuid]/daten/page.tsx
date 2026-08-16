@@ -12,12 +12,9 @@ interface VehicleSpecsPageProps {
   params: Promise<{ uuid: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: VehicleSpecsPageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Technische Daten · ${uuid}`,
+    title: "Technische Daten · ZeloxTag",
     description: "Stammdaten und technische Fahrzeugdaten hinterlegen.",
   };
 }

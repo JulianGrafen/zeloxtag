@@ -12,6 +12,7 @@ import { withDefaultShowcaseFields } from "@/lib/vehicles/public-showcase-data";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, TagScanResult, Vehicle } from "@/types/database";
 
+import { parseLineItems } from "@/lib/documents/line-items";
 import { DOCUMENT_SHOWCASE_COLUMNS, VEHICLE_COLUMNS } from "@/lib/documents/query-columns";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 
@@ -19,10 +20,7 @@ function isMissingShowcaseColumnError(error: {
   message?: string;
   code?: string;
 }): boolean {
-  return (
-    error.code === "PGRST204" ||
-    Boolean(error.message?.includes("show_on_public_showcase"))
-  );
+  return Boolean(error.message?.includes("show_on_public_showcase"));
 }
 
 function normalizeVehicle(value: unknown): Vehicle | null {
@@ -68,7 +66,16 @@ async function loadVehicleDocuments(vehicleId: string): Promise<Document[]> {
     }
     throw new Error(`Failed to load public showcase documents: ${error.message}`);
   }
-  return Array.isArray(data) ? (data as unknown as Document[]) : [];
+
+  return (Array.isArray(data) ? data : []).map((row) => {
+    const doc = row as Document;
+    return {
+      ...doc,
+      line_items: parseLineItems(doc.line_items),
+      // Query already scoped to opted-in rows — keep the flag explicit for extract.
+      show_on_public_showcase: true,
+    };
+  });
 }
 
 async function loadVehicleBySlugRpc(slug: string): Promise<Vehicle | null> {

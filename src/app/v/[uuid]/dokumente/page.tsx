@@ -18,12 +18,9 @@ const VALID_TYPES = new Set<DocumentType | "all">([
   "other",
 ]);
 
-export async function generateMetadata({
-  params,
-}: DocumentsPageProps): Promise<Metadata> {
-  const { uuid } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Dokumente · ${uuid}`,
+    title: "Dokumente · ZeloxTag",
     description: "Fahrzeugdokumente für diesen ZeloxTag.",
   };
 }

@@ -162,4 +162,72 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.modifications[0]?.label).toBe("GReddy GT-Flügel");
     expect(payload.modifications[0]).not.toHaveProperty("amount");
   });
+
+  it("includes opted-in Umbau-Bilder stored as invoice + manual marker", () => {
+    const documents: Document[] = [
+      baseInvoice({
+        id: "umbau-1",
+        title: "Work Emotion CR Kiwami",
+        invoice_number: "__manual__",
+        file_url: "https://example.com/felgen.jpg",
+        line_items: null,
+        amount: null,
+      }),
+    ];
+
+    const payload = buildPublicShowcasePayload(baseVehicle, documents);
+    expect(payload.modifications).toHaveLength(1);
+    expect(payload.modifications[0]?.label).toBe("Work Emotion CR Kiwami");
+    expect(payload.modifications[0]?.source).toBe("manual");
+    expect(payload.modifications[0]?.category).toBe("Umbauten");
+  });
+
+  it("includes opted-in invoices even when OCR category is not tuning", () => {
+    const documents: Document[] = [
+      baseInvoice({
+        category: "repair",
+        title: "KW Gewindefahrwerk",
+        line_items: null,
+      }),
+    ];
+
+    const payload = buildPublicShowcasePayload(baseVehicle, documents);
+    expect(payload.modifications).toHaveLength(1);
+    expect(payload.modifications[0]?.label).toBe("KW Gewindefahrwerk");
+    expect(payload.modifications[0]?.source).toBe("invoice");
+  });
+
+  it("exposes the public dyno route when a Leistungsdiagramm is stored", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      tech_specs: {
+        ...((baseVehicle.tech_specs ?? {}) as Record<string, unknown>),
+        dynoChartUrl:
+          "https://example.supabase.co/storage/v1/object/public/vehicle-documents/11111111-1111-4111-8111-111111111111/dyno-chart.pdf?v=9",
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.profile.dynoChartUrl).toBe(
+      `/api/public/vehicle/${baseVehicle.id}/dyno-chart`,
+    );
+    expect(payload.profile.dynoChartIsImage).toBe(false);
+  });
+
+  it("marks an uploaded dyno photo as an image on the public profile", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      tech_specs: {
+        ...((baseVehicle.tech_specs ?? {}) as Record<string, unknown>),
+        dynoChartUrl:
+          "https://example.supabase.co/storage/v1/object/public/vehicle-documents/11111111-1111-4111-8111-111111111111/dyno-chart.jpg?v=9",
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.profile.dynoChartUrl).toBe(
+      `/api/public/vehicle/${baseVehicle.id}/dyno-chart`,
+    );
+    expect(payload.profile.dynoChartIsImage).toBe(true);
+  });
 });

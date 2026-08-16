@@ -61,7 +61,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `ZeloxTag · ${uuid}`,
+    title: "ZeloxTag",
     description: "QR-Scan-Ziel für ZeloxTag Fahrzeugdokumente.",
   };
 }
@@ -95,7 +95,7 @@ export default async function TagScanPage({
   if (!entry) {
     return (
       <AppShell showNavbar={false}>
-        <TagNotFound uuid={identifier} />
+        <TagNotFound />
       </AppShell>
     );
   }
@@ -214,7 +214,7 @@ export default async function TagScanPage({
 
   return (
     <AppShell showNavbar={false}>
-      <TagNotFound uuid={identifier} />
+      <TagNotFound />
     </AppShell>
   );
 }

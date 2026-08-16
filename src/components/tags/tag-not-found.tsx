@@ -1,14 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 
-interface TagNotFoundProps {
-  uuid: string;
-}
-
 /**
  * Clean 404 for unknown / invalid ZeloxTag UUIDs (State C).
  */
-export function TagNotFound({ uuid }: TagNotFoundProps) {
+export function TagNotFound() {
   return (
     <section className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center gap-5 px-4 pb-12 pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-5">
       <div className="vd-anim-header rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-6 shadow-[var(--vd-shadow)]">
@@ -24,9 +20,6 @@ export function TagNotFound({ uuid }: TagNotFoundProps) {
         <p className="mt-2 text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
           Für diesen QR-Code existiert kein ZeloxTag-Eintrag. Prüfe den Scan oder
           kontaktiere den Support.
-        </p>
-        <p className="mt-4 rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2 font-mono text-[0.75rem] break-all text-[color:var(--vd-text)]">
-          {uuid}
         </p>
 
         <Link

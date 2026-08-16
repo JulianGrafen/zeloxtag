@@ -1,6 +1,7 @@
 import {
   filterManualVehicleEntries,
-  parseManualEntryCategory,
+  isManualVehicleEntry,
+  isTuningLikeCategory,
 } from "@/lib/documents/manual-entries";
 import { parseLineItems } from "@/lib/documents/line-items";
 import { isVatLineItem } from "@/lib/ocr/invoice-vat";
@@ -25,6 +26,11 @@ export type ExtractVehicleModificationsOptions = {
   hideFinancials: boolean;
   /** Restrict to a document subset (e.g. public showcase). Default: all documents. */
   documentFilter?: (doc: Document) => boolean;
+  /**
+   * Public showcase: owner already opted these invoices in.
+   * Include them even when OCR category is not exactly `tuning`.
+   */
+  includeOptedInInvoices?: boolean;
 };
 
 const LABOR_LABEL =
@@ -61,9 +67,13 @@ function isAbeDocument(doc: Document): boolean {
   return category === "abe";
 }
 
-function isTuningInvoice(doc: Document): boolean {
+function isTuningInvoice(
+  doc: Document,
+  includeOptedInInvoices = false,
+): boolean {
   if (doc.type !== "invoice") return false;
-  return doc.category?.trim().toLowerCase() === "tuning";
+  if (includeOptedInInvoices) return true;
+  return isTuningLikeCategory(doc.category);
 }
 
 function resolveInvoicePartLabel(doc: Document): string {
@@ -100,11 +110,18 @@ function extractFromAbeDocuments(
 function extractFromTuningInvoices(
   documents: Document[],
   hideFinancials: boolean,
+  includeOptedInInvoices = false,
 ): VehicleModification[] {
   const mods: VehicleModification[] = [];
   const seenLineKeys = new Set<string>();
 
-  for (const doc of sortDocumentsByDate(documents.filter(isTuningInvoice))) {
+  for (const doc of sortDocumentsByDate(
+    documents.filter(
+      (row) =>
+        !isManualVehicleEntry(row) &&
+        isTuningInvoice(row, includeOptedInInvoices),
+    ),
+  )) {
     const lineItems = parseLineItems(doc.line_items) ?? [];
     let addedFromLines = false;
 
@@ -153,8 +170,7 @@ function extractFromManualEntries(
   const mods: VehicleModification[] = [];
 
   for (const entry of filterManualVehicleEntries(documents)) {
-    const category = parseManualEntryCategory(entry.category);
-    if (category !== "tuning") continue;
+    if (!isTuningLikeCategory(entry.category)) continue;
 
     mods.push({
       id: entry.id,
@@ -184,7 +200,11 @@ export function extractVehicleModifications(
   const modifications = [
     ...extractFromAbeDocuments(scoped, options.hideFinancials),
     ...extractFromManualEntries(scoped, options.hideFinancials),
-    ...extractFromTuningInvoices(scoped, options.hideFinancials),
+    ...extractFromTuningInvoices(
+      scoped,
+      options.hideFinancials,
+      options.includeOptedInInvoices === true,
+    ),
   ];
 
   return modifications.sort((a, b) =>

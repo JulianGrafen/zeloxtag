@@ -18,7 +18,7 @@ export type VehicleTechSpecs = {
   notes: string | null;
   /** Public Instagram handle without @ — never a free-form URL. */
   instagramHandle: string | null;
-  /** Supabase Storage URL for dyno / Leistungsdiagramm PDF. */
+  /** Supabase Storage URL for dyno / Leistungsdiagramm (PDF or image). */
   dynoChartUrl: string | null;
 };
 
@@ -57,10 +57,18 @@ function asPositiveInt(value: unknown): number | null {
 }
 
 export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+  let value = raw;
+  if (typeof raw === "string") {
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      return { ...EMPTY_VEHICLE_TECH_SPECS };
+    }
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     return { ...EMPTY_VEHICLE_TECH_SPECS };
   }
-  const record = raw as Record<string, unknown>;
+  const record = value as Record<string, unknown>;
   return {
     engine: asTrimmedString(record.engine),
     powerPs: asPositiveInt(record.powerPs),

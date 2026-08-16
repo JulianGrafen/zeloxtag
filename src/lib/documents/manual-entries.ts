@@ -61,3 +61,13 @@ export function parseManualEntryCategory(
     ? (value as ManualEntryCategory)
     : null;
 }
+
+/** True for stored `tuning` and OCR/UI labels like "Tuning / Umbau". */
+export function isTuningLikeCategory(
+  value: string | null | undefined,
+): boolean {
+  if (parseManualEntryCategory(value) === "tuning") return true;
+  const normalized = value?.trim().toLowerCase() ?? "";
+  if (!normalized) return false;
+  return /tuning|umbau/.test(normalized);
+}
