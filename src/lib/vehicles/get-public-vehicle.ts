@@ -68,7 +68,7 @@ async function loadVehicleDocuments(vehicleId: string): Promise<Document[]> {
     }
     throw new Error(`Failed to load public showcase documents: ${error.message}`);
   }
-  return (data as Document[]) ?? [];
+  return Array.isArray(data) ? (data as unknown as Document[]) : [];
 }
 
 async function loadVehicleBySlugRpc(slug: string): Promise<Vehicle | null> {

@@ -178,7 +178,9 @@ async function resolveTagWithAdmin(
     return normalizeScanResult({
       tag: tag as Tag,
       vehicle: (vehicle as Vehicle | null) ?? null,
-      documents: (documents as Document[] | null) ?? [],
+      documents: Array.isArray(documents)
+        ? (documents as unknown as Document[])
+        : [],
     });
   }
 

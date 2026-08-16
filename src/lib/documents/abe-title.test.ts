@@ -100,7 +100,7 @@ describe("displayAbeDocumentTitle", () => {
         type: "abe",
         manufacturer: "BMW",
         vendor: "3er",
-        approval_fields: { kind: "einzelabnahme", data: {} },
+        approval_fields: { kind: "einzelabnahme" },
       }),
     ).toBe("Einzelabnahme BMW 3er");
   });
