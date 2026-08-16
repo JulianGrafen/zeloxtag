@@ -45,7 +45,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       status: 200,
       headers: {
         "Content-Type": image.contentType,
+        "Content-Disposition": `inline; filename="${kuerzel}.jpg"`,
         "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (err) {

@@ -9,6 +9,7 @@ import {
   parseAuflagenKuerzelRecords,
   selectKuerzelRecordsToLearn,
   auflagenKuerzelMapToRecords,
+  auflagenKuerzelStorageObjectPath,
   type AuflagenKuerzelRecord,
 } from "@/lib/ocr/auflagen-kuerzel-db";
 import {
@@ -50,12 +51,17 @@ export async function downloadAuflagenKuerzelImage(
     .maybeSingle();
 
   const candidates = [
-    row?.image_path?.trim(),
+    auflagenKuerzelStorageObjectPath(
+      row?.image_path,
+      AUFLAGEN_KUERZEL_BUCKET,
+    ),
     `${code}.jpg`,
     `${code}.jpeg`,
     `${code}.png`,
     `${code}.webp`,
-  ].filter((path): path is string => Boolean(path));
+  ].filter((path, index, all): path is string => {
+    return Boolean(path) && all.indexOf(path) === index;
+  });
 
   for (const imagePath of candidates) {
     const { data, error } = await admin.storage
@@ -263,18 +269,18 @@ export async function uploadAuflagenKuerzelImage(
   }
 
   const nextText = existing?.text?.trim() || text?.trim() || "";
-  if (nextText.length < 8) {
-    throw new Error(
-      `Kürzel ${code} muss zuerst mit Text gespeichert werden.`,
-    );
-  }
-
-  const { error: updateError } = existing?.text?.trim()
-    ? await admin
-        .from("abe_auflagen_kuerzel")
-        .update({ image_path: imagePath })
-        .eq("kuerzel", code)
-    : await admin.from("abe_auflagen_kuerzel").upsert(
+  if (existing) {
+    const { error: updateError } = await admin
+      .from("abe_auflagen_kuerzel")
+      .update({ image_path: imagePath })
+      .eq("kuerzel", code);
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  } else if (nextText.length >= 8) {
+    const { error: updateError } = await admin
+      .from("abe_auflagen_kuerzel")
+      .upsert(
         {
           kuerzel: code,
           text: nextText,
@@ -284,9 +290,9 @@ export async function uploadAuflagenKuerzelImage(
         },
         { onConflict: "kuerzel" },
       );
-
-  if (updateError) {
-    throw new Error(updateError.message);
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
   }
 
   const imageUrl = publicUrlForKuerzelImage(imagePath);

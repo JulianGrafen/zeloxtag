@@ -5,6 +5,10 @@ export const DOCUMENT_BUCKET = "vehicle-documents";
 /** Crowd-sourced cropped Auflagen reference snippets (shared across users). */
 export const AUFLAGEN_KUERZEL_BUCKET = "abe-auflagen-kuerzel";
 
+/** Same-origin paper-snippet bytes (shared reference crops, not vehicle files). */
+export const AUFLAGEN_KUERZEL_IMAGE_API_PATH =
+  "/api/abe/auflagen-kuerzel/image";
+
 /** Max upload size — room for high-fidelity invoice photos / multi-page PDFs. */
 export const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 

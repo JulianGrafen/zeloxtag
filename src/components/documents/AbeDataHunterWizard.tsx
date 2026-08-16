@@ -2734,15 +2734,10 @@ export function AbeDataHunterWizard({
     );
     const auflagenSnippets = auflagenEntries.map((entry) => {
       const key = normalizeAuflagenKuerzel(entry.code);
-      const stored = kuerzelImageUrlsRef.current.get(key);
       return {
         code: entry.code,
         text: entry.text,
-        imageUrl: stored
-          ? stored.startsWith("blob:")
-            ? auflagenKuerzelImageSrc(key)
-            : stored
-          : null,
+        imageUrl: auflagenKuerzelImageSrc(key) || null,
       };
     });
     const conditions =

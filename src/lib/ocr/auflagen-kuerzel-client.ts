@@ -176,11 +176,13 @@ export async function persistAuflagenKuerzelCrops(
     nextImages.set(key, localUrl);
 
     try {
-      await uploadAuflagenKuerzelImageClient(
+      const uploadedUrl = await uploadAuflagenKuerzelImageClient(
         code,
         file,
         texts.get(key) ?? texts.get(code),
       );
+      nextImages.set(key, uploadedUrl || auflagenKuerzelImageSrc(key));
+      URL.revokeObjectURL(localUrl);
     } catch (error) {
       console.error("[auflagen-kuerzel] image upload failed", code, error);
     }

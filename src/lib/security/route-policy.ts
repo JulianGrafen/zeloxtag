@@ -1,3 +1,5 @@
+import { AUFLAGEN_KUERZEL_IMAGE_API_PATH } from "@/lib/documents/constants";
+
 /**
  * Path classification for Next.js Proxy auth gates (Zero-Trust).
  * Public QR digital-twin routes stay open; dashboard + owner APIs require a session.
@@ -30,11 +32,10 @@ const PUBLIC_PREFIXES = [
 const PROTECTED_API_PREFIXES = ["/api/protected"];
 
 /**
- * Public GET APIs — empty by design.
- * Document bytes (`/api/documents/file`) require a session at the proxy layer
- * and an ownership check inside the route handler (fail closed).
+ * Public GET APIs — shared reference media only.
+ * Document bytes (`/api/documents/file`) stay session-gated (fail closed).
  */
-const PUBLIC_API_GET = new Set<string>();
+const PUBLIC_API_GET = new Set<string>([AUFLAGEN_KUERZEL_IMAGE_API_PATH]);
 
 /** COEP-safe vehicle imagery — no session required (digital twin surface). */
 const PUBLIC_API_GET_PREFIXES = [
@@ -48,6 +49,7 @@ export function isPublicVehicleImagePath(
   method: string,
 ): boolean {
   if (method !== "GET" && method !== "HEAD") return false;
+  if (PUBLIC_API_GET.has(pathname)) return true;
   return PUBLIC_API_GET_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 

@@ -1,3 +1,4 @@
+import { AUFLAGEN_KUERZEL_IMAGE_API_PATH } from "@/lib/documents/constants";
 import {
   abeAuflagenEntriesToConditions,
   missingAuflagenCodesInNotes,
@@ -20,7 +21,60 @@ export function normalizeAuflagenKuerzel(code: string): string {
 export function auflagenKuerzelImageSrc(kuerzel: string): string {
   const code = normalizeAuflagenKuerzel(kuerzel);
   if (!code) return "";
-  return `/api/abe/auflagen-kuerzel/image?kuerzel=${encodeURIComponent(code)}`;
+  return `${AUFLAGEN_KUERZEL_IMAGE_API_PATH}?kuerzel=${encodeURIComponent(code)}`;
+}
+
+function isEphemeralImageUrl(url: string): boolean {
+  return url.startsWith("blob:") || url.startsWith("data:");
+}
+
+/**
+ * Prefer a live session preview; otherwise always use the same-origin proxy.
+ * Stored Storage public URLs 403, and blob URLs die after reload.
+ */
+export function resolveDisplayAuflagenImageUrl(
+  code: string,
+  mappedUrl?: string | null,
+  snippetUrl?: string | null,
+): string | null {
+  const normalized = normalizeAuflagenKuerzel(code);
+  if (!normalized) return null;
+
+  const mapped = mappedUrl?.trim() ?? "";
+  if (isEphemeralImageUrl(mapped)) return mapped;
+
+  const snippet = snippetUrl?.trim() ?? "";
+  if (isEphemeralImageUrl(snippet)) return snippet;
+
+  return auflagenKuerzelImageSrc(normalized);
+}
+
+/** Storage object key from `image_path` (filename, bucket prefix, or public URL). */
+export function auflagenKuerzelStorageObjectPath(
+  imagePath: string | null | undefined,
+  bucket: string,
+): string | null {
+  const trimmed = imagePath?.trim();
+  if (!trimmed) return null;
+
+  let path = trimmed;
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      const marker = `/${bucket}/`;
+      const index = url.pathname.indexOf(marker);
+      if (index < 0) return null;
+      path = decodeURIComponent(url.pathname.slice(index + marker.length));
+    } catch {
+      return null;
+    }
+  } else if (path.startsWith(`${bucket}/`)) {
+    path = path.slice(bucket.length + 1);
+  }
+
+  path = (path.replace(/^\//, "").split("?")[0] ?? "").trim();
+  if (!path || path.includes("://") || path.length > 256) return null;
+  return path;
 }
 
 export function parseAuflagenKuerzelRecords(

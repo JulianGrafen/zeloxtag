@@ -3,9 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   augmentAuflagenNotesWithKuerzelDb,
   auflagenCodesMissingAfterKuerzelDb,
+  auflagenKuerzelImageSrc,
+  auflagenKuerzelStorageObjectPath,
   extractKuerzelRecordsFromOcrNotes,
   mergeAuflagenKuerzelMaps,
   resolveAuflagenWithKuerzelDb,
+  resolveDisplayAuflagenImageUrl,
   selectKuerzelRecordsToLearn,
 } from "@/lib/ocr/auflagen-kuerzel-db";
 
@@ -57,5 +60,40 @@ describe("auflagen-kuerzel-db", () => {
         db,
       ),
     ).toEqual([{ kuerzel: "F40", text: "Brandneue Auflage aus OCR Scan." }]);
+  });
+});
+
+describe("auflagen kuerzel image display", () => {
+  it("keeps a live blob preview and otherwise uses the same-origin proxy", () => {
+    expect(
+      resolveDisplayAuflagenImageUrl("744", "blob:https://local/preview"),
+    ).toBe("blob:https://local/preview");
+    expect(
+      resolveDisplayAuflagenImageUrl(
+        "744",
+        "https://example.supabase.co/storage/v1/object/public/abe-auflagen-kuerzel/744.jpg",
+      ),
+    ).toBe(auflagenKuerzelImageSrc("744"));
+    expect(resolveDisplayAuflagenImageUrl("744")).toBe(
+      auflagenKuerzelImageSrc("744"),
+    );
+  });
+
+  it("extracts a storage object key from public URLs and bucket prefixes", () => {
+    expect(
+      auflagenKuerzelStorageObjectPath(
+        "https://example.supabase.co/storage/v1/object/public/abe-auflagen-kuerzel/744.jpg",
+        "abe-auflagen-kuerzel",
+      ),
+    ).toBe("744.jpg");
+    expect(
+      auflagenKuerzelStorageObjectPath(
+        "abe-auflagen-kuerzel/A02.png",
+        "abe-auflagen-kuerzel",
+      ),
+    ).toBe("A02.png");
+    expect(
+      auflagenKuerzelStorageObjectPath("F40.webp", "abe-auflagen-kuerzel"),
+    ).toBe("F40.webp");
   });
 });

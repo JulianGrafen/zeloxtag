@@ -8,7 +8,11 @@ import {
   parseAbeAuflagenNotes,
   type AbeAuflageEntry,
 } from "@/lib/ocr/abe-auflagen-from-text";
-import { normalizeAuflagenKuerzel } from "@/lib/ocr/auflagen-kuerzel-db";
+import {
+  auflagenKuerzelImageSrc,
+  normalizeAuflagenKuerzel,
+  resolveDisplayAuflagenImageUrl,
+} from "@/lib/ocr/auflagen-kuerzel-db";
 
 type AbeAuflagenFoldListProps = {
   /** Raw OCR text (wizard / review). */
@@ -33,30 +37,51 @@ function resolveImageUrl(
   imageUrlsByCode?: Map<string, string> | ReadonlyMap<string, string>,
 ): string | null {
   const normalized = normalizeAuflagenKuerzel(code);
-  const fromMap = imageUrlsByCode?.get(normalized);
-  if (fromMap) return fromMap;
-
   const fromSnippet = snippets?.find(
     (snippet) => normalizeAuflagenKuerzel(snippet.code) === normalized,
   )?.imageUrl;
-  return fromSnippet?.trim() || null;
+  return resolveDisplayAuflagenImageUrl(
+    code,
+    imageUrlsByCode?.get(normalized),
+    fromSnippet,
+  );
 }
 
 function AuflagePaperImage({ src, code }: { src: string; code: string }) {
+  const apiSrc = auflagenKuerzelImageSrc(code);
+  const [currentSrc, setCurrentSrc] = useState(src);
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
   if (failed) return null;
 
   return (
-    <div className="mb-3 overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-neutral-100">
+    <a
+      href={currentSrc}
+      target="_blank"
+      rel="noreferrer"
+      className="mb-3 block overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-neutral-100"
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={src}
+        src={currentSrc}
         alt={`Auflage ${code} aus dem Papier`}
-        className="max-h-72 w-full bg-white object-contain"
+        className={[
+          "max-h-72 w-full cursor-zoom-in bg-white object-contain",
+          loaded ? "opacity-100" : "opacity-0",
+        ].join(" ")}
         loading="eager"
-        onError={() => setFailed(true)}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          if (currentSrc !== apiSrc && apiSrc) {
+            setCurrentSrc(apiSrc);
+            setLoaded(false);
+            return;
+          }
+          setFailed(true);
+        }}
       />
-    </div>
+    </a>
   );
 }
 
@@ -164,7 +189,11 @@ export function AbeAuflagenFoldList({
               ) : (
                 <>
                   {imageUrl ? (
-                    <AuflagePaperImage src={imageUrl} code={entry.code} />
+                    <AuflagePaperImage
+                      key={`${normalized}-${imageUrl}`}
+                      src={imageUrl}
+                      code={entry.code}
+                    />
                   ) : null}
                   <p className="whitespace-pre-wrap text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]">
                     {entry.text.trim() || "—"}
