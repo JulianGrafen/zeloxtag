@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Instagram } from "lucide-react";
+import { AtSign } from "lucide-react";
 
 import {
   instagramHandleLabel,
@@ -65,7 +65,7 @@ export function ShowroomHero({
             rel="noopener noreferrer"
             className="mt-5 inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 text-[0.82rem] font-semibold text-white backdrop-blur-md"
           >
-            <Instagram className="h-4 w-4" aria-hidden />
+            <AtSign className="h-4 w-4" aria-hidden />
             {instagramHandleLabel(profile.instagramHandle)}
           </a>
         ) : null}
