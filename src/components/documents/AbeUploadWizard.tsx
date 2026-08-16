@@ -17,6 +17,7 @@ import {
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
 import { AbeVehicleMatchPicker } from "@/components/documents/abe-vehicle-match-picker";
+import { AbeVehicleTableWatermark } from "@/components/documents/abe-vehicle-table-watermark";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -882,7 +883,13 @@ export function AbeUploadWizard({
           title={title}
           hint={hint}
           guideLabel={guideLabel}
-          guideFrame="a4"
+          guideWatermark={
+            phase === "capture-vehicles" ? (
+              <AbeVehicleTableWatermark vehicleContext={vehicleContext} />
+            ) : undefined
+          }
+          guideFrame={phase === "capture-vehicles" ? "table" : "a4"}
+          a4AutoCrop
           allowPdf={false}
           showBriefing={false}
           continuousCapture

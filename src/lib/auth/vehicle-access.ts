@@ -182,13 +182,14 @@ export async function sessionOwnsTagVehicle(
 export async function getTagVehicleAccess(
   tagUuid: string,
   vehicleUserId: string | null | undefined,
+  vehicleIdHint?: string | null,
 ): Promise<VehicleAccess> {
   const session = await getCurrentUser();
   const sessionUserId = session?.id ?? null;
   const sessionEmail = session?.email ?? null;
 
-  let vehicleId: string | null = null;
-  if (isSupabaseAdminConfigured()) {
+  let vehicleId: string | null = vehicleIdHint?.trim() || null;
+  if (!vehicleId && isSupabaseAdminConfigured()) {
     try {
       const admin = createAdminClient();
       const { data: tag } = await admin

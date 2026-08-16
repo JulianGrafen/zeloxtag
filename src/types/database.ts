@@ -53,6 +53,10 @@ export type Vehicle = {
   hide_financials: boolean;
   /** Share token for `/v/{public_slug}`. */
   public_slug: string | null;
+  /** Unguessable token for `/expose/{token}` — migration 00037. */
+  expose_token: string | null;
+  /** When true, the token-gated sales exposé is publicly readable. */
+  is_expose_active: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -202,6 +206,8 @@ export type Database = {
           is_public?: boolean;
           hide_financials?: boolean;
           public_slug?: string | null;
+          expose_token?: string | null;
+          is_expose_active?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -217,6 +223,8 @@ export type Database = {
           is_public?: boolean;
           hide_financials?: boolean;
           public_slug?: string | null;
+          expose_token?: string | null;
+          is_expose_active?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -456,6 +464,10 @@ export type Database = {
       };
       resolve_public_vehicle_by_slug: {
         Args: { p_slug: string };
+        Returns: Json;
+      };
+      resolve_public_expose_by_token: {
+        Args: { p_token: string };
         Returns: Json;
       };
     };

@@ -16,6 +16,8 @@ import { isVehiclePublicShowcase } from "@/lib/vehicles/get-public-vehicle";
 export const runtime = "nodejs";
 
 const vehicleIdSchema = z.string().uuid();
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const querySchema = z
   .object({
     src: z.string().trim().min(1).max(2048),
@@ -75,24 +77,26 @@ export async function GET(
     }
 
     if (!dyno) {
-      const admin = createAdminClient();
       const documentId = storagePath.split("/")[1]?.slice(0, 36) ?? "";
-      if (documentId) {
-        const { data: doc } = await admin
-          .from("documents")
-          .select("id, category, invoice_number, file_url, type")
-          .eq("id", documentId)
-          .eq("vehicle_id", vehicleId)
-          .maybeSingle();
+      if (!UUID_RE.test(documentId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
 
-        const allowedManual =
-          doc &&
-          isManualVehicleEntry(doc as Parameters<typeof isManualVehicleEntry>[0]) &&
-          doc.category === "tuning";
+      const admin = createAdminClient();
+      const { data: doc } = await admin
+        .from("documents")
+        .select("id, category, invoice_number, file_url, type")
+        .eq("id", documentId)
+        .eq("vehicle_id", vehicleId)
+        .maybeSingle();
 
-        if (!allowedManual) {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
+      const allowedManual =
+        doc &&
+        isManualVehicleEntry(doc as Parameters<typeof isManualVehicleEntry>[0]) &&
+        doc.category === "tuning";
+
+      if (!allowedManual) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
 

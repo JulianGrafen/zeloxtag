@@ -27,6 +27,8 @@ const baseVehicle: Vehicle = {
   is_public: true,
   hide_financials: true,
   public_slug: "abc123XYZ",
+  expose_token: null,
+  is_expose_active: false,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };
@@ -69,7 +71,7 @@ describe("buildPublicShowcasePayload", () => {
 
     const payload = buildPublicShowcasePayload(baseVehicle, documents);
     expect(payload.profile.hideFinancials).toBe(true);
-    expect(payload.modifications[0]?.amount).toBeNull();
+    expect(payload.modifications[0]).not.toHaveProperty("amount");
     expect(payload.profile.mileageKm).toBe(142000);
     expect(payload.profile.powerPs).toBe(320);
     expect(payload.profile.torqueNm).toBe(427);
@@ -77,6 +79,22 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.profile.drivetrain).toBe("Heckantrieb");
     expect(payload.profile.fuelType).toBe("Benzin");
     expect(payload.profile.transmission).toBe("6-Gang manuell");
+  });
+
+  it("exposes a sanitized Instagram handle and never VIN or owner id", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      vin: "WBASECRET1234567",
+      tech_specs: {
+        ...((baseVehicle.tech_specs ?? {}) as Record<string, unknown>),
+        instagramHandle: "@julian_f11",
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.profile.instagramHandle).toBe("julian_f11");
+    expect(JSON.stringify(payload)).not.toContain("WBASECRET");
+    expect(JSON.stringify(payload)).not.toContain(vehicle.user_id);
   });
 
   it("includes tech spec notes on the public profile", () => {
@@ -97,7 +115,7 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.profile.notes).toBeNull();
   });
 
-  it("shows amounts when hide_financials is false", () => {
+  it("never exposes invoice amounts on the public showroom payload", () => {
     const vehicle = { ...baseVehicle, hide_financials: false };
     const documents: Document[] = [
       baseInvoice({
@@ -113,7 +131,8 @@ describe("buildPublicShowcasePayload", () => {
     ];
 
     const payload = buildPublicShowcasePayload(vehicle, documents);
-    expect(payload.modifications[0]?.amount).toBe(480);
+    expect(payload.modifications[0]).not.toHaveProperty("amount");
+    expect(JSON.stringify(payload)).not.toContain("480");
   });
 
   it("excludes documents not marked for public showcase", () => {
@@ -141,6 +160,6 @@ describe("buildPublicShowcasePayload", () => {
     );
     expect(payload.modifications).toHaveLength(1);
     expect(payload.modifications[0]?.label).toBe("GReddy GT-Flügel");
-    expect(payload.modifications[0]?.amount).toBe(2380);
+    expect(payload.modifications[0]).not.toHaveProperty("amount");
   });
 });

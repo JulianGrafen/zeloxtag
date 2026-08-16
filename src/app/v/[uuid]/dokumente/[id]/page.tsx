@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { DocumentAbeDetailView } from "@/components/documents/document-abe-detail-view";
 import { DocumentInvoiceDetailView } from "@/components/documents/document-invoice-detail-view";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { getDocumentById } from "@/lib/tags/get-tag-by-uuid";
 
 interface DocumentDetailPageProps {
   params: Promise<{ uuid: string; id: string }>;
@@ -25,7 +26,9 @@ export default async function DocumentDetailPage({
   const { uuid, id } = await params;
   const { result, access } = await requireTagWriter(uuid);
 
-  const document = result.documents.find((doc) => doc.id === id);
+  const document =
+    (await getDocumentById(result.vehicle!.id, id)) ??
+    result.documents.find((doc) => doc.id === id);
   if (!document) {
     notFound();
   }

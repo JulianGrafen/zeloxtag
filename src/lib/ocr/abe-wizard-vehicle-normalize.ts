@@ -76,11 +76,28 @@ export function isLikelyAuflagenMisplacedAsFahrzeugtyp(
   return /^[A-Z]\d{2,3}$/.test(trimmed) && looksLikeStrictAuflagenCode(trimmed);
 }
 
+/** Split glued OCR like `11A12A20B22B744` into individual Kürzel. */
+const PACKED_AUFLAGEN_TOKEN_PATTERN =
+  /\d{1,2}[A-Za-z]{1,2}|\d{2,3}|[A-Za-z]\d{1,3}[A-Za-z]?|[A-Za-z]{2,4}/g;
+
+function expandPackedAuflagenToken(raw: string): string[] {
+  const trimmed = raw.trim().replace(/^[\(\[]+|[\)\].,:;]+$/g, "");
+  if (!trimmed) return [];
+  if (DRIVE_TYPES.has(trimmed.toLowerCase())) return [trimmed];
+  if (looksLikeAuflagenCode(trimmed)) return [trimmed];
+  if (!/^[A-Z0-9+]{7,}$/i.test(trimmed)) return [trimmed];
+
+  const packed = trimmed.match(PACKED_AUFLAGEN_TOKEN_PATTERN);
+  if (!packed || packed.length < 2) return [trimmed];
+  return packed;
+}
+
 function tokenizeAuflagenColumnWithRaw(
   items: readonly string[],
 ): { raw: string; normalized: string }[] {
   return items
     .flatMap((item) => item.trim().split(/[\s,/;]+/))
+    .flatMap((token) => expandPackedAuflagenToken(token))
     .map((token) => ({
       raw: token.trim().replace(/^[\(\[]+|[\)\].,:;]+$/g, ""),
       normalized: normalizeAuflagenToken(token),
@@ -384,6 +401,10 @@ function mergeUniqueAuflagenCodes(codes: string[]): string[] {
   return out;
 }
 
+/** Digit+letter families beyond the seed (20B, 22B, A77). One-digit junk like K7C stays out. */
+const STANDARD_AUFLAGEN_PATTERN =
+  /^(?:\d{2,3}|\d{1,2}[A-Z]{1,2}|[A-Z]\d{2,3}[A-Z]?)$/;
+
 function filterAuflagenCodesToTrustedDictionary(
   codes: readonly string[],
 ): string[] {
@@ -393,9 +414,7 @@ function filterAuflagenCodesToTrustedDictionary(
       const normalized = normalizeAuflagenToken(code);
       if (!normalized) return false;
       if (known.has(normalized)) return true;
-      // Numeric Auflagen (744, 166) are valid even when not yet in the seed DB.
-      if (/^\d{2,3}$/.test(normalized)) return true;
-      return false;
+      return STANDARD_AUFLAGEN_PATTERN.test(normalized);
     }),
   );
 }
@@ -411,7 +430,7 @@ export function dropIncompleteVehicleTableRows(
   );
 }
 
-/** Keep dictionary-backed codes plus numeric Auflagen; drop unknown OCR junk (K7C, …). */
+/** Keep dictionary, numeric, and standard digit/letter Auflagen; drop letter-only junk. */
 export function filterKnownAuflagenCodes(codes: readonly string[]): string[] {
   return filterAuflagenCodesToTrustedDictionary(codes);
 }

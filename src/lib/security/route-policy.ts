@@ -18,6 +18,7 @@ const PUBLIC_EXACT = new Set([
 
 const PUBLIC_PREFIXES = [
   "/v/", // physical QR scan surface
+  "/expose/", // token-gated sales exposé (never by vehicle id)
   "/einladung/", // Schrauber invite landing (accept requires auth)
   "/abe", // mock ABE showcase (Verwendungsbereich highlight demo)
   "/rechnungen", // mock invoice showcase

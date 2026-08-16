@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { VehicleSettingsView } from "@/components/vehicles/vehicle-settings-view";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import { getOwnerExposeState } from "@/lib/vehicles/get-public-expose";
 
 interface VehicleSettingsPageProps {
   params: Promise<{ uuid: string }>;
@@ -27,6 +28,7 @@ export default async function VehicleSettingsPage({
   const { uuid } = await params;
   const { result } = await requireTagOwner(uuid);
   const vehicle = result.vehicle!;
+  const expose = await getOwnerExposeState(vehicle.id);
 
   return (
     <AppShell showNavbar={false}>
@@ -58,6 +60,8 @@ export default async function VehicleSettingsPage({
           vehicle={vehicle}
           documents={result.documents}
           canEdit={!isDemoActiveTag(uuid)}
+          exposeToken={expose.exposeToken}
+          isExposeActive={expose.isExposeActive}
         />
       </section>
     </AppShell>

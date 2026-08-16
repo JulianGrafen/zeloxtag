@@ -1,3 +1,5 @@
+import { parseInstagramHandle } from "@/lib/vehicles/instagram-handle";
+
 /**
  * Structured Antrieb / Fahrwerk fields stored on vehicles.tech_specs.
  */
@@ -14,6 +16,8 @@ export type VehicleTechSpecs = {
   color: string | null;
   bodyType: string | null;
   notes: string | null;
+  /** Public Instagram handle without @ — never a free-form URL. */
+  instagramHandle: string | null;
   /** Supabase Storage URL for dyno / Leistungsdiagramm PDF. */
   dynoChartUrl: string | null;
 };
@@ -30,6 +34,7 @@ export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
   color: null,
   bodyType: null,
   notes: null,
+  instagramHandle: null,
   dynoChartUrl: null,
 };
 
@@ -68,6 +73,9 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
     color: asTrimmedString(record.color),
     bodyType: asTrimmedString(record.bodyType),
     notes: asTrimmedString(record.notes),
+    instagramHandle: parseInstagramHandle(
+      record.instagramHandle ?? record.instagram,
+    ),
     dynoChartUrl: asTrimmedString(record.dynoChartUrl),
   };
 }
@@ -88,6 +96,8 @@ export function serializeVehicleTechSpecs(
   if (specs.color) out.color = specs.color;
   if (specs.bodyType) out.bodyType = specs.bodyType;
   if (specs.notes) out.notes = specs.notes;
+  const instagramHandle = parseInstagramHandle(specs.instagramHandle);
+  if (instagramHandle) out.instagramHandle = instagramHandle;
   if (specs.dynoChartUrl) out.dynoChartUrl = specs.dynoChartUrl;
   return out;
 }

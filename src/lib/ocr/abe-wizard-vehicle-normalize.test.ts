@@ -91,6 +91,27 @@ describe("abe-wizard-vehicle-normalize", () => {
     expect(parseAuflagenCodes(["744 A77 Allradantrieb"]).driveType).toBe(
       "Allradantrieb",
     );
+    expect(parseAuflagenCodes(["744 A77 Allradantrieb"]).codes).toEqual([
+      "744",
+      "A77",
+    ]);
+  });
+
+  it("keeps every standard table Kürzel including 20B/22B and repairs 228", () => {
+    expect(
+      parseAuflagenCodes(["11A", "12A", "20B", "228", "51A", "A01", "A02", "744"])
+        .codes,
+    ).toEqual(["11A", "12A", "20B", "22B", "51A", "A01", "A02", "744"]);
+  });
+
+  it("splits packed Auflagen OCR into individual Kürzel", () => {
+    expect(parseAuflagenCodes(["11A12A20B22B744"]).codes).toEqual([
+      "11A",
+      "12A",
+      "20B",
+      "22B",
+      "744",
+    ]);
   });
 
   it("repairs Gutachten column mis-assignments (kW → fahrzeugtyp, Reifen → typeApproval)", () => {

@@ -580,6 +580,28 @@ nextjs-portal {
   }
 }
 
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .expose-no-print {
+    display: none !important;
+  }
+
+  .expose-root {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .expose-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vd-anim-header,
   .vd-anim-stagger > *,

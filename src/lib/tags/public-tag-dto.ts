@@ -64,6 +64,8 @@ function toGuestClientVehicle(vehicle: Vehicle): Vehicle {
     hide_financials: vehicle.hide_financials !== false,
     public_slug:
       typeof vehicle.public_slug === "string" ? vehicle.public_slug : null,
+    expose_token: null,
+    is_expose_active: false,
     created_at: vehicle.created_at,
     updated_at: vehicle.updated_at,
   };

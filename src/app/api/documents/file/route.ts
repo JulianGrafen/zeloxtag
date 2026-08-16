@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
-import { isVehicleDynoChartStoragePath } from "@/lib/vehicles/dyno-chart-constants";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
 import {
@@ -46,6 +45,9 @@ export async function GET(request: NextRequest) {
 
   try {
     if (src.startsWith("/demo/")) {
+      if (!isSafeDemoDocumentPath(src)) {
+        return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
+      }
       const origin = request.nextUrl.origin;
       return proxyInline(`${origin}${src}`, guessContentType(src));
     }
@@ -137,10 +139,6 @@ async function authorizeDocumentRead(
 
   if (ownedVehicle.user_id === user.id) return true;
 
-  if (isVehicleDynoChartStoragePath(storagePath)) {
-    return true;
-  }
-
   const { data: grant } = await supabase
     .from("vehicle_contributors")
     .select("id, can_read_history")
@@ -213,6 +211,11 @@ function inlineDocumentHeaders(
     "X-Frame-Options": "SAMEORIGIN",
     "Content-Security-Policy": "frame-ancestors 'self'",
   };
+}
+
+/** Same-origin demo assets only — no path traversal or open redirects. */
+function isSafeDemoDocumentPath(src: string): boolean {
+  return /^\/demo\/[A-Za-z0-9._-]+$/.test(src);
 }
 
 function filenameFromPath(url: string): string {

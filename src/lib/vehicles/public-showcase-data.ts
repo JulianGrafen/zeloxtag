@@ -17,10 +17,15 @@ export type PublicGalleryPhoto = {
 export type PublicModification = {
   id: string;
   label: string;
+  category: string;
   date: string | null;
   vendor: string | null;
-  amount: number | null;
   source: "invoice" | "manual";
+};
+
+export type PublicModificationGroup = {
+  category: string;
+  items: PublicModification[];
 };
 
 export type PublicShowcaseProfile = {
@@ -39,6 +44,7 @@ export type PublicShowcaseProfile = {
   bodyType: string | null;
   color: string | null;
   notes: string | null;
+  instagramHandle: string | null;
   mileageKm: number | null;
   dynoChartUrl: string | null;
   heroImageSrc: string | null;
@@ -56,12 +62,17 @@ function normalizeVehicleShowcaseFields(vehicle: Vehicle): {
   is_public: boolean;
   hide_financials: boolean;
   public_slug: string | null;
+  expose_token: string | null;
+  is_expose_active: boolean;
 } {
   return {
     is_public: Boolean(vehicle.is_public),
     hide_financials: vehicle.hide_financials !== false,
     public_slug:
       typeof vehicle.public_slug === "string" ? vehicle.public_slug : null,
+    expose_token:
+      typeof vehicle.expose_token === "string" ? vehicle.expose_token : null,
+    is_expose_active: vehicle.is_expose_active === true,
   };
 }
 
@@ -119,16 +130,48 @@ function collectGalleryPhotos(
   return photos;
 }
 
+const PUBLIC_MOD_CATEGORY_LABELS: Record<string, string> = {
+  tuning: "Teile & Umbauten",
+  "Tuning / Teile": "Teile & Umbauten",
+  "Manueller Eintrag": "Umbauten",
+};
+
+function publicModCategoryLabel(raw: string): string {
+  const trimmed = raw.trim();
+  return PUBLIC_MOD_CATEGORY_LABELS[trimmed] ?? (trimmed || "Umbauten");
+}
+
 function mapModificationsToPublic(
   modifications: ReturnType<typeof extractVehicleModifications>,
 ): PublicModification[] {
   return modifications.map((mod) => ({
     id: mod.id,
     label: mod.partName,
+    category: publicModCategoryLabel(mod.category),
     date: mod.date,
     vendor: mod.manufacturer,
-    amount: mod.amount,
     source: mod.source === "manual" ? "manual" : "invoice",
+  }));
+}
+
+export function groupPublicModifications(
+  modifications: readonly PublicModification[],
+): PublicModificationGroup[] {
+  const order: string[] = [];
+  const byCategory = new Map<string, PublicModification[]>();
+
+  for (const mod of modifications) {
+    const key = mod.category;
+    if (!byCategory.has(key)) {
+      byCategory.set(key, []);
+      order.push(key);
+    }
+    byCategory.get(key)!.push(mod);
+  }
+
+  return order.map((category) => ({
+    category,
+    items: byCategory.get(category) ?? [],
   }));
 }
 
@@ -147,11 +190,14 @@ export function buildPublicShowcasePayload(
 
   const modifications = mapModificationsToPublic(
     extractVehicleModifications(documents, {
-      hideFinancials: hide_financials,
+      hideFinancials: true,
       documentFilter: (doc) =>
         filterPublicShowcaseDocuments([doc]).length > 0,
     }).filter((mod) => mod.source !== "abe"),
   );
+
+  const photos = collectGalleryPhotos(vehicle, documents);
+  const heroFromGallery = photos.find((photo) => photo.id !== "silhouette");
 
   return {
     profile: {
@@ -170,13 +216,14 @@ export function buildPublicShowcasePayload(
       bodyType: specs.bodyType,
       color: specs.color,
       notes: specs.notes?.trim() ? specs.notes.trim() : null,
+      instagramHandle: specs.instagramHandle,
       mileageKm: latestMileageKm(publicDocs),
       dynoChartUrl,
-      heroImageSrc: `/api/vehicle/silhouette/${vehicle.id}`,
+      heroImageSrc: heroFromGallery?.src ?? `/api/vehicle/silhouette/${vehicle.id}`,
       hideFinancials: hide_financials,
       publicSlug: public_slug,
     },
-    photos: collectGalleryPhotos(vehicle, documents),
+    photos,
     modifications,
   };
 }
@@ -188,5 +235,7 @@ export function withDefaultShowcaseFields(vehicle: Vehicle): Vehicle {
     is_public: fields.is_public,
     hide_financials: fields.hide_financials,
     public_slug: fields.public_slug,
+    expose_token: fields.expose_token,
+    is_expose_active: fields.is_expose_active,
   };
 }

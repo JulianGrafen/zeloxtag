@@ -4,6 +4,7 @@ import {
   auflagenKuerzelConfusionDistance,
   correctAuflagenKuerzelList,
   correctAuflagenKuerzelOcr,
+  repairNumericAuflagenLetterSuffix,
 } from "@/lib/ocr/auflagen-kuerzel-ocr-correction";
 
 describe("auflagenKuerzelConfusionDistance", () => {
@@ -11,6 +12,20 @@ describe("auflagenKuerzelConfusionDistance", () => {
     expect(auflagenKuerzelConfusionDistance("CPO", "CPE")).toBe(1);
     expect(auflagenKuerzelConfusionDistance("CPO", "CBO")).toBe(1);
     expect(auflagenKuerzelConfusionDistance("K3A", "K8A")).toBe(1);
+    expect(auflagenKuerzelConfusionDistance("228", "22B")).toBe(1);
+  });
+});
+
+describe("repairNumericAuflagenLetterSuffix", () => {
+  it("maps 228 to 22B and 118 to dictionary 11B", () => {
+    expect(repairNumericAuflagenLetterSuffix("228")).toBe("22B");
+    expect(repairNumericAuflagenLetterSuffix("118")).toBe("11B");
+    expect(repairNumericAuflagenLetterSuffix("208")).toBe("20B");
+  });
+
+  it("keeps known numeric codes such as 248", () => {
+    expect(repairNumericAuflagenLetterSuffix("248")).toBe("248");
+    expect(repairNumericAuflagenLetterSuffix("166")).toBe("166");
   });
 });
 
@@ -55,6 +70,10 @@ describe("correctAuflagenKuerzelOcr", () => {
       }),
     ).toBe("76O");
   });
+
+  it("maps OCR 228 to 22B", () => {
+    expect(correctAuflagenKuerzelOcr("228")).toBe("22B");
+  });
 });
 
 describe("correctAuflagenKuerzelList", () => {
@@ -64,5 +83,14 @@ describe("correctAuflagenKuerzelList", () => {
         rawContext: "744 und CPE laut ABE",
       }),
     ).toEqual(["744", "CPE"]);
+  });
+
+  it("repairs 228 in a row list without collapsing 248", () => {
+    expect(correctAuflagenKuerzelList(["11A", "228", "248", "744"])).toEqual([
+      "11A",
+      "22B",
+      "248",
+      "744",
+    ]);
   });
 });

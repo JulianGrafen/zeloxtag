@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         vehicleId: meta.data.vehicleId,
         userId: user.id,
         bytes,
-        mimeType: file.type,
+        mimeType: sniffed,
         originalName: file.name,
         ocr,
       });
@@ -176,8 +176,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(body, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected OCR route error.";
-    return jsonError(500, message, "storage_failed");
+    console.error("[api/ocr] unexpected", error);
+    return jsonError(500, "OCR request failed.", "storage_failed");
   }
 }

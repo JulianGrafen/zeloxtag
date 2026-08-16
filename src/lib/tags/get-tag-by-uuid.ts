@@ -1,4 +1,12 @@
+import { cache } from "react";
+
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
+import {
+  DOCUMENT_DETAIL_COLUMNS,
+  DOCUMENT_LIST_COLUMNS,
+  TAG_COLUMNS,
+  VEHICLE_COLUMNS,
+} from "@/lib/documents/query-columns";
 import { parseLineItems } from "@/lib/documents/line-items";
 import { getMockUploadedDocuments } from "@/lib/documents/mock-uploads";
 import {
@@ -136,7 +144,7 @@ async function resolveTagWithAdmin(
 
   const { data: tag, error: tagError } = await supabase
     .from("tags")
-    .select("*")
+    .select(TAG_COLUMNS)
     .eq("uuid", uuid)
     .maybeSingle();
 
@@ -150,12 +158,12 @@ async function resolveTagWithAdmin(
       await Promise.all([
         supabase
           .from("vehicles")
-          .select("*")
+          .select(VEHICLE_COLUMNS)
           .eq("id", tag.vehicle_id)
           .maybeSingle(),
         supabase
           .from("documents")
-          .select("*")
+          .select(DOCUMENT_LIST_COLUMNS)
           .eq("vehicle_id", tag.vehicle_id)
           .order("created_at", { ascending: false }),
       ]);
@@ -209,7 +217,9 @@ async function resolveTagWithRpc(
  * and is only a fallback. Never hydrate RPC/admin payloads into the client for
  * non-owners; use `toGuestClientTagScanResult` / `PrivateTwinGate` instead.
  */
-export async function getTagByUuid(uuid: string): Promise<TagScanResult | null> {
+async function getTagByUuidUncached(
+  uuid: string,
+): Promise<TagScanResult | null> {
   const normalized = uuid.trim();
   if (!normalized) return null;
 
@@ -231,4 +241,34 @@ export async function getTagByUuid(uuid: string): Promise<TagScanResult | null> 
   }
 
   return resolveTagWithRpc(normalized);
+}
+
+/** Request-memoized QR lookup — metadata + page + access share one twin load. */
+export const getTagByUuid = cache(getTagByUuidUncached);
+
+/** Full document row for detail views (list payload omits notes/conditions/specs). */
+export async function getDocumentById(
+  vehicleId: string,
+  documentId: string,
+): Promise<Document | null> {
+  const vid = vehicleId.trim();
+  const did = documentId.trim();
+  if (!vid || !did) return null;
+
+  if (!isSupabaseAdminConfigured()) {
+    return null;
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("documents")
+    .select(DOCUMENT_DETAIL_COLUMNS)
+    .eq("id", did)
+    .eq("vehicle_id", vid)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load document: ${error.message}`);
+  }
+  return data ? normalizeDocument(data) : null;
 }

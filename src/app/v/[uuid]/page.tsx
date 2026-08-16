@@ -70,11 +70,7 @@ async function renderPublicShowcase(vehicle: Vehicle) {
   const documents = await loadPublicShowcaseDocuments(vehicle.id);
   const payload = buildPublicShowcasePayload(vehicle, documents);
 
-  return (
-    <AppShell showNavbar={false}>
-      <PublicShowcaseView data={payload} />
-    </AppShell>
-  );
+  return <PublicShowcaseView data={payload} />;
 }
 
 function hasInsiderAccess(access: {
@@ -144,7 +140,7 @@ export default async function TagScanPage({
   }
 
   if (tag.status === "active" && vehicle) {
-    const access = await getTagVehicleAccess(tag.uuid, vehicle.user_id);
+    const access = await getTagVehicleAccess(tag.uuid, vehicle.user_id, vehicle.id);
     const isPublicShowcase = vehicleSupportsPublicShowcase(vehicle);
 
     // Public showcase is guest-only; owner and Schrauber land in the private dashboard.

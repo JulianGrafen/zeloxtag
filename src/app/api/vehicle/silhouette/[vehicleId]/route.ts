@@ -18,9 +18,21 @@ export const runtime = "nodejs";
 
 const vehicleIdSchema = z.string().uuid();
 
+function isAllowedSilhouetteFetchUrl(url: string, supabaseOrigin: string): boolean {
+  try {
+    return new URL(url).origin === new URL(supabaseOrigin).origin;
+  } catch {
+    return false;
+  }
+}
+
 async function fetchRemoteSilhouetteBytes(
   url: string,
+  supabaseOrigin: string,
 ): Promise<Uint8Array | null> {
+  if (!supabaseOrigin || !isAllowedSilhouetteFetchUrl(url, supabaseOrigin)) {
+    return null;
+  }
   try {
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) return null;
@@ -70,6 +82,14 @@ export async function GET(
     );
   }
 
+  const { url: supabaseUrl } = getSupabaseEnv();
+  let supabaseOrigin = "";
+  try {
+    supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : "";
+  } catch {
+    supabaseOrigin = "";
+  }
+
   const admin = createAdminClient();
   const objectPaths = [
     vehiclePhotoObjectPath(parsed.data),
@@ -95,7 +115,10 @@ export async function GET(
       .createSignedUrl(objectPath, 120);
 
     if (!signedError && signed?.signedUrl) {
-      const signedBytes = await fetchRemoteSilhouetteBytes(signed.signedUrl);
+      const signedBytes = await fetchRemoteSilhouetteBytes(
+        signed.signedUrl,
+        supabaseOrigin,
+      );
       if (signedBytes && isLikelyImageBytes(signedBytes)) {
         return imageResponse(signedBytes);
       }
@@ -117,6 +140,7 @@ export async function GET(
 
   const remoteBytes = await fetchRemoteSilhouetteBytes(
     vehicle.silhouette_image_url,
+    supabaseOrigin,
   );
   if (!remoteBytes) {
     return NextResponse.json(

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ABE_AUFLAGEN_COLUMN_LLM_HINT } from "@/lib/ocr/abe-auflagen-kuerzel-hints";
+
 /** Prefix for OpenAI JSON schema field descriptions — reduces example hallucination. */
 const FROM_DOCUMENT =
   "Extract only from the attached document. Copy verbatim. Null or empty if not visible. ";
@@ -233,7 +235,8 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_DOCUMENT +
-                "Short Auflagen condition codes from this row's Auflagen column only. Never copy codes from other rows or Verkaufsbezeichnung sections above/below.",
+                ABE_AUFLAGEN_COLUMN_LLM_HINT +
+                " Never copy codes from other rows or Verkaufsbezeichnung sections above/below.",
             },
           },
         },

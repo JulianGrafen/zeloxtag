@@ -198,6 +198,27 @@ export async function buildA4ImageFromGuideCapture(
   return canvasToJpegFile(canvas, fileName, jpegQuality);
 }
 
+/** Crop the guide frame and keep its aspect — no A4 warp (table excerpts). */
+export async function buildImageFromGuideCapture(
+  fullCapture: HTMLCanvasElement,
+  crop: VideoCropRect,
+  fileName = `table-scan-${Date.now()}`,
+  options: A4CaptureEncodeOptions = {},
+): Promise<File> {
+  const cropped = cropCanvasRegion(fullCapture, crop);
+  const canvas = resizeDocumentCanvas(
+    cropped,
+    options.maxWidth ?? WARP_MAX_WIDTH_PX,
+  );
+  cropped.width = 0;
+  cropped.height = 0;
+  return canvasToJpegFile(
+    canvas,
+    fileName,
+    options.jpegQuality ?? 0.92,
+  );
+}
+
 /**
  * Crop the guide frame and build a single-page A4 PDF (legacy / explicit PDF path).
  */

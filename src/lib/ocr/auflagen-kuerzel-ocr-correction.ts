@@ -12,6 +12,8 @@ const CONFUSION_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ["E", "O"],
   ["P", "B"],
   ["B", "P"],
+  ["B", "8"],
+  ["8", "B"],
   ["P", "R"],
   ["I", "1"],
   ["1", "I"],
@@ -25,9 +27,48 @@ const CONFUSION_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ["8", "3"],
 ];
 
+/** Trailing OCR digits that are usually Auflage letter suffixes. */
+const TRAILING_DIGIT_TO_LETTER: Readonly<Record<string, string>> = {
+  "8": "B",
+  "0": "O",
+  "1": "I",
+  "5": "S",
+  "6": "G",
+};
+
+/** 10B–29B are Radhaus codes; 228 is almost never an Achslast-Kürzel. */
+const RADHAUS_LETTER_B_PREFIX = /^(1\d|2\d)$/;
+
 const KNOWN_KUERZEL_FROM_SEED = new Set(
   seedRecords.map((record) => normalizeAuflagenKuerzel(record.kuerzel)),
 );
+
+/**
+ * Map numeric OCR like 228 → 22B when the digit form is unknown and the
+ * letter form is a dictionary hit or a standard 10B–29B Radhaus code.
+ * Known numeric codes (248, 166) stay unchanged.
+ */
+export function repairNumericAuflagenLetterSuffix(
+  raw: string,
+  known: ReadonlySet<string> = KNOWN_KUERZEL_FROM_SEED,
+): string {
+  const code = normalizeAuflagenKuerzel(raw);
+  if (!/^\d{2,3}$/.test(code)) return code;
+  if (known.has(code)) return code;
+
+  const letter = TRAILING_DIGIT_TO_LETTER[code.slice(-1)];
+  if (!letter) return code;
+
+  const variant = `${code.slice(0, -1)}${letter}`;
+  if (known.has(variant)) return variant;
+
+  const prefix = code.slice(0, -1);
+  if (letter === "B" && RADHAUS_LETTER_B_PREFIX.test(prefix)) {
+    return variant;
+  }
+
+  return code;
+}
 
 function substitutionCost(from: string, to: string): number {
   if (from === to) return 0;
@@ -113,10 +154,11 @@ export function correctAuflagenKuerzelOcr(
   raw: string,
   options: CorrectAuflagenKuerzelOptions = {},
 ): string {
-  const code = normalizeAuflagenKuerzel(raw);
-  if (!code) return code;
+  const rawCode = normalizeAuflagenKuerzel(raw);
+  if (!rawCode) return rawCode;
 
   const known = options.knownKuerzel ?? KNOWN_KUERZEL_FROM_SEED;
+  const code = repairNumericAuflagenLetterSuffix(rawCode, known);
   const maxDistance = options.maxDistance ?? 1;
   const allowlist = [
     ...new Set(

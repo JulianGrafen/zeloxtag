@@ -420,7 +420,12 @@ describe("ABE_HUNT_FIELD_WATERMARKS", () => {
 
   it("shows Fahrzeugmodell for verkaufsbezeichnung in the UI", () => {
     expect(abeHuntFieldDisplayLabel("verkaufsbezeichnung")).toBe("Fahrzeugmodell");
-    expect(ABE_HUNT_FIELD_WATERMARKS.verkaufsbezeichnung).toContain("Fahrzeugmodell");
+    expect(ABE_HUNT_FIELD_WATERMARKS.verkaufsbezeichnung).toContain(
+      "Fahrzeugtyp",
+    );
+    expect(ABE_HUNT_FIELD_WATERMARKS.verkaufsbezeichnung).toContain(
+      "Betriebserlaubnis",
+    );
     expect(ABE_HUNT_FIELD_SCAN_HINTS.verkaufsbezeichnung?.popupBody).toContain(
       "Tabellenabschnitt",
     );

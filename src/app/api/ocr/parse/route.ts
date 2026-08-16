@@ -235,8 +235,7 @@ export async function POST(request: NextRequest) {
       return jsonError(502, error.message, "parse_failed");
     }
 
-    const message =
-      error instanceof Error ? error.message : "Unexpected OCR parse error.";
-    return jsonError(500, message, "parse_failed");
+    console.error("[api/ocr/parse] unexpected", error);
+    return jsonError(500, "Dokumentanalyse fehlgeschlagen.", "parse_failed");
   }
 }

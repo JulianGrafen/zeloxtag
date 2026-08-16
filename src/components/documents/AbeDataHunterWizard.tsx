@@ -18,6 +18,7 @@ import {
   AbeKbaHero,
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
+import { AbeVehicleTableWatermark } from "@/components/documents/abe-vehicle-table-watermark";
 import { InBrowserCamera, type GuideFrameType } from "@/components/documents/in-browser-camera";
 import {
   ABE_CAPTURE_JPEG_QUALITY,
@@ -303,6 +304,11 @@ function KbaHuntOverlay({
         <>
           <AbeScanHud
             status={detectedKba ? `KBA ${detectedKba}` : "KBA scannen"}
+            hint={
+              analyzing
+                ? "Foto wird ausgewertet — bitte kurz warten."
+                : ABE_HUNT_FIELD_SCAN_HINTS.kbaNumber?.scanAction
+            }
             analyzing={analyzing}
             complete={false}
             onClose={onClose}
@@ -530,6 +536,9 @@ const CAMERA_HUD_SHELL =
   "pointer-events-none fixed inset-x-0 top-0 z-[10050] px-2 pt-[max(0.2rem,env(safe-area-inset-top))]";
 const CAMERA_HUD_BAR =
   "pointer-events-auto mx-auto flex max-w-[min(100%,260px)] items-center gap-1 rounded-lg border border-white/10 bg-black/35 py-0.5 pl-0.5 pr-1 text-white shadow-sm backdrop-blur-[2px]";
+/** Clears the shutter row in `InBrowserCamera` compact chrome. */
+const CAMERA_HINT_ABOVE_SHUTTER =
+  "pointer-events-none fixed inset-x-0 z-[10050] px-4 bottom-[max(6.15rem,calc(env(safe-area-inset-bottom)+5.65rem))]";
 
 function ScanCompleteBanner({
   title,
@@ -609,79 +618,83 @@ function AbeScanHud({
     (progress && status.trim().length > 0 ? status : undefined);
 
   return createPortal(
-    <div className={CAMERA_HUD_SHELL}>
-      <div className={CAMERA_HUD_BAR}>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10"
-          aria-label="Schließen"
-        >
-          <X className="h-3 w-3" />
-        </button>
+    <>
+      <div className={CAMERA_HUD_SHELL}>
+        <div className={CAMERA_HUD_BAR}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10"
+            aria-label="Schließen"
+          >
+            <X className="h-3 w-3" />
+          </button>
 
-        {progress ? (
-          <>
-            <div
-              className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-white/15"
-              role="progressbar"
-              aria-valuenow={progress.done}
-              aria-valuemin={0}
-              aria-valuemax={progress.total}
-            >
+          {progress ? (
+            <>
               <div
-                className="h-full rounded-full bg-emerald-400/90 transition-[width] duration-300"
-                style={{
-                  width: `${(progress.done / progress.total) * 100}%`,
-                }}
-              />
-            </div>
-            <span className="shrink-0 text-[0.52rem] font-semibold tabular-nums text-white/80">
-              {progress.done}/{progress.total}
-            </span>
-          </>
-        ) : (
-          <p
-            className="min-w-0 flex-1 truncate text-[0.62rem] font-medium text-white/90"
-            title={status}
-          >
-            {status}
-          </p>
-        )}
+                className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-white/15"
+                role="progressbar"
+                aria-valuenow={progress.done}
+                aria-valuemin={0}
+                aria-valuemax={progress.total}
+              >
+                <div
+                  className="h-full rounded-full bg-emerald-400/90 transition-[width] duration-300"
+                  style={{
+                    width: `${(progress.done / progress.total) * 100}%`,
+                  }}
+                />
+              </div>
+              <span className="shrink-0 text-[0.52rem] font-semibold tabular-nums text-white/80">
+                {progress.done}/{progress.total}
+              </span>
+            </>
+          ) : (
+            <p
+              className="min-w-0 flex-1 truncate text-[0.62rem] font-medium text-white/90"
+              title={status}
+            >
+              {status}
+            </p>
+          )}
 
-        {analyzing ? (
-          <LoaderCircle
-            className="h-3 w-3 shrink-0 animate-spin text-amber-200"
-            aria-label="Analysiert"
-          />
-        ) : onContinue ? (
-          <button
-            type="button"
-            onClick={onContinue}
-            className="flex h-5 shrink-0 items-center rounded-full bg-emerald-400 px-2 text-[0.55rem] font-semibold text-emerald-950"
-            aria-label="Weiter"
-          >
-            →
-          </button>
-        ) : onSkip ? (
-          <button
-            type="button"
-            onClick={onSkip}
-            className="shrink-0 rounded-full border border-white/20 px-2 py-0.5 text-[0.5rem] font-medium text-white/80"
-          >
-            {skipLabel}
-          </button>
-        ) : null}
+          {analyzing ? (
+            <LoaderCircle
+              className="h-3 w-3 shrink-0 animate-spin text-amber-200"
+              aria-label="Analysiert"
+            />
+          ) : onContinue ? (
+            <button
+              type="button"
+              onClick={onContinue}
+              className="flex h-5 shrink-0 items-center rounded-full bg-emerald-400 px-2 text-[0.55rem] font-semibold text-emerald-950"
+              aria-label="Weiter"
+            >
+              →
+            </button>
+          ) : onSkip ? (
+            <button
+              type="button"
+              onClick={onSkip}
+              className="shrink-0 rounded-full border border-white/20 px-2 py-0.5 text-[0.5rem] font-medium text-white/80"
+            >
+              {skipLabel}
+            </button>
+          ) : null}
+        </div>
       </div>
       {hintLine ? (
-        <p
-          className="pointer-events-none mx-auto mt-1 max-w-[min(100%,300px)] px-2 text-center text-[0.62rem] font-medium leading-snug text-white/90"
-          title={hintLine}
-        >
-          {hintLine}
-        </p>
+        <div className={CAMERA_HINT_ABOVE_SHUTTER}>
+          <p
+            className="mx-auto max-w-[min(100%,22rem)] rounded-xl bg-black/70 px-3 py-2 text-center text-[0.78rem] font-medium leading-snug text-white shadow-lg backdrop-blur-md"
+            title={hintLine}
+          >
+            {hintLine}
+          </p>
+        </div>
       ) : null}
-    </div>,
+    </>,
     document.body,
   );
 }
@@ -701,11 +714,8 @@ const ABE_CAMERA_PROPS = {
 };
 
 function abeGuideFrameForField(field: AbeRequiredFieldKey): GuideFrameType {
-  if (
-    field === "verkaufsbezeichnung" ||
-    field === "auflagenCodes" ||
-    field === "auflagenNotes"
-  ) {
+  if (field === "verkaufsbezeichnung") return "table";
+  if (field === "auflagenCodes" || field === "auflagenNotes") {
     return "section";
   }
   return "a4";
@@ -2719,9 +2729,12 @@ export function AbeDataHunterWizard({
   const huntFocusKey = coreComplete
     ? "verkaufsbezeichnung"
     : firstMissingFocusKey(report, null, vehicleContext);
-  const guideWatermark = coreComplete
-    ? undefined
-    : ABE_HUNT_FIELD_WATERMARKS[huntFocusKey];
+  const guideWatermark =
+    huntFocusKey === "verkaufsbezeichnung" ? (
+      <AbeVehicleTableWatermark vehicleContext={vehicleContext} />
+    ) : (
+      ABE_HUNT_FIELD_WATERMARKS[huntFocusKey]
+    );
 
   const switchToCameraButton =
     huntMode === "pdf" &&

@@ -527,7 +527,7 @@ export class AbeExtractionService {
         "- typeApproval: Betriebserlaubnis cell verbatim.",
         "- driveType: drive-type word in Auflagen (Allradantrieb / Heckantrieb / Frontantrieb), else null.",
         "- tireSizes: tyre sizes from Reifen column if present; empty array when column is missing (e.g. spoiler, spacer).",
-        "- auflagenCodes: short condition codes from this row's Auflagen column only — never from other rows above or below.",
+        "- auflagenCodes: EVERY short condition code from this row's Auflagen columns (reifenbezogen AND Hinweise) — never from other rows. Letter suffixes stay letters (22B not 228).",
         "Read digits 3 and 8 carefully in Fahrzeugtyp codes — common OCR confusion (346K not 846K).",
         'When one table line lists multiple Fahrzeugtyp codes (e.g. "346C, 346R"), emit ONE row PER code.',
         "Do not merge rows. Do not skip rows. Do not add rows that are not visible.",

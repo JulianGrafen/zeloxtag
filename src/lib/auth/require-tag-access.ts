@@ -43,6 +43,7 @@ export async function requireTagWriter(
   const access = await getTagVehicleAccess(
     result.tag.uuid,
     result.vehicle.user_id,
+    result.vehicle.id,
   );
 
   if (!access.canWriteInvoices) {
@@ -85,6 +86,7 @@ export async function requireTagOwner(
   const access = await getTagVehicleAccess(
     result.tag.uuid,
     result.vehicle.user_id,
+    result.vehicle.id,
   );
 
   if (!access.isOwner) {

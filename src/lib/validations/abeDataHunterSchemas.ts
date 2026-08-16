@@ -26,6 +26,7 @@ import {
   groupAbeVehicleMatches,
   resolveAuflagenCodesForReport,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
+import { ABE_AUFLAGEN_COLUMN_LLM_HINT } from "@/lib/ocr/abe-auflagen-kuerzel-hints";
 import { isPlaceholderAbeVerkaufsbezeichnung } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 
 /** LLM hint: legal ABE holder may appear as Inhaber der ABE or Auftraggeber. */
@@ -102,7 +103,8 @@ export const ABE_HUNT_FIELD_WATERMARKS: Record<AbeRequiredFieldKey, string> = {
   manufacturer: "Herstellerzeichen\nAC Schnitzer",
   partDesignation: "Leichtmetallfelge\n8,5 × 19",
   markingText: "Kennzeichnung\nKBA 123456",
-  verkaufsbezeichnung: "Fahrzeugmodell\n5ER REIHE",
+  verkaufsbezeichnung:
+    "Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen",
   auflagenCodes: "A1 · A2 · A3",
   auflagenNotes: "Auflage 744\nText wörtlich…",
 };
@@ -163,7 +165,7 @@ export const ABE_HUNT_FIELD_SCAN_HINTS: Partial<
   },
   verkaufsbezeichnung: {
     scanAction:
-      "Fotografiere die Fahrzeugtabelle — deine Zeile inkl. Auflagen-Spalte, falls sichtbar.",
+      "Fotografiere nur den Tabellenausschnitt deines Fahrzeugs — Zeile mit Typ, Betriebserlaubnis, kW, Reifen und Auflagen.",
     popupTitle: "Fahrzeugmodell",
     popupBody:
       "Fotografiere den Tabellenabschnitt mit deinem Fahrzeug (Verkaufsbezeichnung + Zeile). Den Auflagen-Text scannst du im nächsten Schritt separat.",
@@ -842,7 +844,8 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_CROP +
-                "Every short Auflagen-Kürzel in this row's Auflagen column — list ALL visible codes (e.g. 744, A02, F40, L04, B04A). Do not omit any.",
+                ABE_AUFLAGEN_COLUMN_LLM_HINT +
+                " Examples: 11A, 12A, 20B, 22B, 51A, 744, A01, A02, F40, L04, B04A.",
             },
           },
         },
@@ -911,7 +914,8 @@ export const ABE_HUNT_AUFLAGEN_JSON_SCHEMA = {
         items: { type: "string" },
         description:
           FROM_CROP +
-          "Short Auflagen-Kürzel that apply to the selected vehicle row only — never codes from other rows or sections above/below (e.g. 744, A77, 12A).",
+          ABE_AUFLAGEN_COLUMN_LLM_HINT +
+          " Apply to the selected vehicle row only — never codes from other rows (e.g. 744, A77, 12A, 22B).",
       },
       auflagenNotes: {
         type: ["string", "null"],
@@ -1036,7 +1040,8 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_PHOTO +
-                "Short Auflagen codes from this row's Auflagen column only — never copy codes from other rows above or below.",
+                ABE_AUFLAGEN_COLUMN_LLM_HINT +
+                " Never copy codes from other rows above or below.",
             },
           },
         },

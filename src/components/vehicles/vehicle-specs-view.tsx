@@ -368,6 +368,18 @@ export function VehicleSpecsView({
                   placeholder="Velocity Red"
                 />
               </Field>
+              <Field label="Instagram (öffentlich)">
+                <input
+                  value={specs.instagramHandle ?? ""}
+                  onChange={(event) =>
+                    patchSpec("instagramHandle", event.target.value)
+                  }
+                  className="claim-input w-full"
+                  placeholder="@julian_f11"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                />
+              </Field>
               <Field label="Notizen">
                 <textarea
                   rows={3}
@@ -435,6 +447,9 @@ export function VehicleSpecsView({
               <ReadRow label="Karosserie" value={specs.bodyType} />
             ) : null}
             {specs.color ? <ReadRow label="Farbe" value={specs.color} /> : null}
+            {specs.instagramHandle ? (
+              <ReadRow label="Instagram" value={`@${specs.instagramHandle}`} />
+            ) : null}
             {specs.notes ? (
               <ReadRow label="Notizen" value={specs.notes} />
             ) : null}

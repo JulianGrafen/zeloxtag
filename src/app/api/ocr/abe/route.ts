@@ -315,8 +315,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       reason: result.reason,
     } satisfies HuntSuccess);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected extraction error.";
-    return jsonError(500, message, "extract_failed");
+    console.error("[api/ocr/abe] unexpected", error);
+    return jsonError(500, "Extraktion fehlgeschlagen.", "extract_failed");
   }
 }

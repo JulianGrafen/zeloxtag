@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -10,6 +12,7 @@ import { withDefaultShowcaseFields } from "@/lib/vehicles/public-showcase-data";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, TagScanResult, Vehicle } from "@/types/database";
 
+import { DOCUMENT_SHOWCASE_COLUMNS, VEHICLE_COLUMNS } from "@/lib/documents/query-columns";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 
 function isMissingShowcaseColumnError(error: {
@@ -51,7 +54,7 @@ async function loadVehicleDocuments(vehicleId: string): Promise<Document[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("documents")
-    .select("*")
+    .select(DOCUMENT_SHOWCASE_COLUMNS)
     .eq("vehicle_id", vehicleId)
     .eq("show_on_public_showcase", true)
     .order("created_at", { ascending: false });
@@ -87,7 +90,7 @@ async function loadVehicleBySlugAdmin(slug: string): Promise<Vehicle | null> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("vehicles")
-    .select("*")
+    .select(VEHICLE_COLUMNS)
     .eq("public_slug", slug.trim())
     .maybeSingle();
 
@@ -104,7 +107,7 @@ export type PublicVehicleLookup =
 /**
  * Resolve `/v/{identifier}` — physical tag UUID or vehicles.public_slug.
  */
-export async function resolvePublicVehicleEntry(
+async function resolvePublicVehicleEntryUncached(
   identifier: string,
 ): Promise<PublicVehicleLookup | null> {
   const normalized = identifier.trim();
@@ -125,6 +128,9 @@ export async function resolvePublicVehicleEntry(
   if (!vehicle) return null;
   return { kind: "slug", vehicle };
 }
+
+/** Request-memoized — generateMetadata and the page share one lookup. */
+export const resolvePublicVehicleEntry = cache(resolvePublicVehicleEntryUncached);
 
 export async function loadPublicShowcaseDocuments(
   vehicleId: string,

@@ -15,6 +15,7 @@ import {
   buildA4ImageFromPhotoFile,
   buildA4PdfFromGuideCapture,
   buildA4PdfFromPhotoFile,
+  buildImageFromGuideCapture,
   mapContainerRectToVideoCrop,
 } from "@/lib/utils/a4-auto-scan";
 import { useTopDownTilt } from "@/lib/hooks/use-top-down-tilt";
@@ -36,7 +37,7 @@ import {
   type InvoiceFramingMetrics,
 } from "@/lib/utils/invoice-capture-framing";
 
-export type GuideFrameType = "a4" | "section" | "none";
+export type GuideFrameType = "a4" | "section" | "table" | "none";
 export type GuideSectionAnchor = "top" | "center" | "bottom";
 
 export interface InBrowserCameraProps {
@@ -57,8 +58,8 @@ export interface InBrowserCameraProps {
   /** Dim area outside the guide frame. Default: false (transparent). */
   guideFrameDimOutside?: boolean;
   /**
-   * With `guideFrame="a4"`: crop the guide frame from the capture,
-   * auto-straighten and return an A4 JPEG (default) or PDF.
+   * Crop the guide frame from the capture. `a4` is auto-straightened to A4;
+   * `table` keeps the landscape excerpt.
    */
   a4AutoCrop?: boolean;
   /** Output format for A4 auto-crop captures. Default: jpeg. */
@@ -113,6 +114,9 @@ const SECTION_ASPECT_RATIOS: Record<GuideSectionAnchor, string> = {
   bottom: "4 / 3",
 };
 
+/** Wide Verwendungsbereich excerpt (Fahrzeugtyp → Auflagen). */
+const TABLE_ASPECT_RATIO = "16 / 7";
+
 async function canvasToCaptureFile(
   canvas: HTMLCanvasElement,
   fileName = `scan-${Date.now()}`,
@@ -143,11 +147,20 @@ async function canvasToCaptureFile(
 }
 
 function GuideFrameWatermark({ children }: { children: ReactNode }) {
+  const isPlainText =
+    typeof children === "string" || typeof children === "number";
+
   return (
-    <div className="absolute inset-0 flex items-center justify-center px-6 py-10">
-      <p className="pointer-events-none select-none whitespace-pre-wrap text-center font-mono text-[clamp(1rem,4.8vw,1.65rem)] font-semibold leading-snug tracking-wide text-white/28 [text-shadow:0_1px_16px_rgba(0,0,0,0.55)]">
-        {children}
-      </p>
+    <div className="absolute inset-0 flex items-center justify-center px-2 py-3">
+      {isPlainText ? (
+        <p className="pointer-events-none select-none whitespace-pre-wrap text-center font-mono text-[clamp(1rem,4.8vw,1.65rem)] font-semibold leading-snug tracking-wide text-white/28 [text-shadow:0_1px_16px_rgba(0,0,0,0.55)]">
+          {children}
+        </p>
+      ) : (
+        <div className="pointer-events-none w-full max-w-full select-none px-1">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -567,6 +580,46 @@ export function InBrowserCamera({
       : buildA4ImageFromGuideCapture(fullCapture, crop, undefined, a4EncodeOptions);
   }
 
+  async function processTableGuideCapture(
+    fullCapture: HTMLCanvasElement,
+    layout: {
+      videoWidth: number;
+      videoHeight: number;
+      container: DOMRect;
+      guide: DOMRect;
+    },
+  ): Promise<File> {
+    const crop = mapContainerRectToVideoCrop(
+      layout.videoWidth,
+      layout.videoHeight,
+      {
+        left: layout.container.left,
+        top: layout.container.top,
+        width: layout.container.width,
+        height: layout.container.height,
+      },
+      {
+        left: layout.guide.left,
+        top: layout.guide.top,
+        width: layout.guide.width,
+        height: layout.guide.height,
+      },
+    );
+
+    if (crop.sw < 8 || crop.sh < 8) {
+      throw new Error(
+        "Tabellen-Rahmen zu klein — bitte näher heran oder Rahmen neu ausrichten.",
+      );
+    }
+
+    return buildImageFromGuideCapture(
+      fullCapture,
+      crop,
+      undefined,
+      a4EncodeOptions,
+    );
+  }
+
   function readA4CaptureLayout():
     | {
         videoWidth: number;
@@ -611,11 +664,12 @@ export function InBrowserCamera({
       return;
     }
 
-    const shouldA4Crop = a4AutoCrop && guideFrame === "a4";
-    const a4Layout = shouldA4Crop ? readA4CaptureLayout() : null;
-    if (shouldA4Crop && !a4Layout) {
+    const shouldGuideCrop =
+      a4AutoCrop && (guideFrame === "a4" || guideFrame === "table");
+    const guideLayout = shouldGuideCrop ? readA4CaptureLayout() : null;
+    if (shouldGuideCrop && !guideLayout) {
       setCameraError(
-        "A4-Rahmen nicht bereit — bitte kurz warten und erneut auslösen.",
+        "Rahmen nicht bereit — bitte kurz warten und erneut auslösen.",
       );
       return;
     }
@@ -637,11 +691,14 @@ export function InBrowserCamera({
         return;
       }
 
-      if (shouldA4Crop && a4Layout) {
+      if (shouldGuideCrop && guideLayout) {
         setProcessingCapture(true);
         try {
-          const a4File = await processA4GuideCapture(canvas, a4Layout);
-          await deliverCaptureFile(a4File);
+          const croppedFile =
+            guideFrame === "table"
+              ? await processTableGuideCapture(canvas, guideLayout)
+              : await processA4GuideCapture(canvas, guideLayout);
+          await deliverCaptureFile(croppedFile);
         } finally {
           setProcessingCapture(false);
         }
@@ -735,7 +792,7 @@ export function InBrowserCamera({
     ? "max(2.4rem, calc(env(safe-area-inset-top) + 2rem))"
     : "max(3.25rem, calc(env(safe-area-inset-top) + 2.75rem))";
   const chromeBottomPad = compactChrome
-    ? "max(5.5rem, calc(env(safe-area-inset-bottom) + 4.5rem))"
+    ? "max(8.25rem, calc(env(safe-area-inset-bottom) + 7.25rem))"
     : showTopDownGuide || resolvedHint || enforceCaptureQuality
       ? "max(8.5rem, calc(env(safe-area-inset-bottom) + 7rem))"
       : captureStep
@@ -988,7 +1045,38 @@ export function InBrowserCamera({
 
             {/* Document guide frame (optional) */}
             {cameraReady && guideFrame !== "none" ? (
-              guideFrame === "a4" ? (
+              guideFrame === "table" ? (
+                <div
+                  className="pointer-events-none absolute inset-0 flex items-center justify-center px-2"
+                  style={{
+                    paddingTop: chromeTopPad,
+                    paddingBottom: chromeBottomPad,
+                  }}
+                >
+                  <div
+                    ref={guideFrameRef}
+                    className={[
+                      "relative w-full max-w-[min(96vw,560px)] rounded-md border-2 transition-colors duration-200",
+                      guideFrameBorderClass(topDownTilt.isLevel, frameReady),
+                      guideFrameOutsideShadow(true),
+                    ].join(" ")}
+                    style={{ aspectRatio: TABLE_ASPECT_RATIO }}
+                    aria-hidden
+                  >
+                    <GuideFrameCorners sharp />
+                    {guideWatermark ? (
+                      <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
+                    ) : null}
+                    {guideLabel && !captureStep ? (
+                      <div className="absolute inset-x-2 bottom-2 flex justify-center">
+                        <span className="rounded-lg bg-black/55 px-3 py-1 text-center text-[0.7rem] font-medium leading-snug text-white backdrop-blur-[2px]">
+                          {guideLabel}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : guideFrame === "a4" ? (
                 <div
                   className="pointer-events-none absolute inset-0 flex items-center justify-center px-2"
                   style={{

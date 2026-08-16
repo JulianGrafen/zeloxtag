@@ -58,10 +58,8 @@ export async function GET(): Promise<NextResponse> {
     };
     return NextResponse.json(body);
   } catch (err) {
-    return jsonError(
-      500,
-      err instanceof Error ? err.message : "Kürzel-Datenbank nicht lesbar.",
-    );
+    console.error("[auflagen-kuerzel] read failed", err);
+    return jsonError(500, "Kürzel-Datenbank nicht lesbar.");
   }
 }
 
@@ -102,9 +100,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     };
     return NextResponse.json(body);
   } catch (err) {
-    return jsonError(
-      500,
-      err instanceof Error ? err.message : "Kürzel konnten nicht gespeichert werden.",
-    );
+    console.error("[auflagen-kuerzel] write failed", err);
+    return jsonError(500, "Kürzel konnten nicht gespeichert werden.");
   }
 }

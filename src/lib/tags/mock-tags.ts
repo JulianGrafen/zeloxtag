@@ -33,6 +33,8 @@ const mockVehicle: Vehicle = {
   is_public: false,
   hide_financials: true,
   public_slug: null,
+  expose_token: null,
+  is_expose_active: false,
   created_at: now,
   updated_at: now,
 };

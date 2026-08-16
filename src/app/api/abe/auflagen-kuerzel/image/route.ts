@@ -87,13 +87,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       imageUrl,
     });
   } catch (err) {
+    console.error("[auflagen-kuerzel/image] unexpected", err);
     return NextResponse.json(
       {
         ok: false,
-        error:
-          err instanceof Error
-            ? err.message
-            : "Auflagen-Bild konnte nicht gespeichert werden.",
+        error: "Auflagen-Bild konnte nicht gespeichert werden.",
       },
       { status: 500 },
     );
