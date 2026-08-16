@@ -67,15 +67,14 @@ async function loadVehicleDocuments(vehicleId: string): Promise<Document[]> {
     throw new Error(`Failed to load public showcase documents: ${error.message}`);
   }
 
-  return (Array.isArray(data) ? data : []).map((row) => {
-    const doc = row as Document;
-    return {
+  return (Array.isArray(data) ? (data as unknown as Document[]) : []).map(
+    (doc) => ({
       ...doc,
       line_items: parseLineItems(doc.line_items),
       // Query already scoped to opted-in rows — keep the flag explicit for extract.
       show_on_public_showcase: true,
-    };
-  });
+    }),
+  );
 }
 
 async function loadVehicleBySlugRpc(slug: string): Promise<Vehicle | null> {
