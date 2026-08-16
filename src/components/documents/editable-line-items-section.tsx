@@ -25,6 +25,7 @@ type DraftItem = {
   key: string;
   label: string;
   amount: string;
+  showOnPublicShowcase?: boolean;
 };
 
 function toDraft(items: DocumentLineItem[]): DraftItem[] {
@@ -36,6 +37,7 @@ function toDraft(items: DocumentLineItem[]): DraftItem[] {
     label: item.label,
     amount:
       Number.isFinite(item.amount) ? String(item.amount).replace(".", ",") : "",
+    showOnPublicShowcase: item.showOnPublicShowcase,
   }));
 }
 
@@ -55,6 +57,9 @@ function parseDraft(draft: DraftItem[]): DocumentLineItem[] {
     items.push({
       label,
       amount: Math.round(amount * 100) / 100,
+      ...(typeof row.showOnPublicShowcase === "boolean"
+        ? { showOnPublicShowcase: row.showOnPublicShowcase }
+        : {}),
     });
     if (items.length >= 40) break;
   }

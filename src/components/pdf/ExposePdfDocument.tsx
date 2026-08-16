@@ -79,10 +79,9 @@ function CoverPage({ data }: { data: ExposePdfData }) {
         <MetricBox label="Leistung" value={data.metrics.powerLabel} />
         <MetricBox label="Kilometerstand" value={data.metrics.mileageLabel} />
         <MetricBox label="Baujahr" value={data.metrics.yearLabel} />
-        <MetricBox
-          label={data.hideFinancials ? "Preis / Wert" : "Investition Umbauten"}
-          value={data.metrics.valueLabel}
-        />
+        {data.metrics.valueLabel ? (
+          <MetricBox label="Investition Umbauten" value={data.metrics.valueLabel} />
+        ) : null}
       </View>
 
       <View style={styles.sellerBadge} wrap={false}>

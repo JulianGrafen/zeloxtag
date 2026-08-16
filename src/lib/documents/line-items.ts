@@ -30,9 +30,20 @@ export function parseLineItems(raw: unknown): DocumentLineItem[] | null {
           ? Number.parseFloat(record.amount.replace(",", "."))
           : NaN;
     if (!label || !Number.isFinite(amount)) continue;
+    const showcaseFlag =
+      record.showOnPublicShowcase === true ||
+      record.show_on_public_showcase === true
+        ? true
+        : record.showOnPublicShowcase === false ||
+            record.show_on_public_showcase === false
+          ? false
+          : undefined;
     items.push({
       label,
       amount: Math.round(amount * 100) / 100,
+      ...(showcaseFlag !== undefined
+        ? { showOnPublicShowcase: showcaseFlag }
+        : {}),
     });
     if (items.length >= 40) break;
   }

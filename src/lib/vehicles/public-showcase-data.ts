@@ -208,6 +208,7 @@ export function buildPublicShowcasePayload(
     extractVehicleModifications(publicDocs, {
       hideFinancials: true,
       includeOptedInInvoices: true,
+      respectLineItemShowcase: true,
     }).filter((mod) => mod.source !== "abe"),
   );
 

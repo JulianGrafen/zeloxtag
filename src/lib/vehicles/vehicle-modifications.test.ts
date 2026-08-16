@@ -183,6 +183,30 @@ describe("extractVehicleModifications", () => {
     expect(mods[0]?.source).toBe("invoice");
   });
 
+  it("publishes selected positions from a manual Umbau instead of the title", () => {
+    const mods = extractVehicleModifications(
+      [
+        baseDoc({
+          title: "Fahrwerk",
+          invoice_number: "__manual__",
+          line_items: [
+            { label: "KW V3", amount: 1290, showOnPublicShowcase: true },
+            { label: "Domlager", amount: 90, showOnPublicShowcase: false },
+          ],
+        }),
+      ],
+      {
+        hideFinancials: true,
+        includeOptedInInvoices: true,
+        respectLineItemShowcase: true,
+      },
+    );
+
+    expect(mods).toHaveLength(1);
+    expect(mods[0]?.source).toBe("manual");
+    expect(mods[0]?.partName).toBe("KW V3");
+  });
+
   it("treats Umbau-Bilder as a single manual modification, not a duplicate invoice", () => {
     const mods = extractVehicleModifications(
       [
@@ -198,6 +222,46 @@ describe("extractVehicleModifications", () => {
     expect(mods).toHaveLength(1);
     expect(mods[0]?.source).toBe("manual");
     expect(mods[0]?.partName).toBe("Work Emotion CR Kiwami");
+  });
+
+  it("keeps only opted-in invoice positions on the public showcase", () => {
+    const mods = extractVehicleModifications(
+      [
+        baseDoc({
+          line_items: [
+            { label: "KW V3", amount: 1290, showOnPublicShowcase: true },
+            { label: "H&R Stabilisator", amount: 320, showOnPublicShowcase: false },
+          ],
+        }),
+      ],
+      {
+        hideFinancials: true,
+        includeOptedInInvoices: true,
+        respectLineItemShowcase: true,
+      },
+    );
+
+    expect(mods.map((mod) => mod.partName)).toEqual(["KW V3"]);
+  });
+
+  it("does not fall back to the document title when every position is hidden", () => {
+    const mods = extractVehicleModifications(
+      [
+        baseDoc({
+          title: "Fahrwerk-Paket",
+          line_items: [
+            { label: "KW V3", amount: 1290, showOnPublicShowcase: false },
+          ],
+        }),
+      ],
+      {
+        hideFinancials: true,
+        includeOptedInInvoices: true,
+        respectLineItemShowcase: true,
+      },
+    );
+
+    expect(mods).toHaveLength(0);
   });
 
   it("respects documentFilter for public showcase scope", () => {

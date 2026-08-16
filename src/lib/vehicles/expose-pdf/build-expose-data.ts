@@ -146,10 +146,10 @@ export async function buildExposePdfData(
   ]);
 
   const valueLabel = hideFinancials
-    ? "Auf Anfrage"
+    ? ""
     : modificationTotal != null
       ? formatCurrencyEur(modificationTotal)
-      : "—";
+      : "";
 
   return {
     generatedAt: new Date().toISOString(),

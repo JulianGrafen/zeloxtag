@@ -582,6 +582,8 @@ const CAMERA_HUD_SHELL =
   "pointer-events-none fixed inset-x-0 top-0 z-[10050] px-2 pt-[max(0.2rem,env(safe-area-inset-top))]";
 const CAMERA_HUD_BAR =
   "pointer-events-auto mx-auto flex max-w-[min(100%,260px)] items-center gap-1 rounded-lg border border-white/10 bg-black/35 py-0.5 pl-0.5 pr-1 text-white shadow-sm backdrop-blur-[2px]";
+const CAMERA_HUD_BAR_WITH_SKIP =
+  "pointer-events-auto mx-auto flex max-w-[min(100%,22rem)] items-center gap-2 rounded-xl border border-white/15 bg-black/50 py-1 pl-1 pr-1.5 text-white shadow-sm backdrop-blur-[2px]";
 function ScanCompleteBanner({
   title,
   subtitle,
@@ -656,7 +658,7 @@ function AbeScanHud({
   return createPortal(
     <>
       <div className={CAMERA_HUD_SHELL}>
-        <div className={CAMERA_HUD_BAR}>
+        <div className={onSkip ? CAMERA_HUD_BAR_WITH_SKIP : CAMERA_HUD_BAR}>
           <button
             type="button"
             onClick={onClose}
@@ -713,7 +715,7 @@ function AbeScanHud({
             <button
               type="button"
               onClick={onSkip}
-              className="shrink-0 rounded-full border border-white/20 px-2 py-0.5 text-[0.5rem] font-medium text-white/80"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-white/45 bg-white/20 px-3.5 text-[0.82rem] font-semibold leading-tight text-white"
             >
               {skipLabel}
             </button>
@@ -950,7 +952,6 @@ function AuflagenDetailPanel({
   vehicleContext,
   selectedGroupIndex,
   selectedRowId,
-  dbResolvedCodes,
   pendingCodes,
   skippedAuflagenCodes,
   imageUrlsByCode,
@@ -969,7 +970,6 @@ function AuflagenDetailPanel({
   vehicleContext?: AbeVehicleContext | null;
   selectedGroupIndex: number | null;
   selectedRowId: string | null;
-  dbResolvedCodes: string[];
   pendingCodes: string[];
   skippedAuflagenCodes: string[];
   imageUrlsByCode?: Map<string, string>;
@@ -1019,9 +1019,6 @@ function AuflagenDetailPanel({
     targetCodes.length > 0 && pendingCodes.length === 0;
   const skippedSet = new Set(
     skippedAuflagenCodes.map((code) => code.toUpperCase()),
-  );
-  const dbResolvedSet = new Set(
-    dbResolvedCodes.map((code) => code.toUpperCase()),
   );
 
   return (
@@ -1099,36 +1096,40 @@ function AuflagenDetailPanel({
             </p>
             <p className="mt-1.5 text-[0.82rem] leading-relaxed text-[color:var(--vd-text)]">
               {allCodesKnown
-                ? "Alle Auflagen-Texte sind vorhanden — du kannst direkt zur Prüfung."
+                ? "Alle Auflagen-Texte sind vorhanden — Kürzel antippen, um Text und Ausschnitt zu prüfen."
                 : pendingCodes.length > 0
                   ? `Fotografiere noch: ${pendingCodes.join(", ")}`
                   : skippedSet.size > 0
                     ? "Übersprungene Kürzel kannst du später im Dokument ergänzen."
                     : "Tippe ein gelbes Kürzel, um es einzeln zu überspringen."}
             </p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {targetCodes.map((code) => {
-                const fromDb = dbResolvedSet.has(code.toUpperCase());
-                const skipped = skippedSet.has(code.toUpperCase());
-                const captured =
-                  skipped ||
-                  !pendingCodes.some(
-                    (pending) => pending.toUpperCase() === code.toUpperCase(),
+            {targetCodes.some(
+              (code) =>
+                skippedSet.has(code.toUpperCase()) ||
+                pendingCodes.some(
+                  (pending) => pending.toUpperCase() === code.toUpperCase(),
+                ),
+            ) ? (
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {targetCodes.map((code) => {
+                  const skipped = skippedSet.has(code.toUpperCase());
+                  const pending = pendingCodes.some(
+                    (item) => item.toUpperCase() === code.toUpperCase(),
                   );
-                if (skipped) {
-                  return (
-                    <button
-                      key={code}
-                      type="button"
-                      onClick={() => onUnskipCode(code)}
-                      className="rounded-full border border-neutral-300/70 bg-neutral-500/10 px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold text-neutral-600 line-through"
-                      aria-label={`${code} wieder scannen`}
-                    >
-                      {code}
-                    </button>
-                  );
-                }
-                if (!captured) {
+                  if (skipped) {
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => onUnskipCode(code)}
+                        className="rounded-full border border-neutral-300/70 bg-neutral-500/10 px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold text-neutral-600 line-through"
+                        aria-label={`${code} wieder scannen`}
+                      >
+                        {code}
+                      </button>
+                    );
+                  }
+                  if (!pending) return null;
                   return (
                     <AuflagenKuerzelSkipChip
                       key={code}
@@ -1136,32 +1137,17 @@ function AuflagenDetailPanel({
                       onSkip={onSkipCode}
                     />
                   );
-                }
-                return (
-                  <span
-                    key={code}
-                    className={`rounded-full border px-2.5 py-0.5 font-mono text-[0.78rem] font-semibold ${
-                      fromDb
-                        ? "border-sky-300/70 bg-sky-500/15 text-sky-950"
-                        : "border-emerald-300/70 bg-emerald-500/15 text-emerald-950"
-                    }`}
-                  >
-                    {code}
-                  </span>
-                );
-              })}
-            </div>
-            {report.auflagenNotes?.trim() ? (
-              <div className="mt-3">
-                <AbeAuflagenFoldList
-                  notes={report.auflagenNotes}
-                  knownCodes={targetCodes}
-                  pendingCodes={pendingCodes}
-                  imageUrlsByCode={imageUrlsByCode}
-                  defaultOpenFirst
-                />
+                })}
               </div>
             ) : null}
+            <div className="mt-3">
+              <AbeAuflagenFoldList
+                notes={report.auflagenNotes}
+                knownCodes={targetCodes}
+                pendingCodes={pendingCodes}
+                imageUrlsByCode={imageUrlsByCode}
+              />
+            </div>
           </div>
         ) : vehicleSelectionReady ? null : (
           <p className="mt-4 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.82rem] text-amber-950">
@@ -1543,13 +1529,15 @@ function ReviewPanel({
                 <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
                   {ABE_REQUIRED_FIELD_LABELS.auflagenNotes}
                 </p>
+                <p className="mt-1 text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
+                  Kürzel antippen, um Text und Papierausschnitt zu prüfen.
+                </p>
                 <div className="mt-2">
                   <AbeAuflagenFoldList
                     notes={form.auflagenNotes}
                     knownCodes={scopedAuflagen}
                     pendingCodes={pendingAuflagenCodes}
                     imageUrlsByCode={imageUrlsByCode}
-                    defaultOpenFirst
                   />
                 </div>
               </div>
@@ -1646,13 +1634,15 @@ function ReviewPanel({
                 <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
                   {ABE_REQUIRED_FIELD_LABELS.auflagenNotes}
                 </p>
+                <p className="mt-1 text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
+                  Kürzel antippen, um Text und Papierausschnitt zu prüfen.
+                </p>
                 <div className="mt-2">
                   <AbeAuflagenFoldList
                     notes={form.auflagenNotes}
                     knownCodes={scopedAuflagen}
                     pendingCodes={pendingAuflagenCodes}
                     imageUrlsByCode={imageUrlsByCode}
-                    defaultOpenFirst
                   />
                 </div>
                 {pendingAuflagenCodes.length > 0 ? (
@@ -2920,7 +2910,6 @@ export function AbeDataHunterWizard({
           vehicleContext={vehicleContext}
           selectedGroupIndex={selectedGroupIndex}
           selectedRowId={selectedRowId}
-          dbResolvedCodes={dbResolvedAuflagenCodes}
           pendingCodes={pendingAuflagenCodes}
           skippedAuflagenCodes={skippedAuflagenCodes}
           imageUrlsByCode={kuerzelImageUrls}

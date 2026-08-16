@@ -78,11 +78,13 @@ export function ExposeView({ data }: ExposeViewProps) {
             Investitionen
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatTile
-              label="Gesamtsumme"
-              value={formatExposeCurrency(data.investmentTotal)}
-              hint="Wartung & Tuning"
-            />
+            {data.hideFinancials ? null : (
+              <StatTile
+                label="Gesamtsumme"
+                value={formatExposeCurrency(data.investmentTotal)}
+                hint="Wartung & Tuning"
+              />
+            )}
             <StatTile
               icon={<Wrench className="h-4 w-4" aria-hidden />}
               label="Services"
@@ -130,9 +132,11 @@ export function ExposeView({ data }: ExposeViewProps) {
                       {item.workshop ? ` · ${item.workshop}` : ""}
                     </p>
                   </div>
-                  <p className="shrink-0 text-[0.92rem] font-semibold tabular-nums">
-                    {formatExposeCurrency(item.amount)}
-                  </p>
+                  {item.amount != null ? (
+                    <p className="shrink-0 text-[0.92rem] font-semibold tabular-nums">
+                      {formatExposeCurrency(item.amount)}
+                    </p>
+                  ) : null}
                 </li>
               ))}
             </ul>

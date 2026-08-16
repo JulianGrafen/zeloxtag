@@ -116,7 +116,9 @@ export function AbeAuflagenFoldList({
   imageUrlsByCode,
   defaultOpenFirst = false,
 }: AbeAuflagenFoldListProps) {
-  const entries = resolveEntries({ notes, conditions, snippets, knownCodes });
+  const entries: AbeAuflageEntry[] = [
+    ...resolveEntries({ notes, conditions, snippets, knownCodes }),
+  ];
   const pendingSet = new Set(
     pendingCodes.map((code) => normalizeAuflagenKuerzel(code)).filter(Boolean),
   );
@@ -124,25 +126,38 @@ export function AbeAuflagenFoldList({
     entries.map((entry) => normalizeAuflagenKuerzel(entry.code)),
   );
 
-  for (const code of pendingSet) {
-    if (!coveredCodes.has(code)) {
-      entries.push({ code, text: "" });
+  for (const code of [...knownCodes, ...pendingCodes]) {
+    const normalized = normalizeAuflagenKuerzel(code);
+    if (!normalized || coveredCodes.has(normalized)) continue;
+    entries.push({ code: normalized, text: "" });
+    coveredCodes.add(normalized);
+  }
+
+  if (entries.length === 0) {
+    const rawNotes = notes?.trim();
+    if (!rawNotes) {
+      return (
+        <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+          Noch keine Auflagen erfasst.
+        </p>
+      );
     }
-  }
 
-  if (entries.length === 0 && pendingSet.size === 0) {
     return (
-      <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-        {notes?.trim() || "Noch keine Auflagen erfasst."}
-      </p>
-    );
-  }
-
-  if (entries.length === 1 && !entries[0]?.text.trim()) {
-    return (
-      <p className="font-mono text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
-        {entries[0]?.code}
-      </p>
+      <details className="group rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+          <span className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
+            Auflagen-Text
+          </span>
+          <ChevronDown
+            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform group-open:rotate-180"
+            aria-hidden
+          />
+        </summary>
+        <p className="whitespace-pre-wrap border-t border-[color:var(--vd-border)] px-3 py-3 text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]">
+          {rawNotes}
+        </p>
+      </details>
     );
   }
 
@@ -163,7 +178,7 @@ export function AbeAuflagenFoldList({
                 : "border-[color:var(--vd-border)]",
             ].join(" ")}
           >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
               <span className="flex min-w-0 flex-col gap-0.5">
                 <span className="font-mono text-[0.88rem] font-semibold tracking-wide text-[color:var(--vd-text)]">
                   {entry.code}

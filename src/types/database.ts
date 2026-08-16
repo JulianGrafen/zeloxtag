@@ -73,6 +73,8 @@ export type Tag = {
 export type DocumentLineItem = {
   label: string;
   amount: number;
+  /** Owner opt-in for this position on the public showcase. */
+  showOnPublicShowcase?: boolean;
 };
 
 /** ABE technical dimension / Maßangabe. */

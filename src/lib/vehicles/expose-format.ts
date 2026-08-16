@@ -18,7 +18,7 @@ export function formatExposeMileage(km: number | null | undefined): string {
 }
 
 export function formatExposeCurrency(amount: number | null | undefined): string {
-  if (amount == null || !Number.isFinite(amount)) return "—";
+  if (amount == null || !Number.isFinite(amount)) return "";
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
     currency: "EUR",

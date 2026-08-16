@@ -15,7 +15,7 @@ const vehicle: Vehicle = {
   tech_specs: { notes: "Privat: Garage hinten links" },
   silhouette_image_url: null,
   is_public: false,
-  hide_financials: true,
+  hide_financials: false,
   public_slug: null,
   expose_token: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   is_expose_active: true,
@@ -117,6 +117,20 @@ describe("sanitizeExposeLabel", () => {
 });
 
 describe("buildExposeData", () => {
+  it("omits investment amounts when hide_financials is on", () => {
+    const data = buildExposeData(
+      { ...vehicle, hide_financials: true },
+      [invoice(), oilDoc(), tuevDoc()],
+      timeline,
+    );
+
+    expect(data.hideFinancials).toBe(true);
+    expect(data.investmentTotal).toBeNull();
+    expect(data.investmentItems.every((item) => item.amount == null)).toBe(true);
+    expect(JSON.stringify(data)).not.toContain("1890");
+    expect(JSON.stringify(data)).not.toContain("2110");
+  });
+
   it("sums confirmed invoices and lists sanitized line items", () => {
     const data = buildExposeData(vehicle, [invoice(), oilDoc(), tuevDoc()], timeline);
 

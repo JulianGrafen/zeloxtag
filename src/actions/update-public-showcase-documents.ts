@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
+import { parseLineItems } from "@/lib/documents/line-items";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
+import {
+  parseShowcaseLineSelections,
+  withShowcaseLineSelection,
+} from "@/lib/vehicles/public-showcase-line-items";
 import { publicShowcasePath } from "@/lib/vehicles/public-slug";
 import {
   createAdminClient,
@@ -15,6 +20,8 @@ export type UpdatePublicShowcaseDocumentsInput = {
   vehicleId: string;
   tagUuid: string;
   documentIds: string[];
+  /** Selected line-item indexes per document (public Umbau positions). */
+  lineSelections?: Record<string, number[]>;
 };
 
 export type UpdatePublicShowcaseDocumentsResult =
@@ -30,6 +37,7 @@ export async function updatePublicShowcaseDocuments(
     const selected = new Set(
       input.documentIds.map((id) => id.trim()).filter(Boolean),
     );
+    const lineSelections = parseShowcaseLineSelections(input.lineSelections);
 
     if (!vehicleId || !tagUuid) {
       return { status: "error", message: "Fahrzeug oder Tag fehlt." };
@@ -82,7 +90,7 @@ export async function updatePublicShowcaseDocuments(
 
     const { data: docs, error: docsError } = await admin
       .from("documents")
-      .select("id")
+      .select("id, line_items")
       .eq("vehicle_id", vehicleId);
 
     if (docsError) {
@@ -128,6 +136,34 @@ export async function updatePublicShowcaseDocuments(
           message: missingColumn
             ? "Dokument-Auswahl braucht Migration 00031_document_public_showcase.sql in Supabase."
             : `Speichern fehlgeschlagen: ${error.message}`,
+        };
+      }
+    }
+
+    for (const row of docs ?? []) {
+      const documentId = row.id as string;
+      if (!selected.has(documentId)) continue;
+      if (!Object.prototype.hasOwnProperty.call(lineSelections, documentId)) {
+        continue;
+      }
+
+      const currentItems = parseLineItems(row.line_items);
+      if (!currentItems?.length) continue;
+
+      const nextItems = withShowcaseLineSelection(
+        currentItems,
+        new Set(lineSelections[documentId]),
+      );
+      const { error } = await admin
+        .from("documents")
+        .update({ line_items: nextItems })
+        .eq("vehicle_id", vehicleId)
+        .eq("id", documentId);
+
+      if (error) {
+        return {
+          status: "error",
+          message: `Positionen konnten nicht gespeichert werden: ${error.message}`,
         };
       }
     }

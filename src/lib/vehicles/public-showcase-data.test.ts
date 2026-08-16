@@ -182,6 +182,21 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.modifications[0]?.category).toBe("Umbauten");
   });
 
+  it("includes only selected positions from an opted-in Umbau invoice", () => {
+    const documents: Document[] = [
+      baseInvoice({
+        title: "Fahrwerk",
+        line_items: [
+          { label: "KW V3", amount: 1290, showOnPublicShowcase: true },
+          { label: "H&R Stabilisator", amount: 320, showOnPublicShowcase: false },
+        ],
+      }),
+    ];
+
+    const payload = buildPublicShowcasePayload(baseVehicle, documents);
+    expect(payload.modifications.map((mod) => mod.label)).toEqual(["KW V3"]);
+  });
+
   it("includes opted-in invoices even when OCR category is not tuning", () => {
     const documents: Document[] = [
       baseInvoice({

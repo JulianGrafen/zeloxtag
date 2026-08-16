@@ -6,10 +6,15 @@ import { Copy, Globe, Shield } from "lucide-react";
 import { updatePublicShowcaseDocuments } from "@/actions/update-public-showcase-documents";
 import { updateVehicleShowcaseSettings } from "@/actions/update-vehicle-showcase-settings";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { parseLineItems } from "@/lib/documents/line-items";
 import {
   formatShowcaseDocumentLabel,
   partitionShowcaseSelectableDocuments,
 } from "@/lib/vehicles/public-showcase-documents";
+import {
+  selectedShowcaseLineIndexes,
+  showcaseLineItemsFromDocument,
+} from "@/lib/vehicles/public-showcase-line-items";
 import type { Document, Vehicle } from "@/types/database";
 
 type VehicleShowcaseSettingsProps = {
@@ -89,14 +94,74 @@ function DocumentCheckboxRow({
   );
 }
 
+function ShowcaseDocumentPicker({
+  doc,
+  meta,
+  selected,
+  selectedLines,
+  disabled,
+  onToggleDocument,
+  onToggleLine,
+}: {
+  doc: Document;
+  meta?: string | null;
+  selected: boolean;
+  selectedLines: number[];
+  disabled?: boolean;
+  onToggleDocument: (value: boolean) => void;
+  onToggleLine: (index: number, value: boolean) => void;
+}) {
+  const positions = showcaseLineItemsFromDocument(doc);
+  const selectedSet = new Set(selectedLines);
+
+  return (
+    <div className="space-y-1.5">
+      <DocumentCheckboxRow
+        label={formatShowcaseDocumentLabel(doc)}
+        meta={meta}
+        checked={selected}
+        disabled={disabled}
+        onChange={onToggleDocument}
+      />
+      {selected && positions.length > 0 ? (
+        <div className="ml-3 space-y-1 border-l border-[color:var(--vd-border)] pl-3">
+          <p className="px-1 text-[0.72rem] text-[color:var(--vd-muted)]">
+            Sichtbare Positionen
+          </p>
+          {positions.map((item) => (
+            <DocumentCheckboxRow
+              key={`${doc.id}-${item.index}`}
+              label={item.label}
+              checked={selectedSet.has(item.index)}
+              disabled={disabled}
+              onChange={(value) => onToggleLine(item.index, value)}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function formatDocumentMeta(doc: Document): string | null {
   const parts: string[] = [];
   if (doc.vendor) parts.push(doc.vendor);
   if (doc.category) parts.push(doc.category);
-  if (doc.line_items?.length) {
-    parts.push(`${doc.line_items.length} Positionen`);
+  const positionCount = showcaseLineItemsFromDocument(doc).length;
+  if (positionCount > 0) {
+    parts.push(`${positionCount} Positionen`);
   }
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function initialLineSelections(documents: Document[]): Record<string, number[]> {
+  const selections: Record<string, number[]> = {};
+  for (const doc of documents) {
+    const items = parseLineItems(doc.line_items);
+    if (!items?.length) continue;
+    selections[doc.id] = selectedShowcaseLineIndexes(items);
+  }
+  return selections;
 }
 
 export function VehicleShowcaseSettings({
@@ -123,6 +188,9 @@ export function VehicleShowcaseSettings({
     vehicle.hide_financials !== false,
   );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(initialSelected);
+  const [lineSelections, setLineSelections] = useState<Record<string, number[]>>(
+    () => initialLineSelections(documents),
+  );
   const [sharePath, setSharePath] = useState<string | null>(
     vehicle.is_public && vehicle.public_slug ? `/v/${vehicle.public_slug}` : null,
   );
@@ -166,29 +234,82 @@ export function VehicleShowcaseSettings({
     });
   }
 
-  function toggleDocument(documentId: string, enabled: boolean) {
-    if (!canEdit) return;
-
-    const next = new Set(selectedIds);
-    if (enabled) next.add(documentId);
-    else next.delete(documentId);
-    setSelectedIds(next);
-
+  function persistShowcase(
+    nextIds: Set<string>,
+    nextLines: Record<string, number[]>,
+    rollback?: () => void,
+  ) {
     startDocumentsTransition(async () => {
       setError(null);
       const result = await updatePublicShowcaseDocuments({
         vehicleId: vehicle.id,
         tagUuid,
-        documentIds: [...next],
+        documentIds: [...nextIds],
+        lineSelections: nextLines,
       });
 
       if (result.status === "error") {
         setError(result.message);
-        setSelectedIds(selectedIds);
+        rollback?.();
         return;
       }
 
       setMessage("Öffentliche Inhalte aktualisiert.");
+    });
+  }
+
+  function toggleDocument(doc: Document, enabled: boolean) {
+    if (!canEdit) return;
+
+    const previousIds = selectedIds;
+    const previousLines = lineSelections;
+    const nextIds = new Set(selectedIds);
+    const nextLines = { ...lineSelections };
+    const positions = showcaseLineItemsFromDocument(doc);
+
+    if (enabled) {
+      nextIds.add(doc.id);
+      if (positions.length > 0 && (nextLines[doc.id]?.length ?? 0) === 0) {
+        nextLines[doc.id] = positions.map((item) => item.index);
+      }
+    } else {
+      nextIds.delete(doc.id);
+    }
+
+    setSelectedIds(nextIds);
+    setLineSelections(nextLines);
+    persistShowcase(nextIds, nextLines, () => {
+      setSelectedIds(previousIds);
+      setLineSelections(previousLines);
+    });
+  }
+
+  function toggleLineItem(
+    documentId: string,
+    lineIndex: number,
+    enabled: boolean,
+  ) {
+    if (!canEdit) return;
+
+    const previousIds = selectedIds;
+    const previousLines = lineSelections;
+    const nextIds = new Set(selectedIds);
+    const current = new Set(lineSelections[documentId] ?? []);
+    if (enabled) current.add(lineIndex);
+    else current.delete(lineIndex);
+
+    const nextLines = {
+      ...lineSelections,
+      [documentId]: [...current].sort((a, b) => a - b),
+    };
+
+    if (enabled) nextIds.add(documentId);
+
+    setSelectedIds(nextIds);
+    setLineSelections(nextLines);
+    persistShowcase(nextIds, nextLines, () => {
+      setSelectedIds(previousIds);
+      setLineSelections(previousLines);
     });
   }
 
@@ -246,8 +367,8 @@ export function VehicleShowcaseSettings({
               Sichtbare Inhalte
             </p>
             <p className="mt-1 text-[0.8rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Wähle Rechnungen und Umbauten, die auf der öffentlichen Seite
-              erscheinen sollen.
+              Wähle Umbauten und einzelne Positionen, die auf der öffentlichen
+              Seite erscheinen sollen.
             </p>
           </div>
 
@@ -263,13 +384,17 @@ export function VehicleShowcaseSettings({
                 Umbauten
               </p>
               {modifications.map((doc) => (
-                <DocumentCheckboxRow
+                <ShowcaseDocumentPicker
                   key={doc.id}
-                  label={formatShowcaseDocumentLabel(doc)}
+                  doc={doc}
                   meta={doc.vendor ?? doc.date?.slice(0, 10) ?? null}
-                  checked={selectedIds.has(doc.id)}
+                  selected={selectedIds.has(doc.id)}
+                  selectedLines={lineSelections[doc.id] ?? []}
                   disabled={!canEdit || documentsPending}
-                  onChange={(value) => toggleDocument(doc.id, value)}
+                  onToggleDocument={(value) => toggleDocument(doc, value)}
+                  onToggleLine={(index, value) =>
+                    toggleLineItem(doc.id, index, value)
+                  }
                 />
               ))}
             </div>
@@ -281,13 +406,17 @@ export function VehicleShowcaseSettings({
                 Rechnungen
               </p>
               {invoices.map((doc) => (
-                <DocumentCheckboxRow
+                <ShowcaseDocumentPicker
                   key={doc.id}
-                  label={formatShowcaseDocumentLabel(doc)}
+                  doc={doc}
                   meta={formatDocumentMeta(doc)}
-                  checked={selectedIds.has(doc.id)}
+                  selected={selectedIds.has(doc.id)}
+                  selectedLines={lineSelections[doc.id] ?? []}
                   disabled={!canEdit || documentsPending}
-                  onChange={(value) => toggleDocument(doc.id, value)}
+                  onToggleDocument={(value) => toggleDocument(doc, value)}
+                  onToggleLine={(index, value) =>
+                    toggleLineItem(doc.id, index, value)
+                  }
                 />
               ))}
             </div>

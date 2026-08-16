@@ -40,6 +40,7 @@ export interface ExposeData {
   mileageKm: number | null;
   heroImageSrc: string | null;
   documentCount: number;
+  hideFinancials: boolean;
   investmentTotal: number | null;
   serviceCount: number;
   lastOilChangeDate: string | null;
@@ -311,7 +312,11 @@ export function buildExposeData(
 ): ExposeData {
   const make = vehicle.make.trim();
   const model = vehicle.model.trim();
-  const investmentItems = buildInvestmentItems(documents);
+  const hideFinancials = vehicle.hide_financials !== false;
+  const investmentItems = buildInvestmentItems(documents).map((item) => ({
+    ...item,
+    amount: hideFinancials ? null : item.amount,
+  }));
   const latestTuev = latestTuevDocument(documents);
 
   return {
@@ -322,7 +327,8 @@ export function buildExposeData(
     mileageKm: latestMileageKm(documents),
     heroImageSrc: `/api/vehicle/silhouette/${vehicle.id}`,
     documentCount: documents.length,
-    investmentTotal: sumInvestmentTotal(investmentItems),
+    hideFinancials,
+    investmentTotal: hideFinancials ? null : sumInvestmentTotal(investmentItems),
     serviceCount: countServices(documents, timeline),
     lastOilChangeDate: latestOilChangeIsoDate(documents),
     lastTuevDate: latestTuev ? documentDate(latestTuev) : null,

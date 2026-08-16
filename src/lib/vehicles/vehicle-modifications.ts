@@ -4,7 +4,10 @@ import {
   isTuningLikeCategory,
 } from "@/lib/documents/manual-entries";
 import { parseLineItems } from "@/lib/documents/line-items";
-import { isVatLineItem } from "@/lib/ocr/invoice-vat";
+import {
+  hasExplicitShowcaseLineSelection,
+  visibleShowcaseLineItems,
+} from "@/lib/vehicles/public-showcase-line-items";
 import type { Document } from "@/types/database";
 
 export type VehicleModificationSource = "abe" | "invoice" | "manual";
@@ -31,13 +34,9 @@ export type ExtractVehicleModificationsOptions = {
    * Include them even when OCR category is not exactly `tuning`.
    */
   includeOptedInInvoices?: boolean;
+  /** Public showcase: honor per-position `showOnPublicShowcase` flags. */
+  respectLineItemShowcase?: boolean;
 };
-
-const LABOR_LABEL =
-  /^(?:arbeitslohn|arbeitszeit|montage|demontage|kleinmaterial|entsorgung|material)$/i;
-
-const SKIP_INVOICE_LINE =
-  /^(?:summe|gesamt|netto|brutto|zwischensumme|position(?:en)?)$/i;
 
 const GENERIC_INVOICE_TITLE = /^(?:rechnung|invoice)$/i;
 
@@ -49,16 +48,6 @@ function sortDocumentsByDate(documents: Document[]): Document[] {
 
 function documentDate(doc: Document): string | null {
   return doc.date ?? doc.created_at.slice(0, 10);
-}
-
-function shouldIncludeInvoiceLine(label: string): boolean {
-  const trimmed = label.trim();
-  if (trimmed.length < 2) return false;
-  if (isVatLineItem({ label: trimmed, amount: 0 })) return false;
-  if (LABOR_LABEL.test(trimmed)) return false;
-  if (/^(?:arbeitslohn|arbeitszeit)\b/i.test(trimmed)) return false;
-  if (SKIP_INVOICE_LINE.test(trimmed)) return false;
-  return true;
 }
 
 function isAbeDocument(doc: Document): boolean {
@@ -111,6 +100,7 @@ function extractFromTuningInvoices(
   documents: Document[],
   hideFinancials: boolean,
   includeOptedInInvoices = false,
+  respectLineItemShowcase = false,
 ): VehicleModification[] {
   const mods: VehicleModification[] = [];
   const seenLineKeys = new Set<string>();
@@ -123,10 +113,17 @@ function extractFromTuningInvoices(
     ),
   )) {
     const lineItems = parseLineItems(doc.line_items) ?? [];
+    const visibleLines = visibleShowcaseLineItems(
+      lineItems,
+      respectLineItemShowcase,
+    );
+    const explicitHideAll =
+      respectLineItemShowcase &&
+      hasExplicitShowcaseLineSelection(lineItems) &&
+      visibleLines.length === 0;
     let addedFromLines = false;
 
-    for (const item of lineItems) {
-      if (!shouldIncludeInvoiceLine(item.label)) continue;
+    for (const item of visibleLines) {
       const key = item.label.trim().toLowerCase();
       if (seenLineKeys.has(key)) continue;
       seenLineKeys.add(key);
@@ -145,7 +142,7 @@ function extractFromTuningInvoices(
       addedFromLines = true;
     }
 
-    if (!addedFromLines) {
+    if (!addedFromLines && !explicitHideAll) {
       mods.push({
         id: doc.id,
         category: doc.category?.trim() || "Tuning / Teile",
@@ -166,11 +163,41 @@ function extractFromTuningInvoices(
 function extractFromManualEntries(
   documents: Document[],
   hideFinancials: boolean,
+  respectLineItemShowcase = false,
 ): VehicleModification[] {
   const mods: VehicleModification[] = [];
 
   for (const entry of filterManualVehicleEntries(documents)) {
     if (!isTuningLikeCategory(entry.category)) continue;
+
+    const lineItems = parseLineItems(entry.line_items) ?? [];
+    const visibleLines = visibleShowcaseLineItems(
+      lineItems,
+      respectLineItemShowcase,
+    );
+    const explicitHideAll =
+      respectLineItemShowcase &&
+      hasExplicitShowcaseLineSelection(lineItems) &&
+      visibleLines.length === 0;
+
+    if (respectLineItemShowcase && visibleLines.length > 0) {
+      for (const item of visibleLines) {
+        mods.push({
+          id: `${entry.id}-${item.label.trim().toLowerCase().slice(0, 24)}`,
+          category: "Manueller Eintrag",
+          partName: item.label.trim(),
+          manufacturer: entry.vendor?.trim() || null,
+          kbaNumber: null,
+          approvalStatus: "Eintrag",
+          date: documentDate(entry),
+          amount: hideFinancials ? null : item.amount,
+          source: "manual",
+        });
+      }
+      continue;
+    }
+
+    if (explicitHideAll) continue;
 
     mods.push({
       id: entry.id,
@@ -197,13 +224,20 @@ export function extractVehicleModifications(
     ? documents.filter(options.documentFilter)
     : documents;
 
+  const respectLineItemShowcase = options.respectLineItemShowcase === true;
+
   const modifications = [
     ...extractFromAbeDocuments(scoped, options.hideFinancials),
-    ...extractFromManualEntries(scoped, options.hideFinancials),
+    ...extractFromManualEntries(
+      scoped,
+      options.hideFinancials,
+      respectLineItemShowcase,
+    ),
     ...extractFromTuningInvoices(
       scoped,
       options.hideFinancials,
       options.includeOptedInInvoices === true,
+      respectLineItemShowcase,
     ),
   ];
 
