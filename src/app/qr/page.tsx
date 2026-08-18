@@ -1,34 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import { AppShell } from "@/components/layout/app-shell";
+import { ScanContent } from "@/components/layout/scan-content";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NetworkMockQr } from "@/components/qr/network-mock-qr";
+import { requireOperator } from "@/lib/auth/require-operator";
 
 export const metadata: Metadata = {
-  title: "ZeloxTag · Unclaimed QR",
+  title: "ZeloxTag · Tag minten",
   description:
-    "Online-QR-Generator für den nächsten unclaimed ZeloxTag (Vercel / Produktion).",
+    "Superuser-Minter: unclaimed ZeloxTags erzeugen und als SVG für die Lasergravur herunterladen.",
 };
 
-export default function QrPage() {
-  return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
-      />
+export default async function QrPage() {
+  const operator = await requireOperator();
+  if (!operator.ok) {
+    redirect(operator.status === 401 ? "/login?next=/qr" : "/dashboard");
+  }
 
-      <main className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pb-12 pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-5">
+  return (
+    <AppShell showNavbar={false}>
+      <ScanContent className="gap-6 pb-12 pt-[max(1.5rem,env(safe-area-inset-top))]">
         <header className="space-y-2">
-          <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            ZeloxTag · Online
-          </p>
-          <h1 className="font-[family-name:var(--font-display)] text-[1.65rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            Unclaimed QR
-          </h1>
-          <p className="text-[0.9rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Inventory-Tool (Login erforderlich). Erzeugt echte Supabase-Tags für
-            physische Plaques. Nach Claim aktualisieren oder „Neuen Tag minten“.
+          <p className="claim-kicker">ZeloxTag · Superuser</p>
+          <h1 className="claim-title">Tag minten</h1>
+          <p className="claim-copy text-[0.9rem]">
+            Erzeugt echte unclaimed Tags und SVG-QR-Codes für die
+            Edelstahl-Plaques. Nur Operator-Accounts mit MFA.
           </p>
         </header>
 
@@ -48,7 +48,7 @@ export default function QrPage() {
             <span className="font-mono text-[color:var(--vd-text)]">/qr</span>
           </p>
         </div>
-      </main>
-    </div>
+      </ScanContent>
+    </AppShell>
   );
 }

@@ -3,13 +3,21 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { claimMembershipForUser } from "@/lib/billing/membership-store";
+import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
+import {
+  claimMembershipForUser,
+  userHasActiveMembership,
+} from "@/lib/billing/membership-store";
 import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership";
 import { AppShell } from "@/components/layout/app-shell";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
 import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
+import {
+  isPostPaymentReturn,
+  withForcedDashboardTour,
+} from "@/lib/onboarding/dashboard-tour";
 
 export const metadata: Metadata = {
   title: "Konto · ZeloxTag",
@@ -40,6 +48,19 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   if (session_id?.startsWith("cs_")) {
     await syncStripeCheckoutSessionAction(session_id);
+  }
+
+  if (
+    isPostPaymentReturn({ checkout, session_id }) &&
+    (await userHasActiveMembership(user.id))
+  ) {
+    const destination = await resolvePostLoginPath(user.id);
+    if (destination.startsWith("/v/")) {
+      redirect(withForcedDashboardTour(destination));
+    }
+  }
+
+  if (session_id?.startsWith("cs_")) {
     redirect("/settings?checkout=success");
   }
 
@@ -71,10 +92,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           >
             ← Zurück zum Dashboard
           </Link>
-          <h1 className="mt-3 font-[family-name:var(--font-display)] text-[1.6rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            Konto
-          </h1>
-          <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
+          <h1 className="claim-title mt-3">Konto</h1>
+          <p className="claim-copy mt-1">
             Sicherheit & Sitzung ·{" "}
             <span className="font-medium text-[color:var(--vd-text)]">
               {user.email ?? user.id}
@@ -92,10 +111,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
         <MfaSetupPanel />
 
-        <section
-          aria-label="Sitzung"
-          className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
-        >
+        <section aria-label="Sitzung" className="vd-surface-card p-5 shadow-[var(--vd-shadow-sm)]">
           <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
             Sitzung
           </h2>

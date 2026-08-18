@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
 
 import { claimTag } from "@/actions/claim-tag";
+import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -126,12 +127,12 @@ export function ClaimFlow({
           aria-label={`Schritt ${stepIndex} von ${stepCount}`}
         >
           {Array.from({ length: stepCount }, (_, index) => (
-            <div
-              key={index}
-              className={`h-1 flex-1 rounded-full ${
-                index < stepIndex ? "bg-neutral-900" : "bg-neutral-200"
-              }`}
-            />
+            <div key={index} className="vd-step-progress">
+              <div
+                className="vd-step-progress__fill"
+                style={{ width: index < stepIndex ? "100%" : "0%" }}
+              />
+            </div>
           ))}
         </div>
       ) : null}
@@ -147,15 +148,15 @@ export function ClaimFlow({
             </p>
             <p className="max-w-[34ch] text-[0.95rem] leading-relaxed text-[color:var(--vd-muted)]">
               {needsAccount
-                ? "Beim ersten Scan legst du ein Konto an und verknüpfst den Edelstahl-Tag mit deinem Auto. Danach schließt du das Cloud-Abo über Stripe ab."
-                : "Verknüpfe den Tag mit deinem Auto. Als Nächstes aktivierst du das Cloud-Abo über Stripe."}
+                ? "Beim ersten Scan legst du ein Konto an und verknüpfst den Edelstahl-Tag mit deinem Auto. Die digitale Visitenkarte ist kostenlos — Belege scannen, Akte und Exposé gibt’s optional mit Pro."
+                : "Verknüpfe den Tag mit deinem Auto. Danach landest du direkt auf deinem Dashboard — ohne Zahlung. Pro brauchst du nur für KI-Scan, Akte und Exposé."}
             </p>
           </div>
 
           <div className="vd-anim-stack mt-8 space-y-3.5">
             <SteelTagPlate />
             {isAuthenticated && userEmail ? (
-              <p className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
+              <p className="vd-tile px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
                 Angemeldet als{" "}
                 <span className="font-medium text-[color:var(--vd-text)]">
                   {userEmail}
@@ -190,7 +191,7 @@ export function ClaimFlow({
               Marke, Modell und Baujahr reichen für den Start.
               {needsAccount
                 ? " Als Nächstes legst du dein Konto an."
-                : " Danach geht’s direkt zum Dokument-Scanner."}
+                : " Danach geht’s direkt zu deinem Dashboard."}
             </p>
           </header>
 
@@ -245,10 +246,7 @@ export function ClaimFlow({
             />
 
             {error ? (
-              <p
-                role="alert"
-                className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-              >
+              <p role="alert" className="vd-alert-error">
                 {error}
               </p>
             ) : null}
@@ -271,7 +269,7 @@ export function ClaimFlow({
                   ? "Weiter zum Konto"
                   : pending
                     ? "Verknüpfen…"
-                    : "Weiter zum Scanner"}
+                    : "Tag aktivieren"}
                 {needsAccount ? (
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 ) : (
@@ -286,7 +284,7 @@ export function ClaimFlow({
       {step === "account" ? (
         <section className="claim-panel vd-anim-header">
           <header>
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+            <div className="vd-icon-badge h-11 w-11">
               <ShieldCheck className="h-5 w-5" aria-hidden />
             </div>
             <p className="claim-kicker mt-4">Konto</p>
@@ -341,10 +339,7 @@ export function ClaimFlow({
             />
 
             {error ? (
-              <p
-                role="alert"
-                className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-              >
+              <p role="alert" className="vd-alert-error">
                 {error}
               </p>
             ) : null}
@@ -375,11 +370,7 @@ export function ClaimFlow({
 }
 
 function ClaimShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="mx-auto flex w-full max-w-lg flex-col px-4 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-      {children}
-    </div>
-  );
+  return <ScanContent>{children}</ScanContent>;
 }
 
 function SteelTagPlate() {

@@ -3,23 +3,29 @@
 :root {
   color-scheme: light;
 
-  --background: #f0f0f0;
+  --background: #ececea;
   --foreground: #0a0a0a;
 
-  --vd-bg: #f0f0f0;
+  --vd-bg: #ececea;
   --vd-text: #0a0a0a;
-  --vd-muted: #6b6b6b;
+  --vd-muted: #646464;
   --vd-accent: #0a0a0a;
-  --vd-surface: rgba(248, 248, 248, 0.88);
-  --vd-surface-elevated: #f3f3f3;
-  --vd-border: rgba(0, 0, 0, 0.09);
-  --vd-glow: rgba(0, 0, 0, 0.06);
-  --vd-glow-soft: rgba(0, 0, 0, 0.04);
-  --vd-shadow: 0 18px 48px rgba(0, 0, 0, 0.07);
-  --vd-shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.05);
-  --vd-shadow-hover: 0 16px 36px rgba(0, 0, 0, 0.1);
-  --vd-atmosphere-base: #f0f0f0;
-  --vd-atmosphere-mid: #e6e6e6;
+  --vd-surface: rgba(252, 252, 251, 0.92);
+  --vd-surface-elevated: #f6f6f5;
+  --vd-border: rgba(0, 0, 0, 0.08);
+  --vd-glow: rgba(0, 0, 0, 0.05);
+  --vd-glow-soft: rgba(0, 0, 0, 0.03);
+  --vd-shadow: 0 20px 50px rgba(0, 0, 0, 0.06);
+  --vd-shadow-sm: 0 6px 20px rgba(0, 0, 0, 0.04);
+  --vd-shadow-hover: 0 18px 40px rgba(0, 0, 0, 0.09);
+  --vd-shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.16);
+  --vd-atmosphere-base: #ececea;
+  --vd-atmosphere-mid: #e2e2df;
+  --vd-overlay: rgba(0, 0, 0, 0.45);
+  --vd-radius-panel: 1.75rem;
+  --vd-radius-tile: 1.35rem;
+  --vd-radius-control: 1rem;
+  --vd-radius-pill: 9999px;
 }
 
 @theme inline {
@@ -59,12 +65,126 @@ nextjs-portal {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.072;
+  opacity: 0.06;
   background-image:
-    linear-gradient(rgba(0, 0, 0, 0.45) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.45) 1px, transparent 1px);
+    linear-gradient(rgba(0, 0, 0, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.4) 1px, transparent 1px);
   background-size: 28px 28px;
   mask-image: radial-gradient(circle at center, black 30%, transparent 82%);
+}
+
+/* —— Shared surface primitives —— */
+.vd-surface-card {
+  border: 1px solid var(--vd-border);
+  background: var(--vd-surface);
+  border-radius: var(--vd-radius-panel);
+  box-shadow: var(--vd-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.vd-tile {
+  border: 1px solid var(--vd-border);
+  background: var(--vd-surface);
+  border-radius: var(--vd-radius-tile);
+  box-shadow: var(--vd-shadow-sm);
+  backdrop-filter: blur(12px);
+}
+
+.vd-back-pill {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--vd-radius-pill);
+  border: 1px solid var(--vd-border);
+  background: var(--vd-surface);
+  padding: 0.5rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--vd-text);
+  box-shadow: var(--vd-shadow-sm);
+  backdrop-filter: blur(12px);
+}
+
+.vd-icon-badge {
+  display: inline-flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--vd-radius-control);
+  background: #0a0a0a;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.vd-alert-error {
+  border-radius: var(--vd-radius-control);
+  background: #fef2f2;
+  border: 1px solid rgba(220, 38, 38, 0.12);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #b91c1c;
+}
+
+.vd-alert-success {
+  border-radius: var(--vd-radius-control);
+  background: #ecfdf5;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #047857;
+}
+
+.vd-fab-gradient {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    var(--vd-bg) 0%,
+    color-mix(in srgb, var(--vd-bg) 92%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+.vd-connected-dot {
+  height: 0.375rem;
+  width: 0.375rem;
+  flex-shrink: 0;
+  border-radius: var(--vd-radius-pill);
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  animation: vd-connected-pulse 2.4s var(--vd-ease-out) infinite;
+}
+
+.vd-step-progress {
+  height: 0.25rem;
+  flex: 1;
+  border-radius: var(--vd-radius-pill);
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.vd-step-progress__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #0a0a0a;
+  transition: width 0.35s var(--vd-ease-spring);
+}
+
+@keyframes vd-connected-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.08);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -338,16 +458,17 @@ nextjs-portal {
 .claim-panel {
   border: 1px solid var(--vd-border);
   background: var(--vd-surface);
-  border-radius: 1.75rem;
+  border-radius: var(--vd-radius-panel);
   padding: 1.35rem 1.25rem 1.4rem;
   box-shadow: var(--vd-shadow);
+  backdrop-filter: blur(16px);
 }
 
 .claim-input {
   width: 100%;
-  border-radius: 0.9rem;
+  border-radius: var(--vd-radius-control);
   border: 1px solid var(--vd-border);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.95);
   padding: 0.85rem 0.95rem;
   font-size: 1rem;
   color: var(--vd-text);
@@ -385,16 +506,33 @@ nextjs-portal {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 1.1rem;
+  border-radius: var(--vd-radius-control);
   background: #0a0a0a;
   padding: 1rem 1.15rem;
   font-size: 0.92rem;
   font-weight: 600;
   color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
+.claim-cta-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: var(--vd-radius-control);
+  background: #0a0a0a;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.claim-cta-sm:disabled,
 .claim-cta:disabled {
   opacity: 0.55;
+  box-shadow: none;
 }
 
 .claim-back {
@@ -402,13 +540,14 @@ nextjs-portal {
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  border-radius: 1.1rem;
+  border-radius: var(--vd-radius-control);
   border: 1px solid var(--vd-border);
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.85);
   padding: 1rem 1rem;
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--vd-text);
+  backdrop-filter: blur(8px);
 }
 
 .claim-back:disabled {
@@ -448,6 +587,38 @@ nextjs-portal {
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 18px 40px rgba(0, 0, 0, 0.24);
   animation: claim-steel-in 0.7s var(--vd-ease-spring) both;
+}
+
+.claim-steel::before {
+  content: "";
+  position: absolute;
+  inset: -50% -20%;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 60%
+  );
+  animation: claim-steel-sheen 4s var(--vd-ease-out) infinite;
+  pointer-events: none;
+}
+
+@keyframes claim-steel-sheen {
+  0%,
+  100% {
+    transform: translateX(-30%) rotate(0deg);
+    opacity: 0;
+  }
+  45% {
+    opacity: 1;
+  }
+  55% {
+    transform: translateX(30%) rotate(0deg);
+    opacity: 1;
+  }
+  70% {
+    opacity: 0;
+  }
 }
 
 .claim-steel__grain {
@@ -608,8 +779,10 @@ nextjs-portal {
   .vd-anim-stack > *,
   .vd-anim-list > li,
   .claim-steel,
+  .claim-steel::before,
   .claim-summary__row,
-  .claim-mail-pulse {
+  .claim-mail-pulse,
+  .vd-connected-dot {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

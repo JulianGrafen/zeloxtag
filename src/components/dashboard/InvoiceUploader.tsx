@@ -23,6 +23,8 @@ import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
+import { BackNav } from "@/components/layout/back-nav";
+import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
@@ -472,6 +474,7 @@ export function InvoiceUploader({
           });
         },
         {
+          vehicleId,
           documentType,
           approvalKind: scanDef?.approvalKind ?? null,
           vehicleContext:
@@ -968,54 +971,38 @@ export function InvoiceUploader({
   }
 
   return (
-    <section
-      className={[
-        "mx-auto flex w-full flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
-        isAbeReview || isEinzelabnahmeReview || isTeilegutachtenReview || isTuevReview ? "max-w-5xl" : "max-w-lg",
-      ].join(" ")}
+    <ScanContent
+      wide={
+        isAbeReview ||
+        isEinzelabnahmeReview ||
+        isTeilegutachtenReview ||
+        isTuevReview
+      }
+      className="pb-12"
     >
       <header className="vd-anim-header space-y-4">
         {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            {backLabel}
-          </button>
+          <BackNav label={backLabel} onClick={onBack} />
         ) : (
-          <PressableLink
-            href={resolvedBackHref}
-            variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            {backLabel}
-          </PressableLink>
+          <BackNav label={backLabel} href={resolvedBackHref} />
         )}
 
         {isInvoiceFamilyScan ? (
           <div className="px-1">
-            <h1 className="font-[family-name:var(--font-display)] text-[1.25rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-              {resolvedHeading}
-            </h1>
-            <p className="mt-0.5 text-[0.8rem] text-[color:var(--vd-muted)]">
+            <p className="claim-kicker">Scanner</p>
+            <h1 className="claim-title mt-1 text-[1.25rem]">{resolvedHeading}</h1>
+            <p className="claim-copy mt-0.5 text-[0.8rem]">
               {resolvedSubheading ?? vehicleLabel}
             </p>
           </div>
         ) : (
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+          <div className="vd-surface-card p-5">
+            <div className="vd-icon-badge">
               <FileText className="h-5 w-5" aria-hidden />
             </div>
-            <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              Scanner
-            </p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-              {resolvedHeading}
-            </h1>
-            <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
+            <p className="claim-kicker mt-4">Scanner</p>
+            <h1 className="claim-title mt-2">{resolvedHeading}</h1>
+            <p className="claim-copy mt-1">
               {resolvedSubheading ?? `${vehicleLabel} · Beleg einlesen`}
             </p>
           </div>
@@ -1295,10 +1282,7 @@ export function InvoiceUploader({
           ) : null}
 
           {error ? (
-            <p
-              role="alert"
-              className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-            >
+            <p role="alert" className="vd-alert-error">
               {error}
             </p>
           ) : null}
@@ -1382,6 +1366,7 @@ export function InvoiceUploader({
 
       {isAbeReview && previewUrl && uploadFile ? (
         <ABEOverview
+          vehicleId={vehicleId}
           previewUrl={previewUrl}
           previewKind={isPdfFile(uploadFile) ? "pdf" : "image"}
           pageCount={pageCount}
@@ -1732,10 +1717,7 @@ export function InvoiceUploader({
           </div>
 
           {error ? (
-            <p
-              role="alert"
-              className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-            >
+            <p role="alert" className="vd-alert-error">
               {error}
             </p>
           ) : null}
@@ -1745,6 +1727,6 @@ export function InvoiceUploader({
           </Button>
         </form>
       ) : null}
-    </section>
+    </ScanContent>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Lock } from "lucide-react";
 
 import { PressableButton, PressableLink } from "./Pressable";
 import { DASHBOARD_ICONS } from "./tile-icons";
@@ -48,10 +48,17 @@ export function DashboardTile({ tile, onClick }: DashboardTileProps) {
           <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
         </span>
 
-        <ChevronRight
-          className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5 group-data-[pressed=true]:text-[color:var(--vd-accent)]"
-          aria-hidden
-        />
+        {tile.locked ? (
+          <Lock
+            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+            aria-hidden
+          />
+        ) : (
+          <ChevronRight
+            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5 group-data-[pressed=true]:text-[color:var(--vd-accent)]"
+            aria-hidden
+          />
+        )}
       </div>
 
       <div className="mt-4 space-y-1.5">
@@ -77,9 +84,8 @@ export function DashboardTile({ tile, onClick }: DashboardTileProps) {
   );
 
   const className = [
-    "group relative z-10 flex min-h-[8.25rem] w-full cursor-pointer flex-col justify-between overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)]",
-    "bg-[color:var(--vd-surface)] p-4 text-left shadow-[var(--vd-shadow-sm)]",
-    "select-none",
+    "group vd-tile relative z-10 flex min-h-[8.25rem] w-full cursor-pointer flex-col justify-between overflow-hidden p-4 text-left",
+    "select-none transition-shadow duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] hover:shadow-[var(--vd-shadow-hover)]",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--vd-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--vd-bg)]",
     tile.featured ? "col-span-2" : "",
   ]
@@ -94,7 +100,7 @@ export function DashboardTile({ tile, onClick }: DashboardTileProps) {
         href={href}
         variant="tile"
         className={className}
-        aria-label={tile.title}
+        aria-label={tile.locked ? `${tile.title} · Pro erforderlich` : tile.title}
         {...tourAnchor}
       >
         {content}
@@ -107,7 +113,7 @@ export function DashboardTile({ tile, onClick }: DashboardTileProps) {
       variant="tile"
       className={className}
       onClick={() => onClick?.(tile.id)}
-      aria-label={tile.title}
+      aria-label={tile.locked ? `${tile.title} · Pro erforderlich` : tile.title}
       {...tourAnchor}
     >
       {content}
