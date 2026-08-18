@@ -1,5 +1,5 @@
 /**
- * Mint a fresh unclaimed ZeloxTag + optional QR PNG for physical plaques.
+ * Mint a fresh unclaimed ZeloxTag + QR SVG/PNG for physical plaques.
  *
  * Usage:
  *   npm run db:mint-tag
@@ -64,19 +64,28 @@ async function mintTag() {
   };
 }
 
-async function writeQrPng(uuid, scanUrl) {
+async function writeQrFiles(uuid, scanUrl) {
   const outDir = path.join(process.cwd(), "public", "qr");
   await mkdir(outDir, { recursive: true });
-  const filename = `zeloxtag-${uuid}.png`;
-  const outPath = path.join(outDir, filename);
-  await QRCode.toFile(outPath, scanUrl, {
+  const pngName = `zeloxtag-${uuid}.png`;
+  const svgName = `zeloxtag-${uuid}.svg`;
+  const pngPath = path.join(outDir, pngName);
+  const svgPath = path.join(outDir, svgName);
+  await QRCode.toFile(pngPath, scanUrl, {
     type: "png",
     width: 1024,
     margin: 2,
     errorCorrectionLevel: "H",
     color: { dark: "#0a0a0a", light: "#ffffff" },
   });
-  return { outPath, filename };
+  const svg = await QRCode.toString(scanUrl, {
+    type: "svg",
+    margin: 2,
+    errorCorrectionLevel: "H",
+    color: { dark: "#0a0a0a", light: "#ffffff" },
+  });
+  await writeFile(svgPath, svg, "utf8");
+  return { pngName, svgName, pngPath, svgPath };
 }
 
 try {
@@ -88,11 +97,11 @@ try {
   console.log(`  Scan URL: ${scanUrl}`);
 
   if (withQr) {
-    const { outPath, filename } = await writeQrPng(minted.uuid, scanUrl);
-    console.log(`  QR PNG:   public/qr/${filename}`);
-    console.log(`            (${outPath})`);
+    const { pngName, svgName } = await writeQrFiles(minted.uuid, scanUrl);
+    console.log(`  QR SVG:   public/qr/${svgName}`);
+    console.log(`  QR PNG:   public/qr/${pngName}`);
   } else {
-    console.log("  Tip: npm run db:mint-tag -- --qr  → saves PNG under public/qr/");
+    console.log("  Tip: npm run db:mint-tag -- --qr  → SVG+PNG under public/qr/");
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);

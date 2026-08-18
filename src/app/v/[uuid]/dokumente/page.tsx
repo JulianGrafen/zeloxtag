@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 
 import { VehicleDocumentsView } from "@/components/documents/vehicle-documents-view";
+import { ProFeatureGate } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
 import { parseInvoiceListCategory } from "@/lib/documents/invoice-categories";
+import { FEATURE } from "@/lib/permissions/feature-access";
 import type { DocumentType } from "@/types/database";
 
 interface DocumentsPageProps {
@@ -48,7 +50,7 @@ export default async function VehicleDocumentsPage({
     : result.documents;
   const invoiceCategory = parseInvoiceListCategory(categoryRaw) ?? "all";
 
-  return (
+  const view = (
     <VehicleDocumentsView
       tagUuid={result.tag.uuid}
       vehicleId={result.vehicle!.id}
@@ -59,5 +61,17 @@ export default async function VehicleDocumentsPage({
       invoiceCategory={invoiceCategory}
       canWrite={!isDemoShowcase && access.canWriteInvoices}
     />
+  );
+
+  if (isDemoShowcase) return view;
+
+  return (
+    <ProFeatureGate
+      ownerUserId={result.vehicle!.user_id}
+      tagUuid={result.tag.uuid}
+      feature={FEATURE.DOCUMENT_VAULT}
+    >
+      {view}
+    </ProFeatureGate>
   );
 }

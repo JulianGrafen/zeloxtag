@@ -11,6 +11,7 @@ import {
   normalizeMembershipEmail,
   type ShopifyMembershipAction,
 } from "./shopify-membership";
+import { shopifyMayUpdateEntitlement } from "./membership-provider";
 import type { StripeMembershipAction } from "./stripe-membership";
 
 function asMembership(row: unknown): Membership | null {
@@ -62,6 +63,10 @@ function asMembership(row: unknown): Membership | null {
         : null,
     stripe_price_id:
       typeof record.stripe_price_id === "string" ? record.stripe_price_id : null,
+    billing_provider:
+      record.billing_provider === "stripe" || record.billing_provider === "shopify"
+        ? record.billing_provider
+        : null,
     status,
     current_period_end:
       typeof record.current_period_end === "string"
@@ -160,13 +165,17 @@ export async function applyShopifyMembershipAction(
     shopify_order_number: action.shopifyOrderNumber,
     shopify_order_token: action.shopifyOrderToken,
     shopify_product_id: action.shopifyProductId,
-    status: action.status,
-    current_period_end: action.currentPeriodEnd,
-    canceled_at: action.status === "canceled" ? now : null,
     claim_token: userId ? null : claimToken,
   };
-  if (action.status === "active") {
-    row.paid_at = now;
+
+  if (shopifyMayUpdateEntitlement(existing)) {
+    row.billing_provider = "shopify";
+    row.status = action.status;
+    row.current_period_end = action.currentPeriodEnd;
+    row.canceled_at = action.status === "canceled" ? now : null;
+    if (action.status === "active") {
+      row.paid_at = now;
+    }
   }
 
   const conflict = email ? "email" : "user_id";
@@ -253,6 +262,7 @@ export async function applyStripeMembershipAction(
   const row: Record<string, unknown> = {
     email: email ?? `${userId}@users.zeloxtag.internal`,
     user_id: userId,
+    billing_provider: "stripe",
     status: action.status,
     claim_token: null,
   };
@@ -281,18 +291,59 @@ export async function applyStripeMembershipAction(
   }
 }
 
-export async function recordStripeWebhookEvent(
+export async function reserveStripeWebhookEvent(
   id: string,
   type: string,
-): Promise<"applied" | "duplicate"> {
-  if (!isSupabaseAdminConfigured()) return "applied";
+): Promise<"new" | "duplicate"> {
+  if (!isSupabaseAdminConfigured()) return "new";
   const admin = createAdminClient();
   const { error } = await admin.from("stripe_webhook_events").insert({ id, type });
   if (error) {
     if (error.code === "23505") return "duplicate";
     throw new Error(`Stripe webhook log failed: ${error.message}`);
   }
-  return "applied";
+  return "new";
+}
+
+export async function releaseStripeWebhookEvent(id: string): Promise<void> {
+  if (!isSupabaseAdminConfigured() || !id) return;
+  const admin = createAdminClient();
+  const { error } = await admin.from("stripe_webhook_events").delete().eq("id", id);
+  if (error) {
+    console.error("[memberships] stripe webhook release failed", error.message);
+  }
+}
+
+/** @deprecated Use reserveStripeWebhookEvent — dedupe must happen before apply. */
+export async function recordStripeWebhookEvent(
+  id: string,
+  type: string,
+): Promise<"applied" | "duplicate"> {
+  const reserved = await reserveStripeWebhookEvent(id, type);
+  return reserved === "duplicate" ? "duplicate" : "applied";
+}
+
+export async function reserveShopifyWebhookEvent(
+  id: string,
+  topic: string,
+): Promise<"new" | "duplicate"> {
+  if (!isSupabaseAdminConfigured() || !id) return "new";
+  const admin = createAdminClient();
+  const { error } = await admin.from("shopify_webhook_events").insert({ id, topic });
+  if (error) {
+    if (error.code === "23505") return "duplicate";
+    throw new Error(`Shopify webhook log failed: ${error.message}`);
+  }
+  return "new";
+}
+
+export async function releaseShopifyWebhookEvent(id: string): Promise<void> {
+  if (!isSupabaseAdminConfigured() || !id) return;
+  const admin = createAdminClient();
+  const { error } = await admin.from("shopify_webhook_events").delete().eq("id", id);
+  if (error) {
+    console.error("[memberships] shopify webhook release failed", error.message);
+  }
 }
 
 const UNKNOWN_CLAIM_TOKEN =
@@ -440,7 +491,7 @@ export async function getMembershipForUser(
   const { data, error } = await admin
     .from("memberships")
     .select(
-      "id, user_id, email, shopify_customer_id, shopify_order_id, shopify_order_name, shopify_order_number, shopify_order_token, shopify_product_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status, current_period_end, paid_at, canceled_at, created_at, updated_at",
+      "id, user_id, email, shopify_customer_id, shopify_order_id, shopify_order_name, shopify_order_number, shopify_order_token, shopify_product_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, billing_provider, status, current_period_end, paid_at, canceled_at, created_at, updated_at",
     )
     .eq("user_id", userId)
     .maybeSingle();

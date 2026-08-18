@@ -6,6 +6,7 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
+import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 import {
   tuevExtractionService,
@@ -76,6 +77,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } catch {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
+
+    const vehicleAccess = await requireVehicleOcrAccess(
+      auth.user.id,
+      String(formData.get("vehicleId") ?? ""),
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
 
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {

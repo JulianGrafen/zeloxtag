@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
+import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
 import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
@@ -13,6 +14,10 @@ import {
 } from "@/lib/documents/scan-types";
 import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import {
+  FEATURE,
+  type FeatureFlag,
+} from "@/lib/permissions/feature-access";
 import {
   readSilhouettePreviewFromSession,
   writeSilhouettePreviewToSession,
@@ -72,6 +77,10 @@ interface TagDashboardShellProps {
   sessionEmail?: string | null;
   initialMode?: DashboardMode;
   initialScanType?: string | null;
+  /** Post-claim / Stripe return / ?tour=1 — run the guided tour. */
+  startTour?: boolean;
+  /** Vehicle owner's ZeloxTag Pro is active. */
+  membershipActive?: boolean;
 }
 
 /**
@@ -87,6 +96,8 @@ export function TagDashboardShell({
   isContributor = false,
   initialMode = "dashboard",
   initialScanType,
+  startTour = false,
+  membershipActive = false,
 }: TagDashboardShellProps) {
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
@@ -100,15 +111,30 @@ export function TagDashboardShell({
       : null;
 
   const [mode, setMode] = useState<DashboardMode>(() => {
-    if (!canWrite) return "dashboard";
+    if (!canWrite || !membershipActive) return "dashboard";
     if (initialMode === "pick-scan" || initialMode === "scanner") {
       return "pick-scan";
     }
     return "dashboard";
   });
+  const [paywallFeature, setPaywallFeature] = useState<FeatureFlag | null>(
+    () => {
+      if (
+        canWrite &&
+        !membershipActive &&
+        (initialMode === "pick-scan" || initialMode === "scanner")
+      ) {
+        return FEATURE.SCAN_AI_RECEIPT;
+      }
+      return null;
+    },
+  );
   const [scanType, setScanType] = useState<ScanType | null>(null);
   const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
+  const [deferSilhouetteForTour, setDeferSilhouetteForTour] = useState(
+    Boolean(startTour),
+  );
 
   const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
     () => initialSilhouetteStorageUrl(vehicle),
@@ -222,7 +248,12 @@ export function TagDashboardShell({
   }, [vehicle.id, silhouetteStorageUrl]);
 
   useEffect(() => {
-    if (!isOwner || hasSilhouette || demoShowcase) {
+    if (
+      !isOwner ||
+      hasSilhouette ||
+      demoShowcase ||
+      deferSilhouetteForTour
+    ) {
       setShowSilhouettePrompt(false);
       return;
     }
@@ -234,7 +265,7 @@ export function TagDashboardShell({
     } catch {
       setShowSilhouettePrompt(true);
     }
-  }, [isOwner, vehicle.id, hasSilhouette, demoShowcase]);
+  }, [isOwner, vehicle.id, hasSilhouette, demoShowcase, deferSilhouetteForTour]);
 
   if (!canWrite) {
     return null;
@@ -285,13 +316,19 @@ export function TagDashboardShell({
         documents={documents}
         tagUuid={tagUuid}
         ownerName={ownerName}
-        canScan
+        canScan={canWrite}
         isOwner={isOwner}
         isContributor={isContributor}
+        cloudUnlocked={membershipActive}
         onOpenScanner={() => {
+          if (!membershipActive) {
+            setPaywallFeature(FEATURE.SCAN_AI_RECEIPT);
+            return;
+          }
           setScanType(null);
           setMode("pick-scan");
         }}
+        onLockedFeature={setPaywallFeature}
         onEditVehicleImage={
           isOwner && !demoShowcase
             ? () => {
@@ -328,7 +365,10 @@ export function TagDashboardShell({
         </div>
       ) : null}
       {showSilhouetteEditor ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center">
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
+          style={{ background: "var(--vd-overlay)" }}
+        >
           <button
             type="button"
             aria-label="Schließen"
@@ -354,10 +394,20 @@ export function TagDashboardShell({
       <DashboardOnboardingTour
         enabled={
           mode === "dashboard" &&
-          !showSilhouettePrompt &&
-          !showSilhouetteEditor
+          !showSilhouetteEditor &&
+          (startTour || !showSilhouettePrompt)
         }
         role={isOwner ? "owner" : "contributor"}
+        force={startTour}
+        autoStart
+        onSettled={() => setDeferSilhouetteForTour(false)}
+      />
+      <ProPaywallModal
+        open={Boolean(paywallFeature)}
+        feature={paywallFeature}
+        tagUuid={tagUuid}
+        isOwner={isOwner}
+        onClose={() => setPaywallFeature(null)}
       />
     </>
   );

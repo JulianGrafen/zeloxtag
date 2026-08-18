@@ -367,10 +367,12 @@ class HuntApiError extends Error {
 }
 
 async function extractAuflagenTextFromFile(
+  vehicleId: string,
   file: File,
   targetCodes: string[],
 ): Promise<{ notes: string; regions: NormalizedAuflagenRegion[] }> {
   const body = new FormData();
+  body.set("vehicleId", vehicleId);
   body.set("file", file);
   body.set("step", "hunt-auflagen-text");
   body.set("targetCodes", JSON.stringify(targetCodes));
@@ -410,8 +412,12 @@ async function extractAuflagenTextFromFile(
   };
 }
 
-async function extractAllFromFile(file: File): Promise<AbeDataHunterReport> {
+async function extractAllFromFile(
+  vehicleId: string,
+  file: File,
+): Promise<AbeDataHunterReport> {
   const body = new FormData();
+  body.set("vehicleId", vehicleId);
   body.set("file", file);
   body.set("step", "hunt-all");
 
@@ -432,8 +438,12 @@ async function extractAllFromFile(file: File): Promise<AbeDataHunterReport> {
   return finalizeAbeDataHunterReport(payload.extraction);
 }
 
-async function extractKbaFromFile(file: File): Promise<AbeDataHunterReport> {
+async function extractKbaFromFile(
+  vehicleId: string,
+  file: File,
+): Promise<AbeDataHunterReport> {
   const body = new FormData();
+  body.set("vehicleId", vehicleId);
   body.set("file", file);
   body.set("step", "hunt-kba");
 
@@ -468,9 +478,11 @@ async function extractKbaFromFile(file: File): Promise<AbeDataHunterReport> {
 }
 
 async function extractVehicleFromFile(
+  vehicleId: string,
   file: File,
 ): Promise<AbeDataHunterReport> {
   const body = new FormData();
+  body.set("vehicleId", vehicleId);
   body.set("file", file);
   body.set("step", "hunt-vehicle");
 
@@ -501,13 +513,14 @@ async function extractVehicleFromFile(
 }
 
 async function extractForHuntFocus(
+  vehicleId: string,
   file: File,
   focusKey: AbeRequiredFieldKey,
 ): Promise<AbeDataHunterReport> {
   if (focusKey === "verkaufsbezeichnung") {
-    return extractVehicleFromFile(file);
+    return extractVehicleFromFile(vehicleId, file);
   }
-  return extractAllFromFile(file);
+  return extractAllFromFile(vehicleId, file);
 }
 
 function enrichAfterHuntMerge(
@@ -2400,7 +2413,7 @@ export function AbeDataHunterWizard({
         const before = reportRef.current;
 
         if (queueModeRef.current === "kba") {
-          const extracted = await extractKbaFromFile(file);
+          const extracted = await extractKbaFromFile(vehicleId, file);
           const merged = fillAbeDataHunterReport(before, extracted);
           reportRef.current = merged;
           setReport(merged);
@@ -2435,7 +2448,7 @@ export function AbeDataHunterWizard({
             )
           ] ?? "kbaNumber";
 
-        const extracted = await extractForHuntFocus(file, focusKey);
+        const extracted = await extractForHuntFocus(vehicleId, file, focusKey);
         const mergedRaw = fillAbeDataHunterReport(before, extracted);
         const {
           report: merged,
@@ -2512,7 +2525,11 @@ export function AbeDataHunterWizard({
           skippedAuflagenCodes,
         );
         const codes = pendingCodes.length > 0 ? pendingCodes : allCodes;
-        const { notes, regions } = await extractAuflagenTextFromFile(file, codes);
+        const { notes, regions } = await extractAuflagenTextFromFile(
+          vehicleId,
+          file,
+          codes,
+        );
         const attributedNotes =
           attributeAuflagenScanNotes(notes, codes) ?? notes;
         const sanitizedNotes =

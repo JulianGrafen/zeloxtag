@@ -4,14 +4,17 @@ import { useState, useTransition } from "react";
 import { Copy, ExternalLink, FileDown, Link2, RefreshCw, ShieldOff } from "lucide-react";
 
 import { manageVehicleExpose } from "@/actions/expose";
+import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
 import { GenerateExposeButton } from "@/components/vehicles/GenerateExposeButton";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { FEATURE } from "@/lib/permissions/feature-access";
 import type { Vehicle } from "@/types/database";
 
 type ExposeShareSettingsProps = {
   tagUuid: string;
   vehicle: Vehicle;
   canEdit: boolean;
+  canUseExpose?: boolean;
   exposeToken: string | null;
   isExposeActive: boolean;
 };
@@ -20,6 +23,7 @@ export function ExposeShareSettings({
   tagUuid,
   vehicle,
   canEdit,
+  canUseExpose = true,
   exposeToken,
   isExposeActive,
 }: ExposeShareSettingsProps) {
@@ -30,10 +34,15 @@ export function ExposeShareSettings({
   );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function runAction(action: "generate" | "deactivate" | "renew") {
     if (!canEdit) return;
+    if (!canUseExpose) {
+      setPaywallOpen(true);
+      return;
+    }
 
     startTransition(async () => {
       setError(null);
@@ -158,6 +167,9 @@ export function ExposeShareSettings({
           vehicleId={vehicle.id}
           vehicleLabel={vehicleLabel}
           disabled={!canEdit}
+          onProRequired={
+            canUseExpose ? undefined : () => setPaywallOpen(true)
+          }
         />
       </div>
 
@@ -169,6 +181,12 @@ export function ExposeShareSettings({
           {error}
         </p>
       ) : null}
+      <ProPaywallModal
+        open={paywallOpen}
+        feature={FEATURE.GENERATE_EXPOSE}
+        tagUuid={tagUuid}
+        onClose={() => setPaywallOpen(false)}
+      />
     </section>
   );
 }

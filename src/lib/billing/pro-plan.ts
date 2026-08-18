@@ -1,0 +1,43 @@
+/** ZeloxTag Cloud Pro — public checkout copy. */
+
+export const PRO_PLAN_NAME = "ZeloxTag Pro";
+export const PRO_PLAN_MONTHLY_PRICE = "4,99 €";
+export const PRO_TRIAL_DAYS = 14;
+
+export const PRO_CHECKOUT_BUTTON_LABEL = "14 Tage kostenlos starten";
+export const PRO_CHECKOUT_BUTTON_RETURNING_LABEL = `Pro Abo abschließen · ${PRO_PLAN_MONTHLY_PRICE} / Monat`;
+
+export const PRO_TRIAL_HEADLINE = `Die ersten ${PRO_TRIAL_DAYS} Tage sind kostenlos.`;
+export const PRO_TRIAL_PRICE_COPY = `Danach ${PRO_PLAN_MONTHLY_PRICE} im Monat, jederzeit kündbar.`;
+export const PRO_RETURNING_PRICE_COPY = `Cloud-Abo ${PRO_PLAN_MONTHLY_PRICE} im Monat, Zahlung über Stripe.`;
+
+export const MEMBERSHIP_REQUIRED_MESSAGE =
+  "ZeloxTag Pro ist nötig, um diese Funktion zu nutzen. Die ersten 14 Tage sind kostenlos.";
+
+export function cloudAboHref(tagUuid: string): string {
+  return `/v/${tagUuid}/abo`;
+}
+
+export const PRO_PLAN_BENEFITS = [
+  "Digitale Fahrzeugakte in der Cloud — Belege, ABEs und TÜV an einem Ort",
+  "Belege scannen: ZeloxTag erkennt den Typ und füllt die Felder vor",
+  "ABE-Prüfung, ob das Gutachten zu deinem konkreten Fahrzeug passt",
+  "Schrauber einladen — die Werkstatt trägt ein, ohne dein Passwort",
+  "Lückenlose Historie für Verkauf, Kontrolle und den nächsten Halter",
+] as const;
+
+export type ProCheckoutAudience = "new" | "returning";
+
+export function proCheckoutButtonLabel(
+  audience: ProCheckoutAudience,
+): string {
+  return audience === "returning"
+    ? PRO_CHECKOUT_BUTTON_RETURNING_LABEL
+    : PRO_CHECKOUT_BUTTON_LABEL;
+}
+
+export function proCheckoutLead(audience: ProCheckoutAudience): string {
+  return audience === "returning"
+    ? PRO_RETURNING_PRICE_COPY
+    : `${PRO_TRIAL_HEADLINE} ${PRO_TRIAL_PRICE_COPY}`;
+}

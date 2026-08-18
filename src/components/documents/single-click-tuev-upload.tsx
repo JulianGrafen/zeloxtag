@@ -259,6 +259,7 @@ export function SingleClickTuevUpload({
     try {
       // 1. Single vision-LLM extraction (full document, no wizard split).
       const body = new FormData();
+      body.set("vehicleId", vehicleId);
       body.set("file", file);
 
       const response = await fetch("/api/ocr/tuev/single", {

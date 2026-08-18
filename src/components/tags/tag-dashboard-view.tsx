@@ -1,5 +1,10 @@
 import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
+import {
+  featureForDashboardTile,
+  isProOnlyFeature,
+  type FeatureFlag,
+} from "@/lib/permissions/feature-access";
 import type { Document, Vehicle } from "@/types/database";
 
 import {
@@ -36,7 +41,11 @@ interface TagDashboardViewProps {
    * demo showcase access (read-only, no login).
    */
   demoMode?: boolean;
+  /** Owner's ZeloxTag Pro is active — unlocks vault, scan, and exposé tiles. */
+  cloudUnlocked?: boolean;
   onOpenScanner?: () => void;
+  /** Pro tile without href — open the action-based paywall. */
+  onLockedFeature?: (feature: FeatureFlag) => void;
   /** Owner: tap header cutout to change silhouette. */
   onEditVehicleImage?: () => void;
   /** Immediate header refresh after silhouette upload (same-origin display URL). */
@@ -58,7 +67,9 @@ export function TagDashboardView({
   isOwner = true,
   isContributor = false,
   demoMode = false,
+  cloudUnlocked = true,
   onOpenScanner,
+  onLockedFeature,
   onEditVehicleImage,
   vehicleImageOverride,
   previewFallbackUrl,
@@ -268,8 +279,8 @@ export function TagDashboardView({
 
     return tile;
   }).filter((tile) => {
-    // Account settings (2FA) require a real session — hide in public demo.
-    if (tile.id === "settings") return isOwner && canScan && !demoMode;
+    // Account settings (2FA) stay available without Pro.
+    if (tile.id === "settings") return isOwner && !demoMode;
     // Vehicle showcase & expose — owner-only; visible in public demo browse.
     if (tile.id === "vehicle-settings") return isOwner || demoMode;
     // Schrauber: owner feature, but visible in the public showcase.
@@ -285,6 +296,20 @@ export function TagDashboardView({
       );
     }
     return true;
+  })
+  .map((tile) => {
+    if (cloudUnlocked || demoMode || demoShowcase) return tile;
+    const feature = featureForDashboardTile(tile.id);
+    if (!feature || !isProOnlyFeature(feature)) return tile;
+    return {
+      ...tile,
+      locked: true,
+      meta: {
+        ...tile.meta,
+        href: undefined,
+        subtitle: "Pro",
+      },
+    };
   });
 
   return (
@@ -292,8 +317,16 @@ export function TagDashboardView({
       <VehicleDashboard
         data={{ ...data, tiles }}
         className={canScan ? "pb-24" : undefined}
+        onTileClick={(tileId) => {
+          const feature = featureForDashboardTile(tileId);
+          if (feature && isProOnlyFeature(feature)) {
+            onLockedFeature?.(feature);
+          }
+        }}
         onEditVehicleImage={
-          isOwner && !demoMode && !demoShowcase ? onEditVehicleImage : undefined
+          isOwner && !demoMode && !demoShowcase
+            ? onEditVehicleImage
+            : undefined
         }
         onSilhouetteProxyLoad={onSilhouetteProxyLoad}
       />

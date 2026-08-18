@@ -4,6 +4,8 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -52,6 +54,11 @@ async function assertOwnerOfVehicle(
 
   if (!vehicle || vehicle.user_id !== userId) {
     return { error: "Kein Zugriff auf dieses Fahrzeug." };
+  }
+
+  const pro = await assertOwnerFeature(userId, FEATURE.INVITE_SCHRAUBER);
+  if (!pro.ok) {
+    return { error: pro.message };
   }
 
   const { data: tag } = await admin

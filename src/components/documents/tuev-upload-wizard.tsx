@@ -108,8 +108,14 @@ class TuevApiError extends Error {
   }
 }
 
-async function callTuevStep<T>(file: File, step: string, label: string): Promise<T> {
+async function callTuevStep<T>(
+  vehicleId: string,
+  file: File,
+  step: string,
+  label: string,
+): Promise<T> {
   const body = new FormData();
+  body.set("vehicleId", vehicleId);
   body.set("file", file);
   body.set("step", step);
 
@@ -129,14 +135,14 @@ async function callTuevStep<T>(file: File, step: string, label: string): Promise
   return (payload as { ok: true; extraction: T }).extraction;
 }
 
-const fetchOverviewExtraction = (f: File) =>
-  callTuevStep<TuevOverviewExtraction>(f, "overview", "Übersicht-Analyse");
+const fetchOverviewExtraction = (vehicleId: string, f: File) =>
+  callTuevStep<TuevOverviewExtraction>(vehicleId, f, "overview", "Übersicht-Analyse");
 
-const fetchHeaderExtraction = (f: File) =>
-  callTuevStep<TuevHeaderExtraction>(f, "header", "Kopf-Analyse");
+const fetchHeaderExtraction = (vehicleId: string, f: File) =>
+  callTuevStep<TuevHeaderExtraction>(vehicleId, f, "header", "Kopf-Analyse");
 
-const fetchDefectsExtraction = (f: File) =>
-  callTuevStep<TuevDefectsExtraction>(f, "defects", "Mängel-Analyse");
+const fetchDefectsExtraction = (vehicleId: string, f: File) =>
+  callTuevStep<TuevDefectsExtraction>(vehicleId, f, "defects", "Mängel-Analyse");
 
 // ─── Merge extraction results → TuevReport ────────────────────────────────────
 
@@ -428,10 +434,10 @@ export function TuevUploadWizard({
   ) {
     try {
       const [overviewResult, headerResult, defectsResult] = await Promise.all([
-        overviewFile ? fetchOverviewExtraction(overviewFile) : Promise.resolve(null),
-        headerFile ? fetchHeaderExtraction(headerFile) : Promise.resolve(null),
+        overviewFile ? fetchOverviewExtraction(vehicleId, overviewFile) : Promise.resolve(null),
+        headerFile ? fetchHeaderExtraction(vehicleId, headerFile) : Promise.resolve(null),
         defectsFile
-          ? fetchDefectsExtraction(defectsFile).catch(
+          ? fetchDefectsExtraction(vehicleId, defectsFile).catch(
               (): TuevDefectsExtraction => ({
                 defectsTable: null,
                 defectsList: null,

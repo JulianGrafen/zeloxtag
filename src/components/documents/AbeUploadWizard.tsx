@@ -115,8 +115,14 @@ class AbeApiError extends Error {
   }
 }
 
-async function callAbeStep<T>(file: File, step: string, label: string): Promise<T> {
+async function callAbeStep<T>(
+  vehicleId: string,
+  file: File,
+  step: string,
+  label: string,
+): Promise<T> {
   const body = new FormData();
+  body.set("vehicleId", vehicleId);
   body.set("file", file);
   body.set("step", step);
 
@@ -136,14 +142,14 @@ async function callAbeStep<T>(file: File, step: string, label: string): Promise<
   return (payload as { ok: true; extraction: T }).extraction;
 }
 
-const fetchCoverExtraction = (f: File) =>
-  callAbeStep<AbeWizardCoverExtraction>(f, "cover", "Deckblatt-Analyse");
+const fetchCoverExtraction = (vehicleId: string, f: File) =>
+  callAbeStep<AbeWizardCoverExtraction>(vehicleId, f, "cover", "Deckblatt-Analyse");
 
-const fetchMainExtraction = (f: File) =>
-  callAbeStep<AbeWizardMainExtraction>(f, "main", "Hauptseite-Analyse");
+const fetchMainExtraction = (vehicleId: string, f: File) =>
+  callAbeStep<AbeWizardMainExtraction>(vehicleId, f, "main", "Hauptseite-Analyse");
 
-const fetchVehiclesExtraction = (f: File) =>
-  callAbeStep<AbeWizardVehiclesExtraction>(f, "vehicles", "Fahrzeugtabellen-Analyse");
+const fetchVehiclesExtraction = (vehicleId: string, f: File) =>
+  callAbeStep<AbeWizardVehiclesExtraction>(vehicleId, f, "vehicles", "Fahrzeugtabellen-Analyse");
 
 async function buildUploadFile(
   coverFile: File | null,
@@ -712,13 +718,13 @@ export function AbeUploadWizard({
       const [coverResult, mainResult, vehiclesResult] = await Promise.all([
         reuseCover
           ? Promise.resolve(reuseCover)
-          : fetchCoverExtraction(coverFile),
+          : fetchCoverExtraction(vehicleId, coverFile),
         reuseMain !== null
           ? Promise.resolve(reuseMain)
           : mainFile
-            ? fetchMainExtraction(mainFile)
+            ? fetchMainExtraction(vehicleId, mainFile)
             : Promise.resolve(null),
-        fetchVehiclesExtraction(vehiclesFile),
+        fetchVehiclesExtraction(vehicleId, vehiclesFile),
       ]);
 
       const report = mergeAbeWizardSteps(coverResult, mainResult, vehiclesResult);

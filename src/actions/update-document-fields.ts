@@ -5,8 +5,11 @@ import { revalidatePath } from "next/cache";
 import {
   contributorMayWriteDocumentType,
   getVehicleWriteAccess,
+  writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import {
   getMockUploadedDocuments,
@@ -170,7 +173,16 @@ export async function updateDocumentFields(
 
   const writeAccess = await getVehicleWriteAccess(vehicleId, user.id);
   if (!writeAccess.ok) {
-    return { status: "error", message: "Kein Schreibzugriff auf dieses Fahrzeug." };
+    return { status: "error", message: writeAccessErrorMessage(writeAccess) };
+  }
+  if (writeAccess.ownerUserId) {
+    const vault = await assertOwnerFeature(
+      writeAccess.ownerUserId,
+      FEATURE.DOCUMENT_VAULT,
+    );
+    if (!vault.ok) {
+      return { status: "error", message: vault.message };
+    }
   }
 
   if (!isSupabaseAdminConfigured()) {

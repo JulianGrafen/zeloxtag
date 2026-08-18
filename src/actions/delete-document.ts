@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import {
   getMockUploadedDocuments,
@@ -61,6 +63,10 @@ export async function deleteDocument(input: {
   const ownership = await assertVehicleOwner(vehicleId);
   if (!ownership.ok) {
     return { status: "error", message: ownership.message };
+  }
+  const vault = await assertOwnerFeature(ownership.userId, FEATURE.DOCUMENT_VAULT);
+  if (!vault.ok) {
+    return { status: "error", message: vault.message };
   }
 
   const supabase = await createClient();

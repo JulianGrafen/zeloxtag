@@ -86,6 +86,8 @@ export type Membership = {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   stripe_price_id: string | null;
+  /** Authoritative billing source — migration 00043. */
+  billing_provider: "stripe" | "shopify" | null;
   status: MembershipStatus;
   current_period_end: string | null;
   paid_at: string | null;

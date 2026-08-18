@@ -23,7 +23,7 @@ function isMissingShowcaseColumnError(error: {
   return Boolean(error.message?.includes("show_on_public_showcase"));
 }
 
-function normalizeVehicle(value: unknown): Vehicle | null {
+function normalizePublicSlugVehicle(value: unknown): Vehicle | null {
   if (!value || typeof value !== "object") return null;
   const vehicle = value as Vehicle;
   if (typeof vehicle.id !== "string" || typeof vehicle.make !== "string") {
@@ -31,10 +31,10 @@ function normalizeVehicle(value: unknown): Vehicle | null {
   }
   return withDefaultShowcaseFields({
     ...vehicle,
-    user_id: typeof vehicle.user_id === "string" ? vehicle.user_id : "",
+    user_id: "",
+    vin: null,
     model: typeof vehicle.model === "string" ? vehicle.model : "",
     year: typeof vehicle.year === "number" ? vehicle.year : null,
-    vin: typeof vehicle.vin === "string" ? vehicle.vin : null,
     tech_specs: parseVehicleTechSpecs(vehicle.tech_specs),
     silhouette_image_url:
       typeof vehicle.silhouette_image_url === "string"
@@ -88,7 +88,7 @@ async function loadVehicleBySlugRpc(slug: string): Promise<Vehicle | null> {
   }
   if (!data || typeof data !== "object") return null;
   const record = data as { vehicle?: unknown };
-  return normalizeVehicle(record.vehicle);
+  return normalizePublicSlugVehicle(record.vehicle);
 }
 
 async function loadVehicleBySlugAdmin(slug: string): Promise<Vehicle | null> {
@@ -98,12 +98,13 @@ async function loadVehicleBySlugAdmin(slug: string): Promise<Vehicle | null> {
     .from("vehicles")
     .select(VEHICLE_COLUMNS)
     .eq("public_slug", slug.trim())
+    .eq("is_public", true)
     .maybeSingle();
 
   if (error) {
     throw new Error(`Failed to resolve public slug: ${error.message}`);
   }
-  return data ? normalizeVehicle(data) : null;
+  return data ? normalizePublicSlugVehicle(data) : null;
 }
 
 export type PublicVehicleLookup =

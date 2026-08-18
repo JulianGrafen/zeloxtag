@@ -2,6 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { User } from "@supabase/supabase-js";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { MEMBERSHIP_REQUIRED_MESSAGE } from "@/lib/billing/pro-plan";
+import { ownerHasFeature } from "@/lib/permissions/require-feature";
+import type { FeatureFlag } from "@/lib/permissions/feature-access";
+import { SUBSCRIPTION_REQUIRED_CODE } from "@/lib/permissions/feature-access";
 import {
   authClientKeyFromHeaders,
   clientIpFromHeaders,
@@ -161,4 +165,26 @@ export async function requireApiUser(): Promise<ApiAuthResult> {
   }
 
   return { ok: true, user };
+}
+
+export function subscriptionRequiredResponse(
+  message: string = MEMBERSHIP_REQUIRED_MESSAGE,
+): NextResponse {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: message,
+      code: SUBSCRIPTION_REQUIRED_CODE,
+    },
+    { status: 402 },
+  );
+}
+
+/** Session-user Pro gate for AI/OCR routes that have no vehicle yet. */
+export async function requireApiFeature(
+  userId: string,
+  feature: FeatureFlag,
+): Promise<NextResponse | null> {
+  if (await ownerHasFeature(userId, feature)) return null;
+  return subscriptionRequiredResponse();
 }

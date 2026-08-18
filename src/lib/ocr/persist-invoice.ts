@@ -3,8 +3,11 @@ import { randomUUID } from "crypto";
 import {
   contributorMayWriteDocumentType,
   getVehicleWriteAccess,
+  writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -58,7 +61,14 @@ export async function persistOcrInvoice(input: {
     input.userId,
   );
   if (!writeAccess.ok || !writeAccess.ownerUserId) {
-    throw new OcrPersistError("No write access to this vehicle.");
+    throw new OcrPersistError(writeAccessErrorMessage(writeAccess));
+  }
+  const vault = await assertOwnerFeature(
+    writeAccess.ownerUserId,
+    FEATURE.SCAN_AI_RECEIPT,
+  );
+  if (!vault.ok) {
+    throw new OcrPersistError(vault.message);
   }
 
   const documentId = randomUUID();

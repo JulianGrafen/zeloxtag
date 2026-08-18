@@ -11,6 +11,7 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
+import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
@@ -75,7 +76,6 @@ export async function POST(request: NextRequest) {
 
     const auth = await requireApiUser();
     if (!auth.ok) return auth.response;
-    const user = auth.user;
 
     let formData: FormData;
     try {
@@ -93,6 +93,13 @@ export async function POST(request: NextRequest) {
     if (!meta.success) {
       return jsonError(400, "vehicleId (UUID) is required.", "bad_request");
     }
+
+    const vehicleAccess = await requireVehicleOcrAccess(
+      auth.user.id,
+      meta.data.vehicleId,
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
+    const user = auth.user;
 
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {

@@ -12,6 +12,7 @@ type VehicleSettingsViewProps = {
   vehicle: Vehicle;
   documents: Document[];
   canEdit: boolean;
+  canUseExpose?: boolean;
   exposeToken: string | null;
   isExposeActive: boolean;
 };
@@ -21,6 +22,7 @@ export function VehicleSettingsView({
   vehicle,
   documents,
   canEdit,
+  canUseExpose = true,
   exposeToken,
   isExposeActive,
 }: VehicleSettingsViewProps) {
@@ -37,6 +39,7 @@ export function VehicleSettingsView({
         tagUuid={tagUuid}
         vehicle={vehicle}
         canEdit={canEdit}
+        canUseExpose={canUseExpose}
         exposeToken={exposeToken}
         isExposeActive={isExposeActive}
       />

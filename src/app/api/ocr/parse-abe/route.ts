@@ -9,6 +9,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
+import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import {
   AbeVehicleContextSchema,
   type AbeMinimal,
@@ -22,6 +23,7 @@ const MAX_RAW_TEXT_CHARS = 48_000;
 
 const requestSchema = z
   .object({
+    vehicleId: z.string().uuid(),
     rawText: z.string().trim().min(8).max(MAX_RAW_TEXT_CHARS),
     vehicleContext: AbeVehicleContextSchema.optional().nullable(),
   })
@@ -78,10 +80,16 @@ export async function POST(request: NextRequest) {
     if (!parsedBody.ok) {
       return jsonError(
         400,
-        "rawText is required; vehicleContext must be { brand, model, type?, egBe? } when set.",
+        "vehicleId and rawText are required; vehicleContext must be { brand, model, type?, egBe? } when set.",
         "bad_request",
       );
     }
+
+    const vehicleAccess = await requireVehicleOcrAccess(
+      auth.user.id,
+      parsedBody.data.vehicleId,
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
 
     let fields: AbeMinimal;
     try {

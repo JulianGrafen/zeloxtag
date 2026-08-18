@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
@@ -69,6 +71,13 @@ export async function manageVehicleExpose(
               ? "Nur der Fahrzeughalter kann das Exposé steuern."
               : ownership.message,
       };
+    }
+    const pro = await assertOwnerFeature(
+      ownership.userId,
+      FEATURE.GENERATE_EXPOSE,
+    );
+    if (!pro.ok) {
+      return { status: "error", message: pro.message };
     }
 
     const supabase = await createClient();

@@ -28,6 +28,7 @@ import {
 import { matchCompatibilityTable } from "@/services/ocr/TableMatchingService";
 
 export type ABEOverviewProps = {
+  vehicleId: string;
   /** Object URL or same-origin URL for the scanned PDF/image. */
   previewUrl: string;
   previewKind?: "pdf" | "image";
@@ -70,6 +71,7 @@ const MATCH_STATUS_COPY: Record<
  * Technical specs / Freigabe stay in the saved PDF.
  */
 export function ABEOverview({
+  vehicleId,
   previewUrl,
   previewKind = "image",
   pageCount = 1,
@@ -94,6 +96,7 @@ export function ABEOverview({
     updateField,
     extract,
   } = useAbeExtraction({
+    vehicleId,
     rawText,
     initialFields,
     autoExtract,

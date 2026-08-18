@@ -28,6 +28,8 @@ export type AnalyzeDocumentResult = {
 };
 
 export type AnalyzeDocumentOptions = {
+  /** Garage twin — required for server-side OCR access checks. */
+  vehicleId: string;
   /** Explicit document type for model routing (preferred). */
   documentType?: OcrDocumentType;
   /** Explicit Gutachten / TÜV subtype from scan picker. */
@@ -61,6 +63,7 @@ function resolveDocumentType(
 
 async function analyzeOneFile(
   file: File,
+  vehicleId: string,
   documentType: OcrDocumentType,
   approvalKind?: ApprovalFieldKind | null,
   vehicleContext?: AbeVehicleContext | null,
@@ -68,6 +71,7 @@ async function analyzeOneFile(
   invoiceCategory?: InvoiceTextParseCategory | null,
 ): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
+  formData.set("vehicleId", vehicleId);
   formData.set("file", file);
   formData.set("documentType", documentType);
   if (approvalKind) {
@@ -190,14 +194,19 @@ function mergeFields(
  */
 export async function analyzeDocumentFiles(
   files: File[],
-  onPageProgress?: (page: number, totalPages: number) => void,
-  options: AnalyzeDocumentOptions = {},
+  onPageProgress: ((page: number, totalPages: number) => void) | undefined,
+  options: AnalyzeDocumentOptions,
 ): Promise<AnalyzeDocumentResult> {
   if (files.length === 0) {
     throw new AnalyzeDocumentError("Keine Datei für die Analyse vorhanden.");
   }
 
+  if (!options.vehicleId?.trim()) {
+    throw new AnalyzeDocumentError("vehicleId fehlt für die Dokumentanalyse.");
+  }
+
   const documentType = resolveDocumentType(options);
+  const vehicleId = options.vehicleId.trim();
 
   const approvalKind = options.approvalKind ?? null;
   const vehicleContext = options.vehicleContext ?? null;
@@ -208,6 +217,7 @@ export async function analyzeDocumentFiles(
     onPageProgress?.(1, 1);
     return analyzeOneFile(
       files[0],
+      vehicleId,
       documentType,
       approvalKind,
       vehicleContext,
@@ -222,6 +232,7 @@ export async function analyzeDocumentFiles(
     results.push(
       await analyzeOneFile(
         files[index],
+        vehicleId,
         documentType,
         approvalKind,
         vehicleContext,
@@ -255,7 +266,7 @@ export async function analyzeDocumentFiles(
 /** @deprecated Prefer analyzeDocumentFiles. */
 export async function analyzeDocumentFile(
   file: File,
-  options?: AnalyzeDocumentOptions,
+  options: AnalyzeDocumentOptions,
 ): Promise<AnalyzeDocumentResult> {
   return analyzeDocumentFiles([file], undefined, options);
 }

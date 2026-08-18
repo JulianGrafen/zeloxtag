@@ -8,9 +8,9 @@ export function isActiveMembership(
   periodEnd: string | null,
 ): boolean {
   if (status !== "active") return false;
-  if (!periodEnd) return true;
+  if (!periodEnd) return false;
   const end = Date.parse(periodEnd);
-  if (!Number.isFinite(end)) return true;
+  if (!Number.isFinite(end)) return false;
   return end > Date.now() - PERIOD_GRACE_MS;
 }
 

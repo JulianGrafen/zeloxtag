@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { applyShopifyMembershipAction } from "@/lib/billing/membership-store";
+import {
+  applyShopifyMembershipAction,
+  releaseShopifyWebhookEvent,
+  reserveShopifyWebhookEvent,
+} from "@/lib/billing/membership-store";
 import {
   shopMatchesAllowlist,
   verifyShopifyHmac,
@@ -9,7 +13,7 @@ import {
   parseMembershipProductIds,
   parseShopifyMembershipAction,
 } from "@/lib/billing/shopify-membership";
-import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -19,18 +23,6 @@ function json(status: number, body: Record<string, unknown>) {
 
 function env(name: string): string {
   return process.env[name]?.trim() ?? "";
-}
-
-async function markWebhookProcessed(id: string, topic: string): Promise<void> {
-  if (!isSupabaseAdminConfigured()) return;
-  const admin = createAdminClient();
-  const { error } = await admin.from("shopify_webhook_events").upsert({
-    id,
-    topic,
-  });
-  if (error) {
-    console.error("[shopify-webhook] event log failed", error.message);
-  }
 }
 
 /**
@@ -79,11 +71,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return json(200, { ok: true, ignored: true, topic });
   }
 
+  if (!isSupabaseAdminConfigured()) {
+    return json(503, { ok: false, error: "Supabase is not configured." });
+  }
+
+  let reserved: "new" | "duplicate" = "new";
   try {
+    if (webhookId) {
+      reserved = await reserveShopifyWebhookEvent(webhookId, topic);
+      if (reserved === "duplicate") {
+        return json(200, { ok: true, duplicate: true, topic });
+      }
+    }
+
     await applyShopifyMembershipAction(action);
-    if (webhookId) await markWebhookProcessed(webhookId, topic);
     return json(200, { ok: true, topic, status: action.status });
   } catch (error) {
+    if (webhookId && reserved === "new") {
+      await releaseShopifyWebhookEvent(webhookId);
+    }
     console.error("[shopify-webhook] apply failed", error);
     return json(500, { ok: false, error: "Membership update failed." });
   }

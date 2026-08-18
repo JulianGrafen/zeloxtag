@@ -7,6 +7,10 @@ import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
+import {
+  dashboardTourHref,
+  isPostPaymentReturn,
+} from "@/lib/onboarding/dashboard-tour";
 
 interface ActivateCloudPageProps {
   params: Promise<{ uuid: string }>;
@@ -15,7 +19,8 @@ interface ActivateCloudPageProps {
 
 export const metadata: Metadata = {
   title: "Cloud aktivieren · ZeloxTag",
-  description: "ZeloxTag Cloud Abo über Stripe abschließen.",
+  description:
+    "ZeloxTag Pro: 14 Tage kostenlos, danach 4,99 € im Monat. Digitale Fahrzeugakte, Belege, ABEs und TÜV.",
 };
 
 export default async function ActivateCloudPage({
@@ -23,7 +28,7 @@ export default async function ActivateCloudPage({
   searchParams,
 }: ActivateCloudPageProps) {
   const { uuid } = await params;
-  const { session_id } = await searchParams;
+  const { session_id, checkout } = await searchParams;
   const user = await getCurrentUser();
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(`/v/${uuid}/abo`)}`);
@@ -36,7 +41,11 @@ export default async function ActivateCloudPage({
   }
 
   if (await userHasActiveMembership(user.id)) {
-    redirect(`/v/${uuid}?scan=1`);
+    redirect(
+      isPostPaymentReturn({ checkout, session_id })
+        ? dashboardTourHref(uuid)
+        : `/v/${uuid}`,
+    );
   }
 
   return (

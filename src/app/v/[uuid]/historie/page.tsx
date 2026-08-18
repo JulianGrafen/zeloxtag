@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { VehicleTimelineView } from "@/components/documents/vehicle-timeline-view";
+import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { FEATURE } from "@/lib/permissions/feature-access";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -25,7 +27,7 @@ export default async function VehicleHistoriePage({
   params,
 }: HistoriePageProps) {
   const { uuid } = await params;
-  const { result, access } = await requireTagWriter(uuid);
+  const { result, access, isDemoShowcase } = await requireTagWriter(uuid);
   const vehicle = result.vehicle!;
   const documents =
     access.isContributor && !access.isOwner
@@ -49,15 +51,21 @@ export default async function VehicleHistoriePage({
     }
   }
 
-  return (
-    <VehicleTimelineView
-      tagUuid={result.tag.uuid}
-      vehicleLabel={`${vehicle.make} ${vehicle.model}${
-        vehicle.year ? ` · ${vehicle.year}` : ""
-      }`}
-      events={events}
-      scanHref={`/v/${result.tag.uuid}/service?scan=1`}
-      backHref={`/v/${result.tag.uuid}`}
-    />
-  );
+  return wrapProFeature({
+    isDemo: isDemoShowcase,
+    ownerUserId: vehicle.user_id,
+    tagUuid: result.tag.uuid,
+    feature: FEATURE.DOCUMENT_VAULT,
+    children: (
+      <VehicleTimelineView
+        tagUuid={result.tag.uuid}
+        vehicleLabel={`${vehicle.make} ${vehicle.model}${
+          vehicle.year ? ` · ${vehicle.year}` : ""
+        }`}
+        events={events}
+        scanHref={`/v/${result.tag.uuid}/service?scan=1`}
+        backHref={`/v/${result.tag.uuid}`}
+      />
+    ),
+  });
 }

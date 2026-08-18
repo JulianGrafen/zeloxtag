@@ -12,6 +12,7 @@ import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseV
 import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getTagVehicleAccess, getVehicleAccess } from "@/lib/auth/vehicle-access";
+import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 import {
   loadPublicShowcaseDocuments,
@@ -21,11 +22,23 @@ import { buildPublicShowcasePayload, vehicleSupportsPublicShowcase } from "@/lib
 import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { toOwnerClientTagScanResult } from "@/lib/tags/public-tag-dto";
+import {
+  dashboardTourHref,
+  isForcedDashboardTourSearch,
+} from "@/lib/onboarding/dashboard-tour";
+import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import type { Vehicle } from "@/types/database";
 
 interface TagScanPageProps {
   params: Promise<{ uuid: string }>;
-  searchParams: Promise<{ scan?: string; type?: string; dashboard?: string }>;
+  searchParams: Promise<{
+    scan?: string;
+    type?: string;
+    dashboard?: string;
+    tour?: string;
+    checkout?: string;
+    session_id?: string;
+  }>;
 }
 
 function vehicleTitle(make: string, model: string, year: number | null): string {
@@ -88,7 +101,8 @@ export default async function TagScanPage({
   searchParams,
 }: TagScanPageProps) {
   const { uuid: identifier } = await params;
-  const { scan, type: scanType, dashboard } = await searchParams;
+  const { scan, type: scanType, dashboard, tour, checkout, session_id } =
+    await searchParams;
   const wantsDashboard = dashboard === "1" || scan === "1";
   const entry = await resolvePublicVehicleEntry(identifier);
 
@@ -180,7 +194,17 @@ export default async function TagScanPage({
       );
     }
 
-    const openScanner = scan === "1";
+    const membershipActive = await userHasActiveMembership(vehicle.user_id);
+    const wantsScan =
+      scan === "1" && !isForcedDashboardTourSearch({ tour, checkout });
+    const openScanner = wantsScan && membershipActive;
+    const startTour =
+      access.isOwner && isForcedDashboardTourSearch({ tour, checkout });
+
+    if (session_id?.startsWith("cs_") && user) {
+      await syncStripeCheckoutSessionAction(session_id);
+      redirect(dashboardTourHref(tag.uuid));
+    }
     const visibleDocuments = filterDocumentsForContributorAccess(
       result.documents,
       {
@@ -205,8 +229,10 @@ export default async function TagScanPage({
           isOwner={access.isOwner}
           isContributor={access.isContributor}
           sessionEmail={access.sessionEmail}
-          initialMode={openScanner ? "pick-scan" : "dashboard"}
+          initialMode={wantsScan ? "pick-scan" : "dashboard"}
           initialScanType={openScanner ? (scanType ?? null) : null}
+          startTour={startTour}
+          membershipActive={membershipActive}
         />
       </AppShell>
     );

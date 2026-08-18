@@ -2,7 +2,6 @@
 
 import { ensureClaimAccount } from "@/lib/auth/ensure-claim-account";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -74,8 +73,8 @@ function normalizeClaimInput(input: ClaimTagInput): NormalizedClaim {
   };
 }
 
-function dashboardScannerHref(tagUuid: string): string {
-  return `/v/${tagUuid}?scan=1`;
+function dashboardAfterClaimHref(tagUuid: string): string {
+  return `/v/${tagUuid}?tour=1`;
 }
 
 /**
@@ -103,7 +102,7 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
     }
     return {
       status: "continue",
-      href: dashboardScannerHref(MOCK_TAG_UUIDS.active),
+      href: dashboardAfterClaimHref(MOCK_TAG_UUIDS.active),
       nextTagUuid: null,
     };
   }
@@ -148,13 +147,9 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
       return result;
     }
 
-    const hasMembership = await userHasActiveMembership(ownerUserId);
-
     return {
       status: "continue",
-      href: hasMembership
-        ? dashboardScannerHref(result.tagUuid)
-        : `/v/${result.tagUuid}/abo`,
+      href: `/v/${result.tagUuid}?tour=1`,
       nextTagUuid: result.nextTagUuid,
     };
   } catch (error) {

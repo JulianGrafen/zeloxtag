@@ -7,6 +7,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
+import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { isAbeTableExtractionEmpty } from "@/lib/validations/abeTableExtractionSchemas";
 import { abeTableExtractorService } from "@/services/documents/TableExtractorService";
 
@@ -89,6 +90,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } catch {
       return jsonError(400, "Multipart-Upload erwartet.", "bad_request");
     }
+
+    const vehicleAccess = await requireVehicleOcrAccess(
+      auth.user.id,
+      String(formData.get("vehicleId") ?? ""),
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
 
     const uploads = await readUploadFiles(formData);
     if (uploads.length === 0) {

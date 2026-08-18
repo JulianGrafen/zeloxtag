@@ -9,6 +9,7 @@ import {
 import {
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
+import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { isAbeVisionExtractionEmpty } from "@/lib/validations/abeVisionExtractionSchemas";
 import { abeVisionExtractor } from "@/services/documents/VisionExtractor";
 
@@ -88,6 +89,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } catch {
       return jsonError(400, "Multipart-Upload erwartet.", "bad_request");
     }
+
+    const vehicleAccess = await requireVehicleOcrAccess(
+      auth.user.id,
+      String(formData.get("vehicleId") ?? ""),
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
 
     const uploads = await readUploadFiles(formData);
     if (uploads.length === 0) {

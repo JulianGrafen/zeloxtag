@@ -22,7 +22,7 @@ type NextUnclaimedErr = {
 
 /**
  * GET /api/tags/next-unclaimed
- * Inventory helper — operator allowlist only (`ZELOXTAG_OPERATOR_EMAILS`).
+ * Inventory helper — sole superuser only (`ZELOXTAG_SUPERUSER_EMAIL`).
  * Pass `?mint=1` to always create a new plaque UUID.
  */
 export async function GET(request: NextRequest) {

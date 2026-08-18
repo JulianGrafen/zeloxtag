@@ -3,7 +3,9 @@ import { notFound, redirect } from "next/navigation";
 
 import { DocumentAbeDetailView } from "@/components/documents/document-abe-detail-view";
 import { DocumentInvoiceDetailView } from "@/components/documents/document-invoice-detail-view";
+import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { FEATURE } from "@/lib/permissions/feature-access";
 import { getDocumentById } from "@/lib/tags/get-tag-by-uuid";
 
 interface DocumentDetailPageProps {
@@ -21,7 +23,7 @@ export default async function DocumentDetailPage({
   params,
 }: DocumentDetailPageProps) {
   const { uuid, id } = await params;
-  const { result, access } = await requireTagWriter(uuid);
+  const { result, access, isDemoShowcase } = await requireTagWriter(uuid);
 
   const document =
     (await getDocumentById(result.vehicle!.id, id)) ??
@@ -41,26 +43,31 @@ export default async function DocumentDetailPage({
 
   const vehicleLabel = `${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`;
 
-  if (document.type === "abe") {
-    return (
+  const view =
+    document.type === "abe" ? (
       <DocumentAbeDetailView
         tagUuid={result.tag.uuid}
         vehicleLabel={vehicleLabel}
         document={document}
       />
+    ) : (
+      <DocumentInvoiceDetailView
+        tagUuid={result.tag.uuid}
+        vehicleLabel={vehicleLabel}
+        document={document}
+        canEdit={
+          access.isOwner ||
+          (access.isContributor && document.type === "invoice")
+        }
+        canDelete={access.isOwner}
+      />
     );
-  }
 
-  return (
-    <DocumentInvoiceDetailView
-      tagUuid={result.tag.uuid}
-      vehicleLabel={vehicleLabel}
-      document={document}
-      canEdit={
-        access.isOwner ||
-        (access.isContributor && document.type === "invoice")
-      }
-      canDelete={access.isOwner}
-    />
-  );
+  return wrapProFeature({
+    isDemo: isDemoShowcase,
+    ownerUserId: result.vehicle!.user_id,
+    tagUuid: result.tag.uuid,
+    feature: FEATURE.DOCUMENT_VAULT,
+    children: view,
+  });
 }

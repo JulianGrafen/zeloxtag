@@ -11,6 +11,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
+import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,7 @@ const MAX_RAW_TEXT_CHARS = 12_000;
 
 const requestSchema = z
   .object({
+    vehicleId: z.string().uuid(),
     rawText: z.string().trim().min(8).max(MAX_RAW_TEXT_CHARS),
   })
   .strict();
@@ -79,10 +81,16 @@ export async function POST(request: NextRequest) {
     if (!parsedBody.ok) {
       return jsonError(
         400,
-        "rawText is required (min 8 characters).",
+        "vehicleId and rawText are required (min 8 characters).",
         "bad_request",
       );
     }
+
+    const vehicleAccess = await requireVehicleOcrAccess(
+      auth.user.id,
+      parsedBody.data.vehicleId,
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
 
     let fields: InvoiceTextParseResult;
     try {

@@ -90,6 +90,17 @@ function priceIdFromSubscription(subscription: Record<string, unknown>): string 
   return asString(price?.id) ?? asString(firstItem(subscription)?.price);
 }
 
+function activeStatusRequiresPeriodEnd(
+  status: MembershipStatus,
+  periodEnd: string | null,
+): MembershipStatus {
+  if (status !== "active") return status;
+  if (!periodEnd) return "pending";
+  const end = Date.parse(periodEnd);
+  if (!Number.isFinite(end)) return "pending";
+  return "active";
+}
+
 function actionFromSubscription(
   subscription: Record<string, unknown>,
   extras?: { userId?: string | null; email?: string | null },
@@ -101,14 +112,15 @@ function actionFromSubscription(
     normalizeEmail(asRecord(subscription.customer)?.email) ??
     null;
   const userId = extras?.userId ?? userIdFrom(subscription);
+  const periodEnd = periodEndFromSubscription(subscription);
   return {
-    status,
+    status: activeStatusRequiresPeriodEnd(status, periodEnd),
     userId,
     email,
     stripeCustomerId: customerId(subscription.customer),
     stripeSubscriptionId: asString(subscription.id),
     stripePriceId: priceIdFromSubscription(subscription),
-    currentPeriodEnd: periodEndFromSubscription(subscription),
+    currentPeriodEnd: periodEnd,
   };
 }
 
@@ -132,6 +144,26 @@ function periodEndFromInvoice(invoice: Record<string, unknown>): string | null {
     }
   }
   return unixSecondsToIso(invoice.period_end);
+}
+
+function actionFromInvoicePaid(
+  invoice: Record<string, unknown>,
+): StripeMembershipAction | null {
+  const userId = userIdFrom(invoice);
+  const email = normalizeEmail(invoice.customer_email);
+  if (!userId && !email && !customerId(invoice.customer) && !invoiceSubscriptionId(invoice)) {
+    return null;
+  }
+  const periodEnd = periodEndFromInvoice(invoice);
+  return {
+    status: activeStatusRequiresPeriodEnd("active", periodEnd),
+    userId,
+    email,
+    stripeCustomerId: customerId(invoice.customer),
+    stripeSubscriptionId: invoiceSubscriptionId(invoice),
+    stripePriceId: null,
+    currentPeriodEnd: periodEnd,
+  };
 }
 
 export function parseStripeMembershipAction(
@@ -161,7 +193,7 @@ export function parseStripeMembershipAction(
     }
     if (!userId && !email) return null;
     return {
-      status: "active",
+      status: "pending",
       userId,
       email,
       stripeCustomerId: customerId(body.customer),
@@ -184,21 +216,8 @@ export function parseStripeMembershipAction(
     return { ...action, status: "canceled", currentPeriodEnd: action.currentPeriodEnd };
   }
 
-  if (eventType === "invoice.paid") {
-    const userId = userIdFrom(body);
-    const email = normalizeEmail(body.customer_email);
-    if (!userId && !email && !customerId(body.customer) && !invoiceSubscriptionId(body)) {
-      return null;
-    }
-    return {
-      status: "active",
-      userId,
-      email,
-      stripeCustomerId: customerId(body.customer),
-      stripeSubscriptionId: invoiceSubscriptionId(body),
-      stripePriceId: null,
-      currentPeriodEnd: periodEndFromInvoice(body),
-    };
+  if (eventType === "invoice.paid" || eventType === "invoice.payment_succeeded") {
+    return actionFromInvoicePaid(body);
   }
 
   if (eventType === "invoice.payment_failed") {

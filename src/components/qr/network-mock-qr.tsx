@@ -1,29 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import QRCode from "qrcode";
-import { RefreshCw, Sparkles } from "lucide-react";
+import { Download, RefreshCw, Sparkles } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { MAX_MINT_BATCH } from "@/lib/tags/mint-batch";
+import {
+  isPlaqueTagUuid,
+  plaquePngFilename,
+  plaqueScanUrl,
+  plaqueSvgFilename,
+  renderPlaqueQrPngDataUrl,
+  renderPlaqueQrSvg,
+} from "@/lib/tags/plaque-qr";
 
 type QrSource = "supabase" | "minted";
 
-type QrTarget = {
-  id: string;
-  label: string;
-  description: string;
-  path: string;
-  source: QrSource;
+type MintedPlaque = {
   uuid: string;
+  source: QrSource;
+  png: string;
+  svg: string;
 };
+
+const BATCH_OPTIONS = [1, 5, 10, 20] as const;
 
 function resolvePublicOrigin(): string {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
   if (typeof window === "undefined") {
     return configured || "";
   }
-  // Prefer explicit production URL when set (custom domain / Vercel).
-  // Never prefer Shopify storefront domains for physical plaque URLs.
   if (
     configured &&
     !configured.includes("localhost") &&
@@ -34,107 +40,78 @@ function resolvePublicOrigin(): string {
   return window.location.origin;
 }
 
-function isRealTagUuid(uuid: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    uuid,
-  );
+function downloadTextFile(contents: string, filename: string, type: string) {
+  const blob = new Blob([contents], { type });
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(href);
+}
+
+async function renderPlaque(
+  origin: string,
+  uuid: string,
+  source: QrSource,
+): Promise<MintedPlaque> {
+  const url = plaqueScanUrl(origin, uuid);
+  const [png, svg] = await Promise.all([
+    renderPlaqueQrPngDataUrl(url),
+    renderPlaqueQrSvg(url),
+  ]);
+  return { uuid, source, png, svg };
 }
 
 /**
- * Online QR generator for Vercel / production.
- * Only emits real Supabase unclaimed tag UUIDs — never demo mock IDs.
+ * Operator minter: create unclaimed tags and download laser-ready SVGs.
  */
 export function NetworkMockQr() {
   const [origin, setOrigin] = useState<string>("");
-  const [targets, setTargets] = useState<QrTarget[]>([]);
-  const [codes, setCodes] = useState<Record<string, string>>({});
+  const [plaques, setPlaques] = useState<MintedPlaque[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [warning, setWarning] = useState<string | null>(null);
-  const [source, setSource] = useState<QrSource | null>(null);
   const [loading, setLoading] = useState(true);
+  const [count, setCount] = useState<(typeof BATCH_OPTIONS)[number]>(1);
 
-  const build = useCallback(async (opts?: { mint?: boolean }) => {
+  const loadLatestUnclaimed = useCallback(async () => {
     const nextOrigin = resolvePublicOrigin();
     setOrigin(nextOrigin);
     setLoading(true);
     setError(null);
-    setWarning(null);
-    setTargets([]);
-    setCodes({});
-    setSource(null);
 
     try {
-      const endpoint = opts?.mint
-        ? "/api/tags/next-unclaimed?mint=1"
-        : "/api/tags/next-unclaimed";
-      const response = await fetch(endpoint, { cache: "no-store" });
+      const response = await fetch("/api/tags/next-unclaimed", {
+        cache: "no-store",
+      });
       const payload = (await response.json().catch(() => null)) as {
         ok?: boolean;
         uuid?: string | null;
         source?: string;
-        warning?: string;
-        missingEnv?: string[];
         error?: string;
       } | null;
 
       if (response.status === 401) {
-        throw new Error("Bitte anmelden, um echte QR-Codes zu erzeugen.");
+        throw new Error("Bitte anmelden, um QR-Codes zu minten.");
       }
-
       if (!response.ok || !payload?.ok || !payload.uuid) {
-        throw new Error(
-          payload?.error ||
-            payload?.warning ||
-            "Echter Tag konnte nicht geladen werden.",
-        );
+        throw new Error(payload?.error || "Tag konnte nicht geladen werden.");
       }
-
-      if (
-        payload.source === "mock" ||
-        payload.source === "empty-fallback-mock" ||
-        !isRealTagUuid(payload.uuid)
-      ) {
-        throw new Error(
-          payload.warning ?? "Demo-Fallback aktiv — keine echten QR-Codes.",
-        );
+      if (!isPlaqueTagUuid(payload.uuid)) {
+        throw new Error("Demo-Fallback aktiv — keine echten QR-Codes.");
       }
-
       if (payload.source !== "supabase" && payload.source !== "minted") {
-        throw new Error("Unerwartete Tag-Quelle — Abbruch ohne Demo-UUID.");
+        throw new Error("Unerwartete Tag-Quelle.");
       }
 
-      const nextSource = payload.source;
-      const nextTargets: QrTarget[] = [
-        {
-          id: "unclaimed",
-          label: "Unclaimed ZeloxTag",
-          description:
-            nextSource === "minted"
-              ? "Frisch gemintet · Claim-Flow"
-              : "Nächster freier Tag · Claim-Flow",
-          path: `/v/${payload.uuid}`,
-          source: nextSource,
-          uuid: payload.uuid,
-        },
-      ];
-
-      const entries = await Promise.all(
-        nextTargets.map(async (target) => {
-          const url = `${nextOrigin}${target.path}`;
-          const dataUrl = await QRCode.toDataURL(url, {
-            width: 512,
-            margin: 2,
-            errorCorrectionLevel: "M",
-            color: { dark: "#0a0a0a", light: "#ffffff" },
-          });
-          return [target.id, dataUrl] as const;
-        }),
+      const plaque = await renderPlaque(
+        nextOrigin,
+        payload.uuid,
+        payload.source,
       );
-
-      setTargets(nextTargets);
-      setCodes(Object.fromEntries(entries));
-      setSource(nextSource);
-      setWarning(payload.warning ?? null);
+      setPlaques((current) => {
+        if (current.some((item) => item.uuid === plaque.uuid)) return current;
+        return [plaque, ...current];
+      });
     } catch (buildError) {
       setError(
         buildError instanceof Error
@@ -146,138 +123,193 @@ export function NetworkMockQr() {
     }
   }, []);
 
+  const mintBatch = useCallback(async () => {
+    const nextOrigin = resolvePublicOrigin();
+    setOrigin(nextOrigin);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/tags/mint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ count }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        tags?: Array<{ uuid: string }>;
+        error?: string;
+      } | null;
+
+      if (response.status === 401) {
+        throw new Error("Bitte anmelden, um QR-Codes zu minten.");
+      }
+      if (!response.ok || !payload?.ok || !payload.tags?.length) {
+        throw new Error(payload?.error || "Mint fehlgeschlagen.");
+      }
+
+      const rendered = await Promise.all(
+        payload.tags
+          .filter((tag) => isPlaqueTagUuid(tag.uuid))
+          .map((tag) => renderPlaque(nextOrigin, tag.uuid, "minted")),
+      );
+      setPlaques((current) => [...rendered, ...current]);
+    } catch (mintError) {
+      setError(
+        mintError instanceof Error ? mintError.message : "Mint fehlgeschlagen.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [count]);
+
   useEffect(() => {
-    void build();
-  }, [build]);
+    void loadLatestUnclaimed();
+  }, [loadLatestUnclaimed]);
 
   const isLocalhost =
     origin.includes("localhost") || origin.includes("127.0.0.1");
-  const isVercelHost =
-    origin.includes("vercel.app") ||
-    Boolean(
-      process.env.NEXT_PUBLIC_SITE_URL &&
-        !process.env.NEXT_PUBLIC_SITE_URL.includes("localhost") &&
-        !process.env.NEXT_PUBLIC_SITE_URL.includes("zeloxtag.de"),
-    );
 
   return (
     <div className="flex w-full flex-col gap-5">
       {isLocalhost ? (
         <div className="rounded-2xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-[0.82rem] leading-relaxed text-amber-950">
-          Lokal verbunden. Für physische Plaques die deployte{" "}
-          <span className="font-mono">/qr</span>-Seite öffnen (
-          <span className="font-mono">https://app.zeloxtag.de/qr</span>
-          ). <span className="font-semibold">zeloxtag.de</span> ist der Shopify-Shop
-          — nicht die App.
+          Lokal verbunden. Für physische Plaques{" "}
+          <span className="font-mono">https://app.zeloxtag.de/qr</span> nutzen —
+          sonst zeigt der QR auf localhost.
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p>
-            Basis-URL:{" "}
-            <span className="font-mono text-[color:var(--vd-text)]">
-              {origin || "…"}
-            </span>
-          </p>
-          {isVercelHost || (!isLocalhost && origin) ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-              Live
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-1">
-          Jeder QR zeigt eine echte Supabase-UUID unter{" "}
-          <span className="font-mono text-[color:var(--vd-text)]">/v/…</span>.
-          Nach Claim aktualisieren oder „Neuen Tag minten“.
+      <div className="vd-tile px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
+        <p>
+          Superuser-Minter. SVG ist für die Lasergravur, PNG nur zur Kontrolle.
+          Scan-URL:{" "}
+          <span className="font-mono text-[color:var(--vd-text)]">
+            {origin || "…"}/v/…
+          </span>
         </p>
-        {source ? (
-          <p className="mt-1 font-mono text-[0.72rem] text-[color:var(--vd-text)]">
-            Quelle: {source}
-          </p>
-        ) : null}
-        {warning ? (
-          <p className="mt-2 text-[0.78rem] text-amber-800">{warning}</p>
-        ) : null}
+        <p className="mt-1">
+          Max. {MAX_MINT_BATCH} Tags pro Lauf. MFA + Operator-Mail erforderlich.
+        </p>
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-[0.78rem] font-semibold text-[color:var(--vd-text)]">
+            Anzahl
+            <select
+              value={count}
+              disabled={loading}
+              onChange={(event) =>
+                setCount(
+                  Number(event.target.value) as (typeof BATCH_OPTIONS)[number],
+                )
+              }
+              className="h-10 rounded-xl border border-[color:var(--vd-border)] bg-white px-2.5 text-[0.82rem]"
+            >
+              {BATCH_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
           <PressableButton
             type="button"
             variant="button"
             disabled={loading}
-            onClick={() => void build()}
-            className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2 text-[0.78rem] font-semibold text-[color:var(--vd-text)] disabled:opacity-50"
+            onClick={() => void mintBatch()}
+            className="claim-cta-sm disabled:opacity-50"
           >
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-            Aktualisieren
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            {count === 1 ? "Tag minten" : `${count} Tags minten`}
           </PressableButton>
           <PressableButton
             type="button"
             variant="button"
             disabled={loading}
-            onClick={() => void build({ mint: true })}
-            className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-3 py-2 text-[0.78rem] font-semibold text-white disabled:opacity-50"
+            onClick={() => void loadLatestUnclaimed()}
+            className="claim-back !w-auto px-3 py-2 text-[0.78rem] disabled:opacity-50"
           >
-            <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            Neuen Tag minten
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+            Nächsten Unclaimed laden
           </PressableButton>
         </div>
       </div>
 
-      {error ? (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-[0.8rem] text-red-700">
-          {error}
-        </p>
+      {error ? <p className="vd-alert-error">{error}</p> : null}
+
+      {plaques.length > 1 ? (
+        <PressableButton
+          type="button"
+          variant="button"
+          disabled={loading}
+          onClick={() => {
+            plaques.forEach((plaque, index) => {
+              window.setTimeout(() => {
+                downloadTextFile(
+                  plaque.svg,
+                  plaqueSvgFilename(plaque.uuid),
+                  "image/svg+xml",
+                );
+              }, index * 180);
+            });
+          }}
+          className="claim-back !w-auto px-4 py-3 text-[0.85rem]"
+        >
+          <Download className="h-4 w-4" aria-hidden />
+          Alle {plaques.length} SVGs speichern
+        </PressableButton>
       ) : null}
 
       <div className="grid gap-4">
-        {targets.map((target) => {
-          const url = origin ? `${origin}${target.path}` : target.path;
-          const dataUrl = codes[target.id];
+        {plaques.map((plaque) => {
+          const url = origin
+            ? plaqueScanUrl(origin, plaque.uuid)
+            : `/v/${plaque.uuid}`;
           return (
-            <article
-              key={target.id}
-              className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
-            >
-              <p className="text-[0.65rem] font-medium uppercase tracking-[0.18em] text-[color:var(--vd-muted)]">
-                {target.label}
+            <article key={plaque.uuid} className="vd-surface-card p-5 shadow-[var(--vd-shadow-sm)]">
+              <p className="claim-kicker">
+                {plaque.source === "minted" ? "Frisch gemintet" : "Unclaimed"}
               </p>
-              <h2 className="mt-1 font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-                {target.description}
-              </h2>
               <p className="mt-2 break-all font-mono text-[0.72rem] text-[color:var(--vd-muted)]">
                 {url}
               </p>
               <p className="mt-1 break-all font-mono text-[0.68rem] text-[color:var(--vd-text)]">
-                UUID: {target.uuid}
+                UUID: {plaque.uuid}
               </p>
 
               <div className="mt-4 flex justify-center rounded-2xl bg-white p-4">
-                {dataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={dataUrl}
-                    alt={`QR-Code für ${target.label}`}
-                    width={240}
-                    height={240}
-                    className="h-auto w-[min(70vw,240px)]"
-                  />
-                ) : (
-                  <div className="flex h-[240px] w-[240px] items-center justify-center text-[0.8rem] text-[color:var(--vd-muted)]">
-                    {loading ? "QR wird erzeugt…" : "—"}
-                  </div>
-                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={plaque.png}
+                  alt={`QR-Code für ${plaque.uuid}`}
+                  width={240}
+                  height={240}
+                  className="h-auto w-[min(70vw,240px)]"
+                />
               </div>
 
-              {dataUrl ? (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <PressableButton
+                  type="button"
+                  onClick={() =>
+                    downloadTextFile(
+                      plaque.svg,
+                      plaqueSvgFilename(plaque.uuid),
+                      "image/svg+xml",
+                    )
+                  }
+                  className="claim-cta h-11"
+                >
+                  SVG speichern
+                </PressableButton>
                 <a
-                  href={dataUrl}
-                  download={`zeloxtag-${target.uuid}.png`}
-                  className="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-[color:var(--vd-border)] bg-white px-4 py-3 text-[0.85rem] font-semibold text-[color:var(--vd-text)]"
+                  href={plaque.png}
+                  download={plaquePngFilename(plaque.uuid)}
+                  className="claim-back inline-flex h-11 items-center justify-center no-underline"
                 >
                   PNG speichern
                 </a>
-              ) : null}
+              </div>
             </article>
           );
         })}

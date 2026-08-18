@@ -1,12 +1,16 @@
 /**
- * In-memory rate limiter for ZeloxTag.
+ * Rate limiter for ZeloxTag.
  *
- * Limits are per server instance (suitable for single-node dev and modest
- * serverless concurrency). Auth buckets use a stable client key so missing
- * proxy headers do not collapse all users into one bucket.
+ * Uses Postgres fixed-window counters when Supabase admin is configured
+ * (shared across Vercel instances). Falls back to in-memory buckets locally.
  */
 
 import { createHash } from "crypto";
+
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 
 export type RateLimitResult = {
   ok: boolean;
@@ -67,12 +71,48 @@ function memoryRateLimit(input: {
   };
 }
 
+function parseRateLimitRpc(value: unknown): RateLimitResult | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.ok !== "boolean") return null;
+  return {
+    ok: row.ok,
+    remaining: typeof row.remaining === "number" ? row.remaining : 0,
+    resetAt: typeof row.reset_at === "number" ? row.reset_at : Date.now(),
+    retryAfterSec:
+      typeof row.retry_after_sec === "number" ? row.retry_after_sec : 0,
+  };
+}
+
+async function supabaseRateLimit(input: {
+  key: string;
+  limit: number;
+  windowMs: number;
+}): Promise<RateLimitResult> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("consume_rate_limit", {
+    p_bucket_key: input.key,
+    p_limit: input.limit,
+    p_window_ms: input.windowMs,
+  });
+
+  if (error) {
+    console.error("[rate-limit] rpc failed — falling back to memory", error.message);
+    return memoryRateLimit(input);
+  }
+
+  return parseRateLimitRpc(data) ?? memoryRateLimit(input);
+}
+
 /** Consume one request from the named bucket for `key`. */
 export async function rateLimit(input: {
   key: string;
   limit: number;
   windowMs: number;
 }): Promise<RateLimitResult> {
+  if (isSupabaseAdminConfigured()) {
+    return supabaseRateLimit(input);
+  }
   return memoryRateLimit(input);
 }
 
@@ -120,4 +160,6 @@ export const RATE_LIMITS = {
   membershipClaim: { limit: 8, windowMs: 10 * 60_000 },
   /** Stripe Checkout / Customer Portal session creation. */
   stripeCheckout: { limit: 8, windowMs: 10 * 60_000 },
+  /** Operator tag mint batches. */
+  tagMint: { limit: 12, windowMs: 60_000 },
 } as const;

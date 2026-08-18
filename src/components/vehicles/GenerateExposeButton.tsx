@@ -9,17 +9,23 @@ type GenerateExposeButtonProps = {
   vehicleId: string;
   vehicleLabel: string;
   disabled?: boolean;
+  onProRequired?: () => void;
 };
 
 export function GenerateExposeButton({
   vehicleId,
   vehicleLabel,
   disabled = false,
+  onProRequired,
 }: GenerateExposeButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleGenerate() {
+    if (onProRequired) {
+      onProRequired();
+      return;
+    }
     setLoading(true);
     setError(null);
 

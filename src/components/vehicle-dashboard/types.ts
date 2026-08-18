@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export type DashboardTileId =
   | "invoices"
   | "oil-change"
@@ -50,6 +52,8 @@ export interface DashboardTileConfig {
   meta?: DashboardTileMeta;
   /** Span full width on mobile grid */
   featured?: boolean;
+  /** Pro-gated: tile leads to checkout instead of the feature. */
+  locked?: boolean;
 }
 
 export interface VehicleInspectionInfo {
@@ -86,5 +90,7 @@ export interface VehicleDashboardProps {
   /** Owner tap on header cutout → change / upload silhouette */
   onEditVehicleImage?: () => void;
   onSilhouetteProxyLoad?: () => void;
+  /** Optional notice above the tile grid (e.g. Pro paywall). */
+  banner?: ReactNode;
   className?: string;
 }

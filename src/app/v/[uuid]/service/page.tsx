@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { ServiceInspectionsView } from "@/components/documents/service-inspections-view";
+import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { FEATURE } from "@/lib/permissions/feature-access";
 
 interface ServicePageProps {
   params: Promise<{ uuid: string }>;
@@ -21,19 +23,25 @@ export default async function ServiceInspectionsPage({
 }: ServicePageProps) {
   const { uuid } = await params;
   const { scan } = await searchParams;
-  const { result, access } = await requireTagWriter(uuid);
+  const { result, access, isDemoShowcase } = await requireTagWriter(uuid);
   const documents =
     access.isContributor && !access.isOwner
       ? result.documents.filter((doc) => doc.type === "invoice")
       : result.documents;
 
-  return (
-    <ServiceInspectionsView
-      tagUuid={result.tag.uuid}
-      vehicleId={result.vehicle!.id}
-      vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
-      documents={documents}
-      initialScan={scan === "1"}
-    />
-  );
+  return wrapProFeature({
+    isDemo: isDemoShowcase,
+    ownerUserId: result.vehicle!.user_id,
+    tagUuid: result.tag.uuid,
+    feature: FEATURE.DOCUMENT_VAULT,
+    children: (
+      <ServiceInspectionsView
+        tagUuid={result.tag.uuid}
+        vehicleId={result.vehicle!.id}
+        vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
+        documents={documents}
+        initialScan={scan === "1"}
+      />
+    ),
+  });
 }

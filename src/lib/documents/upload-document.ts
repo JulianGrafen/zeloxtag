@@ -7,7 +7,10 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import {
   contributorMayWriteDocumentType,
   getVehicleWriteAccess,
+  writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import {
   isUploadFile,
   validateDocumentUpload,
@@ -228,9 +231,15 @@ export async function uploadDocument(
   if (!writeAccess.ok || !writeAccess.ownerUserId) {
     return {
       status: "error",
-      message:
-        "Kein Schreibzugriff auf dieses Fahrzeug. Eigentümer oder eingeladener Schrauber erforderlich.",
+      message: writeAccessErrorMessage(writeAccess),
     };
+  }
+  const vault = await assertOwnerFeature(
+    writeAccess.ownerUserId,
+    FEATURE.DOCUMENT_VAULT,
+  );
+  if (!vault.ok) {
+    return { status: "error", message: vault.message };
   }
   if (
     !contributorMayWriteDocumentType(

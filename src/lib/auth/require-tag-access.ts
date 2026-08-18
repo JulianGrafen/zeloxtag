@@ -22,6 +22,7 @@ export type TagAccessContext = {
 /**
  * Owner or active Schrauber — for invoice/document write surfaces.
  * Documents are already scoped for Schrauber history permissions.
+ * Pro-only surfaces add `assertOwnerFeature` / `ProFeatureGate` separately.
  */
 export async function requireTagWriter(
   tagUuid: string,
@@ -64,7 +65,8 @@ export async function requireTagWriter(
 }
 
 /**
- * Vehicle owner only — settings, Schrauber invites, ABE/TÜV management.
+ * Vehicle owner only — settings, Schrauber invites, basic profile.
+ * Does not require ZeloxTag Pro (digital business card is free).
  */
 export async function requireTagOwner(
   tagUuid: string,

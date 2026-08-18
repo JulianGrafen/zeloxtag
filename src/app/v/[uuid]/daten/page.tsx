@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
 
 import { VehicleSpecsView } from "@/components/vehicles/vehicle-specs-view";
-import { getCurrentUser } from "@/lib/auth/get-user";
-import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
-import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
-import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import { requireTagOwner } from "@/lib/auth/require-tag-access";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 
 interface VehicleSpecsPageProps {
@@ -23,32 +19,20 @@ export default async function VehicleSpecsPage({
   params,
 }: VehicleSpecsPageProps) {
   const { uuid } = await params;
-  const result = await getTagByUuid(uuid);
-
-  if (!result?.vehicle || result.tag.status !== "active") {
-    notFound();
+  const { result, access, isDemoShowcase } = await requireTagOwner(uuid);
+  const vehicle = result.vehicle;
+  if (!vehicle) {
+    return null;
   }
-
-  const user = await getCurrentUser();
-  const demoShowcase = isDemoActiveTag(uuid);
-  if (!user && !demoShowcase) {
-    redirect(`/?next=${encodeURIComponent(`/v/${uuid}/daten`)}`);
-  }
-
-  const access = demoShowcase
-    ? { isOwner: false, isContributor: false }
-    : await getTagVehicleAccess(result.tag.uuid, result.vehicle.user_id);
-
-  const vehicle = {
-    ...result.vehicle,
-    tech_specs: parseVehicleTechSpecs(result.vehicle.tech_specs),
-  };
 
   return (
     <VehicleSpecsView
       tagUuid={result.tag.uuid}
-      vehicle={vehicle}
-      canEdit={access.isOwner}
+      vehicle={{
+        ...vehicle,
+        tech_specs: parseVehicleTechSpecs(vehicle.tech_specs),
+      }}
+      canEdit={access.isOwner && !isDemoShowcase}
     />
   );
 }

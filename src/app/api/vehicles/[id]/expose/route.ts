@@ -6,9 +6,12 @@ import { buildExposePdfData } from "@/lib/vehicles/expose-pdf/build-expose-data"
 import { sanitizePdfFilename } from "@/lib/vehicles/expose-pdf/formatters";
 import { generateExposeQrDataUri } from "@/lib/vehicles/expose-pdf/generate-qr";
 import { renderExposePdfBuffer } from "@/lib/vehicles/expose-pdf/render-expose-pdf";
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import {
   enforceRateLimit,
   requireApiUser,
+  subscriptionRequiredResponse,
 } from "@/lib/security/api-guard";
 import { TimelineService } from "@/services/timeline/TimelineService";
 import { createClient } from "@/lib/supabase/server";
@@ -46,6 +49,14 @@ export async function GET(
             ? 503
             : 404;
     return NextResponse.json({ error: ownership.message }, { status });
+  }
+
+  const pro = await assertOwnerFeature(
+    ownership.userId,
+    FEATURE.GENERATE_EXPOSE,
+  );
+  if (!pro.ok) {
+    return subscriptionRequiredResponse(pro.message);
   }
 
   try {

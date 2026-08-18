@@ -4,6 +4,9 @@
 
 export const DASHBOARD_TOUR_STORAGE_KEY = "zt_dashboard_tour_v1";
 export const DASHBOARD_TOUR_VERSION = 1;
+export const DASHBOARD_TOUR_QUERY = "tour";
+
+const APP_ORIGIN_FOR_PATH = "https://app.zeloxtag.de";
 
 export type DashboardTourRole = "owner" | "contributor";
 
@@ -21,7 +24,7 @@ const OWNER_STEPS: DashboardTourStep[] = [
   {
     id: "welcome",
     title: "Willkommen bei ZeloxTag",
-    body: "In zwei Minuten zeigen wir dir deine digitale Fahrzeugakte — von Belegen über ABEs bis zum Scan. Du kannst die Tour jederzeit überspringen.",
+    body: "Deine digitale Visitenkarte ist kostenlos. In zwei Minuten zeigen wir dir, wo Profil, Belege und Scan liegen — Akte, KI-Scan und Exposé gehören zu Pro.",
   },
   {
     id: "header",
@@ -111,13 +114,13 @@ const OWNER_STEPS: DashboardTourStep[] = [
     id: "scan",
     target: "[data-tour='scan-fab']",
     title: "Dokument scannen",
-    body: "Der wichtigste Einstieg: Foto oder PDF aufnehmen — ZeloxTag erkennt den Typ und füllt die Felder vor.",
+    body: "Der Einstieg in die Pro-Akte: Foto oder PDF aufnehmen — ZeloxTag erkennt den Typ und füllt die Felder vor. Ohne Abo bleibt die Visitenkarte frei.",
     placement: "top",
   },
   {
     id: "done",
     title: "Alles klar — leg los",
-    body: "Scanne deinen ersten Beleg oder öffne eine Kachel. Die Tour kannst du später über ?tour=1 erneut starten.",
+    body: "Profil und öffentlicher Tag sind startklar. KI-Scan, Akte und Exposé schaltest du mit Pro frei. Die Tour kannst du später über ?tour=1 erneut starten.",
   },
 ];
 
@@ -166,6 +169,77 @@ export function getDashboardTourSteps(
   role: DashboardTourRole,
 ): DashboardTourStep[] {
   return role === "owner" ? OWNER_STEPS : CONTRIBUTOR_STEPS;
+}
+
+/** Vehicle dashboard with the guided tour forced (post-Stripe-payment). */
+export function dashboardTourHref(tagUuid: string): string {
+  return `/v/${tagUuid}?${DASHBOARD_TOUR_QUERY}=1`;
+}
+
+/**
+ * Rewrites an in-app path so the vehicle dashboard opens the tour,
+ * not the scanner.
+ */
+export function withForcedDashboardTour(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
+    return trimmed;
+  }
+  const url = new URL(trimmed, APP_ORIGIN_FOR_PATH);
+  url.searchParams.delete("scan");
+  url.searchParams.delete("type");
+  url.searchParams.delete("session_id");
+  url.searchParams.set(DASHBOARD_TOUR_QUERY, "1");
+  return `${url.pathname}${url.search}`;
+}
+
+export function isForcedDashboardTourSearch(search: {
+  tour?: string | string[];
+  checkout?: string | string[];
+}): boolean {
+  const tour = Array.isArray(search.tour) ? search.tour[0] : search.tour;
+  const checkout = Array.isArray(search.checkout)
+    ? search.checkout[0]
+    : search.checkout;
+  return tour === "1" || checkout === "success";
+}
+
+export function wantsForcedDashboardTour(): boolean {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  return isForcedDashboardTourSearch({
+    tour: params.get(DASHBOARD_TOUR_QUERY) ?? undefined,
+    checkout: params.get("checkout") ?? undefined,
+  });
+}
+
+export function clearForcedDashboardTourFromUrl(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (
+    !url.searchParams.has(DASHBOARD_TOUR_QUERY) &&
+    url.searchParams.get("checkout") !== "success"
+  ) {
+    return;
+  }
+  url.searchParams.delete(DASHBOARD_TOUR_QUERY);
+  if (url.searchParams.get("checkout") === "success") {
+    url.searchParams.delete("checkout");
+  }
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+export function isPostPaymentReturn(search: {
+  checkout?: string | string[];
+  session_id?: string | string[];
+}): boolean {
+  const checkout = Array.isArray(search.checkout)
+    ? search.checkout[0]
+    : search.checkout;
+  const sessionId = Array.isArray(search.session_id)
+    ? search.session_id[0]
+    : search.session_id;
+  return checkout === "success" || Boolean(sessionId?.startsWith("cs_"));
 }
 
 export function hasCompletedDashboardTour(): boolean {

@@ -7,11 +7,12 @@ import {
   startStripePortalAction,
 } from "@/actions/stripe-checkout";
 import { Button } from "@/components/ui/button";
+import { PRO_CHECKOUT_BUTTON_LABEL } from "@/lib/billing/pro-plan";
 
 export function StripeCheckoutButton({
   successPath,
   cancelPath,
-  label = "Cloud Abo abschließen · 4,99 € / Monat",
+  label = PRO_CHECKOUT_BUTTON_LABEL,
 }: {
   successPath: string;
   cancelPath: string;

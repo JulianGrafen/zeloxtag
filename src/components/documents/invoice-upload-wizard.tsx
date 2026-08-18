@@ -125,12 +125,14 @@ function formatBytes(bytes: number): string {
 }
 
 async function callInvoiceStep<T>(
+  vehicleId: string,
   file: File,
   step: string,
   label: string,
   lockedCategory?: InvoiceTextParseCategory | null,
 ): Promise<T> {
   const body = new FormData();
+  body.set("vehicleId", vehicleId);
   body.set("file", file);
   body.set("step", step);
   if (lockedCategory) {
@@ -463,6 +465,7 @@ export function InvoiceUploadWizard({
       const [overviewResult, headerResult, lineItemsResults] = await Promise.all([
         overviewFile
           ? callInvoiceStep<InvoiceOverviewExtraction>(
+              vehicleId,
               overviewFile,
               "overview",
               "Übersicht-Analyse",
@@ -470,6 +473,7 @@ export function InvoiceUploadWizard({
             )
           : Promise.resolve(null),
         callInvoiceStep<InvoiceHeaderExtraction>(
+          vehicleId,
           headerFile,
           "header",
           "Kopf-Analyse",
@@ -478,6 +482,7 @@ export function InvoiceUploadWizard({
         Promise.all(
           lineItemsFiles.map((file, index) =>
             callInvoiceStep<InvoiceLineItemsExtraction>(
+              vehicleId,
               file,
               "line-items",
               `Positions-Analyse Block ${index + 1}`,

@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import {
   applyStripeMembershipAction,
-  recordStripeWebhookEvent,
+  releaseStripeWebhookEvent,
+  reserveStripeWebhookEvent,
 } from "@/lib/billing/membership-store";
 import { getStripe, stripeEnv } from "@/lib/billing/stripe";
 import { parseStripeMembershipAction } from "@/lib/billing/stripe-membership";
@@ -50,11 +51,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return json(503, { ok: false, error: "Supabase is not configured." });
   }
 
+  let reserved: "new" | "duplicate" = "new";
   try {
+    reserved = await reserveStripeWebhookEvent(event.id, event.type);
+    if (reserved === "duplicate") {
+      return json(200, { ok: true, duplicate: true, type: event.type });
+    }
+
     await applyStripeMembershipAction(action);
-    await recordStripeWebhookEvent(event.id, event.type);
     return json(200, { ok: true, type: event.type, status: action.status });
   } catch (error) {
+    if (reserved === "new") {
+      await releaseStripeWebhookEvent(event.id);
+    }
     console.error("[stripe-webhook] apply failed", error);
     return json(500, { ok: false, error: "Membership update failed." });
   }

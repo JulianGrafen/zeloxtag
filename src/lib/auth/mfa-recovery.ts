@@ -10,12 +10,11 @@ export const MFA_RECOVERY_CODE_COUNT = 8;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function recoveryPepper(): string {
-  return (
-    process.env.MFA_RECOVERY_PEPPER?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    process.env.SUPABASE_SERVICE_KEY?.trim() ||
-    ""
-  );
+  return process.env.MFA_RECOVERY_PEPPER?.trim() ?? "";
+}
+
+export function isMfaRecoveryPepperConfigured(): boolean {
+  return recoveryPepper().length > 0;
 }
 
 /** Normalize user input: strip separators, uppercase. */
@@ -32,7 +31,9 @@ export function formatRecoveryCode(normalized: string): string {
 export function hashRecoveryCode(normalized: string): string {
   const pepper = recoveryPepper();
   if (!pepper) {
-    throw new Error("MFA recovery pepper is not configured.");
+    throw new Error(
+      "MFA_RECOVERY_PEPPER is not configured — set a dedicated server secret.",
+    );
   }
   return createHash("sha256")
     .update(`${pepper}:${normalizeRecoveryCode(normalized)}`)

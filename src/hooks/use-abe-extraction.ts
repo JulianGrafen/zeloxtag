@@ -38,6 +38,8 @@ const COVER_RAW_TEXT_LIMIT = 12_000;
 const CONTEXT_RAW_TEXT_LIMIT = 48_000;
 
 export type UseAbeExtractionOptions = {
+  /** Garage twin id — required for server-side OCR access checks. */
+  vehicleId: string;
   /** Azure OCR cover / window text; triggers extract when autoExtract is true. */
   rawText?: string;
   /** Optimistic seed while / before specialized parse completes. */
@@ -99,8 +101,9 @@ function hasUsableSeed(fields: AbeMinimal): boolean {
 /**
  * Client-side ABE cover extract state + `/api/ocr/parse-abe` calls.
  */
-export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
+export function useAbeExtraction(options: UseAbeExtractionOptions) {
   const {
+    vehicleId,
     rawText = "",
     initialFields,
     autoExtract = true,
@@ -123,6 +126,9 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
   initialFieldsRef.current = initialFields;
   const vehicleContextRef = useRef(vehicleContext);
   vehicleContextRef.current = vehicleContext;
+
+  const vehicleIdRef = useRef(vehicleId);
+  vehicleIdRef.current = vehicleId;
 
   const extract = useCallback(async (text?: string) => {
     const payload = (text ?? rawText).trim();
@@ -156,6 +162,7 @@ export function useAbeExtraction(options: UseAbeExtractionOptions = {}) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          vehicleId: vehicleIdRef.current,
           rawText: payload.slice(0, charLimit),
           vehicleContext: context,
         }),

@@ -1,9 +1,14 @@
+import { ProPlanBenefits } from "@/components/billing/pro-plan-benefits";
 import {
   StripeCheckoutButton,
   StripePortalButton,
 } from "@/components/billing/stripe-checkout-button";
 import { getMembershipForUser } from "@/lib/billing/membership-store";
 import { isActiveMembership } from "@/lib/billing/membership";
+import {
+  proCheckoutButtonLabel,
+  type ProCheckoutAudience,
+} from "@/lib/billing/pro-plan";
 
 function formatPeriodEnd(iso: string | null): string | null {
   if (!iso) return null;
@@ -40,7 +45,7 @@ export async function MembershipStatusCard({
       className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
     >
       <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-        ZeloxTag Cloud
+        Abo abschließen
       </h2>
       {justLinked || (checkoutState === "success" && active) ? (
         <p className="mt-2 text-[0.82rem] text-emerald-800">
@@ -78,22 +83,47 @@ export async function MembershipStatusCard({
         </>
       ) : (
         <>
-          <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-            {membership?.status === "past_due"
-              ? "Zahlung fehlgeschlagen — bitte in Stripe prüfen oder erneut abschließen."
-              : membership?.status === "canceled"
-                ? "Mitgliedschaft beendet. Du kannst sie hier neu starten."
-                : "Cloud-Abo 4,99 € / Monat, Zahlung über Stripe."}
-          </p>
-          <StripeCheckoutButton
-            successPath="/settings"
-            cancelPath="/settings"
-          />
-          {membership?.stripe_customer_id ? (
-            <StripePortalButton returnPath="/settings" />
+          {membership?.status === "past_due" ? (
+            <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Zahlung fehlgeschlagen — bitte in Stripe prüfen oder erneut
+              abschließen.
+            </p>
+          ) : membership?.status === "canceled" ? (
+            <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Mitgliedschaft beendet. Du kannst sie hier neu starten.
+            </p>
           ) : null}
+          <InactiveMembershipCheckout
+            audience={
+              membership?.status === "canceled" ||
+              membership?.status === "past_due"
+                ? "returning"
+                : "new"
+            }
+            showPortal={Boolean(membership?.stripe_customer_id)}
+          />
         </>
       )}
     </section>
+  );
+}
+
+function InactiveMembershipCheckout({
+  audience,
+  showPortal,
+}: {
+  audience: ProCheckoutAudience;
+  showPortal: boolean;
+}) {
+  return (
+    <>
+      <ProPlanBenefits audience={audience} />
+      <StripeCheckoutButton
+        successPath="/settings"
+        cancelPath="/settings"
+        label={proCheckoutButtonLabel(audience)}
+      />
+      {showPortal ? <StripePortalButton returnPath="/settings" /> : null}
+    </>
   );
 }

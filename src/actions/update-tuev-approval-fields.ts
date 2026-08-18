@@ -5,8 +5,11 @@ import { revalidatePath } from "next/cache";
 import {
   contributorMayWriteDocumentType,
   getVehicleWriteAccess,
+  writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import {
   getMockUploadedDocuments,
@@ -126,7 +129,22 @@ export async function updateTuevApprovalFields(
   }
 
   const writeAccess = await getVehicleWriteAccess(vehicleId, user.id);
-  if (!writeAccess.ok || !writeAccess.isOwner) {
+  if (!writeAccess.ok) {
+    return {
+      status: "error",
+      message: writeAccessErrorMessage(writeAccess),
+    };
+  }
+  if (writeAccess.ownerUserId) {
+    const vault = await assertOwnerFeature(
+      writeAccess.ownerUserId,
+      FEATURE.DOCUMENT_VAULT,
+    );
+    if (!vault.ok) {
+      return { status: "error", message: vault.message };
+    }
+  }
+  if (!writeAccess.isOwner) {
     return {
       status: "error",
       message: "Nur der Eigentümer kann TÜV-Daten ändern.",

@@ -4,11 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 
 export type OwnerCheckResult =
   | { ok: true; userId: string; vehicleId: string }
-  | { ok: false; reason: "unconfigured" | "unauthorized" | "forbidden" | "not_found"; message: string };
+  | {
+      ok: false;
+      reason: "unconfigured" | "unauthorized" | "forbidden" | "not_found";
+      message: string;
+    };
 
 /**
  * Ensures the current session owns the given vehicle.
- * In local mock mode (no Supabase), ownership checks are skipped by callers.
+ * Subscription checks belong in `assertOwnerFeature`, not here.
  */
 export async function assertVehicleOwner(
   vehicleId: string,

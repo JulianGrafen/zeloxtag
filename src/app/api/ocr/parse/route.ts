@@ -23,6 +23,7 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
+import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { AbeVehicleContextSchema } from "@/lib/validations/abeSchema";
 
@@ -101,6 +102,12 @@ export async function POST(request: NextRequest) {
     } catch {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
+
+    const vehicleAccess = await requireVehicleOcrAccess(
+      auth.user.id,
+      String(formData.get("vehicleId") ?? ""),
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
 
     const documentTypeRaw = String(formData.get("documentType") ?? "").trim();
     const documentTypeParsed = documentTypeSchema.safeParse(documentTypeRaw);
