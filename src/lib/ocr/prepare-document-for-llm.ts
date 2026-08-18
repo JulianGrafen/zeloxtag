@@ -16,8 +16,8 @@ import {
 export type { DocumentBytesInput };
 
 /**
- * Azure Layout reads vector PDFs more reliably than rasterized PNG previews.
- * Keep enhanced PNG/JPEG for vision LLM, send original PDF bytes to Document Intelligence.
+ * Azure Layout reads vector PDFs more reliably than rasterized previews.
+ * Keep enhanced WebP/JPEG for vision LLM, send original PDF bytes to Document Intelligence.
  */
 export function resolveAzureLayoutInput(
   original: DocumentBytesInput,
@@ -34,23 +34,23 @@ export function resolveAzureLayoutInput(
 
 /** ~220 DPI on A4 width — matches TÜV rasterization. */
 export const LLM_DOCUMENT_RASTER_DPI = 220;
-/** Cap rasterized / uploaded image long edge before LLM. */
-export const LLM_IMAGE_MAX_EDGE_PX = 2200;
-/** ABE vision — slightly below invoice cap to limit token cost. */
-export const ABE_LLM_IMAGE_MAX_EDGE_PX = 1600;
+/** Cap rasterized / uploaded image long edge — matches OpenAI Vision tile scaling. */
+export const LLM_IMAGE_MAX_EDGE_PX = 1536;
+/** ABE vision — same cap as general LLM prep for Vision tile alignment. */
+export const ABE_LLM_IMAGE_MAX_EDGE_PX = 1536;
 export const LLM_INVOICE_MAX_PDF_PAGES = 4;
 
-function pngImagePart(png: Buffer): DocumentUserMessagePart {
+function llmImagePart(bytes: Buffer, contentType = "image/webp"): DocumentUserMessagePart {
   return {
     type: "image_url",
     image_url: {
-      url: `data:image/png;base64,${png.toString("base64")}`,
+      url: `data:${contentType};base64,${bytes.toString("base64")}`,
       detail: "high",
     },
   };
 }
 
-async function normalizeRasterToPng(
+async function normalizeRasterToWebp(
   bytes: Buffer,
   maxEdgePx = LLM_IMAGE_MAX_EDGE_PX,
 ): Promise<Buffer> {
@@ -60,9 +60,9 @@ async function normalizeRasterToPng(
       width: maxEdgePx,
       height: maxEdgePx,
       fit: "inside",
-      withoutEnlargement: false,
+      withoutEnlargement: true,
     })
-    .png({ compressionLevel: 6, adaptiveFiltering: true })
+    .webp({ quality: 85 })
     .toBuffer();
 }
 
@@ -73,24 +73,19 @@ export async function enhanceDocumentImageForLlm(
   bytes: Buffer,
   maxEdgePx = LLM_IMAGE_MAX_EDGE_PX,
 ): Promise<Buffer> {
-  try {
-    return await sharp(bytes, { failOn: "none" })
-      .rotate()
-      .resize({
-        width: maxEdgePx,
-        height: maxEdgePx,
-        fit: "inside",
-        withoutEnlargement: false,
-      })
-      .grayscale()
-      .normalize()
-      .sharpen({ sigma: 1.1, m1: 0.5, m2: 2.5 })
-      .png({ compressionLevel: 6, adaptiveFiltering: true })
-      .toBuffer();
-  } catch (error) {
-    console.warn("[prepare-document-for-llm] enhanced pass failed, using plain PNG", error);
-    return normalizeRasterToPng(bytes, maxEdgePx);
-  }
+  return await sharp(bytes, { failOn: "none" })
+    .rotate()
+    .resize({
+      width: maxEdgePx,
+      height: maxEdgePx,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .grayscale()
+    .normalize()
+    .sharpen({ sigma: 1.1, m1: 0.5, m2: 2.5 })
+    .webp({ quality: 85 })
+    .toBuffer();
 }
 
 async function rasterizePdfPagesWithSharp(
@@ -178,7 +173,7 @@ export async function prepareDocumentImagesForLlm(
   } catch (error) {
     console.warn("[prepare-document-for-llm] image enhance failed", error);
     try {
-      return [await normalizeRasterToPng(input.bytes, maxEdgePx)];
+      return [await normalizeRasterToWebp(input.bytes, maxEdgePx)];
     } catch (normalizeError) {
       console.warn("[prepare-document-for-llm] image normalize failed", normalizeError);
       return [];
@@ -221,8 +216,8 @@ export async function buildPreparedDocumentUserMessage(
       });
     }
 
-    for (const png of images) {
-      parts.push(pngImagePart(png));
+    for (const image of images) {
+      parts.push(llmImagePart(image));
     }
 
     return parts;
@@ -231,11 +226,15 @@ export async function buildPreparedDocumentUserMessage(
   }
 }
 
-/** Use an already contrast-enhanced PNG/JPEG buffer (no second Sharp pass). */
+/** Use an already contrast-enhanced image buffer (no second Sharp pass). */
 export function buildEnhancedImageUserMessage(
   instructionLines: string[],
-  enhancedPng: Buffer,
-  options: { rowSeparators?: boolean; rowMarkersLeft?: boolean } = {},
+  enhancedImage: Buffer,
+  options: {
+    rowSeparators?: boolean;
+    rowMarkersLeft?: boolean;
+    contentType?: string;
+  } = {},
 ): DocumentUserMessagePart[] {
   const parts: DocumentUserMessagePart[] = instructionLines
     .filter((line) => line.length > 0)
@@ -263,11 +262,11 @@ export function buildEnhancedImageUserMessage(
   }
 
   parts.push({ type: "text", text: imageHint });
-  parts.push(pngImagePart(enhancedPng));
+  parts.push(llmImagePart(enhancedImage, options.contentType ?? "image/webp"));
   return parts;
 }
 
-/** Build vision user content from prepared OCR input (PNG or PDF fallback). */
+/** Build vision user content from prepared OCR input (WebP or PDF fallback). */
 export function buildVisionUserMessage(
   instructionLines: string[],
   input: DocumentBytesInput,
@@ -280,7 +279,10 @@ export function buildVisionUserMessage(
     });
   }
 
-  return buildEnhancedImageUserMessage(instructionLines, input.bytes, options);
+  return buildEnhancedImageUserMessage(instructionLines, input.bytes, {
+    ...options,
+    contentType: input.contentType,
+  });
 }
 
 /** Single-page OCR/LLM input after prepareDocumentImagesForLlm. */
@@ -295,7 +297,7 @@ export async function prepareSinglePageOcrInput(
   if (pages[0]?.byteLength) {
     return {
       bytes: pages[0],
-      contentType: "image/png",
+      contentType: "image/webp",
     };
   }
 
@@ -305,7 +307,7 @@ export async function prepareSinglePageOcrInput(
   };
 }
 
-/** ABE hunt / table vision — contrast-enhanced PNG capped for LLM cost. */
+/** ABE hunt / table vision — contrast-enhanced WebP capped for LLM cost. */
 export async function prepareAbeOcrInput(
   input: DocumentBytesInput,
   options: PrepareDocumentForLlmOptions = {},

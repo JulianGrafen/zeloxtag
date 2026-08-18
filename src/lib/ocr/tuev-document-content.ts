@@ -14,11 +14,11 @@ const TUEV_PDF_RASTER_DPI = LLM_DOCUMENT_RASTER_DPI;
 
 export { rasterizePdfPagesForLlm };
 
-function pngPart(png: Buffer, label: string): DocumentUserMessagePart {
+function webpPart(webp: Buffer): DocumentUserMessagePart {
   return {
     type: "image_url",
     image_url: {
-      url: `data:image/png;base64,${png.toString("base64")}`,
+      url: `data:image/webp;base64,${webp.toString("base64")}`,
       detail: "high",
     },
   };
@@ -50,9 +50,9 @@ export async function buildTuevDocumentUserMessage(
             "High-resolution page images follow (page 1 first, then page 2 if present). " +
             "Read Kopf, Punkt 4 (KM-Stand), and Punkt 6 (Mängel table) at full zoom — do not skip rows.",
         });
-        pageImages.forEach((png, index) => {
-          parts.push(pngPart(png, `Seite ${index + 1}`));
-        });
+        for (const pageImage of pageImages) {
+          parts.push(webpPart(pageImage));
+        }
         return parts;
       }
     } catch {
@@ -71,11 +71,6 @@ export async function buildTuevDocumentUserMessage(
     return parts;
   }
 
-  parts.push(
-    pngPart(
-      await enhanceDocumentImageForLlm(input.bytes),
-      "Dokument",
-    ),
-  );
+  parts.push(webpPart(await enhanceDocumentImageForLlm(input.bytes)));
   return parts;
 }

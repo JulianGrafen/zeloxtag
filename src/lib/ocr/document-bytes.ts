@@ -29,23 +29,26 @@ export function isJpegBuffer(bytes: Buffer): boolean {
   );
 }
 
+export function isWebpBuffer(bytes: Buffer): boolean {
+  return (
+    bytes.byteLength >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  );
+}
+
 export function isProbablyRasterImage(bytes: Buffer): boolean {
-  if (isPngBuffer(bytes) || isJpegBuffer(bytes)) return true;
+  if (isPngBuffer(bytes) || isJpegBuffer(bytes) || isWebpBuffer(bytes)) {
+    return true;
+  }
 
   if (bytes.byteLength >= 12) {
-    // WebP (RIFF....WEBP)
-    if (
-      bytes[0] === 0x52 &&
-      bytes[1] === 0x49 &&
-      bytes[2] === 0x46 &&
-      bytes[3] === 0x46 &&
-      bytes[8] === 0x57 &&
-      bytes[9] === 0x45 &&
-      bytes[10] === 0x42 &&
-      bytes[11] === 0x50
-    ) {
-      return true;
-    }
 
     // HEIC/HEIF (....ftyp)
     if (
@@ -70,5 +73,6 @@ export function resolveDocumentContentType(
   }
   if (isPngBuffer(bytes)) return "image/png";
   if (isJpegBuffer(bytes)) return "image/jpeg";
+  if (isWebpBuffer(bytes)) return "image/webp";
   return declaredContentType;
 }

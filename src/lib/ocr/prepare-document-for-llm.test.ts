@@ -25,7 +25,7 @@ startxref
 );
 
 describe("resolveAzureLayoutInput", () => {
-  it("keeps original PDF bytes for Azure Layout while vision uses prepared PNG", () => {
+  it("keeps original PDF bytes for Azure Layout while vision uses prepared raster", () => {
     const pdf = Buffer.from("%PDF-1.4\n% mock", "utf8");
     const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -51,6 +51,7 @@ describe("rasterizePdfPagesForLlm", () => {
     const pages = await rasterizePdfPagesForLlm(MINIMAL_PDF, 1, 110);
     expect(pages).toHaveLength(1);
     expect(pages[0]!.byteLength).toBeGreaterThan(500);
-    expect(pages[0]!.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    expect(pages[0]!.subarray(0, 4).toString("ascii")).toBe("RIFF");
+    expect(pages[0]!.subarray(8, 12).toString("ascii")).toBe("WEBP");
   });
 });

@@ -266,5 +266,10 @@ export async function drawInvoiceRowSeparatorsOnImage(
 }
 
 export function canDrawRowSeparators(bytes: Buffer, contentType: string): boolean {
-  return contentType === "image/png" || isPngBuffer(bytes) || isProbablyRasterImage(bytes);
+  return (
+    contentType === "image/png" ||
+    contentType === "image/webp" ||
+    isPngBuffer(bytes) ||
+    isProbablyRasterImage(bytes)
+  );
 }
