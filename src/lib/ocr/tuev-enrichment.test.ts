@@ -4,6 +4,7 @@ import {
   DEKRA_HU_REPORT_EXPECTED,
   DEKRA_HU_REPORT_OCR,
 } from "@/lib/ocr/fixtures/dekra-hu-report-ocr";
+import { OCR_SAMPLES } from "@/lib/ocr/__fixtures__/ocr-samples";
 import {
   enrichTuevRecordFromOcrText,
   reconcileTuevDefectRows,
@@ -88,6 +89,23 @@ describe("enrichTuevRecordFromOcrText — DEKRA fixture", () => {
 
     expect(enriched.mileageKm).toBe(178605);
   });
+
+  it("uses fee sum when LLM returned MwSt-only amount without OCR fee block", () => {
+    const enriched = enrichTuevRecordFromOcrText(
+      {
+        testDate: "2026-03-12",
+        mileageKm: null,
+        amount: 19.96,
+        lineItems: [
+          { label: "Hauptuntersuchung", amount: 123.81 },
+          { label: "MwSt 19%", amount: 19.96 },
+        ],
+      },
+      OCR_SAMPLES.tuevReportPass,
+    );
+
+    expect(enriched.amount).toBe(123.81);
+  });
 });
 
 describe("reconcileTuevDefectRows", () => {
@@ -130,5 +148,29 @@ describe("preferTuevTestDate", () => {
   it("accepts TÜV Rheinland Prüftermin with time suffix", () => {
     const ocr = "(3) Prüftermin: 26.01.2026, 10:21 Uhr";
     expect(preferTuevTestDate("2026-01-26", ocr)).toBe("2026-01-26");
+  });
+
+  it("reads Prüfungsdatum label in report header", () => {
+    expect(
+      extractTuevTestDateFromText("Prüfungsdatum: 18.08.2026"),
+    ).toBe("2026-08-18");
+  });
+
+  it("reads Punkt-3 date split across lines", () => {
+    const ocr = `
+(3) Prüfort
+Mechernich, 23.03.2021
+(4) km-St. 178605
+`.trim();
+    expect(extractTuevTestDateFromText(ocr)).toBe("2021-03-23");
+  });
+
+  it("accepts LLM date near (3) marker when OCR layout is noisy", () => {
+    const ocr = `
+(3)
+Prüfort Mechernich
+23.03.2021
+`.trim();
+    expect(preferTuevTestDate("2021-03-23", ocr)).toBe("2021-03-23");
   });
 });

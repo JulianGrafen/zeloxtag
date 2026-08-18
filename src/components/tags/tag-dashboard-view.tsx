@@ -1,5 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { NotebookPen } from "lucide-react";
+
+import { ManualEntryModal } from "@/components/service/ManualEntryModal";
+import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
 import {
@@ -77,6 +82,7 @@ export function TagDashboardView({
   previewFallbackUrl,
   onSilhouetteProxyLoad,
 }: TagDashboardViewProps) {
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const invoiceCount = documents.filter((doc) => doc.type === "invoice").length;
   const abeCount = documents.filter((doc) => doc.type === "abe").length;
   const tuevCount = documents.filter((doc) => doc.type === "tuev").length;
@@ -319,6 +325,24 @@ export function TagDashboardView({
       <VehicleDashboard
         data={{ ...data, tiles }}
         className={canScan ? "pb-24" : undefined}
+        banner={
+          canScan ? (
+            <div
+              className="vd-anim-header px-1"
+              style={{ animationDelay: "0.08s" }}
+            >
+              <PressableButton
+                type="button"
+                variant="button"
+                onClick={() => setManualEntryOpen(true)}
+                className="claim-back w-full border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]"
+              >
+                <NotebookPen className="h-4 w-4" aria-hidden />
+                Manuell eintragen
+              </PressableButton>
+            </div>
+          ) : undefined
+        }
         onTileClick={(tileId) => {
           const feature = featureForDashboardTile(tileId);
           if (feature && isProOnlyFeature(feature)) {
@@ -334,6 +358,14 @@ export function TagDashboardView({
       />
       {canScan ? (
         <DashboardScanFab tagUuid={tagUuid} onOpenScanner={onOpenScanner} />
+      ) : null}
+      {canScan ? (
+        <ManualEntryModal
+          tagUuid={tagUuid}
+          vehicleId={vehicle.id}
+          open={manualEntryOpen}
+          onClose={() => setManualEntryOpen(false)}
+        />
       ) : null}
     </div>
   );

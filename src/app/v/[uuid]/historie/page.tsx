@@ -55,7 +55,7 @@ export default async function VehicleHistoriePage({
     isDemo: isDemoShowcase,
     ownerUserId: vehicle.user_id,
     tagUuid: result.tag.uuid,
-    feature: FEATURE.DOCUMENT_VAULT,
+    feature: FEATURE.ADD_MANUAL_SERVICE_ENTRY,
     children: (
       <VehicleTimelineView
         tagUuid={result.tag.uuid}

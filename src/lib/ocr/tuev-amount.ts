@@ -1,7 +1,16 @@
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 
 const GESAMT_LABEL =
-  /gesamt(?:betrag)?(?:\s+inkl\.?\s*(?:\d+\s*%?\s*)?(?:mwst|ust|u\.?\s*st\.?|eur)?)?|summe|total|endbetrag|endpreis|zu\s*zahlen|prüfungsentgelt\s*gesamt|entgelt\s*gesamt/i;
+  /gesamt(?:betrag|summe)?(?:\s+inkl\.?\s*(?:\d+\s*%?\s*)?(?:mwst|ust|u\.?\s*st\.?|eur)?)?|summe|total|endbetrag|endpreis|zu\s*zahlen|rechnungsbetrag|endsumme|prüfungsentgelt\s*gesamt|entgelt\s*gesamt/i;
+
+const TAX_OR_NET_LABEL =
+  /^(?:mwst|ust|mehrwertsteuer|umsatzsteuer)\b|ohne\s*mwst|nettobetrag|summe\s+netto/i;
+
+export function isTuevTaxOrNetLineItem(label: string): boolean {
+  const trimmed = label.trim();
+  if (!trimmed) return true;
+  return TAX_OR_NET_LABEL.test(trimmed);
+}
 
 function roundEuro(value: number): number {
   return Math.round(value * 100) / 100;
@@ -48,6 +57,32 @@ export function normalizeTuevLineItems(
   return items.length > 0 ? items : null;
 }
 
+function sumTuevFeeLineItems(
+  lineItems: readonly InvoiceLineItem[],
+): number | null {
+  const fees = lineItems.filter(
+    (item) =>
+      item.amount > 0 &&
+      !isTuevTaxOrNetLineItem(item.label) &&
+      !GESAMT_LABEL.test(item.label),
+  );
+  if (fees.length === 0) return null;
+
+  const sum = roundEuro(fees.reduce((acc, item) => acc + item.amount, 0));
+  return sum > 0 ? sum : null;
+}
+
+function amountMatchesTaxLineItem(
+  amount: number,
+  lineItems: readonly InvoiceLineItem[],
+): boolean {
+  return lineItems.some(
+    (item) =>
+      isTuevTaxOrNetLineItem(item.label) &&
+      Math.abs(item.amount - amount) < 0.02,
+  );
+}
+
 /**
  * Resolve the total Prüfgebühr from LLM output.
  *
@@ -70,11 +105,14 @@ export function resolveTuevTotalAmount(
 
   for (const item of lineItems) {
     if (GESAMT_LABEL.test(item.label) && item.amount > 0) {
+      if (/ohne\s*mwst|nettobetrag/i.test(item.label)) continue;
       return roundEuro(item.amount);
     }
   }
 
-  const sum = roundEuro(
+  const feeSum = sumTuevFeeLineItems(lineItems);
+
+  const sum = feeSum ?? roundEuro(
     lineItems.reduce((acc, item) => acc + (item.amount > 0 ? item.amount : 0), 0),
   );
 
@@ -82,7 +120,16 @@ export function resolveTuevTotalAmount(
     return sum > 0 ? sum : null;
   }
 
+  if (amountMatchesTaxLineItem(parsedAmount, lineItems)) {
+    if (feeSum !== null && feeSum > parsedAmount) return feeSum;
+    return null;
+  }
+
   // Sum of fee rows beats a single partial line (DEKRA: 123,81 + 1,19 = 125,00).
+  if (feeSum !== null && feeSum > parsedAmount + 0.05) {
+    return feeSum;
+  }
+
   if (sum > parsedAmount + 0.05) {
     return sum;
   }

@@ -10,6 +10,8 @@ export function normalizeTuevOcrText(rawText: string): string {
     .replace(/\(\s+(\d{1,2})\s+\)/g, "($1)")
     .replace(/(?:Prüf|Pruef)\s+ort/gi, "Prüfort")
     .replace(/(?:Prüf|Pruef)\s+termin/gi, "Prüftermin")
+    .replace(/(?:Prüf|Pruef)\s+ungsdatum/gi, "Prüfungsdatum")
+    .replace(/(?:Prüf|Pruef)\s+datum/gi, "Prüfdatum")
     .replace(/km\s*-\s*St\.?/gi, "km-St.")
     .replace(/\(\s*(EM|GM)\s*\)/g, "($1)")
     .replace(/([EG])\s+(M)\b/g, "$1$2")

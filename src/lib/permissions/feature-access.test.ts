@@ -21,6 +21,7 @@ describe("hasFeatureAccess", () => {
     expect(hasFeatureAccess("free", FEATURE.CLAIM_TAG)).toBe(true);
     expect(hasFeatureAccess("free", FEATURE.EDIT_BASIC_PROFILE)).toBe(true);
     expect(hasFeatureAccess("free", FEATURE.VIEW_PUBLIC_PROFILE)).toBe(true);
+    expect(hasFeatureAccess("free", FEATURE.ADD_MANUAL_SERVICE_ENTRY)).toBe(true);
   });
 
   it("keeps AI scan, vault, exposé, and Schrauber on Pro", () => {
@@ -48,7 +49,21 @@ describe("dashboard tile mapping", () => {
   it("maps vault tiles and scan-adjacent tiles to Pro", () => {
     expect(featureForDashboardTile("invoices")).toBe(FEATURE.DOCUMENT_VAULT);
     expect(featureForDashboardTile("abe")).toBe(FEATURE.DOCUMENT_VAULT);
+    expect(featureForDashboardTile("service")).toBe(FEATURE.DOCUMENT_VAULT);
     expect(featureForDashboardTile("schrauber")).toBe(FEATURE.INVITE_SCHRAUBER);
     expect(isProOnlyFeature(FEATURE.SCAN_AI_RECEIPT)).toBe(true);
+  });
+
+  it("keeps manual service history tiles on the free tier", () => {
+    expect(featureForDashboardTile("oil-change")).toBe(
+      FEATURE.ADD_MANUAL_SERVICE_ENTRY,
+    );
+    expect(featureForDashboardTile("tuning-history")).toBe(
+      FEATURE.ADD_MANUAL_SERVICE_ENTRY,
+    );
+    expect(featureForDashboardTile("timeline")).toBe(
+      FEATURE.ADD_MANUAL_SERVICE_ENTRY,
+    );
+    expect(isProOnlyFeature(FEATURE.ADD_MANUAL_SERVICE_ENTRY)).toBe(false);
   });
 });

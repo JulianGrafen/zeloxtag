@@ -17,7 +17,10 @@ import {
   MANUAL_ENTRY_CATEGORIES,
   MANUAL_ENTRY_MARKER,
   MANUAL_ENTRY_MAX_PHOTOS,
+  MANUAL_SERVICE_ENTRY_LABELS,
+  MANUAL_SERVICE_ENTRY_TYPES,
   type ManualEntryCategory,
+  type ManualServiceEntryType,
 } from "@/lib/documents/manual-entries";
 import {
   ensureOilChangeNotes,
@@ -52,6 +55,8 @@ const fieldsSchema = z.object({
   mileageKm: z.string().trim().max(16).optional().default(""),
   notes: z.string().trim().max(500).optional().default(""),
   entryType: z.enum(["default", "oil_change"]).optional().default("default"),
+  serviceType: z.enum(MANUAL_SERVICE_ENTRY_TYPES).optional().default("service"),
+  details: z.string().trim().max(200).optional().default(""),
   oilSpec: z.string().trim().max(120).optional().default(""),
   oilAmountLiters: z.string().trim().max(16).optional().default(""),
   filterChanged: z.enum(["true", "false", ""]).optional().default(""),
@@ -84,6 +89,30 @@ function defaultTitle(category: ManualEntryCategory): string {
   return category === "tuning" ? "Tuning-Eintrag" : "Wartungseintrag";
 }
 
+function categoryForServiceType(
+  serviceType: ManualServiceEntryType,
+): ManualEntryCategory {
+  return serviceType === "tuning_part" ? "tuning" : "service";
+}
+
+function titleForServiceType(
+  serviceType: ManualServiceEntryType,
+  details: string | null,
+): string {
+  if (serviceType === "other" && details) {
+    return details.slice(0, 160);
+  }
+  return MANUAL_SERVICE_ENTRY_LABELS[serviceType];
+}
+
+function combineManualNotes(
+  details: string | null | undefined,
+  notes: string | null | undefined,
+): string | null {
+  const parts = [details?.trim(), notes?.trim()].filter(Boolean);
+  return parts.length > 0 ? parts.join("\n").slice(0, 500) : null;
+}
+
 function fieldsFromFormData(formData: FormData) {
   const categoryRaw = String(formData.get("category") ?? "");
   return {
@@ -97,6 +126,8 @@ function fieldsFromFormData(formData: FormData) {
     mileageKm: String(formData.get("mileageKm") ?? ""),
     notes: String(formData.get("notes") ?? ""),
     entryType: String(formData.get("entryType") ?? "default"),
+    serviceType: String(formData.get("serviceType") ?? "service"),
+    details: String(formData.get("details") ?? ""),
     oilSpec: String(formData.get("oilSpec") ?? ""),
     oilAmountLiters: String(formData.get("oilAmountLiters") ?? ""),
     filterChanged: String(formData.get("filterChanged") ?? ""),
@@ -165,6 +196,7 @@ function revalidateManualPaths(tagUuid: string) {
   revalidatePath(`/v/${tagUuid}/service`);
   revalidatePath(`/v/${tagUuid}/dokumente`);
   revalidatePath(`/v/${tagUuid}/intervalle`);
+  revalidatePath(`/v/${tagUuid}/historie`);
 }
 
 /**
@@ -180,12 +212,24 @@ export async function createManualVehicleEntry(
   }
 
   const data = parsed.data;
-  const isOilChangeEntry = data.entryType === "oil_change";
-  const oilFields = isOilChangeEntry ? buildOilChangeManualFields(data) : null;
-  const category = oilFields?.category ?? (data.category as ManualEntryCategory);
+  const serviceType = data.serviceType as ManualServiceEntryType;
+  const isOilChangeEntry =
+    data.entryType === "oil_change" || serviceType === "oil_change";
+  const oilFields = isOilChangeEntry
+    ? buildOilChangeManualFields({
+        ...data,
+        oilSpec: data.oilSpec?.trim() || data.details?.trim() || "",
+      })
+    : null;
+  const category =
+    oilFields?.category ??
+    (data.category as ManualEntryCategory) ??
+    categoryForServiceType(serviceType);
   const title =
     oilFields?.title ??
-    (data.title.trim() || defaultTitle(category));
+    (data.title.trim() ||
+      titleForServiceType(serviceType, data.details?.trim() || null) ||
+      defaultTitle(category));
   const dateRaw = data.date?.trim() || "";
   if (dateRaw && !/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
     return { status: "error", message: "Datum ungültig." };
@@ -196,7 +240,8 @@ export async function createManualVehicleEntry(
   const amount = amountFromLines ?? parseAmount(data.amount);
   const vendor = data.vendor?.trim().slice(0, 160) || null;
   const notes =
-    oilFields?.notes ?? (data.notes?.trim().slice(0, 500) || null);
+    oilFields?.notes ??
+    combineManualNotes(data.details, data.notes);
   const mileageKm = parseMileageKm(data.mileageKm);
   const documentId = randomUUID();
   const now = new Date().toISOString();
@@ -268,12 +313,12 @@ export async function createManualVehicleEntry(
       message: writeAccessErrorMessage(writeAccess),
     };
   }
-  const vault = await assertOwnerFeature(
+  const manualEntry = await assertOwnerFeature(
     writeAccess.ownerUserId,
-    FEATURE.DOCUMENT_VAULT,
+    FEATURE.ADD_MANUAL_SERVICE_ENTRY,
   );
-  if (!vault.ok) {
-    return { status: "error", message: vault.message };
+  if (!manualEntry.ok) {
+    return { status: "error", message: manualEntry.message };
   }
   if (
     !contributorMayWriteDocumentType(

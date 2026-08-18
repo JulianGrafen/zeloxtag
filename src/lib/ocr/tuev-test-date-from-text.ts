@@ -23,13 +23,13 @@ function toIsoDate(day: number, month: number, year: number): string | null {
 }
 
 const PUNKT3_LABEL =
-  /(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüftag|Untersuchungsdatum|Untersuchungstag)|(?:Punkt|Feld)\s*3|3\.\s*Prüftermin/i;
+  /(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüfungsdatum|Prüftag|Untersuchungsdatum|Untersuchungstag)|(?:Punkt|Feld)\s*3|3\.\s*Prüftermin/i;
 
 const PUNKT3_CAPTURE =
-  /(?:(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüftag|Untersuchungsdatum|Untersuchungstag)|(?:Punkt|Feld)\s*3|3\.\s*Prüftermin)\s*[:\s]*(?:[^0-9]{0,60})?(\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}-\d{2}-\d{2})/gi;
+  /(?:(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüfungsdatum|Prüftag|Untersuchungsdatum|Untersuchungstag)|(?:Punkt|Feld)\s*3|3\.\s*Prüftermin)\s*[:\s]*(?:[^0-9]{0,60})?(\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}-\d{2}-\d{2})/gi;
 
 const FORBIDDEN_DATE_LABEL =
-  /Erstzulassung|\bEZ\b|Letzte\s+HU|Dat\.?\s*letzt\.?\s*HU|n[aä]chste\s+HU|Nachuntersuchung|Hauptuntersuchung\s+vom|Leistungsdatum|Frist\s+bis|sp[aä]testens\s+bis/i;
+  /Erstzulassung|\bEZ\b|Letzte\s+HU|Dat\.?\s*letzt\.?\s*HU|n[aä]chste\s+HU|Nachuntersuchung|Hauptuntersuchung\s+vom|Leistungsdatum|Rechnungsdatum|Belegdatum|Frist\s+bis|sp[aä]testens\s+bis/i;
 
 function dateVariants(iso: string): string[] {
   const [y, m, d] = iso.split("-");
@@ -67,7 +67,7 @@ function dateOnPunkt3Line(rawText: string, iso: string): boolean {
 function dateNearPunkt3Window(rawText: string, iso: string): boolean {
   const text = normalizeTuevOcrText(rawText);
   const punkt3Pattern =
-    /(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüftag|Untersuchungsdatum|Untersuchungstag)/gi;
+    /(?:\(?3\)?[\.)]?\s*)?(?:Prüftermin|Prüfort|Prüfdatum|Prüfungsdatum|Prüftag|Untersuchungsdatum|Untersuchungstag)/gi;
 
   for (const match of text.matchAll(punkt3Pattern)) {
     if (match.index == null) continue;
@@ -78,6 +78,54 @@ function dateNearPunkt3Window(rawText: string, iso: string): boolean {
   }
 
   return false;
+}
+
+function parseRawDateToken(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed) && isValidCalendarDate(trimmed)) {
+    return trimmed;
+  }
+  const de = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (!de) return null;
+  return toIsoDate(
+    Number.parseInt(de[1]!, 10),
+    Number.parseInt(de[2]!, 10),
+    Number.parseInt(de[3]!, 10),
+  );
+}
+
+function extractDateFromTextWindow(text: string): string | null {
+  for (const match of text.matchAll(
+    /(\d{1,2}[./]\d{1,2}[./]\d{4}|\d{4}-\d{2}-\d{2})/g,
+  )) {
+    const iso = parseRawDateToken(match[1] ?? "");
+    if (iso) return iso;
+  }
+  return null;
+}
+
+/** OCR often splits Punkt 3 label and date across adjacent lines. */
+function extractTuevTestDateFromMultilinePunkt3(lines: string[]): string | null {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!.trim();
+    if (!line) continue;
+    const isPunkt3Line =
+      PUNKT3_LABEL.test(line) || /^\(?3\)?[\.)]?\s/.test(line);
+    if (!isPunkt3Line) continue;
+
+    const inline = extractDateFromTextWindow(line);
+    if (inline && !dateNearForbiddenLabel(lines.join("\n"), inline)) {
+      return inline;
+    }
+
+    const window = lines.slice(index, index + 4).join(" ");
+    const fromWindow = extractDateFromTextWindow(window);
+    if (fromWindow && !dateNearForbiddenLabel(lines.join("\n"), fromWindow)) {
+      return fromWindow;
+    }
+  }
+
+  return null;
 }
 
 /** Extract test date strictly from Punkt 3 labels. */
@@ -119,6 +167,9 @@ export function extractTuevTestDateFromText(rawText: string): string | null {
     if (iso) return iso;
   }
 
+  const multiline = extractTuevTestDateFromMultilinePunkt3(lines);
+  if (multiline) return multiline;
+
   return null;
 }
 
@@ -144,6 +195,22 @@ export function preferTuevTestDate(
   if (dateNearForbiddenLabel(rawText, llmDate)) return null;
   if (dateOnPunkt3Line(rawText, llmDate)) return llmDate;
   if (dateNearPunkt3Window(rawText, llmDate)) return llmDate;
+  if (llmDateNearPunkt3Marker(rawText, llmDate)) return llmDate;
 
   return null;
+}
+
+function llmDateNearPunkt3Marker(rawText: string, iso: string): boolean {
+  const text = normalizeTuevOcrText(rawText);
+  const marker = /(?:\(?3\)?[\.)]?\s*)|(?:Punkt|Feld)\s*3\b/gi;
+
+  for (const match of text.matchAll(marker)) {
+    if (match.index == null) continue;
+    const window = text.slice(match.index, match.index + 200);
+    if (dateVariants(iso).some((variant) => window.includes(variant))) {
+      return true;
+    }
+  }
+
+  return false;
 }

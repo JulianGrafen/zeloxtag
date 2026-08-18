@@ -55,6 +55,15 @@ describe("resolveTuevTotalAmount", () => {
     ).toBe(125);
   });
 
+  it("rejects MwSt-only LLM totals when fee rows are present", () => {
+    expect(
+      resolveTuevTotalAmount(19.96, [
+        { label: "Hauptuntersuchung", amount: 123.81 },
+        { label: "MwSt 19%", amount: 19.96 },
+      ]),
+    ).toBe(123.81);
+  });
+
   it("returns parsed amount when no line items", () => {
     expect(resolveTuevTotalAmount(171.9, null)).toBe(171.9);
   });

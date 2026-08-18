@@ -81,7 +81,7 @@ export const TUEV_PUNKT4_MILEAGE_GUIDANCE =
 export const TUEV_PUNKT3_PRUEFDATUM_GUIDANCE =
   "PRÜFDATUM (testDate): IMMER ausschließlich aus Punkt 3 / Feld 3 / (3) Prüftermin extrahieren.\n" +
   "Das ist die EINZIGE erlaubte Quelle — keine Fallbacks, keine anderen Datumsfelder.\n" +
-  "Labels: '3. Prüftermin', 'Punkt 3', 'Feld 3', '(3) Prüftermin', '(3)Prüftermin', '(3) Prüfort'.\n" +
+  "Labels: '3. Prüftermin', 'Punkt 3', 'Feld 3', '(3) Prüftermin', '(3)Prüftermin', '(3) Prüfort', 'Prüfungsdatum', 'Untersuchungsdatum'.\n" +
   "  TÜV Rheinland/FSP: '(3) Prüftermin: 26.01.2026, 10:21 Uhr' → 2026-01-26\n" +
   "  DEKRA: '(3)Prüfort: Mechernich, 23.03.2021' or '(3) Prüfort Mechernich, 23.03.2021' → 2021-03-23\n" +
   "NIEMALS verwenden (auch wenn lesbar):\n" +

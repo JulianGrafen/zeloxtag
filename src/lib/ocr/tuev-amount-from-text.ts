@@ -19,7 +19,7 @@ const PARTIAL_FEE_LABEL =
   /^(?:hauptuntersuchung|\bhu\b|\bau\b|abgasuntersuchung|sonstiges|vorgaben|vergütung|prüfungsentgelt|untersuchung)$/i;
 
 const GESAMT_AMOUNT_PATTERN =
-  /(?:gesamt(?:betrag)?(?:\s+inkl\.?\s*(?:\d+\s*%?\s*)?(?:mwst|ust|u\.?\s*st\.?|eur)?)?|endpreis|zu\s*zahlen|prüfungsentgelt\s*gesamt|entgelt\s*gesamt|summe\s+entgelt)\s*[:\s]*(-?\s*[0-9][0-9.\s,]{0,14})\s*(?:€|eur)?/gi;
+  /(?:gesamt(?:betrag|summe)?(?:\s+inkl\.?\s*(?:\d+\s*%?\s*)?(?:mwst|ust|u\.?\s*st\.?|eur)?)?|endpreis|end\s*summe|zu\s*zahlen|rechnungsbetrag|prüfungsentgelt\s*gesamt|entgelt\s*gesamt|summe\s+entgelt)\s*[:\s]*(-?\s*[0-9][0-9.\s,]{0,14})\s*(?:€|eur)?/gi;
 
 const ENTGELT_SECTION = /Entgeltinformation[\s\S]{0,1200}/i;
 

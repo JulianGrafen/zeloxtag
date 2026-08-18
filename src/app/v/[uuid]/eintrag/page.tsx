@@ -30,7 +30,7 @@ export default async function ManualEntryPage({
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: result.tag.uuid,
-    feature: FEATURE.DOCUMENT_VAULT,
+    feature: FEATURE.ADD_MANUAL_SERVICE_ENTRY,
     children: (
       <ManualEntryView
         tagUuid={result.tag.uuid}

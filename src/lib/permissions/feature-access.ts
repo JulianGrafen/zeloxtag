@@ -12,6 +12,7 @@ export const FEATURE = {
   VIEW_PUBLIC_PROFILE: "CAN_VIEW_PUBLIC_PROFILE",
   EDIT_BASIC_PROFILE: "CAN_EDIT_BASIC_PROFILE",
   CLAIM_TAG: "CAN_CLAIM_TAG",
+  ADD_MANUAL_SERVICE_ENTRY: "CAN_ADD_MANUAL_SERVICE_ENTRY",
   SCAN_AI_RECEIPT: "CAN_SCAN_AI_RECEIPT",
   GENERATE_EXPOSE: "CAN_GENERATE_EXPOSE",
   DOCUMENT_VAULT: "CAN_USE_DOCUMENT_VAULT",
@@ -25,6 +26,7 @@ const FEATURE_MIN_TIER: Record<FeatureFlag, UserTier> = {
   [FEATURE.VIEW_PUBLIC_PROFILE]: "free",
   [FEATURE.EDIT_BASIC_PROFILE]: "free",
   [FEATURE.CLAIM_TAG]: "free",
+  [FEATURE.ADD_MANUAL_SERVICE_ENTRY]: "free",
   [FEATURE.SCAN_AI_RECEIPT]: "pro",
   [FEATURE.GENERATE_EXPOSE]: "pro",
   [FEATURE.DOCUMENT_VAULT]: "pro",
@@ -64,13 +66,18 @@ export function featureForDashboardTile(tileId: string): FeatureFlag | null {
   if (tileId === "schrauber") return FEATURE.INVITE_SCHRAUBER;
 
   if (
-    tileId === "invoices" ||
     tileId === "oil-change" ||
+    tileId === "tuning-history" ||
+    tileId === "timeline"
+  ) {
+    return FEATURE.ADD_MANUAL_SERVICE_ENTRY;
+  }
+
+  if (
+    tileId === "invoices" ||
     tileId === "abe" ||
     tileId === "tuv" ||
     tileId === "service" ||
-    tileId === "timeline" ||
-    tileId === "tuning-history" ||
     tileId === "modifications"
   ) {
     return FEATURE.DOCUMENT_VAULT;
@@ -89,6 +96,8 @@ export function paywallTitle(feature: FeatureFlag): string {
       return "Schrauber einladen ist Teil von Pro";
     case FEATURE.DOCUMENT_VAULT:
       return "Die Dokumentenakte ist Teil von Pro";
+    case FEATURE.ADD_MANUAL_SERVICE_ENTRY:
+      return "Service-Eintrag";
     default:
       return "Das ist eine Pro-Funktion";
   }
