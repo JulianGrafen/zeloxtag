@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { parseAllTireSizes } from "@/lib/ocr/abe-wizard-vehicle-normalize";
+
 import {
   ABE_MARKING_LLM_INSTRUCTION,
   ABE_MARKING_TEXT_MAX,
@@ -403,7 +405,7 @@ function mergeVehicleMatchRow(
     fahrzeugtyp: current.fahrzeugtyp ?? incoming.fahrzeugtyp,
     typeApproval: current.typeApproval ?? incoming.typeApproval,
     driveType: current.driveType ?? incoming.driveType,
-    tireSizes: mergeUniqueCodes(current.tireSizes, incoming.tireSizes),
+    tireSizes: parseAllTireSizes([...current.tireSizes, ...incoming.tireSizes]),
     auflagenCodes: mergeUniqueCodes(
       current.auflagenCodes,
       incoming.auflagenCodes,
@@ -878,7 +880,7 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_CROP +
-                'Reifen / Radgröße column (e.g. "225/40 R18", "245/35 ZR19") — one string per size; empty array when column missing.',
+                'Reifen / Radgröße column — ALL printed sizes for this row (e.g. "225/40 R18", "245/35 ZR19"); one string per size; never omit a size from the cell; empty array when column missing.',
             },
             auflagenCodes: {
               type: "array",

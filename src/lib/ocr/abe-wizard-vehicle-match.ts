@@ -152,7 +152,7 @@ export function listAbeVehicleVariantOptions(
           group.verkaufsbezeichnung,
           row,
         ),
-        hint: row.tireSizes[0]?.trim() || row.driveType?.trim() || null,
+        hint: row.tireSizes.length > 0 ? row.tireSizes.join(", ") : row.driveType?.trim() || null,
         suggested:
           suggested?.groupIndex === groupIndex &&
           suggested.rowIndex === rowIndex,

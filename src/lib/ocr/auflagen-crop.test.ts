@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isUsableAuflagenRegion,
   parseAuflagenRegions,
+  resolveFullBleedAuflagenCodes,
 } from "@/lib/ocr/auflagen-crop";
 
 describe("parseAuflagenRegions", () => {
@@ -23,6 +24,46 @@ describe("parseAuflagenRegions", () => {
   it("returns empty array for non-array input", () => {
     expect(parseAuflagenRegions(null)).toEqual([]);
     expect(parseAuflagenRegions({})).toEqual([]);
+  });
+
+  it("prefers full-bleed for the active scan target", () => {
+    const targetSet = new Set(["744", "A77"]);
+    expect(
+      resolveFullBleedAuflagenCodes(
+        [{ code: "744", text: "Montage nur mit …" }],
+        targetSet,
+        "744",
+      ),
+    ).toEqual(["744"]);
+    expect(
+      resolveFullBleedAuflagenCodes(
+        [
+          { code: "744", text: "Erste Bedingung" },
+          { code: "A77", text: "Zweite Bedingung" },
+        ],
+        targetSet,
+        "744",
+      ),
+    ).toEqual(["744"]);
+  });
+
+  it("uses full-bleed when only one parsed entry matches targets", () => {
+    const targetSet = new Set(["744", "A77"]);
+    expect(
+      resolveFullBleedAuflagenCodes(
+        [{ code: "744", text: "Montage nur mit …" }],
+        targetSet,
+      ),
+    ).toEqual(["744"]);
+    expect(
+      resolveFullBleedAuflagenCodes(
+        [
+          { code: "744", text: "Erste Bedingung" },
+          { code: "A77", text: "Zweite Bedingung" },
+        ],
+        targetSet,
+      ),
+    ).toEqual([]);
   });
 
   it("rejects Kürzel-only boxes that would look like an empty paper placeholder", () => {

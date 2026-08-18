@@ -6,6 +6,7 @@ import {
 } from "@/lib/ocr/abe-auflagen-from-text";
 import { normalizeAuflagenKuerzel } from "@/lib/ocr/auflagen-kuerzel-db";
 import { cropImageToJpegFile } from "@/lib/ocr/crop-image";
+import { loadImageFromFile } from "@/lib/utils/image-loader";
 
 export type NormalizedAuflagenRegion = {
   code: string;
@@ -61,22 +62,6 @@ export function parseAuflagenRegions(raw: unknown): NormalizedAuflagenRegion[] {
   return out;
 }
 
-export function loadImageFromFile(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Bild konnte nicht geladen werden."));
-    };
-    image.src = url;
-  });
-}
-
 function normalizedRegionToPixelCrop(
   image: HTMLImageElement,
   region: NormalizedAuflagenRegion,
@@ -97,42 +82,32 @@ function normalizedRegionToPixelCrop(
   };
 }
 
-/** Fallback when the model returns no boxes — split by text weight top-to-bottom. */
-export function estimateProportionalAuflagenCrops(
-  image: HTMLImageElement,
+/** Codes that should use the full photo (one Auflage per scan). */
+export function resolveFullBleedAuflagenCodes(
   entries: readonly AbeAuflageEntry[],
-): Map<string, PixelCrop> {
-  const out = new Map<string, PixelCrop>();
-  if (entries.length === 0) return out;
-
-  const width = image.naturalWidth;
-  const height = image.naturalHeight;
-  const marginX = Math.round(width * 0.03);
-  const marginY = Math.round(height * 0.02);
-  const weights = entries.map((entry) =>
-    Math.max(12, entry.text.length + entry.code.length * 4),
-  );
-  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-
-  let y = marginY;
-  for (let index = 0; index < entries.length; index++) {
-    const entry = entries[index]!;
-    const sliceHeight = Math.max(
-      24,
-      Math.round((weights[index]! / totalWeight) * (height - marginY * 2)),
-    );
-    const cropHeight = Math.min(sliceHeight, height - marginY - y);
-    out.set(normalizeAuflagenKuerzel(entry.code), {
-      unit: "px",
-      x: marginX,
-      y,
-      width: Math.max(1, width - marginX * 2),
-      height: Math.max(1, cropHeight),
-    });
-    y += cropHeight;
+  targetSet: ReadonlySet<string>,
+  primaryTargetCode?: string | null,
+): string[] {
+  const primary = primaryTargetCode
+    ? normalizeAuflagenKuerzel(primaryTargetCode)
+    : "";
+  if (primary && targetSet.has(primary)) {
+    return [primary];
   }
 
-  return out;
+  const matchedEntries = entries.filter((entry) =>
+    targetSet.has(normalizeAuflagenKuerzel(entry.code)),
+  );
+  if (matchedEntries.length === 1) {
+    return [normalizeAuflagenKuerzel(matchedEntries[0]!.code)];
+  }
+
+  if (entries.length === 1) {
+    const only = normalizeAuflagenKuerzel(entries[0]!.code);
+    if (targetSet.has(only)) return [only];
+  }
+
+  return [];
 }
 
 export async function cropAuflagenSnippetsFromPhoto(
@@ -140,9 +115,12 @@ export async function cropAuflagenSnippetsFromPhoto(
   notes: string,
   targetCodes: readonly string[],
   regions: readonly NormalizedAuflagenRegion[] = [],
+  primaryTargetCode?: string | null,
 ): Promise<Map<string, File>> {
   const image = await loadImageFromFile(file);
-  const entries = parseAbeAuflagenNotes(notes, [...targetCodes]);
+  const entries = parseAbeAuflagenNotes(notes, [...targetCodes], {
+    strict: true,
+  });
   const notedCodes = new Set(
     entries.map((entry) => normalizeAuflagenKuerzel(entry.code)).filter(Boolean),
   );
@@ -153,19 +131,29 @@ export async function cropAuflagenSnippetsFromPhoto(
   );
   const crops = new Map<string, File>();
 
-  if (entries.length === 1) {
-    const only = normalizeAuflagenKuerzel(entries[0]!.code);
-    if (targetSet.has(only) || notedCodes.has(only)) {
-      crops.set(
-        only,
-        await cropImageToJpegFile(
-          image,
-          fullBleedCrop(image),
-          `auflage-${only}.jpg`,
-        ),
-      );
-      return crops;
+  async function addFullBleed(code: string): Promise<void> {
+    const normalized = normalizeAuflagenKuerzel(code);
+    if (!normalized || crops.has(normalized)) return;
+    crops.set(
+      normalized,
+      await cropImageToJpegFile(
+        image,
+        fullBleedCrop(image),
+        `auflage-${normalized}.jpg`,
+      ),
+    );
+  }
+
+  const fullBleedCodes = resolveFullBleedAuflagenCodes(
+    entries,
+    targetSet,
+    primaryTargetCode,
+  );
+  if (fullBleedCodes.length > 0) {
+    for (const code of fullBleedCodes) {
+      await addFullBleed(code);
     }
+    return crops;
   }
 
   for (const region of regions) {
@@ -189,38 +177,8 @@ export async function cropAuflagenSnippetsFromPhoto(
   const missingCodes = [...targetSet].filter((code) => !crops.has(code));
   if (missingCodes.length === 0) return crops;
 
-  const fallbackEntries = entries.filter((entry) =>
-    missingCodes.includes(normalizeAuflagenKuerzel(entry.code)),
-  );
-  const proportional = estimateProportionalAuflagenCrops(
-    image,
-    fallbackEntries.length > 0 ? fallbackEntries : entries,
-  );
-
   for (const code of missingCodes) {
-    const crop = proportional.get(code);
-    if (!crop || crop.width < 48 || crop.height < 48) continue;
-    crops.set(
-      code,
-      await cropImageToJpegFile(image, crop, `auflage-${code}.jpg`),
-    );
-  }
-
-  if (crops.size === 0 && (entries.length === 1 || missingCodes.length === 1)) {
-    const only =
-      entries.length === 1
-        ? normalizeAuflagenKuerzel(entries[0]!.code)
-        : missingCodes[0]!;
-    if (only && (targetSet.has(only) || notedCodes.has(only))) {
-      crops.set(
-        only,
-        await cropImageToJpegFile(
-          image,
-          fullBleedCrop(image),
-          `auflage-${only}.jpg`,
-        ),
-      );
-    }
+    await addFullBleed(code);
   }
 
   return crops;

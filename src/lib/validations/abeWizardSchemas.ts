@@ -228,7 +228,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
               items: { type: "string" },
               description:
                 FROM_DOCUMENT +
-                "Tyre sizes from Reifen column when present. Empty array if no Reifen column (e.g. spoiler, spacer).",
+                "ALL tyre sizes from the Reifen column for this row — one array entry per printed size (e.g. two sizes in one cell → two entries). Never omit a visible size. Empty array if no Reifen column (e.g. spoiler, spacer).",
             },
             auflagenCodes: {
               type: "array",

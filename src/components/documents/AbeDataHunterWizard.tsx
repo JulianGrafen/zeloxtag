@@ -2571,6 +2571,7 @@ export function AbeDataHunterWizard({
             sanitizedNotes,
             codes,
             regions,
+            pendingCodes[0] ?? codes[0] ?? null,
           );
           if (crops.size > 0) {
             const cropTexts = new Map(

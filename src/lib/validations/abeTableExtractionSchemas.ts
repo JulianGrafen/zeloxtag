@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { parseAllTireSizes } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 import { normalizeAuflagenKuerzel } from "@/lib/ocr/auflagen-kuerzel-db";
 import type {
   AbeConfiguration,
@@ -67,7 +68,8 @@ export const ABE_TABLE_EXTRACTION_JSON_SCHEMA = {
                   },
                   tire_size: {
                     type: "string",
-                    description: "Tire size, e.g. 205/50R17",
+                    description:
+                      "ALL tire sizes from the Reifen column for this row, comma-separated when multiple are printed (e.g. '215/45R17, 225/45R17'). Empty string when column missing.",
                   },
                   auflagen_codes: {
                     type: "array",
@@ -96,6 +98,8 @@ Grouping (Row Spans): A vehicle name in the first column applies to ALL subseque
 
 'auflagen_codes': Combine the codes from BOTH the 'Reifenbezogene Auflagen' column and the 'Auflagen und Hinweise' column into a single flat array of strings. Remove spaces (e.g., 'K 2b' -> 'K2b').
 
+'tire_size': Copy EVERY tyre size printed in the Reifen column for that row. When multiple sizes appear in one cell (e.g. '215/45R17 225/45R17'), return them comma-separated — never drop a size.
+
 Do not hallucinate. If a cell is completely unreadable, skip that specific row.`;
 
 function cleanAuflagenToken(raw: string): string {
@@ -119,7 +123,8 @@ function cleanModelName(raw: string): string {
 
 function normalizeConfiguration(raw: AbeConfiguration): AbeConfiguration | null {
   const kw_range = raw.kw_range.trim();
-  const tire_size = raw.tire_size.trim();
+  const tireSizes = parseAllTireSizes(raw.tire_size);
+  const tire_size = tireSizes.join(", ");
   const auflagen_codes = Array.from(
     new Set(
       raw.auflagen_codes

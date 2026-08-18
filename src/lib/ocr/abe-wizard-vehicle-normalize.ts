@@ -146,9 +146,84 @@ export function looksLikeAuflagenCode(value: string): boolean {
 }
 
 export function looksLikeTireSize(value: string): boolean {
-  const trimmed = value.trim();
+  const trimmed = value.trim().replace(/[,;]+$/g, "");
   if (!trimmed) return false;
-  return /^\d{3}\/\d{2}\s*Z?R?\d{2}/i.test(trimmed);
+  return /^\d{3}\s*\/\s*\d{2}\s*Z?R?\s*\d{2}/i.test(trimmed);
+}
+
+/** Normalize spacing for display/storage — "225/45R17" → "225/45 R17". */
+export function normalizeTireSizeLabel(value: string): string {
+  const trimmed = value.trim().replace(/[,;]+$/g, "").trim();
+  const match = trimmed.match(/^(\d{3}\s*\/\s*\d{2})\s*(Z?R\s*\d{2})/i);
+  if (!match) return trimmed;
+  const width = match[1]!.replace(/\s+/g, "");
+  const suffix = match[2]!.replace(/\s+/g, "").replace(/^ZR/i, "ZR").replace(/^R/i, "R");
+  const normalizedSuffix =
+    suffix.startsWith("ZR") || suffix.startsWith("zr")
+      ? ` ${suffix.charAt(0).toUpperCase()}${suffix.slice(1, 2)}${suffix.slice(2)}`
+      : ` ${suffix.charAt(0).toUpperCase()}${suffix.slice(1)}`;
+  return `${width}${normalizedSuffix}`;
+}
+
+const TIRE_SIZE_PATTERN = /\b(\d{3}\s*\/\s*\d{2}\s*Z?R\s*\d{2})\b/gi;
+
+/** Extract every tyre dimension printed in a Reifen cell (space/comma/slash separated). */
+export function extractTireSizesFromText(text: string): string[] {
+  const found: string[] = [];
+  const seen = new Set<string>();
+
+  for (const match of text.matchAll(TIRE_SIZE_PATTERN)) {
+    const label = normalizeTireSizeLabel(match[1] ?? "");
+    const key = label.replace(/\s+/g, "").toUpperCase();
+    if (!label || seen.has(key)) continue;
+    seen.add(key);
+    found.push(label);
+  }
+
+  return found;
+}
+
+/** Parse one or many raw LLM / OCR tyre values into deduplicated size labels. */
+export function parseAllTireSizes(
+  values: string | readonly string[] | null | undefined,
+): string[] {
+  const raw: string[] = [];
+  if (typeof values === "string") {
+    raw.push(values);
+  } else if (Array.isArray(values)) {
+    raw.push(...values.filter((entry): entry is string => typeof entry === "string"));
+  }
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+
+  for (const item of raw) {
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+
+    const extracted = extractTireSizesFromText(trimmed);
+    if (extracted.length > 0) {
+      for (const size of extracted) {
+        const key = size.replace(/\s+/g, "").toUpperCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(size);
+      }
+      continue;
+    }
+
+    for (const part of trimmed.split(/[,;/]+/)) {
+      const token = part.trim();
+      if (!token || !looksLikeTireSize(token)) continue;
+      const label = normalizeTireSizeLabel(token);
+      const key = label.replace(/\s+/g, "").toUpperCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(label);
+    }
+  }
+
+  return out;
 }
 
 function looksLikeKwRange(value: string): boolean {
@@ -219,7 +294,7 @@ function splitMixedTireAndAuflagenTokens(items: readonly string[]): {
   }
 
   return {
-    tireSizes: [...new Set(tireSizes.map((size) => size.trim()).filter(Boolean))],
+    tireSizes: [...new Set(tireSizes.map((size) => normalizeTireSizeLabel(size.trim())).filter(Boolean))],
     auflagenCodes: mergeUniqueAuflagenCodes(auflagenCodes),
   };
 }
@@ -599,24 +674,23 @@ function readStringArray(value: unknown): string[] {
 }
 
 function readTireSizes(row: Record<string, unknown>): string[] {
-  const fromArray = readStringArray(row.tireSizes);
-  if (fromArray.length > 0) return fromArray;
+  const collected: string[] = [];
+
+  collected.push(...readStringArray(row.tireSizes));
 
   for (const key of ["reifen", "radSizes", "radgroesse", "radgroessen"] as const) {
     const alt = row[key];
     if (Array.isArray(alt)) {
-      const parsed = readStringArray(alt);
-      if (parsed.length > 0) return parsed;
-    }
-    if (typeof alt === "string" && alt.trim()) {
-      return alt
-        .split(/[,;/]+/)
-        .map((part) => part.trim())
-        .filter(Boolean);
+      collected.push(...readStringArray(alt));
+    } else if (typeof alt === "string" && alt.trim()) {
+      collected.push(alt);
     }
   }
 
-  return [];
+  const tireSizeString = readString(row.tire_size);
+  if (tireSizeString) collected.push(tireSizeString);
+
+  return parseAllTireSizes(collected);
 }
 
 function readTypeApproval(row: Record<string, unknown>): string | null {
@@ -764,7 +838,10 @@ export function mergeAbeVehicleMatchRows(
         fahrzeugtyp: existing.fahrzeugtyp ?? row.fahrzeugtyp,
         typeApproval: existing.typeApproval ?? row.typeApproval,
         driveType: existing.driveType ?? row.driveType,
-        tireSizes: [...new Set([...existing.tireSizes, ...row.tireSizes])],
+        tireSizes: parseAllTireSizes([
+          ...existing.tireSizes,
+          ...row.tireSizes,
+        ]),
         auflagenCodes: mergeUniqueAuflagenCodes([
           ...existing.auflagenCodes,
           ...row.auflagenCodes,
@@ -1042,6 +1119,7 @@ export function normalizeAbeVehicleMatches(
     return {
       ...repaired,
       fahrzeugtyp,
+      tireSizes: parseAllTireSizes(repaired.tireSizes),
       auflagenCodes: correctAuflagenKuerzelList(
         filterAuflagenCodesAgainstFahrzeugtyp(
           auflagenCodes,

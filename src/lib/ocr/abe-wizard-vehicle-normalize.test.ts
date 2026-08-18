@@ -216,7 +216,7 @@ describe("abe-wizard-vehicle-normalize", () => {
 
     expect(normalized[0]?.fahrzeugtyp).toBeNull();
     expect(normalized[0]?.typeApproval).toBeNull();
-    expect(normalized[0]?.tireSizes).toContain("225/45R17");
+    expect(normalized[0]?.tireSizes).toContain("225/45 R17");
     expect(normalized[0]?.auflagenCodes).toEqual(
       expect.arrayContaining(["K2B", "K41", "A01"]),
     );
@@ -315,6 +315,38 @@ describe("abe-wizard-vehicle-normalize", () => {
 
     expect(parsed[0]?.typeApproval).toBe("e1*2007/46*0508*0508*0000*00");
     expect(parsed[0]?.tireSizes).toEqual(["225/45 R17", "245/40 R18"]);
+  });
+
+  it("splits comma-separated tire sizes in a single tireSizes entry", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "3ER REIHE",
+        fahrzeugtyp: "346K",
+        technischeBezeichnung: "e1*98/14*0167*..",
+        tireSizes: ["215/45R17, 225/45R17, 245/40R18"],
+        auflagenCodes: ["744"],
+      },
+    ]);
+
+    expect(parsed[0]?.tireSizes).toEqual([
+      "215/45 R17",
+      "225/45 R17",
+      "245/40 R18",
+    ]);
+  });
+
+  it("extracts all glued tire sizes from one OCR string", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "BMW 3er-Compact",
+        fahrzeugtyp: "346K",
+        technischeBezeichnung: "e1*98/14*0167*..",
+        tireSizes: ["215/45R17 225/45R17"],
+        auflagenCodes: ["K2b"],
+      },
+    ]);
+
+    expect(parsed[0]?.tireSizes).toEqual(["215/45 R17", "225/45 R17"]);
   });
 
   it("drops unknown OCR junk codes while keeping numeric Auflagen", () => {

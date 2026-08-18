@@ -38,7 +38,10 @@ describe("ABE KBA 48571 Interpneu / TAM3325-8017 fixture", () => {
 
     const compactRow = parsed.find((row) => row.fahrzeugtyp === "346K");
     expect(compactRow?.typeApproval).toMatch(/e1\*98\/14\*0167/i);
-    expect(compactRow?.tireSizes).toContain("215/45R17");
+    expect(compactRow?.tireSizes).toEqual(
+      expect.arrayContaining(["215/45 R17", "225/45 R17"]),
+    );
+    expect(compactRow?.tireSizes).toHaveLength(2);
     expect(compactRow?.auflagenCodes).toContain("A01");
 
     const cgRow = parsed.find((row) => row.fahrzeugtyp === "3/CG");

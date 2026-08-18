@@ -73,4 +73,25 @@ describe("abeTableExtractionSchemas", () => {
 
     expect(normalized.vehicles[0]?.configurations).toHaveLength(2);
   });
+
+  it("keeps all tire sizes when multiple are printed in one Reifen cell", () => {
+    const normalized = normalizeAbeTableExtraction({
+      vehicles: [
+        {
+          model_name: "BMW 3er-Compact",
+          configurations: [
+            {
+              kw_range: "85-141",
+              tire_size: "215/45R17, 225/45R17",
+              auflagen_codes: ["K2b"],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(normalized.vehicles[0]?.configurations[0]?.tire_size).toBe(
+      "215/45 R17, 225/45 R17",
+    );
+  });
 });

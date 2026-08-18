@@ -249,7 +249,7 @@ export class AbeDataHunterExtractionService {
             "- typeApproval: SECOND column — Betriebserlaubnis / EG-BE / ABE/EWG-Nr verbatim. Never put type codes here.",
             "- kW ranges are NOT fahrzeugtyp and NOT typeApproval — ignore that column.",
             "- driveType: Allradantrieb / Heckantrieb / Frontantrieb if present, else null.",
-            "- tireSizes: Reifen column — one entry per printed size; empty array when column missing.",
+            "- tireSizes: Reifen column — ALL printed sizes for this row; one entry per size; never omit a size from the cell; empty array when column missing.",
             "- auflagenCodes: ALL short codes from reifenbezogene Auflagen AND Auflagen und Hinweise columns for this row. Letter suffixes stay letters. Do not omit any visible Kürzel.",
             "Read digits 3 and 8 carefully in Fahrzeugtyp codes — they are often confused.",
             "When one table line lists multiple Fahrzeugtyp codes separated by comma, emit ONE vehicleMatches row PER printed code with the same header and EG-BE.",
