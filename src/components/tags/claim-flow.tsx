@@ -147,8 +147,8 @@ export function ClaimFlow({
             </p>
             <p className="max-w-[34ch] text-[0.95rem] leading-relaxed text-[color:var(--vd-muted)]">
               {needsAccount
-                ? "Beim ersten Scan legst du ein Konto an, verknüpfst den Tag mit deinem Auto — und kannst danach Dokumente speichern."
-                : "Verknüpfe den Tag mit deinem Auto — danach kannst du Rechnungen direkt scannen und speichern."}
+                ? "Beim ersten Scan legst du ein Konto an und verknüpfst den Edelstahl-Tag mit deinem Auto. Danach schließt du das Cloud-Abo über Stripe ab."
+                : "Verknüpfe den Tag mit deinem Auto. Als Nächstes aktivierst du das Cloud-Abo über Stripe."}
             </p>
           </div>
 

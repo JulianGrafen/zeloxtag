@@ -70,6 +70,30 @@ export type Tag = {
   updated_at: string;
 };
 
+export type MembershipStatus = "pending" | "active" | "past_due" | "canceled";
+
+/** Paid Cloud Abo, synced from Stripe (`00038_memberships` + `00041_stripe_memberships`). */
+export type Membership = {
+  id: string;
+  user_id: string | null;
+  email: string;
+  shopify_customer_id: string | null;
+  shopify_order_id: string | null;
+  shopify_order_name: string | null;
+  shopify_order_number: string | null;
+  shopify_order_token: string | null;
+  shopify_product_id: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_price_id: string | null;
+  status: MembershipStatus;
+  current_period_end: string | null;
+  paid_at: string | null;
+  canceled_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type DocumentLineItem = {
   label: string;
   amount: number;

@@ -1,4 +1,8 @@
 import { AUFLAGEN_KUERZEL_IMAGE_API_PATH } from "@/lib/documents/constants";
+import {
+  SHOPIFY_WEBHOOK_API_PATH,
+  STRIPE_WEBHOOK_API_PATH,
+} from "@/lib/billing/constants";
 
 /**
  * Path classification for Next.js Proxy auth gates (Zero-Trust).
@@ -57,7 +61,10 @@ export function isPublicVehicleImagePath(
  * No unauthenticated OCR/LLM POST routes — prevents cost abuse + PII extraction.
  * Scan UI runs only for authenticated vehicle owners.
  */
-const PUBLIC_API_POST = new Set<string>();
+const PUBLIC_API_POST = new Set<string>([
+  SHOPIFY_WEBHOOK_API_PATH,
+  STRIPE_WEBHOOK_API_PATH,
+]);
 
 export function isPublicPath(pathname: string): boolean {
   if (PUBLIC_EXACT.has(pathname)) return true;

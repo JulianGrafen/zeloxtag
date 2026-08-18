@@ -3,19 +3,62 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { claimMembershipForUser } from "@/lib/billing/membership-store";
+import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership";
 import { AppShell } from "@/components/layout/app-shell";
+import { MembershipStatusCard } from "@/components/billing/membership-status-card";
 import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 
 export const metadata: Metadata = {
   title: "Konto · ZeloxTag",
   description: "Konto, Sicherheit und Abmelden für ZeloxTag.",
 };
 
-export default async function SettingsPage() {
+interface SettingsPageProps {
+  searchParams: Promise<{
+    claim?: string;
+    linked?: string;
+    checkout?: string;
+    session_id?: string;
+  }>;
+}
+
+export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const user = await getCurrentUser();
+  const { claim, linked, checkout, session_id } = await searchParams;
+  const token = extractUnguessableOrderSecret(claim ?? "");
+
   if (!user) {
-    redirect("/login?next=/settings");
+    const nextParams = new URLSearchParams();
+    if (token) nextParams.set("claim", token);
+    const qs = nextParams.toString();
+    const next = qs ? `/settings?${qs}` : "/settings";
+    redirect(`/login?next=${encodeURIComponent(next)}`);
+  }
+
+  if (session_id?.startsWith("cs_")) {
+    await syncStripeCheckoutSessionAction(session_id);
+    redirect("/settings?checkout=success");
+  }
+
+  let claimError: string | null = null;
+  const justLinked = linked === "1";
+  const checkoutState =
+    checkout === "success" || checkout === "cancel" ? checkout : null;
+
+  if (token) {
+    const result = await claimMembershipForUser(user.id, {
+      token,
+      loginEmail: user.email,
+    });
+    if (result.status === "ok") {
+      redirect("/settings?linked=1");
+    }
+    if (result.status === "error") {
+      claimError = result.message;
+    }
   }
 
   return (
@@ -38,6 +81,14 @@ export default async function SettingsPage() {
             </span>
           </p>
         </div>
+
+        <MembershipStatusCard
+          userId={user.id}
+          email={user.email}
+          claimError={claimError}
+          justLinked={justLinked}
+          checkoutState={checkoutState}
+        />
 
         <MfaSetupPanel />
 

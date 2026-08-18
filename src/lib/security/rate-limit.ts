@@ -116,4 +116,8 @@ export const RATE_LIMITS = {
   upload: { limit: 10, windowMs: 60_000 },
   /** Generic public GET helpers. */
   apiDefault: { limit: 45, windowMs: 60_000 },
+  /** Membership claim (legacy Shopify email link). */
+  membershipClaim: { limit: 8, windowMs: 10 * 60_000 },
+  /** Stripe Checkout / Customer Portal session creation. */
+  stripeCheckout: { limit: 8, windowMs: 10 * 60_000 },
 } as const;

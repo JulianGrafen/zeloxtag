@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { AUFLAGEN_KUERZEL_IMAGE_API_PATH } from "@/lib/documents/constants";
+import {
+  SHOPIFY_WEBHOOK_API_PATH,
+  STRIPE_WEBHOOK_API_PATH,
+} from "@/lib/billing/constants";
 
 import {
   isProtectedApiPath,
@@ -30,5 +34,19 @@ describe("auflagen kuerzel image GET", () => {
       true,
     );
     expect(isProtectedApiPath("/api/abe/auflagen-kuerzel", "GET")).toBe(true);
+  });
+});
+
+describe("shopify membership webhook POST", () => {
+  it("is public so Shopify can deliver without a ZeloxTag session", () => {
+    expect(isProtectedApiPath(SHOPIFY_WEBHOOK_API_PATH, "POST")).toBe(false);
+    expect(isProtectedApiPath(SHOPIFY_WEBHOOK_API_PATH, "GET")).toBe(true);
+  });
+});
+
+describe("stripe membership webhook POST", () => {
+  it("is public so Stripe can deliver without a ZeloxTag session", () => {
+    expect(isProtectedApiPath(STRIPE_WEBHOOK_API_PATH, "POST")).toBe(false);
+    expect(isProtectedApiPath(STRIPE_WEBHOOK_API_PATH, "GET")).toBe(true);
   });
 });

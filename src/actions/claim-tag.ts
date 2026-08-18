@@ -2,6 +2,7 @@
 
 import { ensureClaimAccount } from "@/lib/auth/ensure-claim-account";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -147,9 +148,13 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
       return result;
     }
 
+    const hasMembership = await userHasActiveMembership(ownerUserId);
+
     return {
       status: "continue",
-      href: dashboardScannerHref(result.tagUuid),
+      href: hasMembership
+        ? dashboardScannerHref(result.tagUuid)
+        : `/v/${result.tagUuid}/abo`,
       nextTagUuid: result.nextTagUuid,
     };
   } catch (error) {
