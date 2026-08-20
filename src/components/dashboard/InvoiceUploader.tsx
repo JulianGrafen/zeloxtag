@@ -444,12 +444,16 @@ export function InvoiceUploader({
           : isTuevUpload
             ? "tuev"
             : "invoice";
-      // Invoice + ABE: one combined PDF keeps multi-page tables in a single parse call.
+      // ABE: combined PDF keeps multi-page tables in one parse call.
+      // Invoice camera scans: send JPEG pages directly — avoids server-side PDF rasterize on Vercel.
       const analyzeFiles =
-        processed.uploadFile &&
-        (documentType === "abe" || documentType === "invoice")
+        documentType === "abe" && processed.uploadFile
           ? [processed.uploadFile]
-          : processed.analyzeFiles;
+          : documentType === "invoice" && processed.sourceKind === "images"
+            ? processed.analyzeFiles
+            : processed.uploadFile
+              ? [processed.uploadFile]
+              : processed.analyzeFiles;
 
       const analyzed = await analyzeDocumentFiles(
         analyzeFiles,

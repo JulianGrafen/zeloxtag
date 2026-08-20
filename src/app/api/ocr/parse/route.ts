@@ -5,6 +5,7 @@ import {
   analyzeDocument,
   isDocumentIntelligenceError,
 } from "@/lib/ocr/document-intelligence";
+import { isTextParseError } from "@/lib/ocr/parse-error";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { resolveParseModel, isInvoiceNanoTestMode } from "@/lib/ocr/model-routing";
 import { OCR_DOCUMENT_TYPES, type OcrDocumentType } from "@/lib/ocr/ocr-types";
@@ -30,8 +31,8 @@ import { AbeVehicleContextSchema } from "@/lib/validations/abeSchema";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** High-fidelity invoice photos / multi-page PDFs. */
-const MAX_BYTES = 25 * 1024 * 1024;
+/** Vercel serverless request body limit (~4.5 MB). Stay below to avoid platform 500s. */
+const MAX_BYTES = 4 * 1024 * 1024;
 
 const documentTypeSchema = z.enum(OCR_DOCUMENT_TYPES);
 const approvalKindSchema = z.enum(APPROVAL_FIELD_KINDS);
@@ -106,7 +107,17 @@ export async function POST(request: NextRequest) {
     const vehicleAccess = await requireVehicleOcrAccess(
       auth.user.id,
       String(formData.get("vehicleId") ?? ""),
-    );
+    ).catch((error) => {
+      console.error("[api/ocr/parse] vehicle access check failed", error);
+      return {
+        ok: false as const,
+        response: jsonError(
+          503,
+          "Fahrzeugzugriff konnte nicht geprüft werden.",
+          "config",
+        ),
+      };
+    });
     if (!vehicleAccess.ok) return vehicleAccess.response;
 
     const documentTypeRaw = String(formData.get("documentType") ?? "").trim();
@@ -238,9 +249,13 @@ export async function POST(request: NextRequest) {
     };
     return NextResponse.json(body);
   } catch (error) {
-    if (isDocumentIntelligenceError(error)) {
+    if (isDocumentIntelligenceError(error) || isTextParseError(error)) {
       console.error("[api/ocr/parse] provider failed", error);
-      return jsonError(502, error.message, "parse_failed");
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "Dokumentanalyse-Dienst vorübergehend nicht verfügbar.";
+      return jsonError(502, message, "parse_failed");
     }
 
     console.error("[api/ocr/parse] unexpected", error);

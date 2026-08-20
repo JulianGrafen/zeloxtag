@@ -40,7 +40,14 @@ export async function getVehicleWriteAccess(
     return denied();
   }
 
-  const supabase = await createClient();
+  let supabase;
+  try {
+    supabase = await createClient();
+  } catch (error) {
+    console.error("[vehicle-write-access] createClient failed", error);
+    return denied({ message: "Datenbankverbindung fehlgeschlagen." });
+  }
+
   const { data: vehicle } = await supabase
     .from("vehicles")
     .select("id, user_id")

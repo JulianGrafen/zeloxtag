@@ -1,21 +1,13 @@
 import "server-only";
 
-import { createRequire } from "node:module";
-
 /** Lazy-loaded pdf.js + Node canvas for serverless PDF rasterization. */
 let pdfJsModulePromise: Promise<typeof import("pdfjs-dist/legacy/build/pdf.mjs")> | null =
   null;
 
 async function loadPdfJs() {
   if (!pdfJsModulePromise) {
-    pdfJsModulePromise = (async () => {
-      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      const require = createRequire(import.meta.url);
-      pdfjs.GlobalWorkerOptions.workerSrc = require.resolve(
-        "pdfjs-dist/legacy/build/pdf.worker.mjs",
-      );
-      return pdfjs;
-    })();
+    // No worker thread — Vercel/serverless cannot reliably load pdf.worker.mjs.
+    pdfJsModulePromise = import("pdfjs-dist/legacy/build/pdf.mjs");
   }
   return pdfJsModulePromise;
 }
@@ -36,12 +28,19 @@ export async function rasterizePdfPagesWithPdfJs(
   dpi: number,
 ): Promise<Buffer[]> {
   const pdfjs = await loadPdfJs();
-  const { createCanvas } = await import("@napi-rs/canvas");
+  let createCanvas: typeof import("@napi-rs/canvas").createCanvas;
+  try {
+    ({ createCanvas } = await import("@napi-rs/canvas"));
+  } catch (error) {
+    console.error("[pdf-rasterize-server] @napi-rs/canvas unavailable", error);
+    throw error;
+  }
 
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(bytes),
     useSystemFonts: true,
     disableFontFace: true,
+    useWorkerFetch: false,
   });
   const doc = await loadingTask.promise;
 

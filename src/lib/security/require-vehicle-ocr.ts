@@ -38,7 +38,24 @@ export async function requireVehicleOcrAccess(
     };
   }
 
-  const access = await getVehicleWriteAccess(parsed.data, userId);
+  let access;
+  try {
+    access = await getVehicleWriteAccess(parsed.data, userId);
+  } catch (error) {
+    console.error("[requireVehicleOcrAccess] write access failed", error);
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          ok: false,
+          error: "Fahrzeugzugriff konnte nicht geprüft werden.",
+          code: "config",
+        },
+        { status: 503 },
+      ),
+    };
+  }
+
   if (!access.ok || !access.ownerUserId) {
     return {
       ok: false,
@@ -53,7 +70,25 @@ export async function requireVehicleOcrAccess(
     };
   }
 
-  if (!(await ownerHasFeature(access.ownerUserId, feature))) {
+  let hasFeature = false;
+  try {
+    hasFeature = await ownerHasFeature(access.ownerUserId, feature);
+  } catch (error) {
+    console.error("[requireVehicleOcrAccess] feature gate failed", error);
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          ok: false,
+          error: "Mitgliedschaft konnte nicht geprüft werden.",
+          code: "config",
+        },
+        { status: 503 },
+      ),
+    };
+  }
+
+  if (!hasFeature) {
     return { ok: false, response: subscriptionRequiredResponse() };
   }
 

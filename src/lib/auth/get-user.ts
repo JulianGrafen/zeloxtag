@@ -8,14 +8,26 @@ import { createClient } from "@/lib/supabase/server";
  * Authenticated Supabase user, or null when logged out / unconfigured.
  * Request-memoized — pages + access helpers share one Auth round-trip.
  */
-export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
+async function readAuthenticatedUser(): Promise<AuthUser | null> {
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) return null;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user;
+  } catch (error) {
+    console.error("[auth] getUser failed", error);
+    return null;
+  }
+}
 
-  return user;
-});
+/** Request-memoized — Server Components + actions share one Auth round-trip. */
+export const getCurrentUser = cache(readAuthenticatedUser);
+
+/** Route handlers — no React `cache()` (can throw across bundled server chunks). */
+export async function getApiRouteUser(): Promise<AuthUser | null> {
+  return readAuthenticatedUser();
+}

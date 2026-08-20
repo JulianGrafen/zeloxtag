@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { User } from "@supabase/supabase-js";
 
-import { getCurrentUser } from "@/lib/auth/get-user";
+import { getApiRouteUser } from "@/lib/auth/get-user";
 import { MEMBERSHIP_REQUIRED_MESSAGE } from "@/lib/billing/pro-plan";
 import { ownerHasFeature } from "@/lib/permissions/require-feature";
 import type { FeatureFlag } from "@/lib/permissions/feature-access";
@@ -149,7 +149,23 @@ export async function requireApiUser(): Promise<ApiAuthResult> {
     };
   }
 
-  const user = await getCurrentUser();
+  let user;
+  try {
+    user = await getApiRouteUser();
+  } catch (error) {
+    console.error("[api-guard] auth lookup failed", error);
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          ok: false,
+          error: "Authentication check failed.",
+          code: "config",
+        },
+        { status: 503 },
+      ),
+    };
+  }
   if (!user) {
     return {
       ok: false,

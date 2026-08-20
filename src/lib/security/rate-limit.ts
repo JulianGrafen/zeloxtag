@@ -89,7 +89,14 @@ async function supabaseRateLimit(input: {
   limit: number;
   windowMs: number;
 }): Promise<RateLimitResult> {
-  const admin = createAdminClient();
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (error) {
+    console.error("[rate-limit] admin client unavailable", error);
+    return memoryRateLimit(input);
+  }
+
   const { data, error } = await admin.rpc("consume_rate_limit", {
     p_bucket_key: input.key,
     p_limit: input.limit,
