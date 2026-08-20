@@ -104,20 +104,6 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
       key: "X-DNS-Prefetch-Control",
       value: "off",
     },
-    {
-      key: "Cross-Origin-Opener-Policy",
-      value: "same-origin",
-    },
-    // require-corp: Safari/iOS does not enable crossOriginIsolated with credentialless.
-    // Vehicle images and WASM assets are same-origin or CORP-opted-in (proxy/CDN).
-    {
-      key: "Cross-Origin-Embedder-Policy",
-      value: "require-corp",
-    },
-    {
-      key: "Cross-Origin-Resource-Policy",
-      value: "same-origin",
-    },
   ];
 
   if (isHttpsDeployment()) {

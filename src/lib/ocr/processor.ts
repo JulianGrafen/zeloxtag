@@ -136,7 +136,10 @@ async function processNativePdf(
 
   const first = await rasterizePdfPage(pdf, 1);
   const previewUrl = URL.createObjectURL(first.blob);
-  await pdf.destroy();
+  const pdfWithCleanup = pdf as { destroy?: () => Promise<void> };
+  if (typeof pdfWithCleanup.destroy === "function") {
+    await pdfWithCleanup.destroy();
+  }
 
   onProgress?.({
     label: "Dokument vorbereitet",

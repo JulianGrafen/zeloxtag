@@ -20,6 +20,13 @@ async function loadPdfJs() {
   return pdfJsModulePromise;
 }
 
+async function destroyPdfDocument(doc: unknown): Promise<void> {
+  const candidate = doc as { destroy?: () => Promise<void> | void };
+  if (typeof candidate.destroy === "function") {
+    await candidate.destroy();
+  }
+}
+
 /**
  * Rasterize PDF pages with pdf.js + @napi-rs/canvas (works on Vercel without Poppler).
  */
@@ -35,7 +42,6 @@ export async function rasterizePdfPagesWithPdfJs(
     data: new Uint8Array(bytes),
     useSystemFonts: true,
     disableFontFace: true,
-    isEvalSupported: false,
   });
   const doc = await loadingTask.promise;
 
@@ -62,9 +68,11 @@ export async function rasterizePdfPagesWithPdfJs(
     }).promise;
 
     pages.push(canvas.toBuffer("image/png"));
-    page.cleanup();
+    if (typeof page.cleanup === "function") {
+      page.cleanup();
+    }
   }
 
-  await doc.destroy();
+  await destroyPdfDocument(doc);
   return pages;
 }

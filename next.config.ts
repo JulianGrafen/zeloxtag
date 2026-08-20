@@ -44,7 +44,6 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    viewTransition: true,
     // Manual-entry photos + multi-page PDFs exceed the 1MB default.
     serverActions: {
       bodySizeLimit: "12mb",
@@ -54,11 +53,10 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
-      // Exclude document + vehicle PNG proxies — global COEP/CORP/DENY would
-      // conflict with embeddable same-origin image responses under COEP pages.
+      // Exclude static assets + media proxies — COEP/CORP on JS chunks breaks hydration.
       {
         source:
-          "/((?!api/documents/file$|api/vehicle/silhouette/|api/vehicle/catalog/).*)",
+          "/((?!_next/static/|_next/image/|favicon.ico|api/documents/file$|api/vehicle/silhouette/|api/vehicle/catalog/).*)",
         headers: securityHeaderEntries(),
       },
       {
