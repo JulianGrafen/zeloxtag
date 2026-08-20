@@ -1,6 +1,7 @@
 import "server-only";
 
-import sharp from "sharp";
+import { resizeImageToMaxEdge } from "@/lib/image/server-canvas";
+import { rasterizePdfPagesWithPdfJs } from "@/lib/ocr/pdf-rasterize-server";
 
 import {
   isPdfBuffer,
@@ -18,7 +19,7 @@ export type { DocumentBytesInput };
 
 /**
  * Azure Layout reads vector PDFs more reliably than rasterized previews.
- * Keep enhanced WebP/JPEG for vision LLM, send original PDF bytes to Document Intelligence.
+ * Keep enhanced PNG/JPEG for vision LLM, send original PDF bytes to Document Intelligence.
  */
 export function resolveAzureLayoutInput(
   original: DocumentBytesInput,
@@ -41,7 +42,7 @@ export const LLM_IMAGE_MAX_EDGE_PX = 1536;
 export const ABE_LLM_IMAGE_MAX_EDGE_PX = 1536;
 export const LLM_INVOICE_MAX_PDF_PAGES = 4;
 
-function llmImagePart(bytes: Buffer, contentType = "image/webp"): DocumentUserMessagePart {
+function llmImagePart(bytes: Buffer, contentType = "image/png"): DocumentUserMessagePart {
   return {
     type: "image_url",
     image_url: {
@@ -51,61 +52,21 @@ function llmImagePart(bytes: Buffer, contentType = "image/webp"): DocumentUserMe
   };
 }
 
-async function normalizeRasterToWebp(
+async function normalizeRasterToPng(
   bytes: Buffer,
   maxEdgePx = LLM_IMAGE_MAX_EDGE_PX,
 ): Promise<Buffer> {
-  return sharp(bytes, { failOn: "none" })
-    .rotate()
-    .resize({
-      width: maxEdgePx,
-      height: maxEdgePx,
-      fit: "inside",
-      withoutEnlargement: true,
-    })
-    .webp({ quality: 85 })
-    .toBuffer();
+  return resizeImageToMaxEdge(bytes, maxEdgePx, "png");
 }
 
 /**
- * Boost contrast + sharpness for small invoice text / table numbers.
+ * Resize + PNG encode for vision LLM (contrast pass optional — canvas-only on serverless).
  */
 export async function enhanceDocumentImageForLlm(
   bytes: Buffer,
   maxEdgePx = LLM_IMAGE_MAX_EDGE_PX,
 ): Promise<Buffer> {
-  return await sharp(bytes, { failOn: "none" })
-    .rotate()
-    .resize({
-      width: maxEdgePx,
-      height: maxEdgePx,
-      fit: "inside",
-      withoutEnlargement: true,
-    })
-    .grayscale()
-    .normalize()
-    .sharpen({ sigma: 1.1, m1: 0.5, m2: 2.5 })
-    .webp({ quality: 85 })
-    .toBuffer();
-}
-
-async function rasterizePdfPagesWithSharp(
-  bytes: Buffer,
-  maxPages: number,
-  dpi: number,
-): Promise<Buffer[]> {
-  const meta = await sharp(bytes, { density: dpi, failOn: "none" }).metadata();
-  const pageCount = Math.max(1, meta.pages ?? 1);
-  const limit = Math.min(maxPages, pageCount);
-
-  const pages: Buffer[] = [];
-  for (let page = 0; page < limit; page += 1) {
-    const png = await sharp(bytes, { density: dpi, page, failOn: "none" })
-      .png()
-      .toBuffer();
-    pages.push(await enhanceDocumentImageForLlm(png));
-  }
-  return pages;
+  return normalizeRasterToPng(bytes, maxEdgePx);
 }
 
 export async function rasterizePdfPagesForLlm(
@@ -113,27 +74,12 @@ export async function rasterizePdfPagesForLlm(
   maxPages: number = LLM_INVOICE_MAX_PDF_PAGES,
   dpi: number = LLM_DOCUMENT_RASTER_DPI,
 ): Promise<Buffer[]> {
-  try {
-    return await rasterizePdfPagesWithSharp(bytes, maxPages, dpi);
-  } catch (sharpError) {
-    console.warn(
-      "[prepare-document-for-llm] Sharp PDF rasterize failed, trying pdf.js",
-      sharpError,
-    );
+  const rawPages = await rasterizePdfPagesWithPdfJs(bytes, maxPages, dpi);
+  const pages: Buffer[] = [];
+  for (const png of rawPages) {
+    pages.push(await enhanceDocumentImageForLlm(png));
   }
-
-  try {
-    const { rasterizePdfPagesWithPdfJs } = await import("./pdf-rasterize-server");
-    const rawPages = await rasterizePdfPagesWithPdfJs(bytes, maxPages, dpi);
-    const pages: Buffer[] = [];
-    for (const png of rawPages) {
-      pages.push(await enhanceDocumentImageForLlm(png));
-    }
-    return pages;
-  } catch (pdfJsError) {
-    console.warn("[prepare-document-for-llm] pdf.js PDF rasterize failed", pdfJsError);
-    throw pdfJsError;
-  }
+  return pages;
 }
 
 export type PrepareDocumentForLlmOptions = {
@@ -143,8 +89,8 @@ export type PrepareDocumentForLlmOptions = {
 };
 
 /**
- * Rasterize PDFs and enhance images before vision LLM parsing.
- * Falls back to the original PDF/image bytes when Sharp cannot decode input.
+ * Rasterize PDFs and resize images before vision LLM parsing.
+ * Falls back to empty when pdf.js / canvas cannot decode input.
  */
 export async function prepareDocumentImagesForLlm(
   input: DocumentBytesInput,
@@ -174,7 +120,7 @@ export async function prepareDocumentImagesForLlm(
   } catch (error) {
     console.warn("[prepare-document-for-llm] image enhance failed", error);
     try {
-      return [await normalizeRasterToWebp(input.bytes, maxEdgePx)];
+      return [await normalizeRasterToPng(input.bytes, maxEdgePx)];
     } catch (normalizeError) {
       console.warn("[prepare-document-for-llm] image normalize failed", normalizeError);
       return [];
@@ -184,7 +130,7 @@ export async function prepareDocumentImagesForLlm(
 
 /**
  * High-contrast page images for invoice / receipt vision parsing.
- * Falls back to the legacy PDF/file path when Sharp/poppler is unavailable.
+ * Falls back to the legacy PDF/file path when rasterization is unavailable.
  */
 export async function buildPreparedDocumentUserMessage(
   instructionLines: string[],
@@ -227,7 +173,7 @@ export async function buildPreparedDocumentUserMessage(
   }
 }
 
-/** Use an already contrast-enhanced image buffer (no second Sharp pass). */
+/** Use an already contrast-enhanced image buffer (no second resize pass). */
 export function buildEnhancedImageUserMessage(
   instructionLines: string[],
   enhancedImage: Buffer,
@@ -263,18 +209,17 @@ export function buildEnhancedImageUserMessage(
   }
 
   parts.push({ type: "text", text: imageHint });
-  parts.push(llmImagePart(enhancedImage, options.contentType ?? "image/webp"));
+  parts.push(llmImagePart(enhancedImage, options.contentType ?? "image/png"));
   return parts;
 }
 
-function visionPdfPagePart(webp: Buffer): DocumentUserMessagePart {
-  return llmImagePart(webp);
+function visionPdfPagePart(png: Buffer): DocumentUserMessagePart {
+  return llmImagePart(png);
 }
 
 /**
  * Build vision user content from prepared OCR input.
- * PDFs are rasterized to contrast-enhanced WebP pages — Azure Foundry and many
- * deployments reject native PDF `file` parts in chat completions.
+ * PDFs are rasterized to PNG pages — Azure Foundry rejects native PDF `file` parts.
  */
 export async function buildVisionUserMessage(
   instructionLines: string[],
@@ -350,7 +295,7 @@ export async function prepareSinglePageOcrInput(
   if (pages[0]?.byteLength) {
     return {
       bytes: pages[0],
-      contentType: "image/webp",
+      contentType: "image/png",
     };
   }
 
@@ -360,7 +305,7 @@ export async function prepareSinglePageOcrInput(
   };
 }
 
-/** ABE hunt / table vision — contrast-enhanced WebP capped for LLM cost. */
+/** ABE hunt / table vision — PNG capped for LLM cost. */
 export async function prepareAbeOcrInput(
   input: DocumentBytesInput,
   options: PrepareDocumentForLlmOptions = {},

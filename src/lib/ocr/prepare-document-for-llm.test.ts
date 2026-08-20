@@ -47,11 +47,10 @@ describe("resolveAzureLayoutInput", () => {
 });
 
 describe("rasterizePdfPagesForLlm", () => {
-  it("rasterizes a PDF via pdf.js when Sharp cannot decode PDF input", async () => {
+  it("rasterizes a PDF via pdf.js", async () => {
     const pages = await rasterizePdfPagesForLlm(MINIMAL_PDF, 1, 110);
     expect(pages).toHaveLength(1);
     expect(pages[0]!.byteLength).toBeGreaterThan(500);
-    expect(pages[0]!.subarray(0, 4).toString("ascii")).toBe("RIFF");
-    expect(pages[0]!.subarray(8, 12).toString("ascii")).toBe("WEBP");
+    expect(pages[0]!.subarray(0, 4).toString("hex")).toBe("89504e47");
   });
 });

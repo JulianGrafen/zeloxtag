@@ -2,7 +2,7 @@
  * Convert inbound vehicle photos (JPEG/HEIC/WebP/PNG) to PNG for storage.
  */
 
-import sharp from "sharp";
+import { getImageDimensions, resizeImageToMaxEdge } from "@/lib/image/server-canvas";
 
 import { isJpegBytes, isPngBytes } from "./silhouette-bytes";
 
@@ -17,7 +17,7 @@ export class HeaderPhotoNormalizeError extends Error {
 }
 
 /**
- * JPEG (and other formats) → PNG, rotate + resize. No background removal.
+ * JPEG (and other formats) → PNG, resize. No background removal.
  */
 export async function normalizeVehicleHeaderPhoto(
   bytes: Uint8Array | Buffer,
@@ -25,38 +25,18 @@ export async function normalizeVehicleHeaderPhoto(
   const input = Buffer.from(bytes);
 
   if (isPngBytes(input) && input.byteLength <= HEADER_PHOTO_MAX_EDGE * HEADER_PHOTO_MAX_EDGE * 4) {
-    try {
-      const meta = await sharp(input).metadata();
-      if (
-        meta.format === "png" &&
-        (meta.width ?? 0) <= HEADER_PHOTO_MAX_EDGE &&
-        (meta.height ?? 0) <= HEADER_PHOTO_MAX_EDGE
-      ) {
-        return input;
-      }
-    } catch {
-      /* fall through to full normalize */
+    const dims = await getImageDimensions(input);
+    if (
+      dims &&
+      dims.width <= HEADER_PHOTO_MAX_EDGE &&
+      dims.height <= HEADER_PHOTO_MAX_EDGE
+    ) {
+      return input;
     }
   }
 
   try {
-    const pipeline = sharp(input).rotate().resize(
-      HEADER_PHOTO_MAX_EDGE,
-      HEADER_PHOTO_MAX_EDGE,
-      {
-        fit: "inside",
-        withoutEnlargement: true,
-        kernel: sharp.kernel.lanczos3,
-      },
-    );
-
-    if (isJpegBytes(input)) {
-      pipeline.flatten({ background: "#ffffff" });
-    }
-
-    return await pipeline
-      .png({ compressionLevel: 8, effort: 6 })
-      .toBuffer();
+    return await resizeImageToMaxEdge(input, HEADER_PHOTO_MAX_EDGE, "png");
   } catch {
     throw new HeaderPhotoNormalizeError(
       "Das Foto konnte nicht verarbeitet werden.",

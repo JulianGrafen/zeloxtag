@@ -45,20 +45,14 @@ async function normalizeDynoUpload(
   | { ok: true; mime: string; bytes: Buffer }
   | { ok: false; error: string }
 > {
-  if (mime !== "image/heic" && mime !== "image/heif") {
-    return { ok: true, mime, bytes };
-  }
-
-  try {
-    const sharp = (await import("sharp")).default;
-    const jpeg = await sharp(bytes).rotate().jpeg({ quality: 85 }).toBuffer();
-    return { ok: true, mime: "image/jpeg", bytes: jpeg };
-  } catch {
+  if (mime === "image/heic" || mime === "image/heif") {
     return {
       ok: false,
-      error: "HEIC konnte nicht gelesen werden. Bitte JPEG, PNG oder PDF wählen.",
+      error: "HEIC wird serverseitig nicht unterstützt. Bitte JPEG, PNG oder PDF wählen.",
     };
   }
+
+  return { ok: true, mime, bytes };
 }
 
 /**

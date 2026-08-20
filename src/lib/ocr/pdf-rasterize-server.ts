@@ -75,3 +75,18 @@ export async function rasterizePdfPagesWithPdfJs(
   await destroyPdfDocument(doc);
   return pages;
 }
+
+/** Page count for ingestion / preprocessing without Sharp/libvips. */
+export async function getPdfPageCount(bytes: Buffer): Promise<number> {
+  const pdfjs = await loadPdfJs();
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(bytes),
+    useSystemFonts: true,
+    disableFontFace: true,
+    useWorkerFetch: false,
+  });
+  const doc = await loadingTask.promise;
+  const pageCount = Math.max(1, doc.numPages);
+  await destroyPdfDocument(doc);
+  return pageCount;
+}

@@ -12,13 +12,19 @@
  * For images the whole document is treated as a single page.
  */
 
-import sharp from "sharp";
+import { resizeImageToMaxEdge } from "@/lib/image/server-canvas";
+import {
+  getPdfPageCount,
+  rasterizePdfPagesWithPdfJs,
+} from "@/lib/ocr/pdf-rasterize-server";
 
 /** DPI used when rasterizing PDF pages for vision-LLM input. */
 const RASTER_DPI = 220;
 
 /** Maximum PDF pages to inspect (costs vs. coverage trade-off). */
 const MAX_PAGES = 3;
+
+const MAX_LONG_EDGE = 2_400;
 
 export type PreprocessedTuevDocument = {
   /**
@@ -35,35 +41,8 @@ export type PreprocessedTuevDocument = {
   pageCount: number;
 };
 
-/**
- * Render one PDF page to a PNG buffer at the specified DPI.
- */
-async function renderPdfPage(pdfBytes: Buffer, pageIndex: number): Promise<Buffer> {
-  return sharp(pdfBytes, { density: RASTER_DPI, page: pageIndex })
-    .png()
-    .toBuffer();
-}
-
-/**
- * Normalize an image (any supported MIME) to PNG for consistent LLM input.
- * Shrinks oversized images to max 2400 px on the long edge to stay within
- * OpenAI token limits without sacrificing table readability.
- */
 async function normalizeImageToPng(bytes: Buffer): Promise<Buffer> {
-  const MAX_LONG_EDGE = 2_400;
-
-  const meta = await sharp(bytes).metadata();
-  const longEdge = Math.max(meta.width ?? 0, meta.height ?? 0);
-
-  let pipeline = sharp(bytes);
-  if (longEdge > MAX_LONG_EDGE) {
-    pipeline = pipeline.resize(
-      meta.width! >= meta.height!
-        ? { width: MAX_LONG_EDGE }
-        : { height: MAX_LONG_EDGE },
-    );
-  }
-  return pipeline.png().toBuffer();
+  return resizeImageToMaxEdge(bytes, MAX_LONG_EDGE, "png");
 }
 
 /**
@@ -78,23 +57,25 @@ export async function preprocessTuevDocument(
   contentType: string,
 ): Promise<PreprocessedTuevDocument> {
   if (contentType !== "application/pdf") {
-    // Image input — normalize and treat as single page.
     const headerPage = await normalizeImageToPng(bytes);
     return { headerPage, defectsPage: null, pageCount: 1 };
   }
 
-  // PDF input — inspect page count.
-  const meta = await sharp(bytes, { density: RASTER_DPI }).metadata();
-  const pageCount = Math.min(Math.max(1, meta.pages ?? 1), MAX_PAGES);
+  const totalPages = Math.min(await getPdfPageCount(bytes), MAX_PAGES);
+  const rendered = await rasterizePdfPagesWithPdfJs(
+    bytes,
+    Math.min(totalPages, 2),
+    RASTER_DPI,
+  );
+  const headerPage = rendered[0];
+  if (!headerPage) {
+    throw new Error("PDF page 1 could not be rasterized.");
+  }
 
-  const headerPage = await renderPdfPage(bytes, 0);
-
-  if (pageCount === 1) {
-    // Single-page PDF — run full extraction on page 1.
+  if (totalPages === 1) {
     return { headerPage, defectsPage: null, pageCount: 1 };
   }
 
-  // Multi-page — isolate the defects page (conventionally page 2).
-  const defectsPage = await renderPdfPage(bytes, 1);
-  return { headerPage, defectsPage, pageCount };
+  const defectsPage = rendered[1] ?? null;
+  return { headerPage, defectsPage, pageCount: totalPages };
 }

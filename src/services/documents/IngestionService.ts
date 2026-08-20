@@ -1,8 +1,12 @@
 import "server-only";
 
-import sharp from "sharp";
+import { resizeImageToMaxEdge } from "@/lib/image/server-canvas";
+import {
+  getPdfPageCount,
+  rasterizePdfPagesWithPdfJs,
+} from "@/lib/ocr/pdf-rasterize-server";
 
-/** DPI when rasterizing PDF pages (sharp/libvips). */
+/** DPI when rasterizing PDF pages. */
 const PDF_RASTER_DPI = 220;
 
 /** Long-edge cap — keeps token usage predictable without losing table detail. */
@@ -60,40 +64,26 @@ export function selectAbePdfPageIndices(totalPages: number): number[] {
 }
 
 async function normalizeImageToJpeg(bytes: Buffer): Promise<Buffer> {
-  const meta = await sharp(bytes).metadata();
-  const longEdge = Math.max(meta.width ?? 0, meta.height ?? 0);
-
-  let pipeline = sharp(bytes).rotate();
-  if (longEdge > MAX_LONG_EDGE_PX) {
-    pipeline = pipeline.resize({
-      width: meta.width! >= (meta.height ?? 0) ? MAX_LONG_EDGE_PX : undefined,
-      height: (meta.height ?? 0) > (meta.width ?? 0) ? MAX_LONG_EDGE_PX : undefined,
-      fit: "inside",
-      withoutEnlargement: true,
-    });
-  }
-
-  return pipeline.jpeg({ quality: JPEG_QUALITY, mozjpeg: true }).toBuffer();
-}
-
-async function renderPdfPageToJpeg(
-  pdfBytes: Buffer,
-  pageIndex: number,
-): Promise<Buffer> {
-  const png = await sharp(pdfBytes, { density: PDF_RASTER_DPI, page: pageIndex })
-    .png()
-    .toBuffer();
-  return normalizeImageToJpeg(png);
+  return resizeImageToMaxEdge(bytes, MAX_LONG_EDGE_PX, "jpeg", JPEG_QUALITY);
 }
 
 async function ingestPdf(bytes: Buffer): Promise<IngestedPage[]> {
-  const meta = await sharp(bytes, { density: PDF_RASTER_DPI }).metadata();
-  const totalPages = Math.max(1, meta.pages ?? 1);
+  const totalPages = await getPdfPageCount(bytes);
   const indices = selectAbePdfPageIndices(totalPages);
+  if (indices.length === 0) return [];
+
+  const maxIndex = Math.max(...indices);
+  const rendered = await rasterizePdfPagesWithPdfJs(
+    bytes,
+    maxIndex + 1,
+    PDF_RASTER_DPI,
+  );
 
   const pages: IngestedPage[] = [];
   for (const pageIndex of indices) {
-    const jpeg = await renderPdfPageToJpeg(bytes, pageIndex);
+    const png = rendered[pageIndex];
+    if (!png) continue;
+    const jpeg = await normalizeImageToJpeg(png);
     pages.push({
       index: pageIndex,
       bytes: jpeg,
