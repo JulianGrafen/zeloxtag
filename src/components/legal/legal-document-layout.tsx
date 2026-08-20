@@ -53,6 +53,13 @@ export function LegalDocumentLayout({
           <Link href="/agb" className="underline-offset-2 hover:underline">
             AGB
           </Link>
+          <span aria-hidden> · </span>
+          <Link
+            href="/datenschutz"
+            className="underline-offset-2 hover:underline"
+          >
+            Datenschutz
+          </Link>
         </p>
       </ScanContent>
     </AppShell>
@@ -75,5 +82,25 @@ export function LegalSection({
         {children}
       </div>
     </section>
+  );
+}
+
+export function LegalParagraph({ children }: { children: ReactNode }) {
+  return <p>{children}</p>;
+}
+
+export function LegalOrderedList({ children }: { children: ReactNode }) {
+  return (
+    <ol className="list-decimal space-y-2 pl-5 marker:text-[color:var(--vd-muted)]">
+      {children}
+    </ol>
+  );
+}
+
+export function LegalUnorderedList({ children }: { children: ReactNode }) {
+  return (
+    <ul className="list-disc space-y-1.5 pl-5 marker:text-[color:var(--vd-muted)]">
+      {children}
+    </ul>
   );
 }

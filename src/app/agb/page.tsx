@@ -3,170 +3,264 @@ import Link from "next/link";
 
 import {
   LegalDocumentLayout,
+  LegalOrderedList,
+  LegalParagraph,
   LegalSection,
+  LegalUnorderedList,
 } from "@/components/legal/legal-document-layout";
+import { PRO_PLAN_MONTHLY_PRICE } from "@/lib/billing/pro-plan";
 import {
-  PRO_PLAN_MONTHLY_PRICE,
-  PRO_PLAN_NAME,
-  PRO_TRIAL_DAYS,
-} from "@/lib/billing/pro-plan";
-import { SITE_LEGAL } from "@/lib/legal/site-legal";
+  formatLegalProviderInline,
+  legalMailtoHref,
+  SITE_LEGAL,
+} from "@/lib/legal/site-legal";
 
 export const metadata: Metadata = {
   title: "AGB · ZeloxTag",
   description: "Allgemeine Geschäftsbedingungen für die Nutzung von ZeloxTag.",
 };
 
+const provider = formatLegalProviderInline();
+
 export default function AgbPage() {
   return (
     <LegalDocumentLayout
-      title="Allgemeine Geschäftsbedingungen"
-      description={`Stand: ${new Date().getFullYear()} · ${SITE_LEGAL.brand}`}
+      title="Allgemeine Geschäftsbedingungen (AGB)"
+      description={`Teil 1 · ${SITE_LEGAL.appHost}`}
     >
-      <LegalSection title="§ 1 Geltungsbereich">
-        <p>
-          Diese Allgemeinen Geschäftsbedingungen (AGB) gelten für die Nutzung
-          der Plattform {SITE_LEGAL.brand} unter {SITE_LEGAL.website} sowie
-          verbundener Dienste. Abweichende Bedingungen des Nutzers werden nicht
-          anerkannt, es sei denn, wir stimmen ihrer Geltung ausdrücklich
-          schriftlich zu.
-        </p>
+      <LegalSection title="1. Geltungsbereich und Vertragspartner">
+        <LegalOrderedList>
+          <li>
+            Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB“) gelten
+            für alle Verträge über die Nutzung der Web-Anwendung unter{" "}
+            {SITE_LEGAL.appHost} (nachfolgend „ZeloxTag-App“) zwischen dem
+            Betreiber {provider} (nachfolgend „Anbieter“) und dem Kunden
+            (nachfolgend „Nutzer“).
+          </li>
+          <li>
+            Das Angebot richtet sich sowohl an Verbraucher im Sinne des § 13
+            BGB als auch an Unternehmer im Sinne des § 14 BGB.
+          </li>
+          <li>
+            Abweichende oder ergänzende Bedingungen des Nutzers werden nicht
+            Vertragsbestandteil, es sei denn, der Anbieter stimmt ihrer Geltung
+            ausdrücklich schriftlich zu.
+          </li>
+        </LegalOrderedList>
       </LegalSection>
 
-      <LegalSection title="§ 2 Vertragsgegenstand">
-        <p>
-          {SITE_LEGAL.brand} verbindet ein physisches QR-Tag am Fahrzeug mit
-          einer digitalen Fahrzeugakte. Nutzer können Fahrzeuge verknüpfen,
-          Dokumente (z. B. Rechnungen, ABEs, TÜV-Berichte) speichern und —
-          abhängig vom gewählten Tarif — erweiterte Funktionen wie KI-gestützte
-          Dokumentenerkennung und Cloud-Synchronisation nutzen.
-        </p>
+      <LegalSection title="2. Leistungsgegenstand und Leistungsstufen">
+        <LegalOrderedList>
+          <li>
+            Der Anbieter stellt unter {SITE_LEGAL.appHost} eine cloudbasierte
+            Softwarelösung (SaaS) zur digitalen Dokumentation und Verwaltung von
+            Fahrzeugdaten, Umbauten, Wartungen und Zubehör zur Verfügung. Das
+            System funktioniert in Kombination mit oder unabhängig von physischen
+            ZeloxTag-QR-Plaketten.
+          </li>
+          <li>
+            <strong>Kostenfreie Basis-Version („ZeloxTag Free“):</strong>
+            <LegalUnorderedList>
+              <li>
+                Bereitstellung einer digitalen Fahrzeug-Visitenkarte / eines
+                Basis-Fahrzeugprofils.
+              </li>
+              <li>
+                Zuordnung und Freischaltung von physischen ZeloxTag-Plaketten.
+              </li>
+              <li>
+                Manuelle Erfassung von Wartungen, Umbauten und Fahrzeugdaten.
+              </li>
+              <li>
+                Anonymisierter Lese-Zugriff für Dritte beim Scannen des
+                QR-Codes (sofern vom Nutzer freigegeben).
+              </li>
+            </LegalUnorderedList>
+          </li>
+          <li>
+            <strong>Kostenpflichtiges Abonnement („ZeloxTag Pro“):</strong>
+            <LegalUnorderedList>
+              <li>
+                Erweiterter Funktionsumfang inkl. KI-gestützter automatischer
+                Extraktion von Rechnungs- und Werkstattdaten (KI-Scan).
+              </li>
+              <li>
+                Unbegrenzter Cloud-Speicher für ABEs, Gutachten und
+                Fahrzeugdokumente.
+              </li>
+              <li>
+                Erweiterte Verwaltungsfunktionen (z. B. Verfassung von
+                Verkaufsexposés, Multi-Garage-Verwaltung).
+              </li>
+            </LegalUnorderedList>
+          </li>
+        </LegalOrderedList>
       </LegalSection>
 
-      <LegalSection title="§ 3 Registrierung und Konto">
-        <p>
-          Für die Nutzerkonto-Funktionen ist eine Registrierung mit gültiger
-          E-Mail-Adresse und sicherem Passwort erforderlich. Der Nutzer ist
-          verpflichtet, Zugangsdaten geheim zu halten und unverzüglich zu
-          informieren, wenn unbefugter Zugriff vermutet wird.
-        </p>
-        <p>
-          Mit der Registrierung bestätigt der Nutzer, volljährig und
-          geschäftsfähig zu sein bzw. mit Zustimmung eines
-          Erziehungsberechtigten zu handeln.
-        </p>
+      <LegalSection title="3. Registrierung und Account-Sicherheit">
+        <LegalOrderedList>
+          <li>
+            Die Nutzung der ZeloxTag-App setzt die Erstellung eines
+            Benutzerkontos voraus. Der Nutzer verpflichtet sich, bei der
+            Registrierung wahrheitsgemäße Angaben zu machen.
+          </li>
+          <li>
+            Der Nutzer ist verpflichtet, seine Zugangsdaten geheim zu halten und
+            vor dem Zugriff Dritter zu schützen.
+          </li>
+        </LegalOrderedList>
       </LegalSection>
 
-      <LegalSection title="§ 4 Leistungen und Tarife">
-        <p>
-          <strong>Kostenlose Basis:</strong> Die öffentliche Fahrzeug-Visitenkarte
-          nach QR-Scan kann ohne kostenpflichtiges Abo genutzt werden, soweit im
-          Produkt ausgewiesen.
-        </p>
-        <p>
-          <strong>{PRO_PLAN_NAME}:</strong> Erweiterte Cloud-Funktionen (u. a.
-          Dokumentenakte, KI-Scan, Verlauf) sind über das kostenpflichtige Abo
-          verfügbar. Neue Abonnenten erhalten {PRO_TRIAL_DAYS} Tage
-          kostenlose Testphase. Danach gilt der Preis von {PRO_PLAN_MONTHLY_PRICE}{" "}
-          pro Monat, sofern nicht abweichend im Checkout ausgewiesen.
-        </p>
+      <LegalSection title="4. Preise, Zahlungsbedingungen und Abrechnung">
+        <LegalOrderedList>
+          <li>Die Nutzung der Basis-Version ist dauerhaft kostenlos.</li>
+          <li>
+            Die Entgelte für das Pro-Abonnement richten sich nach der aktuellen
+            Preisliste auf der Website (z. B. {PRO_PLAN_MONTHLY_PRICE} inkl.
+            MwSt. pro Monat).
+          </li>
+          <li>
+            Die Zahlungsabwicklung erfolgt über den externen Zahlungsdienstleister
+            Stripe Payments Europe, Ltd. Die Vergütung wird jeweils zu Beginn des
+            Abrechnungszeitraums (monatlich) im Voraus fällig und über das
+            gewählte Zahlungsmittel eingezogen.
+          </li>
+        </LegalOrderedList>
       </LegalSection>
 
-      <LegalSection title="§ 5 Preise, Zahlung und Abrechnung">
-        <p>
-          Zahlungen für {PRO_PLAN_NAME} werden über den Zahlungsdienstleister
-          Stripe abgewickelt. Es gelten die im Checkout angezeigten Preise
-          inklusive gesetzlicher Umsatzsteuer, sofern ausgewiesen.
-        </p>
-        <p>
-          Das Abonnement verlängert sich automatisch um jeweils einen Monat,
-          sofern es nicht fristgerecht gekündigt wird. Kündigungen sind über
-          die Aboverwaltung bzw. den Stripe-Kundenbereich möglich.
-        </p>
+      <LegalSection title="5. Vertragslaufzeit und Kündigung">
+        <LegalOrderedList>
+          <li>
+            Das kostenlose Basis-Konto wird auf unbestimmte Zeit geschlossen und
+            kann vom Nutzer jederzeit ohne Einhaltung einer Frist durch Löschung
+            des Accounts oder Kündigung in der App beendet werden.
+          </li>
+          <li>
+            Das kostenpflichtige Pro-Abonnement verlängert sich automatisch
+            jeweils um einen weiteren Monat, wenn es nicht vor Ablauf des
+            aktuellen Abrechnungszeitraums gekündigt wird.
+          </li>
+          <li>
+            Die Kündigung des Pro-Abonnements kann jederzeit mit wenigen Klicks
+            direkt in den Account-Einstellungen der App oder über das
+            Stripe-Kundenportal durchgeführt werden. Nach der Kündigung bleibt
+            der Pro-Zugriff bis zum Ende der bereits bezahlten Laufzeit aktiv
+            und wechselt anschließend automatisch in die kostenfreie
+            Basis-Version.
+          </li>
+        </LegalOrderedList>
       </LegalSection>
 
-      <LegalSection title="§ 6 Pflichten des Nutzers">
-        <p>
-          Der Nutzer ist für alle Inhalte verantwortlich, die er hochlädt oder
-          veröffentlicht. Insbesondere dürfen keine rechtswidrigen, irreführenden
-          oder fremde Rechte verletzenden Inhalte verwendet werden.
-        </p>
-        <p>
-          Der Nutzer stellt {SITE_LEGAL.companyName} von Ansprüchen Dritter frei,
-          die aus einer schuldhaften Verletzung dieser Pflichten entstehen.
-        </p>
+      <LegalSection title="6. Eigenverantwortung des Nutzers und StVZO-Hinweis">
+        <LegalOrderedList>
+          <li>
+            <strong>Keine amtliche Gültigkeit:</strong> Die ZeloxTag-App ist ein
+            privates Dokumentenmanagement-Tool. Sie ersetzt nicht die gesetzlichen
+            Mitführpflichten von Originaldokumenten (z. B. Zulassungsbescheinigung
+            Teil I, ABE-Originalausdrucke, Teilegutachten) gemäß der
+            Straßenverkehrs-Zulassungs-Ordnung (StVZO).
+          </li>
+          <li>
+            Der Nutzer ist selbst dafür verantwortlich, bei
+            Straßenverkehrskontrollen oder Prüfterminen (z. B. TÜV) die gesetzlich
+            geforderten Originaldokumente mitzuführen.
+          </li>
+          <li>
+            Der Nutzer verpflichtet sich, keine rechtswidrigen, Urheberrechte
+            verletzenden oder unangemessenen Inhalte (z. B. gefälschte Gutachten
+            oder beleidigende Medien) auf die Server hochzuladen.
+          </li>
+        </LegalOrderedList>
       </LegalSection>
 
-      <LegalSection title="§ 7 Verfügbarkeit">
-        <p>
-          Wir bemühen uns um eine hohe Verfügbarkeit des Dienstes. Wartungen,
-          technische Störungen oder höhere Gewalt können jedoch zu
-          vorübergehenden Einschränkungen führen. Ein Anspruch auf
-          ununterbrochene Verfügbarkeit besteht nicht.
-        </p>
+      <LegalSection title="7. Haftungsbeschränkung">
+        <LegalOrderedList>
+          <li>
+            Der Anbieter haftet unbeschränkt für Vorsatz und grobe
+            Fahrlässigkeit sowie nach dem Produkthaftungsgesetz.
+          </li>
+          <li>
+            Bei leichter Fahrlässigkeit haftet der Anbieter nur bei Verletzung
+            einer wesentlichen Vertragspflicht (Kardinalpflicht). In diesem Fall
+            ist die Haftung auf den vorhersehbaren, vertragstypischen Schaden
+            begrenzt.
+          </li>
+          <li>
+            Der Anbieter übernimmt keine Haftung für den Verlust von Daten,
+            sofern der Schaden darauf beruht, dass es der Nutzer unterlassen hat,
+            eigene Sicherungen der hochgeladenen Dokumente anzulegen.
+          </li>
+        </LegalOrderedList>
       </LegalSection>
 
-      <LegalSection title="§ 8 Haftung">
-        <p>
-          Wir haften unbeschränkt bei Vorsatz und grober Fahrlässigkeit sowie
-          bei Schäden aus der Verletzung des Lebens, des Körpers oder der
-          Gesundheit. Bei leicht fahrlässiger Verletzung wesentlicher
-          Vertragspflichten ist die Haftung auf den vertragstypischen,
-          vorhersehbaren Schaden begrenzt.
-        </p>
-        <p>
-          Für von Nutzern hochgeladene Dokumente und deren inhaltliche Richtigkeit
-          übernehmen wir keine Gewähr. KI-gestützte Erkennung dient der
-          Unterstützung — der Nutzer prüft erkannte Daten vor dem Speichern.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="§ 9 Laufzeit und Kündigung">
-        <p>
-          Das Nutzerkonto kann jederzeit durch Löschungsanfrage an{" "}
+      <LegalSection title="8. Widerrufsbelehrung für Verbraucher (Digitale Inhalte)">
+        <LegalParagraph>
+          <strong>Widerrufsrecht</strong>
+        </LegalParagraph>
+        <LegalParagraph>
+          Sie haben das Recht, binnen vierzehn Tagen ohne Angabe von Gründen
+          diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage
+          ab dem Tag des Vertragsschlusses. Um Ihr Widerrufsrecht auszuüben,
+          müssen Sie uns ({provider},{" "}
           <a
-            href={`mailto:${SITE_LEGAL.email}`}
-            className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
-          >
-            {SITE_LEGAL.email}
-          </a>{" "}
-          beendet werden. Kostenpflichtige Abos enden zusätzlich mit wirksamer
-          Kündigung des Abonnements gemäß § 5.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="§ 10 Datenschutz">
-        <p>
-          Informationen zur Verarbeitung personenbezogener Daten werden in
-          unserer Datenschutzerklärung bereitgestellt. Bei Fragen wende dich an{" "}
-          <a
-            href={`mailto:${SITE_LEGAL.email}`}
+            href={legalMailtoHref()}
             className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
           >
             {SITE_LEGAL.email}
           </a>
-          .
-        </p>
+          ) mittels einer eindeutigen Erklärung über Ihren Entschluss informieren.
+        </LegalParagraph>
+        <LegalParagraph>
+          <strong>Erlöschen des Widerrufsrechts</strong>
+        </LegalParagraph>
+        <LegalParagraph>
+          Das Widerrufsrecht erlischt bei einem Vertrag über die Lieferung von
+          nicht auf einem körperlichen Datenträger befindlichen digitalen
+          Inhalten, wenn wir mit der Ausführung des Vertrags begonnen haben,
+          nachdem Sie ausdrücklich zugestimmt haben, dass wir mit der Ausführung
+          des Vertrags vor Ablauf der Widerrufsfrist beginnen, und Sie Ihre
+          Kenntnis davon bestätigt haben, dass Sie durch Ihre Zustimmung mit
+          Beginn der Ausführung des Vertrags Ihr Widerrufsrecht verlieren.
+        </LegalParagraph>
       </LegalSection>
 
-      <LegalSection title="§ 11 Schlussbestimmungen">
-        <p>Es gilt das Recht der Bundesrepublik Deutschland.</p>
-        <p>
-          Sollten einzelne Bestimmungen unwirksam sein, bleibt die Wirksamkeit
-          der übrigen Regelungen unberührt.
-        </p>
-        <p>
-          Anbieter im Sinne dieser AGB: {SITE_LEGAL.companyName}. Weitere
-          Angaben findest du im{" "}
+      <LegalSection title="9. Schlussbestimmungen">
+        <LegalOrderedList>
+          <li>
+            Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des
+            UN-Kaufrechts.
+          </li>
+          <li>
+            Sollte eine Bestimmung dieser AGB unwirksam sein, bleibt der Vertrag
+            im Übrigen wirksam.
+          </li>
+        </LegalOrderedList>
+        <LegalParagraph>
+          Weitere Anbieterangaben findest du im{" "}
           <Link
             href="/impressum"
             className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
           >
             Impressum
           </Link>
+          . Informationen zur Datenverarbeitung findest du in der{" "}
+          <Link
+            href="/datenschutz"
+            className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
+          >
+            Datenschutzerklärung
+          </Link>
           .
-        </p>
+        </LegalParagraph>
       </LegalSection>
+
+      <LegalParagraph>
+        <em className="text-[0.82rem] text-[color:var(--vd-muted)]">
+          Hinweis: Dieser Text stellt einen rechtlich fundierten Entwurf dar, der
+          auf das technische Setup angepasst ist, und ersetzt im Zweifel keine
+          Einzelfallprüfung durch einen spezialisierten Rechtsanwalt.
+        </em>
+      </LegalParagraph>
     </LegalDocumentLayout>
   );
 }

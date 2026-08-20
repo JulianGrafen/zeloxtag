@@ -4,7 +4,11 @@ import {
   LegalDocumentLayout,
   LegalSection,
 } from "@/components/legal/legal-document-layout";
-import { formatLegalAddress, SITE_LEGAL } from "@/lib/legal/site-legal";
+import {
+  formatLegalAddress,
+  legalMailtoHref,
+  SITE_LEGAL,
+} from "@/lib/legal/site-legal";
 
 export const metadata: Metadata = {
   title: "Impressum · ZeloxTag",
@@ -20,21 +24,19 @@ export default function ImpressumPage() {
       description="Angaben gemäß § 5 TMG"
     >
       <LegalSection title="Anbieter">
+        <p>{SITE_LEGAL.operatorName}</p>
+        <p>{SITE_LEGAL.street}</p>
         <p>
-          {SITE_LEGAL.companyName}
-          {SITE_LEGAL.legalForm ? ` (${SITE_LEGAL.legalForm})` : null}
+          {SITE_LEGAL.postalCode} {SITE_LEGAL.city}
         </p>
-        {SITE_LEGAL.representative ? (
-          <p>Vertreten durch: {SITE_LEGAL.representative}</p>
-        ) : null}
-        {address ? <p>{address}</p> : null}
+        <p>{SITE_LEGAL.country}</p>
       </LegalSection>
 
       <LegalSection title="Kontakt">
         <p>
           E-Mail:{" "}
           <a
-            href={`mailto:${SITE_LEGAL.email}`}
+            href={legalMailtoHref()}
             className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
           >
             {SITE_LEGAL.email}
@@ -47,7 +49,7 @@ export default function ImpressumPage() {
             href={SITE_LEGAL.website}
             className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
           >
-            {SITE_LEGAL.website.replace(/^https?:\/\//, "")}
+            {SITE_LEGAL.appHost}
           </a>
         </p>
       </LegalSection>
@@ -67,12 +69,11 @@ export default function ImpressumPage() {
         </LegalSection>
       ) : null}
 
-      <LegalSection title="Verantwortlich für den Inhalt">
+      <LegalSection title="Verantwortlich für den Inhalt (§ 55 Abs. 2 RStV)">
         <p>
-          {SITE_LEGAL.contentResponsible ||
-            SITE_LEGAL.representative ||
-            SITE_LEGAL.companyName}
-          {address ? `, ${address}` : null}
+          {SITE_LEGAL.contentResponsible}
+          <br />
+          {address}
         </p>
       </LegalSection>
 

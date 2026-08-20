@@ -188,8 +188,12 @@ export function LoginForm({
             Mit der Registrierung akzeptierst du unsere{" "}
             <a href="/agb" className="underline-offset-2 hover:underline">
               AGB
-            </a>
-            .
+            </a>{" "}
+            und nimmst unsere{" "}
+            <a href="/datenschutz" className="underline-offset-2 hover:underline">
+              Datenschutzerklärung
+            </a>{" "}
+            zur Kenntnis.
           </p>
         ) : null}
 
@@ -229,6 +233,10 @@ export function LoginForm({
         <span aria-hidden>·</span>
         <a href="/agb" className="underline-offset-2 hover:underline">
           AGB
+        </a>
+        <span aria-hidden>·</span>
+        <a href="/datenschutz" className="underline-offset-2 hover:underline">
+          Datenschutz
         </a>
       </nav>
     </ScanContent>
