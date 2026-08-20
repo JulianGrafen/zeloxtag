@@ -15,7 +15,7 @@ export const SITE_LEGAL = {
   postalCode: env("NEXT_PUBLIC_LEGAL_POSTAL_CODE", "53925"),
   city: env("NEXT_PUBLIC_LEGAL_CITY", "Kall"),
   country: env("NEXT_PUBLIC_LEGAL_COUNTRY", "Deutschland"),
-  email: env("NEXT_PUBLIC_LEGAL_EMAIL", "kontakt@zeloxtag.de"),
+  email: env("NEXT_PUBLIC_LEGAL_EMAIL", "info@zeloxtag.de"),
   phone: env("NEXT_PUBLIC_LEGAL_PHONE", ""),
   vatId: env("NEXT_PUBLIC_LEGAL_VAT_ID", ""),
   registerCourt: env("NEXT_PUBLIC_LEGAL_REGISTER_COURT", ""),
