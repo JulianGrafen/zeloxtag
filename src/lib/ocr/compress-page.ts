@@ -77,6 +77,35 @@ function canvasToJpegBlob(
 }
 
 function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
+  if (typeof createImageBitmap === "function") {
+    return createImageBitmap(blob, { imageOrientation: "none" })
+      .then((bitmap) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          bitmap.close();
+          throw new Error("Canvas ist in diesem Browser nicht verfügbar.");
+        }
+        ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
+
+        const image = new Image();
+        return new Promise<HTMLImageElement>((resolve, reject) => {
+          image.onload = () => resolve(image);
+          image.onerror = () =>
+            reject(new Error("Bild konnte nicht geladen werden."));
+          image.src = canvas.toDataURL("image/jpeg", 0.92);
+        });
+      })
+      .catch(() => loadImageFromBlobViaObjectUrl(blob));
+  }
+
+  return loadImageFromBlobViaObjectUrl(blob);
+}
+
+function loadImageFromBlobViaObjectUrl(blob: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(blob);
     const image = new Image();
@@ -101,7 +130,7 @@ export async function compressPageImage(
 ): Promise<CompressedPage> {
   const image =
     file instanceof File
-      ? await loadImageFromFile(file)
+      ? await loadImageFromFile(file, { applyExifOrientation: false })
       : await loadImageFromBlob(file);
 
   const sourceWidth = image.naturalWidth || image.width;

@@ -14,6 +14,7 @@ import {
   type DocumentUserMessagePart,
 } from "./llm-document-content";
 import { TextParseError } from "./parse-error";
+import { isHeicMime } from "@/lib/image/convert-heic-to-jpeg";
 
 export type { DocumentBytesInput };
 
@@ -52,21 +53,20 @@ function llmImagePart(bytes: Buffer, contentType = "image/png"): DocumentUserMes
   };
 }
 
-async function normalizeRasterToPng(
-  bytes: Buffer,
-  maxEdgePx = LLM_IMAGE_MAX_EDGE_PX,
-): Promise<Buffer> {
-  return resizeImageToMaxEdge(bytes, maxEdgePx, "png");
-}
-
-/**
- * Resize + PNG encode for vision LLM (contrast pass optional — canvas-only on serverless).
- */
 export async function enhanceDocumentImageForLlm(
   bytes: Buffer,
   maxEdgePx = LLM_IMAGE_MAX_EDGE_PX,
+  mime?: string,
 ): Promise<Buffer> {
-  return normalizeRasterToPng(bytes, maxEdgePx);
+  return normalizeRasterToPng(bytes, maxEdgePx, mime);
+}
+
+async function normalizeRasterToPng(
+  bytes: Buffer,
+  maxEdgePx = LLM_IMAGE_MAX_EDGE_PX,
+  mime?: string,
+): Promise<Buffer> {
+  return resizeImageToMaxEdge(bytes, maxEdgePx, "png", 85, mime);
 }
 
 export async function rasterizePdfPagesForLlm(
@@ -111,16 +111,18 @@ export async function prepareDocumentImagesForLlm(
     }
   }
 
-  if (!isProbablyRasterImage(input.bytes)) {
+  if (!isProbablyRasterImage(input.bytes) && !isHeicMime(contentType)) {
     return [];
   }
 
   try {
-    return [await enhanceDocumentImageForLlm(input.bytes, maxEdgePx)];
+    return [
+      await enhanceDocumentImageForLlm(input.bytes, maxEdgePx, contentType),
+    ];
   } catch (error) {
     console.warn("[prepare-document-for-llm] image enhance failed", error);
     try {
-      return [await normalizeRasterToPng(input.bytes, maxEdgePx)];
+      return [await normalizeRasterToPng(input.bytes, maxEdgePx, contentType)];
     } catch (normalizeError) {
       console.warn("[prepare-document-for-llm] image normalize failed", normalizeError);
       return [];

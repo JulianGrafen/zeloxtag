@@ -117,7 +117,7 @@ export async function cropAuflagenSnippetsFromPhoto(
   regions: readonly NormalizedAuflagenRegion[] = [],
   primaryTargetCode?: string | null,
 ): Promise<Map<string, File>> {
-  const image = await loadImageFromFile(file);
+  const image = await loadImageFromFile(file, { applyExifOrientation: true });
   const entries = parseAbeAuflagenNotes(notes, [...targetCodes], {
     strict: true,
   });

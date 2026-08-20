@@ -2,7 +2,21 @@
  * Load image files into HTMLImageElement for canvas pipelines.
  */
 
-export async function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+export type LoadImageFromFileOptions = {
+  /**
+   * Apply JPEG/HEIC EXIF orientation when decoding.
+   * Default false — avoids double-rotation after browser-image-compression or
+   * when uploading high-resolution files whose pixels are already upright.
+   */
+  applyExifOrientation?: boolean;
+};
+
+export async function loadImageFromFile(
+  file: File,
+  options: LoadImageFromFileOptions = {},
+): Promise<HTMLImageElement> {
+  const applyExifOrientation = options.applyExifOrientation ?? false;
+
   const looksLikeImage =
     file.type.startsWith("image/") ||
     file.type === "" ||
@@ -12,10 +26,11 @@ export async function loadImageFromFile(file: File): Promise<HTMLImageElement> {
     throw new Error("Nur Bilddateien werden unterstützt.");
   }
 
-  // Prefer createImageBitmap (better HEIC / EXIF orientation on modern browsers).
   if (typeof createImageBitmap === "function") {
     try {
-      const bitmap = await createImageBitmap(file);
+      const bitmap = await createImageBitmap(file, {
+        imageOrientation: applyExifOrientation ? "from-image" : "none",
+      });
       const canvas = document.createElement("canvas");
       canvas.width = bitmap.width;
       canvas.height = bitmap.height;

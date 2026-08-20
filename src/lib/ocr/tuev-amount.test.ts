@@ -61,7 +61,7 @@ describe("resolveTuevTotalAmount", () => {
         { label: "Hauptuntersuchung", amount: 123.81 },
         { label: "MwSt 19%", amount: 19.96 },
       ]),
-    ).toBe(123.81);
+    ).toBe(125);
   });
 
   it("returns parsed amount when no line items", () => {

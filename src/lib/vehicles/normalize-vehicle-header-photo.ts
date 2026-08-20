@@ -3,6 +3,7 @@
  */
 
 import { getImageDimensions, resizeImageToMaxEdge } from "@/lib/image/server-canvas";
+import { normalizeHeicUploadBytes, resolveHeicMime } from "@/lib/image/convert-heic-to-jpeg";
 
 import { isJpegBytes, isPngBytes } from "./silhouette-bytes";
 
@@ -21,11 +22,20 @@ export class HeaderPhotoNormalizeError extends Error {
  */
 export async function normalizeVehicleHeaderPhoto(
   bytes: Uint8Array | Buffer,
+  mime?: string,
 ): Promise<Buffer> {
-  const input = Buffer.from(bytes);
+  let input = Buffer.from(bytes);
+  let contentType = mime?.trim().toLowerCase() ?? "";
+
+  const heicMime = resolveHeicMime(input, contentType);
+  if (heicMime) {
+    const converted = await normalizeHeicUploadBytes(input, heicMime);
+    input = Buffer.from(converted.bytes);
+    contentType = converted.mime;
+  }
 
   if (isPngBytes(input) && input.byteLength <= HEADER_PHOTO_MAX_EDGE * HEADER_PHOTO_MAX_EDGE * 4) {
-    const dims = await getImageDimensions(input);
+    const dims = await getImageDimensions(input, contentType);
     if (
       dims &&
       dims.width <= HEADER_PHOTO_MAX_EDGE &&
@@ -36,7 +46,7 @@ export async function normalizeVehicleHeaderPhoto(
   }
 
   try {
-    return await resizeImageToMaxEdge(input, HEADER_PHOTO_MAX_EDGE, "png");
+    return await resizeImageToMaxEdge(input, HEADER_PHOTO_MAX_EDGE, "png", 85, contentType);
   } catch {
     throw new HeaderPhotoNormalizeError(
       "Das Foto konnte nicht verarbeitet werden.",

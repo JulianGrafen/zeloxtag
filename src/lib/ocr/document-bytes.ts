@@ -1,5 +1,7 @@
 /** Magic-byte helpers for server-side document prep. */
 
+import { sniffHeicMimeFromBytes } from "@/lib/image/convert-heic-to-jpeg";
+
 export function isPdfBuffer(bytes: Buffer): boolean {
   return (
     bytes.byteLength >= 4 &&
@@ -74,5 +76,7 @@ export function resolveDocumentContentType(
   if (isPngBuffer(bytes)) return "image/png";
   if (isJpegBuffer(bytes)) return "image/jpeg";
   if (isWebpBuffer(bytes)) return "image/webp";
+  const heic = sniffHeicMimeFromBytes(bytes);
+  if (heic) return heic;
   return declaredContentType;
 }

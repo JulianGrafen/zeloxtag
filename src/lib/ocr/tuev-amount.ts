@@ -6,6 +6,9 @@ const GESAMT_LABEL =
 const TAX_OR_NET_LABEL =
   /^(?:mwst|ust|mehrwertsteuer|umsatzsteuer)\b|ohne\s*mwst|nettobetrag|summe\s+netto/i;
 
+const PARTIAL_FEE_LINE_LABEL =
+  /^(?:hauptuntersuchung|\bhu\b|\bau\b|abgasuntersuchung|sonstiges|vorgaben|vergütung|prüfungsentgelt|untersuchung)\b/i;
+
 export function isTuevTaxOrNetLineItem(label: string): boolean {
   const trimmed = label.trim();
   if (!trimmed) return true;
@@ -57,19 +60,30 @@ export function normalizeTuevLineItems(
   return items.length > 0 ? items : null;
 }
 
+function isPartialFeeLineItem(label: string): boolean {
+  const trimmed = label.trim();
+  if (!trimmed || isTuevTaxOrNetLineItem(trimmed) || GESAMT_LABEL.test(trimmed)) {
+    return false;
+  }
+  return PARTIAL_FEE_LINE_LABEL.test(trimmed);
+}
+
 function sumTuevFeeLineItems(
   lineItems: readonly InvoiceLineItem[],
 ): number | null {
   const fees = lineItems.filter(
-    (item) =>
-      item.amount > 0 &&
-      !isTuevTaxOrNetLineItem(item.label) &&
-      !GESAMT_LABEL.test(item.label),
+    (item) => item.amount > 0 && isPartialFeeLineItem(item.label),
   );
   if (fees.length === 0) return null;
 
   const sum = roundEuro(fees.reduce((acc, item) => acc + item.amount, 0));
   return sum > 0 ? sum : null;
+}
+
+function estimateGrossFromMwSt(mwstAmount: number): number | null {
+  // Standard 19 % USt: gross ≈ net + MwSt, net ≈ MwSt / 0.19
+  const estimated = roundEuro((mwstAmount / 0.19) * 1.19);
+  return estimated >= 5 && estimated <= 2_000 ? estimated : null;
 }
 
 function amountMatchesTaxLineItem(
@@ -121,7 +135,22 @@ export function resolveTuevTotalAmount(
   }
 
   if (amountMatchesTaxLineItem(parsedAmount, lineItems)) {
-    if (feeSum !== null && feeSum > parsedAmount) return feeSum;
+    if (feeSum !== null) {
+      // DEKRA often omits the small "Vorgaben/Sonstiges" row (~1,19 €).
+      const withStandardAddon = roundEuro(feeSum + 1.19);
+      const estimatedGross = estimateGrossFromMwSt(parsedAmount);
+      if (
+        withStandardAddon > feeSum &&
+        (estimatedGross === null ||
+          Math.abs(withStandardAddon - estimatedGross) <= 1)
+      ) {
+        return withStandardAddon;
+      }
+      if (feeSum > parsedAmount) return feeSum;
+    }
+
+    const estimatedGross = estimateGrossFromMwSt(parsedAmount);
+    if (estimatedGross !== null) return estimatedGross;
     return null;
   }
 

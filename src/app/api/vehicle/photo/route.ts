@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     if (!sniffed || !ALLOWED_INPUT_MIME.has(sniffed)) {
       return jsonError(
         415,
-        "Unsupported image type. Use JPEG, PNG, or WebP.",
+        "Unsupported image type. Use JPEG, PNG, WebP, or HEIC.",
         "unsupported_media",
       );
     }
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
 
     let photoPng: Buffer;
     try {
-      photoPng = await normalizeVehicleHeaderPhoto(bytes);
+      photoPng = await normalizeVehicleHeaderPhoto(bytes, sniffed);
     } catch (error) {
       if (error instanceof HeaderPhotoNormalizeError) {
         return jsonError(422, error.message, "normalize_failed");

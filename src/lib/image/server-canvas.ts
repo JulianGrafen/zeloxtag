@@ -2,13 +2,30 @@ import "server-only";
 
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 
+import {
+  isHeicMime,
+  normalizeHeicUploadBytes,
+  resolveHeicMime,
+} from "./convert-heic-to-jpeg";
+
+export { HeicConversionError } from "./convert-heic-to-jpeg";
+
 export type ImageOutputFormat = "png" | "jpeg";
+
+async function decodeForCanvas(bytes: Buffer, mime?: string): Promise<Buffer> {
+  const heicMime = resolveHeicMime(bytes, mime);
+  if (heicMime) {
+    return (await normalizeHeicUploadBytes(bytes, heicMime)).bytes;
+  }
+  return bytes;
+}
 
 export async function getImageDimensions(
   bytes: Buffer,
+  mime?: string,
 ): Promise<{ width: number; height: number } | null> {
   try {
-    const img = await loadImage(bytes);
+    const img = await loadImage(await decodeForCanvas(bytes, mime));
     return { width: img.width, height: img.height };
   } catch {
     return null;
@@ -20,8 +37,9 @@ export async function resizeImageToMaxEdge(
   maxEdgePx: number,
   format: ImageOutputFormat = "png",
   jpegQuality = 85,
+  mime?: string,
 ): Promise<Buffer> {
-  const img = await loadImage(bytes);
+  const img = await loadImage(await decodeForCanvas(bytes, mime));
   const width = img.width;
   const height = img.height;
   const longEdge = Math.max(width, height);
@@ -48,8 +66,8 @@ export async function resizeImageToMaxEdge(
   return canvas.toBuffer("image/png");
 }
 
-export async function encodeImageAsPng(bytes: Buffer): Promise<Buffer> {
-  const img = await loadImage(bytes);
+export async function encodeImageAsPng(bytes: Buffer, mime?: string): Promise<Buffer> {
+  const img = await loadImage(await decodeForCanvas(bytes, mime));
   const canvas = createCanvas(img.width, img.height);
   canvas.getContext("2d").drawImage(img, 0, 0);
   return canvas.toBuffer("image/png");

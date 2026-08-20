@@ -104,7 +104,7 @@ describe("enrichTuevRecordFromOcrText — DEKRA fixture", () => {
       OCR_SAMPLES.tuevReportPass,
     );
 
-    expect(enriched.amount).toBe(123.81);
+    expect(enriched.amount).toBe(125);
   });
 });
 

@@ -183,6 +183,16 @@ export function LoginForm({
         {message ? <p className="vd-alert-error">{message}</p> : null}
         {info ? <p className="vd-alert-success">{info}</p> : null}
 
+        {tab === "signup" ? (
+          <p className="text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
+            Mit der Registrierung akzeptierst du unsere{" "}
+            <a href="/agb" className="underline-offset-2 hover:underline">
+              AGB
+            </a>
+            .
+          </p>
+        ) : null}
+
         <Button type="submit" disabled={pending}>
           {pending
             ? "Bitte warten…"
@@ -208,6 +218,19 @@ export function LoginForm({
           · Toyota Supra Showcase
         </span>
       </p>
+
+      <nav
+        aria-label="Rechtliches"
+        className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[0.75rem] text-[color:var(--vd-muted)]"
+      >
+        <a href="/impressum" className="underline-offset-2 hover:underline">
+          Impressum
+        </a>
+        <span aria-hidden>·</span>
+        <a href="/agb" className="underline-offset-2 hover:underline">
+          AGB
+        </a>
+      </nav>
     </ScanContent>
   );
 }

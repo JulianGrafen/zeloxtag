@@ -38,7 +38,7 @@ function isImageFile(file: File): boolean {
 }
 
 async function rasterToPngFile(file: File, baseName: string): Promise<File> {
-  const bitmap = await createImageBitmap(file);
+  const bitmap = await createImageBitmap(file, { imageOrientation: "none" });
   const maxEdge = SILHOUETTE_CLIENT_MAX_EDGE_PX;
   const scale = Math.min(
     1,

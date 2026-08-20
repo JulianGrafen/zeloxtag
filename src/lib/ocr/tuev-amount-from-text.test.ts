@@ -25,6 +25,25 @@ Gesamtbetrag inkl. MwSt: 125,00 EUR
     expect(extractTuevAmountFromText(text)).toBe(125);
   });
 
+  it("reads Gesamtbetrag split across OCR lines", () => {
+    const text = `
+Gesamtbetrag
+inkl. MwSt
+125,00 EUR
+    `.trim();
+
+    expect(extractTuevAmountFromText(text)).toBe(125);
+  });
+
+  it("sums DEKRA inline fee rows", () => {
+    const text = `
+Hauptuntersuchung inkl. AU mit Abgasmessung 123,81 EUR
+Vorgaben nach Nr. 1 Anlage VIIIa StVZO 1,19 EUR
+    `.trim();
+
+    expect(extractTuevAmountFromText(text)).toBe(125);
+  });
+
   it("sums partial fee rows when no Gesamt label is present", () => {
     const text = `
 Hauptuntersuchung                  123,81

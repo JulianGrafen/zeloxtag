@@ -16,18 +16,49 @@ function parseFee(raw: string): number | null {
 }
 
 const PARTIAL_FEE_LABEL =
-  /^(?:hauptuntersuchung|\bhu\b|\bau\b|abgasuntersuchung|sonstiges|vorgaben|vergütung|prüfungsentgelt|untersuchung)$/i;
+  /^(?:hauptuntersuchung|\bhu\b|\bau\b|abgasuntersuchung|sonstiges|vorgaben|vergütung|prüfungsentgelt|untersuchung)\b/i;
 
 const GESAMT_AMOUNT_PATTERN =
   /(?:gesamt(?:betrag|summe)?(?:\s+inkl\.?\s*(?:\d+\s*%?\s*)?(?:mwst|ust|u\.?\s*st\.?|eur)?)?|endpreis|end\s*summe|zu\s*zahlen|rechnungsbetrag|prüfungsentgelt\s*gesamt|entgelt\s*gesamt|summe\s+entgelt)\s*[:\s]*(-?\s*[0-9][0-9.\s,]{0,14})\s*(?:€|eur)?/gi;
 
 const ENTGELT_SECTION = /Entgeltinformation[\s\S]{0,1200}/i;
 
-function isPartialFeeLabel(label: string): boolean {
+const AMOUNT_TOKEN = /([0-9]{1,3}(?:\.[0-9]{3})*,\d{2}|[0-9]+,\d{2})/;
+
+function isPartialFeeLineLabel(label: string): boolean {
   const trimmed = label.trim();
-  if (!trimmed) return true;
-  if (/^mwst|^ust|^mehrwertsteuer/i.test(trimmed)) return true;
-  return false;
+  if (!trimmed || /^mwst|^ust|^mehrwertsteuer/i.test(trimmed)) return false;
+  if (/gesamt|endpreis|zu\s*zahlen|nettobetrag|ohne\s*mwst/i.test(trimmed)) {
+    return false;
+  }
+  return PARTIAL_FEE_LABEL.test(trimmed);
+}
+
+/** OCR splits "Gesamtbetrag" / "inkl. MwSt" / amount across consecutive lines. */
+function extractMultilineGesamtbetrag(lines: string[]): number | null {
+  const ohnePattern = /gesamtbetrag\s+ohne|nettobetrag|summe\s+netto/i;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    if (!/^gesamtbetrag\b|^gesamt\s*:/i.test(line)) continue;
+    if (ohnePattern.test(line)) continue;
+
+    const window = lines.slice(index, index + 4).join(" ");
+    if (/ohne\s*mwst|nettobetrag/i.test(window) && !/inkl/i.test(window)) {
+      continue;
+    }
+
+    for (let offset = 0; offset <= 3; offset += 1) {
+      const checkLine = lines[index + offset];
+      if (!checkLine || ohnePattern.test(checkLine)) continue;
+      const amountMatch = checkLine.match(AMOUNT_TOKEN);
+      if (!amountMatch) continue;
+      const value = parseFee(amountMatch[1]!);
+      if (value !== null) return value;
+    }
+  }
+
+  return null;
 }
 
 function extractGesamtFromSection(section: string): number | null {
@@ -44,26 +75,25 @@ function extractGesamtFromSection(section: string): number | null {
     const line = lines[index]!;
     if (!inklPattern.test(line)) continue;
 
-    const inline = line.match(
-      /([0-9]{1,3}(?:\.[0-9]{3})*,\d{2}|[0-9]+,\d{2})/,
-    );
+    const inline = line.match(AMOUNT_TOKEN);
     if (inline) {
       const value = parseFee(inline[1]!);
       if (value !== null) return value;
     }
 
-    for (let offset = 1; offset <= 2; offset += 1) {
+    for (let offset = 1; offset <= 3; offset += 1) {
       const next = lines[index + offset];
       if (!next || inklPattern.test(next) || ohnePattern.test(next)) continue;
-      const nextAmount = next.match(
-        /([0-9]{1,3}(?:\.[0-9]{3})*,\d{2}|[0-9]+,\d{2})/,
-      );
+      const nextAmount = next.match(AMOUNT_TOKEN);
       if (nextAmount) {
         const value = parseFee(nextAmount[1]!);
         if (value !== null) return value;
       }
     }
   }
+
+  const multiline = extractMultilineGesamtbetrag(lines);
+  if (multiline !== null) return multiline;
 
   const candidates: number[] = [];
 
@@ -78,9 +108,7 @@ function extractGesamtFromSection(section: string): number | null {
   for (const line of lines) {
     if (ohnePattern.test(line) || /^mwst|^ust/i.test(line)) continue;
     if (!/gesamt|endpreis|zu\s*zahlen|summe/i.test(line)) continue;
-    for (const match of line.matchAll(
-      /([0-9]{1,3}(?:\.[0-9]{3})*,\d{2}|[0-9]+,\d{2})/g,
-    )) {
+    for (const match of line.matchAll(new RegExp(`${AMOUNT_TOKEN.source}`, "g"))) {
       const value = parseFee(match[1] ?? "");
       if (value !== null) candidates.push(value);
     }
@@ -102,14 +130,15 @@ function sumPartialFeeRows(text: string): number | null {
     const trimmed = line.trim();
     if (!trimmed || /gesamt|endpreis|zu\s*zahlen/i.test(trimmed)) continue;
 
-    const amountMatch = trimmed.match(
-      /([0-9]{1,3}(?:\.[0-9]{3})*,\d{2}|[0-9]+,\d{2})\s*(?:€|eur)?\s*$/i,
-    );
+    const amountMatch =
+      trimmed.match(
+        /([0-9]{1,3}(?:\.[0-9]{3})*,\d{2}|[0-9]+,\d{2})\s*(?:€|eur)?\s*$/i,
+      ) ??
+      trimmed.match(/([0-9]{1,3}(?:\.[0-9]{3})*,\d{2}|[0-9]+,\d{2})\s*(?:€|eur)?/i);
     if (!amountMatch) continue;
 
     const label = trimmed.slice(0, trimmed.length - amountMatch[0].length).trim();
-    if (!label || /^mwst|^ust|^mehrwertsteuer/i.test(label)) continue;
-    if (!PARTIAL_FEE_LABEL.test(label)) continue;
+    if (!isPartialFeeLineLabel(label)) continue;
 
     const value = parseFeeComponent(amountMatch[1] ?? "");
     if (value !== null) rows.push(value);
@@ -162,8 +191,8 @@ export function preferTuevTotalAmount(
   // LLM often returns HU line (123,81) — OCR Gesamt (125,00) wins when higher.
   if (fromOcr > fromLineItems + 0.05) return fromOcr;
 
-  // When line items sum to Gesamt, trust resolveTuevTotalAmount.
-  if (lineItems?.length) return fromLineItems;
+  // OCR Gesamt matches line-item sum — prefer OCR label authority.
+  if (Math.abs(fromOcr - fromLineItems) <= 0.05) return fromOcr;
 
   return fromLineItems;
 }

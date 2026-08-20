@@ -71,6 +71,8 @@ export async function buildTuevDocumentUserMessage(
     return parts;
   }
 
-  parts.push(pngPart(await enhanceDocumentImageForLlm(input.bytes)));
+  parts.push(
+    pngPart(await enhanceDocumentImageForLlm(input.bytes, undefined, input.contentType)),
+  );
   return parts;
 }

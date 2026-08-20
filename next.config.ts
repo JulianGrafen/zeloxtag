@@ -27,7 +27,7 @@ function supabaseImageRemotePattern():
 const supabasePattern = supabaseImageRemotePattern();
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist"],
+  serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist", "heic-convert", "heic-decode", "libheif-js"],
   turbopack: {
     root: process.cwd(),
   },

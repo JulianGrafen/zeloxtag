@@ -23,6 +23,7 @@ import {
   parseVehicleTechSpecs,
   serializeVehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
+import { normalizeHeicUploadBytes } from "@/lib/image/convert-heic-to-jpeg";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -45,14 +46,15 @@ async function normalizeDynoUpload(
   | { ok: true; mime: string; bytes: Buffer }
   | { ok: false; error: string }
 > {
-  if (mime === "image/heic" || mime === "image/heif") {
+  try {
+    const normalized = await normalizeHeicUploadBytes(bytes, mime);
+    return { ok: true, mime: normalized.mime, bytes: normalized.bytes };
+  } catch {
     return {
       ok: false,
-      error: "HEIC wird serverseitig nicht unterstützt. Bitte JPEG, PNG oder PDF wählen.",
+      error: "HEIC konnte nicht gelesen werden. Bitte JPEG, PNG oder PDF wählen.",
     };
   }
-
-  return { ok: true, mime, bytes };
 }
 
 /**

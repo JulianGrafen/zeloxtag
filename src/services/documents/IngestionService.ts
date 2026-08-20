@@ -63,8 +63,17 @@ export function selectAbePdfPageIndices(totalPages: number): number[] {
   return ordered;
 }
 
-async function normalizeImageToJpeg(bytes: Buffer): Promise<Buffer> {
-  return resizeImageToMaxEdge(bytes, MAX_LONG_EDGE_PX, "jpeg", JPEG_QUALITY);
+async function normalizeImageToJpeg(
+  bytes: Buffer,
+  contentType?: string,
+): Promise<Buffer> {
+  return resizeImageToMaxEdge(
+    bytes,
+    MAX_LONG_EDGE_PX,
+    "jpeg",
+    JPEG_QUALITY,
+    contentType,
+  );
 }
 
 async function ingestPdf(bytes: Buffer): Promise<IngestedPage[]> {
@@ -99,7 +108,7 @@ async function ingestImages(files: IngestionImageFile[]): Promise<IngestedPage[]
 
   for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
     const file = files[fileIndex]!;
-    const jpeg = await normalizeImageToJpeg(file.bytes);
+    const jpeg = await normalizeImageToJpeg(file.bytes, file.contentType);
     pages.push({
       index: fileIndex,
       bytes: jpeg,
