@@ -571,7 +571,7 @@ export class AbeExtractionService {
     }
 
     const prepared = await prepareAbeOcrInput(input);
-    const userContent = buildVisionUserMessage(instructionLines, prepared);
+    const userContent = await buildVisionUserMessage(instructionLines, prepared);
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {

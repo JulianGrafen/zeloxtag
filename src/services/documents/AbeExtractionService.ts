@@ -720,7 +720,7 @@ export class AbeDataHunterExtractionService {
           bytes: input.bytes,
           contentType: "application/pdf",
         })
-      : buildVisionUserMessage(
+      : await buildVisionUserMessage(
           instructionLines,
           await prepareAbeOcrInput(input, prepareOptions),
         );

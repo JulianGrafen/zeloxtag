@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_noStore as noStore } from "next/cache";
 
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import {
@@ -222,6 +223,7 @@ async function resolveTagWithRpc(
 async function getTagByUuidUncached(
   uuid: string,
 ): Promise<TagScanResult | null> {
+  noStore();
   const normalized = uuid.trim();
   if (!normalized) return null;
 

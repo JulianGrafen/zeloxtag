@@ -312,13 +312,13 @@ async function runVisionExtract<T>(
 
   const userContent =
     userMessageParts ??
-    buildVisionUserMessage(
+    (await buildVisionUserMessage(
       [
         "Deutsche Kfz-Rechnung oder Servicebeleg (PDF oder Scan).",
         ...userLines,
       ],
       input,
-    );
+    ));
 
   let completion: OpenAI.Chat.Completions.ChatCompletion;
   try {
@@ -469,7 +469,7 @@ export class InvoiceExtractionService {
       );
     }
 
-    const visionMessage = buildVisionUserMessage(
+    const visionMessage = await buildVisionUserMessage(
       instructionLines,
       llmInput,
       { rowSeparators, rowMarkersLeft },

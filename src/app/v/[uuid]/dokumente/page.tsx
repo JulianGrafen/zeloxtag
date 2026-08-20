@@ -7,6 +7,8 @@ import { parseInvoiceListCategory } from "@/lib/documents/invoice-categories";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import type { DocumentType } from "@/types/database";
 
+export const dynamic = "force-dynamic";
+
 interface DocumentsPageProps {
   params: Promise<{ uuid: string }>;
   searchParams: Promise<{ type?: string; category?: string }>;

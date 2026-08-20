@@ -59,7 +59,7 @@ export function VehicleInvoicesView({
   const invoices = useMemo(
     () =>
       documents
-        .filter((doc) => doc.type === "invoice" && !isManualVehicleEntry(doc))
+        .filter((doc) => doc.type === "invoice")
         .slice()
         .sort((a, b) => {
           const aDate = a.date ?? a.created_at;
@@ -184,6 +184,7 @@ export function VehicleInvoicesView({
                   INVOICE_LIST_CATEGORY_LABELS[
                     resolveInvoiceListCategory(doc.category)
                   ];
+                const isManual = isManualVehicleEntry(doc);
 
                 return (
                   <li key={doc.id}>
@@ -223,7 +224,7 @@ export function VehicleInvoicesView({
                         </span>
 
                         <span className="mt-1.5 inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
-                          bezahlt
+                          {isManual ? "Eigener Eintrag" : "bezahlt"}
                         </span>
                       </span>
                     </PressableLink>

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import {
   analyzeDocument,
-  DocumentIntelligenceError,
+  isDocumentIntelligenceError,
 } from "@/lib/ocr/document-intelligence";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { resolveParseModel, isInvoiceNanoTestMode } from "@/lib/ocr/model-routing";
@@ -238,11 +238,16 @@ export async function POST(request: NextRequest) {
     };
     return NextResponse.json(body);
   } catch (error) {
-    if (error instanceof DocumentIntelligenceError) {
+    if (isDocumentIntelligenceError(error)) {
+      console.error("[api/ocr/parse] provider failed", error);
       return jsonError(502, error.message, "parse_failed");
     }
 
     console.error("[api/ocr/parse] unexpected", error);
-    return jsonError(500, "Dokumentanalyse fehlgeschlagen.", "parse_failed");
+    return jsonError(
+      500,
+      "Dokumentanalyse fehlgeschlagen. Bitte erneut versuchen.",
+      "parse_failed",
+    );
   }
 }

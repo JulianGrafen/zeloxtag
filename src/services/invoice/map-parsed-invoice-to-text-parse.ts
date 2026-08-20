@@ -38,7 +38,7 @@ export function mapParsedInvoiceToTextParseResult(
   const fullText = `${headerLines.join("\n")}\n${rawText}`;
 
   const lineItems = normalizeLineItemsList(
-    invoice.line_items.map((item) => ({
+    (invoice.line_items ?? []).map((item) => ({
       label: item.description,
       amount: item.total_price,
     })),

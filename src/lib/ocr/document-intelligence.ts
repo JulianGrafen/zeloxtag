@@ -68,6 +68,19 @@ export class DocumentIntelligenceError extends Error {
   }
 }
 
+/** Bundler-safe check — `instanceof` breaks across duplicated server chunks. */
+export function isDocumentIntelligenceError(
+  error: unknown,
+): error is DocumentIntelligenceError {
+  if (error instanceof DocumentIntelligenceError) return true;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error as Error).name === "DocumentIntelligenceError"
+  );
+}
+
 export type AnalyzeDocumentResult = {
   kind: "invoice" | "abe";
   documentType: OcrDocumentType;

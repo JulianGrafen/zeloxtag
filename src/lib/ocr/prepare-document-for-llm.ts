@@ -266,13 +266,66 @@ export function buildEnhancedImageUserMessage(
   return parts;
 }
 
-/** Build vision user content from prepared OCR input (WebP or PDF fallback). */
-export function buildVisionUserMessage(
+function visionPdfPagePart(webp: Buffer): DocumentUserMessagePart {
+  return llmImagePart(webp);
+}
+
+/**
+ * Build vision user content from prepared OCR input.
+ * PDFs are rasterized to contrast-enhanced WebP pages — Azure Foundry and many
+ * deployments reject native PDF `file` parts in chat completions.
+ */
+export async function buildVisionUserMessage(
   instructionLines: string[],
   input: DocumentBytesInput,
-  options: { rowSeparators?: boolean; rowMarkersLeft?: boolean } = {},
-): DocumentUserMessagePart[] {
+  options: {
+    rowSeparators?: boolean;
+    rowMarkersLeft?: boolean;
+    maxPdfPages?: number;
+  } = {},
+): Promise<DocumentUserMessagePart[]> {
   if (input.contentType === "application/pdf" || isPdfBuffer(input.bytes)) {
+    try {
+      const pageImages = await rasterizePdfPagesForLlm(
+        input.bytes,
+        options.maxPdfPages ?? LLM_INVOICE_MAX_PDF_PAGES,
+      );
+      if (pageImages.length > 0) {
+        const parts: DocumentUserMessagePart[] = instructionLines
+          .filter((line) => line.length > 0)
+          .map((text) => ({ type: "text" as const, text }));
+
+        let imageHint =
+          "Kontrastverstärktes Dokumentbild folgt. " +
+          "Lies kleine Schrift und Tabellenspalten sorgfältig Zeile für Zeile.";
+        if (options.rowMarkersLeft && options.rowSeparators) {
+          imageHint =
+            "Kontrastverstärktes Dokumentbild mit nummerierten Tabellenzeilen (orange Z01, Z02, … links) " +
+            "und horizontalen Trennlinien folgt. " +
+            "Jede orange Markierung Znn = genau EINE Position — alle Spalten rechts davon gehören zu Znn.";
+        } else if (options.rowSeparators) {
+          imageHint =
+            "Kontrastverstärktes Dokumentbild mit horizontalen Trennlinien pro Tabellenzeile folgt. " +
+            "Bezeichnung und Betrag gehören zur gleichen Zeile.";
+        } else if (pageImages.length > 1) {
+          imageHint =
+            "Kontrastverstärkte Seitenbilder folgen (Seite 1 zuerst). " +
+            "Lies Tabellenzeile für Zeile — Bezeichnung und Betrag gehören zur gleichen Zeile.";
+        }
+
+        parts.push({ type: "text", text: imageHint });
+        for (const pageImage of pageImages) {
+          parts.push(visionPdfPagePart(pageImage));
+        }
+        return parts;
+      }
+    } catch (error) {
+      console.warn(
+        "[buildVisionUserMessage] PDF rasterize failed, falling back to native PDF",
+        error,
+      );
+    }
+
     return buildDocumentUserMessage(instructionLines, {
       bytes: input.bytes,
       contentType: "application/pdf",

@@ -1419,12 +1419,15 @@ export function InvoiceUploader({
 
               const category = oilPrimary ? "service" : fields.category;
               const storedTitle = resolvedTitle.slice(0, 160);
+              const storedType = isInvoiceFamilyScan
+                ? scanDef.documentType
+                : documentTypeForTextCategory(category);
 
               const formData = new FormData();
               formData.set("vehicleId", vehicleId);
               formData.set("tagUuid", tagUuid);
               formData.set("title", storedTitle);
-              formData.set("type", documentTypeForTextCategory(category));
+              formData.set("type", storedType);
               formData.set("category", category);
               formData.set("vendor", fields.vendor?.trim() ?? "");
               formData.set("date", fields.date ?? "");

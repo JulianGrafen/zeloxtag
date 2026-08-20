@@ -471,8 +471,10 @@ export async function uploadDocument(
 
   revalidatePath(`/v/${tagUuid}`);
   revalidatePath(`/v/${tagUuid}/dokumente`);
+  revalidatePath(`/v/${tagUuid}/historie`);
   revalidatePath(`/v/${tagUuid}/service`);
   revalidatePath(`/v/${tagUuid}/intervalle`);
+  revalidatePath(`/v/${tagUuid}/eintrag`);
 
   return { status: "uploaded", document, tagUuid };
 }

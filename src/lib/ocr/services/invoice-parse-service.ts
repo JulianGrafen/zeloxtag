@@ -203,7 +203,7 @@ export class InvoiceParseService {
 
     const userContent = isTuevReport
       ? await buildTuevDocumentUserMessage([docHint, ...userLines], prepared)
-      : buildVisionUserMessage([docHint, ...userLines], llmInput, {
+      : await buildVisionUserMessage([docHint, ...userLines], llmInput, {
           rowSeparators,
           rowMarkersLeft,
         });
