@@ -4,6 +4,7 @@ import {
   isTuningLikeCategory,
 } from "@/lib/documents/manual-entries";
 import { parseLineItems } from "@/lib/documents/line-items";
+import { humanizeShowcaseLabel } from "@/lib/documents/humanize-showcase-label";
 import {
   hasExplicitShowcaseLineSelection,
   visibleShowcaseLineItems,
@@ -131,7 +132,7 @@ function extractFromTuningInvoices(
       mods.push({
         id: `${doc.id}-${key.slice(0, 24)}`,
         category: doc.category?.trim() || "Tuning / Teile",
-        partName: item.label.trim(),
+        partName: humanizeShowcaseLabel(item.label.trim()),
         manufacturer: doc.vendor?.trim() || null,
         kbaNumber: null,
         approvalStatus: "Rechnung",
@@ -185,7 +186,7 @@ function extractFromManualEntries(
         mods.push({
           id: `${entry.id}-${item.label.trim().toLowerCase().slice(0, 24)}`,
           category: "Manueller Eintrag",
-          partName: item.label.trim(),
+          partName: humanizeShowcaseLabel(item.label.trim()),
           manufacturer: entry.vendor?.trim() || null,
           kbaNumber: null,
           approvalStatus: "Eintrag",

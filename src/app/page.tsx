@@ -2,15 +2,27 @@ import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { LoginForm } from "@/components/auth/login-form";
+import { pageSocialMetadata } from "@/lib/seo/open-graph";
 
 export const metadata: Metadata = {
-  title: "Anmelden · ZeloxTag",
+  title: "Anmelden",
   description:
     "Bei ZeloxTag anmelden — digitale Fahrzeugakte nach QR-Scan.",
+  ...pageSocialMetadata({
+    title: "Anmelden · ZeloxTag",
+    description:
+      "Bei ZeloxTag anmelden — digitale Fahrzeugakte nach QR-Scan.",
+    path: "/",
+  }),
 };
 
 interface HomePageProps {
-  searchParams: Promise<{ next?: string; error?: string; recovered?: string }>;
+  searchParams: Promise<{
+    next?: string;
+    error?: string;
+    recovered?: string;
+    tab?: string;
+  }>;
 }
 
 /**
@@ -28,7 +40,7 @@ function mapLoginQueryError(error: string | undefined): string | undefined {
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const { next, error, recovered } = await searchParams;
+  const { next, error, recovered, tab } = await searchParams;
 
   return (
     <AppShell showNavbar={false}>
@@ -36,6 +48,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         nextPath={next && next !== "/" ? next : "/auth/continue"}
         initialError={mapLoginQueryError(error)}
         recovered={recovered === "1"}
+        initialTab={tab === "signup" ? "signup" : "password"}
       />
     </AppShell>
   );

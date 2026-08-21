@@ -35,8 +35,9 @@ import {
   isManualVehicleEntry,
 } from "@/lib/documents/manual-entries";
 import {
+  documentMediaKind,
   isViewableDocumentUrl,
-  openDocumentOriginal,
+  resolveDocumentViewUrl,
 } from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
 
@@ -92,6 +93,12 @@ export function DocumentInvoiceDetailView({
   const [title, setTitle] = useState(() => displayDocumentTitle(document.title));
   const lineItems = document.line_items ?? [];
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
+  const previewSrc = canOpenOriginal
+    ? resolveDocumentViewUrl(document.file_url)
+    : null;
+  const previewKind = canOpenOriginal
+    ? documentMediaKind(document.file_url)
+    : null;
   const isManual = isManualVehicleEntry(document);
   const canEditInvoice =
     canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
@@ -405,16 +412,21 @@ export function DocumentInvoiceDetailView({
             </p>
           </div>
           <div className="p-4">
-            {canOpenOriginal ? (
-              <PressableButton
-                type="button"
-                variant="button"
-                onClick={() => openDocumentOriginal(document.file_url)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
-              >
-                <FileText className="h-4 w-4" aria-hidden />
-                {isManual ? "Fotos öffnen" : "Original öffnen"}
-              </PressableButton>
+            {canOpenOriginal && previewSrc ? (
+              previewKind === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewSrc}
+                  alt={title}
+                  className="max-h-[50vh] w-full rounded-xl bg-neutral-100 object-contain"
+                />
+              ) : (
+                <iframe
+                  title={title}
+                  src={previewSrc}
+                  className="h-[min(50vh,28rem)] w-full rounded-xl border border-[color:var(--vd-border)] bg-white"
+                />
+              )
             ) : (
               <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
                 {isManual

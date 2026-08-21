@@ -19,6 +19,10 @@ import {
   resolvePublicVehicleEntry,
 } from "@/lib/vehicles/get-public-vehicle";
 import { buildPublicShowcasePayload, vehicleSupportsPublicShowcase } from "@/lib/vehicles/public-showcase-data";
+import {
+  pageSocialMetadata,
+  SHOWCASE_OG_DESCRIPTION,
+} from "@/lib/seo/open-graph";
 import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { toOwnerClientTagScanResult } from "@/lib/tags/public-tag-dto";
@@ -51,26 +55,71 @@ export async function generateMetadata({
 }: TagScanPageProps): Promise<Metadata> {
   const { uuid } = await params;
   const entry = await resolvePublicVehicleEntry(uuid);
+  const user = await getCurrentUser();
 
-  if (entry?.kind === "slug" && entry.vehicle.is_public) {
-    const title = vehicleTitle(
-      entry.vehicle.make,
-      entry.vehicle.model,
-      entry.vehicle.year,
-    );
+  async function titleForVehicle(
+    make: string,
+    model: string,
+    year: number | null,
+    vehicleUserId: string,
+    vehicleId: string,
+    tagUuid?: string,
+    isPublic?: boolean,
+  ): Promise<Metadata> {
+    const title = vehicleTitle(make, model, year);
+    const ogPath = tagUuid ? `/v/${tagUuid}/opengraph-image` : "/opengraph-image";
+
+    if (user && tagUuid) {
+      const access = await getTagVehicleAccess(tagUuid, vehicleUserId, vehicleId);
+      if (access.isOwner || access.isContributor) {
+        return {
+          title,
+          description: "Dein Fahrzeug-Dashboard — Belege, Termine und Profil.",
+        };
+      }
+    }
+    if (isPublic) {
+      return {
+        title: `${title} · Showcase`,
+        description: SHOWCASE_OG_DESCRIPTION,
+        ...pageSocialMetadata({
+          title: `${title} · ZeloxTag Showcase`,
+          description: SHOWCASE_OG_DESCRIPTION,
+          path: tagUuid ? `/v/${tagUuid}` : undefined,
+          imagePath: ogPath,
+        }),
+      };
+    }
     return {
-      title: `${title} · ZeloxTag Showcase`,
-      description: "Öffentliches Fahrzeugprofil — Specs, Galerie und Umbauten.",
+      title,
+      description: "QR-Scan-Ziel für ZeloxTag Fahrzeugdokumente.",
     };
   }
 
-  if (entry?.kind === "tag" && entry.result.vehicle?.is_public) {
+  if (entry?.kind === "slug" && entry.vehicle.is_public) {
+    const tagUuid = await getActiveTagUuidForVehicle(entry.vehicle.id);
+    return titleForVehicle(
+      entry.vehicle.make,
+      entry.vehicle.model,
+      entry.vehicle.year,
+      entry.vehicle.user_id,
+      entry.vehicle.id,
+      tagUuid ?? undefined,
+      true,
+    );
+  }
+
+  if (entry?.kind === "tag" && entry.result.vehicle) {
     const v = entry.result.vehicle;
-    const title = vehicleTitle(v.make, v.model, v.year);
-    return {
-      title: `${title} · ZeloxTag Showcase`,
-      description: "Öffentliches Fahrzeugprofil — Specs, Galerie und Umbauten.",
-    };
+    return titleForVehicle(
+      v.make,
+      v.model,
+      v.year,
+      v.user_id,
+      v.id,
+      entry.result.tag.uuid,
+      v.is_public,
+    );
   }
 
   return {
@@ -79,11 +128,16 @@ export async function generateMetadata({
   };
 }
 
-async function renderPublicShowcase(vehicle: Vehicle) {
+async function renderPublicShowcase(vehicle: Vehicle, tagUuid?: string) {
   const documents = await loadPublicShowcaseDocuments(vehicle.id);
   const payload = buildPublicShowcasePayload(vehicle, documents);
 
-  return <PublicShowcaseView data={payload} />;
+  return (
+    <PublicShowcaseView
+      data={payload}
+      dashboardHref={tagUuid ? `/v/${tagUuid}?scan=1` : null}
+    />
+  );
 }
 
 function hasInsiderAccess(access: {
@@ -134,7 +188,8 @@ export default async function TagScanPage({
       }
     }
 
-    return renderPublicShowcase(vehicle);
+    const slugTagUuid = await getActiveTagUuidForVehicle(vehicle.id);
+    return renderPublicShowcase(vehicle, slugTagUuid ?? undefined);
   }
 
   const result = entry.result;
@@ -163,7 +218,7 @@ export default async function TagScanPage({
       !wantsDashboard &&
       !hasInsiderAccess(access)
     ) {
-      return renderPublicShowcase(vehicle);
+      return renderPublicShowcase(vehicle, tag.uuid);
     }
 
     if (!access.isOwner && !access.isContributor) {

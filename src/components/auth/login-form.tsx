@@ -20,6 +20,7 @@ interface LoginFormProps {
   initialError?: string;
   /** Shown after MFA recovery code disabled 2FA. */
   recovered?: boolean;
+  initialTab?: AuthTab;
 }
 
 function mapAuthError(result: AuthActionResult): string | null {
@@ -38,9 +39,10 @@ export function LoginForm({
   nextPath = "/auth/continue",
   initialError,
   recovered = false,
+  initialTab = "password",
 }: LoginFormProps) {
   const router = useRouter();
-  const [tab, setTab] = useState<AuthTab>("password");
+  const [tab, setTab] = useState<AuthTab>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(initialError ?? null);
@@ -219,7 +221,7 @@ export function LoginForm({
         </a>
         <span className="text-[color:var(--vd-muted)]">
           {" "}
-          · Toyota Supra Showcase
+          · BMW E36 328i Showcase
         </span>
       </p>
 

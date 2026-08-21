@@ -25,7 +25,9 @@ export default async function VehicleSettingsPage({
   params,
 }: VehicleSettingsPageProps) {
   const { uuid } = await params;
-  const { result, isDemoShowcase } = await requireTagOwner(uuid);
+  const { result, isDemoShowcase } = await requireTagOwner(uuid, {
+    loginNext: `/v/${uuid}/einstellungen`,
+  });
   const vehicle = result.vehicle!;
   const expose = await getOwnerExposeState(vehicle.id);
   const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(uuid);

@@ -41,6 +41,14 @@ export function isViewableDocumentUrl(fileUrl: string): boolean {
 }
 
 /**
+ * Resolve a view URL — demo/static assets skip the auth-gated proxy.
+ */
+export function resolveDocumentViewUrl(fileUrl: string): string {
+  if (fileUrl.startsWith("/demo/")) return fileUrl;
+  return inlineDocumentProxyUrl(fileUrl);
+}
+
+/**
  * Same-origin proxy URL that forces `Content-Disposition: inline`.
  */
 export function inlineDocumentProxyUrl(fileUrl: string): string {
@@ -51,6 +59,6 @@ export function inlineDocumentProxyUrl(fileUrl: string): string {
 /** Open the document inline in the system browser / PDF viewer. */
 export function openDocumentOriginal(fileUrl: string): void {
   if (typeof window === "undefined") return;
-  const url = inlineDocumentProxyUrl(fileUrl);
+  const url = resolveDocumentViewUrl(fileUrl);
   window.open(url, "_blank", "noopener,noreferrer");
 }

@@ -19,7 +19,9 @@ export default async function VehicleSpecsPage({
   params,
 }: VehicleSpecsPageProps) {
   const { uuid } = await params;
-  const { result, access, isDemoShowcase } = await requireTagOwner(uuid);
+  const { result, access, isDemoShowcase } = await requireTagOwner(uuid, {
+    loginNext: `/v/${uuid}/daten`,
+  });
   const vehicle = result.vehicle;
   if (!vehicle) {
     return null;

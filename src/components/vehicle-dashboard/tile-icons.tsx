@@ -7,6 +7,7 @@ import {
   History,
   Images,
   Info,
+  LayoutGrid,
   Settings,
   ShieldCheck,
   Stamp,
@@ -30,4 +31,5 @@ export const DASHBOARD_ICONS: Record<DashboardIconName, LucideIcon> = {
   settings: Settings,
   globe: Globe,
   users: Users,
+  grid: LayoutGrid,
 };

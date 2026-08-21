@@ -26,7 +26,8 @@ export type DashboardIconName =
   | "info"
   | "settings"
   | "globe"
-  | "users";
+  | "users"
+  | "grid";
 
 export type DashboardTileTone =
   | "default"

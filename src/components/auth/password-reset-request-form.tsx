@@ -97,7 +97,7 @@ export function PasswordResetRequestForm({
           disabled={pending || Boolean(info)}
           className="inline-flex w-full items-center justify-center rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white disabled:opacity-60"
         >
-          {pending ? "Senden…" : "Reset-Link senden"}
+          {pending ? "Senden…" : "Link zum Zurücksetzen senden"}
         </PressableButton>
       </form>
 

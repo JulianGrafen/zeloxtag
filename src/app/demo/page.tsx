@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
+import { pageSocialMetadata } from "@/lib/seo/open-graph";
 import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import {
   getMockTagScan,
@@ -11,9 +12,16 @@ import {
 } from "@/lib/tags/mock-tags";
 
 export const metadata: Metadata = {
-  title: "Demo · ZeloxTag",
+  title: "Demo",
   description:
     "Öffentliche Demo des ZeloxTag Fahrzeug-Dashboards (BMW E36).",
+  ...pageSocialMetadata({
+    title: "Demo · BMW E36 328i",
+    description:
+      "Öffentliche Demo des ZeloxTag Fahrzeug-Dashboards (BMW E36).",
+    path: "/demo",
+    imagePath: "/demo/opengraph-image",
+  }),
 };
 
 /**
@@ -45,7 +53,7 @@ export default function DemoPage() {
               href="/"
               className="shrink-0 rounded-full bg-neutral-900 px-3 py-1.5 text-[0.72rem] font-semibold text-white"
             >
-              Login
+              Anmelden
             </Link>
           </div>
         </div>

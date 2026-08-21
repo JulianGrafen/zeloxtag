@@ -329,7 +329,7 @@ export function VehicleShowcaseSettings({
       <div className="mb-4 flex items-center gap-2">
         <Globe className="h-4 w-4 text-[color:var(--vd-accent)]" aria-hidden />
         <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          Öffentliche Showcase
+          Öffentliches Profil
         </h2>
       </div>
       <p className="mb-4 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">

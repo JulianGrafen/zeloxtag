@@ -101,24 +101,28 @@ export function GuidedTour({
     left = Math.max(16, Math.min(left, window.innerWidth - cardWidth - 16));
 
     if (preferBottom) {
+      const rawTop = rect.top + rect.height + CARD_GAP;
+      const maxTop = window.innerHeight - 280 - 16;
       setCardStyle({
-        top: Math.min(rect.top + rect.height + CARD_GAP, window.innerHeight - 240),
+        top: Math.max(16, Math.min(rawTop, maxTop)),
         left,
         width: cardWidth,
         bottom: "auto",
         transform: "none",
+        maxHeight: "min(280px, calc(100dvh - 2rem - env(safe-area-inset-bottom)))",
+        overflowY: "auto",
       });
     } else {
-      const bottom = Math.max(
-        16,
-        window.innerHeight - rect.top + CARD_GAP,
-      );
+      const rawBottom = window.innerHeight - rect.top + CARD_GAP;
+      const maxBottom = window.innerHeight - 280 - 16;
       setCardStyle({
-        bottom,
+        bottom: Math.max(16, Math.min(rawBottom, maxBottom)),
         left,
         width: cardWidth,
         top: "auto",
         transform: "none",
+        maxHeight: "min(280px, calc(100dvh - 2rem - env(safe-area-inset-bottom)))",
+        overflowY: "auto",
       });
     }
   }, [step]);

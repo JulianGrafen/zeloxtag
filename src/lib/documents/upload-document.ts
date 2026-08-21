@@ -23,6 +23,11 @@ import type { Document } from "@/types/database";
 
 import { parseApprovalFields } from "./approval-fields";
 import { DOCUMENT_BUCKET } from "./constants";
+import {
+  documentPageHash,
+  findDuplicateDocument,
+} from "./find-duplicate-document";
+import { guardDocumentTitle } from "./guard-document-title";
 import { isPrimaryOilChange } from "./invoice-title";
 import { parseLineItems } from "./line-items";
 import { appendMockUploadedDocument } from "./mock-uploads";
@@ -30,8 +35,10 @@ import {
   detectOilChangeInvoice,
   ensureOilChangeNotes,
 } from "./oil-changes";
+import { sanitizeVendorForStorage } from "./sanitize-vendor";
 import { parseAbeConditions, parseStringList } from "./string-list";
 import { parseTechnicalSpecs } from "./technical-specs";
+import { validateMileageAgainstHistory } from "./validate-mileage";
 import {
   metaFromFormData,
   UPLOAD_AUTHORITY_MAX,
@@ -110,7 +117,8 @@ export async function uploadDocument(
 
   const amount = parseAmount(meta.amount);
   const date = parseDate(meta.date);
-  const vendor = meta.vendor.slice(0, 160) || null;
+  const vendorParsed = sanitizeVendorForStorage(meta.vendor.slice(0, 160) || null);
+  let vendor = vendorParsed.vendor;
   let category = meta.category.slice(0, 40) || null;
   const lineItems = parseLineItems(meta.lineItems);
   const kbaNumber = meta.kbaNumber.slice(0, UPLOAD_KBA_NUMBER_MAX) || null;
@@ -149,8 +157,16 @@ export async function uploadDocument(
     lineItems,
     oil,
   });
-  let title = meta.title;
+  let title = guardDocumentTitle(
+    meta.title,
+    vendor ?? "Beleg",
+  );
   let typeRaw = meta.type;
+  if (vendorParsed.needsReview) {
+    notes = notes?.trim()
+      ? `${notes.trim()} · Werkstatt prüfen`
+      : "Werkstatt prüfen";
+  }
   if (oilPrimary) {
     category = "service";
     title = oil.title || title;
@@ -256,8 +272,52 @@ export async function uploadDocument(
 
   const ownerUserId = writeAccess.ownerUserId;
 
-  const storagePath = `${vehicleId}/${documentId}-${safeName}`;
   const bytes = Buffer.from(await file.arrayBuffer());
+  const pageHash = documentPageHash(bytes);
+  if (!notes?.includes(`pageHash:${pageHash}`)) {
+    notes = notes?.trim()
+      ? `${notes.trim()} · pageHash:${pageHash}`
+      : `pageHash:${pageHash}`;
+  }
+
+  const { data: existingRows } = await supabase
+    .from("documents")
+    .select("*")
+    .eq("vehicle_id", vehicleId);
+
+  const existingDocs = (existingRows ?? []) as Document[];
+
+  const mileageCheck = validateMileageAgainstHistory(
+    mileageKm,
+    date,
+    existingDocs,
+  );
+  if (!mileageCheck.ok) {
+    return {
+      status: "error",
+      message: mileageCheck.warning ?? "Kilometerstand unplausibel.",
+    };
+  }
+
+  const duplicate = findDuplicateDocument(existingDocs, {
+    vehicleId,
+    type: typeRaw,
+    title,
+    vendor,
+    date,
+    amount,
+    pageHash,
+  });
+
+  if (duplicate) {
+    revalidatePath(`/v/${tagUuid}`);
+    revalidatePath(`/v/${tagUuid}/dokumente`);
+    revalidatePath(`/v/${tagUuid}/service`);
+    revalidatePath(`/v/${tagUuid}/intervalle`);
+    return { status: "uploaded", document: duplicate, tagUuid };
+  }
+
+  const storagePath = `${vehicleId}/${documentId}-${safeName}`;
 
   const { error: storageError } = await supabase.storage
     .from(DOCUMENT_BUCKET)

@@ -1,6 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 
+import {
+  DEFAULT_OG_DESCRIPTION,
+  pageSocialMetadata,
+} from "@/lib/seo/open-graph";
+import { getSiteUrl } from "@/lib/seo/site-url";
+
 import "./globals.css";
 
 const poppins = Poppins({
@@ -11,9 +17,19 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "ZeloxTag",
-  description:
-    "Digitale Fahrzeugakte per QR-Code — Rechnungen, ABE und Service sicher verwalten.",
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: "ZeloxTag",
+    template: "%s · ZeloxTag",
+  },
+  description: DEFAULT_OG_DESCRIPTION,
+  applicationName: "ZeloxTag",
+  manifest: "/manifest.webmanifest",
+  ...pageSocialMetadata({
+    title: "ZeloxTag",
+    description: DEFAULT_OG_DESCRIPTION,
+    path: "/",
+  }),
 };
 
 export const viewport: Viewport = {

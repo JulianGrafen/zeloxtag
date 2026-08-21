@@ -42,7 +42,7 @@ export function ShowroomHero({
           href={dashboardHref}
           className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 inline-flex min-h-11 items-center rounded-full border border-white/15 bg-black/35 px-4 text-[0.78rem] font-medium text-zinc-100 backdrop-blur-md"
         >
-          Dashboard
+          {dashboardHref.includes("scan=1") ? "Scanner" : "Dashboard"}
         </a>
       ) : null}
 

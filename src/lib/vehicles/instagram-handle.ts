@@ -11,6 +11,7 @@ export function parseInstagramHandle(raw: unknown): string | null {
   const fromUrl = URL_HANDLE_PATTERN.exec(trimmed);
   const candidate = (fromUrl?.[1] ?? trimmed.replace(/^@/, "")).trim();
   if (!HANDLE_PATTERN.test(candidate)) return null;
+  if (/^dein[_-]?username$/i.test(candidate)) return null;
   return candidate;
 }
 

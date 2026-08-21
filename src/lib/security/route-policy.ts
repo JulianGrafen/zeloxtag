@@ -12,11 +12,15 @@ import {
 const PUBLIC_EXACT = new Set([
   "/",
   "/login",
+  "/register",
   "/login/mfa",
   "/login/reset",
   "/auth/callback",
   "/auth/confirm",
-  "/demo", // optional Supra showcase (not the landing page)
+  "/demo",
+  "/impressum",
+  "/agb",
+  "/datenschutz",
   // /login/update-password requires a recovery session (checked in page)
   // /qr requires auth — inventory mint must not be anonymous
   // /auth/continue is protected — resolves owner dashboard after login

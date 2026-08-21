@@ -28,6 +28,10 @@ import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
+import {
+  ScanConfirmSheet,
+  type ScanConfirmValues,
+} from "@/components/documents/scan-confirm-sheet";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
@@ -44,6 +48,8 @@ import {
   type ScanType,
 } from "@/lib/documents/scan-types";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { assessVehicleDocumentMatch } from "@/lib/documents/vehicle-document-match";
+import { DOCUMENT_TYPE_LABELS } from "@/lib/documents/constants";
 import { analyzeDocumentFiles } from "@/lib/ocr/analyze-document-client";
 import {
   documentTypeForTextCategory,
@@ -228,6 +234,13 @@ export function InvoiceUploader({
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmValues, setConfirmValues] = useState<ScanConfirmValues | null>(
+    null,
+  );
+  const [vehicleMismatchReason, setVehicleMismatchReason] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     return () => {
@@ -263,6 +276,135 @@ export function InvoiceUploader({
     setFields(emptyFields(resolvedCategory));
     setTitle("");
     setError(null);
+    setConfirmOpen(false);
+    setConfirmValues(null);
+    setVehicleMismatchReason(null);
+  }
+
+  function openGenericInvoiceConfirm(resolvedTitle: string) {
+    const category = fields.category;
+    const storedType = isInvoiceFamilyScan
+      ? scanDef.documentType
+      : documentTypeForTextCategory(category);
+
+    const match = assessVehicleDocumentMatch({
+      rawText,
+      garageVin: vehicleVin,
+      garageMake: vehicleMake,
+      garageModel: vehicleModel,
+    });
+
+    setVehicleMismatchReason(match.mismatch ? match.reason : null);
+    setConfirmValues({
+      type: storedType,
+      typeLabel: DOCUMENT_TYPE_LABELS[storedType] ?? storedType,
+      title: resolvedTitle,
+      vendor: fields.vendor?.trim() ?? "",
+      date: fields.date,
+      amount: fields.amount,
+      mileageKm: fields.mileageKm,
+      vehicleLabel,
+    });
+    setConfirmOpen(true);
+  }
+
+  function persistGenericInvoiceFromConfirm(
+    values: ScanConfirmValues,
+    assignDespiteMismatch = false,
+  ) {
+    if (vehicleMismatchReason && !assignDespiteMismatch) {
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const oil = detectOilChangeInvoice({
+        title: values.title,
+        summary: values.title,
+        vendor: values.vendor,
+        category: fields.category,
+        notes: fields.notes,
+        lineItems: fields.lineItems,
+        rawText,
+      });
+      const oilPrimary = isPrimaryOilChange({
+        summary: values.title,
+        vendor: values.vendor,
+        category: fields.category,
+        lineItems: fields.lineItems,
+        rawText,
+        oil,
+      });
+
+      const category = oilPrimary ? "service" : fields.category;
+      const storedTitle = values.title.trim().slice(0, 160);
+      const storedType = values.type;
+
+      if (!uploadFile) {
+        setError("Keine Datei zum Speichern.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.set("vehicleId", vehicleId);
+      formData.set("tagUuid", tagUuid);
+      formData.set("title", storedTitle);
+      formData.set("type", storedType);
+      formData.set("category", category);
+      formData.set("vendor", values.vendor.trim());
+      formData.set("date", values.date ?? "");
+      formData.set(
+        "amount",
+        values.amount === null || values.amount === undefined
+          ? ""
+          : String(values.amount),
+      );
+      formData.set(
+        "lineItems",
+        fields.lineItems?.length ? JSON.stringify(fields.lineItems) : "",
+      );
+      formData.set("kbaNumber", "");
+      formData.set("vehicleApprovals", "");
+      formData.set("authority", "");
+      formData.set("conditions", "");
+      formData.set("technicalSpecs", "");
+      formData.set("partCategory", "");
+      formData.set(
+        "notes",
+        oil.isOilChange
+          ? (fields.notes?.trim() || oil.notes)
+          : (fields.notes?.trim() ?? ""),
+      );
+      formData.set("manufacturer", "");
+      formData.set("invoiceNumber", fields.invoiceNumber?.trim() ?? "");
+      formData.set(
+        "mileageKm",
+        values.mileageKm === null || values.mileageKm === undefined
+          ? ""
+          : String(values.mileageKm),
+      );
+      formData.set("pageCount", String(pageCount || 1));
+      formData.set(
+        "approvalFields",
+        category === "tuev" && approvalFields?.kind === "tuev"
+          ? JSON.stringify(approvalFields)
+          : "",
+      );
+      formData.set("file", uploadFile);
+
+      const result = await uploadDocument(formData);
+      if (result.status === "error") {
+        setError(result.message);
+        return;
+      }
+
+      setConfirmOpen(false);
+      const href = oilPrimary
+        ? `/v/${result.tagUuid}/intervalle`
+        : (successHref ??
+          `/v/${result.tagUuid}/dokumente/${result.document.id}`);
+      window.location.assign(href);
+    });
   }
 
   async function handleIncomingFile(file: File) {
@@ -993,7 +1135,7 @@ export function InvoiceUploader({
 
         {isInvoiceFamilyScan ? (
           <div className="px-1">
-            <p className="claim-kicker">Scanner</p>
+            <p className="claim-kicker">Dokument scannen</p>
             <h1 className="claim-title mt-1 text-[1.25rem]">{resolvedHeading}</h1>
             <p className="claim-copy mt-0.5 text-[0.8rem]">
               {resolvedSubheading ?? vehicleLabel}
@@ -1004,7 +1146,7 @@ export function InvoiceUploader({
             <div className="vd-icon-badge">
               <FileText className="h-5 w-5" aria-hidden />
             </div>
-            <p className="claim-kicker mt-4">Scanner</p>
+            <p className="claim-kicker mt-4">Dokument scannen</p>
             <h1 className="claim-title mt-2">{resolvedHeading}</h1>
             <p className="claim-copy mt-1">
               {resolvedSubheading ?? `${vehicleLabel} · Beleg einlesen`}
@@ -1402,96 +1544,7 @@ export function InvoiceUploader({
               return;
             }
 
-            startTransition(async () => {
-              const oil = detectOilChangeInvoice({
-                title: resolvedTitle,
-                summary: resolvedTitle,
-                vendor: fields.vendor,
-                category: fields.category,
-                notes: fields.notes,
-                lineItems: fields.lineItems,
-                rawText,
-              });
-              const oilPrimary = isPrimaryOilChange({
-                summary: resolvedTitle,
-                vendor: fields.vendor,
-                category: fields.category,
-                lineItems: fields.lineItems,
-                rawText,
-                oil,
-              });
-
-              const category = oilPrimary ? "service" : fields.category;
-              const storedTitle = resolvedTitle.slice(0, 160);
-              const storedType = isInvoiceFamilyScan
-                ? scanDef.documentType
-                : documentTypeForTextCategory(category);
-
-              const formData = new FormData();
-              formData.set("vehicleId", vehicleId);
-              formData.set("tagUuid", tagUuid);
-              formData.set("title", storedTitle);
-              formData.set("type", storedType);
-              formData.set("category", category);
-              formData.set("vendor", fields.vendor?.trim() ?? "");
-              formData.set("date", fields.date ?? "");
-              formData.set(
-                "amount",
-                fields.amount === null || fields.amount === undefined
-                  ? ""
-                  : String(fields.amount),
-              );
-              formData.set(
-                "lineItems",
-                fields.lineItems?.length
-                  ? JSON.stringify(fields.lineItems)
-                  : "",
-              );
-              formData.set("kbaNumber", "");
-              formData.set("vehicleApprovals", "");
-              formData.set("authority", "");
-              formData.set("conditions", "");
-              formData.set("technicalSpecs", "");
-              formData.set("partCategory", "");
-              formData.set(
-                "notes",
-                oil.isOilChange
-                  ? (fields.notes?.trim() || oil.notes)
-                  : (fields.notes?.trim() ?? ""),
-              );
-              formData.set("manufacturer", "");
-              formData.set(
-                "invoiceNumber",
-                fields.invoiceNumber?.trim() ?? "",
-              );
-              formData.set(
-                "mileageKm",
-                fields.mileageKm === null || fields.mileageKm === undefined
-                  ? ""
-                  : String(fields.mileageKm),
-              );
-              formData.set("pageCount", String(pageCount || 1));
-              formData.set(
-                "approvalFields",
-                category === "tuev" && approvalFields?.kind === "tuev"
-                  ? JSON.stringify(approvalFields)
-                  : "",
-              );
-              formData.set("file", uploadFile);
-
-              const result = await uploadDocument(formData);
-              if (result.status === "error") {
-                setError(result.message);
-                return;
-              }
-
-              // Primary oil jobs open Intervalle; otherwise structured detail.
-              const href = oilPrimary
-                ? `/v/${result.tagUuid}/intervalle`
-                : (successHref ??
-                  `/v/${result.tagUuid}/dokumente/${result.document.id}`);
-              window.location.assign(href);
-            });
+            openGenericInvoiceConfirm(resolvedTitle);
           }}
         >
           <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
@@ -1730,9 +1783,35 @@ export function InvoiceUploader({
           ) : null}
 
           <Button type="submit" disabled={pending} className="claim-cta">
-            {pending ? "Wird gespeichert…" : "Speichern"}
+            {pending ? "Wird gespeichert…" : "Prüfen & speichern"}
           </Button>
         </form>
+      ) : null}
+
+      {confirmValues ? (
+        <ScanConfirmSheet
+          open={confirmOpen}
+          values={confirmValues}
+          vehicleMismatch={Boolean(vehicleMismatchReason)}
+          vehicleMismatchReason={vehicleMismatchReason}
+          mileageWarning={null}
+          duplicateHint={null}
+          saving={pending}
+          onChange={(patch) =>
+            setConfirmValues((current) =>
+              current ? { ...current, ...patch } : current,
+            )
+          }
+          onConfirm={() => persistGenericInvoiceFromConfirm(confirmValues)}
+          onAssignAnyway={() =>
+            persistGenericInvoiceFromConfirm(confirmValues, true)
+          }
+          onDiscard={() => {
+            setConfirmOpen(false);
+            setConfirmValues(null);
+            setVehicleMismatchReason(null);
+          }}
+        />
       ) : null}
     </ScanContent>
   );

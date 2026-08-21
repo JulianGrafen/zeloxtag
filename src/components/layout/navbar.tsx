@@ -3,7 +3,6 @@ import { QrCode, Tag } from "lucide-react";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { isOperatorEmail } from "@/lib/auth/require-operator";
-import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 
 export async function Navbar() {
   const user = await getCurrentUser();
@@ -32,11 +31,11 @@ export async function Navbar() {
             </Link>
           ) : null}
           <Link
-            href={`/v/${MOCK_TAG_UUIDS.active}?scan=1`}
+            href="/demo"
             className="claim-cta-sm !w-auto px-3 py-1.5 no-underline"
           >
             <QrCode className="h-3.5 w-3.5" aria-hidden />
-            Scanner
+            Demo
           </Link>
         </nav>
       </div>

@@ -54,10 +54,12 @@ describe("dashboard tour persistence", () => {
   it("provides owner and contributor catalogs", () => {
     const owner = getDashboardTourSteps("owner");
     const contributor = getDashboardTourSteps("contributor");
-    expect(owner.some((step) => step.id === "schrauber")).toBe(true);
-    expect(contributor.some((step) => step.id === "schrauber")).toBe(false);
+    expect(owner.length).toBeLessThanOrEqual(5);
+    expect(owner.some((step) => step.id === "scan")).toBe(true);
+    expect(owner.some((step) => step.id === "invoices")).toBe(true);
+    expect(contributor.some((step) => step.id === "scan")).toBe(true);
     expect(owner[0]?.id).toBe("welcome");
-    expect(owner.at(-1)?.id).toBe("done");
+    expect(owner.at(-1)?.id).toBe("settings");
   });
 
   it("treats missing window as completed to avoid SSR flash", () => {

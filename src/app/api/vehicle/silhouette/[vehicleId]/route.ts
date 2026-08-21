@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { optimizeWebImageBytes } from "@/lib/image/optimize-web-image";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
@@ -45,9 +46,9 @@ async function fetchRemoteSilhouetteBytes(
   }
 }
 
-function imageResponse(bytes: Uint8Array): NextResponse {
-  const contentType = imageContentTypeFromBytes(bytes);
-  return new NextResponse(Buffer.from(bytes), {
+async function imageResponse(bytes: Uint8Array): Promise<NextResponse> {
+  const { body, contentType } = await optimizeWebImageBytes(bytes);
+  return new NextResponse(new Uint8Array(body), {
     status: 200,
     headers: {
       "Content-Type": contentType,
@@ -104,7 +105,7 @@ export async function GET(
     if (!error && data) {
       const bytes = new Uint8Array(await data.arrayBuffer());
       if (isLikelyImageBytes(bytes)) {
-        return imageResponse(bytes);
+        return await imageResponse(bytes);
       }
     }
   }
@@ -120,7 +121,7 @@ export async function GET(
         supabaseOrigin,
       );
       if (signedBytes && isLikelyImageBytes(signedBytes)) {
-        return imageResponse(signedBytes);
+        return await imageResponse(signedBytes);
       }
     }
   }
@@ -149,5 +150,5 @@ export async function GET(
     );
   }
 
-  return imageResponse(remoteBytes);
+  return await imageResponse(remoteBytes);
 }

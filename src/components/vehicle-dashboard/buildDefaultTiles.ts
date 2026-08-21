@@ -4,12 +4,26 @@ import type {
   VehicleDashboardData,
 } from "./types";
 
+const BERLIN: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "Europe/Berlin",
+};
+
 function daysUntil(isoDate: string): number {
-  const target = new Date(isoDate);
+  const target = new Date(
+    isoDate.length === 10 ? `${isoDate}T12:00:00` : isoDate,
+  );
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const berlinToday = new Date(
+    today.toLocaleString("en-US", { timeZone: "Europe/Berlin" }),
+  );
+  berlinToday.setHours(0, 0, 0, 0);
   target.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.ceil(
+    (target.getTime() - berlinToday.getTime()) / (1000 * 60 * 60 * 24),
+  );
 }
 
 function inspectionMeta(data: VehicleDashboardData): DashboardTileConfig["meta"] {
@@ -27,11 +41,11 @@ function inspectionMeta(data: VehicleDashboardData): DashboardTileConfig["meta"]
         ? "Heute fällig"
         : `Noch ${days} Tage`);
 
-  const formatted = new Date(inspection.nextDate).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const formatted = new Date(
+    inspection.nextDate.length === 10
+      ? `${inspection.nextDate}T12:00:00`
+      : inspection.nextDate,
+  ).toLocaleDateString("de-DE", BERLIN);
 
   return {
     subtitle: `${formatted} · ${countdown}`,
@@ -43,11 +57,11 @@ function oilChangeMeta(data: VehicleDashboardData): DashboardTileConfig["meta"] 
     return { subtitle: "Letzter Ölwechsel", href: "/intervalle" };
   }
 
-  const formatted = new Date(data.lastOilChange).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const formatted = new Date(
+    data.lastOilChange.length === 10
+      ? `${data.lastOilChange}T12:00:00`
+      : data.lastOilChange,
+  ).toLocaleDateString("de-DE", BERLIN);
 
   return {
     subtitle: `Letzter Ölwechsel · ${formatted}`,
@@ -88,15 +102,15 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "tuning-history",
-      title: "Wartung & Tuning",
-      description: "Selbst eintragen ohne Beleg",
+      title: "Manuelle Einträge",
+      description: "Wartung & Tuning ohne Beleg",
       icon: "history",
-      meta: { subtitle: "Eigene Einträge" },
+      meta: { subtitle: "Eigene Notizen" },
     },
     {
       id: "tuv",
-      title: "Nächste TÜV-Prüfung",
-      description: "HU / AU Termin",
+      title: "TÜV / HU",
+      description: "Hauptuntersuchung",
       icon: "shield-check",
       tone:
         inspectionDays !== null && inspectionDays <= 30 ? "warning" : "default",
@@ -105,18 +119,18 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "timeline",
-      title: "Service Timeline",
-      description: "Historie nach KM-Stand",
+      title: "Service-Historie",
+      description: "Chronologie nach KM-Stand",
       icon: "history",
       featured: true,
       meta: { subtitle: "Öl · Reparatur · TÜV" },
     },
     {
       id: "service",
-      title: "Service & Wartung",
-      description: "Inspektionen einlesen",
+      title: "Service & Inspektion",
+      description: "Wartungsbelege",
       icon: "wrench",
-      meta: { subtitle: "Belege scannen" },
+      meta: { subtitle: "Inspektionen" },
     },
     {
       id: "schrauber",
@@ -140,11 +154,11 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "vehicle-settings",
-      title: "Einstellungen",
-      description: "Showcase & Verkaufs-Exposé",
+      title: "Showcase",
+      description: "Öffentliches Profil & Exposé",
       icon: "globe",
       featured: true,
-      meta: { subtitle: "Öffentliches Profil" },
+      meta: { subtitle: "Sichtbarkeit" },
     },
     {
       id: "settings",

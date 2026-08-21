@@ -30,7 +30,9 @@ import type { InvoiceListCategory } from "@/lib/documents/invoice-categories";
 import {
   collectFilterValues,
   matchesSearchQuery,
+  shortFilterChipLabel,
 } from "@/lib/documents/list-search";
+import { eintraegeLabel } from "@/lib/i18n/pluralize-de";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import type { Document, DocumentType } from "@/types/database";
 
@@ -84,7 +86,13 @@ export function VehicleDocumentsView({
     if (filterType !== "abe") return [];
     return [
       { id: ALL_PART_CATEGORY, label: "Alle", count: typed.length },
-      ...collectFilterValues(typed.map((doc) => doc.part_category)),
+      ...collectFilterValues(typed.map((doc) => doc.part_category)).map(
+        (chip) => ({
+          ...chip,
+          title: chip.label,
+          label: shortFilterChipLabel(chip.label),
+        }),
+      ),
     ];
   }, [filterType, typed]);
 
@@ -136,16 +144,23 @@ export function VehicleDocumentsView({
     );
   }
 
-  function handleDelete(documentId: string) {
+  function handleDelete(document: Document) {
     if (!canWrite) return;
-    const confirmed = window.confirm("Dokument wirklich löschen?");
-    if (!confirmed) return;
+    const title =
+      document.type === "abe"
+        ? displayAbeDocumentTitle(document)
+        : displayDocumentTitle(document.title);
+    const message =
+      document.type === "abe"
+        ? `ABE „${title}“ wirklich löschen? Das lässt sich nicht rückgängig machen.`
+        : `Dokument „${title}“ wirklich löschen?`;
+    if (!window.confirm(message)) return;
 
     setError(null);
-    setPendingId(documentId);
+    setPendingId(document.id);
     startTransition(async () => {
       const result = await deleteDocument({
-        documentId,
+        documentId: document.id,
         vehicleId,
         tagUuid,
       });
@@ -188,7 +203,7 @@ export function VehicleDocumentsView({
               Dokumente
             </h1>
             <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {vehicleLabel} · {filtered.length} Einträge
+              {vehicleLabel} · {eintraegeLabel(filtered.length)}
             </p>
             {invoiceSum > 0 ? (
               <p className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
@@ -285,7 +300,7 @@ export function VehicleDocumentsView({
                     document={doc}
                     canDelete={canWrite}
                     deleting={pending && pendingId === doc.id}
-                    onDelete={() => handleDelete(doc.id)}
+                    onDelete={() => handleDelete(doc)}
                   />
                 </li>
               ))}
@@ -402,11 +417,11 @@ function DocumentRow({
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-2">
           <span className="min-w-0">
-            <span className="block font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+            <span className="block truncate font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]" title={listTitle}>
               {listTitle}
             </span>
             {subtitle ? (
-              <span className="mt-0.5 block truncate text-[0.75rem] text-[color:var(--vd-muted)]">
+              <span className="mt-0.5 block truncate text-[0.75rem] text-[color:var(--vd-muted)]" title={subtitle}>
                 {subtitle}
               </span>
             ) : null}
@@ -445,9 +460,14 @@ function DocumentRow({
           aria-label={`Löschen: ${listTitle}`}
           disabled={deleting}
           onClick={onDelete}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-red-600 disabled:opacity-50"
+          className={[
+            "inline-flex shrink-0 items-center justify-center rounded-lg border border-red-200/80 bg-red-50/80 text-red-700 disabled:opacity-50",
+            document.type === "abe"
+              ? "h-8 w-8"
+              : "h-10 w-10 rounded-xl border-[color:var(--vd-border)] bg-white text-red-600",
+          ].join(" ")}
         >
-          <Trash2 className="h-4 w-4" aria-hidden />
+          <Trash2 className="h-3.5 w-3.5" aria-hidden />
         </PressableButton>
       ) : null}
     </div>

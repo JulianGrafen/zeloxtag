@@ -5,7 +5,7 @@ import { ExternalLink, X } from "lucide-react";
 
 import {
   documentMediaKind,
-  inlineDocumentProxyUrl,
+  resolveDocumentViewUrl,
 } from "@/lib/documents/viewable-url";
 
 type DocumentViewerProps = {
@@ -19,7 +19,7 @@ type DocumentViewerProps = {
  */
 export function DocumentViewer({ title, fileUrl, onClose }: DocumentViewerProps) {
   const kind = documentMediaKind(fileUrl);
-  const src = inlineDocumentProxyUrl(fileUrl);
+  const src = resolveDocumentViewUrl(fileUrl);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {

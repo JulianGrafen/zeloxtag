@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { NextResponse, type NextRequest } from "next/server";
 
+import { optimizeWebImageBytes } from "@/lib/image/optimize-web-image";
+
 export const runtime = "nodejs";
 
 const SAFE_FILENAME = /^[a-z0-9-]+\.png$/i;
@@ -25,10 +27,11 @@ export async function GET(
   const filePath = path.join(process.cwd(), "public", "vehicles", filename);
   try {
     const bytes = await readFile(filePath);
-    return new NextResponse(bytes, {
+    const optimized = await optimizeWebImageBytes(bytes);
+    return new NextResponse(new Uint8Array(optimized.body), {
       status: 200,
       headers: {
-        "Content-Type": "image/png",
+        "Content-Type": optimized.contentType,
         "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
         "Cross-Origin-Resource-Policy": "same-origin",
       },

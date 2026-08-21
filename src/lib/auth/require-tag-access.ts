@@ -21,11 +21,10 @@ export type TagAccessContext = {
 
 /**
  * Owner or active Schrauber — for invoice/document write surfaces.
- * Documents are already scoped for Schrauber history permissions.
- * Pro-only surfaces add `assertOwnerFeature` / `ProFeatureGate` separately.
  */
 export async function requireTagWriter(
   tagUuid: string,
+  options?: { loginNext?: string },
 ): Promise<TagAccessContext> {
   const result = await getTagByUuid(tagUuid);
 
@@ -48,6 +47,10 @@ export async function requireTagWriter(
   );
 
   if (!access.canWriteInvoices) {
+    if (!access.sessionUserId) {
+      const next = options?.loginNext ?? `/v/${result.tag.uuid}`;
+      redirect(`/login?next=${encodeURIComponent(next)}`);
+    }
     redirect(`/v/${result.tag.uuid}`);
   }
 
@@ -70,6 +73,7 @@ export async function requireTagWriter(
  */
 export async function requireTagOwner(
   tagUuid: string,
+  options?: { loginNext?: string },
 ): Promise<TagAccessContext> {
   const result = await getTagByUuid(tagUuid);
 
@@ -92,6 +96,10 @@ export async function requireTagOwner(
   );
 
   if (!access.isOwner) {
+    if (!access.sessionUserId) {
+      const next = options?.loginNext ?? `/v/${result.tag.uuid}`;
+      redirect(`/login?next=${encodeURIComponent(next)}`);
+    }
     redirect(`/v/${result.tag.uuid}`);
   }
 

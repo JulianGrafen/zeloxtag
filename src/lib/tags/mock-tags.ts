@@ -465,8 +465,8 @@ const mockDocuments: Document[] = [
     technical_specs: null,
     approval_fields: null,
     amount: null,
-    date: "2023-09-18",
-    created_at: "2023-09-18T10:00:00.000Z",
+    date: "2025-07-18",
+    created_at: "2025-07-18T10:00:00.000Z",
   },
 ];
 

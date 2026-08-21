@@ -72,6 +72,7 @@ export function ListSearchControls({
                 key={chip.id}
                 type="button"
                 variant="button"
+                title={chip.title ?? chip.label}
                 onClick={() => onChipChange(chip.id)}
                 className={[
                   "shrink-0 rounded-full px-3.5 py-2 text-[0.78rem] font-semibold",

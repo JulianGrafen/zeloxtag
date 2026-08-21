@@ -28,7 +28,7 @@ export function VehicleDataDisclaimer({
         className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
         aria-hidden
       />
-      <p>
+      <p className="min-w-0 break-words">
         <span className="font-semibold text-[color:var(--vd-text)]">
           Hinweis:
         </span>{" "}

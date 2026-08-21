@@ -34,8 +34,16 @@ export function matchesSearchQuery(
 export type ListFilterChip = {
   id: string;
   label: string;
+  /** Full label for native tooltip when chip text is shortened. */
+  title?: string;
   count?: number;
 };
+
+export function shortFilterChipLabel(label: string, max = 22): string {
+  const trimmed = label.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, Math.max(1, max - 1))}…`;
+}
 
 /** Unique non-empty values, sorted by frequency then label. */
 export function collectFilterValues(

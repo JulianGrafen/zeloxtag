@@ -17,15 +17,23 @@ export function formatTuevYearMonth(ym: string | null): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-export function formatDocumentDate(isoDate: string | null): string {
+/** Format ISO date in Europe/Berlin (document date, not UTC-shifted). */
+export function formatBerlinDocumentDate(isoDate: string | null): string {
   if (!isoDate) return "Ohne Datum";
-  const date = new Date(isoDate);
+  const normalized =
+    isoDate.length === 10 ? `${isoDate}T12:00:00` : isoDate;
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return isoDate;
   return date.toLocaleDateString("de-DE", {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "Europe/Berlin",
   });
+}
+
+export function formatDocumentDate(isoDate: string | null): string {
+  return formatBerlinDocumentDate(isoDate);
 }
 
 /** Local calendar date as YYYY-MM-DD (scan date, not UTC-shifted). */
