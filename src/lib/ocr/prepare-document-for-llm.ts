@@ -41,6 +41,8 @@ export const LLM_DOCUMENT_RASTER_DPI = 220;
 export const LLM_IMAGE_MAX_EDGE_PX = 1536;
 /** ABE vision — same cap as general LLM prep for Vision tile alignment. */
 export const ABE_LLM_IMAGE_MAX_EDGE_PX = 1536;
+/** Full ABE PDF uploads (data hunter / multi-page Gutachten). */
+export const ABE_HUNT_MAX_PDF_PAGES = 12;
 export const LLM_INVOICE_MAX_PDF_PAGES = 4;
 
 function llmImagePart(bytes: Buffer, contentType = "image/png"): DocumentUserMessagePart {
@@ -317,4 +319,34 @@ export async function prepareAbeOcrInput(
     maxEdgePx: ABE_LLM_IMAGE_MAX_EDGE_PX,
     ...options,
   });
+}
+
+type BuildAbeVisionUserMessageOptions = {
+  maxPdfPages?: number;
+  prepareOptions?: PrepareDocumentForLlmOptions;
+};
+
+/**
+ * Rasterize PDFs to PNG pages for vision LLM calls.
+ * Native PDF `file` parts are rejected by Azure Foundry — never send them raw.
+ */
+export async function buildAbeVisionUserMessage(
+  instructionLines: string[],
+  input: DocumentBytesInput,
+  options: BuildAbeVisionUserMessageOptions = {},
+): Promise<DocumentUserMessagePart[]> {
+  const contentType = resolveDocumentContentType(input.bytes, input.contentType);
+  const isPdf = contentType === "application/pdf" || isPdfBuffer(input.bytes);
+  const maxPdfPages = options.maxPdfPages ?? ABE_HUNT_MAX_PDF_PAGES;
+
+  if (isPdf) {
+    return buildVisionUserMessage(
+      instructionLines,
+      { bytes: input.bytes, contentType: "application/pdf" },
+      { maxPdfPages },
+    );
+  }
+
+  const prepared = await prepareAbeOcrInput(input, options.prepareOptions);
+  return buildVisionUserMessage(instructionLines, prepared);
 }

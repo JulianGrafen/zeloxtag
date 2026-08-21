@@ -2,14 +2,14 @@ import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import {
-  buildVisionUserMessage,
+  buildAbeVisionUserMessage,
+  ABE_HUNT_MAX_PDF_PAGES,
   LLM_IMAGE_MAX_EDGE_PX,
-  prepareAbeOcrInput,
+  LLM_INVOICE_MAX_PDF_PAGES,
   type PrepareDocumentForLlmOptions,
 } from "@/lib/ocr/prepare-document-for-llm";
 import { isPdfBuffer } from "@/lib/ocr/document-bytes";
 import {
-  buildDocumentUserMessage,
   type DocumentBytesInput,
 } from "@/lib/ocr/llm-document-content";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
@@ -713,17 +713,18 @@ export class AbeDataHunterExtractionService {
       );
     }
 
-    const sendOriginalPdf =
+    const isPdf =
       input.contentType === "application/pdf" || isPdfBuffer(input.bytes);
-    const userContent = sendOriginalPdf
-      ? buildDocumentUserMessage(instructionLines, {
-          bytes: input.bytes,
-          contentType: "application/pdf",
-        })
-      : await buildVisionUserMessage(
-          instructionLines,
-          await prepareAbeOcrInput(input, prepareOptions),
-        );
+    const maxPdfPages =
+      prepareOptions?.maxPdfPages ??
+      (stepLabel === "hunt-all" || stepLabel === "hunt-kba"
+        ? ABE_HUNT_MAX_PDF_PAGES
+        : LLM_INVOICE_MAX_PDF_PAGES);
+
+    const userContent = await buildAbeVisionUserMessage(instructionLines, input, {
+      ...(isPdf ? { maxPdfPages } : {}),
+      prepareOptions,
+    });
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {

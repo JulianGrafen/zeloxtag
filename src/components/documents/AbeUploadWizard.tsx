@@ -896,7 +896,7 @@ export function AbeUploadWizard({
           }
           guideFrame={phase === "capture-vehicles" ? "table" : "a4"}
           a4AutoCrop
-          allowPdf={false}
+          allowPdf
           showBriefing={false}
           continuousCapture
           captureStep={{ current: stepNumber, total: CAPTURE_STEPS.length }}

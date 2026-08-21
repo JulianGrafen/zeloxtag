@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 
+import { SaveSuccessBanner } from "@/components/documents/save-success-banner";
 import { DocumentAbeDetailView } from "@/components/documents/document-abe-detail-view";
 import { DocumentInvoiceDetailView } from "@/components/documents/document-invoice-detail-view";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
@@ -45,13 +47,22 @@ export default async function DocumentDetailPage({
 
   const view =
     document.type === "abe" ? (
-      <DocumentAbeDetailView
-        tagUuid={result.tag.uuid}
-        vehicleLabel={vehicleLabel}
-        document={document}
-      />
+      <>
+        <Suspense fallback={null}>
+          <SaveSuccessBanner />
+        </Suspense>
+        <DocumentAbeDetailView
+          tagUuid={result.tag.uuid}
+          vehicleLabel={vehicleLabel}
+          document={document}
+        />
+      </>
     ) : (
-      <DocumentInvoiceDetailView
+      <>
+        <Suspense fallback={null}>
+          <SaveSuccessBanner />
+        </Suspense>
+        <DocumentInvoiceDetailView
         tagUuid={result.tag.uuid}
         vehicleLabel={vehicleLabel}
         document={document}
@@ -61,6 +72,7 @@ export default async function DocumentDetailPage({
         }
         canDelete={access.isOwner}
       />
+      </>
     );
 
   return wrapProFeature({

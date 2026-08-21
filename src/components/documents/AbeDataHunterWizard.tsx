@@ -781,7 +781,7 @@ function auflagenScanWatermark(nextCode: string | null): string {
 const ABE_CAMERA_PROPS = {
   title: "",
   guideFrame: "a4" as const,
-  allowPdf: false,
+  allowPdf: true,
   showBriefing: false,
   showTopDownGuide: true,
   continuousCapture: true,

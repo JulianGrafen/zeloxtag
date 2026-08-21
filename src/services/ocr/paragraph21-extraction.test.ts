@@ -28,15 +28,17 @@ describe("normalizeParagraph21Extraction", () => {
     const result = normalizeParagraph21Extraction({
       documentNumber: "0DE0CAL09MV009494",
       issueDate: "12.04.2019",
-      vin: " 2tm000104 ",
+      vin: " 2tm00010400000001 ",
       manufacturer: "YAMAHA (J)",
       model: "SRX 600",
       modificationsField22:
         "AUSN.:FAHRTRICHTANZ.FEDERND BEFESTIGT*LENKRAD:SPARCO*",
       additionalRemarks: "Siehe Anlage",
+      officialExpert: "Max Mustermann",
+      mileageKm: 142_350,
     });
 
-    expect(result.vin).toBe("2TM000104");
+    expect(result.vin).toBe("2TM00010400000001");
     expect(result.documentNumber).toBe("0DE0CAL09MV009494");
     expect(result.modificationsField22).toContain("*");
   });
@@ -51,19 +53,25 @@ describe("normalizeParagraph21Extraction", () => {
         model: "SRX 600",
         modificationsField22: "Änderungen",
         additionalRemarks: null,
+        officialExpert: null,
+        mileageKm: null,
       }),
     ).toThrow(MissingVinError);
   });
 });
 
 describe("verifyVehicleMatch", () => {
+  const sampleVin = "2TM00010400000001";
+  const otherVin = "2TM00010400000002";
+
   it("matches normalized VINs exactly", () => {
-    expect(verifyVehicleMatch("2TM000104", "2tm 000104")).toBe(true);
-    expect(verifyVehicleMatch("2TM000104", "2TM000105")).toBe(false);
+    expect(verifyVehicleMatch(sampleVin, "2tm 00010400000001")).toBe(true);
+    expect(verifyVehicleMatch(sampleVin, otherVin)).toBe(false);
   });
 
-  it("returns false when either VIN is empty", () => {
-    expect(verifyVehicleMatch("", "2TM000104")).toBe(false);
+  it("returns false when either VIN is invalid", () => {
+    expect(verifyVehicleMatch("", sampleVin)).toBe(false);
+    expect(verifyVehicleMatch(sampleVin, "2347184NDSFJSFJSF")).toBe(false);
     expect(normalizeVin("abc")).toBeNull();
   });
 });
@@ -72,11 +80,13 @@ describe("paragraph21 mappers", () => {
   const sample = normalizeParagraph21Extraction({
     documentNumber: "0DE0CAL09MV009494",
     issueDate: "12.04.2019",
-    vin: "2TM000104",
+    vin: "2TM00010400000001",
     manufacturer: "YAMAHA (J)",
     model: "SRX 600",
     modificationsField22: "AUSN.:FAHRTRICHTANZ.*",
     additionalRemarks: null,
+    officialExpert: "Max Mustermann",
+    mileageKm: 85_400,
   });
 
   it("maps to Einzelabnahme approval_fields", () => {
@@ -90,7 +100,7 @@ describe("paragraph21 mappers", () => {
     const fields = paragraph21ToAnalyzeFields(sample, false);
     expect(fields.category).toBe("abe");
     expect(fields.date).toBe("2019-04-12");
-    expect(fields.vehicleApprovals).toEqual(["VIN 2TM000104"]);
+    expect(fields.vehicleApprovals).toEqual(["VIN 2TM00010400000001"]);
     expect(fields.notes).toContain("stimmt NICHT");
   });
 

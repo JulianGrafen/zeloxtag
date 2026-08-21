@@ -5,6 +5,8 @@ import {
   buildDocumentUserMessage,
   type DocumentBytesInput,
 } from "@/lib/ocr/llm-document-content";
+import { buildAbeVisionUserMessage } from "@/lib/ocr/prepare-document-for-llm";
+import { isPdfBuffer } from "@/lib/ocr/document-bytes";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
@@ -158,7 +160,13 @@ export class TeilegutachtenExtractionService {
           "Set userVehicleMatchStatus and matchedVehicleRow to null.",
         ];
 
-    const userContent = buildDocumentUserMessage(instructionLines, input);
+    const isPdf =
+      input.contentType === "application/pdf" || isPdfBuffer(input.bytes);
+    const userContent = isPdf
+      ? await buildAbeVisionUserMessage(instructionLines, input, {
+          maxPdfPages: 12,
+        })
+      : buildDocumentUserMessage(instructionLines, input);
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {

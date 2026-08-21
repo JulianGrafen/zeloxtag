@@ -9,10 +9,13 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { GermanDateInput } from "@/components/documents/german-date-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import { parseEinzelabnahmeField22Meta } from "@/lib/documents/einzelabnahme-field22-meta";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
+import { isPlausibleVin } from "@/lib/vehicles/vin";
 
 export type EinzelabnahmeReviewFields = {
   documentNumber: string | null;
@@ -20,6 +23,8 @@ export type EinzelabnahmeReviewFields = {
   vin: string | null;
   manufacturer: string | null;
   model: string | null;
+  officialExpert: string | null;
+  mileageKm: number | null;
   modificationsField22: string | null;
   additionalRemarks: string | null;
   vinMatchesGarage: boolean | null;
@@ -95,6 +100,9 @@ export function fieldsToEinzelabnahmeReview(
   const fromNotes = parseField22FromNotes(fields.notes);
   const einzelData =
     approvalFields?.kind === "einzelabnahme" ? approvalFields.data : null;
+  const field22Meta = parseEinzelabnahmeField22Meta(
+    fromNotes.field22 || einzelData?.field22Text,
+  );
 
   return {
     documentNumber:
@@ -103,8 +111,17 @@ export function fieldsToEinzelabnahmeReview(
       null,
     issueDate: fields.date?.trim() || null,
     vin: parseVinFromApprovals(fields.vehicleApprovals),
-    manufacturer: fields.manufacturer?.trim() || null,
+    manufacturer:
+      fields.manufacturer?.trim() ||
+      fields.vendor?.trim() ||
+      null,
     model: parseModelFromSummary(fields.summary),
+    officialExpert:
+      einzelData?.officialExpert?.trim() ||
+      field22Meta.officialExpert ||
+      null,
+    mileageKm:
+      fields.mileageKm ?? field22Meta.mileageKm ?? null,
     modificationsField22:
       fromNotes.field22 || einzelData?.field22Text?.trim() || null,
     additionalRemarks: fromNotes.additionalRemarks,
@@ -135,6 +152,7 @@ export function EinzelabnahmeOverview({
 
   const vinMissing = !review.vin?.trim();
   const field22Missing = !review.modificationsField22?.trim();
+  const garageVinPlausible = isPlausibleVin(garageVin);
 
   function patch<K extends keyof EinzelabnahmeReviewFields>(
     key: K,
@@ -159,7 +177,10 @@ export function EinzelabnahmeOverview({
     const approval: Extract<ApprovalFields, { kind: "einzelabnahme" }> = {
       kind: "einzelabnahme",
       data: {
-        officialExpert: existingExpert?.trim() || "Siehe Originaldokument",
+        officialExpert:
+          review.officialExpert?.trim() ||
+          existingExpert?.trim() ||
+          "Siehe Originaldokument",
         reportNumber: review.documentNumber?.trim() || "unbekannt",
         field22Text:
           review.modificationsField22?.trim() ||
@@ -212,20 +233,25 @@ export function EinzelabnahmeOverview({
                 autoComplete="off"
               />
             </Label>
-            {garageVin ? (
+            {garageVin && garageVinPlausible ? (
               <p className="mt-2 text-[0.78rem] text-[color:var(--vd-muted)]">
                 Garage-VIN:{" "}
                 <span className="font-mono font-medium text-[color:var(--vd-text)]">
                   {garageVin}
                 </span>
               </p>
+            ) : garageVin ? (
+              <p className="mt-2 text-[0.78rem] font-medium text-amber-900">
+                Garage-VIN ist ungültig — VIN-Vergleich deaktiviert. Bitte in
+                den Fahrzeugdaten korrigieren.
+              </p>
             ) : null}
-            {review.vinMatchesGarage === true ? (
+            {review.vinMatchesGarage === true && garageVinPlausible ? (
               <p className="mt-2 text-[0.78rem] font-medium text-emerald-800">
                 VIN stimmt mit deinem Fahrzeug überein.
               </p>
             ) : null}
-            {review.vinMatchesGarage === false ? (
+            {review.vinMatchesGarage === false && garageVinPlausible ? (
               <p className="mt-2 text-[0.78rem] font-medium text-amber-900">
                 VIN stimmt nicht mit deinem Fahrzeug überein — Dokument gilt
                 ggf. nicht für dieses Auto.
@@ -244,12 +270,9 @@ export function EinzelabnahmeOverview({
               />
             </FieldBlock>
             <FieldBlock label="Ausstellungsdatum">
-              <Input
-                value={review.issueDate ?? ""}
-                onChange={(event) =>
-                  patch("issueDate", event.target.value || null)
-                }
-                placeholder="z. B. 12.04.2019"
+              <GermanDateInput
+                value={review.issueDate}
+                onChange={(iso) => patch("issueDate", iso)}
               />
             </FieldBlock>
             <FieldBlock label="Feld 2 · Hersteller">
@@ -266,6 +289,31 @@ export function EinzelabnahmeOverview({
                 value={review.model ?? ""}
                 onChange={(event) => patch("model", event.target.value || null)}
                 placeholder="z. B. SRX 600"
+              />
+            </FieldBlock>
+            <FieldBlock label="Prüfer / Sachverständiger">
+              <Input
+                value={review.officialExpert ?? ""}
+                onChange={(event) =>
+                  patch("officialExpert", event.target.value || null)
+                }
+                placeholder="z. B. Max Mustermann"
+              />
+            </FieldBlock>
+            <FieldBlock label="KM-Stand">
+              <Input
+                inputMode="numeric"
+                value={
+                  review.mileageKm != null ? String(review.mileageKm) : ""
+                }
+                onChange={(event) => {
+                  const raw = event.target.value.replace(/\D/g, "");
+                  patch(
+                    "mileageKm",
+                    raw ? Number.parseInt(raw, 10) : null,
+                  );
+                }}
+                placeholder="z. B. 142350"
               />
             </FieldBlock>
             <FieldBlock label="Feld 22 · Bemerkungen / Änderungen">

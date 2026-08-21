@@ -5,6 +5,8 @@ import {
   buildDocumentUserMessage,
   type DocumentBytesInput,
 } from "@/lib/ocr/llm-document-content";
+import { buildAbeVisionUserMessage } from "@/lib/ocr/prepare-document-for-llm";
+import { isPdfBuffer } from "@/lib/ocr/document-bytes";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { resolveAbeContextModel } from "@/services/ocr/AbeExtractionService";
 import { TextParseError } from "@/lib/ocr/parse-error";
@@ -16,6 +18,7 @@ import {
   verifyVehicleMatch,
   type Paragraph21Extraction,
 } from "@/lib/validations/paragraph21Schema";
+import { isPlausibleVin } from "@/lib/vehicles/vin";
 
 export const PARAGRAPH_21_MAX_CHARS = 24_000;
 const PARAGRAPH_21_MAX_TOKENS = 1_800;
@@ -56,6 +59,8 @@ export function buildParagraph21SystemPrompt(): string {
     'Example fragment: "AUSN.:FAHRTRICHTANZ.FEDERND BEFESTIGT*...".',
     "",
     'Also extract "documentNumber" (top of form), "issueDate" (Ausstellungsdatum),',
+    '"officialExpert" (Amtlich anerkannter Sachverständiger / Prüfer),',
+    '"mileageKm" (KM-Stand as integer when visible),',
     'and "additionalRemarks" under "Zusätzliche Bemerkungen zur Fahrzeugbeschreibung" if present.',
     "",
     "Return ONLY valid JSON matching the schema.",
@@ -83,13 +88,17 @@ export class Paragraph21ExtractionService {
       );
     }
 
-    const userContent = buildDocumentUserMessage(
-      [
-        "German §21 Einzelbetriebserlaubnis document.",
-        "Extract Field E (vin), Field 2, Field D.3, Field 22 verbatim, documentNumber, issueDate, additionalRemarks.",
-      ],
-      input,
-    );
+    const instructionLines = [
+      "German §21 Einzelbetriebserlaubnis document.",
+      "Extract Field E (vin), Field 2 (manufacturer), Field D.3 (model), Field 22 verbatim, documentNumber, issueDate, officialExpert, mileageKm, additionalRemarks.",
+    ];
+    const isPdf =
+      input.contentType === "application/pdf" || isPdfBuffer(input.bytes);
+    const userContent = isPdf
+      ? await buildAbeVisionUserMessage(instructionLines, input, {
+          maxPdfPages: 8,
+        })
+      : buildDocumentUserMessage(instructionLines, input);
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
@@ -209,9 +218,10 @@ export class Paragraph21ExtractionService {
     }
 
     const trimmedGarageVin = garageVin?.trim();
-    const vinMatchesGarage = trimmedGarageVin
-      ? verifyVehicleMatch(extracted.vin, trimmedGarageVin)
-      : null;
+    const vinMatchesGarage =
+      trimmedGarageVin && isPlausibleVin(trimmedGarageVin)
+        ? verifyVehicleMatch(extracted.vin, trimmedGarageVin)
+        : null;
 
     return {
       ...extracted,

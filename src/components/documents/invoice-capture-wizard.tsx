@@ -16,7 +16,6 @@ import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 const IMAGE_ACCEPT = "image/*";
 const PDF_ACCEPT = "application/pdf,.pdf";
 const MAX_POSITION_BLOCKS = 8;
-const TOTAL_CAPTURE_STEPS = 2;
 
 export const INVOICE_CAPTURE_HINTS = {
   overview: "Ganze Seite ins A4-Feld",
@@ -24,6 +23,8 @@ export const INVOICE_CAPTURE_HINTS = {
     blockNumber > 1
       ? `Block ${blockNumber} — nächste Tabelle`
       : "Pos · Menge · Preise im Rahmen",
+  intro:
+    "Ein Foto der ganzen Seite reicht — Positionsblock nur bei Bedarf nachscannen.",
 } as const;
 
 type CapturePhase =
@@ -39,10 +40,16 @@ function isPdfFile(file: File): boolean {
   );
 }
 
-function StepProgress({ current }: { current: number }) {
+function StepProgress({
+  current,
+  total,
+}: {
+  current: number;
+  total: number;
+}) {
   return (
     <div className="flex items-center justify-center gap-2">
-      {Array.from({ length: TOTAL_CAPTURE_STEPS }, (_, index) => {
+      {Array.from({ length: total }, (_, index) => {
         const step = index + 1;
         const done = step < current;
         const active = step === current;
@@ -139,7 +146,7 @@ function PositionsCamera({
       showBriefing={false}
       enforceCaptureQuality
       allowOpticalZoom
-      captureStep={{ current: 2, total: TOTAL_CAPTURE_STEPS }}
+      captureStep={{ current: 2, total: 2 }}
       onCapture={onCapture}
       onClose={onClose}
     />
@@ -208,7 +215,7 @@ export function InvoiceCaptureWizard({
       if (current) URL.revokeObjectURL(current);
       return URL.createObjectURL(file);
     });
-    setPhase("capture-positions");
+    setPhase("hub");
   }
 
   function handlePositionCapture(file: File) {
@@ -218,8 +225,12 @@ export function InvoiceCaptureWizard({
   }
 
   function finishWizard() {
-    if (!overviewFile || positionFiles.length === 0) return;
-    emitComplete([overviewFile, ...positionFiles]);
+    if (!overviewFile) return;
+    emitComplete(
+      positionFiles.length > 0
+        ? [overviewFile, ...positionFiles]
+        : [overviewFile],
+    );
   }
 
   function removePositionBlock(index: number) {
@@ -298,7 +309,7 @@ export function InvoiceCaptureWizard({
         showBriefing={false}
         allowOpticalZoom
         enforceCaptureQuality
-        captureStep={{ current: 1, total: TOTAL_CAPTURE_STEPS }}
+        captureStep={{ current: 1, total: 1 }}
         onCapture={handleOverviewCapture}
         onClose={() => {
           if (overviewFile || positionFiles.length > 0) {
@@ -333,15 +344,19 @@ export function InvoiceCaptureWizard({
 
   if (phase === "hub" && overviewFile) {
     const canAddMore = positionFiles.length < MAX_POSITION_BLOCKS;
+    const captureSteps = positionFiles.length > 0 ? 2 : 1;
 
     return (
       <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white p-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
-            A4 + {positionFiles.length}{" "}
-            {positionFiles.length === 1 ? "Block" : "Blöcke"}
+            {positionFiles.length > 0
+              ? `A4 + ${positionFiles.length} ${
+                  positionFiles.length === 1 ? "Block" : "Blöcke"
+                }`
+              : "1 Foto erfasst"}
           </p>
-          <StepProgress current={TOTAL_CAPTURE_STEPS + 1} />
+          <StepProgress current={captureSteps} total={captureSteps} />
         </div>
 
         <ul className="grid grid-cols-3 gap-2">
@@ -393,13 +408,13 @@ export function InvoiceCaptureWizard({
             className="claim-back inline-flex w-full items-center justify-center gap-2"
           >
             <Plus className="h-4 w-4" aria-hidden />
-            Weiterer Block
+            Positionsblock fotografieren (optional)
           </button>
         ) : null}
 
         <button
           type="button"
-          disabled={disabled || positionFiles.length === 0}
+          disabled={disabled}
           onClick={finishWizard}
           className="claim-cta inline-flex w-full items-center justify-center gap-2 disabled:opacity-50"
         >
@@ -423,7 +438,7 @@ export function InvoiceCaptureWizard({
     <div className="space-y-3 rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-white px-4 py-4">
       <h2 className="sr-only">{title}</h2>
       <p className="text-center text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
-        {hint ?? "Zwei Fotos: ganze Seite, dann der Positionsblock."}
+        {hint ?? INVOICE_CAPTURE_HINTS.intro}
       </p>
 
       <div className={allowPdf ? "grid grid-cols-2 gap-2" : "grid grid-cols-1"}>

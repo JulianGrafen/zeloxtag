@@ -1,10 +1,16 @@
 import { z } from "zod";
 
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import { parseEinzelabnahmeField22Meta } from "@/lib/documents/einzelabnahme-field22-meta";
 import { normalizeAbeDate } from "@/lib/ocr/abe-parse-schema";
 import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import type { Einzelabnahme } from "@/lib/validations/documentSchemas";
+import {
+  isPlausibleVin,
+  normalizeVin,
+  verifyVinMatch,
+} from "@/lib/vehicles/vin";
 
 /**
  * § 21 StVZO Einzelbetriebserlaubnis — fields for police traffic-stop checks.
@@ -35,6 +41,10 @@ export const Paragraph21LlmPayloadSchema = z
     /** Field 22 — Bemerkungen / Änderungen (verbatim). */
     modificationsField22: z.string().trim().min(1).max(8_000).nullable(),
     additionalRemarks: z.string().trim().min(1).max(4_000).nullable(),
+    /** Amtlich anerkannter Sachverständiger / Prüfer when printed outside Feld 22. */
+    officialExpert: z.string().trim().min(1).max(200).nullable(),
+    /** KM-Stand when printed on the form or inside Feld 22. */
+    mileageKm: z.number().int().min(1).max(2_000_000).nullable(),
   })
   .strict();
 
@@ -50,6 +60,8 @@ export const Paragraph21ExtractionSchema = z
     model: z.string().trim().min(1).max(120).nullable(),
     modificationsField22: z.string().trim().min(1).max(8_000).nullable(),
     additionalRemarks: z.string().trim().min(1).max(4_000).nullable(),
+    officialExpert: z.string().trim().min(1).max(200).nullable(),
+    mileageKm: z.number().int().min(1).max(2_000_000).nullable(),
   })
   .strict();
 
@@ -70,6 +82,8 @@ export const PARAGRAPH_21_JSON_SCHEMA = {
       "model",
       "modificationsField22",
       "additionalRemarks",
+      "officialExpert",
+      "mileageKm",
     ],
     properties: {
       documentNumber: {
@@ -104,29 +118,27 @@ export const PARAGRAPH_21_JSON_SCHEMA = {
         description:
           'Text under "Zusätzliche Bemerkungen zur Fahrzeugbeschreibung" if present.',
       },
+      officialExpert: {
+        type: ["string", "null"],
+        description:
+          'Amtlich anerkannter Sachverständiger / Prüfer, e.g. header line or "Prüfer: …".',
+      },
+      mileageKm: {
+        type: ["integer", "null"],
+        description: "KM-Stand as integer km when visible on the form or in Feld 22.",
+      },
     },
   },
 } as const;
 
-/** Normalize VIN for comparison (uppercase, no spaces). */
-export function normalizeVin(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const cleaned = value.trim().replace(/\s+/g, "").toUpperCase();
-  if (cleaned.length < 5) return null;
-  return cleaned.slice(0, 32);
-}
+export { normalizeVin, isPlausibleVin };
 
-/**
- * §21 documents are vehicle-specific — extracted VIN must match the garage twin.
- */
+/** §21 documents are vehicle-specific — extracted VIN must match the garage twin. */
 export function verifyVehicleMatch(
   extractedVin: string,
   userGarageVin: string,
 ): boolean {
-  const extracted = normalizeVin(extractedVin);
-  const garage = normalizeVin(userGarageVin);
-  if (!extracted || !garage) return false;
-  return extracted === garage;
+  return verifyVinMatch(extractedVin, userGarageVin);
 }
 
 function normalizeOptionalText(
@@ -153,6 +165,8 @@ export function normalizeParagraph21Extraction(
     throw new MissingVinError();
   }
 
+  const field22Meta = parseEinzelabnahmeField22Meta(fields.modificationsField22);
+
   const normalized: Paragraph21Extraction = {
     documentNumber: normalizeOptionalText(fields.documentNumber, 120),
     issueDate: normalizeOptionalText(fields.issueDate, 32),
@@ -161,6 +175,10 @@ export function normalizeParagraph21Extraction(
     model: normalizeOptionalText(fields.model, 120),
     modificationsField22: normalizeField22(fields.modificationsField22),
     additionalRemarks: normalizeOptionalText(fields.additionalRemarks, 4_000),
+    officialExpert:
+      normalizeOptionalText(fields.officialExpert, 200) ??
+      field22Meta.officialExpert,
+    mileageKm: fields.mileageKm ?? field22Meta.mileageKm,
   };
 
   return Paragraph21ExtractionSchema.parse(normalized);
@@ -175,6 +193,8 @@ export function emptyParagraph21LlmPayload(): Paragraph21LlmPayload {
     model: null,
     modificationsField22: null,
     additionalRemarks: null,
+    officialExpert: null,
+    mileageKm: null,
   };
 }
 
@@ -183,7 +203,8 @@ export function paragraph21ToApprovalFields(
   extracted: Paragraph21Extraction,
 ): Extract<ApprovalFields, { kind: "einzelabnahme" }> {
   const data: Einzelabnahme = {
-    officialExpert: "Siehe Originaldokument",
+    officialExpert:
+      extracted.officialExpert?.trim() || "Siehe Originaldokument",
     reportNumber: extracted.documentNumber ?? extracted.vin,
     field22Text:
       extracted.modificationsField22 ??
@@ -241,6 +262,6 @@ export function paragraph21ToAnalyzeFields(
     notes: notes || null,
     manufacturer: extracted.manufacturer,
     invoiceNumber: extracted.documentNumber,
-    mileageKm: null,
+    mileageKm: extracted.mileageKm,
   });
 }

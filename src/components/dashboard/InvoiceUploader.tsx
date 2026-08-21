@@ -16,13 +16,13 @@ import { ABEOverview } from "@/components/dashboard/ABEOverview";
 import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverview";
 import { TeilegutachtenOverview } from "@/components/dashboard/TeilegutachtenOverview";
 import { TuevOverview } from "@/components/dashboard/TuevOverview";
-import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard";
-import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
 import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import { CameraCapture } from "@/components/documents/camera-capture";
+import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard";
 import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
+import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
 import { BackNav } from "@/components/layout/back-nav";
 import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,7 @@ import {
   normalizeInvoiceReviewCategory,
   type InvoiceReviewCategory,
 } from "@/lib/documents/invoice-review-categories";
+import { isThinInvoiceExtraction } from "@/lib/documents/invoice-extraction-thin";
 
 const MAX_PAGES = 12;
 
@@ -135,6 +136,15 @@ function emptyFields(
     invoiceNumber: null,
     mileageKm: null,
   };
+}
+
+function savedDocumentHref(
+  tagUuid: string,
+  documentId: string,
+  successHref?: string,
+): string {
+  const base = successHref ?? `/v/${tagUuid}/dokumente/${documentId}`;
+  return base.includes("?") ? `${base}&saved=1` : `${base}?saved=1`;
 }
 
 function isPdfFile(file: File): boolean {
@@ -242,6 +252,7 @@ export function InvoiceUploader({
   const [vehicleMismatchReason, setVehicleMismatchReason] = useState<
     string | null
   >(null);
+  const [showThinPositionsHint, setShowThinPositionsHint] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -280,6 +291,7 @@ export function InvoiceUploader({
     setConfirmOpen(false);
     setConfirmValues(null);
     setVehicleMismatchReason(null);
+    setShowThinPositionsHint(false);
   }
 
   function openGenericInvoiceConfirm(resolvedTitle: string) {
@@ -411,7 +423,13 @@ export function InvoiceUploader({
       }
 
       const compressed = await ingestImageFile(optimized.file);
-      setPages((current) => [...current, compressed]);
+      setPages((current) => {
+        const next = [...current, compressed];
+        if (next.length > 1) {
+          setShowThinPositionsHint(false);
+        }
+        return next;
+      });
     } catch (ingestError) {
       setError(
         ingestError instanceof Error
@@ -673,6 +691,22 @@ export function InvoiceUploader({
       setTitle(defaultTitle);
 
       setProgress({ label: "Fertig", percent: 100 });
+
+      const usedSingleOverviewScan =
+        isInvoiceFamilyScan && !pdf && imagePages.length === 1;
+      if (
+        usedSingleOverviewScan &&
+        isThinInvoiceExtraction({
+          lineItems: nextFields.lineItems,
+          amount: nextFields.amount,
+        })
+      ) {
+        setShowThinPositionsHint(true);
+        setStep("compose");
+        return;
+      }
+
+      setShowThinPositionsHint(false);
       setStep("review");
     } catch (extractError) {
       setStep("compose");
@@ -763,6 +797,8 @@ export function InvoiceUploader({
       vin: string | null;
       manufacturer: string | null;
       model: string | null;
+      officialExpert: string | null;
+      mileageKm: number | null;
       modificationsField22: string | null;
       additionalRemarks: string | null;
       vinMatchesGarage: boolean | null;
@@ -802,7 +838,10 @@ export function InvoiceUploader({
       formData.set("type", "abe");
       formData.set("category", "abe");
       formData.set("vendor", review.model?.trim() ?? storedTitle);
-      formData.set("date", review.issueDate?.trim() ?? localDateIso());
+      formData.set(
+        "date",
+        normalizeDocumentDateIso(review.issueDate) ?? localDateIso(),
+      );
       formData.set("amount", "");
       formData.set("lineItems", "");
       formData.set("kbaNumber", review.documentNumber?.trim() ?? "");
@@ -822,7 +861,10 @@ export function InvoiceUploader({
       formData.set("notes", notes);
       formData.set("manufacturer", review.manufacturer?.trim() ?? "");
       formData.set("invoiceNumber", review.documentNumber?.trim() ?? "");
-      formData.set("mileageKm", "");
+      formData.set(
+        "mileageKm",
+        review.mileageKm != null ? String(review.mileageKm) : "",
+      );
       formData.set("pageCount", String(pageCount || 1));
       formData.set("approvalFields", JSON.stringify(approval));
       formData.set("file", uploadFile);
@@ -833,8 +875,11 @@ export function InvoiceUploader({
         return;
       }
 
-      const href =
-        successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      const href = savedDocumentHref(
+        result.tagUuid,
+        result.document.id,
+        successHref,
+      );
       window.location.assign(href);
     });
   }
@@ -1311,6 +1356,27 @@ export function InvoiceUploader({
                 ))}
               </ul>
 
+              {showThinPositionsHint && isInvoiceFamilyScan && pages.length === 1 ? (
+                <div className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-3 text-[0.82rem] leading-relaxed text-amber-950">
+                  <p className="font-semibold">Wenige Positionen erkannt</p>
+                  <p className="mt-1">
+                    Noch ein Foto vom Positionsblock (Pos · Menge · Preise)
+                    verbessert die Erkennung — oder fahre mit den erkannten
+                    Daten fort.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowThinPositionsHint(false);
+                      setStep("review");
+                    }}
+                    className="mt-3 w-full rounded-xl border border-amber-300/80 bg-white px-3 py-2.5 text-[0.82rem] font-semibold text-amber-950"
+                  >
+                    Weiter zur Prüfung
+                  </button>
+                </div>
+              ) : null}
+
               {pages.length < MAX_PAGES ? (
                 <div className="grid grid-cols-1 gap-2">
                   {isInvoiceFamilyScan ? (
@@ -1320,7 +1386,11 @@ export function InvoiceUploader({
                       scanLabel={scanDef?.title ?? "Beleg"}
                       disabled={compressing}
                       imageButtonLabel="Bild hinzufügen"
-                      cameraButtonLabel="Rechnungsblock · Kamera"
+                      cameraButtonLabel={
+                        showThinPositionsHint
+                          ? "Positionen fotografieren"
+                          : "Rechnungsblock · Kamera"
+                      }
                       onFileSelected={(file) => {
                         void handleIncomingFile(file);
                       }}

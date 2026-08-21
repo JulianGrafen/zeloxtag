@@ -2,12 +2,10 @@ import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import {
-  buildDocumentUserMessage,
   type DocumentBytesInput,
 } from "@/lib/ocr/llm-document-content";
 import {
-  buildVisionUserMessage,
-  prepareAbeOcrInput,
+  buildAbeVisionUserMessage,
 } from "@/lib/ocr/prepare-document-for-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
@@ -219,7 +217,9 @@ export class AbeExtractionService {
           "Set userVehicleMatchStatus, matchedConditions, matchedVehicleRow to null.",
         ];
 
-    const userContent = buildDocumentUserMessage(instructionLines, input);
+    const userContent = await buildAbeVisionUserMessage(instructionLines, input, {
+      maxPdfPages: withContext ? ABE_CONTEXT_MAX_PAGES : ABE_COVER_MAX_PAGES,
+    });
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
@@ -570,8 +570,9 @@ export class AbeExtractionService {
       );
     }
 
-    const prepared = await prepareAbeOcrInput(input);
-    const userContent = await buildVisionUserMessage(instructionLines, prepared);
+    const userContent = await buildAbeVisionUserMessage(instructionLines, input, {
+      maxPdfPages: 1,
+    });
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
