@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
+import { GermanDateInput } from "@/components/documents/german-date-input";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 
 interface OilChangeManualFormProps {
@@ -89,10 +90,9 @@ export function OilChangeManualForm({
           <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
             Datum
           </span>
-          <input
-            type="date"
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
+          <GermanDateInput
+            value={date || null}
+            onChange={(iso) => setDate(iso ?? "")}
             className="claim-input w-full"
           />
         </label>

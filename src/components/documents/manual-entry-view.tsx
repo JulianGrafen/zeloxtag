@@ -16,6 +16,7 @@ import {
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
 import { deleteDocument } from "@/actions/delete-document";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
+import { GermanDateInput } from "@/components/documents/german-date-input";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import {
   PressableButton,
@@ -493,10 +494,9 @@ export function ManualEntryView({
                 <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                   Datum
                 </span>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
+                <GermanDateInput
+                  value={date || null}
+                  onChange={(iso) => setDate(iso ?? "")}
                   className="claim-input w-full"
                 />
               </label>

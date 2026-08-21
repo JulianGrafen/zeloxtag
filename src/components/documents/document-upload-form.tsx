@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, LoaderCircle, Upload } from "lucide-react";
 
 import { DocumentUpload } from "@/components/dashboard/DocumentUpload";
+import { GermanDateInput } from "@/components/documents/german-date-input";
 import {
   PressableButton,
   PressableLink,
@@ -141,10 +142,9 @@ export function DocumentUploadForm({
             <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
               Datum
             </span>
-            <input
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
+            <GermanDateInput
+              value={date || null}
+              onChange={(iso) => setDate(iso ?? "")}
               className="claim-input"
             />
           </label>
@@ -154,10 +154,9 @@ export function DocumentUploadForm({
               <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                 Datum
               </span>
-              <input
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
+              <GermanDateInput
+                value={date || null}
+                onChange={(iso) => setDate(iso ?? "")}
                 className="claim-input"
               />
             </label>

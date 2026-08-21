@@ -32,7 +32,7 @@ describe("document date display", () => {
   });
 
   it("formats long DE dates from raw OCR text", () => {
-    expect(formatDocumentDate("22.08.2026")).toMatch(/22\.?\s*Aug\.?\s*2026/i);
-    expect(formatDocumentDate("12. Aug 2026")).toMatch(/12\.?\s*Aug\.?\s*2026/i);
+    expect(formatDocumentDate("22.08.2026")).toBe("22.08.2026");
+    expect(formatDocumentDate("12. Aug 2026")).toBe("12.08.2026");
   });
 });

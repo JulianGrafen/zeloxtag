@@ -37,12 +37,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
-import {
-  formatCompactGermanDate,
-  localDateIso,
-  normalizeDocumentDateIso,
-  parseGermanDocumentDateInput,
-} from "@/lib/documents/format";
+import { GermanDateInput } from "@/components/documents/german-date-input";
+import { localDateIso, normalizeDocumentDateIso } from "@/lib/documents/format";
 import {
   buildInvoiceDashboardTitle,
   isPrimaryOilChange,
@@ -1686,20 +1682,15 @@ export function InvoiceUploader({
                 <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                   Datum
                 </span>
-                <Input
-                  inputMode="numeric"
-                  placeholder="TT.MM.JJJJ"
-                  value={
-                    fields.date ? formatCompactGermanDate(fields.date) : ""
-                  }
-                  onChange={(event) =>
+                <GermanDateInput
+                  value={fields.date}
+                  onChange={(iso) =>
                     setFields((current) => ({
                       ...current,
-                      date:
-                        parseGermanDocumentDateInput(event.target.value) ??
-                        (event.target.value.trim() ? current.date : null),
+                      date: iso,
                     }))
                   }
+                  className="claim-input"
                 />
               </Label>
             </div>

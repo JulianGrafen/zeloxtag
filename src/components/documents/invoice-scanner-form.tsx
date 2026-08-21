@@ -16,6 +16,7 @@ import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 import { CameraCapture } from "./camera-capture";
 import { DocumentCornerEditor } from "./document-corner-editor";
+import { GermanDateInput } from "./german-date-input";
 
 /** App-level scan categories (mapped onto documents.type). */
 export const SCAN_CATEGORIES = ["tuning", "service", "other"] as const;
@@ -302,10 +303,9 @@ export function InvoiceScannerForm({
                 <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                   Datum
                 </span>
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
+                <GermanDateInput
+                  value={date || null}
+                  onChange={(iso) => setDate(iso ?? "")}
                 />
               </Label>
             </div>

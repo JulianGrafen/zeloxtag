@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
+import { GermanDateInput } from "@/components/documents/german-date-input";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1169,17 +1170,16 @@ export function InvoiceUploadWizard({
                 <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                   Datum
                 </span>
-                <Input
-                  type="date"
-                  value={fields.date ?? ""}
-                  onChange={(event) =>
+                <GermanDateInput
+                  value={fields.date}
+                  onChange={(iso) =>
                     setState((prev) =>
                       prev.fields
                         ? {
                             ...prev,
                             fields: {
                               ...prev.fields,
-                              date: event.target.value || null,
+                              date: iso,
                             },
                           }
                         : prev,

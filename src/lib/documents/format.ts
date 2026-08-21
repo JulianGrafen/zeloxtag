@@ -17,19 +17,11 @@ export function formatTuevYearMonth(ym: string | null): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-/** Format ISO date in Europe/Berlin (document date, not UTC-shifted). */
+/** Numeric German calendar date (22.08.2026) for Belege and lists. */
 export function formatBerlinDocumentDate(isoDate: string | null): string {
-  if (!isoDate) return "Ohne Datum";
-  const iso = normalizeDocumentDateIso(isoDate);
-  if (!iso) return isoDate.trim();
-  const date = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return isoDate;
-  return date.toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Europe/Berlin",
-  });
+  if (!isoDate?.trim()) return "Ohne Datum";
+  const compact = formatCompactGermanDate(isoDate);
+  return compact || isoDate.trim();
 }
 
 export function formatDocumentDate(isoDate: string | null): string {

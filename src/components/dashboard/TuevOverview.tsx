@@ -15,6 +15,7 @@ import {
   TuevDefectsDraftEditor,
   type DraftDefect,
 } from "@/components/documents/tuev-defects-draft-editor";
+import { GermanDateInput } from "@/components/documents/german-date-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -305,12 +306,9 @@ export function TuevOverview({
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <FieldBlock label="Prüfdatum">
-            <Input
-              type="date"
-              value={review.testDate ?? ""}
-              onChange={(event) =>
-                patch("testDate", event.target.value || null)
-              }
+            <GermanDateInput
+              value={review.testDate}
+              onChange={(iso) => patch("testDate", iso)}
             />
           </FieldBlock>
           <FieldBlock label="Ergebnis">
