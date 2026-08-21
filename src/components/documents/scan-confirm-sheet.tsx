@@ -113,8 +113,8 @@ export function ScanConfirmSheet({
           /tuning|umbau|fahrwerk|felgen/i.test(values.title) ? (
             <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/8 px-3 py-2.5 text-[0.82rem] text-emerald-900">
               Tipp: Nach dem Speichern kannst du unter{" "}
-              <span className="font-semibold">Mehr → Umbau-Bilder</span> Fotos
-              zum Umbau ablegen.
+              <span className="font-semibold">Umbau-Bilder</span> Fotos zum Umbau
+              ablegen.
             </div>
           ) : null}
 

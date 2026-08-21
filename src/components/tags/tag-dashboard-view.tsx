@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { NotebookPen } from "lucide-react";
 
 import { ManualEntryModal } from "@/components/service/ManualEntryModal";
+import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
 import {
@@ -35,27 +37,6 @@ import {
 } from "@/lib/tags/demo-showcase";
 
 import { DashboardScanFab } from "./dashboard-scan-fab";
-import { DashboardMoreSheet } from "./dashboard-more-sheet";
-
-/** Home grid — launch set. */
-const CORE_OWNER_TILE_IDS = new Set([
-  "invoices",
-  "abe",
-  "tuv",
-  "oil-change",
-  "timeline",
-  "vehicle-settings",
-  "settings",
-]);
-
-/** One tap deeper via „Mehr“. */
-const SECONDARY_OWNER_TILE_IDS = new Set([
-  "service",
-  "schrauber",
-  "modifications",
-  "tuning-history",
-  "specs",
-]);
 
 interface TagDashboardViewProps {
   vehicle: Vehicle;
@@ -106,7 +87,6 @@ export function TagDashboardView({
   onSilhouetteProxyLoad,
 }: TagDashboardViewProps) {
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const invoiceCount = documents.filter((doc) => doc.type === "invoice").length;
   const abeCount = documents.filter((doc) => doc.type === "abe").length;
   const tuevCount = documents.filter((doc) => doc.type === "tuev").length;
@@ -310,73 +290,61 @@ export function TagDashboardView({
     }
 
     return tile;
-  });
-
-  const secondaryTiles = tiles.filter((tile) =>
-    SECONDARY_OWNER_TILE_IDS.has(String(tile.id)),
-  );
-
-  let visibleTiles = tiles.filter((tile) => {
-    if (demoMode) {
-      return tile.id !== "settings";
-    }
-    if (tile.id === "settings") return isOwner && !demoMode;
-    if (tile.id === "vehicle-settings") return isOwner || demoMode;
-    if (tile.id === "schrauber") return isOwner || demoMode;
-    if (SECONDARY_OWNER_TILE_IDS.has(String(tile.id))) return false;
-    if (isContributor && !isOwner) {
-      return (
-        tile.id === "invoices" ||
-        tile.id === "service" ||
-        tile.id === "oil-change" ||
-        tile.id === "timeline" ||
-        tile.id === "tuning-history"
-      );
-    }
-    if (isOwner || demoMode) {
-      return CORE_OWNER_TILE_IDS.has(String(tile.id));
-    }
-    return true;
-  });
-
-  if (isOwner && !isContributor) {
-    visibleTiles = [
-      ...visibleTiles,
-      {
-        id: "more",
-        title: "Mehr",
-        description: "Service, Umbauten, Technik",
-        icon: "grid" as const,
-        meta: { subtitle: `${secondaryTiles.length} Bereiche` },
-      },
-    ];
-  }
-
-  visibleTiles = visibleTiles.map((tile) => {
-    if (cloudUnlocked || demoMode || demoShowcase) return tile;
-    const feature = featureForDashboardTile(tile.id);
-    if (!feature || !isProOnlyFeature(feature)) return tile;
-    return {
-      ...tile,
-      locked: true,
-      meta: {
-        ...tile.meta,
-        href: undefined,
-        subtitle: "Pro",
-      },
-    };
-  });
+  })
+    .filter((tile) => {
+      if (tile.id === "settings") return isOwner && !demoMode;
+      if (tile.id === "vehicle-settings") return isOwner || demoMode;
+      if (tile.id === "schrauber") return isOwner || demoMode;
+      if (isContributor && !isOwner) {
+        return (
+          tile.id === "invoices" ||
+          tile.id === "service" ||
+          tile.id === "oil-change" ||
+          tile.id === "timeline" ||
+          tile.id === "tuning-history"
+        );
+      }
+      return true;
+    })
+    .map((tile) => {
+      if (cloudUnlocked || demoMode || demoShowcase) return tile;
+      const feature = featureForDashboardTile(tile.id);
+      if (!feature || !isProOnlyFeature(feature)) return tile;
+      return {
+        ...tile,
+        locked: true,
+        meta: {
+          ...tile.meta,
+          href: undefined,
+          subtitle: "Pro",
+        },
+      };
+    });
 
   return (
     <div className="relative">
       <VehicleDashboard
-        data={{ ...data, tiles: visibleTiles }}
-        className={canScan ? "pb-[max(7rem,calc(5rem+env(safe-area-inset-bottom)))]" : undefined}
+        data={{ ...data, tiles }}
+        className={canScan ? "pb-24" : undefined}
+        banner={
+          canScan ? (
+            <div
+              className="vd-anim-header px-1"
+              style={{ animationDelay: "0.08s" }}
+            >
+              <PressableButton
+                type="button"
+                variant="button"
+                onClick={() => setManualEntryOpen(true)}
+                className="claim-back w-full border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]"
+              >
+                <NotebookPen className="h-4 w-4" aria-hidden />
+                Manuell eintragen
+              </PressableButton>
+            </div>
+          ) : undefined
+        }
         onTileClick={(tileId) => {
-          if (tileId === "more") {
-            setMoreOpen(true);
-            return;
-          }
           const feature = featureForDashboardTile(tileId);
           if (feature && isProOnlyFeature(feature)) {
             onLockedFeature?.(feature);
@@ -390,18 +358,8 @@ export function TagDashboardView({
         onSilhouetteProxyLoad={onSilhouetteProxyLoad}
       />
       {canScan ? (
-        <DashboardScanFab
-          tagUuid={tagUuid}
-          onOpenScanner={onOpenScanner}
-          onManualEntry={() => setManualEntryOpen(true)}
-        />
+        <DashboardScanFab tagUuid={tagUuid} onOpenScanner={onOpenScanner} />
       ) : null}
-      <DashboardMoreSheet
-        open={moreOpen}
-        tiles={secondaryTiles}
-        onClose={() => setMoreOpen(false)}
-        onManualEntry={canScan ? () => setManualEntryOpen(true) : undefined}
-      />
       {canScan ? (
         <ManualEntryModal
           tagUuid={tagUuid}
