@@ -37,7 +37,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
-import { localDateIso } from "@/lib/documents/format";
+import {
+  formatCompactGermanDate,
+  localDateIso,
+  normalizeDocumentDateIso,
+  parseGermanDocumentDateInput,
+} from "@/lib/documents/format";
 import {
   buildInvoiceDashboardTitle,
   isPrimaryOilChange,
@@ -300,7 +305,7 @@ export function InvoiceUploader({
       typeLabel: DOCUMENT_TYPE_LABELS[storedType] ?? storedType,
       title: resolvedTitle,
       vendor: fields.vendor?.trim() ?? "",
-      date: fields.date,
+      date: normalizeDocumentDateIso(fields.date) ?? fields.date,
       amount: fields.amount,
       mileageKm: fields.mileageKm,
       vehicleLabel,
@@ -318,25 +323,7 @@ export function InvoiceUploader({
 
     setError(null);
     startTransition(async () => {
-      const oil = detectOilChangeInvoice({
-        title: values.title,
-        summary: values.title,
-        vendor: values.vendor,
-        category: fields.category,
-        notes: fields.notes,
-        lineItems: fields.lineItems,
-        rawText,
-      });
-      const oilPrimary = isPrimaryOilChange({
-        summary: values.title,
-        vendor: values.vendor,
-        category: fields.category,
-        lineItems: fields.lineItems,
-        rawText,
-        oil,
-      });
-
-      const category = oilPrimary ? "service" : fields.category;
+      const category = fields.category;
       const storedTitle = values.title.trim().slice(0, 160);
       const storedType = values.type;
 
@@ -371,9 +358,7 @@ export function InvoiceUploader({
       formData.set("partCategory", "");
       formData.set(
         "notes",
-        oil.isOilChange
-          ? (fields.notes?.trim() || oil.notes)
-          : (fields.notes?.trim() ?? ""),
+        fields.notes?.trim() ?? "",
       );
       formData.set("manufacturer", "");
       formData.set("invoiceNumber", fields.invoiceNumber?.trim() ?? "");
@@ -399,10 +384,9 @@ export function InvoiceUploader({
       }
 
       setConfirmOpen(false);
-      const href = oilPrimary
-        ? `/v/${result.tagUuid}/intervalle`
-        : (successHref ??
-          `/v/${result.tagUuid}/dokumente/${result.document.id}`);
+      const href =
+        successHref ??
+        `/v/${result.tagUuid}/dokumente/${result.document.id}`;
       window.location.assign(href);
     });
   }
@@ -663,29 +647,23 @@ export function InvoiceUploader({
 
       const baseFields = {
         ...analyzed.fields,
+        date:
+          normalizeDocumentDateIso(analyzed.fields.date) ?? analyzed.fields.date,
         category: normalizeInvoiceReviewCategory(
           resolvedLockCategory ? resolvedCategory : analyzed.fields.category,
           defaultReviewCategory,
         ),
       };
 
-      // Only promote to Service/Ölwechsel title when oil is the main job.
-      const nextFields = {
-        ...baseFields,
-        ...(oilPrimary
+      const nextFields =
+        oil.isOilChange && !oilPrimary
           ? {
-              category: "service" as const,
-              notes: oil.notes,
-              summary: oil.title,
+              ...baseFields,
+              notes: baseFields.notes?.trim()
+                ? `${baseFields.notes.trim()} · ${oil.notes}`
+                : oil.notes,
             }
-          : oil.isOilChange
-            ? {
-                notes: baseFields.notes?.trim()
-                  ? `${baseFields.notes.trim()} · ${oil.notes}`
-                  : oil.notes,
-              }
-            : {}),
-      };
+          : baseFields;
       setFields(nextFields);
 
       const defaultTitle = buildInvoiceDashboardTitle({
@@ -1567,20 +1545,12 @@ export function InvoiceUploader({
                 rawText,
                 oil,
               });
+              if (!primary) return null;
               return (
                 <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/8 px-3 py-2.5 text-[0.82rem] text-emerald-800">
-                  {primary ? (
-                    <>
-                      Ölwechsel ist die Hauptarbeit — Titel & Speicherung unter{" "}
-                      <span className="font-semibold">Öl-Wechsel</span>.
-                    </>
-                  ) : (
-                    <>
-                      Ölwechsel als Nebenposition erkannt — bleibt unter{" "}
-                      <span className="font-semibold">Öl-Wechsel</span>, Titel
-                      beschreibt die Hauptarbeit.
-                    </>
-                  )}
+                  Ölwechsel erkannt — optional als Intervall merken. Der Beleg
+                  wird unter{" "}
+                  <span className="font-semibold">Rechnungen</span> gespeichert.
                 </div>
               );
             })()}
@@ -1717,12 +1687,17 @@ export function InvoiceUploader({
                   Datum
                 </span>
                 <Input
-                  type="date"
-                  value={fields.date ?? ""}
+                  inputMode="numeric"
+                  placeholder="TT.MM.JJJJ"
+                  value={
+                    fields.date ? formatCompactGermanDate(fields.date) : ""
+                  }
                   onChange={(event) =>
                     setFields((current) => ({
                       ...current,
-                      date: event.target.value || null,
+                      date:
+                        parseGermanDocumentDateInput(event.target.value) ??
+                        (event.target.value.trim() ? current.date : null),
                     }))
                   }
                 />

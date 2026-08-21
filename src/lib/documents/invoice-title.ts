@@ -19,8 +19,8 @@ const TUNING_LINE =
 const REPAIR_LINE =
   /(?:^|[^A-Za-z0-9_])(?:reparatur|instandsetzung|unfall|karosserie|lackierung|getriebe|kupplung|bremsen?|bremsscheiben|querlenker|stoßdämpfer|stossdaempfer|zahnriemen|steuerkette|defekt|schaden)(?:[^A-Za-z0-9_]|$)/i;
 
-const SERVICE_LINE =
-  /(?:^|[^A-Za-z0-9_])(?:inspektion|wartung|service|hu\b|hauptuntersuchung|reifenwechsel|achsvermessung)(?:[^A-Za-z0-9_]|$)/i;
+const OIL_ADJUNCT =
+  /(?:^|[^A-Za-z0-9_])(?:entsorgung|umwelt|kleinmaterial|altöl|altol)(?:[^A-Za-z0-9_]|$)/i;
 
 export type InvoiceTitleInput = {
   summary?: string | null;
@@ -39,64 +39,44 @@ function billableItems(items: DocumentLineItem[] | null | undefined): DocumentLi
   return (items ?? []).filter((item) => !VAT_OR_TOTAL.test(item.label));
 }
 
-function amountShare(
-  items: DocumentLineItem[],
-  predicate: (label: string) => boolean,
-): number {
-  const total = items.reduce((sum, item) => sum + Math.abs(item.amount), 0);
-  if (total <= 0) return 0;
-  const matched = items
-    .filter((item) => predicate(item.label))
-    .reduce((sum, item) => sum + Math.abs(item.amount), 0);
-  return matched / total;
+const SERVICE_LINE =
+  /(?:^|[^A-Za-z0-9_])(?:inspektion|wartung|service|hu\b|hauptuntersuchung|reifenwechsel|achsvermessung)(?:[^A-Za-z0-9_]|$)/i;
+
+function isOilAdjacentLine(label: string): boolean {
+  return OIL_LINE.test(label) || OIL_ADJUNCT.test(label);
 }
 
-function hasLine(
+/** True when the line describes main workshop work (not oil/consumables/tax). */
+function isMainWorkLine(label: string): boolean {
+  if (VAT_OR_TOTAL.test(label)) return false;
+  if (isOilAdjacentLine(label)) return false;
+  return true;
+}
+
+function firstMainWorkLine(
   items: DocumentLineItem[],
-  pattern: RegExp,
-): boolean {
-  return items.some((item) => pattern.test(item.label));
+): DocumentLineItem | null {
+  for (const item of items) {
+    if (isMainWorkLine(item.label)) return item;
+  }
+  return null;
 }
 
 /**
- * Oil change is primary only when it is the main job — not a side job on tuning/repair.
+ * Oil change is primary only when it is the sole job — not a side line on Inspektion/Reparatur.
  */
 export function isPrimaryOilChange(input: InvoiceTitleInput): boolean {
   const oil = input.oil;
   if (!oil?.isOilChange) return false;
 
   const items = billableItems(input.lineItems);
-  const category = (input.category ?? "").toLowerCase();
-  const blob = [input.summary, input.rawText, ...items.map((i) => i.label)]
-    .filter(Boolean)
-    .join("\n");
-
-  const oilShare = amountShare(items, (label) => OIL_LINE.test(label));
-  const tuningShare = amountShare(items, (label) => TUNING_LINE.test(label));
-  const repairShare = amountShare(items, (label) => REPAIR_LINE.test(label));
-  const hasTuning = hasLine(items, TUNING_LINE) || TUNING_LINE.test(blob);
-  const hasRepair = hasLine(items, REPAIR_LINE) || REPAIR_LINE.test(blob);
-
-  // Explicit non-service categories win unless oil clearly dominates the bill.
-  if (category === "tuning" || category === "repair") {
-    return oilShare >= 0.55 && oilShare > tuningShare && oilShare > repairShare;
+  if (items.length === 0) {
+    return /öl[-\s]*wechsel|oil\s*change/i.test(
+      [input.summary, input.rawText].filter(Boolean).join("\n"),
+    );
   }
 
-  if (hasTuning && tuningShare >= oilShare) return false;
-  if (hasRepair && repairShare > oilShare) return false;
-
-  // Dominant oil lines, or classic service invoice centered on oil.
-  if (oilShare >= 0.4) return true;
-  if (
-    (category === "service" || category === "" || category === "other") &&
-    !hasTuning &&
-    !hasRepair &&
-    oil.isOilChange
-  ) {
-    return true;
-  }
-
-  return false;
+  return items.every((item) => !isMainWorkLine(item.label));
 }
 
 function shortenLabel(label: string): string {
@@ -119,6 +99,27 @@ export function buildInvoiceDashboardTitle(input: InvoiceTitleInput): string {
 
   if (oilPrimary && input.oil?.title) {
     return cleanTitle(input.oil.title);
+  }
+
+  const explicitSubject =
+    summary &&
+    !/öl[-\s]*wechsel|oel[-\s]*wechsel|ol[-\s]*wechsel/i.test(summary)
+      ? summary
+      : "";
+  if (explicitSubject && (SERVICE_LINE.test(explicitSubject) || REPAIR_LINE.test(explicitSubject) || TUNING_LINE.test(explicitSubject))) {
+    return cleanTitle(explicitSubject);
+  }
+
+  const leadMain = firstMainWorkLine(items);
+  if (leadMain) {
+    const base = shortenLabel(leadMain.label);
+    const hasOilSide = items.some((item) => isOilAdjacentLine(item.label));
+    if (hasOilSide && SERVICE_LINE.test(leadMain.label)) {
+      if (/inspektion/i.test(base) && !/öl|oel|ol/i.test(base)) {
+        return cleanTitle(`${base} inkl. Ölwechsel`);
+      }
+    }
+    return base;
   }
 
   // Drop oil-forced summaries when oil is only incidental.

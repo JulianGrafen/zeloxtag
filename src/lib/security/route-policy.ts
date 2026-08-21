@@ -1,4 +1,6 @@
 import { AUFLAGEN_KUERZEL_IMAGE_API_PATH } from "@/lib/documents/constants";
+import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
+import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import {
   SHOPIFY_WEBHOOK_API_PATH,
   STRIPE_WEBHOOK_API_PATH,
@@ -96,7 +98,32 @@ export function isProtectedApiPath(pathname: string, method: string): boolean {
   return true;
 }
 
+const PUBLIC_TAG_SUBPATHS = new Set(["/opengraph-image"]);
+
+/**
+ * Owner / Schrauber sub-routes under `/v/{tag}` — require a session at the edge.
+ * QR landing (`/v/{tag}` alone) stays public (PrivateTwinGate / showcase).
+ */
+export function isProtectedVehicleTagSubPath(pathname: string): boolean {
+  const match = pathname.match(/^\/v\/([^/]+)(\/[^?#]*)/);
+  if (!match) return false;
+
+  const tagUuid = match[1]?.trim() ?? "";
+  const subPath = match[2] ?? "";
+
+  if (!subPath || subPath === "/") return false;
+  if (PUBLIC_TAG_SUBPATHS.has(subPath)) return false;
+  if (isDemoActiveTag(tagUuid) || tagUuid === MOCK_TAG_UUIDS.unclaimed) {
+    return false;
+  }
+
+  return true;
+}
+
 export function isProtectedPagePath(pathname: string): boolean {
+  if (isProtectedVehicleTagSubPath(pathname)) {
+    return true;
+  }
   if (pathname === "/auth/continue") {
     return true;
   }

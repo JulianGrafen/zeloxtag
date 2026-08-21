@@ -29,11 +29,13 @@ import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
   displayDocumentTitle,
   formatDocumentDate,
+  formatDocumentDateCompact,
 } from "@/lib/documents/format";
 import {
   displayManualInvoiceNumber,
   isManualVehicleEntry,
 } from "@/lib/documents/manual-entries";
+import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
 import {
   documentMediaKind,
   isViewableDocumentUrl,
@@ -59,17 +61,6 @@ function fileNameFromUrl(fileUrl: string, fallback: string): string {
     // ignore
   }
   return `${fallback.replace(/\s+/g, "_")}.pdf`;
-}
-
-function formatCompactDate(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
-  if (Number.isNaN(date.getTime())) return formatDocumentDate(iso);
-  return date.toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
 }
 
 /**
@@ -100,6 +91,7 @@ export function DocumentInvoiceDetailView({
     ? documentMediaKind(document.file_url)
     : null;
   const isManual = isManualVehicleEntry(document);
+  const paymentBadge = resolveInvoicePaymentBadge(document);
   const canEditInvoice =
     canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
   const canEditVendor = canEditInvoice;
@@ -135,8 +127,8 @@ export function DocumentInvoiceDetailView({
     });
   }
   const fileName = fileNameFromUrl(document.file_url, title);
-  const issuedLabel = formatCompactDate(document.date);
-  const scannedLabel = formatCompactDate(document.created_at);
+  const issuedLabel = formatDocumentDateCompact(document.date);
+  const scannedLabel = formatDocumentDateCompact(document.created_at);
   const mileageLabel =
     typeof document.mileage_km === "number"
       ? `${document.mileage_km.toLocaleString("de-DE")} km`
@@ -226,10 +218,12 @@ export function DocumentInvoiceDetailView({
 
           <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                {isManual ? "dokumentiert" : "bezahlt"}
-              </span>
+              {paymentBadge ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                  {paymentBadge}
+                </span>
+              ) : null}
               {issuedLabel ? (
                 <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-muted)]">
                   {issuedLabel}

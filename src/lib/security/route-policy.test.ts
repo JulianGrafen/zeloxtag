@@ -8,9 +8,26 @@ import {
 
 import {
   isProtectedApiPath,
+  isProtectedVehicleTagSubPath,
   isPublicPath,
   isPublicVehicleImagePath,
 } from "./route-policy";
+
+describe("isProtectedVehicleTagSubPath", () => {
+  it("requires auth for owner sub-routes but keeps QR landing public", () => {
+    expect(isProtectedVehicleTagSubPath("/v/zlx-abc123")).toBe(false);
+    expect(isProtectedVehicleTagSubPath("/v/zlx-abc123/dokumente")).toBe(true);
+    expect(isProtectedVehicleTagSubPath("/v/zlx-abc123/einstellungen")).toBe(
+      true,
+    );
+    expect(
+      isProtectedVehicleTagSubPath("/v/zlx-abc123/opengraph-image"),
+    ).toBe(false);
+    expect(isProtectedVehicleTagSubPath("/v/demo-active-tag/dokumente")).toBe(
+      false,
+    );
+  });
+});
 
 describe("isPublicPath", () => {
   it("allows token-gated exposé URLs and keeps owner APIs protected", () => {

@@ -9,6 +9,7 @@ import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
   displayDocumentTitle,
+  formatDocumentDateCompact,
   sumInvoiceAmounts,
 } from "@/lib/documents/format";
 import {
@@ -18,7 +19,7 @@ import {
   type InvoiceListCategory,
 } from "@/lib/documents/invoice-categories";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
-import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
+import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
 import type { Document } from "@/types/database";
 
 interface VehicleInvoicesViewProps {
@@ -31,17 +32,6 @@ interface VehicleInvoicesViewProps {
 }
 
 const ALL_CHIP = "all";
-
-function formatCompactDate(iso: string | null): string {
-  if (!iso) return "Ohne Datum";
-  const date = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
 
 /**
  * Invoice overview matching the "Rechnungen & Belege" dashboard mock.
@@ -179,12 +169,12 @@ export function VehicleInvoicesView({
                 const amount =
                   typeof doc.amount === "number" ? formatEur(doc.amount) : null;
                 const vendor = doc.vendor?.trim() || "Unbekannter Anbieter";
-                const issued = formatCompactDate(doc.date);
+                const issued = formatDocumentDateCompact(doc.date);
                 const categoryLabel =
                   INVOICE_LIST_CATEGORY_LABELS[
                     resolveInvoiceListCategory(doc.category)
                   ];
-                const isManual = isManualVehicleEntry(doc);
+                const paymentBadge = resolveInvoicePaymentBadge(doc);
 
                 return (
                   <li key={doc.id}>
@@ -223,9 +213,11 @@ export function VehicleInvoicesView({
                           />
                         </span>
 
-                        <span className="mt-1.5 inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
-                          {isManual ? "Eigener Eintrag" : "bezahlt"}
-                        </span>
+                        {paymentBadge ? (
+                          <span className="mt-1.5 inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
+                            {paymentBadge}
+                          </span>
+                        ) : null}
                       </span>
                     </PressableLink>
 

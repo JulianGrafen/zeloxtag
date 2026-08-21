@@ -14,7 +14,7 @@ export type InvoiceListCategory = (typeof INVOICE_LIST_CATEGORIES)[number];
 export const INVOICE_LIST_CATEGORY_LABELS: Record<InvoiceListCategory, string> =
   {
     repair: "Reparatur",
-    service: "Service",
+    service: "Inspektion",
     tuning: "Tuning",
     other: "Sonstiges",
   };

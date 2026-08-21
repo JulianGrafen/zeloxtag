@@ -28,7 +28,7 @@ import {
   findDuplicateDocument,
 } from "./find-duplicate-document";
 import { guardDocumentTitle } from "./guard-document-title";
-import { isPrimaryOilChange } from "./invoice-title";
+import { normalizeDocumentDateIso } from "./format";
 import { parseLineItems } from "./line-items";
 import { appendMockUploadedDocument } from "./mock-uploads";
 import {
@@ -70,8 +70,7 @@ function parseAmount(raw: string | undefined): number | null {
 
 function parseDate(raw: string | undefined): string | null {
   if (!raw?.trim()) return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
-  return raw;
+  return normalizeDocumentDateIso(raw);
 }
 
 function parseMileageKm(raw: string | undefined): number | null {
@@ -150,29 +149,15 @@ export async function uploadDocument(
     lineItems,
   });
   notes = ensureOilChangeNotes(notes, oil);
-  const oilPrimary = isPrimaryOilChange({
-    summary: meta.title,
-    vendor,
-    category,
-    lineItems,
-    oil,
-  });
-  let title = guardDocumentTitle(
+  const title = guardDocumentTitle(
     meta.title,
     vendor ?? "Beleg",
   );
-  let typeRaw = meta.type;
+  const typeRaw = meta.type;
   if (vendorParsed.needsReview) {
     notes = notes?.trim()
       ? `${notes.trim()} · Werkstatt prüfen`
       : "Werkstatt prüfen";
-  }
-  if (oilPrimary) {
-    category = "service";
-    title = oil.title || title;
-    if (typeRaw === "invoice" || typeRaw === "other") {
-      typeRaw = "invoice";
-    }
   }
 
   const documentId = randomUUID();

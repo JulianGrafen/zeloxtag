@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { normalizeDocumentDateIso } from "@/lib/documents/format";
 import {
   coerceGermanMoneyAmount,
   sanitizeLlmMoneyAmount,
@@ -340,6 +341,9 @@ export function normalizeLineItemsList(
           Number.isFinite(item.amount) &&
           !isHtmlDebrisLabel(item.label) &&
           !isJunkInvoiceLineLabel(item.label) &&
+          !/(?:^|[^a-zäöüß])(?:mwst|m\.?\s*w\.?\s*st\.?|umsatzsteuer|vat\s*19)(?:[^a-zäöüß]|$)/i.test(
+            item.label,
+          ) &&
           /[a-zäöüß]{2,}/i.test(item.label) &&
           !isPercentRestatedAsAmount(item.label, item.amount),
       ),
@@ -371,7 +375,7 @@ export function normalizeTextParseResult(
 
   return {
     vendor,
-    date: fields.date,
+    date: normalizeDocumentDateIso(fields.date) ?? fields.date,
     amount:
       typeof fields.amount === "number"
         ? sanitizeLlmMoneyAmount(fields.amount, "conservative")
