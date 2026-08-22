@@ -27,7 +27,6 @@ import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { toOwnerClientTagScanResult } from "@/lib/tags/public-tag-dto";
 import {
-  dashboardTourHref,
   isForcedDashboardTourSearch,
 } from "@/lib/onboarding/dashboard-tour";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
@@ -155,7 +154,7 @@ export default async function TagScanPage({
   searchParams,
 }: TagScanPageProps) {
   const { uuid: identifier } = await params;
-  const { scan, type: scanType, dashboard, tour, checkout, session_id } =
+  const { scan, type: scanType, dashboard, tour, session_id } =
     await searchParams;
   const wantsDashboard = dashboard === "1" || scan === "1";
   const entry = await resolvePublicVehicleEntry(identifier);
@@ -250,15 +249,13 @@ export default async function TagScanPage({
     }
 
     const membershipActive = await userHasActiveMembership(vehicle.user_id);
-    const wantsScan =
-      scan === "1" && !isForcedDashboardTourSearch({ tour, checkout });
+    const wantsScan = scan === "1" && tour !== "1";
     const openScanner = wantsScan && membershipActive;
-    const startTour =
-      access.isOwner && isForcedDashboardTourSearch({ tour, checkout });
+    const startTour = access.isOwner && isForcedDashboardTourSearch({ tour });
 
     if (session_id?.startsWith("cs_") && user) {
       await syncStripeCheckoutSessionAction(session_id);
-      redirect(dashboardTourHref(tag.uuid));
+      redirect(`/v/${tag.uuid}`);
     }
     const visibleDocuments = filterDocumentsForContributorAccess(
       result.documents,

@@ -8,7 +8,6 @@ import {
   PRO_TRIAL_PRICE_COPY,
   proCheckoutButtonLabel,
 } from "@/lib/billing/pro-plan";
-import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
 
 export function ActivateCloudView({ tagUuid }: { tagUuid: string }) {
   const dashboardHref = `/v/${tagUuid}`;
@@ -30,7 +29,7 @@ export function ActivateCloudView({ tagUuid }: { tagUuid: string }) {
         <ProPlanBenefits audience="new" showLead={false} />
 
         <StripeCheckoutButton
-          successPath={dashboardTourHref(tagUuid)}
+          successPath={dashboardHref}
           cancelPath={aboHref}
           label={proCheckoutButtonLabel("new")}
         />

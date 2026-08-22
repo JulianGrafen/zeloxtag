@@ -73,8 +73,8 @@ function normalizeClaimInput(input: ClaimTagInput): NormalizedClaim {
   };
 }
 
-function dashboardAfterClaimHref(tagUuid: string): string {
-  return `/v/${tagUuid}?tour=1`;
+function dashboardAfterClaimHref(tagUuid: string, startTour: boolean): string {
+  return startTour ? `/v/${tagUuid}?tour=1` : `/v/${tagUuid}`;
 }
 
 /**
@@ -102,12 +102,13 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
     }
     return {
       status: "continue",
-      href: dashboardAfterClaimHref(MOCK_TAG_UUIDS.active),
+      href: dashboardAfterClaimHref(MOCK_TAG_UUIDS.active, true),
       nextTagUuid: null,
     };
   }
 
   let ownerUserId: string;
+  let startTour = false;
   const currentUser = await getCurrentUser();
 
   if (currentUser) {
@@ -130,6 +131,7 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
       return { status: "error", message: account.message };
     }
     ownerUserId = account.userId;
+    startTour = account.created;
   }
 
   try {
@@ -149,7 +151,7 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
 
     return {
       status: "continue",
-      href: `/v/${result.tagUuid}?tour=1`,
+      href: dashboardAfterClaimHref(result.tagUuid, startTour),
       nextTagUuid: result.nextTagUuid,
     };
   } catch (error) {

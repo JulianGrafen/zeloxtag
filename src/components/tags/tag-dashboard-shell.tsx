@@ -77,7 +77,7 @@ interface TagDashboardShellProps {
   sessionEmail?: string | null;
   initialMode?: DashboardMode;
   initialScanType?: string | null;
-  /** Post-claim / Stripe return / ?tour=1 — run the guided tour. */
+  /** Post-claim first registration (`?tour=1`) — run the guided tour. */
   startTour?: boolean;
   /** Vehicle owner's ZeloxTag Pro is active. */
   membershipActive?: boolean;
@@ -399,7 +399,6 @@ export function TagDashboardShell({
         }
         role={isOwner ? "owner" : "contributor"}
         force={startTour}
-        autoStart
         onSettled={() => setDeferSilhouetteForTour(false)}
       />
       <ProPaywallModal

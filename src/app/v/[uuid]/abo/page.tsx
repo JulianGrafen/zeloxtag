@@ -7,10 +7,6 @@ import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
-import {
-  dashboardTourHref,
-  isPostPaymentReturn,
-} from "@/lib/onboarding/dashboard-tour";
 
 interface ActivateCloudPageProps {
   params: Promise<{ uuid: string }>;
@@ -28,7 +24,7 @@ export default async function ActivateCloudPage({
   searchParams,
 }: ActivateCloudPageProps) {
   const { uuid } = await params;
-  const { session_id, checkout } = await searchParams;
+  const { session_id } = await searchParams;
   const user = await getCurrentUser();
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(`/v/${uuid}/abo`)}`);
@@ -41,11 +37,7 @@ export default async function ActivateCloudPage({
   }
 
   if (await userHasActiveMembership(user.id)) {
-    redirect(
-      isPostPaymentReturn({ checkout, session_id })
-        ? dashboardTourHref(uuid)
-        : `/v/${uuid}`,
-    );
+    redirect(`/v/${uuid}`);
   }
 
   return (

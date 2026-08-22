@@ -68,7 +68,7 @@ describe("dashboard tour persistence", () => {
   });
 });
 
-describe("post-payment tour URLs", () => {
+describe("first-registration tour URLs", () => {
   it("builds a dashboard tour href without opening the scanner", () => {
     const href = dashboardTourHref("8f3a9b2c-1a2b-4c3d-8e9f-0a1b2c3d4e5f");
     expect(href).toBe(
@@ -85,10 +85,10 @@ describe("post-payment tour URLs", () => {
     ).toBe("/v/8f3a9b2c-1a2b-4c3d-8e9f-0a1b2c3d4e5f?tour=1");
   });
 
-  it("detects Stripe success and explicit tour flags", () => {
+  it("detects explicit tour flag only (not Stripe success)", () => {
     expect(isForcedDashboardTourSearch({ tour: "1" })).toBe(true);
-    expect(isForcedDashboardTourSearch({ checkout: "success" })).toBe(true);
-    expect(isForcedDashboardTourSearch({ checkout: "cancel" })).toBe(false);
+    expect(isForcedDashboardTourSearch({ tour: "0" })).toBe(false);
+    expect(isPostPaymentReturn({ checkout: "success" })).toBe(true);
     expect(isPostPaymentReturn({ session_id: "cs_test_123" })).toBe(true);
     expect(isPostPaymentReturn({ checkout: "cancel" })).toBe(false);
   });

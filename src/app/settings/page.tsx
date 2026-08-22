@@ -16,7 +16,6 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import {
   isPostPaymentReturn,
-  withForcedDashboardTour,
 } from "@/lib/onboarding/dashboard-tour";
 
 export const metadata: Metadata = {
@@ -56,7 +55,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   ) {
     const destination = await resolvePostLoginPath(user.id);
     if (destination.startsWith("/v/")) {
-      redirect(withForcedDashboardTour(destination));
+      redirect(destination);
     }
   }
 

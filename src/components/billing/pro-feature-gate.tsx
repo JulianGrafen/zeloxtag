@@ -41,7 +41,7 @@ export async function ProFeatureGate({
           <p className="claim-copy mt-2">{paywallBody(feature)}</p>
           <ProPlanBenefits audience="new" showLead={false} />
           <StripeCheckoutButton
-            successPath={`/v/${tagUuid}?tour=1`}
+            successPath={`/v/${tagUuid}`}
             cancelPath={aboHref}
             label={proCheckoutButtonLabel("new")}
           />

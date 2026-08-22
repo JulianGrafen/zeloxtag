@@ -103,7 +103,7 @@ export function getDashboardTourSteps(
   return role === "owner" ? OWNER_STEPS : CONTRIBUTOR_STEPS;
 }
 
-/** Vehicle dashboard with the guided tour forced (post-Stripe-payment). */
+/** Vehicle dashboard after first registration (claim with new account). */
 export function dashboardTourHref(tagUuid: string): string {
   return `/v/${tagUuid}?${DASHBOARD_TOUR_QUERY}=1`;
 }
@@ -127,22 +127,15 @@ export function withForcedDashboardTour(path: string): string {
 
 export function isForcedDashboardTourSearch(search: {
   tour?: string | string[];
-  checkout?: string | string[];
 }): boolean {
   const tour = Array.isArray(search.tour) ? search.tour[0] : search.tour;
-  const checkout = Array.isArray(search.checkout)
-    ? search.checkout[0]
-    : search.checkout;
-  return tour === "1" || checkout === "success";
+  return tour === "1";
 }
 
 export function wantsForcedDashboardTour(): boolean {
   if (typeof window === "undefined") return false;
   const params = new URLSearchParams(window.location.search);
-  return isForcedDashboardTourSearch({
-    tour: params.get(DASHBOARD_TOUR_QUERY) ?? undefined,
-    checkout: params.get("checkout") ?? undefined,
-  });
+  return params.get(DASHBOARD_TOUR_QUERY) === "1";
 }
 
 export function clearForcedDashboardTourFromUrl(): void {

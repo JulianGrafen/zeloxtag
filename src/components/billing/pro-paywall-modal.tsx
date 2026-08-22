@@ -66,7 +66,7 @@ export function ProPaywallModal({
         </p>
         {isOwner ? (
           <StripeCheckoutButton
-            successPath={`/v/${tagUuid}?tour=1`}
+            successPath={`/v/${tagUuid}`}
             cancelPath={aboHref}
             label={proCheckoutButtonLabel("new")}
           />
