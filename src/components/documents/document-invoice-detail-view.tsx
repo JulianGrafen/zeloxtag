@@ -29,6 +29,7 @@ import {
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
   displayDocumentTitle,
+  formatMileageKmLabel,
   formatDocumentDate,
   formatDocumentDateCompact,
 } from "@/lib/documents/format";
@@ -36,6 +37,10 @@ import {
   displayManualInvoiceNumber,
   isManualVehicleEntry,
 } from "@/lib/documents/manual-entries";
+import {
+  documentDeleteButtonLabel,
+  documentDeleteConfirmMessage,
+} from "@/lib/documents/constants";
 import { resolveDocumentMileageKm } from "@/lib/documents/document-mileage";
 import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
 import {
@@ -106,11 +111,15 @@ export function DocumentInvoiceDetailView({
       !document.file_url.startsWith("/demo/"));
   const resolvedBack =
     backHref ?? `/v/${tagUuid}/dokumente?type=${document.type}`;
+  const deleteDocumentType =
+    document.type === "tuev" || document.approval_fields?.kind === "tuev"
+      ? "tuev"
+      : document.type;
 
   function handleDeleteInvoice() {
     if (!canDeleteInvoice) return;
     const confirmed = window.confirm(
-      `Rechnung „${title}“ wirklich löschen? Das lässt sich nicht rückgängig machen.`,
+      documentDeleteConfirmMessage(deleteDocumentType, title),
     );
     if (!confirmed) return;
 
@@ -134,9 +143,7 @@ export function DocumentInvoiceDetailView({
   const scannedLabel = formatDocumentDateCompact(document.created_at);
   const resolvedMileageKm = resolveDocumentMileageKm(document);
   const mileageLabel =
-    resolvedMileageKm !== null
-      ? `${resolvedMileageKm.toLocaleString("de-DE")} km`
-      : null;
+    resolvedMileageKm !== null ? formatMileageKmLabel(resolvedMileageKm) : null;
   const vendor = vendorLabel.trim() || title;
   const category = document.category?.trim() || (isManual ? "Eintrag" : "Beleg");
   const invoiceNumberLabel = displayManualInvoiceNumber(document.invoice_number);
@@ -469,7 +476,9 @@ export function DocumentInvoiceDetailView({
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-[0.88rem] font-semibold text-red-700 disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
-              {deleting ? "Wird gelöscht…" : "Rechnung löschen"}
+              {deleting
+                ? "Wird gelöscht…"
+                : documentDeleteButtonLabel(deleteDocumentType)}
             </PressableButton>
             {deleteError ? (
               <p

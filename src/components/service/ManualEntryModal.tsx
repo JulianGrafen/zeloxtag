@@ -6,6 +6,8 @@ import { NotebookPen, X } from "lucide-react";
 
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
 import { GermanDateInput } from "@/components/documents/german-date-input";
+import { MileageKmInput } from "@/components/documents/mileage-km-input";
+import { parseMileageKmInput } from "@/lib/documents/format";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import {
   MANUAL_SERVICE_ENTRY_LABELS,
@@ -204,12 +206,11 @@ export function ManualEntryModal({
               <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                 Kilometerstand
               </span>
-              <input
-                inputMode="numeric"
-                value={mileageKm}
-                onChange={(event) => setMileageKm(event.target.value)}
+              <MileageKmInput
+                value={parseMileageKmInput(mileageKm)}
+                onChange={(km) => setMileageKm(km === null ? "" : String(km))}
                 className="claim-input w-full"
-                placeholder="z. B. 84200"
+                placeholder="z. B. 84.200"
                 required
               />
             </label>

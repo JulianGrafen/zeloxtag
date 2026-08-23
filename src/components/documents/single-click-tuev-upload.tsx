@@ -22,8 +22,11 @@ import {
 } from "lucide-react";
 
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
-import { localDateIso } from "@/lib/documents/format";
-import { formatTuevYearMonth } from "@/lib/documents/format";
+import {
+  formatMileageKmLabel,
+  formatTuevYearMonth,
+  localDateIso,
+} from "@/lib/documents/format";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { TuevVisionExtraction } from "@/services/ocr/TuevExtractionService";
@@ -542,7 +545,7 @@ export function SingleClickTuevUpload({
               label="Kilometerstand"
               value={
                 report.mileageKm !== null
-                  ? `${report.mileageKm.toLocaleString("de-DE")} km`
+                  ? formatMileageKmLabel(report.mileageKm)
                   : null
               }
             />

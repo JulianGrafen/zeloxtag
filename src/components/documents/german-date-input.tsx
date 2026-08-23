@@ -1,10 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import {
-  formatCompactGermanDate,
-  parseGermanDocumentDateInput,
-} from "@/lib/documents/format";
+import { normalizeDocumentDateIso } from "@/lib/documents/format";
 
 type GermanDateInputProps = {
   value: string | null;
@@ -15,11 +12,15 @@ type GermanDateInputProps = {
   id?: string;
 };
 
-/** Beleg-Datum als TT.MM.JJJJ — kein US-Date-Picker. */
+function toDateInputValue(value: string | null): string {
+  if (!value?.trim()) return "";
+  return normalizeDocumentDateIso(value) ?? "";
+}
+
+/** Beleg-Datum — nativer Kalender-Picker (ISO YYYY-MM-DD intern). */
 export function GermanDateInput({
   value,
   onChange,
-  placeholder = "TT.MM.JJJJ",
   className,
   required,
   id,
@@ -28,14 +29,13 @@ export function GermanDateInput({
     <Input
       id={id}
       required={required}
-      inputMode="numeric"
-      placeholder={placeholder}
+      type="date"
+      lang="de"
       className={className}
-      value={value ? formatCompactGermanDate(value) : ""}
+      value={toDateInputValue(value)}
       onChange={(event) => {
-        const raw = event.target.value;
-        const iso = parseGermanDocumentDateInput(raw);
-        onChange(iso ?? (raw.trim() ? value : null));
+        const raw = event.target.value.trim();
+        onChange(raw || null);
       }}
     />
   );

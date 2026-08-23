@@ -10,6 +10,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { GermanDateInput } from "@/components/documents/german-date-input";
+import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
@@ -301,19 +302,10 @@ export function EinzelabnahmeOverview({
               />
             </FieldBlock>
             <FieldBlock label="KM-Stand">
-              <Input
-                inputMode="numeric"
-                value={
-                  review.mileageKm != null ? String(review.mileageKm) : ""
-                }
-                onChange={(event) => {
-                  const raw = event.target.value.replace(/\D/g, "");
-                  patch(
-                    "mileageKm",
-                    raw ? Number.parseInt(raw, 10) : null,
-                  );
-                }}
-                placeholder="z. B. 142350"
+              <MileageKmInput
+                value={review.mileageKm}
+                onChange={(km) => patch("mileageKm", km)}
+                placeholder="z. B. 142.350"
               />
             </FieldBlock>
             <FieldBlock label="Feld 22 · Bemerkungen / Änderungen">

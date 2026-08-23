@@ -38,6 +38,7 @@ import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { GermanDateInput } from "@/components/documents/german-date-input";
+import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { localDateIso, normalizeDocumentDateIso } from "@/lib/documents/format";
 import {
   buildInvoiceDashboardTitle,
@@ -1676,26 +1677,16 @@ export function InvoiceUploader({
               <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                 Kilometerstand
               </span>
-              <Input
-                inputMode="numeric"
-                value={
-                  fields.mileageKm === null || fields.mileageKm === undefined
-                    ? ""
-                    : String(fields.mileageKm)
-                }
-                onChange={(event) => {
-                  const raw = event.target.value.replace(/[^\d]/g, "");
-                  if (!raw) {
-                    setFields((current) => ({ ...current, mileageKm: null }));
-                    return;
-                  }
-                  const value = Number.parseInt(raw, 10);
+              <MileageKmInput
+                value={fields.mileageKm ?? null}
+                onChange={(km) =>
                   setFields((current) => ({
                     ...current,
-                    mileageKm: Number.isFinite(value) ? value : current.mileageKm,
-                  }));
-                }}
-                placeholder="z. B. 67210"
+                    mileageKm: km,
+                  }))
+                }
+                className="claim-input"
+                placeholder="z. B. 67.210"
               />
             </Label>
 

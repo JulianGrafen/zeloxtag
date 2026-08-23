@@ -32,6 +32,7 @@ import {
   isPrimaryOilChange,
 } from "@/lib/documents/invoice-title";
 import { detectOilChangeInvoice } from "@/lib/documents/oil-changes";
+import { formatMileageKmLabel } from "@/lib/documents/format";
 import {
   INVOICE_REVIEW_CATEGORIES,
   INVOICE_REVIEW_CATEGORY_LABELS,
@@ -1094,7 +1095,9 @@ export function InvoiceUploadWizard({
             <ReviewRow
               label="KM-Stand"
               value={
-                fields.mileageKm === null ? null : `${fields.mileageKm} km`
+                fields.mileageKm === null
+                  ? null
+                  : formatMileageKmLabel(fields.mileageKm)
               }
             />
 

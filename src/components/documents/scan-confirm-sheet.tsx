@@ -3,7 +3,7 @@
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { formatDocumentAmount, formatDocumentDate } from "@/lib/documents/format";
+import { formatDocumentAmount, formatDocumentDate, formatMileageKmLabel } from "@/lib/documents/format";
 import type { DocumentType } from "@/types/database";
 
 export type ScanConfirmValues = {
@@ -178,9 +178,7 @@ export function ScanConfirmSheet({
             <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.68rem] text-[color:var(--vd-muted)]">Kilometerstand</dt>
               <dd className="mt-0.5 font-semibold tabular-nums text-[color:var(--vd-text)]">
-                {values.mileageKm != null
-                  ? `${values.mileageKm.toLocaleString("de-DE")} km`
-                  : "—"}
+                {formatMileageKmLabel(values.mileageKm)}
               </dd>
             </div>
             <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">

@@ -17,6 +17,7 @@ import {
   type DraftDefect,
 } from "@/components/documents/tuev-defects-draft-editor";
 import { GermanDateInput } from "@/components/documents/german-date-input";
+import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { Button } from "@/components/ui/button";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
@@ -329,24 +330,10 @@ export function TuevOverview({
             </select>
           </FieldBlock>
           <FieldBlock label="Kilometerstand">
-            <Input
-              inputMode="numeric"
-              value={
-                review.mileageKm === null ? "" : String(review.mileageKm)
-              }
-              onChange={(event) => {
-                const raw = event.target.value.replace(/[^\d]/g, "");
-                if (!raw) {
-                  patch("mileageKm", null);
-                  return;
-                }
-                const value = Number.parseInt(raw, 10);
-                patch(
-                  "mileageKm",
-                  Number.isFinite(value) ? value : review.mileageKm,
-                );
-              }}
-              placeholder="z. B. 87200"
+            <MileageKmInput
+              value={review.mileageKm}
+              onChange={(km) => patch("mileageKm", km)}
+              placeholder="z. B. 87.200"
             />
           </FieldBlock>
           <FieldBlock label="Vorgangsnummer">

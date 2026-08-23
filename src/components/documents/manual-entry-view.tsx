@@ -17,6 +17,8 @@ import { createManualVehicleEntry } from "@/actions/create-manual-entry";
 import { deleteDocument } from "@/actions/delete-document";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { GermanDateInput } from "@/components/documents/german-date-input";
+import { MileageKmInput } from "@/components/documents/mileage-km-input";
+import { parseMileageKmInput } from "@/lib/documents/format";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import {
   PressableButton,
@@ -532,10 +534,9 @@ export function ManualEntryView({
               <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                 Kilometerstand
               </span>
-              <input
-                inputMode="numeric"
-                value={mileageKm}
-                onChange={(event) => setMileageKm(event.target.value)}
+              <MileageKmInput
+                value={parseMileageKmInput(mileageKm)}
+                onChange={(km) => setMileageKm(km === null ? "" : String(km))}
                 className="claim-input w-full"
                 placeholder="optional"
               />

@@ -237,6 +237,27 @@ export function documentTypeLabel(type: DocumentType): string {
   return DOCUMENT_TYPE_LABELS[type];
 }
 
+/** Odometer number with German thousand separators — 178605 → "178.605". */
+export function formatMileageKmNumber(km: number | null | undefined): string {
+  if (km == null || !Number.isFinite(km)) return "";
+  return Math.round(km).toLocaleString("de-DE");
+}
+
+/** Odometer with unit — 178605 → "178.605 km", null → "—". */
+export function formatMileageKmLabel(km: number | null | undefined): string {
+  const formatted = formatMileageKmNumber(km);
+  return formatted ? `${formatted} km` : "—";
+}
+
+/** Parse typed/pasted mileage (digits only, ignores thousand-separator dots). */
+export function parseMileageKmInput(raw: string): number | null {
+  const digits = raw.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  const value = Number.parseInt(digits, 10);
+  if (!Number.isFinite(value) || value < 0 || value > 9_999_999) return null;
+  return value;
+}
+
 /** Strip legacy OCR category prefixes like `[repair]` from stored titles. */
 export function displayDocumentTitle(title: string): string {
   return title.replace(/^\[[a-z_]+\]\s*/i, "").trim() || title;

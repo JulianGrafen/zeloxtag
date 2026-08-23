@@ -18,6 +18,7 @@ import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-vie
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import { displayAbeDocumentTitle } from "@/lib/documents/abe-title";
+import { documentDeleteConfirmMessage } from "@/lib/documents/constants";
 import {
   displayDocumentTitle,
   documentTypeLabel,
@@ -150,11 +151,11 @@ export function VehicleDocumentsView({
       document.type === "abe"
         ? displayAbeDocumentTitle(document)
         : displayDocumentTitle(document.title);
-    const message =
-      document.type === "abe"
-        ? `ABE „${title}“ wirklich löschen? Das lässt sich nicht rückgängig machen.`
-        : `Dokument „${title}“ wirklich löschen?`;
-    if (!window.confirm(message)) return;
+    const deleteType =
+      document.type === "tuev" || document.approval_fields?.kind === "tuev"
+        ? "tuev"
+        : document.type;
+    if (!window.confirm(documentDeleteConfirmMessage(deleteType, title))) return;
 
     setError(null);
     setPendingId(document.id);

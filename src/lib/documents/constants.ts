@@ -31,6 +31,25 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   other: "Sonstiges",
 };
 
+/** Noun used in delete button + confirm dialog per document type. */
+export const DOCUMENT_DELETE_NOUNS: Record<DocumentType, string> = {
+  invoice: "Rechnung",
+  abe: "ABE",
+  tuev: "TÜV-Bericht",
+  other: "Dokument",
+};
+
+export function documentDeleteButtonLabel(type: DocumentType): string {
+  return `${DOCUMENT_DELETE_NOUNS[type]} löschen`;
+}
+
+export function documentDeleteConfirmMessage(
+  type: DocumentType,
+  title: string,
+): string {
+  return `${DOCUMENT_DELETE_NOUNS[type]} „${title}“ wirklich löschen? Das lässt sich nicht rückgängig machen.`;
+}
+
 export const DOCUMENT_TYPE_OPTIONS: DocumentType[] = [
   "invoice",
   "abe",
