@@ -30,10 +30,14 @@ export function validateMileageAgainstHistory(
     }))
     .sort((a, b) => b.date.localeCompare(a.date));
 
+  // Find the chronologically closest predecessor document.
+  // Do NOT fall back to the newest entry when no predecessor exists — uploading
+  // an older document (e.g. a TÜV from 3 years ago) is always valid when there
+  // are no prior dated entries to compare against.
   const prior =
     date === null
       ? dated[0]
-      : dated.find((row) => row.date <= date) ?? dated[0];
+      : dated.find((row) => row.date <= date);
 
   if (!prior || prior.km <= mileageKm) {
     return { ok: true, warning: null };

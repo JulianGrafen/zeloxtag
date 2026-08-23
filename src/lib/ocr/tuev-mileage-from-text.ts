@@ -166,15 +166,28 @@ export function extractTuevMileageKmFromText(rawText: string): number | null {
   return extractMileageKmFromText(text);
 }
 
+/**
+ * True when OCR likely has the full value and LLM dropped trailing digits.
+ * e.g. LLM=9867 OCR=98670 — OCR string starts with LLM string and is longer.
+ * We require the numeric strings to align, not just "OCR > LLM".
+ */
 function isTruncatedLlmMileage(llmKm: number, ocrKm: number): boolean {
   const llmStr = String(llmKm);
   const ocrStr = String(ocrKm);
-  if (ocrStr.startsWith(llmStr) && ocrStr.length > llmStr.length) return true;
-  if (ocrKm > llmKm && ocrKm < llmKm * 100) return true;
-  return false;
+  return ocrStr.startsWith(llmStr) && ocrStr.length > llmStr.length;
 }
 
-/** Prefer Punkt-4 OCR mileage; LLM often drops digits on long odometer readings. */
+/**
+ * Resolve odometer for a TÜV/HU report.
+ *
+ * Priority — LLM (vision) wins when it looks complete; OCR Punkt 4 wins only
+ * when LLM is null or truncated (fewer digits than OCR).
+ * Rationale: the vision LLM reads the physical document image directly and
+ * tends to read the full number correctly.  Azure Layout OCR can misread
+ * stylised digits, read an adjacent number, or pick up a number from a
+ * different section.  We therefore trust LLM by default and only let OCR
+ * override when there is strong evidence that LLM's value is incomplete.
+ */
 export function preferTuevMileageKm(
   structured: number | null | undefined,
   rawText: string,
@@ -190,14 +203,21 @@ export function preferTuevMileageKm(
   if (!rawText.trim()) return llmKm;
 
   const punkt4 = extractTuevPunkt4MileageKmFromText(rawText);
-  if (punkt4 !== null) {
-    if (llmKm !== null && llmKm !== punkt4 && isTruncatedLlmMileage(llmKm, punkt4)) {
-      return punkt4;
-    }
-    return punkt4;
-  }
 
-  // Punkt 4 only — generic invoice-style KM heuristics pick up unrelated numbers
-  // (other form fields, fees, VIN fragments) and must not override TÜV mileage.
+  // No OCR value — use LLM directly.
+  if (punkt4 === null) return llmKm;
+
+  // No LLM value — OCR fills the gap.
+  if (llmKm === null) return punkt4;
+
+  // Both agree (within 1 %) — prefer OCR as it has richer digit fidelity.
+  if (llmKm === punkt4) return punkt4;
+  const ratio = Math.abs(punkt4 - llmKm) / Math.max(llmKm, punkt4);
+  if (ratio <= 0.01) return punkt4;
+
+  // LLM looks truncated (OCR is a digit-extension of the LLM string).
+  if (isTruncatedLlmMileage(llmKm, punkt4)) return punkt4;
+
+  // OCR and LLM disagree significantly — trust the LLM vision value.
   return llmKm;
 }

@@ -55,9 +55,19 @@ function sameDefectRow(a: TuevDefectRow, b: TuevDefectRow): boolean {
   return foldText(a.description) === foldText(b.description);
 }
 
+/**
+ * Check whether a defect row can be grounded in the OCR text.
+ * Used to reject purely hallucinated LLM rows (no trace in the document).
+ *
+ * When the LLM checkpoint appears verbatim in OCR text → row is verified.
+ * (If OCR misread the checkpoint we fall through to description matching.)
+ * When the description appears in OCR text → row is verified.
+ * Only rows whose BOTH checkpoint AND description are absent from OCR are dropped.
+ */
 function rowMatchesOcr(row: TuevDefectRow, ocrText: string): boolean {
   const folded = foldText(ocrText);
 
+  // Fast path: LLM checkpoint appears literally in OCR.
   if (row.checkpoint) {
     const checkpoint = normalizeCheckpoint(row.checkpoint).toLowerCase();
     if (checkpoint && folded.includes(checkpoint)) return true;
@@ -78,8 +88,14 @@ function rowMatchesOcr(row: TuevDefectRow, ocrText: string): boolean {
 
 /**
  * Reconcile LLM defects with OCR Punkt 6 — prevents invented Mängel.
- * LLM checkpoints are kept verbatim when verified in OCR text; OCR rows
- * only fill gaps the LLM missed (never overwrite LLM Prüfpunkte).
+ *
+ * Policy:
+ *  1. LLM rows whose checkpoint OR description are grounded in OCR text are
+ *     kept VERBATIM — including the LLM-extracted checkpoint, which the vision
+ *     LLM reads accurately from the image even when Layout OCR misreads it.
+ *  2. OCR rows are used ONLY to fill gaps the LLM missed (defects the LLM
+ *     did not extract at all).  They never overwrite LLM Prüfpunkte.
+ *  3. When LLM has no rows, fall back to OCR entirely.
  */
 export function reconcileTuevDefectRows(
   llmTable: TuevDefectRow[] | null | undefined,
