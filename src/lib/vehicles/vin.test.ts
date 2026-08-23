@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { parseEinzelabnahmeField22Meta } from "@/lib/documents/einzelabnahme-field22-meta";
-import { isPlausibleVin, verifyVinMatch } from "@/lib/vehicles/vin";
+import { isPlausibleVin, normalizeVinForStorage, verifyVinMatch } from "@/lib/vehicles/vin";
 
 describe("isPlausibleVin", () => {
   it("accepts a valid 17-char VIN", () => {
@@ -14,6 +14,14 @@ describe("isPlausibleVin", () => {
 
   it("rejects short values", () => {
     expect(isPlausibleVin("2TM000104")).toBe(false);
+  });
+});
+
+describe("normalizeVinForStorage", () => {
+  it("returns null for invalid VINs instead of storing junk", () => {
+    expect(normalizeVinForStorage("2347184NDSFJSFJSF")).toBeNull();
+    expect(normalizeVinForStorage("")).toBeNull();
+    expect(normalizeVinForStorage("2TM00010400000001")).toBe("2TM00010400000001");
   });
 });
 

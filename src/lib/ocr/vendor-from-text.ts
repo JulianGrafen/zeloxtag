@@ -17,6 +17,9 @@ const LOOKS_LIKE_CODE =
 const COMPANY_HINT =
   /\b(gmbh|gbr|ag|kg|ug|e\.?\s?k\.?|ltd|llc|inc|co\.|werkstatt|garage|motorsport|tuning|autoservice|kfz|service|parts|performance)\b/i;
 
+const PAGE_WATERMARK =
+  /(?:qa[-\s]*test|keine\s+echte\s+urkunde|demo[-\s]*wasserzeichen|wasserzeichen|probe[-\s]*druck)/i;
+
 function cleanLine(line: string): string {
   return stripHtmlTags(line).replace(/\s+/g, " ").trim();
 }
@@ -25,6 +28,7 @@ export function isPlausibleVendorLine(line: string): boolean {
   const value = cleanLine(line);
   if (value.length < 2 || value.length > 80) return false;
   if (SKIP_LINE.test(value)) return false;
+  if (PAGE_WATERMARK.test(value)) return false;
   if (LOOKS_LIKE_ADDRESS.test(value)) return false;
   if (LOOKS_LIKE_CODE.test(value)) return false;
   if (!/\p{L}{2,}/u.test(value)) return false;

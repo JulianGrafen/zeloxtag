@@ -31,3 +31,12 @@ export function verifyVinMatch(
   }
   return normalizeVin(extractedVin) === normalizeVin(garageVin);
 }
+
+/** Persist only ISO-valid VINs; invalid input becomes null (not stored). */
+export function normalizeVinForStorage(
+  raw: string | null | undefined,
+): string | null {
+  if (!raw?.trim()) return null;
+  if (!isPlausibleVin(raw)) return null;
+  return normalizeVin(raw);
+}

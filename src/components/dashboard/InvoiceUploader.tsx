@@ -20,7 +20,6 @@ import type { TeilegutachtenReviewFields } from "@/components/dashboard/Teilegut
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import { CameraCapture } from "@/components/documents/camera-capture";
-import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard";
 import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
 import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
 import { BackNav } from "@/components/layout/back-nav";
@@ -392,10 +391,9 @@ export function InvoiceUploader({
       }
 
       setConfirmOpen(false);
-      const href =
-        successHref ??
-        `/v/${result.tagUuid}/dokumente/${result.document.id}`;
-      window.location.assign(href);
+      window.location.assign(
+        savedDocumentHref(result.tagUuid, result.document.id, successHref),
+      );
     });
   }
 
@@ -510,10 +508,8 @@ export function InvoiceUploader({
     "abe";
   const isEinzelabnahmeUpload = scanDef?.approvalKind === "einzelabnahme";
   const isTeilegutachtenUpload = scanDef?.approvalKind === "teilegutachten";
-  const isGutachtenFamilyUpload =
-    isAbeUpload && !isEinzelabnahmeUpload && !isTeilegutachtenUpload;
-  const isMultiPageGutachtenUpload =
-    isGutachtenFamilyUpload || isTeilegutachtenUpload;
+  const isPlainAbeUpload = scanDef?.approvalKind === "abe";
+  const isMultiPageGutachtenUpload = isAbeUpload;
   const isTuevUpload =
     scanDef?.ocrDocumentType === "tuev" ||
     (resolvedLockCategory && resolvedCategory === "tuev");
@@ -535,22 +531,8 @@ export function InvoiceUploader({
     );
   }
 
-  // Plain ABE uploads use the data-hunter wizard (crop targeted sections).
-  // Teilegutachten / Einzelabnahme / EG-BE keep the generic multi-page scanner.
-  if (isGutachtenFamilyUpload) {
-    return (
-      <AbeDataHunterWizard
-        vehicleId={vehicleId}
-        tagUuid={tagUuid}
-        vehicleLabel={vehicleLabel}
-        vehicleContext={vehicleContext}
-        successHref={successHref}
-        onBack={onBack}
-        backHref={resolvedBackHref}
-        backLabel={backLabel}
-      />
-    );
-  }
+  // Plain ABE / Teilegutachten / Einzelabnahme use the generic multi-page scanner + vision extract.
+  // (No camera questionnaire — PDF upload must work without a dead-end hunt flow.)
 
   async function runExtraction(source?: {
     nativePdf?: File | null;
@@ -737,9 +719,7 @@ export function InvoiceUploader({
     Boolean(uploadFile);
   const isAbeReview =
     step === "review" &&
-    !isEinzelabnahmeUpload &&
-    !isTeilegutachtenUpload &&
-    (fields.category === "abe" || isGutachtenFamilyUpload) &&
+    isPlainAbeUpload &&
     Boolean(previewUrl) &&
     Boolean(uploadFile);
 
@@ -1196,7 +1176,7 @@ export function InvoiceUploader({
                     ? "Einzelabnahme fotografieren oder als PDF hochladen"
                     : isTeilegutachtenUpload
                       ? "Teilegutachten fotografieren oder als PDF hochladen"
-                      : isGutachtenFamilyUpload
+                      : isPlainAbeUpload
                         ? `Alle Seiten von ${scanDef?.title ?? "Gutachten"} fotografieren oder als PDF hochladen`
                         : isTuevUpload
                           ? "TÜV-/HU-Bericht fotografieren oder als PDF hochladen"
@@ -1262,7 +1242,7 @@ export function InvoiceUploader({
             </div>
           ) : null}
 
-          {isGutachtenFamilyUpload ? (
+          {isPlainAbeUpload ? (
             <div
               role="note"
               className="rounded-[1.35rem] border border-amber-300/70 bg-amber-50 px-4 py-3.5 text-[0.84rem] leading-relaxed text-amber-950 shadow-[var(--vd-shadow-sm)]"
@@ -1404,7 +1384,7 @@ export function InvoiceUploader({
                           ? "Nächste Seite derselben Einzelabnahme hinzufügen"
                           : isTeilegutachtenUpload
                             ? "Nächste Seite desselben Teilegutachtens hinzufügen"
-                            : isGutachtenFamilyUpload
+                            : isPlainAbeUpload
                               ? "Nächste Seite desselben Gutachtens hinzufügen"
                               : "Nächste Seite fotografieren oder aus der Galerie wählen"
                       }
@@ -1421,7 +1401,7 @@ export function InvoiceUploader({
                       ? `Weitere Seite derselben Einzelabnahme · max. ${MAX_PAGES}`
                       : isTeilegutachtenUpload
                         ? `Weitere Seite desselben Teilegutachtens · max. ${MAX_PAGES}`
-                        : isGutachtenFamilyUpload
+                        : isPlainAbeUpload
                       ? `Weitere Seite desselben Gutachtens · max. ${MAX_PAGES}`
                       : `Weitere Seite hinzufügen · max. ${MAX_PAGES}`}
                   </p>
@@ -1442,7 +1422,7 @@ export function InvoiceUploader({
                 </p>
               ) : null}
 
-              {isGutachtenFamilyUpload && pages.length === 1 ? (
+              {isPlainAbeUpload && pages.length === 1 ? (
                 <p className="rounded-xl bg-amber-50 px-3 py-2 text-[0.78rem] text-amber-950">
                   Nur 1 Seite erfasst — fehlen noch Seiten dieses Gutachtens?
                   Bitte alle Seiten hinzufügen.

@@ -45,6 +45,9 @@ export function GenerateExposeButton({
       }
 
       const blob = await response.blob();
+      if (blob.size === 0) {
+        throw new Error("PDF-Exposé ist leer — bitte erneut versuchen.");
+      }
       const objectUrl = URL.createObjectURL(blob);
       window.open(objectUrl, "_blank", "noopener,noreferrer");
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);

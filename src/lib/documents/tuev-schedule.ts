@@ -40,13 +40,24 @@ export function nextTuevDateFromReportDate(reportDateIso: string): string | null
 }
 
 /**
- * Convert YYYY-MM to ISO date (first day of month).
+ * Convert YYYY-MM to ISO date, preserving day-of-month from a reference date when given.
  */
-export function yearMonthToIsoDate(yearMonth: string): string | null {
+export function yearMonthToIsoDate(
+  yearMonth: string,
+  daySourceIso?: string | null,
+): string | null {
   if (!/^\d{4}-\d{2}$/.test(yearMonth)) return null;
   const [year, month] = yearMonth.split("-").map(Number);
   if (!year || !month || month < 1 || month > 12) return null;
-  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-01`;
+
+  let day = 1;
+  if (daySourceIso && /^\d{4}-\d{2}-\d{2}$/.test(daySourceIso)) {
+    day = Number.parseInt(daySourceIso.slice(8, 10), 10);
+    const maxDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    day = Math.min(Math.max(1, day), maxDay);
+  }
+
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 /**
@@ -59,17 +70,35 @@ export function deriveNextInspectionFromDocuments(
   if (!latest) return undefined;
 
   const approvalFields = parseApprovalFields(latest.approval_fields);
-  if (
-    approvalFields?.kind === "tuev" &&
-    approvalFields.data.nextInspectionDate
-  ) {
-    const nextDate = yearMonthToIsoDate(
-      approvalFields.data.nextInspectionDate,
-    );
-    if (nextDate) return { nextDate };
+  if (approvalFields?.kind === "tuev") {
+    const testDate = approvalFields.data.testDate?.trim() ?? null;
+
+    // Primary: Prüfdatum + 24 months (same calendar day).
+    if (testDate && /^\d{4}-\d{2}-\d{2}$/.test(testDate)) {
+      const nextFromTest = nextTuevDateFromReportDate(testDate);
+      if (nextFromTest) return { nextDate: nextFromTest };
+    }
+
+    const nextInspectionRaw = approvalFields.data.nextInspectionDate?.trim();
+    if (nextInspectionRaw && /^\d{4}-\d{2}-\d{2}$/.test(nextInspectionRaw)) {
+      return { nextDate: nextInspectionRaw };
+    }
+    if (nextInspectionRaw && /^\d{4}-\d{2}$/.test(nextInspectionRaw)) {
+      const daySource =
+        testDate && /^\d{4}-\d{2}-\d{2}$/.test(testDate)
+          ? testDate
+          : latest.date ?? latest.created_at.slice(0, 10);
+      const nextDate = yearMonthToIsoDate(nextInspectionRaw, daySource);
+      if (nextDate) return { nextDate };
+    }
   }
 
-  const reportDate = latest.date ?? latest.created_at.slice(0, 10);
+  const reportDate =
+    approvalFields?.kind === "tuev" &&
+    approvalFields.data.testDate?.trim() &&
+    /^\d{4}-\d{2}-\d{2}$/.test(approvalFields.data.testDate.trim())
+      ? approvalFields.data.testDate.trim()
+      : latest.date ?? latest.created_at.slice(0, 10);
   const nextDate = nextTuevDateFromReportDate(reportDate);
   if (!nextDate) return undefined;
 

@@ -15,7 +15,6 @@ import {
 } from "@/components/documents/abe-review-ui";
 import { EditableAbeListsSection } from "@/components/documents/editable-abe-lists-section";
 import {
-  PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
 import {
@@ -27,8 +26,9 @@ import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import { displayAbeDocumentTitle } from "@/lib/documents/abe-title";
 import { formatDocumentDate } from "@/lib/documents/format";
 import {
+  documentMediaKind,
   isViewableDocumentUrl,
-  openDocumentOriginal,
+  resolveDocumentViewUrl,
 } from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
 
@@ -111,6 +111,12 @@ export function DocumentAbeDetailView({
   });
   const pages = document.page_count && document.page_count > 0 ? document.page_count : 1;
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
+  const previewKind = canOpenOriginal
+    ? documentMediaKind(document.file_url)
+    : "unknown";
+  const previewSrc = canOpenOriginal
+    ? resolveDocumentViewUrl(document.file_url)
+    : null;
   const resolvedBack =
     backHref ?? `/v/${tagUuid}/dokumente?type=abe`;
   const scannedLabel = formatDocumentDate(document.created_at.slice(0, 10));
@@ -337,16 +343,21 @@ export function DocumentAbeDetailView({
             </div>
           </div>
           <div className="p-4">
-            {canOpenOriginal ? (
-              <PressableButton
-                type="button"
-                variant="button"
-                onClick={() => openDocumentOriginal(document.file_url)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
-              >
-                <FileText className="h-4 w-4" aria-hidden />
-                Original öffnen
-              </PressableButton>
+            {canOpenOriginal && previewSrc ? (
+              previewKind === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewSrc}
+                  alt={partName}
+                  className="max-h-[50vh] w-full rounded-xl bg-neutral-100 object-contain"
+                />
+              ) : (
+                <iframe
+                  title={partName}
+                  src={previewSrc}
+                  className="h-[min(50vh,28rem)] w-full rounded-xl border border-[color:var(--vd-border)] bg-white"
+                />
+              )
             ) : (
               <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
                 Für diesen Demo-Beleg liegt keine Datei vor.

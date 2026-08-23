@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
+import { normalizeVinForStorage } from "@/lib/vehicles/vin";
 import {
   parseVehicleTechSpecs,
   serializeVehicleTechSpecs,
@@ -26,12 +27,7 @@ export type UpdateVehicleSpecsResult =
   | { status: "error"; message: string };
 
 function normalizeVin(raw: string | undefined): string | null {
-  const vin = raw?.trim().toUpperCase() ?? "";
-  if (!vin) return null;
-  if (vin.length < 5 || vin.length > 32) {
-    throw new Error("VIN muss zwischen 5 und 32 Zeichen liegen.");
-  }
-  return vin;
+  return normalizeVinForStorage(raw);
 }
 
 export async function updateVehicleSpecs(

@@ -22,6 +22,10 @@ const REPAIR_LINE =
 const OIL_ADJUNCT =
   /(?:^|[^A-Za-z0-9_])(?:entsorgung|umwelt|kleinmaterial|altöl|altol)(?:[^A-Za-z0-9_]|$)/i;
 
+/** Consumables / wear parts — not dominant workshop labor for titles. */
+const CONSUMABLE_LINE =
+  /(?:^|[^A-Za-z0-9_])(?:luftfilter|pollenfilter|innenraumfilter|kabinenfilter|kraftstofffilter|dieselfilter|zündkerzen?|zuendkerzen?|kerzen|bremsflüssigkeit|bremsfluessigkeit|kühlmittel|kuehlmittel|scheibenwisch|wischwasser|adblue|filter\s*element|verschleiß|verschleiss)(?:[^A-Za-z0-9_]|$)/i;
+
 export type InvoiceTitleInput = {
   summary?: string | null;
   vendor?: string | null;
@@ -46,10 +50,15 @@ function isOilAdjacentLine(label: string): boolean {
   return OIL_LINE.test(label) || OIL_ADJUNCT.test(label);
 }
 
+function isConsumableLine(label: string): boolean {
+  return CONSUMABLE_LINE.test(label);
+}
+
 /** True when the line describes main workshop work (not oil/consumables/tax). */
 function isMainWorkLine(label: string): boolean {
   if (VAT_OR_TOTAL.test(label)) return false;
   if (isOilAdjacentLine(label)) return false;
+  if (isConsumableLine(label)) return false;
   return true;
 }
 
@@ -101,13 +110,19 @@ export function buildInvoiceDashboardTitle(input: InvoiceTitleInput): string {
     return cleanTitle(input.oil.title);
   }
 
-  const explicitSubject =
-    summary &&
-    !/öl[-\s]*wechsel|oel[-\s]*wechsel|ol[-\s]*wechsel/i.test(summary)
+  const summaryLooksOilOnly =
+    /öl[-\s]*wechsel|oel[-\s]*wechsel|ol[-\s]*wechsel/i.test(summary) &&
+    !TUNING_LINE.test(summary) &&
+    !REPAIR_LINE.test(summary) &&
+    !SERVICE_LINE.test(summary);
+
+  // Betreff / OCR summary wins when oil is only incidental side work.
+  const usableBetreff =
+    summary && !(summaryLooksOilOnly && input.oil?.isOilChange && !oilPrimary)
       ? summary
       : "";
-  if (explicitSubject && (SERVICE_LINE.test(explicitSubject) || REPAIR_LINE.test(explicitSubject) || TUNING_LINE.test(explicitSubject))) {
-    return cleanTitle(explicitSubject);
+  if (usableBetreff) {
+    return cleanTitle(usableBetreff);
   }
 
   const leadMain = firstMainWorkLine(items);
@@ -121,16 +136,6 @@ export function buildInvoiceDashboardTitle(input: InvoiceTitleInput): string {
     }
     return base;
   }
-
-  // Drop oil-forced summaries when oil is only incidental.
-  const summaryLooksOilOnly =
-    /öl[-\s]*wechsel|oel[-\s]*wechsel|ol[-\s]*wechsel/i.test(summary) &&
-    !TUNING_LINE.test(summary) &&
-    !REPAIR_LINE.test(summary);
-  const usableSummary =
-    summary && !(summaryLooksOilOnly && input.oil?.isOilChange && !oilPrimary)
-      ? summary
-      : "";
 
   const sorted = [...items].sort(
     (a, b) => Math.abs(b.amount) - Math.abs(a.amount),
@@ -168,22 +173,12 @@ export function buildInvoiceDashboardTitle(input: InvoiceTitleInput): string {
   }
 
   if (category === "repair" || (repairItems.length > 0 && repairItems[0])) {
-    if (usableSummary && REPAIR_LINE.test(usableSummary)) {
-      return cleanTitle(usableSummary);
-    }
     return shortenLabel(repairItems[0]?.label ?? sorted[0]?.label ?? "Reparatur");
   }
 
   if (category === "service" || serviceItems.length > 0) {
-    if (usableSummary && !summaryLooksOilOnly) {
-      return cleanTitle(usableSummary);
-    }
     const lead = serviceItems[0] ?? sorted.find((item) => !OIL_LINE.test(item.label));
     if (lead) return shortenLabel(lead.label);
-  }
-
-  if (usableSummary) {
-    return cleanTitle(usableSummary);
   }
 
   const lead = sorted.find((item) => !OIL_LINE.test(item.label)) ?? sorted[0];

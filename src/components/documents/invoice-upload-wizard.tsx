@@ -649,11 +649,10 @@ export function InvoiceUploadWizard({
         return;
       }
 
-      const href = oilPrimary
-        ? `/v/${result.tagUuid}/intervalle`
-        : (successHref ??
-          `/v/${result.tagUuid}/dokumente/${result.document.id}`);
-      window.location.assign(href);
+      window.location.assign(
+        successHref ??
+          `/v/${result.tagUuid}/dokumente/${result.document.id}?saved=1`,
+      );
     });
   }
 
