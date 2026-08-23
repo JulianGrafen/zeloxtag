@@ -44,9 +44,37 @@ describe("QA-ZT-2026-001 mixed Inspektion invoice", () => {
     expect(title.toLowerCase()).not.toMatch(/^ölwechsel\b/);
   });
 
-  it("normalizes German invoice date", () => {
-    expect(normalizeDocumentDateIso("22.08.2026")).toBe("2026-08-22");
-    expect(normalizeDocumentDateIso("08/22/2026")).toBe("2026-08-22");
+  it("prefers Inspektion subject over oil OCR summary on mixed jobs", () => {
+    const title = buildInvoiceDashboardTitle({
+      category: "service",
+      summary: "Ölwechsel · Castrol Edge 5W-30 · 6,5 l",
+      lineItems: QA_LINE_ITEMS,
+      vendor: "ZeloxTag QA Werkstatt",
+      oil,
+    });
+    expect(title.toLowerCase()).toContain("inspektion");
+    expect(title.toLowerCase()).not.toMatch(/^ölwechsel\b/);
+  });
+});
+
+describe("QA2 Zahnriemen + Öl invoice", () => {
+  const lineItems = [
+    { label: "Zahnriemenwechsel inkl. Wasserpumpe", amount: 890 },
+    { label: "Motoröl Castrol Edge 5W-30 6,5", amount: 142 },
+    { label: "Ölfilter Original BMW", amount: 19.5 },
+    { label: "Arbeitslohn Inspektion", amount: 95 },
+  ];
+  const oil = detectOilChangeInvoice({ lineItems, category: "service" });
+
+  it("keeps Zahnriemen as title when oil is side work", () => {
+    const title = buildInvoiceDashboardTitle({
+      category: "service",
+      summary: "Zahnriemenwechsel inkl. Wasserpumpe",
+      lineItems,
+      oil,
+    });
+    expect(title.toLowerCase()).toContain("zahnriemen");
+    expect(title.toLowerCase()).not.toMatch(/^ölwechsel\b/);
   });
 });
 
@@ -62,5 +90,12 @@ describe("oil-only invoice", () => {
     expect(
       isPrimaryOilChange({ category: "service", lineItems, oil }),
     ).toBe(true);
+  });
+});
+
+describe("document dates", () => {
+  it("normalizes German invoice date", () => {
+    expect(normalizeDocumentDateIso("22.08.2026")).toBe("2026-08-22");
+    expect(normalizeDocumentDateIso("08/22/2026")).toBe("2026-08-22");
   });
 });

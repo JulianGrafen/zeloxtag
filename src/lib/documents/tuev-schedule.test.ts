@@ -39,13 +39,17 @@ function tuevDocument(
 }
 
 describe("yearMonthToIsoDate", () => {
-  it("returns first day of month", () => {
+  it("defaults to first day without a reference date", () => {
     expect(yearMonthToIsoDate("2028-05")).toBe("2028-05-01");
+  });
+
+  it("preserves day-of-month from Prüfdatum reference", () => {
+    expect(yearMonthToIsoDate("2028-08", "2026-08-23")).toBe("2028-08-23");
   });
 });
 
 describe("deriveNextInspectionFromDocuments", () => {
-  it("prefers extracted nextInspectionDate from approval_fields", () => {
+  it("uses Prüfdatum + 24 months (same day) as primary source", () => {
     const documents = [
       tuevDocument({
         id: "doc-1",
@@ -54,10 +58,10 @@ describe("deriveNextInspectionFromDocuments", () => {
           kind: "tuev",
           data: {
             testingOrganization: "TÜV",
-            testDate: "2024-04-12",
+            testDate: "2026-08-23",
             result: "no_defects",
             mileageKm: 87200,
-            nextInspectionDate: "2028-05",
+            nextInspectionDate: "2028-08",
             documentNumber: null,
             defectsTable: null,
             defectsList: null,
@@ -67,7 +71,34 @@ describe("deriveNextInspectionFromDocuments", () => {
     ];
 
     expect(deriveNextInspectionFromDocuments(documents)).toEqual({
-      nextDate: "2028-05-01",
+      nextDate: "2028-08-23",
+    });
+  });
+
+  it("preserves day when only nextInspectionDate month is stored", () => {
+    const documents = [
+      tuevDocument({
+        id: "doc-1",
+        vehicle_id: "veh-1",
+        date: "2026-08-23",
+        approval_fields: {
+          kind: "tuev",
+          data: {
+            testingOrganization: "TÜV",
+            testDate: "2026-08-23",
+            result: "no_defects",
+            mileageKm: 87200,
+            nextInspectionDate: "2028-08",
+            documentNumber: null,
+            defectsTable: null,
+            defectsList: null,
+          },
+        },
+      }),
+    ];
+
+    expect(deriveNextInspectionFromDocuments(documents)).toEqual({
+      nextDate: "2028-08-23",
     });
   });
 

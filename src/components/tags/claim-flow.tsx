@@ -9,6 +9,7 @@ import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isPlausibleVin } from "@/lib/vehicles/vin";
 
 interface ClaimFlowProps {
   tagUuid: string;
@@ -47,8 +48,8 @@ export function ClaimFlow({
       return "Baujahr muss zwischen 1900 und 2100 liegen.";
     }
     const trimmedVin = vin.trim();
-    if (trimmedVin && (trimmedVin.length < 5 || trimmedVin.length > 32)) {
-      return "VIN muss zwischen 5 und 32 Zeichen liegen.";
+    if (trimmedVin && !isPlausibleVin(trimmedVin)) {
+      return "FIN muss genau 17 Zeichen haben (ohne I, O, Q).";
     }
     return null;
   }

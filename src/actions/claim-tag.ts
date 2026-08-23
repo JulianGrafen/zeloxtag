@@ -10,6 +10,7 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { createUnclaimedTag } from "@/lib/tags/create-unclaimed-tag";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
+import { normalizeVinForStorage } from "@/lib/vehicles/vin";
 import {
   clearPendingClaim,
   getPendingClaim,
@@ -37,12 +38,7 @@ type NormalizedClaim = PendingClaim & {
 };
 
 function normalizeVin(raw: string | undefined): string | null {
-  const vin = raw?.trim().toUpperCase() ?? "";
-  if (!vin) return null;
-  if (vin.length < 5 || vin.length > 32) {
-    throw new Error("VIN muss zwischen 5 und 32 Zeichen liegen.");
-  }
-  return vin;
+  return normalizeVinForStorage(raw);
 }
 
 function normalizeClaimInput(input: ClaimTagInput): NormalizedClaim {

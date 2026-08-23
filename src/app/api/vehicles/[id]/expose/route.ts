@@ -126,7 +126,7 @@ export async function GET(
   } catch (error) {
     console.error("[vehicle-expose] PDF generation failed", error);
     return NextResponse.json(
-      { error: "PDF generation failed." },
+      { error: "PDF-Exposé konnte nicht erstellt werden." },
       { status: 500 },
     );
   }

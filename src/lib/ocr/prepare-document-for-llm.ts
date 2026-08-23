@@ -8,12 +8,10 @@ import {
   isProbablyRasterImage,
   resolveDocumentContentType,
 } from "./document-bytes";
-import {
-  buildDocumentUserMessage,
+import { buildDocumentUserMessage,
   type DocumentBytesInput,
   type DocumentUserMessagePart,
 } from "./llm-document-content";
-import { TextParseError } from "./parse-error";
 import { isHeicMime } from "@/lib/image/convert-heic-to-jpeg";
 
 export type { DocumentBytesInput };
@@ -271,14 +269,12 @@ export async function buildVisionUserMessage(
       }
     } catch (error) {
       console.error("[buildVisionUserMessage] PDF rasterize failed", error);
-      throw new TextParseError(
-        "PDF konnte nicht für die Bildanalyse vorbereitet werden.",
-      );
     }
 
-    throw new TextParseError(
-      "PDF konnte nicht in Seitenbilder umgewandelt werden.",
+    console.warn(
+      "[buildVisionUserMessage] PDF rasterize unavailable — falling back to native PDF bytes",
     );
+    return buildDocumentUserMessage(instructionLines, input);
   }
 
   return buildEnhancedImageUserMessage(instructionLines, input.bytes, {
