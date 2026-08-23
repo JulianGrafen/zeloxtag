@@ -38,6 +38,10 @@ import {
 import { sanitizeVendorForStorage } from "./sanitize-vendor";
 import { parseAbeConditions, parseStringList } from "./string-list";
 import { parseTechnicalSpecs } from "./technical-specs";
+import {
+  resolveUploadMileageKm,
+  syncApprovalFieldsMileage,
+} from "./document-mileage";
 import { validateMileageAgainstHistory } from "./validate-mileage";
 import {
   metaFromFormData,
@@ -131,13 +135,17 @@ export async function uploadDocument(
   const manufacturer = meta.manufacturer.slice(0, 120) || null;
   const invoiceNumber =
     meta.invoiceNumber.slice(0, UPLOAD_KBA_NUMBER_MAX) || null;
-  const mileageKm = parseMileageKm(meta.mileageKm);
   const pageCountParsed = Number.parseInt(meta.pageCount, 10);
   const pageCount =
     Number.isFinite(pageCountParsed) && pageCountParsed > 0
       ? pageCountParsed
       : null;
-  const approvalFields = parseApprovalFields(meta.approvalFields);
+  let approvalFields = parseApprovalFields(meta.approvalFields);
+  const mileageKm = resolveUploadMileageKm(
+    parseMileageKm(meta.mileageKm),
+    approvalFields,
+  );
+  approvalFields = syncApprovalFieldsMileage(approvalFields, mileageKm);
 
   // Durable oil-change marker for Intervalle history (no raw OCR at read time).
   const oil = detectOilChangeInvoice({

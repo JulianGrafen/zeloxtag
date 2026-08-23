@@ -12,8 +12,8 @@ export const OCR_IMAGE_MAX_EDGE_PX = 1920;
 /** Target size per page image after compression. */
 export const OCR_IMAGE_MAX_SIZE_MB = 1.5;
 
-/** Native PDF hard cap (Document Intelligence / storage). */
-export const OCR_PDF_MAX_BYTES = 10 * 1024 * 1024;
+/** Native PDF hard cap — matches `/api/ocr/parse` body limit on Vercel (~4 MB). */
+export const OCR_PDF_MAX_BYTES = 4 * 1024 * 1024;
 
 export const OCR_OUTPUT_IMAGE_TYPE = "image/jpeg" as const;
 

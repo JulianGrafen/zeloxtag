@@ -9,7 +9,6 @@ import {
   resolveDocumentContentType,
 } from "./document-bytes";
 import {
-  buildDocumentUserMessage,
   type DocumentBytesInput,
   type DocumentUserMessagePart,
 } from "./llm-document-content";
@@ -148,7 +147,15 @@ export async function buildPreparedDocumentUserMessage(
   try {
     const images = await prepareDocumentImagesForLlm(input, options);
     if (images.length === 0) {
-      return buildDocumentUserMessage(instructionLines, input);
+      const contentType = resolveDocumentContentType(input.bytes, input.contentType);
+      if (contentType === "application/pdf" || isPdfBuffer(input.bytes)) {
+        throw new TextParseError(
+          "PDF konnte nicht in Seitenbilder umgewandelt werden.",
+        );
+      }
+      throw new TextParseError(
+        "Dokumentbild konnte nicht für die Analyse vorbereitet werden.",
+      );
     }
 
     if (images.length > 1) {
@@ -172,8 +179,13 @@ export async function buildPreparedDocumentUserMessage(
     }
 
     return parts;
-  } catch {
-    return buildDocumentUserMessage(instructionLines, input);
+  } catch (error) {
+    if (error instanceof TextParseError) {
+      throw error;
+    }
+    throw new TextParseError(
+      "Dokument konnte nicht für die Bildanalyse vorbereitet werden.",
+    );
   }
 }
 

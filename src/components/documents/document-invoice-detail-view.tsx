@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   FileText,
   Receipt,
   Share2,
@@ -35,10 +36,12 @@ import {
   displayManualInvoiceNumber,
   isManualVehicleEntry,
 } from "@/lib/documents/manual-entries";
+import { resolveDocumentMileageKm } from "@/lib/documents/document-mileage";
 import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
 import {
   documentMediaKind,
   isViewableDocumentUrl,
+  openDocumentOriginal,
   resolveDocumentViewUrl,
 } from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
@@ -129,9 +132,10 @@ export function DocumentInvoiceDetailView({
   const fileName = fileNameFromUrl(document.file_url, title);
   const issuedLabel = formatDocumentDateCompact(document.date);
   const scannedLabel = formatDocumentDateCompact(document.created_at);
+  const resolvedMileageKm = resolveDocumentMileageKm(document);
   const mileageLabel =
-    typeof document.mileage_km === "number"
-      ? `${document.mileage_km.toLocaleString("de-DE")} km`
+    resolvedMileageKm !== null
+      ? `${resolvedMileageKm.toLocaleString("de-DE")} km`
       : null;
   const vendor = vendorLabel.trim() || title;
   const category = document.category?.trim() || (isManual ? "Eintrag" : "Beleg");
@@ -394,18 +398,31 @@ export function DocumentInvoiceDetailView({
         ) : null}
 
         <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-          <div className="border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
-            <p className="truncate text-[0.78rem] font-medium text-[color:var(--vd-text)]">
-              {fileName}
-            </p>
-            <p className="text-[0.7rem] text-[color:var(--vd-muted)]">
-              {isManual ? "Fotodoku" : "Original-PDF"}
-              {scannedLabel
-                ? ` · ${isManual ? "erstellt" : "gescannt"} ${scannedLabel}`
-                : ""}
-            </p>
+          <div className="flex items-start justify-between gap-3 border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
+            <div className="min-w-0">
+              <p className="truncate text-[0.78rem] font-medium text-[color:var(--vd-text)]">
+                {fileName}
+              </p>
+              <p className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                {isManual ? "Fotodoku" : "Original-PDF"}
+                {scannedLabel
+                  ? ` · ${isManual ? "erstellt" : "gescannt"} ${scannedLabel}`
+                  : ""}
+              </p>
+            </div>
+            {canOpenOriginal ? (
+              <PressableButton
+                type="button"
+                variant="button"
+                onClick={() => openDocumentOriginal(document.file_url)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+              >
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                Neues Fenster
+              </PressableButton>
+            ) : null}
           </div>
-          <div className="p-4">
+          <div className="space-y-3 p-4">
             {canOpenOriginal && previewSrc ? (
               previewKind === "image" ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -428,6 +445,17 @@ export function DocumentInvoiceDetailView({
                   : "Für diesen Demo-Beleg liegt keine Datei vor."}
               </p>
             )}
+            {canOpenOriginal ? (
+              <PressableButton
+                type="button"
+                variant="button"
+                onClick={() => openDocumentOriginal(document.file_url)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
+              >
+                <FileText className="h-4 w-4" aria-hidden />
+                Original öffnen
+              </PressableButton>
+            ) : null}
           </div>
         </section>
 

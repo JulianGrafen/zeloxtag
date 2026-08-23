@@ -10,7 +10,7 @@ import {
   type CompressedPage,
   revokeCompressedPages,
 } from "./compress-page";
-import { loadPdfDocument, rasterizePdfPage } from "./pdf-source";
+import { loadPdfDocument } from "./pdf-source";
 
 export type ProcessorProgress = {
   label: string;
@@ -29,10 +29,12 @@ export type ProcessInvoiceResult = {
   analyzeFiles: File[];
   /** PDF file stored in Supabase after review. */
   uploadFile: File;
-  /** Preview image/object URL for the review step. */
+  /** Preview object URL for the review step. */
   previewUrl: string;
   /** Whether the caller must revoke `previewUrl`. */
   previewUrlOwned: boolean;
+  /** How to render `previewUrl` — independent of `uploadFile` MIME type. */
+  previewKind: "pdf" | "image";
   pageCount: number;
   sourceKind: "images" | "pdf";
 };
@@ -111,6 +113,7 @@ async function processImagePages(
     uploadFile: pdf.file,
     previewUrl: pages[0].previewUrl,
     previewUrlOwned: false,
+    previewKind: "image",
     pageCount: totalPages,
     sourceKind: "images",
   };
@@ -134,8 +137,7 @@ async function processNativePdf(
     totalPages,
   });
 
-  const first = await rasterizePdfPage(pdf, 1);
-  const previewUrl = URL.createObjectURL(first.blob);
+  const previewUrl = URL.createObjectURL(file);
   const pdfWithCleanup = pdf as { destroy?: () => Promise<void> };
   if (typeof pdfWithCleanup.destroy === "function") {
     await pdfWithCleanup.destroy();
@@ -152,6 +154,7 @@ async function processNativePdf(
     uploadFile: file,
     previewUrl,
     previewUrlOwned: true,
+    previewKind: "pdf",
     pageCount: totalPages,
     sourceKind: "pdf",
   };

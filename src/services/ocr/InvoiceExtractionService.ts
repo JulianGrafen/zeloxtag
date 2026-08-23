@@ -51,13 +51,14 @@ import {
 } from "@/lib/ocr/invoice-workshop-sections";
 import { extractAmountFromText } from "@/lib/ocr/amount-from-text";
 import {
-  INVOICE_HEADER_USER_LINES,
-  INVOICE_OVERVIEW_USER_LINES,
   buildInvoiceHeaderSystemPrompt,
   buildInvoiceLineItemsSystemPromptForFormat,
   buildInvoiceSystemPrompt,
+  INVOICE_HEADER_USER_LINES,
+  INVOICE_OVERVIEW_USER_LINES,
   invoiceLineItemsUserLinesForFormat,
 } from "@/lib/ocr/invoice-parse-prompts";
+import { resolveInvoiceVendor } from "@/lib/ocr/invoice-vendor-from-logo";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import {
@@ -375,8 +376,15 @@ export class InvoiceExtractionService {
       ? options.lockedCategory
       : parseCategory(record.category);
 
+    const vendor = await resolveInvoiceVendor({
+      documentInput: prepared,
+      structuredVendor: parseNullableString(record.vendor, 160),
+      logoCandidates: [],
+      rawText: "",
+    });
+
     return {
-      vendor: parseNullableString(record.vendor, 160),
+      vendor,
       date: parseIsoDate(record.date),
       amount: coerceGermanMoneyAmount(record.amount, "conservative"),
       category: category === "abe" ? "other" : category,
@@ -413,8 +421,18 @@ export class InvoiceExtractionService {
       );
     }
 
+    const vendor = await resolveInvoiceVendor({
+      documentInput: prepared,
+      structuredVendor: parseNullableString(record.vendor, 160),
+      logoCandidates:
+        azureLayout?.pages[0]?.lines
+          ?.map((line) => line.content)
+          .slice(0, 4) ?? [],
+      rawText: azureLayout?.content ?? "",
+    });
+
     return {
-      vendor: parseNullableString(record.vendor, 160),
+      vendor,
       invoiceNumber,
       mileageKm,
       date: parseIsoDate(record.date),

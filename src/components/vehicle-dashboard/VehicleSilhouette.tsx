@@ -10,7 +10,7 @@ type VehicleSilhouetteProps = SVGProps<SVGSVGElement> & {
  * Neutral genug für Supra und vergleichbare Sportwagen.
  */
 export function VehicleSilhouette({
-  label = "Fahrzeug-Silhouette",
+  label = "Kein Fahrzeugfoto",
   className,
   ...props
 }: VehicleSilhouetteProps) {

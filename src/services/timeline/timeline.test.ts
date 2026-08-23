@@ -168,19 +168,47 @@ describe("deriveTimelineEventsFromDocuments", () => {
     expect(tuev?.title).toBe("TÜV / HU");
     expect(tuev?.description).toBe("TÜV Süd");
   });
+
+  it("uses TÜV approval_fields mileage for timeline when mileage_km is stale", () => {
+    const events = deriveTimelineEventsFromDocuments([
+      stubDocument({
+        id: "d-tuev",
+        type: "tuev",
+        category: "tuev",
+        mileage_km: 150_000,
+        vendor: "DEKRA",
+        approval_fields: {
+          kind: "tuev",
+          data: {
+            testingOrganization: "DEKRA",
+            testDate: "2021-03-23",
+            result: "no_defects",
+            mileageKm: 178_605,
+            nextInspectionDate: "2024-03",
+            documentNumber: null,
+            defectsTable: null,
+            defectsList: null,
+          },
+        },
+      }),
+    ]);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.mileage).toBe(178_605);
+  });
 });
 
 describe("mergeTimelineEvents", () => {
-  it("prefers stored events for the same documentId", () => {
+  it("prefers document-derived events for the same documentId", () => {
     const merged = mergeTimelineEvents(
       [
         {
           id: "stored-1",
           vehicleId: "v",
-          mileage: 70_100,
+          mileage: 150_000,
           date: "2024-08-01",
           category: "tuev",
-          title: "HU angepasst",
+          title: "HU stale",
           documentId: "d3",
         },
       ],
@@ -188,8 +216,8 @@ describe("mergeTimelineEvents", () => {
         {
           id: "doc-d3",
           vehicleId: "v",
-          mileage: 70_000,
-          date: "2024-07-01",
+          mileage: 178_605,
+          date: "2021-03-23",
           category: "tuev",
           title: "HU Prüfbericht",
           documentId: "d3",
@@ -197,8 +225,8 @@ describe("mergeTimelineEvents", () => {
       ],
     );
     expect(merged).toHaveLength(1);
-    expect(merged[0]?.title).toBe("HU angepasst");
-    expect(merged[0]?.mileage).toBe(70_100);
+    expect(merged[0]?.title).toBe("HU Prüfbericht");
+    expect(merged[0]?.mileage).toBe(178_605);
   });
 });
 

@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   CalendarClock,
+  ExternalLink,
   FileText,
   LoaderCircle,
 } from "lucide-react";
@@ -17,6 +18,7 @@ import {
 } from "@/components/documents/tuev-defects-draft-editor";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { Button } from "@/components/ui/button";
+import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
@@ -122,7 +124,7 @@ export function fieldsToTuevReview(
       normalizeIsoDateInput(fields.date),
     nextInspectionDate: normalizeYearMonthInput(tuevData?.nextInspectionDate),
     result: tuevData?.result ?? "no_defects",
-    mileageKm: tuevData?.mileageKm ?? fields.mileageKm ?? null,
+    mileageKm: fields.mileageKm ?? tuevData?.mileageKm ?? null,
     documentNumber:
       tuevData?.documentNumber?.trim() ||
       fields.invoiceNumber?.trim() ||
@@ -470,6 +472,19 @@ export function TuevOverview({
               {pageCount === 1 ? "Seite" : "Seiten"}
             </span>
           </div>
+          {previewUrl ? (
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={() => {
+                window.open(previewUrl, "_blank", "noopener,noreferrer");
+              }}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-1.5 text-[0.72rem] font-semibold text-[color:var(--vd-text)]"
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              Neues Fenster
+            </PressableButton>
+          ) : null}
         </div>
         <div className="max-h-[min(62vh,560px)] min-h-[240px] overflow-auto bg-neutral-100">
           {previewKind === "pdf" ? (

@@ -1,11 +1,13 @@
 import type OpenAI from "openai";
 
+import { isPdfBuffer, resolveDocumentContentType } from "./document-bytes";
 import type { DocumentBytesInput, DocumentUserMessagePart } from "./llm-document-content";
 import {
   enhanceDocumentImageForLlm,
   LLM_DOCUMENT_RASTER_DPI,
   rasterizePdfPagesForLlm,
 } from "./prepare-document-for-llm";
+import { TextParseError } from "./parse-error";
 
 /** HU/AU reports: critical data on pages 1–2 (Kopf, Punkt 4, Punkt 6). */
 export const TUEV_LLM_MAX_PDF_PAGES = 2;
@@ -36,7 +38,10 @@ export async function buildTuevDocumentUserMessage(
     .filter((line) => line.length > 0)
     .map((text) => ({ type: "text" as const, text }));
 
-  if (input.contentType === "application/pdf") {
+  const contentType = resolveDocumentContentType(input.bytes, input.contentType);
+  const isPdf = contentType === "application/pdf" || isPdfBuffer(input.bytes);
+
+  if (isPdf) {
     try {
       const pageImages = await rasterizePdfPagesForLlm(
         input.bytes,
@@ -55,24 +60,20 @@ export async function buildTuevDocumentUserMessage(
         }
         return parts;
       }
-    } catch {
-      // Poppler/Sharp unavailable — fall back to native PDF file part.
+    } catch (error) {
+      console.error("[buildTuevDocumentUserMessage] PDF rasterize failed", error);
+      throw new TextParseError(
+        "PDF konnte nicht für die Bildanalyse vorbereitet werden.",
+      );
     }
-  }
 
-  if (input.contentType === "application/pdf") {
-    parts.push({
-      type: "file",
-      file: {
-        filename: "document.pdf",
-        file_data: `data:application/pdf;base64,${input.bytes.toString("base64")}`,
-      },
-    });
-    return parts;
+    throw new TextParseError(
+      "PDF konnte nicht in Seitenbilder umgewandelt werden.",
+    );
   }
 
   parts.push(
-    pngPart(await enhanceDocumentImageForLlm(input.bytes, undefined, input.contentType)),
+    pngPart(await enhanceDocumentImageForLlm(input.bytes, undefined, contentType)),
   );
   return parts;
 }

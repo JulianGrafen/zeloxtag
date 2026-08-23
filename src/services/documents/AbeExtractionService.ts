@@ -8,7 +8,11 @@ import {
   LLM_INVOICE_MAX_PDF_PAGES,
   type PrepareDocumentForLlmOptions,
 } from "@/lib/ocr/prepare-document-for-llm";
-import { isPdfBuffer } from "@/lib/ocr/document-bytes";
+import { isPdfBuffer, resolveDocumentContentType } from "@/lib/ocr/document-bytes";
+import {
+  extractMarkdownFromAzureLayout,
+  isAzureMarkdownLayoutAvailable,
+} from "@/lib/ocr/azure-markdown-layout";
 import {
   type DocumentBytesInput,
 } from "@/lib/ocr/llm-document-content";
@@ -324,9 +328,10 @@ export class AbeDataHunterExtractionService {
     const empty = { ...EMPTY_STAMMDATEN };
 
     try {
-      const isPdf = input.contentType === "application/pdf";
-      const raw = await this.runSnippetStep(
-        input,
+      const normalized = this.normalizeInput(input);
+      const isPdf = this.isPdfInput(normalized);
+      const raw = await this.runSnippetStepWithPdfHybrid(
+        normalized,
         [
           FREESTYLE_GUARD,
           "Extract ONLY the KBA approval number and optional Nummer der ABE from this document.",
@@ -400,9 +405,10 @@ export class AbeDataHunterExtractionService {
     const empty = emptyAbeDataHunterReport();
 
     try {
-      const isPdf = input.contentType === "application/pdf";
-      const raw = await this.runSnippetStep(
-        input,
+      const normalized = this.normalizeInput(input);
+      const isPdf = this.isPdfInput(normalized);
+      const raw = await this.runSnippetStepWithPdfHybrid(
+        normalized,
         [
           FREESTYLE_GUARD,
           "Fields: kbaNumber (digits only), abeNumber (Nummer der ABE / Gutachten zur ABE Nr., digits only), abeHolder (Inhaber / Auftraggeber), manufacturer (Hersteller / Herstellerzeichen — Prüfgegenstand or Kennzeichnungen row), partDesignation (Prüfgegenstand / Bauteilbezeichnung inkl. Radgröße), markingText (Kennzeichnungen block verbatim), vehicleMatches (Verwendungsbereich table), auflagenCodes.",
@@ -689,6 +695,122 @@ export class AbeDataHunterExtractionService {
           "Auflagen-Text konnte nicht gelesen werden — bitte erneut fotografieren.",
       };
     }
+  }
+
+  private normalizeInput(input: DocumentBytesInput): DocumentBytesInput {
+    return {
+      bytes: input.bytes,
+      contentType: resolveDocumentContentType(input.bytes, input.contentType),
+    };
+  }
+
+  private isPdfInput(input: DocumentBytesInput): boolean {
+    return (
+      input.contentType === "application/pdf" || isPdfBuffer(input.bytes)
+    );
+  }
+
+  private async runTextSnippetStep(
+    systemLines: string[],
+    instructionLines: string[],
+    jsonSchema: JsonSchema,
+    stepLabel: string,
+    maxTokens: number,
+    model: string = resolveAbeContextModel(),
+  ): Promise<unknown> {
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: maxTokens,
+        response_format: {
+          type: "json_schema",
+          json_schema: jsonSchema,
+        },
+        messages: [
+          { role: "system", content: systemLines.join(" ") },
+          {
+            role: "user",
+            content: instructionLines.filter((line) => line.length > 0).join("\n"),
+          },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(
+        `ABE data-hunter ${stepLabel} failed: ${message}`,
+      );
+    }
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new TextParseError(
+        `ABE data-hunter ${stepLabel} returned an empty response.`,
+      );
+    }
+
+    try {
+      return extractJsonObject(content);
+    } catch {
+      throw new TextParseError(
+        `ABE data-hunter ${stepLabel} returned invalid JSON.`,
+      );
+    }
+  }
+
+  private async runSnippetStepWithPdfHybrid(
+    input: DocumentBytesInput,
+    systemLines: string[],
+    instructionLines: string[],
+    jsonSchema: JsonSchema,
+    stepLabel: string,
+    maxTokens: number,
+    model: string = resolveAbeContextModel(),
+    prepareOptions?: PrepareDocumentForLlmOptions,
+  ): Promise<unknown> {
+    if (this.isPdfInput(input) && isAzureMarkdownLayoutAvailable()) {
+      try {
+        const { markdown } = await extractMarkdownFromAzureLayout(
+          input.bytes,
+          input.contentType,
+        );
+        return this.runTextSnippetStep(
+          systemLines,
+          [...instructionLines, "", markdown],
+          jsonSchema,
+          stepLabel,
+          maxTokens,
+          model,
+        );
+      } catch (error) {
+        console.warn(
+          `[AbeDataHunter] hybrid ${stepLabel} failed, trying vision`,
+          error,
+        );
+      }
+    }
+
+    return this.runSnippetStep(
+      input,
+      systemLines,
+      instructionLines,
+      jsonSchema,
+      stepLabel,
+      maxTokens,
+      model,
+      prepareOptions,
+    );
   }
 
   private async runSnippetStep(

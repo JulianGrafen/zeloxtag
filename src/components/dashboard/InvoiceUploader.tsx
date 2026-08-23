@@ -232,6 +232,7 @@ export function InvoiceUploader({
     percent: 0,
   });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewKind, setPreviewKind] = useState<"pdf" | "image">("image");
   const [previewOwned, setPreviewOwned] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [pageCount, setPageCount] = useState(0);
@@ -280,6 +281,7 @@ export function InvoiceUploader({
     setPagePrepBusy(false);
     setProgress({ label: "Vorbereitung…", percent: 0 });
     setPreviewUrl(null);
+    setPreviewKind("image");
     setPreviewOwned(false);
     setUploadFile(null);
     setPageCount(0);
@@ -636,6 +638,7 @@ export function InvoiceUploader({
 
       setUploadFile(processed.uploadFile);
       setPreviewUrl(processed.previewUrl);
+      setPreviewKind(processed.previewKind);
       setPreviewOwned(processed.previewUrlOwned);
       setPageCount(processed.pageCount);
       setRawText(analyzed.rawText);
@@ -1514,7 +1517,7 @@ export function InvoiceUploader({
       {isEinzelabnahmeReview && previewUrl && uploadFile ? (
         <EinzelabnahmeOverview
           previewUrl={previewUrl}
-          previewKind={isPdfFile(uploadFile) ? "pdf" : "image"}
+          previewKind={previewKind}
           pageCount={pageCount}
           fields={fields}
           approvalFields={approvalFields}
@@ -1529,7 +1532,7 @@ export function InvoiceUploader({
       {isTeilegutachtenReview && previewUrl && uploadFile ? (
         <TeilegutachtenOverview
           previewUrl={previewUrl}
-          previewKind={isPdfFile(uploadFile) ? "pdf" : "image"}
+          previewKind={previewKind}
           pageCount={pageCount}
           fields={fields}
           approvalFields={approvalFields}
@@ -1543,7 +1546,7 @@ export function InvoiceUploader({
       {isTuevReview && previewUrl && uploadFile ? (
         <TuevOverview
           previewUrl={previewUrl}
-          previewKind={isPdfFile(uploadFile) ? "pdf" : "image"}
+          previewKind={previewKind}
           pageCount={pageCount}
           fields={fields}
           approvalFields={approvalFields}
@@ -1558,7 +1561,7 @@ export function InvoiceUploader({
         <ABEOverview
           vehicleId={vehicleId}
           previewUrl={previewUrl}
-          previewKind={isPdfFile(uploadFile) ? "pdf" : "image"}
+          previewKind={previewKind}
           pageCount={pageCount}
           rawText={rawText}
           initialFields={abeInitialFields}
@@ -1790,12 +1793,20 @@ export function InvoiceUploader({
           </div>
 
           <div className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Dokumentvorschau"
-              className="max-h-[36vh] w-full object-contain bg-neutral-100"
-            />
+            {previewKind === "pdf" ? (
+              <iframe
+                title="Dokumentvorschau"
+                src={previewUrl}
+                className="max-h-[36vh] w-full border-0 bg-neutral-100"
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={previewUrl}
+                alt="Dokumentvorschau"
+                className="max-h-[36vh] w-full object-contain bg-neutral-100"
+              />
+            )}
             <div className="flex items-center justify-between gap-3 border-t border-[color:var(--vd-border)] px-3 py-2.5 text-[0.75rem] text-[color:var(--vd-muted)]">
               <span>
                 {pageCount > 1 ? `${pageCount} Seiten` : "1 Seite"} ·{" "}

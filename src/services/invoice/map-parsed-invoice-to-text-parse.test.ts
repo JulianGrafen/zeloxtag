@@ -89,4 +89,16 @@ describe("mapParsedInvoiceToTextParseResult", () => {
 
     expect(mapped.category).toBe("repair");
   });
+
+  it("prefers visionVendor from logo over hybrid text vendor_name", () => {
+    const mapped = mapParsedInvoiceToTextParseResult(
+      buildParsedInvoice({ vendor_name: null }),
+      {
+        rawMarkdown: "Rechnung\nDatum 15.01.2026",
+        visionVendor: "Wagner Tuning",
+      },
+    );
+
+    expect(mapped.vendor).toBe("Wagner Tuning");
+  });
 });

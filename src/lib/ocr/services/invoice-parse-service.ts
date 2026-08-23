@@ -68,6 +68,7 @@ import {
   normalizeTextParseResult,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
+import { resolveInvoiceVendor } from "@/lib/ocr/invoice-vendor-from-logo";
 import { resolveVendorName } from "@/lib/ocr/vendor-from-text";
 
 /** Higher ceiling — invoice line-item arrays need room. */
@@ -266,6 +267,15 @@ export class InvoiceParseService {
       : buildStubOcrPayload(prepared.contentType);
 
     if (isTuevReport || !azureLayout) {
+      if (!isTuevReport) {
+        const vendor = await resolveInvoiceVendor({
+          documentInput: prepared,
+          structuredVendor: normalized.vendor,
+          logoCandidates: [],
+          rawText: normalized.summary ?? "",
+        });
+        return { fields: { ...normalized, vendor }, ocrJson };
+      }
       return { fields: normalized, ocrJson };
     }
 
@@ -295,7 +305,8 @@ export class InvoiceParseService {
           amount: columnResult.amount,
           lineItems: columnResult.lineItems,
           mileageKm: preferMileageKm(normalized.mileageKm, azureLayout.content),
-          vendor: resolveVendorName({
+          vendor: await resolveInvoiceVendor({
+            documentInput: prepared,
             structuredVendor: normalized.vendor,
             logoCandidates:
               azureLayout.pages[0]?.lines
@@ -349,7 +360,8 @@ export class InvoiceParseService {
         amount,
         lineItems,
         mileageKm: preferMileageKm(normalized.mileageKm, azureLayout.content),
-        vendor: resolveVendorName({
+        vendor: await resolveInvoiceVendor({
+          documentInput: prepared,
           structuredVendor: normalized.vendor,
           logoCandidates:
             azureLayout.pages[0]?.lines

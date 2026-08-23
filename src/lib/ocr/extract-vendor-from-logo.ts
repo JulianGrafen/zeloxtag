@@ -82,14 +82,14 @@ export async function extractVendorFromLogoImage(input: {
         {
           role: "system",
           content:
-            "Du liest Kfz-Rechnungen. Deine einzige Aufgabe: den Werkstatt-/Firmennamen aus dem LOGO oder der Kopfzeile oben lesen. Antworte nur als JSON: {\"vendor\":\"...\"} oder {\"vendor\":null}.",
+            "Du liest Kfz-Rechnungen. Deine einzige Aufgabe: den Werkstatt-/Firmennamen aus dem LOGO, der Markenzeile oder der Kopfzeile oben lesen — auch wenn der Name nur als Grafik/Logo erscheint und nicht als normaler Fließtext. Antworte nur als JSON: {\"vendor\":\"...\"} oder {\"vendor\":null}.",
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "Welcher Anbieter-/Werkstattname steht im Logo oben auf dieser Rechnung? Ignoriere Kundennamen, Adressen und Beträge.",
+              text: "Welcher Anbieter-/Werkstattname steht im Logo oder in der Kopfzeile oben auf dieser Rechnung? Lies auch stilisierte Logos und Wortmarken. Ignoriere Kundennamen, Adressen, Rechnungsnummern und Beträge.",
             },
             {
               type: "image_url",

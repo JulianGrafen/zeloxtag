@@ -2,9 +2,9 @@ import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import {
-  buildDocumentUserMessage,
+  buildAbeVisionUserMessage,
   type DocumentBytesInput,
-} from "@/lib/ocr/llm-document-content";
+} from "@/lib/ocr/prepare-document-for-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { resolveParseModel } from "@/lib/ocr/model-routing";
 import { TextParseError } from "@/lib/ocr/parse-error";
@@ -53,12 +53,13 @@ export class EgbeExtractionService {
       );
     }
 
-    const userContent = buildDocumentUserMessage(
+    const userContent = await buildAbeVisionUserMessage(
       [
         "German EG/ECE type approval document (E-Prüfzeichen).",
         "Extract the e-mark (eMark) and component group (componentGroup).",
       ],
       input,
+      { maxPdfPages: 4 },
     );
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;

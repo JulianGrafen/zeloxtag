@@ -131,6 +131,65 @@ describe("sanitizeTuevPayload · LLM vision output", () => {
     ]);
   });
 
+  it("preserves exact Prüfpunkt values on save without re-parsing or OCR dedup", () => {
+    const sanitized = sanitizeTuevPayload({
+      testingOrganization: "DEKRA",
+      testDate: "2026-04-15",
+      result: "minor_defects",
+      mileageKm: 92_100,
+      nextInspectionDate: "2028-04",
+      documentNumber: "HU-2026-4421",
+      defectsTable: [
+        {
+          checkpoint: "2.6b",
+          description: "Reifen",
+          severity: "EM",
+        },
+        {
+          checkpoint: "1.1.13a",
+          description: "Bremsbelag Achse 1",
+          severity: "GM",
+        },
+        {
+          checkpoint: "1.1.3a",
+          description: "Bremsbelag Achse 2",
+          severity: "GM",
+        },
+      ],
+      defectsList: null,
+    });
+
+    const parsed = new TuevReportService().parseAndValidate(sanitized);
+    expect(parsed.defectsTable?.map((row) => row.checkpoint)).toEqual([
+      "2.6b",
+      "1.1.13a",
+      "1.1.3a",
+    ]);
+  });
+
+  it("does not re-parse checkpoint from description when structured table is provided", () => {
+    const sanitized = sanitizeTuevPayload({
+      testingOrganization: "TÜV",
+      testDate: "2026-04-15",
+      result: "minor_defects",
+      mileageKm: 92_100,
+      nextInspectionDate: "2028-04",
+      documentNumber: null,
+      defectsTable: [
+        {
+          checkpoint: "2.6b",
+          description: "2.6.1 (EM) Reifen — OCR noise in description",
+          severity: "EM",
+        },
+      ],
+      defectsList: null,
+    });
+
+    const parsed = new TuevReportService().parseAndValidate(sanitized);
+    expect(parsed.defectsTable?.[0]?.checkpoint).toBe("2.6b");
+    expect(parsed.defectsTable?.[0]?.description).toContain("2.6.1");
+  });
+
   it("parses Punkt 6 Festgestellte Mängel structure with EM/GM sub-items", () => {
     const sanitized = sanitizeTuevPayload({
       testingOrganization: "TÜV",

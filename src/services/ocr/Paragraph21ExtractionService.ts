@@ -2,11 +2,9 @@ import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import {
-  buildDocumentUserMessage,
+  buildAbeVisionUserMessage,
   type DocumentBytesInput,
-} from "@/lib/ocr/llm-document-content";
-import { buildAbeVisionUserMessage } from "@/lib/ocr/prepare-document-for-llm";
-import { isPdfBuffer } from "@/lib/ocr/document-bytes";
+} from "@/lib/ocr/prepare-document-for-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { resolveAbeContextModel } from "@/services/ocr/AbeExtractionService";
 import { TextParseError } from "@/lib/ocr/parse-error";
@@ -92,13 +90,9 @@ export class Paragraph21ExtractionService {
       "German §21 Einzelbetriebserlaubnis document.",
       "Extract Field E (vin), Field 2 (manufacturer), Field D.3 (model), Field 22 verbatim, documentNumber, issueDate, officialExpert, mileageKm, additionalRemarks.",
     ];
-    const isPdf =
-      input.contentType === "application/pdf" || isPdfBuffer(input.bytes);
-    const userContent = isPdf
-      ? await buildAbeVisionUserMessage(instructionLines, input, {
-          maxPdfPages: 8,
-        })
-      : buildDocumentUserMessage(instructionLines, input);
+    const userContent = await buildAbeVisionUserMessage(instructionLines, input, {
+      maxPdfPages: 8,
+    });
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {

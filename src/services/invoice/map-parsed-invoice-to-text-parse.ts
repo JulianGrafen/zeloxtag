@@ -16,6 +16,8 @@ export type MapParsedInvoiceOptions = {
   rawMarkdown: string;
   /** Scan-type locked category (repair/service/tuning). */
   lockedCategory?: InvoiceTextParseCategory | null;
+  /** Workshop name from logo/header vision (hybrid PDF path). */
+  visionVendor?: string | null;
 };
 
 function headerLinesFromMarkdown(markdown: string): string[] {
@@ -53,6 +55,7 @@ export function mapParsedInvoiceToTextParseResult(
   const vendor = resolveVendorName({
     structuredVendor: invoice.vendor_name,
     logoCandidates: headerLines.slice(0, 4),
+    visionVendor: options.visionVendor,
     rawText: fullText,
   });
 

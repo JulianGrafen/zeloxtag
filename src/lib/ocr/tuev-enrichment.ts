@@ -1,7 +1,6 @@
 import {
   defectsListFromTuevDefectRows,
   extractTuevDefectsFromText,
-  hasTuevDefectsSectionInText,
   normalizeCheckpoint,
 } from "@/lib/ocr/tuev-defects-from-text";
 import { preferTuevTotalAmount } from "@/lib/ocr/tuev-amount-from-text";
@@ -79,39 +78,46 @@ function rowMatchesOcr(row: TuevDefectRow, ocrText: string): boolean {
 
 /**
  * Reconcile LLM defects with OCR Punkt 6 — prevents invented Mängel.
- * OCR parser wins when it finds rows; verified LLM rows can fill OCR gaps.
+ * LLM checkpoints are kept verbatim when verified in OCR text; OCR rows
+ * only fill gaps the LLM missed (never overwrite LLM Prüfpunkte).
  */
 export function reconcileTuevDefectRows(
   llmTable: TuevDefectRow[] | null | undefined,
   ocrText: string | null | undefined,
 ): TuevDefectRow[] | null {
   const normalized = normalizeOcrText(ocrText);
+  const llmRows = dedupeDefectRows(llmTable ?? []);
 
   if (!normalized) {
-    const llmOnly = dedupeDefectRows(llmTable ?? []);
-    return llmOnly.length > 0 ? llmOnly : null;
+    return llmRows.length > 0 ? llmRows : null;
   }
 
   const ocrTable = extractTuevDefectsFromText(normalized);
-  if (ocrTable?.length) {
-    const extras = (llmTable ?? []).filter(
-      (row) =>
-        rowMatchesOcr(row, normalized) &&
-        !ocrTable.some((existing) => sameDefectRow(existing, row)),
-    );
-    const merged = dedupeDefectRows([...ocrTable, ...extras]);
-    return merged.length > 0 ? merged : null;
-  }
 
-  if (hasTuevDefectsSectionInText(normalized)) {
+  if (llmRows.length > 0) {
+    const verifiedLlm = llmRows.filter((row) => rowMatchesOcr(row, normalized));
+
+    const merged = dedupeDefectRows([...verifiedLlm]);
+
+    if (ocrTable?.length) {
+      const extras = ocrTable.filter(
+        (ocrRow) =>
+          rowMatchesOcr(ocrRow, normalized) &&
+          !merged.some((existing) => sameDefectRow(existing, ocrRow)),
+      );
+      merged.push(...extras);
+    }
+
+    const deduped = dedupeDefectRows(merged);
+    if (deduped.length > 0) return deduped;
     return null;
   }
 
-  if (!llmTable?.length) return null;
+  if (ocrTable?.length) {
+    return dedupeDefectRows(ocrTable);
+  }
 
-  const verified = llmTable.filter((row) => rowMatchesOcr(row, normalized));
-  const deduped = dedupeDefectRows(verified);
-  return deduped.length > 0 ? deduped : null;
+  return null;
 }
 
 function normalizeTuevResult(value: unknown): TuevResult {

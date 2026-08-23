@@ -1,4 +1,5 @@
 import { isOilChangeDocument } from "@/lib/documents/oil-changes";
+import { resolveDocumentMileageKm } from "@/lib/documents/document-mileage";
 import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
 import {
   TIMELINE_CATEGORY_LABELS,
@@ -72,7 +73,7 @@ export function deriveTimelineEventsFromDocuments(
   const events: TimelineEvent[] = [];
 
   for (const document of documents) {
-    const mileage = document.mileage_km;
+    const mileage = resolveDocumentMileageKm(document);
     if (typeof mileage !== "number" || !Number.isFinite(mileage) || mileage < 0) {
       continue;
     }

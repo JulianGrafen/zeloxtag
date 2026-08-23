@@ -10,7 +10,12 @@ import type {
   ApprovalFields,
 } from "@/lib/documents/approval-fields";
 
-import { isPdfBuffer } from "./document-bytes";
+import {
+  extractMarkdownFromAzureLayout,
+  isAzureMarkdownLayoutAvailable,
+} from "./azure-markdown-layout";
+import { isPdfBuffer, resolveDocumentContentType } from "./document-bytes";
+import type { DocumentBytesInput } from "./llm-document-content";
 import { isLlmConfigured } from "./llm-client";
 import {
   buildStubOcrPayload,
@@ -35,6 +40,7 @@ import {
 import {
   hybridInvoiceService,
 } from "@/services/invoice/HybridInvoiceService";
+import { extractVendorFromLogoHeader } from "@/lib/ocr/invoice-vendor-from-logo";
 import { mapParsedInvoiceToTextParseResult } from "@/services/invoice/map-parsed-invoice-to-text-parse";
 import {
   abeExtractionService,
@@ -97,6 +103,193 @@ export type AnalyzeDocumentResult = {
 
 const HYBRID_INVOICE_MODEL_ID = "hybrid-layout-text";
 
+function normalizeDocumentInput(input: {
+  bytes: Buffer;
+  contentType: string;
+}): DocumentBytesInput {
+  return {
+    bytes: input.bytes,
+    contentType: resolveDocumentContentType(input.bytes, input.contentType),
+  };
+}
+
+function isPdfDocumentInput(input: DocumentBytesInput): boolean {
+  return (
+    input.contentType === "application/pdf" || isPdfBuffer(input.bytes)
+  );
+}
+
+async function extractGutachtenMarkdownFromAzure(
+  documentInput: DocumentBytesInput,
+): Promise<{ markdown: string; ocrJson: OcrJsonPayload }> {
+  const { markdown, pageCount } = await extractMarkdownFromAzureLayout(
+    documentInput.bytes,
+    documentInput.contentType,
+  );
+  return {
+    markdown,
+    ocrJson: buildOcrPayloadFromMarkdown(markdown, pageCount),
+  };
+}
+
+/**
+ * PDF Gutachten: Azure markdown first (all pages, no rasterization),
+ * vision rasterization as fallback when Azure or text LLM fails.
+ */
+async function analyzeTeilegutachtenDocument(
+  documentInput: DocumentBytesInput,
+  vehicleContext: AbeVehicleContext | null,
+): Promise<{
+  teilegutachten: Awaited<
+    ReturnType<typeof teilegutachtenExtractionService.extractFromDocument>
+  >;
+  rawText: string;
+  ocrJson: OcrJsonPayload;
+  modelId: string;
+}> {
+  const runVision = async () => {
+    const teilegutachten =
+      await teilegutachtenExtractionService.extractFromDocument(
+        documentInput,
+        { vehicleContext },
+      );
+    return {
+      teilegutachten,
+      rawText: "",
+      ocrJson: buildStubOcrPayload(documentInput.contentType),
+      modelId: LLM_VISION_PARSE_MODEL_ID,
+    };
+  };
+
+  if (isPdfDocumentInput(documentInput) && isAzureMarkdownLayoutAvailable()) {
+    try {
+      const { markdown, ocrJson } =
+        await extractGutachtenMarkdownFromAzure(documentInput);
+      const teilegutachten =
+        await teilegutachtenExtractionService.extractTeilegutachten(
+          markdown,
+          { vehicleContext },
+        );
+      console.info(
+        `[analyzeDocument] hybrid teilegutachten: ${ocrJson.pageCount} page(s), ${markdown.length} chars`,
+      );
+      return {
+        teilegutachten,
+        rawText: markdown,
+        ocrJson,
+        modelId: HYBRID_INVOICE_MODEL_ID,
+      };
+    } catch (hybridError) {
+      console.warn(
+        "[analyzeDocument] hybrid teilegutachten failed, falling back to vision",
+        hybridError,
+      );
+    }
+  }
+
+  return runVision();
+}
+
+async function analyzeEinzelabnahmeDocument(
+  documentInput: DocumentBytesInput,
+  garageVin: string | null,
+): Promise<{
+  paragraph21: Awaited<
+    ReturnType<typeof paragraph21ExtractionService.extractFromDocument>
+  >;
+  rawText: string;
+  ocrJson: OcrJsonPayload;
+  modelId: string;
+}> {
+  const runVision = async () => {
+    const paragraph21 =
+      await paragraph21ExtractionService.extractFromDocument(documentInput, {
+        garageVin,
+      });
+    return {
+      paragraph21,
+      rawText: "",
+      ocrJson: buildStubOcrPayload(documentInput.contentType),
+      modelId: LLM_VISION_PARSE_MODEL_ID,
+    };
+  };
+
+  if (isPdfDocumentInput(documentInput) && isAzureMarkdownLayoutAvailable()) {
+    try {
+      const { markdown, ocrJson } =
+        await extractGutachtenMarkdownFromAzure(documentInput);
+      const paragraph21 =
+        await paragraph21ExtractionService.extractParagraph21(markdown, {
+          garageVin,
+        });
+      console.info(
+        `[analyzeDocument] hybrid einzelabnahme: ${ocrJson.pageCount} page(s), ${markdown.length} chars`,
+      );
+      return {
+        paragraph21,
+        rawText: markdown,
+        ocrJson,
+        modelId: HYBRID_INVOICE_MODEL_ID,
+      };
+    } catch (hybridError) {
+      console.warn(
+        "[analyzeDocument] hybrid einzelabnahme failed, falling back to vision",
+        hybridError,
+      );
+    }
+  }
+
+  return runVision();
+}
+
+async function analyzeAbeMinimalDocument(
+  documentInput: DocumentBytesInput,
+  vehicleContext: AbeVehicleContext | null,
+): Promise<{
+  abe: Awaited<ReturnType<typeof abeExtractionService.extractFromDocument>>;
+  rawText: string;
+  ocrJson: OcrJsonPayload;
+  modelId: string;
+}> {
+  const runVision = async () => {
+    const abe = await abeExtractionService.extractFromDocument(documentInput, {
+      vehicleContext,
+    });
+    return {
+      abe,
+      rawText: "",
+      ocrJson: buildStubOcrPayload(documentInput.contentType),
+      modelId: LLM_VISION_PARSE_MODEL_ID,
+    };
+  };
+
+  if (isPdfDocumentInput(documentInput) && isAzureMarkdownLayoutAvailable()) {
+    try {
+      const { markdown, ocrJson } =
+        await extractGutachtenMarkdownFromAzure(documentInput);
+      const abe = await abeExtractionService.extractFromText(markdown, {
+        vehicleContext,
+      });
+      console.info(
+        `[analyzeDocument] hybrid abe: ${ocrJson.pageCount} page(s), ${markdown.length} chars`,
+      );
+      return {
+        abe,
+        rawText: markdown,
+        ocrJson,
+        modelId: HYBRID_INVOICE_MODEL_ID,
+      };
+    } catch (hybridError) {
+      console.warn(
+        "[analyzeDocument] hybrid abe failed, falling back to vision",
+        hybridError,
+      );
+    }
+  }
+
+  return runVision();
+}
+
 function buildOcrPayloadFromMarkdown(
   markdown: string,
   pageCount: number,
@@ -140,11 +333,15 @@ async function analyzeInvoiceOneShot(input: {
   const canHybrid = isAzureDocumentIntelligenceConfigured();
 
   const runHybrid = async (): Promise<AnalyzeDocumentResult> => {
-    const hybrid = await hybridInvoiceService.extract(documentInput);
+    const [hybrid, visionVendor] = await Promise.all([
+      hybridInvoiceService.extract(documentInput),
+      extractVendorFromLogoHeader(documentInput),
+    ]);
     const ocrJson = buildOcrPayloadFromMarkdown(hybrid.markdown, hybrid.pageCount);
     const fields = mapParsedInvoiceToTextParseResult(hybrid.invoice, {
       rawMarkdown: hybrid.markdown,
       lockedCategory: input.lockedCategory,
+      visionVendor,
     });
     console.info(
       `[analyzeDocument] hybrid invoice: pages=${hybrid.pageCount} tables=${hybrid.tableCount} positions=${fields.lineItems?.length ?? 0}`,
@@ -298,19 +495,17 @@ export async function analyzeDocument(input: {
   });
   const preferredApprovalKind = input.approvalKind ?? null;
   const vehicleContext = input.vehicleContext ?? null;
-  const documentInput = {
-    bytes: input.bytes,
-    contentType: input.contentType,
-  };
-  const ocrPayload = buildStubOcrPayload(input.contentType);
+  const documentInput = normalizeDocumentInput(input);
+  const abeParseModel = resolveAbeContextModel();
 
   try {
     if (documentType === "abe") {
       if (preferredApprovalKind === "einzelabnahme") {
-        const paragraph21 =
-          await paragraph21ExtractionService.extractFromDocument(documentInput, {
-            garageVin: input.garageVin ?? null,
-          });
+        const { paragraph21, rawText, ocrJson, modelId } =
+          await analyzeEinzelabnahmeDocument(
+            documentInput,
+            input.garageVin ?? null,
+          );
         return {
           kind: "abe",
           documentType,
@@ -319,62 +514,57 @@ export async function analyzeDocument(input: {
             paragraph21.vinMatchesGarage,
           ),
           approvalFields: paragraph21ToApprovalFields(paragraph21),
-          rawText: "",
-          ocrJson: ocrPayload,
-          modelId: LLM_VISION_PARSE_MODEL_ID,
-          parseModel: resolveAbeContextModel(),
+          rawText,
+          ocrJson,
+          modelId,
+          parseModel: abeParseModel,
         };
       }
 
       if (preferredApprovalKind === "teilegutachten") {
-        const teilegutachten =
-          await teilegutachtenExtractionService.extractFromDocument(
-            documentInput,
-            { vehicleContext },
-          );
+        const { teilegutachten, rawText, ocrJson, modelId } =
+          await analyzeTeilegutachtenDocument(documentInput, vehicleContext);
         return {
           kind: "abe",
           documentType,
           fields: teilegutachtenToAnalyzeFields(teilegutachten),
           approvalFields: teilegutachtenToApprovalFields(teilegutachten),
-          rawText: "",
-          ocrJson: ocrPayload,
-          modelId: LLM_VISION_PARSE_MODEL_ID,
-          parseModel: resolveAbeContextModel(),
+          rawText,
+          ocrJson,
+          modelId,
+          parseModel: abeParseModel,
         };
       }
 
       if (preferredApprovalKind === "egbe") {
-        const [abe, egbe] = await Promise.all([
-          abeExtractionService.extractFromDocument(documentInput, {
-            vehicleContext,
-          }),
-          egbeExtractionService.extractFromDocument(documentInput),
-        ]);
+        const { abe, rawText, ocrJson, modelId } =
+          await analyzeAbeMinimalDocument(documentInput, vehicleContext);
+        const egbe = await egbeExtractionService.extractFromDocument(
+          documentInput,
+        );
         return {
           kind: "abe",
           documentType,
           fields: abeMinimalToAnalyzeFields(abe),
           approvalFields: { kind: "egbe", data: egbe },
-          rawText: "",
-          ocrJson: ocrPayload,
-          modelId: LLM_VISION_PARSE_MODEL_ID,
-          parseModel: resolveAbeContextModel(),
+          rawText,
+          ocrJson,
+          modelId,
+          parseModel: abeParseModel,
         };
       }
 
-      const abe = await abeExtractionService.extractFromDocument(documentInput, {
-        vehicleContext,
-      });
+      const { abe, rawText, ocrJson, modelId } =
+        await analyzeAbeMinimalDocument(documentInput, vehicleContext);
       return {
         kind: "abe",
         documentType,
         fields: abeMinimalToAnalyzeFields(abe),
         approvalFields: { kind: "abe" },
-        rawText: "",
-        ocrJson: ocrPayload,
-        modelId: LLM_VISION_PARSE_MODEL_ID,
-        parseModel: resolveAbeContextModel(),
+        rawText,
+        ocrJson,
+        modelId,
+        parseModel: abeParseModel,
       };
     }
 
@@ -402,7 +592,7 @@ export async function analyzeDocument(input: {
 
       const resolvedOcrJson = azureLayout
         ? buildOcrPayloadFromAzureLayout(azureLayout)
-        : ocrPayload;
+        : buildStubOcrPayload(documentInput.contentType);
 
       return {
         kind: "invoice",

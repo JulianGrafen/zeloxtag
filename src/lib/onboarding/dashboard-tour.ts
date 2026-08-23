@@ -30,7 +30,7 @@ const OWNER_STEPS: DashboardTourStep[] = [
     id: "header",
     target: "[data-tour='dashboard-header']",
     title: "Profil & Fahrzeug",
-    body: "Marke, Modell und dein verbundener ZeloxTag. Tippe auf die Silhouette, um das Headerbild zu ändern.",
+    body: "Marke, Modell und dein verbundener ZeloxTag. Tippe auf dein Fahrzeugfoto oben rechts, um es zu ändern.",
     placement: "bottom",
   },
   {
@@ -51,7 +51,7 @@ const OWNER_STEPS: DashboardTourStep[] = [
     id: "settings",
     target: "[data-tour='tile-settings']",
     title: "Showcase & Konto",
-    body: "Öffentliches Profil, Galerie und Exposé steuerst du hier. Tour erneut starten: ?tour=1 in der Adresszeile.",
+    body: "Öffentliches Profil, Galerie und Exposé steuerst du hier.",
     placement: "top",
   },
 ];

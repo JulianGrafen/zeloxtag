@@ -192,21 +192,44 @@ function normalizeDefectsList(value: unknown): string[] | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
-function normalizeDefectRow(row: TuevDefectRow): TuevDefectRow {
-  let checkpoint = row.checkpoint
-    ? normalizeCheckpoint(row.checkpoint.replace(/^-+\s*/, ""))
-    : null;
+/**
+ * Keep structured defect rows verbatim (review / save / persisted data).
+ * Only trims whitespace and strips decorative brackets — no re-parsing.
+ */
+function preserveDefectRow(row: TuevDefectRow): TuevDefectRow | null {
+  const description = row.description.trim().slice(0, MAX_DEFECT_LENGTH);
+  if (!description) return null;
 
+  let checkpoint = row.checkpoint?.trim().replace(/^-+\s*/, "") ?? "";
   if (checkpoint) {
+    checkpoint = normalizeCheckpoint(checkpoint);
     const embeddedSeverity = row.checkpoint?.match(/\((EM|GM)\)\s*$/i);
     if (embeddedSeverity && !row.severity) {
       return {
-        ...row,
         checkpoint,
+        description,
         severity: embeddedSeverity[1]!.toUpperCase() as "EM" | "GM",
       };
     }
-    return { ...row, checkpoint };
+  }
+
+  return {
+    checkpoint: checkpoint || null,
+    description,
+    severity:
+      row.severity === "EM" || row.severity === "GM" ? row.severity : null,
+  };
+}
+
+/** Parse unstructured / legacy rows (defectsList fallback only). */
+function normalizeDefectRow(row: TuevDefectRow): TuevDefectRow {
+  const preserved = preserveDefectRow(row);
+  if (!preserved) {
+    return { ...row, checkpoint: null, description: row.description.trim() };
+  }
+
+  if (preserved.checkpoint) {
+    return preserved;
   }
 
   const parsed = parseTuevDefectLine(row.description);
@@ -224,12 +247,12 @@ function normalizeDefectRow(row: TuevDefectRow): TuevDefectRow {
   if (parsedCheckpoint?.checkpoint) {
     return {
       checkpoint: parsedCheckpoint.checkpoint,
-      description: row.description,
+      description: row.description.trim().slice(0, MAX_DEFECT_LENGTH),
       severity: row.severity ?? parsedCheckpoint.severity,
     };
   }
 
-  return { ...row, checkpoint: null };
+  return preserved;
 }
 
 /**
@@ -290,6 +313,22 @@ function removeMisreadDuplicates(rows: TuevDefectRow[]): TuevDefectRow[] {
   return rows.filter((r) => !r.checkpoint || !shadowed.has(r.checkpoint));
 }
 
+function preserveDefectsTable(value: unknown): TuevDefectRow[] | null {
+  if (value == null) return null;
+  if (!Array.isArray(value)) return null;
+
+  const rows: TuevDefectRow[] = [];
+  for (const item of value) {
+    const parsed = TuevDefectRowSchema.safeParse(item);
+    if (!parsed.success) continue;
+    const preserved = preserveDefectRow(parsed.data);
+    if (preserved) rows.push(preserved);
+    if (rows.length >= MAX_DEFECTS) break;
+  }
+
+  return rows.length > 0 ? rows : null;
+}
+
 function normalizeDefectsTable(value: unknown): TuevDefectRow[] | null {
   if (value == null) return null;
   if (!Array.isArray(value)) return null;
@@ -310,10 +349,8 @@ function resolveTuevDefects(
   defectsTable: unknown,
   defectsList: unknown,
 ): { defectsTable: TuevDefectRow[] | null; defectsList: string[] | null } {
-  const table = normalizeDefectsTable(defectsTable);
+  const table = preserveDefectsTable(defectsTable);
   if (table?.length) {
-    // Always regenerate the plain-text list from the deduplicated table so
-    // misread checkpoints removed from the table are also absent from the list.
     return {
       defectsTable: table,
       defectsList: defectsListFromTuevDefectRows(table),

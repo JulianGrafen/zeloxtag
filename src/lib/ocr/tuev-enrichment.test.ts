@@ -127,6 +127,26 @@ Hinweise:
 
     expect(reconciled).toBeNull();
   });
+
+  it("keeps LLM checkpoint verbatim when OCR parser misreads the Prüfpunkt", () => {
+    const reconciled = reconcileTuevDefectRows(
+      [
+        {
+          checkpoint: "2.6b",
+          description: "Elektromechanische Servolenkung Unterstützungsmoment mangelhaft",
+          severity: "EM",
+        },
+      ],
+      `
+6. Festgestellte Mängel
+2.6.1 (EM)
+Elektromechanische Servolenkung Unterstützungsmoment mangelhaft
+`.trim(),
+    );
+
+    expect(reconciled).toHaveLength(1);
+    expect(reconciled?.[0]?.checkpoint).toBe("2.6b");
+  });
 });
 
 describe("preferTuevTestDate", () => {

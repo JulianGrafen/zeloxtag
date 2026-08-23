@@ -68,6 +68,7 @@ interface WizardState {
   defectsExtraction: TuevDefectsExtraction | null;
   uploadFile: File | null;
   previewUrl: string | null;
+  previewKind: "pdf" | "image";
   previewOwned: boolean;
   error: string | null;
 }
@@ -100,6 +101,13 @@ const RESULT_HAS_DEFECTS = new Set<TuevResult>([
 ]);
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
+
+function isPdfFile(file: File): boolean {
+  return (
+    file.type === "application/pdf" ||
+    file.name.toLowerCase().endsWith(".pdf")
+  );
+}
 
 class TuevApiError extends Error {
   constructor(message: string) {
@@ -345,6 +353,7 @@ export function TuevUploadWizard({
     defectsExtraction: null,
     uploadFile: null,
     previewUrl: null,
+    previewKind: "image",
     previewOwned: false,
     error: null,
   });
@@ -362,16 +371,25 @@ export function TuevUploadWizard({
     };
   }, []);
 
-  function setPreviewUrl(url: string | null, owned: boolean) {
+  function setPreview(
+    url: string | null,
+    kind: "pdf" | "image",
+    owned: boolean,
+  ) {
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current);
     }
     previewUrlRef.current = owned && url ? url : null;
-    setState((prev) => ({ ...prev, previewUrl: url, previewOwned: owned }));
+    setState((prev) => ({
+      ...prev,
+      previewUrl: url,
+      previewKind: kind,
+      previewOwned: owned,
+    }));
   }
 
   function resetToStart() {
-    setPreviewUrl(null, false);
+    setPreview(null, "image", false);
     setState({
       phase: "mode-select",
       overviewFile: null,
@@ -382,6 +400,7 @@ export function TuevUploadWizard({
       defectsExtraction: null,
       uploadFile: null,
       previewUrl: null,
+      previewKind: "image",
       previewOwned: false,
       error: null,
     });
@@ -450,15 +469,25 @@ export function TuevUploadWizard({
         throw new TuevApiError("Kein Dokumentenkopf-Bild vorhanden.");
       }
 
-      // Build the upload PDF and preview URL from the header photo.
+      // Build the upload PDF and preview URL from the captured source file(s).
       const uploadFile = await buildUploadFile(overviewFile, headerFile, defectsFile);
       const previewSource = headerFile ?? overviewFile;
-      const owned = previewSource !== null && !previewSource.type.includes("pdf");
-      const previewUrl = owned && previewSource
-        ? URL.createObjectURL(previewSource)
-        : null;
+      let previewUrl: string | null = null;
+      let previewKind: "pdf" | "image" = "image";
+      let previewOwned = false;
+
+      if (previewSource) {
+        previewUrl = URL.createObjectURL(previewSource);
+        previewKind = isPdfFile(previewSource) ? "pdf" : "image";
+        previewOwned = true;
+      } else if (uploadFile && isPdfFile(uploadFile)) {
+        previewUrl = URL.createObjectURL(uploadFile);
+        previewKind = "pdf";
+        previewOwned = true;
+      }
+
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = previewUrl;
+      previewUrlRef.current = previewOwned ? previewUrl : null;
 
       setState((prev) => ({
         ...prev,
@@ -468,7 +497,8 @@ export function TuevUploadWizard({
         defectsExtraction: defectsResult,
         uploadFile,
         previewUrl,
-        previewOwned: owned,
+        previewKind,
+        previewOwned,
         error: null,
       }));
     } catch (err) {
@@ -811,9 +841,6 @@ export function TuevUploadWizard({
     const mergedReport = buildTuevReport(overviewExtraction, headerExtraction!, defectsExtraction);
     const mergedFields = buildAnalyzeFields(overviewExtraction, headerExtraction!, defectsExtraction);
     const approvalFields: ApprovalFields = { kind: "tuev", data: mergedReport };
-    const isPdf =
-      state.uploadFile.type === "application/pdf" ||
-      state.uploadFile.name.toLowerCase().endsWith(".pdf");
 
     return (
       <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-6 px-4 py-6">
@@ -825,7 +852,7 @@ export function TuevUploadWizard({
         ) : null}
         <TuevOverview
           previewUrl={state.previewUrl ?? ""}
-          previewKind={isPdf ? "pdf" : "image"}
+          previewKind={state.previewKind}
           pageCount={[state.overviewFile, state.headerFile, state.defectsFile].filter(Boolean).length || 1}
           fields={mergedFields}
           approvalFields={approvalFields}

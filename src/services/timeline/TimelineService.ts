@@ -36,7 +36,7 @@ export function sortTimelineEventsByMileage(
 
 /**
  * Merge stored `vehicle_events` with document-derived milestones.
- * Rows linked to the same `documentId` prefer the stored event.
+ * Document-linked rows win — `documents` (+ approval_fields) are the source of truth.
  */
 export function mergeTimelineEvents(
   stored: TimelineEvent[],
@@ -45,7 +45,7 @@ export function mergeTimelineEvents(
   const byDocumentId = new Map<string, TimelineEvent>();
   const withoutDocument: TimelineEvent[] = [];
 
-  for (const event of stored) {
+  for (const event of derived) {
     const docId = event.documentId;
     if (docId) {
       byDocumentId.set(docId, event);
@@ -54,7 +54,7 @@ export function mergeTimelineEvents(
     }
   }
 
-  for (const event of derived) {
+  for (const event of stored) {
     const docId = event.documentId;
     if (!docId) {
       withoutDocument.push(event);

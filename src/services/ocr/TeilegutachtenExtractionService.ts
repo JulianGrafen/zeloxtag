@@ -2,11 +2,9 @@ import type OpenAI from "openai";
 
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import {
-  buildDocumentUserMessage,
+  buildAbeVisionUserMessage,
   type DocumentBytesInput,
-} from "@/lib/ocr/llm-document-content";
-import { buildAbeVisionUserMessage } from "@/lib/ocr/prepare-document-for-llm";
-import { isPdfBuffer } from "@/lib/ocr/document-bytes";
+} from "@/lib/ocr/prepare-document-for-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
@@ -160,13 +158,9 @@ export class TeilegutachtenExtractionService {
           "Set userVehicleMatchStatus and matchedVehicleRow to null.",
         ];
 
-    const isPdf =
-      input.contentType === "application/pdf" || isPdfBuffer(input.bytes);
-    const userContent = isPdf
-      ? await buildAbeVisionUserMessage(instructionLines, input, {
-          maxPdfPages: 12,
-        })
-      : buildDocumentUserMessage(instructionLines, input);
+    const userContent = await buildAbeVisionUserMessage(instructionLines, input, {
+      maxPdfPages: 12,
+    });
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {

@@ -67,12 +67,14 @@ export const TUEV_PRUEFPUNKT_DOT_GUIDANCE =
 
 /** Kilometerstand is under Punkt 4 / Feld 4, also sometimes in the document header. */
 export const TUEV_PUNKT4_MILEAGE_GUIDANCE =
-  "KILOMETERSTAND (mileageKm): Look for field label '(4)', 'Punkt 4', 'Feld 4', 'Stand Wegstreckenzähler', " +
-  "'KM-Stand', 'Km-St.', 'Kilometerstand', 'Tachostand'. " +
-  "In TÜV Rheinland/FSP reports the label is '(4) Stand Wegstreckenzähler'. " +
-  "In DEKRA reports the label is '(4)Km-St.' in a small table column. " +
-  "Read the 6–7 digit number VERY carefully — every digit matters. Remove thousand separators (. or space). " +
-  "Example: '294.683 km' → 294683, '178 605 km' → 178605.";
+  "KILOMETERSTAND (mileageKm): ALWAYS from Punkt 4 / Feld 4 / (4) — the ONLY standard field for odometer on HU/AU forms.\n" +
+  "Labels (often split across OCR lines): '(4) Stand Wegstreckenzähler', '(4) km-St.', '(4)Km-St.', '4. Kilometerstand', " +
+  "'Punkt 4', 'Feld 4', 'KM-Stand', 'Km-St.', 'Wegstreckenzähler', 'Kilometerstand', 'Tachostand'.\n" +
+  "TÜV Rheinland: '(4) Stand Wegstreckenzähler' with value on same or next line (e.g. '294 683').\n" +
+  "DEKRA: '(4)' + 'km-St.' on separate lines, value on the line after (e.g. '178605').\n" +
+  "Read ALL digits carefully — 6–7 digits are common. Strip thousand separators (. or space).\n" +
+  "Examples: '294.683 km' → 294683, '178 605' → 178605, '(4)Km-St. 178605' → 178605.\n" +
+  "Do NOT use Erstzulassung, Rechnungs-KM or workshop invoice mileage — Punkt 4 only.";
 
 /**
  * testDate = Prüfdatum — ALWAYS from Punkt 3 / Feld 3 / (3) Prüftermin only.
@@ -158,8 +160,9 @@ export const TUEV_JSON_SCHEMA = {
       mileageKm: {
         type: ["integer", "null"],
         description:
-          "Kilometerstand from Punkt 4 / Feld 4 / (4) or document header (Kopf) as whole number. " +
-          'Labels: "4. Kilometerstand", KM-Stand, Kilometerstand, Tachostand.',
+          "Kilometerstand from Punkt 4 / Feld 4 / (4) ONLY — whole number, all digits. " +
+          "Labels: (4) Stand Wegstreckenzähler, (4) km-St., 4. Kilometerstand, KM-Stand, Wegstreckenzähler. " +
+          "Value may be on the line after the label. Null when Punkt 4 unreadable.",
       },
       nextInspectionDate: {
         type: ["string", "null"],
@@ -321,7 +324,8 @@ const TUEV_HEADER_JSON_SCHEMA = {
       mileageKm: {
         type: ["integer", "null"],
         description:
-          "Kilometerstand from Punkt 4 / Feld 4 / (4) or document header as whole number.",
+          "Kilometerstand from Punkt 4 / Feld 4 / (4) ONLY — whole number, all digits. " +
+          "Labels: (4) Stand Wegstreckenzähler, (4) km-St., Wegstreckenzähler, KM-Stand.",
       },
       nextInspectionDate: {
         type: ["string", "null"],
@@ -576,7 +580,7 @@ export class TuevExtractionService {
         "TÜV/HU inspection report — extract HEADER fields only.",
         "Prüfdatum (testDate): ALWAYS from Punkt 3 / (3) Prüftermin — no other date source.",
         "Focus: Kopf (top), Punkt 3 (Prüfdatum), Punkt 4 (KM-Stand), Ergebnis, Nächste HU.",
-        "Punkt 4 KM: read every digit — labels include (4) Stand Wegstreckenzähler, (4)Km-St., KM-Stand.",
+        "Punkt 4 KM: read every digit at Punkt 4 / (4) — labels: Stand Wegstreckenzähler, km-St., KM-Stand, Wegstreckenzähler; value may be on the next line.",
         "Ignore Punkt 6 (Mängel) — leave defects for a separate scan.",
       ],
       input,
