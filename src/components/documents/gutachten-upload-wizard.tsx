@@ -41,6 +41,7 @@ import {
   GUTACHTEN_SUBTYPE_LABELS,
   gutachtenToAnalyzeFields,
   gutachtenToApprovalFields,
+  refineGutachtenExtractionSubtype,
   type GutachtenExtraction,
 } from "@/lib/validations/gutachtenSchema";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
@@ -89,10 +90,12 @@ function isPdfFile(file: File): boolean {
 function extractionFromAnalyzeResult(
   result: AnalyzeDocumentResult,
 ): GutachtenExtraction {
-  if (result.approvalFields?.kind === "gutachten") {
-    return result.approvalFields.data;
-  }
-  return fieldsToGutachtenReview(result.fields, result.approvalFields);
+  const base =
+    result.approvalFields?.kind === "gutachten"
+      ? result.approvalFields.data
+      : fieldsToGutachtenReview(result.fields, result.approvalFields);
+
+  return refineGutachtenExtractionSubtype(base, result.fields);
 }
 
 function AnalyzingOverlay({ label }: { label: string }) {

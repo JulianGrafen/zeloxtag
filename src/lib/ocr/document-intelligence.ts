@@ -584,7 +584,7 @@ export async function analyzeDocument(input: {
         return {
           kind: "abe",
           documentType,
-          fields: gutachtenToAnalyzeFields(gutachten),
+          fields: normalizeTextParseResult(gutachtenToAnalyzeFields(gutachten)),
           approvalFields: gutachtenToApprovalFields(gutachten),
           rawText: "",
           ocrJson: buildStubOcrPayload(documentInput.contentType),

@@ -22,6 +22,13 @@ import {
 } from "@/lib/ocr/infer-invoice-category";
 import { extractMileageKmFromText } from "@/lib/ocr/mileage-from-text";
 import { DocumentServiceFactory } from "@/services/documents";
+import {
+  gutachtenToAnalyzeFields,
+  inferGutachtenSubtypeFromText,
+  refineGutachtenExtractionSubtype,
+  type GutachtenExtraction,
+} from "@/lib/validations/gutachtenSchema";
+import { invoiceTextParseSchema } from "@/lib/ocr/text-parse-schema";
 import { sanitizeTuevPayload } from "@/services/documents/TuevReportService";
 
 import { OCR_SAMPLES } from "./__fixtures__/ocr-samples";
@@ -236,5 +243,61 @@ describe("pre-deploy extraction quality · scan type catalog", () => {
     expect(parseScanType("einzelabnahme")).toBe("gutachten");
     expect(scanTypeDefinition("teilegutachten").approvalKind).toBe("gutachten");
     expect(scanTypeDefinition("tuev").ocrDocumentType).toBe("tuev");
+  });
+});
+
+describe("pre-deploy extraction quality · gutachten analyze fields", () => {
+  it("normalizes oversized gutachten OCR fields for /api/ocr/parse validation", () => {
+    const extraction: GutachtenExtraction = {
+      documentSubtype: "TEILEGUTACHTEN",
+      partName: "KW V3 Gewindefahrwerk".repeat(8),
+      modificationType: "Art der Umrüstung ".repeat(120),
+      modificationsField22: "Feld 22 ".repeat(400),
+      vehicleMatchNotes: "Verwendungsbereich ".repeat(80),
+      certificateNumber: "14-TG-0892-00",
+      testOrganization: "TÜV Rheinland",
+      issueDate: "2024-03-15",
+      conditions: ["Auflage ".repeat(200)],
+    };
+
+    const fields = gutachtenToAnalyzeFields(extraction);
+    expect(invoiceTextParseSchema.safeParse(fields).success).toBe(true);
+    expect(fields.summary?.length ?? 0).toBeLessThanOrEqual(80);
+    expect(fields.notes?.length ?? 0).toBeLessThanOrEqual(500);
+  });
+
+  it("infers gutachten subtype from OCR text when LLM returns SONSTIGES", () => {
+    expect(inferGutachtenSubtypeFromText(OCR_SAMPLES.teilegutachten)).toBe(
+      "TEILEGUTACHTEN",
+    );
+    expect(inferGutachtenSubtypeFromText(OCR_SAMPLES.einzelabnahme)).toBe(
+      "EINZELABNAHME",
+    );
+
+    const refined = refineGutachtenExtractionSubtype(
+      {
+        documentSubtype: "SONSTIGES",
+        partName: "Gewindefahrwerk",
+      },
+      {
+        vendor: null,
+        date: null,
+        amount: null,
+        category: "abe",
+        summary: "TEILEGUTACHTEN",
+        lineItems: null,
+        kbaNumber: null,
+        vehicleApprovals: null,
+        authority: null,
+        conditions: null,
+        partCategory: OCR_SAMPLES.teilegutachten.slice(0, 400),
+        notes: null,
+        manufacturer: null,
+        invoiceNumber: null,
+        mileageKm: null,
+      },
+    );
+
+    expect(refined.documentSubtype).toBe("TEILEGUTACHTEN");
   });
 });

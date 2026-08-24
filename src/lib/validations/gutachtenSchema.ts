@@ -4,6 +4,7 @@ import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import type { ApprovalFieldKind } from "@/lib/documents/approval-fields";
 import { normalizeDocumentDateIso } from "@/lib/documents/format";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
+import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
 
 /** AI-detected Gutachten / Prüfbericht subtype. */
 export const GUTACHTEN_DOCUMENT_SUBTYPES = [
@@ -318,6 +319,62 @@ export function gutachtenToApprovalFields(
   return { kind: "gutachten", data };
 }
 
+export function inferGutachtenSubtypeFromText(
+  text: string,
+): GutachtenDocumentSubtype | null {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+
+  if (
+    /\bteilegutachten\b/i.test(normalized) ||
+    /\b§\s*19\s*abs\.?\s*3\b/i.test(normalized)
+  ) {
+    return "TEILEGUTACHTEN";
+  }
+
+  if (
+    /\b§\s*21\b/i.test(normalized) ||
+    /\beinzelabnahme\b/i.test(normalized) ||
+    /\beinzelbetriebserlaubnis\b/i.test(normalized)
+  ) {
+    return "EINZELABNAHME";
+  }
+
+  if (
+    /\b§\s*19\s*\(\s*2\s*\)/i.test(normalized) ||
+    /\bprüfung\s+nach\s+§\s*19/i.test(normalized) ||
+    /\buntersuchungsbericht\b/i.test(normalized)
+  ) {
+    return "ANBAUBESTAETIGUNG";
+  }
+
+  return null;
+}
+
+export function refineGutachtenExtractionSubtype(
+  extraction: GutachtenExtraction,
+  fields: InvoiceTextParseResult,
+): GutachtenExtraction {
+  if (extraction.documentSubtype !== "SONSTIGES") return extraction;
+
+  const text = [
+    extraction.partName,
+    extraction.modificationType,
+    extraction.vehicleMatchNotes,
+    fields.partCategory,
+    fields.notes,
+    fields.summary,
+    fields.authority,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const inferred = inferGutachtenSubtypeFromText(text);
+  if (!inferred) return extraction;
+
+  return { ...extraction, documentSubtype: inferred };
+}
+
 export function gutachtenToAnalyzeFields(
   data: GutachtenExtraction,
 ): InvoiceTextParseResult {
@@ -354,7 +411,7 @@ export function gutachtenToAnalyzeFields(
     data.vehicleMatchNotes?.trim(),
   ].filter(Boolean) as string[];
 
-  return {
+  return normalizeTextParseResult({
     vendor: data.testOrganization?.trim() || null,
     date: data.issueDate ?? null,
     amount: null,
@@ -372,5 +429,5 @@ export function gutachtenToAnalyzeFields(
     manufacturer: data.manufacturer?.trim() || null,
     invoiceNumber: data.certificateNumber?.trim() || null,
     mileageKm: null,
-  };
+  });
 }

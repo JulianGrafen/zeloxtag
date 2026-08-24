@@ -10,6 +10,7 @@ import {
   gutachtenToAnalyzeFields,
   gutachtenToApprovalFields,
   mergeGutachtenExtractionsSafe,
+  refineGutachtenExtractionSubtype,
   type GutachtenDocumentSubtype,
   type GutachtenExtraction,
 } from "@/lib/validations/gutachtenSchema";
@@ -261,7 +262,12 @@ export async function enrichGutachtenPrimaryScan(
       gutachtenToAnalyzeFields(extraction),
       coverResult.fields,
     );
-    const approvalFields: ApprovalFields = gutachtenToApprovalFields(extraction);
+    const refinedExtraction = refineGutachtenExtractionSubtype(
+      extraction,
+      fields,
+    );
+    const approvalFields: ApprovalFields =
+      gutachtenToApprovalFields(refinedExtraction);
 
     return {
       result: {
@@ -269,7 +275,7 @@ export async function enrichGutachtenPrimaryScan(
         fields,
         approvalFields,
       },
-      extraction,
+      extraction: refinedExtraction,
     };
   } catch (error) {
     console.warn("[gutachten-cover-enrichment] merge failed", error);
