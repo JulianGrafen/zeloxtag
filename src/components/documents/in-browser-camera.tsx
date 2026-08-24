@@ -115,10 +115,10 @@ const TABLE_ASPECT_RATIO = "16 / 7";
 
 /** Fixed viewport — guide frames stay the same size across wizard steps. */
 const GUIDE_FRAME_VIEWPORT_CLASS =
-  "flex h-[min(52dvh,26rem)] w-[min(88vw,21rem)] shrink-0 items-center justify-center";
+  "flex h-[min(68dvh,34rem)] w-[min(92vw,28rem)] shrink-0 items-center justify-center";
 
 const GUIDE_FRAME_INNER_A4_CLASS =
-  "relative h-full w-auto min-h-[12rem] min-w-[8.5rem] max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
+  "relative h-full w-auto min-h-[14rem] min-w-[9.5rem] max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
 
 const GUIDE_FRAME_INNER_BASE_CLASS =
   "relative max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
