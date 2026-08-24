@@ -81,9 +81,12 @@ describe("pre-deploy extraction quality · amounts", () => {
 });
 
 describe("pre-deploy extraction quality · approval kind detection", () => {
+  it("detects unified gutachten for Teilegutachten and Einzelabnahme text", () => {
+    expect(detectApprovalKind(OCR_SAMPLES.teilegutachten)).toBe("gutachten");
+    expect(detectApprovalKind(OCR_SAMPLES.einzelabnahme)).toBe("gutachten");
+  });
+
   it.each([
-    ["teilegutachten", OCR_SAMPLES.teilegutachten],
-    ["einzelabnahme", OCR_SAMPLES.einzelabnahme],
     ["egbe", OCR_SAMPLES.egbe],
     ["abe", OCR_SAMPLES.classicAbe],
     ["tuev", OCR_SAMPLES.tuevReportPass],
@@ -94,7 +97,7 @@ describe("pre-deploy extraction quality · approval kind detection", () => {
   it("does not treat workshop bills as gutachten/tuev subtypes", () => {
     const kind = detectApprovalKind(OCR_SAMPLES.workshopInvoiceWithTuevMention);
     expect(kind).not.toBe("tuev");
-    expect(kind).not.toBe("teilegutachten");
+    expect(kind).not.toBe("gutachten");
   });
 });
 
@@ -226,11 +229,12 @@ describe("pre-deploy extraction quality · scan type catalog", () => {
     expect(scanTypeDefinition("egbe").approvalKind).toBe("egbe");
   });
 
-  it("routes gutachten subtypes through ABE OCR bucket", () => {
-    expect(scanTypeDefinition("teilegutachten").ocrDocumentType).toBe("abe");
-    expect(scanTypeDefinition("einzelabnahme").approvalKind).toBe(
-      "einzelabnahme",
-    );
+  it("routes gutachten through ABE OCR bucket and normalizes legacy scan types", () => {
+    expect(scanTypeDefinition("gutachten").ocrDocumentType).toBe("abe");
+    expect(scanTypeDefinition("gutachten").approvalKind).toBe("gutachten");
+    expect(parseScanType("teilegutachten")).toBe("gutachten");
+    expect(parseScanType("einzelabnahme")).toBe("gutachten");
+    expect(scanTypeDefinition("teilegutachten").approvalKind).toBe("gutachten");
     expect(scanTypeDefinition("tuev").ocrDocumentType).toBe("tuev");
   });
 });
