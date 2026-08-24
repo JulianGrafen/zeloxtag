@@ -25,9 +25,10 @@ const SCAN_ICONS: Record<ScanType, LucideIcon> = {
   repair: Hammer,
   service: Wrench,
   abe: Stamp,
-  teilegutachten: Stamp,
-  einzelabnahme: Stamp,
-  pruefung192: Stamp,
+  gutachten: NotebookPen,
+  teilegutachten: NotebookPen,
+  einzelabnahme: NotebookPen,
+  pruefung192: NotebookPen,
   egbe: Stamp,
   tuev: ShieldCheck,
 };

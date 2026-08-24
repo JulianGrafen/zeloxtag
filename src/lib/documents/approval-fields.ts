@@ -14,6 +14,13 @@ import {
   type Teilegutachten,
   type TuevReport,
 } from "@/lib/validations/documentSchemas";
+import {
+  gutachtenExtractionSchema,
+  type GutachtenExtraction,
+} from "@/lib/validations/gutachtenSchema";
+
+export type Gutachten = GutachtenExtraction;
+export const GutachtenSchema = gutachtenExtractionSchema;
 
 /**
  * Stored on `documents.approval_fields`.
@@ -21,6 +28,7 @@ import {
  */
 export const APPROVAL_FIELD_KINDS = [
   "abe",
+  "gutachten",
   "teilegutachten",
   "einzelabnahme",
   "pruefung192",
@@ -32,6 +40,7 @@ export type ApprovalFieldKind = (typeof APPROVAL_FIELD_KINDS)[number];
 
 export type ApprovalFields =
   | { kind: "abe"; data?: AbeApprovalData }
+  | { kind: "gutachten"; data: Gutachten }
   | { kind: "teilegutachten"; data: Teilegutachten }
   | { kind: "einzelabnahme"; data: Einzelabnahme }
   | { kind: "pruefung192"; data: Pruefung192 }
@@ -45,6 +54,12 @@ export const approvalFieldsSchema: z.ZodType<ApprovalFields> = z.discriminatedUn
       .object({
         kind: z.literal("abe"),
         data: AbeApprovalDataSchema.optional(),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal("gutachten"),
+        data: GutachtenSchema,
       })
       .strict(),
     z
@@ -82,6 +97,7 @@ export const approvalFieldsSchema: z.ZodType<ApprovalFields> = z.discriminatedUn
 
 export const APPROVAL_KIND_LABELS: Record<ApprovalFieldKind, string> = {
   abe: "ABE",
+  gutachten: "Gutachten",
   teilegutachten: "Teilegutachten",
   einzelabnahme: "Einzelabnahme",
   pruefung192: "§19(2) Prüfung",

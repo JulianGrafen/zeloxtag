@@ -776,7 +776,6 @@ const ABE_CAMERA_PROPS = {
   guideFrame: "a4" as const,
   allowPdf: true,
   showBriefing: false,
-  showTopDownGuide: true,
   continuousCapture: true,
   compactChrome: true,
   a4AutoCrop: true,

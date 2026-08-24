@@ -44,6 +44,7 @@ const ALL_ABE_KIND = "all";
 
 const ABE_KIND_LABELS: Record<AbeFamilyKind, string> = {
   abe: "ABE",
+  gutachten: "Gutachten",
   teilegutachten: "Teilegutachten",
   pruefung192: "§19(2) Prüfung",
   einzelabnahme: "Einzelabnahme",
@@ -97,6 +98,7 @@ export function VehicleDocumentsView({
     if (filterType !== "abe") return [];
     const counts: Record<AbeFamilyKind, number> = {
       abe: 0,
+      gutachten: 0,
       teilegutachten: 0,
       pruefung192: 0,
       einzelabnahme: 0,

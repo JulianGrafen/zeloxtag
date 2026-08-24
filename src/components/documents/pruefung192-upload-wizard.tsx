@@ -8,10 +8,7 @@ import {
 } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
-  LoaderCircle,
   RotateCcw,
-  ScanLine,
   SkipForward,
 } from "lucide-react";
 
@@ -21,7 +18,12 @@ import {
 } from "@/components/dashboard/Pruefung192Overview";
 import { ImageCropOverlay } from "@/components/documents/image-crop-capture";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
-import { WizardStepProgress } from "@/components/documents/wizard-step-progress";
+import {
+  WizardAnalyzingPanel,
+  WizardCameraError,
+  WizardScanHeader,
+  WizardShell,
+} from "@/components/documents/wizard-scan-shell";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { localDateIso, normalizeDocumentDateIso } from "@/lib/documents/format";
 import { uploadDocument } from "@/lib/documents/upload-document";
@@ -43,7 +45,6 @@ import {
   convertImagesToPdf,
   normalizePageForPdfMerge,
 } from "@/lib/utils/pdf-converter";
-import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 type WizardPhase =
   | "capture-bericht"
@@ -160,19 +161,6 @@ function applyExtractionToAnalyze(
     rawText: "",
     modelId: "wizard-merge",
   };
-}
-
-function AnalyzingOverlay({ label }: { label: string }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
-        <LoaderCircle className="h-7 w-7 animate-spin text-white" />
-      </div>
-      <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-        {label}
-      </p>
-    </div>
-  );
 }
 
 export function Pruefung192UploadWizard({
@@ -576,11 +564,7 @@ export function Pruefung192UploadWizard({
   if (phase === "capture-bericht") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Untersuchungsbericht fotografieren"
           hint="Prüfung nach § 19(2) StVZO · Untersuchungsbericht mit Fahrzeugdaten, Ergebnis (z. B. Ohne Mängel), Kennzeichen & VIN"
@@ -601,11 +585,7 @@ export function Pruefung192UploadWizard({
   if (phase === "capture-gutachten") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Gutachten zur Erlangung fotografieren"
           hint="Gutachten zur Erlangung der Betriebserlaubnis — danach ZB-Tabelle (Felder B, J, E, 2.1 …) zuschneiden"
@@ -644,11 +624,7 @@ export function Pruefung192UploadWizard({
   if (phase === "capture-vorschriften") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Technische Vorschriften · Seite 1"
           hint="Aufstellung der technischen Vorschriften — Seite 1 von 2 · begutachtete Änderungen"
@@ -670,11 +646,7 @@ export function Pruefung192UploadWizard({
   if (phase === "capture-vorschriften-2") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Technische Vorschriften · Seite 2"
           hint="Aufstellung — Seite 2 von 2 (optional)"
@@ -726,50 +698,26 @@ export function Pruefung192UploadWizard({
   }
 
   return (
-    <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col px-4 py-6">
-      <header className="mb-6 space-y-4">
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </button>
-        ) : backHref ? (
-          <PressableLink href={backHref} variant="pill">
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </PressableLink>
-        ) : null}
-
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-          <ScanLine className="h-5 w-5" />
-          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            § 19 Abs. 2 StVZO
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold">
-            Prüfung scannen
-          </h1>
-          <p className="mt-1 text-[0.88rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel}
-          </p>
-        </div>
-
-        {showStep > 0 ? (
-          <WizardStepProgress currentStep={showStep} totalSteps={TOTAL_STEPS} />
-        ) : null}
-      </header>
+    <WizardShell>
+      <WizardScanHeader
+        eyebrow="§ 19 Abs. 2 StVZO"
+        title="Prüfung scannen"
+        vehicleLabel={vehicleLabel}
+        currentStep={showStep}
+        totalSteps={TOTAL_STEPS}
+        onBack={onBack}
+        backHref={backHref}
+        backLabel={backLabel}
+      />
 
       {phase === "analyzing-bericht" ? (
-        <AnalyzingOverlay label="Untersuchungsbericht wird ausgelesen…" />
+        <WizardAnalyzingPanel label="Untersuchungsbericht wird ausgelesen…" />
       ) : null}
       {phase === "analyzing-gutachten" ? (
-        <AnalyzingOverlay label="Feld 22 wird ausgelesen…" />
+        <WizardAnalyzingPanel label="Feld 22 wird ausgelesen…" />
       ) : null}
       {phase === "analyzing" ? (
-        <AnalyzingOverlay label="Prüfung wird zusammengeführt…" />
+        <WizardAnalyzingPanel label="Prüfung wird zusammengeführt…" />
       ) : null}
 
       {error && !phase.startsWith("analyzing") ? (
@@ -786,6 +734,6 @@ export function Pruefung192UploadWizard({
           </button>
         </div>
       ) : null}
-    </section>
+    </WizardShell>
   );
 }

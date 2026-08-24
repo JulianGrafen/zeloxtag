@@ -48,6 +48,7 @@ import {
 } from "@/services/ocr/AbeExtractionService";
 import { egbeExtractionService } from "@/services/ocr/EgbeExtractionService";
 import { paragraph21ExtractionService } from "@/services/ocr/Paragraph21ExtractionService";
+import { gutachtenExtractionService } from "@/services/ocr/GutachtenExtractionService";
 import { paragraph192ExtractionService } from "@/services/ocr/Paragraph192ExtractionService";
 import { teilegutachtenExtractionService } from "@/services/ocr/TeilegutachtenExtractionService";
 import { tuevExtractionService, tuevVisionToAnalyzeFields } from "@/services/ocr/TuevExtractionService";
@@ -69,6 +70,10 @@ import {
   teilegutachtenToAnalyzeFields,
   teilegutachtenToApprovalFields,
 } from "@/lib/validations/teilegutachtenSchema";
+import {
+  gutachtenToAnalyzeFields,
+  gutachtenToApprovalFields,
+} from "@/lib/validations/gutachtenSchema";
 
 export type { DocumentParseKind, OcrDocumentType, OcrJsonPayload } from "./ocr-types";
 
@@ -572,6 +577,22 @@ export async function analyzeDocument(input: {
 
   try {
     if (documentType === "abe") {
+      if (preferredApprovalKind === "gutachten") {
+        const gutachten = await gutachtenExtractionService.extractFromDocument(
+          documentInput,
+        );
+        return {
+          kind: "abe",
+          documentType,
+          fields: gutachtenToAnalyzeFields(gutachten),
+          approvalFields: gutachtenToApprovalFields(gutachten),
+          rawText: "",
+          ocrJson: buildStubOcrPayload(documentInput.contentType),
+          modelId: LLM_VISION_PARSE_MODEL_ID,
+          parseModel: abeParseModel,
+        };
+      }
+
       if (preferredApprovalKind === "einzelabnahme") {
         const { paragraph21, rawText, ocrJson, modelId } =
           await analyzeEinzelabnahmeDocument(

@@ -20,11 +20,10 @@ import type { TeilegutachtenReviewFields } from "@/components/dashboard/Teilegut
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import { CameraCapture } from "@/components/documents/camera-capture";
+import { GutachtenUploadWizard } from "@/components/documents/gutachten-upload-wizard";
 import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard";
 import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
 import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
-import { TeilegutachtenUploadWizard } from "@/components/documents/teilegutachten-upload-wizard";
-import { Pruefung192UploadWizard } from "@/components/documents/pruefung192-upload-wizard";
 import { BackNav } from "@/components/layout/back-nav";
 import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
@@ -513,23 +512,13 @@ export function InvoiceUploader({
     (scanDef?.ocrDocumentType ??
       (resolvedLockCategory && resolvedCategory === "abe" ? "abe" : "invoice")) ===
     "abe";
-  const isEinzelabnahmeUpload = scanDef?.approvalKind === "einzelabnahme";
-  const isTeilegutachtenUpload = scanDef?.approvalKind === "teilegutachten";
-  const isPruefung192Upload = scanDef?.approvalKind === "pruefung192";
-  const isGutachtenFamilyUpload =
-    isAbeUpload &&
-    !isEinzelabnahmeUpload &&
-    !isTeilegutachtenUpload &&
-    !isPruefung192Upload;
-  const isMultiPageGutachtenUpload =
-    isGutachtenFamilyUpload;
+  const isGutachtenUpload = scanDef?.approvalKind === "gutachten";
+  const isPlainAbeUpload = scanDef?.approvalKind === "abe";
   const isTuevUpload =
     scanDef?.ocrDocumentType === "tuev" ||
     (resolvedLockCategory && resolvedCategory === "tuev");
   const isInvoiceFamilyScan = scanDef?.ocrDocumentType === "invoice";
 
-  // TÜV uploads use a dedicated guided wizard — render it in place of the
-  // generic scanner so users are led through header + defect captures.
   if (isTuevUpload) {
     return (
       <TuevUploadWizard
@@ -544,13 +533,12 @@ export function InvoiceUploader({
     );
   }
 
-  if (isTeilegutachtenUpload) {
+  if (isGutachtenUpload) {
     return (
-      <TeilegutachtenUploadWizard
+      <GutachtenUploadWizard
         vehicleId={vehicleId}
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
-        vehicleContext={vehicleContext}
         successHref={successHref}
         onBack={onBack}
         backHref={resolvedBackHref}
@@ -559,25 +547,7 @@ export function InvoiceUploader({
     );
   }
 
-  if (isPruefung192Upload) {
-    return (
-      <Pruefung192UploadWizard
-        vehicleId={vehicleId}
-        tagUuid={tagUuid}
-        vehicleLabel={vehicleLabel}
-        vehicleContext={vehicleContext}
-        garageVin={vehicleVin ?? null}
-        successHref={successHref}
-        onBack={onBack}
-        backHref={resolvedBackHref}
-        backLabel={backLabel}
-      />
-    );
-  }
-
-  // Plain ABE uploads use the data-hunter wizard (crop targeted sections).
-  // Einzelabnahme / EG-BE keep the generic multi-page scanner.
-  if (isGutachtenFamilyUpload) {
+  if (isPlainAbeUpload) {
     return (
       <AbeDataHunterWizard
         vehicleId={vehicleId}
@@ -591,6 +561,11 @@ export function InvoiceUploader({
       />
     );
   }
+
+  const isEinzelabnahmeUpload = scanDef?.approvalKind === "einzelabnahme";
+  const isTeilegutachtenUpload = scanDef?.approvalKind === "teilegutachten";
+  const isGutachtenFamilyUpload = false;
+  const isMultiPageGutachtenUpload = false;
 
   async function runExtraction(source?: {
     nativePdf?: File | null;

@@ -142,7 +142,6 @@ function PositionsCamera({
       guideFrame="section"
       guideSectionAnchor="center"
       guideFrameDimOutside
-      showTopDownGuide
       showBriefing={false}
       enforceCaptureQuality
       allowOpticalZoom
@@ -304,7 +303,6 @@ export function InvoiceCaptureWizard({
         guideFrameDimOutside
         a4AutoCrop
         a4OutputFormat="jpeg"
-        showTopDownGuide
         showFramingGuide
         showBriefing={false}
         allowOpticalZoom

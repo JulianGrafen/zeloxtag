@@ -24,7 +24,11 @@ import {
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
-import { WizardStepProgress } from "@/components/documents/wizard-step-progress";
+import {
+  WizardCameraError,
+  WizardScanHeader,
+  WizardShell,
+} from "@/components/documents/wizard-scan-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -759,17 +763,13 @@ export function InvoiceUploadWizard({
   if (phase === "capture-overview") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Gesamtseite"
           hint={INVOICE_SCAN_CAMERA_HINTS.overview}
-          showTopDownGuide
           captureStep={{ current: 1, total: 3 }}
           guideFrame="a4"
+          guideFrameDimOutside
           a4OutputFormat="pdf"
           onCapture={handleOverviewCapture}
           onClose={() => {
@@ -793,15 +793,10 @@ export function InvoiceUploadWizard({
   if (phase === "capture-header") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Kopf"
           hint={INVOICE_SCAN_CAMERA_HINTS.header}
-          showTopDownGuide
           captureStep={{ current: 2, total: 3 }}
           guideFrame="none"
           onCapture={handleHeaderCapture}
@@ -817,15 +812,10 @@ export function InvoiceUploadWizard({
     const blockNumber = lineItemsFiles.length + 1;
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title={blockNumber > 1 ? `Block ${blockNumber}` : "Positionen"}
           hint={INVOICE_SCAN_CAMERA_HINTS.lineItems(blockNumber)}
-          showTopDownGuide
           captureStep={{ current: 3, total: 3 }}
           guideFrame="none"
           onCapture={handleLineItemsCapture}
@@ -845,31 +835,18 @@ export function InvoiceUploadWizard({
     const canAddMore = lineItemsFiles.length < MAX_LINE_ITEM_BLOCKS;
 
     return (
-      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
-        <header className="space-y-3">
-          <button
-            type="button"
-            onClick={() =>
-              setState((prev) => ({ ...prev, phase: "capture-header", error: null }))
-            }
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Kopf erneut scannen
-          </button>
-
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-            <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              Schritt 3 von 3 · Rechnungsblock
-            </p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.35rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-              Rechnungsblöcke
-            </h1>
-            <div className="mt-4">
-              <WizardStepProgress currentStep={3} totalSteps={3} />
-            </div>
-          </div>
-        </header>
+      <WizardShell className="gap-4">
+        <WizardScanHeader
+          eyebrow={`${scanDef.title} · Schritt 3 von 3`}
+          title="Rechnungsblöcke"
+          vehicleLabel={vehicleLabel}
+          currentStep={3}
+          totalSteps={3}
+          onBack={() =>
+            setState((prev) => ({ ...prev, phase: "capture-header", error: null }))
+          }
+          backLabel="Kopf erneut scannen"
+        />
 
         {lineItemsFiles.length > 0 ? (
           <ul className="grid grid-cols-2 gap-2">
@@ -966,7 +943,7 @@ export function InvoiceUploadWizard({
               : `${lineItemsFiles.length} Blöcke analysieren`}
           </Button>
         </div>
-      </section>
+      </WizardShell>
     );
   }
 
@@ -1013,43 +990,17 @@ export function InvoiceUploadWizard({
   const canReview = Boolean(state.fields && state.uploadFile);
 
   return (
-    <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
-      <header className="space-y-3">
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </button>
-        ) : backHref ? (
-          <PressableLink
-            href={backHref}
-            variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </PressableLink>
-        ) : null}
-
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-          <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            {scanDef.title} · Review
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.35rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-            {resolvedHeading}
-          </h1>
-          <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel}
-          </p>
-          <div className="mt-4">
-            <WizardStepProgress currentStep={showCurrentStep} totalSteps={3} />
-          </div>
-        </div>
-      </header>
+    <WizardShell className="gap-4">
+      <WizardScanHeader
+        eyebrow={`${scanDef.title} · Review`}
+        title={resolvedHeading}
+        vehicleLabel={vehicleLabel}
+        currentStep={showCurrentStep}
+        totalSteps={3}
+        onBack={onBack}
+        backHref={backHref}
+        backLabel={backLabel}
+      />
 
       {canReview && fields && uploadFile ? (
         <form className="space-y-4" onSubmit={handleSave}>
@@ -1253,6 +1204,6 @@ export function InvoiceUploadWizard({
           </Button>
         </div>
       )}
-    </section>
+    </WizardShell>
   );
 }

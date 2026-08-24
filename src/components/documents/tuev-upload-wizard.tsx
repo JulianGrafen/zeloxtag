@@ -21,7 +21,12 @@ import {
 import { TuevOverview } from "@/components/dashboard/TuevOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
-import { WizardStepProgress } from "@/components/documents/wizard-step-progress";
+import {
+  WizardAnalyzingPanel,
+  WizardCameraError,
+  WizardScanHeader,
+  WizardShell,
+} from "@/components/documents/wizard-scan-shell";
 import { SingleClickTuevUpload } from "@/components/documents/single-click-tuev-upload";
 import { Button } from "@/components/ui/button";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
@@ -254,29 +259,6 @@ async function buildUploadFile(
     // Fallback: first available file.
     return pages[0]!;
   }
-}
-
-// ─── Analyzing overlay ────────────────────────────────────────────────────────
-
-function AnalyzingOverlay({ label }: { label: string }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
-        <LoaderCircle className="h-7 w-7 animate-spin text-white" />
-      </div>
-      <div>
-        <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-          {label}
-        </p>
-        <p className="mt-1 text-[0.8rem] text-[color:var(--vd-muted)]">
-          Einen Moment bitte…
-        </p>
-      </div>
-      <div className="h-1.5 w-40 overflow-hidden rounded-full bg-neutral-200">
-        <div className="h-full w-full animate-pulse rounded-full bg-neutral-400" />
-      </div>
-    </div>
-  );
 }
 
 // ─── Header result card ───────────────────────────────────────────────────────
@@ -695,16 +677,13 @@ export function TuevUploadWizard({
   if (phase === "capture-overview") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Gesamten Bericht fotografieren"
           hint="Gesamtes Blatt im DIN-A4-Rahmen ausrichten"
           captureStep={{ current: 1, total: 3 }}
           guideFrame="a4"
+          guideFrameDimOutside
           guideLabel="Gesamtes Blatt im DIN-A4-Rahmen ausrichten"
           allowPdf
           onCapture={handleOverviewCapture}
@@ -717,11 +696,7 @@ export function TuevUploadWizard({
   if (phase === "capture-header") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Dokumentenkopf fotografieren"
           hint="Kopf mit KM-Stand, Datum und FIN"
@@ -740,11 +715,7 @@ export function TuevUploadWizard({
   if (phase === "capture-defects") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Mängel-Nachweis fotografieren"
           hint="Punkt 6 — Festgestellte Mängel"
@@ -839,55 +810,21 @@ export function TuevUploadWizard({
   }
 
   return (
-    <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-0 px-4 py-6">
-      {/* Back button */}
-      <header className="mb-6 space-y-4">
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </button>
-        ) : backHref ? (
-          <PressableLink
-            href={backHref}
-            variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </PressableLink>
-        ) : null}
-
-        {/* Card */}
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-            <ScanLine className="h-5 w-5" />
-          </div>
-          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            TÜV / HU · Guided Scan
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-            {phase === "capture-defects-prompt"
-              ? "Mängel vorhanden?"
-              : "TÜV-Bericht scannen"}
-          </h1>
-          <p className="mt-1 text-[0.88rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel}
-          </p>
-        </div>
-
-        {/* Progress bar — only during capture phases */}
-        {showCurrentStep > 0 ? (
-          <WizardStepProgress
-            currentStep={showCurrentStep}
-            totalSteps={showTotalSteps}
-          />
-        ) : null}
-      </header>
+    <WizardShell>
+      <WizardScanHeader
+        eyebrow="TÜV / HU · Guided Scan"
+        title={
+          phase === "capture-defects-prompt"
+            ? "Mängel vorhanden?"
+            : "TÜV-Bericht scannen"
+        }
+        vehicleLabel={vehicleLabel}
+        currentStep={showCurrentStep}
+        totalSteps={showTotalSteps}
+        onBack={onBack}
+        backHref={backHref}
+        backLabel={backLabel}
+      />
 
       {/* ── Defects prompt (Step 3/3) ─────────────────────────────── */}
       {phase === "capture-defects-prompt" ? (
@@ -934,6 +871,6 @@ export function TuevUploadWizard({
           </button>
         </div>
       ) : null}
-    </section>
+    </WizardShell>
   );
 }

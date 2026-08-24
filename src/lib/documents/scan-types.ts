@@ -13,6 +13,7 @@ export const SCAN_TYPES = [
   "repair",
   "service",
   "abe",
+  "gutachten",
   "teilegutachten",
   "einzelabnahme",
   "pruefung192",
@@ -90,14 +91,27 @@ export const SCAN_TYPE_DEFINITIONS: Record<ScanType, ScanTypeDefinition> = {
   abe: {
     id: "abe",
     title: "ABE",
-    description: "Allgemeine Betriebserlaubnis",
+    description: "Allgemeine Betriebserlaubnis, KBA-Nummer",
     ocrDocumentType: "abe",
     category: "abe",
     lockCategory: true,
     approvalKind: "abe",
     documentType: "abe",
     heading: "ABE scannen",
-    subheading: "Ein Bauteil · alle Seiten",
+    subheading: "KBA-Nummer · Verwendungsbereich",
+    successTypeQuery: "abe",
+  },
+  gutachten: {
+    id: "gutachten",
+    title: "Gutachten / Prüfbericht",
+    description: "Teilegutachten, Einzelabnahme §21, Anbauabnahme",
+    ocrDocumentType: "abe",
+    category: "abe",
+    lockCategory: true,
+    approvalKind: "gutachten",
+    documentType: "abe",
+    heading: "Gutachten scannen",
+    subheading: "KI erkennt Teilegutachten, §21 oder Anbauabnahme",
     successTypeQuery: "abe",
   },
   teilegutachten: {
@@ -172,11 +186,27 @@ export const SCAN_TYPE_OPTIONS: ScanTypeDefinition[] = [
   SCAN_TYPE_DEFINITIONS.invoice,
   SCAN_TYPE_DEFINITIONS.service,
   SCAN_TYPE_DEFINITIONS.abe,
-  SCAN_TYPE_DEFINITIONS.teilegutachten,
-  SCAN_TYPE_DEFINITIONS.pruefung192,
-  SCAN_TYPE_DEFINITIONS.einzelabnahme,
+  SCAN_TYPE_DEFINITIONS.gutachten,
   SCAN_TYPE_DEFINITIONS.tuev,
 ];
+
+/** Legacy scan intents map to the unified Gutachten flow. */
+const LEGACY_GUTACHTEN_SCAN_TYPES = new Set<ScanType>([
+  "teilegutachten",
+  "einzelabnahme",
+  "pruefung192",
+]);
+
+export function normalizeScanType(type: ScanType): ScanType {
+  if (LEGACY_GUTACHTEN_SCAN_TYPES.has(type)) return "gutachten";
+  return type;
+}
+
+export function parseScanType(value: string | null | undefined): ScanType | null {
+  if (!value) return null;
+  if (!(SCAN_TYPES as readonly string[]).includes(value)) return null;
+  return normalizeScanType(value as ScanType);
+}
 
 export function scanTypeOptionsForRole(
   role: "owner" | "contributor",
@@ -185,13 +215,6 @@ export function scanTypeOptionsForRole(
   return SCHRAUBER_SCAN_TYPES.map((id) => SCAN_TYPE_DEFINITIONS[id]);
 }
 
-export function parseScanType(value: string | null | undefined): ScanType | null {
-  if (!value) return null;
-  return (SCAN_TYPES as readonly string[]).includes(value)
-    ? (value as ScanType)
-    : null;
-}
-
 export function scanTypeDefinition(type: ScanType): ScanTypeDefinition {
-  return SCAN_TYPE_DEFINITIONS[type];
+  return SCAN_TYPE_DEFINITIONS[normalizeScanType(type)];
 }

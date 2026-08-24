@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { TableDataSchema } from "@/lib/validations/abeSchema";
+import { gutachtenExtractionSchema } from "@/lib/validations/gutachtenSchema";
 
 /**
  * Strict Zod schemas for German automotive approval documents.
@@ -8,6 +9,7 @@ import { TableDataSchema } from "@/lib/validations/abeSchema";
  */
 
 export const AUTOMOTIVE_DOCUMENT_TYPES = [
+  "gutachten",
   "teilegutachten",
   "einzelabnahme",
   "pruefung192",
@@ -99,6 +101,10 @@ export const TeilegutachtenSchema = z
   .strict();
 
 export type Teilegutachten = z.infer<typeof TeilegutachtenSchema>;
+
+/** Unified Gutachten / Prüfbericht (stored in approval_fields.kind = gutachten). */
+export { gutachtenExtractionSchema as GutachtenSchema } from "@/lib/validations/gutachtenSchema";
+export type { GutachtenExtraction as Gutachten } from "@/lib/validations/gutachtenSchema";
 
 /**
  * Einzelabnahme / Änderungsabnahme after § 21 / § 19 Abs. 2 StVZO.
@@ -263,6 +269,7 @@ export const automotiveDocumentTypeSchema = z.enum(AUTOMOTIVE_DOCUMENT_TYPES);
 
 /** Map document type → Zod schema (single source for factory / tests). */
 export const DOCUMENT_SCHEMAS = {
+  gutachten: gutachtenExtractionSchema,
   teilegutachten: TeilegutachtenSchema,
   einzelabnahme: EinzelabnahmeSchema,
   pruefung192: Pruefung192Schema,

@@ -8,9 +8,7 @@ import {
 } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
   ArrowRight,
-  LoaderCircle,
   RotateCcw,
   ScanLine,
   SkipForward,
@@ -21,7 +19,12 @@ import {
   type TeilegutachtenReviewFields,
 } from "@/components/dashboard/TeilegutachtenOverview";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
-import { WizardStepProgress } from "@/components/documents/wizard-step-progress";
+import {
+  WizardAnalyzingPanel,
+  WizardCameraError,
+  WizardScanHeader,
+  WizardShell,
+} from "@/components/documents/wizard-scan-shell";
 import { Button } from "@/components/ui/button";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { localDateIso, normalizeDocumentDateIso } from "@/lib/documents/format";
@@ -47,7 +50,6 @@ import {
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import { convertImagesToPdf, normalizePageForPdfMerge } from "@/lib/utils/pdf-converter";
-import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -246,42 +248,35 @@ async function buildUploadPdf(
   }
 }
 
-function AnalyzingOverlay({
-  coverOnly = false,
-  markingOnly = false,
-  verwendungsbereichOnly = false,
-}: {
-  coverOnly?: boolean;
-  markingOnly?: boolean;
-  verwendungsbereichOnly?: boolean;
-}) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
-        <LoaderCircle className="h-7 w-7 animate-spin text-white" />
-      </div>
-      <div>
-        <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-          {coverOnly
-            ? "Erste Seite wird ausgelesen…"
-            : markingOnly
-              ? "Kennzeichnung wird ausgelesen…"
-              : verwendungsbereichOnly
-                ? "Verwendungsbereich wird ausgelesen…"
-                : "Teilegutachten wird analysiert…"}
-        </p>
-        <p className="mt-1 text-[0.8rem] text-[color:var(--vd-muted)]">
-          {coverOnly
-            ? "Fahrzeugteil, Art der Umrüstung, Teiletyp, Fz-Typen und Hersteller werden extrahiert."
-            : markingOnly
-              ? "Art der Kennzeichnung und Kennzeichnungsnummer werden erkannt."
-              : verwendungsbereichOnly
-                ? "Die Fahrzeug-Tabelle wird Zeile für Zeile extrahiert."
-                : "Gutachtennummer, Verwendungsbereich und Auflagen werden ausgelesen."}
-        </p>
-      </div>
-    </div>
-  );
+function teilegutachtenAnalyzingLabel(
+  coverOnly: boolean,
+  markingOnly: boolean,
+  verwendungsbereichOnly: boolean,
+): { label: string; subtitle: string } {
+  if (coverOnly) {
+    return {
+      label: "Erste Seite wird ausgelesen…",
+      subtitle:
+        "Fahrzeugteil, Art der Umrüstung, Teiletyp, Fz-Typen und Hersteller werden extrahiert.",
+    };
+  }
+  if (markingOnly) {
+    return {
+      label: "Kennzeichnung wird ausgelesen…",
+      subtitle: "Art der Kennzeichnung und Kennzeichnungsnummer werden erkannt.",
+    };
+  }
+  if (verwendungsbereichOnly) {
+    return {
+      label: "Verwendungsbereich wird ausgelesen…",
+      subtitle: "Die Fahrzeug-Tabelle wird Zeile für Zeile extrahiert.",
+    };
+  }
+  return {
+    label: "Teilegutachten wird analysiert…",
+    subtitle:
+      "Gutachtennummer, Verwendungsbereich und Auflagen werden ausgelesen.",
+  };
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -874,16 +869,13 @@ export function TeilegutachtenUploadWizard({
   if (phase === "capture-cover") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Erste Seite fotografieren"
           hint="TEILEGUTACHTEN · Fahrzeugteil, Art der Umrüstung, Fz-Teile Type, Für Fz-Typen, Hersteller"
           captureStep={{ current: 1, total: TOTAL_STEPS }}
           guideFrame="a4"
+          guideFrameDimOutside
           guideSectionAnchor="top"
           guideLabel="Titelseite mit TEILEGUTACHTEN & Kopffeldern"
           allowPdf
@@ -897,11 +889,7 @@ export function TeilegutachtenUploadWizard({
   if (phase === "capture-marking") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Kennzeichnung fotografieren"
           hint="Aufdruck am Bauteil · Prägung · Typenschild — Nummer muss lesbar sein"
@@ -931,11 +919,7 @@ export function TeilegutachtenUploadWizard({
   if (phase === "capture-auflagen") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Punkt IV fotografieren"
           hint="Abschnitt IV · Auflagen und Hinweise — komplett erfassen"
@@ -963,11 +947,7 @@ export function TeilegutachtenUploadWizard({
   if (phase === "capture-verwendungsbereich") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Verwendungsbereich fotografieren"
           hint="Komplette Fahrzeug-Tabelle erfassen"
@@ -999,11 +979,7 @@ export function TeilegutachtenUploadWizard({
   if (phase === "capture-technical") {
     return (
       <>
-        {error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm text-white shadow-lg">
-            {error}
-          </div>
-        ) : null}
+        {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Technische Daten fotografieren"
           hint="Abschnitt II und ggf. Hinweise für den Halter"
@@ -1055,55 +1031,37 @@ export function TeilegutachtenUploadWizard({
   // ── Page shell (prompt, analyzing) ─────────────────────────────────────────
 
   return (
-    <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-0 px-4 py-6">
-      <header className="mb-6 space-y-4">
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </button>
-        ) : backHref ? (
-          <PressableLink
-            href={backHref}
-            variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </PressableLink>
-        ) : null}
+    <WizardShell>
+      <WizardScanHeader
+        eyebrow="Teilegutachten · § 19 Abs. 3"
+        title={
+          phase === "capture-technical-prompt"
+            ? "Weitere Seiten?"
+            : "Teilegutachten scannen"
+        }
+        vehicleLabel={vehicleLabel}
+        currentStep={showCurrentStep}
+        totalSteps={TOTAL_STEPS}
+        onBack={onBack}
+        backHref={backHref}
+        backLabel={backLabel}
+      />
 
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-            <ScanLine className="h-5 w-5" />
-          </div>
-          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            Teilegutachten · § 19 Abs. 3
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-            {phase === "capture-technical-prompt"
-              ? "Weitere Seiten?"
-              : "Teilegutachten scannen"}
-          </h1>
-          <p className="mt-1 text-[0.88rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel}
-          </p>
-        </div>
-
-        {showCurrentStep > 0 ? (
-          <WizardStepProgress currentStep={showCurrentStep} totalSteps={TOTAL_STEPS} />
-        ) : null}
-      </header>
-
-      {phase === "analyzing" ? <AnalyzingOverlay /> : null}
-      {phase === "analyzing-cover" ? <AnalyzingOverlay coverOnly /> : null}
-      {phase === "analyzing-marking" ? <AnalyzingOverlay markingOnly /> : null}
+      {phase === "analyzing" ? (
+        <WizardAnalyzingPanel
+          {...teilegutachtenAnalyzingLabel(false, false, false)}
+        />
+      ) : null}
+      {phase === "analyzing-cover" ? (
+        <WizardAnalyzingPanel {...teilegutachtenAnalyzingLabel(true, false, false)} />
+      ) : null}
+      {phase === "analyzing-marking" ? (
+        <WizardAnalyzingPanel {...teilegutachtenAnalyzingLabel(false, true, false)} />
+      ) : null}
       {phase === "analyzing-verwendungsbereich" ? (
-        <AnalyzingOverlay verwendungsbereichOnly />
+        <WizardAnalyzingPanel
+          {...teilegutachtenAnalyzingLabel(false, false, true)}
+        />
       ) : null}
 
       {phase === "capture-technical-prompt" ? (
@@ -1153,6 +1111,6 @@ export function TeilegutachtenUploadWizard({
           </button>
         </div>
       ) : null}
-    </section>
+    </WizardShell>
   );
 }

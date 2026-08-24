@@ -72,6 +72,11 @@ export function detectApprovalKind(text: string): ApprovalFieldKind {
   if (!normalized) return "abe";
 
   const scores: Record<ApprovalFieldKind, number> = {
+    gutachten: Math.max(
+      score(normalized, TEILEGUTACHTEN),
+      score(normalized, EINZELABNAHME),
+      score(normalized, PRUEFUNG192),
+    ),
     pruefung192: score(normalized, PRUEFUNG192),
     einzelabnahme: score(normalized, EINZELABNAHME),
     teilegutachten: score(normalized, TEILEGUTACHTEN),

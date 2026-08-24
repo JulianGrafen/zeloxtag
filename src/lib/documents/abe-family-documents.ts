@@ -3,6 +3,7 @@ import type { Document } from "@/types/database";
 
 export const ABE_FAMILY_KINDS = [
   "abe",
+  "gutachten",
   "teilegutachten",
   "einzelabnahme",
   "pruefung192",
@@ -28,7 +29,12 @@ export function resolveAbeFamilyKind(
 
   const kind = document.approval_fields?.kind;
   if (kind && !ABE_FAMILY_KIND_SET.has(kind)) return null;
-  if (kind === "teilegutachten" || kind === "einzelabnahme" || kind === "pruefung192") {
+  if (
+    kind === "gutachten" ||
+    kind === "teilegutachten" ||
+    kind === "einzelabnahme" ||
+    kind === "pruefung192"
+  ) {
     return kind;
   }
   return "abe";

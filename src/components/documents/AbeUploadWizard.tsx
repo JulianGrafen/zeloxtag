@@ -18,6 +18,7 @@ import {
 } from "@/components/documents/abe-review-ui";
 import { AbeVehicleMatchPicker } from "@/components/documents/abe-vehicle-match-picker";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
+import { WizardCameraError } from "@/components/documents/wizard-scan-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
@@ -853,16 +854,14 @@ export function AbeUploadWizard({
 
     return (
       <>
-        {state.error ? (
-          <div className="fixed bottom-4 left-4 right-4 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[0.82rem] text-red-800 shadow-lg">
-            {state.error}
-          </div>
-        ) : null}
+        {state.error ? <WizardCameraError message={state.error} /> : null}
         <InBrowserCamera
           key={state.phase}
           title={title}
           hint={hint}
           guideFrame={phase === "capture-vehicles" ? "table" : "a4"}
+          guideFrameDimOutside={phase !== "capture-vehicles"}
+          guideLabel={currentCaptureStep.guideLabel}
           a4AutoCrop
           allowPdf
           showBriefing={false}

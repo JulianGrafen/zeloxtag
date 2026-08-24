@@ -3,6 +3,7 @@ import {
   type ApprovalFields,
 } from "@/lib/documents/approval-fields";
 import { formatDocumentDate, formatTuevYearMonth } from "@/lib/documents/format";
+import { GUTACHTEN_SUBTYPE_LABELS } from "@/lib/validations/gutachtenSchema";
 import { stripAuflagenFromValidityArea } from "@/lib/validations/teilegutachtenSchema";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
 
@@ -59,6 +60,41 @@ export function ApprovalFieldsSection({
       <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
         Extrahierte Felder · {title}
       </h2>
+
+      {approvalFields.kind === "gutachten" ? (
+        <dl className="grid grid-cols-1 gap-3 text-[0.85rem] sm:grid-cols-2">
+          <Fact
+            label="Dokumenttyp"
+            value={GUTACHTEN_SUBTYPE_LABELS[approvalFields.data.documentSubtype]}
+          />
+          <Fact label="Bauteil / Umrüstung" value={approvalFields.data.partName} />
+          <Fact label="Hersteller" value={approvalFields.data.manufacturer} />
+          <Fact
+            label="Gutachten- / Bericht-Nr."
+            value={approvalFields.data.certificateNumber}
+          />
+          <Fact
+            label="Prüforganisation"
+            value={approvalFields.data.testOrganization}
+          />
+          <Fact
+            label="Ausstellungsdatum"
+            value={
+              approvalFields.data.issueDate
+                ? formatDocumentDate(approvalFields.data.issueDate)
+                : null
+            }
+          />
+          {approvalFields.data.vehicleMatchNotes ? (
+            <div className="sm:col-span-2">
+              <Fact
+                label="Verwendung / Fahrzeug-Hinweise"
+                value={approvalFields.data.vehicleMatchNotes}
+              />
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
 
       {approvalFields.kind === "teilegutachten" ? (
         <dl className="grid grid-cols-1 gap-3 text-[0.85rem] sm:grid-cols-2">
