@@ -10,6 +10,14 @@ type WeightedPattern = {
   weight: number;
 };
 
+const PRUEFUNG192: WeightedPattern[] = [
+  { pattern: /\b§\s*19\s*\(\s*2\s*\)/i, weight: 12 },
+  { pattern: /\bprüfung\s+nach\s+§\s*19/i, weight: 10 },
+  { pattern: /\buntersuchungsbericht\b/i, weight: 4 },
+  { pattern: /\bgutachten\s+zur\s+erlangung\s+der\s+betriebserlaubnis\b/i, weight: 9 },
+  { pattern: /\baufstellung\s+der\s+technischen\s+vorschriften\b/i, weight: 7 },
+];
+
 const EINZELABNAHME: WeightedPattern[] = [
   { pattern: /\beinzelabnahme\b/i, weight: 10 },
   { pattern: /\bänderungsabnahme\b|\baenderungsabnahme\b/i, weight: 9 },
@@ -64,6 +72,7 @@ export function detectApprovalKind(text: string): ApprovalFieldKind {
   if (!normalized) return "abe";
 
   const scores: Record<ApprovalFieldKind, number> = {
+    pruefung192: score(normalized, PRUEFUNG192),
     einzelabnahme: score(normalized, EINZELABNAHME),
     teilegutachten: score(normalized, TEILEGUTACHTEN),
     egbe: score(normalized, EGBE),

@@ -27,6 +27,7 @@ const SCAN_ICONS: Record<ScanType, LucideIcon> = {
   abe: Stamp,
   teilegutachten: Stamp,
   einzelabnahme: Stamp,
+  pruefung192: Stamp,
   egbe: Stamp,
   tuev: ShieldCheck,
 };

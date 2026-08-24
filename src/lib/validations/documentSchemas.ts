@@ -10,6 +10,7 @@ import { TableDataSchema } from "@/lib/validations/abeSchema";
 export const AUTOMOTIVE_DOCUMENT_TYPES = [
   "teilegutachten",
   "einzelabnahme",
+  "pruefung192",
   "egbe",
   "tuev",
 ] as const;
@@ -111,6 +112,27 @@ export const EinzelabnahmeSchema = z
   .strict();
 
 export type Einzelabnahme = z.infer<typeof EinzelabnahmeSchema>;
+
+/**
+ * Prüfung nach § 19 Abs. 2 StVZO (Anbauabnahme / Begutachtung nach Umrüstung).
+ */
+export const Pruefung192Schema = z
+  .object({
+    testingOrganization: z.enum(TESTING_ORGANIZATIONS),
+    reportNumber: nonEmpty(120),
+    inspectionResult: z
+      .enum(["no_defects", "minor_defects", "major_defects", "failed"])
+      .nullable()
+      .optional(),
+    field22Text: nonEmpty(8_000),
+    assessedModifications: z.string().trim().min(1).max(2_000).nullable().optional(),
+    officialExpert: nonEmpty(200),
+    /** ZB grid (Felder B, J, E, 2.1 …) preserved via crop in stored PDF. */
+    zbTablePreserved: z.boolean().optional(),
+  })
+  .strict();
+
+export type Pruefung192 = z.infer<typeof Pruefung192Schema>;
 
 /** Optional structured payload for plain ABE documents. */
 export const AbeAuflagenSnippetSchema = z
@@ -243,6 +265,7 @@ export const automotiveDocumentTypeSchema = z.enum(AUTOMOTIVE_DOCUMENT_TYPES);
 export const DOCUMENT_SCHEMAS = {
   teilegutachten: TeilegutachtenSchema,
   einzelabnahme: EinzelabnahmeSchema,
+  pruefung192: Pruefung192Schema,
   egbe: EGBESchema,
   tuev: TuevReportSchema,
 } as const;

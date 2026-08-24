@@ -5,6 +5,7 @@ export const ABE_FAMILY_KINDS = [
   "abe",
   "teilegutachten",
   "einzelabnahme",
+  "pruefung192",
 ] as const;
 
 export type AbeFamilyKind = (typeof ABE_FAMILY_KINDS)[number];
@@ -27,7 +28,9 @@ export function resolveAbeFamilyKind(
 
   const kind = document.approval_fields?.kind;
   if (kind && !ABE_FAMILY_KIND_SET.has(kind)) return null;
-  if (kind === "teilegutachten" || kind === "einzelabnahme") return kind;
+  if (kind === "teilegutachten" || kind === "einzelabnahme" || kind === "pruefung192") {
+    return kind;
+  }
   return "abe";
 }
 

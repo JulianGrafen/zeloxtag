@@ -40,6 +40,10 @@ export type AnalyzeDocumentOptions = {
   garageVin?: string | null;
   /** Locked invoice category from scan picker (repair/service/tuning). */
   invoiceCategory?: InvoiceTextParseCategory | null;
+  /** Teilegutachten wizard — cover page OCR to skip redundant scans. */
+  teilegutachtenScope?: "cover" | "marking" | "verwendungsbereich" | "full";
+  /** §19(2) Prüfung wizard — scoped page extraction. */
+  pruefung192Scope?: "bericht" | "gutachten" | "vorschriften" | "full";
   /** @deprecated Prefer `documentType`. Mapped to documentType when unset. */
   kind?: DocumentParseKind;
 };
@@ -69,6 +73,8 @@ async function analyzeOneFile(
   vehicleContext?: AbeVehicleContext | null,
   garageVin?: string | null,
   invoiceCategory?: InvoiceTextParseCategory | null,
+  teilegutachtenScope?: "cover" | "marking" | "verwendungsbereich" | "full",
+  pruefung192Scope?: "bericht" | "gutachten" | "vorschriften" | "full",
 ): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
   formData.set("vehicleId", vehicleId);
@@ -85,6 +91,12 @@ async function analyzeOneFile(
   }
   if (invoiceCategory) {
     formData.set("invoiceCategory", invoiceCategory);
+  }
+  if (teilegutachtenScope) {
+    formData.set("teilegutachtenScope", teilegutachtenScope);
+  }
+  if (pruefung192Scope) {
+    formData.set("pruefung192Scope", pruefung192Scope);
   }
 
   const response = await fetch("/api/ocr/parse", {
@@ -212,6 +224,8 @@ export async function analyzeDocumentFiles(
   const vehicleContext = options.vehicleContext ?? null;
   const garageVin = options.garageVin ?? null;
   const invoiceCategory = options.invoiceCategory ?? null;
+  const teilegutachtenScope = options.teilegutachtenScope;
+  const pruefung192Scope = options.pruefung192Scope;
 
   if (files.length === 1) {
     onPageProgress?.(1, 1);
@@ -223,6 +237,8 @@ export async function analyzeDocumentFiles(
       vehicleContext,
       garageVin,
       invoiceCategory,
+      teilegutachtenScope,
+      pruefung192Scope,
     );
   }
 
@@ -238,6 +254,8 @@ export async function analyzeDocumentFiles(
         vehicleContext,
         garageVin,
         invoiceCategory,
+        index === 0 ? teilegutachtenScope : undefined,
+        index === 0 ? pruefung192Scope : undefined,
       ),
     );
   }

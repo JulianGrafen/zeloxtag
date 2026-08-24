@@ -12,10 +12,10 @@ const MODIFICATION_TYPE_HEADING =
   /(?:^|\n)\s*Art\s+der\s+Umr[uü][sß]tung\b\s*(?:[:\-|]\s*([^\n|]+))?\s*(?:\n|$)/i;
 
 const MODIFICATION_TYPE_SECTION_END =
-  /\n\s*(?:Hersteller|Bezeichnung|Typ(?:en)?(?:bezeichnung|schlüssel)?|Kennzeichnung|Gutachten|Verwendungsbereich|Technische\s+Daten|Prüforganisation)\b/i;
+  /\n\s*(?:Fz\.?\s*-?\s*Teile|Für\s+Fz|Fahrzeugteil|Hersteller|Bezeichnung|Typ(?:en)?(?:bezeichnung|schlüssel)?|Kennzeichnung|Gutachten|Verwendungsbereich|Technische\s+Daten|Prüforganisation)\b/i;
 
 const MODIFICATION_TYPE_LINE_STOP =
-  /^(?:Hersteller|Bezeichnung|Typ(?:en)?(?:bezeichnung|schlüssel)?|Kennzeichnung|Gutachten|Verwendungsbereich|Technische\s+Daten|Prüforganisation)\b/i;
+  /^(?:Fz\.?\s*-?\s*Teile|Für\s+Fz|Fahrzeugteil|Hersteller|Bezeichnung|Typ(?:en)?(?:bezeichnung|schlüssel)?|Kennzeichnung|Gutachten|Verwendungsbereich|Technische\s+Daten|Prüforganisation)\b/i;
 
 /** Preserve OCR line breaks — only trim outer whitespace and cap length. */
 export function normalizeTeilegutachtenModificationType(

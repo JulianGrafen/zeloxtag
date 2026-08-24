@@ -48,6 +48,7 @@ import {
 } from "@/services/ocr/AbeExtractionService";
 import { egbeExtractionService } from "@/services/ocr/EgbeExtractionService";
 import { paragraph21ExtractionService } from "@/services/ocr/Paragraph21ExtractionService";
+import { paragraph192ExtractionService } from "@/services/ocr/Paragraph192ExtractionService";
 import { teilegutachtenExtractionService } from "@/services/ocr/TeilegutachtenExtractionService";
 import { tuevExtractionService, tuevVisionToAnalyzeFields } from "@/services/ocr/TuevExtractionService";
 import {
@@ -60,6 +61,10 @@ import {
   paragraph21ToAnalyzeFields,
   paragraph21ToApprovalFields,
 } from "@/lib/validations/paragraph21Schema";
+import {
+  paragraph192ToAnalyzeFields,
+  paragraph192ToApprovalFields,
+} from "@/lib/validations/paragraph192Schema";
 import {
   teilegutachtenToAnalyzeFields,
   teilegutachtenToApprovalFields,
@@ -139,6 +144,7 @@ async function extractGutachtenMarkdownFromAzure(
 async function analyzeTeilegutachtenDocument(
   documentInput: DocumentBytesInput,
   vehicleContext: AbeVehicleContext | null,
+  scope: "cover" | "marking" | "verwendungsbereich" | "full" = "full",
 ): Promise<{
   teilegutachten: Awaited<
     ReturnType<typeof teilegutachtenExtractionService.extractFromDocument>
@@ -149,10 +155,25 @@ async function analyzeTeilegutachtenDocument(
 }> {
   const runVision = async () => {
     const teilegutachten =
-      await teilegutachtenExtractionService.extractFromDocument(
-        documentInput,
-        { vehicleContext },
-      );
+      scope === "cover"
+        ? await teilegutachtenExtractionService.extractCoverPage(
+            documentInput,
+            { vehicleContext },
+          )
+        : scope === "marking"
+          ? await teilegutachtenExtractionService.extractMarkingCapture(
+              documentInput,
+              { vehicleContext },
+            )
+          : scope === "verwendungsbereich"
+            ? await teilegutachtenExtractionService.extractVerwendungsbereichTable(
+                documentInput,
+                { vehicleContext },
+              )
+            : await teilegutachtenExtractionService.extractFromDocument(
+              documentInput,
+              { vehicleContext },
+            );
     return {
       teilegutachten,
       rawText: "",
@@ -161,7 +182,11 @@ async function analyzeTeilegutachtenDocument(
     };
   };
 
-  if (isPdfDocumentInput(documentInput) && isAzureMarkdownLayoutAvailable()) {
+  if (
+    scope === "full" &&
+    isPdfDocumentInput(documentInput) &&
+    isAzureMarkdownLayoutAvailable()
+  ) {
     try {
       const { markdown, ocrJson } =
         await extractGutachtenMarkdownFromAzure(documentInput);
@@ -238,6 +263,49 @@ async function analyzeEinzelabnahmeDocument(
       );
     }
   }
+
+  return runVision();
+}
+
+async function analyzePruefung192Document(
+  documentInput: DocumentBytesInput,
+  garageVin: string | null,
+  scope: "bericht" | "gutachten" | "vorschriften" | "full" = "full",
+): Promise<{
+  paragraph192: Awaited<
+    ReturnType<typeof paragraph192ExtractionService.extractFromDocument>
+  >;
+  rawText: string;
+  ocrJson: OcrJsonPayload;
+  modelId: string;
+}> {
+  const runVision = async () => {
+    const paragraph192 =
+      scope === "bericht"
+        ? await paragraph192ExtractionService.extractBerichtPage(documentInput, {
+            garageVin,
+          })
+        : scope === "gutachten"
+          ? await paragraph192ExtractionService.extractGutachtenField22(
+              documentInput,
+              { garageVin },
+            )
+          : scope === "vorschriften"
+            ? await paragraph192ExtractionService.extractVorschriftenPage(
+                documentInput,
+                { garageVin },
+              )
+            : await paragraph192ExtractionService.extractFromDocument(
+                documentInput,
+                { garageVin },
+              );
+    return {
+      paragraph192,
+      rawText: "",
+      ocrJson: buildStubOcrPayload(documentInput.contentType),
+      modelId: LLM_VISION_PARSE_MODEL_ID,
+    };
+  };
 
   return runVision();
 }
@@ -482,6 +550,10 @@ export async function analyzeDocument(input: {
   garageVin?: string | null;
   /** Locked invoice category from scan picker (repair/service/tuning). */
   invoiceCategory?: InvoiceTextParseCategory | null;
+  /** Teilegutachten wizard: analyze cover page only vs full document. */
+  teilegutachtenScope?: "cover" | "marking" | "verwendungsbereich" | "full";
+  /** §19(2) Prüfung wizard — scoped page extraction. */
+  pruefung192Scope?: "bericht" | "gutachten" | "vorschriften" | "full";
 }): Promise<AnalyzeDocumentResult> {
   if (!isLlmConfigured()) {
     throw new DocumentIntelligenceError(
@@ -522,13 +594,41 @@ export async function analyzeDocument(input: {
       }
 
       if (preferredApprovalKind === "teilegutachten") {
+        const scope = input.teilegutachtenScope ?? "full";
         const { teilegutachten, rawText, ocrJson, modelId } =
-          await analyzeTeilegutachtenDocument(documentInput, vehicleContext);
+          await analyzeTeilegutachtenDocument(
+            documentInput,
+            vehicleContext,
+            scope,
+          );
         return {
           kind: "abe",
           documentType,
           fields: teilegutachtenToAnalyzeFields(teilegutachten),
           approvalFields: teilegutachtenToApprovalFields(teilegutachten),
+          rawText,
+          ocrJson,
+          modelId,
+          parseModel: abeParseModel,
+        };
+      }
+
+      if (preferredApprovalKind === "pruefung192") {
+        const scope = input.pruefung192Scope ?? "full";
+        const { paragraph192, rawText, ocrJson, modelId } =
+          await analyzePruefung192Document(
+            documentInput,
+            input.garageVin ?? null,
+            scope,
+          );
+        return {
+          kind: "abe",
+          documentType,
+          fields: paragraph192ToAnalyzeFields(
+            paragraph192,
+            paragraph192.vinMatchesGarage,
+          ),
+          approvalFields: paragraph192ToApprovalFields(paragraph192),
           rawText,
           ocrJson,
           modelId,

@@ -120,6 +120,40 @@ const SECTION_ASPECT_RATIOS: Record<GuideSectionAnchor, string> = {
 /** Wide Verwendungsbereich excerpt (Fahrzeugtyp → Auflagen). */
 const TABLE_ASPECT_RATIO = "16 / 7";
 
+/** Fixed viewport — guide frames stay the same size across wizard steps. */
+const GUIDE_FRAME_VIEWPORT_CLASS =
+  "flex h-[min(52dvh,26rem)] w-[min(88vw,21rem)] shrink-0 items-center justify-center";
+
+const GUIDE_FRAME_INNER_BASE_CLASS =
+  "relative max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
+
+function GuideFrameViewport({
+  children,
+  chromeTopPad,
+  chromeBottomPad,
+  layoutClass = "items-center justify-center",
+}: {
+  children: ReactNode;
+  chromeTopPad: string;
+  chromeBottomPad: string;
+  layoutClass?: string;
+}) {
+  return (
+    <div
+      className={[
+        "pointer-events-none absolute inset-0 flex px-2",
+        layoutClass,
+      ].join(" ")}
+      style={{
+        paddingTop: chromeTopPad,
+        paddingBottom: chromeBottomPad,
+      }}
+    >
+      <div className={GUIDE_FRAME_VIEWPORT_CLASS}>{children}</div>
+    </div>
+  );
+}
+
 async function canvasToCaptureFile(
   canvas: HTMLCanvasElement,
   fileName = `scan-${Date.now()}`,
@@ -193,7 +227,7 @@ function GuideFrameWatermark({ children }: { children: ReactNode }) {
 
 function GuideFrameCorners({ sharp = false }: { sharp?: boolean }) {
   const radius = sharp ? "rounded-sm" : "rounded-xl";
-  const corner = sharp ? "h-5 w-5" : "h-6 w-6";
+  const corner = "h-6 w-6";
   return (
     <>
       <span className={`absolute -left-px -top-px ${corner} ${radius} border-l-4 border-t-4 border-white/85`} />
@@ -1095,17 +1129,15 @@ export function InBrowserCamera({
             {/* Document guide frame (optional) */}
             {cameraReady && guideFrame !== "none" ? (
               guideFrame === "table" ? (
-                <div
-                  className="pointer-events-none absolute inset-0 flex items-center justify-center px-2"
-                  style={{
-                    paddingTop: chromeTopPad,
-                    paddingBottom: chromeBottomPad,
-                  }}
+                <GuideFrameViewport
+                  chromeTopPad={chromeTopPad}
+                  chromeBottomPad={chromeBottomPad}
                 >
                   <div
                     ref={guideFrameRef}
                     className={[
-                      "relative w-full max-w-[min(96vw,560px)] rounded-md border-2 transition-colors duration-200",
+                      GUIDE_FRAME_INNER_BASE_CLASS,
+                      "rounded-md",
                       guideFrameBorderClass(topDownTilt.isLevel, frameReady),
                       frameOutsideShadow,
                     ].join(" ")}
@@ -1124,19 +1156,17 @@ export function InBrowserCamera({
                       </div>
                     ) : null}
                   </div>
-                </div>
+                </GuideFrameViewport>
               ) : guideFrame === "a4" ? (
-                <div
-                  className="pointer-events-none absolute inset-0 flex items-center justify-center px-2"
-                  style={{
-                    paddingTop: chromeTopPad,
-                    paddingBottom: chromeBottomPad,
-                  }}
+                <GuideFrameViewport
+                  chromeTopPad={chromeTopPad}
+                  chromeBottomPad={chromeBottomPad}
                 >
                   <div
                     ref={guideFrameRef}
                     className={[
-                      "relative h-full w-auto max-h-full max-w-[92vw] shrink-0 rounded-xl border-2 transition-colors duration-200",
+                      GUIDE_FRAME_INNER_BASE_CLASS,
+                      "rounded-xl",
                       guideFrameBorderClass(topDownTilt.isLevel, frameReady),
                       frameOutsideShadow,
                     ].join(" ")}
@@ -1160,25 +1190,24 @@ export function InBrowserCamera({
                       </div>
                     ) : null}
                   </div>
-                </div>
+                </GuideFrameViewport>
               ) : (
-                <div
-                  className={[
-                    "pointer-events-none absolute inset-0 flex px-3",
-                    sectionFrameLayoutClass(guideSectionAnchor),
-                  ].join(" ")}
-                  style={{
-                    paddingTop: chromeTopPad,
-                    paddingBottom: chromeBottomPad,
-                  }}
+                <GuideFrameViewport
+                  chromeTopPad={chromeTopPad}
+                  chromeBottomPad={chromeBottomPad}
+                  layoutClass={sectionFrameLayoutClass(guideSectionAnchor)}
                 >
                   <div
+                    ref={guideFrameRef}
                     className={[
-                      "relative w-full max-w-[min(96vw,560px)] rounded-md border-2 transition-colors duration-200",
+                      GUIDE_FRAME_INNER_BASE_CLASS,
+                      "rounded-md",
                       guideFrameBorderClass(topDownTilt.isLevel, frameReady),
                       frameOutsideShadow,
                     ].join(" ")}
-                    style={{ aspectRatio: SECTION_ASPECT_RATIOS[guideSectionAnchor] }}
+                    style={{
+                      aspectRatio: SECTION_ASPECT_RATIOS[guideSectionAnchor],
+                    }}
                     aria-hidden
                   >
                     <GuideFrameCorners sharp />
@@ -1193,7 +1222,7 @@ export function InBrowserCamera({
                       </div>
                     ) : null}
                   </div>
-                </div>
+                </GuideFrameViewport>
               )
             ) : null}
 

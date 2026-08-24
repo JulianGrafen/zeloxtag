@@ -24,6 +24,7 @@ import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard"
 import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
 import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
 import { TeilegutachtenUploadWizard } from "@/components/documents/teilegutachten-upload-wizard";
+import { Pruefung192UploadWizard } from "@/components/documents/pruefung192-upload-wizard";
 import { BackNav } from "@/components/layout/back-nav";
 import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
@@ -514,8 +515,12 @@ export function InvoiceUploader({
     "abe";
   const isEinzelabnahmeUpload = scanDef?.approvalKind === "einzelabnahme";
   const isTeilegutachtenUpload = scanDef?.approvalKind === "teilegutachten";
+  const isPruefung192Upload = scanDef?.approvalKind === "pruefung192";
   const isGutachtenFamilyUpload =
-    isAbeUpload && !isEinzelabnahmeUpload && !isTeilegutachtenUpload;
+    isAbeUpload &&
+    !isEinzelabnahmeUpload &&
+    !isTeilegutachtenUpload &&
+    !isPruefung192Upload;
   const isMultiPageGutachtenUpload =
     isGutachtenFamilyUpload;
   const isTuevUpload =
@@ -546,6 +551,22 @@ export function InvoiceUploader({
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
         vehicleContext={vehicleContext}
+        successHref={successHref}
+        onBack={onBack}
+        backHref={resolvedBackHref}
+        backLabel={backLabel}
+      />
+    );
+  }
+
+  if (isPruefung192Upload) {
+    return (
+      <Pruefung192UploadWizard
+        vehicleId={vehicleId}
+        tagUuid={tagUuid}
+        vehicleLabel={vehicleLabel}
+        vehicleContext={vehicleContext}
+        garageVin={vehicleVin ?? null}
         successHref={successHref}
         onBack={onBack}
         backHref={resolvedBackHref}

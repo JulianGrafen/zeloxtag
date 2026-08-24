@@ -15,6 +15,7 @@ export const SCAN_TYPES = [
   "abe",
   "teilegutachten",
   "einzelabnahme",
+  "pruefung192",
   "egbe",
   "tuev",
 ] as const;
@@ -125,6 +126,19 @@ export const SCAN_TYPE_DEFINITIONS: Record<ScanType, ScanTypeDefinition> = {
     subheading: "Änderungsabnahme / Sachverständiger",
     successTypeQuery: "abe",
   },
+  pruefung192: {
+    id: "pruefung192",
+    title: "§19(2) Prüfung",
+    description: "Anbauabnahme · TÜV",
+    ocrDocumentType: "abe",
+    category: "abe",
+    lockCategory: true,
+    approvalKind: "pruefung192",
+    documentType: "abe",
+    heading: "§19(2) Prüfung scannen",
+    subheading: "Untersuchungsbericht · Gutachten · Vorschriften",
+    successTypeQuery: "abe",
+  },
   egbe: {
     id: "egbe",
     title: "EG-BE",
@@ -159,6 +173,7 @@ export const SCAN_TYPE_OPTIONS: ScanTypeDefinition[] = [
   SCAN_TYPE_DEFINITIONS.service,
   SCAN_TYPE_DEFINITIONS.abe,
   SCAN_TYPE_DEFINITIONS.teilegutachten,
+  SCAN_TYPE_DEFINITIONS.pruefung192,
   SCAN_TYPE_DEFINITIONS.einzelabnahme,
   SCAN_TYPE_DEFINITIONS.tuev,
 ];

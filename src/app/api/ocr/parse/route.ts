@@ -188,6 +188,28 @@ export async function POST(request: NextRequest) {
       ? invoiceCategoryParsed.data
       : null;
 
+    const teilegutachtenScopeRaw = String(
+      formData.get("teilegutachtenScope") ?? "",
+    ).trim();
+    const teilegutachtenScope =
+      teilegutachtenScopeRaw === "cover" ||
+      teilegutachtenScopeRaw === "marking" ||
+      teilegutachtenScopeRaw === "verwendungsbereich" ||
+      teilegutachtenScopeRaw === "full"
+        ? teilegutachtenScopeRaw
+        : undefined;
+
+    const pruefung192ScopeRaw = String(
+      formData.get("pruefung192Scope") ?? "",
+    ).trim();
+    const pruefung192Scope =
+      pruefung192ScopeRaw === "bericht" ||
+      pruefung192ScopeRaw === "gutachten" ||
+      pruefung192ScopeRaw === "vorschriften" ||
+      pruefung192ScopeRaw === "full"
+        ? pruefung192ScopeRaw
+        : undefined;
+
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Document file is required.", "bad_request");
@@ -221,6 +243,8 @@ export async function POST(request: NextRequest) {
       garageVin,
       invoiceCategory,
       kind: documentType === "abe" ? "abe" : "invoice",
+      teilegutachtenScope,
+      pruefung192Scope,
     });
 
     // Defense in depth: re-validate LLM-shaped fields before responding.

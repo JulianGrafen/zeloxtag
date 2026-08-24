@@ -21,6 +21,7 @@ import {
 import { TuevOverview } from "@/components/dashboard/TuevOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
+import { WizardStepProgress } from "@/components/documents/wizard-step-progress";
 import { SingleClickTuevUpload } from "@/components/documents/single-click-tuev-upload";
 import { Button } from "@/components/ui/button";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
@@ -253,34 +254,6 @@ async function buildUploadFile(
     // Fallback: first available file.
     return pages[0]!;
   }
-}
-
-// ─── Progress indicator ───────────────────────────────────────────────────────
-
-function WizardProgress({
-  currentStep,
-  totalSteps,
-}: {
-  currentStep: number;
-  totalSteps: number;
-}) {
-  return (
-    <div className="flex items-center gap-2" aria-label={`Schritt ${currentStep} von ${totalSteps}`}>
-      {Array.from({ length: totalSteps }, (_, i) => (
-        <div
-          key={i}
-          className={[
-            "h-1.5 flex-1 rounded-full transition-colors duration-300",
-            i < currentStep
-              ? "bg-neutral-900"
-              : i === currentStep - 1
-                ? "bg-neutral-700"
-                : "bg-neutral-200",
-          ].join(" ")}
-        />
-      ))}
-    </div>
-  );
 }
 
 // ─── Analyzing overlay ────────────────────────────────────────────────────────
@@ -909,7 +882,7 @@ export function TuevUploadWizard({
 
         {/* Progress bar — only during capture phases */}
         {showCurrentStep > 0 ? (
-          <WizardProgress
+          <WizardStepProgress
             currentStep={showCurrentStep}
             totalSteps={showTotalSteps}
           />

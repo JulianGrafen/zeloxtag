@@ -8,6 +8,15 @@ import {
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
+  extractTeilegutachtenCompatibilityTableFromText,
+} from "@/lib/ocr/teilegutachten-compatibility-from-text";
+import {
+  enrichTeilegutachtenCoverFromOcr,
+} from "@/lib/ocr/teilegutachten-cover-from-text";
+import {
+  resolveTeilegutachtenMarking,
+} from "@/lib/ocr/teilegutachten-marking-from-text";
+import {
   enrichTeilegutachtenModificationTypeFromOcr,
 } from "@/lib/ocr/teilegutachten-modification-type-from-text";
 import {
@@ -23,11 +32,12 @@ import {
   TeilegutachtenLlmPayloadSchema,
   type TeilegutachtenExtraction,
 } from "@/lib/validations/teilegutachtenSchema";
-import { formatMatchedVehicleRowFromTable } from "@/lib/validations/teilegutachten-compatibility-table";
+import { formatMatchedVehicleRowFromTable, mergeTeilegutachtenCompatibilityTables } from "@/lib/validations/teilegutachten-compatibility-table";
 import {
   ABE_CONTEXT_MAX_CHARS,
   ABE_CONTEXT_MAX_PAGES,
   resolveAbeContextModel,
+  resolveAbeTableExtractionModel,
   truncateAbeCoverPages,
 } from "@/services/ocr/AbeExtractionService";
 import { tableMatchingService } from "@/services/ocr/TableMatchingService";
@@ -60,10 +70,10 @@ export function buildTeilegutachtenSystemPrompt(
     "Extract these fields:",
     '- "certificateNumber" — Gutachtennummer, e.g. "14-00123-CP-GBM".',
     '- "issueDate" — Ausstellungs-/Gutachtendatum from the document header as YYYY-MM-DD. Not today\'s date.',
-    '- "manufacturer" — part manufacturer / Herstellerzeichen.',
-    '- "modificationType" — Art der Umrüstung from the document header. Copy the COMPLETE block verbatim, including every listed modification when multiple lines or bullet points appear. Preserve line breaks. Do NOT truncate.',
-    '- "partCategory" — optional Bauteil / Bezeichnung when separate from Art der Umrüstung.',
-    '- "partType" — exact part model / type id.',
+    '- "manufacturer" — Hersteller / Herstellerzeichen from cover header.',
+    '- "modificationType" — Fahrzeugteil + Art der Umrüstung: COMPLETE description block verbatim (line breaks preserved).',
+    '- "partCategory" — optional Bauteil / Bezeichnung when separate from Fahrzeugteil.',
+    '- "partType" — Fz.-Teile Type / Teiletyp (exact part model id).',
     '- "markingType" — Art der Kennzeichnung, verbatim (e.g. "Aufdruck", "Eingegossen"). CRITICAL.',
     '- "markingNumber" — Kennzeichnungsnummer / Nummer on the part (e.g. "e1*47656"). CRITICAL.',
     '- "physicalMarking" — legacy combined Kennzeichnung text; prefer markingType + markingNumber.',
@@ -128,6 +138,172 @@ export function buildTeilegutachtenSystemPrompt(
   ].join(" ");
 }
 
+/** Page 1 with TEILEGUTACHTEN header — extract header fields to skip follow-up scans. */
+export function buildTeilegutachtenCoverSystemPrompt(
+  vehicleContext?: AbeVehicleContext | null,
+): string {
+  const base = [
+    "You are a strict data extractor for German automotive approval documents.",
+    'Target: PAGE 1 ONLY — the Teilegutachten cover with the "TEILEGUTACHTEN" title.',
+    'Set documentType to exactly "Teilegutachten". requiresPhysicalInspection: always true.',
+    "",
+    "Extract ALL of these header fields when visible on page 1:",
+    '- "Fahrzeugteil" → modificationType (FULL description, preserve line breaks).',
+    '- "Art der Umrüstung" → modificationType (FULL block verbatim; combine with Fahrzeugteil when both appear).',
+    '- "Fz.-Teile Type" / "Fz-Teile Type" / "Teiletyp" → partType.',
+    '- "Für Fz-Typen" / "für Fahrzeugtypen" → verwendungsbereich OR compatibilityTable if tabular.',
+    '- "Hersteller" / "Herstellerzeichen" → manufacturer.',
+    '- Gutachtennummer → certificateNumber; Ausstellungsdatum → issueDate (YYYY-MM-DD).',
+    '- Kennzeichnung → markingType + markingNumber; Prüforganisation → testingOrganization.',
+    "",
+    "If Verwendungsbereich (table) or Section IV Auflagen appear on page 1, extract them fully.",
+    "If a section is NOT on this page, return null — do NOT guess from other pages.",
+  ];
+
+  if (!vehicleContext) {
+    return [
+      ...base,
+      "No target vehicle — userVehicleMatchStatus and matchedVehicleRow must be null.",
+      "Return ONLY valid JSON matching the schema.",
+    ].join(" ");
+  }
+
+  const target = formatAbeVehicleContextLabel(vehicleContext);
+  return [
+    ...base,
+    "",
+    `TARGET VEHICLE: ${target}. If Für Fz-Typen / Verwendungsbereich on page 1 includes this vehicle, set userVehicleMatchStatus to verified.`,
+    "Return ONLY valid JSON matching the schema.",
+  ].join(" ");
+}
+
+/** Close-up of physical part marking or Kennzeichnung document section. */
+export function buildTeilegutachtenMarkingSystemPrompt(): string {
+  return [
+    "You are a strict data extractor for German Teilegutachten (§ 19 Abs. 3 StVZO) Kennzeichnung.",
+    'Set documentType to exactly "Teilegutachten". requiresPhysicalInspection: always true.',
+    "",
+    "INPUT: a close-up photo of the PHYSICAL marking on the vehicle part OR the Kennzeichnung section of the Gutachten.",
+    "Examples: colored print on a spring coil, embossed e1* code, type plate, Prüfplakette.",
+    "",
+    "Extract ONLY these fields (all others null):",
+    '- "markingType" — Art der Kennzeichnung: describe HOW the part is marked, verbatim when from document,',
+    '  or from the photo (e.g. "Farbiger Aufdruck auf den Federwindungen", "Eingegossen", "Typenschild"). CRITICAL.',
+    '- "markingNumber" — Kennzeichnungsnummer / code visible on the part or in the section (e.g. "e1*47656"). CRITICAL.',
+    '- "physicalMarking" — optional combined one-line summary when useful.',
+    "",
+    "Read every visible character on stamps, prints, and plates — police verify this at Anbauabnahme.",
+    "Return ONLY valid JSON matching the schema.",
+  ].join(" ");
+}
+
+/** Verwendungsbereich compatibility table — full grid like ABE Fahrzeug-Tabelle. */
+export function buildTeilegutachtenVerwendungsbereichSystemPrompt(
+  vehicleContext?: AbeVehicleContext | null,
+): string {
+  const base = [
+    "You are a strict table extractor for German Teilegutachten (§ 19 Abs. 3 StVZO) Verwendungsbereich pages.",
+    'Set documentType to exactly "Teilegutachten". requiresPhysicalInspection: always true.',
+    "",
+    "INPUT: a photograph of the Verwendungsbereich / Fahrzeug-Freigaben table (section I or dedicated table page).",
+    "",
+    "Extract ONLY compatibilityTable (all other fields null):",
+    "- Copy ALL original column headers verbatim (Fahrzeughersteller, Fahrzeugtyp, Handelsbezeichnung, Ausführungen, Achslasten, ABE-Nr., …).",
+    "- ONE row per visible table row — do NOT merge, skip, or summarize cells.",
+    "- Preserve full cell text including footnotes and line breaks inside cells.",
+    "- Set verwendungsbereich to null when compatibilityTable is filled.",
+    "- isUserVehicleMatch=false and matchReason=null on every row (matching is server-side).",
+    "",
+    "Read every row on the page. Multi-page tables: extract all visible rows on THIS image.",
+    "Return ONLY valid JSON matching the schema.",
+  ];
+
+  if (!vehicleContext) {
+    return base.join(" ");
+  }
+
+  return [
+    ...base,
+    "",
+    `TARGET VEHICLE: ${formatAbeVehicleContextLabel(vehicleContext)} — still extract the FULL table; do not filter rows.`,
+  ].join(" ");
+}
+
+function applyTeilegutachtenTableMatch(
+  extracted: TeilegutachtenExtraction,
+  vehicleContext: AbeVehicleContext | null,
+): TeilegutachtenExtraction {
+  if (!extracted.compatibilityTable) {
+    return {
+      ...extracted,
+      userVehicleMatchStatus: null,
+      matchedVehicleRow: null,
+    };
+  }
+
+  if (!vehicleContext) {
+    const table = tableMatchingService.matchTable(
+      extracted.compatibilityTable,
+      null,
+    ).table;
+    return {
+      ...extracted,
+      compatibilityTable: table,
+      verwendungsbereich: null,
+      userVehicleMatchStatus: null,
+      matchedVehicleRow: formatMatchedVehicleRowFromTable(table),
+    };
+  }
+
+  const { table: matchedTable, matchedRowIds } =
+    tableMatchingService.matchTable(
+      extracted.compatibilityTable,
+      vehicleContext,
+    );
+
+  const matchedRow = matchedTable.rows.find((row) => row.isUserVehicleMatch);
+  const shouldPromoteMatch =
+    matchedRowIds.length > 0 &&
+    extracted.userVehicleMatchStatus !== "needs_manual_check";
+
+  return {
+    ...extracted,
+    compatibilityTable: matchedTable,
+    verwendungsbereich: null,
+    userVehicleMatchStatus: shouldPromoteMatch
+      ? "verified"
+      : extracted.userVehicleMatchStatus,
+    matchedVehicleRow:
+      (shouldPromoteMatch
+        ? formatMatchedVehicleRowFromTable(matchedTable) ??
+          matchedRow?.cells.filter(Boolean).join(" · ") ??
+          extracted.matchedVehicleRow
+        : extracted.matchedVehicleRow) ??
+      formatMatchedVehicleRowFromTable(matchedTable),
+  };
+}
+
+function enrichTeilegutachtenCompatibilityFromOcr(
+  extracted: TeilegutachtenExtraction,
+  ocrText: string,
+): TeilegutachtenExtraction {
+  const fromOcr = extractTeilegutachtenCompatibilityTableFromText(ocrText);
+  const compatibilityTable = mergeTeilegutachtenCompatibilityTables(
+    extracted.compatibilityTable,
+    fromOcr,
+  );
+
+  if (!compatibilityTable) {
+    return extracted;
+  }
+
+  return {
+    ...extracted,
+    compatibilityTable,
+    verwendungsbereich: null,
+  };
+}
+
 /**
  * Dedicated § 19 Abs. 3 Teilegutachten extractor — part approval requiring Anbauabnahme.
  */
@@ -190,6 +366,272 @@ export class TeilegutachtenExtractionService {
     }
 
     return this.normalizeExtracted(completion, withContext, vehicleContext);
+  }
+
+  /** Cover page only — Fahrzeugteil, Fz-Teile Type, Für Fz-Typen, Hersteller, … */
+  async extractCoverPage(
+    input: DocumentBytesInput,
+    options: TeilegutachtenExtractionOptions = {},
+  ): Promise<TeilegutachtenExtraction> {
+    const vehicleContext = options.vehicleContext ?? null;
+    const withContext = Boolean(vehicleContext);
+    const model = options.model?.trim() || resolveAbeContextModel();
+
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const systemPrompt = buildTeilegutachtenCoverSystemPrompt(vehicleContext);
+    const instructionLines = withContext
+      ? [
+          "German Teilegutachten § 19 Abs. 3 — PAGE 1 / cover only.",
+          `TARGET VEHICLE: ${formatAbeVehicleContextLabel(vehicleContext!)}`,
+          "Extract Fahrzeugteil, Art der Umrüstung, Fz-Teile Type, Für Fz-Typen, Hersteller, Gutachtennummer, Kennzeichnung.",
+        ]
+      : [
+          "German Teilegutachten § 19 Abs. 3 — PAGE 1 / cover only.",
+          "Extract Fahrzeugteil, Art der Umrüstung, Fz-Teile Type, Für Fz-Typen, Hersteller, Gutachtennummer, Kennzeichnung.",
+          "Set userVehicleMatchStatus and matchedVehicleRow to null.",
+        ];
+
+    const userContent = await buildAbeVisionUserMessage(instructionLines, input, {
+      maxPdfPages: 1,
+    });
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: TEILEGUTACHTEN_MAX_TOKENS,
+        response_format: {
+          type: "json_schema",
+          json_schema: TEILEGUTACHTEN_JSON_SCHEMA,
+        },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(`Teilegutachten cover extract failed: ${message}`);
+    }
+
+    const normalized = await this.normalizeExtracted(
+      completion,
+      withContext,
+      vehicleContext,
+    );
+
+    const ocrHint =
+      typeof userContent === "string"
+        ? userContent
+        : userContent
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join("\n");
+
+    return enrichTeilegutachtenIssueDateFromOcr(
+      enrichTeilegutachtenCoverFromOcr(
+        enrichTeilegutachtenModificationTypeFromOcr(normalized, ocrHint),
+        ocrHint,
+      ),
+      ocrHint,
+    );
+  }
+
+  /** Step 2 — Kennzeichnung am Bauteil (Aufdruck, Nummer) or Kennzeichnung section. */
+  async extractMarkingCapture(
+    input: DocumentBytesInput,
+    options: TeilegutachtenExtractionOptions = {},
+  ): Promise<TeilegutachtenExtraction> {
+    const vehicleContext = options.vehicleContext ?? null;
+    const withContext = Boolean(vehicleContext);
+    const model = options.model?.trim() || resolveAbeContextModel();
+
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const systemPrompt = buildTeilegutachtenMarkingSystemPrompt();
+    const instructionLines = [
+      "German Teilegutachten — KENNZEICHNUNG capture only.",
+      "Photo of physical part marking OR Kennzeichnung section from the Gutachten.",
+      "Extract markingType (Art der Kennzeichnung) and markingNumber (Kennzeichnungsnummer).",
+      "All other fields must be null.",
+    ];
+
+    const userContent = await buildAbeVisionUserMessage(instructionLines, input, {
+      maxPdfPages: 1,
+    });
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: 900,
+        response_format: {
+          type: "json_schema",
+          json_schema: TEILEGUTACHTEN_JSON_SCHEMA,
+        },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(
+        `Teilegutachten marking extract failed: ${message}`,
+      );
+    }
+
+    const normalized = await this.normalizeExtracted(
+      completion,
+      withContext,
+      vehicleContext,
+    );
+
+    const ocrHint =
+      typeof userContent === "string"
+        ? userContent
+        : userContent
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join("\n");
+
+    const marking = resolveTeilegutachtenMarking({
+      markingType: normalized.markingType,
+      markingNumber: normalized.markingNumber,
+      physicalMarking: normalized.physicalMarking,
+      ocrText: ocrHint,
+    });
+
+    return {
+      ...normalized,
+      markingType: marking.markingType,
+      markingNumber: marking.markingNumber,
+      physicalMarking: marking.physicalMarking,
+      certificateNumber: null,
+      issueDate: null,
+      manufacturer: null,
+      partCategory: null,
+      modificationType: null,
+      partType: null,
+      testingOrganization: null,
+      userVehicleMatchStatus: null,
+      matchedVehicleRow: null,
+      verwendungsbereich: null,
+      auflagen: null,
+      ownerNotes: null,
+      compatibilityTable: null,
+      technicalDataTable: null,
+    };
+  }
+
+  /** Verwendungsbereich table page — full compatibilityTable like ABE vehicle scan. */
+  async extractVerwendungsbereichTable(
+    input: DocumentBytesInput,
+    options: TeilegutachtenExtractionOptions = {},
+  ): Promise<TeilegutachtenExtraction> {
+    const vehicleContext = options.vehicleContext ?? null;
+    const model = resolveAbeTableExtractionModel();
+
+    let client: OpenAI;
+    let resolvedModel: string;
+    try {
+      ({ client, model: resolvedModel } = getOcrLlmClient({ model }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    const systemPrompt =
+      buildTeilegutachtenVerwendungsbereichSystemPrompt(vehicleContext);
+    const instructionLines = [
+      "German Teilegutachten — Verwendungsbereich TABLE only.",
+      "Extract the complete Fahrzeug-Freigaben grid: every header column and every data row visible.",
+      "Typical headers: Fahrzeughersteller, Fahrzeugtyp, Handelsbezeichnung, Ausführungen, Achslasten, ABE-Nr.",
+      "Do NOT return an empty compatibilityTable when a grid table is visible.",
+      "All other JSON fields must be null.",
+    ];
+
+    const userContent = await buildAbeVisionUserMessage(instructionLines, input, {
+      maxPdfPages: 1,
+    });
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create({
+        model: resolvedModel,
+        max_completion_tokens: 4_000,
+        response_format: {
+          type: "json_schema",
+          json_schema: TEILEGUTACHTEN_JSON_SCHEMA,
+        },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed.";
+      throw new TextParseError(
+        `Teilegutachten Verwendungsbereich extract failed: ${message}`,
+      );
+    }
+
+    const normalized = await this.normalizeExtracted(
+      completion,
+      Boolean(vehicleContext),
+      vehicleContext,
+    );
+
+    const ocrHint =
+      typeof userContent === "string"
+        ? userContent
+        : userContent
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join("\n");
+
+    const enriched = applyTeilegutachtenTableMatch(
+      enrichTeilegutachtenCompatibilityFromOcr(normalized, ocrHint),
+      vehicleContext,
+    );
+
+    return {
+      ...enriched,
+      certificateNumber: null,
+      issueDate: null,
+      manufacturer: null,
+      partCategory: null,
+      modificationType: null,
+      partType: null,
+      markingType: null,
+      markingNumber: null,
+      physicalMarking: null,
+      testingOrganization: null,
+      auflagen: null,
+      ownerNotes: null,
+      technicalDataTable: null,
+    };
   }
 
   async extractTeilegutachten(

@@ -8,7 +8,11 @@ import {
   teilegutachtenVehicleApprovals,
   vehicleApprovalsFromCompatibilityTable,
 } from "@/lib/validations/teilegutachtenSchema";
-import { buildTeilegutachtenSystemPrompt } from "@/services/ocr/TeilegutachtenExtractionService";
+import {
+  buildTeilegutachtenMarkingSystemPrompt,
+  buildTeilegutachtenSystemPrompt,
+  buildTeilegutachtenVerwendungsbereichSystemPrompt,
+} from "@/services/ocr/TeilegutachtenExtractionService";
 import { fieldsToTeilegutachtenReview } from "@/components/dashboard/TeilegutachtenOverview";
 
 describe("buildTeilegutachtenSystemPrompt", () => {
@@ -26,7 +30,29 @@ describe("buildTeilegutachtenSystemPrompt", () => {
     expect(prompt).toContain("auflagen");
     expect(prompt).toContain("verwendungsbereich");
   });
+});
 
+describe("buildTeilegutachtenMarkingSystemPrompt", () => {
+  it("targets physical part marking capture", () => {
+    const prompt = buildTeilegutachtenMarkingSystemPrompt();
+    expect(prompt).toContain("markingType");
+    expect(prompt).toContain("markingNumber");
+    expect(prompt).toContain("PHYSICAL");
+    expect(prompt).toContain("Federwindungen");
+  });
+});
+
+describe("buildTeilegutachtenVerwendungsbereichSystemPrompt", () => {
+  it("targets full compatibility table extraction like ABE", () => {
+    const prompt = buildTeilegutachtenVerwendungsbereichSystemPrompt();
+    expect(prompt).toContain("compatibilityTable");
+    expect(prompt).toContain("Verwendungsbereich");
+    expect(prompt).toContain("Fahrzeughersteller");
+    expect(prompt).toContain("ONE row per visible table row");
+  });
+});
+
+describe("buildTeilegutachtenSystemPrompt vehicle context", () => {
   it("includes target vehicle when context is provided", () => {
     const prompt = buildTeilegutachtenSystemPrompt({
       brand: "Mazda",

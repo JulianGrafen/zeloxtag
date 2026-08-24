@@ -24,6 +24,7 @@ import {
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
+import { WizardStepProgress } from "@/components/documents/wizard-step-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -203,31 +204,6 @@ async function buildUploadFile(
   } catch {
     return unique[0]!;
   }
-}
-
-function WizardProgress({
-  currentStep,
-  totalSteps,
-}: {
-  currentStep: number;
-  totalSteps: number;
-}) {
-  return (
-    <div
-      className="flex items-center gap-2"
-      aria-label={`Schritt ${currentStep} von ${totalSteps}`}
-    >
-      {Array.from({ length: totalSteps }, (_, index) => (
-        <div
-          key={index}
-          className={[
-            "h-1.5 flex-1 rounded-full transition-colors duration-300",
-            index < currentStep ? "bg-neutral-900" : "bg-neutral-200",
-          ].join(" ")}
-        />
-      ))}
-    </div>
-  );
 }
 
 function ReviewRow({ label, value }: { label: string; value: ReactNode }) {
@@ -890,7 +866,7 @@ export function InvoiceUploadWizard({
               Rechnungsblöcke
             </h1>
             <div className="mt-4">
-              <WizardProgress currentStep={3} totalSteps={3} />
+              <WizardStepProgress currentStep={3} totalSteps={3} />
             </div>
           </div>
         </header>
@@ -1070,7 +1046,7 @@ export function InvoiceUploadWizard({
             {vehicleLabel}
           </p>
           <div className="mt-4">
-            <WizardProgress currentStep={showCurrentStep} totalSteps={3} />
+            <WizardStepProgress currentStep={showCurrentStep} totalSteps={3} />
           </div>
         </div>
       </header>

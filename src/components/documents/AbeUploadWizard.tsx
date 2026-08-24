@@ -175,31 +175,6 @@ async function buildUploadFile(
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function WizardProgress({
-  currentStep,
-  totalSteps,
-}: {
-  currentStep: number;
-  totalSteps: number;
-}) {
-  return (
-    <div
-      className="flex items-center gap-2"
-      aria-label={`Schritt ${currentStep} von ${totalSteps}`}
-    >
-      {Array.from({ length: totalSteps }, (_, i) => (
-        <div
-          key={i}
-          className={[
-            "h-1.5 flex-1 rounded-full transition-colors duration-300",
-            i < currentStep ? "bg-neutral-900" : "bg-neutral-200",
-          ].join(" ")}
-        />
-      ))}
-    </div>
-  );
-}
-
 function WizardBackButton({
   onBack,
   backHref,

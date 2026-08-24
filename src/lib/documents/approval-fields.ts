@@ -4,11 +4,13 @@ import {
   AbeApprovalDataSchema,
   EGBESchema,
   EinzelabnahmeSchema,
+  Pruefung192Schema,
   TeilegutachtenSchema,
   TuevReportSchema,
   type AbeApprovalData,
   type EGBE,
   type Einzelabnahme,
+  type Pruefung192,
   type Teilegutachten,
   type TuevReport,
 } from "@/lib/validations/documentSchemas";
@@ -21,6 +23,7 @@ export const APPROVAL_FIELD_KINDS = [
   "abe",
   "teilegutachten",
   "einzelabnahme",
+  "pruefung192",
   "egbe",
   "tuev",
 ] as const;
@@ -31,6 +34,7 @@ export type ApprovalFields =
   | { kind: "abe"; data?: AbeApprovalData }
   | { kind: "teilegutachten"; data: Teilegutachten }
   | { kind: "einzelabnahme"; data: Einzelabnahme }
+  | { kind: "pruefung192"; data: Pruefung192 }
   | { kind: "egbe"; data: EGBE }
   | { kind: "tuev"; data: TuevReport };
 
@@ -57,6 +61,12 @@ export const approvalFieldsSchema: z.ZodType<ApprovalFields> = z.discriminatedUn
       .strict(),
     z
       .object({
+        kind: z.literal("pruefung192"),
+        data: Pruefung192Schema,
+      })
+      .strict(),
+    z
+      .object({
         kind: z.literal("egbe"),
         data: EGBESchema,
       })
@@ -74,6 +84,7 @@ export const APPROVAL_KIND_LABELS: Record<ApprovalFieldKind, string> = {
   abe: "ABE",
   teilegutachten: "Teilegutachten",
   einzelabnahme: "Einzelabnahme",
+  pruefung192: "§19(2) Prüfung",
   egbe: "EG-BE",
   tuev: "TÜV / HU",
 };
