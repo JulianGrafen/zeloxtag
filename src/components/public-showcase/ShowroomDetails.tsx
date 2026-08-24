@@ -1,5 +1,7 @@
 import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
 
+import { showroom } from "./showroom-styles";
+
 type ShowroomDetailsProps = {
   profile: PublicShowcaseProfile;
 };
@@ -38,8 +40,10 @@ export function ShowroomDetails({ profile }: ShowroomDetailsProps) {
   return (
     <section className="space-y-3 px-4">
       {rows.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
-          <p className="border-b border-white/10 px-4 py-2.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+        <div className={showroom.panel}>
+          <p
+            className={`border-b border-white/15 px-4 py-2.5 ${showroom.sectionTitle}`}
+          >
             Technische Daten
           </p>
           <dl className="divide-y divide-white/10">
@@ -48,10 +52,8 @@ export function ShowroomDetails({ profile }: ShowroomDetailsProps) {
                 key={row.label}
                 className="flex items-start justify-between gap-4 px-4 py-3"
               >
-                <dt className="text-[0.78rem] text-zinc-400">{row.label}</dt>
-                <dd className="text-right text-[0.88rem] font-medium text-zinc-100">
-                  {row.value}
-                </dd>
+                <dt className={showroom.label}>{row.label}</dt>
+                <dd className={`text-right ${showroom.value}`}>{row.value}</dd>
               </div>
             ))}
           </dl>
@@ -59,11 +61,9 @@ export function ShowroomDetails({ profile }: ShowroomDetailsProps) {
       ) : null}
 
       {profile.notes ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 backdrop-blur-md">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Notizen
-          </p>
-          <p className="mt-2 whitespace-pre-wrap text-[0.88rem] leading-relaxed text-zinc-200">
+        <div className={`${showroom.panelFlat} px-4 py-3.5`}>
+          <p className={showroom.sectionTitle}>Spezifikationen</p>
+          <p className={`mt-2 whitespace-pre-wrap ${showroom.body}`}>
             {profile.notes}
           </p>
         </div>

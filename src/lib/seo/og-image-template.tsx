@@ -13,8 +13,8 @@ const wrapper: CSSProperties = {
   flexDirection: "column",
   justifyContent: "space-between",
   padding: "64px 72px",
-  background: "linear-gradient(145deg, #0f0f10 0%, #1c1c1f 48%, #0a0a0b 100%)",
-  color: "#f4f4f5",
+  background: "#000000",
+  color: "#ffffff",
   fontFamily: "system-ui, sans-serif",
 };
 

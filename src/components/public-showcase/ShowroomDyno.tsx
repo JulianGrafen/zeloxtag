@@ -2,6 +2,8 @@ import { ExternalLink, Gauge } from "lucide-react";
 
 import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
 
+import { showroom } from "./showroom-styles";
+
 type ShowroomDynoProps = {
   profile: PublicShowcaseProfile;
 };
@@ -11,8 +13,10 @@ export function ShowroomDyno({ profile }: ShowroomDynoProps) {
 
   return (
     <section className="px-4">
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
-        <p className="border-b border-white/10 px-4 py-2.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+      <div className={showroom.panel}>
+        <p
+          className={`border-b border-white/15 px-4 py-2.5 ${showroom.sectionTitle}`}
+        >
           Leistungsdiagramm
         </p>
 
@@ -21,21 +25,21 @@ export function ShowroomDyno({ profile }: ShowroomDynoProps) {
           <img
             src={profile.dynoChartUrl}
             alt={`Leistungsdiagramm ${profile.make} ${profile.model}`.trim()}
-            className="aspect-[4/3] w-full bg-zinc-950 object-contain"
+            className="aspect-[4/3] w-full bg-black object-contain"
           />
         ) : (
           <div className="flex flex-col items-center gap-3 px-4 py-6 text-center">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.04] text-white/70">
               <Gauge className="h-5 w-5" aria-hidden />
             </div>
-            <p className="text-[0.88rem] leading-relaxed text-zinc-300">
+            <p className={showroom.body}>
               Dyno- bzw. Leistungsdiagramm als PDF hinterlegt.
             </p>
             <a
               href={profile.dynoChartUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-[0.88rem] font-semibold text-zinc-950"
+              className={showroom.cta}
             >
               <ExternalLink className="h-4 w-4" aria-hidden />
               Diagramm öffnen

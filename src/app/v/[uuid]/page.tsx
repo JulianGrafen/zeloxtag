@@ -172,11 +172,9 @@ export default async function TagScanPage({
     const { vehicle } = entry;
     if (!vehicle.is_public) {
       return (
-        <AppShell showNavbar={false}>
-          <PublicProfilePrivate
-            vehicleLabel={vehicleTitle(vehicle.make, vehicle.model, vehicle.year)}
-          />
-        </AppShell>
+        <PublicProfilePrivate
+          vehicleLabel={vehicleTitle(vehicle.make, vehicle.model, vehicle.year)}
+        />
       );
     }
 

@@ -19,6 +19,7 @@ import {
   MANUAL_ENTRY_MAX_PHOTOS,
   MANUAL_SERVICE_ENTRY_LABELS,
   MANUAL_SERVICE_ENTRY_TYPES,
+  parseManualEntryCategory,
   type ManualEntryCategory,
   type ManualServiceEntryType,
 } from "@/lib/documents/manual-entries";
@@ -29,7 +30,6 @@ import {
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
 import {
-  isUploadFile,
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
 import {
@@ -118,7 +118,7 @@ function fieldsFromFormData(formData: FormData) {
   return {
     vehicleId: String(formData.get("vehicleId") ?? ""),
     tagUuid: String(formData.get("tagUuid") ?? ""),
-    category: categoryRaw || "service",
+    category: parseManualEntryCategory(categoryRaw) ?? "service",
     title: String(formData.get("title") ?? ""),
     date: String(formData.get("date") ?? ""),
     amount: String(formData.get("amount") ?? ""),
@@ -175,16 +175,38 @@ function buildOilChangeManualFields(
   };
 }
 
+function normalizeManualUploadFile(
+  value: unknown,
+  fallbackName: string,
+): File | null {
+  if (value instanceof File && value.size > 0) {
+    if (value.name?.trim()) return value;
+    return new File([value], fallbackName, {
+      type: value.type || "application/octet-stream",
+    });
+  }
+  if (typeof Blob !== "undefined" && value instanceof Blob && value.size > 0) {
+    return new File([value], fallbackName, {
+      type: value.type || "application/octet-stream",
+    });
+  }
+  return null;
+}
+
 function collectPhotoFiles(formData: FormData): File[] {
   const files: File[] = [];
+  let index = 0;
   for (const value of formData.getAll("photos")) {
-    if (isUploadFile(value)) {
-      files.push(value);
+    const file = normalizeManualUploadFile(value, `manual-photo-${index + 1}.jpg`);
+    if (file) {
+      files.push(file);
+      index += 1;
     }
   }
   const single = formData.get("photo");
-  if (isUploadFile(single)) {
-    files.push(single);
+  const singleFile = normalizeManualUploadFile(single, "manual-photo.jpg");
+  if (singleFile) {
+    files.push(singleFile);
   }
   return files.slice(0, MANUAL_ENTRY_MAX_PHOTOS);
 }
@@ -208,7 +230,11 @@ export async function createManualVehicleEntry(
 ): Promise<CreateManualEntryResult> {
   const parsed = fieldsSchema.safeParse(fieldsFromFormData(formData));
   if (!parsed.success) {
-    return { status: "error", message: "Bitte Titel und Kategorie prüfen." };
+    const field = parsed.error.issues[0]?.path.join(".") ?? "Eingabe";
+    return {
+      status: "error",
+      message: `Ungültige ${field === "vehicleId" ? "Fahrzeug-ID" : field}.`,
+    };
   }
 
   const data = parsed.data;
@@ -401,17 +427,43 @@ export async function createManualVehicleEntry(
     date,
   };
 
-  const { error } = await admin.from("documents").insert(row);
-  if (error) {
-    if (uploadedStoragePath) {
-      await admin.storage
-        .from(DOCUMENT_BUCKET)
-        .remove([uploadedStoragePath])
-        .catch(() => undefined);
+  const insertAttempts: Array<Record<string, unknown>> = [
+    row,
+    { ...row, created_by: undefined },
+    {
+      id: row.id,
+      vehicle_id: row.vehicle_id,
+      user_id: row.user_id,
+      title: row.title,
+      type: row.type,
+      file_url: row.file_url,
+      vendor: row.vendor,
+      category: row.category,
+      notes: row.notes,
+      invoice_number: row.invoice_number,
+      mileage_km: row.mileage_km,
+      page_count: row.page_count,
+      amount: row.amount,
+      date: row.date,
+    },
+  ];
+
+  let lastError: string | null = null;
+  for (const attempt of insertAttempts) {
+    const { error } = await admin.from("documents").insert(attempt);
+    if (!error) {
+      revalidateManualPaths(data.tagUuid);
+      return { status: "created", documentId };
     }
-    return { status: "error", message: error.message };
+    lastError = error.message;
   }
 
-  revalidateManualPaths(data.tagUuid);
-  return { status: "created", documentId };
+  if (uploadedStoragePath) {
+    await admin.storage
+      .from(DOCUMENT_BUCKET)
+      .remove([uploadedStoragePath])
+      .catch(() => undefined);
+  }
+  return { status: "error", message: lastError ?? "Speichern fehlgeschlagen." };
+
 }

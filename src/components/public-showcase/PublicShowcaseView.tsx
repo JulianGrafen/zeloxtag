@@ -6,6 +6,7 @@ import { ShowroomDyno } from "./ShowroomDyno";
 import { ShowroomHero } from "./ShowroomHero";
 import { ShowroomMods } from "./ShowroomMods";
 import { ShowroomStats } from "./ShowroomStats";
+import { showroom } from "./showroom-styles";
 
 type PublicShowcaseViewProps = {
   data: PublicShowcasePayload;
@@ -17,15 +18,15 @@ export function PublicShowcaseView({
   dashboardHref = null,
 }: PublicShowcaseViewProps) {
   return (
-    <div className="min-h-dvh bg-zinc-950 text-zinc-50">
+    <div className={showroom.page}>
       <ShowroomHero profile={data.profile} dashboardHref={dashboardHref} />
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-6 pb-[max(2rem,env(safe-area-inset-bottom))]">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-7 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <ShowroomStats profile={data.profile} />
         <ShowroomMods modifications={data.modifications} />
         <ShowroomDyno profile={data.profile} />
         <ShowroomDetails profile={data.profile} />
         <PublicGallery photos={data.photos} />
-        <footer className="px-4 pb-2 text-center text-[0.68rem] uppercase tracking-[0.18em] text-zinc-600">
+        <footer className={`px-4 pb-2 ${showroom.footer}`}>
           ZeloxTag · Digitaler Showroom
         </footer>
       </div>

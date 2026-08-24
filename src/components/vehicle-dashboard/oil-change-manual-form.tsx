@@ -39,6 +39,8 @@ export function OilChangeManualForm({
       formData.set("vehicleId", vehicleId);
       formData.set("tagUuid", tagUuid);
       formData.set("entryType", "oil_change");
+      formData.set("category", "service");
+      formData.set("serviceType", "oil_change");
       formData.set("title", "Ölwechsel");
       formData.set("date", date);
       formData.set("vendor", vendor);

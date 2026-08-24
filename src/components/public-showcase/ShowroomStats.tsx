@@ -3,6 +3,7 @@ import { Cog, Gauge, Zap } from "lucide-react";
 import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
 
 import { SpecCard } from "./SpecCard";
+import { showroom } from "./showroom-styles";
 
 type ShowroomStatsProps = {
   profile: PublicShowcaseProfile;
@@ -42,17 +43,17 @@ export function ShowroomStats({ profile }: ShowroomStatsProps) {
         <SpecCard
           label="Leistung"
           value={power ?? "—"}
-          icon={<Zap className="h-3 w-3 text-emerald-400" aria-hidden />}
+          icon={<Zap className={`h-3 w-3 ${showroom.icon}`} aria-hidden />}
         />
         <SpecCard
           label="Motor"
           value={engine ?? "—"}
-          icon={<Cog className="h-3 w-3 text-emerald-400" aria-hidden />}
+          icon={<Cog className={`h-3 w-3 ${showroom.icon}`} aria-hidden />}
         />
         <SpecCard
           label="Antrieb"
           value={drive ?? "—"}
-          icon={<Gauge className="h-3 w-3 text-emerald-400" aria-hidden />}
+          icon={<Gauge className={`h-3 w-3 ${showroom.icon}`} aria-hidden />}
         />
       </div>
     </section>

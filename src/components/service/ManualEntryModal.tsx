@@ -105,7 +105,11 @@ export function ManualEntryModal({
         formData.set("entryType", "oil_change");
       }
       if (receiptPhoto) {
-        formData.set("photo", receiptPhoto);
+        formData.set(
+          "photo",
+          receiptPhoto,
+          receiptPhoto.name?.trim() || "beleg.jpg",
+        );
       }
 
       const result = await createManualVehicleEntry(formData);

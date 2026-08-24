@@ -9,6 +9,7 @@ import {
 } from "@/lib/vehicles/public-showcase-data";
 
 import { ModBadge } from "./ModBadge";
+import { showroom } from "./showroom-styles";
 
 type ShowroomModsProps = {
   modifications: PublicModification[];
@@ -33,14 +34,12 @@ export function ShowroomMods({ modifications }: ShowroomModsProps) {
   return (
     <section className="px-4">
       <div className="mb-3 flex items-center gap-2">
-        <Wrench className="h-4 w-4 text-emerald-400" aria-hidden />
-        <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-          Spezifikationen
-        </h2>
+        <Wrench className={`h-4 w-4 ${showroom.icon}`} aria-hidden />
+        <h2 className={showroom.sectionTitle}>Umbauten</h2>
       </div>
 
       {groups.length === 0 ? (
-        <p className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-[0.88rem] text-zinc-400 backdrop-blur-md">
+        <p className={`${showroom.panelFlat} px-4 py-5 ${showroom.body}`}>
           Noch keine öffentlichen Umbauten hinterlegt.
         </p>
       ) : (
@@ -50,10 +49,7 @@ export function ShowroomMods({ modifications }: ShowroomModsProps) {
             const panelId = `showroom-mod-${group.category}`;
 
             return (
-              <div
-                key={group.category}
-                className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
-              >
+              <div key={group.category} className={showroom.panel}>
                 <button
                   type="button"
                   aria-expanded={open}
@@ -63,10 +59,10 @@ export function ShowroomMods({ modifications }: ShowroomModsProps) {
                   }
                   className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left"
                 >
-                  <span className="text-[0.92rem] font-semibold text-zinc-50">
+                  <span className="text-[0.92rem] font-semibold text-white">
                     {group.category}
                   </span>
-                  <span className="flex items-center gap-2 text-zinc-400">
+                  <span className="flex items-center gap-2 text-white/45">
                     <span className="text-[0.72rem] tabular-nums">
                       {group.items.length}
                     </span>
@@ -80,7 +76,7 @@ export function ShowroomMods({ modifications }: ShowroomModsProps) {
                   </span>
                 </button>
                 {open ? (
-                  <ul id={panelId} className="border-t border-white/10 px-2 pb-2">
+                  <ul id={panelId} className="border-t border-white/15 px-2 pb-2">
                     {group.items.map((mod) => {
                       const dateLabel = formatDate(mod.date);
                       return (
@@ -89,11 +85,11 @@ export function ShowroomMods({ modifications }: ShowroomModsProps) {
                           className="flex items-start justify-between gap-3 px-2 py-3"
                         >
                           <div className="min-w-0">
-                            <p className="font-medium leading-snug text-zinc-100">
+                            <p className="font-medium leading-snug text-white/90">
                               {mod.label}
                             </p>
                             {dateLabel ? (
-                              <p className="mt-0.5 text-[0.72rem] text-zinc-500">
+                              <p className="mt-0.5 text-[0.72rem] text-white/40">
                                 {dateLabel}
                               </p>
                             ) : null}

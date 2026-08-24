@@ -98,6 +98,18 @@ export function parseManualEntryCategory(
     : null;
 }
 
+/** Default title when the user leaves the field empty in manual entry forms. */
+export function resolveManualEntryTitle(
+  rawTitle: string,
+  category: ManualEntryCategory,
+  options: { umbau?: boolean } = {},
+): string {
+  const trimmed = rawTitle.trim();
+  if (trimmed.length >= 2) return trimmed.slice(0, 160);
+  if (options.umbau || category === "tuning") return "Umbau / Tuning";
+  return "Wartungseintrag";
+}
+
 /** True for stored `tuning` and OCR/UI labels like "Tuning / Umbau". */
 export function isTuningLikeCategory(
   value: string | null | undefined,

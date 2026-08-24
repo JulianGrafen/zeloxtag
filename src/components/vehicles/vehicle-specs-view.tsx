@@ -380,7 +380,7 @@ export function VehicleSpecsView({
                   autoCorrect="off"
                 />
               </Field>
-              <Field label="Notizen">
+              <Field label="Spezifikationen">
                 <textarea
                   rows={3}
                   value={specs.notes ?? ""}
@@ -451,7 +451,7 @@ export function VehicleSpecsView({
               <ReadRow label="Instagram" value={`@${specs.instagramHandle}`} />
             ) : null}
             {specs.notes ? (
-              <ReadRow label="Notizen" value={specs.notes} />
+              <ReadRow label="Spezifikationen" value={specs.notes} />
             ) : null}
           </section>
         )}

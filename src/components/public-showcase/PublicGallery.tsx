@@ -2,6 +2,8 @@ import Image from "next/image";
 
 import type { PublicGalleryPhoto } from "@/lib/vehicles/public-showcase-data";
 
+import { showroom } from "./showroom-styles";
+
 type PublicGalleryProps = {
   photos: PublicGalleryPhoto[];
 };
@@ -12,14 +14,12 @@ export function PublicGallery({ photos }: PublicGalleryProps) {
 
   return (
     <section className="px-4">
-      <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-        Galerie
-      </h2>
+      <h2 className={`mb-3 ${showroom.sectionTitle}`}>Galerie</h2>
       <ul className="grid grid-cols-2 gap-2.5">
         {visible.map((photo) => (
           <li
             key={photo.id}
-            className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-white/5"
+            className="relative aspect-[4/3] overflow-hidden rounded-[1.25rem] border border-white/15 bg-white/[0.03]"
           >
             <Image
               src={photo.src}

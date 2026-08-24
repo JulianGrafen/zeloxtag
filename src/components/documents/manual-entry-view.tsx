@@ -36,6 +36,7 @@ import {
   MANUAL_ENTRY_CATEGORIES,
   MANUAL_ENTRY_CATEGORY_LABELS,
   MANUAL_ENTRY_MAX_PHOTOS,
+  resolveManualEntryTitle,
   type ManualEntryCategory,
 } from "@/lib/documents/manual-entries";
 import {
@@ -277,11 +278,9 @@ export function ManualEntryView({
           return;
         }
 
-        const baseTitle =
-          title.trim() ||
-          (isUmbau || category === "tuning"
-            ? "Umbau / Tuning"
-            : "Wartungseintrag");
+        const baseTitle = resolveManualEntryTitle(title, category, {
+          umbau: isUmbau,
+        });
 
         // Umbau-Bilder: one document per photo so thumbnails stay images.
         if (isUmbau && photos.length > 0) {
@@ -478,15 +477,13 @@ export function ManualEntryView({
                 Titel
               </span>
               <input
-                required
-                minLength={2}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 className="claim-input w-full"
                 placeholder={
                   isUmbau || category === "tuning"
-                    ? "z. B. KW V3 Fahrwerk"
-                    : "z. B. Ölwechsel selbst gemacht"
+                    ? "z. B. KW V3 Fahrwerk (optional)"
+                    : "z. B. Ölwechsel selbst gemacht (optional)"
                 }
               />
             </label>
@@ -663,11 +660,7 @@ export function ManualEntryView({
               <PressableButton
                 type="submit"
                 variant="button"
-                disabled={
-                  busy ||
-                  title.trim().length < 2 ||
-                  (isUmbau && photos.length === 0)
-                }
+                disabled={busy || (isUmbau && photos.length === 0)}
                 className="claim-cta flex-1 disabled:opacity-60"
               >
                 {busy ? "Speichern…" : isUmbau ? "Fotos speichern" : "Eintrag speichern"}

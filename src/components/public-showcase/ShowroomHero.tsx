@@ -7,6 +7,7 @@ import {
 import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
 
 import { InstagramGlyph } from "./InstagramGlyph";
+import { showroom } from "./showroom-styles";
 
 type ShowroomHeroProps = {
   profile: PublicShowcaseProfile;
@@ -22,7 +23,7 @@ export function ShowroomHero({
 
   return (
     <header className="relative isolate min-h-[78dvh] overflow-hidden">
-      <div className="absolute inset-0 bg-zinc-950" aria-hidden>
+      <div className="absolute inset-0 bg-black" aria-hidden>
         {profile.heroImageSrc ? (
           <Image
             src={profile.heroImageSrc}
@@ -30,31 +31,29 @@ export function ShowroomHero({
             fill
             priority
             unoptimized
-            className="object-cover object-center opacity-60"
+            className="object-cover object-center opacity-55"
             sizes="100vw"
           />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-zinc-950/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" />
       </div>
 
       {dashboardHref ? (
         <a
           href={dashboardHref}
-          className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 inline-flex min-h-11 items-center rounded-full border border-white/15 bg-black/35 px-4 text-[0.78rem] font-medium text-zinc-100 backdrop-blur-md"
+          className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 inline-flex min-h-11 items-center rounded-full border border-white/20 bg-black/60 px-4 text-[0.78rem] font-medium text-white backdrop-blur-sm"
         >
           {dashboardHref.includes("scan=1") ? "Scanner" : "Dashboard"}
         </a>
       ) : null}
 
       <div className="relative z-10 flex min-h-[78dvh] flex-col justify-end px-5 pb-8 pt-[max(4.5rem,env(safe-area-inset-top))]">
-        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-emerald-400/90">
-          {profile.make || "ZeloxTag"}
-        </p>
+        <p className={showroom.kicker}>{profile.make || "ZeloxTag"}</p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-[2.05rem] font-semibold leading-[1.05] tracking-[-0.04em] text-white sm:text-[2.45rem]">
           {title || "Fahrzeug"}
         </h1>
         {yearLabel ? (
-          <p className="mt-2 text-[0.95rem] font-medium text-zinc-300">
+          <p className="mt-2 text-[0.95rem] font-medium text-white/65">
             Baujahr {yearLabel}
           </p>
         ) : null}
@@ -64,7 +63,7 @@ export function ShowroomHero({
             href={instagramProfileUrl(profile.instagramHandle)}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-5 inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 text-[0.82rem] font-semibold text-white backdrop-blur-md"
+            className={`mt-5 ${showroom.pill}`}
           >
             <InstagramGlyph className="h-4 w-4 text-white" />
             {instagramHandleLabel(profile.instagramHandle)}
