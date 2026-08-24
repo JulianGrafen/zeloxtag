@@ -73,6 +73,7 @@ import {
 import {
   gutachtenToAnalyzeFields,
   gutachtenToApprovalFields,
+  resolveGutachtenExtractionSubtype,
 } from "@/lib/validations/gutachtenSchema";
 
 export type { DocumentParseKind, OcrDocumentType, OcrJsonPayload } from "./ocr-types";
@@ -218,6 +219,55 @@ async function analyzeTeilegutachtenDocument(
   }
 
   return runVision();
+}
+
+/**
+ * Unified Gutachten cover scan — vision LLM for fields, Azure layout for rawText
+ * so §19 Abs. 2 vs Teilegutachten can be disambiguated server-side.
+ */
+async function analyzeGutachtenDocument(
+  documentInput: DocumentBytesInput,
+): Promise<{
+  gutachten: Awaited<
+    ReturnType<typeof gutachtenExtractionService.extractFromDocument>
+  >;
+  rawText: string;
+  ocrJson: OcrJsonPayload;
+  modelId: string;
+}> {
+  let rawText = "";
+  let ocrJson = buildStubOcrPayload(documentInput.contentType);
+  let modelId = LLM_VISION_PARSE_MODEL_ID;
+
+  if (isAzureMarkdownLayoutAvailable()) {
+    try {
+      const azure = await extractGutachtenMarkdownFromAzure(documentInput);
+      rawText = azure.markdown;
+      ocrJson = azure.ocrJson;
+      modelId = HYBRID_INVOICE_MODEL_ID;
+      console.info(
+        `[analyzeDocument] gutachten rawText: ${ocrJson.pageCount} page(s), ${rawText.length} chars`,
+      );
+    } catch (hybridError) {
+      console.warn(
+        "[analyzeDocument] gutachten Azure layout failed, vision-only",
+        hybridError,
+      );
+    }
+  }
+
+  const gutachtenRaw =
+    await gutachtenExtractionService.extractFromDocument(documentInput);
+  const fields = normalizeTextParseResult(
+    gutachtenToAnalyzeFields(gutachtenRaw),
+  );
+  const gutachten = resolveGutachtenExtractionSubtype(
+    gutachtenRaw,
+    fields,
+    rawText,
+  );
+
+  return { gutachten, rawText, ocrJson, modelId };
 }
 
 async function analyzeEinzelabnahmeDocument(
@@ -578,17 +628,16 @@ export async function analyzeDocument(input: {
   try {
     if (documentType === "abe") {
       if (preferredApprovalKind === "gutachten") {
-        const gutachten = await gutachtenExtractionService.extractFromDocument(
-          documentInput,
-        );
+        const { gutachten, rawText, ocrJson, modelId } =
+          await analyzeGutachtenDocument(documentInput);
         return {
           kind: "abe",
           documentType,
           fields: normalizeTextParseResult(gutachtenToAnalyzeFields(gutachten)),
           approvalFields: gutachtenToApprovalFields(gutachten),
-          rawText: "",
-          ocrJson: buildStubOcrPayload(documentInput.contentType),
-          modelId: LLM_VISION_PARSE_MODEL_ID,
+          rawText,
+          ocrJson,
+          modelId,
           parseModel: abeParseModel,
         };
       }

@@ -7,10 +7,16 @@ import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import { normalizeDocumentDateIso } from "@/lib/documents/format";
 import {
+  buildGutachtenResolutionText,
+  isAmbiguousTeilegutachtenVsPruefung192,
+  resolveGutachtenDocumentSubtype,
+  resolveGutachtenExtractionSubtype,
+  scoreGutachtenDocumentSubtypes,
+} from "@/lib/documents/gutachten-subtype-resolution";
+import {
   gutachtenToAnalyzeFields,
   gutachtenToApprovalFields,
   mergeGutachtenExtractionsSafe,
-  refineGutachtenExtractionSubtype,
   type GutachtenDocumentSubtype,
   type GutachtenExtraction,
 } from "@/lib/validations/gutachtenSchema";
@@ -227,6 +233,85 @@ function patchForSubtype(
   }
 }
 
+function coverSubtypeSignal(cover: AnalyzeDocumentResult | null): number {
+  if (!cover?.approvalFields) return 0;
+  switch (cover.approvalFields.kind) {
+    case "teilegutachten":
+      return 12;
+    case "pruefung192":
+      return 12;
+    case "einzelabnahme":
+      return 12;
+    default:
+      return 0;
+  }
+}
+
+async function resolveCoverForSubtype(
+  file: File,
+  vehicleId: string,
+  extraction: GutachtenExtraction,
+  fields: InvoiceTextParseResult,
+  vehicleContext?: AbeVehicleContext | null,
+): Promise<{
+  subtype: GutachtenDocumentSubtype;
+  cover: AnalyzeDocumentResult | null;
+}> {
+  const resolutionText = buildGutachtenResolutionText({ extraction, fields });
+  const scores = scoreGutachtenDocumentSubtypes(resolutionText);
+  const ambiguous = isAmbiguousTeilegutachtenVsPruefung192(scores);
+  const clearlyEinzelabnahme =
+    extraction.documentSubtype === "EINZELABNAHME" && scores.EINZELABNAHME >= 10;
+  // Always dual-run Teilegutachten vs §19(2) cover extractors unless §21 is clear.
+  const needsDual =
+    !clearlyEinzelabnahme &&
+    (ambiguous ||
+      extraction.documentSubtype === "SONSTIGES" ||
+      extraction.documentSubtype === "TEILEGUTACHTEN" ||
+      extraction.documentSubtype === "ANBAUBESTAETIGUNG" ||
+      (scores.TEILEGUTACHTEN >= 4 && scores.ANBAUBESTAETIGUNG >= 4));
+
+  if (needsDual) {
+    const [teileCover, pruefungCover] = await Promise.all([
+      analyzeSubtypeCover(file, vehicleId, "TEILEGUTACHTEN", vehicleContext),
+      analyzeSubtypeCover(file, vehicleId, "ANBAUBESTAETIGUNG", vehicleContext),
+    ]);
+
+    const tgSignal =
+      coverSubtypeSignal(teileCover) + scores.TEILEGUTACHTEN * 0.25;
+    const p192Signal =
+      coverSubtypeSignal(pruefungCover) + scores.ANBAUBESTAETIGUNG * 0.25;
+
+    if (p192Signal > tgSignal && pruefungCover) {
+      return { subtype: "ANBAUBESTAETIGUNG", cover: pruefungCover };
+    }
+    if (tgSignal > p192Signal && teileCover) {
+      return { subtype: "TEILEGUTACHTEN", cover: teileCover };
+    }
+    if (pruefungCover) {
+      return { subtype: "ANBAUBESTAETIGUNG", cover: pruefungCover };
+    }
+    if (teileCover) {
+      return { subtype: "TEILEGUTACHTEN", cover: teileCover };
+    }
+  }
+
+  const resolvedSubtype = resolveGutachtenDocumentSubtype({
+    llmSubtype: extraction.documentSubtype,
+    extraction,
+    fields,
+  });
+
+  const cover = await analyzeSubtypeCover(
+    file,
+    vehicleId,
+    resolvedSubtype,
+    vehicleContext,
+  );
+
+  return { subtype: resolvedSubtype, cover };
+}
+
 /**
  * After unified Gutachten classification, run the legacy cover extractor for
  * the detected subtype and merge rich header fields into the unified model.
@@ -241,30 +326,46 @@ export async function enrichGutachtenPrimaryScan(
   } = {},
 ): Promise<EnrichedGutachtenAnalysis> {
   try {
-    const coverResult = await analyzeSubtypeCover(
-      file,
-      vehicleId,
-      baseExtraction.documentSubtype,
-      options.vehicleContext,
-    );
+    const { subtype: resolvedSubtype, cover: coverResult } =
+      await resolveCoverForSubtype(
+        file,
+        vehicleId,
+        baseExtraction,
+        baseResult.fields,
+        options.vehicleContext,
+      );
 
     if (!coverResult) {
-      return { result: baseResult, extraction: baseExtraction };
+      const extractionOnly = resolveGutachtenExtractionSubtype(
+        baseExtraction,
+        baseResult.fields,
+        baseResult.rawText,
+      );
+      if (extractionOnly.documentSubtype === resolvedSubtype) {
+        return { result: baseResult, extraction: extractionOnly };
+      }
+      return {
+        result: {
+          ...baseResult,
+          approvalFields: gutachtenToApprovalFields(extractionOnly),
+        },
+        extraction: extractionOnly,
+      };
     }
 
-    const patch = patchForSubtype(
-      baseExtraction.documentSubtype,
-      baseExtraction,
-      coverResult,
-    );
-    const extraction = mergeGutachtenExtractionsSafe(baseExtraction, patch);
+    const patch = patchForSubtype(resolvedSubtype, baseExtraction, coverResult);
+    const extraction = mergeGutachtenExtractionsSafe(baseExtraction, {
+      ...patch,
+      documentSubtype: resolvedSubtype,
+    });
     const fields = mergeAnalyzeFields(
       gutachtenToAnalyzeFields(extraction),
       coverResult.fields,
     );
-    const refinedExtraction = refineGutachtenExtractionSubtype(
+    const refinedExtraction = resolveGutachtenExtractionSubtype(
       extraction,
       fields,
+      coverResult.rawText || baseResult.rawText,
     );
     const approvalFields: ApprovalFields =
       gutachtenToApprovalFields(refinedExtraction);

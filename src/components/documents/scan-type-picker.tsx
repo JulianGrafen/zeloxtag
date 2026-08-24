@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Archive,
   FileText,
   Hammer,
   NotebookPen,
@@ -25,6 +26,7 @@ const SCAN_ICONS: Record<ScanType, LucideIcon> = {
   repair: Hammer,
   service: Wrench,
   abe: Stamp,
+  vault: Archive,
   gutachten: NotebookPen,
   teilegutachten: NotebookPen,
   einzelabnahme: NotebookPen,

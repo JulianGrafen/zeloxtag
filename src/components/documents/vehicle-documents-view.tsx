@@ -36,6 +36,13 @@ import type { InvoiceListCategory } from "@/lib/documents/invoice-categories";
 import {
   matchesSearchQuery,
 } from "@/lib/documents/list-search";
+import {
+  filterDocumentsByVaultCategory,
+  isVaultDocument,
+  VAULT_FILTER_CHIPS,
+  vaultCategoryLabel,
+} from "@/lib/documents/vault-documents";
+import type { VaultCategory } from "@/lib/validations/vaultClassificationSchema";
 import { eintraegeLabel } from "@/lib/i18n/pluralize-de";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import type { Document, DocumentType } from "@/types/database";
@@ -88,6 +95,9 @@ export function VehicleDocumentsView({
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
   const [abeKindId, setAbeKindId] = useState<string>(ALL_ABE_KIND);
+  const [vaultCategoryId, setVaultCategoryId] = useState<VaultCategory | "all">(
+    "all",
+  );
 
   const typed = useMemo(
     () => filterDocumentsByType(documents, filterType),
@@ -117,6 +127,23 @@ export function VehicleDocumentsView({
     ];
   }, [filterType, typed]);
 
+  const vaultCategoryChips = useMemo(() => {
+    if (filterType !== "abe") return [];
+    const counts = new Map<VaultCategory | "all", number>();
+    counts.set("all", typed.length);
+    for (const doc of typed) {
+      if (!isVaultDocument(doc)) continue;
+      const category = doc.part_category as VaultCategory | null;
+      if (category) {
+        counts.set(category, (counts.get(category) ?? 0) + 1);
+      }
+    }
+    return VAULT_FILTER_CHIPS.map((chip) => ({
+      ...chip,
+      count: counts.get(chip.id) ?? 0,
+    })).filter((chip) => chip.id === "all" || (chip.count ?? 0) > 0);
+  }, [filterType, typed]);
+
   const { filtered, filterBaseCount } = useMemo(() => {
     const byKind =
       filterType === "abe"
@@ -126,13 +153,19 @@ export function VehicleDocumentsView({
           )
         : typed;
 
-    const result = byKind.filter((doc) =>
+    const byVaultCategory =
+      filterType === "abe" && vaultCategoryId !== "all"
+        ? filterDocumentsByVaultCategory(byKind, vaultCategoryId)
+        : byKind;
+
+    const result = byVaultCategory.filter((doc) =>
       matchesSearchQuery(
         query,
         doc.title,
         doc.manufacturer,
         doc.vendor,
         doc.part_category,
+        vaultCategoryLabel(doc),
         doc.kba_number,
         doc.authority,
         doc.notes,
@@ -143,8 +176,8 @@ export function VehicleDocumentsView({
       ),
     );
 
-    return { filtered: result, filterBaseCount: byKind.length };
-  }, [typed, filterType, abeKindId, query]);
+    return { filtered: result, filterBaseCount: byVaultCategory.length };
+  }, [typed, filterType, abeKindId, vaultCategoryId, query]);
 
   const invoiceSum = sumInvoiceAmounts(
     filterType === "all"
@@ -287,7 +320,7 @@ export function VehicleDocumentsView({
           onQueryChange={setQuery}
           placeholder={
             filterType === "abe"
-              ? "Teil, Hersteller, KBA, Freigabe…"
+              ? "Teil, Kategorie, Hersteller, KBA…"
               : filterType === "tuev"
                 ? "Prüfstelle, Titel, Notiz…"
                 : "Titel, Hersteller, Kategorie…"
@@ -295,6 +328,15 @@ export function VehicleDocumentsView({
           chips={filterType === "abe" ? abeKindChips : undefined}
           activeChipId={abeKindId}
           onChipChange={setAbeKindId}
+          secondaryChips={
+            filterType === "abe" && vaultCategoryChips.length > 1
+              ? vaultCategoryChips
+              : undefined
+          }
+          secondaryActiveChipId={vaultCategoryId}
+          onSecondaryChipChange={(id) =>
+            setVaultCategoryId(id as VaultCategory | "all")
+          }
           resultLabel={searchResultLabel}
         />
 
@@ -303,7 +345,8 @@ export function VehicleDocumentsView({
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               {typed.length > 0 &&
               (query.trim() ||
-                (filterType === "abe" && abeKindId !== ALL_ABE_KIND)) ? (
+                (filterType === "abe" && abeKindId !== ALL_ABE_KIND) ||
+                (filterType === "abe" && vaultCategoryId !== "all")) ? (
                 "Keine Treffer für diese Suche / Filter."
               ) : filterType === "abe" ? (
                 <div className="space-y-2">
@@ -352,7 +395,7 @@ export function VehicleDocumentsView({
                 filterType === "tuev"
                   ? `/v/${tagUuid}?scan=1&type=tuev`
                   : filterType === "abe"
-                    ? `/v/${tagUuid}?scan=1&type=abe`
+                    ? `/v/${tagUuid}?scan=1&type=vault`
                     : `/v/${tagUuid}?scan=1`
               }
               variant="button"
@@ -360,7 +403,7 @@ export function VehicleDocumentsView({
             >
               <Plus className="h-4 w-4" aria-hidden />
               {filterType === "abe"
-                ? "Gutachten scannen"
+                ? "In Tresor ablegen"
                 : filterType === "tuev"
                   ? "TÜV scannen"
                   : "Dokument scannen"}
@@ -396,7 +439,7 @@ function DocumentRow({
   const approvalCount = document.vehicle_approvals?.length ?? 0;
 
   const listTitle =
-    document.type === "abe"
+    document.type === "abe" && !isVaultDocument(document)
       ? displayAbeDocumentTitle(document)
       : displayDocumentTitle(document.title);
   const manufacturer = document.manufacturer?.trim() || "";
@@ -416,13 +459,15 @@ function DocumentRow({
         : null;
 
   const typeLabel =
-    document.type === "abe" &&
-    document.approval_fields &&
-    document.approval_fields.kind !== "abe"
-      ? approvalKindLabel(document.approval_fields)
-      : document.type === "tuev" && document.approval_fields?.kind === "tuev"
+    document.type === "abe" && isVaultDocument(document)
+      ? `Tresor · ${vaultCategoryLabel(document) ?? "ABE"}`
+      : document.type === "abe" &&
+          document.approval_fields &&
+          document.approval_fields.kind !== "abe"
         ? approvalKindLabel(document.approval_fields)
-        : documentTypeLabel(document.type);
+        : document.type === "tuev" && document.approval_fields?.kind === "tuev"
+          ? approvalKindLabel(document.approval_fields)
+          : documentTypeLabel(document.type);
 
   const meta = (
     <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">

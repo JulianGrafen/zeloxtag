@@ -21,6 +21,7 @@ import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { GutachtenUploadWizard } from "@/components/documents/gutachten-upload-wizard";
+import { DocumentVaultUpload } from "@/components/documents/document-vault-upload";
 import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard";
 import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
 import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
@@ -517,7 +518,22 @@ export function InvoiceUploader({
   const isTuevUpload =
     scanDef?.ocrDocumentType === "tuev" ||
     (resolvedLockCategory && resolvedCategory === "tuev");
+  const isVaultUpload = scanDef?.approvalKind === "vault";
   const isInvoiceFamilyScan = scanDef?.ocrDocumentType === "invoice";
+
+  if (isVaultUpload) {
+    return (
+      <DocumentVaultUpload
+        vehicleId={vehicleId}
+        tagUuid={tagUuid}
+        vehicleLabel={vehicleLabel}
+        successHref={successHref}
+        onBack={onBack}
+        backHref={resolvedBackHref}
+        backLabel={backLabel}
+      />
+    );
+  }
 
   if (isTuevUpload) {
     return (

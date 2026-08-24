@@ -64,6 +64,18 @@ Sportfedern H&R eingebaut, Achsvermessung durchgeführt.
 Eintragung in die Fahrzeugpapiere erforderlich.
 `.trim(),
 
+  pruefung192: `
+Prüfung nach § 19 Abs. 2 StVZO
+Untersuchungsbericht
+TÜV Rheinland · Bericht-Nr. P192-2026-4412
+
+Gutachten zur Erlangung der Betriebserlaubnis
+KW V3 Gewindefahrwerk eingebaut
+
+Aufstellung der technischen Vorschriften:
+Begutachtete Änderungen am Fahrwerk
+`.trim(),
+
   egbe: `
 EG-Betriebserlaubnis / ECE-Typgenehmigung
 E-Prüfzeichen: e1*2007/46*0123*01

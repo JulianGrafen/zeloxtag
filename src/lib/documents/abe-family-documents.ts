@@ -1,4 +1,5 @@
 import type { ApprovalFieldKind } from "@/lib/documents/approval-fields";
+import { isVaultDocument } from "@/lib/documents/vault-documents";
 import type { Document } from "@/types/database";
 
 export const ABE_FAMILY_KINDS = [
@@ -18,6 +19,7 @@ const ABE_FAMILY_KIND_SET = new Set<ApprovalFieldKind>(ABE_FAMILY_KINDS);
  * Excludes EG-BE and other misclassified rows on `type = abe`.
  */
 export function isAbeFamilyDocument(document: Document): boolean {
+  if (isVaultDocument(document)) return true;
   return resolveAbeFamilyKind(document) !== null;
 }
 

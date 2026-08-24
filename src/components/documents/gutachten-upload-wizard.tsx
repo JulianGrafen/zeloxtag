@@ -41,9 +41,12 @@ import {
   GUTACHTEN_SUBTYPE_LABELS,
   gutachtenToAnalyzeFields,
   gutachtenToApprovalFields,
-  refineGutachtenExtractionSubtype,
+  needsGutachtenSubtypeConfirmation,
+  resolveGutachtenExtractionSubtype,
+  type GutachtenDocumentSubtype,
   type GutachtenExtraction,
 } from "@/lib/validations/gutachtenSchema";
+import { GutachtenSubtypePicker } from "@/components/documents/gutachten-subtype-picker";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import { Button } from "@/components/ui/button";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
@@ -95,7 +98,7 @@ function extractionFromAnalyzeResult(
       ? result.approvalFields.data
       : fieldsToGutachtenReview(result.fields, result.approvalFields);
 
-  return refineGutachtenExtractionSubtype(base, result.fields);
+  return resolveGutachtenExtractionSubtype(base, result.fields, result.rawText);
 }
 
 function AnalyzingOverlay({ label }: { label: string }) {
@@ -123,6 +126,8 @@ export function GutachtenUploadWizard({
 }: GutachtenUploadWizardProps) {
   const previewUrlRef = useRef<string | null>(null);
   const primaryScanRef = useRef<File | null>(null);
+  const coverEnrichmentSettledRef = useRef(true);
+  const [coverEnrichmentSettled, setCoverEnrichmentSettled] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, startSave] = useTransition();
 
@@ -166,9 +171,18 @@ export function GutachtenUploadWizard({
       ? (followUpSteps[state.followUpIndex] ?? null)
       : null;
 
-  // Briefing → auto-open first follow-up camera (wizard start).
+  // Briefing → auto-open first follow-up once cover enrichment confirms subtype.
   useEffect(() => {
     if (state.phase !== "briefing" || followUpSteps.length === 0) return;
+    if (
+      !state.extraction ||
+      !state.fields ||
+      needsGutachtenSubtypeConfirmation(state.extraction, state.fields)
+    ) {
+      return;
+    }
+
+    if (!coverEnrichmentSettled) return;
 
     const timer = window.setTimeout(() => {
       setState((prev) =>
@@ -179,7 +193,23 @@ export function GutachtenUploadWizard({
     }, 450);
 
     return () => window.clearTimeout(timer);
-  }, [state.phase, followUpSteps.length]);
+  }, [
+    state.phase,
+    state.extraction,
+    state.fields,
+    followUpSteps.length,
+    coverEnrichmentSettled,
+  ]);
+
+  // Never block the wizard if background enrichment hangs.
+  useEffect(() => {
+    if (state.phase !== "briefing" || coverEnrichmentSettled) return;
+    const fallback = window.setTimeout(() => {
+      coverEnrichmentSettledRef.current = true;
+      setCoverEnrichmentSettled(true);
+    }, 5_000);
+    return () => window.clearTimeout(fallback);
+  }, [state.phase, coverEnrichmentSettled]);
 
   // Recover orphan states instead of showing "Wizard wird vorbereitet…".
   useEffect(() => {
@@ -243,7 +273,8 @@ export function GutachtenUploadWizard({
     extraction: GutachtenExtraction,
   ) {
     const steps = gutachtenFollowUpSteps(extraction.documentSubtype);
-    if (steps.length === 0) {
+
+    if (steps.length === 0 && extraction.documentSubtype !== "SONSTIGES") {
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
       }
@@ -280,16 +311,96 @@ export function GutachtenUploadWizard({
     }));
   }
 
+  function selectGutachtenSubtype(subtype: GutachtenDocumentSubtype) {
+    setState((prev) => {
+      if (!prev.extraction || !prev.primaryFile || !prev.fields) return prev;
+
+      const extraction = { ...prev.extraction, documentSubtype: subtype };
+      const steps = gutachtenFollowUpSteps(subtype);
+
+      if (steps.length === 0) {
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+        }
+        const previewUrl = URL.createObjectURL(prev.primaryFile);
+        previewUrlRef.current = previewUrl;
+
+        return {
+          ...prev,
+          extraction,
+          phase: "review",
+          uploadFile: prev.primaryFile,
+          previewUrl,
+          previewKind: isPdfFile(prev.primaryFile) ? "pdf" : "image",
+          approvalFields: gutachtenToApprovalFields(extraction),
+        };
+      }
+
+      return {
+        ...prev,
+        extraction,
+        followUpIndex: 0,
+        phase: "capture-followup",
+        approvalFields: gutachtenToApprovalFields(extraction),
+        error: null,
+      };
+    });
+  }
+
   function applyEnrichedPrimaryScan(
     file: File,
     enriched: Awaited<ReturnType<typeof enrichGutachtenPrimaryScan>>,
   ) {
+    coverEnrichmentSettledRef.current = true;
+    setCoverEnrichmentSettled(true);
+
     setState((prev) => {
       if (prev.primaryFile !== file || prev.phase === "capture-primary") {
         return prev;
       }
+
+      const previousSubtype = prev.extraction?.documentSubtype;
+      const nextSubtype = enriched.extraction.documentSubtype;
+      const nextSteps = gutachtenFollowUpSteps(nextSubtype);
+      const tgP192 = new Set<GutachtenDocumentSubtype>([
+        "TEILEGUTACHTEN",
+        "ANBAUBESTAETIGUNG",
+      ]);
+      const subtypeChanged =
+        Boolean(previousSubtype) &&
+        previousSubtype !== nextSubtype &&
+        nextSubtype !== "SONSTIGES" &&
+        nextSteps.length > 0;
+      const wrongWizardStarted =
+        subtypeChanged &&
+        previousSubtype != null &&
+        tgP192.has(previousSubtype) &&
+        tgP192.has(nextSubtype) &&
+        prev.phase === "capture-followup" &&
+        prev.additionalFiles.length === 0;
+
+      let phase = prev.phase;
+      let followUpIndex = prev.followUpIndex;
+
+      if (
+        subtypeChanged &&
+        (prev.phase === "briefing" ||
+          prev.phase === "review" ||
+          wrongWizardStarted)
+      ) {
+        phase = needsGutachtenSubtypeConfirmation(
+          enriched.extraction,
+          enriched.result.fields,
+        )
+          ? "briefing"
+          : "capture-followup";
+        followUpIndex = phase === "capture-followup" ? 0 : prev.followUpIndex;
+      }
+
       return {
         ...prev,
+        phase,
+        followUpIndex,
         fields: enriched.result.fields,
         approvalFields: enriched.result.approvalFields,
         extraction: enriched.extraction,
@@ -299,6 +410,8 @@ export function GutachtenUploadWizard({
 
   async function runPrimaryAnalysis(file: File) {
     primaryScanRef.current = file;
+    coverEnrichmentSettledRef.current = false;
+    setCoverEnrichmentSettled(false);
     setState((prev) => ({
       ...prev,
       phase: "analyzing",
@@ -330,8 +443,16 @@ export function GutachtenUploadWizard({
         })
         .catch((error) => {
           console.warn("[gutachten-wizard] cover enrichment failed", error);
+        })
+        .finally(() => {
+          if (primaryScanRef.current !== file) return;
+          if (coverEnrichmentSettledRef.current) return;
+          coverEnrichmentSettledRef.current = true;
+          setCoverEnrichmentSettled(true);
         });
     } catch (error) {
+      coverEnrichmentSettledRef.current = true;
+      setCoverEnrichmentSettled(true);
       const message =
         error instanceof AnalyzeDocumentError
           ? error.message
@@ -505,18 +626,26 @@ export function GutachtenUploadWizard({
     );
   }
 
-  if (phase === "briefing" && extraction) {
+  if (phase === "briefing" && extraction && state.fields) {
     const briefing = gutachtenSubtypeBriefing(
       extraction.documentSubtype,
       extraction.partName,
     );
     const nextStep = followUpSteps[0];
+    const showSubtypePicker = needsGutachtenSubtypeConfirmation(
+      extraction,
+      state.fields,
+    );
 
     return (
       <WizardShell>
         <WizardScanHeader
           eyebrow="Gutachten · Erkannt"
-          title={briefing.headline}
+          title={
+            showSubtypePicker
+              ? "Dokumenttyp bestätigen"
+              : briefing.headline
+          }
           vehicleLabel={vehicleLabel}
           currentStep={2}
           totalSteps={totalSteps}
@@ -525,31 +654,41 @@ export function GutachtenUploadWizard({
         />
         <div className="space-y-4">
           <GutachtenExtractedSummary extraction={extraction} />
-          <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-            {briefing.body}
-          </p>
-          {nextStep ? (
-            <div className="rounded-[1.25rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Nächster Scan
+          {showSubtypePicker ? (
+            <GutachtenSubtypePicker onSelect={selectGutachtenSubtype} />
+          ) : !coverEnrichmentSettled ? (
+            <p className="text-[0.85rem] text-[color:var(--vd-muted)]">
+              Dokumenttyp wird noch verfeinert…
+            </p>
+          ) : (
+            <>
+              <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+                {briefing.body}
               </p>
-              <p className="mt-2 text-[1rem] font-semibold text-[color:var(--vd-text)]">
-                {nextStep.title}
-              </p>
-              <p className="mt-1 text-[0.82rem] text-[color:var(--vd-muted)]">
-                {nextStep.hint}
-              </p>
-            </div>
-          ) : null}
-          <Button
-            type="button"
-            className="claim-cta w-full"
-            onClick={startFollowUpCapture}
-          >
-            <ScanLine className="h-4 w-4" />
-            Weiter — {nextStep?.title ?? "Review"}
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+              {nextStep ? (
+                <div className="rounded-[1.25rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                    Nächster Scan
+                  </p>
+                  <p className="mt-2 text-[1rem] font-semibold text-[color:var(--vd-text)]">
+                    {nextStep.title}
+                  </p>
+                  <p className="mt-1 text-[0.82rem] text-[color:var(--vd-muted)]">
+                    {nextStep.hint}
+                  </p>
+                </div>
+              ) : null}
+              <Button
+                type="button"
+                className="claim-cta w-full"
+                onClick={startFollowUpCapture}
+              >
+                <ScanLine className="h-4 w-4" />
+                Weiter — {nextStep?.title ?? "Review"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </WizardShell>
     );

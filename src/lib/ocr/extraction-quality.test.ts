@@ -24,10 +24,14 @@ import { extractMileageKmFromText } from "@/lib/ocr/mileage-from-text";
 import { DocumentServiceFactory } from "@/services/documents";
 import {
   gutachtenToAnalyzeFields,
-  inferGutachtenSubtypeFromText,
-  refineGutachtenExtractionSubtype,
+  resolveGutachtenDocumentSubtype,
+  resolveGutachtenExtractionSubtype,
   type GutachtenExtraction,
 } from "@/lib/validations/gutachtenSchema";
+import {
+  resolveGutachtenDocumentSubtype as resolveSubtypeDirect,
+  scoreGutachtenDocumentSubtypes,
+} from "@/lib/documents/gutachten-subtype-resolution";
 import { invoiceTextParseSchema } from "@/lib/ocr/text-parse-schema";
 import { sanitizeTuevPayload } from "@/services/documents/TuevReportService";
 
@@ -267,37 +271,69 @@ describe("pre-deploy extraction quality · gutachten analyze fields", () => {
   });
 
   it("infers gutachten subtype from OCR text when LLM returns SONSTIGES", () => {
-    expect(inferGutachtenSubtypeFromText(OCR_SAMPLES.teilegutachten)).toBe(
-      "TEILEGUTACHTEN",
-    );
-    expect(inferGutachtenSubtypeFromText(OCR_SAMPLES.einzelabnahme)).toBe(
-      "EINZELABNAHME",
-    );
+    expect(
+      resolveSubtypeDirect({
+        llmSubtype: "SONSTIGES",
+        extraction: { documentSubtype: "SONSTIGES", partName: "Gewindefahrwerk" },
+        fields: {
+          vendor: null,
+          date: null,
+          amount: null,
+          category: "abe",
+          summary: "TEILEGUTACHTEN",
+          lineItems: null,
+          kbaNumber: null,
+          vehicleApprovals: null,
+          authority: null,
+          conditions: null,
+          partCategory: OCR_SAMPLES.teilegutachten.slice(0, 400),
+          notes: null,
+          manufacturer: null,
+          invoiceNumber: null,
+          mileageKm: null,
+        },
+      }),
+    ).toBe("TEILEGUTACHTEN");
 
-    const refined = refineGutachtenExtractionSubtype(
-      {
-        documentSubtype: "SONSTIGES",
-        partName: "Gewindefahrwerk",
-      },
-      {
-        vendor: null,
-        date: null,
-        amount: null,
-        category: "abe",
-        summary: "TEILEGUTACHTEN",
-        lineItems: null,
-        kbaNumber: null,
-        vehicleApprovals: null,
-        authority: null,
-        conditions: null,
-        partCategory: OCR_SAMPLES.teilegutachten.slice(0, 400),
-        notes: null,
-        manufacturer: null,
-        invoiceNumber: null,
-        mileageKm: null,
-      },
-    );
+    expect(
+      resolveSubtypeDirect({
+        llmSubtype: "SONSTIGES",
+        extraction: { documentSubtype: "SONSTIGES", partName: "Fahrwerk" },
+        fields: {
+          vendor: "TÜV Rheinland",
+          date: null,
+          amount: null,
+          category: "abe",
+          summary: "Prüfung",
+          lineItems: null,
+          kbaNumber: null,
+          vehicleApprovals: null,
+          authority: null,
+          conditions: null,
+          partCategory: OCR_SAMPLES.pruefung192.slice(0, 400),
+          notes: null,
+          manufacturer: null,
+          invoiceNumber: null,
+          mileageKm: null,
+        },
+      }),
+    ).toBe("ANBAUBESTAETIGUNG");
+  });
 
-    expect(refined.documentSubtype).toBe("TEILEGUTACHTEN");
+  it("resolves §19(2) from raw OCR text even when LLM guesses Teilegutachten", () => {
+    expect(
+      resolveGutachtenDocumentSubtype({
+        llmSubtype: "TEILEGUTACHTEN",
+        extraction: {
+          documentSubtype: "TEILEGUTACHTEN",
+          partName: "Gewindefahrwerk",
+        },
+        fields: gutachtenToAnalyzeFields({
+          documentSubtype: "TEILEGUTACHTEN",
+          partName: "Gewindefahrwerk",
+        }),
+        rawText: OCR_SAMPLES.pruefung192,
+      }),
+    ).toBe("ANBAUBESTAETIGUNG");
   });
 });

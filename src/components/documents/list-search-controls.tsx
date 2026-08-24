@@ -13,9 +13,60 @@ export type ListSearchControlsProps = {
   chips?: ListFilterChip[];
   activeChipId?: string;
   onChipChange?: (chipId: string) => void;
+  /** Second chip row (e.g. Tresor part categories). */
+  secondaryChips?: ListFilterChip[];
+  secondaryActiveChipId?: string;
+  onSecondaryChipChange?: (chipId: string) => void;
   resultLabel?: string;
   className?: string;
 };
+
+function ChipRow({
+  chips,
+  activeChipId,
+  onChipChange,
+  ariaLabel,
+}: {
+  chips: ListFilterChip[];
+  activeChipId?: string;
+  onChipChange: (chipId: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div
+      role="toolbar"
+      aria-label={ariaLabel}
+      className="flex gap-2 overflow-x-auto pb-0.5"
+    >
+      {chips.map((chip) => {
+        const active = activeChipId === chip.id;
+        return (
+          <PressableButton
+            key={chip.id}
+            type="button"
+            variant="button"
+            title={chip.title ?? chip.label}
+            onClick={() => onChipChange(chip.id)}
+            className={[
+              "shrink-0 rounded-full px-3.5 py-2 text-[0.78rem] font-semibold",
+              active
+                ? "bg-neutral-900 text-white"
+                : "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-muted)]",
+            ].join(" ")}
+          >
+            {chip.label}
+            {typeof chip.count === "number" ? (
+              <span className={active ? "text-white/70" : "text-[color:var(--vd-muted)]"}>
+                {" "}
+                · {chip.count}
+              </span>
+            ) : null}
+          </PressableButton>
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * Search field + optional filter chips for document / Umbau lists.
@@ -27,6 +78,9 @@ export function ListSearchControls({
   chips,
   activeChipId,
   onChipChange,
+  secondaryChips,
+  secondaryActiveChipId,
+  onSecondaryChipChange,
   resultLabel,
   className = "",
 }: ListSearchControlsProps) {
@@ -60,38 +114,21 @@ export function ListSearchControls({
       </label>
 
       {chips && chips.length > 0 && onChipChange ? (
-        <div
-          role="toolbar"
-          aria-label="Filter"
-          className="flex gap-2 overflow-x-auto pb-0.5"
-        >
-          {chips.map((chip) => {
-            const active = activeChipId === chip.id;
-            return (
-              <PressableButton
-                key={chip.id}
-                type="button"
-                variant="button"
-                title={chip.title ?? chip.label}
-                onClick={() => onChipChange(chip.id)}
-                className={[
-                  "shrink-0 rounded-full px-3.5 py-2 text-[0.78rem] font-semibold",
-                  active
-                    ? "bg-neutral-900 text-white"
-                    : "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-muted)]",
-                ].join(" ")}
-              >
-                {chip.label}
-                {typeof chip.count === "number" ? (
-                  <span className={active ? "text-white/70" : "text-[color:var(--vd-muted)]"}>
-                    {" "}
-                    · {chip.count}
-                  </span>
-                ) : null}
-              </PressableButton>
-            );
-          })}
-        </div>
+        <ChipRow
+          chips={chips}
+          activeChipId={activeChipId}
+          onChipChange={onChipChange}
+          ariaLabel="Filter"
+        />
+      ) : null}
+
+      {secondaryChips && secondaryChips.length > 0 && onSecondaryChipChange ? (
+        <ChipRow
+          chips={secondaryChips}
+          activeChipId={secondaryActiveChipId}
+          onChipChange={onSecondaryChipChange}
+          ariaLabel="Kategorie"
+        />
       ) : null}
 
       {resultLabel ? (

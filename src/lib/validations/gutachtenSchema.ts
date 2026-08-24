@@ -319,60 +319,28 @@ export function gutachtenToApprovalFields(
   return { kind: "gutachten", data };
 }
 
-export function inferGutachtenSubtypeFromText(
-  text: string,
-): GutachtenDocumentSubtype | null {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (!normalized) return null;
+import {
+  resolveGutachtenExtractionSubtype as resolveGutachtenExtractionSubtypeImpl,
+} from "@/lib/documents/gutachten-subtype-resolution";
 
-  if (
-    /\bteilegutachten\b/i.test(normalized) ||
-    /\b§\s*19\s*abs\.?\s*3\b/i.test(normalized)
-  ) {
-    return "TEILEGUTACHTEN";
-  }
+export {
+  buildGutachtenResolutionText,
+  inferGutachtenSubtypeFromText,
+  isAmbiguousTeilegutachtenVsPruefung192,
+  needsGutachtenSubtypeConfirmation,
+  resolveGutachtenDocumentSubtype,
+  resolveGutachtenExtractionSubtype,
+  scoreGutachtenDocumentSubtypes,
+  type GutachtenSubtypeScores,
+} from "@/lib/documents/gutachten-subtype-resolution";
 
-  if (
-    /\b§\s*21\b/i.test(normalized) ||
-    /\beinzelabnahme\b/i.test(normalized) ||
-    /\beinzelbetriebserlaubnis\b/i.test(normalized)
-  ) {
-    return "EINZELABNAHME";
-  }
-
-  if (
-    /\b§\s*19\s*\(\s*2\s*\)/i.test(normalized) ||
-    /\bprüfung\s+nach\s+§\s*19/i.test(normalized) ||
-    /\buntersuchungsbericht\b/i.test(normalized)
-  ) {
-    return "ANBAUBESTAETIGUNG";
-  }
-
-  return null;
-}
-
+/** @deprecated Use resolveGutachtenExtractionSubtype */
 export function refineGutachtenExtractionSubtype(
   extraction: GutachtenExtraction,
   fields: InvoiceTextParseResult,
+  rawText?: string | null,
 ): GutachtenExtraction {
-  if (extraction.documentSubtype !== "SONSTIGES") return extraction;
-
-  const text = [
-    extraction.partName,
-    extraction.modificationType,
-    extraction.vehicleMatchNotes,
-    fields.partCategory,
-    fields.notes,
-    fields.summary,
-    fields.authority,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const inferred = inferGutachtenSubtypeFromText(text);
-  if (!inferred) return extraction;
-
-  return { ...extraction, documentSubtype: inferred };
+  return resolveGutachtenExtractionSubtypeImpl(extraction, fields, rawText);
 }
 
 export function gutachtenToAnalyzeFields(

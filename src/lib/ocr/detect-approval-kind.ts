@@ -83,6 +83,7 @@ export function detectApprovalKind(text: string): ApprovalFieldKind {
     egbe: score(normalized, EGBE),
     tuev: score(normalized, TUEV),
     abe: score(normalized, ABE),
+    vault: 0,
   };
 
   const ranked = (

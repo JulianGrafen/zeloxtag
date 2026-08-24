@@ -15,12 +15,24 @@ import {
   type TuevReport,
 } from "@/lib/validations/documentSchemas";
 import {
+  VAULT_CATEGORIES,
+  type VaultCategory,
+} from "@/lib/validations/vaultClassificationSchema";
+import {
   gutachtenExtractionSchema,
   type GutachtenExtraction,
 } from "@/lib/validations/gutachtenSchema";
 
 export type Gutachten = GutachtenExtraction;
 export const GutachtenSchema = gutachtenExtractionSchema;
+
+export const VaultDocumentSchema = z
+  .object({
+    category: z.enum(VAULT_CATEGORIES),
+  })
+  .strict();
+
+export type VaultDocument = z.infer<typeof VaultDocumentSchema>;
 
 /**
  * Stored on `documents.approval_fields`.
@@ -34,6 +46,7 @@ export const APPROVAL_FIELD_KINDS = [
   "pruefung192",
   "egbe",
   "tuev",
+  "vault",
 ] as const;
 
 export type ApprovalFieldKind = (typeof APPROVAL_FIELD_KINDS)[number];
@@ -45,7 +58,8 @@ export type ApprovalFields =
   | { kind: "einzelabnahme"; data: Einzelabnahme }
   | { kind: "pruefung192"; data: Pruefung192 }
   | { kind: "egbe"; data: EGBE }
-  | { kind: "tuev"; data: TuevReport };
+  | { kind: "tuev"; data: TuevReport }
+  | { kind: "vault"; data: VaultDocument };
 
 export const approvalFieldsSchema: z.ZodType<ApprovalFields> = z.discriminatedUnion(
   "kind",
@@ -92,6 +106,12 @@ export const approvalFieldsSchema: z.ZodType<ApprovalFields> = z.discriminatedUn
         data: TuevReportSchema,
       })
       .strict(),
+    z
+      .object({
+        kind: z.literal("vault"),
+        data: VaultDocumentSchema,
+      })
+      .strict(),
   ],
 );
 
@@ -103,6 +123,7 @@ export const APPROVAL_KIND_LABELS: Record<ApprovalFieldKind, string> = {
   pruefung192: "§19(2) Prüfung",
   egbe: "EG-BE",
   tuev: "TÜV / HU",
+  vault: "Tresor",
 };
 
 export function parseApprovalFields(value: unknown): ApprovalFields | null {
