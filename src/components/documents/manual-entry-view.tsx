@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Camera,
@@ -84,10 +84,12 @@ export function ManualEntryView({
   variant = "default",
 }: ManualEntryViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const openFormOnLoad = searchParams.get("neu") === "1";
   const isUmbau = variant === "umbau";
   const { compressFile, isCompressing, statusLabel, error: compressError } =
     useDocumentCompression();
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(openFormOnLoad);
   const [category, setCategory] = useState<ManualEntryCategory>(
     isUmbau
       ? "tuning"

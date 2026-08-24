@@ -8,15 +8,15 @@ interface DashboardScanFabProps {
   tagUuid: string;
   /** Prefer in-page scanner when provided. */
   onOpenScanner?: () => void;
-  /** Secondary action — manual entry without receipt. */
-  onManualEntry?: () => void;
+  /** Link to the manual entry page (no receipt / KI scan). */
+  manualEntryHref?: string;
   scanLabel?: string;
 }
 
 export function DashboardScanFab({
   tagUuid,
   onOpenScanner,
-  onManualEntry,
+  manualEntryHref,
   scanLabel = "Dokument scannen",
 }: DashboardScanFabProps) {
   return (
@@ -48,15 +48,15 @@ export function DashboardScanFab({
             </PressableLink>
           )}
         </div>
-        {onManualEntry ? (
+        {manualEntryHref ? (
           <div className="mx-auto max-w-lg text-center">
-            <button
-              type="button"
-              onClick={onManualEntry}
-              className="text-[0.78rem] font-medium text-[color:var(--vd-muted)] underline decoration-[color:var(--vd-border)] underline-offset-4"
+            <PressableLink
+              href={manualEntryHref}
+              nav="none"
+              className="inline text-[0.78rem] font-medium text-[color:var(--vd-muted)] underline decoration-[color:var(--vd-border)] underline-offset-4"
             >
               Manuell eintragen
-            </button>
+            </PressableLink>
           </div>
         ) : null}
       </div>

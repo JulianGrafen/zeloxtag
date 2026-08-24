@@ -31,11 +31,11 @@ export function ShowroomHero({
             fill
             priority
             unoptimized
-            className="object-cover object-center opacity-55"
+            className="object-cover object-center opacity-70"
             sizes="100vw"
           />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/15" />
       </div>
 
       {dashboardHref ? (

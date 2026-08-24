@@ -33,41 +33,30 @@ function buildRows(profile: PublicShowcaseProfile): DetailRow[] {
 
 export function ShowroomDetails({ profile }: ShowroomDetailsProps) {
   const rows = buildRows(profile);
-  if (rows.length === 0 && !profile.notes) {
+  if (rows.length === 0) {
     return null;
   }
 
   return (
     <section className="space-y-3 px-4">
-      {rows.length > 0 ? (
-        <div className={showroom.panel}>
-          <p
-            className={`border-b border-white/15 px-4 py-2.5 ${showroom.sectionTitle}`}
-          >
-            Technische Daten
-          </p>
-          <dl className="divide-y divide-white/10">
-            {rows.map((row) => (
-              <div
-                key={row.label}
-                className="flex items-start justify-between gap-4 px-4 py-3"
-              >
-                <dt className={showroom.label}>{row.label}</dt>
-                <dd className={`text-right ${showroom.value}`}>{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      ) : null}
-
-      {profile.notes ? (
-        <div className={`${showroom.panelFlat} px-4 py-3.5`}>
-          <p className={showroom.sectionTitle}>Spezifikationen</p>
-          <p className={`mt-2 whitespace-pre-wrap ${showroom.body}`}>
-            {profile.notes}
-          </p>
-        </div>
-      ) : null}
+      <div className={showroom.panel}>
+        <p
+          className={`border-b border-white/15 px-4 py-2.5 ${showroom.sectionTitle}`}
+        >
+          Technische Daten
+        </p>
+        <dl className="divide-y divide-white/10">
+          {rows.map((row) => (
+            <div
+              key={row.label}
+              className="flex items-start justify-between gap-4 px-4 py-3"
+            >
+              <dt className={showroom.label}>{row.label}</dt>
+              <dd className={`text-right ${showroom.value}`}>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </section>
   );
 }

@@ -5,6 +5,7 @@ import { ShowroomDetails } from "./ShowroomDetails";
 import { ShowroomDyno } from "./ShowroomDyno";
 import { ShowroomHero } from "./ShowroomHero";
 import { ShowroomMods } from "./ShowroomMods";
+import { ShowroomSpecifications } from "./ShowroomSpecifications";
 import { ShowroomStats } from "./ShowroomStats";
 import { showroom } from "./showroom-styles";
 
@@ -22,6 +23,7 @@ export function PublicShowcaseView({
       <ShowroomHero profile={data.profile} dashboardHref={dashboardHref} />
       <div className="mx-auto flex w-full max-w-lg flex-col gap-7 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <ShowroomStats profile={data.profile} />
+        <ShowroomSpecifications profile={data.profile} />
         <ShowroomMods modifications={data.modifications} />
         <ShowroomDyno profile={data.profile} />
         <ShowroomDetails profile={data.profile} />

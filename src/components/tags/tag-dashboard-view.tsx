@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { NotebookPen } from "lucide-react";
 
-import { ManualEntryModal } from "@/components/service/ManualEntryModal";
-import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
 import {
@@ -91,7 +89,7 @@ export function TagDashboardView({
   previewFallbackUrl,
   onSilhouetteProxyLoad,
 }: TagDashboardViewProps) {
-  const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const manualEntryHref = `/v/${tagUuid}/eintrag?neu=1`;
   const invoiceCount = filterInvoiceReceiptDocuments(documents).length;
   const abeCount = filterAbeFamilyDocuments(documents).length;
   const tuevCount = documents.filter((doc) => doc.type === "tuev").length;
@@ -357,15 +355,14 @@ export function TagDashboardView({
               className="vd-anim-header px-1"
               style={{ animationDelay: "0.08s" }}
             >
-              <PressableButton
-                type="button"
+              <PressableLink
+                href={manualEntryHref}
                 variant="button"
-                onClick={() => setManualEntryOpen(true)}
                 className="claim-back w-full border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]"
               >
                 <NotebookPen className="h-4 w-4" aria-hidden />
                 Manuell eintragen
-              </PressableButton>
+              </PressableLink>
             </div>
           ) : undefined
         }
@@ -386,18 +383,10 @@ export function TagDashboardView({
         <DashboardScanFab
           tagUuid={tagUuid}
           onOpenScanner={onOpenScanner}
+          manualEntryHref={manualEntryHref}
           scanLabel={
             isContributor && !isOwner ? "Beleg scannen" : "Dokument scannen"
           }
-        />
-      ) : null}
-      {canScan ? (
-        <ManualEntryModal
-          tagUuid={tagUuid}
-          vehicleId={vehicle.id}
-          open={manualEntryOpen}
-          onClose={() => setManualEntryOpen(false)}
-          isContributor={isContributor && !isOwner}
         />
       ) : null}
     </div>
