@@ -8,6 +8,7 @@ import {
   SmartReviewField,
   SmartReviewPreview,
 } from "@/components/documents/smart-review-shell";
+import { GutachtenExtractedSummary } from "@/components/documents/gutachten-extracted-summary";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { Input } from "@/components/ui/input";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
@@ -48,6 +49,78 @@ function fieldsToGutachtenReview(
     return approvalFields.data;
   }
 
+  if (approvalFields?.kind === "teilegutachten") {
+    const tg = approvalFields.data;
+    return {
+      documentSubtype: "TEILEGUTACHTEN",
+      partName:
+        fields.partCategory?.trim() ||
+        fields.summary?.replace(/^[^·]+·\s*/, "").trim() ||
+        "Teilegutachten",
+      modificationType: fields.partCategory?.trim() || undefined,
+      manufacturer: fields.manufacturer?.trim() || undefined,
+      certificateNumber:
+        fields.kbaNumber?.trim() ||
+        fields.invoiceNumber?.trim() ||
+        tg.documentNumber?.trim() ||
+        undefined,
+      testOrganization:
+        fields.authority?.trim() || fields.vendor?.trim() || undefined,
+      issueDate: fields.date?.trim() || undefined,
+      markingType: tg.markingType?.trim() || undefined,
+      markingNumber: tg.markingNumber?.trim() || undefined,
+      ownerNotes: tg.ownerNotes?.trim() || undefined,
+      conditions: fields.conditions?.length ? fields.conditions : undefined,
+      matchedVehicleRow: fields.vehicleApprovals?.[0]?.trim() || undefined,
+      vehicleMatchNotes:
+        tg.validityArea?.trim() ||
+        fields.vehicleApprovals?.[0]?.trim() ||
+        fields.notes?.trim() ||
+        undefined,
+    };
+  }
+
+  if (approvalFields?.kind === "einzelabnahme") {
+    const ea = approvalFields.data;
+    return {
+      documentSubtype: "EINZELABNAHME",
+      partName:
+        fields.partCategory?.trim() ||
+        fields.summary?.replace(/^[^·]+·\s*/, "").trim() ||
+        "Einzelabnahme",
+      certificateNumber:
+        fields.kbaNumber?.trim() ||
+        fields.invoiceNumber?.trim() ||
+        ea.reportNumber?.trim() ||
+        undefined,
+      testOrganization: fields.authority?.trim() || undefined,
+      issueDate: fields.date?.trim() || undefined,
+      modificationsField22: ea.field22Text?.trim() || fields.notes?.trim(),
+      vehicleMatchNotes: fields.vehicleApprovals?.[0]?.trim() || undefined,
+    };
+  }
+
+  if (approvalFields?.kind === "pruefung192") {
+    const p192 = approvalFields.data;
+    return {
+      documentSubtype: "ANBAUBESTAETIGUNG",
+      partName:
+        p192.assessedModifications?.trim() ||
+        fields.partCategory?.trim() ||
+        fields.summary?.replace(/^[^·]+·\s*/, "").trim() ||
+        "Anbauabnahme",
+      certificateNumber:
+        fields.kbaNumber?.trim() ||
+        fields.invoiceNumber?.trim() ||
+        p192.reportNumber?.trim() ||
+        undefined,
+      testOrganization: fields.authority?.trim() || undefined,
+      issueDate: fields.date?.trim() || undefined,
+      modificationsField22: p192.field22Text?.trim() || undefined,
+      vehicleMatchNotes: fields.vehicleApprovals?.[0]?.trim() || undefined,
+    };
+  }
+
   const legacySubtype =
     approvalFields?.kind != null
       ? legacyApprovalKindToGutachtenSubtype(approvalFields.kind)
@@ -59,6 +132,7 @@ function fieldsToGutachtenReview(
       fields.partCategory?.trim() ||
       fields.summary?.replace(/^[^·]+·\s*/, "").trim() ||
       "Gutachten",
+    modificationType: fields.partCategory?.trim() || undefined,
     manufacturer: fields.manufacturer?.trim() || undefined,
     certificateNumber:
       fields.kbaNumber?.trim() ||
@@ -67,10 +141,17 @@ function fieldsToGutachtenReview(
     testOrganization:
       fields.authority?.trim() || fields.vendor?.trim() || undefined,
     issueDate: fields.date?.trim() || undefined,
+    markingType: undefined,
+    markingNumber: undefined,
+    conditions: fields.conditions?.length ? fields.conditions : undefined,
+    ownerNotes: undefined,
+    matchedVehicleRow: fields.vehicleApprovals?.[0]?.trim() || undefined,
     vehicleMatchNotes:
       fields.vehicleApprovals?.[0]?.trim() ||
       fields.notes?.trim() ||
       undefined,
+    vin: undefined,
+    modificationsField22: undefined,
   };
 }
 
@@ -106,11 +187,19 @@ export function GutachtenOverview({
     const payload = {
       ...review,
       partName: review.partName.trim(),
+      modificationType: review.modificationType?.trim() || undefined,
       manufacturer: review.manufacturer?.trim() || undefined,
       certificateNumber: review.certificateNumber?.trim() || undefined,
       testOrganization: review.testOrganization?.trim() || undefined,
       issueDate: review.issueDate?.trim() || undefined,
+      markingType: review.markingType?.trim() || undefined,
+      markingNumber: review.markingNumber?.trim() || undefined,
+      ownerNotes: review.ownerNotes?.trim() || undefined,
+      matchedVehicleRow: review.matchedVehicleRow?.trim() || undefined,
       vehicleMatchNotes: review.vehicleMatchNotes?.trim() || undefined,
+      vin: review.vin?.trim() || undefined,
+      modificationsField22: review.modificationsField22?.trim() || undefined,
+      conditions: review.conditions?.length ? review.conditions : undefined,
     };
     await onSave({
       review: payload,
@@ -127,6 +216,8 @@ export function GutachtenOverview({
         pageCount={pageCount}
         alt="Gutachten Vorschau"
       />
+
+      <GutachtenExtractedSummary extraction={review} />
 
       <div className="relative">
         <button
@@ -178,6 +269,22 @@ export function GutachtenOverview({
           />
         </SmartReviewField>
 
+        {review.modificationType ? (
+          <SmartReviewField
+            label="Art der Umrüstung"
+            hint="Volltext von der Titelseite — bei Bedarf kürzen."
+          >
+            <textarea
+              value={review.modificationType}
+              onChange={(event) =>
+                update("modificationType", event.target.value || undefined)
+              }
+              rows={3}
+              className="flex min-h-[5rem] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </SmartReviewField>
+        ) : null}
+
         <SmartReviewField label="Hersteller">
           <Input
             value={review.manufacturer ?? ""}
@@ -214,6 +321,45 @@ export function GutachtenOverview({
             onChange={(value) => update("issueDate", value || undefined)}
           />
         </SmartReviewField>
+
+        {review.markingType || review.markingNumber ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SmartReviewField label="Kennzeichnung · Art">
+              <Input
+                value={review.markingType ?? ""}
+                onChange={(event) =>
+                  update("markingType", event.target.value || undefined)
+                }
+              />
+            </SmartReviewField>
+            <SmartReviewField label="Kennzeichnung · Nummer">
+              <Input
+                value={review.markingNumber ?? ""}
+                onChange={(event) =>
+                  update("markingNumber", event.target.value || undefined)
+                }
+              />
+            </SmartReviewField>
+          </div>
+        ) : null}
+
+        {review.conditions?.length ? (
+          <SmartReviewField
+            label={`Auflagen (${review.conditions.length})`}
+            hint="Aus Punkt IV — Details im PDF."
+          >
+            <ul className="space-y-2 text-[0.82rem] leading-relaxed text-neutral-700">
+              {review.conditions.map((entry, index) => (
+                <li
+                  key={`${index}-${entry.slice(0, 24)}`}
+                  className="rounded-lg bg-neutral-50 px-3 py-2"
+                >
+                  {entry}
+                </li>
+              ))}
+            </ul>
+          </SmartReviewField>
+        ) : null}
 
         <SmartReviewField
           label="Verwendung / Fahrzeug-Hinweise"

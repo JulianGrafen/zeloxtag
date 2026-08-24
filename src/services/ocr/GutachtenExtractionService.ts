@@ -14,12 +14,12 @@ import {
   type GutachtenExtraction,
 } from "@/lib/validations/gutachtenSchema";
 
-const GUTACHTEN_MAX_TOKENS = 1_600;
+const GUTACHTEN_MAX_TOKENS = 3_200;
 
 export function buildGutachtenSystemPrompt(): string {
   return [
     "You are a strict data extractor for German automotive approval and inspection documents.",
-    "Classify the document and extract key metadata into JSON.",
+    "Target: PAGE 1 / cover — classify the document AND extract every readable header field.",
     "",
     "documentSubtype rules:",
     "- TEILEGUTACHTEN: Header contains TEILEGUTACHTEN, § 19 Abs. 3 StVZO, Prüforganisation sections, Verwendungsbereich table.",
@@ -27,18 +27,24 @@ export function buildGutachtenSystemPrompt(): string {
     "- ANBAUBESTAETIGUNG: Prüfung nach § 19 Abs. 2 StVZO, Untersuchungsbericht, TÜV/DEKRA/GTÜ/KÜS Anbauabnahme after modification.",
     "- SONSTIGES: Other expert reports / Herstellerbescheinigung without clear §19/§21 header.",
     "",
-    "Look for: document titles, paragraph references (§19, §21, §22 StVZO), testing authority stamps (TÜV, DEKRA, GTÜ, KÜS).",
+    "Cover-page extraction (critical — extract ALL visible fields, do NOT wait for follow-up scans):",
+    '- partName: short component / modification label (e.g. KW V3 Gewindefahrwerk).',
+    '- modificationType: FULL "Art der Umrüstung" / Fahrzeugteil block verbatim when present.',
+    '- manufacturer: Hersteller / Herstellerzeichen.',
+    '- certificateNumber: Gutachten-Nr., Bericht-Nr., Aktenzeichen.',
+    '- testOrganization: Prüforganisation / issuer (TÜV, DEKRA, GTÜ, KÜS).',
+    '- issueDate: Ausstellungsdatum as YYYY-MM-DD.',
+    '- markingType + markingNumber: Kennzeichnung section when visible on page 1.',
+    '- conditions: Section IV Auflagen — one array item per subsection or bullet when readable on page 1.',
+    '- ownerNotes: Section III Hinweise für den Fahrzeughalter verbatim when on page 1.',
+    '- matchedVehicleRow: matched Verwendungsbereich row as "Hersteller · Typ · Modell" when table visible.',
+    '- vehicleMatchNotes: Für Fz-Typen / vehicle restriction summary when no full table.',
+    '- vin: Field E Fahrgestellnummer when §21 / §19(2) grid visible.',
+    '- modificationsField22: Field 22 Bemerkungen verbatim when visible on cover.',
     "",
-    "Field guidance:",
-    "- partName: main component or modification (e.g. KW V3 Gewindefahrwerk, Spoiler, Auspuffanlage).",
-    "- manufacturer: Bauteilhersteller when visible.",
-    "- certificateNumber: Gutachten-Nr., Bericht-Nr., Aktenzeichen.",
-    "- testOrganization: full name of testing org if present.",
-    "- issueDate: Ausstellungsdatum as YYYY-MM-DD.",
-    "- vehicleMatchNotes: short Verwendungsbereich / vehicle restriction summary (one paragraph max).",
-    "",
-    "Return ONLY valid JSON. Use null for unknown optional fields.",
+    "If a section is NOT on this page, return null — do NOT guess.",
     "documentSubtype must always be set — prefer best match, use SONSTIGES when uncertain.",
+    "Return ONLY valid JSON.",
   ].join("\n");
 }
 
@@ -61,8 +67,8 @@ export class GutachtenExtractionService {
 
     const userContent = await buildAbeVisionUserMessage(
       [
-        "German Gutachten / Prüfbericht document.",
-        "Detect subtype (TEILEGUTACHTEN, EINZELABNAHME, ANBAUBESTAETIGUNG, SONSTIGES) and extract metadata.",
+        "German Gutachten / Prüfbericht — PAGE 1 / cover scan.",
+        "Detect subtype and extract ALL readable header metadata from this page.",
       ],
       input,
       { maxPdfPages: 12 },

@@ -21,6 +21,8 @@ import {
   WizardShell,
 } from "@/components/documents/wizard-scan-shell";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import { enrichGutachtenPrimaryScan } from "@/lib/documents/gutachten-cover-enrichment";
+import { GutachtenExtractedSummary } from "@/components/documents/gutachten-extracted-summary";
 import {
   gutachtenFollowUpSteps,
   gutachtenSubtypeBriefing,
@@ -43,6 +45,7 @@ import {
 } from "@/lib/validations/gutachtenSchema";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import { Button } from "@/components/ui/button";
+import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 
 type WizardPhase =
   | "capture-primary"
@@ -69,6 +72,7 @@ export interface GutachtenUploadWizardProps {
   vehicleId: string;
   tagUuid: string;
   vehicleLabel: string;
+  vehicleContext?: AbeVehicleContext | null;
   successHref?: string;
   onBack?: () => void;
   backHref?: string;
@@ -99,8 +103,7 @@ function AnalyzingOverlay({ label }: { label: string }) {
       </div>
       <p className="text-[1rem] font-semibold">{label}</p>
       <p className="max-w-sm text-[0.85rem] text-white/75">
-        Dokumenttyp wird erkannt — gleich geht es mit der passenden Anleitung
-        weiter.
+        Dokumenttyp wird erkannt — gleich startet die passende Scan-Anleitung.
       </p>
     </div>
   );
@@ -109,12 +112,14 @@ function AnalyzingOverlay({ label }: { label: string }) {
 export function GutachtenUploadWizard({
   vehicleId,
   vehicleLabel,
+  vehicleContext,
   successHref,
   onBack,
   backHref,
   backLabel = "Zurück",
 }: GutachtenUploadWizardProps) {
   const previewUrlRef = useRef<string | null>(null);
+  const primaryScanRef = useRef<File | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, startSave] = useTransition();
 
@@ -158,11 +163,61 @@ export function GutachtenUploadWizard({
       ? (followUpSteps[state.followUpIndex] ?? null)
       : null;
 
+  // Briefing → auto-open first follow-up camera (wizard start).
+  useEffect(() => {
+    if (state.phase !== "briefing" || followUpSteps.length === 0) return;
+
+    const timer = window.setTimeout(() => {
+      setState((prev) =>
+        prev.phase === "briefing"
+          ? { ...prev, phase: "capture-followup", error: null }
+          : prev,
+      );
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [state.phase, followUpSteps.length]);
+
+  // Recover orphan states instead of showing "Wizard wird vorbereitet…".
+  useEffect(() => {
+    if (state.phase !== "capture-followup" || !state.extraction) return;
+
+    const steps = gutachtenFollowUpSteps(state.extraction.documentSubtype);
+    if (steps.length === 0 && state.primaryFile) {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
+      const previewUrl = URL.createObjectURL(state.primaryFile);
+      previewUrlRef.current = previewUrl;
+      setState((prev) => ({
+        ...prev,
+        phase: "review",
+        previewUrl,
+        previewKind: isPdfFile(state.primaryFile!) ? "pdf" : "image",
+        uploadFile: state.primaryFile,
+      }));
+      return;
+    }
+
+    if (steps.length > 0 && state.followUpIndex >= steps.length) {
+      setState((prev) => ({
+        ...prev,
+        followUpIndex: Math.max(0, steps.length - 1),
+      }));
+    }
+  }, [
+    state.phase,
+    state.extraction,
+    state.followUpIndex,
+    state.primaryFile,
+  ]);
+
   function resetToStart() {
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current);
       previewUrlRef.current = null;
     }
+    primaryScanRef.current = null;
     setSaveError(null);
     setState({
       phase: "capture-primary",
@@ -211,7 +266,7 @@ export function GutachtenUploadWizard({
 
     setState((prev) => ({
       ...prev,
-      phase: "capture-followup",
+      phase: "briefing",
       primaryFile: file,
       additionalFiles: [],
       followUpIndex: 0,
@@ -222,7 +277,25 @@ export function GutachtenUploadWizard({
     }));
   }
 
+  function applyEnrichedPrimaryScan(
+    file: File,
+    enriched: Awaited<ReturnType<typeof enrichGutachtenPrimaryScan>>,
+  ) {
+    setState((prev) => {
+      if (prev.primaryFile !== file || prev.phase === "capture-primary") {
+        return prev;
+      }
+      return {
+        ...prev,
+        fields: enriched.result.fields,
+        approvalFields: enriched.result.approvalFields,
+        extraction: enriched.extraction,
+      };
+    });
+  }
+
   async function runPrimaryAnalysis(file: File) {
+    primaryScanRef.current = file;
     setState((prev) => ({
       ...prev,
       phase: "analyzing",
@@ -237,7 +310,24 @@ export function GutachtenUploadWizard({
       });
 
       const extraction = extractionFromAnalyzeResult(result);
+
+      // Start subtype wizard immediately — do not block on second OCR pass.
       advanceAfterPrimaryAnalysis(file, result, extraction);
+
+      void enrichGutachtenPrimaryScan(
+        file,
+        vehicleId,
+        result,
+        extraction,
+        { vehicleContext: vehicleContext ?? null },
+      )
+        .then((enriched) => {
+          if (primaryScanRef.current !== file) return;
+          applyEnrichedPrimaryScan(file, enriched);
+        })
+        .catch((error) => {
+          console.warn("[gutachten-wizard] cover enrichment failed", error);
+        });
     } catch (error) {
       const message =
         error instanceof AnalyzeDocumentError
@@ -431,6 +521,7 @@ export function GutachtenUploadWizard({
           backLabel="Neu scannen"
         />
         <div className="space-y-4">
+          <GutachtenExtractedSummary extraction={extraction} />
           <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
             {briefing.body}
           </p>
@@ -461,6 +552,26 @@ export function GutachtenUploadWizard({
     );
   }
 
+  if (
+    phase === "capture-followup" &&
+    extraction &&
+    followUpSteps.length > 0 &&
+    !currentFollowUpStep
+  ) {
+    return (
+      <WizardShell>
+        <WizardScanHeader
+          eyebrow="Gutachten · Scan"
+          title="Nächster Schritt wird vorbereitet…"
+          vehicleLabel={vehicleLabel}
+          onBack={resetToStart}
+          backLabel="Neu scannen"
+        />
+        <WizardAnalyzingPanel label="Kamera wird geöffnet…" />
+      </WizardShell>
+    );
+  }
+
   if (phase === "capture-followup" && currentFollowUpStep && extraction) {
     const stepNumber = 2 + state.followUpIndex;
     const subtypeBriefing = gutachtenSubtypeBriefing(
@@ -475,6 +586,11 @@ export function GutachtenUploadWizard({
     return (
       <>
         {error ? <WizardCameraError message={error} /> : null}
+        {isFirstFollowUp ? (
+          <div className="fixed inset-x-0 top-[max(4.5rem,env(safe-area-inset-top))] z-40 mx-auto max-w-lg px-3">
+            <GutachtenExtractedSummary extraction={extraction} compact />
+          </div>
+        ) : null}
         <InBrowserCamera
           key={`${extraction.documentSubtype}-${currentFollowUpStep.id}-${state.followUpIndex}`}
           title={currentFollowUpStep.title}

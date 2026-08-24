@@ -66,6 +66,24 @@ export const gutachtenExtractionSchema = z
       .describe(
         "Key vehicle restrictions or approval notes, e.g., nur für F11 xDrive",
       ),
+    /** Full Art der Umrüstung block from cover when visible. */
+    modificationType: z.string().trim().min(1).max(500).optional(),
+    /** Kennzeichnung on the component — cover or marking scan. */
+    markingType: z.string().trim().min(1).max(200).optional(),
+    markingNumber: z.string().trim().min(1).max(120).optional(),
+    /** Section IV Auflagen / conditions from cover when readable. */
+    conditions: z
+      .array(z.string().trim().min(1).max(2_400))
+      .max(40)
+      .optional(),
+    /** Section III Hinweise für den Fahrzeughalter. */
+    ownerNotes: z.string().trim().min(1).max(2_400).optional(),
+    /** Matched Verwendungsbereich row, e.g. BMW · F11 · 520d. */
+    matchedVehicleRow: z.string().trim().min(1).max(500).optional(),
+    /** §21 / §19(2) — Field E when visible on cover. */
+    vin: z.string().trim().min(5).max(32).optional(),
+    /** §21 / §19(2) — Field 22 Bemerkungen when on cover. */
+    modificationsField22: z.string().trim().min(1).max(8_000).optional(),
   })
   .strict();
 
@@ -85,6 +103,14 @@ export const GUTACHTEN_JSON_SCHEMA = {
       "testOrganization",
       "issueDate",
       "vehicleMatchNotes",
+      "modificationType",
+      "markingType",
+      "markingNumber",
+      "conditions",
+      "ownerNotes",
+      "matchedVehicleRow",
+      "vin",
+      "modificationsField22",
     ],
     properties: {
       documentSubtype: {
@@ -105,6 +131,17 @@ export const GUTACHTEN_JSON_SCHEMA = {
         description: "YYYY-MM-DD or null",
       },
       vehicleMatchNotes: { type: ["string", "null"] },
+      modificationType: { type: ["string", "null"] },
+      markingType: { type: ["string", "null"] },
+      markingNumber: { type: ["string", "null"] },
+      conditions: {
+        type: ["array", "null"],
+        items: { type: "string" },
+      },
+      ownerNotes: { type: ["string", "null"] },
+      matchedVehicleRow: { type: ["string", "null"] },
+      vin: { type: ["string", "null"] },
+      modificationsField22: { type: ["string", "null"] },
     },
   },
 } as const;
@@ -118,6 +155,14 @@ const GutachtenLlmPayloadSchema = z
     testOrganization: z.string().nullable(),
     issueDate: z.string().nullable(),
     vehicleMatchNotes: z.string().nullable(),
+    modificationType: z.string().nullable(),
+    markingType: z.string().nullable(),
+    markingNumber: z.string().nullable(),
+    conditions: z.array(z.string()).nullable(),
+    ownerNotes: z.string().nullable(),
+    matchedVehicleRow: z.string().nullable(),
+    vin: z.string().nullable(),
+    modificationsField22: z.string().nullable(),
   })
   .strict();
 
@@ -131,6 +176,78 @@ function normalizeIssueDate(value: string | null | undefined): string | undefine
   const normalized = normalizeDocumentDateIso(value.trim());
   if (!normalized) return undefined;
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : undefined;
+}
+
+function normalizeConditions(
+  value: string[] | null | undefined,
+): string[] | undefined {
+  if (!value?.length) return undefined;
+  const items = value
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .slice(0, 40);
+  return items.length > 0 ? items : undefined;
+}
+
+export function mergeGutachtenExtractions(
+  base: GutachtenExtraction,
+  patch: Partial<GutachtenExtraction>,
+): GutachtenExtraction {
+  const pickLonger = (
+    left: string | undefined,
+    right: string | undefined,
+  ): string | undefined => {
+    if (!left?.trim()) return right?.trim() || undefined;
+    if (!right?.trim()) return left.trim();
+    return right.trim().length > left.trim().length ? right.trim() : left.trim();
+  };
+
+  const mergedConditions = [
+    ...(base.conditions ?? []),
+    ...(patch.conditions ?? []),
+  ]
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  return gutachtenExtractionSchema.parse({
+    ...base,
+    ...patch,
+    documentSubtype: patch.documentSubtype ?? base.documentSubtype,
+    partName: pickLonger(base.partName, patch.partName) ?? base.partName,
+    modificationType: pickLonger(base.modificationType, patch.modificationType),
+    manufacturer: pickLonger(base.manufacturer, patch.manufacturer),
+    certificateNumber: pickLonger(
+      base.certificateNumber,
+      patch.certificateNumber,
+    ),
+    testOrganization: pickLonger(
+      base.testOrganization,
+      patch.testOrganization,
+    ),
+    issueDate:
+      normalizeIssueDate(patch.issueDate) ??
+      base.issueDate,
+    vehicleMatchNotes: pickLonger(
+      base.vehicleMatchNotes,
+      patch.vehicleMatchNotes,
+    ),
+    markingType: pickLonger(base.markingType, patch.markingType),
+    markingNumber: pickLonger(base.markingNumber, patch.markingNumber),
+    ownerNotes: pickLonger(base.ownerNotes, patch.ownerNotes),
+    matchedVehicleRow: pickLonger(
+      base.matchedVehicleRow,
+      patch.matchedVehicleRow,
+    ),
+    vin: pickLonger(base.vin, patch.vin),
+    modificationsField22: pickLonger(
+      base.modificationsField22,
+      patch.modificationsField22,
+    ),
+    conditions:
+      mergedConditions.length > 0
+        ? [...new Set(mergedConditions)]
+        : undefined,
+  });
 }
 
 export function normalizeGutachtenExtraction(
@@ -150,7 +267,27 @@ export function normalizeGutachtenExtraction(
     testOrganization: normalizeOptionalString(parsed.testOrganization),
     issueDate: normalizeIssueDate(parsed.issueDate),
     vehicleMatchNotes: normalizeOptionalString(parsed.vehicleMatchNotes),
+    modificationType: normalizeOptionalString(parsed.modificationType),
+    markingType: normalizeOptionalString(parsed.markingType),
+    markingNumber: normalizeOptionalString(parsed.markingNumber),
+    conditions: normalizeConditions(parsed.conditions),
+    ownerNotes: normalizeOptionalString(parsed.ownerNotes),
+    matchedVehicleRow: normalizeOptionalString(parsed.matchedVehicleRow),
+    vin: normalizeOptionalString(parsed.vin),
+    modificationsField22: normalizeOptionalString(parsed.modificationsField22),
   });
+}
+
+/** Like {@link mergeGutachtenExtractions} but never throws — returns base on invalid patch. */
+export function mergeGutachtenExtractionsSafe(
+  base: GutachtenExtraction,
+  patch: Partial<GutachtenExtraction>,
+): GutachtenExtraction {
+  try {
+    return mergeGutachtenExtractions(base, patch);
+  } catch {
+    return base;
+  }
 }
 
 /** Map legacy approval kinds to unified Gutachten subtype. */
@@ -184,8 +321,26 @@ export function gutachtenToApprovalFields(
 export function gutachtenToAnalyzeFields(
   data: GutachtenExtraction,
 ): InvoiceTextParseResult {
+  const markingNote =
+    data.markingType?.trim() || data.markingNumber?.trim()
+      ? [
+          data.markingType?.trim(),
+          data.markingNumber?.trim(),
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : null;
+
   const notesParts = [
+    data.modificationType?.trim(),
     data.vehicleMatchNotes?.trim(),
+    data.matchedVehicleRow?.trim()
+      ? `Verwendungsbereich: ${data.matchedVehicleRow.trim()}`
+      : null,
+    data.modificationsField22?.trim(),
+    data.ownerNotes?.trim(),
+    markingNote ? `Kennzeichnung: ${markingNote}` : null,
+    data.vin?.trim() ? `VIN: ${data.vin.trim()}` : null,
     data.certificateNumber
       ? `Gutachten-Nr.: ${data.certificateNumber.trim()}`
       : null,
@@ -193,6 +348,11 @@ export function gutachtenToAnalyzeFields(
       ? `Prüforganisation: ${data.testOrganization.trim()}`
       : null,
   ].filter(Boolean);
+
+  const vehicleApprovals = [
+    data.matchedVehicleRow?.trim(),
+    data.vehicleMatchNotes?.trim(),
+  ].filter(Boolean) as string[];
 
   return {
     vendor: data.testOrganization?.trim() || null,
@@ -202,12 +362,12 @@ export function gutachtenToAnalyzeFields(
     summary: gutachtenTitle(data),
     lineItems: null,
     kbaNumber: data.certificateNumber?.trim() || null,
-    vehicleApprovals: data.vehicleMatchNotes?.trim()
-      ? [data.vehicleMatchNotes.trim()]
-      : null,
+    vehicleApprovals:
+      vehicleApprovals.length > 0 ? [...new Set(vehicleApprovals)] : null,
     authority: data.testOrganization?.trim() || null,
-    conditions: null,
-    partCategory: data.partName.trim() || null,
+    conditions: data.conditions?.length ? data.conditions : null,
+    partCategory:
+      data.modificationType?.trim() || data.partName.trim() || null,
     notes: notesParts.length > 0 ? notesParts.join("\n\n") : null,
     manufacturer: data.manufacturer?.trim() || null,
     invoiceNumber: data.certificateNumber?.trim() || null,
