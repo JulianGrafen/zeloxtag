@@ -48,14 +48,32 @@ async function loadContributorGrant(
   sessionUserId: string,
 ): Promise<{ active: boolean; canReadHistory: boolean }> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("vehicle_contributors")
-      .select("id, can_read_history")
-      .eq("vehicle_id", vehicleId)
-      .eq("user_id", sessionUserId)
-      .eq("status", "active")
-      .maybeSingle();
+    const queryGrant = async () => {
+      if (isSupabaseAdminConfigured()) {
+        const admin = createAdminClient();
+        return admin
+          .from("vehicle_contributors")
+          .select("id, can_read_history")
+          .eq("vehicle_id", vehicleId)
+          .eq("user_id", sessionUserId)
+          .eq("status", "active")
+          .maybeSingle();
+      }
+      const supabase = await createClient();
+      return supabase
+        .from("vehicle_contributors")
+        .select("id, can_read_history")
+        .eq("vehicle_id", vehicleId)
+        .eq("user_id", sessionUserId)
+        .eq("status", "active")
+        .maybeSingle();
+    };
+
+    const { data, error } = await queryGrant();
+    if (error) {
+      console.error("[vehicle-access] contributor grant lookup failed", error);
+      return { active: false, canReadHistory: false };
+    }
 
     if (!data) {
       return { active: false, canReadHistory: false };

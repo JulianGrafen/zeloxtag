@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import {
   isPlausibleVehicleApproval,
+  normalizeAbeDate,
   normalizeAbeVehicleApprovals,
 } from "@/lib/ocr/abe-parse-schema";
 import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
@@ -34,7 +35,12 @@ import {
   TEILEGUTACHTEN_OWNER_NOTES_MAX_LENGTH,
 } from "@/lib/ocr/teilegutachten-owner-notes-from-text";
 import { normalizeTeilegutachtenMarking } from "@/lib/ocr/teilegutachten-marking-from-text";
+import {
+  normalizeTeilegutachtenModificationType,
+  TEILEGUTACHTEN_MODIFICATION_TYPE_MAX_LENGTH,
+} from "@/lib/ocr/teilegutachten-modification-type-from-text";
 
+export { TEILEGUTACHTEN_MODIFICATION_TYPE_MAX_LENGTH };
 export const TEILEGUTACHTEN_AUFLAGEN_MAX_LENGTH = 2_400;
 
 /**
@@ -56,11 +62,18 @@ export const TeilegutachtenLlmPayloadSchema = z
     documentType: z.literal("Teilegutachten"),
     /** Gutachtennummer, e.g. "14-00123-CP-GBM". */
     certificateNumber: z.string().trim().min(1).max(120).nullable(),
+    /** Ausstellungs-/Gutachtendatum from the document header (YYYY-MM-DD). */
+    issueDate: z.string().trim().min(1).max(32).nullable(),
     manufacturer: z.string().trim().min(1).max(120).nullable(),
     /** Part family, e.g. "Sonderfahrwerksfedern". */
     partCategory: z.string().trim().min(1).max(120).nullable(),
-    /** Art der Umrüstung — document header field, e.g. "Sportfahrwerk". */
-    modificationType: z.string().trim().min(1).max(120).nullable(),
+    /** Art der Umrüstung — full header block, may span multiple lines. */
+    modificationType: z
+      .string()
+      .trim()
+      .min(1)
+      .max(TEILEGUTACHTEN_MODIFICATION_TYPE_MAX_LENGTH)
+      .nullable(),
     /** Exact part type / model id, e.g. "Eibach 21-85-041-01-VA". */
     partType: z.string().trim().min(1).max(160).nullable(),
     /**
@@ -115,9 +128,15 @@ export const TeilegutachtenExtractionSchema = z
   .object({
     documentType: z.literal("Teilegutachten"),
     certificateNumber: z.string().trim().min(1).max(120).nullable(),
+    issueDate: z.string().trim().min(1).max(32).nullable(),
     manufacturer: z.string().trim().min(1).max(120).nullable(),
     partCategory: z.string().trim().min(1).max(120).nullable(),
-    modificationType: z.string().trim().min(1).max(120).nullable(),
+    modificationType: z
+      .string()
+      .trim()
+      .min(1)
+      .max(TEILEGUTACHTEN_MODIFICATION_TYPE_MAX_LENGTH)
+      .nullable(),
     partType: z.string().trim().min(1).max(160).nullable(),
     physicalMarking: z.string().trim().min(1).max(500).nullable(),
     markingType: z.string().trim().min(1).max(200).nullable(),
@@ -161,6 +180,7 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
     required: [
       "documentType",
       "certificateNumber",
+      "issueDate",
       "manufacturer",
       "partCategory",
       "modificationType",
@@ -190,6 +210,11 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
         description:
           'Gutachtennummer / certificate number, e.g. "14-00123-CP-GBM".',
       },
+      issueDate: {
+        type: ["string", "null"],
+        description:
+          'Ausstellungs-/Gutachtendatum from the document header as YYYY-MM-DD (e.g. "2021-03-15"). Not the upload/scan date.',
+      },
       manufacturer: {
         type: ["string", "null"],
         description: 'Part manufacturer / Herstellerzeichen.',
@@ -202,7 +227,7 @@ export const TEILEGUTACHTEN_JSON_SCHEMA = {
       modificationType: {
         type: ["string", "null"],
         description:
-          'Art der Umrüstung from the document header — verbatim, e.g. "Sonderfahrwerksfedern", "Abgasanlage", "Sportfahrwerk".',
+          'Art der Umrüstung from the document header — copy the COMPLETE block verbatim, including every listed modification when multiple lines or bullet points appear. Preserve line breaks. Do NOT truncate or summarize.',
       },
       partType: {
         type: ["string", "null"],
@@ -393,9 +418,12 @@ export function normalizeTeilegutachtenExtraction(
   const normalized: TeilegutachtenExtraction = {
     documentType: "Teilegutachten",
     certificateNumber: normalizeOptionalText(fields.certificateNumber, 120),
+    issueDate: normalizeAbeDate(fields.issueDate),
     manufacturer: normalizeOptionalText(fields.manufacturer, 120),
     partCategory: normalizeOptionalText(fields.partCategory, 120),
-    modificationType: normalizeOptionalText(fields.modificationType, 120),
+    modificationType: normalizeTeilegutachtenModificationType(
+      fields.modificationType,
+    ),
     partType: normalizeOptionalText(fields.partType, 160),
     markingType: marking.markingType,
     markingNumber: marking.markingNumber,
@@ -422,6 +450,7 @@ export function emptyTeilegutachtenLlmPayload(): TeilegutachtenLlmPayload {
   return {
     documentType: "Teilegutachten",
     certificateNumber: null,
+    issueDate: null,
     manufacturer: null,
     partCategory: null,
     modificationType: null,
@@ -504,6 +533,7 @@ export function teilegutachtenVehicleApprovals(
 /** Review form state → extraction shape (for syncing Freigaben from tables). */
 export type TeilegutachtenReviewSource = {
   certificateNumber: string | null;
+  issueDate: string | null;
   manufacturer: string | null;
   partCategory: string | null;
   modificationType: string | null;
@@ -533,9 +563,12 @@ export function teilegutachtenReviewToExtraction(
   return {
     documentType: "Teilegutachten",
     certificateNumber: review.certificateNumber?.trim() || null,
+    issueDate: normalizeAbeDate(review.issueDate),
     manufacturer: review.manufacturer?.trim() || null,
     partCategory: review.partCategory?.trim() || null,
-    modificationType: review.modificationType?.trim() || null,
+    modificationType: normalizeTeilegutachtenModificationType(
+      review.modificationType,
+    ),
     partType: review.partType?.trim() || null,
     markingType: marking.markingType,
     markingNumber: marking.markingNumber,
@@ -670,7 +703,7 @@ export function teilegutachtenToAnalyzeFields(
 
   return normalizeTextParseResult({
     vendor: extracted.partType ?? extracted.partCategory,
-    date: null,
+    date: normalizeAbeDate(extracted.issueDate),
     amount: null,
     category: "abe",
     summary:

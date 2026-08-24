@@ -34,6 +34,7 @@ export default async function ServiceInspectionsPage({
     ownerUserId: result.vehicle!.user_id,
     tagUuid: result.tag.uuid,
     feature: FEATURE.DOCUMENT_VAULT,
+    isContributor: access.isContributor && !access.isOwner,
     children: (
       <ServiceInspectionsView
         tagUuid={result.tag.uuid}

@@ -86,8 +86,8 @@ export const invoiceTextParseSchema = z.object({
   authority: z.string().trim().min(1).max(120).nullable(),
   /** ABE Auflagen / conditions — full wording, not summaries. */
   conditions: z.array(z.string().trim().min(1).max(2400)).max(40).nullable(),
-  /** Part family label: Aerodynamik, Räder, Fahrwerk, Abgasanlage, … */
-  partCategory: z.string().trim().min(1).max(120).nullable(),
+  /** Part family label, or Teilegutachten Art der Umrüstung (may be multi-line). */
+  partCategory: z.string().trim().min(1).max(2_000).nullable(),
   /** Longer freigabe description for ABE detail. */
   notes: z.string().trim().min(1).max(500).nullable(),
   /** ABE part manufacturer / brand (e.g. AutoExe, Milltek). */
@@ -387,7 +387,7 @@ export function normalizeTextParseResult(
     vehicleApprovals: normalizeStringList(fields.vehicleApprovals, 120),
     authority: fields.authority?.trim().slice(0, 120) || null,
     conditions: normalizeStringList(fields.conditions, 1200, 40),
-    partCategory: fields.partCategory?.trim().slice(0, 120) || null,
+    partCategory: fields.partCategory?.trim().slice(0, 2_000) || null,
     notes: fields.notes?.trim().slice(0, 500) || null,
     manufacturer: fields.manufacturer?.trim().slice(0, 120) || null,
     invoiceNumber: fields.invoiceNumber?.trim().slice(0, 80) || null,

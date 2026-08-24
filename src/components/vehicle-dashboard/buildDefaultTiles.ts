@@ -3,6 +3,7 @@ import type {
   DashboardTileConfig,
   VehicleDashboardData,
 } from "./types";
+import { formatTuevYearMonth } from "@/lib/documents/format";
 
 const BERLIN: Intl.DateTimeFormatOptions = {
   day: "2-digit",
@@ -41,11 +42,7 @@ function inspectionMeta(data: VehicleDashboardData): DashboardTileConfig["meta"]
         ? "Heute fällig"
         : `Noch ${days} Tage`);
 
-  const formatted = new Date(
-    inspection.nextDate.length === 10
-      ? `${inspection.nextDate}T12:00:00`
-      : inspection.nextDate,
-  ).toLocaleDateString("de-DE", BERLIN);
+  const formatted = formatTuevYearMonth(inspection.nextDate);
 
   return {
     subtitle: `${formatted} · ${countdown}`,

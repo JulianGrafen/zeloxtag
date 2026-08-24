@@ -8,6 +8,12 @@ import {
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import {
+  enrichTeilegutachtenModificationTypeFromOcr,
+} from "@/lib/ocr/teilegutachten-modification-type-from-text";
+import {
+  enrichTeilegutachtenIssueDateFromOcr,
+} from "@/lib/ocr/teilegutachten-issue-date-from-text";
+import {
   formatAbeVehicleContextLabel,
   type AbeVehicleContext,
 } from "@/lib/validations/abeSchema";
@@ -53,8 +59,9 @@ export function buildTeilegutachtenSystemPrompt(
     "",
     "Extract these fields:",
     '- "certificateNumber" — Gutachtennummer, e.g. "14-00123-CP-GBM".',
+    '- "issueDate" — Ausstellungs-/Gutachtendatum from the document header as YYYY-MM-DD. Not today\'s date.',
     '- "manufacturer" — part manufacturer / Herstellerzeichen.',
-    '- "modificationType" — Art der Umrüstung from the document header (verbatim).',
+    '- "modificationType" — Art der Umrüstung from the document header. Copy the COMPLETE block verbatim, including every listed modification when multiple lines or bullet points appear. Preserve line breaks. Do NOT truncate.',
     '- "partCategory" — optional Bauteil / Bezeichnung when separate from Art der Umrüstung.',
     '- "partType" — exact part model / type id.',
     '- "markingType" — Art der Kennzeichnung, verbatim (e.g. "Aufdruck", "Eingegossen"). CRITICAL.',
@@ -148,12 +155,12 @@ export class TeilegutachtenExtractionService {
       ? [
           "German Teilegutachten § 19 Abs. 3 document.",
           `TARGET VEHICLE: ${formatAbeVehicleContextLabel(vehicleContext!)}`,
-          "Extract certificateNumber, part fields, markingType, markingNumber,",
+          "Extract certificateNumber, issueDate, part fields, markingType, markingNumber,",
           "Verwendungsbereich (compatibilityTable), Auflagen, ownerNotes, technicalDataTable, match status.",
         ]
       : [
           "German Teilegutachten § 19 Abs. 3 document.",
-          "Extract certificateNumber, manufacturer, modificationType, partCategory, partType,",
+          "Extract certificateNumber, manufacturer, issueDate, modificationType, partCategory, partType,",
           "markingType, markingNumber, testingOrganization, compatibilityTable, auflagen, ownerNotes, technicalDataTable.",
           "Set userVehicleMatchStatus and matchedVehicleRow to null.",
         ];
@@ -221,14 +228,14 @@ export class TeilegutachtenExtractionService {
       ? [
           "German Teilegutachten § 19 Abs. 3 OCR (Markdown).",
           `TARGET VEHICLE: ${formatAbeVehicleContextLabel(vehicleContext!)}`,
-          "Extract certificateNumber, part fields, markingType (Art der Kennzeichnung), markingNumber (Kennzeichnungsnummer),",
+          "Extract certificateNumber, issueDate, part fields, markingType (Art der Kennzeichnung), markingNumber (Kennzeichnungsnummer),",
           "Verwendungsbereich (compatibilityTable / verwendungsbereich), Auflagen (auflagen), Hinweise für den Fahrzeughalter (ownerNotes), Technische Daten (technicalDataTable), match status, matchedVehicleRow.",
           "",
           windowText,
         ]
       : [
           "German Teilegutachten § 19 Abs. 3 OCR (Markdown).",
-          "Extract certificateNumber, manufacturer, modificationType (Art der Umrüstung), partCategory, partType,",
+          "Extract certificateNumber, manufacturer, issueDate, modificationType (Art der Umrüstung), partCategory, partType,",
           "markingType (Art der Kennzeichnung), markingNumber (Kennzeichnungsnummer), testingOrganization,",
           "compatibilityTable, verwendungsbereich, auflagen, ownerNotes, technicalDataTable.",
           "Set userVehicleMatchStatus and matchedVehicleRow to null.",
@@ -256,7 +263,13 @@ export class TeilegutachtenExtractionService {
       throw new TextParseError(`Teilegutachten extract failed: ${message}`);
     }
 
-    return this.normalizeExtracted(completion, withContext, vehicleContext);
+    return enrichTeilegutachtenIssueDateFromOcr(
+      enrichTeilegutachtenModificationTypeFromOcr(
+        await this.normalizeExtracted(completion, withContext, vehicleContext),
+        windowText,
+      ),
+      windowText,
+    );
   }
 
   private normalizeExtracted(

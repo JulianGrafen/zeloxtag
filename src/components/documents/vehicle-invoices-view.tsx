@@ -12,6 +12,7 @@ import {
   formatDocumentDateCompact,
   sumInvoiceAmounts,
 } from "@/lib/documents/format";
+import { filterInvoiceReceiptDocuments } from "@/lib/documents/invoice-receipts";
 import {
   INVOICE_LIST_CATEGORIES,
   INVOICE_LIST_CATEGORY_LABELS,
@@ -48,10 +49,7 @@ export function VehicleInvoicesView({
 
   const invoices = useMemo(
     () =>
-      documents
-        .filter((doc) => doc.type === "invoice")
-        .slice()
-        .sort((a, b) => {
+      filterInvoiceReceiptDocuments(documents).slice().sort((a, b) => {
           const aDate = a.date ?? a.created_at;
           const bDate = b.date ?? b.created_at;
           return bDate.localeCompare(aDate);

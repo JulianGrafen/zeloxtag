@@ -74,6 +74,7 @@ export default async function VehicleDocumentsPage({
       ownerUserId={result.vehicle!.user_id}
       tagUuid={result.tag.uuid}
       feature={FEATURE.DOCUMENT_VAULT}
+      isContributor={access.isContributor && !access.isOwner}
     >
       {view}
     </ProFeatureGate>

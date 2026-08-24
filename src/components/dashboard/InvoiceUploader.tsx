@@ -23,6 +23,7 @@ import { CameraCapture } from "@/components/documents/camera-capture";
 import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard";
 import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
 import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
+import { TeilegutachtenUploadWizard } from "@/components/documents/teilegutachten-upload-wizard";
 import { BackNav } from "@/components/layout/back-nav";
 import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
@@ -516,7 +517,7 @@ export function InvoiceUploader({
   const isGutachtenFamilyUpload =
     isAbeUpload && !isEinzelabnahmeUpload && !isTeilegutachtenUpload;
   const isMultiPageGutachtenUpload =
-    isGutachtenFamilyUpload || isTeilegutachtenUpload;
+    isGutachtenFamilyUpload;
   const isTuevUpload =
     scanDef?.ocrDocumentType === "tuev" ||
     (resolvedLockCategory && resolvedCategory === "tuev");
@@ -538,8 +539,23 @@ export function InvoiceUploader({
     );
   }
 
+  if (isTeilegutachtenUpload) {
+    return (
+      <TeilegutachtenUploadWizard
+        vehicleId={vehicleId}
+        tagUuid={tagUuid}
+        vehicleLabel={vehicleLabel}
+        vehicleContext={vehicleContext}
+        successHref={successHref}
+        onBack={onBack}
+        backHref={resolvedBackHref}
+        backLabel={backLabel}
+      />
+    );
+  }
+
   // Plain ABE uploads use the data-hunter wizard (crop targeted sections).
-  // Teilegutachten / Einzelabnahme / EG-BE keep the generic multi-page scanner.
+  // Einzelabnahme / EG-BE keep the generic multi-page scanner.
   if (isGutachtenFamilyUpload) {
     return (
       <AbeDataHunterWizard
@@ -931,7 +947,7 @@ export function InvoiceUploader({
       formData.set("type", "abe");
       formData.set("category", "abe");
       formData.set("vendor", review.partType?.trim() ?? storedTitle);
-      formData.set("date", localDateIso());
+      formData.set("date", normalizeDocumentDateIso(review.issueDate) ?? localDateIso());
       formData.set("amount", "");
       formData.set("lineItems", "");
       formData.set("kbaNumber", certificateNumber);

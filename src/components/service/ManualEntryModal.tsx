@@ -22,6 +22,8 @@ interface ManualEntryModalProps {
   onClose: () => void;
   /** Prefill category when opened from Öl-Wechsel tile. */
   initialServiceType?: ManualServiceEntryType;
+  /** Schrauber copy — emphasize receipt photo. */
+  isContributor?: boolean;
 }
 
 function todayIsoDate(): string {
@@ -38,6 +40,7 @@ export function ManualEntryModal({
   open,
   onClose,
   initialServiceType = "service",
+  isContributor = false,
 }: ManualEntryModalProps) {
   const router = useRouter();
   const [serviceType, setServiceType] =
@@ -48,6 +51,7 @@ export function ManualEntryModal({
   const [details, setDetails] = useState("");
   const [vendor, setVendor] = useState("");
   const [notes, setNotes] = useState("");
+  const [receiptPhoto, setReceiptPhoto] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -56,6 +60,7 @@ export function ManualEntryModal({
     if (!open) return;
     setServiceType(initialServiceType);
     setDate(todayIsoDate());
+    setReceiptPhoto(null);
     setError(null);
     setSuccess(null);
   }, [open, initialServiceType]);
@@ -98,6 +103,9 @@ export function ManualEntryModal({
       formData.set("notes", notes);
       if (serviceType === "oil_change") {
         formData.set("entryType", "oil_change");
+      }
+      if (receiptPhoto) {
+        formData.set("photo", receiptPhoto);
       }
 
       const result = await createManualVehicleEntry(formData);
@@ -153,8 +161,9 @@ export function ManualEntryModal({
         </div>
 
         <p className="mb-4 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Service, Ölwechsel oder Wartung ohne KI-Scan festhalten — kostenlos
-          für alle Nutzer.
+          {isContributor
+            ? "Service oder Reparatur eintragen — optional mit Foto des Belegs. Kostenlos, ohne KI-Scan."
+            : "Service, Ölwechsel oder Wartung ohne KI-Scan festhalten — kostenlos für alle Nutzer."}
         </p>
 
         {error ? (
@@ -255,6 +264,23 @@ export function ManualEntryModal({
               className="claim-input w-full"
               placeholder="optional"
             />
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+              Beleg-Foto
+            </span>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              className="claim-input w-full text-[0.82rem]"
+              onChange={(event) => {
+                setReceiptPhoto(event.target.files?.[0] ?? null);
+              }}
+            />
+            <span className="block text-[0.75rem] text-[color:var(--vd-muted)]">
+              Optional — Foto oder PDF des Werkstattbelegs
+            </span>
           </label>
 
           <label className="block space-y-1.5">

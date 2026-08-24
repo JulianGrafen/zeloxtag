@@ -18,6 +18,8 @@ import {
   filterOilChangeDocuments,
   latestOilChangeIsoDate,
 } from "@/lib/documents/oil-changes";
+import { filterAbeFamilyDocuments } from "@/lib/documents/abe-family-documents";
+import { filterInvoiceReceiptDocuments, isInvoiceReceiptDocument } from "@/lib/documents/invoice-receipts";
 import { dokumenteLabel, belegeLabel } from "@/lib/i18n/pluralize-de";
 import {
   filterManualVehicleEntries,
@@ -87,14 +89,14 @@ export function TagDashboardView({
   onSilhouetteProxyLoad,
 }: TagDashboardViewProps) {
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
-  const invoiceCount = documents.filter((doc) => doc.type === "invoice").length;
-  const abeCount = documents.filter((doc) => doc.type === "abe").length;
+  const invoiceCount = filterInvoiceReceiptDocuments(documents).length;
+  const abeCount = filterAbeFamilyDocuments(documents).length;
   const tuevCount = documents.filter((doc) => doc.type === "tuev").length;
   const serviceCount = filterServiceInspectionDocuments(documents).length;
   const manualEntries = filterManualVehicleEntries(documents);
   const manualEntryCount = manualEntries.length;
   const umbauCount = documents.filter(
-    (doc) => doc.type === "invoice" && isTuningLikeCategory(doc.category),
+    (doc) => isInvoiceReceiptDocument(doc) && isTuningLikeCategory(doc.category),
   ).length + manualEntries.filter((doc) => doc.category === "tuning").length;
   const oilChangeCount = filterOilChangeDocuments(documents).length;
   const timelineEventCount = buildTimelineFromDocuments(documents).length;
@@ -157,7 +159,9 @@ export function TagDashboardView({
           ...tile.meta,
           href: `/v/${tagUuid}/dokumente?type=abe`,
           subtitle:
-            abeCount > 0 ? dokumenteLabel(abeCount) : "Noch keine ABEs",
+            abeCount > 0
+              ? dokumenteLabel(abeCount)
+              : "ABE · Teilegutachten · Einzelabnahme",
         },
       };
     }
@@ -358,7 +362,13 @@ export function TagDashboardView({
         onSilhouetteProxyLoad={onSilhouetteProxyLoad}
       />
       {canScan ? (
-        <DashboardScanFab tagUuid={tagUuid} onOpenScanner={onOpenScanner} />
+        <DashboardScanFab
+          tagUuid={tagUuid}
+          onOpenScanner={onOpenScanner}
+          scanLabel={
+            isContributor && !isOwner ? "Beleg scannen" : "Dokument scannen"
+          }
+        />
       ) : null}
       {canScan ? (
         <ManualEntryModal
@@ -366,6 +376,7 @@ export function TagDashboardView({
           vehicleId={vehicle.id}
           open={manualEntryOpen}
           onClose={() => setManualEntryOpen(false)}
+          isContributor={isContributor && !isOwner}
         />
       ) : null}
     </div>

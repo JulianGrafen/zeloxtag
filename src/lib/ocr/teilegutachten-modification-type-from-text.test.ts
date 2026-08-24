@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  enrichTeilegutachtenModificationTypeFromOcr,
   extractTeilegutachtenModificationTypeFromText,
   mergeTeilegutachtenModificationType,
 } from "@/lib/ocr/teilegutachten-modification-type-from-text";
+import type { TeilegutachtenExtraction } from "@/lib/validations/teilegutachtenSchema";
 
 describe("extractTeilegutachtenModificationTypeFromText", () => {
   it("parses inline Art der Umrüstung with colon", () => {
@@ -31,14 +33,29 @@ Hersteller Eibach
     );
   });
 
+  it("parses the complete multi-line block until the next header", () => {
+    const text = `
+Art der Umrüstung
+Sportfahrwerk / Tieferlegung
+Abgasananlage
+Sportlenkrad
+Hersteller: Milltek
+Typ: MS-123
+`;
+
+    expect(extractTeilegutachtenModificationTypeFromText(text)).toBe(
+      "Sportfahrwerk / Tieferlegung\nAbgasananlage\nSportlenkrad",
+    );
+  });
+
   it("parses pipe-table style OCR rows", () => {
     const text = `
-| Art der Umrüstung | Abgasananlage |
+| Art der Umrüstung | Abgasanlage |
 | Hersteller | Milltek |
 `;
 
     expect(extractTeilegutachtenModificationTypeFromText(text)).toBe(
-      "Abgasananlage",
+      "Abgasanlage",
     );
   });
 
@@ -52,18 +69,66 @@ Hersteller Eibach
 });
 
 describe("mergeTeilegutachtenModificationType", () => {
-  it("prefers LLM value over heuristic", () => {
+  it("prefers LLM value when it is longer than heuristic", () => {
     expect(
       mergeTeilegutachtenModificationType(
-        "Leistungssteigerung",
+        "Leistungssteigerung\nAbgasananlage",
         "Sportfahrwerk",
       ),
-    ).toBe("Leistungssteigerung");
+    ).toBe("Leistungssteigerung\nAbgasananlage");
   });
 
   it("falls back to heuristic when LLM value is empty", () => {
     expect(
       mergeTeilegutachtenModificationType(null, "  Sonderfahrwerksfedern "),
     ).toBe("Sonderfahrwerksfedern");
+  });
+
+  it("prefers the longer OCR block when LLM truncated", () => {
+    expect(
+      mergeTeilegutachtenModificationType(
+        "Sportfahrwerk",
+        "Sportfahrwerk / Tieferlegung\nAbgasananlage",
+      ),
+    ).toBe("Sportfahrwerk / Tieferlegung\nAbgasananlage");
+  });
+});
+
+describe("enrichTeilegutachtenModificationTypeFromOcr", () => {
+  const base: TeilegutachtenExtraction = {
+    documentType: "Teilegutachten",
+    certificateNumber: "TG-1",
+      issueDate: null,
+    manufacturer: "Eibach",
+    partCategory: null,
+    modificationType: "Sportfahrwerk",
+    partType: null,
+    physicalMarking: null,
+    markingType: null,
+    markingNumber: null,
+    requiresPhysicalInspection: true,
+    testingOrganization: "TÜV",
+    userVehicleMatchStatus: null,
+    verwendungsbereich: null,
+    auflagen: null,
+    matchedVehicleRow: null,
+    compatibilityTable: null,
+    technicalDataTable: null,
+    ownerNotes: null,
+  };
+
+  it("extends truncated LLM modificationType from OCR text", () => {
+    const ocr = `
+Art der Umrüstung
+Sportfahrwerk / Tieferlegung
+Abgasananlage
+Hersteller: Eibach
+`;
+
+    const enriched = enrichTeilegutachtenModificationTypeFromOcr(base, ocr);
+
+    expect(enriched.modificationType).toBe(
+      "Sportfahrwerk / Tieferlegung\nAbgasananlage",
+    );
   });
 });

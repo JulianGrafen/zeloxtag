@@ -10,12 +10,14 @@ interface DashboardScanFabProps {
   onOpenScanner?: () => void;
   /** Secondary action — manual entry without receipt. */
   onManualEntry?: () => void;
+  scanLabel?: string;
 }
 
 export function DashboardScanFab({
   tagUuid,
   onOpenScanner,
   onManualEntry,
+  scanLabel = "Dokument scannen",
 }: DashboardScanFabProps) {
   return (
     <div
@@ -33,7 +35,7 @@ export function DashboardScanFab({
               className="claim-cta shadow-[var(--vd-shadow)]"
             >
               <Plus className="h-4 w-4" aria-hidden />
-              Dokument scannen
+              {scanLabel}
             </PressableButton>
           ) : (
             <PressableLink
@@ -42,7 +44,7 @@ export function DashboardScanFab({
               className="claim-cta shadow-[var(--vd-shadow)]"
             >
               <Plus className="h-4 w-4" aria-hidden />
-              Dokument scannen
+              {scanLabel}
             </PressableLink>
           )}
         </div>

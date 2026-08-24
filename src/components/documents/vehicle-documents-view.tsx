@@ -17,6 +17,11 @@ import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-discl
 import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-view";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
+import {
+  filterAbeFamilyDocumentsByKind,
+  resolveAbeFamilyKind,
+  type AbeFamilyKind,
+} from "@/lib/documents/abe-family-documents";
 import { displayAbeDocumentTitle } from "@/lib/documents/abe-title";
 import { documentDeleteConfirmMessage } from "@/lib/documents/constants";
 import {
@@ -29,15 +34,19 @@ import {
 } from "@/lib/documents/format";
 import type { InvoiceListCategory } from "@/lib/documents/invoice-categories";
 import {
-  collectFilterValues,
   matchesSearchQuery,
-  shortFilterChipLabel,
 } from "@/lib/documents/list-search";
 import { eintraegeLabel } from "@/lib/i18n/pluralize-de";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import type { Document, DocumentType } from "@/types/database";
 
-const ALL_PART_CATEGORY = "all";
+const ALL_ABE_KIND = "all";
+
+const ABE_KIND_LABELS: Record<AbeFamilyKind, string> = {
+  abe: "ABE",
+  teilegutachten: "Teilegutachten",
+  einzelabnahme: "Einzelabnahme",
+};
 
 interface VehicleDocumentsViewProps {
   tagUuid: string;
@@ -56,7 +65,7 @@ interface VehicleDocumentsViewProps {
 const FILTERS: Array<{ id: DocumentType | "all"; label: string }> = [
   { id: "all", label: "Alle" },
   { id: "invoice", label: "Rechnungen" },
-  { id: "abe", label: "ABE" },
+  { id: "abe", label: "Gutachten" },
   { id: "tuev", label: "TÜV" },
   { id: "other", label: "Andere" },
 ];
@@ -76,37 +85,45 @@ export function VehicleDocumentsView({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
-  const [partCategoryId, setPartCategoryId] = useState(ALL_PART_CATEGORY);
+  const [abeKindId, setAbeKindId] = useState<string>(ALL_ABE_KIND);
 
   const typed = useMemo(
     () => filterDocumentsByType(documents, filterType),
     [documents, filterType],
   );
 
-  const partCategoryChips = useMemo(() => {
+  const abeKindChips = useMemo(() => {
     if (filterType !== "abe") return [];
+    const counts: Record<AbeFamilyKind, number> = {
+      abe: 0,
+      teilegutachten: 0,
+      einzelabnahme: 0,
+    };
+    for (const doc of typed) {
+      const kind = resolveAbeFamilyKind(doc);
+      if (kind) counts[kind] += 1;
+    }
     return [
-      { id: ALL_PART_CATEGORY, label: "Alle", count: typed.length },
-      ...collectFilterValues(typed.map((doc) => doc.part_category)).map(
-        (chip) => ({
-          ...chip,
-          title: chip.label,
-          label: shortFilterChipLabel(chip.label),
-        }),
-      ),
+      { id: ALL_ABE_KIND, label: "Alle", count: typed.length },
+      ...Object.entries(ABE_KIND_LABELS).map(([id, label]) => ({
+        id,
+        label,
+        count: counts[id as AbeFamilyKind],
+      })),
     ];
   }, [filterType, typed]);
 
-  const filtered = useMemo(() => {
-    return typed.filter((doc) => {
-      if (
-        filterType === "abe" &&
-        partCategoryId !== ALL_PART_CATEGORY &&
-        (doc.part_category?.trim() || "") !== partCategoryId
-      ) {
-        return false;
-      }
-      return matchesSearchQuery(
+  const { filtered, filterBaseCount } = useMemo(() => {
+    const byKind =
+      filterType === "abe"
+        ? filterAbeFamilyDocumentsByKind(
+            typed,
+            abeKindId === ALL_ABE_KIND ? "all" : (abeKindId as AbeFamilyKind),
+          )
+        : typed;
+
+    const result = byKind.filter((doc) =>
+      matchesSearchQuery(
         query,
         doc.title,
         doc.manufacturer,
@@ -117,10 +134,13 @@ export function VehicleDocumentsView({
         doc.notes,
         doc.category,
         documentTypeLabel(doc.type),
+        approvalKindLabel(doc.approval_fields),
         ...(doc.vehicle_approvals ?? []),
-      );
-    });
-  }, [typed, filterType, partCategoryId, query]);
+      ),
+    );
+
+    return { filtered: result, filterBaseCount: byKind.length };
+  }, [typed, filterType, abeKindId, query]);
 
   const invoiceSum = sumInvoiceAmounts(
     filterType === "all"
@@ -129,9 +149,9 @@ export function VehicleDocumentsView({
   );
 
   const searchResultLabel =
-    filtered.length === typed.length
+    filtered.length === filterBaseCount && !query.trim()
       ? undefined
-      : `${filtered.length} von ${typed.length} Treffern`;
+      : `${filtered.length} von ${filterBaseCount} Treffern`;
 
   if (filterType === "invoice") {
     return (
@@ -201,10 +221,16 @@ export function VehicleDocumentsView({
               ZeloxTag
             </p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-              Dokumente
+              {filterType === "abe"
+                ? "ABE & Gutachten"
+                : filterType === "tuev"
+                  ? "TÜV / HU"
+                  : "Dokumente"}
             </h1>
             <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {vehicleLabel} · {eintraegeLabel(filtered.length)}
+              {filterType === "abe"
+                ? `${vehicleLabel} · ABE, Teilegutachten & Einzelabnahmen · ${eintraegeLabel(filtered.length)}`
+                : `${vehicleLabel} · ${eintraegeLabel(filtered.length)}`}
             </p>
             {invoiceSum > 0 ? (
               <p className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
@@ -262,30 +288,32 @@ export function VehicleDocumentsView({
                 ? "Prüfstelle, Titel, Notiz…"
                 : "Titel, Hersteller, Kategorie…"
           }
-          chips={filterType === "abe" ? partCategoryChips : undefined}
-          activeChipId={partCategoryId}
-          onChipChange={filterType === "abe" ? setPartCategoryId : undefined}
+          chips={filterType === "abe" ? abeKindChips : undefined}
+          activeChipId={abeKindId}
+          onChipChange={setAbeKindId}
           resultLabel={searchResultLabel}
         />
 
         <section aria-label="Dokumentliste" className="space-y-2">
           {filtered.length === 0 ? (
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
-              {typed.length > 0 && (query.trim() || partCategoryId !== ALL_PART_CATEGORY) ? (
+              {typed.length > 0 &&
+              (query.trim() ||
+                (filterType === "abe" && abeKindId !== ALL_ABE_KIND)) ? (
                 "Keine Treffer für diese Suche / Filter."
               ) : filterType === "abe" ? (
                 <div className="space-y-2">
-                  <p>Noch keine ABE in dieser Kategorie.</p>
+                  <p>Noch kein Gutachten hinterlegt.</p>
                   <p className="text-[0.82rem] leading-relaxed">
-                    Pro Upload immer nur die ABE für{" "}
+                    Hier gehören{" "}
+                    <span className="font-medium text-[color:var(--vd-text)]">
+                      ABE, Teilegutachten und Einzelabnahmen
+                    </span>
+                    . Pro Upload immer nur{" "}
                     <span className="font-medium text-[color:var(--vd-text)]">
                       ein Bauteil
                     </span>
-                    — und bitte{" "}
-                    <span className="font-medium text-[color:var(--vd-text)]">
-                      alle Seiten
-                    </span>{" "}
-                    dieses Gutachtens scannen.
+                    — bitte alle Seiten des Dokuments scannen.
                   </p>
                 </div>
               ) : (

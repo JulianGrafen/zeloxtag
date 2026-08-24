@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth/vehicle-write-access";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import { FEATURE } from "@/lib/permissions/feature-access";
-import { assertOwnerFeature } from "@/lib/permissions/require-feature";
+import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -63,8 +63,8 @@ export async function persistOcrInvoice(input: {
   if (!writeAccess.ok || !writeAccess.ownerUserId) {
     throw new OcrPersistError(writeAccessErrorMessage(writeAccess));
   }
-  const vault = await assertOwnerFeature(
-    writeAccess.ownerUserId,
+  const vault = await assertVehicleDocumentWrite(
+    writeAccess,
     FEATURE.SCAN_AI_RECEIPT,
   );
   if (!vault.ok) {

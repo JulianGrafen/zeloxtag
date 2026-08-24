@@ -1,3 +1,7 @@
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export type VehicleWriteAccess = {
@@ -28,31 +32,53 @@ export function writeAccessErrorMessage(access: VehicleWriteAccess): string {
   return access.message?.trim() || "Kein Schreibzugriff auf dieses Fahrzeug.";
 }
 
-/**
- * Whether the session user may write documents for this vehicle.
- * Identity + role only — Pro features are gated via `assertOwnerFeature`.
- */
-export async function getVehicleWriteAccess(
+async function resolveVehicleWriteAccessFromDb(
   vehicleId: string,
   userId: string,
 ): Promise<VehicleWriteAccess> {
-  if (!vehicleId || !userId) {
-    return denied();
-  }
+  const readVehicle = async () => {
+    if (isSupabaseAdminConfigured()) {
+      const admin = createAdminClient();
+      return admin
+        .from("vehicles")
+        .select("id, user_id")
+        .eq("id", vehicleId)
+        .maybeSingle();
+    }
+    const supabase = await createClient();
+    return supabase
+      .from("vehicles")
+      .select("id, user_id")
+      .eq("id", vehicleId)
+      .maybeSingle();
+  };
 
-  let supabase;
-  try {
-    supabase = await createClient();
-  } catch (error) {
-    console.error("[vehicle-write-access] createClient failed", error);
-    return denied({ message: "Datenbankverbindung fehlgeschlagen." });
-  }
+  const readContributorGrant = async (resolvedVehicleId: string) => {
+    if (isSupabaseAdminConfigured()) {
+      const admin = createAdminClient();
+      return admin
+        .from("vehicle_contributors")
+        .select("id")
+        .eq("vehicle_id", resolvedVehicleId)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+    }
+    const supabase = await createClient();
+    return supabase
+      .from("vehicle_contributors")
+      .select("id")
+      .eq("vehicle_id", resolvedVehicleId)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+  };
 
-  const { data: vehicle } = await supabase
-    .from("vehicles")
-    .select("id, user_id")
-    .eq("id", vehicleId)
-    .maybeSingle();
+  const { data: vehicle, error: vehicleError } = await readVehicle();
+  if (vehicleError) {
+    console.error("[vehicle-write-access] vehicle lookup failed", vehicleError);
+    return denied({ message: "Fahrzeug konnte nicht geladen werden." });
+  }
 
   if (!vehicle?.id || !vehicle.user_id) {
     return denied();
@@ -62,13 +88,17 @@ export async function getVehicleWriteAccess(
   let asContributor = false;
 
   if (!asOwner) {
-    const { data: grant } = await supabase
-      .from("vehicle_contributors")
-      .select("id")
-      .eq("vehicle_id", vehicle.id)
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .maybeSingle();
+    const { data: grant, error: grantError } = await readContributorGrant(
+      vehicle.id,
+    );
+    if (grantError) {
+      console.error("[vehicle-write-access] contributor lookup failed", grantError);
+      return denied({
+        ownerUserId: vehicle.user_id,
+        vehicleId: vehicle.id,
+        message: "Schrauber-Zugriff konnte nicht geprüft werden.",
+      });
+    }
     asContributor = Boolean(grant);
   }
 
@@ -86,6 +116,26 @@ export async function getVehicleWriteAccess(
     ownerUserId: vehicle.user_id,
     vehicleId: vehicle.id,
   };
+}
+
+/**
+ * Whether the session user may write documents for this vehicle.
+ * Identity + role only — Pro features are gated via `assertVehicleDocumentWrite`.
+ */
+export async function getVehicleWriteAccess(
+  vehicleId: string,
+  userId: string,
+): Promise<VehicleWriteAccess> {
+  if (!vehicleId || !userId) {
+    return denied();
+  }
+
+  try {
+    return await resolveVehicleWriteAccessFromDb(vehicleId, userId);
+  } catch (error) {
+    console.error("[vehicle-write-access] lookup failed", error);
+    return denied({ message: "Datenbankverbindung fehlgeschlagen." });
+  }
 }
 
 /** Contributors may only persist invoice-type documents. */

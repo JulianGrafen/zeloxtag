@@ -25,6 +25,7 @@ export type ScanType = (typeof SCAN_TYPES)[number];
 export const SCHRAUBER_SCAN_TYPES: readonly ScanType[] = [
   "service",
   "invoice",
+  "repair",
 ];
 
 export type ScanTypeDefinition = {
@@ -108,7 +109,7 @@ export const SCAN_TYPE_DEFINITIONS: Record<ScanType, ScanTypeDefinition> = {
     approvalKind: "teilegutachten",
     documentType: "abe",
     heading: "Teilegutachten scannen",
-    subheading: "Verwendungsbereich & Abnahmeauflagen",
+    subheading: "Geführter Scan · 4 Abschnitte",
     successTypeQuery: "abe",
   },
   einzelabnahme: {

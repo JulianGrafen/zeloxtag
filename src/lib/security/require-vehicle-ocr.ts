@@ -9,7 +9,7 @@ import {
   FEATURE,
   type FeatureFlag,
 } from "@/lib/permissions/feature-access";
-import { ownerHasFeature } from "@/lib/permissions/require-feature";
+import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 
 import { subscriptionRequiredResponse } from "./api-guard";
 
@@ -70,25 +70,8 @@ export async function requireVehicleOcrAccess(
     };
   }
 
-  let hasFeature = false;
-  try {
-    hasFeature = await ownerHasFeature(access.ownerUserId, feature);
-  } catch (error) {
-    console.error("[requireVehicleOcrAccess] feature gate failed", error);
-    return {
-      ok: false,
-      response: NextResponse.json(
-        {
-          ok: false,
-          error: "Mitgliedschaft konnte nicht geprüft werden.",
-          code: "config",
-        },
-        { status: 503 },
-      ),
-    };
-  }
-
-  if (!hasFeature) {
+  const featureCheck = await assertVehicleDocumentWrite(access, feature);
+  if (!featureCheck.ok) {
     return { ok: false, response: subscriptionRequiredResponse() };
   }
 

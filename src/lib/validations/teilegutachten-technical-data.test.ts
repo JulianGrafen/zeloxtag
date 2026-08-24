@@ -47,6 +47,7 @@ describe("teilegutachtenTechnicalSpecs", () => {
     const extracted = normalizeTeilegutachtenExtraction({
       documentType: "Teilegutachten",
       certificateNumber: "TG-TECH-1",
+      issueDate: null,
       manufacturer: "Eibach",
       partCategory: "Federn",
       modificationType: null,

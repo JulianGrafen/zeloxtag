@@ -9,7 +9,7 @@ import {
 } from "@/lib/auth/vehicle-write-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { FEATURE } from "@/lib/permissions/feature-access";
-import { assertOwnerFeature } from "@/lib/permissions/require-feature";
+import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import {
   getMockUploadedDocuments,
@@ -176,8 +176,8 @@ export async function updateDocumentFields(
     return { status: "error", message: writeAccessErrorMessage(writeAccess) };
   }
   if (writeAccess.ownerUserId) {
-    const vault = await assertOwnerFeature(
-      writeAccess.ownerUserId,
+    const vault = await assertVehicleDocumentWrite(
+      writeAccess,
       FEATURE.DOCUMENT_VAULT,
     );
     if (!vault.ok) {

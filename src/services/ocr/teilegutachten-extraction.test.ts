@@ -21,6 +21,7 @@ describe("buildTeilegutachtenSystemPrompt", () => {
     expect(prompt).toContain("Einzelabnahme");
     expect(prompt).toContain("Kennzeichnung");
     expect(prompt).toContain("modificationType");
+    expect(prompt).toContain("issueDate");
     expect(prompt).toContain("Art der Umrüstung");
     expect(prompt).toContain("auflagen");
     expect(prompt).toContain("verwendungsbereich");
@@ -39,10 +40,37 @@ describe("buildTeilegutachtenSystemPrompt", () => {
 });
 
 describe("normalizeTeilegutachtenExtraction", () => {
+  it("maps issueDate to analyze date", () => {
+    const extracted = normalizeTeilegutachtenExtraction({
+      documentType: "Teilegutachten",
+      certificateNumber: "TG-9010",
+      issueDate: "15.03.2021",
+      manufacturer: "Eibach",
+      partCategory: null,
+      modificationType: null,
+      markingType: null,
+      markingNumber: null,
+      partType: null,
+      physicalMarking: null,
+      requiresPhysicalInspection: true,
+      testingOrganization: "TÜV",
+      userVehicleMatchStatus: null,
+      verwendungsbereich: null,
+      ownerNotes: null,
+      auflagen: null,
+      matchedVehicleRow: null,
+      compatibilityTable: null,
+    });
+
+    const fields = teilegutachtenToAnalyzeFields(extracted);
+    expect(fields.date).toBe("2021-03-15");
+  });
+
   it("maps modificationType to analyze partCategory", () => {
     const extracted = normalizeTeilegutachtenExtraction({
       documentType: "Teilegutachten",
       certificateNumber: "TG-9010",
+      issueDate: null,
       manufacturer: "Eibach",
       partCategory: "Tieferlegungsfedern VA",
       modificationType: "Sonderfahrwerksfedern",
@@ -68,6 +96,7 @@ describe("normalizeTeilegutachtenExtraction", () => {
     const extracted = normalizeTeilegutachtenExtraction({
       documentType: "Teilegutachten",
       certificateNumber: "TG-9011",
+      issueDate: null,
       manufacturer: "Eibach",
       partCategory: null,
       modificationType: null,
@@ -94,6 +123,7 @@ describe("normalizeTeilegutachtenExtraction", () => {
     const result = normalizeTeilegutachtenExtraction({
       documentType: "Teilegutachten",
       certificateNumber: "14-00123-CP-GBM",
+      issueDate: null,
       manufacturer: "Eibach",
       partCategory: "Sonderfahrwerksfedern",
       modificationType: null,
@@ -122,6 +152,7 @@ describe("normalizeTeilegutachtenExtraction", () => {
     const result = normalizeTeilegutachtenExtraction({
       documentType: "Teilegutachten",
       certificateNumber: "TG-8821",
+      issueDate: null,
       manufacturer: null,
       partCategory: null,
       modificationType: null,
@@ -147,6 +178,7 @@ describe("normalizeTeilegutachtenExtraction", () => {
     const result = normalizeTeilegutachtenExtraction({
       documentType: "Teilegutachten",
       certificateNumber: "TG-8821",
+      issueDate: null,
       manufacturer: null,
       partCategory: null,
       modificationType: null,
@@ -321,6 +353,7 @@ describe("teilegutachten mappers", () => {
   const sample = normalizeTeilegutachtenExtraction({
     documentType: "Teilegutachten",
     certificateNumber: "14-00123-CP-GBM",
+      issueDate: null,
     manufacturer: "Eibach",
     partCategory: "Sonderfahrwerksfedern",
     modificationType: null,
@@ -363,6 +396,7 @@ describe("teilegutachten mappers", () => {
     const extracted = normalizeTeilegutachtenExtraction({
       documentType: "Teilegutachten",
       certificateNumber: "TG-9001",
+      issueDate: null,
       manufacturer: "Eibach",
       partCategory: "Federn",
       modificationType: null,
@@ -424,6 +458,7 @@ describe("teilegutachten mappers", () => {
     const extracted = normalizeTeilegutachtenExtraction({
       documentType: "Teilegutachten",
       certificateNumber: "TG-9002",
+      issueDate: null,
       manufacturer: null,
       partCategory: null,
       modificationType: null,

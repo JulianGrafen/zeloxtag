@@ -4,6 +4,7 @@ import {
   formatCompactGermanDate,
   formatDocumentDate,
   formatDocumentDateCompact,
+  formatTuevYearMonth,
   normalizeDocumentDateIso,
 } from "@/lib/documents/format";
 
@@ -34,5 +35,11 @@ describe("document date display", () => {
   it("formats long DE dates from raw OCR text", () => {
     expect(formatDocumentDate("22.08.2026")).toBe("22.08.2026");
     expect(formatDocumentDate("12. Aug 2026")).toBe("12.08.2026");
+  });
+
+  it("formats next HU as month and year only", () => {
+    expect(formatTuevYearMonth("2028-05")).toBe("Mai 2028");
+    expect(formatTuevYearMonth("2028-05-01")).toBe("Mai 2028");
+    expect(formatTuevYearMonth("2028-05-17")).toBe("Mai 2028");
   });
 });

@@ -8,11 +8,13 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { GermanDateInput } from "@/components/documents/german-date-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { titleFromAbeFields } from "@/lib/documents/abe-title";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import { normalizeDocumentDateIso } from "@/lib/documents/format";
 import { VerwendungsbereichTable } from "@/components/documents/verwendungsbereich-table";
 import { CollapsibleAuflagenList } from "@/components/documents/collapsible-auflagen-list";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
@@ -35,6 +37,8 @@ import {
 
 export type TeilegutachtenReviewFields = {
   certificateNumber: string | null;
+  /** Ausstellungs-/Gutachtendatum → documents.date */
+  issueDate: string | null;
   manufacturer: string | null;
   /** Art der Umrüstung — stored in documents.part_category. */
   modificationType: string | null;
@@ -244,6 +248,7 @@ export function fieldsToTeilegutachtenReview(
       fields.invoiceNumber?.trim() ||
       tgData?.documentNumber?.trim() ||
       null,
+    issueDate: normalizeDocumentDateIso(fields.date ?? "") ?? null,
     manufacturer: fields.manufacturer?.trim() || null,
     modificationType: fields.partCategory?.trim() || null,
     partCategory: null,
@@ -395,6 +400,12 @@ export function TeilegutachtenOverview({
         </div>
 
         <div className="mt-4 space-y-3">
+          <Field label="Ausstellungsdatum">
+            <GermanDateInput
+              value={review.issueDate}
+              onChange={(iso) => patch("issueDate", iso)}
+            />
+          </Field>
           <Field label="Hersteller">
             <Input
               value={review.manufacturer ?? ""}
@@ -414,12 +425,14 @@ export function TeilegutachtenOverview({
             />
           </Field>
           <Field label="Art der Umrüstung">
-            <Input
+            <textarea
               value={review.modificationType ?? ""}
               onChange={(event) =>
                 patch("modificationType", event.target.value || null)
               }
-              placeholder="z. B. Sonderfahrwerksfedern, Sportfahrwerk"
+              placeholder={"z. B. Sonderfahrwerksfedern\nSportfahrwerk / Tieferlegung\nAbgasananlage"}
+              rows={5}
+              className="claim-input min-h-[6rem] w-full resize-y text-[0.88rem] leading-relaxed whitespace-pre-wrap"
             />
           </Field>
           <Field label="Bauteil / Bezeichnung">

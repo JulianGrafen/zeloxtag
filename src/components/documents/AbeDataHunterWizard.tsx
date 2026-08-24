@@ -18,7 +18,6 @@ import {
   AbeKbaHero,
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
-import { AbeVehicleTableWatermark } from "@/components/documents/abe-vehicle-table-watermark";
 import { InBrowserCamera, type GuideFrameType } from "@/components/documents/in-browser-camera";
 import {
   ABE_CAPTURE_JPEG_QUALITY,
@@ -88,7 +87,6 @@ import {
 } from "@/lib/validations/abeSchema";
 import {
   ABE_HUNT_FIELD_SCAN_HINTS,
-  ABE_HUNT_FIELD_WATERMARKS,
   ABE_REQUIRED_FIELD_LABELS,
   abeHuntFieldDisplayLabel,
   ABE_CORE_HUNT_FIELD_KEYS,
@@ -326,17 +324,17 @@ function KbaHuntOverlay({
           />
           {!detectedKba
             ? createPortal(
-                <div className="pointer-events-none fixed inset-x-0 top-[calc(max(0.2rem,env(safe-area-inset-top))+2.1rem)] z-[10050] px-2">
+                <div className="pointer-events-none fixed inset-0 z-[10050] flex flex-col items-center justify-center px-4 pt-[max(3.25rem,calc(env(safe-area-inset-top)+2.75rem))] pb-[max(7.5rem,calc(env(safe-area-inset-bottom)+6.5rem))]">
                   <Input
                     inputMode="numeric"
                     placeholder="KBA manuell (mind. 5 Ziffern)"
                     value={manualValue}
                     onChange={(event) => onManualChange(event.target.value)}
                     aria-invalid={manualTooShort}
-                    className="pointer-events-auto mx-auto h-8 max-w-[min(100%,260px)] border-white/15 bg-black/45 px-2.5 text-[0.78rem] font-semibold text-white placeholder:text-white/35 backdrop-blur-[2px]"
+                    className="pointer-events-auto h-10 w-full max-w-[min(100%,280px)] border-white/15 bg-black/45 px-3 text-center text-[0.88rem] font-semibold text-white placeholder:text-white/35 backdrop-blur-[2px]"
                   />
                   {manualTooShort ? (
-                    <p className="pointer-events-none mx-auto mt-1 max-w-[min(100%,260px)] text-center text-[0.62rem] font-medium text-amber-200">
+                    <p className="pointer-events-none mt-2 max-w-[min(100%,280px)] text-center text-[0.68rem] font-medium text-amber-200">
                       Mindestens {MIN_MANUAL_ABE_KBA_DIGITS} Ziffern eingeben
                     </p>
                   ) : null}
@@ -771,11 +769,6 @@ function auflagenTextScanHint(
   if (analyzing) return ANALYZING_SCAN_HINT;
   if (nextCode) return `Fotografiere den Auflagen-Text zu ${nextCode}.`;
   return "Weitere Auflagen-Abschnitte fotografieren.";
-}
-
-function auflagenScanWatermark(nextCode: string | null): string {
-  if (!nextCode) return "Auflagen-Text\nwörtlich…";
-  return `Auflage\n${nextCode}`;
 }
 
 const ABE_CAMERA_PROPS = {
@@ -2970,7 +2963,6 @@ export function AbeDataHunterWizard({
           hint={auflagenTextScanHint(analyzing, nextAuflagenCode)}
           guideFrame="section"
           guideSectionAnchor="center"
-          guideWatermark={auflagenScanWatermark(nextAuflagenCode)}
           onCapture={enqueueAuflagenFile}
           onClose={returnToAuflagenDetail}
         />
@@ -3008,7 +3000,6 @@ export function AbeDataHunterWizard({
         <InBrowserCamera
           {...ABE_CAMERA_PROPS}
           hint={kbaScanHint(analyzing)}
-          guideWatermark={ABE_HUNT_FIELD_WATERMARKS.kbaNumber}
           onCapture={enqueueFile}
           onClose={returnToChooser}
         />
@@ -3036,12 +3027,6 @@ export function AbeDataHunterWizard({
   const huntFocusKey = coreComplete
     ? "verkaufsbezeichnung"
     : firstMissingFocusKey(report, null, vehicleContext, coreHuntSkip);
-  const guideWatermark =
-    huntFocusKey === "verkaufsbezeichnung" ? (
-      <AbeVehicleTableWatermark vehicleContext={vehicleContext} />
-    ) : (
-      ABE_HUNT_FIELD_WATERMARKS[huntFocusKey]
-    );
 
   const switchToCameraButton =
     huntMode === "pdf" &&
@@ -3092,7 +3077,6 @@ export function AbeDataHunterWizard({
             ? "center"
             : "top"
         }
-        guideWatermark={guideWatermark}
         onCapture={enqueueFile}
         onClose={returnToChooser}
       />

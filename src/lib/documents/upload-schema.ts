@@ -4,7 +4,7 @@ import { z } from "zod";
 export const UPLOAD_NOTES_MAX = 4_000;
 export const UPLOAD_KBA_NUMBER_MAX = 120;
 export const UPLOAD_AUTHORITY_MAX = 200;
-export const UPLOAD_PART_CATEGORY_MAX = 120;
+export const UPLOAD_PART_CATEGORY_MAX = 2_000;
 
 /**
  * Strict metadata schema for document upload FormData (excluding the file).

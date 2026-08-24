@@ -1,15 +1,33 @@
 import type { Document, DocumentType } from "@/types/database";
 
 import { DOCUMENT_TYPE_LABELS } from "./constants";
+import { filterAbeFamilyDocuments } from "./abe-family-documents";
+import { filterInvoiceReceiptDocuments } from "./invoice-receipts";
 
-/** TÜV next-HU month (YYYY-MM) → e.g. "Mai 2028". */
-export function formatTuevYearMonth(ym: string | null): string {
-  if (!ym?.trim()) return "—";
-  if (!/^\d{4}-\d{2}$/.test(ym)) return ym;
-  const [yearStr, monthStr] = ym.split("-");
-  const year = Number.parseInt(yearStr!, 10);
-  const month = Number.parseInt(monthStr!, 10);
-  if (!year || month < 1 || month > 12) return ym;
+/** TÜV next-HU month (YYYY-MM or YYYY-MM-DD) → e.g. "Mai 2028". */
+export function formatTuevYearMonth(value: string | null | undefined): string {
+  if (!value?.trim()) return "—";
+  const trimmed = value.trim();
+
+  const isoDate = trimmed.match(/^(\d{4})-(\d{2})-\d{2}$/);
+  if (isoDate) {
+    const year = Number.parseInt(isoDate[1]!, 10);
+    const month = Number.parseInt(isoDate[2]!, 10);
+    const label = formatTuevYearMonthLabel(year, month);
+    return label ?? trimmed;
+  }
+
+  if (!/^\d{4}-\d{2}$/.test(trimmed)) return trimmed;
+  const [yearStr, monthStr] = trimmed.split("-");
+  const label = formatTuevYearMonthLabel(
+    Number.parseInt(yearStr!, 10),
+    Number.parseInt(monthStr!, 10),
+  );
+  return label ?? trimmed;
+}
+
+function formatTuevYearMonthLabel(year: number, month: number): string | null {
+  if (!year || month < 1 || month > 12) return null;
   const label = new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString(
     "de-DE",
     { month: "long", year: "numeric", timeZone: "UTC" },
@@ -268,11 +286,13 @@ export function filterDocumentsByType(
   type?: DocumentType | "all",
 ): Document[] {
   if (!type || type === "all") return documents;
+  if (type === "invoice") return filterInvoiceReceiptDocuments(documents);
+  if (type === "abe") return filterAbeFamilyDocuments(documents);
   return documents.filter((doc) => doc.type === type);
 }
 
 export function sumInvoiceAmounts(documents: Document[]): number {
-  return documents
-    .filter((doc) => doc.type === "invoice" && doc.amount !== null)
+  return filterInvoiceReceiptDocuments(documents)
+    .filter((doc) => doc.amount !== null)
     .reduce((sum, doc) => sum + (doc.amount ?? 0), 0);
 }

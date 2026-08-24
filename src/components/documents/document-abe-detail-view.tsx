@@ -250,7 +250,9 @@ export function DocumentAbeDetailView({
             </div>
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                {isEinzelabnahme ? "Ausstellungsdatum" : "Scandatum"}
+                {isEinzelabnahme || isTeilegutachten
+                  ? "Ausstellungsdatum"
+                  : "Scandatum"}
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                 {document.date
@@ -287,7 +289,7 @@ export function DocumentAbeDetailView({
                 <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
                   Art der Umrüstung
                 </dt>
-                <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                <dd className="mt-0.5 whitespace-pre-wrap font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                   {document.part_category}
                 </dd>
               </div>

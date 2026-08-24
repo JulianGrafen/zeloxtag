@@ -127,30 +127,58 @@ async function authorizeDocumentRead(
   const user = await getCurrentUser();
   if (!user) return false;
 
-  const supabase = await createClient();
+  const readVehicle = async () => {
+    if (isSupabaseAdminConfigured()) {
+      const admin = createAdminClient();
+      return admin
+        .from("vehicles")
+        .select("id, user_id")
+        .eq("id", vehicleId)
+        .maybeSingle();
+    }
+    const supabase = await createClient();
+    return supabase
+      .from("vehicles")
+      .select("id, user_id")
+      .eq("id", vehicleId)
+      .maybeSingle();
+  };
 
-  const { data: ownedVehicle } = await supabase
-    .from("vehicles")
-    .select("id, user_id")
-    .eq("id", vehicleId)
-    .maybeSingle();
+  const readGrant = async () => {
+    if (isSupabaseAdminConfigured()) {
+      const admin = createAdminClient();
+      return admin
+        .from("vehicle_contributors")
+        .select("id, can_read_history")
+        .eq("vehicle_id", vehicleId)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .maybeSingle();
+    }
+    const supabase = await createClient();
+    return supabase
+      .from("vehicle_contributors")
+      .select("id, can_read_history")
+      .eq("vehicle_id", vehicleId)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+  };
 
+  const { data: ownedVehicle } = await readVehicle();
   if (!ownedVehicle) return false;
 
   if (ownedVehicle.user_id === user.id) return true;
 
-  const { data: grant } = await supabase
-    .from("vehicle_contributors")
-    .select("id, can_read_history")
-    .eq("vehicle_id", vehicleId)
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .maybeSingle();
-
+  const { data: grant } = await readGrant();
   if (!grant) return false;
 
   const documentId = documentIdFromStoragePath(storagePath);
   if (!documentId) return false;
+
+  const supabase = isSupabaseAdminConfigured()
+    ? createAdminClient()
+    : await createClient();
 
   // Contributor SELECT policy is invoice-only (+ history toggle via RLS).
   let query = supabase

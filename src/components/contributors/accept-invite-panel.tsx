@@ -91,7 +91,9 @@ export function AcceptInvitePanel({
               setMessage(result.message);
               return;
             }
-            router.push(result.tagUuid ? `/v/${result.tagUuid}` : "/auth/continue");
+            router.push(
+              result.tagUuid ? `/v/${result.tagUuid}?scan=1` : "/auth/continue",
+            );
           });
         }}
       >
