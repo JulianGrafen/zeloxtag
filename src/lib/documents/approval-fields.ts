@@ -16,7 +16,9 @@ import {
 } from "@/lib/validations/documentSchemas";
 import {
   VAULT_CATEGORIES,
+  VAULT_DOCUMENT_KINDS,
   type VaultCategory,
+  type VaultDocumentKind,
 } from "@/lib/validations/vaultClassificationSchema";
 import {
   gutachtenExtractionSchema,
@@ -29,6 +31,7 @@ export const GutachtenSchema = gutachtenExtractionSchema;
 export const VaultDocumentSchema = z
   .object({
     category: z.enum(VAULT_CATEGORIES),
+    documentKind: z.enum(VAULT_DOCUMENT_KINDS).nullable().optional(),
   })
   .strict();
 

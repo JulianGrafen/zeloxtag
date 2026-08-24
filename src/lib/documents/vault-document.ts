@@ -23,13 +23,16 @@ import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import type { Document } from "@/types/database";
 
 import { DOCUMENT_BUCKET } from "./constants";
+import { localDateIso, normalizeDocumentDateIso } from "./format";
 import { guardDocumentTitle } from "./guard-document-title";
 import { appendMockUploadedDocument } from "./mock-uploads";
 import type { UploadDocumentResult } from "./upload-document";
 import {
   VAULT_CATEGORIES,
   VAULT_DOCUMENT_TYPE_MARKER,
+  isVaultDocumentKind,
   type VaultCategory,
+  type VaultDocumentKind,
 } from "@/lib/validations/vaultClassificationSchema";
 import type { ApprovalFields } from "./approval-fields";
 
@@ -47,7 +50,15 @@ const saveVaultMetaSchema = z
     documentId: z.string().uuid(),
     title: z.string().trim().min(1).max(160),
     vaultCategory: z.enum(VAULT_CATEGORIES),
+    vaultDocumentKind: z.string().trim().max(32).optional().default(""),
     fileUrl: z.string().trim().min(1).max(2_000),
+    pageCount: z.string().trim().max(8).optional().default(""),
+    date: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$|^$/)
+      .optional()
+      .default(""),
   })
   .strict();
 
@@ -74,12 +85,30 @@ function metaFromSaveFormData(formData: FormData): unknown {
     documentId: String(formData.get("documentId") ?? "").trim(),
     title: String(formData.get("title") ?? "").trim(),
     vaultCategory: String(formData.get("vaultCategory") ?? "").trim(),
+    vaultDocumentKind: String(formData.get("vaultDocumentKind") ?? "").trim(),
     fileUrl: String(formData.get("fileUrl") ?? "").trim(),
+    pageCount: String(formData.get("pageCount") ?? "").trim(),
+    date: String(formData.get("date") ?? "").trim(),
   };
 }
 
-function vaultApprovalFields(category: VaultCategory): ApprovalFields {
-  return { kind: "vault", data: { category } };
+function vaultApprovalFields(
+  category: VaultCategory,
+  documentKind: VaultDocumentKind | null,
+): ApprovalFields {
+  return {
+    kind: "vault",
+    data: {
+      category,
+      documentKind,
+    },
+  };
+}
+
+function parseVaultDocumentKind(raw: string): VaultDocumentKind | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return isVaultDocumentKind(trimmed) ? trimmed : null;
 }
 
 /**
@@ -218,7 +247,15 @@ export async function saveVaultDocument(
 
   const meta = metaParsed.data;
   const title = guardDocumentTitle(meta.title, "Gutachten / ABE");
-  const approvalFields = vaultApprovalFields(meta.vaultCategory);
+  const documentKind = parseVaultDocumentKind(meta.vaultDocumentKind);
+  const approvalFields = vaultApprovalFields(meta.vaultCategory, documentKind);
+  const pageCountParsed = Number.parseInt(meta.pageCount, 10);
+  const pageCount =
+    Number.isFinite(pageCountParsed) && pageCountParsed > 0
+      ? pageCountParsed
+      : null;
+  const scanDate =
+    normalizeDocumentDateIso(meta.date) ?? localDateIso();
   const now = new Date().toISOString();
 
   const { isConfigured } = getSupabaseEnv();
@@ -247,14 +284,14 @@ export async function saveVaultDocument(
       conditions: null,
       part_category: meta.vaultCategory,
       notes: null,
-      page_count: null,
+      page_count: pageCount,
       manufacturer: null,
       invoice_number: null,
       mileage_km: null,
       technical_specs: null,
       approval_fields: approvalFields,
       amount: null,
-      date: null,
+      date: scanDate,
       created_at: now,
       show_on_public_showcase: false,
     };
@@ -321,8 +358,9 @@ export async function saveVaultDocument(
     category: VAULT_DOCUMENT_TYPE_MARKER,
     part_category: meta.vaultCategory,
     approval_fields: approvalFields,
+    page_count: pageCount,
     amount: null,
-    date: null,
+    date: scanDate,
   };
 
   const insertAttempts: Array<Record<string, unknown>> = [

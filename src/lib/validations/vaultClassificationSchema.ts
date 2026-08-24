@@ -22,6 +22,34 @@ export const VAULT_CATEGORY_LABELS: Record<VaultCategory, string> = {
 /** Stored on `documents.category` to mark Tresor uploads. */
 export const VAULT_DOCUMENT_TYPE_MARKER = "GUTACHTEN_ABE" as const;
 
+/** Optional ABE/Gutachten subtype stored on Tresor uploads. */
+export const VAULT_DOCUMENT_KINDS = [
+  "abe",
+  "teilegutachten",
+  "einzelabnahme",
+  "pruefung192",
+  "egbe",
+  "gutachten",
+] as const;
+
+export type VaultDocumentKind = (typeof VAULT_DOCUMENT_KINDS)[number];
+
+export const VAULT_DOCUMENT_KIND_LABELS: Record<VaultDocumentKind, string> = {
+  abe: "ABE",
+  teilegutachten: "Teilegutachten",
+  einzelabnahme: "Einzelabnahme",
+  pruefung192: "§19(2) Prüfung",
+  egbe: "EG-BE",
+  gutachten: "Gutachten",
+};
+
+export function isVaultDocumentKind(
+  value: string | null | undefined,
+): value is VaultDocumentKind {
+  if (!value) return false;
+  return (VAULT_DOCUMENT_KINDS as readonly string[]).includes(value);
+}
+
 export const vaultClassificationSchema = z
   .object({
     title: z
@@ -35,6 +63,12 @@ export const vaultClassificationSchema = z
     category: z
       .enum(VAULT_CATEGORIES)
       .describe("Broad category of the part for filtering."),
+    documentKind: z
+      .enum(VAULT_DOCUMENT_KINDS)
+      .nullable()
+      .describe(
+        "Document type if recognizable (ABE, Teilegutachten, Einzelabnahme, etc.) — null if unknown.",
+      ),
   })
   .strict();
 
@@ -46,7 +80,7 @@ export const VAULT_CLASSIFICATION_JSON_SCHEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["title", "category"],
+    required: ["title", "category", "documentKind"],
     properties: {
       title: {
         type: "string",
@@ -57,6 +91,12 @@ export const VAULT_CLASSIFICATION_JSON_SCHEMA = {
         type: "string",
         enum: [...VAULT_CATEGORIES],
       },
+      documentKind: {
+        type: ["string", "null"],
+        enum: [...VAULT_DOCUMENT_KINDS, null],
+        description:
+          "Document type: abe, teilegutachten, einzelabnahme, pruefung192, egbe, gutachten — or null.",
+      },
     },
   },
 } as const;
@@ -65,6 +105,7 @@ const VaultClassificationLlmSchema = z
   .object({
     title: z.string(),
     category: z.enum(VAULT_CATEGORIES),
+    documentKind: z.enum(VAULT_DOCUMENT_KINDS).nullable(),
   })
   .strict();
 
@@ -79,6 +120,7 @@ export function normalizeVaultClassification(
   return vaultClassificationSchema.parse({
     title,
     category: parsed.category,
+    documentKind: parsed.documentKind ?? null,
   });
 }
 

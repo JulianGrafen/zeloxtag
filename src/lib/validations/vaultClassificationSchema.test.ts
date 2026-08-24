@@ -11,10 +11,26 @@ describe("vaultClassificationSchema", () => {
       normalizeVaultClassification({
         title: "  KW V3 Gewindefahrwerk  ",
         category: "FAHRWERK",
+        documentKind: "teilegutachten",
       }),
     ).toEqual({
       title: "KW V3 Gewindefahrwerk",
       category: "FAHRWERK",
+      documentKind: "teilegutachten",
+    });
+  });
+
+  it("defaults missing documentKind to null", () => {
+    expect(
+      normalizeVaultClassification({
+        title: "Maxton Heckspoiler",
+        category: "AERODYNAMIK_KAROSSERIE",
+        documentKind: null,
+      }),
+    ).toEqual({
+      title: "Maxton Heckspoiler",
+      category: "AERODYNAMIK_KAROSSERIE",
+      documentKind: null,
     });
   });
 

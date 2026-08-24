@@ -41,6 +41,7 @@ import {
   isVaultDocument,
   VAULT_FILTER_CHIPS,
   vaultCategoryLabel,
+  vaultDocumentKindLabel,
 } from "@/lib/documents/vault-documents";
 import type { VaultCategory } from "@/lib/validations/vaultClassificationSchema";
 import { eintraegeLabel } from "@/lib/i18n/pluralize-de";
@@ -166,6 +167,7 @@ export function VehicleDocumentsView({
         doc.vendor,
         doc.part_category,
         vaultCategoryLabel(doc),
+        vaultDocumentKindLabel(doc),
         doc.kba_number,
         doc.authority,
         doc.notes,
@@ -460,7 +462,14 @@ function DocumentRow({
 
   const typeLabel =
     document.type === "abe" && isVaultDocument(document)
-      ? `Tresor · ${vaultCategoryLabel(document) ?? "ABE"}`
+      ? (() => {
+          const kindLabel = vaultDocumentKindLabel(document);
+          const categoryLabel = vaultCategoryLabel(document);
+          const parts = ["Tresor"];
+          if (kindLabel) parts.push(kindLabel);
+          if (categoryLabel) parts.push(categoryLabel);
+          return parts.join(" · ");
+        })()
       : document.type === "abe" &&
           document.approval_fields &&
           document.approval_fields.kind !== "abe"

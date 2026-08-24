@@ -1,9 +1,12 @@
 import type { Document } from "@/types/database";
 import {
   isVaultCategory,
+  isVaultDocumentKind,
   VAULT_CATEGORY_LABELS,
+  VAULT_DOCUMENT_KIND_LABELS,
   VAULT_DOCUMENT_TYPE_MARKER,
   type VaultCategory,
+  type VaultDocumentKind,
 } from "@/lib/validations/vaultClassificationSchema";
 
 export function isVaultDocument(document: Document): boolean {
@@ -26,6 +29,19 @@ export function resolveVaultCategory(document: Document): VaultCategory | null {
 export function vaultCategoryLabel(document: Document): string | null {
   const category = resolveVaultCategory(document);
   return category ? VAULT_CATEGORY_LABELS[category] : null;
+}
+
+export function resolveVaultDocumentKind(
+  document: Document,
+): VaultDocumentKind | null {
+  if (document.approval_fields?.kind !== "vault") return null;
+  const kind = document.approval_fields.data.documentKind;
+  return isVaultDocumentKind(kind) ? kind : null;
+}
+
+export function vaultDocumentKindLabel(document: Document): string | null {
+  const kind = resolveVaultDocumentKind(document);
+  return kind ? VAULT_DOCUMENT_KIND_LABELS[kind] : null;
 }
 
 /** Filter chips for the ABE/Tresor list — short labels for mobile. */

@@ -30,6 +30,20 @@ export function resolveAbeFamilyKind(
   if (document.type !== "abe") return null;
 
   const kind = document.approval_fields?.kind;
+
+  if (kind === "vault") {
+    const vaultKind = document.approval_fields?.data.documentKind;
+    if (
+      vaultKind === "gutachten" ||
+      vaultKind === "teilegutachten" ||
+      vaultKind === "einzelabnahme" ||
+      vaultKind === "pruefung192"
+    ) {
+      return vaultKind;
+    }
+    return "abe";
+  }
+
   if (kind && !ABE_FAMILY_KIND_SET.has(kind)) return null;
   if (
     kind === "gutachten" ||

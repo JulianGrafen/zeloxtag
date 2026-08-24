@@ -21,7 +21,7 @@ import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { GutachtenUploadWizard } from "@/components/documents/gutachten-upload-wizard";
-import { DocumentVaultUpload } from "@/components/documents/document-vault-upload";
+import { VaultUploadWizard } from "@/components/documents/vault-upload-wizard";
 import { AbeDataHunterWizard } from "@/components/documents/AbeDataHunterWizard";
 import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
 import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
@@ -523,7 +523,7 @@ export function InvoiceUploader({
 
   if (isVaultUpload) {
     return (
-      <DocumentVaultUpload
+      <VaultUploadWizard
         vehicleId={vehicleId}
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
