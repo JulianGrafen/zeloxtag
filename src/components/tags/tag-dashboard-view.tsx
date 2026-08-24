@@ -49,6 +49,8 @@ interface TagDashboardViewProps {
   canScan?: boolean;
   isOwner?: boolean;
   isContributor?: boolean;
+  /** Superuser inventory minter — show tile linking to /qr. */
+  showOperatorMinter?: boolean;
   /**
    * Showcase mode: all dashboard tiles link to tag routes; sub-pages load via
    * demo showcase access (read-only, no login).
@@ -79,6 +81,7 @@ export function TagDashboardView({
   canScan = true,
   isOwner = true,
   isContributor = false,
+  showOperatorMinter = false,
   demoMode = false,
   cloudUnlocked = true,
   onOpenScanner,
@@ -137,7 +140,25 @@ export function TagDashboardView({
     nextInspection: deriveNextInspectionFromDocuments(documents),
   };
 
-  const tiles = buildDefaultTiles(data).map((tile) => {
+  const tiles = [
+    ...buildDefaultTiles(data),
+    ...(showOperatorMinter
+      ? [
+          {
+            id: "operator-mint",
+            title: "Tag minten",
+            description: "QR-SVG für Lasergravur",
+            icon: "grid" as const,
+            tone: "accent" as const,
+            featured: true,
+            meta: {
+              href: "/qr",
+              subtitle: "Superuser-Minter",
+            },
+          },
+        ]
+      : []),
+  ].map((tile) => {
     if (tile.id === "invoices") {
       return {
         ...tile,

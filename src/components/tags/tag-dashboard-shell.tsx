@@ -81,6 +81,8 @@ interface TagDashboardShellProps {
   startTour?: boolean;
   /** Vehicle owner's ZeloxTag Pro is active. */
   membershipActive?: boolean;
+  /** Inventory minter tile for configured superuser. */
+  showOperatorMinter?: boolean;
 }
 
 /**
@@ -98,6 +100,7 @@ export function TagDashboardShell({
   initialScanType,
   startTour = false,
   membershipActive = false,
+  showOperatorMinter = false,
 }: TagDashboardShellProps) {
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
@@ -319,6 +322,7 @@ export function TagDashboardShell({
         canScan={canWrite}
         isOwner={isOwner}
         isContributor={isContributor}
+        showOperatorMinter={showOperatorMinter}
         cloudUnlocked={membershipActive}
         onOpenScanner={() => {
           if (!membershipActive) {

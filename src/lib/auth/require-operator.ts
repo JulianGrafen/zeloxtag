@@ -35,23 +35,42 @@ export function isOperatorEmail(email: string | null | undefined): boolean {
   return normalizeEmail(email) === superuser;
 }
 
+export type OperatorDenialCode =
+  | "unauthenticated"
+  | "superuser_not_configured"
+  | "not_superuser"
+  | "mfa_required"
+  | "mfa_unavailable";
+
+export type OperatorAccessResult =
+  | { ok: true; email: string; userId: string }
+  | {
+      ok: false;
+      status: 401 | 403;
+      code: OperatorDenialCode;
+      message: string;
+    };
+
 /**
  * Inventory / QR mint — fail closed unless the session is the sole superuser
  * and MFA is completed (AAL2).
  */
-export async function requireOperator(): Promise<
-  | { ok: true; email: string; userId: string }
-  | { ok: false; status: 401 | 403; message: string }
-> {
+export async function requireOperator(): Promise<OperatorAccessResult> {
   const user = await getCurrentUser();
   if (!user) {
-    return { ok: false, status: 401, message: "Authentication required." };
+    return {
+      ok: false,
+      status: 401,
+      code: "unauthenticated",
+      message: "Authentication required.",
+    };
   }
 
   if (!readSuperuserEmail()) {
     return {
       ok: false,
       status: 403,
+      code: "superuser_not_configured",
       message:
         "Inventory mint is locked. Set ZELOXTAG_SUPERUSER_EMAIL to a single address.",
     };
@@ -61,6 +80,7 @@ export async function requireOperator(): Promise<
     return {
       ok: false,
       status: 403,
+      code: "not_superuser",
       message: "Superuser only — tag minting denied.",
     };
   }
@@ -72,6 +92,7 @@ export async function requireOperator(): Promise<
     return {
       ok: false,
       status: 403,
+      code: "mfa_unavailable",
       message: "MFA status unavailable — operator access denied.",
     };
   }
@@ -79,6 +100,7 @@ export async function requireOperator(): Promise<
     return {
       ok: false,
       status: 403,
+      code: "mfa_required",
       message:
         "Operator MFA required. Enable 2FA under Settings and complete the challenge.",
     };

@@ -6,6 +6,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ScanContent } from "@/components/layout/scan-content";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NetworkMockQr } from "@/components/qr/network-mock-qr";
+import { OperatorAccessDenied } from "@/components/qr/operator-access-denied";
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { requireOperator } from "@/lib/auth/require-operator";
 
 export const metadata: Metadata = {
@@ -15,9 +17,15 @@ export const metadata: Metadata = {
 };
 
 export default async function QrPage() {
+  const user = await getCurrentUser();
   const operator = await requireOperator();
   if (!operator.ok) {
-    redirect(operator.status === 401 ? "/login?next=/qr" : "/dashboard");
+    if (operator.status === 401) {
+      redirect("/login?next=/qr");
+    }
+    return (
+      <OperatorAccessDenied code={operator.code} userEmail={user?.email} />
+    );
   }
 
   return (

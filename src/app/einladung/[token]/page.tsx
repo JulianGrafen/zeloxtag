@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Wrench } from "lucide-react";
 
-import { getInvitePreview } from "@/actions/vehicle-contributors";
+import {
+  acceptSchrauberInvite,
+  getInvitePreview,
+} from "@/actions/vehicle-contributors";
 import { AcceptInvitePanel } from "@/components/contributors/accept-invite-panel";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
@@ -19,7 +23,20 @@ export default async function InvitePage({ params }: InvitePageProps) {
   const { token } = await params;
   const preview = await getInvitePreview(token);
   const user = await getCurrentUser();
-  const loginHref = `/login?next=${encodeURIComponent(`/einladung/${token}`)}`;
+  const invitePath = `/einladung/${token}`;
+  const loginHref = `/?next=${encodeURIComponent(invitePath)}&tab=signup`;
+
+  if (preview.status !== "error" && user) {
+    if (preview.alreadyActive) {
+      redirect(`/v/${preview.tagUuid}?scan=1`);
+    }
+    if (!preview.expired) {
+      const accepted = await acceptSchrauberInvite(token);
+      if (accepted.status === "ok" && accepted.tagUuid) {
+        redirect(`/v/${accepted.tagUuid}?scan=1`);
+      }
+    }
+  }
 
   return (
     <AppShell showNavbar={false}>

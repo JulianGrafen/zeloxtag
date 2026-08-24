@@ -99,21 +99,22 @@ export function LoginForm({
           setMessage(null);
           setInfo(null);
           startTransition(async () => {
+            const destination = nextPath || "/auth/continue";
             if (tab === "signup") {
               const result = await signUpWithPassword(
                 email,
                 password,
-                "/auth/continue",
+                destination,
               );
               if (result.status === "mfa_required") {
                 router.push(
-                  `/login/mfa?next=${encodeURIComponent("/auth/continue")}`,
+                  `/login/mfa?next=${encodeURIComponent(destination)}`,
                 );
                 return;
               }
               if (result.status === "ok") {
                 window.location.assign(
-                  result.redirectTo || "/auth/continue",
+                  result.redirectTo || destination,
                 );
                 return;
               }
@@ -124,11 +125,11 @@ export function LoginForm({
             const result = await signInWithPassword(
               email,
               password,
-              nextPath || "/auth/continue",
+              destination,
             );
             if (result.status === "mfa_required") {
               router.push(
-                `/login/mfa?next=${encodeURIComponent("/auth/continue")}`,
+                `/login/mfa?next=${encodeURIComponent(destination)}`,
               );
               return;
             }

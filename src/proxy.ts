@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import {
   isDemoOrShowcasePath,
+  isGenericPostLoginNext,
+  sanitizePostLoginPath,
 } from "@/lib/auth/post-login-path";
 import {
   isProtectedApiPath,
@@ -100,6 +102,15 @@ export async function proxy(request: NextRequest) {
     !needsMfa &&
     (pathname === "/" || pathname === "/login" || pathname === "/login/mfa")
   ) {
+    const next = request.nextUrl.searchParams.get("next");
+    if (
+      next &&
+      next.startsWith("/") &&
+      !next.startsWith("//") &&
+      !isGenericPostLoginNext(next)
+    ) {
+      return NextResponse.redirect(new URL(sanitizePostLoginPath(next), origin));
+    }
     return NextResponse.redirect(new URL("/auth/continue", origin));
   }
 

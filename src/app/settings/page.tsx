@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
+import { isOperatorEmail } from "@/lib/auth/require-operator";
 import {
   claimMembershipForUser,
   userHasActiveMembership,
@@ -67,6 +68,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const justLinked = linked === "1";
   const checkoutState =
     checkout === "success" || checkout === "cancel" ? checkout : null;
+  const superuser = isOperatorEmail(user.email);
 
   if (token) {
     const result = await claimMembershipForUser(user.id, {
@@ -109,6 +111,27 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         />
 
         <MfaSetupPanel />
+
+        {superuser ? (
+          <section
+            aria-label="Tag-Minter"
+            className="vd-surface-card p-5 shadow-[var(--vd-shadow-sm)]"
+          >
+            <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+              Tag minten
+            </h2>
+            <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Unclaimed QR-Tags erzeugen und SVG für die Lasergravur
+              herunterladen. Erfordert aktive 2FA.
+            </p>
+            <Link
+              href="/qr"
+              className="claim-cta mt-4 inline-flex w-full justify-center no-underline sm:w-auto"
+            >
+              Zum QR-Minter
+            </Link>
+          </section>
+        ) : null}
 
         <section aria-label="Sitzung" className="vd-surface-card p-5 shadow-[var(--vd-shadow-sm)]">
           <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">

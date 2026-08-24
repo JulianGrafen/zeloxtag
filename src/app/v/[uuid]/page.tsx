@@ -11,6 +11,7 @@ import { PublicProfilePrivate } from "@/components/public-showcase/PublicProfile
 import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
 import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { isOperatorEmail } from "@/lib/auth/require-operator";
 import { getTagVehicleAccess, getVehicleAccess } from "@/lib/auth/vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
@@ -270,6 +271,8 @@ export default async function TagScanPage({
       ...result,
       documents: visibleDocuments,
     });
+    const showOperatorMinter =
+      access.isOwner && isOperatorEmail(user?.email ?? null);
 
     return (
       <AppShell showNavbar={false}>
@@ -285,6 +288,7 @@ export default async function TagScanPage({
           initialScanType={openScanner ? (scanType ?? null) : null}
           startTour={startTour}
           membershipActive={membershipActive}
+          showOperatorMinter={showOperatorMinter}
         />
       </AppShell>
     );

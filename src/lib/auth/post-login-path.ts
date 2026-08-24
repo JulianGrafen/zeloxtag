@@ -111,6 +111,12 @@ export async function resolvePostLoginPath(userId: string): Promise<string> {
       void rememberActiveTag(fromSession);
       return sanitizePostLoginPath(fromSession);
     }
+
+    const fromContributor = await resolveViaContributorGrant(userId);
+    if (fromContributor) {
+      void rememberActiveTag(fromContributor);
+      return sanitizePostLoginPath(fromContributor);
+    }
   } catch {
     // Fall through to account hub.
   }
@@ -148,8 +154,12 @@ async function resolveViaUserMetadata(userId: string): Promise<string | null> {
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (!vehicle) return null;
-    return vehiclePath(tag.uuid);
+    if (vehicle) return vehiclePath(tag.uuid);
+
+    const contributor = await isActiveContributor(userId, tag.vehicle_id);
+    if (contributor) return vehiclePath(tag.uuid);
+
+    return null;
   }
 
   // RLS: tags_select_own only returns the row if the vehicle belongs to auth.uid().
@@ -216,6 +226,84 @@ async function resolveViaSessionUser(userId: string): Promise<string | null> {
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
+
+    if (tag?.uuid && typeof tag.uuid === "string") {
+      return vehiclePath(tag.uuid);
+    }
+  }
+
+  return null;
+}
+
+async function isActiveContributor(
+  userId: string,
+  vehicleId: string,
+): Promise<boolean> {
+  if (isSupabaseAdminConfigured()) {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("vehicle_contributors")
+      .select("id")
+      .eq("vehicle_id", vehicleId)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+    return Boolean(data);
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("vehicle_contributors")
+    .select("id")
+    .eq("vehicle_id", vehicleId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+  return Boolean(data);
+}
+
+async function resolveViaContributorGrant(
+  userId: string,
+): Promise<string | null> {
+  const { data: grants, error } = isSupabaseAdminConfigured()
+    ? await createAdminClient()
+        .from("vehicle_contributors")
+        .select("vehicle_id, accepted_at")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .order("accepted_at", { ascending: false })
+        .limit(5)
+    : await (await createClient())
+        .from("vehicle_contributors")
+        .select("vehicle_id, accepted_at")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .order("accepted_at", { ascending: false })
+        .limit(5);
+
+  if (error || !grants?.length) return null;
+
+  for (const grant of grants) {
+    const vehicleId = grant.vehicle_id;
+    if (!vehicleId) continue;
+
+    const { data: tag } = isSupabaseAdminConfigured()
+      ? await createAdminClient()
+          .from("tags")
+          .select("uuid")
+          .eq("vehicle_id", vehicleId)
+          .eq("status", "active")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle()
+      : await (await createClient())
+          .from("tags")
+          .select("uuid")
+          .eq("vehicle_id", vehicleId)
+          .eq("status", "active")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
 
     if (tag?.uuid && typeof tag.uuid === "string") {
       return vehiclePath(tag.uuid);

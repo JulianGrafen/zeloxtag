@@ -145,11 +145,14 @@ export async function signUpWithPassword(
   const siteUrl = await getSiteUrl();
 
   const supabase = await createClient();
+  const redirectNext = isGenericPostLoginNext(next)
+    ? "/auth/continue"
+    : next;
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent("/auth/continue")}`,
+      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(redirectNext)}`,
     },
   });
 
