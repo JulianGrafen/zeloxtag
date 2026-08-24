@@ -363,7 +363,7 @@ export function InBrowserCamera({
         captureStep,
     );
   const shouldShowBriefing = Boolean(
-    resolvedHint && showBriefing && !continuousCapture && !captureStep,
+    resolvedHint && showBriefing && !continuousCapture,
   );
   const [instructionsOpen, setInstructionsOpen] = useState(shouldShowBriefing);
 
@@ -734,7 +734,7 @@ export function InBrowserCamera({
       a4AutoCrop && (guideFrame === "a4" || guideFrame === "table");
     const guideLayout = shouldGuideCrop ? readA4CaptureLayout() : null;
     if (shouldGuideCrop && !guideLayout) {
-      setCameraError(
+      showCaptureRejectMessage(
         "Rahmen nicht bereit — bitte kurz warten und erneut auslösen.",
       );
       return;
@@ -1148,7 +1148,7 @@ export function InBrowserCamera({
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}
-                    {guideLabel && !captureStep ? (
+                    {guideLabel ? (
                       <div className="absolute inset-x-2 bottom-2 flex justify-center">
                         <span className="rounded-lg bg-black/55 px-3 py-1 text-center text-[0.7rem] font-medium leading-snug text-white backdrop-blur-[2px]">
                           {guideLabel}
@@ -1182,7 +1182,7 @@ export function InBrowserCamera({
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}
-                    {guideLabel && !captureStep ? (
+                    {guideLabel ? (
                       <div className="absolute inset-x-2 bottom-3 flex justify-center">
                         <span className="rounded-lg bg-black/55 px-3 py-1.5 text-center text-[0.75rem] font-medium leading-snug text-white backdrop-blur-[2px]">
                           {guideLabel}
@@ -1214,7 +1214,7 @@ export function InBrowserCamera({
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}
-                    {guideLabel && !captureStep ? (
+                    {guideLabel ? (
                       <div className="absolute inset-x-2 bottom-3 flex justify-center">
                         <span className="rounded-lg bg-black/55 px-3 py-1.5 text-center text-[0.75rem] font-medium leading-snug text-white backdrop-blur-[2px]">
                           {guideLabel}

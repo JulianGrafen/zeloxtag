@@ -276,24 +276,28 @@ export function Pruefung192UploadWizard({
   async function runBerichtAnalysis(file: File) {
     try {
       const extracted = await runScopedAnalysis(file, "bericht");
-      if (!extracted) throw new Error("Bericht konnte nicht ausgelesen werden.");
       setState((prev) => ({
         ...prev,
         berichtFile: file,
         draftExtraction: extracted,
         phase: "capture-gutachten",
-        error: null,
+        error: extracted
+          ? null
+          : "Seite gespeichert — Felder konnten nicht vollständig ausgelesen werden.",
       }));
     } catch (err) {
+      const message =
+        err instanceof AnalyzeDocumentError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Untersuchungsbericht konnte nicht ausgelesen werden.";
+
       setState((prev) => ({
         ...prev,
-        phase: "capture-bericht",
-        error:
-          err instanceof AnalyzeDocumentError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : "Untersuchungsbericht konnte nicht ausgelesen werden.",
+        berichtFile: file,
+        phase: "capture-gutachten",
+        error: `${message} — Scan wurde übernommen, Felder im Review prüfen.`,
       }));
     }
   }
@@ -579,11 +583,13 @@ export function Pruefung192UploadWizard({
         ) : null}
         <InBrowserCamera
           title="Untersuchungsbericht fotografieren"
-          hint="Prüfung nach § 19(2) StVZO · Fahrzeugdaten & Ergebnis"
+          hint="Prüfung nach § 19(2) StVZO · Untersuchungsbericht mit Fahrzeugdaten, Ergebnis (z. B. Ohne Mängel), Kennzeichen & VIN"
           captureStep={{ current: 1, total: TOTAL_STEPS }}
           guideFrame="a4"
+          guideFrameDimOutside
           guideSectionAnchor="top"
           guideLabel="Untersuchungsbericht — Prüfung §19(2)"
+          guideWatermark="Prüfung nach § 19(2) StVZO"
           allowPdf
           onCapture={handleBerichtCapture}
           onClose={onBack ?? resetToStart}
@@ -602,11 +608,13 @@ export function Pruefung192UploadWizard({
         ) : null}
         <InBrowserCamera
           title="Gutachten zur Erlangung fotografieren"
-          hint="Daten für die Zulassungsbescheinigung — danach ZB-Tabelle zuschneiden"
+          hint="Gutachten zur Erlangung der Betriebserlaubnis — danach ZB-Tabelle (Felder B, J, E, 2.1 …) zuschneiden"
           captureStep={{ current: 2, total: TOTAL_STEPS }}
           guideFrame="a4"
+          guideFrameDimOutside
           guideSectionAnchor="top"
           guideLabel="Gutachten zur Erlangung der BE"
+          guideWatermark="Daten für die Zulassungsbescheinigung"
           allowPdf
           onCapture={handleGutachtenCapture}
           onClose={() =>
@@ -643,9 +651,10 @@ export function Pruefung192UploadWizard({
         ) : null}
         <InBrowserCamera
           title="Technische Vorschriften · Seite 1"
-          hint="Aufstellung der technischen Vorschriften — Seite 1 von 2"
+          hint="Aufstellung der technischen Vorschriften — Seite 1 von 2 · begutachtete Änderungen"
           captureStep={{ current: 3, total: TOTAL_STEPS }}
           guideFrame="a4"
+          guideFrameDimOutside
           guideSectionAnchor="top"
           guideLabel="Aufstellung techn. Vorschriften S.1"
           allowPdf
@@ -671,6 +680,7 @@ export function Pruefung192UploadWizard({
           hint="Aufstellung — Seite 2 von 2 (optional)"
           captureStep={{ current: 4, total: TOTAL_STEPS }}
           guideFrame="a4"
+          guideFrameDimOutside
           guideSectionAnchor="top"
           guideLabel="Aufstellung techn. Vorschriften S.2"
           allowPdf
