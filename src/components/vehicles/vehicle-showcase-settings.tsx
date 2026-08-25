@@ -269,7 +269,7 @@ export function VehicleShowcaseSettings({
 
     if (enabled) {
       nextIds.add(doc.id);
-      if (positions.length > 0 && (nextLines[doc.id]?.length ?? 0) === 0) {
+      if (positions.length > 0) {
         nextLines[doc.id] = positions.map((item) => item.index);
       }
     } else {
@@ -303,7 +303,11 @@ export function VehicleShowcaseSettings({
       [documentId]: [...current].sort((a, b) => a - b),
     };
 
-    if (enabled) nextIds.add(documentId);
+    if (enabled) {
+      nextIds.add(documentId);
+    } else if (current.size === 0) {
+      nextIds.delete(documentId);
+    }
 
     setSelectedIds(nextIds);
     setLineSelections(nextLines);
@@ -333,14 +337,13 @@ export function VehicleShowcaseSettings({
         </h2>
       </div>
       <p className="mb-4 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Ideal fürs Tuningtreffen: Beim QR-Scan am Motorraum-Tag sehen Besucher
-        Specs (PS, Nm, …), Fotos und ausgewählte Umbauten — ohne Login.
+        QR-Showcase für Besucher — Specs, Fotos und Umbauten.
       </p>
 
       <div className="space-y-3">
         <ToggleRow
           label="Öffentliches Profil"
-          description="Gäste sehen beim QR-Scan (/v/Tag-UUID) das öffentliche Showcase."
+          description="Beim QR-Scan sichtbar"
           checked={isPublic}
           disabled={!canEdit || pending}
           onChange={(value) => {
@@ -350,7 +353,7 @@ export function VehicleShowcaseSettings({
         />
         <ToggleRow
           label="Preise ausblenden"
-          description="Rechnungsbeträge und Teilepreise bleiben auf der öffentlichen Seite verborgen."
+          description="Beträge auf der Public Page verbergen"
           checked={hideFinancials}
           disabled={!canEdit || pending}
           onChange={(value) => {
@@ -367,14 +370,13 @@ export function VehicleShowcaseSettings({
               Sichtbare Inhalte
             </p>
             <p className="mt-1 text-[0.8rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Wähle Umbauten und einzelne Positionen, die auf der öffentlichen
-              Seite erscheinen sollen.
+              Umbauten und Positionen für die Public Page.
             </p>
           </div>
 
           {!hasSelectableDocs ? (
             <p className="rounded-xl border border-dashed border-[color:var(--vd-border)] px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
-              Noch keine Rechnungen oder manuellen Umbauten vorhanden.
+              Noch keine Belege oder Umbauten.
             </p>
           ) : null}
 

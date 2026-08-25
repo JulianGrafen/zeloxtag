@@ -59,4 +59,17 @@ describe("partitionShowcaseSelectableDocuments", () => {
     expect(modifications.map((doc) => doc.id)).toEqual(["doc-1"]);
     expect(invoices.map((doc) => doc.id)).toEqual(["doc-2"]);
   });
+
+  it("treats legacy manual Umbauten without category as modifications", () => {
+    const legacy = baseDoc({
+      id: "legacy-umbau",
+      category: null,
+      title: "Felgen Umbau",
+    });
+
+    expect(isShowcaseModificationDocument(legacy)).toBe(true);
+
+    const { modifications } = partitionShowcaseSelectableDocuments([legacy]);
+    expect(modifications.map((doc) => doc.id)).toEqual(["legacy-umbau"]);
+  });
 });

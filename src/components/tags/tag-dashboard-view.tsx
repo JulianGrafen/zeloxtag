@@ -145,13 +145,13 @@ export function TagDashboardView({
           {
             id: "operator-mint",
             title: "Tag minten",
-            description: "QR-SVG für Lasergravur",
+            description: "QR für Gravur",
             icon: "grid" as const,
             tone: "accent" as const,
             featured: true,
             meta: {
               href: "/qr",
-              subtitle: "Superuser-Minter",
+              subtitle: "Minter",
             },
           },
         ]
@@ -166,7 +166,7 @@ export function TagDashboardView({
           subtitle:
             invoiceCount > 0
               ? belegeLabel(invoiceCount)
-              : "Noch keine Belege",
+              : "Leer",
         },
       };
     }
@@ -180,7 +180,7 @@ export function TagDashboardView({
           subtitle:
             abeCount > 0
               ? dokumenteLabel(abeCount)
-              : "ABE · Teilegutachten · Einzelabnahme",
+              : "Scannen",
         },
       };
     }
@@ -194,7 +194,7 @@ export function TagDashboardView({
           subtitle:
             tuevCount > 0
               ? tile.meta?.subtitle
-              : "TÜV-Bericht scannen",
+              : "Scannen",
         },
       };
     }
@@ -207,8 +207,8 @@ export function TagDashboardView({
           href: `/v/${tagUuid}/service`,
           subtitle:
             serviceCount > 0
-              ? `${serviceCount} Inspektionen`
-              : "Inspektion scannen",
+              ? `${serviceCount} Einträge`
+              : "Scannen",
         },
       };
     }
@@ -221,8 +221,8 @@ export function TagDashboardView({
           href: `/v/${tagUuid}/historie`,
           subtitle:
             timelineEventCount > 0
-              ? `${timelineEventCount} Meilensteine`
-              : "Nach KM-Stand",
+              ? `${timelineEventCount} Events`
+              : "Leer",
         },
       };
     }
@@ -235,8 +235,8 @@ export function TagDashboardView({
           href: `/v/${tagUuid}/eintrag`,
           subtitle:
             manualEntryCount > 0
-              ? `${manualEntryCount} eigene Einträge`
-              : "Wartung oder Tuning notieren",
+              ? `${manualEntryCount} Einträge`
+              : "Neu",
         },
       };
     }
@@ -249,8 +249,8 @@ export function TagDashboardView({
           href: `/v/${tagUuid}/umbauten`,
           subtitle:
             umbauCount > 0
-              ? `${umbauCount} Umbau-Fotos`
-              : "Umbau fotografieren",
+              ? `${umbauCount} Fotos`
+              : "Neu",
         },
       };
     }
@@ -264,8 +264,8 @@ export function TagDashboardView({
           subtitle:
             oilChangeCount > 0
               ? tile.meta?.subtitle ??
-                `${oilChangeCount} Ölwechsel`
-              : "Manuell eintragen oder scannen",
+                `${oilChangeCount} Einträge`
+              : "Eintragen",
         },
       };
     }
@@ -276,7 +276,7 @@ export function TagDashboardView({
         meta: {
           ...tile.meta,
           href: `/v/${tagUuid}/schrauber`,
-          subtitle: "Einladen & verwalten",
+          subtitle: "Verwalten",
         },
       };
     }
@@ -287,13 +287,12 @@ export function TagDashboardView({
       );
       return {
         ...tile,
-        description: `${vehicle.make} · ${vehicle.year}`,
         meta: {
           ...tile.meta,
           href: `/v/${tagUuid}/daten`,
           subtitle:
             filledSpecs > 0
-              ? `${filledSpecs} technische Angaben`
+              ? `${filledSpecs} Felder`
               : vinLabel,
         },
       };
@@ -306,8 +305,8 @@ export function TagDashboardView({
           ...tile.meta,
           href: `/v/${tagUuid}/einstellungen`,
           subtitle: vehicle.is_public
-            ? "Profil ist öffentlich"
-            : "Profil & Exposé",
+            ? "Öffentlich"
+            : "Privat",
         },
       };
     }

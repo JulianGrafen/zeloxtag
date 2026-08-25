@@ -25,10 +25,10 @@ describe("Speedworkz section invoice", () => {
     expect(isWorkshopSectionInvoiceText(SPEEDWORKZ_OCR_TEXT)).toBe(true);
   });
 
-  it("extracts all 8 billable positions from OCR text", () => {
+  it("extracts labor, Ersatzteile subtotal, and Sonstige Kosten from OCR text", () => {
     const items = extractWorkshopSectionLineItems(SPEEDWORKZ_OCR_TEXT);
     expect(items).not.toBeNull();
-    expect(items!).toHaveLength(8);
+    expect(items!).toHaveLength(5);
 
     for (let i = 0; i < SPEEDWORKZ_EXPECTED_LINE_ITEMS.length; i += 1) {
       expect(items![i]!.label).toContain(
@@ -42,6 +42,8 @@ describe("Speedworkz section invoice", () => {
 
     const sum = items!.reduce((acc, item) => acc + item.amount, 0);
     expect(sum).toBeCloseTo(SPEEDWORKZ_NET_SUM, 2);
+    expect(items!.some((item) => item.label === "Ersatzteile")).toBe(true);
+    expect(items!.some((item) => item.label === "Wasserschlauch")).toBe(false);
   });
 
   it("skips description-only labor lines without price", () => {
@@ -67,7 +69,7 @@ describe("Speedworkz section invoice", () => {
 
   it("uses section parser in extractInvoiceLineItemsFromText fallback", () => {
     const items = extractInvoiceLineItemsFromText(SPEEDWORKZ_OCR_TEXT);
-    expect(items).toHaveLength(8);
+    expect(items).toHaveLength(5);
     expect(items![0]!.amount).toBeCloseTo(46.22, 2);
   });
 
@@ -76,13 +78,8 @@ describe("Speedworkz section invoice", () => {
       checksumMode: "standard",
     });
     expect(processed).toHaveLength(8);
-
-    for (let i = 0; i < SPEEDWORKZ_EXPECTED_LINE_ITEMS.length; i += 1) {
-      expect(processed[i]!.gesamtpreis).toBeCloseTo(
-        SPEEDWORKZ_EXPECTED_LINE_ITEMS[i]!.amount,
-        2,
-      );
-    }
+    expect(processed[3]!.gesamtpreis).toBeCloseTo(65.12, 2);
+    expect(processed[6]!.gesamtpreis).toBeCloseTo(28.73, 2);
 
     const sum = processed.reduce((acc, row) => acc + row.gesamtpreis, 0);
     expect(sum).toBeCloseTo(SPEEDWORKZ_NET_SUM, 2);
@@ -117,7 +114,8 @@ describe("Speedworkz section invoice", () => {
       ocrText: SPEEDWORKZ_OCR_TEXT,
     });
 
-    expect(resolved).toHaveLength(8);
+    expect(resolved).toHaveLength(5);
+    expect(resolved!.some((item) => item.label === "Ersatzteile")).toBe(true);
     expect(resolved!.reduce((s, i) => s + i.amount, 0)).toBeCloseTo(
       SPEEDWORKZ_NET_SUM,
       2,

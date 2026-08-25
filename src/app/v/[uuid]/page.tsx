@@ -128,16 +128,11 @@ export async function generateMetadata({
   };
 }
 
-async function renderPublicShowcase(vehicle: Vehicle, tagUuid?: string) {
+async function renderPublicShowcase(vehicle: Vehicle) {
   const documents = await loadPublicShowcaseDocuments(vehicle.id);
   const payload = buildPublicShowcasePayload(vehicle, documents);
 
-  return (
-    <PublicShowcaseView
-      data={payload}
-      dashboardHref={tagUuid ? `/v/${tagUuid}?scan=1` : null}
-    />
-  );
+  return <PublicShowcaseView data={payload} />;
 }
 
 function hasInsiderAccess(access: {
@@ -187,7 +182,7 @@ export default async function TagScanPage({
     }
 
     const slugTagUuid = await getActiveTagUuidForVehicle(vehicle.id);
-    return renderPublicShowcase(vehicle, slugTagUuid ?? undefined);
+    return renderPublicShowcase(vehicle);
   }
 
   const result = entry.result;
@@ -216,7 +211,7 @@ export default async function TagScanPage({
       !wantsDashboard &&
       !hasInsiderAccess(access)
     ) {
-      return renderPublicShowcase(vehicle, tag.uuid);
+      return renderPublicShowcase(vehicle);
     }
 
     if (!access.isOwner && !access.isContributor) {

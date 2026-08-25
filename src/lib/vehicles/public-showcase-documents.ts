@@ -1,6 +1,7 @@
 import {
   isManualVehicleEntry,
   isTuningLikeCategory,
+  parseManualEntryCategory,
 } from "@/lib/documents/manual-entries";
 import type { Document } from "@/types/database";
 
@@ -17,7 +18,10 @@ export function filterPublicShowcaseDocuments(documents: Document[]): Document[]
  * Settings and the public showroom must treat them as modifications, not Rechnungen.
  */
 export function isShowcaseModificationDocument(doc: Document): boolean {
-  return isManualVehicleEntry(doc) && isTuningLikeCategory(doc.category);
+  if (!isManualVehicleEntry(doc)) return false;
+  if (parseManualEntryCategory(doc.category) === "service") return false;
+  // Legacy rows may lack category after minimal DB insert — treat as Umbau.
+  return isTuningLikeCategory(doc.category) || doc.category == null;
 }
 
 /** Invoices + manual tuning entries the owner can opt into the public profile. */

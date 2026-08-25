@@ -244,7 +244,7 @@ describe("extractVehicleModifications", () => {
     expect(mods.map((mod) => mod.partName)).toEqual(["KW V3"]);
   });
 
-  it("does not fall back to the document title when every position is hidden", () => {
+  it("falls back to the document title when every position flag is hidden", () => {
     const mods = extractVehicleModifications(
       [
         baseDoc({
@@ -261,7 +261,8 @@ describe("extractVehicleModifications", () => {
       },
     );
 
-    expect(mods).toHaveLength(0);
+    expect(mods).toHaveLength(1);
+    expect(mods[0]?.partName).toBe("Fahrwerk-Paket");
   });
 
   it("respects documentFilter for public showcase scope", () => {

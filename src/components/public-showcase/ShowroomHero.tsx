@@ -11,13 +11,9 @@ import { showroom } from "./showroom-styles";
 
 type ShowroomHeroProps = {
   profile: PublicShowcaseProfile;
-  dashboardHref?: string | null;
 };
 
-export function ShowroomHero({
-  profile,
-  dashboardHref = null,
-}: ShowroomHeroProps) {
+export function ShowroomHero({ profile }: ShowroomHeroProps) {
   const title = [profile.make, profile.model].filter(Boolean).join(" ");
   const yearLabel = profile.year ? String(profile.year) : null;
 
@@ -31,21 +27,15 @@ export function ShowroomHero({
             fill
             priority
             unoptimized
-            className="object-cover object-center opacity-70"
+            className="object-cover object-center"
             sizes="100vw"
           />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/15" />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black via-black/55 to-transparent"
+          aria-hidden
+        />
       </div>
-
-      {dashboardHref ? (
-        <a
-          href={dashboardHref}
-          className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 inline-flex min-h-11 items-center rounded-full border border-white/20 bg-black/60 px-4 text-[0.78rem] font-medium text-white backdrop-blur-sm"
-        >
-          {dashboardHref.includes("scan=1") ? "Scanner" : "Dashboard"}
-        </a>
-      ) : null}
 
       <div className="relative z-10 flex min-h-[78dvh] flex-col justify-end px-5 pb-8 pt-[max(4.5rem,env(safe-area-inset-top))]">
         <p className={showroom.kicker}>{profile.make || "ZeloxTag"}</p>

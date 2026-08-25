@@ -3,12 +3,10 @@ import {
   isManualVehicleEntry,
   isTuningLikeCategory,
 } from "@/lib/documents/manual-entries";
+import { isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { parseLineItems } from "@/lib/documents/line-items";
 import { humanizeShowcaseLabel } from "@/lib/documents/humanize-showcase-label";
-import {
-  hasExplicitShowcaseLineSelection,
-  visibleShowcaseLineItems,
-} from "@/lib/vehicles/public-showcase-line-items";
+import { visibleShowcaseLineItems } from "@/lib/vehicles/public-showcase-line-items";
 import type { Document } from "@/types/database";
 
 export type VehicleModificationSource = "abe" | "invoice" | "manual";
@@ -118,10 +116,6 @@ function extractFromTuningInvoices(
       lineItems,
       respectLineItemShowcase,
     );
-    const explicitHideAll =
-      respectLineItemShowcase &&
-      hasExplicitShowcaseLineSelection(lineItems) &&
-      visibleLines.length === 0;
     let addedFromLines = false;
 
     for (const item of visibleLines) {
@@ -143,7 +137,7 @@ function extractFromTuningInvoices(
       addedFromLines = true;
     }
 
-    if (!addedFromLines && !explicitHideAll) {
+    if (!addedFromLines) {
       mods.push({
         id: doc.id,
         category: doc.category?.trim() || "Tuning / Teile",
@@ -169,17 +163,13 @@ function extractFromManualEntries(
   const mods: VehicleModification[] = [];
 
   for (const entry of filterManualVehicleEntries(documents)) {
-    if (!isTuningLikeCategory(entry.category)) continue;
+    if (!isShowcaseModificationDocument(entry)) continue;
 
     const lineItems = parseLineItems(entry.line_items) ?? [];
     const visibleLines = visibleShowcaseLineItems(
       lineItems,
       respectLineItemShowcase,
     );
-    const explicitHideAll =
-      respectLineItemShowcase &&
-      hasExplicitShowcaseLineSelection(lineItems) &&
-      visibleLines.length === 0;
 
     if (respectLineItemShowcase && visibleLines.length > 0) {
       for (const item of visibleLines) {
@@ -197,8 +187,6 @@ function extractFromManualEntries(
       }
       continue;
     }
-
-    if (explicitHideAll) continue;
 
     mods.push({
       id: entry.id,

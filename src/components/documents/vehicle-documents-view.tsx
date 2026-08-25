@@ -405,7 +405,7 @@ export function VehicleDocumentsView({
             >
               <Plus className="h-4 w-4" aria-hidden />
               {filterType === "abe"
-                ? "In Tresor ablegen"
+                ? "In Gutachten Tresor ablegen"
                 : filterType === "tuev"
                   ? "TÜV scannen"
                   : "Dokument scannen"}
@@ -465,7 +465,7 @@ function DocumentRow({
       ? (() => {
           const kindLabel = vaultDocumentKindLabel(document);
           const categoryLabel = vaultCategoryLabel(document);
-          const parts = ["Tresor"];
+          const parts = ["Gutachten Tresor"];
           if (kindLabel) parts.push(kindLabel);
           if (categoryLabel) parts.push(categoryLabel);
           return parts.join(" · ");

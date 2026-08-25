@@ -70,8 +70,8 @@ describe("mergeInvoiceWizardExtractions", () => {
     expect(merged.lineItems).toMatchObject([
       { label: "Arbeitslohn Sportfedern", amount: 120 },
       { label: "Sportfedern H&R", amount: 480 },
-      { label: "MwSt 19%", amount: 114 },
     ]);
+    expect(merged.lineItems).toHaveLength(2);
   });
 
   it("respects locked category from scan picker", () => {

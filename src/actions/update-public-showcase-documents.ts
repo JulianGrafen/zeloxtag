@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { parseLineItems } from "@/lib/documents/line-items";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
 import {
+  listShowcaseLineItemOptions,
   parseShowcaseLineSelections,
   withShowcaseLineSelection,
 } from "@/lib/vehicles/public-showcase-line-items";
@@ -150,9 +151,16 @@ export async function updatePublicShowcaseDocuments(
       const currentItems = parseLineItems(row.line_items);
       if (!currentItems?.length) continue;
 
+      const eligibleIndexes = listShowcaseLineItemOptions(currentItems).map(
+        (item) => item.index,
+      );
+      const requestedIndexes = lineSelections[documentId] ?? eligibleIndexes;
+      const selectedIndexes =
+        requestedIndexes.length > 0 ? requestedIndexes : eligibleIndexes;
+
       const nextItems = withShowcaseLineSelection(
         currentItems,
-        new Set(lineSelections[documentId]),
+        new Set(selectedIndexes),
       );
       const { error } = await admin
         .from("documents")

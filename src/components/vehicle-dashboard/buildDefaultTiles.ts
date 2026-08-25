@@ -51,7 +51,7 @@ function inspectionMeta(data: VehicleDashboardData): DashboardTileConfig["meta"]
 
 function oilChangeMeta(data: VehicleDashboardData): DashboardTileConfig["meta"] {
   if (!data.lastOilChange) {
-    return { subtitle: "Letzter Ölwechsel", href: "/intervalle" };
+    return { subtitle: "Noch offen", href: "/intervalle" };
   }
 
   const formatted = new Date(
@@ -61,7 +61,7 @@ function oilChangeMeta(data: VehicleDashboardData): DashboardTileConfig["meta"] 
   ).toLocaleDateString("de-DE", BERLIN);
 
   return {
-    subtitle: `Letzter Ölwechsel · ${formatted}`,
+    subtitle: formatted,
     href: "/intervalle",
   };
 }
@@ -78,36 +78,31 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
   const tiles: TileDraft[] = [
     {
       id: "invoices",
-      title: "Rechnungen & Belege",
-      description: "Service, Tuning & Teile",
+      title: "Belege",
       icon: "file-text",
       meta: { href: "/rechnungen" },
     },
     {
       id: "oil-change",
-      title: "Öl-Wechsel",
+      title: "Ölwechsel",
       icon: "droplet",
       meta: oilChangeMeta(data),
     },
     {
       id: "abe",
-      title: "ABE & Gutachten",
-      description: "Zulassungen & Konformität",
+      title: "ABE",
       icon: "stamp",
       tone: "accent",
       meta: { href: "/abe" },
     },
     {
       id: "tuning-history",
-      title: "Manuelle Einträge",
-      description: "Wartung & Tuning ohne Beleg",
+      title: "Einträge",
       icon: "history",
-      meta: { subtitle: "Eigene Notizen" },
     },
     {
       id: "tuv",
-      title: "TÜV / HU",
-      description: "Hauptuntersuchung",
+      title: "TÜV",
       icon: "shield-check",
       tone:
         inspectionDays !== null && inspectionDays <= 30 ? "warning" : "default",
@@ -116,55 +111,43 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "timeline",
-      title: "Service-Historie",
-      description: "Chronologie nach KM-Stand",
+      title: "Historie",
       icon: "history",
       featured: true,
-      meta: { subtitle: "Öl · Reparatur · TÜV" },
     },
     {
       id: "service",
-      title: "Service & Inspektion",
-      description: "Wartungsbelege",
+      title: "Service",
       icon: "wrench",
-      meta: { subtitle: "Inspektionen" },
     },
     {
       id: "schrauber",
       title: "Schrauber",
-      description: "Werkstatt-Zugang teilen",
       icon: "users",
-      meta: { subtitle: "Reparaturen eintragen lassen" },
     },
     {
       id: "modifications",
-      title: "Umbau-Bilder",
-      description: "Umbauten mit Fotos",
+      title: "Umbauten",
       icon: "images",
-      meta: { subtitle: "Galerie" },
     },
     {
       id: "specs",
-      title: "Technische Daten",
-      description: "Antrieb & Fahrwerk",
+      title: "Fahrzeugdaten",
       icon: "info",
     },
     {
       id: "vehicle-settings",
       title: "Showcase",
-      description: "Öffentliches Profil & Exposé",
       icon: "globe",
       featured: true,
-      meta: { subtitle: "Sichtbarkeit" },
     },
     {
       id: "settings",
       title: "Konto",
-      description: "2FA & Abmelden",
       icon: "settings",
       featured: true,
       meta: {
-        subtitle: "Sicherheit und Sitzung",
+        subtitle: "Sicherheit",
         href: "/settings",
       },
     },

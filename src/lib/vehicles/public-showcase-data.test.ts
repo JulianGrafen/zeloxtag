@@ -182,6 +182,25 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.modifications[0]?.category).toBe("Umbauten");
   });
 
+  it("includes legacy manual Umbauten without category on the public page", () => {
+    const documents: Document[] = [
+      baseInvoice({
+        id: "legacy-umbau",
+        title: "BBS LM",
+        invoice_number: "__manual__",
+        category: null,
+        file_url: "https://example.com/bbs.jpg",
+        line_items: null,
+        amount: null,
+      }),
+    ];
+
+    const payload = buildPublicShowcasePayload(baseVehicle, documents);
+    expect(payload.modifications).toHaveLength(1);
+    expect(payload.modifications[0]?.label).toBe("BBS LM");
+    expect(payload.modifications[0]?.source).toBe("manual");
+  });
+
   it("includes only selected positions from an opted-in Umbau invoice", () => {
     const documents: Document[] = [
       baseInvoice({

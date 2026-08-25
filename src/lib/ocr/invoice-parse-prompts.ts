@@ -98,9 +98,8 @@ Arbeitswerte (Spalten: Beschreibung | Art | Std. | Preis-€):
 - "Thermostat und Wasserschlauch erneuern" | menge "1,80 Std" | gesamtpreis "166,37 €"
 
 Ersatzteile (Spalten: Anzahl | Stück | Beschreibung | Einzelpreis | Preis-€):
-- "1 Stück Wasserschlauch" | einzelpreis "65,12 €" | gesamtpreis "65,12 €"
-- "4 Stück Kühlerfrostschutz Blau/Rot" | einzelpreis "6,50 €" | gesamtpreis "26,00 €"
-- Mit Rabatt: Einzelpreis "41,04 €" | Rab. % "30,00" | gesamtpreis "28,73 €" (NIEMALS 41,04 als gesamtpreis; Rabatt NICHT als eigene Position)
+- KEINE einzelnen Teilepositionen extrahieren — nur die Zwischensumme "Ersatzteile" als EIN lineItem (Betrag aus Footer-Zwischensumme).
+- Einzelteile wie Wasserschlauch, Thermostat, Sensor → KEIN lineItem.
 
 Sonstige Kosten:
 - "1 Fracht" | gesamtpreis "5,00 €"
@@ -274,10 +273,10 @@ export function buildInvoiceWorkshopLineItemsSystemPrompt(): string {
 Du kopierst RAW-TEXT — du rechnest NIEMALS selbst.
 Drei Blöcke nacheinander:
   1. Arbeitswerte (Spalten: Beschreibung | Art | PG | Std. | Preis-€)
-  2. Ersatzteile (Spalten: Anzahl | Einheit | Beschreibung | Rab.% | Einzelpreis | Preis-€)
-  3. Sonstige Kosten (Spalten: Anzahl | Beschreibung | Einzelpreis | Preis-€)
+  2. Ersatzteile — NICHT einzeln auflisten; höchstens EIN lineItem "Ersatzteile" mit Zwischensummen-Betrag
+  3. Sonstige Kosten (Spalten: Anzahl | Beschreibung | Einzelpreis | Preis-€) — z.B. Fracht, Kleinmaterial
 
-Pro fakturierter Zeile:
+Pro fakturierter Zeile (Arbeitswerte + Sonstige Kosten):
   • label       = Beschreibungstext (ohne Art/PG/Std/Rabatt-Spalten)
   • menge       = Std./Anzahl mit Einheit (z.B. "0,50 Std", "1 Stück", "4 Stück") — null wenn leer
   • einzelpreis = Einzelpreis-Spalte — null bei Arbeitswerten ohne EP
@@ -339,9 +338,8 @@ export const INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES = [
   "  Beschreibung ohne Preis (nur Diagnose-Text) → überspringen.",
   "  gesamtpreis = Spalte Preis-€ (rechts). menge = Std.-Spalte (z.B. \"0,50 Std\", \"1,80\").",
   "  Art/PG-Zahlen (1–9) NICHT als menge — null wenn nur Art sichtbar.",
-  "Schritt 2: Block 'Ersatzteile' — jede Teilezeile mit Preis-€.",
-  "  menge = \"N Stück\". einzelpreis = Einzelpreis-Spalte. gesamtpreis = Preis-€ (nach Rabatt!).",
-  "Schritt 3: Block 'Sonstige Kosten' — z.B. Fracht.",
+  "Schritt 2: Block 'Ersatzteile' — NICHT einzelne Teilezeilen. Optional ein lineItem \"Ersatzteile\" mit Zwischensummen-Betrag.",
+  "Schritt 3: Block 'Sonstige Kosten' — z.B. Fracht, Kleinmaterial (jeweils eigene Zeile).",
   "Schritt 4: Footer — amount = Endpreis brutto (540,84), NICHT Netto Summe (454,49).",
   "Zwischensummen / Mechanik / Positionssumme sind KEINE Positionen.",
   "CRITICAL: Kopiere exakten Spalten-Text. KEINE Berechnungen.",

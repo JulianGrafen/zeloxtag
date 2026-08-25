@@ -104,15 +104,15 @@ export const SCAN_TYPE_DEFINITIONS: Record<ScanType, ScanTypeDefinition> = {
   },
   vault: {
     id: "vault",
-    title: "Tresor",
-    description: "Gutachten, Teilegutachten & Sonstiges ablegen",
+    title: "Gutachten Tresor",
+    description: "Teilegutachten, ABE & Sonstiges ablegen",
     ocrDocumentType: "abe",
     category: "abe",
     lockCategory: true,
     approvalKind: "vault",
     documentType: "abe",
-    heading: "Dokumenten-Tresor",
-    subheading: "Gutachten, Teilegutachten & Sonstiges ablegen",
+    heading: "Gutachten Tresor",
+    subheading: "Teilegutachten, ABE & Sonstiges ablegen",
     successTypeQuery: "abe",
   },
   gutachten: {
@@ -201,7 +201,6 @@ export const SCAN_TYPE_OPTIONS: ScanTypeDefinition[] = [
   SCAN_TYPE_DEFINITIONS.service,
   SCAN_TYPE_DEFINITIONS.vault,
   SCAN_TYPE_DEFINITIONS.abe,
-  SCAN_TYPE_DEFINITIONS.gutachten,
   SCAN_TYPE_DEFINITIONS.tuev,
 ];
 

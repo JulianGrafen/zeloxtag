@@ -1,10 +1,9 @@
 import {
   filterManualVehicleEntries,
-  isTuningLikeCategory,
 } from "@/lib/documents/manual-entries";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { publicVehicleDynoChartPath } from "@/lib/vehicles/dyno-chart-constants";
-import { filterPublicShowcaseDocuments } from "@/lib/vehicles/public-showcase-documents";
+import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
 import type { Document, Vehicle } from "@/types/database";
@@ -131,7 +130,7 @@ function collectGalleryPhotos(
   seen.add(heroSrc);
 
   for (const entry of filterManualVehicleEntries(publicDocs)) {
-    if (!isTuningLikeCategory(entry.category)) continue;
+    if (!isShowcaseModificationDocument(entry)) continue;
     if (documentMediaKind(entry.file_url) !== "image") continue;
     if (!entry.file_url.startsWith("http")) continue;
 

@@ -241,7 +241,7 @@ export async function saveVaultDocument(
   if (!metaParsed.ok) {
     return {
       status: "error",
-      message: "Ungültige Tresor-Daten.",
+      message: "Ungültige Gutachten-Tresor-Daten.",
     };
   }
 

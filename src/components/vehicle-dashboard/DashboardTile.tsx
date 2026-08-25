@@ -74,11 +74,6 @@ export function DashboardTile({ tile, onClick }: DashboardTileProps) {
             {tile.description}
           </p>
         ) : null}
-        {tile.meta?.subtitle && tile.description ? (
-          <p className="text-[0.72rem] font-normal tracking-[-0.01em] text-[color:var(--vd-muted)]">
-            {tile.description}
-          </p>
-        ) : null}
       </div>
     </>
   );

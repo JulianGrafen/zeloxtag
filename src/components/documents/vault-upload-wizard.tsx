@@ -702,7 +702,7 @@ export function VaultUploadWizard({
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                Im Tresor speichern
+                Im Gutachten Tresor speichern
               </>
             )}
           </Button>
@@ -742,7 +742,7 @@ export function VaultUploadWizard({
             <div className="max-h-[min(62vh,560px)] min-h-[240px] overflow-auto bg-neutral-100">
               {previewKind === "pdf" ? (
                 <iframe
-                  title="Tresor Dokumentvorschau"
+                  title="Gutachten Tresor · Vorschau"
                   src={previewUrl}
                   className="h-[min(62vh,560px)] w-full border-0 bg-white"
                 />
@@ -750,7 +750,7 @@ export function VaultUploadWizard({
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={previewUrl}
-                  alt="Tresor Dokumentvorschau"
+                  alt="Gutachten Tresor · Vorschau"
                   className="mx-auto block w-full object-contain"
                 />
               )}

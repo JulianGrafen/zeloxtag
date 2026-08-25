@@ -126,7 +126,7 @@ export const APPROVAL_KIND_LABELS: Record<ApprovalFieldKind, string> = {
   pruefung192: "§19(2) Prüfung",
   egbe: "EG-BE",
   tuev: "TÜV / HU",
-  vault: "Tresor",
+  vault: "Gutachten Tresor",
 };
 
 export function parseApprovalFields(value: unknown): ApprovalFields | null {
