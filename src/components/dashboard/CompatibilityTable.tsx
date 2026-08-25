@@ -127,7 +127,7 @@ export function CompatibilityTable({
                       >
                         {isFirst && matched ? (
                           <span className="flex flex-wrap items-center gap-2">
-                            <Badge variant="success">
+                            <Badge variant="default">
                               {selected
                                 ? "Ausgewählt"
                                 : row.matchReason === "Garagen-Vorschlag"

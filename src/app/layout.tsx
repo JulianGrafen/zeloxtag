@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Inter } from "next/font/google";
 
 import {
   DEFAULT_OG_DESCRIPTION,
@@ -8,6 +8,12 @@ import {
 import { getSiteUrl } from "@/lib/seo/site-url";
 
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -35,7 +41,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ececea",
+  themeColor: "#fafafa",
 };
 
 export default function RootLayout({
@@ -44,8 +50,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" className={`${poppins.variable} h-full antialiased`}>
-      <body className="min-h-full bg-[color:var(--vd-bg)] font-sans text-[color:var(--vd-text)]">
+    <html
+      lang="de"
+      className={cn("h-full antialiased", inter.variable, poppins.variable)}
+    >
+      <body className="min-h-full bg-background font-sans text-foreground">
         {children}
       </body>
     </html>
