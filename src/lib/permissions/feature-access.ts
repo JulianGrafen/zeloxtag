@@ -97,7 +97,7 @@ export function paywallTitle(feature: FeatureFlag): string {
     case FEATURE.DOCUMENT_VAULT:
       return "Die Dokumentenakte ist Teil von Pro";
     case FEATURE.ADD_MANUAL_SERVICE_ENTRY:
-      return "Service-Eintrag";
+      return "Manuelle Einträge";
     default:
       return "Das ist eine Pro-Funktion";
   }

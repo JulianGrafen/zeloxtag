@@ -26,9 +26,12 @@ import { ABE_REQUIRED_FIELD_LABELS } from "@/lib/validations/abeDataHunterSchema
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import { displayAbeDocumentTitle } from "@/lib/documents/abe-title";
 import { formatDocumentDate } from "@/lib/documents/format";
+import { isVaultDocument, vaultCategoryLabel } from "@/lib/documents/vault-documents";
 import {
+  documentMediaKind,
   isViewableDocumentUrl,
   openDocumentOriginal,
+  resolveDocumentViewUrl,
 } from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
 
@@ -57,6 +60,7 @@ export function DocumentAbeDetailView({
   backHref,
 }: DocumentAbeDetailViewProps) {
   const kindLabel = approvalKindLabel(document.approval_fields);
+  const isVault = isVaultDocument(document);
   const isEinzelabnahme = document.approval_fields?.kind === "einzelabnahme";
   const isTeilegutachten = document.approval_fields?.kind === "teilegutachten";
   const title = displayAbeDocumentTitle(document);
@@ -111,6 +115,13 @@ export function DocumentAbeDetailView({
   });
   const pages = document.page_count && document.page_count > 0 ? document.page_count : 1;
   const canOpenOriginal = isViewableDocumentUrl(document.file_url);
+  const previewSrc = canOpenOriginal
+    ? resolveDocumentViewUrl(document.file_url)
+    : null;
+  const previewKind = canOpenOriginal
+    ? documentMediaKind(document.file_url)
+    : null;
+  const vaultCategory = isVault ? vaultCategoryLabel(document) : null;
   const resolvedBack =
     backHref ?? `/v/${tagUuid}/dokumente?type=abe`;
   const scannedLabel = formatDocumentDate(document.created_at.slice(0, 10));
@@ -164,7 +175,11 @@ export function DocumentAbeDetailView({
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
               gültig
             </span>
-            {document.part_category ? (
+            {vaultCategory ? (
+              <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-text)]">
+                {vaultCategory}
+              </span>
+            ) : document.part_category ? (
               <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-text)]">
                 {document.part_category}
               </span>
@@ -334,11 +349,32 @@ export function DocumentAbeDetailView({
                 {fileName}
               </p>
               <p className="text-[0.68rem] text-[color:var(--vd-muted)]">
-                {pages} {pages === 1 ? "Seite" : "Seiten"} · Original-PDF
+                {pages} {pages === 1 ? "Seite" : "Seiten"} ·{" "}
+                {isVault ? "Gutachten Tresor" : "Original-PDF"}
               </p>
             </div>
           </div>
-          <div className="p-4">
+          <div className="space-y-3 p-4">
+            {canOpenOriginal && previewSrc ? (
+              previewKind === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewSrc}
+                  alt={partName}
+                  className="max-h-[50vh] w-full rounded-xl bg-neutral-100 object-contain"
+                />
+              ) : (
+                <iframe
+                  title={partName}
+                  src={previewSrc}
+                  className="h-[min(50vh,28rem)] w-full rounded-xl border border-[color:var(--vd-border)] bg-white"
+                />
+              )
+            ) : (
+              <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
+                Für diesen Demo-Beleg liegt keine Datei vor.
+              </p>
+            )}
             {canOpenOriginal ? (
               <PressableButton
                 type="button"
@@ -349,11 +385,7 @@ export function DocumentAbeDetailView({
                 <FileText className="h-4 w-4" aria-hidden />
                 Original öffnen
               </PressableButton>
-            ) : (
-              <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
-                Für diesen Demo-Beleg liegt keine Datei vor.
-              </p>
-            )}
+            ) : null}
           </div>
         </section>
 

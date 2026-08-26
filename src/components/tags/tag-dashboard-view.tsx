@@ -235,7 +235,7 @@ export function TagDashboardView({
           href: `/v/${tagUuid}/eintrag`,
           subtitle:
             manualEntryCount > 0
-              ? `${manualEntryCount} Einträge`
+              ? `${manualEntryCount} manuelle Einträge`
               : "Neu",
         },
       };

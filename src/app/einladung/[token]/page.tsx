@@ -24,7 +24,6 @@ export default async function InvitePage({ params }: InvitePageProps) {
   const preview = await getInvitePreview(token);
   const user = await getCurrentUser();
   const invitePath = `/einladung/${token}`;
-  const loginHref = `/?next=${encodeURIComponent(invitePath)}&tab=signup`;
 
   if (preview.status !== "error" && user) {
     if (preview.alreadyActive) {
@@ -63,7 +62,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
               </h1>
               <p className="mt-3 text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
                 Du wurdest eingeladen, Reparaturen und Service-Belege für dieses
-                Fahrzeug einzutragen.
+                Fahrzeug einzutragen — ohne Passwort, per E-Mail-Link.
               </p>
               <div className="mt-5">
                 <AcceptInvitePanel
@@ -74,7 +73,6 @@ export default async function InvitePage({ params }: InvitePageProps) {
                   expired={preview.expired}
                   alreadyActive={preview.alreadyActive}
                   isAuthenticated={Boolean(user)}
-                  loginHref={loginHref}
                 />
               </div>
             </>

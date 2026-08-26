@@ -237,19 +237,6 @@ function GuideFrameWatermark({ children }: { children: ReactNode }) {
   );
 }
 
-function GuideFrameCorners({ sharp = false }: { sharp?: boolean }) {
-  const radius = sharp ? "rounded-sm" : "rounded-xl";
-  const corner = "h-6 w-6";
-  return (
-    <>
-      <span className={`absolute -left-px -top-px ${corner} ${radius} border-l-4 border-t-4 border-white/85`} />
-      <span className={`absolute -right-px -top-px ${corner} ${radius} border-r-4 border-t-4 border-white/85`} />
-      <span className={`absolute -bottom-px -left-px ${corner} ${radius} border-b-4 border-l-4 border-white/85`} />
-      <span className={`absolute -bottom-px -right-px ${corner} ${radius} border-b-4 border-r-4 border-white/85`} />
-    </>
-  );
-}
-
 function guideFrameOutsideShadow(dimOutside: boolean): string {
   return dimOutside ? "shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" : "";
 }
@@ -1115,7 +1102,6 @@ export function InBrowserCamera({
                     style={{ aspectRatio: TABLE_ASPECT_RATIO }}
                     aria-hidden
                   >
-                    <GuideFrameCorners sharp />
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}
@@ -1144,7 +1130,6 @@ export function InBrowserCamera({
                     ].join(" ")}
                     aria-hidden
                   >
-                    <GuideFrameCorners />
                     {!compactChrome ? (
                       <div className="absolute left-3 top-3 rounded-md bg-black/40 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/90">
                         DIN A4
@@ -1181,7 +1166,6 @@ export function InBrowserCamera({
                     }}
                     aria-hidden
                   >
-                    <GuideFrameCorners sharp />
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}

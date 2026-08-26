@@ -42,6 +42,7 @@ import {
   VAULT_FILTER_CHIPS,
   vaultCategoryLabel,
   vaultDocumentKindLabel,
+  resolveVaultDocumentKind,
 } from "@/lib/documents/vault-documents";
 import type { VaultCategory } from "@/lib/validations/vaultClassificationSchema";
 import { eintraegeLabel } from "@/lib/i18n/pluralize-de";
@@ -463,7 +464,9 @@ function DocumentRow({
   const typeLabel =
     document.type === "abe" && isVaultDocument(document)
       ? (() => {
-          const kindLabel = vaultDocumentKindLabel(document);
+          const kind = resolveVaultDocumentKind(document);
+          const kindLabel =
+            kind && kind !== "abe" ? vaultDocumentKindLabel(document) : null;
           const categoryLabel = vaultCategoryLabel(document);
           const parts = ["Gutachten Tresor"];
           if (kindLabel) parts.push(kindLabel);

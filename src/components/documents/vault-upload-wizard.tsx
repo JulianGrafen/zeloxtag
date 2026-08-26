@@ -42,6 +42,11 @@ import {
 } from "@/lib/documents/vault-document";
 import { scanTypeDefinition } from "@/lib/documents/scan-types";
 import {
+  documentMediaKind,
+  isViewableDocumentUrl,
+  resolveDocumentViewUrl,
+} from "@/lib/documents/viewable-url";
+import {
   localDateIso,
   normalizeDocumentDateIso,
 } from "@/lib/documents/format";
@@ -209,6 +214,20 @@ export function VaultUploadWizard({
     setPreviewKind(isPdf(file) ? "pdf" : "image");
   }
 
+  function setStagedDocumentPreview(
+    stagedUrl: string | null,
+    fallbackFile: File,
+  ) {
+    clearDocumentPreview();
+    if (stagedUrl && isViewableDocumentUrl(stagedUrl)) {
+      setPreviewUrl(resolveDocumentViewUrl(stagedUrl));
+      const kind = documentMediaKind(stagedUrl);
+      setPreviewKind(kind === "image" ? "image" : "pdf");
+      return;
+    }
+    setDocumentPreview(fallbackFile);
+  }
+
   useEffect(() => {
     if (phase !== "pages-hub") {
       for (const url of pagePreviewUrlsRef.current) {
@@ -310,7 +329,7 @@ export function VaultUploadWizard({
       setTitle(classification?.title?.trim() ?? "");
       setCategory(classification?.category ?? "SONSTIGES");
       setDocumentKind(classification?.documentKind ?? null);
-      setDocumentPreview(uploadFile);
+      setStagedDocumentPreview(stageResult.fileUrl, uploadFile);
       setPhase("review");
     } catch (caught) {
       setPhase("pages-hub");

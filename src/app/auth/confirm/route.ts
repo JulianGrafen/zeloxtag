@@ -58,8 +58,13 @@ export async function GET(request: NextRequest) {
     const loginUrl = new URL("/login", origin);
     loginUrl.searchParams.set(
       "error",
-      "Link ungültig oder abgelaufen. Bitte erneut Passwort zurücksetzen.",
+      typeRaw === "magiclink"
+        ? "Link ungültig oder abgelaufen. Bitte erneut einen Anmelde-Link anfordern."
+        : "Link ungültig oder abgelaufen. Bitte erneut Passwort zurücksetzen.",
     );
+    if (next.startsWith("/einladung/")) {
+      loginUrl.pathname = next;
+    }
     return NextResponse.redirect(loginUrl);
   }
 

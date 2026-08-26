@@ -229,6 +229,7 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.modifications).toHaveLength(1);
     expect(payload.modifications[0]?.label).toBe("KW Gewindefahrwerk");
     expect(payload.modifications[0]?.source).toBe("invoice");
+    expect(payload.modifications[0]?.category).toBe("Teile & Umbauten");
   });
 
   it("exposes the public dyno route when a Leistungsdiagramm is stored", () => {

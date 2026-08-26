@@ -79,8 +79,8 @@ export function ManualEntryView({
   vehicleLabel,
   documents,
   initialListFilter = "all",
-  heading = "Wartung & Tuning",
-  subheading = "Einträge mit optionalen Fotos",
+  heading = "Manuelle Einträge",
+  subheading = "Mit optionalen Fotos",
   variant = "default",
 }: ManualEntryViewProps) {
   const router = useRouter();
@@ -177,7 +177,7 @@ export function ManualEntryView({
         cta: "Umbau mit Foto hinzufügen",
       }
     : {
-        title: "Noch keine eigenen Einträge",
+        title: "Noch keine manuellen Einträge",
         body: "Trage Wartungen oder Tuning-Arbeiten ein und dokumentiere sie optional mit Fotos.",
         cta: "Eintrag hinzufügen",
       };
@@ -672,7 +672,7 @@ export function ManualEntryView({
         ) : null}
 
         <section
-          aria-label={isUmbau ? "Umbau-Bilder" : "Eigene Einträge"}
+          aria-label={isUmbau ? "Umbau-Bilder" : "Manuelle Einträge"}
           className="space-y-2"
         >
           {entries.length === 0 ? (

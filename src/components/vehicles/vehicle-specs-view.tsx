@@ -15,6 +15,8 @@ import {
 import { writeSilhouetteToSession } from "@/lib/vehicles/silhouette-session";
 import {
   parseVehicleTechSpecs,
+  VEHICLE_DRIVETRAIN_TYPES,
+  VEHICLE_FUEL_TYPES,
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
 import type { Vehicle } from "@/types/database";
@@ -88,7 +90,7 @@ export function VehicleSpecsView({
           [key]: digits ? Number.parseInt(digits, 10) : null,
         };
       }
-      return { ...prev, [key]: value };
+      return { ...prev, [key]: value || null };
     });
     setSaved(false);
   }
@@ -318,14 +320,20 @@ export function VehicleSpecsView({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Kraftstoff">
-                  <input
+                  <select
                     value={specs.fuelType ?? ""}
                     onChange={(event) =>
                       patchSpec("fuelType", event.target.value)
                     }
                     className="claim-input w-full"
-                    placeholder="Benzin"
-                  />
+                  >
+                    <option value="">—</option>
+                    {VEHICLE_FUEL_TYPES.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Getriebe">
                   <input
@@ -340,14 +348,20 @@ export function VehicleSpecsView({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Antrieb">
-                  <input
+                  <select
                     value={specs.drivetrain ?? ""}
                     onChange={(event) =>
                       patchSpec("drivetrain", event.target.value)
                     }
                     className="claim-input w-full"
-                    placeholder="Heckantrieb"
-                  />
+                  >
+                    <option value="">—</option>
+                    {VEHICLE_DRIVETRAIN_TYPES.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Karosserie">
                   <input

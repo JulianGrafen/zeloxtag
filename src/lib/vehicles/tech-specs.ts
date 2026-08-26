@@ -1,5 +1,89 @@
 import { parseInstagramHandle } from "@/lib/vehicles/instagram-handle";
 
+/** Allowed Kraftstoff values for Technische Daten. */
+export const VEHICLE_FUEL_TYPES = [
+  "Benzin",
+  "Diesel",
+  "Elektro",
+  "LPG",
+] as const;
+
+export type VehicleFuelType = (typeof VEHICLE_FUEL_TYPES)[number];
+
+const FUEL_TYPE_ALIASES: Record<string, VehicleFuelType> = {
+  benzin: "Benzin",
+  petrol: "Benzin",
+  gasoline: "Benzin",
+  diesel: "Diesel",
+  elektro: "Elektro",
+  electric: "Elektro",
+  ev: "Elektro",
+  lpg: "LPG",
+  autogas: "LPG",
+};
+
+export function isVehicleFuelType(value: string): value is VehicleFuelType {
+  return (VEHICLE_FUEL_TYPES as readonly string[]).includes(value);
+}
+
+/** Map stored / legacy strings to a known fuel type when possible. */
+export function normalizeVehicleFuelType(
+  value: string | null | undefined,
+): VehicleFuelType | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (isVehicleFuelType(trimmed)) return trimmed;
+  const alias = FUEL_TYPE_ALIASES[trimmed.toLowerCase()];
+  return alias ?? null;
+}
+
+/** Allowed Antrieb values for Technische Daten. */
+export const VEHICLE_DRIVETRAIN_TYPES = [
+  "Allradantrieb",
+  "Heckantrieb",
+  "Frontantrieb",
+] as const;
+
+export type VehicleDrivetrainType = (typeof VEHICLE_DRIVETRAIN_TYPES)[number];
+
+const DRIVETRAIN_ALIASES: Record<string, VehicleDrivetrainType> = {
+  allrad: "Allradantrieb",
+  allradantrieb: "Allradantrieb",
+  "4x4": "Allradantrieb",
+  "4wd": "Allradantrieb",
+  awd: "Allradantrieb",
+  xdrive: "Allradantrieb",
+  quattro: "Allradantrieb",
+  "4matic": "Allradantrieb",
+  heck: "Heckantrieb",
+  heckantrieb: "Heckantrieb",
+  rwd: "Heckantrieb",
+  hinterradantrieb: "Heckantrieb",
+  front: "Frontantrieb",
+  frontantrieb: "Frontantrieb",
+  fwd: "Frontantrieb",
+  vorderradantrieb: "Frontantrieb",
+};
+
+export function isVehicleDrivetrainType(
+  value: string,
+): value is VehicleDrivetrainType {
+  return (VEHICLE_DRIVETRAIN_TYPES as readonly string[]).includes(value);
+}
+
+/** Map stored / legacy strings to a known drivetrain when possible. */
+export function normalizeVehicleDrivetrain(
+  value: string | null | undefined,
+): VehicleDrivetrainType | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (isVehicleDrivetrainType(trimmed)) return trimmed;
+  const alias = DRIVETRAIN_ALIASES[trimmed.toLowerCase()];
+  return alias ?? null;
+}
+
 /**
  * Structured Antrieb / Fahrwerk fields stored on vehicles.tech_specs.
  */
@@ -75,9 +159,12 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
     powerKw: asPositiveInt(record.powerKw),
     torqueNm: asPositiveInt(record.torqueNm),
     displacementCc: asPositiveInt(record.displacementCc),
-    fuelType: asTrimmedString(record.fuelType),
+    fuelType: normalizeVehicleFuelType(asTrimmedString(record.fuelType)) ??
+      asTrimmedString(record.fuelType),
     transmission: asTrimmedString(record.transmission),
-    drivetrain: asTrimmedString(record.drivetrain),
+    drivetrain:
+      normalizeVehicleDrivetrain(asTrimmedString(record.drivetrain)) ??
+      asTrimmedString(record.drivetrain),
     color: asTrimmedString(record.color),
     bodyType: asTrimmedString(record.bodyType),
     notes: asTrimmedString(record.notes),

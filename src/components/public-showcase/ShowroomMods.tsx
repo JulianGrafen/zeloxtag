@@ -1,12 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, Wrench } from "lucide-react";
+import { Wrench } from "lucide-react";
 
-import {
-  groupPublicModifications,
-  type PublicModification,
-} from "@/lib/vehicles/public-showcase-data";
+import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
 
 import { ModBadge } from "./ModBadge";
 import { showroom } from "./showroom-styles";
@@ -26,11 +22,6 @@ function formatDate(iso: string | null): string | null {
 }
 
 export function ShowroomMods({ modifications }: ShowroomModsProps) {
-  const groups = groupPublicModifications(modifications);
-  const [openCategory, setOpenCategory] = useState<string | null>(
-    groups[0]?.category ?? null,
-  );
-
   return (
     <section className="px-4">
       <div className="mb-3 flex items-center gap-2">
@@ -38,72 +29,34 @@ export function ShowroomMods({ modifications }: ShowroomModsProps) {
         <h2 className={showroom.sectionTitle}>Umbauten</h2>
       </div>
 
-      {groups.length === 0 ? (
+      {modifications.length === 0 ? (
         <p className={`${showroom.panelFlat} px-4 py-5 ${showroom.body}`}>
           Noch keine öffentlichen Umbauten hinterlegt.
         </p>
       ) : (
-        <div className="space-y-2">
-          {groups.map((group) => {
-            const open = openCategory === group.category;
-            const panelId = `showroom-mod-${group.category}`;
-
+        <ul className={showroom.panel}>
+          {modifications.map((mod) => {
+            const dateLabel = formatDate(mod.date);
             return (
-              <div key={group.category} className={showroom.panel}>
-                <button
-                  type="button"
-                  aria-expanded={open}
-                  aria-controls={panelId}
-                  onClick={() =>
-                    setOpenCategory(open ? null : group.category)
-                  }
-                  className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                >
-                  <span className="text-[0.92rem] font-semibold text-white">
-                    {group.category}
-                  </span>
-                  <span className="flex items-center gap-2 text-white/45">
-                    <span className="text-[0.72rem] tabular-nums">
-                      {group.items.length}
-                    </span>
-                    <ChevronDown
-                      className={[
-                        "h-4 w-4 transition-transform",
-                        open ? "rotate-180" : "",
-                      ].join(" ")}
-                      aria-hidden
-                    />
-                  </span>
-                </button>
-                {open ? (
-                  <ul id={panelId} className="border-t border-white/15 px-2 pb-2">
-                    {group.items.map((mod) => {
-                      const dateLabel = formatDate(mod.date);
-                      return (
-                        <li
-                          key={mod.id}
-                          className="flex items-start justify-between gap-3 px-2 py-3"
-                        >
-                          <div className="min-w-0">
-                            <p className="font-medium leading-snug text-white/90">
-                              {mod.label}
-                            </p>
-                            {dateLabel ? (
-                              <p className="mt-0.5 text-[0.72rem] text-white/40">
-                                {dateLabel}
-                              </p>
-                            ) : null}
-                          </div>
-                          {mod.vendor ? <ModBadge>{mod.vendor}</ModBadge> : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-              </div>
+              <li
+                key={mod.id}
+                className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-3 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium leading-snug text-white/90">
+                    {mod.label}
+                  </p>
+                  {dateLabel ? (
+                    <p className="mt-0.5 text-[0.72rem] text-white/40">
+                      {dateLabel}
+                    </p>
+                  ) : null}
+                </div>
+                {mod.vendor ? <ModBadge>{mod.vendor}</ModBadge> : null}
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </section>
   );

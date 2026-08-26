@@ -38,4 +38,26 @@ describe("vehicle tech specs", () => {
     expect(parsed.powerPs).toBe(320);
     expect(parsed.dynoChartUrl).toContain("dyno-chart.pdf");
   });
+
+  it("normalizes legacy fuel type strings", () => {
+    expect(parseVehicleTechSpecs({ fuelType: "benzin" }).fuelType).toBe(
+      "Benzin",
+    );
+    expect(parseVehicleTechSpecs({ fuelType: "autogas" }).fuelType).toBe("LPG");
+    expect(parseVehicleTechSpecs({ fuelType: "Hybrid" }).fuelType).toBe(
+      "Hybrid",
+    );
+  });
+
+  it("normalizes legacy drivetrain strings", () => {
+    expect(parseVehicleTechSpecs({ drivetrain: "awd" }).drivetrain).toBe(
+      "Allradantrieb",
+    );
+    expect(parseVehicleTechSpecs({ drivetrain: "rwd" }).drivetrain).toBe(
+      "Heckantrieb",
+    );
+    expect(parseVehicleTechSpecs({ drivetrain: "Mittelmotor" }).drivetrain).toBe(
+      "Mittelmotor",
+    );
+  });
 });

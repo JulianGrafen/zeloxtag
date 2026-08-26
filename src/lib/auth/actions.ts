@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
-import { isResendConfigured, sendPasswordResetEmail } from "@/lib/email/resend";
+import { isResendConfigured, sendMagicLinkEmail, sendPasswordResetEmail } from "@/lib/email/resend";
 import {
   authClientKeyFromHeaders,
   rateLimit,
@@ -233,6 +233,9 @@ export async function signOutToLoginForm(formData: FormData): Promise<void> {
 const GENERIC_RESET_OK =
   "Wenn ein Konto mit dieser E-Mail existiert, erhältst du gleich einen Link zum Zurücksetzen.";
 
+const GENERIC_MAGIC_LINK_OK =
+  "Wenn die E-Mail gültig ist, erhältst du gleich einen Anmelde-Link.";
+
 /**
  * Password reset via Supabase recovery token + Resend email.
  * Always returns a generic success message (no account enumeration).
@@ -304,6 +307,116 @@ export async function requestPasswordReset(
   } catch (error) {
     console.error("[password-reset] unexpected error", error);
     return { status: "ok", message: GENERIC_RESET_OK };
+  }
+}
+
+async function ensureMagicLinkUser(email: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const existing = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+  });
+  if (existing.data?.properties?.hashed_token) {
+    return true;
+  }
+
+  const created = await admin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+  });
+  if (created.error) {
+    const message = created.error.message.toLowerCase();
+    if (
+      !message.includes("already") &&
+      !message.includes("registered") &&
+      !message.includes("exists")
+    ) {
+      return false;
+    }
+  }
+
+  const retry = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+  });
+  return Boolean(retry.data?.properties?.hashed_token);
+}
+
+/**
+ * Passwordless login for Schrauber workshops — magic link via Resend.
+ * Creates a Supabase user on first use; always returns a generic success message.
+ */
+export async function requestMagicLinkLogin(
+  emailRaw: string,
+  nextPath = "/auth/continue",
+  vehicleLabel?: string | null,
+): Promise<AuthActionResult> {
+  const limited = await enforceAuthRateLimit("magic-link");
+  if (limited) return limited;
+
+  const emailParsed = emailSchema.safeParse(emailRaw);
+  if (!emailParsed.success) {
+    return { status: "error", message: "Gültige E-Mail erforderlich." };
+  }
+
+  const { isConfigured } = getSupabaseEnv();
+  if (!isConfigured) return { status: "unconfigured" };
+  if (!isSupabaseAdminConfigured()) {
+    return {
+      status: "error",
+      message: "Magic Link ist serverseitig nicht konfiguriert.",
+    };
+  }
+  if (!isResendConfigured()) {
+    return {
+      status: "error",
+      message: "E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY).",
+    };
+  }
+
+  const email = emailParsed.data.toLowerCase();
+  const next = normalizeNext(nextPath);
+  const siteUrl = await getSiteUrl();
+
+  try {
+    const ready = await ensureMagicLinkUser(email);
+    if (!ready) {
+      return { status: "ok", message: GENERIC_MAGIC_LINK_OK };
+    }
+
+    const admin = createAdminClient();
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+    });
+
+    if (error || !data?.properties?.hashed_token) {
+      return { status: "ok", message: GENERIC_MAGIC_LINK_OK };
+    }
+
+    const magicUrl = new URL("/auth/confirm", siteUrl);
+    magicUrl.searchParams.set("token_hash", data.properties.hashed_token);
+    magicUrl.searchParams.set("type", "magiclink");
+    magicUrl.searchParams.set("next", next);
+
+    const sent = await sendMagicLinkEmail({
+      to: email,
+      loginUrl: magicUrl.toString(),
+      vehicleLabel: vehicleLabel ?? null,
+    });
+
+    if (!sent.ok) {
+      console.error("[magic-link] Resend failed:", sent.message);
+      return {
+        status: "error",
+        message: `E-Mail-Versand fehlgeschlagen: ${sent.message}`,
+      };
+    }
+
+    return { status: "ok", message: GENERIC_MAGIC_LINK_OK };
+  } catch (error) {
+    console.error("[magic-link] unexpected error", error);
+    return { status: "ok", message: GENERIC_MAGIC_LINK_OK };
   }
 }
 

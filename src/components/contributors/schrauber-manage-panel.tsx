@@ -150,7 +150,7 @@ export function SchrauberManagePanel({
         </h2>
         <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
           Mit dem Link kann eine Werkstatt Reparaturen, Service und Rechnungen
-          für dieses Fahrzeug eintragen — ohne vollen Eigentümer-Zugriff.
+          für dieses Fahrzeug eintragen — per E-Mail-Link, ohne Passwort.
         </p>
 
         <label className="mt-4 block space-y-1.5">
@@ -286,8 +286,9 @@ export function SchrauberManagePanel({
 
             <p className="flex items-start gap-2 text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
               <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              Werkstatt scannt den QR oder öffnet den Link — danach Login und
-              Zugang ist freigeschaltet.
+              Werkstatt scannt den QR oder öffnet den Link, gibt die E-Mail ein
+              und tippt den Anmelde-Link — danach kann sie sofort Belege
+              eintragen.
             </p>
           </div>
         ) : null}

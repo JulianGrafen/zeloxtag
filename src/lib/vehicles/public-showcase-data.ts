@@ -153,22 +153,31 @@ const PUBLIC_MOD_CATEGORY_LABELS: Record<string, string> = {
   "Manueller Eintrag": "Umbauten",
 };
 
-function publicModCategoryLabel(raw: string): string {
+function publicModCategoryLabel(
+  raw: string,
+  source: PublicModification["source"],
+): string {
+  if (source === "manual") return "Umbauten";
+  if (source === "invoice") return "Teile & Umbauten";
+
   const trimmed = raw.trim();
-  return PUBLIC_MOD_CATEGORY_LABELS[trimmed] ?? (trimmed || "Umbauten");
+  return PUBLIC_MOD_CATEGORY_LABELS[trimmed] ?? "Umbauten";
 }
 
 function mapModificationsToPublic(
   modifications: ReturnType<typeof extractVehicleModifications>,
 ): PublicModification[] {
-  return modifications.map((mod) => ({
-    id: mod.id,
-    label: mod.partName,
-    category: publicModCategoryLabel(mod.category),
-    date: mod.date,
-    vendor: mod.manufacturer,
-    source: mod.source === "manual" ? "manual" : "invoice",
-  }));
+  return modifications.map((mod) => {
+    const source = mod.source === "manual" ? "manual" : "invoice";
+    return {
+      id: mod.id,
+      label: mod.partName,
+      category: publicModCategoryLabel(mod.category, source),
+      date: mod.date,
+      vendor: mod.manufacturer,
+      source,
+    };
+  });
 }
 
 export function groupPublicModifications(

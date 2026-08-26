@@ -11,8 +11,8 @@ interface ManualEntryPageProps {
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Wartung & Tuning · ZeloxTag",
-    description: "Eigene Wartungs- und Tuning-Einträge ohne Beleg.",
+    title: "Manuelle Einträge · ZeloxTag",
+    description: "Wartungs- und Tuning-Einträge ohne Beleg.",
   };
 }
 

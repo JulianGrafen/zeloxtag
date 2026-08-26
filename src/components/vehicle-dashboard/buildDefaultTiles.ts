@@ -97,7 +97,7 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "tuning-history",
-      title: "Einträge",
+      title: "Manuelle Einträge",
       icon: "history",
     },
     {
