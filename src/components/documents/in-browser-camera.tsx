@@ -1130,11 +1130,6 @@ export function InBrowserCamera({
                     ].join(" ")}
                     aria-hidden
                   >
-                    {!compactChrome ? (
-                      <div className="absolute left-3 top-3 rounded-md bg-black/40 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/90">
-                        DIN A4
-                      </div>
-                    ) : null}
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}
