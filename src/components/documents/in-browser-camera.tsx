@@ -100,6 +100,9 @@ type FacingMode = "environment" | "user";
 const IMAGE_ACCEPT = "image/*";
 const PDF_ACCEPT = "image/*,application/pdf,.pdf";
 
+/** DIN A4 portrait ratio (210 × 297 mm). */
+const A4_ASPECT_RATIO = "210 / 297";
+
 /** Landscape crop ratios for guided section scans. */
 const SECTION_ASPECT_RATIOS: Record<GuideSectionAnchor, string> = {
   top: "5 / 2", // document header band
@@ -110,58 +113,39 @@ const SECTION_ASPECT_RATIOS: Record<GuideSectionAnchor, string> = {
 /** Wide Verwendungsbereich excerpt (Fahrzeugtyp → Auflagen). */
 const TABLE_ASPECT_RATIO = "16 / 7";
 
-/** A4 scans: stretch to the chrome-safe area so the frame keeps a visible rectangle. */
-const GUIDE_FRAME_VIEWPORT_FILL_CLASS =
-  "flex h-full w-[min(92vw,28rem)] max-w-full shrink-0 items-center justify-center self-stretch";
-
-/** Section/table scans: width-bound box; height follows aspect ratio on the inner frame. */
-const GUIDE_FRAME_VIEWPORT_COMPACT_CLASS =
-  "w-[min(92vw,28rem)] max-w-full shrink-0";
+/** Fixed viewport — guide frames stay the same size across wizard steps. */
+const GUIDE_FRAME_VIEWPORT_CLASS =
+  "flex h-[min(68dvh,34rem)] w-[min(92vw,28rem)] shrink-0 items-center justify-center";
 
 const GUIDE_FRAME_INNER_A4_CLASS =
-  "relative aspect-[210/297] h-full w-auto max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
+  "relative h-full w-auto min-h-[14rem] min-w-[9.5rem] max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
 
 const GUIDE_FRAME_INNER_BASE_CLASS =
-  "relative w-full max-h-full shrink-0 border-2 transition-colors duration-200";
+  "relative max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
 
 function GuideFrameViewport({
   children,
   chromeTopPad,
   chromeBottomPad,
   layoutClass = "items-center justify-center",
-  fillHeight = false,
 }: {
   children: ReactNode;
   chromeTopPad: string;
   chromeBottomPad: string;
   layoutClass?: string;
-  /** When true (A4 invoice scan), the guide area gets an explicit height between chrome bars. */
-  fillHeight?: boolean;
 }) {
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 px-2"
+      className={[
+        "pointer-events-none absolute inset-0 flex px-2",
+        layoutClass,
+      ].join(" ")}
       style={{
-        top: chromeTopPad,
-        bottom: chromeBottomPad,
+        paddingTop: chromeTopPad,
+        paddingBottom: chromeBottomPad,
       }}
     >
-      <div
-        className={[
-          "flex h-full w-full min-h-0",
-          fillHeight ? "items-stretch justify-center" : layoutClass,
-        ].join(" ")}
-      >
-        <div
-          className={
-            fillHeight
-              ? GUIDE_FRAME_VIEWPORT_FILL_CLASS
-              : GUIDE_FRAME_VIEWPORT_COMPACT_CLASS
-          }
-        >
-          {children}
-        </div>
-      </div>
+      <div className={GUIDE_FRAME_VIEWPORT_CLASS}>{children}</div>
     </div>
   );
 }
@@ -234,6 +218,19 @@ function GuideFrameWatermark({ children }: { children: ReactNode }) {
         </div>
       )}
     </div>
+  );
+}
+
+function GuideFrameCorners({ sharp = false }: { sharp?: boolean }) {
+  const radius = sharp ? "rounded-sm" : "rounded-xl";
+  const corner = "h-6 w-6";
+  return (
+    <>
+      <span className={`absolute -left-px -top-px ${corner} ${radius} border-l-4 border-t-4 border-white/85`} />
+      <span className={`absolute -right-px -top-px ${corner} ${radius} border-r-4 border-t-4 border-white/85`} />
+      <span className={`absolute -bottom-px -left-px ${corner} ${radius} border-b-4 border-l-4 border-white/85`} />
+      <span className={`absolute -bottom-px -right-px ${corner} ${radius} border-b-4 border-r-4 border-white/85`} />
+    </>
   );
 }
 
@@ -1102,6 +1099,7 @@ export function InBrowserCamera({
                     style={{ aspectRatio: TABLE_ASPECT_RATIO }}
                     aria-hidden
                   >
+                    <GuideFrameCorners sharp />
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}
@@ -1118,7 +1116,6 @@ export function InBrowserCamera({
                 <GuideFrameViewport
                   chromeTopPad={chromeTopPad}
                   chromeBottomPad={chromeBottomPad}
-                  fillHeight
                 >
                   <div
                     ref={guideFrameRef}
@@ -1128,8 +1125,15 @@ export function InBrowserCamera({
                       guideFrameBorderClass(guideFrameReady),
                       frameOutsideShadow,
                     ].join(" ")}
+                    style={{ aspectRatio: A4_ASPECT_RATIO }}
                     aria-hidden
                   >
+                    <GuideFrameCorners />
+                    {!compactChrome ? (
+                      <div className="absolute left-3 top-3 rounded-md bg-black/40 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-white/90">
+                        DIN A4
+                      </div>
+                    ) : null}
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}
@@ -1161,6 +1165,7 @@ export function InBrowserCamera({
                     }}
                     aria-hidden
                   >
+                    <GuideFrameCorners sharp />
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
                     ) : null}

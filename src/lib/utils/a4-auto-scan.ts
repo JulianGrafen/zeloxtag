@@ -17,6 +17,16 @@ import {
   WARP_MAX_WIDTH_PX,
 } from "@/lib/utils/perspective";
 
+/** Guide-frame captures: user already aligned the page — use the full crop. */
+function guideFrameQuad(width: number, height: number): QuadPoints {
+  return [
+    { x: 0, y: 0 },
+    { x: width, y: 0 },
+    { x: width, y: height },
+    { x: 0, y: height },
+  ];
+}
+
 export type ContainerRect = {
   left: number;
   top: number;
@@ -212,11 +222,11 @@ async function warpAndBuildA4Pdf(
 
 function detectInvoiceCorners(
   canvas: HTMLCanvasElement,
-  fallbackInsetRatio = 0.015,
+  fallbackInsetRatio = 0.005,
 ): QuadPoints {
   return detectDocumentQuad(canvas, {
-    minAreaRatio: 0.14,
-    insetRatio: 0.008,
+    minAreaRatio: 0.1,
+    insetRatio: 0.002,
     fallbackInsetRatio,
   });
 }
@@ -236,7 +246,7 @@ export async function buildA4ImageFromGuideCapture(
   const cropped = cropCanvasRegion(fullCapture, crop);
 
   try {
-    const corners = detectInvoiceCorners(cropped);
+    const corners = guideFrameQuad(cropped.width, cropped.height);
     const canvas = await warpResizeA4(cropped, corners, maxWidth);
     return await canvasToJpegFile(canvas, fileName, jpegQuality);
   } catch {
@@ -275,7 +285,7 @@ export async function buildA4PdfFromGuideCapture(
   fileName = `${WIZARD_OVERVIEW_PDF_PREFIX}${Date.now()}`,
 ): Promise<PdfConversionResult> {
   const cropped = cropCanvasRegion(fullCapture, crop);
-  const corners = detectInvoiceCorners(cropped);
+  const corners = guideFrameQuad(cropped.width, cropped.height);
   return warpAndBuildA4Pdf(cropped, corners, fileName.replace(/\.pdf$/i, ""));
 }
 

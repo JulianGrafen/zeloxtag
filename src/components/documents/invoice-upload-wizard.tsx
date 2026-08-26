@@ -76,7 +76,7 @@ const MAX_LINE_ITEM_BLOCKS = 8;
 
 const INVOICE_SCAN_CAMERA_HINTS = {
   overview:
-    "Gesamte Rechnung im Rahmen — senkrecht von oben, parallel zum Blatt",
+    "Gesamte Rechnung ins DIN-A4-Feld — senkrecht von oben, parallel zum Blatt",
   header: "Kopf mit Werkstatt, Belegnummer, Datum und KM-Stand",
   lineItems: (blockNumber: number) =>
     blockNumber > 1

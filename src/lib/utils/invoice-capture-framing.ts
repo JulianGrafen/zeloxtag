@@ -23,7 +23,7 @@ export function analyzeInvoiceCaptureFraming(
     return {
       fillRatio: 0,
       status: "unknown",
-      message: "Rechnung im weißen Rahmen ausrichten",
+      message: "Rechnung ins weiße DIN-A4-Feld legen",
     };
   }
 

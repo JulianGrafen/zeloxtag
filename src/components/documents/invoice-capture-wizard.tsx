@@ -18,7 +18,7 @@ const PDF_ACCEPT = "application/pdf,.pdf";
 const MAX_POSITION_BLOCKS = 8;
 
 export const INVOICE_CAPTURE_HINTS = {
-  overview: "Ganze Seite im Rahmen",
+  overview: "Ganze Seite ins A4-Feld",
   positions: (blockNumber: number) =>
     blockNumber > 1
       ? `Block ${blockNumber} — nächste Tabelle`
@@ -154,7 +154,7 @@ function PositionsCamera({
 
 export function InvoiceCaptureWizard({
   title,
-  scanLabel: _scanLabel = "Rechnung",
+  scanLabel = "Rechnung",
   disabled = false,
   allowPdf = false,
   onComplete,
@@ -298,6 +298,7 @@ export function InvoiceCaptureWizard({
       <InBrowserCamera
         title="Gesamtseite"
         hint={INVOICE_CAPTURE_HINTS.overview}
+        guideLabel={`${scanLabel} · A4`}
         guideFrame="a4"
         guideFrameDimOutside
         a4AutoCrop
@@ -348,7 +349,7 @@ export function InvoiceCaptureWizard({
         <div className="flex items-center justify-between gap-2">
           <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
             {positionFiles.length > 0
-              ? `Seite + ${positionFiles.length} ${
+              ? `A4 + ${positionFiles.length} ${
                   positionFiles.length === 1 ? "Block" : "Blöcke"
                 }`
               : "1 Foto erfasst"}
@@ -367,7 +368,7 @@ export function InvoiceCaptureWizard({
               />
             ) : null}
             <span className="absolute left-1.5 top-1.5 rounded-md bg-emerald-700 px-1.5 py-0.5 text-[0.62rem] font-semibold text-white">
-              Seite
+              A4
             </span>
           </li>
 
