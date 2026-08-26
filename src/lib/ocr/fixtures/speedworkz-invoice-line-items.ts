@@ -46,7 +46,10 @@ export const SPEEDWORKZ_EXPECTED_LINE_ITEMS: Array<{ label: string; amount: numb
     { label: "Motor wird heiß lt. Kunde Thermost wurde erneuert", amount: 46.22 },
     { label: "Thermostat und Wasserschlauch erneuern", amount: 166.37 },
     { label: "Kühlmitteltemp.sensor prüfen und erneuern", amount: 46.22 },
-    { label: "Ersatzteile", amount: 190.68 },
+    { label: "Wasserschlauch", amount: 65.12 },
+    { label: "Thermostat", amount: 70.83 },
+    { label: "Kühlerfrostschutz Blau/Rot", amount: 26.0 },
+    { label: "Sensor, Kühlmitteltemperatur", amount: 28.73 },
     { label: "Fracht", amount: 5.0 },
   ];
 

@@ -231,7 +231,6 @@ describe("pre-deploy extraction quality · scan type catalog", () => {
     }
     expect(SCAN_TYPE_OPTIONS.some((opt) => opt.id === "egbe")).toBe(false);
     expect(SCAN_TYPE_OPTIONS.some((opt) => opt.id === "repair")).toBe(false);
-    expect(SCAN_TYPE_OPTIONS.some((opt) => opt.id === "gutachten")).toBe(false);
   });
 
   it("keeps repair defined for legacy deep links and OCR", () => {

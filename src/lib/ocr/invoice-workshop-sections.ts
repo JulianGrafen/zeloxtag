@@ -4,10 +4,7 @@
  */
 
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
-import {
-  isJunkInvoiceLineLabel,
-  normalizedInvoiceLineLabelKey,
-} from "@/lib/ocr/invoice-line-item-dedupe";
+import { isJunkInvoiceLineLabel } from "@/lib/ocr/invoice-line-item-dedupe";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 
 const MAX_ITEMS = 60;
@@ -165,107 +162,6 @@ function sumItems(items: InvoiceLineItem[]): number {
   return roundMoney(items.reduce((sum, item) => sum + item.amount, 0));
 }
 
-/** Ersatzteile block subtotal from Zwischensummen (not individual parts). */
-export function extractWorkshopPartsSubtotal(rawText: string): number | null {
-  const text = rawText.replace(/\r\n/g, "\n");
-  for (const rawLine of text.split("\n")) {
-    const line = rawLine.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
-    if (!/^ersatz\s*teile\b/i.test(line)) continue;
-
-    const amounts = trailingMoneyValues(line);
-    if (amounts.length === 0) continue;
-    const total = amounts[amounts.length - 1]!;
-    if (total > 0) return roundMoney(total);
-  }
-  return null;
-}
-
-/** Normalized labels of individual rows under the Ersatzteile section (for LLM cleanup). */
-function extractWorkshopPartsLineLabelKeys(rawText: string): Set<string> {
-  const normalized = rawText.replace(/\r\n/g, "\n");
-  if (!isWorkshopSectionInvoiceText(normalized)) return new Set();
-
-  const keys = new Set<string>();
-  let section: WorkshopSection = "none";
-
-  for (const rawLine of normalized.split("\n")) {
-    const line = rawLine.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
-    if (!line) continue;
-
-    const prevSection: WorkshopSection = section;
-    section = detectSection(line, section);
-    if (section !== prevSection) continue;
-
-    if (SECTION_PARTS.test(line) || /\bersatz\s*teile\b/i.test(line)) continue;
-    if (section !== "parts") continue;
-    if (SKIP_LINE.test(line)) continue;
-
-    const parsed = parsePartsLine(line) ?? parseLaborLine(line);
-    if (!parsed) continue;
-
-    const key = normalizedInvoiceLineLabelKey(parsed.label);
-    if (key.length >= 2) keys.add(key);
-  }
-
-  return keys;
-}
-
-/**
- * Workshop invoices: list labor + Sonstige Kosten individually, collapse parts to one
- * "Ersatzteile" row (Zwischensumme), not each spare part.
- */
-export function formatWorkshopLineItemsForDisplay(
-  items: InvoiceLineItem[],
-  rawText: string,
-): InvoiceLineItem[] {
-  if (!items.length || !isWorkshopSectionInvoiceText(rawText)) return items;
-
-  const partsKeys = extractWorkshopPartsLineLabelKeys(rawText);
-  if (partsKeys.size === 0) return items;
-
-  const filtered: InvoiceLineItem[] = [];
-  let removedParts = false;
-
-  for (const item of items) {
-    const label = item.label.trim();
-    if (/^ersatz\s*teile$/i.test(label)) {
-      filtered.push(item);
-      continue;
-    }
-
-    const key = normalizedInvoiceLineLabelKey(label);
-    if (partsKeys.has(key)) {
-      removedParts = true;
-      continue;
-    }
-
-    filtered.push(item);
-  }
-
-  if (!removedParts) return filtered;
-
-  const subtotal = extractWorkshopPartsSubtotal(rawText);
-  if (subtotal == null || subtotal <= 0) return filtered;
-
-  if (filtered.some((item) => /^ersatz\s*teile$/i.test(item.label.trim()))) {
-    return filtered;
-  }
-
-  const otherIndex = filtered.findIndex((item) =>
-    /^(?:fracht|kleinmaterial|sonstige\s+kosten)\b/i.test(item.label.trim()),
-  );
-  const aggregate: InvoiceLineItem = { label: "Ersatzteile", amount: subtotal };
-  if (otherIndex >= 0) {
-    return [
-      ...filtered.slice(0, otherIndex),
-      aggregate,
-      ...filtered.slice(otherIndex),
-    ];
-  }
-
-  return [...filtered, aggregate];
-}
-
 /** Net total from Positionssumme / Netto Summe (excludes MwSt). */
 export function extractWorkshopNetSum(rawText: string): number | null {
   const text = rawText.replace(/\r\n/g, "\n");
@@ -336,23 +232,15 @@ export function resolveWorkshopLineItems(options: {
     Math.abs(sumItems(ocrItems) - netSum) <= 1.5;
 
   if (ocrMatchesNet) {
-    if (llm.length === 0 || isGarbageWorkshopLineItems(llm)) {
-      return formatWorkshopLineItemsForDisplay(ocrItems, options.ocrText);
-    }
+    if (llm.length === 0 || isGarbageWorkshopLineItems(llm)) return ocrItems;
     if (netSum != null && Math.abs(sumItems(llm) - netSum) > Math.max(5, netSum * 0.08)) {
-      return formatWorkshopLineItemsForDisplay(ocrItems, options.ocrText);
+      return ocrItems;
     }
   }
 
-  if (isGarbageWorkshopLineItems(llm) && ocrItems?.length) {
-    return formatWorkshopLineItemsForDisplay(ocrItems, options.ocrText);
-  }
-  if (llm.length > 0) {
-    return formatWorkshopLineItemsForDisplay(llm, options.ocrText);
-  }
-  return ocrItems
-    ? formatWorkshopLineItemsForDisplay(ocrItems, options.ocrText)
-    : null;
+  if (isGarbageWorkshopLineItems(llm) && ocrItems?.length) return ocrItems;
+  if (llm.length > 0) return llm;
+  return ocrItems;
 }
 
 /**
@@ -364,10 +252,8 @@ export function extractWorkshopSectionLineItems(
   const normalized = rawText.replace(/\r\n/g, "\n");
   if (!isWorkshopSectionInvoiceText(normalized)) return null;
 
-  const laborItems: InvoiceLineItem[] = [];
-  const otherItems: InvoiceLineItem[] = [];
-  let partsSum = 0;
-  let partsCount = 0;
+  const items: InvoiceLineItem[] = [];
+  const seen = new Set<string>();
   let section: WorkshopSection = "none";
 
   for (const rawLine of normalized.split("\n")) {
@@ -396,11 +282,6 @@ export function extractWorkshopSectionLineItems(
       parsed = parseLaborLine(line);
     } else if (section === "parts") {
       parsed = parsePartsLine(line) ?? parseLaborLine(line);
-      if (parsed) {
-        partsSum += parsed.amount;
-        partsCount += 1;
-      }
-      continue;
     } else if (section === "other") {
       parsed = parseOtherLine(line) ?? parsePartsLine(line);
     }
@@ -409,25 +290,12 @@ export function extractWorkshopSectionLineItems(
     if (parsed.label.length < 4 && section !== "other") continue;
 
     const key = `${parsed.label.toLowerCase()}|${parsed.amount}`;
-    const target = section === "other" ? otherItems : laborItems;
-    const targetSeen = new Set(
-      target.map((item) => `${item.label.toLowerCase()}|${item.amount}`),
-    );
-    if (targetSeen.has(key)) continue;
-    target.push(parsed);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(parsed);
 
-    if (laborItems.length + otherItems.length + partsCount >= MAX_ITEMS) break;
+    if (items.length >= MAX_ITEMS) break;
   }
-
-  const items: InvoiceLineItem[] = [...laborItems];
-  if (partsCount > 0) {
-    const partsTotal =
-      extractWorkshopPartsSubtotal(normalized) ?? roundMoney(partsSum);
-    if (partsTotal > 0) {
-      items.push({ label: "Ersatzteile", amount: partsTotal });
-    }
-  }
-  items.push(...otherItems);
 
   const sanitized = sanitizeWorkshopLineItems(items);
   return sanitized != null && sanitized.length >= 3 ? sanitized : null;
