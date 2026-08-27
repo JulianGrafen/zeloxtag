@@ -39,6 +39,8 @@ export const gutachtenExtractionSchema = z
         "Name/Description of the component, e.g., KW V3 Gewindefahrwerk",
       ),
     manufacturer: z.string().trim().min(1).max(160).optional(),
+    /** KBA type-approval number when distinct from TG/certificate number. */
+    kbaNumber: z.string().trim().min(1).max(120).optional(),
     certificateNumber: z
       .string()
       .trim()
@@ -100,6 +102,7 @@ export const GUTACHTEN_JSON_SCHEMA = {
       "documentSubtype",
       "partName",
       "manufacturer",
+      "kbaNumber",
       "certificateNumber",
       "testOrganization",
       "issueDate",
@@ -125,6 +128,7 @@ export const GUTACHTEN_JSON_SCHEMA = {
         description: "Component or modification name",
       },
       manufacturer: { type: ["string", "null"] },
+      kbaNumber: { type: ["string", "null"] },
       certificateNumber: { type: ["string", "null"] },
       testOrganization: { type: ["string", "null"] },
       issueDate: {
@@ -152,6 +156,7 @@ const GutachtenLlmPayloadSchema = z
     documentSubtype: z.enum(GUTACHTEN_DOCUMENT_SUBTYPES),
     partName: z.string(),
     manufacturer: z.string().nullable(),
+    kbaNumber: z.string().nullable(),
     certificateNumber: z.string().nullable(),
     testOrganization: z.string().nullable(),
     issueDate: z.string().nullable(),
@@ -264,6 +269,7 @@ export function normalizeGutachtenExtraction(
     documentSubtype: parsed.documentSubtype,
     partName,
     manufacturer: normalizeOptionalString(parsed.manufacturer),
+    kbaNumber: normalizeOptionalString(parsed.kbaNumber),
     certificateNumber: normalizeOptionalString(parsed.certificateNumber),
     testOrganization: normalizeOptionalString(parsed.testOrganization),
     issueDate: normalizeIssueDate(parsed.issueDate),
@@ -386,7 +392,7 @@ export function gutachtenToAnalyzeFields(
     category: "abe",
     summary: gutachtenTitle(data),
     lineItems: null,
-    kbaNumber: data.certificateNumber?.trim() || null,
+    kbaNumber: data.kbaNumber?.trim() || data.certificateNumber?.trim() || null,
     vehicleApprovals:
       vehicleApprovals.length > 0 ? [...new Set(vehicleApprovals)] : null,
     authority: data.testOrganization?.trim() || null,

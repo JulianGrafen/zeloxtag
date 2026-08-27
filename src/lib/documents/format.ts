@@ -30,12 +30,12 @@ export function yearMonthToIsoDate(yearMonth: string | null | undefined): string
   return normalizeDocumentDateIso(trimmed);
 }
 
-/** ISO date from picker → YYYY-MM for next-HU storage. */
+/** ISO date from picker → YYYY-MM or YYYY-MM-DD for next-HU storage. */
 export function isoDateToYearMonth(iso: string | null | undefined): string | null {
   if (!iso?.trim()) return null;
   const normalized = normalizeDocumentDateIso(iso);
   if (!normalized) return null;
-  return normalized.slice(0, 7);
+  return normalized;
 }
 
 /** Numeric German calendar date (22.08.2026) for Belege and lists. */

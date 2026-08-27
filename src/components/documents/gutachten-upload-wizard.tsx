@@ -582,7 +582,7 @@ export function GutachtenUploadWizard({
         "approvalFields",
         JSON.stringify(gutachtenToApprovalFields(payload.review)),
       );
-      formData.set("kbaNumber", payload.review.certificateNumber ?? "");
+      formData.set("kbaNumber", payload.review.kbaNumber ?? payload.review.certificateNumber ?? "");
       formData.set("manufacturer", payload.review.manufacturer ?? "");
       formData.set("partCategory", payload.review.partName);
       formData.set("authority", payload.review.testOrganization ?? "");

@@ -21,8 +21,8 @@ import { filterInvoiceReceiptDocuments, isInvoiceReceiptDocument } from "@/lib/d
 import { dokumenteLabel, belegeLabel } from "@/lib/i18n/pluralize-de";
 import {
   filterManualVehicleEntries,
-  isTuningLikeCategory,
 } from "@/lib/documents/manual-entries";
+import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
 import { deriveNextInspectionFromDocuments } from "@/lib/documents/tuev-schedule";
 import { buildTimelineFromDocuments } from "@/services/timeline";
@@ -96,9 +96,10 @@ export function TagDashboardView({
   const serviceCount = filterServiceInspectionDocuments(documents).length;
   const manualEntries = filterManualVehicleEntries(documents);
   const manualEntryCount = manualEntries.length;
-  const umbauCount = documents.filter(
-    (doc) => isInvoiceReceiptDocument(doc) && isTuningLikeCategory(doc.category),
-  ).length + manualEntries.filter((doc) => doc.category === "tuning").length;
+  const umbauCount = manualEntries.filter(
+    (doc) =>
+      doc.category === "tuning" && isViewableDocumentUrl(doc.file_url),
+  ).length;
   const oilChangeCount = filterOilChangeDocuments(documents).length;
   const timelineEventCount = buildTimelineFromDocuments(documents).length;
   const lastOilChange = latestOilChangeIsoDate(documents);

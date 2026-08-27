@@ -197,7 +197,7 @@ export function preferTuevTestDate(
   if (dateNearPunkt3Window(rawText, llmDate)) return llmDate;
   if (llmDateNearPunkt3Marker(rawText, llmDate)) return llmDate;
 
-  return null;
+  return llmDate;
 }
 
 function llmDateNearPunkt3Marker(rawText: string, iso: string): boolean {

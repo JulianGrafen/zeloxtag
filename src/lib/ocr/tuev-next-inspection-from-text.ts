@@ -84,8 +84,15 @@ function foldGerman(value: string): string {
     .toLowerCase();
 }
 
-function normalizeToYearMonth(raw: string): string | null {
+function normalizeToInspectionDueDate(raw: string): string | null {
   const trimmed = raw.trim().replace(/\s+/g, "");
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [year, month, day] = trimmed.split("-").map(Number);
+    if (!year || !month || !day || month < 1 || month > 12) return null;
+    if (year < 1980 || year > 2100) return null;
+    return trimmed;
+  }
 
   if (/^\d{4}-\d{2}$/.test(trimmed)) {
     const [year, month] = trimmed.split("-").map(Number);
@@ -104,10 +111,12 @@ function normalizeToYearMonth(raw: string): string | null {
 
   const dayMonthYear = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
   if (dayMonthYear) {
+    const day = Number.parseInt(dayMonthYear[1]!, 10);
     const month = Number.parseInt(dayMonthYear[2]!, 10);
     const year = Number.parseInt(dayMonthYear[3]!, 10);
-    if (month < 1 || month > 12 || year < 1980 || year > 2100) return null;
-    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    if (year < 1980 || year > 2100) return null;
+    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   }
 
   return null;
@@ -138,7 +147,7 @@ function extractDateFromFragment(fragment: string): string | null {
 
   const numeric = cleaned.match(NUMERIC_DATE);
   if (numeric?.[1]) {
-    const normalized = normalizeToYearMonth(numeric[1]);
+    const normalized = normalizeToInspectionDueDate(numeric[1]);
     if (normalized) return normalized;
   }
 
@@ -232,7 +241,8 @@ export function preferTuevNextInspectionDate(
   if (ocrDate) return ocrDate;
 
   const llmDate =
-    typeof structured === "string" && /^\d{4}-\d{2}$/.test(structured.trim())
+    typeof structured === "string" &&
+    /^\d{4}-\d{2}(-\d{2})?$/.test(structured.trim())
       ? structured.trim()
       : null;
 

@@ -46,6 +46,8 @@ export const uploadDocumentMetaSchema = z
     amount: z.string().trim().max(32).optional().default(""),
     /** Set when user confirms “Trotzdem zuordnen” after a vehicle mismatch warning. */
     forceVehicleAssign: z.enum(["", "1"]).optional().default(""),
+    /** Set when user confirms “Trotzdem speichern” after a mileage plausibility warning. */
+    forceMileageSave: z.enum(["", "1"]).optional().default(""),
   })
   .strict();
 
@@ -76,6 +78,10 @@ export function metaFromFormData(formData: FormData): unknown {
     amount: String(formData.get("amount") ?? "").trim(),
     forceVehicleAssign:
       String(formData.get("forceVehicleAssign") ?? "").trim() === "1"
+        ? "1"
+        : "",
+    forceMileageSave:
+      String(formData.get("forceMileageSave") ?? "").trim() === "1"
         ? "1"
         : "",
   };

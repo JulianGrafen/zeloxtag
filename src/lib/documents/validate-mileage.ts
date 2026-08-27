@@ -1,3 +1,4 @@
+import { resolveDocumentMileageKm } from "@/lib/documents/document-mileage";
 import type { Document } from "@/types/database";
 
 export type MileageValidation = {
@@ -18,16 +19,13 @@ export function validateMileageAgainstHistory(
   }
 
   const dated = existing
-    .filter(
-      (doc) =>
-        typeof doc.mileage_km === "number" &&
-        doc.mileage_km > 0 &&
-        (doc.date ?? doc.created_at.slice(0, 10)),
-    )
-    .map((doc) => ({
-      km: doc.mileage_km as number,
-      date: doc.date ?? doc.created_at.slice(0, 10),
-    }))
+    .map((doc) => {
+      const km = resolveDocumentMileageKm(doc);
+      const docDate = doc.date ?? doc.created_at.slice(0, 10);
+      if (km === null || km <= 0 || !docDate) return null;
+      return { km, date: docDate };
+    })
+    .filter((row): row is { km: number; date: string } => row !== null)
     .sort((a, b) => b.date.localeCompare(a.date));
 
   // Find the chronologically closest predecessor document.

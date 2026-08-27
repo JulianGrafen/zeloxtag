@@ -108,6 +108,7 @@ export function ServiceInspectionsView({
         vehicleId={vehicleId}
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
+        existingDocuments={documents}
         backHref={`/v/${tagUuid}/service`}
         backLabel="Service & Wartung"
         onBack={() => {

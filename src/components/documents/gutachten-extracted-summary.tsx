@@ -28,6 +28,7 @@ function buildSummaryItems(extraction: GutachtenExtraction): SummaryItem[] {
   push("Bauteil", extraction.partName);
   push("Umrüstung", extraction.modificationType);
   push("Hersteller", extraction.manufacturer);
+  push("KBA-Nr.", extraction.kbaNumber);
   push("Gutachten-Nr.", extraction.certificateNumber);
   push("Prüforganisation", extraction.testOrganization);
   push("Datum", formatDate(extraction.issueDate));

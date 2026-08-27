@@ -11,6 +11,8 @@ import {
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
+import { isPlausibleVin, normalizeVin } from "@/lib/validations/vin";
+
 export type UpdateVehicleSpecsInput = {
   vehicleId: string;
   tagUuid: string;
@@ -25,11 +27,13 @@ export type UpdateVehicleSpecsResult =
   | { status: "ok" }
   | { status: "error"; message: string };
 
-function normalizeVin(raw: string | undefined): string | null {
-  const vin = raw?.trim().toUpperCase() ?? "";
+function normalizeVinInput(raw: string | undefined): string | null {
+  const vin = normalizeVin(raw ?? "");
   if (!vin) return null;
-  if (vin.length < 5 || vin.length > 32) {
-    throw new Error("VIN muss zwischen 5 und 32 Zeichen liegen.");
+  if (!isPlausibleVin(vin)) {
+    throw new Error(
+      "VIN ungültig — bitte die 17-stellige Fahrgestellnummer prüfen.",
+    );
   }
   return vin;
 }
@@ -62,7 +66,7 @@ export async function updateVehicleSpecs(
       };
     }
 
-    const vin = normalizeVin(input.vin);
+    const vin = normalizeVinInput(input.vin);
     const techSpecs = serializeVehicleTechSpecs(
       parseVehicleTechSpecs(input.techSpecs ?? null),
     );

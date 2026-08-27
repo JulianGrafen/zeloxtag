@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   FileText,
   Info,
@@ -43,6 +42,7 @@ import {
 } from "@/lib/documents/scan-types";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { assessVehicleDocumentMatch } from "@/lib/documents/vehicle-document-match";
+import { validateMileageAgainstHistory } from "@/lib/documents/validate-mileage";
 import { DOCUMENT_TYPE_LABELS } from "@/lib/documents/constants";
 import { analyzeDocumentFiles } from "@/lib/ocr/analyze-document-client";
 import {
@@ -66,6 +66,7 @@ import {
   type InvoiceTextParseCategory,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
+import type { Document } from "@/types/database";
 
 import {
   invoiceReviewCategoryFromScanType,
@@ -102,6 +103,8 @@ interface InvoiceUploaderProps {
   scanType: ScanType;
   /** After successful save (default: documents list for that type). */
   successHref?: string;
+  /** Existing vehicle documents — used for client-side mileage plausibility checks. */
+  existingDocuments?: Document[];
   heading?: string;
   subheading?: string;
 }
@@ -188,10 +191,10 @@ export function InvoiceUploader({
   lockCategory = false,
   scanType,
   successHref,
+  existingDocuments = [],
   heading = "Rechnung scannen",
   subheading,
 }: InvoiceUploaderProps) {
-  const router = useRouter();
   const vehicleContext = useMemo(
     () =>
       buildVehicleContext({
@@ -241,6 +244,19 @@ export function InvoiceUploader({
     string | null
   >(null);
   const [showThinPositionsHint, setShowThinPositionsHint] = useState(false);
+
+  const mileageWarning = useMemo(() => {
+    const km = fields.mileageKm;
+    if (km === null || km <= 0 || existingDocuments.length === 0) {
+      return null;
+    }
+    const check = validateMileageAgainstHistory(
+      km,
+      normalizeDocumentDateIso(fields.date),
+      existingDocuments,
+    );
+    return check.ok ? null : check.warning;
+  }, [existingDocuments, fields.date, fields.mileageKm]);
 
   useEffect(() => {
     return () => {
@@ -299,7 +315,11 @@ export function InvoiceUploader({
     };
   }
 
-  function attemptSaveInvoice(resolvedTitle: string, force = false) {
+  function attemptSaveInvoice(
+    resolvedTitle: string,
+    forceVehicle = false,
+    forceMileage = false,
+  ) {
     const match = assessVehicleDocumentMatch({
       rawText,
       garageVin: vehicleVin,
@@ -307,18 +327,28 @@ export function InvoiceUploader({
       garageModel: vehicleModel,
     });
 
-    if (match.mismatch && !force) {
+    if (match.mismatch && !forceVehicle) {
       setVehicleMismatchReason(match.reason);
       return;
     }
 
+    if (mileageWarning && !forceMileage) {
+      setError(null);
+      return;
+    }
+
     setVehicleMismatchReason(null);
-    persistGenericInvoiceFromConfirm(buildInvoiceSaveValues(resolvedTitle), force);
+    persistGenericInvoiceFromConfirm(
+      buildInvoiceSaveValues(resolvedTitle),
+      forceVehicle,
+      forceMileage,
+    );
   }
 
   function persistGenericInvoiceFromConfirm(
     values: ReturnType<typeof buildInvoiceSaveValues>,
     assignDespiteMismatch = false,
+    forceMileageSave = false,
   ) {
     setError(null);
     if (assignDespiteMismatch) {
@@ -381,6 +411,9 @@ export function InvoiceUploader({
       if (assignDespiteMismatch) {
         formData.set("forceVehicleAssign", "1");
       }
+      if (forceMileageSave) {
+        formData.set("forceMileageSave", "1");
+      }
       formData.set("file", uploadFile);
 
       try {
@@ -393,8 +426,7 @@ export function InvoiceUploader({
         const href =
           successHref ??
           `/v/${result.tagUuid}/dokumente/${result.document.id}?saved=1`;
-        router.push(href);
-        router.refresh();
+        window.location.assign(href);
       } catch (caught) {
         setError(
           caught instanceof Error
@@ -1620,6 +1652,7 @@ export function InvoiceUploader({
             }
             categoryLocked={Boolean(resolvedLockCategory)}
             vehicleMismatchReason={vehicleMismatchReason}
+            mileageWarning={vehicleMismatchReason ? null : mileageWarning}
             saving={pending}
             error={error}
             preview={{
@@ -1645,7 +1678,16 @@ export function InvoiceUploader({
                 setError("Bezeichnung ist erforderlich.");
                 return;
               }
-              attemptSaveInvoice(resolvedTitle, true);
+              attemptSaveInvoice(resolvedTitle, true, true);
+            }}
+            onSaveDespiteMileage={() => {
+              setError(null);
+              const resolvedTitle = title.trim();
+              if (!resolvedTitle) {
+                setError("Bezeichnung ist erforderlich.");
+                return;
+              }
+              attemptSaveInvoice(resolvedTitle, false, true);
             }}
             onDismissMismatch={() => setVehicleMismatchReason(null)}
             topBanner={(() => {

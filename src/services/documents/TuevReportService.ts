@@ -89,10 +89,27 @@ function normalizeYearMonth(value: unknown): string | null {
   if (typeof value !== "string") return null;
 
   const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [y, m, d] = trimmed.split("-").map(Number);
+    if (!y || !m || !d || m < 1 || m > 12 || d < 1 || d > 31) return null;
+    if (y < 1980 || y > 2100) return null;
+    return trimmed;
+  }
+
   if (/^\d{4}-\d{2}$/.test(trimmed)) {
     const [y, m] = trimmed.split("-").map(Number);
     if (!y || !m || m < 1 || m > 12 || y < 1980 || y > 2100) return null;
     return trimmed;
+  }
+
+  const deFull = trimmed.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (deFull) {
+    const day = Number.parseInt(deFull[1]!, 10);
+    const month = Number.parseInt(deFull[2]!, 10);
+    const year = Number.parseInt(deFull[3]!, 10);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    if (year < 1980 || year > 2100) return null;
+    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   }
 
   const de = trimmed.match(/^(\d{1,2})[./-](\d{4})$/);

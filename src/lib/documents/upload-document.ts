@@ -280,8 +280,8 @@ export async function uploadDocument(
 
   const existingDocs = (existingRows ?? []) as Document[];
 
-  const forceVehicleAssign = meta.forceVehicleAssign === "1";
-  if (!forceVehicleAssign) {
+  const forceMileageSave = meta.forceMileageSave === "1";
+  if (!forceMileageSave) {
     const mileageCheck = validateMileageAgainstHistory(
       mileageKm,
       date,

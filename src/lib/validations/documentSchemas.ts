@@ -75,7 +75,7 @@ const isoDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD");
 const yearMonth = z
   .string()
-  .regex(/^\d{4}-\d{2}$/, "Month must be YYYY-MM");
+  .regex(/^\d{4}-\d{2}(-\d{2})?$/, "Month must be YYYY-MM or YYYY-MM-DD");
 
 /**
  * Teilegutachten after § 19 Abs. 3 StVZO

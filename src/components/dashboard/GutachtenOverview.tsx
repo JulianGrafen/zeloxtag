@@ -59,8 +59,8 @@ function fieldsToGutachtenReview(
         "Teilegutachten",
       modificationType: fields.partCategory?.trim() || undefined,
       manufacturer: fields.manufacturer?.trim() || undefined,
+      kbaNumber: fields.kbaNumber?.trim() || undefined,
       certificateNumber:
-        fields.kbaNumber?.trim() ||
         fields.invoiceNumber?.trim() ||
         tg.documentNumber?.trim() ||
         undefined,
@@ -134,8 +134,8 @@ function fieldsToGutachtenReview(
       "Gutachten",
     modificationType: fields.partCategory?.trim() || undefined,
     manufacturer: fields.manufacturer?.trim() || undefined,
+    kbaNumber: fields.kbaNumber?.trim() || undefined,
     certificateNumber:
-      fields.kbaNumber?.trim() ||
       fields.invoiceNumber?.trim() ||
       undefined,
     testOrganization:
@@ -189,6 +189,7 @@ export function GutachtenOverview({
       partName: review.partName.trim(),
       modificationType: review.modificationType?.trim() || undefined,
       manufacturer: review.manufacturer?.trim() || undefined,
+      kbaNumber: review.kbaNumber?.trim() || undefined,
       certificateNumber: review.certificateNumber?.trim() || undefined,
       testOrganization: review.testOrganization?.trim() || undefined,
       issueDate: review.issueDate?.trim() || undefined,
@@ -295,7 +296,17 @@ export function GutachtenOverview({
           />
         </SmartReviewField>
 
-        <SmartReviewField label="Gutachten- / Bericht-Nr.">
+        <SmartReviewField label="KBA-Nummer">
+          <Input
+            value={review.kbaNumber ?? review.certificateNumber ?? ""}
+            onChange={(event) =>
+              update("kbaNumber", event.target.value || undefined)
+            }
+            placeholder="z. B. 91180"
+          />
+        </SmartReviewField>
+
+        <SmartReviewField label="Gutachten- / TG-Nr.">
           <Input
             value={review.certificateNumber ?? ""}
             onChange={(event) =>

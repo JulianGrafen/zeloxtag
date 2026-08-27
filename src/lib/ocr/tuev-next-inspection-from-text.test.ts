@@ -70,7 +70,15 @@ Nächste Untersuchung
       extractTuevNextInspectionFromText(
         "Nächste Hauptuntersuchung: 15.06.2030",
       ),
-    ).toBe("2030-06");
+    ).toBe("2030-06-15");
+  });
+
+  it("parses nächste HU with full date 18.08.2028", () => {
+    expect(
+      extractTuevNextInspectionFromText(
+        "Termin der nächsten Hauptuntersuchung: 18.08.2028",
+      ),
+    ).toBe("2028-08-18");
   });
 
   it("parses Termin der nächsten HU", () => {

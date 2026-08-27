@@ -22,6 +22,7 @@ export type InvoiceReviewFormProps = {
   onFieldsChange: (patch: Partial<InvoiceTextParseResult>) => void;
   categoryLocked?: boolean;
   vehicleMismatchReason?: string | null;
+  mileageWarning?: string | null;
   preview?: {
     url: string;
     kind: "pdf" | "image";
@@ -32,6 +33,7 @@ export type InvoiceReviewFormProps = {
   error?: string | null;
   onSave: () => void;
   onSaveDespiteMismatch?: () => void;
+  onSaveDespiteMileage?: () => void;
   onReset?: () => void;
   topBanner?: ReactNode;
   onDismissMismatch?: () => void;
@@ -50,11 +52,13 @@ export function InvoiceReviewForm({
   onFieldsChange,
   categoryLocked = false,
   vehicleMismatchReason = null,
+  mileageWarning = null,
   preview,
   saving = false,
   error = null,
   onSave,
   onSaveDespiteMismatch,
+  onSaveDespiteMileage,
   onReset,
   topBanner,
   onDismissMismatch,
@@ -70,6 +74,16 @@ export function InvoiceReviewForm({
             Anderes Fahrzeug erkannt?
           </p>
           <p className="mt-1.5 leading-relaxed">{vehicleMismatchReason}</p>
+        </div>
+      ) : null}
+
+      {mileageWarning ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-[0.85rem] text-amber-950">
+          <p className="flex items-start gap-2 font-semibold">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            Kilometerstand prüfen
+          </p>
+          <p className="mt-1.5 leading-relaxed">{mileageWarning}</p>
         </div>
       ) : null}
 
@@ -139,6 +153,18 @@ export function InvoiceReviewForm({
             />
           </label>
 
+          <label className="block space-y-1">
+            <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+              Kilometerstand
+            </span>
+            <MileageKmInput
+              value={fields.mileageKm ?? null}
+              onChange={(km) => onFieldsChange({ mileageKm: km })}
+              className="claim-input"
+              placeholder="z. B. 187.430"
+            />
+          </label>
+
           {!categoryLocked ? (
             <div className="space-y-1.5">
               <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
@@ -187,17 +213,6 @@ export function InvoiceReviewForm({
                       invoiceNumber: event.target.value || null,
                     })
                   }
-                  placeholder="optional"
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Kilometerstand
-                </span>
-                <MileageKmInput
-                  value={fields.mileageKm ?? null}
-                  onChange={(km) => onFieldsChange({ mileageKm: km })}
-                  className="claim-input"
                   placeholder="optional"
                 />
               </label>
@@ -279,6 +294,26 @@ export function InvoiceReviewForm({
             onClick={onDismissMismatch ?? onSave}
           >
             Zurück
+          </Button>
+        </div>
+      ) : mileageWarning && onSaveDespiteMileage ? (
+        <div className="space-y-2">
+          <Button
+            type="button"
+            disabled={saving}
+            className="claim-cta w-full"
+            onClick={onSaveDespiteMileage}
+          >
+            {saving ? "Wird gespeichert…" : "Trotzdem speichern"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving}
+            className="w-full"
+            onClick={onSave}
+          >
+            KM korrigieren
           </Button>
         </div>
       ) : (
