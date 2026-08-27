@@ -1,7 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { Input } from "@/components/ui/input";
-import { normalizeDocumentDateIso } from "@/lib/documents/format";
+import {
+  formatCompactGermanDate,
+  parseGermanDocumentDateInput,
+} from "@/lib/documents/format";
 
 type GermanDateInputProps = {
   value: string | null;
@@ -12,30 +17,57 @@ type GermanDateInputProps = {
   id?: string;
 };
 
-function toDateInputValue(value: string | null): string {
+function isoToDisplay(value: string | null): string {
   if (!value?.trim()) return "";
-  return normalizeDocumentDateIso(value) ?? "";
+  return formatCompactGermanDate(value) || "";
 }
 
-/** Beleg-Datum — nativer Kalender-Picker (ISO YYYY-MM-DD intern). */
+/** Beleg-Datum — Eingabe und Anzeige als TT.MM.JJJJ (ISO intern). */
 export function GermanDateInput({
   value,
   onChange,
+  placeholder = "TT.MM.JJJJ",
   className,
   required,
   id,
 }: GermanDateInputProps) {
+  const [text, setText] = useState(() => isoToDisplay(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) {
+      setText(isoToDisplay(value));
+    }
+  }, [value, focused]);
+
   return (
     <Input
       id={id}
       required={required}
-      type="date"
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
       lang="de"
+      placeholder={placeholder}
       className={className}
-      value={toDateInputValue(value)}
-      onChange={(event) => {
-        const raw = event.target.value.trim();
-        onChange(raw || null);
+      value={text}
+      onFocus={() => setFocused(true)}
+      onChange={(event) => setText(event.target.value)}
+      onBlur={() => {
+        setFocused(false);
+        const trimmed = text.trim();
+        if (!trimmed) {
+          onChange(null);
+          setText("");
+          return;
+        }
+        const parsed = parseGermanDocumentDateInput(trimmed);
+        if (parsed) {
+          onChange(parsed);
+          setText(isoToDisplay(parsed));
+          return;
+        }
+        setText(isoToDisplay(value));
       }}
     />
   );

@@ -48,6 +48,7 @@ import {
 } from "@/lib/validations/gutachtenSchema";
 import { GutachtenSubtypePicker } from "@/components/documents/gutachten-subtype-picker";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
+import { createDocumentPreviewUrl } from "@/lib/ocr/prepare-client-ocr-file";
 import { Button } from "@/components/ui/button";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 

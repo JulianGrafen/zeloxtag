@@ -4,35 +4,38 @@ import { DOCUMENT_TYPE_LABELS } from "./constants";
 import { filterAbeFamilyDocuments } from "./abe-family-documents";
 import { filterInvoiceReceiptDocuments } from "./invoice-receipts";
 
-/** TÜV next-HU month (YYYY-MM or YYYY-MM-DD) → e.g. "Mai 2028". */
+/** TÜV next-HU (YYYY-MM or YYYY-MM-DD) → dd.mm.yyyy. Month-only uses 01 as day. */
 export function formatTuevYearMonth(value: string | null | undefined): string {
   if (!value?.trim()) return "—";
   const trimmed = value.trim();
 
-  const isoDate = trimmed.match(/^(\d{4})-(\d{2})-\d{2}$/);
-  if (isoDate) {
-    const year = Number.parseInt(isoDate[1]!, 10);
-    const month = Number.parseInt(isoDate[2]!, 10);
-    const label = formatTuevYearMonthLabel(year, month);
-    return label ?? trimmed;
+  if (/^\d{4}-\d{2}$/.test(trimmed)) {
+    return formatCompactGermanDate(`${trimmed}-01`);
   }
 
-  if (!/^\d{4}-\d{2}$/.test(trimmed)) return trimmed;
-  const [yearStr, monthStr] = trimmed.split("-");
-  const label = formatTuevYearMonthLabel(
-    Number.parseInt(yearStr!, 10),
-    Number.parseInt(monthStr!, 10),
-  );
-  return label ?? trimmed;
+  const compact = formatCompactGermanDate(trimmed);
+  return compact || trimmed;
 }
 
-function formatTuevYearMonthLabel(year: number, month: number): string | null {
-  if (!year || month < 1 || month > 12) return null;
-  const label = new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString(
-    "de-DE",
-    { month: "long", year: "numeric", timeZone: "UTC" },
-  );
-  return label.charAt(0).toUpperCase() + label.slice(1);
+/** Stored YYYY-MM → ISO date for date inputs (defaults to 1st of month). */
+export function yearMonthToIsoDate(yearMonth: string | null | undefined): string | null {
+  if (!yearMonth?.trim()) return null;
+  const trimmed = yearMonth.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return normalizeDocumentDateIso(trimmed);
+  }
+  if (/^\d{4}-\d{2}$/.test(trimmed)) {
+    return `${trimmed}-01`;
+  }
+  return normalizeDocumentDateIso(trimmed);
+}
+
+/** ISO date from picker → YYYY-MM for next-HU storage. */
+export function isoDateToYearMonth(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const normalized = normalizeDocumentDateIso(iso);
+  if (!normalized) return null;
+  return normalized.slice(0, 7);
 }
 
 /** Numeric German calendar date (22.08.2026) for Belege and lists. */
@@ -233,7 +236,7 @@ export function formatCompactGermanDate(isoOrRaw: string | null): string {
   const iso = isoForDisplay(isoOrRaw);
   if (!iso) return isoOrRaw?.trim() ?? "";
   const [year, month, day] = iso.split("-");
-  return `${day}.${month}.${year}`;
+  return `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`;
 }
 
 /** List/detail helper — numeric DE date or „Ohne Datum“. */

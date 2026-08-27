@@ -4,12 +4,12 @@ import {
   GUTACHTEN_SUBTYPE_LABELS,
   type GutachtenExtraction,
 } from "@/lib/validations/gutachtenSchema";
+import { formatCompactGermanDate } from "@/lib/documents/format";
 
 function formatDate(iso?: string): string | null {
   if (!iso?.trim()) return null;
-  const match = iso.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return iso.trim();
-  return `${match[3]}.${match[2]}.${match[1]}`;
+  const compact = formatCompactGermanDate(iso.trim());
+  return compact || iso.trim();
 }
 
 type SummaryItem = {

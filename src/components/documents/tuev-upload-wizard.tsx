@@ -37,6 +37,10 @@ import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { resolveTuevTotalAmount } from "@/lib/ocr/tuev-amount";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import {
+  createDocumentPreviewUrl,
+  prepareTuevWizardOcrFile,
+} from "@/lib/ocr/prepare-client-ocr-file";
+import {
   TESTING_ORGANIZATIONS,
   TUEV_RESULTS,
   type TuevReport,
@@ -125,12 +129,13 @@ class TuevApiError extends Error {
 async function callTuevStep<T>(
   vehicleId: string,
   file: File,
-  step: string,
+  step: "overview" | "header" | "defects",
   label: string,
 ): Promise<T> {
+  const ocrFile = await prepareTuevWizardOcrFile(file, step);
   const body = new FormData();
   body.set("vehicleId", vehicleId);
-  body.set("file", file);
+  body.set("file", ocrFile);
   body.set("step", step);
 
   const response = await fetch("/api/ocr/tuev", { method: "POST", body });
@@ -432,13 +437,15 @@ export function TuevUploadWizard({
       let previewOwned = false;
 
       if (previewSource) {
-        previewUrl = URL.createObjectURL(previewSource);
-        previewKind = isPdfFile(previewSource) ? "pdf" : "image";
-        previewOwned = true;
-      } else if (uploadFile && isPdfFile(uploadFile)) {
-        previewUrl = URL.createObjectURL(uploadFile);
-        previewKind = "pdf";
-        previewOwned = true;
+        const preview = await createDocumentPreviewUrl(previewSource);
+        previewUrl = preview.url;
+        previewKind = preview.kind;
+        previewOwned = preview.owned;
+      } else if (uploadFile) {
+        const preview = await createDocumentPreviewUrl(uploadFile);
+        previewUrl = preview.url;
+        previewKind = preview.kind;
+        previewOwned = preview.owned;
       }
 
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);

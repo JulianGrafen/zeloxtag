@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, FileText, LoaderCircle, RotateCcw } from "lucide-react";
 
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { formatCompactGermanDate, localDateIso } from "@/lib/documents/format";
 import { drawImageToCanvas, loadImageFromFile } from "@/lib/utils/image-loader";
 import type { QuadPoints } from "@/lib/utils/perspective";
 import { buildScanFromCorners } from "@/lib/utils/scan-pipeline";
@@ -112,7 +113,7 @@ export function InvoiceScannerForm({
       setStep("ready");
 
       if (!title.trim()) {
-        const stamp = new Date().toLocaleDateString("de-DE");
+        const stamp = formatCompactGermanDate(localDateIso());
         setTitle(`Rechnung ${stamp}`);
       }
     } catch (processError) {

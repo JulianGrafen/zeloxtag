@@ -1,15 +1,9 @@
-const DE_DATE: Intl.DateTimeFormatOptions = {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-};
+import { formatCompactGermanDate } from "@/lib/documents/format";
 
 export function formatExposeDate(isoDate: string | null | undefined): string {
   if (!isoDate?.trim()) return "—";
-  const normalized = isoDate.trim().slice(0, 10);
-  const parsed = new Date(`${normalized}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) return "—";
-  return parsed.toLocaleDateString("de-DE", DE_DATE);
+  const compact = formatCompactGermanDate(isoDate.trim());
+  return compact || "—";
 }
 
 export function formatExposeMileage(km: number | null | undefined): string {

@@ -18,14 +18,15 @@ const VAULT_CLASSIFY_MAX_TOKENS = 280;
 
 function buildVaultClassificationSystemPrompt(): string {
   return [
-    "You classify German automotive approval documents (ABE, Teilegutachten, Gutachten).",
-    "Return a short part/product title, a broad category, and the document type if recognizable.",
-    "Do NOT extract dates, prices, KBA numbers, paragraphs, or vehicle data.",
-    "Title: concise product name (max ~8 words), e.g. 'KW V3 Gewindefahrwerk'.",
-    "Category: pick the best enum value for the modified part.",
-    "documentKind: abe | teilegutachten | einzelabnahme | pruefung192 | egbe | gutachten — or null if unknown.",
-    "If unreadable, use title 'Unbekanntes Bauteil', category SONSTIGES, documentKind null.",
-    "Return ONLY valid JSON.",
+    "Du klassifizierst deutsche ABE- und Gutachten-Dokumente (Teilegutachten, Einzelabnahme, ABE).",
+    "Gib einen kurzen Bauteil-/Produkttitel, eine Kategorie und den Dokumenttyp zurück.",
+    "Keine Daten, Preise, KBA-Nummern oder Fahrzeugdaten extrahieren.",
+    "Titel: präziser Produktname (max. ~8 Wörter), z. B. 'KW V3 Gewindefahrwerk'.",
+    "Kategorie: passender Enum-Wert für das Bauteil.",
+    "documentKind: abe | teilegutachten | einzelabnahme | pruefung192 | egbe | gutachten — oder null wenn unklar.",
+    "Teilegutachten erkennst du an §19 Abs. 3, 'Teilegutachten', Gutachtennummer auf dem Deckblatt.",
+    "Wenn unleserlich: Titel 'Unbekanntes Bauteil', category SONSTIGES, documentKind null.",
+    "Nur gültiges JSON zurückgeben.",
   ].join("\n");
 }
 
@@ -48,11 +49,12 @@ export class VaultClassificationService {
 
     const userContent = await buildAbeVisionUserMessage(
       [
-        "German ABE / Gutachten document — identify the modified part and document type.",
-        "Return title, category, and documentKind. Ignore all other fields.",
+        "Deutsches ABE- / Gutachten-Dokument — Bauteil und Dokumenttyp erkennen.",
+        "Teilegutachten (§19 Abs. 3) von Einzelabnahme (§21) und ABE unterscheiden.",
+        "Gib title, category und documentKind zurück. Alles andere ignorieren.",
       ],
       input,
-      { maxPdfPages: 1 },
+      { maxPdfPages: 2 },
     );
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;

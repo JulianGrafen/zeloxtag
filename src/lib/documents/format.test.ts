@@ -37,9 +37,9 @@ describe("document date display", () => {
     expect(formatDocumentDate("12. Aug 2026")).toBe("12.08.2026");
   });
 
-  it("formats next HU as month and year only", () => {
-    expect(formatTuevYearMonth("2028-05")).toBe("Mai 2028");
-    expect(formatTuevYearMonth("2028-05-01")).toBe("Mai 2028");
-    expect(formatTuevYearMonth("2028-05-17")).toBe("Mai 2028");
+  it("formats next HU as dd.mm.yyyy", () => {
+    expect(formatTuevYearMonth("2028-05")).toBe("01.05.2028");
+    expect(formatTuevYearMonth("2028-05-01")).toBe("01.05.2028");
+    expect(formatTuevYearMonth("2028-05-17")).toBe("17.05.2028");
   });
 });

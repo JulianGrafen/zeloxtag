@@ -20,6 +20,7 @@ import {
   type ContributorRow,
 } from "@/actions/vehicle-contributors";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { formatDocumentDate } from "@/lib/documents/format";
 
 type SchrauberManagePanelProps = {
   vehicleId: string;
@@ -325,7 +326,7 @@ export function SchrauberManagePanel({
                         ? "Einladung offen"
                         : row.userEmail || "Aktiv"}
                       {row.expiresAt && row.status === "invited"
-                        ? ` · gültig bis ${new Date(row.expiresAt).toLocaleDateString("de-DE")}`
+                        ? ` · gültig bis ${formatDocumentDate(row.expiresAt.slice(0, 10))}`
                         : ""}
                     </p>
                   </div>

@@ -28,6 +28,7 @@ import {
   localDateIso,
 } from "@/lib/documents/format";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { prepareTuevSingleOcrFile } from "@/lib/ocr/prepare-client-ocr-file";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { TuevVisionExtraction } from "@/services/ocr/TuevExtractionService";
 import {
@@ -260,10 +261,10 @@ export function SingleClickTuevUpload({
     setPhase("processing");
 
     try {
-      // 1. Single vision-LLM extraction (full document, no wizard split).
+      const ocrFile = await prepareTuevSingleOcrFile(file);
       const body = new FormData();
       body.set("vehicleId", vehicleId);
-      body.set("file", file);
+      body.set("file", ocrFile);
 
       const response = await fetch("/api/ocr/tuev/single", {
         method: "POST",

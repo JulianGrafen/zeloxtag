@@ -35,6 +35,15 @@ export async function loadPdfDocument(file: File | Blob): Promise<PDFDocumentPro
   return loadingTask.promise;
 }
 
+export async function getClientPdfPageCount(file: File | Blob): Promise<number> {
+  const pdf = await loadPdfDocument(file);
+  const pageCount = Math.max(1, pdf.numPages);
+  if (typeof pdf.destroy === "function") {
+    await pdf.destroy();
+  }
+  return pageCount;
+}
+
 /**
  * Concatenate embedded text layers. Empty/whitespace-only pages contribute "".
  */

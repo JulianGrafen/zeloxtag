@@ -4,6 +4,8 @@ import { Wrench } from "lucide-react";
 
 import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
 
+import { formatDocumentDate } from "@/lib/documents/format";
+
 import { ModBadge } from "./ModBadge";
 import { showroom } from "./showroom-styles";
 
@@ -13,12 +15,8 @@ type ShowroomModsProps = {
 
 function formatDate(iso: string | null): string | null {
   if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString("de-DE", {
-    month: "short",
-    year: "numeric",
-  });
+  const label = formatDocumentDate(iso);
+  return label === "Ohne Datum" ? null : label;
 }
 
 export function ShowroomMods({ modifications }: ShowroomModsProps) {

@@ -44,6 +44,7 @@ function teilegutachtenMeta(overrides: Record<string, unknown> = {}) {
     }),
     date: "2026-08-06",
     amount: "",
+    forceVehicleAssign: "",
     ...overrides,
   };
 }
@@ -70,5 +71,15 @@ describe("uploadDocumentMetaSchema", () => {
       }),
     );
     expect(parsed.success).toBe(false);
+  });
+
+  it("accepts forceVehicleAssign for mismatch override saves", () => {
+    const parsed = uploadDocumentMetaSchema.safeParse(
+      teilegutachtenMeta({ forceVehicleAssign: "1" }),
+    );
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.forceVehicleAssign).toBe("1");
+    }
   });
 });

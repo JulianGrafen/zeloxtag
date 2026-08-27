@@ -24,6 +24,7 @@ export type ScanConfirmSheetProps = {
   vehicleMismatchReason: string | null;
   mileageWarning: string | null;
   duplicateHint: string | null;
+  error?: string | null;
   saving?: boolean;
   onChange: (patch: Partial<ScanConfirmValues>) => void;
   onConfirm: () => void;
@@ -45,6 +46,7 @@ export function ScanConfirmSheet({
   vehicleMismatchReason,
   mileageWarning,
   duplicateHint,
+  error = null,
   saving = false,
   onChange,
   onConfirm,
@@ -191,6 +193,15 @@ export function ScanConfirmSheet({
         </div>
 
         <footer className="space-y-2 border-t border-[color:var(--vd-border)] px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {error ? (
+            <p
+              role="alert"
+              className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.82rem] text-red-700"
+            >
+              {error}
+            </p>
+          ) : null}
+
           {vehicleMismatch ? (
             <>
               <Button

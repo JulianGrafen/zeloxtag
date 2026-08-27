@@ -19,6 +19,8 @@ type EditableLineItemsSectionProps = {
   /** Optional document total shown under the list. */
   totalAmount?: number | null;
   emptyHint?: string;
+  /** Inline: always editable rows (scan review). Default: read-only until Bearbeiten. */
+  mode?: "default" | "inline";
 };
 
 type DraftItem = {
@@ -77,8 +79,10 @@ export function EditableLineItemsSection({
   onChange,
   totalAmount = null,
   emptyHint = "Keine Positionen erkannt. Original-PDF unten öffnen.",
+  mode = "default",
 }: EditableLineItemsSectionProps) {
-  const [editing, setEditing] = useState(false);
+  const inline = mode === "inline";
+  const [editing, setEditing] = useState(inline);
   const [draft, setDraft] = useState<DraftItem[]>(() => toDraft(items));
   const [displayItems, setDisplayItems] = useState(items);
   const [error, setError] = useState<string | null>(null);
@@ -87,10 +91,21 @@ export function EditableLineItemsSection({
   useEffect(() => {
     if (!editing) {
       setDisplayItems(items);
+    } else if (inline) {
+      setDraft(toDraft(items));
     }
-  }, [items, editing]);
+  }, [items, editing, inline]);
 
   const persistLocally = Boolean(onChange) && !documentId;
+
+  function applyDraft(nextDraft: DraftItem[]) {
+    setDraft(nextDraft);
+    if (inline && onChange) {
+      const next = parseDraft(nextDraft);
+      setDisplayItems(next);
+      onChange(next);
+    }
+  }
 
   function startEdit() {
     setError(null);
@@ -138,12 +153,14 @@ export function EditableLineItemsSection({
   }
 
   return (
-    <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <section
+      className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 space-y-3"
+    >
+      <div className="flex items-center justify-between gap-3">
         <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
           Positionen
         </h2>
-        {!editing ? (
+        {!editing && !inline ? (
           <PressableButton
             type="button"
             variant="button"
@@ -172,11 +189,17 @@ export function EditableLineItemsSection({
                   value={row.label}
                   onChange={(event) => {
                     const value = event.target.value;
-                    setDraft((current) =>
-                      current.map((entry, i) =>
+                    setDraft((current) => {
+                      const next = current.map((entry, i) =>
                         i === index ? { ...entry, label: value } : entry,
-                      ),
-                    );
+                      );
+                      if (inline && onChange) {
+                        const parsed = parseDraft(next);
+                        setDisplayItems(parsed);
+                        onChange(parsed);
+                      }
+                      return next;
+                    });
                   }}
                   placeholder="Bezeichnung"
                   className="claim-input min-w-0 text-[0.88rem]"
@@ -186,11 +209,17 @@ export function EditableLineItemsSection({
                   value={row.amount}
                   onChange={(event) => {
                     const value = event.target.value;
-                    setDraft((current) =>
-                      current.map((entry, i) =>
+                    setDraft((current) => {
+                      const next = current.map((entry, i) =>
                         i === index ? { ...entry, amount: value } : entry,
-                      ),
-                    );
+                      );
+                      if (inline && onChange) {
+                        const parsed = parseDraft(next);
+                        setDisplayItems(parsed);
+                        onChange(parsed);
+                      }
+                      return next;
+                    });
                   }}
                   placeholder="€"
                   className="claim-input text-right text-[0.88rem] tabular-nums"
@@ -200,10 +229,10 @@ export function EditableLineItemsSection({
                   variant="button"
                   aria-label="Position entfernen"
                   onClick={() => {
-                    setDraft((current) =>
-                      current.length <= 1
+                    applyDraft(
+                      draft.length <= 1
                         ? [{ key: crypto.randomUUID(), label: "", amount: "" }]
-                        : current.filter((_, i) => i !== index),
+                        : draft.filter((_, i) => i !== index),
                     );
                   }}
                   className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[color:var(--vd-border)] text-[color:var(--vd-muted)]"
@@ -218,8 +247,8 @@ export function EditableLineItemsSection({
             type="button"
             variant="button"
             onClick={() => {
-              setDraft((current) => [
-                ...current,
+              applyDraft([
+                ...draft,
                 { key: crypto.randomUUID(), label: "", amount: "" },
               ]);
             }}
@@ -235,26 +264,28 @@ export function EditableLineItemsSection({
             </p>
           ) : null}
 
-          <div className="flex gap-2 pt-1">
-            <PressableButton
-              type="button"
-              variant="button"
-              disabled={pending}
-              onClick={cancelEdit}
-              className="inline-flex flex-1 items-center justify-center rounded-2xl border border-[color:var(--vd-border)] px-3 py-2.5 text-[0.85rem] font-medium text-[color:var(--vd-text)]"
-            >
-              Abbrechen
-            </PressableButton>
-            <PressableButton
-              type="button"
-              variant="button"
-              disabled={pending}
-              onClick={commit}
-              className="inline-flex flex-1 items-center justify-center rounded-2xl bg-neutral-900 px-3 py-2.5 text-[0.85rem] font-semibold text-white disabled:opacity-60"
-            >
-              {pending ? "Speichern…" : "Übernehmen"}
-            </PressableButton>
-          </div>
+          {!inline ? (
+            <div className="flex gap-2 pt-1">
+              <PressableButton
+                type="button"
+                variant="button"
+                disabled={pending}
+                onClick={cancelEdit}
+                className="inline-flex flex-1 items-center justify-center rounded-2xl border border-[color:var(--vd-border)] px-3 py-2.5 text-[0.85rem] font-medium text-[color:var(--vd-text)]"
+              >
+                Abbrechen
+              </PressableButton>
+              <PressableButton
+                type="button"
+                variant="button"
+                disabled={pending}
+                onClick={commit}
+                className="inline-flex flex-1 items-center justify-center rounded-2xl bg-neutral-900 px-3 py-2.5 text-[0.85rem] font-semibold text-white disabled:opacity-60"
+              >
+                {pending ? "Speichern…" : "Übernehmen"}
+              </PressableButton>
+            </div>
+          ) : null}
         </div>
       ) : displayItems.length === 0 ? (
         <p className="text-[0.88rem] text-[color:var(--vd-muted)]">{emptyHint}</p>

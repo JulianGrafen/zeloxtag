@@ -280,16 +280,19 @@ export async function uploadDocument(
 
   const existingDocs = (existingRows ?? []) as Document[];
 
-  const mileageCheck = validateMileageAgainstHistory(
-    mileageKm,
-    date,
-    existingDocs,
-  );
-  if (!mileageCheck.ok) {
-    return {
-      status: "error",
-      message: mileageCheck.warning ?? "Kilometerstand unplausibel.",
-    };
+  const forceVehicleAssign = meta.forceVehicleAssign === "1";
+  if (!forceVehicleAssign) {
+    const mileageCheck = validateMileageAgainstHistory(
+      mileageKm,
+      date,
+      existingDocs,
+    );
+    if (!mileageCheck.ok) {
+      return {
+        status: "error",
+        message: mileageCheck.warning ?? "Kilometerstand unplausibel.",
+      };
+    }
   }
 
   const duplicate = findDuplicateDocument(existingDocs, {

@@ -10,15 +10,12 @@ import {
   type ProCheckoutAudience,
 } from "@/lib/billing/pro-plan";
 
+import { formatCompactGermanDate } from "@/lib/documents/format";
+
 function formatPeriodEnd(iso: string | null): string | null {
   if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("de-DE", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
+  const compact = formatCompactGermanDate(iso.trim());
+  return compact || null;
 }
 
 export async function MembershipStatusCard({

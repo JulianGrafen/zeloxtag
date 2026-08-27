@@ -3,14 +3,7 @@ import type {
   DashboardTileConfig,
   VehicleDashboardData,
 } from "./types";
-import { formatTuevYearMonth } from "@/lib/documents/format";
-
-const BERLIN: Intl.DateTimeFormatOptions = {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  timeZone: "Europe/Berlin",
-};
+import { formatTuevYearMonth, formatDocumentDate } from "@/lib/documents/format";
 
 function daysUntil(isoDate: string): number {
   const target = new Date(
@@ -54,11 +47,7 @@ function oilChangeMeta(data: VehicleDashboardData): DashboardTileConfig["meta"] 
     return { subtitle: "Noch offen", href: "/intervalle" };
   }
 
-  const formatted = new Date(
-    data.lastOilChange.length === 10
-      ? `${data.lastOilChange}T12:00:00`
-      : data.lastOilChange,
-  ).toLocaleDateString("de-DE", BERLIN);
+  const formatted = formatDocumentDate(data.lastOilChange);
 
   return {
     subtitle: formatted,

@@ -20,7 +20,7 @@ import { vaultClassificationService } from "@/services/ocr/VaultClassificationSe
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-const MAX_BYTES = 4 * 1024 * 1024;
+const MAX_BYTES = 12 * 1024 * 1024;
 
 type ClassifySuccess = {
   ok: true;

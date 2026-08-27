@@ -31,8 +31,8 @@ import { AbeVehicleContextSchema } from "@/lib/validations/abeSchema";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** Vercel serverless request body limit (~4.5 MB). Stay below to avoid platform 500s. */
-const MAX_BYTES = 4 * 1024 * 1024;
+/** Stay below Vercel body limit; JPEG pages from client rasterization are smaller than PDFs. */
+const MAX_BYTES = 12 * 1024 * 1024;
 
 const documentTypeSchema = z.enum(OCR_DOCUMENT_TYPES);
 const approvalKindSchema = z.enum(APPROVAL_FIELD_KINDS);

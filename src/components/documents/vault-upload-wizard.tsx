@@ -52,6 +52,20 @@ import {
 } from "@/lib/documents/format";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import {
+  createDocumentPreviewUrl,
+  isPdfUploadFile,
+  prepareVaultClassifyFile,
+} from "@/lib/ocr/prepare-client-ocr-file";
+import {
+  extractPdfEmbeddedText,
+  getClientPdfPageCount,
+  loadPdfDocument,
+} from "@/lib/ocr/pdf-source";
+import {
+  inferVaultClassificationFromText,
+  resolveVaultReviewDefaults,
+} from "@/lib/documents/vault-classify-heuristics";
+import {
   VAULT_CATEGORIES,
   VAULT_CATEGORY_LABELS,
   VAULT_DOCUMENT_KINDS,
@@ -107,7 +121,8 @@ async function buildVaultUploadFile(
   }
 
   if (pdfs.length === 1 && images.length === 0) {
-    return { file: pdfs[0]!, pageCount: 1 };
+    const pageCount = await getClientPdfPageCount(pdfs[0]!);
+    return { file: pdfs[0]!, pageCount };
   }
 
   if (pdfs.length > 1) {
@@ -126,28 +141,31 @@ async function buildVaultUploadFile(
 async function classifyVaultDocument(
   file: File,
   vehicleId: string,
-): Promise<VaultClassification | null> {
+): Promise<VaultClassification> {
+  const classifyFile = isPdfUploadFile(file)
+    ? await prepareVaultClassifyFile(file)
+    : file;
   const formData = new FormData();
   formData.set("vehicleId", vehicleId);
-  formData.set("file", file);
+  formData.set("file", classifyFile);
 
-  try {
-    const response = await fetch("/api/ocr/vault-classify", {
-      method: "POST",
-      body: formData,
-    });
-    const payload = (await response.json().catch(() => null)) as
-      | { ok: true; classification: VaultClassification }
-      | { ok: false; error?: string }
-      | null;
+  const response = await fetch("/api/ocr/vault-classify", {
+    method: "POST",
+    body: formData,
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { ok: true; classification: VaultClassification }
+    | { ok: false; error?: string }
+    | null;
 
-    if (!response.ok || !payload || payload.ok !== true) {
-      return null;
-    }
-    return payload.classification;
-  } catch {
-    return null;
+  if (!response.ok || !payload || payload.ok !== true) {
+    throw new Error(
+      payload && "error" in payload && payload.error
+        ? payload.error
+        : `Klassifizierung fehlgeschlagen (${response.status}).`,
+    );
   }
+  return payload.classification;
 }
 
 export function VaultUploadWizard({
@@ -180,6 +198,7 @@ export function VaultUploadWizard({
   const [fileName, setFileName] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewKind, setPreviewKind] = useState<"pdf" | "image">("pdf");
+  const [classifyWarning, setClassifyWarning] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/dokumente?type=abe`;
@@ -208,10 +227,11 @@ export function VaultUploadWizard({
 
   function setDocumentPreview(file: File) {
     clearDocumentPreview();
-    const url = URL.createObjectURL(file);
-    documentPreviewUrlRef.current = url;
-    setPreviewUrl(url);
-    setPreviewKind(isPdf(file) ? "pdf" : "image");
+    void createDocumentPreviewUrl(file).then((preview) => {
+      documentPreviewUrlRef.current = preview.url;
+      setPreviewUrl(preview.url);
+      setPreviewKind(preview.kind);
+    });
   }
 
   function setStagedDocumentPreview(
@@ -223,6 +243,16 @@ export function VaultUploadWizard({
       setPreviewUrl(resolveDocumentViewUrl(stagedUrl));
       const kind = documentMediaKind(stagedUrl);
       setPreviewKind(kind === "image" ? "image" : "pdf");
+      if (kind !== "image" && isPdfUploadFile(fallbackFile)) {
+        void createDocumentPreviewUrl(fallbackFile).then((preview) => {
+          if (documentPreviewUrlRef.current) {
+            URL.revokeObjectURL(documentPreviewUrlRef.current);
+          }
+          documentPreviewUrlRef.current = preview.url;
+          setPreviewUrl(preview.url);
+          setPreviewKind("image");
+        });
+      }
       return;
     }
     setDocumentPreview(fallbackFile);
@@ -241,13 +271,33 @@ export function VaultUploadWizard({
     for (const url of pagePreviewUrlsRef.current) {
       if (url) URL.revokeObjectURL(url);
     }
-    const urls = pageFiles.map((file) =>
-      isPdf(file) ? "" : URL.createObjectURL(file),
-    );
-    pagePreviewUrlsRef.current = urls.filter(Boolean);
-    setPagePreviewUrls(urls);
+    let cancelled = false;
+    void (async () => {
+      const urls: string[] = [];
+      for (const file of pageFiles) {
+        if (isPdf(file)) {
+          try {
+            const preview = await createDocumentPreviewUrl(file);
+            urls.push(preview.url);
+          } catch {
+            urls.push("");
+          }
+        } else {
+          urls.push(URL.createObjectURL(file));
+        }
+      }
+      if (cancelled) {
+        for (const url of urls) {
+          if (url) URL.revokeObjectURL(url);
+        }
+        return;
+      }
+      pagePreviewUrlsRef.current = urls.filter(Boolean);
+      setPagePreviewUrls(urls);
+    })();
 
     return () => {
+      cancelled = true;
       for (const url of pagePreviewUrlsRef.current) {
         if (url) URL.revokeObjectURL(url);
       }
@@ -257,6 +307,7 @@ export function VaultUploadWizard({
   function resetWizard() {
     setPhase("choose-source");
     setError(null);
+    setClassifyWarning(null);
     setPageFiles([]);
     setTitle("");
     setScanDate(localDateIso());
@@ -298,6 +349,7 @@ export function VaultUploadWizard({
     }
 
     setError(null);
+    setClassifyWarning(null);
     setPhase("analyzing");
 
     try {
@@ -311,24 +363,53 @@ export function VaultUploadWizard({
       stageForm.set("tagUuid", tagUuid);
       stageForm.set("file", uploadFile);
 
-      const classifySource = pages.find((page) => !isPdf(page)) ?? pages[0]!;
+      const classifySource = isPdfUploadFile(uploadFile)
+        ? uploadFile
+        : (pages.find((page) => !isPdf(page)) ?? pages[0]!);
 
-      const [stageResult, classification] = await Promise.all([
-        stageVaultDocument(stageForm),
-        classifyVaultDocument(classifySource, vehicleId),
-      ]);
-
+      const stageResult = await stageVaultDocument(stageForm);
       if (stageResult.status === "error") {
         setPhase("pages-hub");
         setError(stageResult.message);
         return;
       }
 
+      let embeddedHint = null;
+      if (isPdfUploadFile(uploadFile)) {
+        try {
+          const pdf = await loadPdfDocument(uploadFile);
+          const embeddedText = await extractPdfEmbeddedText(pdf);
+          if (typeof pdf.destroy === "function") {
+            await pdf.destroy();
+          }
+          embeddedHint = inferVaultClassificationFromText(embeddedText);
+        } catch {
+          // Optional — LLM / heuristics still run without embedded text.
+        }
+      }
+
+      let classification: VaultClassification | null = null;
+      try {
+        classification = await classifyVaultDocument(classifySource, vehicleId);
+      } catch (classifyError) {
+        setClassifyWarning(
+          classifyError instanceof Error
+            ? classifyError.message
+            : "Automatische Erkennung fehlgeschlagen — bitte Titel und Kategorie prüfen.",
+        );
+      }
+
+      const reviewDefaults = resolveVaultReviewDefaults({
+        classification,
+        fileName: uploadFile.name,
+        embeddedHint,
+      });
+
       setStagedDocumentId(stageResult.documentId);
       setStagedFileUrl(stageResult.fileUrl);
-      setTitle(classification?.title?.trim() ?? "");
-      setCategory(classification?.category ?? "SONSTIGES");
-      setDocumentKind(classification?.documentKind ?? null);
+      setTitle(reviewDefaults.title);
+      setCategory(reviewDefaults.category);
+      setDocumentKind(reviewDefaults.documentKind);
       setStagedDocumentPreview(stageResult.fileUrl, uploadFile);
       setPhase("review");
     } catch (caught) {
@@ -624,6 +705,15 @@ export function VaultUploadWizard({
           }}
           backLabel="Seiten bearbeiten"
         />
+
+        {classifyWarning ? (
+          <p
+            role="status"
+            className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.82rem] text-amber-950"
+          >
+            {classifyWarning}
+          </p>
+        ) : null}
 
         <form
           className="space-y-4 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"

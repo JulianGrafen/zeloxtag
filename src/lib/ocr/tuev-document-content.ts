@@ -52,8 +52,8 @@ export async function buildTuevDocumentUserMessage(
         parts.push({
           type: "text",
           text:
-            "High-resolution page images follow (page 1 first, then page 2 if present). " +
-            "Read Kopf, Punkt 4 (KM-Stand), and Punkt 6 (Mängel table) at full zoom — do not skip rows.",
+            "Kontrastverstärkte Seitenbilder folgen (Seite 1, ggf. Seite 2). " +
+            "Lies Kopf, Punkt 4 (KM-Stand) und Punkt 6 (Mängeltabelle) sorgfältig — keine Zeile auslassen.",
         });
         for (const pageImage of pageImages) {
           parts.push(pngPart(pageImage));

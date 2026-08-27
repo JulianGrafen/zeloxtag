@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
-  ExternalLink,
   FileText,
   Receipt,
   Share2,
@@ -30,7 +29,6 @@ import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
   displayDocumentTitle,
   formatMileageKmLabel,
-  formatDocumentDate,
   formatDocumentDateCompact,
 } from "@/lib/documents/format";
 import {
@@ -265,10 +263,6 @@ export function DocumentInvoiceDetailView({
         ) : null}
 
         <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            {isManual ? "Eintrag" : "Belegdaten"}
-          </h2>
-
           {canEditVendor ? (
             <EditableVendorSection
               documentId={document.id}
@@ -281,47 +275,34 @@ export function DocumentInvoiceDetailView({
                 setVendorLabel(nextVendor?.trim() || title)
               }
             />
+          ) : document.type === "invoice" ? (
+            <p className="text-[0.9rem] font-medium text-[color:var(--vd-text)]">
+              {vendor}
+            </p>
           ) : null}
 
-          <dl
-            className={[
-              "grid grid-cols-2 gap-3 text-[0.85rem]",
-              canEditVendor ? "mt-4" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            {!canEditVendor && document.type === "invoice" ? (
-              <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-                <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                  Werkstatt
-                </dt>
-                <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                  {vendor}
-                </dd>
-              </div>
-            ) : null}
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                Nummer
+          <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-[color:var(--vd-border)] pt-3 text-[0.82rem]">
+            <div>
+              <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+                Belegnr.
               </dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+              <dd className="mt-0.5 font-medium tabular-nums text-[color:var(--vd-text)]">
                 {invoiceNumberLabel || "—"}
               </dd>
             </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+            <div>
+              <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
                 Datum
               </dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+              <dd className="mt-0.5 font-medium text-[color:var(--vd-text)]">
                 {issuedLabel || "—"}
               </dd>
             </div>
-            <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                Kilometerstand
+            <div>
+              <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+                KM
               </dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] tabular-nums text-[color:var(--vd-text)]">
+              <dd className="mt-0.5 font-medium tabular-nums text-[color:var(--vd-text)]">
                 {mileageLabel ?? "—"}
               </dd>
             </div>
@@ -404,45 +385,27 @@ export function DocumentInvoiceDetailView({
           </section>
         ) : null}
 
-        <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-          <div className="flex items-start justify-between gap-3 border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
-            <div className="min-w-0">
-              <p className="truncate text-[0.78rem] font-medium text-[color:var(--vd-text)]">
-                {fileName}
-              </p>
-              <p className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                {isManual ? "Fotodoku" : "Original-PDF"}
-                {scannedLabel
-                  ? ` · ${isManual ? "erstellt" : "gescannt"} ${scannedLabel}`
-                  : ""}
-              </p>
-            </div>
-            {canOpenOriginal ? (
-              <PressableButton
-                type="button"
-                variant="button"
-                onClick={() => openDocumentOriginal(document.file_url)}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-              >
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                Neues Fenster
-              </PressableButton>
-            ) : null}
-          </div>
-          <div className="space-y-3 p-4">
+        <details className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+          <summary className="cursor-pointer px-4 py-3 text-[0.82rem] font-medium text-[color:var(--vd-text)] marker:content-none [&::-webkit-details-marker]:hidden">
+            {isManual ? "Fotodoku" : "Original"} · {fileName}
+            {scannedLabel
+              ? ` · ${isManual ? "erstellt" : "gescannt"} ${scannedLabel}`
+              : ""}
+          </summary>
+          <div className="space-y-3 border-t border-[color:var(--vd-border)] p-4">
             {canOpenOriginal && previewSrc ? (
               previewKind === "image" ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewSrc}
                   alt={title}
-                  className="max-h-[50vh] w-full rounded-xl bg-neutral-100 object-contain"
+                  className="max-h-[40vh] w-full rounded-xl bg-neutral-100 object-contain"
                 />
               ) : (
                 <iframe
                   title={title}
                   src={previewSrc}
-                  className="h-[min(50vh,28rem)] w-full rounded-xl border border-[color:var(--vd-border)] bg-white"
+                  className="h-[min(40vh,24rem)] w-full rounded-xl border border-[color:var(--vd-border)] bg-white"
                 />
               )
             ) : (
@@ -457,14 +420,14 @@ export function DocumentInvoiceDetailView({
                 type="button"
                 variant="button"
                 onClick={() => openDocumentOriginal(document.file_url)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3 text-[0.85rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
               >
                 <FileText className="h-4 w-4" aria-hidden />
                 Original öffnen
               </PressableButton>
             ) : null}
           </div>
-        </section>
+        </details>
 
         {canDeleteInvoice ? (
           <div className="space-y-2">

@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   FileText,
   Info,
   LoaderCircle,
   Plus,
-  RotateCcw,
   Trash2,
   X,
 } from "lucide-react";
@@ -28,19 +27,10 @@ import { TuevUploadWizard } from "@/components/documents/tuev-upload-wizard";
 import { BackNav } from "@/components/layout/back-nav";
 import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
-import {
-  ScanConfirmSheet,
-  type ScanConfirmValues,
-} from "@/components/documents/scan-confirm-sheet";
-import { Label } from "@/components/ui/label";
+import { InvoiceReviewForm } from "@/components/documents/invoice-review-form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
-import { GermanDateInput } from "@/components/documents/german-date-input";
-import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { localDateIso, normalizeDocumentDateIso } from "@/lib/documents/format";
 import {
   buildInvoiceDashboardTitle,
@@ -78,11 +68,8 @@ import {
 } from "@/lib/ocr/text-parse-schema";
 
 import {
-  INVOICE_REVIEW_CATEGORIES,
-  INVOICE_REVIEW_CATEGORY_LABELS,
   invoiceReviewCategoryFromScanType,
   normalizeInvoiceReviewCategory,
-  type InvoiceReviewCategory,
 } from "@/lib/documents/invoice-review-categories";
 import { isThinInvoiceExtraction } from "@/lib/documents/invoice-extraction-thin";
 
@@ -204,6 +191,7 @@ export function InvoiceUploader({
   heading = "Rechnung scannen",
   subheading,
 }: InvoiceUploaderProps) {
+  const router = useRouter();
   const vehicleContext = useMemo(
     () =>
       buildVehicleContext({
@@ -249,10 +237,6 @@ export function InvoiceUploader({
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmValues, setConfirmValues] = useState<ScanConfirmValues | null>(
-    null,
-  );
   const [vehicleMismatchReason, setVehicleMismatchReason] = useState<
     string | null
   >(null);
@@ -293,27 +277,17 @@ export function InvoiceUploader({
     setFields(emptyFields(resolvedCategory));
     setTitle("");
     setError(null);
-    setConfirmOpen(false);
-    setConfirmValues(null);
     setVehicleMismatchReason(null);
     setShowThinPositionsHint(false);
   }
 
-  function openGenericInvoiceConfirm(resolvedTitle: string) {
+  function buildInvoiceSaveValues(resolvedTitle: string) {
     const category = fields.category;
     const storedType = isInvoiceFamilyScan
       ? scanDef.documentType
       : documentTypeForTextCategory(category);
 
-    const match = assessVehicleDocumentMatch({
-      rawText,
-      garageVin: vehicleVin,
-      garageMake: vehicleMake,
-      garageModel: vehicleModel,
-    });
-
-    setVehicleMismatchReason(match.mismatch ? match.reason : null);
-    setConfirmValues({
+    return {
       type: storedType,
       typeLabel: DOCUMENT_TYPE_LABELS[storedType] ?? storedType,
       title: resolvedTitle,
@@ -322,19 +296,35 @@ export function InvoiceUploader({
       amount: fields.amount,
       mileageKm: fields.mileageKm,
       vehicleLabel,
-    });
-    setConfirmOpen(true);
+    };
   }
 
-  function persistGenericInvoiceFromConfirm(
-    values: ScanConfirmValues,
-    assignDespiteMismatch = false,
-  ) {
-    if (vehicleMismatchReason && !assignDespiteMismatch) {
+  function attemptSaveInvoice(resolvedTitle: string, force = false) {
+    const match = assessVehicleDocumentMatch({
+      rawText,
+      garageVin: vehicleVin,
+      garageMake: vehicleMake,
+      garageModel: vehicleModel,
+    });
+
+    if (match.mismatch && !force) {
+      setVehicleMismatchReason(match.reason);
       return;
     }
 
+    setVehicleMismatchReason(null);
+    persistGenericInvoiceFromConfirm(buildInvoiceSaveValues(resolvedTitle), force);
+  }
+
+  function persistGenericInvoiceFromConfirm(
+    values: ReturnType<typeof buildInvoiceSaveValues>,
+    assignDespiteMismatch = false,
+  ) {
     setError(null);
+    if (assignDespiteMismatch) {
+      setVehicleMismatchReason(null);
+    }
+
     startTransition(async () => {
       const category = fields.category;
       const storedTitle = values.title.trim().slice(0, 160);
@@ -388,19 +378,30 @@ export function InvoiceUploader({
           ? JSON.stringify(approvalFields)
           : "",
       );
+      if (assignDespiteMismatch) {
+        formData.set("forceVehicleAssign", "1");
+      }
       formData.set("file", uploadFile);
 
-      const result = await uploadDocument(formData);
-      if (result.status === "error") {
-        setError(result.message);
-        return;
-      }
+      try {
+        const result = await uploadDocument(formData);
+        if (result.status === "error") {
+          setError(result.message);
+          return;
+        }
 
-      setConfirmOpen(false);
-      const href =
-        successHref ??
-        `/v/${result.tagUuid}/dokumente/${result.document.id}`;
-      window.location.assign(href);
+        const href =
+          successHref ??
+          `/v/${result.tagUuid}/dokumente/${result.document.id}?saved=1`;
+        router.push(href);
+        router.refresh();
+      } catch (caught) {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Speichern fehlgeschlagen.",
+        );
+      }
     });
   }
 
@@ -1609,23 +1610,45 @@ export function InvoiceUploader({
       uploadFile &&
       fields.category !== "abe" &&
       !isTuevReview ? (
-        <form
-          className="vd-anim-header space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setError(null);
-
-            const resolvedTitle = title.trim();
-            if (!resolvedTitle) {
-              setError("Titel ist erforderlich.");
-              return;
+        <div className="vd-anim-header">
+          <InvoiceReviewForm
+            title={title}
+            onTitleChange={setTitle}
+            fields={fields}
+            onFieldsChange={(patch) =>
+              setFields((current) => ({ ...current, ...patch }))
             }
-
-            openGenericInvoiceConfirm(resolvedTitle);
-          }}
-        >
-          <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
-            {(() => {
+            categoryLocked={Boolean(resolvedLockCategory)}
+            vehicleMismatchReason={vehicleMismatchReason}
+            saving={pending}
+            error={error}
+            preview={{
+              url: previewUrl,
+              kind: previewKind,
+              pageCount,
+              fileSizeLabel: formatBytes(uploadFile.size),
+            }}
+            onReset={resetWizard}
+            onSave={() => {
+              setError(null);
+              const resolvedTitle = title.trim();
+              if (!resolvedTitle) {
+                setError("Bezeichnung ist erforderlich.");
+                return;
+              }
+              attemptSaveInvoice(resolvedTitle);
+            }}
+            onSaveDespiteMismatch={() => {
+              setError(null);
+              const resolvedTitle = title.trim();
+              if (!resolvedTitle) {
+                setError("Bezeichnung ist erforderlich.");
+                return;
+              }
+              attemptSaveInvoice(resolvedTitle, true);
+            }}
+            onDismissMismatch={() => setVehicleMismatchReason(null)}
+            topBanner={(() => {
               const oil = detectOilChangeInvoice({
                 title,
                 summary: title,
@@ -1647,238 +1670,13 @@ export function InvoiceUploader({
               if (!primary) return null;
               return (
                 <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/8 px-3 py-2.5 text-[0.82rem] text-emerald-800">
-                  Ölwechsel erkannt — optional als Intervall merken. Der Beleg
-                  wird unter{" "}
+                  Ölwechsel erkannt — der Beleg wird unter{" "}
                   <span className="font-semibold">Rechnungen</span> gespeichert.
                 </div>
               );
             })()}
-
-            <Label>
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Titel / Summary
-              </span>
-              <Input
-                required
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder={
-                  resolvedCategory === "service"
-                    ? "z. B. Inspektion 60.000 km"
-                    : "z. B. Ölwechsel + Filter"
-                }
-              />
-            </Label>
-
-            <Label>
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Anbieter
-              </span>
-              <Input
-                value={fields.vendor ?? ""}
-                onChange={(event) =>
-                  setFields((current) => ({
-                    ...current,
-                    vendor: event.target.value || null,
-                  }))
-                }
-                placeholder="Werkstatt / Händler"
-              />
-            </Label>
-
-            <Label>
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Rechnungsnummer
-              </span>
-              <Input
-                value={fields.invoiceNumber ?? ""}
-                onChange={(event) =>
-                  setFields((current) => ({
-                    ...current,
-                    invoiceNumber: event.target.value || null,
-                  }))
-                }
-                placeholder="z. B. RE-2026-0312"
-              />
-            </Label>
-
-            <Label>
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Kilometerstand
-              </span>
-              <MileageKmInput
-                value={fields.mileageKm ?? null}
-                onChange={(km) =>
-                  setFields((current) => ({
-                    ...current,
-                    mileageKm: km,
-                  }))
-                }
-                className="claim-input"
-                placeholder="z. B. 67.210"
-              />
-            </Label>
-
-            <Label>
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Art der Rechnung
-              </span>
-              <select
-                value={fields.category}
-                onChange={(event) => {
-                  const category = event.target
-                    .value as InvoiceReviewCategory;
-                  setFields((current) => ({
-                    ...current,
-                    category,
-                  }));
-                }}
-                className="claim-input"
-              >
-                {INVOICE_REVIEW_CATEGORIES.map((option) => (
-                  <option key={option} value={option}>
-                    {INVOICE_REVIEW_CATEGORY_LABELS[option]}
-                  </option>
-                ))}
-              </select>
-            </Label>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Label>
-                <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                  Betrag (€)
-                </span>
-                <Input
-                  inputMode="decimal"
-                  value={
-                    fields.amount === null || fields.amount === undefined
-                      ? ""
-                      : String(fields.amount)
-                  }
-                  onChange={(event) => {
-                    const raw = event.target.value.trim();
-                    if (!raw) {
-                      setFields((current) => ({ ...current, amount: null }));
-                      return;
-                    }
-                    const normalized = raw.replace(",", ".");
-                    const value = Number.parseFloat(normalized);
-                    setFields((current) => ({
-                      ...current,
-                      amount: Number.isFinite(value) ? value : current.amount,
-                    }));
-                  }}
-                  placeholder="optional"
-                />
-              </Label>
-              <Label>
-                <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                  Datum
-                </span>
-                <GermanDateInput
-                  value={fields.date}
-                  onChange={(iso) =>
-                    setFields((current) => ({
-                      ...current,
-                      date: iso,
-                    }))
-                  }
-                  className="claim-input"
-                />
-              </Label>
-            </div>
-
-            <EditableLineItemsSection
-              items={fields.lineItems ?? []}
-              totalAmount={fields.amount}
-              emptyHint="Keine Positionen erkannt — über Bearbeiten manuell ergänzen."
-              onChange={(lineItems) =>
-                setFields((current) => ({
-                  ...current,
-                  lineItems: lineItems.length ? lineItems : null,
-                }))
-              }
-            />
-
-            {rawText ? (
-              <details className="rounded-xl bg-neutral-50 px-3 py-2 text-left">
-                <summary className="cursor-pointer text-[0.78rem] font-medium text-[color:var(--vd-muted)]">
-                  Erkannten Text anzeigen ({rawText.length} Zeichen)
-                </summary>
-                <p className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[0.7rem] text-[color:var(--vd-text)]">
-                  {rawText}
-                </p>
-              </details>
-            ) : null}
-          </div>
-
-          <div className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
-            {previewKind === "pdf" ? (
-              <iframe
-                title="Dokumentvorschau"
-                src={previewUrl}
-                className="max-h-[36vh] w-full border-0 bg-neutral-100"
-              />
-            ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={previewUrl}
-                alt="Dokumentvorschau"
-                className="max-h-[36vh] w-full object-contain bg-neutral-100"
-              />
-            )}
-            <div className="flex items-center justify-between gap-3 border-t border-[color:var(--vd-border)] px-3 py-2.5 text-[0.75rem] text-[color:var(--vd-muted)]">
-              <span>
-                {pageCount > 1 ? `${pageCount} Seiten` : "1 Seite"} ·{" "}
-                {formatBytes(uploadFile.size)}
-              </span>
-              <button
-                type="button"
-                onClick={resetWizard}
-                className="inline-flex items-center gap-1 font-medium text-[color:var(--vd-text)]"
-              >
-                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-                Neu
-              </button>
-            </div>
-          </div>
-
-          {error ? (
-            <p role="alert" className="vd-alert-error">
-              {error}
-            </p>
-          ) : null}
-
-          <Button type="submit" disabled={pending} className="claim-cta">
-            {pending ? "Wird gespeichert…" : "Prüfen & speichern"}
-          </Button>
-        </form>
-      ) : null}
-
-      {confirmValues ? (
-        <ScanConfirmSheet
-          open={confirmOpen}
-          values={confirmValues}
-          vehicleMismatch={Boolean(vehicleMismatchReason)}
-          vehicleMismatchReason={vehicleMismatchReason}
-          mileageWarning={null}
-          duplicateHint={null}
-          saving={pending}
-          onChange={(patch) =>
-            setConfirmValues((current) =>
-              current ? { ...current, ...patch } : current,
-            )
-          }
-          onConfirm={() => persistGenericInvoiceFromConfirm(confirmValues)}
-          onAssignAnyway={() =>
-            persistGenericInvoiceFromConfirm(confirmValues, true)
-          }
-          onDiscard={() => {
-            setConfirmOpen(false);
-            setConfirmValues(null);
-            setVehicleMismatchReason(null);
-          }}
-        />
+          />
+        </div>
       ) : null}
     </ScanContent>
   );

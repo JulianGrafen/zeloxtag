@@ -41,6 +41,8 @@ export async function rasterizePdfPagesWithPdfJs(
     useSystemFonts: true,
     disableFontFace: true,
     useWorkerFetch: false,
+    isEvalSupported: false,
+    verbosity: 0,
   });
   const doc = await loadingTask.promise;
 
@@ -84,6 +86,8 @@ export async function getPdfPageCount(bytes: Buffer): Promise<number> {
     useSystemFonts: true,
     disableFontFace: true,
     useWorkerFetch: false,
+    isEvalSupported: false,
+    verbosity: 0,
   });
   const doc = await loadingTask.promise;
   const pageCount = Math.max(1, doc.numPages);

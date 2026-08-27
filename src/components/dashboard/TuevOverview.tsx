@@ -23,6 +23,10 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import {
+  isoDateToYearMonth,
+  yearMonthToIsoDate,
+} from "@/lib/documents/format";
 import type { InvoiceLineItem, InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import {
   TESTING_ORGANIZATIONS,
@@ -291,11 +295,10 @@ export function TuevOverview({
             Nächste HU
           </div>
           <Label className="mt-2 block">
-            <Input
-              type="month"
-              value={review.nextInspectionDate ?? ""}
-              onChange={(event) =>
-                patch("nextInspectionDate", event.target.value || null)
+            <GermanDateInput
+              value={yearMonthToIsoDate(review.nextInspectionDate)}
+              onChange={(iso) =>
+                patch("nextInspectionDate", isoDateToYearMonth(iso))
               }
               className="text-[1.05rem] font-semibold"
             />

@@ -4,10 +4,14 @@ import { useEffect, useState, useTransition } from "react";
 import { CalendarClock, Pencil } from "lucide-react";
 
 import { updateTuevApprovalFields } from "@/actions/update-tuev-approval-fields";
+import { GermanDateInput } from "@/components/documents/german-date-input";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatTuevYearMonth } from "@/lib/documents/format";
+import {
+  formatTuevYearMonth,
+  isoDateToYearMonth,
+  yearMonthToIsoDate,
+} from "@/lib/documents/format";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 
 type EditableTuevHuSectionProps = {
@@ -102,12 +106,11 @@ export function EditableTuevHuSection({
         <div className="space-y-3">
           <Label>
             <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-              Monat / Jahr
+              Fällig am
             </span>
-            <Input
-              type="month"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+            <GermanDateInput
+              value={yearMonthToIsoDate(draft)}
+              onChange={(iso) => setDraft(isoDateToYearMonth(iso) ?? "")}
               className="mt-1.5"
             />
           </Label>

@@ -11,6 +11,11 @@ import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 
 import type { DocumentParseKind, OcrDocumentType } from "./ocr-types";
+import {
+  isPdfUploadFile,
+  prepareClientOcrFiles,
+  resolveClientOcrMaxPages,
+} from "./prepare-client-ocr-file";
 import type {
   InvoiceTextParseCategory,
   InvoiceTextParseResult,
@@ -220,6 +225,21 @@ export async function analyzeDocumentFiles(
   const documentType = resolveDocumentType(options);
   const vehicleId = options.vehicleId.trim();
 
+  const maxPages = resolveClientOcrMaxPages({
+    documentType,
+    approvalKind: options.approvalKind ?? null,
+  });
+  const expandedFiles: File[] = [];
+  for (const file of files) {
+    if (isPdfUploadFile(file)) {
+      expandedFiles.push(
+        ...(await prepareClientOcrFiles(file, { maxPages })),
+      );
+    } else {
+      expandedFiles.push(file);
+    }
+  }
+
   const approvalKind = options.approvalKind ?? null;
   const vehicleContext = options.vehicleContext ?? null;
   const garageVin = options.garageVin ?? null;
@@ -227,10 +247,10 @@ export async function analyzeDocumentFiles(
   const teilegutachtenScope = options.teilegutachtenScope;
   const pruefung192Scope = options.pruefung192Scope;
 
-  if (files.length === 1) {
+  if (expandedFiles.length === 1) {
     onPageProgress?.(1, 1);
     return analyzeOneFile(
-      files[0],
+      expandedFiles[0],
       vehicleId,
       documentType,
       approvalKind,
@@ -243,11 +263,11 @@ export async function analyzeDocumentFiles(
   }
 
   const results: AnalyzeDocumentResult[] = [];
-  for (let index = 0; index < files.length; index += 1) {
-    onPageProgress?.(index + 1, files.length);
+  for (let index = 0; index < expandedFiles.length; index += 1) {
+    onPageProgress?.(index + 1, expandedFiles.length);
     results.push(
       await analyzeOneFile(
-        files[index],
+        expandedFiles[index],
         vehicleId,
         documentType,
         approvalKind,

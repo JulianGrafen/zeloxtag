@@ -1,12 +1,7 @@
-const VIN_RE = /\b([A-HJ-NPR-Z0-9]{17})\b/gi;
-
-function normalizeVin(vin: string): string {
-  return vin.replace(/\s+/g, "").toUpperCase();
-}
+import { extractPlausibleVin, isPlausibleVin, normalizeVin } from "@/lib/validations/vin";
 
 function extractVin(rawText: string): string | null {
-  const matches = [...rawText.matchAll(VIN_RE)].map((m) => normalizeVin(m[1]!));
-  return matches[0] ?? null;
+  return extractPlausibleVin(rawText);
 }
 
 function tokenizeModel(value: string): string[] {
@@ -33,9 +28,12 @@ export function assessVehicleDocumentMatch(input: {
   garageModel: string | null | undefined;
 }): VehicleDocumentMatch {
   const extractedVin = extractVin(input.rawText);
-  const garageVin = input.garageVin?.trim()
+  const garageVinRaw = input.garageVin?.trim()
     ? normalizeVin(input.garageVin.trim())
     : null;
+  /** Ignore placeholder / junk garage VINs — they cause false mismatch on every scan. */
+  const garageVin =
+    garageVinRaw && isPlausibleVin(garageVinRaw) ? garageVinRaw : null;
 
   if (extractedVin && garageVin && extractedVin !== garageVin) {
     return {
