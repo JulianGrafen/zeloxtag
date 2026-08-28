@@ -15,6 +15,10 @@ import {
   BLOTZHEIM_EXPECTED_TOTALS,
   BLOTZHEIM_LLM_RAW_LINE_ITEMS,
 } from "@/lib/ocr/fixtures/blotzheim-invoice-line-items";
+import {
+  SPEEDWORKZ_CAMERA_OCR_TEXT,
+  SPEEDWORKZ_NET_SUM,
+} from "@/lib/ocr/fixtures/speedworkz-invoice-line-items";
 
 describe("extractInvoiceLineItemsFromAzureLayout", () => {
   it("pairs label and Ges. Preis by rowIndex", () => {
@@ -167,6 +171,29 @@ describe("extractInvoiceLineItemsFromAzureLayout", () => {
     ];
 
     expect(extractRowLineTotalAmount(rowCells)).toBe(480);
+  });
+
+  it("parses camera-style workshop OCR from page lines when markdown is empty", () => {
+    const result: AzureLayoutAnalyzeResult = {
+      content: "",
+      pages: [
+        {
+          pageNumber: 1,
+          lines: SPEEDWORKZ_CAMERA_OCR_TEXT.split("\n").map((content) => ({
+            content,
+          })),
+        },
+      ],
+      tables: [],
+    };
+
+    const items = extractInvoiceLineItemsFromAzureLayout(result);
+    expect(items).not.toBeNull();
+    expect(items!).toHaveLength(8);
+    expect(items!.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
+      SPEEDWORKZ_NET_SUM,
+      2,
+    );
   });
 });
 

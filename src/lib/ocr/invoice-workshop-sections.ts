@@ -9,6 +9,7 @@ import {
   extractNetSumFromText,
   INVOICE_NET_TOTAL_TOLERANCE_EUR,
 } from "@/lib/ocr/invoice-footer-totals";
+import { isContinuationInvoiceLabel } from "@/lib/ocr/invoice-line-item-alignment";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 
 const MAX_ITEMS = 60;
@@ -26,6 +27,9 @@ const SECTION_STOP =
 
 const SKIP_LINE =
   /^(?:beschreibung|rab\.?\s*%|art\.?|pg\.?|std\.?|preis|einzelpreis|mechanik|ersatzteile|sonstige\s+kosten|positionssumme|netto|mwst|endpreis|endsummen|zahlbar)\b/i;
+
+const AMOUNT_ONLY_LINE =
+  /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*(?:€|eur))?\s*$/i;
 
 function cleanLabel(value: string): string {
   return value
@@ -142,6 +146,108 @@ function detectSection(line: string, current: WorkshopSection): WorkshopSection 
   return current;
 }
 
+/** Infer section from a data line when headers are missing or glued. */
+function inferSectionFromLine(line: string): WorkshopSection | null {
+  if (/\bfracht\b/i.test(line)) return "other";
+  if (/\bstück\b|\bstk\.?\b/i.test(line)) return "parts";
+  if (/\bstd\.?\b/i.test(line) || /\d+[.,]\d{1,2}\s*(?:std)/i.test(line)) {
+    return "labor";
+  }
+  if (/^\d+\s+[A-Za-zÄÖÜäöüß]/.test(line) && !/\bstd\.?\b/i.test(line)) {
+    return "parts";
+  }
+  return null;
+}
+
+function lineHasMoney(line: string): boolean {
+  return trailingMoneyValues(line).length > 0;
+}
+
+/** Short wrap fragment (Blau/Rot) — not a diagnostic sentence. */
+function isWorkshopWrapFragment(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed || lineHasMoney(trimmed)) return false;
+  if (/^\d+\s/.test(trimmed)) return false;
+  if (SKIP_LINE.test(trimmed) || SECTION_STOP.test(trimmed)) return false;
+  if (isContinuationInvoiceLabel(trimmed)) return true;
+  if (trimmed.length <= 24 && !/\s/.test(trimmed)) return true;
+  if (
+    trimmed.length <= 24 &&
+    /^[A-ZÄÖÜa-zäöüß0-9]+(?:[\/\-][A-ZÄÖÜa-zäöüß0-9]+)+$/.test(trimmed)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Join description + following amount-only line without gluing diagnostic notes
+ * into the next priced position.
+ */
+export function prejoinWorkshopSectionLines(rawText: string): string {
+  const lines = rawText.split("\n");
+  const joined: string[] = [];
+  let pending: string | null = null;
+
+  const flushPendingAsNote = () => {
+    if (pending) joined.push(pending);
+    pending = null;
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
+    if (!line) continue;
+
+    if (
+      SECTION_LABOR.test(line) ||
+      SECTION_PARTS.test(line) ||
+      SECTION_OTHER.test(line) ||
+      SECTION_STOP.test(line) ||
+      SKIP_LINE.test(line)
+    ) {
+      flushPendingAsNote();
+      joined.push(line);
+      continue;
+    }
+
+    if (AMOUNT_ONLY_LINE.test(line)) {
+      if (pending) {
+        joined.push(`${pending} ${line}`);
+        pending = null;
+      } else {
+        joined.push(line);
+      }
+      continue;
+    }
+
+    if (lineHasMoney(line)) {
+      if (pending && isWorkshopWrapFragment(pending)) {
+        joined.push(`${pending} ${line}`);
+        pending = null;
+      } else {
+        flushPendingAsNote();
+        joined.push(line);
+      }
+      continue;
+    }
+
+    if (pending) {
+      if (isWorkshopWrapFragment(line)) {
+        pending = `${pending} ${line}`;
+      } else {
+        joined.push(pending);
+        pending = line;
+      }
+      continue;
+    }
+
+    pending = line;
+  }
+
+  flushPendingAsNote();
+  return joined.join("\n");
+}
+
 /** Score partial DMS/workshop signals when section headers are split across OCR lines. */
 export function detectWorkshopInvoiceSignals(rawText: string): number {
   const lower = rawText.replace(/\r\n/g, "\n").toLowerCase();
@@ -213,32 +319,84 @@ export function isGarbageWorkshopLineItems(
   return false;
 }
 
+function netDelta(
+  items: InvoiceLineItem[] | null | undefined,
+  netSum: number | null,
+): number | null {
+  if (!items?.length || netSum == null) return null;
+  return Math.abs(sumItems(items) - netSum);
+}
+
+function pickClosestToNet(
+  candidates: InvoiceLineItem[][],
+  netSum: number | null,
+): InvoiceLineItem[] | null {
+  if (candidates.length === 0) return null;
+  if (netSum == null) {
+    return candidates.reduce((best, items) =>
+      items.length > best.length ? items : best,
+    );
+  }
+
+  let best = candidates[0]!;
+  let bestGap = netDelta(best, netSum) ?? Number.POSITIVE_INFINITY;
+  for (const items of candidates.slice(1)) {
+    const gap = netDelta(items, netSum) ?? Number.POSITIVE_INFINITY;
+    if (gap + 0.005 < bestGap) {
+      best = items;
+      bestGap = gap;
+    } else if (Math.abs(gap - bestGap) <= 0.005 && items.length > best.length) {
+      best = items;
+      bestGap = gap;
+    }
+  }
+  return best;
+}
+
 /**
- * OCR-first resolver for section invoices: prefer section parser when net sum matches footer.
+ * OCR-first resolver: prefer the candidate whose sum is closest to the footer net.
+ * Mega-merged LLM rows (long labels, far fewer rows than OCR, or sum mismatch)
+ * lose to any priced OCR candidate.
  */
 export function resolveWorkshopLineItems(options: {
   llmItems: InvoiceLineItem[] | null | undefined;
   ocrText: string;
+  extraOcrItems?: InvoiceLineItem[] | null;
 }): InvoiceLineItem[] | null {
   const llm = sanitizeWorkshopLineItems(options.llmItems) ?? [];
-  const ocrItems = sanitizeWorkshopLineItems(
+  const fromText = sanitizeWorkshopLineItems(
     extractWorkshopSectionLineItems(options.ocrText),
   );
+  const extra = sanitizeWorkshopLineItems(options.extraOcrItems ?? null);
   const netSum = extractWorkshopNetSum(options.ocrText);
 
-  const ocrMatchesNet =
-    ocrItems != null &&
-    ocrItems.length >= 2 &&
+  const ocrCandidates = [fromText, extra].filter(
+    (items): items is InvoiceLineItem[] => items != null && items.length >= 2,
+  );
+  const bestOcr = pickClosestToNet(ocrCandidates, netSum);
+
+  if (
+    bestOcr &&
     netSum != null &&
-    Math.abs(sumItems(ocrItems) - netSum) <= INVOICE_NET_TOTAL_TOLERANCE_EUR;
-
-  if (ocrMatchesNet) return ocrItems;
-
-  if (isGarbageWorkshopLineItems(llm, { netSum }) && ocrItems?.length) {
-    return ocrItems;
+    (netDelta(bestOcr, netSum) ?? Number.POSITIVE_INFINITY) <=
+      INVOICE_NET_TOTAL_TOLERANCE_EUR
+  ) {
+    return bestOcr;
   }
+
+  if (bestOcr && netSum != null && llm.length > 0) {
+    const llmGap = netDelta(llm, netSum) ?? Number.POSITIVE_INFINITY;
+    const ocrGap = netDelta(bestOcr, netSum) ?? Number.POSITIVE_INFINITY;
+    if (ocrGap + 0.05 < llmGap) return bestOcr;
+  }
+
+  const llmLooksMegaMerged =
+    isGarbageWorkshopLineItems(llm, { netSum }) ||
+    (bestOcr != null && bestOcr.length >= llm.length + 2);
+
+  if (llmLooksMegaMerged && bestOcr) return bestOcr;
   if (llm.length > 0) return llm;
-  return ocrItems;
+  return bestOcr;
 }
 
 /**
@@ -264,8 +422,10 @@ export function sectionOcrMatchesFooterNet(ocrText: string): boolean {
 export function extractWorkshopSectionLineItems(
   rawText: string,
 ): InvoiceLineItem[] | null {
-  const normalized = rawText.replace(/\r\n/g, "\n");
-  if (!isWorkshopSectionInvoiceText(normalized)) return null;
+  const normalized = prejoinWorkshopSectionLines(rawText.replace(/\r\n/g, "\n"));
+  if (!isWorkshopSectionInvoiceText(normalized) && detectWorkshopInvoiceSignals(normalized) < 3) {
+    return null;
+  }
 
   const items: InvoiceLineItem[] = [];
   const seen = new Set<string>();
@@ -284,6 +444,21 @@ export function extractWorkshopSectionLineItems(
       SECTION_PARTS.test(line) ||
       SECTION_OTHER.test(line)
     ) {
+      continue;
+    }
+
+    if (section === "none") {
+      const inferred = inferSectionFromLine(line);
+      if (inferred) section = inferred;
+    }
+
+    if (
+      items.length > 0 &&
+      isWorkshopWrapFragment(line) &&
+      !lineHasMoney(line)
+    ) {
+      const last = items[items.length - 1]!;
+      last.label = cleanLabel(`${last.label} ${line}`);
       continue;
     }
 
@@ -313,7 +488,7 @@ export function extractWorkshopSectionLineItems(
   }
 
   const sanitized = sanitizeWorkshopLineItems(items);
-  return sanitized != null && sanitized.length >= 3 ? sanitized : null;
+  return sanitized != null && sanitized.length >= 2 ? sanitized : null;
 }
 
 /** Prefer Endpreis (brutto). Never treat Netto Summe as the payable document total. */

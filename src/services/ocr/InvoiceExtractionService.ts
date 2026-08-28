@@ -8,6 +8,7 @@ import {
 } from "@/lib/ocr/azure-document-intelligence";
 import { sumLineItems } from "@/lib/documents/line-items";
 import {
+  azureLayoutPlainText,
   extractInvoiceLineItemsFromAzureLayout,
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
@@ -434,7 +435,9 @@ export class InvoiceExtractionService {
       ? await analyzeLayoutWithAzure(azureInput.bytes, azureInput.contentType)
       : null;
 
-    const ocrText = azureLayout?.content ?? "";
+    const ocrText = azureLayout
+      ? azureLayoutPlainText(azureLayout) || azureLayout.content || ""
+      : "";
     const tableFormat = detectInvoiceTableFormat(ocrText);
     const isWorkshopFormat = tableFormat === "workshop-sections";
     const isLlmOnlyFormat = tableFormat === "unknown";
@@ -504,14 +507,16 @@ export class InvoiceExtractionService {
         amount: item.gesamtpreis,
       }));
 
-    llmLineItems =
-      resolveWorkshopLineItems({ llmItems: llmLineItems, ocrText }) ??
-      llmLineItems;
+    const layoutLineItems = azureLayout
+      ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
+      : null;
 
-    const layoutLineItems =
-      shouldMergeAzureLayout(tableFormat) && azureLayout
-        ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
-        : null;
+    llmLineItems =
+      resolveWorkshopLineItems({
+        llmItems: llmLineItems,
+        ocrText,
+        extraOcrItems: tableFormat !== "column" ? layoutLineItems : null,
+      }) ?? llmLineItems;
 
     const footerNet = ocrText.trim() ? extractNetSumFromText(ocrText) : null;
     const footerGross = ocrText.trim() ? extractGrossTotalFromText(ocrText) : null;

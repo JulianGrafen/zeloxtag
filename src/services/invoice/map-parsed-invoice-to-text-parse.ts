@@ -2,6 +2,7 @@ import { buildInvoiceDashboardTitle } from "@/lib/documents/invoice-title";
 import { preferAmount } from "@/lib/ocr/amount-from-text";
 import { inferInvoiceCategory, preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import { preferMileageKm } from "@/lib/ocr/mileage-from-text";
+import { resolveWorkshopLineItems } from "@/lib/ocr/invoice-workshop-sections";
 import {
   normalizeLineItemsList,
   normalizeTextParseResult,
@@ -39,11 +40,15 @@ export function mapParsedInvoiceToTextParseResult(
   const headerLines = headerLinesFromMarkdown(rawText);
   const fullText = `${headerLines.join("\n")}\n${rawText}`;
 
+  const mappedItems = (invoice.line_items ?? []).map((item) => ({
+    label: item.description,
+    amount: item.total_price,
+  }));
   const lineItems = normalizeLineItemsList(
-    (invoice.line_items ?? []).map((item) => ({
-      label: item.description,
-      amount: item.total_price,
-    })),
+    resolveWorkshopLineItems({
+      llmItems: mappedItems,
+      ocrText: rawText,
+    }) ?? mappedItems,
     60,
   );
 

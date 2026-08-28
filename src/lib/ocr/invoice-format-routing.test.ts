@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { BLOTZHEIM_27327_OCR_TEXT } from "@/lib/ocr/fixtures/blotzheim-27327-invoice";
-import { SPEEDWORKZ_OCR_TEXT } from "@/lib/ocr/fixtures/speedworkz-invoice-line-items";
+import {
+  SPEEDWORKZ_CAMERA_OCR_TEXT,
+  SPEEDWORKZ_OCR_TEXT,
+} from "@/lib/ocr/fixtures/speedworkz-invoice-line-items";
 import {
   detectInvoiceTableFormat,
   isColumnTableInvoiceText,
@@ -15,6 +18,10 @@ import {
 describe("invoice format routing", () => {
   it("detects Speedworkz section layout from OCR text", () => {
     expect(detectInvoiceTableFormat(SPEEDWORKZ_OCR_TEXT)).toBe("workshop-sections");
+    expect(detectInvoiceTableFormat(SPEEDWORKZ_CAMERA_OCR_TEXT)).toBe(
+      "workshop-sections",
+    );
+    expect(shouldDrawInvoiceRowSeparators("workshop-sections")).toBe(false);
   });
 
   it("routes column format from table headers, not vendor or product names", () => {
@@ -51,16 +58,17 @@ describe("invoice format routing", () => {
     );
 
     expect(shouldMergeAzureLayout("unknown")).toBe(false);
-    expect(shouldDrawInvoiceRowSeparators("unknown")).toBe(true);
+    expect(shouldDrawInvoiceRowSeparators("unknown")).toBe(false);
     expect(shouldReconcileWithOcrHeuristics("unknown")).toBe(true);
     expect(shouldRealignLineItems("unknown")).toBe(false);
   });
 
-  it("draws row separators for all formats; skips layout merge for workshop", () => {
+  it("draws row separators only for column tables", () => {
     expect(shouldMergeAzureLayout("workshop-sections")).toBe(false);
-    expect(shouldDrawInvoiceRowSeparators("workshop-sections")).toBe(true);
+    expect(shouldDrawInvoiceRowSeparators("workshop-sections")).toBe(false);
     expect(shouldMergeAzureLayout("column")).toBe(true);
     expect(shouldDrawInvoiceRowSeparators("column")).toBe(true);
+    expect(shouldDrawInvoiceRowSeparators("unknown")).toBe(false);
   });
 
   it("still routes Speedworkz without the Arbeitswerte header", () => {

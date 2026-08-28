@@ -23,6 +23,7 @@ import {
 } from "@/lib/ocr/invoice-line-item-alignment";
 import { finalizeColumnFormatLineItems } from "@/lib/ocr/invoice-column-pipeline";
 import {
+  azureLayoutPlainText,
   extractInvoiceLineItemsFromAzureLayout,
   mergeLayoutAndLlmLineItems,
 } from "@/lib/ocr/invoice-line-items-from-layout";
@@ -192,8 +193,14 @@ export class InvoiceParseService {
       );
     }
 
+    const layoutPlainText = azureLayout
+      ? azureLayoutPlainText(azureLayout)
+      : "";
+
     const tableFormat = !isTuevReport
-      ? detectInvoiceTableFormat(azureLayout?.content ?? "")
+      ? detectInvoiceTableFormat(
+          layoutPlainText.trim() || azureLayout?.content || "",
+        )
       : ("column" as const);
 
     if (
@@ -274,23 +281,39 @@ export class InvoiceParseService {
       ? buildOcrPayloadFromAzureLayout(azureLayout)
       : buildStubOcrPayload(prepared.contentType);
 
-    if (isTuevReport || !azureLayout) {
+    if (isTuevReport) {
       return { fields: normalized, ocrJson };
     }
 
-    const isWorkshopFormat = tableFormat === "workshop-sections";
-    const azureContent = azureLayout.content;
-    // For multi-page PDFs, Azure Layout generates duplicate item tables across
-    // pages (page 1 often has truncated Ges.-Preis, page 2 is complete).
-    // Use the deduplicated text for reconciliation so OCR search never picks
-    // up the shorter, wrong page-1 values.
-    const dedupedOcrText = deduplicateInvoiceItemTable(azureContent);
+    const azureContent = azureLayout?.content ?? "";
+    const dedupedOcrText = azureLayout
+      ? deduplicateInvoiceItemTable(layoutPlainText || azureContent)
+      : `${ocrJson.headerLines.join("\n")}\n${ocrJson.text}`.trim();
+
+    const extraOcrItems =
+      azureLayout && tableFormat !== "column"
+        ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
+        : null;
 
     const checksumItems =
       resolveWorkshopLineItems({
         llmItems: normalized.lineItems,
         ocrText: dedupedOcrText,
+        extraOcrItems,
       }) ?? normalized.lineItems;
+
+    if (!azureLayout) {
+      return {
+        fields: {
+          ...normalized,
+          lineItems: checksumItems,
+          amount: preferAmount(normalized.amount, dedupedOcrText, checksumItems),
+        },
+        ocrJson,
+      };
+    }
+
+    const isWorkshopFormat = tableFormat === "workshop-sections";
 
     if (sectionOcrMatchesFooterNet(dedupedOcrText)) {
       const amount =

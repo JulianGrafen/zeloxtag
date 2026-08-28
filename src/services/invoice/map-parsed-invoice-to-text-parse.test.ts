@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { mapParsedInvoiceToTextParseResult } from "@/services/invoice/map-parsed-invoice-to-text-parse";
 import type { ParsedInvoice } from "@/types/invoice";
+import {
+  SPEEDWORKZ_CAMERA_OCR_TEXT,
+  SPEEDWORKZ_NET_SUM,
+} from "@/lib/ocr/fixtures/speedworkz-invoice-line-items";
 
 function buildParsedInvoice(
   overrides: Partial<ParsedInvoice> = {},
@@ -100,5 +104,55 @@ describe("mapParsedInvoiceToTextParseResult", () => {
     );
 
     expect(mapped.vendor).toBe("Wagner Tuning");
+  });
+
+  it("replaces mega-merged hybrid line items with camera section OCR", () => {
+    const mapped = mapParsedInvoiceToTextParseResult(
+      buildParsedInvoice({
+        vendor_name: "SPEEDWORKZ GMBH",
+        totals: {
+          net_amount: SPEEDWORKZ_NET_SUM,
+          vat_amount: 86.35,
+          gross_amount: 540.84,
+        },
+        line_items: [
+          {
+            description: "Motor wird heiß lt. Kunde Thermostat wurde erneuert",
+            quantity: 1,
+            unit_price: 46.22,
+            total_price: 46.22,
+            is_math_valid: true,
+          },
+          {
+            description: "Wasserschlauch undicht",
+            quantity: 1,
+            unit_price: 166.37,
+            total_price: 166.37,
+            is_math_valid: true,
+          },
+          {
+            description:
+              "Thermostat und Wasserschlauch erneuern Kühlmitteltemp.sensor prüfen und erneuern Wasserschlauch Thermostat Kühlerfrostschutz",
+            quantity: 1,
+            unit_price: 70.83,
+            total_price: 70.83,
+            is_math_valid: true,
+          },
+          {
+            description: "Sensor, Kühlmitteltemperatur Fracht",
+            quantity: 1,
+            unit_price: 28.73,
+            total_price: 28.73,
+            is_math_valid: true,
+          },
+        ],
+      }),
+      { rawMarkdown: SPEEDWORKZ_CAMERA_OCR_TEXT },
+    );
+
+    expect(mapped.lineItems).toHaveLength(8);
+    expect(
+      mapped.lineItems.reduce((sum, item) => sum + item.amount, 0),
+    ).toBeCloseTo(SPEEDWORKZ_NET_SUM, 2);
   });
 });

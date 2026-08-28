@@ -80,14 +80,13 @@ export function shouldMergeAzureLayout(format: InvoiceTableFormat): boolean {
 }
 
 /**
- * Always draw row guides when geometry exists — same as the proven path at
- * 54d78144 (vision LLM + horizontal separators). Format gating previously
- * skipped overlays for workshop/unknown layouts and caused row-shift regressions.
+ * Draw Pos-table row guides only. Section invoices (Arbeitswerte/Ersatzteile)
+ * must not get Z-markers — wrap and note lines would be treated as new positions.
  */
 export function shouldDrawInvoiceRowSeparators(
-  _format: InvoiceTableFormat,
+  format: InvoiceTableFormat,
 ): boolean {
-  return true;
+  return format === "column";
 }
 
 export function shouldReconcileWithOcrHeuristics(

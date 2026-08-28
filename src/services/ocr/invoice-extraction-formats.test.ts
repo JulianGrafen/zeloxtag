@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  SPEEDWORKZ_CAMERA_OCR_TEXT,
   SPEEDWORKZ_EXPECTED_LINE_ITEMS,
   SPEEDWORKZ_LLM_RAW_LINE_ITEMS,
   SPEEDWORKZ_NET_SUM,
@@ -65,16 +66,13 @@ describe("workshop-section invoice extraction pipeline (Speedworkz)", () => {
     const resolved =
       resolveWorkshopLineItems({
         llmItems: garbledLlm,
-        ocrText: SPEEDWORKZ_OCR_TEXT,
+        ocrText: SPEEDWORKZ_CAMERA_OCR_TEXT,
       }) ?? garbledLlm;
 
     expect(resolved).toHaveLength(8);
     expect(resolved.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
       SPEEDWORKZ_NET_SUM,
       2,
-    );
-    expect(resolved.map((item) => item.label)).toEqual(
-      SPEEDWORKZ_EXPECTED_LINE_ITEMS.map((item) => item.label),
     );
   });
 

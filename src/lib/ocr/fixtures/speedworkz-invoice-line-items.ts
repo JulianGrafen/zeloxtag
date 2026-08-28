@@ -57,6 +57,49 @@ export const SPEEDWORKZ_NET_SUM = 454.49;
 export const SPEEDWORKZ_VAT = 86.35;
 export const SPEEDWORKZ_GROSS_TOTAL = 540.84;
 
+/**
+ * Camera-style Azure OCR: amounts on the next line, diagnostic notes without €,
+ * wrapped parts description (Kühlerfrostschutz / Blau/Rot).
+ */
+export const SPEEDWORKZ_CAMERA_OCR_TEXT = `
+SPEEDWORKZ GMBH
+Rechnung Nr. 2026-06-27993
+Datum 09.06.2026
+
+Arbeitswerte
+Beschreibung Rab. % Art PG Std. Preis-€
+Motor wird heiß lt. Kunde Thermostat wurde erneuert
+46,22
+Thermostat gebrochen
+Wasserflansch undicht
+Thermostat und Wasserschlauch erneuern
+166,37
+Kühlmitteltemp.sensor prüfen und erneuern 4 0,50 46,22
+
+Ersatzteile
+Anzahl Einheit Beschreibung Rab. % Einzelpreis Preis-€
+1 Stück Wasserschlauch 65,12 65,12
+1 Stück Thermostat 70,83 70,83
+4 Stück Kühlerfrostschutz 6,50 26,00
+Blau/Rot
+1 Stück Sensor, Kühlmitteltemperatur 30,00 41,04 28,73
+
+Sonstige Kosten
+Anzahl Beschreibung Einzelpreis Preis-€
+1 Fracht 5,00 5,00
+
+Zwischensummen
+Mechanik 2,80 Std 92,43 258,81
+Ersatzteile 190,68
+Sonstige Kosten 5,00
+Positionssumme 454,49
+
+Endsummen
+Netto Summe 454,49 €
+MwSt. 19,0 % 86,35 €
+Endpreis 540,84 €
+`.trim();
+
 /** LLM Extract & Compute raw strings for the same invoice. */
 export const SPEEDWORKZ_LLM_RAW_LINE_ITEMS = [
   {

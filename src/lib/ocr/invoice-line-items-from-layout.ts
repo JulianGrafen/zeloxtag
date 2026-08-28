@@ -17,6 +17,13 @@ import {
   lineTotalFromInvoiceRow,
 } from "@/lib/ocr/invoice-line-items-from-text";
 import { detectInvoiceTableFormat } from "@/lib/ocr/invoice-format-routing";
+import {
+  extractNetSumFromText,
+  invoiceLineItemsMatchNetTotal,
+  INVOICE_NET_TOTAL_TOLERANCE_EUR,
+  sumInvoiceLineItems,
+} from "@/lib/ocr/invoice-footer-totals";
+import { extractWorkshopSectionLineItems } from "@/lib/ocr/invoice-workshop-sections";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 import {
@@ -29,8 +36,6 @@ import type {
   AzureLayoutTable,
   AzureLayoutTableCell,
 } from "./azure-document-intelligence";
-
-import { INVOICE_NET_TOTAL_TOLERANCE_EUR, sumInvoiceLineItems } from "@/lib/ocr/invoice-footer-totals";
 
 const MAX_ITEMS = 60;
 const NET_TOTAL_TOLERANCE_EUR = INVOICE_NET_TOTAL_TOLERANCE_EUR;
@@ -477,6 +482,68 @@ function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
   return mergeContinuationInvoiceLineItems(items) ?? items;
 }
 
+function tableToPlainText(table: AzureLayoutTable): string {
+  const lines: string[] = [];
+  for (let rowIndex = 0; rowIndex < table.rowCount; rowIndex += 1) {
+    const cells = table.cells
+      .filter((cell) => cell.rowIndex === rowIndex)
+      .sort((a, b) => a.columnIndex - b.columnIndex);
+    const line = cells
+      .map((cell) => cell.content.replace(/\|/g, " ").replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+      .join(" ");
+    if (line) lines.push(line);
+  }
+  return lines.join("\n");
+}
+
+/** Content markdown, page lines, and table rows — tried separately for section OCR. */
+export function azureLayoutTextBlobs(
+  result: AzureLayoutAnalyzeResult,
+): string[] {
+  const blobs: string[] = [];
+  if (result.content?.trim()) blobs.push(result.content);
+  for (const page of result.pages) {
+    const pageText = page.lines?.map((line) => line.content).join("\n") ?? "";
+    if (pageText.trim()) blobs.push(pageText);
+  }
+  for (const table of result.tables ?? []) {
+    if (table.rowCount < 2) continue;
+    blobs.push(tableToPlainText(table));
+  }
+  return blobs;
+}
+
+export function azureLayoutPlainText(
+  result: AzureLayoutAnalyzeResult,
+): string {
+  return azureLayoutTextBlobs(result).join("\n");
+}
+
+function pickBestWorkshopParse(
+  blobs: string[],
+  footerNet: number | null,
+): InvoiceLineItem[] | null {
+  let best: InvoiceLineItem[] | null = null;
+  let bestDelta = Number.POSITIVE_INFINITY;
+
+  for (const blob of blobs) {
+    const items = extractWorkshopSectionLineItems(blob);
+    if (!items?.length) continue;
+    if (footerNet != null && invoiceLineItemsMatchNetTotal(items, footerNet)) {
+      return items;
+    }
+    const sum = items.reduce((acc, item) => acc + item.amount, 0);
+    const delta = footerNet != null ? Math.abs(sum - footerNet) : 0;
+    if (delta < bestDelta) {
+      best = items;
+      bestDelta = delta;
+    }
+  }
+
+  return best;
+}
+
 /**
  * Primary: Azure layout tables (row/column indices).
  * Fallback: markdown content line parser.
@@ -484,12 +551,16 @@ function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
 export function extractInvoiceLineItemsFromAzureLayout(
   result: AzureLayoutAnalyzeResult,
 ): InvoiceLineItem[] | null {
-  if (result.content) {
-    const format = detectInvoiceTableFormat(result.content);
-    if (format === "workshop-sections") {
-      const fromSections = extractInvoiceLineItemsFromText(result.content);
-      return fromSections?.length ? fromSections : null;
-    }
+  const layoutText = azureLayoutPlainText(result);
+  const footerNet = layoutText ? extractNetSumFromText(layoutText) : null;
+  const format = layoutText ? detectInvoiceTableFormat(layoutText) : "unknown";
+
+  if (format === "workshop-sections") {
+    const fromSections = pickBestWorkshopParse(
+      azureLayoutTextBlobs(result),
+      footerNet,
+    );
+    if (fromSections?.length) return fromSections;
   }
 
   const tables = [...(result.tables ?? [])].sort(

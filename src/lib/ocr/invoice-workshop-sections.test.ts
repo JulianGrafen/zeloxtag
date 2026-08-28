@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  SPEEDWORKZ_CAMERA_OCR_TEXT,
   SPEEDWORKZ_EXPECTED_LINE_ITEMS,
   SPEEDWORKZ_GROSS_TOTAL,
   SPEEDWORKZ_LLM_RAW_LINE_ITEMS,
@@ -15,6 +16,7 @@ import {
   extractWorkshopSectionLineItems,
   isGarbageWorkshopLineItems,
   isWorkshopSectionInvoiceText,
+  prejoinWorkshopSectionLines,
   resolveWorkshopLineItems,
   sectionOcrMatchesFooterNet,
 } from "@/lib/ocr/invoice-workshop-sections";
@@ -173,6 +175,78 @@ describe("Speedworkz section invoice", () => {
     );
     expect(sectionOcrMatchesFooterNet(SPEEDWORKZ_OCR_TEXT)).toBe(true);
   });
+
+  it("extracts 8 positions from camera OCR with wrapped amounts and notes", () => {
+    const items = extractWorkshopSectionLineItems(SPEEDWORKZ_CAMERA_OCR_TEXT);
+    expect(items).not.toBeNull();
+    expect(items!).toHaveLength(8);
+
+    const labels = items!.map((item) => item.label.toLowerCase());
+    expect(labels.some((label) => label.includes("thermostat gebrochen"))).toBe(
+      false,
+    );
+    expect(labels.some((label) => label.includes("wasserflansch"))).toBe(false);
+    expect(items!.some((item) => /kühlerfrostschutz/i.test(item.label))).toBe(
+      true,
+    );
+    expect(
+      items!.find((item) => /kühlerfrostschutz/i.test(item.label))!.label,
+    ).toMatch(/blau\/rot/i);
+
+    const sum = items!.reduce((acc, item) => acc + item.amount, 0);
+    expect(sum).toBeCloseTo(SPEEDWORKZ_NET_SUM, 2);
+    expect(sectionOcrMatchesFooterNet(SPEEDWORKZ_CAMERA_OCR_TEXT)).toBe(true);
+    expect(extractWorkshopInvoiceAmount(SPEEDWORKZ_CAMERA_OCR_TEXT)).toBe(
+      SPEEDWORKZ_GROSS_TOTAL,
+    );
+  });
+
+  it("joins description + next-line amount without billing diagnostic notes", () => {
+    const joined = prejoinWorkshopSectionLines(
+      [
+        "Motor wird heiß lt. Kunde Thermostat wurde erneuert",
+        "46,22",
+        "Thermostat gebrochen",
+        "Wasserflansch undicht",
+        "Thermostat und Wasserschlauch erneuern",
+        "166,37",
+      ].join("\n"),
+    );
+
+    expect(joined).toContain(
+      "Motor wird heiß lt. Kunde Thermostat wurde erneuert 46,22",
+    );
+    expect(joined).toContain("Thermostat und Wasserschlauch erneuern 166,37");
+    expect(joined).toContain("Thermostat gebrochen");
+    expect(joined).toContain("Wasserflansch undicht");
+  });
+
+  it("replaces mega-merged vision rows using camera OCR checksum", () => {
+    const garbledLlm = [
+      {
+        label: "Motor wird heiß lt. Kunde Thermostat wurde erneuert",
+        amount: 46.22,
+      },
+      { label: "Wasserschlauch undicht", amount: 166.37 },
+      {
+        label:
+          "Thermostat und Wasserschlauch erneuern Kühlmitteltemp.sensor prüfen und erneuern Wasserschlauch Thermostat Kühlerfrostschutz",
+        amount: 70.83,
+      },
+      { label: "Sensor, Kühlmitteltemperatur Fracht", amount: 28.73 },
+    ];
+
+    const resolved = resolveWorkshopLineItems({
+      llmItems: garbledLlm,
+      ocrText: SPEEDWORKZ_CAMERA_OCR_TEXT,
+    });
+
+    expect(resolved).toHaveLength(8);
+    expect(resolved!.reduce((s, i) => s + i.amount, 0)).toBeCloseTo(
+      SPEEDWORKZ_NET_SUM,
+      2,
+    );
+  });
 });
 
 describe("section invoice checksum (vendor-agnostic)", () => {
@@ -213,6 +287,33 @@ describe("section invoice checksum (vendor-agnostic)", () => {
     });
 
     expect(sectionOcrMatchesFooterNet(ocr)).toBe(true);
+    expect(resolved).toHaveLength(5);
+    expect(resolved!.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
+      353.54,
+      2,
+    );
+  });
+
+  it("uses extra OCR candidates when markdown is thin but layout parsed positions", () => {
+    const extra = [
+      { label: "Diagnose", amount: 46.22 },
+      { label: "Schlauch erneuern", amount: 166.37 },
+      { label: "Wasserschlauch", amount: 65.12 },
+      { label: "Thermostat", amount: 70.83 },
+      { label: "Fracht", amount: 5 },
+    ];
+    const thinMarkdown = "Positionssumme 353,54\nNetto Summe 353,54 €";
+    const garbled = [
+      { label: "Diagnose Schlauch erneuern Wasserschlauch Thermostat Fracht", amount: 70.83 },
+      { label: "Fracht", amount: 5 },
+    ];
+
+    const resolved = resolveWorkshopLineItems({
+      llmItems: garbled,
+      ocrText: thinMarkdown,
+      extraOcrItems: extra,
+    });
+
     expect(resolved).toHaveLength(5);
     expect(resolved!.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
       353.54,
