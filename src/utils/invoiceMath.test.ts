@@ -138,4 +138,31 @@ describe("processLineItems", () => {
     ]);
     expect(item.gesamtpreis).toBe(-10);
   });
+
+  it("infers fractional Std from label when menge is null and EP was copied to GP", () => {
+    const [item] = processLineItems(
+      [
+        {
+          label: "Beide Bremsscheiben erneuern (0,90 Std)",
+          menge: null,
+          einzelpreis: "90,00 €",
+          gesamtpreis: "90,00 €",
+        },
+      ],
+      { checksumMode: "column" },
+    );
+    expect(item.gesamtpreis).toBe(81);
+  });
+
+  it("keeps genuine 1× positions when menge is null and EP equals GP", () => {
+    const [item] = processLineItems([
+      {
+        label: "Wasserschlauch",
+        menge: null,
+        einzelpreis: "65,12 €",
+        gesamtpreis: "65,12 €",
+      },
+    ]);
+    expect(item.gesamtpreis).toBe(65.12);
+  });
 });

@@ -92,6 +92,42 @@ describe("mergeInvoiceWizardExtractions", () => {
 
     expect(merged.category).toBe("repair");
   });
+
+  it("preserves position count and order for wizard review", () => {
+    const inputItems = [
+      { label: "Beide Bremsscheiben erneuern (Hinterachse)", amount: 81 },
+      { label: "Bremsbelagsatz, Scheibenbremse", amount: 141.46 },
+      { label: "Ölfilter", amount: 23.86 },
+    ];
+
+    const merged = mergeInvoiceWizardExtractions(
+      {
+        vendor: "Werkstatt",
+        date: "2026-01-01",
+        amount: 246.32,
+        category: "repair",
+        summary: "Bremsen",
+      },
+      {
+        vendor: "Werkstatt",
+        invoiceNumber: "RE-99",
+        mileageKm: 142_350,
+        date: "2026-01-01",
+      },
+      {
+        lineItems: inputItems,
+        amount: 246.32,
+      },
+    );
+
+    expect(merged.lineItems).toHaveLength(3);
+    expect(merged.lineItems?.map((item) => item.label)).toEqual(
+      inputItems.map((item) => item.label),
+    );
+    expect(merged.lineItems?.map((item) => item.amount)).toEqual(
+      inputItems.map((item) => item.amount),
+    );
+  });
 });
 
 describe("mergeLineItemsExtractions", () => {

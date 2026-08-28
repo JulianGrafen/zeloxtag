@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   dedupeInvoiceLineItemUnitPrices,
+  isHourlyRateOfLineTotal,
   isUnitPriceAmountOfTotal,
 } from "@/lib/ocr/invoice-line-item-dedupe";
 
@@ -9,6 +10,17 @@ describe("isUnitPriceAmountOfTotal", () => {
   it("detects qty × unit = total", () => {
     expect(isUnitPriceAmountOfTotal(120, 480)).toBe(true);
     expect(isUnitPriceAmountOfTotal(141.6, 141.6)).toBe(false);
+  });
+
+  it("detects fractional multi-qty when unit is smaller than total", () => {
+    expect(isUnitPriceAmountOfTotal(50, 90)).toBe(true);
+  });
+});
+
+describe("isHourlyRateOfLineTotal", () => {
+  it("detects Stundenpreis vs Zeilenbetrag for fractional hours", () => {
+    expect(isHourlyRateOfLineTotal(90, 81)).toBe(true);
+    expect(isHourlyRateOfLineTotal(65.12, 65.12)).toBe(false);
   });
 });
 
@@ -56,5 +68,16 @@ describe("dedupeInvoiceLineItemUnitPrices", () => {
     ]);
 
     expect(result).toEqual([{ label: "Ölfilter", amount: 42.9 }]);
+  });
+
+  it("keeps Zeilenbetrag when Stundenpreis was duplicated for same label", () => {
+    const result = dedupeInvoiceLineItemUnitPrices([
+      { label: "Beide Bremsscheiben erneuern (Hinterachse)", amount: 90 },
+      { label: "Beide Bremsscheiben erneuern (Hinterachse)", amount: 81 },
+    ]);
+
+    expect(result).toEqual([
+      { label: "Beide Bremsscheiben erneuern (Hinterachse)", amount: 81 },
+    ]);
   });
 });

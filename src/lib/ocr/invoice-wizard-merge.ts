@@ -11,7 +11,7 @@ import {
 import { extractMileageKmFromText } from "@/lib/ocr/mileage-from-text";
 import {
   coerceLooseNumber,
-  normalizeLineItemsList,
+  normalizeLineItemsForReview,
   normalizeTextParseResult,
   type InvoiceLineItem,
   type InvoiceTextParseCategory,
@@ -133,10 +133,9 @@ export function mergeLineItemsExtractions(
       .map((block) => block.amount)
       .find((value) => value !== null) ?? null;
 
-  const lineItems = normalizeLineItemsList(
-    realignShiftedInvoiceLineItems(merged, amount),
-    LINE_ITEMS_MAX_COUNT,
-  );
+  const realigned =
+    amount != null ? realignShiftedInvoiceLineItems(merged, amount) : merged;
+  const lineItems = normalizeLineItemsForReview(realigned, LINE_ITEMS_MAX_COUNT);
 
   return {
     lineItems,
@@ -182,6 +181,8 @@ export function mergeInvoiceWizardExtractions(
     lineItems,
     amount,
     expectedGross: overview?.amount ?? lineItemsBlock.amount,
+    enableRealign: false,
+    enableOcrReconcile: false,
   });
 
   const withVat = ensureInvoiceVatAndGrossTotal({
@@ -194,21 +195,24 @@ export function mergeInvoiceWizardExtractions(
     header.invoiceNumber,
   );
 
-  return normalizeTextParseResult({
-    vendor,
-    date,
-    amount: withVat.amount,
-    category: category === "abe" ? "other" : category,
-    summary: overview?.summary ?? null,
-    lineItems: withVat.lineItems,
-    kbaNumber: null,
-    vehicleApprovals: null,
-    authority: null,
-    conditions: null,
-    partCategory: null,
-    notes: null,
-    manufacturer: null,
-    invoiceNumber: header.invoiceNumber,
-    mileageKm,
-  });
+  return normalizeTextParseResult(
+    {
+      vendor,
+      date,
+      amount: withVat.amount,
+      category: category === "abe" ? "other" : category,
+      summary: overview?.summary ?? null,
+      lineItems: withVat.lineItems,
+      kbaNumber: null,
+      vehicleApprovals: null,
+      authority: null,
+      conditions: null,
+      partCategory: null,
+      notes: null,
+      manufacturer: null,
+      invoiceNumber: header.invoiceNumber,
+      mileageKm,
+    },
+    { preservePositions: true },
+  );
 }

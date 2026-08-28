@@ -45,6 +45,37 @@ function isRateOnlyRow(
   );
 }
 
+/** Parse Menge from label or menge field when the numeric column is empty. */
+function inferQuantityFromContext(
+  label: unknown,
+  mengeField: unknown,
+  parsedMenge: number | null,
+): number | null {
+  if (parsedMenge !== null && parsedMenge > 0) return parsedMenge;
+
+  if (typeof mengeField === "string" && mengeField.trim()) {
+    const fromField = parseGermanNumber(mengeField);
+    if (fromField !== null && fromField > 0) return fromField;
+  }
+
+  if (typeof label !== "string") return null;
+
+  const stdPatterns = [
+    /(\d+[.,]\d+)\s*Std\.?/i,
+    /(\d+[.,]\d+)\s*h\b/i,
+    /\((\d+[.,]\d+)\s*Std\.?\)/i,
+  ];
+  for (const pattern of stdPatterns) {
+    const match = label.match(pattern);
+    if (match?.[1]) {
+      const qty = parseGermanNumber(match[1]);
+      if (qty !== null && qty > 0 && qty <= 999) return qty;
+    }
+  }
+
+  return null;
+}
+
 /** OCR dropped leading digits (1,47 vs 141,46) or scaled by 10/100. */
 function looksLikeTruncatedTotal(printed: number, computed: number): boolean {
   if (printed <= 0 || computed <= 0) return false;
@@ -68,11 +99,14 @@ export function resolveInvoiceRowGesamtpreis(options: {
   gesamtpreis: number | null;
   /** Rabatt-% from a dedicated column (10 = 10 % off). */
   rabattPercent?: number | null;
+  /** False when menge was defaulted to 1 because the Menge cell was empty. */
+  mengeExplicit?: boolean;
 }): number | null {
   const rawMenge = options.menge;
   const rawEPreis = options.einzelpreis;
   const rawGesPreis = options.gesamtpreis;
   const rabattPercent = options.rabattPercent;
+  const mengeExplicit = options.mengeExplicit !== false;
 
   if (rawEPreis === null && rawGesPreis === null) return null;
   if (rawEPreis === null) return rawGesPreis;
@@ -87,6 +121,16 @@ export function resolveInvoiceRowGesamtpreis(options: {
   if (rawGesPreis === null) {
     return discountedFromPercent ?? computedTotal;
   }
+
+  // EP copied into GP with missing Menge: only trust GP≈qty×EP when qty is known.
+  if (
+    !mengeExplicit &&
+    Math.abs(rawGesPreis - rawEPreis) <= 0.05 &&
+    Math.abs(menge - 1) <= 0.001
+  ) {
+    return rawGesPreis;
+  }
+
   if (Math.abs(rawGesPreis - computedTotal) <= 0.05) return rawGesPreis;
   if (
     discountedFromPercent != null &&
@@ -192,9 +236,14 @@ export function processLineItems(
       }
     }
 
-    // Rule 1: If Menge is missing, default to 1 only when Ges. Preis or E-Preis needs computing
-    let menge = rawMenge !== null ? rawMenge : 1;
-    
+    const inferredMenge = inferQuantityFromContext(
+      item.label,
+      item.menge,
+      rawMenge,
+    );
+    const mengeExplicit = rawMenge !== null || inferredMenge !== null;
+    let menge = rawMenge ?? inferredMenge ?? 1;
+
     // Rule 2: If E-Preis is missing but GesPreis exists, use GesPreis as E-Preis (since menge is likely 1)
     const ePreis = rawEPreis !== null ? rawEPreis : (rawGesPreis !== null ? rawGesPreis : 0);
     
@@ -217,6 +266,7 @@ export function processLineItems(
       menge,
       einzelpreis: ePreis,
       gesamtpreis: rawGesPreis,
+      mengeExplicit,
       rabattPercent:
         rabattPercent != null && Math.abs(rabattPercent) <= 100
           ? Math.abs(rabattPercent)

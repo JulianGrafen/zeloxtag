@@ -317,37 +317,55 @@ export function isPercentRestatedAsAmount(
   );
 }
 
+function sanitizeLineItemRows(
+  items: InvoiceLineItem[],
+): InvoiceLineItem[] {
+  return items
+    .map((item) => {
+      const label = stripHtmlTags(item.label).replace(/\s+/g, " ").trim().slice(0, 160);
+      return {
+        label,
+        amount: signedInvoiceLineAmount(
+          label,
+          sanitizeLlmMoneyAmount(item.amount, "aggressive"),
+        ),
+      };
+    })
+    .filter(
+      (item) =>
+        item.label.length > 0 &&
+        Number.isFinite(item.amount) &&
+        !isHtmlDebrisLabel(item.label) &&
+        !isJunkInvoiceLineLabel(item.label) &&
+        !/(?:^|[^a-zäöüß])(?:mwst|m\.?\s*w\.?\s*st\.?|umsatzsteuer|vat\s*19)(?:[^a-zäöüß]|$)/i.test(
+          item.label,
+        ) &&
+        /[a-zäöüß]{2,}/i.test(item.label) &&
+        !isPercentRestatedAsAmount(item.label, item.amount),
+    );
+}
+
+/** Light sanitization for wizard review — keeps position count/order, no EP/GP dedupe. */
+export function normalizeLineItemsForReview(
+  items: InvoiceLineItem[] | null | undefined,
+  maxItems = 40,
+): InvoiceLineItem[] | null {
+  if (!items?.length) return null;
+
+  const cleaned = sanitizeLineItemRows(items).slice(0, maxItems);
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 export function normalizeLineItemsList(
   items: InvoiceLineItem[] | null | undefined,
   maxItems = 40,
 ): InvoiceLineItem[] | null {
   if (!items?.length) return null;
 
-  const cleaned = dedupeInvoiceLineItemUnitPrices(
-    items
-      .map((item) => {
-        const label = stripHtmlTags(item.label).replace(/\s+/g, " ").trim().slice(0, 160);
-        return {
-          label,
-          amount: signedInvoiceLineAmount(
-            label,
-            sanitizeLlmMoneyAmount(item.amount, "aggressive"),
-          ),
-        };
-      })
-      .filter(
-        (item) =>
-          item.label.length > 0 &&
-          Number.isFinite(item.amount) &&
-          !isHtmlDebrisLabel(item.label) &&
-          !isJunkInvoiceLineLabel(item.label) &&
-          !/(?:^|[^a-zäöüß])(?:mwst|m\.?\s*w\.?\s*st\.?|umsatzsteuer|vat\s*19)(?:[^a-zäöüß]|$)/i.test(
-            item.label,
-          ) &&
-          /[a-zäöüß]{2,}/i.test(item.label) &&
-          !isPercentRestatedAsAmount(item.label, item.amount),
-      ),
-  ).slice(0, maxItems);
+  const cleaned = dedupeInvoiceLineItemUnitPrices(sanitizeLineItemRows(items)).slice(
+    0,
+    maxItems,
+  );
 
   return cleaned.length > 0 ? cleaned : null;
 }
@@ -367,6 +385,7 @@ function normalizeStringList(
 
 export function normalizeTextParseResult(
   fields: InvoiceTextParseResult,
+  options: { preservePositions?: boolean } = {},
 ): InvoiceTextParseResult {
   const vendorRaw = fields.vendor?.trim();
   const vendor = vendorRaw
@@ -382,7 +401,9 @@ export function normalizeTextParseResult(
         : null,
     category: fields.category,
     summary: fields.summary?.trim().slice(0, 80) || null,
-    lineItems: normalizeLineItemsList(fields.lineItems, 60),
+    lineItems: options.preservePositions
+      ? normalizeLineItemsForReview(fields.lineItems, 60)
+      : normalizeLineItemsList(fields.lineItems, 60),
     kbaNumber: fields.kbaNumber?.trim().slice(0, 80) || null,
     vehicleApprovals: normalizeStringList(fields.vehicleApprovals, 120),
     authority: fields.authority?.trim().slice(0, 120) || null,

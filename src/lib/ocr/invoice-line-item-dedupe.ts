@@ -45,6 +45,18 @@ export function isPriceOnlyLineLabel(label: string): boolean {
   return PRICE_ONLY_LABEL.test(label.trim());
 }
 
+/** True when `rate` is a Stundenpreis and `lineTotal` is the matching Zeilenbetrag (qty < 1). */
+export function isHourlyRateOfLineTotal(rate: number, lineTotal: number): boolean {
+  if (!Number.isFinite(rate) || !Number.isFinite(lineTotal)) return false;
+  if (rate <= lineTotal + 0.01) return false;
+
+  const qty = Math.round((lineTotal / rate) * 100) / 100;
+  if (qty < 0.01 || qty >= 2) return false;
+
+  const product = parseFloat((rate * qty).toFixed(2));
+  return Math.abs(product - lineTotal) <= 0.05;
+}
+
 /** True when `small` looks like Einzelpreis and `large` like Gesamtpreis (qty × unit). */
 export function isUnitPriceAmountOfTotal(
   small: number,
@@ -55,7 +67,17 @@ export function isUnitPriceAmountOfTotal(
 
   const ratio = large / small;
   const qty = Math.round(ratio);
-  return qty >= 2 && qty <= 100 && Math.abs(ratio - qty) < 0.06;
+  if (qty >= 2 && qty <= 100 && Math.abs(ratio - qty) < 0.06) {
+    return true;
+  }
+
+  const fractionalQty = Math.round(ratio * 100) / 100;
+  if (fractionalQty >= 0.01 && fractionalQty < 2) {
+    const product = parseFloat((small * fractionalQty).toFixed(2));
+    if (Math.abs(product - large) <= 0.05) return true;
+  }
+
+  return false;
 }
 
 function isJunkColumnRow(item: InvoiceLineItem): boolean {
@@ -80,12 +102,18 @@ function dropUnitPriceDuplicatesInGroup(
     );
     if (duplicateAmount) continue;
 
-    const looksLikeUnit = sorted.some(
+    const looksLikeUnitPrice = sorted.some(
       (other) =>
         other.amount > candidate.amount + 0.01 &&
-        isUnitPriceAmountOfTotal(candidate.amount, other.amount),
+        isUnitPriceAmountOfTotal(candidate.amount, other.amount) &&
+        !isHourlyRateOfLineTotal(other.amount, candidate.amount),
     );
-    if (looksLikeUnit) continue;
+    const looksLikeHourlyRate = sorted.some(
+      (other) =>
+        candidate.amount > other.amount + 0.01 &&
+        isHourlyRateOfLineTotal(candidate.amount, other.amount),
+    );
+    if (looksLikeUnitPrice || looksLikeHourlyRate) continue;
 
     kept.push(candidate);
   }
@@ -135,7 +163,9 @@ export function dedupeInvoiceLineItemUnitPrices(
     }
 
     const orphanUnit = allTotals.some(
-      (total) => total > amount + 0.01 && isUnitPriceAmountOfTotal(amount, total),
+      (total) =>
+        (total > amount + 0.01 && isUnitPriceAmountOfTotal(amount, total)) ||
+        (amount > total + 0.01 && isHourlyRateOfLineTotal(amount, total)),
     );
     if (orphanUnit && (isPriceOnlyLineLabel(item.label) || item.label.length <= 14)) {
       continue;
