@@ -10,6 +10,7 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
+import { requireOperator } from "@/lib/auth/require-operator";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 
 export const runtime = "nodejs";
@@ -125,12 +126,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ? textRaw.trim()
         : null;
 
+    const operator = await requireOperator();
     const { imagePath, imageUrl } = await uploadAuflagenKuerzelImage(
       kuerzel,
       bytes,
       mime,
       auth.user.id,
       text,
+      operator.ok,
     );
 
     return NextResponse.json({

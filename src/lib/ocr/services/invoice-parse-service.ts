@@ -29,6 +29,10 @@ import {
   reconcileLineItemAmountsWithOcrText,
 } from "@/lib/ocr/invoice-line-items-from-text";
 import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
+import {
+  fenceUntrustedDocumentText,
+  UNTRUSTED_TEXT_SYSTEM_RULE,
+} from "@/lib/ocr/untrusted-document-text";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   buildInvoiceSystemPrompt,
@@ -436,10 +440,17 @@ export class InvoiceParseService {
           json_schema: INVOICE_TEXT_PARSE_JSON_SCHEMA,
         },
         messages: [
-          { role: "system", content: systemInstructions },
+          {
+            role: "system",
+            content: [systemInstructions, UNTRUSTED_TEXT_SYSTEM_RULE].join("\n"),
+          },
           {
             role: "user",
-            content: [...INVOICE_USER_PROMPT_LINES, "", text].join("\n"),
+            content: [
+              ...INVOICE_USER_PROMPT_LINES,
+              "",
+              fenceUntrustedDocumentText(text),
+            ].join("\n"),
           },
         ],
       });

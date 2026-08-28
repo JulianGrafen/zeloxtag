@@ -14,6 +14,7 @@ import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 import {
   isUploadFile,
+  storagePathFromPublicOrAuthenticatedUrl,
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
 import { parseStrictBody } from "@/lib/security/parse-body";
@@ -61,6 +62,40 @@ const saveVaultMetaSchema = z
       .default(""),
   })
   .strict();
+
+/**
+ * `fileUrl` arrives from the browser after staging, so it must be re-bound to the
+ * object this exact document actually uploaded. Without this an attacker with
+ * write access can persist a row pointing at another object or an external host.
+ */
+function stagedVaultFileUrlError(
+  fileUrl: string,
+  vehicleId: string,
+  documentId: string,
+): string | null {
+  const { url: supabaseUrl } = getSupabaseEnv();
+  if (!supabaseUrl) return "Storage ist nicht konfiguriert.";
+
+  let origin: string;
+  try {
+    origin = new URL(fileUrl).origin;
+  } catch {
+    return "Ungültige Datei-URL.";
+  }
+  if (origin !== new URL(supabaseUrl).origin) {
+    return "Datei-URL nicht erlaubt.";
+  }
+
+  const storagePath = storagePathFromPublicOrAuthenticatedUrl(
+    fileUrl,
+    DOCUMENT_BUCKET,
+  );
+  if (!storagePath?.startsWith(`${vehicleId}/${documentId}-`)) {
+    return "Datei gehört nicht zu diesem Upload.";
+  }
+
+  return null;
+}
 
 export type StageVaultDocumentResult =
   | {
@@ -345,6 +380,15 @@ export async function saveVaultDocument(
       status: "error",
       message: "Schrauber können keine Gutachten/ABEs ablegen.",
     };
+  }
+
+  const fileUrlError = stagedVaultFileUrlError(
+    meta.fileUrl,
+    meta.vehicleId,
+    meta.documentId,
+  );
+  if (fileUrlError) {
+    return { status: "error", message: fileUrlError };
   }
 
   const row = {

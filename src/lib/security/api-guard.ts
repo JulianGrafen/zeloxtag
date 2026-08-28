@@ -54,7 +54,17 @@ export async function enforceRateLimit(
     if (!result.ok) return rateLimitResponse(result);
     return null;
   } catch (error) {
-    console.error("[api-guard] rate limit skipped", error);
+    console.error("[api-guard] rate limit failed", error);
+    // Credential-bearing buckets fail closed: an outage must not turn into an
+    // unlimited brute-force window. Public reads stay available.
+    if (bucket === "auth" || bucket === "membershipClaim") {
+      return rateLimitResponse({
+        ok: false,
+        remaining: 0,
+        resetAt: Date.now() + 60_000,
+        retryAfterSec: 60,
+      });
+    }
     return null;
   }
 }

@@ -105,6 +105,7 @@ export function AcceptInvitePanel({
                 email,
                 invitePath,
                 vehicleLabel,
+                token,
               );
               if (result.status === "error") {
                 setMessage(result.message);

@@ -26,6 +26,29 @@ export function toGuestClientTagScanResult(result: TagScanResult): TagScanResult
   };
 }
 
+/**
+ * Schrauber projection — dashboard access without owner-only identifiers.
+ * A contributor must never receive the VIN or the exposé share token, since
+ * either lets them act outside the vehicle they were invited to.
+ */
+export function toContributorClientTagScanResult(
+  result: TagScanResult,
+): TagScanResult {
+  return {
+    tag: toPublicTag(result.tag),
+    vehicle: result.vehicle
+      ? {
+          ...result.vehicle,
+          user_id: "",
+          vin: null,
+          expose_token: null,
+          is_expose_active: false,
+        }
+      : null,
+    documents: result.documents.map(toOwnerClientDocument),
+  };
+}
+
 /** @deprecated Use {@link toGuestClientTagScanResult} / {@link toOwnerClientTagScanResult}. */
 export function toPublicTagScanResult(result: TagScanResult): TagScanResult {
   return toGuestClientTagScanResult(result);

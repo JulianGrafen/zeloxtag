@@ -297,7 +297,35 @@ export async function requestPasswordReset(
   }
 }
 
-async function ensureMagicLinkUser(email: string): Promise<boolean> {
+/**
+ * Only a pending Schrauber invite may bring a brand-new account into existence.
+ * Without this check the unauthenticated magic-link action lets anyone create a
+ * confirmed account for someone else's address and block their registration.
+ */
+async function inviteTokenAllowsAccountCreation(
+  token: string | null | undefined,
+): Promise<boolean> {
+  const candidate = token?.trim() ?? "";
+  if (candidate.length < 16) return false;
+
+  const admin = createAdminClient();
+  const { data: invite } = await admin
+    .from("vehicle_contributors")
+    .select("id, status, expires_at")
+    .eq("invite_token", candidate)
+    .maybeSingle();
+
+  if (!invite || invite.status !== "invited") return false;
+  if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
+    return false;
+  }
+  return true;
+}
+
+async function ensureMagicLinkUser(
+  email: string,
+  mayCreateAccount: boolean,
+): Promise<boolean> {
   const admin = createAdminClient();
   const existing = await admin.auth.admin.generateLink({
     type: "magiclink",
@@ -305,6 +333,10 @@ async function ensureMagicLinkUser(email: string): Promise<boolean> {
   });
   if (existing.data?.properties?.hashed_token) {
     return true;
+  }
+
+  if (!mayCreateAccount) {
+    return false;
   }
 
   const created = await admin.auth.admin.createUser({
@@ -331,12 +363,14 @@ async function ensureMagicLinkUser(email: string): Promise<boolean> {
 
 /**
  * Passwordless login for Schrauber workshops — magic link via Resend.
- * Creates a Supabase user on first use; always returns a generic success message.
+ * A new account is only created when `inviteToken` names a pending invite;
+ * otherwise existing users get a link and unknown addresses get the generic reply.
  */
 export async function requestMagicLinkLogin(
   emailRaw: string,
   nextPath = "/auth/continue",
   vehicleLabel?: string | null,
+  inviteToken?: string | null,
 ): Promise<AuthActionResult> {
   const limited = await enforceAuthRateLimit("magic-link");
   if (limited) return limited;
@@ -366,7 +400,8 @@ export async function requestMagicLinkLogin(
   const siteUrl = await getSiteUrl();
 
   try {
-    const ready = await ensureMagicLinkUser(email);
+    const mayCreateAccount = await inviteTokenAllowsAccountCreation(inviteToken);
+    const ready = await ensureMagicLinkUser(email, mayCreateAccount);
     if (!ready) {
       return { status: "ok", message: GENERIC_MAGIC_LINK_OK };
     }

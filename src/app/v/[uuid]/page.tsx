@@ -26,7 +26,10 @@ import {
 } from "@/lib/seo/open-graph";
 import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
-import { toOwnerClientTagScanResult } from "@/lib/tags/public-tag-dto";
+import {
+  toContributorClientTagScanResult,
+  toOwnerClientTagScanResult,
+} from "@/lib/tags/public-tag-dto";
 import {
   isForcedDashboardTourSearch,
 } from "@/lib/onboarding/dashboard-tour";
@@ -260,7 +263,10 @@ export default async function TagScanPage({
         sessionUserId: access.sessionUserId,
       },
     );
-    const ownerTwin = toOwnerClientTagScanResult({
+    const projectTwin = access.isOwner
+      ? toOwnerClientTagScanResult
+      : toContributorClientTagScanResult;
+    const ownerTwin = projectTwin({
       ...result,
       documents: visibleDocuments,
     });

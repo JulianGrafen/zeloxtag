@@ -123,13 +123,30 @@ export async function rateLimit(input: {
   return memoryRateLimit(input);
 }
 
-/** Client IP best-effort (Vercel / proxy / CDN headers). */
+/**
+ * Client IP best-effort.
+ *
+ * Order matters: platform-injected headers first, because a client can send its
+ * own `x-forwarded-for` and proxies append rather than replace. Reading the
+ * leftmost `x-forwarded-for` entry would let an attacker rotate the value per
+ * request and bypass every rate limit. The rightmost entry is the one written
+ * by the closest trusted proxy.
+ */
 export function clientIpFromHeaders(headers: Headers): string {
+  const rightmost = (value: string | null | undefined): string | undefined => {
+    if (!value) return undefined;
+    const parts = value
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    return parts.length ? parts[parts.length - 1] : undefined;
+  };
+
   const candidates = [
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
-    headers.get("x-real-ip")?.trim(),
-    headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim(),
+    rightmost(headers.get("x-vercel-forwarded-for")),
     headers.get("cf-connecting-ip")?.trim(),
+    headers.get("x-real-ip")?.trim(),
+    rightmost(headers.get("x-forwarded-for")),
   ];
   for (const candidate of candidates) {
     if (candidate) return candidate.slice(0, 64);

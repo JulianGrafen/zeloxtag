@@ -31,6 +31,10 @@ import type { OcrDocumentType } from "@/lib/ocr/ocr-types";
 import { TextParseError } from "@/lib/ocr/parse-error";
 import { resolveAbePartName } from "@/lib/ocr/part-from-text";
 import {
+  fenceUntrustedDocumentText,
+  UNTRUSTED_TEXT_SYSTEM_RULE,
+} from "@/lib/ocr/untrusted-document-text";
+import {
   normalizeTextParseResult,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
@@ -132,10 +136,17 @@ export class AbeParseService {
           json_schema: ABE_CORE_PARSE_JSON_SCHEMA,
         },
         messages: [
-          { role: "system", content: ABE_SYSTEM_PROMPT },
+          {
+            role: "system",
+            content: [ABE_SYSTEM_PROMPT, UNTRUSTED_TEXT_SYSTEM_RULE].join("\n"),
+          },
           {
             role: "user",
-            content: [...ABE_USER_PROMPT_LINES, "", text].join("\n"),
+            content: [
+              ...ABE_USER_PROMPT_LINES,
+              "",
+              fenceUntrustedDocumentText(text),
+            ].join("\n"),
           },
         ],
       });

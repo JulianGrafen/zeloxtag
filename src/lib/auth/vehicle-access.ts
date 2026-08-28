@@ -281,7 +281,10 @@ export async function viewerCanAccessPrivateTwin(
 }
 
 /**
- * Silhouette images may be shown to owners, contributors, or public-showcase viewers.
+ * Vehicle photo access for `/api/vehicle/silhouette/[vehicleId]`.
+ *
+ * Allowed for owners, active Schrauber, published showcases, and vehicles with
+ * an active exposé — the exposé hero image is rendered for anonymous token holders.
  */
 export async function sessionCanAccessVehicleMedia(
   vehicleId: string,
@@ -292,12 +295,12 @@ export async function sessionCanAccessVehicleMedia(
   const admin = createAdminClient();
   const { data: vehicle, error } = await admin
     .from("vehicles")
-    .select("user_id, is_public")
+    .select("user_id, is_public, is_expose_active")
     .eq("id", vehicleId)
     .maybeSingle();
 
   if (error || !vehicle) return false;
-  if (vehicle.is_public) return true;
+  if (vehicle.is_public || vehicle.is_expose_active) return true;
   if (!sessionUserId) return false;
   if (vehicle.user_id === sessionUserId) return true;
 

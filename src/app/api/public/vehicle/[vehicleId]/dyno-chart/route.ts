@@ -96,16 +96,28 @@ export async function GET(
     }
 
     const buffer = Buffer.from(await found.data.arrayBuffer());
-    const contentType =
-      found.data.type?.split(";")[0]?.trim() ||
-      dynoChartContentTypeFromPath(found.path);
-    const filename = found.path.split("/").pop() ?? "leistungsdiagramm";
+    const storedType = found.data.type?.split(";")[0]?.trim().toLowerCase() ?? "";
+    // Stored content types are attacker-influenced at upload time; only serve
+    // types that cannot execute in the showcase origin.
+    const contentType = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ].includes(storedType)
+      ? storedType
+      : dynoChartContentTypeFromPath(found.path);
+    const filename = (found.path.split("/").pop() ?? "leistungsdiagramm").replace(
+      /[^\w.-]/g,
+      "_",
+    );
 
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": `inline; filename="${filename}"`,
+        "X-Content-Type-Options": "nosniff",
         "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
         "Cross-Origin-Resource-Policy": "same-origin",
       },

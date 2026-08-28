@@ -1,3 +1,7 @@
+// Build-time guard: importing this module from a client bundle must fail loudly
+// rather than shipping SUPABASE_SERVICE_ROLE_KEY to the browser.
+import "server-only";
+
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { getSupabaseEnv } from "./env";

@@ -3,7 +3,7 @@ import "server-only";
 import { resizeImageToMaxEdge } from "@/lib/image/server-canvas";
 import {
   getPdfPageCount,
-  rasterizePdfPagesWithPdfJs,
+  rasterizePdfPageIndicesWithPdfJs,
 } from "@/lib/ocr/pdf-rasterize-server";
 
 /** DPI when rasterizing PDF pages. */
@@ -81,16 +81,17 @@ async function ingestPdf(bytes: Buffer): Promise<IngestedPage[]> {
   const indices = selectAbePdfPageIndices(totalPages);
   if (indices.length === 0) return [];
 
-  const maxIndex = Math.max(...indices);
-  const rendered = await rasterizePdfPagesWithPdfJs(
+  // Render only the selected pages — rasterizing the whole prefix just to reach
+  // the trailing pages is what a page-count bomb exploits.
+  const rendered = await rasterizePdfPageIndicesWithPdfJs(
     bytes,
-    maxIndex + 1,
+    indices,
     PDF_RASTER_DPI,
   );
 
   const pages: IngestedPage[] = [];
   for (const pageIndex of indices) {
-    const png = rendered[pageIndex];
+    const png = rendered.get(pageIndex);
     if (!png) continue;
     const jpeg = await normalizeImageToJpeg(png);
     pages.push({

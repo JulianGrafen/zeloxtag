@@ -233,6 +233,11 @@ export async function uploadAuflagenKuerzelImage(
   contentType: string,
   learnedByUserId?: string | null,
   text?: string | null,
+  /**
+   * Reference crops are shared by every tenant. Overwriting an existing image
+   * is a data-poisoning primitive, so only trusted callers may replace one.
+   */
+  allowOverwrite = false,
 ): Promise<{ imagePath: string; imageUrl: string }> {
   if (!isSupabaseAdminConfigured()) {
     throw new Error("Supabase admin is not configured.");
@@ -250,9 +255,15 @@ export async function uploadAuflagenKuerzelImage(
   const { error: uploadError } = await admin.storage
     .from(AUFLAGEN_KUERZEL_BUCKET)
     .upload(imagePath, bytes, {
-      upsert: true,
+      upsert: allowOverwrite,
       contentType: contentType.includes("png") ? "image/png" : "image/jpeg",
     });
+
+  if (uploadError && !allowOverwrite) {
+    throw new Error(
+      "Für dieses Kürzel existiert bereits ein Referenzbild.",
+    );
+  }
 
   if (uploadError) {
     throw new Error(uploadError.message);

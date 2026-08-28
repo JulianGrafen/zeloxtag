@@ -75,13 +75,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return json(503, { ok: false, error: "Supabase is not configured." });
   }
 
+  // Without the delivery id there is no replay protection, so reject rather
+  // than process an event that could be re-sent indefinitely.
+  if (!webhookId) {
+    return json(400, { ok: false, error: "Missing X-Shopify-Webhook-Id." });
+  }
+
   let reserved: "new" | "duplicate" = "new";
   try {
-    if (webhookId) {
-      reserved = await reserveShopifyWebhookEvent(webhookId, topic);
-      if (reserved === "duplicate") {
-        return json(200, { ok: true, duplicate: true, topic });
-      }
+    reserved = await reserveShopifyWebhookEvent(webhookId, topic);
+    if (reserved === "duplicate") {
+      return json(200, { ok: true, duplicate: true, topic });
     }
 
     await applyShopifyMembershipAction(action);

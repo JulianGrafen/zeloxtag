@@ -110,15 +110,23 @@ export async function GET(
     }
 
     const buffer = Buffer.from(await data.arrayBuffer());
-    const contentType =
-      data.type?.split(";")[0]?.trim() ||
-      (dyno ? "application/pdf" : "image/jpeg");
+    const storedType = data.type?.split(";")[0]?.trim().toLowerCase() ?? "";
+    const fallbackType = dyno ? "application/pdf" : "image/jpeg";
+    // Never echo the stored content type back verbatim — a legacy object typed
+    // as text/html or image/svg+xml would execute in the showcase origin.
+    const allowedTypes = dyno
+      ? ["application/pdf", "image/jpeg", "image/png", "image/webp"]
+      : ["image/jpeg", "image/png", "image/webp"];
+    const contentType = allowedTypes.includes(storedType)
+      ? storedType
+      : fallbackType;
 
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": "inline",
+        "X-Content-Type-Options": "nosniff",
         "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
         "Cross-Origin-Resource-Policy": "same-origin",
       },

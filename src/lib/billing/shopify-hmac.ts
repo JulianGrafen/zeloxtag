@@ -22,7 +22,11 @@ export function shopMatchesAllowlist(
 ): boolean {
   const incoming = shopDomain?.trim().toLowerCase() ?? "";
   const allowed = allowedShop?.trim().toLowerCase() ?? "";
-  if (!allowed) return true;
+  if (!allowed) {
+    // A missing allowlist in production would accept any shop that shares the
+    // webhook secret (e.g. a staging store). Fail closed there, stay open locally.
+    return process.env.NODE_ENV !== "production";
+  }
   if (!incoming) return false;
   return incoming === allowed || incoming === `${allowed}.myshopify.com`;
 }
