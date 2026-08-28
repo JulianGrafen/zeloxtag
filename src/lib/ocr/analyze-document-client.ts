@@ -30,6 +30,13 @@ export type AnalyzeDocumentResult = {
   rawText: string;
   modelId: string;
   parseModel?: string;
+  /**
+   * Invoices: false when the extracted positions do not add up to the totals
+   * printed on the document. Undefined when there was nothing to verify.
+   */
+  lineItemsVerified?: boolean;
+  /** German review hint shown above the positions when verification failed. */
+  lineItemsWarning?: string | null;
 };
 
 export type AnalyzeDocumentOptions = {
@@ -118,6 +125,8 @@ async function analyzeOneFile(
         approvalFields?: ApprovalFields | null;
         rawText: string;
         modelId: string;
+        lineItemsVerified?: boolean;
+        lineItemsWarning?: string | null;
       }
     | { ok: false; error?: string }
     | null;
@@ -138,6 +147,8 @@ async function analyzeOneFile(
     rawText: payload.rawText,
     modelId: payload.modelId,
     parseModel: payload.parseModel,
+    lineItemsVerified: payload.lineItemsVerified,
+    lineItemsWarning: payload.lineItemsWarning ?? null,
   };
 }
 
@@ -354,6 +365,17 @@ export async function analyzeDocumentFiles(
     rawText,
     modelId: results[0]?.modelId ?? "prebuilt-layout",
     parseModel: results[0]?.parseModel,
+    // Merged positions are only trustworthy when every page reconciled.
+    lineItemsVerified: results.some(
+      (result) => result.lineItemsVerified === false,
+    )
+      ? false
+      : results.every((result) => result.lineItemsVerified === true)
+        ? true
+        : undefined,
+    lineItemsWarning:
+      results.find((result) => result.lineItemsWarning)?.lineItemsWarning ??
+      null,
   };
 }
 

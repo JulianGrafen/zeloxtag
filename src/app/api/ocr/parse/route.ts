@@ -48,6 +48,10 @@ type ParseSuccess = {
   approvalFields: ApprovalFields | null;
   rawText: string;
   modelId: string;
+  /** Invoices: false when the positions do not add up to the printed totals. */
+  lineItemsVerified?: boolean;
+  /** German review hint when `lineItemsVerified` is false. */
+  lineItemsWarning?: string | null;
 };
 
 type ParseError = {
@@ -270,6 +274,8 @@ export async function POST(request: NextRequest) {
       approvalFields: parseApprovalFields(result.approvalFields),
       rawText: result.rawText,
       modelId: result.modelId,
+      lineItemsVerified: result.lineItemsVerified,
+      lineItemsWarning: result.lineItemsWarning ?? null,
     };
     return NextResponse.json(body);
   } catch (error) {
