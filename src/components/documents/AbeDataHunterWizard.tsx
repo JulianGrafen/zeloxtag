@@ -95,6 +95,7 @@ import {
   finalizeAbeDataHunterReport,
   isAbeCoreHuntComplete,
   isAbeDataHunterReportComplete,
+  isAbeHuntVehicleModelResolved,
   missingAbeCoreHuntFields,
   missingAbeRequiredFields,
   scopeAbeDataHunterReportAuflagen,
@@ -521,6 +522,36 @@ async function extractForHuntFocus(
   return extractAllFromFile(vehicleId, file);
 }
 
+/**
+ * PDF hunt-all often fills Stammdaten but misses the Verwendungsbereich table.
+ * Run a dedicated vehicle pass before leaving the queue when Modell is still open.
+ */
+async function followUpPdfVehicleExtraction(
+  vehicleId: string,
+  file: File,
+  report: AbeDataHunterReport,
+  groupIndex: number | null,
+  vehicleContext?: AbeVehicleContext | null,
+  skip?: AbeCoreHuntSkip | null,
+): Promise<{
+  report: AbeDataHunterReport;
+  groupIndex: number | null;
+}> {
+  if (
+    !isPdfFile(file) ||
+    isAbeCoreHuntComplete(report, null, vehicleContext, skip) ||
+    !missingAbeCoreHuntFields(report, null, vehicleContext, skip).includes(
+      "verkaufsbezeichnung",
+    )
+  ) {
+    return { report, groupIndex };
+  }
+
+  const vehicleExtract = await extractVehicleFromFile(vehicleId, file);
+  const mergedRaw = fillAbeDataHunterReport(report, vehicleExtract);
+  return enrichAfterHuntMerge(mergedRaw, groupIndex, vehicleContext);
+}
+
 function enrichAfterHuntMerge(
   report: AbeDataHunterReport,
   selectedGroupIndex: number | null,
@@ -800,6 +831,7 @@ function HuntProgressOverlay({
   onClose,
   vehicleContext,
   skippedAbeNumber = false,
+  allowPdfContinue = false,
 }: {
   report: AbeDataHunterReport;
   analyzing: boolean;
@@ -808,6 +840,8 @@ function HuntProgressOverlay({
   onClose: () => void;
   vehicleContext?: AbeVehicleContext | null;
   skippedAbeNumber?: boolean;
+  /** PDF uploads: proceed when vehicle rows exist but Modell header OCR failed. */
+  allowPdfContinue?: boolean;
 }) {
   const skip: AbeCoreHuntSkip = { skippedAbeNumber };
   const missing = missingAbeCoreHuntFields(report, null, vehicleContext, skip);
@@ -819,7 +853,13 @@ function HuntProgressOverlay({
     skip,
   );
   const totalCount = CORE_HUNT_ORDER.length;
-  const showComplete = complete && !analyzing;
+  const pdfContinueReady =
+    allowPdfContinue &&
+    !analyzing &&
+    !complete &&
+    (report.vehicleMatches.length > 0 ||
+      isAbeHuntVehicleModelResolved(report, vehicleContext));
+  const showComplete = (complete && !analyzing) || pdfContinueReady;
   const nextMissing = missing[0];
   const canSkipAbeNumber = nextMissing === "abeNumber" && !analyzing;
   const status =
@@ -843,7 +883,11 @@ function HuntProgressOverlay({
       />
       {showComplete ? (
         <ScanCompleteBanner
-          title="Alle Pflichtfelder erfasst"
+          title={
+            complete
+              ? "Alle Pflichtfelder erfasst"
+              : "Fahrzeugtabelle erkannt — Modell in der Bestätigung wählen"
+          }
           actionLabel="Weiter"
           onAction={onOpenReview}
         />
@@ -2441,11 +2485,24 @@ export function AbeDataHunterWizard({
           ] ?? "kbaNumber";
 
         const extracted = await extractForHuntFocus(vehicleId, file, focusKey);
-        const mergedRaw = fillAbeDataHunterReport(before, extracted);
-        const {
+        let mergedRaw = fillAbeDataHunterReport(before, extracted);
+        let {
           report: merged,
           groupIndex: resolvedGroupIndex,
         } = enrichAfterHuntMerge(mergedRaw, groupIndex, vehicleContext);
+
+        if (queueModeRef.current === "all" && isPdfFile(file)) {
+          const followUp = await followUpPdfVehicleExtraction(
+            vehicleId,
+            file,
+            merged,
+            resolvedGroupIndex,
+            vehicleContext,
+            huntSkip,
+          );
+          merged = followUp.report;
+          resolvedGroupIndex = followUp.groupIndex;
+        }
 
         if (resolvedGroupIndex !== selectedGroupIndexRef.current) {
           selectedGroupIndexRef.current = resolvedGroupIndex;
@@ -3020,6 +3077,7 @@ export function AbeDataHunterWizard({
       onClose={returnToChooser}
       vehicleContext={vehicleContext}
       skippedAbeNumber={skippedAbeNumber}
+      allowPdfContinue={huntMode === "pdf"}
     />
   );
 
