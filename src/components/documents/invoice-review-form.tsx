@@ -1,13 +1,19 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { AlertTriangle } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { AlertTriangle, Pencil } from "lucide-react";
 
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
+import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  formatCompactGermanDate,
+  formatDocumentAmount,
+  formatMileageKmLabel,
+} from "@/lib/documents/format";
 import {
   INVOICE_REVIEW_CATEGORIES,
   INVOICE_REVIEW_CATEGORY_LABELS,
@@ -63,6 +69,17 @@ export function InvoiceReviewForm({
   topBanner,
   onDismissMismatch,
 }: InvoiceReviewFormProps) {
+  const [editingHeader, setEditingHeader] = useState(false);
+
+  const amountLabel =
+    formatDocumentAmount(fields.amount ?? null) ?? "—";
+  const dateLabel = fields.date
+    ? formatCompactGermanDate(fields.date) || "—"
+    : "—";
+  const categoryLabel = INVOICE_REVIEW_CATEGORY_LABELS[
+    fields.category as InvoiceReviewCategory
+  ];
+
   return (
     <div className="space-y-4">
       {topBanner}
@@ -88,137 +105,228 @@ export function InvoiceReviewForm({
       ) : null}
 
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-        <div className="grid grid-cols-[1fr_auto] items-end gap-3 border-b border-[color:var(--vd-border)] pb-4">
-          <label className="block min-w-0 space-y-1">
-            <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Betrag
-            </span>
-            <Input
-              inputMode="decimal"
-              value={
-                fields.amount === null || fields.amount === undefined
-                  ? ""
-                  : String(fields.amount)
-              }
-              onChange={(event) => {
-                const raw = event.target.value.trim();
-                if (!raw) {
-                  onFieldsChange({ amount: null });
-                  return;
-                }
-                const value = Number.parseFloat(raw.replace(",", "."));
-                if (Number.isFinite(value)) {
-                  onFieldsChange({ amount: value });
-                }
-              }}
-              placeholder="0,00"
-              className="text-[1.35rem] font-bold tabular-nums"
-            />
-          </label>
-          <label className="block w-[9.5rem] space-y-1">
-            <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Datum
-            </span>
-            <GermanDateInput
-              value={fields.date}
-              onChange={(iso) => onFieldsChange({ date: iso })}
-              className="claim-input"
-            />
-          </label>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+            Belegdaten
+          </h2>
+          {!editingHeader ? (
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={() => setEditingHeader(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-1.5 text-[0.72rem] font-medium text-[color:var(--vd-text)]"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+              Bearbeiten
+            </PressableButton>
+          ) : null}
         </div>
 
-        <div className="mt-4 space-y-3">
-          <label className="block space-y-1">
-            <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Werkstatt
-            </span>
-            <Input
-              value={fields.vendor ?? ""}
-              onChange={(event) =>
-                onFieldsChange({ vendor: event.target.value || null })
-              }
-              placeholder="Name der Werkstatt"
-            />
-          </label>
-
-          <label className="block space-y-1">
-            <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Bezeichnung
-            </span>
-            <Input
-              required
-              value={title}
-              onChange={(event) => onTitleChange(event.target.value)}
-              placeholder="z. B. Inspektion 60.000 km"
-            />
-          </label>
-
-          <label className="block space-y-1">
-            <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Kilometerstand
-            </span>
-            <MileageKmInput
-              value={fields.mileageKm ?? null}
-              onChange={(km) => onFieldsChange({ mileageKm: km })}
-              className="claim-input"
-              placeholder="z. B. 187.430"
-            />
-          </label>
-
-          {!categoryLocked ? (
-            <div className="space-y-1.5">
-              <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Kategorie
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {INVOICE_REVIEW_CATEGORIES.map((option) => {
-                  const active = fields.category === option;
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() =>
-                        onFieldsChange({
-                          category: option as InvoiceReviewCategory,
-                        })
-                      }
-                      className={[
-                        "rounded-full px-3.5 py-2 text-[0.82rem] font-medium transition-colors",
-                        active
-                          ? "bg-neutral-900 text-white"
-                          : "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)]",
-                      ].join(" ")}
-                    >
-                      {INVOICE_REVIEW_CATEGORY_LABELS[option]}
-                    </button>
-                  );
-                })}
+        {!editingHeader ? (
+          <button
+            type="button"
+            onClick={() => setEditingHeader(true)}
+            className="w-full space-y-3 text-left"
+          >
+            <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-b border-[color:var(--vd-border)] pb-4">
+              <div>
+                <dt className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Betrag
+                </dt>
+                <dd className="mt-0.5 text-[0.95rem] tabular-nums text-[color:var(--vd-text)]">
+                  {amountLabel}
+                </dd>
               </div>
-            </div>
-          ) : null}
-
-          <details className="group rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]/60 px-3 py-2.5">
-            <summary className="cursor-pointer list-none text-[0.8rem] font-medium text-[color:var(--vd-muted)] marker:content-none [&::-webkit-details-marker]:hidden">
-              Weitere Angaben
-            </summary>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label className="block space-y-1">
+              <div>
+                <dt className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Datum
+                </dt>
+                <dd className="mt-0.5 text-[0.95rem] text-[color:var(--vd-text)]">
+                  {dateLabel}
+                </dd>
+              </div>
+            </dl>
+            <div className="space-y-2 text-[0.88rem] text-[color:var(--vd-text)]">
+              <p>
                 <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Belegnummer
+                  Werkstatt ·{" "}
+                </span>
+                {fields.vendor?.trim() || "—"}
+              </p>
+              <p>
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Bezeichnung ·{" "}
+                </span>
+                {title.trim() || "—"}
+              </p>
+              <p>
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Kilometerstand ·{" "}
+                </span>
+                {formatMileageKmLabel(fields.mileageKm)}
+              </p>
+              {!categoryLocked ? (
+                <p>
+                  <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                    Kategorie ·{" "}
+                  </span>
+                  {categoryLabel}
+                </p>
+              ) : null}
+              {fields.invoiceNumber?.trim() ? (
+                <p>
+                  <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                    Belegnummer ·{" "}
+                  </span>
+                  {fields.invoiceNumber.trim()}
+                </p>
+              ) : null}
+            </div>
+          </button>
+        ) : (
+          <>
+            <div className="grid grid-cols-[1fr_auto] items-end gap-3 border-b border-[color:var(--vd-border)] pb-4">
+              <label className="block min-w-0 space-y-1">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Betrag
                 </span>
                 <Input
-                  value={fields.invoiceNumber ?? ""}
-                  onChange={(event) =>
-                    onFieldsChange({
-                      invoiceNumber: event.target.value || null,
-                    })
+                  inputMode="decimal"
+                  value={
+                    fields.amount === null || fields.amount === undefined
+                      ? ""
+                      : String(fields.amount)
                   }
-                  placeholder="optional"
+                  onChange={(event) => {
+                    const raw = event.target.value.trim();
+                    if (!raw) {
+                      onFieldsChange({ amount: null });
+                      return;
+                    }
+                    const value = Number.parseFloat(raw.replace(",", "."));
+                    if (Number.isFinite(value)) {
+                      onFieldsChange({ amount: value });
+                    }
+                  }}
+                  placeholder="0,00"
+                  className="tabular-nums"
+                />
+              </label>
+              <label className="block w-[9.5rem] space-y-1">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Datum
+                </span>
+                <GermanDateInput
+                  value={fields.date}
+                  onChange={(iso) => onFieldsChange({ date: iso })}
+                  className="claim-input"
                 />
               </label>
             </div>
-          </details>
-        </div>
+
+            <div className="mt-4 space-y-3">
+              <label className="block space-y-1">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Werkstatt
+                </span>
+                <Input
+                  value={fields.vendor ?? ""}
+                  onChange={(event) =>
+                    onFieldsChange({ vendor: event.target.value || null })
+                  }
+                  placeholder="Name der Werkstatt"
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Bezeichnung
+                </span>
+                <Input
+                  required
+                  value={title}
+                  onChange={(event) => onTitleChange(event.target.value)}
+                  placeholder="z. B. Inspektion 60.000 km"
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Kilometerstand
+                </span>
+                <MileageKmInput
+                  value={fields.mileageKm ?? null}
+                  onChange={(km) => onFieldsChange({ mileageKm: km })}
+                  className="claim-input"
+                  placeholder="z. B. 187.430"
+                />
+              </label>
+
+              {!categoryLocked ? (
+                <div className="space-y-1.5">
+                  <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                    Kategorie
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {INVOICE_REVIEW_CATEGORIES.map((option) => {
+                      const active = fields.category === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() =>
+                            onFieldsChange({
+                              category: option as InvoiceReviewCategory,
+                            })
+                          }
+                          className={[
+                            "rounded-full px-3.5 py-2 text-[0.82rem] font-medium transition-colors",
+                            active
+                              ? "bg-neutral-900 text-white"
+                              : "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)]",
+                          ].join(" ")}
+                        >
+                          {INVOICE_REVIEW_CATEGORY_LABELS[option]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              <details className="group rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]/60 px-3 py-2.5">
+                <summary className="cursor-pointer list-none text-[0.8rem] font-medium text-[color:var(--vd-muted)] marker:content-none [&::-webkit-details-marker]:hidden">
+                  Weitere Angaben
+                </summary>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="block space-y-1">
+                    <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                      Belegnummer
+                    </span>
+                    <Input
+                      value={fields.invoiceNumber ?? ""}
+                      onChange={(event) =>
+                        onFieldsChange({
+                          invoiceNumber: event.target.value || null,
+                        })
+                      }
+                      placeholder="optional"
+                    />
+                  </label>
+                </div>
+              </details>
+            </div>
+
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={() => setEditingHeader(false)}
+              className="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-[color:var(--vd-border)] px-3 py-2.5 text-[0.85rem] font-medium text-[color:var(--vd-text)]"
+            >
+              Fertig
+            </PressableButton>
+          </>
+        )}
       </section>
 
       <EditableLineItemsSection
