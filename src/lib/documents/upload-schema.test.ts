@@ -93,4 +93,32 @@ describe("uploadDocumentMetaSchema", () => {
       expect(parsed.data.forceMileageSave).toBe("1");
     }
   });
+
+  it("accepts empty and ISO invoice dates", () => {
+    expect(
+      uploadDocumentMetaSchema.safeParse(
+        teilegutachtenMeta({ type: "invoice", category: "repair", date: "" }),
+      ).success,
+    ).toBe(true);
+    expect(
+      uploadDocumentMetaSchema.safeParse(
+        teilegutachtenMeta({
+          type: "invoice",
+          category: "repair",
+          date: "2026-08-22",
+        }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("rejects invalid invoice date strings", () => {
+    const parsed = uploadDocumentMetaSchema.safeParse(
+      teilegutachtenMeta({
+        type: "invoice",
+        category: "repair",
+        date: "22.08.2026",
+      }),
+    );
+    expect(parsed.success).toBe(false);
+  });
 });

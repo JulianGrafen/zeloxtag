@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronRight, Plus, Receipt } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
+import { SaveSuccessBanner } from "@/components/documents/save-success-banner";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
@@ -34,18 +36,33 @@ interface VehicleInvoicesViewProps {
 
 const ALL_CHIP = "all";
 
-/**
- * Invoice overview matching the "Rechnungen & Belege" dashboard mock.
- */
-export function VehicleInvoicesView({
+function VehicleInvoicesViewContent({
   tagUuid,
   vehicleModel,
   documents,
   canWrite = false,
   initialCategory = "all",
 }: VehicleInvoicesViewProps) {
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string>(initialCategory);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("saved") === "1") {
+      setCategoryId(ALL_CHIP);
+    }
+    const highlight = searchParams.get("highlight")?.trim();
+    if (highlight) {
+      setHighlightId(highlight);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!highlightId) return;
+    const timer = window.setTimeout(() => setHighlightId(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [highlightId]);
 
   const invoices = useMemo(
     () =>
@@ -112,6 +129,8 @@ export function VehicleInvoicesView({
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
+        <SaveSuccessBanner />
+
         <header className="vd-anim-header space-y-4">
           <PressableLink
             href={`/v/${tagUuid}`}
@@ -175,7 +194,14 @@ export function VehicleInvoicesView({
                 const paymentBadge = resolveInvoicePaymentBadge(doc);
 
                 return (
-                  <li key={doc.id}>
+                  <li
+                    key={doc.id}
+                    className={
+                      highlightId === doc.id
+                        ? "bg-emerald-500/8 ring-1 ring-inset ring-emerald-500/25"
+                        : undefined
+                    }
+                  >
                     <PressableLink
                       href={`/v/${tagUuid}/dokumente/${doc.id}`}
                       variant="row"
@@ -256,5 +282,14 @@ export function VehicleInvoicesView({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** Invoice overview matching the "Rechnungen & Belege" dashboard mock. */
+export function VehicleInvoicesView(props: VehicleInvoicesViewProps) {
+  return (
+    <Suspense fallback={null}>
+      <VehicleInvoicesViewContent {...props} />
+    </Suspense>
   );
 }

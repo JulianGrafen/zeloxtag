@@ -5,6 +5,7 @@ import {
   formatDocumentDate,
   formatDocumentDateCompact,
   formatTuevYearMonth,
+  normalizeDocumentDateForUpload,
   normalizeDocumentDateIso,
 } from "@/lib/documents/format";
 
@@ -22,6 +23,18 @@ describe("normalizeDocumentDateIso", () => {
       "2026-08-12",
     );
     expect(normalizeDocumentDateIso("12. August 2026")).toBe("2026-08-12");
+  });
+});
+
+describe("normalizeDocumentDateForUpload", () => {
+  it("returns ISO dates for upload metadata", () => {
+    expect(normalizeDocumentDateForUpload("22.08.2026")).toBe("2026-08-22");
+    expect(normalizeDocumentDateForUpload("2026-08-13")).toBe("2026-08-13");
+  });
+
+  it("returns empty string for invalid OCR dates", () => {
+    expect(normalizeDocumentDateForUpload("Rechnungsdatum unbekannt")).toBe("");
+    expect(normalizeDocumentDateForUpload(null)).toBe("");
   });
 });
 

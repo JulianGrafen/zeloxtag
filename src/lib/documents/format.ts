@@ -221,6 +221,13 @@ export function normalizeDocumentDateIso(
   return null;
 }
 
+/** ISO date for upload FormData — invalid OCR strings become empty (Zod-safe). */
+export function normalizeDocumentDateForUpload(
+  raw: string | null | undefined,
+): string {
+  return normalizeDocumentDateIso(raw) ?? "";
+}
+
 /** Parse user-entered or OCR date text into ISO. */
 export function parseGermanDocumentDateInput(raw: string): string | null {
   return normalizeDocumentDateIso(raw.trim());

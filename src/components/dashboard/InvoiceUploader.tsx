@@ -30,7 +30,7 @@ import { InvoiceReviewForm } from "@/components/documents/invoice-review-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
-import { localDateIso, normalizeDocumentDateIso } from "@/lib/documents/format";
+import { localDateIso, normalizeDocumentDateForUpload, normalizeDocumentDateIso } from "@/lib/documents/format";
 import {
   buildInvoiceDashboardTitle,
   isPrimaryOilChange,
@@ -139,6 +139,22 @@ function savedDocumentHref(
 ): string {
   const base = successHref ?? `/v/${tagUuid}/dokumente/${documentId}`;
   return base.includes("?") ? `${base}&saved=1` : `${base}?saved=1`;
+}
+
+function savedInvoiceListHref(
+  tagUuid: string,
+  documentId: string,
+  duplicate = false,
+): string {
+  const params = new URLSearchParams({
+    type: "invoice",
+    saved: "1",
+    highlight: documentId,
+  });
+  if (duplicate) {
+    params.set("duplicate", "1");
+  }
+  return `/v/${tagUuid}/dokumente?${params.toString()}`;
 }
 
 function isPdfFile(file: File): boolean {
@@ -309,7 +325,7 @@ export function InvoiceUploader({
       typeLabel: DOCUMENT_TYPE_LABELS[storedType] ?? storedType,
       title: resolvedTitle,
       vendor: fields.vendor?.trim() ?? "",
-      date: normalizeDocumentDateIso(fields.date) ?? fields.date,
+      date: normalizeDocumentDateForUpload(fields.date),
       amount: fields.amount,
       mileageKm: fields.mileageKm,
       vehicleLabel,
@@ -330,11 +346,12 @@ export function InvoiceUploader({
 
     if (match.mismatch && !forceVehicle) {
       setVehicleMismatchReason(match.reason);
+      setError(match.reason);
       return;
     }
 
     if (mileageWarning && !forceMileage) {
-      setError(null);
+      setError(mileageWarning);
       return;
     }
 
@@ -424,9 +441,20 @@ export function InvoiceUploader({
           return;
         }
 
-        const href =
-          successHref ??
-          `/v/${result.tagUuid}/dokumente/${result.document.id}?saved=1`;
+        const isInvoiceSave = scanDef.ocrDocumentType === "invoice";
+        const href = successHref
+          ? savedDocumentHref(
+              result.tagUuid,
+              result.document.id,
+              successHref,
+            )
+          : isInvoiceSave
+            ? savedInvoiceListHref(
+                result.tagUuid,
+                result.document.id,
+                result.duplicate === true,
+              )
+            : savedDocumentHref(result.tagUuid, result.document.id);
         window.location.assign(href);
       } catch (caught) {
         setError(
@@ -740,8 +768,7 @@ export function InvoiceUploader({
 
       const baseFields = {
         ...analyzed.fields,
-        date:
-          normalizeDocumentDateIso(analyzed.fields.date) ?? analyzed.fields.date,
+        date: normalizeDocumentDateIso(analyzed.fields.date),
         category: normalizeInvoiceReviewCategory(
           resolvedLockCategory ? resolvedCategory : analyzed.fields.category,
           defaultReviewCategory,

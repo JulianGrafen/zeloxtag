@@ -394,7 +394,7 @@ export function normalizeTextParseResult(
 
   return {
     vendor,
-    date: normalizeDocumentDateIso(fields.date) ?? fields.date,
+    date: normalizeDocumentDateIso(fields.date),
     amount:
       typeof fields.amount === "number"
         ? sanitizeLlmMoneyAmount(fields.amount, "conservative")

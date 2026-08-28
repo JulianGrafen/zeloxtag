@@ -53,7 +53,7 @@ import {
 } from "./upload-schema";
 
 export type UploadDocumentResult =
-  | { status: "uploaded"; document: Document; tagUuid: string }
+  | { status: "uploaded"; document: Document; tagUuid: string; duplicate?: boolean }
   | { status: "error"; message: string };
 
 function parseAmount(raw: string | undefined): number | null {
@@ -306,11 +306,15 @@ export async function uploadDocument(
   });
 
   if (duplicate) {
+    console.info("[upload-document] duplicate document matched", {
+      documentId: duplicate.id,
+      vehicleId,
+    });
     revalidatePath(`/v/${tagUuid}`);
     revalidatePath(`/v/${tagUuid}/dokumente`);
     revalidatePath(`/v/${tagUuid}/service`);
     revalidatePath(`/v/${tagUuid}/intervalle`);
-    return { status: "uploaded", document: duplicate, tagUuid };
+    return { status: "uploaded", document: duplicate, tagUuid, duplicate: true };
   }
 
   const storagePath = `${vehicleId}/${documentId}-${safeName}`;
