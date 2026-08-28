@@ -120,6 +120,10 @@ const GUIDE_FRAME_VIEWPORT_CLASS =
 const GUIDE_FRAME_INNER_A4_CLASS =
   "relative h-full w-auto min-h-[14rem] min-w-[9.5rem] max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
 
+/** Landscape table excerpt — width drives height via aspect-ratio (no in-flow children). */
+const GUIDE_FRAME_INNER_TABLE_CLASS =
+  "relative w-full min-h-[5.25rem] min-w-[12rem] max-h-full max-w-full shrink-0 overflow-hidden border-2 transition-colors duration-200";
+
 const GUIDE_FRAME_INNER_BASE_CLASS =
   "relative max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
 
@@ -1091,7 +1095,7 @@ export function InBrowserCamera({
                   <div
                     ref={guideFrameRef}
                     className={[
-                      GUIDE_FRAME_INNER_BASE_CLASS,
+                      GUIDE_FRAME_INNER_TABLE_CLASS,
                       "rounded-md",
                       guideFrameBorderClass(guideFrameReady),
                       frameOutsideShadow,

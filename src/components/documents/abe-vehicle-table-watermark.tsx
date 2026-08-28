@@ -73,7 +73,7 @@ export function AbeVehicleTableWatermark({
 
   return (
     <div
-      className="pointer-events-none w-full select-none text-white/42 [text-shadow:0_1px_10px_rgba(0,0,0,0.5)]"
+      className="pointer-events-none w-full select-none text-white/58 [text-shadow:0_1px_10px_rgba(0,0,0,0.55)]"
       aria-hidden
     >
       <p className="mb-1 text-center text-[clamp(0.55rem,2.3vw,0.75rem)] font-semibold uppercase tracking-[0.12em]">
@@ -108,7 +108,7 @@ export function AbeVehicleTableWatermark({
               {excerptRow.map((cell, index) => (
                 <td
                   key={`excerpt-${ABE_VEHICLE_TABLE_WATERMARK_COLUMNS[index]}`}
-                  className={`${CELL} text-[clamp(0.42rem,1.75vw,0.6rem)] font-semibold text-white/55`}
+                  className={`${CELL} text-[clamp(0.42rem,1.75vw,0.6rem)] font-semibold text-white/72`}
                 >
                   {cell}
                 </td>
