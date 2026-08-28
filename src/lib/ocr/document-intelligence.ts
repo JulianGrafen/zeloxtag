@@ -40,7 +40,11 @@ import {
 import {
   hybridInvoiceService,
 } from "@/services/invoice/HybridInvoiceService";
-import { extractVendorFromLogoHeader } from "@/lib/ocr/invoice-vendor-from-logo";
+import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
+import {
+  extractVendorFromLogoHeader,
+  mergeVisionVendorIntoInvoiceFields,
+} from "@/lib/ocr/invoice-vendor-from-logo";
 import { mapParsedInvoiceToTextParseResult } from "@/services/invoice/map-parsed-invoice-to-text-parse";
 import {
   abeExtractionService,
@@ -482,21 +486,39 @@ async function analyzeInvoiceOneShot(input: {
   };
 
   const runVision = async (): Promise<AnalyzeDocumentResult> => {
-    const { fields, ocrJson } = await invoiceParseService.parseFromDocument(
-      documentInput,
-      { model: input.parseModel, documentType: "invoice" },
+    const [{ fields, ocrJson }, visionVendor] = await Promise.all([
+      invoiceParseService.parseFromDocument(documentInput, {
+        model: input.parseModel,
+        documentType: "invoice",
+      }),
+      extractVendorFromLogoHeader(documentInput),
+    ]);
+
+    const withVendor = mergeVisionVendorIntoInvoiceFields(
+      fields,
+      ocrJson,
+      visionVendor,
     );
-    const withCategory =
+
+    const fullText = `${ocrJson.headerLines.join("\n")}\n${ocrJson.text}`.trim();
+    const category =
       input.lockedCategory != null
-        ? { ...fields, category: input.lockedCategory }
-        : fields;
+        ? input.lockedCategory
+        : preferInvoiceCategory(
+            withVendor.category,
+            fullText,
+            ocrJson.headerLines,
+          );
+
+    const finalFields = { ...withVendor, category };
+
     console.info(
-      `[analyzeDocument] vision invoice (row guides): positions=${withCategory.lineItems?.length ?? 0}`,
+      `[analyzeDocument] vision invoice (row guides): positions=${finalFields.lineItems?.length ?? 0} category=${finalFields.category}${visionVendor ? " logoVendor" : ""}`,
     );
     return {
       kind: "invoice",
       documentType: "invoice",
-      fields: withCategory,
+      fields: finalFields,
       approvalFields: null,
       rawText: ocrJson.text,
       ocrJson,

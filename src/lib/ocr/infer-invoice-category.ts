@@ -145,6 +145,66 @@ export function hasStrongTuevEvidence(text: string): boolean {
   return scorePatterns(normalized, TUEV_STRONG_PATTERNS) >= 6;
 }
 
+const HEADER_KEYWORD_PATTERNS: Array<{
+  pattern: RegExp;
+  category: InvoiceTextParseCategory;
+}> = [
+  {
+    pattern:
+      /\b(hauptuntersuchung|prüfbericht|pruefbericht|hu\s*[\/+]\s*au)\b/i,
+    category: "tuev",
+  },
+  {
+    pattern:
+      /\b(inspektion|wartung|service(?:rechnung|-rechnung)?|ölwechsel|oelwechsel)\b/i,
+    category: "service",
+  },
+  {
+    pattern:
+      /\b(tuning|chiptuning|umbau(?:rechnung|-rechnung)?|leistungssteigerung)\b/i,
+    category: "tuning",
+  },
+  {
+    pattern:
+      /\b(reparatur(?:rechnung|-rechnung)?|instandsetzung|schadenreparatur)\b/i,
+    category: "repair",
+  },
+];
+
+const HEADER_KEYWORD_BOOST = 4;
+const HEADER_LINE_SCAN_COUNT = 6;
+
+/**
+ * Fast title-line keyword match on letterhead / document type words.
+ */
+export function inferCategoryFromHeaderKeywords(
+  headerLines: string[],
+): InvoiceTextParseCategory | null {
+  const headerBlob = headerLines
+    .slice(0, HEADER_LINE_SCAN_COUNT)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
+  if (!headerBlob) return null;
+
+  for (const { pattern, category } of HEADER_KEYWORD_PATTERNS) {
+    if (pattern.test(headerBlob)) return category;
+  }
+  return null;
+}
+
+function applyHeaderKeywordBoost(
+  scores: { tuevStrong: number; tuning: number; service: number; repair: number },
+  headerLines: string[],
+): void {
+  const headerCategory = inferCategoryFromHeaderKeywords(headerLines);
+  if (!headerCategory) return;
+  if (headerCategory === "tuev") scores.tuevStrong += HEADER_KEYWORD_BOOST;
+  else if (headerCategory === "tuning") scores.tuning += HEADER_KEYWORD_BOOST;
+  else if (headerCategory === "service") scores.service += HEADER_KEYWORD_BOOST;
+  else if (headerCategory === "repair") scores.repair += HEADER_KEYWORD_BOOST;
+}
+
 function pickBestSpecialty(scores: {
   tuning: number;
   service: number;
@@ -164,15 +224,35 @@ function pickBestSpecialty(scores: {
  * Classify invoice text into app categories.
  * Commercial invoices with incidental TÜV/DEKRA mentions stay service/repair/tuning/other.
  */
-export function inferInvoiceCategory(text: string): InvoiceTextParseCategory {
+export type InferInvoiceCategoryOptions = {
+  /** Letterhead / title lines for fast keyword boost. */
+  headerLines?: string[];
+};
+
+export function inferInvoiceCategory(
+  text: string,
+  options: InferInvoiceCategoryOptions = {},
+): InvoiceTextParseCategory {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return "other";
 
-  const tuevStrong = scorePatterns(normalized, TUEV_STRONG_PATTERNS);
-  const tuevWeak = scorePatterns(normalized, TUEV_WEAK_PATTERNS);
-  const repair = scorePatterns(normalized, REPAIR_PATTERNS);
-  const tuning = scorePatterns(normalized, TUNING_PATTERNS);
-  const service = scorePatterns(normalized, SERVICE_PATTERNS);
+  const scores = {
+    tuevStrong: scorePatterns(normalized, TUEV_STRONG_PATTERNS),
+    tuevWeak: scorePatterns(normalized, TUEV_WEAK_PATTERNS),
+    repair: scorePatterns(normalized, REPAIR_PATTERNS),
+    tuning: scorePatterns(normalized, TUNING_PATTERNS),
+    service: scorePatterns(normalized, SERVICE_PATTERNS),
+  };
+  const headerLines =
+    options.headerLines ??
+    text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, HEADER_LINE_SCAN_COUNT);
+  applyHeaderKeywordBoost(scores, headerLines);
+
+  const { tuevStrong, tuevWeak, repair, tuning, service } = scores;
   const abeStrong = scorePatterns(normalized, ABE_STRONG_PATTERNS);
   const abeWeak = scorePatterns(normalized, ABE_WEAK_PATTERNS);
   const invoice = scorePatterns(normalized, INVOICE_PATTERNS);
@@ -226,8 +306,9 @@ export function inferInvoiceCategory(text: string): InvoiceTextParseCategory {
 export function preferInvoiceCategory(
   llmCategory: InvoiceTextParseCategory,
   rawText: string,
+  headerLines?: string[],
 ): InvoiceTextParseCategory {
-  const scored = inferInvoiceCategory(rawText);
+  const scored = inferInvoiceCategory(rawText, { headerLines });
   const isInvoice = looksLikeCommercialInvoice(rawText);
   const strongTuev = hasStrongTuevEvidence(rawText);
 

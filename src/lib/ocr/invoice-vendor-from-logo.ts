@@ -15,6 +15,8 @@ import {
   LLM_DOCUMENT_RASTER_DPI,
   type DocumentBytesInput,
 } from "./prepare-document-for-llm";
+import type { OcrJsonPayload } from "./ocr-types";
+import type { InvoiceTextParseResult } from "./text-parse-schema";
 import { resolveVendorName } from "./vendor-from-text";
 
 /** Top band of page 1 — letterhead / logo region on German workshop invoices. */
@@ -121,6 +123,23 @@ export async function extractVendorFromLogoHeader(
     console.warn("[invoice-vendor-from-logo] logo extract failed", error);
     return null;
   }
+}
+
+/** Merge logo vision vendor into parsed invoice fields (vision path). */
+export function mergeVisionVendorIntoInvoiceFields(
+  fields: InvoiceTextParseResult,
+  ocrJson: OcrJsonPayload,
+  visionVendor: string | null,
+): InvoiceTextParseResult {
+  const headerBlob = ocrJson.headerLines.join("\n");
+  const fullText = `${headerBlob}\n${ocrJson.text}`.trim();
+  const vendor = resolveVendorName({
+    structuredVendor: fields.vendor,
+    logoCandidates: ocrJson.headerLines.slice(0, 4),
+    visionVendor,
+    rawText: fullText,
+  });
+  return { ...fields, vendor };
 }
 
 /**
