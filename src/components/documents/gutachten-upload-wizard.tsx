@@ -614,7 +614,7 @@ export function GutachtenUploadWizard({
         {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Gutachten · Titelseite"
-          hint="Ganzes Dokument im DIN-A4-Rahmen — danach erkennt die KI den Dokumenttyp"
+          hint="Ganzes Dokument im Rahmen — danach erkennt die KI den Dokumenttyp"
           captureStep={{ current: 1, total: totalSteps }}
           guideFrame="a4"
           guideFrameDimOutside

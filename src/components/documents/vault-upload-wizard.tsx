@@ -511,7 +511,7 @@ export function VaultUploadWizard({
           title={pageNumber === 1 ? "Erste Seite" : `Seite ${pageNumber}`}
           hint={
             pageNumber === 1
-              ? "Titelseite oder erste Seite im DIN-A4-Rahmen fotografieren"
+              ? "Titelseite oder erste Seite im Rahmen fotografieren"
               : "Nächste Seite fotografieren — danach weiter Seiten hinzufügen oder analysieren"
           }
           captureStep={{ current: 1, total: TOTAL_STEPS }}

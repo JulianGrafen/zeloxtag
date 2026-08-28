@@ -18,6 +18,7 @@ import {
   AbeKbaHero,
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
+import { AbeVehicleTableWatermark } from "@/components/documents/abe-vehicle-table-watermark";
 import { InBrowserCamera, type GuideFrameType } from "@/components/documents/in-browser-camera";
 import {
   ABE_CAPTURE_JPEG_QUALITY,
@@ -87,6 +88,7 @@ import {
 } from "@/lib/validations/abeSchema";
 import {
   ABE_HUNT_FIELD_SCAN_HINTS,
+  ABE_HUNT_FIELD_WATERMARKS,
   ABE_REQUIRED_FIELD_LABELS,
   abeHuntFieldDisplayLabel,
   ABE_CORE_HUNT_FIELD_KEYS,
@@ -800,6 +802,11 @@ function auflagenTextScanHint(
   if (analyzing) return ANALYZING_SCAN_HINT;
   if (nextCode) return `Fotografiere den Auflagen-Text zu ${nextCode}.`;
   return "Weitere Auflagen-Abschnitte fotografieren.";
+}
+
+function auflagenScanWatermark(nextCode: string | null): string {
+  if (!nextCode) return "Auflagen-Text\nwörtlich…";
+  return `Auflage\n${nextCode}`;
 }
 
 const ABE_CAMERA_PROPS = {
@@ -2828,12 +2835,17 @@ export function AbeDataHunterWizard({
           });
           uploadFile = pdf.file;
         } catch {
-          uploadFile = photos[0] ?? null;
+          setSaveError(
+            "PDF konnte nicht erstellt werden. Bitte erneut scannen und speichern.",
+          );
+          return;
         }
       }
 
-      if (!uploadFile) {
-        setSaveError("PDF konnte nicht erstellt werden.");
+      if (!uploadFile || uploadFile.type !== "application/pdf") {
+        setSaveError(
+          "PDF konnte nicht erstellt werden. Bitte erneut scannen und speichern.",
+        );
         return;
       }
 
@@ -3019,6 +3031,7 @@ export function AbeDataHunterWizard({
           hint={auflagenTextScanHint(analyzing, nextAuflagenCode)}
           guideFrame="section"
           guideSectionAnchor="center"
+          guideWatermark={auflagenScanWatermark(nextAuflagenCode)}
           onCapture={enqueueAuflagenFile}
           onClose={returnToAuflagenDetail}
         />
@@ -3056,6 +3069,7 @@ export function AbeDataHunterWizard({
         <InBrowserCamera
           {...ABE_CAMERA_PROPS}
           hint={kbaScanHint(analyzing)}
+          guideWatermark={ABE_HUNT_FIELD_WATERMARKS.kbaNumber}
           onCapture={enqueueFile}
           onClose={returnToChooser}
         />
@@ -3084,6 +3098,12 @@ export function AbeDataHunterWizard({
   const huntFocusKey = coreComplete
     ? "verkaufsbezeichnung"
     : firstMissingFocusKey(report, null, vehicleContext, coreHuntSkip);
+  const guideWatermark =
+    huntFocusKey === "verkaufsbezeichnung" ? (
+      <AbeVehicleTableWatermark vehicleContext={vehicleContext} />
+    ) : (
+      ABE_HUNT_FIELD_WATERMARKS[huntFocusKey]
+    );
 
   const switchToCameraButton =
     huntMode === "pdf" &&
@@ -3129,6 +3149,8 @@ export function AbeDataHunterWizard({
           coreComplete ? undefined : huntFocusKey,
         )}
         guideFrame={abeGuideFrameForField(huntFocusKey)}
+        guideFrameDimOutside={abeGuideFrameForField(huntFocusKey) !== "table"}
+        guideWatermark={guideWatermark}
         guideSectionAnchor={
           huntFocusKey === "auflagenNotes" || huntFocusKey === "auflagenCodes"
             ? "center"

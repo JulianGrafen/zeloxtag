@@ -687,11 +687,11 @@ export function TuevUploadWizard({
         {error ? <WizardCameraError message={error} /> : null}
         <InBrowserCamera
           title="Gesamten Bericht fotografieren"
-          hint="Gesamtes Blatt im DIN-A4-Rahmen ausrichten"
+          hint="Gesamtes Blatt im Rahmen ausrichten"
           captureStep={{ current: 1, total: 3 }}
           guideFrame="a4"
           guideFrameDimOutside
-          guideLabel="Gesamtes Blatt im DIN-A4-Rahmen ausrichten"
+          guideLabel="Gesamtes Blatt im Rahmen ausrichten"
           allowPdf
           onCapture={handleOverviewCapture}
           onClose={() => setState((prev) => ({ ...prev, phase: "mode-select" }))}

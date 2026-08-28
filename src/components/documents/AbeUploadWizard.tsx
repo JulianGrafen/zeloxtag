@@ -17,6 +17,7 @@ import {
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
 import { AbeVehicleMatchPicker } from "@/components/documents/abe-vehicle-match-picker";
+import { AbeVehicleTableWatermark } from "@/components/documents/abe-vehicle-table-watermark";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { WizardCameraError } from "@/components/documents/wizard-scan-shell";
 import { Button } from "@/components/ui/button";
@@ -170,7 +171,7 @@ async function buildUploadFile(
     });
     return result.file;
   } catch {
-    return pages[0]!;
+    return null;
   }
 }
 
@@ -798,6 +799,10 @@ export function AbeUploadWizard({
         setSaveError("PDF konnte nicht erstellt werden. Bitte erneut scannen.");
         return;
       }
+      if (uploadFile.type !== "application/pdf") {
+        setSaveError("Nur PDF-Uploads sind erlaubt. Bitte erneut scannen.");
+        return;
+      }
 
       const formData = new FormData();
       formData.set("vehicleId", vehicleId);
@@ -862,6 +867,11 @@ export function AbeUploadWizard({
           guideFrame={phase === "capture-vehicles" ? "table" : "a4"}
           guideFrameDimOutside={phase !== "capture-vehicles"}
           guideLabel={currentCaptureStep.guideLabel}
+          guideWatermark={
+            phase === "capture-vehicles" ? (
+              <AbeVehicleTableWatermark vehicleContext={vehicleContext} />
+            ) : undefined
+          }
           a4AutoCrop
           allowPdf
           showBriefing={false}

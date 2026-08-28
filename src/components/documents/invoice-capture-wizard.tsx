@@ -18,7 +18,7 @@ const PDF_ACCEPT = "application/pdf,.pdf";
 const MAX_POSITION_BLOCKS = 8;
 
 export const INVOICE_CAPTURE_HINTS = {
-  overview: "Ganze Seite ins A4-Feld",
+  overview: "Ganze Seite ins weiße Feld",
   positions: (blockNumber: number) =>
     blockNumber > 1
       ? `Block ${blockNumber} — nächste Tabelle`
@@ -298,7 +298,7 @@ export function InvoiceCaptureWizard({
       <InBrowserCamera
         title="Gesamtseite"
         hint={INVOICE_CAPTURE_HINTS.overview}
-        guideLabel={`${scanLabel} · A4`}
+        guideLabel={scanLabel}
         guideFrame="a4"
         guideFrameDimOutside
         a4AutoCrop
