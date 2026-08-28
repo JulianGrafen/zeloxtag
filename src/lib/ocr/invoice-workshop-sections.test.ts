@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DMS_SECTION_CAMERA_OCR_TEXT,
+  DMS_SECTION_GROSS_TOTAL,
+  DMS_SECTION_NET_SUM,
+} from "@/lib/ocr/fixtures/dms-section-invoice";
+import {
   SPEEDWORKZ_CAMERA_COLUMN_OCR_TEXT,
   SPEEDWORKZ_CAMERA_OCR_TEXT,
   SPEEDWORKZ_EXPECTED_LINE_ITEMS,
@@ -403,6 +408,58 @@ describe("section invoice checksum (vendor-agnostic)", () => {
     expect(resolved).toHaveLength(5);
     expect(resolved!.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
       353.54,
+      2,
+    );
+  });
+
+  it("parses Arbeitszeit/Material/Fremdleistungen camera OCR using Preis-€ not Std", () => {
+    expect(isWorkshopSectionInvoiceText(DMS_SECTION_CAMERA_OCR_TEXT)).toBe(true);
+
+    const items = extractWorkshopSectionLineItems(DMS_SECTION_CAMERA_OCR_TEXT);
+    expect(items).not.toBeNull();
+    expect(items!).toHaveLength(5);
+
+    expect(items![0]!.amount).toBeCloseTo(89, 2);
+    expect(items![1]!.amount).toBeCloseTo(110.5, 2);
+    expect(items!.some((item) => item.amount === 0.75)).toBe(false);
+    expect(
+      items!.find((item) => /dichtring/i.test(item.label))!.amount,
+    ).toBeCloseTo(2.4, 2);
+    expect(items!.find((item) => /fracht/i.test(item.label))!.amount).toBeCloseTo(
+      8,
+      2,
+    );
+
+    const labels = items!.map((item) => item.label.toLowerCase());
+    expect(labels.some((label) => label.includes("geräusch"))).toBe(false);
+
+    expect(items!.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
+      DMS_SECTION_NET_SUM,
+      2,
+    );
+    expect(extractWorkshopInvoiceAmount(DMS_SECTION_CAMERA_OCR_TEXT)).toBe(
+      DMS_SECTION_GROSS_TOTAL,
+    );
+  });
+
+  it("replaces Std-as-€ LLM using unnamed DMS camera OCR", () => {
+    const hoursAsEur = [
+      { label: "Diagnose Kühlkreislauf", amount: 0.75 },
+      { label: "Dichtung erneuern", amount: 1.2 },
+      { label: "Ölfilter", amount: 12.5 },
+      { label: "Dichtring", amount: 1.2 },
+      { label: "Fracht", amount: 8 },
+    ];
+
+    const resolved = resolveWorkshopLineItems({
+      llmItems: hoursAsEur,
+      ocrText: DMS_SECTION_CAMERA_OCR_TEXT,
+    });
+
+    expect(resolved).toHaveLength(5);
+    expect(resolved!.some((item) => item.amount === 0.75)).toBe(false);
+    expect(resolved!.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
+      DMS_SECTION_NET_SUM,
       2,
     );
   });

@@ -89,24 +89,23 @@ NIEMALS rechnen. Leere Zellen = null. €-Zeichen und Kommas exakt abschreiben.
 
 /** Few-shot — Abschnitts-Rechnung (Arbeitswerte | Ersatzteile | Sonstige Kosten). */
 export const INVOICE_WORKSHOP_SECTIONS_FEW_SHOT = `
-FORMAT B — Abschnitts-Werkstattrechnung (SPEEDWORKZ / DMS):
-Erkenne drei Blöcke: "Arbeitswerte", "Ersatzteile", "Sonstige Kosten".
+FORMAT B — Abschnitts-Werkstattrechnung (DMS):
+Erkenne Blöcke wie "Arbeitswerte"/"Arbeitszeit", "Ersatzteile"/"Material", "Sonstige Kosten"/"Fremdleistungen".
 
 Arbeitswerte (Spalten: Beschreibung | Art | Std. | Preis-€):
-- "Motor wird heiß lt. Kunde …" | 0,50 Std | gesamtpreis "46,22 €"
-- Zeilen NUR mit Beschreibung ohne Preis (z.B. "Thermostat gebrochen") → KEIN lineItem
-- "Thermostat und Wasserschlauch erneuern" | menge "1,80 Std" | gesamtpreis "166,37 €"
+- Beschreibung | Std. | gesamtpreis = Preis-€ (rechts), z.B. 0,50 Std → amount die rechte €-Spalte, nicht die Stunden
+- Zeilen NUR mit Beschreibung ohne Preis (Diagnose-Notizen) → KEIN lineItem
+- Wrap-Zeilen ohne neuen Preis (z.B. Farbe/Typ) gehören zur vorherigen Teileposition
 
 Ersatzteile (Spalten: Anzahl | Stück | Beschreibung | Einzelpreis | Preis-€):
-- "1 Stück Wasserschlauch" | einzelpreis "65,12 €" | gesamtpreis "65,12 €"
-- "4 Stück Kühlerfrostschutz Blau/Rot" | einzelpreis "6,50 €" | gesamtpreis "26,00 €"
-- Mit Rabatt: Einzelpreis "41,04 €" | Rab. % "30,00" | gesamtpreis "28,73 €" (NIEMALS 41,04 als gesamtpreis; Rabatt NICHT als eigene Position)
+- menge = Anzahl + Einheit; einzelpreis = Einzelpreis-Spalte; gesamtpreis = Preis-€ nach Rabatt
+- NIEMALS Einzelpreis als gesamtpreis wenn eine rechte Preis-€-Spalte existiert
 
-Sonstige Kosten:
-- "1 Fracht" | gesamtpreis "5,00 €"
+Sonstige Kosten / Fremdleistungen:
+- z.B. Fracht — gesamtpreis = Preis-€
 
-Footer (KEINE lineItems): Zwischensummen, Netto Summe, MwSt., Endpreis.
-amount = "Endpreis" brutto (z.B. "540,84 €") — nicht Netto Summe.
+Footer (KEINE lineItems): Zwischensummen, Netto Summe, MwSt., Endpreis, Gesamt.
+amount = Endpreis / Zahlbetrag brutto — nicht Netto Summe.
 `.trim();
 
 /** Fallback system prompt when Foundry agent metadata is unavailable. */
@@ -300,7 +299,7 @@ Zwischensummen, Netto Summe, Mechanik-Summen, Positionssumme → KEINE lineItems
 MwSt-Zeile im Footer → KEIN lineItem (wird separat berechnet).
 Bei Rabatt: gesamtpreis = Preis NACH Rabatt (z.B. 28,73 — NICHT 41,04 Einzelpreis).`,
     INVOICE_WORKSHOP_SECTIONS_FEW_SHOT,
-    "amount = raw text des Endpreis brutto (z.B. \"540,84 €\") — nicht Netto Summe / Positionssumme.",
+    "amount = raw text des Endpreis / Zahlbetrag brutto — nicht Netto Summe / Positionssumme.",
     "Antworte nur mit JSON.",
   ].join("\n\n");
 }
@@ -345,16 +344,17 @@ export const INVOICE_LINE_ITEMS_USER_LINES = [
 
 /** Guided wizard — section-based workshop invoice (Format B). */
 export const INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES = [
-  "Abschnitts-Rechnung (DMS): Arbeitswerte → Ersatzteile → Sonstige Kosten.",
-  "Schritt 1: Block 'Arbeitswerte' — jede Zeile mit Preis-€ ist ein lineItem.",
+  "Abschnitts-Rechnung (DMS): Arbeitswerte/Arbeitszeit → Ersatzteile/Material → Sonstige Kosten/Fremdleistungen.",
+  "Schritt 1: Labor-Block — jede Zeile mit Preis-€ ist ein lineItem.",
   "  Beschreibung ohne Preis (nur Diagnose-Text) → überspringen.",
-  "  gesamtpreis = Spalte Preis-€ (rechts). menge = Std.-Spalte (z.B. \"0,50 Std\", \"1,80\").",
+  "  gesamtpreis / amount = rechte Summenspalte (Preis-€ / Betrag). menge = Std./Stunden/AE, nie amount.",
   "  Art/PG-Zahlen (1–9) NICHT als menge — null wenn nur Art sichtbar.",
-  "Schritt 2: Block 'Ersatzteile' — jede Teilezeile mit Preis-€.",
+  "Schritt 2: Teile-Block — jede Teilezeile mit Preis-€.",
   "  menge = \"N Stück\". einzelpreis = Einzelpreis-Spalte. gesamtpreis = Preis-€ (nach Rabatt!).",
-  "Schritt 3: Block 'Sonstige Kosten' — z.B. Fracht.",
-  "Schritt 4: Footer — amount = Endpreis brutto (540,84), NICHT Netto Summe (454,49).",
-  "Zwischensummen / Mechanik / Positionssumme sind KEINE Positionen.",
+  "  Einzelpreis nie als amount wenn eine rechte Preis-Spalte existiert.",
+  "Schritt 3: Sonstige Kosten / Fremdleistungen — z.B. Fracht.",
+  "Schritt 4: Footer — amount = Endpreis / Zahlbetrag brutto, NICHT Netto Summe / Positionssumme.",
+  "Zwischensummen / Mechanik / Positionssumme / Gesamt sind KEINE Positionen.",
   "CRITICAL: Kopiere exakten Spalten-Text. KEINE Berechnungen.",
 ] as const;
 

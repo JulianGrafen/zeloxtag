@@ -48,8 +48,7 @@ export function isColumnTableInvoiceText(rawText: string): boolean {
  * correction) matches the proven 54d78144 behaviour where all invoices ran
  * through that path unconditionally.
  *
- * Section-only invoices that lack "Ges. Preis" (e.g. Speedworkz) still route
- * to the workshop path.
+ * Section-only invoices that lack "Ges. Preis" still route to the workshop path.
  */
 export function detectInvoiceTableFormat(
   rawText: string | null | undefined,

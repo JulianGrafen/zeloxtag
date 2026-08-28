@@ -1,6 +1,6 @@
 /**
  * DMS / Werkstatt-Rechnungen mit Abschnitten:
- * Arbeitswerte | Ersatzteile | Sonstige Kosten (z. B. SPEEDWORKZ, KSR, Autosoft).
+ * Arbeitswerte/Arbeitszeit | Ersatzteile/Material | Sonstige Kosten/Fremdleistungen.
  */
 
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
@@ -19,14 +19,15 @@ const MONEY = /(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/;
 
 type WorkshopSection = "labor" | "parts" | "other" | "none";
 
-const SECTION_LABOR = /^arbeits\s*werte\b/i;
-const SECTION_PARTS = /^ersatz\s*teile\b/i;
-const SECTION_OTHER = /^sonstige\s+kosten\b/i;
+const SECTION_LABOR = /^(?:arbeits\s*werte|arbeitszeit|lohnarbeiten)\b/i;
+const SECTION_PARTS = /^(?:ersatz\s*teile|material(?:ien)?)\b/i;
+const SECTION_OTHER =
+  /^(?:sonstige\s+kosten|fremdleistungen?|nebenkosten)\b/i;
 const SECTION_STOP =
   /^(?:zwischensummen|endsummen|netto\s+summe|positionssumme|zahlbar|endsumme)\b/i;
 
 const SKIP_LINE =
-  /^(?:beschreibung|rab\.?\s*%|art\.?|pg\.?|std\.?|preis|einzelpreis|mechanik|ersatzteile|sonstige\s+kosten|positionssumme|netto|mwst|endpreis|endsummen|zahlbar)\b/i;
+  /^(?:beschreibung|rab\.?\s*%|art\.?|pg\.?|std\.?|preis|einzelpreis|mechanik|ersatzteile|material(?:ien)?|sonstige\s+kosten|fremdleistungen?|nebenkosten|arbeitszeit|lohnarbeiten|positionssumme|netto|mwst|endpreis|endsummen|zahlbar)\b/i;
 
 const AMOUNT_ONLY_LINE =
   /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*(?:€|eur))?\s*$/i;
@@ -56,9 +57,11 @@ function hasSectionHeaders(text: string): boolean {
   const hasOther = lines.some((line) => SECTION_OTHER.test(line));
   // Also match section headers embedded in longer OCR lines.
   const blob = text.toLowerCase();
-  const laborInBlob = /\barbeits\s*werte\b/.test(blob);
-  const partsInBlob = /\bersatz\s*teile\b/.test(blob);
-  const otherInBlob = /\bsonstige\s+kosten\b/.test(blob);
+  const laborInBlob =
+    /\barbeits\s*werte\b|\barbeitszeit\b|\blohnarbeiten\b/.test(blob);
+  const partsInBlob = /\bersatz\s*teile\b|\bmaterial(?:ien)?\b/.test(blob);
+  const otherInBlob =
+    /\bsonstige\s+kosten\b|\bfremdleistungen?\b|\bnebenkosten\b/.test(blob);
   return (
     (hasLabor || laborInBlob) &&
     (hasParts || hasOther || partsInBlob || otherInBlob)
@@ -147,7 +150,12 @@ function parseOtherLine(line: string): { label: string; amount: number } | null 
 function detectSection(line: string, current: WorkshopSection): WorkshopSection {
   if (SECTION_LABOR.test(line) || /\barbeits\s*werte\b/i.test(line)) return "labor";
   if (SECTION_PARTS.test(line) || /\bersatz\s*teile\b/i.test(line)) return "parts";
-  if (SECTION_OTHER.test(line) || /\bsonstige\s+kosten\b/i.test(line)) return "other";
+  if (
+    SECTION_OTHER.test(line) ||
+    /\bsonstige\s+kosten\b|\bfremdleistungen?\b/i.test(line)
+  ) {
+    return "other";
+  }
   if (SECTION_STOP.test(line)) return "none";
   return current;
 }
@@ -274,9 +282,13 @@ export function prejoinWorkshopSectionLines(rawText: string): string {
 export function detectWorkshopInvoiceSignals(rawText: string): number {
   const lower = rawText.replace(/\r\n/g, "\n").toLowerCase();
   let score = 0;
-  if (/\barbeits\s*werte\b/.test(lower)) score += 3;
-  if (/\bersatz\s*teile\b/.test(lower)) score += 2;
-  if (/\bsonstige\s+kosten\b/.test(lower)) score += 2;
+  if (/\barbeits\s*werte\b|\barbeitszeit\b|\blohnarbeiten\b/.test(lower)) {
+    score += 3;
+  }
+  if (/\bersatz\s*teile\b|\bmaterial(?:ien)?\b/.test(lower)) score += 2;
+  if (/\bsonstige\s+kosten\b|\bfremdleistungen?\b|\bnebenkosten\b/.test(lower)) {
+    score += 2;
+  }
   if (/\bpreis-?\s*€\b/.test(lower)) score += 2;
   if (/\bendsummen\b/.test(lower)) score += 2;
   if (/\bpositionssumme\b/.test(lower)) score += 2;

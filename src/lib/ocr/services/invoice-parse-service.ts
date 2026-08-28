@@ -54,6 +54,7 @@ import {
   shouldReconcileWithOcrHeuristics,
 } from "@/lib/ocr/invoice-format-routing";
 import {
+  detectWorkshopInvoiceSignals,
   extractWorkshopInvoiceAmount,
   reconcileWorkshopLineItemsWithOcrText,
   resolveWorkshopLineItems,
@@ -194,20 +195,25 @@ export class InvoiceParseService {
     const layoutPlainText = azureLayout
       ? azureLayoutPlainText(azureLayout)
       : "";
+    const layoutTextForFormat =
+      layoutPlainText.trim() || azureLayout?.content || "";
 
     const tableFormat = !isTuevReport
-      ? detectInvoiceTableFormat(
-          layoutPlainText.trim() || azureLayout?.content || "",
-        )
+      ? detectInvoiceTableFormat(layoutTextForFormat)
       : ("column" as const);
+
+    const useWorkshopPrompt =
+      !isTuevReport &&
+      (tableFormat === "workshop-sections" ||
+        detectWorkshopInvoiceSignals(layoutTextForFormat) >= 4);
 
     const userLines = isTuevReport
       ? TUEV_COST_USER_PROMPT_LINES
-      : tableFormat === "workshop-sections"
+      : useWorkshopPrompt
         ? [
             ...INVOICE_USER_PROMPT_LINES,
             ...INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES,
-            "lineItems.amount = Spalte Preis-€ (rechts). Niemals Std. (0,50 / 1,80) oder Einzelpreis als amount.",
+            "lineItems.amount = rechte Summenspalte (Preis-€ / Betrag). Std./Stunden/AE = menge, nie amount. Einzelpreis nie amount wenn eine rechte Preis-Spalte existiert.",
           ]
         : INVOICE_USER_PROMPT_LINES;
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { BLOTZHEIM_27327_OCR_TEXT } from "@/lib/ocr/fixtures/blotzheim-27327-invoice";
+import { DMS_SECTION_CAMERA_OCR_TEXT } from "@/lib/ocr/fixtures/dms-section-invoice";
 import {
   SPEEDWORKZ_CAMERA_OCR_TEXT,
   SPEEDWORKZ_OCR_TEXT,
@@ -91,6 +92,13 @@ describe("invoice format routing", () => {
     ].join("\n");
 
     expect(detectInvoiceTableFormat(partial)).toBe("workshop-sections");
+  });
+
+  it("routes Arbeitszeit/Material/Fremdleistungen camera OCR as workshop-sections", () => {
+    expect(detectInvoiceTableFormat(DMS_SECTION_CAMERA_OCR_TEXT)).toBe(
+      "workshop-sections",
+    );
+    expect(shouldDrawInvoiceRowSeparators("workshop-sections")).toBe(false);
   });
 
   it("merges wrapped descriptions only for column tables", () => {
