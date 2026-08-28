@@ -28,7 +28,11 @@ import {
   groupAbeVehicleMatches,
   resolveAuflagenCodesForReport,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
-import { ABE_AUFLAGEN_COLUMN_LLM_HINT } from "@/lib/ocr/abe-auflagen-kuerzel-hints";
+import {
+  ABE_AUFLAGEN_COLUMN_LLM_HINT,
+  ABE_VEHICLE_ROW_AUFLAGEN_JSON_REQUIRED,
+  abeVehicleRowAuflagenJsonProperties,
+} from "@/lib/ocr/abe-auflagen-kuerzel-hints";
 import { isPlaceholderAbeVerkaufsbezeichnung } from "@/lib/ocr/abe-wizard-vehicle-normalize";
 
 /** LLM hint: legal ABE holder may appear as Inhaber der ABE or Auftraggeber. */
@@ -106,7 +110,7 @@ export const ABE_HUNT_FIELD_WATERMARKS: Record<AbeRequiredFieldKey, string> = {
   partDesignation: "Leichtmetallfelge\n8,5 × 19",
   markingText: "Kennzeichnung\nKBA 123456",
   verkaufsbezeichnung:
-    "Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Auflagen",
+    "Fahrzeugtyp | Betriebserlaubnis | kW | Reifen | Reifen-Aufl. | Aufl. u. Hinw.",
   auflagenCodes: "A1 · A2 · A3",
   auflagenNotes: "Auflage\nKürzel",
 };
@@ -168,7 +172,7 @@ export const ABE_HUNT_FIELD_SCAN_HINTS: Partial<
   },
   verkaufsbezeichnung: {
     scanAction:
-      "Fotografiere nur den Tabellenausschnitt deines Fahrzeugs — Zeile mit Typ, Betriebserlaubnis, kW, Reifen und Auflagen.",
+      "Fotografiere den Tabellenausschnitt deines Fahrzeugs — beide Auflagen-Spalten rechts müssen sichtbar sein (Reifenbezogene Auflagen und Auflagen und Hinweise).",
     popupTitle: "Fahrzeugmodell",
     popupBody:
       "Fotografiere den Tabellenabschnitt mit deinem Fahrzeug (Verkaufsbezeichnung + Zeile). Den Auflagen-Text scannst du im nächsten Schritt separat.",
@@ -848,7 +852,7 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
             "typeApproval",
             "driveType",
             "tireSizes",
-            "auflagenCodes",
+            ...ABE_VEHICLE_ROW_AUFLAGEN_JSON_REQUIRED,
           ],
           properties: {
             verkaufsbezeichnung: {
@@ -882,14 +886,7 @@ export const ABE_HUNT_VEHICLE_JSON_SCHEMA = {
                 FROM_CROP +
                 'Reifen / Radgröße column — ALL printed sizes for this row (e.g. "225/40 R18", "245/35 ZR19"); one string per size; never omit a size from the cell; empty array when column missing.',
             },
-            auflagenCodes: {
-              type: "array",
-              items: { type: "string" },
-              description:
-                FROM_CROP +
-                ABE_AUFLAGEN_COLUMN_LLM_HINT +
-                " Examples: 11A, 12A, 20B, 22B, 51A, 744, A01, A02, F40, L04, B04A.",
-            },
+            ...abeVehicleRowAuflagenJsonProperties(FROM_CROP),
           },
         },
       },
@@ -1044,7 +1041,7 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
             "typeApproval",
             "driveType",
             "tireSizes",
-            "auflagenCodes",
+            ...ABE_VEHICLE_ROW_AUFLAGEN_JSON_REQUIRED,
           ],
           properties: {
             verkaufsbezeichnung: {
@@ -1078,14 +1075,7 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
                 FROM_PHOTO +
                 'Reifen / Radgröße column (e.g. "225/40 R18", "245/35 ZR19") — one string per size; empty array when column missing.',
             },
-            auflagenCodes: {
-              type: "array",
-              items: { type: "string" },
-              description:
-                FROM_PHOTO +
-                ABE_AUFLAGEN_COLUMN_LLM_HINT +
-                " Never copy codes from other rows above or below.",
-            },
+            ...abeVehicleRowAuflagenJsonProperties(FROM_PHOTO),
           },
         },
       },
@@ -1094,7 +1084,7 @@ export const ABE_HUNT_ALL_JSON_SCHEMA = {
         items: { type: "string" },
         description:
           FROM_PHOTO +
-          "Leave empty — Auflagen text is captured in a separate scan step. Put table Kürzel only in vehicleMatches[].auflagenCodes.",
+          "Leave empty — Auflagen text is captured in a separate scan step. Put table Kürzel only in vehicleMatches[] (reifenbezogeneAuflagenCodes + auflagenUndHinweiseCodes).",
       },
       auflagenNotes: {
         type: ["string", "null"],

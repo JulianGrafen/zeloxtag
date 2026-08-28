@@ -518,7 +518,8 @@ export class AbeExtractionService {
         "- typeApproval: Betriebserlaubnis cell verbatim.",
         "- driveType: drive-type word in Auflagen (Allradantrieb / Heckantrieb / Frontantrieb), else null.",
         "- tireSizes: ALL tyre sizes from the Reifen column for this row — one entry per printed size; never omit a size; empty array when column is missing (e.g. spoiler, spacer).",
-        "- auflagenCodes: EVERY short condition code from this row's Auflagen columns (reifenbezogen AND Hinweise) — never from other rows. Letter suffixes stay letters (22B not 228).",
+        "- reifenbezogeneAuflagenCodes: left Auflagen column (next to Reifen) — every short Kürzel from that cell on this row.",
+        "- auflagenUndHinweiseCodes: RIGHTMOST column 'Auflagen und Hinweise' — every short Kürzel; always read even when reifenbezogene Auflagen were already listed.",
         "Read digits 3 and 8 carefully in Fahrzeugtyp codes — they are often confused.",
         "When one table line lists multiple Fahrzeugtyp codes, emit ONE row PER printed code.",
         "Do not merge rows. Do not skip rows. Do not add rows that are not visible. Never invent a model or type code.",
@@ -527,7 +528,7 @@ export class AbeExtractionService {
       isRetry
         ? [
             "This image shows a Verwendungs- or Fahrzeug-Tabelle (wheels, spoiler, spacers, etc.).",
-            "Typical columns: Fahrzeugtyp, Betriebserlaubnis, kW, Reifen (optional), Auflagen.",
+            "Typical columns: Fahrzeugtyp, Betriebserlaubnis, kW, Reifen (optional), Reifenbezogene Auflagen, Auflagen und Hinweise (rightmost).",
             "Look for the bold 'Verkaufsbezeichnung:' header above each table block.",
             "Extract EVERY visible data row from ALL table blocks on this page.",
             "Repeat the Verkaufsbezeichnung text on each row even when it only appears once above the group.",
@@ -536,7 +537,7 @@ export class AbeExtractionService {
             "Extract every visible row from the Fahrzeug- und Auflagen-Tabelle in this photograph.",
             "The page must show a grid table — not the ABE cover or plain legal text.",
             "Read the Verkaufsbezeichnung header above each group and repeat it on every row in that group.",
-            "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen (if applicable) | Auflagen.",
+            "Typical columns: Fahrzeugtyp | Betriebserlaubnis | kW | Reifen (if applicable) | Reifenbezogene Auflagen | Auflagen und Hinweise (rechts).",
             "Use only text you can read on this image.",
           ],
       ABE_WIZARD_VEHICLES_JSON_SCHEMA,

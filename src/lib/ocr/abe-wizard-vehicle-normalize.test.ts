@@ -357,6 +357,43 @@ describe("abe-wizard-vehicle-normalize", () => {
     ]);
   });
 
+  it("merges split Auflagen columns from raw LLM rows", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "BMW 3er-Compact",
+        fahrzeugtyp: "346K",
+        typeApproval: "e1*98/14*0167*..",
+        driveType: null,
+        tireSizes: ["215/45R17"],
+        reifenbezogeneAuflagenCodes: ["K2b", "K41"],
+        auflagenUndHinweiseCodes: ["A01", "A02", "744"],
+      },
+    ]);
+
+    expect(parsed[0]?.auflagenCodes).toEqual(
+      expect.arrayContaining(["K2B", "K41", "A01", "A02", "744"]),
+    );
+  });
+
+  it("merges legacy auflagenCodes with split column fields", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "BMW 3er-Compact",
+        fahrzeugtyp: "346K",
+        typeApproval: "e1*98/14*0167*..",
+        driveType: null,
+        tireSizes: ["215/45R17"],
+        reifenbezogeneAuflagenCodes: ["K2b"],
+        auflagenUndHinweiseCodes: ["A01"],
+        auflagenCodes: ["S01"],
+      },
+    ]);
+
+    expect(parsed[0]?.auflagenCodes).toEqual(
+      expect.arrayContaining(["K2B", "A01", "S01"]),
+    );
+  });
+
   it("drops vehicle table rows without Fahrzeugtyp or EG-BE", () => {
     const rows = dropIncompleteVehicleTableRows([
       {

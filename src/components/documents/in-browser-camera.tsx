@@ -111,12 +111,12 @@ const SECTION_ASPECT_RATIOS: Record<GuideSectionAnchor, string> = {
   bottom: "4 / 3",
 };
 
-/** Wide Verwendungsbereich excerpt (Fahrzeugtyp → Auflagen). */
-const TABLE_ASPECT_RATIO = "16 / 7";
+/** Wide Verwendungsbereich excerpt (Fahrzeugtyp → both Auflagen columns). */
+const TABLE_ASPECT_RATIO = "22 / 7";
 
 /** Fixed viewport — guide frames stay the same size across wizard steps. */
 const GUIDE_FRAME_VIEWPORT_CLASS =
-  "flex h-[min(68dvh,34rem)] w-[min(92vw,28rem)] shrink-0 items-center justify-center";
+  "flex h-[min(68dvh,34rem)] w-[min(96vw,32rem)] shrink-0 items-center justify-center";
 
 const GUIDE_FRAME_INNER_A4_CLASS =
   "relative h-full w-auto min-h-[14rem] min-w-[9.5rem] max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";

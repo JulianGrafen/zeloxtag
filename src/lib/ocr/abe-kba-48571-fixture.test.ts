@@ -120,4 +120,23 @@ describe("ABE KBA 48571 Interpneu / TAM3325-8017 fixture", () => {
     );
     expect(compact?.auflagenCodes).not.toContain("K7C");
   });
+
+  it("merges reifenbezogene and rightmost Auflagen und Hinweise columns", () => {
+    const parsed = parseAbeVehicleRows([
+      {
+        verkaufsbezeichnung: "BMW 3er-Compact",
+        fahrzeugtyp: "346K",
+        typeApproval: "e1*98/14*0167*..",
+        driveType: null,
+        tireSizes: ["215/45R17", "225/45R17"],
+        reifenbezogeneAuflagenCodes: ["K2b", "K41", "V17", "S01"],
+        auflagenUndHinweiseCodes: ["A01", "A02", "A04", "A05"],
+      },
+    ]);
+
+    const compact = parsed.find((row) => row.fahrzeugtyp === "346K");
+    expect(compact?.auflagenCodes).toEqual(
+      expect.arrayContaining(["K2B", "K41", "A01", "A02", "A04", "A05", "S01"]),
+    );
+  });
 });

@@ -102,7 +102,7 @@ const CAPTURE_STEPS: Array<{
     phase: "capture-vehicles",
     stepNumber: 3,
     title: "Fahrzeugtabelle",
-    hint: "Scanne die Verwendungs- bzw. Fahrzeugtabelle mit „Verkaufsbezeichnung:“ und den Tabellenzeilen darunter (Fahrzeugtyp, Betriebserlaubnis, ggf. Reifen, Auflagen).",
+    hint: "Scanne die Verwendungs- bzw. Fahrzeugtabelle — Rahmen muss beide Auflagen-Spalten rechts einschließen (Reifenbezogene Auflagen und Auflagen und Hinweise).",
     guideLabel: "Verkaufsbezeichnung · Tabellenzeilen",
   },
 ];

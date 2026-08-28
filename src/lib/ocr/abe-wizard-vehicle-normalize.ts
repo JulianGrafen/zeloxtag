@@ -673,6 +673,17 @@ function readStringArray(value: unknown): string[] {
     .filter(Boolean);
 }
 
+/** Merge split Auflagen columns (+ legacy single field) from raw LLM rows. */
+export function readMergedAuflagenCodesFromRow(
+  row: Record<string, unknown>,
+): string[] {
+  return [
+    ...readStringArray(row.reifenbezogeneAuflagenCodes),
+    ...readStringArray(row.auflagenUndHinweiseCodes),
+    ...readStringArray(row.auflagenCodes),
+  ];
+}
+
 function readTireSizes(row: Record<string, unknown>): string[] {
   const collected: string[] = [];
 
@@ -1003,7 +1014,8 @@ export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
       );
     }
 
-    const rawAuflagenTokens = readStringArray(row.auflagenCodes)
+    const mergedAuflagenCodes = readMergedAuflagenCodesFromRow(row);
+    const rawAuflagenTokens = mergedAuflagenCodes
       .flatMap((item) => item.split(/[\s,/;]+/))
       .map((token) => token.trim())
       .filter(Boolean);
@@ -1021,7 +1033,7 @@ export function parseAbeVehicleRows(rawRows: unknown[]): AbeVehicleMatch[] {
       typFromAuflagen ??
       null;
 
-    const parsedAuflagen = parseAuflagenCodes(readStringArray(row.auflagenCodes));
+    const parsedAuflagen = parseAuflagenCodes(mergedAuflagenCodes);
     const draft: AbeVehicleMatch = {
       verkaufsbezeichnung:
         (rawGroupStripped && isFragmentVerkaufsbezeichnung(rawGroupStripped)

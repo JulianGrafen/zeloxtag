@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { ABE_AUFLAGEN_COLUMN_LLM_HINT } from "@/lib/ocr/abe-auflagen-kuerzel-hints";
+import {
+  ABE_VEHICLE_ROW_AUFLAGEN_JSON_REQUIRED,
+  abeVehicleRowAuflagenJsonProperties,
+} from "@/lib/ocr/abe-auflagen-kuerzel-hints";
 
 /** Prefix for OpenAI JSON schema field descriptions — reduces example hallucination. */
 const FROM_DOCUMENT =
@@ -197,7 +200,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
             "typeApproval",
             "driveType",
             "tireSizes",
-            "auflagenCodes",
+            ...ABE_VEHICLE_ROW_AUFLAGEN_JSON_REQUIRED,
           ],
           properties: {
             verkaufsbezeichnung: {
@@ -230,14 +233,7 @@ export const ABE_WIZARD_VEHICLES_JSON_SCHEMA = {
                 FROM_DOCUMENT +
                 "ALL tyre sizes from the Reifen column for this row — one array entry per printed size (e.g. two sizes in one cell → two entries). Never omit a visible size. Empty array if no Reifen column (e.g. spoiler, spacer).",
             },
-            auflagenCodes: {
-              type: "array",
-              items: { type: "string" },
-              description:
-                FROM_DOCUMENT +
-                ABE_AUFLAGEN_COLUMN_LLM_HINT +
-                " Never copy codes from other rows or Verkaufsbezeichnung sections above/below.",
-            },
+            ...abeVehicleRowAuflagenJsonProperties(FROM_DOCUMENT),
           },
         },
       },

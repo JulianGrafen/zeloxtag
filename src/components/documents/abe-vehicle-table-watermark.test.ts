@@ -7,13 +7,14 @@ import {
 } from "@/components/documents/abe-vehicle-table-watermark";
 
 describe("ABE_VEHICLE_TABLE_WATERMARK_COLUMNS", () => {
-  it("lists Fahrzeugtyp first, then Betriebserlaubnis, kW, Reifen, Auflagen", () => {
+  it("lists Fahrzeugtyp first, then both Auflagen columns on the right", () => {
     expect(ABE_VEHICLE_TABLE_WATERMARK_COLUMNS).toEqual([
       "Fahrzeugtyp",
       "Betriebserlaubnis",
       "kW",
       "Reifen",
-      "Auflagen",
+      "Reifen-Aufl.",
+      "Aufl. u. Hinw.",
     ]);
   });
 });
@@ -27,7 +28,7 @@ describe("buildAbeVehicleTableExcerptRow", () => {
         type: "5L",
         egBe: "e1*2007/46*0508*00",
       }),
-    ).toEqual(["5L", "e1*2007/46*0…", "kW", "Reifen", "Auflagen"]);
+    ).toEqual(["5L", "e1*2007/46*0…", "kW", "Reifen", "10B", "A01"]);
   });
 });
 

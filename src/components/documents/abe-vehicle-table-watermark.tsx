@@ -5,10 +5,12 @@ export const ABE_VEHICLE_TABLE_WATERMARK_COLUMNS = [
   "Betriebserlaubnis",
   "kW",
   "Reifen",
-  "Auflagen",
+  "Reifen-Aufl.",
+  "Aufl. u. Hinw.",
 ] as const;
 
 export type AbeVehicleTableWatermarkRow = readonly [
+  string,
   string,
   string,
   string,
@@ -22,9 +24,11 @@ const NEIGHBOR_ABOVE: AbeVehicleTableWatermarkRow = [
   "…",
   "…",
   "…",
+  "…",
 ];
 
 const NEIGHBOR_BELOW: AbeVehicleTableWatermarkRow = [
+  "…",
   "…",
   "…",
   "…",
@@ -40,7 +44,7 @@ export function buildAbeVehicleTableExcerptRow(
 ): AbeVehicleTableWatermarkRow {
   const typ = vehicleContext?.type?.trim() || "Typ";
   const egBe = shortenEgBe(vehicleContext?.egBe);
-  return [typ, egBe, "kW", "Reifen", "Auflagen"];
+  return [typ, egBe, "kW", "Reifen", "10B", "A01"];
 }
 
 export function formatAbeVehicleTableCaption(
@@ -86,7 +90,7 @@ export function AbeVehicleTableWatermark({
               {ABE_VEHICLE_TABLE_WATERMARK_COLUMNS.map((column) => (
                 <th
                   key={column}
-                  className={`${CELL} text-[clamp(0.4rem,1.8vw,0.6rem)] font-semibold uppercase`}
+                  className={`${CELL} text-[clamp(0.36rem,1.6vw,0.55rem)] font-semibold uppercase`}
                 >
                   {column}
                 </th>
@@ -98,7 +102,7 @@ export function AbeVehicleTableWatermark({
               {NEIGHBOR_ABOVE.map((cell, index) => (
                 <td
                   key={`above-${index}`}
-                  className={`${CELL} text-[clamp(0.36rem,1.5vw,0.52rem)]`}
+                  className={`${CELL} text-[clamp(0.32rem,1.4vw,0.48rem)]`}
                 >
                   {cell}
                 </td>
@@ -108,7 +112,7 @@ export function AbeVehicleTableWatermark({
               {excerptRow.map((cell, index) => (
                 <td
                   key={`excerpt-${ABE_VEHICLE_TABLE_WATERMARK_COLUMNS[index]}`}
-                  className={`${CELL} text-[clamp(0.42rem,1.75vw,0.6rem)] font-semibold text-white/72`}
+                  className={`${CELL} text-[clamp(0.38rem,1.6vw,0.55rem)] font-semibold text-white/72`}
                 >
                   {cell}
                 </td>
@@ -118,7 +122,7 @@ export function AbeVehicleTableWatermark({
               {NEIGHBOR_BELOW.map((cell, index) => (
                 <td
                   key={`below-${index}`}
-                  className={`${CELL} text-[clamp(0.36rem,1.5vw,0.52rem)]`}
+                  className={`${CELL} text-[clamp(0.32rem,1.4vw,0.48rem)]`}
                 >
                   {cell}
                 </td>
@@ -128,7 +132,7 @@ export function AbeVehicleTableWatermark({
         </table>
       </div>
       <p className="mt-1.5 text-center text-[clamp(0.48rem,2vw,0.62rem)] font-medium tracking-wide text-white/40">
-        Nur die Zeile deines Fahrzeugs
+        Beide Auflagen-Spalten rechts mit erfassen
       </p>
     </div>
   );
