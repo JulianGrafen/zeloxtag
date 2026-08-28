@@ -498,6 +498,10 @@ export type Database = {
         Args: { p_token: string };
         Returns: Json;
       };
+      resolve_contributor_vehicle: {
+        Args: { p_vehicle_id: string };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
