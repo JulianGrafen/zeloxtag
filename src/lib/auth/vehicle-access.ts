@@ -268,3 +268,39 @@ export async function getTagVehicleAccess(
     sessionUserId,
   };
 }
+
+/** Owner or active Schrauber may load the private digital twin server-side. */
+export async function viewerCanAccessPrivateTwin(
+  vehicle: { id: string; user_id: string },
+  sessionUserId: string | null,
+): Promise<boolean> {
+  if (!sessionUserId) return false;
+  if (vehicle.user_id === sessionUserId) return true;
+  const grant = await loadContributorGrant(vehicle.id, sessionUserId);
+  return grant.active;
+}
+
+/**
+ * Silhouette images may be shown to owners, contributors, or public-showcase viewers.
+ */
+export async function sessionCanAccessVehicleMedia(
+  vehicleId: string,
+  sessionUserId: string | null,
+): Promise<boolean> {
+  if (!isSupabaseAdminConfigured()) return false;
+
+  const admin = createAdminClient();
+  const { data: vehicle, error } = await admin
+    .from("vehicles")
+    .select("user_id, is_public")
+    .eq("id", vehicleId)
+    .maybeSingle();
+
+  if (error || !vehicle) return false;
+  if (vehicle.is_public) return true;
+  if (!sessionUserId) return false;
+  if (vehicle.user_id === sessionUserId) return true;
+
+  const grant = await loadContributorGrant(vehicleId, sessionUserId);
+  return grant.active;
+}

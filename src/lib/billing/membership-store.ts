@@ -445,27 +445,14 @@ export async function claimMembershipForUser(
   }
 
   const membership = await loadMembershipByEmail(shopifyEmail);
-  const loginEmail = normalizeMembershipEmail(input.loginEmail);
-  const ownsInbox = Boolean(loginEmail && loginEmail === shopifyEmail);
-
-  if (ownsInbox) {
-    if (!membership) {
-      return {
-        status: "error",
-        message: "Keine bezahlte Mitgliedschaft zu dieser Mail gefunden.",
-      };
-    }
-    if (membership.user_id && membership.user_id !== userId) {
-      return {
-        status: "error",
-        message: "Diese Zahlung ist bereits mit einem anderen Konto verknüpft.",
-      };
-    }
-    await attachUser(membership.id, userId);
-    return { status: "ok" };
+  if (!membership) {
+    return {
+      status: "error",
+      message: "Keine bezahlte Mitgliedschaft zu dieser Mail gefunden.",
+    };
   }
 
-  if (membership && !membership.user_id) {
+  if (!membership.user_id) {
     try {
       await ensureClaimEmail(membership, shopifyEmail);
     } catch (error) {

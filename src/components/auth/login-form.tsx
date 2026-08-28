@@ -127,6 +127,10 @@ export function LoginForm({
                     );
                     return;
                   }
+                  if (result.status === "confirm_email") {
+                    setInfo(result.message);
+                    return;
+                  }
                   if (result.status === "ok") {
                     window.location.assign(
                       result.redirectTo || destination,

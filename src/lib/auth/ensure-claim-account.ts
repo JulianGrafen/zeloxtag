@@ -7,10 +7,6 @@ import {
   rateLimit,
   RATE_LIMITS,
 } from "@/lib/security/rate-limit";
-import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const emailSchema = z.string().trim().email().max(320);
@@ -18,7 +14,7 @@ const passwordSchema = z.string().min(10).max(128);
 
 export type EnsureClaimAccountResult =
   | { ok: true; userId: string; created: boolean }
-  | { ok: false; message: string };
+  | { ok: false; message: string; needsEmailConfirmation?: boolean };
 
 function looksLikeExistingUser(message: string): boolean {
   const lower = message.toLowerCase();
@@ -30,10 +26,13 @@ function looksLikeExistingUser(message: string): boolean {
   );
 }
 
+const GENERIC_EXISTING_ACCOUNT =
+  "Dieses Konto existiert bereits. Bitte anmelden oder Passwort zurücksetzen.";
+
 /**
  * Ensures the claiming user has a Supabase Auth session.
  * — Already signed in → reuse session
- * — New email → create account + sign in (admin marks email confirmed)
+ * — New email → sign up (email must be confirmed before claim completes)
  * — Existing email → sign in with password
  */
 export async function ensureClaimAccount(input: {
@@ -56,7 +55,11 @@ export async function ensureClaimAccount(input: {
       };
     }
   } catch {
-    // Fail open — claim onboarding must stay reachable.
+    return {
+      ok: false,
+      message:
+        "Anmeldung vorübergehend nicht verfügbar. Bitte später erneut versuchen.",
+    };
   }
 
   const emailParsed = emailSchema.safeParse(input.email);
@@ -91,27 +94,13 @@ export async function ensureClaimAccount(input: {
     return { ok: true, userId: signedUp.session.user.id, created: true };
   }
 
-  // Email confirmation enabled in Supabase → confirm via service role, then sign in.
-  if (signedUp.user && !signedUp.session && isSupabaseAdminConfigured()) {
-    const admin = createAdminClient();
-    const confirmed = await admin.auth.admin.updateUserById(signedUp.user.id, {
-      email_confirm: true,
-      user_metadata: name ? { name } : undefined,
-    });
-    if (confirmed.error) {
-      return { ok: false, message: confirmed.error.message };
-    }
-
-    const { data: signedIn, error: signInError } =
-      await supabase.auth.signInWithPassword({ email, password });
-    if (signInError || !signedIn.user) {
-      return {
-        ok: false,
-        message:
-          signInError?.message ?? "Anmeldung nach Kontoanlage fehlgeschlagen.",
-      };
-    }
-    return { ok: true, userId: signedIn.user.id, created: true };
+  if (signedUp.user && !signedUp.session) {
+    return {
+      ok: false,
+      needsEmailConfirmation: true,
+      message:
+        "Bitte bestätige deine E-Mail über den Link in deinem Postfach. Danach wird der Tag automatisch verknüpft.",
+    };
   }
 
   if (signUpError && looksLikeExistingUser(signUpError.message)) {
@@ -120,8 +109,7 @@ export async function ensureClaimAccount(input: {
     if (signInError || !signedIn.user) {
       return {
         ok: false,
-        message:
-          "Dieses Konto existiert bereits. Passwort prüfen oder über /login anmelden.",
+        message: GENERIC_EXISTING_ACCOUNT,
       };
     }
     return { ok: true, userId: signedIn.user.id, created: false };
@@ -131,50 +119,9 @@ export async function ensureClaimAccount(input: {
     return { ok: false, message: signUpError.message };
   }
 
-  // Fallback: admin create + sign-in (seamless first-scan onboarding).
-  if (isSupabaseAdminConfigured()) {
-    const admin = createAdminClient();
-    const created = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: name ? { name } : undefined,
-    });
-
-    if (created.error || !created.data.user) {
-      if (created.error && looksLikeExistingUser(created.error.message)) {
-        const { data: signedIn, error: signInError } =
-          await supabase.auth.signInWithPassword({ email, password });
-        if (signInError || !signedIn.user) {
-          return {
-            ok: false,
-            message:
-              "Dieses Konto existiert bereits. Passwort prüfen oder über /login anmelden.",
-          };
-        }
-        return { ok: true, userId: signedIn.user.id, created: false };
-      }
-      return {
-        ok: false,
-        message: created.error?.message ?? "Kontoanlage fehlgeschlagen.",
-      };
-    }
-
-    const { data: signedIn, error: signInError } =
-      await supabase.auth.signInWithPassword({ email, password });
-    if (signInError || !signedIn.user) {
-      return {
-        ok: false,
-        message:
-          signInError?.message ?? "Anmeldung nach Kontoanlage fehlgeschlagen.",
-      };
-    }
-    return { ok: true, userId: signedIn.user.id, created: true };
-  }
-
   return {
     ok: false,
     message:
-      "Konto angelegt, aber keine Sitzung. SUPABASE_SERVICE_ROLE_KEY für Auto-Confirm setzen oder E-Mail-Confirm in Supabase deaktivieren.",
+      "Kontoanlage fehlgeschlagen. Bitte erneut versuchen oder über /login anmelden.",
   };
 }

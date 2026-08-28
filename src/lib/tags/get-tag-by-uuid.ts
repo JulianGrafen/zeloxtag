@@ -2,6 +2,8 @@ import { cache } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
+import { getCurrentUser } from "@/lib/auth/get-user";
+import { viewerCanAccessPrivateTwin } from "@/lib/auth/vehicle-access";
 import {
   DOCUMENT_DETAIL_COLUMNS,
   DOCUMENT_LIST_COLUMNS,
@@ -26,6 +28,7 @@ import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
 import { getMockTagScan, MOCK_TAG_UUIDS } from "./mock-tags";
+import { toGuestClientTagScanResult } from "./public-tag-dto";
 
 function isTagScanResult(value: unknown): value is TagScanResult {
   if (!value || typeof value !== "object") return false;
@@ -240,8 +243,20 @@ async function getTagByUuidUncached(
 
   if (isSupabaseAdminConfigured()) {
     const viaAdmin = await resolveTagWithAdmin(normalized);
-    if (viaAdmin) return viaAdmin;
-    return null;
+    if (!viaAdmin) return null;
+
+    if (viaAdmin.vehicle) {
+      const viewer = await getCurrentUser();
+      const canAccess = await viewerCanAccessPrivateTwin(
+        viaAdmin.vehicle,
+        viewer?.id ?? null,
+      );
+      if (!canAccess) {
+        return toGuestClientTagScanResult(viaAdmin);
+      }
+    }
+
+    return viaAdmin;
   }
 
   return resolveTagWithRpc(normalized);

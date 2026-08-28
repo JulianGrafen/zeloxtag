@@ -2,19 +2,14 @@
 
 import { ensureClaimAccount } from "@/lib/auth/ensure-claim-account";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
-import { getSupabaseEnv } from "@/lib/supabase/env";
-import { createClient } from "@/lib/supabase/server";
-import { createUnclaimedTag } from "@/lib/tags/create-unclaimed-tag";
+import { completeClaimForOwner } from "@/lib/tags/complete-claim-for-owner";
+import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import {
-  clearPendingClaim,
-  getPendingClaim,
+  setPendingClaim,
   type PendingClaim,
 } from "@/lib/tags/pending-claim";
+import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export type ClaimTagInput = {
   tagUuid: string;
@@ -30,6 +25,7 @@ export type ClaimTagInput = {
 
 export type ClaimTagResult =
   | { status: "error"; message: string }
+  | { status: "confirm_email"; message: string }
   | { status: "continue"; href: string; nextTagUuid: string | null };
 
 type NormalizedClaim = PendingClaim & {
@@ -128,6 +124,21 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
     });
 
     if (!account.ok) {
+      if (account.needsEmailConfirmation) {
+        await setPendingClaim({
+          tagUuid: normalized.tagUuid,
+          make: normalized.make,
+          model: normalized.model,
+          year: normalized.year,
+          vin: normalized.vin,
+          email: normalized.email,
+          name: normalized.name,
+        });
+        return {
+          status: "confirm_email",
+          message: account.message,
+        };
+      }
       return { status: "error", message: account.message };
     }
     ownerUserId = account.userId;
@@ -164,10 +175,7 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
 }
 
 /**
- * Completes a claim after auth callback (optional path).
- * Prefer {@link completePendingClaimForUser} from the auth callback when the
- * session was just written onto the Route Handler response (not yet in
- * `cookies()` from `next/headers`).
+ * Completes a claim after auth callback when the session is available via cookies().
  */
 export async function completePendingClaim(): Promise<
   | { status: "claimed"; tagUuid: string; nextTagUuid: string | null }
@@ -176,124 +184,7 @@ export async function completePendingClaim(): Promise<
 > {
   const user = await getCurrentUser();
   if (!user) {
-    const pending = await getPendingClaim();
-    if (!pending) return null;
     return { status: "error", message: "Sitzung nach Login nicht gefunden." };
   }
   return completePendingClaimForUser(user.id);
-}
-
-/** Complete a pending claim for a known user id (auth callback). */
-export async function completePendingClaimForUser(
-  ownerUserId: string,
-): Promise<
-  | { status: "claimed"; tagUuid: string; nextTagUuid: string | null }
-  | { status: "error"; message: string }
-  | null
-> {
-  const pending = await getPendingClaim();
-  if (!pending) return null;
-
-  const result = await completeClaimForOwner(ownerUserId, pending);
-  await clearPendingClaim();
-  return result;
-}
-
-async function completeClaimForOwner(
-  ownerUserId: string,
-  claim: PendingClaim,
-): Promise<
-  | { status: "claimed"; tagUuid: string; nextTagUuid: string | null }
-  | { status: "error"; message: string }
-> {
-  if (!isSupabaseAdminConfigured()) {
-    return {
-      status: "error",
-      message: "SUPABASE_SERVICE_ROLE_KEY fehlt für Claim + Tag-Minting.",
-    };
-  }
-  const supabase = createAdminClient();
-
-  const user = await getCurrentUser();
-  const authed = await createClient();
-  if (user) {
-    const meta: Record<string, string> = {
-      active_tag_uuid: claim.tagUuid,
-    };
-    if (claim.name && !user.user_metadata?.name) {
-      meta.name = claim.name;
-    }
-    await authed.auth.updateUser({ data: meta });
-  }
-
-  const { data: tag, error: tagError } = await supabase
-    .from("tags")
-    .select("*")
-    .eq("uuid", claim.tagUuid)
-    .maybeSingle();
-
-  if (tagError) {
-    return { status: "error", message: `Tag: ${tagError.message}` };
-  }
-  if (!tag) {
-    return { status: "error", message: "Tag nicht gefunden." };
-  }
-  if (tag.status !== "unclaimed" || tag.vehicle_id) {
-    return { status: "error", message: "Dieser Tag ist bereits verknüpft." };
-  }
-
-  const { data: vehicle, error: vehicleError } = await supabase
-    .from("vehicles")
-    .insert({
-      user_id: ownerUserId,
-      make: claim.make,
-      model: claim.model,
-      year: claim.year,
-      vin: claim.vin,
-    })
-    .select("*")
-    .single();
-
-  if (vehicleError || !vehicle) {
-    return {
-      status: "error",
-      message: `Fahrzeug: ${vehicleError?.message ?? "Anlage fehlgeschlagen"}`,
-    };
-  }
-
-  const { data: linkedTag, error: linkError } = await supabase
-    .from("tags")
-    .update({
-      status: "active",
-      vehicle_id: vehicle.id,
-    })
-    .eq("id", tag.id)
-    .eq("status", "unclaimed")
-    .is("vehicle_id", null)
-    .select("id")
-    .maybeSingle();
-
-  if (linkError || !linkedTag) {
-    await supabase.from("vehicles").delete().eq("id", vehicle.id);
-    return {
-      status: "error",
-      message: linkError
-        ? `Verknüpfung: ${linkError.message}`
-        : "Dieser Tag wurde gerade von jemand anderem beansprucht.",
-    };
-  }
-
-  let nextTagUuid: string | null = null;
-  try {
-    const nextTag = await createUnclaimedTag();
-    nextTagUuid = nextTag.uuid;
-  } catch (mintError) {
-    console.error("Failed to mint next unclaimed tag after claim:", mintError);
-  }
-
-  return {
-    status: "claimed",
-    tagUuid: claim.tagUuid,
-    nextTagUuid,
-  };
 }

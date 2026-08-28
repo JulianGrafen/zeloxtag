@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { optimizeWebImageBytes } from "@/lib/image/optimize-web-image";
+import { getCurrentUser } from "@/lib/auth/get-user";
+import { sessionCanAccessVehicleMedia } from "@/lib/auth/vehicle-access";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
@@ -80,6 +82,18 @@ export async function GET(
     return NextResponse.json(
       { ok: false, error: "Invalid vehicle id." },
       { status: 400 },
+    );
+  }
+
+  const viewer = await getCurrentUser();
+  const allowed = await sessionCanAccessVehicleMedia(
+    parsed.data,
+    viewer?.id ?? null,
+  );
+  if (!allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Vehicle photo not found." },
+      { status: 404 },
     );
   }
 

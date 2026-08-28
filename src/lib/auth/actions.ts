@@ -21,6 +21,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type AuthActionResult =
   | { status: "ok"; message?: string; redirectTo?: string }
+  | { status: "confirm_email"; message: string }
   | { status: "mfa_required" }
   | { status: "error"; message: string }
   | { status: "unconfigured" }
@@ -114,8 +115,8 @@ export async function signInWithPassword(
 
 /**
  * Password signup via Server Action so session cookies are HttpOnly.
- * If Supabase requires email confirmation, the service role confirms immediately
- * so onboarding stays seamless (no inbox confirm step).
+ * When Supabase requires email confirmation, returns `confirm_email` instead
+ * of bypassing inbox verification via the service role.
  */
 export async function signUpWithPassword(
   emailRaw: string,
@@ -161,31 +162,17 @@ export async function signUpWithPassword(
   }
 
   if (!data.session) {
-    if (!data.user || !isSupabaseAdminConfigured()) {
+    if (data.user) {
       return {
-        status: "error",
+        status: "confirm_email",
         message:
-          "Konto angelegt, aber keine Sitzung. SUPABASE_SERVICE_ROLE_KEY setzen oder E-Mail-Confirm in Supabase deaktivieren.",
+          "Bitte bestätige deine E-Mail über den Link in deinem Postfach, bevor du fortfährst.",
       };
     }
-
-    const admin = createAdminClient();
-    const confirmed = await admin.auth.admin.updateUserById(data.user.id, {
-      email_confirm: true,
-    });
-    if (confirmed.error) {
-      return { status: "error", message: confirmed.error.message };
-    }
-
-    const { data: signedIn, error: signInError } =
-      await supabase.auth.signInWithPassword({ email, password });
-    if (signInError || !signedIn.session) {
-      return {
-        status: "error",
-        message:
-          signInError?.message ?? "Anmeldung nach Kontoanlage fehlgeschlagen.",
-      };
-    }
+    return {
+      status: "error",
+      message: "Kontoanlage fehlgeschlagen. Bitte erneut versuchen.",
+    };
   }
 
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();

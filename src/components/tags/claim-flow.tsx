@@ -33,6 +33,7 @@ export function ClaimFlow({
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const needsAccount = !isAuthenticated;
@@ -68,6 +69,7 @@ export function ClaimFlow({
 
   function submitClaim() {
     setError(null);
+    setInfo(null);
 
     const vehicleError = validateVehicle();
     if (vehicleError) {
@@ -104,6 +106,11 @@ export function ClaimFlow({
 
         if (result.status === "error") {
           setError(result.message);
+          return;
+        }
+
+        if (result.status === "confirm_email") {
+          setInfo(result.message);
           return;
         }
 
@@ -343,6 +350,11 @@ export function ClaimFlow({
                 {error}
               </p>
             ) : null}
+            {info ? (
+              <p role="status" className="text-sm text-muted-foreground">
+                {info}
+              </p>
+            ) : null}
 
             <div className="flex gap-2 pt-1">
               <Button
@@ -350,6 +362,7 @@ export function ClaimFlow({
                 variant="outline"
                 onClick={() => {
                   setError(null);
+                  setInfo(null);
                   setStep("vehicle");
                 }}
                 disabled={pending}
