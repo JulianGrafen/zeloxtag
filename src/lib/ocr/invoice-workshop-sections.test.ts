@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  SPEEDWORKZ_CAMERA_COLUMN_OCR_TEXT,
   SPEEDWORKZ_CAMERA_OCR_TEXT,
   SPEEDWORKZ_EXPECTED_LINE_ITEMS,
   SPEEDWORKZ_GROSS_TOTAL,
@@ -219,6 +220,91 @@ describe("Speedworkz section invoice", () => {
     expect(joined).toContain("Thermostat und Wasserschlauch erneuern 166,37");
     expect(joined).toContain("Thermostat gebrochen");
     expect(joined).toContain("Wasserflansch undicht");
+  });
+
+  it("joins column-split OCR to Preis-€, not Std or Einzelpreis", () => {
+    const joined = prejoinWorkshopSectionLines(
+      [
+        "Motor wird heiß lt. Kunde Thermostat wurde erneuert",
+        "4",
+        "0,50",
+        "Std.",
+        "46,22",
+      ].join("\n"),
+    );
+
+    expect(joined).toContain(
+      "Motor wird heiß lt. Kunde Thermostat wurde erneuert 46,22",
+    );
+    expect(joined).not.toMatch(/erneuert 0,50/);
+  });
+
+  it("extracts 8 Preis-€ positions from column-split camera OCR", () => {
+    const items = extractWorkshopSectionLineItems(
+      SPEEDWORKZ_CAMERA_COLUMN_OCR_TEXT,
+    );
+    expect(items).not.toBeNull();
+    expect(items!).toHaveLength(8);
+
+    expect(items![0]!.amount).toBeCloseTo(46.22, 2);
+    expect(items![1]!.amount).toBeCloseTo(166.37, 2);
+    expect(items![2]!.amount).toBeCloseTo(46.22, 2);
+    expect(
+      items!.find((item) => /kühlerfrostschutz/i.test(item.label))!.amount,
+    ).toBeCloseTo(26, 2);
+    expect(
+      items!.find((item) => /sensor/i.test(item.label))!.amount,
+    ).toBeCloseTo(28.73, 2);
+
+    const labels = items!.map((item) => item.label.toLowerCase());
+    expect(labels.some((label) => label.includes("thermostat gebrochen"))).toBe(
+      false,
+    );
+    expect(labels.some((label) => /^gesamt$/.test(label.trim()))).toBe(false);
+
+    expect(items!.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
+      SPEEDWORKZ_NET_SUM,
+      2,
+    );
+  });
+
+  it("replaces Std-as-€ vision rows using column-split camera OCR", () => {
+    const hoursAsEur = [
+      {
+        label: "Motor wird heiß lt. Kunde Thermost wurde erneuert",
+        amount: 0.5,
+      },
+      { label: "Thermostat und Wasserschlauch erneuern", amount: 1.8 },
+      { label: "Kühlmitteltemp.sensor prüfen und erneuern", amount: 0.5 },
+      { label: "Wasserschlauch", amount: 65.12 },
+      { label: "Thermostat", amount: 70.83 },
+      { label: "Kühlerfrostschutz Blau/Rot", amount: 6.5 },
+      { label: "Sensor, Kühlmitteltemperatur", amount: 30 },
+      { label: "Gesamt", amount: 540.84 },
+    ];
+
+    expect(
+      isGarbageWorkshopLineItems(hoursAsEur, { netSum: SPEEDWORKZ_NET_SUM }),
+    ).toBe(true);
+
+    const resolved = resolveWorkshopLineItems({
+      llmItems: hoursAsEur,
+      ocrText: SPEEDWORKZ_CAMERA_COLUMN_OCR_TEXT,
+    });
+
+    expect(resolved).toHaveLength(8);
+    expect(resolved!.some((item) => item.amount === 0.5)).toBe(false);
+    expect(resolved!.some((item) => item.amount === 1.8)).toBe(false);
+    expect(resolved!.some((item) => /^gesamt$/i.test(item.label))).toBe(false);
+    expect(resolved![0]!.amount).toBeCloseTo(46.22, 2);
+    expect(resolved![1]!.amount).toBeCloseTo(166.37, 2);
+    expect(
+      resolved!.find((item) => /kühlerfrostschutz/i.test(item.label))!.amount,
+    ).toBeCloseTo(26, 2);
+    expect(resolved!.reduce((s, i) => s + i.amount, 0)).toBeCloseTo(
+      SPEEDWORKZ_NET_SUM,
+      2,
+    );
   });
 
   it("replaces mega-merged vision rows using camera OCR checksum", () => {

@@ -3,8 +3,17 @@ import { describe, expect, it } from "vitest";
 import {
   dedupeInvoiceLineItemUnitPrices,
   isHourlyRateOfLineTotal,
+  isJunkInvoiceLineLabel,
   isUnitPriceAmountOfTotal,
 } from "@/lib/ocr/invoice-line-item-dedupe";
+
+describe("isJunkInvoiceLineLabel", () => {
+  it("treats Gesamt footer as junk, not a position", () => {
+    expect(isJunkInvoiceLineLabel("Gesamt")).toBe(true);
+    expect(isJunkInvoiceLineLabel("Endpreis")).toBe(true);
+    expect(isJunkInvoiceLineLabel("Wasserschlauch")).toBe(false);
+  });
+});
 
 describe("isUnitPriceAmountOfTotal", () => {
   it("detects qty × unit = total", () => {

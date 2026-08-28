@@ -31,6 +31,12 @@ const SKIP_LINE =
 const AMOUNT_ONLY_LINE =
   /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*(?:€|eur))?\s*$/i;
 
+/** Art/PG column (1–9) printed on its own OCR line. */
+const WORKSHOP_ART_PG_TOKEN = /^[1-9]$/;
+
+/** Unit cell between Std/Einzelpreis and Preis-€. */
+const WORKSHOP_UNIT_TOKEN = /^(?:std\.?|stück|stk\.?|€|eur)$/i;
+
 function cleanLabel(value: string): string {
   return value
     .replace(/\s+/g, " ")
@@ -167,7 +173,10 @@ function lineHasMoney(line: string): boolean {
 function isWorkshopWrapFragment(line: string): boolean {
   const trimmed = line.trim();
   if (!trimmed || lineHasMoney(trimmed)) return false;
-  if (/^\d+\s/.test(trimmed)) return false;
+  if (WORKSHOP_ART_PG_TOKEN.test(trimmed) || WORKSHOP_UNIT_TOKEN.test(trimmed)) {
+    return false;
+  }
+  if (/^\d+$/.test(trimmed) || /^\d+\s/.test(trimmed)) return false;
   if (SKIP_LINE.test(trimmed) || SECTION_STOP.test(trimmed)) return false;
   if (isContinuationInvoiceLabel(trimmed)) return true;
   if (trimmed.length <= 24 && !/\s/.test(trimmed)) return true;
@@ -181,22 +190,39 @@ function isWorkshopWrapFragment(line: string): boolean {
 }
 
 /**
- * Join description + following amount-only line without gluing diagnostic notes
- * into the next priced position.
+ * Join description + Preis-€. Camera OCR often prints Art, Std/Einzelpreis, and
+ * Preis-€ on separate lines — keep the last amount in that run (rightmost column).
  */
 export function prejoinWorkshopSectionLines(rawText: string): string {
   const lines = rawText.split("\n");
   const joined: string[] = [];
   let pending: string | null = null;
+  let amountRun: string[] = [];
 
-  const flushPendingAsNote = () => {
-    if (pending) joined.push(pending);
+  const flushPending = () => {
+    if (pending) {
+      if (amountRun.length > 0) {
+        joined.push(`${pending} ${amountRun[amountRun.length - 1]}`);
+      } else {
+        joined.push(pending);
+      }
+    } else if (amountRun.length > 0) {
+      joined.push(amountRun[amountRun.length - 1]!);
+    }
     pending = null;
+    amountRun = [];
   };
 
   for (const rawLine of lines) {
     const line = rawLine.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
     if (!line) continue;
+
+    if (WORKSHOP_UNIT_TOKEN.test(line)) {
+      continue;
+    }
+    if (WORKSHOP_ART_PG_TOKEN.test(line) && pending) {
+      continue;
+    }
 
     if (
       SECTION_LABOR.test(line) ||
@@ -205,27 +231,23 @@ export function prejoinWorkshopSectionLines(rawText: string): string {
       SECTION_STOP.test(line) ||
       SKIP_LINE.test(line)
     ) {
-      flushPendingAsNote();
+      flushPending();
       joined.push(line);
       continue;
     }
 
     if (AMOUNT_ONLY_LINE.test(line)) {
-      if (pending) {
-        joined.push(`${pending} ${line}`);
-        pending = null;
-      } else {
-        joined.push(line);
-      }
+      amountRun.push(line);
       continue;
     }
 
     if (lineHasMoney(line)) {
-      if (pending && isWorkshopWrapFragment(pending)) {
+      if (pending && isWorkshopWrapFragment(pending) && amountRun.length === 0) {
         joined.push(`${pending} ${line}`);
         pending = null;
+        amountRun = [];
       } else {
-        flushPendingAsNote();
+        flushPending();
         joined.push(line);
       }
       continue;
@@ -234,17 +256,17 @@ export function prejoinWorkshopSectionLines(rawText: string): string {
     if (pending) {
       if (isWorkshopWrapFragment(line)) {
         pending = `${pending} ${line}`;
-      } else {
-        joined.push(pending);
-        pending = line;
+        continue;
       }
+      flushPending();
+      pending = line;
       continue;
     }
 
     pending = line;
   }
 
-  flushPendingAsNote();
+  flushPending();
   return joined.join("\n");
 }
 
@@ -287,7 +309,9 @@ export function sanitizeWorkshopLineItems(
       Number.isFinite(item.amount) &&
       item.amount > 0 &&
       !isJunkInvoiceLineLabel(item.label) &&
-      !/^(?:endpreis|endsummen|netto\s+summe|positionssumme)\b/i.test(item.label.trim()),
+      !/^(?:endpreis|endsummen|netto\s+summe|positionssumme|gesamt)\b/i.test(
+        item.label.trim(),
+      ),
   );
   return cleaned.length > 0 ? cleaned : null;
 }
@@ -305,11 +329,20 @@ export function isGarbageWorkshopLineItems(
   const junkRows = items.filter((item) => isJunkInvoiceLineLabel(item.label));
   if (junkRows.length >= 2) return true;
 
-  if (items.some((item) => /^endpreis\b/i.test(item.label.trim()))) return true;
+  if (items.some((item) => /^endpreis\b|^gesamt$/i.test(item.label.trim()))) {
+    return true;
+  }
 
   if (items.some((item) => item.label.trim().length > 80)) return true;
 
   const netSum = options?.netSum ?? null;
+  if (netSum != null && netSum > 50) {
+    const hourLike = items.filter(
+      (item) => item.amount > 0 && item.amount <= 3,
+    ).length;
+    if (hourLike >= 2) return true;
+  }
+
   if (netSum != null && netSum > 0) {
     const sum = sumItems(items);
     const delta = Math.abs(sum - netSum);
@@ -387,7 +420,9 @@ export function resolveWorkshopLineItems(options: {
   if (bestOcr && netSum != null && llm.length > 0) {
     const llmGap = netDelta(llm, netSum) ?? Number.POSITIVE_INFINITY;
     const ocrGap = netDelta(bestOcr, netSum) ?? Number.POSITIVE_INFINITY;
-    if (ocrGap + 0.05 < llmGap) return bestOcr;
+    const ocrClose = ocrGap <= INVOICE_NET_TOTAL_TOLERANCE_EUR;
+    const llmClose = llmGap <= INVOICE_NET_TOTAL_TOLERANCE_EUR;
+    if (ocrClose && (!llmClose || ocrGap + 0.05 < llmGap)) return bestOcr;
   }
 
   const llmLooksMegaMerged =

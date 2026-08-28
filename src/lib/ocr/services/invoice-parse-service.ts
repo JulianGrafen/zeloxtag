@@ -42,6 +42,7 @@ import {
   buildInvoiceSystemPrompt,
   buildTuevCostSystemPrompt,
   INVOICE_USER_PROMPT_LINES,
+  INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES,
   TUEV_COST_USER_PROMPT_LINES,
 } from "@/lib/ocr/invoice-parse-prompts";
 import {
@@ -172,9 +173,6 @@ export class InvoiceParseService {
     const docHint = isTuevReport
       ? "This is a German HU/AU inspection report (TÜV-Bericht)."
       : "This is a German vehicle invoice, workshop receipt, or service bill.";
-    const userLines = isTuevReport
-      ? TUEV_COST_USER_PROMPT_LINES
-      : INVOICE_USER_PROMPT_LINES;
 
     const prepared = isTuevReport
       ? input
@@ -202,6 +200,16 @@ export class InvoiceParseService {
           layoutPlainText.trim() || azureLayout?.content || "",
         )
       : ("column" as const);
+
+    const userLines = isTuevReport
+      ? TUEV_COST_USER_PROMPT_LINES
+      : tableFormat === "workshop-sections"
+        ? [
+            ...INVOICE_USER_PROMPT_LINES,
+            ...INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES,
+            "lineItems.amount = Spalte Preis-€ (rechts). Niemals Std. (0,50 / 1,80) oder Einzelpreis als amount.",
+          ]
+        : INVOICE_USER_PROMPT_LINES;
 
     if (
       !isTuevReport &&

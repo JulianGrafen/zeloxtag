@@ -11,7 +11,7 @@ const PRICE_ONLY_LABEL =
 
 /** Unit/column/footer tokens misread as position labels (common Azure column shift). */
 const JUNK_INVOICE_LINE_LABEL =
-  /^(?:stück|stk\.?|std\.?|einheit|anzahl|art\.?|pg\.?|pos\.?|menge|e-?preis|einzelpreis|ges\.?\s*preis|preis-?€|endpreis|endsummen|netto(?:\s+summe)?|positionssumme|zahlbar|brutto|endsumme|mechanik)$/i;
+  /^(?:stück|stk\.?|std\.?|einheit|anzahl|art\.?|pg\.?|pos\.?|menge|e-?preis|einzelpreis|ges\.?\s*preis|preis-?€|endpreis|endsummen|netto(?:\s+summe)?|positionssumme|zahlbar|brutto|endsumme|mechanik|gesamt)$/i;
 
 export function isJunkInvoiceLineLabel(label: string): boolean {
   const trimmed = label.trim();
@@ -20,6 +20,7 @@ export function isJunkInvoiceLineLabel(label: string): boolean {
   if (UNIT_PRICE_LABEL.test(trimmed) || COLUMN_HEADER_LABEL.test(trimmed)) return true;
   // Footer row captured as line item
   if (/^endpreis\b/i.test(trimmed)) return true;
+  if (/^gesamt$/i.test(trimmed)) return true;
   if (/^netto\s+summe\b/i.test(trimmed)) return true;
   if (/^gesamtbetrag\b/i.test(trimmed)) return true;
   if (/^nettosumme\b/i.test(trimmed)) return true;
