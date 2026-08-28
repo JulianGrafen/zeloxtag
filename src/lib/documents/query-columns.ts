@@ -67,6 +67,29 @@ export const DOCUMENT_DETAIL_COLUMNS = [
   "technical_specs",
 ].join(", ");
 
+/** ABE / Gutachten list — omits line_items (detail page loads separately). */
+export const DOCUMENT_ABE_LIST_COLUMNS = [
+  "id",
+  "vehicle_id",
+  "user_id",
+  "created_by",
+  "title",
+  "type",
+  "file_url",
+  "vendor",
+  "category",
+  "kba_number",
+  "vehicle_approvals",
+  "authority",
+  "part_category",
+  "approval_fields",
+  "manufacturer",
+  "amount",
+  "date",
+  "show_on_public_showcase",
+  "created_at",
+].join(", ");
+
 export const DOCUMENT_SHOWCASE_COLUMNS = [
   "id",
   "vehicle_id",

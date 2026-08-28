@@ -18,7 +18,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function UmbautenPage({ params }: UmbautenPageProps) {
   const { uuid } = await params;
-  const { result, access, isDemoShowcase } = await requireTagWriter(uuid);
+  const { result, access, isDemoShowcase } = await requireTagWriter(uuid, {
+    load: {
+      documents: {
+        mode: "types",
+        types: ["invoice"],
+        columns: "invoice",
+      },
+    },
+  });
   const documents =
     access.isContributor && !access.isOwner
       ? result.documents.filter((doc) => doc.type === "invoice")

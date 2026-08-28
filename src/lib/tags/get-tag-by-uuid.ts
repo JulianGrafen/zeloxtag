@@ -5,9 +5,11 @@ import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { viewerCanAccessPrivateTwin } from "@/lib/auth/vehicle-access";
 import {
+  DOCUMENT_ABE_LIST_COLUMNS,
   DOCUMENT_DETAIL_COLUMNS,
   DOCUMENT_INVOICE_LIST_COLUMNS,
   DOCUMENT_LIST_COLUMNS,
+  DOCUMENT_SHOWCASE_COLUMNS,
   TAG_COLUMNS,
   VEHICLE_COLUMNS,
 } from "@/lib/documents/query-columns";
@@ -149,10 +151,20 @@ function normalizeScanResult(
   };
 }
 
+export type DocumentListColumnProfile =
+  | "list"
+  | "invoice"
+  | "showcase"
+  | "abe";
+
 export type TagDocumentLoad =
-  | { mode: "all"; columns?: "list" | "invoice" }
+  | { mode: "all"; columns?: DocumentListColumnProfile }
   | { mode: "none" }
-  | { mode: "types"; types: DocumentType[]; columns?: "list" | "invoice" };
+  | {
+      mode: "types";
+      types: DocumentType[];
+      columns?: DocumentListColumnProfile;
+    };
 
 export type TagLoadOptions = {
   documents?: TagDocumentLoad;
@@ -165,9 +177,10 @@ function documentSelectColumns(load?: TagDocumentLoad): string {
       : load?.mode === "all"
         ? load.columns
         : undefined;
-  return columns === "invoice"
-    ? DOCUMENT_INVOICE_LIST_COLUMNS
-    : DOCUMENT_LIST_COLUMNS;
+  if (columns === "invoice") return DOCUMENT_INVOICE_LIST_COLUMNS;
+  if (columns === "showcase") return DOCUMENT_SHOWCASE_COLUMNS;
+  if (columns === "abe") return DOCUMENT_ABE_LIST_COLUMNS;
+  return DOCUMENT_LIST_COLUMNS;
 }
 
 function usesLightDocumentNormalize(load?: TagDocumentLoad): boolean {
@@ -177,7 +190,7 @@ function usesLightDocumentNormalize(load?: TagDocumentLoad): boolean {
       (type) => type === "invoice" || type === "other",
     );
   }
-  return load.columns === "invoice";
+  return load.columns === "invoice" || load.columns === "showcase";
 }
 
 async function resolveMockTag(uuid: string): Promise<TagScanResult | null> {

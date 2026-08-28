@@ -31,7 +31,12 @@ function documentLoadForFilter(
     documents: {
       mode: "types",
       types: [filterType],
-      columns: filterType === "invoice" ? "invoice" : "list",
+      columns:
+        filterType === "invoice"
+          ? "invoice"
+          : filterType === "abe"
+            ? "abe"
+            : "list",
     },
   };
 }

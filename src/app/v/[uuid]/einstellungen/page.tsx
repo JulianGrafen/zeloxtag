@@ -27,12 +27,22 @@ export default async function VehicleSettingsPage({
   const { uuid } = await params;
   const { result, isDemoShowcase } = await requireTagOwner(uuid, {
     loginNext: `/v/${uuid}/einstellungen`,
+    load: {
+      documents: {
+        mode: "types",
+        types: ["invoice"],
+        columns: "showcase",
+      },
+    },
   });
   const vehicle = result.vehicle!;
-  const expose = await getOwnerExposeState(vehicle.id);
   const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(uuid);
-  const canUseExpose =
-    isDemo || (await ownerHasFeature(vehicle.user_id, FEATURE.GENERATE_EXPOSE));
+  const [expose, canUseExpose] = await Promise.all([
+    getOwnerExposeState(vehicle.id),
+    isDemo
+      ? Promise.resolve(true)
+      : ownerHasFeature(vehicle.user_id, FEATURE.GENERATE_EXPOSE),
+  ]);
 
   return (
     <AppShell showNavbar={false}>

@@ -73,9 +73,9 @@ export async function requireTagWriter(
  */
 export async function requireTagOwner(
   tagUuid: string,
-  options?: { loginNext?: string },
+  options?: { loginNext?: string; load?: TagLoadOptions },
 ): Promise<TagAccessContext> {
-  const result = await getTagByUuid(tagUuid);
+  const result = await getTagByUuid(tagUuid, options?.load);
 
   if (!result?.vehicle || result.tag.status !== "active") {
     notFound();
