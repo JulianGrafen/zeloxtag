@@ -11,11 +11,6 @@ import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 
 import type { DocumentParseKind, OcrDocumentType } from "./ocr-types";
-import {
-  isPdfUploadFile,
-  prepareClientOcrFiles,
-  resolveClientOcrMaxPages,
-} from "./prepare-client-ocr-file";
 import type {
   InvoiceTextParseCategory,
   InvoiceTextParseResult,
@@ -281,21 +276,6 @@ export async function analyzeDocumentFiles(
   const documentType = resolveDocumentType(options);
   const vehicleId = options.vehicleId.trim();
 
-  const maxPages = resolveClientOcrMaxPages({
-    documentType,
-    approvalKind: options.approvalKind ?? null,
-  });
-  const expandedFiles: File[] = [];
-  for (const file of files) {
-    if (isPdfUploadFile(file)) {
-      expandedFiles.push(
-        ...(await prepareClientOcrFiles(file, { maxPages })),
-      );
-    } else {
-      expandedFiles.push(file);
-    }
-  }
-
   const approvalKind = options.approvalKind ?? null;
   const vehicleContext = options.vehicleContext ?? null;
   const garageVin = options.garageVin ?? null;
@@ -303,10 +283,10 @@ export async function analyzeDocumentFiles(
   const teilegutachtenScope = options.teilegutachtenScope;
   const pruefung192Scope = options.pruefung192Scope;
 
-  if (expandedFiles.length === 1) {
+  if (files.length === 1) {
     onPageProgress?.(1, 1);
     return analyzeOneFile(
-      expandedFiles[0],
+      files[0],
       vehicleId,
       documentType,
       approvalKind,
@@ -319,7 +299,7 @@ export async function analyzeDocumentFiles(
   }
 
   const results = await mapWithConcurrency(
-    expandedFiles,
+    files,
     resolveOcrMaxParallelPages(),
     (file, index) =>
       analyzeOneFile(
