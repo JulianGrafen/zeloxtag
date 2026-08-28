@@ -127,23 +127,6 @@ async function authorizeDocumentRead(
   const user = await getCurrentUser();
   if (!user) return false;
 
-  const readVehicle = async () => {
-    if (isSupabaseAdminConfigured()) {
-      const admin = createAdminClient();
-      return admin
-        .from("vehicles")
-        .select("id, user_id")
-        .eq("id", vehicleId)
-        .maybeSingle();
-    }
-    const supabase = await createClient();
-    return supabase
-      .from("vehicles")
-      .select("id, user_id")
-      .eq("id", vehicleId)
-      .maybeSingle();
-  };
-
   const readGrant = async () => {
     if (isSupabaseAdminConfigured()) {
       const admin = createAdminClient();
@@ -165,10 +148,17 @@ async function authorizeDocumentRead(
       .maybeSingle();
   };
 
-  const { data: ownedVehicle } = await readVehicle();
-  if (!ownedVehicle) return false;
+  const supabase = await createClient();
+  const { data: ownedVehicle } = await supabase
+    .from("vehicles")
+    .select("id, user_id")
+    .eq("id", vehicleId)
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-  if (ownedVehicle.user_id === user.id) return true;
+  if (ownedVehicle?.user_id === user.id) {
+    return true;
+  }
 
   const { data: grant } = await readGrant();
   if (!grant) return false;
@@ -176,12 +166,12 @@ async function authorizeDocumentRead(
   const documentId = documentIdFromStoragePath(storagePath);
   if (!documentId) return false;
 
-  const supabase = isSupabaseAdminConfigured()
+  const docClient = isSupabaseAdminConfigured()
     ? createAdminClient()
     : await createClient();
 
   // Contributor SELECT policy is invoice-only (+ history toggle via RLS).
-  let query = supabase
+  let query = docClient
     .from("documents")
     .select("id")
     .eq("id", documentId)

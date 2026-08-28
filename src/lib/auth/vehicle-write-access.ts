@@ -2,6 +2,7 @@ import {
   createAdminClient,
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
+import { loadVehicleOwnerUserId } from "@/lib/auth/load-vehicle-owner-id";
 import { createClient } from "@/lib/supabase/server";
 
 export type VehicleWriteAccess = {
@@ -32,89 +33,92 @@ export function writeAccessErrorMessage(access: VehicleWriteAccess): string {
   return access.message?.trim() || "Kein Schreibzugriff auf dieses Fahrzeug.";
 }
 
+async function readContributorGrant(vehicleId: string, userId: string) {
+  if (isSupabaseAdminConfigured()) {
+    const admin = createAdminClient();
+    return admin
+      .from("vehicle_contributors")
+      .select("id")
+      .eq("vehicle_id", vehicleId)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+  }
+  const supabase = await createClient();
+  return supabase
+    .from("vehicle_contributors")
+    .select("id")
+    .eq("vehicle_id", vehicleId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+}
+
+async function readOwnedVehicle(vehicleId: string, userId: string) {
+  const supabase = await createClient();
+  return supabase
+    .from("vehicles")
+    .select("id, user_id")
+    .eq("id", vehicleId)
+    .eq("user_id", userId)
+    .maybeSingle();
+}
+
 async function resolveVehicleWriteAccessFromDb(
   vehicleId: string,
   userId: string,
 ): Promise<VehicleWriteAccess> {
-  const readVehicle = async () => {
-    if (isSupabaseAdminConfigured()) {
-      const admin = createAdminClient();
-      return admin
-        .from("vehicles")
-        .select("id, user_id")
-        .eq("id", vehicleId)
-        .maybeSingle();
-    }
-    const supabase = await createClient();
-    return supabase
-      .from("vehicles")
-      .select("id, user_id")
-      .eq("id", vehicleId)
-      .maybeSingle();
-  };
+  const { data: ownedVehicle, error: ownerError } = await readOwnedVehicle(
+    vehicleId,
+    userId,
+  );
 
-  const readContributorGrant = async (resolvedVehicleId: string) => {
-    if (isSupabaseAdminConfigured()) {
-      const admin = createAdminClient();
-      return admin
-        .from("vehicle_contributors")
-        .select("id")
-        .eq("vehicle_id", resolvedVehicleId)
-        .eq("user_id", userId)
-        .eq("status", "active")
-        .maybeSingle();
-    }
-    const supabase = await createClient();
-    return supabase
-      .from("vehicle_contributors")
-      .select("id")
-      .eq("vehicle_id", resolvedVehicleId)
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .maybeSingle();
-  };
-
-  const { data: vehicle, error: vehicleError } = await readVehicle();
-  if (vehicleError) {
-    console.error("[vehicle-write-access] vehicle lookup failed", vehicleError);
+  if (ownerError) {
+    console.error("[vehicle-write-access] owner lookup failed", ownerError);
     return denied({ message: "Fahrzeug konnte nicht geladen werden." });
   }
 
-  if (!vehicle?.id || !vehicle.user_id) {
-    return denied();
+  if (ownedVehicle?.id && ownedVehicle.user_id === userId) {
+    return {
+      ok: true,
+      isOwner: true,
+      isContributor: false,
+      ownerUserId: ownedVehicle.user_id,
+      vehicleId: ownedVehicle.id,
+    };
   }
 
-  const asOwner = vehicle.user_id === userId;
-  let asContributor = false;
-
-  if (!asOwner) {
-    const { data: grant, error: grantError } = await readContributorGrant(
-      vehicle.id,
-    );
-    if (grantError) {
-      console.error("[vehicle-write-access] contributor lookup failed", grantError);
-      return denied({
-        ownerUserId: vehicle.user_id,
-        vehicleId: vehicle.id,
-        message: "Schrauber-Zugriff konnte nicht geprüft werden.",
-      });
-    }
-    asContributor = Boolean(grant);
-  }
-
-  if (!asOwner && !asContributor) {
+  const { data: grant, error: grantError } = await readContributorGrant(
+    vehicleId,
+    userId,
+  );
+  if (grantError) {
+    console.error("[vehicle-write-access] contributor lookup failed", grantError);
     return denied({
-      ownerUserId: vehicle.user_id,
-      vehicleId: vehicle.id,
+      vehicleId,
+      message: "Schrauber-Zugriff konnte nicht geprüft werden.",
+    });
+  }
+
+  if (!grant) {
+    return denied({ vehicleId });
+  }
+
+  const ownerUserId = await loadVehicleOwnerUserId(vehicleId);
+  if (!ownerUserId) {
+    return denied({
+      vehicleId,
+      message:
+        "Schrauber-Zugriff erfordert serverseitige Konfiguration (Service Role).",
     });
   }
 
   return {
     ok: true,
-    isOwner: asOwner,
-    isContributor: asContributor,
-    ownerUserId: vehicle.user_id,
-    vehicleId: vehicle.id,
+    isOwner: false,
+    isContributor: true,
+    ownerUserId,
+    vehicleId,
   };
 }
 
