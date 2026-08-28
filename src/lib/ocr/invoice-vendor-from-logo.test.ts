@@ -1,8 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createCanvas } from "@napi-rs/canvas";
 
-import { mergeVisionVendorIntoInvoiceFields } from "@/lib/ocr/invoice-vendor-from-logo";
+vi.mock("./extract-vendor-from-logo", () => ({
+  extractVendorFromLogoImage: vi.fn(),
+}));
+
+import { extractVendorFromLogoImage } from "@/lib/ocr/extract-vendor-from-logo";
+import {
+  extractVendorFromLogoHeader,
+  mergeVisionVendorIntoInvoiceFields,
+} from "@/lib/ocr/invoice-vendor-from-logo";
 import type { OcrJsonPayload } from "@/lib/ocr/ocr-types";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
+
+function buildTestJpeg(): Buffer {
+  const canvas = createCanvas(800, 1200);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, 800, 1200);
+  ctx.fillStyle = "#000000";
+  ctx.font = "48px sans-serif";
+  ctx.fillText("Speedworkz", 40, 80);
+  return canvas.toBuffer("image/jpeg");
+}
 
 function buildFields(
   overrides: Partial<InvoiceTextParseResult> = {},
@@ -69,5 +89,64 @@ describe("mergeVisionVendorIntoInvoiceFields", () => {
     );
 
     expect(fields.vendor).toBe("Kfz-Service Müller");
+  });
+
+  it("does not keep generic structured vendor when vision is missing", () => {
+    const fields = mergeVisionVendorIntoInvoiceFields(
+      buildFields({ vendor: "Rechnung" }),
+      buildOcrJson(),
+      null,
+    );
+
+    expect(fields.vendor).toBeNull();
+  });
+});
+
+describe("extractVendorFromLogoHeader fallback stages", () => {
+  beforeEach(() => {
+    vi.mocked(extractVendorFromLogoImage).mockReset();
+  });
+
+  it("tries wider header band after the first crop fails", async () => {
+    vi.mocked(extractVendorFromLogoImage)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce("TM Motorsport");
+
+    const vendor = await extractVendorFromLogoHeader({
+      bytes: buildTestJpeg(),
+      contentType: "image/jpeg",
+    });
+
+    expect(vendor).toBe("TM Motorsport");
+    expect(extractVendorFromLogoImage).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls back to full page when header bands fail", async () => {
+    vi.mocked(extractVendorFromLogoImage)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce("Edge Logo GmbH");
+
+    const vendor = await extractVendorFromLogoHeader({
+      bytes: buildTestJpeg(),
+      contentType: "image/jpeg",
+    });
+
+    expect(vendor).toBe("Edge Logo GmbH");
+    expect(extractVendorFromLogoImage).toHaveBeenCalledTimes(3);
+  });
+
+  it("skips implausible vendor names and continues fallback stages", async () => {
+    vi.mocked(extractVendorFromLogoImage)
+      .mockResolvedValueOnce("Rechnung")
+      .mockResolvedValueOnce("Speedworkz");
+
+    const vendor = await extractVendorFromLogoHeader({
+      bytes: buildTestJpeg(),
+      contentType: "image/jpeg",
+    });
+
+    expect(vendor).toBe("Speedworkz");
+    expect(extractVendorFromLogoImage).toHaveBeenCalledTimes(2);
   });
 });

@@ -178,4 +178,49 @@ describe("mergeInvoiceScanFields", () => {
 
     expect(merged.lineItems).toEqual([{ label: "Only overview", amount: 100 }]);
   });
+
+  it("returns null when overview vendor is generic and positions vendor is ignored", () => {
+    const merged = mergeInvoiceScanFields(
+      [
+        buildResult(0, {
+          vendor: "Rechnung",
+          date: "2026-01-15",
+          amount: 714,
+          lineItems: [{ label: "Thin overview row", amount: 10 }],
+        }),
+        buildResult(1, {
+          vendor: "Speedworkz",
+          date: null,
+          amount: 600,
+          lineItems: [
+            { label: "Arbeitslohn Sportfedern", amount: 120 },
+            { label: "Sportfedern H&R", amount: 480 },
+          ],
+        }),
+      ],
+      ["overview", "positions"],
+    );
+
+    expect(merged.vendor).toBeNull();
+  });
+
+  it("prefers overview vendor over full when both are valid", () => {
+    const merged = mergeInvoiceScanFields(
+      [
+        buildResult(0, {
+          vendor: "Speedworkz",
+          amount: 714,
+          lineItems: null,
+        }),
+        buildResult(1, {
+          vendor: "Other Garage",
+          amount: 600,
+          lineItems: [{ label: "Position", amount: 600 }],
+        }),
+      ],
+      ["overview", "positions"],
+    );
+
+    expect(merged.vendor).toBe("Speedworkz");
+  });
 });

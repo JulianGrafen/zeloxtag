@@ -13,14 +13,14 @@ import { extractVendorFromLogoImage } from "./extract-vendor-from-logo";
 import { rasterizePdfPagesWithPdfJs } from "./pdf-rasterize-server";
 import {
   LLM_DOCUMENT_RASTER_DPI,
+  LLM_IMAGE_MAX_EDGE_PX,
   type DocumentBytesInput,
 } from "./prepare-document-for-llm";
 import type { OcrJsonPayload } from "./ocr-types";
 import type { InvoiceTextParseResult } from "./text-parse-schema";
-import { resolveVendorName } from "./vendor-from-text";
+import { isPlausibleVendorLine, resolveVendorName } from "./vendor-from-text";
 
-/** Top band of page 1 — letterhead / logo region on German workshop invoices. */
-const HEADER_BAND_FRACTION = 0.24;
+const HEADER_BAND_FRACTIONS = [0.24, 0.32] as const;
 const MIN_HEADER_HEIGHT_PX = 100;
 const MAX_HEADER_HEIGHT_PX = 720;
 
@@ -32,12 +32,27 @@ async function decodeImageBytes(bytes: Buffer, mime?: string): Promise<Buffer> {
   return bytes;
 }
 
+function normalizeLogoContentType(contentType: string): string {
+  const lower = contentType.toLowerCase();
+  if (lower === "image/jpg") return "image/jpeg";
+  if (
+    lower === "image/jpeg" ||
+    lower === "image/png" ||
+    lower === "image/webp" ||
+    lower === "image/gif"
+  ) {
+    return lower;
+  }
+  return "image/jpeg";
+}
+
 /**
  * Crop the invoice letterhead band (logo + Werkstattname) for focused vision OCR.
  */
 export async function cropInvoiceHeaderBand(
   bytes: Buffer,
   mime?: string,
+  headerBandFraction: number = HEADER_BAND_FRACTIONS[0],
 ): Promise<{ bytes: Buffer; contentType: "image/jpeg" } | null> {
   try {
     const decoded = await decodeImageBytes(bytes, mime);
@@ -46,7 +61,7 @@ export async function cropInvoiceHeaderBand(
       MAX_HEADER_HEIGHT_PX,
       Math.max(
         MIN_HEADER_HEIGHT_PX,
-        Math.round(image.height * HEADER_BAND_FRACTION),
+        Math.round(image.height * headerBandFraction),
       ),
     );
 
@@ -73,23 +88,52 @@ export async function cropInvoiceHeaderBand(
   }
 }
 
-function normalizeLogoContentType(contentType: string): string {
-  const lower = contentType.toLowerCase();
-  if (lower === "image/jpg") return "image/jpeg";
-  if (
-    lower === "image/jpeg" ||
-    lower === "image/png" ||
-    lower === "image/webp" ||
-    lower === "image/gif"
-  ) {
-    return lower;
+/** Downscale full page for logo vision when header crops miss edge logos. */
+async function prepareFullPageForLogoVision(
+  bytes: Buffer,
+  mime?: string,
+): Promise<{ bytes: Buffer; contentType: string } | null> {
+  try {
+    const decoded = await decodeImageBytes(bytes, mime);
+    const image = await loadImage(decoded);
+    const maxEdge = Math.max(image.width, image.height);
+    if (maxEdge <= LLM_IMAGE_MAX_EDGE_PX) {
+      return {
+        bytes: decoded,
+        contentType: normalizeLogoContentType(mime ?? "image/jpeg"),
+      };
+    }
+
+    const scale = LLM_IMAGE_MAX_EDGE_PX / maxEdge;
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(image, 0, 0, width, height);
+
+    return { bytes: canvas.toBuffer("image/jpeg"), contentType: "image/jpeg" };
+  } catch (error) {
+    console.warn("[invoice-vendor-from-logo] full-page resize failed", error);
+    return null;
   }
-  return "image/jpeg";
+}
+
+async function tryExtractVendorFromImage(
+  bytes: Buffer,
+  contentType: string,
+): Promise<string | null> {
+  const vendor = await extractVendorFromLogoImage({ bytes, contentType });
+  if (vendor && isPlausibleVendorLine(vendor)) {
+    return vendor.trim().slice(0, 160);
+  }
+  return null;
 }
 
 /**
  * Read workshop name from the logo / letterhead via multimodal LLM.
- * PDFs are rasterized to page 1 first; images are header-cropped.
+ * PDFs are rasterized to page 1 first; tries header bands then full page.
  */
 export async function extractVendorFromLogoHeader(
   input: DocumentBytesInput,
@@ -109,16 +153,27 @@ export async function extractVendorFromLogoHeader(
       mime = "image/png";
     }
 
-    const cropped = await cropInvoiceHeaderBand(bytes, mime);
-    const targetBytes = cropped?.bytes ?? bytes;
-    const contentType = normalizeLogoContentType(
-      cropped?.contentType ?? mime,
-    );
+    for (const fraction of HEADER_BAND_FRACTIONS) {
+      const cropped = await cropInvoiceHeaderBand(bytes, mime, fraction);
+      if (!cropped) continue;
 
-    return await extractVendorFromLogoImage({
-      bytes: targetBytes,
-      contentType,
-    });
+      const vendor = await tryExtractVendorFromImage(
+        cropped.bytes,
+        normalizeLogoContentType(cropped.contentType),
+      );
+      if (vendor) return vendor;
+    }
+
+    const fullPage = await prepareFullPageForLogoVision(bytes, mime);
+    if (fullPage) {
+      const vendor = await tryExtractVendorFromImage(
+        fullPage.bytes,
+        normalizeLogoContentType(fullPage.contentType),
+      );
+      if (vendor) return vendor;
+    }
+
+    return null;
   } catch (error) {
     console.warn("[invoice-vendor-from-logo] logo extract failed", error);
     return null;

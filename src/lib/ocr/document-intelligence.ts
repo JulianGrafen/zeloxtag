@@ -444,13 +444,17 @@ async function analyzeInvoiceOneShot(input: {
     contentType: input.contentType,
   };
 
+  const shouldExtractLogo = input.invoiceScanPart !== "positions";
+
   const [{ fields, ocrJson }, visionVendor] = await Promise.all([
     invoiceParseService.parseFromDocument(documentInput, {
       model: input.parseModel,
       documentType: "invoice",
       invoiceScanPart: input.invoiceScanPart,
     }),
-    extractVendorFromLogoHeader(documentInput),
+    shouldExtractLogo
+      ? extractVendorFromLogoHeader(documentInput)
+      : Promise.resolve(null),
   ]);
 
   const withVendor = mergeVisionVendorIntoInvoiceFields(

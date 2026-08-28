@@ -22,6 +22,7 @@ import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import { mergeLineItemsExtractions } from "@/lib/ocr/invoice-wizard-merge";
 import { ensureInvoiceVatAndGrossTotal } from "@/lib/ocr/invoice-vat";
 import type { InvoiceScanPart } from "./services/invoice-parse-service";
+import { isGenericInvoiceVendor } from "@/lib/ocr/vendor-from-text";
 
 export type { InvoiceScanPart };
 
@@ -274,6 +275,31 @@ function mergeFields(
   });
 }
 
+function pickInvoiceVendorFromScans(
+  results: AnalyzeDocumentResult[],
+  scanParts: InvoiceScanPart[],
+): string | null {
+  const overviewIndex = scanParts.indexOf("overview");
+  const overviewVendor =
+    overviewIndex >= 0 ? results[overviewIndex]?.fields.vendor : null;
+
+  if (overviewVendor && !isGenericInvoiceVendor(overviewVendor)) {
+    return overviewVendor;
+  }
+
+  for (let index = 0; index < results.length; index += 1) {
+    const part = scanParts[index];
+    if (part !== "overview" && part !== "full") continue;
+
+    const vendor = results[index]?.fields.vendor;
+    if (vendor && !isGenericInvoiceVendor(vendor)) {
+      return vendor;
+    }
+  }
+
+  return null;
+}
+
 /** Merge overview + positions-block invoice scans (A4 + optional blocks). */
 export function mergeInvoiceScanFields(
   results: AnalyzeDocumentResult[],
@@ -336,7 +362,7 @@ export function mergeInvoiceScanFields(
 
   return normalizeTextParseResult(
     {
-      vendor: overviewFields?.vendor ?? null,
+      vendor: pickInvoiceVendorFromScans(results, scanParts),
       date: overviewFields?.date ?? null,
       amount: withVat.amount,
       category,

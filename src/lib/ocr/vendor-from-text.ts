@@ -17,13 +17,24 @@ const LOOKS_LIKE_CODE =
 const COMPANY_HINT =
   /\b(gmbh|gbr|ag|kg|ug|e\.?\s?k\.?|ltd|llc|inc|co\.|werkstatt|garage|motorsport|tuning|autoservice|kfz|service|parts|performance)\b/i;
 
+const GENERIC_VENDOR =
+  /^(rechnung|invoice|quittung|beleg|kassenbon|lieferschein|gutschrift|werkstatt|service|kunde|customer|anbieter|firma|unternehmen)$/i;
+
 function cleanLine(line: string): string {
   return stripHtmlTags(line).replace(/\s+/g, " ").trim();
+}
+
+/** Block document-type labels and other non-vendor placeholders from LLM output. */
+export function isGenericInvoiceVendor(value: string | null | undefined): boolean {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return true;
+  return GENERIC_VENDOR.test(trimmed);
 }
 
 export function isPlausibleVendorLine(line: string): boolean {
   const value = cleanLine(line);
   if (value.length < 2 || value.length > 80) return false;
+  if (isGenericInvoiceVendor(value)) return false;
   if (SKIP_LINE.test(value)) return false;
   if (LOOKS_LIKE_ADDRESS.test(value)) return false;
   if (LOOKS_LIKE_CODE.test(value)) return false;
@@ -78,7 +89,11 @@ export function resolveVendorName(input: {
   }
 
   const structured = input.structuredVendor?.trim() || null;
-  if (structured && isPlausibleVendorLine(structured)) {
+  if (
+    structured &&
+    !isGenericInvoiceVendor(structured) &&
+    isPlausibleVendorLine(structured)
+  ) {
     return cleanLine(structured).slice(0, 160);
   }
 
