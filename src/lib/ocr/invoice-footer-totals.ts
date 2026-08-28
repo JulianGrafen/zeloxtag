@@ -36,16 +36,26 @@ function parseLabeledAmount(
   return values.length > 0 ? Math.max(...values) : null;
 }
 
-/** Nettosumme / Netto Summe from invoice footer. */
+/** Nettosumme / Netto Summe / Positionssumme from invoice footer. */
 export function extractNetSumFromText(rawText: string): number | null {
   const text = rawText.replace(/\r\n/g, "\n");
-  return parseLabeledAmount(
-    text,
-    /nettosumme\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+  return (
+    parseLabeledAmount(
+      text,
+      /nettosumme\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+    ) ??
+    parseLabeledAmount(
+      text,
+      /netto\s+summe\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+    ) ??
+    parseLabeledAmount(
+      text,
+      /positionssumme\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+    )
   );
 }
 
-/** Gesamtbetrag / Endbetrag brutto from invoice footer. */
+/** Gesamtbetrag / Endpreis / Endbetrag brutto from invoice footer. */
 export function extractGrossTotalFromText(rawText: string): number | null {
   const text = rawText.replace(/\r\n/g, "\n");
   return (
@@ -56,6 +66,10 @@ export function extractGrossTotalFromText(rawText: string): number | null {
     parseLabeledAmount(
       text,
       /(?:rechnungsbetrag|zahlbetrag|endbetrag)\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+    ) ??
+    parseLabeledAmount(
+      text,
+      /endpreis\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
     )
   );
 }

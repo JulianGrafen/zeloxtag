@@ -48,6 +48,7 @@ import {
   extractWorkshopInvoiceAmount,
   reconcileWorkshopLineItemsWithOcrText,
   resolveWorkshopLineItems,
+  sectionOcrMatchesFooterNet,
 } from "@/lib/ocr/invoice-workshop-sections";
 import { extractAmountFromText } from "@/lib/ocr/amount-from-text";
 import {
@@ -504,10 +505,8 @@ export class InvoiceExtractionService {
       }));
 
     llmLineItems =
-      isWorkshopFormat
-        ? (resolveWorkshopLineItems({ llmItems: llmLineItems, ocrText }) ??
-          llmLineItems)
-        : llmLineItems;
+      resolveWorkshopLineItems({ llmItems: llmLineItems, ocrText }) ??
+      llmLineItems;
 
     const layoutLineItems =
       shouldMergeAzureLayout(tableFormat) && azureLayout
@@ -539,13 +538,33 @@ export class InvoiceExtractionService {
     const amount =
       structuredAmount ??
       footerGross ??
-      (isWorkshopFormat ? extractWorkshopInvoiceAmount(ocrText) : null) ??
+      extractWorkshopInvoiceAmount(ocrText) ??
       (ocrText.trim() ? extractAmountFromText(ocrText) : null) ??
       (layoutLineItems?.length ? sumLineItems(layoutLineItems) : null);
 
     const hasUsableColumnLayout =
       shouldMergeAzureLayout(tableFormat) &&
       (layoutLineItems?.length ?? 0) >= 3;
+
+    // Footer-checksum OCR wins over format routing (any section-layout vendor).
+    if (sectionOcrMatchesFooterNet(ocrText)) {
+      const plausibility = reconcileInvoicePlausibility({
+        lineItems: llmLineItems,
+        amount: footerGross ?? amount,
+        ocrText,
+        ocrHeuristicItems: null,
+        enableRealign: false,
+        enableOcrReconcile: false,
+        enableContinuationMerge: false,
+      });
+      return {
+        lineItems: normalizeLineItemsList(
+          plausibility.lineItems,
+          LINE_ITEMS_MAX_COUNT,
+        ),
+        amount: plausibility.amount,
+      };
+    }
 
     if (tableFormat === "column") {
       const columnResult = finalizeColumnFormatLineItems({
@@ -609,11 +628,7 @@ export class InvoiceExtractionService {
         : null;
 
     let baseItems = stripNonPositionInvoiceRows(merged);
-    if (
-      isWorkshopFormat &&
-      shouldReconcileWithOcrHeuristics(tableFormat) &&
-      ocrText.trim()
-    ) {
+    if (ocrText.trim()) {
       baseItems = reconcileWorkshopLineItemsWithOcrText(baseItems, ocrText);
     }
 

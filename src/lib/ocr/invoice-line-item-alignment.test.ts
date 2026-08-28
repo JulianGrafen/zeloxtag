@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isContinuationInvoiceLabel,
   mergeContinuationInvoiceLineItems,
   prejoinWrappedInvoiceLines,
   realignShiftedInvoiceLineItems,
@@ -59,6 +60,34 @@ describe("mergeContinuationInvoiceLineItems", () => {
       { label: "Ventildeckeldichtung erneuern", amount: 81 },
     ]);
     expect(realignShiftedInvoiceLineItems(merged, 171)).toEqual(merged);
+  });
+
+  it("does not merge standalone part names like Thermostat or Fracht", () => {
+    const items = [
+      { label: "Wasserschlauch", amount: 65.12 },
+      { label: "Thermostat", amount: 70.83 },
+      { label: "Kühlerfrostschutz Blau/Rot", amount: 26 },
+      { label: "Sensor, Kühlmitteltemperatur", amount: 28.73 },
+      { label: "Fracht", amount: 5 },
+    ];
+
+    expect(mergeContinuationInvoiceLineItems(items)).toEqual(items);
+  });
+});
+
+describe("isContinuationInvoiceLabel", () => {
+  it("accepts Pos-table wrap fragments only", () => {
+    expect(isContinuationInvoiceLabel("(Hinterachse)")).toBe(true);
+    expect(isContinuationInvoiceLabel("GREENPARTS")).toBe(true);
+    expect(isContinuationInvoiceLabel("ORIGINAL ERSATZTEIL")).toBe(true);
+    expect(isContinuationInvoiceLabel("erneuern")).toBe(true);
+  });
+
+  it("rejects workshop part names and diagnostic fragments", () => {
+    expect(isContinuationInvoiceLabel("Thermostat")).toBe(false);
+    expect(isContinuationInvoiceLabel("Wasserschlauch")).toBe(false);
+    expect(isContinuationInvoiceLabel("Fracht")).toBe(false);
+    expect(isContinuationInvoiceLabel("undicht")).toBe(false);
   });
 });
 

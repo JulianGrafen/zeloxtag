@@ -7,6 +7,7 @@ import {
   isColumnTableInvoiceText,
   shouldDrawInvoiceRowSeparators,
   shouldMergeAzureLayout,
+  shouldMergeContinuationLineItems,
   shouldRealignLineItems,
   shouldReconcileWithOcrHeuristics,
 } from "@/lib/ocr/invoice-format-routing";
@@ -60,5 +61,33 @@ describe("invoice format routing", () => {
     expect(shouldDrawInvoiceRowSeparators("workshop-sections")).toBe(true);
     expect(shouldMergeAzureLayout("column")).toBe(true);
     expect(shouldDrawInvoiceRowSeparators("column")).toBe(true);
+  });
+
+  it("still routes Speedworkz without the Arbeitswerte header", () => {
+    const withoutLaborHeader = SPEEDWORKZ_OCR_TEXT.replace(
+      /^Arbeitswerte\n/m,
+      "",
+    );
+    expect(detectInvoiceTableFormat(withoutLaborHeader)).toBe(
+      "workshop-sections",
+    );
+  });
+
+  it("routes partial OCR with Einzelpreis + Ersatzteile + Positionssumme as workshop", () => {
+    const partial = [
+      "Beschreibung Rab. % Art PG Std. Preis-€",
+      "Anzahl Einheit Beschreibung Einzelpreis Preis-€",
+      "Ersatzteile",
+      "1 Stück Wasserschlauch 65,12 65,12",
+      "Positionssumme 454,49",
+    ].join("\n");
+
+    expect(detectInvoiceTableFormat(partial)).toBe("workshop-sections");
+  });
+
+  it("merges wrapped descriptions only for column tables", () => {
+    expect(shouldMergeContinuationLineItems("column")).toBe(true);
+    expect(shouldMergeContinuationLineItems("workshop-sections")).toBe(false);
+    expect(shouldMergeContinuationLineItems("unknown")).toBe(false);
   });
 });

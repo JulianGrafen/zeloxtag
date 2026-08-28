@@ -2,6 +2,10 @@ import { preferAmount } from "@/lib/ocr/amount-from-text";
 import { sumLineItems } from "@/lib/documents/line-items";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
+  shouldMergeContinuationLineItems,
+  type InvoiceTableFormat,
+} from "@/lib/ocr/invoice-format-routing";
+import {
   mergeContinuationInvoiceLineItems,
   realignShiftedInvoiceLineItems,
 } from "@/lib/ocr/invoice-line-item-alignment";
@@ -109,6 +113,7 @@ function resolveWizardGrossAmount(
 /** Merge multiple position-block scans (multi-page invoices). */
 export function mergeLineItemsExtractions(
   blocks: InvoiceLineItemsExtraction[],
+  format: InvoiceTableFormat = "unknown",
 ): InvoiceLineItemsExtraction {
   if (blocks.length === 0) {
     return { lineItems: null, amount: null };
@@ -136,10 +141,11 @@ export function mergeLineItemsExtractions(
       .map((block) => block.amount)
       .find((value) => value !== null) ?? null;
 
-  const mergedContinuations =
-    mergeContinuationInvoiceLineItems(merged) ?? merged;
+  const mergedContinuations = shouldMergeContinuationLineItems(format)
+    ? mergeContinuationInvoiceLineItems(merged) ?? merged
+    : merged;
   const realigned =
-    amount != null
+    amount != null && shouldMergeContinuationLineItems(format)
       ? realignShiftedInvoiceLineItems(mergedContinuations, amount)
       : mergedContinuations;
   const lineItems = normalizeLineItemsForReview(realigned, LINE_ITEMS_MAX_COUNT);

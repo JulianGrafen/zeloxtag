@@ -16,8 +16,13 @@ import {
   isGarbageWorkshopLineItems,
   isWorkshopSectionInvoiceText,
   resolveWorkshopLineItems,
+  sectionOcrMatchesFooterNet,
 } from "@/lib/ocr/invoice-workshop-sections";
 import { extractAmountFromText } from "@/lib/ocr/amount-from-text";
+import {
+  extractGrossTotalFromText,
+  extractNetSumFromText,
+} from "@/lib/ocr/invoice-footer-totals";
 import { processLineItems } from "@/utils/invoiceMath";
 
 describe("Speedworkz section invoice", () => {
@@ -120,6 +125,97 @@ describe("Speedworkz section invoice", () => {
     expect(resolved).toHaveLength(8);
     expect(resolved!.reduce((s, i) => s + i.amount, 0)).toBeCloseTo(
       SPEEDWORKZ_NET_SUM,
+      2,
+    );
+  });
+
+  it("falls back to OCR when LLM merges section rows into mega-labels", () => {
+    const garbledLlm = [
+      {
+        label: "Motor wird heiß lt. Kunde Thermostat wurde erneuert",
+        amount: 46.22,
+      },
+      { label: "Wasserschlauch undicht", amount: 166.37 },
+      {
+        label:
+          "Thermostat und Wasserschlauch erneuern Kühlmitteltemp.sensor prüfen und erneuern Wasserschlauch Thermostat Kühlerfrostschutz",
+        amount: 70.83,
+      },
+      { label: "Sensor, Kühlmitteltemperatur Fracht", amount: 28.73 },
+    ];
+
+    expect(
+      isGarbageWorkshopLineItems(garbledLlm, { netSum: SPEEDWORKZ_NET_SUM }),
+    ).toBe(true);
+
+    const resolved = resolveWorkshopLineItems({
+      llmItems: garbledLlm,
+      ocrText: SPEEDWORKZ_OCR_TEXT,
+    });
+
+    expect(resolved).toHaveLength(8);
+    for (let i = 0; i < SPEEDWORKZ_EXPECTED_LINE_ITEMS.length; i += 1) {
+      expect(resolved![i]!.amount).toBeCloseTo(
+        SPEEDWORKZ_EXPECTED_LINE_ITEMS[i]!.amount,
+        2,
+      );
+    }
+    expect(resolved!.reduce((s, i) => s + i.amount, 0)).toBeCloseTo(
+      SPEEDWORKZ_NET_SUM,
+      2,
+    );
+  });
+
+  it("reads Netto Summe and Endpreis via the shared footer extractors", () => {
+    expect(extractNetSumFromText(SPEEDWORKZ_OCR_TEXT)).toBe(SPEEDWORKZ_NET_SUM);
+    expect(extractGrossTotalFromText(SPEEDWORKZ_OCR_TEXT)).toBe(
+      SPEEDWORKZ_GROSS_TOTAL,
+    );
+    expect(sectionOcrMatchesFooterNet(SPEEDWORKZ_OCR_TEXT)).toBe(true);
+  });
+});
+
+describe("section invoice checksum (vendor-agnostic)", () => {
+  it("does not treat a short invoice as garbage when the net footer matches", () => {
+    const items = [
+      { label: "Ölfilter", amount: 42.9 },
+      { label: "Arbeitslohn", amount: 95 },
+      { label: "Fracht", amount: 5 },
+    ];
+    expect(isGarbageWorkshopLineItems(items, { netSum: 142.9 })).toBe(false);
+  });
+
+  it("recovers merged vision rows for any DMS section invoice, not a named vendor", () => {
+    const ocr = [
+      "Arbeitswerte",
+      "Beschreibung PG Std. Preis-€",
+      "Diagnose Kühlkreislauf 4 0,50 46,22",
+      "Thermostat und Schlauch erneuern 4 1,80 166,37",
+      "Ersatzteile",
+      "Anzahl Einheit Beschreibung Einzelpreis Preis-€",
+      "1 Stück Wasserschlauch 65,12 65,12",
+      "1 Stück Thermostat 70,83 70,83",
+      "Sonstige Kosten",
+      "1 Fracht 5,00 5,00",
+      "Positionssumme 353,54",
+      "Netto Summe 353,54 €",
+      "Endpreis 420,71 €",
+    ].join("\n");
+
+    const garbled = [
+      { label: "Diagnose Kühlkreislauf Thermostat und Schlauch erneuern Wasserschlauch Thermostat Fracht", amount: 70.83 },
+      { label: "Fracht", amount: 5 },
+    ];
+
+    const resolved = resolveWorkshopLineItems({
+      llmItems: garbled,
+      ocrText: ocr,
+    });
+
+    expect(sectionOcrMatchesFooterNet(ocr)).toBe(true);
+    expect(resolved).toHaveLength(5);
+    expect(resolved!.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
+      353.54,
       2,
     );
   });

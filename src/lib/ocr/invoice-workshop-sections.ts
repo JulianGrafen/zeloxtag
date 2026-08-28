@@ -5,6 +5,10 @@
 
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 import { isJunkInvoiceLineLabel } from "@/lib/ocr/invoice-line-item-dedupe";
+import {
+  extractNetSumFromText,
+  INVOICE_NET_TOTAL_TOLERANCE_EUR,
+} from "@/lib/ocr/invoice-footer-totals";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 
 const MAX_ITEMS = 60;
@@ -162,21 +166,9 @@ function sumItems(items: InvoiceLineItem[]): number {
   return roundMoney(items.reduce((sum, item) => sum + item.amount, 0));
 }
 
-/** Net total from Positionssumme / Netto Summe (excludes MwSt). */
+/** Net total from Positionssumme / Netto Summe / Nettosumme (excludes MwSt). */
 export function extractWorkshopNetSum(rawText: string): number | null {
-  const text = rawText.replace(/\r\n/g, "\n");
-  const patterns = [
-    /positionssumme\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/gi,
-    /netto\s+summe\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/gi,
-  ];
-  const values: number[] = [];
-  for (const pattern of patterns) {
-    for (const match of text.matchAll(pattern)) {
-      const parsed = parseMoney(match[1] ?? "");
-      if (parsed != null) values.push(parsed);
-    }
-  }
-  return values.length > 0 ? Math.max(...values) : null;
+  return extractNetSumFromText(rawText);
 }
 
 export function sanitizeWorkshopLineItems(
@@ -194,8 +186,11 @@ export function sanitizeWorkshopLineItems(
   return cleaned.length > 0 ? cleaned : null;
 }
 
-/** True when layout/LLM output shows classic column-shift garbage. */
-export function isGarbageWorkshopLineItems(items: InvoiceLineItem[]): boolean {
+/** True when layout/LLM output is structurally unusable vs a section invoice. */
+export function isGarbageWorkshopLineItems(
+  items: InvoiceLineItem[],
+  options?: { netSum?: number | null },
+): boolean {
   if (items.length === 0) return true;
 
   const stückRows = items.filter((item) => /^stück$/i.test(item.label.trim()));
@@ -206,8 +201,14 @@ export function isGarbageWorkshopLineItems(items: InvoiceLineItem[]): boolean {
 
   if (items.some((item) => /^endpreis\b/i.test(item.label.trim()))) return true;
 
-  const sum = sumItems(items);
-  if (sum > 700 && items.length <= 12) return true;
+  if (items.some((item) => item.label.trim().length > 80)) return true;
+
+  const netSum = options?.netSum ?? null;
+  if (netSum != null && netSum > 0) {
+    const sum = sumItems(items);
+    const delta = Math.abs(sum - netSum);
+    if (delta > Math.max(15, netSum * 0.08)) return true;
+  }
 
   return false;
 }
@@ -227,20 +228,34 @@ export function resolveWorkshopLineItems(options: {
 
   const ocrMatchesNet =
     ocrItems != null &&
-    ocrItems.length >= 3 &&
+    ocrItems.length >= 2 &&
     netSum != null &&
-    Math.abs(sumItems(ocrItems) - netSum) <= 1.5;
+    Math.abs(sumItems(ocrItems) - netSum) <= INVOICE_NET_TOTAL_TOLERANCE_EUR;
 
-  if (ocrMatchesNet) {
-    if (llm.length === 0 || isGarbageWorkshopLineItems(llm)) return ocrItems;
-    if (netSum != null && Math.abs(sumItems(llm) - netSum) > Math.max(5, netSum * 0.08)) {
-      return ocrItems;
-    }
+  if (ocrMatchesNet) return ocrItems;
+
+  if (isGarbageWorkshopLineItems(llm, { netSum }) && ocrItems?.length) {
+    return ocrItems;
   }
-
-  if (isGarbageWorkshopLineItems(llm) && ocrItems?.length) return ocrItems;
   if (llm.length > 0) return llm;
   return ocrItems;
+}
+
+/**
+ * True when the section OCR parser reconciles with the printed net footer.
+ * Format routing is ignored — any vendor with Arbeitswerte/Ersatzteile layout.
+ */
+export function sectionOcrMatchesFooterNet(ocrText: string): boolean {
+  const ocrItems = sanitizeWorkshopLineItems(
+    extractWorkshopSectionLineItems(ocrText),
+  );
+  const netSum = extractWorkshopNetSum(ocrText);
+  return (
+    ocrItems != null &&
+    ocrItems.length >= 2 &&
+    netSum != null &&
+    Math.abs(sumItems(ocrItems) - netSum) <= INVOICE_NET_TOTAL_TOLERANCE_EUR
+  );
 }
 
 /**

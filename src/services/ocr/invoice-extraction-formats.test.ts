@@ -6,6 +6,7 @@ import {
   SPEEDWORKZ_NET_SUM,
   SPEEDWORKZ_OCR_TEXT,
 } from "@/lib/ocr/fixtures/speedworkz-invoice-line-items";
+import { mergeContinuationInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
 import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import {
   isGarbageWorkshopLineItems,
@@ -44,6 +45,44 @@ describe("workshop-section invoice extraction pipeline (Speedworkz)", () => {
       SPEEDWORKZ_NET_SUM,
       2,
     );
+  });
+
+  it("recovers the 8 Speedworkz positions from the camera-scan mega-merge pattern", () => {
+    const garbledLlm = [
+      {
+        label: "Motor wird heiß lt. Kunde Thermostat wurde erneuert",
+        amount: 46.22,
+      },
+      { label: "Wasserschlauch undicht", amount: 166.37 },
+      {
+        label:
+          "Thermostat und Wasserschlauch erneuern Kühlmitteltemp.sensor prüfen und erneuern Wasserschlauch Thermostat Kühlerfrostschutz",
+        amount: 70.83,
+      },
+      { label: "Sensor, Kühlmitteltemperatur Fracht", amount: 28.73 },
+    ];
+
+    const resolved =
+      resolveWorkshopLineItems({
+        llmItems: garbledLlm,
+        ocrText: SPEEDWORKZ_OCR_TEXT,
+      }) ?? garbledLlm;
+
+    expect(resolved).toHaveLength(8);
+    expect(resolved.reduce((sum, item) => sum + item.amount, 0)).toBeCloseTo(
+      SPEEDWORKZ_NET_SUM,
+      2,
+    );
+    expect(resolved.map((item) => item.label)).toEqual(
+      SPEEDWORKZ_EXPECTED_LINE_ITEMS.map((item) => item.label),
+    );
+  });
+
+  it("does not merge Speedworkz part names as Pos-table continuations", () => {
+    const merged = mergeContinuationInvoiceLineItems(
+      SPEEDWORKZ_EXPECTED_LINE_ITEMS,
+    );
+    expect(merged).toEqual(SPEEDWORKZ_EXPECTED_LINE_ITEMS);
   });
 
   it("uses plausibility reconciliation for unknown/simple Pos lists", () => {

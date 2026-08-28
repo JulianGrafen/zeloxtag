@@ -5,7 +5,10 @@
  * vendor names, customer names, or line-item descriptions from the invoice body.
  */
 
-import { isWorkshopSectionInvoiceText } from "@/lib/ocr/invoice-workshop-sections";
+import {
+  detectWorkshopInvoiceSignals,
+  isWorkshopSectionInvoiceText,
+} from "@/lib/ocr/invoice-workshop-sections";
 
 export type InvoiceTableFormat = "column" | "workshop-sections" | "unknown";
 
@@ -55,8 +58,14 @@ export function detectInvoiceTableFormat(
   if (!text) return "column";
   // Explicit Ges.-Preis column → always the tabular pipeline.
   if (hasGesPreisColumn(text)) return "column";
-  // Section-based layout (Arbeitswerte / Ersatzteile) without Ges.-Preis.
-  if (isWorkshopSectionInvoiceText(text)) return "workshop-sections";
+  // Section invoices (Arbeitswerte / Ersatzteile / Preis-€ / Positionssumme)
+  // even when Einzelpreis appears in the parts block.
+  if (
+    isWorkshopSectionInvoiceText(text) ||
+    detectWorkshopInvoiceSignals(text) >= 4
+  ) {
+    return "workshop-sections";
+  }
   // Generic column table (score ≥ 4 but no explicit Ges.-Preis).
   if (isColumnTableInvoiceText(text)) return "column";
   return "unknown";
@@ -92,6 +101,13 @@ export function shouldReconcileWithOcrHeuristics(
 }
 
 export function shouldRealignLineItems(format: InvoiceTableFormat): boolean {
+  return format === "column";
+}
+
+/** Wrapped Pos-table description merge — never on section invoices. */
+export function shouldMergeContinuationLineItems(
+  format: InvoiceTableFormat,
+): boolean {
   return format === "column";
 }
 

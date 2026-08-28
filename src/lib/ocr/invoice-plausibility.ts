@@ -61,6 +61,8 @@ export type ReconcileInvoicePlausibilityOptions = {
   ocrHeuristicItems?: InvoiceLineItem[] | null;
   enableRealign?: boolean;
   enableOcrReconcile?: boolean;
+  /** Merge wrapped Pos-table description rows. Defaults to enableRealign. */
+  enableContinuationMerge?: boolean;
   /** Brutto reference when OCR footer is unavailable (wizard overview scan). */
   expectedGross?: number | null;
 };
@@ -305,6 +307,7 @@ function pickBestPositionSet(options: {
   ocrText: string;
   enableOcrReconcile: boolean;
   enableRealign: boolean;
+  enableContinuationMerge: boolean;
 }): InvoiceLineItem[] | null {
   const {
     current,
@@ -313,6 +316,7 @@ function pickBestPositionSet(options: {
     ocrText,
     enableOcrReconcile,
     enableRealign,
+    enableContinuationMerge,
   } = options;
 
   let working = stripNonPositionInvoiceRows(current) ?? null;
@@ -341,14 +345,17 @@ function pickBestPositionSet(options: {
   }
 
   const realignTarget = footerNet ?? sumLineItems(working);
+  const stripped = stripNonPositionInvoiceRows(working);
+  const mergedContinuations = enableContinuationMerge
+    ? mergeContinuationInvoiceLineItems(stripped) ?? stripped
+    : stripped;
   if (enableRealign && footerNet != null) {
-    const stripped = stripNonPositionInvoiceRows(working);
-    const mergedContinuations =
-      mergeContinuationInvoiceLineItems(stripped) ?? stripped;
     working = realignShiftedInvoiceLineItems(
       mergedContinuations,
       realignTarget,
     );
+  } else {
+    working = mergedContinuations;
   }
 
   return stripNonPositionInvoiceRows(working);
@@ -406,8 +413,11 @@ export function reconcileInvoicePlausibility(
     ocrHeuristicItems,
     enableRealign = true,
     enableOcrReconcile = true,
+    enableContinuationMerge,
     expectedGross = null,
   } = options;
+
+  const shouldMergeContinuations = enableContinuationMerge ?? enableRealign;
 
   const footerNet = ocrText ? extractNetSumFromText(ocrText) : null;
   const footerGross =
@@ -424,6 +434,7 @@ export function reconcileInvoicePlausibility(
     ocrText,
     enableOcrReconcile,
     enableRealign,
+    enableContinuationMerge: shouldMergeContinuations,
   });
 
   if (

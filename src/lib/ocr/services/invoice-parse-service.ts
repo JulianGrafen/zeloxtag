@@ -47,6 +47,7 @@ import {
   detectInvoiceTableFormat,
   shouldDrawInvoiceRowSeparators,
   shouldMergeAzureLayout,
+  shouldMergeContinuationLineItems,
   shouldRealignLineItems,
   shouldReconcileWithOcrHeuristics,
 } from "@/lib/ocr/invoice-format-routing";
@@ -54,6 +55,7 @@ import {
   extractWorkshopInvoiceAmount,
   reconcileWorkshopLineItemsWithOcrText,
   resolveWorkshopLineItems,
+  sectionOcrMatchesFooterNet,
 } from "@/lib/ocr/invoice-workshop-sections";
 import { deduplicateInvoiceItemTable } from "@/lib/ocr/markdown-page-dedup";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
@@ -284,13 +286,42 @@ export class InvoiceParseService {
     // up the shorter, wrong page-1 values.
     const dedupedOcrText = deduplicateInvoiceItemTable(azureContent);
 
+    const checksumItems =
+      resolveWorkshopLineItems({
+        llmItems: normalized.lineItems,
+        ocrText: dedupedOcrText,
+      }) ?? normalized.lineItems;
+
+    if (sectionOcrMatchesFooterNet(dedupedOcrText)) {
+      const amount =
+        preferAmount(normalized.amount, dedupedOcrText, checksumItems) ??
+        extractWorkshopInvoiceAmount(dedupedOcrText);
+      return {
+        fields: {
+          ...normalized,
+          amount,
+          lineItems: normalizeLineItemsList(checksumItems, 60),
+          mileageKm: preferMileageKm(normalized.mileageKm, azureLayout.content),
+          vendor: resolveVendorName({
+            structuredVendor: normalized.vendor,
+            logoCandidates:
+              azureLayout.pages[0]?.lines
+                ?.map((line) => line.content)
+                .slice(0, 4) ?? [],
+            rawText: azureLayout.content,
+          }),
+        },
+        ocrJson,
+      };
+    }
+
     if (tableFormat === "column") {
       const layoutLineItems = extractInvoiceLineItemsFromAzureLayout(azureLayout);
       const amount =
-        preferAmount(normalized.amount, dedupedOcrText, normalized.lineItems) ??
+        preferAmount(normalized.amount, dedupedOcrText, checksumItems) ??
         null;
       const columnResult = finalizeColumnFormatLineItems({
-        llmItems: normalized.lineItems,
+        llmItems: checksumItems,
         layoutItems: layoutLineItems,
         ocrText: dedupedOcrText,
         grossAmount: amount,
@@ -315,14 +346,7 @@ export class InvoiceParseService {
       };
     }
 
-    let llmItems = normalized.lineItems;
-    if (isWorkshopFormat) {
-      llmItems =
-        resolveWorkshopLineItems({
-          llmItems: normalized.lineItems,
-          ocrText: dedupedOcrText,
-        }) ?? normalized.lineItems;
-    }
+    const llmItems = checksumItems;
 
     const layoutLineItems = shouldMergeAzureLayout(tableFormat)
       ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
@@ -330,7 +354,7 @@ export class InvoiceParseService {
 
     const amount =
       preferAmount(normalized.amount, dedupedOcrText, llmItems) ??
-      (isWorkshopFormat ? extractWorkshopInvoiceAmount(dedupedOcrText) : null);
+      extractWorkshopInvoiceAmount(dedupedOcrText);
 
     const merged = shouldMergeAzureLayout(tableFormat)
       ? mergeLayoutAndLlmLineItems(llmItems, layoutLineItems, amount)
@@ -343,13 +367,14 @@ export class InvoiceParseService {
           : reconcileLineItemAmountsWithOcrText(merged, dedupedOcrText)
         : merged;
 
+    const withContinuations = shouldMergeContinuationLineItems(tableFormat)
+      ? mergeContinuationInvoiceLineItems(reconciled) ?? reconciled
+      : reconciled;
+
     const lineItems = normalizeLineItemsList(
       shouldRealignLineItems(tableFormat)
-        ? realignShiftedInvoiceLineItems(
-            mergeContinuationInvoiceLineItems(reconciled) ?? reconciled,
-            amount,
-          )
-        : mergeContinuationInvoiceLineItems(reconciled) ?? reconciled,
+        ? realignShiftedInvoiceLineItems(withContinuations, amount)
+        : withContinuations,
       60,
     );
 
@@ -495,15 +520,28 @@ export class InvoiceParseService {
     const normalized = this.nullAbeFields(
       normalizeTextParseResult(parsed.data),
     );
-    const mergedContinuations =
-      mergeContinuationInvoiceLineItems(
-        preferInvoiceLineItems(normalized.lineItems, heuristicLineItems),
-      ) ??
+    const preferred =
+      resolveWorkshopLineItems({
+        llmItems: preferInvoiceLineItems(
+          normalized.lineItems,
+          heuristicLineItems,
+        ),
+        ocrText: plainText,
+      }) ??
       preferInvoiceLineItems(normalized.lineItems, heuristicLineItems);
-    const lineItems = realignShiftedInvoiceLineItems(
-      mergedContinuations,
-      preferAmount(normalized.amount, plainText, normalized.lineItems),
-    );
+    const tableFormat = detectInvoiceTableFormat(plainText);
+    const skipColumnPostProcess = sectionOcrMatchesFooterNet(plainText);
+    const mergedContinuations =
+      !skipColumnPostProcess && shouldMergeContinuationLineItems(tableFormat)
+        ? mergeContinuationInvoiceLineItems(preferred) ?? preferred
+        : preferred;
+    const lineItems =
+      !skipColumnPostProcess && shouldRealignLineItems(tableFormat)
+        ? realignShiftedInvoiceLineItems(
+            mergedContinuations,
+            preferAmount(normalized.amount, plainText, normalized.lineItems),
+          )
+        : mergedContinuations;
 
     return {
       ...normalized,

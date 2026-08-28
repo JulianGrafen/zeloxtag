@@ -20,6 +20,10 @@ const TABLE_HEADER_LINE =
 
 const MONEY_IN_LABEL = /\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}/;
 
+/** Verb-only wrap fragments on Pos tables — never part names like Thermostat. */
+const CONTINUATION_VERB_LABEL =
+  /^(?:erneuern|prüfen|pruefen|wechseln|montieren)$/i;
+
 function isInvoiceTableHeaderLine(line: string): boolean {
   if (TABLE_HEADER_LINE.test(line)) return true;
   if (/^pos\.?\s+menge\b/i.test(line)) return true;
@@ -70,13 +74,7 @@ export function isContinuationInvoiceLabel(label: string): boolean {
     return true;
   }
 
-  if (
-    trimmed.length <= 24 &&
-    /^[a-zäöüß]+$/i.test(trimmed) &&
-    !/^(rechnung|mwst|netto|summe|pos|menge)$/i.test(trimmed)
-  ) {
-    return true;
-  }
+  if (CONTINUATION_VERB_LABEL.test(trimmed)) return true;
 
   return false;
 }
