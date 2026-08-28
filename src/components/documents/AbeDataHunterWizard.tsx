@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   FileUp,
   LoaderCircle,
+  Pencil,
   RotateCcw,
   X,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import {
 } from "@/components/documents/abe-review-ui";
 import { AbeVehicleTableWatermark } from "@/components/documents/abe-vehicle-table-watermark";
 import { InBrowserCamera, type GuideFrameType } from "@/components/documents/in-browser-camera";
+import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import {
   ABE_CAPTURE_JPEG_QUALITY,
   ABE_CAPTURE_MAX_WIDTH_PX,
@@ -1215,7 +1217,7 @@ function AuflagenDetailPanel({
         {allCodesKnown ? (
           <>
             <div className="mt-4 rounded-xl border border-emerald-300/70 bg-emerald-50 px-3 py-2.5 text-[0.82rem] font-medium text-emerald-950">
-              Alle Auflagen erfasst — du kannst zur Prüfung wechseln und
+              Alle Auflagen erfasst — du kannst die Daten prüfen und
               speichern.
             </div>
             <Button
@@ -1223,7 +1225,7 @@ function AuflagenDetailPanel({
               className="mt-3 h-12 w-full"
               onClick={onContinueToReview}
             >
-              Weiter zur Prüfung
+              Daten prüfen
             </Button>
           </>
         ) : (
@@ -1422,7 +1424,7 @@ function ReviewPanel({
     auflagenCodes: scopedAuflagen.join(" "),
     auflagenNotes: report.auflagenNotes ?? "",
   }));
-  const [saveStep, setSaveStep] = useState<"edit" | "confirm">("edit");
+  const [editingFields, setEditingFields] = useState(false);
   const [saveAcked, setSaveAcked] = useState(false);
 
   useEffect(() => {
@@ -1482,12 +1484,6 @@ function ReviewPanel({
   );
   const auflagenNotesMissing = missing.includes("auflagenNotes");
 
-  useEffect(() => {
-    if (saveStep === "confirm" && missing.length > 0) {
-      setSaveStep("edit");
-    }
-  }, [saveStep, missing.length]);
-
   return (
     <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
       {showAllCapturedBanner ? (
@@ -1525,32 +1521,35 @@ function ReviewPanel({
       ) : null}
 
       <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)]">
-        <header>
-          <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            Pflichtfelder
-          </p>
-          <h2 className="mt-1 text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
-            {saveStep === "confirm" ? "Alles korrekt?" : "ABE Kern­daten"}
-          </h2>
-          <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
-            {saveStep === "confirm"
-              ? "Bitte prüfe KBA, Inhaber, Bauteil und Auflagen noch einmal gegen deine ABE."
-              : `Extrahierte Werte kannst du hier korrigieren · ${vehicleLabel}`}
-          </p>
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
+              Pflichtfelder
+            </p>
+            <h2 className="mt-1 text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
+              ABE prüfen
+            </h2>
+            <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
+              {editingFields
+                ? `Extrahierte Werte kannst du hier korrigieren · ${vehicleLabel}`
+                : `${vehicleLabel} · Kurz gegen deine ABE prüfen, dann speichern.`}
+            </p>
+          </div>
+          {!editingFields ? (
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={() => setEditingFields(true)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-1.5 text-[0.72rem] font-medium text-[color:var(--vd-text)]"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+              Bearbeiten
+            </PressableButton>
+          ) : null}
         </header>
 
-        {saveStep === "confirm" ? (
+        {!editingFields ? (
           <div className="mt-4 space-y-3">
-            <div
-              role="note"
-              className="flex gap-2.5 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] leading-relaxed text-amber-950"
-            >
-              <AlertTriangle
-                className="mt-0.5 h-4 w-4 shrink-0 text-amber-800"
-                aria-hidden
-              />
-              <p>{ABE_SAVE_ORIGINAL_PAPERS_NOTICE}</p>
-            </div>
             <AbeKbaHero value={form.kbaNumber} />
             <dl className="grid gap-2.5">
               <AbeSummaryRow
@@ -1732,6 +1731,14 @@ function ReviewPanel({
                 </details>
               </div>
             </div>
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={() => setEditingFields(false)}
+              className="inline-flex w-full items-center justify-center rounded-2xl border border-[color:var(--vd-border)] px-3 py-2.5 text-[0.85rem] font-medium text-[color:var(--vd-text)]"
+            >
+              Fertig
+            </PressableButton>
           </div>
         )}
 
@@ -1802,55 +1809,39 @@ function ReviewPanel({
         ) : null}
 
         <div className="mt-5 grid gap-2">
-          {saveStep === "confirm" ? (
-            <>
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-text)]">
-                <input
-                  type="checkbox"
-                  checked={saveAcked}
-                  onChange={(event) => setSaveAcked(event.target.checked)}
-                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-[color:var(--vd-border)] accent-neutral-900"
-                />
-                <span>{ABE_SAVE_CONFIRM_ACK}</span>
-              </label>
-              <Button
-                type="button"
-                disabled={isSaving || !saveAcked}
-                onClick={() => onSave(form)}
-              >
-                {isSaving ? (
-                  <span className="inline-flex items-center gap-2">
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                    Speichern…
-                  </span>
-                ) : (
-                  "Ja, alles korrekt — ABE speichern"
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isSaving}
-                onClick={() => {
-                  setSaveAcked(false);
-                  setSaveStep("edit");
-                }}
-              >
-                Zurück & bearbeiten
-              </Button>
-            </>
-          ) : (
-            <Button
-              type="button"
-              disabled={missing.length > 0}
-              onClick={() => {
-                setSaveAcked(false);
-                setSaveStep("confirm");
-              }}
-            >
-              Weiter zur Bestätigung
-            </Button>
-          )}
+          <div
+            role="note"
+            className="flex gap-2.5 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] leading-relaxed text-amber-950"
+          >
+            <AlertTriangle
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-800"
+              aria-hidden
+            />
+            <p>{ABE_SAVE_ORIGINAL_PAPERS_NOTICE}</p>
+          </div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-text)]">
+            <input
+              type="checkbox"
+              checked={saveAcked}
+              onChange={(event) => setSaveAcked(event.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-[color:var(--vd-border)] accent-neutral-900"
+            />
+            <span>{ABE_SAVE_CONFIRM_ACK}</span>
+          </label>
+          <Button
+            type="button"
+            disabled={isSaving || !saveAcked || missing.length > 0}
+            onClick={() => onSave(form)}
+          >
+            {isSaving ? (
+              <span className="inline-flex items-center gap-2">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Speichern…
+              </span>
+            ) : (
+              "ABE speichern"
+            )}
+          </Button>
           <Button type="button" variant="outline" onClick={onRestart}>
             <RotateCcw className="h-4 w-4" />
             Neu starten
