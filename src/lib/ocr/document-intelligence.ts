@@ -1,8 +1,6 @@
 /**
- * Document parse dispatch — adaptive routing for invoices:
- *   • PDFs   → hybrid layout+text first (all pages in markdown, deduplication)
- *   • Images → vision LLM first (Azure row guides / Z-markers on the image)
- * Each path falls back to the other on failure.
+ * Document parse dispatch — invoices via vision LLM only (no Azure OCR / hybrid).
+ * ABE / Gutachten / TÜV keep their existing routing.
  */
 
 import type {
@@ -37,15 +35,11 @@ import {
 import {
   isAzureDocumentIntelligenceConfigured,
 } from "./azure-document-intelligence";
-import {
-  hybridInvoiceService,
-} from "@/services/invoice/HybridInvoiceService";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   extractVendorFromLogoHeader,
   mergeVisionVendorIntoInvoiceFields,
 } from "@/lib/ocr/invoice-vendor-from-logo";
-import { mapParsedInvoiceToTextParseResult } from "@/services/invoice/map-parsed-invoice-to-text-parse";
 import {
   abeExtractionService,
   resolveAbeContextModel,
@@ -443,119 +437,54 @@ async function analyzeInvoiceOneShot(input: {
   contentType: string;
   parseModel: string;
   lockedCategory?: InvoiceTextParseCategory | null;
+  invoiceScanPart?: import("./services/invoice-parse-service").InvoiceScanPart;
 }): Promise<AnalyzeDocumentResult> {
   const documentInput = {
     bytes: input.bytes,
     contentType: input.contentType,
   };
 
-  // PDFs contain multiple pages. The vision path rasterises only page 1 and
-  // can miss a complete Ges.-Preis column that only appears fully on page 2.
-  // The hybrid path feeds all pages (after deduplication) as markdown, so the
-  // LLM always sees the most complete table.
-  //
-  // Images (camera scans) are single-frame — the vision path with Azure row
-  // guides / Z-markers anchors each row precisely and works best.
-  const isPdf = isPdfBuffer(input.bytes) || input.contentType === "application/pdf";
-  const canHybrid = isAzureDocumentIntelligenceConfigured();
-
-  const runHybrid = async (): Promise<AnalyzeDocumentResult> => {
-    const [hybrid, visionVendor] = await Promise.all([
-      hybridInvoiceService.extract(documentInput),
-      extractVendorFromLogoHeader(documentInput),
-    ]);
-    const ocrJson = buildOcrPayloadFromMarkdown(hybrid.markdown, hybrid.pageCount);
-    const fields = mapParsedInvoiceToTextParseResult(hybrid.invoice, {
-      rawMarkdown: hybrid.markdown,
-      lockedCategory: input.lockedCategory,
-      visionVendor,
-    });
-    console.info(
-      `[analyzeDocument] hybrid invoice: pages=${hybrid.pageCount} tables=${hybrid.tableCount} positions=${fields.lineItems?.length ?? 0}`,
-    );
-    return {
-      kind: "invoice",
+  const [{ fields, ocrJson }, visionVendor] = await Promise.all([
+    invoiceParseService.parseFromDocument(documentInput, {
+      model: input.parseModel,
       documentType: "invoice",
-      fields,
-      approvalFields: null,
-      rawText: hybrid.markdown,
-      ocrJson,
-      modelId: HYBRID_INVOICE_MODEL_ID,
-      parseModel: input.parseModel,
-    };
-  };
+      invoiceScanPart: input.invoiceScanPart,
+    }),
+    extractVendorFromLogoHeader(documentInput),
+  ]);
 
-  const runVision = async (): Promise<AnalyzeDocumentResult> => {
-    const [{ fields, ocrJson }, visionVendor] = await Promise.all([
-      invoiceParseService.parseFromDocument(documentInput, {
-        model: input.parseModel,
-        documentType: "invoice",
-      }),
-      extractVendorFromLogoHeader(documentInput),
-    ]);
-
-    const withVendor = mergeVisionVendorIntoInvoiceFields(
-      fields,
-      ocrJson,
-      visionVendor,
-    );
-
-    const fullText = `${ocrJson.headerLines.join("\n")}\n${ocrJson.text}`.trim();
-    const category =
-      input.lockedCategory != null
-        ? input.lockedCategory
-        : preferInvoiceCategory(
-            withVendor.category,
-            fullText,
-            ocrJson.headerLines,
-          );
-
-    const finalFields = { ...withVendor, category };
-
-    console.info(
-      `[analyzeDocument] vision invoice (row guides): positions=${finalFields.lineItems?.length ?? 0} category=${finalFields.category}${visionVendor ? " logoVendor" : ""}`,
-    );
-    return {
-      kind: "invoice",
-      documentType: "invoice",
-      fields: finalFields,
-      approvalFields: null,
-      rawText: ocrJson.text,
-      ocrJson,
-      modelId: LLM_VISION_PARSE_MODEL_ID,
-      parseModel: input.parseModel,
-    };
-  };
-
-  if (isPdf && canHybrid) {
-    // PDF: hybrid first (all pages, deduplication), vision as fallback.
-    try {
-      return await runHybrid();
-    } catch (hybridError) {
-      console.warn("[analyzeDocument] hybrid failed for PDF, falling back to vision", hybridError);
-    }
-    return runVision();
-  }
-
-  // Image: vision first (row guides anchor each row), hybrid as fallback.
-  try {
-    return await runVision();
-  } catch (visionError) {
-    console.warn("[analyzeDocument] vision failed, trying hybrid layout+text", visionError);
-  }
-
-  if (canHybrid) {
-    try {
-      return await runHybrid();
-    } catch (error) {
-      console.error("[analyzeDocument] hybrid fallback also failed", error);
-      throw error;
-    }
-  }
-
-  throw new TextParseError(
-    "Invoice parse failed: vision unavailable and Azure Layout is not configured for hybrid fallback.",
+  const withVendor = mergeVisionVendorIntoInvoiceFields(
+    fields,
+    ocrJson,
+    visionVendor,
   );
+
+  const fullText = `${ocrJson.headerLines.join("\n")}\n${ocrJson.text}`.trim();
+  const category =
+    input.lockedCategory != null
+      ? input.lockedCategory
+      : preferInvoiceCategory(
+          withVendor.category,
+          fullText,
+          ocrJson.headerLines,
+        );
+
+  const finalFields = { ...withVendor, category };
+
+  console.info(
+    `[analyzeDocument] vision invoice: positions=${finalFields.lineItems?.length ?? 0} category=${finalFields.category}${visionVendor ? " logoVendor" : ""}`,
+  );
+
+  return {
+    kind: "invoice",
+    documentType: "invoice",
+    fields: finalFields,
+    approvalFields: null,
+    rawText: ocrJson.text,
+    ocrJson,
+    modelId: LLM_VISION_PARSE_MODEL_ID,
+    parseModel: input.parseModel,
+  };
 }
 
 /** Map minimal extract → analyze API shape (summary + optional vehicle match). */
@@ -631,6 +560,8 @@ export async function analyzeDocument(input: {
   teilegutachtenScope?: "cover" | "marking" | "verwendungsbereich" | "full";
   /** §19(2) Prüfung wizard — scoped page extraction. */
   pruefung192Scope?: "bericht" | "gutachten" | "vorschriften" | "full";
+  /** Multi-photo invoice scan role — overview page vs positions block. */
+  invoiceScanPart?: import("./services/invoice-parse-service").InvoiceScanPart;
 }): Promise<AnalyzeDocumentResult> {
   if (!isLlmConfigured()) {
     throw new DocumentIntelligenceError(
@@ -803,6 +734,7 @@ export async function analyzeDocument(input: {
       contentType: input.contentType,
       parseModel,
       lockedCategory: input.invoiceCategory ?? null,
+      invoiceScanPart: input.invoiceScanPart,
     });
   } catch (error) {
     if (error instanceof MissingVinError) {

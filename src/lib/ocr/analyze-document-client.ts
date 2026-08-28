@@ -15,7 +15,15 @@ import type {
   InvoiceTextParseCategory,
   InvoiceTextParseResult,
 } from "./text-parse-schema";
-import { normalizeTextParseResult } from "./text-parse-schema";
+import { normalizeLineItemsForReview, normalizeTextParseResult } from "./text-parse-schema";
+import { preferAmount } from "@/lib/ocr/amount-from-text";
+import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
+import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
+import { mergeLineItemsExtractions } from "@/lib/ocr/invoice-wizard-merge";
+import { ensureInvoiceVatAndGrossTotal } from "@/lib/ocr/invoice-vat";
+import type { InvoiceScanPart } from "./services/invoice-parse-service";
+
+export type { InvoiceScanPart };
 
 export type AnalyzeDocumentResult = {
   kind: "invoice" | "abe";
@@ -75,6 +83,7 @@ async function analyzeOneFile(
   invoiceCategory?: InvoiceTextParseCategory | null,
   teilegutachtenScope?: "cover" | "marking" | "verwendungsbereich" | "full",
   pruefung192Scope?: "bericht" | "gutachten" | "vorschriften" | "full",
+  invoiceScanPart?: InvoiceScanPart,
 ): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
   formData.set("vehicleId", vehicleId);
@@ -97,6 +106,9 @@ async function analyzeOneFile(
   }
   if (pruefung192Scope) {
     formData.set("pruefung192Scope", pruefung192Scope);
+  }
+  if (invoiceScanPart) {
+    formData.set("invoiceScanPart", invoiceScanPart);
   }
 
   const response = await fetch("/api/ocr/parse", {
@@ -185,6 +197,18 @@ export async function mapWithConcurrency<T, R>(
   return results;
 }
 
+function resolveInvoiceScanParts(
+  fileCount: number,
+  documentType: OcrDocumentType,
+): InvoiceScanPart[] {
+  if (documentType !== "invoice" || fileCount <= 1) {
+    return Array.from({ length: fileCount }, () => "full");
+  }
+  return Array.from({ length: fileCount }, (_, index) =>
+    index === 0 ? "overview" : "positions",
+  );
+}
+
 function mergeFields(
   results: AnalyzeDocumentResult[],
 ): InvoiceTextParseResult {
@@ -250,10 +274,97 @@ function mergeFields(
   });
 }
 
+/** Merge overview + positions-block invoice scans (A4 + optional blocks). */
+export function mergeInvoiceScanFields(
+  results: AnalyzeDocumentResult[],
+  scanParts: InvoiceScanPart[],
+  lockedCategory?: InvoiceTextParseCategory | null,
+): InvoiceTextParseResult {
+  const hasSplitFlow =
+    scanParts.includes("overview") && scanParts.includes("positions");
+
+  if (!hasSplitFlow) {
+    return mergeFields(results);
+  }
+
+  const overviewIndex = scanParts.indexOf("overview");
+  const overviewFields = results[overviewIndex]?.fields;
+
+  const positionBlocks = results
+    .filter((_, index) => scanParts[index] === "positions")
+    .map((result) => ({
+      lineItems: result.fields.lineItems,
+      amount: result.fields.amount,
+    }));
+
+  const mergedPositions = mergeLineItemsExtractions(positionBlocks);
+  const lineItems =
+    mergedPositions.lineItems && mergedPositions.lineItems.length > 0
+      ? mergedPositions.lineItems
+      : (overviewFields?.lineItems ?? null);
+
+  const amount = preferAmount(
+    overviewFields?.amount ?? mergedPositions.amount,
+    "",
+    lineItems,
+  );
+
+  const categorySeed = [
+    overviewFields?.summary,
+    overviewFields?.vendor,
+    lineItems?.map((item) => item.label).join(" "),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const category = lockedCategory
+    ? lockedCategory
+    : preferInvoiceCategory(overviewFields?.category ?? "other", categorySeed);
+
+  const plausibility = reconcileInvoicePlausibility({
+    lineItems,
+    amount,
+    expectedGross: overviewFields?.amount ?? mergedPositions.amount,
+    enableRealign: false,
+    enableOcrReconcile: false,
+  });
+
+  const withVat = ensureInvoiceVatAndGrossTotal({
+    lineItems: plausibility.lineItems,
+    amount: plausibility.amount,
+  });
+
+  return normalizeTextParseResult(
+    {
+      vendor: overviewFields?.vendor ?? null,
+      date: overviewFields?.date ?? null,
+      amount: withVat.amount,
+      category,
+      summary: overviewFields?.summary ?? null,
+      lineItems: normalizeLineItemsForReview(withVat.lineItems, 60),
+      kbaNumber: null,
+      vehicleApprovals: null,
+      authority: null,
+      conditions: null,
+      partCategory: null,
+      notes: overviewFields?.notes ?? null,
+      manufacturer: null,
+      invoiceNumber: overviewFields?.invoiceNumber ?? null,
+      mileageKm: overviewFields?.mileageKm ?? null,
+    },
+    { preservePositions: true },
+  );
+}
+
 /** Merge per-page OCR fields into one review payload (page order preserved). */
 export function mergeAnalyzeDocumentFields(
   results: AnalyzeDocumentResult[],
+  scanParts?: InvoiceScanPart[],
+  lockedCategory?: InvoiceTextParseCategory | null,
 ): InvoiceTextParseResult {
+  if (scanParts?.length === results.length) {
+    return mergeInvoiceScanFields(results, scanParts, lockedCategory);
+  }
   return mergeFields(results);
 }
 
@@ -282,6 +393,7 @@ export async function analyzeDocumentFiles(
   const invoiceCategory = options.invoiceCategory ?? null;
   const teilegutachtenScope = options.teilegutachtenScope;
   const pruefung192Scope = options.pruefung192Scope;
+  const scanParts = resolveInvoiceScanParts(files.length, documentType);
 
   if (files.length === 1) {
     onPageProgress?.(1, 1);
@@ -295,6 +407,7 @@ export async function analyzeDocumentFiles(
       invoiceCategory,
       teilegutachtenScope,
       pruefung192Scope,
+      scanParts[0],
     );
   }
 
@@ -312,6 +425,7 @@ export async function analyzeDocumentFiles(
         invoiceCategory,
         index === 0 ? teilegutachtenScope : undefined,
         index === 0 ? pruefung192Scope : undefined,
+        scanParts[index],
       ),
     (completed, total) => onPageProgress?.(completed, total),
   );
@@ -328,7 +442,7 @@ export async function analyzeDocumentFiles(
   return {
     kind: mergedKind,
     documentType,
-    fields: mergeFields(results),
+    fields: mergeAnalyzeDocumentFields(results, scanParts, invoiceCategory),
     approvalFields:
       results.find((result) => result.approvalFields)?.approvalFields ?? null,
     rawText,

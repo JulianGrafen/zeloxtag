@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   mapWithConcurrency,
   mergeAnalyzeDocumentFields,
+  mergeInvoiceScanFields,
   resolveOcrMaxParallelPages,
   type AnalyzeDocumentResult,
 } from "@/lib/ocr/analyze-document-client";
@@ -124,5 +125,57 @@ describe("mergeAnalyzeDocumentFields", () => {
 
     expect(merged.vendor).toBe("Werkstatt Süd");
     expect(merged.amount).toBe(200);
+  });
+});
+
+describe("mergeInvoiceScanFields", () => {
+  it("uses overview metadata and positions-only line items", () => {
+    const merged = mergeInvoiceScanFields(
+      [
+        buildResult(0, {
+          vendor: "Speedworkz",
+          date: "2026-01-15",
+          amount: 714,
+          invoiceNumber: "RE-100",
+          mileageKm: 142350,
+          summary: "Sportfedern",
+          lineItems: [{ label: "Thin overview row", amount: 10 }],
+        }),
+        buildResult(1, {
+          vendor: null,
+          date: null,
+          amount: 600,
+          lineItems: [
+            { label: "Arbeitslohn Sportfedern", amount: 120 },
+            { label: "Sportfedern H&R", amount: 480 },
+          ],
+        }),
+      ],
+      ["overview", "positions"],
+    );
+
+    expect(merged.vendor).toBe("Speedworkz");
+    expect(merged.invoiceNumber).toBe("RE-100");
+    expect(merged.mileageKm).toBe(142350);
+    expect(merged.amount).toBe(714);
+    expect(merged.lineItems).toEqual([
+      { label: "Arbeitslohn Sportfedern", amount: 120 },
+      { label: "Sportfedern H&R", amount: 480 },
+    ]);
+  });
+
+  it("falls back to overview line items when no positions blocks", () => {
+    const merged = mergeInvoiceScanFields(
+      [
+        buildResult(0, {
+          vendor: "Werkstatt",
+          amount: 100,
+          lineItems: [{ label: "Only overview", amount: 100 }],
+        }),
+      ],
+      ["overview"],
+    );
+
+    expect(merged.lineItems).toEqual([{ label: "Only overview", amount: 100 }]);
   });
 });

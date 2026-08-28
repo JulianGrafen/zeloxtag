@@ -125,6 +125,10 @@ const GUIDE_FRAME_INNER_A4_CLASS =
 const GUIDE_FRAME_INNER_TABLE_CLASS =
   "relative w-full min-h-[5.25rem] min-w-[12rem] max-h-full max-w-full shrink-0 overflow-hidden border-2 transition-colors duration-200";
 
+/** Landscape section excerpt (Positionsblock) — same width-driven sizing as table. */
+const GUIDE_FRAME_INNER_SECTION_CLASS =
+  "relative w-full min-h-[8rem] min-w-[12rem] max-h-full max-w-full shrink-0 overflow-hidden border-2 transition-colors duration-200";
+
 const GUIDE_FRAME_INNER_BASE_CLASS =
   "relative max-h-full max-w-full shrink-0 border-2 transition-colors duration-200";
 
@@ -1125,7 +1129,7 @@ export function InBrowserCamera({
                   <div
                     ref={guideFrameRef}
                     className={[
-                      GUIDE_FRAME_INNER_BASE_CLASS,
+                      GUIDE_FRAME_INNER_SECTION_CLASS,
                       "rounded-md",
                       guideFrameBorderClass(guideFrameReady),
                       frameOutsideShadow,

@@ -210,6 +210,14 @@ export async function POST(request: NextRequest) {
         ? pruefung192ScopeRaw
         : undefined;
 
+    const invoiceScanPartRaw = String(formData.get("invoiceScanPart") ?? "").trim();
+    const invoiceScanPart =
+      invoiceScanPartRaw === "overview" ||
+      invoiceScanPartRaw === "positions" ||
+      invoiceScanPartRaw === "full"
+        ? invoiceScanPartRaw
+        : undefined;
+
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Document file is required.", "bad_request");
@@ -245,6 +253,7 @@ export async function POST(request: NextRequest) {
       kind: documentType === "abe" ? "abe" : "invoice",
       teilegutachtenScope,
       pruefung192Scope,
+      invoiceScanPart,
     });
 
     // Defense in depth: re-validate LLM-shaped fields before responding.

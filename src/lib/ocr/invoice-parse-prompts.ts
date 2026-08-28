@@ -110,8 +110,7 @@ amount = Endpreis / Zahlbetrag brutto — nicht Netto Summe.
 
 /** Fallback system prompt when Foundry agent metadata is unavailable. */
 export const INVOICE_SYSTEM_PROMPT = `Du bist ein präziser Parser für Kfz-Rechnungen und Servicebelege.
-Der OCR-Input ist Markdown (inkl. Tabellen). Nutze Tabellenzeilen und Überschriften als Struktur.
-Extrahiere strikt JSON. Wenn ein Wert nicht auffindbar ist, setze ihn auf null.
+Extrahiere strikt JSON aus dem Dokument. Wenn ein Wert nicht auffindbar ist, setze ihn auf null.
 
 Schema:
 {
@@ -193,14 +192,18 @@ MERGE sie zu EINEM lineItem. Die zweite Zeile ist KEIN neues lineItem.
 "Schraube, Einspritzdüsenhalter" + "ORIGINAL ERSATZTEIL" + "GREENPARTS" = EIN lineItem.
 `.trim();
 
-/** Per-request user instructions appended before OCR Markdown. */
-export const INVOICE_USER_PROMPT_LINES = [
-  "Nachfolgend OCR-MARKDOWN einer Kfz-RECHNUNG / eines Servicebelegs",
+/** Per-request user instructions for vision LLM invoice parse. */
+export const INVOICE_VISION_USER_PROMPT_LINES = [
+  "Deutsche Kfz-RECHNUNG / Servicebeleg als hochgeladenes Dokumentbild.",
   "amount + lineItems.amount = NUR Ges. Preis / rechte Summenspalte — NIE Einzelpreis.",
   "Jede Positionstabelle-Zeile einzeln — nichts überspringen.",
   "Mehrzeilige Bezeichnungen = EINE Position, nicht mehrere lineItems.",
   "mileageKm nur bei explizitem KM-Feld im Kopf — sonst null.",
+  "Bei Abschnitts-Rechnungen (Arbeitswerte/Ersatzteile): Preis-€/Betrag-Spalte, nicht Std./Stunden.",
 ] as const;
+
+/** @deprecated Text-parse path — prefer {@link INVOICE_VISION_USER_PROMPT_LINES}. */
+export const INVOICE_USER_PROMPT_LINES = INVOICE_VISION_USER_PROMPT_LINES;
 
 /** System prompt used for invoice LLM calls (base + few-shot). */
 export function buildInvoiceSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string {
@@ -211,6 +214,46 @@ export function buildInvoiceSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string {
     INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES,
     INVOICE_MULTILINE_DESCRIPTION_RULE,
   ].join("\n\n");
+}
+
+/** Vision-only invoice parse — column + section + spatial rules in one prompt. */
+export function buildInvoiceVisionSystemPrompt(): string {
+  return [
+    buildInvoiceSystemPrompt(),
+    INVOICE_VISION_SPATIAL_RULES,
+    INVOICE_LINE_ITEMS_EXTRACT_COMPUTE_FEW_SHOT,
+    INVOICE_WORKSHOP_SECTIONS_FEW_SHOT,
+    INVOICE_LINE_ITEMS_COMPLETENESS_RULES,
+  ].join("\n\n");
+}
+
+/** Positions-block vision parse — line items focus with full-format coverage. */
+export function buildInvoicePositionsVisionSystemPrompt(): string {
+  return [
+    buildInvoiceVisionSystemPrompt(),
+    buildInvoiceLineItemsSystemPrompt(),
+    buildInvoiceWorkshopLineItemsSystemPrompt(),
+    buildInvoiceGenericLineItemsSystemPrompt(),
+  ].join("\n\n");
+}
+
+/** Overview-page vision user lines (metadata-first). */
+export function buildInvoiceOverviewVisionUserLines(): readonly string[] {
+  return [
+    ...INVOICE_OVERVIEW_USER_LINES,
+    "lineItems optional — dünn oder null wenn Positionsblock separat gescannt wird.",
+    "mileageKm, invoiceNumber, vendor, date und amount (brutto) aus dem Kopf extrahieren.",
+  ];
+}
+
+/** Positions-block vision user lines (all table formats). */
+export function buildInvoicePositionsVisionUserLines(): readonly string[] {
+  return [
+    ...INVOICE_LINE_ITEMS_USER_LINES,
+    ...INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES,
+    ...INVOICE_GENERIC_LINE_ITEMS_USER_LINES,
+    "Nur Positionsbereich — vendor/date/mileageKm dürfen null bleiben.",
+  ];
 }
 
 /** System prompt for HU/AU cost/metadata vision parse (header mileage emphasis). */
