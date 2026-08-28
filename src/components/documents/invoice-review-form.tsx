@@ -29,6 +29,8 @@ export type InvoiceReviewFormProps = {
   categoryLocked?: boolean;
   vehicleMismatchReason?: string | null;
   mileageWarning?: string | null;
+  /** Set when the extracted positions do not add up to the printed totals. */
+  lineItemsWarning?: string | null;
   preview?: {
     url: string;
     kind: "pdf" | "image";
@@ -59,6 +61,7 @@ export function InvoiceReviewForm({
   categoryLocked = false,
   vehicleMismatchReason = null,
   mileageWarning = null,
+  lineItemsWarning = null,
   preview,
   saving = false,
   error = null,
@@ -328,6 +331,16 @@ export function InvoiceReviewForm({
           </>
         )}
       </section>
+
+      {lineItemsWarning ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-[0.85rem] text-amber-950">
+          <p className="flex items-start gap-2 font-semibold">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            Positionen prüfen
+          </p>
+          <p className="mt-1.5 leading-relaxed">{lineItemsWarning}</p>
+        </div>
+      ) : null}
 
       <EditableLineItemsSection
         items={fields.lineItems ?? []}

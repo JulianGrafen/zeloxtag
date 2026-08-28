@@ -40,11 +40,8 @@ import {
 import {
   hybridInvoiceService,
 } from "@/services/invoice/HybridInvoiceService";
-import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
-import {
-  extractVendorFromLogoHeader,
-  mergeVisionVendorIntoInvoiceFields,
-} from "@/lib/ocr/invoice-vendor-from-logo";
+import { extractVendorFromLogoHeader } from "@/lib/ocr/invoice-vendor-from-logo";
+import { invoicePositionsMismatchHint } from "@/lib/ocr/invoice-extraction-verify";
 import { mapParsedInvoiceToTextParseResult } from "@/services/invoice/map-parsed-invoice-to-text-parse";
 import {
   abeExtractionService,
@@ -114,6 +111,13 @@ export type AnalyzeDocumentResult = {
   modelId: string;
   /** Chat deployment used for structured parse. */
   parseModel: string;
+  /**
+   * Invoices only: false when the extracted positions do not add up to the
+   * totals printed on the document. Undefined for non-invoice documents.
+   */
+  lineItemsVerified?: boolean;
+  /** German review hint when `lineItemsVerified` is false. */
+  lineItemsWarning?: string | null;
 };
 
 const HYBRID_INVOICE_MODEL_ID = "hybrid-layout-text";
@@ -470,8 +474,11 @@ async function analyzeInvoiceOneShot(input: {
       lockedCategory: input.lockedCategory,
       visionVendor,
     });
+    const { net_reconciled, gross_reconciled, line_items_net_sum } =
+      hybrid.invoice.reconciliation;
+    const verified = net_reconciled || gross_reconciled;
     console.info(
-      `[analyzeDocument] hybrid invoice: pages=${hybrid.pageCount} tables=${hybrid.tableCount} positions=${fields.lineItems?.length ?? 0}`,
+      `[analyzeDocument] hybrid invoice: pages=${hybrid.pageCount} tables=${hybrid.tableCount} positions=${fields.lineItems?.length ?? 0} verified=${verified}`,
     );
     return {
       kind: "invoice",
@@ -482,38 +489,33 @@ async function analyzeInvoiceOneShot(input: {
       ocrJson,
       modelId: HYBRID_INVOICE_MODEL_ID,
       parseModel: input.parseModel,
+      lineItemsVerified: verified,
+      lineItemsWarning: verified
+        ? null
+        : invoicePositionsMismatchHint(
+            line_items_net_sum,
+            hybrid.invoice.totals.net_amount ??
+              hybrid.invoice.totals.gross_amount,
+          ),
     };
   };
 
+  // One vision call does the whole extraction — vendor comes from the same
+  // response, so no separate logo/header call is needed.
   const runVision = async (): Promise<AnalyzeDocumentResult> => {
-    const [{ fields, ocrJson }, visionVendor] = await Promise.all([
-      invoiceParseService.parseFromDocument(documentInput, {
+    const { fields, ocrJson, lineItemsVerified, lineItemsWarning } =
+      await invoiceParseService.parseFromDocument(documentInput, {
         model: input.parseModel,
         documentType: "invoice",
-      }),
-      extractVendorFromLogoHeader(documentInput),
-    ]);
+      });
 
-    const withVendor = mergeVisionVendorIntoInvoiceFields(
-      fields,
-      ocrJson,
-      visionVendor,
-    );
-
-    const fullText = `${ocrJson.headerLines.join("\n")}\n${ocrJson.text}`.trim();
-    const category =
+    const finalFields =
       input.lockedCategory != null
-        ? input.lockedCategory
-        : preferInvoiceCategory(
-            withVendor.category,
-            fullText,
-            ocrJson.headerLines,
-          );
-
-    const finalFields = { ...withVendor, category };
+        ? { ...fields, category: input.lockedCategory }
+        : fields;
 
     console.info(
-      `[analyzeDocument] vision invoice (row guides): positions=${finalFields.lineItems?.length ?? 0} category=${finalFields.category}${visionVendor ? " logoVendor" : ""}`,
+      `[analyzeDocument] vision invoice: positions=${finalFields.lineItems?.length ?? 0} category=${finalFields.category} verified=${lineItemsVerified}`,
     );
     return {
       kind: "invoice",
@@ -524,6 +526,8 @@ async function analyzeInvoiceOneShot(input: {
       ocrJson,
       modelId: LLM_VISION_PARSE_MODEL_ID,
       parseModel: input.parseModel,
+      lineItemsVerified,
+      lineItemsWarning,
     };
   };
 

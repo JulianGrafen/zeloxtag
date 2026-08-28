@@ -2,7 +2,6 @@ import type OpenAI from "openai";
 
 import { preferAmount, extractAmountFromText } from "@/lib/ocr/amount-from-text";
 import {
-  buildVisionUserMessage,
   prepareSinglePageOcrInput,
   resolveAzureLayoutInput,
   type DocumentBytesInput,
@@ -12,25 +11,15 @@ import {
   buildOcrPayloadFromAzureLayout,
   isAzureDocumentIntelligenceConfigured,
 } from "@/lib/ocr/azure-document-intelligence";
-import {
-  canDrawRowSeparators,
-  drawInvoiceRowSeparatorsOnImage,
-} from "@/lib/ocr/draw-invoice-row-separators";
 import { buildStubOcrPayload } from "@/lib/ocr/llm-document-content";
 import {
   mergeContinuationInvoiceLineItems,
   realignShiftedInvoiceLineItems,
 } from "@/lib/ocr/invoice-line-item-alignment";
-import { finalizeColumnFormatLineItems } from "@/lib/ocr/invoice-column-pipeline";
-import {
-  azureLayoutPlainText,
-  extractInvoiceLineItemsFromAzureLayout,
-  mergeLayoutAndLlmLineItems,
-} from "@/lib/ocr/invoice-line-items-from-layout";
+import { mergeLayoutAndLlmLineItems } from "@/lib/ocr/invoice-line-items-from-layout";
 import {
   extractInvoiceLineItemsFromText,
   preferInvoiceLineItems,
-  reconcileLineItemAmountsWithOcrText,
 } from "@/lib/ocr/invoice-line-items-from-text";
 import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import {
@@ -42,24 +31,24 @@ import {
   buildInvoiceSystemPrompt,
   buildTuevCostSystemPrompt,
   INVOICE_USER_PROMPT_LINES,
-  INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES,
   TUEV_COST_USER_PROMPT_LINES,
 } from "@/lib/ocr/invoice-parse-prompts";
 import {
   detectInvoiceTableFormat,
-  shouldDrawInvoiceRowSeparators,
-  shouldMergeAzureLayout,
   shouldMergeContinuationLineItems,
   shouldRealignLineItems,
-  shouldReconcileWithOcrHeuristics,
 } from "@/lib/ocr/invoice-format-routing";
 import {
-  detectWorkshopInvoiceSignals,
-  extractWorkshopInvoiceAmount,
-  reconcileWorkshopLineItemsWithOcrText,
   resolveWorkshopLineItems,
   sectionOcrMatchesFooterNet,
 } from "@/lib/ocr/invoice-workshop-sections";
+import {
+  extractGrossTotalFromText,
+  extractNetSumFromText,
+} from "@/lib/ocr/invoice-footer-totals";
+import { extractInvoiceFromImage } from "@/lib/ocr/invoice-vision-extract";
+import { describeInvoiceVerificationIssue } from "@/lib/ocr/invoice-extraction-verify";
+import { mapParsedInvoiceToTextParseResult } from "@/services/invoice/map-parsed-invoice-to-text-parse";
 import { deduplicateInvoiceItemTable } from "@/lib/ocr/markdown-page-dedup";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
 import { getOcrLlmClient } from "@/lib/ocr/llm-client";
@@ -136,11 +125,19 @@ export type InvoiceDocumentParseOptions = InvoiceParseOptions & {
 export type InvoiceDocumentParseResult = {
   fields: InvoiceTextParseResult;
   ocrJson: OcrJsonPayload;
+  /**
+   * False when the extracted positions do not add up to the totals printed on
+   * the document — the review screen asks the user to check them.
+   */
+  lineItemsVerified: boolean;
+  /** German review hint when `lineItemsVerified` is false. */
+  lineItemsWarning: string | null;
 };
 
 /**
  * Invoice-only LLM parse service.
- * Uses mid-tier model routing + few-shot prompts for mileage / line items.
+ * Invoices are extracted by a single vision call and verified against the
+ * printed totals; no heuristic re-pairs descriptions with amounts.
  * Does not extract ABE fields — use {@link AbeParseService}.
  */
 export class InvoiceParseService {
@@ -151,98 +148,113 @@ export class InvoiceParseService {
     input: DocumentBytesInput,
     options: InvoiceDocumentParseOptions = {},
   ): Promise<InvoiceDocumentParseResult> {
-    const routedModel =
-      options.model ??
-      (options.documentType === "tuev"
-        ? resolveParseModel("tuev")
-        : resolveInvoiceParseModel());
-    let client: OpenAI;
-    let model: string;
-    try {
-      ({ client, model } = getOcrLlmClient({ model: routedModel }));
-    } catch (error) {
-      throw new TextParseError(
-        error instanceof Error ? error.message : "LLM client is not configured.",
-      );
-    }
+    return options.documentType === "tuev"
+      ? this.parseTuevCostsFromDocument(input, options)
+      : this.parseInvoiceFromDocument(input, options);
+  }
 
-    if (/^zeloxta/i.test(model)) {
-      model = resolveInvoiceParseModel();
-    }
+  /**
+   * LLM-only invoice extraction: one vision call for header, positions and
+   * totals, then an arithmetic check against the printed Nettosumme.
+   */
+  private async parseInvoiceFromDocument(
+    input: DocumentBytesInput,
+    options: InvoiceDocumentParseOptions,
+  ): Promise<InvoiceDocumentParseResult> {
+    const { client, model } = this.resolveClient(
+      options.model ?? resolveInvoiceParseModel(),
+    );
 
-    const isTuevReport = options.documentType === "tuev";
-    const docHint = isTuevReport
-      ? "This is a German HU/AU inspection report (TÜV-Bericht)."
-      : "This is a German vehicle invoice, workshop receipt, or service bill.";
+    const prepared = await prepareSinglePageOcrInput(input);
+    const azureInput = resolveAzureLayoutInput(input, prepared);
+    const azureLayout = isAzureDocumentIntelligenceConfigured()
+      ? await analyzeLayoutWithAzure(azureInput.bytes, azureInput.contentType)
+      : null;
 
-    const prepared = isTuevReport
-      ? input
-      : await prepareSinglePageOcrInput(input);
-    const azureInput = isTuevReport ? input : resolveAzureLayoutInput(input, prepared);
-
-    let azureLayout = null;
-    let llmInput = prepared;
-    let rowSeparators = false;
-    let rowMarkersLeft = false;
-
-    if (!isTuevReport && isAzureDocumentIntelligenceConfigured()) {
-      azureLayout = await analyzeLayoutWithAzure(
-        azureInput.bytes,
-        azureInput.contentType,
-      );
-    }
-
-    const layoutPlainText = azureLayout
-      ? azureLayoutPlainText(azureLayout)
+    const ocrJson = azureLayout
+      ? buildOcrPayloadFromAzureLayout(azureLayout)
+      : buildStubOcrPayload(prepared.contentType);
+    const ocrText = azureLayout
+      ? deduplicateInvoiceItemTable(ocrJson.text)
       : "";
-    const layoutTextForFormat =
-      layoutPlainText.trim() || azureLayout?.content || "";
 
-    const tableFormat = !isTuevReport
-      ? detectInvoiceTableFormat(layoutTextForFormat)
-      : ("column" as const);
-
-    const useWorkshopPrompt =
-      !isTuevReport &&
-      (tableFormat === "workshop-sections" ||
-        detectWorkshopInvoiceSignals(layoutTextForFormat) >= 4);
-
-    const userLines = isTuevReport
-      ? TUEV_COST_USER_PROMPT_LINES
-      : useWorkshopPrompt
-        ? [
-            ...INVOICE_USER_PROMPT_LINES,
-            ...INVOICE_WORKSHOP_LINE_ITEMS_USER_LINES,
-            "lineItems.amount = rechte Summenspalte (Preis-€ / Betrag). Std./Stunden/AE = menge, nie amount. Einzelpreis nie amount wenn eine rechte Preis-Spalte existiert.",
-          ]
-        : INVOICE_USER_PROMPT_LINES;
-
-    if (
-      !isTuevReport &&
-      canDrawRowSeparators(prepared.bytes, prepared.contentType) &&
-      shouldDrawInvoiceRowSeparators(tableFormat)
-    ) {
-      const drawn = await drawInvoiceRowSeparatorsOnImage(
-        prepared.bytes,
-        azureLayout,
-      );
-      llmInput = { bytes: drawn.bytes, contentType: "image/png" };
-      rowSeparators = drawn.separatorsDrawn > 0;
-      rowMarkersLeft = drawn.rowMarkersDrawn > 0;
-    }
-
-    const userContent = isTuevReport
-      ? await buildTuevDocumentUserMessage([docHint, ...userLines], prepared)
-      : await buildVisionUserMessage([docHint, ...userLines], llmInput, {
-          rowSeparators,
-          rowMarkersLeft,
-        });
-    const jsonSchema = buildInvoiceTextParseJsonSchema({
-      documentType: isTuevReport ? "tuev" : "invoice",
+    const extraction = await extractInvoiceFromImage({
+      client: {
+        chat: {
+          completions: {
+            create: (body) => client.chat.completions.create(body),
+          },
+        },
+      },
+      model,
+      image: prepared,
+      ocrTotals: {
+        net: extractNetSumFromText(ocrText),
+        gross: extractGrossTotalFromText(ocrText),
+      },
     });
-    const systemPrompt = (
-      isTuevReport ? buildTuevCostSystemPrompt() : buildInvoiceSystemPrompt()
-    ).replace(/OCR-Input ist Markdown/g, "Lies das hochgeladene Dokument");
+
+    const fields = this.nullAbeFields(
+      mapParsedInvoiceToTextParseResult(
+        {
+          vendor_name: extraction.vendorName,
+          invoice_number: extraction.invoiceNumber,
+          invoice_date: extraction.invoiceDate,
+          vehicle: {
+            vin: null,
+            hsn_tsn: null,
+            license_plate: null,
+            mileage: extraction.mileageKm,
+          },
+          totals: extraction.totals,
+          line_items: extraction.lineItems,
+          reconciliation: {
+            line_items_net_sum: extraction.verdict.positionsSum ?? 0,
+            line_items_count: extraction.lineItems.length,
+            net_delta: extraction.verdict.delta,
+            gross_delta: null,
+            vat_delta: null,
+            net_reconciled: extraction.verdict.verified,
+            gross_reconciled: extraction.verdict.verified,
+            vat_reconciled: extraction.verdict.verified,
+          },
+        },
+        {
+          rawMarkdown: ocrText,
+          llmCategory: extraction.category,
+          llmAuthoritative: true,
+        },
+      ),
+    );
+
+    console.info(
+      `[InvoiceParseService] vision extract: positions=${fields.lineItems?.length ?? 0} sum=${extraction.verdict.positionsSum} printed=${extraction.verdict.expectedTotal} verified=${extraction.verdict.verified} attempts=${extraction.attempts}`,
+    );
+
+    return {
+      fields,
+      ocrJson,
+      lineItemsVerified: extraction.verdict.verified,
+      lineItemsWarning: describeInvoiceVerificationIssue(extraction.verdict),
+    };
+  }
+
+  /** HU/AU Prüfbericht costs — separate prompt/schema from invoices. */
+  private async parseTuevCostsFromDocument(
+    input: DocumentBytesInput,
+    options: InvoiceDocumentParseOptions,
+  ): Promise<InvoiceDocumentParseResult> {
+    const { client, model } = this.resolveClient(
+      options.model ?? resolveParseModel("tuev"),
+    );
+
+    const userContent = await buildTuevDocumentUserMessage(
+      [
+        "This is a German HU/AU inspection report (TÜV-Bericht).",
+        ...TUEV_COST_USER_PROMPT_LINES,
+      ],
+      input,
+    );
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
@@ -251,12 +263,17 @@ export class InvoiceParseService {
         max_completion_tokens: PARSE_MAX_TOKENS,
         response_format: {
           type: "json_schema",
-          json_schema: jsonSchema,
+          json_schema: buildInvoiceTextParseJsonSchema({
+            documentType: "tuev",
+          }),
         },
         messages: [
           {
             role: "system",
-            content: systemPrompt,
+            content: buildTuevCostSystemPrompt().replace(
+              /OCR-Input ist Markdown/g,
+              "Lies das hochgeladene Dokument",
+            ),
           },
           { role: "user", content: userContent },
         ],
@@ -289,148 +306,29 @@ export class InvoiceParseService {
       );
     }
 
-    const normalized = this.nullAbeFields(normalizeTextParseResult(parsed.data));
-
-    const ocrJson = azureLayout
-      ? buildOcrPayloadFromAzureLayout(azureLayout)
-      : buildStubOcrPayload(prepared.contentType);
-
-    if (isTuevReport) {
-      return { fields: normalized, ocrJson };
-    }
-
-    const azureContent = azureLayout?.content ?? "";
-    const dedupedOcrText = azureLayout
-      ? deduplicateInvoiceItemTable(layoutPlainText || azureContent)
-      : `${ocrJson.headerLines.join("\n")}\n${ocrJson.text}`.trim();
-
-    const extraOcrItems =
-      azureLayout && tableFormat !== "column"
-        ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
-        : null;
-
-    const checksumItems =
-      resolveWorkshopLineItems({
-        llmItems: normalized.lineItems,
-        ocrText: dedupedOcrText,
-        extraOcrItems,
-      }) ?? normalized.lineItems;
-
-    if (!azureLayout) {
-      return {
-        fields: {
-          ...normalized,
-          lineItems: checksumItems,
-          amount: preferAmount(normalized.amount, dedupedOcrText, checksumItems),
-        },
-        ocrJson,
-      };
-    }
-
-    const isWorkshopFormat = tableFormat === "workshop-sections";
-
-    if (sectionOcrMatchesFooterNet(dedupedOcrText)) {
-      const amount =
-        preferAmount(normalized.amount, dedupedOcrText, checksumItems) ??
-        extractWorkshopInvoiceAmount(dedupedOcrText);
-      return {
-        fields: {
-          ...normalized,
-          amount,
-          lineItems: normalizeLineItemsList(checksumItems, 60),
-          mileageKm: preferMileageKm(normalized.mileageKm, azureLayout.content),
-          vendor: resolveVendorName({
-            structuredVendor: normalized.vendor,
-            logoCandidates:
-              azureLayout.pages[0]?.lines
-                ?.map((line) => line.content)
-                .slice(0, 4) ?? [],
-            rawText: azureLayout.content,
-          }),
-        },
-        ocrJson,
-      };
-    }
-
-    if (tableFormat === "column") {
-      const layoutLineItems = extractInvoiceLineItemsFromAzureLayout(azureLayout);
-      const amount =
-        preferAmount(normalized.amount, dedupedOcrText, checksumItems) ??
-        null;
-      const columnResult = finalizeColumnFormatLineItems({
-        llmItems: checksumItems,
-        layoutItems: layoutLineItems,
-        ocrText: dedupedOcrText,
-        grossAmount: amount,
-      });
-
-      return {
-        fields: {
-          ...normalized,
-          amount: columnResult.amount,
-          lineItems: columnResult.lineItems,
-          mileageKm: preferMileageKm(normalized.mileageKm, azureLayout.content),
-          vendor: resolveVendorName({
-            structuredVendor: normalized.vendor,
-            logoCandidates:
-              azureLayout.pages[0]?.lines
-                ?.map((line) => line.content)
-                .slice(0, 4) ?? [],
-            rawText: azureLayout.content,
-          }),
-        },
-        ocrJson,
-      };
-    }
-
-    const llmItems = checksumItems;
-
-    const layoutLineItems = shouldMergeAzureLayout(tableFormat)
-      ? extractInvoiceLineItemsFromAzureLayout(azureLayout)
-      : null;
-
-    const amount =
-      preferAmount(normalized.amount, dedupedOcrText, llmItems) ??
-      extractWorkshopInvoiceAmount(dedupedOcrText);
-
-    const merged = shouldMergeAzureLayout(tableFormat)
-      ? mergeLayoutAndLlmLineItems(llmItems, layoutLineItems, amount)
-      : llmItems;
-
-    const reconciled =
-      shouldReconcileWithOcrHeuristics(tableFormat)
-        ? isWorkshopFormat
-          ? reconcileWorkshopLineItemsWithOcrText(merged, dedupedOcrText)
-          : reconcileLineItemAmountsWithOcrText(merged, dedupedOcrText)
-        : merged;
-
-    const withContinuations = shouldMergeContinuationLineItems(tableFormat)
-      ? mergeContinuationInvoiceLineItems(reconciled) ?? reconciled
-      : reconciled;
-
-    const lineItems = normalizeLineItemsList(
-      shouldRealignLineItems(tableFormat)
-        ? realignShiftedInvoiceLineItems(withContinuations, amount)
-        : withContinuations,
-      60,
-    );
-
     return {
-      fields: {
-        ...normalized,
-        amount,
-        lineItems,
-        mileageKm: preferMileageKm(normalized.mileageKm, azureLayout.content),
-        vendor: resolveVendorName({
-          structuredVendor: normalized.vendor,
-          logoCandidates:
-            azureLayout.pages[0]?.lines
-              ?.map((line) => line.content)
-              .slice(0, 4) ?? [],
-          rawText: azureLayout.content,
-        }),
-      },
-      ocrJson,
+      fields: this.nullAbeFields(normalizeTextParseResult(parsed.data)),
+      ocrJson: buildStubOcrPayload(input.contentType),
+      lineItemsVerified: true,
+      lineItemsWarning: null,
+    };
+  }
+
+  private resolveClient(routedModel: string): { client: OpenAI; model: string } {
+    let client: OpenAI;
+    let model: string;
+    try {
+      ({ client, model } = getOcrLlmClient({ model: routedModel }));
+    } catch (error) {
+      throw new TextParseError(
+        error instanceof Error ? error.message : "LLM client is not configured.",
+      );
+    }
+
+    // Never send an agent name as the chat model.
+    return {
+      client,
+      model: /^zeloxta/i.test(model) ? resolveInvoiceParseModel() : model,
     };
   }
 

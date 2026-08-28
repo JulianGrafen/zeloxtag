@@ -4,6 +4,7 @@ import { inferInvoiceCategory, preferInvoiceCategory } from "@/lib/ocr/infer-inv
 import { preferMileageKm } from "@/lib/ocr/mileage-from-text";
 import { resolveWorkshopLineItems } from "@/lib/ocr/invoice-workshop-sections";
 import {
+  normalizeLineItemsForReview,
   normalizeLineItemsList,
   normalizeTextParseResult,
   type InvoiceTextParseCategory,
@@ -19,6 +20,13 @@ export type MapParsedInvoiceOptions = {
   lockedCategory?: InvoiceTextParseCategory | null;
   /** Workshop name from logo/header vision (hybrid PDF path). */
   visionVendor?: string | null;
+  /** Category the model returned; wins over text heuristics when they are unsure. */
+  llmCategory?: InvoiceTextParseCategory | null;
+  /**
+   * Vision path: the positions were already verified against the printed
+   * totals, so keep them verbatim instead of re-deriving them from OCR text.
+   */
+  llmAuthoritative?: boolean;
 };
 
 function headerLinesFromMarkdown(markdown: string): string[] {
@@ -44,18 +52,22 @@ export function mapParsedInvoiceToTextParseResult(
     label: item.description,
     amount: item.total_price,
   }));
-  const lineItems = normalizeLineItemsList(
-    resolveWorkshopLineItems({
-      llmItems: mappedItems,
-      ocrText: rawText,
-    }) ?? mappedItems,
-    60,
-  );
+  const lineItems = options.llmAuthoritative
+    ? normalizeLineItemsForReview(mappedItems, 60)
+    : normalizeLineItemsList(
+        resolveWorkshopLineItems({
+          llmItems: mappedItems,
+          ocrText: rawText,
+        }) ?? mappedItems,
+        60,
+      );
 
-  const inferredCategory = inferInvoiceCategory(fullText);
   const category = options.lockedCategory
     ? options.lockedCategory
-    : preferInvoiceCategory(inferredCategory, fullText);
+    : preferInvoiceCategory(
+        options.llmCategory ?? inferInvoiceCategory(fullText),
+        fullText,
+      );
 
   const vendor = resolveVendorName({
     structuredVendor: invoice.vendor_name,

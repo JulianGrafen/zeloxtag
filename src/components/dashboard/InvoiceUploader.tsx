@@ -245,6 +245,7 @@ export function InvoiceUploader({
     string | null
   >(null);
   const [showThinPositionsHint, setShowThinPositionsHint] = useState(false);
+  const [lineItemsWarning, setLineItemsWarning] = useState<string | null>(null);
 
   const mileageWarning = useMemo(() => {
     const km = fields.mileageKm;
@@ -296,6 +297,7 @@ export function InvoiceUploader({
     setError(null);
     setVehicleMismatchReason(null);
     setShowThinPositionsHint(false);
+    setLineItemsWarning(null);
   }
 
   function buildInvoiceSaveValues(resolvedTitle: string) {
@@ -719,6 +721,11 @@ export function InvoiceUploader({
       setPageCount(processed.pageCount);
       setRawText(analyzed.rawText);
       setApprovalFields(analyzed.approvalFields);
+      setLineItemsWarning(
+        analyzed.lineItemsVerified === false
+          ? analyzed.lineItemsWarning ?? null
+          : null,
+      );
 
       const oil = detectOilChangeInvoice({
         title: analyzed.fields.summary,
@@ -1666,6 +1673,7 @@ export function InvoiceUploader({
             categoryLocked={Boolean(resolvedLockCategory)}
             vehicleMismatchReason={vehicleMismatchReason}
             mileageWarning={vehicleMismatchReason ? null : mileageWarning}
+            lineItemsWarning={lineItemsWarning}
             saving={pending}
             error={error}
             preview={{
