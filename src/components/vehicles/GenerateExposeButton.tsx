@@ -4,6 +4,11 @@ import { useState } from "react";
 import { FileDown } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import {
+  parseContentDispositionFilename,
+  triggerBlobDownload,
+} from "@/lib/documents/viewable-url";
+import { sanitizePdfFilename } from "@/lib/vehicles/expose-pdf/formatters";
 
 type GenerateExposeButtonProps = {
   vehicleId: string;
@@ -20,6 +25,8 @@ export function GenerateExposeButton({
 }: GenerateExposeButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [readyUrl, setReadyUrl] = useState<string | null>(null);
+  const [readyFilename, setReadyFilename] = useState<string | null>(null);
 
   async function handleGenerate() {
     if (onProRequired) {
@@ -28,6 +35,8 @@ export function GenerateExposeButton({
     }
     setLoading(true);
     setError(null);
+    setReadyUrl(null);
+    setReadyFilename(null);
 
     try {
       const url = `/api/vehicles/${encodeURIComponent(vehicleId)}/expose`;
@@ -45,9 +54,15 @@ export function GenerateExposeButton({
       }
 
       const blob = await response.blob();
+      const filename =
+        parseContentDispositionFilename(
+          response.headers.get("Content-Disposition"),
+        ) ?? sanitizePdfFilename(vehicleLabel);
+      triggerBlobDownload(blob, filename);
+
       const objectUrl = URL.createObjectURL(blob);
-      window.open(objectUrl, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      setReadyUrl(objectUrl);
+      setReadyFilename(filename);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -78,6 +93,18 @@ export function GenerateExposeButton({
       {error ? (
         <p className="text-[0.78rem] text-red-600" role="alert">
           {error}
+        </p>
+      ) : null}
+      {readyUrl && readyFilename ? (
+        <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+          Download gestartet. Falls nichts passiert ist:{" "}
+          <a
+            href={readyUrl}
+            download={readyFilename}
+            className="font-medium text-[color:var(--vd-text)] underline underline-offset-2"
+          >
+            PDF erneut speichern
+          </a>
         </p>
       ) : null}
     </div>

@@ -21,7 +21,15 @@ export default async function VehicleOilIntervalsPage({
   params,
 }: OilIntervalsPageProps) {
   const { uuid } = await params;
-  const { result, isDemoShowcase } = await requireTagWriter(uuid);
+  const { result, isDemoShowcase } = await requireTagWriter(uuid, {
+    load: {
+      documents: {
+        mode: "types",
+        types: ["invoice"],
+        columns: "invoice",
+      },
+    },
+  });
 
   const records = oilChangeRecordsFromDocuments(result.documents);
   const vehicleModel = `${result.vehicle!.make} ${result.vehicle!.model}`;

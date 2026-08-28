@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { viewerCanAccessPrivateTwin } from "@/lib/auth/vehicle-access";
 import {
   DOCUMENT_DETAIL_COLUMNS,
+  DOCUMENT_INVOICE_LIST_COLUMNS,
   DOCUMENT_LIST_COLUMNS,
   TAG_COLUMNS,
   VEHICLE_COLUMNS,
@@ -25,7 +26,7 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { withDefaultShowcaseFields } from "@/lib/vehicles/public-showcase-data";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
-import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
+import type { Document, DocumentType, Tag, TagScanResult, Vehicle } from "@/types/database";
 
 import { getMockTagScan, MOCK_TAG_UUIDS } from "./mock-tags";
 import { toGuestClientTagScanResult } from "./public-tag-dto";
@@ -38,7 +39,10 @@ function isTagScanResult(value: unknown): value is TagScanResult {
   return true;
 }
 
-function normalizeDocument(value: unknown): Document | null {
+function normalizeDocument(
+  value: unknown,
+  options?: { light?: boolean },
+): Document | null {
   if (!value || typeof value !== "object") return null;
   const doc = value as Document;
   if (typeof doc.id !== "string" || typeof doc.title !== "string") return null;
@@ -57,6 +61,10 @@ function normalizeDocument(value: unknown): Document | null {
         ? Number.parseInt(mileageRaw.replace(/[^\d]/g, ""), 10)
         : NaN;
 
+  const docType = doc.type;
+  const parseAbeFields =
+    !options?.light && (docType === "abe" || docType === "tuev");
+
   return {
     ...doc,
     user_id: typeof doc.user_id === "string" ? doc.user_id : "",
@@ -64,22 +72,41 @@ function normalizeDocument(value: unknown): Document | null {
     vendor: typeof doc.vendor === "string" ? doc.vendor : null,
     category: typeof doc.category === "string" ? doc.category : null,
     line_items: parseLineItems(doc.line_items),
-    kba_number: typeof doc.kba_number === "string" ? doc.kba_number : null,
-    vehicle_approvals: parseStringList(doc.vehicle_approvals),
-    authority: typeof doc.authority === "string" ? doc.authority : null,
-    conditions: parseAbeConditions(doc.conditions),
+    kba_number:
+      parseAbeFields && typeof doc.kba_number === "string"
+        ? doc.kba_number
+        : null,
+    vehicle_approvals: parseAbeFields
+      ? parseStringList(doc.vehicle_approvals)
+      : [],
+    authority:
+      parseAbeFields && typeof doc.authority === "string"
+        ? doc.authority
+        : null,
+    conditions: parseAbeFields ? parseAbeConditions(doc.conditions) : null,
     part_category:
-      typeof doc.part_category === "string" ? doc.part_category : null,
+      parseAbeFields && typeof doc.part_category === "string"
+        ? doc.part_category
+        : null,
     notes: typeof doc.notes === "string" ? doc.notes : null,
-    page_count: typeof doc.page_count === "number" ? doc.page_count : null,
+    page_count:
+      parseAbeFields && typeof doc.page_count === "number"
+        ? doc.page_count
+        : null,
     manufacturer:
-      typeof doc.manufacturer === "string" ? doc.manufacturer : null,
+      parseAbeFields && typeof doc.manufacturer === "string"
+        ? doc.manufacturer
+        : null,
     invoice_number:
       typeof doc.invoice_number === "string" ? doc.invoice_number : null,
     amount: Number.isFinite(amount) ? amount : null,
     mileage_km: Number.isFinite(mileageKm) ? mileageKm : null,
-    technical_specs: parseTechnicalSpecs(doc.technical_specs),
-    approval_fields: parseApprovalFields(doc.approval_fields),
+    technical_specs: parseAbeFields
+      ? parseTechnicalSpecs(doc.technical_specs)
+      : null,
+    approval_fields: parseAbeFields
+      ? parseApprovalFields(doc.approval_fields)
+      : null,
     show_on_public_showcase: doc.show_on_public_showcase === true,
   };
 }
@@ -108,14 +135,49 @@ function normalizeVehicle(value: unknown): Vehicle | null {
   });
 }
 
-function normalizeScanResult(data: TagScanResult): TagScanResult {
+function normalizeScanResult(
+  data: TagScanResult,
+  options?: { lightDocuments?: boolean },
+): TagScanResult {
+  const light = options?.lightDocuments ?? false;
   return {
     tag: data.tag as Tag,
     vehicle: normalizeVehicle(data.vehicle),
     documents: ((data.documents as unknown[]) ?? [])
-      .map(normalizeDocument)
+      .map((doc) => normalizeDocument(doc, { light }))
       .filter((doc): doc is Document => doc !== null),
   };
+}
+
+export type TagDocumentLoad =
+  | { mode: "all"; columns?: "list" | "invoice" }
+  | { mode: "none" }
+  | { mode: "types"; types: DocumentType[]; columns?: "list" | "invoice" };
+
+export type TagLoadOptions = {
+  documents?: TagDocumentLoad;
+};
+
+function documentSelectColumns(load?: TagDocumentLoad): string {
+  const columns =
+    load?.mode === "types"
+      ? load.columns
+      : load?.mode === "all"
+        ? load.columns
+        : undefined;
+  return columns === "invoice"
+    ? DOCUMENT_INVOICE_LIST_COLUMNS
+    : DOCUMENT_LIST_COLUMNS;
+}
+
+function usesLightDocumentNormalize(load?: TagDocumentLoad): boolean {
+  if (!load || load.mode === "none") return true;
+  if (load.mode === "types") {
+    return load.types.every(
+      (type) => type === "invoice" || type === "other",
+    );
+  }
+  return load.columns === "invoice";
 }
 
 async function resolveMockTag(uuid: string): Promise<TagScanResult | null> {
@@ -143,8 +205,11 @@ function isDemoTagUuid(uuid: string): boolean {
  */
 async function resolveTagWithAdmin(
   uuid: string,
+  load?: TagDocumentLoad,
 ): Promise<TagScanResult | null> {
   const supabase = createAdminClient();
+  const documentLoad = load ?? { mode: "all", columns: "list" as const };
+  const lightDocuments = usesLightDocumentNormalize(documentLoad);
 
   const { data: tag, error: tagError } = await supabase
     .from("tags")
@@ -158,34 +223,59 @@ async function resolveTagWithAdmin(
   if (!tag) return null;
 
   if (tag.status === "active" && tag.vehicle_id) {
-    const [{ data: vehicle, error: vehicleError }, { data: documents, error: docsError }] =
-      await Promise.all([
-        supabase
-          .from("vehicles")
-          .select(VEHICLE_COLUMNS)
-          .eq("id", tag.vehicle_id)
-          .maybeSingle(),
-        supabase
-          .from("documents")
-          .select(DOCUMENT_LIST_COLUMNS)
-          .eq("vehicle_id", tag.vehicle_id)
-          .order("created_at", { ascending: false }),
-      ]);
+    const vehiclePromise = supabase
+      .from("vehicles")
+      .select(VEHICLE_COLUMNS)
+      .eq("id", tag.vehicle_id)
+      .maybeSingle();
 
+    let documents: unknown[] = [];
+    if (documentLoad.mode !== "none") {
+      let docQuery = supabase
+        .from("documents")
+        .select(documentSelectColumns(documentLoad))
+        .eq("vehicle_id", tag.vehicle_id)
+        .order("created_at", { ascending: false });
+
+      if (documentLoad.mode === "types" && documentLoad.types.length > 0) {
+        docQuery = docQuery.in("type", documentLoad.types);
+      }
+
+      const [{ data: vehicle, error: vehicleError }, { data: docs, error: docsError }] =
+        await Promise.all([vehiclePromise, docQuery]);
+
+      if (vehicleError) {
+        throw new Error(`Failed to resolve vehicle: ${vehicleError.message}`);
+      }
+      if (docsError) {
+        throw new Error(`Failed to resolve documents: ${docsError.message}`);
+      }
+
+      documents = Array.isArray(docs) ? docs : [];
+
+      return normalizeScanResult(
+        {
+          tag: tag as Tag,
+          vehicle: (vehicle as Vehicle | null) ?? null,
+          documents: documents as Document[],
+        },
+        { lightDocuments },
+      );
+    }
+
+    const { data: vehicle, error: vehicleError } = await vehiclePromise;
     if (vehicleError) {
       throw new Error(`Failed to resolve vehicle: ${vehicleError.message}`);
     }
-    if (docsError) {
-      throw new Error(`Failed to resolve documents: ${docsError.message}`);
-    }
 
-    return normalizeScanResult({
-      tag: tag as Tag,
-      vehicle: (vehicle as Vehicle | null) ?? null,
-      documents: Array.isArray(documents)
-        ? (documents as unknown as Document[])
-        : [],
-    });
+    return normalizeScanResult(
+      {
+        tag: tag as Tag,
+        vehicle: (vehicle as Vehicle | null) ?? null,
+        documents: [],
+      },
+      { lightDocuments },
+    );
   }
 
   return normalizeScanResult({
@@ -225,6 +315,7 @@ async function resolveTagWithRpc(
  */
 async function getTagByUuidUncached(
   uuid: string,
+  options?: TagLoadOptions,
 ): Promise<TagScanResult | null> {
   noStore();
   const normalized = uuid.trim();
@@ -242,11 +333,15 @@ async function getTagByUuidUncached(
   }
 
   if (isSupabaseAdminConfigured()) {
-    const viaAdmin = await resolveTagWithAdmin(normalized);
+    const viewerPromise = getCurrentUser();
+    const viaAdmin = await resolveTagWithAdmin(
+      normalized,
+      options?.documents,
+    );
     if (!viaAdmin) return null;
 
     if (viaAdmin.vehicle) {
-      const viewer = await getCurrentUser();
+      const viewer = await viewerPromise;
       const canAccess = await viewerCanAccessPrivateTwin(
         viaAdmin.vehicle,
         viewer?.id ?? null,

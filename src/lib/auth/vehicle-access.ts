@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { getCurrentUser } from "@/lib/auth/get-user";
 import {
   createAdminClient,
@@ -43,7 +45,7 @@ function displayNameFromUser(user: {
   return "Fahrer";
 }
 
-async function loadContributorGrant(
+async function loadContributorGrantUncached(
   vehicleId: string,
   sessionUserId: string,
 ): Promise<{ active: boolean; canReadHistory: boolean }> {
@@ -90,6 +92,9 @@ async function loadContributorGrant(
     return { active: false, canReadHistory: false };
   }
 }
+
+/** Request-memoized — tag lookup and access checks share one grant read. */
+const loadContributorGrant = cache(loadContributorGrantUncached);
 
 /**
  * Resolves owner vs Schrauber vs guest access for a claimed vehicle.

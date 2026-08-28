@@ -25,11 +25,11 @@ export default async function DocumentDetailPage({
   params,
 }: DocumentDetailPageProps) {
   const { uuid, id } = await params;
-  const { result, access, isDemoShowcase } = await requireTagWriter(uuid);
+  const { result, access, isDemoShowcase } = await requireTagWriter(uuid, {
+    load: { documents: { mode: "none" } },
+  });
 
-  const document =
-    (await getDocumentById(result.vehicle!.id, id)) ??
-    result.documents.find((doc) => doc.id === id);
+  const document = await getDocumentById(result.vehicle!.id, id);
   if (!document) {
     notFound();
   }

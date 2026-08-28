@@ -5,7 +5,7 @@ import {
   getTagVehicleAccess,
   type VehicleAccess,
 } from "@/lib/auth/vehicle-access";
-import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
+import { getTagByUuid, type TagLoadOptions } from "@/lib/tags/get-tag-by-uuid";
 import {
   demoShowcaseAccess,
   isDemoActiveTag,
@@ -24,9 +24,9 @@ export type TagAccessContext = {
  */
 export async function requireTagWriter(
   tagUuid: string,
-  options?: { loginNext?: string },
+  options?: { loginNext?: string; load?: TagLoadOptions },
 ): Promise<TagAccessContext> {
-  const result = await getTagByUuid(tagUuid);
+  const result = await getTagByUuid(tagUuid, options?.load);
 
   if (!result?.vehicle || result.tag.status !== "active") {
     notFound();

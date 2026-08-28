@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -67,6 +67,8 @@ interface VehicleDocumentsViewProps {
   vehicleModel?: string;
   documents: Document[];
   filterType?: DocumentType | "all";
+  /** When "all", type chips filter client-side without a server round-trip. */
+  documentsScope?: "all" | "filtered";
   /** Owner-only scan / delete actions. */
   canWrite?: boolean;
   /** Prefill invoice category chip when showing Belege. */
@@ -88,10 +90,34 @@ export function VehicleDocumentsView({
   vehicleModel,
   documents,
   filterType = "all",
+  documentsScope = "filtered",
   canWrite = false,
   invoiceCategory = "all",
 }: VehicleDocumentsViewProps) {
   const router = useRouter();
+  const [activeType, setActiveType] = useState(filterType);
+
+  useEffect(() => {
+    setActiveType(filterType);
+  }, [filterType]);
+
+  function typeFilterHref(id: DocumentType | "all"): string {
+    return id === "all"
+      ? `/v/${tagUuid}/dokumente`
+      : `/v/${tagUuid}/dokumente?type=${id}`;
+  }
+
+  function onTypeFilterChange(id: DocumentType | "all") {
+    if (id === activeType) return;
+    const href = typeFilterHref(id);
+    if (documentsScope === "all") {
+      setActiveType(id);
+      window.history.replaceState(null, "", href);
+      return;
+    }
+    router.push(href);
+  }
+
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -102,12 +128,12 @@ export function VehicleDocumentsView({
   );
 
   const typed = useMemo(
-    () => filterDocumentsByType(documents, filterType),
-    [documents, filterType],
+    () => filterDocumentsByType(documents, activeType),
+    [documents, activeType],
   );
 
   const abeKindChips = useMemo(() => {
-    if (filterType !== "abe") return [];
+    if (activeType !== "abe") return [];
     const counts: Record<AbeFamilyKind, number> = {
       abe: 0,
       gutachten: 0,
@@ -127,10 +153,10 @@ export function VehicleDocumentsView({
         count: counts[id as AbeFamilyKind],
       })),
     ];
-  }, [filterType, typed]);
+  }, [activeType, typed]);
 
   const vaultCategoryChips = useMemo(() => {
-    if (filterType !== "abe") return [];
+    if (activeType !== "abe") return [];
     const counts = new Map<VaultCategory | "all", number>();
     counts.set("all", typed.length);
     for (const doc of typed) {
@@ -144,11 +170,11 @@ export function VehicleDocumentsView({
       ...chip,
       count: counts.get(chip.id) ?? 0,
     })).filter((chip) => chip.id === "all" || (chip.count ?? 0) > 0);
-  }, [filterType, typed]);
+  }, [activeType, typed]);
 
   const { filtered, filterBaseCount } = useMemo(() => {
     const byKind =
-      filterType === "abe"
+      activeType === "abe"
         ? filterAbeFamilyDocumentsByKind(
             typed,
             abeKindId === ALL_ABE_KIND ? "all" : (abeKindId as AbeFamilyKind),
@@ -156,7 +182,7 @@ export function VehicleDocumentsView({
         : typed;
 
     const byVaultCategory =
-      filterType === "abe" && vaultCategoryId !== "all"
+      activeType === "abe" && vaultCategoryId !== "all"
         ? filterDocumentsByVaultCategory(byKind, vaultCategoryId)
         : byKind;
 
@@ -180,10 +206,10 @@ export function VehicleDocumentsView({
     );
 
     return { filtered: result, filterBaseCount: byVaultCategory.length };
-  }, [typed, filterType, abeKindId, vaultCategoryId, query]);
+  }, [typed, activeType, abeKindId, vaultCategoryId, query]);
 
   const invoiceSum = sumInvoiceAmounts(
-    filterType === "all"
+    activeType === "all"
       ? documents.filter((doc) => doc.type === "invoice")
       : [],
   );
@@ -193,7 +219,7 @@ export function VehicleDocumentsView({
       ? undefined
       : `${filtered.length} von ${filterBaseCount} Treffern`;
 
-  if (filterType === "invoice") {
+  if (activeType === "invoice") {
     return (
       <VehicleInvoicesView
         tagUuid={tagUuid}
@@ -261,14 +287,14 @@ export function VehicleDocumentsView({
               ZeloxTag
             </p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-              {filterType === "abe"
+              {activeType === "abe"
                 ? "ABE & Gutachten"
-                : filterType === "tuev"
+                : activeType === "tuev"
                   ? "TÜV / HU"
                   : "Dokumente"}
             </h1>
             <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {filterType === "abe"
+              {activeType === "abe"
                 ? `${vehicleLabel} · ABE, Teilegutachten & Einzelabnahmen · ${eintraegeLabel(filtered.length)}`
                 : `${vehicleLabel} · ${eintraegeLabel(filtered.length)}`}
             </p>
@@ -285,17 +311,13 @@ export function VehicleDocumentsView({
           className="vd-anim-header flex gap-2 overflow-x-auto pb-1"
         >
           {FILTERS.map((filter) => {
-            const active = filterType === filter.id;
-            const href =
-              filter.id === "all"
-                ? `/v/${tagUuid}/dokumente`
-                : `/v/${tagUuid}/dokumente?type=${filter.id}`;
+            const active = activeType === filter.id;
             return (
-              <PressableLink
+              <PressableButton
                 key={filter.id}
-                href={href}
+                type="button"
                 variant="pill"
-                nav="none"
+                onClick={() => onTypeFilterChange(filter.id)}
                 className={[
                   "shrink-0 rounded-full px-3.5 py-2 text-[0.78rem] font-semibold",
                   active
@@ -304,7 +326,7 @@ export function VehicleDocumentsView({
                 ].join(" ")}
               >
                 {filter.label}
-              </PressableLink>
+              </PressableButton>
             );
           })}
         </nav>
@@ -322,17 +344,17 @@ export function VehicleDocumentsView({
           query={query}
           onQueryChange={setQuery}
           placeholder={
-            filterType === "abe"
+            activeType === "abe"
               ? "Teil, Kategorie, Hersteller, KBA…"
-              : filterType === "tuev"
+              : activeType === "tuev"
                 ? "Prüfstelle, Titel, Notiz…"
                 : "Titel, Hersteller, Kategorie…"
           }
-          chips={filterType === "abe" ? abeKindChips : undefined}
+          chips={activeType === "abe" ? abeKindChips : undefined}
           activeChipId={abeKindId}
           onChipChange={setAbeKindId}
           secondaryChips={
-            filterType === "abe" && vaultCategoryChips.length > 1
+            activeType === "abe" && vaultCategoryChips.length > 1
               ? vaultCategoryChips
               : undefined
           }
@@ -348,10 +370,10 @@ export function VehicleDocumentsView({
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               {typed.length > 0 &&
               (query.trim() ||
-                (filterType === "abe" && abeKindId !== ALL_ABE_KIND) ||
-                (filterType === "abe" && vaultCategoryId !== "all")) ? (
+                (activeType === "abe" && abeKindId !== ALL_ABE_KIND) ||
+                (activeType === "abe" && vaultCategoryId !== "all")) ? (
                 "Keine Treffer für diese Suche / Filter."
-              ) : filterType === "abe" ? (
+              ) : activeType === "abe" ? (
                 <div className="space-y-2">
                   <p>Noch kein Gutachten hinterlegt.</p>
                   <p className="text-[0.82rem] leading-relaxed">
@@ -395,9 +417,9 @@ export function VehicleDocumentsView({
           <div className="pointer-events-auto mx-auto max-w-lg">
             <PressableLink
               href={
-                filterType === "tuev"
+                activeType === "tuev"
                   ? `/v/${tagUuid}?scan=1&type=tuev`
-                  : filterType === "abe"
+                  : activeType === "abe"
                     ? `/v/${tagUuid}?scan=1&type=vault`
                     : `/v/${tagUuid}?scan=1`
               }
@@ -405,9 +427,9 @@ export function VehicleDocumentsView({
               className="claim-cta shadow-[var(--vd-shadow)]"
             >
               <Plus className="h-4 w-4" aria-hidden />
-              {filterType === "abe"
+              {activeType === "abe"
                 ? "In Gutachten Tresor ablegen"
-                : filterType === "tuev"
+                : activeType === "tuev"
                   ? "TÜV scannen"
                   : "Dokument scannen"}
             </PressableLink>

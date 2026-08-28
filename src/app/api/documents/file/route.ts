@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
+import { isDocumentStoragePath } from "@/lib/documents/viewable-url";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -16,9 +17,13 @@ export const runtime = "nodejs";
 
 const querySchema = z
   .object({
-    src: z.string().trim().min(1).max(2048),
+    src: z.string().trim().max(2048).optional(),
+    path: z.string().trim().max(512).optional(),
   })
-  .strict();
+  .strict()
+  .refine((value) => Boolean(value.src?.length || value.path?.length), {
+    message: "src or path is required",
+  });
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -37,13 +42,25 @@ export async function GET(request: NextRequest) {
 
   const parsed = querySchema.safeParse({
     src: request.nextUrl.searchParams.get("src")?.trim() ?? "",
+    path: request.nextUrl.searchParams.get("path")?.trim() ?? "",
   });
   if (!parsed.success) {
-    return NextResponse.json({ error: "src is required" }, { status: 400 });
+    return NextResponse.json({ error: "src or path is required" }, { status: 400 });
   }
-  const src = parsed.data.src;
+  const { src, path } = parsed.data;
 
   try {
+    if (path) {
+      if (!isDocumentStoragePath(path) || path.includes("..")) {
+        return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
+      }
+      return serveStoragePath(path);
+    }
+
+    if (!src) {
+      return NextResponse.json({ error: "src or path is required" }, { status: 400 });
+    }
+
     if (src.startsWith("/demo/")) {
       if (!isSafeDemoDocumentPath(src)) {
         return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
@@ -71,43 +88,45 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
     }
 
-    const vehicleId = storagePath.split("/")[0] ?? "";
-    if (!UUID_RE.test(vehicleId)) {
-      return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
-    }
-
-    if (!isSupabaseAdminConfigured()) {
-      return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
-    }
-
-    // AuthZ via user session + RLS; Storage download may still need service
-    // role for Schrauber (bucket policies are owner-only).
-    const allowed = await authorizeDocumentRead(vehicleId, storagePath);
-    if (!allowed) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const admin = createAdminClient();
-    const { data, error } = await admin.storage
-      .from(DOCUMENT_BUCKET)
-      .download(storagePath);
-
-    if (error || !data) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    const buffer = Buffer.from(await data.arrayBuffer());
-    const contentType =
-      data.type?.split(";")[0]?.trim() || guessContentType(storagePath);
-    const filename = filenameFromPath(storagePath);
-
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: inlineDocumentHeaders(contentType, filename),
-    });
+    return serveStoragePath(storagePath);
   } catch {
     return NextResponse.json({ error: "Invalid src" }, { status: 400 });
   }
+}
+
+async function serveStoragePath(storagePath: string): Promise<NextResponse> {
+  const vehicleId = storagePath.split("/")[0] ?? "";
+  if (!UUID_RE.test(vehicleId)) {
+    return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
+  }
+
+  if (!isSupabaseAdminConfigured()) {
+    return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+  }
+
+  const allowed = await authorizeDocumentRead(vehicleId, storagePath);
+  if (!allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.storage
+    .from(DOCUMENT_BUCKET)
+    .download(storagePath);
+
+  if (error || !data) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const contentType =
+    data.type?.split(";")[0]?.trim() || guessContentType(storagePath);
+  const filename = filenameFromPath(storagePath);
+
+  return new NextResponse(buffer, {
+    status: 200,
+    headers: inlineDocumentHeaders(contentType, filename),
+  });
 }
 
 function documentIdFromStoragePath(storagePath: string): string | null {

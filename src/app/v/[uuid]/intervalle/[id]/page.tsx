@@ -6,6 +6,7 @@ import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
 import { oilChangeRecordsFromDocuments } from "@/lib/documents/oil-changes";
 import { FEATURE } from "@/lib/permissions/feature-access";
+import { getDocumentById } from "@/lib/tags/get-tag-by-uuid";
 
 interface OilIntervalDetailPageProps {
   params: Promise<{ uuid: string; id: string }>;
@@ -22,9 +23,16 @@ export default async function VehicleOilIntervalDetailPage({
   params,
 }: OilIntervalDetailPageProps) {
   const { uuid, id } = await params;
-  const { result, isDemoShowcase } = await requireTagWriter(uuid);
+  const { result, isDemoShowcase } = await requireTagWriter(uuid, {
+    load: { documents: { mode: "none" } },
+  });
 
-  const records = oilChangeRecordsFromDocuments(result.documents);
+  const document = await getDocumentById(result.vehicle!.id, id);
+  if (!document) {
+    notFound();
+  }
+
+  const records = oilChangeRecordsFromDocuments([document]);
   const record = records.find((entry) => entry.id === id);
   if (!record) {
     notFound();

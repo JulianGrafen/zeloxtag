@@ -44,7 +44,6 @@ import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
 import {
   documentMediaKind,
   isViewableDocumentUrl,
-  openDocumentOriginal,
   resolveDocumentViewUrl,
 } from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
@@ -70,8 +69,7 @@ function fileNameFromUrl(fileUrl: string, fallback: string): string {
 }
 
 /**
- * Structured invoice detail (metadata + line items).
- * Original PDF opens only via explicit action — never as the default surface.
+ * Structured invoice detail (metadata + line items + inline original PDF).
  */
 export function DocumentInvoiceDetailView({
   tagUuid,
@@ -385,49 +383,68 @@ export function DocumentInvoiceDetailView({
           </section>
         ) : null}
 
-        <details className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-          <summary className="cursor-pointer px-4 py-3 text-[0.82rem] font-medium text-[color:var(--vd-text)] marker:content-none [&::-webkit-details-marker]:hidden">
-            {isManual ? "Fotodoku" : "Original"} · {fileName}
-            {scannedLabel
-              ? ` · ${isManual ? "erstellt" : "gescannt"} ${scannedLabel}`
-              : ""}
-          </summary>
-          <div className="space-y-3 border-t border-[color:var(--vd-border)] p-4">
+        <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
+          <div className="flex items-center justify-between border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
+            <div className="min-w-0">
+              <p className="truncate text-[0.75rem] font-medium text-[color:var(--vd-text)]">
+                {fileName}
+              </p>
+              <p className="text-[0.68rem] text-[color:var(--vd-muted)]">
+                {isManual ? "Fotodoku" : "Original-PDF"}
+                {scannedLabel
+                  ? ` · ${isManual ? "erstellt" : "gescannt"} ${scannedLabel}`
+                  : ""}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3 p-4">
             {canOpenOriginal && previewSrc ? (
               previewKind === "image" ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewSrc}
                   alt={title}
-                  className="max-h-[40vh] w-full rounded-xl bg-neutral-100 object-contain"
+                  className="max-h-[50vh] w-full rounded-xl bg-neutral-100 object-contain"
                 />
               ) : (
                 <iframe
                   title={title}
                   src={previewSrc}
-                  className="h-[min(40vh,24rem)] w-full rounded-xl border border-[color:var(--vd-border)] bg-white"
+                  className="h-[min(50vh,28rem)] w-full rounded-xl border border-[color:var(--vd-border)] bg-white"
                 />
               )
             ) : (
               <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
                 {isManual
                   ? "Für diesen Eintrag liegt kein Foto vor."
-                  : "Für diesen Demo-Beleg liegt keine Datei vor."}
+                  : "Originaldatei konnte nicht geladen werden. Bitte erneut hochladen oder Support kontaktieren."}
               </p>
             )}
-            {canOpenOriginal ? (
-              <PressableButton
-                type="button"
-                variant="button"
-                onClick={() => openDocumentOriginal(document.file_url)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3 text-[0.85rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
-              >
-                <FileText className="h-4 w-4" aria-hidden />
-                Original öffnen
-              </PressableButton>
+            {canOpenOriginal && previewSrc ? (
+              <>
+                <PressableLink
+                  href={previewSrc}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="button"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
+                >
+                  <FileText className="h-4 w-4" aria-hidden />
+                  Original öffnen
+                </PressableLink>
+                <PressableLink
+                  href={previewSrc}
+                  download={fileName}
+                  variant="button"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3 text-[0.85rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+                >
+                  <FileText className="h-4 w-4" aria-hidden />
+                  PDF herunterladen
+                </PressableLink>
+              </>
             ) : null}
           </div>
-        </details>
+        </section>
 
         {canDeleteInvoice ? (
           <div className="space-y-2">

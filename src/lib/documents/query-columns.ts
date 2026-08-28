@@ -39,6 +39,27 @@ export const DOCUMENT_LIST_COLUMNS = [
   "created_at",
 ].join(", ");
 
+/** Invoice / service hot paths — omit ABE-only JSON blobs. */
+export const DOCUMENT_INVOICE_LIST_COLUMNS = [
+  "id",
+  "vehicle_id",
+  "user_id",
+  "created_by",
+  "title",
+  "type",
+  "file_url",
+  "vendor",
+  "category",
+  "line_items",
+  "notes",
+  "invoice_number",
+  "mileage_km",
+  "amount",
+  "date",
+  "show_on_public_showcase",
+  "created_at",
+].join(", ");
+
 export const DOCUMENT_DETAIL_COLUMNS = [
   DOCUMENT_LIST_COLUMNS,
   "notes",

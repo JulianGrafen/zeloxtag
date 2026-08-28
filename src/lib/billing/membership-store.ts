@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { cache } from "react";
 
 import { sendMembershipClaimEmail } from "@/lib/email/resend";
 import { RATE_LIMITS, rateLimit } from "@/lib/security/rate-limit";
@@ -470,7 +471,7 @@ export async function claimMembershipForUser(
   return { status: "sent" };
 }
 
-export async function getMembershipForUser(
+async function getMembershipForUserUncached(
   userId: string,
 ): Promise<Membership | null> {
   if (!isSupabaseAdminConfigured()) return null;
@@ -488,6 +489,9 @@ export async function getMembershipForUser(
   }
   return asMembership(data);
 }
+
+/** Request-memoized — Pro gates on a page share one membership lookup. */
+export const getMembershipForUser = cache(getMembershipForUserUncached);
 
 export async function userHasActiveMembership(userId: string): Promise<boolean> {
   const membership = await getMembershipForUser(userId);
