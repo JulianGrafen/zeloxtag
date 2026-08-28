@@ -49,6 +49,77 @@ describe("extractInvoiceLineItemsFromAzureLayout", () => {
     ]);
   });
 
+  it("merges wrapped description continuation row without Pos or Ges. Preis", () => {
+    const result: AzureLayoutAnalyzeResult = {
+      content: "",
+      pages: [],
+      tables: [
+        {
+          rowCount: 4,
+          columnCount: 5,
+          cells: [
+            { rowIndex: 0, columnIndex: 0, content: "Pos" },
+            { rowIndex: 0, columnIndex: 1, content: "Bezeichnung" },
+            { rowIndex: 0, columnIndex: 2, content: "Menge" },
+            { rowIndex: 0, columnIndex: 3, content: "E-Preis" },
+            { rowIndex: 0, columnIndex: 4, content: "Ges. Preis" },
+            { rowIndex: 1, columnIndex: 0, content: "4" },
+            { rowIndex: 1, columnIndex: 1, content: "Bremsscheibe PRO+" },
+            { rowIndex: 1, columnIndex: 2, content: "2,00" },
+            { rowIndex: 1, columnIndex: 3, content: "165,99 €" },
+            { rowIndex: 1, columnIndex: 4, content: "331,98 €" },
+            { rowIndex: 2, columnIndex: 0, content: "5" },
+            { rowIndex: 2, columnIndex: 1, content: "Beide Bremsscheiben erneuern" },
+            { rowIndex: 2, columnIndex: 2, content: "0,90" },
+            { rowIndex: 2, columnIndex: 3, content: "90,00 €" },
+            { rowIndex: 2, columnIndex: 4, content: "81,00 €" },
+            { rowIndex: 3, columnIndex: 1, content: "(Hinterachse)" },
+          ],
+        },
+      ],
+    };
+
+    expect(extractInvoiceLineItemsFromAzureLayout(result)).toEqual([
+      { label: "Bremsscheibe PRO+", amount: 331.98 },
+      {
+        label: "Beide Bremsscheiben erneuern (Hinterachse)",
+        amount: 81,
+      },
+    ]);
+  });
+
+  it("accumulates split description rows before the amount row", () => {
+    const result: AzureLayoutAnalyzeResult = {
+      content: "",
+      pages: [],
+      tables: [
+        {
+          rowCount: 4,
+          columnCount: 4,
+          cells: [
+            { rowIndex: 0, columnIndex: 0, content: "Pos" },
+            { rowIndex: 0, columnIndex: 1, content: "Bezeichnung" },
+            { rowIndex: 0, columnIndex: 2, content: "Menge" },
+            { rowIndex: 0, columnIndex: 3, content: "Ges. Preis" },
+            { rowIndex: 1, columnIndex: 0, content: "16" },
+            { rowIndex: 1, columnIndex: 1, content: "Schraube, Einspritzdü." },
+            { rowIndex: 2, columnIndex: 1, content: "ORIGINAL ERSATZTEIL" },
+            { rowIndex: 3, columnIndex: 1, content: "GREENPARTS" },
+            { rowIndex: 3, columnIndex: 2, content: "6,00" },
+            { rowIndex: 3, columnIndex: 3, content: "15,06 €" },
+          ],
+        },
+      ],
+    };
+
+    expect(extractInvoiceLineItemsFromAzureLayout(result)).toEqual([
+      {
+        label: "Schraube, Einspritzdü. ORIGINAL ERSATZTEIL GREENPARTS",
+        amount: 15.06,
+      },
+    ]);
+  });
+
   it("keeps the printed row order and Ges. Preis for a full Pos table", () => {
     const result: AzureLayoutAnalyzeResult = {
       content: "",

@@ -17,7 +17,10 @@ import {
   drawInvoiceRowSeparatorsOnImage,
 } from "@/lib/ocr/draw-invoice-row-separators";
 import { buildStubOcrPayload } from "@/lib/ocr/llm-document-content";
-import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import {
+  mergeContinuationInvoiceLineItems,
+  realignShiftedInvoiceLineItems,
+} from "@/lib/ocr/invoice-line-item-alignment";
 import { finalizeColumnFormatLineItems } from "@/lib/ocr/invoice-column-pipeline";
 import {
   extractInvoiceLineItemsFromAzureLayout,
@@ -342,8 +345,11 @@ export class InvoiceParseService {
 
     const lineItems = normalizeLineItemsList(
       shouldRealignLineItems(tableFormat)
-        ? realignShiftedInvoiceLineItems(reconciled, amount)
-        : reconciled,
+        ? realignShiftedInvoiceLineItems(
+            mergeContinuationInvoiceLineItems(reconciled) ?? reconciled,
+            amount,
+          )
+        : mergeContinuationInvoiceLineItems(reconciled) ?? reconciled,
       60,
     );
 
@@ -489,8 +495,13 @@ export class InvoiceParseService {
     const normalized = this.nullAbeFields(
       normalizeTextParseResult(parsed.data),
     );
+    const mergedContinuations =
+      mergeContinuationInvoiceLineItems(
+        preferInvoiceLineItems(normalized.lineItems, heuristicLineItems),
+      ) ??
+      preferInvoiceLineItems(normalized.lineItems, heuristicLineItems);
     const lineItems = realignShiftedInvoiceLineItems(
-      preferInvoiceLineItems(normalized.lineItems, heuristicLineItems),
+      mergedContinuations,
       preferAmount(normalized.amount, plainText, normalized.lineItems),
     );
 

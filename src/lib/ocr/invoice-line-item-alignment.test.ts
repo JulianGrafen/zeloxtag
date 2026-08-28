@@ -1,9 +1,66 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  mergeContinuationInvoiceLineItems,
   prejoinWrappedInvoiceLines,
   realignShiftedInvoiceLineItems,
 } from "./invoice-line-item-alignment";
+
+describe("mergeContinuationInvoiceLineItems", () => {
+  it("merges (Hinterachse) into the previous Bremsscheiben row", () => {
+    const items = [
+      { label: "Beide Bremsscheiben erneuern", amount: 90 },
+      { label: "(Hinterachse)", amount: 81 },
+    ];
+
+    expect(mergeContinuationInvoiceLineItems(items)).toEqual([
+      {
+        label: "Beide Bremsscheiben erneuern (Hinterachse)",
+        amount: 81,
+      },
+    ]);
+  });
+
+  it("merges triple continuation Schraube + ORIGINAL ERSATZTEIL + GREENPARTS", () => {
+    const items = [
+      { label: "Schraube, Einspritzdüsenhalter", amount: 15.06 },
+      { label: "ORIGINAL ERSATZTEIL", amount: 0 },
+      { label: "GREENPARTS", amount: 0 },
+    ];
+
+    expect(mergeContinuationInvoiceLineItems(items)).toEqual([
+      {
+        label: "Schraube, Einspritzdüsenhalter ORIGINAL ERSATZTEIL GREENPARTS",
+        amount: 15.06,
+      },
+    ]);
+  });
+
+  it("leaves amounts unchanged after merge when realign is not needed", () => {
+    const items = [
+      { label: "Bremsscheibe PRO+", amount: 331.98 },
+      { label: "Beide Bremsscheiben erneuern (Hinterachse)", amount: 81 },
+    ];
+
+    const merged = mergeContinuationInvoiceLineItems(items);
+    expect(realignShiftedInvoiceLineItems(merged, 412.98)).toEqual(merged);
+  });
+
+  it("fixes phantom rows with shifted amounts before realign would scramble totals", () => {
+    const phantomRows = [
+      { label: "Beide Bremsscheiben erneuern", amount: 90 },
+      { label: "(Hinterachse)", amount: 0 },
+      { label: "Ventildeckeldichtung erneuern", amount: 81 },
+    ];
+
+    const merged = mergeContinuationInvoiceLineItems(phantomRows);
+    expect(merged).toEqual([
+      { label: "Beide Bremsscheiben erneuern (Hinterachse)", amount: 90 },
+      { label: "Ventildeckeldichtung erneuern", amount: 81 },
+    ]);
+    expect(realignShiftedInvoiceLineItems(merged, 171)).toEqual(merged);
+  });
+});
 
 describe("realignShiftedInvoiceLineItems", () => {
   it("fixes amounts shifted one row down (header row consumes first amount)", () => {
@@ -58,5 +115,30 @@ describe("prejoinWrappedInvoiceLines", () => {
     ].join("\n");
 
     expect(prejoinWrappedInvoiceLines(text)).toBe(text);
+  });
+
+  it("joins desc+desc continuation lines before amount row", () => {
+    const text = [
+      "Beide Bremsscheiben erneuern",
+      "(Hinterachse)",
+      "1 Ventildeckeldichtung 4,00 90,00 360,00",
+    ].join("\n");
+
+    expect(prejoinWrappedInvoiceLines(text)).toBe(
+      "Beide Bremsscheiben erneuern (Hinterachse)\n1 Ventildeckeldichtung 4,00 90,00 360,00",
+    );
+  });
+
+  it("joins ALL-CAPS continuation fragments into the previous description", () => {
+    const text = [
+      "Schraube, Einspritzdüsenhalter",
+      "ORIGINAL ERSATZTEIL",
+      "GREENPARTS",
+      "15,06",
+    ].join("\n");
+
+    expect(prejoinWrappedInvoiceLines(text)).toBe(
+      "Schraube, Einspritzdüsenhalter ORIGINAL ERSATZTEIL GREENPARTS 15,06",
+    );
   });
 });

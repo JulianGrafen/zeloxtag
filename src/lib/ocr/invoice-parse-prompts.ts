@@ -186,11 +186,20 @@ export const TUEV_COST_USER_PROMPT_LINES = [
   "Nur echte €-Summen — keine Prozentwerte als amount.",
 ] as const;
 
+/** Multiline description rule for one-shot vision parse (subset of spatial rules). */
+export const INVOICE_MULTILINE_DESCRIPTION_RULE = `
+Mehrzeilige Bezeichnungen: Umbrüche in der Bezeichnungsspalte erzeugen KEINE neue Position.
+Wenn eine Beschreibung über mehrere Zeilen geht (z.B. Zeile 1: "Beide Bremsscheiben erneuern", Zeile 2: "(Hinterachse)"),
+MERGE sie zu EINEM lineItem. Die zweite Zeile ist KEIN neues lineItem.
+"Schraube, Einspritzdüsenhalter" + "ORIGINAL ERSATZTEIL" + "GREENPARTS" = EIN lineItem.
+`.trim();
+
 /** Per-request user instructions appended before OCR Markdown. */
 export const INVOICE_USER_PROMPT_LINES = [
   "Nachfolgend OCR-MARKDOWN einer Kfz-RECHNUNG / eines Servicebelegs",
   "amount + lineItems.amount = NUR Ges. Preis / rechte Summenspalte — NIE Einzelpreis.",
   "Jede Positionstabelle-Zeile einzeln — nichts überspringen.",
+  "Mehrzeilige Bezeichnungen = EINE Position, nicht mehrere lineItems.",
   "mileageKm nur bei explizitem KM-Feld im Kopf — sonst null.",
 ] as const;
 
@@ -200,6 +209,8 @@ export function buildInvoiceSystemPrompt(base = INVOICE_SYSTEM_PROMPT): string {
     base,
     INVOICE_FEW_SHOT_PROMPT,
     INVOICE_RIGHTMOST_PRICE_RULES,
+    INVOICE_LINE_ITEMS_ROW_ALIGNMENT_RULES,
+    INVOICE_MULTILINE_DESCRIPTION_RULE,
   ].join("\n\n");
 }
 

@@ -1,4 +1,5 @@
 import {
+  isJunkInvoiceLineLabel,
   isPriceOnlyLineLabel,
   isUnitPriceAmountOfTotal,
 } from "@/lib/ocr/invoice-line-item-dedupe";
@@ -16,6 +17,8 @@ const TRAILING_ROW_AMOUNT =
 
 const TABLE_HEADER_LINE =
   /\b(?:bezeichnung|beschreibung|artikel)\b.*\b(?:einzelpreis|e-?preis|ep|ges\.?\s*preis|gesamtpreis|menge)\b/i;
+
+const MONEY_IN_LABEL = /\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}/;
 
 function isInvoiceTableHeaderLine(line: string): boolean {
   if (TABLE_HEADER_LINE.test(line)) return true;
@@ -39,6 +42,123 @@ function roundMoney(value: number): number {
 
 function sumLineItems(items: InvoiceLineItem[]): number {
   return roundMoney(items.reduce((sum, item) => sum + item.amount, 0));
+}
+
+/** True when the label starts with a Pos integer (e.g. "1 Sportfedern"). */
+export function hasLeadingInvoicePosLabel(label: string): boolean {
+  const trimmed = label.trim();
+  if (!trimmed) return false;
+  return /^\d{1,2}\s+(?!\d{1,3}(?:\.\d{3})*,\d{2})/.test(trimmed);
+}
+
+/** Wrapped description fragment that belongs on the row above, not a new position. */
+export function isContinuationInvoiceLabel(label: string): boolean {
+  const trimmed = label.trim();
+  if (!trimmed || trimmed.length > 120) return false;
+  if (isJunkInvoiceLineLabel(trimmed)) return false;
+  if (hasLeadingInvoicePosLabel(trimmed)) return false;
+  if (MONEY_IN_LABEL.test(trimmed)) return false;
+  if (isLikelyInvoiceTableHeaderRow({ label: trimmed, amount: 0 })) return false;
+
+  if (/^\([^)]+\)$/.test(trimmed)) return true;
+
+  if (
+    trimmed.length >= 3 &&
+    /^[A-ZÄÖÜ0-9][A-ZÄÖÜ0-9\s\-\/\.]+$/.test(trimmed) &&
+    !/[a-zäöüß]/.test(trimmed)
+  ) {
+    return true;
+  }
+
+  if (
+    trimmed.length <= 24 &&
+    /^[a-zäöüß]+$/i.test(trimmed) &&
+    !/^(rechnung|mwst|netto|summe|pos|menge)$/i.test(trimmed)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function hasPlausibleLineAmount(amount: number): boolean {
+  return Number.isFinite(amount) && amount > 0;
+}
+
+function mergeContinuationLabels(prev: string, next: string): string {
+  return `${prev} ${next}`.replace(/\s+/g, " ").trim().slice(0, 160);
+}
+
+function applyContinuationAmount(
+  target: InvoiceLineItem,
+  continuationAmount: number,
+): void {
+  if (!hasPlausibleLineAmount(continuationAmount)) return;
+
+  if (!hasPlausibleLineAmount(target.amount)) {
+    target.amount = roundMoney(continuationAmount);
+    return;
+  }
+
+  if (isUnitPriceAmountOfTotal(target.amount, continuationAmount)) {
+    target.amount = roundMoney(continuationAmount);
+    return;
+  }
+
+  if (isUnitPriceAmountOfTotal(continuationAmount, target.amount)) {
+    return;
+  }
+
+  if (continuationAmount > target.amount + 0.01) {
+    target.amount = roundMoney(continuationAmount);
+  }
+}
+
+/**
+ * Merge wrapped description rows (e.g. "(Hinterachse)", "GREENPARTS") into the
+ * previous line item before amount realignment runs.
+ */
+export function mergeContinuationInvoiceLineItems(
+  items: InvoiceLineItem[] | null | undefined,
+): InvoiceLineItem[] | null {
+  if (!items?.length) return items ?? null;
+
+  const merged: InvoiceLineItem[] = [];
+
+  for (const raw of items) {
+    const label = raw.label.trim();
+    if (!label) continue;
+    if (isLikelyInvoiceTableHeaderRow(raw) || isJunkInvoiceLineLabel(label)) {
+      continue;
+    }
+
+    const amount = roundMoney(raw.amount);
+    const hasAmount = hasPlausibleLineAmount(amount);
+    const prev = merged[merged.length - 1];
+
+    const isContinuationRow =
+      prev != null &&
+      !hasLeadingInvoicePosLabel(label) &&
+      isContinuationInvoiceLabel(label);
+
+    if (isContinuationRow) {
+      prev.label = mergeContinuationLabels(prev.label, label);
+      applyContinuationAmount(prev, amount);
+      continue;
+    }
+
+    merged.push({
+      label: label.slice(0, 160),
+      amount: hasAmount ? amount : 0,
+    });
+  }
+
+  return merged.filter(
+    (item) =>
+      item.label.trim().length > 0 &&
+      (hasPlausibleLineAmount(item.amount) ||
+        !isContinuationInvoiceLabel(item.label)),
+  );
 }
 
 export function isLikelyInvoiceTableHeaderRow(item: InvoiceLineItem): boolean {
@@ -246,6 +366,17 @@ export function prejoinWrappedInvoiceLines(rawText: string): string {
       continue;
     }
 
+    if (
+      !pendingLabel &&
+      joined.length > 0 &&
+      isContinuationInvoiceLabel(line) &&
+      !AMOUNT_ONLY_LINE.test(line) &&
+      !TRAILING_ROW_AMOUNT.test(line)
+    ) {
+      joined[joined.length - 1] = `${joined[joined.length - 1]} ${line}`;
+      continue;
+    }
+
     if (AMOUNT_ONLY_LINE.test(line)) {
       if (pendingLabel) {
         if (isInvoiceTableHeaderLine(pendingLabel)) {
@@ -259,6 +390,11 @@ export function prejoinWrappedInvoiceLines(rawText: string): string {
       } else {
         joined.push(line);
       }
+      continue;
+    }
+
+    if (pendingLabel && isContinuationInvoiceLabel(line)) {
+      pendingLabel = `${pendingLabel} ${line}`;
       continue;
     }
 

@@ -1,5 +1,8 @@
 import { sumLineItems } from "@/lib/documents/line-items";
-import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import {
+  mergeContinuationInvoiceLineItems,
+  realignShiftedInvoiceLineItems,
+} from "@/lib/ocr/invoice-line-item-alignment";
 import {
   extractGrossTotalFromText,
   extractNetSumFromText,
@@ -339,8 +342,11 @@ function pickBestPositionSet(options: {
 
   const realignTarget = footerNet ?? sumLineItems(working);
   if (enableRealign && footerNet != null) {
+    const stripped = stripNonPositionInvoiceRows(working);
+    const mergedContinuations =
+      mergeContinuationInvoiceLineItems(stripped) ?? stripped;
     working = realignShiftedInvoiceLineItems(
-      stripNonPositionInvoiceRows(working),
+      mergedContinuations,
       realignTarget,
     );
   }

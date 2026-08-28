@@ -1,7 +1,10 @@
 import { preferAmount } from "@/lib/ocr/amount-from-text";
 import { sumLineItems } from "@/lib/documents/line-items";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
-import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import {
+  mergeContinuationInvoiceLineItems,
+  realignShiftedInvoiceLineItems,
+} from "@/lib/ocr/invoice-line-item-alignment";
 import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
 import {
   ensureInvoiceVatAndGrossTotal,
@@ -133,8 +136,12 @@ export function mergeLineItemsExtractions(
       .map((block) => block.amount)
       .find((value) => value !== null) ?? null;
 
+  const mergedContinuations =
+    mergeContinuationInvoiceLineItems(merged) ?? merged;
   const realigned =
-    amount != null ? realignShiftedInvoiceLineItems(merged, amount) : merged;
+    amount != null
+      ? realignShiftedInvoiceLineItems(mergedContinuations, amount)
+      : mergedContinuations;
   const lineItems = normalizeLineItemsForReview(realigned, LINE_ITEMS_MAX_COUNT);
 
   return {

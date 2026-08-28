@@ -7,7 +7,11 @@ import {
   isUnitPriceAmountOfTotal,
   normalizedInvoiceLineLabelKey,
 } from "@/lib/ocr/invoice-line-item-dedupe";
-import { isLikelyInvoiceTableHeaderRow } from "@/lib/ocr/invoice-line-item-alignment";
+import {
+  isContinuationInvoiceLabel,
+  isLikelyInvoiceTableHeaderRow,
+  mergeContinuationInvoiceLineItems,
+} from "@/lib/ocr/invoice-line-item-alignment";
 import {
   extractInvoiceLineItemsFromText,
   lineTotalFromInvoiceRow,
@@ -384,6 +388,13 @@ export function extractRowLineTotalAmount(
   );
 }
 
+function rowHasPos(
+  rowCells: AzureLayoutTableCell[],
+  columns: InvoiceTableColumnLayout,
+): boolean {
+  return rowCells.some((cell) => isPosColumnCell(cell, rowCells, columns));
+}
+
 function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
   const headerRowIndex = table.cells.some((cell) => cell.rowIndex === 0)
     ? 0
@@ -400,6 +411,7 @@ function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
 
   const items: InvoiceLineItem[] = [];
   const seen = new Set<string>();
+  let pendingLabel: string | null = null;
 
   for (let rowIndex = headerRowIndex + 1; rowIndex < table.rowCount; rowIndex += 1) {
     const rowCells = table.cells.filter((cell) => cell.rowIndex === rowIndex);
@@ -415,22 +427,54 @@ function extractLineItemsFromTable(table: AzureLayoutTable): InvoiceLineItem[] {
       label = cleanCellText(textCells.map((cell) => cell.content).join(" "));
     }
 
-    const amount = extractRowLineTotalAmount(rowCells, columnLayout);
-
-    if (amount == null || !label) continue;
+    if (!label) continue;
     if (shouldSkipTableRow(label)) continue;
 
-    const candidate = { label, amount };
-    if (isLikelyInvoiceTableHeaderRow(candidate)) continue;
+    const amount = extractRowLineTotalAmount(rowCells, columnLayout);
+    const hasPos = rowHasPos(rowCells, columnLayout);
+    const headerCandidate = { label, amount: amount ?? 0 };
+    if (isLikelyInvoiceTableHeaderRow(headerCandidate)) continue;
 
-    const key = `${label.toLowerCase()}|${amount}`;
+    const isContinuation =
+      !hasPos &&
+      items.length > 0 &&
+      isContinuationInvoiceLabel(label);
+
+    if (isContinuation) {
+      const last = items[items.length - 1]!;
+      last.label = `${last.label} ${label}`.trim().slice(0, 160);
+      if (amount != null) {
+        if (
+          last.amount <= 0 ||
+          isUnitPriceAmountOfTotal(last.amount, amount)
+        ) {
+          last.amount = amount;
+        } else if (amount > last.amount + 0.01) {
+          last.amount = amount;
+        }
+      }
+      continue;
+    }
+
+    if (amount == null) {
+      pendingLabel = pendingLabel ? `${pendingLabel} ${label}`.trim() : label;
+      continue;
+    }
+
+    const fullLabel = pendingLabel
+      ? `${pendingLabel} ${label}`.trim().slice(0, 160)
+      : label.slice(0, 160);
+    pendingLabel = null;
+
+    const candidate = { label: fullLabel, amount };
+    const key = `${fullLabel.toLowerCase()}|${amount}`;
     if (seen.has(key)) continue;
     seen.add(key);
     items.push(candidate);
     if (items.length >= MAX_ITEMS) break;
   }
 
-  return items;
+  return mergeContinuationInvoiceLineItems(items) ?? items;
 }
 
 /**

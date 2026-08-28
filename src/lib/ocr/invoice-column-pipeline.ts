@@ -6,7 +6,10 @@ import {
   stripNonPositionInvoiceRows,
   sumInvoiceLineItems,
 } from "@/lib/ocr/invoice-footer-totals";
-import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
+import {
+  mergeContinuationInvoiceLineItems,
+  realignShiftedInvoiceLineItems,
+} from "@/lib/ocr/invoice-line-item-alignment";
 import { mergeLayoutAndLlmLineItems } from "@/lib/ocr/invoice-line-items-from-layout";
 import { reconcileLineItemAmountsWithOcrText } from "@/lib/ocr/invoice-line-items-from-text";
 import { ensureInvoiceVatAndGrossTotal } from "@/lib/ocr/invoice-vat";
@@ -138,9 +141,11 @@ export function finalizeColumnFormatLineItems(options: {
   }
 
   const stripped = stripNonPositionInvoiceRows(workingItems);
+  const mergedContinuations =
+    mergeContinuationInvoiceLineItems(stripped) ?? stripped;
   const realigned = layoutTrusted
-    ? stripped
-    : realignShiftedInvoiceLineItems(stripped, effectiveNet);
+    ? mergedContinuations
+    : realignShiftedInvoiceLineItems(mergedContinuations, effectiveNet);
 
   const normalized = normalizeLineItemsList(realigned, maxItems);
   const withVat = ensureInvoiceVatAndGrossTotal({
