@@ -51,6 +51,7 @@ export interface InBrowserCameraProps {
   /** Called when the user dismisses the camera. */
   onClose: () => void;
   /** Overlay message shown inside the viewfinder guide box. */
+  /** @deprecated Document-type badges are no longer shown in the viewfinder overlay. */
   guideLabel?: ReactNode;
   /** Semi-transparent example text centered in the guide frame. */
   guideWatermark?: ReactNode;
@@ -225,19 +226,6 @@ function GuideFrameWatermark({ children }: { children: ReactNode }) {
   );
 }
 
-function GuideFrameCorners({ sharp = false }: { sharp?: boolean }) {
-  const radius = sharp ? "rounded-sm" : "rounded-xl";
-  const corner = "h-6 w-6";
-  return (
-    <>
-      <span className={`absolute -left-px -top-px ${corner} ${radius} border-l-4 border-t-4 border-white/85`} />
-      <span className={`absolute -right-px -top-px ${corner} ${radius} border-r-4 border-t-4 border-white/85`} />
-      <span className={`absolute -bottom-px -left-px ${corner} ${radius} border-b-4 border-l-4 border-white/85`} />
-      <span className={`absolute -bottom-px -right-px ${corner} ${radius} border-b-4 border-r-4 border-white/85`} />
-    </>
-  );
-}
-
 function guideFrameOutsideShadow(dimOutside: boolean): string {
   return dimOutside ? "shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" : "";
 }
@@ -285,7 +273,6 @@ export function InBrowserCamera({
   hint,
   onCapture,
   onClose,
-  guideLabel,
   guideWatermark,
   guideFrame = "section",
   guideFrameDimOutside = false,
@@ -1103,16 +1090,8 @@ export function InBrowserCamera({
                     style={{ aspectRatio: TABLE_ASPECT_RATIO }}
                     aria-hidden
                   >
-                    <GuideFrameCorners sharp />
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
-                    ) : null}
-                    {guideLabel ? (
-                      <div className="absolute inset-x-2 bottom-2 flex justify-center">
-                        <span className="rounded-lg bg-black/55 px-3 py-1 text-center text-[0.7rem] font-medium leading-snug text-white backdrop-blur-[2px]">
-                          {guideLabel}
-                        </span>
-                      </div>
                     ) : null}
                   </div>
                 </GuideFrameViewport>
@@ -1132,16 +1111,8 @@ export function InBrowserCamera({
                     style={{ aspectRatio: A4_ASPECT_RATIO }}
                     aria-hidden
                   >
-                    <GuideFrameCorners />
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
-                    ) : null}
-                    {guideLabel ? (
-                      <div className="absolute inset-x-2 bottom-3 flex justify-center">
-                        <span className="rounded-lg bg-black/55 px-3 py-1.5 text-center text-[0.75rem] font-medium leading-snug text-white backdrop-blur-[2px]">
-                          {guideLabel}
-                        </span>
-                      </div>
                     ) : null}
                   </div>
                 </GuideFrameViewport>
@@ -1164,16 +1135,8 @@ export function InBrowserCamera({
                     }}
                     aria-hidden
                   >
-                    <GuideFrameCorners sharp />
                     {guideWatermark ? (
                       <GuideFrameWatermark>{guideWatermark}</GuideFrameWatermark>
-                    ) : null}
-                    {guideLabel ? (
-                      <div className="absolute inset-x-2 bottom-3 flex justify-center">
-                        <span className="rounded-lg bg-black/55 px-3 py-1.5 text-center text-[0.75rem] font-medium leading-snug text-white backdrop-blur-[2px]">
-                          {guideLabel}
-                        </span>
-                      </div>
                     ) : null}
                   </div>
                 </GuideFrameViewport>
@@ -1211,11 +1174,6 @@ export function InBrowserCamera({
                   <p className="mt-3 text-[0.92rem] leading-relaxed text-neutral-700">
                     {resolvedHint}
                   </p>
-                  {guideLabel ? (
-                    <p className="mt-4 rounded-xl bg-neutral-100 px-3 py-2 text-[0.82rem] font-medium text-neutral-800">
-                      Im Rahmen sichtbar: {guideLabel}
-                    </p>
-                  ) : null}
                   <button
                     type="button"
                     onClick={() => setInstructionsOpen(false)}

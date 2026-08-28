@@ -303,7 +303,7 @@ export function EditableLineItemsSection({
               <span className="whitespace-pre-line text-[color:var(--vd-text)]">
                 {item.label}
               </span>
-              <span className="shrink-0 font-semibold tabular-nums text-[color:var(--vd-text)]">
+              <span className="shrink-0 tabular-nums text-[color:var(--vd-text)]">
                 {formatEur(item.amount)}
               </span>
             </li>

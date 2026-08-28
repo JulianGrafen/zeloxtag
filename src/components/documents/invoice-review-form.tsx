@@ -222,7 +222,6 @@ export function InvoiceReviewForm({
       </section>
 
       <EditableLineItemsSection
-        mode="inline"
         items={fields.lineItems ?? []}
         totalAmount={fields.amount}
         emptyHint="Positionen manuell ergänzen."
