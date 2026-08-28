@@ -57,6 +57,7 @@ import {
 } from "@/lib/validations/abeSchema";
 import type { CompressedPage } from "@/lib/ocr/compress-page";
 import {
+  buildUploadPdfFromPages,
   ingestImageFile,
   processInvoiceDocuments,
   revokeCompressedPages,
@@ -486,35 +487,37 @@ export function InvoiceUploader({
     setProgress({ label: "Vorbereitung…", percent: 4 });
 
     try {
-      const ingestedPages: CompressedPage[] = [];
-      let pdf: File | null = null;
+      const optimized = await Promise.all(files.map((file) => compressFile(file)));
 
-      for (const file of files) {
-        const optimized = await compressFile(file);
-        if (optimized.kind === "pdf" || isPdfFile(optimized.file)) {
-          pdf = optimized.file;
-          break;
-        }
-        if (ingestedPages.length >= MAX_PAGES) {
-          setError(`Maximal ${MAX_PAGES} Seiten pro Beleg.`);
-          setStep("compose");
-          return;
-        }
-        ingestedPages.push(await ingestImageFile(optimized.file));
-      }
-
-      if (pdf) {
+      const pdfEntry = optimized.find(
+        (item) => item.kind === "pdf" || isPdfFile(item.file),
+      );
+      if (pdfEntry) {
         clearPages();
-        setNativePdf(pdf);
-        await runExtraction({ nativePdf: pdf, pages: [] });
+        setNativePdf(pdfEntry.file);
+        await runExtraction({ nativePdf: pdfEntry.file, pages: [] });
         return;
       }
 
-      if (ingestedPages.length === 0) {
+      const imageFiles = optimized.filter(
+        (item) => item.kind !== "pdf" && !isPdfFile(item.file),
+      );
+
+      if (imageFiles.length === 0) {
         setError("Bitte mindestens eine Seite oder ein PDF hinzufügen.");
         setStep("compose");
         return;
       }
+
+      if (imageFiles.length > MAX_PAGES) {
+        setError(`Maximal ${MAX_PAGES} Seiten pro Beleg.`);
+        setStep("compose");
+        return;
+      }
+
+      const ingestedPages = await Promise.all(
+        imageFiles.map((item) => ingestImageFile(item.file)),
+      );
 
       if (nativePdf) setNativePdf(null);
       clearPages();
@@ -699,7 +702,17 @@ export function InvoiceUploader({
         },
       );
 
-      setUploadFile(processed.uploadFile);
+      let uploadPdf = processed.uploadFile;
+      if (!uploadPdf && processed.sourceKind === "images" && imagePages.length > 0) {
+        setProgress({
+          label: "PDF für Speicherung wird erzeugt…",
+          percent: 96,
+          totalPages: processed.pageCount,
+        });
+        uploadPdf = await buildUploadPdfFromPages(imagePages);
+      }
+
+      setUploadFile(uploadPdf);
       setPreviewUrl(processed.previewUrl);
       setPreviewKind(processed.previewKind);
       setPreviewOwned(processed.previewUrlOwned);

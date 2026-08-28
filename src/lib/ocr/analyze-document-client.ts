@@ -141,6 +141,55 @@ async function analyzeOneFile(
   };
 }
 
+const DEFAULT_OCR_MAX_PARALLEL_PAGES = 2;
+
+/** Bounded concurrency for multi-page OCR (client-side). */
+export function resolveOcrMaxParallelPages(): number {
+  const raw =
+    typeof process !== "undefined"
+      ? process.env.NEXT_PUBLIC_OCR_MAX_PARALLEL_PAGES
+      : undefined;
+  if (raw) {
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 4) {
+      return parsed;
+    }
+  }
+  return DEFAULT_OCR_MAX_PARALLEL_PAGES;
+}
+
+/**
+ * Run async tasks with a concurrency cap; results preserve input order.
+ */
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+  onItemComplete?: (completedCount: number, total: number) => void,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+
+  const limit = Math.max(1, Math.min(concurrency, items.length));
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  let completedCount = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+
+      results[index] = await fn(items[index], index);
+      completedCount += 1;
+      onItemComplete?.(completedCount, items.length);
+    }
+  }
+
+  await Promise.all(Array.from({ length: limit }, () => worker()));
+  return results;
+}
+
 function mergeFields(
   results: AnalyzeDocumentResult[],
 ): InvoiceTextParseResult {
@@ -206,6 +255,13 @@ function mergeFields(
   });
 }
 
+/** Merge per-page OCR fields into one review payload (page order preserved). */
+export function mergeAnalyzeDocumentFields(
+  results: AnalyzeDocumentResult[],
+): InvoiceTextParseResult {
+  return mergeFields(results);
+}
+
 /**
  * Analyze one or more prepared files via vision LLM parse.
  */
@@ -262,12 +318,12 @@ export async function analyzeDocumentFiles(
     );
   }
 
-  const results: AnalyzeDocumentResult[] = [];
-  for (let index = 0; index < expandedFiles.length; index += 1) {
-    onPageProgress?.(index + 1, expandedFiles.length);
-    results.push(
-      await analyzeOneFile(
-        expandedFiles[index],
+  const results = await mapWithConcurrency(
+    expandedFiles,
+    resolveOcrMaxParallelPages(),
+    (file, index) =>
+      analyzeOneFile(
+        file,
         vehicleId,
         documentType,
         approvalKind,
@@ -277,8 +333,8 @@ export async function analyzeDocumentFiles(
         index === 0 ? teilegutachtenScope : undefined,
         index === 0 ? pruefung192Scope : undefined,
       ),
-    );
-  }
+    (completed, total) => onPageProgress?.(completed, total),
+  );
 
   const rawText = results
     .map((result, index) => `--- Seite ${index + 1} ---\n${result.rawText}`)

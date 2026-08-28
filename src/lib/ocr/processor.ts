@@ -27,8 +27,8 @@ export type ProcessInvoiceInput =
 export type ProcessInvoiceResult = {
   /** A4-compressed page file(s) (or native PDF) for Document Intelligence. */
   analyzeFiles: File[];
-  /** PDF file stored in Supabase after review. */
-  uploadFile: File;
+  /** PDF file stored in Supabase after review; null until built for image scans. */
+  uploadFile: File | null;
   /** Preview object URL for the review step. */
   previewUrl: string;
   /** Whether the caller must revoke `previewUrl`. */
@@ -76,6 +76,28 @@ export async function processInvoiceDocuments(
   return processImagePages(input.pages, onProgress);
 }
 
+/**
+ * Assemble a storage PDF from compressed page blobs (deferred until after OCR).
+ */
+export async function buildUploadPdfFromPages(
+  pages: CompressedPage[],
+): Promise<File> {
+  if (pages.length === 0) {
+    throw new ProcessorError("Bitte mindestens eine Seite hinzufügen.");
+  }
+
+  const pdf = await convertImagesToPdf(
+    pages.map((page) => page.blob),
+    {
+      fileName: `scan-${Date.now()}`,
+      marginMm: 0,
+      imageCompression: "MEDIUM",
+    },
+  );
+
+  return pdf.file;
+}
+
 async function processImagePages(
   pages: CompressedPage[],
   onProgress?: (progress: ProcessorProgress) => void,
@@ -88,21 +110,6 @@ async function processImagePages(
   const analyzeFiles = pages.map((page, index) => pageToAnalyzeFile(page, index));
 
   onProgress?.({
-    label: "A4-PDF für Speicherung wird erzeugt…",
-    percent: 55,
-    totalPages,
-  });
-
-  const pdf = await convertImagesToPdf(
-    pages.map((page) => page.blob),
-    {
-      fileName: `scan-${Date.now()}`,
-      marginMm: 0,
-      imageCompression: "MEDIUM",
-    },
-  );
-
-  onProgress?.({
     label: "Dokument vorbereitet",
     percent: 70,
     totalPages,
@@ -110,7 +117,7 @@ async function processImagePages(
 
   return {
     analyzeFiles,
-    uploadFile: pdf.file,
+    uploadFile: null,
     previewUrl: pages[0].previewUrl,
     previewUrlOwned: false,
     previewKind: "image",
