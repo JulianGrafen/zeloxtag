@@ -111,7 +111,7 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "schrauber",
-      title: "Schrauber",
+      title: "Werkstatt",
       icon: "users",
     },
     {

@@ -18,7 +18,7 @@ import {
 } from "@/lib/documents/oil-changes";
 import { filterAbeFamilyDocuments } from "@/lib/documents/abe-family-documents";
 import { filterInvoiceReceiptDocuments, isInvoiceReceiptDocument } from "@/lib/documents/invoice-receipts";
-import { dokumenteLabel, belegeLabel } from "@/lib/i18n/pluralize-de";
+import { bilderLabel, dokumenteLabel, belegeLabel } from "@/lib/i18n/pluralize-de";
 import {
   filterManualVehicleEntries,
 } from "@/lib/documents/manual-entries";
@@ -237,7 +237,7 @@ export function TagDashboardView({
           subtitle:
             manualEntryCount > 0
               ? `${manualEntryCount} manuelle Einträge`
-              : "Neu",
+              : "Selbst eintragen",
         },
       };
     }
@@ -249,9 +249,7 @@ export function TagDashboardView({
           ...tile.meta,
           href: `/v/${tagUuid}/umbauten`,
           subtitle:
-            umbauCount > 0
-              ? `${umbauCount} Fotos`
-              : "Neu",
+            umbauCount > 0 ? bilderLabel(umbauCount) : "Keine Bilder",
         },
       };
     }

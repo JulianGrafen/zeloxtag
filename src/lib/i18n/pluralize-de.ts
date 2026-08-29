@@ -21,3 +21,7 @@ export function dokumenteLabel(count: number): string {
 export function belegeLabel(count: number): string {
   return pluralizeDe(count, "Beleg", "Belege");
 }
+
+export function bilderLabel(count: number): string {
+  return pluralizeDe(count, "Bild", "Bilder");
+}
