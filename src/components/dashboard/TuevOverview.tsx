@@ -13,9 +13,9 @@ import {
   emptyDraftRow,
   parseDraftRows,
   toDraftRows,
-  TuevDefectsDraftEditor,
   type DraftDefect,
 } from "@/components/documents/tuev-defects-draft-editor";
+import { TuevDefectsEditableBlock } from "@/components/documents/tuev-defects-editable-block";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { Button } from "@/components/ui/button";
@@ -413,10 +413,10 @@ export function TuevOverview({
             Festgestellte Mängel
           </p>
           <p className="mb-3 text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Mängel aus dem Scan prüfen, korrigieren oder ergänzen — leere Zeilen
+            Mängel prüfen oder ergänzen — tippen zum Bearbeiten. Leere Zeilen
             werden nicht gespeichert.
           </p>
-          <TuevDefectsDraftEditor
+          <TuevDefectsEditableBlock
             draft={defectsDraft}
             onChange={setDefectsDraft}
             disabled={isSaving}

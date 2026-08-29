@@ -2,6 +2,7 @@ import {
   defectsListFromTuevDefectRows,
   extractTuevDefectsFromText,
   normalizeCheckpoint,
+  TUEV_CHECKPOINT_CORE,
 } from "@/lib/ocr/tuev-defects-from-text";
 import { preferTuevTotalAmount } from "@/lib/ocr/tuev-amount-from-text";
 import { preferTuevMileageKm } from "@/lib/ocr/tuev-mileage-from-text";
@@ -46,6 +47,31 @@ function dedupeDefectRows(rows: TuevDefectRow[]): TuevDefectRow[] {
   }
 
   return unique;
+}
+
+function isPlausibleVisionDefectRow(row: TuevDefectRow): boolean {
+  const description = row.description.trim();
+  if (description.length < 8) return false;
+  if (row.severity === "EM" || row.severity === "GM") return true;
+  const checkpoint = row.checkpoint?.trim();
+  return Boolean(checkpoint && TUEV_CHECKPOINT_CORE.test(checkpoint));
+}
+
+/**
+ * When Azure Layout OCR cannot parse Punkt 6, keep structured vision rows.
+ * Single-row fallback requires OCR grounding to block one-off hallucinations.
+ */
+function visionDefectFallback(
+  llmRows: TuevDefectRow[],
+  ocrText: string,
+): TuevDefectRow[] | null {
+  const plausible = llmRows.filter(isPlausibleVisionDefectRow);
+  if (plausible.length === 0) return null;
+  if (plausible.length >= 2) return dedupeDefectRows(plausible);
+  if (plausible.length === 1 && rowMatchesOcr(plausible[0]!, ocrText)) {
+    return plausible;
+  }
+  return null;
 }
 
 function sameDefectRow(a: TuevDefectRow, b: TuevDefectRow): boolean {
@@ -126,6 +152,14 @@ export function reconcileTuevDefectRows(
 
     const deduped = dedupeDefectRows(merged);
     if (deduped.length > 0) return deduped;
+
+    // Azure Layout often garbles Punkt 6 — keep multi-row vision extract when OCR
+    // cannot parse structured checkpoints (still blocks single-row hallucinations).
+    if ((ocrTable?.length ?? 0) === 0) {
+      const fallback = visionDefectFallback(llmRows, normalized);
+      if (fallback?.length) return fallback;
+    }
+
     return null;
   }
 

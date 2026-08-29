@@ -40,9 +40,9 @@ import {
   emptyDraftRow,
   parseDraftRows,
   toDraftRows,
-  TuevDefectsDraftEditor,
   type DraftDefect,
 } from "@/components/documents/tuev-defects-draft-editor";
+import { TuevDefectsEditableBlock } from "@/components/documents/tuev-defects-editable-block";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { inferResultFromDefectRows } from "@/services/documents/TuevReportService";
 
@@ -573,10 +573,10 @@ export function SingleClickTuevUpload({
             Festgestellte Mängel
           </h2>
           <p className="mb-3 text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Mängel prüfen, korrigieren oder ergänzen — leere Zeilen werden nicht
-            gespeichert.
+            Mängel prüfen oder ergänzen — tippen zum Bearbeiten. Leere Zeilen
+            werden nicht gespeichert.
           </p>
-          <TuevDefectsDraftEditor
+          <TuevDefectsEditableBlock
             draft={defectsDraft}
             onChange={setDefectsDraft}
             disabled={saving}

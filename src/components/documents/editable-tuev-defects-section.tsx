@@ -108,7 +108,19 @@ export function EditableTuevDefectsSection({
       </div>
 
       {!editing ? (
-        <TuevDefectsSection data={displayData} asSection={false} />
+        <button
+          type="button"
+          onClick={startEdit}
+          className="group w-full rounded-xl border border-transparent text-left transition-colors hover:border-[color:var(--vd-border)] hover:bg-[color:var(--vd-surface-elevated)]/40 active:bg-[color:var(--vd-surface-elevated)]"
+        >
+          <div className="p-1">
+            <TuevDefectsSection data={displayData} asSection={false} />
+            <p className="mt-2 flex items-center gap-1.5 text-[0.75rem] font-medium text-[color:var(--vd-muted)] group-hover:text-[color:var(--vd-text)]">
+              <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Tippen zum Bearbeiten
+            </p>
+          </div>
+        </button>
       ) : (
         <>
           <TuevDefectsDraftEditor

@@ -873,7 +873,30 @@ export class TuevExtractionService {
       sanitizeTuevPayload(enrichedRecord),
       ocrText,
     );
-    const { report, requiresManualReview } = parseTuevReportLenient(sanitized);
+    let { report, requiresManualReview } = parseTuevReportLenient(sanitized);
+
+    const needsDefectRows =
+      report.result !== "no_defects" &&
+      report.result !== "failed" &&
+      !report.defectsTable?.length;
+
+    if (needsDefectRows) {
+      try {
+        const defectsOnly = await this.extractDefectsFromDocument(input, options);
+        if (defectsOnly.defectsTable?.length) {
+          report = {
+            ...report,
+            defectsTable: defectsOnly.defectsTable,
+            defectsList: defectsOnly.defectsList,
+          };
+        }
+      } catch (fallbackError) {
+        console.warn(
+          "[TuevExtractionService] Punkt-6 fallback extract failed",
+          fallbackError,
+        );
+      }
+    }
 
     const vendor =
       typeof record.vendor === "string" && record.vendor.trim()
