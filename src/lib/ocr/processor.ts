@@ -10,7 +10,10 @@ import {
   type CompressedPage,
   revokeCompressedPages,
 } from "./compress-page";
-import { loadPdfDocument } from "./pdf-source";
+import {
+  prepareClientOcrFiles,
+  resolveClientOcrMaxPages,
+} from "./prepare-client-ocr-file";
 
 export type ProcessorProgress = {
   label: string;
@@ -135,34 +138,33 @@ async function processNativePdf(
   }
 
   onProgress?.({ label: "PDF wird geladen…", percent: 20 });
-  const pdf = await loadPdfDocument(file);
-  const totalPages = pdf.numPages;
 
-  onProgress?.({
-    label: "Vorschau wird erzeugt…",
-    percent: 45,
-    totalPages,
+  onProgress?.({ label: "Seiten werden vorbereitet…", percent: 45 });
+  const analyzeFiles = await prepareClientOcrFiles(file, {
+    maxPages: resolveClientOcrMaxPages({ documentType: "invoice" }),
   });
 
-  const previewUrl = URL.createObjectURL(file);
-  const pdfWithCleanup = pdf as { destroy?: () => Promise<void> };
-  if (typeof pdfWithCleanup.destroy === "function") {
-    await pdfWithCleanup.destroy();
+  if (analyzeFiles.length === 0) {
+    throw new ProcessorError(
+      "PDF konnte nicht in Seitenbilder umgewandelt werden.",
+    );
   }
+
+  const previewUrl = URL.createObjectURL(analyzeFiles[0]!);
 
   onProgress?.({
     label: "Dokument vorbereitet",
     percent: 70,
-    totalPages,
+    totalPages: analyzeFiles.length,
   });
 
   return {
-    analyzeFiles: [file],
+    analyzeFiles,
     uploadFile: file,
     previewUrl,
     previewUrlOwned: true,
-    previewKind: "pdf",
-    pageCount: totalPages,
+    previewKind: "image",
+    pageCount: analyzeFiles.length,
     sourceKind: "pdf",
   };
 }
