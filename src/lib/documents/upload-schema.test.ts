@@ -121,4 +121,14 @@ describe("uploadDocumentMetaSchema", () => {
     );
     expect(parsed.success).toBe(false);
   });
+
+  it("accepts forceDuplicateSave for duplicate override saves", () => {
+    const parsed = uploadDocumentMetaSchema.safeParse(
+      teilegutachtenMeta({ forceDuplicateSave: "1" }),
+    );
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.forceDuplicateSave).toBe("1");
+    }
+  });
 });

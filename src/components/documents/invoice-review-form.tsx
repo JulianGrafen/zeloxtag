@@ -29,6 +29,7 @@ export type InvoiceReviewFormProps = {
   categoryLocked?: boolean;
   vehicleMismatchReason?: string | null;
   mileageWarning?: string | null;
+  duplicateHint?: string | null;
   preview?: {
     url: string;
     kind: "pdf" | "image";
@@ -40,9 +41,11 @@ export type InvoiceReviewFormProps = {
   onSave: () => void;
   onSaveDespiteMismatch?: () => void;
   onSaveDespiteMileage?: () => void;
+  onSaveDespiteDuplicate?: () => void;
   onReset?: () => void;
   topBanner?: ReactNode;
   onDismissMismatch?: () => void;
+  onDismissDuplicate?: () => void;
 };
 
 function formatBytes(bytes: number): string {
@@ -59,15 +62,18 @@ export function InvoiceReviewForm({
   categoryLocked = false,
   vehicleMismatchReason = null,
   mileageWarning = null,
+  duplicateHint = null,
   preview,
   saving = false,
   error = null,
   onSave,
   onSaveDespiteMismatch,
   onSaveDespiteMileage,
+  onSaveDespiteDuplicate,
   onReset,
   topBanner,
   onDismissMismatch,
+  onDismissDuplicate,
 }: InvoiceReviewFormProps) {
   const [editingHeader, setEditingHeader] = useState(false);
 
@@ -101,6 +107,16 @@ export function InvoiceReviewForm({
             Kilometerstand prüfen
           </p>
           <p className="mt-1.5 leading-relaxed">{mileageWarning}</p>
+        </div>
+      ) : null}
+
+      {duplicateHint ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-[0.85rem] text-amber-950">
+          <p className="flex items-start gap-2 font-semibold">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            Mögliches Duplikat
+          </p>
+          <p className="mt-1.5 leading-relaxed">{duplicateHint}</p>
         </div>
       ) : null}
 
@@ -401,6 +417,26 @@ export function InvoiceReviewForm({
             onClick={onDismissMismatch ?? onSave}
           >
             Zurück
+          </Button>
+        </div>
+      ) : duplicateHint && onSaveDespiteDuplicate ? (
+        <div className="space-y-2">
+          <Button
+            type="button"
+            disabled={saving}
+            className="claim-cta w-full"
+            onClick={onSaveDespiteDuplicate}
+          >
+            {saving ? "Wird gespeichert…" : "Trotzdem als neuen Beleg speichern"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving}
+            className="w-full"
+            onClick={onDismissDuplicate ?? onSave}
+          >
+            Abbrechen
           </Button>
         </div>
       ) : mileageWarning && onSaveDespiteMileage ? (

@@ -141,19 +141,12 @@ function savedDocumentHref(
   return base.includes("?") ? `${base}&saved=1` : `${base}?saved=1`;
 }
 
-function savedInvoiceListHref(
-  tagUuid: string,
-  documentId: string,
-  duplicate = false,
-): string {
+function savedInvoiceListHref(tagUuid: string, documentId: string): string {
   const params = new URLSearchParams({
     type: "invoice",
     saved: "1",
     highlight: documentId,
   });
-  if (duplicate) {
-    params.set("duplicate", "1");
-  }
   return `/v/${tagUuid}/dokumente?${params.toString()}`;
 }
 
@@ -260,6 +253,7 @@ export function InvoiceUploader({
   const [vehicleMismatchReason, setVehicleMismatchReason] = useState<
     string | null
   >(null);
+  const [duplicateHint, setDuplicateHint] = useState<string | null>(null);
   const [showThinPositionsHint, setShowThinPositionsHint] = useState(false);
 
   const mileageWarning = useMemo(() => {
@@ -311,6 +305,7 @@ export function InvoiceUploader({
     setTitle("");
     setError(null);
     setVehicleMismatchReason(null);
+    setDuplicateHint(null);
     setShowThinPositionsHint(false);
   }
 
@@ -336,6 +331,7 @@ export function InvoiceUploader({
     resolvedTitle: string,
     forceVehicle = false,
     forceMileage = false,
+    forceDuplicate = false,
   ) {
     const match = assessVehicleDocumentMatch({
       rawText,
@@ -356,10 +352,14 @@ export function InvoiceUploader({
     }
 
     setVehicleMismatchReason(null);
+    if (forceDuplicate) {
+      setDuplicateHint(null);
+    }
     persistGenericInvoiceFromConfirm(
       buildInvoiceSaveValues(resolvedTitle),
       forceVehicle,
       forceMileage,
+      forceDuplicate,
     );
   }
 
@@ -367,10 +367,14 @@ export function InvoiceUploader({
     values: ReturnType<typeof buildInvoiceSaveValues>,
     assignDespiteMismatch = false,
     forceMileageSave = false,
+    forceDuplicateSave = false,
   ) {
     setError(null);
     if (assignDespiteMismatch) {
       setVehicleMismatchReason(null);
+    }
+    if (!forceDuplicateSave) {
+      setDuplicateHint(null);
     }
 
     startTransition(async () => {
@@ -432,12 +436,19 @@ export function InvoiceUploader({
       if (forceMileageSave) {
         formData.set("forceMileageSave", "1");
       }
+      if (forceDuplicateSave) {
+        formData.set("forceDuplicateSave", "1");
+      }
       formData.set("file", uploadFile);
 
       try {
         const result = await uploadDocument(formData);
         if (result.status === "error") {
           setError(result.message);
+          return;
+        }
+        if (result.status === "duplicate") {
+          setDuplicateHint(result.message);
           return;
         }
 
@@ -449,11 +460,7 @@ export function InvoiceUploader({
               successHref,
             )
           : isInvoiceSave
-            ? savedInvoiceListHref(
-                result.tagUuid,
-                result.document.id,
-                result.duplicate === true,
-              )
+            ? savedInvoiceListHref(result.tagUuid, result.document.id)
             : savedDocumentHref(result.tagUuid, result.document.id);
         window.location.assign(href);
       } catch (caught) {
@@ -1692,7 +1699,10 @@ export function InvoiceUploader({
             }
             categoryLocked={Boolean(resolvedLockCategory)}
             vehicleMismatchReason={vehicleMismatchReason}
-            mileageWarning={vehicleMismatchReason ? null : mileageWarning}
+            mileageWarning={
+              vehicleMismatchReason || duplicateHint ? null : mileageWarning
+            }
+            duplicateHint={duplicateHint}
             saving={pending}
             error={error}
             preview={{
@@ -1729,7 +1739,17 @@ export function InvoiceUploader({
               }
               attemptSaveInvoice(resolvedTitle, false, true);
             }}
+            onSaveDespiteDuplicate={() => {
+              setError(null);
+              const resolvedTitle = title.trim();
+              if (!resolvedTitle) {
+                setError("Bezeichnung ist erforderlich.");
+                return;
+              }
+              attemptSaveInvoice(resolvedTitle, true, true, true);
+            }}
             onDismissMismatch={() => setVehicleMismatchReason(null)}
+            onDismissDuplicate={() => setDuplicateHint(null)}
             topBanner={(() => {
               const oil = detectOilChangeInvoice({
                 title,

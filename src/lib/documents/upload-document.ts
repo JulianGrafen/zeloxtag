@@ -25,6 +25,7 @@ import { parseApprovalFields } from "./approval-fields";
 import { DOCUMENT_BUCKET } from "./constants";
 import {
   documentPageHash,
+  buildDuplicateDocumentHint,
   findDuplicateDocument,
 } from "./find-duplicate-document";
 import { guardDocumentTitle } from "./guard-document-title";
@@ -53,7 +54,13 @@ import {
 } from "./upload-schema";
 
 export type UploadDocumentResult =
-  | { status: "uploaded"; document: Document; tagUuid: string; duplicate?: boolean }
+  | { status: "uploaded"; document: Document; tagUuid: string }
+  | {
+      status: "duplicate";
+      document: Document;
+      tagUuid: string;
+      message: string;
+    }
   | { status: "error"; message: string };
 
 function parseAmount(raw: string | undefined): number | null {
@@ -295,26 +302,30 @@ export async function uploadDocument(
     }
   }
 
-  const duplicate = findDuplicateDocument(existingDocs, {
-    vehicleId,
-    type: typeRaw,
-    title,
-    vendor,
-    date,
-    amount,
-    pageHash,
-  });
-
-  if (duplicate) {
-    console.info("[upload-document] duplicate document matched", {
-      documentId: duplicate.id,
+  const forceDuplicateSave = meta.forceDuplicateSave === "1";
+  if (!forceDuplicateSave) {
+    const duplicate = findDuplicateDocument(existingDocs, {
       vehicleId,
+      type: typeRaw,
+      title,
+      vendor,
+      date,
+      amount,
+      pageHash,
     });
-    revalidatePath(`/v/${tagUuid}`);
-    revalidatePath(`/v/${tagUuid}/dokumente`);
-    revalidatePath(`/v/${tagUuid}/service`);
-    revalidatePath(`/v/${tagUuid}/intervalle`);
-    return { status: "uploaded", document: duplicate, tagUuid, duplicate: true };
+
+    if (duplicate) {
+      console.info("[upload-document] duplicate document matched", {
+        documentId: duplicate.id,
+        vehicleId,
+      });
+      return {
+        status: "duplicate",
+        document: duplicate,
+        tagUuid,
+        message: buildDuplicateDocumentHint(duplicate),
+      };
+    }
   }
 
   const storagePath = `${vehicleId}/${documentId}-${safeName}`;

@@ -48,6 +48,8 @@ export const uploadDocumentMetaSchema = z
     forceVehicleAssign: z.enum(["", "1"]).optional().default(""),
     /** Set when user confirms “Trotzdem speichern” after a mileage plausibility warning. */
     forceMileageSave: z.enum(["", "1"]).optional().default(""),
+    /** Set when user confirms save despite a likely duplicate Beleg. */
+    forceDuplicateSave: z.enum(["", "1"]).optional().default(""),
   })
   .strict();
 
@@ -82,6 +84,10 @@ export function metaFromFormData(formData: FormData): unknown {
         : "",
     forceMileageSave:
       String(formData.get("forceMileageSave") ?? "").trim() === "1"
+        ? "1"
+        : "",
+    forceDuplicateSave:
+      String(formData.get("forceDuplicateSave") ?? "").trim() === "1"
         ? "1"
         : "",
   };
