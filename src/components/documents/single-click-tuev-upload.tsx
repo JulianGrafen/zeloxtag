@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -23,11 +24,13 @@ import {
 
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import {
-  formatMileageKmLabel,
   formatTuevYearMonth,
   localDateIso,
+  normalizeDocumentDateIso,
 } from "@/lib/documents/format";
+import { isMileagePlausibilityMessage } from "@/lib/documents/mileage-plausibility-message";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { validateMileageAgainstHistory } from "@/lib/documents/validate-mileage";
 import { prepareTuevSingleOcrFile } from "@/lib/ocr/prepare-client-ocr-file";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { TuevVisionExtraction } from "@/services/ocr/TuevExtractionService";
@@ -43,8 +46,10 @@ import {
   type DraftDefect,
 } from "@/components/documents/tuev-defects-draft-editor";
 import { TuevDefectsEditableBlock } from "@/components/documents/tuev-defects-editable-block";
+import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { inferResultFromDefectRows } from "@/services/documents/TuevReportService";
+import type { Document } from "@/types/database";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -89,6 +94,7 @@ export interface SingleClickTuevUploadProps {
   vehicleId: string;
   tagUuid: string;
   vehicleLabel: string;
+  existingDocuments?: Document[];
   successHref?: string;
   onBack?: () => void;
   backHref?: string;
@@ -130,6 +136,7 @@ function buildSaveFormData(
   vehicleId: string,
   tagUuid: string,
   title: string,
+  options?: { forceMileageSave?: boolean },
 ): FormData {
   const { report, vendor, amount, lineItems } = extraction;
   const orgLabel =
@@ -172,6 +179,9 @@ function buildSaveFormData(
   );
   formData.set("pageCount", "1");
   formData.set("approvalFields", JSON.stringify(approvalPayload));
+  if (options?.forceMileageSave) {
+    formData.set("forceMileageSave", "1");
+  }
   formData.set("file", uploadFile);
   return formData;
 }
@@ -236,6 +246,7 @@ export function SingleClickTuevUpload({
   vehicleId,
   tagUuid,
   vehicleLabel,
+  existingDocuments = [],
   successHref,
   onBack,
   backHref,
@@ -244,6 +255,7 @@ export function SingleClickTuevUpload({
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [state, setState] = useState<ExtractionState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [savedDocumentId, setSavedDocumentId] = useState<string | null>(null);
   const [saving, startSaveTransition] = useTransition();
@@ -253,6 +265,20 @@ export function SingleClickTuevUpload({
 
   const processingMessage = useProcessingMessage(phase === "processing");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const mileageWarning = useMemo(() => {
+    if (!state) return null;
+    const km = state.extraction.report.mileageKm;
+    if (km === null || km <= 0 || existingDocuments.length === 0) {
+      return null;
+    }
+    const check = validateMileageAgainstHistory(
+      km,
+      normalizeDocumentDateIso(state.extraction.report.testDate),
+      existingDocuments,
+    );
+    return check.ok ? null : check.warning;
+  }, [existingDocuments, state]);
 
   // ── File handling ────────────────────────────────────────────────────────────
 
@@ -316,8 +342,14 @@ export function SingleClickTuevUpload({
 
   // ── Save ─────────────────────────────────────────────────────────────────────
 
-  function handleSave() {
+  function handleSave(forceMileage = false) {
     if (!state) return;
+
+    setSaveError(null);
+    if (mileageWarning && !forceMileage) {
+      setSaveError(mileageWarning);
+      return;
+    }
 
     const defectsTable = parseDraftRows(defectsDraft);
     const reportWithDefects = {
@@ -341,13 +373,17 @@ export function SingleClickTuevUpload({
       vehicleId,
       tagUuid,
       title,
+      { forceMileageSave: forceMileage },
     );
 
     startSaveTransition(async () => {
       const result = await uploadDocument(formData);
       if (result.status === "error") {
-        setError(result.message);
-        setPhase("error");
+        if (isMileagePlausibilityMessage(result.message)) {
+          setSaveError(result.message);
+          return;
+        }
+        setSaveError(result.message);
         return;
       }
       setSavedDocumentId(result.document.id);
@@ -357,6 +393,7 @@ export function SingleClickTuevUpload({
 
   function retry() {
     setError(null);
+    setSaveError(null);
     setState(null);
     setDefectsDraft([emptyDraftRow()]);
     setPhase("idle");
@@ -494,6 +531,7 @@ export function SingleClickTuevUpload({
   if (phase === "confirm" && state) {
     const { report, vendor, amount } = state.extraction;
     const needsReview = state.extraction.requiresManualReview;
+    const activeMileageWarning = saveError ?? mileageWarning;
 
     return (
       <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
@@ -542,14 +580,33 @@ export function SingleClickTuevUpload({
             />
             <SummaryRow label="Prüfstation" value={vendor?.trim() ?? null} />
             <SummaryRow label="Prüfdatum" value={report.testDate ?? null} />
-            <SummaryRow
-              label="Kilometerstand"
-              value={
-                report.mileageKm !== null
-                  ? formatMileageKmLabel(report.mileageKm)
-                  : null
-              }
-            />
+            <div className="py-2.5">
+              <span className="block text-[0.78rem] text-[color:var(--vd-muted)]">
+                Kilometerstand
+              </span>
+              <MileageKmInput
+                value={report.mileageKm}
+                onChange={(km) => {
+                  setSaveError(null);
+                  setState((current) =>
+                    current
+                      ? {
+                          ...current,
+                          extraction: {
+                            ...current.extraction,
+                            report: {
+                              ...current.extraction.report,
+                              mileageKm: km,
+                            },
+                          },
+                        }
+                      : current,
+                  );
+                }}
+                placeholder="z. B. 87.200"
+                className="mt-1.5"
+              />
+            </div>
             <SummaryRow
               label="Ergebnis"
               value={RESULT_LABELS[report.result]}
@@ -583,20 +640,70 @@ export function SingleClickTuevUpload({
           />
         </div>
 
+        {activeMileageWarning ? (
+          <div
+            role="alert"
+            className="flex gap-3 rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3.5"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+            <p className="text-[0.8rem] leading-relaxed text-amber-900">
+              {activeMileageWarning}
+            </p>
+          </div>
+        ) : null}
+
+        {saveError && !isMileagePlausibilityMessage(saveError) ? (
+          <div
+            role="alert"
+            className="flex gap-3 rounded-[1.2rem] border border-red-200 bg-red-50 px-4 py-3.5"
+          >
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-700" />
+            <p className="text-[0.8rem] leading-relaxed text-red-900">
+              {saveError}
+            </p>
+          </div>
+        ) : null}
+
         {/* Save action */}
-        <Button
-          type="button"
-          className="claim-cta"
-          disabled={saving}
-          onClick={handleSave}
-        >
-          {saving ? (
-            <LoaderCircle className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          {saving ? "Wird gespeichert…" : "Bericht speichern"}
-        </Button>
+        {activeMileageWarning ? (
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              className="claim-cta"
+              disabled={saving}
+              onClick={() => handleSave(true)}
+            >
+              {saving ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {saving ? "Wird gespeichert…" : "Trotzdem speichern"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => setSaveError(null)}
+            >
+              KM korrigieren
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            className="claim-cta"
+            disabled={saving}
+            onClick={() => handleSave(false)}
+          >
+            {saving ? (
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {saving ? "Wird gespeichert…" : "Bericht speichern"}
+          </Button>
+        )}
 
         <button
           type="button"

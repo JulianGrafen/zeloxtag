@@ -40,6 +40,7 @@ import {
   createDocumentPreviewUrl,
   prepareTuevWizardOcrFile,
 } from "@/lib/ocr/prepare-client-ocr-file";
+import type { Document } from "@/types/database";
 import {
   TESTING_ORGANIZATIONS,
   TUEV_RESULTS,
@@ -87,6 +88,7 @@ export interface TuevUploadWizardProps {
   vehicleId: string;
   tagUuid: string;
   vehicleLabel: string;
+  existingDocuments?: Document[];
   successHref?: string;
   onBack?: () => void;
   backHref?: string;
@@ -298,6 +300,7 @@ export function TuevUploadWizard({
   vehicleId,
   tagUuid,
   vehicleLabel,
+  existingDocuments = [],
   successHref,
   onBack,
   backHref,
@@ -477,11 +480,14 @@ export function TuevUploadWizard({
 
   // ── Save ─────────────────────────────────────────────────────────────────────
 
-  function handleSave(payload: {
-    review: TuevReviewFields;
-    approvalFields: Extract<ApprovalFields, { kind: "tuev" }>;
-    title: string;
-  }) {
+  function handleSave(
+    payload: {
+      review: TuevReviewFields;
+      approvalFields: Extract<ApprovalFields, { kind: "tuev" }>;
+      title: string;
+    },
+    options?: { forceMileageSave?: boolean },
+  ) {
     if (!state.uploadFile) {
       setSaveError("Keine Datei zum Speichern vorhanden.");
       return;
@@ -529,6 +535,9 @@ export function TuevUploadWizard({
         .filter(Boolean).length;
       formData.set("pageCount", String(pageCount || 1));
       formData.set("approvalFields", JSON.stringify(approval));
+      if (options?.forceMileageSave) {
+        formData.set("forceMileageSave", "1");
+      }
       formData.set("file", state.uploadFile!);
 
       const result = await uploadDocument(formData);
@@ -674,6 +683,7 @@ export function TuevUploadWizard({
         vehicleId={vehicleId}
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
+        existingDocuments={existingDocuments}
         successHref={successHref}
         onBack={() => setState((prev) => ({ ...prev, phase: "mode-select" }))}
       />
@@ -807,6 +817,7 @@ export function TuevUploadWizard({
           pageCount={[state.overviewFile, state.headerFile, state.defectsFile].filter(Boolean).length || 1}
           fields={mergedFields}
           approvalFields={approvalFields}
+          existingDocuments={existingDocuments}
           isSaving={saving}
           saveError={saveError}
           onCancel={resetToStart}

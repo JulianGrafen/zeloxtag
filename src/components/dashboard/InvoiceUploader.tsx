@@ -612,6 +612,7 @@ export function InvoiceUploader({
         vehicleId={vehicleId}
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
+        existingDocuments={existingDocuments}
         successHref={successHref}
         onBack={onBack}
         backHref={resolvedBackHref}
@@ -1090,11 +1091,14 @@ export function InvoiceUploader({
     });
   }
 
-  function saveTuevDocument(payload: {
-    review: TuevReviewFields;
-    approvalFields: Extract<ApprovalFields, { kind: "tuev" }>;
-    title: string;
-  }) {
+  function saveTuevDocument(
+    payload: {
+      review: TuevReviewFields;
+      approvalFields: Extract<ApprovalFields, { kind: "tuev" }>;
+      title: string;
+    },
+    options?: { forceMileageSave?: boolean },
+  ) {
     if (!uploadFile) {
       setError("Keine Datei zum Speichern vorhanden.");
       return;
@@ -1143,6 +1147,9 @@ export function InvoiceUploader({
       );
       formData.set("pageCount", String(pageCount || 1));
       formData.set("approvalFields", JSON.stringify(approval));
+      if (options?.forceMileageSave) {
+        formData.set("forceMileageSave", "1");
+      }
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
@@ -1660,6 +1667,7 @@ export function InvoiceUploader({
           pageCount={pageCount}
           fields={fields}
           approvalFields={approvalFields}
+          existingDocuments={existingDocuments}
           isSaving={pending}
           saveError={error}
           onCancel={resetWizard}

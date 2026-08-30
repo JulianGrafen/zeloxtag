@@ -25,8 +25,12 @@ import { Label } from "@/components/ui/label";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import {
   isoDateToYearMonth,
+  normalizeDocumentDateIso,
   yearMonthToIsoDate,
 } from "@/lib/documents/format";
+import { validateMileageAgainstHistory } from "@/lib/documents/validate-mileage";
+import { isMileagePlausibilityMessage } from "@/lib/documents/mileage-plausibility-message";
+import type { Document } from "@/types/database";
 import type { InvoiceLineItem, InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import {
   TESTING_ORGANIZATIONS,
@@ -60,13 +64,17 @@ export type TuevOverviewProps = {
   pageCount?: number;
   fields: InvoiceTextParseResult;
   approvalFields: ApprovalFields | null;
+  existingDocuments?: Document[];
   isSaving?: boolean;
   saveError?: string | null;
-  onSave: (payload: {
-    review: TuevReviewFields;
-    approvalFields: Extract<ApprovalFields, { kind: "tuev" }>;
-    title: string;
-  }) => void | Promise<void>;
+  onSave: (
+    payload: {
+      review: TuevReviewFields;
+      approvalFields: Extract<ApprovalFields, { kind: "tuev" }>;
+      title: string;
+    },
+    options?: { forceMileageSave?: boolean },
+  ) => void | Promise<void>;
   onCancel?: () => void;
 };
 
@@ -217,6 +225,7 @@ export function TuevOverview({
   pageCount = 1,
   fields,
   approvalFields,
+  existingDocuments = [],
   isSaving = false,
   saveError = null,
   onSave,
@@ -239,6 +248,21 @@ export function TuevOverview({
     () => parseDraftRows(defectsDraft),
     [defectsDraft],
   );
+  const mileageWarning = useMemo(() => {
+    const km = review.mileageKm;
+    if (km === null || km <= 0 || existingDocuments.length === 0) {
+      return null;
+    }
+    const check = validateMileageAgainstHistory(
+      km,
+      normalizeDocumentDateIso(review.testDate),
+      existingDocuments,
+    );
+    return check.ok ? null : check.warning;
+  }, [existingDocuments, review.mileageKm, review.testDate]);
+  const activeMileageWarning =
+    mileageWarning ??
+    (isMileagePlausibilityMessage(saveError) ? saveError : null);
   const requiresManualReview =
     approvalFields?.kind === "tuev" &&
     approvalFields.data.requiresManualReview === true;
@@ -251,7 +275,7 @@ export function TuevOverview({
     setReview((current) => ({ ...current, [key]: value }));
   }
 
-  function handleSave() {
+  function buildSavePayload() {
     const workshop =
       review.workshopName?.trim() ||
       (review.testingOrganization === "other"
@@ -264,7 +288,14 @@ export function TuevOverview({
       approvalFields,
       defectsTable.length > 0 ? defectsTable : null,
     );
-    void onSave({ review, approvalFields: approval, title });
+    return { review, approvalFields: approval, title };
+  }
+
+  function handleSave(forceMileage = false) {
+    if (activeMileageWarning && !forceMileage) {
+      return;
+    }
+    void onSave(buildSavePayload(), { forceMileageSave: forceMileage });
   }
 
   return (
@@ -429,7 +460,16 @@ export function TuevOverview({
           ) : null}
         </div>
 
-        {saveError ? (
+        {activeMileageWarning ? (
+          <p
+            role="alert"
+            className="mt-4 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] text-amber-950"
+          >
+            {activeMileageWarning}
+          </p>
+        ) : null}
+
+        {saveError && !isMileagePlausibilityMessage(saveError) ? (
           <p
             role="alert"
             className="mt-4 flex items-start gap-2 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-[0.78rem] text-amber-950"
@@ -445,21 +485,48 @@ export function TuevOverview({
               Abbrechen
             </Button>
           ) : null}
-          <Button
-            type="button"
-            className="claim-cta"
-            disabled={isSaving}
-            onClick={handleSave}
-          >
-            {isSaving ? (
-              <>
-                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                Speichern…
-              </>
-            ) : (
-              "TÜV-Bericht speichern"
-            )}
-          </Button>
+          {activeMileageWarning ? (
+            <>
+              <Button
+                type="button"
+                className="claim-cta"
+                disabled={isSaving}
+                onClick={() => handleSave(true)}
+              >
+                {isSaving ? (
+                  <>
+                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                    Speichern…
+                  </>
+                ) : (
+                  "Trotzdem speichern"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSaving}
+              >
+                KM korrigieren
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              className="claim-cta"
+              disabled={isSaving}
+              onClick={() => handleSave(false)}
+            >
+              {isSaving ? (
+                <>
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  Speichern…
+                </>
+              ) : (
+                "TÜV-Bericht speichern"
+              )}
+            </Button>
+          )}
         </div>
       </section>
 
