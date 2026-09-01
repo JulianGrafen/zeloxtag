@@ -1,9 +1,14 @@
 import type { VehicleWriteAccess } from "@/lib/auth/vehicle-write-access";
 import { writeAccessErrorMessage } from "@/lib/auth/vehicle-write-access";
+import {
+  ownerCanUseAiInvoiceScan,
+  ownerHasFreeInvoiceScanRemaining,
+} from "@/lib/billing/free-scan-quota";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { MEMBERSHIP_REQUIRED_MESSAGE } from "@/lib/billing/pro-plan";
 import {
   FEATURE,
+  FREE_SCAN_EXHAUSTED_CODE,
   SUBSCRIPTION_REQUIRED_CODE,
   hasFeatureAccess,
   resolveUserTier,
@@ -25,22 +30,56 @@ export async function ownerHasFeature(
 
 export type FeatureDenied = {
   ok: false;
-  code: typeof SUBSCRIPTION_REQUIRED_CODE;
+  code: typeof SUBSCRIPTION_REQUIRED_CODE | typeof FREE_SCAN_EXHAUSTED_CODE;
   message: string;
 };
 
-export async function assertOwnerFeature(
+export type FeatureGateOptions = {
+  /** Allow the vehicle owner's one free KI invoice scan. */
+  allowFreeInvoiceScan?: boolean;
+};
+
+async function denyOwnerFeature(
   ownerUserId: string,
-  feature: FeatureFlag,
-): Promise<{ ok: true } | FeatureDenied> {
-  if (await ownerHasFeature(ownerUserId, feature)) {
-    return { ok: true };
+  options?: FeatureGateOptions,
+): Promise<FeatureDenied> {
+  if (
+    options?.allowFreeInvoiceScan &&
+    !(await ownerHasFreeInvoiceScanRemaining(ownerUserId))
+  ) {
+    return {
+      ok: false,
+      code: FREE_SCAN_EXHAUSTED_CODE,
+      message: MEMBERSHIP_REQUIRED_MESSAGE,
+    };
   }
+
   return {
     ok: false,
     code: SUBSCRIPTION_REQUIRED_CODE,
     message: MEMBERSHIP_REQUIRED_MESSAGE,
   };
+}
+
+export async function assertOwnerFeature(
+  ownerUserId: string,
+  feature: FeatureFlag,
+  options?: FeatureGateOptions,
+): Promise<{ ok: true } | FeatureDenied> {
+  if (await ownerHasFeature(ownerUserId, feature)) {
+    return { ok: true };
+  }
+
+  if (
+    options?.allowFreeInvoiceScan &&
+    (feature === FEATURE.SCAN_AI_RECEIPT ||
+      feature === FEATURE.DOCUMENT_VAULT) &&
+    (await ownerCanUseAiInvoiceScan(ownerUserId))
+  ) {
+    return { ok: true };
+  }
+
+  return denyOwnerFeature(ownerUserId, options);
 }
 
 /**
@@ -50,6 +89,7 @@ export async function assertOwnerFeature(
 export async function assertVehicleDocumentWrite(
   writeAccess: VehicleWriteAccess,
   feature: FeatureFlag,
+  options?: FeatureGateOptions,
 ): Promise<{ ok: true } | FeatureDenied> {
   if (!writeAccess.ok || !writeAccess.ownerUserId) {
     return {
@@ -60,11 +100,25 @@ export async function assertVehicleDocumentWrite(
   }
 
   if (writeAccess.isOwner) {
-    return assertOwnerFeature(writeAccess.ownerUserId, feature);
+    return assertOwnerFeature(writeAccess.ownerUserId, feature, options);
   }
 
   if (writeAccess.isContributor) {
-    return assertOwnerFeature(writeAccess.ownerUserId, FEATURE.INVITE_SCHRAUBER);
+    const invite = await assertOwnerFeature(
+      writeAccess.ownerUserId,
+      FEATURE.INVITE_SCHRAUBER,
+    );
+    if (!invite.ok) return invite;
+
+    if (
+      options?.allowFreeInvoiceScan &&
+      (feature === FEATURE.SCAN_AI_RECEIPT ||
+        feature === FEATURE.DOCUMENT_VAULT)
+    ) {
+      return assertOwnerFeature(writeAccess.ownerUserId, feature, options);
+    }
+
+    return assertOwnerFeature(writeAccess.ownerUserId, feature);
   }
 
   return {

@@ -49,7 +49,7 @@ export function MfaSetupPanel() {
   }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-tour="mfa-settings">
       <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
         <h2 className="font-[family-name:var(--font-display)] text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
           Zwei-Faktor-Authentifizierung (2FA)

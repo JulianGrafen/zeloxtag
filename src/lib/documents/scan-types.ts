@@ -232,3 +232,7 @@ export function scanTypeOptionsForRole(
 export function scanTypeDefinition(type: ScanType): ScanTypeDefinition {
   return SCAN_TYPE_DEFINITIONS[normalizeScanType(type)];
 }
+
+export function isInvoiceFamilyScanType(type: ScanType): boolean {
+  return scanTypeDefinition(type).ocrDocumentType === "invoice";
+}

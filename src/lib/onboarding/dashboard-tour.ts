@@ -3,7 +3,7 @@
  */
 
 export const DASHBOARD_TOUR_STORAGE_KEY = "zt_dashboard_tour_v1";
-export const DASHBOARD_TOUR_VERSION = 1;
+export const DASHBOARD_TOUR_VERSION = 2;
 export const DASHBOARD_TOUR_QUERY = "tour";
 
 const APP_ORIGIN_FOR_PATH = "https://app.zeloxtag.de";
@@ -24,7 +24,7 @@ const OWNER_STEPS: DashboardTourStep[] = [
   {
     id: "welcome",
     title: "Willkommen bei ZeloxTag",
-    body: "Kurz die wichtigsten Stellen — Profil, Scan, Belege und öffentliches Showcase. Du kannst jederzeit überspringen.",
+    body: "Kurz die wichtigsten Stellen — Scan, Akte, Historie, Werkstatt, Showcase und Kontosicherheit. Du kannst jederzeit überspringen.",
   },
   {
     id: "header",
@@ -48,10 +48,31 @@ const OWNER_STEPS: DashboardTourStep[] = [
     placement: "bottom",
   },
   {
-    id: "settings",
+    id: "timeline",
+    target: "[data-tour='tile-timeline']",
+    title: "Historie & Timeline",
+    body: "Alle Meilensteine in einer Timeline: Belege, Service, TÜV und Ölwechsel — sortiert nach Kilometerstand. Perfekt für Übergabe und Verkauf.",
+    placement: "bottom",
+  },
+  {
+    id: "werkstatt",
+    target: "[data-tour='tile-schrauber']",
+    title: "Werkstatt & Schrauber",
+    body: "Lade Werkstatt oder Schrauber ein. Sie tragen Belege ein und scannen vor Ort — ohne dein Passwort, nur mit den Rechten, die du freigibst.",
+    placement: "bottom",
+  },
+  {
+    id: "showcase",
+    target: "[data-tour='tile-vehicle-settings']",
+    title: "Öffentliches Showcase",
+    body: "Steuere, was Interessenten beim QR-Scan sehen: Profil, Galerie, freigegebene Dokumente und Exposé für den Verkauf.",
+    placement: "top",
+  },
+  {
+    id: "account",
     target: "[data-tour='tile-settings']",
-    title: "Showcase & Konto",
-    body: "Öffentliches Profil, Galerie und Exposé steuerst du hier.",
+    title: "Konto & 2FA",
+    body: "Hier erreichst du deine Kontoeinstellungen. Richte Zwei-Faktor-Authentifizierung (2FA) per Authenticator-App ein — empfohlen für zusätzlichen Schutz.",
     placement: "top",
   },
 ];
@@ -74,6 +95,13 @@ const CONTRIBUTOR_STEPS: DashboardTourStep[] = [
     target: "[data-tour='tile-invoices']",
     title: "Rechnungen & Reparaturen",
     body: "Hier landen Werkstattbelege. Mit Suche und dem Filter „Reparatur“ findest du Einträge schnell wieder.",
+    placement: "bottom",
+  },
+  {
+    id: "timeline",
+    target: "[data-tour='tile-timeline']",
+    title: "Historie & Timeline",
+    body: "Chronologische Übersicht aller Einträge nach Kilometerstand — Reparaturen, Service und TÜV auf einen Blick.",
     placement: "bottom",
   },
   {

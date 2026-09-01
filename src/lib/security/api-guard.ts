@@ -5,7 +5,10 @@ import { getApiRouteUser } from "@/lib/auth/get-user";
 import { MEMBERSHIP_REQUIRED_MESSAGE } from "@/lib/billing/pro-plan";
 import { ownerHasFeature } from "@/lib/permissions/require-feature";
 import type { FeatureFlag } from "@/lib/permissions/feature-access";
-import { SUBSCRIPTION_REQUIRED_CODE } from "@/lib/permissions/feature-access";
+import {
+  FREE_SCAN_EXHAUSTED_CODE,
+  SUBSCRIPTION_REQUIRED_CODE,
+} from "@/lib/permissions/feature-access";
 import {
   authClientKeyFromHeaders,
   clientIpFromHeaders,
@@ -195,12 +198,15 @@ export async function requireApiUser(): Promise<ApiAuthResult> {
 
 export function subscriptionRequiredResponse(
   message: string = MEMBERSHIP_REQUIRED_MESSAGE,
+  code:
+    | typeof SUBSCRIPTION_REQUIRED_CODE
+    | typeof FREE_SCAN_EXHAUSTED_CODE = SUBSCRIPTION_REQUIRED_CODE,
 ): NextResponse {
   return NextResponse.json(
     {
       ok: false,
       error: message,
-      code: SUBSCRIPTION_REQUIRED_CODE,
+      code,
     },
     { status: 402 },
   );

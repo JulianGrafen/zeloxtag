@@ -5,6 +5,8 @@
  * Cloud subscription — never stored as a separate user column.
  */
 
+import { FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-quota";
+
 export const USER_TIERS = ["free", "pro"] as const;
 export type UserTier = (typeof USER_TIERS)[number];
 
@@ -34,6 +36,9 @@ const FEATURE_MIN_TIER: Record<FeatureFlag, UserTier> = {
 };
 
 export const SUBSCRIPTION_REQUIRED_CODE = "SUBSCRIPTION_REQUIRED" as const;
+export const FREE_SCAN_EXHAUSTED_CODE = "FREE_SCAN_EXHAUSTED" as const;
+
+export type PaywallVariant = "default" | "free_scan_exhausted";
 
 export function resolveUserTier(hasActiveMembership: boolean): UserTier {
   return hasActiveMembership ? "pro" : "free";
@@ -86,9 +91,15 @@ export function featureForDashboardTile(tileId: string): FeatureFlag | null {
   return null;
 }
 
-export function paywallTitle(feature: FeatureFlag): string {
+export function paywallTitle(
+  feature: FeatureFlag,
+  variant: PaywallVariant = "default",
+): string {
   switch (feature) {
     case FEATURE.SCAN_AI_RECEIPT:
+      if (variant === "free_scan_exhausted") {
+        return "Dein Gratis-Scan ist verbraucht";
+      }
       return "KI-Scan ist Teil von Pro";
     case FEATURE.GENERATE_EXPOSE:
       return "Verkaufs-Exposé ist Teil von Pro";
@@ -103,10 +114,16 @@ export function paywallTitle(feature: FeatureFlag): string {
   }
 }
 
-export function paywallBody(feature: FeatureFlag): string {
+export function paywallBody(
+  feature: FeatureFlag,
+  variant: PaywallVariant = "default",
+): string {
   switch (feature) {
     case FEATURE.SCAN_AI_RECEIPT:
-      return "Belege fotografieren und automatisch auslesen — mit ZeloxTag Pro. Die ersten 14 Tage sind kostenlos.";
+      if (variant === "free_scan_exhausted") {
+        return `Du hast deinen kostenlosen KI-Rechnungsscan genutzt. Für weitere Belege, ABEs und die volle Akte: ZeloxTag Pro — die ersten 14 Tage sind kostenlos.`;
+      }
+      return `Belege fotografieren und automatisch auslesen — mit ZeloxTag Pro. Oder teste einmal kostenlos (${FREE_AI_INVOICE_SCAN_LIMIT}× KI-Rechnungsscan). Die ersten 14 Tage Pro sind ebenfalls kostenlos.`;
     case FEATURE.GENERATE_EXPOSE:
       return "Das PDF-Verkaufsdossier gibt’s mit Pro. Deine digitale Visitenkarte bleibt kostenlos.";
     case FEATURE.INVITE_SCHRAUBER:

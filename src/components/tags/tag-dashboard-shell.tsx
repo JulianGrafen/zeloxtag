@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
+import { FreeScanSuccessModal } from "@/components/billing/free-scan-success-modal";
 import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
 import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
 import {
   parseScanType,
+  isInvoiceFamilyScanType,
   SCHRAUBER_SCAN_TYPES,
   type ScanType,
 } from "@/lib/documents/scan-types";
@@ -17,6 +19,7 @@ import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import {
   FEATURE,
   type FeatureFlag,
+  type PaywallVariant,
 } from "@/lib/permissions/feature-access";
 import {
   readSilhouettePreviewFromSession,
@@ -81,6 +84,10 @@ interface TagDashboardShellProps {
   startTour?: boolean;
   /** Vehicle owner's ZeloxTag Pro is active. */
   membershipActive?: boolean;
+  /** Remaining complimentary KI invoice scans for the vehicle owner. */
+  freeInvoiceScanRemaining?: number;
+  /** Post-save upsell after the one free scan (`?freeScanWelcome=1`). */
+  showFreeScanWelcome?: boolean;
   /** Inventory minter tile for configured superuser. */
   showOperatorMinter?: boolean;
 }
@@ -100,11 +107,15 @@ export function TagDashboardShell({
   initialScanType,
   startTour = false,
   membershipActive = false,
+  freeInvoiceScanRemaining = 0,
+  showFreeScanWelcome = false,
   showOperatorMinter = false,
 }: TagDashboardShellProps) {
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
   const demoShowcase = isDemoActiveTag(tagUuid);
+  const canAiScan =
+    membershipActive || freeInvoiceScanRemaining > 0;
   const parsedInitial = parseScanType(initialScanType ?? undefined);
   const allowedInitial =
     parsedInitial &&
@@ -114,7 +125,7 @@ export function TagDashboardShell({
       : null;
 
   const [mode, setMode] = useState<DashboardMode>(() => {
-    if (!canWrite || !membershipActive) return "dashboard";
+    if (!canWrite || !canAiScan) return "dashboard";
     if (initialMode === "pick-scan" || initialMode === "scanner") {
       return "pick-scan";
     }
@@ -124,13 +135,24 @@ export function TagDashboardShell({
     () => {
       if (
         canWrite &&
-        !membershipActive &&
+        !canAiScan &&
         (initialMode === "pick-scan" || initialMode === "scanner")
       ) {
         return FEATURE.SCAN_AI_RECEIPT;
       }
       return null;
     },
+  );
+  const [paywallVariant, setPaywallVariant] = useState<PaywallVariant>(
+    freeInvoiceScanRemaining === 0 && !membershipActive
+      ? "free_scan_exhausted"
+      : "default",
+  );
+  const [showFreeScanSuccess, setShowFreeScanSuccess] = useState(
+    showFreeScanWelcome,
+  );
+  const [localFreeScanRemaining, setLocalFreeScanRemaining] = useState(
+    freeInvoiceScanRemaining,
   );
   const [scanType, setScanType] = useState<ScanType | null>(null);
   const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
@@ -146,6 +168,64 @@ export function TagDashboardShell({
       setDeferSilhouetteForTour(true);
     }
   }, [startTour]);
+
+  useEffect(() => {
+    setLocalFreeScanRemaining(freeInvoiceScanRemaining);
+  }, [freeInvoiceScanRemaining]);
+
+  useEffect(() => {
+    if (showFreeScanWelcome) {
+      setShowFreeScanSuccess(true);
+    }
+  }, [showFreeScanWelcome]);
+
+  function openPaywall(
+    feature: FeatureFlag,
+    variant: PaywallVariant = "default",
+  ) {
+    setPaywallFeature(feature);
+    setPaywallVariant(variant);
+  }
+
+  function handleScanTypeSelect(type: ScanType) {
+    if (!membershipActive && !isInvoiceFamilyScanType(type)) {
+      openPaywall(FEATURE.SCAN_AI_RECEIPT, "default");
+      return;
+    }
+    if (
+      !membershipActive &&
+      isInvoiceFamilyScanType(type) &&
+      localFreeScanRemaining <= 0
+    ) {
+      openPaywall(FEATURE.SCAN_AI_RECEIPT, "free_scan_exhausted");
+      return;
+    }
+    setScanType(type);
+    setMode("scanner");
+  }
+
+  function handleOpenScanner() {
+    if (!membershipActive && localFreeScanRemaining <= 0) {
+      openPaywall(
+        FEATURE.SCAN_AI_RECEIPT,
+        "free_scan_exhausted",
+      );
+      return;
+    }
+    setScanType(null);
+    setMode("pick-scan");
+  }
+
+  function dismissFreeScanWelcome() {
+    setShowFreeScanSuccess(false);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("freeScanWelcome")) {
+        url.searchParams.delete("freeScanWelcome");
+        window.history.replaceState({}, "", url.pathname + url.search);
+      }
+    }
+  }
 
   const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
     () => initialSilhouetteStorageUrl(vehicle),
@@ -284,40 +364,63 @@ export function TagDashboardShell({
 
   if (mode === "pick-scan" || (mode === "scanner" && !scanType)) {
     return (
-      <ScanTypePicker
-        vehicleLabel={vehicleLabel}
-        backHref={`/v/${tagUuid}`}
-        role={role}
-        suggestedType={allowedInitial}
-        onBack={() => {
-          setScanType(null);
-          setMode("dashboard");
-        }}
-        onSelect={(type) => {
-          setScanType(type);
-          setMode("scanner");
-        }}
-      />
+      <>
+        <ScanTypePicker
+          vehicleLabel={vehicleLabel}
+          backHref={`/v/${tagUuid}`}
+          role={role}
+          suggestedType={allowedInitial}
+          freeInvoiceScanRemaining={
+            membershipActive ? 0 : localFreeScanRemaining
+          }
+          onBack={() => {
+            setScanType(null);
+            setMode("dashboard");
+          }}
+          onSelect={handleScanTypeSelect}
+        />
+        <ProPaywallModal
+          open={Boolean(paywallFeature)}
+          feature={paywallFeature}
+          variant={paywallVariant}
+          tagUuid={tagUuid}
+          isOwner={isOwner}
+          onClose={() => setPaywallFeature(null)}
+        />
+      </>
     );
   }
 
   if (mode === "scanner" && scanType) {
     return (
-      <InvoiceUploader
-        vehicleId={vehicle.id}
-        tagUuid={tagUuid}
-        vehicleLabel={vehicleLabel}
-        vehicleMake={vehicle.make}
-        vehicleModel={vehicle.model}
-        vehicleVin={vehicle.vin}
-        existingDocuments={documents}
-        backHref={`/v/${tagUuid}`}
-        backLabel="Dashboard"
-        onBack={() => {
-          setMode("pick-scan");
-        }}
-        scanType={scanType}
-      />
+      <>
+        <InvoiceUploader
+          vehicleId={vehicle.id}
+          tagUuid={tagUuid}
+          vehicleLabel={vehicleLabel}
+          vehicleMake={vehicle.make}
+          vehicleModel={vehicle.model}
+          vehicleVin={vehicle.vin}
+          existingDocuments={documents}
+          backHref={`/v/${tagUuid}`}
+          backLabel="Dashboard"
+          onBack={() => {
+            setMode("pick-scan");
+          }}
+          scanType={scanType}
+          useFreeScanSaveRedirect={
+            !membershipActive && localFreeScanRemaining > 0
+          }
+        />
+        <ProPaywallModal
+          open={Boolean(paywallFeature)}
+          feature={paywallFeature}
+          variant={paywallVariant}
+          tagUuid={tagUuid}
+          isOwner={isOwner}
+          onClose={() => setPaywallFeature(null)}
+        />
+      </>
     );
   }
 
@@ -333,15 +436,18 @@ export function TagDashboardShell({
         isContributor={isContributor}
         showOperatorMinter={showOperatorMinter}
         cloudUnlocked={membershipActive}
-        onOpenScanner={() => {
-          if (!membershipActive) {
-            setPaywallFeature(FEATURE.SCAN_AI_RECEIPT);
-            return;
-          }
-          setScanType(null);
-          setMode("pick-scan");
+        freeInvoiceScanRemaining={
+          membershipActive ? 0 : localFreeScanRemaining
+        }
+        onOpenScanner={handleOpenScanner}
+        onLockedFeature={(feature) => {
+          openPaywall(
+            feature,
+            !membershipActive && localFreeScanRemaining <= 0
+              ? "free_scan_exhausted"
+              : "default",
+          );
         }}
-        onLockedFeature={setPaywallFeature}
         onEditVehicleImage={
           isOwner && !demoShowcase
             ? () => {
@@ -417,9 +523,15 @@ export function TagDashboardShell({
       <ProPaywallModal
         open={Boolean(paywallFeature)}
         feature={paywallFeature}
+        variant={paywallVariant}
         tagUuid={tagUuid}
         isOwner={isOwner}
         onClose={() => setPaywallFeature(null)}
+      />
+      <FreeScanSuccessModal
+        open={showFreeScanSuccess}
+        tagUuid={tagUuid}
+        onClose={dismissFreeScanWelcome}
       />
     </>
   );

@@ -16,6 +16,7 @@ import { ScanContent } from "@/components/layout/scan-content";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import {
   SCAN_TYPE_OPTIONS,
+  isInvoiceFamilyScanType,
   scanTypeOptionsForRole,
   type ScanType,
   type ScanTypeDefinition,
@@ -44,16 +45,20 @@ interface ScanTypePickerProps {
   role?: "owner" | "contributor";
   /** Optional hint from deep link — still requires an explicit tap. */
   suggestedType?: ScanType | null;
+  /** One free KI invoice scan available — highlight invoice types. */
+  freeInvoiceScanRemaining?: number;
 }
 
 function ScanTile({
   option,
   onSelect,
   suggested,
+  freeScan,
 }: {
   option: ScanTypeDefinition;
   onSelect: (type: ScanType) => void;
   suggested?: boolean;
+  freeScan?: boolean;
 }) {
   const Icon = SCAN_ICONS[option.id];
   return (
@@ -80,6 +85,11 @@ function ScanTile({
               Vorschlag
             </span>
           ) : null}
+          {freeScan ? (
+            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-white">
+              1× gratis
+            </span>
+          ) : null}
         </span>
         <span className="mt-0.5 block text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
           {option.description}
@@ -104,9 +114,11 @@ export function ScanTypePicker({
   onSelect,
   role = "owner",
   suggestedType = null,
+  freeInvoiceScanRemaining = 0,
 }: ScanTypePickerProps) {
   const options =
     role === "owner" ? SCAN_TYPE_OPTIONS : scanTypeOptionsForRole(role);
+  const showFreeScanHint = freeInvoiceScanRemaining > 0;
 
   return (
     <ScanContent className="vd-anim-stack pb-12">
@@ -128,6 +140,14 @@ export function ScanTypePicker({
         </p>
       </header>
 
+      {showFreeScanHint ? (
+        <p className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 px-3 py-2.5 text-[0.82rem] leading-snug text-emerald-950">
+          <strong className="font-semibold">1× KI-Rechnungsscan gratis:</strong>{" "}
+          Rechnung, Reparatur oder Service scannen — danach Pro für weitere
+          Belege und ABE/TÜV.
+        </p>
+      ) : null}
+
       <div className="grid gap-3">
         {options.map((option) => (
           <ScanTile
@@ -135,6 +155,9 @@ export function ScanTypePicker({
             option={option}
             onSelect={onSelect}
             suggested={suggestedType === option.id}
+            freeScan={
+              showFreeScanHint && isInvoiceFamilyScanType(option.id)
+            }
           />
         ))}
       </div>

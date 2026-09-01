@@ -9,6 +9,10 @@ import {
   getVehicleWriteAccess,
   writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
+import {
+  consumeFreeInvoiceScan,
+} from "@/lib/billing/free-scan-quota";
+import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 import {
@@ -55,7 +59,7 @@ import {
 } from "./upload-schema";
 
 export type UploadDocumentResult =
-  | { status: "uploaded"; document: Document; tagUuid: string }
+  | { status: "uploaded"; document: Document; tagUuid: string; freeScanConsumed?: boolean }
   | {
       status: "duplicate";
       document: Document;
@@ -245,6 +249,7 @@ export async function uploadDocument(
   const vault = await assertVehicleDocumentWrite(
     writeAccess,
     FEATURE.DOCUMENT_VAULT,
+    typeRaw === "invoice" ? { allowFreeInvoiceScan: true } : undefined,
   );
   if (!vault.ok) {
     return { status: "error", message: vault.message };
@@ -539,5 +544,13 @@ export async function uploadDocument(
   revalidatePath(`/v/${tagUuid}/intervalle`);
   revalidatePath(`/v/${tagUuid}/eintrag`);
 
-  return { status: "uploaded", document, tagUuid };
+  let freeScanConsumed = false;
+  if (
+    typeRaw === "invoice" &&
+    !(await userHasActiveMembership(ownerUserId))
+  ) {
+    freeScanConsumed = await consumeFreeInvoiceScan(ownerUserId);
+  }
+
+  return { status: "uploaded", document, tagUuid, freeScanConsumed };
 }

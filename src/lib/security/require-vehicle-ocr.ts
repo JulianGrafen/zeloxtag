@@ -9,16 +9,25 @@ import {
   FEATURE,
   type FeatureFlag,
 } from "@/lib/permissions/feature-access";
-import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
+import {
+  assertVehicleDocumentWrite,
+  type FeatureGateOptions,
+} from "@/lib/permissions/require-feature";
+import type { OcrDocumentType } from "@/lib/ocr/ocr-types";
 
 import { subscriptionRequiredResponse } from "./api-guard";
 
 const vehicleIdSchema = z.string().uuid();
 
+function ocrGateOptions(documentType?: OcrDocumentType): FeatureGateOptions {
+  return documentType === "invoice" ? { allowFreeInvoiceScan: true } : {};
+}
+
 export async function requireVehicleOcrAccess(
   userId: string,
   vehicleIdRaw: string,
   feature: FeatureFlag = FEATURE.SCAN_AI_RECEIPT,
+  documentType?: OcrDocumentType,
 ): Promise<
   | { ok: true; vehicleId: string; ownerUserId: string }
   | { ok: false; response: NextResponse }
@@ -70,9 +79,19 @@ export async function requireVehicleOcrAccess(
     };
   }
 
-  const featureCheck = await assertVehicleDocumentWrite(access, feature);
+  const featureCheck = await assertVehicleDocumentWrite(
+    access,
+    feature,
+    ocrGateOptions(documentType),
+  );
   if (!featureCheck.ok) {
-    return { ok: false, response: subscriptionRequiredResponse() };
+    return {
+      ok: false,
+      response: subscriptionRequiredResponse(
+        featureCheck.message,
+        featureCheck.code,
+      ),
+    };
   }
 
   return {

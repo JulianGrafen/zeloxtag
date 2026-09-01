@@ -46,6 +46,7 @@ export function VehicleSettingsView({
 
       <Link
         href="/settings"
+        data-tour="konto-security-link"
         className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
       >
         <span>

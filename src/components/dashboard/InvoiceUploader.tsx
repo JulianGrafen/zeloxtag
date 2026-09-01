@@ -102,6 +102,8 @@ interface InvoiceUploaderProps {
   lockCategory?: boolean;
   /** Explicit scan intent from type picker — required before capture. */
   scanType: ScanType;
+  /** After free scan save, redirect to dashboard upsell instead of document list. */
+  useFreeScanSaveRedirect?: boolean;
   /** After successful save (default: documents list for that type). */
   successHref?: string;
   /** Existing vehicle documents — used for client-side mileage plausibility checks. */
@@ -200,6 +202,7 @@ export function InvoiceUploader({
   initialCategory = "service",
   lockCategory = false,
   scanType,
+  useFreeScanSaveRedirect = false,
   successHref,
   existingDocuments = [],
   heading = "Rechnung scannen",
@@ -449,6 +452,11 @@ export function InvoiceUploader({
         }
         if (result.status === "duplicate") {
           setDuplicateHint(result.message);
+          return;
+        }
+
+        if (useFreeScanSaveRedirect && result.freeScanConsumed) {
+          window.location.assign(`/v/${result.tagUuid}?freeScanWelcome=1`);
           return;
         }
 

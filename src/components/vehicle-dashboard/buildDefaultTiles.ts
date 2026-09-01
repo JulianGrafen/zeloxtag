@@ -136,7 +136,7 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       icon: "settings",
       featured: true,
       meta: {
-        subtitle: "Sicherheit",
+        subtitle: "2FA & Sicherheit",
         href: "/settings",
       },
     },

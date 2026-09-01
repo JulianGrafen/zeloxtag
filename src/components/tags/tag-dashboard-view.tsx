@@ -56,6 +56,8 @@ interface TagDashboardViewProps {
   demoMode?: boolean;
   /** Owner's ZeloxTag Pro is active — unlocks vault, scan, and exposé tiles. */
   cloudUnlocked?: boolean;
+  /** One free KI invoice scan still available for the owner. */
+  freeInvoiceScanRemaining?: number;
   onOpenScanner?: () => void;
   /** Pro tile without href — open the action-based paywall. */
   onLockedFeature?: (feature: FeatureFlag) => void;
@@ -82,6 +84,7 @@ export function TagDashboardView({
   showOperatorMinter = false,
   demoMode = false,
   cloudUnlocked = true,
+  freeInvoiceScanRemaining = 0,
   onOpenScanner,
   onLockedFeature,
   onEditVehicleImage,
@@ -167,7 +170,9 @@ export function TagDashboardView({
           subtitle:
             invoiceCount > 0
               ? belegeLabel(invoiceCount)
-              : "Leer",
+              : !cloudUnlocked && freeInvoiceScanRemaining > 0
+                ? "1× KI-Scan gratis"
+                : "Leer",
         },
       };
     }
@@ -383,7 +388,13 @@ export function TagDashboardView({
           onOpenScanner={onOpenScanner}
           manualEntryHref={manualEntryHref}
           scanLabel={
-            isContributor && !isOwner ? "Beleg scannen" : "Dokument scannen"
+            !cloudUnlocked && freeInvoiceScanRemaining > 0
+              ? isContributor && !isOwner
+                ? "Beleg scannen (1× gratis)"
+                : "Dokument scannen (1× gratis)"
+              : isContributor && !isOwner
+                ? "Beleg scannen"
+                : "Dokument scannen"
           }
         />
       ) : null}

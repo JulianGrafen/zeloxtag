@@ -54,12 +54,16 @@ describe("dashboard tour persistence", () => {
   it("provides owner and contributor catalogs", () => {
     const owner = getDashboardTourSteps("owner");
     const contributor = getDashboardTourSteps("contributor");
-    expect(owner.length).toBeLessThanOrEqual(5);
+    expect(owner.length).toBe(8);
     expect(owner.some((step) => step.id === "scan")).toBe(true);
-    expect(owner.some((step) => step.id === "invoices")).toBe(true);
+    expect(owner.some((step) => step.id === "timeline")).toBe(true);
+    expect(owner.some((step) => step.id === "werkstatt")).toBe(true);
+    expect(owner.some((step) => step.id === "showcase")).toBe(true);
+    expect(owner.some((step) => step.id === "account")).toBe(true);
     expect(contributor.some((step) => step.id === "scan")).toBe(true);
+    expect(contributor.some((step) => step.id === "timeline")).toBe(true);
     expect(owner[0]?.id).toBe("welcome");
-    expect(owner.at(-1)?.id).toBe("settings");
+    expect(owner.at(-1)?.id).toBe("account");
   });
 
   it("treats missing window as completed to avoid SSR flash", () => {

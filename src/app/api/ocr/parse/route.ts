@@ -25,6 +25,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { FEATURE } from "@/lib/permissions/feature-access";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import { logServerError } from "@/lib/security/public-error";
 import { AbeVehicleContextSchema } from "@/lib/validations/abeSchema";
@@ -105,9 +106,22 @@ export async function POST(request: NextRequest) {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
 
+    const documentTypeRaw = String(formData.get("documentType") ?? "").trim();
+    const documentTypeParsed = documentTypeSchema.safeParse(documentTypeRaw);
+    if (!documentTypeParsed.success) {
+      return jsonError(
+        400,
+        `documentType is required (one of: ${OCR_DOCUMENT_TYPES.join(", ")}).`,
+        "bad_request",
+      );
+    }
+    const documentType = documentTypeParsed.data;
+
     const vehicleAccess = await requireVehicleOcrAccess(
       auth.user.id,
       String(formData.get("vehicleId") ?? ""),
+      FEATURE.SCAN_AI_RECEIPT,
+      documentType,
     ).catch((error) => {
       console.error("[api/ocr/parse] vehicle access check failed", error);
       return {
@@ -120,17 +134,6 @@ export async function POST(request: NextRequest) {
       };
     });
     if (!vehicleAccess.ok) return vehicleAccess.response;
-
-    const documentTypeRaw = String(formData.get("documentType") ?? "").trim();
-    const documentTypeParsed = documentTypeSchema.safeParse(documentTypeRaw);
-    if (!documentTypeParsed.success) {
-      return jsonError(
-        400,
-        `documentType is required (one of: ${OCR_DOCUMENT_TYPES.join(", ")}).`,
-        "bad_request",
-      );
-    }
-    const documentType = documentTypeParsed.data;
 
     const approvalKindRaw = String(formData.get("approvalKind") ?? "").trim();
     const approvalKindParsed = approvalKindRaw
