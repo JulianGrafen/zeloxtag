@@ -34,6 +34,7 @@ import {
 import {
   isForcedDashboardTourSearch,
 } from "@/lib/onboarding/dashboard-tour";
+import { hasPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import type { Vehicle } from "@/types/database";
 
@@ -257,7 +258,10 @@ export default async function TagScanPage({
     const membershipActive = await userHasActiveMembership(vehicle.user_id);
     const wantsScan = scan === "1" && tour !== "1";
     const openScanner = wantsScan && membershipActive;
-    const startTour = access.isOwner && isForcedDashboardTourSearch({ tour });
+    const pendingTour = await hasPendingDashboardTour();
+    const startTour =
+      access.isOwner &&
+      (isForcedDashboardTourSearch({ tour }) || pendingTour);
 
     if (session_id?.startsWith("cs_") && user) {
       await syncStripeCheckoutSessionAction(session_id);

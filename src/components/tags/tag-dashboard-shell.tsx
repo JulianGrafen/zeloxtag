@@ -138,6 +138,14 @@ export function TagDashboardShell({
   const [deferSilhouetteForTour, setDeferSilhouetteForTour] = useState(
     Boolean(startTour),
   );
+  const [forceTour, setForceTour] = useState(startTour);
+
+  useEffect(() => {
+    if (startTour) {
+      setForceTour(true);
+      setDeferSilhouetteForTour(true);
+    }
+  }, [startTour]);
 
   const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
     () => initialSilhouetteStorageUrl(vehicle),
@@ -400,10 +408,10 @@ export function TagDashboardShell({
         enabled={
           mode === "dashboard" &&
           !showSilhouetteEditor &&
-          (startTour || !showSilhouettePrompt)
+          (forceTour || !showSilhouettePrompt)
         }
         role={isOwner ? "owner" : "contributor"}
-        force={startTour}
+        force={forceTour}
         onSettled={() => setDeferSilhouetteForTour(false)}
       />
       <ProPaywallModal

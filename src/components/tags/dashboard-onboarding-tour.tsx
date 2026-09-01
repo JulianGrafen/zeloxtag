@@ -2,19 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { clearPendingDashboardTourAction } from "@/actions/dashboard-tour";
 import { GuidedTour } from "@/components/onboarding/guided-tour";
 import {
   clearForcedDashboardTourFromUrl,
   getDashboardTourSteps,
   markDashboardTourCompleted,
   resolveAvailableTourSteps,
+  wantsForcedDashboardTour,
   type DashboardTourRole,
 } from "@/lib/onboarding/dashboard-tour";
 
 type DashboardOnboardingTourProps = {
   enabled: boolean;
   role: DashboardTourRole;
-  /** First registration after claim (`?tour=1`). */
+  /** First registration after claim (`?tour=1` or pending tour cookie). */
   force?: boolean;
   onSettled?: () => void;
 };
@@ -30,24 +32,52 @@ export function DashboardOnboardingTour({
   onSettled,
 }: DashboardOnboardingTourProps) {
   const [open, setOpen] = useState(false);
+  const [forceTour, setForceTour] = useState(force);
   const catalog = useMemo(() => getDashboardTourSteps(role), [role]);
   const [steps, setSteps] = useState(catalog);
 
   useEffect(() => {
-    if (!enabled || !force) return;
+    if (force) {
+      setForceTour(true);
+      return;
+    }
+    if (wantsForcedDashboardTour()) {
+      setForceTour(true);
+    }
+  }, [force]);
 
-    const start = () => {
+  useEffect(() => {
+    if (!enabled || !forceTour) return;
+
+    let cancelled = false;
+    const timers: number[] = [];
+
+    const tryStart = (attempt = 0) => {
+      if (cancelled) return;
       const available = resolveAvailableTourSteps(catalog);
-      setSteps(available.length > 0 ? available : catalog);
-      setOpen(true);
+      if (available.length > 0 || attempt >= 8) {
+        setSteps(available.length > 0 ? available : catalog);
+        setOpen(true);
+        return;
+      }
+      timers.push(window.setTimeout(() => tryStart(attempt + 1), 250));
     };
 
-    const timer = window.setTimeout(start, 400);
-    return () => window.clearTimeout(timer);
-  }, [enabled, catalog, force]);
+    timers.push(window.setTimeout(() => tryStart(), 300));
 
-  function finish() {
+    return () => {
+      cancelled = true;
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+  }, [enabled, catalog, forceTour]);
+
+  async function finish() {
     markDashboardTourCompleted();
+    try {
+      await clearPendingDashboardTourAction();
+    } catch {
+      /* non-fatal */
+    }
     setOpen(false);
     clearForcedDashboardTourFromUrl();
     onSettled?.();

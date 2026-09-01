@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 
+import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
+
 export const PENDING_CLAIM_COOKIE = "zt_pending_claim";
 
 /** Vehicle + tag payload stored while deferred auth completes. */
@@ -24,6 +26,7 @@ export async function setPendingClaim(claim: PendingClaim): Promise<void> {
     path: "/",
     maxAge: MAX_AGE_SECONDS,
   });
+  await setPendingDashboardTour();
 }
 
 export async function getPendingClaim(): Promise<PendingClaim | null> {

@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
-import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
+import {
+  dashboardTourHref,
+  withForcedDashboardTour,
+} from "@/lib/onboarding/dashboard-tour";
+import { hasPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import { createClient } from "@/lib/supabase/server";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 
@@ -40,5 +44,10 @@ export async function GET(request: NextRequest) {
   }
 
   const path = await resolvePostLoginPath(user.id);
-  return NextResponse.redirect(new URL(path, request.url));
+  const pendingTour = await hasPendingDashboardTour();
+  const destination =
+    pendingTour && path.startsWith("/v/")
+      ? withForcedDashboardTour(path)
+      : path;
+  return NextResponse.redirect(new URL(destination, request.url));
 }

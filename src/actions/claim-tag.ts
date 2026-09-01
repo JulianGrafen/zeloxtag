@@ -18,6 +18,7 @@ import { completeClaimForOwner } from "@/lib/tags/complete-claim-for-owner";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
+import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import {
   setPendingClaim,
   type PendingClaim,
@@ -188,6 +189,10 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
 
     if (result.status === "error") {
       return result;
+    }
+
+    if (startTour) {
+      await setPendingDashboardTour();
     }
 
     return {
