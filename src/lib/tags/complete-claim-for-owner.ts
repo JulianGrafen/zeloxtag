@@ -1,11 +1,16 @@
 import { getCurrentUser } from "@/lib/auth/get-user";
-import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
+import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-import { createUnclaimedTag } from "@/lib/tags/create-unclaimed-tag";
+import { CLAIM_UNAVAILABLE_MESSAGE } from "@/lib/tags/claim-landing";
 import type { PendingClaim } from "@/lib/tags/pending-claim";
+import type { Json } from "@/types/database";
+
+function claimRpcSucceeded(data: Json | null): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return false;
+  }
+  return data.ok === true;
+}
 
 export async function completeClaimForOwner(
   ownerUserId: string,
@@ -14,94 +19,49 @@ export async function completeClaimForOwner(
   | { status: "claimed"; tagUuid: string; nextTagUuid: string | null }
   | { status: "error"; message: string }
 > {
-  if (!isSupabaseAdminConfigured()) {
+  const { isConfigured } = getSupabaseEnv();
+  if (!isConfigured) {
     return {
       status: "error",
-      message: "SUPABASE_SERVICE_ROLE_KEY fehlt für Claim + Tag-Minting.",
+      message: "Supabase ist nicht konfiguriert.",
     };
   }
-  const supabase = createAdminClient();
 
   const user = await getCurrentUser();
-  const authed = await createClient();
-  if (user) {
-    const meta: Record<string, string> = {
-      active_tag_uuid: claim.tagUuid,
+  if (!user || user.id !== ownerUserId) {
+    return {
+      status: "error",
+      message: "Bitte anmelden, um den Tag zu beanspruchen.",
     };
-    if (claim.name && !user.user_metadata?.name) {
-      meta.name = claim.name;
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("claim_unclaimed_tag", {
+    p_uuid: claim.tagUuid,
+    p_make: claim.make,
+    p_model: claim.model,
+    p_year: claim.year,
+    p_vin: claim.vin,
+  });
+
+  if (error || !claimRpcSucceeded(data)) {
+    if (error) {
+      console.error("[claim] rpc failed", error.message);
     }
-    await authed.auth.updateUser({ data: meta });
+    return { status: "error", message: CLAIM_UNAVAILABLE_MESSAGE };
   }
 
-  const { data: tag, error: tagError } = await supabase
-    .from("tags")
-    .select("*")
-    .eq("uuid", claim.tagUuid)
-    .maybeSingle();
-
-  if (tagError) {
-    return { status: "error", message: `Tag: ${tagError.message}` };
+  const meta: Record<string, string> = {
+    active_tag_uuid: claim.tagUuid,
+  };
+  if (claim.name && !user.user_metadata?.name) {
+    meta.name = claim.name;
   }
-  if (!tag) {
-    return { status: "error", message: "Tag nicht gefunden." };
-  }
-  if (tag.status !== "unclaimed" || tag.vehicle_id) {
-    return { status: "error", message: "Dieser Tag ist bereits verknüpft." };
-  }
-
-  const { data: vehicle, error: vehicleError } = await supabase
-    .from("vehicles")
-    .insert({
-      user_id: ownerUserId,
-      make: claim.make,
-      model: claim.model,
-      year: claim.year,
-      vin: claim.vin,
-    })
-    .select("*")
-    .single();
-
-  if (vehicleError || !vehicle) {
-    return {
-      status: "error",
-      message: `Fahrzeug: ${vehicleError?.message ?? "Anlage fehlgeschlagen"}`,
-    };
-  }
-
-  const { data: linkedTag, error: linkError } = await supabase
-    .from("tags")
-    .update({
-      status: "active",
-      vehicle_id: vehicle.id,
-    })
-    .eq("id", tag.id)
-    .eq("status", "unclaimed")
-    .is("vehicle_id", null)
-    .select("id")
-    .maybeSingle();
-
-  if (linkError || !linkedTag) {
-    await supabase.from("vehicles").delete().eq("id", vehicle.id);
-    return {
-      status: "error",
-      message: linkError
-        ? `Verknüpfung: ${linkError.message}`
-        : "Dieser Tag wurde gerade von jemand anderem beansprucht.",
-    };
-  }
-
-  let nextTagUuid: string | null = null;
-  try {
-    const nextTag = await createUnclaimedTag();
-    nextTagUuid = nextTag.uuid;
-  } catch (mintError) {
-    console.error("Failed to mint next unclaimed tag after claim:", mintError);
-  }
+  await supabase.auth.updateUser({ data: meta });
 
   return {
     status: "claimed",
     tagUuid: claim.tagUuid,
-    nextTagUuid,
+    nextTagUuid: null,
   };
 }

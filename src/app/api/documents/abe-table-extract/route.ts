@@ -134,7 +134,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return jsonError(400, validated.error, "bad_request");
       }
 
-      const bytes = Buffer.from(await pdf.arrayBuffer());
+      const bytes = Buffer.from(validated.bytes);
       const result = await abeTableExtractorService.extract({
         kind: "pdf",
         bytes,
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
 
       imageFiles.push({
-        bytes: Buffer.from(await file.arrayBuffer()),
+        bytes: Buffer.from(validated.bytes),
         contentType: validated.mime,
         name: file.name,
       });

@@ -102,6 +102,7 @@ export function DocumentViewer({ title, fileUrl, onClose }: DocumentViewerProps)
           <iframe
             title={title}
             src={src}
+            referrerPolicy="no-referrer"
             className="h-full w-full border-0 bg-white"
             onError={() => setLoadError(true)}
           />

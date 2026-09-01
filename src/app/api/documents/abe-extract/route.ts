@@ -133,7 +133,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return jsonError(400, validated.error, "bad_request");
       }
 
-      const bytes = Buffer.from(await pdf.arrayBuffer());
+      const bytes = Buffer.from(validated.bytes);
       const result = await abeVisionExtractor.extract({
         kind: "pdf",
         bytes,
@@ -163,9 +163,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return jsonError(400, "Nur ein PDF pro Upload.", "bad_request");
       }
 
-      const bytes = Buffer.from(await file.arrayBuffer());
       imageFiles.push({
-        bytes,
+        bytes: Buffer.from(validated.bytes),
         contentType: validated.mime,
         name: file.name,
       });

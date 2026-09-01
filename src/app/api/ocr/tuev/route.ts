@@ -8,7 +8,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
-import { sniffAllowedMime } from "@/lib/security/file-upload";
+import { validateDocumentUpload } from "@/lib/security/file-upload";
 import {
   tuevExtractionService,
   type TuevDefectsExtraction,
@@ -108,23 +108,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return jsonError(400, "Document file is required.", "bad_request");
     }
 
-    if (file.size > MAX_BYTES) {
-      return jsonError(
-        400,
-        `Datei zu groß (max. ${Math.round(MAX_BYTES / (1024 * 1024))} MB).`,
-        "bad_request",
-      );
+    const fileCheck = await validateDocumentUpload(file, { maxBytes: MAX_BYTES });
+    if (!fileCheck.ok) {
+      return jsonError(400, fileCheck.error, "bad_request");
     }
-
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const sniffed = sniffAllowedMime(bytes);
-    if (!sniffed) {
-      return jsonError(
-        400,
-        "Unsupported or spoofed file type (PDF/JPEG/PNG/WebP/HEIC required).",
-        "bad_request",
-      );
-    }
+    const bytes = Buffer.from(fileCheck.bytes);
+    const sniffed = fileCheck.mime;
 
     const input = { bytes, contentType: sniffed };
 

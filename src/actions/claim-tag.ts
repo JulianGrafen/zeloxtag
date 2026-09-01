@@ -1,7 +1,15 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { ensureClaimAccount } from "@/lib/auth/ensure-claim-account";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import {
+  authClientKeyFromHeaders,
+  rateLimit,
+  RATE_LIMITS,
+} from "@/lib/security/rate-limit";
+import { getSupabaseEnv } from "@/lib/supabase/env";
 import { completeClaimForOwner } from "@/lib/tags/complete-claim-for-owner";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
@@ -9,7 +17,6 @@ import {
   setPendingClaim,
   type PendingClaim,
 } from "@/lib/tags/pending-claim";
-import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export type ClaimTagInput = {
   tagUuid: string;
@@ -86,6 +93,24 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
       status: "error",
       message: error instanceof Error ? error.message : "Ungültige Eingabe.",
     };
+  }
+
+  try {
+    const headerStore = await headers();
+    const clientKey = authClientKeyFromHeaders(headerStore);
+    const limited = await rateLimit({
+      key: `auth:claim-tag:${clientKey}`,
+      limit: RATE_LIMITS.auth.limit,
+      windowMs: RATE_LIMITS.auth.windowMs,
+    });
+    if (!limited.ok) {
+      return {
+        status: "error",
+        message: `Zu viele Versuche. Bitte in ${limited.retryAfterSec}s erneut versuchen.`,
+      };
+    }
+  } catch (error) {
+    console.error("[claim] rate limit skipped", error);
   }
 
   const { isConfigured } = getSupabaseEnv();

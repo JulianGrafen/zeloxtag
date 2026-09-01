@@ -6,12 +6,11 @@ import {
   writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
+import { documentStorageObjectPath } from "@/lib/documents/storage-path";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertOwnerFeature } from "@/lib/permissions/require-feature";
-import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
+import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 import type { Document, DocumentType } from "@/types/database";
 
 import type { InvoiceOcrCategory, InvoiceOcrFields } from "./types";
@@ -52,8 +51,9 @@ export async function persistOcrInvoice(input: {
   originalName: string;
   ocr: InvoiceOcrFields;
 }): Promise<PersistedOcrDocument> {
-  if (!isSupabaseAdminConfigured()) {
-    throw new OcrPersistError("SUPABASE_SERVICE_ROLE_KEY fehlt.");
+  const { isConfigured } = getSupabaseEnv();
+  if (!isConfigured) {
+    throw new OcrPersistError("Storage ist nicht konfiguriert.");
   }
 
   const writeAccess = await getVehicleWriteAccess(
@@ -73,7 +73,11 @@ export async function persistOcrInvoice(input: {
 
   const documentId = randomUUID();
   const safeName = sanitizeFilename(input.originalName || "invoice.jpg");
-  const storagePath = `${input.vehicleId}/${documentId}-${safeName}`;
+  const storagePath = documentStorageObjectPath(
+    input.vehicleId,
+    documentId,
+    safeName,
+  );
   const docType = documentTypeForCategory(input.ocr.category);
 
   if (
@@ -88,7 +92,7 @@ export async function persistOcrInvoice(input: {
     );
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { error: storageError } = await supabase.storage
     .from(DOCUMENT_BUCKET)
@@ -101,10 +105,6 @@ export async function persistOcrInvoice(input: {
     throw new OcrPersistError(`Storage upload failed: ${storageError.message}`);
   }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(DOCUMENT_BUCKET).getPublicUrl(storagePath);
-
   const vendor = input.ocr.vendor?.trim().slice(0, 160) || null;
   const title = (vendor || "Rechnung").slice(0, 160);
   const category = input.ocr.category;
@@ -116,7 +116,7 @@ export async function persistOcrInvoice(input: {
     created_by: input.userId,
     title,
     type: docType,
-    file_url: publicUrl,
+    file_url: storagePath,
     vendor,
     category,
     line_items: null,

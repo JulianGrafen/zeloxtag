@@ -9,7 +9,7 @@ import {
   getMockUploadedDocuments,
   removeMockUploadedDocument,
 } from "@/lib/documents/mock-uploads";
-import { storagePathFromPublicUrl } from "@/lib/documents/storage-path";
+import { resolveStoragePath } from "@/lib/documents/storage-path";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
@@ -84,7 +84,7 @@ export async function deleteDocument(input: {
     return { status: "error", message: "Dokument nicht gefunden." };
   }
 
-  const storagePath = storagePathFromPublicUrl(document.file_url);
+  const storagePath = resolveStoragePath(document.file_url);
 
   const { error: deleteError } = await supabase
     .from("documents")

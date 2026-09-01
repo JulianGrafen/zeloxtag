@@ -11,6 +11,7 @@ import {
   writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
+import { documentStorageObjectPath } from "@/lib/documents/storage-path";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import {
@@ -32,11 +33,8 @@ import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
 import {
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
-import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import type { Document } from "@/types/database";
 
@@ -325,12 +323,6 @@ export async function createManualVehicleEntry(
   if (!user) {
     return { status: "error", message: "Bitte anmelden." };
   }
-  if (!isSupabaseAdminConfigured()) {
-    return {
-      status: "error",
-      message: "SUPABASE_SERVICE_ROLE_KEY fehlt.",
-    };
-  }
 
   const writeAccess = await getVehicleWriteAccess(data.vehicleId, user.id);
   if (!writeAccess.ok || !writeAccess.ownerUserId) {
@@ -359,7 +351,7 @@ export async function createManualVehicleEntry(
     };
   }
 
-  const admin = createAdminClient();
+  const supabase = await createClient();
 
   const clientSentPhotoFlag = formData.has("photo") || formData.has("photos");
   if (clientSentPhotoFlag && photos.length === 0) {
@@ -377,9 +369,13 @@ export async function createManualVehicleEntry(
       return { status: "error", message: fileCheck.error };
     }
 
-    const storagePath = `${data.vehicleId}/${documentId}-${fileCheck.safeName}`;
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const { error: storageError } = await admin.storage
+    const storagePath = documentStorageObjectPath(
+      data.vehicleId,
+      documentId,
+      fileCheck.safeName,
+    );
+    const bytes = Buffer.from(fileCheck.bytes);
+    const { error: storageError } = await supabase.storage
       .from(DOCUMENT_BUCKET)
       .upload(storagePath, bytes, {
         contentType: fileCheck.mime,
@@ -390,11 +386,7 @@ export async function createManualVehicleEntry(
       return { status: "error", message: `Foto: ${storageError.message}` };
     }
 
-    const {
-      data: { publicUrl },
-    } = admin.storage.from(DOCUMENT_BUCKET).getPublicUrl(storagePath);
-
-    fileUrl = publicUrl;
+    fileUrl = storagePath;
     uploadedStoragePath = storagePath;
     const pageCountRaw = Number.parseInt(
       String(formData.get("pageCount") ?? ""),
@@ -450,7 +442,7 @@ export async function createManualVehicleEntry(
 
   let lastError: string | null = null;
   for (const attempt of insertAttempts) {
-    const { error } = await admin.from("documents").insert(attempt);
+    const { error } = await supabase.from("documents").insert(attempt);
     if (!error) {
       revalidateManualPaths(data.tagUuid);
       return { status: "created", documentId };
@@ -459,7 +451,7 @@ export async function createManualVehicleEntry(
   }
 
   if (uploadedStoragePath) {
-    await admin.storage
+    await supabase.storage
       .from(DOCUMENT_BUCKET)
       .remove([uploadedStoragePath])
       .catch(() => undefined);

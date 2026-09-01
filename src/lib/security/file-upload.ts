@@ -1,19 +1,25 @@
 /**
- * Server-side file upload guards: size, declared MIME, and magic-byte sniffing.
+ * Server-side file upload guards: size, declared MIME, magic-byte sniffing,
+ * then polyglot / PDF / raster hardening before Storage or OCR.
  * Never trust client Content-Type alone.
  */
+
+import "server-only";
 
 import {
   ALLOWED_DOCUMENT_MIME_TYPES,
   MAX_DOCUMENT_BYTES,
   type AllowedDocumentMimeType,
 } from "@/lib/documents/constants";
+import { hardenUploadBytes } from "@/lib/security/upload-hardening";
 
 export type FileValidationSuccess = {
   ok: true;
   mime: AllowedDocumentMimeType;
   size: number;
   safeName: string;
+  /** Hardened bytes — persist / OCR these, never the raw File. */
+  bytes: Uint8Array;
 };
 
 export type FileValidationFailure = {
@@ -161,6 +167,7 @@ export function isUploadFile(value: unknown): value is File {
 
 /**
  * Validate an uploaded File (or File-like) before Storage / OCR.
+ * Returns hardened bytes (polyglot-stripped, PDF rewritten, images re-encoded).
  */
 export async function validateDocumentUpload(
   file: File,
@@ -168,6 +175,8 @@ export async function validateDocumentUpload(
     maxBytes?: number;
     /** When true, only application/pdf is accepted. */
     pdfOnly?: boolean;
+    /** Passed to hardening — tests may disable canvas re-encode. */
+    reencodeImages?: boolean;
   },
 ): Promise<FileValidationSuccess | FileValidationFailure> {
   const maxBytes = options?.maxBytes ?? MAX_DOCUMENT_BYTES;
@@ -183,8 +192,15 @@ export async function validateDocumentUpload(
     };
   }
 
-  const header = new Uint8Array(await file.slice(0, 64).arrayBuffer());
-  const sniffed = sniffAllowedMime(header);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.byteLength === 0 || bytes.byteLength > maxBytes) {
+    return {
+      ok: false,
+      error: `Datei zu groß (max. ${Math.round(maxBytes / (1024 * 1024))} MB).`,
+    };
+  }
+
+  const sniffed = sniffAllowedMime(bytes);
   const declared = (file.type || "").toLowerCase().trim();
   const extMime = MIME_BY_EXT[extensionOf(file.name)];
 
@@ -210,12 +226,20 @@ export async function validateDocumentUpload(
     };
   }
 
-  const resolved = sniffed;
-
-  if (options?.pdfOnly && resolved !== "application/pdf") {
+  if (options?.pdfOnly && sniffed !== "application/pdf") {
     return { ok: false, error: "Nur PDF-Dateien können gespeichert werden." };
   }
 
+  const hardened = await hardenUploadBytes(bytes, sniffed, {
+    reencodeImages: options?.reencodeImages,
+  });
+  if (!hardened.ok) return hardened;
+
+  if (options?.pdfOnly && hardened.mime !== "application/pdf") {
+    return { ok: false, error: "Nur PDF-Dateien können gespeichert werden." };
+  }
+
+  const resolved = hardened.mime;
   const base = sanitizeUploadFilename(file.name || `document.${EXT_BY_MIME[resolved]}`);
   const expectedExt = EXT_BY_MIME[resolved];
   const safeName = base.toLowerCase().endsWith(`.${expectedExt}`)
@@ -225,8 +249,9 @@ export async function validateDocumentUpload(
   return {
     ok: true,
     mime: resolved,
-    size: file.size,
+    size: hardened.bytes.byteLength,
     safeName,
+    bytes: hardened.bytes,
   };
 }
 

@@ -12,7 +12,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
-import { sniffAllowedMime } from "@/lib/security/file-upload";
+import { validateDocumentUpload } from "@/lib/security/file-upload";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
@@ -106,23 +106,22 @@ export async function POST(request: NextRequest) {
       return jsonError(400, "Image file is required.", "bad_request");
     }
 
-    if (file.size > MAX_OCR_BYTES) {
-      return jsonError(
-        400,
-        "Image too large after compression (max 4 MB). Compress on the client first.",
-        "bad_request",
-      );
+    const fileCheck = await validateDocumentUpload(file, {
+      maxBytes: MAX_OCR_BYTES,
+    });
+    if (!fileCheck.ok) {
+      return jsonError(400, fileCheck.error, "bad_request");
     }
-
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const sniffed = sniffAllowedMime(bytes);
-    if (!sniffed || !ALLOWED_OCR_MIME.has(sniffed)) {
+    if (!ALLOWED_OCR_MIME.has(fileCheck.mime)) {
       return jsonError(
         400,
         "Only compressed images are accepted (JPEG, PNG, WebP, HEIC).",
         "bad_request",
       );
     }
+
+    const bytes = Buffer.from(fileCheck.bytes);
+    const sniffed = fileCheck.mime;
 
     let ocr;
     try {

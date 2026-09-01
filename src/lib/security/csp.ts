@@ -125,6 +125,18 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
  * Global DENY / frame-ancestors 'none' must not apply to this route
  * (see next.config.ts exclude pattern).
  */
+export function documentInlineContentSecurityPolicy(): string {
+  // Chrome's PDF viewer needs object-src (not default-src 'none').
+  // script-src none blocks PDF OpenAction JS if a polyglot slipped storage.
+  return [
+    "frame-ancestors 'self'",
+    "script-src 'none'",
+    "object-src 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+  ].join("; ");
+}
+
 /**
  * Headers for COEP-safe vehicle PNG routes (`/api/vehicle/silhouette/*`,
  * `/api/vehicle/catalog/*`). Excluded from global COEP/CORP so route handlers
@@ -157,7 +169,7 @@ export function documentFileSecurityHeaderEntries(): Array<{
   return [
     {
       key: "Content-Security-Policy",
-      value: "frame-ancestors 'self'",
+      value: documentInlineContentSecurityPolicy(),
     },
     {
       key: "X-Frame-Options",

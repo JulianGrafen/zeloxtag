@@ -3,13 +3,10 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
+import { isDocumentStoragePath } from "@/lib/documents/storage-path";
 import { enforceRateLimit } from "@/lib/security/api-guard";
+import { documentInlineContentSecurityPolicy } from "@/lib/security/csp";
 import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
-import { isDocumentStoragePath } from "@/lib/documents/viewable-url";
-import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -100,17 +97,13 @@ async function serveStoragePath(storagePath: string): Promise<NextResponse> {
     return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
   }
 
-  if (!isSupabaseAdminConfigured()) {
-    return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
-  }
-
   const allowed = await authorizeDocumentRead(vehicleId, storagePath);
   if (!allowed) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const admin = createAdminClient();
-  const { data, error } = await admin.storage
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
     .from(DOCUMENT_BUCKET)
     .download(storagePath);
 
@@ -119,8 +112,12 @@ async function serveStoragePath(storagePath: string): Promise<NextResponse> {
   }
 
   const buffer = Buffer.from(await data.arrayBuffer());
-  const contentType =
-    data.type?.split(";")[0]?.trim() || guessContentType(storagePath);
+  const sniffedType = guessContentType(storagePath);
+  const storedType = data.type?.split(";")[0]?.trim().toLowerCase() ?? "";
+  const contentType = coerceInlineDocumentContentType(storedType, sniffedType);
+  if (!contentType) {
+    return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
+  }
   const filename = filenameFromPath(storagePath);
 
   return new NextResponse(buffer, {
@@ -146,27 +143,6 @@ async function authorizeDocumentRead(
   const user = await getCurrentUser();
   if (!user) return false;
 
-  const readGrant = async () => {
-    if (isSupabaseAdminConfigured()) {
-      const admin = createAdminClient();
-      return admin
-        .from("vehicle_contributors")
-        .select("id, can_read_history")
-        .eq("vehicle_id", vehicleId)
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .maybeSingle();
-    }
-    const supabase = await createClient();
-    return supabase
-      .from("vehicle_contributors")
-      .select("id, can_read_history")
-      .eq("vehicle_id", vehicleId)
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle();
-  };
-
   const supabase = await createClient();
   const { data: ownedVehicle } = await supabase
     .from("vehicles")
@@ -179,18 +155,21 @@ async function authorizeDocumentRead(
     return true;
   }
 
-  const { data: grant } = await readGrant();
+  const { data: grant } = await supabase
+    .from("vehicle_contributors")
+    .select("id, can_read_history")
+    .eq("vehicle_id", vehicleId)
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
   if (!grant) return false;
 
   const documentId = documentIdFromStoragePath(storagePath);
   if (!documentId) return false;
 
-  const docClient = isSupabaseAdminConfigured()
-    ? createAdminClient()
-    : await createClient();
-
   // Contributor SELECT policy is invoice-only (+ history toggle via RLS).
-  let query = docClient
+  let query = supabase
     .from("documents")
     .select("id")
     .eq("id", documentId)
@@ -246,7 +225,9 @@ function inlineDocumentHeaders(
     "Cache-Control": "private, max-age=300",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "SAMEORIGIN",
-    "Content-Security-Policy": "frame-ancestors 'self'",
+    "Content-Security-Policy": documentInlineContentSecurityPolicy(),
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Referrer-Policy": "no-referrer",
   };
 }
 
@@ -265,13 +246,42 @@ function filenameFromPath(url: string): string {
   }
 }
 
+function coerceInlineDocumentContentType(
+  storedType: string,
+  fallback: string,
+): string | null {
+  const candidate = storedType || fallback;
+  if (
+    candidate.includes("html") ||
+    candidate.includes("svg") ||
+    candidate.includes("javascript")
+  ) {
+    return null;
+  }
+  const allowed = new Set([
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+    "application/octet-stream",
+  ]);
+  if (allowed.has(candidate)) return candidate;
+  if (fallback === "application/pdf" || fallback.startsWith("image/")) {
+    return fallback;
+  }
+  return "application/octet-stream";
+}
+
 function guessContentType(url: string): string {
   const lower = url.toLowerCase().split("?")[0] ?? "";
-  if (lower.endsWith(".svg")) return "image/svg+xml";
+  if (lower.endsWith(".svg") || lower.endsWith(".html") || lower.endsWith(".htm")) {
+    return "application/octet-stream";
+  }
   if (lower.endsWith(".pdf")) return "application/pdf";
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".webp")) return "image/webp";
-  if (lower.endsWith(".gif")) return "image/gif";
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
   return "application/octet-stream";
 }

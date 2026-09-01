@@ -1,4 +1,7 @@
 import { DOCUMENT_BUCKET } from "./constants";
+import { resolveStoragePath } from "./storage-path";
+
+export { isDocumentStoragePath } from "./storage-path";
 
 export type DocumentMediaKind = "pdf" | "image" | "unknown";
 
@@ -24,14 +27,6 @@ function isSupabaseDocumentObjectPath(pathname: string): boolean {
   );
 }
 
-/** `{vehicleId}/{documentId}-filename.pdf` stored without host prefix. */
-const STORAGE_PATH_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-/i;
-
-export function isDocumentStoragePath(fileUrl: string): boolean {
-  return STORAGE_PATH_RE.test(fileUrl.trim());
-}
-
 /**
  * Whether this URL can be opened in the in-app viewer (has real bytes).
  * Private-bucket objects are still viewable via `/api/documents/file` proxy.
@@ -40,7 +35,7 @@ export function isViewableDocumentUrl(fileUrl: string): boolean {
   if (!fileUrl || fileUrl.startsWith("mock://")) return false;
   if (fileUrl.startsWith("manual://")) return false;
   if (fileUrl.startsWith("/demo/")) return true;
-  if (isDocumentStoragePath(fileUrl)) return true;
+  if (resolveStoragePath(fileUrl)) return true;
   try {
     const url = new URL(fileUrl);
     return isSupabaseDocumentObjectPath(url.pathname);
@@ -49,24 +44,30 @@ export function isViewableDocumentUrl(fileUrl: string): boolean {
   }
 }
 
+function documentFileProxyUrl(fileUrl: string): string {
+  const storagePath = resolveStoragePath(fileUrl);
+  if (storagePath) {
+    const params = new URLSearchParams({ path: storagePath });
+    return `/api/documents/file?${params.toString()}`;
+  }
+  const params = new URLSearchParams({ src: fileUrl });
+  return `/api/documents/file?${params.toString()}`;
+}
+
 /**
  * Resolve a view URL — demo/static assets skip the auth-gated proxy.
+ * Storage objects always go through same-origin `path=` (never a signed URL).
  */
 export function resolveDocumentViewUrl(fileUrl: string): string {
   if (fileUrl.startsWith("/demo/")) return fileUrl;
-  if (isDocumentStoragePath(fileUrl)) {
-    const params = new URLSearchParams({ path: fileUrl.trim() });
-    return `/api/documents/file?${params.toString()}`;
-  }
-  return inlineDocumentProxyUrl(fileUrl);
+  return documentFileProxyUrl(fileUrl);
 }
 
 /**
  * Same-origin proxy URL that forces `Content-Disposition: inline`.
  */
 export function inlineDocumentProxyUrl(fileUrl: string): string {
-  const params = new URLSearchParams({ src: fileUrl });
-  return `/api/documents/file?${params.toString()}`;
+  return documentFileProxyUrl(fileUrl);
 }
 
 /** Open the document inline — same-tab navigation avoids mobile popup blockers. */

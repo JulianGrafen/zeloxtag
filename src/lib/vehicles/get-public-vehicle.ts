@@ -14,6 +14,7 @@ import type { Document, TagScanResult, Vehicle } from "@/types/database";
 
 import { parseLineItems } from "@/lib/documents/line-items";
 import { DOCUMENT_SHOWCASE_COLUMNS, VEHICLE_COLUMNS } from "@/lib/documents/query-columns";
+import { publicScanLookupKind } from "@/lib/tags/claim-landing";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 
 function isMissingShowcaseColumnError(error: {
@@ -113,6 +114,8 @@ export type PublicVehicleLookup =
 
 /**
  * Resolve `/v/{identifier}` — physical tag UUID or vehicles.public_slug.
+ * Unclaimed tags resolve as null (same as unknown UUIDs) so GET cannot
+ * enumerate unsold inventory.
  */
 async function resolvePublicVehicleEntryUncached(
   identifier: string,
@@ -121,8 +124,14 @@ async function resolvePublicVehicleEntryUncached(
   if (!normalized) return null;
 
   const tagResult = await getTagByUuid(normalized);
-  if (tagResult) {
+  const lookup = publicScanLookupKind(normalized, tagResult);
+
+  if (lookup === "tag" && tagResult) {
     return { kind: "tag", result: tagResult };
+  }
+
+  if (lookup === "absent") {
+    return null;
   }
 
   const { isConfigured } = getSupabaseEnv();

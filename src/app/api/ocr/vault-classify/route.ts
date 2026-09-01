@@ -7,7 +7,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
-import { sniffAllowedMime } from "@/lib/security/file-upload";
+import { validateDocumentUpload } from "@/lib/security/file-upload";
 import { resolveDocumentContentType } from "@/lib/ocr/document-bytes";
 import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
 import { isTextParseError } from "@/lib/ocr/parse-error";
@@ -91,23 +91,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return jsonError(400, "Document file is required.", "bad_request");
     }
 
-    if (file.size > MAX_BYTES) {
-      return jsonError(
-        400,
-        `Datei zu groß (max. ${Math.round(MAX_BYTES / (1024 * 1024))} MB).`,
-        "bad_request",
-      );
+    const fileCheck = await validateDocumentUpload(file, { maxBytes: MAX_BYTES });
+    if (!fileCheck.ok) {
+      return jsonError(400, fileCheck.error, "bad_request");
     }
-
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const sniffed = sniffAllowedMime(new Uint8Array(bytes.subarray(0, 64)));
-    if (!sniffed) {
-      return jsonError(
-        400,
-        "Dateityp nicht erkennbar (PDF, JPEG, PNG, WebP, HEIC).",
-        "bad_request",
-      );
-    }
+    const bytes = Buffer.from(fileCheck.bytes);
+    const sniffed = fileCheck.mime;
 
     const documentInput: DocumentBytesInput = {
       bytes,

@@ -11,7 +11,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { requireOperator } from "@/lib/auth/require-operator";
-import { sniffAllowedMime } from "@/lib/security/file-upload";
+import { validateDocumentUpload } from "@/lib/security/file-upload";
 
 export const runtime = "nodejs";
 
@@ -104,21 +104,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    if (file.size > MAX_BYTES) {
+    const fileCheck = await validateDocumentUpload(file, { maxBytes: MAX_BYTES });
+    if (!fileCheck.ok) {
       return NextResponse.json(
-        { ok: false, error: "Bild ist zu groß (max. 5 MB)." },
+        { ok: false, error: fileCheck.error },
         { status: 400 },
       );
     }
-
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const mime = sniffAllowedMime(bytes);
-    if (!mime || !mime.startsWith("image/")) {
+    if (!fileCheck.mime.startsWith("image/")) {
       return NextResponse.json(
         { ok: false, error: "Nur Bilddateien erlaubt." },
         { status: 400 },
       );
     }
+    const bytes = Buffer.from(fileCheck.bytes);
+    const mime = fileCheck.mime;
 
     const textRaw = formData.get("text");
     const text =

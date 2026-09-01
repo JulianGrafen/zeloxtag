@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       return jsonError(403, "Nur der Fahrzeughalter darf hochladen.", "forbidden");
     }
 
-    const rawBytes = Buffer.from(await file.arrayBuffer());
+    const rawBytes = Buffer.from(fileCheck.bytes);
     const normalized = await normalizeDynoUpload(fileCheck.mime, rawBytes);
     if (!normalized.ok) {
       return jsonError(415, normalized.error, "unsupported_media");

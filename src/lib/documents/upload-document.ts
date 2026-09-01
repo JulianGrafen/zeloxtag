@@ -16,13 +16,14 @@ import {
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
 import { parseStrictBody } from "@/lib/security/parse-body";
-import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import type { Document } from "@/types/database";
 
 import { parseApprovalFields } from "./approval-fields";
 import { DOCUMENT_BUCKET } from "./constants";
+import { documentStorageObjectPath } from "./storage-path";
 import {
   documentPageHash,
   buildDuplicateDocumentHint,
@@ -232,16 +233,7 @@ export async function uploadDocument(
     };
   }
 
-  if (!isSupabaseAdminConfigured()) {
-    return {
-      status: "error",
-      message: "SUPABASE_SERVICE_ROLE_KEY fehlt für Dokument-Uploads.",
-    };
-  }
-
-  // Service role for storage/DB writes; ownership is enforced explicitly below
-  // so accounts never write into each other's vehicles.
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const writeAccess = await getVehicleWriteAccess(vehicleId, user.id);
   if (!writeAccess.ok || !writeAccess.ownerUserId) {
@@ -272,7 +264,7 @@ export async function uploadDocument(
 
   const ownerUserId = writeAccess.ownerUserId;
 
-  const bytes = Buffer.from(await file.arrayBuffer());
+  const bytes = Buffer.from(fileCheck.bytes);
   const pageHash = documentPageHash(bytes);
   if (!notes?.includes(`pageHash:${pageHash}`)) {
     notes = notes?.trim()
@@ -328,7 +320,11 @@ export async function uploadDocument(
     }
   }
 
-  const storagePath = `${vehicleId}/${documentId}-${safeName}`;
+  const storagePath = documentStorageObjectPath(
+    vehicleId,
+    documentId,
+    safeName,
+  );
 
   const { error: storageError } = await supabase.storage
     .from(DOCUMENT_BUCKET)
@@ -341,10 +337,6 @@ export async function uploadDocument(
     return { status: "error", message: `Storage: ${storageError.message}` };
   }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(DOCUMENT_BUCKET).getPublicUrl(storagePath);
-
   const baseRow = {
     id: documentId,
     vehicle_id: vehicleId,
@@ -352,7 +344,7 @@ export async function uploadDocument(
     created_by: user.id,
     title,
     type: typeRaw,
-    file_url: publicUrl,
+    file_url: storagePath,
     amount,
     date,
   };

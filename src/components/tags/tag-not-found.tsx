@@ -4,7 +4,9 @@ import { ArrowLeft, TriangleAlert } from "lucide-react";
 import { ScanContent } from "@/components/layout/scan-content";
 
 /**
- * Clean 404 for unknown / invalid ZeloxTag UUIDs (State C).
+ * 404 for identifiers that cannot be a physical plaque (not a UUID / demo slug).
+ * Unclaimed and unknown plaque UUIDs share the claim landing instead — otherwise
+ * GET `/v/{uuid}` is an inventory oracle.
  */
 export function TagNotFound() {
   return (
@@ -16,7 +18,7 @@ export function TagNotFound() {
         <p className="claim-kicker mt-4">404</p>
         <h1 className="claim-title mt-2">Tag nicht gefunden</h1>
         <p className="claim-copy mt-2">
-          Für diesen QR-Code existiert kein ZeloxTag-Eintrag. Prüfe den Scan oder
+          Dieser Link ist kein gültiges ZeloxTag. Prüfe den Scan oder
           kontaktiere den Support.
         </p>
 

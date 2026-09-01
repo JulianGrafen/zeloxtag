@@ -14,16 +14,19 @@ import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 import {
   isUploadFile,
-  storagePathFromPublicOrAuthenticatedUrl,
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
 import { parseStrictBody } from "@/lib/security/parse-body";
-import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import type { Document } from "@/types/database";
 
 import { DOCUMENT_BUCKET } from "./constants";
+import {
+  documentStorageObjectPath,
+  resolveStoragePath,
+} from "./storage-path";
 import { localDateIso, normalizeDocumentDateIso } from "./format";
 import { guardDocumentTitle } from "./guard-document-title";
 import { appendMockUploadedDocument } from "./mock-uploads";
@@ -73,24 +76,12 @@ function stagedVaultFileUrlError(
   vehicleId: string,
   documentId: string,
 ): string | null {
-  const { url: supabaseUrl } = getSupabaseEnv();
-  if (!supabaseUrl) return "Storage ist nicht konfiguriert.";
-
-  let origin: string;
-  try {
-    origin = new URL(fileUrl).origin;
-  } catch {
-    return "Ungültige Datei-URL.";
-  }
-  if (origin !== new URL(supabaseUrl).origin) {
-    return "Datei-URL nicht erlaubt.";
-  }
-
-  const storagePath = storagePathFromPublicOrAuthenticatedUrl(
-    fileUrl,
-    DOCUMENT_BUCKET,
-  );
-  if (!storagePath?.startsWith(`${vehicleId}/${documentId}-`)) {
+  const storagePath = resolveStoragePath(fileUrl);
+  if (
+    !storagePath ||
+    storagePath.includes("..") ||
+    !storagePath.startsWith(`${vehicleId}/${documentId}-`)
+  ) {
     return "Datei gehört nicht zu diesem Upload.";
   }
 
@@ -176,7 +167,7 @@ export async function stageVaultDocument(
   const { vehicleId, tagUuid } = metaParsed.data;
   const documentId = randomUUID();
   const safeName = fileCheck.safeName;
-  const bytes = Buffer.from(await file.arrayBuffer());
+  const bytes = Buffer.from(fileCheck.bytes);
 
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {
@@ -202,14 +193,7 @@ export async function stageVaultDocument(
     };
   }
 
-  if (!isSupabaseAdminConfigured()) {
-    return {
-      status: "error",
-      message: "SUPABASE_SERVICE_ROLE_KEY fehlt für Dokument-Uploads.",
-    };
-  }
-
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const writeAccess = await getVehicleWriteAccess(vehicleId, user.id);
   if (!writeAccess.ok || !writeAccess.ownerUserId) {
     return {
@@ -239,7 +223,11 @@ export async function stageVaultDocument(
     };
   }
 
-  const storagePath = `${vehicleId}/${documentId}-${safeName}`;
+  const storagePath = documentStorageObjectPath(
+    vehicleId,
+    documentId,
+    safeName,
+  );
   const { error: storageError } = await supabase.storage
     .from(DOCUMENT_BUCKET)
     .upload(storagePath, bytes, {
@@ -251,14 +239,10 @@ export async function stageVaultDocument(
     return { status: "error", message: `Storage: ${storageError.message}` };
   }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(DOCUMENT_BUCKET).getPublicUrl(storagePath);
-
   return {
     status: "staged",
     documentId,
-    fileUrl: publicUrl,
+    fileUrl: storagePath,
     tagUuid,
   };
 }
@@ -345,14 +329,7 @@ export async function saveVaultDocument(
     };
   }
 
-  if (!isSupabaseAdminConfigured()) {
-    return {
-      status: "error",
-      message: "SUPABASE_SERVICE_ROLE_KEY fehlt für Dokument-Uploads.",
-    };
-  }
-
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const writeAccess = await getVehicleWriteAccess(meta.vehicleId, user.id);
   if (!writeAccess.ok || !writeAccess.ownerUserId) {
     return {
@@ -391,6 +368,11 @@ export async function saveVaultDocument(
     return { status: "error", message: fileUrlError };
   }
 
+  const storagePath = resolveStoragePath(meta.fileUrl);
+  if (!storagePath) {
+    return { status: "error", message: "Datei gehört nicht zu diesem Upload." };
+  }
+
   const row = {
     id: meta.documentId,
     vehicle_id: meta.vehicleId,
@@ -398,7 +380,7 @@ export async function saveVaultDocument(
     created_by: user.id,
     title,
     type: "abe" as const,
-    file_url: meta.fileUrl,
+    file_url: storagePath,
     category: VAULT_DOCUMENT_TYPE_MARKER,
     part_category: meta.vaultCategory,
     approval_fields: approvalFields,

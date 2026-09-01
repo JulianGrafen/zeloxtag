@@ -25,6 +25,7 @@ import {
   SHOWCASE_OG_DESCRIPTION,
 } from "@/lib/seo/open-graph";
 import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
+import { isClaimLandingIdentifier } from "@/lib/tags/claim-landing";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import {
   toContributorClientTagScanResult,
@@ -145,6 +146,21 @@ function hasInsiderAccess(access: {
   return access.isOwner || access.isContributor;
 }
 
+function renderClaimLanding(
+  tagUuid: string,
+  user: { email?: string | null } | null,
+) {
+  return (
+    <AppShell showNavbar={false}>
+      <ClaimFlow
+        tagUuid={tagUuid}
+        isAuthenticated={Boolean(user)}
+        userEmail={user?.email ?? null}
+      />
+    </AppShell>
+  );
+}
+
 /**
  * QR scan + public share landing — resolves tag UUID or vehicles.public_slug.
  */
@@ -156,9 +172,15 @@ export default async function TagScanPage({
   const { scan, type: scanType, dashboard, tour, session_id } =
     await searchParams;
   const wantsDashboard = dashboard === "1" || scan === "1";
-  const entry = await resolvePublicVehicleEntry(identifier);
+  const [entry, user] = await Promise.all([
+    resolvePublicVehicleEntry(identifier),
+    getCurrentUser(),
+  ]);
 
   if (!entry) {
+    if (isClaimLandingIdentifier(identifier)) {
+      return renderClaimLanding(identifier.trim(), user);
+    }
     return (
       <AppShell showNavbar={false}>
         <TagNotFound />
@@ -190,19 +212,6 @@ export default async function TagScanPage({
 
   const result = entry.result;
   const { tag, vehicle } = result;
-  const user = await getCurrentUser();
-
-  if (tag.status === "unclaimed") {
-    return (
-      <AppShell showNavbar={false}>
-        <ClaimFlow
-          tagUuid={tag.uuid}
-          isAuthenticated={Boolean(user)}
-          userEmail={user?.email ?? null}
-        />
-      </AppShell>
-    );
-  }
 
   if (tag.status === "active" && vehicle) {
     const access = await getTagVehicleAccess(tag.uuid, vehicle.user_id, vehicle.id);
@@ -291,6 +300,10 @@ export default async function TagScanPage({
         />
       </AppShell>
     );
+  }
+
+  if (isClaimLandingIdentifier(identifier)) {
+    return renderClaimLanding(identifier.trim(), user);
   }
 
   return (

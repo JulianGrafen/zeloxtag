@@ -323,8 +323,9 @@ async function resolveTagWithRpc(
  *
  * Prefers the service-role path (full twin for server-side owner checks).
  * The public RPC (`resolve_tag_by_uuid`) is redacted — no documents/VIN/owner id —
- * and is only a fallback. Never hydrate RPC/admin payloads into the client for
- * non-owners; use `toGuestClientTagScanResult` / `PrivateTwinGate` instead.
+ * and returns null for unclaimed tags (same as unknown UUIDs). It is only a
+ * fallback. Never hydrate RPC/admin payloads into the client for non-owners;
+ * use `toGuestClientTagScanResult` / `PrivateTwinGate` instead.
  */
 async function getTagByUuidUncached(
   uuid: string,

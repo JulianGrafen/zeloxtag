@@ -502,6 +502,16 @@ export type Database = {
         Args: { p_vehicle_id: string };
         Returns: Json;
       };
+      claim_unclaimed_tag: {
+        Args: {
+          p_uuid: string;
+          p_make: string;
+          p_model: string;
+          p_year: number;
+          p_vin?: string | null;
+        };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

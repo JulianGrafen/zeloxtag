@@ -8,6 +8,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
+import { hardenUploadBytes } from "@/lib/security/upload-hardening";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
@@ -148,6 +149,10 @@ export async function POST(request: NextRequest) {
         "unsupported_media",
       );
     }
+    const hardened = await hardenUploadBytes(bytes, sniffed);
+    if (!hardened.ok) {
+      return jsonError(415, hardened.error, "unsupported_media");
+    }
 
     const admin = createAdminClient();
     const { data: vehicle, error: vehicleError } = await admin
@@ -165,7 +170,10 @@ export async function POST(request: NextRequest) {
 
     let photoPng: Buffer;
     try {
-      photoPng = await normalizeVehicleHeaderPhoto(bytes, sniffed);
+      photoPng = await normalizeVehicleHeaderPhoto(
+        hardened.bytes,
+        hardened.mime,
+      );
     } catch (error) {
       if (error instanceof HeaderPhotoNormalizeError) {
         return jsonError(422, error.message, "normalize_failed");
