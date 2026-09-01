@@ -108,6 +108,54 @@ export async function sendMagicLinkEmail(input: {
   }
 }
 
+export async function sendSignupConfirmationEmail(input: {
+  to: string;
+  confirmUrl: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!isResendConfigured()) {
+    return {
+      ok: false,
+      message: "E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY).",
+    };
+  }
+
+  const from = readFromAddress();
+
+  try {
+    const resend = getResendClient();
+    const { error } = await resend.emails.send({
+      from,
+      to: input.to,
+      subject: "E-Mail bestätigen · ZeloxTag",
+      html: buildSignupConfirmationHtml(input.confirmUrl),
+      text: [
+        "E-Mail bestätigen · ZeloxTag",
+        "",
+        "Bitte bestätige deine E-Mail-Adresse, um dein Konto zu aktivieren.",
+        `Link (60 Minuten gültig): ${input.confirmUrl}`,
+        "",
+        "Falls du das nicht angefordert hast, ignoriere diese E-Mail.",
+      ].join("\n"),
+    });
+
+    if (error) {
+      return {
+        ok: false,
+        message: `${error.message} (from: ${from})`,
+      };
+    }
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error
+          ? `${error.message} (from: ${from})`
+          : `E-Mail konnte nicht gesendet werden. (from: ${from})`,
+    };
+  }
+}
+
 export async function sendPasswordResetEmail(input: {
   to: string;
   resetUrl: string;
@@ -259,6 +307,42 @@ function buildMagicLinkHtml(
               </p>
               <a href="${safeUrl}" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 18px;border-radius:12px;">
                 Jetzt anmelden
+              </a>
+              <p style="margin:22px 0 0;font-size:12px;line-height:1.5;color:#a1a1aa;">
+                Falls der Button nicht funktioniert:<br />
+                <span style="word-break:break-all;color:#71717a;">${safeUrl}</span>
+              </p>
+              <p style="margin:18px 0 0;font-size:12px;line-height:1.5;color:#a1a1aa;">
+                Wenn du das nicht angefordert hast, kannst du diese E-Mail ignorieren.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function buildSignupConfirmationHtml(confirmUrl: string): string {
+  const safeUrl = escapeHtml(confirmUrl);
+  return `<!DOCTYPE html>
+<html lang="de">
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border:1px solid #e4e4e7;border-radius:20px;padding:28px 24px;">
+          <tr>
+            <td>
+              <p style="margin:0 0 8px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;">ZeloxTag</p>
+              <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;color:#18181b;">E-Mail bestätigen</h1>
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#52525b;">
+                Fast geschafft — tippe den Button, um dein Konto zu aktivieren. Der Link ist etwa 60&nbsp;Minuten gültig.
+              </p>
+              <a href="${safeUrl}" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 18px;border-radius:12px;">
+                E-Mail bestätigen
               </a>
               <p style="margin:22px 0 0;font-size:12px;line-height:1.5;color:#a1a1aa;">
                 Falls der Button nicht funktioniert:<br />

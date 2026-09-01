@@ -22,6 +22,8 @@ import {
   type AuthActionResult,
 } from "@/lib/auth/actions";
 
+import { OAuthSignInButtons } from "./oauth-sign-in-buttons";
+
 type AuthTab = "password" | "signup";
 
 interface LoginFormProps {
@@ -247,6 +249,20 @@ export function LoginForm({
                   ? "Konto erstellen"
                   : "Anmelden"}
             </Button>
+
+            <div className="relative py-1">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">oder</span>
+              </div>
+            </div>
+
+            <OAuthSignInButtons
+              nextPath={nextPath || "/auth/continue"}
+              onError={setMessage}
+            />
           </form>
         </CardContent>
       </Card>

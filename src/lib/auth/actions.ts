@@ -6,6 +6,10 @@ import { z } from "zod";
 
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
+import {
+  CONFIRM_EMAIL_MESSAGE,
+  registerAccountWithConfirmation,
+} from "@/lib/auth/signup-confirmation";
 import { isResendConfigured, sendMagicLinkEmail, sendPasswordResetEmail } from "@/lib/email/resend";
 import {
   authClientKeyFromHeaders,
@@ -25,6 +29,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type AuthActionResult =
   | { status: "ok"; message?: string; redirectTo?: string }
+  | { status: "oauth_redirect"; url: string }
   | { status: "confirm_email"; message: string }
   | { status: "mfa_required" }
   | { status: "error"; message: string }
@@ -118,6 +123,55 @@ export async function signInWithPassword(
   redirect(redirectTo);
 }
 
+/** Sign in with Google via Supabase OAuth → /auth/callback PKCE hop. */
+export async function signInWithGoogle(
+  nextPath = "/auth/continue",
+): Promise<AuthActionResult> {
+  const limited = await enforceAuthRateLimit("oauth-google");
+  if (limited) return limited;
+
+  const { isConfigured } = getSupabaseEnv();
+  if (!isConfigured) {
+    return { status: "unconfigured" };
+  }
+
+  const next = normalizeNext(nextPath);
+  const redirectNext = isGenericPostLoginNext(next) ? "/auth/continue" : next;
+  const siteUrl = await getSiteUrl();
+  const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(redirectNext)}`;
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+
+    if (error) {
+      logServerError("[auth] signInWithGoogle failed", error);
+      return {
+        status: "error",
+        message: publicAuthMessage(error, "Google-Anmeldung fehlgeschlagen."),
+      };
+    }
+
+    if (!data.url) {
+      return {
+        status: "error",
+        message: "Google-Anmeldung konnte nicht gestartet werden.",
+      };
+    }
+
+    return { status: "oauth_redirect", url: data.url };
+  } catch (error) {
+    logServerError("[auth] signInWithGoogle unexpected", error);
+    return {
+      status: "error",
+      message: "Google-Anmeldung fehlgeschlagen.",
+    };
+  }
+}
+
 /**
  * Password signup via Server Action so session cookies are HttpOnly.
  * When Supabase requires email confirmation, returns `confirm_email` instead
@@ -148,42 +202,33 @@ export async function signUpWithPassword(
   const email = emailParsed.data.toLowerCase();
   const password = passwordParsed.data;
   const next = normalizeNext(nextPath);
-  const siteUrl = await getSiteUrl();
-
-  const supabase = await createClient();
   const redirectNext = isGenericPostLoginNext(next)
     ? "/auth/continue"
     : next;
-  const { data, error } = await supabase.auth.signUp({
+
+  const result = await registerAccountWithConfirmation({
     email,
     password,
-    options: {
-      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(redirectNext)}`,
-    },
+    redirectNext,
+    confirmMessage: CONFIRM_EMAIL_MESSAGE,
   });
 
-  if (error) {
-    logServerError("[auth] signUpWithPassword failed", error);
+  if (result.status === "error") {
+    logServerError("[auth] signUpWithPassword failed", result.message);
     return {
       status: "error",
-      message: publicAuthMessage(error, "Kontoanlage fehlgeschlagen."),
+      message: result.message,
     };
   }
 
-  if (!data.session) {
-    if (data.user) {
-      return {
-        status: "confirm_email",
-        message:
-          "Bitte bestätige deine E-Mail über den Link in deinem Postfach, bevor du fortfährst.",
-      };
-    }
+  if (result.status === "confirm_email") {
     return {
-      status: "error",
-      message: "Kontoanlage fehlgeschlagen. Bitte erneut versuchen.",
+      status: "confirm_email",
+      message: result.message,
     };
   }
 
+  const supabase = await createClient();
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
     return { status: "mfa_required" };

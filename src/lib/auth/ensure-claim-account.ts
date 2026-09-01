@@ -2,13 +2,15 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { getSiteUrl } from "@/lib/auth/site-url";
+import {
+  CLAIM_CONFIRM_EMAIL_MESSAGE,
+  registerAccountWithConfirmation,
+} from "@/lib/auth/signup-confirmation";
 import {
   authClientKeyFromHeaders,
   rateLimit,
   RATE_LIMITS,
 } from "@/lib/security/rate-limit";
-import { createClient } from "@/lib/supabase/server";
 
 const emailSchema = z.string().trim().email().max(320);
 const passwordSchema = z.string().min(10).max(128);
@@ -16,16 +18,6 @@ const passwordSchema = z.string().min(10).max(128);
 export type EnsureClaimAccountResult =
   | { ok: true; userId: string; created: boolean }
   | { ok: false; message: string; needsEmailConfirmation?: boolean };
-
-function looksLikeExistingUser(message: string): boolean {
-  const lower = message.toLowerCase();
-  return (
-    lower.includes("already") ||
-    lower.includes("registered") ||
-    lower.includes("exists") ||
-    lower.includes("bereits")
-  );
-}
 
 const GENERIC_EXISTING_ACCOUNT =
   "Dieses Konto existiert bereits. Bitte anmelden oder Passwort zurücksetzen.";
@@ -81,50 +73,33 @@ export async function ensureClaimAccount(input: {
     return { ok: true, userId: existing.id, created: false };
   }
 
-  const supabase = await createClient();
-  const siteUrl = await getSiteUrl();
-
-  const { data: signedUp, error: signUpError } = await supabase.auth.signUp({
+  const result = await registerAccountWithConfirmation({
     email,
     password,
-    options: {
-      data: name ? { name } : undefined,
-      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent("/auth/continue")}`,
-    },
+    name,
+    redirectNext: "/auth/continue",
+    confirmMessage: CLAIM_CONFIRM_EMAIL_MESSAGE,
   });
 
-  if (signedUp.session?.user) {
-    return { ok: true, userId: signedUp.session.user.id, created: true };
-  }
-
-  if (signedUp.user && !signedUp.session) {
+  if (result.status === "session") {
     return {
-      ok: false,
-      needsEmailConfirmation: true,
-      message:
-        "Bitte bestätige deine E-Mail über den Link in deinem Postfach. Danach wird der Tag automatisch verknüpft.",
+      ok: true,
+      userId: result.userId,
+      created: result.created,
     };
   }
 
-  if (signUpError && looksLikeExistingUser(signUpError.message)) {
-    const { data: signedIn, error: signInError } =
-      await supabase.auth.signInWithPassword({ email, password });
-    if (signInError || !signedIn.user) {
-      return {
-        ok: false,
-        message: GENERIC_EXISTING_ACCOUNT,
-      };
-    }
-    return { ok: true, userId: signedIn.user.id, created: false };
+  if (result.status === "confirm_email") {
+    return {
+      ok: false,
+      needsEmailConfirmation: true,
+      message: result.message,
+    };
   }
 
-  if (signUpError) {
-    return { ok: false, message: signUpError.message };
+  if (result.message === GENERIC_EXISTING_ACCOUNT) {
+    return { ok: false, message: result.message };
   }
 
-  return {
-    ok: false,
-    message:
-      "Kontoanlage fehlgeschlagen. Bitte erneut versuchen oder über /login anmelden.",
-  };
+  return { ok: false, message: result.message };
 }
