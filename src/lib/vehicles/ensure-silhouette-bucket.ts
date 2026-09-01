@@ -19,7 +19,7 @@ export async function ensureVehicleSilhouetteBucket(
   admin: SupabaseClient,
 ): Promise<void> {
   const { error } = await admin.storage.updateBucket(SILHOUETTE_BUCKET, {
-    public: true,
+    public: false,
     fileSizeLimit: MAX_SILHOUETTE_UPLOAD_BYTES,
     allowedMimeTypes: [...VEHICLE_PHOTO_MIME_TYPES],
   });

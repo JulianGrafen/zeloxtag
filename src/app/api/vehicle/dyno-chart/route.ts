@@ -12,10 +12,11 @@ import {
   isUploadFile,
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
-import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
   DYNO_CHART_BUCKET,
+  ownerDynoChartDisplayPath,
   vehicleDynoChartCandidatePaths,
   vehicleDynoChartObjectPath,
 } from "@/lib/vehicles/dyno-chart-constants";
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
     if (limited) return limited;
 
     const { isConfigured } = getSupabaseEnv();
-    if (!isConfigured || !isSupabaseAdminConfigured()) {
+    if (!isConfigured) {
       return jsonError(
         503,
         "Supabase ist für Leistungsdiagramm-Uploads nicht konfiguriert.",
@@ -139,8 +140,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const admin = createAdminClient();
-    const { data: vehicle, error: vehicleError } = await admin
+    const supabase = await createClient();
+    const { data: vehicle, error: vehicleError } = await supabase
       .from("vehicles")
       .select("id, user_id, tech_specs, public_slug")
       .eq("id", vehicleId)
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     const objectPath = vehicleDynoChartObjectPath(vehicleId, normalized.mime);
 
-    const { error: uploadError } = await admin.storage
+    const { error: uploadError } = await supabase.storage
       .from(DYNO_CHART_BUCKET)
       .upload(objectPath, normalized.bytes, {
         contentType: normalized.mime,
@@ -178,29 +179,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const {
-      data: { publicUrl },
-    } = admin.storage.from(DYNO_CHART_BUCKET).getPublicUrl(objectPath);
-
     const stalePaths = vehicleDynoChartCandidatePaths(vehicleId).filter(
       (path) => path !== objectPath,
     );
     if (stalePaths.length > 0) {
-      await admin.storage
+      await supabase.storage
         .from(DYNO_CHART_BUCKET)
         .remove(stalePaths)
         .catch(() => undefined);
     }
 
     const cacheBust = Date.now();
-    const dynoChartUrl = `${publicUrl}?v=${cacheBust}`;
     const currentSpecs = parseVehicleTechSpecs(vehicle.tech_specs);
     const techSpecs = serializeVehicleTechSpecs({
       ...currentSpecs,
-      dynoChartUrl,
+      dynoChartUrl: objectPath,
     });
 
-    const { error: updateError } = await admin
+    const { error: updateError } = await supabase
       .from("vehicles")
       .update({
         tech_specs: techSpecs,
@@ -230,7 +226,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true as const,
-      dynoChartUrl,
+      dynoChartUrl: ownerDynoChartDisplayPath(vehicleId, cacheBust),
     });
   } catch (error) {
     console.error("[vehicle-dyno-chart] unexpected", error);

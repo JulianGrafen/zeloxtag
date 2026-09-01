@@ -18,6 +18,20 @@ describe("resolveVehicleImage", () => {
     });
   });
 
+  it("maps a relative silhouette storage path to the same-origin proxy", () => {
+    const vehicleId = "11111111-1111-4111-8111-111111111111";
+    const match = resolveVehicleImage({
+      make: "BMW",
+      model: "530d",
+      vehicleId,
+      silhouetteImageUrl: `${vehicleId}/silhouette.png`,
+    });
+    expect(match?.src.startsWith(`/api/vehicle/silhouette/${vehicleId}?v=`)).toBe(
+      true,
+    );
+    expect(match?.alt).toBe("BMW 530d");
+  });
+
   it("ignores remote URL without vehicleId and uses catalog", () => {
     const match = resolveVehicleImage({
       make: "BMW",

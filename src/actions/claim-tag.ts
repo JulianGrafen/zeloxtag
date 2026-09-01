@@ -81,8 +81,8 @@ function dashboardAfterClaimHref(tagUuid: string, startTour: boolean): string {
 }
 
 /**
- * Claims an unclaimed ZeloxTag for a real user account, then mints the next tag.
- * First-time scanners create an account (email + password) as part of the claim.
+ * Claims an unclaimed ZeloxTag for the signed-in account (or creates one).
+ * Possession is proof: only a minted UUID can succeed. Does not mint tags.
  */
 export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
   let normalized: NormalizedClaim;

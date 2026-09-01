@@ -1,4 +1,5 @@
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
+import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
 
 export const DYNO_CHART_FILE_STEM = "dyno-chart" as const;
 
@@ -61,6 +62,63 @@ export function dynoChartContentTypeFromPath(storagePath: string): string {
 /** Guest-readable dyno file on the public showcase. */
 export function publicVehicleDynoChartPath(vehicleId: string): string {
   return `/api/public/vehicle/${vehicleId}/dyno-chart`;
+}
+
+/** Owner / Schrauber preview — session proxy, works when the profile is private. */
+export function ownerDynoChartDisplayPath(
+  vehicleId: string,
+  cacheBust?: string | number | null,
+): string {
+  const version =
+    cacheBust == null || cacheBust === ""
+      ? Date.now()
+      : String(cacheBust);
+  return `/api/vehicle/dyno-chart/${vehicleId}?v=${encodeURIComponent(version)}`;
+}
+
+/**
+ * Resolve a stored dyno value (relative `{vehicleId}/dyno-chart.ext` or a
+ * legacy public/authenticated Storage URL) to the object path.
+ */
+export function resolveStoredDynoChartPath(
+  vehicleId: string,
+  stored: string | null | undefined,
+): string | null {
+  const trimmed = stored?.trim();
+  if (!trimmed || trimmed.includes("..")) return null;
+
+  const withoutQuery = trimmed.split("?")[0] ?? trimmed;
+  if (
+    withoutQuery.startsWith(`${vehicleId}/`) &&
+    isVehicleDynoChartStoragePath(withoutQuery)
+  ) {
+    return withoutQuery;
+  }
+
+  const fromUrl = storagePathFromPublicOrAuthenticatedUrl(
+    trimmed,
+    DOCUMENT_BUCKET,
+  );
+  if (
+    fromUrl &&
+    fromUrl.startsWith(`${vehicleId}/`) &&
+    isVehicleDynoChartStoragePath(fromUrl)
+  ) {
+    return fromUrl;
+  }
+  return null;
+}
+
+export function resolveOwnerDynoChartViewUrl(
+  vehicleId: string,
+  stored: string | null | undefined,
+): string | null {
+  const trimmed = stored?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("/demo/") || trimmed.startsWith("/api/")) {
+    return trimmed;
+  }
+  return ownerDynoChartDisplayPath(vehicleId);
 }
 
 export { DOCUMENT_BUCKET as DYNO_CHART_BUCKET };

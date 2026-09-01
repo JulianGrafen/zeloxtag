@@ -3,14 +3,12 @@ import { unstable_noStore as noStore } from "next/cache";
 
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { viewerCanAccessPrivateTwin } from "@/lib/auth/vehicle-access";
 import {
   DOCUMENT_ABE_LIST_COLUMNS,
   DOCUMENT_DETAIL_COLUMNS,
   DOCUMENT_INVOICE_LIST_COLUMNS,
   DOCUMENT_LIST_COLUMNS,
   DOCUMENT_SHOWCASE_COLUMNS,
-  TAG_COLUMNS,
   VEHICLE_COLUMNS,
 } from "@/lib/documents/query-columns";
 import { parseLineItems } from "@/lib/documents/line-items";
@@ -20,10 +18,6 @@ import {
   parseStringList,
 } from "@/lib/documents/string-list";
 import { parseTechnicalSpecs } from "@/lib/documents/technical-specs";
-import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { withDefaultShowcaseFields } from "@/lib/vehicles/public-showcase-data";
@@ -31,7 +25,6 @@ import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, DocumentType, Tag, TagScanResult, Vehicle } from "@/types/database";
 
 import { getMockTagScan, MOCK_TAG_UUIDS } from "./mock-tags";
-import { toGuestClientTagScanResult } from "./public-tag-dto";
 
 function isTagScanResult(value: unknown): value is TagScanResult {
   if (!value || typeof value !== "object") return false;
@@ -211,93 +204,6 @@ function isDemoTagUuid(uuid: string): boolean {
   );
 }
 
-/**
- * Direct service-role lookup. Required when FORCE RLS is on and migration
- * 00013 (`row_security = off` on the RPC) is not yet applied — SECURITY DEFINER
- * alone cannot see vehicles/documents, which made post-claim redirects 404.
- */
-async function resolveTagWithAdmin(
-  uuid: string,
-  load?: TagDocumentLoad,
-): Promise<TagScanResult | null> {
-  const supabase = createAdminClient();
-  const documentLoad = load ?? { mode: "all", columns: "list" as const };
-  const lightDocuments = usesLightDocumentNormalize(documentLoad);
-
-  const { data: tag, error: tagError } = await supabase
-    .from("tags")
-    .select(TAG_COLUMNS)
-    .eq("uuid", uuid)
-    .maybeSingle();
-
-  if (tagError) {
-    throw new Error(`Failed to resolve tag: ${tagError.message}`);
-  }
-  if (!tag) return null;
-
-  if (tag.status === "active" && tag.vehicle_id) {
-    const vehiclePromise = supabase
-      .from("vehicles")
-      .select(VEHICLE_COLUMNS)
-      .eq("id", tag.vehicle_id)
-      .maybeSingle();
-
-    let documents: unknown[] = [];
-    if (documentLoad.mode !== "none") {
-      let docQuery = supabase
-        .from("documents")
-        .select(documentSelectColumns(documentLoad))
-        .eq("vehicle_id", tag.vehicle_id)
-        .order("created_at", { ascending: false });
-
-      if (documentLoad.mode === "types" && documentLoad.types.length > 0) {
-        docQuery = docQuery.in("type", documentLoad.types);
-      }
-
-      const [{ data: vehicle, error: vehicleError }, { data: docs, error: docsError }] =
-        await Promise.all([vehiclePromise, docQuery]);
-
-      if (vehicleError) {
-        throw new Error(`Failed to resolve vehicle: ${vehicleError.message}`);
-      }
-      if (docsError) {
-        throw new Error(`Failed to resolve documents: ${docsError.message}`);
-      }
-
-      documents = Array.isArray(docs) ? docs : [];
-
-      return normalizeScanResult(
-        {
-          tag: tag as Tag,
-          vehicle: (vehicle as Vehicle | null) ?? null,
-          documents: documents as Document[],
-        },
-        { lightDocuments },
-      );
-    }
-
-    const { data: vehicle, error: vehicleError } = await vehiclePromise;
-    if (vehicleError) {
-      throw new Error(`Failed to resolve vehicle: ${vehicleError.message}`);
-    }
-
-    return normalizeScanResult(
-      {
-        tag: tag as Tag,
-        vehicle: (vehicle as Vehicle | null) ?? null,
-        documents: [],
-      },
-      { lightDocuments },
-    );
-  }
-
-  return normalizeScanResult({
-    tag: tag as Tag,
-    vehicle: null,
-    documents: [],
-  });
-}
-
 async function resolveTagWithRpc(
   uuid: string,
 ): Promise<TagScanResult | null> {
@@ -319,13 +225,70 @@ async function resolveTagWithRpc(
 }
 
 /**
+ * Overlay owner/contributor fields via session RLS. Guests keep the redacted
+ * RPC payload (no extra queries that could distinguish unclaimed inventory).
+ */
+async function hydratePrivateTwin(
+  scan: TagScanResult,
+  documentLoad: TagDocumentLoad,
+): Promise<TagScanResult> {
+  const vehicleId = scan.vehicle?.id?.trim();
+  if (!vehicleId) return scan;
+
+  const supabase = await createClient();
+  const lightDocuments = usesLightDocumentNormalize(documentLoad);
+
+  const { data: vehicle, error: vehicleError } = await supabase
+    .from("vehicles")
+    .select(VEHICLE_COLUMNS)
+    .eq("id", vehicleId)
+    .maybeSingle();
+
+  if (vehicleError) {
+    throw new Error(`Failed to resolve vehicle: ${vehicleError.message}`);
+  }
+  if (!vehicle) {
+    return scan;
+  }
+
+  let documents: unknown[] = [];
+  if (documentLoad.mode !== "none") {
+    let docQuery = supabase
+      .from("documents")
+      .select(documentSelectColumns(documentLoad))
+      .eq("vehicle_id", vehicleId)
+      .order("created_at", { ascending: false });
+
+    if (documentLoad.mode === "types" && documentLoad.types.length > 0) {
+      docQuery = docQuery.in("type", documentLoad.types);
+    }
+
+    const { data: docs, error: docsError } = await docQuery;
+    if (docsError) {
+      throw new Error(`Failed to resolve documents: ${docsError.message}`);
+    }
+    documents = Array.isArray(docs) ? docs : [];
+  }
+
+  return normalizeScanResult(
+    {
+      tag: {
+        ...scan.tag,
+        vehicle_id: vehicle.id,
+      },
+      vehicle: vehicle as Vehicle,
+      documents: documents as Document[],
+    },
+    { lightDocuments },
+  );
+}
+
+/**
  * Resolves a physical ZeloxTag QR UUID to tag + optional vehicle payload.
  *
- * Prefers the service-role path (full twin for server-side owner checks).
- * The public RPC (`resolve_tag_by_uuid`) is redacted — no documents/VIN/owner id —
- * and returns null for unclaimed tags (same as unknown UUIDs). It is only a
- * fallback. Never hydrate RPC/admin payloads into the client for non-owners;
- * use `toGuestClientTagScanResult` / `PrivateTwinGate` instead.
+ * Public scans use only `resolve_tag_by_uuid` (anon SSR client). The RPC
+ * returns an active twin or null — unclaimed and unknown UUIDs are identical.
+ * Signed-in owners/contributors then overlay private fields via table RLS.
  */
 async function getTagByUuidUncached(
   uuid: string,
@@ -346,29 +309,16 @@ async function getTagByUuidUncached(
     return resolveMockTag(normalized);
   }
 
-  if (isSupabaseAdminConfigured()) {
-    const viewerPromise = getCurrentUser();
-    const viaAdmin = await resolveTagWithAdmin(
-      normalized,
-      options?.documents,
-    );
-    if (!viaAdmin) return null;
+  const viaRpc = await resolveTagWithRpc(normalized);
+  if (!viaRpc) return null;
 
-    if (viaAdmin.vehicle) {
-      const viewer = await viewerPromise;
-      const canAccess = await viewerCanAccessPrivateTwin(
-        viaAdmin.vehicle,
-        viewer?.id ?? null,
-      );
-      if (!canAccess) {
-        return toGuestClientTagScanResult(viaAdmin);
-      }
-    }
+  const viewer = await getCurrentUser();
+  if (!viewer) return viaRpc;
 
-    return viaAdmin;
-  }
-
-  return resolveTagWithRpc(normalized);
+  return hydratePrivateTwin(
+    viaRpc,
+    options?.documents ?? { mode: "all", columns: "list" },
+  );
 }
 
 /** Request-memoized QR lookup — metadata + page + access share one twin load. */
@@ -383,11 +333,7 @@ export async function getDocumentById(
   const did = documentId.trim();
   if (!vid || !did) return null;
 
-  if (!isSupabaseAdminConfigured()) {
-    return null;
-  }
-
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("documents")
     .select(DOCUMENT_DETAIL_COLUMNS)

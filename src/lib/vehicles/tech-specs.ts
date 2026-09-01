@@ -102,7 +102,7 @@ export type VehicleTechSpecs = {
   notes: string | null;
   /** Public Instagram handle without @ — never a free-form URL. */
   instagramHandle: string | null;
-  /** Supabase Storage URL for dyno / Leistungsdiagramm (PDF or image). */
+  /** Relative `{vehicleId}/dyno-chart.ext` path, or a view/proxy URL. */
   dynoChartUrl: string | null;
 };
 

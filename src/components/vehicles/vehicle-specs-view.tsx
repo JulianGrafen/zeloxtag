@@ -19,6 +19,7 @@ import {
   VEHICLE_FUEL_TYPES,
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
+import { resolveOwnerDynoChartViewUrl } from "@/lib/vehicles/dyno-chart-constants";
 import type { Vehicle } from "@/types/database";
 
 type VehicleSpecsViewProps = {
@@ -185,7 +186,10 @@ export function VehicleSpecsView({
         <VehicleDynoChartUpload
           vehicleId={vehicle.id}
           tagUuid={tagUuid}
-          dynoChartUrl={specs.dynoChartUrl}
+          dynoChartUrl={resolveOwnerDynoChartViewUrl(
+            vehicle.id,
+            specs.dynoChartUrl,
+          )}
           canEdit={canEdit}
           onUploaded={(url) => {
             setSpecs((prev) => ({ ...prev, dynoChartUrl: url }));

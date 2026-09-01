@@ -19,7 +19,7 @@ import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-imag
 import { fileToPreviewDataUrl } from "@/lib/vehicles/silhouette-preview-session";
 
 export type SilhouetteUploadResult = {
-  /** Supabase public URL with cache-bust (DB source of truth). */
+  /** Relative storage path `{vehicleId}/silhouette.png` (DB source of truth). */
   storageUrl: string;
   /** Same-origin proxy URL — use this in the dashboard header. */
   displayUrl: string;

@@ -11,6 +11,7 @@ import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { hardenUploadBytes } from "@/lib/security/upload-hardening";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 import {
   ensureVehicleSilhouetteBucket,
   isStorageMimeRejected,
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (limited) return limited;
 
     const { isConfigured } = getSupabaseEnv();
-    if (!isConfigured || !isSupabaseAdminConfigured()) {
+    if (!isConfigured) {
       return jsonError(
         503,
         "Supabase is not configured for vehicle photo uploads.",
@@ -154,8 +155,8 @@ export async function POST(request: NextRequest) {
       return jsonError(415, hardened.error, "unsupported_media");
     }
 
-    const admin = createAdminClient();
-    const { data: vehicle, error: vehicleError } = await admin
+    const supabase = await createClient();
+    const { data: vehicle, error: vehicleError } = await supabase
       .from("vehicles")
       .select("id, user_id")
       .eq("id", vehicleId)
@@ -191,12 +192,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await ensureVehicleSilhouetteBucket(admin);
+    if (isSupabaseAdminConfigured()) {
+      await ensureVehicleSilhouetteBucket(createAdminClient());
+    }
 
     const objectPath = vehiclePhotoObjectPath(vehicleId);
 
     async function storePhoto(): Promise<string | null> {
-      const { error: uploadError } = await admin.storage
+      const { error: uploadError } = await supabase.storage
         .from(SILHOUETTE_BUCKET)
         .upload(objectPath, photoPng, {
           contentType: "image/png",
@@ -212,8 +215,10 @@ export async function POST(request: NextRequest) {
 
     let storageError = await storePhoto();
     if (storageError && isStorageMimeRejected(storageError)) {
-      await ensureVehicleSilhouetteBucket(admin);
-      storageError = await storePhoto();
+      if (isSupabaseAdminConfigured()) {
+        await ensureVehicleSilhouetteBucket(createAdminClient());
+        storageError = await storePhoto();
+      }
     }
 
     if (storageError) {
@@ -223,18 +228,14 @@ export async function POST(request: NextRequest) {
       return jsonError(500, friendly, "storage_error");
     }
 
-    const {
-      data: { publicUrl },
-    } = admin.storage.from(SILHOUETTE_BUCKET).getPublicUrl(objectPath);
-
     const cacheBust = Date.now();
-    const silhouetteUrl = `${publicUrl}?v=${cacheBust}`;
+    const storagePath = objectPath;
     const displayUrl = silhouetteDisplayUrl(vehicleId, cacheBust);
 
-    const { error: updateError } = await admin
+    const { error: updateError } = await supabase
       .from("vehicles")
       .update({
-        silhouette_image_url: silhouetteUrl,
+        silhouette_image_url: storagePath,
         updated_at: new Date().toISOString(),
       })
       .eq("id", vehicleId)
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const storageReady = await verifySilhouetteInStorage(admin, vehicleId);
+    const storageReady = await verifySilhouetteInStorage(supabase, vehicleId);
     if (!storageReady) {
       console.warn(
         "[vehicle-photo] photo not readable immediately after upload",
@@ -264,7 +265,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true as const,
-      silhouetteImageUrl: silhouetteUrl,
+      silhouetteImageUrl: storagePath,
       silhouetteDisplayUrl: displayUrl,
     });
   } catch (error) {

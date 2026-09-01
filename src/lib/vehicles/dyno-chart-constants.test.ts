@@ -1,50 +1,38 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  dynoChartContentTypeFromPath,
-  dynoChartExtensionForMime,
-  isVehicleDynoChartStoragePath,
-  vehicleDynoChartCandidatePaths,
+  resolveOwnerDynoChartViewUrl,
+  resolveStoredDynoChartPath,
   vehicleDynoChartObjectPath,
-} from "@/lib/vehicles/dyno-chart-constants";
+} from "./dyno-chart-constants";
 
-const vehicleId = "11111111-1111-4111-8111-111111111111";
+const VEHICLE_ID = "11111111-1111-4111-8111-111111111111";
 
 describe("dyno chart storage paths", () => {
-  it("uses pdf by default and jpg for jpeg uploads", () => {
-    expect(vehicleDynoChartObjectPath(vehicleId)).toBe(
-      `${vehicleId}/dyno-chart.pdf`,
-    );
-    expect(vehicleDynoChartObjectPath(vehicleId, "image/jpeg")).toBe(
-      `${vehicleId}/dyno-chart.jpg`,
-    );
-    expect(dynoChartExtensionForMime("image/png")).toBe("png");
-  });
-
-  it("recognizes image and pdf object names", () => {
-    expect(isVehicleDynoChartStoragePath(`${vehicleId}/dyno-chart.pdf`)).toBe(
-      true,
-    );
-    expect(isVehicleDynoChartStoragePath(`${vehicleId}/dyno-chart.jpg`)).toBe(
-      true,
-    );
-    expect(isVehicleDynoChartStoragePath(`${vehicleId}/invoice.pdf`)).toBe(
-      false,
+  it("builds `{vehicleId}/dyno-chart.ext`", () => {
+    expect(vehicleDynoChartObjectPath(VEHICLE_ID, "application/pdf")).toBe(
+      `${VEHICLE_ID}/dyno-chart.pdf`,
     );
   });
 
-  it("maps path extensions to content types", () => {
-    expect(dynoChartContentTypeFromPath(`${vehicleId}/dyno-chart.webp`)).toBe(
-      "image/webp",
-    );
-    expect(dynoChartContentTypeFromPath(`${vehicleId}/dyno-chart.pdf`)).toBe(
-      "application/pdf",
-    );
+  it("reads a relative stored path", () => {
+    expect(
+      resolveStoredDynoChartPath(VEHICLE_ID, `${VEHICLE_ID}/dyno-chart.jpg`),
+    ).toBe(`${VEHICLE_ID}/dyno-chart.jpg`);
   });
 
-  it("lists replaceable candidate paths", () => {
-    const paths = vehicleDynoChartCandidatePaths(vehicleId);
-    expect(paths).toContain(`${vehicleId}/dyno-chart.pdf`);
-    expect(paths).toContain(`${vehicleId}/dyno-chart.jpg`);
+  it("reads a legacy public Storage URL", () => {
+    expect(
+      resolveStoredDynoChartPath(
+        VEHICLE_ID,
+        `https://example.supabase.co/storage/v1/object/public/vehicle-documents/${VEHICLE_ID}/dyno-chart.pdf?v=9`,
+      ),
+    ).toBe(`${VEHICLE_ID}/dyno-chart.pdf`);
+  });
+
+  it("maps stored paths to the owner proxy", () => {
+    expect(
+      resolveOwnerDynoChartViewUrl(VEHICLE_ID, `${VEHICLE_ID}/dyno-chart.pdf`),
+    ).toMatch(new RegExp(`^/api/vehicle/dyno-chart/${VEHICLE_ID}\\?v=`));
   });
 });

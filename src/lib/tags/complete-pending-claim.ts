@@ -11,6 +11,7 @@ const ownerUserIdSchema = z.string().uuid();
 /**
  * Completes a deferred tag claim after auth (email confirm / magic link).
  * Internal only — not a Server Action export (prevents IDOR via forged user ids).
+ * Does not mint inventory tags.
  */
 export async function completePendingClaimForUser(
   ownerUserId: string,

@@ -1,9 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import { enforceRateLimit } from "@/lib/security/api-guard";
-import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -11,7 +9,7 @@ import {
 import {
   DYNO_CHART_BUCKET,
   dynoChartContentTypeFromPath,
-  isVehicleDynoChartStoragePath,
+  resolveStoredDynoChartPath,
   vehicleDynoChartCandidatePaths,
 } from "@/lib/vehicles/dyno-chart-constants";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
@@ -80,15 +78,7 @@ export async function GET(
     }
 
     const storedUrl = parseVehicleTechSpecs(vehicle.tech_specs).dynoChartUrl;
-    const fromUrl = storedUrl
-      ? storagePathFromPublicOrAuthenticatedUrl(storedUrl, DOCUMENT_BUCKET)
-      : null;
-    const preferredPath =
-      fromUrl &&
-      fromUrl.startsWith(`${vehicleId}/`) &&
-      isVehicleDynoChartStoragePath(fromUrl)
-        ? fromUrl
-        : null;
+    const preferredPath = resolveStoredDynoChartPath(vehicleId, storedUrl);
 
     const found = await downloadFirstExisting(vehicleId, preferredPath);
     if (!found) {
