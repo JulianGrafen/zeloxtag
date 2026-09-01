@@ -52,7 +52,21 @@ export function GermanDateInput({
       className={className}
       value={text}
       onFocus={() => setFocused(true)}
-      onChange={(event) => setText(event.target.value)}
+      onChange={(event) => {
+        const next = event.target.value;
+        setText(next);
+        const trimmed = next.trim();
+        if (!trimmed) return;
+        const parsed = parseGermanDocumentDateInput(trimmed);
+        if (parsed) {
+          onChange(parsed);
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.currentTarget.blur();
+        }
+      }}
       onBlur={() => {
         setFocused(false);
         const trimmed = text.trim();

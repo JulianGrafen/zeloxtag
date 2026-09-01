@@ -48,7 +48,6 @@ import {
 import { TuevDefectsEditableBlock } from "@/components/documents/tuev-defects-editable-block";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
-import { inferResultFromDefectRows } from "@/services/documents/TuevReportService";
 import type { Document } from "@/types/database";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -351,14 +350,9 @@ export function SingleClickTuevUpload({
       return;
     }
 
-    const defectsTable = parseDraftRows(defectsDraft);
     const reportWithDefects = {
       ...state.extraction.report,
       ...draftRowsToReportDefects(defectsDraft),
-      result: inferResultFromDefectRows(
-        defectsTable.length > 0 ? defectsTable : null,
-        state.extraction.report.result,
-      ),
     };
 
     const extraction = {

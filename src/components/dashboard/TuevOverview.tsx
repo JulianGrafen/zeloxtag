@@ -41,7 +41,6 @@ import {
 } from "@/lib/validations/documentSchemas";
 import { parseTuevDefectLine } from "@/lib/ocr/tuev-defects-from-text";
 import { TuevReportService } from "@/services/documents";
-import { inferResultFromDefectRows } from "@/services/documents/TuevReportService";
 
 export type TuevReviewFields = {
   testDate: string | null;
@@ -148,10 +147,7 @@ export function fieldsToTuevReview(
     nextInspectionDate: normalizeYearMonthInput(tuevData?.nextInspectionDate),
     result: tuevData?.result ?? "no_defects",
     mileageKm: fields.mileageKm ?? tuevData?.mileageKm ?? null,
-    documentNumber:
-      tuevData?.documentNumber?.trim() ||
-      fields.invoiceNumber?.trim() ||
-      null,
+    documentNumber: tuevData?.documentNumber?.trim() || null,
     testingOrganization: normalizeOrganization(
       tuevData?.testingOrganization ??
         fields.authority ??
@@ -177,15 +173,11 @@ function reviewToApprovalPayload(
     approvalFields?.kind === "tuev" ? approvalFields.data : null;
 
   const service = new TuevReportService();
-  const resolvedResult = inferResultFromDefectRows(
-    defectsTable,
-    review.result,
-  );
 
   const data = service.parseAndValidate({
     testingOrganization: review.testingOrganization,
     testDate: review.testDate,
-    result: resolvedResult,
+    result: review.result,
     mileageKm: review.mileageKm,
     nextInspectionDate: review.nextInspectionDate,
     documentNumber: review.documentNumber,
@@ -292,6 +284,7 @@ export function TuevOverview({
   }
 
   function handleSave(forceMileage = false) {
+    (document.activeElement as HTMLElement | null)?.blur?.();
     if (activeMileageWarning && !forceMileage) {
       return;
     }
