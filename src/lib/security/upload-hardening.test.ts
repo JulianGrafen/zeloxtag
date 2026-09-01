@@ -95,6 +95,49 @@ describe("upload hardening", () => {
     }
   });
 
+  it("does not treat /Length-delimited stream bytes as active PDF names", () => {
+    const payload = "/binary/endstream /JS /AA noise";
+    const streamBody = payload.padEnd(40, "X").slice(0, 40);
+    const pdf = encode(`%PDF-1.4
+5 0 obj
+<< /Length ${streamBody.length} /Filter /FlateDecode >>
+stream
+${streamBody}
+endstream
+endobj
+trailer
+<< /Root 1 0 R >>
+%%EOF
+`);
+    expect(findPdfActiveContent(pdf)).toBeNull();
+  });
+
+  it("accepts jsPDF image scans (invoice photo → PDF pipeline)", async () => {
+    const { jsPDF } = await import("jspdf");
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    });
+    pdf.addImage(
+      "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=",
+      "JPEG",
+      10,
+      10,
+      100,
+      100,
+    );
+    const bytes = new Uint8Array(pdf.output("arraybuffer"));
+    const result = await hardenUploadBytes(bytes, "application/pdf", {
+      reencodeImages: false,
+    });
+    expect(result.ok, !result.ok ? result.error : undefined).toBe(true);
+    if (result.ok) {
+      expect(findPdfActiveContent(result.bytes)).toBeNull();
+    }
+  });
+
   it("strips HTML appended after JPEG EOI", () => {
     const polyglot = concat(JPEG_SOI, encode("<html><script>alert(1)</script>"));
     const stripped = stripJpegTrailer(polyglot);

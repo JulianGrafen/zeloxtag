@@ -171,6 +171,43 @@ function skipPdfHexString(bytes: Uint8Array, start: number): number {
   return Math.min(i + 1, bytes.length);
 }
 
+function parseStreamLengthBefore(bytes: Uint8Array, streamKeywordIndex: number): number | null {
+  const lookback = Math.max(0, streamKeywordIndex - 768);
+  const header = latin1Slice(bytes, lookback, streamKeywordIndex);
+  const matches = [...header.matchAll(/\/Length\s+(\d{1,10})\b/g)];
+  if (matches.length === 0) return null;
+  const raw = matches[matches.length - 1]?.[1];
+  if (!raw) return null;
+  const length = Number.parseInt(raw, 10);
+  if (!Number.isFinite(length) || length < 0) return null;
+  return length;
+}
+
+function skipPdfStream(bytes: Uint8Array, streamKeywordIndex: number): number {
+  let dataStart = streamKeywordIndex + "stream".length;
+  while (dataStart < bytes.length && isPdfWs(bytes[dataStart] ?? 0)) {
+    dataStart += 1;
+  }
+  if (bytes[dataStart] === 0x0d) dataStart += 1;
+  if (bytes[dataStart] === 0x0a) dataStart += 1;
+
+  const declaredLength = parseStreamLengthBefore(bytes, streamKeywordIndex);
+  if (declaredLength !== null) {
+    const afterData = dataStart + declaredLength;
+    let cursor = afterData;
+    while (cursor < bytes.length && isPdfWs(bytes[cursor] ?? 0)) {
+      cursor += 1;
+    }
+    if (isKeywordAt(bytes, cursor, "endstream")) {
+      return cursor + "endstream".length;
+    }
+  }
+
+  const end = indexOfPdfKeyword(bytes, streamKeywordIndex + 6, "endstream");
+  if (end < 0) return bytes.length;
+  return end + "endstream".length;
+}
+
 function indexOfPdfKeyword(
   bytes: Uint8Array,
   from: number,
@@ -233,9 +270,7 @@ export function findPdfActiveContent(bytes: Uint8Array): string | null {
     }
 
     if (isKeywordAt(bytes, i, "stream")) {
-      const end = indexOfPdfKeyword(bytes, i + 6, "endstream");
-      if (end < 0) return "stream";
-      i = end + "endstream".length;
+      i = skipPdfStream(bytes, i);
       continue;
     }
 
@@ -413,7 +448,7 @@ function stripPdfTrailer(bytes: Uint8Array): Uint8Array {
   return bytes.subarray(0, end);
 }
 
-function pdfStructureError(bytes: Uint8Array): string | null {
+function pdfBasicStructureError(bytes: Uint8Array): string | null {
   if (pdfHeaderOffset(bytes) < 0) {
     return "PDF-Kopf fehlt oder Datei ist ein Polyglot.";
   }
@@ -424,15 +459,23 @@ function pdfStructureError(bytes: Uint8Array): string | null {
   if (pages !== null && pages > MAX_PDF_PAGES) {
     return `PDF hat zu viele Seiten (max. ${MAX_PDF_PAGES}).`;
   }
-  const active = findPdfActiveContent(bytes);
-  if (active) {
-    return "PDF enthält aktive Inhalte (Skript, Anhang oder Auto-Aktion) und wurde abgelehnt.";
-  }
   const head = latin1Slice(bytes, 0, Math.min(bytes.length, 256));
   if (HTML_POLY_RE.test(head)) {
     return "PDF/HTML-Polyglot erkannt.";
   }
   return null;
+}
+
+function pdfActiveContentError(bytes: Uint8Array): string | null {
+  const active = findPdfActiveContent(bytes);
+  if (active) {
+    return "PDF enthält aktive Inhalte (Skript, Anhang oder Auto-Aktion) und wurde abgelehnt.";
+  }
+  return null;
+}
+
+function pdfStructureError(bytes: Uint8Array): string | null {
+  return pdfBasicStructureError(bytes) ?? pdfActiveContentError(bytes);
 }
 
 async function rewritePdfPagesOnly(bytes: Uint8Array): Promise<Uint8Array> {
@@ -537,8 +580,8 @@ export async function hardenUploadBytes(
   let resolved: AllowedDocumentMimeType = mime;
 
   if (mime === "application/pdf") {
-    const structure = pdfStructureError(bytes);
-    if (structure) return { ok: false, error: structure };
+    const basic = pdfBasicStructureError(bytes);
+    if (basic) return { ok: false, error: basic };
     bytes = stripPdfTrailer(bytes);
     try {
       bytes = await rewritePdfPagesOnly(bytes);
@@ -555,7 +598,7 @@ export async function hardenUploadBytes(
       }
       throw error;
     }
-    const after = pdfStructureError(bytes);
+    const after = pdfActiveContentError(bytes);
     if (after) return { ok: false, error: after };
     return { ok: true, bytes, mime: "application/pdf" };
   }
