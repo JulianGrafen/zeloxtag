@@ -14,6 +14,7 @@ import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import { documentStorageObjectPath } from "@/lib/documents/storage-path";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertOwnerFeature } from "@/lib/permissions/require-feature";
+import { logServerError } from "@/lib/security/public-error";
 import {
   MANUAL_ENTRY_CATEGORIES,
   MANUAL_ENTRY_MARKER,
@@ -456,6 +457,7 @@ export async function createManualVehicleEntry(
       .remove([uploadedStoragePath])
       .catch(() => undefined);
   }
-  return { status: "error", message: lastError ?? "Speichern fehlgeschlagen." };
+  logServerError("[create-manual-entry] insert failed", { lastError, documentId });
+  return { status: "error", message: "Speichern fehlgeschlagen." };
 
 }

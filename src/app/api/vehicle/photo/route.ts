@@ -9,6 +9,10 @@ import {
 } from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { hardenUploadBytes } from "@/lib/security/upload-hardening";
+import {
+  logServerError,
+  publicClientMessage,
+} from "@/lib/security/public-error";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -177,7 +181,14 @@ export async function POST(request: NextRequest) {
       );
     } catch (error) {
       if (error instanceof HeaderPhotoNormalizeError) {
-        return jsonError(422, error.message, "normalize_failed");
+        return jsonError(
+          422,
+          publicClientMessage(
+            error,
+            "Foto konnte nicht verarbeitet werden — bitte anderes Bild wählen.",
+          ),
+          "normalize_failed",
+        );
       }
       throw error;
     }
@@ -209,8 +220,8 @@ export async function POST(request: NextRequest) {
 
       if (!uploadError) return null;
 
-      console.error("[vehicle-photo] storage upload failed", uploadError);
-      return uploadError.message;
+      logServerError("[vehicle-photo] storage upload failed", uploadError);
+      return uploadError.message ?? "storage_failed";
     }
 
     let storageError = await storePhoto();
@@ -224,7 +235,7 @@ export async function POST(request: NextRequest) {
     if (storageError) {
       const friendly = isStorageMimeRejected(storageError)
         ? "Speicher lehnt das Foto-Format ab — bitte in 1 Minute erneut versuchen."
-        : `Could not store vehicle photo: ${storageError}`;
+        : "Foto konnte nicht gespeichert werden.";
       return jsonError(500, friendly, "storage_error");
     }
 
@@ -242,10 +253,10 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id);
 
     if (updateError) {
-      console.error("[vehicle-photo] vehicle update failed", updateError);
+      logServerError("[vehicle-photo] vehicle update failed", updateError);
       return jsonError(
         500,
-        `Could not save vehicle photo URL: ${updateError.message}`,
+        "Foto-URL konnte nicht gespeichert werden.",
         "db_error",
       );
     }
@@ -269,10 +280,10 @@ export async function POST(request: NextRequest) {
       silhouetteDisplayUrl: displayUrl,
     });
   } catch (error) {
-    console.error("[vehicle-photo] unexpected", error);
+    logServerError("[vehicle-photo] unexpected", error);
     return jsonError(
       500,
-      error instanceof Error ? error.message : "Unexpected server error.",
+      "Foto-Upload fehlgeschlagen. Bitte erneut versuchen.",
       "internal",
     );
   }

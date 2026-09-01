@@ -10,6 +10,7 @@ import {
 } from "@/lib/vehicles/tech-specs";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/security/public-error";
 
 import { isPlausibleVin, normalizeVin } from "@/lib/validations/vin";
 
@@ -118,9 +119,10 @@ export async function updateVehicleSpecs(
           .eq("user_id", ownership.userId);
 
         if (fallbackError) {
+          logServerError("[update-vehicle-specs] fallback save failed", fallbackError);
           return {
             status: "error",
-            message: `Speichern fehlgeschlagen: ${fallbackError.message}`,
+            message: "Speichern fehlgeschlagen.",
           };
         }
 
@@ -131,9 +133,10 @@ export async function updateVehicleSpecs(
         };
       }
 
+      logServerError("[update-vehicle-specs] update failed", error);
       return {
         status: "error",
-        message: `Speichern fehlgeschlagen: ${error.message}`,
+        message: "Speichern fehlgeschlagen.",
       };
     }
 
@@ -141,12 +144,10 @@ export async function updateVehicleSpecs(
     revalidatePath(`/v/${tagUuid}/daten`);
     return { status: "ok" };
   } catch (error) {
+    logServerError("[update-vehicle-specs] unexpected", error);
     return {
       status: "error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Technische Daten konnten nicht gespeichert werden.",
+      message: "Technische Daten konnten nicht gespeichert werden.",
     };
   }
 }

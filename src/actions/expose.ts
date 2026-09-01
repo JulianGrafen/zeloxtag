@@ -7,6 +7,7 @@ import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/security/public-error";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
 import {
   exposePublicPath,
@@ -124,9 +125,11 @@ export async function manageVehicleExpose(
       .eq("user_id", ownership.userId);
 
     if (error) {
+      logServerError("[expose] update failed", error);
       return {
         status: "error",
-        message: missingColumnMessage(error) ?? `Speichern fehlgeschlagen: ${error.message}`,
+        message:
+          missingColumnMessage(error) ?? "Speichern fehlgeschlagen.",
       };
     }
 
@@ -142,12 +145,10 @@ export async function manageVehicleExpose(
       sharePath: nextActive && nextToken ? exposePublicPath(nextToken) : null,
     };
   } catch (error) {
+    logServerError("[expose] unexpected", error);
     return {
       status: "error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Exposé konnte nicht aktualisiert werden.",
+      message: "Exposé konnte nicht aktualisiert werden.",
     };
   }
 }

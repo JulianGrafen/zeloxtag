@@ -12,6 +12,7 @@ import {
   isUploadFile,
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
+import { logServerError } from "@/lib/security/public-error";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
@@ -229,10 +230,10 @@ export async function POST(request: NextRequest) {
       dynoChartUrl: ownerDynoChartDisplayPath(vehicleId, cacheBust),
     });
   } catch (error) {
-    console.error("[vehicle-dyno-chart] unexpected", error);
+    logServerError("[vehicle-dyno-chart] unexpected", error);
     return jsonError(
       500,
-      error instanceof Error ? error.message : "Unexpected server error.",
+      "Dyno-Chart konnte nicht gespeichert werden.",
       "internal",
     );
   }

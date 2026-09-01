@@ -13,6 +13,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { logServerError } from "@/lib/security/public-error";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import {
   invoiceExtractionService,
@@ -202,8 +203,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     };
     return NextResponse.json(body);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected extraction error.";
-    return jsonError(500, message, "extract_failed");
+    logServerError("[api/ocr/invoice] unexpected", error);
+    return jsonError(
+      500,
+      "Rechnungsauswertung fehlgeschlagen. Bitte erneut versuchen.",
+      "extract_failed",
+    );
   }
 }

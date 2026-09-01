@@ -2637,7 +2637,7 @@ export function AbeDataHunterWizard({
             setKuerzelImageUrls(new Map(kuerzelImageUrlsRef.current));
           }
         } catch (cropError) {
-          console.error("[abe-hunt] auflagen crop failed", cropError);
+          console.error("[abe-hunt] auflagen crop failed");
         }
 
         const enriched = enrichReportAuflagenFromKuerzelDb(

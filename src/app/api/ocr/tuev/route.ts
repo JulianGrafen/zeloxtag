@@ -9,6 +9,7 @@ import {
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
+import { logServerError } from "@/lib/security/public-error";
 import {
   tuevExtractionService,
   type TuevDefectsExtraction,
@@ -133,8 +134,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body: StepSuccess = { ok: true, step: "defects", extraction };
     return NextResponse.json(body);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected extraction error.";
-    return jsonError(500, message, "extract_failed");
+    logServerError("[api/ocr/tuev] unexpected", error);
+    return jsonError(
+      500,
+      "TÜV-Auswertung fehlgeschlagen. Bitte erneut versuchen.",
+      "extract_failed",
+    );
   }
 }

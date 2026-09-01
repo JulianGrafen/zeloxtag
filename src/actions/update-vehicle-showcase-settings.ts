@@ -10,6 +10,7 @@ import {
 } from "@/lib/vehicles/public-slug";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/security/public-error";
 
 export type UpdateVehicleShowcaseSettingsInput = {
   vehicleId: string;
@@ -91,6 +92,7 @@ export async function updateVehicleShowcaseSettings(
       .eq("user_id", ownership.userId);
 
     if (error) {
+      logServerError("[update-vehicle-showcase-settings] update failed", error);
       const missingColumn =
         error.message.includes("is_public") ||
         error.message.includes("public_slug") ||
@@ -106,7 +108,7 @@ export async function updateVehicleShowcaseSettings(
 
       return {
         status: "error",
-        message: `Speichern fehlgeschlagen: ${error.message}`,
+        message: "Speichern fehlgeschlagen.",
       };
     }
 
@@ -123,12 +125,10 @@ export async function updateVehicleShowcaseSettings(
       sharePath: input.isPublic && publicSlug ? publicShowcasePath(publicSlug) : null,
     };
   } catch (error) {
+    logServerError("[update-vehicle-showcase-settings] unexpected", error);
     return {
       status: "error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Showcase-Einstellungen konnten nicht gespeichert werden.",
+      message: "Showcase-Einstellungen konnten nicht gespeichert werden.",
     };
   }
 }

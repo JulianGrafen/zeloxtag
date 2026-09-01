@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { isGenericPostLoginNext, normalizeAuthCallbackNext } from "@/lib/auth/post-login-path";
+import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { hardenCookieOptions } from "@/lib/security/cookie-options";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
       const claimResult = await completePendingClaimForUser(userId);
       if (claimResult?.status === "claimed") {
         return copyCookies(
-          NextResponse.redirect(new URL(`/v/${claimResult.tagUuid}`, origin)),
+          NextResponse.redirect(new URL(dashboardTourHref(claimResult.tagUuid), origin)),
         );
       }
       if (claimResult?.status === "error") {

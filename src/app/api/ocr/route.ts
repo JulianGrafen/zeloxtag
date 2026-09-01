@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { extractInvoiceFromImage, OcrExtractionError } from "@/lib/ocr/extract-invoice";
+import { extractInvoiceFromImage } from "@/lib/ocr/extract-invoice";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { OcrPersistError, persistOcrInvoice } from "@/lib/ocr/persist-invoice";
 import type { OcrApiError, OcrApiSuccess } from "@/lib/ocr/types";
@@ -13,6 +13,10 @@ import {
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
+import {
+  logServerError,
+  publicClientMessage,
+} from "@/lib/security/public-error";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
@@ -130,11 +134,12 @@ export async function POST(request: NextRequest) {
         mimeType: sniffed,
       });
     } catch (error) {
-      const message =
-        error instanceof OcrExtractionError
-          ? error.message
-          : "OCR extraction failed.";
-      return jsonError(422, message, "ocr_failed");
+      logServerError("[api/ocr] extraction failed", error);
+      return jsonError(
+        422,
+        publicClientMessage(error, "OCR-Extraktion fehlgeschlagen."),
+        "ocr_failed",
+      );
     }
 
     let document;
@@ -149,14 +154,18 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       if (error instanceof OcrPersistError) {
+        logServerError("[api/ocr] persist failed", error);
         const forbidden = error.message.toLowerCase().includes("write access");
         return jsonError(
           forbidden ? 403 : 500,
-          error.message,
+          forbidden
+            ? "Kein Schreibzugriff für dieses Fahrzeug."
+            : "Speichern nach OCR fehlgeschlagen.",
           forbidden ? "forbidden" : "storage_failed",
         );
       }
-      return jsonError(500, "Failed to store invoice after OCR.", "storage_failed");
+      logServerError("[api/ocr] persist unexpected", error);
+      return jsonError(500, "Speichern nach OCR fehlgeschlagen.", "storage_failed");
     }
 
     if (meta.data.tagUuid) {

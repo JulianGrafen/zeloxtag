@@ -443,7 +443,7 @@ export function GutachtenUploadWizard({
           applyEnrichedPrimaryScan(file, enriched);
         })
         .catch((error) => {
-          console.warn("[gutachten-wizard] cover enrichment failed", error);
+          console.warn("[gutachten-wizard] cover enrichment failed");
         })
         .finally(() => {
           if (primaryScanRef.current !== file) return;

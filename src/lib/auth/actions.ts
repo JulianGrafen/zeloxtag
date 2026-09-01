@@ -13,6 +13,10 @@ import {
   RATE_LIMITS,
 } from "@/lib/security/rate-limit";
 import {
+  logServerError,
+  publicAuthMessage,
+} from "@/lib/security/public-error";
+import {
   createAdminClient,
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
@@ -91,7 +95,8 @@ export async function signInWithPassword(
   });
 
   if (error) {
-    return { status: "error", message: error.message };
+    logServerError("[auth] signInWithPassword failed", error);
+    return { status: "error", message: publicAuthMessage(error) };
   }
 
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -158,7 +163,11 @@ export async function signUpWithPassword(
   });
 
   if (error) {
-    return { status: "error", message: error.message };
+    logServerError("[auth] signUpWithPassword failed", error);
+    return {
+      status: "error",
+      message: publicAuthMessage(error, "Kontoanlage fehlgeschlagen."),
+    };
   }
 
   if (!data.session) {
@@ -479,7 +488,11 @@ export async function updatePasswordAfterReset(
     password: passwordParsed.data,
   });
   if (error) {
-    return { status: "error", message: error.message };
+    logServerError("[auth] updatePasswordAfterReset failed", error);
+    return {
+      status: "error",
+      message: publicAuthMessage(error, "Passwort konnte nicht aktualisiert werden."),
+    };
   }
 
   return {

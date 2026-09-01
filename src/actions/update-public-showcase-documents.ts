@@ -16,6 +16,7 @@ import {
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/security/public-error";
 
 export type UpdatePublicShowcaseDocumentsInput = {
   vehicleId: string;
@@ -83,9 +84,10 @@ export async function updatePublicShowcaseDocuments(
       .maybeSingle();
 
     if (vehicleError) {
+      logServerError("[update-public-showcase-documents] vehicle load failed", vehicleError);
       return {
         status: "error",
-        message: `Laden fehlgeschlagen: ${vehicleError.message}`,
+        message: "Laden fehlgeschlagen.",
       };
     }
 
@@ -95,9 +97,10 @@ export async function updatePublicShowcaseDocuments(
       .eq("vehicle_id", vehicleId);
 
     if (docsError) {
+      logServerError("[update-public-showcase-documents] docs load failed", docsError);
       return {
         status: "error",
-        message: `Dokumente konnten nicht geladen werden: ${docsError.message}`,
+        message: "Dokumente konnten nicht geladen werden.",
       };
     }
 
@@ -114,11 +117,14 @@ export async function updatePublicShowcaseDocuments(
 
       if (error) {
         const missingColumn = error.message.includes("show_on_public_showcase");
+        if (!missingColumn) {
+          logServerError("[update-public-showcase-documents] disable failed", error);
+        }
         return {
           status: "error",
           message: missingColumn
             ? "Dokument-Auswahl braucht Migration 00031_document_public_showcase.sql in Supabase."
-            : `Speichern fehlgeschlagen: ${error.message}`,
+            : "Speichern fehlgeschlagen.",
         };
       }
     }
@@ -132,11 +138,14 @@ export async function updatePublicShowcaseDocuments(
 
       if (error) {
         const missingColumn = error.message.includes("show_on_public_showcase");
+        if (!missingColumn) {
+          logServerError("[update-public-showcase-documents] enable failed", error);
+        }
         return {
           status: "error",
           message: missingColumn
             ? "Dokument-Auswahl braucht Migration 00031_document_public_showcase.sql in Supabase."
-            : `Speichern fehlgeschlagen: ${error.message}`,
+            : "Speichern fehlgeschlagen.",
         };
       }
     }
@@ -169,9 +178,10 @@ export async function updatePublicShowcaseDocuments(
         .eq("id", documentId);
 
       if (error) {
+        logServerError("[update-public-showcase-documents] line items failed", error);
         return {
           status: "error",
-          message: `Positionen konnten nicht gespeichert werden: ${error.message}`,
+          message: "Positionen konnten nicht gespeichert werden.",
         };
       }
     }
@@ -188,12 +198,10 @@ export async function updatePublicShowcaseDocuments(
 
     return { status: "ok" };
   } catch (error) {
+    logServerError("[update-public-showcase-documents] unexpected", error);
     return {
       status: "error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Showcase-Dokumente konnten nicht gespeichert werden.",
+      message: "Showcase-Dokumente konnten nicht gespeichert werden.",
     };
   }
 }

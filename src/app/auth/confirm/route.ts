@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
+import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { hardenCookieOptions } from "@/lib/security/cookie-options";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -83,19 +84,41 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const userId = data.user?.id ?? data.session?.user?.id;
+
   if (typeRaw === "signup") {
+    if (userId) {
+      try {
+        const claimResult = await completePendingClaimForUser(userId);
+        if (claimResult?.status === "claimed") {
+          return copyCookies(
+            NextResponse.redirect(
+              new URL(dashboardTourHref(claimResult.tagUuid), origin),
+            ),
+          );
+        }
+        if (claimResult?.status === "error") {
+          const loginUrl = new URL("/login", origin);
+          loginUrl.searchParams.set("error", claimResult.message);
+          return copyCookies(NextResponse.redirect(loginUrl));
+        }
+      } catch {
+        /* fall through to /auth/continue */
+      }
+    }
     return copyCookies(
       NextResponse.redirect(new URL("/auth/continue", origin)),
     );
   }
 
-  const userId = data.user?.id ?? data.session?.user?.id;
   if (userId) {
     try {
       const claimResult = await completePendingClaimForUser(userId);
       if (claimResult?.status === "claimed") {
         return copyCookies(
-          NextResponse.redirect(new URL(`/v/${claimResult.tagUuid}`, origin)),
+          NextResponse.redirect(
+            new URL(dashboardTourHref(claimResult.tagUuid), origin),
+          ),
         );
       }
     } catch {

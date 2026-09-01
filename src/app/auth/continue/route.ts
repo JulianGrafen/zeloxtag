@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
+import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
 import { createClient } from "@/lib/supabase/server";
+import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 
 /**
  * Post-auth hop: resolve the owner's vehicle dashboard on a fresh request
@@ -19,6 +21,22 @@ export async function GET(request: NextRequest) {
     login.searchParams.set("next", "/auth/continue");
     login.searchParams.set("error", "session");
     return NextResponse.redirect(login);
+  }
+
+  try {
+    const claimResult = await completePendingClaimForUser(user.id);
+    if (claimResult?.status === "claimed") {
+      return NextResponse.redirect(
+        new URL(dashboardTourHref(claimResult.tagUuid), request.url),
+      );
+    }
+    if (claimResult?.status === "error") {
+      const login = new URL("/login", request.url);
+      login.searchParams.set("error", claimResult.message);
+      return NextResponse.redirect(login);
+    }
+  } catch {
+    /* optional — fall through to dashboard resolve */
   }
 
   const path = await resolvePostLoginPath(user.id);

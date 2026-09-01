@@ -26,6 +26,7 @@ import {
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
+import { logServerError } from "@/lib/security/public-error";
 import { AbeVehicleContextSchema } from "@/lib/validations/abeSchema";
 
 export const runtime = "nodejs";
@@ -271,15 +272,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(body);
   } catch (error) {
     if (isDocumentIntelligenceError(error) || isTextParseError(error)) {
-      console.error("[api/ocr/parse] provider failed", error);
-      const message =
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : "Dokumentanalyse-Dienst vorübergehend nicht verfügbar.";
-      return jsonError(502, message, "parse_failed");
+      logServerError("[api/ocr/parse] provider failed", error);
+      return jsonError(
+        502,
+        "Dokumentanalyse-Dienst vorübergehend nicht verfügbar.",
+        "parse_failed",
+      );
     }
 
-    console.error("[api/ocr/parse] unexpected", error);
+    logServerError("[api/ocr/parse] unexpected", error);
     return jsonError(
       500,
       "Dokumentanalyse fehlgeschlagen. Bitte erneut versuchen.",

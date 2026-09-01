@@ -9,10 +9,15 @@ import {
   rateLimit,
   RATE_LIMITS,
 } from "@/lib/security/rate-limit";
+import {
+  logServerError,
+  publicClientMessage,
+} from "@/lib/security/public-error";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { completeClaimForOwner } from "@/lib/tags/complete-claim-for-owner";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
+import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
 import {
   setPendingClaim,
   type PendingClaim,
@@ -77,7 +82,7 @@ function normalizeClaimInput(input: ClaimTagInput): NormalizedClaim {
 }
 
 function dashboardAfterClaimHref(tagUuid: string, startTour: boolean): string {
-  return startTour ? `/v/${tagUuid}?tour=1` : `/v/${tagUuid}`;
+  return startTour ? dashboardTourHref(tagUuid) : `/v/${tagUuid}`;
 }
 
 /**
@@ -91,7 +96,7 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Ungültige Eingabe.",
+      message: publicClientMessage(error, "Ungültige Eingabe."),
     };
   }
 
@@ -191,10 +196,10 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
       nextTagUuid: result.nextTagUuid,
     };
   } catch (error) {
+    logServerError("[claim-tag] unexpected", error);
     return {
       status: "error",
-      message:
-        error instanceof Error ? error.message : "Claim fehlgeschlagen.",
+      message: "Claim fehlgeschlagen.",
     };
   }
 }

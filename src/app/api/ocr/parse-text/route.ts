@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
-import { TextParseError } from "@/lib/ocr/parse-error";
 import { invoiceParseService } from "@/lib/ocr/services/invoice-parse-service";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import {
@@ -11,6 +10,10 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
+import {
+  logServerError,
+  publicClientMessage,
+} from "@/lib/security/public-error";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 
 export const runtime = "nodejs";
@@ -96,18 +99,25 @@ export async function POST(request: NextRequest) {
     try {
       fields = await invoiceParseService.parseFromText(parsedBody.data.rawText);
     } catch (error) {
-      const message =
-        error instanceof TextParseError
-          ? error.message
-          : "Failed to parse invoice text.";
-      return jsonError(422, message, "parse_failed");
+      logServerError("[api/ocr/parse-text] extract failed", error);
+      return jsonError(
+        422,
+        publicClientMessage(
+          error,
+          "Rechnungstext konnte nicht ausgewertet werden.",
+        ),
+        "parse_failed",
+      );
     }
 
     const body: ParseTextSuccess = { ok: true, fields };
     return NextResponse.json(body, { status: 200 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected parse-text error.";
-    return jsonError(500, message, "parse_failed");
+    logServerError("[api/ocr/parse-text] unexpected", error);
+    return jsonError(
+      500,
+      "Textauswertung fehlgeschlagen. Bitte erneut versuchen.",
+      "parse_failed",
+    );
   }
 }

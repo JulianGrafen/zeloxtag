@@ -8,6 +8,7 @@ import {
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
+import { logServerError, publicClientMessage } from "@/lib/security/public-error";
 import { resolveDocumentContentType } from "@/lib/ocr/document-bytes";
 import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
 import { isTextParseError } from "@/lib/ocr/parse-error";
@@ -114,9 +115,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } satisfies ClassifySuccess);
   } catch (error) {
     if (isTextParseError(error)) {
-      return jsonError(422, error.message, "classify_failed");
+      logServerError("[vault-classify] parse failed", error);
+      return jsonError(
+        422,
+        publicClientMessage(error, "Klassifizierung fehlgeschlagen."),
+        "classify_failed",
+      );
     }
-    console.error("[vault-classify]", error);
+    logServerError("[vault-classify] unexpected", error);
     return jsonError(500, "Klassifizierung fehlgeschlagen.", "classify_failed");
   }
 }

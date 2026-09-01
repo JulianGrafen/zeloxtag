@@ -12,6 +12,7 @@ import {
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/security/public-error";
 
 const INVITE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_ACTIVE_OR_PENDING = 20;
@@ -136,7 +137,10 @@ export async function listVehicleContributors(
     .neq("status", "revoked")
     .order("created_at", { ascending: false });
 
-  if (error) return { status: "error", message: error.message };
+  if (error) {
+    logServerError("[vehicle-contributors] list failed", error);
+    return { status: "error", message: "Mitwirkende konnten nicht geladen werden." };
+  }
 
   const contributors = await mapContributorRows(data ?? []);
   return { status: "ok", contributors };
@@ -199,7 +203,8 @@ export async function createSchrauberInvite(
           "Datenbank-Migration fehlt: bitte 00022_contributor_read_history.sql in Supabase ausführen.",
       };
     }
-    return { status: "error", message: error.message };
+    logServerError("[vehicle-contributors] create invite failed", error);
+    return { status: "error", message: "Einladung konnte nicht erstellt werden." };
   }
 
   if (owned.tagUuid) {
@@ -240,7 +245,8 @@ export async function setSchrauberReadHistory(
           "Datenbank-Migration fehlt: bitte 00022_contributor_read_history.sql in Supabase ausführen.",
       };
     }
-    return { status: "error", message: error.message };
+    logServerError("[vehicle-contributors] update read history failed", error);
+    return { status: "error", message: "Einstellung konnte nicht gespeichert werden." };
   }
 
   if (owned.tagUuid) {
@@ -272,7 +278,10 @@ export async function revokeSchrauberInvite(
     .eq("id", contributorId)
     .eq("vehicle_id", vehicleId);
 
-  if (error) return { status: "error", message: error.message };
+  if (error) {
+    logServerError("[vehicle-contributors] revoke failed", error);
+    return { status: "error", message: "Einladung konnte nicht widerrufen werden." };
+  }
 
   if (owned.tagUuid) {
     revalidatePath(`/v/${owned.tagUuid}`);
@@ -430,7 +439,10 @@ export async function acceptSchrauberInvite(
       .eq("id", invite.id)
       .eq("status", "invited");
 
-    if (error) return { status: "error", message: error.message };
+    if (error) {
+      logServerError("[vehicle-contributors] accept invite failed", error);
+      return { status: "error", message: "Einladung konnte nicht angenommen werden." };
+    }
   }
 
   const { data: tag } = await admin

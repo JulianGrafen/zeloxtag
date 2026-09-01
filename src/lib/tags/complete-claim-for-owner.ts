@@ -1,9 +1,38 @@
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { logServerError } from "@/lib/security/public-error";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { CLAIM_UNAVAILABLE_MESSAGE } from "@/lib/tags/claim-landing";
 import type { PendingClaim } from "@/lib/tags/pending-claim";
 import type { Json } from "@/types/database";
+
+function isClaimRpcMissing(error: { message?: string; code?: string }): boolean {
+  const message = error.message ?? "";
+  return (
+    error.code === "PGRST202" ||
+    /claim_unclaimed_tag.*schema cache/i.test(message) ||
+    /Could not find the function public\.claim_unclaimed_tag/i.test(message)
+  );
+}
+
+function claimRpcArgs(claim: PendingClaim) {
+  const args: {
+    p_uuid: string;
+    p_make: string;
+    p_model: string;
+    p_year: number;
+    p_vin?: string;
+  } = {
+    p_uuid: claim.tagUuid,
+    p_make: claim.make,
+    p_model: claim.model,
+    p_year: claim.year,
+  };
+  if (claim.vin) {
+    args.p_vin = claim.vin;
+  }
+  return args;
+}
 
 function claimRpcSucceeded(data: Json | null): boolean {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -36,17 +65,21 @@ export async function completeClaimForOwner(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("claim_unclaimed_tag", {
-    p_uuid: claim.tagUuid,
-    p_make: claim.make,
-    p_model: claim.model,
-    p_year: claim.year,
-    p_vin: claim.vin,
-  });
+  const { data, error } = await supabase.rpc(
+    "claim_unclaimed_tag",
+    claimRpcArgs(claim),
+  );
 
   if (error || !claimRpcSucceeded(data)) {
     if (error) {
-      console.error("[claim] rpc failed", error.message);
+      if (isClaimRpcMissing(error)) {
+        logServerError(
+          "[claim] claim_unclaimed_tag missing on database — apply migration 00049 or 00051 and reload PostgREST schema",
+          error,
+        );
+      } else {
+        logServerError("[claim] rpc failed", error);
+      }
     }
     return { status: "error", message: CLAIM_UNAVAILABLE_MESSAGE };
   }

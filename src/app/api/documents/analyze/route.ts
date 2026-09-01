@@ -16,6 +16,7 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
+import { logServerError } from "@/lib/security/public-error";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 
@@ -151,11 +152,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(body);
   } catch (error) {
     if (error instanceof DocumentIntelligenceError) {
-      return jsonError(502, error.message, "analyze_failed");
+      logServerError("[api/documents/analyze] provider failed", error);
+      return jsonError(
+        502,
+        "Dokumentanalyse-Dienst vorübergehend nicht verfügbar.",
+        "analyze_failed",
+      );
     }
 
-    const message =
-      error instanceof Error ? error.message : "Unexpected analyze error.";
-    return jsonError(500, message, "analyze_failed");
+    logServerError("[api/documents/analyze] unexpected", error);
+    return jsonError(
+      500,
+      "Dokumentanalyse fehlgeschlagen. Bitte erneut versuchen.",
+      "analyze_failed",
+    );
   }
 }

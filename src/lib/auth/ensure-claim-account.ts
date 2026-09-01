@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { getSiteUrl } from "@/lib/auth/site-url";
 import {
   authClientKeyFromHeaders,
   rateLimit,
@@ -81,12 +82,14 @@ export async function ensureClaimAccount(input: {
   }
 
   const supabase = await createClient();
+  const siteUrl = await getSiteUrl();
 
   const { data: signedUp, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: name ? { name } : undefined,
+      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent("/auth/continue")}`,
     },
   });
 

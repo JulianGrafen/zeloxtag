@@ -2,13 +2,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
-import { TextParseError } from "@/lib/ocr/parse-error";
 import {
   enforceRateLimit,
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
+import {
+  logServerError,
+  publicClientMessage,
+} from "@/lib/security/public-error";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import {
   AbeVehicleContextSchema,
@@ -98,18 +101,22 @@ export async function POST(request: NextRequest) {
         { vehicleContext: parsedBody.data.vehicleContext ?? null },
       );
     } catch (error) {
-      const message =
-        error instanceof TextParseError
-          ? error.message
-          : "Failed to parse ABE text.";
-      return jsonError(422, message, "parse_failed");
+      logServerError("[api/ocr/parse-abe] extract failed", error);
+      return jsonError(
+        422,
+        publicClientMessage(error, "ABE-Text konnte nicht ausgewertet werden."),
+        "parse_failed",
+      );
     }
 
     const body: ParseAbeSuccess = { ok: true, fields };
     return NextResponse.json(body, { status: 200 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected parse-abe error.";
-    return jsonError(500, message, "parse_failed");
+    logServerError("[api/ocr/parse-abe] unexpected", error);
+    return jsonError(
+      500,
+      "ABE-Auswertung fehlgeschlagen. Bitte erneut versuchen.",
+      "parse_failed",
+    );
   }
 }
