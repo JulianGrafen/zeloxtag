@@ -11,7 +11,10 @@ import {
   MAX_DOCUMENT_BYTES,
   type AllowedDocumentMimeType,
 } from "@/lib/documents/constants";
+import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/documents/supabase-storage-url";
 import { hardenUploadBytes } from "@/lib/security/upload-hardening";
+
+export { storagePathFromPublicOrAuthenticatedUrl };
 
 export type FileValidationSuccess = {
   ok: true;
@@ -255,31 +258,3 @@ export async function validateDocumentUpload(
   };
 }
 
-/**
- * Extract `{vehicleId}/...` object path from a Supabase Storage URL.
- */
-export function storagePathFromPublicOrAuthenticatedUrl(
-  fileUrl: string,
-  bucket: string,
-): string | null {
-  try {
-    const url = new URL(fileUrl);
-    const markers = [
-      `/object/public/${bucket}/`,
-      `/object/authenticated/${bucket}/`,
-      `/object/sign/${bucket}/`,
-    ];
-    for (const marker of markers) {
-      const idx = url.pathname.indexOf(marker);
-      if (idx >= 0) {
-        const path = decodeURIComponent(
-          url.pathname.slice(idx + marker.length),
-        );
-        return path && !path.includes("..") ? path : null;
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}

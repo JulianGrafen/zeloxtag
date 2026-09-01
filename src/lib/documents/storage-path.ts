@@ -1,6 +1,5 @@
-import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
-
 import { DOCUMENT_BUCKET } from "./constants";
+import { storagePathFromPublicOrAuthenticatedUrl } from "./supabase-storage-url";
 
 /** `{vehicleId}/{documentId}-filename.pdf` stored without host prefix. */
 const STORAGE_PATH_RE =

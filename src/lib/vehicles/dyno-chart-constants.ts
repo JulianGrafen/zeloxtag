@@ -1,5 +1,5 @@
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
-import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
+import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/documents/supabase-storage-url";
 
 export const DYNO_CHART_FILE_STEM = "dyno-chart" as const;
 
