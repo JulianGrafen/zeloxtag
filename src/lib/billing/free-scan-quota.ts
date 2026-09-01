@@ -1,10 +1,10 @@
+import "server-only";
+
 import { cache } from "react";
 
+import { FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-constants";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
-
-/** One complimentary KI invoice scan per vehicle owner account. */
-export const FREE_AI_INVOICE_SCAN_LIMIT = 1;
 
 export type FreeInvoiceScanQuota = {
   used: number;

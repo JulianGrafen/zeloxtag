@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-quota";
+import { FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-constants";
 import {
   FEATURE,
   paywallBody,

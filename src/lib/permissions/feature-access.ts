@@ -5,7 +5,7 @@
  * Cloud subscription — never stored as a separate user column.
  */
 
-import { FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-quota";
+import { FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-constants";
 
 export const USER_TIERS = ["free", "pro"] as const;
 export type UserTier = (typeof USER_TIERS)[number];
