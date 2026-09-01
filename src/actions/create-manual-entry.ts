@@ -419,7 +419,7 @@ export async function createManualVehicleEntry(
     date,
   };
 
-  const insertAttempts: Array<Record<string, unknown>> = [
+  const insertAttempts = [
     row,
     { ...row, created_by: undefined },
     {
@@ -438,11 +438,11 @@ export async function createManualVehicleEntry(
       amount: row.amount,
       date: row.date,
     },
-  ];
+  ] as const;
 
   let lastError: string | null = null;
   for (const attempt of insertAttempts) {
-    const { error } = await supabase.from("documents").insert(attempt);
+    const { error } = await supabase.from("documents").insert({ ...attempt });
     if (!error) {
       revalidateManualPaths(data.tagUuid);
       return { status: "created", documentId };

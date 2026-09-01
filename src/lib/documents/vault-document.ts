@@ -389,19 +389,19 @@ export async function saveVaultDocument(
     date: scanDate,
   };
 
-  const insertAttempts: Array<Record<string, unknown>> = [
+  const insertAttempts = [
     row,
     {
       ...row,
       approval_fields: undefined,
     },
-  ];
+  ] as const;
 
   let lastError: string | null = null;
   for (const attempt of insertAttempts) {
     const { data, error } = await supabase
       .from("documents")
-      .insert(attempt)
+      .insert({ ...attempt })
       .select("*")
       .single();
 
