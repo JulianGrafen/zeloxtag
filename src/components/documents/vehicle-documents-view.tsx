@@ -389,7 +389,21 @@ export function VehicleDocumentsView({
                   </p>
                 </div>
               ) : (
-                "Noch keine Dokumente in dieser Kategorie."
+                <div className="space-y-3">
+                  <p>Noch keine Dokumente in dieser Kategorie.</p>
+                  {!canWrite ? (
+                    <p className="text-[0.82rem] leading-relaxed">
+                      Manuelle Einträge kannst du jederzeit kostenlos anlegen —{" "}
+                      <PressableLink
+                        href={`/v/${tagUuid}/eintrag?neu=1`}
+                        className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
+                      >
+                        jetzt eintragen
+                      </PressableLink>
+                      . KI-Scan und neue Uploads sind Teil von Pro.
+                    </p>
+                  ) : null}
+                </div>
               )}
             </div>
           ) : (

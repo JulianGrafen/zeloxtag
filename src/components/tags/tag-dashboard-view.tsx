@@ -333,9 +333,11 @@ export function TagDashboardView({
       return true;
     })
     .map((tile) => {
-      if (cloudUnlocked || demoMode || demoShowcase) return tile;
+      if (demoMode || demoShowcase) return tile;
       const feature = featureForDashboardTile(tile.id);
+      // Vault read + manual history stay open on Free; only Pro-only tiles lock.
       if (!feature || !isProOnlyFeature(feature)) return tile;
+      if (cloudUnlocked) return tile;
       return {
         ...tile,
         locked: true,

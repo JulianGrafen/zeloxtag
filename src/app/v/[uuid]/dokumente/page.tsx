@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 
 import { VehicleDocumentsView } from "@/components/documents/vehicle-documents-view";
-import { ProFeatureGate } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { parseInvoiceListCategory } from "@/lib/documents/invoice-categories";
-import { FEATURE } from "@/lib/permissions/feature-access";
 import type { TagLoadOptions } from "@/lib/tags/get-tag-by-uuid";
 import type { DocumentType } from "@/types/database";
 
@@ -77,7 +75,7 @@ export default async function VehicleDocumentsPage({
   const invoiceCategory = parseInvoiceListCategory(categoryRaw) ?? "all";
   const membershipActive = await userHasActiveMembership(result.vehicle!.user_id);
 
-  const view = (
+  return (
     <VehicleDocumentsView
       tagUuid={result.tag.uuid}
       vehicleId={result.vehicle!.id}
@@ -91,18 +89,5 @@ export default async function VehicleDocumentsPage({
         !isDemoShowcase && access.canWriteInvoices && membershipActive
       }
     />
-  );
-
-  if (isDemoShowcase) return view;
-
-  return (
-    <ProFeatureGate
-      ownerUserId={result.vehicle!.user_id}
-      tagUuid={result.tag.uuid}
-      feature={FEATURE.VIEW_DOCUMENT_VAULT}
-      isContributor={access.isContributor && !access.isOwner}
-    >
-      {view}
-    </ProFeatureGate>
   );
 }

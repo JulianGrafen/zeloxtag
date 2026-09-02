@@ -8,6 +8,7 @@ import {
   proCheckoutButtonLabel,
 } from "@/lib/billing/pro-plan";
 import {
+  isProOnlyFeature,
   paywallBody,
   paywallTitle,
   type FeatureFlag,
@@ -27,6 +28,11 @@ export async function ProFeatureGate({
   isContributor?: boolean;
   children: React.ReactNode;
 }) {
+  // Free-tier features (vault read, manual entries, …) never show a paywall.
+  if (!isProOnlyFeature(feature)) {
+    return children;
+  }
+
   if (await ownerHasFeature(ownerUserId, feature)) {
     return children;
   }

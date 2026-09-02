@@ -155,8 +155,8 @@ export function ClaimFlow({
             </p>
             <p className="max-w-[34ch] text-[0.95rem] leading-relaxed text-[color:var(--vd-muted)]">
               {needsAccount
-                ? "Beim ersten Scan legst du ein Konto an und verknüpfst den Edelstahl-Tag mit deinem Auto. Die digitale Visitenkarte ist kostenlos — Belege scannen, Akte und Exposé gibt’s optional mit Pro."
-                : "Verknüpfe den Tag mit deinem Auto. Danach landest du direkt auf deinem Dashboard — ohne Zahlung. Pro brauchst du nur für KI-Scan, Akte und Exposé."}
+                ? "Beim ersten Scan legst du ein Konto an und verknüpfst den Edelstahl-Tag mit deinem Auto. Die digitale Visitenkarte und deine Akte mit manuellen Einträgen sind kostenlos — KI-Scan und Exposé optional mit Pro."
+                : "Verknüpfe den Tag mit deinem Auto. Danach landest du direkt auf deinem Dashboard — ohne Zahlung. Pro brauchst du nur für KI-Scan und Exposé."}
             </p>
           </div>
 
