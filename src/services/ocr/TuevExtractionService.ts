@@ -92,7 +92,8 @@ export const TUEV_PUNKT3_PRUEFDATUM_GUIDANCE =
   "  - 'nächste HU' / 'Nächste Untersuchung' / 'spätestens bis' / 'Nachuntersuchung bis'\n" +
   "  - 'Hauptuntersuchung vom', 'Leistungsdatum', 'HU-Datum', Fußzeilen-/Stempeldaten\n" +
   "  - Dokumenttitel, Formularversion, Fristen aus Punkt 8\n" +
-  "Output: YYYY-MM-DD. Wenn Punkt 3 nicht lesbar → null (nicht raten).";
+  "Output: YYYY-MM-DD (deutsches Datumsformat: Tag.Monat.Jahr). Beispiel: 12.09.2026 → 2026-09-12 (12. September), NIEMALS 2026-12-09.\n" +
+  "Wenn Punkt 3 nicht lesbar → null (nicht raten).";
 
 /** @deprecated Use TUEV_PUNKT3_PRUEFDATUM_GUIDANCE */
 export const TUEV_PRUEFTERMIN_GUIDANCE = TUEV_PUNKT3_PRUEFDATUM_GUIDANCE;

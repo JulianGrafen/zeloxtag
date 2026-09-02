@@ -193,6 +193,13 @@ export function preferTuevTestDate(
   if (!rawText.trim()) return llmDate;
 
   if (dateNearForbiddenLabel(rawText, llmDate)) return null;
+
+  const loosePunkt3Date = extractLooseGermanDateNearPunkt3Marker(rawText);
+  if (loosePunkt3Date) {
+    if (loosePunkt3Date !== llmDate) return loosePunkt3Date;
+    return llmDate;
+  }
+
   if (dateOnPunkt3Line(rawText, llmDate)) return llmDate;
   if (dateNearPunkt3Window(rawText, llmDate)) return llmDate;
   if (llmDateNearPunkt3Marker(rawText, llmDate)) return llmDate;
@@ -213,4 +220,35 @@ function llmDateNearPunkt3Marker(rawText: string, iso: string): boolean {
   }
 
   return false;
+}
+
+/** True when two ISO dates share a year but day/month are swapped (US vs DE). */
+export function isLikelyDayMonthSwap(correctIso: string, swappedIso: string): boolean {
+  const [y1, m1, d1] = correctIso.split("-").map(Number);
+  const [y2, m2, d2] = swappedIso.split("-").map(Number);
+  if (!y1 || !y2 || y1 !== y2 || m1 === m2) return false;
+  return m1 === d2 && d1 === m2;
+}
+
+/**
+ * Fallback when strict Punkt-3 label capture misses the date token but a German
+ * DD.MM.YYYY still appears in the Punkt-3 window (common on noisy OCR layouts).
+ */
+function extractLooseGermanDateNearPunkt3Marker(rawText: string): string | null {
+  const text = normalizeTuevOcrText(rawText);
+  const marker =
+    /(?:\(?3\)?[\.)]?\s*)|(?:Punkt|Feld)\s*3\b|(?:Prüftermin|Prüfort|Prüfdatum|Prüfungsdatum|Prüftag|Untersuchungsdatum)/gi;
+
+  for (const match of text.matchAll(marker)) {
+    if (match.index == null) continue;
+    const window = text.slice(match.index, match.index + 200);
+    for (const dateMatch of window.matchAll(/\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b/g)) {
+      const iso = parseRawDateToken(dateMatch[0] ?? "");
+      if (!iso) continue;
+      if (dateNearForbiddenLabel(rawText, iso)) continue;
+      return iso;
+    }
+  }
+
+  return null;
 }

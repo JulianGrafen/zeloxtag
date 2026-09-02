@@ -11,6 +11,7 @@ import {
 } from "@/lib/ocr/tuev-enrichment";
 import {
   extractTuevTestDateFromText,
+  isLikelyDayMonthSwap,
   preferTuevTestDate,
 } from "@/lib/ocr/tuev-test-date-from-text";
 
@@ -192,5 +193,20 @@ Prüfort Mechernich
 23.03.2021
 `.trim();
     expect(preferTuevTestDate("2021-03-23", ocr)).toBe("2021-03-23");
+  });
+
+  it("corrects LLM day/month swap when Punkt 3 shows 12.09.2026", () => {
+    const ocr = "(3) Prüftermin: 12.09.2026, 10:21 Uhr";
+    expect(preferTuevTestDate("2026-12-09", ocr)).toBe("2026-09-12");
+    expect(isLikelyDayMonthSwap("2026-09-12", "2026-12-09")).toBe(true);
+  });
+
+  it("prefers loose Punkt-3 German date when strict label capture misses", () => {
+    const ocr = `
+(3)
+12.09.2026
+(4) km-St. 89420
+`.trim();
+    expect(preferTuevTestDate("2026-12-09", ocr)).toBe("2026-09-12");
   });
 });

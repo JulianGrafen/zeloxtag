@@ -573,7 +573,10 @@ export function SingleClickTuevUpload({
               }
             />
             <SummaryRow label="Prüfstation" value={vendor?.trim() ?? null} />
-            <SummaryRow label="Prüfdatum" value={report.testDate ?? null} />
+            <SummaryRow
+              label="Prüfdatum"
+              value={report.testDate ? formatTuevYearMonth(report.testDate) : null}
+            />
             <div className="py-2.5">
               <span className="block text-[0.78rem] text-[color:var(--vd-muted)]">
                 Kilometerstand
