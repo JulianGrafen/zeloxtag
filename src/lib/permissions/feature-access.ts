@@ -5,7 +5,7 @@
  * Cloud subscription — never stored as a separate user column.
  */
 
-import { FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-constants";
+import { FREE_AI_ABE_SCAN_LIMIT, FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-constants";
 
 export const USER_TIERS = ["free", "pro"] as const;
 export type UserTier = (typeof USER_TIERS)[number];
@@ -126,9 +126,9 @@ export function paywallBody(
   switch (feature) {
     case FEATURE.SCAN_AI_RECEIPT:
       if (variant === "free_scan_exhausted") {
-        return `Du hast deinen kostenlosen KI-Rechnungsscan genutzt. Für weitere Belege, ABEs und die volle Akte: ZeloxTag Pro — die ersten 14 Tage sind kostenlos.`;
+        return `Du hast deine kostenlosen KI-Scans genutzt (${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung, ${FREE_AI_ABE_SCAN_LIMIT}× ABE). Für weitere Belege, ABEs und die volle Akte: ZeloxTag Pro — die ersten 14 Tage sind kostenlos.`;
       }
-      return `Belege fotografieren und automatisch auslesen — mit ZeloxTag Pro. Oder teste einmal kostenlos (${FREE_AI_INVOICE_SCAN_LIMIT}× KI-Rechnungsscan). Die ersten 14 Tage Pro sind ebenfalls kostenlos.`;
+      return `Belege und ABEs per KI auslesen — mit ZeloxTag Pro. Oder teste kostenlos (${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung, ${FREE_AI_ABE_SCAN_LIMIT}× ABE). Die ersten 14 Tage Pro sind ebenfalls kostenlos.`;
     case FEATURE.GENERATE_EXPOSE:
       return "Das PDF-Verkaufsdossier gibt’s mit Pro. Deine digitale Visitenkarte bleibt kostenlos.";
     case FEATURE.INVITE_SCHRAUBER:

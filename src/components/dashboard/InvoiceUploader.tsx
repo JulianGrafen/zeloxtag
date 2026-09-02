@@ -655,6 +655,7 @@ export function InvoiceUploader({
         onBack={onBack}
         backHref={resolvedBackHref}
         backLabel={backLabel}
+        useFreeScanSaveRedirect={useFreeScanSaveRedirect}
       />
     );
   }

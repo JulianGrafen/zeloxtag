@@ -10,6 +10,7 @@ import {
   writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
 import {
+  consumeFreeAbeScan,
   consumeFreeInvoiceScan,
 } from "@/lib/billing/free-scan-quota";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
@@ -67,6 +68,26 @@ export type UploadDocumentResult =
       message: string;
     }
   | { status: "error"; message: string };
+
+function isComplimentaryAbeUpload(
+  typeRaw: string,
+  approvalFields: ReturnType<typeof parseApprovalFields>,
+): boolean {
+  if (typeRaw !== "abe") return false;
+  const kind = approvalFields?.kind;
+  return kind === "abe" || kind == null;
+}
+
+function uploadVaultGateOptions(
+  typeRaw: string,
+  approvalFields: ReturnType<typeof parseApprovalFields>,
+) {
+  if (typeRaw === "invoice") return { allowFreeInvoiceScan: true as const };
+  if (isComplimentaryAbeUpload(typeRaw, approvalFields)) {
+    return { allowFreeAbeScan: true as const };
+  }
+  return undefined;
+}
 
 function parseAmount(raw: string | undefined): number | null {
   if (!raw?.trim()) return null;
@@ -249,7 +270,7 @@ export async function uploadDocument(
   const vault = await assertVehicleDocumentWrite(
     writeAccess,
     FEATURE.DOCUMENT_VAULT,
-    typeRaw === "invoice" ? { allowFreeInvoiceScan: true } : undefined,
+    uploadVaultGateOptions(typeRaw, approvalFields),
   );
   if (!vault.ok) {
     return { status: "error", message: vault.message };
@@ -545,11 +566,12 @@ export async function uploadDocument(
   revalidatePath(`/v/${tagUuid}/eintrag`);
 
   let freeScanConsumed = false;
-  if (
-    typeRaw === "invoice" &&
-    !(await userHasActiveMembership(ownerUserId))
-  ) {
-    freeScanConsumed = await consumeFreeInvoiceScan(ownerUserId);
+  if (!(await userHasActiveMembership(ownerUserId))) {
+    if (typeRaw === "invoice") {
+      freeScanConsumed = await consumeFreeInvoiceScan(ownerUserId);
+    } else if (isComplimentaryAbeUpload(typeRaw, approvalFields)) {
+      freeScanConsumed = await consumeFreeAbeScan(ownerUserId);
+    }
   }
 
   return { status: "uploaded", document, tagUuid, freeScanConsumed };

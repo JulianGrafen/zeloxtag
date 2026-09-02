@@ -119,6 +119,8 @@ export interface AbeDataHunterWizardProps {
   onBack?: () => void;
   backHref?: string;
   backLabel?: string;
+  /** After free scan save, redirect to dashboard upsell instead of document list. */
+  useFreeScanSaveRedirect?: boolean;
 }
 
 type WizardPhase =
@@ -1862,6 +1864,7 @@ export function AbeDataHunterWizard({
   successHref,
   onBack,
   backHref,
+  useFreeScanSaveRedirect = false,
 }: AbeDataHunterWizardProps) {
   const [phase, setPhase] = useState<WizardPhase>("choose");
   const [huntMode, setHuntMode] = useState<HuntMode | null>(null);
@@ -2914,6 +2917,14 @@ export function AbeDataHunterWizard({
       const result = await uploadDocument(formData);
       if (result.status === "error") {
         setSaveError(result.message);
+        return;
+      }
+      if (result.status === "duplicate") {
+        setSaveError(result.message);
+        return;
+      }
+      if (useFreeScanSaveRedirect && result.freeScanConsumed) {
+        window.location.assign(`/v/${result.tagUuid}?freeScanWelcome=1`);
         return;
       }
       if (successHref) window.location.href = successHref;

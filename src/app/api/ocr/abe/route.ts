@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
+import { FEATURE } from "@/lib/permissions/feature-access";
 import {
   enforceRateLimit,
   enforceSameOrigin,
@@ -152,6 +153,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const vehicleAccess = await requireVehicleOcrAccess(
       auth.user.id,
       String(formData.get("vehicleId") ?? ""),
+      FEATURE.SCAN_AI_RECEIPT,
+      "abe",
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
 

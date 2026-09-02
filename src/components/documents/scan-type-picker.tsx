@@ -16,6 +16,7 @@ import { ScanContent } from "@/components/layout/scan-content";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import {
   SCAN_TYPE_OPTIONS,
+  isComplimentaryAbeScanType,
   isInvoiceFamilyScanType,
   scanTypeOptionsForRole,
   type ScanType,
@@ -47,6 +48,8 @@ interface ScanTypePickerProps {
   suggestedType?: ScanType | null;
   /** One free KI invoice scan available — highlight invoice types. */
   freeInvoiceScanRemaining?: number;
+  /** One free KI ABE scan available — highlight ABE tile. */
+  freeAbeScanRemaining?: number;
 }
 
 function ScanTile({
@@ -115,10 +118,12 @@ export function ScanTypePicker({
   role = "owner",
   suggestedType = null,
   freeInvoiceScanRemaining = 0,
+  freeAbeScanRemaining = 0,
 }: ScanTypePickerProps) {
   const options =
     role === "owner" ? SCAN_TYPE_OPTIONS : scanTypeOptionsForRole(role);
-  const showFreeScanHint = freeInvoiceScanRemaining > 0;
+  const showInvoiceFreeHint = freeInvoiceScanRemaining > 0;
+  const showAbeFreeHint = freeAbeScanRemaining > 0;
 
   return (
     <ScanContent className="vd-anim-stack pb-12">
@@ -140,11 +145,13 @@ export function ScanTypePicker({
         </p>
       </header>
 
-      {showFreeScanHint ? (
+      {showInvoiceFreeHint || showAbeFreeHint ? (
         <p className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 px-3 py-2.5 text-[0.82rem] leading-snug text-emerald-950">
-          <strong className="font-semibold">1× KI-Rechnungsscan gratis:</strong>{" "}
-          Rechnung, Reparatur oder Service scannen — danach Pro für weitere
-          Belege und ABE/TÜV.
+          <strong className="font-semibold">Gratis KI-Scans:</strong>{" "}
+          {showInvoiceFreeHint ? "1× Rechnung/Service" : null}
+          {showInvoiceFreeHint && showAbeFreeHint ? " · " : null}
+          {showAbeFreeHint ? "1× ABE" : null}
+          {" — "}danach Pro für TÜV, Gutachten und weitere Scans.
         </p>
       ) : null}
 
@@ -156,7 +163,8 @@ export function ScanTypePicker({
             onSelect={onSelect}
             suggested={suggestedType === option.id}
             freeScan={
-              showFreeScanHint && isInvoiceFamilyScanType(option.id)
+              (showInvoiceFreeHint && isInvoiceFamilyScanType(option.id)) ||
+              (showAbeFreeHint && isComplimentaryAbeScanType(option.id))
             }
           />
         ))}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { QrCode, Tag } from "lucide-react";
+import { Tag } from "lucide-react";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { isOperatorEmail } from "@/lib/auth/require-operator";
@@ -30,13 +30,6 @@ export async function Navbar() {
               Mint
             </Link>
           ) : null}
-          <Link
-            href="/demo"
-            className="claim-cta-sm !w-auto px-3 py-1.5 no-underline"
-          >
-            <QrCode className="h-3.5 w-3.5" aria-hidden />
-            Demo
-          </Link>
         </nav>
       </div>
     </header>

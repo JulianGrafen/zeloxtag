@@ -49,12 +49,12 @@ export function FreeScanSuccessModal({
           id="free-scan-success-title"
           className="font-[family-name:var(--font-display)] text-[1.2rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]"
         >
-          Beleg gespeichert — KI hat alles erkannt
+          Dokument gespeichert — KI hat alles erkannt
         </h2>
         <p className="claim-copy mt-2 text-[0.88rem]">
-          Dein kostenloser KI-Rechnungsscan liegt jetzt in der Akte. Für weitere
-          Belege, ABEs, TÜV und die volle Dokumentenakte: ZeloxTag Pro — die
-          ersten 14 Tage sind kostenlos.
+          Dein kostenloser KI-Scan liegt jetzt in der Akte. Für weitere Belege,
+          ABEs, TÜV und die volle Dokumentenakte: ZeloxTag Pro — die ersten 14
+          Tage sind kostenlos.
         </p>
         <StripeCheckoutButton
           successPath={`/v/${tagUuid}`}

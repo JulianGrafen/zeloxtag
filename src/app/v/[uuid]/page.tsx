@@ -14,7 +14,7 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { isOperatorEmail } from "@/lib/auth/require-operator";
 import { getTagVehicleAccess, getVehicleAccess } from "@/lib/auth/vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
-import { getFreeInvoiceScanQuota } from "@/lib/billing/free-scan-quota";
+import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free-scan-quota";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 import {
   loadPublicShowcaseDocuments,
@@ -258,12 +258,18 @@ export default async function TagScanPage({
     }
 
     const membershipActive = await userHasActiveMembership(vehicle.user_id);
-    const freeScanQuota = membershipActive
+    const freeInvoiceScanQuota = membershipActive
       ? { remaining: 0, used: 0, limit: 1 }
       : await getFreeInvoiceScanQuota(vehicle.user_id);
+    const freeAbeScanQuota = membershipActive
+      ? { remaining: 0, used: 0, limit: 1 }
+      : await getFreeAbeScanQuota(vehicle.user_id);
     const wantsScan = scan === "1" && tour !== "1";
     const openScanner =
-      wantsScan && (membershipActive || freeScanQuota.remaining > 0);
+      wantsScan &&
+      (membershipActive ||
+        freeInvoiceScanQuota.remaining > 0 ||
+        freeAbeScanQuota.remaining > 0);
     const pendingTour = await hasPendingDashboardTour();
     const startTour =
       access.isOwner &&
@@ -306,7 +312,8 @@ export default async function TagScanPage({
           initialScanType={openScanner ? (scanType ?? null) : null}
           startTour={startTour}
           membershipActive={membershipActive}
-          freeInvoiceScanRemaining={freeScanQuota.remaining}
+          freeInvoiceScanRemaining={freeInvoiceScanQuota.remaining}
+          freeAbeScanRemaining={freeAbeScanQuota.remaining}
           showFreeScanWelcome={freeScanWelcome === "1"}
           showOperatorMinter={showOperatorMinter}
         />

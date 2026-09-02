@@ -58,6 +58,8 @@ interface TagDashboardViewProps {
   cloudUnlocked?: boolean;
   /** One free KI invoice scan still available for the owner. */
   freeInvoiceScanRemaining?: number;
+  /** One free KI ABE scan still available for the owner. */
+  freeAbeScanRemaining?: number;
   onOpenScanner?: () => void;
   /** Pro tile without href — open the action-based paywall. */
   onLockedFeature?: (feature: FeatureFlag) => void;
@@ -85,6 +87,7 @@ export function TagDashboardView({
   demoMode = false,
   cloudUnlocked = true,
   freeInvoiceScanRemaining = 0,
+  freeAbeScanRemaining = 0,
   onOpenScanner,
   onLockedFeature,
   onEditVehicleImage,
@@ -186,7 +189,9 @@ export function TagDashboardView({
           subtitle:
             abeCount > 0
               ? dokumenteLabel(abeCount)
-              : "Scannen",
+              : !cloudUnlocked && freeAbeScanRemaining > 0
+                ? "1× KI-Scan gratis"
+                : "Scannen",
         },
       };
     }
@@ -390,10 +395,11 @@ export function TagDashboardView({
           onOpenScanner={onOpenScanner}
           manualEntryHref={manualEntryHref}
           scanLabel={
-            !cloudUnlocked && freeInvoiceScanRemaining > 0
+            !cloudUnlocked &&
+            (freeInvoiceScanRemaining > 0 || freeAbeScanRemaining > 0)
               ? isContributor && !isOwner
-                ? "Beleg scannen (1× gratis)"
-                : "Dokument scannen (1× gratis)"
+                ? "Beleg scannen (gratis)"
+                : "Dokument scannen (gratis)"
               : isContributor && !isOwner
                 ? "Beleg scannen"
                 : "Dokument scannen"

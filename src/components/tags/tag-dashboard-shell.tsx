@@ -10,6 +10,7 @@ import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilh
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
 import {
   parseScanType,
+  isComplimentaryAbeScanType,
   isInvoiceFamilyScanType,
   SCHRAUBER_SCAN_TYPES,
   type ScanType,
@@ -86,6 +87,8 @@ interface TagDashboardShellProps {
   membershipActive?: boolean;
   /** Remaining complimentary KI invoice scans for the vehicle owner. */
   freeInvoiceScanRemaining?: number;
+  /** Remaining complimentary KI ABE scans for the vehicle owner. */
+  freeAbeScanRemaining?: number;
   /** Post-save upsell after the one free scan (`?freeScanWelcome=1`). */
   showFreeScanWelcome?: boolean;
   /** Inventory minter tile for configured superuser. */
@@ -108,6 +111,7 @@ export function TagDashboardShell({
   startTour = false,
   membershipActive = false,
   freeInvoiceScanRemaining = 0,
+  freeAbeScanRemaining = 0,
   showFreeScanWelcome = false,
   showOperatorMinter = false,
 }: TagDashboardShellProps) {
@@ -115,7 +119,9 @@ export function TagDashboardShell({
   const role = isOwner ? "owner" : "contributor";
   const demoShowcase = isDemoActiveTag(tagUuid);
   const canAiScan =
-    membershipActive || freeInvoiceScanRemaining > 0;
+    membershipActive ||
+    freeInvoiceScanRemaining > 0 ||
+    freeAbeScanRemaining > 0;
   const parsedInitial = parseScanType(initialScanType ?? undefined);
   const allowedInitial =
     parsedInitial &&
@@ -144,15 +150,19 @@ export function TagDashboardShell({
     },
   );
   const [paywallVariant, setPaywallVariant] = useState<PaywallVariant>(
-    freeInvoiceScanRemaining === 0 && !membershipActive
+    freeInvoiceScanRemaining === 0 &&
+      freeAbeScanRemaining === 0 &&
+      !membershipActive
       ? "free_scan_exhausted"
       : "default",
   );
   const [showFreeScanSuccess, setShowFreeScanSuccess] = useState(
     showFreeScanWelcome,
   );
-  const [localFreeScanRemaining, setLocalFreeScanRemaining] = useState(
-    freeInvoiceScanRemaining,
+  const [localFreeInvoiceScanRemaining, setLocalFreeInvoiceScanRemaining] =
+    useState(freeInvoiceScanRemaining);
+  const [localFreeAbeScanRemaining, setLocalFreeAbeScanRemaining] = useState(
+    freeAbeScanRemaining,
   );
   const [scanType, setScanType] = useState<ScanType | null>(null);
   const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
@@ -170,8 +180,12 @@ export function TagDashboardShell({
   }, [startTour]);
 
   useEffect(() => {
-    setLocalFreeScanRemaining(freeInvoiceScanRemaining);
+    setLocalFreeInvoiceScanRemaining(freeInvoiceScanRemaining);
   }, [freeInvoiceScanRemaining]);
+
+  useEffect(() => {
+    setLocalFreeAbeScanRemaining(freeAbeScanRemaining);
+  }, [freeAbeScanRemaining]);
 
   useEffect(() => {
     if (showFreeScanWelcome) {
@@ -188,24 +202,32 @@ export function TagDashboardShell({
   }
 
   function handleScanTypeSelect(type: ScanType) {
-    if (!membershipActive && !isInvoiceFamilyScanType(type)) {
-      openPaywall(FEATURE.SCAN_AI_RECEIPT, "default");
-      return;
-    }
-    if (
-      !membershipActive &&
-      isInvoiceFamilyScanType(type) &&
-      localFreeScanRemaining <= 0
-    ) {
-      openPaywall(FEATURE.SCAN_AI_RECEIPT, "free_scan_exhausted");
-      return;
+    if (!membershipActive) {
+      if (isInvoiceFamilyScanType(type)) {
+        if (localFreeInvoiceScanRemaining <= 0) {
+          openPaywall(FEATURE.SCAN_AI_RECEIPT, "free_scan_exhausted");
+          return;
+        }
+      } else if (isComplimentaryAbeScanType(type)) {
+        if (localFreeAbeScanRemaining <= 0) {
+          openPaywall(FEATURE.SCAN_AI_RECEIPT, "free_scan_exhausted");
+          return;
+        }
+      } else {
+        openPaywall(FEATURE.SCAN_AI_RECEIPT, "default");
+        return;
+      }
     }
     setScanType(type);
     setMode("scanner");
   }
 
   function handleOpenScanner() {
-    if (!membershipActive && localFreeScanRemaining <= 0) {
+    if (
+      !membershipActive &&
+      localFreeInvoiceScanRemaining <= 0 &&
+      localFreeAbeScanRemaining <= 0
+    ) {
       openPaywall(
         FEATURE.SCAN_AI_RECEIPT,
         "free_scan_exhausted",
@@ -371,7 +393,10 @@ export function TagDashboardShell({
           role={role}
           suggestedType={allowedInitial}
           freeInvoiceScanRemaining={
-            membershipActive ? 0 : localFreeScanRemaining
+            membershipActive ? 0 : localFreeInvoiceScanRemaining
+          }
+          freeAbeScanRemaining={
+            membershipActive ? 0 : localFreeAbeScanRemaining
           }
           onBack={() => {
             setScanType(null);
@@ -409,7 +434,13 @@ export function TagDashboardShell({
           }}
           scanType={scanType}
           useFreeScanSaveRedirect={
-            !membershipActive && localFreeScanRemaining > 0
+            !membershipActive &&
+            ((scanType != null &&
+              isInvoiceFamilyScanType(scanType) &&
+              localFreeInvoiceScanRemaining > 0) ||
+              (scanType != null &&
+                isComplimentaryAbeScanType(scanType) &&
+                localFreeAbeScanRemaining > 0))
           }
         />
         <ProPaywallModal
@@ -437,13 +468,18 @@ export function TagDashboardShell({
         showOperatorMinter={showOperatorMinter}
         cloudUnlocked={membershipActive}
         freeInvoiceScanRemaining={
-          membershipActive ? 0 : localFreeScanRemaining
+          membershipActive ? 0 : localFreeInvoiceScanRemaining
+        }
+        freeAbeScanRemaining={
+          membershipActive ? 0 : localFreeAbeScanRemaining
         }
         onOpenScanner={handleOpenScanner}
         onLockedFeature={(feature) => {
           openPaywall(
             feature,
-            !membershipActive && localFreeScanRemaining <= 0
+            !membershipActive &&
+              localFreeInvoiceScanRemaining <= 0 &&
+              localFreeAbeScanRemaining <= 0
               ? "free_scan_exhausted"
               : "default",
           );

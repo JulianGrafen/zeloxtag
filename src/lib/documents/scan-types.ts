@@ -236,3 +236,8 @@ export function scanTypeDefinition(type: ScanType): ScanTypeDefinition {
 export function isInvoiceFamilyScanType(type: ScanType): boolean {
   return scanTypeDefinition(type).ocrDocumentType === "invoice";
 }
+
+/** Classic ABE scan eligible for the one free KI scan on Free. */
+export function isComplimentaryAbeScanType(type: ScanType): boolean {
+  return type === "abe";
+}

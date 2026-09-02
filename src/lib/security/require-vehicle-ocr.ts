@@ -20,7 +20,9 @@ import { subscriptionRequiredResponse } from "./api-guard";
 const vehicleIdSchema = z.string().uuid();
 
 function ocrGateOptions(documentType?: OcrDocumentType): FeatureGateOptions {
-  return documentType === "invoice" ? { allowFreeInvoiceScan: true } : {};
+  if (documentType === "invoice") return { allowFreeInvoiceScan: true };
+  if (documentType === "abe") return { allowFreeAbeScan: true };
+  return {};
 }
 
 export async function requireVehicleOcrAccess(

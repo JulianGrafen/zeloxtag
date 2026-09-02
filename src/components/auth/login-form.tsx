@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 import {
   signInWithPassword,
   signUpWithPassword,
@@ -269,19 +268,6 @@ export function LoginForm({
 
       <p className="text-center text-sm leading-relaxed text-muted-foreground">
         Neuer Tag? Scanne den QR-Code am Fahrzeug, um ihn zu beanspruchen.
-      </p>
-
-      <p className="text-center text-sm text-muted-foreground">
-        <a
-          href="/demo"
-          className={cn(
-            "font-medium text-foreground underline decoration-border underline-offset-4",
-            "transition hover:decoration-foreground",
-          )}
-        >
-          Demo ansehen
-        </a>
-        <span> · BMW E36 328i Showcase</span>
       </p>
 
       <nav

@@ -1,7 +1,9 @@
 import type { VehicleWriteAccess } from "@/lib/auth/vehicle-write-access";
 import { writeAccessErrorMessage } from "@/lib/auth/vehicle-write-access";
 import {
+  ownerCanUseAiAbeScan,
   ownerCanUseAiInvoiceScan,
+  ownerHasFreeAbeScanRemaining,
   ownerHasFreeInvoiceScanRemaining,
 } from "@/lib/billing/free-scan-quota";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
@@ -37,6 +39,8 @@ export type FeatureDenied = {
 export type FeatureGateOptions = {
   /** Allow the vehicle owner's one free KI invoice scan. */
   allowFreeInvoiceScan?: boolean;
+  /** Allow the vehicle owner's one free KI ABE scan. */
+  allowFreeAbeScan?: boolean;
 };
 
 async function denyOwnerFeature(
@@ -46,6 +50,17 @@ async function denyOwnerFeature(
   if (
     options?.allowFreeInvoiceScan &&
     !(await ownerHasFreeInvoiceScanRemaining(ownerUserId))
+  ) {
+    return {
+      ok: false,
+      code: FREE_SCAN_EXHAUSTED_CODE,
+      message: MEMBERSHIP_REQUIRED_MESSAGE,
+    };
+  }
+
+  if (
+    options?.allowFreeAbeScan &&
+    !(await ownerHasFreeAbeScanRemaining(ownerUserId))
   ) {
     return {
       ok: false,
@@ -75,6 +90,15 @@ export async function assertOwnerFeature(
     (feature === FEATURE.SCAN_AI_RECEIPT ||
       feature === FEATURE.DOCUMENT_VAULT) &&
     (await ownerCanUseAiInvoiceScan(ownerUserId))
+  ) {
+    return { ok: true };
+  }
+
+  if (
+    options?.allowFreeAbeScan &&
+    (feature === FEATURE.SCAN_AI_RECEIPT ||
+      feature === FEATURE.DOCUMENT_VAULT) &&
+    (await ownerCanUseAiAbeScan(ownerUserId))
   ) {
     return { ok: true };
   }
@@ -111,7 +135,7 @@ export async function assertVehicleDocumentWrite(
     if (!invite.ok) return invite;
 
     if (
-      options?.allowFreeInvoiceScan &&
+      (options?.allowFreeInvoiceScan || options?.allowFreeAbeScan) &&
       (feature === FEATURE.SCAN_AI_RECEIPT ||
         feature === FEATURE.DOCUMENT_VAULT)
     ) {
