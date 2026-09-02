@@ -44,7 +44,7 @@ export default async function VehicleOilIntervalDetailPage({
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: result.tag.uuid,
-    feature: FEATURE.DOCUMENT_VAULT,
+    feature: FEATURE.VIEW_DOCUMENT_VAULT,
     children: (
       <OilIntervalDetailView
         record={record}

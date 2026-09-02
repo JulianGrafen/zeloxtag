@@ -24,14 +24,16 @@ describe("hasFeatureAccess", () => {
     expect(hasFeatureAccess("free", FEATURE.ADD_MANUAL_SERVICE_ENTRY)).toBe(true);
   });
 
-  it("keeps AI scan, vault, exposé, and Schrauber on Pro", () => {
+  it("keeps AI scan and vault writes on Pro", () => {
     expect(hasFeatureAccess("free", FEATURE.SCAN_AI_RECEIPT)).toBe(false);
     expect(hasFeatureAccess("free", FEATURE.DOCUMENT_VAULT)).toBe(false);
+    expect(hasFeatureAccess("free", FEATURE.VIEW_DOCUMENT_VAULT)).toBe(true);
     expect(hasFeatureAccess("free", FEATURE.GENERATE_EXPOSE)).toBe(false);
     expect(hasFeatureAccess("free", FEATURE.INVITE_SCHRAUBER)).toBe(false);
 
     expect(hasFeatureAccess("pro", FEATURE.SCAN_AI_RECEIPT)).toBe(true);
     expect(hasFeatureAccess("pro", FEATURE.DOCUMENT_VAULT)).toBe(true);
+    expect(hasFeatureAccess("pro", FEATURE.VIEW_DOCUMENT_VAULT)).toBe(true);
     expect(hasFeatureAccess("pro", FEATURE.GENERATE_EXPOSE)).toBe(true);
   });
 });
@@ -46,12 +48,14 @@ describe("dashboard tile mapping", () => {
     expect(isProOnlyFeature(FEATURE.CLAIM_TAG)).toBe(false);
   });
 
-  it("maps vault tiles and scan-adjacent tiles to Pro", () => {
-    expect(featureForDashboardTile("invoices")).toBe(FEATURE.DOCUMENT_VAULT);
-    expect(featureForDashboardTile("abe")).toBe(FEATURE.DOCUMENT_VAULT);
-    expect(featureForDashboardTile("service")).toBe(FEATURE.DOCUMENT_VAULT);
+  it("maps vault tiles to free read access and scan to Pro", () => {
+    expect(featureForDashboardTile("invoices")).toBe(FEATURE.VIEW_DOCUMENT_VAULT);
+    expect(featureForDashboardTile("abe")).toBe(FEATURE.VIEW_DOCUMENT_VAULT);
+    expect(featureForDashboardTile("service")).toBe(FEATURE.VIEW_DOCUMENT_VAULT);
     expect(featureForDashboardTile("schrauber")).toBe(FEATURE.INVITE_SCHRAUBER);
+    expect(isProOnlyFeature(FEATURE.VIEW_DOCUMENT_VAULT)).toBe(false);
     expect(isProOnlyFeature(FEATURE.SCAN_AI_RECEIPT)).toBe(true);
+    expect(isProOnlyFeature(FEATURE.DOCUMENT_VAULT)).toBe(true);
   });
 
   it("keeps manual service history tiles on the free tier", () => {

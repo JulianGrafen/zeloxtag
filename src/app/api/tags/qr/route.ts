@@ -5,6 +5,7 @@ import { enforceRateLimit } from "@/lib/security/api-guard";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import {
   isPlaqueTagUuid,
+  plaqueProductionOrigin,
   plaqueScanUrl,
   plaqueSvgFilename,
   renderPlaqueQrSvg,
@@ -13,15 +14,7 @@ import {
 export const runtime = "nodejs";
 
 function plaqueOrigin(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
-  if (
-    configured &&
-    !configured.includes("localhost") &&
-    !configured.includes("127.0.0.1")
-  ) {
-    return configured;
-  }
-  return "https://app.zeloxtag.de";
+  return plaqueProductionOrigin();
 }
 
 /**

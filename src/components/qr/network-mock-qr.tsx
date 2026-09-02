@@ -23,7 +23,8 @@ type MintedPlaque = {
   svg: string;
 };
 
-const BATCH_OPTIONS = [1, 5, 10, 20] as const;
+const BATCH_OPTIONS = [1, 5, 10, 20, 25] as const;
+const DEFAULT_BATCH = 25;
 
 function resolvePublicOrigin(): string {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
@@ -42,6 +43,37 @@ function resolvePublicOrigin(): string {
 
 function downloadTextFile(contents: string, filename: string, type: string) {
   const blob = new Blob([contents], { type });
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(href);
+}
+
+async function downloadPlaqueZip(uuids: string[]): Promise<void> {
+  const response = await fetch("/api/tags/qr/zip", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uuids }),
+  });
+
+  if (response.status === 401) {
+    throw new Error("Bitte anmelden, um QR-Codes zu minten.");
+  }
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    throw new Error(payload?.error || "ZIP konnte nicht erstellt werden.");
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filename =
+    disposition.match(/filename="([^"]+)"/)?.[1] ??
+    `zeloxtag-mint-${uuids.length}.zip`;
   const href = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = href;
@@ -69,9 +101,13 @@ async function renderPlaque(
 export function NetworkMockQr() {
   const [origin, setOrigin] = useState<string>("");
   const [plaques, setPlaques] = useState<MintedPlaque[]>([]);
+  const [lastBatchUuids, setLastBatchUuids] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [count, setCount] = useState<(typeof BATCH_OPTIONS)[number]>(1);
+  const [zipPending, setZipPending] = useState(false);
+  const [count, setCount] = useState<(typeof BATCH_OPTIONS)[number]>(
+    DEFAULT_BATCH,
+  );
 
   const loadLatestUnclaimed = useCallback(async () => {
     const nextOrigin = resolvePublicOrigin();
@@ -123,45 +159,77 @@ export function NetworkMockQr() {
     }
   }, []);
 
-  const mintBatch = useCallback(async () => {
-    const nextOrigin = resolvePublicOrigin();
-    setOrigin(nextOrigin);
-    setLoading(true);
+  const mintBatch = useCallback(
+    async (options?: { downloadZip?: boolean }) => {
+      const nextOrigin = resolvePublicOrigin();
+      setOrigin(nextOrigin);
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/tags/mint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ count }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          tags?: Array<{ uuid: string }>;
+          error?: string;
+        } | null;
+
+        if (response.status === 401) {
+          throw new Error("Bitte anmelden, um QR-Codes zu minten.");
+        }
+        if (!response.ok || !payload?.ok || !payload.tags?.length) {
+          throw new Error(payload?.error || "Mint fehlgeschlagen.");
+        }
+
+        const mintedUuids = payload.tags
+          .map((tag) => tag.uuid)
+          .filter((uuid) => isPlaqueTagUuid(uuid));
+        setLastBatchUuids(mintedUuids);
+
+        const rendered = await Promise.all(
+          mintedUuids.map((uuid) => renderPlaque(nextOrigin, uuid, "minted")),
+        );
+        setPlaques((current) => [...rendered, ...current]);
+
+        if (options?.downloadZip && mintedUuids.length > 0) {
+          setZipPending(true);
+          try {
+            await downloadPlaqueZip(mintedUuids);
+          } finally {
+            setZipPending(false);
+          }
+        }
+      } catch (mintError) {
+        setError(
+          mintError instanceof Error ? mintError.message : "Mint fehlgeschlagen.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [count],
+  );
+
+  const downloadLastBatchZip = useCallback(async () => {
+    if (lastBatchUuids.length === 0) return;
+    setZipPending(true);
     setError(null);
-
     try {
-      const response = await fetch("/api/tags/mint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count }),
-      });
-      const payload = (await response.json().catch(() => null)) as {
-        ok?: boolean;
-        tags?: Array<{ uuid: string }>;
-        error?: string;
-      } | null;
-
-      if (response.status === 401) {
-        throw new Error("Bitte anmelden, um QR-Codes zu minten.");
-      }
-      if (!response.ok || !payload?.ok || !payload.tags?.length) {
-        throw new Error(payload?.error || "Mint fehlgeschlagen.");
-      }
-
-      const rendered = await Promise.all(
-        payload.tags
-          .filter((tag) => isPlaqueTagUuid(tag.uuid))
-          .map((tag) => renderPlaque(nextOrigin, tag.uuid, "minted")),
-      );
-      setPlaques((current) => [...rendered, ...current]);
-    } catch (mintError) {
+      await downloadPlaqueZip(lastBatchUuids);
+    } catch (zipError) {
       setError(
-        mintError instanceof Error ? mintError.message : "Mint fehlgeschlagen.",
+        zipError instanceof Error
+          ? zipError.message
+          : "ZIP konnte nicht erstellt werden.",
       );
     } finally {
-      setLoading(false);
+      setZipPending(false);
     }
-  }, [count]);
+  }, [lastBatchUuids]);
 
   useEffect(() => {
     void loadLatestUnclaimed();
@@ -169,6 +237,7 @@ export function NetworkMockQr() {
 
   const isLocalhost =
     origin.includes("localhost") || origin.includes("127.0.0.1");
+  const busy = loading || zipPending;
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -197,7 +266,7 @@ export function NetworkMockQr() {
             Anzahl
             <select
               value={count}
-              disabled={loading}
+              disabled={busy}
               onChange={(event) =>
                 setCount(
                   Number(event.target.value) as (typeof BATCH_OPTIONS)[number],
@@ -215,17 +284,29 @@ export function NetworkMockQr() {
           <PressableButton
             type="button"
             variant="button"
-            disabled={loading}
-            onClick={() => void mintBatch()}
+            disabled={busy}
+            onClick={() => void mintBatch({ downloadZip: true })}
             className="claim-cta-sm disabled:opacity-50"
           >
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            {count === 1 ? "Tag minten" : `${count} Tags minten`}
+            {count === 1
+              ? "Tag minten & ZIP"
+              : `${count} Tags minten & ZIP`}
           </PressableButton>
           <PressableButton
             type="button"
             variant="button"
-            disabled={loading}
+            disabled={busy}
+            onClick={() => void mintBatch()}
+            className="claim-back !w-auto px-3 py-2 text-[0.78rem] disabled:opacity-50"
+          >
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            Nur minten
+          </PressableButton>
+          <PressableButton
+            type="button"
+            variant="button"
+            disabled={busy}
             onClick={() => void loadLatestUnclaimed()}
             className="claim-back !w-auto px-3 py-2 text-[0.78rem] disabled:opacity-50"
           >
@@ -237,26 +318,16 @@ export function NetworkMockQr() {
 
       {error ? <p className="vd-alert-error">{error}</p> : null}
 
-      {plaques.length > 1 ? (
+      {lastBatchUuids.length > 0 ? (
         <PressableButton
           type="button"
           variant="button"
-          disabled={loading}
-          onClick={() => {
-            plaques.forEach((plaque, index) => {
-              window.setTimeout(() => {
-                downloadTextFile(
-                  plaque.svg,
-                  plaqueSvgFilename(plaque.uuid),
-                  "image/svg+xml",
-                );
-              }, index * 180);
-            });
-          }}
+          disabled={busy}
+          onClick={() => void downloadLastBatchZip()}
           className="claim-back !w-auto px-4 py-3 text-[0.85rem]"
         >
           <Download className="h-4 w-4" aria-hidden />
-          Alle {plaques.length} SVGs speichern
+          Letzte {lastBatchUuids.length} SVGs als ZIP
         </PressableButton>
       ) : null}
 

@@ -36,7 +36,7 @@ export default async function UmbautenPage({ params }: UmbautenPageProps) {
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: result.tag.uuid,
-    feature: FEATURE.DOCUMENT_VAULT,
+    feature: FEATURE.VIEW_DOCUMENT_VAULT,
     children: (
       <ManualEntryView
         tagUuid={result.tag.uuid}

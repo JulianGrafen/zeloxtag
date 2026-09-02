@@ -22,6 +22,18 @@ export function plaqueScanUrl(origin: string, uuid: string): string {
   return `${base}/v/${id}`;
 }
 
+export function plaqueProductionOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  if (
+    configured &&
+    !configured.includes("localhost") &&
+    !configured.includes("127.0.0.1")
+  ) {
+    return configured;
+  }
+  return "https://app.zeloxtag.de";
+}
+
 export function plaqueSvgFilename(uuid: string): string {
   return `zeloxtag-${uuid.trim()}.svg`;
 }

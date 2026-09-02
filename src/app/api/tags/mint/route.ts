@@ -5,6 +5,7 @@ import { enforceRateLimit, enforceSameOrigin } from "@/lib/security/api-guard";
 import { getSupabaseEnvDiagnostics } from "@/lib/supabase/env";
 import {
   createUnclaimedTags,
+  MAX_MINT_BATCH,
   parseMintCount,
 } from "@/lib/tags/create-unclaimed-tag";
 
@@ -13,7 +14,7 @@ export const runtime = "nodejs";
 /**
  * POST /api/tags/mint
  * Superuser-only batch mint for steel QR plaques.
- * Body: `{ "count": 1-20 }`
+ * Body: `{ "count": 1-25 }`
  */
 export async function POST(request: NextRequest) {
   const originBlocked = enforceSameOrigin(request);
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
   );
   if (!count) {
     return NextResponse.json(
-      { ok: false, error: "Anzahl muss zwischen 1 und 20 liegen." },
+      { ok: false, error: `Anzahl muss zwischen 1 und ${MAX_MINT_BATCH} liegen.` },
       { status: 400 },
     );
   }

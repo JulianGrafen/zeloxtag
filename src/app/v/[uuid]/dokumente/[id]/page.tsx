@@ -7,6 +7,8 @@ import { DocumentAbeDetailView } from "@/components/documents/document-abe-detai
 import { DocumentInvoiceDetailView } from "@/components/documents/document-invoice-detail-view";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
+import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { getDocumentById } from "@/lib/tags/get-tag-by-uuid";
 
@@ -44,6 +46,10 @@ export default async function DocumentDetailPage({
   }
 
   const vehicleLabel = `${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`;
+  const membershipActive = await userHasActiveMembership(result.vehicle!.user_id);
+  const manualEntry = isManualVehicleEntry(document);
+  const canManageDocument =
+    membershipActive || (access.isOwner && manualEntry);
 
   const view =
     document.type === "abe" ? (
@@ -67,10 +73,11 @@ export default async function DocumentDetailPage({
         vehicleLabel={vehicleLabel}
         document={document}
         canEdit={
-          access.isOwner ||
-          (access.isContributor && document.type === "invoice")
+          canManageDocument &&
+          (access.isOwner ||
+            (access.isContributor && document.type === "invoice"))
         }
-        canDelete={access.isOwner}
+        canDelete={access.isOwner && canManageDocument}
       />
       </>
     );
@@ -79,7 +86,7 @@ export default async function DocumentDetailPage({
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: result.tag.uuid,
-    feature: FEATURE.DOCUMENT_VAULT,
+    feature: FEATURE.VIEW_DOCUMENT_VAULT,
     children: view,
   });
 }

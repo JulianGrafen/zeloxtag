@@ -37,8 +37,10 @@ interface ServiceInspectionsViewProps {
   vehicleId: string;
   vehicleLabel: string;
   documents: Document[];
-  /** Open type picker immediately. */
+  /** Open type picker immediately (Pro only). */
   initialScan?: boolean;
+  /** Pro: scan FAB + delete scanned documents. */
+  canManageDocuments?: boolean;
 }
 
 type ServiceScanMode = "list" | "pick-scan" | "scanner";
@@ -49,6 +51,7 @@ export function ServiceInspectionsView({
   vehicleLabel,
   documents,
   initialScan = false,
+  canManageDocuments = true,
 }: ServiceInspectionsViewProps) {
   const router = useRouter();
   const [mode, setMode] = useState<ServiceScanMode>(
@@ -219,7 +222,9 @@ export function ServiceInspectionsView({
                 const amount = formatDocumentAmount(doc.amount);
                 const workshop = doc.vendor?.trim() || null;
                 const isMock = doc.file_url.startsWith("mock://");
-                const canDelete = isMock || !doc.file_url.startsWith("/demo/");
+                const canDelete =
+                  canManageDocuments &&
+                  (isMock || !doc.file_url.startsWith("/demo/"));
                 const detailHref = `/v/${tagUuid}/dokumente/${doc.id}`;
 
                 return (
@@ -261,22 +266,24 @@ export function ServiceInspectionsView({
         </section>
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="pointer-events-auto w-full max-w-lg">
-          <PressableButton
-            type="button"
-            variant="button"
-            onClick={() => {
-              setScanType(null);
-              setMode("pick-scan");
-            }}
-            className="claim-cta inline-flex w-full items-center justify-center gap-2"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Inspektion scannen
-          </PressableButton>
+      {canManageDocuments ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="pointer-events-auto w-full max-w-lg">
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={() => {
+                setScanType(null);
+                setMode("pick-scan");
+              }}
+              className="claim-cta inline-flex w-full items-center justify-center gap-2"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Inspektion scannen
+            </PressableButton>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

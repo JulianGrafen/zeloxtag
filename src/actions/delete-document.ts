@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertOwnerFeature } from "@/lib/permissions/require-feature";
+import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import {
   getMockUploadedDocuments,
@@ -64,10 +65,6 @@ export async function deleteDocument(input: {
   if (!ownership.ok) {
     return { status: "error", message: ownership.message };
   }
-  const vault = await assertOwnerFeature(ownership.userId, FEATURE.DOCUMENT_VAULT);
-  if (!vault.ok) {
-    return { status: "error", message: vault.message };
-  }
 
   const supabase = await createClient();
   const { data: document, error: loadError } = await supabase
@@ -82,6 +79,16 @@ export async function deleteDocument(input: {
   }
   if (!document) {
     return { status: "error", message: "Dokument nicht gefunden." };
+  }
+
+  const vault = isManualVehicleEntry(document)
+    ? await assertOwnerFeature(
+        ownership.userId,
+        FEATURE.ADD_MANUAL_SERVICE_ENTRY,
+      )
+    : await assertOwnerFeature(ownership.userId, FEATURE.DOCUMENT_VAULT);
+  if (!vault.ok) {
+    return { status: "error", message: vault.message };
   }
 
   const storagePath = resolveStoragePath(document.file_url);

@@ -15,6 +15,8 @@ export const FEATURE = {
   EDIT_BASIC_PROFILE: "CAN_EDIT_BASIC_PROFILE",
   CLAIM_TAG: "CAN_CLAIM_TAG",
   ADD_MANUAL_SERVICE_ENTRY: "CAN_ADD_MANUAL_SERVICE_ENTRY",
+  /** Browse documents, timeline links, and manual entries in the vault UI. */
+  VIEW_DOCUMENT_VAULT: "CAN_VIEW_DOCUMENT_VAULT",
   SCAN_AI_RECEIPT: "CAN_SCAN_AI_RECEIPT",
   GENERATE_EXPOSE: "CAN_GENERATE_EXPOSE",
   DOCUMENT_VAULT: "CAN_USE_DOCUMENT_VAULT",
@@ -29,6 +31,7 @@ const FEATURE_MIN_TIER: Record<FeatureFlag, UserTier> = {
   [FEATURE.EDIT_BASIC_PROFILE]: "free",
   [FEATURE.CLAIM_TAG]: "free",
   [FEATURE.ADD_MANUAL_SERVICE_ENTRY]: "free",
+  [FEATURE.VIEW_DOCUMENT_VAULT]: "free",
   [FEATURE.SCAN_AI_RECEIPT]: "pro",
   [FEATURE.GENERATE_EXPOSE]: "pro",
   [FEATURE.DOCUMENT_VAULT]: "pro",
@@ -85,7 +88,7 @@ export function featureForDashboardTile(tileId: string): FeatureFlag | null {
     tileId === "service" ||
     tileId === "modifications"
   ) {
-    return FEATURE.DOCUMENT_VAULT;
+    return FEATURE.VIEW_DOCUMENT_VAULT;
   }
 
   return null;
@@ -106,7 +109,9 @@ export function paywallTitle(
     case FEATURE.INVITE_SCHRAUBER:
       return "Schrauber einladen ist Teil von Pro";
     case FEATURE.DOCUMENT_VAULT:
-      return "Die Dokumentenakte ist Teil von Pro";
+      return "Belege speichern ist Teil von Pro";
+    case FEATURE.VIEW_DOCUMENT_VAULT:
+      return "Die Dokumentenakte";
     case FEATURE.ADD_MANUAL_SERVICE_ENTRY:
       return "Manuelle Einträge";
     default:
@@ -129,7 +134,9 @@ export function paywallBody(
     case FEATURE.INVITE_SCHRAUBER:
       return "Werkstätten ohne Passwort mitarbeiten lassen — mit ZeloxTag Pro.";
     case FEATURE.DOCUMENT_VAULT:
-      return "Rechnungen, ABEs, TÜV und Historie liegen in der Pro-Akte. Profil und öffentlicher Tag bleiben kostenlos.";
+      return "Rechnungen, ABEs und TÜV per KI scannen und in der Cloud speichern — mit ZeloxTag Pro. Einsehen und manuelle Einträge bleiben kostenlos.";
+    case FEATURE.VIEW_DOCUMENT_VAULT:
+      return "Deine Akte mit manuellen Einträgen und gespeicherten Belegen — kostenlos einsehbar.";
     default:
       return "Diese Funktion gehört zu ZeloxTag Pro. Die ersten 14 Tage sind kostenlos.";
   }

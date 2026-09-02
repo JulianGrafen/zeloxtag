@@ -1,4 +1,4 @@
-export const MAX_MINT_BATCH = 20;
+export const MAX_MINT_BATCH = 25;
 
 export function parseMintCount(raw: unknown): number | null {
   const n =

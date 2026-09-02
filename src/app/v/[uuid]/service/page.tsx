@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ServiceInspectionsView } from "@/components/documents/service-inspections-view";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
 
 interface ServicePageProps {
@@ -28,12 +29,13 @@ export default async function ServiceInspectionsPage({
     access.isContributor && !access.isOwner
       ? result.documents.filter((doc) => doc.type === "invoice")
       : result.documents;
+  const membershipActive = await userHasActiveMembership(result.vehicle!.user_id);
 
   return wrapProFeature({
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: result.tag.uuid,
-    feature: FEATURE.DOCUMENT_VAULT,
+    feature: FEATURE.VIEW_DOCUMENT_VAULT,
     isContributor: access.isContributor && !access.isOwner,
     children: (
       <ServiceInspectionsView
@@ -41,7 +43,8 @@ export default async function ServiceInspectionsPage({
         vehicleId={result.vehicle!.id}
         vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
         documents={documents}
-        initialScan={scan === "1"}
+        initialScan={scan === "1" && membershipActive}
+        canManageDocuments={membershipActive}
       />
     ),
   });

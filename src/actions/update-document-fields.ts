@@ -9,8 +9,12 @@ import {
 } from "@/lib/auth/vehicle-write-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { FEATURE } from "@/lib/permissions/feature-access";
-import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
+import { assertOwnerFeature, assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
+import {
+  isManualEntryMarker,
+  isManualEntryUrl,
+} from "@/lib/documents/manual-entries";
 import {
   getMockUploadedDocuments,
   updateMockUploadedDocument,
@@ -175,15 +179,6 @@ export async function updateDocumentFields(
   if (!writeAccess.ok) {
     return { status: "error", message: writeAccessErrorMessage(writeAccess) };
   }
-  if (writeAccess.ownerUserId) {
-    const vault = await assertVehicleDocumentWrite(
-      writeAccess,
-      FEATURE.DOCUMENT_VAULT,
-    );
-    if (!vault.ok) {
-      return { status: "error", message: vault.message };
-    }
-  }
 
   if (!isSupabaseAdminConfigured()) {
     return { status: "error", message: "SUPABASE_SERVICE_ROLE_KEY fehlt." };
@@ -192,7 +187,7 @@ export async function updateDocumentFields(
   const admin = createAdminClient();
   const { data: document, error: loadError } = await admin
     .from("documents")
-    .select("id, type, vehicle_id")
+    .select("id, type, vehicle_id, file_url, invoice_number")
     .eq("id", documentId)
     .eq("vehicle_id", vehicleId)
     .maybeSingle();
@@ -202,6 +197,24 @@ export async function updateDocumentFields(
   }
   if (!document) {
     return { status: "error", message: "Dokument nicht gefunden." };
+  }
+
+  if (writeAccess.ownerUserId) {
+    const manual =
+      isManualEntryMarker(document.invoice_number) ||
+      isManualEntryUrl(document.file_url);
+    const gate = manual
+      ? await assertOwnerFeature(
+          writeAccess.ownerUserId,
+          FEATURE.ADD_MANUAL_SERVICE_ENTRY,
+        )
+      : await assertVehicleDocumentWrite(
+          writeAccess,
+          FEATURE.DOCUMENT_VAULT,
+        );
+    if (!gate.ok) {
+      return { status: "error", message: gate.message };
+    }
   }
 
   if (
