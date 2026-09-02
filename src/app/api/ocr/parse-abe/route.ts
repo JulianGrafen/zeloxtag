@@ -13,6 +13,7 @@ import {
   publicClientMessage,
 } from "@/lib/security/public-error";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { FEATURE } from "@/lib/permissions/feature-access";
 import {
   AbeVehicleContextSchema,
   type AbeMinimal,
@@ -91,6 +92,8 @@ export async function POST(request: NextRequest) {
     const vehicleAccess = await requireVehicleOcrAccess(
       auth.user.id,
       parsedBody.data.vehicleId,
+      FEATURE.SCAN_AI_RECEIPT,
+      "abe",
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
 

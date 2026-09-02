@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { authCookieOptions, hardenCookieOptions } from "@/lib/security/cookie-options";
+import { createProxiedResponse, recreateProxiedResponse } from "@/lib/security/csp";
 import type { Database } from "@/types/database";
 
 import { getSupabaseEnv } from "./env";
@@ -20,7 +21,8 @@ export type SessionRefreshResult = {
 export async function updateSession(
   request: NextRequest,
 ): Promise<SessionRefreshResult> {
-  let response = NextResponse.next({ request });
+  const { response: initialResponse, nonce } = createProxiedResponse(request);
+  let response = initialResponse;
   const { url, anonKey, isConfigured } = getSupabaseEnv();
 
   if (!isConfigured) {
@@ -37,7 +39,7 @@ export async function updateSession(
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
-        response = NextResponse.next({ request });
+        response = recreateProxiedResponse(request, nonce);
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, hardenCookieOptions(options));
         });

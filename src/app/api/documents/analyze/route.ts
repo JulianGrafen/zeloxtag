@@ -18,6 +18,7 @@ import {
 } from "@/lib/security/api-guard";
 import { logServerError } from "@/lib/security/public-error";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { FEATURE } from "@/lib/permissions/feature-access";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 
 export const runtime = "nodejs";
@@ -111,9 +112,16 @@ export async function POST(request: NextRequest) {
       return jsonError(400, "vehicleId (UUID) is required.", "bad_request");
     }
 
+    const kind: DocumentParseKind = meta.data.kind ?? "auto";
+    const documentType: OcrDocumentType | undefined =
+      meta.data.documentType ??
+      (kind === "invoice" ? "invoice" : kind === "abe" ? "abe" : undefined);
+
     const vehicleAccess = await requireVehicleOcrAccess(
       auth.user.id,
       meta.data.vehicleId,
+      FEATURE.SCAN_AI_RECEIPT,
+      documentType,
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
 
@@ -128,9 +136,6 @@ export async function POST(request: NextRequest) {
     }
     const bytes = Buffer.from(fileCheck.bytes);
     const sniffed = fileCheck.mime;
-
-    const kind: DocumentParseKind = meta.data.kind ?? "auto";
-    const documentType: OcrDocumentType | undefined = meta.data.documentType;
 
     const result = await analyzeDocument({
       bytes,

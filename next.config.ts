@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 
 import {
   documentFileSecurityHeaderEntries,
-  securityHeaderEntries,
   vehicleImageSecurityHeaderEntries,
 } from "./src/lib/security/csp";
 
@@ -53,12 +52,7 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
-      // Exclude static assets + media proxies — COEP/CORP on JS chunks breaks hydration.
-      {
-        source:
-          "/((?!_next/static/|_next/image/|favicon.ico|api/documents/file$|api/vehicle/silhouette/|api/vehicle/catalog/).*)",
-        headers: securityHeaderEntries(),
-      },
+      // HTML CSP + baseline security headers are set per request in src/proxy.ts.
       {
         source: "/api/documents/file",
         headers: documentFileSecurityHeaderEntries(),

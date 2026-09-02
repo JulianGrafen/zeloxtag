@@ -13,6 +13,7 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { FEATURE } from "@/lib/permissions/feature-access";
 import { logServerError } from "@/lib/security/public-error";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import {
@@ -117,6 +118,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const vehicleAccess = await requireVehicleOcrAccess(
       auth.user.id,
       String(formData.get("vehicleId") ?? ""),
+      FEATURE.SCAN_AI_RECEIPT,
+      "invoice",
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
 

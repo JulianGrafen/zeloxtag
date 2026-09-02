@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import { Poppins, Inter } from "next/font/google";
 
 import {
@@ -44,11 +45,14 @@ export const viewport: Viewport = {
   themeColor: "#fafafa",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Required for nonce-based CSP — pages render per request, not at build time.
+  await connection();
+
   return (
     <html
       lang="de"

@@ -15,6 +15,7 @@ import {
   publicClientMessage,
 } from "@/lib/security/public-error";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { FEATURE } from "@/lib/permissions/feature-access";
 
 export const runtime = "nodejs";
 
@@ -92,6 +93,8 @@ export async function POST(request: NextRequest) {
     const vehicleAccess = await requireVehicleOcrAccess(
       auth.user.id,
       parsedBody.data.vehicleId,
+      FEATURE.SCAN_AI_RECEIPT,
+      "invoice",
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
 

@@ -5,8 +5,11 @@ import {
   getVehicleWriteAccess,
   writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
+import { tryConsumeFreeOcrScanForOwner } from "@/lib/billing/free-scan-quota";
+import { MEMBERSHIP_REQUIRED_MESSAGE } from "@/lib/billing/pro-plan";
 import {
   FEATURE,
+  FREE_SCAN_EXHAUSTED_CODE,
   type FeatureFlag,
 } from "@/lib/permissions/feature-access";
 import {
@@ -81,10 +84,11 @@ export async function requireVehicleOcrAccess(
     };
   }
 
+  const gateOptions = ocrGateOptions(documentType);
   const featureCheck = await assertVehicleDocumentWrite(
     access,
     feature,
-    ocrGateOptions(documentType),
+    gateOptions,
   );
   if (!featureCheck.ok) {
     return {
@@ -92,6 +96,34 @@ export async function requireVehicleOcrAccess(
       response: subscriptionRequiredResponse(
         featureCheck.message,
         featureCheck.code,
+      ),
+    };
+  }
+
+  const consume = await tryConsumeFreeOcrScanForOwner(
+    access.ownerUserId,
+    gateOptions,
+    documentType,
+  );
+  if (!consume.ok) {
+    if (consume.code === "free_scan_exhausted") {
+      return {
+        ok: false,
+        response: subscriptionRequiredResponse(
+          MEMBERSHIP_REQUIRED_MESSAGE,
+          FREE_SCAN_EXHAUSTED_CODE,
+        ),
+      };
+    }
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          ok: false,
+          error: "Gratis-Scan-Kontingent konnte nicht geprüft werden.",
+          code: "config",
+        },
+        { status: 503 },
       ),
     };
   }

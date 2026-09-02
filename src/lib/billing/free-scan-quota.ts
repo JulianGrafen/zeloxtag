@@ -7,7 +7,13 @@ import {
   FREE_AI_INVOICE_SCAN_LIMIT,
 } from "@/lib/billing/free-scan-constants";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
+import type { OcrDocumentType } from "@/lib/ocr/ocr-types";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+
+export type FreeScanGateOptions = {
+  allowFreeInvoiceScan?: boolean;
+  allowFreeAbeScan?: boolean;
+};
 
 export type FreeScanQuota = {
   used: number;
@@ -18,12 +24,15 @@ export type FreeScanQuota = {
 export type FreeInvoiceScanQuota = FreeScanQuota;
 export type FreeAbeScanQuota = FreeScanQuota;
 
-async function loadEntitlementRow(userId: string): Promise<{
+type EntitlementRow = {
   invoiceUsed: number;
   abeUsed: number;
-}> {
+  loadError: boolean;
+};
+
+async function loadEntitlementRow(userId: string): Promise<EntitlementRow> {
   if (!userId || !isSupabaseAdminConfigured()) {
-    return { invoiceUsed: 0, abeUsed: 0 };
+    return { invoiceUsed: 0, abeUsed: 0, loadError: true };
   }
 
   const admin = createAdminClient();
@@ -35,7 +44,7 @@ async function loadEntitlementRow(userId: string): Promise<{
 
   if (error) {
     console.error("[free-scan] read failed", error.message);
-    return { invoiceUsed: 0, abeUsed: 0 };
+    return { invoiceUsed: 0, abeUsed: 0, loadError: true };
   }
 
   const invoiceUsed = data?.free_ai_invoice_scans_used;
@@ -50,10 +59,14 @@ async function loadEntitlementRow(userId: string): Promise<{
       typeof abeUsed === "number" && Number.isFinite(abeUsed) && abeUsed > 0
         ? Math.floor(abeUsed)
         : 0,
+    loadError: false,
   };
 }
 
-function toQuota(used: number, limit: number): FreeScanQuota {
+function toQuota(used: number, limit: number, loadError = false): FreeScanQuota {
+  if (loadError) {
+    return { used: limit, remaining: 0, limit };
+  }
   const remaining = Math.max(0, limit - used);
   return { used, remaining, limit };
 }
@@ -61,15 +74,15 @@ function toQuota(used: number, limit: number): FreeScanQuota {
 const getFreeInvoiceScanQuotaUncached = async (
   userId: string,
 ): Promise<FreeInvoiceScanQuota> => {
-  const { invoiceUsed } = await loadEntitlementRow(userId);
-  return toQuota(invoiceUsed, FREE_AI_INVOICE_SCAN_LIMIT);
+  const row = await loadEntitlementRow(userId);
+  return toQuota(row.invoiceUsed, FREE_AI_INVOICE_SCAN_LIMIT, row.loadError);
 };
 
 const getFreeAbeScanQuotaUncached = async (
   userId: string,
 ): Promise<FreeAbeScanQuota> => {
-  const { abeUsed } = await loadEntitlementRow(userId);
-  return toQuota(abeUsed, FREE_AI_ABE_SCAN_LIMIT);
+  const row = await loadEntitlementRow(userId);
+  return toQuota(row.abeUsed, FREE_AI_ABE_SCAN_LIMIT, row.loadError);
 };
 
 /** Request-memoized quota lookup for dashboard render. */
@@ -106,6 +119,7 @@ export async function ownerCanUseAiInvoiceScan(
 ): Promise<boolean> {
   if (!ownerUserId) return false;
   if (await userHasActiveMembership(ownerUserId)) return true;
+  if (!isSupabaseAdminConfigured()) return false;
   return ownerHasFreeInvoiceScanRemaining(ownerUserId);
 }
 
@@ -114,7 +128,73 @@ export async function ownerCanUseAiAbeScan(
 ): Promise<boolean> {
   if (!ownerUserId) return false;
   if (await userHasActiveMembership(ownerUserId)) return true;
+  if (!isSupabaseAdminConfigured()) return false;
   return ownerHasFreeAbeScanRemaining(ownerUserId);
+}
+
+export type FreeOcrScanConsumeResult =
+  | { ok: true; consumed: boolean }
+  | { ok: false; code: "free_scan_exhausted" | "quota_unavailable" };
+
+/**
+ * Atomically consume a complimentary scan when a Free user enters the OCR pipeline.
+ * Pro members skip consumption. Idempotent when no complimentary gate applies.
+ */
+export async function tryConsumeFreeOcrScanForOwner(
+  ownerUserId: string,
+  gateOptions: FreeScanGateOptions,
+  documentType?: OcrDocumentType,
+): Promise<FreeOcrScanConsumeResult> {
+  if (!ownerUserId) {
+    return { ok: false, code: "quota_unavailable" };
+  }
+
+  if (!isSupabaseAdminConfigured()) {
+    return { ok: false, code: "quota_unavailable" };
+  }
+
+  if (await userHasActiveMembership(ownerUserId)) {
+    return { ok: true, consumed: false };
+  }
+
+  const needsInvoice =
+    gateOptions.allowFreeInvoiceScan === true && documentType === "invoice";
+  const needsAbe =
+    gateOptions.allowFreeAbeScan === true && documentType === "abe";
+
+  if (!needsInvoice && !needsAbe) {
+    return { ok: true, consumed: false };
+  }
+
+  if (needsInvoice) {
+    const consumed = await consumeFreeInvoiceScan(ownerUserId);
+    if (consumed) {
+      return { ok: true, consumed: true };
+    }
+
+    const row = await loadEntitlementRow(ownerUserId);
+    if (row.loadError) {
+      return { ok: false, code: "quota_unavailable" };
+    }
+    if (row.invoiceUsed >= FREE_AI_INVOICE_SCAN_LIMIT) {
+      return { ok: false, code: "free_scan_exhausted" };
+    }
+    return { ok: false, code: "quota_unavailable" };
+  }
+
+  const consumed = await consumeFreeAbeScan(ownerUserId);
+  if (consumed) {
+    return { ok: true, consumed: true };
+  }
+
+  const row = await loadEntitlementRow(ownerUserId);
+  if (row.loadError) {
+    return { ok: false, code: "quota_unavailable" };
+  }
+  if (row.abeUsed >= FREE_AI_ABE_SCAN_LIMIT) {
+    return { ok: false, code: "free_scan_exhausted" };
+  }
+  return { ok: false, code: "quota_unavailable" };
 }
 
 /**
