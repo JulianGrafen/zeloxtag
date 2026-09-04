@@ -1,7 +1,10 @@
 import Stripe from "stripe";
 
 import { resolvePublicSiteOrigin } from "@/lib/site-origin";
-import { STRIPE_PRO_PAYMENT_LINK } from "./constants";
+import {
+  STRIPE_PRO_ANNUAL_PAYMENT_LINK,
+  STRIPE_PRO_PAYMENT_LINK,
+} from "./constants";
 import type { ProBillingInterval } from "./pro-plan";
 
 const UUID_RE =
@@ -14,6 +17,7 @@ export function stripeEnv(): {
   priceId: string;
   priceIdAnnual: string;
   paymentLinkUrl: string;
+  paymentLinkUrlAnnual: string;
 } {
   return {
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ?? "",
@@ -23,7 +27,15 @@ export function stripeEnv(): {
     priceIdAnnual: process.env.STRIPE_PRICE_ID_ANNUAL?.trim() ?? "",
     paymentLinkUrl:
       process.env.STRIPE_PAYMENT_LINK_URL?.trim() || STRIPE_PRO_PAYMENT_LINK,
+    paymentLinkUrlAnnual:
+      process.env.STRIPE_PAYMENT_LINK_URL_ANNUAL?.trim() ||
+      STRIPE_PRO_ANNUAL_PAYMENT_LINK,
   };
+}
+
+export function resolveStripePaymentLink(interval: ProBillingInterval): string {
+  const { paymentLinkUrl, paymentLinkUrlAnnual } = stripeEnv();
+  return interval === "annual" ? paymentLinkUrlAnnual : paymentLinkUrl;
 }
 
 export function resolveStripePriceId(interval: ProBillingInterval): string {
@@ -32,11 +44,12 @@ export function resolveStripePriceId(interval: ProBillingInterval): string {
 }
 
 export function isAnnualPlanConfigured(): boolean {
-  return Boolean(stripeEnv().priceIdAnnual);
+  const { priceIdAnnual, paymentLinkUrlAnnual } = stripeEnv();
+  return Boolean(priceIdAnnual) || isStripePaymentLink(paymentLinkUrlAnnual);
 }
 
 export function canCheckoutStripeInterval(interval: ProBillingInterval): boolean {
-  if (interval === "monthly" && isStripePaymentLink(stripeEnv().paymentLinkUrl)) {
+  if (isStripePaymentLink(resolveStripePaymentLink(interval))) {
     return true;
   }
   return Boolean(isStripeSecretConfigured() && resolveStripePriceId(interval));
@@ -60,9 +73,11 @@ export function isStripePaymentLink(raw: string): boolean {
 }
 
 export function isStripeBillingConfigured(): boolean {
-  const { secretKey, priceId, priceIdAnnual, paymentLinkUrl } = stripeEnv();
+  const { secretKey, priceId, priceIdAnnual, paymentLinkUrl, paymentLinkUrlAnnual } =
+    stripeEnv();
   return (
     isStripePaymentLink(paymentLinkUrl) ||
+    isStripePaymentLink(paymentLinkUrlAnnual) ||
     Boolean(secretKey && (priceId || priceIdAnnual))
   );
 }

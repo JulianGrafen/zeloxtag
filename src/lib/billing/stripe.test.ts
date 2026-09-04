@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  STRIPE_PRO_ANNUAL_PAYMENT_LINK,
+  STRIPE_PRO_PAYMENT_LINK,
+} from "@/lib/billing/constants";
+import {
   buildStripePaymentLinkUrl,
   checkoutReturnUrl,
+  resolveStripePaymentLink,
   safeAppReturnPath,
 } from "@/lib/billing/stripe";
-import { STRIPE_PRO_PAYMENT_LINK } from "@/lib/billing/constants";
 
 describe("safeAppReturnPath", () => {
   it("keeps in-app paths", () => {
@@ -43,6 +47,15 @@ describe("buildStripePaymentLinkUrl", () => {
     expect(url).toContain(`client_reference_id=${userId}`);
     expect(url).toContain("prefilled_email=owner%40zeloxtag.de");
     expect(url).toContain("locale=de");
+  });
+
+  it("builds the annual Jahresabo payment link", () => {
+    const url = buildStripePaymentLinkUrl({
+      paymentLink: STRIPE_PRO_ANNUAL_PAYMENT_LINK,
+      userId,
+    });
+    expect(url).toContain("buy.stripe.com/bJe00d5NfcGA62BgnV0sU01");
+    expect(url).toContain(`client_reference_id=${userId}`);
   });
 
   it("rejects a non-Stripe host", () => {

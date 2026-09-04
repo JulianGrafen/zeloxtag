@@ -4,7 +4,7 @@ import { cache } from "react";
 import { sendMembershipClaimEmail } from "@/lib/email/resend";
 import { resolvePublicSiteOrigin } from "@/lib/site-origin";
 import { RATE_LIMITS, rateLimit } from "@/lib/security/rate-limit";
-import { resolvePublicSiteOrigin } from "@/lib/site-origin"; isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import type { Membership, MembershipStatus } from "@/types/database";
 
 import {

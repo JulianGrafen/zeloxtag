@@ -16,10 +16,10 @@ import {
   isStripeBillingConfigured,
   isStripeSecretConfigured,
   buildStripePaymentLinkUrl,
+  resolveStripePaymentLink,
   resolveStripePriceId,
   safeAppReturnPath,
   siteOrigin,
-  stripeEnv,
 } from "@/lib/billing/stripe";
 import { parseStripeMembershipAction } from "@/lib/billing/stripe-membership";
 
@@ -66,6 +66,17 @@ export async function startStripeCheckoutAction(input: {
 
   const priceId = resolveStripePriceId(interval);
 
+  if (interval === "annual") {
+    const annualPaymentUrl = buildStripePaymentLinkUrl({
+      paymentLink: resolveStripePaymentLink("annual"),
+      userId: user.id,
+      email: user.email,
+    });
+    if (annualPaymentUrl) {
+      return { status: "ok", url: annualPaymentUrl };
+    }
+  }
+
   // Prefer Checkout Session API so success/cancel URLs always use the live app
   // origin — Payment Links use a fixed redirect configured in Stripe Dashboard.
   if (isStripeSecretConfigured() && priceId) {
@@ -108,7 +119,7 @@ export async function startStripeCheckoutAction(input: {
   const paymentUrl =
     interval === "monthly"
       ? buildStripePaymentLinkUrl({
-          paymentLink: stripeEnv().paymentLinkUrl,
+          paymentLink: resolveStripePaymentLink("monthly"),
           userId: user.id,
           email: user.email,
         })
