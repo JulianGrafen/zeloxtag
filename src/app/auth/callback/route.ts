@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
+import { resolveInsiderVehiclePath } from "@/lib/auth/resolve-insider-vehicle-path";
 import { isGenericPostLoginNext, normalizeAuthCallbackNext } from "@/lib/auth/post-login-path";
 import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
 import { resolveAuthSiteOrigin } from "@/lib/site-origin";
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
   }
 
   const code = searchParams.get("code");
-  const next = normalizeAuthCallbackNext(searchParams.get("next") ?? "/auth/continue");
+  let next = normalizeAuthCallbackNext(searchParams.get("next") ?? "/auth/continue");
 
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {
@@ -83,6 +84,13 @@ export async function GET(request: NextRequest) {
 
   const userId = data.user?.id ?? data.session?.user?.id;
   if (userId) {
+    if (!isGenericPostLoginNext(next)) {
+      const insiderPath = await resolveInsiderVehiclePath(next, userId);
+      if (insiderPath) {
+        next = insiderPath;
+      }
+    }
+
     try {
       const claimResult = await completePendingClaimForUser(userId);
       if (claimResult?.status === "claimed") {
@@ -103,12 +111,11 @@ export async function GET(request: NextRequest) {
 
     if (isGenericPostLoginNext(next)) {
       // Cookie-bearing hop; continue resolves /v/{uuid} for owners.
-      response = copyCookies(
+      return copyCookies(
         NextResponse.redirect(new URL("/auth/continue", authOrigin)),
       );
-      return response;
     }
   }
 
-  return response;
+  return copyCookies(NextResponse.redirect(new URL(next, authOrigin)));
 }

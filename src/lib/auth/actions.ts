@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
 import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
+import { resolveInsiderVehiclePath } from "@/lib/auth/resolve-insider-vehicle-path";
 import {
   CONFIRM_EMAIL_MESSAGE,
   registerAccountWithConfirmation,
@@ -116,9 +117,16 @@ export async function signInWithPassword(
   // Generic login → /auth/continue (fresh request, cookies committed).
   // Deep links (settings, claim, …) keep their explicit next path.
   const requested = normalizeNext(nextPath);
-  const redirectTo = isGenericPostLoginNext(requested)
+  let redirectTo = isGenericPostLoginNext(requested)
     ? "/auth/continue"
     : requested;
+
+  if (!isGenericPostLoginNext(requested)) {
+    const insiderPath = await resolveInsiderVehiclePath(requested, data.session.user.id);
+    if (insiderPath) {
+      redirectTo = insiderPath;
+    }
+  }
 
   redirect(redirectTo);
 }

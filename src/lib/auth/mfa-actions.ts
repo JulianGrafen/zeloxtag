@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
+import { resolveInsiderVehiclePath } from "@/lib/auth/resolve-insider-vehicle-path";
 import {
   adminRemoveTotpFactors,
   consumeRecoveryCode,
@@ -255,10 +256,17 @@ export async function verifyMfaLogin(
   } = await supabase.auth.getUser();
   const next = nextPathSchema.safeParse(nextPath);
   const requested = next.success ? next.data : "/auth/continue";
-  const redirectTo =
+  let redirectTo =
     !user?.id || isGenericPostLoginNext(requested)
       ? "/auth/continue"
       : requested;
+
+  if (user?.id && !isGenericPostLoginNext(requested)) {
+    const insiderPath = await resolveInsiderVehiclePath(requested, user.id);
+    if (insiderPath) {
+      redirectTo = insiderPath;
+    }
+  }
 
   return { status: "verified", redirectTo };
 }

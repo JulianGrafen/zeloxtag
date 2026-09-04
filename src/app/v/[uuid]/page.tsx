@@ -12,7 +12,7 @@ import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseV
 import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { isOperatorEmail } from "@/lib/auth/require-operator";
-import { getTagVehicleAccess, getVehicleAccess } from "@/lib/auth/vehicle-access";
+import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free-scan-quota";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
@@ -201,15 +201,18 @@ export default async function TagScanPage({
       );
     }
 
-    const access = await getVehicleAccess(vehicle.user_id, vehicle.id);
-    if (hasInsiderAccess(access)) {
-      const tagUuid = await getActiveTagUuidForVehicle(vehicle.id);
-      if (tagUuid) {
+    const tagUuid = await getActiveTagUuidForVehicle(vehicle.id);
+    if (tagUuid) {
+      const access = await getTagVehicleAccess(
+        tagUuid,
+        vehicle.user_id?.trim() || null,
+        vehicle.id,
+      );
+      if (hasInsiderAccess(access)) {
         redirect(`/v/${tagUuid}`);
       }
     }
 
-    const slugTagUuid = await getActiveTagUuidForVehicle(vehicle.id);
     return renderPublicShowcase(vehicle);
   }
 

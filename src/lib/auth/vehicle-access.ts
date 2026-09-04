@@ -274,6 +274,26 @@ export async function getTagVehicleAccess(
   };
 }
 
+/** Owner or active Schrauber for a vehicle twin (explicit user id — e.g. auth callback). */
+export async function userHasInsiderVehicleAccess(
+  userId: string,
+  tagUuid: string,
+  vehicleId: string,
+): Promise<boolean> {
+  const normalizedUserId = userId.trim();
+  const normalizedTagUuid = tagUuid.trim();
+  const normalizedVehicleId = vehicleId.trim();
+  if (!normalizedUserId || !normalizedTagUuid || !normalizedVehicleId) {
+    return false;
+  }
+
+  const owned = await sessionOwnsTagVehicle(normalizedTagUuid, normalizedUserId);
+  if (owned.isOwner) return true;
+
+  const grant = await loadContributorGrant(normalizedVehicleId, normalizedUserId);
+  return grant.active;
+}
+
 /** Owner or active Schrauber may load the private digital twin server-side. */
 export async function viewerCanAccessPrivateTwin(
   vehicle: { id: string; user_id: string },
