@@ -3,11 +3,9 @@
 import {
   PRO_ANNUAL_RECOMMENDED_LABEL,
   PRO_ANNUAL_SAVINGS_COPY,
-  PRO_PLAN_ANNUAL_DAILY_PRICE,
   PRO_PLAN_ANNUAL_PRICE,
-  PRO_PLAN_MONTHLY_DAILY_PRICE,
   PRO_PLAN_MONTHLY_PRICE,
-  PRO_TRIAL_DAYS,
+  proTrialHint,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
 import { cn } from "@/lib/utils";
@@ -33,14 +31,14 @@ export function ProPlanIntervalPicker({
         selected={value === "monthly"}
         title="Monatlich"
         price={`${PRO_PLAN_MONTHLY_PRICE} / Monat`}
-        hint={`${PRO_PLAN_MONTHLY_DAILY_PRICE} pro Tag · ${PRO_TRIAL_DAYS} Tage kostenlos`}
+        hint={proTrialHint("monthly")}
         onSelect={() => onChange("monthly")}
       />
       <IntervalOption
         selected={value === "annual"}
         title="Jährlich"
         price={`${PRO_PLAN_ANNUAL_PRICE} / Jahr`}
-        hint={`${PRO_PLAN_ANNUAL_DAILY_PRICE} pro Tag`}
+        hint={proTrialHint("annual")}
         badges={[
           { label: PRO_ANNUAL_RECOMMENDED_LABEL, tone: "recommended" },
           { label: PRO_ANNUAL_SAVINGS_COPY, tone: "savings" },

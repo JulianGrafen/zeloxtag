@@ -5,9 +5,7 @@ import { StripeCheckoutButton } from "@/components/billing/stripe-checkout-butto
 import { isAnnualPlanConfigured } from "@/lib/billing/stripe";
 import {
   PRO_PLAN_NAME,
-  PRO_TRIAL_HEADLINE,
-  PRO_TRIAL_PRICE_COPY,
-  PRO_ANNUAL_PRICE_COPY,
+  PRO_TRIAL_CHECKOUT_COPY,
 } from "@/lib/billing/pro-plan";
 
 export function ActivateCloudView({ tagUuid }: { tagUuid: string }) {
@@ -22,9 +20,8 @@ export function ActivateCloudView({ tagUuid }: { tagUuid: string }) {
           <p className="claim-kicker">{PRO_PLAN_NAME}</p>
           <h1 className="claim-title mt-2">Abo abschließen</h1>
           <p className="claim-copy mt-2">
-            {PRO_TRIAL_HEADLINE} {PRO_TRIAL_PRICE_COPY} Oder{" "}
-            {PRO_ANNUAL_PRICE_COPY.toLowerCase()}. Die digitale Visitenkarte bleibt
-            kostenlos. KI-Scan, Dokumentenakte und Verkaufs-Exposé gehören zu Pro.
+            {PRO_TRIAL_CHECKOUT_COPY} Die digitale Visitenkarte bleibt kostenlos.
+            KI-Scan, Dokumentenakte und Verkaufs-Exposé gehören zu Pro.
           </p>
         </header>
 

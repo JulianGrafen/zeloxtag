@@ -34,9 +34,8 @@ describe("pro plan copy", () => {
   });
 
   it("supports annual checkout copy", () => {
-    expect(proCheckoutButtonLabel("new", "annual")).toContain(
-      PRO_PLAN_ANNUAL_PRICE,
-    );
+    expect(proCheckoutButtonLabel("new", "annual")).toContain("14 Tage");
+    expect(proCheckoutLead("new", "annual")).toContain("14 Tage");
     expect(proCheckoutLead("new", "annual")).toContain(PRO_PLAN_ANNUAL_PRICE);
     expect(proCheckoutButtonLabel("returning", "annual")).toContain("Jahresabo");
   });

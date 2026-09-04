@@ -16,7 +16,9 @@ export const PRO_CHECKOUT_BUTTON_RETURNING_LABEL = `Pro Abo abschließen · ${PR
 
 export const PRO_TRIAL_HEADLINE = `Die ersten ${PRO_TRIAL_DAYS} Tage sind kostenlos.`;
 export const PRO_TRIAL_PRICE_COPY = `Danach ${PRO_PLAN_MONTHLY_PRICE} im Monat, jederzeit kündbar.`;
-export const PRO_ANNUAL_PRICE_COPY = `${PRO_PLAN_ANNUAL_PRICE} pro Jahr, jederzeit kündbar.`;
+export const PRO_ANNUAL_TRIAL_PRICE_COPY = `Danach ${PRO_PLAN_ANNUAL_PRICE} pro Jahr, jederzeit kündbar.`;
+export const PRO_ANNUAL_PRICE_COPY = PRO_ANNUAL_TRIAL_PRICE_COPY;
+export const PRO_TRIAL_CHECKOUT_COPY = `${PRO_TRIAL_HEADLINE} Danach ${PRO_PLAN_MONTHLY_PRICE} im Monat oder ${PRO_PLAN_ANNUAL_PRICE} pro Jahr, jederzeit kündbar.`;
 export const PRO_RETURNING_PRICE_COPY = `Cloud-Abo ${PRO_PLAN_MONTHLY_PRICE} im Monat, Zahlung über Stripe.`;
 export const PRO_RETURNING_ANNUAL_PRICE_COPY = `Cloud-Abo ${PRO_PLAN_ANNUAL_PRICE} pro Jahr, Zahlung über Stripe.`;
 
@@ -37,6 +39,16 @@ export const PRO_PLAN_BENEFITS = [
 
 export type ProCheckoutAudience = "new" | "returning";
 
+export function proIntervalDailyPriceCopy(interval: ProBillingInterval): string {
+  return interval === "annual"
+    ? PRO_PLAN_ANNUAL_DAILY_PRICE
+    : PRO_PLAN_MONTHLY_DAILY_PRICE;
+}
+
+export function proTrialHint(interval: ProBillingInterval): string {
+  return `${proIntervalDailyPriceCopy(interval)} pro Tag · ${PRO_TRIAL_DAYS} Tage kostenlos`;
+}
+
 export function proIntervalPriceCopy(interval: ProBillingInterval): string {
   return interval === "annual"
     ? `${PRO_PLAN_ANNUAL_PRICE} / Jahr`
@@ -50,7 +62,7 @@ export function proCheckoutButtonLabel(
   if (interval === "annual") {
     return audience === "returning"
       ? `Jahresabo abschließen · ${PRO_PLAN_ANNUAL_PRICE} / Jahr`
-      : `Jahresabo starten · ${PRO_PLAN_ANNUAL_PRICE} / Jahr`;
+      : PRO_CHECKOUT_BUTTON_LABEL;
   }
   return audience === "returning"
     ? PRO_CHECKOUT_BUTTON_RETURNING_LABEL
@@ -64,7 +76,7 @@ export function proCheckoutLead(
   if (interval === "annual") {
     return audience === "returning"
       ? PRO_RETURNING_ANNUAL_PRICE_COPY
-      : PRO_ANNUAL_PRICE_COPY;
+      : `${PRO_TRIAL_HEADLINE} ${PRO_ANNUAL_TRIAL_PRICE_COPY}`;
   }
   return audience === "returning"
     ? PRO_RETURNING_PRICE_COPY

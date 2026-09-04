@@ -9,7 +9,7 @@ import {
   getMembershipForUser,
 } from "@/lib/billing/membership-store";
 import { RATE_LIMITS, rateLimit } from "@/lib/security/rate-limit";
-import type { ProBillingInterval } from "@/lib/billing/pro-plan";
+import { PRO_TRIAL_DAYS, type ProBillingInterval } from "@/lib/billing/pro-plan";
 import {
   checkoutReturnUrl,
   getStripe,
@@ -33,6 +33,16 @@ export type StripeCheckoutResult =
 
 function billingError(message: string): StripeBillingLinkResult {
   return { status: "error", message };
+}
+
+function isProTrialEligible(
+  membership: Awaited<ReturnType<typeof getMembershipForUser>>,
+): boolean {
+  if (!membership) return true;
+  if (membership.status === "canceled" || membership.status === "past_due") {
+    return false;
+  }
+  return !membership.stripe_customer_id;
 }
 
 export async function startStripeCheckoutAction(input: {
@@ -88,6 +98,8 @@ export async function startStripeCheckoutAction(input: {
     });
     const successUrl = `${successBase}${successBase.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`;
 
+    const trialEligible = isProTrialEligible(membership);
+
     try {
       const stripe = getStripe();
       const session = await stripe.checkout.sessions.create({
@@ -104,6 +116,7 @@ export async function startStripeCheckoutAction(input: {
         metadata: { user_id: user.id, billing_interval: interval },
         subscription_data: {
           metadata: { user_id: user.id, billing_interval: interval },
+          ...(trialEligible ? { trial_period_days: PRO_TRIAL_DAYS } : {}),
         },
       });
       if (!session.url) {
