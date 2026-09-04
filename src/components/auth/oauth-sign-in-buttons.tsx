@@ -19,11 +19,11 @@ export function OAuthSignInButtons({
       href={googleLoginHref}
       className={cn(
         buttonVariants({ variant: "outline", size: "lg" }),
-        "min-h-11 w-full bg-background text-foreground",
+        "inline-flex min-h-11 w-full items-center justify-center gap-2 bg-background text-foreground",
       )}
     >
-      <GoogleIcon className="h-5 w-5" />
-      Mit Google fortfahren
+      <GoogleIcon className="h-5 w-5 shrink-0" />
+      <span>Mit Google fortfahren</span>
     </Link>
   );
 }

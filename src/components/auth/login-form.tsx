@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, ShieldCheck } from "lucide-react";
 
@@ -20,6 +20,7 @@ import {
   signUpWithPassword,
   type AuthActionResult,
 } from "@/lib/auth/actions";
+import { cn } from "@/lib/utils";
 
 import { OAuthSignInButtons } from "./oauth-sign-in-buttons";
 
@@ -33,6 +34,9 @@ interface LoginFormProps {
   initialTab?: AuthTab;
 }
 
+const AUTH_FIELD_CLASS = "min-h-11 w-full";
+const AUTH_PRIMARY_BUTTON_CLASS = "min-h-11 w-full";
+
 function mapAuthError(result: AuthActionResult): string | null {
   if (result.status === "error") return result.message;
   if (result.status === "unconfigured") {
@@ -43,6 +47,25 @@ function mapAuthError(result: AuthActionResult): string | null {
   }
   if (result.status === "ok" && result.message) return result.message;
   return null;
+}
+
+function AuthField({
+  id,
+  label,
+  children,
+}: {
+  id: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid w-full gap-2">
+      <Label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </Label>
+      {children}
+    </div>
+  );
 }
 
 export function LoginForm({
@@ -63,6 +86,7 @@ export function LoginForm({
   );
   const [pending, startTransition] = useTransition();
 
+  const isSignup = tab === "signup";
   const tabs: Array<{ id: AuthTab; label: string; icon: typeof KeyRound }> = [
     { id: "password", label: "Anmelden", icon: KeyRound },
     { id: "signup", label: "Registrieren", icon: ShieldCheck },
@@ -70,53 +94,63 @@ export function LoginForm({
 
   return (
     <ScanContent className="mx-auto w-full max-w-md gap-5 pb-12 pt-[max(1.75rem,env(safe-area-inset-top))]">
-      <Card>
-        <CardHeader>
-          <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+      <Card className="w-full overflow-hidden">
+        <CardHeader className="border-b border-border/70 pb-5">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <ShieldCheck className="h-5 w-5" aria-hidden />
           </div>
           <CardTitle className="font-[family-name:var(--font-display)] text-2xl tracking-tight">
             ZeloxTag
           </CardTitle>
           <CardDescription>
-            Melde dich an, um deine digitale Fahrzeugakte zu öffnen.
+            {isSignup
+              ? "Erstelle dein Konto für die digitale Fahrzeugakte."
+              : "Melde dich an, um deine digitale Fahrzeugakte zu öffnen."}
           </CardDescription>
         </CardHeader>
-      </Card>
 
-      <Card size="sm">
-        <CardContent className="grid grid-cols-2 gap-1 p-1">
-          {tabs.map(({ id, label, icon: Icon }) => (
-            <Button
-              key={id}
-              type="button"
-              variant={tab === id ? "default" : "ghost"}
-              size="sm"
-              className="min-h-10"
-              onClick={() => {
-                setTab(id);
-                setMessage(null);
-                setInfo(null);
-              }}
-            >
-              <Icon className="h-3.5 w-3.5" aria-hidden />
-              {label}
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
+        <CardContent className="pt-5">
+          <div
+            className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1"
+            role="tablist"
+            aria-label="Anmeldung oder Registrierung"
+          >
+            {tabs.map(({ id, label, icon: Icon }) => {
+              const selected = tab === id;
+              return (
+                <Button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  variant={selected ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "min-h-10 w-full justify-center gap-1.5 rounded-lg px-3",
+                    !selected && "bg-transparent hover:bg-background/70",
+                  )}
+                  onClick={() => {
+                    setTab(id);
+                    setMessage(null);
+                    setInfo(null);
+                  }}
+                >
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                  <span>{label}</span>
+                </Button>
+              );
+            })}
+          </div>
 
-      <Card>
-        <CardContent className="pt-(--card-spacing)">
           <form
-            className="space-y-4"
+            className="mt-5 flex w-full flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               setMessage(null);
               setInfo(null);
               startTransition(async () => {
                 const destination = nextPath || "/auth/continue";
-                if (tab === "signup") {
+                if (isSignup) {
                   const result = await signUpWithPassword(
                     email,
                     password,
@@ -133,9 +167,7 @@ export function LoginForm({
                     return;
                   }
                   if (result.status === "ok") {
-                    window.location.assign(
-                      result.redirectTo || destination,
-                    );
+                    window.location.assign(result.redirectTo || destination);
                     return;
                   }
                   setMessage(mapAuthError(result));
@@ -154,102 +186,102 @@ export function LoginForm({
                   return;
                 }
                 if (result.status === "ok") {
-                  window.location.assign(
-                    result.redirectTo || "/auth/continue",
-                  );
+                  window.location.assign(result.redirectTo || "/auth/continue");
                   return;
                 }
                 setMessage(mapAuthError(result));
               });
             }}
           >
-            <div className="space-y-2">
-              <Label htmlFor="login-email">E-Mail</Label>
-              <Input
-                id="login-email"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="du@beispiel.de"
-                className="min-h-10"
-              />
+            <div className="grid w-full gap-4">
+              <AuthField id="login-email" label="E-Mail">
+                <Input
+                  id="login-email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="du@beispiel.de"
+                  className={AUTH_FIELD_CLASS}
+                />
+              </AuthField>
+
+              <AuthField id="login-password" label="Passwort">
+                <Input
+                  id="login-password"
+                  type="password"
+                  required
+                  minLength={10}
+                  autoComplete={isSignup ? "new-password" : "current-password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Mindestens 10 Zeichen"
+                  className={AUTH_FIELD_CLASS}
+                />
+              </AuthField>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="login-password">Passwort</Label>
-              <Input
-                id="login-password"
-                type="password"
-                required
-                minLength={10}
-                autoComplete={
-                  tab === "signup" ? "new-password" : "current-password"
-                }
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Mindestens 10 Zeichen"
-                className="min-h-10"
-              />
-            </div>
-
-            {tab === "password" ? (
-              <div className="flex justify-end">
+            <div className="flex min-h-5 w-full items-center justify-end">
+              {!isSignup ? (
                 <a
                   href="/login/reset"
                   className="text-sm text-muted-foreground underline-offset-4 hover:underline"
                 >
                   Passwort vergessen?
                 </a>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
 
             {message ? (
               <p
                 role="alert"
-                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                className="w-full rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
               >
                 {message}
               </p>
             ) : null}
             {info ? (
-              <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+              <p className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
                 {info}
               </p>
             ) : null}
 
-            {tab === "signup" ? (
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Mit der Registrierung akzeptierst du unsere{" "}
-                <a href="/agb" className="underline-offset-4 hover:underline">
-                  AGB
-                </a>{" "}
-                und nimmst unsere{" "}
-                <a
-                  href="/datenschutz"
-                  className="underline-offset-4 hover:underline"
-                >
-                  Datenschutzerklärung
-                </a>{" "}
-                zur Kenntnis.
-              </p>
-            ) : null}
+            <div
+              className={cn(
+                "min-h-[3.25rem] w-full text-xs leading-relaxed text-muted-foreground",
+                !isSignup && "invisible",
+              )}
+              aria-hidden={!isSignup}
+            >
+              Mit der Registrierung akzeptierst du unsere{" "}
+              <a href="/agb" className="underline-offset-4 hover:underline">
+                AGB
+              </a>{" "}
+              und nimmst unsere{" "}
+              <a
+                href="/datenschutz"
+                className="underline-offset-4 hover:underline"
+              >
+                Datenschutzerklärung
+              </a>{" "}
+              zur Kenntnis.
+            </div>
 
             <Button
               type="submit"
               disabled={pending}
               size="lg"
-              className="min-h-11 w-full"
+              className={AUTH_PRIMARY_BUTTON_CLASS}
             >
               {pending
                 ? "Bitte warten…"
-                : tab === "signup"
+                : isSignup
                   ? "Konto erstellen"
                   : "Anmelden"}
             </Button>
 
-            <div className="relative py-1">
+            <div className="relative w-full py-1">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border" />
               </div>
