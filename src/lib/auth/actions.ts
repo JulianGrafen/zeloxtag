@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getSiteUrl } from "@/lib/auth/site-url";
+import { accountHasPasswordLogin } from "@/lib/auth/account-password";
 import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
 import {
   CONFIRM_EMAIL_MESSAGE,
@@ -494,5 +495,78 @@ export async function updatePasswordAfterReset(
     status: "ok",
     message: "Passwort aktualisiert.",
     redirectTo: "/auth/continue",
+  };
+}
+
+/** Change password from Konto settings (requires current password when set). */
+export async function changeAccountPassword(
+  currentPasswordRaw: string | null | undefined,
+  newPasswordRaw: string,
+  confirmPasswordRaw: string,
+): Promise<AuthActionResult> {
+  const limited = await enforceAuthRateLimit("password-change");
+  if (limited) return limited;
+
+  const newPasswordParsed = passwordSchema.safeParse(newPasswordRaw);
+  if (!newPasswordParsed.success) {
+    return {
+      status: "error",
+      message: "Neues Passwort muss mindestens 10 Zeichen haben.",
+    };
+  }
+  if (newPasswordRaw !== confirmPasswordRaw) {
+    return { status: "error", message: "Passwörter stimmen nicht überein." };
+  }
+
+  const { isConfigured } = getSupabaseEnv();
+  if (!isConfigured) return { status: "unconfigured" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) {
+    return { status: "error", message: "Nicht angemeldet." };
+  }
+
+  const hasPasswordLogin = accountHasPasswordLogin(user);
+
+  if (hasPasswordLogin) {
+    const currentPassword = currentPasswordRaw?.trim() ?? "";
+    if (!currentPassword) {
+      return {
+        status: "error",
+        message: "Bitte gib dein aktuelles Passwort ein.",
+      };
+    }
+
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+    if (verifyError) {
+      return {
+        status: "error",
+        message: "Aktuelles Passwort ist falsch.",
+      };
+    }
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: newPasswordParsed.data,
+  });
+  if (error) {
+    logServerError("[auth] changeAccountPassword failed", error);
+    return {
+      status: "error",
+      message: publicAuthMessage(error, "Passwort konnte nicht geändert werden."),
+    };
+  }
+
+  return {
+    status: "ok",
+    message: hasPasswordLogin
+      ? "Passwort wurde geändert."
+      : "Passwort wurde festgelegt. Du kannst dich künftig auch per E-Mail anmelden.",
   };
 }

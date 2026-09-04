@@ -29,6 +29,16 @@ describe("resolvePublicSiteOrigin", () => {
     expect(resolvePublicSiteOrigin()).toBe("https://app.zeloxtag.de");
   });
 
+  it("ignores vercel.app SITE_URL in production", () => {
+    process.env = {
+      ...env,
+      NODE_ENV: "production",
+      VERCEL_ENV: "production",
+      NEXT_PUBLIC_SITE_URL: "https://zeloxtag.vercel.app",
+    };
+    expect(resolvePublicSiteOrigin()).toBe("https://app.zeloxtag.de");
+  });
+
   it("defaults to localhost in development", () => {
     process.env = {
       ...env,

@@ -1,5 +1,7 @@
 import { headers } from "next/headers";
 
+import { resolvePublicSiteOrigin } from "@/lib/site-origin";
+
 /** Canonical production app origin (password-reset + QR targets). */
 export const PRODUCTION_SITE_URL = "https://app.zeloxtag.de";
 
@@ -16,32 +18,24 @@ function normalizeOrigin(value: string): string {
   return stripTrailingSlash(`https://${trimmed.replace(/^\/\//, "")}`);
 }
 
-/** Known deployment origins we may safely put into auth emails. */
-function allowedOrigins(): string[] {
-  const candidates = [
-    process.env.NEXT_PUBLIC_SITE_URL,
-    PRODUCTION_SITE_URL,
-    process.env.VERCEL_PROJECT_PRODUCTION_URL,
-    process.env.VERCEL_BRANCH_URL,
-    process.env.VERCEL_URL,
-  ];
-  return [
-    ...new Set(
-      candidates
-        .map((value) => (value ? normalizeOrigin(value) : ""))
-        .filter(Boolean),
-    ),
-  ];
+function isProductionRuntime(): boolean {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL_ENV === "production"
+  );
 }
 
 /**
- * Absolute site origin for auth redirects (password-reset links, etc.).
+ * Absolute site origin for auth redirects (OAuth, password-reset links, etc.).
  *
- * Production emails always prefer `https://app.zeloxtag.de` so links never
- * point at a stale `*.vercel.app` deployment.
+ * In production always prefers the canonical custom domain — never a
+ * `*.vercel.app` deployment URL baked into env or inferred from headers.
  */
 export async function getSiteUrl(): Promise<string> {
-  const allowed = allowedOrigins();
+  if (isProductionRuntime()) {
+    return resolvePublicSiteOrigin();
+  }
+
   const headerStore = await headers();
   const host =
     headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "";
@@ -50,29 +44,13 @@ export async function getSiteUrl(): Promise<string> {
     const proto =
       headerStore.get("x-forwarded-proto") ??
       (host.includes("localhost") ? "http" : "https");
-    const requestOrigin = normalizeOrigin(`${proto}://${host}`);
-
-    // On the live custom domain (or when SITE_URL matches), use that host.
-    if (allowed.includes(requestOrigin) || host.includes("localhost")) {
-      // Prefer canonical production when the request is already production.
-      if (
-        requestOrigin === PRODUCTION_SITE_URL ||
-        host === "app.zeloxtag.de"
-      ) {
-        return PRODUCTION_SITE_URL;
-      }
-      return requestOrigin;
-    }
+    return normalizeOrigin(`${proto}://${host}`);
   }
 
   const configured = process.env.NEXT_PUBLIC_SITE_URL
     ? normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL)
     : "";
 
-  // Never fall back to a dead *.vercel.app when production domain is known.
-  if (configured && !configured.endsWith(".vercel.app")) {
-    return configured;
-  }
-
-  return PRODUCTION_SITE_URL;
+  if (configured) return configured;
+  return "http://localhost:3000";
 }

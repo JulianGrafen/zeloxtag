@@ -10,9 +10,11 @@ import {
 } from "@/lib/billing/membership-store";
 import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership";
 import { AppShell } from "@/components/layout/app-shell";
+import { ChangePasswordPanel } from "@/components/auth/change-password-panel";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
 import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { accountHasPasswordLogin } from "@/lib/auth/account-password";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import {
   isPostPaymentReturn,
@@ -106,6 +108,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           justLinked={justLinked}
           checkoutState={checkoutState}
         />
+
+        <ChangePasswordPanel hasPasswordLogin={accountHasPasswordLogin(user)} />
 
         <MfaSetupPanel />
 

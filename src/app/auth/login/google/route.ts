@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { normalizeAuthCallbackNext } from "@/lib/auth/post-login-path";
-import { getSiteUrl } from "@/lib/auth/site-url";
+import { resolvePublicSiteOrigin } from "@/lib/site-origin";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { hardenCookieOptions } from "@/lib/security/cookie-options";
 import { publicAuthMessage } from "@/lib/security/public-error";
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   const next = normalizeAuthCallbackNext(
     request.nextUrl.searchParams.get("next") ?? "/auth/continue",
   );
-  const siteUrl = await getSiteUrl();
+  const siteUrl = resolvePublicSiteOrigin();
   const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
 
   const cookieResponse = NextResponse.redirect(new URL("/login", origin));

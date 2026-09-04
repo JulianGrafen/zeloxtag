@@ -22,6 +22,14 @@ function isLocalOrigin(origin: string): boolean {
   }
 }
 
+function isVercelAppOrigin(origin: string): boolean {
+  try {
+    return new URL(origin).hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
 function isProductionRuntime(): boolean {
   return (
     process.env.NODE_ENV === "production" ||
@@ -40,7 +48,11 @@ export function resolvePublicSiteOrigin(): string {
     : "";
 
   if (isProductionRuntime()) {
-    if (configured && !isLocalOrigin(configured)) {
+    if (
+      configured &&
+      !isLocalOrigin(configured) &&
+      !isVercelAppOrigin(configured)
+    ) {
       return configured;
     }
     return PRODUCTION_SITE_URL;
