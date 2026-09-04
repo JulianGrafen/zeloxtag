@@ -61,8 +61,6 @@ import {
   uploadDocumentMetaSchema,
 } from "./upload-schema";
 
-export { isActionFailure, actionFailureMessage } from "@/lib/permissions/feature-gate-result";
-
 export type UploadDocumentResult =
   | { status: "uploaded"; document: Document; tagUuid: string; freeScanConsumed?: boolean }
   | {

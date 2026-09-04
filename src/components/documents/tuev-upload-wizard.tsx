@@ -35,7 +35,8 @@ import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { InvoiceLineItem, InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { resolveTuevTotalAmount } from "@/lib/ocr/tuev-amount";
-import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
+import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import {
   createDocumentPreviewUrl,
   prepareTuevWizardOcrFile,

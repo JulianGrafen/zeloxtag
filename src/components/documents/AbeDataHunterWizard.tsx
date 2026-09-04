@@ -35,7 +35,8 @@ import {
 } from "@/lib/documents/abe-title";
 import { localDateIso } from "@/lib/documents/format";
 import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
-import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
+import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import {
   cropAuflagenSnippetsFromPhoto,
   type NormalizedAuflagenRegion,

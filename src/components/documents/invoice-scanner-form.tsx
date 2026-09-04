@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, FileText, LoaderCircle, RotateCcw } from "lucide-react";
 
-import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
+import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { formatCompactGermanDate, localDateIso } from "@/lib/documents/format";
 import { drawImageToCanvas, loadImageFromFile } from "@/lib/utils/image-loader";
 import type { QuadPoints } from "@/lib/utils/perspective";

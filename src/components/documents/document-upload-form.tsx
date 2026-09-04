@@ -14,7 +14,8 @@ import {
   DOCUMENT_TYPE_LABELS,
   DOCUMENT_TYPE_OPTIONS,
 } from "@/lib/documents/constants";
-import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
+import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import type { DocumentType } from "@/types/database";
 
 interface DocumentUploadFormProps {

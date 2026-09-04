@@ -46,7 +46,8 @@ import {
   type InvoiceReviewCategory,
 } from "@/lib/documents/invoice-review-categories";
 import { scanTypeDefinition, type ScanType } from "@/lib/documents/scan-types";
-import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
+import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { documentTypeForTextCategory } from "@/lib/ocr/category-map";
 import {
   type InvoiceTextParseCategory,

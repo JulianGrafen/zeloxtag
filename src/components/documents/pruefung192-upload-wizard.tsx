@@ -26,7 +26,8 @@ import {
 } from "@/components/documents/wizard-scan-shell";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { localDateIso, normalizeDocumentDateIso } from "@/lib/documents/format";
-import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
+import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import {
   analyzeDocumentFiles,
   AnalyzeDocumentError,

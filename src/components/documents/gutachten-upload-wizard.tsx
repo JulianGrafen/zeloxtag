@@ -30,7 +30,8 @@ import {
   type GutachtenFollowUpStep,
 } from "@/lib/documents/gutachten-scan-steps";
 import { localDateIso } from "@/lib/documents/format";
-import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
+import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import {
   analyzeDocumentFiles,
   AnalyzeDocumentError,

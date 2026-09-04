@@ -40,7 +40,8 @@ import {
   scanTypeDefinition,
   type ScanType,
 } from "@/lib/documents/scan-types";
-import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
+import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { assessVehicleDocumentMatch } from "@/lib/documents/vehicle-document-match";
 import { validateMileageAgainstHistory } from "@/lib/documents/validate-mileage";
 import { DOCUMENT_TYPE_LABELS } from "@/lib/documents/constants";

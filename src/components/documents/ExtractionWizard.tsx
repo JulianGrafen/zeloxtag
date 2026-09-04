@@ -22,7 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { abePartArtLabel, titleFromAbeFields } from "@/lib/documents/abe-title";
 import { localDateIso } from "@/lib/documents/format";
-import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
+import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import {
   buildClientAuflagenKuerzelDb,
   fetchServerAuflagenKuerzelRecords,

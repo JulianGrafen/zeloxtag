@@ -15,6 +15,10 @@ export type FeatureForbiddenResult = {
   code: FeatureGateErrorCode;
 };
 
+export type ActionFailureResult =
+  | FeatureForbiddenResult
+  | { status: "error"; message: string };
+
 export function featureDeniedToForbidden(
   denied: FeatureDenied,
 ): FeatureForbiddenResult {
@@ -32,7 +36,9 @@ export function isFeatureGateFailure(result: {
 }
 
 /** Treat paywall blocks and validation errors uniformly in server-action clients. */
-export function isActionFailure(result: { status: string }): boolean {
+export function isActionFailure(
+  result: { status: string },
+): result is ActionFailureResult {
   return result.status === "error" || result.status === "forbidden";
 }
 
@@ -40,5 +46,5 @@ export function actionFailureMessage(
   result: { status: string; message?: string },
 ): string | null {
   if (!isActionFailure(result)) return null;
-  return typeof result.message === "string" ? result.message : null;
+  return result.message;
 }
