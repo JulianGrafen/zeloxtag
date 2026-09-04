@@ -50,7 +50,7 @@ export function ProPaywallContent({
     <div
       className={cn(
         "flex min-h-0 flex-col",
-        isModal ? "h-full min-h-0 flex-1" : "gap-3",
+        isModal ? "h-full min-h-0 flex-1" : "gap-5",
       )}
     >
       <div className={cn("shrink-0", isModal ? "px-4 pt-10" : "")}>
@@ -77,18 +77,18 @@ export function ProPaywallContent({
           </h2>
 
           {showConversionExtras && isModal ? (
-            <p className="mt-1.5 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
+            <p className="mt-2.5 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
               {PRO_PAYWALL_MODAL_SUBLINE}
             </p>
           ) : null}
 
-          {statusMessage ? <div className="mt-1.5">{statusMessage}</div> : null}
+          {statusMessage ? <div className="mt-2.5">{statusMessage}</div> : null}
         </div>
       </div>
 
       {showConversionExtras ? (
         isModal ? (
-          <div className={cn("min-h-0 flex-1 px-4", contentWidth)}>
+          <div className={cn("min-h-0 flex-1 px-4 pt-2", contentWidth)}>
             <PaywallModalFold
               benefits={<BenefitList compact={compact} />}
               pricing={
@@ -105,7 +105,7 @@ export function ProPaywallContent({
             />
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-5">
             <BenefitList compact={compact} />
             <PricingCards
               interval={interval}
@@ -132,7 +132,7 @@ export function ProPaywallContent({
         </div>
       )}
 
-      <div className={cn("relative z-20 shrink-0", isModal ? "mt-auto px-4" : "")}>
+      <div className={cn("relative z-20 shrink-0", isModal ? "mt-auto px-4 pb-2 pt-4" : "")}>
         {ctaSlot}
       </div>
     </div>

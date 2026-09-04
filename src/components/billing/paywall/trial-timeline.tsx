@@ -25,17 +25,14 @@ export function TrialTimeline({
   compact?: boolean;
 }) {
   return (
-    <div
-      className={cn(compact ? "mt-5" : "mt-6")}
-      aria-label="Testphase-Ablauf"
-    >
+    <div className={cn(compact ? "mt-0" : "mt-6")} aria-label="Testphase-Ablauf">
       <ol className="relative space-y-0">
         {nodes.map((node, index) => (
           <li
             key={node.text}
             className={cn(
               "relative flex gap-2",
-              compact ? "pb-2 last:pb-0" : "pb-5 last:pb-0",
+              compact ? "pb-3.5 last:pb-0" : "pb-5 last:pb-0",
             )}
           >
             {index < nodes.length - 1 ? (

@@ -36,7 +36,7 @@ export function PricingCard({
       onClick={onSelect}
       className={cn(
         "relative overflow-hidden rounded-2xl border text-left transition-all duration-200",
-        compact ? "px-3 py-2.5" : "px-4 py-3.5",
+        compact ? "px-3 py-3" : "px-4 py-3.5",
         selected
           ? "scale-[1.01] border-blue-600 bg-blue-50/60 ring-2 ring-blue-600"
           : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] hover:border-neutral-400",

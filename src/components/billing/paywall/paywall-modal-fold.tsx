@@ -31,7 +31,7 @@ export function PaywallModalFold({
   } as CSSProperties;
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
+    <div className={cn("flex min-h-0 flex-1 flex-col gap-5", className)}>
       <div
         className={cn(
           "shrink-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]",
@@ -42,14 +42,14 @@ export function PaywallModalFold({
         )}
         style={{
           ...benefitMaskStyle,
-          height: "calc(33dvh - 5.75rem)",
+          height: "calc(33dvh - 6.25rem)",
         }}
         aria-label="Vorteile scrollen"
       >
         {benefits}
       </div>
 
-      <div className="shrink-0 bg-gradient-to-t from-[color:var(--vd-surface)] from-60% pt-1">
+      <div className="shrink-0 bg-gradient-to-t from-[color:var(--vd-surface)] from-60% pt-2">
         {pricing}
       </div>
       <div className="shrink-0">{timeline}</div>

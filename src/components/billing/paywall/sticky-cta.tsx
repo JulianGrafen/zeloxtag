@@ -33,7 +33,7 @@ export function StickyPaywallCta({
       className={cn(
         "z-20 px-4",
         inline
-          ? "shrink-0 bg-[color:var(--vd-surface)]/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-0 backdrop-blur-xl"
+          ? "shrink-0 bg-[color:var(--vd-surface)]/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-xl"
           : "fixed inset-x-0 bottom-0 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl",
       )}
     >
@@ -52,7 +52,7 @@ export function StickyPaywallCta({
         <p
           className={cn(
             "text-center leading-snug text-[color:var(--vd-muted)]",
-            inline ? "mt-1 text-[0.66rem]" : "mt-2 text-[0.72rem] leading-relaxed",
+            inline ? "mt-2 text-[0.66rem]" : "mt-2 text-[0.72rem] leading-relaxed",
           )}
         >
           {microCopy}
@@ -74,7 +74,7 @@ export function StickyPaywallCta({
             onClick={onDismiss}
             className={cn(
               "claim-later w-full rounded-xl px-3",
-              inline ? "mt-1 py-1.5 text-[0.76rem]" : "mt-2 py-2 text-[0.84rem]",
+              inline ? "mt-2 py-2 text-[0.76rem]" : "mt-2 py-2 text-[0.84rem]",
             )}
           >
             {dismissLabel}
