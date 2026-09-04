@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { VehicleWriteAccess } from "@/lib/auth/vehicle-write-access";
-import { userHasActiveMembership } from "@/lib/billing/membership-store";
+import { ownerHasProSubscription } from "@/lib/billing/owner-entitlement";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 
-vi.mock("@/lib/billing/membership-store", () => ({
-  userHasActiveMembership: vi.fn(),
+vi.mock("@/lib/billing/owner-entitlement", () => ({
+  ownerHasProSubscription: vi.fn(),
 }));
 
 const contributorAccess: VehicleWriteAccess = {
@@ -19,11 +19,11 @@ const contributorAccess: VehicleWriteAccess = {
 
 describe("assertVehicleDocumentWrite", () => {
   beforeEach(() => {
-    vi.mocked(userHasActiveMembership).mockReset();
+    vi.mocked(ownerHasProSubscription).mockReset();
   });
 
   it("allows Schrauber uploads when the vehicle owner has Pro", async () => {
-    vi.mocked(userHasActiveMembership).mockResolvedValue(true);
+    vi.mocked(ownerHasProSubscription).mockResolvedValue(true);
 
     const result = await assertVehicleDocumentWrite(
       contributorAccess,
@@ -31,11 +31,11 @@ describe("assertVehicleDocumentWrite", () => {
     );
 
     expect(result).toEqual({ ok: true });
-    expect(userHasActiveMembership).toHaveBeenCalledWith("owner-1");
+    expect(ownerHasProSubscription).toHaveBeenCalledWith("owner-1");
   });
 
   it("blocks Schrauber uploads when the vehicle owner lacks Pro", async () => {
-    vi.mocked(userHasActiveMembership).mockResolvedValue(false);
+    vi.mocked(ownerHasProSubscription).mockResolvedValue(false);
 
     const result = await assertVehicleDocumentWrite(
       contributorAccess,

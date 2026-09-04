@@ -35,7 +35,7 @@ import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { InvoiceLineItem, InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { resolveTuevTotalAmount } from "@/lib/ocr/tuev-amount";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import {
   createDocumentPreviewUrl,
   prepareTuevWizardOcrFile,
@@ -541,7 +541,7 @@ export function TuevUploadWizard({
       formData.set("file", state.uploadFile!);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setSaveError(result.message);
         return;
       }

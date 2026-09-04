@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, Pencil } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import {
   displaySpecForAbeDetailView,
   auflagenNotesFromTechnicalSpecs,
@@ -144,7 +145,7 @@ export function EditableAbeListsSection({
         technicalSpecs: nextSpecs,
         conditions: nextConditions,
       });
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setError(result.message);
         return;
       }

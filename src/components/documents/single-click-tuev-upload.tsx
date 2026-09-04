@@ -29,7 +29,7 @@ import {
   normalizeDocumentDateIso,
 } from "@/lib/documents/format";
 import { isMileagePlausibilityMessage } from "@/lib/documents/mileage-plausibility-message";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import { validateMileageAgainstHistory } from "@/lib/documents/validate-mileage";
 import { prepareTuevSingleOcrFile } from "@/lib/ocr/prepare-client-ocr-file";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
@@ -372,7 +372,7 @@ export function SingleClickTuevUpload({
 
     startSaveTransition(async () => {
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         if (isMileagePlausibilityMessage(result.message)) {
           setSaveError(result.message);
           return;

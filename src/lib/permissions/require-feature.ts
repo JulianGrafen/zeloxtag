@@ -6,7 +6,7 @@ import {
   ownerHasFreeAbeScanRemaining,
   ownerHasFreeInvoiceScanRemaining,
 } from "@/lib/billing/free-scan-quota";
-import { userHasActiveMembership } from "@/lib/billing/membership-store";
+import { ownerHasProSubscription } from "@/lib/billing/owner-entitlement";
 import { MEMBERSHIP_REQUIRED_MESSAGE } from "@/lib/billing/pro-plan";
 import {
   FEATURE,
@@ -20,7 +20,7 @@ import {
 
 export async function getOwnerTier(ownerUserId: string): Promise<UserTier> {
   if (!ownerUserId) return "free";
-  return resolveUserTier(await userHasActiveMembership(ownerUserId));
+  return resolveUserTier(await ownerHasProSubscription(ownerUserId));
 }
 
 export async function ownerHasFeature(

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Copy, ExternalLink, FileDown, Link2, RefreshCw, ShieldOff } from "lucide-react";
 
 import { manageVehicleExpose } from "@/actions/expose";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
 import { GenerateExposeButton } from "@/components/vehicles/GenerateExposeButton";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
@@ -53,7 +54,7 @@ export function ExposeShareSettings({
         action,
       });
 
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setError(result.message);
         return;
       }

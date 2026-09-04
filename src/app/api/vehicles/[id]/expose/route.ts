@@ -56,7 +56,7 @@ export async function GET(
     FEATURE.GENERATE_EXPOSE,
   );
   if (!pro.ok) {
-    return subscriptionRequiredResponse(pro.message);
+    return subscriptionRequiredResponse(pro.message, pro.code);
   }
 
   try {

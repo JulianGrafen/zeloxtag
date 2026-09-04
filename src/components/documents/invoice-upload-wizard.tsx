@@ -46,7 +46,7 @@ import {
   type InvoiceReviewCategory,
 } from "@/lib/documents/invoice-review-categories";
 import { scanTypeDefinition, type ScanType } from "@/lib/documents/scan-types";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import { documentTypeForTextCategory } from "@/lib/ocr/category-map";
 import {
   type InvoiceTextParseCategory,
@@ -625,7 +625,7 @@ export function InvoiceUploadWizard({
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setSaveError(result.message);
         return;
       }

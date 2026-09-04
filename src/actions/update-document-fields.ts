@@ -9,6 +9,8 @@ import {
 } from "@/lib/auth/vehicle-write-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { FEATURE } from "@/lib/permissions/feature-access";
+import { featureDeniedToForbidden } from "@/lib/permissions/feature-gate-result";
+import type { FeatureForbiddenResult } from "@/lib/permissions/feature-gate-result";
 import { assertOwnerFeature, assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import {
@@ -30,6 +32,7 @@ import type { DocumentLineItem, DocumentTechnicalSpec } from "@/types/database";
 
 export type UpdateDocumentFieldsResult =
   | { status: "ok" }
+  | FeatureForbiddenResult
   | { status: "error"; message: string };
 
 type UpdatePayload = {
@@ -213,7 +216,7 @@ export async function updateDocumentFields(
           FEATURE.DOCUMENT_VAULT,
         );
     if (!gate.ok) {
-      return { status: "error", message: gate.message };
+      return featureDeniedToForbidden(gate);
     }
   }
 

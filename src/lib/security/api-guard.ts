@@ -196,6 +196,10 @@ export async function requireApiUser(): Promise<ApiAuthResult> {
   return { ok: true, user };
 }
 
+/**
+ * Paywall enforcement for API routes — always 403 so direct POST bypass cannot
+ * reach Pro features without an active/trialing membership or free-scan quota.
+ */
 export function subscriptionRequiredResponse(
   message: string = MEMBERSHIP_REQUIRED_MESSAGE,
   code:
@@ -208,7 +212,7 @@ export function subscriptionRequiredResponse(
       error: message,
       code,
     },
-    { status: 402 },
+    { status: 403 },
   );
 }
 

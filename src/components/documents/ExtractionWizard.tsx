@@ -22,7 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { abePartArtLabel, titleFromAbeFields } from "@/lib/documents/abe-title";
 import { localDateIso } from "@/lib/documents/format";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import {
   buildClientAuflagenKuerzelDb,
   fetchServerAuflagenKuerzelRecords,
@@ -304,7 +304,7 @@ export function ExtractionWizard({
       formData.set("file", uploadFile, uploadFile.name);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setSaveError(result.message);
         return;
       }

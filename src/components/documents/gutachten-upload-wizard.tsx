@@ -30,7 +30,7 @@ import {
   type GutachtenFollowUpStep,
 } from "@/lib/documents/gutachten-scan-steps";
 import { localDateIso } from "@/lib/documents/format";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import {
   analyzeDocumentFiles,
   AnalyzeDocumentError,
@@ -591,7 +591,7 @@ export function GutachtenUploadWizard({
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setSaveError(result.message);
         return;
       }

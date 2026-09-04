@@ -40,6 +40,7 @@ import {
   saveVaultDocument,
   stageVaultDocument,
 } from "@/lib/documents/vault-document";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { scanTypeDefinition } from "@/lib/documents/scan-types";
 import {
   documentMediaKind,
@@ -368,7 +369,7 @@ export function VaultUploadWizard({
         : (pages.find((page) => !isPdf(page)) ?? pages[0]!);
 
       const stageResult = await stageVaultDocument(stageForm);
-      if (stageResult.status === "error") {
+      if (isActionFailure(stageResult)) {
         setPhase("pages-hub");
         setError(stageResult.message);
         return;
@@ -491,7 +492,7 @@ export function VaultUploadWizard({
       }
 
       const result = await saveVaultDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setPhase("review");
         setError(result.message);
         return;

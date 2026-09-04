@@ -133,12 +133,12 @@ export async function ownerCanUseAiAbeScan(
 }
 
 export type FreeOcrScanConsumeResult =
-  | { ok: true; consumed: boolean }
+  | { ok: true; consumed: false }
   | { ok: false; code: "free_scan_exhausted" | "quota_unavailable" };
 
 /**
- * Atomically consume a complimentary scan when a Free user enters the OCR pipeline.
- * Pro members skip consumption. Idempotent when no complimentary gate applies.
+ * Verify a complimentary scan is still available before OCR starts.
+ * Quota is consumed only on successful document save — not here.
  */
 export async function tryConsumeFreeOcrScanForOwner(
   ownerUserId: string,
@@ -167,9 +167,8 @@ export async function tryConsumeFreeOcrScanForOwner(
   }
 
   if (needsInvoice) {
-    const consumed = await consumeFreeInvoiceScan(ownerUserId);
-    if (consumed) {
-      return { ok: true, consumed: true };
+    if (await ownerHasFreeInvoiceScanRemaining(ownerUserId)) {
+      return { ok: true, consumed: false };
     }
 
     const row = await loadEntitlementRow(ownerUserId);
@@ -182,9 +181,8 @@ export async function tryConsumeFreeOcrScanForOwner(
     return { ok: false, code: "quota_unavailable" };
   }
 
-  const consumed = await consumeFreeAbeScan(ownerUserId);
-  if (consumed) {
-    return { ok: true, consumed: true };
+  if (await ownerHasFreeAbeScanRemaining(ownerUserId)) {
+    return { ok: true, consumed: false };
   }
 
   const row = await loadEntitlementRow(ownerUserId);

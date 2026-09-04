@@ -26,7 +26,7 @@ import {
 } from "@/components/documents/wizard-scan-shell";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { localDateIso, normalizeDocumentDateIso } from "@/lib/documents/format";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import {
   analyzeDocumentFiles,
   AnalyzeDocumentError,
@@ -539,7 +539,7 @@ export function Pruefung192UploadWizard({
       formData.set("file", state.uploadFile!);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setSaveError(result.message);
         return;
       }

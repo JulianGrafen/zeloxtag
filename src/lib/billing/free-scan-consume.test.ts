@@ -69,7 +69,7 @@ describe("tryConsumeFreeOcrScanForOwner", () => {
     expect(mockCreateAdminClient).not.toHaveBeenCalled();
   });
 
-  it("consumes invoice quota at parse time for Free users", async () => {
+  it("allows invoice OCR when complimentary quota remains", async () => {
     mockCreateAdminClient.mockReturnValue(entitlementAdminClient(0));
     const { tryConsumeFreeOcrScanForOwner } = await import("./free-scan-quota");
 
@@ -79,7 +79,7 @@ describe("tryConsumeFreeOcrScanForOwner", () => {
       "invoice",
     );
 
-    expect(result).toEqual({ ok: true, consumed: true });
+    expect(result).toEqual({ ok: true, consumed: false });
   });
 
   it("returns exhausted when invoice quota is already used", async () => {

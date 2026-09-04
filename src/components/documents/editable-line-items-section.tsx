@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import type { DocumentLineItem } from "@/types/database";
@@ -142,7 +143,7 @@ export function EditableLineItemsSection({
         tagUuid,
         lineItems: next,
       });
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setError(result.message);
         return;
       }

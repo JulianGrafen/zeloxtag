@@ -40,7 +40,7 @@ import {
   scanTypeDefinition,
   type ScanType,
 } from "@/lib/documents/scan-types";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import { assessVehicleDocumentMatch } from "@/lib/documents/vehicle-document-match";
 import { validateMileageAgainstHistory } from "@/lib/documents/validate-mileage";
 import { DOCUMENT_TYPE_LABELS } from "@/lib/documents/constants";
@@ -446,7 +446,7 @@ export function InvoiceUploader({
 
       try {
         const result = await uploadDocument(formData);
-        if (result.status === "error") {
+        if (isActionFailure(result)) {
           setError(result.message);
           return;
         }
@@ -993,7 +993,7 @@ export function InvoiceUploader({
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setError(result.message);
         return;
       }
@@ -1089,7 +1089,7 @@ export function InvoiceUploader({
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setError(result.message);
         return;
       }
@@ -1162,7 +1162,7 @@ export function InvoiceUploader({
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setError(result.message);
         return;
       }
@@ -1252,7 +1252,7 @@ export function InvoiceUploader({
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setError(result.message);
         return;
       }

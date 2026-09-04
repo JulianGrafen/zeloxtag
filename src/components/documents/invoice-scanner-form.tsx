@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, FileText, LoaderCircle, RotateCcw } from "lucide-react";
 
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import { formatCompactGermanDate, localDateIso } from "@/lib/documents/format";
 import { drawImageToCanvas, loadImageFromFile } from "@/lib/utils/image-loader";
 import type { QuadPoints } from "@/lib/utils/perspective";
@@ -222,7 +222,7 @@ export function InvoiceScannerForm({
               formData.set("file", pdfFile);
 
               const result = await uploadDocument(formData);
-              if (result.status === "error") {
+              if (isActionFailure(result)) {
                 setError(result.message);
                 return;
               }

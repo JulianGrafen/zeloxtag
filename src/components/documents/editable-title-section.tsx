@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Pencil } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
+import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,7 +64,7 @@ export function EditableTitleSection({
         tagUuid,
         title: nextTitle,
       });
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setError(result.message);
         return;
       }

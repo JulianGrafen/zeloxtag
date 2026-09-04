@@ -35,7 +35,7 @@ import {
 } from "@/lib/documents/abe-title";
 import { localDateIso } from "@/lib/documents/format";
 import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import {
   cropAuflagenSnippetsFromPhoto,
   type NormalizedAuflagenRegion,
@@ -2915,7 +2915,7 @@ export function AbeDataHunterWizard({
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setSaveError(result.message);
         return;
       }

@@ -14,7 +14,7 @@ import {
   DOCUMENT_TYPE_LABELS,
   DOCUMENT_TYPE_OPTIONS,
 } from "@/lib/documents/constants";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import type { DocumentType } from "@/types/database";
 
 interface DocumentUploadFormProps {
@@ -90,7 +90,7 @@ export function DocumentUploadForm({
             formData.set("file", file);
 
             const result = await uploadDocument(formData);
-            if (result.status === "error") {
+            if (isActionFailure(result)) {
               setError(result.message);
               return;
             }

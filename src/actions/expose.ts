@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { FEATURE } from "@/lib/permissions/feature-access";
+import { featureDeniedToForbidden } from "@/lib/permissions/feature-gate-result";
+import type { FeatureForbiddenResult } from "@/lib/permissions/feature-gate-result";
 import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -32,6 +34,7 @@ export type ManageExposeResult =
       isActive: boolean;
       sharePath: string | null;
     }
+  | FeatureForbiddenResult
   | { status: "error"; message: string };
 
 function missingColumnMessage(error: { message: string; code?: string }): string | null {
@@ -78,7 +81,7 @@ export async function manageVehicleExpose(
       FEATURE.GENERATE_EXPOSE,
     );
     if (!pro.ok) {
-      return { status: "error", message: pro.message };
+      return featureDeniedToForbidden(pro);
     }
 
     const supabase = await createClient();

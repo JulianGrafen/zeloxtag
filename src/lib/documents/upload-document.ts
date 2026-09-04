@@ -15,6 +15,8 @@ import {
 } from "@/lib/billing/free-scan-quota";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
+import { featureDeniedToForbidden } from "@/lib/permissions/feature-gate-result";
+import type { FeatureForbiddenResult } from "@/lib/permissions/feature-gate-result";
 import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 import {
   isUploadFile,
@@ -59,6 +61,8 @@ import {
   uploadDocumentMetaSchema,
 } from "./upload-schema";
 
+export { isActionFailure, actionFailureMessage } from "@/lib/permissions/feature-gate-result";
+
 export type UploadDocumentResult =
   | { status: "uploaded"; document: Document; tagUuid: string; freeScanConsumed?: boolean }
   | {
@@ -67,6 +71,7 @@ export type UploadDocumentResult =
       tagUuid: string;
       message: string;
     }
+  | FeatureForbiddenResult
   | { status: "error"; message: string };
 
 function isComplimentaryAbeUpload(
@@ -273,7 +278,7 @@ export async function uploadDocument(
     uploadVaultGateOptions(typeRaw, approvalFields),
   );
   if (!vault.ok) {
-    return { status: "error", message: vault.message };
+    return featureDeniedToForbidden(vault);
   }
   if (
     !contributorMayWriteDocumentType(

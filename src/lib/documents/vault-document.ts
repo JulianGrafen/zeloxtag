@@ -11,6 +11,8 @@ import {
   writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
 import { FEATURE } from "@/lib/permissions/feature-access";
+import { featureDeniedToForbidden } from "@/lib/permissions/feature-gate-result";
+import type { FeatureForbiddenResult } from "@/lib/permissions/feature-gate-result";
 import { assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
 import {
   isUploadFile,
@@ -95,6 +97,7 @@ export type StageVaultDocumentResult =
       fileUrl: string;
       tagUuid: string;
     }
+  | FeatureForbiddenResult
   | { status: "error"; message: string };
 
 function metaFromStageFormData(formData: FormData): unknown {
@@ -207,7 +210,7 @@ export async function stageVaultDocument(
     FEATURE.DOCUMENT_VAULT,
   );
   if (!vault.ok) {
-    return { status: "error", message: vault.message };
+    return featureDeniedToForbidden(vault);
   }
 
   if (
@@ -343,7 +346,7 @@ export async function saveVaultDocument(
     FEATURE.DOCUMENT_VAULT,
   );
   if (!vault.ok) {
-    return { status: "error", message: vault.message };
+    return featureDeniedToForbidden(vault);
   }
 
   if (

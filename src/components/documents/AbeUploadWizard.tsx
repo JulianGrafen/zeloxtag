@@ -32,7 +32,7 @@ import {
   resolveInitialAbeVehicleGroupIndex,
   selectedVerkaufsbezeichnungPayload,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
-import { uploadDocument } from "@/lib/documents/upload-document";
+import { isActionFailure, uploadDocument } from "@/lib/documents/upload-document";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import {
@@ -840,7 +840,7 @@ export function AbeUploadWizard({
       formData.set("file", uploadFile);
 
       const result = await uploadDocument(formData);
-      if (result.status === "error") {
+      if (isActionFailure(result)) {
         setSaveError(result.message);
         return;
       }
