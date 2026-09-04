@@ -258,10 +258,7 @@ export function LoginForm({
               </div>
             </div>
 
-            <OAuthSignInButtons
-              nextPath={nextPath || "/auth/continue"}
-              onError={setMessage}
-            />
+            <OAuthSignInButtons nextPath={nextPath || "/auth/continue"} />
           </form>
         </CardContent>
       </Card>

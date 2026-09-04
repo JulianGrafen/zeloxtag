@@ -29,7 +29,6 @@ import { createClient } from "@/lib/supabase/server";
 
 export type AuthActionResult =
   | { status: "ok"; message?: string; redirectTo?: string }
-  | { status: "oauth_redirect"; url: string }
   | { status: "confirm_email"; message: string }
   | { status: "mfa_required" }
   | { status: "error"; message: string }
@@ -121,55 +120,6 @@ export async function signInWithPassword(
     : requested;
 
   redirect(redirectTo);
-}
-
-/** Sign in with Google via Supabase OAuth → /auth/callback PKCE hop. */
-export async function signInWithGoogle(
-  nextPath = "/auth/continue",
-): Promise<AuthActionResult> {
-  const limited = await enforceAuthRateLimit("oauth-google");
-  if (limited) return limited;
-
-  const { isConfigured } = getSupabaseEnv();
-  if (!isConfigured) {
-    return { status: "unconfigured" };
-  }
-
-  const next = normalizeNext(nextPath);
-  const redirectNext = isGenericPostLoginNext(next) ? "/auth/continue" : next;
-  const siteUrl = await getSiteUrl();
-  const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(redirectNext)}`;
-
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo },
-    });
-
-    if (error) {
-      logServerError("[auth] signInWithGoogle failed", error);
-      return {
-        status: "error",
-        message: publicAuthMessage(error, "Google-Anmeldung fehlgeschlagen."),
-      };
-    }
-
-    if (!data.url) {
-      return {
-        status: "error",
-        message: "Google-Anmeldung konnte nicht gestartet werden.",
-      };
-    }
-
-    return { status: "oauth_redirect", url: data.url };
-  } catch (error) {
-    logServerError("[auth] signInWithGoogle unexpected", error);
-    return {
-      status: "error",
-      message: "Google-Anmeldung fehlgeschlagen.",
-    };
-  }
 }
 
 /**
