@@ -26,7 +26,7 @@ export function PricingCards({
         className={cn(
           "vd-anim-stagger grid gap-2",
           showAnnualPlan ? "grid-cols-2" : "grid-cols-1",
-          compact ? "gap-3" : "mt-3 gap-3",
+          compact ? "gap-2" : "mt-3 gap-3",
         )}
         role="radiogroup"
         aria-label="Abrechnungsintervall"

@@ -9,7 +9,6 @@ import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
 import {
   PRO_PAYWALL_DISMISS_LABEL,
-  PRO_PAYWALL_MODAL_MICROCOPY,
   PRO_PLAN_CHECKOUT_HEADLINE,
   cloudAboHref,
   type ProBillingInterval,
@@ -117,7 +116,6 @@ export function ProPaywallModal({
               <StickyPaywallCta
                 pending={pending}
                 error={error}
-                microCopy={PRO_PAYWALL_MODAL_MICROCOPY}
                 dismissLabel={PRO_PAYWALL_DISMISS_LABEL}
                 onCheckout={handleCheckout}
                 onDismiss={onClose}

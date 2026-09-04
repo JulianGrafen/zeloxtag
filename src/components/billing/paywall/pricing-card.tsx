@@ -36,7 +36,7 @@ export function PricingCard({
       onClick={onSelect}
       className={cn(
         "relative overflow-hidden rounded-2xl border text-left transition-all duration-200",
-        compact ? "px-3 py-3" : "px-4 py-3.5",
+        compact ? "px-3 py-2.5" : "px-4 py-3.5",
         selected
           ? "scale-[1.01] border-blue-600 bg-blue-50/60 ring-2 ring-blue-600"
           : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] hover:border-neutral-400",
@@ -80,8 +80,8 @@ export function PricingCard({
       {anchor.referencePrice ? (
         <span
           className={cn(
-            "block line-through",
-            compact ? "mt-1 text-[0.68rem]" : "mt-0.5 text-[0.78rem] mt-1",
+            "mt-0.5 block line-through",
+            compact ? "text-[0.68rem]" : "text-[0.78rem] mt-1",
             selected
               ? "text-blue-800/50"
               : "text-[color:var(--vd-muted)]",
@@ -121,8 +121,8 @@ export function PricingCard({
 
       <span
         className={cn(
-          "block font-semibold tracking-[-0.02em]",
-          compact ? "mt-1 text-[0.92rem]" : "mt-0.5 text-[0.98rem]",
+          "mt-0.5 block font-semibold tracking-[-0.02em]",
+          compact ? "text-[0.88rem]" : "text-[0.98rem]",
         )}
       >
         {anchor.currentPrice}
@@ -140,17 +140,15 @@ export function PricingCard({
         </span>
       ) : null}
 
-      {!compact ? (
-        <span
-          className={cn(
-            "mt-0.5 block leading-snug",
-            "text-[0.72rem] mt-1",
-            selected ? "text-blue-900/70" : "text-[color:var(--vd-muted)]",
-          )}
-        >
-          {anchor.weeklyAnchor}
-        </span>
-      ) : null}
+      <span
+        className={cn(
+          "mt-0.5 block leading-snug",
+          compact ? "text-[0.64rem]" : "text-[0.72rem] mt-1",
+          selected ? "text-blue-900/70" : "text-[color:var(--vd-muted)]",
+        )}
+      >
+        {anchor.weeklyAnchor}
+      </span>
 
       {!compact && anchor.flexSubline ? (
         <span

@@ -3,6 +3,23 @@ import { Check } from "lucide-react";
 import { PRO_PAYWALL_MODAL_BENEFITS } from "@/lib/billing/pro-plan";
 import { cn } from "@/lib/utils";
 
+function BenefitText({ benefit }: { benefit: string }) {
+  const colonIndex = benefit.indexOf(":");
+  if (colonIndex === -1) {
+    return <span>{benefit}</span>;
+  }
+
+  const title = benefit.slice(0, colonIndex + 1);
+  const description = benefit.slice(colonIndex + 1);
+
+  return (
+    <span>
+      <span className="font-semibold">{title}</span>
+      {description}
+    </span>
+  );
+}
+
 export function BenefitList({
   items = PRO_PAYWALL_MODAL_BENEFITS,
   compact = false,
@@ -14,7 +31,7 @@ export function BenefitList({
     <ul
       className={cn(
         "vd-anim-list",
-        compact ? "space-y-2.5" : "mt-5 space-y-3",
+        compact ? "mt-1 space-y-1.5" : "mt-5 space-y-3",
       )}
       aria-label="Vorteile von ZeloxTag Pro"
     >
@@ -22,8 +39,8 @@ export function BenefitList({
         <li
           key={benefit}
           className={cn(
-            "flex gap-3 leading-snug text-[color:var(--vd-text)]",
-            compact ? "text-[0.84rem]" : "text-[0.84rem]",
+            "flex gap-2.5 leading-snug text-[color:var(--vd-text)]",
+            compact ? "text-[0.8rem]" : "text-[0.84rem]",
           )}
         >
           <span
@@ -32,7 +49,7 @@ export function BenefitList({
           >
             <Check className="h-3 w-3" strokeWidth={3} />
           </span>
-          <span>{benefit}</span>
+          <BenefitText benefit={benefit} />
         </li>
       ))}
     </ul>

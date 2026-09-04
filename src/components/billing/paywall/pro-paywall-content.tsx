@@ -74,33 +74,35 @@ export function ProPaywallContent({
       {showConversionExtras ? (
         <div
           className={cn(
-            "flex min-h-0 flex-1 flex-col gap-3",
-            isModal ? "px-4 pt-3" : "mt-3",
+            "relative min-h-0 flex-1",
+            isModal ? "px-4 pt-1" : "mt-2",
           )}
         >
-          <div className={cn("relative min-h-[6.5rem] min-w-0 flex-1", contentWidth)}>
+          <div className={cn("relative h-full min-h-0", contentWidth)}>
             <div
               className={cn(
-                "absolute inset-0 overflow-y-auto overscroll-contain pr-0.5",
-                "[mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)]",
-                "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)]",
+                "absolute inset-0 overflow-y-auto overscroll-contain pb-44",
+                "[mask-image:linear-gradient(to_bottom,black_0%,black_58%,transparent_96%)]",
+                "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_58%,transparent_96%)]",
               )}
               aria-label="Vorteile scrollen"
             >
               <BenefitList compact={compact} />
             </div>
-          </div>
 
-          <div className={cn("shrink-0 space-y-2.5", contentWidth)}>
-            <PricingCards
-              interval={interval}
-              onIntervalChange={onIntervalChange}
-              showAnnualPlan={showAnnualPlan}
-              compact={compact}
-              className="!mt-0"
-            />
-            <TrialTimeline compact={compact} />
-            {belowFoldFooter}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0">
+              <div className="pointer-events-auto bg-gradient-to-t from-[color:var(--vd-surface)] from-35% via-[color:var(--vd-surface)]/95 to-transparent pt-3">
+                <PricingCards
+                  interval={interval}
+                  onIntervalChange={onIntervalChange}
+                  showAnnualPlan={showAnnualPlan}
+                  compact={compact}
+                  className="!mt-0"
+                />
+                <TrialTimeline compact={compact} />
+                {belowFoldFooter}
+              </div>
+            </div>
           </div>
         </div>
       ) : (
@@ -117,7 +119,7 @@ export function ProPaywallContent({
         </div>
       )}
 
-      <div className={cn("shrink-0", isModal ? "mt-2 px-4" : "")}>{ctaSlot}</div>
+      <div className={cn("shrink-0", isModal ? "-mt-1 px-4" : "")}>{ctaSlot}</div>
     </div>
   );
 }

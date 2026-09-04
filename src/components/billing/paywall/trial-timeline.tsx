@@ -31,8 +31,8 @@ export function TrialTimeline({
           <li
             key={node.text}
             className={cn(
-              "relative flex gap-2.5",
-              compact ? "pb-1.5 last:pb-0" : "pb-5 last:pb-0",
+              "relative flex gap-2",
+              compact ? "pb-2 last:pb-0" : "pb-5 last:pb-0",
             )}
           >
             {index < nodes.length - 1 ? (
@@ -53,7 +53,7 @@ export function TrialTimeline({
             <span
               className={cn(
                 "leading-snug text-[color:var(--vd-text)]",
-                compact ? "pt-0 text-[0.72rem]" : "pt-0.5 text-[0.82rem]",
+                compact ? "pt-0 text-[0.74rem]" : "pt-0.5 text-[0.82rem]",
               )}
             >
               {node.text}
