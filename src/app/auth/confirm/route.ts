@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
-import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { hardenCookieOptions } from "@/lib/security/cookie-options";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -15,6 +14,28 @@ const ALLOWED_TYPES = new Set<EmailOtpType>([
   "magiclink",
   "email",
 ]);
+
+const EMAIL_CONFIRM_SUCCESS_PATH = "/auth/confirmed";
+
+function resolvePostConfirmPath(type: EmailOtpType, next: string): string {
+  if (type === "recovery") {
+    return "/login/update-password";
+  }
+
+  if (
+    type === "signup" ||
+    type === "magiclink" ||
+    type === "email" ||
+    type === "invite"
+  ) {
+    if (next.startsWith("/einladung/")) {
+      return next;
+    }
+    return EMAIL_CONFIRM_SUCCESS_PATH;
+  }
+
+  return next;
+}
 
 /**
  * Token-hash confirmation for custom emails (Resend recovery links).
@@ -47,7 +68,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  let response = NextResponse.redirect(new URL(next, origin));
+  const destination = resolvePostConfirmPath(typeRaw, next);
+  let response = NextResponse.redirect(new URL(destination, origin));
   const supabase = createRouteHandlerClient(request, response);
 
   const { data, error } = await supabase.auth.verifyOtp({
@@ -77,54 +99,21 @@ export async function GET(request: NextRequest) {
     return target;
   };
 
-  // Recovery → always land on password update (ignore claim continue).
-  if (typeRaw === "recovery") {
-    return copyCookies(
-      NextResponse.redirect(new URL("/login/update-password", origin)),
-    );
-  }
-
   const userId = data.user?.id ?? data.session?.user?.id;
-
-  if (typeRaw === "signup") {
-    if (userId) {
-      try {
-        const claimResult = await completePendingClaimForUser(userId);
-        if (claimResult?.status === "claimed") {
-          return copyCookies(
-            NextResponse.redirect(
-              new URL(dashboardTourHref(claimResult.tagUuid), origin),
-            ),
-          );
-        }
-        if (claimResult?.status === "error") {
-          const loginUrl = new URL("/login", origin);
-          loginUrl.searchParams.set("error", claimResult.message);
-          return copyCookies(NextResponse.redirect(loginUrl));
-        }
-      } catch {
-        /* fall through to /auth/continue */
-      }
-    }
-    return copyCookies(
-      NextResponse.redirect(new URL("/auth/continue", origin)),
-    );
-  }
-
   if (userId) {
     try {
       const claimResult = await completePendingClaimForUser(userId);
-      if (claimResult?.status === "claimed") {
-        return copyCookies(
-          NextResponse.redirect(
-            new URL(dashboardTourHref(claimResult.tagUuid), origin),
-          ),
-        );
+      if (claimResult?.status === "error") {
+        const loginUrl = new URL("/login", origin);
+        loginUrl.searchParams.set("error", claimResult.message);
+        return copyCookies(NextResponse.redirect(loginUrl));
       }
     } catch {
       /* optional */
     }
   }
 
-  return response;
+  return copyCookies(
+    NextResponse.redirect(new URL(resolvePostConfirmPath(typeRaw, next), origin)),
+  );
 }

@@ -18,6 +18,7 @@ import {
   VEHICLE_DRIVETRAIN_TYPES,
   VEHICLE_FUEL_TYPES,
 } from "@/lib/vehicles/tech-specs";
+import { cn } from "@/lib/utils";
 
 interface ClaimFlowProps {
   tagUuid: string;
@@ -212,7 +213,7 @@ export function ClaimFlow({
           copy="Wie heißt dein Fahrzeug? Das steht gleich auf deiner digitalen Visitenkarte."
         >
           <form
-            className="mt-6 space-y-4"
+            className="mt-6 grid w-full gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               setError(null);
@@ -224,8 +225,9 @@ export function ClaimFlow({
               setStep("year");
             }}
           >
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field
+                id="claim-make"
                 label="Marke"
                 value={make}
                 onChange={setMake}
@@ -233,6 +235,7 @@ export function ClaimFlow({
                 required
               />
               <Field
+                id="claim-model"
                 label="Modell"
                 value={model}
                 onChange={setModel}
@@ -258,7 +261,7 @@ export function ClaimFlow({
           copy="Das Baujahr hilft bei der Zuordnung deiner Dokumente. Die VIN kannst du optional ergänzen."
         >
           <form
-            className="mt-6 space-y-4"
+            className="mt-6 grid w-full gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               setError(null);
@@ -271,6 +274,7 @@ export function ClaimFlow({
             }}
           >
             <Field
+              id="claim-year"
               label="Baujahr"
               value={year}
               onChange={setYear}
@@ -279,6 +283,7 @@ export function ClaimFlow({
               required
             />
             <Field
+              id="claim-vin"
               label="VIN (optional)"
               value={vin}
               onChange={setVin}
@@ -302,15 +307,16 @@ export function ClaimFlow({
           copy="Optional — du kannst die Werte auch später unter Fahrzeugdaten ergänzen."
         >
           <form
-            className="mt-6 space-y-4"
+            className="mt-6 grid w-full gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               setError(null);
               setStep("drivetrain");
             }}
           >
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field
+                id="claim-power-ps"
                 label="PS"
                 value={powerPs}
                 onChange={setPowerPs}
@@ -318,6 +324,7 @@ export function ClaimFlow({
                 placeholder="231"
               />
               <Field
+                id="claim-displacement"
                 label="Hubraum (ccm)"
                 value={displacementCc}
                 onChange={setDisplacementCc}
@@ -347,7 +354,7 @@ export function ClaimFlow({
           }
         >
           <form
-            className="mt-6 space-y-4"
+            className="mt-6 grid w-full gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               setError(null);
@@ -358,14 +365,16 @@ export function ClaimFlow({
               submitClaim();
             }}
           >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <SelectField
+                id="claim-drivetrain"
                 label="Antrieb"
                 value={drivetrain}
                 onChange={setDrivetrain}
                 options={VEHICLE_DRIVETRAIN_TYPES}
               />
               <SelectField
+                id="claim-fuel-type"
                 label="Kraftstoff"
                 value={fuelType}
                 onChange={setFuelType}
@@ -397,13 +406,14 @@ export function ClaimFlow({
           copy="Damit bleiben Fahrzeug und Dokumente sicher mit dir verknüpft."
         >
           <form
-            className="mt-6 space-y-4"
+            className="mt-6 grid w-full gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               submitClaim();
             }}
           >
             <Field
+              id="claim-account-name"
               label="Name (optional)"
               value={name}
               onChange={setName}
@@ -411,6 +421,7 @@ export function ClaimFlow({
               autoComplete="name"
             />
             <Field
+              id="claim-account-email"
               label="E-Mail"
               value={email}
               onChange={setEmail}
@@ -421,6 +432,7 @@ export function ClaimFlow({
               autoComplete="email"
             />
             <Field
+              id="claim-account-password"
               label="Passwort"
               value={password}
               onChange={setPassword}
@@ -430,6 +442,7 @@ export function ClaimFlow({
               autoComplete="new-password"
             />
             <Field
+              id="claim-account-password-confirm"
               label="Passwort bestätigen"
               value={passwordConfirm}
               onChange={setPasswordConfirm}
@@ -563,7 +576,32 @@ function SteelTagPlate() {
   );
 }
 
+function ClaimFormField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid w-full gap-2">
+      <Label
+        htmlFor={htmlFor}
+        className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase"
+      >
+        {label}
+      </Label>
+      {children}
+    </div>
+  );
+}
+
+const CLAIM_FIELD_CLASS = "min-h-11 w-full";
+
 function Field({
+  id,
   label,
   value,
   onChange,
@@ -573,6 +611,7 @@ function Field({
   placeholder,
   autoComplete,
 }: {
+  id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -583,43 +622,42 @@ function Field({
   autoComplete?: string;
 }) {
   return (
-    <Label>
-      <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-        {label}
-      </span>
+    <ClaimFormField label={label} htmlFor={id}>
       <Input
+        id={id}
         type={type}
         inputMode={inputMode}
         required={required}
         value={value}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        className={CLAIM_FIELD_CLASS}
         onChange={(event) => onChange(event.target.value)}
       />
-    </Label>
+    </ClaimFormField>
   );
 }
 
 function SelectField({
+  id,
   label,
   value,
   onChange,
   options,
 }: {
+  id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: readonly string[];
 }) {
   return (
-    <Label>
-      <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-        {label}
-      </span>
+    <ClaimFormField label={label} htmlFor={id}>
       <select
+        id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="claim-input w-full"
+        className={cn("claim-input", CLAIM_FIELD_CLASS)}
       >
         <option value="">—</option>
         {options.map((option) => (
@@ -628,6 +666,6 @@ function SelectField({
           </option>
         ))}
       </select>
-    </Label>
+    </ClaimFormField>
   );
 }

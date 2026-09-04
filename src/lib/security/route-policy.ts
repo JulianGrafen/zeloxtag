@@ -125,7 +125,7 @@ export function isProtectedPagePath(pathname: string): boolean {
   if (isProtectedVehicleTagSubPath(pathname)) {
     return true;
   }
-  if (pathname === "/auth/continue") {
+  if (pathname === "/auth/continue" || pathname === "/auth/confirmed") {
     return true;
   }
   if (pathname === "/qr" || pathname.startsWith("/qr/")) {

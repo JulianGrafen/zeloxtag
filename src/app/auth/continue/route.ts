@@ -1,13 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
-import {
-  dashboardTourHref,
-  withForcedDashboardTour,
-} from "@/lib/onboarding/dashboard-tour";
-import { hasPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
+import { resolveAuthenticatedDestination } from "@/lib/auth/resolve-authenticated-destination";
 import { createClient } from "@/lib/supabase/server";
-import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 
 /**
  * Post-auth hop: resolve the owner's vehicle dashboard on a fresh request
@@ -27,27 +21,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  try {
-    const claimResult = await completePendingClaimForUser(user.id);
-    if (claimResult?.status === "claimed") {
-      return NextResponse.redirect(
-        new URL(dashboardTourHref(claimResult.tagUuid), request.url),
-      );
-    }
-    if (claimResult?.status === "error") {
-      const login = new URL("/login", request.url);
-      login.searchParams.set("error", claimResult.message);
-      return NextResponse.redirect(login);
-    }
-  } catch {
-    /* optional — fall through to dashboard resolve */
+  const destination = await resolveAuthenticatedDestination(user.id);
+  if (destination.status === "error") {
+    const login = new URL("/login", request.url);
+    login.searchParams.set("error", destination.message);
+    return NextResponse.redirect(login);
   }
 
-  const path = await resolvePostLoginPath(user.id);
-  const pendingTour = await hasPendingDashboardTour();
-  const destination =
-    pendingTour && path.startsWith("/v/")
-      ? withForcedDashboardTour(path)
-      : path;
-  return NextResponse.redirect(new URL(destination, request.url));
+  return NextResponse.redirect(new URL(destination.href, request.url));
 }
