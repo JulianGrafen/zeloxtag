@@ -99,7 +99,7 @@ export function ProPaywallModal({
           type="button"
           onClick={onClose}
           aria-label="Schließen"
-          className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/90 text-[color:var(--vd-text)] shadow-sm backdrop-blur-md transition hover:bg-[color:var(--vd-surface)]"
+          className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-text)] backdrop-blur-md transition hover:bg-white/10"
         >
           <X className="h-5 w-5" aria-hidden />
         </button>

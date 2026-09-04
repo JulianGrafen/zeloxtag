@@ -49,7 +49,7 @@ export function PaywallModalFold({
         {benefits}
       </div>
 
-      <div className="shrink-0 bg-gradient-to-t from-[color:var(--vd-surface)] from-60% pt-2">
+      <div className="shrink-0 pt-2">
         {pricing}
       </div>
       <div className="shrink-0">{timeline}</div>

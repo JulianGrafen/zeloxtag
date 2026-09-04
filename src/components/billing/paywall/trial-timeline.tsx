@@ -43,7 +43,7 @@ export function TrialTimeline({
             ) : null}
             <span
               className={cn(
-                "relative z-10 inline-flex shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)]",
+                "relative z-10 inline-flex shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-text)]",
                 compact ? "h-5 w-5" : "h-6 w-6",
               )}
               aria-hidden
