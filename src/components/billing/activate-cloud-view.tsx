@@ -4,8 +4,9 @@ import { ProPlanBenefits } from "@/components/billing/pro-plan-benefits";
 import { StripeCheckoutButton } from "@/components/billing/stripe-checkout-button";
 import { isAnnualPlanConfigured } from "@/lib/billing/stripe";
 import {
+  PRO_PLAN_CHECKOUT_HEADLINE,
+  PRO_PLAN_CHECKOUT_SUBLINE,
   PRO_PLAN_NAME,
-  PRO_TRIAL_CHECKOUT_COPY,
 } from "@/lib/billing/pro-plan";
 
 export function ActivateCloudView({ tagUuid }: { tagUuid: string }) {
@@ -18,11 +19,8 @@ export function ActivateCloudView({ tagUuid }: { tagUuid: string }) {
       <section className="claim-panel">
         <header>
           <p className="claim-kicker">{PRO_PLAN_NAME}</p>
-          <h1 className="claim-title mt-2">Abo abschließen</h1>
-          <p className="claim-copy mt-2">
-            {PRO_TRIAL_CHECKOUT_COPY} Die digitale Visitenkarte bleibt kostenlos.
-            KI-Scan, Dokumentenakte und Verkaufs-Exposé gehören zu Pro.
-          </p>
+          <h1 className="claim-title mt-2">{PRO_PLAN_CHECKOUT_HEADLINE}</h1>
+          <p className="claim-copy mt-2">{PRO_PLAN_CHECKOUT_SUBLINE}</p>
         </header>
 
         <ProPlanBenefits audience="new" showLead={false} />

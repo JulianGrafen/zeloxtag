@@ -6,7 +6,10 @@ import {
 import { getMembershipForUser } from "@/lib/billing/membership-store";
 import { isActiveMembership } from "@/lib/billing/membership";
 import { isAnnualPlanConfigured } from "@/lib/billing/stripe";
-import type { ProCheckoutAudience } from "@/lib/billing/pro-plan";
+import {
+  PRO_PLAN_CHECKOUT_HEADLINE,
+  type ProCheckoutAudience,
+} from "@/lib/billing/pro-plan";
 
 import { formatCompactGermanDate } from "@/lib/documents/format";
 
@@ -40,7 +43,7 @@ export async function MembershipStatusCard({
       className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
     >
       <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-        Abo abschließen
+        {active ? "Mitgliedschaft" : PRO_PLAN_CHECKOUT_HEADLINE}
       </h2>
       {justLinked || (checkoutState === "success" && active) ? (
         <p className="mt-2 text-[0.82rem] text-emerald-800">

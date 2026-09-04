@@ -9,8 +9,8 @@ import {
 import { ProPlanIntervalPicker } from "@/components/billing/pro-plan-interval-picker";
 import { Button } from "@/components/ui/button";
 import {
-  PRO_CHECKOUT_BUTTON_LABEL,
   proCheckoutButtonLabel,
+  proCheckoutMicroCopy,
   type ProBillingInterval,
   type ProCheckoutAudience,
 } from "@/lib/billing/pro-plan";
@@ -21,7 +21,7 @@ export function StripeCheckoutButton({
   label,
   audience = "new",
   showAnnualPlan = true,
-  defaultInterval = "monthly",
+  defaultInterval = "annual",
 }: {
   successPath: string;
   cancelPath: string;
@@ -69,6 +69,11 @@ export function StripeCheckoutButton({
       >
         {pending ? "Weiter zu Stripe…" : resolvedLabel}
       </Button>
+      {audience === "new" ? (
+        <p className="text-center text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
+          {proCheckoutMicroCopy(interval)}
+        </p>
+      ) : null}
       {error ? (
         <p className="text-[0.78rem] text-red-700" role="alert">
           {error}

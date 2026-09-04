@@ -20,15 +20,13 @@ export function ProPlanBenefits({
           {proCheckoutLead(audience)}
         </p>
       ) : null}
-      <p
-        className={`${showLead ? "mt-4" : "mt-0"} text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]`}
+      <ul
+        className={`${showLead ? "mt-4" : "mt-0"} space-y-4`}
+        aria-label="Vorteile von ZeloxTag Pro"
       >
-        Das bringt Pro
-      </p>
-      <ul className="mt-2.5 space-y-2.5" aria-label="Vorteile von ZeloxTag Pro">
         {PRO_PLAN_BENEFITS.map((benefit) => (
           <li
-            key={benefit}
+            key={benefit.title}
             className="flex gap-2.5 text-[0.86rem] leading-snug text-[color:var(--vd-text)]"
           >
             <span
@@ -37,7 +35,10 @@ export function ProPlanBenefits({
             >
               <Check className="h-3 w-3" strokeWidth={3} />
             </span>
-            <span>{benefit}</span>
+            <span>
+              <span className="font-semibold">{benefit.title}:</span>{" "}
+              {benefit.description}
+            </span>
           </li>
         ))}
       </ul>

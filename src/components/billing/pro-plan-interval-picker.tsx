@@ -2,10 +2,9 @@
 
 import {
   PRO_ANNUAL_RECOMMENDED_LABEL,
-  PRO_ANNUAL_SAVINGS_COPY,
-  PRO_PLAN_ANNUAL_PRICE,
-  PRO_PLAN_MONTHLY_PRICE,
-  proTrialHint,
+  PRO_TRIAL_LABEL,
+  proIntervalPickerDetail,
+  proIntervalPriceDisplay,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
 import { cn } from "@/lib/utils";
@@ -21,6 +20,9 @@ export function ProPlanIntervalPicker({
 }) {
   if (!showAnnual) return null;
 
+  const monthlyPrice = proIntervalPriceDisplay("monthly");
+  const annualPrice = proIntervalPriceDisplay("annual");
+
   return (
     <div
       className="grid grid-cols-2 gap-2"
@@ -30,43 +32,43 @@ export function ProPlanIntervalPicker({
       <IntervalOption
         selected={value === "monthly"}
         title="Monatlich"
-        price={`${PRO_PLAN_MONTHLY_PRICE} / Monat`}
-        hint={proTrialHint("monthly")}
+        price={monthlyPrice.primary}
+        priceSecondary={monthlyPrice.secondary}
+        detail={proIntervalPickerDetail("monthly")}
+        trialLabel={PRO_TRIAL_LABEL}
         onSelect={() => onChange("monthly")}
       />
       <IntervalOption
         selected={value === "annual"}
         title="Jährlich"
-        price={`${PRO_PLAN_ANNUAL_PRICE} / Jahr`}
-        hint={proTrialHint("annual")}
-        badges={[
-          { label: PRO_ANNUAL_RECOMMENDED_LABEL, tone: "recommended" },
-          { label: PRO_ANNUAL_SAVINGS_COPY, tone: "savings" },
-        ]}
+        price={annualPrice.primary}
+        priceSecondary={annualPrice.secondary}
+        detail={proIntervalPickerDetail("annual")}
+        trialLabel={PRO_TRIAL_LABEL}
+        badge={PRO_ANNUAL_RECOMMENDED_LABEL}
         onSelect={() => onChange("annual")}
       />
     </div>
   );
 }
 
-type IntervalBadge = {
-  label: string;
-  tone: "recommended" | "savings";
-};
-
 function IntervalOption({
   selected,
   title,
   price,
-  hint,
-  badges = [],
+  priceSecondary,
+  detail,
+  trialLabel,
+  badge,
   onSelect,
 }: {
   selected: boolean;
   title: string;
   price: string;
-  hint: string;
-  badges?: IntervalBadge[];
+  priceSecondary?: string;
+  detail: string;
+  trialLabel: string;
+  badge?: string;
   onSelect: () => void;
 }) {
   return (
@@ -82,38 +84,51 @@ function IntervalOption({
           : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] hover:border-neutral-400",
       )}
     >
-      <span className="mb-2 flex min-h-[1.375rem] flex-wrap gap-1">
-        {badges.map((badge) => (
-          <span
-            key={badge.label}
-            className={cn(
-              "inline-flex rounded-full px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em]",
-              badge.tone === "recommended"
-                ? selected
-                  ? "bg-white/15 text-white"
-                  : "bg-neutral-900 text-white"
-                : selected
-                  ? "bg-emerald-400/20 text-emerald-100"
-                  : "bg-emerald-100 text-emerald-800",
-            )}
-          >
-            {badge.label}
-          </span>
-        ))}
-      </span>
+      {badge ? (
+        <span
+          className={cn(
+            "mb-2 inline-flex rounded-full px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em]",
+            selected
+              ? "bg-white/15 text-white"
+              : "bg-neutral-900 text-white",
+          )}
+        >
+          {badge}
+        </span>
+      ) : (
+        <span className="mb-2 block min-h-[1.375rem]" aria-hidden />
+      )}
       <span className="block text-[0.72rem] font-semibold uppercase tracking-[0.12em] opacity-80">
         {title}
       </span>
       <span className="mt-1 block text-[0.95rem] font-semibold tracking-[-0.02em]">
         {price}
       </span>
+      {priceSecondary ? (
+        <span
+          className={cn(
+            "mt-0.5 block text-[0.72rem] leading-snug",
+            selected ? "text-white/70" : "text-[color:var(--vd-muted)]",
+          )}
+        >
+          {priceSecondary}
+        </span>
+      ) : null}
       <span
         className={cn(
-          "mt-1 block text-[0.72rem] leading-snug",
+          "mt-2 block text-[0.72rem] leading-snug",
           selected ? "text-white/75" : "text-[color:var(--vd-muted)]",
         )}
       >
-        {hint}
+        {detail}
+      </span>
+      <span
+        className={cn(
+          "mt-1 block text-[0.72rem] font-medium leading-snug",
+          selected ? "text-white/90" : "text-[color:var(--vd-text)]",
+        )}
+      >
+        {trialLabel}
       </span>
     </button>
   );
