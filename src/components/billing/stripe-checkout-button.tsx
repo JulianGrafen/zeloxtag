@@ -45,7 +45,7 @@ export function StripeCheckoutButton({
       />
       <Button
         type="button"
-        className="h-11 w-full"
+        className="paywall-cta-pulse h-11 w-full"
         disabled={pending}
         onClick={() => {
           setError(null);

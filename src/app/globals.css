@@ -798,6 +798,10 @@ nextjs-portal {
   animation: claim-pulse 1.8s var(--vd-ease-out) infinite;
 }
 
+.paywall-cta-pulse:not(:disabled) {
+  animation: claim-pulse 2.2s var(--vd-ease-out) infinite;
+}
+
 @keyframes claim-steel-in {
   from {
     opacity: 0;
@@ -852,6 +856,7 @@ nextjs-portal {
   .claim-steel::before,
   .claim-summary__row,
   .claim-mail-pulse,
+  .paywall-cta-pulse,
   .vd-connected-dot {
     animation: none !important;
     opacity: 1 !important;

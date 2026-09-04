@@ -5,11 +5,25 @@ export const PRO_PLAN_MONTHLY_PRICE = "4,99 €";
 export const PRO_PLAN_MONTHLY_DAILY_PRICE = "0,16 €";
 export const PRO_PLAN_ANNUAL_PRICE = "49,90 €";
 export const PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY = "4,16 €";
+export const PRO_PLAN_ANNUAL_DAILY_PRICE = "0,14 €";
+export const PRO_PLAN_ANNUAL_REFERENCE_PRICE = "59,88 €";
+export const PRO_ANNUAL_SAVINGS_AMOUNT = "10 €";
+export const PRO_ANNUAL_SAVINGS_PERCENT = 17;
+export const PRO_ANNUAL_DISCOUNT_LABEL = "Spare 17%";
+export const PRO_ANNUAL_DISCOUNT_HEADLINE = "Spare 17% · 2 Monate geschenkt";
+export const PRO_ANNUAL_DISCOUNT_STORY =
+  "Belohnung für deinen fast fertigen Fahrzeugpass";
 export const PRO_ANNUAL_RECOMMENDED_LABEL = "Beliebteste Wahl";
 export const PRO_ANNUAL_SAVINGS_COPY =
   "2 Monate geschenkt (Spare 10 € gegenüber Monatszahlung)";
 export const PRO_TRIAL_DAYS = 14;
 export const PRO_TRIAL_LABEL = "14 Tage kostenlos testen";
+export const PRO_TRIAL_BADGE_LABEL = "14 Tage kostenlos";
+export const PRO_TRIAL_NO_COMMITMENT =
+  "Keine Verpflichtung · Jederzeit kündbar";
+export const PRO_PRICE_ANCHOR_DAILY = "Nur 16 Cent pro Tag";
+export const PRO_PRICE_ANCHOR_ANNUAL_DAILY = "Nur 14 Cent pro Tag";
+export const PRO_PRICE_ANCHOR_COFFEE = "Weniger als ein Kaffee pro Woche";
 
 export type ProBillingInterval = "monthly" | "annual";
 
@@ -21,21 +35,50 @@ export const PRO_PLAN_CHECKOUT_SUBLINE =
 /** Paywall modal — progress endowment framing */
 export const PRO_PAYWALL_PROGRESS_PERCENT = 80;
 export const PRO_PAYWALL_PROGRESS_LABEL = "Fahrzeugpass zu 80 % eingerichtet";
-export const PRO_PAYWALL_MODAL_SUBLINE =
-  "Sichere dir dauerhaften Cloud-Speicher für alle Umbauten und lade deinen Fahrzeugpass direkt ins Smartphone-Wallet.";
+export const PRO_PAYWALL_MODAL_SUBLINE = `${PRO_TRIAL_BADGE_LABEL} — Cloud-Speicher, QR-Fahrzeugpass und lückenlose Dokumentation für dein Fahrzeug.`;
 export const PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER =
   "Dein Gratis-Scan ist verbraucht";
-export const PRO_PAYWALL_STICKY_MICROCOPY =
-  "Erst nach Ablauf der 14 Tage zahlbar. Keine Mindestvertragslaufzeit – Kündigung jederzeit im Account mit 1 Klick.";
+export const PRO_PAYWALL_STICKY_MICROCOPY = `Erst nach Ablauf der ${PRO_TRIAL_DAYS} Tage zahlbar. ${PRO_TRIAL_NO_COMMITMENT}.`;
 export const PRO_MONTHLY_CARD_SUBLINE = "Monatlich kündbar · Volle Flexibilität";
 export const PRO_ANNUAL_CARD_HIGHLIGHT = `entspricht ${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat (2 Monate geschenkt)`;
 
 export const PRO_PAYWALL_MODAL_BENEFITS = [
-  "Kein Zettelchaos mehr: Alle ABEs, Rechnungen und TÜV-Berichte griffbereit bei jeder Polizeikontrolle.",
-  "KI-Belegscan: Erkennt Preise, Teile und Prüfnummern automatisch in Sekunden.",
-  "Apple & Google Wallet: Digitaler Fahrzeugpass direkt auf dem Homescreen.",
-  "Maximaler Wiederverkaufswert: Lückenlose Dokumentation für den nächsten Halter.",
+  "Schluss mit dem Papierchaos: Die KI scannt Rechnungen, ABEs und Gutachten in Sekunden und baut automatisch deine digitale Akte.",
+  "Lückenlose Projekthistorie: Dokumentiere jeden Cent und jeden Umbau sauber an einem zentralen Ort.",
+  "Maximaler Werterhalt: Beweise die Qualität deines Fahrzeugs beim späteren Verkauf schwarz auf weiß.",
+  "Dein Fahrzeugpass für Tuning-Treffen: Zeige alle Specs per QR-Code als digitale Visitenkarte deines Autos.",
 ] as const;
+
+export type ProPaywallPricingAnchor = {
+  referencePrice?: string;
+  currentPrice: string;
+  savingsLabel?: string;
+  monthlyEquivalent?: string;
+  dailyAnchor: string;
+  trialLabel: string;
+  flexSubline?: string;
+};
+
+export function proPaywallPricingAnchor(
+  interval: ProBillingInterval,
+): ProPaywallPricingAnchor {
+  if (interval === "annual") {
+    return {
+      referencePrice: `${PRO_PLAN_ANNUAL_REFERENCE_PRICE} / Jahr`,
+      currentPrice: `${PRO_PLAN_ANNUAL_PRICE} / Jahr`,
+      savingsLabel: PRO_ANNUAL_DISCOUNT_LABEL,
+      monthlyEquivalent: `${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat`,
+      dailyAnchor: PRO_PRICE_ANCHOR_ANNUAL_DAILY,
+      trialLabel: PRO_TRIAL_LABEL,
+    };
+  }
+  return {
+    currentPrice: `${PRO_PLAN_MONTHLY_PRICE} / Monat`,
+    dailyAnchor: PRO_PRICE_ANCHOR_DAILY,
+    trialLabel: PRO_TRIAL_LABEL,
+    flexSubline: PRO_MONTHLY_CARD_SUBLINE,
+  };
+}
 
 export type ProPaywallTimelineIcon = "check" | "mail" | "shield";
 
@@ -157,7 +200,7 @@ export function proCheckoutMicroCopy(interval: ProBillingInterval): string {
     interval === "annual"
       ? PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY
       : PRO_PLAN_MONTHLY_PRICE;
-  return `Erst nach ${PRO_TRIAL_DAYS} Tagen ${monthlyRate}/Mo. Keine Fristen, Kündigung jederzeit im Profil mit einem Klick.`;
+  return `Erst nach ${PRO_TRIAL_DAYS} Tagen ${monthlyRate}/Mo. ${PRO_TRIAL_NO_COMMITMENT}.`;
 }
 
 export function proCheckoutLead(
