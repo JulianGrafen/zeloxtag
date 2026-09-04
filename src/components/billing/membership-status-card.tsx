@@ -1,7 +1,5 @@
-import {
-  StripePortalButton,
-} from "@/components/billing/stripe-checkout-button";
-import { ProPaywallSection } from "@/components/billing/pro-paywall-section";
+import { StripePortalButton } from "@/components/billing/stripe-checkout-button";
+import { SettingsPaywallSection } from "@/components/billing/settings-paywall-section";
 import { getMembershipForUser } from "@/lib/billing/membership-store";
 import { isActiveMembership } from "@/lib/billing/membership";
 import {
@@ -74,12 +72,9 @@ export async function MembershipStatusCard({
       : "new";
 
   return (
-    <ProPaywallSection
-      successPath="/settings"
-      cancelPath="/settings"
+    <SettingsPaywallSection
       audience={audience}
       showPortal={Boolean(membership?.stripe_customer_id)}
-      dismissHref="/dashboard"
       statusMessage={
         <>
           {justLinked ? (

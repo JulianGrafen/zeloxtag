@@ -32,6 +32,9 @@ export type ProBillingInterval = "monthly" | "annual";
 
 export const PRO_PLAN_CHECKOUT_HEADLINE =
   "Hol das Maximum aus deinem Fahrzeug.";
+export const PRO_SETTINGS_PAYWALL_HEADLINE =
+  "Aktiviere ZeloxTag Pro für dein Fahrzeug.";
+export const PRO_SETTINGS_PAYWALL_KICKER = "Mitgliedschaft";
 export const PRO_PLAN_CHECKOUT_SUBLINE =
   "Teste ZeloxTag Pro 14 Tage kostenlos. Voller Zugriff, jederzeit mit 1 Klick kündbar.";
 
@@ -41,17 +44,17 @@ export const PRO_PAYWALL_PROGRESS_LABEL = "Fahrzeugpass zu 80 % eingerichtet";
 export const PRO_PAYWALL_MODAL_SUBLINE = `${PRO_TRIAL_BADGE_LABEL} — Cloud-Speicher, QR-Fahrzeugpass und lückenlose Dokumentation für dein Fahrzeug.`;
 export const PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER =
   "Dein Gratis-Scan ist verbraucht";
-export const PRO_PAYWALL_STICKY_MICROCOPY = `Erst nach Ablauf der ${PRO_TRIAL_DAYS} Tage zahlbar. ${PRO_TRIAL_NO_COMMITMENT}.`;
+export const PRO_PAYWALL_STICKY_MICROCOPY = PRO_TRIAL_NO_COMMITMENT;
+export const PRO_PAYWALL_MODAL_MICROCOPY = "Jederzeit kündbar";
 export const PRO_PAYWALL_DISMISS_LABEL = "Weiter mit ZeloxTag Free";
 export const PRO_MONTHLY_CARD_SUBLINE = "Monatlich kündbar · Volle Flexibilität";
 export const PRO_ANNUAL_CARD_HIGHLIGHT = `entspricht ${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat (2 Monate geschenkt)`;
 
 export const PRO_PAYWALL_MODAL_BENEFITS = [
-  "Schluss mit dem Papierchaos: Die KI scannt Rechnungen, ABEs und Gutachten in Sekunden und baut automatisch deine digitale Akte.",
-  "Endlose KI-Scans: Scanne Rechnungen, ABEs und Gutachten ohne Limit – jederzeit und überall.",
-  "Lückenlose Projekthistorie: Dokumentiere jeden Cent und jeden Umbau sauber an einem zentralen Ort.",
-  "Maximaler Werterhalt: Beweise die Qualität deines Fahrzeugs beim späteren Verkauf schwarz auf weiß.",
-  "Dein Fahrzeugpass für Tuning-Treffen: Zeige alle Specs per QR-Code als digitale Visitenkarte deines Autos.",
+  "Endlose KI-Scans: Rechnungen, ABEs & Gutachten in Sekunden",
+  "Digitale Akte: Alles an einem Ort",
+  "Werterhalt: Umbauten beim Verkauf nachweisen",
+  "QR-Fahrzeugpass: Specs per Scan auf Tuning-Treffen",
 ] as const;
 
 export type ProPaywallPricingAnchor = {
@@ -97,15 +100,15 @@ export type ProPaywallTimelineNode = {
 export const PRO_PAYWALL_TRIAL_TIMELINE: readonly ProPaywallTimelineNode[] = [
   {
     icon: "check",
-    text: "Heute: 14 Tage kostenloser Pro-Zugriff (0,00 €)",
+    text: "Heute: 14 Tage Pro gratis (0,00 €)",
   },
   {
     icon: "mail",
-    text: "Tag 12: Erinnerungs-E-Mail vor Ende der Testphase",
+    text: "Tag 12: Erinnerungs-Mail vor Testende",
   },
   {
     icon: "shield",
-    text: "Tag 14: Erstmalige Abrechnung – jederzeit mit 1 Klick kündbar",
+    text: "Tag 14: Abo startet · jederzeit kündbar",
   },
 ] as const;
 

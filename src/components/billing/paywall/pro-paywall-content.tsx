@@ -1,15 +1,18 @@
 "use client";
 
 import { BenefitList } from "@/components/billing/paywall/benefit-list";
-import { PaywallBenefitScrollZone } from "@/components/billing/paywall/paywall-benefit-scroll-zone";
+import { PaywallModalFold } from "@/components/billing/paywall/paywall-modal-fold";
 import { PricingCards } from "@/components/billing/paywall/pricing-cards";
 import { TrialTimeline } from "@/components/billing/paywall/trial-timeline";
 import {
   PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER,
+  PRO_PAYWALL_MODAL_SUBLINE,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
 import type { PaywallVariant } from "@/lib/permissions/feature-access";
 import { cn } from "@/lib/utils";
+
+export type ProPaywallLayout = "modal" | "section" | "settings";
 
 type ProPaywallContentProps = {
   interval: ProBillingInterval;
@@ -19,7 +22,7 @@ type ProPaywallContentProps = {
   headlineId?: string;
   showConversionExtras?: boolean;
   variant?: PaywallVariant;
-  layout?: "modal" | "section";
+  layout?: ProPaywallLayout;
   statusMessage?: React.ReactNode;
   belowFoldFooter?: React.ReactNode;
   ctaSlot: React.ReactNode;
@@ -40,19 +43,20 @@ export function ProPaywallContent({
 }: ProPaywallContentProps) {
   const compact = true;
   const isModal = layout === "modal";
-  const contentWidth = cn(isModal ? "mx-auto max-w-lg" : "");
+  const isStacked = layout === "section" || layout === "settings";
+  const contentWidth = cn(isModal ? "mx-auto w-full max-w-lg" : "");
 
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-1 flex-col",
-        isModal ? "h-full min-h-0" : "",
+        "flex min-h-0 flex-col",
+        isModal ? "h-full min-h-0 flex-1" : "gap-3",
       )}
     >
-      <div className={cn("shrink-0", isModal ? "px-4 pt-12" : "")}>
+      <div className={cn("shrink-0", isModal ? "px-4 pt-10" : "")}>
         <div className={cn("vd-anim-header w-full", contentWidth)}>
           {showConversionExtras && variant === "free_scan_exhausted" ? (
-            <p className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-[0.72rem] font-semibold tracking-[0.06em] text-amber-900 uppercase">
+            <p className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-amber-900 uppercase">
               {PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER}
             </p>
           ) : null}
@@ -62,28 +66,32 @@ export function ProPaywallContent({
             className={cn(
               "font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]",
               variant === "free_scan_exhausted" ? "mt-2" : "",
-              "text-[1.15rem] leading-snug sm:text-[1.25rem]",
+              isModal
+                ? "text-[1.05rem] leading-snug"
+                : isStacked
+                  ? "text-[1.15rem] leading-snug"
+                  : "text-[1.15rem] leading-snug sm:text-[1.25rem]",
             )}
           >
             {headline}
           </h2>
 
-          {statusMessage ? <div className="mt-2">{statusMessage}</div> : null}
+          {showConversionExtras && isModal ? (
+            <p className="mt-1.5 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
+              {PRO_PAYWALL_MODAL_SUBLINE}
+            </p>
+          ) : null}
+
+          {statusMessage ? <div className="mt-1.5">{statusMessage}</div> : null}
         </div>
       </div>
 
       {showConversionExtras ? (
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col",
-            isModal ? "px-4 pt-1" : "mt-2",
-          )}
-        >
-          <PaywallBenefitScrollZone
-            className={contentWidth}
-            benefits={<BenefitList compact={compact} />}
-            overlay={
-              <>
+        isModal ? (
+          <div className={cn("min-h-0 flex-1 px-4", contentWidth)}>
+            <PaywallModalFold
+              benefits={<BenefitList compact={compact} />}
+              pricing={
                 <PricingCards
                   interval={interval}
                   onIntervalChange={onIntervalChange}
@@ -91,14 +99,27 @@ export function ProPaywallContent({
                   compact={compact}
                   className="!mt-0"
                 />
-                <TrialTimeline compact={compact} />
-                {belowFoldFooter}
-              </>
-            }
-          />
-        </div>
+              }
+              timeline={<TrialTimeline compact={compact} />}
+              footer={belowFoldFooter}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <BenefitList compact={compact} />
+            <PricingCards
+              interval={interval}
+              onIntervalChange={onIntervalChange}
+              showAnnualPlan={showAnnualPlan}
+              compact={compact}
+              className="!mt-0"
+            />
+            <TrialTimeline compact={compact} />
+            {belowFoldFooter}
+          </div>
+        )
       ) : (
-        <div className={cn("shrink-0", isModal ? "px-4" : "mt-3")}>
+        <div className={cn("shrink-0", isModal ? "px-4" : "")}>
           <div className={contentWidth}>
             <PricingCards
               interval={interval}
@@ -111,7 +132,9 @@ export function ProPaywallContent({
         </div>
       )}
 
-      <div className={cn("shrink-0", isModal ? "-mt-1 px-4" : "")}>{ctaSlot}</div>
+      <div className={cn("relative z-20 shrink-0", isModal ? "mt-auto px-4" : "")}>
+        {ctaSlot}
+      </div>
     </div>
   );
 }

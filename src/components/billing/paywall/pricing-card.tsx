@@ -140,15 +140,17 @@ export function PricingCard({
         </span>
       ) : null}
 
-      <span
-        className={cn(
-          "mt-0.5 block leading-snug",
-          compact ? "text-[0.64rem]" : "text-[0.72rem] mt-1",
-          selected ? "text-blue-900/70" : "text-[color:var(--vd-muted)]",
-        )}
-      >
-        {anchor.weeklyAnchor}
-      </span>
+      {!compact ? (
+        <span
+          className={cn(
+            "mt-0.5 block leading-snug",
+            "text-[0.72rem] mt-1",
+            selected ? "text-blue-900/70" : "text-[color:var(--vd-muted)]",
+          )}
+        >
+          {anchor.weeklyAnchor}
+        </span>
+      ) : null}
 
       {!compact && anchor.flexSubline ? (
         <span

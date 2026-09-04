@@ -82,12 +82,14 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     }
   }
 
+  const dashboardHref = await resolvePostLoginPath(user.id);
+
   return (
     <AppShell>
       <section className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pb-12 pt-6 sm:px-5">
         <div>
           <Link
-            href="/dashboard"
+            href={dashboardHref}
             className="text-[0.8rem] font-medium text-[color:var(--vd-muted)]"
           >
             ← Zurück zum Dashboard

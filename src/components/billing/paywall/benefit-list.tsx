@@ -31,7 +31,7 @@ export function BenefitList({
     <ul
       className={cn(
         "vd-anim-list",
-        compact ? "mt-1 space-y-1.5" : "mt-5 space-y-3",
+        compact ? "mt-0.5 space-y-2" : "mt-5 space-y-3",
       )}
       aria-label="Vorteile von ZeloxTag Pro"
     >
