@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   MEMBERSHIP_REQUIRED_MESSAGE,
   PRO_PLAN_ANNUAL_PRICE,
+  PRO_ANNUAL_SAVINGS_COPY,
+  PRO_PLAN_MONTHLY_DAILY_PRICE,
   PRO_PLAN_BENEFITS,
   PRO_TRIAL_DAYS,
   cloudAboHref,
@@ -21,6 +23,14 @@ describe("pro plan copy", () => {
   it("does not re-promise a trial to returning subscribers", () => {
     expect(proCheckoutLead("returning")).not.toContain("14 Tage");
     expect(proCheckoutButtonLabel("returning")).toContain("4,99");
+  });
+
+  it("exposes daily price equivalents for plan pickers", () => {
+    expect(PRO_PLAN_MONTHLY_DAILY_PRICE).toBe("0,16 €");
+  });
+
+  it("highlights annual savings for the plan picker", () => {
+    expect(PRO_ANNUAL_SAVINGS_COPY).toBe("Spare 17%!");
   });
 
   it("supports annual checkout copy", () => {

@@ -3,6 +3,10 @@
 export const PRO_PLAN_NAME = "ZeloxTag Pro";
 export const PRO_PLAN_MONTHLY_PRICE = "4,99 €";
 export const PRO_PLAN_ANNUAL_PRICE = "49,99 €";
+export const PRO_PLAN_MONTHLY_DAILY_PRICE = "0,16 €";
+export const PRO_PLAN_ANNUAL_DAILY_PRICE = "0,14 €";
+export const PRO_ANNUAL_RECOMMENDED_LABEL = "Empfohlen";
+export const PRO_ANNUAL_SAVINGS_COPY = "Spare 17%!";
 export const PRO_TRIAL_DAYS = 14;
 
 export type ProBillingInterval = "monthly" | "annual";
