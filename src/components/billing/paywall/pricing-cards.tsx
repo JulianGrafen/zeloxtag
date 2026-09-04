@@ -1,6 +1,7 @@
 "use client";
 
 import { PricingCard } from "@/components/billing/paywall/pricing-card";
+import { useDeviceMotionShine } from "@/lib/hooks/use-device-motion-shine";
 import type { ProBillingInterval } from "@/lib/billing/pro-plan";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,8 @@ export function PricingCards({
   compact?: boolean;
   className?: string;
 }) {
+  const { position, motionActive } = useDeviceMotionShine(true);
+
   return (
     <div className={cn(compact ? "mt-2" : "mt-6", className)}>
       <div
@@ -33,6 +36,8 @@ export function PricingCards({
           selected={interval === "monthly"}
           onSelect={() => onIntervalChange("monthly")}
           compact={compact}
+          shinePosition={position}
+          shineMotionActive={motionActive}
         />
         {showAnnualPlan ? (
           <PricingCard

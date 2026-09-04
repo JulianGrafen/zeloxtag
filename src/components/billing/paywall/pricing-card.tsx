@@ -1,10 +1,12 @@
 "use client";
 
+import { MotionShineOverlay } from "@/components/billing/paywall/motion-shine-overlay";
 import {
   PRO_ANNUAL_RECOMMENDED_LABEL,
   proPaywallPricingAnchor,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
+import type { ShinePosition } from "@/lib/hooks/use-device-motion-shine";
 import { cn } from "@/lib/utils";
 
 export function PricingCard({
@@ -12,11 +14,15 @@ export function PricingCard({
   selected,
   onSelect,
   compact = false,
+  shinePosition,
+  shineMotionActive = false,
 }: {
   interval: ProBillingInterval;
   selected: boolean;
   onSelect: () => void;
   compact?: boolean;
+  shinePosition?: ShinePosition;
+  shineMotionActive?: boolean;
 }) {
   const anchor = proPaywallPricingAnchor(interval);
   const title = interval === "annual" ? "Jährlich" : "Monatlich";
@@ -29,13 +35,22 @@ export function PricingCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "relative rounded-2xl border text-left transition-all duration-200",
+        "relative overflow-hidden rounded-2xl border text-left transition-all duration-200",
         compact ? "px-3 py-2.5" : "px-4 py-3.5",
         selected
           ? "scale-[1.01] border-blue-600 bg-blue-50/60 ring-2 ring-blue-600"
           : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] hover:border-neutral-400",
       )}
     >
+      {interval === "monthly" && shinePosition ? (
+        <MotionShineOverlay
+          position={shinePosition}
+          selected={selected}
+          motionActive={shineMotionActive}
+        />
+      ) : null}
+
+      <div className="relative z-[1]">
       {badge ? (
         <span
           className={cn(
@@ -156,6 +171,7 @@ export function PricingCard({
           {anchor.trialLabel}
         </span>
       ) : null}
+      </div>
     </button>
   );
 }

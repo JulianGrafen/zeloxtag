@@ -9,6 +9,7 @@ import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { StripePortalButton } from "@/components/billing/stripe-checkout-button";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
 import {
+  PRO_PAYWALL_DISMISS_LABEL,
   PRO_PLAN_CHECKOUT_HEADLINE,
   proCheckoutButtonLabel,
   type ProBillingInterval,
@@ -41,7 +42,7 @@ export function ProPaywallSection({
   feature = FEATURE.DOCUMENT_VAULT,
   variant = "default",
   dismissHref,
-  dismissLabel = "Weiter mit der kostenlosen Visitenkarte",
+  dismissLabel = PRO_PAYWALL_DISMISS_LABEL,
   statusMessage,
 }: ProPaywallSectionProps) {
   const showAnnualPlan = isAnnualPlanAvailable();

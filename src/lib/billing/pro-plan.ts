@@ -42,6 +42,7 @@ export const PRO_PAYWALL_MODAL_SUBLINE = `${PRO_TRIAL_BADGE_LABEL} — Cloud-Spe
 export const PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER =
   "Dein Gratis-Scan ist verbraucht";
 export const PRO_PAYWALL_STICKY_MICROCOPY = `Erst nach Ablauf der ${PRO_TRIAL_DAYS} Tage zahlbar. ${PRO_TRIAL_NO_COMMITMENT}.`;
+export const PRO_PAYWALL_DISMISS_LABEL = "Weiter mit ZeloxTag Free";
 export const PRO_MONTHLY_CARD_SUBLINE = "Monatlich kündbar · Volle Flexibilität";
 export const PRO_ANNUAL_CARD_HIGHLIGHT = `entspricht ${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat (2 Monate geschenkt)`;
 

@@ -8,6 +8,7 @@ import { ProPaywallContent } from "@/components/billing/paywall/pro-paywall-cont
 import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
 import {
+  PRO_PAYWALL_DISMISS_LABEL,
   PRO_PLAN_CHECKOUT_HEADLINE,
   cloudAboHref,
   type ProBillingInterval,
@@ -115,7 +116,7 @@ export function ProPaywallModal({
               <StickyPaywallCta
                 pending={pending}
                 error={error}
-                dismissLabel="Weiter mit der kostenlosen Visitenkarte"
+                dismissLabel={PRO_PAYWALL_DISMISS_LABEL}
                 onCheckout={handleCheckout}
                 onDismiss={onClose}
                 fixed={false}

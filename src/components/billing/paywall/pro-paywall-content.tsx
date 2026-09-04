@@ -119,7 +119,7 @@ export function ProPaywallContent({
         </div>
       )}
 
-      <div className={cn("shrink-0", isModal ? "-mt-0.5 px-4" : "")}>{ctaSlot}</div>
+      <div className={cn("shrink-0", isModal ? "-mt-1 px-4" : "")}>{ctaSlot}</div>
     </div>
   );
 }
