@@ -18,6 +18,47 @@ export const PRO_PLAN_CHECKOUT_HEADLINE =
 export const PRO_PLAN_CHECKOUT_SUBLINE =
   "Teste ZeloxTag Pro 14 Tage kostenlos. Voller Zugriff, jederzeit mit 1 Klick kündbar.";
 
+/** Paywall modal — progress endowment framing */
+export const PRO_PAYWALL_PROGRESS_PERCENT = 80;
+export const PRO_PAYWALL_PROGRESS_LABEL = "Fahrzeugpass zu 80 % eingerichtet";
+export const PRO_PAYWALL_MODAL_SUBLINE =
+  "Sichere dir dauerhaften Cloud-Speicher für alle Umbauten und lade deinen Fahrzeugpass direkt ins Smartphone-Wallet.";
+export const PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER =
+  "Dein Gratis-Scan ist verbraucht";
+export const PRO_PAYWALL_STICKY_MICROCOPY =
+  "Erst nach Ablauf der 14 Tage zahlbar. Keine Mindestvertragslaufzeit – Kündigung jederzeit im Account mit 1 Klick.";
+export const PRO_MONTHLY_CARD_SUBLINE = "Monatlich kündbar · Volle Flexibilität";
+export const PRO_ANNUAL_CARD_HIGHLIGHT = `entspricht ${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat (2 Monate geschenkt)`;
+
+export const PRO_PAYWALL_MODAL_BENEFITS = [
+  "Kein Zettelchaos mehr: Alle ABEs, Rechnungen und TÜV-Berichte griffbereit bei jeder Polizeikontrolle.",
+  "KI-Belegscan: Erkennt Preise, Teile und Prüfnummern automatisch in Sekunden.",
+  "Apple & Google Wallet: Digitaler Fahrzeugpass direkt auf dem Homescreen.",
+  "Maximaler Wiederverkaufswert: Lückenlose Dokumentation für den nächsten Halter.",
+] as const;
+
+export type ProPaywallTimelineIcon = "check" | "mail" | "shield";
+
+export type ProPaywallTimelineNode = {
+  icon: ProPaywallTimelineIcon;
+  text: string;
+};
+
+export const PRO_PAYWALL_TRIAL_TIMELINE: readonly ProPaywallTimelineNode[] = [
+  {
+    icon: "check",
+    text: "Heute: 14 Tage kostenloser Pro-Zugriff (0,00 €)",
+  },
+  {
+    icon: "mail",
+    text: "Tag 12: Erinnerungs-E-Mail vor Ende der Testphase",
+  },
+  {
+    icon: "shield",
+    text: "Tag 14: Erstmalige Abrechnung – jederzeit mit 1 Klick kündbar",
+  },
+] as const;
+
 export const PRO_CHECKOUT_BUTTON_LABEL = PRO_TRIAL_LABEL;
 export const PRO_CHECKOUT_BUTTON_RETURNING_LABEL = `Pro Abo abschließen · ${PRO_PLAN_MONTHLY_PRICE} / Monat`;
 
