@@ -2,11 +2,12 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronRight, Plus, Receipt } from "lucide-react";
+import { ArrowLeft, ChevronRight, Receipt } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { SaveSuccessBanner } from "@/components/documents/save-success-banner";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
+import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
@@ -29,6 +30,9 @@ interface VehicleInvoicesViewProps {
   tagUuid: string;
   vehicleModel: string;
   documents: Document[];
+  /** Show floating scan CTA (owner / Schrauber). */
+  canScan?: boolean;
+  /** @deprecated Use canScan — kept for callers that still pass canWrite. */
   canWrite?: boolean;
   /** Prefill category chip (e.g. "repair" for Reparaturen). */
   initialCategory?: InvoiceListCategory | "all";
@@ -40,9 +44,11 @@ function VehicleInvoicesViewContent({
   tagUuid,
   vehicleModel,
   documents,
+  canScan,
   canWrite = false,
   initialCategory = "all",
 }: VehicleInvoicesViewProps) {
+  const showScanFab = canScan ?? canWrite;
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string>(initialCategory);
@@ -261,25 +267,18 @@ function VehicleInvoicesViewContent({
         <VehicleDataDisclaimer />
       </div>
 
-      {canWrite ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
-          <div className="pointer-events-auto mx-auto max-w-lg">
-            <PressableLink
-              href={
-                categoryId === "repair"
-                  ? `/v/${tagUuid}?scan=1&type=repair`
-                  : `/v/${tagUuid}?scan=1&type=invoice`
-              }
-              variant="button"
-              className="claim-cta shadow-[var(--vd-shadow)]"
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              {categoryId === "repair"
-                ? "Reparatur scannen"
-                : "Rechnung scannen"}
-            </PressableLink>
-          </div>
-        </div>
+      {showScanFab ? (
+        <DashboardScanFab
+          tagUuid={tagUuid}
+          scanHref={
+            categoryId === "repair"
+              ? `/v/${tagUuid}?scan=1&type=repair`
+              : `/v/${tagUuid}?scan=1&type=invoice`
+          }
+          scanLabel={
+            categoryId === "repair" ? "Reparatur scannen" : "Rechnung scannen"
+          }
+        />
       ) : null}
     </div>
   );

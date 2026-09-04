@@ -1,13 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
-interface DashboardScanCtaProps {
+export interface DashboardScanCtaProps {
   tagUuid: string;
   /** Prefer in-page scanner when provided. */
   onOpenScanner?: () => void;
+  /** Direct link to scan flow (sub-pages without in-page picker). */
+  scanHref?: string;
   /** Link to the manual entry page (no receipt / KI scan). */
   manualEntryHref?: string;
   scanLabel?: string;
@@ -16,9 +20,12 @@ interface DashboardScanCtaProps {
 export function DashboardScanCta({
   tagUuid,
   onOpenScanner,
+  scanHref,
   manualEntryHref,
   scanLabel = "Dokument scannen",
 }: DashboardScanCtaProps) {
+  const href = scanHref ?? `/v/${tagUuid}?scan=1`;
+
   return (
     <div className="space-y-2" data-tour="scan-fab">
       {onOpenScanner ? (
@@ -33,7 +40,7 @@ export function DashboardScanCta({
         </PressableButton>
       ) : (
         <PressableLink
-          href={`/v/${tagUuid}?scan=1`}
+          href={href}
           variant="button"
           className="claim-cta w-full shadow-[var(--vd-shadow)]"
         >
@@ -56,16 +63,30 @@ export function DashboardScanCta({
   );
 }
 
-/** @deprecated Use inline `DashboardScanCta` in the dashboard tile grid. */
+/** Fixed bottom scan CTA with fade gradient (dashboard + document menus). */
 export function DashboardScanFab(props: DashboardScanCtaProps) {
-  return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30"
+      data-tour="scan-fab-shell"
+    >
       <div aria-hidden className="vd-fab-gradient h-28" />
       <div className="pointer-events-auto relative px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5">
         <div className="mx-auto max-w-lg">
           <DashboardScanCta {...props} />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

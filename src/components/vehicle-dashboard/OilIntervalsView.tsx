@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, ChevronRight, Droplet, Plus } from "lucide-react";
 
+import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 
@@ -69,7 +70,7 @@ export function OilIntervalsView({
         className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <header className="vd-anim-header space-y-4">
           <div className="flex items-center justify-between gap-2">
             <PressableLink
@@ -91,16 +92,6 @@ export function OilIntervalsView({
                   <Plus className="h-3.5 w-3.5" aria-hidden />
                   Eintragen
                 </PressableButton>
-              ) : null}
-              {scanHref ? (
-                <PressableLink
-                  href={scanHref}
-                  variant="pill"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-2 text-[0.78rem] font-medium text-white"
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  Scannen
-                </PressableLink>
               ) : null}
             </div>
           </div>
@@ -228,6 +219,14 @@ export function OilIntervalsView({
           )}
         </section>
       </div>
+
+      {scanHref && tagUuid ? (
+        <DashboardScanFab
+          tagUuid={tagUuid}
+          scanHref={scanHref}
+          scanLabel="Beleg scannen"
+        />
+      ) : null}
     </div>
   );
 }

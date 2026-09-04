@@ -88,6 +88,7 @@ export default async function VehicleDocumentsPage({
       canWrite={
         !isDemoShowcase && access.canWriteInvoices && membershipActive
       }
+      canScan={!isDemoShowcase && access.canWriteInvoices}
     />
   );
 }

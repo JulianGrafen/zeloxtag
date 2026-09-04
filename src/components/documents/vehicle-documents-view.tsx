@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Eye,
   FileText,
-  Plus,
   Stamp,
   Trash2,
 } from "lucide-react";
@@ -15,6 +14,7 @@ import { deleteDocument } from "@/actions/delete-document";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-view";
+import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import {
@@ -69,8 +69,10 @@ interface VehicleDocumentsViewProps {
   filterType?: DocumentType | "all";
   /** When "all", type chips filter client-side without a server round-trip. */
   documentsScope?: "all" | "filtered";
-  /** Owner-only scan / delete actions. */
+  /** Owner-only delete actions (Pro). */
   canWrite?: boolean;
+  /** Floating scan CTA — available without Pro when free scan quota remains. */
+  canScan?: boolean;
   /** Prefill invoice category chip when showing Belege. */
   invoiceCategory?: InvoiceListCategory | "all";
 }
@@ -92,8 +94,10 @@ export function VehicleDocumentsView({
   filterType = "all",
   documentsScope = "filtered",
   canWrite = false,
+  canScan,
   invoiceCategory = "all",
 }: VehicleDocumentsViewProps) {
+  const showScanFab = canScan ?? canWrite;
   const router = useRouter();
   const [activeType, setActiveType] = useState(filterType);
 
@@ -225,6 +229,7 @@ export function VehicleDocumentsView({
         tagUuid={tagUuid}
         vehicleModel={vehicleModel?.trim() || vehicleLabel.split("·")[0]?.trim() || vehicleLabel}
         documents={documents}
+        canScan={showScanFab}
         canWrite={canWrite}
         initialCategory={invoiceCategory}
       />
@@ -426,29 +431,24 @@ export function VehicleDocumentsView({
         <VehicleDataDisclaimer />
       </div>
 
-      {canWrite ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
-          <div className="pointer-events-auto mx-auto max-w-lg">
-            <PressableLink
-              href={
-                activeType === "tuev"
-                  ? `/v/${tagUuid}?scan=1&type=tuev`
-                  : activeType === "abe"
-                    ? `/v/${tagUuid}?scan=1&type=vault`
-                    : `/v/${tagUuid}?scan=1`
-              }
-              variant="button"
-              className="claim-cta shadow-[var(--vd-shadow)]"
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              {activeType === "abe"
-                ? "In Gutachten Tresor ablegen"
-                : activeType === "tuev"
-                  ? "TÜV scannen"
-                  : "Dokument scannen"}
-            </PressableLink>
-          </div>
-        </div>
+      {showScanFab ? (
+        <DashboardScanFab
+          tagUuid={tagUuid}
+          scanHref={
+            activeType === "tuev"
+              ? `/v/${tagUuid}?scan=1&type=tuev`
+              : activeType === "abe"
+                ? `/v/${tagUuid}?scan=1&type=vault`
+                : `/v/${tagUuid}?scan=1`
+          }
+          scanLabel={
+            activeType === "abe"
+              ? "In Gutachten Tresor ablegen"
+              : activeType === "tuev"
+                ? "TÜV scannen"
+                : "Dokument scannen"
+          }
+        />
       ) : null}
     </div>
   );

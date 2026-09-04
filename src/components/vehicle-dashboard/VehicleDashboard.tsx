@@ -3,10 +3,7 @@
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { ScanContent } from "@/components/layout/scan-content";
 
-import {
-  buildDefaultTiles,
-  isPrimaryScanSectionTile,
-} from "./buildDefaultTiles";
+import { buildDefaultTiles } from "./buildDefaultTiles";
 import { DashboardTile } from "./DashboardTile";
 import type { VehicleDashboardProps } from "./types";
 import { VehicleDashboardHeader } from "./VehicleDashboardHeader";
@@ -17,12 +14,9 @@ export function VehicleDashboard({
   onEditVehicleImage,
   onSilhouetteProxyLoad,
   banner,
-  scanSlot,
   className = "",
 }: VehicleDashboardProps) {
   const tiles = data.tiles ?? buildDefaultTiles(data);
-  const primaryTiles = tiles.filter((tile) => isPrimaryScanSectionTile(tile.id));
-  const secondaryTiles = tiles.filter((tile) => !isPrimaryScanSectionTile(tile.id));
 
   return (
     <ScanContent className={className}>
@@ -51,31 +45,11 @@ export function VehicleDashboard({
       >
         <h2 className="claim-kicker px-1">Fahrzeugmenü</h2>
 
-        {primaryTiles.length > 0 ? (
-          <div className="vd-anim-stagger grid grid-cols-2 gap-3">
-            {primaryTiles.map((tile) => (
-              <DashboardTile
-                key={tile.id}
-                tile={tile}
-                onClick={onTileClick}
-              />
-            ))}
-          </div>
-        ) : null}
-
-        {scanSlot ? <div className="px-1">{scanSlot}</div> : null}
-
-        {secondaryTiles.length > 0 ? (
-          <div className="vd-anim-stagger grid grid-cols-2 gap-3">
-            {secondaryTiles.map((tile) => (
-              <DashboardTile
-                key={tile.id}
-                tile={tile}
-                onClick={onTileClick}
-              />
-            ))}
-          </div>
-        ) : null}
+        <div className="vd-anim-stagger grid grid-cols-2 gap-3">
+          {tiles.map((tile) => (
+            <DashboardTile key={tile.id} tile={tile} onClick={onTileClick} />
+          ))}
+        </div>
       </section>
 
       <VehicleDataDisclaimer className="vd-anim-header" />

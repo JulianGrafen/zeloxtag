@@ -33,7 +33,7 @@ import {
   isDemoActiveTag,
 } from "@/lib/tags/demo-showcase";
 
-import { DashboardScanCta } from "./dashboard-scan-fab";
+import { DashboardScanFab } from "./dashboard-scan-fab";
 
 interface TagDashboardViewProps {
   vehicle: Vehicle;
@@ -355,25 +355,7 @@ export function TagDashboardView({
     <div className="relative">
       <VehicleDashboard
         data={{ ...data, tiles }}
-        scanSlot={
-          canScan ? (
-            <DashboardScanCta
-              tagUuid={tagUuid}
-              onOpenScanner={onOpenScanner}
-              manualEntryHref={manualEntryHref}
-              scanLabel={
-                !cloudUnlocked &&
-                (freeInvoiceScanRemaining > 0 || freeAbeScanRemaining > 0)
-                  ? isContributor && !isOwner
-                    ? "Beleg scannen (gratis)"
-                    : "Dokument scannen (gratis)"
-                  : isContributor && !isOwner
-                    ? "Beleg scannen"
-                    : "Dokument scannen"
-              }
-            />
-          ) : undefined
-        }
+        className={canScan ? "pb-24" : undefined}
         onTileClick={(tileId) => {
           const feature = featureForDashboardTile(tileId);
           if (feature && isProOnlyFeature(feature)) {
@@ -387,6 +369,23 @@ export function TagDashboardView({
         }
         onSilhouetteProxyLoad={onSilhouetteProxyLoad}
       />
+      {canScan ? (
+        <DashboardScanFab
+          tagUuid={tagUuid}
+          onOpenScanner={onOpenScanner}
+          manualEntryHref={manualEntryHref}
+          scanLabel={
+            !cloudUnlocked &&
+            (freeInvoiceScanRemaining > 0 || freeAbeScanRemaining > 0)
+              ? isContributor && !isOwner
+                ? "Beleg scannen (gratis)"
+                : "Dokument scannen (gratis)"
+              : isContributor && !isOwner
+                ? "Beleg scannen"
+                : "Dokument scannen"
+          }
+        />
+      ) : null}
     </div>
   );
 }

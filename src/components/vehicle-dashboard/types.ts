@@ -93,7 +93,5 @@ export interface VehicleDashboardProps {
   onSilhouetteProxyLoad?: () => void;
   /** Optional notice above the tile grid (e.g. Pro paywall). */
   banner?: ReactNode;
-  /** Inline CTA between primary tiles (Belege, Ölwechsel, ABE) and the rest. */
-  scanSlot?: ReactNode;
   className?: string;
 }
