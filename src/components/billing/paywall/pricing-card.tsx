@@ -12,11 +12,13 @@ export function PricingCard({
   selected,
   onSelect,
   highlighted = interval === "annual",
+  compact = false,
 }: {
   interval: ProBillingInterval;
   selected: boolean;
   onSelect: () => void;
   highlighted?: boolean;
+  compact?: boolean;
 }) {
   const anchor = proPaywallPricingAnchor(interval);
   const title = interval === "annual" ? "Jährlich" : "Monatlich";
@@ -29,7 +31,8 @@ export function PricingCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "relative rounded-2xl border px-4 py-3.5 text-left transition-all duration-200",
+        "relative rounded-2xl border text-left transition-all duration-200",
+        compact ? "px-3 py-2.5" : "px-4 py-3.5",
         selected && highlighted
           ? "scale-[1.01] border-blue-600 bg-blue-50/60 ring-2 ring-blue-600"
           : selected
@@ -40,7 +43,8 @@ export function PricingCard({
       {badge ? (
         <span
           className={cn(
-            "mb-2 inline-flex rounded-full px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em]",
+            "mb-1.5 inline-flex rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.08em]",
+            compact ? "text-[0.58rem]" : "text-[0.62rem] mb-2",
             selected && highlighted
               ? "bg-blue-600 text-white"
               : selected
@@ -48,15 +52,16 @@ export function PricingCard({
                 : "bg-neutral-900 text-white",
           )}
         >
-          {badge}
+          {compact ? "Beliebt" : badge}
         </span>
-      ) : (
+      ) : compact ? null : (
         <span className="mb-2 block min-h-[1.375rem]" aria-hidden />
       )}
 
       <span
         className={cn(
-          "block text-[0.72rem] font-semibold uppercase tracking-[0.12em]",
+          "block font-semibold uppercase tracking-[0.12em]",
+          compact ? "text-[0.62rem]" : "text-[0.72rem]",
           selected && !highlighted ? "opacity-80" : "text-[color:var(--vd-muted)]",
           selected && highlighted && "text-blue-800/80",
         )}
@@ -67,7 +72,8 @@ export function PricingCard({
       {anchor.referencePrice ? (
         <span
           className={cn(
-            "mt-1 block text-[0.78rem] line-through",
+            "mt-0.5 block line-through",
+            compact ? "text-[0.68rem]" : "text-[0.78rem] mt-1",
             selected && highlighted
               ? "text-blue-800/50"
               : selected && !highlighted
@@ -82,7 +88,8 @@ export function PricingCard({
       {anchor.foundersDiscountLabel ? (
         <span
           className={cn(
-            "mt-1 block text-[0.68rem] font-semibold uppercase tracking-[0.08em]",
+            "mt-0.5 block font-semibold uppercase tracking-[0.08em]",
+            compact ? "text-[0.58rem]" : "text-[0.68rem] mt-1",
             selected && highlighted
               ? "text-emerald-700"
               : selected && !highlighted
@@ -90,18 +97,40 @@ export function PricingCard({
                 : "text-emerald-700",
           )}
         >
-          {anchor.foundersDiscountLabel}
+          {compact ? "Founders" : anchor.foundersDiscountLabel}
         </span>
       ) : null}
 
-      <span className="mt-0.5 block text-[0.98rem] font-semibold tracking-[-0.02em]">
+      {anchor.savingsLabel ? (
+        <span
+          className={cn(
+            "mt-0.5 block font-semibold uppercase tracking-[0.08em]",
+            compact ? "text-[0.58rem]" : "text-[0.68rem] mt-1",
+            selected && highlighted
+              ? "text-emerald-700"
+              : selected && !highlighted
+                ? "text-emerald-300"
+                : "text-emerald-700",
+          )}
+        >
+          {anchor.savingsLabel}
+        </span>
+      ) : null}
+
+      <span
+        className={cn(
+          "mt-0.5 block font-semibold tracking-[-0.02em]",
+          compact ? "text-[0.88rem]" : "text-[0.98rem]",
+        )}
+      >
         {anchor.currentPrice}
       </span>
 
       {anchor.monthlyEquivalent ? (
         <span
           className={cn(
-            "mt-0.5 block text-[0.74rem] leading-snug",
+            "mt-0.5 block leading-snug",
+            compact ? "text-[0.66rem]" : "text-[0.74rem]",
             selected && highlighted
               ? "text-blue-900/80"
               : selected && !highlighted
@@ -115,7 +144,8 @@ export function PricingCard({
 
       <span
         className={cn(
-          "mt-1 block text-[0.72rem] leading-snug",
+          "mt-0.5 block leading-snug",
+          compact ? "text-[0.64rem]" : "text-[0.72rem] mt-1",
           selected && highlighted
             ? "text-blue-900/70"
             : selected && !highlighted
@@ -126,7 +156,7 @@ export function PricingCard({
         {anchor.weeklyAnchor}
       </span>
 
-      {anchor.flexSubline ? (
+      {!compact && anchor.flexSubline ? (
         <span
           className={cn(
             "mt-0.5 block text-[0.72rem] leading-snug",
@@ -139,18 +169,20 @@ export function PricingCard({
         </span>
       ) : null}
 
-      <span
-        className={cn(
-          "mt-2 block text-[0.72rem] font-medium leading-snug",
-          selected && highlighted
-            ? "text-blue-800"
-            : selected && !highlighted
-              ? "text-white/90"
-              : "text-emerald-700",
-        )}
-      >
-        {anchor.trialLabel}
-      </span>
+      {!compact ? (
+        <span
+          className={cn(
+            "mt-2 block text-[0.72rem] font-medium leading-snug",
+            selected && highlighted
+              ? "text-blue-800"
+              : selected && !highlighted
+                ? "text-white/90"
+                : "text-emerald-700",
+          )}
+        >
+          {anchor.trialLabel}
+        </span>
+      ) : null}
     </button>
   );
 }

@@ -4,6 +4,7 @@ import {
   PRO_PAYWALL_TRIAL_TIMELINE,
   type ProPaywallTimelineIcon,
 } from "@/lib/billing/pro-plan";
+import { cn } from "@/lib/utils";
 
 function TimelineIcon({ icon }: { icon: ProPaywallTimelineIcon }) {
   switch (icon) {
@@ -18,14 +19,22 @@ function TimelineIcon({ icon }: { icon: ProPaywallTimelineIcon }) {
 
 export function TrialTimeline({
   nodes = PRO_PAYWALL_TRIAL_TIMELINE,
+  compact = false,
 }: {
   nodes?: readonly { icon: ProPaywallTimelineIcon; text: string }[];
+  compact?: boolean;
 }) {
   return (
-    <div className="mt-6" aria-label="Testphase-Ablauf">
+    <div className={cn(compact ? "mt-4" : "mt-6")} aria-label="Testphase-Ablauf">
       <ol className="relative space-y-0">
         {nodes.map((node, index) => (
-          <li key={node.text} className="relative flex gap-3 pb-5 last:pb-0">
+          <li
+            key={node.text}
+            className={cn(
+              "relative flex gap-3",
+              compact ? "pb-3 last:pb-0" : "pb-5 last:pb-0",
+            )}
+          >
             {index < nodes.length - 1 ? (
               <span
                 className="absolute top-7 left-[0.6875rem] h-[calc(100%-1.25rem)] w-px bg-[color:var(--vd-border)]"
@@ -38,7 +47,12 @@ export function TrialTimeline({
             >
               <TimelineIcon icon={node.icon} />
             </span>
-            <span className="pt-0.5 text-[0.82rem] leading-snug text-[color:var(--vd-text)]">
+            <span
+              className={cn(
+                "pt-0.5 leading-snug text-[color:var(--vd-text)]",
+                compact ? "text-[0.76rem]" : "text-[0.82rem]",
+              )}
+            >
               {node.text}
             </span>
           </li>

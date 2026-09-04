@@ -2,21 +2,34 @@ import {
   PRO_PAYWALL_PROGRESS_LABEL,
   PRO_PAYWALL_PROGRESS_PERCENT,
 } from "@/lib/billing/pro-plan";
+import { cn } from "@/lib/utils";
 
 export function PaywallProgress({
   percent = PRO_PAYWALL_PROGRESS_PERCENT,
   label = PRO_PAYWALL_PROGRESS_LABEL,
+  compact = false,
 }: {
   percent?: number;
   label?: string;
+  compact?: boolean;
 }) {
   return (
-    <div className="vd-anim-header mt-4 mb-5">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-[0.78rem] font-medium text-[color:var(--vd-text)]">
+    <div className={cn("vd-anim-header", compact ? "mt-2 mb-3" : "mt-4 mb-5")}>
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <span
+          className={cn(
+            "font-medium text-[color:var(--vd-text)]",
+            compact ? "text-[0.72rem]" : "text-[0.78rem]",
+          )}
+        >
           {label}
         </span>
-        <span className="text-[0.78rem] font-semibold tabular-nums text-[color:var(--vd-muted)]">
+        <span
+          className={cn(
+            "font-semibold tabular-nums text-[color:var(--vd-muted)]",
+            compact ? "text-[0.72rem]" : "text-[0.78rem]",
+          )}
+        >
           {percent} %
         </span>
       </div>
