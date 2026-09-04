@@ -59,6 +59,17 @@ type TileDraft = Omit<DashboardTileConfig, "icon"> & {
   icon: DashboardIconName;
 };
 
+/** Tiles shown above the inline scan CTA on the vehicle dashboard. */
+export const PRIMARY_SCAN_SECTION_TILE_IDS = [
+  "invoices",
+  "oil-change",
+  "abe",
+] as const satisfies readonly DashboardTileConfig["id"][];
+
+export function isPrimaryScanSectionTile(tileId: string): boolean {
+  return (PRIMARY_SCAN_SECTION_TILE_IDS as readonly string[]).includes(tileId);
+}
+
 export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConfig[] {
   const inspectionDays = data.nextInspection
     ? daysUntil(data.nextInspection.nextDate)

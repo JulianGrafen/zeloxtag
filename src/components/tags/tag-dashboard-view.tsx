@@ -1,8 +1,5 @@
 "use client";
 
-import { NotebookPen } from "lucide-react";
-
-import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
 import {
@@ -36,7 +33,7 @@ import {
   isDemoActiveTag,
 } from "@/lib/tags/demo-showcase";
 
-import { DashboardScanFab } from "./dashboard-scan-fab";
+import { DashboardScanCta } from "./dashboard-scan-fab";
 
 interface TagDashboardViewProps {
   vehicle: Vehicle;
@@ -358,22 +355,23 @@ export function TagDashboardView({
     <div className="relative">
       <VehicleDashboard
         data={{ ...data, tiles }}
-        className={canScan ? "pb-24" : undefined}
-        banner={
+        scanSlot={
           canScan ? (
-            <div
-              className="vd-anim-header px-1"
-              style={{ animationDelay: "0.08s" }}
-            >
-              <PressableLink
-                href={manualEntryHref}
-                variant="button"
-                className="claim-back w-full border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]"
-              >
-                <NotebookPen className="h-4 w-4" aria-hidden />
-                Manuell eintragen
-              </PressableLink>
-            </div>
+            <DashboardScanCta
+              tagUuid={tagUuid}
+              onOpenScanner={onOpenScanner}
+              manualEntryHref={manualEntryHref}
+              scanLabel={
+                !cloudUnlocked &&
+                (freeInvoiceScanRemaining > 0 || freeAbeScanRemaining > 0)
+                  ? isContributor && !isOwner
+                    ? "Beleg scannen (gratis)"
+                    : "Dokument scannen (gratis)"
+                  : isContributor && !isOwner
+                    ? "Beleg scannen"
+                    : "Dokument scannen"
+              }
+            />
           ) : undefined
         }
         onTileClick={(tileId) => {
@@ -389,23 +387,6 @@ export function TagDashboardView({
         }
         onSilhouetteProxyLoad={onSilhouetteProxyLoad}
       />
-      {canScan ? (
-        <DashboardScanFab
-          tagUuid={tagUuid}
-          onOpenScanner={onOpenScanner}
-          manualEntryHref={manualEntryHref}
-          scanLabel={
-            !cloudUnlocked &&
-            (freeInvoiceScanRemaining > 0 || freeAbeScanRemaining > 0)
-              ? isContributor && !isOwner
-                ? "Beleg scannen (gratis)"
-                : "Dokument scannen (gratis)"
-              : isContributor && !isOwner
-                ? "Beleg scannen"
-                : "Dokument scannen"
-          }
-        />
-      ) : null}
     </div>
   );
 }

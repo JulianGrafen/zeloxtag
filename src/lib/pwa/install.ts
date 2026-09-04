@@ -35,6 +35,12 @@ export function isIosSafari(): boolean {
   return /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
 }
 
+/** Chrome on iOS — shares WebKit, manual add-to-home-screen flow. */
+export function isIosChrome(): boolean {
+  if (!isIosDevice()) return false;
+  return /CriOS/i.test(navigator.userAgent);
+}
+
 export function isAndroidDevice(): boolean {
   if (typeof navigator === "undefined") return false;
   return /Android/i.test(navigator.userAgent);

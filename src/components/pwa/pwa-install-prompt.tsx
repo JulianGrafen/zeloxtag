@@ -1,28 +1,11 @@
 "use client";
 
-import { Plus, Share, X } from "lucide-react";
+import { X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { PwaInstallGuide } from "@/components/pwa/pwa-install-guide";
 import { usePwaInstall } from "@/lib/hooks/use-pwa-install";
+import { isIosChrome, isIosSafari } from "@/lib/pwa/install";
 import { cn } from "@/lib/utils";
-
-function IosShareHint() {
-  return (
-    <p className="mt-2 text-[0.8rem] leading-relaxed text-[color:var(--vd-muted)]">
-      Tippe unten auf das Teilen-Icon{" "}
-      <Share
-        className="mx-0.5 inline h-4 w-4 align-[-0.2em] text-[color:var(--vd-text)]"
-        aria-hidden
-      />{" "}
-      und wähle{" "}
-      <span className="inline-flex items-center gap-0.5 font-medium text-[color:var(--vd-text)]">
-        <Plus className="h-3.5 w-3.5" aria-hidden />
-        Zum Home-Bildschirm
-      </span>
-      .
-    </p>
-  );
-}
 
 export function PwaInstallPrompt() {
   const { visible, platform, canNativeInstall, dismiss, promptInstall } =
@@ -30,7 +13,14 @@ export function PwaInstallPrompt() {
 
   if (!visible) return null;
 
-  const isIos = platform === "ios";
+  const guideVariant =
+    platform === "ios"
+      ? isIosSafari()
+        ? "safari"
+        : isIosChrome()
+          ? "chrome"
+          : "full"
+      : "chrome";
 
   return (
     <div
@@ -54,25 +44,14 @@ export function PwaInstallPrompt() {
           >
             ZeloxTag als App installieren
           </p>
-          <div id="pwa-install-desc">
-            {isIos ? (
-              <IosShareHint />
-            ) : (
-              <p className="mt-2 text-[0.8rem] leading-relaxed text-[color:var(--vd-muted)]">
-                Installiere ZeloxTag auf deinem Home-Bildschirm — schneller Zugriff,
-                ohne Browser-Leiste.
-              </p>
-            )}
+          <div id="pwa-install-desc" className="mt-2">
+            <PwaInstallGuide
+              compact
+              variant={guideVariant}
+              showChromeInstallButton={canNativeInstall}
+              onChromeInstall={promptInstall}
+            />
           </div>
-          {!isIos && canNativeInstall ? (
-            <Button
-              type="button"
-              className="mt-3 h-10 w-full text-[0.88rem] font-semibold"
-              onClick={() => void promptInstall()}
-            >
-              App installieren
-            </Button>
-          ) : null}
         </div>
         <button
           type="button"

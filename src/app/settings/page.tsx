@@ -13,6 +13,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ChangePasswordPanel } from "@/components/auth/change-password-panel";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
 import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
+import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
@@ -114,6 +115,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <ChangePasswordPanel hasPasswordLogin={accountHasPasswordLogin(user)} />
 
         <MfaSetupPanel />
+
+        <PwaInstallSettingsPanel />
 
         <section aria-label="Sitzung" className="vd-surface-card p-5 shadow-[var(--vd-shadow-sm)]">
           <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">

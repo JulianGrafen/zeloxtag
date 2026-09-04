@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   isAndroidDevice,
   isBeforeInstallPromptEvent,
-  isIosSafari,
+  isIosDevice,
   isMobileDevice,
   isStandaloneDisplay,
   persistInstallDismissed,
@@ -38,7 +38,7 @@ export function usePwaInstall(): UsePwaInstallResult {
     setIsStandalone(isStandaloneDisplay());
     setDismissed(readInstallDismissed());
 
-    const ios = isIosSafari();
+    const ios = isIosDevice();
     const android = isAndroidDevice();
     setPlatform(ios ? "ios" : android ? "android" : null);
 
@@ -81,13 +81,13 @@ export function usePwaInstall(): UsePwaInstallResult {
   }, [deferredPrompt]);
 
   const canNativeInstall = deferredPrompt != null;
-  const showIosGuide = platform === "ios" && isIosSafari();
-  const showAndroidPrompt = platform === "android" && canNativeInstall;
+  const showIosGuide = platform === "ios";
+  const showAndroidGuide = platform === "android";
   const visible =
     !isStandalone &&
     !dismissed &&
     isMobileDevice() &&
-    (showIosGuide || showAndroidPrompt);
+    (showIosGuide || showAndroidGuide);
 
   return {
     visible,
