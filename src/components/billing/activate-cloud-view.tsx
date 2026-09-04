@@ -27,14 +27,12 @@ export function ActivateCloudView({ tagUuid }: { tagUuid: string }) {
 
         <ProPlanBenefits audience="new" showLead={false} />
 
-        <div className="mt-4">
-          <StripeCheckoutButton
-            successPath={dashboardHref}
-            cancelPath={aboHref}
-            audience="new"
-            showAnnualPlan={showAnnualPlan}
-          />
-        </div>
+        <StripeCheckoutButton
+          successPath={dashboardHref}
+          cancelPath={aboHref}
+          audience="new"
+          showAnnualPlan={showAnnualPlan}
+        />
 
         <Link href={dashboardHref} className="claim-later mt-4">
           Zurück zur kostenlosen Visitenkarte

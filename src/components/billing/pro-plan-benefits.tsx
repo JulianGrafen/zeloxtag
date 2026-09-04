@@ -14,7 +14,7 @@ export function ProPlanBenefits({
   showLead?: boolean;
 }) {
   return (
-    <div className="mt-5">
+    <div className="mt-5 mb-8">
       {showLead ? (
         <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
           {proCheckoutLead(audience)}
