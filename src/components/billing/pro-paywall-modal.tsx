@@ -93,7 +93,7 @@ export function ProPaywallModal({
         onClick={onClose}
       />
 
-      <div className="relative z-10 flex h-full max-h-[100dvh] flex-col bg-[color:var(--vd-surface)]/92 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)] backdrop-blur-2xl supports-[backdrop-filter]:bg-[color:var(--vd-surface)]/88">
+      <div className="relative z-10 flex h-full max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-[color:var(--vd-surface)]/92 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)] backdrop-blur-2xl supports-[backdrop-filter]:bg-[color:var(--vd-surface)]/88">
         <button
           type="button"
           onClick={onClose}
@@ -104,25 +104,27 @@ export function ProPaywallModal({
         </button>
 
         {isOwner ? (
-          <ProPaywallContent
-            layout="modal"
-            interval={interval}
-            onIntervalChange={setInterval}
-            showAnnualPlan={showAnnualPlan}
-            headline={PRO_PLAN_CHECKOUT_HEADLINE}
-            headlineId="pro-paywall-title"
-            variant={variant}
-            ctaSlot={
-              <StickyPaywallCta
-                pending={pending}
-                error={error}
-                dismissLabel={PRO_PAYWALL_DISMISS_LABEL}
-                onCheckout={handleCheckout}
-                onDismiss={onClose}
-                fixed={false}
-              />
-            }
-          />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <ProPaywallContent
+              layout="modal"
+              interval={interval}
+              onIntervalChange={setInterval}
+              showAnnualPlan={showAnnualPlan}
+              headline={PRO_PLAN_CHECKOUT_HEADLINE}
+              headlineId="pro-paywall-title"
+              variant={variant}
+              ctaSlot={
+                <StickyPaywallCta
+                  pending={pending}
+                  error={error}
+                  dismissLabel={PRO_PAYWALL_DISMISS_LABEL}
+                  onCheckout={handleCheckout}
+                  onDismiss={onClose}
+                  fixed={false}
+                />
+              }
+            />
+          </div>
         ) : (
           <div className="flex flex-1 flex-col px-4 pt-14 pb-8">
             <div className="mx-auto w-full max-w-lg">

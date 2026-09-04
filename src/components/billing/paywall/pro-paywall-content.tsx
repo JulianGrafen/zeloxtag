@@ -1,6 +1,7 @@
 "use client";
 
 import { BenefitList } from "@/components/billing/paywall/benefit-list";
+import { PaywallBenefitScrollZone } from "@/components/billing/paywall/paywall-benefit-scroll-zone";
 import { PricingCards } from "@/components/billing/paywall/pricing-cards";
 import { TrialTimeline } from "@/components/billing/paywall/trial-timeline";
 import {
@@ -45,7 +46,7 @@ export function ProPaywallContent({
     <div
       className={cn(
         "flex min-h-0 flex-1 flex-col",
-        isModal ? "h-full" : "",
+        isModal ? "h-full min-h-0" : "",
       )}
     >
       <div className={cn("shrink-0", isModal ? "px-4 pt-12" : "")}>
@@ -74,24 +75,15 @@ export function ProPaywallContent({
       {showConversionExtras ? (
         <div
           className={cn(
-            "relative min-h-0 flex-1",
+            "flex min-h-0 flex-1 flex-col",
             isModal ? "px-4 pt-1" : "mt-2",
           )}
         >
-          <div className={cn("relative h-full min-h-0", contentWidth)}>
-            <div
-              className={cn(
-                "absolute inset-0 overflow-y-auto overscroll-contain pb-44",
-                "[mask-image:linear-gradient(to_bottom,black_0%,black_58%,transparent_96%)]",
-                "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_58%,transparent_96%)]",
-              )}
-              aria-label="Vorteile scrollen"
-            >
-              <BenefitList compact={compact} />
-            </div>
-
-            <div className="pointer-events-none absolute inset-x-0 bottom-0">
-              <div className="pointer-events-auto bg-gradient-to-t from-[color:var(--vd-surface)] from-35% via-[color:var(--vd-surface)]/95 to-transparent pt-3">
+          <PaywallBenefitScrollZone
+            className={contentWidth}
+            benefits={<BenefitList compact={compact} />}
+            overlay={
+              <>
                 <PricingCards
                   interval={interval}
                   onIntervalChange={onIntervalChange}
@@ -101,9 +93,9 @@ export function ProPaywallContent({
                 />
                 <TrialTimeline compact={compact} />
                 {belowFoldFooter}
-              </div>
-            </div>
-          </div>
+              </>
+            }
+          />
         </div>
       ) : (
         <div className={cn("shrink-0", isModal ? "px-4" : "mt-3")}>
