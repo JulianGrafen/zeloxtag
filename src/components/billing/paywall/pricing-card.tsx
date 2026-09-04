@@ -79,6 +79,21 @@ export function PricingCard({
         </span>
       ) : null}
 
+      {anchor.foundersDiscountLabel ? (
+        <span
+          className={cn(
+            "mt-1 block text-[0.68rem] font-semibold uppercase tracking-[0.08em]",
+            selected && highlighted
+              ? "text-emerald-700"
+              : selected && !highlighted
+                ? "text-emerald-300"
+                : "text-emerald-700",
+          )}
+        >
+          {anchor.foundersDiscountLabel}
+        </span>
+      ) : null}
+
       <span className="mt-0.5 block text-[0.98rem] font-semibold tracking-[-0.02em]">
         {anchor.currentPrice}
       </span>
@@ -108,7 +123,7 @@ export function PricingCard({
               : "text-[color:var(--vd-muted)]",
         )}
       >
-        {anchor.dailyAnchor}
+        {anchor.weeklyAnchor}
       </span>
 
       {anchor.flexSubline ? (

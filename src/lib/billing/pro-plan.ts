@@ -2,11 +2,13 @@
 
 export const PRO_PLAN_NAME = "ZeloxTag Pro";
 export const PRO_PLAN_MONTHLY_PRICE = "4,99 €";
-export const PRO_PLAN_MONTHLY_DAILY_PRICE = "0,16 €";
+export const PRO_PLAN_MONTHLY_REFERENCE_PRICE = "5,99 €";
+export const PRO_PLAN_MONTHLY_WEEKLY_PRICE = "1,15 €";
 export const PRO_PLAN_ANNUAL_PRICE = "49,90 €";
 export const PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY = "4,16 €";
-export const PRO_PLAN_ANNUAL_DAILY_PRICE = "0,14 €";
+export const PRO_PLAN_ANNUAL_WEEKLY_PRICE = "0,96 €";
 export const PRO_PLAN_ANNUAL_REFERENCE_PRICE = "59,88 €";
+export const PRO_FOUNDERS_DISCOUNT_LABEL = "Founders Discount";
 export const PRO_ANNUAL_SAVINGS_AMOUNT = "10 €";
 export const PRO_ANNUAL_SAVINGS_PERCENT = 17;
 export const PRO_ANNUAL_DISCOUNT_LABEL = "Spare 17%";
@@ -21,9 +23,10 @@ export const PRO_TRIAL_LABEL = "14 Tage kostenlos testen";
 export const PRO_TRIAL_BADGE_LABEL = "14 Tage kostenlos";
 export const PRO_TRIAL_NO_COMMITMENT =
   "Keine Verpflichtung · Jederzeit kündbar";
-export const PRO_PRICE_ANCHOR_DAILY = "Nur 16 Cent pro Tag";
-export const PRO_PRICE_ANCHOR_ANNUAL_DAILY = "Nur 14 Cent pro Tag";
-export const PRO_PRICE_ANCHOR_COFFEE = "Weniger als ein Kaffee pro Woche";
+
+export function proWeeklyPriceCopy(price: string): string {
+  return `${price} pro Woche`;
+}
 
 export type ProBillingInterval = "monthly" | "annual";
 
@@ -51,10 +54,11 @@ export const PRO_PAYWALL_MODAL_BENEFITS = [
 
 export type ProPaywallPricingAnchor = {
   referencePrice?: string;
+  foundersDiscountLabel?: string;
   currentPrice: string;
   savingsLabel?: string;
   monthlyEquivalent?: string;
-  dailyAnchor: string;
+  weeklyAnchor: string;
   trialLabel: string;
   flexSubline?: string;
 };
@@ -68,13 +72,15 @@ export function proPaywallPricingAnchor(
       currentPrice: `${PRO_PLAN_ANNUAL_PRICE} / Jahr`,
       savingsLabel: PRO_ANNUAL_DISCOUNT_LABEL,
       monthlyEquivalent: `${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat`,
-      dailyAnchor: PRO_PRICE_ANCHOR_ANNUAL_DAILY,
+      weeklyAnchor: proWeeklyPriceCopy(PRO_PLAN_ANNUAL_WEEKLY_PRICE),
       trialLabel: PRO_TRIAL_LABEL,
     };
   }
   return {
+    referencePrice: `${PRO_PLAN_MONTHLY_REFERENCE_PRICE} / Monat`,
+    foundersDiscountLabel: PRO_FOUNDERS_DISCOUNT_LABEL,
     currentPrice: `${PRO_PLAN_MONTHLY_PRICE} / Monat`,
-    dailyAnchor: PRO_PRICE_ANCHOR_DAILY,
+    weeklyAnchor: proWeeklyPriceCopy(PRO_PLAN_MONTHLY_WEEKLY_PRICE),
     trialLabel: PRO_TRIAL_LABEL,
     flexSubline: PRO_MONTHLY_CARD_SUBLINE,
   };
@@ -173,7 +179,7 @@ export function proIntervalPriceDisplay(interval: ProBillingInterval): {
   }
   return {
     primary: `${PRO_PLAN_MONTHLY_PRICE} / Monat`,
-    secondary: `${PRO_PLAN_MONTHLY_DAILY_PRICE} pro Tag`,
+    secondary: proWeeklyPriceCopy(PRO_PLAN_MONTHLY_WEEKLY_PRICE),
   };
 }
 
