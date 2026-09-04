@@ -25,32 +25,35 @@ export function TrialTimeline({
   compact?: boolean;
 }) {
   return (
-    <div className={cn(compact ? "mt-2" : "mt-6")} aria-label="Testphase-Ablauf">
+    <div className={cn(compact ? "mt-0.5" : "mt-6")} aria-label="Testphase-Ablauf">
       <ol className="relative space-y-0">
         {nodes.map((node, index) => (
           <li
             key={node.text}
             className={cn(
-              "relative flex gap-3",
-              compact ? "pb-3 last:pb-0" : "pb-5 last:pb-0",
+              "relative flex gap-2",
+              compact ? "pb-1.5 last:pb-0" : "pb-5 last:pb-0",
             )}
           >
             {index < nodes.length - 1 ? (
               <span
-                className="absolute top-7 left-[0.6875rem] h-[calc(100%-1.25rem)] w-px bg-[color:var(--vd-border)]"
+                className="absolute top-6 left-[0.6875rem] h-[calc(100%-1rem)] w-px bg-[color:var(--vd-border)]"
                 aria-hidden
               />
             ) : null}
             <span
-              className="relative z-10 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)]"
+              className={cn(
+                "relative z-10 inline-flex shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)]",
+                compact ? "h-5 w-5" : "h-6 w-6",
+              )}
               aria-hidden
             >
               <TimelineIcon icon={node.icon} />
             </span>
             <span
               className={cn(
-                "pt-0.5 leading-snug text-[color:var(--vd-text)]",
-                compact ? "text-[0.76rem]" : "text-[0.82rem]",
+                "leading-snug text-[color:var(--vd-text)]",
+                compact ? "pt-0 text-[0.72rem]" : "pt-0.5 text-[0.82rem]",
               )}
             >
               {node.text}

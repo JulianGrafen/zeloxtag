@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function EmailConfirmedPanel({ dashboardHref }: { dashboardHref: string }) {
   return (
@@ -16,9 +17,15 @@ export function EmailConfirmedPanel({ dashboardHref }: { dashboardHref: string }
         <p className="mt-2 text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
           Dein Konto ist aktiv. Weiter geht&apos;s auf deinem Dashboard.
         </p>
-        <Button asChild className="mt-6 h-12 w-full text-[0.95rem] font-semibold">
-          <Link href={dashboardHref}>Zum Dashboard</Link>
-        </Button>
+        <Link
+          href={dashboardHref}
+          className={cn(
+            buttonVariants(),
+            "mt-6 inline-flex h-12 w-full text-[0.95rem] font-semibold",
+          )}
+        >
+          Zum Dashboard
+        </Link>
       </div>
     </section>
   );

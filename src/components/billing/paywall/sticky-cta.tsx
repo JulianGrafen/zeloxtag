@@ -29,10 +29,10 @@ export function StickyPaywallCta({
   return (
     <div
       className={cn(
-        "z-20 border-t border-[color:var(--vd-border)] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.08)]",
+        "z-20 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.08)]",
         fixed
-          ? "fixed inset-x-0 bottom-0 bg-[color:var(--vd-surface)]/95 backdrop-blur-xl"
-          : "mt-6 shrink-0 rounded-2xl border bg-[color:var(--vd-surface)]/95 shadow-[var(--vd-shadow-sm)] backdrop-blur-xl",
+          ? "fixed inset-x-0 bottom-0 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/95 pt-2 backdrop-blur-xl"
+          : "shrink-0 border-t border-[color:var(--vd-surface)] bg-[color:var(--vd-surface)]/95 pt-1.5 backdrop-blur-xl",
       )}
     >
       <div className="mx-auto w-full max-w-lg">
