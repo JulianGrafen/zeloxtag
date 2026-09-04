@@ -6,15 +6,39 @@ import {
 } from "@/lib/billing/pro-plan";
 import { cn } from "@/lib/utils";
 
-function TimelineIcon({ icon }: { icon: ProPaywallTimelineIcon }) {
+function TimelineIcon({
+  icon,
+  compact = false,
+}: {
+  icon: ProPaywallTimelineIcon;
+  compact?: boolean;
+}) {
+  const size = compact ? "h-4 w-4" : "h-3.5 w-3.5";
   switch (icon) {
     case "check":
-      return <Check className="h-3.5 w-3.5" strokeWidth={2.5} />;
+      return <Check className={size} strokeWidth={2.5} />;
     case "mail":
-      return <Mail className="h-3.5 w-3.5" strokeWidth={2.5} />;
+      return <Mail className={size} strokeWidth={2.5} />;
     case "shield":
-      return <Shield className="h-3.5 w-3.5" strokeWidth={2.5} />;
+      return <Shield className={size} strokeWidth={2.5} />;
   }
+}
+
+function TimelineText({ text }: { text: string }) {
+  const colonIndex = text.indexOf(":");
+  if (colonIndex === -1) {
+    return <span>{text}</span>;
+  }
+
+  const label = text.slice(0, colonIndex + 1);
+  const description = text.slice(colonIndex + 1);
+
+  return (
+    <span>
+      <span className="font-semibold">{label}</span>
+      {description}
+    </span>
+  );
 }
 
 export function TrialTimeline({
@@ -31,7 +55,7 @@ export function TrialTimeline({
           <li
             key={node.text}
             className={cn(
-              "relative flex gap-2",
+              "relative flex gap-2.5",
               compact ? "pb-3.5 last:pb-0" : "pb-5 last:pb-0",
             )}
           >
@@ -43,20 +67,19 @@ export function TrialTimeline({
             ) : null}
             <span
               className={cn(
-                "relative z-10 inline-flex shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-text)]",
-                compact ? "h-5 w-5" : "h-6 w-6",
+                "relative z-10 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-text)]",
               )}
               aria-hidden
             >
-              <TimelineIcon icon={node.icon} />
+              <TimelineIcon icon={node.icon} compact={compact} />
             </span>
             <span
               className={cn(
                 "leading-snug text-[color:var(--vd-text)]",
-                compact ? "pt-0 text-[0.74rem]" : "pt-0.5 text-[0.82rem]",
+                compact ? "pt-0.5 text-[0.82rem]" : "pt-0.5 text-[0.86rem]",
               )}
             >
-              {node.text}
+              <TimelineText text={node.text} />
             </span>
           </li>
         ))}

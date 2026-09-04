@@ -24,7 +24,7 @@ export function PricingCards({
     <div className={cn(compact ? "mt-0" : "mt-6", className)}>
       <div
         className={cn(
-          "vd-anim-stagger grid gap-2",
+          "vd-anim-stagger grid items-center overflow-visible",
           showAnnualPlan ? "grid-cols-2" : "grid-cols-1",
           compact ? "gap-3" : "mt-3 gap-3",
         )}

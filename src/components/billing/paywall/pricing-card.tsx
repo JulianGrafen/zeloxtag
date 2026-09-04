@@ -35,11 +35,14 @@ export function PricingCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "relative overflow-hidden rounded-2xl border text-left transition-all duration-200",
-        compact ? "px-3 py-3" : "px-4 py-3.5",
+        "relative overflow-hidden rounded-2xl border text-left",
+        "origin-center will-change-transform",
+        "transition-[transform,box-shadow,border-color,background-color,opacity] duration-350",
+        "[transition-timing-function:var(--vd-ease-spring)]",
+        compact ? (selected ? "px-3.5 py-3.5" : "px-3 py-3") : "px-4 py-3.5",
         selected
-          ? "scale-[1.01] border-blue-600 bg-blue-600/10 ring-2 ring-blue-600"
-          : "border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-text)] hover:border-neutral-400 hover:bg-white/5",
+          ? "z-10 scale-[1.06] border-blue-600 bg-blue-600/10 ring-2 ring-blue-600 shadow-[var(--vd-shadow)]"
+          : "scale-[0.97] border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-text)] opacity-90 hover:scale-[0.99] hover:border-neutral-400 hover:bg-white/5 hover:opacity-100",
       )}
     >
       {interval === "monthly" && shinePosition ? (
@@ -121,8 +124,8 @@ export function PricingCard({
 
       <span
         className={cn(
-          "mt-0.5 block font-semibold tracking-[-0.02em]",
-          compact ? "text-[0.88rem]" : "text-[0.98rem]",
+          "mt-0.5 block font-semibold tracking-[-0.02em] transition-[font-size] duration-350 [transition-timing-function:var(--vd-ease-spring)]",
+          compact ? (selected ? "text-[0.94rem]" : "text-[0.88rem]") : "text-[0.98rem]",
         )}
       >
         {anchor.currentPrice}
@@ -140,17 +143,15 @@ export function PricingCard({
         </span>
       ) : null}
 
-      {!compact ? (
-        <span
-          className={cn(
-            "mt-0.5 block leading-snug",
-            "text-[0.72rem] mt-1",
-            selected ? "text-blue-900/70" : "text-[color:var(--vd-muted)]",
-          )}
-        >
-          {anchor.weeklyAnchor}
-        </span>
-      ) : null}
+      <span
+        className={cn(
+          "mt-0.5 block leading-snug",
+          compact ? "text-[0.64rem]" : "text-[0.72rem] mt-1",
+          selected ? "text-blue-900/70" : "text-[color:var(--vd-muted)]",
+        )}
+      >
+        {anchor.weeklyAnchor}
+      </span>
 
       {!compact && anchor.flexSubline ? (
         <span
