@@ -25,7 +25,7 @@ export function TrialTimeline({
   compact?: boolean;
 }) {
   return (
-    <div className={cn(compact ? "mt-4" : "mt-6")} aria-label="Testphase-Ablauf">
+    <div className={cn(compact ? "mt-2" : "mt-6")} aria-label="Testphase-Ablauf">
       <ol className="relative space-y-0">
         {nodes.map((node, index) => (
           <li

@@ -8,7 +8,6 @@ import { ProPaywallContent } from "@/components/billing/paywall/pro-paywall-cont
 import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
 import {
-  PRO_PAYWALL_MODAL_SUBLINE,
   PRO_PLAN_CHECKOUT_HEADLINE,
   cloudAboHref,
   type ProBillingInterval,
@@ -34,7 +33,7 @@ export function ProPaywallModal({
   onClose: () => void;
 }) {
   const showAnnualPlan = isAnnualPlanAvailable();
-  const defaultInterval: ProBillingInterval = showAnnualPlan ? "annual" : "monthly";
+  const defaultInterval: ProBillingInterval = "monthly";
   const [interval, setInterval] = useState<ProBillingInterval>(defaultInterval);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +109,6 @@ export function ProPaywallModal({
             onIntervalChange={setInterval}
             showAnnualPlan={showAnnualPlan}
             headline={PRO_PLAN_CHECKOUT_HEADLINE}
-            subline={PRO_PAYWALL_MODAL_SUBLINE}
             headlineId="pro-paywall-title"
             variant={variant}
             ctaSlot={

@@ -47,6 +47,7 @@ export const PRO_ANNUAL_CARD_HIGHLIGHT = `entspricht ${PRO_PLAN_ANNUAL_EQUIVALEN
 
 export const PRO_PAYWALL_MODAL_BENEFITS = [
   "Schluss mit dem Papierchaos: Die KI scannt Rechnungen, ABEs und Gutachten in Sekunden und baut automatisch deine digitale Akte.",
+  "Endlose KI-Scans: Scanne Rechnungen, ABEs und Gutachten ohne Limit – jederzeit und überall.",
   "Lückenlose Projekthistorie: Dokumentiere jeden Cent und jeden Umbau sauber an einem zentralen Ort.",
   "Maximaler Werterhalt: Beweise die Qualität deines Fahrzeugs beim späteren Verkauf schwarz auf weiß.",
   "Dein Fahrzeugpass für Tuning-Treffen: Zeige alle Specs per QR-Code als digitale Visitenkarte deines Autos.",
@@ -71,7 +72,6 @@ export function proPaywallPricingAnchor(
       referencePrice: `${PRO_PLAN_ANNUAL_REFERENCE_PRICE} / Jahr`,
       currentPrice: `${PRO_PLAN_ANNUAL_PRICE} / Jahr`,
       savingsLabel: PRO_ANNUAL_DISCOUNT_LABEL,
-      monthlyEquivalent: `${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat`,
       weeklyAnchor: proWeeklyPriceCopy(PRO_PLAN_ANNUAL_WEEKLY_PRICE),
       trialLabel: PRO_TRIAL_LABEL,
     };

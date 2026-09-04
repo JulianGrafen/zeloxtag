@@ -9,7 +9,6 @@ import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { StripePortalButton } from "@/components/billing/stripe-checkout-button";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
 import {
-  PRO_PAYWALL_MODAL_SUBLINE,
   PRO_PLAN_CHECKOUT_HEADLINE,
   proCheckoutButtonLabel,
   type ProBillingInterval,
@@ -17,7 +16,6 @@ import {
 } from "@/lib/billing/pro-plan";
 import {
   FEATURE,
-  paywallBody,
   paywallTitle,
   type FeatureFlag,
   type PaywallVariant,
@@ -47,7 +45,7 @@ export function ProPaywallSection({
   statusMessage,
 }: ProPaywallSectionProps) {
   const showAnnualPlan = isAnnualPlanAvailable();
-  const defaultInterval: ProBillingInterval = showAnnualPlan ? "annual" : "monthly";
+  const defaultInterval: ProBillingInterval = "monthly";
   const [interval, setInterval] = useState<ProBillingInterval>(defaultInterval);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -56,9 +54,6 @@ export function ProPaywallSection({
   const headline = useConversionCopy
     ? PRO_PLAN_CHECKOUT_HEADLINE
     : paywallTitle(feature, variant);
-  const subline = useConversionCopy
-    ? PRO_PAYWALL_MODAL_SUBLINE
-    : paywallBody(feature, variant);
 
   function handleCheckout() {
     setError(null);
@@ -91,7 +86,6 @@ export function ProPaywallSection({
         onIntervalChange={setInterval}
         showAnnualPlan={showAnnualPlan}
         headline={headline}
-        subline={subline}
         showConversionExtras={useConversionCopy}
         variant={variant}
         statusMessage={statusMessage}
