@@ -3,6 +3,7 @@ import { logServerError } from "@/lib/security/public-error";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { CLAIM_UNAVAILABLE_MESSAGE } from "@/lib/tags/claim-landing";
+import { applyClaimTechSpecs } from "@/lib/tags/apply-claim-tech-specs";
 import type { PendingClaim } from "@/lib/tags/pending-claim";
 import type { Json } from "@/types/database";
 
@@ -91,6 +92,8 @@ export async function completeClaimForOwner(
     meta.name = claim.name;
   }
   await supabase.auth.updateUser({ data: meta });
+
+  await applyClaimTechSpecs(claim.tagUuid, claim.techSpecs);
 
   return {
     status: "claimed",

@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { isGenericPostLoginNext, normalizeAuthCallbackNext } from "@/lib/auth/post-login-path";
 import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
+import { resolveAuthSiteOrigin } from "@/lib/site-origin";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { hardenCookieOptions } from "@/lib/security/cookie-options";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -29,32 +30,44 @@ function mapAuthCallbackError(message: string): string {
  * verifier and new session cookies travel with the redirect.
  */
 export async function GET(request: NextRequest) {
-  const limited = await enforceRateLimit(request, "auth", "auth-callback");
-  if (limited) {
-    return NextResponse.redirect(new URL("/login?error=rate_limited", request.nextUrl.origin));
+  const authOrigin = resolveAuthSiteOrigin(request);
+  const { searchParams, origin } = request.nextUrl;
+
+  if (origin !== authOrigin) {
+    const canonicalCallback = new URL("/auth/callback", authOrigin);
+    searchParams.forEach((value, key) => {
+      canonicalCallback.searchParams.set(key, value);
+    });
+    return NextResponse.redirect(canonicalCallback);
   }
 
-  const { searchParams, origin } = request.nextUrl;
+  const limited = await enforceRateLimit(request, "auth", "auth-callback");
+  if (limited) {
+    return NextResponse.redirect(
+      new URL("/login?error=rate_limited", authOrigin),
+    );
+  }
+
   const code = searchParams.get("code");
   const next = normalizeAuthCallbackNext(searchParams.get("next") ?? "/auth/continue");
 
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {
-    return NextResponse.redirect(new URL(next, origin));
+    return NextResponse.redirect(new URL(next, authOrigin));
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL(next, origin));
+    return NextResponse.redirect(new URL(next, authOrigin));
   }
 
   // Temporary redirect target; may be replaced after session + claim resolve.
-  let response = NextResponse.redirect(new URL(next, origin));
+  let response = NextResponse.redirect(new URL(next, authOrigin));
   const supabase = createRouteHandlerClient(request, response);
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    const loginUrl = new URL("/login", origin);
+    const loginUrl = new URL("/login", authOrigin);
     loginUrl.searchParams.set("error", mapAuthCallbackError(error.message));
     loginUrl.searchParams.set("next", next);
     return NextResponse.redirect(loginUrl);
@@ -74,11 +87,13 @@ export async function GET(request: NextRequest) {
       const claimResult = await completePendingClaimForUser(userId);
       if (claimResult?.status === "claimed") {
         return copyCookies(
-          NextResponse.redirect(new URL(dashboardTourHref(claimResult.tagUuid), origin)),
+          NextResponse.redirect(
+            new URL(dashboardTourHref(claimResult.tagUuid), authOrigin),
+          ),
         );
       }
       if (claimResult?.status === "error") {
-        const loginUrl = new URL("/login", origin);
+        const loginUrl = new URL("/login", authOrigin);
         loginUrl.searchParams.set("error", claimResult.message);
         return copyCookies(NextResponse.redirect(loginUrl));
       }
@@ -89,7 +104,7 @@ export async function GET(request: NextRequest) {
     if (isGenericPostLoginNext(next)) {
       // Cookie-bearing hop; continue resolves /v/{uuid} for owners.
       response = copyCookies(
-        NextResponse.redirect(new URL("/auth/continue", origin)),
+        NextResponse.redirect(new URL("/auth/continue", authOrigin)),
       );
       return response;
     }

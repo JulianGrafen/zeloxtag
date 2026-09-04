@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { normalizeAuthCallbackNext } from "@/lib/auth/post-login-path";
-import { resolvePublicSiteOrigin } from "@/lib/site-origin";
+import { resolveAuthSiteOrigin } from "@/lib/site-origin";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { hardenCookieOptions } from "@/lib/security/cookie-options";
 import { publicAuthMessage } from "@/lib/security/public-error";
@@ -13,16 +13,22 @@ import { createRouteHandlerClient } from "@/lib/supabase/route";
  * written onto the redirect response cookies (Server Actions are unreliable here).
  */
 export async function GET(request: NextRequest) {
-  const { origin } = request.nextUrl;
+  const authOrigin = resolveAuthSiteOrigin(request);
+
+  if (request.nextUrl.origin !== authOrigin) {
+    const canonicalStart = new URL(request.nextUrl.pathname, authOrigin);
+    canonicalStart.search = request.nextUrl.search;
+    return NextResponse.redirect(canonicalStart);
+  }
 
   const limited = await enforceRateLimit(request, "auth", "oauth-google");
   if (limited) {
-    return NextResponse.redirect(new URL("/login?error=rate_limited", origin));
+    return NextResponse.redirect(new URL("/login?error=rate_limited", authOrigin));
   }
 
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {
-    const loginUrl = new URL("/login", origin);
+    const loginUrl = new URL("/login", authOrigin);
     loginUrl.searchParams.set(
       "error",
       "Supabase ist nicht konfiguriert. Setze NEXT_PUBLIC_SUPABASE_URL und NEXT_PUBLIC_SUPABASE_ANON_KEY.",
@@ -33,10 +39,9 @@ export async function GET(request: NextRequest) {
   const next = normalizeAuthCallbackNext(
     request.nextUrl.searchParams.get("next") ?? "/auth/continue",
   );
-  const siteUrl = resolvePublicSiteOrigin();
-  const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
+  const redirectTo = `${authOrigin}/auth/callback?next=${encodeURIComponent(next)}`;
 
-  const cookieResponse = NextResponse.redirect(new URL("/login", origin));
+  const cookieResponse = NextResponse.redirect(new URL("/login", authOrigin));
   const supabase = createRouteHandlerClient(request, cookieResponse);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -45,7 +50,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (error || !data.url) {
-    const loginUrl = new URL("/login", origin);
+    const loginUrl = new URL("/login", authOrigin);
     loginUrl.searchParams.set(
       "error",
       publicAuthMessage(error, "Google-Anmeldung konnte nicht gestartet werden."),

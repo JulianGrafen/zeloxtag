@@ -37,6 +37,27 @@ function isProductionRuntime(): boolean {
   );
 }
 
+function isLocalHostname(host: string): boolean {
+  return (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".local")
+  );
+}
+
+/**
+ * Origin used for OAuth start, callback, and post-auth redirects.
+ * Non-local traffic always uses the canonical custom domain so PKCE cookies
+ * and Supabase redirectTo stay on one host (never *.vercel.app).
+ */
+export function resolveAuthSiteOrigin(request?: { nextUrl: URL }): string {
+  const host = request?.nextUrl.hostname ?? "";
+  if (host && isLocalHostname(host)) {
+    return request!.nextUrl.origin;
+  }
+  return PRODUCTION_SITE_URL;
+}
+
 /**
  * Canonical app origin for Stripe return URLs, claim links, and QR targets.
  * Never returns localhost when running in production — even if NEXT_PUBLIC_SITE_URL

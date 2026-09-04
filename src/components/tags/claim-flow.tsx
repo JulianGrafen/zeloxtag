@@ -2,13 +2,22 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 
 import { claimTag } from "@/actions/claim-tag";
 import { ScanContent } from "@/components/layout/scan-content";
+import { ClaimProgressBar } from "@/components/tags/claim-progress-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  claimWizardPreviousStep,
+  type ClaimWizardStep,
+} from "@/lib/tags/claim-flow-steps";
+import {
+  VEHICLE_DRIVETRAIN_TYPES,
+  VEHICLE_FUEL_TYPES,
+} from "@/lib/vehicles/tech-specs";
 
 interface ClaimFlowProps {
   tagUuid: string;
@@ -16,18 +25,20 @@ interface ClaimFlowProps {
   userEmail?: string | null;
 }
 
-type Step = "intro" | "vehicle" | "account";
-
 export function ClaimFlow({
   tagUuid,
   isAuthenticated = false,
   userEmail = null,
 }: ClaimFlowProps) {
-  const [step, setStep] = useState<Step>("intro");
+  const [step, setStep] = useState<ClaimWizardStep>("intro");
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
   const [vin, setVin] = useState("");
+  const [powerPs, setPowerPs] = useState("");
+  const [displacementCc, setDisplacementCc] = useState("");
+  const [drivetrain, setDrivetrain] = useState("");
+  const [fuelType, setFuelType] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState(userEmail ?? "");
   const [password, setPassword] = useState("");
@@ -37,12 +48,20 @@ export function ClaimFlow({
   const [pending, startTransition] = useTransition();
 
   const needsAccount = !isAuthenticated;
-  const stepCount = needsAccount ? 2 : 1;
-  const stepIndex = step === "vehicle" ? 1 : step === "account" ? 2 : 0;
 
-  function validateVehicle(): string | null {
+  function goBack() {
+    setError(null);
+    setInfo(null);
+    setStep(claimWizardPreviousStep(step, needsAccount));
+  }
+
+  function validateMakeModel(): string | null {
     if (!make.trim()) return "Marke ist erforderlich.";
     if (!model.trim()) return "Modell ist erforderlich.";
+    return null;
+  }
+
+  function validateYear(): string | null {
     const parsedYear = Number.parseInt(year, 10);
     if (!Number.isFinite(parsedYear) || parsedYear < 1900 || parsedYear > 2100) {
       return "Baujahr muss zwischen 1900 und 2100 liegen.";
@@ -52,6 +71,10 @@ export function ClaimFlow({
       return "VIN muss zwischen 5 und 32 Zeichen liegen.";
     }
     return null;
+  }
+
+  function validateVehicle(): string | null {
+    return validateMakeModel() ?? validateYear();
   }
 
   function validateAccount(): string | null {
@@ -74,7 +97,7 @@ export function ClaimFlow({
     const vehicleError = validateVehicle();
     if (vehicleError) {
       setError(vehicleError);
-      setStep("vehicle");
+      setStep(validateMakeModel() ? "makeModel" : "year");
       return;
     }
 
@@ -95,6 +118,12 @@ export function ClaimFlow({
           model,
           year,
           vin: vin.trim() || undefined,
+          techSpecs: {
+            powerPs: powerPs.trim() || undefined,
+            displacementCc: displacementCc.trim() || undefined,
+            drivetrain: drivetrain.trim() || undefined,
+            fuelType: fuelType.trim() || undefined,
+          },
           ...(needsAccount
             ? {
                 email: email.trim(),
@@ -114,7 +143,6 @@ export function ClaimFlow({
           return;
         }
 
-        // Hard navigation: Soft Router can stall after Server Actions on LAN/mobile.
         window.location.assign(result.href);
       } catch (submitError) {
         setError(
@@ -129,19 +157,7 @@ export function ClaimFlow({
   return (
     <ClaimShell>
       {step !== "intro" ? (
-        <div
-          className="mb-5 flex items-center gap-2 vd-anim-header"
-          aria-label={`Schritt ${stepIndex} von ${stepCount}`}
-        >
-          {Array.from({ length: stepCount }, (_, index) => (
-            <div key={index} className="vd-step-progress">
-              <div
-                className="vd-step-progress__fill"
-                style={{ width: index < stepIndex ? "100%" : "0%" }}
-              />
-            </div>
-          ))}
-        </div>
+        <ClaimProgressBar step={step} needsAccount={needsAccount} />
       ) : null}
 
       {step === "intro" ? (
@@ -170,7 +186,7 @@ export function ClaimFlow({
                 </span>
               </p>
             ) : null}
-            <Button type="button" onClick={() => setStep("vehicle")}>
+            <Button type="button" onClick={() => setStep("makeModel")}>
               Tag beanspruchen
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Button>
@@ -189,34 +205,23 @@ export function ClaimFlow({
         </section>
       ) : null}
 
-      {step === "vehicle" ? (
-        <section className="claim-panel vd-anim-header">
-          <header>
-            <p className="claim-kicker">Fahrzeugdaten</p>
-            <h1 className="claim-title mt-2">Fahrzeug verknüpfen</h1>
-            <p className="claim-copy mt-2">
-              Marke, Modell und Baujahr reichen für den Start.
-              {needsAccount
-                ? " Als Nächstes legst du dein Konto an."
-                : " Danach geht’s direkt zu deinem Dashboard."}
-            </p>
-          </header>
-
+      {step === "makeModel" ? (
+        <SlidePanel
+          kicker="Schritt 1 von 4"
+          title="Marke & Modell"
+          copy="Wie heißt dein Fahrzeug? Das steht gleich auf deiner digitalen Visitenkarte."
+        >
           <form
             className="mt-6 space-y-4"
             onSubmit={(event) => {
               event.preventDefault();
               setError(null);
-              const vehicleError = validateVehicle();
-              if (vehicleError) {
-                setError(vehicleError);
+              const validationError = validateMakeModel();
+              if (validationError) {
+                setError(validationError);
                 return;
               }
-              if (needsAccount) {
-                setStep("account");
-                return;
-              }
-              submitClaim();
+              setStep("year");
             }}
           >
             <div className="grid grid-cols-2 gap-3">
@@ -235,7 +240,36 @@ export function ClaimFlow({
                 required
               />
             </div>
+            <SlideActions
+              error={error}
+              pending={pending}
+              onBack={goBack}
+              submitLabel="Weiter"
+              showBack
+            />
+          </form>
+        </SlidePanel>
+      ) : null}
 
+      {step === "year" ? (
+        <SlidePanel
+          kicker="Schritt 2 von 4"
+          title="Baujahr"
+          copy="Das Baujahr hilft bei der Zuordnung deiner Dokumente. Die VIN kannst du optional ergänzen."
+        >
+          <form
+            className="mt-6 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setError(null);
+              const validationError = validateYear();
+              if (validationError) {
+                setError(validationError);
+                return;
+              }
+              setStep("power");
+            }}
+          >
             <Field
               label="Baujahr"
               value={year}
@@ -244,64 +278,124 @@ export function ClaimFlow({
               placeholder="2011"
               required
             />
-
             <Field
               label="VIN (optional)"
               value={vin}
               onChange={setVin}
               placeholder="Fahrgestellnummer"
             />
+            <SlideActions
+              error={error}
+              pending={pending}
+              onBack={goBack}
+              submitLabel="Weiter"
+              showBack
+            />
+          </form>
+        </SlidePanel>
+      ) : null}
 
-            {error ? (
-              <p role="alert" className="vd-alert-error">
-                {error}
-              </p>
-            ) : null}
+      {step === "power" ? (
+        <SlidePanel
+          kicker="Schritt 3 von 4"
+          title="Leistung & Hubraum"
+          copy="Optional — du kannst die Werte auch später unter Fahrzeugdaten ergänzen."
+        >
+          <form
+            className="mt-6 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setError(null);
+              setStep("drivetrain");
+            }}
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label="PS"
+                value={powerPs}
+                onChange={setPowerPs}
+                inputMode="numeric"
+                placeholder="231"
+              />
+              <Field
+                label="Hubraum (ccm)"
+                value={displacementCc}
+                onChange={setDisplacementCc}
+                inputMode="numeric"
+                placeholder="2998"
+              />
+            </div>
+            <SlideActions
+              error={error}
+              pending={pending}
+              onBack={goBack}
+              submitLabel="Weiter"
+              showBack
+            />
+          </form>
+        </SlidePanel>
+      ) : null}
 
-            <div className="flex gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setError(null);
-                  setStep("intro");
-                }}
-                disabled={pending}
-              >
-                <ArrowLeft className="h-4 w-4" aria-hidden />
-                Zurück
-              </Button>
-              <Button type="submit" disabled={pending} className="flex-1">
-                {needsAccount
+      {step === "drivetrain" ? (
+        <SlidePanel
+          kicker="Schritt 4 von 4"
+          title="Antrieb & Kraftstoff"
+          copy={
+            needsAccount
+              ? "Optional. Als Nächstes legst du dein Konto an."
+              : "Optional. Danach wird dein Tag sofort aktiviert."
+          }
+        >
+          <form
+            className="mt-6 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setError(null);
+              if (needsAccount) {
+                setStep("account");
+                return;
+              }
+              submitClaim();
+            }}
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <SelectField
+                label="Antrieb"
+                value={drivetrain}
+                onChange={setDrivetrain}
+                options={VEHICLE_DRIVETRAIN_TYPES}
+              />
+              <SelectField
+                label="Kraftstoff"
+                value={fuelType}
+                onChange={setFuelType}
+                options={VEHICLE_FUEL_TYPES}
+              />
+            </div>
+            <SlideActions
+              error={error}
+              pending={pending}
+              onBack={goBack}
+              submitLabel={
+                needsAccount
                   ? "Weiter zum Konto"
                   : pending
                     ? "Verknüpfen…"
-                    : "Tag aktivieren"}
-                {needsAccount ? (
-                  <ArrowRight className="h-4 w-4" aria-hidden />
-                ) : (
-                  <Check className="h-4 w-4" aria-hidden />
-                )}
-              </Button>
-            </div>
+                    : "Tag aktivieren"
+              }
+              submitIcon={needsAccount ? "next" : "check"}
+              showBack
+            />
           </form>
-        </section>
+        </SlidePanel>
       ) : null}
 
       {step === "account" ? (
-        <section className="claim-panel vd-anim-header">
-          <header>
-            <div className="vd-icon-badge h-11 w-11">
-              <ShieldCheck className="h-5 w-5" aria-hidden />
-            </div>
-            <p className="claim-kicker mt-4">Konto</p>
-            <h1 className="claim-title mt-2">Konto anlegen</h1>
-            <p className="claim-copy mt-2">
-              Damit bleiben Fahrzeug und Dokumente sicher mit dir verknüpft.
-              Hast du schon ein Konto, melden wir dich mit E-Mail und Passwort an.
-            </p>
-          </header>
-
+        <SlidePanel
+          kicker="Konto"
+          title="Konto anlegen"
+          copy="Damit bleiben Fahrzeug und Dokumente sicher mit dir verknüpft."
+        >
           <form
             className="mt-6 space-y-4"
             onSubmit={(event) => {
@@ -356,29 +450,88 @@ export function ClaimFlow({
               </p>
             ) : null}
 
-            <div className="flex gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setError(null);
-                  setInfo(null);
-                  setStep("vehicle");
-                }}
-                disabled={pending}
-              >
-                <ArrowLeft className="h-4 w-4" aria-hidden />
-                Zurück
-              </Button>
-              <Button type="submit" disabled={pending} className="flex-1">
-                {pending ? "Konto wird angelegt…" : "Konto anlegen & starten"}
-                <Check className="h-4 w-4" aria-hidden />
-              </Button>
-            </div>
+            <SlideActions
+              error={null}
+              pending={pending}
+              onBack={goBack}
+              submitLabel={pending ? "Konto wird angelegt…" : "Konto anlegen & starten"}
+              submitIcon="check"
+              showBack
+            />
           </form>
-        </section>
+        </SlidePanel>
       ) : null}
     </ClaimShell>
+  );
+}
+
+function SlidePanel({
+  kicker,
+  title,
+  copy,
+  children,
+}: {
+  kicker: string;
+  title: string;
+  copy: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="claim-panel vd-anim-header">
+      <header>
+        <p className="claim-kicker">{kicker}</p>
+        <h1 className="claim-title mt-2">{title}</h1>
+        <p className="claim-copy mt-2">{copy}</p>
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function SlideActions({
+  error,
+  pending,
+  onBack,
+  submitLabel,
+  submitIcon = "next",
+  showBack,
+}: {
+  error: string | null;
+  pending: boolean;
+  onBack: () => void;
+  submitLabel: string;
+  submitIcon?: "next" | "check";
+  showBack?: boolean;
+}) {
+  return (
+    <>
+      {error ? (
+        <p role="alert" className="vd-alert-error">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex gap-2 pt-1">
+        {showBack ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            disabled={pending}
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Zurück
+          </Button>
+        ) : null}
+        <Button type="submit" disabled={pending} className="flex-1">
+          {submitLabel}
+          {submitIcon === "check" ? (
+            <Check className="h-4 w-4" aria-hidden />
+          ) : (
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          )}
+        </Button>
+      </div>
+    </>
   );
 }
 
@@ -443,6 +596,38 @@ function Field({
         autoComplete={autoComplete}
         onChange={(event) => onChange(event.target.value)}
       />
+    </Label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly string[];
+}) {
+  return (
+    <Label>
+      <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="claim-input w-full"
+      >
+        <option value="">—</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     </Label>
   );
 }

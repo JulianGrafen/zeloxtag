@@ -23,6 +23,21 @@ import { updateSession } from "@/lib/supabase/proxy";
  */
 export async function proxy(request: NextRequest) {
   const { pathname, search, origin } = request.nextUrl;
+  const host = request.nextUrl.hostname;
+
+  // Never finish OAuth on a *.vercel.app alias — PKCE cookies + redirects must stay canonical.
+  if (host.endsWith(".vercel.app")) {
+    const authEntryPaths = new Set([
+      "/auth/login/google",
+      "/auth/callback",
+      "/auth/confirm",
+    ]);
+    if (authEntryPaths.has(pathname)) {
+      const canonical = new URL(`https://app.zeloxtag.de${pathname}${search}`);
+      return NextResponse.redirect(canonical);
+    }
+  }
+
   const { isConfigured } = getSupabaseEnv();
   const { response, userId, needsMfa } = await updateSession(request);
 

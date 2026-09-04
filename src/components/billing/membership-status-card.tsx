@@ -1,13 +1,10 @@
-import { ProPlanBenefits } from "@/components/billing/pro-plan-benefits";
 import {
-  StripeCheckoutButton,
   StripePortalButton,
 } from "@/components/billing/stripe-checkout-button";
+import { ProPaywallSection } from "@/components/billing/pro-paywall-section";
 import { getMembershipForUser } from "@/lib/billing/membership-store";
 import { isActiveMembership } from "@/lib/billing/membership";
-import { isAnnualPlanConfigured } from "@/lib/billing/stripe";
 import {
-  PRO_PLAN_CHECKOUT_HEADLINE,
   type ProCheckoutAudience,
 } from "@/lib/billing/pro-plan";
 
@@ -37,98 +34,85 @@ export async function MembershipStatusCard({
     : false;
   const periodLabel = formatPeriodEnd(membership?.current_period_end ?? null);
 
-  return (
-    <section
-      aria-label="Mitgliedschaft"
-      className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
-    >
-      <h2
-        className={
-          active
-            ? "font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]"
-            : "claim-title text-[1.75rem] font-bold sm:text-[1.95rem]"
-        }
+  if (active) {
+    return (
+      <section
+        aria-label="Mitgliedschaft"
+        className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
       >
-        {active ? "Mitgliedschaft" : PRO_PLAN_CHECKOUT_HEADLINE}
-      </h2>
-      {justLinked || (checkoutState === "success" && active) ? (
-        <p className="mt-2 text-[0.82rem] text-emerald-800">
-          Mitgliedschaft ist aktiv.
-        </p>
-      ) : null}
-      {checkoutState === "success" && !active ? (
-        <p className="mt-2 text-[0.82rem] text-[color:var(--vd-muted)]">
-          Zahlung eingegangen — das Abo wird in wenigen Sekunden freigeschaltet.
-        </p>
-      ) : null}
-      {checkoutState === "cancel" ? (
-        <p className="mt-2 text-[0.82rem] text-[color:var(--vd-muted)]">
-          Checkout abgebrochen. Du kannst jederzeit neu starten.
-        </p>
-      ) : null}
-      {claimError ? (
-        <p className="mt-2 text-[0.82rem] text-red-700" role="alert">
-          {claimError}
-        </p>
-      ) : null}
-      {active ? (
-        <>
-          <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Mitgliedschaft aktiv
-            {periodLabel ? ` · bezahlt bis ${periodLabel}` : ""}.
+        <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+          Mitgliedschaft
+        </h2>
+        {justLinked || checkoutState === "success" ? (
+          <p className="mt-2 text-[0.82rem] text-emerald-800">
+            Mitgliedschaft ist aktiv.
           </p>
-          {membership?.stripe_customer_id ? (
-            <StripePortalButton returnPath="/settings" />
-          ) : (
-            <p className="mt-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Kündigung und Verlängerung laufen über Stripe.
-            </p>
-          )}
-        </>
-      ) : (
+        ) : null}
+        {claimError ? (
+          <p className="mt-2 text-[0.82rem] text-red-700" role="alert">
+            {claimError}
+          </p>
+        ) : null}
+        <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
+          Mitgliedschaft aktiv
+          {periodLabel ? ` · bezahlt bis ${periodLabel}` : ""}.
+        </p>
+        {membership?.stripe_customer_id ? (
+          <StripePortalButton returnPath="/settings" />
+        ) : (
+          <p className="mt-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+            Kündigung und Verlängerung laufen über Stripe.
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  const audience: ProCheckoutAudience =
+    membership?.status === "canceled" || membership?.status === "past_due"
+      ? "returning"
+      : "new";
+
+  return (
+    <ProPaywallSection
+      successPath="/settings"
+      cancelPath="/settings"
+      audience={audience}
+      showPortal={Boolean(membership?.stripe_customer_id)}
+      dismissHref="/dashboard"
+      statusMessage={
         <>
+          {justLinked ? (
+            <p className="text-[0.82rem] text-emerald-800">
+              Mitgliedschaft ist aktiv.
+            </p>
+          ) : null}
+          {checkoutState === "success" ? (
+            <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
+              Zahlung eingegangen — das Abo wird in wenigen Sekunden freigeschaltet.
+            </p>
+          ) : null}
+          {checkoutState === "cancel" ? (
+            <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
+              Checkout abgebrochen. Du kannst jederzeit neu starten.
+            </p>
+          ) : null}
+          {claimError ? (
+            <p className="text-[0.82rem] text-red-700" role="alert">
+              {claimError}
+            </p>
+          ) : null}
           {membership?.status === "past_due" ? (
-            <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Zahlung fehlgeschlagen — bitte in Stripe prüfen oder erneut
-              abschließen.
+            <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Zahlung fehlgeschlagen — bitte in Stripe prüfen oder erneut abschließen.
             </p>
           ) : membership?.status === "canceled" ? (
-            <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
+            <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
               Mitgliedschaft beendet. Du kannst sie hier neu starten.
             </p>
           ) : null}
-          <InactiveMembershipCheckout
-            audience={
-              membership?.status === "canceled" ||
-              membership?.status === "past_due"
-                ? "returning"
-                : "new"
-            }
-            showPortal={Boolean(membership?.stripe_customer_id)}
-          />
         </>
-      )}
-    </section>
-  );
-}
-
-function InactiveMembershipCheckout({
-  audience,
-  showPortal,
-}: {
-  audience: ProCheckoutAudience;
-  showPortal: boolean;
-}) {
-  return (
-    <>
-      <ProPlanBenefits audience={audience} />
-      <StripeCheckoutButton
-        successPath="/settings"
-        cancelPath="/settings"
-        audience={audience}
-        showAnnualPlan={isAnnualPlanConfigured()}
-      />
-      {showPortal ? <StripePortalButton returnPath="/settings" /> : null}
-    </>
+      }
+    />
   );
 }

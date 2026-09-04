@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
+import type { ClaimTechSpecs } from "@/lib/tags/claim-tech-specs";
 
 export const PENDING_CLAIM_COOKIE = "zt_pending_claim";
 
@@ -13,9 +14,36 @@ export type PendingClaim = {
   vin: string | null;
   email: string;
   name: string | null;
+  techSpecs?: ClaimTechSpecs | null;
 };
 
 const MAX_AGE_SECONDS = 60 * 60; // 1 hour
+
+function isClaimTechSpecs(value: unknown): value is ClaimTechSpecs {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  const powerPs = record.powerPs;
+  const displacementCc = record.displacementCc;
+  const drivetrain = record.drivetrain;
+  const fuelType = record.fuelType;
+
+  if (
+    !(powerPs === null || (typeof powerPs === "number" && Number.isFinite(powerPs)))
+  ) {
+    return false;
+  }
+  if (
+    !(
+      displacementCc === null ||
+      (typeof displacementCc === "number" && Number.isFinite(displacementCc))
+    )
+  ) {
+    return false;
+  }
+  if (!(drivetrain === null || typeof drivetrain === "string")) return false;
+  if (!(fuelType === null || typeof fuelType === "string")) return false;
+  return true;
+}
 
 export async function setPendingClaim(claim: PendingClaim): Promise<void> {
   const cookieStore = await cookies();
@@ -44,6 +72,13 @@ export async function getPendingClaim(): Promise<PendingClaim | null> {
       typeof parsed.email !== "string" ||
       !(parsed.vin === null || typeof parsed.vin === "string") ||
       !(parsed.name === null || typeof parsed.name === "string")
+    ) {
+      return null;
+    }
+    if (
+      parsed.techSpecs != null &&
+      parsed.techSpecs !== undefined &&
+      !isClaimTechSpecs(parsed.techSpecs)
     ) {
       return null;
     }

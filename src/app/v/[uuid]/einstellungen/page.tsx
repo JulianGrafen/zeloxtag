@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { VehicleSettingsView } from "@/components/vehicles/vehicle-settings-view";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
+import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { ownerHasFeature } from "@/lib/permissions/require-feature";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
@@ -37,11 +38,14 @@ export default async function VehicleSettingsPage({
   });
   const vehicle = result.vehicle!;
   const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(uuid);
-  const [expose, canUseExpose] = await Promise.all([
+  const [expose, canUseExpose, membershipActive] = await Promise.all([
     getOwnerExposeState(vehicle.id),
     isDemo
       ? Promise.resolve(true)
       : ownerHasFeature(vehicle.user_id, FEATURE.GENERATE_EXPOSE),
+    isDemo
+      ? Promise.resolve(true)
+      : userHasActiveMembership(vehicle.user_id),
   ]);
 
   return (
@@ -75,6 +79,7 @@ export default async function VehicleSettingsPage({
           documents={result.documents}
           canEdit={!isDemo}
           canUseExpose={canUseExpose}
+          membershipActive={membershipActive}
           exposeToken={expose.exposeToken}
           isExposeActive={expose.isExposeActive}
         />

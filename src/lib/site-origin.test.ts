@@ -1,6 +1,6 @@
 import { describe, expect, it, afterEach } from "vitest";
 
-import { resolvePublicSiteOrigin } from "@/lib/site-origin";
+import { resolvePublicSiteOrigin, resolveAuthSiteOrigin } from "@/lib/site-origin";
 
 describe("resolvePublicSiteOrigin", () => {
   const env = process.env;
@@ -37,6 +37,27 @@ describe("resolvePublicSiteOrigin", () => {
       NEXT_PUBLIC_SITE_URL: "https://zeloxtag.vercel.app",
     };
     expect(resolvePublicSiteOrigin()).toBe("https://app.zeloxtag.de");
+  });
+
+  it("forces auth flows onto the canonical domain outside localhost", () => {
+    expect(
+      resolveAuthSiteOrigin({
+        nextUrl: new URL("https://zeloxtag.vercel.app/auth/login/google"),
+      }),
+    ).toBe("https://app.zeloxtag.de");
+    expect(
+      resolveAuthSiteOrigin({
+        nextUrl: new URL("https://app.zeloxtag.de/auth/callback"),
+      }),
+    ).toBe("https://app.zeloxtag.de");
+  });
+
+  it("keeps localhost for local auth development", () => {
+    expect(
+      resolveAuthSiteOrigin({
+        nextUrl: new URL("http://localhost:3000/auth/login/google"),
+      }),
+    ).toBe("http://localhost:3000");
   });
 
   it("defaults to localhost in development", () => {

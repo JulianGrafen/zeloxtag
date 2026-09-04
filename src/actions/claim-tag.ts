@@ -23,6 +23,10 @@ import {
   setPendingClaim,
   type PendingClaim,
 } from "@/lib/tags/pending-claim";
+import {
+  normalizeClaimTechSpecs,
+  type ClaimTechSpecsInput,
+} from "@/lib/tags/claim-tech-specs";
 
 export type ClaimTagInput = {
   tagUuid: string;
@@ -30,6 +34,7 @@ export type ClaimTagInput = {
   model: string;
   year: string;
   vin?: string;
+  techSpecs?: ClaimTechSpecsInput;
   /** Required on first claim when not already signed in. */
   email?: string;
   password?: string;
@@ -79,6 +84,7 @@ function normalizeClaimInput(input: ClaimTagInput): NormalizedClaim {
     email,
     name,
     password,
+    techSpecs: normalizeClaimTechSpecs(input.techSpecs),
   };
 }
 
@@ -164,6 +170,7 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
           vin: normalized.vin,
           email: normalized.email,
           name: normalized.name,
+          techSpecs: normalized.techSpecs,
         });
         return {
           status: "confirm_email",
@@ -185,6 +192,7 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
       vin: normalized.vin,
       email: (currentUser?.email ?? normalized.email).toLowerCase(),
       name: normalized.name,
+      techSpecs: normalized.techSpecs,
     });
 
     if (result.status === "error") {
