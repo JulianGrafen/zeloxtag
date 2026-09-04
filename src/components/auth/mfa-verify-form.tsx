@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { Shield } from "lucide-react";
 
 import {
   verifyMfaLogin,
   verifyMfaRecoveryCode,
 } from "@/lib/auth/mfa-actions";
+import { signOutToLoginForm } from "@/lib/auth/actions";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 
 interface MfaVerifyFormProps {
@@ -150,12 +150,15 @@ export function MfaVerifyForm({ nextPath = "/dashboard" }: MfaVerifyFormProps) {
         </button>
       </form>
 
-      <Link
-        href="/login"
-        className="block text-center text-[0.82rem] font-medium text-[color:var(--vd-muted)]"
-      >
-        Zurück zur Anmeldung
-      </Link>
+      <form action={signOutToLoginForm}>
+        <input type="hidden" name="next" value="/auth/continue" />
+        <button
+          type="submit"
+          className="block w-full text-center text-[0.82rem] font-medium text-[color:var(--vd-muted)] underline-offset-2 hover:underline"
+        >
+          Zurück zur Anmeldung
+        </button>
+      </form>
     </section>
   );
 }

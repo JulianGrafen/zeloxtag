@@ -1,13 +1,7 @@
 import Link from "next/link";
 import { Tag } from "lucide-react";
 
-import { getCurrentUser } from "@/lib/auth/get-user";
-import { isOperatorEmail } from "@/lib/auth/require-operator";
-
 export async function Navbar() {
-  const user = await getCurrentUser();
-  const superuser = isOperatorEmail(user?.email);
-
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--vd-border)] bg-[color:var(--vd-bg)]/88 backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-lg items-center justify-between gap-3 px-4 sm:px-5">
@@ -20,17 +14,6 @@ export async function Navbar() {
           </span>
           ZeloxTag
         </Link>
-
-        <nav className="flex items-center gap-1 text-[0.78rem] font-medium text-[color:var(--vd-muted)]">
-          {superuser ? (
-            <Link
-              href="/qr"
-              className="rounded-full px-3 py-1.5 transition-colors hover:bg-black/[0.04] hover:text-[color:var(--vd-text)]"
-            >
-              Mint
-            </Link>
-          ) : null}
-        </nav>
       </div>
     </header>
   );

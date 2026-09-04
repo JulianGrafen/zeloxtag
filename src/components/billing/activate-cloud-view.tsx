@@ -19,7 +19,9 @@ export function ActivateCloudView({ tagUuid }: { tagUuid: string }) {
       <section className="claim-panel">
         <header>
           <p className="claim-kicker">{PRO_PLAN_NAME}</p>
-          <h1 className="claim-title mt-2">{PRO_PLAN_CHECKOUT_HEADLINE}</h1>
+          <h1 className="claim-title mt-2 text-[2rem] font-bold sm:text-[2.15rem]">
+            {PRO_PLAN_CHECKOUT_HEADLINE}
+          </h1>
           <p className="claim-copy mt-2">{PRO_PLAN_CHECKOUT_SUBLINE}</p>
         </header>
 

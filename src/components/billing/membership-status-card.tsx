@@ -42,7 +42,13 @@ export async function MembershipStatusCard({
       aria-label="Mitgliedschaft"
       className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
     >
-      <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+      <h2
+        className={
+          active
+            ? "font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]"
+            : "claim-title text-[1.75rem] font-bold sm:text-[1.95rem]"
+        }
+      >
         {active ? "Mitgliedschaft" : PRO_PLAN_CHECKOUT_HEADLINE}
       </h2>
       {justLinked || (checkoutState === "success" && active) ? (

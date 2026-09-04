@@ -2,6 +2,7 @@
 
 export const PRO_PLAN_NAME = "ZeloxTag Pro";
 export const PRO_PLAN_MONTHLY_PRICE = "4,99 €";
+export const PRO_PLAN_MONTHLY_DAILY_PRICE = "0,16 €";
 export const PRO_PLAN_ANNUAL_PRICE = "49,90 €";
 export const PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY = "4,16 €";
 export const PRO_ANNUAL_RECOMMENDED_LABEL = "Beliebteste Wahl";
@@ -44,7 +45,7 @@ export const PRO_PLAN_BENEFITS: readonly ProPlanBenefit[] = [
   {
     title: "Schluss mit dem Zettelchaos",
     description:
-      "Rechnungen, ABEs und TÜV-Berichte dauerhaft digital gesichert – direkt auf dem Smartphone griffbereit bei jeder Polizeikontrolle.",
+      "Rechnungen, ABEs und TÜV-Berichte dauerhaft digital gesichert – direkt auf dem Smartphone griffbereit.",
   },
   {
     title: "KI-Belegscan in Sekunden",
@@ -88,6 +89,7 @@ export function proIntervalPriceDisplay(interval: ProBillingInterval): {
   }
   return {
     primary: `${PRO_PLAN_MONTHLY_PRICE} / Monat`,
+    secondary: `${PRO_PLAN_MONTHLY_DAILY_PRICE} pro Tag`,
   };
 }
 

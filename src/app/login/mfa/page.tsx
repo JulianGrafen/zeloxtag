@@ -16,7 +16,7 @@ export default async function MfaLoginPage({ searchParams }: MfaPageProps) {
   const { next } = await searchParams;
 
   return (
-    <AppShell>
+    <AppShell showNavbar={false}>
       <MfaVerifyForm nextPath={next ?? "/dashboard"} />
     </AppShell>
   );

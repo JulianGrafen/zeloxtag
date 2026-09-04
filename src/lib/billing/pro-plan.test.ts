@@ -39,6 +39,10 @@ describe("pro plan copy", () => {
     expect(PRO_PLAN_CHECKOUT_SUBLINE).toContain("14 Tage kostenlos");
   });
 
+  it("shows daily price on the monthly plan picker", () => {
+    expect(proIntervalPriceDisplay("monthly").secondary).toContain("0,16 € pro Tag");
+  });
+
   it("highlights annual savings with gifted months framing", () => {
     expect(PRO_ANNUAL_RECOMMENDED_LABEL).toBe("Beliebteste Wahl");
     expect(PRO_ANNUAL_SAVINGS_COPY).toContain("2 Monate geschenkt");
