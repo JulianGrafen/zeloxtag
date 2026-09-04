@@ -72,40 +72,39 @@ export function ProPaywallContent({
       </div>
 
       {showConversionExtras ? (
-        <>
-          <div
-            className={cn(
-              "min-h-0 flex-1 overflow-y-auto overscroll-contain",
-              isModal ? "px-4 pt-1" : "mt-2 px-0",
-              "[mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)]",
-              "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)]",
-            )}
-            aria-label="Vorteile scrollen"
-          >
-            <div className={contentWidth}>
+        <div
+          className={cn(
+            "relative min-h-0 flex-1",
+            isModal ? "px-4 pt-1" : "mt-2",
+          )}
+        >
+          <div className={cn("relative h-full min-h-0", contentWidth)}>
+            <div
+              className={cn(
+                "absolute inset-0 overflow-y-auto overscroll-contain pb-44",
+                "[mask-image:linear-gradient(to_bottom,black_0%,black_58%,transparent_96%)]",
+                "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_58%,transparent_96%)]",
+              )}
+              aria-label="Vorteile scrollen"
+            >
               <BenefitList compact={compact} />
             </div>
-          </div>
 
-          <div
-            className={cn(
-              "shrink-0 bg-gradient-to-t from-[color:var(--vd-surface)] from-15% via-[color:var(--vd-surface)]/95 to-transparent pt-1",
-              isModal ? "px-4" : "",
-            )}
-          >
-            <div className={contentWidth}>
-              <PricingCards
-                interval={interval}
-                onIntervalChange={onIntervalChange}
-                showAnnualPlan={showAnnualPlan}
-                compact={compact}
-                className="!mt-0"
-              />
-              <TrialTimeline compact={compact} />
-              {belowFoldFooter}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0">
+              <div className="pointer-events-auto bg-gradient-to-t from-[color:var(--vd-surface)] from-35% via-[color:var(--vd-surface)]/95 to-transparent pt-3">
+                <PricingCards
+                  interval={interval}
+                  onIntervalChange={onIntervalChange}
+                  showAnnualPlan={showAnnualPlan}
+                  compact={compact}
+                  className="!mt-0"
+                />
+                <TrialTimeline compact={compact} />
+                {belowFoldFooter}
+              </div>
             </div>
           </div>
-        </>
+        </div>
       ) : (
         <div className={cn("shrink-0", isModal ? "px-4" : "mt-3")}>
           <div className={contentWidth}>
@@ -120,7 +119,7 @@ export function ProPaywallContent({
         </div>
       )}
 
-      <div className="shrink-0">{ctaSlot}</div>
+      <div className={cn("shrink-0", isModal ? "-mt-0.5 px-4" : "")}>{ctaSlot}</div>
     </div>
   );
 }
