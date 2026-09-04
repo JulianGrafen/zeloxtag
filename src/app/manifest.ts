@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 
+import { PWA_BACKGROUND_COLOR, PWA_THEME_COLOR } from "@/lib/pwa/constants";
 import { DEFAULT_OG_DESCRIPTION } from "@/lib/seo/open-graph";
+
+export { PWA_BACKGROUND_COLOR, PWA_THEME_COLOR };
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -10,9 +13,10 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#ececea",
-    theme_color: "#ececea",
+    background_color: PWA_BACKGROUND_COLOR,
+    theme_color: PWA_THEME_COLOR,
     lang: "de",
+    orientation: "portrait",
     icons: [
       {
         src: "/icon.svg",
@@ -25,6 +29,12 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: "180x180",
         type: "image/png",
         purpose: "any",
+      },
+      {
+        src: "/apple-icon",
+        sizes: "180x180",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };

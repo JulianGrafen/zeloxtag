@@ -17,7 +17,8 @@
     "db:mint-tag": "node --env-file=.env scripts/mint-unclaimed-tag.mjs --qr",
     "db:seed-kuerzel": "npx tsx scripts/seed-abe-auflagen-kuerzel.ts",
     "db:generate-kuerzel-migration": "npx tsx scripts/generate-kuerzel-migration.ts",
-    "postinstall": "node scripts/copy-pdf-worker.mjs"
+    "postinstall": "node scripts/copy-pdf-worker.mjs",
+    "generate:sw": "node scripts/generate-sw.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

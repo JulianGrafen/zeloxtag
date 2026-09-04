@@ -6,9 +6,11 @@ import {
   DEFAULT_OG_DESCRIPTION,
   pageSocialMetadata,
 } from "@/lib/seo/open-graph";
+import { PWA_THEME_COLOR } from "@/lib/pwa/constants";
 import { getSiteUrl } from "@/lib/seo/site-url";
 
 import "./globals.css";
+import { PwaRoot } from "@/components/pwa/pwa-root";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -32,6 +34,17 @@ export const metadata: Metadata = {
   description: DEFAULT_OG_DESCRIPTION,
   applicationName: "ZeloxTag",
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "ZeloxTag",
+    statusBarStyle: "default",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "apple-mobile-web-app-title": "ZeloxTag",
+  },
   ...pageSocialMetadata({
     title: "ZeloxTag",
     description: DEFAULT_OG_DESCRIPTION,
@@ -42,7 +55,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#fafafa",
+  themeColor: PWA_THEME_COLOR,
 };
 
 export default async function RootLayout({
@@ -60,6 +73,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full bg-background font-sans text-foreground">
         {children}
+        <PwaRoot />
       </body>
     </html>
   );
