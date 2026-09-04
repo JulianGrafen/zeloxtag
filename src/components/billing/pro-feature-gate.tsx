@@ -5,7 +5,6 @@ import { ProPlanBenefits } from "@/components/billing/pro-plan-benefits";
 import { StripeCheckoutButton } from "@/components/billing/stripe-checkout-button";
 import {
   cloudAboHref,
-  proCheckoutButtonLabel,
 } from "@/lib/billing/pro-plan";
 import {
   isProOnlyFeature,
@@ -57,7 +56,7 @@ export async function ProFeatureGate({
               <StripeCheckoutButton
                 successPath={`/v/${tagUuid}`}
                 cancelPath={aboHref}
-                label={proCheckoutButtonLabel("new")}
+                audience="new"
               />
             </>
           ) : null}

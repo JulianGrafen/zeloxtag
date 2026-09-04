@@ -5,10 +5,8 @@ import {
 } from "@/components/billing/stripe-checkout-button";
 import { getMembershipForUser } from "@/lib/billing/membership-store";
 import { isActiveMembership } from "@/lib/billing/membership";
-import {
-  proCheckoutButtonLabel,
-  type ProCheckoutAudience,
-} from "@/lib/billing/pro-plan";
+import { isAnnualPlanConfigured } from "@/lib/billing/stripe";
+import type { ProCheckoutAudience } from "@/lib/billing/pro-plan";
 
 import { formatCompactGermanDate } from "@/lib/documents/format";
 
@@ -118,7 +116,8 @@ function InactiveMembershipCheckout({
       <StripeCheckoutButton
         successPath="/settings"
         cancelPath="/settings"
-        label={proCheckoutButtonLabel(audience)}
+        audience={audience}
+        showAnnualPlan={isAnnualPlanConfigured()}
       />
       {showPortal ? <StripePortalButton returnPath="/settings" /> : null}
     </>

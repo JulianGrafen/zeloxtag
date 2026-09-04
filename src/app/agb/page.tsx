@@ -8,7 +8,7 @@ import {
   LegalSection,
   LegalUnorderedList,
 } from "@/components/legal/legal-document-layout";
-import { PRO_PLAN_MONTHLY_PRICE } from "@/lib/billing/pro-plan";
+import { PRO_PLAN_ANNUAL_PRICE, PRO_PLAN_MONTHLY_PRICE } from "@/lib/billing/pro-plan";
 import {
   formatLegalProviderInline,
   legalMailtoHref,
@@ -117,13 +117,13 @@ export default function AgbPage() {
           <li>
             Die Entgelte für das Pro-Abonnement richten sich nach der aktuellen
             Preisliste auf der Website (z. B. {PRO_PLAN_MONTHLY_PRICE} inkl.
-            MwSt. pro Monat).
+            MwSt. pro Monat oder {PRO_PLAN_ANNUAL_PRICE} inkl. MwSt. pro Jahr).
           </li>
           <li>
             Die Zahlungsabwicklung erfolgt über den externen Zahlungsdienstleister
             Stripe Payments Europe, Ltd. Die Vergütung wird jeweils zu Beginn des
-            Abrechnungszeitraums (monatlich) im Voraus fällig und über das
-            gewählte Zahlungsmittel eingezogen.
+            gewählten Abrechnungszeitraums (monatlich oder jährlich) im Voraus
+            fällig und über das gewählte Zahlungsmittel eingezogen.
           </li>
         </LegalOrderedList>
       </LegalSection>
@@ -137,8 +137,8 @@ export default function AgbPage() {
           </li>
           <li>
             Das kostenpflichtige Pro-Abonnement verlängert sich automatisch
-            jeweils um einen weiteren Monat, wenn es nicht vor Ablauf des
-            aktuellen Abrechnungszeitraums gekündigt wird.
+            jeweils um einen weiteren Monat bzw. um ein weiteres Jahr, wenn es
+            nicht vor Ablauf des aktuellen Abrechnungszeitraums gekündigt wird.
           </li>
           <li>
             Die Kündigung des Pro-Abonnements kann jederzeit mit wenigen Klicks

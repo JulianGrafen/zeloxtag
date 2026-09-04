@@ -2,14 +2,19 @@
 
 export const PRO_PLAN_NAME = "ZeloxTag Pro";
 export const PRO_PLAN_MONTHLY_PRICE = "4,99 €";
+export const PRO_PLAN_ANNUAL_PRICE = "49,99 €";
 export const PRO_TRIAL_DAYS = 14;
+
+export type ProBillingInterval = "monthly" | "annual";
 
 export const PRO_CHECKOUT_BUTTON_LABEL = "14 Tage kostenlos starten";
 export const PRO_CHECKOUT_BUTTON_RETURNING_LABEL = `Pro Abo abschließen · ${PRO_PLAN_MONTHLY_PRICE} / Monat`;
 
 export const PRO_TRIAL_HEADLINE = `Die ersten ${PRO_TRIAL_DAYS} Tage sind kostenlos.`;
 export const PRO_TRIAL_PRICE_COPY = `Danach ${PRO_PLAN_MONTHLY_PRICE} im Monat, jederzeit kündbar.`;
+export const PRO_ANNUAL_PRICE_COPY = `${PRO_PLAN_ANNUAL_PRICE} pro Jahr, jederzeit kündbar.`;
 export const PRO_RETURNING_PRICE_COPY = `Cloud-Abo ${PRO_PLAN_MONTHLY_PRICE} im Monat, Zahlung über Stripe.`;
+export const PRO_RETURNING_ANNUAL_PRICE_COPY = `Cloud-Abo ${PRO_PLAN_ANNUAL_PRICE} pro Jahr, Zahlung über Stripe.`;
 
 export const MEMBERSHIP_REQUIRED_MESSAGE =
   "ZeloxTag Pro ist nötig, um diese Funktion zu nutzen. Die ersten 14 Tage sind kostenlos.";
@@ -28,15 +33,35 @@ export const PRO_PLAN_BENEFITS = [
 
 export type ProCheckoutAudience = "new" | "returning";
 
+export function proIntervalPriceCopy(interval: ProBillingInterval): string {
+  return interval === "annual"
+    ? `${PRO_PLAN_ANNUAL_PRICE} / Jahr`
+    : `${PRO_PLAN_MONTHLY_PRICE} / Monat`;
+}
+
 export function proCheckoutButtonLabel(
   audience: ProCheckoutAudience,
+  interval: ProBillingInterval = "monthly",
 ): string {
+  if (interval === "annual") {
+    return audience === "returning"
+      ? `Jahresabo abschließen · ${PRO_PLAN_ANNUAL_PRICE} / Jahr`
+      : `Jahresabo starten · ${PRO_PLAN_ANNUAL_PRICE} / Jahr`;
+  }
   return audience === "returning"
     ? PRO_CHECKOUT_BUTTON_RETURNING_LABEL
     : PRO_CHECKOUT_BUTTON_LABEL;
 }
 
-export function proCheckoutLead(audience: ProCheckoutAudience): string {
+export function proCheckoutLead(
+  audience: ProCheckoutAudience,
+  interval: ProBillingInterval = "monthly",
+): string {
+  if (interval === "annual") {
+    return audience === "returning"
+      ? PRO_RETURNING_ANNUAL_PRICE_COPY
+      : PRO_ANNUAL_PRICE_COPY;
+  }
   return audience === "returning"
     ? PRO_RETURNING_PRICE_COPY
     : `${PRO_TRIAL_HEADLINE} ${PRO_TRIAL_PRICE_COPY}`;

@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 
 import { StripeCheckoutButton } from "@/components/billing/stripe-checkout-button";
-import { cloudAboHref, proCheckoutButtonLabel } from "@/lib/billing/pro-plan";
+import { cloudAboHref } from "@/lib/billing/pro-plan";
 import {
   paywallBody,
   paywallTitle,
@@ -71,7 +71,7 @@ export function ProPaywallModal({
           <StripeCheckoutButton
             successPath={`/v/${tagUuid}`}
             cancelPath={aboHref}
-            label={proCheckoutButtonLabel("new")}
+            audience="new"
           />
         ) : null}
         <button

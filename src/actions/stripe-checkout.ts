@@ -9,12 +9,14 @@ import {
   getMembershipForUser,
 } from "@/lib/billing/membership-store";
 import { RATE_LIMITS, rateLimit } from "@/lib/security/rate-limit";
+import type { ProBillingInterval } from "@/lib/billing/pro-plan";
 import {
   checkoutReturnUrl,
   getStripe,
   isStripeBillingConfigured,
   isStripeSecretConfigured,
   buildStripePaymentLinkUrl,
+  resolveStripePriceId,
   safeAppReturnPath,
   siteOrigin,
   stripeEnv,
@@ -36,7 +38,9 @@ function billingError(message: string): StripeBillingLinkResult {
 export async function startStripeCheckoutAction(input: {
   successPath?: string;
   cancelPath?: string;
+  interval?: ProBillingInterval;
 }): Promise<StripeCheckoutResult> {
+  const interval: ProBillingInterval = input.interval ?? "monthly";
   const user = await getCurrentUser();
   if (!user) return billingError("Bitte zuerst anmelden.");
   if (!isStripeBillingConfigured()) {
@@ -60,16 +64,20 @@ export async function startStripeCheckoutAction(input: {
     return { status: "active" };
   }
 
-  const paymentUrl = buildStripePaymentLinkUrl({
-    paymentLink: stripeEnv().paymentLinkUrl,
-    userId: user.id,
-    email: user.email,
-  });
+  const paymentUrl =
+    interval === "monthly"
+      ? buildStripePaymentLinkUrl({
+          paymentLink: stripeEnv().paymentLinkUrl,
+          userId: user.id,
+          email: user.email,
+        })
+      : null;
   if (paymentUrl) {
     return { status: "ok", url: paymentUrl };
   }
 
-  if (!isStripeSecretConfigured() || !stripeEnv().priceId) {
+  const priceId = resolveStripePriceId(interval);
+  if (!isStripeSecretConfigured() || !priceId) {
     return billingError("Stripe-Checkout ist nicht konfiguriert.");
   }
 
@@ -89,14 +97,14 @@ export async function startStripeCheckoutAction(input: {
       customer: membership?.stripe_customer_id ?? undefined,
       customer_email:
         membership?.stripe_customer_id || !user.email ? undefined : user.email,
-      line_items: [{ price: stripeEnv().priceId, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       locale: "de",
       allow_promotion_codes: true,
       success_url: successUrl,
       cancel_url: checkoutReturnUrl(origin, cancelPath, { checkout: "cancel" }),
-      metadata: { user_id: user.id },
+      metadata: { user_id: user.id, billing_interval: interval },
       subscription_data: {
-        metadata: { user_id: user.id },
+        metadata: { user_id: user.id, billing_interval: interval },
       },
     });
     if (!session.url) {

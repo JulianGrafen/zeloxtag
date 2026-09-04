@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   MEMBERSHIP_REQUIRED_MESSAGE,
+  PRO_PLAN_ANNUAL_PRICE,
   PRO_PLAN_BENEFITS,
   PRO_TRIAL_DAYS,
   cloudAboHref,
@@ -20,6 +21,14 @@ describe("pro plan copy", () => {
   it("does not re-promise a trial to returning subscribers", () => {
     expect(proCheckoutLead("returning")).not.toContain("14 Tage");
     expect(proCheckoutButtonLabel("returning")).toContain("4,99");
+  });
+
+  it("supports annual checkout copy", () => {
+    expect(proCheckoutButtonLabel("new", "annual")).toContain(
+      PRO_PLAN_ANNUAL_PRICE,
+    );
+    expect(proCheckoutLead("new", "annual")).toContain(PRO_PLAN_ANNUAL_PRICE);
+    expect(proCheckoutButtonLabel("returning", "annual")).toContain("Jahresabo");
   });
 
   it("lists the core Pro benefits", () => {

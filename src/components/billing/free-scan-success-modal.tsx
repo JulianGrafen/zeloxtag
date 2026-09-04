@@ -3,7 +3,6 @@
 import { Sparkles, X } from "lucide-react";
 
 import { StripeCheckoutButton } from "@/components/billing/stripe-checkout-button";
-import { proCheckoutButtonLabel } from "@/lib/billing/pro-plan";
 
 export function FreeScanSuccessModal({
   open,
@@ -59,7 +58,7 @@ export function FreeScanSuccessModal({
         <StripeCheckoutButton
           successPath={`/v/${tagUuid}`}
           cancelPath={`/v/${tagUuid}/abo`}
-          label={proCheckoutButtonLabel("new")}
+          audience="new"
         />
         <button
           type="button"
