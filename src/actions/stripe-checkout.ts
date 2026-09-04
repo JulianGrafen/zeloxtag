@@ -64,6 +64,47 @@ export async function startStripeCheckoutAction(input: {
     return { status: "active" };
   }
 
+  const priceId = resolveStripePriceId(interval);
+
+  // Prefer Checkout Session API so success/cancel URLs always use the live app
+  // origin — Payment Links use a fixed redirect configured in Stripe Dashboard.
+  if (isStripeSecretConfigured() && priceId) {
+    const origin = siteOrigin();
+    const successPath = safeAppReturnPath(input.successPath ?? "/settings");
+    const cancelPath = safeAppReturnPath(input.cancelPath ?? "/settings");
+    const successBase = checkoutReturnUrl(origin, successPath, {
+      checkout: "success",
+    });
+    const successUrl = `${successBase}${successBase.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`;
+
+    try {
+      const stripe = getStripe();
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        client_reference_id: user.id,
+        customer: membership?.stripe_customer_id ?? undefined,
+        customer_email:
+          membership?.stripe_customer_id || !user.email ? undefined : user.email,
+        line_items: [{ price: priceId, quantity: 1 }],
+        locale: "de",
+        allow_promotion_codes: true,
+        success_url: successUrl,
+        cancel_url: checkoutReturnUrl(origin, cancelPath, { checkout: "cancel" }),
+        metadata: { user_id: user.id, billing_interval: interval },
+        subscription_data: {
+          metadata: { user_id: user.id, billing_interval: interval },
+        },
+      });
+      if (!session.url) {
+        return billingError("Stripe-Checkout konnte nicht gestartet werden.");
+      }
+      return { status: "ok", url: session.url };
+    } catch (error) {
+      console.error("[stripe] checkout create failed", error);
+      return billingError("Stripe-Checkout fehlgeschlagen.");
+    }
+  }
+
   const paymentUrl =
     interval === "monthly"
       ? buildStripePaymentLinkUrl({
@@ -76,45 +117,7 @@ export async function startStripeCheckoutAction(input: {
     return { status: "ok", url: paymentUrl };
   }
 
-  const priceId = resolveStripePriceId(interval);
-  if (!isStripeSecretConfigured() || !priceId) {
-    return billingError("Stripe-Checkout ist nicht konfiguriert.");
-  }
-
-  const origin = siteOrigin();
-  const successPath = safeAppReturnPath(input.successPath ?? "/settings");
-  const cancelPath = safeAppReturnPath(input.cancelPath ?? "/settings");
-  const successBase = checkoutReturnUrl(origin, successPath, {
-    checkout: "success",
-  });
-  const successUrl = `${successBase}${successBase.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`;
-
-  try {
-    const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      client_reference_id: user.id,
-      customer: membership?.stripe_customer_id ?? undefined,
-      customer_email:
-        membership?.stripe_customer_id || !user.email ? undefined : user.email,
-      line_items: [{ price: priceId, quantity: 1 }],
-      locale: "de",
-      allow_promotion_codes: true,
-      success_url: successUrl,
-      cancel_url: checkoutReturnUrl(origin, cancelPath, { checkout: "cancel" }),
-      metadata: { user_id: user.id, billing_interval: interval },
-      subscription_data: {
-        metadata: { user_id: user.id, billing_interval: interval },
-      },
-    });
-    if (!session.url) {
-      return billingError("Stripe-Checkout konnte nicht gestartet werden.");
-    }
-    return { status: "ok", url: session.url };
-  } catch (error) {
-    console.error("[stripe] checkout create failed", error);
-    return billingError("Stripe-Checkout fehlgeschlagen.");
-  }
+  return billingError("Stripe-Checkout ist nicht konfiguriert.");
 }
 
 export async function startStripePortalAction(input: {

@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 
+import { resolvePublicSiteOrigin } from "@/lib/site-origin";
 import { STRIPE_PRO_PAYMENT_LINK } from "./constants";
 import type { ProBillingInterval } from "./pro-plan";
 
@@ -102,8 +103,7 @@ export function getStripe(): Stripe {
 }
 
 export function siteOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://app.zeloxtag.de";
-  return raw.replace(/\/$/, "");
+  return resolvePublicSiteOrigin();
 }
 
 /** Relative app path only — blocks open redirects into Stripe success/cancel URLs. */

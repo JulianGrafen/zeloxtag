@@ -2,8 +2,9 @@ import { randomBytes } from "crypto";
 import { cache } from "react";
 
 import { sendMembershipClaimEmail } from "@/lib/email/resend";
+import { resolvePublicSiteOrigin } from "@/lib/site-origin";
 import { RATE_LIMITS, rateLimit } from "@/lib/security/rate-limit";
-import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { resolvePublicSiteOrigin } from "@/lib/site-origin"; isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import type { Membership, MembershipStatus } from "@/types/database";
 
 import {
@@ -86,8 +87,7 @@ function newClaimToken(): string {
 }
 
 function siteOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://app.zeloxtag.de";
-  return raw.replace(/\/$/, "");
+  return resolvePublicSiteOrigin();
 }
 
 async function findUserIdByEmail(email: string): Promise<string | null> {
