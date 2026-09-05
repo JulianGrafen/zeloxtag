@@ -2,6 +2,7 @@
 
 import { MotionShineOverlay } from "@/components/billing/paywall/motion-shine-overlay";
 import {
+  PRO_ANNUAL_DISCOUNT_LABEL,
   PRO_ANNUAL_RECOMMENDED_LABEL,
   proPaywallPricingAnchor,
   type ProBillingInterval,
@@ -55,17 +56,37 @@ export function PricingCard({
 
       <div className="relative z-[1]">
       {badge ? (
-        <span
+        <div
           className={cn(
-            "mb-1.5 inline-flex rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.08em]",
-            compact ? "text-[0.58rem]" : "text-[0.62rem] mb-2",
-            selected
-              ? "bg-blue-600 text-white"
-              : "bg-neutral-900 text-white",
+            "mb-1.5 flex flex-wrap items-center gap-1.5",
+            compact ? "mb-1.5" : "mb-2",
           )}
         >
-          {compact ? "Beliebt" : badge}
-        </span>
+          <span
+            className={cn(
+              "inline-flex rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.08em]",
+              compact ? "text-[0.58rem]" : "text-[0.62rem]",
+              selected
+                ? "bg-blue-600 text-white"
+                : "bg-neutral-900 text-white",
+            )}
+          >
+            {compact ? "Beliebteste Wahl" : badge}
+          </span>
+          {interval === "annual" ? (
+            <span
+              className={cn(
+                "inline-flex rounded-full px-2.5 py-0.5 font-semibold uppercase tracking-[0.06em]",
+                compact ? "text-[0.64rem]" : "text-[0.7rem]",
+                selected
+                  ? "bg-emerald-600 text-white"
+                  : "bg-emerald-500/15 text-emerald-800 ring-1 ring-emerald-500/25",
+              )}
+            >
+              {PRO_ANNUAL_DISCOUNT_LABEL}
+            </span>
+          ) : null}
+        </div>
       ) : compact ? null : (
         <span className="mb-2 block min-h-[1.375rem]" aria-hidden />
       )}
@@ -94,34 +115,6 @@ export function PricingCard({
         </span>
       ) : null}
 
-      {anchor.foundersDiscountLabel ? (
-        <span
-          className={cn(
-            "mt-0.5 block font-semibold uppercase tracking-[0.08em]",
-            compact ? "text-[0.58rem]" : "text-[0.68rem] mt-1",
-            selected
-              ? "text-emerald-700"
-              : "text-emerald-700",
-          )}
-        >
-          {anchor.foundersDiscountLabel}
-        </span>
-      ) : null}
-
-      {anchor.savingsLabel ? (
-        <span
-          className={cn(
-            "mt-0.5 block font-semibold uppercase tracking-[0.08em]",
-            compact ? "text-[0.58rem]" : "text-[0.68rem] mt-1",
-            selected
-              ? "text-emerald-700"
-              : "text-emerald-700",
-          )}
-        >
-          {anchor.savingsLabel}
-        </span>
-      ) : null}
-
       <span
         className={cn(
           "mt-0.5 block font-semibold tracking-[-0.02em] transition-[font-size] duration-350 [transition-timing-function:var(--vd-ease-spring)]",
@@ -143,21 +136,12 @@ export function PricingCard({
         </span>
       ) : null}
 
-      <span
-        className={cn(
-          "mt-0.5 block leading-snug",
-          compact ? "text-[0.64rem]" : "text-[0.72rem] mt-1",
-          selected ? "text-blue-900/70" : "text-[color:var(--vd-muted)]",
-        )}
-      >
-        {anchor.weeklyAnchor}
-      </span>
-
-      {!compact && anchor.flexSubline ? (
+      {anchor.flexSubline ? (
         <span
           className={cn(
-            "mt-0.5 block text-[0.72rem] leading-snug",
-            selected ? "text-blue-800/80" : "text-[color:var(--vd-muted)]",
+            "mt-0.5 block leading-snug",
+            compact ? "text-[0.64rem]" : "text-[0.72rem]",
+            selected ? "text-blue-900/70" : "text-[color:var(--vd-muted)]",
           )}
         >
           {anchor.flexSubline}

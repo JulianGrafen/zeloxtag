@@ -41,31 +41,35 @@ export const PRO_PLAN_CHECKOUT_SUBLINE =
 /** Paywall modal — progress endowment framing */
 export const PRO_PAYWALL_PROGRESS_PERCENT = 80;
 export const PRO_PAYWALL_PROGRESS_LABEL = "Fahrzeugpass zu 80 % eingerichtet";
-export const PRO_PAYWALL_MODAL_SUBLINE = `${PRO_TRIAL_BADGE_LABEL} — Cloud-Speicher, QR-Fahrzeugpass und lückenlose Dokumentation für dein Fahrzeug.`;
+export const PRO_PAYWALL_MODAL_SUBLINE =
+  "14 Tage kostenlos — Cloud-Speicher, digitaler Fahrzeugpass und lückenlose Projektdokumentation.";
 export const PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER =
   "Dein Gratis-Scan ist verbraucht";
 export const PRO_PAYWALL_STICKY_MICROCOPY = PRO_TRIAL_NO_COMMITMENT;
 export const PRO_PAYWALL_MODAL_MICROCOPY = "Jederzeit kündbar";
 export const PRO_PAYWALL_DISMISS_LABEL = "Weiter mit ZeloxTag Free";
-export const PRO_MONTHLY_CARD_SUBLINE = "Monatlich kündbar · Volle Flexibilität";
-export const PRO_ANNUAL_CARD_HIGHLIGHT = `entspricht ${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat (2 Monate geschenkt)`;
+export const PRO_MONTHLY_CARD_SUBLINE = "Jederzeit kündbar";
+export const PRO_ANNUAL_CARD_HIGHLIGHT = `Entspricht ${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat (2 Monate geschenkt)`;
 
 export const PRO_PAYWALL_MODAL_BENEFITS = [
-  "Endlose KI-Scans: Rechnungen, ABEs & Gutachten in Sekunden",
-  "Digitale Akte: Alles an einem Ort",
-  "Werterhalt: Umbauten beim Verkauf nachweisen",
-  "QR-Fahrzeugpass: Specs per Scan auf Tuning-Treffen",
+  "Endlose KI-Scans: Rechnungen, ABEs & Gutachten in Sekunden verarbeitet",
+  "Digitale Akte: Nie wieder Zettelchaos – alles griffbereit an einem Ort",
+  "Gutachten-Tresor: ABEs, Teilegutachten & Einzelabnahmen sicher archiviert",
+  "Service & Ölwechsel: Intervalle, Werkstatt-Historie und Fälligkeiten im Blick",
+  "TÜV-Erinnerung: HU-Termine rechtzeitig sehen – ohne Kalender-Chaos",
+  "Maximaler Werterhalt: Beweise die Qualität der Umbauten beim späteren Verkauf",
+  "QR-Fahrzeugpass: Präsentiere deine Specs per Scan auf jedem Tuning-Treffen",
+  "Öffentlicher Showroom: Teile dein Projekt – ohne sensible Belege preiszugeben",
+  "Verkaufs-Exposé: Professionelles PDF für Käufer in wenigen Klicks",
+  "Werkstatt-Zugang: Schrauber laden Belege hoch – ohne dein Passwort",
 ] as const;
 
 export type ProPaywallPricingAnchor = {
   referencePrice?: string;
-  foundersDiscountLabel?: string;
   currentPrice: string;
-  savingsLabel?: string;
   monthlyEquivalent?: string;
-  weeklyAnchor: string;
-  trialLabel: string;
   flexSubline?: string;
+  trialLabel: string;
 };
 
 export function proPaywallPricingAnchor(
@@ -75,18 +79,14 @@ export function proPaywallPricingAnchor(
     return {
       referencePrice: `${PRO_PLAN_ANNUAL_REFERENCE_PRICE} / Jahr`,
       currentPrice: `${PRO_PLAN_ANNUAL_PRICE} / Jahr`,
-      savingsLabel: PRO_ANNUAL_DISCOUNT_LABEL,
-      weeklyAnchor: proWeeklyPriceCopy(PRO_PLAN_ANNUAL_WEEKLY_PRICE),
+      monthlyEquivalent: PRO_ANNUAL_CARD_HIGHLIGHT,
       trialLabel: PRO_TRIAL_LABEL,
     };
   }
   return {
-    referencePrice: `${PRO_PLAN_MONTHLY_REFERENCE_PRICE} / Monat`,
-    foundersDiscountLabel: PRO_FOUNDERS_DISCOUNT_LABEL,
     currentPrice: `${PRO_PLAN_MONTHLY_PRICE} / Monat`,
-    weeklyAnchor: proWeeklyPriceCopy(PRO_PLAN_MONTHLY_WEEKLY_PRICE),
-    trialLabel: PRO_TRIAL_LABEL,
     flexSubline: PRO_MONTHLY_CARD_SUBLINE,
+    trialLabel: PRO_TRIAL_LABEL,
   };
 }
 
@@ -108,7 +108,7 @@ export const PRO_PAYWALL_TRIAL_TIMELINE: readonly ProPaywallTimelineNode[] = [
   },
   {
     icon: "shield",
-    text: "Tag 14: Abo startet · jederzeit kündbar",
+    text: "Tag 14: Erstmalige Abrechnung · vorher jederzeit mit 1 Klick kündbar",
   },
 ] as const;
 
@@ -147,14 +147,34 @@ export const PRO_PLAN_BENEFITS: readonly ProPlanBenefit[] = [
       "Quittung fotografieren, die KI erkennt Teile sowie Preise automatisch und ordnet alles deiner Historie zu.",
   },
   {
+    title: "Gutachten-Tresor",
+    description:
+      "ABEs, Teilegutachten und Einzelabnahmen an einem Ort – durchsuchbar und beim Tuning-Termin sofort parat.",
+  },
+  {
     title: "Passgenauigkeits-Check",
     description:
       "Schnelle Prüfung, ob Teilegutachten und ABEs formell zu deiner exakten FIN passen, bevor der Prüfer meckert.",
   },
   {
+    title: "Service & Ölwechsel im Griff",
+    description:
+      "Wartungsintervalle, letzte Ölwechsel und Werkstatt-Historie lückenlos – ohne Excel und Zettelwirtschaft.",
+  },
+  {
+    title: "TÜV ohne Stress",
+    description:
+      "Nächste HU im Dashboard sehen und rechtzeitig handeln, statt erst bei der Polizei daran zu denken.",
+  },
+  {
     title: "Werkstatt-Direktzugriff",
     description:
       "Gib deiner Werkstatt temporären Upload-Zugriff für Wartungsnachweise – ohne deine Zugangsdaten teilen zu müssen.",
+  },
+  {
+    title: "Showroom & Verkaufs-Exposé",
+    description:
+      "Präsentiere Umbauten und Specs öffentlich oder als professionelles PDF – ohne sensible Belege zu veröffentlichen.",
   },
   {
     title: "Maximaler Wiederverkaufswert",
@@ -183,7 +203,7 @@ export function proIntervalPriceDisplay(interval: ProBillingInterval): {
   }
   return {
     primary: `${PRO_PLAN_MONTHLY_PRICE} / Monat`,
-    secondary: proWeeklyPriceCopy(PRO_PLAN_MONTHLY_WEEKLY_PRICE),
+    secondary: PRO_MONTHLY_CARD_SUBLINE,
   };
 }
 
