@@ -53,6 +53,7 @@ const PUBLIC_API_GET_PREFIXES = [
   "/api/vehicle/silhouette/",
   "/api/vehicle/catalog/",
   "/api/public/vehicle/",
+  "/api/expose/",
 ];
 
 export function isPublicVehicleImagePath(

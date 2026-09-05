@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
-import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
+import { isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
 import {
@@ -85,17 +85,19 @@ export async function GET(
       const admin = createAdminClient();
       const { data: doc } = await admin
         .from("documents")
-        .select("id, category, invoice_number, file_url, type")
+        .select(
+          "id, category, invoice_number, file_url, type, show_on_public_showcase",
+        )
         .eq("id", documentId)
         .eq("vehicle_id", vehicleId)
         .maybeSingle();
 
-      const allowedManual =
+      const allowedShowcase =
         doc &&
-        isManualVehicleEntry(doc as Parameters<typeof isManualVehicleEntry>[0]) &&
-        doc.category === "tuning";
+        doc.show_on_public_showcase === true &&
+        isShowcaseModificationDocument(doc as Parameters<typeof isShowcaseModificationDocument>[0]);
 
-      if (!allowedManual) {
+      if (!allowedShowcase) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }

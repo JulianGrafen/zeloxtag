@@ -7,7 +7,9 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
-import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { withScanSessionId } from "@/lib/billing/free-scan-quota";
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import { logServerError } from "@/lib/security/public-error";
 import {
@@ -87,11 +89,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
 
-    const vehicleAccess = await requireVehicleOcrAccess(
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
       auth.user.id,
-      String(formData.get("vehicleId") ?? ""),
+      FEATURE.SCAN_AI_RECEIPT,
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
+    const scanSessionId = vehicleAccess.scanSessionId;
 
     const stepRaw = String(formData.get("step") ?? "").trim();
     const stepParsed = stepSchema.safeParse(stepRaw);
@@ -121,18 +125,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (step === "overview") {
       const extraction = await tuevExtractionService.extractOverviewFromDocument(input);
       const body: StepSuccess = { ok: true, step: "overview", extraction };
-      return NextResponse.json(body);
+      return NextResponse.json(
+        withScanSessionId(body, scanSessionId),
+      );
     }
 
     if (step === "header") {
       const extraction = await tuevExtractionService.extractHeaderFromDocument(input);
       const body: StepSuccess = { ok: true, step: "header", extraction };
-      return NextResponse.json(body);
+      return NextResponse.json(
+        withScanSessionId(body, scanSessionId),
+      );
     }
 
     const extraction = await tuevExtractionService.extractDefectsFromDocument(input);
     const body: StepSuccess = { ok: true, step: "defects", extraction };
-    return NextResponse.json(body);
+    return NextResponse.json(withScanSessionId(body, scanSessionId));
   } catch (error) {
     logServerError("[api/ocr/tuev] unexpected", error);
     return jsonError(

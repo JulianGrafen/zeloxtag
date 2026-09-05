@@ -36,6 +36,10 @@ import {
 import { localDateIso } from "@/lib/documents/format";
 import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import {
+  appendScanSessionId,
+  readScanSessionId,
+} from "@/lib/billing/scan-session-client";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import {
   cropAuflagenSnippetsFromPhoto,
@@ -372,16 +376,64 @@ class HuntApiError extends Error {
   }
 }
 
+type AbeOcrStepResult<T> = {
+  value: T;
+  scanSessionId?: string;
+};
+
+async function postAbeOcrStep<T>(
+  vehicleId: string,
+  file: File,
+  step: string,
+  scanSessionId: string | null,
+  mapValue: (payload: { ok: true; extraction: unknown }) => T,
+  errorMessage: string,
+): Promise<AbeOcrStepResult<T>> {
+  const body = new FormData();
+  body.set("vehicleId", vehicleId);
+  body.set("file", file);
+  body.set("step", step);
+  appendScanSessionId(body, scanSessionId);
+
+  const response = await fetch("/api/ocr/abe", { method: "POST", body });
+  const payload = (await response.json().catch(() => null)) as
+    | { ok: true; extraction: unknown; scanSessionId?: string; reason?: string }
+    | { ok: false; error?: string }
+    | null;
+
+  if (!response.ok || !payload || payload.ok !== true) {
+    throw new HuntApiError(
+      payload && "error" in payload && payload.error
+        ? payload.error
+        : `${errorMessage} (${response.status}).`,
+    );
+  }
+
+  return {
+    value: mapValue(payload),
+    scanSessionId: readScanSessionId(payload),
+  };
+}
+
+function applyScanSessionId(
+  current: string | null,
+  next?: string,
+): string | null {
+  return next ?? current;
+}
+
 async function extractAuflagenTextFromFile(
   vehicleId: string,
   file: File,
   targetCodes: string[],
-): Promise<{ notes: string; regions: NormalizedAuflagenRegion[] }> {
+  scanSessionId: string | null = null,
+): Promise<AbeOcrStepResult<{ notes: string; regions: NormalizedAuflagenRegion[] }>> {
   const body = new FormData();
   body.set("vehicleId", vehicleId);
   body.set("file", file);
   body.set("step", "hunt-auflagen-text");
   body.set("targetCodes", JSON.stringify(targetCodes));
+  appendScanSessionId(body, scanSessionId);
 
   const response = await fetch("/api/ocr/abe", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
@@ -392,6 +444,7 @@ async function extractAuflagenTextFromFile(
           regions?: NormalizedAuflagenRegion[];
         };
         reason?: string;
+        scanSessionId?: string;
       }
     | { ok: false; error?: string }
     | null;
@@ -413,108 +466,78 @@ async function extractAuflagenTextFromFile(
   }
 
   return {
-    notes,
-    regions: payload.extraction.regions ?? [],
+    value: {
+      notes,
+      regions: payload.extraction.regions ?? [],
+    },
+    scanSessionId: readScanSessionId(payload),
   };
 }
 
 async function extractAllFromFile(
   vehicleId: string,
   file: File,
-): Promise<AbeDataHunterReport> {
-  const body = new FormData();
-  body.set("vehicleId", vehicleId);
-  body.set("file", file);
-  body.set("step", "hunt-all");
-
-  const response = await fetch("/api/ocr/abe", { method: "POST", body });
-  const payload = (await response.json().catch(() => null)) as
-    | { ok: true; extraction: AbeDataHunterReport; reason?: string }
-    | { ok: false; error?: string }
-    | null;
-
-  if (!response.ok || !payload || payload.ok !== true) {
-    throw new HuntApiError(
-      payload && "error" in payload && payload.error
-        ? payload.error
-        : `Analyse fehlgeschlagen (${response.status}).`,
-    );
-  }
-
-  return finalizeAbeDataHunterReport(payload.extraction);
+  scanSessionId: string | null = null,
+): Promise<AbeOcrStepResult<AbeDataHunterReport>> {
+  return postAbeOcrStep(
+    vehicleId,
+    file,
+    "hunt-all",
+    scanSessionId,
+    (payload) => finalizeAbeDataHunterReport(payload.extraction as AbeDataHunterReport),
+    "Analyse fehlgeschlagen",
+  );
 }
 
 async function extractKbaFromFile(
   vehicleId: string,
   file: File,
-): Promise<AbeDataHunterReport> {
-  const body = new FormData();
-  body.set("vehicleId", vehicleId);
-  body.set("file", file);
-  body.set("step", "hunt-kba");
-
-  const response = await fetch("/api/ocr/abe", { method: "POST", body });
-  const payload = (await response.json().catch(() => null)) as
-    | {
-        ok: true;
-        extraction: {
-          kbaNumber: string | null;
-          abeNumber: string | null;
-        };
-        reason?: string;
-      }
-    | { ok: false; error?: string }
-    | null;
-
-  if (!response.ok || !payload || payload.ok !== true) {
-    throw new HuntApiError(
-      payload && "error" in payload && payload.error
-        ? payload.error
-        : `KBA-Analyse fehlgeschlagen (${response.status}).`,
-    );
-  }
-
-  return finalizeAbeDataHunterReport(
-    fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
-      ...emptyAbeDataHunterReport(),
-      kbaNumber: payload.extraction.kbaNumber,
-      abeNumber: payload.extraction.abeNumber,
-    }),
+  scanSessionId: string | null = null,
+): Promise<AbeOcrStepResult<AbeDataHunterReport>> {
+  return postAbeOcrStep(
+    vehicleId,
+    file,
+    "hunt-kba",
+    scanSessionId,
+    (payload) => {
+      const extraction = payload.extraction as {
+        kbaNumber: string | null;
+        abeNumber: string | null;
+      };
+      return finalizeAbeDataHunterReport(
+        fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
+          ...emptyAbeDataHunterReport(),
+          kbaNumber: extraction.kbaNumber,
+          abeNumber: extraction.abeNumber,
+        }),
+      );
+    },
+    "KBA-Analyse fehlgeschlagen",
   );
 }
 
 async function extractVehicleFromFile(
   vehicleId: string,
   file: File,
-): Promise<AbeDataHunterReport> {
-  const body = new FormData();
-  body.set("vehicleId", vehicleId);
-  body.set("file", file);
-  body.set("step", "hunt-vehicle");
-
-  const response = await fetch("/api/ocr/abe", { method: "POST", body });
-  const payload = (await response.json().catch(() => null)) as
-    | {
-        ok: true;
-        extraction: { vehicleMatches: AbeDataHunterReport["vehicleMatches"] };
-        reason?: string;
-      }
-    | { ok: false; error?: string }
-    | null;
-
-  if (!response.ok || !payload || payload.ok !== true) {
-    throw new HuntApiError(
-      payload && "error" in payload && payload.error
-        ? payload.error
-        : `Fahrzeugtabelle fehlgeschlagen (${response.status}).`,
-    );
-  }
-
-  return finalizeAbeDataHunterReport(
-    fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
-      ...emptyAbeDataHunterReport(),
-      vehicleMatches: payload.extraction.vehicleMatches ?? [],
-    }),
+  scanSessionId: string | null = null,
+): Promise<AbeOcrStepResult<AbeDataHunterReport>> {
+  return postAbeOcrStep(
+    vehicleId,
+    file,
+    "hunt-vehicle",
+    scanSessionId,
+    (payload) => {
+      const extraction = payload.extraction as {
+        vehicleMatches: AbeDataHunterReport["vehicleMatches"];
+      };
+      return finalizeAbeDataHunterReport(
+        fillAbeDataHunterReport(emptyAbeDataHunterReport(), {
+          ...emptyAbeDataHunterReport(),
+          vehicleMatches: extraction.vehicleMatches ?? [],
+        }),
+      );
+    },
+    "Fahrzeugtabelle fehlgeschlagen",
   );
 }
 
@@ -522,11 +545,12 @@ async function extractForHuntFocus(
   vehicleId: string,
   file: File,
   focusKey: AbeRequiredFieldKey,
-): Promise<AbeDataHunterReport> {
+  scanSessionId: string | null = null,
+): Promise<AbeOcrStepResult<AbeDataHunterReport>> {
   if (focusKey === "verkaufsbezeichnung") {
-    return extractVehicleFromFile(vehicleId, file);
+    return extractVehicleFromFile(vehicleId, file, scanSessionId);
   }
-  return extractAllFromFile(vehicleId, file);
+  return extractAllFromFile(vehicleId, file, scanSessionId);
 }
 
 /**
@@ -540,9 +564,11 @@ async function followUpPdfVehicleExtraction(
   groupIndex: number | null,
   vehicleContext?: AbeVehicleContext | null,
   skip?: AbeCoreHuntSkip | null,
+  scanSessionId: string | null = null,
 ): Promise<{
   report: AbeDataHunterReport;
   groupIndex: number | null;
+  scanSessionId: string | null;
 }> {
   if (
     !isPdfFile(file) ||
@@ -551,12 +577,20 @@ async function followUpPdfVehicleExtraction(
       "verkaufsbezeichnung",
     )
   ) {
-    return { report, groupIndex };
+    return { report, groupIndex, scanSessionId };
   }
 
-  const vehicleExtract = await extractVehicleFromFile(vehicleId, file);
-  const mergedRaw = fillAbeDataHunterReport(report, vehicleExtract);
-  return enrichAfterHuntMerge(mergedRaw, groupIndex, vehicleContext);
+  const vehicleExtract = await extractVehicleFromFile(
+    vehicleId,
+    file,
+    scanSessionId,
+  );
+  const mergedRaw = fillAbeDataHunterReport(report, vehicleExtract.value);
+  const enriched = enrichAfterHuntMerge(mergedRaw, groupIndex, vehicleContext);
+  return {
+    ...enriched,
+    scanSessionId: applyScanSessionId(scanSessionId, vehicleExtract.scanSessionId),
+  };
 }
 
 function enrichAfterHuntMerge(
@@ -1907,6 +1941,7 @@ export function AbeDataHunterWizard({
   const kuerzelImageUrlsRef = useRef<Map<string, string>>(
     buildClientAuflagenKuerzelImageMap(),
   );
+  const scanSessionIdRef = useRef<string | null>(null);
   const [kuerzelImageUrls, setKuerzelImageUrls] = useState<Map<string, string>>(
     () => buildClientAuflagenKuerzelImageMap(),
   );
@@ -2382,6 +2417,7 @@ export function AbeDataHunterWizard({
     skippedAbeNumberRef.current = false;
     setSkippedAbeNumber(false);
     setShowAllCapturedBanner(false);
+    scanSessionIdRef.current = null;
     setHuntSessionKey((current) => current + 1);
   }
 
@@ -2451,8 +2487,16 @@ export function AbeDataHunterWizard({
         const before = reportRef.current;
 
         if (queueModeRef.current === "kba") {
-          const extracted = await extractKbaFromFile(vehicleId, file);
-          const merged = fillAbeDataHunterReport(before, extracted);
+          const extracted = await extractKbaFromFile(
+            vehicleId,
+            file,
+            scanSessionIdRef.current,
+          );
+          scanSessionIdRef.current = applyScanSessionId(
+            scanSessionIdRef.current,
+            extracted.scanSessionId,
+          );
+          const merged = fillAbeDataHunterReport(before, extracted.value);
           reportRef.current = merged;
           setReport(merged);
           const kba = reportKbaDigits(merged);
@@ -2486,8 +2530,17 @@ export function AbeDataHunterWizard({
             )
           ] ?? "kbaNumber";
 
-        const extracted = await extractForHuntFocus(vehicleId, file, focusKey);
-        let mergedRaw = fillAbeDataHunterReport(before, extracted);
+        const extracted = await extractForHuntFocus(
+          vehicleId,
+          file,
+          focusKey,
+          scanSessionIdRef.current,
+        );
+        scanSessionIdRef.current = applyScanSessionId(
+          scanSessionIdRef.current,
+          extracted.scanSessionId,
+        );
+        let mergedRaw = fillAbeDataHunterReport(before, extracted.value);
         let {
           report: merged,
           groupIndex: resolvedGroupIndex,
@@ -2501,7 +2554,9 @@ export function AbeDataHunterWizard({
             resolvedGroupIndex,
             vehicleContext,
             huntSkip,
+            scanSessionIdRef.current,
           );
+          scanSessionIdRef.current = followUp.scanSessionId;
           merged = followUp.report;
           resolvedGroupIndex = followUp.groupIndex;
         }
@@ -2576,11 +2631,17 @@ export function AbeDataHunterWizard({
           skippedAuflagenCodes,
         );
         const codes = pendingCodes.length > 0 ? pendingCodes : allCodes;
-        const { notes, regions } = await extractAuflagenTextFromFile(
+        const auflagenResult = await extractAuflagenTextFromFile(
           vehicleId,
           file,
           codes,
+          scanSessionIdRef.current,
         );
+        scanSessionIdRef.current = applyScanSessionId(
+          scanSessionIdRef.current,
+          auflagenResult.scanSessionId,
+        );
+        const { notes, regions } = auflagenResult.value;
         const attributedNotes =
           attributeAuflagenScanNotes(notes, codes) ?? notes;
         const sanitizedNotes =
@@ -2914,6 +2975,7 @@ export function AbeDataHunterWizard({
         }),
       );
       formData.set("file", uploadFile);
+      appendScanSessionId(formData, scanSessionIdRef.current);
 
       const result = await uploadDocument(formData);
       if (isActionFailure(result)) {

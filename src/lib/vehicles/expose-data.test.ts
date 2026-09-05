@@ -185,6 +185,18 @@ describe("buildExposeData", () => {
     expect(data.investmentItems).toHaveLength(0);
   });
 
+  it("uses token-gated hero image for public exposés", () => {
+    const token = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const data = buildExposeData(
+      vehicle,
+      [invoice()],
+      [],
+      { exposeToken: token },
+    );
+
+    expect(data.heroImageSrc).toBe(`/api/expose/${token}/silhouette`);
+  });
+
   it("sorts the timeline newest-first and maps kinds", () => {
     const data = buildExposeData(vehicle, [invoice(), oilDoc()], timeline);
     expect(data.timeline.map((entry) => entry.date)).toEqual([

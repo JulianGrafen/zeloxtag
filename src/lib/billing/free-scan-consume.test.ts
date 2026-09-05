@@ -121,3 +121,109 @@ describe("tryConsumeFreeOcrScanForOwner", () => {
     expect(result).toEqual({ ok: false, code: "quota_unavailable" });
   });
 });
+
+describe("beginFreeScanSession", () => {
+  const sessionId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const vehicleId = "11111111-1111-4111-8111-111111111111";
+
+  beforeEach(() => {
+    vi.resetModules();
+    mockUserHasActiveMembership.mockReset();
+    mockIsSupabaseAdminConfigured.mockReset();
+    mockCreateAdminClient.mockReset();
+    mockIsSupabaseAdminConfigured.mockReturnValue(true);
+    mockUserHasActiveMembership.mockResolvedValue(false);
+  });
+
+  it("starts a new session when quota is available", async () => {
+    mockCreateAdminClient.mockReturnValue({
+      ...entitlementAdminClient(0),
+      rpc: async (name: string) => {
+        if (name === "begin_free_scan_session") {
+          return { data: sessionId, error: null };
+        }
+        return entitlementAdminClient(0).rpc(name);
+      },
+    });
+
+    const { beginFreeScanSession } = await import("./free-scan-quota");
+    const result = await beginFreeScanSession(
+      "owner-1",
+      "invoice",
+      vehicleId,
+      null,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      sessionId,
+      started: true,
+    });
+  });
+
+  it("reuses a valid existing session without consuming again", async () => {
+    mockCreateAdminClient.mockReturnValue({
+      rpc: async (name: string) => {
+        if (name === "validate_free_scan_session") {
+          return { data: true, error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+
+    const { beginFreeScanSession } = await import("./free-scan-quota");
+    const result = await beginFreeScanSession(
+      "owner-1",
+      "invoice",
+      vehicleId,
+      sessionId,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      sessionId,
+      started: false,
+    });
+  });
+
+  it("returns exhausted when begin RPC yields null and quota is used", async () => {
+    mockCreateAdminClient.mockReturnValue({
+      ...entitlementAdminClient(1),
+      rpc: async (name: string) => {
+        if (name === "begin_free_scan_session") {
+          return { data: null, error: null };
+        }
+        return entitlementAdminClient(1).rpc(name);
+      },
+    });
+
+    const { beginFreeScanSession } = await import("./free-scan-quota");
+    const result = await beginFreeScanSession(
+      "owner-1",
+      "invoice",
+      vehicleId,
+      null,
+    );
+
+    expect(result).toEqual({ ok: false, code: "free_scan_exhausted" });
+  });
+});
+
+describe("validateFreeScanSession", () => {
+  it("returns false when RPC validation fails", async () => {
+    mockIsSupabaseAdminConfigured.mockReturnValue(true);
+    mockCreateAdminClient.mockReturnValue({
+      rpc: async () => ({ data: false, error: null }),
+    });
+
+    const { validateFreeScanSession } = await import("./free-scan-quota");
+    const valid = await validateFreeScanSession(
+      "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "owner-1",
+      "11111111-1111-4111-8111-111111111111",
+      "invoice",
+    );
+
+    expect(valid).toBe(false);
+  });
+});

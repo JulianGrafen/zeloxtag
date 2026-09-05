@@ -8,7 +8,8 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
-import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { withScanSessionId } from "@/lib/billing/free-scan-quota";
+import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import type {
   AbeDataHunterReport,
@@ -118,8 +119,11 @@ function jsonError(
   return NextResponse.json({ ok: false, error, code }, { status });
 }
 
+function jsonSuccess(body: StepSuccess, scanSessionId?: string) {
+  return NextResponse.json(withScanSessionId(body, scanSessionId));
+}
+
 /**
- * POST /api/ocr/abe
  *
  * Data-hunter steps never fail the request on Zod/completeness misses —
  * they return `{ status: "needs_manual", extraction }` for HITL entry.
@@ -150,13 +154,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
 
-    const vehicleAccess = await requireVehicleOcrAccess(
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
       auth.user.id,
-      String(formData.get("vehicleId") ?? ""),
       FEATURE.SCAN_AI_RECEIPT,
       "abe",
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
+    const scanSessionId = vehicleAccess.scanSessionId;
 
     const stepRaw = String(formData.get("step") ?? "").trim();
     const stepParsed = stepSchema.safeParse(stepRaw);
@@ -186,91 +191,115 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (step === "cover") {
       const extraction =
         await abeExtractionService.extractCoverFromDocument(input);
-      return NextResponse.json({
-        ok: true,
-        step: "cover",
-        extraction,
-      } satisfies LegacySuccess);
+      return jsonSuccess(
+        {
+          ok: true,
+          step: "cover",
+          extraction,
+        },
+        scanSessionId,
+      );
     }
 
     if (step === "main") {
       const extraction =
         await abeExtractionService.extractMainFromDocument(input);
-      return NextResponse.json({
-        ok: true,
-        step: "main",
-        extraction,
-      } satisfies LegacySuccess);
+      return jsonSuccess(
+        {
+          ok: true,
+          step: "main",
+          extraction,
+        },
+        scanSessionId,
+      );
     }
 
     if (step === "vehicles") {
       const extraction =
         await abeExtractionService.extractVehiclesFromDocument(input);
-      return NextResponse.json({
-        ok: true,
-        step: "vehicles",
-        extraction,
-      } satisfies LegacySuccess);
+      return jsonSuccess(
+        {
+          ok: true,
+          step: "vehicles",
+          extraction,
+        },
+        scanSessionId,
+      );
     }
 
     if (step === "hunt-all") {
       const result =
         await abeDataHunterExtractionService.extractAllFromPhoto(input);
-      return NextResponse.json({
-        ok: true,
-        step: "hunt-all",
-        status: result.status,
-        extraction: result.extraction,
-        reason: result.reason,
-      } satisfies HuntSuccess);
+      return jsonSuccess(
+        {
+          ok: true,
+          step: "hunt-all",
+          status: result.status,
+          extraction: result.extraction,
+          reason: result.reason,
+        },
+        scanSessionId,
+      );
     }
 
     if (step === "hunt-kba") {
       const result =
         await abeDataHunterExtractionService.extractKbaFromPhoto(input);
-      return NextResponse.json({
-        ok: true,
-        step,
-        status: result.status,
-        extraction: result.extraction,
-        reason: result.reason,
-      } satisfies HuntSuccess);
+      return jsonSuccess(
+        {
+          ok: true,
+          step,
+          status: result.status,
+          extraction: result.extraction,
+          reason: result.reason,
+        },
+        scanSessionId,
+      );
     }
 
     if (step === "hunt-stammdaten") {
       const result =
         await abeDataHunterExtractionService.extractStammdatenSnippet(input);
-      return NextResponse.json({
-        ok: true,
-        step,
-        status: result.status,
-        extraction: result.extraction,
-        reason: result.reason,
-      } satisfies HuntSuccess);
+      return jsonSuccess(
+        {
+          ok: true,
+          step,
+          status: result.status,
+          extraction: result.extraction,
+          reason: result.reason,
+        },
+        scanSessionId,
+      );
     }
 
     if (step === "hunt-marking") {
       const result =
         await abeDataHunterExtractionService.extractMarkingSnippet(input);
-      return NextResponse.json({
-        ok: true,
-        step: "hunt-marking",
-        status: result.status,
-        extraction: result.extraction,
-        reason: result.reason,
-      } satisfies HuntSuccess);
+      return jsonSuccess(
+        {
+          ok: true,
+          step: "hunt-marking",
+          status: result.status,
+          extraction: result.extraction,
+          reason: result.reason,
+        },
+        scanSessionId,
+      );
     }
 
     if (step === "hunt-vehicle") {
       const result =
         await abeDataHunterExtractionService.extractVehicleSnippet(input);
-      return NextResponse.json({
-        ok: true,
-        step: "hunt-vehicle",
-        status: result.status,
-        extraction: result.extraction,
-        reason: result.reason,
-      } satisfies HuntSuccess);
+      return jsonSuccess(
+        {
+          ok: true,
+          step: "hunt-vehicle",
+          status: result.status,
+          extraction: result.extraction,
+          reason: result.reason,
+        },
+        scanSessionId,
+      );
     }
 
     if (step === "hunt-auflagen-text") {
@@ -295,24 +324,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           input,
           targetCodes,
         );
-      return NextResponse.json({
-        ok: true,
-        step: "hunt-auflagen-text",
-        status: result.status,
-        extraction: result.extraction,
-        reason: result.reason,
-      } satisfies HuntSuccess);
+      return jsonSuccess(
+        {
+          ok: true,
+          step: "hunt-auflagen-text",
+          status: result.status,
+          extraction: result.extraction,
+          reason: result.reason,
+        },
+        scanSessionId,
+      );
     }
 
     const result =
       await abeDataHunterExtractionService.extractAuflagenSnippet(input);
-    return NextResponse.json({
-      ok: true,
-      step: "hunt-auflagen",
-      status: result.status,
-      extraction: result.extraction,
-      reason: result.reason,
-    } satisfies HuntSuccess);
+    return jsonSuccess(
+      {
+        ok: true,
+        step: "hunt-auflagen",
+        status: result.status,
+        extraction: result.extraction,
+        reason: result.reason,
+      },
+      scanSessionId,
+    );
   } catch (error) {
     console.error("[api/ocr/abe] unexpected", error);
     return jsonError(500, "Extraktion fehlgeschlagen.", "extract_failed");

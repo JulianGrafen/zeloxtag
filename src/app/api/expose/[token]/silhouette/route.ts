@@ -2,15 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { optimizeWebImageBytes } from "@/lib/image/optimize-web-image";
-import { getCurrentUser } from "@/lib/auth/get-user";
-import { sessionCanAccessVehicleMedia } from "@/lib/auth/vehicle-access";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { exposeTokenSchema } from "@/lib/vehicles/expose-token";
 import { loadVehicleSilhouetteBytes } from "@/lib/vehicles/load-silhouette-bytes";
 
 export const runtime = "nodejs";
-
-const vehicleIdSchema = z.string().uuid();
 
 async function imageResponse(bytes: Uint8Array): Promise<NextResponse> {
   const { body, contentType } = await optimizeWebImageBytes(bytes);
@@ -25,12 +22,12 @@ async function imageResponse(bytes: Uint8Array): Promise<NextResponse> {
 }
 
 /**
- * GET /api/vehicle/silhouette/[vehicleId]
- * Same-origin image stream for dashboard headers under COEP.
+ * GET /api/expose/[token]/silhouette
+ * Token-gated hero image for sales exposés — never by vehicle id alone.
  */
 export async function GET(
   _request: NextRequest,
-  context: { params: Promise<{ vehicleId: string }> },
+  context: { params: Promise<{ token: string }> },
 ) {
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured || !isSupabaseAdminConfigured()) {
@@ -40,28 +37,31 @@ export async function GET(
     );
   }
 
-  const { vehicleId: rawId } = await context.params;
-  const parsed = vehicleIdSchema.safeParse(rawId);
+  const { token: rawToken } = await context.params;
+  const parsed = exposeTokenSchema.safeParse(rawToken.trim());
   if (!parsed.success) {
     return NextResponse.json(
-      { ok: false, error: "Invalid vehicle id." },
+      { ok: false, error: "Invalid exposé token." },
       { status: 400 },
     );
   }
 
-  const viewer = await getCurrentUser();
-  const allowed = await sessionCanAccessVehicleMedia(
-    parsed.data,
-    viewer?.id ?? null,
-  );
-  if (!allowed) {
+  const admin = createAdminClient();
+  const { data: vehicle, error } = await admin
+    .from("vehicles")
+    .select("id")
+    .eq("expose_token", parsed.data)
+    .eq("is_expose_active", true)
+    .maybeSingle();
+
+  if (error || !vehicle?.id) {
     return NextResponse.json(
       { ok: false, error: "Vehicle photo not found." },
       { status: 404 },
     );
   }
 
-  const bytes = await loadVehicleSilhouetteBytes(parsed.data);
+  const bytes = await loadVehicleSilhouetteBytes(vehicle.id);
   if (!bytes) {
     return NextResponse.json(
       { ok: false, error: "Vehicle photo not found." },

@@ -41,16 +41,21 @@ export type FeatureGateOptions = {
   allowFreeInvoiceScan?: boolean;
   /** Allow the vehicle owner's one free KI ABE scan. */
   allowFreeAbeScan?: boolean;
+  /** Complimentary quota already consumed for an in-flight OCR session. */
+  validatedFreeScanSession?: boolean;
 };
 
 async function denyOwnerFeature(
   ownerUserId: string,
   options?: FeatureGateOptions,
-): Promise<FeatureDenied> {
+): Promise<{ ok: true } | FeatureDenied> {
   if (
     options?.allowFreeInvoiceScan &&
     !(await ownerHasFreeInvoiceScanRemaining(ownerUserId))
   ) {
+    if (options.validatedFreeScanSession) {
+      return { ok: true };
+    }
     return {
       ok: false,
       code: FREE_SCAN_EXHAUSTED_CODE,
@@ -62,6 +67,9 @@ async function denyOwnerFeature(
     options?.allowFreeAbeScan &&
     !(await ownerHasFreeAbeScanRemaining(ownerUserId))
   ) {
+    if (options.validatedFreeScanSession) {
+      return { ok: true };
+    }
     return {
       ok: false,
       code: FREE_SCAN_EXHAUSTED_CODE,

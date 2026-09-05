@@ -12,6 +12,8 @@ import {
 import {
   consumeFreeAbeScan,
   consumeFreeInvoiceScan,
+  freeScanKindForDocumentType,
+  validateFreeScanSession,
 } from "@/lib/billing/free-scan-quota";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
@@ -270,10 +272,39 @@ export async function uploadDocument(
       message: writeAccessErrorMessage(writeAccess),
     };
   }
+  const ownerUserId = writeAccess.ownerUserId;
+  const vaultGateBase = uploadVaultGateOptions(typeRaw, approvalFields);
+  let validatedFreeScanSession = false;
+
+  if (meta.scanSessionId && vaultGateBase) {
+    const kind =
+      typeRaw === "invoice"
+        ? "invoice"
+        : isComplimentaryAbeUpload(typeRaw, approvalFields)
+          ? "abe"
+          : null;
+    if (kind) {
+      validatedFreeScanSession = await validateFreeScanSession(
+        meta.scanSessionId,
+        ownerUserId,
+        vehicleId,
+        kind,
+      );
+      if (!validatedFreeScanSession) {
+        return {
+          status: "error",
+          message: "Scan-Sitzung abgelaufen. Bitte erneut scannen.",
+        };
+      }
+    }
+  }
+
   const vault = await assertVehicleDocumentWrite(
     writeAccess,
     FEATURE.DOCUMENT_VAULT,
-    uploadVaultGateOptions(typeRaw, approvalFields),
+    validatedFreeScanSession && vaultGateBase
+      ? { ...vaultGateBase, validatedFreeScanSession: true }
+      : vaultGateBase,
   );
   if (!vault.ok) {
     return featureDeniedToForbidden(vault);
@@ -290,8 +321,6 @@ export async function uploadDocument(
       message: "Schrauber können nur Rechnungen, Reparaturen und Service eintragen.",
     };
   }
-
-  const ownerUserId = writeAccess.ownerUserId;
 
   const bytes = Buffer.from(fileCheck.bytes);
   const pageHash = documentPageHash(bytes);
@@ -570,7 +599,9 @@ export async function uploadDocument(
 
   let freeScanConsumed = false;
   if (!(await userHasActiveMembership(ownerUserId))) {
-    if (typeRaw === "invoice") {
+    if (validatedFreeScanSession) {
+      freeScanConsumed = true;
+    } else if (typeRaw === "invoice") {
       freeScanConsumed = await consumeFreeInvoiceScan(ownerUserId);
     } else if (isComplimentaryAbeUpload(typeRaw, approvalFields)) {
       freeScanConsumed = await consumeFreeAbeScan(ownerUserId);

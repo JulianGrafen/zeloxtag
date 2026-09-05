@@ -11,7 +11,9 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
-import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { withScanSessionId } from "@/lib/billing/free-scan-quota";
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import {
   logServerError,
@@ -98,9 +100,11 @@ export async function POST(request: NextRequest) {
       return jsonError(400, "vehicleId (UUID) is required.", "bad_request");
     }
 
-    const vehicleAccess = await requireVehicleOcrAccess(
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
       auth.user.id,
-      meta.data.vehicleId,
+      FEATURE.SCAN_AI_RECEIPT,
+      "invoice",
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
     const user = auth.user;
@@ -189,7 +193,10 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    return NextResponse.json(body, { status: 201 });
+    return NextResponse.json(
+      withScanSessionId(body, vehicleAccess.scanSessionId),
+      { status: 201 },
+    );
   } catch (error) {
     console.error("[api/ocr] unexpected", error);
     return jsonError(500, "OCR request failed.", "storage_failed");

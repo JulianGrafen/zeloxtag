@@ -46,6 +46,10 @@ import {
   type InvoiceReviewCategory,
 } from "@/lib/documents/invoice-review-categories";
 import { scanTypeDefinition, type ScanType } from "@/lib/documents/scan-types";
+import {
+  appendScanSessionId,
+  readScanSessionId,
+} from "@/lib/billing/scan-session-client";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { documentTypeForTextCategory } from "@/lib/ocr/category-map";
@@ -98,6 +102,7 @@ interface WizardState {
   previewUrl: string | null;
   previewOwned: boolean;
   title: string;
+  scanSessionId: string | null;
   error: string | null;
 }
 
@@ -138,7 +143,8 @@ async function callInvoiceStep<T>(
   step: string,
   label: string,
   lockedCategory?: InvoiceTextParseCategory | null,
-): Promise<T> {
+  scanSessionId?: string | null,
+): Promise<{ extraction: T; scanSessionId?: string }> {
   const body = new FormData();
   body.set("vehicleId", vehicleId);
   body.set("file", file);
@@ -146,10 +152,11 @@ async function callInvoiceStep<T>(
   if (lockedCategory) {
     body.set("lockedCategory", lockedCategory);
   }
+  appendScanSessionId(body, scanSessionId);
 
   const response = await fetch("/api/ocr/invoice", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
-    | { ok: true; extraction: T }
+    | { ok: true; extraction: T; scanSessionId?: string }
     | { ok: false; error?: string }
     | null;
 
@@ -160,7 +167,10 @@ async function callInvoiceStep<T>(
         : `${label} fehlgeschlagen (${response.status}).`,
     );
   }
-  return (payload as { ok: true; extraction: T }).extraction;
+  return {
+    extraction: payload.extraction,
+    scanSessionId: readScanSessionId(payload) ?? scanSessionId ?? undefined,
+  };
 }
 
 async function buildUploadFile(
@@ -250,6 +260,7 @@ export function InvoiceUploadWizard({
     previewUrl: null,
     previewOwned: false,
     title: "",
+    scanSessionId: null,
     error: null,
   });
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -320,6 +331,7 @@ export function InvoiceUploadWizard({
       previewUrl: null,
       previewOwned: false,
       title: "",
+      scanSessionId: null,
       error: null,
     });
     setSaveError(null);
@@ -445,7 +457,16 @@ export function InvoiceUploadWizard({
         throw new InvoiceApiError("Kein Positions-Bild vorhanden.");
       }
 
-      const [overviewResult, headerResult, lineItemsResults] = await Promise.all([
+      const headerStep = await callInvoiceStep<InvoiceHeaderExtraction>(
+        vehicleId,
+        headerFile,
+        "header",
+        "Kopf-Analyse",
+        lockedCategory,
+      );
+      let scanSessionId = headerStep.scanSessionId ?? null;
+
+      const [overviewResult, lineItemsResults] = await Promise.all([
         overviewFile
           ? callInvoiceStep<InvoiceOverviewExtraction>(
               vehicleId,
@@ -453,15 +474,12 @@ export function InvoiceUploadWizard({
               "overview",
               "Übersicht-Analyse",
               lockedCategory,
-            )
+              scanSessionId,
+            ).then((result) => {
+              scanSessionId = result.scanSessionId ?? scanSessionId;
+              return result.extraction;
+            })
           : Promise.resolve(null),
-        callInvoiceStep<InvoiceHeaderExtraction>(
-          vehicleId,
-          headerFile,
-          "header",
-          "Kopf-Analyse",
-          lockedCategory,
-        ),
         Promise.all(
           lineItemsFiles.map((file, index) =>
             callInvoiceStep<InvoiceLineItemsExtraction>(
@@ -470,10 +488,16 @@ export function InvoiceUploadWizard({
               "line-items",
               `Positions-Analyse Block ${index + 1}`,
               lockedCategory,
-            ),
+              scanSessionId,
+            ).then((result) => {
+              scanSessionId = result.scanSessionId ?? scanSessionId;
+              return result.extraction;
+            }),
           ),
         ),
       ]);
+
+      const headerResult = headerStep.extraction;
 
       const lineItemsResult = mergeLineItemsExtractions(lineItemsResults);
 
@@ -520,6 +544,7 @@ export function InvoiceUploadWizard({
         previewUrl,
         previewOwned: owned,
         title: defaultTitle,
+        scanSessionId,
         error: null,
       }));
     } catch (err) {
@@ -624,6 +649,7 @@ export function InvoiceUploadWizard({
       formData.set("pageCount", String(pageCount || 1));
       formData.set("approvalFields", "");
       formData.set("file", uploadFile);
+      appendScanSessionId(formData, state.scanSessionId);
 
       const result = await uploadDocument(formData);
       if (isActionFailure(result)) {

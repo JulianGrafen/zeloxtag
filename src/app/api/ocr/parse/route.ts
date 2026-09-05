@@ -24,7 +24,8 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
-import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { withScanSessionId } from "@/lib/billing/free-scan-quota";
+import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import { logServerError } from "@/lib/security/public-error";
@@ -117,9 +118,9 @@ export async function POST(request: NextRequest) {
     }
     const documentType = documentTypeParsed.data;
 
-    const vehicleAccess = await requireVehicleOcrAccess(
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
       auth.user.id,
-      String(formData.get("vehicleId") ?? ""),
       FEATURE.SCAN_AI_RECEIPT,
       documentType,
     ).catch((error) => {
@@ -272,7 +273,9 @@ export async function POST(request: NextRequest) {
       rawText: result.rawText,
       modelId: result.modelId,
     };
-    return NextResponse.json(body);
+    return NextResponse.json(
+      withScanSessionId(body, vehicleAccess.scanSessionId),
+    );
   } catch (error) {
     if (isDocumentIntelligenceError(error) || isTextParseError(error)) {
       logServerError("[api/ocr/parse] provider failed", error);

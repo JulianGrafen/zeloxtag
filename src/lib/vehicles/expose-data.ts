@@ -309,6 +309,7 @@ export function buildExposeData(
   vehicle: Vehicle,
   documents: Document[],
   timeline: TimelineEvent[],
+  options?: { exposeToken?: string | null },
 ): ExposeData {
   const make = vehicle.make.trim();
   const model = vehicle.model.trim();
@@ -318,6 +319,7 @@ export function buildExposeData(
     amount: hideFinancials ? null : item.amount,
   }));
   const latestTuev = latestTuevDocument(documents);
+  const exposeToken = options?.exposeToken?.trim() || null;
 
   return {
     vehicleTitle: `${make} ${model}`.trim(),
@@ -325,7 +327,9 @@ export function buildExposeData(
     model,
     firstRegistrationYear: vehicle.year,
     mileageKm: latestMileageKm(documents),
-    heroImageSrc: `/api/vehicle/silhouette/${vehicle.id}`,
+    heroImageSrc: exposeToken
+      ? `/api/expose/${exposeToken}/silhouette`
+      : `/api/vehicle/silhouette/${vehicle.id}`,
     documentCount: documents.length,
     hideFinancials,
     investmentTotal: hideFinancials ? null : sumInvestmentTotal(investmentItems),

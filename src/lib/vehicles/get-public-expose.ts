@@ -236,6 +236,7 @@ function buildDemoExpose(): ExposeData | null {
     mock.vehicle,
     documents,
     buildTimelineFromDocuments(documents, "desc"),
+    { exposeToken: DEMO_EXPOSE_TOKEN },
   );
 }
 
@@ -258,7 +259,9 @@ async function getPublicExposeByTokenUncached(
 
   const documents = await loadExposeDocuments(vehicle.id);
   const timeline = await loadExposeTimeline(vehicle.id, documents);
-  return buildExposeData(vehicle, documents, timeline);
+  return buildExposeData(vehicle, documents, timeline, {
+    exposeToken: parsed.data,
+  });
 }
 
 /** Request-memoized — generateMetadata and the page share one lookup. */

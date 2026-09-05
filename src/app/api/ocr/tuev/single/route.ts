@@ -6,7 +6,9 @@ import {
   enforceSameOrigin,
   requireApiUser,
 } from "@/lib/security/api-guard";
-import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { withScanSessionId } from "@/lib/billing/free-scan-quota";
+import { FEATURE } from "@/lib/permissions/feature-access";
+import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import { logServerError } from "@/lib/security/public-error";
 import {
@@ -79,9 +81,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
 
-    const vehicleAccess = await requireVehicleOcrAccess(
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
       auth.user.id,
-      String(formData.get("vehicleId") ?? ""),
+      FEATURE.SCAN_AI_RECEIPT,
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
 
@@ -104,7 +107,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     const body: SingleSuccess = { ok: true, extraction };
-    return NextResponse.json(body);
+    return NextResponse.json(
+      withScanSessionId(body, vehicleAccess.scanSessionId),
+    );
   } catch (error) {
     logServerError("[api/ocr/tuev/single] extraction failed", error);
     return jsonError(

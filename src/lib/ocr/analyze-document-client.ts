@@ -24,6 +24,11 @@ import { ensureInvoiceVatAndGrossTotal } from "@/lib/ocr/invoice-vat";
 import type { InvoiceScanPart } from "./services/invoice-parse-service";
 import { isGenericInvoiceVendor } from "@/lib/ocr/vendor-from-text";
 
+import {
+  appendScanSessionId,
+  readScanSessionId,
+} from "@/lib/billing/scan-session-client";
+
 export type { InvoiceScanPart };
 
 export type AnalyzeDocumentResult = {
@@ -34,6 +39,7 @@ export type AnalyzeDocumentResult = {
   rawText: string;
   modelId: string;
   parseModel?: string;
+  scanSessionId?: string;
 };
 
 export type AnalyzeDocumentOptions = {
@@ -53,6 +59,8 @@ export type AnalyzeDocumentOptions = {
   teilegutachtenScope?: "cover" | "marking" | "verwendungsbereich" | "full";
   /** §19(2) Prüfung wizard — scoped page extraction. */
   pruefung192Scope?: "bericht" | "gutachten" | "vorschriften" | "full";
+  /** Reuse complimentary OCR session across multi-page scans. */
+  scanSessionId?: string | null;
   /** @deprecated Prefer `documentType`. Mapped to documentType when unset. */
   kind?: DocumentParseKind;
 };
@@ -85,11 +93,13 @@ async function analyzeOneFile(
   teilegutachtenScope?: "cover" | "marking" | "verwendungsbereich" | "full",
   pruefung192Scope?: "bericht" | "gutachten" | "vorschriften" | "full",
   invoiceScanPart?: InvoiceScanPart,
+  scanSessionId?: string | null,
 ): Promise<AnalyzeDocumentResult> {
   const formData = new FormData();
   formData.set("vehicleId", vehicleId);
   formData.set("file", file);
   formData.set("documentType", documentType);
+  appendScanSessionId(formData, scanSessionId);
   if (approvalKind) {
     formData.set("approvalKind", approvalKind);
   }
@@ -126,6 +136,7 @@ async function analyzeOneFile(
         approvalFields?: ApprovalFields | null;
         rawText: string;
         modelId: string;
+        scanSessionId?: string;
       }
     | { ok: false; error?: string }
     | null;
@@ -146,6 +157,7 @@ async function analyzeOneFile(
     rawText: payload.rawText,
     modelId: payload.modelId,
     parseModel: payload.parseModel,
+    scanSessionId: readScanSessionId(payload),
   };
 }
 
@@ -420,6 +432,7 @@ export async function analyzeDocumentFiles(
   const teilegutachtenScope = options.teilegutachtenScope;
   const pruefung192Scope = options.pruefung192Scope;
   const scanParts = resolveInvoiceScanParts(files.length, documentType);
+  let scanSessionId = options.scanSessionId ?? null;
 
   if (files.length === 1) {
     onPageProgress?.(1, 1);
@@ -434,11 +447,29 @@ export async function analyzeDocumentFiles(
       teilegutachtenScope,
       pruefung192Scope,
       scanParts[0],
+      scanSessionId,
     );
   }
 
-  const results = await mapWithConcurrency(
-    files,
+  onPageProgress?.(1, files.length);
+  const firstResult = await analyzeOneFile(
+    files[0],
+    vehicleId,
+    documentType,
+    approvalKind,
+    vehicleContext,
+    garageVin,
+    invoiceCategory,
+    teilegutachtenScope,
+    pruefung192Scope,
+    scanParts[0],
+    scanSessionId,
+  );
+  scanSessionId = firstResult.scanSessionId ?? scanSessionId;
+
+  const restFiles = files.slice(1);
+  const restResults = await mapWithConcurrency(
+    restFiles,
     resolveOcrMaxParallelPages(),
     (file, index) =>
       analyzeOneFile(
@@ -451,10 +482,14 @@ export async function analyzeDocumentFiles(
         invoiceCategory,
         index === 0 ? teilegutachtenScope : undefined,
         index === 0 ? pruefung192Scope : undefined,
-        scanParts[index],
+        scanParts[index + 1],
+        scanSessionId,
       ),
-    (completed, total) => onPageProgress?.(completed, total),
+    (completed, total) =>
+      onPageProgress?.(completed + 1, files.length),
   );
+
+  const results = [firstResult, ...restResults];
 
   const rawText = results
     .map((result, index) => `--- Seite ${index + 1} ---\n${result.rawText}`)
@@ -474,6 +509,7 @@ export async function analyzeDocumentFiles(
     rawText,
     modelId: results[0]?.modelId ?? "prebuilt-layout",
     parseModel: results[0]?.parseModel,
+    scanSessionId: scanSessionId ?? results.at(-1)?.scanSessionId,
   };
 }
 

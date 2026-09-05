@@ -41,6 +41,7 @@ import {
   type ScanType,
 } from "@/lib/documents/scan-types";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { appendScanSessionId } from "@/lib/billing/scan-session-client";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { assessVehicleDocumentMatch } from "@/lib/documents/vehicle-document-match";
 import { validateMileageAgainstHistory } from "@/lib/documents/validate-mileage";
@@ -259,6 +260,7 @@ export function InvoiceUploader({
   >(null);
   const [duplicateHint, setDuplicateHint] = useState<string | null>(null);
   const [showThinPositionsHint, setShowThinPositionsHint] = useState(false);
+  const [scanSessionId, setScanSessionId] = useState<string | null>(null);
 
   const mileageWarning = useMemo(() => {
     const km = fields.mileageKm;
@@ -311,6 +313,7 @@ export function InvoiceUploader({
     setVehicleMismatchReason(null);
     setDuplicateHint(null);
     setShowThinPositionsHint(false);
+    setScanSessionId(null);
   }
 
   function buildInvoiceSaveValues(resolvedTitle: string) {
@@ -444,6 +447,7 @@ export function InvoiceUploader({
         formData.set("forceDuplicateSave", "1");
       }
       formData.set("file", uploadFile);
+      appendScanSessionId(formData, scanSessionId);
 
       try {
         const result = await uploadDocument(formData);
@@ -765,6 +769,7 @@ export function InvoiceUploader({
       setPageCount(processed.pageCount);
       setRawText(analyzed.rawText);
       setApprovalFields(analyzed.approvalFields);
+      setScanSessionId(analyzed.scanSessionId ?? null);
 
       const oil = detectOilChangeInvoice({
         title: analyzed.fields.summary,
@@ -992,6 +997,7 @@ export function InvoiceUploader({
       formData.set("pageCount", String(pageCount || 1));
       formData.set("approvalFields", JSON.stringify(approval));
       formData.set("file", uploadFile);
+      appendScanSessionId(formData, scanSessionId);
 
       const result = await uploadDocument(formData);
       if (isActionFailure(result)) {
@@ -1088,6 +1094,7 @@ export function InvoiceUploader({
       formData.set("pageCount", String(pageCount || 1));
       formData.set("approvalFields", JSON.stringify(approval));
       formData.set("file", uploadFile);
+      appendScanSessionId(formData, scanSessionId);
 
       const result = await uploadDocument(formData);
       if (isActionFailure(result)) {
@@ -1161,6 +1168,7 @@ export function InvoiceUploader({
         formData.set("forceMileageSave", "1");
       }
       formData.set("file", uploadFile);
+      appendScanSessionId(formData, scanSessionId);
 
       const result = await uploadDocument(formData);
       if (isActionFailure(result)) {
@@ -1251,6 +1259,7 @@ export function InvoiceUploader({
         persistedApproval ? JSON.stringify(persistedApproval) : "",
       );
       formData.set("file", uploadFile);
+      appendScanSessionId(formData, scanSessionId);
 
       const result = await uploadDocument(formData);
       if (isActionFailure(result)) {

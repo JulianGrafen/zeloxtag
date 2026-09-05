@@ -50,6 +50,8 @@ export const uploadDocumentMetaSchema = z
     forceMileageSave: z.enum(["", "1"]).optional().default(""),
     /** Set when user confirms save despite a likely duplicate Beleg. */
     forceDuplicateSave: z.enum(["", "1"]).optional().default(""),
+    /** Active complimentary OCR session (quota consumed at scan start). */
+    scanSessionId: z.string().uuid().optional(),
   })
   .strict();
 
@@ -90,5 +92,6 @@ export function metaFromFormData(formData: FormData): unknown {
       String(formData.get("forceDuplicateSave") ?? "").trim() === "1"
         ? "1"
         : "",
+    scanSessionId: String(formData.get("scanSessionId") ?? "").trim() || undefined,
   };
 }

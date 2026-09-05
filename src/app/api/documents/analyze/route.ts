@@ -17,7 +17,8 @@ import {
   requireApiUser,
 } from "@/lib/security/api-guard";
 import { logServerError } from "@/lib/security/public-error";
-import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { withScanSessionId } from "@/lib/billing/free-scan-quota";
+import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 
@@ -117,9 +118,9 @@ export async function POST(request: NextRequest) {
       meta.data.documentType ??
       (kind === "invoice" ? "invoice" : kind === "abe" ? "abe" : undefined);
 
-    const vehicleAccess = await requireVehicleOcrAccess(
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
       auth.user.id,
-      meta.data.vehicleId,
       FEATURE.SCAN_AI_RECEIPT,
       documentType,
     );
@@ -154,7 +155,9 @@ export async function POST(request: NextRequest) {
       rawText: result.rawText,
       modelId: result.modelId,
     };
-    return NextResponse.json(body);
+    return NextResponse.json(
+      withScanSessionId(body, vehicleAccess.scanSessionId),
+    );
   } catch (error) {
     if (error instanceof DocumentIntelligenceError) {
       logServerError("[api/documents/analyze] provider failed", error);

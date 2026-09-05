@@ -10,7 +10,8 @@ import {
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
 import { FEATURE } from "@/lib/permissions/feature-access";
-import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
+import { withScanSessionId } from "@/lib/billing/free-scan-quota";
+import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { isAbeVisionExtractionEmpty } from "@/lib/validations/abeVisionExtractionSchemas";
 import { abeVisionExtractor } from "@/services/documents/VisionExtractor";
 
@@ -91,13 +92,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return jsonError(400, "Multipart-Upload erwartet.", "bad_request");
     }
 
-    const vehicleAccess = await requireVehicleOcrAccess(
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
       auth.user.id,
-      String(formData.get("vehicleId") ?? ""),
       FEATURE.SCAN_AI_RECEIPT,
       "abe",
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
+    const scanSessionId = vehicleAccess.scanSessionId;
 
     const uploads = await readUploadFiles(formData);
     if (uploads.length === 0) {
@@ -149,7 +151,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         model: result.model,
         manualFallback: isAbeVisionExtractionEmpty(result.extraction),
       };
-      return NextResponse.json(body);
+      return NextResponse.json(withScanSessionId(body, scanSessionId));
     }
 
     const imageFiles: Array<{ bytes: Buffer; contentType: string; name: string }> =
@@ -185,7 +187,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       model: result.model,
       manualFallback: isAbeVisionExtractionEmpty(result.extraction),
     };
-    return NextResponse.json(body);
+    return NextResponse.json(withScanSessionId(body, scanSessionId));
   } catch (error) {
     console.error("[abe-extract]", error);
     return jsonError(500, "Extraktion fehlgeschlagen.", "bad_request");

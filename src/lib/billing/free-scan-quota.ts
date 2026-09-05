@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { z } from "zod";
 
 import {
   FREE_AI_ABE_SCAN_LIMIT,
@@ -15,6 +16,8 @@ export type FreeScanGateOptions = {
   allowFreeAbeScan?: boolean;
 };
 
+export type FreeScanKind = "invoice" | "abe";
+
 export type FreeScanQuota = {
   used: number;
   remaining: number;
@@ -23,6 +26,8 @@ export type FreeScanQuota = {
 
 export type FreeInvoiceScanQuota = FreeScanQuota;
 export type FreeAbeScanQuota = FreeScanQuota;
+
+const scanSessionIdSchema = z.string().uuid();
 
 type EntitlementRow = {
   invoiceUsed: number;
@@ -132,19 +137,139 @@ export async function ownerCanUseAiAbeScan(
   return ownerHasFreeAbeScanRemaining(ownerUserId);
 }
 
-export type FreeOcrScanConsumeResult =
-  | { ok: true; consumed: false }
-  | { ok: false; code: "free_scan_exhausted" | "quota_unavailable" };
+export function parseScanSessionId(
+  raw: FormData | string | null | undefined,
+): string | null {
+  const value =
+    raw instanceof FormData
+      ? String(raw.get("scanSessionId") ?? "").trim()
+      : raw?.trim() ?? "";
+  if (!value) return null;
+  const parsed = scanSessionIdSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+export function freeScanKindForDocumentType(
+  documentType?: OcrDocumentType,
+): FreeScanKind | null {
+  if (documentType === "invoice") return "invoice";
+  if (documentType === "abe") return "abe";
+  return null;
+}
+
+export type BeginFreeScanSessionResult =
+  | { ok: true; sessionId: string; started: boolean }
+  | { ok: false; code: "free_scan_exhausted" | "quota_unavailable" | "invalid_session" };
+
+export async function validateFreeScanSession(
+  sessionId: string,
+  ownerUserId: string,
+  vehicleId: string,
+  kind: FreeScanKind,
+): Promise<boolean> {
+  if (!sessionId || !ownerUserId || !vehicleId || !isSupabaseAdminConfigured()) {
+    return false;
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("validate_free_scan_session", {
+    p_session_id: sessionId,
+    p_user_id: ownerUserId,
+    p_vehicle_id: vehicleId,
+    p_kind: kind,
+  });
+
+  if (error) {
+    console.error("[free-scan] validate session failed", error.message);
+    return false;
+  }
+
+  return data === true;
+}
 
 /**
- * Verify a complimentary scan is still available before OCR starts.
- * Quota is consumed only on successful document save — not here.
+ * Begin or reuse a complimentary OCR session. Consumes quota atomically on first begin.
+ */
+export async function beginFreeScanSession(
+  ownerUserId: string,
+  kind: FreeScanKind,
+  vehicleId: string,
+  existingSessionId?: string | null,
+): Promise<BeginFreeScanSessionResult> {
+  if (!ownerUserId || !vehicleId || !isSupabaseAdminConfigured()) {
+    return { ok: false, code: "quota_unavailable" };
+  }
+
+  if (await userHasActiveMembership(ownerUserId)) {
+    return { ok: false, code: "quota_unavailable" };
+  }
+
+  const admin = createAdminClient();
+  const parsedExisting = existingSessionId
+    ? scanSessionIdSchema.safeParse(existingSessionId)
+    : null;
+
+  if (parsedExisting?.success) {
+    const valid = await validateFreeScanSession(
+      parsedExisting.data,
+      ownerUserId,
+      vehicleId,
+      kind,
+    );
+    if (valid) {
+      return { ok: true, sessionId: parsedExisting.data, started: false };
+    }
+    return { ok: false, code: "invalid_session" };
+  }
+
+  const { data, error } = await admin.rpc("begin_free_scan_session", {
+    p_user_id: ownerUserId,
+    p_kind: kind,
+    p_vehicle_id: vehicleId,
+    p_session_id: null,
+  });
+
+  if (error) {
+    console.error("[free-scan] begin session failed", error.message);
+    return { ok: false, code: "quota_unavailable" };
+  }
+
+  if (typeof data !== "string" || !data) {
+    const row = await loadEntitlementRow(ownerUserId);
+    if (row.loadError) {
+      return { ok: false, code: "quota_unavailable" };
+    }
+    const limit =
+      kind === "invoice" ? FREE_AI_INVOICE_SCAN_LIMIT : FREE_AI_ABE_SCAN_LIMIT;
+    const used = kind === "invoice" ? row.invoiceUsed : row.abeUsed;
+    if (used >= limit) {
+      return { ok: false, code: "free_scan_exhausted" };
+    }
+    return { ok: false, code: "quota_unavailable" };
+  }
+
+  return { ok: true, sessionId: data, started: true };
+}
+
+export function withScanSessionId<T extends Record<string, unknown>>(
+  body: T,
+  scanSessionId?: string,
+): T & { scanSessionId?: string } {
+  if (!scanSessionId) return body;
+  return { ...body, scanSessionId };
+}
+
+/**
+ * @deprecated Replaced by beginFreeScanSession in requireVehicleOcrAccess.
  */
 export async function tryConsumeFreeOcrScanForOwner(
   ownerUserId: string,
   gateOptions: FreeScanGateOptions,
   documentType?: OcrDocumentType,
-): Promise<FreeOcrScanConsumeResult> {
+): Promise<
+  | { ok: true; consumed: false }
+  | { ok: false; code: "free_scan_exhausted" | "quota_unavailable" }
+> {
   if (!ownerUserId) {
     return { ok: false, code: "quota_unavailable" };
   }
@@ -157,24 +282,22 @@ export async function tryConsumeFreeOcrScanForOwner(
     return { ok: true, consumed: false };
   }
 
-  const needsInvoice =
-    gateOptions.allowFreeInvoiceScan === true && documentType === "invoice";
-  const needsAbe =
-    gateOptions.allowFreeAbeScan === true && documentType === "abe";
+  const kind = freeScanKindForDocumentType(documentType);
+  if (!kind) return { ok: true, consumed: false };
 
-  if (!needsInvoice && !needsAbe) {
+  if (
+    (kind === "invoice" && gateOptions.allowFreeInvoiceScan !== true) ||
+    (kind === "abe" && gateOptions.allowFreeAbeScan !== true)
+  ) {
     return { ok: true, consumed: false };
   }
 
-  if (needsInvoice) {
+  if (kind === "invoice") {
     if (await ownerHasFreeInvoiceScanRemaining(ownerUserId)) {
       return { ok: true, consumed: false };
     }
-
     const row = await loadEntitlementRow(ownerUserId);
-    if (row.loadError) {
-      return { ok: false, code: "quota_unavailable" };
-    }
+    if (row.loadError) return { ok: false, code: "quota_unavailable" };
     if (row.invoiceUsed >= FREE_AI_INVOICE_SCAN_LIMIT) {
       return { ok: false, code: "free_scan_exhausted" };
     }
@@ -184,21 +307,15 @@ export async function tryConsumeFreeOcrScanForOwner(
   if (await ownerHasFreeAbeScanRemaining(ownerUserId)) {
     return { ok: true, consumed: false };
   }
-
   const row = await loadEntitlementRow(ownerUserId);
-  if (row.loadError) {
-    return { ok: false, code: "quota_unavailable" };
-  }
+  if (row.loadError) return { ok: false, code: "quota_unavailable" };
   if (row.abeUsed >= FREE_AI_ABE_SCAN_LIMIT) {
     return { ok: false, code: "free_scan_exhausted" };
   }
   return { ok: false, code: "quota_unavailable" };
 }
 
-/**
- * Atomically consume one free invoice scan slot for the owner.
- * Returns false when the limit is already reached.
- */
+/** Legacy direct consume — prefer session flow for OCR + upload. */
 export async function consumeFreeInvoiceScan(
   ownerUserId: string,
 ): Promise<boolean> {
@@ -218,10 +335,7 @@ export async function consumeFreeInvoiceScan(
   return data === true;
 }
 
-/**
- * Atomically consume one free ABE scan slot for the owner.
- * Returns false when the limit is already reached.
- */
+/** Legacy direct consume — prefer session flow for OCR + upload. */
 export async function consumeFreeAbeScan(
   ownerUserId: string,
 ): Promise<boolean> {

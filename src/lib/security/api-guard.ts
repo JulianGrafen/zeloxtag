@@ -20,6 +20,14 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 
 type RateBucket = keyof typeof RATE_LIMITS;
 
+const FAIL_CLOSED_RATE_BUCKETS = new Set<RateBucket>([
+  "auth",
+  "membershipClaim",
+  "ocr",
+  "upload",
+  "tagMint",
+]);
+
 export function rateLimitResponse(result: RateLimitResult): NextResponse {
   return NextResponse.json(
     {
@@ -58,9 +66,9 @@ export async function enforceRateLimit(
     return null;
   } catch (error) {
     console.error("[api-guard] rate limit failed", error);
-    // Credential-bearing buckets fail closed: an outage must not turn into an
-    // unlimited brute-force window. Public reads stay available.
-    if (bucket === "auth" || bucket === "membershipClaim") {
+    // Cost- and credential-bearing buckets fail closed: an outage must not
+    // turn into unlimited OCR spend or brute-force windows.
+    if (FAIL_CLOSED_RATE_BUCKETS.has(bucket)) {
       return rateLimitResponse({
         ok: false,
         remaining: 0,

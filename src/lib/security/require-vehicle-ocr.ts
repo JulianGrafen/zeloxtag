@@ -5,7 +5,13 @@ import {
   getVehicleWriteAccess,
   writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
-import { tryConsumeFreeOcrScanForOwner } from "@/lib/billing/free-scan-quota";
+import {
+  beginFreeScanSession,
+  freeScanKindForDocumentType,
+  parseScanSessionId,
+  validateFreeScanSession,
+} from "@/lib/billing/free-scan-quota";
+import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { MEMBERSHIP_REQUIRED_MESSAGE } from "@/lib/billing/pro-plan";
 import {
   FEATURE,
@@ -28,15 +34,34 @@ function ocrGateOptions(documentType?: OcrDocumentType): FeatureGateOptions {
   return {};
 }
 
+function complimentaryGateEnabled(
+  gateOptions: FeatureGateOptions,
+  kind: ReturnType<typeof freeScanKindForDocumentType>,
+): boolean {
+  if (kind === "invoice") return gateOptions.allowFreeInvoiceScan === true;
+  if (kind === "abe") return gateOptions.allowFreeAbeScan === true;
+  return false;
+}
+
+export type VehicleOcrAccessSuccess = {
+  ok: true;
+  vehicleId: string;
+  ownerUserId: string;
+  scanSessionId?: string;
+  freeScanSessionStarted?: boolean;
+};
+
+export type VehicleOcrAccessResult =
+  | VehicleOcrAccessSuccess
+  | { ok: false; response: NextResponse };
+
 export async function requireVehicleOcrAccess(
   userId: string,
   vehicleIdRaw: string,
   feature: FeatureFlag = FEATURE.SCAN_AI_RECEIPT,
   documentType?: OcrDocumentType,
-): Promise<
-  | { ok: true; vehicleId: string; ownerUserId: string }
-  | { ok: false; response: NextResponse }
-> {
+  scanSessionIdRaw?: string | null,
+): Promise<VehicleOcrAccessResult> {
   const parsed = vehicleIdSchema.safeParse(vehicleIdRaw.trim());
   if (!parsed.success) {
     return {
@@ -85,10 +110,23 @@ export async function requireVehicleOcrAccess(
   }
 
   const gateOptions = ocrGateOptions(documentType);
+  const freeKind = freeScanKindForDocumentType(documentType);
+  const existingSessionId = parseScanSessionId(scanSessionIdRaw);
+  const hasValidatedSession =
+    Boolean(freeKind && existingSessionId) &&
+    (await validateFreeScanSession(
+      existingSessionId!,
+      access.ownerUserId,
+      parsed.data,
+      freeKind!,
+    ));
+
   const featureCheck = await assertVehicleDocumentWrite(
     access,
     feature,
-    gateOptions,
+    hasValidatedSession
+      ? { ...gateOptions, validatedFreeScanSession: true }
+      : gateOptions,
   );
   if (!featureCheck.ok) {
     return {
@@ -100,31 +138,71 @@ export async function requireVehicleOcrAccess(
     };
   }
 
-  const consume = await tryConsumeFreeOcrScanForOwner(
-    access.ownerUserId,
-    gateOptions,
-    documentType,
-  );
-  if (!consume.ok) {
-    if (consume.code === "free_scan_exhausted") {
+  const needsFreeSession =
+    freeKind &&
+    complimentaryGateEnabled(gateOptions, freeKind) &&
+    !(await userHasActiveMembership(access.ownerUserId));
+
+  if (needsFreeSession && freeKind) {
+    if (hasValidatedSession && existingSessionId) {
+      return {
+        ok: true,
+        vehicleId: parsed.data,
+        ownerUserId: access.ownerUserId,
+        scanSessionId: existingSessionId,
+        freeScanSessionStarted: false,
+      };
+    }
+
+    const session = await beginFreeScanSession(
+      access.ownerUserId,
+      freeKind,
+      parsed.data,
+      null,
+    );
+
+    if (!session.ok) {
+      if (session.code === "free_scan_exhausted") {
+        return {
+          ok: false,
+          response: subscriptionRequiredResponse(
+            MEMBERSHIP_REQUIRED_MESSAGE,
+            FREE_SCAN_EXHAUSTED_CODE,
+          ),
+        };
+      }
+      if (session.code === "invalid_session") {
+        return {
+          ok: false,
+          response: NextResponse.json(
+            {
+              ok: false,
+              error: "Scan-Sitzung abgelaufen. Bitte erneut starten.",
+              code: "bad_request",
+            },
+            { status: 400 },
+          ),
+        };
+      }
       return {
         ok: false,
-        response: subscriptionRequiredResponse(
-          MEMBERSHIP_REQUIRED_MESSAGE,
-          FREE_SCAN_EXHAUSTED_CODE,
+        response: NextResponse.json(
+          {
+            ok: false,
+            error: "Gratis-Scan-Kontingent konnte nicht geprüft werden.",
+            code: "config",
+          },
+          { status: 503 },
         ),
       };
     }
+
     return {
-      ok: false,
-      response: NextResponse.json(
-        {
-          ok: false,
-          error: "Gratis-Scan-Kontingent konnte nicht geprüft werden.",
-          code: "config",
-        },
-        { status: 503 },
-      ),
+      ok: true,
+      vehicleId: parsed.data,
+      ownerUserId: access.ownerUserId,
+      scanSessionId: session.sessionId,
+      freeScanSessionStarted: session.started,
     };
   }
 
@@ -133,4 +211,20 @@ export async function requireVehicleOcrAccess(
     vehicleId: parsed.data,
     ownerUserId: access.ownerUserId,
   };
+}
+
+/** Parse vehicle + session ids from multipart OCR requests. */
+export function ocrAccessFromFormData(
+  formData: FormData,
+  userId: string,
+  feature: FeatureFlag,
+  documentType?: OcrDocumentType,
+): Promise<VehicleOcrAccessResult> {
+  return requireVehicleOcrAccess(
+    userId,
+    String(formData.get("vehicleId") ?? ""),
+    feature,
+    documentType,
+    parseScanSessionId(formData),
+  );
 }

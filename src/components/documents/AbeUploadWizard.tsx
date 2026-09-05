@@ -33,6 +33,10 @@ import {
   selectedVerkaufsbezeichnungPayload,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import {
+  appendScanSessionId,
+  readScanSessionId,
+} from "@/lib/billing/scan-session-client";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
@@ -64,6 +68,7 @@ interface WizardState {
   vehiclesExtraction: AbeWizardVehiclesExtraction | null;
   report: AbeWizardReport | null;
   uploadFile: File | null;
+  scanSessionId: string | null;
   error: string | null;
 }
 
@@ -122,15 +127,17 @@ async function callAbeStep<T>(
   file: File,
   step: string,
   label: string,
-): Promise<T> {
+  scanSessionId?: string | null,
+): Promise<{ extraction: T; scanSessionId?: string }> {
   const body = new FormData();
   body.set("vehicleId", vehicleId);
   body.set("file", file);
   body.set("step", step);
+  appendScanSessionId(body, scanSessionId);
 
   const response = await fetch("/api/ocr/abe", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
-    | { ok: true; extraction: T }
+    | { ok: true; extraction: T; scanSessionId?: string }
     | { ok: false; error?: string }
     | null;
 
@@ -141,17 +148,50 @@ async function callAbeStep<T>(
         : `${label} fehlgeschlagen (${response.status}).`,
     );
   }
-  return (payload as { ok: true; extraction: T }).extraction;
+  return {
+    extraction: payload.extraction,
+    scanSessionId: readScanSessionId(payload),
+  };
 }
 
-const fetchCoverExtraction = (vehicleId: string, f: File) =>
-  callAbeStep<AbeWizardCoverExtraction>(vehicleId, f, "cover", "Deckblatt-Analyse");
+const fetchCoverExtraction = (
+  vehicleId: string,
+  f: File,
+  scanSessionId?: string | null,
+) =>
+  callAbeStep<AbeWizardCoverExtraction>(
+    vehicleId,
+    f,
+    "cover",
+    "Deckblatt-Analyse",
+    scanSessionId,
+  );
 
-const fetchMainExtraction = (vehicleId: string, f: File) =>
-  callAbeStep<AbeWizardMainExtraction>(vehicleId, f, "main", "Hauptseite-Analyse");
+const fetchMainExtraction = (
+  vehicleId: string,
+  f: File,
+  scanSessionId?: string | null,
+) =>
+  callAbeStep<AbeWizardMainExtraction>(
+    vehicleId,
+    f,
+    "main",
+    "Hauptseite-Analyse",
+    scanSessionId,
+  );
 
-const fetchVehiclesExtraction = (vehicleId: string, f: File) =>
-  callAbeStep<AbeWizardVehiclesExtraction>(vehicleId, f, "vehicles", "Fahrzeugtabellen-Analyse");
+const fetchVehiclesExtraction = (
+  vehicleId: string,
+  f: File,
+  scanSessionId?: string | null,
+) =>
+  callAbeStep<AbeWizardVehiclesExtraction>(
+    vehicleId,
+    f,
+    "vehicles",
+    "Fahrzeugtabellen-Analyse",
+    scanSessionId,
+  );
 
 async function buildUploadFile(
   coverFile: File | null,
@@ -574,6 +614,7 @@ export function AbeUploadWizard({
     vehiclesExtraction: null,
     report: null,
     uploadFile: null,
+    scanSessionId: null,
     error: null,
   });
 
@@ -628,6 +669,7 @@ export function AbeUploadWizard({
       vehiclesExtraction: null,
       report: null,
       uploadFile: null,
+      scanSessionId: null,
       error: null,
     });
     setSaveError(null);
@@ -692,17 +734,31 @@ export function AbeUploadWizard({
     reuseMain?: AbeWizardMainExtraction | null;
   }) {
     try {
-      const [coverResult, mainResult, vehiclesResult] = await Promise.all([
+      let scanSessionId: string | null = null;
+
+      let mainResult: AbeWizardMainExtraction | null = reuseMain;
+      if (reuseMain === null && mainFile) {
+        const mainCall = await fetchMainExtraction(vehicleId, mainFile, scanSessionId);
+        mainResult = mainCall.extraction;
+        scanSessionId = mainCall.scanSessionId ?? scanSessionId;
+      }
+
+      const [coverCall, vehiclesCall] = await Promise.all([
         reuseCover
-          ? Promise.resolve(reuseCover)
-          : fetchCoverExtraction(vehicleId, coverFile),
-        reuseMain !== null
-          ? Promise.resolve(reuseMain)
-          : mainFile
-            ? fetchMainExtraction(vehicleId, mainFile)
-            : Promise.resolve(null),
-        fetchVehiclesExtraction(vehicleId, vehiclesFile),
+          ? Promise.resolve<{
+              extraction: AbeWizardCoverExtraction;
+              scanSessionId?: string;
+            }>({ extraction: reuseCover })
+          : fetchCoverExtraction(vehicleId, coverFile, scanSessionId),
+        fetchVehiclesExtraction(vehicleId, vehiclesFile, scanSessionId),
       ]);
+      scanSessionId =
+        vehiclesCall.scanSessionId ??
+        coverCall.scanSessionId ??
+        scanSessionId;
+
+      const coverResult = coverCall.extraction;
+      const vehiclesResult = vehiclesCall.extraction;
 
       const report = mergeAbeWizardSteps(coverResult, mainResult, vehiclesResult);
 
@@ -714,6 +770,7 @@ export function AbeUploadWizard({
         vehiclesExtraction: vehiclesResult,
         report,
         uploadFile: null,
+        scanSessionId,
         error: null,
       }));
     } catch (err) {
@@ -839,6 +896,7 @@ export function AbeUploadWizard({
         }),
       );
       formData.set("file", uploadFile);
+      appendScanSessionId(formData, state.scanSessionId);
 
       const result = await uploadDocument(formData);
       if (isActionFailure(result)) {

@@ -12,6 +12,7 @@ import {
   logServerError,
   publicClientMessage,
 } from "@/lib/security/public-error";
+import { withScanSessionId } from "@/lib/billing/free-scan-quota";
 import { requireVehicleOcrAccess } from "@/lib/security/require-vehicle-ocr";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import {
@@ -30,6 +31,7 @@ const requestSchema = z
     vehicleId: z.string().uuid(),
     rawText: z.string().trim().min(8).max(MAX_RAW_TEXT_CHARS),
     vehicleContext: AbeVehicleContextSchema.optional().nullable(),
+    scanSessionId: z.string().uuid().optional(),
   })
   .strict();
 
@@ -94,6 +96,7 @@ export async function POST(request: NextRequest) {
       parsedBody.data.vehicleId,
       FEATURE.SCAN_AI_RECEIPT,
       "abe",
+      parsedBody.data.scanSessionId ?? null,
     );
     if (!vehicleAccess.ok) return vehicleAccess.response;
 
@@ -113,7 +116,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body: ParseAbeSuccess = { ok: true, fields };
-    return NextResponse.json(body, { status: 200 });
+    return NextResponse.json(
+      withScanSessionId(body, vehicleAccess.scanSessionId),
+      { status: 200 },
+    );
   } catch (error) {
     logServerError("[api/ocr/parse-abe] unexpected", error);
     return jsonError(
