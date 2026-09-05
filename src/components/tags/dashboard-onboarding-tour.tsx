@@ -19,6 +19,7 @@ type DashboardOnboardingTourProps = {
   /** First registration after claim (`?tour=1` or pending tour cookie). */
   force?: boolean;
   onSettled?: () => void;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /**
@@ -30,6 +31,7 @@ export function DashboardOnboardingTour({
   role,
   force = false,
   onSettled,
+  onOpenChange,
 }: DashboardOnboardingTourProps) {
   const [open, setOpen] = useState(false);
   const [forceTour, setForceTour] = useState(force);
@@ -70,6 +72,10 @@ export function DashboardOnboardingTour({
       timers.forEach((id) => window.clearTimeout(id));
     };
   }, [enabled, catalog, forceTour]);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   async function finish() {
     markDashboardTourCompleted();

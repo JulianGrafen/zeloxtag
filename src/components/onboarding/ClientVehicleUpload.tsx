@@ -11,12 +11,14 @@ import {
 import { Camera, ImagePlus, Loader2, SkipForward } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { PromptCloseButton } from "@/components/ui/prompt-close-button";
 import {
   compressSilhouetteImage,
   SilhouetteCompressionError,
 } from "@/lib/vehicles/compress-silhouette-image";
 import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
 import { fileToPreviewDataUrl } from "@/lib/vehicles/silhouette-preview-session";
+import { cn } from "@/lib/utils";
 
 export type SilhouetteUploadResult = {
   /** Relative storage path `{vehicleId}/silhouette.png` (DB source of truth). */
@@ -34,6 +36,8 @@ export type ClientVehicleUploadProps = {
   tagUuid: string;
   onUploaded?: (result: SilhouetteUploadResult) => void;
   onSkip?: () => void;
+  /** Top-right dismiss (same as skip when provided). */
+  onDismiss?: () => void;
   skipLabel?: string;
   title?: string;
   description?: string;
@@ -217,6 +221,7 @@ export function ClientVehicleUpload({
   tagUuid,
   onUploaded,
   onSkip,
+  onDismiss,
   skipLabel = "Später",
   title = "Fahrzeugfoto",
   description = "Lade ein Foto deines Autos hoch — es erscheint oben rechts in deinem Dashboard.",
@@ -337,9 +342,20 @@ export function ClientVehicleUpload({
 
   return (
     <section
-      className={`rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim()}
+      className={`relative rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim()}
     >
-      <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+      {onDismiss ? (
+        <PromptCloseButton
+          onClick={onDismiss}
+          label="Foto-Hinweis schließen"
+        />
+      ) : null}
+      <h2
+        className={cn(
+          "font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]",
+          onDismiss ? "pr-10" : undefined,
+        )}
+      >
         {title}
       </h2>
       <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">

@@ -35,6 +35,11 @@ import {
   readSilhouetteFromSession,
   writeSilhouetteToSession,
 } from "@/lib/vehicles/silhouette-session";
+import {
+  DASHBOARD_FAB_CLEARANCE,
+  resetDashboardPromptOrchestrator,
+  setDashboardPromptPhase,
+} from "@/lib/ui/dashboard-prompt-orchestrator";
 import type { Document, Vehicle } from "@/types/database";
 
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
@@ -43,6 +48,26 @@ import { TagDashboardView } from "./tag-dashboard-view";
 function silhouetteSkipKey(vehicleId: string): string {
   return `zlx-silhouette-skip:${vehicleId}`;
 }
+
+function readSilhouetteSkipped(vehicleId: string): boolean {
+  try {
+    return window.localStorage.getItem(silhouetteSkipKey(vehicleId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistSilhouetteSkipped(vehicleId: string): void {
+  try {
+    window.localStorage.setItem(silhouetteSkipKey(vehicleId), "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+const SILHOUETTE_PROMPT_DELAY_MS = 700;
+const PWA_AFTER_SILHOUETTE_MS = 900;
+const PWA_ALONE_DELAY_MS = 1_600;
 
 function initialSilhouetteStorageUrl(vehicle: Vehicle): string | null {
   const fromServer = vehicle.silhouette_image_url?.trim();
@@ -165,8 +190,10 @@ export function TagDashboardShell({
     freeAbeScanRemaining,
   );
   const [scanType, setScanType] = useState<ScanType | null>(null);
-  const [showSilhouettePrompt, setShowSilhouettePrompt] = useState(false);
+  const [silhouettePromptVisible, setSilhouettePromptVisible] = useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
+  const promptTimersRef = useRef<number[]>([]);
+  const postTourSequenceHandledRef = useRef(false);
   const [deferSilhouetteForTour, setDeferSilhouetteForTour] = useState(
     Boolean(startTour),
   );
@@ -270,6 +297,64 @@ export function TagDashboardShell({
     silhouette_image_url: silhouetteStorageUrl,
   };
   const hasSilhouette = Boolean(silhouetteStorageUrl?.trim());
+  const wantsSilhouettePrompt =
+    isOwner &&
+    !hasSilhouette &&
+    !demoShowcase &&
+    !readSilhouetteSkipped(vehicle.id);
+
+  function clearPromptTimers() {
+    promptTimersRef.current.forEach((id) => window.clearTimeout(id));
+    promptTimersRef.current = [];
+  }
+
+  function schedulePrompt(task: () => void, delayMs: number) {
+    const id = window.setTimeout(task, delayMs);
+    promptTimersRef.current.push(id);
+  }
+
+  function schedulePwaPrompt(delayMs = PWA_ALONE_DELAY_MS) {
+    schedulePrompt(() => {
+      setSilhouettePromptVisible(false);
+      setDashboardPromptPhase("pwa");
+    }, delayMs);
+  }
+
+  function scheduleSilhouettePrompt(delayMs = SILHOUETTE_PROMPT_DELAY_MS) {
+    schedulePrompt(() => {
+      setDashboardPromptPhase("silhouette");
+      setSilhouettePromptVisible(true);
+    }, delayMs);
+  }
+
+  function dismissSilhouettePrompt(persistSkip = false) {
+    if (persistSkip) {
+      persistSilhouetteSkipped(vehicle.id);
+    }
+    setSilhouettePromptVisible(false);
+    schedulePwaPrompt(PWA_AFTER_SILHOUETTE_MS);
+  }
+
+  function handleTourOpenChange(open: boolean) {
+    if (!open) return;
+    clearPromptTimers();
+    setDashboardPromptPhase("tour");
+    setSilhouettePromptVisible(false);
+  }
+
+  function handleTourSettled() {
+    setDeferSilhouetteForTour(false);
+    setForceTour(false);
+    postTourSequenceHandledRef.current = true;
+    clearPromptTimers();
+
+    if (wantsSilhouettePrompt) {
+      scheduleSilhouettePrompt(SILHOUETTE_PROMPT_DELAY_MS);
+      return;
+    }
+
+    schedulePwaPrompt(PWA_ALONE_DELAY_MS);
+  }
 
   /**
    * Sync from server only when the stored Supabase URL actually changed
@@ -361,24 +446,68 @@ export function TagDashboardShell({
   }, [vehicle.id, silhouetteStorageUrl]);
 
   useEffect(() => {
+    postTourSequenceHandledRef.current = false;
+  }, [vehicle.id]);
+
+  useEffect(() => {
+    if (mode !== "dashboard" || !canWrite) {
+      clearPromptTimers();
+      resetDashboardPromptOrchestrator();
+      setSilhouettePromptVisible(false);
+      return;
+    }
+
+    if (forceTour || deferSilhouetteForTour) {
+      setDashboardPromptPhase("tour");
+      return () => {
+        clearPromptTimers();
+      };
+    }
+
+    if (postTourSequenceHandledRef.current) {
+      return () => {
+        clearPromptTimers();
+        resetDashboardPromptOrchestrator();
+      };
+    }
+
+    clearPromptTimers();
+    if (wantsSilhouettePrompt) {
+      scheduleSilhouettePrompt(SILHOUETTE_PROMPT_DELAY_MS);
+    } else {
+      schedulePwaPrompt(PWA_ALONE_DELAY_MS);
+    }
+
+    return () => {
+      clearPromptTimers();
+      resetDashboardPromptOrchestrator();
+    };
+  }, [
+    mode,
+    canWrite,
+    forceTour,
+    deferSilhouetteForTour,
+    wantsSilhouettePrompt,
+    vehicle.id,
+  ]);
+
+  useEffect(() => {
     if (
       !isOwner ||
       hasSilhouette ||
       demoShowcase ||
-      deferSilhouetteForTour
+      deferSilhouetteForTour ||
+      forceTour
     ) {
-      setShowSilhouettePrompt(false);
-      return;
+      setSilhouettePromptVisible(false);
     }
-    try {
-      const skipped = window.localStorage.getItem(
-        silhouetteSkipKey(vehicle.id),
-      );
-      setShowSilhouettePrompt(!skipped);
-    } catch {
-      setShowSilhouettePrompt(true);
-    }
-  }, [isOwner, vehicle.id, hasSilhouette, demoShowcase, deferSilhouetteForTour]);
+  }, [
+    isOwner,
+    hasSilhouette,
+    demoShowcase,
+    deferSilhouetteForTour,
+    forceTour,
+  ]);
 
   if (!canWrite) {
     return null;
@@ -487,7 +616,7 @@ export function TagDashboardShell({
         onEditVehicleImage={
           isOwner && !demoShowcase
             ? () => {
-                setShowSilhouettePrompt(false);
+                setSilhouettePromptVisible(false);
                 setShowSilhouetteEditor(true);
               }
             : undefined
@@ -496,26 +625,22 @@ export function TagDashboardShell({
         previewFallbackUrl={previewFallbackUrl}
         onSilhouetteProxyLoad={handleSilhouetteProxyLoad}
       />
-      {showSilhouettePrompt && mode === "dashboard" && !showSilhouetteEditor ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+      {silhouettePromptVisible && mode === "dashboard" && !showSilhouetteEditor ? (
+        <div
+          className="fixed inset-x-0 z-40 mx-auto max-w-lg px-4 pt-2"
+          style={{ bottom: DASHBOARD_FAB_CLEARANCE }}
+        >
           <VehicleSilhouetteUpload
             vehicleId={vehicle.id}
             tagUuid={tagUuid}
+            title="Bilder hinzufügen"
+            description="Lade ein Foto deines Autos hoch — es erscheint oben im Dashboard."
             onUploaded={(result) => {
               handleSilhouetteUploaded(result);
-              setShowSilhouettePrompt(false);
+              dismissSilhouettePrompt(true);
             }}
-            onSkip={() => {
-              try {
-                window.localStorage.setItem(
-                  silhouetteSkipKey(vehicle.id),
-                  "1",
-                );
-              } catch {
-                /* ignore quota / private mode */
-              }
-              setShowSilhouettePrompt(false);
-            }}
+            onSkip={() => dismissSilhouettePrompt(true)}
+            onDismiss={() => dismissSilhouettePrompt(true)}
           />
         </div>
       ) : null}
@@ -537,6 +662,7 @@ export function TagDashboardShell({
               title="Fahrzeugfoto ändern"
               description="Neues Foto aus Galerie oder Kamera — es erscheint oben rechts in deinem Dashboard."
               skipLabel="Schließen"
+              onDismiss={() => setShowSilhouetteEditor(false)}
               onUploaded={(result) => {
                 handleSilhouetteUploaded(result);
                 setShowSilhouetteEditor(false);
@@ -550,11 +676,12 @@ export function TagDashboardShell({
         enabled={
           mode === "dashboard" &&
           !showSilhouetteEditor &&
-          (forceTour || !showSilhouettePrompt)
+          (forceTour || deferSilhouetteForTour)
         }
         role={isOwner ? "owner" : "contributor"}
         force={forceTour}
-        onSettled={() => setDeferSilhouetteForTour(false)}
+        onOpenChange={handleTourOpenChange}
+        onSettled={handleTourSettled}
       />
       <ProPaywallModal
         open={Boolean(paywallFeature)}

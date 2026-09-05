@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
+import {
+  getDashboardPromptSnapshot,
+  isVehicleDashboardPath,
+  subscribeDashboardPrompts,
+} from "@/lib/ui/dashboard-prompt-orchestrator";
 import {
   isAndroidDevice,
   isBeforeInstallPromptEvent,
@@ -28,8 +34,11 @@ export type UsePwaInstallResult = {
 };
 
 export function usePwaInstall(): UsePwaInstallResult {
+  const pathname = usePathname();
+  const onVehicleDashboard = isVehicleDashboardPath(pathname ?? "");
   const [isStandalone, setIsStandalone] = useState(true);
   const [dismissed, setDismissed] = useState(true);
+  const [orchestratorReady, setOrchestratorReady] = useState(!onVehicleDashboard);
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [platform, setPlatform] = useState<PwaInstallPlatform>(null);
@@ -68,6 +77,19 @@ export function usePwaInstall(): UsePwaInstallResult {
     };
   }, []);
 
+  useEffect(() => {
+    if (!onVehicleDashboard) {
+      setOrchestratorReady(true);
+      return;
+    }
+
+    const sync = () => {
+      setOrchestratorReady(getDashboardPromptSnapshot().pwaAllowed);
+    };
+    sync();
+    return subscribeDashboardPrompts(sync);
+  }, [onVehicleDashboard]);
+
   const dismiss = useCallback(() => {
     persistInstallDismissed();
     setDismissed(true);
@@ -87,7 +109,8 @@ export function usePwaInstall(): UsePwaInstallResult {
     !isStandalone &&
     !dismissed &&
     isMobileDevice() &&
-    (showIosGuide || showAndroidGuide);
+    (showIosGuide || showAndroidGuide) &&
+    orchestratorReady;
 
   return {
     visible,
