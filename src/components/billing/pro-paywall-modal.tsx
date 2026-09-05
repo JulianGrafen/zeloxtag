@@ -7,6 +7,7 @@ import { startStripeCheckoutAction } from "@/actions/stripe-checkout";
 import { ProPaywallContent } from "@/components/billing/paywall/pro-paywall-content";
 import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
+import { setPaywallOpen } from "@/lib/billing/paywall-open-state";
 import {
   PRO_PAYWALL_DISMISS_LABEL,
   PRO_PAYWALL_MODAL_MICROCOPY,
@@ -54,6 +55,12 @@ export function ProPaywallModal({
       document.body.style.overflow = previousOverflow;
     };
   }, [open]);
+
+  useEffect(() => {
+    const visible = open && Boolean(feature);
+    setPaywallOpen(visible);
+    return () => setPaywallOpen(false);
+  }, [open, feature]);
 
   if (!open || !feature) return null;
 

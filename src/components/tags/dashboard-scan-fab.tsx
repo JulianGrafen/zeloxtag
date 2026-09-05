@@ -5,6 +5,10 @@ import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import {
+  isPaywallOpen,
+  subscribePaywallOpen,
+} from "@/lib/billing/paywall-open-state";
 
 export interface DashboardScanCtaProps {
   tagUuid: string;
@@ -66,12 +70,20 @@ export function DashboardScanCta({
 /** Fixed bottom scan CTA with fade gradient (dashboard + document menus). */
 export function DashboardScanFab(props: DashboardScanCtaProps) {
   const [mounted, setMounted] = useState(false);
+  const [paywallOpen, setPaywallOpenState] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
+  useEffect(() => {
+    setPaywallOpenState(isPaywallOpen());
+    return subscribePaywallOpen(() => {
+      setPaywallOpenState(isPaywallOpen());
+    });
+  }, []);
+
+  if (!mounted || paywallOpen) {
     return null;
   }
 

@@ -49,7 +49,7 @@ export const PRO_PAYWALL_STICKY_MICROCOPY = PRO_TRIAL_NO_COMMITMENT;
 export const PRO_PAYWALL_MODAL_MICROCOPY = "Jederzeit kündbar";
 export const PRO_PAYWALL_DISMISS_LABEL = "Weiter mit ZeloxTag Free";
 export const PRO_MONTHLY_CARD_SUBLINE = "Jederzeit kündbar";
-export const PRO_ANNUAL_CARD_HIGHLIGHT = `Entspricht ${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat (2 Monate geschenkt)`;
+export const PRO_ANNUAL_CARD_HIGHLIGHT = `Entspricht ${PRO_PLAN_ANNUAL_WEEKLY_PRICE} pro Woche (2 Monate geschenkt)`;
 
 export const PRO_PAYWALL_MODAL_BENEFITS = [
   "Endlose KI-Scans: Rechnungen, ABEs & Gutachten in Sekunden verarbeitet",
