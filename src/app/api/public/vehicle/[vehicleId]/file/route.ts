@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
+import { isShowcaseGalleryDocument } from "@/lib/documents/showcase-gallery";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { enforceRateLimit } from "@/lib/security/api-guard";
@@ -112,7 +113,12 @@ export async function GET(
       const allowedShowcase =
         doc &&
         doc.show_on_public_showcase === true &&
-        isShowcaseModificationDocument(doc as Parameters<typeof isShowcaseModificationDocument>[0]);
+        (isShowcaseModificationDocument(
+          doc as Parameters<typeof isShowcaseModificationDocument>[0],
+        ) ||
+          isShowcaseGalleryDocument(
+            doc as Parameters<typeof isShowcaseGalleryDocument>[0],
+          ));
 
       if (!allowedShowcase) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });

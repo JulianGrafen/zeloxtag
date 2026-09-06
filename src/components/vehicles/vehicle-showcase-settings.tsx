@@ -22,6 +22,7 @@ type VehicleShowcaseSettingsProps = {
   tagUuid: string;
   vehicle: Vehicle;
   documents: Document[];
+  galleryPhotos: Document[];
   canEdit: boolean;
 };
 
@@ -169,6 +170,7 @@ export function VehicleShowcaseSettings({
   tagUuid,
   vehicle,
   documents,
+  galleryPhotos,
   canEdit,
 }: VehicleShowcaseSettingsProps) {
   const { invoices, modifications } = useMemo(
@@ -344,6 +346,7 @@ export function VehicleShowcaseSettings({
       <ShowcaseMediaSettings
         tagUuid={tagUuid}
         vehicle={vehicle}
+        galleryPhotos={galleryPhotos}
         canEdit={canEdit}
         isPublic={isPublic}
       />

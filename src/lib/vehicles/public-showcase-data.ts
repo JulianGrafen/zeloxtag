@@ -1,6 +1,9 @@
 import {
   filterManualVehicleEntries,
 } from "@/lib/documents/manual-entries";
+import {
+  filterShowcaseGalleryDocuments,
+} from "@/lib/documents/showcase-gallery";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { resolvePublicDynoChartHref } from "@/lib/vehicles/dyno-chart-constants";
 import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
@@ -96,6 +99,18 @@ function publicGalleryProxyUrl(vehicleId: string, src: string): string {
   return `/api/public/vehicle/${vehicleId}/file?${params.toString()}`;
 }
 
+function publicGalleryPhotoSrc(vehicleId: string, fileUrl: string): string | null {
+  if (
+    !fileUrl ||
+    fileUrl.startsWith("mock://") ||
+    fileUrl.startsWith("manual://")
+  ) {
+    return null;
+  }
+  if (documentMediaKind(fileUrl) !== "image") return null;
+  return publicGalleryProxyUrl(vehicleId, fileUrl);
+}
+
 function collectGalleryPhotos(
   vehicle: Vehicle,
   documents: Document[],
@@ -127,13 +142,22 @@ function collectGalleryPhotos(
 
   const publicDocs = filterPublicShowcaseDocuments(documents);
 
+  for (const entry of filterShowcaseGalleryDocuments(publicDocs)) {
+    const src = publicGalleryPhotoSrc(vehicle.id, entry.file_url);
+    if (!src || seen.has(src)) continue;
+    seen.add(src);
+    photos.push({
+      id: entry.id,
+      src,
+      alt: entry.title || "Galerie",
+    });
+  }
+
   for (const entry of filterManualVehicleEntries(publicDocs)) {
     if (!isShowcaseModificationDocument(entry)) continue;
-    if (documentMediaKind(entry.file_url) !== "image") continue;
-    if (!entry.file_url.startsWith("http")) continue;
 
-    const src = publicGalleryProxyUrl(vehicle.id, entry.file_url);
-    if (seen.has(src)) continue;
+    const src = publicGalleryPhotoSrc(vehicle.id, entry.file_url);
+    if (!src || seen.has(src)) continue;
     seen.add(src);
     photos.push({
       id: entry.id,

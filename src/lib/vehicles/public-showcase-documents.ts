@@ -3,6 +3,7 @@ import {
   isTuningLikeCategory,
   parseManualEntryCategory,
 } from "@/lib/documents/manual-entries";
+import { isShowcaseGalleryDocument } from "@/lib/documents/showcase-gallery";
 import type { Document } from "@/types/database";
 
 export function isPublicShowcaseDocument(doc: Document): boolean {
@@ -29,6 +30,7 @@ export function listShowcaseSelectableDocuments(documents: Document[]): Document
   const selectable: Document[] = [];
 
   for (const doc of documents) {
+    if (isShowcaseGalleryDocument(doc)) continue;
     if (isShowcaseModificationDocument(doc) || doc.type === "invoice") {
       selectable.push(doc);
     }

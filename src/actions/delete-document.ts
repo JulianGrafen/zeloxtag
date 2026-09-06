@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
+import { isShowcaseGalleryDocument } from "@/lib/documents/showcase-gallery";
 import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
 import {
   getMockUploadedDocuments,
@@ -58,6 +59,7 @@ export async function deleteDocument(input: {
     revalidatePath(`/v/${tagUuid}/service`);
     revalidatePath(`/v/${tagUuid}/eintrag`);
     revalidatePath(`/v/${tagUuid}/umbauten`);
+    revalidatePath(`/v/${tagUuid}/einstellungen`);
     return { status: "deleted", documentId };
   }
 
@@ -81,12 +83,14 @@ export async function deleteDocument(input: {
     return { status: "error", message: "Dokument nicht gefunden." };
   }
 
-  const vault = isManualVehicleEntry(document)
-    ? await assertOwnerFeature(
-        ownership.userId,
-        FEATURE.ADD_MANUAL_SERVICE_ENTRY,
-      )
-    : await assertOwnerFeature(ownership.userId, FEATURE.DOCUMENT_VAULT);
+  const vault = isShowcaseGalleryDocument(document)
+    ? { ok: true as const }
+    : isManualVehicleEntry(document)
+      ? await assertOwnerFeature(
+          ownership.userId,
+          FEATURE.ADD_MANUAL_SERVICE_ENTRY,
+        )
+      : await assertOwnerFeature(ownership.userId, FEATURE.DOCUMENT_VAULT);
   if (!vault.ok) {
     return { status: "error", message: vault.message };
   }
@@ -112,5 +116,6 @@ export async function deleteDocument(input: {
   revalidatePath(`/v/${tagUuid}/service`);
   revalidatePath(`/v/${tagUuid}/eintrag`);
   revalidatePath(`/v/${tagUuid}/umbauten`);
+  revalidatePath(`/v/${tagUuid}/einstellungen`);
   return { status: "deleted", documentId };
 }

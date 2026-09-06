@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { VehicleSettingsView } from "@/components/vehicles/vehicle-settings-view";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
-import { userHasActiveMembership } from "@/lib/billing/membership-store";
+import { loadShowcaseGalleryDocuments } from "@/lib/documents/load-showcase-gallery";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { ownerHasFeature } from "@/lib/permissions/require-feature";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
@@ -17,7 +17,7 @@ interface VehicleSettingsPageProps {
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Einstellungen · ZeloxTag",
+    title: "Showcase · ZeloxTag",
     description: "Öffentlicher Showcase und Verkaufs-Exposé verwalten.",
   };
 }
@@ -38,14 +38,12 @@ export default async function VehicleSettingsPage({
   });
   const vehicle = result.vehicle!;
   const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(uuid);
-  const [expose, canUseExpose, membershipActive] = await Promise.all([
+  const [expose, canUseExpose, galleryPhotos] = await Promise.all([
     getOwnerExposeState(vehicle.id),
     isDemo
       ? Promise.resolve(true)
       : ownerHasFeature(vehicle.user_id, FEATURE.GENERATE_EXPOSE),
-    isDemo
-      ? Promise.resolve(true)
-      : userHasActiveMembership(vehicle.user_id),
+    loadShowcaseGalleryDocuments(vehicle.id),
   ]);
 
   return (
@@ -64,7 +62,7 @@ export default async function VehicleSettingsPage({
             Fahrzeug
           </p>
           <h1 className="font-[family-name:var(--font-display)] text-[1.65rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            Einstellungen
+            Showcase
           </h1>
           <p className="text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
             {vehicle.make} {vehicle.model}
@@ -77,9 +75,9 @@ export default async function VehicleSettingsPage({
           tagUuid={uuid}
           vehicle={vehicle}
           documents={result.documents}
+          galleryPhotos={galleryPhotos}
           canEdit={!isDemo}
           canUseExpose={canUseExpose}
-          membershipActive={membershipActive}
           exposeToken={expose.exposeToken}
           isExposeActive={expose.isExposeActive}
         />

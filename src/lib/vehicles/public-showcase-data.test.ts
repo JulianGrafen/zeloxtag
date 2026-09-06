@@ -323,4 +323,27 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.photos).toHaveLength(0);
     expect(payload.profile.heroImageSrc).toBeNull();
   });
+
+  it("includes showcase gallery photos in the public gallery", () => {
+    const documents: Document[] = [
+      baseInvoice({
+        id: "gallery-1",
+        type: "other",
+        title: "Galerie 1",
+        invoice_number: "__showcase_gallery__",
+        category: "showcase_gallery",
+        file_url: `${baseVehicle.id}/gallery-1-photo.jpg`,
+        line_items: null,
+        amount: null,
+        vendor: null,
+      }),
+    ];
+
+    const payload = buildPublicShowcasePayload(baseVehicle, documents);
+    expect(payload.photos).toHaveLength(1);
+    expect(payload.photos[0]?.id).toBe("gallery-1");
+    expect(payload.photos[0]?.src).toContain(
+      `/api/public/vehicle/${baseVehicle.id}/file`,
+    );
+  });
 });

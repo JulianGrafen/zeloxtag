@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
-import { ProPaywallSection } from "@/components/billing/pro-paywall-section";
 import { ExposeShareSettings } from "@/components/vehicles/ExposeShareSettings";
 import { VehicleShowcaseSettings } from "@/components/vehicles/vehicle-showcase-settings";
 import type { Document, Vehicle } from "@/types/database";
@@ -12,9 +11,9 @@ type VehicleSettingsViewProps = {
   tagUuid: string;
   vehicle: Vehicle;
   documents: Document[];
+  galleryPhotos: Document[];
   canEdit: boolean;
   canUseExpose?: boolean;
-  membershipActive?: boolean;
   exposeToken: string | null;
   isExposeActive: boolean;
 };
@@ -23,26 +22,19 @@ export function VehicleSettingsView({
   tagUuid,
   vehicle,
   documents,
+  galleryPhotos,
   canEdit,
   canUseExpose = true,
-  membershipActive = false,
   exposeToken,
   isExposeActive,
 }: VehicleSettingsViewProps) {
   return (
     <div className="flex flex-col gap-5">
-      {!membershipActive ? (
-        <ProPaywallSection
-          successPath={`/v/${tagUuid}/einstellungen`}
-          cancelPath={`/v/${tagUuid}/abo`}
-          dismissHref={`/v/${tagUuid}`}
-        />
-      ) : null}
-
       <VehicleShowcaseSettings
         tagUuid={tagUuid}
         vehicle={vehicle}
         documents={documents}
+        galleryPhotos={galleryPhotos}
         canEdit={canEdit}
       />
 
