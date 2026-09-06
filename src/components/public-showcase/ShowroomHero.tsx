@@ -43,7 +43,7 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
 
   return (
     <>
-      <header className="relative isolate min-h-[78dvh] overflow-hidden">
+      <header className="relative z-0 isolate min-h-[78dvh] overflow-hidden">
         <div className="absolute inset-0 bg-black" aria-hidden>
           {profile.heroImageSrc ? (
             <button
@@ -73,7 +73,7 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
             </button>
           ) : null}
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black via-black/55 to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[52%] bg-gradient-to-t from-black via-black/70 to-transparent"
             aria-hidden
           />
         </div>

@@ -38,7 +38,7 @@ export function ShowroomStats({ profile }: ShowroomStatsProps) {
   if (!power && !engine && !drive) return null;
 
   return (
-    <section className="-mt-5 px-4">
+    <section className="relative z-10 -mt-10 px-4">
       <div className="grid grid-cols-3 gap-2">
         <SpecCard
           label="Leistung"
