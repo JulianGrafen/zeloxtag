@@ -5,10 +5,17 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Gauge, Save } from "lucide-react";
 
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
+import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
+import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
 import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
+import {
+  clearSilhouetteFromSession,
+  writeSilhouetteToSession,
+} from "@/lib/vehicles/silhouette-session";
+import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 import {
   parseVehicleTechSpecs,
   VEHICLE_DRIVETRAIN_TYPES,
@@ -114,6 +121,9 @@ export function VehicleSpecsView({
   }
 
   const title = `${make.trim() || vehicle.make} ${model.trim() || vehicle.model}`;
+  const profilePhotoUrl = vehicle.silhouette_image_url?.trim()
+    ? silhouetteDisplayUrl(vehicle.id)
+    : null;
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -165,6 +175,39 @@ export function VehicleSpecsView({
           >
             Gespeichert.
           </p>
+        ) : null}
+
+        {canEdit ? (
+          <VehicleSilhouetteUpload
+            vehicleId={vehicle.id}
+            tagUuid={tagUuid}
+            initialDisplayUrl={profilePhotoUrl}
+            allowDelete
+            title="Fahrzeugbild"
+            description="Profilbild für dein Dashboard — erscheint auch im öffentlichen Showcase, wenn dein Profil aktiv ist."
+            onUploaded={(result: SilhouetteUploadResult) => {
+              writeSilhouetteToSession(vehicle.id, result.storageUrl);
+              router.refresh();
+            }}
+            onDeleted={() => {
+              clearSilhouetteFromSession(vehicle.id);
+              router.refresh();
+            }}
+          />
+        ) : profilePhotoUrl ? (
+          <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
+            <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+              Fahrzeugbild
+            </h2>
+            <div className="relative mx-auto mt-4 aspect-[4/3] w-full max-w-[14rem] overflow-hidden rounded-[1.1rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={profilePhotoUrl}
+                alt={`${title} Profilbild`}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          </section>
         ) : null}
 
         {canEdit ? (

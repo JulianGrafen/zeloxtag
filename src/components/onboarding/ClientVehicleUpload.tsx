@@ -39,7 +39,7 @@ export type ClientVehicleUploadProps = {
   initialDisplayUrl?: string | null;
   onUploaded?: (result: SilhouetteUploadResult) => void;
   onDeleted?: () => void;
-  /** Show remove control when a photo is present (Fahrzeugdaten). */
+  /** Show remove control when a photo is present. */
   allowDelete?: boolean;
   onSkip?: () => void;
   /** Top-right dismiss (same as skip when provided). */

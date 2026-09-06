@@ -18,8 +18,8 @@ export function ShowcasePublicMediaNotice({
       />
       <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
         {isPublic
-          ? "Showcase-Foto und Leistungsdiagramm sind für alle Besucher öffentlich sichtbar."
-          : "Wenn du dein öffentliches Profil aktivierst, sind Showcase-Foto und Leistungsdiagramm für alle Besucher sichtbar."}
+          ? "Das Fahrzeugbild aus den Fahrzeugdaten und das Leistungsdiagramm sind für alle Besucher öffentlich sichtbar."
+          : "Wenn du dein öffentliches Profil aktivierst, sind das Fahrzeugbild aus den Fahrzeugdaten und das Leistungsdiagramm für alle Besucher sichtbar."}
       </p>
     </div>
   );
