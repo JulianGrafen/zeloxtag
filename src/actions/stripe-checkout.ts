@@ -76,19 +76,9 @@ export async function startStripeCheckoutAction(input: {
 
   const priceId = resolveStripePriceId(interval);
 
-  if (interval === "annual") {
-    const annualPaymentUrl = buildStripePaymentLinkUrl({
-      paymentLink: resolveStripePaymentLink("annual"),
-      userId: user.id,
-      email: user.email,
-    });
-    if (annualPaymentUrl) {
-      return { status: "ok", url: annualPaymentUrl };
-    }
-  }
-
-  // Prefer Checkout Session API so success/cancel URLs always use the live app
-  // origin — Payment Links use a fixed redirect configured in Stripe Dashboard.
+  // Prefer Checkout Session API for all intervals — hosted checkout has reliable
+  // Google/Apple Pay and dynamic success/cancel URLs on the live app origin.
+  // Payment Links (buy.stripe.com) are fallback only and can time out on wallets.
   if (isStripeSecretConfigured() && priceId) {
     const origin = siteOrigin();
     const successPath = safeAppReturnPath(input.successPath ?? "/settings");
@@ -129,14 +119,11 @@ export async function startStripeCheckoutAction(input: {
     }
   }
 
-  const paymentUrl =
-    interval === "monthly"
-      ? buildStripePaymentLinkUrl({
-          paymentLink: resolveStripePaymentLink("monthly"),
-          userId: user.id,
-          email: user.email,
-        })
-      : null;
+  const paymentUrl = buildStripePaymentLinkUrl({
+    paymentLink: resolveStripePaymentLink(interval),
+    userId: user.id,
+    email: user.email,
+  });
   if (paymentUrl) {
     return { status: "ok", url: paymentUrl };
   }
