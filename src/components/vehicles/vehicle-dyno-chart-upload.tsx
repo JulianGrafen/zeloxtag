@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ExternalLink, FileUp, Loader2 } from "lucide-react";
+import { ExternalLink, FileUp, Loader2, Trash2 } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
@@ -16,7 +16,9 @@ export type VehicleDynoChartUploadProps = {
   tagUuid: string;
   dynoChartUrl: string | null;
   canEdit: boolean;
+  allowDelete?: boolean;
   onUploaded?: (dynoChartUrl: string) => void;
+  onDeleted?: () => void;
   className?: string;
 };
 
@@ -60,7 +62,9 @@ export function VehicleDynoChartUpload({
   tagUuid,
   dynoChartUrl,
   canEdit,
+  allowDelete = false,
   onUploaded,
+  onDeleted,
   className = "",
 }: VehicleDynoChartUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -68,13 +72,14 @@ export function VehicleDynoChartUpload({
     useDocumentCompression();
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<UploadState>("idle");
+  const [deleting, setDeleting] = useState(false);
   const [localUrl, setLocalUrl] = useState<string | null>(dynoChartUrl);
 
   useEffect(() => {
     setLocalUrl(dynoChartUrl);
   }, [dynoChartUrl]);
 
-  const busy = state === "uploading" || isCompressing;
+  const busy = state === "uploading" || isCompressing || deleting;
   const chartUrl = localUrl ?? dynoChartUrl;
   const chartIsImage = chartUrl ? documentMediaKind(chartUrl) === "image" : false;
   const chartPreviewSrc = chartUrl ? inlineDocumentProxyUrl(chartUrl) : null;
@@ -134,6 +139,42 @@ export function VehicleDynoChartUpload({
     if (file) void processFile(file);
   }
 
+  async function handleDelete() {
+    if (!chartUrl || !allowDelete) return;
+    setError(null);
+    setDeleting(true);
+    try {
+      const response = await fetch("/api/vehicle/dyno-chart", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ vehicleId, tagUuid }),
+      });
+      let payload: { ok?: boolean; error?: string } | null = null;
+      try {
+        payload = (await response.json()) as { ok?: boolean; error?: string };
+      } catch {
+        payload = null;
+      }
+      if (!response.ok || !payload?.ok) {
+        throw new Error(
+          payload?.error ?? "Leistungsdiagramm konnte nicht gelöscht werden.",
+        );
+      }
+      setLocalUrl(null);
+      setState("idle");
+      onDeleted?.();
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Leistungsdiagramm konnte nicht gelöscht werden.",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <section
       className={`rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim()}
@@ -142,8 +183,8 @@ export function VehicleDynoChartUpload({
         Leistungsdiagramm
       </h2>
       <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Dyno- oder Leistungsdiagramm als Foto oder PDF — z. B. vom Prüfstand
-        oder Tuner.
+        Dyno- oder Leistungsdiagramm als Foto oder PDF — erscheint im Showcase,
+        wenn dein Profil öffentlich ist.
       </p>
 
       {chartUrl ? (
@@ -217,6 +258,23 @@ export function VehicleDynoChartUpload({
             )}
           </PressableButton>
         </>
+      ) : null}
+
+      {allowDelete && chartUrl ? (
+        <PressableButton
+          type="button"
+          variant="button"
+          disabled={busy}
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[0.88rem] font-medium text-red-700 disabled:opacity-60"
+          onClick={() => void handleDelete()}
+        >
+          {deleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Trash2 className="h-4 w-4" aria-hidden />
+          )}
+          Leistungsdiagramm löschen
+        </PressableButton>
       ) : null}
 
       {error || compressError ? (

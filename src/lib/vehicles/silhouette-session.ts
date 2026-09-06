@@ -25,3 +25,12 @@ export function writeSilhouetteToSession(
     /* quota / private mode */
   }
 }
+
+export function clearSilhouetteFromSession(vehicleId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(silhouetteSessionKey(vehicleId));
+  } catch {
+    /* ignore */
+  }
+}

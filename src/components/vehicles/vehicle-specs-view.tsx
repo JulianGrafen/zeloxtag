@@ -5,21 +5,16 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Gauge, Save } from "lucide-react";
 
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
-import { VehicleDynoChartUpload } from "@/components/vehicles/vehicle-dyno-chart-upload";
-import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
-import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
 import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
-import { writeSilhouetteToSession } from "@/lib/vehicles/silhouette-session";
 import {
   parseVehicleTechSpecs,
   VEHICLE_DRIVETRAIN_TYPES,
   VEHICLE_FUEL_TYPES,
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
-import { resolveOwnerDynoChartViewUrl } from "@/lib/vehicles/dyno-chart-constants";
 import type { Vehicle } from "@/types/database";
 
 type VehicleSpecsViewProps = {
@@ -171,31 +166,6 @@ export function VehicleSpecsView({
             Gespeichert.
           </p>
         ) : null}
-
-        {canEdit ? (
-          <VehicleSilhouetteUpload
-            vehicleId={vehicle.id}
-            tagUuid={tagUuid}
-            onUploaded={(result: SilhouetteUploadResult) => {
-              writeSilhouetteToSession(vehicle.id, result.storageUrl);
-              router.refresh();
-            }}
-          />
-        ) : null}
-
-        <VehicleDynoChartUpload
-          vehicleId={vehicle.id}
-          tagUuid={tagUuid}
-          dynoChartUrl={resolveOwnerDynoChartViewUrl(
-            vehicle.id,
-            specs.dynoChartUrl,
-          )}
-          canEdit={canEdit}
-          onUploaded={(url) => {
-            setSpecs((prev) => ({ ...prev, dynoChartUrl: url }));
-            router.refresh();
-          }}
-        />
 
         {canEdit ? (
           <form

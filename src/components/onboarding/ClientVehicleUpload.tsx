@@ -2,13 +2,14 @@
 
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
   type DragEvent,
   type ReactNode,
 } from "react";
-import { Camera, ImagePlus, Loader2, SkipForward } from "lucide-react";
+import { Camera, ImagePlus, Loader2, SkipForward, Trash2 } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { PromptCloseButton } from "@/components/ui/prompt-close-button";
@@ -34,7 +35,12 @@ export type SilhouetteUploadResult = {
 export type ClientVehicleUploadProps = {
   vehicleId: string;
   tagUuid: string;
+  /** Same-origin proxy URL for an existing stored photo. */
+  initialDisplayUrl?: string | null;
   onUploaded?: (result: SilhouetteUploadResult) => void;
+  onDeleted?: () => void;
+  /** Show remove control when a photo is present (Fahrzeugdaten). */
+  allowDelete?: boolean;
   onSkip?: () => void;
   /** Top-right dismiss (same as skip when provided). */
   onDismiss?: () => void;
@@ -219,7 +225,10 @@ function PreviewFrame({
 export function ClientVehicleUpload({
   vehicleId,
   tagUuid,
+  initialDisplayUrl = null,
   onUploaded,
+  onDeleted,
+  allowDelete = false,
   onSkip,
   onDismiss,
   skipLabel = "Später",
@@ -229,12 +238,21 @@ export function ClientVehicleUpload({
 }: ClientVehicleUploadProps) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    initialDisplayUrl?.trim() || null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<UploadState>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
-  const busy = state === "compressing" || state === "uploading";
+  useEffect(() => {
+    if (initialDisplayUrl?.trim()) {
+      setPreviewUrl(initialDisplayUrl.trim());
+    }
+  }, [initialDisplayUrl]);
+
+  const busy = state === "compressing" || state === "uploading" || deleting;
 
   const barProgress =
     state === "compressing"
@@ -340,6 +358,43 @@ export function ClientVehicleUpload({
     if (file) void processFile(file);
   }
 
+  async function handleDelete() {
+    if (!previewUrl || !allowDelete) return;
+    setError(null);
+    setDeleting(true);
+    try {
+      const response = await fetch("/api/vehicle/photo", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ vehicleId, tagUuid }),
+      });
+      let payload: { ok?: boolean; error?: string } | null = null;
+      try {
+        payload = (await response.json()) as { ok?: boolean; error?: string };
+      } catch {
+        payload = null;
+      }
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error ?? "Foto konnte nicht gelöscht werden.");
+      }
+      setPreviewUrl((previous) => {
+        if (previous?.startsWith("blob:")) URL.revokeObjectURL(previous);
+        return null;
+      });
+      setState("idle");
+      onDeleted?.();
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Foto konnte nicht gelöscht werden.",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <section
       className={`relative rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim()}
@@ -434,6 +489,23 @@ export function ClientVehicleUpload({
           <span className="relative z-0">Kamera</span>
         </FilePickLabel>
       </div>
+
+      {allowDelete && previewUrl ? (
+        <PressableButton
+          type="button"
+          variant="button"
+          disabled={busy}
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[0.88rem] font-medium text-red-700 disabled:opacity-60"
+          onClick={() => void handleDelete()}
+        >
+          {deleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Trash2 className="h-4 w-4" aria-hidden />
+          )}
+          Foto löschen
+        </PressableButton>
+      ) : null}
 
       {onSkip ? (
         <PressableButton

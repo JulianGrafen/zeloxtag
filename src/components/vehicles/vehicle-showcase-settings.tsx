@@ -5,6 +5,7 @@ import { Copy, Globe, Shield } from "lucide-react";
 
 import { updatePublicShowcaseDocuments } from "@/actions/update-public-showcase-documents";
 import { updateVehicleShowcaseSettings } from "@/actions/update-vehicle-showcase-settings";
+import { ShowcaseMediaSettings } from "@/components/vehicles/showcase-media-settings";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { parseLineItems } from "@/lib/documents/line-items";
 import {
@@ -340,7 +341,14 @@ export function VehicleShowcaseSettings({
         QR-Showcase für Besucher — Specs, Fotos und Umbauten.
       </p>
 
-      <div className="space-y-3">
+      <ShowcaseMediaSettings
+        tagUuid={tagUuid}
+        vehicle={vehicle}
+        canEdit={canEdit}
+        isPublic={isPublic}
+      />
+
+      <div className="mt-5 space-y-3">
         <ToggleRow
           label="Öffentliches Profil"
           description="Beim QR-Scan sichtbar"

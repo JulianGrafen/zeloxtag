@@ -296,3 +296,98 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+async function revalidateVehiclePhotoPaths(
+  tagUuid: string | undefined,
+  publicSlug: string | null | undefined,
+): Promise<void> {
+  if (tagUuid) {
+    revalidatePath(`/v/${tagUuid}`, "page");
+    revalidatePath(`/v/${tagUuid}/daten`, "page");
+  }
+  const slug = publicSlug?.trim();
+  if (slug) {
+    revalidatePath(`/v/${slug}`, "page");
+  }
+}
+
+/**
+ * DELETE /api/vehicle/photo
+ * Owner removes the dashboard / showcase header photo.
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const originBlocked = enforceSameOrigin(request);
+    if (originBlocked) return originBlocked;
+
+    const limited = await enforceRateLimit(request, "upload", "vehicle-photo-delete");
+    if (limited) return limited;
+
+    const { isConfigured } = getSupabaseEnv();
+    if (!isConfigured) {
+      return jsonError(
+        503,
+        "Supabase is not configured for vehicle photo uploads.",
+        "config",
+      );
+    }
+
+    const auth = await requireApiUser();
+    if (!auth.ok) return auth.response;
+    const user = auth.user;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError(400, "Ungültige Anfrage.", "bad_request");
+    }
+
+    const metaParsed = metaSchema.safeParse(body);
+    if (!metaParsed.success) {
+      return jsonError(400, "Fahrzeug konnte nicht erkannt werden.", "bad_request");
+    }
+    const { vehicleId, tagUuid } = metaParsed.data;
+
+    const supabase = await createClient();
+    const { data: vehicle, error: vehicleError } = await supabase
+      .from("vehicles")
+      .select("id, user_id, public_slug")
+      .eq("id", vehicleId)
+      .maybeSingle();
+
+    if (vehicleError) {
+      return jsonError(500, "Could not verify vehicle ownership.", "db_error");
+    }
+    if (!vehicle || vehicle.user_id !== user.id) {
+      return jsonError(403, "Not allowed for this vehicle.", "forbidden");
+    }
+
+    if (isSupabaseAdminConfigured()) {
+      const admin = createAdminClient();
+      const objectPath = vehiclePhotoObjectPath(vehicleId);
+      await admin.storage.from(SILHOUETTE_BUCKET).remove([objectPath]);
+    }
+
+    const { error: updateError } = await supabase
+      .from("vehicles")
+      .update({
+        silhouette_image_url: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", vehicleId)
+      .eq("user_id", user.id);
+
+    if (updateError) {
+      logServerError("[vehicle-photo] delete update failed", updateError);
+      return jsonError(500, "Foto konnte nicht entfernt werden.", "db_error");
+    }
+
+    await revalidateVehiclePhotoPaths(tagUuid, vehicle.public_slug);
+
+    return NextResponse.json({ ok: true as const });
+  } catch (error) {
+    logServerError("[vehicle-photo] delete unexpected", error);
+    return jsonError(500, "Foto konnte nicht entfernt werden.", "internal");
+  }
+}

@@ -16,9 +16,7 @@ type PublicGalleryProps = {
 export function filterVisibleGalleryPhotos(
   photos: readonly PublicGalleryPhoto[],
 ): PublicGalleryPhoto[] {
-  return photos.filter(
-    (photo) => photo.id !== "silhouette" || photos.length === 1,
-  );
+  return [...photos];
 }
 
 export function PublicGallery({ photos }: PublicGalleryProps) {

@@ -119,15 +119,30 @@ function collectGalleryPhotos(
 ): PublicGalleryPhoto[] {
   const photos: PublicGalleryPhoto[] = [];
   const seen = new Set<string>();
-  const publicDocs = filterPublicShowcaseDocuments(documents);
+  const specs = parseVehicleTechSpecs(vehicle.tech_specs);
+  const vehicleLabel = `${vehicle.make} ${vehicle.model}`.trim() || "Fahrzeug";
 
-  const heroSrc = `/api/vehicle/silhouette/${vehicle.id}`;
-  photos.push({
-    id: "silhouette",
-    src: heroSrc,
-    alt: `${vehicle.make} ${vehicle.model}`.trim(),
-  });
-  seen.add(heroSrc);
+  if (vehicle.silhouette_image_url?.trim()) {
+    const heroSrc = `/api/vehicle/silhouette/${vehicle.id}`;
+    photos.push({
+      id: "silhouette",
+      src: heroSrc,
+      alt: vehicleLabel,
+    });
+    seen.add(heroSrc);
+  }
+
+  const dyno = resolvePublicDynoChart(vehicle.id, specs.dynoChartUrl);
+  if (dyno.href && dyno.isImage && !seen.has(dyno.href)) {
+    photos.push({
+      id: "dyno-chart",
+      src: dyno.href,
+      alt: "Leistungsdiagramm",
+    });
+    seen.add(dyno.href);
+  }
+
+  const publicDocs = filterPublicShowcaseDocuments(documents);
 
   for (const entry of filterManualVehicleEntries(publicDocs)) {
     if (!isShowcaseModificationDocument(entry)) continue;
@@ -221,7 +236,7 @@ export function buildPublicShowcasePayload(
   );
 
   const photos = collectGalleryPhotos(vehicle, documents);
-  const heroFromGallery = photos.find((photo) => photo.id !== "silhouette");
+  const silhouettePhoto = photos.find((photo) => photo.id === "silhouette");
 
   return {
     profile: {
@@ -244,7 +259,7 @@ export function buildPublicShowcasePayload(
       mileageKm: latestMileageKm(publicDocs),
       dynoChartUrl: dyno.href,
       dynoChartIsImage: dyno.isImage,
-      heroImageSrc: heroFromGallery?.src ?? `/api/vehicle/silhouette/${vehicle.id}`,
+      heroImageSrc: silhouettePhoto?.src ?? photos[0]?.src ?? null,
       hideFinancials: hide_financials,
       publicSlug: public_slug,
     },

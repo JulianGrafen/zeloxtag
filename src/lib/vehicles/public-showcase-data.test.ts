@@ -281,4 +281,30 @@ describe("buildPublicShowcasePayload", () => {
     );
     expect(payload.profile.dynoChartIsImage).toBe(true);
   });
+
+  it("includes showcase media in the gallery when uploaded", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      silhouette_image_url: `${baseVehicle.id}/silhouette.png`,
+      tech_specs: {
+        ...((baseVehicle.tech_specs ?? {}) as Record<string, unknown>),
+        dynoChartUrl: `${baseVehicle.id}/dyno-chart.jpg`,
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.photos.map((photo) => photo.id)).toEqual([
+      "silhouette",
+      "dyno-chart",
+    ]);
+    expect(payload.profile.heroImageSrc).toBe(
+      `/api/vehicle/silhouette/${baseVehicle.id}`,
+    );
+  });
+
+  it("omits gallery photos when no showcase media is uploaded", () => {
+    const payload = buildPublicShowcasePayload(baseVehicle, []);
+    expect(payload.photos).toHaveLength(0);
+    expect(payload.profile.heroImageSrc).toBeNull();
+  });
 });
