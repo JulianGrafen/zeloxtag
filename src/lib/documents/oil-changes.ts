@@ -282,6 +282,13 @@ export function oilChangeRecordsFromDocuments(
   });
 }
 
+export function formatLastOilChangeSubtitle(
+  isoDate: string | null | undefined,
+): string | null {
+  if (!isoDate?.trim()) return null;
+  return `Letzter Wechsel · ${formatDocumentDate(isoDate)}`;
+}
+
 export function latestOilChangeIsoDate(documents: Document[]): string | null {
   const latest = filterOilChangeDocuments(documents)[0];
   if (!latest) return null;
