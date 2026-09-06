@@ -203,14 +203,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (isSupabaseAdminConfigured()) {
-      await ensureVehicleSilhouetteBucket(createAdminClient());
+    if (!isSupabaseAdminConfigured()) {
+      return jsonError(
+        503,
+        "Foto-Speicher ist nicht vollständig konfiguriert.",
+        "config",
+      );
     }
+
+    // Private bucket (C6): session Storage RLS cannot see/insert objects after
+    // public SELECT was dropped. Ownership is already verified above — write
+    // with the service role, same as `/api/vehicle/silhouette` reads.
+    const admin = createAdminClient();
+    await ensureVehicleSilhouetteBucket(admin);
 
     const objectPath = vehiclePhotoObjectPath(vehicleId);
 
     async function storePhoto(): Promise<string | null> {
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await admin.storage
         .from(SILHOUETTE_BUCKET)
         .upload(objectPath, photoPng, {
           contentType: "image/png",
@@ -226,10 +236,8 @@ export async function POST(request: NextRequest) {
 
     let storageError = await storePhoto();
     if (storageError && isStorageMimeRejected(storageError)) {
-      if (isSupabaseAdminConfigured()) {
-        await ensureVehicleSilhouetteBucket(createAdminClient());
-        storageError = await storePhoto();
-      }
+      await ensureVehicleSilhouetteBucket(admin);
+      storageError = await storePhoto();
     }
 
     if (storageError) {
@@ -261,7 +269,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const storageReady = await verifySilhouetteInStorage(supabase, vehicleId);
+    const storageReady = await verifySilhouetteInStorage(admin, vehicleId);
     if (!storageReady) {
       console.warn(
         "[vehicle-photo] photo not readable immediately after upload",
