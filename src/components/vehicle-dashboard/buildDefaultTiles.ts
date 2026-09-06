@@ -3,7 +3,8 @@ import type {
   DashboardTileConfig,
   VehicleDashboardData,
 } from "./types";
-import { formatTuevYearMonth, formatDocumentDate } from "@/lib/documents/format";
+import { formatTuevYearMonth } from "@/lib/documents/format";
+import { formatLastOilChangeSubtitle } from "@/lib/documents/oil-changes";
 
 function daysUntil(isoDate: string): number {
   const target = new Date(
@@ -43,14 +44,13 @@ function inspectionMeta(data: VehicleDashboardData): DashboardTileConfig["meta"]
 }
 
 function oilChangeMeta(data: VehicleDashboardData): DashboardTileConfig["meta"] {
-  if (!data.lastOilChange) {
+  const subtitle = formatLastOilChangeSubtitle(data.lastOilChange);
+  if (!subtitle) {
     return { subtitle: "Noch offen", href: "/intervalle" };
   }
 
-  const formatted = formatDocumentDate(data.lastOilChange);
-
   return {
-    subtitle: formatted,
+    subtitle,
     href: "/intervalle",
   };
 }

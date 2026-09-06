@@ -24,6 +24,7 @@ export const DOCUMENT_LIST_COLUMNS = [
   "vendor",
   "category",
   "line_items",
+  "notes",
   "kba_number",
   "vehicle_approvals",
   "authority",
