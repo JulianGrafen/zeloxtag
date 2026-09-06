@@ -16,7 +16,7 @@ type PublicShowcaseViewProps = {
 export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
   return (
     <div className={showroom.page}>
-      <ShowroomHero profile={data.profile} />
+      <ShowroomHero profile={data.profile} photos={data.photos} />
       <div className="mx-auto flex w-full max-w-lg flex-col gap-7 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <ShowroomStats profile={data.profile} />
         <ShowroomSpecifications profile={data.profile} />
