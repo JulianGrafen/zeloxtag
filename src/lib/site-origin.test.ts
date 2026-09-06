@@ -42,7 +42,7 @@ describe("resolvePublicSiteOrigin", () => {
   it("forces auth flows onto the canonical domain outside localhost", () => {
     expect(
       resolveAuthSiteOrigin({
-        nextUrl: new URL("https://zeloxtag.vercel.app/auth/login/google"),
+        nextUrl: new URL("https://zeloxtag.vercel.app/auth/callback"),
       }),
     ).toBe("https://app.zeloxtag.de");
     expect(
@@ -55,7 +55,7 @@ describe("resolvePublicSiteOrigin", () => {
   it("keeps localhost for local auth development", () => {
     expect(
       resolveAuthSiteOrigin({
-        nextUrl: new URL("http://localhost:3000/auth/login/google"),
+        nextUrl: new URL("http://localhost:3000/auth/callback"),
       }),
     ).toBe("http://localhost:3000");
   });

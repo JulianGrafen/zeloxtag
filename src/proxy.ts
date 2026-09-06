@@ -28,7 +28,6 @@ export async function proxy(request: NextRequest) {
   // Never finish OAuth on a *.vercel.app alias — PKCE cookies + redirects must stay canonical.
   if (host.endsWith(".vercel.app")) {
     const authEntryPaths = new Set([
-      "/auth/login/google",
       "/auth/callback",
       "/auth/confirm",
     ]);

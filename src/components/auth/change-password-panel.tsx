@@ -33,7 +33,7 @@ export function ChangePasswordPanel({
       <p className="mt-2 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
         {hasPasswordLogin
           ? "Ändere dein Anmeldepasswort. Mindestens 10 Zeichen."
-          : "Du meldest dich mit Google an. Optional kannst du hier ein Passwort festlegen, um dich künftig auch per E-Mail anzumelden."}
+          : "Du hast noch kein Passwort festgelegt. Optional kannst du hier eines setzen, um dich künftig per E-Mail anzumelden."}
       </p>
 
       <form
