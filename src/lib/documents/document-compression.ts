@@ -15,6 +15,9 @@ export const OCR_IMAGE_MAX_SIZE_MB = 1.5;
 /** Native PDF hard cap — matches `/api/ocr/parse` body limit on Vercel (~4 MB). */
 export const OCR_PDF_MAX_BYTES = 4 * 1024 * 1024;
 
+/** Dyno PDF cap — leave headroom for multipart fields under Vercel's ~4.5 MB limit. */
+export const DYNO_PDF_MAX_BYTES = Math.floor(4.2 * 1024 * 1024);
+
 export const OCR_OUTPUT_IMAGE_TYPE = "image/jpeg" as const;
 
 const IMAGE_MIME = new Set([
@@ -43,11 +46,27 @@ export type DocumentCompressionResult = {
   kind: "image" | "pdf";
 };
 
-function isPdfFile(file: File): boolean {
+function isPdfMime(mime: string): boolean {
+  const normalized = mime.trim().toLowerCase();
   return (
-    file.type === "application/pdf" ||
-    file.name.toLowerCase().endsWith(".pdf")
+    normalized === "application/pdf" ||
+    normalized === "application/x-pdf" ||
+    normalized === "application/vnd.pdf"
   );
+}
+
+function isPdfBytes(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0x25 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x44 &&
+    bytes[3] === 0x46
+  );
+}
+
+function isPdfFile(file: File): boolean {
+  return isPdfMime(file.type) || file.name.toLowerCase().endsWith(".pdf");
 }
 
 function isImageFile(file: File): boolean {
@@ -139,6 +158,75 @@ export async function compressDocumentFile(
 
   if (isImageFile(file)) {
     return compressImageFile(file);
+  }
+
+  throw new DocumentCompressionError(
+    "Nur PDF oder Bilder (JPEG, PNG, WebP, HEIC) werden unterstützt.",
+  );
+}
+
+function pdfOutputName(originalName: string): string {
+  const trimmed = originalName.trim();
+  if (trimmed.toLowerCase().endsWith(".pdf")) return trimmed;
+  const base = trimmed.replace(/\.[^.]+$/, "") || "leistungsdiagramm";
+  return `${base}.pdf`;
+}
+
+/**
+ * Prepare a dyno / Leistungsdiagramm upload: materialize bytes immediately,
+ * compress images, pass PDFs through with a stable in-memory File.
+ */
+export async function prepareDynoChartFile(
+  file: File,
+): Promise<DocumentCompressionResult> {
+  const originalBytes = file.size;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.byteLength < 32) {
+    throw new DocumentCompressionError(
+      "Datei ist leer — bitte erneut auswählen.",
+    );
+  }
+
+  if (isPdfBytes(bytes) || isPdfFile(file)) {
+    if (bytes.byteLength > DYNO_PDF_MAX_BYTES) {
+      throw new DocumentCompressionError(
+        `PDF zu groß (max. ${Math.round(DYNO_PDF_MAX_BYTES / (1024 * 1024))} MB).`,
+      );
+    }
+
+    const normalized = new File([bytes], pdfOutputName(file.name), {
+      type: "application/pdf",
+      lastModified: Date.now(),
+    });
+
+    return {
+      file: normalized,
+      wasCompressed: false,
+      originalBytes,
+      outputBytes: normalized.size,
+      kind: "pdf",
+    };
+  }
+
+  if (isImageFile(file)) {
+    const materialized = new File([bytes], file.name || "leistungsdiagramm.jpg", {
+      type: file.type || "application/octet-stream",
+      lastModified: Date.now(),
+    });
+    const compressed = await compressImageFile(materialized);
+    const outputBytes = new Uint8Array(await compressed.file.arrayBuffer());
+    const output = new File([outputBytes], compressed.file.name, {
+      type: compressed.file.type,
+      lastModified: Date.now(),
+    });
+
+    return {
+      file: output,
+      wasCompressed: compressed.wasCompressed,
+      originalBytes,
+      outputBytes: output.size,
+      kind: "image",
+    };
   }
 
   throw new DocumentCompressionError(

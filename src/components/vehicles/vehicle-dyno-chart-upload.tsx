@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "reac
 import { ExternalLink, FileUp, Loader2, Trash2 } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
-import { useDocumentCompression } from "@/hooks/useDocumentCompression";
+import {
+  DocumentCompressionError,
+  prepareDynoChartFile,
+} from "@/lib/documents/document-compression";
 import {
   documentMediaKind,
   openDocumentOriginal,
@@ -68,10 +71,9 @@ export function VehicleDynoChartUpload({
   className = "",
 }: VehicleDynoChartUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { compressFile, isCompressing, statusLabel, error: compressError } =
-    useDocumentCompression();
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<UploadState>("idle");
+  const [isPreparing, setIsPreparing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [localUrl, setLocalUrl] = useState<string | null>(dynoChartUrl);
 
@@ -79,7 +81,7 @@ export function VehicleDynoChartUpload({
     setLocalUrl(dynoChartUrl);
   }, [dynoChartUrl]);
 
-  const busy = state === "uploading" || isCompressing || deleting;
+  const busy = state === "uploading" || isPreparing || deleting;
   const chartUrl = localUrl ?? dynoChartUrl;
   const chartIsImage = chartUrl ? documentMediaKind(chartUrl) === "image" : false;
   const chartPreviewSrc = chartUrl ? inlineDocumentProxyUrl(chartUrl) : null;
@@ -90,10 +92,13 @@ export function VehicleDynoChartUpload({
       setState("uploading");
 
       try {
+        setIsPreparing(true);
+        const prepared = await prepareDynoChartFile(file);
+        setIsPreparing(false);
+
         const body = new FormData();
         body.append("vehicleId", vehicleId);
         body.append("tagUuid", tagUuid);
-        const prepared = await compressFile(file);
         body.append(
           "file",
           prepared.file,
@@ -124,13 +129,17 @@ export function VehicleDynoChartUpload({
       } catch (uploadError) {
         setState("idle");
         setError(
-          uploadError instanceof Error
+          uploadError instanceof DocumentCompressionError
             ? uploadError.message
-            : "Upload fehlgeschlagen. Bitte erneut versuchen.",
+            : uploadError instanceof Error
+              ? uploadError.message
+              : "Upload fehlgeschlagen. Bitte erneut versuchen.",
         );
+      } finally {
+        setIsPreparing(false);
       }
     },
-    [compressFile, onUploaded, tagUuid, vehicleId],
+    [onUploaded, tagUuid, vehicleId],
   );
 
   function onInputChange(event: ChangeEvent<HTMLInputElement>) {
@@ -248,7 +257,7 @@ export function VehicleDynoChartUpload({
             {busy ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                {statusLabel ?? "Wird hochgeladen…"}
+                {isPreparing ? "Datei wird vorbereitet…" : "Wird hochgeladen…"}
               </>
             ) : (
               <>
@@ -277,9 +286,9 @@ export function VehicleDynoChartUpload({
         </PressableButton>
       ) : null}
 
-      {error || compressError ? (
+      {error ? (
         <p className="mt-3 text-[0.85rem] text-red-700" role="alert">
-          {error || compressError}
+          {error}
         </p>
       ) : null}
       {state === "done" ? (

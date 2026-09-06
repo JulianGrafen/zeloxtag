@@ -41,6 +41,42 @@ function jsonError(status: number, error: string, code: string) {
   return NextResponse.json({ ok: false as const, error, code }, { status });
 }
 
+function asUploadBlob(
+  value: FormDataEntryValue | null,
+): { blob: Blob; filename: string } | null {
+  if (value instanceof File && value.size > 0) {
+    return { blob: value, filename: value.name || "leistungsdiagramm" };
+  }
+  if (typeof Blob !== "undefined" && value instanceof Blob && value.size > 0) {
+    const named = value as Blob & { name?: string };
+    return {
+      blob: value,
+      filename:
+        typeof named.name === "string" && named.name.length > 0
+          ? named.name
+          : "leistungsdiagramm",
+    };
+  }
+  return null;
+}
+
+function uploadFileFromFormData(formData: FormData): File | null {
+  const upload =
+    asUploadBlob(formData.get("file")) ??
+    asUploadBlob(formData.get("dynoChart")) ??
+    asUploadBlob(formData.get("document"));
+  if (!upload) return null;
+
+  if (upload.blob instanceof File) {
+    return upload.blob;
+  }
+
+  return new File([upload.blob], upload.filename, {
+    type: upload.blob.type || "application/octet-stream",
+    lastModified: Date.now(),
+  });
+}
+
 async function normalizeDynoUpload(
   mime: string,
   bytes: Buffer,
@@ -119,8 +155,8 @@ export async function POST(request: NextRequest) {
     }
     const { vehicleId, tagUuid } = metaParsed.data;
 
-    const file = formData.get("file");
-    if (!isUploadFile(file)) {
+    const file = uploadFileFromFormData(formData);
+    if (!file || !isUploadFile(file)) {
       return jsonError(
         400,
         "Keine Datei erhalten — bitte Foto oder PDF erneut auswählen.",
