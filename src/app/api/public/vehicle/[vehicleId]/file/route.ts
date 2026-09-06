@@ -24,6 +24,23 @@ const querySchema = z
   })
   .strict();
 
+function resolveShowcaseStoragePath(
+  vehicleId: string,
+  src: string,
+): string | null {
+  const fromUrl = storagePathFromPublicOrAuthenticatedUrl(src, DOCUMENT_BUCKET);
+  if (fromUrl?.startsWith(`${vehicleId}/`)) {
+    return fromUrl;
+  }
+
+  const bare = src.trim().split("?")[0]?.split("#")[0] ?? "";
+  if (bare.startsWith(`${vehicleId}/`) && !bare.includes("..")) {
+    return bare;
+  }
+
+  return null;
+}
+
 /**
  * Public showcase media proxy — images + dyno chart only when is_public.
  */
@@ -64,8 +81,8 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const storagePath = storagePathFromPublicOrAuthenticatedUrl(src, DOCUMENT_BUCKET);
-    if (!storagePath || !storagePath.startsWith(`${vehicleId}/`)) {
+    const storagePath = resolveShowcaseStoragePath(vehicleId, src);
+    if (!storagePath) {
       return NextResponse.json({ error: "Source not allowed." }, { status: 403 });
     }
 
@@ -133,7 +150,8 @@ export async function GET(
         "Cross-Origin-Resource-Policy": "same-origin",
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[public-vehicle-file] failed", { vehicleId, src, error });
     return NextResponse.json({ error: "Invalid src" }, { status: 400 });
   }
 }

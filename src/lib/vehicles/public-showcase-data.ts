@@ -2,7 +2,7 @@ import {
   filterManualVehicleEntries,
 } from "@/lib/documents/manual-entries";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
-import { publicVehicleDynoChartPath } from "@/lib/vehicles/dyno-chart-constants";
+import { resolvePublicDynoChartHref } from "@/lib/vehicles/dyno-chart-constants";
 import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
@@ -96,23 +96,6 @@ function publicGalleryProxyUrl(vehicleId: string, src: string): string {
   return `/api/public/vehicle/${vehicleId}/file?${params.toString()}`;
 }
 
-function resolvePublicDynoChart(vehicleId: string, storedUrl: string | null): {
-  href: string | null;
-  isImage: boolean;
-} {
-  if (!storedUrl) return { href: null, isImage: false };
-  if (storedUrl.startsWith("/demo/") || storedUrl.startsWith("/")) {
-    return {
-      href: storedUrl,
-      isImage: documentMediaKind(storedUrl) === "image",
-    };
-  }
-  return {
-    href: publicVehicleDynoChartPath(vehicleId),
-    isImage: documentMediaKind(storedUrl) === "image",
-  };
-}
-
 function collectGalleryPhotos(
   vehicle: Vehicle,
   documents: Document[],
@@ -132,7 +115,7 @@ function collectGalleryPhotos(
     seen.add(heroSrc);
   }
 
-  const dyno = resolvePublicDynoChart(vehicle.id, specs.dynoChartUrl);
+  const dyno = resolvePublicDynoChartHref(vehicle.id, specs.dynoChartUrl);
   if (dyno.href && dyno.isImage && !seen.has(dyno.href)) {
     photos.push({
       id: "dyno-chart",
@@ -225,7 +208,7 @@ export function buildPublicShowcasePayload(
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
   const publicDocs = filterPublicShowcaseDocuments(documents);
 
-  const dyno = resolvePublicDynoChart(vehicle.id, specs.dynoChartUrl);
+  const dyno = resolvePublicDynoChartHref(vehicle.id, specs.dynoChartUrl);
 
   const modifications = mapModificationsToPublic(
     extractVehicleModifications(publicDocs, {

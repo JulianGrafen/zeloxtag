@@ -64,6 +64,72 @@ export function publicVehicleDynoChartPath(vehicleId: string): string {
   return `/api/public/vehicle/${vehicleId}/dyno-chart`;
 }
 
+const OWNER_DYNO_CHART_PATH_RE =
+  /^\/api\/vehicle\/dyno-chart\/[0-9a-f-]{36}(?:\?.*)?$/i;
+
+/**
+ * Map a stored dyno value to the guest-readable showcase URL.
+ * Never expose owner-only `/api/vehicle/dyno-chart/*` or legacy file proxies.
+ */
+export function resolvePublicDynoChartHref(
+  vehicleId: string,
+  stored: string | null | undefined,
+): { href: string | null; isImage: boolean } {
+  const trimmed = stored?.trim();
+  if (!trimmed) return { href: null, isImage: false };
+
+  if (trimmed.startsWith("/demo/")) {
+    return {
+      href: trimmed,
+      isImage: isDynoChartImageReference(trimmed),
+    };
+  }
+
+  const publicPath = publicVehicleDynoChartPath(vehicleId);
+  const storedPath = resolveStoredDynoChartPath(vehicleId, trimmed);
+  const isImage = storedPath
+    ? !storedPath.toLowerCase().endsWith(".pdf")
+    : isDynoChartImageReference(trimmed);
+
+  if (
+    trimmed === publicPath ||
+    trimmed.startsWith(`${publicPath}?`) ||
+    OWNER_DYNO_CHART_PATH_RE.test(trimmed.split("#")[0] ?? trimmed) ||
+    (trimmed.includes("/file?") && trimmed.includes("dyno-chart"))
+  ) {
+    return {
+      href: publicPath,
+      isImage,
+    };
+  }
+
+  return {
+    href: publicPath,
+    isImage,
+  };
+}
+
+function isDynoChartImageReference(reference: string): boolean {
+  let probe = reference;
+  if (reference.includes("/file?")) {
+    try {
+      const url = reference.startsWith("http")
+        ? new URL(reference)
+        : new URL(reference, "https://zeloxtag.test");
+      const src = url.searchParams.get("src");
+      if (src) probe = src;
+    } catch {
+      // keep probe as reference
+    }
+  }
+
+  const lower = probe.toLowerCase().split("?")[0] ?? "";
+  if (lower.endsWith(".pdf") || lower.includes("application/pdf")) {
+    return false;
+  }
+  return /\.(jpe?g|png|webp|svg)$/.test(lower);
+}
+
 /** Owner / Schrauber preview — session proxy, works when the profile is private. */
 export function ownerDynoChartDisplayPath(
   vehicleId: string,

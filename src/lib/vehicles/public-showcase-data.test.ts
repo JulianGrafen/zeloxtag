@@ -265,6 +265,22 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.profile.dynoChartIsImage).toBe(true);
   });
 
+  it("maps owner dyno proxy URLs to the public dyno route", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      tech_specs: {
+        ...((baseVehicle.tech_specs ?? {}) as Record<string, unknown>),
+        dynoChartUrl: `/api/vehicle/dyno-chart/${baseVehicle.id}?v=9`,
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.profile.dynoChartUrl).toBe(
+      `/api/public/vehicle/${baseVehicle.id}/dyno-chart`,
+    );
+    expect(payload.profile.dynoChartIsImage).toBe(false);
+  });
+
   it("marks an uploaded dyno photo as an image on the public profile", () => {
     const vehicle: Vehicle = {
       ...baseVehicle,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   resolveOwnerDynoChartViewUrl,
+  resolvePublicDynoChartHref,
   resolveStoredDynoChartPath,
   vehicleDynoChartObjectPath,
 } from "./dyno-chart-constants";
@@ -34,5 +35,36 @@ describe("dyno chart storage paths", () => {
     expect(
       resolveOwnerDynoChartViewUrl(VEHICLE_ID, `${VEHICLE_ID}/dyno-chart.pdf`),
     ).toMatch(new RegExp(`^/api/vehicle/dyno-chart/${VEHICLE_ID}\\?v=`));
+  });
+
+  it("maps owner dyno proxy URLs to the public showcase route", () => {
+    expect(
+      resolvePublicDynoChartHref(
+        VEHICLE_ID,
+        `/api/vehicle/dyno-chart/${VEHICLE_ID}?v=123`,
+      ),
+    ).toEqual({
+      href: `/api/public/vehicle/${VEHICLE_ID}/dyno-chart`,
+      isImage: false,
+    });
+  });
+
+  it("maps legacy file-proxy dyno URLs to the public showcase route", () => {
+    expect(
+      resolvePublicDynoChartHref(
+        VEHICLE_ID,
+        `/api/public/vehicle/${VEHICLE_ID}/file?src=https%3A%2F%2Fexample.supabase.co%2Fdyno-chart.jpg`,
+      ),
+    ).toEqual({
+      href: `/api/public/vehicle/${VEHICLE_ID}/dyno-chart`,
+      isImage: true,
+    });
+  });
+
+  it("keeps demo dyno assets on /demo", () => {
+    expect(resolvePublicDynoChartHref(VEHICLE_ID, "/demo/dyno-e36.svg")).toEqual({
+      href: "/demo/dyno-e36.svg",
+      isImage: true,
+    });
   });
 });
