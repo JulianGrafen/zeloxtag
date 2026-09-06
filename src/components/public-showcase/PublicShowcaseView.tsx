@@ -17,7 +17,7 @@ export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
   return (
     <div className={showroom.page}>
       <ShowroomHero profile={data.profile} photos={data.photos} />
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-7 pb-[max(2rem,env(safe-area-inset-bottom))]">
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-7 pt-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <ShowroomStats profile={data.profile} />
         <ShowroomSpecifications profile={data.profile} />
         <ShowroomMods modifications={data.modifications} />
