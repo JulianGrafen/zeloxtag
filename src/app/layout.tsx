@@ -11,6 +11,7 @@ import { getSiteUrl } from "@/lib/seo/site-url";
 
 import "./globals.css";
 import { PwaRoot } from "@/components/pwa/pwa-root";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -74,6 +75,7 @@ export default async function RootLayout({
       <body className="min-h-full bg-background font-sans text-foreground">
         {children}
         <PwaRoot />
+        <Toaster richColors closeButton position="top-center" />
       </body>
     </html>
   );

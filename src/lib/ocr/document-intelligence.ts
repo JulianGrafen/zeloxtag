@@ -35,6 +35,10 @@ import {
 import {
   isAzureDocumentIntelligenceConfigured,
 } from "./azure-document-intelligence";
+import {
+  AutomotiveContextRejectedError,
+  runAutomotiveGate,
+} from "./verify-automotive-context";
 import { preferInvoiceCategory } from "@/lib/ocr/infer-invoice-category";
 import {
   extractVendorFromLogoHeader,
@@ -566,6 +570,8 @@ export async function analyzeDocument(input: {
   pruefung192Scope?: "bericht" | "gutachten" | "vorschriften" | "full";
   /** Multi-photo invoice scan role — overview page vs positions block. */
   invoiceScanPart?: import("./services/invoice-parse-service").InvoiceScanPart;
+  /** Set when Tier-1 gate already ran in the API route. */
+  skipAutomotiveGate?: boolean;
 }): Promise<AnalyzeDocumentResult> {
   if (!isLlmConfigured()) {
     throw new DocumentIntelligenceError(
@@ -581,6 +587,16 @@ export async function analyzeDocument(input: {
   const vehicleContext = input.vehicleContext ?? null;
   const documentInput = normalizeDocumentInput(input);
   const abeParseModel = resolveAbeContextModel();
+
+  const gate = input.skipAutomotiveGate
+    ? { ok: true as const, context: { isAutomotiveRelated: true, reason: null } }
+    : await runAutomotiveGate(
+        documentInput.bytes,
+        documentInput.contentType,
+      );
+  if (!gate.ok) {
+    throw new AutomotiveContextRejectedError(gate.error, gate.reason);
+  }
 
   try {
     if (documentType === "abe") {
@@ -741,6 +757,9 @@ export async function analyzeDocument(input: {
       invoiceScanPart: input.invoiceScanPart,
     });
   } catch (error) {
+    if (error instanceof AutomotiveContextRejectedError) {
+      throw error;
+    }
     if (error instanceof MissingVinError) {
       throw new DocumentIntelligenceError(error.message);
     }

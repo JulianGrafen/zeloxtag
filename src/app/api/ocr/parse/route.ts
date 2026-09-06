@@ -30,6 +30,11 @@ import { FEATURE } from "@/lib/permissions/feature-access";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import { logServerError } from "@/lib/security/public-error";
 import { AbeVehicleContextSchema } from "@/lib/validations/abeSchema";
+import {
+  automotiveGateErrorFromCaught,
+  enforceAutomotiveGateFromFormData,
+} from "@/lib/ocr/ocr-automotive-gate";
+import { AUTOMOTIVE_REJECTION_CODE } from "@/lib/ocr/verify-automotive-context";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -62,7 +67,8 @@ type ParseError = {
     | "config"
     | "azure_unreachable"
     | "parse_failed"
-    | "rate_limited";
+    | "rate_limited"
+    | typeof AUTOMOTIVE_REJECTION_CODE;
 };
 
 function jsonError(
@@ -117,6 +123,19 @@ export async function POST(request: NextRequest) {
       );
     }
     const documentType = documentTypeParsed.data;
+
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      return jsonError(400, "Document file is required.", "bad_request");
+    }
+
+    const fileCheck = await validateDocumentUpload(file, { maxBytes: MAX_BYTES });
+    if (!fileCheck.ok) {
+      return jsonError(400, fileCheck.error, "bad_request");
+    }
+
+    const gateBlocked = await enforceAutomotiveGateFromFormData(formData, fileCheck);
+    if (gateBlocked) return gateBlocked;
 
     const vehicleAccess = await ocrAccessFromFormData(
       formData,
@@ -223,15 +242,6 @@ export async function POST(request: NextRequest) {
         ? invoiceScanPartRaw
         : undefined;
 
-    const file = formData.get("file");
-    if (!(file instanceof File) || file.size === 0) {
-      return jsonError(400, "Document file is required.", "bad_request");
-    }
-
-    const fileCheck = await validateDocumentUpload(file, { maxBytes: MAX_BYTES });
-    if (!fileCheck.ok) {
-      return jsonError(400, fileCheck.error, "bad_request");
-    }
     const bytes = Buffer.from(fileCheck.bytes);
     const contentType = fileCheck.mime;
 
@@ -247,6 +257,7 @@ export async function POST(request: NextRequest) {
       teilegutachtenScope,
       pruefung192Scope,
       invoiceScanPart,
+      skipAutomotiveGate: true,
     });
 
     // Defense in depth: re-validate LLM-shaped fields before responding.
@@ -277,6 +288,9 @@ export async function POST(request: NextRequest) {
       withScanSessionId(body, vehicleAccess.scanSessionId),
     );
   } catch (error) {
+    const gateResponse = automotiveGateErrorFromCaught(error);
+    if (gateResponse) return gateResponse;
+
     if (isDocumentIntelligenceError(error) || isTextParseError(error)) {
       logServerError("[api/ocr/parse] provider failed", error);
       return jsonError(

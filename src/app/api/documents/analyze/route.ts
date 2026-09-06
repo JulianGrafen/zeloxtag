@@ -21,6 +21,11 @@ import { withScanSessionId } from "@/lib/billing/free-scan-quota";
 import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
+import {
+  automotiveGateErrorFromCaught,
+  enforceAutomotiveGateFromFormData,
+} from "@/lib/ocr/ocr-automotive-gate";
+import { AUTOMOTIVE_REJECTION_CODE } from "@/lib/ocr/verify-automotive-context";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -51,7 +56,7 @@ type AnalyzeSuccess = {
 type AnalyzeError = {
   ok: false;
   error: string;
-  code: "unauthorized" | "bad_request" | "config" | "analyze_failed" | "rate_limited";
+  code: "unauthorized" | "bad_request" | "config" | "analyze_failed" | "rate_limited" | typeof AUTOMOTIVE_REJECTION_CODE;
 };
 
 function jsonError(
@@ -118,14 +123,6 @@ export async function POST(request: NextRequest) {
       meta.data.documentType ??
       (kind === "invoice" ? "invoice" : kind === "abe" ? "abe" : undefined);
 
-    const vehicleAccess = await ocrAccessFromFormData(
-      formData,
-      auth.user.id,
-      FEATURE.SCAN_AI_RECEIPT,
-      documentType,
-    );
-    if (!vehicleAccess.ok) return vehicleAccess.response;
-
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Document file is required.", "bad_request");
@@ -135,6 +132,18 @@ export async function POST(request: NextRequest) {
     if (!fileCheck.ok) {
       return jsonError(400, fileCheck.error, "bad_request");
     }
+
+    const gateBlocked = await enforceAutomotiveGateFromFormData(formData, fileCheck);
+    if (gateBlocked) return gateBlocked;
+
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
+      auth.user.id,
+      FEATURE.SCAN_AI_RECEIPT,
+      documentType,
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
+
     const bytes = Buffer.from(fileCheck.bytes);
     const sniffed = fileCheck.mime;
 
@@ -143,6 +152,7 @@ export async function POST(request: NextRequest) {
       contentType: sniffed,
       kind,
       documentType,
+      skipAutomotiveGate: true,
     });
 
     const body: AnalyzeSuccess = {
@@ -159,6 +169,9 @@ export async function POST(request: NextRequest) {
       withScanSessionId(body, vehicleAccess.scanSessionId),
     );
   } catch (error) {
+    const gateResponse = automotiveGateErrorFromCaught(error);
+    if (gateResponse) return gateResponse;
+
     if (error instanceof DocumentIntelligenceError) {
       logServerError("[api/documents/analyze] provider failed", error);
       return jsonError(

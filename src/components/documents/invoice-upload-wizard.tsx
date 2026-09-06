@@ -67,6 +67,10 @@ import {
   type InvoiceOverviewExtraction,
 } from "@/lib/ocr/invoice-wizard-merge";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import {
+  notifyOcrError,
+  readOcrErrorPayload,
+} from "@/lib/ocr/ocr-client-errors";
 
 type WizardPhase =
   | "choose-source"
@@ -157,15 +161,13 @@ async function callInvoiceStep<T>(
   const response = await fetch("/api/ocr/invoice", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
     | { ok: true; extraction: T; scanSessionId?: string }
-    | { ok: false; error?: string }
+    | { ok: false; error?: string; code?: string }
     | null;
 
   if (!response.ok || !payload || payload.ok !== true) {
-    throw new InvoiceApiError(
-      payload && "error" in payload && payload.error
-        ? payload.error
-        : `${label} fehlgeschlagen (${response.status}).`,
-    );
+    const { message, code } = readOcrErrorPayload(payload);
+    notifyOcrError(message, code);
+    throw new InvoiceApiError(message);
   }
   return {
     extraction: payload.extraction,

@@ -16,6 +16,11 @@ import { FEATURE } from "@/lib/permissions/feature-access";
 import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
 import {
+  automotiveGateErrorFromCaught,
+  enforceAutomotiveGateFromFormData,
+} from "@/lib/ocr/ocr-automotive-gate";
+import { AUTOMOTIVE_REJECTION_CODE } from "@/lib/ocr/verify-automotive-context";
+import {
   logServerError,
   publicClientMessage,
 } from "@/lib/security/public-error";
@@ -100,15 +105,6 @@ export async function POST(request: NextRequest) {
       return jsonError(400, "vehicleId (UUID) is required.", "bad_request");
     }
 
-    const vehicleAccess = await ocrAccessFromFormData(
-      formData,
-      auth.user.id,
-      FEATURE.SCAN_AI_RECEIPT,
-      "invoice",
-    );
-    if (!vehicleAccess.ok) return vehicleAccess.response;
-    const user = auth.user;
-
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Image file is required.", "bad_request");
@@ -127,6 +123,18 @@ export async function POST(request: NextRequest) {
         "bad_request",
       );
     }
+
+    const gateBlocked = await enforceAutomotiveGateFromFormData(formData, fileCheck);
+    if (gateBlocked) return gateBlocked;
+
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
+      auth.user.id,
+      FEATURE.SCAN_AI_RECEIPT,
+      "invoice",
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
+    const user = auth.user;
 
     const bytes = Buffer.from(fileCheck.bytes);
     const sniffed = fileCheck.mime;
@@ -198,6 +206,9 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
+    const gateResponse = automotiveGateErrorFromCaught(error);
+    if (gateResponse) return gateResponse;
+
     console.error("[api/ocr] unexpected", error);
     return jsonError(500, "OCR request failed.", "storage_failed");
   }

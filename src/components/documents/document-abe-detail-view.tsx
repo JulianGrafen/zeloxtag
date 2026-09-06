@@ -22,6 +22,7 @@ import {
   technicalSpecsForAbeDetailView,
   vehicleApprovalsForAbeDetailView,
 } from "@/lib/documents/abe-detail-display";
+import { mayRenderAbeValidBadge } from "@/lib/validations/abeComplianceSchemas";
 import { ABE_REQUIRED_FIELD_LABELS } from "@/lib/validations/abeDataHunterSchemas";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import { displayAbeDocumentTitle } from "@/lib/documents/abe-title";
@@ -126,6 +127,12 @@ export function DocumentAbeDetailView({
     backHref ?? `/v/${tagUuid}/dokumente?type=abe`;
   const scannedLabel = formatDocumentDate(document.created_at.slice(0, 10));
   const fileName = fileNameFromUrl(document.file_url, partName);
+  const showValidBadge =
+    !isTeilegutachten &&
+    mayRenderAbeValidBadge({
+      kbaNumber: document.kba_number,
+      abeNr: document.invoice_number,
+    });
   const subtitle = [
     titleIncludesManufacturer ? null : manufacturer || null,
     vehicleLabel,
@@ -171,10 +178,17 @@ export function DocumentAbeDetailView({
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-700">
-              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-              gültig
-            </span>
+            {showValidBadge ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                gültig
+              </span>
+            ) : !isTeilegutachten ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-amber-800">
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                Prüfung
+              </span>
+            ) : null}
             {vaultCategory ? (
               <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-text)]">
                 {vaultCategory}

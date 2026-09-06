@@ -11,6 +11,11 @@ import { withScanSessionId } from "@/lib/billing/free-scan-quota";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
+import {
+  automotiveGateErrorFromCaught,
+  enforceAutomotiveGateFromFormData,
+} from "@/lib/ocr/ocr-automotive-gate";
+import { AUTOMOTIVE_REJECTION_CODE } from "@/lib/ocr/verify-automotive-context";
 import { logServerError } from "@/lib/security/public-error";
 import {
   tuevExtractionService,
@@ -42,7 +47,8 @@ type StepError = {
     | "bad_request"
     | "config"
     | "extract_failed"
-    | "rate_limited";
+    | "rate_limited"
+    | typeof AUTOMOTIVE_REJECTION_CODE;
 };
 
 function jsonError(
@@ -89,14 +95,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
 
-    const vehicleAccess = await ocrAccessFromFormData(
-      formData,
-      auth.user.id,
-      FEATURE.SCAN_AI_RECEIPT,
-    );
-    if (!vehicleAccess.ok) return vehicleAccess.response;
-    const scanSessionId = vehicleAccess.scanSessionId;
-
     const stepRaw = String(formData.get("step") ?? "").trim();
     const stepParsed = stepSchema.safeParse(stepRaw);
     if (!stepParsed.success) {
@@ -117,6 +115,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!fileCheck.ok) {
       return jsonError(400, fileCheck.error, "bad_request");
     }
+
+    const gateBlocked = await enforceAutomotiveGateFromFormData(formData, fileCheck);
+    if (gateBlocked) return gateBlocked;
+
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
+      auth.user.id,
+      FEATURE.SCAN_AI_RECEIPT,
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
+    const scanSessionId = vehicleAccess.scanSessionId;
+
     const bytes = Buffer.from(fileCheck.bytes);
     const sniffed = fileCheck.mime;
 
@@ -142,6 +152,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body: StepSuccess = { ok: true, step: "defects", extraction };
     return NextResponse.json(withScanSessionId(body, scanSessionId));
   } catch (error) {
+    const gateResponse = automotiveGateErrorFromCaught(error);
+    if (gateResponse) return gateResponse;
+
     logServerError("[api/ocr/tuev] unexpected", error);
     return jsonError(
       500,

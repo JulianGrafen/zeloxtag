@@ -16,7 +16,7 @@ import { resolveAbeTableExtractionModel } from "@/services/ocr/AbeExtractionServ
 import type { AbeTableExtraction } from "@/types/abe";
 
 import {
-  ingestAbeDocument,
+  ingestAbeTableDocument,
   type IngestedPage,
   type IngestionInput,
 } from "./IngestionService";
@@ -101,7 +101,7 @@ export class TableExtractorService {
   }
 
   async extract(input: IngestionInput): Promise<TableExtractionResult> {
-    const pages = await ingestAbeDocument(input);
+    const pages = await ingestAbeTableDocument(input);
     const extraction = await this.extractFromPages(pages);
 
     return {

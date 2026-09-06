@@ -10,6 +10,11 @@ import { withScanSessionId } from "@/lib/billing/free-scan-quota";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
+import {
+  automotiveGateErrorFromCaught,
+  enforceAutomotiveGateFromFormData,
+} from "@/lib/ocr/ocr-automotive-gate";
+import { AUTOMOTIVE_REJECTION_CODE } from "@/lib/ocr/verify-automotive-context";
 import { logServerError, publicClientMessage } from "@/lib/security/public-error";
 import { resolveDocumentContentType } from "@/lib/ocr/document-bytes";
 import type { DocumentBytesInput } from "@/lib/ocr/llm-document-content";
@@ -38,7 +43,8 @@ type ClassifyError = {
     | "bad_request"
     | "config"
     | "classify_failed"
-    | "rate_limited";
+    | "rate_limited"
+    | typeof AUTOMOTIVE_REJECTION_CODE;
 };
 
 function jsonError(
@@ -83,14 +89,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return jsonError(400, "Expected multipart form data.", "bad_request");
     }
 
-    const vehicleAccess = await ocrAccessFromFormData(
-      formData,
-      auth.user.id,
-      FEATURE.SCAN_AI_RECEIPT,
-      "invoice",
-    );
-    if (!vehicleAccess.ok) return vehicleAccess.response;
-
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return jsonError(400, "Document file is required.", "bad_request");
@@ -100,6 +98,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!fileCheck.ok) {
       return jsonError(400, fileCheck.error, "bad_request");
     }
+
+    const gateBlocked = await enforceAutomotiveGateFromFormData(formData, fileCheck);
+    if (gateBlocked) return gateBlocked;
+
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
+      auth.user.id,
+      FEATURE.SCAN_AI_RECEIPT,
+      "invoice",
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
+
     const bytes = Buffer.from(fileCheck.bytes);
     const sniffed = fileCheck.mime;
 
@@ -123,6 +133,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ),
     );
   } catch (error) {
+    const gateResponse = automotiveGateErrorFromCaught(error);
+    if (gateResponse) return gateResponse;
+
     if (isTextParseError(error)) {
       logServerError("[vault-classify] parse failed", error);
       return jsonError(

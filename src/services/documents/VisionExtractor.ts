@@ -111,13 +111,20 @@ export class AbeVisionExtractor {
   ) {}
 
   async extract(input: IngestionInput): Promise<VisionExtractionResult> {
-    const pages = await ingestAbeDocument(input);
+    const ingested = await ingestAbeDocument(input);
+    const pages = ingested.pages;
     const model =
       this.provider instanceof OpenAiVisionExtractionProvider
         ? resolveAbeContextModel()
         : "vision-provider";
 
-    const extraction = await this.provider.extractFromPages(pages);
+    let extraction = await this.provider.extractFromPages(pages);
+    if (!extraction.kba_number && ingested.textKbaDigits) {
+      extraction = normalizeAbeVisionExtraction({
+        ...extraction,
+        kba_number: ingested.textKbaDigits,
+      });
+    }
 
     return {
       extraction,

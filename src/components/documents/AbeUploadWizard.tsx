@@ -38,6 +38,10 @@ import {
   readScanSessionId,
 } from "@/lib/billing/scan-session-client";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
+import {
+  notifyOcrError,
+  readOcrErrorPayload,
+} from "@/lib/ocr/ocr-client-errors";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import {
@@ -138,15 +142,13 @@ async function callAbeStep<T>(
   const response = await fetch("/api/ocr/abe", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
     | { ok: true; extraction: T; scanSessionId?: string }
-    | { ok: false; error?: string }
+    | { ok: false; error?: string; code?: string }
     | null;
 
   if (!response.ok || !payload || payload.ok !== true) {
-    throw new AbeApiError(
-      payload && "error" in payload && payload.error
-        ? payload.error
-        : `${label} fehlgeschlagen (${response.status}).`,
-    );
+    const { message, code } = readOcrErrorPayload(payload);
+    notifyOcrError(message, code);
+    throw new AbeApiError(message);
   }
   return {
     extraction: payload.extraction,

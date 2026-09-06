@@ -46,7 +46,8 @@ import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { assessVehicleDocumentMatch } from "@/lib/documents/vehicle-document-match";
 import { validateMileageAgainstHistory } from "@/lib/documents/validate-mileage";
 import { DOCUMENT_TYPE_LABELS } from "@/lib/documents/constants";
-import { analyzeDocumentFiles } from "@/lib/ocr/analyze-document-client";
+import { analyzeDocumentFiles, AnalyzeDocumentError } from "@/lib/ocr/analyze-document-client";
+import { notifyOcrError } from "@/lib/ocr/ocr-client-errors";
 import {
   documentTypeForTextCategory,
   titleFromAbeFields,
@@ -840,11 +841,17 @@ export function InvoiceUploader({
     } catch (extractError) {
       setStep("compose");
       setUploadFile(null);
-      setError(
+      const message =
         extractError instanceof Error
           ? extractError.message
-          : "Extraktion fehlgeschlagen.",
+          : "Extraktion fehlgeschlagen.";
+      notifyOcrError(
+        message,
+        extractError instanceof AnalyzeDocumentError
+          ? extractError.code
+          : undefined,
       );
+      setError(message);
     }
   }
 

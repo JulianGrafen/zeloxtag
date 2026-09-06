@@ -9,10 +9,16 @@ import {
 import {
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
+import {
+  automotiveGateErrorFromCaught,
+  enforceAutomotiveGateFromFormData,
+} from "@/lib/ocr/ocr-automotive-gate";
+import { AUTOMOTIVE_REJECTION_CODE } from "@/lib/ocr/verify-automotive-context";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { withScanSessionId } from "@/lib/billing/free-scan-quota";
 import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
-import { isAbeVisionExtractionEmpty } from "@/lib/validations/abeVisionExtractionSchemas";
+import { AbePdfPageLimitError } from "@/lib/ocr/abe-pdf-kba-locator";
+import { requiresAbeManualFallback } from "@/lib/validations/abeVisionExtractionSchemas";
 import { abeVisionExtractor } from "@/services/documents/VisionExtractor";
 
 export const runtime = "nodejs";
@@ -24,6 +30,7 @@ type ExtractSuccess = {
   ok: true;
   extraction: {
     kba_number: string | null;
+    abe_nr: string | null;
     part_type: string | null;
     auflagen: string[];
     confidence_score: number;
@@ -36,7 +43,7 @@ type ExtractSuccess = {
 type ExtractError = {
   ok: false;
   error: string;
-  code: "unauthorized" | "bad_request" | "config" | "rate_limited";
+  code: "unauthorized" | "bad_request" | "config" | "rate_limited" | typeof AUTOMOTIVE_REJECTION_CODE;
 };
 
 function jsonError(
@@ -92,15 +99,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return jsonError(400, "Multipart-Upload erwartet.", "bad_request");
     }
 
-    const vehicleAccess = await ocrAccessFromFormData(
-      formData,
-      auth.user.id,
-      FEATURE.SCAN_AI_RECEIPT,
-      "abe",
-    );
-    if (!vehicleAccess.ok) return vehicleAccess.response;
-    const scanSessionId = vehicleAccess.scanSessionId;
-
     const uploads = await readUploadFiles(formData);
     if (uploads.length === 0) {
       return jsonError(
@@ -128,15 +126,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    const gateSource = pdfUploads[0] ?? uploads[0]!;
+    const gateValidated = await validateDocumentUpload(gateSource, {
+      maxBytes: MAX_BYTES,
+      pdfOnly: pdfUploads.length === 1,
+    });
+    if (!gateValidated.ok) {
+      return jsonError(400, gateValidated.error, "bad_request");
+    }
+
+    const gateBlocked = await enforceAutomotiveGateFromFormData(
+      formData,
+      gateValidated,
+    );
+    if (gateBlocked) return gateBlocked;
+
+    const vehicleAccess = await ocrAccessFromFormData(
+      formData,
+      auth.user.id,
+      FEATURE.SCAN_AI_RECEIPT,
+      "abe",
+    );
+    if (!vehicleAccess.ok) return vehicleAccess.response;
+    const scanSessionId = vehicleAccess.scanSessionId;
+
     if (pdfUploads.length === 1) {
       const pdf = pdfUploads[0]!;
-      const validated = await validateDocumentUpload(pdf, {
-        maxBytes: MAX_BYTES,
-        pdfOnly: true,
-      });
-      if (!validated.ok) {
-        return jsonError(400, validated.error, "bad_request");
-      }
+      const validated = gateValidated;
 
       const bytes = Buffer.from(validated.bytes);
       const result = await abeVisionExtractor.extract({
@@ -149,7 +165,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         extraction: result.extraction,
         pageCount: result.pageCount,
         model: result.model,
-        manualFallback: isAbeVisionExtractionEmpty(result.extraction),
+        manualFallback: requiresAbeManualFallback(result.extraction),
       };
       return NextResponse.json(withScanSessionId(body, scanSessionId));
     }
@@ -185,10 +201,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       extraction: result.extraction,
       pageCount: result.pageCount,
       model: result.model,
-      manualFallback: isAbeVisionExtractionEmpty(result.extraction),
+      manualFallback: requiresAbeManualFallback(result.extraction),
     };
     return NextResponse.json(withScanSessionId(body, scanSessionId));
   } catch (error) {
+    if (error instanceof AbePdfPageLimitError) {
+      return jsonError(400, error.message, "bad_request");
+    }
+
+    const gateResponse = automotiveGateErrorFromCaught(error);
+    if (gateResponse) return gateResponse;
+
     console.error("[abe-extract]", error);
     return jsonError(500, "Extraktion fehlgeschlagen.", "bad_request");
   }

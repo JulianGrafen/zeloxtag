@@ -42,6 +42,10 @@ import {
 } from "@/lib/billing/scan-session-client";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import {
+  notifyOcrError,
+  readOcrErrorPayload,
+} from "@/lib/ocr/ocr-client-errors";
+import {
   cropAuflagenSnippetsFromPhoto,
   type NormalizedAuflagenRegion,
 } from "@/lib/ocr/auflagen-crop";
@@ -387,7 +391,7 @@ async function postAbeOcrStep<T>(
   step: string,
   scanSessionId: string | null,
   mapValue: (payload: { ok: true; extraction: unknown }) => T,
-  errorMessage: string,
+  _errorMessage: string,
 ): Promise<AbeOcrStepResult<T>> {
   const body = new FormData();
   body.set("vehicleId", vehicleId);
@@ -398,15 +402,13 @@ async function postAbeOcrStep<T>(
   const response = await fetch("/api/ocr/abe", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
     | { ok: true; extraction: unknown; scanSessionId?: string; reason?: string }
-    | { ok: false; error?: string }
+    | { ok: false; error?: string; code?: string }
     | null;
 
   if (!response.ok || !payload || payload.ok !== true) {
-    throw new HuntApiError(
-      payload && "error" in payload && payload.error
-        ? payload.error
-        : `${errorMessage} (${response.status}).`,
-    );
+    const { message, code } = readOcrErrorPayload(payload);
+    notifyOcrError(message, code);
+    throw new HuntApiError(message);
   }
 
   return {
@@ -446,15 +448,13 @@ async function extractAuflagenTextFromFile(
         reason?: string;
         scanSessionId?: string;
       }
-    | { ok: false; error?: string }
+    | { ok: false; error?: string; code?: string }
     | null;
 
   if (!response.ok || !payload || payload.ok !== true) {
-    throw new HuntApiError(
-      payload && "error" in payload && payload.error
-        ? payload.error
-        : `Auflagen-Text fehlgeschlagen (${response.status}).`,
-    );
+    const { message, code } = readOcrErrorPayload(payload);
+    notifyOcrError(message, code);
+    throw new HuntApiError(message);
   }
 
   const notes = payload.extraction.auflagenNotes?.trim();

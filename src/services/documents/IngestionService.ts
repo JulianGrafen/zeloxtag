@@ -2,9 +2,16 @@ import "server-only";
 
 import { resizeImageToMaxEdge } from "@/lib/image/server-canvas";
 import {
-  getPdfPageCount,
-  rasterizePdfPageIndicesWithPdfJs,
-} from "@/lib/ocr/pdf-rasterize-server";
+  AbePdfPageLimitError,
+  extractPdfPageTextsServer,
+  findKbaMatchesInPageTexts,
+  selectVisionPagesForKbaHits,
+} from "@/lib/ocr/abe-pdf-kba-locator";
+import { rasterizePdfPageIndicesWithPdfJs } from "@/lib/ocr/pdf-rasterize-server";
+import {
+  abeUploadSchema,
+  ABE_UPLOAD_MAX_PAGES,
+} from "@/lib/validations/abeComplianceSchemas";
 
 /** DPI when rasterizing PDF pages. */
 const PDF_RASTER_DPI = 220;
@@ -34,34 +41,12 @@ export type IngestionInput =
   | { kind: "pdf"; bytes: Buffer }
   | { kind: "images"; files: IngestionImageFile[] };
 
-/**
- * Select PDF page indices for ABE extraction:
- * first 3 pages + last 2 pages (deduplicated, order preserved).
- * Middle pages are typically multilingual boilerplate.
- */
-export function selectAbePdfPageIndices(totalPages: number): number[] {
-  if (totalPages <= 0) return [];
-
-  const firstCount = Math.min(3, totalPages);
-  const first = Array.from({ length: firstCount }, (_, index) => index);
-
-  if (totalPages <= 3) return first;
-
-  const lastStart = Math.max(3, totalPages - 2);
-  const last = Array.from(
-    { length: totalPages - lastStart },
-    (_, offset) => lastStart + offset,
-  );
-
-  const seen = new Set<number>();
-  const ordered: number[] = [];
-  for (const pageIndex of [...first, ...last]) {
-    if (seen.has(pageIndex)) continue;
-    seen.add(pageIndex);
-    ordered.push(pageIndex);
-  }
-  return ordered;
-}
+export type AbeIngestionResult = {
+  pages: IngestedPage[];
+  /** KBA Typzeichen found via cheap PDF text search before vision. */
+  textKbaDigits: string | null;
+  totalPdfPages?: number;
+};
 
 async function normalizeImageToJpeg(
   bytes: Buffer,
@@ -76,21 +61,29 @@ async function normalizeImageToJpeg(
   );
 }
 
-async function ingestPdf(bytes: Buffer): Promise<IngestedPage[]> {
-  const totalPages = await getPdfPageCount(bytes);
-  const indices = selectAbePdfPageIndices(totalPages);
-  if (indices.length === 0) return [];
+async function ingestPdf(bytes: Buffer): Promise<AbeIngestionResult> {
+  const { pageTexts, totalPages } = await extractPdfPageTextsServer(bytes);
+  const uploadParsed = abeUploadSchema.safeParse({ pageCount: totalPages });
+  if (!uploadParsed.success) {
+    throw new AbePdfPageLimitError(
+      `PDF hat zu viele Seiten (max. ${ABE_UPLOAD_MAX_PAGES}).`,
+    );
+  }
 
-  // Render only the selected pages — rasterizing the whole prefix just to reach
-  // the trailing pages is what a page-count bomb exploits.
+  const { kbaPageIndices, kbaDigits } = findKbaMatchesInPageTexts(pageTexts);
+  const visionIndices = selectVisionPagesForKbaHits(kbaPageIndices, totalPages);
+  if (visionIndices.length === 0) {
+    return { pages: [], textKbaDigits: kbaDigits, totalPdfPages: totalPages };
+  }
+
   const rendered = await rasterizePdfPageIndicesWithPdfJs(
     bytes,
-    indices,
+    visionIndices,
     PDF_RASTER_DPI,
   );
 
   const pages: IngestedPage[] = [];
-  for (const pageIndex of indices) {
+  for (const pageIndex of visionIndices) {
     const png = rendered.get(pageIndex);
     if (!png) continue;
     const jpeg = await normalizeImageToJpeg(png);
@@ -101,10 +94,24 @@ async function ingestPdf(bytes: Buffer): Promise<IngestedPage[]> {
       sourceLabel: `pdf-page-${pageIndex + 1}`,
     });
   }
-  return pages;
+
+  return {
+    pages,
+    textKbaDigits: kbaDigits,
+    totalPdfPages: totalPages,
+  };
 }
 
-async function ingestImages(files: IngestionImageFile[]): Promise<IngestedPage[]> {
+async function ingestImages(
+  files: IngestionImageFile[],
+): Promise<AbeIngestionResult> {
+  const uploadParsed = abeUploadSchema.safeParse({ pageCount: files.length });
+  if (!uploadParsed.success) {
+    throw new AbePdfPageLimitError(
+      `Zu viele Bilder (max. ${ABE_UPLOAD_MAX_PAGES}).`,
+    );
+  }
+
   const pages: IngestedPage[] = [];
 
   for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
@@ -118,15 +125,79 @@ async function ingestImages(files: IngestionImageFile[]): Promise<IngestedPage[]
     });
   }
 
+  return {
+    pages,
+    textKbaDigits: null,
+  };
+}
+
+/**
+ * Table extraction samples cover + tail pages where Verwendungsbereich tables live.
+ */
+export function selectAbeTablePdfPageIndices(totalPages: number): number[] {
+  if (totalPages <= 0) return [];
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index);
+  }
+  return [0, 1, 2, totalPages - 2, totalPages - 1];
+}
+
+async function ingestPdfForTable(bytes: Buffer): Promise<IngestedPage[]> {
+  const { totalPages } = await extractPdfPageTextsServer(bytes);
+  const uploadParsed = abeUploadSchema.safeParse({ pageCount: totalPages });
+  if (!uploadParsed.success) {
+    throw new AbePdfPageLimitError(
+      `PDF hat zu viele Seiten (max. ${ABE_UPLOAD_MAX_PAGES}).`,
+    );
+  }
+
+  const visionIndices = selectAbeTablePdfPageIndices(totalPages);
+  const rendered = await rasterizePdfPageIndicesWithPdfJs(
+    bytes,
+    visionIndices,
+    PDF_RASTER_DPI,
+  );
+
+  const pages: IngestedPage[] = [];
+  for (const pageIndex of visionIndices) {
+    const png = rendered.get(pageIndex);
+    if (!png) continue;
+    const jpeg = await normalizeImageToJpeg(png);
+    pages.push({
+      index: pageIndex,
+      bytes: jpeg,
+      contentType: "image/jpeg",
+      sourceLabel: `pdf-page-${pageIndex + 1}`,
+    });
+  }
+
   return pages;
 }
 
 /**
+ * Normalize uploads for table vision extraction (cover + tail pages on PDFs).
+ */
+export async function ingestAbeTableDocument(
+  input: IngestionInput,
+): Promise<IngestedPage[]> {
+  if (input.kind === "pdf") {
+    return ingestPdfForTable(input.bytes);
+  }
+
+  if (input.files.length === 0) {
+    throw new Error("Mindestens eine Datei erforderlich.");
+  }
+
+  return (await ingestImages(input.files)).pages;
+}
+
+/**
  * Normalize uploads into JPEG page buffers for the vision extractor.
+ * PDFs: text-search all pages for KBA first, then rasterize at most three pages.
  */
 export async function ingestAbeDocument(
   input: IngestionInput,
-): Promise<IngestedPage[]> {
+): Promise<AbeIngestionResult> {
   if (input.kind === "pdf") {
     return ingestPdf(input.bytes);
   }

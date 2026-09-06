@@ -28,6 +28,9 @@ import {
   appendScanSessionId,
   readScanSessionId,
 } from "@/lib/billing/scan-session-client";
+import {
+  readOcrErrorPayload,
+} from "@/lib/ocr/ocr-client-errors";
 
 export type { InvoiceScanPart };
 
@@ -66,9 +69,12 @@ export type AnalyzeDocumentOptions = {
 };
 
 export class AnalyzeDocumentError extends Error {
-  constructor(message: string) {
+  readonly code?: string;
+
+  constructor(message: string, code?: string) {
     super(message);
     this.name = "AnalyzeDocumentError";
+    this.code = code;
   }
 }
 
@@ -138,15 +144,12 @@ async function analyzeOneFile(
         modelId: string;
         scanSessionId?: string;
       }
-    | { ok: false; error?: string }
+    | { ok: false; error?: string; code?: string }
     | null;
 
   if (!response.ok || !payload || payload.ok !== true) {
-    throw new AnalyzeDocumentError(
-      payload && "error" in payload && payload.error
-        ? payload.error
-        : `Analyse fehlgeschlagen (${response.status}).`,
-    );
+    const { message, code } = readOcrErrorPayload(payload);
+    throw new AnalyzeDocumentError(message, code);
   }
 
   return {

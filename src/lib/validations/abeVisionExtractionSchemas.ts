@@ -4,14 +4,31 @@ import { normalizeAuflagenKuerzel } from "@/lib/ocr/auflagen-kuerzel-db";
 import { normalizeAbeKbaDigits } from "@/lib/validations/abeSchema";
 
 /** Strict vision-LLM response for ABE document pages. */
-export const AbeVisionExtractionSchema = z
+const abeExtractObjectSchema = z
   .object({
     kba_number: z.string().nullable(),
+    abe_nr: z.string().nullable(),
     part_type: z.string().nullable(),
     auflagen: z.array(z.string()),
     confidence_score: z.number().int().min(1).max(100),
   })
   .strict();
+
+/** @alias AbeVisionExtractionSchema — compliance-aware ABE extract payload. */
+export const AbeExtractSchema = abeExtractObjectSchema.superRefine((value, ctx) => {
+  const kbaDigits = normalizeAbeKbaDigits(value.kba_number ?? "");
+  const abeDigits = (value.abe_nr ?? "").replace(/\D/g, "");
+  if (!kbaDigits && !abeDigits && value.confidence_score >= 80) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "Hohe Modell-Konfidenz ohne KBA- oder ABE-Nummer — gültig-Badge nicht erlaubt.",
+      path: ["kba_number"],
+    });
+  }
+});
+
+export const AbeVisionExtractionSchema = AbeExtractSchema;
 
 export type AbeVisionExtraction = z.infer<typeof AbeVisionExtractionSchema>;
 
@@ -21,12 +38,17 @@ export const ABE_VISION_EXTRACTION_JSON_SCHEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["kba_number", "part_type", "auflagen", "confidence_score"],
+    required: ["kba_number", "abe_nr", "part_type", "auflagen", "confidence_score"],
     properties: {
       kba_number: {
         type: ["string", "null"],
         description:
           "4- or 5-digit KBA (Kraftfahrt-Bundesamt) number, digits only when possible.",
+      },
+      abe_nr: {
+        type: ["string", "null"],
+        description:
+          "ABE document number printed on the approval (distinct from KBA Typzeichen).",
       },
       part_type: {
         type: ["string", "null"],
@@ -53,9 +75,10 @@ export const ABE_VISION_SYSTEM_PROMPT =
   "You are a German TÜV automotive document expert. Analyze the provided document pages. " +
   "Extract the following as strict JSON:\n" +
   "1. `kba_number`: The 4- or 5-digit KBA (Kraftfahrt-Bundesamt) number.\n" +
-  "2. `part_type`: e.g., 'Felge', 'Fahrwerk', 'Spoiler'.\n" +
-  "3. `auflagen`: An array of restriction codes (e.g., ['A01', 'K2b']) relevant to the vehicle table shown.\n" +
-  "4. `confidence_score`: 1-100 based on readability.\n" +
+  "2. `abe_nr`: The ABE document number if visible (not the same as KBA Typzeichen).\n" +
+  "3. `part_type`: e.g., 'Felge', 'Fahrwerk', 'Spoiler'.\n" +
+  "4. `auflagen`: An array of restriction codes (e.g., ['A01', 'K2b']) relevant to the vehicle table shown.\n" +
+  "5. `confidence_score`: 1-100 based on readability.\n" +
   "If a value is completely unreadable, return null, do not hallucinate.";
 
 export const ABE_VISION_CONFIDENCE_WARNING_THRESHOLD = 80;
@@ -74,10 +97,31 @@ export function parseAuflagenCodeInput(raw: string): string[] {
 export function emptyAbeVisionExtraction(): AbeVisionExtraction {
   return {
     kba_number: null,
+    abe_nr: null,
     part_type: null,
     auflagen: [],
     confidence_score: 1,
   };
+}
+
+function normalizeAbeNr(value: string | null | undefined): string | null {
+  const digits = (value ?? "").replace(/\D/g, "");
+  return digits.length >= 4 ? digits : null;
+}
+
+export function isAbeExtractComplianceReady(
+  extraction: AbeVisionExtraction,
+): boolean {
+  const normalized = normalizeAbeVisionExtraction(extraction);
+  return Boolean(normalized.kba_number || normalized.abe_nr);
+}
+
+/** Manual review when identifiers are missing — never show a trust badge. */
+export function requiresAbeManualFallback(
+  extraction: AbeVisionExtraction,
+): boolean {
+  if (!isAbeExtractComplianceReady(extraction)) return true;
+  return isAbeVisionExtractionEmpty(extraction);
 }
 
 export function normalizeAbeVisionExtraction(
@@ -86,6 +130,7 @@ export function normalizeAbeVisionExtraction(
   const kbaDigits = normalizeAbeKbaDigits(raw.kba_number ?? "");
   return {
     kba_number: kbaDigits || null,
+    abe_nr: normalizeAbeNr(raw.abe_nr),
     part_type: raw.part_type?.trim() || null,
     auflagen: Array.from(
       new Set(
@@ -105,6 +150,7 @@ export function isAbeVisionExtractionEmpty(
   const normalized = normalizeAbeVisionExtraction(extraction);
   return (
     !normalized.kba_number &&
+    !normalized.abe_nr &&
     !normalized.part_type &&
     normalized.auflagen.length === 0
   );
