@@ -11,7 +11,7 @@ export const SITE_LEGAL = {
   companyName: env("NEXT_PUBLIC_LEGAL_COMPANY_NAME", "Julian Gräfen"),
   legalForm: env("NEXT_PUBLIC_LEGAL_LEGAL_FORM", ""),
   representative: env("NEXT_PUBLIC_LEGAL_REPRESENTATIVE", "Julian Gräfen"),
-  street: env("NEXT_PUBLIC_LEGAL_STREET", "Pfarrer-Reinartz Str. 11"),
+  street: env("NEXT_PUBLIC_LEGAL_STREET", "Pfarrer-Reinartz-Str. 11"),
   postalCode: env("NEXT_PUBLIC_LEGAL_POSTAL_CODE", "53925"),
   city: env("NEXT_PUBLIC_LEGAL_CITY", "Kall"),
   country: env("NEXT_PUBLIC_LEGAL_COUNTRY", "Deutschland"),
