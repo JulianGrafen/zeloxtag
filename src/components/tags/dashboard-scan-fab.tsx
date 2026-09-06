@@ -9,6 +9,10 @@ import {
   isPaywallOpen,
   subscribePaywallOpen,
 } from "@/lib/billing/paywall-open-state";
+import {
+  getDashboardPromptSnapshot,
+  subscribeDashboardPrompts,
+} from "@/lib/ui/dashboard-prompt-orchestrator";
 
 export interface DashboardScanCtaProps {
   tagUuid: string;
@@ -19,6 +23,8 @@ export interface DashboardScanCtaProps {
   /** Link to the manual entry page (no receipt / KI scan). */
   manualEntryHref?: string;
   scanLabel?: string;
+  /** Hide while a photo sheet / modal needs the bottom of the screen. */
+  hidden?: boolean;
 }
 
 export function DashboardScanCta({
@@ -27,7 +33,7 @@ export function DashboardScanCta({
   scanHref,
   manualEntryHref,
   scanLabel = "Dokument scannen",
-}: DashboardScanCtaProps) {
+}: Omit<DashboardScanCtaProps, "hidden">) {
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
 
   return (
@@ -68,9 +74,12 @@ export function DashboardScanCta({
 }
 
 /** Fixed bottom scan CTA with fade gradient (dashboard + document menus). */
-export function DashboardScanFab(props: DashboardScanCtaProps) {
+export function DashboardScanFab({ hidden = false, ...ctaProps }: DashboardScanCtaProps) {
   const [mounted, setMounted] = useState(false);
   const [paywallOpen, setPaywallOpenState] = useState(false);
+  const [promptPhase, setPromptPhase] = useState(
+    () => getDashboardPromptSnapshot().phase,
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -83,7 +92,18 @@ export function DashboardScanFab(props: DashboardScanCtaProps) {
     });
   }, []);
 
-  if (!mounted || paywallOpen) {
+  useEffect(() => {
+    const syncPhase = () => {
+      setPromptPhase(getDashboardPromptSnapshot().phase);
+    };
+    syncPhase();
+    return subscribeDashboardPrompts(syncPhase);
+  }, []);
+
+  const blockedByPrompt =
+    promptPhase === "silhouette" || promptPhase === "tour";
+
+  if (!mounted || paywallOpen || hidden || blockedByPrompt) {
     return null;
   }
 
@@ -95,7 +115,7 @@ export function DashboardScanFab(props: DashboardScanCtaProps) {
       <div aria-hidden className="vd-fab-gradient h-28" />
       <div className="pointer-events-auto relative px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5">
         <div className="mx-auto max-w-lg">
-          <DashboardScanCta {...props} />
+          <DashboardScanCta {...ctaProps} />
         </div>
       </div>
     </div>,

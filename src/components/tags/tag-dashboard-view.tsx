@@ -11,6 +11,7 @@ import type { Document, Vehicle } from "@/types/database";
 
 import {
   filterOilChangeDocuments,
+  formatLastOilChangeSubtitle,
   latestOilChangeIsoDate,
 } from "@/lib/documents/oil-changes";
 import { filterAbeFamilyDocuments } from "@/lib/documents/abe-family-documents";
@@ -58,6 +59,8 @@ interface TagDashboardViewProps {
   /** One free KI ABE scan still available for the owner. */
   freeAbeScanRemaining?: number;
   onOpenScanner?: () => void;
+  /** Hide the scan FAB while a photo sheet/modal is open. */
+  hideScanFab?: boolean;
   /** Pro tile without href — open the action-based paywall. */
   onLockedFeature?: (feature: FeatureFlag) => void;
   /** Owner: tap header cutout to change silhouette. */
@@ -86,6 +89,7 @@ export function TagDashboardView({
   freeInvoiceScanRemaining = 0,
   freeAbeScanRemaining = 0,
   onOpenScanner,
+  hideScanFab = false,
   onLockedFeature,
   onEditVehicleImage,
   vehicleImageOverride,
@@ -262,16 +266,15 @@ export function TagDashboardView({
     }
 
     if (tile.id === "oil-change") {
+      const lastChangeSubtitle = formatLastOilChangeSubtitle(lastOilChange);
       return {
         ...tile,
         meta: {
           ...tile.meta,
           href: `/v/${tagUuid}/intervalle`,
           subtitle:
-            oilChangeCount > 0
-              ? tile.meta?.subtitle ??
-                `${oilChangeCount} Einträge`
-              : "Eintragen",
+            lastChangeSubtitle ??
+            (oilChangeCount > 0 ? `${oilChangeCount} Einträge` : "Eintragen"),
         },
       };
     }
@@ -372,6 +375,7 @@ export function TagDashboardView({
       {canScan ? (
         <DashboardScanFab
           tagUuid={tagUuid}
+          hidden={hideScanFab}
           onOpenScanner={onOpenScanner}
           manualEntryHref={manualEntryHref}
           scanLabel={

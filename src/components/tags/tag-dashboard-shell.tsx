@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { FreeScanSuccessModal } from "@/components/billing/free-scan-success-modal";
@@ -36,7 +37,6 @@ import {
   writeSilhouetteToSession,
 } from "@/lib/vehicles/silhouette-session";
 import {
-  DASHBOARD_FAB_CLEARANCE,
   resetDashboardPromptOrchestrator,
   setDashboardPromptPhase,
 } from "@/lib/ui/dashboard-prompt-orchestrator";
@@ -192,12 +192,17 @@ export function TagDashboardShell({
   const [scanType, setScanType] = useState<ScanType | null>(null);
   const [silhouettePromptVisible, setSilhouettePromptVisible] = useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
   const promptTimersRef = useRef<number[]>([]);
   const postTourSequenceHandledRef = useRef(false);
   const [deferSilhouetteForTour, setDeferSilhouetteForTour] = useState(
     Boolean(startTour),
   );
   const [forceTour, setForceTour] = useState(startTour);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   useEffect(() => {
     if (startTour) {
@@ -333,6 +338,11 @@ export function TagDashboardShell({
     }
     setSilhouettePromptVisible(false);
     schedulePwaPrompt(PWA_AFTER_SILHOUETTE_MS);
+  }
+
+  function closeSilhouetteEditor() {
+    setShowSilhouetteEditor(false);
+    setDashboardPromptPhase("idle");
   }
 
   function handleTourOpenChange(open: boolean) {
@@ -603,6 +613,7 @@ export function TagDashboardShell({
           membershipActive ? 0 : localFreeAbeScanRemaining
         }
         onOpenScanner={handleOpenScanner}
+        hideScanFab={silhouettePromptVisible || showSilhouetteEditor}
         onLockedFeature={(feature) => {
           openPaywall(
             feature,
@@ -617,6 +628,7 @@ export function TagDashboardShell({
           isOwner && !demoShowcase
             ? () => {
                 setSilhouettePromptVisible(false);
+                setDashboardPromptPhase("silhouette");
                 setShowSilhouetteEditor(true);
               }
             : undefined
@@ -625,53 +637,64 @@ export function TagDashboardShell({
         previewFallbackUrl={previewFallbackUrl}
         onSilhouetteProxyLoad={handleSilhouetteProxyLoad}
       />
-      {silhouettePromptVisible && mode === "dashboard" && !showSilhouetteEditor ? (
-        <div
-          className="fixed inset-x-0 z-40 mx-auto max-w-lg px-4 pt-2"
-          style={{ bottom: DASHBOARD_FAB_CLEARANCE }}
-        >
-          <VehicleSilhouetteUpload
-            vehicleId={vehicle.id}
-            tagUuid={tagUuid}
-            title="Bilder hinzufügen"
-            description="Lade ein Foto deines Autos hoch — es erscheint oben im Dashboard."
-            onUploaded={(result) => {
-              handleSilhouetteUploaded(result);
-              dismissSilhouettePrompt(true);
-            }}
-            onSkip={() => dismissSilhouettePrompt(true)}
-            onDismiss={() => dismissSilhouettePrompt(true)}
-          />
-        </div>
-      ) : null}
-      {showSilhouetteEditor ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
-          style={{ background: "var(--vd-overlay)" }}
-        >
-          <button
-            type="button"
-            aria-label="Schließen"
-            className="absolute inset-0 cursor-default"
-            onClick={() => setShowSilhouetteEditor(false)}
-          />
-          <div className="relative z-10 w-full max-w-lg">
-            <VehicleSilhouetteUpload
-              vehicleId={vehicle.id}
-              tagUuid={tagUuid}
-              title="Fahrzeugfoto ändern"
-              description="Neues Foto aus Galerie oder Kamera — es erscheint oben rechts in deinem Dashboard."
-              skipLabel="Schließen"
-              onDismiss={() => setShowSilhouetteEditor(false)}
-              onUploaded={(result) => {
-                handleSilhouetteUploaded(result);
-                setShowSilhouetteEditor(false);
+      {portalReady &&
+      silhouettePromptVisible &&
+      mode === "dashboard" &&
+      !showSilhouetteEditor
+        ? createPortal(
+            <div
+              className="fixed inset-x-0 z-[60] mx-auto max-w-lg px-4 pt-2"
+              style={{
+                bottom: "max(1rem, env(safe-area-inset-bottom))",
               }}
-              onSkip={() => setShowSilhouetteEditor(false)}
-            />
-          </div>
-        </div>
-      ) : null}
+            >
+              <VehicleSilhouetteUpload
+                vehicleId={vehicle.id}
+                tagUuid={tagUuid}
+                title="Bilder hinzufügen"
+                description="Lade ein Foto deines Autos hoch — es erscheint oben im Dashboard."
+                onUploaded={(result) => {
+                  handleSilhouetteUploaded(result);
+                  dismissSilhouettePrompt(true);
+                }}
+                onSkip={() => dismissSilhouettePrompt(true)}
+                onDismiss={() => dismissSilhouettePrompt(true)}
+              />
+            </div>,
+            document.body,
+          )
+        : null}
+      {portalReady && showSilhouetteEditor
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[60] flex items-end justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
+              style={{ background: "var(--vd-overlay)" }}
+            >
+              <button
+                type="button"
+                aria-label="Schließen"
+                className="absolute inset-0 cursor-default"
+                onClick={() => closeSilhouetteEditor()}
+              />
+              <div className="relative z-10 w-full max-w-lg">
+                <VehicleSilhouetteUpload
+                  vehicleId={vehicle.id}
+                  tagUuid={tagUuid}
+                  title="Fahrzeugfoto ändern"
+                  description="Neues Foto aus Galerie oder Kamera — es erscheint oben rechts in deinem Dashboard."
+                  skipLabel="Schließen"
+                  onDismiss={closeSilhouetteEditor}
+                  onUploaded={(result) => {
+                    handleSilhouetteUploaded(result);
+                    closeSilhouetteEditor();
+                  }}
+                  onSkip={closeSilhouetteEditor}
+                />
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
       <DashboardOnboardingTour
         enabled={
           mode === "dashboard" &&
