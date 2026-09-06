@@ -58,6 +58,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "src or path is required" }, { status: 400 });
     }
 
+    if (src.startsWith("/api/")) {
+      return NextResponse.redirect(new URL(src, request.url), 307);
+    }
+
     if (src.startsWith("/demo/")) {
       if (!isSafeDemoDocumentPath(src)) {
         return NextResponse.json({ error: "Source not allowed" }, { status: 403 });

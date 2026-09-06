@@ -1,5 +1,9 @@
 import { DOCUMENT_BUCKET } from "./constants";
 import { resolveStoragePath } from "./storage-path";
+import {
+  isVehicleDynoChartStoragePath,
+  ownerDynoChartDisplayPath,
+} from "@/lib/vehicles/dyno-chart-constants";
 
 export { isDocumentStoragePath } from "./storage-path";
 
@@ -44,6 +48,34 @@ export function isViewableDocumentUrl(fileUrl: string): boolean {
   }
 }
 
+const OWNER_DYNO_CHART_PATH_RE =
+  /^\/api\/vehicle\/dyno-chart\/[0-9a-f-]{36}(?:\?.*)?$/i;
+const PUBLIC_DYNO_CHART_PATH_RE =
+  /^\/api\/public\/vehicle\/[0-9a-f-]{36}\/dyno-chart(?:\?.*)?$/i;
+
+function resolveDynoChartProxyUrl(fileUrl: string): string | null {
+  const trimmed = fileUrl.trim();
+  if (!trimmed) return null;
+
+  const bare = trimmed.split("#")[0] ?? trimmed;
+  if (
+    OWNER_DYNO_CHART_PATH_RE.test(bare) ||
+    PUBLIC_DYNO_CHART_PATH_RE.test(bare)
+  ) {
+    return bare;
+  }
+
+  const pathOnly = trimmed.split("?")[0]?.split("#")[0] ?? trimmed;
+  if (isVehicleDynoChartStoragePath(pathOnly)) {
+    const vehicleId = pathOnly.split("/")[0] ?? "";
+    if (/^[0-9a-f-]{36}$/i.test(vehicleId)) {
+      return ownerDynoChartDisplayPath(vehicleId);
+    }
+  }
+
+  return null;
+}
+
 function documentFileProxyUrl(fileUrl: string): string {
   const storagePath = resolveStoragePath(fileUrl);
   if (storagePath) {
@@ -60,6 +92,8 @@ function documentFileProxyUrl(fileUrl: string): string {
  */
 export function resolveDocumentViewUrl(fileUrl: string): string {
   if (fileUrl.startsWith("/demo/")) return fileUrl;
+  const dyno = resolveDynoChartProxyUrl(fileUrl);
+  if (dyno) return dyno;
   return documentFileProxyUrl(fileUrl);
 }
 
@@ -67,7 +101,7 @@ export function resolveDocumentViewUrl(fileUrl: string): string {
  * Same-origin proxy URL that forces `Content-Disposition: inline`.
  */
 export function inlineDocumentProxyUrl(fileUrl: string): string {
-  return documentFileProxyUrl(fileUrl);
+  return resolveDocumentViewUrl(fileUrl);
 }
 
 /** Open the document inline — same-tab navigation avoids mobile popup blockers. */
