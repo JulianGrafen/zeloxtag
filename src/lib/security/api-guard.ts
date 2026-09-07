@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { User } from "@supabase/supabase-js";
 
+import { checkAccountWritable } from "@/lib/account/account-lifecycle";
 import { getApiRouteUser } from "@/lib/auth/get-user";
 import { MEMBERSHIP_REQUIRED_MESSAGE } from "@/lib/billing/pro-plan";
 import { ownerHasFeature } from "@/lib/permissions/require-feature";
@@ -202,6 +203,29 @@ export async function requireApiUser(): Promise<ApiAuthResult> {
   }
 
   return { ok: true, user };
+}
+
+/** Require auth and reject accounts in deletion grace (read-only). */
+export async function requireWritableApiUser(): Promise<ApiAuthResult> {
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth;
+
+  const writable = await checkAccountWritable(auth.user.id);
+  if (!writable.ok) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          ok: false,
+          error: writable.message,
+          code: "account_read_only",
+        },
+        { status: 403 },
+      ),
+    };
+  }
+
+  return auth;
 }
 
 /**

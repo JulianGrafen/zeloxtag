@@ -9,7 +9,7 @@ import type { OcrApiError, OcrApiSuccess } from "@/lib/ocr/types";
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 import { withScanSessionId } from "@/lib/billing/free-scan-quota";
 import { FEATURE } from "@/lib/permissions/feature-access";
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
 
     let formData: FormData;

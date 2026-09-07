@@ -16,7 +16,10 @@ import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
 import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
+import { getAccountDeletionState } from "@/lib/account/account-lifecycle";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
+import { AccountDeletionPanel } from "@/components/account/account-deletion-panel";
+import { AccountDeletionBanner } from "@/components/account/account-deletion-banner";
 import {
   isPostPaymentReturn,
 } from "@/lib/onboarding/dashboard-tour";
@@ -85,6 +88,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   const dashboardHref = await resolvePostLoginPath(user.id);
   const hasPasswordLogin = accountHasPasswordLogin(user);
+  const deletionState = await getAccountDeletionState(user.id);
 
   return (
     <AppShell>
@@ -104,6 +108,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             </span>
           </p>
         </div>
+
+        {deletionState.status === "grace" && deletionState.graceEndsAt ? (
+          <AccountDeletionBanner graceEndsAt={deletionState.graceEndsAt} />
+        ) : null}
 
         <MembershipStatusCard
           userId={user.id}
@@ -146,6 +154,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <SignOutButton />
           </div>
         </section>
+
+        <AccountDeletionPanel
+          userEmail={user.email ?? ""}
+          hasPasswordLogin={hasPasswordLogin}
+          deletionState={deletionState}
+        />
       </section>
     </AppShell>
   );

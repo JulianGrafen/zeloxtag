@@ -5,7 +5,7 @@ import { z } from "zod";
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 import { sniffAllowedMime } from "@/lib/security/file-upload";
 import { hardenUploadBytes } from "@/lib/security/upload-hardening";
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
     const user = auth.user;
 
@@ -332,7 +332,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
     const user = auth.user;
 

@@ -44,6 +44,7 @@ import type { Document, Vehicle } from "@/types/database";
 
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
 import { TagDashboardView } from "./tag-dashboard-view";
+import { AccountDeletionBanner } from "@/components/account/account-deletion-banner";
 
 function silhouetteSkipKey(vehicleId: string): string {
   return `zlx-silhouette-skip:${vehicleId}`;
@@ -118,6 +119,8 @@ interface TagDashboardShellProps {
   showFreeScanWelcome?: boolean;
   /** Inventory minter tile for configured superuser. */
   showOperatorMinter?: boolean;
+  /** When set, owner account is in deletion grace (read-only). */
+  accountDeletionGraceEndsAt?: string | null;
 }
 
 /**
@@ -139,6 +142,7 @@ export function TagDashboardShell({
   freeAbeScanRemaining = 0,
   showFreeScanWelcome = false,
   showOperatorMinter = false,
+  accountDeletionGraceEndsAt = null,
 }: TagDashboardShellProps) {
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
@@ -596,6 +600,9 @@ export function TagDashboardShell({
 
   return (
     <>
+      {isOwner && accountDeletionGraceEndsAt ? (
+        <AccountDeletionBanner graceEndsAt={accountDeletionGraceEndsAt} />
+      ) : null}
       <TagDashboardView
         vehicle={displayVehicle}
         documents={documents}

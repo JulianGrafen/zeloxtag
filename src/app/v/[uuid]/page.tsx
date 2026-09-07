@@ -11,6 +11,7 @@ import { PublicProfilePrivate } from "@/components/public-showcase/PublicProfile
 import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
 import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { getAccountDeletionState } from "@/lib/account/account-lifecycle";
 import { isOperatorEmail } from "@/lib/auth/require-operator";
 import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
@@ -300,6 +301,10 @@ export default async function TagScanPage({
     });
     const showOperatorMinter =
       access.isOwner && isOperatorEmail(user?.email ?? null);
+    const deletionState =
+      access.isOwner && vehicle.user_id
+        ? await getAccountDeletionState(vehicle.user_id)
+        : null;
 
     return (
       <AppShell showNavbar={false}>
@@ -319,6 +324,11 @@ export default async function TagScanPage({
           freeAbeScanRemaining={freeAbeScanQuota.remaining}
           showFreeScanWelcome={freeScanWelcome === "1"}
           showOperatorMinter={showOperatorMinter}
+          accountDeletionGraceEndsAt={
+            deletionState?.status === "grace"
+              ? deletionState.graceEndsAt
+              : null
+          }
         />
       </AppShell>
     );

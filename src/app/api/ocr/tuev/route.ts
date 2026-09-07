@@ -5,7 +5,7 @@ import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 import { withScanSessionId } from "@/lib/billing/free-scan-quota";
 import { FEATURE } from "@/lib/permissions/feature-access";
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const limited = await enforceRateLimit(request, "ocr", "tuev");
     if (limited) return limited;
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
 
     if (!isLlmConfigured()) {

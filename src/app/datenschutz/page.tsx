@@ -292,16 +292,17 @@ export default function DatenschutzPage() {
 
       <LegalSection title="5. Vertragsbeendigung, Löschung & Backups">
         <LegalParagraph>
-          Nach der Kündigung oder dem Ablauf eines Vertrages durchläuft das
-          Kundenkonto einen automatisierten Lebenszyklus zur Gewährleistung der
-          DSGVO-Vorgaben:
+          Wenn du dein Konto in den Einstellungen freiwillig löschst, durchläuft
+          es einen automatisierten Lebenszyklus zur Gewährleistung der
+          DSGVO-Vorgaben. Die Kündigung eines Pro-Abos führt hingegen nur zum
+          Wechsel in den kostenlosen Tarif — dein Konto bleibt bestehen.
         </LegalParagraph>
         <LegalUnorderedList>
           <li>
-            <strong>Grace Period:</strong> Mit Ablauf des Abos wird das Konto
+            <strong>Grace Period:</strong> Nach der Lösch-Anfrage wird das Konto
             für 30 Tage in einen &quot;Gesperrt / Read-Only&quot;-Status
-            versetzt. Der Nutzer erhält die Möglichkeit, seine Akte als
-            ZIP-Archiv herunterzuladen.
+            versetzt. Du kannst deine Akte als ZIP-Archiv herunterladen oder die
+            Löschung widerrufen.
           </li>
           <li>
             <strong>Hard Delete:</strong> Nach 30 Tagen werden alle

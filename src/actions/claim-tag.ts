@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 
+import { checkAccountWritable } from "@/lib/account/account-lifecycle";
 import { ensureClaimAccount } from "@/lib/auth/ensure-claim-account";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import {
@@ -145,6 +146,10 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
   const currentUser = await getCurrentUser();
 
   if (currentUser) {
+    const writable = await checkAccountWritable(currentUser.id);
+    if (!writable.ok) {
+      return { status: "error", message: writable.message };
+    }
     ownerUserId = currentUser.id;
   } else {
     if (!normalized.email || !normalized.password) {

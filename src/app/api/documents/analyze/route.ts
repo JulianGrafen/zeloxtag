@@ -14,7 +14,7 @@ import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 import { logServerError } from "@/lib/security/public-error";
 import { withScanSessionId } from "@/lib/billing/free-scan-quota";
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     const limited = await enforceRateLimit(request, "upload", "analyze");
     if (limited) return limited;
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
 
     if (!isLlmConfigured()) {

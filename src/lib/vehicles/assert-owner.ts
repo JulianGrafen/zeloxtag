@@ -1,3 +1,4 @@
+import { checkAccountWritable } from "@/lib/account/account-lifecycle";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -6,7 +7,12 @@ export type OwnerCheckResult =
   | { ok: true; userId: string; vehicleId: string }
   | {
       ok: false;
-      reason: "unconfigured" | "unauthorized" | "forbidden" | "not_found";
+      reason:
+        | "unconfigured"
+        | "unauthorized"
+        | "forbidden"
+        | "not_found"
+        | "read_only";
       message: string;
     };
 
@@ -53,6 +59,15 @@ export async function assertVehicleOwner(
       ok: false,
       reason: "forbidden",
       message: "Only the vehicle owner can perform this action.",
+    };
+  }
+
+  const writable = await checkAccountWritable(user.id);
+  if (!writable.ok) {
+    return {
+      ok: false,
+      reason: "read_only",
+      message: writable.message,
     };
   }
 

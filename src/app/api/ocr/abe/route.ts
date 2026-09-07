@@ -6,7 +6,7 @@ import { FEATURE } from "@/lib/permissions/feature-access";
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 import { withScanSessionId } from "@/lib/billing/free-scan-quota";
 import { ocrAccessFromFormData } from "@/lib/security/require-vehicle-ocr";
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const limited = await enforceRateLimit(request, "ocr", "abe");
     if (limited) return limited;
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
 
     if (!isLlmConfigured()) {

@@ -186,4 +186,6 @@ export const RATE_LIMITS = {
   stripeCheckout: { limit: 8, windowMs: 10 * 60_000 },
   /** Operator tag mint batches. */
   tagMint: { limit: 12, windowMs: 60_000 },
+  /** Account ZIP export during deletion grace. */
+  accountExport: { limit: 3, windowMs: 24 * 60 * 60 * 1000 },
 } as const;

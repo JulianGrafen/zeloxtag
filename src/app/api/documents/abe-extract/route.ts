@@ -4,7 +4,7 @@ import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 import {
   validateDocumentUpload,
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const limited = await enforceRateLimit(request, "ocr", "abe-extract");
     if (limited) return limited;
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
 
     if (!isLlmConfigured()) {

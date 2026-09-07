@@ -10,7 +10,7 @@ import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import {
   enforceRateLimit,
-  requireApiUser,
+  requireWritableApiUser,
   subscriptionRequiredResponse,
 } from "@/lib/security/api-guard";
 import { TimelineService } from "@/services/timeline/TimelineService";
@@ -28,7 +28,7 @@ export async function GET(
   const limited = await enforceRateLimit(request, "apiDefault", "vehicle-expose");
   if (limited) return limited;
 
-  const auth = await requireApiUser();
+  const auth = await requireWritableApiUser();
   if (!auth.ok) return auth.response;
 
   const { id: rawId } = await context.params;

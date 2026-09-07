@@ -12,7 +12,7 @@ import {
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 
 export const runtime = "nodejs";
@@ -48,7 +48,7 @@ function jsonError(status: number, error: string) {
 /** GET /api/abe/auflagen-kuerzel — merged Kürzel lookup table. */
 export async function GET(): Promise<NextResponse> {
   try {
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
 
     const records = await loadAuflagenKuerzelRecordsWithImages();
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const limited = await enforceRateLimit(request, "apiDefault", "auflagen-kuerzel");
     if (limited) return limited;
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
 
     let payload: unknown;

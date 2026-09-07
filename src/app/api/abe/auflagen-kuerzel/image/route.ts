@@ -8,7 +8,7 @@ import {
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 import { requireOperator } from "@/lib/auth/require-operator";
 import { validateDocumentUpload } from "@/lib/security/file-upload";
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
     if (limited) return limited;
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
 
     let formData: FormData;

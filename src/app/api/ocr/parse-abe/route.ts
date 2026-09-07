@@ -5,7 +5,7 @@ import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 import { parseStrictBody, readJsonBody } from "@/lib/security/parse-body";
 import {
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const limited = await enforceRateLimit(request, "ocr", "parse-abe");
     if (limited) return limited;
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
 
     if (!isLlmConfigured()) {

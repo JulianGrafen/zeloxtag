@@ -206,6 +206,32 @@ export type Document = {
   created_at: string;
 };
 
+/** DSR audit log for account deletion lifecycle (`00055`). */
+export type AccountDataSubjectLog = {
+  id: string;
+  user_id: string;
+  event_type:
+    | "deletion_requested"
+    | "deletion_canceled"
+    | "export_downloaded"
+    | "purge_completed";
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+/** Voluntary account deletion grace request (`00055`). */
+export type AccountDeletionRequest = {
+  id: string;
+  user_id: string;
+  status: "grace" | "canceled" | "completed";
+  requested_at: string;
+  grace_ends_at: string;
+  canceled_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /** Joined payload returned when resolving a scanned tag. */
 export type TagScanResult = {
   tag: Tag;
@@ -370,6 +396,58 @@ export type Database = {
           image_path?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      account_deletion_requests: {
+        Row: AccountDeletionRequest;
+        Insert: {
+          id?: string;
+          user_id: string;
+          status?: "grace" | "canceled" | "completed";
+          requested_at?: string;
+          grace_ends_at: string;
+          canceled_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          status?: "grace" | "canceled" | "completed";
+          requested_at?: string;
+          grace_ends_at?: string;
+          canceled_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      account_data_subject_log: {
+        Row: AccountDataSubjectLog;
+        Insert: {
+          id?: string;
+          user_id: string;
+          event_type:
+            | "deletion_requested"
+            | "deletion_canceled"
+            | "export_downloaded"
+            | "purge_completed";
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          event_type?:
+            | "deletion_requested"
+            | "deletion_canceled"
+            | "export_downloaded"
+            | "purge_completed";
+          metadata?: Record<string, unknown>;
+          created_at?: string;
         };
         Relationships: [];
       };

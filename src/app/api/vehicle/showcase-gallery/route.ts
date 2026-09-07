@@ -15,7 +15,7 @@ import { normalizeHeicUploadBytes } from "@/lib/image/convert-heic-to-jpeg";
 import {
   enforceRateLimit,
   enforceSameOrigin,
-  requireApiUser,
+  requireWritableApiUser,
 } from "@/lib/security/api-guard";
 import {
   isUploadFile,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const auth = await requireApiUser();
+    const auth = await requireWritableApiUser();
     if (!auth.ok) return auth.response;
     const user = auth.user;
 

@@ -1,3 +1,4 @@
+import { checkAccountWritable } from "@/lib/account/account-lifecycle";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -79,6 +80,14 @@ async function resolveVehicleWriteAccessFromDb(
   }
 
   if (ownedVehicle?.id && ownedVehicle.user_id === userId) {
+    const writable = await checkAccountWritable(userId);
+    if (!writable.ok) {
+      return denied({
+        vehicleId: ownedVehicle.id,
+        ownerUserId: ownedVehicle.user_id,
+        message: writable.message,
+      });
+    }
     return {
       ok: true,
       isOwner: true,
@@ -110,6 +119,15 @@ async function resolveVehicleWriteAccessFromDb(
       vehicleId,
       message:
         "Schrauber-Zugriff erfordert serverseitige Konfiguration (Service Role).",
+    });
+  }
+
+  const ownerWritable = await checkAccountWritable(ownerUserId);
+  if (!ownerWritable.ok) {
+    return denied({
+      vehicleId,
+      ownerUserId,
+      message: ownerWritable.message,
     });
   }
 
