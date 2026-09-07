@@ -12,7 +12,7 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { logServerError } from "@/lib/security/public-error";
 
-import { isPlausibleVin, normalizeVin } from "@/lib/validations/vin";
+import { coerceVinForStorage } from "@/lib/validations/vin";
 
 export type UpdateVehicleSpecsInput = {
   vehicleId: string;
@@ -29,14 +29,7 @@ export type UpdateVehicleSpecsResult =
   | { status: "error"; message: string };
 
 function normalizeVinInput(raw: string | undefined): string | null {
-  const vin = normalizeVin(raw ?? "");
-  if (!vin) return null;
-  if (!isPlausibleVin(vin)) {
-    throw new Error(
-      "VIN ungültig — bitte die 17-stellige Fahrgestellnummer prüfen.",
-    );
-  }
-  return vin;
+  return coerceVinForStorage(raw);
 }
 
 export async function updateVehicleSpecs(

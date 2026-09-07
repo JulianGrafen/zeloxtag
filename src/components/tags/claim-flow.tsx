@@ -20,8 +20,10 @@ import {
   VEHICLE_DRIVETRAIN_TYPES,
   VEHICLE_FUEL_TYPES,
   OIL_CHANGE_INTERVAL_KM_OPTIONS,
+  OIL_CHANGE_INTERVAL_MONTHS_OPTIONS,
+  formatOilChangeIntervalMonthsLabel,
 } from "@/lib/vehicles/tech-specs";
-import { DEFAULT_OIL_INTERVAL_KM } from "@/lib/documents/oil-changes";
+import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
 import { formatMileageKmNumber } from "@/lib/documents/format";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +50,9 @@ export function ClaimFlow({
   const [oilChangeIntervalKm, setOilChangeIntervalKm] = useState(
     String(DEFAULT_OIL_INTERVAL_KM),
   );
+  const [oilChangeIntervalMonths, setOilChangeIntervalMonths] = useState(
+    String(DEFAULT_OIL_INTERVAL_MONTHS),
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState(userEmail ?? "");
   const [password, setPassword] = useState("");
@@ -67,6 +72,9 @@ export function ClaimFlow({
   function validateOilInterval(): string | null {
     if (!oilChangeIntervalKm.trim()) {
       return "Bitte ein Ölwechsel-Intervall wählen.";
+    }
+    if (!oilChangeIntervalMonths.trim()) {
+      return "Bitte ein Monats-Intervall wählen.";
     }
     return null;
   }
@@ -146,6 +154,7 @@ export function ClaimFlow({
             drivetrain: drivetrain.trim() || undefined,
             fuelType: fuelType.trim() || undefined,
             oilChangeIntervalKm,
+            oilChangeIntervalMonths,
           },
           ...(needsAccount
             ? {
@@ -440,9 +449,17 @@ export function ClaimFlow({
                 label: `${formatMileageKmNumber(km)} km`,
               }))}
             />
-            <p className="text-[0.8rem] text-[color:var(--vd-muted)]">
-              Zeitlich gilt weiterhin 12 Monate — einstellbar unter Fahrzeugdaten.
-            </p>
+            <SelectField
+              id="claim-oil-interval-months"
+              label="Intervall (Monate)"
+              value={oilChangeIntervalMonths}
+              onChange={setOilChangeIntervalMonths}
+              required
+              options={OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => ({
+                value: String(months),
+                label: formatOilChangeIntervalMonthsLabel(months),
+              }))}
+            />
             <SlideActions
               error={error}
               pending={pending}

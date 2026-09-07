@@ -42,6 +42,17 @@ export function normalizeVin(vin: string): string {
   return vin.replace(/\s+/g, "").toUpperCase();
 }
 
+/**
+ * Persist a VIN without blocking saves on checksum/format issues.
+ * Full ISO validation when possible; otherwise keep normalized input (max 32).
+ */
+export function coerceVinForStorage(raw: string | undefined): string | null {
+  const vin = normalizeVin(raw ?? "");
+  if (!vin) return null;
+  if (isPlausibleVin(vin)) return vin;
+  return vin.slice(0, 32);
+}
+
 /** ISO 3779 check digit — filters OCR garbage VINs. */
 export function isPlausibleVin(vin: string): boolean {
   const normalized = normalizeVin(vin);

@@ -54,6 +54,19 @@ describe("claim-tech-specs", () => {
     });
     expect(
       normalizeClaimTechSpecs({
+        oilChangeIntervalKm: "15000",
+        oilChangeIntervalMonths: "18",
+      }),
+    ).toEqual({
+      powerPs: null,
+      displacementCc: null,
+      drivetrain: null,
+      fuelType: null,
+      oilChangeIntervalKm: 15_000,
+      oilChangeIntervalMonths: 18,
+    });
+    expect(
+      normalizeClaimTechSpecs({
         oilChangeIntervalKm: "9999",
       }),
     ).toBeNull();

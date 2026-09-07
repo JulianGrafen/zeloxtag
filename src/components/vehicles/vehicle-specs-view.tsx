@@ -22,8 +22,11 @@ import {
 } from "@/lib/vehicles/silhouette-session";
 import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 import {
+  formatOilChangeIntervalMonthsLabel,
   isOilChangeIntervalKmOption,
+  isOilChangeIntervalMonthsOption,
   OIL_CHANGE_INTERVAL_KM_OPTIONS,
+  OIL_CHANGE_INTERVAL_MONTHS_OPTIONS,
   parseVehicleTechSpecs,
   VEHICLE_DRIVETRAIN_TYPES,
   VEHICLE_FUEL_TYPES,
@@ -138,6 +141,9 @@ export function VehicleSpecsView({
   const oilIntervalKmSelectValue = String(
     specs.oilChangeIntervalKm ?? oilInterval.intervalKm,
   );
+  const oilIntervalMonthsSelectValue = String(
+    specs.oilChangeIntervalMonths ?? oilInterval.intervalMonths,
+  );
 
   function patchOilChangeIntervalKm(raw: string) {
     const km = Number.parseInt(raw, 10);
@@ -146,6 +152,19 @@ export function VehicleSpecsView({
       oilChangeIntervalKm: isOilChangeIntervalKmOption(km) ? km : null,
       oilChangeIntervalMonths:
         prev.oilChangeIntervalMonths ?? DEFAULT_OIL_INTERVAL_MONTHS,
+    }));
+    setSaved(false);
+  }
+
+  function patchOilChangeIntervalMonths(raw: string) {
+    const months = Number.parseInt(raw, 10);
+    setSpecs((prev) => ({
+      ...prev,
+      oilChangeIntervalMonths: isOilChangeIntervalMonthsOption(months)
+        ? months
+        : null,
+      oilChangeIntervalKm:
+        prev.oilChangeIntervalKm ?? resolveOilChangeInterval(prev).intervalKm,
     }));
     setSaved(false);
   }
@@ -474,19 +493,19 @@ export function VehicleSpecsView({
                   </select>
                 </Field>
                 <Field label="Ölwechsel-Intervall (Monate)">
-                  <input
-                    inputMode="numeric"
-                    value={
-                      specs.oilChangeIntervalMonths != null
-                        ? String(specs.oilChangeIntervalMonths)
-                        : ""
-                    }
+                  <select
+                    value={oilIntervalMonthsSelectValue}
                     onChange={(event) =>
-                      patchSpec("oilChangeIntervalMonths", event.target.value)
+                      patchOilChangeIntervalMonths(event.target.value)
                     }
                     className="claim-input w-full"
-                    placeholder="12"
-                  />
+                  >
+                    {OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => (
+                      <option key={months} value={String(months)}>
+                        {formatOilChangeIntervalMonthsLabel(months)}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
               </div>
             </section>

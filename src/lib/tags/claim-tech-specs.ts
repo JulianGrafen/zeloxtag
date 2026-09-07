@@ -2,6 +2,7 @@ import { DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
 import {
   EMPTY_VEHICLE_TECH_SPECS,
   parseOilChangeIntervalKm,
+  parseOilChangeIntervalMonths,
   normalizeVehicleDrivetrain,
   normalizeVehicleFuelType,
   type VehicleTechSpecs,
@@ -23,6 +24,7 @@ export type ClaimTechSpecsInput = {
   drivetrain?: string | null;
   fuelType?: string | null;
   oilChangeIntervalKm?: string | number | null;
+  oilChangeIntervalMonths?: string | number | null;
 };
 
 function parsePositiveInt(value: string | number | null | undefined): number | null {
@@ -53,7 +55,8 @@ export function normalizeClaimTechSpecs(
     (input.fuelType?.trim() || null);
   const oilChangeIntervalKm = parseOilChangeIntervalKm(input.oilChangeIntervalKm);
   const oilChangeIntervalMonths =
-    oilChangeIntervalKm != null ? DEFAULT_OIL_INTERVAL_MONTHS : null;
+    parseOilChangeIntervalMonths(input.oilChangeIntervalMonths) ??
+    (oilChangeIntervalKm != null ? DEFAULT_OIL_INTERVAL_MONTHS : null);
 
   if (
     powerPs == null &&

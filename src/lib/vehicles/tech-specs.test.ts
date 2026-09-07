@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   countFilledTechSpecs,
+  formatOilChangeIntervalMonthsLabel,
   isOilChangeIntervalKmOption,
+  isOilChangeIntervalMonthsOption,
   OIL_CHANGE_INTERVAL_KM_OPTIONS,
+  OIL_CHANGE_INTERVAL_MONTHS_OPTIONS,
   parseVehicleTechSpecs,
   serializeVehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
@@ -69,6 +72,16 @@ describe("vehicle tech specs", () => {
     expect(OIL_CHANGE_INTERVAL_KM_OPTIONS.at(-1)).toBe(50_000);
     expect(isOilChangeIntervalKmOption(10_000)).toBe(true);
     expect(isOilChangeIntervalKmOption(9_999)).toBe(false);
+  });
+
+  it("builds oil-change month options in 1-month steps", () => {
+    expect(OIL_CHANGE_INTERVAL_MONTHS_OPTIONS[0]).toBe(1);
+    expect(OIL_CHANGE_INTERVAL_MONTHS_OPTIONS).toContain(12);
+    expect(OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.at(-1)).toBe(36);
+    expect(isOilChangeIntervalMonthsOption(12)).toBe(true);
+    expect(isOilChangeIntervalMonthsOption(37)).toBe(false);
+    expect(formatOilChangeIntervalMonthsLabel(1)).toBe("1 Monat");
+    expect(formatOilChangeIntervalMonthsLabel(12)).toBe("12 Monate");
   });
 
   it("parses and clamps oil-change interval fields", () => {

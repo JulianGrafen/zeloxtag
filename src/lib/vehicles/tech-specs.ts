@@ -121,6 +121,33 @@ export function parseOilChangeIntervalKm(value: unknown): number | null {
   return isOilChangeIntervalKmOption(parsed) ? parsed : null;
 }
 
+/** Dropdown options for oil-change interval (months), 1-month steps. */
+export const OIL_CHANGE_INTERVAL_MONTHS_OPTIONS: readonly number[] = Array.from(
+  {
+    length:
+      OIL_CHANGE_INTERVAL_MONTHS_MAX - OIL_CHANGE_INTERVAL_MONTHS_MIN + 1,
+  },
+  (_, index) => OIL_CHANGE_INTERVAL_MONTHS_MIN + index,
+);
+
+export function isOilChangeIntervalMonthsOption(months: number): boolean {
+  return (
+    months >= OIL_CHANGE_INTERVAL_MONTHS_MIN &&
+    months <= OIL_CHANGE_INTERVAL_MONTHS_MAX &&
+    Number.isInteger(months)
+  );
+}
+
+export function formatOilChangeIntervalMonthsLabel(months: number): string {
+  return months === 1 ? "1 Monat" : `${months} Monate`;
+}
+
+export function parseOilChangeIntervalMonths(value: unknown): number | null {
+  const parsed = asPositiveInt(value);
+  if (parsed == null) return null;
+  return isOilChangeIntervalMonthsOption(parsed) ? parsed : null;
+}
+
 export type VehicleTechSpecs = {
   engine: string | null;
   powerPs: number | null;
@@ -223,10 +250,8 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
     ),
     dynoChartUrl: asTrimmedString(record.dynoChartUrl),
     oilChangeIntervalKm: parseOilChangeIntervalKm(record.oilChangeIntervalKm),
-    oilChangeIntervalMonths: asBoundedInt(
+    oilChangeIntervalMonths: parseOilChangeIntervalMonths(
       record.oilChangeIntervalMonths,
-      OIL_CHANGE_INTERVAL_MONTHS_MIN,
-      OIL_CHANGE_INTERVAL_MONTHS_MAX,
     ),
   };
 }

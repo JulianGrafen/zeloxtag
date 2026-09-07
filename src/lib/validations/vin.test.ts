@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractPlausibleVin, isPlausibleVin } from "@/lib/validations/vin";
+import { coerceVinForStorage, extractPlausibleVin, isPlausibleVin } from "@/lib/validations/vin";
 
 describe("vin validation", () => {
   it("accepts valid ISO 3779 VINs", () => {
@@ -15,5 +15,13 @@ describe("vin validation", () => {
     expect(
       extractPlausibleVin("Vertragswerkstatt VERTRAGSWERKSTATT Service"),
     ).toBeNull();
+  });
+
+  it("coerces partial VINs for storage without blocking saves", () => {
+    expect(coerceVinForStorage("")).toBeNull();
+    expect(coerceVinForStorage("  ")).toBeNull();
+    expect(coerceVinForStorage("1HGBH41JXMN109186")).toBe("1HGBH41JXMN109186");
+    expect(coerceVinForStorage("teil-fin-123")).toBe("TEIL-FIN-123");
+    expect(coerceVinForStorage("a".repeat(40))).toHaveLength(32);
   });
 });
