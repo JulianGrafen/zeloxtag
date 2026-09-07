@@ -8,6 +8,7 @@ export const ABE_FAMILY_KINDS = [
   "teilegutachten",
   "einzelabnahme",
   "pruefung192",
+  "egbe",
 ] as const;
 
 export type AbeFamilyKind = (typeof ABE_FAMILY_KINDS)[number];
@@ -37,7 +38,8 @@ export function resolveAbeFamilyKind(
       vaultKind === "gutachten" ||
       vaultKind === "teilegutachten" ||
       vaultKind === "einzelabnahme" ||
-      vaultKind === "pruefung192"
+      vaultKind === "pruefung192" ||
+      vaultKind === "egbe"
     ) {
       return vaultKind;
     }
@@ -53,6 +55,7 @@ export function resolveAbeFamilyKind(
   ) {
     return kind;
   }
+  if (kind === "egbe") return null;
   return "abe";
 }
 

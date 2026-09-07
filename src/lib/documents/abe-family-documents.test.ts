@@ -126,4 +126,27 @@ describe("filterAbeFamilyDocumentsByKind", () => {
     ).toEqual(["tg-1"]);
     expect(resolveAbeFamilyKind(docs[0]!)).toBe("abe");
   });
+
+  it("resolves vault Tresor subtypes from documentKind", () => {
+    const vaultEinzelabnahme = baseDocument({
+      id: "vault-ea",
+      category: "GUTACHTEN_ABE",
+      approval_fields: {
+        kind: "vault",
+        data: { category: "RÄDER_FELGEN", documentKind: "einzelabnahme" },
+      },
+    });
+
+    expect(resolveAbeFamilyKind(vaultEinzelabnahme)).toBe("einzelabnahme");
+    expect(resolveAbeFamilyKind(
+      baseDocument({
+        id: "vault-abe",
+        category: "GUTACHTEN_ABE",
+        approval_fields: {
+          kind: "vault",
+          data: { category: "RÄDER_FELGEN", documentKind: "abe" },
+        },
+      }),
+    )).toBe("abe");
+  });
 });

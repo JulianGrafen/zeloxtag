@@ -49,7 +49,7 @@ export function ApprovalFieldsSection({
   /** When defects are shown in a dedicated section (e.g. detail view). */
   hideDefects?: boolean;
 }) {
-  if (!approvalFields || approvalFields.kind === "abe") {
+  if (!approvalFields || approvalFields.kind === "abe" || approvalFields.kind === "vault") {
     return null;
   }
 

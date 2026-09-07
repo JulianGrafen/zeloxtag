@@ -22,6 +22,9 @@ import {
   technicalSpecsForAbeDetailView,
   vehicleApprovalsForAbeDetailView,
 } from "@/lib/documents/abe-detail-display";
+import {
+  resolveAbeFamilyKind,
+} from "@/lib/documents/abe-family-documents";
 import { mayRenderAbeValidBadge } from "@/lib/validations/abeComplianceSchemas";
 import { ABE_REQUIRED_FIELD_LABELS } from "@/lib/validations/abeDataHunterSchemas";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
@@ -62,8 +65,10 @@ export function DocumentAbeDetailView({
 }: DocumentAbeDetailViewProps) {
   const kindLabel = approvalKindLabel(document.approval_fields);
   const isVault = isVaultDocument(document);
-  const isEinzelabnahme = document.approval_fields?.kind === "einzelabnahme";
-  const isTeilegutachten = document.approval_fields?.kind === "teilegutachten";
+  const familyKind = resolveAbeFamilyKind(document);
+  const isPlainAbe = familyKind === "abe";
+  const isEinzelabnahme = familyKind === "einzelabnahme";
+  const isTeilegutachten = familyKind === "teilegutachten";
   const title = displayAbeDocumentTitle(document);
   const partName = title || document.vendor?.trim() || kindLabel;
   const vinFromApprovals = document.vehicle_approvals?.[0]
@@ -74,7 +79,6 @@ export function DocumentAbeDetailView({
     document.approval_fields?.kind === "abe"
       ? document.approval_fields.data?.abeHolder?.trim() || ""
       : "";
-  const isPlainAbe = !isEinzelabnahme && !isTeilegutachten;
   const titleIncludesManufacturer =
     manufacturer.length > 0 &&
     partName.toLowerCase().startsWith(manufacturer.toLowerCase());
@@ -255,33 +259,74 @@ export function DocumentAbeDetailView({
                 />
               </dl>
             </div>
-          ) : (
+          ) : isEinzelabnahme ? (
+            <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
+              {document.invoice_number ? (
+                <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                  <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                    Dokumentnummer
+                  </dt>
+                  <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                    {document.invoice_number}
+                  </dd>
+                </div>
+              ) : null}
+              {vinFromApprovals ? (
+                <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                  <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                    Feld E · VIN
+                  </dt>
+                  <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                    {vinFromApprovals}
+                  </dd>
+                </div>
+              ) : null}
+              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                  Ausstellungsdatum
+                </dt>
+                <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                  {document.date
+                    ? formatDocumentDate(document.date)
+                    : scannedLabel}
+                </dd>
+              </div>
+              {manufacturer ? (
+                <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                  <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                    Feld 2 · Hersteller
+                  </dt>
+                  <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                    {manufacturer}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : isTeilegutachten ? (
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
+            {document.invoice_number ? (
+              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                  Teilegutachten-Nr.
+                </dt>
+                <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                  {document.invoice_number}
+                </dd>
+              </div>
+            ) : null}
+            {document.authority ? (
+              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
+                <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
+                  Behörde
+                </dt>
+                <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                  {document.authority}
+                </dd>
+              </div>
+            ) : null}
             <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
               <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                {isEinzelabnahme
-                  ? "Dokumentnummer"
-                  : "Teilegutachten-Nr."}
-              </dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {document.kba_number ?? "—"}
-              </dd>
-            </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                {isEinzelabnahme ? "Feld E · VIN" : "Behörde"}
-              </dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {isEinzelabnahme
-                  ? vinFromApprovals || "—"
-                  : document.authority ?? "—"}
-              </dd>
-            </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                {isEinzelabnahme || isTeilegutachten
-                  ? "Ausstellungsdatum"
-                  : "Scandatum"}
+                Ausstellungsdatum
               </dt>
               <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                 {document.date
@@ -289,7 +334,7 @@ export function DocumentAbeDetailView({
                   : scannedLabel}
               </dd>
             </div>
-            {isTeilegutachten && document.approval_fields?.kind === "teilegutachten" ? (
+            {document.approval_fields?.kind === "teilegutachten" ? (
               <>
                 {document.approval_fields.data.markingType ? (
                   <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
@@ -313,7 +358,7 @@ export function DocumentAbeDetailView({
                 ) : null}
               </>
             ) : null}
-            {isTeilegutachten && document.part_category ? (
+            {document.part_category ? (
               <div className="col-span-2 rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
                 <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
                   Art der Umrüstung
@@ -323,17 +368,20 @@ export function DocumentAbeDetailView({
                 </dd>
               </div>
             ) : null}
-            {isEinzelabnahme && manufacturer ? (
+          </dl>
+          ) : (
+            <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
               <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
                 <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                  Feld 2 · Hersteller
+                  Scandatum
                 </dt>
                 <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                  {manufacturer}
+                  {document.date
+                    ? formatDocumentDate(document.date)
+                    : scannedLabel}
                 </dd>
               </div>
-            ) : null}
-          </dl>
+            </dl>
           )}
         </section>
 
