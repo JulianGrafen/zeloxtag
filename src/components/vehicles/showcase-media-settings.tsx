@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 
 import { ShowcaseGallerySettings } from "@/components/vehicles/showcase-gallery-settings";
-import { ShowcasePublicMediaNotice } from "@/components/vehicles/showcase-public-media-notice";
 import { VehicleDynoChartUpload } from "@/components/vehicles/vehicle-dyno-chart-upload";
 import { resolveOwnerDynoChartViewUrl } from "@/lib/vehicles/dyno-chart-constants";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
@@ -14,7 +13,6 @@ type ShowcaseMediaSettingsProps = {
   vehicle: Vehicle;
   galleryPhotos: Document[];
   canEdit: boolean;
-  isPublic: boolean;
 };
 
 export function ShowcaseMediaSettings({
@@ -22,7 +20,6 @@ export function ShowcaseMediaSettings({
   vehicle,
   galleryPhotos,
   canEdit,
-  isPublic,
 }: ShowcaseMediaSettingsProps) {
   const router = useRouter();
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
@@ -32,9 +29,7 @@ export function ShowcaseMediaSettings({
   }
 
   return (
-    <div className="space-y-4">
-      <ShowcasePublicMediaNotice isPublic={isPublic} />
-
+    <div className="space-y-5">
       <ShowcaseGallerySettings
         tagUuid={tagUuid}
         vehicleId={vehicle.id}
@@ -44,6 +39,7 @@ export function ShowcaseMediaSettings({
       />
 
       <VehicleDynoChartUpload
+        embedded
         vehicleId={vehicle.id}
         tagUuid={tagUuid}
         dynoChartUrl={resolveOwnerDynoChartViewUrl(vehicle.id, specs.dynoChartUrl)}

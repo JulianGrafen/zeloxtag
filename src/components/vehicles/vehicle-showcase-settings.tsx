@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { Copy, Globe, Shield } from "lucide-react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { Copy, ChevronDown } from "lucide-react";
 
 import { updatePublicShowcaseDocuments } from "@/actions/update-public-showcase-documents";
 import { updateVehicleShowcaseSettings } from "@/actions/update-vehicle-showcase-settings";
+import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
 import { ShowcaseMediaSettings } from "@/components/vehicles/showcase-media-settings";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { parseLineItems } from "@/lib/documents/line-items";
@@ -40,7 +41,7 @@ function ToggleRow({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3.5">
+    <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3">
       <span className="min-w-0">
         <span className="block text-[0.88rem] font-medium text-[color:var(--vd-text)]">
           {label}
@@ -145,6 +146,45 @@ function ShowcaseDocumentPicker({
   );
 }
 
+function CollapsibleDocGroup({
+  title,
+  count,
+  selectedCount,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  count: number;
+  selectedCount: number;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details className="group" open={defaultOpen}>
+      <summary
+        className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.78rem] font-medium text-[color:var(--vd-text)] [&::-webkit-details-marker]:hidden"
+      >
+        <span>
+          {title}
+          <span className="ml-1.5 font-normal text-[color:var(--vd-muted)]">
+            ({count})
+          </span>
+          {selectedCount > 0 ? (
+            <span className="ml-1.5 font-normal text-[color:var(--vd-accent)]">
+              · {selectedCount} sichtbar
+            </span>
+          ) : null}
+        </span>
+        <ChevronDown
+          className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="mt-2 space-y-2">{children}</div>
+    </details>
+  );
+}
+
 function formatDocumentMeta(doc: Document): string | null {
   const parts: string[] = [];
   if (doc.vendor) parts.push(doc.vendor);
@@ -204,6 +244,13 @@ export function VehicleShowcaseSettings({
 
   const pending = settingsPending || documentsPending;
   const hasSelectableDocs = invoices.length > 0 || modifications.length > 0;
+  const shareUrl = sharePath ? `${PRODUCTION_SITE_URL}${sharePath}` : null;
+  const selectedModificationCount = modifications.filter((doc) =>
+    selectedIds.has(doc.id),
+  ).length;
+  const selectedInvoiceCount = invoices.filter((doc) =>
+    selectedIds.has(doc.id),
+  ).length;
 
   function saveSettings(next: { isPublic?: boolean; hideFinancials?: boolean }) {
     if (!canEdit) return;
@@ -321,10 +368,9 @@ export function VehicleShowcaseSettings({
   }
 
   async function copyShareLink() {
-    if (!sharePath || typeof window === "undefined") return;
-    const url = `${window.location.origin}${sharePath}`;
+    if (!shareUrl || typeof window === "undefined") return;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareUrl);
       setMessage("Link kopiert.");
     } catch {
       setError("Link konnte nicht kopiert werden.");
@@ -333,28 +379,14 @@ export function VehicleShowcaseSettings({
 
   return (
     <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <Globe className="h-4 w-4 text-[color:var(--vd-accent)]" aria-hidden />
-        <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          Öffentliches Profil
-        </h2>
-      </div>
-      <p className="mb-4 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-        QR-Showcase für Besucher — Specs, Fotos und Umbauten.
-      </p>
+      <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+        Öffentliches Profil
+      </h2>
 
-      <ShowcaseMediaSettings
-        tagUuid={tagUuid}
-        vehicle={vehicle}
-        galleryPhotos={galleryPhotos}
-        canEdit={canEdit}
-        isPublic={isPublic}
-      />
-
-      <div className="mt-5 space-y-3">
+      <div className="mt-4 space-y-2">
         <ToggleRow
-          label="Öffentliches Profil"
-          description="Beim QR-Scan sichtbar"
+          label="Profil veröffentlichen"
+          description="Showcase-Seite mit Share-Link aktivieren"
           checked={isPublic}
           disabled={!canEdit || pending}
           onChange={(value) => {
@@ -362,29 +394,51 @@ export function VehicleShowcaseSettings({
             saveSettings({ isPublic: value });
           }}
         />
-        <ToggleRow
-          label="Preise ausblenden"
-          description="Beträge auf der Public Page verbergen"
-          checked={hideFinancials}
-          disabled={!canEdit || pending}
-          onChange={(value) => {
-            setHideFinancials(value);
-            saveSettings({ hideFinancials: value });
-          }}
+        {isPublic ? (
+          <ToggleRow
+            label="Preise ausblenden"
+            description="Beträge auf der öffentlichen Seite verbergen"
+            checked={hideFinancials}
+            disabled={!canEdit || pending}
+            onChange={(value) => {
+              setHideFinancials(value);
+              saveSettings({ hideFinancials: value });
+            }}
+          />
+        ) : null}
+      </div>
+
+      {isPublic && shareUrl ? (
+        <div className="mt-4 flex items-stretch gap-2">
+          <p
+            className="min-w-0 flex-1 truncate rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 font-mono text-[0.76rem] leading-snug text-[color:var(--vd-text)]"
+            title={shareUrl}
+          >
+            {shareUrl.replace(/^https?:\/\//, "")}
+          </p>
+          <PressableButton
+            type="button"
+            variant="button"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.8rem] font-medium"
+            onClick={copyShareLink}
+          >
+            <Copy className="h-4 w-4" aria-hidden />
+            Kopieren
+          </PressableButton>
+        </div>
+      ) : null}
+
+      <div className="mt-5 border-t border-[color:var(--vd-border)] pt-5">
+        <ShowcaseMediaSettings
+          tagUuid={tagUuid}
+          vehicle={vehicle}
+          galleryPhotos={galleryPhotos}
+          canEdit={canEdit}
         />
       </div>
 
       {isPublic ? (
-        <div className="mt-5 space-y-4">
-          <div>
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Sichtbare Inhalte
-            </p>
-            <p className="mt-1 text-[0.8rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Umbauten und Positionen für die Public Page.
-            </p>
-          </div>
-
+        <div className="mt-5 space-y-3 border-t border-[color:var(--vd-border)] pt-5">
           {!hasSelectableDocs ? (
             <p className="rounded-xl border border-dashed border-[color:var(--vd-border)] px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
               Noch keine Belege oder Umbauten.
@@ -392,10 +446,12 @@ export function VehicleShowcaseSettings({
           ) : null}
 
           {modifications.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-[0.78rem] font-medium text-[color:var(--vd-text)]">
-                Umbauten
-              </p>
+            <CollapsibleDocGroup
+              title="Umbauten"
+              count={modifications.length}
+              selectedCount={selectedModificationCount}
+              defaultOpen={modifications.length <= 3}
+            >
               {modifications.map((doc) => (
                 <ShowcaseDocumentPicker
                   key={doc.id}
@@ -410,14 +466,15 @@ export function VehicleShowcaseSettings({
                   }
                 />
               ))}
-            </div>
+            </CollapsibleDocGroup>
           ) : null}
 
           {invoices.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-[0.78rem] font-medium text-[color:var(--vd-text)]">
-                Rechnungen
-              </p>
+            <CollapsibleDocGroup
+              title="Rechnungen"
+              count={invoices.length}
+              selectedCount={selectedInvoiceCount}
+            >
               {invoices.map((doc) => (
                 <ShowcaseDocumentPicker
                   key={doc.id}
@@ -432,29 +489,8 @@ export function VehicleShowcaseSettings({
                   }
                 />
               ))}
-            </div>
+            </CollapsibleDocGroup>
           ) : null}
-        </div>
-      ) : null}
-
-      {isPublic && sharePath ? (
-        <div className="mt-4 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3">
-          <p className="flex items-center gap-1.5 text-[0.68rem] font-medium uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-            <Shield className="h-3.5 w-3.5" aria-hidden />
-            Share-Link
-          </p>
-          <p className="mt-2 break-all font-mono text-[0.78rem] text-[color:var(--vd-text)]">
-            {sharePath}
-          </p>
-          <PressableButton
-            type="button"
-            variant="button"
-            className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.82rem] font-medium"
-            onClick={copyShareLink}
-          >
-            <Copy className="h-4 w-4" aria-hidden />
-            Link kopieren
-          </PressableButton>
         </div>
       ) : null}
 

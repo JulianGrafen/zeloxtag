@@ -23,6 +23,7 @@ export type VehicleDynoChartUploadProps = {
   onUploaded?: (dynoChartUrl: string) => void;
   onDeleted?: () => void;
   className?: string;
+  embedded?: boolean;
 };
 
 type UploadState = "idle" | "uploading" | "done";
@@ -69,6 +70,7 @@ export function VehicleDynoChartUpload({
   onUploaded,
   onDeleted,
   className = "",
+  embedded = false,
 }: VehicleDynoChartUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -184,20 +186,32 @@ export function VehicleDynoChartUpload({
     }
   }
 
+  const wrapperClass = embedded
+    ? `space-y-3 ${className}`.trim()
+    : `rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim();
+
   return (
-    <section
-      className={`rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim()}
-    >
-      <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-        Leistungsdiagramm
-      </h2>
-      <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Dyno- oder Leistungsdiagramm als Foto oder PDF — erscheint im Showcase,
-        wenn dein Profil öffentlich ist.
-      </p>
+    <div className={wrapperClass}>
+      {embedded ? (
+        <p className="text-[0.88rem] font-medium text-[color:var(--vd-text)]">
+          Leistungsdiagramm
+        </p>
+      ) : (
+        <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+          Leistungsdiagramm
+        </h2>
+      )}
+      {!embedded ? (
+        <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+          Dyno- oder Leistungsdiagramm als Foto oder PDF — erscheint im Showcase,
+          wenn dein Profil öffentlich ist.
+        </p>
+      ) : null}
 
       {chartUrl ? (
-        <div className="mt-4 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-4 py-4">
+        <div
+          className={`${embedded ? "" : "mt-4 "}rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-3 py-3`}
+        >
           {chartIsImage && chartPreviewSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -206,32 +220,36 @@ export function VehicleDynoChartUpload({
               className="w-full rounded-xl border border-[color:var(--vd-border)] bg-neutral-950 object-contain"
             />
           ) : null}
-          <p className={`text-[0.85rem] font-medium text-[color:var(--vd-text)] ${chartIsImage ? "mt-3" : ""}`}>
+          <p className={`text-[0.85rem] font-medium text-[color:var(--vd-text)] ${chartIsImage ? "mt-2" : ""}`}>
             Leistungsdiagramm hinterlegt
           </p>
-          <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
-            {chartIsImage
-              ? "Vorschau — Original im Browser öffnen."
-              : "PDF wird inline im Browser geöffnet."}
-          </p>
+          {!embedded ? (
+            <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
+              {chartIsImage
+                ? "Vorschau — Original im Browser öffnen."
+                : "PDF wird inline im Browser geöffnet."}
+            </p>
+          ) : null}
           <PressableButton
             type="button"
             variant="button"
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3 text-[0.88rem] font-semibold text-white"
+            className={`${embedded ? "mt-2" : "mt-3"} inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2.5 text-[0.84rem] font-medium text-[color:var(--vd-text)]`}
             onClick={() => openDocumentOriginal(chartUrl)}
           >
             <ExternalLink className="h-4 w-4" aria-hidden />
-            Diagramm öffnen
+            Öffnen
           </PressableButton>
         </div>
       ) : (
-        <div className="mt-4 rounded-2xl border border-dashed border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-4 py-6 text-center">
+        <div
+          className={`${embedded ? "" : "mt-4 "}rounded-xl border border-dashed border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-3 py-4 text-center`}
+        >
           <FileUp
             className="mx-auto h-7 w-7 text-[color:var(--vd-muted)]"
             aria-hidden
           />
-          <p className="mt-2 text-[0.85rem] font-medium text-[color:var(--vd-text)]">
-            Noch kein Leistungsdiagramm
+          <p className="mt-2 text-[0.82rem] text-[color:var(--vd-muted)]">
+            Noch kein Diagramm
           </p>
         </div>
       )}
@@ -251,7 +269,7 @@ export function VehicleDynoChartUpload({
             type="button"
             variant="button"
             disabled={busy}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-4 py-3.5 text-[0.88rem] font-medium text-[color:var(--vd-text)] disabled:opacity-60"
+            className={`${embedded ? "" : "mt-4 "}inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-3 py-2.5 text-[0.84rem] font-medium text-[color:var(--vd-text)] disabled:opacity-60`}
             onClick={() => inputRef.current?.click()}
           >
             {busy ? (
@@ -274,7 +292,7 @@ export function VehicleDynoChartUpload({
           type="button"
           variant="button"
           disabled={busy}
-          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[0.88rem] font-medium text-red-700 disabled:opacity-60"
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-[0.84rem] font-medium text-red-700 disabled:opacity-60"
           onClick={() => void handleDelete()}
         >
           {deleting ? (
@@ -296,6 +314,6 @@ export function VehicleDynoChartUpload({
           Leistungsdiagramm gespeichert.
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }

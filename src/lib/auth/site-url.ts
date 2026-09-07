@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
 
+import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
 import { resolvePublicSiteOrigin } from "@/lib/site-origin";
 
-/** Canonical production app origin (password-reset + QR targets). */
-export const PRODUCTION_SITE_URL = "https://app.zeloxtag.de";
+export { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
 
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/$/, "");

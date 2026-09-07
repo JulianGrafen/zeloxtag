@@ -1,4 +1,4 @@
-import { PRODUCTION_SITE_URL } from "@/lib/auth/site-url";
+import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
 
 function normalizeOrigin(raw: string): string {
   const trimmed = raw.trim().replace(/\/$/, "");

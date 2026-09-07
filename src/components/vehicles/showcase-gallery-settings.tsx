@@ -172,10 +172,10 @@ export function ShowcaseGallerySettings({
         <p className="text-[0.88rem] font-medium text-[color:var(--vd-text)]">
           Showcase-Galerie
         </p>
-        <p className="mt-0.5 text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Bis zu {MAX_SHOWCASE_GALLERY_PHOTOS} Fotos für das öffentliche Profil.
+        <p className="mt-0.5 text-[0.78rem] text-[color:var(--vd-muted)]">
+          Bis zu {MAX_SHOWCASE_GALLERY_PHOTOS} Fotos
           {galleryPhotos.length > 0
-            ? ` ${galleryPhotos.length} von ${MAX_SHOWCASE_GALLERY_PHOTOS} hochgeladen.`
+            ? ` · ${galleryPhotos.length}/${MAX_SHOWCASE_GALLERY_PHOTOS}`
             : ""}
         </p>
       </div>
