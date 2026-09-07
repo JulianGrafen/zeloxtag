@@ -2,7 +2,10 @@
  * Oil-change detection from invoice OCR + derivation of interval records.
  */
 
-import type { OilChangeRecord } from "@/components/vehicle-dashboard/oilChangeRecords";
+import {
+  type OilChangeRecord,
+  OIL_CHANGE_SELF_WORKSHOP_LABEL,
+} from "@/components/vehicle-dashboard/oilChangeRecords";
 import type { Document, DocumentLineItem } from "@/types/database";
 
 import { formatDocumentDate } from "./format";
@@ -133,7 +136,7 @@ export function detectOilChangeInvoice(input: {
   if (oilAmountLiters) {
     noteParts.push(`${oilAmountLiters.toLocaleString("de-DE")} l`);
   }
-  noteParts.push(filterChanged ? "Filter gewechselt" : "Filter unklar");
+  if (filterChanged) noteParts.push("Filter gewechselt");
 
   return {
     isOilChange,
@@ -263,13 +266,15 @@ export function oilChangeRecordsFromDocuments(
       typeof document.mileage_km === "number" ? document.mileage_km : 0;
     const nextDueIso = addMonthsIso(isoDate, intervalMonths) ?? isoDate;
 
+    const workshop = document.vendor?.trim() || null;
+
     return {
       id: document.id,
       date: toDisplayDate(isoDate),
       mileageKm,
-      workshop: document.vendor?.trim() || "Werkstatt",
-      oilSpec: detected.oilSpec || "Motoröl",
-      oilAmountLiters: detected.oilAmountLiters ?? 0,
+      workshop,
+      oilSpec: detected.oilSpec,
+      oilAmountLiters: detected.oilAmountLiters,
       filterChanged: detected.filterChanged,
       intervalKm,
       intervalMonths,
@@ -281,6 +286,21 @@ export function oilChangeRecordsFromDocuments(
     } satisfies OilChangeRecord;
   });
 }
+
+/** Compact secondary line for oil-change list rows (km, optional spec). */
+export function oilChangeRecordListSubtitle(record: OilChangeRecord): string {
+  const parts: string[] = [];
+  if (record.mileageKm > 0) {
+    parts.push(`${record.mileageKm.toLocaleString("de-DE")} km`);
+  }
+  const spec = record.oilSpec?.trim();
+  if (spec) {
+    parts.push(spec.split(/\s+/).slice(0, 3).join(" "));
+  }
+  return parts.join(" · ");
+}
+
+export { OIL_CHANGE_SELF_WORKSHOP_LABEL };
 
 export function formatLastOilChangeSubtitle(
   isoDate: string | null | undefined,

@@ -75,7 +75,7 @@ export type VehicleTimelineProps = {
 export function VehicleTimeline({
   events,
   documentHref,
-  emptyMessage = "Noch keine Meilensteine mit Kilometerstand — Belege scannen oder eintragen.",
+  emptyMessage = "Noch keine Meilensteine — Belege scannen oder manuell eintragen.",
   className = "",
 }: VehicleTimelineProps) {
   if (events.length === 0) {
@@ -126,7 +126,9 @@ export function VehicleTimeline({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] tabular-nums text-[color:var(--vd-text)]">
-                    {formatTimelineMileage(event.mileage)}
+                    {formatTimelineMileage(event.mileage, {
+                      known: event.mileageKnown,
+                    })}
                   </p>
                   <h3 className="mt-0.5 text-[0.95rem] font-medium leading-snug tracking-[-0.02em] text-[color:var(--vd-text)]">
                     {event.title}

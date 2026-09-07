@@ -6,6 +6,8 @@ import {
 } from "@/lib/validations/timelineSchema";
 import type { Document } from "@/types/database";
 
+import { MANUAL_ENTRY_MARKER } from "@/lib/documents/manual-entries";
+
 import { deriveTimelineEventsFromDocuments } from "./derive-timeline-from-documents";
 import {
   mergeTimelineEvents,
@@ -169,6 +171,46 @@ describe("deriveTimelineEventsFromDocuments", () => {
     expect(tuev?.description).toBe("TÜV Süd");
   });
 
+  it("includes manual entries without mileage using the document title", () => {
+    const events = deriveTimelineEventsFromDocuments([
+      stubDocument({
+        id: "manual-1",
+        title: "Bremsen vorne erneuert",
+        category: "service",
+        invoice_number: MANUAL_ENTRY_MARKER,
+        file_url: "manual://entry/abc",
+        vendor: "Selbst gemacht",
+        mileage_km: null,
+        date: "2025-11-20",
+      }),
+    ]);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.title).toBe("Bremsen vorne erneuert");
+    expect(events[0]?.mileageKnown).toBe(false);
+    expect(events[0]?.description).toBe("Selbst gemacht");
+    expect(events[0]?.category).toBe("inspection");
+  });
+
+  it("includes manual tuning entries with mileage", () => {
+    const events = deriveTimelineEventsFromDocuments([
+      stubDocument({
+        id: "manual-tuning",
+        title: "KW V3 Fahrwerk",
+        category: "tuning",
+        invoice_number: MANUAL_ENTRY_MARKER,
+        file_url: "manual://entry/tuning",
+        mileage_km: 84_200,
+      }),
+    ]);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.title).toBe("KW V3 Fahrwerk");
+    expect(events[0]?.category).toBe("part_install");
+    expect(events[0]?.mileage).toBe(84_200);
+    expect(events[0]?.mileageKnown).toBe(true);
+  });
+
   it("uses TÜV approval_fields mileage for timeline when mileage_km is stale", () => {
     const events = deriveTimelineEventsFromDocuments([
       stubDocument({
@@ -195,6 +237,34 @@ describe("deriveTimelineEventsFromDocuments", () => {
 
     expect(events).toHaveLength(1);
     expect(events[0]?.mileage).toBe(178_605);
+  });
+});
+
+describe("sortTimelineEventsByMileage with unknown KM", () => {
+  it("lists known-mileage events before manual entries without KM", () => {
+    const sorted = sortTimelineEventsByMileage(
+      [
+        {
+          id: "manual",
+          vehicleId: "v",
+          mileage: 0,
+          mileageKnown: false,
+          date: "2025-12-01",
+          category: "inspection",
+          title: "Wartung",
+        },
+        {
+          id: "scan",
+          vehicleId: "v",
+          mileage: 50_000,
+          date: "2024-01-01",
+          category: "oil_change",
+          title: "Ölwechsel",
+        },
+      ],
+      "desc",
+    );
+    expect(sorted.map((event) => event.id)).toEqual(["scan", "manual"]);
   });
 });
 

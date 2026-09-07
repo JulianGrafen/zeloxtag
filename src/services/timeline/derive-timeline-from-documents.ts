@@ -1,6 +1,10 @@
+import { displayDocumentTitle } from "@/lib/documents/format";
 import { isOilChangeDocument } from "@/lib/documents/oil-changes";
 import { resolveDocumentMileageKm } from "@/lib/documents/document-mileage";
-import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
+import {
+  isManualVehicleEntry,
+  isTuningLikeCategory,
+} from "@/lib/documents/manual-entries";
 import {
   TIMELINE_CATEGORY_LABELS,
   type TimelineEvent,
@@ -37,8 +41,11 @@ export function timelineCategoryFromDocument(
     return "part_install";
   }
 
-  if (isManualVehicleEntry(document) && category === "tuning") {
-    return "part_install";
+  if (isManualVehicleEntry(document)) {
+    if (isTuningLikeCategory(document.category)) {
+      return "part_install";
+    }
+    return "inspection";
   }
 
   return "other";
@@ -56,16 +63,50 @@ function resolveEventDate(document: Document): string {
   return "1970-01-01";
 }
 
-/** Secondary line: workshop name only — never OCR notes / oil specs. */
-function buildWorkshopLabel(document: Document): string | null {
+function resolveTimelineMileage(document: Document): {
+  mileage: number;
+  mileageKnown: boolean;
+} | null {
+  const resolved = resolveDocumentMileageKm(document);
+  const hasMileage =
+    typeof resolved === "number" && Number.isFinite(resolved) && resolved >= 0;
+
+  if (hasMileage) {
+    return { mileage: Math.round(resolved), mileageKnown: true };
+  }
+
+  if (isManualVehicleEntry(document)) {
+    return { mileage: 0, mileageKnown: false };
+  }
+
+  return null;
+}
+
+function buildEventTitle(
+  document: Document,
+  category: TimelineEventCategory,
+): string {
+  if (isManualVehicleEntry(document)) {
+    const custom = displayDocumentTitle(document.title).trim();
+    if (custom) return custom.slice(0, 200);
+  }
+  return TIMELINE_CATEGORY_LABELS[category];
+}
+
+/** Secondary line: workshop / short note — never full OCR blobs on scans. */
+function buildEventDescription(document: Document): string | null {
   const vendor = document.vendor?.trim();
-  if (!vendor) return null;
-  return vendor.slice(0, 200);
+  if (vendor) return vendor.slice(0, 200);
+  if (isManualVehicleEntry(document)) {
+    const notes = document.notes?.trim();
+    if (notes) return notes.slice(0, 200);
+  }
+  return null;
 }
 
 /**
  * Derive mileage milestones from scanned / saved documents.
- * Documents without a positive `mileage_km` are omitted (timeline is KM-first).
+ * Scanned docs need KM; manual entries also appear without odometer (date-sorted).
  */
 export function deriveTimelineEventsFromDocuments(
   documents: Document[],
@@ -73,21 +114,20 @@ export function deriveTimelineEventsFromDocuments(
   const events: TimelineEvent[] = [];
 
   for (const document of documents) {
-    const mileage = resolveDocumentMileageKm(document);
-    if (typeof mileage !== "number" || !Number.isFinite(mileage) || mileage < 0) {
-      continue;
-    }
+    const mileageState = resolveTimelineMileage(document);
+    if (!mileageState) continue;
 
     const category = timelineCategoryFromDocument(document);
 
     events.push({
       id: `doc-${document.id}`,
       vehicleId: document.vehicle_id,
-      mileage: Math.round(mileage),
+      mileage: mileageState.mileage,
+      mileageKnown: mileageState.mileageKnown,
       date: resolveEventDate(document),
       category,
-      title: TIMELINE_CATEGORY_LABELS[category],
-      description: buildWorkshopLabel(document),
+      title: buildEventTitle(document, category),
+      description: buildEventDescription(document),
       cost:
         typeof document.amount === "number" && Number.isFinite(document.amount)
           ? document.amount

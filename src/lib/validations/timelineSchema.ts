@@ -39,6 +39,8 @@ export const TimelineEventSchema = z
     id: z.string().trim().min(1),
     vehicleId: z.string().trim().min(1),
     mileage: z.number().int().nonnegative().max(9_999_999),
+    /** False when derived from a manual entry without odometer (sort by date). */
+    mileageKnown: z.boolean().optional(),
     date: isoDate,
     category: z.enum(TIMELINE_EVENT_CATEGORIES),
     title: z.string().trim().min(1).max(200),

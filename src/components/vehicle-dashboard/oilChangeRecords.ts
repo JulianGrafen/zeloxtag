@@ -1,10 +1,13 @@
+/** Stored on `documents.vendor` when the owner did the oil change themselves. */
+export const OIL_CHANGE_SELF_WORKSHOP_LABEL = "Selbst gemacht";
+
 export interface OilChangeRecord {
   id: string;
   date: string;
   mileageKm: number;
-  workshop: string;
-  oilSpec: string;
-  oilAmountLiters: number;
+  workshop: string | null;
+  oilSpec: string | null;
+  oilAmountLiters: number | null;
   filterChanged: boolean;
   intervalKm: number;
   intervalMonths: number;

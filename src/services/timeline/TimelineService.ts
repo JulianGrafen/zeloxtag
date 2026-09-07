@@ -18,16 +18,29 @@ type TimelineSupabase = SupabaseClient<Database>;
  * Sort timeline events strictly by mileage (then date as tie-breaker).
  * Default: descending — highest / latest KM at the top.
  */
+function mileageIsKnown(event: TimelineEvent): boolean {
+  return event.mileageKnown !== false;
+}
+
 export function sortTimelineEventsByMileage(
   events: TimelineEvent[],
   order: TimelineMileageOrder = "desc",
 ): TimelineEvent[] {
   const direction = order === "desc" ? -1 : 1;
   return [...events].sort((a, b) => {
-    if (a.mileage !== b.mileage) {
-      return a.mileage < b.mileage ? -direction : direction;
+    const aKnown = mileageIsKnown(a);
+    const bKnown = mileageIsKnown(b);
+
+    if (aKnown && bKnown) {
+      if (a.mileage !== b.mileage) {
+        return a.mileage < b.mileage ? -direction : direction;
+      }
+    } else if (aKnown !== bKnown) {
+      // KM-backed events first; manual entries without odometer follow (by date).
+      return aKnown ? -1 : 1;
     }
-    // Stable secondary: newer date first when desc, older first when asc.
+
+    // Unknown KM (manual entries): sort by date, then id.
     const dateCmp = a.date.localeCompare(b.date);
     if (dateCmp !== 0) return dateCmp * (order === "desc" ? -1 : 1);
     return a.id.localeCompare(b.id);
