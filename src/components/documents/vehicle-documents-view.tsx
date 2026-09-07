@@ -40,7 +40,6 @@ import {
   resolveVaultDocumentKind,
 } from "@/lib/documents/vault-documents";
 import type { VaultCategory } from "@/lib/validations/vaultClassificationSchema";
-import { eintraegeLabel } from "@/lib/i18n/pluralize-de";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import type { Document, DocumentType } from "@/types/database";
 
@@ -241,21 +240,13 @@ export function VehicleDocumentsView({
           </PressableLink>
 
           <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-            <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              ZeloxTag
-            </p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
+            <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
               {activeType === "abe"
                 ? "ABE & Gutachten"
                 : activeType === "tuev"
                   ? "TÜV / HU"
                   : "Dokumente"}
             </h1>
-            <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {activeType === "abe"
-                ? `${vehicleLabel} · ABE, Teilegutachten & Einzelabnahmen · ${eintraegeLabel(filtered.length)}`
-                : `${vehicleLabel} · ${eintraegeLabel(filtered.length)}`}
-            </p>
             {invoiceSum > 0 ? (
               <p className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
                 Rechnungen {formatDocumentAmount(invoiceSum)}

@@ -191,16 +191,9 @@ export function VehicleSpecsView({
             <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
               <Gauge className="h-5 w-5" aria-hidden />
             </div>
-            <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              Fahrzeugakte
-            </p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
+            <h1 className="mt-4 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
               Technische Daten
             </h1>
-            <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {title}
-              {year ? ` · ${year}` : ""}
-            </p>
           </div>
         </header>
 

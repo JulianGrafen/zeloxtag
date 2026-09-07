@@ -78,15 +78,9 @@ export function AbeDocumentsView({
           </PressableLink>
 
           <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
-            <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              Digitalisiert
-            </p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
+            <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
               ABE & Gutachten
             </h1>
-            <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-              {vehicleModel} · {documents.length} Dokumente
-            </p>
           </div>
         </header>
 
