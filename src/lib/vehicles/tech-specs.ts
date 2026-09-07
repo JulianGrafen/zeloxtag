@@ -88,6 +88,12 @@ export function normalizeVehicleDrivetrain(
  * Structured Antrieb / Fahrwerk fields stored on vehicles.tech_specs.
  */
 
+/** Default oil-change interval bounds for tech_specs validation. */
+export const OIL_CHANGE_INTERVAL_KM_MIN = 1_000;
+export const OIL_CHANGE_INTERVAL_KM_MAX = 50_000;
+export const OIL_CHANGE_INTERVAL_MONTHS_MIN = 1;
+export const OIL_CHANGE_INTERVAL_MONTHS_MAX = 36;
+
 export type VehicleTechSpecs = {
   engine: string | null;
   powerPs: number | null;
@@ -104,6 +110,10 @@ export type VehicleTechSpecs = {
   instagramHandle: string | null;
   /** Relative `{vehicleId}/dyno-chart.ext` path, or a view/proxy URL. */
   dynoChartUrl: string | null;
+  /** Custom oil-change interval in km (default 10_000 when null). */
+  oilChangeIntervalKm: number | null;
+  /** Custom oil-change interval in months (default 12 when null). */
+  oilChangeIntervalMonths: number | null;
 };
 
 export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
@@ -120,6 +130,8 @@ export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
   notes: null,
   instagramHandle: null,
   dynoChartUrl: null,
+  oilChangeIntervalKm: null,
+  oilChangeIntervalMonths: null,
 };
 
 function asTrimmedString(value: unknown): string | null {
@@ -138,6 +150,17 @@ function asPositiveInt(value: unknown): number | null {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
   return null;
+}
+
+function asBoundedInt(
+  value: unknown,
+  min: number,
+  max: number,
+): number | null {
+  const parsed = asPositiveInt(value);
+  if (parsed == null) return null;
+  if (parsed < min || parsed > max) return null;
+  return parsed;
 }
 
 export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
@@ -172,6 +195,16 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
       record.instagramHandle ?? record.instagram,
     ),
     dynoChartUrl: asTrimmedString(record.dynoChartUrl),
+    oilChangeIntervalKm: asBoundedInt(
+      record.oilChangeIntervalKm,
+      OIL_CHANGE_INTERVAL_KM_MIN,
+      OIL_CHANGE_INTERVAL_KM_MAX,
+    ),
+    oilChangeIntervalMonths: asBoundedInt(
+      record.oilChangeIntervalMonths,
+      OIL_CHANGE_INTERVAL_MONTHS_MIN,
+      OIL_CHANGE_INTERVAL_MONTHS_MAX,
+    ),
   };
 }
 
@@ -194,6 +227,12 @@ export function serializeVehicleTechSpecs(
   const instagramHandle = parseInstagramHandle(specs.instagramHandle);
   if (instagramHandle) out.instagramHandle = instagramHandle;
   if (specs.dynoChartUrl) out.dynoChartUrl = specs.dynoChartUrl;
+  if (specs.oilChangeIntervalKm != null) {
+    out.oilChangeIntervalKm = specs.oilChangeIntervalKm;
+  }
+  if (specs.oilChangeIntervalMonths != null) {
+    out.oilChangeIntervalMonths = specs.oilChangeIntervalMonths;
+  }
   return out;
 }
 

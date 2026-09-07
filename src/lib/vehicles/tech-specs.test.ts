@@ -60,4 +60,26 @@ describe("vehicle tech specs", () => {
       "Mittelmotor",
     );
   });
+
+  it("parses and clamps oil-change interval fields", () => {
+    const parsed = parseVehicleTechSpecs({
+      oilChangeIntervalKm: 15_000,
+      oilChangeIntervalMonths: 24,
+    });
+    expect(parsed.oilChangeIntervalKm).toBe(15_000);
+    expect(parsed.oilChangeIntervalMonths).toBe(24);
+
+    expect(
+      parseVehicleTechSpecs({ oilChangeIntervalKm: 500 }).oilChangeIntervalKm,
+    ).toBeNull();
+    expect(
+      parseVehicleTechSpecs({ oilChangeIntervalMonths: 48 }).oilChangeIntervalMonths,
+    ).toBeNull();
+
+    const serialized = serializeVehicleTechSpecs(parsed);
+    expect(serialized).toEqual({
+      oilChangeIntervalKm: 15_000,
+      oilChangeIntervalMonths: 24,
+    });
+  });
 });

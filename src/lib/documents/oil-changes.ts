@@ -6,6 +6,7 @@ import {
   type OilChangeRecord,
   OIL_CHANGE_SELF_WORKSHOP_LABEL,
 } from "@/components/vehicle-dashboard/oilChangeRecords";
+import type { VehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, DocumentLineItem } from "@/types/database";
 
 import { formatDocumentDate } from "./format";
@@ -13,6 +14,19 @@ import { formatDocumentDate } from "./format";
 /** Default service interval when the invoice does not state one. */
 export const DEFAULT_OIL_INTERVAL_KM = 10_000;
 export const DEFAULT_OIL_INTERVAL_MONTHS = 12;
+
+export function resolveOilChangeInterval(
+  specs?: Pick<
+    VehicleTechSpecs,
+    "oilChangeIntervalKm" | "oilChangeIntervalMonths"
+  > | null,
+): { intervalKm: number; intervalMonths: number } {
+  return {
+    intervalKm: specs?.oilChangeIntervalKm ?? DEFAULT_OIL_INTERVAL_KM,
+    intervalMonths:
+      specs?.oilChangeIntervalMonths ?? DEFAULT_OIL_INTERVAL_MONTHS,
+  };
+}
 
 /**
  * Fold German OCR text for oil matching:

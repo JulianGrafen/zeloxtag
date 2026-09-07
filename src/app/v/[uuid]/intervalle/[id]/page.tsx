@@ -4,9 +4,13 @@ import { notFound } from "next/navigation";
 import { OilIntervalDetailView } from "@/components/vehicle-dashboard";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
-import { oilChangeRecordsFromDocuments } from "@/lib/documents/oil-changes";
+import {
+  oilChangeRecordsFromDocuments,
+  resolveOilChangeInterval,
+} from "@/lib/documents/oil-changes";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { getDocumentById } from "@/lib/tags/get-tag-by-uuid";
+import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 
 interface OilIntervalDetailPageProps {
   params: Promise<{ uuid: string; id: string }>;
@@ -32,7 +36,10 @@ export default async function VehicleOilIntervalDetailPage({
     notFound();
   }
 
-  const records = oilChangeRecordsFromDocuments([document]);
+  const interval = resolveOilChangeInterval(
+    parseVehicleTechSpecs(result.vehicle!.tech_specs),
+  );
+  const records = oilChangeRecordsFromDocuments([document], interval);
   const record = records.find((entry) => entry.id === id);
   if (!record) {
     notFound();

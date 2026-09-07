@@ -142,6 +142,7 @@ export async function updateVehicleSpecs(
 
     revalidatePath(`/v/${tagUuid}`);
     revalidatePath(`/v/${tagUuid}/daten`);
+    revalidatePath(`/v/${tagUuid}/intervalle`);
     return { status: "ok" };
   } catch (error) {
     logServerError("[update-vehicle-specs] unexpected", error);

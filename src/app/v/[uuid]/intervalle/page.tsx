@@ -3,8 +3,12 @@ import type { Metadata } from "next";
 import { OilIntervalsView } from "@/components/vehicle-dashboard";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
-import { oilChangeRecordsFromDocuments } from "@/lib/documents/oil-changes";
+import {
+  oilChangeRecordsFromDocuments,
+  resolveOilChangeInterval,
+} from "@/lib/documents/oil-changes";
 import { FEATURE } from "@/lib/permissions/feature-access";
+import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 
 interface OilIntervalsPageProps {
   params: Promise<{ uuid: string }>;
@@ -31,7 +35,10 @@ export default async function VehicleOilIntervalsPage({
     },
   });
 
-  const records = oilChangeRecordsFromDocuments(result.documents);
+  const interval = resolveOilChangeInterval(
+    parseVehicleTechSpecs(result.vehicle!.tech_specs),
+  );
+  const records = oilChangeRecordsFromDocuments(result.documents, interval);
   const vehicleModel = `${result.vehicle!.make} ${result.vehicle!.model}`;
 
   return wrapProFeature({
