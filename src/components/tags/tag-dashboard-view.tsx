@@ -186,7 +186,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/dokumente?type=abe`,
+          href: `/v/${tagUuid}/abe`,
           subtitle:
             abeCount > 0
               ? dokumenteLabel(abeCount)

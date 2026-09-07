@@ -25,10 +25,9 @@ import {
   type ManualServiceEntryType,
 } from "@/lib/documents/manual-entries";
 import {
-  ensureOilChangeNotes,
-  detectOilChangeInvoice,
-  resolveOilChangeVendor,
-} from "@/lib/documents/oil-changes";
+  buildManualOilChangeDocumentFields,
+  resolveManualOilChangeVendor,
+} from "@/lib/documents/manual-oil-change-form";
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
@@ -136,47 +135,6 @@ function fieldsFromFormData(formData: FormData) {
   };
 }
 
-function buildOilChangeManualFields(
-  data: z.infer<typeof fieldsSchema>,
-): {
-  category: ManualEntryCategory;
-  title: string;
-  notes: string | null;
-} {
-  const oilSpec = data.oilSpec?.trim() || null;
-  const litersRaw = data.oilAmountLiters?.trim() ?? "";
-  let oilAmountLiters: number | null = null;
-  if (litersRaw) {
-    const value = Number.parseFloat(litersRaw.replace(",", "."));
-    if (Number.isFinite(value) && value > 0 && value <= 20) {
-      oilAmountLiters = Math.round(value * 10) / 10;
-    }
-  }
-  const filterChanged = data.filterChanged === "true";
-  const userNotes = data.notes?.trim() ?? "";
-
-  const parts = ["Ölwechsel"];
-  if (oilSpec) parts.push(oilSpec);
-  if (oilAmountLiters) {
-    parts.push(`${oilAmountLiters.toLocaleString("de-DE")} l`);
-  }
-  parts.push(filterChanged ? "Filter gewechselt" : "Filter unklar");
-  if (userNotes) parts.push(userNotes);
-
-  const blob = parts.join(" · ");
-  const detected = detectOilChangeInvoice({
-    title: "Ölwechsel",
-    notes: blob,
-    category: "service",
-  });
-
-  return {
-    category: "service",
-    title: data.title.trim() || "Ölwechsel",
-    notes: ensureOilChangeNotes(blob, detected),
-  };
-}
-
 function normalizeManualUploadFile(
   value: unknown,
   fallbackName: string,
@@ -234,9 +192,12 @@ export async function createManualVehicleEntry(
   const isOilChangeEntry =
     data.entryType === "oil_change" || serviceType === "oil_change";
   const oilFields = isOilChangeEntry
-    ? buildOilChangeManualFields({
-        ...data,
+    ? buildManualOilChangeDocumentFields({
+        title: data.title,
         oilSpec: data.oilSpec?.trim() || data.details?.trim() || "",
+        oilAmountLiters: data.oilAmountLiters,
+        filterChanged: data.filterChanged,
+        notes: data.notes,
       })
     : null;
   const category =
@@ -257,7 +218,7 @@ export async function createManualVehicleEntry(
   const amountFromLines = sumLineItems(lineItems);
   const amount = amountFromLines ?? parseAmount(data.amount);
   const vendor = isOilChangeEntry
-    ? resolveOilChangeVendor(data.selfMade === "true", data.vendor)
+    ? resolveManualOilChangeVendor(data.selfMade, data.vendor)
     : data.vendor?.trim().slice(0, 160) || null;
   const notes =
     oilFields?.notes ??

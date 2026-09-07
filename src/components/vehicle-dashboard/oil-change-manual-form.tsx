@@ -1,19 +1,24 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
+import { updateManualVehicleEntry } from "@/actions/update-manual-entry";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { parseMileageKmInput } from "@/lib/documents/format";
+import { manualOilChangeFormFromDocument } from "@/lib/documents/manual-oil-change-form";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import type { Document } from "@/types/database";
 
 interface OilChangeManualFormProps {
   tagUuid: string;
   vehicleId: string;
   onClose: () => void;
+  /** When set, the form updates an existing manual Ölwechsel log. */
+  editDocument?: Document | null;
 }
 
 const fieldLabelClassName =
@@ -44,8 +49,10 @@ export function OilChangeManualForm({
   tagUuid,
   vehicleId,
   onClose,
+  editDocument = null,
 }: OilChangeManualFormProps) {
   const router = useRouter();
+  const isEditing = Boolean(editDocument);
   const [date, setDate] = useState("");
   const [mileageKm, setMileageKm] = useState("");
   const [selfMade, setSelfMade] = useState(false);
@@ -56,6 +63,20 @@ export function OilChangeManualForm({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!editDocument) return;
+    const initial = manualOilChangeFormFromDocument(editDocument);
+    setDate(initial.date);
+    setMileageKm(initial.mileageKm);
+    setSelfMade(initial.selfMade);
+    setVendor(initial.vendor);
+    setOilSpec(initial.oilSpec);
+    setOilLiters(initial.oilLiters);
+    setFilterChanged(initial.filterChanged);
+    setNotes(initial.notes);
+    setError(null);
+  }, [editDocument]);
 
   function handleSubmit() {
     setError(null);
@@ -76,7 +97,13 @@ export function OilChangeManualForm({
       formData.set("filterChanged", filterChanged ? "true" : "false");
       formData.set("notes", notes);
 
-      const result = await createManualVehicleEntry(formData);
+      const result = isEditing && editDocument
+        ? await (() => {
+            formData.set("documentId", editDocument.id);
+            return updateManualVehicleEntry(formData);
+          })()
+        : await createManualVehicleEntry(formData);
+
       if (result.status === "error") {
         setError(result.message);
         return;
@@ -97,7 +124,7 @@ export function OilChangeManualForm({
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="font-[family-name:var(--font-display)] text-[1rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-          Ölwechsel eintragen
+          {isEditing ? "Ölwechsel bearbeiten" : "Ölwechsel eintragen"}
         </p>
         <button
           type="button"
@@ -221,7 +248,7 @@ export function OilChangeManualForm({
           disabled={pending}
           className="claim-cta flex-1 disabled:opacity-60"
         >
-          {pending ? "Speichern…" : "Speichern"}
+          {pending ? "Speichern…" : isEditing ? "Übernehmen" : "Speichern"}
         </PressableButton>
       </div>
     </form>

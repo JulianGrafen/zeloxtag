@@ -12,10 +12,10 @@ import {
 import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership";
 import { AppShell } from "@/components/layout/app-shell";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
-import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
 import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
+import { getMfaRecoveryStatus } from "@/lib/auth/mfa-actions";
 import { getAccountDeletionState } from "@/lib/account/account-lifecycle";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import { AccountDeletionPanel } from "@/components/account/account-deletion-panel";
@@ -88,6 +88,11 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   const dashboardHref = await resolvePostLoginPath(user.id);
   const hasPasswordLogin = accountHasPasswordLogin(user);
+  const mfaStatus = await getMfaRecoveryStatus();
+  const mfaSubtitle =
+    mfaStatus.status === "recovery_status" && mfaStatus.hasTotp
+      ? `Aktiv · ${mfaStatus.unusedCount} Recovery-Codes übrig`
+      : "Optional mit Authenticator aktivieren";
   const deletionState = await getAccountDeletionState(user.id);
 
   return (
@@ -139,7 +144,23 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           />
         </Link>
 
-        <MfaSetupPanel />
+        <Link
+          href="/settings/security"
+          className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+        >
+          <span>
+            <span className="block text-[0.88rem] font-medium">
+              Zwei-Faktor-Authentifizierung (2FA)
+            </span>
+            <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
+              {mfaSubtitle}
+            </span>
+          </span>
+          <ChevronRight
+            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+            aria-hidden
+          />
+        </Link>
 
         <PwaInstallSettingsPanel />
 

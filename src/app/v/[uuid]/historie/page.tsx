@@ -63,6 +63,7 @@ export default async function VehicleHistoriePage({
           vehicle.year ? ` · ${vehicle.year}` : ""
         }`}
         events={events}
+        documents={documents}
         scanHref={`/v/${result.tag.uuid}/service?scan=1`}
         backHref={`/v/${result.tag.uuid}`}
       />

@@ -1,3 +1,7 @@
+import {
+  isManualVehicleEntry,
+  isTuningLikeCategory,
+} from "@/lib/documents/manual-entries";
 import type { Document } from "@/types/database";
 
 const SERVICE_TITLE_HINT =
@@ -8,6 +12,9 @@ const SERVICE_TITLE_HINT =
  * Prefer persisted OCR category; fall back to title heuristics for legacy rows.
  */
 export function isServiceInspectionDocument(document: Document): boolean {
+  if (isManualVehicleEntry(document)) {
+    return !isTuningLikeCategory(document.category);
+  }
   if (document.category === "service") return true;
   if (document.type !== "invoice") return false;
   if (document.category && document.category !== "service") return false;

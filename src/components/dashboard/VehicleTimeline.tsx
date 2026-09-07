@@ -69,6 +69,24 @@ export type VehicleTimelineProps = {
   className?: string;
 };
 
+function partitionTimelineEvents(events: TimelineEvent[]): {
+  withMileage: TimelineEvent[];
+  withoutMileage: TimelineEvent[];
+} {
+  const withMileage: TimelineEvent[] = [];
+  const withoutMileage: TimelineEvent[] = [];
+
+  for (const event of events) {
+    if (event.mileageKnown === false) {
+      withoutMileage.push(event);
+    } else {
+      withMileage.push(event);
+    }
+  }
+
+  return { withMileage, withoutMileage };
+}
+
 /**
  * Vertical mileage-ordered Service & History Timeline (mobile-first).
  */
@@ -93,15 +111,47 @@ export function VehicleTimeline({
     );
   }
 
+  const { withMileage, withoutMileage } = partitionTimelineEvents(events);
+
+  return (
+    <div className={["space-y-8", className].filter(Boolean).join(" ")}>
+      {withMileage.length > 0 ? (
+        <TimelineEventList
+          events={withMileage}
+          documentHref={documentHref}
+          ariaLabel="Service-Historie nach Kilometerstand"
+        />
+      ) : null}
+
+      {withoutMileage.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="px-1 font-[family-name:var(--font-display)] text-[0.72rem] font-semibold tracking-[0.16em] text-[color:var(--vd-muted)] uppercase">
+            Manuelle Einträge
+          </h2>
+          <TimelineEventList
+            events={withoutMileage}
+            documentHref={documentHref}
+            ariaLabel="Manuelle Einträge ohne Kilometerstand"
+          />
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function TimelineEventList({
+  events,
+  documentHref,
+  ariaLabel,
+}: {
+  events: TimelineEvent[];
+  documentHref?: (documentId: string) => string;
+  ariaLabel: string;
+}) {
   return (
     <ol
-      aria-label="Service-Historie nach Kilometerstand"
-      className={[
-        "relative ml-3 border-l-2 border-[color:var(--vd-border)] pl-5 sm:ml-4 sm:pl-6",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      aria-label={ariaLabel}
+      className="relative ml-3 border-l-2 border-[color:var(--vd-border)] pl-5 sm:ml-4 sm:pl-6"
     >
       {events.map((event) => {
         const visual = CATEGORY_VISUALS[event.category];
@@ -110,6 +160,9 @@ export function VehicleTimeline({
           event.documentId && documentHref
             ? documentHref(event.documentId)
             : null;
+        const linkLabel = event.isManualEntry
+          ? "Eintrag öffnen"
+          : "Dokument anzeigen";
 
         return (
           <li key={event.id} className="relative pb-6 last:pb-0">
@@ -134,15 +187,22 @@ export function VehicleTimeline({
                     {event.title}
                   </h3>
                 </div>
-                <span
-                  className={[
-                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.68rem] font-medium",
-                    visual.badgeClass,
-                  ].join(" ")}
-                >
-                  {visual.icon}
-                  {TIMELINE_CATEGORY_LABELS[event.category]}
-                </span>
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  {event.isManualEntry ? (
+                    <span className="inline-flex items-center rounded-full bg-neutral-900/8 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-neutral-800">
+                      Manuell
+                    </span>
+                  ) : null}
+                  <span
+                    className={[
+                      "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.68rem] font-medium",
+                      visual.badgeClass,
+                    ].join(" ")}
+                  >
+                    {visual.icon}
+                    {TIMELINE_CATEGORY_LABELS[event.category]}
+                  </span>
+                </div>
               </div>
 
               <p className="mt-2 text-[0.78rem] text-[color:var(--vd-muted)]">
@@ -168,7 +228,7 @@ export function VehicleTimeline({
                   className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.82rem] font-medium text-[color:var(--vd-text)] sm:w-auto"
                 >
                   <FileText className="h-4 w-4 shrink-0" aria-hidden />
-                  Dokument anzeigen
+                  {linkLabel}
                 </PressableLink>
               ) : null}
             </article>

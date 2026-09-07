@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronRight, Droplet, Plus } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, ChevronRight, Droplet, Pencil, Plus } from "lucide-react";
 
 import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
+import { isEditableManualOilChangeDocument } from "@/lib/documents/manual-oil-change-form";
 import { oilChangeRecordListSubtitle } from "@/lib/documents/oil-changes";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
+import type { Document } from "@/types/database";
 
 import {
   getLatestOilChange,
@@ -28,6 +31,7 @@ interface OilIntervalsViewProps {
   tagUuid?: string;
   vehicleId?: string;
   canAddManual?: boolean;
+  documents?: Document[];
 }
 
 export function OilIntervalsView({
@@ -39,10 +43,36 @@ export function OilIntervalsView({
   tagUuid,
   vehicleId,
   canAddManual = false,
+  documents = [],
 }: OilIntervalsViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editDocumentId = searchParams.get("edit");
   const [query, setQuery] = useState("");
-  const [showManualForm, setShowManualForm] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(
+    Boolean(editDocumentId),
+  );
   const latest = getLatestOilChange(records);
+
+  const documentsById = useMemo(
+    () => new Map(documents.map((doc) => [doc.id, doc])),
+    [documents],
+  );
+
+  const editDocument = useMemo(() => {
+    if (!editDocumentId) return null;
+    const doc = documentsById.get(editDocumentId);
+    return doc && isEditableManualOilChangeDocument(doc) ? doc : null;
+  }, [documentsById, editDocumentId]);
+
+  const showForm = showManualForm || Boolean(editDocument);
+
+  function closeManualForm() {
+    setShowManualForm(false);
+    if (editDocumentId) {
+      router.replace(basePath);
+    }
+  }
 
   const visibleRecords = useMemo(() => {
     return records.filter((record) =>
@@ -83,7 +113,7 @@ export function OilIntervalsView({
               Zurück
             </PressableLink>
             <div className="flex items-center gap-2">
-              {canAddManual && tagUuid && vehicleId && !showManualForm ? (
+              {canAddManual && tagUuid && vehicleId && !showForm ? (
                 <PressableButton
                   type="button"
                   variant="button"
@@ -131,11 +161,12 @@ export function OilIntervalsView({
           </div>
         </header>
 
-        {showManualForm && tagUuid && vehicleId ? (
+        {showForm && tagUuid && vehicleId ? (
           <OilChangeManualForm
             tagUuid={tagUuid}
             vehicleId={vehicleId}
-            onClose={() => setShowManualForm(false)}
+            editDocument={editDocument}
+            onClose={closeManualForm}
           />
         ) : null}
 
@@ -170,36 +201,49 @@ export function OilIntervalsView({
           <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
             {visibleRecords.map((record, index) => (
               <li key={record.id}>
-                <PressableLink
-                  href={`${basePath}/${record.id}`}
-                  variant="row"
-                  className="group flex w-full items-center gap-3 px-4 py-3.5 text-left"
-                >
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                    <Droplet className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-                  </span>
+                <div className="flex items-stretch">
+                  <PressableLink
+                    href={`${basePath}/${record.id}`}
+                    variant="row"
+                    className="group flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left"
+                  >
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
+                      <Droplet className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                    </span>
 
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-start justify-between gap-2">
-                      <span className="font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                        {record.date}
-                      </span>
-                      {record.status === "aktuell" ? (
-                        <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
-                          Aktuell
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                          {record.date}
                         </span>
-                      ) : null}
+                        {record.status === "aktuell" ? (
+                          <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
+                            Aktuell
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="mt-0.5 block text-[0.75rem] text-[color:var(--vd-muted)]">
+                        {oilChangeRecordListSubtitle(record) || "—"}
+                      </span>
                     </span>
-                    <span className="mt-0.5 block text-[0.75rem] text-[color:var(--vd-muted)]">
-                      {oilChangeRecordListSubtitle(record) || "—"}
-                    </span>
-                  </span>
 
-                  <ChevronRight
-                    className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
-                    aria-hidden
-                  />
-                </PressableLink>
+                    <ChevronRight
+                      className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
+                      aria-hidden
+                    />
+                  </PressableLink>
+
+                  {record.isManual && tagUuid ? (
+                    <PressableLink
+                      href={`${basePath}?edit=${encodeURIComponent(record.id)}`}
+                      variant="button"
+                      aria-label="Ölwechsel bearbeiten"
+                      className="inline-flex shrink-0 items-center justify-center border-l border-[color:var(--vd-border)] px-3 text-[color:var(--vd-muted)]"
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                    </PressableLink>
+                  ) : null}
+                </div>
 
                 {index < visibleRecords.length - 1 ? (
                   <div

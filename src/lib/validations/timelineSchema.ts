@@ -47,6 +47,8 @@ export const TimelineEventSchema = z
     description: z.string().trim().min(1).max(4_000).nullable().optional(),
     cost: z.number().finite().nonnegative().nullable().optional(),
     documentId: z.string().trim().min(1).nullable().optional(),
+    /** True for free-tier manual Wartung / Tuning log rows. */
+    isManualEntry: z.boolean().optional(),
   })
   .strict();
 

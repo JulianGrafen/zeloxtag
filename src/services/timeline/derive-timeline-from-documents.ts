@@ -119,6 +119,8 @@ export function deriveTimelineEventsFromDocuments(
 
     const category = timelineCategoryFromDocument(document);
 
+    const manualEntry = isManualVehicleEntry(document);
+
     events.push({
       id: `doc-${document.id}`,
       vehicleId: document.vehicle_id,
@@ -133,6 +135,7 @@ export function deriveTimelineEventsFromDocuments(
           ? document.amount
           : null,
       documentId: document.id,
+      isManualEntry: manualEntry ? true : undefined,
     });
   }
 

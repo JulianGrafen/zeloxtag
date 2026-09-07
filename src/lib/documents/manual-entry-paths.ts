@@ -14,5 +14,6 @@ export function revalidateManualEntryPaths(
   revalidatePath(`/v/${tagUuid}/historie`);
   if (documentId) {
     revalidatePath(`/v/${tagUuid}/dokumente/${documentId}`);
+    revalidatePath(`/v/${tagUuid}/intervalle/${documentId}`);
   }
 }

@@ -8,6 +8,7 @@ import {
   oilChangeRecordsFromDocuments,
   resolveOilChangeInterval,
 } from "@/lib/documents/oil-changes";
+import { isEditableManualOilChangeDocument } from "@/lib/documents/manual-oil-change-form";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { getDocumentById } from "@/lib/tags/get-tag-by-uuid";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
@@ -46,6 +47,7 @@ export default async function VehicleOilIntervalDetailPage({
   }
 
   const vehicleModel = `${result.vehicle!.make} ${result.vehicle!.model}`;
+  const canEditManual = isEditableManualOilChangeDocument(document);
 
   return wrapProFeature({
     isDemo: isDemoShowcase,
@@ -57,7 +59,12 @@ export default async function VehicleOilIntervalDetailPage({
         record={record}
         vehicleModel={vehicleModel}
         backHref={`/v/${result.tag.uuid}/intervalle`}
-        invoiceHref={`/v/${result.tag.uuid}/dokumente/${record.id}`}
+        invoiceHref={
+          canEditManual ? null : `/v/${result.tag.uuid}/dokumente/${record.id}`
+        }
+        tagUuid={result.tag.uuid}
+        vehicleId={result.vehicle!.id}
+        editDocument={canEditManual ? document : null}
       />
     ),
   });

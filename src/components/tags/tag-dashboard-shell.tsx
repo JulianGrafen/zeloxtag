@@ -158,9 +158,15 @@ export function TagDashboardShell({
       (SCHRAUBER_SCAN_TYPES as readonly string[]).includes(parsedInitial))
       ? parsedInitial
       : null;
+  const openScannerDirectly =
+    Boolean(allowedInitial) &&
+    canWrite &&
+    canAiScan &&
+    (initialMode === "pick-scan" || initialMode === "scanner");
 
   const [mode, setMode] = useState<DashboardMode>(() => {
     if (!canWrite || !canAiScan) return "dashboard";
+    if (openScannerDirectly) return "scanner";
     if (initialMode === "pick-scan" || initialMode === "scanner") {
       return "pick-scan";
     }
@@ -193,7 +199,9 @@ export function TagDashboardShell({
   const [localFreeAbeScanRemaining, setLocalFreeAbeScanRemaining] = useState(
     freeAbeScanRemaining,
   );
-  const [scanType, setScanType] = useState<ScanType | null>(null);
+  const [scanType, setScanType] = useState<ScanType | null>(() =>
+    openScannerDirectly && allowedInitial ? allowedInitial : null,
+  );
   const [silhouettePromptVisible, setSilhouettePromptVisible] = useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
   const [portalReady, setPortalReady] = useState(false);

@@ -1,18 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
   Droplet,
   Gauge,
+  Pencil,
   Wrench,
 } from "lucide-react";
 
 import { isOilChangeSelfMadeVendor } from "@/lib/documents/oil-changes";
+import type { Document } from "@/types/database";
 
+import { OilChangeManualForm } from "./oil-change-manual-form";
 import type { OilChangeRecord } from "./oilChangeRecords";
-import { PressableLink } from "./Pressable";
+import { PressableButton, PressableLink } from "./Pressable";
 
 interface OilIntervalDetailViewProps {
   record: OilChangeRecord;
@@ -21,6 +25,10 @@ interface OilIntervalDetailViewProps {
   backHref?: string;
   /** Optional link to the source invoice document. */
   invoiceHref?: string | null;
+  tagUuid?: string;
+  vehicleId?: string;
+  /** Stored document row when this is a manual Ölwechsel log. */
+  editDocument?: Document | null;
 }
 
 export function OilIntervalDetailView({
@@ -28,7 +36,42 @@ export function OilIntervalDetailView({
   vehicleModel,
   backHref = "/intervalle",
   invoiceHref = null,
+  tagUuid,
+  vehicleId,
+  editDocument = null,
 }: OilIntervalDetailViewProps) {
+  const [showEditForm, setShowEditForm] = useState(false);
+  const canEditManual = Boolean(editDocument && tagUuid && vehicleId);
+
+  if (showEditForm && canEditManual && editDocument && tagUuid && vehicleId) {
+    return (
+      <div className="vd-root relative min-h-dvh overflow-x-hidden">
+        <div
+          aria-hidden
+          className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
+        />
+
+        <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
+          <PressableLink
+            href={backHref}
+            variant="pill"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Zurück zur Historie
+          </PressableLink>
+
+          <OilChangeManualForm
+            tagUuid={tagUuid}
+            vehicleId={vehicleId}
+            editDocument={editDocument}
+            onClose={() => setShowEditForm(false)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
       <div
@@ -37,14 +80,28 @@ export function OilIntervalDetailView({
       />
 
       <div className="vd-anim-stack relative z-10 mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <PressableLink
-          href={backHref}
-          variant="pill"
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Zurück zur Historie
-        </PressableLink>
+        <div className="flex items-center justify-between gap-2">
+          <PressableLink
+            href={backHref}
+            variant="pill"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Zurück zur Historie
+          </PressableLink>
+
+          {canEditManual ? (
+            <PressableButton
+              type="button"
+              variant="pill"
+              onClick={() => setShowEditForm(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+              Bearbeiten
+            </PressableButton>
+          ) : null}
+        </div>
 
         <header className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
           <div className="flex items-start justify-between gap-3">
@@ -182,9 +239,9 @@ export function OilIntervalDetailView({
             {record.notes}
           </p>
 
-          {invoiceHref || record.invoiceRef ? (
+          {invoiceHref && !record.isManual ? (
             <PressableLink
-              href={invoiceHref ?? `/rechnungen/${record.invoiceRef}`}
+              href={invoiceHref}
               variant="button"
               className="mt-4 inline-flex items-center gap-1.5 text-[0.82rem] font-semibold text-[color:var(--vd-text)] underline-offset-2"
             >

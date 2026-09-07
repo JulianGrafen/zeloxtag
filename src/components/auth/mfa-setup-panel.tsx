@@ -15,7 +15,7 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 
 type Factor = { id: string; friendlyName: string | null };
 
-export function MfaSetupPanel() {
+export function MfaSetupPanel({ showHeader = true }: { showHeader?: boolean }) {
   const [factors, setFactors] = useState<Factor[]>([]);
   const [factorId, setFactorId] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -48,21 +48,24 @@ export function MfaSetupPanel() {
     refreshStatus();
   }, []);
 
-  return (
-    <div className="space-y-4" data-tour="mfa-settings">
-      <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
-        <h2 className="font-[family-name:var(--font-display)] text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
-          Zwei-Faktor-Authentifizierung (2FA)
-        </h2>
-        <p className="mt-2 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Optional: Schütze dein Konto mit einem Authenticator (Google Authenticator,
-          1Password, Authy, …). Nach der Aktivierung brauchst du bei jedem Login
-          zusätzlich einen 6-stelligen Code — oder einen Recovery-Code, falls die
-          App verloren geht.
-        </p>
+  const content = (
+    <>
+      {showHeader ? (
+        <>
+          <h2 className="font-[family-name:var(--font-display)] text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
+            Zwei-Faktor-Authentifizierung (2FA)
+          </h2>
+          <p className="mt-2 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
+            Optional: Schütze dein Konto mit einem Authenticator (Google Authenticator,
+            1Password, Authy, …). Nach der Aktivierung brauchst du bei jedem Login
+            zusätzlich einen 6-stelligen Code — oder einen Recovery-Code, falls die
+            App verloren geht.
+          </p>
+        </>
+      ) : null}
 
         {factors.length > 0 ? (
-          <ul className="mt-4 space-y-2">
+          <ul className={`space-y-2 ${showHeader ? "mt-4" : ""}`}>
             {factors.map((factor) => (
               <li
                 key={factor.id}
@@ -101,7 +104,7 @@ export function MfaSetupPanel() {
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-[0.8rem] text-[color:var(--vd-muted)]">
+          <p className={`text-[0.8rem] text-[color:var(--vd-muted)] ${showHeader ? "mt-3" : ""}`}>
             2FA ist noch nicht aktiviert.
           </p>
         )}
@@ -167,8 +170,11 @@ export function MfaSetupPanel() {
             {factors.length > 0 ? "Weiteren Authenticator hinzufügen" : "2FA aktivieren"}
           </PressableButton>
         ) : null}
-      </div>
+    </>
+  );
 
+  const enrollmentAndMessages = (
+    <>
       {qrCode && factorId ? (
         <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
           <p className="text-[0.85rem] text-[color:var(--vd-muted)]">
@@ -249,6 +255,24 @@ export function MfaSetupPanel() {
       {error ? (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-[0.8rem] text-red-700">{error}</p>
       ) : null}
+    </>
+  );
+
+  if (!showHeader) {
+    return (
+      <div className="space-y-4" data-tour="mfa-settings">
+        {content}
+        {enrollmentAndMessages}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-tour="mfa-settings">
+      <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
+        {content}
+      </div>
+      {enrollmentAndMessages}
     </div>
   );
 }

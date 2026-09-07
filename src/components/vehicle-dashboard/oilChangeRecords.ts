@@ -16,6 +16,8 @@ export interface OilChangeRecord {
   notes: string;
   invoiceRef?: string;
   status: "aktuell" | "erledigt";
+  /** True when logged manually (editable on /intervalle). */
+  isManual?: boolean;
 }
 
 export const OIL_CHANGE_RECORDS: OilChangeRecord[] = [

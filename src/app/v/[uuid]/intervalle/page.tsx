@@ -50,6 +50,7 @@ export default async function VehicleOilIntervalsPage({
       <OilIntervalsView
         vehicleModel={vehicleModel}
         records={records}
+        documents={result.documents}
         backHref={`/v/${result.tag.uuid}`}
         basePath={`/v/${result.tag.uuid}/intervalle`}
         scanHref={`/v/${result.tag.uuid}?scan=1`}

@@ -23,6 +23,12 @@ import {
   parseManualEntryMileageKm,
   resolveManualEntryAmount,
 } from "@/lib/documents/manual-entry-input";
+import {
+  buildManualOilChangeDocumentFields,
+  isEditableManualOilChangeDocument,
+  manualOilChangeFieldsFromFormData,
+  resolveManualOilChangeVendor,
+} from "@/lib/documents/manual-oil-change-form";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
 import {
   getMockUploadedDocuments,
@@ -68,10 +74,8 @@ export async function updateManualVehicleEntry(
 
   const data = parsed.data;
   const documentId = data.documentId.trim();
-  const category = parseManualEntryCategory(data.category) as ManualEntryCategory;
-  if (!category) {
-    return { status: "error", message: "Ungültige Kategorie." };
-  }
+  const oilForm = manualOilChangeFieldsFromFormData(formData);
+  const isOilChangeUpdate = oilForm.entryType === "oil_change";
 
   const dateRaw = data.date?.trim() ?? "";
   if (dateRaw && !parseManualEntryDate(dateRaw)) {
@@ -80,10 +84,30 @@ export async function updateManualVehicleEntry(
   const date = parseManualEntryDate(dateRaw);
   const lineItems = parseLineItems(formData.get("lineItems"));
   const amount = resolveManualEntryAmount(formData, data.amount);
-  const vendor = data.vendor?.trim().slice(0, 160) || null;
-  const notes = data.notes?.trim().slice(0, 500) || null;
   const mileageKm = parseManualEntryMileageKm(data.mileageKm);
-  const title = data.title.trim().slice(0, 160);
+
+  let category = parseManualEntryCategory(data.category) as ManualEntryCategory;
+  if (!category) {
+    return { status: "error", message: "Ungültige Kategorie." };
+  }
+
+  let title = data.title.trim().slice(0, 160);
+  let vendor = data.vendor?.trim().slice(0, 160) || null;
+  let notes = data.notes?.trim().slice(0, 500) || null;
+
+  if (isOilChangeUpdate) {
+    const oilDocument = buildManualOilChangeDocumentFields({
+      title: "Ölwechsel",
+      oilSpec: oilForm.oilSpec,
+      oilAmountLiters: oilForm.oilAmountLiters,
+      filterChanged: oilForm.filterChanged,
+      notes: data.notes,
+    });
+    category = oilDocument.category;
+    title = oilDocument.title;
+    notes = oilDocument.notes;
+    vendor = resolveManualOilChangeVendor(oilForm.selfMade, data.vendor);
+  }
 
   const patch = {
     title,
@@ -92,8 +116,9 @@ export async function updateManualVehicleEntry(
     vendor,
     notes,
     mileage_km: mileageKm,
-    line_items: lineItems && lineItems.length > 0 ? lineItems : null,
-    amount,
+    line_items:
+      isOilChangeUpdate ? null : lineItems && lineItems.length > 0 ? lineItems : null,
+    amount: isOilChangeUpdate ? null : amount,
   };
 
   const { isConfigured } = getSupabaseEnv();
@@ -101,7 +126,11 @@ export async function updateManualVehicleEntry(
   if (!isConfigured) {
     const uploaded = await getMockUploadedDocuments(data.vehicleId);
     const target = uploaded.find((doc) => doc.id === documentId);
-    if (!target || !isManualVehicleEntry(target)) {
+    if (
+      !target ||
+      !isManualVehicleEntry(target) ||
+      (isOilChangeUpdate && !isEditableManualOilChangeDocument(target))
+    ) {
       return { status: "error", message: "Manueller Eintrag nicht gefunden." };
     }
     await updateMockUploadedDocument(data.vehicleId, documentId, patch);
@@ -150,7 +179,9 @@ export async function updateManualVehicleEntry(
   const admin = createAdminClient();
   const { data: document, error: loadError } = await admin
     .from("documents")
-    .select("id, type, vehicle_id, file_url, invoice_number")
+    .select(
+      "id, type, vehicle_id, file_url, invoice_number, title, notes, vendor, category",
+    )
     .eq("id", documentId)
     .eq("vehicle_id", data.vehicleId)
     .maybeSingle();
@@ -160,6 +191,12 @@ export async function updateManualVehicleEntry(
   }
   if (!document || !isStoredManualEntry(document)) {
     return { status: "error", message: "Manueller Eintrag nicht gefunden." };
+  }
+  if (isOilChangeUpdate && !isEditableManualOilChangeDocument(document as Document)) {
+    return {
+      status: "error",
+      message: "Nur manuelle Ölwechsel-Einträge können hier bearbeitet werden.",
+    };
   }
 
   const { error: updateError } = await admin
@@ -174,5 +211,6 @@ export async function updateManualVehicleEntry(
 
   revalidateManualEntryPaths(data.tagUuid, documentId);
   revalidatePath(`/v/${data.tagUuid}/dokumente/${documentId}`);
+  revalidatePath(`/v/${data.tagUuid}/intervalle/${documentId}`);
   return { status: "ok" };
 }

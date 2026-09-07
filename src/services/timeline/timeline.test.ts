@@ -188,8 +188,28 @@ describe("deriveTimelineEventsFromDocuments", () => {
     expect(events).toHaveLength(1);
     expect(events[0]?.title).toBe("Bremsen vorne erneuert");
     expect(events[0]?.mileageKnown).toBe(false);
+    expect(events[0]?.isManualEntry).toBe(true);
     expect(events[0]?.description).toBe("Selbst gemacht");
     expect(events[0]?.category).toBe("inspection");
+  });
+
+  it("includes manual entries with storage photo URL and marker", () => {
+    const events = deriveTimelineEventsFromDocuments([
+      stubDocument({
+        id: "manual-photo",
+        title: "Spoiler montiert",
+        category: "tuning",
+        invoice_number: MANUAL_ENTRY_MARKER,
+        file_url: "vehicle-id/doc-id/photo.webp",
+        mileage_km: null,
+        date: "2025-08-10",
+      }),
+    ]);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.isManualEntry).toBe(true);
+    expect(events[0]?.title).toBe("Spoiler montiert");
+    expect(events[0]?.category).toBe("part_install");
   });
 
   it("includes manual tuning entries with mileage", () => {

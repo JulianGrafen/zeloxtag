@@ -1,17 +1,28 @@
 "use client";
 
+import { useMemo } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 
 import { VehicleTimeline } from "@/components/dashboard/VehicleTimeline";
 import {
+  isManualVehicleEntry,
+  manualEntryEditPath,
+} from "@/lib/documents/manual-entries";
+import {
+  isEditableManualOilChangeDocument,
+  manualOilChangeEditPath,
+} from "@/lib/documents/manual-oil-change-form";
+import {
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
 import type { TimelineEvent } from "@/lib/validations/timelineSchema";
+import type { Document } from "@/types/database";
 
 export type VehicleTimelineViewProps = {
   tagUuid: string;
   vehicleLabel: string;
   events: TimelineEvent[];
+  documents?: Document[];
   /** Optional CTA to open scan / upload. */
   scanHref?: string;
   backHref?: string;
@@ -24,10 +35,26 @@ export function VehicleTimelineView({
   tagUuid,
   vehicleLabel,
   events,
+  documents = [],
   scanHref,
   backHref,
 }: VehicleTimelineViewProps) {
   const resolvedBack = backHref ?? `/v/${tagUuid}`;
+  const documentsById = useMemo(
+    () => new Map(documents.map((doc) => [doc.id, doc])),
+    [documents],
+  );
+
+  function resolveDocumentHref(documentId: string): string {
+    const document = documentsById.get(documentId);
+    if (document && isEditableManualOilChangeDocument(document)) {
+      return manualOilChangeEditPath(tagUuid, documentId);
+    }
+    if (document && isManualVehicleEntry(document)) {
+      return manualEntryEditPath(tagUuid, documentId, document.category);
+    }
+    return `/v/${tagUuid}/dokumente/${documentId}`;
+  }
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -61,20 +88,22 @@ export function VehicleTimelineView({
 
           <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
             <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
-              Timeline
+              Historie
             </h1>
             <p className="mt-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Alle Meilensteine aus Belegen, Ölwechseln, Reparaturen und TÜV —
-              sortiert nach KM-Stand.
+              Belege, Ölwechsel, TÜV und{" "}
+              <span className="font-medium text-[color:var(--vd-text)]">
+                manuelle Einträge
+              </span>
+              {" "}— sortiert nach KM-Stand. Einträge ohne Kilometerstand
+              stehen unten in einem eigenen Block.
             </p>
           </div>
         </header>
 
         <VehicleTimeline
           events={events}
-          documentHref={(documentId) =>
-            `/v/${tagUuid}/dokumente/${documentId}`
-          }
+          documentHref={resolveDocumentHref}
         />
       </div>
     </div>

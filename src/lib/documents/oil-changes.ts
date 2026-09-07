@@ -10,6 +10,7 @@ import type { VehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, DocumentLineItem } from "@/types/database";
 
 import { formatDocumentDate } from "./format";
+import { isManualVehicleEntry } from "./manual-entries";
 
 /** Default service interval when the invoice does not state one. */
 export const DEFAULT_OIL_INTERVAL_KM = 10_000;
@@ -316,6 +317,7 @@ export function oilChangeRecordsFromDocuments(
       notes: document.notes?.trim() || detected.notes,
       invoiceRef: document.id,
       status: index === 0 ? "aktuell" : "erledigt",
+      isManual: isManualVehicleEntry(document),
     } satisfies OilChangeRecord;
   });
 }
