@@ -155,43 +155,82 @@ export default function DatenschutzPage() {
         </LegalUnorderedList>
 
         <LegalParagraph>
-          <strong>b) KI-Rechnungsscan (OCR-Extraktion)</strong>
+          <strong>
+            b) Automatisierte Belegerfassung &amp; KI-Textextraktion (Azure AI
+            Document Intelligence &amp; Azure AI Foundry)
+          </strong>
         </LegalParagraph>
         <LegalParagraph>
-          Zur automatisierten Analyse von PDFs (z.&nbsp;B. Extraktion von
-          Bauteilen, KBA-Nummern oder Kosten) nutzen wir OpenAI-Modelle.
-          Vertragspartner ist hierbei die Microsoft Ireland Operations Limited
-          (Dublin, Irland). Das Hosting erfolgt über Microsoft Azure in der
-          Region Germany West Central (Frankfurt).
+          <strong>Funktionsweise &amp; Architektur:</strong> Für die digitale
+          Erfassung und Auswertung von Fahrzeugdokumenten (z.&nbsp;B. Rechnungen,
+          ABEs, Gutachten, TÜV-Berichte) setzen wir eine zweistufige
+          Analyse-Pipeline ein:
         </LegalParagraph>
         <LegalUnorderedList>
           <li>
-            Es werden Bilddateien, PDFs und die darin enthaltenen Text- und
-            Metadaten (inklusive personenbezogener Daten wie Name oder
-            Rechnungsanschrift) zur Verarbeitung an die Schnittstelle übertragen.
+            <strong>Optische Zeichen- und Layouterkennung (OCR):</strong> Über
+            Azure AI Document Intelligence werden die hochgeladenen Bild- und
+            PDF-Dateien analysiert, um Textinhalte, Belegstrukturen und
+            Tabellendaten präzise zu erfassen.
           </li>
           <li>
-            Eine automatische Vorab-Anonymisierung der Daten findet nicht statt,
-            da die Identifikation und Extraktion spezifischer Fahrzeughistorien
-            und Bauteilzuordnungen (z.&nbsp;B. FIN, amtliches Kennzeichen, Halter
-            auf der Rechnung) der vertragliche Hauptzweck der Anwendung ist (Art.
-            6 Abs. 1 lit. b DSGVO).
-          </li>
-          <li>
-            Die übertragenen Dokumente und Prompts werden von Microsoft oder
-            Dritten zu keinem Zeitpunkt für das Training oder die Verbesserung
-            von KI-Modellen verwendet.
-          </li>
-          <li>
-            Die Verarbeitung erfolgt zustandslos (stateless). Zur Sicherstellung
-            der Systemintegrität (Abuse Monitoring) behält sich der Anbieter eine
-            temporäre Zwischenspeicherung der Eingaben für maximal 30 Tage vor.
-            Ein potenzieller Datentransfer an die US-Muttergesellschaft ist
-            primär durch die Zertifizierung von Microsoft unter dem EU-US Data
-            Privacy Framework (DPF) sowie subsidiär durch
-            EU-Standardvertragsklauseln rechtlich abgesichert.
+            <strong>Semantische Extraktion &amp; Modell-Routing:</strong> Über
+            Microsoft Azure AI Foundry (Azure OpenAI Service) verarbeiten
+            Sprachmodelle (z.&nbsp;B. GPT-Modelle) die extrahierten Rohtexte, um
+            Bauteile, KBA-Nummern, Datumsangaben, Kilometerstände und Kosten zu
+            strukturieren. Zur Gewährleistung von Hochverfügbarkeit und
+            Lastverteilung greift das System bei Bedarf auf interne
+            Fallback-Modelle innerhalb der Azure-Infrastruktur zurück.
           </li>
         </LegalUnorderedList>
+        <LegalParagraph>
+          <strong>Dienstleister &amp; Serverstandort:</strong> Vertragspartner ist
+          die Microsoft Ireland Operations Limited (One Microsoft Place, South
+          County Business Park, Leopardstown, Dublin 18, Irland). Die
+          Verarbeitung sämtlicher Dokumente und die Modellausführung erfolgen auf
+          Cloud-Ressourcen innerhalb der Europäischen Union, primär im
+          Rechenzentrum Frankfurt am Main (Azure Region Germany West Central).
+        </LegalParagraph>
+        <LegalParagraph>
+          <strong>Umfang der Datenverarbeitung:</strong> Übertragen werden die
+          vom Nutzer aktiv hochgeladenen Belege (PDF-, JPEG- oder PNG-Dateien)
+          sowie die darin enthaltenen Text- und Metadaten. Dies umfasst neben
+          rein fahrzeugbezogenen Sachdaten (Fahrgestellnummer/FIN, amtliches
+          Kennzeichen, Bauteilbezeichnungen) auch die auf den Rechnungen
+          abgedruckten personenbezogenen Daten (z.&nbsp;B. Name und Anschrift des
+          Rechnungsempfängers bzw. Ausstellers).
+        </LegalParagraph>
+        <LegalParagraph>
+          <strong>Zweck &amp; Rechtsgrundlage:</strong> Eine Vorab-Anonymisierung
+          der Dokumente erfolgt bewusst nicht, da die Erfassung der Halter- und
+          Fahrzeughistorie sowie die eindeutige Zuordnung der Belege integraler
+          Bestandteil der digitalen Fahrzeugakte ist. Rechtsgrundlage für diese
+          Verarbeitung ist Art. 6 Abs. 1 lit. b DSGVO (Erfüllung des
+          Nutzungsvertrags).
+        </LegalParagraph>
+        <LegalParagraph>
+          <strong>Ausschluss von Modell-Training:</strong> Die übermittelten
+          Dokumente, Extrakte und Systemanweisungen (Prompts) werden von
+          Microsoft, OpenAI oder Dritten zu keinem Zeitpunkt zum Trainieren oder
+          Verbessern von KI-Modellen verwendet.
+        </LegalParagraph>
+        <LegalParagraph>
+          <strong>Speicherdauer &amp; Abuse Monitoring:</strong> Die Analyse
+          erfolgt zustandslos (stateless). Zur Erkennung von
+          Sicherheitsvorfällen und zum Schutz vor Missbrauch (Abuse Monitoring)
+          behält sich Microsoft standardmäßig eine temporäre, zugriffsgeschützte
+          Speicherung der verarbeiteten Daten für maximal 30 Tage vor. Nach Ablauf
+          dieser Frist bzw. mit Abschluss der Prüfung werden die temporären Daten
+          bei Microsoft verworfen.
+        </LegalParagraph>
+        <LegalParagraph>
+          <strong>Drittlandübermittlung:</strong> Ein potenzieller Zugriff oder
+          Transfer durch die US-amerikanische Konzernmutter (Microsoft
+          Corporation) ist durch die Zertifizierung von Microsoft unter dem
+          EU-US Data Privacy Framework (DPF) sowie den Abschluss des Microsoft
+          Data Protection Addendum (DPA) inklusive EU-Standardvertragsklauseln
+          (SCCs) rechtlich abgesichert.
+        </LegalParagraph>
 
         <LegalParagraph>
           <strong>c) Zahlungsabwicklung via Stripe</strong>
