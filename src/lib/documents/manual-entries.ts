@@ -119,3 +119,15 @@ export function isTuningLikeCategory(
   if (!normalized) return false;
   return /tuning|umbau/.test(normalized);
 }
+
+/** Deep-link to edit a manual entry in the list form (`?edit=`). */
+export function manualEntryEditPath(
+  tagUuid: string,
+  documentId: string,
+  category: string | null | undefined,
+): string {
+  const base = isTuningLikeCategory(category)
+    ? `/v/${tagUuid}/umbauten`
+    : `/v/${tagUuid}/eintrag`;
+  return `${base}?edit=${encodeURIComponent(documentId)}`;
+}

@@ -1,7 +1,6 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
@@ -31,6 +30,7 @@ import {
 } from "@/lib/documents/oil-changes";
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
+import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
 import {
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
@@ -210,16 +210,6 @@ function collectPhotoFiles(formData: FormData): File[] {
   return files.slice(0, MANUAL_ENTRY_MAX_PHOTOS);
 }
 
-function revalidateManualPaths(tagUuid: string) {
-  revalidatePath(`/v/${tagUuid}`);
-  revalidatePath(`/v/${tagUuid}/eintrag`);
-  revalidatePath(`/v/${tagUuid}/umbauten`);
-  revalidatePath(`/v/${tagUuid}/service`);
-  revalidatePath(`/v/${tagUuid}/dokumente`);
-  revalidatePath(`/v/${tagUuid}/intervalle`);
-  revalidatePath(`/v/${tagUuid}/historie`);
-}
-
 /**
  * Persist a user-written Wartung / Tuning log, optionally with photo docs.
  * Accepts FormData: text fields + optional `photos` / `photo` files.
@@ -316,7 +306,7 @@ export async function createManualVehicleEntry(
       created_at: now,
     };
     await appendMockUploadedDocument(document);
-    revalidateManualPaths(data.tagUuid);
+    revalidateManualEntryPaths(data.tagUuid);
     return { status: "created", documentId };
   }
 
@@ -445,7 +435,7 @@ export async function createManualVehicleEntry(
   for (const attempt of insertAttempts) {
     const { error } = await supabase.from("documents").insert({ ...attempt });
     if (!error) {
-      revalidateManualPaths(data.tagUuid);
+      revalidateManualEntryPaths(data.tagUuid);
       return { status: "created", documentId };
     }
     lastError = error.message;

@@ -54,7 +54,8 @@ export function OilIntervalDetailView({
                 {record.date}
               </h1>
               <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-                {vehicleModel} · {record.workshop}
+                {vehicleModel}
+                {record.workshop ? ` · ${record.workshop}` : ""}
               </p>
             </div>
             <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white">
@@ -110,30 +111,36 @@ export function OilIntervalDetailView({
             Spezifikation
           </h2>
           <dl className="space-y-3 text-[0.88rem]">
-            <div className="flex justify-between gap-3">
-              <dt className="text-[color:var(--vd-muted)]">Öl</dt>
-              <dd className="max-w-[60%] text-right font-medium text-[color:var(--vd-text)]">
-                {record.oilSpec}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-[color:var(--vd-muted)]">Menge</dt>
-              <dd className="font-medium text-[color:var(--vd-text)]">
-                {record.oilAmountLiters.toLocaleString("de-DE")} l
-              </dd>
-            </div>
+            {record.oilSpec ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-[color:var(--vd-muted)]">Öl</dt>
+                <dd className="max-w-[60%] text-right font-medium text-[color:var(--vd-text)]">
+                  {record.oilSpec}
+                </dd>
+              </div>
+            ) : null}
+            {record.oilAmountLiters != null ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-[color:var(--vd-muted)]">Menge</dt>
+                <dd className="font-medium text-[color:var(--vd-text)]">
+                  {record.oilAmountLiters.toLocaleString("de-DE")} l
+                </dd>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-3">
               <dt className="text-[color:var(--vd-muted)]">Filter</dt>
               <dd className="font-medium text-[color:var(--vd-text)]">
                 {record.filterChanged ? "Erneuert" : "Unverändert"}
               </dd>
             </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-[color:var(--vd-muted)]">Werkstatt</dt>
-              <dd className="max-w-[60%] text-right font-medium text-[color:var(--vd-text)]">
-                {record.workshop}
-              </dd>
-            </div>
+            {record.workshop ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-[color:var(--vd-muted)]">Werkstatt</dt>
+                <dd className="max-w-[60%] text-right font-medium text-[color:var(--vd-text)]">
+                  {record.workshop}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         </section>
 

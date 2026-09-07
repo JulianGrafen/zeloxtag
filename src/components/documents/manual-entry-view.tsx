@@ -7,6 +7,7 @@ import {
   Camera,
   ImagePlus,
   NotebookPen,
+  Pencil,
   Plus,
   Trash2,
   Wrench,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
+import { updateManualVehicleEntry } from "@/actions/update-manual-entry";
 import { deleteDocument } from "@/actions/delete-document";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { GermanDateInput } from "@/components/documents/german-date-input";
@@ -36,6 +38,7 @@ import {
   MANUAL_ENTRY_CATEGORIES,
   MANUAL_ENTRY_CATEGORY_LABELS,
   MANUAL_ENTRY_MAX_PHOTOS,
+  parseManualEntryCategory,
   resolveManualEntryTitle,
   type ManualEntryCategory,
 } from "@/lib/documents/manual-entries";
@@ -86,10 +89,11 @@ export function ManualEntryView({
   const router = useRouter();
   const searchParams = useSearchParams();
   const openFormOnLoad = searchParams.get("neu") === "1";
+  const editDocumentId = searchParams.get("edit");
   const isUmbau = variant === "umbau";
   const { compressFile, isCompressing, statusLabel, error: compressError } =
     useDocumentCompression();
-  const [showForm, setShowForm] = useState(openFormOnLoad);
+  const [showForm, setShowForm] = useState(openFormOnLoad || Boolean(editDocumentId));
   const [category, setCategory] = useState<ManualEntryCategory>(
     isUmbau
       ? "tuning"
@@ -119,6 +123,22 @@ export function ManualEntryView({
     // Umbau-Bilder: only tuning / Umbau rows (never Wartung).
     return all.filter((doc) => doc.category === "tuning");
   }, [documents, isUmbau]);
+
+  const editingDocument = useMemo(() => {
+    if (!editDocumentId) return null;
+    return entries.find((doc) => doc.id === editDocumentId) ?? null;
+  }, [entries, editDocumentId]);
+
+  const isEditing = Boolean(editingDocument);
+
+  const existingPhotoUrl =
+    editingDocument && isViewableDocumentUrl(editingDocument.file_url)
+      ? inlineDocumentProxyUrl(editingDocument.file_url)
+      : null;
+  const existingPhotoIsImage =
+    Boolean(existingPhotoUrl) &&
+    editingDocument &&
+    documentMediaKind(editingDocument.file_url) === "image";
 
   const listChips = useMemo(() => {
     const withPhoto = entries.filter((doc) =>
@@ -190,6 +210,36 @@ export function ManualEntryView({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, []);
 
+  useEffect(() => {
+    if (!editingDocument) return;
+    setShowForm(true);
+    setCategory(parseManualEntryCategory(editingDocument.category) ?? "service");
+    setTitle(displayDocumentTitle(editingDocument.title));
+    setDate(editingDocument.date ?? "");
+    setAmount(
+      editingDocument.amount != null
+        ? editingDocument.amount.toFixed(2).replace(".", ",")
+        : "",
+    );
+    setVendor(editingDocument.vendor ?? "");
+    setMileageKm(
+      editingDocument.mileage_km != null
+        ? String(editingDocument.mileage_km)
+        : "",
+    );
+    setNotes(editingDocument.notes ?? "");
+    setLineItems(editingDocument.line_items ?? []);
+    setPhotos([]);
+    setError(null);
+  }, [editingDocument]);
+
+  useEffect(() => {
+    if (!editDocumentId || editingDocument) return;
+    if (entries.length === 0 && documents.length === 0) return;
+    setError("Eintrag nicht gefunden oder nicht mehr vorhanden.");
+    setShowForm(false);
+  }, [editDocumentId, editingDocument, entries.length, documents.length]);
+
   function resetForm() {
     photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
     setTitle("");
@@ -202,6 +252,15 @@ export function ManualEntryView({
     setPhotos([]);
     setCategory(isUmbau ? "tuning" : "service");
     setError(null);
+  }
+
+  function closeForm() {
+    resetForm();
+    setShowForm(false);
+    if (editDocumentId) {
+      const base = isUmbau ? `/v/${tagUuid}/umbauten` : `/v/${tagUuid}/eintrag`;
+      router.replace(base);
+    }
   }
 
   async function addPhotoFiles(fileList: FileList | null) {
@@ -269,6 +328,44 @@ export function ManualEntryView({
     if (lineItems.length > 0) {
       formData.set("lineItems", JSON.stringify(lineItems));
     }
+  }
+
+  function handleUpdate() {
+    if (!editingDocument) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        const baseTitle = resolveManualEntryTitle(title, category, {
+          umbau: isUmbau,
+        });
+        const formData = new FormData();
+        formData.set("documentId", editingDocument.id);
+        formData.set("vehicleId", vehicleId);
+        formData.set("tagUuid", tagUuid);
+        formData.set("category", category);
+        formData.set("title", baseTitle);
+        formData.set("date", date);
+        formData.set("amount", amount);
+        formData.set("vendor", vendor);
+        formData.set("mileageKm", mileageKm);
+        formData.set("notes", notes);
+        appendLineItemsToFormData(formData);
+
+        const result = await updateManualVehicleEntry(formData);
+        if (result.status === "error") {
+          setError(result.message);
+          return;
+        }
+        closeForm();
+        router.refresh();
+      } catch (updateError) {
+        setError(
+          updateError instanceof Error
+            ? updateError.message
+            : "Eintrag konnte nicht gespeichert werden.",
+        );
+      }
+    });
   }
 
   function handleCreate() {
@@ -446,9 +543,16 @@ export function ManualEntryView({
             className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
             onSubmit={(event) => {
               event.preventDefault();
-              handleCreate();
+              if (isEditing) {
+                handleUpdate();
+              } else {
+                handleCreate();
+              }
             }}
           >
+            <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+              {isEditing ? "Eintrag bearbeiten" : "Neuer Eintrag"}
+            </p>
             {!isUmbau ? (
               <>
                 <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
@@ -571,13 +675,34 @@ export function ManualEntryView({
               <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                 Fotos{" "}
                 <span className="normal-case tracking-normal text-[color:var(--vd-muted)]">
-                  {isUmbau
-                    ? `(mindestens 1, max. ${MANUAL_ENTRY_MAX_PHOTOS})`
-                    : `(optional, max. ${MANUAL_ENTRY_MAX_PHOTOS})`}
+                  {isEditing
+                    ? "(aktuell)"
+                    : isUmbau
+                      ? `(mindestens 1, max. ${MANUAL_ENTRY_MAX_PHOTOS})`
+                      : `(optional, max. ${MANUAL_ENTRY_MAX_PHOTOS})`}
                 </span>
               </p>
 
-              {photos.length > 0 ? (
+              {isEditing && existingPhotoUrl ? (
+                <div className="relative aspect-video overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-neutral-100">
+                  {existingPhotoIsImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={existingPhotoUrl}
+                      alt=""
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <iframe
+                      title="Vorhandenes Dokument"
+                      src={existingPhotoUrl}
+                      className="h-full min-h-[12rem] w-full"
+                    />
+                  )}
+                </div>
+              ) : null}
+
+              {!isEditing && photos.length > 0 ? (
                 <ul className="grid grid-cols-3 gap-2">
                   {photos.map((photo) => (
                     <li
@@ -604,7 +729,7 @@ export function ManualEntryView({
                 </ul>
               ) : null}
 
-              {photos.length < MANUAL_ENTRY_MAX_PHOTOS ? (
+              {!isEditing && photos.length < MANUAL_ENTRY_MAX_PHOTOS ? (
                 <div className="grid grid-cols-2 gap-2">
                   <label className="claim-back relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden">
                     <input
@@ -651,10 +776,7 @@ export function ManualEntryView({
                 type="button"
                 variant="button"
                 disabled={busy}
-                onClick={() => {
-                  resetForm();
-                  setShowForm(false);
-                }}
+                onClick={closeForm}
                 className="claim-back flex-1"
               >
                 Abbrechen
@@ -662,10 +784,19 @@ export function ManualEntryView({
               <PressableButton
                 type="submit"
                 variant="button"
-                disabled={busy || (isUmbau && photos.length === 0)}
+                disabled={
+                  busy ||
+                  (!isEditing && isUmbau && photos.length === 0)
+                }
                 className="claim-cta flex-1 disabled:opacity-60"
               >
-                {busy ? "Speichern…" : isUmbau ? "Fotos speichern" : "Eintrag speichern"}
+                {busy
+                  ? "Speichern…"
+                  : isEditing
+                    ? "Änderungen speichern"
+                    : isUmbau
+                      ? "Fotos speichern"
+                      : "Eintrag speichern"}
               </PressableButton>
             </div>
           </form>
@@ -738,6 +869,20 @@ export function ManualEntryView({
                     <PressableButton
                       type="button"
                       variant="button"
+                      aria-label={`Bearbeiten: ${displayDocumentTitle(doc.title)}`}
+                      onClick={() => {
+                        const base = isUmbau
+                          ? `/v/${tagUuid}/umbauten`
+                          : `/v/${tagUuid}/eintrag`;
+                        router.push(`${base}?edit=${encodeURIComponent(doc.id)}`);
+                      }}
+                      className="absolute left-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-white/95 text-[color:var(--vd-text)] shadow-sm"
+                    >
+                      <Pencil className="h-3.5 w-3.5" aria-hidden />
+                    </PressableButton>
+                    <PressableButton
+                      type="button"
+                      variant="button"
                       aria-label={`Löschen: ${displayDocumentTitle(doc.title)}`}
                       disabled={pending && pendingId === doc.id}
                       onClick={() => handleDelete(doc.id)}
@@ -799,6 +944,19 @@ export function ManualEntryView({
                         </span>
                       </span>
                     </PressableLink>
+                    <PressableButton
+                      type="button"
+                      variant="button"
+                      aria-label={`Bearbeiten: ${displayDocumentTitle(doc.title)}`}
+                      onClick={() => {
+                        router.push(
+                          `/v/${tagUuid}/eintrag?edit=${encodeURIComponent(doc.id)}`,
+                        );
+                      }}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-[color:var(--vd-text)]"
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                    </PressableButton>
                     <PressableButton
                       type="button"
                       variant="button"

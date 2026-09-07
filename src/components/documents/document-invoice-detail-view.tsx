@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   FileText,
+  Pencil,
   Receipt,
   Share2,
   Trash2,
@@ -34,6 +35,7 @@ import {
 import {
   displayManualInvoiceNumber,
   isManualVehicleEntry,
+  manualEntryEditPath,
 } from "@/lib/documents/manual-entries";
 import {
   documentDeleteButtonLabel,
@@ -95,6 +97,10 @@ export function DocumentInvoiceDetailView({
     ? documentMediaKind(document.file_url)
     : null;
   const isManual = isManualVehicleEntry(document);
+  const manualEditHref =
+    isManual && canEdit
+      ? manualEntryEditPath(tagUuid, document.id, document.category)
+      : null;
   const paymentBadge = resolveInvoicePaymentBadge(document);
   const canEditInvoice =
     canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
@@ -475,14 +481,26 @@ export function DocumentInvoiceDetailView({
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
-        <div className="pointer-events-auto mx-auto max-w-lg">
+        <div className="pointer-events-auto mx-auto flex max-w-lg gap-2">
+          {manualEditHref ? (
+            <PressableLink
+              href={manualEditHref}
+              variant="button"
+              className="claim-cta inline-flex flex-1 items-center justify-center gap-2"
+            >
+              <Pencil className="h-4 w-4" aria-hidden />
+              Bearbeiten
+            </PressableLink>
+          ) : null}
           <PressableButton
             type="button"
             variant="button"
             onClick={() => {
               void handleShare();
             }}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow)]"
+            className={`inline-flex items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow)] ${
+              manualEditHref ? "flex-1" : "w-full"
+            }`}
           >
             <Share2 className="h-4 w-4" aria-hidden />
             Teilen

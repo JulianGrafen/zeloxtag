@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronRight, Droplet, Plus } from "lucide-react";
 
 import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
+import { oilChangeRecordListSubtitle } from "@/lib/documents/oil-changes";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 
 import {
@@ -196,8 +197,7 @@ export function OilIntervalsView({
                       ) : null}
                     </span>
                     <span className="mt-0.5 block text-[0.75rem] text-[color:var(--vd-muted)]">
-                      {record.mileageKm.toLocaleString("de-DE")} km ·{" "}
-                      {record.oilSpec.split(" ").slice(0, 3).join(" ")}
+                      {oilChangeRecordListSubtitle(record) || "—"}
                     </span>
                   </span>
 
