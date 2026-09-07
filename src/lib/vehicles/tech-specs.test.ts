@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   countFilledTechSpecs,
+  isOilChangeIntervalKmOption,
+  OIL_CHANGE_INTERVAL_KM_OPTIONS,
   parseVehicleTechSpecs,
   serializeVehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
@@ -61,6 +63,14 @@ describe("vehicle tech specs", () => {
     );
   });
 
+  it("builds oil-change km options in 2.500 km steps", () => {
+    expect(OIL_CHANGE_INTERVAL_KM_OPTIONS[0]).toBe(2_500);
+    expect(OIL_CHANGE_INTERVAL_KM_OPTIONS).toContain(10_000);
+    expect(OIL_CHANGE_INTERVAL_KM_OPTIONS.at(-1)).toBe(50_000);
+    expect(isOilChangeIntervalKmOption(10_000)).toBe(true);
+    expect(isOilChangeIntervalKmOption(9_999)).toBe(false);
+  });
+
   it("parses and clamps oil-change interval fields", () => {
     const parsed = parseVehicleTechSpecs({
       oilChangeIntervalKm: 15_000,
@@ -71,6 +81,9 @@ describe("vehicle tech specs", () => {
 
     expect(
       parseVehicleTechSpecs({ oilChangeIntervalKm: 500 }).oilChangeIntervalKm,
+    ).toBeNull();
+    expect(
+      parseVehicleTechSpecs({ oilChangeIntervalKm: 9_999 }).oilChangeIntervalKm,
     ).toBeNull();
     expect(
       parseVehicleTechSpecs({ oilChangeIntervalMonths: 48 }).oilChangeIntervalMonths,

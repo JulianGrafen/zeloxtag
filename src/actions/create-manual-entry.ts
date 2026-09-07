@@ -27,6 +27,7 @@ import {
 import {
   ensureOilChangeNotes,
   detectOilChangeInvoice,
+  resolveOilChangeVendor,
 } from "@/lib/documents/oil-changes";
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
@@ -59,6 +60,7 @@ const fieldsSchema = z.object({
   oilSpec: z.string().trim().max(120).optional().default(""),
   oilAmountLiters: z.string().trim().max(16).optional().default(""),
   filterChanged: z.enum(["true", "false", ""]).optional().default(""),
+  selfMade: z.enum(["true", "false", ""]).optional().default(""),
 });
 
 function parseAmount(raw: string | undefined): number | null {
@@ -130,6 +132,7 @@ function fieldsFromFormData(formData: FormData) {
     oilSpec: String(formData.get("oilSpec") ?? ""),
     oilAmountLiters: String(formData.get("oilAmountLiters") ?? ""),
     filterChanged: String(formData.get("filterChanged") ?? ""),
+    selfMade: String(formData.get("selfMade") ?? ""),
   };
 }
 
@@ -253,7 +256,9 @@ export async function createManualVehicleEntry(
   const lineItems = parseLineItems(formData.get("lineItems"));
   const amountFromLines = sumLineItems(lineItems);
   const amount = amountFromLines ?? parseAmount(data.amount);
-  const vendor = data.vendor?.trim().slice(0, 160) || null;
+  const vendor = isOilChangeEntry
+    ? resolveOilChangeVendor(data.selfMade === "true", data.vendor)
+    : data.vendor?.trim().slice(0, 160) || null;
   const notes =
     oilFields?.notes ??
     combineManualNotes(data.details, data.notes);

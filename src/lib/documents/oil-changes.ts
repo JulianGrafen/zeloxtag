@@ -15,6 +15,25 @@ import { formatDocumentDate } from "./format";
 export const DEFAULT_OIL_INTERVAL_KM = 10_000;
 export const DEFAULT_OIL_INTERVAL_MONTHS = 12;
 
+export function isOilChangeSelfMadeVendor(
+  vendor: string | null | undefined,
+): boolean {
+  const trimmed = vendor?.trim();
+  if (!trimmed) return false;
+  if (trimmed === OIL_CHANGE_SELF_WORKSHOP_LABEL) return true;
+  return foldGermanOilText(trimmed).includes("selbst gemacht");
+}
+
+/** Persisted `documents.vendor` for manual self-service oil changes. */
+export function resolveOilChangeVendor(
+  selfMade: boolean,
+  vendorInput: string | null | undefined,
+): string | null {
+  if (selfMade) return OIL_CHANGE_SELF_WORKSHOP_LABEL;
+  const trimmed = vendorInput?.trim();
+  return trimmed ? trimmed.slice(0, 160) : null;
+}
+
 export function resolveOilChangeInterval(
   specs?: Pick<
     VehicleTechSpecs,
@@ -301,15 +320,26 @@ export function oilChangeRecordsFromDocuments(
   });
 }
 
-/** Compact secondary line for oil-change list rows (km, optional spec). */
+/** Compact secondary line for oil-change list rows (km, source, optional spec). */
 export function oilChangeRecordListSubtitle(record: OilChangeRecord): string {
   const parts: string[] = [];
   if (record.mileageKm > 0) {
     parts.push(`${record.mileageKm.toLocaleString("de-DE")} km`);
   }
+  const workshop = record.workshop?.trim();
+  if (workshop) {
+    parts.push(workshop);
+  }
   const spec = record.oilSpec?.trim();
   if (spec) {
     parts.push(spec.split(/\s+/).slice(0, 3).join(" "));
+  }
+  if (
+    record.oilAmountLiters != null &&
+    record.oilAmountLiters > 0 &&
+    !spec
+  ) {
+    parts.push(`${record.oilAmountLiters.toLocaleString("de-DE")} l`);
   }
   return parts.join(" · ");
 }

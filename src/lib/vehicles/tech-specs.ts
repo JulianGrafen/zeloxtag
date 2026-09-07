@@ -91,8 +91,35 @@ export function normalizeVehicleDrivetrain(
 /** Default oil-change interval bounds for tech_specs validation. */
 export const OIL_CHANGE_INTERVAL_KM_MIN = 1_000;
 export const OIL_CHANGE_INTERVAL_KM_MAX = 50_000;
+export const OIL_CHANGE_INTERVAL_KM_STEP = 2_500;
 export const OIL_CHANGE_INTERVAL_MONTHS_MIN = 1;
 export const OIL_CHANGE_INTERVAL_MONTHS_MAX = 36;
+
+/** Dropdown options for oil-change interval (km), 2.500 km steps. */
+export const OIL_CHANGE_INTERVAL_KM_OPTIONS: readonly number[] = Array.from(
+  {
+    length:
+      (OIL_CHANGE_INTERVAL_KM_MAX - OIL_CHANGE_INTERVAL_KM_STEP) /
+        OIL_CHANGE_INTERVAL_KM_STEP +
+      1,
+  },
+  (_, index) => OIL_CHANGE_INTERVAL_KM_STEP + index * OIL_CHANGE_INTERVAL_KM_STEP,
+);
+
+export function isOilChangeIntervalKmOption(km: number): boolean {
+  return (
+    km >= OIL_CHANGE_INTERVAL_KM_STEP &&
+    km <= OIL_CHANGE_INTERVAL_KM_MAX &&
+    km % OIL_CHANGE_INTERVAL_KM_STEP === 0
+  );
+}
+
+/** Parse claim / form input to a valid oil-change km option (2.500 km steps). */
+export function parseOilChangeIntervalKm(value: unknown): number | null {
+  const parsed = asPositiveInt(value);
+  if (parsed == null) return null;
+  return isOilChangeIntervalKmOption(parsed) ? parsed : null;
+}
 
 export type VehicleTechSpecs = {
   engine: string | null;
@@ -195,11 +222,7 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
       record.instagramHandle ?? record.instagram,
     ),
     dynoChartUrl: asTrimmedString(record.dynoChartUrl),
-    oilChangeIntervalKm: asBoundedInt(
-      record.oilChangeIntervalKm,
-      OIL_CHANGE_INTERVAL_KM_MIN,
-      OIL_CHANGE_INTERVAL_KM_MAX,
-    ),
+    oilChangeIntervalKm: parseOilChangeIntervalKm(record.oilChangeIntervalKm),
     oilChangeIntervalMonths: asBoundedInt(
       record.oilChangeIntervalMonths,
       OIL_CHANGE_INTERVAL_MONTHS_MIN,

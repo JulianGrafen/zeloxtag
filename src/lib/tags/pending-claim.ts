@@ -42,6 +42,25 @@ function isClaimTechSpecs(value: unknown): value is ClaimTechSpecs {
   }
   if (!(drivetrain === null || typeof drivetrain === "string")) return false;
   if (!(fuelType === null || typeof fuelType === "string")) return false;
+  const oilChangeIntervalKm = record.oilChangeIntervalKm;
+  const oilChangeIntervalMonths = record.oilChangeIntervalMonths;
+  if (
+    !(
+      oilChangeIntervalKm === null ||
+      (typeof oilChangeIntervalKm === "number" && Number.isFinite(oilChangeIntervalKm))
+    )
+  ) {
+    return false;
+  }
+  if (
+    !(
+      oilChangeIntervalMonths === null ||
+      (typeof oilChangeIntervalMonths === "number" &&
+        Number.isFinite(oilChangeIntervalMonths))
+    )
+  ) {
+    return false;
+  }
   return true;
 }
 

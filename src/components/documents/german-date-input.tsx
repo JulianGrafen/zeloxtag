@@ -124,10 +124,15 @@ export function GermanDateInput({
         </Popover.Trigger>
       </div>
 
-      <Popover.Portal>
-        <Popover.Positioner side="bottom" align="end" sideOffset={8}>
+      <Popover.Portal className="z-[100]">
+        <Popover.Positioner
+          side="bottom"
+          align="end"
+          sideOffset={8}
+          className="z-[100]"
+        >
           <Popover.Popup
-            className="z-50 rounded-[1.25rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-[var(--vd-shadow-modal)] outline-none"
+            className="rounded-[1.25rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-[var(--vd-shadow-modal)] outline-none"
           >
             <GermanDateCalendar
               value={value}

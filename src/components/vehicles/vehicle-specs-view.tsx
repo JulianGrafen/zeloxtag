@@ -11,7 +11,10 @@ import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
-import { resolveOilChangeInterval } from "@/lib/documents/oil-changes";
+import {
+  DEFAULT_OIL_INTERVAL_MONTHS,
+  resolveOilChangeInterval,
+} from "@/lib/documents/oil-changes";
 import { formatMileageKmNumber } from "@/lib/documents/format";
 import {
   clearSilhouetteFromSession,
@@ -19,6 +22,8 @@ import {
 } from "@/lib/vehicles/silhouette-session";
 import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 import {
+  isOilChangeIntervalKmOption,
+  OIL_CHANGE_INTERVAL_KM_OPTIONS,
   parseVehicleTechSpecs,
   VEHICLE_DRIVETRAIN_TYPES,
   VEHICLE_FUEL_TYPES,
@@ -130,6 +135,20 @@ export function VehicleSpecsView({
     : null;
   const oilInterval = resolveOilChangeInterval(specs);
   const oilIntervalLabel = `${formatMileageKmNumber(oilInterval.intervalKm)} km · ${oilInterval.intervalMonths} Monate`;
+  const oilIntervalKmSelectValue = String(
+    specs.oilChangeIntervalKm ?? oilInterval.intervalKm,
+  );
+
+  function patchOilChangeIntervalKm(raw: string) {
+    const km = Number.parseInt(raw, 10);
+    setSpecs((prev) => ({
+      ...prev,
+      oilChangeIntervalKm: isOilChangeIntervalKmOption(km) ? km : null,
+      oilChangeIntervalMonths:
+        prev.oilChangeIntervalMonths ?? DEFAULT_OIL_INTERVAL_MONTHS,
+    }));
+    setSaved(false);
+  }
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -434,24 +453,25 @@ export function VehicleSpecsView({
                   Wartung
                 </p>
                 <p className="mt-1 text-[0.8rem] text-[color:var(--vd-muted)]">
-                  Für die Fälligkeit auf der Ölwechsel-Seite.
+                  Für die Fälligkeit auf der Ölwechsel-Seite — wird beim
+                  Registrieren übernommen und kann hier angepasst werden.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Ölwechsel-Intervall (km)">
-                  <input
-                    inputMode="numeric"
-                    value={
-                      specs.oilChangeIntervalKm != null
-                        ? formatMileageKmNumber(specs.oilChangeIntervalKm)
-                        : ""
-                    }
+                  <select
+                    value={oilIntervalKmSelectValue}
                     onChange={(event) =>
-                      patchSpec("oilChangeIntervalKm", event.target.value)
+                      patchOilChangeIntervalKm(event.target.value)
                     }
                     className="claim-input w-full"
-                    placeholder="10.000"
-                  />
+                  >
+                    {OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => (
+                      <option key={km} value={String(km)}>
+                        {formatMileageKmNumber(km)} km
+                      </option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Ölwechsel-Intervall (Monate)">
                   <input

@@ -1,5 +1,7 @@
+import { DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
 import {
   EMPTY_VEHICLE_TECH_SPECS,
+  parseOilChangeIntervalKm,
   normalizeVehicleDrivetrain,
   normalizeVehicleFuelType,
   type VehicleTechSpecs,
@@ -11,6 +13,8 @@ export type ClaimTechSpecs = {
   displacementCc: number | null;
   drivetrain: string | null;
   fuelType: string | null;
+  oilChangeIntervalKm: number | null;
+  oilChangeIntervalMonths: number | null;
 };
 
 export type ClaimTechSpecsInput = {
@@ -18,6 +22,7 @@ export type ClaimTechSpecsInput = {
   displacementCc?: string | number | null;
   drivetrain?: string | null;
   fuelType?: string | null;
+  oilChangeIntervalKm?: string | number | null;
 };
 
 function parsePositiveInt(value: string | number | null | undefined): number | null {
@@ -46,12 +51,16 @@ export function normalizeClaimTechSpecs(
   const fuelType =
     normalizeVehicleFuelType(input.fuelType?.trim() || null) ??
     (input.fuelType?.trim() || null);
+  const oilChangeIntervalKm = parseOilChangeIntervalKm(input.oilChangeIntervalKm);
+  const oilChangeIntervalMonths =
+    oilChangeIntervalKm != null ? DEFAULT_OIL_INTERVAL_MONTHS : null;
 
   if (
     powerPs == null &&
     displacementCc == null &&
     !drivetrain &&
-    !fuelType
+    !fuelType &&
+    oilChangeIntervalKm == null
   ) {
     return null;
   }
@@ -61,6 +70,8 @@ export function normalizeClaimTechSpecs(
     displacementCc,
     drivetrain,
     fuelType,
+    oilChangeIntervalKm,
+    oilChangeIntervalMonths,
   };
 }
 
@@ -74,6 +85,12 @@ export function claimTechSpecsToVehicleSpecs(
   if (specs.displacementCc != null) partial.displacementCc = specs.displacementCc;
   if (specs.drivetrain) partial.drivetrain = specs.drivetrain;
   if (specs.fuelType) partial.fuelType = specs.fuelType;
+  if (specs.oilChangeIntervalKm != null) {
+    partial.oilChangeIntervalKm = specs.oilChangeIntervalKm;
+  }
+  if (specs.oilChangeIntervalMonths != null) {
+    partial.oilChangeIntervalMonths = specs.oilChangeIntervalMonths;
+  }
 
   return Object.keys(partial).length > 0 ? partial : null;
 }

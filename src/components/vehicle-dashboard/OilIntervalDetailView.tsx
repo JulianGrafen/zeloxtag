@@ -9,6 +9,8 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { isOilChangeSelfMadeVendor } from "@/lib/documents/oil-changes";
+
 import type { OilChangeRecord } from "./oilChangeRecords";
 import { PressableLink } from "./Pressable";
 
@@ -119,7 +121,7 @@ export function OilIntervalDetailView({
                 </dd>
               </div>
             ) : null}
-            {record.oilAmountLiters != null ? (
+            {record.oilAmountLiters != null && record.oilAmountLiters > 0 ? (
               <div className="flex justify-between gap-3">
                 <dt className="text-[color:var(--vd-muted)]">Menge</dt>
                 <dd className="font-medium text-[color:var(--vd-text)]">
@@ -135,7 +137,11 @@ export function OilIntervalDetailView({
             </div>
             {record.workshop ? (
               <div className="flex justify-between gap-3">
-                <dt className="text-[color:var(--vd-muted)]">Werkstatt</dt>
+                <dt className="text-[color:var(--vd-muted)]">
+                  {isOilChangeSelfMadeVendor(record.workshop)
+                    ? "Durchführung"
+                    : "Werkstatt"}
+                </dt>
                 <dd className="max-w-[60%] text-right font-medium text-[color:var(--vd-text)]">
                   {record.workshop}
                 </dd>

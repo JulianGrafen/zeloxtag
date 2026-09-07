@@ -4,6 +4,7 @@ export type ClaimWizardStep =
   | "year"
   | "power"
   | "drivetrain"
+  | "oilInterval"
   | "account";
 
 const VEHICLE_STEPS: ClaimWizardStep[] = [
@@ -11,6 +12,7 @@ const VEHICLE_STEPS: ClaimWizardStep[] = [
   "year",
   "power",
   "drivetrain",
+  "oilInterval",
 ];
 
 export function claimWizardTotalSteps(needsAccount: boolean): number {

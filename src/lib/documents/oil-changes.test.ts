@@ -5,8 +5,11 @@ import type { Document } from "@/types/database";
 import {
   DEFAULT_OIL_INTERVAL_KM,
   DEFAULT_OIL_INTERVAL_MONTHS,
+  isOilChangeSelfMadeVendor,
+  oilChangeRecordListSubtitle,
   oilChangeRecordsFromDocuments,
   resolveOilChangeInterval,
+  resolveOilChangeVendor,
 } from "./oil-changes";
 
 function oilChangeDocument(
@@ -59,6 +62,61 @@ describe("resolveOilChangeInterval", () => {
       intervalKm: 15_000,
       intervalMonths: 24,
     });
+  });
+});
+
+describe("resolveOilChangeVendor", () => {
+  it("stores Selbst gemacht when selfMade is checked", () => {
+    expect(resolveOilChangeVendor(true, "")).toBe("Selbst gemacht");
+    expect(resolveOilChangeVendor(true, "Werkstatt XY")).toBe("Selbst gemacht");
+  });
+
+  it("keeps workshop name when not self-made", () => {
+    expect(resolveOilChangeVendor(false, "Auto Meister")).toBe("Auto Meister");
+    expect(resolveOilChangeVendor(false, "")).toBeNull();
+  });
+});
+
+describe("oilChangeRecordListSubtitle", () => {
+  it("shows self-made label in the list row", () => {
+    const subtitle = oilChangeRecordListSubtitle({
+      id: "1",
+      date: "01.01.2026",
+      mileageKm: 84_200,
+      workshop: "Selbst gemacht",
+      oilSpec: null,
+      oilAmountLiters: null,
+      filterChanged: true,
+      intervalKm: 10_000,
+      intervalMonths: 12,
+      nextDueKm: 94_200,
+      nextDueDate: "01.01.2027",
+      notes: "",
+      status: "aktuell",
+    });
+
+    expect(subtitle).toContain("Selbst gemacht");
+    expect(isOilChangeSelfMadeVendor("Selbst gemacht")).toBe(true);
+  });
+
+  it("omits zero liters from the subtitle", () => {
+    const subtitle = oilChangeRecordListSubtitle({
+      id: "1",
+      date: "01.01.2026",
+      mileageKm: 84_200,
+      workshop: null,
+      oilSpec: null,
+      oilAmountLiters: 0,
+      filterChanged: false,
+      intervalKm: 10_000,
+      intervalMonths: 12,
+      nextDueKm: 94_200,
+      nextDueDate: "01.01.2027",
+      notes: "",
+      status: "aktuell",
+    });
+
+    expect(subtitle).not.toContain("0 l");
   });
 });
 

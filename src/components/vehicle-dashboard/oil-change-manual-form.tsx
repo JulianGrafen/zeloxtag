@@ -24,6 +24,7 @@ export function OilChangeManualForm({
   const router = useRouter();
   const [date, setDate] = useState("");
   const [mileageKm, setMileageKm] = useState("");
+  const [selfMade, setSelfMade] = useState(false);
   const [vendor, setVendor] = useState("");
   const [oilSpec, setOilSpec] = useState("");
   const [oilLiters, setOilLiters] = useState("");
@@ -43,7 +44,8 @@ export function OilChangeManualForm({
       formData.set("serviceType", "oil_change");
       formData.set("title", "Ölwechsel");
       formData.set("date", date);
-      formData.set("vendor", vendor);
+      formData.set("selfMade", selfMade ? "true" : "false");
+      formData.set("vendor", selfMade ? "" : vendor);
       formData.set("mileageKm", mileageKm);
       formData.set("oilSpec", oilSpec);
       formData.set("oilAmountLiters", oilLiters);
@@ -113,17 +115,32 @@ export function OilChangeManualForm({
         </label>
       </div>
 
-      <label className="mt-3 block space-y-1.5">
-        <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-          Werkstatt / Quelle
-        </span>
+      <label className="mt-3 flex items-center gap-2 text-[0.85rem] text-[color:var(--vd-text)]">
         <input
-          value={vendor}
-          onChange={(event) => setVendor(event.target.value)}
-          className="claim-input w-full"
-          placeholder="optional"
+          type="checkbox"
+          checked={selfMade}
+          onChange={(event) => {
+            setSelfMade(event.target.checked);
+            if (event.target.checked) setVendor("");
+          }}
+          className="h-4 w-4 rounded border-[color:var(--vd-border)]"
         />
+        Selbst gemacht
       </label>
+
+      {!selfMade ? (
+        <label className="mt-3 block space-y-1.5">
+          <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+            Werkstatt / Quelle
+          </span>
+          <input
+            value={vendor}
+            onChange={(event) => setVendor(event.target.value)}
+            className="claim-input w-full"
+            placeholder="optional"
+          />
+        </label>
+      ) : null}
 
       <div className="mt-3 grid grid-cols-2 gap-3">
         <label className="block space-y-1.5">

@@ -49,6 +49,7 @@ export function ManualEntryModal({
   const [mileageKm, setMileageKm] = useState("");
   const [amount, setAmount] = useState("");
   const [details, setDetails] = useState("");
+  const [selfMade, setSelfMade] = useState(false);
   const [vendor, setVendor] = useState("");
   const [notes, setNotes] = useState("");
   const [receiptPhoto, setReceiptPhoto] = useState<File | null>(null);
@@ -61,6 +62,7 @@ export function ManualEntryModal({
     setServiceType(initialServiceType);
     setDate(todayIsoDate());
     setReceiptPhoto(null);
+    setSelfMade(false);
     setError(null);
     setSuccess(null);
   }, [open, initialServiceType]);
@@ -73,6 +75,12 @@ export function ManualEntryModal({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose, pending]);
+
+  useEffect(() => {
+    if (serviceType !== "oil_change") {
+      setSelfMade(false);
+    }
+  }, [serviceType]);
 
   if (!open) return null;
 
@@ -99,10 +107,11 @@ export function ManualEntryModal({
       formData.set("mileageKm", mileageKm);
       formData.set("amount", parseAmount(amount));
       formData.set("details", details);
-      formData.set("vendor", vendor);
+      formData.set("vendor", selfMade ? "" : vendor);
       formData.set("notes", notes);
       if (serviceType === "oil_change") {
         formData.set("entryType", "oil_change");
+        formData.set("selfMade", selfMade ? "true" : "false");
       }
       if (receiptPhoto) {
         formData.set(
@@ -258,17 +267,34 @@ export function ManualEntryModal({
             />
           </label>
 
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Werkstatt
-            </span>
-            <input
-              value={vendor}
-              onChange={(event) => setVendor(event.target.value)}
-              className="claim-input w-full"
-              placeholder="optional"
-            />
-          </label>
+          {serviceType === "oil_change" ? (
+            <label className="flex items-center gap-2 text-[0.85rem] text-[color:var(--vd-text)]">
+              <input
+                type="checkbox"
+                checked={selfMade}
+                onChange={(event) => {
+                  setSelfMade(event.target.checked);
+                  if (event.target.checked) setVendor("");
+                }}
+                className="h-4 w-4 rounded border-[color:var(--vd-border)]"
+              />
+              Selbst gemacht
+            </label>
+          ) : null}
+
+          {serviceType !== "oil_change" || !selfMade ? (
+            <label className="block space-y-1.5">
+              <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                {serviceType === "oil_change" ? "Werkstatt / Quelle" : "Werkstatt"}
+              </span>
+              <input
+                value={vendor}
+                onChange={(event) => setVendor(event.target.value)}
+                className="claim-input w-full"
+                placeholder="optional"
+              />
+            </label>
+          ) : null}
 
           <label className="block space-y-1.5">
             <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">

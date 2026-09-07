@@ -12,12 +12,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   claimWizardPreviousStep,
+  claimWizardStepIndex,
+  claimWizardTotalSteps,
   type ClaimWizardStep,
 } from "@/lib/tags/claim-flow-steps";
 import {
   VEHICLE_DRIVETRAIN_TYPES,
   VEHICLE_FUEL_TYPES,
+  OIL_CHANGE_INTERVAL_KM_OPTIONS,
 } from "@/lib/vehicles/tech-specs";
+import { DEFAULT_OIL_INTERVAL_KM } from "@/lib/documents/oil-changes";
+import { formatMileageKmNumber } from "@/lib/documents/format";
 import { cn } from "@/lib/utils";
 
 interface ClaimFlowProps {
@@ -40,6 +45,9 @@ export function ClaimFlow({
   const [displacementCc, setDisplacementCc] = useState("");
   const [drivetrain, setDrivetrain] = useState("");
   const [fuelType, setFuelType] = useState("");
+  const [oilChangeIntervalKm, setOilChangeIntervalKm] = useState(
+    String(DEFAULT_OIL_INTERVAL_KM),
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState(userEmail ?? "");
   const [password, setPassword] = useState("");
@@ -49,6 +57,19 @@ export function ClaimFlow({
   const [pending, startTransition] = useTransition();
 
   const needsAccount = !isAuthenticated;
+
+  function stepKicker(currentStep: ClaimWizardStep): string {
+    const index = claimWizardStepIndex(currentStep, needsAccount);
+    const total = claimWizardTotalSteps(needsAccount);
+    return `Schritt ${index} von ${total}`;
+  }
+
+  function validateOilInterval(): string | null {
+    if (!oilChangeIntervalKm.trim()) {
+      return "Bitte ein Ölwechsel-Intervall wählen.";
+    }
+    return null;
+  }
 
   function goBack() {
     setError(null);
@@ -124,6 +145,7 @@ export function ClaimFlow({
             displacementCc: displacementCc.trim() || undefined,
             drivetrain: drivetrain.trim() || undefined,
             fuelType: fuelType.trim() || undefined,
+            oilChangeIntervalKm,
           },
           ...(needsAccount
             ? {
@@ -208,7 +230,7 @@ export function ClaimFlow({
 
       {step === "makeModel" ? (
         <SlidePanel
-          kicker="Schritt 1 von 4"
+          kicker={stepKicker("makeModel")}
           title="Marke & Modell"
           copy="Wie heißt dein Fahrzeug? Das steht gleich auf deiner digitalen Visitenkarte."
         >
@@ -256,7 +278,7 @@ export function ClaimFlow({
 
       {step === "year" ? (
         <SlidePanel
-          kicker="Schritt 2 von 4"
+          kicker={stepKicker("year")}
           title="Baujahr"
           copy="Das Baujahr hilft bei der Zuordnung deiner Dokumente. Die VIN kannst du optional ergänzen."
         >
@@ -302,7 +324,7 @@ export function ClaimFlow({
 
       {step === "power" ? (
         <SlidePanel
-          kicker="Schritt 3 von 4"
+          kicker={stepKicker("power")}
           title="Leistung & Hubraum"
           copy="Optional — du kannst die Werte auch später unter Fahrzeugdaten ergänzen."
         >
@@ -345,24 +367,16 @@ export function ClaimFlow({
 
       {step === "drivetrain" ? (
         <SlidePanel
-          kicker="Schritt 4 von 4"
+          kicker={stepKicker("drivetrain")}
           title="Antrieb & Kraftstoff"
-          copy={
-            needsAccount
-              ? "Optional. Als Nächstes legst du dein Konto an."
-              : "Optional. Danach wird dein Tag sofort aktiviert."
-          }
+          copy="Optional. Als Nächstes legst du dein Ölwechsel-Intervall fest."
         >
           <form
             className="mt-6 grid w-full gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               setError(null);
-              if (needsAccount) {
-                setStep("account");
-                return;
-              }
-              submitClaim();
+              setStep("oilInterval");
             }}
           >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -381,6 +395,54 @@ export function ClaimFlow({
                 options={VEHICLE_FUEL_TYPES}
               />
             </div>
+            <SlideActions
+              error={error}
+              pending={pending}
+              onBack={goBack}
+              submitLabel="Weiter"
+              showBack
+            />
+          </form>
+        </SlidePanel>
+      ) : null}
+
+      {step === "oilInterval" ? (
+        <SlidePanel
+          kicker={stepKicker("oilInterval")}
+          title="Ölwechsel-Intervall"
+          copy="Wie oft soll der nächste Ölwechsel fällig sein? Standard ist 10.000 km — du kannst es später in den Fahrzeugdaten anpassen."
+        >
+          <form
+            className="mt-6 grid w-full gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setError(null);
+              const validationError = validateOilInterval();
+              if (validationError) {
+                setError(validationError);
+                return;
+              }
+              if (needsAccount) {
+                setStep("account");
+                return;
+              }
+              submitClaim();
+            }}
+          >
+            <SelectField
+              id="claim-oil-interval-km"
+              label="Intervall (km)"
+              value={oilChangeIntervalKm}
+              onChange={setOilChangeIntervalKm}
+              required
+              options={OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => ({
+                value: String(km),
+                label: `${formatMileageKmNumber(km)} km`,
+              }))}
+            />
+            <p className="text-[0.8rem] text-[color:var(--vd-muted)]">
+              Zeitlich gilt weiterhin 12 Monate — einstellbar unter Fahrzeugdaten.
+            </p>
             <SlideActions
               error={error}
               pending={pending}
@@ -638,31 +700,40 @@ function Field({
   );
 }
 
+type SelectOption = string | { value: string; label: string };
+
 function SelectField({
   id,
   label,
   value,
   onChange,
   options,
+  required,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: readonly string[];
+  options: readonly SelectOption[];
+  required?: boolean;
 }) {
+  const normalized = options.map((option) =>
+    typeof option === "string" ? { value: option, label: option } : option,
+  );
+
   return (
     <ClaimFormField label={label} htmlFor={id}>
       <select
         id={id}
         value={value}
+        required={required}
         onChange={(event) => onChange(event.target.value)}
         className={cn("claim-input", CLAIM_FIELD_CLASS)}
       >
-        <option value="">—</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+        {!required ? <option value="">—</option> : null}
+        {normalized.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
