@@ -120,8 +120,13 @@ export function ManualEntryView({
   const entries = useMemo(() => {
     const all = filterManualVehicleEntries(documents);
     if (!isUmbau) return all;
-    // Umbau-Bilder: only tuning / Umbau rows (never Wartung).
-    return all.filter((doc) => doc.category === "tuning");
+    // Umbau-Bilder: nur Tuning-Fotos — keine Rechnungs-/Texteinträge ohne Bild.
+    return all.filter(
+      (doc) =>
+        doc.category === "tuning" &&
+        isViewableDocumentUrl(doc.file_url) &&
+        documentMediaKind(doc.file_url) === "image",
+    );
   }, [documents, isUmbau]);
 
   const editingDocument = useMemo(() => {
@@ -330,6 +335,19 @@ export function ManualEntryView({
     }
   }
 
+  function appendUmbauMetadata(
+    formData: FormData,
+    baseTitle: string,
+  ) {
+    formData.set("category", "tuning");
+    formData.set("title", baseTitle);
+    formData.set("date", date);
+    formData.set("notes", notes);
+    formData.set("amount", "");
+    formData.set("vendor", "");
+    formData.set("mileageKm", "");
+  }
+
   function handleUpdate() {
     if (!editingDocument) return;
     setError(null);
@@ -342,14 +360,18 @@ export function ManualEntryView({
         formData.set("documentId", editingDocument.id);
         formData.set("vehicleId", vehicleId);
         formData.set("tagUuid", tagUuid);
-        formData.set("category", category);
-        formData.set("title", baseTitle);
-        formData.set("date", date);
-        formData.set("amount", amount);
-        formData.set("vendor", vendor);
-        formData.set("mileageKm", mileageKm);
-        formData.set("notes", notes);
-        appendLineItemsToFormData(formData);
+        if (isUmbau) {
+          appendUmbauMetadata(formData, baseTitle);
+        } else {
+          formData.set("category", category);
+          formData.set("title", baseTitle);
+          formData.set("date", date);
+          formData.set("amount", amount);
+          formData.set("vendor", vendor);
+          formData.set("mileageKm", mileageKm);
+          formData.set("notes", notes);
+          appendLineItemsToFormData(formData);
+        }
 
         const result = await updateManualVehicleEntry(formData);
         if (result.status === "error") {
@@ -388,19 +410,12 @@ export function ManualEntryView({
             const formData = new FormData();
             formData.set("vehicleId", vehicleId);
             formData.set("tagUuid", tagUuid);
-            formData.set("category", "tuning");
-            formData.set(
-              "title",
+            appendUmbauMetadata(
+              formData,
               photos.length > 1
                 ? `${baseTitle} (${index + 1}/${photos.length})`
                 : baseTitle,
             );
-            formData.set("date", date);
-            formData.set("amount", amount);
-            formData.set("vendor", vendor);
-            formData.set("mileageKm", mileageKm);
-            formData.set("notes", notes);
-            appendLineItemsToFormData(formData);
             formData.set("photo", photo.file, photo.file.name);
 
             const result = await createManualVehicleEntry(formData);
@@ -521,7 +536,7 @@ export function ManualEntryView({
           <ListSearchControls
             query={query}
             onQueryChange={setQuery}
-            placeholder="Titel, Notiz, Werkstatt…"
+            placeholder={isUmbau ? "Titel, Notiz…" : "Titel, Notiz, Werkstatt…"}
             chips={listChips}
             activeChipId={listFilter}
             onChipChange={(id) => setListFilter(id as ManualListFilter)}
@@ -551,7 +566,13 @@ export function ManualEntryView({
             }}
           >
             <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              {isEditing ? "Eintrag bearbeiten" : "Neuer Eintrag"}
+              {isEditing
+                ? isUmbau
+                  ? "Bild bearbeiten"
+                  : "Eintrag bearbeiten"
+                : isUmbau
+                  ? "Neues Bild"
+                  : "Neuer Eintrag"}
             </p>
             {!isUmbau ? (
               <>
@@ -594,7 +615,7 @@ export function ManualEntryView({
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className={isUmbau ? "space-y-3" : "grid grid-cols-2 gap-3"}>
               <label className="block space-y-1.5">
                 <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                   Datum
@@ -605,45 +626,51 @@ export function ManualEntryView({
                   className="claim-input w-full"
                 />
               </label>
-              <label className="block space-y-1.5">
-                <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Betrag (€)
-                </span>
-                <input
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  className="claim-input w-full"
-                  placeholder={
-                    lineItems.length > 0 ? "aus Positionen" : "optional"
-                  }
-                />
-              </label>
+              {!isUmbau ? (
+                <label className="block space-y-1.5">
+                  <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                    Betrag (€)
+                  </span>
+                  <input
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    className="claim-input w-full"
+                    placeholder={
+                      lineItems.length > 0 ? "aus Positionen" : "optional"
+                    }
+                  />
+                </label>
+              ) : null}
             </div>
 
-            <label className="block space-y-1.5">
-              <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Werkstatt / Quelle
-              </span>
-              <input
-                value={vendor}
-                onChange={(event) => setVendor(event.target.value)}
-                className="claim-input w-full"
-                placeholder="optional"
-              />
-            </label>
+            {!isUmbau ? (
+              <>
+                <label className="block space-y-1.5">
+                  <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                    Werkstatt / Quelle
+                  </span>
+                  <input
+                    value={vendor}
+                    onChange={(event) => setVendor(event.target.value)}
+                    className="claim-input w-full"
+                    placeholder="optional"
+                  />
+                </label>
 
-            <label className="block space-y-1.5">
-              <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Kilometerstand
-              </span>
-              <MileageKmInput
-                value={parseMileageKmInput(mileageKm)}
-                onChange={(km) => setMileageKm(km === null ? "" : String(km))}
-                className="claim-input w-full"
-                placeholder="optional"
-              />
-            </label>
+                <label className="block space-y-1.5">
+                  <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                    Kilometerstand
+                  </span>
+                  <MileageKmInput
+                    value={parseMileageKmInput(mileageKm)}
+                    onChange={(km) => setMileageKm(km === null ? "" : String(km))}
+                    className="claim-input w-full"
+                    placeholder="optional"
+                  />
+                </label>
+              </>
+            ) : null}
 
             {!isUmbau ? (
               <EditableLineItemsSection
@@ -667,7 +694,11 @@ export function ManualEntryView({
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
                 className="claim-input w-full resize-none"
-                placeholder="Was wurde gemacht?"
+                placeholder={
+                  isUmbau
+                    ? "Optional — was zeigt das Foto?"
+                    : "Was wurde gemacht?"
+                }
               />
             </label>
 
@@ -692,6 +723,10 @@ export function ManualEntryView({
                       alt=""
                       className="h-full w-full object-contain"
                     />
+                  ) : isUmbau ? (
+                    <p className="flex h-full min-h-[12rem] items-center justify-center px-4 text-center text-[0.82rem] text-[color:var(--vd-muted)]">
+                      Nur Bilder werden hier angezeigt.
+                    </p>
                   ) : (
                     <iframe
                       title="Vorhandenes Dokument"
