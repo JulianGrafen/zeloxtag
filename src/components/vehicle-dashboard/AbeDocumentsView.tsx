@@ -18,7 +18,6 @@ interface AbeDocumentsViewProps {
   backHref?: string;
 }
 
-const ALL_CHIP = "all";
 const ALL_STATUS = "all-status";
 
 export function AbeDocumentsView({
@@ -27,16 +26,7 @@ export function AbeDocumentsView({
   backHref = "/",
 }: AbeDocumentsViewProps) {
   const [query, setQuery] = useState("");
-  const [categoryId, setCategoryId] = useState(ALL_CHIP);
   const [statusId, setStatusId] = useState(ALL_STATUS);
-
-  const categoryChips = useMemo(
-    () => [
-      { id: ALL_CHIP, label: "Alle", count: documents.length },
-      ...collectFilterValues(documents.map((doc) => doc.category)),
-    ],
-    [documents],
-  );
 
   const statusChips = useMemo(
     () => [
@@ -48,7 +38,6 @@ export function AbeDocumentsView({
 
   const visible = useMemo(() => {
     return documents.filter((doc) => {
-      if (categoryId !== ALL_CHIP && doc.category !== categoryId) return false;
       if (statusId !== ALL_STATUS && doc.status !== statusId) return false;
       return matchesSearchQuery(
         query,
@@ -63,7 +52,7 @@ export function AbeDocumentsView({
         ...(doc.vehicleFitment ?? []),
       );
     });
-  }, [documents, query, categoryId, statusId]);
+  }, [documents, query, statusId]);
 
   const resultLabel =
     visible.length === documents.length
@@ -105,9 +94,6 @@ export function AbeDocumentsView({
           query={query}
           onQueryChange={setQuery}
           placeholder="Teil, Hersteller, KBA, Kategorie…"
-          chips={categoryChips}
-          activeChipId={categoryId}
-          onChipChange={setCategoryId}
           resultLabel={resultLabel}
         />
 

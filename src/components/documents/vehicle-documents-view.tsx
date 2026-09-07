@@ -17,11 +17,6 @@ import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-vie
 import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
-import {
-  filterAbeFamilyDocumentsByKind,
-  resolveAbeFamilyKind,
-  type AbeFamilyKind,
-} from "@/lib/documents/abe-family-documents";
 import { displayAbeDocumentTitle } from "@/lib/documents/abe-title";
 import { documentDeleteConfirmMessage } from "@/lib/documents/constants";
 import {
@@ -48,16 +43,6 @@ import type { VaultCategory } from "@/lib/validations/vaultClassificationSchema"
 import { eintraegeLabel } from "@/lib/i18n/pluralize-de";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import type { Document, DocumentType } from "@/types/database";
-
-const ALL_ABE_KIND = "all";
-
-const ABE_KIND_LABELS: Record<AbeFamilyKind, string> = {
-  abe: "ABE",
-  gutachten: "Gutachten",
-  teilegutachten: "Teilegutachten",
-  pruefung192: "§19(2) Prüfung",
-  einzelabnahme: "Einzelabnahme",
-};
 
 interface VehicleDocumentsViewProps {
   tagUuid: string;
@@ -126,7 +111,6 @@ export function VehicleDocumentsView({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
-  const [abeKindId, setAbeKindId] = useState<string>(ALL_ABE_KIND);
   const [vaultCategoryId, setVaultCategoryId] = useState<VaultCategory | "all">(
     "all",
   );
@@ -135,29 +119,6 @@ export function VehicleDocumentsView({
     () => filterDocumentsByType(documents, activeType),
     [documents, activeType],
   );
-
-  const abeKindChips = useMemo(() => {
-    if (activeType !== "abe") return [];
-    const counts: Record<AbeFamilyKind, number> = {
-      abe: 0,
-      gutachten: 0,
-      teilegutachten: 0,
-      pruefung192: 0,
-      einzelabnahme: 0,
-    };
-    for (const doc of typed) {
-      const kind = resolveAbeFamilyKind(doc);
-      if (kind) counts[kind] += 1;
-    }
-    return [
-      { id: ALL_ABE_KIND, label: "Alle", count: typed.length },
-      ...Object.entries(ABE_KIND_LABELS).map(([id, label]) => ({
-        id,
-        label,
-        count: counts[id as AbeFamilyKind],
-      })),
-    ];
-  }, [activeType, typed]);
 
   const vaultCategoryChips = useMemo(() => {
     if (activeType !== "abe") return [];
@@ -177,18 +138,10 @@ export function VehicleDocumentsView({
   }, [activeType, typed]);
 
   const { filtered, filterBaseCount } = useMemo(() => {
-    const byKind =
-      activeType === "abe"
-        ? filterAbeFamilyDocumentsByKind(
-            typed,
-            abeKindId === ALL_ABE_KIND ? "all" : (abeKindId as AbeFamilyKind),
-          )
-        : typed;
-
     const byVaultCategory =
       activeType === "abe" && vaultCategoryId !== "all"
-        ? filterDocumentsByVaultCategory(byKind, vaultCategoryId)
-        : byKind;
+        ? filterDocumentsByVaultCategory(typed, vaultCategoryId)
+        : typed;
 
     const result = byVaultCategory.filter((doc) =>
       matchesSearchQuery(
@@ -210,7 +163,7 @@ export function VehicleDocumentsView({
     );
 
     return { filtered: result, filterBaseCount: byVaultCategory.length };
-  }, [typed, activeType, abeKindId, vaultCategoryId, query]);
+  }, [typed, activeType, vaultCategoryId, query]);
 
   const invoiceSum = sumInvoiceAmounts(
     activeType === "all"
@@ -355,16 +308,13 @@ export function VehicleDocumentsView({
                 ? "Prüfstelle, Titel, Notiz…"
                 : "Titel, Hersteller, Kategorie…"
           }
-          chips={activeType === "abe" ? abeKindChips : undefined}
-          activeChipId={abeKindId}
-          onChipChange={setAbeKindId}
-          secondaryChips={
+          chips={
             activeType === "abe" && vaultCategoryChips.length > 1
               ? vaultCategoryChips
               : undefined
           }
-          secondaryActiveChipId={vaultCategoryId}
-          onSecondaryChipChange={(id) =>
+          activeChipId={vaultCategoryId}
+          onChipChange={(id) =>
             setVaultCategoryId(id as VaultCategory | "all")
           }
           resultLabel={searchResultLabel}
@@ -375,7 +325,6 @@ export function VehicleDocumentsView({
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               {typed.length > 0 &&
               (query.trim() ||
-                (activeType === "abe" && abeKindId !== ALL_ABE_KIND) ||
                 (activeType === "abe" && vaultCategoryId !== "all")) ? (
                 "Keine Treffer für diese Suche / Filter."
               ) : activeType === "abe" ? (
