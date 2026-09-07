@@ -6,11 +6,15 @@
 
 import imageCompression from "browser-image-compression";
 
+import { resizeDocumentImage } from "@/lib/utils/image-optimizer";
+
 /** Full HD long edge — enough for Azure OCR, avoids 4K payloads. */
 export const OCR_IMAGE_MAX_EDGE_PX = 1920;
 
 /** Target size per page image after compression. */
 export const OCR_IMAGE_MAX_SIZE_MB = 1.5;
+
+const OCR_IMAGE_MAX_BYTES = OCR_IMAGE_MAX_SIZE_MB * 1024 * 1024;
 
 /** Native PDF hard cap — matches `/api/ocr/parse` body limit on Vercel (~4 MB). */
 export const OCR_PDF_MAX_BYTES = 4 * 1024 * 1024;
@@ -79,54 +83,157 @@ function outputFileName(originalName: string, extension: string): string {
   return `${base}.${extension}`;
 }
 
+function inferImageMime(bytes: Uint8Array, name: string, declaredType: string): string {
+  if (declaredType.startsWith("image/")) return declaredType;
+
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    return "image/jpeg";
+  }
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[4] === 0x66 &&
+    bytes[5] === 0x74 &&
+    bytes[6] === 0x79 &&
+    bytes[7] === 0x70
+  ) {
+    const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
+    if (brand.startsWith("heic") || brand.startsWith("heif")) {
+      return "image/heic";
+    }
+  }
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46
+  ) {
+    return "image/webp";
+  }
+
+  const lower = name.toLowerCase();
+  if (/\.jpe?g$/.test(lower)) return "image/jpeg";
+  if (/\.png$/.test(lower)) return "image/png";
+  if (/\.webp$/.test(lower)) return "image/webp";
+  if (/\.heic$/.test(lower)) return "image/heic";
+  if (/\.heif$/.test(lower)) return "image/heif";
+  return "image/jpeg";
+}
+
+async function materializeImageFile(file: File): Promise<File> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.byteLength < 32) {
+    throw new DocumentCompressionError(
+      "Datei ist leer — bitte erneut auswählen.",
+    );
+  }
+
+  const type = inferImageMime(bytes, file.name, file.type.trim().toLowerCase());
+  return new File([bytes], file.name || "photo.jpg", {
+    type,
+    lastModified: Date.now(),
+  });
+}
+
+function normalizeCompressedJpeg(
+  compressed: File | Blob,
+  originalName: string,
+): File {
+  const output =
+    compressed instanceof File
+      ? compressed
+      : new File([compressed], outputFileName(originalName, "jpg"), {
+          type: OCR_OUTPUT_IMAGE_TYPE,
+          lastModified: Date.now(),
+        });
+
+  if (output.type === OCR_OUTPUT_IMAGE_TYPE) {
+    return output;
+  }
+
+  return new File([output], outputFileName(originalName, "jpg"), {
+    type: OCR_OUTPUT_IMAGE_TYPE,
+    lastModified: Date.now(),
+  });
+}
+
+async function compressImageWithCanvas(file: File): Promise<File> {
+  const result = await resizeDocumentImage(file, {
+    maxWidth: OCR_IMAGE_MAX_EDGE_PX,
+    maxBytes: OCR_IMAGE_MAX_BYTES,
+  });
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    result.canvas.toBlob(resolve, OCR_OUTPUT_IMAGE_TYPE, 0.85);
+  });
+
+  if (!blob || blob.size < 32) {
+    throw new DocumentCompressionError(
+      "Bild konnte nicht als JPEG gespeichert werden.",
+    );
+  }
+
+  return new File([blob], outputFileName(file.name, "jpg"), {
+    type: OCR_OUTPUT_IMAGE_TYPE,
+    lastModified: Date.now(),
+  });
+}
+
 async function compressImageFile(file: File): Promise<DocumentCompressionResult> {
   const originalBytes = file.size;
+  const materialized = await materializeImageFile(file);
 
   try {
-    const compressed = await imageCompression(file, {
+    const compressed = await imageCompression(materialized, {
       maxSizeMB: OCR_IMAGE_MAX_SIZE_MB,
       maxWidthOrHeight: OCR_IMAGE_MAX_EDGE_PX,
-      useWebWorker: true,
+      // Main-thread path — Web Workers fail on some mobile Safari / embedded builds.
+      useWebWorker: false,
       fileType: OCR_OUTPUT_IMAGE_TYPE,
       initialQuality: 0.85,
-      // Preserve legibility for invoice / ABE text.
       alwaysKeepResolution: false,
     });
 
-    const output =
-      compressed instanceof File
-        ? compressed
-        : new File(
-            [compressed],
-            outputFileName(file.name, "jpg"),
-            {
-              type: OCR_OUTPUT_IMAGE_TYPE,
-              lastModified: Date.now(),
-            },
-          );
-
-    const normalized =
-      output.type === OCR_OUTPUT_IMAGE_TYPE
-        ? output
-        : new File([output], outputFileName(file.name, "jpg"), {
-            type: OCR_OUTPUT_IMAGE_TYPE,
-            lastModified: Date.now(),
-          });
+    const normalized = normalizeCompressedJpeg(compressed, materialized.name);
 
     return {
       file: normalized,
-      wasCompressed: normalized.size < originalBytes || normalized !== file,
+      wasCompressed:
+        normalized.size < originalBytes || normalized.size < materialized.size,
       originalBytes,
       outputBytes: normalized.size,
       kind: "image",
     };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Bildkompression fehlgeschlagen.";
-    // HEIC unsupported in some browsers — reject clearly instead of uploading 4K raw.
-    throw new DocumentCompressionError(
-      `Bild konnte nicht optimiert werden: ${message}`,
-    );
+  } catch (libraryError) {
+    try {
+      const fallback = await compressImageWithCanvas(materialized);
+      return {
+        file: fallback,
+        wasCompressed: true,
+        originalBytes,
+        outputBytes: fallback.size,
+        kind: "image",
+      };
+    } catch (fallbackError) {
+      const message =
+        fallbackError instanceof Error
+          ? fallbackError.message
+          : libraryError instanceof Error
+            ? libraryError.message
+            : "Bildkompression fehlgeschlagen.";
+      throw new DocumentCompressionError(
+        `Bild konnte nicht optimiert werden: ${message}`,
+      );
+    }
   }
 }
 

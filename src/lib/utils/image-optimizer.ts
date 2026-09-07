@@ -247,7 +247,12 @@ export async function resizeDocumentImage(
   file: File,
   options: Pick<OptimizeImageOptions, "maxWidth" | "maxBytes"> = {},
 ): Promise<OptimizedImageResult> {
-  if (!file.type.startsWith("image/")) {
+  const looksLikeImage =
+    file.type.startsWith("image/") ||
+    file.type === "" ||
+    /\.(jpe?g|png|webp|heic|heif|gif|bmp|tiff?)$/i.test(file.name);
+
+  if (!looksLikeImage) {
     throw new Error("Nur Bilddateien werden unterstützt.");
   }
 
@@ -283,7 +288,12 @@ export async function optimizeDocumentImage(
   file: File,
   options: OptimizeImageOptions = {},
 ): Promise<OptimizedImageResult> {
-  if (!file.type.startsWith("image/")) {
+  const looksLikeImage =
+    file.type.startsWith("image/") ||
+    file.type === "" ||
+    /\.(jpe?g|png|webp|heic|heif|gif|bmp|tiff?)$/i.test(file.name);
+
+  if (!looksLikeImage) {
     throw new Error("Nur Bilddateien werden unterstützt.");
   }
 
