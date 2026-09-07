@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
@@ -10,7 +11,6 @@ import {
 } from "@/lib/billing/membership-store";
 import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership";
 import { AppShell } from "@/components/layout/app-shell";
-import { ChangePasswordPanel } from "@/components/auth/change-password-panel";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
 import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
 import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
@@ -84,6 +84,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   }
 
   const dashboardHref = await resolvePostLoginPath(user.id);
+  const hasPasswordLogin = accountHasPasswordLogin(user);
 
   return (
     <AppShell>
@@ -112,7 +113,23 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           checkoutState={checkoutState}
         />
 
-        <ChangePasswordPanel hasPasswordLogin={accountHasPasswordLogin(user)} />
+        <Link
+          href="/settings/password"
+          className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+        >
+          <span>
+            <span className="block text-[0.88rem] font-medium">Passwort</span>
+            <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
+              {hasPasswordLogin
+                ? "Passwort ändern"
+                : "Passwort festlegen"}
+            </span>
+          </span>
+          <ChevronRight
+            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+            aria-hidden
+          />
+        </Link>
 
         <MfaSetupPanel />
 

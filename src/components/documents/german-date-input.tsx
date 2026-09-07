@@ -112,13 +112,13 @@ export function GermanDateInput({
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <div className="flex w-full items-center gap-2">
+      <div className="flex w-full items-stretch gap-2">
         {input}
         <Popover.Trigger
           type="button"
           disabled={disabled}
           aria-label="Kalender öffnen"
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-10 shrink-0 items-center justify-center self-stretch rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Calendar className="h-4 w-4" aria-hidden />
         </Popover.Trigger>

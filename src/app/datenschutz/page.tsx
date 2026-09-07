@@ -52,27 +52,34 @@ export default function DatenschutzPage() {
           an den Server übermittelt (z.&nbsp;B. IP-Adresse, Datum und Uhrzeit,
           Name der abgerufenen Datei, Browser-Typ).
         </LegalParagraph>
-        <LegalParagraph>
-          Die Datenverarbeitung und Speicherung erfolgt physisch ausschließlich
-          in der EU bzw. im EWR (Frankfurt am Main).
-        </LegalParagraph>
-        <LegalParagraph>
-          Da es sich bei den Hostern um US-amerikanische Mutterkonzerne handelt,
-          ist ein Datentransfer in die USA theoretisch möglich. Dieser ist durch
-          das EU-US Data Privacy Framework (DPF) sowie den Abschluss von
-          Standardvertragsklauseln (SCCs) als Auftragsverarbeitungsvertrag
-          (AVV) rechtlich abgesichert.
-        </LegalParagraph>
-        <LegalParagraph>
-          Vercel nutzt IP-Adressen im Rahmen berechtigter Interessen (Art. 6
-          Abs. 1 lit. f DSGVO) zur Angriffsabwehr (z.&nbsp;B. DDoS-Schutz) und
-          für die integrierte Firewall.
-        </LegalParagraph>
-        <LegalParagraph>
-          Die Speicherdauer der Server- und Access-Logs beträgt im
-          Standardbetrieb 24 Stunden (bis maximal 30 Tage bei Nutzung
-          erweiterter Observability-Funktionen).
-        </LegalParagraph>
+        <LegalUnorderedList>
+          <li>
+            Die Datenspeicherung und Kernverarbeitung erfolgt physisch
+            ausschließlich in der EU bzw. im EWR (Frankfurt am Main).
+          </li>
+          <li>
+            Durch das globale Edge-Netzwerk (Anycast CDN) von Vercel kann
+            initialer Traffic zur Gewährleistung der Erreichbarkeit temporär über
+            Serverknoten außerhalb des EWR geleitet werden.
+          </li>
+          <li>
+            Sowohl Vercel Inc. als auch Supabase Inc. sind nach dem EU-US Data
+            Privacy Framework (DPF) zertifiziert. Ein potenzieller Datentransfer
+            in die USA ist hierdurch rechtlich vollumfänglich abgesichert.
+            Ergänzend wurden Auftragsverarbeitungsverträge (AVV) inkl.
+            EU-Standardvertragsklauseln (SCCs) geschlossen.
+          </li>
+          <li>
+            Vercel nutzt IP-Adressen im Rahmen berechtigter Interessen (Art. 6
+            Abs. 1 lit. f DSGVO) zur Angriffsabwehr (z.&nbsp;B. DDoS-Schutz) und
+            für die integrierte Firewall.
+          </li>
+          <li>
+            Die Speicherdauer der Server- und Access-Logs beträgt im
+            Standardbetrieb 24 Stunden (bis maximal 30 Tage bei Nutzung
+            erweiterter Observability-Funktionen).
+          </li>
+        </LegalUnorderedList>
 
         <LegalParagraph>
           <strong>b) Bei Registrierung und Nutzung des Benutzerkontos</strong>
@@ -100,37 +107,39 @@ export default function DatenschutzPage() {
           Consent-Management-Tool „Cookiebot“ (Usercentrics A/S, Havnegade 39,
           1058 Kopenhagen, Dänemark) ein.
         </LegalParagraph>
-        <LegalParagraph>
-          Cookiebot verarbeitet Ihre IP-Adresse und den Zustimmungsstatus, um
-          Ihre Präferenzen rechtssicher zu dokumentieren (Rechtsgrundlage: Art.
-          6 Abs. 1 lit. c DSGVO).
-        </LegalParagraph>
-        <LegalParagraph>
-          Vor der ausdrücklichen Einwilligung des Nutzers werden auf unserer
-          Website ausschließlich technisch zwingend erforderliche
-          First-Party-Cookies gesetzt.
-        </LegalParagraph>
-        <LegalParagraph>
-          Aktuell setzen wir keine Tracking-Tools wie Google Analytics ein.
-        </LegalParagraph>
+        <LegalUnorderedList>
+          <li>
+            Cookiebot verarbeitet Ihre IP-Adresse und den Zustimmungsstatus, um
+            Ihre Präferenzen rechtssicher zu dokumentieren (Rechtsgrundlage:
+            Art. 6 Abs. 1 lit. c DSGVO).
+          </li>
+          <li>
+            Vor der ausdrücklichen Einwilligung des Nutzers werden auf unserer
+            Website ausschließlich technisch zwingend erforderliche Cookies
+            gesetzt (dies schließt notwendige Third-Party-Sicherheits-Cookies
+            unseres Zahlungsdienstleisters Stripe zur Betrugsprävention ein).
+          </li>
+          <li>
+            Aktuell setzen wir keine Tracking-Tools wie Google Analytics ein.
+          </li>
+        </LegalUnorderedList>
       </LegalSection>
 
       <LegalSection title="3. Spezifische Funktionen, Dokumentenspeicherung & Dienstleister">
         <LegalParagraph>
           <strong>a) Speicherung von Dokumenten (PDFs)</strong>
         </LegalParagraph>
+        <LegalParagraph>
+          Die Speicherung hochgeladener Dokumente erfolgt in Supabase Storage auf
+          Basis einer AWS S3-Infrastruktur mit ausschließlichem Speicherort in
+          Frankfurt am Main.
+        </LegalParagraph>
         <LegalUnorderedList>
           <li>
-            Die Speicherung hochgeladener Dokumente erfolgt in Supabase Storage
-            auf Basis einer AWS S3-Infrastruktur mit ausschließlichem
-            Speicherort in Frankfurt am Main.
-          </li>
-          <li>
             Alle gespeicherten PDFs werden im Ruhezustand (Data at Rest)
-            standardmäßig mittels AES-256 (Server-Side Encryption)
-            verschlüsselt. Jede Datenübertragung (Upload und Download) erfolgt
-            zwingend über HTTPS und ist via TLS 1.2 bzw. TLS 1.3
-            transportverschlüsselt.
+            standardmäßig mittels AES-256 (Server-Side Encryption) verschlüsselt.
+            Jede Datenübertragung (Upload und Download) erfolgt zwingend über
+            HTTPS und ist via TLS 1.2 bzw. TLS 1.3 transportverschlüsselt.
           </li>
           <li>
             Die Dokumente werden in nicht-öffentlichen Buckets (Private Storage)
@@ -148,25 +157,25 @@ export default function DatenschutzPage() {
         <LegalParagraph>
           <strong>b) KI-Rechnungsscan (OCR-Extraktion)</strong>
         </LegalParagraph>
+        <LegalParagraph>
+          Zur automatisierten Analyse von PDFs (z.&nbsp;B. Extraktion von
+          Bauteilen, KBA-Nummern oder Kosten) nutzen wir OpenAI-Modelle.
+          Vertragspartner ist hierbei die Microsoft Ireland Operations Limited
+          (Dublin, Irland). Das Hosting erfolgt über Microsoft Azure in der
+          Region Germany West Central (Frankfurt).
+        </LegalParagraph>
         <LegalUnorderedList>
-          <li>
-            Zur automatisierten Analyse von PDFs (z.&nbsp;B. Extraktion von
-            Bauteilen, KBA-Nummern oder Kosten) nutzen wir OpenAI-Modelle, die
-            über Microsoft Azure in der Region Germany West Central (Frankfurt)
-            gehostet werden.
-          </li>
           <li>
             Es werden Bilddateien, PDFs und die darin enthaltenen Text- und
             Metadaten (inklusive personenbezogener Daten wie Name oder
-            Rechnungsanschrift) zur Verarbeitung an die Schnittstelle
-            übertragen.
+            Rechnungsanschrift) zur Verarbeitung an die Schnittstelle übertragen.
           </li>
           <li>
             Eine automatische Vorab-Anonymisierung der Daten findet nicht statt,
             da die Identifikation und Extraktion spezifischer Fahrzeughistorien
-            und Bauteilzuordnungen (z.&nbsp;B. FIN, amtliches Kennzeichen,
-            Halter auf der Rechnung) der vertragliche Hauptzweck der Anwendung
-            ist (Art. 6 Abs. 1 lit. b DSGVO).
+            und Bauteilzuordnungen (z.&nbsp;B. FIN, amtliches Kennzeichen, Halter
+            auf der Rechnung) der vertragliche Hauptzweck der Anwendung ist (Art.
+            6 Abs. 1 lit. b DSGVO).
           </li>
           <li>
             Die übertragenen Dokumente und Prompts werden von Microsoft oder
@@ -175,10 +184,12 @@ export default function DatenschutzPage() {
           </li>
           <li>
             Die Verarbeitung erfolgt zustandslos (stateless). Zur Sicherstellung
-            der Systemintegrität (Abuse Monitoring) behält sich der Anbieter
-            eine temporäre Zwischenspeicherung der Eingaben für maximal 30 Tage
-            vor. Dieser Prozess unterliegt vollumfänglich den
-            EU-Standardvertragsklauseln.
+            der Systemintegrität (Abuse Monitoring) behält sich der Anbieter eine
+            temporäre Zwischenspeicherung der Eingaben für maximal 30 Tage vor.
+            Ein potenzieller Datentransfer an die US-Muttergesellschaft ist
+            primär durch die Zertifizierung von Microsoft unter dem EU-US Data
+            Privacy Framework (DPF) sowie subsidiär durch
+            EU-Standardvertragsklauseln rechtlich abgesichert.
           </li>
         </LegalUnorderedList>
 
@@ -210,10 +221,12 @@ export default function DatenschutzPage() {
         <LegalParagraph>
           Für den Versand von transaktionalen E-Mails (z.&nbsp;B.
           E-Mail-Bestätigung, Passwort-Reset) nutzen wir den Dienst Resend Inc.
-          Der Datentransfer in die USA wird durch Standardvertragsklauseln
-          (SCCs) abgesichert. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO
-          (berechtigtes Interesse an einer zuverlässigen Zustellung von
-          System-E-Mails).
+          Das Tracking von Öffnungs- und Klickraten (Open-/Click-Tracking) ist
+          für diese essenziellen System-Mails vollständig deaktiviert. Der
+          Datentransfer in die USA wird durch das EU-US Data Privacy Framework
+          (DPF) sowie Standardvertragsklauseln (SCCs) abgesichert.
+          Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an
+          einer zuverlässigen Zustellung von System-E-Mails).
         </LegalParagraph>
       </LegalSection>
 
@@ -322,10 +335,11 @@ export default function DatenschutzPage() {
             Testdaten.
           </li>
           <li>
-            Administrative Zugriffe auf produktive Speicher- und
+            Administrative Zugriffe unsererseits auf produktive Speicher- und
             Datenbankressourcen unterliegen dem Least-Privilege-Prinzip,
-            erfordern Multi-Faktor-Authentifizierung (MFA) und werden in
-            unveränderbaren Plattform-Audit-Logs erfasst.
+            erfordern zwingend eine Multi-Faktor-Authentifizierung (MFA) für
+            alle eingesetzten Kernsysteme (Vercel, Supabase, Azure, Stripe) und
+            werden in unveränderbaren Plattform-Audit-Logs erfasst.
           </li>
         </LegalUnorderedList>
       </LegalSection>

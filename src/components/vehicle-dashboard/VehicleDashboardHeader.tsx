@@ -31,17 +31,19 @@ export function VehicleDashboardHeader({
   const greeting = `${ownerName}s ${vehicleModel}`;
 
   return (
-    <header className="vd-surface-card relative overflow-hidden p-5 sm:p-6">
+    <header className="vd-surface-card relative p-5 sm:p-6">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--vd-glow)_0%,transparent_55%),radial-gradient(ellipse_at_bottom_left,var(--vd-glow-soft)_0%,transparent_50%)]"
+        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] bg-[radial-gradient(ellipse_at_top_right,var(--vd-glow)_0%,transparent_55%),radial-gradient(ellipse_at_bottom_left,var(--vd-glow-soft)_0%,transparent_50%)]"
       />
 
       <div className="relative flex items-center justify-between gap-3 sm:gap-5">
         <div className="min-w-0 flex-1 space-y-2.5">
           <p className="claim-kicker flex items-center gap-1.5">
             <span>{statusLabel}</span>
-            <span className="vd-connected-dot" aria-label="Verbunden" />
+            <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
+              <span className="vd-connected-dot" aria-label="Verbunden" />
+            </span>
           </p>
           <div className="space-y-1">
             <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-[1.12] tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.9rem]">

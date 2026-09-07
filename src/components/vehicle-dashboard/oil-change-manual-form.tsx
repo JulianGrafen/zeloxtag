@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 
@@ -14,6 +14,30 @@ interface OilChangeManualFormProps {
   tagUuid: string;
   vehicleId: string;
   onClose: () => void;
+}
+
+const fieldLabelClassName =
+  "text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]";
+
+function TwoColFieldRow({
+  leftLabel,
+  rightLabel,
+  left,
+  right,
+}: {
+  leftLabel: string;
+  rightLabel: string;
+  left: ReactNode;
+  right: ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+      <span className={fieldLabelClassName}>{leftLabel}</span>
+      <span className={fieldLabelClassName}>{rightLabel}</span>
+      <div className="min-w-0">{left}</div>
+      <div className="min-w-0">{right}</div>
+    </div>
+  );
 }
 
 export function OilChangeManualForm({
@@ -91,105 +115,95 @@ export function OilChangeManualForm({
         </p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block space-y-1.5">
-          <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-            Datum
-          </span>
-          <GermanDateInput
-            value={date || null}
-            onChange={(iso) => setDate(iso ?? "")}
-            className="claim-input w-full"
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-            KM-Stand
-          </span>
-          <MileageKmInput
-            value={parseMileageKmInput(mileageKm)}
-            onChange={(km) => setMileageKm(km === null ? "" : String(km))}
-            className="claim-input w-full"
-            placeholder="z. B. 84.200"
-          />
-        </label>
-      </div>
-
-      <label className="mt-3 flex items-center gap-2 text-[0.85rem] text-[color:var(--vd-text)]">
-        <input
-          type="checkbox"
-          checked={selfMade}
-          onChange={(event) => {
-            setSelfMade(event.target.checked);
-            if (event.target.checked) setVendor("");
-          }}
-          className="h-4 w-4 rounded border-[color:var(--vd-border)]"
+      <div className="space-y-3">
+        <TwoColFieldRow
+          leftLabel="Datum"
+          rightLabel="KM-Stand"
+          left={
+            <GermanDateInput
+              value={date || null}
+              onChange={(iso) => setDate(iso ?? "")}
+              className="claim-input w-full min-w-0"
+            />
+          }
+          right={
+            <MileageKmInput
+              value={parseMileageKmInput(mileageKm)}
+              onChange={(km) => setMileageKm(km === null ? "" : String(km))}
+              className="claim-input w-full"
+              placeholder="z. B. 84.200"
+            />
+          }
         />
-        Selbst gemacht
-      </label>
 
-      {!selfMade ? (
-        <label className="mt-3 block space-y-1.5">
-          <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-            Werkstatt / Quelle
-          </span>
+        <label className="flex items-center gap-2 text-[0.85rem] text-[color:var(--vd-text)]">
           <input
-            value={vendor}
-            onChange={(event) => setVendor(event.target.value)}
-            className="claim-input w-full"
+            type="checkbox"
+            checked={selfMade}
+            onChange={(event) => {
+              setSelfMade(event.target.checked);
+              if (event.target.checked) setVendor("");
+            }}
+            className="h-4 w-4 rounded border-[color:var(--vd-border)]"
+          />
+          Selbst gemacht
+        </label>
+
+        {!selfMade ? (
+          <label className="block space-y-1.5">
+            <span className={fieldLabelClassName}>Werkstatt / Quelle</span>
+            <input
+              value={vendor}
+              onChange={(event) => setVendor(event.target.value)}
+              className="claim-input w-full"
+              placeholder="optional"
+            />
+          </label>
+        ) : null}
+
+        <TwoColFieldRow
+          leftLabel="Motoröl"
+          rightLabel="Menge (l)"
+          left={
+            <input
+              value={oilSpec}
+              onChange={(event) => setOilSpec(event.target.value)}
+              className="claim-input w-full"
+              placeholder="z. B. 5W-30"
+            />
+          }
+          right={
+            <input
+              inputMode="decimal"
+              value={oilLiters}
+              onChange={(event) => setOilLiters(event.target.value)}
+              className="claim-input w-full"
+              placeholder="optional"
+            />
+          }
+        />
+
+        <label className="flex items-center gap-2 text-[0.85rem] text-[color:var(--vd-text)]">
+          <input
+            type="checkbox"
+            checked={filterChanged}
+            onChange={(event) => setFilterChanged(event.target.checked)}
+            className="h-4 w-4 rounded border-[color:var(--vd-border)]"
+          />
+          Ölfilter gewechselt
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className={fieldLabelClassName}>Notiz</span>
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={2}
+            className="claim-input w-full resize-none"
             placeholder="optional"
           />
         </label>
-      ) : null}
-
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <label className="block space-y-1.5">
-          <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-            Motoröl
-          </span>
-          <input
-            value={oilSpec}
-            onChange={(event) => setOilSpec(event.target.value)}
-            className="claim-input w-full"
-            placeholder="z. B. 5W-30"
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-            Menge (l)
-          </span>
-          <input
-            inputMode="decimal"
-            value={oilLiters}
-            onChange={(event) => setOilLiters(event.target.value)}
-            className="claim-input w-full"
-            placeholder="optional"
-          />
-        </label>
       </div>
-
-      <label className="mt-3 flex items-center gap-2 text-[0.85rem] text-[color:var(--vd-text)]">
-        <input
-          type="checkbox"
-          checked={filterChanged}
-          onChange={(event) => setFilterChanged(event.target.checked)}
-          className="h-4 w-4 rounded border-[color:var(--vd-border)]"
-        />
-        Ölfilter gewechselt
-      </label>
-
-      <label className="mt-3 block space-y-1.5">
-        <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-          Notiz
-        </span>
-        <textarea
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          rows={2}
-          className="claim-input w-full resize-none"
-          placeholder="optional"
-        />
-      </label>
 
       <div className="mt-4 flex gap-2">
         <PressableButton

@@ -7,8 +7,10 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 
 export function ChangePasswordPanel({
   hasPasswordLogin,
+  showHeader = true,
 }: {
   hasPasswordLogin: boolean;
+  showHeader?: boolean;
 }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -22,23 +24,14 @@ export function ChangePasswordPanel({
     confirmPassword.length >= 10 &&
     (!hasPasswordLogin || currentPassword.length > 0);
 
-  return (
-    <section
-      aria-label="Passwort"
-      className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
-    >
-      <h2 className="font-[family-name:var(--font-display)] text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
-        Passwort
-      </h2>
-      <p className="mt-2 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-        {hasPasswordLogin
-          ? "Ändere dein Anmeldepasswort. Mindestens 10 Zeichen."
-          : "Du hast noch kein Passwort festgelegt. Optional kannst du hier eines setzen, um dich künftig per E-Mail anzumelden."}
-      </p>
+  const description = hasPasswordLogin
+    ? "Ändere dein Anmeldepasswort. Mindestens 10 Zeichen."
+    : "Du hast noch kein Passwort festgelegt. Optional kannst du hier eines setzen, um dich künftig per E-Mail anzumelden.";
 
-      <form
-        className="mt-4 space-y-3"
-        onSubmit={(event) => {
+  const form = (
+    <form
+      className={showHeader ? "mt-4 space-y-3" : "space-y-3"}
+      onSubmit={(event) => {
           event.preventDefault();
           setMessage(null);
           setError(null);
@@ -143,6 +136,24 @@ export function ChangePasswordPanel({
               : "Passwort festlegen"}
         </PressableButton>
       </form>
+  );
+
+  if (!showHeader) {
+    return form;
+  }
+
+  return (
+    <section
+      aria-label="Passwort"
+      className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+    >
+      <h2 className="font-[family-name:var(--font-display)] text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
+        Passwort
+      </h2>
+      <p className="mt-2 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
+        {description}
+      </p>
+      {form}
     </section>
   );
 }
