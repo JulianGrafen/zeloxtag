@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
-import { FreeScanSuccessModal } from "@/components/billing/free-scan-success-modal";
 import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
 import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
@@ -174,6 +173,9 @@ export function TagDashboardShell({
   });
   const [paywallFeature, setPaywallFeature] = useState<FeatureFlag | null>(
     () => {
+      if (showFreeScanWelcome) {
+        return FEATURE.SCAN_AI_RECEIPT;
+      }
       if (
         canWrite &&
         !canAiScan &&
@@ -184,16 +186,19 @@ export function TagDashboardShell({
       return null;
     },
   );
-  const [paywallVariant, setPaywallVariant] = useState<PaywallVariant>(
-    freeInvoiceScanRemaining === 0 &&
+  const [paywallVariant, setPaywallVariant] = useState<PaywallVariant>(() => {
+    if (showFreeScanWelcome) {
+      return "free_scan_exhausted";
+    }
+    if (
+      freeInvoiceScanRemaining === 0 &&
       freeAbeScanRemaining === 0 &&
       !membershipActive
-      ? "free_scan_exhausted"
-      : "default",
-  );
-  const [showFreeScanSuccess, setShowFreeScanSuccess] = useState(
-    showFreeScanWelcome,
-  );
+    ) {
+      return "free_scan_exhausted";
+    }
+    return "default";
+  });
   const [localFreeInvoiceScanRemaining, setLocalFreeInvoiceScanRemaining] =
     useState(freeInvoiceScanRemaining);
   const [localFreeAbeScanRemaining, setLocalFreeAbeScanRemaining] = useState(
@@ -231,11 +236,18 @@ export function TagDashboardShell({
     setLocalFreeAbeScanRemaining(freeAbeScanRemaining);
   }, [freeAbeScanRemaining]);
 
-  useEffect(() => {
-    if (showFreeScanWelcome) {
-      setShowFreeScanSuccess(true);
-    }
-  }, [showFreeScanWelcome]);
+  function clearFreeScanWelcomeParam() {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("freeScanWelcome")) return;
+    url.searchParams.delete("freeScanWelcome");
+    window.history.replaceState({}, "", url.pathname + url.search);
+  }
+
+  function closePaywall() {
+    setPaywallFeature(null);
+    clearFreeScanWelcomeParam();
+  }
 
   function openPaywall(
     feature: FeatureFlag,
@@ -280,17 +292,6 @@ export function TagDashboardShell({
     }
     setScanType(null);
     setMode("pick-scan");
-  }
-
-  function dismissFreeScanWelcome() {
-    setShowFreeScanSuccess(false);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (url.searchParams.has("freeScanWelcome")) {
-        url.searchParams.delete("freeScanWelcome");
-        window.history.replaceState({}, "", url.pathname + url.search);
-      }
-    }
   }
 
   const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
@@ -561,7 +562,7 @@ export function TagDashboardShell({
           variant={paywallVariant}
           tagUuid={tagUuid}
           isOwner={isOwner}
-          onClose={() => setPaywallFeature(null)}
+          onClose={closePaywall}
         />
       </>
     );
@@ -600,7 +601,7 @@ export function TagDashboardShell({
           variant={paywallVariant}
           tagUuid={tagUuid}
           isOwner={isOwner}
-          onClose={() => setPaywallFeature(null)}
+          onClose={closePaywall}
         />
       </>
     );
@@ -628,7 +629,9 @@ export function TagDashboardShell({
           membershipActive ? 0 : localFreeAbeScanRemaining
         }
         onOpenScanner={handleOpenScanner}
-        hideScanFab={silhouettePromptVisible || showSilhouetteEditor}
+        hideScanFab={
+          silhouettePromptVisible || showSilhouetteEditor || Boolean(paywallFeature)
+        }
         onLockedFeature={(feature) => {
           openPaywall(
             feature,
@@ -727,12 +730,7 @@ export function TagDashboardShell({
         variant={paywallVariant}
         tagUuid={tagUuid}
         isOwner={isOwner}
-        onClose={() => setPaywallFeature(null)}
-      />
-      <FreeScanSuccessModal
-        open={showFreeScanSuccess}
-        tagUuid={tagUuid}
-        onClose={dismissFreeScanWelcome}
+        onClose={closePaywall}
       />
     </>
   );

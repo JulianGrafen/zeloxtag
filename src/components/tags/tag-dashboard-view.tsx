@@ -3,6 +3,7 @@
 import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
 import {
+  FEATURE,
   featureForDashboardTile,
   isProOnlyFeature,
   type FeatureFlag,
@@ -97,6 +98,10 @@ export function TagDashboardView({
   onSilhouetteProxyLoad,
 }: TagDashboardViewProps) {
   const manualEntryHref = `/v/${tagUuid}/eintrag?neu=1`;
+  const scanLocked =
+    !cloudUnlocked &&
+    freeInvoiceScanRemaining <= 0 &&
+    freeAbeScanRemaining <= 0;
   const invoiceCount = filterInvoiceReceiptDocuments(documents).length;
   const abeCount = filterAbeFamilyDocuments(documents).length;
   const tuevCount = documents.filter((doc) => doc.type === "tuev").length;
@@ -377,9 +382,12 @@ export function TagDashboardView({
           tagUuid={tagUuid}
           hidden={hideScanFab}
           onOpenScanner={onOpenScanner}
+          scanLocked={scanLocked}
+          onScanLocked={() => onLockedFeature?.(FEATURE.SCAN_AI_RECEIPT)}
           manualEntryHref={manualEntryHref}
           scanLabel={
             !cloudUnlocked &&
+            !scanLocked &&
             (freeInvoiceScanRemaining > 0 || freeAbeScanRemaining > 0)
               ? isContributor && !isOwner
                 ? "Beleg scannen (gratis)"

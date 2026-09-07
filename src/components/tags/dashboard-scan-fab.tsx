@@ -13,6 +13,7 @@ import {
   getDashboardPromptSnapshot,
   subscribeDashboardPrompts,
 } from "@/lib/ui/dashboard-prompt-orchestrator";
+import { cn } from "@/lib/utils";
 
 export interface DashboardScanCtaProps {
   tagUuid: string;
@@ -23,6 +24,9 @@ export interface DashboardScanCtaProps {
   /** Link to the manual entry page (no receipt / KI scan). */
   manualEntryHref?: string;
   scanLabel?: string;
+  /** Free KI scan used — muted CTA that routes to paywall on tap. */
+  scanLocked?: boolean;
+  onScanLocked?: () => void;
   /** Hide while a photo sheet / modal needs the bottom of the screen. */
   hidden?: boolean;
 }
@@ -33,17 +37,45 @@ export function DashboardScanCta({
   scanHref,
   manualEntryHref,
   scanLabel = "Dokument scannen",
+  scanLocked = false,
+  onScanLocked,
 }: Omit<DashboardScanCtaProps, "hidden">) {
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
+  const buttonClassName = cn(
+    "claim-cta w-full shadow-[var(--vd-shadow)]",
+    scanLocked &&
+      "bg-neutral-400 text-white shadow-none ring-1 ring-neutral-300/80",
+  );
+
+  function handleScanClick() {
+    if (scanLocked) {
+      if (onScanLocked) {
+        onScanLocked();
+        return;
+      }
+      if (onOpenScanner) {
+        onOpenScanner();
+        return;
+      }
+      window.location.assign(href);
+      return;
+    }
+    onOpenScanner?.();
+  }
+
+  const useScanButton = Boolean(onOpenScanner) || scanLocked;
 
   return (
     <div className="space-y-2" data-tour="scan-fab">
-      {onOpenScanner ? (
+      {useScanButton ? (
         <PressableButton
           type="button"
           variant="button"
-          onClick={onOpenScanner}
-          className="claim-cta w-full shadow-[var(--vd-shadow)]"
+          onClick={handleScanClick}
+          className={buttonClassName}
+          aria-label={
+            scanLocked ? `${scanLabel} — ZeloxTag Pro erforderlich` : scanLabel
+          }
         >
           <Plus className="h-4 w-4" aria-hidden />
           {scanLabel}
@@ -52,7 +84,7 @@ export function DashboardScanCta({
         <PressableLink
           href={href}
           variant="button"
-          className="claim-cta w-full shadow-[var(--vd-shadow)]"
+          className={buttonClassName}
         >
           <Plus className="h-4 w-4" aria-hidden />
           {scanLabel}

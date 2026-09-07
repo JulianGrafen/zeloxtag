@@ -59,6 +59,12 @@ export function GermanDateInput({
     setText(iso ? isoToDisplay(iso) : "");
   }
 
+  function openCalendar() {
+    if (!disabled && showCalendar) {
+      setOpen(true);
+    }
+  }
+
   const input = (
     <Input
       id={id}
@@ -71,6 +77,7 @@ export function GermanDateInput({
       placeholder={placeholder}
       className={cn(showCalendar ? "flex-1" : undefined, className)}
       value={text}
+      onClick={openCalendar}
       onFocus={() => setFocused(true)}
       onChange={(event) => {
         const next = event.target.value;
