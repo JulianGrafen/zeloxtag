@@ -469,37 +469,41 @@ export function VehicleSpecsView({
                   Registrieren übernommen und kann hier angepasst werden.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Ölwechsel-Intervall (km)">
-                  <select
-                    value={oilIntervalKmSelectValue}
-                    onChange={(event) =>
-                      patchOilChangeIntervalKm(event.target.value)
-                    }
-                    className="claim-input w-full"
-                  >
-                    {OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => (
-                      <option key={km} value={String(km)}>
-                        {formatMileageKmNumber(km)} km
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Ölwechsel-Intervall (Monate)">
-                  <select
-                    value={oilIntervalMonthsSelectValue}
-                    onChange={(event) =>
-                      patchOilChangeIntervalMonths(event.target.value)
-                    }
-                    className="claim-input w-full"
-                  >
-                    {OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => (
-                      <option key={months} value={String(months)}>
-                        {formatOilChangeIntervalMonthsLabel(months)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Ölwechsel-Intervall (km)
+                </span>
+                <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Ölwechsel-Intervall (Monate)
+                </span>
+                <select
+                  value={oilIntervalKmSelectValue}
+                  onChange={(event) =>
+                    patchOilChangeIntervalKm(event.target.value)
+                  }
+                  className="claim-input w-full"
+                  aria-label="Ölwechsel-Intervall in Kilometern"
+                >
+                  {OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => (
+                    <option key={km} value={String(km)}>
+                      {formatMileageKmNumber(km)} km
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={oilIntervalMonthsSelectValue}
+                  onChange={(event) =>
+                    patchOilChangeIntervalMonths(event.target.value)
+                  }
+                  className="claim-input w-full"
+                  aria-label="Ölwechsel-Intervall in Monaten"
+                >
+                  {OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => (
+                    <option key={months} value={String(months)}>
+                      {formatOilChangeIntervalMonthsLabel(months)}
+                    </option>
+                  ))}
+                </select>
               </div>
             </section>
 
