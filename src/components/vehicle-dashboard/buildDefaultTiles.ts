@@ -81,7 +81,6 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       id: "abe",
       title: "ABE",
       icon: "stamp",
-      tone: "accent",
       meta: { href: "/abe" },
     },
     {
