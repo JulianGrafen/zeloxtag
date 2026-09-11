@@ -168,6 +168,35 @@ function buildNonceRequestHeaders(
   return requestHeaders;
 }
 
+/**
+ * Forward the original request body when Proxy rewrites headers.
+ * Headers-only `NextResponse.next({ request: { headers }})` breaks multipart
+ * uploads (missing boundary) on some Next.js runtimes.
+ */
+function proxiedNextResponse(
+  request: NextRequest,
+  requestHeaders: Headers,
+): NextResponse {
+  const method = request.method.toUpperCase();
+  if (method === "GET" || method === "HEAD") {
+    return NextResponse.next({
+      request: new NextRequest(request.url, {
+        headers: requestHeaders,
+        method,
+      }),
+    });
+  }
+
+  return NextResponse.next({
+    request: new NextRequest(request.url, {
+      headers: requestHeaders,
+      method,
+      body: request.body,
+      duplex: "half",
+    } as RequestInit),
+  });
+}
+
 /** Create a NextResponse with per-request nonce CSP for App Router SSR. */
 export function createProxiedResponse(request: NextRequest): {
   response: NextResponse;
@@ -177,9 +206,7 @@ export function createProxiedResponse(request: NextRequest): {
   const csp = buildContentSecurityPolicy({ nonce });
   const requestHeaders = buildNonceRequestHeaders(request, nonce, csp);
 
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
+  const response = proxiedNextResponse(request, requestHeaders);
 
   applyStaticSecurityHeaders(response);
   response.headers.set("Content-Security-Policy", csp);
@@ -195,9 +222,7 @@ export function recreateProxiedResponse(
   const csp = buildContentSecurityPolicy({ nonce });
   const requestHeaders = buildNonceRequestHeaders(request, nonce, csp);
 
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
+  const response = proxiedNextResponse(request, requestHeaders);
 
   applyStaticSecurityHeaders(response);
   response.headers.set("Content-Security-Policy", csp);

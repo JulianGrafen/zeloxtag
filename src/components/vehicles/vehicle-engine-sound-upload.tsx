@@ -10,6 +10,7 @@ import {
   ENGINE_SOUND_MAX_SECONDS,
 } from "@/lib/vehicles/engine-sound-constants";
 import { measureAudioFileDurationSeconds } from "@/lib/vehicles/measure-audio-duration";
+import { bytesToBase64 } from "@/lib/vehicles/engine-sound-json-upload";
 import { validateEngineSoundUploadBytes } from "@/lib/vehicles/engine-sound-validation";
 
 export type VehicleEngineSoundUploadProps = {
@@ -88,19 +89,18 @@ export function VehicleEngineSoundUpload({
           throw new Error(meta.error);
         }
 
-        const body = new FormData();
-        body.append("vehicleId", vehicleId);
-        body.append("tagUuid", tagUuid);
-        body.append(
-          "durationSeconds",
-          String(durationSeconds > 0 ? durationSeconds : 1),
-        );
-        body.append("file", file, file.name || "engine-sound");
-
         const response = await fetch("/api/vehicle/engine-sound", {
           method: "POST",
-          body,
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
+          body: JSON.stringify({
+            vehicleId,
+            tagUuid: tagUuid.trim() || undefined,
+            durationSeconds: durationSeconds > 0 ? durationSeconds : 1,
+            filename: file.name || "engine-sound",
+            mime: file.type || undefined,
+            fileBase64: bytesToBase64(bytes),
+          }),
         });
 
         let payload: UploadApiPayload | null = null;

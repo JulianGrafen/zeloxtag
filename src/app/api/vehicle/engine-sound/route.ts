@@ -18,10 +18,22 @@ import {
   vehicleEngineSoundCandidatePaths,
   vehicleEngineSoundObjectPath,
 } from "@/lib/vehicles/engine-sound-constants";
+import { ENGINE_SOUND_MAX_BASE64_LENGTH } from "@/lib/vehicles/engine-sound-json-upload";
 import { validateEngineSoundUploadBytes } from "@/lib/vehicles/engine-sound-validation";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+const jsonUploadSchema = z
+  .object({
+    vehicleId: z.string().uuid(),
+    tagUuid: z.string().trim().min(1).max(128).optional(),
+    durationSeconds: z.coerce.number().positive().max(10).optional(),
+    filename: z.string().trim().min(1).max(255),
+    mime: z.string().trim().max(128).optional(),
+    fileBase64: z.string().min(1).max(ENGINE_SOUND_MAX_BASE64_LENGTH),
+  })
+  .strict();
 
 const metaSchema = z
   .object({
@@ -84,6 +96,130 @@ function optionalTagUuid(value: FormDataEntryValue | null): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+type ParsedEngineSoundUpload =
+  | {
+      ok: true;
+      vehicleId: string;
+      tagUuid?: string;
+      durationSeconds?: number;
+      filename: string;
+      mime: string;
+      bytes: Buffer;
+    }
+  | { ok: false; response: NextResponse };
+
+async function parseEngineSoundUpload(
+  request: NextRequest,
+): Promise<ParsedEngineSoundUpload> {
+  const contentType = request.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (error) {
+      console.error("[vehicle-engine-sound] json parse failed", error);
+      return {
+        ok: false,
+        response: jsonError(
+          400,
+          "Upload konnte nicht gelesen werden.",
+          "bad_request",
+        ),
+      };
+    }
+
+    const parsed = jsonUploadSchema.safeParse(body);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        response: jsonError(
+          400,
+          "Ungültige Upload-Daten — max. 10 Sekunden, MP3, M4A oder WAV.",
+          "bad_request",
+        ),
+      };
+    }
+
+    let bytes: Buffer;
+    try {
+      bytes = Buffer.from(parsed.data.fileBase64, "base64");
+    } catch {
+      return {
+        ok: false,
+        response: jsonError(400, "Audiodatei ist beschädigt.", "bad_request"),
+      };
+    }
+
+    if (bytes.byteLength === 0) {
+      return {
+        ok: false,
+        response: jsonError(400, "Leere Audiodatei.", "bad_request"),
+      };
+    }
+
+    return {
+      ok: true,
+      vehicleId: parsed.data.vehicleId,
+      tagUuid: parsed.data.tagUuid,
+      durationSeconds: parsed.data.durationSeconds,
+      filename: parsed.data.filename,
+      mime: parsed.data.mime ?? "",
+      bytes,
+    };
+  }
+
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch (error) {
+    console.error("[vehicle-engine-sound] formData parse failed", error);
+    return {
+      ok: false,
+      response: jsonError(
+        400,
+        "Upload konnte nicht gelesen werden — bitte Seite neu laden und erneut versuchen.",
+        "bad_request",
+      ),
+    };
+  }
+
+  const metaParsed = metaSchema.safeParse({
+    vehicleId: formData.get("vehicleId"),
+    tagUuid: optionalTagUuid(formData.get("tagUuid")),
+    durationSeconds: formData.get("durationSeconds"),
+  });
+  if (!metaParsed.success) {
+    return {
+      ok: false,
+      response: jsonError(
+        400,
+        "Ungültige Upload-Daten — max. 10 Sekunden, MP3, M4A oder WAV.",
+        "bad_request",
+      ),
+    };
+  }
+
+  const file = uploadFileFromFormData(formData);
+  if (!file || !isUploadFile(file)) {
+    return {
+      ok: false,
+      response: jsonError(400, "Keine Audiodatei erhalten.", "bad_request"),
+    };
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  return {
+    ok: true,
+    vehicleId: metaParsed.data.vehicleId,
+    tagUuid: metaParsed.data.tagUuid,
+    durationSeconds: metaParsed.data.durationSeconds,
+    filename: file.name,
+    mime: file.type,
+    bytes,
+  };
+}
+
 async function revalidateEngineSoundPaths(
   tagUuid: string | undefined,
   publicSlug: string | null | undefined,
@@ -124,42 +260,18 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
     const user = auth.user;
 
-    let formData: FormData;
-    try {
-      formData = await request.formData();
-    } catch (error) {
-      console.error("[vehicle-engine-sound] formData parse failed", error);
-      return jsonError(
-        400,
-        "Upload konnte nicht gelesen werden — Datei kleiner als 2 MB und als MP3, M4A oder WAV erneut versuchen.",
-        "bad_request",
-      );
+    const upload = await parseEngineSoundUpload(request);
+    if (!upload.ok) {
+      return upload.response;
     }
 
-    const metaParsed = metaSchema.safeParse({
-      vehicleId: formData.get("vehicleId"),
-      tagUuid: optionalTagUuid(formData.get("tagUuid")),
-      durationSeconds: formData.get("durationSeconds"),
-    });
-    if (!metaParsed.success) {
-      return jsonError(
-        400,
-        "Ungültige Upload-Daten — max. 10 Sekunden, MP3, M4A oder WAV.",
-        "bad_request",
-      );
-    }
-    const { vehicleId, tagUuid, durationSeconds } = metaParsed.data;
+    const { vehicleId, tagUuid, durationSeconds, filename, mime, bytes } =
+      upload;
 
-    const file = uploadFileFromFormData(formData);
-    if (!file || !isUploadFile(file)) {
-      return jsonError(400, "Keine Audiodatei erhalten.", "bad_request");
-    }
-
-    const bytes = Buffer.from(await file.arrayBuffer());
     const validated = validateEngineSoundUploadBytes(
       bytes,
-      file.type,
-      file.name,
+      mime,
+      filename,
       durationSeconds,
     );
     if (!validated.ok) {
