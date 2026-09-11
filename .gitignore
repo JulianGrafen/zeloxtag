@@ -13,6 +13,8 @@
 # testing
 /coverage
 .zap/reports/
+.zap/session/
+.zap/__pycache__/
 
 # next.js
 /.next/

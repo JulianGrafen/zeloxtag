@@ -1,0 +1,8 @@
+# ZAP context rule config (pluginId	action	name)
+# See https://www.zaproxy.org/docs/desktop/addons/automation-framework/
+
+10098	IGNORE	Cross-Domain Misconfiguration	Vercel serves public static assets with Access-Control-Allow-Origin: * (fonts, robots.txt); not app-controlled.
+40025	IGNORE	Proxy Disclosure	Active scan fingerprints Vercel edge via TRACE/OPTIONS; expected CDN behaviour, not a misconfiguration.
+10035	IGNORE	Strict-Transport-Security Header Not Set	Third-party origins reached during Playwright login (e.g. ssl.gstatic.com), not ZeloxTag.
+10019	IGNORE	Big Redirect Detected (Potential Sensitive Information Leak)	Post-login /login → /auth/continue redirect chain is intentional; no secrets in Location.
+10096	IGNORE	Timestamp Disclosure - Unix	Unix-like numbers in public HTML/URLs (IDs, cache busters); no actionable secret leakage.

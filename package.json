@@ -19,7 +19,11 @@
     "db:generate-kuerzel-migration": "npx tsx scripts/generate-kuerzel-migration.ts",
     "postinstall": "node scripts/copy-pdf-worker.mjs",
     "generate:sw": "node scripts/generate-sw.mjs",
-    "security:zap": "bash scripts/zap-baseline.sh"
+    "security:zap": "bash scripts/zap-baseline.sh",
+    "security:zap:auth": "bash scripts/zap-authenticated.sh",
+    "security:zap:active": "bash scripts/zap-full-active.sh",
+    "security:idor": "bash scripts/idor-scan.sh",
+    "security:zap:auth:export-cookies": "node scripts/zap-export-auth-cookies.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -57,6 +61,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.7"

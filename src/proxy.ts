@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { applyStaticSecurityHeaders } from "@/lib/security/csp";
 import {
   isDemoOrShowcasePath,
   isGenericPostLoginNext,
@@ -21,6 +22,17 @@ import { updateSession } from "@/lib/supabase/proxy";
  * — Gates /dashboard, /settings, /api/protected, and other owner APIs
  * — Forces MFA step-up when TOTP is enrolled but session is still AAL1
  */
+function secureRedirect(url: URL | string): NextResponse {
+  return applyStaticSecurityHeaders(NextResponse.redirect(url));
+}
+
+function secureJson(
+  body: Record<string, unknown>,
+  init: { status: number },
+): NextResponse {
+  return applyStaticSecurityHeaders(NextResponse.json(body, init));
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname, search, origin } = request.nextUrl;
   const host = request.nextUrl.hostname;
@@ -33,7 +45,7 @@ export async function proxy(request: NextRequest) {
     ]);
     if (authEntryPaths.has(pathname)) {
       const canonical = new URL(`https://app.zeloxtag.de${pathname}${search}`);
-      return NextResponse.redirect(canonical);
+      return secureRedirect(canonical);
     }
   }
 
@@ -59,12 +71,12 @@ export async function proxy(request: NextRequest) {
 
   if (requiresAuth && !userId) {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json(
+      return secureJson(
         { ok: false, error: "Authentication required.", code: "unauthorized" },
         { status: 401 },
       );
     }
-    return NextResponse.redirect(loginRedirectUrl(origin, pathname, search));
+    return secureRedirect(loginRedirectUrl(origin, pathname, search));
   }
 
   // Password-recovery session must reach update-password before MFA step-up.
@@ -83,7 +95,7 @@ export async function proxy(request: NextRequest) {
     (requiresAuth || pathname.startsWith("/dashboard"))
   ) {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json(
+      return secureJson(
         {
           ok: false,
           error: "Multi-factor authentication required.",
@@ -99,14 +111,14 @@ export async function proxy(request: NextRequest) {
         ? `${pathname}${search}`
         : "/auth/continue",
     );
-    return NextResponse.redirect(mfaUrl);
+    return secureRedirect(mfaUrl);
   }
 
   // Password session at AAL1 with enrolled TOTP → MFA challenge UI.
   if (userId && needsMfa && (pathname === "/" || pathname === "/login")) {
     const mfaUrl = new URL("/login/mfa", origin);
     mfaUrl.searchParams.set("next", "/auth/continue");
-    return NextResponse.redirect(mfaUrl);
+    return secureRedirect(mfaUrl);
   }
 
   // Authenticated users who finished MFA → own vehicle dashboard (via continue).
@@ -123,14 +135,14 @@ export async function proxy(request: NextRequest) {
       !next.startsWith("//") &&
       !isGenericPostLoginNext(next)
     ) {
-      return NextResponse.redirect(new URL(sanitizePostLoginPath(next), origin));
+      return secureRedirect(new URL(sanitizePostLoginPath(next), origin));
     }
-    return NextResponse.redirect(new URL("/auth/continue", origin));
+    return secureRedirect(new URL("/auth/continue", origin));
   }
 
   // Logged-in users should never browse public showcase surfaces.
   if (userId && !needsMfa && isDemoOrShowcasePath(pathname)) {
-    return NextResponse.redirect(new URL("/auth/continue", origin));
+    return secureRedirect(new URL("/auth/continue", origin));
   }
 
   return response;

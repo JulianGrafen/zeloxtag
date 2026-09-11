@@ -53,6 +53,18 @@ describe("staticSecurityHeaderEntries", () => {
 
     expect(byKey["X-Content-Type-Options"]).toBe("nosniff");
     expect(byKey["X-Frame-Options"]).toBe("DENY");
+    expect(byKey["Cross-Origin-Opener-Policy"]).toBe("same-origin");
+    expect(byKey["Cross-Origin-Embedder-Policy"]).toBe("credentialless");
     expect(byKey["Content-Security-Policy"]).toBeUndefined();
+  });
+
+  it("does not duplicate supabase hosts in img-src", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("NODE_ENV", "production");
+
+    const csp = buildContentSecurityPolicy({ nonce: "n" });
+    const imgSrc = csp.match(/img-src ([^;]+)/)?.[1] ?? "";
+    const hosts = imgSrc.split(/\s+/).filter((p) => p.startsWith("https://"));
+    expect(new Set(hosts).size).toBe(hosts.length);
   });
 });

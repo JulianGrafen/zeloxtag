@@ -18,13 +18,21 @@ fi
 echo "ZAP baseline → ${TARGET}"
 echo "Reports → ${REPORT_DIR}/zap-baseline-${TIMESTAMP}.html"
 
+ZAP_CONFIG=()
+if [[ -f "${ROOT}/.zap/rules.tsv" ]]; then
+  ZAP_CONFIG=(-c "/zap/wrk/rules.tsv")
+fi
+
 docker run --rm \
-  -v "${REPORT_DIR}:/zap/wrk:rw" \
+  --add-host=host.docker.internal:host-gateway \
+  -v "${ROOT}/.zap:/zap/wrk:rw" \
+  -v "${REPORT_DIR}:/zap/wrk/reports:rw" \
   -t "${IMAGE}" \
   zap-baseline.py \
   -t "${TARGET}" \
-  -r "zap-baseline-${TIMESTAMP}.html" \
-  -J "zap-baseline-${TIMESTAMP}.json" \
+  "${ZAP_CONFIG[@]}" \
+  -r "reports/zap-baseline-${TIMESTAMP}.html" \
+  -J "reports/zap-baseline-${TIMESTAMP}.json" \
   -I \
   -d \
   -a

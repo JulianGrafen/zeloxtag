@@ -69,12 +69,10 @@ export function buildContentSecurityPolicy(
 
   const supabase = supabaseHosts();
   const connect = ["'self'", "blob:", "data:", ...supabase].join(" ");
-  const img = [
-    "'self'",
-    "data:",
-    "blob:",
-    ...supabase.map((h) => h.replace("wss:", "https:")),
-  ].join(" ");
+  const imgHosts = [
+    ...new Set(supabase.map((host) => host.replace(/^wss:/, "https:"))),
+  ];
+  const img = ["'self'", "data:", "blob:", ...imgHosts].join(" ");
 
   const scriptParts = ["'self'", `'nonce-${options.nonce}'`, "'strict-dynamic'", "blob:"];
   if (allowUnsafeEval) {
@@ -115,16 +113,18 @@ export function buildContentSecurityPolicy(
   return directives.join("; ");
 }
 
-/** Non-CSP security headers applied on every proxied HTML response. */
-export function staticSecurityHeaderEntries(): Array<{ key: string; value: string }> {
+const PERMISSIONS_POLICY =
+  "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()";
+
+/** Baseline headers for static assets and routes that bypass Proxy. */
+export function staticAssetSecurityHeaderEntries(): Array<{
+  key: string;
+  value: string;
+}> {
   const headers: Array<{ key: string; value: string }> = [
     {
       key: "X-Content-Type-Options",
       value: "nosniff",
-    },
-    {
-      key: "X-Frame-Options",
-      value: "DENY",
     },
     {
       key: "Referrer-Policy",
@@ -132,7 +132,7 @@ export function staticSecurityHeaderEntries(): Array<{ key: string; value: strin
     },
     {
       key: "Permissions-Policy",
-      value: "camera=(self), microphone=(), geolocation=(), payment=()",
+      value: PERMISSIONS_POLICY,
     },
     {
       key: "X-DNS-Prefetch-Control",
@@ -150,10 +150,72 @@ export function staticSecurityHeaderEntries(): Array<{ key: string; value: strin
   return headers;
 }
 
-function applyStaticSecurityHeaders(response: NextResponse): void {
+/**
+ * Cross-origin isolation on document responses (Proxy). Uses `credentialless`
+ * rather than `require-corp` so Supabase / third-party subresources in CSP
+ * stay loadable without platform CORP headers.
+ */
+export function crossOriginIsolationHeaderEntries(): Array<{
+  key: string;
+  value: string;
+}> {
+  return [
+    {
+      key: "Cross-Origin-Opener-Policy",
+      value: "same-origin",
+    },
+    {
+      key: "Cross-Origin-Embedder-Policy",
+      value: "credentialless",
+    },
+    {
+      key: "Cross-Origin-Resource-Policy",
+      value: "same-origin",
+    },
+  ];
+}
+
+/** Non-CSP security headers applied on every proxied HTML response. */
+export function staticSecurityHeaderEntries(): Array<{ key: string; value: string }> {
+  return [
+    ...staticAssetSecurityHeaderEntries(),
+    ...crossOriginIsolationHeaderEntries(),
+    {
+      key: "X-Frame-Options",
+      value: "DENY",
+    },
+  ];
+}
+
+/** Apply baseline + isolation headers to any NextResponse (redirects, JSON gates). */
+export function applyStaticSecurityHeaders(response: NextResponse): NextResponse {
   for (const { key, value } of staticSecurityHeaderEntries()) {
     response.headers.set(key, value);
   }
+  return response;
+}
+
+/** next.config `headers()` entries for paths excluded from Proxy matcher. */
+export function nextConfigStaticAssetHeaderRoutes(): Array<{
+  source: string;
+  headers: Array<{ key: string; value: string }>;
+}> {
+  const headers = staticAssetSecurityHeaderEntries();
+  const sources = [
+    "/_next/static/:path*",
+    "/_next/image/:path*",
+    "/sw.js",
+    "/manifest.webmanifest",
+    "/favicon.ico",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/pdfjs/:path*",
+    "/background-removal-data/:path*",
+    "/demo/:path*",
+    "/qr/:path*",
+  ];
+
+  return sources.map((source) => ({ source, headers }));
 }
 
 function buildNonceRequestHeaders(
@@ -208,6 +270,7 @@ export function createProxiedResponse(request: NextRequest): {
   const response = proxiedNextResponse(request, requestHeaders);
 
   applyStaticSecurityHeaders(response);
+  response.headers.delete("X-Powered-By");
   response.headers.set("Content-Security-Policy", csp);
 
   return { response, nonce };
@@ -224,6 +287,7 @@ export function recreateProxiedResponse(
   const response = proxiedNextResponse(request, requestHeaders);
 
   applyStaticSecurityHeaders(response);
+  response.headers.delete("X-Powered-By");
   response.headers.set("Content-Security-Policy", csp);
 
   return response;
@@ -280,6 +344,10 @@ export function vehicleImageSecurityHeaderEntries(): Array<{
       key: "Referrer-Policy",
       value: "strict-origin-when-cross-origin",
     },
+    {
+      key: "Permissions-Policy",
+      value: PERMISSIONS_POLICY,
+    },
   ];
 }
 
@@ -307,6 +375,10 @@ export function documentFileSecurityHeaderEntries(): Array<{
     {
       key: "Referrer-Policy",
       value: "strict-origin-when-cross-origin",
+    },
+    {
+      key: "Permissions-Policy",
+      value: PERMISSIONS_POLICY,
     },
   ];
 }

@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 import {
   documentFileSecurityHeaderEntries,
+  nextConfigStaticAssetHeaderRoutes,
   vehicleImageSecurityHeaderEntries,
 } from "./src/lib/security/csp";
 
@@ -26,6 +27,7 @@ function supabaseImageRemotePattern():
 const supabasePattern = supabaseImageRemotePattern();
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist", "heic-convert", "heic-decode", "libheif-js"],
   turbopack: {
     root: process.cwd(),
@@ -53,6 +55,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       // HTML CSP + baseline security headers are set per request in src/proxy.ts.
+      ...nextConfigStaticAssetHeaderRoutes(),
       {
         source: "/api/documents/file",
         headers: documentFileSecurityHeaderEntries(),
