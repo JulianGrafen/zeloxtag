@@ -1,4 +1,4 @@
-import { Cog, Gauge, Zap } from "lucide-react";
+import { Activity, Cog, Gauge, Zap } from "lucide-react";
 
 import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
 
@@ -9,12 +9,14 @@ type ShowroomStatsProps = {
   profile: PublicShowcaseProfile;
 };
 
-function formatPower(profile: PublicShowcaseProfile): string | null {
-  const parts: string[] = [];
-  if (profile.powerPs != null) parts.push(`${profile.powerPs} PS`);
-  if (profile.powerKw != null) parts.push(`${profile.powerKw} kW`);
-  if (profile.torqueNm != null) parts.push(`${profile.torqueNm} Nm`);
-  return parts.length > 0 ? parts.join(" · ") : null;
+function formatPowerPs(profile: PublicShowcaseProfile): string | null {
+  if (profile.powerPs == null) return null;
+  return `${profile.powerPs} PS`;
+}
+
+function formatTorqueNm(profile: PublicShowcaseProfile): string | null {
+  if (profile.torqueNm == null) return null;
+  return `${profile.torqueNm} Nm`;
 }
 
 function formatEngine(profile: PublicShowcaseProfile): string | null {
@@ -32,18 +34,24 @@ function formatDrivetrain(profile: PublicShowcaseProfile): string | null {
 }
 
 export function ShowroomStats({ profile }: ShowroomStatsProps) {
-  const power = formatPower(profile);
+  const powerPs = formatPowerPs(profile);
+  const torqueNm = formatTorqueNm(profile);
   const engine = formatEngine(profile);
   const drive = formatDrivetrain(profile);
-  if (!power && !engine && !drive) return null;
+  if (!powerPs && !torqueNm && !engine && !drive) return null;
 
   return (
     <section className="relative z-10 px-4">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <SpecCard
           label="Leistung"
-          value={power ?? "—"}
+          value={powerPs ?? "—"}
           icon={<Zap className={`h-3 w-3 ${showroom.icon}`} aria-hidden />}
+        />
+        <SpecCard
+          label="Drehmoment"
+          value={torqueNm ?? "—"}
+          icon={<Activity className={`h-3 w-3 ${showroom.icon}`} aria-hidden />}
         />
         <SpecCard
           label="Motor"
