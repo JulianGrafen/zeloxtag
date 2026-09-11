@@ -1,3 +1,5 @@
+import { measureEngineSoundDurationSeconds } from "@/lib/vehicles/engine-sound-duration";
+
 const MEASURE_TIMEOUT_MS = 12_000;
 
 function isUsableDuration(duration: number): boolean {
@@ -7,7 +9,21 @@ function isUsableDuration(duration: number): boolean {
 /**
  * Browser-only duration probe for engine sound uploads (incl. WAV).
  */
-export function measureAudioFileDurationSeconds(file: File): Promise<number> {
+export async function measureAudioFileDurationSeconds(
+  file: File,
+  preloadedBytes?: Uint8Array,
+): Promise<number> {
+  const bytes =
+    preloadedBytes ?? new Uint8Array(await file.arrayBuffer());
+  const fromHeader = measureEngineSoundDurationSeconds(
+    bytes,
+    file.name,
+    file.type,
+  );
+  if (fromHeader != null && Number.isFinite(fromHeader) && fromHeader > 0) {
+    return fromHeader;
+  }
+
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const audio = new Audio();

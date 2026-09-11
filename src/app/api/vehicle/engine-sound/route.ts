@@ -18,7 +18,7 @@ import {
   vehicleEngineSoundCandidatePaths,
   vehicleEngineSoundObjectPath,
 } from "@/lib/vehicles/engine-sound-constants";
-import { validateEngineSoundMeta } from "@/lib/vehicles/engine-sound-validation";
+import { validateEngineSoundUploadBytes } from "@/lib/vehicles/engine-sound-validation";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,7 +27,7 @@ const metaSchema = z
   .object({
     vehicleId: z.string().uuid(),
     tagUuid: z.string().trim().min(1).max(128).optional(),
-    durationSeconds: z.coerce.number().positive().max(10),
+    durationSeconds: z.coerce.number().positive().max(10).optional(),
   })
   .strict();
 
@@ -156,10 +156,10 @@ export async function POST(request: NextRequest) {
     }
 
     const bytes = Buffer.from(await file.arrayBuffer());
-    const validated = validateEngineSoundMeta(
+    const validated = validateEngineSoundUploadBytes(
+      bytes,
       file.type,
       file.name,
-      bytes.byteLength,
       durationSeconds,
     );
     if (!validated.ok) {
@@ -220,6 +220,14 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error("[vehicle-engine-sound] vehicle update failed", updateError);
+      const message = updateError.message ?? "";
+      if (message.includes("sound_url")) {
+        return jsonError(
+          503,
+          "Datenbank-Update fehlgeschlagen — Migration 00056_vehicle_engine_sound.sql auf Supabase anwenden.",
+          "schema",
+        );
+      }
       return jsonError(500, "Sound-URL konnte nicht gespeichert werden.", "db_error");
     }
 

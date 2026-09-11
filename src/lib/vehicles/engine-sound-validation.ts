@@ -4,6 +4,7 @@ import {
   engineSoundExtensionForFilename,
   engineSoundExtensionForMime,
 } from "@/lib/vehicles/engine-sound-constants";
+import { measureEngineSoundDurationSeconds } from "@/lib/vehicles/engine-sound-duration";
 
 const ALLOWED_MIME_PREFIXES = [
   "audio/mpeg",
@@ -69,7 +70,7 @@ export function validateEngineSoundMeta(
     if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
       return { ok: false, error: "Audiodatei konnte nicht gelesen werden." };
     }
-    if (durationSeconds > ENGINE_SOUND_MAX_SECONDS) {
+    if (durationSeconds > ENGINE_SOUND_MAX_SECONDS + 0.25) {
       return {
         ok: false,
         error: `Soundcheck darf maximal ${ENGINE_SOUND_MAX_SECONDS} Sekunden lang sein.`,
@@ -86,4 +87,32 @@ export function validateEngineSoundMeta(
         : "audio/mpeg";
 
   return { ok: true, mime: resolvedMime, extension };
+}
+
+export function validateEngineSoundUploadBytes(
+  bytes: Uint8Array,
+  mime: string,
+  filename: string,
+  clientDurationSeconds?: number | null,
+): EngineSoundValidationResult {
+  const fromFile = measureEngineSoundDurationSeconds(bytes, filename, mime);
+  const durationSeconds = fromFile ?? clientDurationSeconds ?? null;
+
+  const meta = validateEngineSoundMeta(
+    mime,
+    filename,
+    bytes.byteLength,
+    durationSeconds,
+  );
+  if (!meta.ok) return meta;
+
+  if (durationSeconds == null) {
+    return {
+      ok: false,
+      error:
+        "Dauer der Audiodatei konnte nicht ermittelt werden — bitte MP3, M4A oder WAV mit gültigem Header wählen.",
+    };
+  }
+
+  return meta;
 }
