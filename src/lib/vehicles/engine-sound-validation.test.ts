@@ -40,10 +40,23 @@ describe("validateEngineSoundMeta", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("rejects unsupported extensions", () => {
+  it("accepts wav within limits", () => {
     const result = validateEngineSoundMeta(
       "audio/wav",
       "engine.wav",
+      100_000,
+      3,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.extension).toBe("wav");
+    }
+  });
+
+  it("rejects unsupported extensions", () => {
+    const result = validateEngineSoundMeta(
+      "audio/flac",
+      "engine.flac",
       100_000,
       3,
     );

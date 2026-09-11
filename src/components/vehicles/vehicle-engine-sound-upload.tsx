@@ -39,7 +39,7 @@ function mapUploadError(
   if (message) return message;
   if (status === 413) return "Datei ist zu groß (max. 2 MB).";
   if (status === 415 || status === 422) {
-    return "Nur MP3 oder M4A bis 10 Sekunden werden unterstützt.";
+    return "Nur MP3, M4A oder WAV bis 10 Sekunden werden unterstützt.";
   }
   return `Upload fehlgeschlagen (Fehler ${status}).`;
 }
@@ -172,7 +172,7 @@ export function VehicleEngineSoundUpload({
       </h2>
       <p className="mt-2 text-[0.86rem] leading-relaxed text-[color:var(--vd-muted)]">
         Kurzer Motor-Sound für die öffentliche Visitenkarte (max.{" "}
-        {ENGINE_SOUND_MAX_SECONDS} Sekunden, MP3 oder M4A, max. 2 MB).
+        {ENGINE_SOUND_MAX_SECONDS} Sekunden, MP3, M4A oder WAV, max. 2 MB).
       </p>
 
       <div className="mt-4 rounded-[1.15rem] bg-black p-4">

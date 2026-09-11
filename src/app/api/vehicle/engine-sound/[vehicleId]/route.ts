@@ -77,7 +77,13 @@ export async function GET(
 
     const buffer = Buffer.from(await data.arrayBuffer());
     const storedType = data.type?.split(";")[0]?.trim().toLowerCase() ?? "";
-    const allowed = ["audio/mpeg", "audio/mp4", "audio/x-m4a"];
+    const allowed = [
+      "audio/mpeg",
+      "audio/mp4",
+      "audio/x-m4a",
+      "audio/wav",
+      "audio/x-wav",
+    ];
     const contentType = allowed.includes(storedType)
       ? storedType
       : engineSoundContentTypeFromPath(path);

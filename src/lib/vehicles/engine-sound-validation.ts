@@ -11,10 +11,15 @@ const ALLOWED_MIME_PREFIXES = [
   "audio/mp4",
   "audio/x-m4a",
   "audio/mp4a-latm",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/wave",
 ] as const;
 
+export type EngineSoundExtension = "mp3" | "m4a" | "wav";
+
 export type EngineSoundValidationResult =
-  | { ok: true; mime: string; extension: "mp3" | "m4a" }
+  | { ok: true; mime: string; extension: EngineSoundExtension }
   | { ok: false; error: string };
 
 function normalizeMime(mime: string): string {
@@ -47,15 +52,16 @@ export function validateEngineSoundMeta(
   if (!mimeOk && !extFromName) {
     return {
       ok: false,
-      error: "Nur MP3 oder M4A werden unterstützt.",
+      error: "Nur MP3, M4A oder WAV werden unterstützt.",
     };
   }
 
-  const extension = extFromName ?? engineSoundExtensionForMime(mime);
-  if (extension !== "mp3" && extension !== "m4a") {
+  const extension =
+    extFromName ?? engineSoundExtensionForMime(mime) ?? null;
+  if (!extension) {
     return {
       ok: false,
-      error: "Nur MP3 oder M4A werden unterstützt.",
+      error: "Nur MP3, M4A oder WAV werden unterstützt.",
     };
   }
 
@@ -71,8 +77,13 @@ export function validateEngineSoundMeta(
     }
   }
 
-  const resolvedMime =
-    mimeOk ? normalizeMime(mime) : extension === "m4a" ? "audio/mp4" : "audio/mpeg";
+  const resolvedMime = mimeOk
+    ? normalizeMime(mime)
+    : extension === "m4a"
+      ? "audio/mp4"
+      : extension === "wav"
+        ? "audio/wav"
+        : "audio/mpeg";
 
   return { ok: true, mime: resolvedMime, extension };
 }

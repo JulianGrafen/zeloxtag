@@ -42,12 +42,46 @@ function jsonError(status: number, error: string, code: string) {
   return NextResponse.json({ ok: false as const, error, code }, { status });
 }
 
-function uploadFileFromFormData(formData: FormData): File | null {
-  const value = formData.get("file");
+function asUploadBlob(
+  value: FormDataEntryValue | null,
+): { blob: Blob; filename: string } | null {
   if (value instanceof File && value.size > 0) {
-    return value;
+    return { blob: value, filename: value.name || "engine-sound" };
+  }
+  if (typeof Blob !== "undefined" && value instanceof Blob && value.size > 0) {
+    const named = value as Blob & { name?: string };
+    return {
+      blob: value,
+      filename:
+        typeof named.name === "string" && named.name.length > 0
+          ? named.name
+          : "engine-sound",
+    };
   }
   return null;
+}
+
+function uploadFileFromFormData(formData: FormData): File | null {
+  const upload =
+    asUploadBlob(formData.get("file")) ??
+    asUploadBlob(formData.get("sound")) ??
+    asUploadBlob(formData.get("audio"));
+  if (!upload) return null;
+
+  if (upload.blob instanceof File) {
+    return upload.blob;
+  }
+
+  return new File([upload.blob], upload.filename, {
+    type: upload.blob.type || "application/octet-stream",
+    lastModified: Date.now(),
+  });
+}
+
+function optionalTagUuid(value: FormDataEntryValue | null): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 async function revalidateEngineSoundPaths(
@@ -95,16 +129,24 @@ export async function POST(request: NextRequest) {
       formData = await request.formData();
     } catch (error) {
       console.error("[vehicle-engine-sound] formData parse failed", error);
-      return jsonError(400, "Upload konnte nicht gelesen werden.", "bad_request");
+      return jsonError(
+        400,
+        "Upload konnte nicht gelesen werden — Datei kleiner als 2 MB und als MP3, M4A oder WAV erneut versuchen.",
+        "bad_request",
+      );
     }
 
     const metaParsed = metaSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
-      tagUuid: formData.get("tagUuid"),
+      tagUuid: optionalTagUuid(formData.get("tagUuid")),
       durationSeconds: formData.get("durationSeconds"),
     });
     if (!metaParsed.success) {
-      return jsonError(400, "Ungültige Upload-Daten.", "bad_request");
+      return jsonError(
+        400,
+        "Ungültige Upload-Daten — max. 10 Sekunden, MP3, M4A oder WAV.",
+        "bad_request",
+      );
     }
     const { vehicleId, tagUuid, durationSeconds } = metaParsed.data;
 
