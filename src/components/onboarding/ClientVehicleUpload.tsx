@@ -48,6 +48,9 @@ export type ClientVehicleUploadProps = {
   title?: string;
   description?: string;
   className?: string;
+  /** Card with header (default) or plain block for settings subpages. */
+  layout?: "card" | "plain";
+  hideHeader?: boolean;
 };
 
 type UploadState = "idle" | "compressing" | "uploading" | "done";
@@ -235,6 +238,8 @@ export function ClientVehicleUpload({
   title = "Fahrzeugfoto",
   description = "Lade ein Foto deines Autos hoch — es erscheint oben rechts in deinem Dashboard.",
   className = "",
+  layout = "card",
+  hideHeader = false,
 }: ClientVehicleUploadProps) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -395,27 +400,36 @@ export function ClientVehicleUpload({
     }
   }
 
+  const shellClass =
+    layout === "card"
+      ? "relative rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+      : "relative";
+
   return (
-    <section
-      className={`relative rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim()}
-    >
+    <section className={`${shellClass} ${className}`.trim()}>
       {onDismiss ? (
         <PromptCloseButton
           onClick={onDismiss}
           label="Foto-Hinweis schließen"
         />
       ) : null}
-      <h2
-        className={cn(
-          "font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]",
-          onDismiss ? "pr-10" : undefined,
-        )}
-      >
-        {title}
-      </h2>
-      <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-        {description}
-      </p>
+      {!hideHeader ? (
+        <>
+          <h2
+            className={cn(
+              "font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]",
+              onDismiss ? "pr-10" : undefined,
+            )}
+          >
+            {title}
+          </h2>
+          {description ? (
+            <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+              {description}
+            </p>
+          ) : null}
+        </>
+      ) : null}
 
       <div
         role="button"
@@ -435,7 +449,7 @@ export function ClientVehicleUpload({
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`relative mt-4 cursor-pointer rounded-2xl border border-dashed px-4 py-5 transition-colors ${
+        className={`relative ${hideHeader ? "mt-0" : "mt-4"} cursor-pointer rounded-2xl border border-dashed px-4 py-5 transition-colors ${
           dragOver
             ? "border-neutral-900 bg-neutral-900/[0.04]"
             : "border-[color:var(--vd-border)] bg-[color:var(--vd-bg)]"
@@ -527,7 +541,7 @@ export function ClientVehicleUpload({
       ) : null}
       {state === "done" ? (
         <p className="mt-3 text-[0.85rem] text-emerald-700" role="status">
-          Fahrzeugfoto gespeichert — es erscheint oben rechts im Dashboard.
+          Gespeichert.
         </p>
       ) : null}
     </section>

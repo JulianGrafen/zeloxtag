@@ -1,47 +1,49 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { Pause, Play } from "lucide-react";
+
 import { useEngineSound } from "@/hooks/use-engine-sound";
 import { cn } from "@/lib/utils";
+
+import { useShowroomMotion } from "./showroom-motion";
+import { showroom } from "./showroom-styles";
 
 type EngineStartButtonProps = {
   soundUrl: string | null;
   /** When true, show a disabled control if no sound is configured. */
   showMissingHint?: boolean;
+  /** Renders as a row inside a ShowroomGroup (public showcase). */
+  embedded?: boolean;
   className?: string;
 };
 
 export function EngineStartButton({
   soundUrl,
   showMissingHint = false,
+  embedded = false,
   className,
 }: EngineStartButtonProps) {
   const hasSound = Boolean(soundUrl?.trim());
+  const motionConfig = useShowroomMotion();
   const { audioRef, isPlaying, togglePlayback, handleAudioEnded } =
     useEngineSound({ soundUrl: hasSound ? soundUrl : null });
 
   if (!hasSound) {
     if (!showMissingHint) return null;
     return (
-      <div
-        className={cn(
-          "pointer-events-auto mt-5 w-full max-w-md rounded-2xl border border-white/15 bg-black/50 px-4 py-4 text-center backdrop-blur-md",
-          className,
-        )}
-      >
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-white/45">
-          Engine soundcheck
-        </p>
-        <p className="mt-2 text-[0.82rem] font-medium text-white/55">
-          Kein Soundcheck hinterlegt
-        </p>
+      <div className={cn("px-4 py-3.5 text-center", className)}>
+        <p className={showroom.rowLabel}>Soundcheck</p>
+        <p className={`mt-2 ${showroom.body}`}>Kein Soundcheck hinterlegt</p>
       </div>
     );
   }
 
-  const label = isPlaying ? "Soundcheck stoppen" : "Motor starten";
+  const actionLabel = isPlaying ? "Stoppen" : "Motor starten";
+  const embeddedLabel = isPlaying ? "Stoppen" : "Soundcheck";
 
   return (
-    <div className={cn("pointer-events-auto mt-5 w-full max-w-md", className)}>
+    <div className={cn("pointer-events-auto relative w-full", className)}>
       <audio
         ref={audioRef}
         preload="none"
@@ -53,37 +55,70 @@ export function EngineStartButton({
         type="button"
         onClick={togglePlayback}
         className={cn(
-          "group relative flex w-full items-center gap-4 rounded-2xl border border-white/20 bg-gradient-to-b from-zinc-800 to-zinc-950 px-4 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_12px_32px_rgba(0,0,0,0.45)] transition-transform active:scale-[0.98]",
-          isPlaying && "border-emerald-500/35",
+          embedded
+            ? showroom.disclosureRow
+            : cn(
+                showroom.panelFlat,
+                "flex min-h-[3.35rem] w-full items-center gap-3 px-4 py-3.5 text-left",
+              ),
+          "transition-colors active:scale-[0.99] active:bg-white/5",
+          !embedded && "hover:bg-white/[0.05]",
+          isPlaying && !embedded && "border-white/25 bg-white/[0.06]",
         )}
         aria-pressed={isPlaying}
-        aria-label={label}
+        aria-label={embedded ? `Soundcheck, ${actionLabel}` : actionLabel}
       >
-        <span
-          aria-hidden
-          className={cn(
-            "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-black/40 bg-zinc-900 shadow-[inset_0_2px_6px_rgba(0,0,0,0.65)]",
-            "before:absolute before:inset-[3px] before:rounded-full before:bg-gradient-to-b before:from-zinc-700 before:to-zinc-900",
+        <span aria-hidden className="flex shrink-0 text-white/80">
+          {isPlaying ? (
+            <Pause className="h-5 w-5" aria-hidden />
+          ) : (
+            <Play className="h-5 w-5 translate-x-0.5" aria-hidden />
           )}
-        >
+        </span>
+        <span className="min-w-0 flex-1 text-left">
+          {embedded ? (
+            <span className="block text-[0.94rem] font-medium text-white">
+              {embeddedLabel}
+            </span>
+          ) : (
+            <>
+              <span className={`block ${showroom.rowLabel}`}>Soundcheck</span>
+              <span className="mt-0.5 block text-[0.94rem] font-medium text-white">
+                {actionLabel}
+              </span>
+            </>
+          )}
+        </span>
+        {!embedded ? (
           <span
+            aria-hidden
             className={cn(
-              "relative z-10 h-2.5 w-2.5 rounded-full",
+              "h-2 w-2 shrink-0 rounded-full transition-colors",
               isPlaying
-                ? "bg-emerald-500 animate-pulse text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.85)]"
-                : "bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.8)]",
+                ? "animate-pulse bg-emerald-500"
+                : "bg-red-500",
             )}
           />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-white/50">
-            Soundcheck
-          </span>
-          <span className="mt-1 block text-[0.78rem] font-bold uppercase tracking-[0.08em] text-white sm:text-[0.82rem]">
-            {label}
-          </span>
-        </span>
+        ) : null}
       </button>
+      {embedded && isPlaying && !motionConfig.reduceMotion ? (
+        <motion.span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-4 bottom-0 h-px origin-left bg-white/30"
+          initial={{ scaleX: 0.15, opacity: 0.4 }}
+          animate={{ scaleX: [0.15, 1, 0.35], opacity: [0.4, 0.85, 0.5] }}
+          transition={{
+            duration: 1.4,
+            ease: "easeInOut",
+            repeat: Infinity,
+          }}
+        />
+      ) : embedded && isPlaying ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-white/30"
+        />
+      ) : null}
     </div>
   );
 }

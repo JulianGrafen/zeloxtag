@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Gauge, Save } from "lucide-react";
 
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
-import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
-import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
+import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
+import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
 import {
   PressableButton,
   PressableLink,
@@ -16,15 +16,8 @@ import {
   resolveOilChangeInterval,
 } from "@/lib/documents/oil-changes";
 import { formatMileageKmNumber } from "@/lib/documents/format";
-import {
-  cacheBustFromSilhouetteUrl,
-  silhouetteDisplayUrl,
-} from "@/lib/vehicles/silhouette-display-url";
-import {
-  clearSilhouetteFromSession,
-  readSilhouetteVersionFromSession,
-  writeSilhouetteToSession,
-} from "@/lib/vehicles/silhouette-session";
+import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
+import { readSilhouetteVersionFromSession } from "@/lib/vehicles/silhouette-session";
 import {
   formatOilChangeIntervalMonthsLabel,
   isOilChangeIntervalKmOption,
@@ -223,41 +216,14 @@ export function VehicleSpecsView({
           </p>
         ) : null}
 
-        {canEdit ? (
-          <VehicleSilhouetteUpload
-            vehicleId={vehicle.id}
-            tagUuid={tagUuid}
-            initialDisplayUrl={profilePhotoUrl}
-            allowDelete
+        <VehicleSettingsSubmenuGroup>
+          <VehicleSettingsSubmenuLink
+            href={`/v/${tagUuid}/daten/fahrzeugbild`}
+            variant="group"
             title="Fahrzeugbild"
-            description="Profilbild für dein Dashboard — erscheint auch im öffentlichen Showcase, wenn dein Profil aktiv ist."
-            onUploaded={(result: SilhouetteUploadResult) => {
-              const bust =
-                cacheBustFromSilhouetteUrl(result.displayUrl) ??
-                Date.now().toString();
-              writeSilhouetteToSession(vehicle.id, result.storageUrl, bust);
-              router.refresh();
-            }}
-            onDeleted={() => {
-              clearSilhouetteFromSession(vehicle.id);
-              router.refresh();
-            }}
+            subtitle={profilePhotoUrl ? "Hinterlegt" : "Kein Foto"}
           />
-        ) : profilePhotoUrl ? (
-          <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
-            <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-              Fahrzeugbild
-            </h2>
-            <div className="relative mx-auto mt-4 aspect-[4/3] w-full max-w-[14rem] overflow-hidden rounded-[1.1rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={profilePhotoUrl}
-                alt={`${title} Profilbild`}
-                className="h-full w-full object-cover"
-              />
-            </div>
-          </section>
-        ) : null}
+        </VehicleSettingsSubmenuGroup>
 
         {canEdit ? (
           <form

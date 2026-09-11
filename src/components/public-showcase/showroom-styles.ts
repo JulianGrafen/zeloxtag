@@ -1,15 +1,28 @@
 /** Shared black/white styling for the public showcase. */
 export const showroom = {
-  page: "min-h-dvh scroll-smooth bg-black text-white",
+  page: "min-h-dvh bg-black text-white",
   /** Tall hero so charts/photos breathe before the spec stack. */
   heroMinHeight: "min-h-[min(92dvh,920px)]",
-  /** Extra scroll runway for sticky hero scroll motion. */
-  heroScrollTrack: "min-h-[min(168dvh,1080px)]",
-  contentOverlap:
-    "relative z-10 -mt-16 rounded-t-[1.75rem] bg-black pt-8 shadow-[0_-28px_56px_rgba(0,0,0,0.55)] sm:-mt-20 sm:pt-10",
+  content: "relative z-10 bg-black pt-2",
   panel:
     "overflow-hidden rounded-[1.25rem] border border-white/15 bg-white/[0.03]",
-  panelFlat: "rounded-[1.25rem] border border-white/15 bg-white/[0.03]",
+  /** Legacy / gallery thumbs — light inset, no heavy shadow. */
+  specSurface: "overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]",
+  panelFlat:
+    "overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]",
+  group: "overflow-hidden rounded-2xl bg-white/[0.07]",
+  groupAccent:
+    "relative before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
+  groupDivider: "border-white/10",
+  sectionLabel:
+    "mb-2 px-1 text-[0.81rem] font-medium text-white/45",
+  rowLabel: "text-[0.94rem] text-white/55",
+  rowValue:
+    "text-right text-[0.94rem] font-medium tabular-nums text-white",
+  rowValueEmphasis:
+    "text-right text-[1.02rem] font-semibold tracking-tight tabular-nums text-white",
+  disclosureRow:
+    "flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-white/5",
   kicker:
     "text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-white/50",
   sectionTitle:
@@ -23,4 +36,6 @@ export const showroom = {
   cta: "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-[0.88rem] font-semibold text-black",
   footer:
     "text-center text-[0.68rem] uppercase tracking-[0.18em] text-white/35",
+  brandWordmark:
+    "font-[family-name:var(--font-bebas-neue)] text-[1.65rem] font-normal leading-none tracking-[0.34em] text-white sm:text-[1.85rem]",
 } as const;

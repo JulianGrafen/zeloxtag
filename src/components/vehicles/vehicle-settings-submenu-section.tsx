@@ -5,12 +5,14 @@ type VehicleSettingsSubmenuSectionProps = {
   className?: string;
 };
 
-/** Header + links block without an extra surface card (avoids nested white frames). */
+/** Label + submenu tiles. Tiles carry their own surface; this wrapper does not. */
 export function VehicleSettingsSubmenuSection({
   children,
   className = "",
 }: VehicleSettingsSubmenuSectionProps) {
   return (
-    <section className={`overflow-hidden ${className}`.trim()}>{children}</section>
+    <section className={`flex flex-col gap-2 ${className}`.trim()}>
+      {children}
+    </section>
   );
 }

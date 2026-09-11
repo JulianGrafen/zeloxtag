@@ -12,20 +12,23 @@ type ShowcaseMediaSettingsProps = {
   vehicle: Vehicle;
   galleryPhotos: Document[];
   canEdit: boolean;
+  variant?: "tile" | "group";
 };
 
 export function ShowcaseMediaSettings({
   tagUuid,
   vehicle,
   galleryPhotos,
+  variant = "tile",
 }: ShowcaseMediaSettingsProps) {
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
 
   return (
-    <div className="divide-y divide-[color:var(--vd-border)]">
+    <>
       <VehicleShowcaseGallerySubmenu
         tagUuid={tagUuid}
         photoCount={filterShowcaseGalleryDocuments(galleryPhotos).length}
+        variant={variant}
       />
 
       <VehicleShowcaseDynoSubmenu
@@ -33,6 +36,7 @@ export function ShowcaseMediaSettings({
         hasDynoChart={Boolean(
           resolveOwnerDynoChartViewUrl(vehicle.id, specs.dynoChartUrl),
         )}
+        variant={variant}
       />
 
       <VehicleShowcaseSoundSubmenu
@@ -40,7 +44,8 @@ export function ShowcaseMediaSettings({
         hasSound={Boolean(
           resolveOwnerEngineSoundViewUrl(vehicle.id, vehicle.sound_url),
         )}
+        variant={variant}
       />
-    </div>
+    </>
   );
 }

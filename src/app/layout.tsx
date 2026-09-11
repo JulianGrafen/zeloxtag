@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
-import { Poppins, Inter } from "next/font/google";
+import { Bebas_Neue, Poppins, Inter } from "next/font/google";
 
 import {
   DEFAULT_OG_DESCRIPTION,
@@ -23,6 +23,13 @@ const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+const bebasNeue = Bebas_Neue({
+  variable: "--font-bebas-neue",
+  subsets: ["latin"],
+  weight: "400",
   display: "swap",
 });
 
@@ -70,7 +77,12 @@ export default async function RootLayout({
   return (
     <html
       lang="de"
-      className={cn("h-full antialiased", inter.variable, poppins.variable)}
+      className={cn(
+        "h-full antialiased",
+        inter.variable,
+        poppins.variable,
+        bebasNeue.variable,
+      )}
     >
       <body className="min-h-full bg-background font-sans text-foreground">
         {children}

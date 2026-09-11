@@ -52,17 +52,13 @@ export default async function VehicleSettingsPage({
           Dashboard
         </Link>
 
-        <header className="space-y-2">
-          <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            Fahrzeug
-          </p>
+        <header className="space-y-1">
           <h1 className="font-[family-name:var(--font-display)] text-[1.65rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
             Showcase
           </h1>
-          <p className="text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
+          <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
             {vehicle.make} {vehicle.model}
-            {vehicle.year ? ` · ${vehicle.year}` : ""} — öffentliches Profil
-            und Verkaufs-Exposé.
+            {vehicle.year ? ` · ${vehicle.year}` : ""}
           </p>
         </header>
 

@@ -2,14 +2,12 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, ShieldCheck } from "lucide-react";
 
 import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -79,41 +77,34 @@ export function LoginForm({
   const [message, setMessage] = useState<string | null>(initialError ?? null);
   const [info, setInfo] = useState<string | null>(
     recovered
-      ? "2FA wurde mit einem Recovery-Code deaktiviert. Melde dich an und richte 2FA unter Einstellungen neu ein."
+      ? "2FA wurde deaktiviert. Nach dem Login kannst du sie in den Einstellungen neu einrichten."
       : null,
   );
   const [pending, startTransition] = useTransition();
 
   const isSignup = tab === "signup";
-  const tabs: Array<{ id: AuthTab; label: string; icon: typeof KeyRound }> = [
-    { id: "password", label: "Anmelden", icon: KeyRound },
-    { id: "signup", label: "Registrieren", icon: ShieldCheck },
-  ];
 
   return (
-    <ScanContent className="mx-auto w-full max-w-md gap-5 pb-12 pt-[max(1.75rem,env(safe-area-inset-top))]">
+    <ScanContent className="mx-auto w-full max-w-md gap-4 pb-12 pt-[max(1.75rem,env(safe-area-inset-top))]">
       <Card className="w-full overflow-hidden">
-        <CardHeader className="border-b border-border/70 pb-5">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <ShieldCheck className="h-5 w-5" aria-hidden />
-          </div>
+        <CardHeader className="border-b border-border/70 pb-4 pt-6">
           <CardTitle className="font-[family-name:var(--font-display)] text-2xl tracking-tight">
             ZeloxTag
           </CardTitle>
-          <CardDescription>
-            {isSignup
-              ? "Erstelle dein Konto für die digitale Fahrzeugakte."
-              : "Melde dich an, um deine digitale Fahrzeugakte zu öffnen."}
-          </CardDescription>
         </CardHeader>
 
-        <CardContent className="pt-5">
+        <CardContent className="pt-4">
           <div
             className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1"
             role="tablist"
             aria-label="Anmeldung oder Registrierung"
           >
-            {tabs.map(({ id, label, icon: Icon }) => {
+            {(
+              [
+                { id: "password" as const, label: "Anmelden" },
+                { id: "signup" as const, label: "Registrieren" },
+              ] as const
+            ).map(({ id, label }) => {
               const selected = tab === id;
               return (
                 <Button
@@ -124,7 +115,7 @@ export function LoginForm({
                   variant={selected ? "default" : "ghost"}
                   size="sm"
                   className={cn(
-                    "min-h-10 w-full justify-center gap-1.5 rounded-lg px-3",
+                    "min-h-10 w-full justify-center rounded-lg px-3",
                     !selected && "bg-transparent hover:bg-background/70",
                   )}
                   onClick={() => {
@@ -133,15 +124,14 @@ export function LoginForm({
                     setInfo(null);
                   }}
                 >
-                  <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                  <span>{label}</span>
+                  {label}
                 </Button>
               );
             })}
           </div>
 
           <form
-            className="mt-5 flex w-full flex-col gap-4"
+            className="mt-4 flex w-full flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               setMessage(null);
@@ -214,22 +204,22 @@ export function LoginForm({
                   autoComplete={isSignup ? "new-password" : "current-password"}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Mindestens 10 Zeichen"
+                  placeholder={isSignup ? "Min. 10 Zeichen" : "Passwort"}
                   className={AUTH_FIELD_CLASS}
                 />
               </AuthField>
             </div>
 
-            <div className="flex min-h-5 w-full items-center justify-end">
-              {!isSignup ? (
+            {!isSignup ? (
+              <div className="flex w-full justify-end">
                 <a
                   href="/login/reset"
                   className="text-sm text-muted-foreground underline-offset-4 hover:underline"
                 >
                   Passwort vergessen?
                 </a>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
 
             {message ? (
               <p
@@ -245,26 +235,22 @@ export function LoginForm({
               </p>
             ) : null}
 
-            <div
-              className={cn(
-                "min-h-[3.25rem] w-full text-xs leading-relaxed text-muted-foreground",
-                !isSignup && "invisible",
-              )}
-              aria-hidden={!isSignup}
-            >
-              Mit der Registrierung akzeptierst du unsere{" "}
-              <a href="/agb" className="underline-offset-4 hover:underline">
-                AGB
-              </a>{" "}
-              und nimmst unsere{" "}
-              <a
-                href="/datenschutz"
-                className="underline-offset-4 hover:underline"
-              >
-                Datenschutzerklärung
-              </a>{" "}
-              zur Kenntnis.
-            </div>
+            {isSignup ? (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Mit „Konto erstellen“ akzeptierst du die{" "}
+                <a href="/agb" className="underline-offset-4 hover:underline">
+                  AGB
+                </a>{" "}
+                und{" "}
+                <a
+                  href="/datenschutz"
+                  className="underline-offset-4 hover:underline"
+                >
+                  Datenschutz
+                </a>
+                .
+              </p>
+            ) : null}
 
             <Button
               type="submit"
@@ -282,8 +268,8 @@ export function LoginForm({
         </CardContent>
       </Card>
 
-      <p className="text-center text-sm leading-relaxed text-muted-foreground">
-        Neuer Tag? Scanne den QR-Code am Fahrzeug, um ihn zu beanspruchen.
+      <p className="text-center text-sm text-muted-foreground">
+        Neuer Tag? QR am Fahrzeug scannen.
       </p>
 
       <nav

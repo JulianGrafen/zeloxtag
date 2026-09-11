@@ -22,6 +22,7 @@ import {
   loadPublicShowcaseDocuments,
   resolvePublicVehicleEntry,
 } from "@/lib/vehicles/get-public-vehicle";
+import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
 import { buildPublicShowcasePayload, vehicleSupportsPublicShowcase } from "@/lib/vehicles/public-showcase-data";
 import {
   pageSocialMetadata,
@@ -55,7 +56,7 @@ interface TagScanPageProps {
 }
 
 function vehicleTitle(make: string, model: string, year: number | null): string {
-  const base = [make, model].filter(Boolean).join(" ");
+  const base = formatPublicVehicleTitle(make, model);
   return year ? `${base} · ${year}` : base;
 }
 

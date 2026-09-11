@@ -1,37 +1,34 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Activity, Cog, Gauge, Zap } from "lucide-react";
+import { motion } from "framer-motion";
 
-import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
+import type {
+  PublicModification,
+  PublicShowcaseProfile,
+} from "@/lib/vehicles/public-showcase-data";
 
 import CountUp from "./CountUp";
-import { SpecCard } from "./SpecCard";
+import { EngineStartButton } from "./EngineStartButton";
+import { ShowroomDyno } from "./ShowroomDyno";
+import { ShowroomGroup } from "./ShowroomGroup";
+import { ShowroomMods } from "./ShowroomMods";
+import { ShowroomRevealItem } from "./ShowroomRevealItem";
+import { ShowroomSpecRow } from "./ShowroomSpecRow";
+import { buildShowcaseSpecRows } from "./showcase-spec-rows";
+import { useShowroomMotion } from "./showroom-motion";
 import { showroom } from "./showroom-styles";
 
 type ShowroomStatsProps = {
   profile: PublicShowcaseProfile;
+  modifications: PublicModification[];
 };
-
-function formatEngine(profile: PublicShowcaseProfile): string | null {
-  if (profile.engine) return profile.engine;
-  if (profile.displacementCc != null) {
-    const liters = (profile.displacementCc / 1000).toFixed(1);
-    return `${liters}L`;
-  }
-  return null;
-}
-
-function formatDrivetrain(profile: PublicShowcaseProfile): string | null {
-  const parts = [profile.drivetrain, profile.transmission].filter(Boolean);
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
 
 function animatedStatValue(
   amount: number | null | undefined,
   unit: string,
 ): ReactNode {
-  if (amount == null || !Number.isFinite(amount)) return "—";
+  if (amount == null || !Number.isFinite(amount)) return null;
   return (
     <>
       <CountUp
@@ -39,7 +36,7 @@ function animatedStatValue(
         to={amount}
         separator=","
         direction="up"
-        duration={1}
+        duration={1.7}
         className="count-up-text"
         delay={0}
       />{" "}
@@ -48,38 +45,84 @@ function animatedStatValue(
   );
 }
 
-export function ShowroomStats({ profile }: ShowroomStatsProps) {
-  const engine = formatEngine(profile);
-  const drive = formatDrivetrain(profile);
-  const hasPower = profile.powerPs != null;
-  const hasTorque = profile.torqueNm != null;
+export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
+  const motionConfig = useShowroomMotion();
+  const vehicleRows = buildShowcaseSpecRows(profile, animatedStatValue);
+  const hasSoundcheck = Boolean(profile.engineSoundUrl?.trim());
+  const hasModsSection =
+    modifications.length > 0 || Boolean(profile.notes?.trim());
+  const hasDyno = Boolean(profile.dynoChartUrl);
+  const hasShowcaseGroup = hasSoundcheck || hasModsSection || hasDyno;
 
-  if (!hasPower && !hasTorque && !engine && !drive) return null;
+  if (vehicleRows.length === 0 && !hasShowcaseGroup) {
+    return null;
+  }
 
   return (
-    <section className="relative z-10 px-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <SpecCard
-          label="Leistung"
-          value={animatedStatValue(profile.powerPs, "PS")}
-          icon={<Zap className={`h-3 w-3 ${showroom.icon}`} aria-hidden />}
-        />
-        <SpecCard
-          label="Drehmoment"
-          value={animatedStatValue(profile.torqueNm, "Nm")}
-          icon={<Activity className={`h-3 w-3 ${showroom.icon}`} aria-hidden />}
-        />
-        <SpecCard
-          label="Motor"
-          value={engine ?? "—"}
-          icon={<Cog className={`h-3 w-3 ${showroom.icon}`} aria-hidden />}
-        />
-        <SpecCard
-          label="Antrieb"
-          value={drive ?? "—"}
-          icon={<Gauge className={`h-3 w-3 ${showroom.icon}`} aria-hidden />}
-        />
-      </div>
-    </section>
+    <motion.section
+      className="relative z-10 flex flex-col gap-6 px-4"
+      variants={motionConfig.staggerContainer}
+      initial="hidden"
+      whileInView="visible"
+      viewport={motionConfig.viewport}
+    >
+      {vehicleRows.length > 0 ? (
+        <ShowroomRevealItem>
+          <div>
+            <h2 className={showroom.sectionLabel}>Fahrzeugdaten</h2>
+            <motion.div
+              variants={motionConfig.rowRevealContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={motionConfig.viewport}
+            >
+              <ShowroomGroup>
+                {vehicleRows.map((row) => (
+                  <motion.div
+                    key={row.key}
+                    variants={motionConfig.rowRevealItem}
+                  >
+                    <ShowroomSpecRow
+                      label={row.label}
+                      value={row.value}
+                      emphasis={row.emphasis}
+                    />
+                  </motion.div>
+                ))}
+              </ShowroomGroup>
+            </motion.div>
+          </div>
+        </ShowroomRevealItem>
+      ) : null}
+
+      {hasShowcaseGroup ? (
+        <ShowroomRevealItem>
+          <div className="flex flex-col gap-4">
+              {hasSoundcheck ? (
+                <ShowroomGroup accent>
+                  <EngineStartButton
+                    soundUrl={profile.engineSoundUrl}
+                    embedded
+                  />
+                </ShowroomGroup>
+              ) : null}
+              {hasModsSection ? (
+                <ShowroomGroup>
+                  <ShowroomMods
+                    profile={profile}
+                    modifications={modifications}
+                    embedded
+                  />
+                </ShowroomGroup>
+              ) : null}
+              {hasDyno ? (
+                <ShowroomGroup>
+                  <ShowroomDyno profile={profile} embedded />
+                </ShowroomGroup>
+              ) : null}
+          </div>
+        </ShowroomRevealItem>
+      ) : null}
+    </motion.section>
   );
 }

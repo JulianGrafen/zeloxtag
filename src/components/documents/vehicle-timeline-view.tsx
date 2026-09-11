@@ -86,19 +86,14 @@ export function VehicleTimelineView({
             ) : null}
           </div>
 
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
-            <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
+          <header className="space-y-1 px-0.5">
+            <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)]">
               Historie
             </h1>
-            <p className="mt-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Belege, Ölwechsel, TÜV und{" "}
-              <span className="font-medium text-[color:var(--vd-text)]">
-                manuelle Einträge
-              </span>
-              {" "}— sortiert nach KM-Stand. Einträge ohne Kilometerstand
-              stehen unten in einem eigenen Block.
+            <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
+              {vehicleLabel}
             </p>
-          </div>
+          </header>
         </header>
 
         <VehicleTimeline
