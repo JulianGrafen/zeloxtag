@@ -9,6 +9,7 @@ import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DOCUMENT_DETAIL_TITLE_CLASS } from "@/components/documents/document-detail-hero";
 import { displayDocumentTitle } from "@/lib/documents/format";
 
 type EditableTitleSectionProps = {
@@ -79,7 +80,7 @@ export function EditableTitleSection({
     <div className="min-w-0">
       {!editing ? (
         <div className="flex items-start gap-2">
-          <h1 className="min-w-0 font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
+          <h1 className={`min-w-0 ${DOCUMENT_DETAIL_TITLE_CLASS}`}>
             {displayTitle}
           </h1>
           <PressableButton

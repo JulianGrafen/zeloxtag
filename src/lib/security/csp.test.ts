@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { NextResponse } from "next/server";
+
 import {
+  applyProxiedResponseSecurityHeaders,
   buildContentSecurityPolicy,
   generateCspNonce,
   staticSecurityHeaderEntries,
@@ -43,6 +46,29 @@ describe("buildContentSecurityPolicy", () => {
 
   it("generates unique nonces", () => {
     expect(generateCspNonce()).not.toBe(generateCspNonce());
+  });
+});
+
+describe("applyProxiedResponseSecurityHeaders", () => {
+  it("uses frameable headers for inline document file API", () => {
+    const response = NextResponse.next();
+    applyProxiedResponseSecurityHeaders(response, "/api/documents/file");
+
+    expect(response.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
+    expect(response.headers.get("Cross-Origin-Embedder-Policy")).toBeNull();
+    expect(response.headers.get("Content-Security-Policy")).toMatch(
+      /object-src 'self'/,
+    );
+  });
+
+  it("applies page isolation headers for HTML routes", () => {
+    const response = NextResponse.next();
+    applyProxiedResponseSecurityHeaders(response, "/v/zlx-demo/dokumente/1");
+
+    expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(response.headers.get("Cross-Origin-Embedder-Policy")).toBe(
+      "credentialless",
+    );
   });
 });
 

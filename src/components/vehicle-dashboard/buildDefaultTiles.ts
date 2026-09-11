@@ -79,7 +79,7 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "abe",
-      title: "ABE",
+      title: "ABE & Gutachten",
       icon: "stamp",
     },
     {

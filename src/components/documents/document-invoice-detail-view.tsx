@@ -7,13 +7,17 @@ import {
   CheckCircle2,
   FileText,
   Pencil,
-  Receipt,
   Share2,
   Trash2,
 } from "lucide-react";
 
 import { deleteDocument } from "@/actions/delete-document";
 
+import {
+  DocumentDetailHero,
+  DocumentDetailHeroAmount,
+  DocumentDetailHeroChip,
+} from "@/components/documents/document-detail-hero";
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
@@ -198,53 +202,42 @@ export function DocumentInvoiceDetailView({
           Zurück zur Liste
         </PressableLink>
 
-        <header className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              {canEditInvoice ? (
-                <EditableTitleSection
-                    documentId={document.id}
-                    vehicleId={document.vehicle_id}
-                    tagUuid={tagUuid}
-                    title={title}
-                    onSaved={setTitle}
-                  />
-              ) : (
-                <h1 className="font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
-                  {title}
-                </h1>
-              )}
-              <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-                {vendor}
-                {vehicleLabel ? ` · ${vehicleLabel}` : ""}
-              </p>
-            </div>
-            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-              <Receipt className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-            </span>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              {paymentBadge ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-700">
-                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                  {paymentBadge}
-                </span>
-              ) : null}
-              {issuedLabel ? (
-                <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-muted)]">
-                  {issuedLabel}
-                </span>
-              ) : null}
-            </div>
-            {document.amount !== null ? (
-              <p className="text-[1.35rem] font-bold tracking-[-0.03em] tabular-nums text-[color:var(--vd-text)]">
+        <DocumentDetailHero
+          title={
+            canEditInvoice ? (
+              <EditableTitleSection
+                documentId={document.id}
+                vehicleId={document.vehicle_id}
+                tagUuid={tagUuid}
+                title={title}
+                onSaved={setTitle}
+              />
+            ) : (
+              title
+            )
+          }
+          subtitle={
+            <>
+              {vendor}
+              {vehicleLabel ? ` · ${vehicleLabel}` : ""}
+            </>
+          }
+          trailing={
+            document.amount !== null ? (
+              <DocumentDetailHeroAmount>
                 {formatEur(document.amount)}
-              </p>
-            ) : null}
-          </div>
-        </header>
+              </DocumentDetailHeroAmount>
+            ) : undefined
+          }
+          chips={
+            paymentBadge ? (
+              <DocumentDetailHeroChip className="bg-emerald-500/10 text-emerald-700">
+                <CheckCircle2 className="h-3 w-3" aria-hidden />
+                {paymentBadge}
+              </DocumentDetailHeroChip>
+            ) : undefined
+          }
+        />
 
         <ApprovalFieldsSection
           approvalFields={document.approval_fields}

@@ -15,6 +15,10 @@ import { CompatibilityTable } from "@/components/dashboard/CompatibilityTable";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import { matchCompatibilityTable } from "@/services/ocr/TableMatchingService";
 
+import {
+  DocumentDetailHero,
+  DocumentDetailHeroChip,
+} from "@/components/documents/document-detail-hero";
 import type { AbeDocument } from "./abeDocuments";
 import { PressableButton, PressableLink } from "./Pressable";
 
@@ -82,35 +86,27 @@ export function AbeDocumentDetailView({
           Zurück zur Liste
         </PressableLink>
 
-        {/* Hero */}
-        <header className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
-                {document.partName}
-              </h1>
-              <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-                {document.manufacturer} · {vehicleModel}
-              </p>
-            </div>
-            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-              <FileText className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-            </span>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-700">
-              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-              {document.status}
-            </span>
-            <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-text)]">
-              {document.category}
-            </span>
-            <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-muted)]">
-              {document.pages} Seiten
-            </span>
-          </div>
-        </header>
+        <DocumentDetailHero
+          title={document.partName}
+          subtitle={`ABE · ${document.manufacturer} · ${vehicleModel}`}
+          chips={
+            <>
+              <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-text)]">
+                ABE
+              </DocumentDetailHeroChip>
+              <DocumentDetailHeroChip className="bg-emerald-500/10 text-emerald-700">
+                <CheckCircle2 className="h-3 w-3" aria-hidden />
+                {document.status}
+              </DocumentDetailHeroChip>
+              <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-text)]">
+                {document.category}
+              </DocumentDetailHeroChip>
+              <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-muted)]">
+                {document.pages} Seiten
+              </DocumentDetailHeroChip>
+            </>
+          }
+        />
 
         {/* Key facts */}
         <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">

@@ -64,7 +64,7 @@ interface VehicleDocumentsViewProps {
 const FILTERS: Array<{ id: DocumentType | "all"; label: string }> = [
   { id: "all", label: "Alle" },
   { id: "invoice", label: "Rechnungen" },
-  { id: "abe", label: "Gutachten" },
+  { id: "abe", label: "ABE & Gutachten" },
   { id: "tuev", label: "TÜV" },
   { id: "other", label: "Andere" },
 ];
@@ -449,9 +449,7 @@ function DocumentRow({
           if (categoryLabel) parts.push(categoryLabel);
           return parts.join(" · ");
         })()
-      : document.type === "abe" &&
-          document.approval_fields &&
-          document.approval_fields.kind !== "abe"
+      : document.type === "abe"
         ? approvalKindLabel(document.approval_fields)
         : document.type === "tuev" && document.approval_fields?.kind === "tuev"
           ? approvalKindLabel(document.approval_fields)

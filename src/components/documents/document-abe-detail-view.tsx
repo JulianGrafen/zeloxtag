@@ -7,6 +7,10 @@ import {
   FileText,
 } from "lucide-react";
 
+import {
+  DocumentDetailHero,
+  DocumentDetailHeroChip,
+} from "@/components/documents/document-detail-hero";
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import {
@@ -137,10 +141,7 @@ export function DocumentAbeDetailView({
       kbaNumber: document.kba_number,
       abeNr: document.invoice_number,
     });
-  const subtitle = [
-    titleIncludesManufacturer ? null : manufacturer || null,
-    vehicleLabel,
-  ]
+  const subtitle = [kindLabel, titleIncludesManufacturer ? null : manufacturer || null, vehicleLabel]
     .filter(Boolean)
     .join(" · ");
 
@@ -161,49 +162,37 @@ export function DocumentAbeDetailView({
           Zurück zur Liste
         </PressableLink>
 
-        <header className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
-                {partName}
-              </h1>
-              {subtitle ? (
-                <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-                  {subtitle}
-                </p>
+        <DocumentDetailHero
+          title={partName}
+          subtitle={subtitle || undefined}
+          chips={
+            <>
+              {showValidBadge ? (
+                <DocumentDetailHeroChip className="bg-emerald-500/10 text-emerald-700">
+                  <CheckCircle2 className="h-3 w-3" aria-hidden />
+                  gültig
+                </DocumentDetailHeroChip>
+              ) : !isTeilegutachten ? (
+                <DocumentDetailHeroChip className="bg-amber-500/10 text-amber-800">
+                  <AlertTriangle className="h-3 w-3" aria-hidden />
+                  Prüfung
+                </DocumentDetailHeroChip>
               ) : null}
-            </div>
-            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-              <FileText className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-            </span>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {showValidBadge ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                gültig
-              </span>
-            ) : !isTeilegutachten ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-amber-800">
-                <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
-                Prüfung
-              </span>
-            ) : null}
-            {vaultCategory ? (
-              <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-text)]">
-                {vaultCategory}
-              </span>
-            ) : document.part_category ? (
-              <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-text)]">
-                {document.part_category}
-              </span>
-            ) : null}
-            <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-muted)]">
-              {pages} {pages === 1 ? "Seite" : "Seiten"}
-            </span>
-          </div>
-        </header>
+              {vaultCategory ? (
+                <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-text)]">
+                  {vaultCategory}
+                </DocumentDetailHeroChip>
+              ) : document.part_category ? (
+                <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-text)]">
+                  {document.part_category}
+                </DocumentDetailHeroChip>
+              ) : null}
+              <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-muted)]">
+                {pages} {pages === 1 ? "Seite" : "Seiten"}
+              </DocumentDetailHeroChip>
+            </>
+          }
+        />
 
         {isTeilegutachten ? (
           <div

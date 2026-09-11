@@ -195,6 +195,30 @@ export function applyStaticSecurityHeaders(response: NextResponse): NextResponse
   return response;
 }
 
+const INLINE_DOCUMENT_FILE_API_PATH = "/api/documents/file";
+
+/** Same-origin PDF/image bytes for iframe embedding — not a document HTML page. */
+export function isInlineDocumentFileApiPath(pathname: string): boolean {
+  return pathname === INLINE_DOCUMENT_FILE_API_PATH;
+}
+
+/**
+ * Proxy response headers: inline document API must stay frameable (SAMEORIGIN)
+ * and must not inherit page COEP / X-Frame-Options DENY from HTML responses.
+ */
+export function applyProxiedResponseSecurityHeaders(
+  response: NextResponse,
+  pathname: string,
+): NextResponse {
+  if (isInlineDocumentFileApiPath(pathname)) {
+    for (const { key, value } of documentFileSecurityHeaderEntries()) {
+      response.headers.set(key, value);
+    }
+    return response;
+  }
+  return applyStaticSecurityHeaders(response);
+}
+
 /** next.config `headers()` entries for paths excluded from Proxy matcher. */
 export function nextConfigStaticAssetHeaderRoutes(): Array<{
   source: string;
@@ -268,10 +292,13 @@ export function createProxiedResponse(request: NextRequest): {
   const requestHeaders = buildNonceRequestHeaders(request, nonce, csp);
 
   const response = proxiedNextResponse(request, requestHeaders);
+  const pathname = request.nextUrl.pathname;
 
-  applyStaticSecurityHeaders(response);
+  applyProxiedResponseSecurityHeaders(response, pathname);
   response.headers.delete("X-Powered-By");
-  response.headers.set("Content-Security-Policy", csp);
+  if (!isInlineDocumentFileApiPath(pathname)) {
+    response.headers.set("Content-Security-Policy", csp);
+  }
 
   return { response, nonce };
 }
@@ -285,10 +312,13 @@ export function recreateProxiedResponse(
   const requestHeaders = buildNonceRequestHeaders(request, nonce, csp);
 
   const response = proxiedNextResponse(request, requestHeaders);
+  const pathname = request.nextUrl.pathname;
 
-  applyStaticSecurityHeaders(response);
+  applyProxiedResponseSecurityHeaders(response, pathname);
   response.headers.delete("X-Powered-By");
-  response.headers.set("Content-Security-Policy", csp);
+  if (!isInlineDocumentFileApiPath(pathname)) {
+    response.headers.set("Content-Security-Policy", csp);
+  }
 
   return response;
 }

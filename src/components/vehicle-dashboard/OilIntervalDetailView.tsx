@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
-  Droplet,
   Gauge,
   Pencil,
   Wrench,
@@ -16,6 +15,11 @@ import type { Document } from "@/types/database";
 
 import { OilChangeManualForm } from "./oil-change-manual-form";
 import type { OilChangeRecord } from "./oilChangeRecords";
+import {
+  DocumentDetailHero,
+  DocumentDetailHeroAmount,
+  DocumentDetailHeroChip,
+} from "@/components/documents/document-detail-hero";
 import { PressableButton, PressableLink } from "./Pressable";
 
 interface OilIntervalDetailViewProps {
@@ -103,38 +107,38 @@ export function OilIntervalDetailView({
           ) : null}
         </div>
 
-        <header className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="font-[family-name:var(--font-display)] text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.65rem]">
-                {record.date}
-              </h1>
-              <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-                {vehicleModel}
-                {record.workshop ? ` · ${record.workshop}` : ""}
-              </p>
-            </div>
-            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-              <Droplet className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-            </span>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {record.status === "aktuell" ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                Aktuell
-              </span>
-            ) : (
-              <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-muted)]">
-                Erledigt
-              </span>
-            )}
-            <span className="rounded-full bg-neutral-900/5 px-2.5 py-1 text-[0.7rem] font-medium text-[color:var(--vd-text)]">
-              {record.intervalKm.toLocaleString("de-DE")} km Intervall
-            </span>
-          </div>
-        </header>
+        <DocumentDetailHero
+          title="Ölwechsel"
+          subtitle={
+            <>
+              {record.date}
+              {vehicleModel ? ` · ${vehicleModel}` : ""}
+              {record.workshop ? ` · ${record.workshop}` : ""}
+            </>
+          }
+          trailing={
+            <DocumentDetailHeroAmount>
+              {record.mileageKm.toLocaleString("de-DE")} km
+            </DocumentDetailHeroAmount>
+          }
+          chips={
+            <>
+              {record.status === "aktuell" ? (
+                <DocumentDetailHeroChip className="bg-emerald-500/10 text-emerald-700">
+                  <CheckCircle2 className="h-3 w-3" aria-hidden />
+                  Aktuell
+                </DocumentDetailHeroChip>
+              ) : (
+                <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-muted)]">
+                  Erledigt
+                </DocumentDetailHeroChip>
+              )}
+              <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-text)]">
+                {record.intervalKm.toLocaleString("de-DE")} km Intervall
+              </DocumentDetailHeroChip>
+            </>
+          }
+        />
 
         <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
