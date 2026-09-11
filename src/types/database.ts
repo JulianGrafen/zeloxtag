@@ -49,6 +49,8 @@ export type Vehicle = {
   silhouette_image_url: string | null;
   /** Optional public engine soundcheck — storage path, migration 00056. */
   sound_url: string | null;
+  /** Spatial scene layer paths — migration 00060. */
+  spatial_scene?: Record<string, unknown> | null;
   /** Public showcase at meets / share links — migration 00030. */
   is_public: boolean;
   /** Hide prices on public profile (default true). */
@@ -260,6 +262,7 @@ export type Database = {
           tech_specs?: VehicleTechSpecs | Record<string, unknown> | null;
           silhouette_image_url?: string | null;
           sound_url?: string | null;
+          spatial_scene?: Record<string, unknown> | null;
           is_public?: boolean;
           hide_financials?: boolean;
           public_slug?: string | null;
@@ -278,6 +281,7 @@ export type Database = {
           tech_specs?: VehicleTechSpecs | Record<string, unknown> | null;
           silhouette_image_url?: string | null;
           sound_url?: string | null;
+          spatial_scene?: Record<string, unknown> | null;
           is_public?: boolean;
           hide_financials?: boolean;
           public_slug?: string | null;

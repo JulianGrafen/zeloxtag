@@ -7,6 +7,7 @@ import {
 import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { resolvePublicDynoChartHref } from "@/lib/vehicles/dyno-chart-constants";
 import { resolvePublicEngineSoundHref } from "@/lib/vehicles/engine-sound-constants";
+import { resolvePublicSpatialLayerUrls } from "@/lib/vehicles/spatial-scene-constants";
 import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
@@ -57,6 +58,8 @@ export type PublicShowcaseProfile = {
   publicSlug: string | null;
   /** Same-origin URL for optional engine soundcheck playback. */
   engineSoundUrl: string | null;
+  /** Far→near spatial PNG layers when generated (migration 00060). */
+  spatialLayerUrls: string[] | null;
 };
 
 export type PublicShowcasePayload = {
@@ -275,6 +278,10 @@ export function buildPublicShowcasePayload(
       engineSoundUrl: resolvePublicEngineSoundHref(
         vehicle.id,
         vehicle.sound_url,
+      ),
+      spatialLayerUrls: resolvePublicSpatialLayerUrls(
+        vehicle.id,
+        vehicle.spatial_scene,
       ),
     },
     photos,

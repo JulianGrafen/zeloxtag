@@ -25,6 +25,7 @@ const baseVehicle: Vehicle = {
   },
   silhouette_image_url: null,
   sound_url: null,
+  spatial_scene: null,
   is_public: true,
   hide_financials: true,
   public_slug: "abc123XYZ",

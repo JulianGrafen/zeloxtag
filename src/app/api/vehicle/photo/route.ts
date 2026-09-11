@@ -31,6 +31,7 @@ import {
 } from "@/lib/vehicles/silhouette-constants";
 import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 import { isPngBytes } from "@/lib/vehicles/silhouette-bytes";
+import { ensureVehicleSpatialScene } from "@/lib/vehicles/ensure-vehicle-spatial-scene";
 import { verifySilhouetteInStorage } from "@/lib/vehicles/verify-silhouette-storage";
 
 export const runtime = "nodejs";
@@ -276,6 +277,8 @@ export async function POST(request: NextRequest) {
         vehicleId,
       );
     }
+
+    await ensureVehicleSpatialScene(admin, vehicleId, null);
 
     if (tagUuid) {
       revalidatePath(`/v/${tagUuid}`, "page");
