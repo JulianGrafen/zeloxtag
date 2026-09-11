@@ -4,7 +4,7 @@ import { showroom } from "./showroom-styles";
 
 type SpecCardProps = {
   label: string;
-  value: string;
+  value: ReactNode;
   icon?: ReactNode;
 };
 

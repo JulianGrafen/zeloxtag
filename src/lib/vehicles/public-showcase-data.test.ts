@@ -116,6 +116,18 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.profile.notes).toBeNull();
   });
 
+  it("exposes a public engine sound proxy when sound_url is set", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      sound_url: `${baseVehicle.id}/engine-sound.mp3`,
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.profile.engineSoundUrl).toBe(
+      `/api/public/vehicle/${baseVehicle.id}/engine-sound`,
+    );
+  });
+
   it("never exposes invoice amounts on the public showroom payload", () => {
     const vehicle = { ...baseVehicle, hide_financials: false };
     const documents: Document[] = [

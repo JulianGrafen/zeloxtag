@@ -156,6 +156,35 @@ export async function loadPublicShowcaseDocuments(
   return loadVehicleDocuments(vehicleId);
 }
 
+/**
+ * Public tag/slug resolvers may omit `sound_url` until DB migrations are applied.
+ * Load it for public showcases so the engine soundcheck control can render.
+ */
+export async function enrichPublicShowcaseVehicle(
+  vehicle: Vehicle,
+): Promise<Vehicle> {
+  if (!vehicle.is_public) return vehicle;
+  if (vehicle.sound_url?.trim()) return vehicle;
+
+  if (!isSupabaseAdminConfigured()) return vehicle;
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("vehicles")
+    .select("sound_url")
+    .eq("id", vehicle.id)
+    .eq("is_public", true)
+    .maybeSingle();
+
+  if (error || !data) return vehicle;
+
+  const soundUrl =
+    typeof data.sound_url === "string" ? data.sound_url.trim() : "";
+  if (!soundUrl) return vehicle;
+
+  return { ...vehicle, sound_url: soundUrl };
+}
+
 export async function isVehiclePublicShowcase(
   vehicleId: string,
 ): Promise<boolean> {

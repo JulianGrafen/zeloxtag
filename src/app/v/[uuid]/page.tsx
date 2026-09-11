@@ -18,6 +18,7 @@ import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free-scan-quota";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 import {
+  enrichPublicShowcaseVehicle,
   loadPublicShowcaseDocuments,
   resolvePublicVehicleEntry,
 } from "@/lib/vehicles/get-public-vehicle";
@@ -137,8 +138,9 @@ export async function generateMetadata({
 }
 
 async function renderPublicShowcase(vehicle: Vehicle) {
-  const documents = await loadPublicShowcaseDocuments(vehicle.id);
-  const payload = buildPublicShowcasePayload(vehicle, documents);
+  const showcaseVehicle = await enrichPublicShowcaseVehicle(vehicle);
+  const documents = await loadPublicShowcaseDocuments(showcaseVehicle.id);
+  const payload = buildPublicShowcasePayload(showcaseVehicle, documents);
 
   return <PublicShowcaseView data={payload} />;
 }
