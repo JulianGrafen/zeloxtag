@@ -1,6 +1,10 @@
 /** Shared black/white styling for the public showcase. */
 export const showroom = {
-  page: "min-h-dvh bg-black text-white",
+  page: "min-h-dvh scroll-smooth bg-black text-white",
+  /** Tall hero so charts/photos breathe before the spec stack. */
+  heroMinHeight: "min-h-[min(92dvh,920px)]",
+  contentOverlap:
+    "relative z-10 -mt-16 rounded-t-[1.75rem] bg-black pt-8 shadow-[0_-28px_56px_rgba(0,0,0,0.55)] sm:-mt-20 sm:pt-10",
   panel:
     "overflow-hidden rounded-[1.25rem] border border-white/15 bg-white/[0.03]",
   panelFlat: "rounded-[1.25rem] border border-white/15 bg-white/[0.03]",
