@@ -23,16 +23,17 @@ import {
   type PaywallVariant,
 } from "@/lib/permissions/feature-access";
 import {
+  clearSilhouettePreviewFromSession,
   readSilhouettePreviewFromSession,
   writeSilhouettePreviewToSession,
 } from "@/lib/vehicles/silhouette-preview-session";
 import {
   cacheBustFromSilhouetteUrl,
-  silhouetteCacheBustEqual,
   silhouetteDisplayUrl,
 } from "@/lib/vehicles/silhouette-display-url";
 import {
   readSilhouetteFromSession,
+  readSilhouetteVersionFromSession,
   writeSilhouetteToSession,
 } from "@/lib/vehicles/silhouette-session";
 import {
@@ -75,23 +76,48 @@ function initialSilhouetteStorageUrl(vehicle: Vehicle): string | null {
   return readSilhouetteFromSession(vehicle.id);
 }
 
+function resolveSilhouetteCacheBust(
+  vehicleId: string,
+  storageUrl: string | null | undefined,
+  serverUpdatedAt?: string | null,
+): string {
+  const fromUrl = storageUrl ? cacheBustFromSilhouetteUrl(storageUrl) : null;
+  if (fromUrl) return fromUrl;
+  const fromSession = readSilhouetteVersionFromSession(vehicleId);
+  if (fromSession) return fromSession;
+  const fromServer = serverUpdatedAt?.trim();
+  if (fromServer) return fromServer;
+  return Date.now().toString();
+}
+
 function proxyUrlForStorage(
   vehicleId: string,
   storageUrl: string | null | undefined,
+  serverUpdatedAt?: string | null,
 ): string | null {
   if (!storageUrl?.trim()) return null;
-  const bust =
-    cacheBustFromSilhouetteUrl(storageUrl) ?? Date.now().toString();
+  const bust = resolveSilhouetteCacheBust(
+    vehicleId,
+    storageUrl,
+    serverUpdatedAt,
+  );
   return silhouetteDisplayUrl(vehicleId, bust);
 }
 
 function initialVehicleImageOverride(
   vehicleId: string,
   storageUrl: string | null | undefined,
+  serverUpdatedAt?: string | null,
 ): string | null {
   const preview = readSilhouettePreviewFromSession(vehicleId);
   if (preview) return preview;
-  return proxyUrlForStorage(vehicleId, storageUrl);
+  return proxyUrlForStorage(vehicleId, storageUrl, serverUpdatedAt);
+}
+
+function silhouetteProxyCacheBust(url: string | null | undefined): string | null {
+  const trimmed = url?.trim();
+  if (!trimmed?.startsWith("/api/vehicle/silhouette/")) return null;
+  return cacheBustFromSilhouetteUrl(trimmed);
 }
 
 type DashboardMode = "dashboard" | "pick-scan" | "scanner";
@@ -302,6 +328,7 @@ export function TagDashboardShell({
       initialVehicleImageOverride(
         vehicle.id,
         initialSilhouetteStorageUrl(vehicle),
+        vehicle.updated_at,
       ),
   );
   const [previewFallbackUrl, setPreviewFallbackUrl] = useState<string | null>(
@@ -380,24 +407,34 @@ export function TagDashboardShell({
   }
 
   /**
-   * Sync from server only when the stored Supabase URL actually changed
-   * (e.g. another tab or hard refresh). Never fight an in-session upload.
+   * Sync storage path + proxy bust from server (e.g. re-upload on Profil page).
+   * Path stays `{id}/silhouette.png` — use updated_at / session v for cache bust.
    */
   useEffect(() => {
     const serverUrl = vehicle.silhouette_image_url?.trim();
     if (!serverUrl) return;
-    if (silhouetteCacheBustEqual(serverUrl, silhouetteStorageUrl)) return;
 
-    setSilhouetteStorageUrl(serverUrl);
-    writeSilhouetteToSession(vehicle.id, serverUrl);
-    const proxy = proxyUrlForStorage(vehicle.id, serverUrl);
-    if (proxy) {
-      setVehicleImageOverride((current) => {
-        if (current?.startsWith("blob:")) return current;
-        return proxy;
-      });
-    }
-  }, [vehicle.id, vehicle.silhouette_image_url, silhouetteStorageUrl]);
+    const bust = resolveSilhouetteCacheBust(
+      vehicle.id,
+      serverUrl,
+      vehicle.updated_at,
+    );
+    writeSilhouetteToSession(vehicle.id, serverUrl, bust);
+    const proxy = silhouetteDisplayUrl(vehicle.id, bust);
+
+    setSilhouetteStorageUrl((current) =>
+      current === serverUrl ? current : serverUrl,
+    );
+
+    setVehicleImageOverride((current) => {
+      if (current?.startsWith("blob:") || current?.startsWith("data:image/")) {
+        return current;
+      }
+      const currentBust = silhouetteProxyCacheBust(current);
+      if (currentBust === bust) return current;
+      return proxy;
+    });
+  }, [vehicle.id, vehicle.silhouette_image_url, vehicle.updated_at]);
 
   useEffect(() => {
     return () => {
@@ -415,8 +452,11 @@ export function TagDashboardShell({
   }
 
   function handleSilhouetteUploaded(result: SilhouetteUploadResult) {
+    const displayBust =
+      cacheBustFromSilhouetteUrl(result.displayUrl) ?? Date.now().toString();
+
     setSilhouetteStorageUrl(result.storageUrl);
-    writeSilhouetteToSession(vehicle.id, result.storageUrl);
+    writeSilhouetteToSession(vehicle.id, result.storageUrl, displayBust);
 
     const previewDataUrl = result.previewDataUrl?.trim();
     if (previewDataUrl?.startsWith("data:image/")) {
@@ -445,28 +485,40 @@ export function TagDashboardShell({
         if (current !== immediateSrc && current !== preview) return current;
         return result.displayUrl;
       });
+      clearSilhouettePreviewFromSession(vehicle.id);
+      setPreviewFallbackUrl(null);
     });
   }
 
   function handleSilhouetteProxyLoad() {
     revokePreviewBlob();
+    clearSilhouettePreviewFromSession(vehicle.id);
+    setPreviewFallbackUrl(null);
   }
 
   useEffect(() => {
     const storage = silhouetteStorageUrl?.trim();
     if (!storage) return;
-    const proxy = proxyUrlForStorage(vehicle.id, storage);
+    const proxy = proxyUrlForStorage(
+      vehicle.id,
+      storage,
+      vehicle.updated_at,
+    );
     if (!proxy) return;
 
     void prefetchSilhouetteImage(proxy).then((ready) => {
       if (!ready) return;
       setVehicleImageOverride((value) => {
-        const src = value?.trim() ?? "";
-        if (src.startsWith("/api/vehicle/silhouette/")) return value;
+        if (value?.startsWith("blob:") || value?.startsWith("data:image/")) {
+          return value;
+        }
+        const nextBust = silhouetteProxyCacheBust(proxy);
+        const currentBust = silhouetteProxyCacheBust(value);
+        if (nextBust && currentBust && currentBust === nextBust) return value;
         return proxy;
       });
     });
-  }, [vehicle.id, silhouetteStorageUrl]);
+  }, [vehicle.id, silhouetteStorageUrl, vehicle.updated_at]);
 
   useEffect(() => {
     postTourSequenceHandledRef.current = false;

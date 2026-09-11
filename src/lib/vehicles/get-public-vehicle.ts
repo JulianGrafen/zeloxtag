@@ -213,7 +213,12 @@ export async function ensurePublicShowcaseSpatialScene(
     vehicle.id,
     vehicle.spatial_scene,
   );
-  if (!result.ok || !result.meta) return vehicle;
+  if (!result.ok || !result.meta) {
+    if (parseVehicleSpatialSceneMeta(vehicle.spatial_scene)) {
+      return { ...vehicle, spatial_scene: null };
+    }
+    return vehicle;
+  }
 
   return {
     ...vehicle,

@@ -3,8 +3,8 @@ export const showroom = {
   page: "min-h-dvh scroll-smooth bg-black text-white",
   /** Tall hero so charts/photos breathe before the spec stack. */
   heroMinHeight: "min-h-[min(92dvh,920px)]",
-  /** Scroll runway while the hero is sticky — spatial layer parallax only. */
-  heroSpatialTrack: "min-h-[min(118dvh,980px)]",
+  /** Extra document scroll while the hero stays sticky (spatial parallax). */
+  heroScrollSpacer: "h-[min(38dvh,340px)] shrink-0",
   contentOverlap:
     "relative z-10 -mt-16 rounded-t-[1.75rem] bg-black pt-8 shadow-[0_-28px_56px_rgba(0,0,0,0.55)] sm:-mt-20 sm:pt-10",
   panel:

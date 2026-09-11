@@ -17,10 +17,14 @@ import {
 } from "@/lib/documents/oil-changes";
 import { formatMileageKmNumber } from "@/lib/documents/format";
 import {
+  cacheBustFromSilhouetteUrl,
+  silhouetteDisplayUrl,
+} from "@/lib/vehicles/silhouette-display-url";
+import {
   clearSilhouetteFromSession,
+  readSilhouetteVersionFromSession,
   writeSilhouetteToSession,
 } from "@/lib/vehicles/silhouette-session";
-import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 import {
   formatOilChangeIntervalMonthsLabel,
   isOilChangeIntervalKmOption,
@@ -134,7 +138,12 @@ export function VehicleSpecsView({
 
   const title = `${make.trim() || vehicle.make} ${model.trim() || vehicle.model}`;
   const profilePhotoUrl = vehicle.silhouette_image_url?.trim()
-    ? silhouetteDisplayUrl(vehicle.id)
+    ? silhouetteDisplayUrl(
+        vehicle.id,
+        vehicle.updated_at ??
+          readSilhouetteVersionFromSession(vehicle.id) ??
+          undefined,
+      )
     : null;
   const oilInterval = resolveOilChangeInterval(specs);
   const oilIntervalLabel = `${formatMileageKmNumber(oilInterval.intervalKm)} km · ${oilInterval.intervalMonths} Monate`;
@@ -223,7 +232,10 @@ export function VehicleSpecsView({
             title="Fahrzeugbild"
             description="Profilbild für dein Dashboard — erscheint auch im öffentlichen Showcase, wenn dein Profil aktiv ist."
             onUploaded={(result: SilhouetteUploadResult) => {
-              writeSilhouetteToSession(vehicle.id, result.storageUrl);
+              const bust =
+                cacheBustFromSilhouetteUrl(result.displayUrl) ??
+                Date.now().toString();
+              writeSilhouetteToSession(vehicle.id, result.storageUrl, bust);
               router.refresh();
             }}
             onDeleted={() => {

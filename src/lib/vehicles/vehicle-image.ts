@@ -35,6 +35,8 @@ export function resolveVehicleImage(input: {
   model: string;
   vehicleId?: string | null;
   silhouetteImageUrl?: string | null;
+  /** e.g. vehicles.updated_at — busts proxy when storage path is unchanged. */
+  silhouetteCacheBust?: string | number | null;
 }): VehicleImageMatch | undefined {
   const uploaded = input.silhouetteImageUrl?.trim();
   const vehicleId = input.vehicleId?.trim();
@@ -42,7 +44,9 @@ export function resolveVehicleImage(input: {
   // Owner uploads: always same-origin proxy (COEP blocks direct Supabase URLs).
   if (uploaded && vehicleId) {
     const bust =
-      cacheBustFromSilhouetteUrl(uploaded) ?? Date.now().toString();
+      input.silhouetteCacheBust != null && String(input.silhouetteCacheBust).trim() !== ""
+        ? String(input.silhouetteCacheBust)
+        : cacheBustFromSilhouetteUrl(uploaded) ?? Date.now().toString();
     return {
       src: silhouetteDisplayUrl(vehicleId, bust),
       alt: `${input.make} ${input.model}`.trim() || "Fahrzeug",

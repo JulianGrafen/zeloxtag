@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: vehicle, error: vehicleError } = await supabase
       .from("vehicles")
-      .select("id, user_id")
+      .select("id, user_id, spatial_scene")
       .eq("id", vehicleId)
       .maybeSingle();
 
@@ -278,7 +278,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await ensureVehicleSpatialScene(admin, vehicleId, null);
+    await ensureVehicleSpatialScene(admin, vehicleId, vehicle.spatial_scene, {
+      forceRegenerate: true,
+    });
 
     if (tagUuid) {
       revalidatePath(`/v/${tagUuid}`, "page");

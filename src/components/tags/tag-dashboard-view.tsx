@@ -123,6 +123,7 @@ export function TagDashboardView({
     model: vehicle.model,
     vehicleId: vehicle.id,
     silhouetteImageUrl: vehicle.silhouette_image_url,
+    silhouetteCacheBust: vehicle.updated_at,
   });
   const catalogCutout = resolveVehicleCatalogImage(vehicle.make, vehicle.model);
   const hasOwnerSilhouette = Boolean(

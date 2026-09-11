@@ -36,7 +36,7 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   const scrollTrackRef = useRef<HTMLElement | null>(null);
   const { scrollYProgress } = useScroll({
     target: scrollTrackRef,
-    offset: ["start start", "end start"],
+    offset: ["start start", "end end"],
   });
 
   const heroGalleryIndex = profile.heroImageSrc
@@ -51,24 +51,18 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   const heroSrc = profile.heroImageSrc ?? "";
   const heroKind = resolveShowroomHeroKind(heroSrc);
   const parallaxEnabled = Boolean(heroSrc) && !reduceMotion;
+  const usesSpatialScroll =
+    parallaxEnabled && heroKind !== "dyno" && heroKind !== "none";
   const heroImageClass =
     heroKind === "dyno"
       ? "object-contain object-center px-2"
       : "object-contain object-center";
 
-  const scrollTrackClass =
-    parallaxEnabled && heroKind !== "dyno"
-      ? showroom.heroSpatialTrack
-      : showroom.heroMinHeight;
-
   const textLayerClass = `pointer-events-none relative z-10 flex ${showroom.heroMinHeight} flex-col justify-end px-5 pb-10 pt-[max(4.5rem,env(safe-area-inset-top))]`;
 
   return (
     <>
-      <header
-        ref={scrollTrackRef}
-        className={`relative z-0 isolate ${scrollTrackClass}`}
-      >
+      <header ref={scrollTrackRef} className="relative z-0 isolate">
         <div
           className={`sticky top-0 z-0 ${showroom.heroMinHeight} overflow-hidden`}
         >
@@ -92,6 +86,9 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
             <HeroCopy profile={profile} title={title} yearLabel={yearLabel} />
           </div>
         </div>
+        {usesSpatialScroll ? (
+          <div className={showroom.heroScrollSpacer} aria-hidden />
+        ) : null}
       </header>
 
       {lightboxIndex !== null ? (

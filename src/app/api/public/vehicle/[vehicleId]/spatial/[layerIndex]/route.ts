@@ -75,9 +75,10 @@ export async function GET(
       headers: {
         "Content-Type": "image/png",
         "Content-Disposition": `inline; filename="spatial-layer-${layerIndex}.png"`,
-        "X-Content-Type-Options": "nosniff",
         "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
         "Cross-Origin-Resource-Policy": "same-origin",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
       },
     });
   } catch {

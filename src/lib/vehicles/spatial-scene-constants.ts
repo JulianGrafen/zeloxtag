@@ -33,10 +33,18 @@ export function publicSpatialLayerPath(
 export function resolvePublicSpatialLayerUrls(
   vehicleId: string,
   meta: unknown,
+  cacheBust?: string | number | null,
 ): string[] | null {
   const parsed = parseVehicleSpatialSceneMeta(meta);
   if (!parsed) return null;
-  return parsed.layers.map((_, index) => publicSpatialLayerPath(vehicleId, index));
+  const version =
+    cacheBust == null || String(cacheBust).trim() === ""
+      ? null
+      : encodeURIComponent(String(cacheBust));
+  return parsed.layers.map((_, index) => {
+    const path = publicSpatialLayerPath(vehicleId, index);
+    return version ? `${path}?v=${version}` : path;
+  });
 }
 
 export function parseVehicleSpatialSceneMeta(

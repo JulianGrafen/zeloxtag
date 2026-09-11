@@ -2,14 +2,15 @@
 
 import Image from "next/image";
 import { Expand } from "lucide-react";
+import { useCallback, useState } from "react";
 import { motion, useTransform, type MotionValue } from "framer-motion";
 
 import type { ShowroomHeroKind } from "@/lib/vehicles/showroom-hero-kind";
 import { showroomHeroUsesSpatialParallax } from "@/lib/vehicles/showroom-hero-kind";
 
-const PARALLAX_PX = 140;
-const TWO_LAYER_FACTORS = { bg: 0.15, fg: 0.45 };
-const THREE_LAYER_FACTORS = [0.12, 0.28, 0.48];
+const PARALLAX_PX = 200;
+const TWO_LAYER_FACTORS = { bg: 0.22, fg: 0.58 };
+const THREE_LAYER_FACTORS = [0.18, 0.38, 0.62];
 
 type ShowroomSpatialSceneProps = {
   heroImageSrc: string;
@@ -28,21 +29,23 @@ function SpatialImageLayer({
   className,
   y,
   priority = false,
+  onError,
 }: {
   src: string;
   className: string;
   y?: MotionValue<number>;
   priority?: boolean;
+  onError?: () => void;
 }) {
   const image = (
-    <Image
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
       src={src}
       alt=""
-      fill
-      priority={priority}
-      unoptimized
-      className={className}
-      sizes="100vw"
+      decoding="async"
+      fetchPriority={priority ? "high" : "auto"}
+      onError={onError}
+      className={`absolute inset-0 h-full w-full ${className}`}
     />
   );
 
@@ -72,6 +75,14 @@ export function ShowroomSpatialScene({
     parallaxEnabled && showroomHeroUsesSpatialParallax(heroKind);
   const hasStoredLayers =
     spatialLayerUrls != null && spatialLayerUrls.length === 3;
+  const [storedLayersFailed, setStoredLayersFailed] = useState(false);
+
+  const markStoredLayersFailed = useCallback(() => {
+    setStoredLayersFailed(true);
+  }, []);
+
+  const useStoredLayers =
+    hasStoredLayers && spatialLayerUrls && !storedLayersFailed;
 
   const bgY = useTransform(scrollYProgress, [0, 1], [
     0,
@@ -145,7 +156,7 @@ export function ShowroomSpatialScene({
     );
   }
 
-  if (hasStoredLayers && spatialLayerUrls) {
+  if (useStoredLayers && spatialLayerUrls) {
     return (
       <div className="absolute inset-0 overflow-hidden bg-black" aria-hidden>
         {studioPlate}
@@ -160,17 +171,20 @@ export function ShowroomSpatialScene({
             src={spatialLayerUrls[0]}
             className={`${heroImageClass} opacity-90`}
             y={layer0Y}
+            onError={markStoredLayersFailed}
           />
           <SpatialImageLayer
             src={spatialLayerUrls[1]}
             className={heroImageClass}
             y={layer1Y}
+            onError={markStoredLayersFailed}
           />
           <SpatialImageLayer
             src={spatialLayerUrls[2]}
             className={heroImageClass}
             y={layer2Y}
             priority
+            onError={markStoredLayersFailed}
           />
           {expandControl}
         </button>
@@ -191,7 +205,7 @@ export function ShowroomSpatialScene({
       >
         <SpatialImageLayer
           src={heroImageSrc}
-          className={`${heroImageClass} scale-110 blur-2xl brightness-[0.45] saturate-125`}
+          className={`${heroImageClass} scale-[1.18] blur-3xl brightness-[0.38] saturate-150`}
           y={bgY}
         />
         <SpatialImageLayer

@@ -18,7 +18,7 @@ async function imageResponse(bytes: Uint8Array): Promise<NextResponse> {
     status: 200,
     headers: {
       "Content-Type": contentType,
-      "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+      "Cache-Control": "private, max-age=0, must-revalidate",
       "Cross-Origin-Resource-Policy": "same-origin",
     },
   });

@@ -32,6 +32,21 @@ describe("resolveVehicleImage", () => {
     expect(match?.alt).toBe("BMW 530d");
   });
 
+  it("uses silhouetteCacheBust when the storage path is unchanged", () => {
+    const vehicleId = "11111111-1111-4111-8111-111111111111";
+    const match = resolveVehicleImage({
+      make: "BMW",
+      model: "530d",
+      vehicleId,
+      silhouetteImageUrl: `${vehicleId}/silhouette.png`,
+      silhouetteCacheBust: "2026-03-20T12:00:00.000Z",
+    });
+    expect(match).toEqual({
+      src: `/api/vehicle/silhouette/${vehicleId}?v=2026-03-20T12%3A00%3A00.000Z`,
+      alt: "BMW 530d",
+    });
+  });
+
   it("ignores remote URL without vehicleId and uses catalog", () => {
     const match = resolveVehicleImage({
       make: "BMW",

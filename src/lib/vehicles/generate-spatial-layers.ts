@@ -58,7 +58,19 @@ function buildDepthBands(
     }
   }
 
-  if (!found) return depth;
+  if (!found) {
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const pixel = readPixel(data, width, x, y);
+        if (pixel.a < 1) continue;
+        const t = y / Math.max(height - 1, 1);
+        if (t < 0.34) depth[y * width + x] = 0;
+        else if (t < 0.67) depth[y * width + x] = 1;
+        else depth[y * width + x] = 2;
+      }
+    }
+    return depth;
+  }
 
   const span = Math.max(maxY - minY, 1);
 
@@ -131,5 +143,53 @@ export async function generateSpatialLayersFromPng(
     layers.push(layerCanvas.toBuffer("image/png"));
   }
 
+  const band0 = extractBandLayer(source.data, depth, width, height, 0);
+  const band1 = extractBandLayer(source.data, depth, width, height, 1);
+  if (!rgbaHasOpaquePixels(band0) && !rgbaHasOpaquePixels(band1)) {
+    return buildFallbackSpatialLayers(source.data, width, height);
+  }
+
   return layers;
+}
+
+function rgbaHasOpaquePixels(data: Uint8ClampedArray): boolean {
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i]! >= 16) return true;
+  }
+  return false;
+}
+
+/** Full-frame photos when depth bands would be empty — far plate + mid + near. */
+function buildFallbackSpatialLayers(
+  source: Uint8ClampedArray,
+  width: number,
+  height: number,
+): Buffer[] {
+  const far = new Uint8ClampedArray(source.length);
+  const mid = new Uint8ClampedArray(source.length);
+  const near = new Uint8ClampedArray(source.length);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const pixel = readPixel(source, width, x, y);
+      if (pixel.a < 1) continue;
+      const t = y / Math.max(height - 1, 1);
+      if (t < 0.55) {
+        writePixel(far, width, x, y, {
+          ...pixel,
+          a: Math.round(pixel.a * 0.42),
+        });
+      }
+      if (t >= 0.28 && t < 0.72) {
+        writePixel(mid, width, x, y, pixel);
+      }
+      writePixel(near, width, x, y, pixel);
+    }
+  }
+
+  return [
+    canvasFromRgba(width, height, far).toBuffer("image/png"),
+    canvasFromRgba(width, height, mid).toBuffer("image/png"),
+    canvasFromRgba(width, height, near).toBuffer("image/png"),
+  ];
 }

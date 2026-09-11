@@ -282,6 +282,7 @@ export function buildPublicShowcasePayload(
       spatialLayerUrls: resolvePublicSpatialLayerUrls(
         vehicle.id,
         vehicle.spatial_scene,
+        vehicle.updated_at,
       ),
     },
     photos,
