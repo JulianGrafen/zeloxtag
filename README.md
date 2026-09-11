@@ -1,5 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## UI components (shadcn)
+
+This repo uses [shadcn/ui](https://ui.shadcn.com) components under `src/components/ui`. The CLI is not a runtime dependency — add or update blocks with:
+
+```bash
+npx shadcn@latest add <component>
+```
+
+Configuration lives in [`components.json`](components.json). Theme utilities are vendored in [`src/styles/shadcn-tailwind.css`](src/styles/shadcn-tailwind.css) — refresh from `shadcn@latest` `dist/tailwind.css` after major CLI upgrades.
+
 ## Getting Started
 
 First, run the development server:
