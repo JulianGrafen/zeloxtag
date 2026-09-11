@@ -41,6 +41,8 @@ function normalizePublicSlugVehicle(value: unknown): Vehicle | null {
       typeof vehicle.silhouette_image_url === "string"
         ? vehicle.silhouette_image_url
         : null,
+    sound_url:
+      typeof vehicle.sound_url === "string" ? vehicle.sound_url : null,
     created_at:
       typeof vehicle.created_at === "string" ? vehicle.created_at : "",
     updated_at:

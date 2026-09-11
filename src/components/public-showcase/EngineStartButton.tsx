@@ -38,9 +38,7 @@ export function EngineStartButton({
     );
   }
 
-  const label = isPlaying
-    ? "STOP ENGINE / SOUND CHECK"
-    : "ENGINE START / SOUNDCHECK";
+  const label = isPlaying ? "Soundcheck stoppen" : "Motor starten";
 
   return (
     <div className={cn("pointer-events-auto mt-5 w-full max-w-md", className)}>

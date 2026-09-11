@@ -16,7 +16,6 @@ import type {
 import { filterVisibleGalleryPhotos } from "./PublicGallery";
 import { ShowroomGalleryLightbox } from "./ShowroomGalleryLightbox";
 import { InstagramGlyph } from "./InstagramGlyph";
-import { EngineStartButton } from "./EngineStartButton";
 import { showroom } from "./showroom-styles";
 
 type ShowroomHeroProps = {
@@ -101,8 +100,6 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
               {instagramHandleLabel(profile.instagramHandle)}
             </a>
           ) : null}
-
-          <EngineStartButton soundUrl={profile.engineSoundUrl} />
         </div>
       </header>
 
