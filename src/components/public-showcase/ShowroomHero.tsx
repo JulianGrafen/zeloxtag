@@ -164,7 +164,7 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   const reduceMotion = useReducedMotion();
   const parallaxEnabled = Boolean(profile.heroImageSrc) && !reduceMotion;
 
-  const motion = useHeroScrollMotion();
+  const heroScroll = useHeroScrollMotion();
 
   const heroGalleryIndex = profile.heroImageSrc
     ? visiblePhotos.findIndex((photo) => photo.src === profile.heroImageSrc)
@@ -192,7 +192,7 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   return (
     <>
       <header
-        ref={motion.scrollTrackRef}
+        ref={heroScroll.scrollTrackRef}
         className={`relative z-0 isolate ${scrollTrackClass}`}
       >
         <div
@@ -204,17 +204,17 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
             heroImageClass={heroImageClass}
             visiblePhotosCount={visiblePhotos.length}
             onOpenGallery={openHeroInGallery}
-            imageScale={motion.imageScale}
-            imageY={motion.imageY}
-            imageRotateX={motion.imageRotateX}
-            imageFilter={motion.imageFilter}
+            imageScale={heroScroll.imageScale}
+            imageY={heroScroll.imageY}
+            imageRotateX={heroScroll.imageRotateX}
+            imageFilter={heroScroll.imageFilter}
             parallaxEnabled={motionActive}
           />
 
           {motionActive ? (
             <motion.div
               className={textLayerClass}
-              style={{ opacity: motion.textOpacity, y: motion.textY }}
+              style={{ opacity: heroScroll.textOpacity, y: heroScroll.textY }}
             >
               <HeroCopy
                 profile={profile}
