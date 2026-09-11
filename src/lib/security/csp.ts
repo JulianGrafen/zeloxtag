@@ -12,8 +12,7 @@
 
 import { randomBytes } from "crypto";
 
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 /** Request header read by Next.js when injecting nonces during SSR. */
 export const CSP_NONCE_HEADER = "x-nonce";
@@ -193,7 +192,7 @@ function proxiedNextResponse(
       method,
       body: request.body,
       duplex: "half",
-    } as RequestInit),
+    }),
   });
 }
 
