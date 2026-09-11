@@ -3,8 +3,22 @@
 import { usePathname } from "next/navigation";
 import { ViewTransition, type ReactNode } from "react";
 
+import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
+
 interface PageTransitionProps {
   children: ReactNode;
+}
+
+function showGlobalLegalFooter(pathname: string): boolean {
+  if (pathname === "/" || pathname.startsWith("/login")) return false;
+  if (
+    pathname === "/impressum" ||
+    pathname === "/agb" ||
+    pathname === "/datenschutz"
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -33,6 +47,11 @@ export function PageTransition({ children }: PageTransitionProps) {
     >
       <div className="vd-page" data-vd-page data-pathname={pathname}>
         {children}
+        {showGlobalLegalFooter(pathname) ? (
+          <LegalFooterNav
+            className="mx-auto w-full max-w-lg px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
+          />
+        ) : null}
       </div>
     </ViewTransition>
   );

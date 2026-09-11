@@ -1,5 +1,7 @@
 import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 
+import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
+
 import { ShowroomHero } from "./ShowroomHero";
 import { ShowroomStats } from "./ShowroomStats";
 import { showroom } from "./showroom-styles";
@@ -19,7 +21,10 @@ export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
           profile={data.profile}
           modifications={data.modifications}
         />
-        <footer className={`px-4 pb-2 ${showroom.footer}`}>ZeloxTag</footer>
+        <footer className={`space-y-3 px-4 pb-2 ${showroom.footer}`}>
+          <p>ZeloxTag</p>
+          <LegalFooterNav tone="inverse" />
+        </footer>
       </div>
     </div>
   );

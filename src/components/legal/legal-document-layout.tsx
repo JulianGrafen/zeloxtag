@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ScanContent } from "@/components/layout/scan-content";
+import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 
 interface LegalDocumentLayoutProps {
   title: string;
@@ -42,25 +43,7 @@ export function LegalDocumentLayout({
           </div>
         </article>
 
-        <p className="text-center text-[0.75rem] text-[color:var(--vd-muted)]">
-          <Link
-            href="/impressum"
-            className="underline-offset-2 hover:underline"
-          >
-            Impressum
-          </Link>
-          <span aria-hidden> · </span>
-          <Link href="/agb" className="underline-offset-2 hover:underline">
-            AGB
-          </Link>
-          <span aria-hidden> · </span>
-          <Link
-            href="/datenschutz"
-            className="underline-offset-2 hover:underline"
-          >
-            Datenschutz
-          </Link>
-        </p>
+        <LegalFooterNav />
       </ScanContent>
     </AppShell>
   );

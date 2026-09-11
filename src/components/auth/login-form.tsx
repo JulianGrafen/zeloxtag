@@ -4,6 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import { ScanContent } from "@/components/layout/scan-content";
+import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -272,20 +273,7 @@ export function LoginForm({
         Neuer Tag? QR am Fahrzeug scannen.
       </p>
 
-      <nav
-        aria-label="Rechtliches"
-        className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
-      >
-        <a href="/impressum" className="underline-offset-4 hover:underline">
-          Impressum
-        </a>
-        <a href="/datenschutz" className="underline-offset-4 hover:underline">
-          Datenschutz
-        </a>
-        <a href="/agb" className="underline-offset-4 hover:underline">
-          AGB
-        </a>
-      </nav>
+      <LegalFooterNav className="text-xs text-muted-foreground [&_a]:text-muted-foreground" />
     </ScanContent>
   );
 }
