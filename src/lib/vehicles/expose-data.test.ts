@@ -14,6 +14,7 @@ const vehicle: Vehicle = {
   vin: "WBSSECRET12345678",
   tech_specs: { notes: "Privat: Garage hinten links" },
   silhouette_image_url: null,
+  sound_url: null,
   is_public: false,
   hide_financials: false,
   public_slug: null,

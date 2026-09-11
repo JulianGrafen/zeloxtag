@@ -6,6 +6,7 @@ import {
 } from "@/lib/documents/showcase-gallery";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { resolvePublicDynoChartHref } from "@/lib/vehicles/dyno-chart-constants";
+import { resolvePublicEngineSoundHref } from "@/lib/vehicles/engine-sound-constants";
 import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
@@ -54,6 +55,8 @@ export type PublicShowcaseProfile = {
   heroImageSrc: string | null;
   hideFinancials: boolean;
   publicSlug: string | null;
+  /** Same-origin URL for optional engine soundcheck playback. */
+  engineSoundUrl: string | null;
 };
 
 export type PublicShowcasePayload = {
@@ -269,6 +272,10 @@ export function buildPublicShowcasePayload(
       heroImageSrc: silhouettePhoto?.src ?? photos[0]?.src ?? null,
       hideFinancials: hide_financials,
       publicSlug: public_slug,
+      engineSoundUrl: resolvePublicEngineSoundHref(
+        vehicle.id,
+        vehicle.sound_url,
+      ),
     },
     photos,
     modifications,

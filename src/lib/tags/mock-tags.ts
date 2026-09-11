@@ -30,6 +30,7 @@ const mockVehicle: Vehicle = {
     dynoChartUrl: "/demo/dyno-e36.svg",
   },
   silhouette_image_url: null,
+  sound_url: null,
   is_public: false,
   hide_financials: true,
   public_slug: null,

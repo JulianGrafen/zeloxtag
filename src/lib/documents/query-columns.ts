@@ -7,7 +7,7 @@ export const TAG_COLUMNS =
   "id, uuid, vehicle_id, status, created_at, updated_at" as const;
 
 export const VEHICLE_COLUMNS =
-  "id, user_id, make, model, year, vin, tech_specs, silhouette_image_url, is_public, hide_financials, public_slug, created_at, updated_at" as const;
+  "id, user_id, make, model, year, vin, tech_specs, silhouette_image_url, sound_url, is_public, hide_financials, public_slug, created_at, updated_at" as const;
 
 /** Token-gated exposé lookup — never used on the public QR path. */
 export const VEHICLE_EXPOSE_COLUMNS =

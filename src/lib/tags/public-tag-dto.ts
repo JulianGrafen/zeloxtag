@@ -83,6 +83,7 @@ function toGuestClientVehicle(vehicle: Vehicle): Vehicle {
     vin: null,
     tech_specs: vehicle.tech_specs ?? null,
     silhouette_image_url: vehicle.silhouette_image_url ?? null,
+    sound_url: null,
     is_public: Boolean(vehicle.is_public),
     hide_financials: vehicle.hide_financials !== false,
     public_slug:

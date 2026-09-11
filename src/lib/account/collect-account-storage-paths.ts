@@ -5,6 +5,10 @@ import {
   resolveStoredDynoChartPath,
 } from "@/lib/vehicles/dyno-chart-constants";
 import {
+  resolveStoredEngineSoundPath,
+  vehicleEngineSoundCandidatePaths,
+} from "@/lib/vehicles/engine-sound-constants";
+import {
   legacySilhouetteObjectPath,
   SILHOUETTE_BUCKET,
   vehiclePhotoObjectPath,
@@ -64,6 +68,23 @@ export function collectVehicleSilhouettePaths(
   return refs;
 }
 
+export function collectVehicleEngineSoundPaths(vehicle: Vehicle): StorageObjectRef[] {
+  const stored = resolveStoredEngineSoundPath(vehicle.id, vehicle.sound_url);
+  const paths = stored
+    ? [stored]
+    : vehicleEngineSoundCandidatePaths(vehicle.id);
+
+  const seen = new Set<string>();
+  const refs: StorageObjectRef[] = [];
+  for (const path of paths) {
+    const key = `${DOCUMENT_BUCKET}:${path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    refs.push({ bucket: DOCUMENT_BUCKET, path });
+  }
+  return refs;
+}
+
 export function collectVehicleDynoChartPaths(vehicle: Vehicle): StorageObjectRef[] {
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
   const stored = resolveStoredDynoChartPath(vehicle.id, specs.dynoChartUrl);
@@ -105,6 +126,9 @@ export function collectAccountStoragePaths(input: {
       push(ref);
     }
     for (const ref of collectVehicleDynoChartPaths(vehicle)) {
+      push(ref);
+    }
+    for (const ref of collectVehicleEngineSoundPaths(vehicle)) {
       push(ref);
     }
   }

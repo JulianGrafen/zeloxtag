@@ -23,6 +23,7 @@ function vehicle(overrides: Partial<Vehicle> = {}): Vehicle {
       dynoChartUrl: `${vehicleId}/dyno-chart.pdf`,
     },
     silhouette_image_url: null,
+    sound_url: null,
     is_public: false,
     hide_financials: true,
     public_slug: null,

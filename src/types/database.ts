@@ -47,6 +47,8 @@ export type Vehicle = {
   tech_specs: VehicleTechSpecs | Record<string, unknown> | null;
   /** Transparent side-profile PNG URL — see migration 00023. */
   silhouette_image_url: string | null;
+  /** Optional public engine soundcheck — storage path, migration 00056. */
+  sound_url: string | null;
   /** Public showcase at meets / share links — migration 00030. */
   is_public: boolean;
   /** Hide prices on public profile (default true). */
@@ -257,6 +259,7 @@ export type Database = {
           vin?: string | null;
           tech_specs?: VehicleTechSpecs | Record<string, unknown> | null;
           silhouette_image_url?: string | null;
+          sound_url?: string | null;
           is_public?: boolean;
           hide_financials?: boolean;
           public_slug?: string | null;
@@ -274,6 +277,7 @@ export type Database = {
           vin?: string | null;
           tech_specs?: VehicleTechSpecs | Record<string, unknown> | null;
           silhouette_image_url?: string | null;
+          sound_url?: string | null;
           is_public?: boolean;
           hide_financials?: boolean;
           public_slug?: string | null;
