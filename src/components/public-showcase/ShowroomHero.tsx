@@ -25,41 +25,36 @@ import { ShowroomGalleryLightbox } from "./ShowroomGalleryLightbox";
 import { InstagramGlyph } from "./InstagramGlyph";
 import { showroom } from "./showroom-styles";
 
+const HERO_PERSPECTIVE_PX = 1200;
+
 type ShowroomHeroProps = {
   profile: PublicShowcaseProfile;
   photos: PublicGalleryPhoto[];
 };
 
-function useHeroScrollMotion() {
+/** Scroll-driven 3D drift for the vehicle layer (not page zoom). */
+function useVehicleScrollDepth() {
   const scrollTrackRef = useRef<HTMLElement | null>(null);
   const { scrollYProgress } = useScroll({
     target: scrollTrackRef,
     offset: ["start start", "end end"],
   });
 
-  const imageScale = useTransform(scrollYProgress, [0, 1], [1.14, 0.86]);
-  const imageY = useTransform(scrollYProgress, [0, 1], [0, 72]);
-  const imageRotateX = useTransform(scrollYProgress, [0, 1], [0, 10]);
-  const imageBrightness = useTransform(scrollYProgress, [0, 1], [1, 0.72]);
-  const imageFilter = useTransform(
-    imageBrightness,
-    (value) => `brightness(${value})`,
-  );
-  const textOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.35, 0.75],
-    [1, 1, 0],
-  );
-  const textY = useTransform(scrollYProgress, [0, 1], [0, -56]);
+  const vehicleY = useTransform(scrollYProgress, [0, 1], ["6%", "-24%"]);
+  const vehicleZ = useTransform(scrollYProgress, [0, 1], [48, -120]);
+  const vehicleRotateY = useTransform(scrollYProgress, [0, 1], [7, -16]);
+  const vehicleRotateX = useTransform(scrollYProgress, [0, 1], [2, -10]);
+  const vehicleX = useTransform(scrollYProgress, [0, 1], [0, 12]);
+  const floorOpacity = useTransform(scrollYProgress, [0, 0.6, 1], [0.35, 0.2, 0]);
 
   return {
     scrollTrackRef,
-    imageScale,
-    imageY,
-    imageRotateX,
-    imageFilter,
-    textOpacity,
-    textY,
+    vehicleY,
+    vehicleZ,
+    vehicleRotateY,
+    vehicleRotateX,
+    vehicleX,
+    floorOpacity,
   };
 }
 
@@ -69,11 +64,13 @@ type HeroBackdropProps = {
   heroImageClass: string;
   visiblePhotosCount: number;
   onOpenGallery: () => void;
-  imageScale: MotionValue<number>;
-  imageY: MotionValue<number>;
-  imageRotateX: MotionValue<number>;
-  imageFilter: MotionValue<string>;
-  parallaxEnabled: boolean;
+  depthEnabled: boolean;
+  vehicleY: MotionValue<string>;
+  vehicleZ: MotionValue<number>;
+  vehicleRotateY: MotionValue<number>;
+  vehicleRotateX: MotionValue<number>;
+  vehicleX: MotionValue<number>;
+  floorOpacity: MotionValue<number>;
 };
 
 function HeroBackdrop({
@@ -82,18 +79,20 @@ function HeroBackdrop({
   heroImageClass,
   visiblePhotosCount,
   onOpenGallery,
-  imageScale,
-  imageY,
-  imageRotateX,
-  imageFilter,
-  parallaxEnabled,
+  depthEnabled,
+  vehicleY,
+  vehicleZ,
+  vehicleRotateY,
+  vehicleRotateX,
+  vehicleX,
+  floorOpacity,
 }: HeroBackdropProps) {
   const mediaLayer = profile.heroImageSrc ? (
     <button
       type="button"
       onClick={onOpenGallery}
       disabled={visiblePhotosCount === 0}
-      className="relative block h-full w-full disabled:cursor-default"
+      className="relative block h-[108%] w-full -translate-y-[4%] disabled:cursor-default"
       aria-label={`${title || "Fahrzeugfoto"} in Galerie öffnen`}
     >
       <Image
@@ -116,39 +115,49 @@ function HeroBackdrop({
     </button>
   ) : null;
 
-  if (!parallaxEnabled) {
+  const gradient = (
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black via-black/55 to-transparent"
+      aria-hidden
+    />
+  );
+
+  if (!depthEnabled) {
     return (
       <div className="absolute inset-0 bg-black" aria-hidden>
-        {mediaLayer}
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black via-black/55 to-transparent"
-          aria-hidden
-        />
+        <div className="relative h-full w-full">{mediaLayer}</div>
+        {gradient}
       </div>
     );
   }
 
   return (
     <div
-      className="absolute inset-0 bg-black [perspective:1400px]"
+      className="absolute inset-0 overflow-hidden bg-black"
+      style={{ perspective: HERO_PERSPECTIVE_PX }}
       aria-hidden
     >
       <motion.div
-        className="absolute inset-0 origin-center will-change-transform"
+        className="absolute inset-0 flex items-center justify-center [transform-style:preserve-3d]"
         style={{
-          scale: imageScale,
-          y: imageY,
-          rotateX: imageRotateX,
-          filter: imageFilter,
-          transformPerspective: 1400,
+          y: vehicleY,
+          z: vehicleZ,
+          rotateY: vehicleRotateY,
+          rotateX: vehicleRotateX,
+          x: vehicleX,
+          transformPerspective: HERO_PERSPECTIVE_PX,
         }}
       >
-        <div className="absolute inset-0 bg-black">{mediaLayer}</div>
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black via-black/55 to-transparent"
-          aria-hidden
-        />
+        <div className="relative h-[88%] w-full max-w-[118%] [transform-style:preserve-3d]">
+          {mediaLayer}
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-[12%] bottom-[18%] h-10 rounded-[100%] bg-white/20 blur-2xl"
+            style={{ opacity: floorOpacity }}
+          />
+        </div>
       </motion.div>
+      {gradient}
     </div>
   );
 }
@@ -162,9 +171,9 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const reduceMotion = useReducedMotion();
-  const parallaxEnabled = Boolean(profile.heroImageSrc) && !reduceMotion;
+  const depthEnabled = Boolean(profile.heroImageSrc) && !reduceMotion;
 
-  const heroScroll = useHeroScrollMotion();
+  const vehicleDepth = useVehicleScrollDepth();
 
   const heroGalleryIndex = profile.heroImageSrc
     ? visiblePhotos.findIndex((photo) => photo.src === profile.heroImageSrc)
@@ -179,11 +188,10 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   const heroIsVector =
     heroSrc.includes(".svg") || heroSrc.includes("dyno-chart");
   const heroImageClass = heroIsVector
-    ? "object-contain object-top px-3 pb-[38%] pt-[max(3.5rem,env(safe-area-inset-top))]"
-    : "object-cover object-[center_42%]";
+    ? "object-contain object-center px-2"
+    : "object-contain object-center";
 
-  const motionActive = parallaxEnabled;
-  const scrollTrackClass = motionActive
+  const scrollTrackClass = depthEnabled
     ? showroom.heroScrollTrack
     : showroom.heroMinHeight;
 
@@ -192,7 +200,7 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   return (
     <>
       <header
-        ref={heroScroll.scrollTrackRef}
+        ref={vehicleDepth.scrollTrackRef}
         className={`relative z-0 isolate ${scrollTrackClass}`}
       >
         <div
@@ -204,33 +212,18 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
             heroImageClass={heroImageClass}
             visiblePhotosCount={visiblePhotos.length}
             onOpenGallery={openHeroInGallery}
-            imageScale={heroScroll.imageScale}
-            imageY={heroScroll.imageY}
-            imageRotateX={heroScroll.imageRotateX}
-            imageFilter={heroScroll.imageFilter}
-            parallaxEnabled={motionActive}
+            depthEnabled={depthEnabled}
+            vehicleY={vehicleDepth.vehicleY}
+            vehicleZ={vehicleDepth.vehicleZ}
+            vehicleRotateY={vehicleDepth.vehicleRotateY}
+            vehicleRotateX={vehicleDepth.vehicleRotateX}
+            vehicleX={vehicleDepth.vehicleX}
+            floorOpacity={vehicleDepth.floorOpacity}
           />
 
-          {motionActive ? (
-            <motion.div
-              className={textLayerClass}
-              style={{ opacity: heroScroll.textOpacity, y: heroScroll.textY }}
-            >
-              <HeroCopy
-                profile={profile}
-                title={title}
-                yearLabel={yearLabel}
-              />
-            </motion.div>
-          ) : (
-            <div className={textLayerClass}>
-              <HeroCopy
-                profile={profile}
-                title={title}
-                yearLabel={yearLabel}
-              />
-            </div>
-          )}
+          <div className={textLayerClass}>
+            <HeroCopy profile={profile} title={title} yearLabel={yearLabel} />
+          </div>
         </div>
       </header>
 
