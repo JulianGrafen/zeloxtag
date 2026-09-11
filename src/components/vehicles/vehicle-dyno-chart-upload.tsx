@@ -192,15 +192,11 @@ export function VehicleDynoChartUpload({
 
   return (
     <div className={wrapperClass}>
-      {embedded ? (
-        <p className="text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-          Leistungsdiagramm
-        </p>
-      ) : (
+      {!embedded ? (
         <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
           Leistungsdiagramm
         </h2>
-      )}
+      ) : null}
       {!embedded ? (
         <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
           Dyno- oder Leistungsdiagramm als Foto oder PDF — erscheint im Showcase,

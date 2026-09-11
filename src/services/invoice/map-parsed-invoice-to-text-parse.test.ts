@@ -151,8 +151,10 @@ describe("mapParsedInvoiceToTextParseResult", () => {
     );
 
     expect(mapped.lineItems).toHaveLength(8);
+    const lineItems = mapped.lineItems;
+    expect(lineItems).not.toBeNull();
     expect(
-      mapped.lineItems.reduce((sum, item) => sum + item.amount, 0),
+      lineItems!.reduce((sum, item) => sum + item.amount, 0),
     ).toBeCloseTo(SPEEDWORKZ_NET_SUM, 2);
   });
 });

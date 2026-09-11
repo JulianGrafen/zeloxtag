@@ -21,6 +21,8 @@ export type VehicleEngineSoundUploadProps = {
   allowDelete?: boolean;
   onUploaded?: () => void;
   onDeleted?: () => void;
+  /** Hide card title/description when rendered inside a settings subpage shell. */
+  embedded?: boolean;
   className?: string;
 };
 
@@ -53,6 +55,7 @@ export function VehicleEngineSoundUpload({
   allowDelete = false,
   onUploaded,
   onDeleted,
+  embedded = false,
   className = "",
 }: VehicleEngineSoundUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -170,19 +173,25 @@ export function VehicleEngineSoundUpload({
     }
   }
 
-  return (
-    <section
-      className={`rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 ${className}`}
-    >
-      <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-        Engine soundcheck
-      </h2>
-      <p className="mt-2 text-[0.86rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Kurzer Motor-Sound für die öffentliche Visitenkarte (max.{" "}
-        {ENGINE_SOUND_MAX_SECONDS} Sekunden, MP3, M4A oder WAV, max. 2 MB).
-      </p>
+  const wrapperClass = embedded
+    ? `rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 sm:p-5 ${className}`
+    : `rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 ${className}`;
 
-      <div className="mt-4 rounded-[1.15rem] bg-black p-4">
+  return (
+    <section className={wrapperClass}>
+      {!embedded ? (
+        <>
+          <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+            Engine soundcheck
+          </h2>
+          <p className="mt-2 text-[0.86rem] leading-relaxed text-[color:var(--vd-muted)]">
+            Kurzer Motor-Sound für die öffentliche Visitenkarte (max.{" "}
+            {ENGINE_SOUND_MAX_SECONDS} Sekunden, MP3, M4A oder WAV, max. 2 MB).
+          </p>
+        </>
+      ) : null}
+
+      <div className={`${embedded ? "" : "mt-4 "}rounded-[1.15rem] bg-black p-4`}>
         <EngineStartButton
           soundUrl={previewUrl}
           showMissingHint

@@ -9,8 +9,6 @@ import {
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { withDefaultShowcaseFields } from "@/lib/vehicles/public-showcase-data";
-import { ensureVehicleSpatialScene } from "@/lib/vehicles/ensure-vehicle-spatial-scene";
-import { parseVehicleSpatialSceneMeta } from "@/lib/vehicles/spatial-scene-constants";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, TagScanResult, Vehicle } from "@/types/database";
 
@@ -167,19 +165,14 @@ export async function enrichPublicShowcaseVehicle(
 ): Promise<Vehicle> {
   if (!vehicle.is_public) return vehicle;
 
-  const needsSound = !vehicle.sound_url?.trim();
-  const needsSpatialMeta =
-    Boolean(vehicle.silhouette_image_url?.trim()) &&
-    !parseVehicleSpatialSceneMeta(vehicle.spatial_scene);
-
-  if (!needsSound && !needsSpatialMeta) return vehicle;
+  if (vehicle.sound_url?.trim()) return vehicle;
 
   if (!isSupabaseAdminConfigured()) return vehicle;
 
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("vehicles")
-    .select("sound_url, spatial_scene")
+    .select("sound_url")
     .eq("id", vehicle.id)
     .eq("is_public", true)
     .maybeSingle();
@@ -188,41 +181,10 @@ export async function enrichPublicShowcaseVehicle(
 
   const soundUrl =
     typeof data.sound_url === "string" ? data.sound_url.trim() : "";
-  const spatialScene = data.spatial_scene ?? vehicle.spatial_scene;
 
   return {
     ...vehicle,
     sound_url: soundUrl || vehicle.sound_url,
-    spatial_scene:
-      (spatialScene as Vehicle["spatial_scene"]) ?? vehicle.spatial_scene,
-  };
-}
-
-/** Generate spatial depth layers once for public showcase heroes (PNG silhouettes). */
-export async function ensurePublicShowcaseSpatialScene(
-  vehicle: Vehicle,
-): Promise<Vehicle> {
-  if (!vehicle.is_public) return vehicle;
-  if (!vehicle.silhouette_image_url?.trim()) return vehicle;
-  if (parseVehicleSpatialSceneMeta(vehicle.spatial_scene)) return vehicle;
-  if (!isSupabaseAdminConfigured()) return vehicle;
-
-  const admin = createAdminClient();
-  const result = await ensureVehicleSpatialScene(
-    admin,
-    vehicle.id,
-    vehicle.spatial_scene,
-  );
-  if (!result.ok || !result.meta) {
-    if (parseVehicleSpatialSceneMeta(vehicle.spatial_scene)) {
-      return { ...vehicle, spatial_scene: null };
-    }
-    return vehicle;
-  }
-
-  return {
-    ...vehicle,
-    spatial_scene: result.meta as Vehicle["spatial_scene"],
   };
 }
 

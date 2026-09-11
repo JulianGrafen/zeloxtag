@@ -7,7 +7,7 @@ import {
 
 describe("isBeforeInstallPromptEvent", () => {
   it("accepts events with a prompt function", () => {
-    const event = { prompt: () => Promise.resolve() } as Event;
+    const event = { prompt: () => Promise.resolve() } as unknown as Event;
     expect(isBeforeInstallPromptEvent(event)).toBe(true);
   });
 

@@ -31,7 +31,6 @@ import {
 } from "@/lib/vehicles/silhouette-constants";
 import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 import { isPngBytes } from "@/lib/vehicles/silhouette-bytes";
-import { ensureVehicleSpatialScene } from "@/lib/vehicles/ensure-vehicle-spatial-scene";
 import { verifySilhouetteInStorage } from "@/lib/vehicles/verify-silhouette-storage";
 
 export const runtime = "nodejs";
@@ -163,7 +162,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: vehicle, error: vehicleError } = await supabase
       .from("vehicles")
-      .select("id, user_id, spatial_scene")
+      .select("id, user_id")
       .eq("id", vehicleId)
       .maybeSingle();
 
@@ -277,10 +276,6 @@ export async function POST(request: NextRequest) {
         vehicleId,
       );
     }
-
-    await ensureVehicleSpatialScene(admin, vehicleId, vehicle.spatial_scene, {
-      forceRegenerate: true,
-    });
 
     if (tagUuid) {
       revalidatePath(`/v/${tagUuid}`, "page");

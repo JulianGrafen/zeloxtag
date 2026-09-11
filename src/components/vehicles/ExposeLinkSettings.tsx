@@ -1,17 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Copy, ExternalLink, FileDown, Link2, RefreshCw, ShieldOff } from "lucide-react";
+import { Copy, ExternalLink, Link2, RefreshCw, ShieldOff } from "lucide-react";
 
 import { manageVehicleExpose } from "@/actions/expose";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
-import { GenerateExposeButton } from "@/components/vehicles/GenerateExposeButton";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import type { Vehicle } from "@/types/database";
 
-type ExposeShareSettingsProps = {
+type ExposeLinkSettingsProps = {
   tagUuid: string;
   vehicle: Vehicle;
   canEdit: boolean;
@@ -20,15 +19,14 @@ type ExposeShareSettingsProps = {
   isExposeActive: boolean;
 };
 
-export function ExposeShareSettings({
+export function ExposeLinkSettings({
   tagUuid,
   vehicle,
   canEdit,
   canUseExpose = true,
   exposeToken,
   isExposeActive,
-}: ExposeShareSettingsProps) {
-  const vehicleLabel = `${vehicle.make} ${vehicle.model}`.trim();
+}: ExposeLinkSettingsProps) {
   const [isActive, setIsActive] = useState(isExposeActive);
   const [sharePath, setSharePath] = useState<string | null>(
     isExposeActive && exposeToken ? `/expose/${exposeToken}` : null,
@@ -84,18 +82,6 @@ export function ExposeShareSettings({
 
   return (
     <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <FileDown className="h-4 w-4 text-[color:var(--vd-accent)]" aria-hidden />
-        <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          1-Klick Verkaufsexposé
-        </h2>
-      </div>
-      <p className="mb-4 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Erzeugt ein fälschungssicheres Dossier mit Investitionen, Services und
-        Historie — ohne Adressen, IBAN oder private Notizen. Ideal für Mobile.de
-        und Kleinanzeigen.
-      </p>
-
       {!isActive || !sharePath ? (
         <PressableButton
           type="button"
@@ -162,17 +148,6 @@ export function ExposeShareSettings({
           </div>
         </div>
       )}
-
-      <div className="mt-5 border-t border-[color:var(--vd-border)] pt-4">
-        <GenerateExposeButton
-          vehicleId={vehicle.id}
-          vehicleLabel={vehicleLabel}
-          disabled={!canEdit}
-          onProRequired={
-            canUseExpose ? undefined : () => setPaywallOpen(true)
-          }
-        />
-      </div>
 
       {message ? (
         <p className="mt-3 text-[0.82rem] text-[color:var(--vd-accent)]">{message}</p>

@@ -28,7 +28,7 @@ function jpegBytes(size = 256): Uint8Array {
 }
 
 function makeImageFile(bytes = jpegBytes()): File {
-  return new File([bytes], "umbau.jpg", {
+  return new File([bytes as BlobPart], "umbau.jpg", {
     type: "image/jpeg",
     lastModified: Date.now(),
   });
@@ -41,7 +41,7 @@ describe("compressDocumentFile", () => {
 
   it("uses browser-image-compression on the main thread", async () => {
     const input = makeImageFile();
-    const output = new File([jpegBytes(128)], "umbau.jpg", {
+    const output = new File([jpegBytes(128) as BlobPart], "umbau.jpg", {
       type: "image/jpeg",
       lastModified: Date.now(),
     });

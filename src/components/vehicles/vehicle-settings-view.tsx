@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
-import { ExposeShareSettings } from "@/components/vehicles/ExposeShareSettings";
+import { VehicleExposeSubmenu } from "@/components/vehicles/vehicle-expose-submenu";
 import { VehicleShowcaseSettings } from "@/components/vehicles/vehicle-showcase-settings";
 import type { Document, Vehicle } from "@/types/database";
 
@@ -13,8 +13,6 @@ type VehicleSettingsViewProps = {
   documents: Document[];
   galleryPhotos: Document[];
   canEdit: boolean;
-  canUseExpose?: boolean;
-  exposeToken: string | null;
   isExposeActive: boolean;
 };
 
@@ -24,10 +22,10 @@ export function VehicleSettingsView({
   documents,
   galleryPhotos,
   canEdit,
-  canUseExpose = true,
-  exposeToken,
   isExposeActive,
 }: VehicleSettingsViewProps) {
+  const vehicleLabel = `${vehicle.make} ${vehicle.model}`.trim() || "Fahrzeug";
+
   return (
     <div className="flex flex-col gap-5">
       <VehicleShowcaseSettings
@@ -38,13 +36,10 @@ export function VehicleSettingsView({
         canEdit={canEdit}
       />
 
-      <ExposeShareSettings
+      <VehicleExposeSubmenu
         tagUuid={tagUuid}
-        vehicle={vehicle}
-        canEdit={canEdit}
-        canUseExpose={canUseExpose}
-        exposeToken={exposeToken}
         isExposeActive={isExposeActive}
+        vehicleLabel={vehicleLabel}
       />
 
       <Link

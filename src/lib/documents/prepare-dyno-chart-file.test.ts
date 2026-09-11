@@ -22,7 +22,7 @@ function makeFile(
   name: string,
   type = "",
 ): File {
-  return new File([bytes], name, { type, lastModified: Date.now() });
+  return new File([bytes as BlobPart], name, { type, lastModified: Date.now() });
 }
 
 describe("prepareDynoChartFile", () => {

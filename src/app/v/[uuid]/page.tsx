@@ -19,7 +19,6 @@ import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 import {
   enrichPublicShowcaseVehicle,
-  ensurePublicShowcaseSpatialScene,
   loadPublicShowcaseDocuments,
   resolvePublicVehicleEntry,
 } from "@/lib/vehicles/get-public-vehicle";
@@ -139,9 +138,7 @@ export async function generateMetadata({
 }
 
 async function renderPublicShowcase(vehicle: Vehicle) {
-  const showcaseVehicle = await ensurePublicShowcaseSpatialScene(
-    await enrichPublicShowcaseVehicle(vehicle),
-  );
+  const showcaseVehicle = await enrichPublicShowcaseVehicle(vehicle);
   const documents = await loadPublicShowcaseDocuments(showcaseVehicle.id);
   const payload = buildPublicShowcasePayload(showcaseVehicle, documents);
 

@@ -1,7 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useReducedMotion, useScroll } from "framer-motion";
+import Image from "next/image";
+import { Expand } from "lucide-react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 
 import {
   instagramHandleLabel,
@@ -11,18 +18,89 @@ import type {
   PublicGalleryPhoto,
   PublicShowcaseProfile,
 } from "@/lib/vehicles/public-showcase-data";
-import { resolveShowroomHeroKind } from "@/lib/vehicles/showroom-hero-kind";
 
 import { filterVisibleGalleryPhotos } from "./PublicGallery";
 import { ShowroomGalleryLightbox } from "./ShowroomGalleryLightbox";
 import { InstagramGlyph } from "./InstagramGlyph";
-import { ShowroomSpatialScene } from "./ShowroomSpatialScene";
 import { showroom } from "./showroom-styles";
 
 type ShowroomHeroProps = {
   profile: PublicShowcaseProfile;
   photos: PublicGalleryPhoto[];
 };
+
+function useHeroScrollMotion() {
+  const scrollTrackRef = useRef<HTMLElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: scrollTrackRef,
+    offset: ["start start", "end end"],
+  });
+
+  const textOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.35, 0.75],
+    [1, 1, 0],
+  );
+  const textY = useTransform(scrollYProgress, [0, 1], [0, -48]);
+
+  return {
+    scrollTrackRef,
+    textOpacity,
+    textY,
+  };
+}
+
+type HeroBackdropProps = {
+  profile: PublicShowcaseProfile;
+  title: string;
+  heroImageClass: string;
+  visiblePhotosCount: number;
+  onOpenGallery: () => void;
+};
+
+function HeroBackdrop({
+  profile,
+  title,
+  heroImageClass,
+  visiblePhotosCount,
+  onOpenGallery,
+}: HeroBackdropProps) {
+  return (
+    <div className="absolute inset-0 bg-black" aria-hidden>
+      {profile.heroImageSrc ? (
+        <button
+          type="button"
+          onClick={onOpenGallery}
+          disabled={visiblePhotosCount === 0}
+          className="relative block h-full w-full disabled:cursor-default"
+          aria-label={`${title || "Fahrzeugfoto"} in Galerie öffnen`}
+        >
+          <Image
+            src={profile.heroImageSrc}
+            alt=""
+            fill
+            priority
+            unoptimized
+            className={heroImageClass}
+            sizes="100vw"
+          />
+          {visiblePhotosCount > 0 ? (
+            <span
+              aria-hidden
+              className="absolute bottom-[38%] right-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white/90 backdrop-blur-sm"
+            >
+              <Expand className="h-4 w-4" />
+            </span>
+          ) : null}
+        </button>
+      ) : null}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black via-black/55 to-transparent"
+        aria-hidden
+      />
+    </div>
+  );
+}
 
 export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   const title = [profile.make, profile.model].filter(Boolean).join(" ");
@@ -33,11 +111,9 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const reduceMotion = useReducedMotion();
-  const scrollTrackRef = useRef<HTMLElement | null>(null);
-  const { scrollYProgress } = useScroll({
-    target: scrollTrackRef,
-    offset: ["start start", "end end"],
-  });
+  const scrollMotionEnabled = Boolean(profile.heroImageSrc) && !reduceMotion;
+
+  const heroScroll = useHeroScrollMotion();
 
   const heroGalleryIndex = profile.heroImageSrc
     ? visiblePhotos.findIndex((photo) => photo.src === profile.heroImageSrc)
@@ -49,46 +125,56 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
   }
 
   const heroSrc = profile.heroImageSrc ?? "";
-  const heroKind = resolveShowroomHeroKind(heroSrc);
-  const parallaxEnabled = Boolean(heroSrc) && !reduceMotion;
-  const usesSpatialScroll =
-    parallaxEnabled && heroKind !== "dyno" && heroKind !== "none";
-  const heroImageClass =
-    heroKind === "dyno"
-      ? "object-contain object-center px-2"
-      : "object-contain object-center";
+  const heroIsVector =
+    heroSrc.includes(".svg") || heroSrc.includes("dyno-chart");
+  const heroImageClass = heroIsVector
+    ? "object-contain object-top px-3 pb-[38%] pt-[max(3.5rem,env(safe-area-inset-top))]"
+    : "object-cover object-[center_42%]";
+
+  const scrollTrackClass = scrollMotionEnabled
+    ? showroom.heroScrollTrack
+    : showroom.heroMinHeight;
 
   const textLayerClass = `pointer-events-none relative z-10 flex ${showroom.heroMinHeight} flex-col justify-end px-5 pb-10 pt-[max(4.5rem,env(safe-area-inset-top))]`;
 
   return (
     <>
-      <header ref={scrollTrackRef} className="relative z-0 isolate">
+      <header
+        ref={heroScroll.scrollTrackRef}
+        className={`relative z-0 isolate ${scrollTrackClass}`}
+      >
         <div
           className={`sticky top-0 z-0 ${showroom.heroMinHeight} overflow-hidden`}
         >
-          {profile.heroImageSrc ? (
-            <ShowroomSpatialScene
-              heroImageSrc={profile.heroImageSrc}
-              heroKind={heroKind}
-              heroImageClass={heroImageClass}
-              spatialLayerUrls={profile.spatialLayerUrls}
-              parallaxEnabled={parallaxEnabled}
-              scrollYProgress={scrollYProgress}
-              visiblePhotosCount={visiblePhotos.length}
-              title={title}
-              onOpenGallery={openHeroInGallery}
-            />
-          ) : (
-            <div className="absolute inset-0 bg-black" aria-hidden />
-          )}
+          <HeroBackdrop
+            profile={profile}
+            title={title}
+            heroImageClass={heroImageClass}
+            visiblePhotosCount={visiblePhotos.length}
+            onOpenGallery={openHeroInGallery}
+          />
 
-          <div className={textLayerClass}>
-            <HeroCopy profile={profile} title={title} yearLabel={yearLabel} />
-          </div>
+          {scrollMotionEnabled ? (
+            <motion.div
+              className={textLayerClass}
+              style={{ opacity: heroScroll.textOpacity, y: heroScroll.textY }}
+            >
+              <HeroCopy
+                profile={profile}
+                title={title}
+                yearLabel={yearLabel}
+              />
+            </motion.div>
+          ) : (
+            <div className={textLayerClass}>
+              <HeroCopy
+                profile={profile}
+                title={title}
+                yearLabel={yearLabel}
+              />
+            </div>
+          )}
         </div>
-        {usesSpatialScroll ? (
-          <div className={showroom.heroScrollSpacer} aria-hidden />
-        ) : null}
       </header>
 
       {lightboxIndex !== null ? (
