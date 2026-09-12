@@ -6,7 +6,9 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
 import { isOperatorEmail } from "@/lib/auth/require-operator";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { ZeloxBrandFadeBanner } from "@/components/brand/zelox-brand-fade-banner";
 import { AppShell } from "@/components/layout/app-shell";
+import { ScanContent } from "@/components/layout/scan-content";
 
 export const metadata: Metadata = {
   title: "Dashboard · ZeloxTag",
@@ -32,8 +34,13 @@ export default async function DashboardPage() {
 
   // No linked vehicle yet — lightweight hub (not the vehicle tile menu).
   return (
-    <AppShell>
-      <section className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pb-12 pt-6 sm:px-5">
+    <AppShell showNavbar={false}>
+      <ScanContent className="max-w-2xl px-0 pt-0">
+        <div className="zelox-brand-banner-bleed pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
+          <ZeloxBrandFadeBanner />
+        </div>
+
+      <section className="flex w-full flex-col gap-5 px-4 pb-12 pt-2 sm:px-5">
         <div className="vd-surface-card p-6">
           <p className="claim-kicker">Dashboard</p>
           <h1 className="claim-title mt-2">Willkommen zurück</h1>
@@ -71,6 +78,7 @@ export default async function DashboardPage() {
 
         <SignOutButton />
       </section>
+      </ScanContent>
     </AppShell>
   );
 }

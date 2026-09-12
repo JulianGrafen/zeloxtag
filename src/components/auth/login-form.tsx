@@ -3,6 +3,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
+import { ZeloxBrandFadeBanner } from "@/components/brand/zelox-brand-fade-banner";
 import { ScanContent } from "@/components/layout/scan-content";
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 import { Button } from "@/components/ui/button";
@@ -86,15 +87,17 @@ export function LoginForm({
   const isSignup = tab === "signup";
 
   return (
-    <ScanContent className="mx-auto w-full max-w-md gap-4 pb-12 pt-[max(1.75rem,env(safe-area-inset-top))]">
-      <Card className="w-full overflow-hidden">
-        <CardHeader className="border-b border-border/70 pb-4 pt-6">
-          <CardTitle className="font-[family-name:var(--font-display)] text-2xl tracking-tight">
-            ZeloxTag
-          </CardTitle>
+    <ScanContent className="mx-auto w-full max-w-md gap-4 overflow-x-clip pb-12 px-0 pt-0 sm:px-0">
+      <div className="zelox-brand-banner-bleed -mt-[max(1.25rem,env(safe-area-inset-top))]">
+        <ZeloxBrandFadeBanner />
+      </div>
+
+      <Card className="mx-4 mt-2 w-[calc(100%-2rem)] overflow-hidden sm:mx-auto sm:w-full">
+        <CardHeader className="sr-only">
+          <CardTitle>Anmelden bei ZeloxTag</CardTitle>
         </CardHeader>
 
-        <CardContent className="pt-4">
+        <CardContent className="pt-6">
           <div
             className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1"
             role="tablist"
@@ -269,11 +272,13 @@ export function LoginForm({
         </CardContent>
       </Card>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="mx-4 text-center text-sm text-muted-foreground sm:mx-auto">
         Neuer Tag? QR am Fahrzeug scannen.
       </p>
 
-      <LegalFooterNav className="text-xs text-muted-foreground [&_a]:text-muted-foreground" />
+      <LegalFooterNav
+        className="mx-4 text-xs text-muted-foreground sm:mx-auto [&_a]:text-muted-foreground"
+      />
     </ScanContent>
   );
 }

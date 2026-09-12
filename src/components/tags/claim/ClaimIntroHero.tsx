@@ -29,11 +29,9 @@ export function ClaimIntroHero({
 }: ClaimIntroHeroProps) {
   return (
     <section className="claim-intro claim-premium-intro flex flex-col pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <div className="claim-intro-brand-bleed pointer-events-none relative z-20 -mt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="zelox-brand-banner-bleed pointer-events-none relative z-20 -mt-[max(1.25rem,env(safe-area-inset-top))]">
         <ClaimBrandBanner />
       </div>
-
-      <div className="claim-intro-bridge" aria-hidden />
 
       <ClaimTagModelHero tagUuid={tagUuid} />
 

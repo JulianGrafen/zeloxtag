@@ -1,7 +1,9 @@
 "use client";
 
+import { ZeloxBrandFadeBanner } from "@/components/brand/zelox-brand-fade-banner";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { ScanContent } from "@/components/layout/scan-content";
+import { cn } from "@/lib/utils";
 
 import { buildDefaultTiles } from "./buildDefaultTiles";
 import { DashboardTile } from "./DashboardTile";
@@ -19,7 +21,12 @@ export function VehicleDashboard({
   const tiles = data.tiles ?? buildDefaultTiles(data);
 
   return (
-    <ScanContent className={className}>
+    <ScanContent className={cn("px-0 pt-0", className)}>
+      <div className="zelox-brand-banner-bleed pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
+        <ZeloxBrandFadeBanner />
+      </div>
+
+      <div className="flex flex-col gap-5 px-4 sm:px-5">
       <div data-tour="dashboard-header">
         <VehicleDashboardHeader
           ownerName={data.ownerName}
@@ -53,6 +60,7 @@ export function VehicleDashboard({
       </section>
 
       <VehicleDataDisclaimer className="vd-anim-header" />
+      </div>
     </ScanContent>
   );
 }

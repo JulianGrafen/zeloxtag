@@ -25,12 +25,17 @@ import {
   claimTagScanUrl,
   isTagFrontMaterial,
 } from "./claim-tag-model";
+import { ClaimTagKeyLight } from "./claim-tag-light-rig";
+import { getTagPremiumMotion } from "./claim-tag-premium-motion";
 import {
   TAG_BRUSHED_STEEL_TEXTURES,
   TAG_BRUSHED_STEEL_UV_REPEAT,
 } from "./claim-tag-steel-textures";
 
 const TARGET_SIZE = 1.48;
+
+/** Claim canvas: no scale/light intro — tag is visible immediately. */
+const CLAIM_TAG_INTRO_REVEAL = false;
 
 /** Flaches Tag (YZ-Ebene) zur Kamera auf +Z drehen. */
 const TAG_FACE_CAMERA_Y = Math.PI / 2;
@@ -133,9 +138,10 @@ function prepareTagModel(
 type TagGlbProps = {
   tagUuid: string;
   animate: boolean;
+  reduceMotion: boolean;
 };
 
-function TagGlb({ tagUuid, animate }: TagGlbProps) {
+function TagGlb({ tagUuid, animate, reduceMotion }: TagGlbProps) {
   const motion = useRef<Group>(null);
   const maxAnisotropy = useThree((state) =>
     state.gl.capabilities.getMaxAnisotropy(),
@@ -181,10 +187,15 @@ function TagGlb({ tagUuid, animate }: TagGlbProps) {
   );
 
   useFrame((state) => {
-    if (!animate || !motion.current) return;
-    const t = state.clock.elapsedTime;
-    motion.current.rotation.y = Math.sin(t * 0.9) * 0.28;
-    motion.current.position.y = Math.sin(t * 1.15) * 0.03;
+    if (!motion.current) return;
+    const m = getTagPremiumMotion(state.clock.elapsedTime, {
+      animate,
+      reduceMotion,
+      introReveal: CLAIM_TAG_INTRO_REVEAL,
+    });
+    motion.current.position.set(m.position.x, m.position.y, m.position.z);
+    motion.current.scale.setScalar(m.scale);
+    motion.current.rotation.set(m.rotation.x, m.rotation.y, m.rotation.z);
   });
 
   return (
@@ -224,11 +235,19 @@ export function ClaimTagModelCanvas({
     >
       <ambientLight intensity={0.78} />
       <hemisphereLight args={["#ffffff", "#5a5a5a", 0.65]} />
-      <directionalLight position={[4, 6, 5]} intensity={1.55} color="#fffefb" />
+      <ClaimTagKeyLight
+        animate={!reduceMotion}
+        reduceMotion={reduceMotion}
+        introReveal={CLAIM_TAG_INTRO_REVEAL}
+      />
       <directionalLight position={[-3, 2, 4]} intensity={0.85} color="#f0f4f8" />
       <directionalLight position={[0, 0, 8]} intensity={0.45} color="#ffffff" />
       <Suspense fallback={null}>
-        <TagGlb tagUuid={tagUuid} animate={!reduceMotion} />
+        <TagGlb
+          tagUuid={tagUuid}
+          animate={!reduceMotion}
+          reduceMotion={reduceMotion}
+        />
       </Suspense>
     </Canvas>
   );
