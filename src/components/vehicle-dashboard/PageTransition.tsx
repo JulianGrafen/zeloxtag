@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { ViewTransition, type ReactNode } from "react";
 
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
+import { usePublicShowcaseSurface } from "@/lib/legal/use-public-showcase-surface";
 
 interface PageTransitionProps {
   children: ReactNode;
@@ -29,6 +30,9 @@ function showGlobalLegalFooter(pathname: string): boolean {
  */
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
+  const publicShowcase = usePublicShowcaseSurface();
+  const showLegalFooter =
+    showGlobalLegalFooter(pathname) && !publicShowcase;
 
   return (
     <ViewTransition
@@ -47,8 +51,8 @@ export function PageTransition({ children }: PageTransitionProps) {
     >
       <div className="vd-page" data-vd-page data-pathname={pathname}>
         {children}
-        {showGlobalLegalFooter(pathname) ? (
-          <div className="relative z-30 pointer-events-auto">
+        {showLegalFooter ? (
+          <div className="relative isolate z-[100]">
             <LegalFooterNav
               className="mx-auto w-full max-w-lg px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
             />

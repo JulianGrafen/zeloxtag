@@ -32,7 +32,7 @@ export function PwaInstallPrompt() {
   return (
     <div
       className={cn(
-        "fixed inset-x-0 z-[45] px-4",
+        "pointer-events-none fixed inset-x-0 z-[45] px-4",
         onVehicleDashboard ? "pb-0" : "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
       )}
       style={
@@ -46,7 +46,7 @@ export function PwaInstallPrompt() {
     >
       <div
         className={cn(
-          "relative mx-auto max-w-lg rounded-2xl border border-[color:var(--vd-border)]",
+          "pointer-events-auto relative mx-auto max-w-lg rounded-2xl border border-[color:var(--vd-border)]",
           "bg-[color:var(--vd-surface)]/92 p-4 pt-12 shadow-[var(--vd-shadow-modal)] backdrop-blur-xl",
         )}
       >
