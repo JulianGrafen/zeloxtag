@@ -1,15 +1,22 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
-import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { useState, useTransition } from "react";
 
 import { claimTag } from "@/actions/claim-tag";
-import { ScanContent } from "@/components/layout/scan-content";
 import { ClaimProgressBar } from "@/components/tags/claim-progress-bar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  ClaimField,
+  ClaimSelectField,
+  ClaimSlideActions,
+} from "@/components/tags/claim/claim-form-fields";
+import type { ClaimTransitionDirection } from "@/components/tags/claim/claim-motion";
+import { ClaimIntroHero } from "@/components/tags/claim/ClaimIntroHero";
+import { ClaimShell } from "@/components/tags/claim/ClaimShell";
+import { ClaimStepTransition } from "@/components/tags/claim/ClaimStepTransition";
+import { ClaimTwinPreviewCard } from "@/components/tags/claim/ClaimTwinPreviewCard";
+import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
+import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
+import { formatMileageKmNumber } from "@/lib/documents/format";
 import {
   claimWizardPreviousStep,
   claimWizardStepIndex,
@@ -23,9 +30,6 @@ import {
   OIL_CHANGE_INTERVAL_MONTHS_OPTIONS,
   formatOilChangeIntervalMonthsLabel,
 } from "@/lib/vehicles/tech-specs";
-import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
-import { formatMileageKmNumber } from "@/lib/documents/format";
-import { cn } from "@/lib/utils";
 
 interface ClaimFlowProps {
   tagUuid: string;
@@ -39,6 +43,8 @@ export function ClaimFlow({
   userEmail = null,
 }: ClaimFlowProps) {
   const [step, setStep] = useState<ClaimWizardStep>("intro");
+  const [transitionDirection, setTransitionDirection] =
+    useState<ClaimTransitionDirection>("forward");
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
@@ -69,6 +75,13 @@ export function ClaimFlow({
     return `Schritt ${index} von ${total}`;
   }
 
+  function advance(next: ClaimWizardStep) {
+    setTransitionDirection("forward");
+    setError(null);
+    setInfo(null);
+    setStep(next);
+  }
+
   function validateOilInterval(): string | null {
     if (!oilChangeIntervalKm.trim()) {
       return "Bitte ein Ölwechsel-Intervall wählen.";
@@ -80,6 +93,7 @@ export function ClaimFlow({
   }
 
   function goBack() {
+    setTransitionDirection("back");
     setError(null);
     setInfo(null);
     setStep(claimWizardPreviousStep(step, needsAccount));
@@ -186,574 +200,348 @@ export function ClaimFlow({
     });
   }
 
+  const showWizardChrome = step !== "intro";
+
   return (
-    <ClaimShell>
-      {step !== "intro" ? (
+    <ClaimShell intro={step === "intro"}>
+      {showWizardChrome ? (
         <ClaimProgressBar step={step} needsAccount={needsAccount} />
       ) : null}
 
-      {step === "intro" ? (
-        <section className="claim-intro flex flex-col py-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="vd-anim-header space-y-4 pt-2">
-            <h1 className="font-[family-name:var(--font-display)] text-[2.75rem] font-semibold leading-none tracking-[-0.05em] text-[color:var(--vd-text)] sm:text-[3.15rem]">
-              ZeloxTag
-            </h1>
-            <p className="max-w-[18ch] font-[family-name:var(--font-display)] text-[1.35rem] font-medium leading-snug tracking-[-0.03em] text-[color:var(--vd-text)]">
-              Dein Fahrzeug. Ein Scan entfernt.
-            </p>
-            <p className="max-w-[34ch] text-[0.95rem] leading-relaxed text-[color:var(--vd-muted)]">
-              {needsAccount
-                ? "Beim ersten Scan legst du ein Konto an und verknüpfst den Edelstahl-Tag mit deinem Auto. Die digitale Visitenkarte und deine Akte mit manuellen Einträgen sind kostenlos — KI-Scan und Exposé optional mit Pro."
-                : "Verknüpfe den Tag mit deinem Auto. Danach landest du direkt auf deinem Dashboard — ohne Zahlung. Pro brauchst du nur für KI-Scan und Exposé."}
-            </p>
-          </div>
-
-          <div className="vd-anim-stack mt-8 space-y-3.5">
-            <SteelTagPlate />
-            {isAuthenticated && userEmail ? (
-              <p className="vd-tile px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
-                Angemeldet als{" "}
-                <span className="font-medium text-[color:var(--vd-text)]">
-                  {userEmail}
-                </span>
-              </p>
-            ) : null}
-            <Button type="button" onClick={() => setStep("makeModel")}>
-              Tag beanspruchen
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Button>
-            <Link href="/" className="claim-later">
-              Später fortfahren
-            </Link>
-            {!isAuthenticated ? (
-              <Link
-                href={`/login?next=${encodeURIComponent(`/v/${tagUuid}`)}`}
-                className="claim-later"
-              >
-                Bereits ein Konto? Anmelden
-              </Link>
-            ) : null}
-          </div>
-        </section>
+      {showWizardChrome ? (
+        <ClaimTwinPreviewCard make={make} model={model} year={year} />
       ) : null}
 
-      {step === "makeModel" ? (
-        <SlidePanel
-          kicker={stepKicker("makeModel")}
-          title="Marke & Modell"
-          copy="Wie heißt dein Fahrzeug? Das steht gleich auf deiner digitalen Visitenkarte."
-        >
-          <form
-            className="mt-6 grid w-full gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setError(null);
-              const validationError = validateMakeModel();
-              if (validationError) {
-                setError(validationError);
-                return;
-              }
-              setStep("year");
-            }}
-          >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field
-                id="claim-make"
-                label="Marke"
-                value={make}
-                onChange={setMake}
-                placeholder="Toyota"
-                required
-              />
-              <Field
-                id="claim-model"
-                label="Modell"
-                value={model}
-                onChange={setModel}
-                placeholder="Supra"
-                required
-              />
-            </div>
-            <SlideActions
-              error={error}
-              pending={pending}
-              onBack={goBack}
-              submitLabel="Weiter"
-              showBack
-            />
-          </form>
-        </SlidePanel>
-      ) : null}
-
-      {step === "year" ? (
-        <SlidePanel
-          kicker={stepKicker("year")}
-          title="Baujahr"
-          copy="Das Baujahr hilft bei der Zuordnung deiner Dokumente. Die VIN kannst du optional ergänzen."
-        >
-          <form
-            className="mt-6 grid w-full gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setError(null);
-              const validationError = validateYear();
-              if (validationError) {
-                setError(validationError);
-                return;
-              }
-              setStep("power");
-            }}
-          >
-            <Field
-              id="claim-year"
-              label="Baujahr"
-              value={year}
-              onChange={setYear}
-              inputMode="numeric"
-              placeholder="2011"
-              required
-            />
-            <Field
-              id="claim-vin"
-              label="VIN (optional)"
-              value={vin}
-              onChange={setVin}
-              placeholder="Fahrgestellnummer"
-            />
-            <SlideActions
-              error={error}
-              pending={pending}
-              onBack={goBack}
-              submitLabel="Weiter"
-              showBack
-            />
-          </form>
-        </SlidePanel>
-      ) : null}
-
-      {step === "power" ? (
-        <SlidePanel
-          kicker={stepKicker("power")}
-          title="Leistung & Hubraum"
-          copy="Optional — du kannst die Werte auch später unter Fahrzeugdaten ergänzen."
-        >
-          <form
-            className="mt-6 grid w-full gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setError(null);
-              setStep("drivetrain");
-            }}
-          >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field
-                id="claim-power-ps"
-                label="PS"
-                value={powerPs}
-                onChange={setPowerPs}
-                inputMode="numeric"
-                placeholder="231"
-              />
-              <Field
-                id="claim-displacement"
-                label="Hubraum (ccm)"
-                value={displacementCc}
-                onChange={setDisplacementCc}
-                inputMode="numeric"
-                placeholder="2998"
-              />
-            </div>
-            <SlideActions
-              error={error}
-              pending={pending}
-              onBack={goBack}
-              submitLabel="Weiter"
-              showBack
-            />
-          </form>
-        </SlidePanel>
-      ) : null}
-
-      {step === "drivetrain" ? (
-        <SlidePanel
-          kicker={stepKicker("drivetrain")}
-          title="Antrieb & Kraftstoff"
-          copy="Optional. Als Nächstes legst du dein Ölwechsel-Intervall fest."
-        >
-          <form
-            className="mt-6 grid w-full gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setError(null);
-              setStep("oilInterval");
-            }}
-          >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <SelectField
-                id="claim-drivetrain"
-                label="Antrieb"
-                value={drivetrain}
-                onChange={setDrivetrain}
-                options={VEHICLE_DRIVETRAIN_TYPES}
-              />
-              <SelectField
-                id="claim-fuel-type"
-                label="Kraftstoff"
-                value={fuelType}
-                onChange={setFuelType}
-                options={VEHICLE_FUEL_TYPES}
-              />
-            </div>
-            <SlideActions
-              error={error}
-              pending={pending}
-              onBack={goBack}
-              submitLabel="Weiter"
-              showBack
-            />
-          </form>
-        </SlidePanel>
-      ) : null}
-
-      {step === "oilInterval" ? (
-        <SlidePanel
-          kicker={stepKicker("oilInterval")}
-          title="Ölwechsel-Intervall"
-          copy="Wie oft soll der nächste Ölwechsel fällig sein? Standard ist 10.000 km — du kannst es später in den Fahrzeugdaten anpassen."
-        >
-          <form
-            className="mt-6 grid w-full gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setError(null);
-              const validationError = validateOilInterval();
-              if (validationError) {
-                setError(validationError);
-                return;
-              }
-              if (needsAccount) {
-                setStep("account");
-                return;
-              }
-              submitClaim();
-            }}
-          >
-            <SelectField
-              id="claim-oil-interval-km"
-              label="Intervall (km)"
-              value={oilChangeIntervalKm}
-              onChange={setOilChangeIntervalKm}
-              required
-              options={OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => ({
-                value: String(km),
-                label: `${formatMileageKmNumber(km)} km`,
-              }))}
-            />
-            <SelectField
-              id="claim-oil-interval-months"
-              label="Intervall (Monate)"
-              value={oilChangeIntervalMonths}
-              onChange={setOilChangeIntervalMonths}
-              required
-              options={OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => ({
-                value: String(months),
-                label: formatOilChangeIntervalMonthsLabel(months),
-              }))}
-            />
-            <SlideActions
-              error={error}
-              pending={pending}
-              onBack={goBack}
-              submitLabel={
-                needsAccount
-                  ? "Weiter zum Konto"
-                  : pending
-                    ? "Verknüpfen…"
-                    : "Tag aktivieren"
-              }
-              submitIcon={needsAccount ? "next" : "check"}
-              showBack
-            />
-          </form>
-        </SlidePanel>
-      ) : null}
-
-      {step === "account" ? (
-        <SlidePanel
-          kicker="Konto"
-          title="Konto anlegen"
-          copy="Damit bleiben Fahrzeug und Dokumente sicher mit dir verknüpft."
-        >
-          <form
-            className="mt-6 grid w-full gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitClaim();
-            }}
-          >
-            <Field
-              id="claim-account-name"
-              label="Name (optional)"
-              value={name}
-              onChange={setName}
-              placeholder="Dein Name"
-              autoComplete="name"
-            />
-            <Field
-              id="claim-account-email"
-              label="E-Mail"
-              value={email}
-              onChange={setEmail}
-              type="email"
-              inputMode="email"
-              placeholder="du@beispiel.de"
-              required
-              autoComplete="email"
-            />
-            <Field
-              id="claim-account-password"
-              label="Passwort"
-              value={password}
-              onChange={setPassword}
-              type="password"
-              placeholder="Mindestens 10 Zeichen"
-              required
-              autoComplete="new-password"
-            />
-            <Field
-              id="claim-account-password-confirm"
-              label="Passwort bestätigen"
-              value={passwordConfirm}
-              onChange={setPasswordConfirm}
-              type="password"
-              placeholder="Passwort wiederholen"
-              required
-              autoComplete="new-password"
-            />
-
-            {error ? (
-              <p role="alert" className="vd-alert-error">
-                {error}
-              </p>
-            ) : null}
-            {info ? (
-              <p role="status" className="text-sm text-muted-foreground">
-                {info}
-              </p>
-            ) : null}
-
-            <SlideActions
-              error={null}
-              pending={pending}
-              onBack={goBack}
-              submitLabel={pending ? "Konto wird angelegt…" : "Konto anlegen & starten"}
-              submitIcon="check"
-              showBack
-            />
-          </form>
-        </SlidePanel>
-      ) : null}
-    </ClaimShell>
-  );
-}
-
-function SlidePanel({
-  kicker,
-  title,
-  copy,
-  children,
-}: {
-  kicker: string;
-  title: string;
-  copy: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="claim-panel vd-anim-header">
-      <header>
-        <p className="claim-kicker">{kicker}</p>
-        <h1 className="claim-title mt-2">{title}</h1>
-        <p className="claim-copy mt-2">{copy}</p>
-      </header>
-      {children}
-    </section>
-  );
-}
-
-function SlideActions({
-  error,
-  pending,
-  onBack,
-  submitLabel,
-  submitIcon = "next",
-  showBack,
-}: {
-  error: string | null;
-  pending: boolean;
-  onBack: () => void;
-  submitLabel: string;
-  submitIcon?: "next" | "check";
-  showBack?: boolean;
-}) {
-  return (
-    <>
-      {error ? (
-        <p role="alert" className="vd-alert-error">
-          {error}
-        </p>
-      ) : null}
-      <div className="flex gap-2 pt-1">
-        {showBack ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onBack}
-            disabled={pending}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Zurück
-          </Button>
+      <ClaimStepTransition step={step} direction={transitionDirection}>
+        {step === "intro" ? (
+          <ClaimIntroHero
+            tagUuid={tagUuid}
+            needsAccount={needsAccount}
+            isAuthenticated={isAuthenticated}
+            userEmail={userEmail}
+            onStart={() => advance("makeModel")}
+          />
         ) : null}
-        <Button type="submit" disabled={pending} className="flex-1">
-          {submitLabel}
-          {submitIcon === "check" ? (
-            <Check className="h-4 w-4" aria-hidden />
-          ) : (
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          )}
-        </Button>
-      </div>
-    </>
-  );
-}
 
-function ClaimShell({ children }: { children: ReactNode }) {
-  return <ScanContent>{children}</ScanContent>;
-}
+        {step === "makeModel" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("makeModel")}
+            title="Marke & Modell"
+            copy="Wie heißt dein Fahrzeug? Das steht gleich auf deiner digitalen Visitenkarte."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                const validationError = validateMakeModel();
+                if (validationError) {
+                  setError(validationError);
+                  return;
+                }
+                advance("year");
+              }}
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <ClaimField
+                  id="claim-make"
+                  label="Marke"
+                  value={make}
+                  onChange={setMake}
+                  placeholder="Toyota"
+                  required
+                />
+                <ClaimField
+                  id="claim-model"
+                  label="Modell"
+                  value={model}
+                  onChange={setModel}
+                  placeholder="Supra"
+                  required
+                />
+              </div>
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel="Weiter"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
 
-function SteelTagPlate() {
-  return (
-    <div className="claim-steel" aria-label="ZeloxTag">
-      <div className="claim-steel__grain" aria-hidden />
-      <div className="relative z-10 flex items-center gap-4">
-        <div className="claim-steel__qr" aria-hidden>
-          <span />
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[0.65rem] font-semibold tracking-[0.2em] text-white/55 uppercase">
-            Unclaimed
-          </p>
-          <p className="mt-1 text-[0.82rem] tracking-wide text-white/90">
-            ZeloxTag
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+        {step === "year" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("year")}
+            title="Baujahr"
+            copy="Das Baujahr hilft bei der Zuordnung deiner Dokumente. Die VIN kannst du optional ergänzen."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                const validationError = validateYear();
+                if (validationError) {
+                  setError(validationError);
+                  return;
+                }
+                advance("power");
+              }}
+            >
+              <ClaimField
+                id="claim-year"
+                label="Baujahr"
+                value={year}
+                onChange={setYear}
+                inputMode="numeric"
+                placeholder="2011"
+                required
+              />
+              <ClaimField
+                id="claim-vin"
+                label="VIN (optional)"
+                value={vin}
+                onChange={setVin}
+                placeholder="Fahrgestellnummer"
+              />
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel="Weiter"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
 
-function ClaimFormField({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="grid w-full gap-2">
-      <Label
-        htmlFor={htmlFor}
-        className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase"
-      >
-        {label}
-      </Label>
-      {children}
-    </div>
-  );
-}
+        {step === "power" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("power")}
+            title="Leistung & Hubraum"
+            copy="Optional — du kannst die Werte auch später unter Fahrzeugdaten ergänzen."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                advance("drivetrain");
+              }}
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <ClaimField
+                  id="claim-power-ps"
+                  label="PS"
+                  value={powerPs}
+                  onChange={setPowerPs}
+                  inputMode="numeric"
+                  placeholder="231"
+                />
+                <ClaimField
+                  id="claim-displacement"
+                  label="Hubraum (ccm)"
+                  value={displacementCc}
+                  onChange={setDisplacementCc}
+                  inputMode="numeric"
+                  placeholder="2998"
+                />
+              </div>
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel="Weiter"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
 
-const CLAIM_FIELD_CLASS = "min-h-11 w-full";
+        {step === "drivetrain" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("drivetrain")}
+            title="Antrieb & Kraftstoff"
+            copy="Optional. Als Nächstes legst du dein Ölwechsel-Intervall fest."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                advance("oilInterval");
+              }}
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <ClaimSelectField
+                  id="claim-drivetrain"
+                  label="Antrieb"
+                  value={drivetrain}
+                  onChange={setDrivetrain}
+                  options={VEHICLE_DRIVETRAIN_TYPES}
+                />
+                <ClaimSelectField
+                  id="claim-fuel-type"
+                  label="Kraftstoff"
+                  value={fuelType}
+                  onChange={setFuelType}
+                  options={VEHICLE_FUEL_TYPES}
+                />
+              </div>
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel="Weiter"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
 
-function Field({
-  id,
-  label,
-  value,
-  onChange,
-  type = "text",
-  inputMode,
-  required,
-  placeholder,
-  autoComplete,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  inputMode?: "numeric" | "email" | "text";
-  required?: boolean;
-  placeholder?: string;
-  autoComplete?: string;
-}) {
-  return (
-    <ClaimFormField label={label} htmlFor={id}>
-      <Input
-        id={id}
-        type={type}
-        inputMode={inputMode}
-        required={required}
-        value={value}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        className={CLAIM_FIELD_CLASS}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </ClaimFormField>
-  );
-}
+        {step === "oilInterval" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("oilInterval")}
+            title="Ölwechsel-Intervall"
+            copy="Wie oft soll der nächste Ölwechsel fällig sein? Standard ist 10.000 km — du kannst es später in den Fahrzeugdaten anpassen."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                const validationError = validateOilInterval();
+                if (validationError) {
+                  setError(validationError);
+                  return;
+                }
+                if (needsAccount) {
+                  advance("account");
+                  return;
+                }
+                submitClaim();
+              }}
+            >
+              <ClaimSelectField
+                id="claim-oil-interval-km"
+                label="Intervall (km)"
+                value={oilChangeIntervalKm}
+                onChange={setOilChangeIntervalKm}
+                required
+                options={OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => ({
+                  value: String(km),
+                  label: `${formatMileageKmNumber(km)} km`,
+                }))}
+              />
+              <ClaimSelectField
+                id="claim-oil-interval-months"
+                label="Intervall (Monate)"
+                value={oilChangeIntervalMonths}
+                onChange={setOilChangeIntervalMonths}
+                required
+                options={OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => ({
+                  value: String(months),
+                  label: formatOilChangeIntervalMonthsLabel(months),
+                }))}
+              />
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel={
+                  needsAccount
+                    ? "Weiter zum Konto"
+                    : pending
+                      ? "Verknüpfen…"
+                      : "Tag aktivieren"
+                }
+                submitIcon={needsAccount ? "next" : "check"}
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
 
-type SelectOption = string | { value: string; label: string };
+        {step === "account" ? (
+          <ClaimWizardPanel
+            kicker="Fast geschafft"
+            title="Konto anlegen"
+            copy="Du gehörst gleich zur ZeloxTag-Community. Damit bleiben Fahrzeug und Dokumente sicher mit dir verknüpft."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitClaim();
+              }}
+            >
+              <ClaimField
+                id="claim-account-name"
+                label="Name (optional)"
+                value={name}
+                onChange={setName}
+                placeholder="Dein Name"
+                autoComplete="name"
+              />
+              <ClaimField
+                id="claim-account-email"
+                label="E-Mail"
+                value={email}
+                onChange={setEmail}
+                type="email"
+                inputMode="email"
+                placeholder="du@beispiel.de"
+                required
+                autoComplete="email"
+              />
+              <ClaimField
+                id="claim-account-password"
+                label="Passwort"
+                value={password}
+                onChange={setPassword}
+                type="password"
+                placeholder="Mindestens 10 Zeichen"
+                required
+                autoComplete="new-password"
+              />
+              <ClaimField
+                id="claim-account-password-confirm"
+                label="Passwort bestätigen"
+                value={passwordConfirm}
+                onChange={setPasswordConfirm}
+                type="password"
+                placeholder="Passwort wiederholen"
+                required
+                autoComplete="new-password"
+              />
 
-function SelectField({
-  id,
-  label,
-  value,
-  onChange,
-  options,
-  required,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: readonly SelectOption[];
-  required?: boolean;
-}) {
-  const normalized = options.map((option) =>
-    typeof option === "string" ? { value: option, label: option } : option,
-  );
+              {error ? (
+                <p role="alert" className="vd-alert-error">
+                  {error}
+                </p>
+              ) : null}
+              {info ? (
+                <p role="status" className="text-sm text-muted-foreground">
+                  {info}
+                </p>
+              ) : null}
 
-  return (
-    <ClaimFormField label={label} htmlFor={id}>
-      <select
-        id={id}
-        value={value}
-        required={required}
-        onChange={(event) => onChange(event.target.value)}
-        className={cn("claim-input", CLAIM_FIELD_CLASS)}
-      >
-        {!required ? <option value="">—</option> : null}
-        {normalized.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </ClaimFormField>
+              <ClaimSlideActions
+                error={null}
+                pending={pending}
+                onBack={goBack}
+                submitLabel={
+                  pending ? "Konto wird angelegt…" : "Konto anlegen & starten"
+                }
+                submitIcon="check"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
+      </ClaimStepTransition>
+    </ClaimShell>
   );
 }
