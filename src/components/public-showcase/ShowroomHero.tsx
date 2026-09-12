@@ -172,7 +172,7 @@ function HeroBackdrop({
         <div
           ref={scrollerRef}
           onScroll={handleScroll}
-          className="flex h-full touch-pan-x snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex h-full w-full touch-pan-x snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="region"
           aria-roledescription="Karussell"
           aria-label="Fahrzeugfotos"

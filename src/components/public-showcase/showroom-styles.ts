@@ -3,9 +3,11 @@ export const showroom = {
   page: "min-h-dvh bg-black text-white",
   /** Tall hero so charts/photos breathe before the spec stack. */
   heroMinHeight: "min-h-[min(92dvh,920px)]",
-  /** Horizontal swipe only in this band — keeps vertical page scroll below. */
-  heroSwipeBand:
-    "h-[min(46dvh,420px)] max-h-[42%] min-h-[200px]",
+  /**
+   * Horizontal swipe capture: most of the hero image, excluding the lower
+   * title / dots strip so vertical page scroll still works there.
+   */
+  heroSwipeBand: "bottom-[34%] min-h-[min(52dvh,520px)]",
   content: "relative z-10 bg-black pt-2",
   panel:
     "overflow-hidden rounded-[1.25rem] border border-white/15 bg-white/[0.03]",

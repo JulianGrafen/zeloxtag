@@ -49,8 +49,7 @@ export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
   const motionConfig = useShowroomMotion();
   const vehicleRows = buildShowcaseSpecRows(profile, animatedStatValue);
   const hasSoundcheck = Boolean(profile.engineSoundUrl?.trim());
-  const hasModsSection =
-    modifications.length > 0 || Boolean(profile.notes?.trim());
+  const hasModsSection = modifications.length > 0;
   const hasDyno = Boolean(profile.dynoChartUrl);
   const hasShowcaseGroup = hasSoundcheck || hasModsSection || hasDyno;
 
@@ -86,6 +85,7 @@ export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
                       label={row.label}
                       value={row.value}
                       emphasis={row.emphasis}
+                      layout={row.layout}
                     />
                   </motion.div>
                 ))}
@@ -108,11 +108,7 @@ export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
               ) : null}
               {hasModsSection ? (
                 <ShowroomGroup>
-                  <ShowroomMods
-                    profile={profile}
-                    modifications={modifications}
-                    embedded
-                  />
+                  <ShowroomMods modifications={modifications} embedded />
                 </ShowroomGroup>
               ) : null}
               {hasDyno ? (

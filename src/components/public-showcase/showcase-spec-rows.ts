@@ -9,6 +9,8 @@ export type ShowcaseSpecRow = {
   label: string;
   value: ReactNode;
   emphasis?: boolean;
+  /** Multiline text (e.g. Spezifikation) — label above value. */
+  layout?: "stacked";
 };
 
 function formatEngine(profile: PublicShowcaseProfile): string | null {
@@ -66,6 +68,16 @@ export function buildShowcaseSpecRows(
       key: field.key,
       label: field.label,
       value: field.value,
+    });
+  }
+
+  const specification = profile.notes?.trim();
+  if (specification) {
+    rows.push({
+      key: "specification",
+      label: "Spezifikation",
+      value: specification,
+      layout: "stacked",
     });
   }
 

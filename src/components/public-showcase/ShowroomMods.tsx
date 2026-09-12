@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 
-import type {
-  PublicModification,
-  PublicShowcaseProfile,
-} from "@/lib/vehicles/public-showcase-data";
+import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
 
 import { formatDocumentDate } from "@/lib/documents/format";
 import { cn } from "@/lib/utils";
@@ -15,7 +12,6 @@ import { ShowroomDisclosure } from "./ShowroomDisclosure";
 import { showroom } from "./showroom-styles";
 
 type ShowroomModsProps = {
-  profile: PublicShowcaseProfile;
   modifications: PublicModification[];
   embedded?: boolean;
 };
@@ -35,24 +31,7 @@ function umbautenSubtitle(
   return count === 1 ? "1 Eintrag" : `${count} Einträge`;
 }
 
-function UmbautenSpecificationsBlock({ notes }: { notes: string }) {
-  return (
-    <div className="px-4 py-3.5">
-      <p className={`whitespace-pre-wrap ${showroom.body}`}>{notes}</p>
-    </div>
-  );
-}
-
-function UmbautenList({
-  modifications,
-  specifications,
-}: {
-  modifications: PublicModification[];
-  specifications: string | null;
-}) {
-  const hasMods = modifications.length > 0;
-  const hasSpecs = Boolean(specifications);
-
+function UmbautenList({ modifications }: { modifications: PublicModification[] }) {
   return (
     <ul id="showroom-mods-list">
       {modifications.map((mod, index) => {
@@ -63,7 +42,7 @@ function UmbautenList({
             key={mod.id}
             className={cn(
               "flex items-start justify-between gap-3 px-4 py-3",
-              (!isLastMod || hasSpecs) && "border-b border-white/10",
+              !isLastMod && "border-b border-white/10",
             )}
           >
             <div className="min-w-0">
@@ -80,30 +59,21 @@ function UmbautenList({
           </li>
         );
       })}
-      {hasSpecs ? (
-        <UmbautenSpecificationsBlock notes={specifications!} />
-      ) : null}
     </ul>
   );
 }
 
 export function ShowroomMods({
-  profile,
   modifications,
   embedded = false,
 }: ShowroomModsProps) {
-  const specifications = profile.notes?.trim() ? profile.notes.trim() : null;
-  const hasMods = modifications.length > 0;
-  const hasSpecs = Boolean(specifications);
   const [open, setOpen] = useState(false);
 
-  if (!hasMods && !hasSpecs) {
+  if (modifications.length === 0) {
     return null;
   }
 
-  const list = (
-    <UmbautenList modifications={modifications} specifications={specifications} />
-  );
+  const list = <UmbautenList modifications={modifications} />;
 
   const subtitle = umbautenSubtitle(modifications, open);
 

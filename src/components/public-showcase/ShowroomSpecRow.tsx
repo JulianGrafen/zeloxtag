@@ -8,13 +8,31 @@ type ShowroomSpecRowProps = {
   label: string;
   value: ReactNode;
   emphasis?: boolean;
+  layout?: "stacked";
 };
 
 export function ShowroomSpecRow({
   label,
   value,
   emphasis = false,
+  layout,
 }: ShowroomSpecRowProps) {
+  if (layout === "stacked") {
+    return (
+      <div className="flex flex-col gap-2 px-4 py-3.5">
+        <span className={showroom.rowLabel}>{label}</span>
+        <div
+          className={cn(
+            "min-w-0 whitespace-pre-wrap",
+            emphasis ? showroom.rowValueEmphasis : showroom.body,
+          )}
+        >
+          {value}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
