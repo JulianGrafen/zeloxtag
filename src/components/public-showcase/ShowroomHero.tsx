@@ -116,7 +116,7 @@ function HeroBackdrop({
   return (
     <div className="absolute inset-0 bg-black">
       <motion.div
-        className="absolute inset-0"
+        className={`absolute inset-x-0 top-0 z-[1] ${showroom.heroSwipeBand}`}
         variants={motionConfig.heroImageSettle}
         initial="hidden"
         animate="visible"
@@ -132,8 +132,8 @@ function HeroBackdrop({
           {photos.map((photo, index) => {
             const contain = photoUsesContainLayout(photo.src);
             const imageClass = contain
-              ? "object-contain object-top px-3 pb-[38%] pt-[max(3.5rem,env(safe-area-inset-top))]"
-              : "object-cover object-[center_42%]";
+              ? "object-contain object-top px-3 pt-[max(3.5rem,env(safe-area-inset-top))]"
+              : "object-cover object-[center_38%]";
             const kenBurnsActive =
               motionConfig.enableHeroKenBurns &&
               !contain &&
@@ -181,7 +181,7 @@ function HeroBackdrop({
         <button
           type="button"
           onClick={() => onOpenAtIndex(activeIndex)}
-          className="pointer-events-auto absolute right-4 top-[max(4.25rem,calc(env(safe-area-inset-top)+3.25rem))] z-[1] inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white/90 backdrop-blur-sm"
+          className="pointer-events-auto absolute right-3 top-[max(3.25rem,calc(env(safe-area-inset-top)+2.5rem))] z-[2] inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white/90 backdrop-blur-sm"
           aria-label="Aktuelles Foto vergrößern"
         >
           <Expand className="h-4 w-4" aria-hidden />
@@ -189,7 +189,12 @@ function HeroBackdrop({
       </motion.div>
 
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[52%] bg-gradient-to-t from-black from-[18%] via-black/80 to-transparent"
+        className={`pointer-events-none absolute inset-x-0 top-0 z-0 ${showroom.heroSwipeBand} bg-gradient-to-b from-transparent via-black/20 to-black`}
+        aria-hidden
+      />
+
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[58%] bg-gradient-to-t from-black from-[12%] via-black/85 to-transparent"
         aria-hidden
       />
     </div>
