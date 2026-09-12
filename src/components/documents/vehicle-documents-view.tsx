@@ -175,6 +175,11 @@ export function VehicleDocumentsView({
       ? undefined
       : `${filtered.length} von ${filterBaseCount} Treffern`;
 
+  const typeFilterPills =
+    activeType === "abe"
+      ? FILTERS.filter((filter) => filter.id !== "invoice")
+      : FILTERS;
+
   if (activeType === "invoice") {
     return (
       <VehicleInvoicesView
@@ -259,7 +264,7 @@ export function VehicleDocumentsView({
           aria-label="Dokumentfilter"
           className="vd-anim-header flex gap-2 overflow-x-auto pb-1"
         >
-          {FILTERS.map((filter) => {
+          {typeFilterPills.map((filter) => {
             const active = activeType === filter.id;
             return (
               <PressableButton
@@ -353,7 +358,7 @@ export function VehicleDocumentsView({
             </div>
           ) : (
             <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-              {filtered.map((doc) => (
+              {filtered.map((doc, index) => (
                 <li key={doc.id}>
                   <DocumentRow
                     tagUuid={tagUuid}
@@ -362,6 +367,12 @@ export function VehicleDocumentsView({
                     deleting={pending && pendingId === doc.id}
                     onDelete={() => handleDelete(doc)}
                   />
+                  {index < filtered.length - 1 ? (
+                    <div
+                      aria-hidden
+                      className="mx-4 border-t border-[color:var(--vd-border)]"
+                    />
+                  ) : null}
                 </li>
               ))}
             </ul>

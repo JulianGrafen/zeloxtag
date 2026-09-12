@@ -220,22 +220,25 @@ export function DocumentAbeDetailView({
           {isPlainAbe ? (
             <div className="space-y-4">
               <AbeKbaHero value={document.kba_number ?? ""} />
-              <dl className="grid gap-2.5 text-[0.88rem]">
-                <AbeSummaryRow label={ABE_REQUIRED_FIELD_LABELS.abeHolder} value={abeHolder} />
-                <AbeSummaryRow label="Hersteller" value={manufacturer} />
-                <AbeSummaryRow label="Behörde" value={document.authority} />
+              <dl className="divide-y divide-[color:var(--vd-border)] border-t border-[color:var(--vd-border)] text-[0.88rem]">
+                <AbeSummaryRow layout="list" label={ABE_REQUIRED_FIELD_LABELS.abeHolder} value={abeHolder} />
+                <AbeSummaryRow layout="list" label="Hersteller" value={manufacturer} />
+                <AbeSummaryRow layout="list" label="Behörde" value={document.authority} />
                 <AbeSummaryRow
+                  layout="list"
                   label="ABE-Nummer"
                   value={document.invoice_number}
                 />
                 {plainAbeSpecs.map((spec) => (
                   <AbeSummaryRow
                     key={`${spec.label}-${spec.value}`}
+                    layout="list"
                     label={spec.label}
                     value={spec.value}
                   />
                 ))}
                 <AbeSummaryRow
+                  layout="list"
                   label="Scandatum"
                   value={
                     document.date

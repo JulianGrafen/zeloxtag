@@ -34,10 +34,26 @@ export function AbeFieldLabel({
 export function AbeSummaryRow({
   label,
   value,
+  layout = "card",
 }: {
   label: string;
   value: string | null | undefined;
+  /** Stacked rows with dividers (detail view); default cards for wizards. */
+  layout?: "card" | "list";
 }) {
+  if (layout === "list") {
+    return (
+      <div className="flex items-start justify-between gap-4 py-3">
+        <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+          {label}
+        </dt>
+        <dd className="max-w-[65%] text-right text-[0.82rem] font-medium text-[color:var(--vd-text)]">
+          {value?.trim() || "—"}
+        </dd>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-start justify-between gap-3 rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
       <dt className="text-[0.78rem] text-[color:var(--vd-muted)]">{label}</dt>

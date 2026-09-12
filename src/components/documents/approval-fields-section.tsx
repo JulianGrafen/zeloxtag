@@ -26,14 +26,19 @@ function Fact({
   const display =
     typeof value === "boolean" ? (value ? "Ja" : "Nein") : String(value);
   return (
-    <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-      <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">{label}</dt>
-      <dd className="mt-0.5 whitespace-pre-wrap font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+    <div className="flex items-start justify-between gap-4 py-3">
+      <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+        {label}
+      </dt>
+      <dd className="max-w-[65%] text-right text-[0.82rem] font-medium whitespace-pre-wrap text-[color:var(--vd-text)]">
         {display}
       </dd>
     </div>
   );
 }
+
+const factListClassName =
+  "divide-y divide-[color:var(--vd-border)] border-t border-[color:var(--vd-border)] text-[0.82rem]";
 
 /**
  * Kind-specific extracted fields for ABE subtypes / TÜV reports.
@@ -62,7 +67,7 @@ export function ApprovalFieldsSection({
       </h2>
 
       {approvalFields.kind === "gutachten" ? (
-        <dl className="grid grid-cols-1 gap-3 text-[0.85rem] sm:grid-cols-2">
+        <dl className={factListClassName}>
           <Fact
             label="Dokumenttyp"
             value={GUTACHTEN_SUBTYPE_LABELS[approvalFields.data.documentSubtype]}
@@ -85,19 +90,15 @@ export function ApprovalFieldsSection({
                 : null
             }
           />
-          {approvalFields.data.vehicleMatchNotes ? (
-            <div className="sm:col-span-2">
-              <Fact
-                label="Verwendung / Fahrzeug-Hinweise"
-                value={approvalFields.data.vehicleMatchNotes}
-              />
-            </div>
-          ) : null}
+          <Fact
+            label="Verwendung / Fahrzeug-Hinweise"
+            value={approvalFields.data.vehicleMatchNotes}
+          />
         </dl>
       ) : null}
 
       {approvalFields.kind === "teilegutachten" ? (
-        <dl className="grid grid-cols-1 gap-3 text-[0.85rem] sm:grid-cols-2">
+        <dl className={factListClassName}>
           <Fact
             label="Prüforganisation"
             value={approvalFields.data.testingOrganization}
@@ -106,33 +107,27 @@ export function ApprovalFieldsSection({
             label="Teilegutachten-Nr."
             value={approvalFields.data.documentNumber}
           />
-          <div className="sm:col-span-2">
-            <Fact
-              label="Verwendungsbereich"
-              value={
-                stripAuflagenFromValidityArea(
-                  approvalFields.data.validityArea,
-                ) ?? approvalFields.data.validityArea
-              }
-            />
-          </div>
+          <Fact
+            label="Verwendungsbereich"
+            value={
+              stripAuflagenFromValidityArea(
+                approvalFields.data.validityArea,
+              ) ?? approvalFields.data.validityArea
+            }
+          />
           <Fact
             label="Sofortige Abnahme erforderlich"
             value={approvalFields.data.immediateInspectionRequired}
           />
-          {approvalFields.data.ownerNotes ? (
-            <div className="sm:col-span-2">
-              <Fact
-                label="Hinweise für den Fahrzeughalter"
-                value={approvalFields.data.ownerNotes}
-              />
-            </div>
-          ) : null}
+          <Fact
+            label="Hinweise für den Fahrzeughalter"
+            value={approvalFields.data.ownerNotes}
+          />
         </dl>
       ) : null}
 
       {approvalFields.kind === "einzelabnahme" ? (
-        <dl className="grid grid-cols-1 gap-3 text-[0.85rem] sm:grid-cols-2">
+        <dl className={factListClassName}>
           <Fact
             label="Dokumentnummer"
             value={approvalFields.data.reportNumber}
@@ -141,17 +136,15 @@ export function ApprovalFieldsSection({
             label="Amtlich anerkannter Sachverständiger"
             value={approvalFields.data.officialExpert}
           />
-          <div className="sm:col-span-2">
-            <Fact
-              label="Feld 22 · Bemerkungen / Änderungen"
-              value={approvalFields.data.field22Text}
-            />
-          </div>
+          <Fact
+            label="Feld 22 · Bemerkungen / Änderungen"
+            value={approvalFields.data.field22Text}
+          />
         </dl>
       ) : null}
 
       {approvalFields.kind === "egbe" ? (
-        <dl className="grid grid-cols-1 gap-3 text-[0.85rem] sm:grid-cols-2">
+        <dl className={factListClassName}>
           <Fact label="E-Prüfzeichen" value={approvalFields.data.eMark} />
           <Fact
             label="Bauteilgruppe"
@@ -162,7 +155,7 @@ export function ApprovalFieldsSection({
 
       {approvalFields.kind === "tuev" ? (
         <>
-          <dl className="grid grid-cols-1 gap-3 text-[0.85rem] sm:grid-cols-2">
+          <dl className={factListClassName}>
             <Fact
               label="Prüforganisation"
               value={approvalFields.data.testingOrganization}
