@@ -117,6 +117,21 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.profile.notes).toBeNull();
   });
 
+  it("includes acceleration times on the public profile", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      tech_specs: {
+        ...((baseVehicle.tech_specs ?? {}) as Record<string, unknown>),
+        accel0To100Sec: 4.9,
+        accel100To200Sec: "11,2",
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.profile.accel0To100Sec).toBe(4.9);
+    expect(payload.profile.accel100To200Sec).toBe(11.2);
+  });
+
   it("exposes a public engine sound proxy when sound_url is set", () => {
     const vehicle: Vehicle = {
       ...baseVehicle,

@@ -2,13 +2,21 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import type { ShowcaseQuartettMeta } from "./showcase-spec-rows";
+import {
+  filledSegments,
+  filledSegmentsLowerIsBetter,
+  SHOWCASE_QUARTETT_SEGMENT_COUNT,
+} from "./showcase-quartett-scales";
+import { ShowroomQuartettBar } from "./ShowroomQuartettBar";
 import { showroom } from "./showroom-styles";
 
 type ShowroomSpecRowProps = {
   label: string;
   value: ReactNode;
   emphasis?: boolean;
-  layout?: "stacked";
+  layout?: "stacked" | "quartett";
+  quartett?: ShowcaseQuartettMeta;
 };
 
 export function ShowroomSpecRow({
@@ -16,7 +24,37 @@ export function ShowroomSpecRow({
   value,
   emphasis = false,
   layout,
+  quartett,
 }: ShowroomSpecRowProps) {
+  if (layout === "quartett" && quartett) {
+    const filled =
+      quartett.polarity === "lower" && quartett.scaleMin != null
+        ? filledSegmentsLowerIsBetter(
+            quartett.amount,
+            quartett.scaleMin,
+            quartett.scaleMax,
+          )
+        : filledSegments(quartett.amount, quartett.scaleMax);
+
+    return (
+      <div
+        className={cn(
+          "flex flex-col gap-2.5 px-4 py-3",
+          emphasis && "border-l-2 border-white/25 pl-3",
+        )}
+      >
+        <div className="flex min-h-6 items-center justify-between gap-4">
+          <span className={showroom.rowLabel}>{label}</span>
+          <span className={showroom.rowValueEmphasis}>{value}</span>
+        </div>
+        <ShowroomQuartettBar
+          filled={filled}
+          total={SHOWCASE_QUARTETT_SEGMENT_COUNT}
+        />
+      </div>
+    );
+  }
+
   if (layout === "stacked") {
     return (
       <div className="flex flex-col gap-2 px-4 py-3.5">

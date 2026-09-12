@@ -95,6 +95,14 @@ export const OIL_CHANGE_INTERVAL_KM_STEP = 2_500;
 export const OIL_CHANGE_INTERVAL_MONTHS_MIN = 1;
 export const OIL_CHANGE_INTERVAL_MONTHS_MAX = 36;
 
+/** 0–100 km/h acceleration time bounds (seconds). */
+export const ACCEL_0_100_SEC_MIN = 1;
+export const ACCEL_0_100_SEC_MAX = 30;
+
+/** 100–200 km/h acceleration time bounds (seconds). */
+export const ACCEL_100_200_SEC_MIN = 1;
+export const ACCEL_100_200_SEC_MAX = 60;
+
 /** Dropdown options for oil-change interval (km), 2.500 km steps. */
 export const OIL_CHANGE_INTERVAL_KM_OPTIONS: readonly number[] = Array.from(
   {
@@ -168,6 +176,10 @@ export type VehicleTechSpecs = {
   oilChangeIntervalKm: number | null;
   /** Custom oil-change interval in months (default 12 when null). */
   oilChangeIntervalMonths: number | null;
+  /** 0–100 km/h in seconds (one decimal). */
+  accel0To100Sec: number | null;
+  /** 100–200 km/h in seconds (one decimal). */
+  accel100To200Sec: number | null;
 };
 
 export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
@@ -186,6 +198,8 @@ export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
   dynoChartUrl: null,
   oilChangeIntervalKm: null,
   oilChangeIntervalMonths: null,
+  accel0To100Sec: null,
+  accel100To200Sec: null,
 };
 
 function asTrimmedString(value: unknown): string | null {
@@ -215,6 +229,43 @@ function asBoundedInt(
   if (parsed == null) return null;
   if (parsed < min || parsed > max) return null;
   return parsed;
+}
+
+function roundAccelSeconds(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+/** Parse acceleration time in seconds (comma or dot decimal). */
+export function parseAccelSeconds(
+  value: unknown,
+  min: number,
+  max: number,
+): number | null {
+  if (value == null || value === "") return null;
+
+  let numeric: number;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    numeric = value;
+  } else if (typeof value === "string") {
+    const normalized = value.trim().replace(",", ".");
+    if (!normalized) return null;
+    numeric = Number.parseFloat(normalized);
+  } else {
+    return null;
+  }
+
+  if (!Number.isFinite(numeric) || numeric < min || numeric > max) {
+    return null;
+  }
+  return roundAccelSeconds(numeric);
+}
+
+export function formatAccelSecondsDe(seconds: number): string {
+  const rounded = roundAccelSeconds(seconds);
+  return `${rounded.toLocaleString("de-DE", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} s`;
 }
 
 export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
@@ -253,6 +304,16 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
     oilChangeIntervalMonths: parseOilChangeIntervalMonths(
       record.oilChangeIntervalMonths,
     ),
+    accel0To100Sec: parseAccelSeconds(
+      record.accel0To100Sec,
+      ACCEL_0_100_SEC_MIN,
+      ACCEL_0_100_SEC_MAX,
+    ),
+    accel100To200Sec: parseAccelSeconds(
+      record.accel100To200Sec,
+      ACCEL_100_200_SEC_MIN,
+      ACCEL_100_200_SEC_MAX,
+    ),
   };
 }
 
@@ -280,6 +341,12 @@ export function serializeVehicleTechSpecs(
   }
   if (specs.oilChangeIntervalMonths != null) {
     out.oilChangeIntervalMonths = specs.oilChangeIntervalMonths;
+  }
+  if (specs.accel0To100Sec != null) {
+    out.accel0To100Sec = specs.accel0To100Sec;
+  }
+  if (specs.accel100To200Sec != null) {
+    out.accel100To200Sec = specs.accel100To200Sec;
   }
   return out;
 }

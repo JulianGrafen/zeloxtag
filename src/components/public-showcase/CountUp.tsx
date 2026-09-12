@@ -7,13 +7,24 @@ type CountUpProps = {
   from?: number;
   to: number;
   separator?: string;
+  decimals?: number;
   direction?: "up" | "down";
   duration?: number;
   className?: string;
   delay?: number;
 };
 
-function formatCount(value: number, separator: string): string {
+function formatCount(
+  value: number,
+  separator: string,
+  decimals: number,
+): string {
+  if (decimals > 0) {
+    return value.toLocaleString("de-DE", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  }
   const rounded = Math.round(value);
   const raw = String(rounded);
   if (!separator) return raw;
@@ -35,6 +46,7 @@ export default function CountUp({
   from = 0,
   to,
   separator = ",",
+  decimals = 0,
   direction = "up",
   duration = 1,
   className,
@@ -76,7 +88,7 @@ export default function CountUp({
 
   return (
     <span ref={ref} className={className}>
-      {formatCount(display, separator)}
+      {formatCount(display, separator, decimals)}
     </span>
   );
 }

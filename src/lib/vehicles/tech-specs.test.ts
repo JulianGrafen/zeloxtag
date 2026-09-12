@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   countFilledTechSpecs,
+  formatAccelSecondsDe,
   formatOilChangeIntervalMonthsLabel,
+  parseAccelSeconds,
   isOilChangeIntervalKmOption,
   isOilChangeIntervalMonthsOption,
   OIL_CHANGE_INTERVAL_KM_OPTIONS,
@@ -82,6 +84,27 @@ describe("vehicle tech specs", () => {
     expect(isOilChangeIntervalMonthsOption(37)).toBe(false);
     expect(formatOilChangeIntervalMonthsLabel(1)).toBe("1 Monat");
     expect(formatOilChangeIntervalMonthsLabel(12)).toBe("12 Monate");
+  });
+
+  it("parses acceleration times with bounds and German formatting", () => {
+    expect(parseAccelSeconds("5,2", 1, 30)).toBe(5.2);
+    expect(parseAccelSeconds("5.2", 1, 30)).toBe(5.2);
+    expect(parseAccelSeconds(0.9, 1, 30)).toBeNull();
+    expect(parseAccelSeconds(31, 1, 30)).toBeNull();
+
+    const parsed = parseVehicleTechSpecs({
+      accel0To100Sec: "6,8",
+      accel100To200Sec: 14.2,
+    });
+    expect(parsed.accel0To100Sec).toBe(6.8);
+    expect(parsed.accel100To200Sec).toBe(14.2);
+    expect(formatAccelSecondsDe(6.8)).toBe("6,8 s");
+
+    const serialized = serializeVehicleTechSpecs(parsed);
+    expect(serialized).toEqual({
+      accel0To100Sec: 6.8,
+      accel100To200Sec: 14.2,
+    });
   });
 
   it("parses and clamps oil-change interval fields", () => {

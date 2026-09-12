@@ -19,9 +19,15 @@ import { formatMileageKmNumber } from "@/lib/documents/format";
 import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 import { readSilhouetteVersionFromSession } from "@/lib/vehicles/silhouette-session";
 import {
+  ACCEL_0_100_SEC_MAX,
+  ACCEL_0_100_SEC_MIN,
+  ACCEL_100_200_SEC_MAX,
+  ACCEL_100_200_SEC_MIN,
+  formatAccelSecondsDe,
   formatOilChangeIntervalMonthsLabel,
   isOilChangeIntervalKmOption,
   isOilChangeIntervalMonthsOption,
+  parseAccelSeconds,
   OIL_CHANGE_INTERVAL_KM_OPTIONS,
   OIL_CHANGE_INTERVAL_MONTHS_OPTIONS,
   parseVehicleTechSpecs,
@@ -88,6 +94,28 @@ export function VehicleSpecsView({
     value: string,
   ) {
     setSpecs((prev) => {
+      if (key === "accel0To100Sec") {
+        const trimmed = value.trim();
+        return {
+          ...prev,
+          accel0To100Sec: trimmed
+            ? parseAccelSeconds(trimmed, ACCEL_0_100_SEC_MIN, ACCEL_0_100_SEC_MAX)
+            : null,
+        };
+      }
+      if (key === "accel100To200Sec") {
+        const trimmed = value.trim();
+        return {
+          ...prev,
+          accel100To200Sec: trimmed
+            ? parseAccelSeconds(
+                trimmed,
+                ACCEL_100_200_SEC_MIN,
+                ACCEL_100_200_SEC_MAX,
+              )
+            : null,
+        };
+      }
       if (
         key === "powerPs" ||
         key === "powerKw" ||
@@ -351,6 +379,46 @@ export function VehicleSpecsView({
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <Field label="0–100">
+                  <input
+                    inputMode="decimal"
+                    value={
+                      specs.accel0To100Sec != null
+                        ? String(specs.accel0To100Sec).replace(".", ",")
+                        : ""
+                    }
+                    onChange={(event) =>
+                      patchSpec("accel0To100Sec", event.target.value)
+                    }
+                    className="claim-input w-full"
+                    placeholder="5,2"
+                    aria-describedby="accel-0-100-hint"
+                  />
+                </Field>
+                <Field label="100–200">
+                  <input
+                    inputMode="decimal"
+                    value={
+                      specs.accel100To200Sec != null
+                        ? String(specs.accel100To200Sec).replace(".", ",")
+                        : ""
+                    }
+                    onChange={(event) =>
+                      patchSpec("accel100To200Sec", event.target.value)
+                    }
+                    className="claim-input w-full"
+                    placeholder="12,4"
+                    aria-describedby="accel-100-200-hint"
+                  />
+                </Field>
+              </div>
+              <p
+                id="accel-0-100-hint"
+                className="text-[0.75rem] text-[color:var(--vd-muted)]"
+              >
+                Beschleunigungszeiten in Sekunden (optional).
+              </p>
+              <div className="grid grid-cols-2 gap-3">
                 <Field label="Kraftstoff">
                   <select
                     value={specs.fuelType ?? ""}
@@ -524,6 +592,18 @@ export function VehicleSpecsView({
             ) : null}
             {specs.torqueNm != null ? (
               <ReadRow label="Drehmoment" value={`${specs.torqueNm} Nm`} />
+            ) : null}
+            {specs.accel0To100Sec != null ? (
+              <ReadRow
+                label="0–100"
+                value={formatAccelSecondsDe(specs.accel0To100Sec)}
+              />
+            ) : null}
+            {specs.accel100To200Sec != null ? (
+              <ReadRow
+                label="100–200"
+                value={formatAccelSecondsDe(specs.accel100To200Sec)}
+              />
             ) : null}
             {specs.displacementCc != null ? (
               <ReadRow label="Hubraum" value={`${specs.displacementCc} ccm`} />

@@ -24,6 +24,8 @@ export default function DevShowroomPage() {
         ? result.vehicle.tech_specs
         : {}),
       instagramHandle: "zeloxtag",
+      accel0To100Sec: 6.8,
+      accel100To200Sec: 14.2,
     },
   };
 

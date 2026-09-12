@@ -27,20 +27,24 @@ type ShowroomStatsProps = {
 function animatedStatValue(
   amount: number | null | undefined,
   unit: string,
+  options?: { decimals?: number },
 ): ReactNode {
   if (amount == null || !Number.isFinite(amount)) return null;
+  const decimals = options?.decimals ?? 0;
+  const separator = decimals > 0 ? "" : ",";
   return (
     <>
       <CountUp
         from={0}
         to={amount}
-        separator=","
+        separator={separator}
+        decimals={decimals}
         direction="up"
         duration={1.7}
         className="count-up-text"
         delay={0}
-      />{" "}
-      {unit}
+      />
+      {unit ? ` ${unit}` : null}
     </>
   );
 }
@@ -86,6 +90,7 @@ export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
                       value={row.value}
                       emphasis={row.emphasis}
                       layout={row.layout}
+                      quartett={row.quartett}
                     />
                   </motion.div>
                 ))}
