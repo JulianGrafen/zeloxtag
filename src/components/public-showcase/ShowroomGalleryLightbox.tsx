@@ -114,7 +114,7 @@ export function ShowroomGalleryLightbox({
         <div
           ref={scrollerRef}
           onScroll={syncIndexFromScroll}
-          className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex h-full touch-pan-x snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {photos.map((photo) => (
             <div

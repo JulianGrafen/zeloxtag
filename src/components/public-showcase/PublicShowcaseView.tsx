@@ -21,7 +21,9 @@ export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
           profile={data.profile}
           modifications={data.modifications}
         />
-        <footer className={`space-y-3 px-4 pb-2 ${showroom.footer}`}>
+        <footer
+          className={`relative z-30 space-y-3 px-4 pb-2 pointer-events-auto ${showroom.footer}`}
+        >
           <p>ZeloxTag</p>
           <LegalFooterNav tone="inverse" />
         </footer>

@@ -124,7 +124,7 @@ function HeroBackdrop({
         <div
           ref={scrollerRef}
           onScroll={handleScroll}
-          className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex h-full touch-pan-x snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="region"
           aria-roledescription="Karussell"
           aria-label="Fahrzeugfotos"
@@ -145,41 +145,34 @@ function HeroBackdrop({
                 className="relative h-full min-w-full shrink-0 snap-center"
                 aria-hidden={index !== activeIndex}
               >
-                <button
-                  type="button"
-                  onClick={() => onOpenAtIndex(index)}
-                  className="relative block h-full w-full text-left"
-                  aria-label={`${photo.alt || title} vergrößern`}
+                <motion.div
+                  className="pointer-events-none absolute inset-0"
+                  animate={
+                    kenBurnsActive
+                      ? {
+                          scale: [1, 1.06],
+                          transition: {
+                            duration: HERO_KEN_BURNS_DURATION_S,
+                            ease: "linear" as const,
+                            repeat: Infinity,
+                            repeatType: "reverse" as const,
+                          },
+                        }
+                      : { scale: 1 }
+                  }
+                  style={{ transformOrigin: "center 42%" }}
                 >
-                  <motion.div
-                    className="absolute inset-0"
-                    animate={
-                      kenBurnsActive
-                        ? {
-                            scale: [1, 1.06],
-                            transition: {
-                              duration: HERO_KEN_BURNS_DURATION_S,
-                              ease: "linear" as const,
-                              repeat: Infinity,
-                              repeatType: "reverse" as const,
-                            },
-                          }
-                        : { scale: 1 }
-                    }
-                    style={{ transformOrigin: "center 42%" }}
-                  >
-                    <Image
-                      src={photo.src}
-                      alt={index === activeIndex ? photo.alt : ""}
-                      fill
-                      priority={index === initialIndex}
-                      unoptimized
-                      className={imageClass}
-                      sizes="100vw"
-                      draggable={false}
-                    />
-                  </motion.div>
-                </button>
+                  <Image
+                    src={photo.src}
+                    alt={index === activeIndex ? photo.alt : ""}
+                    fill
+                    priority={index === initialIndex}
+                    unoptimized
+                    className={`pointer-events-none ${imageClass}`}
+                    sizes="100vw"
+                    draggable={false}
+                  />
+                </motion.div>
               </div>
             );
           })}
@@ -241,7 +234,7 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
         <ShowroomBrandBanner />
 
         <div
-          className={`relative z-10 flex ${showroom.heroMinHeight} flex-col justify-end px-5 pb-8 pt-[max(4.5rem,env(safe-area-inset-top))]`}
+          className={`pointer-events-none relative z-10 flex ${showroom.heroMinHeight} flex-col justify-end px-5 pb-8 pt-[max(4.5rem,env(safe-area-inset-top))]`}
         >
           {visiblePhotos.length > 1 ? (
             <HeroPhotoPagination

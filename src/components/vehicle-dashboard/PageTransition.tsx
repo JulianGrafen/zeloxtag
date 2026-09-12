@@ -48,9 +48,11 @@ export function PageTransition({ children }: PageTransitionProps) {
       <div className="vd-page" data-vd-page data-pathname={pathname}>
         {children}
         {showGlobalLegalFooter(pathname) ? (
-          <LegalFooterNav
-            className="mx-auto w-full max-w-lg px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
-          />
+          <div className="relative z-30 pointer-events-auto">
+            <LegalFooterNav
+              className="mx-auto w-full max-w-lg px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
+            />
+          </div>
         ) : null}
       </div>
     </ViewTransition>
