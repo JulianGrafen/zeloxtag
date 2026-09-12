@@ -56,6 +56,14 @@ type HeroBackdropProps = {
   onOpenAtIndex: (index: number) => void;
 };
 
+function heroImageClassName(src: string): string {
+  const contain = photoUsesContainLayout(src);
+  if (contain) {
+    return "object-contain object-top px-3 pb-[38%] pt-[max(3.5rem,env(safe-area-inset-top))]";
+  }
+  return "object-cover object-[center_42%]";
+}
+
 function HeroBackdrop({
   photos,
   initialIndex,
@@ -102,6 +110,12 @@ function HeroBackdrop({
     );
   }, [onActiveIndexChange, photos.length]);
 
+  const activePhoto = photos[activeIndex] ?? photos[0];
+  const kenBurnsActive =
+    Boolean(activePhoto) &&
+    motionConfig.enableHeroKenBurns &&
+    !photoUsesContainLayout(activePhoto.src);
+
   if (photos.length === 0) {
     return (
       <div className="absolute inset-0 bg-black" aria-hidden>
@@ -116,10 +130,44 @@ function HeroBackdrop({
   return (
     <div className="absolute inset-0 bg-black">
       <motion.div
-        className={`absolute inset-x-0 top-0 z-[1] ${showroom.heroSwipeBand}`}
+        className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
         variants={motionConfig.heroImageSettle}
         initial="hidden"
         animate="visible"
+      >
+        <motion.div
+          className="absolute inset-0"
+          animate={
+            kenBurnsActive
+              ? {
+                  scale: [1, 1.06],
+                  transition: {
+                    duration: HERO_KEN_BURNS_DURATION_S,
+                    ease: "linear" as const,
+                    repeat: Infinity,
+                    repeatType: "reverse" as const,
+                  },
+                }
+              : { scale: 1 }
+          }
+          style={{ transformOrigin: "center 42%" }}
+        >
+          <Image
+            key={activePhoto.id}
+            src={activePhoto.src}
+            alt={activePhoto.alt || title}
+            fill
+            priority={activeIndex === initialIndex}
+            unoptimized
+            className={`pointer-events-none ${heroImageClassName(activePhoto.src)}`}
+            sizes="100vw"
+            draggable={false}
+          />
+        </motion.div>
+      </motion.div>
+
+      <div
+        className={`absolute inset-x-0 top-0 z-[1] ${showroom.heroSwipeBand}`}
       >
         <div
           ref={scrollerRef}
@@ -129,53 +177,15 @@ function HeroBackdrop({
           aria-roledescription="Karussell"
           aria-label="Fahrzeugfotos"
         >
-          {photos.map((photo, index) => {
-            const contain = photoUsesContainLayout(photo.src);
-            const imageClass = contain
-              ? "object-contain object-top px-3 pt-[max(3.5rem,env(safe-area-inset-top))]"
-              : "object-cover object-[center_38%]";
-            const kenBurnsActive =
-              motionConfig.enableHeroKenBurns &&
-              !contain &&
-              index === activeIndex;
-
-            return (
-              <div
-                key={photo.id}
-                className="relative h-full min-w-full shrink-0 snap-center"
-                aria-hidden={index !== activeIndex}
-              >
-                <motion.div
-                  className="pointer-events-none absolute inset-0"
-                  animate={
-                    kenBurnsActive
-                      ? {
-                          scale: [1, 1.06],
-                          transition: {
-                            duration: HERO_KEN_BURNS_DURATION_S,
-                            ease: "linear" as const,
-                            repeat: Infinity,
-                            repeatType: "reverse" as const,
-                          },
-                        }
-                      : { scale: 1 }
-                  }
-                  style={{ transformOrigin: "center 42%" }}
-                >
-                  <Image
-                    src={photo.src}
-                    alt={index === activeIndex ? photo.alt : ""}
-                    fill
-                    priority={index === initialIndex}
-                    unoptimized
-                    className={`pointer-events-none ${imageClass}`}
-                    sizes="100vw"
-                    draggable={false}
-                  />
-                </motion.div>
-              </div>
-            );
-          })}
+          {photos.map((photo, index) => (
+            <div
+              key={photo.id}
+              className="relative h-full min-w-full shrink-0 snap-center"
+              aria-hidden={index !== activeIndex}
+            >
+              <span className="sr-only">{photo.alt || title}</span>
+            </div>
+          ))}
         </div>
 
         <button
@@ -186,15 +196,10 @@ function HeroBackdrop({
         >
           <Expand className="h-4 w-4" aria-hidden />
         </button>
-      </motion.div>
+      </div>
 
       <div
-        className={`pointer-events-none absolute inset-x-0 top-0 z-0 ${showroom.heroSwipeBand} bg-gradient-to-b from-transparent via-black/20 to-black`}
-        aria-hidden
-      />
-
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[58%] bg-gradient-to-t from-black from-[12%] via-black/85 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[52%] bg-gradient-to-t from-black from-[18%] via-black/80 to-transparent"
         aria-hidden
       />
     </div>
