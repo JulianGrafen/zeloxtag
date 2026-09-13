@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { cache } from "react";
 
+import { syncMembershipTrialWindow } from "@/lib/email/pro-trial-reminders";
 import { sendMembershipClaimEmail } from "@/lib/email/resend";
 import { resolvePublicSiteOrigin } from "@/lib/site-origin";
 import { RATE_LIMITS, rateLimit } from "@/lib/security/rate-limit";
@@ -74,6 +75,12 @@ function asMembership(row: unknown): Membership | null {
       typeof record.current_period_end === "string"
         ? record.current_period_end
         : null,
+    trial_started_at:
+      typeof record.trial_started_at === "string"
+        ? record.trial_started_at
+        : null,
+    trial_ends_at:
+      typeof record.trial_ends_at === "string" ? record.trial_ends_at : null,
     paid_at: typeof record.paid_at === "string" ? record.paid_at : null,
     canceled_at:
       typeof record.canceled_at === "string" ? record.canceled_at : null,
@@ -283,6 +290,11 @@ export async function applyStripeMembershipAction(
     if (error) {
       throw new Error(`Membership Stripe update failed: ${error.message}`);
     }
+    await syncMembershipTrialWindow({
+      userId,
+      trialStartedAt: action.trialStartedAt,
+      trialEndsAt: action.trialEndsAt,
+    });
     return;
   }
 
@@ -290,6 +302,12 @@ export async function applyStripeMembershipAction(
   if (error) {
     throw new Error(`Membership Stripe insert failed: ${error.message}`);
   }
+
+  await syncMembershipTrialWindow({
+    userId,
+    trialStartedAt: action.trialStartedAt,
+    trialEndsAt: action.trialEndsAt,
+  });
 }
 
 export async function reserveStripeWebhookEvent(

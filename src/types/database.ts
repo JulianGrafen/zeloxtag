@@ -94,6 +94,8 @@ export type Membership = {
   billing_provider: "stripe" | "shopify" | null;
   status: MembershipStatus;
   current_period_end: string | null;
+  trial_started_at: string | null;
+  trial_ends_at: string | null;
   paid_at: string | null;
   canceled_at: string | null;
   created_at: string;

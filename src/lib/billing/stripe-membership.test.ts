@@ -117,6 +117,26 @@ describe("parseStripeMembershipAction", () => {
     ).toBe("canceled");
   });
 
+  it("maps trialing subscriptions and trial window timestamps", () => {
+    const trialStart = 1784000000;
+    const trialEnd = 1785000000;
+    const action = parseStripeMembershipAction("customer.subscription.created", {
+      id: "sub_trial",
+      status: "trialing",
+      customer: "cus_123",
+      metadata: { user_id: USER_ID },
+      trial_start: trialStart,
+      trial_end: trialEnd,
+      current_period_end: trialEnd,
+      items: { data: [{ price: { id: "price_cloud" } }] },
+    });
+    expect(action).toMatchObject({
+      status: "active",
+      trialStartedAt: new Date(trialStart * 1000).toISOString(),
+      trialEndsAt: new Date(trialEnd * 1000).toISOString(),
+    });
+  });
+
   it("ignores one-time checkouts", () => {
     expect(
       parseStripeMembershipAction("checkout.session.completed", {

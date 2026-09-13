@@ -1,5 +1,36 @@
 import { Resend } from "resend";
 
+import {
+  buildTransactionalEmailHtml,
+  escapeHtml,
+} from "@/lib/email/transactional-email-layout";
+
+export type TransactionalBodyBlock =
+  | { kind: "paragraph"; text: string }
+  | { kind: "heading"; text: string }
+  | { kind: "list"; items: string[] };
+
+function renderTransactionalBodyBlocks(
+  blocks: TransactionalBodyBlock[],
+): string {
+  return blocks
+    .map((block) => {
+      if (block.kind === "paragraph") {
+        return `<p style="margin:0 0 12px;">${escapeHtml(block.text)}</p>`;
+      }
+      if (block.kind === "heading") {
+        return `<p style="margin:16px 0 8px;font-weight:600;color:#18181b;">${escapeHtml(block.text)}</p>`;
+      }
+      return `<ul style="margin:0 0 12px;padding-left:20px;color:#52525b;">${block.items
+        .map(
+          (item) =>
+            `<li style="margin:0 0 6px;line-height:1.5;">${escapeHtml(item)}</li>`,
+        )
+        .join("")}</ul>`;
+    })
+    .join("");
+}
+
 function readResendApiKey(): string {
   return process.env.RESEND_API_KEY?.trim() ?? "";
 }
@@ -204,6 +235,103 @@ export async function sendPasswordResetEmail(input: {
   }
 }
 
+export async function sendTransactionalEmail(input: {
+  to: string;
+  subject: string;
+  headline: string;
+  bodyParagraphs?: string[];
+  bodyBlocks?: TransactionalBodyBlock[];
+  ctaLabel: string;
+  ctaUrl: string;
+  kicker?: string;
+  afterCtaLine?: string;
+  footerNote?: string;
+  signOffLines?: string[];
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!isResendConfigured()) {
+    return {
+      ok: false,
+      message: "E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY).",
+    };
+  }
+
+  const from = readFromAddress();
+  const bodyHtml = input.bodyBlocks
+    ? renderTransactionalBodyBlocks(input.bodyBlocks)
+    : (input.bodyParagraphs ?? [])
+        .map(
+          (paragraph) =>
+            `<p style="margin:0 0 12px;">${escapeHtml(paragraph)}</p>`,
+        )
+        .join("");
+
+  const plainBody = input.bodyBlocks
+    ? input.bodyBlocks.flatMap((block) => {
+        if (block.kind === "list") return block.items;
+        return [block.text];
+      })
+    : (input.bodyParagraphs ?? []);
+
+  const text = [
+    input.headline,
+    "",
+    ...plainBody,
+    "",
+    `${input.ctaLabel}: ${input.ctaUrl}`,
+    input.afterCtaLine ?? "",
+    input.footerNote ?? "",
+    ...(input.signOffLines ?? []),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const afterCtaHtml = input.afterCtaLine
+    ? `<p style="margin:0;">${escapeHtml(input.afterCtaLine)}</p>`
+    : undefined;
+  const signOffHtml =
+    input.signOffLines && input.signOffLines.length > 0
+      ? input.signOffLines
+          .map(
+            (line) =>
+              `<p style="margin:0 0 4px;">${escapeHtml(line)}</p>`,
+          )
+          .join("")
+      : undefined;
+
+  try {
+    const resend = getResendClient();
+    const { error } = await resend.emails.send({
+      from,
+      to: input.to,
+      subject: input.subject,
+      html: buildTransactionalEmailHtml({
+        kicker: input.kicker,
+        headline: input.headline,
+        bodyHtml,
+        ctaLabel: input.ctaLabel,
+        ctaUrl: input.ctaUrl,
+        afterCtaHtml,
+        footerNote: input.footerNote,
+        signOffHtml,
+      }),
+      text,
+    });
+
+    if (error) {
+      return { ok: false, message: `${error.message} (from: ${from})` };
+    }
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error
+          ? `${error.message} (from: ${from})`
+          : `E-Mail konnte nicht gesendet werden. (from: ${from})`,
+    };
+  }
+}
+
 export async function sendMembershipClaimEmail(input: {
   to: string;
   claimUrl: string;
@@ -395,13 +523,4 @@ function buildPasswordResetHtml(resetUrl: string): string {
   </table>
 </body>
 </html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }

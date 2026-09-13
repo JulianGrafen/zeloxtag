@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { logServerError } from "@/lib/security/public-error";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { notifyTagActivatedProNudge } from "@/lib/email/pro-trial-reminders";
 import { CLAIM_UNAVAILABLE_MESSAGE } from "@/lib/tags/claim-landing";
 import { applyClaimTechSpecs } from "@/lib/tags/apply-claim-tech-specs";
 import type { PendingClaim } from "@/lib/tags/pending-claim";
@@ -94,6 +95,15 @@ export async function completeClaimForOwner(
   await supabase.auth.updateUser({ data: meta });
 
   await applyClaimTechSpecs(claim.tagUuid, claim.techSpecs);
+
+  const ownerEmail = (user.email ?? claim.email).trim().toLowerCase();
+  if (ownerEmail.includes("@")) {
+    void notifyTagActivatedProNudge({
+      userId: ownerUserId,
+      email: ownerEmail,
+      tagUuid: claim.tagUuid,
+    });
+  }
 
   return {
     status: "claimed",

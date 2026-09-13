@@ -22,6 +22,8 @@ const baseMembership = (): Membership => ({
   billing_provider: null,
   status: "active",
   current_period_end: "2099-01-01T00:00:00.000Z",
+  trial_started_at: null,
+  trial_ends_at: null,
   paid_at: null,
   canceled_at: null,
   created_at: "",

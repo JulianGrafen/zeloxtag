@@ -13,6 +13,8 @@ export type StripeMembershipAction = {
   stripeSubscriptionId: string | null;
   stripePriceId: string | null;
   currentPeriodEnd: string | null;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -121,6 +123,8 @@ function actionFromSubscription(
     stripeSubscriptionId: asString(subscription.id),
     stripePriceId: priceIdFromSubscription(subscription),
     currentPeriodEnd: periodEnd,
+    trialStartedAt: unixSecondsToIso(subscription.trial_start),
+    trialEndsAt: unixSecondsToIso(subscription.trial_end),
   };
 }
 
@@ -163,6 +167,8 @@ function actionFromInvoicePaid(
     stripeSubscriptionId: invoiceSubscriptionId(invoice),
     stripePriceId: null,
     currentPeriodEnd: periodEnd,
+    trialStartedAt: null,
+    trialEndsAt: null,
   };
 }
 
@@ -200,6 +206,8 @@ export function parseStripeMembershipAction(
       stripeSubscriptionId: subscriptionId(body.subscription),
       stripePriceId: null,
       currentPeriodEnd: null,
+      trialStartedAt: null,
+      trialEndsAt: null,
     };
   }
 
@@ -229,6 +237,8 @@ export function parseStripeMembershipAction(
       stripeSubscriptionId: invoiceSubscriptionId(body),
       stripePriceId: null,
       currentPeriodEnd: periodEndFromInvoice(body),
+      trialStartedAt: null,
+      trialEndsAt: null,
     };
   }
 
