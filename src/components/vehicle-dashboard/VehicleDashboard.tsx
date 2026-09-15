@@ -21,12 +21,12 @@ export function VehicleDashboard({
   const tiles = data.tiles ?? buildDefaultTiles(data);
 
   return (
-    <ScanContent className={cn("px-0 pt-0", className)}>
-      <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--soft pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
+    <ScanContent className={cn("gap-0 px-0 pt-0", className)}>
+      <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
         <ZeloxBrandFadeBanner />
       </div>
 
-      <div className="relative z-10 flex flex-col gap-5 px-4 sm:px-5">
+      <div className="relative z-10 -mt-1 flex flex-col gap-5 px-4 sm:px-5">
       <div data-tour="dashboard-header">
         <VehicleDashboardHeader
           ownerName={data.ownerName}

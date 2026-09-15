@@ -662,9 +662,23 @@ nextjs-portal {
   margin-right: calc(50% - 50vw);
 }
 
-/* Login / vehicle dashboard: content tucks under masked fade tail */
+/* Login: content tucks under masked fade tail */
 .zelox-brand-banner-bleed--soft {
-  margin-bottom: clamp(-9rem, -28vw, -5.5rem);
+  margin-bottom: clamp(-6.5rem, -20vw, -4rem);
+}
+
+/* Vehicle / account dashboard: tighter gap below wordmark */
+.zelox-brand-banner-bleed--tight {
+  margin-bottom: clamp(-5.25rem, -15vw, -3.25rem);
+}
+
+.zelox-brand-banner-bleed--tight .zelox-brand-fade-banner__tail {
+  height: clamp(4.5rem, 13vw, 7rem);
+}
+
+.zelox-brand-banner-bleed--tight .zelox-brand-fade-banner__fade {
+  margin-top: -0.75rem;
+  padding-top: 0.75rem;
 }
 
 /* Solid black bar (wordmark stays crisp; fade is a separate masked tail) */
@@ -682,7 +696,7 @@ nextjs-portal {
 }
 
 .zelox-brand-fade-banner__tail {
-  height: clamp(14rem, 44vw, 26rem);
+  height: clamp(8rem, 24vw, 12rem);
   background: #000;
   -webkit-mask-image: linear-gradient(
     to bottom,
