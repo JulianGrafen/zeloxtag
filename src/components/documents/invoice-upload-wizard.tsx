@@ -52,6 +52,7 @@ import {
   readScanSessionId,
 } from "@/lib/billing/scan-session-client";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { cacheMockUploadFileInSession } from "@/lib/documents/mock-upload-session-cache";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { documentTypeForTextCategory } from "@/lib/ocr/category-map";
 import {
@@ -664,6 +665,12 @@ export function InvoiceUploadWizard({
         ? `/v/${result.tagUuid}/intervalle`
         : (successHref ??
           `/v/${result.tagUuid}/dokumente/${result.document.id}`);
+      if (state.uploadFile && result.document.file_url.startsWith("mock://")) {
+        await cacheMockUploadFileInSession(
+          result.document.id,
+          state.uploadFile,
+        );
+      }
       window.location.assign(href);
     });
   }

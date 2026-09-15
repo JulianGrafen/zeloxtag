@@ -41,6 +41,7 @@ import {
   type ScanType,
 } from "@/lib/documents/scan-types";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { cacheMockUploadFileInSession } from "@/lib/documents/mock-upload-session-cache";
 import { appendScanSessionId } from "@/lib/billing/scan-session-client";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { assessVehicleDocumentMatch } from "@/lib/documents/vehicle-document-match";
@@ -153,6 +154,15 @@ function savedInvoiceListHref(tagUuid: string, documentId: string): string {
     highlight: documentId,
   });
   return `/v/${tagUuid}/dokumente?${params.toString()}`;
+}
+
+async function cacheMockScanFileIfNeeded(
+  fileUrl: string,
+  documentId: string,
+  file: File | null,
+): Promise<void> {
+  if (!file || !fileUrl.startsWith("mock://")) return;
+  await cacheMockUploadFileInSession(documentId, file);
 }
 
 function isPdfFile(file: File): boolean {
@@ -476,6 +486,11 @@ export function InvoiceUploader({
           : isInvoiceSave
             ? savedInvoiceListHref(result.tagUuid, result.document.id)
             : savedDocumentHref(result.tagUuid, result.document.id);
+        await cacheMockScanFileIfNeeded(
+          result.document.file_url,
+          result.document.id,
+          uploadFile,
+        );
         window.location.assign(href);
       } catch (caught) {
         setError(
@@ -1017,6 +1032,11 @@ export function InvoiceUploader({
         result.document.id,
         successHref,
       );
+      await cacheMockScanFileIfNeeded(
+        result.document.file_url,
+        result.document.id,
+        uploadFile,
+      );
       window.location.assign(href);
     });
   }
@@ -1111,6 +1131,11 @@ export function InvoiceUploader({
 
       const href =
         successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      await cacheMockScanFileIfNeeded(
+        result.document.file_url,
+        result.document.id,
+        uploadFile,
+      );
       window.location.assign(href);
     });
   }
@@ -1185,6 +1210,11 @@ export function InvoiceUploader({
 
       const href =
         successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      await cacheMockScanFileIfNeeded(
+        result.document.file_url,
+        result.document.id,
+        uploadFile,
+      );
       window.location.assign(href);
     });
   }
@@ -1276,6 +1306,11 @@ export function InvoiceUploader({
 
       const href =
         successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      await cacheMockScanFileIfNeeded(
+        result.document.file_url,
+        result.document.id,
+        uploadFile,
+      );
       // Hard nav so detail always loads fresh extracted fields (not PDF overlay).
       window.location.assign(href);
     });

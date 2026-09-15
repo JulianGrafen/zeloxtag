@@ -344,5 +344,11 @@ export async function getDocumentById(
   if (error) {
     throw new Error(`Failed to load document: ${error.message}`);
   }
-  return data ? normalizeDocument(data) : null;
+  if (data) {
+    return normalizeDocument(data);
+  }
+
+  const uploaded = await getMockUploadedDocuments(vid);
+  const mockDoc = uploaded.find((doc) => doc.id === did) ?? null;
+  return mockDoc ? normalizeDocument(mockDoc) : null;
 }

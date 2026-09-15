@@ -9,6 +9,10 @@ import { documentInlineContentSecurityPolicy } from "@/lib/security/csp";
 import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -106,18 +110,17 @@ async function serveStoragePath(storagePath: string): Promise<NextResponse> {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.storage
-    .from(DOCUMENT_BUCKET)
-    .download(storagePath);
-
-  if (error || !data) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const downloaded = await downloadStorageObject(storagePath);
+  if (!downloaded.ok) {
+    return NextResponse.json(
+      { error: downloaded.error },
+      { status: downloaded.status },
+    );
   }
 
+  const { data, storedType } = downloaded;
   const buffer = Buffer.from(await data.arrayBuffer());
   const sniffedType = guessContentType(storagePath);
-  const storedType = data.type?.split(";")[0]?.trim().toLowerCase() ?? "";
   const contentType = coerceInlineDocumentContentType(storedType, sniffedType);
   if (!contentType) {
     return NextResponse.json({ error: "Source not allowed" }, { status: 403 });
@@ -138,6 +141,47 @@ function documentIdFromStoragePath(storagePath: string): string | null {
   const candidate = rest.slice(0, 36);
   if (!UUID_RE.test(candidate) || rest.charAt(36) !== "-") return null;
   return candidate;
+}
+
+type StorageDownloadResult =
+  | { ok: true; data: Blob; storedType: string }
+  | { ok: false; error: string; status: number };
+
+async function downloadStorageObject(
+  storagePath: string,
+): Promise<StorageDownloadResult> {
+  if (isSupabaseAdminConfigured()) {
+    try {
+      const admin = createAdminClient();
+      const { data, error } = await admin.storage
+        .from(DOCUMENT_BUCKET)
+        .download(storagePath);
+      if (!error && data) {
+        return {
+          ok: true,
+          data,
+          storedType: data.type?.split(";")[0]?.trim().toLowerCase() ?? "",
+        };
+      }
+    } catch {
+      // Fall back to session client below.
+    }
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from(DOCUMENT_BUCKET)
+    .download(storagePath);
+
+  if (error || !data) {
+    return { ok: false, error: "Not found", status: 404 };
+  }
+
+  return {
+    ok: true,
+    data,
+    storedType: data.type?.split(";")[0]?.trim().toLowerCase() ?? "",
+  };
 }
 
 async function authorizeDocumentRead(
@@ -172,13 +216,12 @@ async function authorizeDocumentRead(
   const documentId = documentIdFromStoragePath(storagePath);
   if (!documentId) return false;
 
-  // Contributor SELECT policy is invoice-only (+ history toggle via RLS).
+  // Contributor SELECT is enforced by documents RLS (invoice + history rules).
   let query = supabase
     .from("documents")
     .select("id")
     .eq("id", documentId)
-    .eq("vehicle_id", vehicleId)
-    .eq("type", "invoice");
+    .eq("vehicle_id", vehicleId);
 
   const canReadHistory =
     typeof grant.can_read_history === "boolean"

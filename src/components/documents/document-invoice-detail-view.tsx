@@ -25,6 +25,7 @@ import { EditableTuevDefectsSection } from "@/components/documents/editable-tuev
 import { EditableTitleSection } from "@/components/documents/editable-title-section";
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
+import { DocumentOriginalPreview } from "@/components/documents/document-original-preview";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
 import {
   PressableButton,
@@ -47,11 +48,6 @@ import {
 } from "@/lib/documents/constants";
 import { resolveDocumentMileageKm } from "@/lib/documents/document-mileage";
 import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
-import {
-  documentMediaKind,
-  isViewableDocumentUrl,
-  resolveDocumentViewUrl,
-} from "@/lib/documents/viewable-url";
 import type { Document } from "@/types/database";
 
 interface DocumentInvoiceDetailViewProps {
@@ -93,13 +89,6 @@ export function DocumentInvoiceDetailView({
   );
   const [title, setTitle] = useState(() => displayDocumentTitle(document.title));
   const lineItems = document.line_items ?? [];
-  const canOpenOriginal = isViewableDocumentUrl(document.file_url);
-  const previewSrc = canOpenOriginal
-    ? resolveDocumentViewUrl(document.file_url)
-    : null;
-  const previewKind = canOpenOriginal
-    ? documentMediaKind(document.file_url)
-    : null;
   const isManual = isManualVehicleEntry(document);
   const manualEditHref =
     isManual && canEdit
@@ -392,51 +381,12 @@ export function DocumentInvoiceDetailView({
             </div>
           </div>
           <div className="space-y-3 p-4">
-            {canOpenOriginal && previewSrc ? (
-              previewKind === "image" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewSrc}
-                  alt={title}
-                  className="max-h-[50vh] w-full rounded-xl bg-neutral-100 object-contain"
-                />
-              ) : (
-                <iframe
-                  title={title}
-                  src={previewSrc}
-                  className="h-[min(50vh,28rem)] w-full rounded-xl border border-[color:var(--vd-border)] bg-white"
-                />
-              )
-            ) : (
-              <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
-                {isManual
-                  ? "Für diesen Eintrag liegt kein Foto vor."
-                  : "Originaldatei konnte nicht geladen werden. Bitte erneut hochladen oder Support kontaktieren."}
-              </p>
-            )}
-            {canOpenOriginal && previewSrc ? (
-              <>
-                <PressableLink
-                  href={previewSrc}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="button"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
-                >
-                  <FileText className="h-4 w-4" aria-hidden />
-                  Original öffnen
-                </PressableLink>
-                <PressableLink
-                  href={previewSrc}
-                  download={fileName}
-                  variant="button"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3 text-[0.85rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-                >
-                  <FileText className="h-4 w-4" aria-hidden />
-                  PDF herunterladen
-                </PressableLink>
-              </>
-            ) : null}
+            <DocumentOriginalPreview
+              documentId={document.id}
+              fileUrl={document.file_url}
+              title={title}
+              isManual={isManual}
+            />
           </div>
         </section>
 
