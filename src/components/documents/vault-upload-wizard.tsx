@@ -36,10 +36,10 @@ import {
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
 import { Button } from "@/components/ui/button";
-import {
-  saveVaultDocument,
-  stageVaultDocument,
-} from "@/lib/documents/vault-document";
+import { materializeUploadFile } from "@/lib/documents/materialize-upload-file";
+import { stageVaultDocumentViaApi } from "@/lib/documents/stage-vault-document-client";
+import { saveVaultDocument } from "@/lib/documents/vault-document";
+import { OCR_PDF_MAX_BYTES } from "@/lib/documents/document-compression";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { scanTypeDefinition } from "@/lib/documents/scan-types";
 import {
@@ -356,19 +356,28 @@ export function VaultUploadWizard({
     try {
       const { file: uploadFile, pageCount: mergedPageCount } =
         await buildVaultUploadFile(pages);
-      setFileName(uploadFile.name);
+      if (uploadFile.size > OCR_PDF_MAX_BYTES) {
+        throw new Error(
+          `PDF ist zu groß (max. ${Math.round(OCR_PDF_MAX_BYTES / (1024 * 1024))} MB) — bitte weniger Seiten oder kleinere Fotos.`,
+        );
+      }
+
+      const materializedFile = await materializeUploadFile(uploadFile, {
+        fallbackName: uploadFile.name || "gutachten-tresor.pdf",
+        fallbackMime: "application/pdf",
+      });
+      setFileName(materializedFile.name);
       setPageCount(mergedPageCount);
 
-      const stageForm = new FormData();
-      stageForm.set("vehicleId", vehicleId);
-      stageForm.set("tagUuid", tagUuid);
-      stageForm.set("file", uploadFile);
-
-      const classifySource = isPdfUploadFile(uploadFile)
-        ? uploadFile
+      const classifySource = isPdfUploadFile(materializedFile)
+        ? materializedFile
         : (pages.find((page) => !isPdf(page)) ?? pages[0]!);
 
-      const stageResult = await stageVaultDocument(stageForm);
+      const stageResult = await stageVaultDocumentViaApi(
+        vehicleId,
+        tagUuid,
+        materializedFile,
+      );
       if (isActionFailure(stageResult)) {
         setPhase("pages-hub");
         setError(stageResult.message);
@@ -376,9 +385,9 @@ export function VaultUploadWizard({
       }
 
       let embeddedHint = null;
-      if (isPdfUploadFile(uploadFile)) {
+      if (isPdfUploadFile(materializedFile)) {
         try {
-          const pdf = await loadPdfDocument(uploadFile);
+          const pdf = await loadPdfDocument(materializedFile);
           const embeddedText = await extractPdfEmbeddedText(pdf);
           if (typeof pdf.destroy === "function") {
             await pdf.destroy();
@@ -402,7 +411,7 @@ export function VaultUploadWizard({
 
       const reviewDefaults = resolveVaultReviewDefaults({
         classification,
-        fileName: uploadFile.name,
+        fileName: materializedFile.name,
         embeddedHint,
       });
 
@@ -411,7 +420,7 @@ export function VaultUploadWizard({
       setTitle(reviewDefaults.title);
       setCategory(reviewDefaults.category);
       setDocumentKind(reviewDefaults.documentKind);
-      setStagedDocumentPreview(stageResult.fileUrl, uploadFile);
+      setStagedDocumentPreview(stageResult.fileUrl, materializedFile);
       setPhase("review");
     } catch (caught) {
       setPhase("pages-hub");

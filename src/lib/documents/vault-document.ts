@@ -1,6 +1,5 @@
 "use server";
 
-import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -10,6 +9,7 @@ import {
   getVehicleWriteAccess,
   writeAccessErrorMessage,
 } from "@/lib/auth/vehicle-write-access";
+import { stageVaultUploadCore } from "@/lib/documents/stage-vault-upload-core";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { featureDeniedToForbidden } from "@/lib/permissions/feature-gate-result";
 import type { FeatureForbiddenResult } from "@/lib/permissions/feature-gate-result";
@@ -168,86 +168,7 @@ export async function stageVaultDocument(
   }
 
   const { vehicleId, tagUuid } = metaParsed.data;
-  const documentId = randomUUID();
-  const safeName = fileCheck.safeName;
-  const bytes = Buffer.from(fileCheck.bytes);
-
-  const { isConfigured } = getSupabaseEnv();
-  if (!isConfigured) {
-    if (tagUuid !== MOCK_TAG_UUIDS.active) {
-      return {
-        status: "error",
-        message: "Mock-Upload nur für demo-active-tag.",
-      };
-    }
-    return {
-      status: "staged",
-      documentId,
-      fileUrl: `mock://upload/${documentId}/${safeName}`,
-      tagUuid,
-    };
-  }
-
-  const user = await getCurrentUser();
-  if (!user) {
-    return {
-      status: "error",
-      message: "Bitte mit dem Fahrzeug-Konto anmelden, um zu speichern.",
-    };
-  }
-
-  const supabase = await createClient();
-  const writeAccess = await getVehicleWriteAccess(vehicleId, user.id);
-  if (!writeAccess.ok || !writeAccess.ownerUserId) {
-    return {
-      status: "error",
-      message: writeAccessErrorMessage(writeAccess),
-    };
-  }
-
-  const vault = await assertVehicleDocumentWrite(
-    writeAccess,
-    FEATURE.DOCUMENT_VAULT,
-  );
-  if (!vault.ok) {
-    return featureDeniedToForbidden(vault);
-  }
-
-  if (
-    !contributorMayWriteDocumentType(
-      writeAccess.isContributor,
-      writeAccess.isOwner,
-      "abe",
-    )
-  ) {
-    return {
-      status: "error",
-      message: "Schrauber können keine Gutachten/ABEs ablegen.",
-    };
-  }
-
-  const storagePath = documentStorageObjectPath(
-    vehicleId,
-    documentId,
-    safeName,
-  );
-  const { error: storageError } = await supabase.storage
-    .from(DOCUMENT_BUCKET)
-    .upload(storagePath, bytes, {
-      contentType: fileCheck.mime,
-      upsert: false,
-    });
-
-  if (storageError) {
-    return { status: "error", message: `Storage: ${storageError.message}` };
-  }
-
-  return {
-    status: "staged",
-    documentId,
-    fileUrl: storagePath,
-    tagUuid,
-  };
+  return stageVaultUploadCore(vehicleId, tagUuid, fileCheck);
 }
 
 /**

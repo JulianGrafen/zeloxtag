@@ -85,8 +85,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let formData: FormData;
     try {
       formData = await request.formData();
-    } catch {
-      return jsonError(400, "Expected multipart form data.", "bad_request");
+    } catch (error) {
+      logServerError("[vault-classify] formData parse failed", error);
+      const message =
+        error instanceof Error &&
+        error.message.toLowerCase().includes("unexpected end of form")
+          ? "Upload unterbrochen oder Datei zu groß — bitte erneut versuchen."
+          : "Expected multipart form data.";
+      return jsonError(400, message, "bad_request");
     }
 
     const file = formData.get("file");
