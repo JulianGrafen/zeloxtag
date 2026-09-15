@@ -178,13 +178,16 @@ function HeroBackdrop({
           aria-label="Fahrzeugfotos"
         >
           {photos.map((photo, index) => (
-            <div
+            <button
               key={photo.id}
-              className="relative h-full min-w-full shrink-0 snap-center"
+              type="button"
+              onClick={() => onOpenAtIndex(index)}
+              className="relative h-full min-w-full shrink-0 cursor-zoom-in snap-center border-0 bg-transparent p-0"
+              aria-label={`${photo.alt || title} im Vollbild anzeigen`}
               aria-hidden={index !== activeIndex}
             >
               <span className="sr-only">{photo.alt || title}</span>
-            </div>
+            </button>
           ))}
         </div>
 

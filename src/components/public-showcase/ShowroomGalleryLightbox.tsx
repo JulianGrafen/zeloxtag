@@ -89,7 +89,7 @@ export function ShowroomGalleryLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-black"
+      className="fixed inset-0 z-[200] flex min-h-dvh flex-col bg-black"
       role="dialog"
       aria-modal="true"
       aria-label="Fotogalerie"
@@ -119,9 +119,9 @@ export function ShowroomGalleryLightbox({
           {photos.map((photo) => (
             <div
               key={photo.id}
-              className="relative flex h-full min-w-full shrink-0 snap-center items-center justify-center px-3"
+              className="relative flex h-full min-w-full shrink-0 snap-center items-center justify-center px-2 pb-1 pt-1"
             >
-              <div className="relative h-full w-full max-h-[min(72dvh,100%)]">
+              <div className="relative h-full w-full min-h-0">
                 <Image
                   src={photo.src}
                   alt={photo.alt}
@@ -130,6 +130,7 @@ export function ShowroomGalleryLightbox({
                   className="object-contain"
                   sizes="100vw"
                   draggable={false}
+                  priority
                 />
               </div>
             </div>

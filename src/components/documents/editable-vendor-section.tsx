@@ -9,6 +9,9 @@ import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+
+const EDIT_TARGET: InvoiceDetailEditTarget = "vendor";
 
 type EditableVendorSectionProps = {
   documentId: string;
@@ -18,6 +21,11 @@ type EditableVendorSectionProps = {
   label?: string;
   placeholder?: string;
   onSaved?: (vendor: string | null) => void;
+  hideEditTrigger?: boolean;
+  editRequest?: InvoiceDetailEditTarget | null;
+  editPulse?: number;
+  onEditRequestConsumed?: () => void;
+  sectionId?: string;
 };
 
 /**
@@ -31,6 +39,11 @@ export function EditableVendorSection({
   label = "Werkstatt",
   placeholder = "z. B. Auto Meister GmbH",
   onSaved,
+  hideEditTrigger = false,
+  editRequest = null,
+  editPulse = 0,
+  onEditRequestConsumed,
+  sectionId,
 }: EditableVendorSectionProps) {
   const router = useRouter();
   const storedVendor = vendor?.trim() || null;
@@ -46,6 +59,13 @@ export function EditableVendorSection({
       setDraft(storedVendor ?? "");
     }
   }, [storedVendor, editing]);
+
+  useEffect(() => {
+    if (editRequest !== EDIT_TARGET || editPulse === 0) return;
+    setError(null);
+    setEditing(true);
+    onEditRequestConsumed?.();
+  }, [editRequest, editPulse, onEditRequestConsumed]);
 
   function handleCancel() {
     setDraft(storedVendor ?? "");
@@ -75,12 +95,15 @@ export function EditableVendorSection({
   }
 
   return (
-    <div className="rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3">
+    <div
+      id={sectionId}
+      className="scroll-mt-24 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3"
+    >
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
           {label}
         </p>
-        {!editing ? (
+        {!editing && !hideEditTrigger ? (
           <PressableButton
             type="button"
             variant="button"

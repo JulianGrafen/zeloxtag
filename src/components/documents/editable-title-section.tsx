@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DOCUMENT_DETAIL_TITLE_CLASS } from "@/components/documents/document-detail-hero";
 import { displayDocumentTitle } from "@/lib/documents/format";
+import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+
+const EDIT_TARGET: InvoiceDetailEditTarget = "title";
 
 type EditableTitleSectionProps = {
   documentId: string;
@@ -18,6 +21,11 @@ type EditableTitleSectionProps = {
   tagUuid: string;
   title: string;
   onSaved?: (title: string) => void;
+  hideEditTrigger?: boolean;
+  editRequest?: InvoiceDetailEditTarget | null;
+  editPulse?: number;
+  onEditRequestConsumed?: () => void;
+  sectionId?: string;
 };
 
 /**
@@ -29,6 +37,11 @@ export function EditableTitleSection({
   tagUuid,
   title,
   onSaved,
+  hideEditTrigger = false,
+  editRequest = null,
+  editPulse = 0,
+  onEditRequestConsumed,
+  sectionId,
 }: EditableTitleSectionProps) {
   const router = useRouter();
   const storedTitle = displayDocumentTitle(title);
@@ -44,6 +57,13 @@ export function EditableTitleSection({
       setDraft(storedTitle);
     }
   }, [storedTitle, editing]);
+
+  useEffect(() => {
+    if (editRequest !== EDIT_TARGET || editPulse === 0) return;
+    setError(null);
+    setEditing(true);
+    onEditRequestConsumed?.();
+  }, [editRequest, editPulse, onEditRequestConsumed]);
 
   function handleCancel() {
     setDraft(storedTitle);
@@ -77,21 +97,23 @@ export function EditableTitleSection({
   }
 
   return (
-    <div className="min-w-0">
+    <div id={sectionId} className="min-w-0 scroll-mt-24">
       {!editing ? (
         <div className="flex items-start gap-2">
           <h1 className={`min-w-0 ${DOCUMENT_DETAIL_TITLE_CLASS}`}>
             {displayTitle}
           </h1>
-          <PressableButton
-            type="button"
-            variant="button"
-            onClick={() => setEditing(true)}
-            aria-label="Titel bearbeiten"
-            className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)]"
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden />
-          </PressableButton>
+          {!hideEditTrigger ? (
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={() => setEditing(true)}
+              aria-label="Titel bearbeiten"
+              className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)]"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+            </PressableButton>
+          ) : null}
         </div>
       ) : (
         <div className="space-y-2">

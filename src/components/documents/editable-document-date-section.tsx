@@ -9,6 +9,9 @@ import { GermanDateInput } from "@/components/documents/german-date-input";
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+
+const EDIT_TARGET: InvoiceDetailEditTarget = "date";
 
 type EditableDocumentDateSectionProps = {
   documentId: string;
@@ -17,6 +20,11 @@ type EditableDocumentDateSectionProps = {
   date: string | null;
   label?: string;
   onSaved?: (date: string | null) => void;
+  hideEditTrigger?: boolean;
+  editRequest?: InvoiceDetailEditTarget | null;
+  editPulse?: number;
+  onEditRequestConsumed?: () => void;
+  sectionId?: string;
 };
 
 export function EditableDocumentDateSection({
@@ -26,6 +34,11 @@ export function EditableDocumentDateSection({
   date,
   label = "Datum",
   onSaved,
+  hideEditTrigger = false,
+  editRequest = null,
+  editPulse = 0,
+  onEditRequestConsumed,
+  sectionId,
 }: EditableDocumentDateSectionProps) {
   const router = useRouter();
   const storedDate = date?.trim() || null;
@@ -41,6 +54,13 @@ export function EditableDocumentDateSection({
       setDraft(storedDate);
     }
   }, [storedDate, editing]);
+
+  useEffect(() => {
+    if (editRequest !== EDIT_TARGET || editPulse === 0) return;
+    setError(null);
+    setEditing(true);
+    onEditRequestConsumed?.();
+  }, [editRequest, editPulse, onEditRequestConsumed]);
 
   function handleCancel() {
     setDraft(storedDate);
@@ -73,12 +93,12 @@ export function EditableDocumentDateSection({
     : "—";
 
   return (
-    <div>
+    <div id={sectionId} className="scroll-mt-24">
       <div className="mb-1 flex items-center justify-between gap-2">
         <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
           {label}
         </dt>
-        {!editing ? (
+        {!editing && !hideEditTrigger ? (
           <PressableButton
             type="button"
             variant="button"

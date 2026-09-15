@@ -8,6 +8,9 @@ import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import type { DocumentLineItem } from "@/types/database";
+import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+
+const EDIT_TARGET: InvoiceDetailEditTarget = "lineItems";
 
 type EditableLineItemsSectionProps = {
   items: DocumentLineItem[];
@@ -22,6 +25,11 @@ type EditableLineItemsSectionProps = {
   emptyHint?: string;
   /** Inline: always editable rows (scan review). Default: read-only until Bearbeiten. */
   mode?: "default" | "inline";
+  hideEditTrigger?: boolean;
+  editRequest?: InvoiceDetailEditTarget | null;
+  editPulse?: number;
+  onEditRequestConsumed?: () => void;
+  sectionId?: string;
 };
 
 type DraftItem = {
@@ -81,6 +89,11 @@ export function EditableLineItemsSection({
   totalAmount = null,
   emptyHint = "Keine Positionen erkannt. Original-PDF unten öffnen.",
   mode = "default",
+  hideEditTrigger = false,
+  editRequest = null,
+  editPulse = 0,
+  onEditRequestConsumed,
+  sectionId,
 }: EditableLineItemsSectionProps) {
   const inline = mode === "inline";
   const [editing, setEditing] = useState(inline);
@@ -113,6 +126,14 @@ export function EditableLineItemsSection({
     setDraft(toDraft(displayItems));
     setEditing(true);
   }
+
+  useEffect(() => {
+    if (editRequest !== EDIT_TARGET || editPulse === 0 || inline) return;
+    setError(null);
+    setDraft(toDraft(displayItems));
+    setEditing(true);
+    onEditRequestConsumed?.();
+  }, [editRequest, editPulse, inline, onEditRequestConsumed, displayItems]);
 
   function cancelEdit() {
     setError(null);
@@ -155,13 +176,14 @@ export function EditableLineItemsSection({
 
   return (
     <section
-      className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 space-y-3"
+      id={sectionId}
+      className="scroll-mt-24 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 space-y-3"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
           Positionen
         </h2>
-        {!editing && !inline ? (
+        {!editing && !inline && !hideEditTrigger ? (
           <PressableButton
             type="button"
             variant="button"

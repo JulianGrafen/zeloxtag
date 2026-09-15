@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -26,6 +26,7 @@ import { EditableTitleSection } from "@/components/documents/editable-title-sect
 import { EditableDocumentDateSection } from "@/components/documents/editable-document-date-section";
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
+import { InvoiceDetailEditPickerSheet } from "@/components/documents/invoice-detail-edit-picker-sheet";
 import { DocumentOriginalPreview } from "@/components/documents/document-original-preview";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
 import {
@@ -49,6 +50,11 @@ import {
 } from "@/lib/documents/constants";
 import { resolveDocumentMileageKm } from "@/lib/documents/document-mileage";
 import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
+import {
+  INVOICE_DETAIL_EDIT_ANCHORS,
+  scrollToInvoiceEditTarget,
+  type InvoiceDetailEditTarget,
+} from "@/lib/documents/invoice-detail-edit";
 import type { Document } from "@/types/database";
 
 interface DocumentInvoiceDetailViewProps {
@@ -90,6 +96,11 @@ export function DocumentInvoiceDetailView({
   );
   const [title, setTitle] = useState(() => displayDocumentTitle(document.title));
   const [documentDate, setDocumentDate] = useState(() => document.date);
+  const [editPickerOpen, setEditPickerOpen] = useState(false);
+  const [editRequest, setEditRequest] = useState<InvoiceDetailEditTarget | null>(
+    null,
+  );
+  const [editPulse, setEditPulse] = useState(0);
   const lineItems = document.line_items ?? [];
   const isManual = isManualVehicleEntry(document);
   const manualEditHref =
@@ -99,6 +110,7 @@ export function DocumentInvoiceDetailView({
   const paymentBadge = resolveInvoicePaymentBadge(document);
   const canEditInvoice =
     canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
+  const useCentralEdit = canEditInvoice;
   const canEditVendor = canEditInvoice;
   const canEditPositions = canEditInvoice;
   const canDeleteInvoice =
@@ -152,6 +164,19 @@ export function DocumentInvoiceDetailView({
   const isTuevDocument =
     document.type === "tuev" || Boolean(tuevApprovalFields);
 
+  const handleEditRequestConsumed = useCallback(() => {
+    setEditRequest(null);
+  }, []);
+
+  function handleEditPick(target: InvoiceDetailEditTarget) {
+    setEditPickerOpen(false);
+    requestAnimationFrame(() => {
+      scrollToInvoiceEditTarget(target);
+      setEditRequest(target);
+      setEditPulse((pulse) => pulse + 1);
+    });
+  }
+
   async function handleShare() {
     const shareUrl =
       typeof window !== "undefined" ? window.location.href : "";
@@ -202,6 +227,11 @@ export function DocumentInvoiceDetailView({
                 tagUuid={tagUuid}
                 title={title}
                 onSaved={setTitle}
+                hideEditTrigger={useCentralEdit}
+                editRequest={editRequest}
+                editPulse={editPulse}
+                onEditRequestConsumed={handleEditRequestConsumed}
+                sectionId={INVOICE_DETAIL_EDIT_ANCHORS.title}
               />
             ) : (
               title
@@ -257,6 +287,11 @@ export function DocumentInvoiceDetailView({
               onSaved={(nextVendor) =>
                 setVendorLabel(nextVendor?.trim() || title)
               }
+              hideEditTrigger={useCentralEdit}
+              editRequest={editRequest}
+              editPulse={editPulse}
+              onEditRequestConsumed={handleEditRequestConsumed}
+              sectionId={INVOICE_DETAIL_EDIT_ANCHORS.vendor}
             />
           ) : document.type === "invoice" ? (
             <p className="text-[0.9rem] font-medium text-[color:var(--vd-text)]">
@@ -281,6 +316,11 @@ export function DocumentInvoiceDetailView({
                   tagUuid={tagUuid}
                   date={documentDate}
                   onSaved={setDocumentDate}
+                  hideEditTrigger={useCentralEdit}
+                  editRequest={editRequest}
+                  editPulse={editPulse}
+                  onEditRequestConsumed={handleEditRequestConsumed}
+                  sectionId={INVOICE_DETAIL_EDIT_ANCHORS.date}
                 />
               ) : (
                 <>
@@ -334,6 +374,11 @@ export function DocumentInvoiceDetailView({
                 ? "Noch keine Positionen. Bearbeiten tippen, um Teile und Kosten einzutragen."
                 : "Keine Positionen erkannt. Original-PDF unten öffnen."
             }
+            hideEditTrigger={useCentralEdit}
+            editRequest={editRequest}
+            editPulse={editPulse}
+            onEditRequestConsumed={handleEditRequestConsumed}
+            sectionId={INVOICE_DETAIL_EDIT_ANCHORS.lineItems}
           />
         ) : !isTuevDocument ? (
           <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
@@ -432,17 +477,25 @@ export function DocumentInvoiceDetailView({
         <VehicleDataDisclaimer />
       </div>
 
+      <InvoiceDetailEditPickerSheet
+        open={editPickerOpen}
+        onClose={() => setEditPickerOpen(false)}
+        onSelect={handleEditPick}
+        manualEditHref={manualEditHref}
+      />
+
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
         <div className="pointer-events-auto mx-auto flex max-w-lg gap-2">
-          {manualEditHref ? (
-            <PressableLink
-              href={manualEditHref}
+          {useCentralEdit ? (
+            <PressableButton
+              type="button"
               variant="button"
+              onClick={() => setEditPickerOpen(true)}
               className="claim-cta inline-flex flex-1 items-center justify-center gap-2"
             >
               <Pencil className="h-4 w-4" aria-hidden />
               Bearbeiten
-            </PressableLink>
+            </PressableButton>
           ) : null}
           <PressableButton
             type="button"
@@ -451,7 +504,7 @@ export function DocumentInvoiceDetailView({
               void handleShare();
             }}
             className={`inline-flex items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow)] ${
-              manualEditHref ? "flex-1" : "w-full"
+              useCentralEdit ? "flex-1" : "w-full"
             }`}
           >
             <Share2 className="h-4 w-4" aria-hidden />
