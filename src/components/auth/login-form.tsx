@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { ZeloxBrandFadeBanner } from "@/components/brand/zelox-brand-fade-banner";
 import { ScanContent } from "@/components/layout/scan-content";
+import { AuthLegalConsentNotice } from "@/components/legal/auth-legal-consent-notice";
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 import { Button } from "@/components/ui/button";
 import {
@@ -239,22 +240,7 @@ export function LoginForm({
               </p>
             ) : null}
 
-            {isSignup ? (
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Mit „Konto erstellen“ akzeptierst du die{" "}
-                <a href="/agb" className="underline-offset-4 hover:underline">
-                  AGB
-                </a>{" "}
-                und{" "}
-                <a
-                  href="/datenschutz"
-                  className="underline-offset-4 hover:underline"
-                >
-                  Datenschutz
-                </a>
-                .
-              </p>
-            ) : null}
+            {isSignup ? <AuthLegalConsentNotice variant="signup" /> : null}
 
             <Button
               type="submit"

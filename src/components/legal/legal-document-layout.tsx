@@ -50,14 +50,16 @@ export function LegalDocumentLayout({
 }
 
 export function LegalSection({
+  id,
   title,
   children,
 }: {
+  id?: string;
   title: string;
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-2">
+    <section id={id} className="space-y-2 scroll-mt-6">
       <h2 className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
         {title}
       </h2>

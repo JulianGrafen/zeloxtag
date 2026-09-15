@@ -99,30 +99,95 @@ export default function DatenschutzPage() {
           nach aktuellen Industriestandards verschlüsselt.
         </LegalParagraph>
 
-        <LegalParagraph>
-          <strong>c) Cookies &amp; Consent-Management</strong>
-        </LegalParagraph>
-        <LegalParagraph>
-          Für das Einholen und Verwalten von Nutzereinwilligungen setzen wir das
-          Consent-Management-Tool „Cookiebot“ (Usercentrics A/S, Havnegade 39,
-          1058 Kopenhagen, Dänemark) ein.
-        </LegalParagraph>
-        <LegalUnorderedList>
-          <li>
-            Cookiebot verarbeitet Ihre IP-Adresse und den Zustimmungsstatus, um
-            Ihre Präferenzen rechtssicher zu dokumentieren (Rechtsgrundlage:
-            Art. 6 Abs. 1 lit. c DSGVO).
-          </li>
-          <li>
-            Vor der ausdrücklichen Einwilligung des Nutzers werden auf unserer
-            Website ausschließlich technisch zwingend erforderliche Cookies
-            gesetzt (dies schließt notwendige Third-Party-Sicherheits-Cookies
-            unseres Zahlungsdienstleisters Stripe zur Betrugsprävention ein).
-          </li>
-          <li>
-            Aktuell setzen wir keine Tracking-Tools wie Google Analytics ein.
-          </li>
-        </LegalUnorderedList>
+        <LegalSection id="cookies" title="c) Cookies &amp; Hinweisbanner">
+          <LegalParagraph>
+            Beim ersten Besuch unserer Web-App zeigen wir einen eigenen
+            Cookie-Hinweis (First-Party-Banner). Mit „Verstanden“ speichern wir
+            Ihre Bestätigung im Cookie{" "}
+            <code className="text-[0.85em]">zt_cookie_consent</code>, damit der
+            Hinweis nicht bei jedem Besuch erneut erscheint (Rechtsgrundlage:
+            Art. 6 Abs. 1 lit. a DSGVO für die Speicherung der Einwilligung;
+            Art. 6 Abs. 1 lit. c DSGVO für die Erfüllung gesetzlicher
+            Informationspflichten).
+          </LegalParagraph>
+          <LegalParagraph>
+            Technisch notwendige Cookies setzen wir ohne separate Einwilligung,
+            soweit sie für den Betrieb der App erforderlich sind (Rechtsgrundlage:
+            Art. 6 Abs. 1 lit. b DSGVO Vertragserfüllung bzw. lit. f DSGVO
+            berechtigtes Interesse an einem sicheren, funktionsfähigen Betrieb).
+            Wir setzen keine Marketing- oder Analyse-Tools wie Google Analytics
+            ein.
+          </LegalParagraph>
+          <LegalParagraph>
+            Sie können Ihre Bestätigung widerrufen, indem Sie den Cookie{" "}
+            <code className="text-[0.85em]">zt_cookie_consent</code> in den
+            Einstellungen Ihres Browsers löschen; der Hinweis wird dann beim
+            nächsten Besuch wieder angezeigt.
+          </LegalParagraph>
+          <LegalParagraph>
+            <strong>Übersicht der verwendeten Cookies</strong>
+          </LegalParagraph>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[36rem] border-collapse text-left text-[0.82rem]">
+              <thead>
+                <tr className="border-b border-[color:var(--vd-border)]">
+                  <th className="py-2 pr-3 font-semibold">Name</th>
+                  <th className="py-2 pr-3 font-semibold">Zweck</th>
+                  <th className="py-2 pr-3 font-semibold">Typ</th>
+                  <th className="py-2 pr-3 font-semibold">Speicherdauer</th>
+                  <th className="py-2 font-semibold">Anbieter</th>
+                </tr>
+              </thead>
+              <tbody className="text-[color:var(--vd-muted-strong,var(--vd-text))]">
+                <tr className="border-b border-[color:var(--vd-border)]/60">
+                  <td className="py-2 pr-3 align-top">
+                    <code>sb-*-auth-token</code> (o.&nbsp;ä.)
+                  </td>
+                  <td className="py-2 pr-3 align-top">
+                    Anmeldung, Sitzung, PKCE (Supabase Auth)
+                  </td>
+                  <td className="py-2 pr-3 align-top">Notwendig</td>
+                  <td className="py-2 pr-3 align-top">Sitzung / konfiguriert</td>
+                  <td className="py-2 align-top">Supabase Inc.</td>
+                </tr>
+                <tr className="border-b border-[color:var(--vd-border)]/60">
+                  <td className="py-2 pr-3 align-top">
+                    <code>zt_cookie_consent</code>
+                  </td>
+                  <td className="py-2 pr-3 align-top">
+                    Dokumentation Ihrer Bestätigung des Cookie-Hinweises
+                  </td>
+                  <td className="py-2 pr-3 align-top">Einwilligung</td>
+                  <td className="py-2 pr-3 align-top">bis zu 12 Monate</td>
+                  <td className="py-2 align-top">ZeloxTag (First-Party)</td>
+                </tr>
+                <tr className="border-b border-[color:var(--vd-border)]/60">
+                  <td className="py-2 pr-3 align-top">
+                    <code>zt_pending_dashboard_tour</code>
+                  </td>
+                  <td className="py-2 pr-3 align-top">
+                    Onboarding-Hinweis nach Tag-Claim (httpOnly, serverseitig)
+                  </td>
+                  <td className="py-2 pr-3 align-top">Notwendig</td>
+                  <td className="py-2 pr-3 align-top">bis zu 1 Stunde</td>
+                  <td className="py-2 align-top">ZeloxTag (First-Party)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-3 align-top">
+                    <code>__stripe_*</code> (o.&nbsp;ä.)
+                  </td>
+                  <td className="py-2 pr-3 align-top">
+                    Betrugsprävention und sichere Zahlungsabwicklung beim
+                    Checkout
+                  </td>
+                  <td className="py-2 pr-3 align-top">Notwendig</td>
+                  <td className="py-2 pr-3 align-top">laut Stripe</td>
+                  <td className="py-2 align-top">Stripe Inc.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </LegalSection>
       </LegalSection>
 
       <LegalSection title="3. Spezifische Funktionen, Dokumentenspeicherung & Dienstleister">

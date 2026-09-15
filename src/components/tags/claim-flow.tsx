@@ -13,6 +13,7 @@ import type { ClaimTransitionDirection } from "@/components/tags/claim/claim-mot
 import { ClaimIntroHero } from "@/components/tags/claim/ClaimIntroHero";
 import { ClaimShell } from "@/components/tags/claim/ClaimShell";
 import { ClaimStepTransition } from "@/components/tags/claim/ClaimStepTransition";
+import { AuthLegalConsentNotice } from "@/components/legal/auth-legal-consent-notice";
 import { ClaimTwinPreviewCard } from "@/components/tags/claim/ClaimTwinPreviewCard";
 import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
 import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
@@ -527,6 +528,8 @@ export function ClaimFlow({
                   {info}
                 </p>
               ) : null}
+
+              <AuthLegalConsentNotice variant="claim" />
 
               <ClaimSlideActions
                 error={null}
