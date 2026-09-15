@@ -16,6 +16,7 @@ import {
   type DraftDefect,
 } from "@/components/documents/tuev-defects-draft-editor";
 import { TuevDefectsEditableBlock } from "@/components/documents/tuev-defects-editable-block";
+import { GermanAmountInput } from "@/components/documents/german-amount-input";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { Button } from "@/components/ui/button";
@@ -411,22 +412,9 @@ export function TuevOverview({
             />
           </FieldBlock>
           <FieldBlock label="Kosten (€)">
-            <Input
-              inputMode="decimal"
-              value={review.amount === null ? "" : String(review.amount)}
-              onChange={(event) => {
-                const raw = event.target.value.trim();
-                if (!raw) {
-                  patch("amount", null);
-                  return;
-                }
-                const normalized = raw.replace(",", ".");
-                const value = Number.parseFloat(normalized);
-                patch(
-                  "amount",
-                  Number.isFinite(value) ? value : review.amount,
-                );
-              }}
+            <GermanAmountInput
+              value={review.amount}
+              onChange={(amount) => patch("amount", amount)}
               placeholder="z. B. 118,50"
             />
           </FieldBlock>

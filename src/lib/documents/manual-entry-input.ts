@@ -18,6 +18,12 @@ export function parseManualEntryAmount(raw: string | undefined): number | null {
   return Math.round(value * 100) / 100;
 }
 
+/** Display stored EUR amounts in German inputs (118.5 → "118,50"). */
+export function formatGermanAmountInput(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "";
+  return value.toFixed(2).replace(".", ",");
+}
+
 export function parseManualEntryMileageKm(
   raw: string | undefined,
 ): number | null {

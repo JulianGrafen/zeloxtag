@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { AlertTriangle, Pencil } from "lucide-react";
 
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
+import { GermanAmountInput } from "@/components/documents/german-amount-input";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
@@ -206,26 +207,11 @@ export function InvoiceReviewForm({
                 <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                   Betrag
                 </span>
-                <Input
-                  inputMode="decimal"
-                  value={
-                    fields.amount === null || fields.amount === undefined
-                      ? ""
-                      : String(fields.amount)
-                  }
-                  onChange={(event) => {
-                    const raw = event.target.value.trim();
-                    if (!raw) {
-                      onFieldsChange({ amount: null });
-                      return;
-                    }
-                    const value = Number.parseFloat(raw.replace(",", "."));
-                    if (Number.isFinite(value)) {
-                      onFieldsChange({ amount: value });
-                    }
-                  }}
+                <GermanAmountInput
+                  value={fields.amount ?? null}
+                  onChange={(amount) => onFieldsChange({ amount })}
                   placeholder="0,00"
-                  className="tabular-nums"
+                  className="claim-input"
                 />
               </label>
               <label className="block w-[9.5rem] space-y-1">

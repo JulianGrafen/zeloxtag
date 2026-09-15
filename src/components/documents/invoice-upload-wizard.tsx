@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
+import { GermanAmountInput } from "@/components/documents/german-amount-input";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import {
@@ -1092,37 +1093,18 @@ export function InvoiceUploadWizard({
                 <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                   Betrag (€)
                 </span>
-                <Input
-                  inputMode="decimal"
-                  value={
-                    fields.amount === null || fields.amount === undefined
-                      ? ""
-                      : String(fields.amount)
-                  }
-                  onChange={(event) => {
-                    const raw = event.target.value.trim();
-                    if (!raw) {
-                      setState((prev) =>
-                        prev.fields
-                          ? {
-                              ...prev,
-                              fields: { ...prev.fields, amount: null },
-                            }
-                          : prev,
-                      );
-                      return;
-                    }
-                    const value = Number.parseFloat(raw.replace(",", "."));
-                    if (!Number.isFinite(value)) return;
+                <GermanAmountInput
+                  value={fields.amount ?? null}
+                  onChange={(amount) =>
                     setState((prev) =>
                       prev.fields
                         ? {
                             ...prev,
-                            fields: { ...prev.fields, amount: value },
+                            fields: { ...prev.fields, amount },
                           }
                         : prev,
-                    );
-                  }}
+                    )
+                  }
                 />
               </Label>
               <Label>
