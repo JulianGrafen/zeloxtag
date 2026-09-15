@@ -23,6 +23,7 @@ import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-discl
 import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
 import { EditableTuevDefectsSection } from "@/components/documents/editable-tuev-defects-section";
 import { EditableTitleSection } from "@/components/documents/editable-title-section";
+import { EditableDocumentDateSection } from "@/components/documents/editable-document-date-section";
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { DocumentOriginalPreview } from "@/components/documents/document-original-preview";
@@ -88,6 +89,7 @@ export function DocumentInvoiceDetailView({
     () => document.vendor?.trim() || displayDocumentTitle(document.title),
   );
   const [title, setTitle] = useState(() => displayDocumentTitle(document.title));
+  const [documentDate, setDocumentDate] = useState(() => document.date);
   const lineItems = document.line_items ?? [];
   const isManual = isManualVehicleEntry(document);
   const manualEditHref =
@@ -134,7 +136,7 @@ export function DocumentInvoiceDetailView({
     });
   }
   const fileName = fileNameFromUrl(document.file_url, title);
-  const issuedLabel = formatDocumentDateCompact(document.date);
+  const issuedLabel = formatDocumentDateCompact(documentDate);
   const scannedLabel = formatDocumentDateCompact(document.created_at);
   const resolvedMileageKm = resolveDocumentMileageKm(document);
   const mileageLabel =
@@ -272,12 +274,24 @@ export function DocumentInvoiceDetailView({
               </dd>
             </div>
             <div>
-              <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                Datum
-              </dt>
-              <dd className="mt-0.5 font-medium text-[color:var(--vd-text)]">
-                {issuedLabel || "—"}
-              </dd>
+              {canEditInvoice ? (
+                <EditableDocumentDateSection
+                  documentId={document.id}
+                  vehicleId={document.vehicle_id}
+                  tagUuid={tagUuid}
+                  date={documentDate}
+                  onSaved={setDocumentDate}
+                />
+              ) : (
+                <>
+                  <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+                    Datum
+                  </dt>
+                  <dd className="mt-0.5 font-medium text-[color:var(--vd-text)]">
+                    {issuedLabel || "—"}
+                  </dd>
+                </>
+              )}
             </div>
             <div>
               <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">

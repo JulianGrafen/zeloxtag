@@ -11,7 +11,6 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  formatCompactGermanDate,
   formatDocumentAmount,
   formatMileageKmLabel,
 } from "@/lib/documents/format";
@@ -80,9 +79,6 @@ export function InvoiceReviewForm({
 
   const amountLabel =
     formatDocumentAmount(fields.amount ?? null) ?? "—";
-  const dateLabel = fields.date
-    ? formatCompactGermanDate(fields.date) || "—"
-    : "—";
   const categoryLabel = INVOICE_REVIEW_CATEGORY_LABELS[
     fields.category as InvoiceReviewCategory
   ];
@@ -140,11 +136,7 @@ export function InvoiceReviewForm({
         </div>
 
         {!editingHeader ? (
-          <button
-            type="button"
-            onClick={() => setEditingHeader(true)}
-            className="w-full space-y-3 text-left"
-          >
+          <div className="space-y-3">
             <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-b border-[color:var(--vd-border)] pb-4">
               <div>
                 <dt className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
@@ -155,14 +147,23 @@ export function InvoiceReviewForm({
                 </dd>
               </div>
               <div>
-                <dt className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Datum
-                </dt>
-                <dd className="mt-0.5 text-[0.95rem] text-[color:var(--vd-text)]">
-                  {dateLabel}
-                </dd>
+                <label className="block space-y-1">
+                  <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                    Datum
+                  </span>
+                  <GermanDateInput
+                    value={fields.date}
+                    onChange={(iso) => onFieldsChange({ date: iso })}
+                    className="claim-input w-[9.5rem] min-w-0"
+                  />
+                </label>
               </div>
             </dl>
+            <button
+              type="button"
+              onClick={() => setEditingHeader(true)}
+              className="w-full space-y-2 text-left"
+            >
             <div className="space-y-2 text-[0.88rem] text-[color:var(--vd-text)]">
               <p>
                 <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
@@ -199,7 +200,8 @@ export function InvoiceReviewForm({
                 </p>
               ) : null}
             </div>
-          </button>
+            </button>
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-[1fr_auto] items-end gap-3 border-b border-[color:var(--vd-border)] pb-4">

@@ -21,6 +21,7 @@ import {
   getMockUploadedDocuments,
   updateMockUploadedDocument,
 } from "@/lib/documents/mock-uploads";
+import { parseDocumentDateField } from "@/lib/documents/document-date-field";
 import { parseTechnicalSpecs } from "@/lib/documents/technical-specs";
 import { parseAbeConditions, parseStringList } from "@/lib/documents/string-list";
 import {
@@ -45,6 +46,7 @@ type UpdatePayload = {
   conditions?: string[] | null;
   vendor?: string | null;
   title?: string | null;
+  date?: string | null;
 };
 
 const MAX_VENDOR_LENGTH = 160;
@@ -71,6 +73,7 @@ function revalidateDocumentPaths(tagUuid: string, documentId: string) {
   revalidatePath(`/v/${tagUuid}/dokumente/${documentId}`);
   revalidatePath(`/v/${tagUuid}/service`);
   revalidatePath(`/v/${tagUuid}/historie`);
+  revalidatePath(`/v/${tagUuid}/rechnungen`);
 }
 
 /**
@@ -93,6 +96,7 @@ export async function updateDocumentFields(
   const hasConditions = input.conditions !== undefined;
   const hasVendor = input.vendor !== undefined;
   const hasTitle = input.title !== undefined;
+  const hasDate = input.date !== undefined;
 
   if (
     !hasLineItems &&
@@ -100,9 +104,15 @@ export async function updateDocumentFields(
     !hasSpecs &&
     !hasConditions &&
     !hasVendor &&
-    !hasTitle
+    !hasTitle &&
+    !hasDate
   ) {
     return { status: "error", message: "Keine Änderungen übergeben." };
+  }
+
+  const parsedDate = hasDate ? parseDocumentDateField(input.date) : undefined;
+  if (parsedDate === "invalid") {
+    return { status: "error", message: "Datum ungültig." };
   }
 
   const lineItems = hasLineItems
@@ -149,6 +159,12 @@ export async function updateDocumentFields(
         message: "Demo-Dokumente können nicht bearbeitet werden — nur eigene Uploads.",
       };
     }
+    if (hasDate && target.type !== "invoice") {
+      return {
+        status: "error",
+        message: "Das Datum kann nur bei Rechnungs-Belegen geändert werden.",
+      };
+    }
     const mockPatch: Record<string, unknown> = {};
     if (lineItems !== undefined) {
       mockPatch.line_items = lineItems;
@@ -168,6 +184,7 @@ export async function updateDocumentFields(
       ...(conditions !== undefined ? { conditions } : {}),
       ...(vendor !== undefined ? { vendor } : {}),
       ...(typeof title === "string" ? { title } : {}),
+      ...(parsedDate !== undefined ? { date: parsedDate } : {}),
     });
     revalidateDocumentPaths(tagUuid, documentId);
     return { status: "ok" };
@@ -200,6 +217,13 @@ export async function updateDocumentFields(
   }
   if (!document) {
     return { status: "error", message: "Dokument nicht gefunden." };
+  }
+
+  if (hasDate && document.type !== "invoice") {
+    return {
+      status: "error",
+      message: "Das Datum kann nur bei Rechnungs-Belegen geändert werden.",
+    };
   }
 
   if (writeAccess.ownerUserId) {
@@ -272,6 +296,9 @@ export async function updateDocumentFields(
   }
   if (title !== undefined) {
     patch.title = title;
+  }
+  if (parsedDate !== undefined) {
+    patch.date = parsedDate;
   }
 
   const { error: updateError } = await admin
