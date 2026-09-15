@@ -11,6 +11,14 @@ export function formatMileageKm(km: number | null | undefined): string {
   return `${Math.round(km).toLocaleString("de-DE")} km`;
 }
 
+export function formatTimelineMileageKm(
+  km: number | null | undefined,
+  mileageKnown?: boolean,
+): string {
+  if (mileageKnown === false) return "—";
+  return formatMileageKm(km);
+}
+
 export function formatCurrencyEur(amount: number | null | undefined): string {
   if (amount == null || !Number.isFinite(amount)) return "";
   return new Intl.NumberFormat("de-DE", {

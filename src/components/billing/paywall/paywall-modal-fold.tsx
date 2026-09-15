@@ -1,58 +1,52 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-
-const BENEFIT_MASK =
-  "linear-gradient(to bottom, black 0%, black 55%, transparent 100%)";
 
 type PaywallModalFoldProps = {
   benefits: ReactNode;
   pricing: ReactNode;
   timeline: ReactNode;
+  bottomNote?: string;
   footer?: ReactNode;
   className?: string;
 };
 
 /**
- * Modal paywall: benefits fill the area up to 33dvh, then pricing and timeline
- * in document flow (no bottom overlay).
+ * Modal paywall: dedicated scroll for benefits; pricing and timeline stay fixed below.
  */
 export function PaywallModalFold({
   benefits,
   pricing,
   timeline,
+  bottomNote,
   footer,
   className,
 }: PaywallModalFoldProps) {
-  const benefitMaskStyle = {
-    "--paywall-benefit-mask": BENEFIT_MASK,
-  } as CSSProperties;
-
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col gap-5", className)}>
+    <div className={cn("flex min-h-0 flex-1 flex-col gap-2.5", className)}>
       <div
         className={cn(
-          "shrink-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]",
-          "[mask-image:var(--paywall-benefit-mask)]",
-          "[-webkit-mask-image:var(--paywall-benefit-mask)]",
-          "[mask-size:100%_100%]",
-          "[-webkit-mask-size:100%_100%]",
+          "max-h-[min(17dvh,7.5rem)] shrink-0 overflow-y-auto overscroll-contain",
+          "[-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]",
         )}
-        style={{
-          ...benefitMaskStyle,
-          height: "calc(33dvh - 6.25rem)",
-        }}
         aria-label="Vorteile scrollen"
       >
-        {benefits}
+        <div className="pb-2">{benefits}</div>
       </div>
 
-      <div className="shrink-0 pt-2">
-        {pricing}
-      </div>
+      <div className="shrink-0 pt-2">{pricing}</div>
       <div className="shrink-0">{timeline}</div>
+      {bottomNote ? (
+        <div className="flex min-h-0 flex-1 flex-col justify-end px-1 pt-1">
+          <p
+            className="text-center text-[0.78rem] leading-snug text-[color:var(--vd-muted)]"
+          >
+            {bottomNote}
+          </p>
+        </div>
+      ) : null}
       {footer ? <div className="shrink-0">{footer}</div> : null}
     </div>
   );

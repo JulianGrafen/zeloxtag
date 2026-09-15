@@ -253,6 +253,24 @@ function sortTimelineByDateDesc(events: TimelineEvent[]): TimelineEvent[] {
   });
 }
 
+/** Shared with PDF exposé — TÜV result label from stored approval fields. */
+export function tuevStatusLabelFromDocument(document: Document): string {
+  return tuevStatusFromDocument(document) ?? "HU durchgeführt";
+}
+
+/** Latest TÜV document status for specs headers (web + PDF). */
+export function latestTuevStatusLabel(documents: Document[]): string {
+  const latest = latestTuevDocument(documents);
+  if (!latest) return "Kein TÜV-Beleg hinterlegt";
+  return tuevStatusLabelFromDocument(latest);
+}
+
+export function sortTimelineEventsByDateDesc(
+  events: TimelineEvent[],
+): TimelineEvent[] {
+  return sortTimelineByDateDesc(events);
+}
+
 function buildTimeline(
   timeline: TimelineEvent[],
   documents: Document[],

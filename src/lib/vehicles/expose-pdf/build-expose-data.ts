@@ -1,3 +1,9 @@
+import {
+  latestTuevStatusLabel,
+  sanitizeExposeLabel,
+  sortTimelineEventsByDateDesc,
+  tuevStatusLabelFromDocument,
+} from "@/lib/vehicles/expose-data";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import {
   extractVehicleModifications,
@@ -6,6 +12,7 @@ import {
 import {
   TIMELINE_CATEGORY_LABELS,
   type TimelineEvent,
+  type TimelineEventCategory,
 } from "@/lib/validations/timelineSchema";
 import type { Document, Vehicle } from "@/types/database";
 
@@ -28,6 +35,14 @@ import type {
   ExposePdfData,
 } from "./types";
 
+const MAINTENANCE_CATEGORIES = new Set<TimelineEventCategory>([
+  "oil_change",
+  "inspection",
+  "repair",
+  "tuev",
+  "other",
+]);
+
 function latestMileageKm(documents: Document[]): number | null {
   let best: number | null = null;
   for (const doc of documents) {
@@ -38,52 +53,61 @@ function latestMileageKm(documents: Document[]): number | null {
   return best;
 }
 
-function tuevStatusFromDocument(document: Document): string {
-  const fields = document.approval_fields;
-  if (fields && "result" in fields && typeof fields.result === "string") {
-    const result = fields.result.trim();
-    if (result.length > 0) return result;
-  }
-  return "HU durchgeführt";
+function workshopLabel(
+  event: TimelineEvent,
+  linked: Document | undefined,
+): string {
+  const fromDoc =
+    (linked
+      ? sanitizeExposeLabel(linked.vendor) ??
+        sanitizeExposeLabel(linked.manufacturer)
+      : null) ?? sanitizeExposeLabel(event.description);
+  return fromDoc ?? "—";
 }
 
-function latestTuevStatus(documents: Document[]): string {
-  const tuevDocs = documents
-    .filter((doc) => doc.type === "tuev")
-    .sort((a, b) =>
-      (b.date ?? b.created_at).localeCompare(a.date ?? a.created_at),
-    );
-
-  if (tuevDocs.length === 0) return "Kein TÜV-Beleg hinterlegt";
-  return tuevStatusFromDocument(tuevDocs[0]!);
+function serviceLabel(event: TimelineEvent): string {
+  const categoryLabel = TIMELINE_CATEGORY_LABELS[event.category];
+  const title = sanitizeExposeLabel(event.title);
+  if (!title) return categoryLabel;
+  if (event.isManualEntry && title !== categoryLabel) return title;
+  if (title !== categoryLabel) return title;
+  return categoryLabel;
 }
 
-function buildMaintenanceRows(
+function isMaintenanceEvent(event: TimelineEvent): boolean {
+  return MAINTENANCE_CATEGORIES.has(event.category);
+}
+
+/** Wartung & Servicehistorie rows for PDF (exported for tests). */
+export function buildExposeMaintenanceRows(
   timeline: TimelineEvent[],
   documents: Document[],
 ): ExposeMaintenanceRow[] {
   const docById = new Map(documents.map((doc) => [doc.id, doc]));
-  const latestTuev = latestTuevStatus(documents);
+  const latestTuev = latestTuevStatusLabel(documents);
 
-  return timeline.slice(0, 14).map((event) => {
+  const maintenanceEvents = sortTimelineEventsByDateDesc(
+    timeline.filter(isMaintenanceEvent),
+  );
+
+  return maintenanceEvents.map((event) => {
     const linked = event.documentId
       ? docById.get(event.documentId)
       : undefined;
-    const workshop =
-      linked?.vendor?.trim() ||
-      event.description?.trim() ||
-      "—";
 
     let tuevStatus = "—";
     if (event.category === "tuev") {
-      tuevStatus = linked ? tuevStatusFromDocument(linked) : latestTuev;
+      tuevStatus = linked
+        ? tuevStatusLabelFromDocument(linked)
+        : latestTuev;
     }
 
     return {
       date: formatGermanDate(event.date),
       mileageKm: event.mileage,
-      workshop: fallbackText(workshop),
-      service: TIMELINE_CATEGORY_LABELS[event.category],
+      mileageKnown: event.mileageKnown !== false,
+      workshop: fallbackText(workshopLabel(event, linked)),
+      service: serviceLabel(event),
       tuevStatus,
     };
   });
@@ -179,8 +203,8 @@ export async function buildExposePdfData(
       torqueLabel:
         specs.torqueNm != null ? `${Math.round(specs.torqueNm)} Nm` : "—",
     },
-    latestTuevStatus: latestTuevStatus(documents),
-    maintenanceRows: buildMaintenanceRows(timeline, documents),
+    latestTuevStatus: latestTuevStatusLabel(documents),
+    maintenanceRows: buildExposeMaintenanceRows(timeline, documents),
     modifications,
     modificationTotal,
     heroImage,

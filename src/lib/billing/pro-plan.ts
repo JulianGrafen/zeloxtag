@@ -31,37 +31,33 @@ export function proWeeklyPriceCopy(price: string): string {
 export type ProBillingInterval = "monthly" | "annual";
 
 export const PRO_PLAN_CHECKOUT_HEADLINE =
-  "Hol das Maximum aus deinem Fahrzeug.";
+  "Dein Build verdient mehr als einen zerknitterten Ordner im Handschuhfach.";
 export const PRO_SETTINGS_PAYWALL_HEADLINE =
   "Aktiviere ZeloxTag Pro für dein Fahrzeug.";
 export const PRO_SETTINGS_PAYWALL_KICKER = "Mitgliedschaft";
 export const PRO_PLAN_CHECKOUT_SUBLINE =
-  "Teste ZeloxTag Pro 14 Tage kostenlos. Voller Zugriff, jederzeit mit 1 Klick kündbar.";
+  "Jede Schraube, jedes Gutachten, jede Stunde Arbeit – lückenlos dokumentiert und mit einem Scan griffbereit.";
 
 /** Paywall modal — progress endowment framing */
 export const PRO_PAYWALL_PROGRESS_PERCENT = 80;
 export const PRO_PAYWALL_PROGRESS_LABEL = "Fahrzeugpass zu 80 % eingerichtet";
-export const PRO_PAYWALL_MODAL_SUBLINE =
-  "14 Tage kostenlos — Cloud-Speicher, digitaler Fahrzeugpass und lückenlose Projektdokumentation.";
+export const PRO_PAYWALL_MODAL_SUBLINE = PRO_PLAN_CHECKOUT_SUBLINE;
 export const PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER =
   "Dein Gratis-Scan ist verbraucht";
 export const PRO_PAYWALL_STICKY_MICROCOPY = PRO_TRIAL_NO_COMMITMENT;
 export const PRO_PAYWALL_MODAL_MICROCOPY = "Jederzeit kündbar";
 export const PRO_PAYWALL_DISMISS_LABEL = "Weiter mit ZeloxTag Free";
-export const PRO_MONTHLY_CARD_SUBLINE = "Jederzeit kündbar";
-export const PRO_ANNUAL_CARD_HIGHLIGHT = `Entspricht ${PRO_PLAN_ANNUAL_WEEKLY_PRICE} pro Woche (2 Monate geschenkt)`;
+export const PRO_MONTHLY_CARD_SUBLINE =
+  "Volle Flexibilität. Jederzeit mit einem Klick kündbar.";
+export const PRO_ANNUAL_CARD_HIGHLIGHT = "2 Monate geschenkt";
+export const PRO_PAYWALL_VALUE_FOOTNOTE =
+  "Weniger als eine halbe Tankfüllung für ein ganzes Jahr Schutz und Dokumentation deines Builds.";
 
 export const PRO_PAYWALL_MODAL_BENEFITS = [
-  "Endlose KI-Scans: Rechnungen, ABEs & Gutachten in Sekunden verarbeitet",
-  "Digitale Akte: Nie wieder Zettelchaos – alles griffbereit an einem Ort",
-  "Gutachten-Tresor: ABEs, Teilegutachten & Einzelabnahmen sicher archiviert",
-  "Service & Ölwechsel: Intervalle, Werkstatt-Historie und Fälligkeiten im Blick",
-  "TÜV-Erinnerung: HU-Termine rechtzeitig sehen – ohne Kalender-Chaos",
-  "Maximaler Werterhalt: Beweise die Qualität der Umbauten beim späteren Verkauf",
-  "QR-Fahrzeugpass: Präsentiere deine Specs per Scan auf jedem Tuning-Treffen",
-  "Öffentlicher Showroom: Teile dein Projekt – ohne sensible Belege preiszugeben",
-  "Verkaufs-Exposé: Professionelles PDF für Käufer in wenigen Klicks",
-  "Werkstatt-Zugang: Schrauber laden Belege hoch – ohne dein Passwort",
+  "Gutachten-Tresor: ABEs, Teilegutachten & §21-Eintragungen in Sekunden griffbereit bei jeder Kontrolle.",
+  "QR-Flex auf Treffen: Haube auf, scannen lassen. Zeig Mod-Liste, Dyno-Sheets & Soundfiles direkt vor Ort.",
+  "Keine Tipparbeit: KI fotografiert Rechnungen ab und ordnet Preise, Teile und Daten automatisch zu.",
+  "Schluss mit „Was letzte Preis?“: Generiere per Klick ein PDF-Exposé, das jeden Cent deiner Umbauten schwarz auf weiß belegt.",
 ] as const;
 
 export type ProPaywallPricingAnchor = {

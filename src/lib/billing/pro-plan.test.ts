@@ -9,6 +9,7 @@ import {
   PRO_PLAN_BENEFITS,
   PRO_PLAN_CHECKOUT_HEADLINE,
   PRO_PLAN_CHECKOUT_SUBLINE,
+  PRO_PAYWALL_MODAL_SUBLINE,
   PRO_TRIAL_DAYS,
   PRO_TRIAL_LABEL,
   cloudAboHref,
@@ -35,8 +36,9 @@ describe("pro plan copy", () => {
   });
 
   it("uses benefit-led checkout messaging", () => {
-    expect(PRO_PLAN_CHECKOUT_HEADLINE).toContain("Maximum");
-    expect(PRO_PLAN_CHECKOUT_SUBLINE).toContain("14 Tage kostenlos");
+    expect(PRO_PLAN_CHECKOUT_HEADLINE).toContain("Handschuhfach");
+    expect(PRO_PLAN_CHECKOUT_SUBLINE).toContain("lückenlos");
+    expect(PRO_PAYWALL_MODAL_SUBLINE).toBe(PRO_PLAN_CHECKOUT_SUBLINE);
   });
 
   it("shows weekly price on the monthly plan picker", () => {

@@ -9,6 +9,8 @@ export type ExposePdfImage = {
 export type ExposeMaintenanceRow = {
   date: string;
   mileageKm: number;
+  /** False for manual / service entries without odometer. */
+  mileageKnown: boolean;
   workshop: string;
   service: string;
   tuevStatus: string;

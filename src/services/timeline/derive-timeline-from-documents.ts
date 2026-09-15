@@ -82,6 +82,18 @@ function resolveTimelineMileage(document: Document): {
   return null;
 }
 
+/** Service / TÜV docs without odometer still appear in timeline (date-sorted). */
+function isMaintenanceEligibleWithoutMileage(document: Document): boolean {
+  if (document.type === "tuev" || document.category === "tuev") return true;
+  if (isOilChangeDocument(document)) return true;
+  const category = document.category?.toLowerCase() ?? "";
+  return (
+    category === "repair" ||
+    category === "service" ||
+    category === "inspection"
+  );
+}
+
 function buildEventTitle(
   document: Document,
   category: TimelineEventCategory,
@@ -114,7 +126,10 @@ export function deriveTimelineEventsFromDocuments(
   const events: TimelineEvent[] = [];
 
   for (const document of documents) {
-    const mileageState = resolveTimelineMileage(document);
+    let mileageState = resolveTimelineMileage(document);
+    if (!mileageState && isMaintenanceEligibleWithoutMileage(document)) {
+      mileageState = { mileage: 0, mileageKnown: false };
+    }
     if (!mileageState) continue;
 
     const category = timelineCategoryFromDocument(document);

@@ -7,6 +7,7 @@ import { TrialTimeline } from "@/components/billing/paywall/trial-timeline";
 import {
   PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER,
   PRO_PAYWALL_MODAL_SUBLINE,
+  PRO_PAYWALL_VALUE_FOOTNOTE,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
 import type { PaywallVariant } from "@/lib/permissions/feature-access";
@@ -88,8 +89,14 @@ export function ProPaywallContent({
 
       {showConversionExtras ? (
         isModal ? (
-          <div className={cn("min-h-0 flex-1 px-4 pt-2", contentWidth)}>
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col px-4 pt-2",
+              contentWidth,
+            )}
+          >
             <PaywallModalFold
+              className="min-h-0 flex-1"
               benefits={<BenefitList compact={compact} />}
               pricing={
                 <PricingCards
@@ -101,6 +108,7 @@ export function ProPaywallContent({
                 />
               }
               timeline={<TrialTimeline compact={compact} />}
+              bottomNote={PRO_PAYWALL_VALUE_FOOTNOTE}
               footer={belowFoldFooter}
             />
           </div>
@@ -115,6 +123,9 @@ export function ProPaywallContent({
               className="!mt-0"
             />
             <TrialTimeline compact={compact} />
+            <p className="mt-auto px-1 pt-4 text-center text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
+              {PRO_PAYWALL_VALUE_FOOTNOTE}
+            </p>
             {belowFoldFooter}
           </div>
         )

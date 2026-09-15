@@ -6,7 +6,10 @@ import {
   View,
 } from "@react-pdf/renderer";
 
-import { formatCurrencyEur, formatMileageKm } from "@/lib/vehicles/expose-pdf/formatters";
+import {
+  formatCurrencyEur,
+  formatTimelineMileageKm,
+} from "@/lib/vehicles/expose-pdf/formatters";
 import type { ExposePdfData } from "@/lib/vehicles/expose-pdf/types";
 
 import { exposePdfStyles as styles } from "./expose-pdf-styles";
@@ -98,7 +101,7 @@ function SpecsPage({ data }: { data: ExposePdfData }) {
   return (
     <Page size="A4" style={styles.page}>
       <PageHeader
-        title="Technische Daten & Historie"
+        title="Technische Daten"
         subtitle={`${data.vehicleTitle} · TÜV: ${data.latestTuevStatus}`}
       />
 
@@ -116,37 +119,81 @@ function SpecsPage({ data }: { data: ExposePdfData }) {
         <SpecRow label="Vorbesitzer" value={data.specs.previousOwners} />
       </View>
 
-      <Text style={styles.sectionTitle}>Wartung & Servicehistorie</Text>
-      {data.maintenanceRows.length === 0 ? (
-        <Text style={styles.emptyState}>
-          Noch keine Service-Einträge mit Kilometerstand hinterlegt.
-        </Text>
-      ) : (
-        <View style={styles.table} wrap={false}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, { width: "14%" }]}>Datum</Text>
-            <Text style={[styles.tableHeaderCell, { width: "14%" }]}>KM</Text>
-            <Text style={[styles.tableHeaderCell, { width: "22%" }]}>Werkstatt</Text>
-            <Text style={[styles.tableHeaderCell, { width: "24%" }]}>Service</Text>
-            <Text style={[styles.tableHeaderCell, { width: "26%" }]}>TÜV</Text>
-          </View>
-          {data.maintenanceRows.map((row, index) => (
-            <View key={`${row.date}-${index}`} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { width: "14%" }]}>{row.date}</Text>
-              <Text style={[styles.tableCell, { width: "14%" }]}>
-                {formatMileageKm(row.mileageKm)}
-              </Text>
-              <Text style={[styles.tableCell, { width: "22%" }]}>{row.workshop}</Text>
-              <Text style={[styles.tableCell, { width: "24%" }]}>{row.service}</Text>
-              <Text style={[styles.tableCell, { width: "26%" }]}>{row.tuevStatus}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
       <PageFooter data={data} />
     </Page>
   );
+}
+
+function MaintenanceTable({ rows }: { rows: ExposePdfData["maintenanceRows"] }) {
+  return (
+    <View style={styles.table}>
+      <View style={styles.tableHeader} minPresenceAhead={40}>
+        <Text style={[styles.tableHeaderCell, { width: "14%" }]}>Datum</Text>
+        <Text style={[styles.tableHeaderCell, { width: "14%" }]}>KM</Text>
+        <Text style={[styles.tableHeaderCell, { width: "22%" }]}>Werkstatt</Text>
+        <Text style={[styles.tableHeaderCell, { width: "24%" }]}>Service</Text>
+        <Text style={[styles.tableHeaderCell, { width: "26%" }]}>TÜV</Text>
+      </View>
+      {rows.map((row, index) => (
+        <View key={`${row.date}-${row.service}-${index}`} style={styles.tableRow}>
+          <Text style={[styles.tableCell, { width: "14%" }]}>{row.date}</Text>
+          <Text style={[styles.tableCell, { width: "14%" }]}>
+            {formatTimelineMileageKm(row.mileageKm, row.mileageKnown)}
+          </Text>
+          <Text style={[styles.tableCell, styles.tableCellWrap, { width: "22%" }]}>
+            {row.workshop}
+          </Text>
+          <Text style={[styles.tableCell, styles.tableCellWrap, { width: "24%" }]}>
+            {row.service}
+          </Text>
+          <Text style={[styles.tableCell, styles.tableCellWrap, { width: "26%" }]}>
+            {row.tuevStatus}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const MAINTENANCE_ROWS_PER_PAGE = 17;
+
+function MaintenanceHistoryPages({ data }: { data: ExposePdfData }) {
+  const rows = data.maintenanceRows;
+
+  if (rows.length === 0) {
+    return (
+      <Page size="A4" style={styles.page}>
+        <PageHeader
+          title="Wartung & Servicehistorie"
+          subtitle={data.vehicleTitle}
+        />
+        <Text style={styles.emptyState}>
+          Noch keine Wartungs- oder Service-Einträge hinterlegt.
+        </Text>
+        <PageFooter data={data} />
+      </Page>
+    );
+  }
+
+  const pageCount = Math.ceil(rows.length / MAINTENANCE_ROWS_PER_PAGE);
+  return Array.from({ length: pageCount }, (_, pageIndex) => {
+    const slice = rows.slice(
+      pageIndex * MAINTENANCE_ROWS_PER_PAGE,
+      (pageIndex + 1) * MAINTENANCE_ROWS_PER_PAGE,
+    );
+    const subtitle =
+      pageIndex === 0
+        ? data.vehicleTitle
+        : `${data.vehicleTitle} · Fortsetzung`;
+
+    return (
+      <Page key={`maintenance-${pageIndex}`} size="A4" style={styles.page}>
+        <PageHeader title="Wartung & Servicehistorie" subtitle={subtitle} />
+        <MaintenanceTable rows={slice} />
+        <PageFooter data={data} />
+      </Page>
+    );
+  });
 }
 
 function ModificationsPage({ data }: { data: ExposePdfData }) {
@@ -181,7 +228,7 @@ function ModificationsPage({ data }: { data: ExposePdfData }) {
             ) : null}
           </View>
           {data.modifications.map((row, index) => (
-            <View key={`${row.partName}-${index}`} style={styles.tableRow} wrap={false}>
+            <View key={`${row.partName}-${index}`} style={styles.tableRow}>
               <Text style={[styles.tableCell, { width: "14%" }]}>{row.category}</Text>
               <Text style={[styles.tableCell, { width: "24%" }]}>{row.partName}</Text>
               <Text style={[styles.tableCell, { width: "16%" }]}>{row.manufacturer}</Text>
@@ -258,6 +305,7 @@ export function ExposePdfDocument({ data }: ExposePdfDocumentProps) {
     >
       <CoverPage data={data} />
       <SpecsPage data={data} />
+      <MaintenanceHistoryPages data={data} />
       <ModificationsPage data={data} />
       <GalleryPage data={data} />
     </Document>

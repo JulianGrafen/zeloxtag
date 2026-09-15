@@ -171,13 +171,18 @@ export const exposePdfStyles = StyleSheet.create({
     flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: exposePdfColors.border,
-    paddingVertical: 6,
+    paddingVertical: 7,
     paddingHorizontal: 8,
     backgroundColor: exposePdfColors.white,
+    alignItems: "flex-start",
   },
   tableCell: {
     fontSize: 8,
     color: exposePdfColors.text,
+  },
+  tableCellWrap: {
+    flexWrap: "wrap",
+    lineHeight: 1.35,
   },
   emptyState: {
     padding: 14,

@@ -171,6 +171,24 @@ describe("deriveTimelineEventsFromDocuments", () => {
     expect(tuev?.description).toBe("TÜV Süd");
   });
 
+  it("includes scanned service invoices without mileage_km", () => {
+    const events = deriveTimelineEventsFromDocuments([
+      stubDocument({
+        id: "svc-no-km",
+        title: "Inspektion",
+        category: "service",
+        vendor: "Werkstatt Süd",
+        mileage_km: null,
+        date: "2025-03-01",
+      }),
+    ]);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.category).toBe("inspection");
+    expect(events[0]?.mileageKnown).toBe(false);
+    expect(events[0]?.description).toBe("Werkstatt Süd");
+  });
+
   it("includes manual entries without mileage using the document title", () => {
     const events = deriveTimelineEventsFromDocuments([
       stubDocument({
