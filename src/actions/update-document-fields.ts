@@ -23,6 +23,8 @@ import {
 } from "@/lib/documents/mock-uploads";
 import { parseDocumentDateField } from "@/lib/documents/document-date-field";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
+import { isOilChangeDocument } from "@/lib/documents/oil-changes";
+import type { Document } from "@/types/database";
 import { parseTechnicalSpecs } from "@/lib/documents/technical-specs";
 import { parseAbeConditions, parseStringList } from "@/lib/documents/string-list";
 import {
@@ -92,6 +94,32 @@ function isStoredManualEntry(document: {
     isManualEntryMarker(document.invoice_number) ||
     isManualEntryUrl(document.file_url)
   );
+}
+
+const EXTRACTED_OIL_CHANGE_FIELD_MESSAGE =
+  "Nur in der Rechnung bearbeitbar. Der Ölwechsel wurde automatisch erfasst.";
+
+function manualOnlyDocumentFieldErrorMessage(
+  document: Pick<
+    Document,
+    | "type"
+    | "invoice_number"
+    | "file_url"
+    | "title"
+    | "vendor"
+    | "category"
+    | "notes"
+    | "line_items"
+  >,
+): string {
+  if (
+    !isStoredManualEntry(document) &&
+    document.type === "invoice" &&
+    isOilChangeDocument(document as Document)
+  ) {
+    return EXTRACTED_OIL_CHANGE_FIELD_MESSAGE;
+  }
+  return "Diese Felder können nur bei manuellen Einträgen geändert werden.";
 }
 
 function parseVendor(value: unknown): string | null | undefined {
@@ -233,7 +261,7 @@ export async function updateDocumentFields(
     ) {
       return {
         status: "error",
-        message: "Diese Felder können nur bei manuellen Einträgen geändert werden.",
+        message: manualOnlyDocumentFieldErrorMessage(target),
       };
     }
     const mockPatch: Record<string, unknown> = {};
@@ -284,7 +312,9 @@ export async function updateDocumentFields(
   const admin = createAdminClient();
   const { data: document, error: loadError } = await admin
     .from("documents")
-    .select("id, type, vehicle_id, file_url, invoice_number")
+    .select(
+      "id, type, vehicle_id, file_url, invoice_number, title, vendor, category, notes, line_items",
+    )
     .eq("id", documentId)
     .eq("vehicle_id", vehicleId)
     .maybeSingle();
@@ -309,7 +339,7 @@ export async function updateDocumentFields(
   ) {
     return {
       status: "error",
-      message: "Diese Felder können nur bei manuellen Einträgen geändert werden.",
+      message: manualOnlyDocumentFieldErrorMessage(document as Document),
     };
   }
 
