@@ -662,6 +662,89 @@ nextjs-portal {
   margin-right: calc(50% - 50vw);
 }
 
+/* Login / vehicle dashboard: content tucks under masked fade tail */
+.zelox-brand-banner-bleed--soft {
+  margin-bottom: clamp(-9rem, -28vw, -5.5rem);
+}
+
+/* Solid black bar (wordmark stays crisp; fade is a separate masked tail) */
+.zelox-brand-fade-banner__bar {
+  background: #000;
+}
+
+/* Overlap bar + long masked tail + soft blur halo (no visible box edge) */
+.zelox-brand-fade-banner__fade {
+  position: relative;
+  margin-top: -1.5rem;
+  padding-top: 1.5rem;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.zelox-brand-fade-banner__tail {
+  height: clamp(14rem, 44vw, 26rem);
+  background: #000;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 36%,
+    rgb(0 0 0 / 0.94) 48%,
+    rgb(0 0 0 / 0.84) 58%,
+    rgb(0 0 0 / 0.7) 68%,
+    rgb(0 0 0 / 0.52) 77%,
+    rgb(0 0 0 / 0.34) 85%,
+    rgb(0 0 0 / 0.18) 92%,
+    rgb(0 0 0 / 0.07) 97%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 36%,
+    rgb(0 0 0 / 0.94) 48%,
+    rgb(0 0 0 / 0.84) 58%,
+    rgb(0 0 0 / 0.7) 68%,
+    rgb(0 0 0 / 0.52) 77%,
+    rgb(0 0 0 / 0.34) 85%,
+    rgb(0 0 0 / 0.18) 92%,
+    rgb(0 0 0 / 0.07) 97%,
+    transparent 100%
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.zelox-brand-fade-banner__tail-halo {
+  position: absolute;
+  inset: -12% -8% -28%;
+  z-index: -1;
+  background: #000;
+  opacity: 0.42;
+  filter: blur(42px);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 0.35) 18%,
+    rgb(0 0 0 / 0.75) 42%,
+    rgb(0 0 0 / 0.45) 72%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 0.35) 18%,
+    rgb(0 0 0 / 0.75) 42%,
+    rgb(0 0 0 / 0.45) 72%,
+    transparent 100%
+  );
+}
+
+.zelox-brand-fade-banner--solid .zelox-brand-fade-banner__bar {
+  padding-bottom: 0.625rem;
+}
+
 .claim-intro-bridge {
   pointer-events: none;
   height: 1.25rem;

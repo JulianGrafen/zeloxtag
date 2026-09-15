@@ -21,6 +21,10 @@ export const runtime = "nodejs";
 
 const vehicleIdSchema = z.string().uuid();
 
+function parseIncludeFinancials(raw: string | null): boolean {
+  return raw === "1" || raw === "true";
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
@@ -104,12 +108,17 @@ export async function GET(
         : "") ||
       "ZeloxTag Fahrzeughalter";
 
+    const includeFinancials = parseIncludeFinancials(
+      request.nextUrl.searchParams.get("includeFinancials"),
+    );
+
     const exposeData = await buildExposePdfData({
       vehicle: vehicle as Vehicle,
       documents: (documents ?? []) as Document[],
       timeline,
       sellerContact,
       qrCodeDataUri,
+      includeFinancials,
     });
 
     const pdfBuffer = await renderExposePdfBuffer(exposeData);

@@ -88,11 +88,11 @@ export function LoginForm({
 
   return (
     <ScanContent className="mx-auto w-full max-w-md gap-4 overflow-x-clip pb-12 px-0 pt-0 sm:px-0">
-      <div className="zelox-brand-banner-bleed -mt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--soft -mt-[max(1.25rem,env(safe-area-inset-top))]">
         <ZeloxBrandFadeBanner />
       </div>
 
-      <Card className="mx-4 mt-2 w-[calc(100%-2rem)] overflow-hidden sm:mx-auto sm:w-full">
+      <Card className="relative z-10 mx-4 mt-0 w-[calc(100%-2rem)] overflow-hidden sm:mx-auto sm:w-full">
         <CardHeader className="sr-only">
           <CardTitle>Anmelden bei ZeloxTag</CardTitle>
         </CardHeader>

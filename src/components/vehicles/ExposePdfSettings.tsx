@@ -29,6 +29,7 @@ export function ExposePdfSettings({
         vehicleId={vehicle.id}
         vehicleLabel={vehicleLabel}
         disabled={!canEdit}
+        profileHidesFinancials={vehicle.hide_financials !== false}
         onProRequired={
           canUseExpose ? undefined : () => setPaywallOpen(true)
         }

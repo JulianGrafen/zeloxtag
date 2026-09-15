@@ -4,7 +4,10 @@ import { formatTimelineMileageKm } from "@/lib/vehicles/expose-pdf/formatters";
 import type { TimelineEvent } from "@/lib/validations/timelineSchema";
 import type { Document } from "@/types/database";
 
-import { buildExposeMaintenanceRows } from "./build-expose-data";
+import {
+  buildExposeMaintenanceRows,
+  sumExposeMaintenanceAmounts,
+} from "./build-expose-data";
 
 const vehicleId = "11111111-1111-4111-8111-111111111111";
 
@@ -79,27 +82,27 @@ describe("buildExposeMaintenanceRows", () => {
     expect(rows.some((row) => row.service.includes("Umbau"))).toBe(false);
   });
 
-  it("sorts by date descending", () => {
+  it("sorts by mileage ascending (chronological odometer)", () => {
     const rows = buildExposeMaintenanceRows(
       [
         timelineEvent({
-          id: "old",
-          category: "repair",
-          date: "2023-01-01",
-          mileage: 40_000,
-        }),
-        timelineEvent({
-          id: "new",
+          id: "high-km",
           category: "oil_change",
           date: "2025-06-01",
           mileage: 80_000,
+        }),
+        timelineEvent({
+          id: "low-km",
+          category: "repair",
+          date: "2023-01-01",
+          mileage: 40_000,
         }),
       ],
       [],
     );
 
-    expect(rows[0]?.date).toBe("01.06.2025");
-    expect(rows[1]?.date).toBe("01.01.2023");
+    expect(rows[0]?.mileageKm).toBe(40_000);
+    expect(rows[1]?.mileageKm).toBe(80_000);
   });
 
   it("maps TÜV approval_fields to German status labels", () => {
@@ -161,5 +164,51 @@ describe("buildExposeMaintenanceRows", () => {
       "—",
     );
     expect(rows[0]?.service).toBe("Bremsflüssigkeit erneuert");
+  });
+
+  it("includes document amounts when financials are enabled", () => {
+    const serviceDoc = doc({
+      id: "svc-1",
+      type: "invoice",
+      category: "service",
+      vendor: "Werkstatt Nord",
+      amount: 320,
+      line_items: [{ label: "Inspektion", amount: 320 }],
+    });
+
+    const rows = buildExposeMaintenanceRows(
+      [
+        timelineEvent({
+          id: "evt-svc",
+          category: "inspection",
+          date: "2024-05-01",
+          documentId: "svc-1",
+          cost: 320,
+        }),
+      ],
+      [serviceDoc],
+      false,
+    );
+
+    expect(rows[0]?.amount).toBe(320);
+    expect(sumExposeMaintenanceAmounts(rows)).toBe(320);
+  });
+
+  it("omits amounts when financials are hidden", () => {
+    const rows = buildExposeMaintenanceRows(
+      [
+        timelineEvent({
+          id: "evt-svc",
+          category: "inspection",
+          date: "2024-05-01",
+          cost: 500,
+        }),
+      ],
+      [],
+      true,
+    );
+
+    expect(rows[0]?.amount).toBeNull();
+    expect(sumExposeMaintenanceAmounts(rows)).toBeNull();
   });
 });

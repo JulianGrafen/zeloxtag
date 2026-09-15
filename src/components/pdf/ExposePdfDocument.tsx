@@ -8,6 +8,7 @@ import {
 
 import {
   formatCurrencyEur,
+  formatExposeCurrencyCell,
   formatTimelineMileageKm,
 } from "@/lib/vehicles/expose-pdf/formatters";
 import type { ExposePdfData } from "@/lib/vehicles/expose-pdf/types";
@@ -82,8 +83,23 @@ function CoverPage({ data }: { data: ExposePdfData }) {
         <MetricBox label="Leistung" value={data.metrics.powerLabel} />
         <MetricBox label="Kilometerstand" value={data.metrics.mileageLabel} />
         <MetricBox label="Baujahr" value={data.metrics.yearLabel} />
-        {data.metrics.valueLabel ? (
-          <MetricBox label="Investition Umbauten" value={data.metrics.valueLabel} />
+        {data.metrics.documentedTotalLabel ? (
+          <MetricBox
+            label="Gesamtkosten dokumentiert"
+            value={data.metrics.documentedTotalLabel}
+          />
+        ) : null}
+        {data.metrics.maintenanceValueLabel ? (
+          <MetricBox
+            label="Wartung & Service"
+            value={data.metrics.maintenanceValueLabel}
+          />
+        ) : null}
+        {data.metrics.modificationValueLabel ? (
+          <MetricBox
+            label="Investition Umbauten"
+            value={data.metrics.modificationValueLabel}
+          />
         ) : null}
       </View>
 
@@ -124,31 +140,50 @@ function SpecsPage({ data }: { data: ExposePdfData }) {
   );
 }
 
-function MaintenanceTable({ rows }: { rows: ExposePdfData["maintenanceRows"] }) {
+function MaintenanceTable({
+  rows,
+  hideFinancials,
+}: {
+  rows: ExposePdfData["maintenanceRows"];
+  hideFinancials: boolean;
+}) {
+  const showAmounts = !hideFinancials;
+  const col = showAmounts
+    ? { date: "11%", km: "11%", workshop: "18%", service: "20%", tuev: "20%", cost: "12%" }
+    : { date: "14%", km: "14%", workshop: "22%", service: "24%", tuev: "26%", cost: "0%" };
+
   return (
     <View style={styles.table}>
       <View style={styles.tableHeader} minPresenceAhead={40}>
-        <Text style={[styles.tableHeaderCell, { width: "14%" }]}>Datum</Text>
-        <Text style={[styles.tableHeaderCell, { width: "14%" }]}>KM</Text>
-        <Text style={[styles.tableHeaderCell, { width: "22%" }]}>Werkstatt</Text>
-        <Text style={[styles.tableHeaderCell, { width: "24%" }]}>Service</Text>
-        <Text style={[styles.tableHeaderCell, { width: "26%" }]}>TÜV</Text>
+        <Text style={[styles.tableHeaderCell, { width: col.date }]}>Datum</Text>
+        <Text style={[styles.tableHeaderCell, { width: col.km }]}>KM</Text>
+        <Text style={[styles.tableHeaderCell, { width: col.workshop }]}>Werkstatt</Text>
+        <Text style={[styles.tableHeaderCell, { width: col.service }]}>Service</Text>
+        <Text style={[styles.tableHeaderCell, { width: col.tuev }]}>TÜV</Text>
+        {showAmounts ? (
+          <Text style={[styles.tableHeaderCell, { width: col.cost }]}>Kosten</Text>
+        ) : null}
       </View>
       {rows.map((row, index) => (
         <View key={`${row.date}-${row.service}-${index}`} style={styles.tableRow}>
-          <Text style={[styles.tableCell, { width: "14%" }]}>{row.date}</Text>
-          <Text style={[styles.tableCell, { width: "14%" }]}>
+          <Text style={[styles.tableCell, { width: col.date }]}>{row.date}</Text>
+          <Text style={[styles.tableCell, { width: col.km }]}>
             {formatTimelineMileageKm(row.mileageKm, row.mileageKnown)}
           </Text>
-          <Text style={[styles.tableCell, styles.tableCellWrap, { width: "22%" }]}>
+          <Text style={[styles.tableCell, styles.tableCellWrap, { width: col.workshop }]}>
             {row.workshop}
           </Text>
-          <Text style={[styles.tableCell, styles.tableCellWrap, { width: "24%" }]}>
+          <Text style={[styles.tableCell, styles.tableCellWrap, { width: col.service }]}>
             {row.service}
           </Text>
-          <Text style={[styles.tableCell, styles.tableCellWrap, { width: "26%" }]}>
+          <Text style={[styles.tableCell, styles.tableCellWrap, { width: col.tuev }]}>
             {row.tuevStatus}
           </Text>
+          {showAmounts ? (
+            <Text style={[styles.tableCell, { width: col.cost }]}>
+              {formatExposeCurrencyCell(row.amount, hideFinancials)}
+            </Text>
+          ) : null}
         </View>
       ))}
     </View>
@@ -189,7 +224,17 @@ function MaintenanceHistoryPages({ data }: { data: ExposePdfData }) {
     return (
       <Page key={`maintenance-${pageIndex}`} size="A4" style={styles.page}>
         <PageHeader title="Wartung & Servicehistorie" subtitle={subtitle} />
-        <MaintenanceTable rows={slice} />
+        <MaintenanceTable rows={slice} hideFinancials={data.hideFinancials} />
+        {!data.hideFinancials &&
+        data.maintenanceTotal != null &&
+        pageIndex === pageCount - 1 ? (
+          <View style={styles.totalRow} wrap={false}>
+            <Text style={styles.totalLabel}>Summe Wartung & Service:</Text>
+            <Text style={styles.totalLabel}>
+              {formatCurrencyEur(data.maintenanceTotal)}
+            </Text>
+          </View>
+        ) : null}
         <PageFooter data={data} />
       </Page>
     );
@@ -237,7 +282,7 @@ function ModificationsPage({ data }: { data: ExposePdfData }) {
               <Text style={[styles.tableCell, { width: "10%" }]}>{row.installationDate}</Text>
               {showAmounts ? (
                 <Text style={[styles.tableCell, { width: "10%" }]}>
-                  {formatCurrencyEur(row.amount)}
+                  {formatExposeCurrencyCell(row.amount, data.hideFinancials)}
                 </Text>
               ) : null}
             </View>

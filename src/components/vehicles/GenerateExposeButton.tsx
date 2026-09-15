@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FileDown } from "lucide-react";
 
+import { GenerateExposeDialog } from "@/components/vehicles/GenerateExposeDialog";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import {
   parseContentDispositionFilename,
@@ -14,6 +15,8 @@ type GenerateExposeButtonProps = {
   vehicleId: string;
   vehicleLabel: string;
   disabled?: boolean;
+  /** Profile default: finances hidden when true. */
+  profileHidesFinancials?: boolean;
   onProRequired?: () => void;
 };
 
@@ -21,25 +24,26 @@ export function GenerateExposeButton({
   vehicleId,
   vehicleLabel,
   disabled = false,
+  profileHidesFinancials = true,
   onProRequired,
 }: GenerateExposeButtonProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [readyUrl, setReadyUrl] = useState<string | null>(null);
   const [readyFilename, setReadyFilename] = useState<string | null>(null);
 
-  async function handleGenerate() {
-    if (onProRequired) {
-      onProRequired();
-      return;
-    }
+  async function runGenerate(includeFinancials: boolean) {
     setLoading(true);
     setError(null);
     setReadyUrl(null);
     setReadyFilename(null);
 
     try {
-      const url = `/api/vehicles/${encodeURIComponent(vehicleId)}/expose`;
+      const params = new URLSearchParams({
+        includeFinancials: includeFinancials ? "1" : "0",
+      });
+      const url = `/api/vehicles/${encodeURIComponent(vehicleId)}/expose?${params}`;
       const response = await fetch(url, { method: "GET", credentials: "include" });
 
       if (!response.ok) {
@@ -63,6 +67,7 @@ export function GenerateExposeButton({
       const objectUrl = URL.createObjectURL(blob);
       setReadyUrl(objectUrl);
       setReadyFilename(filename);
+      setDialogOpen(false);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -74,13 +79,22 @@ export function GenerateExposeButton({
     }
   }
 
+  function handleOpenClick() {
+    if (onProRequired) {
+      onProRequired();
+      return;
+    }
+    setError(null);
+    setDialogOpen(true);
+  }
+
   return (
     <div className="space-y-2">
       <PressableButton
         type="button"
         variant="button"
         disabled={disabled || loading}
-        onClick={() => void handleGenerate()}
+        onClick={handleOpenClick}
         className="inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[0.92rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)] disabled:opacity-60"
       >
         <FileDown className="h-4 w-4 shrink-0" aria-hidden />
@@ -107,6 +121,17 @@ export function GenerateExposeButton({
           </a>
         </p>
       ) : null}
+
+      <GenerateExposeDialog
+        open={dialogOpen}
+        vehicleLabel={vehicleLabel}
+        profileHidesFinancials={profileHidesFinancials}
+        loading={loading}
+        onClose={() => {
+          if (!loading) setDialogOpen(false);
+        }}
+        onConfirm={(includeFinancials) => void runGenerate(includeFinancials)}
+      />
     </div>
   );
 }

@@ -36,11 +36,11 @@ export default async function DashboardPage() {
   return (
     <AppShell showNavbar={false}>
       <ScanContent className="max-w-2xl px-0 pt-0">
-        <div className="zelox-brand-banner-bleed pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
+        <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--soft pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
           <ZeloxBrandFadeBanner />
         </div>
 
-      <section className="flex w-full flex-col gap-5 px-4 pb-12 pt-2 sm:px-5">
+      <section className="relative z-10 flex w-full flex-col gap-5 px-4 pb-12 pt-0 sm:px-5">
         <div className="vd-surface-card p-6">
           <p className="claim-kicker">Dashboard</p>
           <h1 className="claim-title mt-2">Willkommen zurück</h1>

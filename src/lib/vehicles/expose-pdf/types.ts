@@ -14,6 +14,7 @@ export type ExposeMaintenanceRow = {
   workshop: string;
   service: string;
   tuevStatus: string;
+  amount: number | null;
 };
 
 export type ExposeModificationRow = {
@@ -38,7 +39,12 @@ export type ExposePdfData = {
     powerLabel: string;
     mileageLabel: string;
     yearLabel: string;
-    valueLabel: string;
+    /** Sum of documented modifications (Umbauten). */
+    modificationValueLabel: string;
+    /** Sum of maintenance / service rows. */
+    maintenanceValueLabel: string;
+    /** Modifications + maintenance where amounts exist. */
+    documentedTotalLabel: string;
   };
   specs: {
     vin: string;
@@ -56,6 +62,8 @@ export type ExposePdfData = {
   maintenanceRows: ExposeMaintenanceRow[];
   modifications: ExposeModificationRow[];
   modificationTotal: number | null;
+  maintenanceTotal: number | null;
+  documentedTotal: number | null;
   heroImage: ExposePdfImage | null;
   galleryImages: ExposePdfImage[];
   dynoChartImage: ExposePdfImage | null;

@@ -22,11 +22,11 @@ export function VehicleDashboard({
 
   return (
     <ScanContent className={cn("px-0 pt-0", className)}>
-      <div className="zelox-brand-banner-bleed pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--soft pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
         <ZeloxBrandFadeBanner />
       </div>
 
-      <div className="flex flex-col gap-5 px-4 sm:px-5">
+      <div className="relative z-10 flex flex-col gap-5 px-4 sm:px-5">
       <div data-tour="dashboard-header">
         <VehicleDashboardHeader
           ownerName={data.ownerName}

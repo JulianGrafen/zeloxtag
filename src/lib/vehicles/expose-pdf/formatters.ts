@@ -28,6 +28,16 @@ export function formatCurrencyEur(amount: number | null | undefined): string {
   }).format(amount);
 }
 
+export function formatExposeCurrencyCell(
+  amount: number | null | undefined,
+  hideFinancials: boolean,
+): string {
+  if (hideFinancials) return "";
+  if (amount == null || !Number.isFinite(amount)) return "—";
+  const formatted = formatCurrencyEur(amount);
+  return formatted || "—";
+}
+
 export function formatPower(
   powerPs: number | null,
   powerKw: number | null,

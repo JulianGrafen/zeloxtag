@@ -105,6 +105,11 @@ function isConfirmedInvoice(doc: Document): boolean {
   return lines.some((item) => Number.isFinite(item.amount) && item.amount > 0);
 }
 
+/** Invoice / service document total for exposé & PDF (line items or doc amount). */
+export function resolveDocumentAmount(doc: Document): number | null {
+  return invoiceAmount(doc);
+}
+
 function invoiceAmount(doc: Document): number | null {
   if (doc.amount != null && Number.isFinite(doc.amount) && doc.amount > 0) {
     return doc.amount;
