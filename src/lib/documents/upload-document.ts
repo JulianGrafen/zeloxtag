@@ -41,6 +41,7 @@ import {
 import { guardDocumentTitle } from "./guard-document-title";
 import { normalizeDocumentDateIso } from "./format";
 import { parseLineItems } from "./line-items";
+import { parseManualEntryAmount } from "./manual-entry-input";
 import { appendMockUploadedDocument } from "./mock-uploads";
 import {
   detectOilChangeInvoice,
@@ -94,22 +95,6 @@ function uploadVaultGateOptions(
   return undefined;
 }
 
-function parseAmount(raw: string | undefined): number | null {
-  if (!raw?.trim()) return null;
-  // Percentages (Skonto/Rabatt) are never EUR totals.
-  if (/%/.test(raw)) return null;
-  let normalized = raw.replace(/\s/g, "").replace(/€|eur/gi, "");
-  // German: 1.234,56 → 1234.56; plain 428,90 → 428.90
-  if (/\d,\d{1,2}$/.test(normalized) && normalized.includes(".")) {
-    normalized = normalized.replace(/\./g, "").replace(",", ".");
-  } else if (/\d,\d{1,2}$/.test(normalized)) {
-    normalized = normalized.replace(",", ".");
-  }
-  const value = Number.parseFloat(normalized);
-  if (!Number.isFinite(value)) return null;
-  return Math.round(value * 100) / 100;
-}
-
 function parseDate(raw: string | undefined): string | null {
   if (!raw?.trim()) return null;
   return normalizeDocumentDateIso(raw);
@@ -156,7 +141,7 @@ export async function uploadDocument(
 
   const { vehicleId, tagUuid } = meta;
 
-  const amount = parseAmount(meta.amount);
+  const amount = parseManualEntryAmount(meta.amount);
   const date = parseDate(meta.date);
   const vendorParsed = sanitizeVendorForStorage(meta.vendor.slice(0, 160) || null);
   let vendor = vendorParsed.vendor;

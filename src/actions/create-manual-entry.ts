@@ -29,6 +29,7 @@ import {
   resolveManualOilChangeVendor,
 } from "@/lib/documents/manual-oil-change-form";
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
+import { parseManualEntryAmount } from "@/lib/documents/manual-entry-input";
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
 import {
@@ -61,20 +62,6 @@ const fieldsSchema = z.object({
   filterChanged: z.enum(["true", "false", ""]).optional().default(""),
   selfMade: z.enum(["true", "false", ""]).optional().default(""),
 });
-
-function parseAmount(raw: string | undefined): number | null {
-  if (!raw?.trim()) return null;
-  if (/%/.test(raw)) return null;
-  let normalized = raw.replace(/\s/g, "").replace(/€|eur/gi, "");
-  if (/\d,\d{1,2}$/.test(normalized) && normalized.includes(".")) {
-    normalized = normalized.replace(/\./g, "").replace(",", ".");
-  } else if (/\d,\d{1,2}$/.test(normalized)) {
-    normalized = normalized.replace(",", ".");
-  }
-  const value = Number.parseFloat(normalized);
-  if (!Number.isFinite(value)) return null;
-  return Math.round(value * 100) / 100;
-}
 
 function parseMileageKm(raw: string | undefined): number | null {
   if (!raw?.trim()) return null;
@@ -216,7 +203,7 @@ export async function createManualVehicleEntry(
   const date = dateRaw || null;
   const lineItems = parseLineItems(formData.get("lineItems"));
   const amountFromLines = sumLineItems(lineItems);
-  const amount = amountFromLines ?? parseAmount(data.amount);
+  const amount = amountFromLines ?? parseManualEntryAmount(data.amount);
   const vendor = isOilChangeEntry
     ? resolveManualOilChangeVendor(data.selfMade, data.vendor)
     : data.vendor?.trim().slice(0, 160) || null;
