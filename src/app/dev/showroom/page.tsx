@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
+import { computeBuildDnaHeuristic } from "@/lib/showcase/build-dna-heuristic";
 import { getMockTagScan, MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 
@@ -34,7 +35,13 @@ export default function DevShowroomPage() {
     show_on_public_showcase: true,
   }));
 
-  const payload = buildPublicShowcasePayload(vehicle, documents);
+  let payload = buildPublicShowcasePayload(vehicle, documents);
+  if (!payload.buildDna && payload.modifications.length >= 2) {
+    payload = {
+      ...payload,
+      buildDna: computeBuildDnaHeuristic(payload.modifications),
+    };
+  }
 
   return <PublicShowcaseView data={payload} />;
 }

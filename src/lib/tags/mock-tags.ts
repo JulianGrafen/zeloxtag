@@ -36,6 +36,9 @@ const mockVehicle: Vehicle = {
   public_slug: null,
   expose_token: null,
   is_expose_active: false,
+  showcase_build_dna: null,
+  showcase_build_dna_fingerprint: null,
+  showcase_build_dna_updated_at: null,
   created_at: now,
   updated_at: now,
 };

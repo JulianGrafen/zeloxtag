@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import type { Document, Vehicle } from "@/types/database";
 
@@ -31,6 +32,9 @@ const baseVehicle: Vehicle = {
   public_slug: "abc123XYZ",
   expose_token: null,
   is_expose_active: false,
+  showcase_build_dna: null,
+  showcase_build_dna_fingerprint: null,
+  showcase_build_dna_updated_at: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };
@@ -374,5 +378,67 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.photos[0]?.src).toContain(
       `/api/public/vehicle/${baseVehicle.id}/file`,
     );
+  });
+
+  it("includes buildDna when cached fingerprint matches public mods", () => {
+    const documents: Document[] = [
+      baseInvoice({ id: "mod-a", line_items: [{ label: "Turbo", amount: 1 }] }),
+      baseInvoice({
+        id: "mod-b",
+        line_items: [{ label: "Coilover", amount: 1 }],
+      }),
+    ];
+    const payloadWithoutCache = buildPublicShowcasePayload(
+      baseVehicle,
+      documents,
+    );
+    const fingerprint = buildShowcaseModsFingerprint(
+      payloadWithoutCache.modifications,
+    );
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      showcase_build_dna_fingerprint: fingerprint,
+      showcase_build_dna: {
+        archetype: "Street Sleeper",
+        radar: [
+          { category: "Power", score: 80 },
+          { category: "Handling", score: 55 },
+          { category: "Style", score: 30 },
+          { category: "Reliability", score: 70 },
+        ],
+        punchline: "Test-Punchline.",
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, documents);
+    expect(payload.buildDna?.archetype).toBe("Street Sleeper");
+    expect(payload.buildDna?.punchline).toBe("Test-Punchline.");
+  });
+
+  it("omits buildDna when fingerprint is stale", () => {
+    const documents: Document[] = [
+      baseInvoice(),
+      baseInvoice({
+        id: "mod-2",
+        line_items: [{ label: "Intercooler", amount: 500 }],
+      }),
+    ];
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      showcase_build_dna_fingerprint: "stale-fingerprint",
+      showcase_build_dna: {
+        archetype: "OEM+",
+        radar: [
+          { category: "Power", score: 50 },
+          { category: "Handling", score: 50 },
+          { category: "Style", score: 50 },
+          { category: "Reliability", score: 50 },
+        ],
+        punchline: "Alt.",
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, documents);
+    expect(payload.buildDna).toBeNull();
   });
 });

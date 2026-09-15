@@ -20,6 +20,9 @@ const vehicle: Vehicle = {
   public_slug: null,
   expose_token: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   is_expose_active: true,
+  showcase_build_dna: null,
+  showcase_build_dna_fingerprint: null,
+  showcase_build_dna_updated_at: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };

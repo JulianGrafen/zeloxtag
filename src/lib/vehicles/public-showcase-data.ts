@@ -8,6 +8,11 @@ import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { resolvePublicDynoChartHref } from "@/lib/vehicles/dyno-chart-constants";
 import { resolvePublicEngineSoundHref } from "@/lib/vehicles/engine-sound-constants";
 import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
+import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import {
+  parseShowcaseBuildDna,
+  type ShowcaseBuildDna,
+} from "@/lib/showcase/build-dna-schema";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
 import type { Document, Vehicle } from "@/types/database";
@@ -65,7 +70,18 @@ export type PublicShowcasePayload = {
   profile: PublicShowcaseProfile;
   photos: PublicGalleryPhoto[];
   modifications: PublicModification[];
+  buildDna: ShowcaseBuildDna | null;
 };
+
+function resolvePublicBuildDna(
+  vehicle: Vehicle,
+  modifications: readonly PublicModification[],
+): ShowcaseBuildDna | null {
+  if (modifications.length < 2) return null;
+  const fingerprint = buildShowcaseModsFingerprint(modifications);
+  if (vehicle.showcase_build_dna_fingerprint !== fingerprint) return null;
+  return parseShowcaseBuildDna(vehicle.showcase_build_dna);
+}
 
 function normalizeVehicleShowcaseFields(vehicle: Vehicle): {
   is_public: boolean;
@@ -283,6 +299,7 @@ export function buildPublicShowcasePayload(
     },
     photos,
     modifications,
+    buildDna: resolvePublicBuildDna(vehicle, modifications),
   };
 }
 
@@ -295,5 +312,10 @@ export function withDefaultShowcaseFields(vehicle: Vehicle): Vehicle {
     public_slug: fields.public_slug,
     expose_token: fields.expose_token,
     is_expose_active: fields.is_expose_active,
+    showcase_build_dna: vehicle.showcase_build_dna ?? null,
+    showcase_build_dna_fingerprint:
+      vehicle.showcase_build_dna_fingerprint ?? null,
+    showcase_build_dna_updated_at:
+      vehicle.showcase_build_dna_updated_at ?? null,
   };
 }

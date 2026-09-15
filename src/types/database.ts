@@ -8,6 +8,7 @@
 
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import type { TimelineEventCategory } from "@/lib/validations/timelineSchema";
+import type { ShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
 import type { VehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 
 export type TagStatus = "unclaimed" | "active";
@@ -61,6 +62,10 @@ export type Vehicle = {
   expose_token: string | null;
   /** When true, the token-gated sales exposé is publicly readable. */
   is_expose_active: boolean;
+  /** Cached Build DNA for public showcase — migration 00063. */
+  showcase_build_dna: ShowcaseBuildDna | Record<string, unknown> | null;
+  showcase_build_dna_fingerprint: string | null;
+  showcase_build_dna_updated_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -270,6 +275,9 @@ export type Database = {
           public_slug?: string | null;
           expose_token?: string | null;
           is_expose_active?: boolean;
+          showcase_build_dna?: ShowcaseBuildDna | Record<string, unknown> | null;
+          showcase_build_dna_fingerprint?: string | null;
+          showcase_build_dna_updated_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -289,6 +297,9 @@ export type Database = {
           public_slug?: string | null;
           expose_token?: string | null;
           is_expose_active?: boolean;
+          showcase_build_dna?: ShowcaseBuildDna | Record<string, unknown> | null;
+          showcase_build_dna_fingerprint?: string | null;
+          showcase_build_dna_updated_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

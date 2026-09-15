@@ -4,6 +4,7 @@ import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 
 import { PublicShowcaseMarker } from "./public-showcase-marker";
 import { ShowroomHero } from "./ShowroomHero";
+import { ShowroomBuildDna } from "./ShowroomBuildDna";
 import { ShowroomStats } from "./ShowroomStats";
 import { showroom } from "./showroom-styles";
 
@@ -12,6 +13,9 @@ type PublicShowcaseViewProps = {
 };
 
 export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
+  const showBuildDna =
+    data.buildDna != null && data.modifications.length >= 2;
+
   return (
     <div className={showroom.page}>
       <PublicShowcaseMarker />
@@ -23,6 +27,7 @@ export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
           profile={data.profile}
           modifications={data.modifications}
         />
+        {showBuildDna ? <ShowroomBuildDna dna={data.buildDna!} /> : null}
         <footer
           className={`relative isolate z-[100] space-y-3 px-4 pb-2 ${showroom.footer}`}
         >

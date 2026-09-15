@@ -90,6 +90,9 @@ function toGuestClientVehicle(vehicle: Vehicle): Vehicle {
       typeof vehicle.public_slug === "string" ? vehicle.public_slug : null,
     expose_token: null,
     is_expose_active: false,
+    showcase_build_dna: null,
+    showcase_build_dna_fingerprint: null,
+    showcase_build_dna_updated_at: null,
     created_at: vehicle.created_at,
     updated_at: vehicle.updated_at,
   };

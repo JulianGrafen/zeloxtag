@@ -9,7 +9,10 @@ import {
   parseShowcaseLineSelections,
   withShowcaseLineSelection,
 } from "@/lib/vehicles/public-showcase-line-items";
+import { refreshShowcaseBuildDna } from "@/lib/showcase/refresh-showcase-build-dna";
+import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import { publicShowcasePath } from "@/lib/vehicles/public-slug";
+import type { Document, Vehicle } from "@/types/database";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -194,6 +197,35 @@ export async function updatePublicShowcaseDocuments(
       typeof vehicleRow?.public_slug === "string" ? vehicleRow.public_slug : null;
     if (publicSlug) {
       revalidatePath(publicShowcasePath(publicSlug));
+    }
+
+    const { data: freshVehicle, error: freshVehicleError } = await admin
+      .from("vehicles")
+      .select("*")
+      .eq("id", vehicleId)
+      .maybeSingle();
+
+    const { data: freshDocs, error: freshDocsError } = await admin
+      .from("documents")
+      .select("*")
+      .eq("vehicle_id", vehicleId);
+
+    if (!freshVehicleError && !freshDocsError && freshVehicle) {
+      const { modifications } = buildPublicShowcasePayload(
+        freshVehicle as Vehicle,
+        (freshDocs ?? []) as Document[],
+      );
+      try {
+        await refreshShowcaseBuildDna(freshVehicle as Vehicle, modifications);
+        if (publicSlug) {
+          revalidatePath(publicShowcasePath(publicSlug));
+        }
+      } catch (refreshError) {
+        logServerError(
+          "[update-public-showcase-documents] build dna refresh failed",
+          refreshError,
+        );
+      }
     }
 
     return { status: "ok" };
