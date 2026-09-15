@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Calendar } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 
@@ -59,11 +59,8 @@ export function GermanDateInput({
     setText(iso ? isoToDisplay(iso) : "");
   }
 
-  function openCalendar() {
-    if (!disabled && showCalendar) {
-      setOpen(true);
-    }
-  }
+  const generatedHintId = useId();
+  const hintId = id ? `${id}-hint` : generatedHintId;
 
   const input = (
     <Input
@@ -77,7 +74,7 @@ export function GermanDateInput({
       placeholder={placeholder}
       className={cn(showCalendar ? "flex-1" : undefined, className)}
       value={text}
-      onClick={openCalendar}
+      aria-describedby={showCalendar ? hintId : undefined}
       onFocus={() => setFocused(true)}
       onChange={(event) => {
         const next = event.target.value;
@@ -119,16 +116,21 @@ export function GermanDateInput({
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <div className="flex w-full items-stretch gap-2">
-        {input}
-        <Popover.Trigger
-          type="button"
-          disabled={disabled}
-          aria-label="Kalender öffnen"
-          className="inline-flex w-10 shrink-0 items-center justify-center self-stretch rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Calendar className="h-4 w-4" aria-hidden />
-        </Popover.Trigger>
+      <div className="flex w-full flex-col gap-1">
+        <div className="flex w-full items-stretch gap-2">
+          {input}
+          <Popover.Trigger
+            type="button"
+            disabled={disabled}
+            aria-label="Kalender öffnen"
+            className="inline-flex w-10 shrink-0 items-center justify-center self-stretch rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Calendar className="h-4 w-4" aria-hidden />
+          </Popover.Trigger>
+        </div>
+        <p id={hintId} className="sr-only">
+          Datum als TT.MM.JJJJ eingeben oder den Kalender nutzen.
+        </p>
       </div>
 
       <Popover.Portal className="z-[100]">
