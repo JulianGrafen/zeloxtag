@@ -23,7 +23,10 @@ import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-discl
 import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
 import { EditableTuevDefectsSection } from "@/components/documents/editable-tuev-defects-section";
 import { EditableTitleSection } from "@/components/documents/editable-title-section";
+import { EditableDocumentAmountSection } from "@/components/documents/editable-document-amount-section";
 import { EditableDocumentDateSection } from "@/components/documents/editable-document-date-section";
+import { EditableDocumentMileageSection } from "@/components/documents/editable-document-mileage-section";
+import { EditableDocumentNotesSection } from "@/components/documents/editable-document-notes-section";
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { InvoiceDetailEditPickerSheet } from "@/components/documents/invoice-detail-edit-picker-sheet";
@@ -96,6 +99,11 @@ export function DocumentInvoiceDetailView({
   );
   const [title, setTitle] = useState(() => displayDocumentTitle(document.title));
   const [documentDate, setDocumentDate] = useState(() => document.date);
+  const [documentAmount, setDocumentAmount] = useState(() => document.amount);
+  const [documentNotes, setDocumentNotes] = useState(() => document.notes);
+  const [mileageKm, setMileageKm] = useState(() =>
+    resolveDocumentMileageKm(document),
+  );
   const [editPickerOpen, setEditPickerOpen] = useState(false);
   const [editRequest, setEditRequest] = useState<InvoiceDetailEditTarget | null>(
     null,
@@ -150,9 +158,8 @@ export function DocumentInvoiceDetailView({
   const fileName = fileNameFromUrl(document.file_url, title);
   const issuedLabel = formatDocumentDateCompact(documentDate);
   const scannedLabel = formatDocumentDateCompact(document.created_at);
-  const resolvedMileageKm = resolveDocumentMileageKm(document);
   const mileageLabel =
-    resolvedMileageKm !== null ? formatMileageKmLabel(resolvedMileageKm) : null;
+    mileageKm !== null ? formatMileageKmLabel(mileageKm) : null;
   const vendor = vendorLabel.trim() || title;
   const category = document.category?.trim() || (isManual ? "Eintrag" : "Beleg");
   const invoiceNumberLabel = displayManualInvoiceNumber(document.invoice_number);
@@ -244,9 +251,22 @@ export function DocumentInvoiceDetailView({
             </>
           }
           trailing={
-            document.amount !== null ? (
+            isManual && canEditInvoice ? (
+              <EditableDocumentAmountSection
+                documentId={document.id}
+                vehicleId={document.vehicle_id}
+                tagUuid={tagUuid}
+                amount={documentAmount}
+                onSaved={setDocumentAmount}
+                hideEditTrigger={useCentralEdit}
+                editRequest={editRequest}
+                editPulse={editPulse}
+                onEditRequestConsumed={handleEditRequestConsumed}
+                sectionId={INVOICE_DETAIL_EDIT_ANCHORS.amount}
+              />
+            ) : documentAmount !== null ? (
               <DocumentDetailHeroAmount>
-                {formatEur(document.amount)}
+                {formatEur(documentAmount)}
               </DocumentDetailHeroAmount>
             ) : undefined
           }
@@ -282,8 +302,10 @@ export function DocumentInvoiceDetailView({
               vehicleId={document.vehicle_id}
               tagUuid={tagUuid}
               vendor={document.vendor}
-              label="Werkstatt"
-              placeholder="z. B. Auto Meister GmbH"
+              label={isManual ? "Werkstatt / Ausführender" : "Werkstatt"}
+              placeholder={
+                isManual ? "z. B. selbst, Werkstatt Name" : "z. B. Auto Meister GmbH"
+              }
               onSaved={(nextVendor) =>
                 setVendorLabel(nextVendor?.trim() || title)
               }
@@ -334,12 +356,29 @@ export function DocumentInvoiceDetailView({
               )}
             </div>
             <div>
-              <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                KM
-              </dt>
-              <dd className="mt-0.5 font-medium tabular-nums text-[color:var(--vd-text)]">
-                {mileageLabel ?? "—"}
-              </dd>
+              {isManual && canEditInvoice ? (
+                <EditableDocumentMileageSection
+                  documentId={document.id}
+                  vehicleId={document.vehicle_id}
+                  tagUuid={tagUuid}
+                  mileageKm={mileageKm}
+                  onSaved={setMileageKm}
+                  hideEditTrigger={useCentralEdit}
+                  editRequest={editRequest}
+                  editPulse={editPulse}
+                  onEditRequestConsumed={handleEditRequestConsumed}
+                  sectionId={INVOICE_DETAIL_EDIT_ANCHORS.mileage}
+                />
+              ) : (
+                <>
+                  <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+                    KM
+                  </dt>
+                  <dd className="mt-0.5 font-medium tabular-nums text-[color:var(--vd-text)]">
+                    {mileageLabel ?? "—"}
+                  </dd>
+                </>
+              )}
             </div>
           </dl>
         </section>
@@ -368,7 +407,7 @@ export function DocumentInvoiceDetailView({
             documentId={document.id}
             vehicleId={document.vehicle_id}
             tagUuid={tagUuid}
-            totalAmount={document.amount}
+            totalAmount={documentAmount}
             emptyHint={
               isManual
                 ? "Noch keine Positionen. Bearbeiten tippen, um Teile und Kosten einzutragen."
@@ -422,6 +461,30 @@ export function DocumentInvoiceDetailView({
                 </span>
               </div>
             ) : null}
+          </section>
+        ) : null}
+
+        {isManual && canEditInvoice ? (
+          <EditableDocumentNotesSection
+            documentId={document.id}
+            vehicleId={document.vehicle_id}
+            tagUuid={tagUuid}
+            notes={documentNotes}
+            onSaved={setDocumentNotes}
+            hideEditTrigger={useCentralEdit}
+            editRequest={editRequest}
+            editPulse={editPulse}
+            onEditRequestConsumed={handleEditRequestConsumed}
+            sectionId={INVOICE_DETAIL_EDIT_ANCHORS.notes}
+          />
+        ) : isManual && documentNotes?.trim() ? (
+          <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+            <h2 className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+              Notizen
+            </h2>
+            <p className="whitespace-pre-line text-[0.9rem] text-[color:var(--vd-text)]">
+              {documentNotes.trim()}
+            </p>
           </section>
         ) : null}
 
@@ -481,6 +544,7 @@ export function DocumentInvoiceDetailView({
         open={editPickerOpen}
         onClose={() => setEditPickerOpen(false)}
         onSelect={handleEditPick}
+        isManualEntry={isManual}
         manualEditHref={manualEditHref}
       />
 

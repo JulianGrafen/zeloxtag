@@ -895,20 +895,14 @@ export function ManualEntryView({
                         </span>
                       </span>
                     </PressableLink>
-                    <PressableButton
-                      type="button"
+                    <PressableLink
+                      href={`/v/${tagUuid}/dokumente/${doc.id}`}
                       variant="button"
                       aria-label={`Bearbeiten: ${displayDocumentTitle(doc.title)}`}
-                      onClick={() => {
-                        const base = isUmbau
-                          ? `/v/${tagUuid}/umbauten`
-                          : `/v/${tagUuid}/eintrag`;
-                        router.push(`${base}?edit=${encodeURIComponent(doc.id)}`);
-                      }}
                       className="absolute left-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-white/95 text-[color:var(--vd-text)] shadow-sm"
                     >
                       <Pencil className="h-3.5 w-3.5" aria-hidden />
-                    </PressableButton>
+                    </PressableLink>
                     <PressableButton
                       type="button"
                       variant="button"
@@ -973,19 +967,14 @@ export function ManualEntryView({
                         </span>
                       </span>
                     </PressableLink>
-                    <PressableButton
-                      type="button"
+                    <PressableLink
+                      href={`/v/${tagUuid}/dokumente/${doc.id}`}
                       variant="button"
                       aria-label={`Bearbeiten: ${displayDocumentTitle(doc.title)}`}
-                      onClick={() => {
-                        router.push(
-                          `/v/${tagUuid}/eintrag?edit=${encodeURIComponent(doc.id)}`,
-                        );
-                      }}
                       className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-[color:var(--vd-text)]"
                     >
                       <Pencil className="h-4 w-4" aria-hidden />
-                    </PressableButton>
+                    </PressableLink>
                     <PressableButton
                       type="button"
                       variant="button"

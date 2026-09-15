@@ -4,36 +4,38 @@ import { ChevronRight, X } from "lucide-react";
 
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import {
-  resolveDetailEditLabel,
-  resolveDetailEditMenuOrder,
-  type InvoiceDetailEditTarget,
-} from "@/lib/documents/invoice-detail-edit";
+  OIL_DETAIL_EDIT_LABELS,
+  resolveOilDetailEditMenuOrder,
+  type OilDetailEditTarget,
+} from "@/lib/documents/oil-detail-edit";
 
-type InvoiceDetailEditPickerSheetProps = {
+type OilDetailEditPickerSheetProps = {
   open: boolean;
   onClose: () => void;
-  onSelect: (target: InvoiceDetailEditTarget) => void;
-  isManualEntry?: boolean;
-  manualEditHref?: string | null;
+  onSelect: (target: OilDetailEditTarget) => void;
+  isManualOilLog: boolean;
+  invoiceDocumentHref?: string | null;
 };
 
-export function InvoiceDetailEditPickerSheet({
+export function OilDetailEditPickerSheet({
   open,
   onClose,
   onSelect,
-  isManualEntry = false,
-  manualEditHref,
-}: InvoiceDetailEditPickerSheetProps) {
+  isManualOilLog,
+  invoiceDocumentHref,
+}: OilDetailEditPickerSheetProps) {
   if (!open) return null;
 
-  const menuOrder = resolveDetailEditMenuOrder(isManualEntry);
+  const menuOrder = resolveOilDetailEditMenuOrder(isManualOilLog).filter(
+    (target) => target !== "openInvoice",
+  );
 
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center bg-neutral-950/55 p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="invoice-edit-picker-title"
+      aria-labelledby="oil-edit-picker-title"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -45,10 +47,10 @@ export function InvoiceDetailEditPickerSheet({
         <header className="flex items-start gap-3 border-b border-[color:var(--vd-border)] px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="min-w-0 flex-1">
             <p className="text-[0.65rem] font-medium uppercase tracking-[0.18em] text-[color:var(--vd-muted)]">
-              {isManualEntry ? "Eintrag bearbeiten" : "Beleg bearbeiten"}
+              Ölwechsel bearbeiten
             </p>
             <h2
-              id="invoice-edit-picker-title"
+              id="oil-edit-picker-title"
               className="mt-1 font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]"
             >
               Was möchtest du ändern?
@@ -73,7 +75,7 @@ export function InvoiceDetailEditPickerSheet({
                 onClick={() => onSelect(target)}
                 className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-[0.92rem] font-medium text-[color:var(--vd-text)] hover:bg-[color:var(--vd-surface-elevated)]"
               >
-                {resolveDetailEditLabel(target, isManualEntry)}
+                {OIL_DETAIL_EDIT_LABELS[target]}
                 <ChevronRight
                   className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
                   aria-hidden
@@ -81,15 +83,15 @@ export function InvoiceDetailEditPickerSheet({
               </PressableButton>
             </li>
           ))}
-          {manualEditHref ? (
+          {!isManualOilLog && invoiceDocumentHref ? (
             <li className="mt-1 border-t border-[color:var(--vd-border)] pt-1">
               <PressableLink
-                href={manualEditHref}
+                href={invoiceDocumentHref}
                 variant="button"
                 onClick={onClose}
                 className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-[0.92rem] font-medium text-[color:var(--vd-text)] hover:bg-[color:var(--vd-surface-elevated)]"
               >
-                Fotos bearbeiten
+                {OIL_DETAIL_EDIT_LABELS.openInvoice}
                 <ChevronRight
                   className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
                   aria-hidden

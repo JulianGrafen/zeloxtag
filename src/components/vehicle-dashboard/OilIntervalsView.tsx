@@ -235,7 +235,7 @@ export function OilIntervalsView({
 
                   {record.isManual && tagUuid ? (
                     <PressableLink
-                      href={`${basePath}?edit=${encodeURIComponent(record.id)}`}
+                      href={`${basePath}/${record.id}`}
                       variant="button"
                       aria-label="Ölwechsel bearbeiten"
                       className="inline-flex shrink-0 items-center justify-center border-l border-[color:var(--vd-border)] px-3 text-[color:var(--vd-muted)]"

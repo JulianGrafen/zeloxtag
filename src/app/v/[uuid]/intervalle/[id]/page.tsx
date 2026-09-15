@@ -28,7 +28,7 @@ export default async function VehicleOilIntervalDetailPage({
   params,
 }: OilIntervalDetailPageProps) {
   const { uuid, id } = await params;
-  const { result, isDemoShowcase } = await requireTagWriter(uuid, {
+  const { result, access, isDemoShowcase } = await requireTagWriter(uuid, {
     load: { documents: { mode: "none" } },
   });
 
@@ -47,7 +47,10 @@ export default async function VehicleOilIntervalDetailPage({
   }
 
   const vehicleModel = `${result.vehicle!.make} ${result.vehicle!.model}`;
-  const canEditManual = isEditableManualOilChangeDocument(document);
+  const isManualOilLog = isEditableManualOilChangeDocument(document);
+  const canEdit =
+    access.isOwner ||
+    (access.isContributor && document.type === "invoice");
 
   return wrapProFeature({
     isDemo: isDemoShowcase,
@@ -57,14 +60,18 @@ export default async function VehicleOilIntervalDetailPage({
     children: (
       <OilIntervalDetailView
         record={record}
+        document={document}
         vehicleModel={vehicleModel}
         backHref={`/v/${result.tag.uuid}/intervalle`}
         invoiceHref={
-          canEditManual ? null : `/v/${result.tag.uuid}/dokumente/${record.id}`
+          isManualOilLog
+            ? null
+            : `/v/${result.tag.uuid}/dokumente/${record.id}`
         }
         tagUuid={result.tag.uuid}
         vehicleId={result.vehicle!.id}
-        editDocument={canEditManual ? document : null}
+        canEdit={canEdit}
+        isManualOilLog={isManualOilLog}
       />
     ),
   });

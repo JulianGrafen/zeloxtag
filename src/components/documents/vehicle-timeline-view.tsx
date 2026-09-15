@@ -4,14 +4,7 @@ import { useMemo } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 
 import { VehicleTimeline } from "@/components/dashboard/VehicleTimeline";
-import {
-  isManualVehicleEntry,
-  manualEntryEditPath,
-} from "@/lib/documents/manual-entries";
-import {
-  isEditableManualOilChangeDocument,
-  manualOilChangeEditPath,
-} from "@/lib/documents/manual-oil-change-form";
+import { isOilChangeDocument } from "@/lib/documents/oil-changes";
 import {
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
@@ -47,11 +40,8 @@ export function VehicleTimelineView({
 
   function resolveDocumentHref(documentId: string): string {
     const document = documentsById.get(documentId);
-    if (document && isEditableManualOilChangeDocument(document)) {
-      return manualOilChangeEditPath(tagUuid, documentId);
-    }
-    if (document && isManualVehicleEntry(document)) {
-      return manualEntryEditPath(tagUuid, documentId, document.category);
+    if (document && isOilChangeDocument(document)) {
+      return `/v/${tagUuid}/intervalle/${documentId}`;
     }
     return `/v/${tagUuid}/dokumente/${documentId}`;
   }

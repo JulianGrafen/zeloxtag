@@ -22,6 +22,7 @@ import {
   updateMockUploadedDocument,
 } from "@/lib/documents/mock-uploads";
 import { parseDocumentDateField } from "@/lib/documents/document-date-field";
+import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
 import { parseTechnicalSpecs } from "@/lib/documents/technical-specs";
 import { parseAbeConditions, parseStringList } from "@/lib/documents/string-list";
 import {
@@ -47,10 +48,51 @@ type UpdatePayload = {
   vendor?: string | null;
   title?: string | null;
   date?: string | null;
+  mileageKm?: number | null;
+  notes?: string | null;
+  amount?: number | null;
 };
 
 const MAX_VENDOR_LENGTH = 160;
 const MAX_TITLE_LENGTH = 160;
+const MAX_NOTES_LENGTH = 500;
+
+function parseMileageKmField(
+  value: unknown,
+): number | null | undefined | "invalid" {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value)) return "invalid";
+  const rounded = Math.round(value);
+  if (rounded < 0 || rounded > 9_999_999) return "invalid";
+  return rounded;
+}
+
+function parseNotesField(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().slice(0, MAX_NOTES_LENGTH);
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseAmountField(value: unknown): number | null | undefined | "invalid" {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value)) return "invalid";
+  if (value < 0 || value > 9_999_999) return "invalid";
+  return Math.round(value * 100) / 100;
+}
+
+function isStoredManualEntry(document: {
+  invoice_number: string | null;
+  file_url: string;
+}): boolean {
+  return (
+    isManualEntryMarker(document.invoice_number) ||
+    isManualEntryUrl(document.file_url)
+  );
+}
 
 function parseVendor(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
@@ -97,6 +139,9 @@ export async function updateDocumentFields(
   const hasVendor = input.vendor !== undefined;
   const hasTitle = input.title !== undefined;
   const hasDate = input.date !== undefined;
+  const hasMileageKm = input.mileageKm !== undefined;
+  const hasNotes = input.notes !== undefined;
+  const hasAmount = input.amount !== undefined;
 
   if (
     !hasLineItems &&
@@ -105,7 +150,10 @@ export async function updateDocumentFields(
     !hasConditions &&
     !hasVendor &&
     !hasTitle &&
-    !hasDate
+    !hasDate &&
+    !hasMileageKm &&
+    !hasNotes &&
+    !hasAmount
   ) {
     return { status: "error", message: "Keine Änderungen übergeben." };
   }
@@ -113,6 +161,20 @@ export async function updateDocumentFields(
   const parsedDate = hasDate ? parseDocumentDateField(input.date) : undefined;
   if (parsedDate === "invalid") {
     return { status: "error", message: "Datum ungültig." };
+  }
+
+  const parsedMileageKm = hasMileageKm
+    ? parseMileageKmField(input.mileageKm)
+    : undefined;
+  if (parsedMileageKm === "invalid") {
+    return { status: "error", message: "Kilometerstand ungültig." };
+  }
+
+  const parsedNotes = hasNotes ? parseNotesField(input.notes) : undefined;
+
+  const parsedAmount = hasAmount ? parseAmountField(input.amount) : undefined;
+  if (parsedAmount === "invalid") {
+    return { status: "error", message: "Betrag ungültig." };
   }
 
   const lineItems = hasLineItems
@@ -165,6 +227,15 @@ export async function updateDocumentFields(
         message: "Das Datum kann nur bei Rechnungs-Belegen geändert werden.",
       };
     }
+    if (
+      (hasMileageKm || hasNotes || hasAmount) &&
+      !isStoredManualEntry(target)
+    ) {
+      return {
+        status: "error",
+        message: "Diese Felder können nur bei manuellen Einträgen geändert werden.",
+      };
+    }
     const mockPatch: Record<string, unknown> = {};
     if (lineItems !== undefined) {
       mockPatch.line_items = lineItems;
@@ -185,8 +256,14 @@ export async function updateDocumentFields(
       ...(vendor !== undefined ? { vendor } : {}),
       ...(typeof title === "string" ? { title } : {}),
       ...(parsedDate !== undefined ? { date: parsedDate } : {}),
+      ...(parsedMileageKm !== undefined ? { mileage_km: parsedMileageKm } : {}),
+      ...(parsedNotes !== undefined ? { notes: parsedNotes } : {}),
+      ...(parsedAmount !== undefined ? { amount: parsedAmount } : {}),
     });
     revalidateDocumentPaths(tagUuid, documentId);
+    if (isStoredManualEntry(target)) {
+      revalidateManualEntryPaths(tagUuid, documentId);
+    }
     return { status: "ok" };
   }
 
@@ -223,6 +300,16 @@ export async function updateDocumentFields(
     return {
       status: "error",
       message: "Das Datum kann nur bei Rechnungs-Belegen geändert werden.",
+    };
+  }
+
+  if (
+    (hasMileageKm || hasNotes || hasAmount) &&
+    !isStoredManualEntry(document)
+  ) {
+    return {
+      status: "error",
+      message: "Diese Felder können nur bei manuellen Einträgen geändert werden.",
     };
   }
 
@@ -300,6 +387,15 @@ export async function updateDocumentFields(
   if (parsedDate !== undefined) {
     patch.date = parsedDate;
   }
+  if (parsedMileageKm !== undefined) {
+    patch.mileage_km = parsedMileageKm;
+  }
+  if (parsedNotes !== undefined) {
+    patch.notes = parsedNotes;
+  }
+  if (parsedAmount !== undefined) {
+    patch.amount = parsedAmount;
+  }
 
   const { error: updateError } = await admin
     .from("documents")
@@ -312,5 +408,8 @@ export async function updateDocumentFields(
   }
 
   revalidateDocumentPaths(tagUuid, documentId);
+  if (isStoredManualEntry(document)) {
+    revalidateManualEntryPaths(tagUuid, documentId);
+  }
   return { status: "ok" };
 }
