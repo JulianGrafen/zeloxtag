@@ -9,6 +9,7 @@ import { resolvePublicDynoChartHref } from "@/lib/vehicles/dyno-chart-constants"
 import { resolvePublicEngineSoundHref } from "@/lib/vehicles/engine-sound-constants";
 import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { computeBuildDnaHeuristic } from "@/lib/showcase/build-dna-heuristic";
 import {
   parseShowcaseBuildDna,
   type ShowcaseBuildDna,
@@ -79,8 +80,14 @@ function resolvePublicBuildDna(
 ): ShowcaseBuildDna | null {
   if (modifications.length < 2) return null;
   const fingerprint = buildShowcaseModsFingerprint(modifications);
-  if (vehicle.showcase_build_dna_fingerprint !== fingerprint) return null;
-  return parseShowcaseBuildDna(vehicle.showcase_build_dna);
+  if (vehicle.showcase_build_dna_fingerprint === fingerprint) {
+    const cached = parseShowcaseBuildDna(vehicle.showcase_build_dna);
+    if (cached) return cached;
+  }
+  if (vehicle.showcase_build_dna_updated_at != null) {
+    return null;
+  }
+  return computeBuildDnaHeuristic(modifications);
 }
 
 function normalizeVehicleShowcaseFields(vehicle: Vehicle): {

@@ -9,8 +9,8 @@ import {
   DOCUMENT_INVOICE_LIST_COLUMNS,
   DOCUMENT_LIST_COLUMNS,
   DOCUMENT_SHOWCASE_COLUMNS,
-  VEHICLE_COLUMNS,
 } from "@/lib/documents/query-columns";
+import { loadVehicleProjectionMaybeSingle } from "@/lib/vehicles/load-vehicle-projection";
 import { parseLineItems } from "@/lib/documents/line-items";
 import { getMockUploadedDocuments } from "@/lib/documents/mock-uploads";
 import {
@@ -238,11 +238,11 @@ async function hydratePrivateTwin(
   const supabase = await createClient();
   const lightDocuments = usesLightDocumentNormalize(documentLoad);
 
-  const { data: vehicle, error: vehicleError } = await supabase
-    .from("vehicles")
-    .select(VEHICLE_COLUMNS)
-    .eq("id", vehicleId)
-    .maybeSingle();
+  const { data: vehicle, error: vehicleError } =
+    await loadVehicleProjectionMaybeSingle(supabase.from("vehicles"), {
+      column: "id",
+      value: vehicleId,
+    });
 
   if (vehicleError) {
     throw new Error(`Failed to resolve vehicle: ${vehicleError.message}`);

@@ -23,6 +23,9 @@ import {
   resolvePublicVehicleEntry,
 } from "@/lib/vehicles/get-public-vehicle";
 import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
+import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { refreshShowcaseBuildDna } from "@/lib/showcase/refresh-showcase-build-dna";
+import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { buildPublicShowcasePayload, vehicleSupportsPublicShowcase } from "@/lib/vehicles/public-showcase-data";
 import {
   pageSocialMetadata,
@@ -141,7 +144,33 @@ export async function generateMetadata({
 async function renderPublicShowcase(vehicle: Vehicle) {
   const showcaseVehicle = await enrichPublicShowcaseVehicle(vehicle);
   const documents = await loadPublicShowcaseDocuments(showcaseVehicle.id);
-  const payload = buildPublicShowcasePayload(showcaseVehicle, documents);
+  let vehicleForPayload = showcaseVehicle;
+  let payload = buildPublicShowcasePayload(vehicleForPayload, documents);
+
+  if (
+    payload.modifications.length >= 2 &&
+    showcaseVehicle.showcase_build_dna_updated_at == null &&
+    isSupabaseAdminConfigured()
+  ) {
+    try {
+      const refresh = await refreshShowcaseBuildDna(
+        showcaseVehicle,
+        payload.modifications,
+      );
+      if (refresh.status === "updated") {
+        const fingerprint = buildShowcaseModsFingerprint(payload.modifications);
+        vehicleForPayload = {
+          ...showcaseVehicle,
+          showcase_build_dna: refresh.dna,
+          showcase_build_dna_fingerprint: fingerprint,
+          showcase_build_dna_updated_at: new Date().toISOString(),
+        };
+        payload = buildPublicShowcasePayload(vehicleForPayload, documents);
+      }
+    } catch {
+      // Guest view still shows heuristic fallback from payload builder.
+    }
+  }
 
   return <PublicShowcaseView data={payload} />;
 }

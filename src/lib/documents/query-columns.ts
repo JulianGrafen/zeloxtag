@@ -6,8 +6,14 @@
 export const TAG_COLUMNS =
   "id, uuid, vehicle_id, status, created_at, updated_at" as const;
 
+export const VEHICLE_BUILD_DNA_COLUMNS =
+  "showcase_build_dna, showcase_build_dna_fingerprint, showcase_build_dna_updated_at" as const;
+
+export const VEHICLE_COLUMNS_BASE =
+  "id, user_id, make, model, year, vin, tech_specs, silhouette_image_url, sound_url, spatial_scene, is_public, hide_financials, public_slug, created_at, updated_at" as const;
+
 export const VEHICLE_COLUMNS =
-  "id, user_id, make, model, year, vin, tech_specs, silhouette_image_url, sound_url, spatial_scene, is_public, hide_financials, public_slug, showcase_build_dna, showcase_build_dna_fingerprint, showcase_build_dna_updated_at, created_at, updated_at" as const;
+  `${VEHICLE_COLUMNS_BASE}, ${VEHICLE_BUILD_DNA_COLUMNS}` as const;
 
 /** Token-gated exposé lookup — never used on the public QR path. */
 export const VEHICLE_EXPOSE_COLUMNS =

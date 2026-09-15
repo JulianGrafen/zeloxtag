@@ -415,6 +415,20 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.buildDna?.punchline).toBe("Test-Punchline.");
   });
 
+  it("uses heuristic buildDna when cache was never written", () => {
+    const documents: Document[] = [
+      baseInvoice({ id: "mod-a", line_items: [{ label: "KW Coilover", amount: 1 }] }),
+      baseInvoice({
+        id: "mod-b",
+        line_items: [{ label: "Turbo Kit", amount: 1 }],
+      }),
+    ];
+
+    const payload = buildPublicShowcasePayload(baseVehicle, documents);
+    expect(payload.buildDna).not.toBeNull();
+    expect(payload.buildDna?.radar).toHaveLength(4);
+  });
+
   it("omits buildDna when fingerprint is stale", () => {
     const documents: Document[] = [
       baseInvoice(),
@@ -425,6 +439,7 @@ describe("buildPublicShowcasePayload", () => {
     ];
     const vehicle: Vehicle = {
       ...baseVehicle,
+      showcase_build_dna_updated_at: "2026-03-01T00:00:00Z",
       showcase_build_dna_fingerprint: "stale-fingerprint",
       showcase_build_dna: {
         archetype: "OEM+",

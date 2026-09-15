@@ -13,7 +13,14 @@ import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, TagScanResult, Vehicle } from "@/types/database";
 
 import { parseLineItems } from "@/lib/documents/line-items";
-import { DOCUMENT_SHOWCASE_COLUMNS, VEHICLE_COLUMNS } from "@/lib/documents/query-columns";
+import {
+  DOCUMENT_SHOWCASE_COLUMNS,
+  VEHICLE_BUILD_DNA_COLUMNS,
+} from "@/lib/documents/query-columns";
+import {
+  isMissingVehicleBuildDnaColumnError,
+  loadVehicleProjectionMaybeSingle,
+} from "@/lib/vehicles/load-vehicle-projection";
 import { publicScanLookupKind } from "@/lib/tags/claim-landing";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 
@@ -97,12 +104,11 @@ async function loadVehicleBySlugRpc(slug: string): Promise<Vehicle | null> {
 async function loadVehicleBySlugAdmin(slug: string): Promise<Vehicle | null> {
   if (!isSupabaseAdminConfigured()) return null;
   const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("vehicles")
-    .select(VEHICLE_COLUMNS)
-    .eq("public_slug", slug.trim())
-    .eq("is_public", true)
-    .maybeSingle();
+  const { data, error } = await loadVehicleProjectionMaybeSingle(
+    admin.from("vehicles"),
+    { column: "public_slug", value: slug.trim() },
+    { column: "is_public", value: true },
+  );
 
   if (error) {
     throw new Error(`Failed to resolve public slug: ${error.message}`);
@@ -156,36 +162,80 @@ export async function loadPublicShowcaseDocuments(
   return loadVehicleDocuments(vehicleId);
 }
 
+const PUBLIC_SHOWCASE_VEHICLE_ENRICH_COLUMNS =
+  `sound_url, ${VEHICLE_BUILD_DNA_COLUMNS}` as const;
+
+function needsPublicShowcaseVehicleEnrichment(vehicle: Vehicle): boolean {
+  if (!vehicle.is_public) return false;
+  const hasSound = Boolean(vehicle.sound_url?.trim());
+  const hasDnaCache = Boolean(
+    vehicle.showcase_build_dna_fingerprint?.trim() ||
+      vehicle.showcase_build_dna_updated_at,
+  );
+  return !hasSound || !hasDnaCache;
+}
+
 /**
- * Public tag/slug resolvers may omit `sound_url` until DB migrations are applied.
- * Load it for public showcases so the engine soundcheck control can render.
+ * Public tag/slug resolvers omit `sound_url` and cached Build DNA.
+ * Hydrate both for guest showcase rendering.
  */
 export async function enrichPublicShowcaseVehicle(
   vehicle: Vehicle,
 ): Promise<Vehicle> {
   if (!vehicle.is_public) return vehicle;
-
-  if (vehicle.sound_url?.trim()) return vehicle;
+  if (!needsPublicShowcaseVehicleEnrichment(vehicle)) {
+    return withDefaultShowcaseFields(vehicle);
+  }
 
   if (!isSupabaseAdminConfigured()) return vehicle;
 
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let data: Record<string, unknown> | null = null;
+
+  const primary = await admin
     .from("vehicles")
-    .select("sound_url")
+    .select(PUBLIC_SHOWCASE_VEHICLE_ENRICH_COLUMNS)
     .eq("id", vehicle.id)
     .eq("is_public", true)
     .maybeSingle();
 
-  if (error || !data) return vehicle;
+  if (!primary.error && primary.data) {
+    data = primary.data as Record<string, unknown>;
+  } else if (
+    primary.error &&
+    isMissingVehicleBuildDnaColumnError(primary.error)
+  ) {
+    const fallback = await admin
+      .from("vehicles")
+      .select("sound_url")
+      .eq("id", vehicle.id)
+      .eq("is_public", true)
+      .maybeSingle();
+    if (!fallback.error && fallback.data) {
+      data = fallback.data as Record<string, unknown>;
+    }
+  }
+
+  if (!data) return vehicle;
 
   const soundUrl =
     typeof data.sound_url === "string" ? data.sound_url.trim() : "";
 
-  return {
+  return withDefaultShowcaseFields({
     ...vehicle,
     sound_url: soundUrl || vehicle.sound_url,
-  };
+    showcase_build_dna:
+      (data.showcase_build_dna as Vehicle["showcase_build_dna"]) ??
+      vehicle.showcase_build_dna,
+    showcase_build_dna_fingerprint:
+      typeof data.showcase_build_dna_fingerprint === "string"
+        ? data.showcase_build_dna_fingerprint
+        : vehicle.showcase_build_dna_fingerprint,
+    showcase_build_dna_updated_at:
+      typeof data.showcase_build_dna_updated_at === "string"
+        ? data.showcase_build_dna_updated_at
+        : vehicle.showcase_build_dna_updated_at,
+  });
 }
 
 export async function isVehiclePublicShowcase(
