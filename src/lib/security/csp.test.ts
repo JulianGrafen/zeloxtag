@@ -24,8 +24,14 @@ describe("buildContentSecurityPolicy", () => {
     expect(csp).toMatch(/script-src[^;]*'strict-dynamic'/);
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-eval'/);
-    expect(csp).toMatch(/style-src[^;]*'nonce-test-nonce-value'/);
-    expect(csp).not.toMatch(/style-src[^;]*'unsafe-inline'/);
+    expect(csp).toMatch(
+      /script-src-elem[^;]*'self'[^;]*'nonce-test-nonce-value'/,
+    );
+    expect(csp).toMatch(/script-src-elem[^;]*blob:/);
+    const styleSrc = csp.match(/style-src ([^;]+)/)?.[1] ?? "";
+    expect(styleSrc).toMatch(/'nonce-test-nonce-value'/);
+    expect(styleSrc).not.toContain("'unsafe-inline'");
+    expect(csp).toMatch(/style-src-attr 'unsafe-inline'/);
   });
 
   it("allows unsafe-eval and inline styles in development", () => {

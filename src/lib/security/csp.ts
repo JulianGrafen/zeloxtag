@@ -58,7 +58,9 @@ export type BuildContentSecurityPolicyOptions = {
 
 /**
  * Build a per-request CSP. Production uses nonce + strict-dynamic for scripts
- * (no unsafe-inline / unsafe-eval). Development keeps unsafe-eval for React.
+ * (no unsafe-inline / unsafe-eval). `script-src-elem` allows same-origin chunk
+ * tags when Next loading boundaries omit nonces (Next #97882). `style-src-attr`
+ * allows React `style={}` (nonces do not apply to style attributes).
  */
 export function buildContentSecurityPolicy(
   options: BuildContentSecurityPolicyOptions,
@@ -79,6 +81,8 @@ export function buildContentSecurityPolicy(
     scriptParts.push("'unsafe-eval'");
   }
 
+  const scriptElemParts = ["'self'", `'nonce-${options.nonce}'`, "blob:"];
+
   const styleParts = ["'self'"];
   if (allowUnsafeInlineStyles) {
     styleParts.push("'unsafe-inline'");
@@ -89,8 +93,10 @@ export function buildContentSecurityPolicy(
   const directives: string[] = [
     "default-src 'self'",
     `script-src ${scriptParts.join(" ")}`,
+    `script-src-elem ${scriptElemParts.join(" ")}`,
     "script-src-attr 'none'",
     `style-src ${styleParts.join(" ")}`,
+    "style-src-attr 'unsafe-inline'",
     `img-src ${img}`,
     "font-src 'self' data:",
     `connect-src ${connect}`,
