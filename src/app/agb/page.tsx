@@ -173,7 +173,52 @@ export default function AgbPage() {
         </LegalOrderedList>
       </LegalSection>
 
-      <LegalSection title="7. Haftungsbeschränkung">
+      <LegalSection title="7. Pflichten des Nutzers beim Einstellen von Inhalten (Verantwortung für Inhalte und Nutzungsrechte)">
+        <LegalOrderedList>
+          <li>
+            Der Nutzer ist für alle von ihm auf der Plattform hochgeladenen
+            Inhalte (insbesondere Fahrzeugbilder, Textbeschreibungen, Gutachten,
+            Rechnungen und sonstige Dokumente) allein verantwortlich. Der
+            Anbieter stellt lediglich den Speicherplatz zur Verfügung und macht
+            sich die Inhalte des Nutzers nicht zu eigen.
+          </li>
+          <li>
+            Der Nutzer verpflichtet sich, beim Hochladen von Inhalten geltendes
+            Recht zu beachten und keine Rechte Dritter (insbesondere Urheber-,
+            Marken- oder Persönlichkeitsrechte) zu verletzen.
+          </li>
+          <li>
+            <strong>Pflicht zur Anonymisierung (Schwärzungspflicht):</strong> Der
+            Nutzer ist zwingend verpflichtet, vor dem Hochladen von Dokumenten
+            (z.&nbsp;B. Werkstattrechnungen, Kaufverträge, Gutachten) oder Fotos
+            sicherzustellen, dass sensible personenbezogene Daten Dritter
+            unkenntlich gemacht wurden. Dies betrifft insbesondere, aber nicht
+            ausschließlich:
+            <LegalUnorderedList>
+              <li>Namen und Anschriften von Vorbesitzern oder Dritten,</li>
+              <li>Bankverbindungen (IBAN/BIC) oder Kreditkartendaten,</li>
+              <li>Fremde Kfz-Kennzeichen auf hochgeladenen Bildern.</li>
+            </LegalUnorderedList>
+          </li>
+          <li>
+            <strong>Freistellung:</strong> Der Nutzer stellt den Anbieter von
+            sämtlichen Ansprüchen Dritter frei, die diese wegen der Verletzung
+            ihrer Rechte durch die vom Nutzer hochgeladenen Inhalte gegen den
+            Anbieter geltend machen. Der Nutzer übernimmt hierbei auch die Kosten
+            der notwendigen Rechtsverteidigung des Anbieters (inkl. Gerichts- und
+            Anwaltskosten in gesetzlicher Höhe).
+          </li>
+          <li>
+            <strong>Löschrecht:</strong> Der Anbieter behält sich das Recht vor,
+            vom Nutzer hochgeladene Inhalte jederzeit ohne vorherige Ankündigung
+            zu sperren oder zu löschen, wenn konkrete Anhaltspunkte dafür
+            vorliegen, dass diese gegen geltendes Recht, Rechte Dritter oder
+            diese AGB verstoßen.
+          </li>
+        </LegalOrderedList>
+      </LegalSection>
+
+      <LegalSection title="8. Haftungsbeschränkung">
         <LegalOrderedList>
           <li>
             Der Anbieter haftet unbeschränkt für Vorsatz und grobe
@@ -193,7 +238,7 @@ export default function AgbPage() {
         </LegalOrderedList>
       </LegalSection>
 
-      <LegalSection title="8. Widerrufsbelehrung für Verbraucher (Digitale Inhalte)">
+      <LegalSection title="9. Widerrufsbelehrung für Verbraucher (Digitale Inhalte)">
         <LegalParagraph>
           <strong>Widerrufsrecht</strong>
         </LegalParagraph>
@@ -224,7 +269,7 @@ export default function AgbPage() {
         </LegalParagraph>
       </LegalSection>
 
-      <LegalSection title="9. Schlussbestimmungen">
+      <LegalSection title="10. Schlussbestimmungen">
         <LegalOrderedList>
           <li>
             Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des

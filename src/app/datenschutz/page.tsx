@@ -332,6 +332,33 @@ export default function DatenschutzPage() {
           Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an
           einer zuverlässigen Zustellung von System-E-Mails).
         </LegalParagraph>
+
+        <LegalParagraph>
+          <strong>
+            e) Datenverarbeitung bei Nutzung der App-Funktionen: Nutzung der
+            Kamera für die QR-Code-Scanner-Funktion
+          </strong>
+        </LegalParagraph>
+        <LegalParagraph>
+          Um die Funktion „Neuer Tag? QR am Fahrzeug scannen“ nutzen zu können,
+          benötigt unsere Web-Applikation Zugriff auf die Kamera Ihres Endgerätes.
+        </LegalParagraph>
+        <LegalParagraph>
+          Wenn Sie die Scanner-Funktion aktivieren, fragt Ihr Browser bzw. Ihr
+          Betriebssystem einmalig nach der Erlaubnis für den Kamerazugriff. Die
+          Rechtsgrundlage für diese Verarbeitung ist Ihre ausdrückliche
+          Einwilligung gemäß Art. 6 Abs. 1 lit. a DSGVO.
+        </LegalParagraph>
+        <LegalParagraph>
+          <strong>Lokale Verarbeitung:</strong> Der Videostream Ihrer Kamera wird
+          ausschließlich lokal im Arbeitsspeicher Ihres Endgerätes verarbeitet,
+          um den QR-Code zu decodieren. Es findet zu keinem Zeitpunkt eine
+          Übertragung, Speicherung oder Aufzeichnung von Bild- oder Videodaten auf
+          unseren Servern statt. Sobald der QR-Code erfolgreich gescannt wurde
+          oder Sie die Funktion schließen, wird der Kamerazugriff beendet. Sie
+          können die Einwilligung jederzeit über die Berechtigungseinstellungen
+          Ihres Browsers oder Betriebssystems für die Zukunft widerrufen.
+        </LegalParagraph>
       </LegalSection>
 
       <LegalSection title="4. Sichtbarkeit von Profilen & QR-Code-Scans (Zwei-Zonen-Prinzip)">
