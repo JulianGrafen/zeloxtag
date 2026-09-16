@@ -57,6 +57,7 @@ import {
   isPdfUploadFile,
   prepareVaultClassifyFile,
 } from "@/lib/ocr/prepare-client-ocr-file";
+import { destroyPdfDocument } from "@/lib/ocr/destroy-pdf-document";
 import {
   extractPdfEmbeddedText,
   getClientPdfPageCount,
@@ -389,9 +390,7 @@ export function VaultUploadWizard({
         try {
           const pdf = await loadPdfDocument(materializedFile);
           const embeddedText = await extractPdfEmbeddedText(pdf);
-          if (typeof pdf.destroy === "function") {
-            await pdf.destroy();
-          }
+          await destroyPdfDocument(pdf);
           embeddedHint = inferVaultClassificationFromText(embeddedText);
         } catch {
           // Optional — LLM / heuristics still run without embedded text.

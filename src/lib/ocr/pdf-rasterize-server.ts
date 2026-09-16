@@ -1,5 +1,6 @@
 import "server-only";
 
+import { destroyPdfDocument } from "@/lib/ocr/destroy-pdf-document";
 import { openPdfJsDocument } from "@/lib/ocr/pdf-js-document";
 
 /** Lazy-loaded pdf.js + Node canvas for serverless PDF rasterization. */
@@ -12,13 +13,6 @@ async function loadPdfJs() {
     pdfJsModulePromise = import("pdfjs-dist/legacy/build/pdf.mjs");
   }
   return pdfJsModulePromise;
-}
-
-async function destroyPdfDocument(doc: unknown): Promise<void> {
-  const candidate = doc as { destroy?: () => Promise<void> | void };
-  if (typeof candidate.destroy === "function") {
-    await candidate.destroy();
-  }
 }
 
 /**

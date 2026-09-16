@@ -13,7 +13,6 @@ export function pdfJsDocumentParams(data: Uint8Array): Record<string, unknown> {
     useSystemFonts: true,
     disableFontFace: true,
     useWorkerFetch: false,
-    isEvalSupported: false,
     verbosity: 0,
   };
 }

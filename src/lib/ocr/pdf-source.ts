@@ -4,6 +4,7 @@
 
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
+import { destroyPdfDocument } from "@/lib/ocr/destroy-pdf-document";
 import { isPdfJsPasswordError } from "@/lib/ocr/pdf-js-document";
 
 const MIN_EMBEDDED_TEXT_CHARS = 48;
@@ -44,9 +45,7 @@ export async function loadPdfDocument(file: File | Blob): Promise<PDFDocumentPro
 export async function getClientPdfPageCount(file: File | Blob): Promise<number> {
   const pdf = await loadPdfDocument(file);
   const pageCount = Math.max(1, pdf.numPages);
-  if (typeof pdf.destroy === "function") {
-    await pdf.destroy();
-  }
+  await destroyPdfDocument(pdf);
   return pageCount;
 }
 

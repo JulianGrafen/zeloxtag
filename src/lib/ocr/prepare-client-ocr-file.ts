@@ -3,6 +3,7 @@
  * Avoids server-side pdf.js + @napi-rs/canvas failures on serverless hosts.
  */
 
+import { destroyPdfDocument } from "@/lib/ocr/destroy-pdf-document";
 import {
   loadPdfDocument,
   rasterizePdfPage,
@@ -54,9 +55,7 @@ export async function prepareClientOcrFiles(
     }
   }
 
-  if (typeof pdf.destroy === "function") {
-    await pdf.destroy();
-  }
+  await destroyPdfDocument(pdf);
 
   return files.length > 0 ? files : [file];
 }
