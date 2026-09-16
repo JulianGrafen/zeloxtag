@@ -1,5 +1,6 @@
 import "server-only";
 
+import { openPdfJsDocument } from "@/lib/ocr/pdf-js-document";
 import { normalizeAbeKbaDigits } from "@/lib/validations/abeSchema";
 import {
   ABE_UPLOAD_MAX_PAGES,
@@ -93,15 +94,9 @@ export async function extractPdfPageTextsServer(
   bytes: Buffer,
 ): Promise<PdfPageTextScan> {
   const pdfjs = await loadPdfJs();
-  const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(bytes),
-    useSystemFonts: true,
-    disableFontFace: true,
-    useWorkerFetch: false,
-    isEvalSupported: false,
-    verbosity: 0,
-  });
-  const doc = await loadingTask.promise;
+  const doc = await openPdfJsDocument<
+    Awaited<ReturnType<(typeof pdfjs)["getDocument"]>["promise"]>
+  >(pdfjs.getDocument.bind(pdfjs), bytes);
   const totalPages = Math.max(1, doc.numPages);
   const scanLimit = Math.min(totalPages, ABE_UPLOAD_MAX_PAGES);
   const pageTexts: string[] = [];

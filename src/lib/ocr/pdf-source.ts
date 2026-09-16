@@ -4,6 +4,8 @@
 
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
+import { isPdfJsPasswordError } from "@/lib/ocr/pdf-js-document";
+
 const MIN_EMBEDDED_TEXT_CHARS = 48;
 const RENDER_MAX_WIDTH_PX = 2000;
 
@@ -31,8 +33,12 @@ async function getPdfJs() {
 export async function loadPdfDocument(file: File | Blob): Promise<PDFDocumentProxy> {
   const pdfjs = await getPdfJs();
   const data = new Uint8Array(await file.arrayBuffer());
-  const loadingTask = pdfjs.getDocument({ data, useSystemFonts: true });
-  return loadingTask.promise;
+  try {
+    return await pdfjs.getDocument({ data, useSystemFonts: true }).promise;
+  } catch (error) {
+    if (!isPdfJsPasswordError(error)) throw error;
+    return pdfjs.getDocument({ data, useSystemFonts: true, password: "" }).promise;
+  }
 }
 
 export async function getClientPdfPageCount(file: File | Blob): Promise<number> {
