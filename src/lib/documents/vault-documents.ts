@@ -18,7 +18,7 @@ export function isVaultDocument(document: Document): boolean {
 
 export function resolveVaultCategory(document: Document): VaultCategory | null {
   if (document.approval_fields?.kind === "vault") {
-    return document.approval_fields.data.category;
+    return document.approval_fields.data?.category ?? null;
   }
   if (isVaultCategory(document.part_category)) {
     return document.part_category;
@@ -35,7 +35,7 @@ export function resolveVaultDocumentKind(
   document: Document,
 ): VaultDocumentKind | null {
   if (document.approval_fields?.kind !== "vault") return null;
-  const kind = document.approval_fields.data.documentKind;
+  const kind = document.approval_fields.data?.documentKind;
   return isVaultDocumentKind(kind) ? kind : null;
 }
 

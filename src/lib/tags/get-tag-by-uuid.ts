@@ -62,6 +62,7 @@ function normalizeDocument(
 
   return {
     ...doc,
+    file_url: typeof doc.file_url === "string" ? doc.file_url : "",
     user_id: typeof doc.user_id === "string" ? doc.user_id : "",
     created_by: typeof doc.created_by === "string" ? doc.created_by : null,
     vendor: typeof doc.vendor === "string" ? doc.vendor : null,

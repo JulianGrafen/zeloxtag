@@ -419,11 +419,12 @@ function DocumentRow({
   onDelete: () => void;
 }) {
   const amount = formatDocumentAmount(document.amount);
-  const isMock = document.file_url.startsWith("mock://");
-  const canView = isViewableDocumentUrl(document.file_url);
+  const fileUrl = document.file_url ?? "";
+  const isMock = fileUrl.startsWith("mock://");
+  const canView = isViewableDocumentUrl(fileUrl);
   const Icon = document.type === "abe" ? Stamp : FileText;
   const canDelete =
-    allowDelete && (isMock || !document.file_url.startsWith("/demo/"));
+    allowDelete && (isMock || !fileUrl.startsWith("/demo/"));
   const detailHref = `/v/${tagUuid}/dokumente/${document.id}`;
   const lineCount = document.line_items?.length ?? 0;
   const approvalCount = document.vehicle_approvals?.length ?? 0;
