@@ -279,6 +279,19 @@ export default function AgbPage() {
             Sollte eine Bestimmung dieser AGB unwirksam sein, bleibt der Vertrag
             im Übrigen wirksam.
           </li>
+          <li>
+            Plattform der EU-Kommission zur Online-Streitbeilegung:{" "}
+            <a
+              href="https://ec.europa.eu/consumers/odr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
+            >
+              https://ec.europa.eu/consumers/odr
+            </a>
+            . Wir sind zur Teilnahme an einem Streitbeilegungsverfahren vor
+            einer Verbraucherschlichtungsstelle weder verpflichtet noch bereit.
+          </li>
         </LegalOrderedList>
         <LegalParagraph>
           Weitere Anbieterangaben findest du im{" "}
