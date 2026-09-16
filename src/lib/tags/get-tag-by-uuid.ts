@@ -110,11 +110,19 @@ function normalizeDocument(
 function normalizeVehicle(value: unknown): Vehicle | null {
   if (!value || typeof value !== "object") return null;
   const vehicle = value as Vehicle;
-  if (typeof vehicle.id !== "string" || typeof vehicle.make !== "string") {
+  if (typeof vehicle.make !== "string") {
+    return null;
+  }
+  const rawId = (vehicle as { id?: unknown }).id;
+  const vehicleId =
+    typeof rawId === "string" && rawId.trim().length > 0 ? rawId.trim() : "";
+  const isPublic = vehicle.is_public === true;
+  if (!vehicleId && isPublic) {
     return null;
   }
   return withDefaultShowcaseFields({
     ...vehicle,
+    id: vehicleId,
     user_id: typeof vehicle.user_id === "string" ? vehicle.user_id : "",
     model: typeof vehicle.model === "string" ? vehicle.model : "",
     year: typeof vehicle.year === "number" ? vehicle.year : null,
@@ -229,11 +237,32 @@ async function resolveTagWithRpc(
  * Overlay owner/contributor fields via session RLS. Guests keep the redacted
  * RPC payload (no extra queries that could distinguish unclaimed inventory).
  */
+async function resolveVehicleIdForHydration(
+  scan: TagScanResult,
+): Promise<string | null> {
+  const fromRpc = scan.vehicle?.id?.trim();
+  if (fromRpc) return fromRpc;
+
+  const supabase = await createClient();
+  const { data: tag, error } = await supabase
+    .from("tags")
+    .select("vehicle_id")
+    .eq("uuid", scan.tag.uuid)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to resolve tag vehicle: ${error.message}`);
+  }
+
+  const linked = tag?.vehicle_id?.trim();
+  return linked || null;
+}
+
 async function hydratePrivateTwin(
   scan: TagScanResult,
   documentLoad: TagDocumentLoad,
 ): Promise<TagScanResult> {
-  const vehicleId = scan.vehicle?.id?.trim();
+  const vehicleId = await resolveVehicleIdForHydration(scan);
   if (!vehicleId) return scan;
 
   const supabase = await createClient();

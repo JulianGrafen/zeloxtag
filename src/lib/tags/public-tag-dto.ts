@@ -74,15 +74,18 @@ function toOwnerClientVehicle(vehicle: Vehicle): Vehicle {
 }
 
 function toGuestClientVehicle(vehicle: Vehicle): Vehicle {
+  const isPublic = Boolean(vehicle.is_public);
   return {
-    id: vehicle.id,
+    id: isPublic ? vehicle.id : "",
     user_id: "",
     make: vehicle.make,
     model: vehicle.model,
     year: vehicle.year,
     vin: null,
-    tech_specs: vehicle.tech_specs ?? null,
-    silhouette_image_url: vehicle.silhouette_image_url ?? null,
+    tech_specs: isPublic ? (vehicle.tech_specs ?? null) : null,
+    silhouette_image_url: isPublic
+      ? (vehicle.silhouette_image_url ?? null)
+      : null,
     sound_url: null,
     is_public: Boolean(vehicle.is_public),
     hide_financials: vehicle.hide_financials !== false,
