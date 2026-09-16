@@ -283,7 +283,14 @@ export async function rasterizePdfFirstPage(
   pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
 
   const bytes = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+  let pdf;
+  try {
+    pdf = await pdfjs.getDocument({ data: bytes }).promise;
+  } catch (error) {
+    const { isPdfJsPasswordError } = await import("@/lib/ocr/pdf-js-document");
+    if (!isPdfJsPasswordError(error)) throw error;
+    pdf = await pdfjs.getDocument({ data: bytes, password: "" }).promise;
+  }
   const page = await pdf.getPage(1);
   const baseViewport = page.getViewport({ scale: 1 });
   const scale = Math.min(2.5, maxWidth / Math.max(1, baseViewport.width));

@@ -29,7 +29,6 @@ const PDF_ACTIVE_NAMES = new Set([
   "Movie",
   "Sound",
   "FileAttachment",
-  "Encrypt",
 ]);
 
 /** Additional-actions dicts are the usual host for page-level JS. */
@@ -478,17 +477,38 @@ function pdfStructureError(bytes: Uint8Array): string | null {
   return pdfBasicStructureError(bytes) ?? pdfActiveContentError(bytes);
 }
 
+/** pdf-lib when the file uses a standard /Encrypt dictionary (incl. empty user password). */
+function isPdfLibEncryptedLoadError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (error.message === "encrypted") return true;
+  return /Input document to `PDFDocument\.load` is encrypted/i.test(error.message);
+}
+
+async function loadPdfForPageRewrite(
+  bytes: Uint8Array,
+): Promise<import("pdf-lib").PDFDocument> {
+  const { PDFDocument } = await import("pdf-lib");
+  try {
+    return await PDFDocument.load(bytes, { ignoreEncryption: false });
+  } catch (error) {
+    if (!isPdfLibEncryptedLoadError(error)) throw error;
+    try {
+      return await PDFDocument.load(bytes, { ignoreEncryption: true });
+    } catch (retryError) {
+      if (isPdfLibEncryptedLoadError(retryError)) {
+        throw new Error("encrypted");
+      }
+      throw retryError;
+    }
+  }
+}
+
 async function rewritePdfPagesOnly(bytes: Uint8Array): Promise<Uint8Array> {
   try {
     // Best-effort page-only rewrite. Types resolve after `npm install`.
     // @ts-ignore
     const { PDFDocument, PDFName } = await import("pdf-lib");
-    const source = await PDFDocument.load(bytes, {
-      ignoreEncryption: false,
-    });
-    if (source.isEncrypted) {
-      throw new Error("encrypted");
-    }
+    const source = await loadPdfForPageRewrite(bytes);
     const output = await PDFDocument.create();
     const indices = source.getPageIndices();
     if (indices.length > MAX_PDF_PAGES) {
@@ -510,7 +530,7 @@ async function rewritePdfPagesOnly(bytes: Uint8Array): Promise<Uint8Array> {
     return saved instanceof Uint8Array ? saved : new Uint8Array(saved);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message === "encrypted" || /encrypt/i.test(message)) {
+    if (message === "encrypted") {
       throw new Error("encrypted");
     }
     if (message === "too many pages") {
@@ -588,7 +608,11 @@ export async function hardenUploadBytes(
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (message === "encrypted") {
-        return { ok: false, error: "Verschlüsselte PDFs werden nicht akzeptiert." };
+        return {
+          ok: false,
+          error:
+            "PDF ist passwortgeschützt und konnte nicht gelesen werden. Bitte ohne Passwort exportieren oder „Drucken → Als PDF speichern“.",
+        };
       }
       if (message === "too many pages") {
         return {

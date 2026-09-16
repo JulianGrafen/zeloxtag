@@ -95,6 +95,22 @@ describe("upload hardening", () => {
     }
   });
 
+  it("accepts PDFs encrypted with an empty user password (typical KBA ABE export)", async () => {
+    const encrypted = Uint8Array.from(
+      Buffer.from(
+        "JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgPDk0NTllNWM2YWM+Cj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovQ291bnQgMQovS2lkcyBbIDQgMCBSIF0KPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFsgMCAwIDYxMiA3OTIgXQo+PgplbmRvYmoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE5IDAwMDAwIG4gCjAwMDAwMDAwNzggMDAwMDAgbiAKMDAwMDAwMDE3NCAwMDAwMCBuIAowMDAwMDAwMjQ1IDAwMDAwIG4gCnRyYWlsZXIKPDwKL1Jvb3QgMyAwIFIKL1BhZ2VzIDIgMCBSCi9FbmNyeXB0IDUgMCBSCj4+CnN0YXJ0eHJlZgozMzMKJSVFT0YK",
+        "base64",
+      ),
+    );
+    const result = await hardenUploadBytes(encrypted, "application/pdf", {
+      reencodeImages: false,
+    });
+    expect(result.ok, !result.ok ? result.error : undefined).toBe(true);
+    if (result.ok) {
+      expect(findPdfActiveContent(result.bytes)).toBeNull();
+    }
+  });
+
   it("does not treat /Length-delimited stream bytes as active PDF names", () => {
     const payload = "/binary/endstream /JS /AA noise";
     const streamBody = payload.padEnd(40, "X").slice(0, 40);

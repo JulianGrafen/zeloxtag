@@ -1,5 +1,7 @@
 import "server-only";
 
+import { openPdfJsDocument } from "@/lib/ocr/pdf-js-document";
+
 /** Lazy-loaded pdf.js + Node canvas for serverless PDF rasterization. */
 let pdfJsModulePromise: Promise<typeof import("pdfjs-dist/legacy/build/pdf.mjs")> | null =
   null;
@@ -52,15 +54,9 @@ export async function rasterizePdfPageIndicesWithPdfJs(
     throw error;
   }
 
-  const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(bytes),
-    useSystemFonts: true,
-    disableFontFace: true,
-    useWorkerFetch: false,
-    isEvalSupported: false,
-    verbosity: 0,
-  });
-  const doc = await loadingTask.promise;
+  const doc = await openPdfJsDocument<
+    Awaited<ReturnType<(typeof pdfjs)["getDocument"]>["promise"]>
+  >(pdfjs.getDocument.bind(pdfjs), bytes);
 
   const pageCount = Math.max(1, doc.numPages);
   const scale = Math.max(0.5, dpi / 72);
@@ -113,15 +109,9 @@ export async function rasterizePdfPagesWithPdfJs(
     throw error;
   }
 
-  const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(bytes),
-    useSystemFonts: true,
-    disableFontFace: true,
-    useWorkerFetch: false,
-    isEvalSupported: false,
-    verbosity: 0,
-  });
-  const doc = await loadingTask.promise;
+  const doc = await openPdfJsDocument<
+    Awaited<ReturnType<(typeof pdfjs)["getDocument"]>["promise"]>
+  >(pdfjs.getDocument.bind(pdfjs), bytes);
 
   const pageCount = Math.max(1, doc.numPages);
   const limit = Math.min(maxPages, pageCount, MAX_RASTERIZE_PAGES);
@@ -163,15 +153,9 @@ export const MAX_TRUSTED_PDF_PAGES = 512;
 
 export async function getPdfPageCount(bytes: Buffer): Promise<number> {
   const pdfjs = await loadPdfJs();
-  const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(bytes),
-    useSystemFonts: true,
-    disableFontFace: true,
-    useWorkerFetch: false,
-    isEvalSupported: false,
-    verbosity: 0,
-  });
-  const doc = await loadingTask.promise;
+  const doc = await openPdfJsDocument<
+    Awaited<ReturnType<(typeof pdfjs)["getDocument"]>["promise"]>
+  >(pdfjs.getDocument.bind(pdfjs), bytes);
   const pageCount = Math.min(Math.max(1, doc.numPages), MAX_TRUSTED_PDF_PAGES);
   await destroyPdfDocument(doc);
   return pageCount;
