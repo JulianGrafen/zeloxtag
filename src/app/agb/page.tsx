@@ -136,17 +136,18 @@ export default function AgbPage() {
             des Accounts oder Kündigung in der App beendet werden.
           </li>
           <li>
-            Das kostenpflichtige Pro-Abonnement verlängert sich automatisch
-            jeweils um einen weiteren Monat bzw. um ein weiteres Jahr, wenn es
-            nicht vor Ablauf des aktuellen Abrechnungszeitraums gekündigt wird.
+            Das kostenpflichtige Pro-Abonnement wird für die gewählte
+            Erstlaufzeit (z.&nbsp;B. ein Monat oder ein Jahr) geschlossen. Nach
+            Ablauf dieser Erstlaufzeit verlängert sich der Vertrag auf
+            unbestimmte Zeit. Er kann dann jederzeit mit einer Frist von einem
+            Monat gekündigt werden.
           </li>
           <li>
-            Die Kündigung des Pro-Abonnements kann jederzeit mit wenigen Klicks
-            direkt in den Account-Einstellungen der App oder über das
-            Stripe-Kundenportal durchgeführt werden. Nach der Kündigung bleibt
-            der Pro-Zugriff bis zum Ende der bereits bezahlten Laufzeit aktiv
-            und wechselt anschließend automatisch in die kostenfreie
-            Basis-Version.
+            Die Kündigung kann direkt über den Kündigungsbutton in der App, in
+            den Account-Einstellungen oder über das Stripe-Kundenportal
+            durchgeführt werden. Nach Wirksamwerden der Kündigung bleibt der
+            Pro-Zugriff bis zum Ende der abgerechneten Laufzeit aktiv und das
+            Konto wechselt anschließend in die kostenfreie Basis-Version.
           </li>
         </LegalOrderedList>
       </LegalSection>
