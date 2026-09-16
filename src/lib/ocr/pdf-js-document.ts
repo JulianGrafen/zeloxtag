@@ -23,7 +23,7 @@ export function isPdfJsPasswordError(error: unknown): boolean {
   const record = error as { name?: string; code?: number; message?: string };
   if (record.name === "PasswordException") return true;
   if (record.code === 1 || record.code === 2) return true;
-  return /password|encrypt/i.test(record.message ?? "");
+  return /password/i.test(record.message ?? "");
 }
 
 export async function openPdfJsDocument<T>(

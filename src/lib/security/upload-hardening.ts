@@ -477,6 +477,13 @@ function pdfStructureError(bytes: Uint8Array): string | null {
   return pdfBasicStructureError(bytes) ?? pdfActiveContentError(bytes);
 }
 
+/** pdf-lib when the file uses a standard /Encrypt dictionary (incl. empty user password). */
+function isPdfLibEncryptedLoadError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (error.message === "encrypted") return true;
+  return /Input document to `PDFDocument\.load` is encrypted/i.test(error.message);
+}
+
 async function loadPdfForPageRewrite(
   bytes: Uint8Array,
 ): Promise<import("pdf-lib").PDFDocument> {
@@ -484,11 +491,15 @@ async function loadPdfForPageRewrite(
   try {
     return await PDFDocument.load(bytes, { ignoreEncryption: false });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (/encrypt/i.test(message)) {
-      return PDFDocument.load(bytes, { ignoreEncryption: true });
+    if (!isPdfLibEncryptedLoadError(error)) throw error;
+    try {
+      return await PDFDocument.load(bytes, { ignoreEncryption: true });
+    } catch (retryError) {
+      if (isPdfLibEncryptedLoadError(retryError)) {
+        throw new Error("encrypted");
+      }
+      throw retryError;
     }
-    throw error;
   }
 }
 
@@ -519,7 +530,7 @@ async function rewritePdfPagesOnly(bytes: Uint8Array): Promise<Uint8Array> {
     return saved instanceof Uint8Array ? saved : new Uint8Array(saved);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message === "encrypted" || /encrypt/i.test(message)) {
+    if (message === "encrypted") {
       throw new Error("encrypted");
     }
     if (message === "too many pages") {
@@ -597,7 +608,11 @@ export async function hardenUploadBytes(
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (message === "encrypted") {
-        return { ok: false, error: "Verschlüsselte PDFs werden nicht akzeptiert." };
+        return {
+          ok: false,
+          error:
+            "PDF ist passwortgeschützt und konnte nicht gelesen werden. Bitte ohne Passwort exportieren oder „Drucken → Als PDF speichern“.",
+        };
       }
       if (message === "too many pages") {
         return {
