@@ -7,6 +7,10 @@ import {
   sanitizePostLoginPath,
 } from "@/lib/auth/post-login-path";
 import {
+  isAuthorizedCronRequest,
+  isCronApiPath,
+} from "@/lib/security/cron-auth";
+import {
   isProtectedApiPath,
   isProtectedPagePath,
   isPublicVehicleImagePath,
@@ -69,7 +73,10 @@ export async function proxy(request: NextRequest) {
     isProtectedApiPath(pathname, method) ||
     pathname.startsWith("/api/protected");
 
-  if (requiresAuth && !userId) {
+  const cronBypass =
+    isCronApiPath(pathname, method) && isAuthorizedCronRequest(request);
+
+  if (requiresAuth && !userId && !cronBypass) {
     if (pathname.startsWith("/api/")) {
       return secureJson(
         { ok: false, error: "Authentication required.", code: "unauthorized" },
