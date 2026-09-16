@@ -1,5 +1,6 @@
 import {
   buildCookieConsentPayload,
+  type CookieConsentDecision,
   COOKIE_CONSENT_MAX_AGE_SECONDS,
   COOKIE_CONSENT_NAME,
   isValidCookieConsentValue,
@@ -22,10 +23,10 @@ export function hasCookieConsent(): boolean {
   return isValidCookieConsentValue(readDocumentCookie(COOKIE_CONSENT_NAME));
 }
 
-export function acceptCookieConsent(acceptedAt: Date = new Date()): void {
+function writeCookieConsent(decision: CookieConsentDecision, at: Date): void {
   if (typeof document === "undefined") return;
   const value = serializeCookieConsentValue(
-    buildCookieConsentPayload(acceptedAt),
+    buildCookieConsentPayload(at, decision),
   );
   const secure =
     typeof window !== "undefined" && window.location.protocol === "https:"
@@ -38,4 +39,12 @@ export function acceptCookieConsent(acceptedAt: Date = new Date()): void {
     "SameSite=Lax",
     secure,
   ].join("; ");
+}
+
+export function acceptCookieConsent(acceptedAt: Date = new Date()): void {
+  writeCookieConsent("accept", acceptedAt);
+}
+
+export function rejectCookieConsent(rejectedAt: Date = new Date()): void {
+  writeCookieConsent("reject", rejectedAt);
 }

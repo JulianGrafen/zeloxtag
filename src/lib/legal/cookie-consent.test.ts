@@ -10,7 +10,10 @@ import {
 
 describe("cookie-consent", () => {
   it("round-trips a valid payload", () => {
-    const payload = buildCookieConsentPayload(new Date("2026-01-15T12:00:00.000Z"));
+    const payload = buildCookieConsentPayload(
+      new Date("2026-01-15T12:00:00.000Z"),
+      "reject",
+    );
     const raw = serializeCookieConsentValue(payload);
     expect(parseCookieConsentValue(raw)).toEqual(payload);
     expect(isValidCookieConsentValue(raw)).toBe(true);

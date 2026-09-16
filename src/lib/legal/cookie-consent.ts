@@ -8,10 +8,14 @@ export const COOKIE_CONSENT_VERSION = 1;
 /** ~12 months */
 export const COOKIE_CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
+export type CookieConsentDecision = "accept" | "reject";
+
 export type CookieConsentPayload = {
   v: number;
   /** ISO 8601 timestamp when the user acknowledged the notice */
   t: string;
+  /** User choice on the banner; omitted in older stored consents. */
+  d?: CookieConsentDecision;
 };
 
 export function serializeCookieConsentValue(
@@ -48,9 +52,11 @@ export function isValidCookieConsentValue(
 
 export function buildCookieConsentPayload(
   acceptedAt: Date = new Date(),
+  decision: CookieConsentDecision = "accept",
 ): CookieConsentPayload {
   return {
     v: COOKIE_CONSENT_VERSION,
     t: acceptedAt.toISOString(),
+    d: decision,
   };
 }

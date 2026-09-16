@@ -102,7 +102,7 @@ export default function DatenschutzPage() {
         <LegalSection id="cookies" title="c) Cookies &amp; Hinweisbanner">
           <LegalParagraph>
             Beim ersten Besuch unserer Web-App zeigen wir einen eigenen
-            Cookie-Hinweis (First-Party-Banner). Mit „Verstanden“ speichern wir
+            Cookie-Hinweis (First-Party-Banner). Mit „Zustimmen“ oder „Ablehnen“ speichern wir
             Ihre Bestätigung im Cookie{" "}
             <code className="text-[0.85em]">zt_cookie_consent</code>, damit der
             Hinweis nicht bei jedem Besuch erneut erscheint (Rechtsgrundlage:
