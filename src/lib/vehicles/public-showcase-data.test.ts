@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
-import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
+import {
+  buildPublicShowcasePayload,
+  isShowcaseBuildDnaCacheStale,
+  shouldRefreshShowcaseBuildDnaCache,
+  withHeuristicBuildDnaFallback,
+} from "@/lib/vehicles/public-showcase-data";
 import type { Document, Vehicle } from "@/types/database";
 
 const baseVehicle: Vehicle = {
@@ -425,6 +430,60 @@ describe("buildPublicShowcasePayload", () => {
     ];
 
     const payload = buildPublicShowcasePayload(baseVehicle, documents);
+    expect(payload.buildDna).not.toBeNull();
+    expect(payload.buildDna?.radar).toHaveLength(4);
+  });
+
+  it("detects stale Build DNA cache when public mods changed", () => {
+    const documents: Document[] = [
+      baseInvoice(),
+      baseInvoice({
+        id: "mod-2",
+        line_items: [{ label: "Intercooler", amount: 500 }],
+      }),
+    ];
+    const payload = buildPublicShowcasePayload(baseVehicle, documents);
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      showcase_build_dna_updated_at: "2026-03-01T00:00:00Z",
+      showcase_build_dna_fingerprint: "stale-fingerprint",
+    };
+
+    expect(isShowcaseBuildDnaCacheStale(vehicle, payload.modifications)).toBe(
+      true,
+    );
+    expect(
+      shouldRefreshShowcaseBuildDnaCache(vehicle, payload.modifications),
+    ).toBe(true);
+  });
+
+  it("applies heuristic Build DNA when cache is stale on the payload", () => {
+    const documents: Document[] = [
+      baseInvoice(),
+      baseInvoice({
+        id: "mod-2",
+        line_items: [{ label: "Intercooler", amount: 500 }],
+      }),
+    ];
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      showcase_build_dna_updated_at: "2026-03-01T00:00:00Z",
+      showcase_build_dna_fingerprint: "stale-fingerprint",
+      showcase_build_dna: {
+        archetype: "OEM+",
+        radar: [
+          { category: "Power", score: 50 },
+          { category: "Handling", score: 50 },
+          { category: "Style", score: 50 },
+          { category: "Reliability", score: 50 },
+        ],
+        punchline: "Alt.",
+      },
+    };
+
+    const payload = withHeuristicBuildDnaFallback(
+      buildPublicShowcasePayload(vehicle, documents),
+    );
     expect(payload.buildDna).not.toBeNull();
     expect(payload.buildDna?.radar).toHaveLength(4);
   });

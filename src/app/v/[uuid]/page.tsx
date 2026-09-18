@@ -26,7 +26,12 @@ import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-t
 import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
 import { refreshShowcaseBuildDna } from "@/lib/showcase/refresh-showcase-build-dna";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
-import { buildPublicShowcasePayload, vehicleSupportsPublicShowcase } from "@/lib/vehicles/public-showcase-data";
+import {
+  buildPublicShowcasePayload,
+  shouldRefreshShowcaseBuildDnaCache,
+  vehicleSupportsPublicShowcase,
+  withHeuristicBuildDnaFallback,
+} from "@/lib/vehicles/public-showcase-data";
 import {
   pageSocialMetadata,
   SHOWCASE_OG_DESCRIPTION,
@@ -148,9 +153,8 @@ async function renderPublicShowcase(vehicle: Vehicle) {
   let payload = buildPublicShowcasePayload(vehicleForPayload, documents);
 
   if (
-    payload.modifications.length >= 2 &&
-    showcaseVehicle.showcase_build_dna_updated_at == null &&
-    isSupabaseAdminConfigured()
+    isSupabaseAdminConfigured() &&
+    shouldRefreshShowcaseBuildDnaCache(showcaseVehicle, payload.modifications)
   ) {
     try {
       const refresh = await refreshShowcaseBuildDna(
@@ -168,9 +172,11 @@ async function renderPublicShowcase(vehicle: Vehicle) {
         payload = buildPublicShowcasePayload(vehicleForPayload, documents);
       }
     } catch {
-      // Guest view still shows heuristic fallback from payload builder.
+      // Heuristic fallback below keeps Build DNA visible for guests.
     }
   }
+
+  payload = withHeuristicBuildDnaFallback(payload);
 
   return <PublicShowcaseView data={payload} />;
 }

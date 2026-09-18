@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 
 import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
-import { computeBuildDnaHeuristic } from "@/lib/showcase/build-dna-heuristic";
 import { getMockTagScan, MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
-import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
+import {
+  buildPublicShowcasePayload,
+  withHeuristicBuildDnaFallback,
+} from "@/lib/vehicles/public-showcase-data";
 
 /** Local-only preview of the public showcase (no auth / owner dashboard). */
 export default function DevShowroomPage() {
@@ -35,13 +37,9 @@ export default function DevShowroomPage() {
     show_on_public_showcase: true,
   }));
 
-  let payload = buildPublicShowcasePayload(vehicle, documents);
-  if (!payload.buildDna && payload.modifications.length >= 2) {
-    payload = {
-      ...payload,
-      buildDna: computeBuildDnaHeuristic(payload.modifications),
-    };
-  }
+  const payload = withHeuristicBuildDnaFallback(
+    buildPublicShowcasePayload(vehicle, documents),
+  );
 
   return <PublicShowcaseView data={payload} />;
 }
