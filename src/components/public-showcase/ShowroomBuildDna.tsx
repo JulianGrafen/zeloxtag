@@ -77,8 +77,7 @@ export function ShowroomBuildDna({ dna }: ShowroomBuildDnaProps) {
       className="relative z-10 px-4"
       variants={motionConfig.staggerContainer}
       initial="hidden"
-      whileInView="visible"
-      viewport={motionConfig.viewport}
+      animate="visible"
     >
       <ShowroomRevealItem>
         <div className={showroom.panelFlat}>

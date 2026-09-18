@@ -84,9 +84,6 @@ function resolvePublicBuildDna(
     const cached = parseShowcaseBuildDna(vehicle.showcase_build_dna);
     if (cached) return cached;
   }
-  if (vehicle.showcase_build_dna_updated_at != null) {
-    return null;
-  }
   return computeBuildDnaHeuristic(modifications);
 }
 
