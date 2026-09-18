@@ -84,10 +84,41 @@ function resolvePublicBuildDna(
     const cached = parseShowcaseBuildDna(vehicle.showcase_build_dna);
     if (cached) return cached;
   }
-  if (vehicle.showcase_build_dna_updated_at != null) {
-    return null;
-  }
   return computeBuildDnaHeuristic(modifications);
+}
+
+/** True when cached DNA exists but public mods changed since the last refresh. */
+export function isShowcaseBuildDnaCacheStale(
+  vehicle: Vehicle,
+  modifications: readonly PublicModification[],
+): boolean {
+  if (modifications.length < 2) return false;
+  if (vehicle.showcase_build_dna_updated_at == null) return false;
+  const fingerprint = buildShowcaseModsFingerprint(modifications);
+  return vehicle.showcase_build_dna_fingerprint !== fingerprint;
+}
+
+/** Whether the server should recompute and persist showcase Build DNA. */
+export function shouldRefreshShowcaseBuildDnaCache(
+  vehicle: Vehicle,
+  modifications: readonly PublicModification[],
+): boolean {
+  if (modifications.length < 2) return false;
+  if (vehicle.showcase_build_dna_updated_at == null) return true;
+  return isShowcaseBuildDnaCacheStale(vehicle, modifications);
+}
+
+/** Guest-safe fallback when cache is stale or refresh failed. */
+export function withHeuristicBuildDnaFallback(
+  payload: PublicShowcasePayload,
+): PublicShowcasePayload {
+  if (payload.buildDna != null || payload.modifications.length < 2) {
+    return payload;
+  }
+  return {
+    ...payload,
+    buildDna: computeBuildDnaHeuristic(payload.modifications),
+  };
 }
 
 function normalizeVehicleShowcaseFields(vehicle: Vehicle): {
