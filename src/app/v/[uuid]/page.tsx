@@ -24,6 +24,7 @@ import {
 } from "@/lib/vehicles/get-public-vehicle";
 import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
 import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { parseShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
 import { refreshShowcaseBuildDna } from "@/lib/showcase/refresh-showcase-build-dna";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { buildPublicShowcasePayload, vehicleSupportsPublicShowcase } from "@/lib/vehicles/public-showcase-data";
@@ -147,28 +148,30 @@ async function renderPublicShowcase(vehicle: Vehicle) {
   let vehicleForPayload = showcaseVehicle;
   let payload = buildPublicShowcasePayload(vehicleForPayload, documents);
 
-  if (
-    payload.modifications.length >= 2 &&
-    showcaseVehicle.showcase_build_dna_updated_at == null &&
-    isSupabaseAdminConfigured()
-  ) {
-    try {
-      const refresh = await refreshShowcaseBuildDna(
-        showcaseVehicle,
-        payload.modifications,
-      );
-      if (refresh.status === "updated") {
-        const fingerprint = buildShowcaseModsFingerprint(payload.modifications);
-        vehicleForPayload = {
-          ...showcaseVehicle,
-          showcase_build_dna: refresh.dna,
-          showcase_build_dna_fingerprint: fingerprint,
-          showcase_build_dna_updated_at: new Date().toISOString(),
-        };
-        payload = buildPublicShowcasePayload(vehicleForPayload, documents);
+  if (payload.modifications.length >= 2 && isSupabaseAdminConfigured()) {
+    const modsFingerprint = buildShowcaseModsFingerprint(payload.modifications);
+    const cacheMatches =
+      showcaseVehicle.showcase_build_dna_fingerprint === modsFingerprint &&
+      parseShowcaseBuildDna(showcaseVehicle.showcase_build_dna) != null;
+
+    if (!cacheMatches) {
+      try {
+        const refresh = await refreshShowcaseBuildDna(
+          showcaseVehicle,
+          payload.modifications,
+        );
+        if (refresh.status === "updated") {
+          vehicleForPayload = {
+            ...showcaseVehicle,
+            showcase_build_dna: refresh.dna,
+            showcase_build_dna_fingerprint: modsFingerprint,
+            showcase_build_dna_updated_at: new Date().toISOString(),
+          };
+          payload = buildPublicShowcasePayload(vehicleForPayload, documents);
+        }
+      } catch {
+        // Guest view still shows heuristic fallback from payload builder.
       }
-    } catch {
-      // Guest view still shows heuristic fallback from payload builder.
     }
   }
 

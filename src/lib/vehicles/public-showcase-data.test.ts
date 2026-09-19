@@ -429,7 +429,7 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.buildDna?.radar).toHaveLength(4);
   });
 
-  it("omits buildDna when fingerprint is stale", () => {
+  it("falls back to heuristic buildDna when fingerprint is stale", () => {
     const documents: Document[] = [
       baseInvoice(),
       baseInvoice({
@@ -454,6 +454,8 @@ describe("buildPublicShowcasePayload", () => {
     };
 
     const payload = buildPublicShowcasePayload(vehicle, documents);
-    expect(payload.buildDna).toBeNull();
+    expect(payload.buildDna).not.toBeNull();
+    expect(payload.buildDna?.punchline).not.toBe("Alt.");
+    expect(payload.buildDna?.radar).toHaveLength(4);
   });
 });

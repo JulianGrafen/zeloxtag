@@ -8,6 +8,7 @@ import {
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { parseShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
 import { withDefaultShowcaseFields } from "@/lib/vehicles/public-showcase-data";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, TagScanResult, Vehicle } from "@/types/database";
@@ -169,8 +170,8 @@ function needsPublicShowcaseVehicleEnrichment(vehicle: Vehicle): boolean {
   if (!vehicle.is_public) return false;
   const hasSound = Boolean(vehicle.sound_url?.trim());
   const hasDnaCache = Boolean(
-    vehicle.showcase_build_dna_fingerprint?.trim() ||
-      vehicle.showcase_build_dna_updated_at,
+    vehicle.showcase_build_dna_fingerprint?.trim() &&
+      parseShowcaseBuildDna(vehicle.showcase_build_dna),
   );
   return !hasSound || !hasDnaCache;
 }
