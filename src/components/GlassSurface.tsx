@@ -192,6 +192,7 @@ export default function GlassSurface({
   return (
     <div
       ref={containerRef}
+      data-glass-mode={svgSupported ? "svg" : "fallback"}
       className={`glass-surface ${svgSupported ? "glass-surface--svg" : "glass-surface--fallback"} ${className}`}
       style={containerStyle}
     >

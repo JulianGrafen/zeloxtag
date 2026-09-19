@@ -49,7 +49,7 @@ export function DashboardScanCta({
       : "text-[color:var(--vd-text,#0a0a0a)]",
   );
   const glassClassName = cn(
-    "w-full shadow-[0_4px_14px_rgba(0,0,0,0.18)] [&_.glass-surface__content]:p-0",
+    "scan-glass-cta w-full shadow-[0_4px_14px_rgba(0,0,0,0.18)] [&_.glass-surface__content]:p-0",
     scanLocked && "opacity-85 saturate-50",
   );
 
