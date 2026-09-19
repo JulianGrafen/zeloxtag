@@ -51,7 +51,7 @@ export const PRO_PAYWALL_VALUE_FOOTNOTE =
   "Weniger als eine halbe Tankfüllung für ein ganzes Jahr Schutz und Dokumentation deines Builds.";
 
 export const PRO_PAYWALL_MODAL_BENEFITS = [
-  "Gutachten-Tresor: ABEs, Teilegutachten & §21-Eintragungen in Sekunden griffbereit bei jeder Kontrolle.",
+  "Gutachten-Tresor: ABEs, Teilegutachten & §21-Eintragungen in Sekunden griffbereit.",
   "QR-Flex auf Treffen: Haube auf, scannen lassen. Zeig Mod-Liste, Dyno-Sheets & Soundfiles direkt vor Ort.",
   "Keine Tipparbeit: KI fotografiert Rechnungen ab und ordnet Preise, Teile und Daten automatisch zu.",
   "Schluss mit „Was letzte Preis?“: Generiere per Klick ein PDF-Exposé, das jeden Cent deiner Umbauten schwarz auf weiß belegt.",
