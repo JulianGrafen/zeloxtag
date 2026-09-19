@@ -3,6 +3,7 @@ import { Lock, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScanContent } from "@/components/layout/scan-content";
 import { signOutToLoginForm } from "@/lib/auth/actions";
+import { GarageVehicleThumbnail } from "@/components/garage/garage-vehicle-thumbnail";
 import type { GarageVehicle } from "@/lib/garage/types";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
@@ -68,10 +69,17 @@ export function PrivateTwinGate({
                       <PressableLink
                         href={`/v/${entry.tagUuid}`}
                         variant="button"
-                        className="claim-cta w-full justify-center no-underline"
+                        className="claim-cta w-full items-center justify-start gap-3 no-underline"
                       >
-                        {entry.label}
-                        {entry.year != null ? ` · ${entry.year}` : ""}
+                        <GarageVehicleThumbnail
+                          imageSrc={entry.imageSrc}
+                          imageAlt={entry.imageAlt}
+                          className="h-10 w-14 shrink-0 rounded-lg bg-black/20"
+                        />
+                        <span className="min-w-0 text-left">
+                          {entry.label}
+                          {entry.year != null ? ` · ${entry.year}` : ""}
+                        </span>
                       </PressableLink>
                     </li>
                   ))}

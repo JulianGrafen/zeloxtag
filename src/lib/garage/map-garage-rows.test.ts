@@ -33,7 +33,9 @@ describe("mapGarageRows", () => {
       tagUuid: "tag-a",
       label: "BMW M3",
       year: 2020,
+      imageAlt: "BMW M3",
     });
+    expect(rows[0]?.imageSrc).toBeDefined();
     expect(rows[1]?.tagUuid).toBe("tag-b");
   });
 

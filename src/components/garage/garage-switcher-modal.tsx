@@ -6,6 +6,8 @@ import { Check, X } from "lucide-react";
 
 import type { GarageVehicle } from "@/lib/garage/types";
 
+import { GarageVehicleThumbnail } from "./garage-vehicle-thumbnail";
+
 interface GarageSwitcherModalProps {
   open: boolean;
   vehicles: GarageVehicle[];
@@ -83,13 +85,18 @@ export function GarageSwitcherModal({
                 <button
                   type="button"
                   onClick={() => onSelect(vehicle.vehicleId)}
-                  className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
+                  className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors ${
                     isActive
                       ? "border-emerald-500/40 bg-emerald-500/10"
                       : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] hover:border-[color:var(--vd-accent)]/30"
                   }`}
                 >
-                  <span>
+                  <GarageVehicleThumbnail
+                    imageSrc={vehicle.imageSrc}
+                    imageAlt={vehicle.imageAlt}
+                    className="h-14 w-[4.5rem]"
+                  />
+                  <span className="min-w-0 flex-1">
                     <span className="block text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
                       {vehicle.label}
                     </span>
@@ -98,7 +105,7 @@ export function GarageSwitcherModal({
                     </span>
                   </span>
                   {isActive ? (
-                    <span className="inline-flex items-center gap-1 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-emerald-400">
+                    <span className="inline-flex shrink-0 items-center gap-1 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-emerald-400">
                       <span
                         className="h-2 w-2 rounded-full bg-emerald-400"
                         aria-hidden

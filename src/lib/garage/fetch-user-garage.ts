@@ -16,7 +16,7 @@ export async function fetchUserGarage(
   const { data, error } = await supabase
     .from("tags")
     .select(
-      "uuid, vehicle_id, vehicles!inner(id, make, model, year, created_at)",
+      "uuid, vehicle_id, vehicles!inner(id, make, model, year, created_at, silhouette_image_url, updated_at)",
     )
     .eq("status", "active")
     .order("created_at", { ascending: true, foreignTable: "vehicles" });

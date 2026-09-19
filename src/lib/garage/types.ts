@@ -7,6 +7,9 @@ export type GarageVehicle = {
   year: number | null;
   /** Display line for switcher UI (make/model, deduped). */
   label: string;
+  /** Side-profile cutout (owner upload, catalog, or undefined → SVG fallback). */
+  imageSrc?: string;
+  imageAlt: string;
 };
 
 export type GarageState = {

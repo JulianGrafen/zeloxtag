@@ -1,9 +1,9 @@
 "use client";
 
-import { CarFront } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { useGarageSwitcher, GarageSwitcherModalHost } from "./garage-switcher-control";
+import { GarageVehicleThumbnail } from "./garage-vehicle-thumbnail";
 
 /**
  * Persistent garage switch — available on all owner routes without re-login.
@@ -38,9 +38,11 @@ export function GarageSwitcherDock() {
           className="pointer-events-auto inline-flex max-w-full items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/95 px-4 py-2.5 text-left shadow-[var(--vd-shadow-hover)] backdrop-blur-md"
           aria-haspopup="dialog"
         >
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)]">
-            <CarFront className="h-4 w-4" aria-hidden />
-          </span>
+          <GarageVehicleThumbnail
+            imageSrc={active.imageSrc}
+            imageAlt={active.imageAlt}
+            className="h-10 w-14 rounded-lg"
+          />
           <span className="min-w-0">
             <span className="block truncate text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
               Garage · {garage.userVehicles.length} Fahrzeuge

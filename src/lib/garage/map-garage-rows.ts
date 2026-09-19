@@ -1,5 +1,6 @@
 import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
 
+import { garageVehicleImageSrc } from "./garage-vehicle-image";
 import type { GarageVehicle } from "./types";
 
 type VehicleJoinRow = {
@@ -8,6 +9,8 @@ type VehicleJoinRow = {
   model: string;
   year: number | null;
   created_at?: string;
+  silhouette_image_url?: string | null;
+  updated_at?: string | null;
 };
 
 type TagGarageRow = {
@@ -33,6 +36,15 @@ export function mapGarageRows(rows: TagGarageRow[] | null | undefined): GarageVe
     if (!vehicle?.id || !row.uuid?.trim()) continue;
     const make = typeof vehicle.make === "string" ? vehicle.make : "";
     const model = typeof vehicle.model === "string" ? vehicle.model : "";
+    const label = formatPublicVehicleTitle(make, model) || "Fahrzeug";
+    const imageSrc = garageVehicleImageSrc({
+      vehicleId: vehicle.id,
+      make,
+      model,
+      silhouetteImageUrl: vehicle.silhouette_image_url,
+      silhouetteCacheBust: vehicle.updated_at,
+    });
+
     mapped.push({
       vehicleId: vehicle.id,
       tagUuid: row.uuid.trim(),
@@ -42,7 +54,9 @@ export function mapGarageRows(rows: TagGarageRow[] | null | undefined): GarageVe
         typeof vehicle.year === "number" && Number.isFinite(vehicle.year)
           ? vehicle.year
           : null,
-      label: formatPublicVehicleTitle(make, model) || "Fahrzeug",
+      label,
+      imageSrc,
+      imageAlt: label,
     });
   }
 
