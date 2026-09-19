@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
+import GlassSurface from "@/components/GlassSurface";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import {
   isPaywallOpen,
@@ -42,9 +43,13 @@ export function DashboardScanCta({
 }: Omit<DashboardScanCtaProps, "hidden">) {
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
   const buttonClassName = cn(
-    "claim-cta w-full shadow-[var(--vd-shadow)]",
-    scanLocked &&
-      "bg-neutral-400 text-white shadow-none ring-1 ring-neutral-300/80",
+    "w-full gap-2 bg-transparent py-4 px-[1.15rem] text-[0.92rem] font-semibold shadow-none",
+    "text-[color:var(--vd-text,#0a0a0a)]",
+    scanLocked && "text-[color:var(--vd-muted,#737373)]",
+  );
+  const glassClassName = cn(
+    "w-full shadow-[var(--vd-shadow)] [&_.glass-surface__content]:p-0",
+    scanLocked && "opacity-85 saturate-50",
   );
 
   function handleScanClick() {
@@ -65,31 +70,44 @@ export function DashboardScanCta({
 
   const useScanButton = Boolean(onOpenScanner) || scanLocked;
 
+  const scanControl = useScanButton ? (
+    <PressableButton
+      type="button"
+      variant="button"
+      onClick={handleScanClick}
+      className={buttonClassName}
+      aria-label={
+        scanLocked ? `${scanLabel} — ZeloxTag Pro erforderlich` : scanLabel
+      }
+    >
+      <Plus className="h-4 w-4" aria-hidden />
+      {scanLabel}
+    </PressableButton>
+  ) : (
+    <PressableLink href={href} variant="button" className={buttonClassName}>
+      <Plus className="h-4 w-4" aria-hidden />
+      {scanLabel}
+    </PressableLink>
+  );
+
   return (
     <div className="space-y-2" data-tour="scan-fab">
-      {useScanButton ? (
-        <PressableButton
-          type="button"
-          variant="button"
-          onClick={handleScanClick}
-          className={buttonClassName}
-          aria-label={
-            scanLocked ? `${scanLabel} — ZeloxTag Pro erforderlich` : scanLabel
-          }
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-          {scanLabel}
-        </PressableButton>
-      ) : (
-        <PressableLink
-          href={href}
-          variant="button"
-          className={buttonClassName}
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-          {scanLabel}
-        </PressableLink>
-      )}
+      <GlassSurface
+        width="100%"
+        height="auto"
+        borderRadius={14}
+        backgroundOpacity={scanLocked ? 0.06 : 0.12}
+        brightness={58}
+        opacity={0.92}
+        blur={11}
+        displace={0.35}
+        distortionScale={-180}
+        mixBlendMode="screen"
+        saturation={1.6}
+        className={glassClassName}
+      >
+        {scanControl}
+      </GlassSurface>
       {manualEntryHref ? (
         <div className="text-center">
           <PressableLink
