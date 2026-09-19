@@ -22,6 +22,10 @@ import { TuevOverview } from "@/components/dashboard/TuevOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import {
+  ScanProcessingPanel,
+  ScanProcessingStepChips,
+} from "@/components/documents/scan-processing-panel";
+import {
   WizardAnalyzingPanel,
   WizardCameraError,
   WizardScanHeader,
@@ -591,7 +595,7 @@ export function TuevUploadWizard({
             <ScanLine className="h-5 w-5" />
           </div>
           <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            TÜV / HU · Upload
+            TÜV / HU · Hochladen
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
             Wie möchtest du scannen?
@@ -647,7 +651,7 @@ export function TuevUploadWizard({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-                Schnell-Upload
+                Schnell hochladen
               </p>
               <p className="mt-1 text-[1rem] font-semibold text-[color:var(--vd-text)]">
                 PDF oder Foto hochladen
@@ -754,35 +758,15 @@ export function TuevUploadWizard({
 
   if (phase === "analyzing") {
     return (
-      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col items-center justify-center gap-8 px-4 py-6 text-center">
-        <div className="relative flex h-24 w-24 items-center justify-center">
-          <div className="absolute inset-0 animate-spin rounded-full border-4 border-neutral-100 border-t-neutral-900" />
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
-            <ScanLine className="h-7 w-7 text-white" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[1rem] font-semibold text-[color:var(--vd-text)]">
-            Alle Abschnitte werden analysiert…
-          </p>
-          <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
-            KM-Stand · Ergebnis · nächste HU · Mängel · Prüfgebühr
-          </p>
-          <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
-            Dauert etwa 15–30 Sekunden
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {["Übersicht", "Kopf", "Mängel"].map((label, i) => (
-            <div
-              key={label}
-              className="flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1"
-            >
-              <LoaderCircle className="h-3 w-3 animate-spin text-neutral-500" style={{ animationDelay: `${i * 300}ms` }} />
-              <span className="text-[0.68rem] font-medium text-neutral-600">{label}</span>
-            </div>
-          ))}
-        </div>
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col px-4 py-6">
+        <ScanProcessingPanel
+          detail="Alle Abschnitte werden analysiert…"
+          hint="KM-Stand · Ergebnis · nächste HU · Mängel · Prüfgebühr · etwa 15–30 Sekunden"
+          state="working"
+          footer={
+            <ScanProcessingStepChips steps={["Übersicht", "Kopf", "Mängel"]} />
+          }
+        />
       </section>
     );
   }

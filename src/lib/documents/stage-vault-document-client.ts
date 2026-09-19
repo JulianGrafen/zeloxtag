@@ -39,7 +39,7 @@ function mapApiFailure(payload: StageVaultApiFailure): StageVaultDocumentResult 
       code: SUBSCRIPTION_REQUIRED_CODE,
     };
   }
-  return { status: "error", message: payload.error || "Upload fehlgeschlagen." };
+  return { status: "error", message: payload.error || "Hochladen fehlgeschlagen." };
 }
 
 /**
@@ -68,7 +68,7 @@ export async function stageVaultDocumentViaApi(
   if (!payload) {
     return {
       status: "error",
-      message: `Upload fehlgeschlagen (${response.status}).`,
+      message: `Hochladen fehlgeschlagen (${response.status}).`,
     };
   }
 

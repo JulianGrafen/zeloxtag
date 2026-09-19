@@ -1,8 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowLeft, LoaderCircle, ScanLine } from "lucide-react";
+import { ArrowLeft, ScanLine } from "lucide-react";
 
+import {
+  ScanProcessingPanel,
+  type ScanStatusHeading,
+} from "@/components/documents/scan-processing-panel";
 import { WizardStepProgress } from "@/components/documents/wizard-step-progress";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
@@ -82,26 +86,20 @@ export function WizardAnalyzingPanel({
   label,
   subtitle = "Einen Moment bitte…",
   footer,
+  heading,
 }: {
   label: string;
   subtitle?: string;
   footer?: ReactNode;
+  heading?: ScanStatusHeading;
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
-        <LoaderCircle className="h-7 w-7 animate-spin text-white" />
-      </div>
-      <div>
-        <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-          {label}
-        </p>
-        <p className="mt-1 text-[0.8rem] text-[color:var(--vd-muted)]">
-          {subtitle}
-        </p>
-      </div>
-      {footer}
-    </div>
+    <ScanProcessingPanel
+      heading={heading}
+      detail={label}
+      hint={subtitle}
+      footer={footer}
+    />
   );
 }
 

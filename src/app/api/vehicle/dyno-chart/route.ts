@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       console.error("[vehicle-dyno-chart] formData parse failed", error);
       return jsonError(
         400,
-        "Upload konnte nicht gelesen werden — bitte kleinere Datei wählen oder Seite neu laden.",
+        "Datei konnte nicht hochgeladen werden — bitte kleinere Datei wählen oder Seite neu laden.",
         "bad_request",
       );
     }

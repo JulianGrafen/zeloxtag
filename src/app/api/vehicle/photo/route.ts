@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       console.error("[vehicle-photo] formData parse failed", error);
       return jsonError(
         400,
-        "Upload konnte nicht gelesen werden — bitte kleineres Foto wählen oder Seite neu laden.",
+        "Datei konnte nicht hochgeladen werden — bitte kleineres Foto wählen oder Seite neu laden.",
         "bad_request",
       );
     }
@@ -291,7 +291,7 @@ export async function POST(request: NextRequest) {
     logServerError("[vehicle-photo] unexpected", error);
     return jsonError(
       500,
-      "Foto-Upload fehlgeschlagen. Bitte erneut versuchen.",
+      "Foto konnte nicht hochgeladen werden. Bitte erneut versuchen.",
       "internal",
     );
   }

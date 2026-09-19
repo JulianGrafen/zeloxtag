@@ -426,7 +426,7 @@ export function VaultUploadWizard({
       setError(
         caught instanceof Error
           ? caught.message
-          : "Upload fehlgeschlagen.",
+          : "Hochladen fehlgeschlagen.",
       );
     }
   }
@@ -911,7 +911,7 @@ export function VaultUploadWizard({
           {VAULT_SCAN.heading}
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-          {VAULT_SCAN.title} · Upload
+          {VAULT_SCAN.title} · Hochladen
         </h1>
         <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
           {vehicleLabel} · {VAULT_SCAN.subheading}
@@ -970,7 +970,7 @@ export function VaultUploadWizard({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-              Datei-Upload
+              Datei hochladen
             </p>
             <p className="mt-1 text-[1rem] font-semibold text-[color:var(--vd-text)]">
               PDF oder Fotos hochladen

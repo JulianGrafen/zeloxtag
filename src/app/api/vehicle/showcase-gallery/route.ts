@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       console.error("[vehicle-showcase-gallery] formData parse failed", error);
       return jsonError(
         400,
-        "Upload konnte nicht gelesen werden — bitte kleinere Datei wählen oder Seite neu laden.",
+        "Datei konnte nicht hochgeladen werden — bitte kleinere Datei wählen oder Seite neu laden.",
         "bad_request",
       );
     }
@@ -270,6 +270,6 @@ export async function POST(request: NextRequest) {
     return jsonError(500, "Speichern fehlgeschlagen.", "db_error");
   } catch (error) {
     logServerError("[vehicle-showcase-gallery] POST failed", error);
-    return jsonError(500, "Upload fehlgeschlagen.", "internal_error");
+    return jsonError(500, "Hochladen fehlgeschlagen.", "internal_error");
   }
 }

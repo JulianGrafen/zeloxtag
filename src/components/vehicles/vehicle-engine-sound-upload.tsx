@@ -44,7 +44,7 @@ function mapUploadError(
   if (status === 415 || status === 422) {
     return "Nur MP3, M4A oder WAV bis 10 Sekunden werden unterstützt.";
   }
-  return `Upload fehlgeschlagen (Fehler ${status}).`;
+  return `Hochladen fehlgeschlagen (Fehler ${status}).`;
 }
 
 export function VehicleEngineSoundUpload({
@@ -123,7 +123,7 @@ export function VehicleEngineSoundUpload({
         setError(
           uploadError instanceof Error
             ? uploadError.message
-            : "Upload fehlgeschlagen. Bitte erneut versuchen.",
+            : "Hochladen fehlgeschlagen. Bitte erneut versuchen.",
         );
       } finally {
         setState("idle");

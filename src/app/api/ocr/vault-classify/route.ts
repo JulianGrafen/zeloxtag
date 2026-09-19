@@ -90,7 +90,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const message =
         error instanceof Error &&
         error.message.toLowerCase().includes("unexpected end of form")
-          ? "Upload unterbrochen oder Datei zu groß — bitte erneut versuchen."
+          ? "Hochladen unterbrochen oder Datei zu groß — bitte erneut versuchen."
           : "Expected multipart form data.";
       return jsonError(400, message, "bad_request");
     }

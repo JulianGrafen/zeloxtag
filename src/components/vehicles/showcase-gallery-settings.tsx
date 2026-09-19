@@ -43,13 +43,13 @@ function mapUploadError(
   const message = payload?.error?.trim();
   if (message) return message;
   if (status === 0) {
-    return "Netzwerkfehler beim Upload — bitte Verbindung prüfen.";
+    return "Netzwerkfehler beim Hochladen — bitte Verbindung prüfen.";
   }
   if (status === 401) {
     return "Sitzung abgelaufen — bitte erneut anmelden.";
   }
   if (status === 403) {
-    return "Upload nicht erlaubt — nur der Fahrzeughalter darf hochladen.";
+    return "Hochladen nicht erlaubt — nur der Fahrzeughalter darf Dateien hochladen.";
   }
   if (status === 409) {
     return `Maximal ${MAX_SHOWCASE_GALLERY_PHOTOS} Fotos erlaubt.`;
@@ -60,7 +60,7 @@ function mapUploadError(
   if (status === 415 || status === 422) {
     return "Nur Foto (JPEG, PNG, WebP, HEIC) wird unterstützt.";
   }
-  return `Upload fehlgeschlagen (Fehler ${status}).`;
+  return `Hochladen fehlgeschlagen (Fehler ${status}).`;
 }
 
 export function ShowcaseGallerySettings({
@@ -121,7 +121,7 @@ export function ShowcaseGallerySettings({
         setError(
           uploadError instanceof Error
             ? uploadError.message
-            : "Upload fehlgeschlagen.",
+            : "Hochladen fehlgeschlagen.",
         );
         return false;
       } finally {

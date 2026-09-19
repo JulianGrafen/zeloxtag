@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { DashboardSkeleton } from "@/components/ui/skeleton";
+import { DashboardTransitionLoading } from "@/components/ui/transition-loading";
 
 export default function TagScanLoading() {
   return (
-    <AppShell>
-      <DashboardSkeleton />
+    <AppShell showNavbar={false}>
+      <DashboardTransitionLoading />
     </AppShell>
   );
 }

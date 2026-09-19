@@ -331,7 +331,7 @@ export function VehicleDocumentsView({
                     <span className="font-medium text-[color:var(--vd-text)]">
                       ABE, Teilegutachten und Einzelabnahmen
                     </span>
-                    . Pro Upload immer nur{" "}
+                    . Pro Scan immer nur{" "}
                     <span className="font-medium text-[color:var(--vd-text)]">
                       ein Bauteil
                     </span>
@@ -481,7 +481,7 @@ function DocumentRow({
       {document.type === "abe" && approvalCount > 0
         ? ` · ${approvalCount} Freigaben`
         : ""}
-      {isMock ? " · Demo-Upload (keine Datei)" : ""}
+      {isMock ? " · Demo (keine Datei)" : ""}
     </span>
   );
 

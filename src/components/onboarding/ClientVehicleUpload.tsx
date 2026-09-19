@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Camera, ImagePlus, Loader2, SkipForward, Trash2 } from "lucide-react";
 
+import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { PromptCloseButton } from "@/components/ui/prompt-close-button";
 import {
@@ -129,10 +130,10 @@ function mapUploadError(
 ): string {
   const message = payload?.error?.trim();
   if (message === "Origin required." || message === "Origin not allowed.") {
-    return "Upload blockiert — bitte Seite neu laden und erneut versuchen.";
+    return "Hochladen blockiert — bitte Seite neu laden und erneut versuchen.";
   }
   if (message === "Authentication required.") {
-    return "Sitzung abgelaufen — bitte erneut anmelden und Upload wiederholen.";
+    return "Sitzung abgelaufen — bitte erneut anmelden und erneut hochladen.";
   }
   if (message === "Multi-factor authentication required.") {
     return "Bitte zuerst Zwei-Faktor-Authentifizierung abschließen.";
@@ -144,16 +145,16 @@ function mapUploadError(
     return message;
   }
   if (status === 0) {
-    return "Netzwerkfehler beim Upload — bitte Verbindung prüfen.";
+    return "Netzwerkfehler beim Hochladen — bitte Verbindung prüfen.";
   }
   if (status === 401) {
-    return "Sitzung abgelaufen — bitte erneut anmelden und Upload wiederholen.";
+    return "Sitzung abgelaufen — bitte erneut anmelden und erneut hochladen.";
   }
   if (status === 403) {
-    return "Upload nicht erlaubt — bitte Seite neu laden.";
+    return "Hochladen nicht erlaubt — bitte Seite neu laden.";
   }
   if (status === 404) {
-    return "Upload-Dienst nicht erreichbar — bitte Seite neu laden (Cache leeren).";
+    return "Hochladen derzeit nicht erreichbar — bitte Seite neu laden (Cache leeren).";
   }
   if (status === 413) {
     return "Foto ist zu groß — bitte ein kleineres Bild wählen.";
@@ -168,9 +169,9 @@ function mapUploadError(
     return "Serverfehler beim Speichern — bitte später erneut versuchen.";
   }
   if (status === 400) {
-    return "Upload fehlgeschlagen — bitte Seite neu laden und erneut versuchen.";
+    return "Hochladen fehlgeschlagen — bitte Seite neu laden und erneut versuchen.";
   }
-  return `Upload fehlgeschlagen (Fehler ${status}).`;
+  return `Hochladen fehlgeschlagen (Fehler ${status}).`;
 }
 
 async function materializeUploadFile(file: File): Promise<File> {
@@ -266,8 +267,11 @@ export function ClientVehicleUpload({
         ? Math.max(12, uploadProgress)
         : 0;
 
-  const loadingText =
-    state === "compressing" ? "Foto wird vorbereitet…" : "Foto wird gespeichert…";
+  const loadingText = deleting
+    ? "Foto wird entfernt…"
+    : state === "compressing"
+      ? "Foto wird vorbereitet…"
+      : "Foto wird hochgeladen…";
 
   const processFile = useCallback(
     async (file: File) => {
@@ -343,7 +347,7 @@ export function ClientVehicleUpload({
         setError(
           uploadError instanceof Error
             ? uploadError.message
-            : "Upload fehlgeschlagen. Bitte erneut versuchen.",
+            : "Hochladen fehlgeschlagen. Bitte erneut versuchen.",
         );
       }
     },
@@ -458,17 +462,24 @@ export function ClientVehicleUpload({
         <PreviewFrame previewUrl={previewUrl} />
 
         {busy ? (
-          <div className="absolute inset-0 z-[2] flex flex-col items-center justify-center gap-2 rounded-2xl bg-[color:var(--vd-surface)]/85 px-5 text-center backdrop-blur-[2px]">
-            <p className="inline-flex items-center gap-2 text-[0.85rem] font-medium text-[color:var(--vd-text)]">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              {loadingText}
-            </p>
-            <div className="h-1.5 w-48 overflow-hidden rounded-full bg-black/10">
-              <div
-                className="h-full min-w-[8%] rounded-full bg-neutral-900 transition-[width] duration-300"
-                style={{ width: `${barProgress}%` }}
-              />
-            </div>
+          <div className="absolute inset-0 z-[2] flex items-center justify-center rounded-2xl bg-[color:var(--vd-surface)]/90 px-3 backdrop-blur-[2px]">
+            <ScanProcessingPanel
+              compact
+              heading={deleting ? "Verarbeiten" : "Hochladen"}
+              detail={loadingText}
+              state="connecting"
+              className="w-full py-2"
+              footer={
+                !deleting ? (
+                  <div className="h-1.5 w-48 overflow-hidden rounded-full bg-black/10">
+                    <div
+                      className="h-full min-w-[8%] rounded-full bg-neutral-900 transition-[width] duration-300"
+                      style={{ width: `${barProgress}%` }}
+                    />
+                  </div>
+                ) : null
+              }
+            />
           </div>
         ) : null}
       </div>

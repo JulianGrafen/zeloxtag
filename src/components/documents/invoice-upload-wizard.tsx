@@ -26,6 +26,10 @@ import { GermanAmountInput } from "@/components/documents/german-amount-input";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import {
+  ScanProcessingPanel,
+  ScanProcessingStepChips,
+} from "@/components/documents/scan-processing-panel";
+import {
   WizardCameraError,
   WizardScanHeader,
   WizardShell,
@@ -708,7 +712,7 @@ export function InvoiceUploadWizard({
             <ScanLine className="h-5 w-5" />
           </div>
           <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            {scanDef.title} · Upload
+            {scanDef.title} · Hochladen
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
             PDF oder Bilder?
@@ -771,7 +775,7 @@ export function InvoiceUploadWizard({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-                Datei-Upload
+                Datei hochladen
               </p>
               <p className="mt-1 text-[1rem] font-semibold text-[color:var(--vd-text)]">
                 PDF hochladen
@@ -986,34 +990,17 @@ export function InvoiceUploadWizard({
 
   if (phase === "analyzing") {
     return (
-      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col items-center justify-center gap-8 px-4 py-6 text-center">
-        <div className="relative flex h-24 w-24 items-center justify-center">
-          <div className="absolute inset-0 animate-spin rounded-full border-4 border-neutral-100 border-t-neutral-900" />
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
-            <ScanLine className="h-7 w-7 text-white" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[1rem] font-semibold text-[color:var(--vd-text)]">
-            Rechnung wird analysiert…
-          </p>
-          <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
-            Kopf · Positionen · Gesamtbetrag — direkt ans LLM
-          </p>
-        </div>
-        <div className="flex flex-wrap justify-center gap-2">
-          {["Übersicht", "Kopf", "Positionen"].map((label) => (
-            <div
-              key={label}
-              className="flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1"
-            >
-              <LoaderCircle className="h-3 w-3 animate-spin text-neutral-500" />
-              <span className="text-[0.68rem] font-medium text-neutral-600">
-                {label}
-              </span>
-            </div>
-          ))}
-        </div>
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col px-4 py-6">
+        <ScanProcessingPanel
+          detail="Rechnung wird analysiert…"
+          hint="Kopf · Positionen · Gesamtbetrag — direkt ans LLM"
+          state="working"
+          footer={
+            <ScanProcessingStepChips
+              steps={["Übersicht", "Kopf", "Positionen"]}
+            />
+          }
+        />
       </section>
     );
   }

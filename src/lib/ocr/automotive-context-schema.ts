@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const AUTOMOTIVE_REJECTION_MESSAGE =
-  "Upload abgelehnt: Das Dokument scheint keinen Kfz-Bezug zu haben.";
+  "Hochladen abgelehnt: Das Dokument scheint keinen Kfz-Bezug zu haben.";
 
 export const AUTOMOTIVE_REJECTION_CODE = "document_rejected" as const;
 

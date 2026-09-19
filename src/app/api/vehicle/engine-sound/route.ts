@@ -123,7 +123,7 @@ async function parseEngineSoundUpload(
         ok: false,
         response: jsonError(
           400,
-          "Upload konnte nicht gelesen werden.",
+          "Datei konnte nicht hochgeladen werden.",
           "bad_request",
         ),
       };
@@ -178,7 +178,7 @@ async function parseEngineSoundUpload(
       ok: false,
       response: jsonError(
         400,
-        "Upload konnte nicht gelesen werden — bitte Seite neu laden und erneut versuchen.",
+        "Datei konnte nicht hochgeladen werden — bitte Seite neu laden und erneut versuchen.",
         "bad_request",
       ),
     };

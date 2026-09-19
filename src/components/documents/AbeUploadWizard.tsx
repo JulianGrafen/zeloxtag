@@ -19,6 +19,10 @@ import {
 import { AbeVehicleMatchPicker } from "@/components/documents/abe-vehicle-match-picker";
 import { AbeVehicleTableWatermark } from "@/components/documents/abe-vehicle-table-watermark";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
+import {
+  ScanProcessingPanel,
+  ScanProcessingStepChips,
+} from "@/components/documents/scan-processing-panel";
 import { WizardCameraError } from "@/components/documents/wizard-scan-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -860,7 +864,7 @@ export function AbeUploadWizard({
         return;
       }
       if (uploadFile.type !== "application/pdf") {
-        setSaveError("Nur PDF-Uploads sind erlaubt. Bitte erneut scannen.");
+        setSaveError("Nur PDF-Dateien sind erlaubt. Bitte erneut scannen.");
         return;
       }
 
@@ -960,40 +964,17 @@ export function AbeUploadWizard({
 
   if (state.phase === "analyzing") {
     return (
-      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col items-center justify-center gap-8 px-4 py-6 text-center">
-        <div className="relative flex h-24 w-24 items-center justify-center">
-          <div className="absolute inset-0 animate-spin rounded-full border-4 border-neutral-100 border-t-neutral-900" />
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
-            <ScanLine className="h-7 w-7 text-white" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <p className="text-[1rem] font-semibold text-[color:var(--vd-text)]">
-            ABE wird analysiert…
-          </p>
-          <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
-            KBA · Maße · Hersteller · Fahrzeugfreigaben
-          </p>
-          <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
-            Dauert etwa 15–30 Sekunden
-          </p>
-        </div>
-        <div className="flex flex-wrap justify-center gap-2">
-          {["ABE-Deckblatt", "Hersteller-Deckblatt", "Fahrzeugtabelle"].map((label, i) => (
-            <div
-              key={label}
-              className="flex items-center gap-1.5 rounded-full bg-neutral-100 px-2.5 py-1"
-            >
-              <LoaderCircle
-                className="h-3 w-3 animate-spin text-neutral-500"
-                style={{ animationDelay: `${i * 300}ms` }}
-              />
-              <span className="text-[0.68rem] font-medium text-neutral-600">
-                {label}
-              </span>
-            </div>
-          ))}
-        </div>
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col px-4 py-6">
+        <ScanProcessingPanel
+          detail="ABE wird analysiert…"
+          hint="KBA · Maße · Hersteller · Fahrzeugfreigaben · etwa 15–30 Sekunden"
+          state="solving"
+          footer={
+            <ScanProcessingStepChips
+              steps={["ABE-Deckblatt", "Hersteller-Deckblatt", "Fahrzeugtabelle"]}
+            />
+          }
+        />
       </section>
     );
   }

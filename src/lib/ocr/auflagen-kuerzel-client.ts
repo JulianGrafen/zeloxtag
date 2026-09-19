@@ -115,7 +115,7 @@ export async function uploadAuflagenKuerzelImageClient(
     throw new Error(
       payload && "error" in payload && payload.error
         ? payload.error
-        : `Auflagen-Bild Upload fehlgeschlagen (${response.status}).`,
+        : `Auflagen-Bild konnte nicht hochgeladen werden (${response.status}).`,
     );
   }
 

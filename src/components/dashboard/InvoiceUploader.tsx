@@ -17,6 +17,7 @@ import { TuevOverview } from "@/components/dashboard/TuevOverview";
 import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
+import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { GutachtenUploadWizard } from "@/components/documents/gutachten-upload-wizard";
 import { VaultUploadWizard } from "@/components/documents/vault-upload-wizard";
@@ -1633,10 +1634,12 @@ export function InvoiceUploader({
           ) : null}
 
           {compressing ? (
-            <p className="flex items-center justify-center gap-2 text-[0.82rem] text-[color:var(--vd-muted)]">
-              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
-              {compressionStatus ?? "Optimiere Dateien…"}
-            </p>
+            <ScanProcessingPanel
+              compact
+              heading="Hochladen"
+              detail={compressionStatus ?? "Dateien werden vorbereitet…"}
+              state="connecting"
+            />
           ) : null}
 
           {canProcess ? (
@@ -1661,34 +1664,35 @@ export function InvoiceUploader({
       ) : null}
 
       {step === "extracting" ? (
-        <div
-          className="vd-anim-header space-y-4 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="flex items-center gap-2 text-[0.9rem] text-[color:var(--vd-text)]">
-            <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
-            {progress.label}
-          </div>
-          {progress.page && progress.totalPages ? (
-            <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
-              Seite {progress.page} von {progress.totalPages} wird verarbeitet…
-            </p>
-          ) : null}
-          <div className="h-2 overflow-hidden rounded-full bg-neutral-200">
-            <div
-              className="h-full rounded-full bg-neutral-900 transition-[width] duration-300"
-              style={{ width: `${progress.percent}%` }}
-            />
-          </div>
-          <div className="space-y-3">
-            <Skeleton className="h-40 w-full rounded-[1.2rem]" />
-            <Skeleton className="h-10 w-full" />
-            <div className="grid grid-cols-2 gap-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          </div>
+        <div className="vd-anim-header rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+          <ScanProcessingPanel
+            compact
+            detail={progress.label}
+            hint={
+              progress.page && progress.totalPages
+                ? `Seite ${progress.page} von ${progress.totalPages}`
+                : undefined
+            }
+            state="solving"
+            footer={
+              <div className="w-full max-w-sm space-y-3">
+                <div className="h-2 overflow-hidden rounded-full bg-neutral-200">
+                  <div
+                    className="h-full rounded-full bg-neutral-900 transition-[width] duration-300"
+                    style={{ width: `${progress.percent}%` }}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Skeleton className="h-40 w-full rounded-[1.2rem]" />
+                  <Skeleton className="h-10 w-full" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
+            }
+          />
         </div>
       ) : null}
 

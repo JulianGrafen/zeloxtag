@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
 import {
   AbeExtractionFieldsForm,
   isAbeExtractionFormValid,
@@ -398,26 +399,23 @@ export function ExtractionWizard({
       ) : null}
 
       {phase === "analyzing" ? (
-        <div
-          className="space-y-4"
-          role="status"
-          aria-live="polite"
-          aria-label="Dokument wird analysiert"
-        >
-          <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-            <div className="flex items-center gap-2 text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-              Dokument wird analysiert…
-            </div>
-            <p className="mt-2 text-[0.78rem] text-[color:var(--vd-muted)]">
-              KBA, Bauteil und Auflagen werden per KI ausgelesen. Das dauert
-              meist wenige Sekunden.
-            </p>
+        <div className="space-y-4">
+          <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-2 shadow-[var(--vd-shadow)]">
+            <ScanProcessingPanel
+              compact
+              detail="Dokument wird analysiert…"
+              hint="KBA, Bauteil und Auflagen werden per KI ausgelesen."
+              state="solving"
+              footer={
+                <>
+                  <Skeleton className="mt-2 h-24 w-full rounded-2xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-28 w-full rounded-xl" />
+                </>
+              }
+            />
           </div>
-          <Skeleton className="h-24 w-full rounded-2xl" />
-          <Skeleton className="h-12 w-full rounded-xl" />
-          <Skeleton className="h-12 w-full rounded-xl" />
-          <Skeleton className="h-28 w-full rounded-xl" />
         </div>
       ) : null}
 

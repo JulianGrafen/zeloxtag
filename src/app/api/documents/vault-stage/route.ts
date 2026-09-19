@@ -101,8 +101,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } catch (error) {
       logServerError("[vault-stage] formData parse failed", error);
       const hint = isMultipartParseError(error)
-        ? "Upload unterbrochen oder Datei zu groß — bitte kleinere PDF, stabiles WLAN oder Seite neu laden."
-        : "Upload konnte nicht gelesen werden.";
+        ? "Hochladen unterbrochen oder Datei zu groß — bitte kleinere PDF, stabiles WLAN oder Seite neu laden."
+        : "Datei konnte nicht hochgeladen werden.";
       return NextResponse.json(
         { ok: false as const, error: hint, code: "bad_request" },
         { status: 400 },
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(
       {
         ok: false as const,
-        error: "Upload fehlgeschlagen.",
+        error: "Hochladen fehlgeschlagen.",
         code: "server_error",
       },
       { status: 500 },

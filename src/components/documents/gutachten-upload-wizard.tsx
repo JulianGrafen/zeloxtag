@@ -14,6 +14,7 @@ import {
   fieldsToGutachtenReview,
 } from "@/components/dashboard/GutachtenOverview";
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
+import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
 import {
   WizardAnalyzingPanel,
   WizardCameraError,
@@ -105,14 +106,14 @@ function extractionFromAnalyzeResult(
 
 function AnalyzingOverlay({ label }: { label: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-neutral-950/90 px-6 text-center text-white backdrop-blur-sm">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
-        <ScanLine className="h-7 w-7 animate-pulse" />
-      </div>
-      <p className="text-[1rem] font-semibold">{label}</p>
-      <p className="max-w-sm text-[0.85rem] text-white/75">
-        Dokumenttyp wird erkannt — gleich startet die passende Scan-Anleitung.
-      </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/90 px-6 backdrop-blur-sm">
+      <ScanProcessingPanel
+        detail={label}
+        hint="Dokumenttyp wird erkannt — gleich startet die passende Scan-Anleitung."
+        state="searching"
+        theme="dark"
+        surface="inverse"
+      />
     </div>
   );
 }

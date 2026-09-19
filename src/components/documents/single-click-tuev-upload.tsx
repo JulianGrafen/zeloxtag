@@ -727,7 +727,7 @@ export function SingleClickTuevUpload({
           <CloudUpload className="h-5 w-5" />
         </div>
         <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-          TÜV / HU · Schnell-Upload
+          TÜV / HU · Schnell hochladen
         </p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
           Foto oder PDF hochladen
@@ -805,7 +805,7 @@ export function SingleClickTuevUpload({
             Hinweis: Geringere Genauigkeit
           </p>
           <p className="mt-0.5 leading-relaxed">
-            Der Schnell-Upload analysiert das Dokument in einem Schritt — bei
+            Beim Schnell hochladen wird das Dokument in einem Schritt analysiert — bei
             mehrseitigen Berichten oder schlechter Bildqualität können Felder
             fehlen. Für 100&nbsp;% Genauigkeit den{" "}
             <strong>Geführten Scan</strong> verwenden.
