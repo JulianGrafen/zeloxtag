@@ -96,6 +96,7 @@ export function DashboardScanCta({
       <GlassSurface
         width="100%"
         height="auto"
+        simBackground="fab-gradient"
         borderRadius={16}
         backgroundOpacity={scanLocked ? 0.12 : 0.22}
         brightness={52}

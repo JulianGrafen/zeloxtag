@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useState,
   useRef,
   useId,
@@ -10,6 +11,9 @@ import {
 } from "react";
 
 import "./GlassSurface.css";
+
+export type GlassSimBackground = "fab-gradient" | "none";
+export type GlassRenderMode = "backdropSvg" | "foregroundSvg" | "cssFallback";
 
 export interface GlassSurfaceProps {
   children?: ReactNode;
@@ -30,8 +34,86 @@ export interface GlassSurfaceProps {
   xChannel?: string;
   yChannel?: string;
   mixBlendMode?: CSSProperties["mixBlendMode"];
+  simBackground?: GlassSimBackground;
   className?: string;
   style?: CSSProperties;
+}
+
+function isAppleWebKit(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const isIosDevice =
+    /iPhone|iPad|iPod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIosDevice) return true;
+  const isSafari =
+    /Safari/i.test(ua) &&
+    !/Chrome|CriOS|Chromium|Edg|OPR|Firefox/i.test(ua);
+  return isSafari;
+}
+
+function acceptsFilterUrl(filterUrl: string): boolean {
+  const probe = document.createElement("div");
+  probe.style.filter = filterUrl;
+  if (probe.style.filter && probe.style.filter !== "none") {
+    return true;
+  }
+  const style = probe.style as CSSStyleDeclaration & { webkitFilter?: string };
+  style.webkitFilter = filterUrl;
+  return Boolean(style.webkitFilter && style.webkitFilter !== "none");
+}
+
+function acceptsBackdropFilterUrl(filterUrl: string): boolean {
+  const probe = document.createElement("div");
+  const style = probe.style as CSSStyleDeclaration & {
+    webkitBackdropFilter?: string;
+    webkitFilter?: string;
+  };
+  style.backdropFilter = filterUrl;
+  style.webkitBackdropFilter = filterUrl;
+  return (
+    style.backdropFilter.includes("url") ||
+    (style.webkitBackdropFilter?.includes("url") ?? false)
+  );
+}
+
+export function detectGlassRenderMode(
+  filterId: string,
+  simBackground: GlassSimBackground,
+): GlassRenderMode {
+  if (typeof document === "undefined") {
+    return "cssFallback";
+  }
+
+  const filterUrl = `url(#${filterId})`;
+  const appleWebKit = isAppleWebKit();
+  const foregroundOk = acceptsFilterUrl(filterUrl);
+  const backdropOk = acceptsBackdropFilterUrl(filterUrl);
+
+  if (appleWebKit && simBackground !== "none") {
+    return foregroundOk ? "foregroundSvg" : "cssFallback";
+  }
+
+  if (!appleWebKit && backdropOk) {
+    return "backdropSvg";
+  }
+
+  if (simBackground !== "none" && foregroundOk) {
+    return "foregroundSvg";
+  }
+
+  return "cssFallback";
+}
+
+function modeClassName(mode: GlassRenderMode): string {
+  switch (mode) {
+    case "backdropSvg":
+      return "glass-surface--svg";
+    case "foregroundSvg":
+      return "glass-surface--foreground-svg";
+    case "cssFallback":
+      return "glass-surface--fallback";
+  }
 }
 
 export default function GlassSurface({
@@ -53,6 +135,7 @@ export default function GlassSurface({
   xChannel = "R",
   yChannel = "G",
   mixBlendMode = "difference",
+  simBackground = "none",
   className = "",
   style = {},
 }: GlassSurfaceProps) {
@@ -61,7 +144,7 @@ export default function GlassSurface({
   const redGradId = `red-grad-${uniqueId}`;
   const blueGradId = `blue-grad-${uniqueId}`;
 
-  const [svgSupported, setSvgSupported] = useState(false);
+  const [renderMode, setRenderMode] = useState<GlassRenderMode>("cssFallback");
 
   const containerRef = useRef<HTMLDivElement>(null);
   const feImageRef = useRef<SVGFEImageElement>(null);
@@ -101,6 +184,10 @@ export default function GlassSurface({
   const updateDisplacementMap = () => {
     feImageRef.current?.setAttribute("href", generateDisplacementMap());
   };
+
+  useLayoutEffect(() => {
+    setRenderMode(detectGlassRenderMode(filterId, simBackground));
+  }, [filterId, simBackground]);
 
   useEffect(() => {
     updateDisplacementMap();
@@ -156,29 +243,6 @@ export default function GlassSurface({
     setTimeout(updateDisplacementMap, 0);
   }, [width, height]);
 
-  useEffect(() => {
-    setSvgSupported(supportsSVGFilters());
-  }, [filterId]);
-
-  const supportsSVGFilters = () => {
-    if (typeof window === "undefined" || typeof document === "undefined") {
-      return false;
-    }
-
-    const isWebkit =
-      /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-    const isFirefox = /Firefox/.test(navigator.userAgent);
-
-    if (isWebkit || isFirefox) {
-      return false;
-    }
-
-    const div = document.createElement("div");
-    div.style.backdropFilter = `url(#${filterId})`;
-
-    return div.style.backdropFilter !== "";
-  };
-
   const containerStyle: CSSProperties & Record<string, string | number> = {
     ...style,
     width: typeof width === "number" ? `${width}px` : width,
@@ -189,11 +253,14 @@ export default function GlassSurface({
     "--filter-id": `url(#${filterId})`,
   };
 
+  const showSimBg =
+    renderMode === "foregroundSvg" && simBackground !== "none";
+
   return (
     <div
       ref={containerRef}
-      data-glass-mode={svgSupported ? "svg" : "fallback"}
-      className={`glass-surface ${svgSupported ? "glass-surface--svg" : "glass-surface--fallback"} ${className}`}
+      data-glass-mode={renderMode}
+      className={`glass-surface ${modeClassName(renderMode)} ${className}`}
       style={containerStyle}
     >
       <svg className="glass-surface__filter" xmlns="http://www.w3.org/2000/svg">
@@ -270,6 +337,17 @@ export default function GlassSurface({
           </filter>
         </defs>
       </svg>
+
+      {showSimBg ? (
+        <div
+          aria-hidden
+          className={
+            simBackground === "fab-gradient"
+              ? "glass-surface__sim-bg glass-surface__sim-bg--fab-gradient"
+              : "glass-surface__sim-bg"
+          }
+        />
+      ) : null}
 
       <div className="glass-surface__content">{children}</div>
     </div>

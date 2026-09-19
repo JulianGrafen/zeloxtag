@@ -33,6 +33,8 @@
 .glass-surface--svg {
   background: light-dark(hsl(0 0% 100% / var(--glass-frost, 0)), hsl(0 0% 0% / var(--glass-frost, 0)));
   backdrop-filter: var(--filter-id, url(#glass-filter)) saturate(var(--glass-saturation, 1));
+  -webkit-backdrop-filter: var(--filter-id, url(#glass-filter))
+    saturate(var(--glass-saturation, 1));
   box-shadow:
     0 0 2px 1px light-dark(color-mix(in oklch, black, transparent 85%), color-mix(in oklch, white, transparent 65%))
       inset,
@@ -44,6 +46,61 @@
     0px 4px 16px rgba(17, 17, 26, 0.05) inset,
     0px 8px 24px rgba(17, 17, 26, 0.05) inset,
     0px 16px 56px rgba(17, 17, 26, 0.05) inset;
+}
+
+/* iOS WebKit: SVG filter on simulated backdrop (no backdrop-filter: url()) */
+.glass-surface--foreground-svg {
+  background: transparent;
+  box-shadow:
+    0 0 2px 1px light-dark(color-mix(in oklch, black, transparent 85%), color-mix(in oklch, white, transparent 65%))
+      inset,
+    0 0 10px 4px light-dark(color-mix(in oklch, black, transparent 90%), color-mix(in oklch, white, transparent 85%))
+      inset,
+    0px 4px 16px rgba(17, 17, 26, 0.05),
+    0px 8px 24px rgba(17, 17, 26, 0.05),
+    0px 16px 56px rgba(17, 17, 26, 0.05),
+    0px 4px 16px rgba(17, 17, 26, 0.05) inset,
+    0px 8px 24px rgba(17, 17, 26, 0.05) inset,
+    0px 16px 56px rgba(17, 17, 26, 0.05) inset;
+}
+
+.glass-surface--foreground-svg .glass-surface__content {
+  z-index: 2;
+}
+
+.glass-surface__sim-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  transform: translateZ(0);
+  -webkit-filter: var(--filter-id) saturate(var(--glass-saturation, 1));
+  filter: var(--filter-id) saturate(var(--glass-saturation, 1));
+  background: light-dark(
+    hsl(0 0% 100% / var(--glass-frost, 0.22)),
+    hsl(0 0% 100% / var(--glass-frost, 0.12))
+  );
+}
+
+.glass-surface__sim-bg--fab-gradient {
+  top: -5.5rem;
+  bottom: 0;
+  background:
+    linear-gradient(
+      to top,
+      var(--vd-bg) 0%,
+      color-mix(in srgb, var(--vd-bg) 92%, transparent) 45%,
+      transparent 100%
+    ),
+    light-dark(
+      hsl(0 0% 100% / calc(var(--glass-frost, 0.22) + 0.06)),
+      hsl(0 0% 100% / calc(var(--glass-frost, 0.12) + 0.04))
+    );
+}
+
+.scan-glass-cta.glass-surface--foreground-svg .glass-surface__sim-bg--fab-gradient {
+  top: -7rem;
 }
 
 /* WebKit / Firefox: SVG backdrop filters off — CSS premium fallback */
