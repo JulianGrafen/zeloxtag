@@ -51,8 +51,8 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  /* Vehicle dashboard tokens — aligned with shadcn b0 preset */
-  --vd-bg: oklch(0.985 0 0);
+  /* Vehicle dashboard tokens — aligned with shadcn preset */
+  --vd-bg: var(--background);
   --vd-text: var(--foreground);
   --vd-muted: var(--muted-foreground);
   --vd-accent: var(--primary);
@@ -61,6 +61,25 @@
   --vd-border: var(--border);
   --vd-atmosphere-base: var(--vd-bg);
   --vd-atmosphere-mid: var(--muted);
+  --vd-atmosphere-grid: rgba(0, 0, 0, 0.4);
+
+  --claim-input-bg: rgba(255, 255, 255, 0.95);
+  --claim-input-placeholder: rgba(10, 10, 10, 0.32);
+  --claim-input-focus-border: rgba(10, 10, 10, 0.35);
+  --claim-input-focus-ring: rgba(10, 10, 10, 0.1);
+  --claim-cta-bg: #0a0a0a;
+  --claim-cta-fg: #ffffff;
+  --claim-cta-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  --claim-cta-sm-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --claim-back-bg: rgba(255, 255, 255, 0.85);
+  --vd-icon-badge-bg: #0a0a0a;
+  --vd-icon-badge-fg: #ffffff;
+  --vd-alert-error-bg: #fef2f2;
+  --vd-alert-error-border: rgba(220, 38, 38, 0.12);
+  --vd-alert-error-text: #b91c1c;
+  --vd-alert-success-bg: #ecfdf5;
+  --vd-alert-success-border: rgba(16, 185, 129, 0.15);
+  --vd-alert-success-text: #047857;
 }
 
 @theme inline {
@@ -137,8 +156,8 @@ nextjs-portal {
   pointer-events: none;
   opacity: 0.06;
   background-image:
-    linear-gradient(rgba(0, 0, 0, 0.4) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.4) 1px, transparent 1px);
+    linear-gradient(var(--vd-atmosphere-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--vd-atmosphere-grid) 1px, transparent 1px);
   background-size: 28px 28px;
   mask-image: radial-gradient(circle at center, black 30%, transparent 82%);
 }
@@ -183,29 +202,29 @@ nextjs-portal {
   align-items: center;
   justify-content: center;
   border-radius: var(--vd-radius-control);
-  background: #0a0a0a;
-  color: #fff;
+  background: var(--vd-icon-badge-bg);
+  color: var(--vd-icon-badge-fg);
   flex-shrink: 0;
 }
 
 .vd-alert-error {
   border-radius: var(--vd-radius-control);
-  background: #fef2f2;
-  border: 1px solid rgba(220, 38, 38, 0.12);
+  background: var(--vd-alert-error-bg);
+  border: 1px solid var(--vd-alert-error-border);
   padding: 0.65rem 0.85rem;
   font-size: 0.8rem;
   line-height: 1.45;
-  color: #b91c1c;
+  color: var(--vd-alert-error-text);
 }
 
 .vd-alert-success {
   border-radius: var(--vd-radius-control);
-  background: #ecfdf5;
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  background: var(--vd-alert-success-bg);
+  border: 1px solid var(--vd-alert-success-border);
   padding: 0.65rem 0.85rem;
   font-size: 0.8rem;
   line-height: 1.45;
-  color: #047857;
+  color: var(--vd-alert-success-text);
 }
 
 .vd-fab-gradient {
@@ -543,7 +562,7 @@ nextjs-portal {
   width: 100%;
   border-radius: var(--vd-radius-control);
   border: 1px solid var(--vd-border);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--claim-input-bg);
   padding: 0.85rem 0.95rem;
   font-size: 1rem;
   color: var(--vd-text);
@@ -567,12 +586,12 @@ nextjs-portal {
 }
 
 .claim-input::placeholder {
-  color: rgba(10, 10, 10, 0.32);
+  color: var(--claim-input-placeholder);
 }
 
 .claim-input:focus {
-  border-color: rgba(10, 10, 10, 0.35);
-  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.1);
+  border-color: var(--claim-input-focus-border);
+  box-shadow: 0 0 0 3px var(--claim-input-focus-ring);
 }
 
 .claim-cta {
@@ -582,12 +601,12 @@ nextjs-portal {
   justify-content: center;
   gap: 0.5rem;
   border-radius: var(--vd-radius-control);
-  background: #0a0a0a;
+  background: var(--claim-cta-bg);
   padding: 1rem 1.15rem;
   font-size: 0.92rem;
   font-weight: 600;
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  color: var(--claim-cta-fg);
+  box-shadow: var(--claim-cta-shadow);
 }
 
 .claim-cta-sm {
@@ -596,12 +615,12 @@ nextjs-portal {
   justify-content: center;
   gap: 0.4rem;
   border-radius: var(--vd-radius-control);
-  background: #0a0a0a;
+  background: var(--claim-cta-bg);
   padding: 0.55rem 0.85rem;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  color: var(--claim-cta-fg);
+  box-shadow: var(--claim-cta-sm-shadow);
 }
 
 .claim-cta-sm:disabled,
@@ -617,7 +636,7 @@ nextjs-portal {
   gap: 0.35rem;
   border-radius: var(--vd-radius-control);
   border: 1px solid var(--vd-border);
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--claim-back-bg);
   padding: 1rem 1rem;
   font-size: 0.88rem;
   font-weight: 600;
@@ -1312,6 +1331,35 @@ nextjs-portal {
 }
 
 .dark {
+  color-scheme: dark;
+
+  --vd-glow: rgba(255, 255, 255, 0.06);
+  --vd-glow-soft: rgba(255, 255, 255, 0.03);
+  --vd-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  --vd-shadow-sm: 0 6px 20px rgba(0, 0, 0, 0.28);
+  --vd-shadow-hover: 0 18px 40px rgba(0, 0, 0, 0.42);
+  --vd-shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --vd-overlay: rgba(0, 0, 0, 0.62);
+  --vd-atmosphere-grid: rgba(255, 255, 255, 0.08);
+
+  --claim-input-bg: rgba(255, 255, 255, 0.06);
+  --claim-input-placeholder: rgba(255, 255, 255, 0.35);
+  --claim-input-focus-border: rgba(255, 255, 255, 0.35);
+  --claim-input-focus-ring: rgba(255, 255, 255, 0.12);
+  --claim-cta-bg: var(--primary);
+  --claim-cta-fg: var(--primary-foreground);
+  --claim-cta-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --claim-cta-sm-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --claim-back-bg: rgba(255, 255, 255, 0.08);
+  --vd-icon-badge-bg: var(--primary);
+  --vd-icon-badge-fg: var(--primary-foreground);
+  --vd-alert-error-bg: rgba(127, 29, 29, 0.35);
+  --vd-alert-error-border: rgba(248, 113, 113, 0.25);
+  --vd-alert-error-text: #fecaca;
+  --vd-alert-success-bg: rgba(6, 78, 59, 0.35);
+  --vd-alert-success-border: rgba(52, 211, 153, 0.25);
+  --vd-alert-success-text: #a7f3d0;
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

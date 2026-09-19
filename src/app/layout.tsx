@@ -10,8 +10,7 @@ import { PWA_THEME_COLOR } from "@/lib/pwa/constants";
 import { getSiteUrl } from "@/lib/seo/site-url";
 
 import "./globals.css";
-import { PwaRoot } from "@/components/pwa/pwa-root";
-import { Toaster } from "@/components/ui/sonner";
+import { AppThemeRoot } from "@/components/theme/app-theme-root";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -77,6 +76,7 @@ export default async function RootLayout({
   return (
     <html
       lang="de"
+      suppressHydrationWarning
       className={cn(
         "h-full antialiased",
         inter.variable,
@@ -85,9 +85,7 @@ export default async function RootLayout({
       )}
     >
       <body className="min-h-full bg-background font-sans text-foreground">
-        {children}
-        <PwaRoot />
-        <Toaster richColors closeButton position="top-center" />
+        <AppThemeRoot>{children}</AppThemeRoot>
       </body>
     </html>
   );

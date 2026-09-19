@@ -13,6 +13,7 @@ import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership"
 import { AppShell } from "@/components/layout/app-shell";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
 import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
+import { ThemeAppearanceSettings } from "@/components/theme/theme-appearance-settings";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
 import { getMfaRecoveryStatus } from "@/lib/auth/mfa-actions";
@@ -161,6 +162,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             aria-hidden
           />
         </Link>
+
+        <ThemeAppearanceSettings />
 
         <PwaInstallSettingsPanel />
 
