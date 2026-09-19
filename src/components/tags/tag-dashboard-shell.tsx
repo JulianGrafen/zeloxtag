@@ -42,6 +42,13 @@ import {
 } from "@/lib/ui/dashboard-prompt-orchestrator";
 import type { Document, Vehicle } from "@/types/database";
 
+import { PrimaryGoalPicker } from "@/components/onboarding/primary-goal-picker";
+import {
+  readPrimaryGoal,
+  writePrimaryGoal,
+  type ZeloxPrimaryGoal,
+} from "@/lib/onboarding/primary-goal";
+
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
 import { TagDashboardView } from "./tag-dashboard-view";
 import { AccountDeletionBanner } from "@/components/account/account-deletion-banner";
@@ -242,9 +249,18 @@ export function TagDashboardShell({
     Boolean(startTour),
   );
   const [forceTour, setForceTour] = useState(startTour);
+  const [primaryGoal, setPrimaryGoal] = useState<ZeloxPrimaryGoal | null>(null);
+  const [primaryGoalReady, setPrimaryGoalReady] = useState(false);
+  const needsPrimaryGoal =
+    isOwner && forceTour && primaryGoalReady && primaryGoal === null;
 
   useEffect(() => {
     setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    setPrimaryGoal(readPrimaryGoal());
+    setPrimaryGoalReady(true);
   }, []);
 
   useEffect(() => {
@@ -682,7 +698,10 @@ export function TagDashboardShell({
         }
         onOpenScanner={handleOpenScanner}
         hideScanFab={
-          silhouettePromptVisible || showSilhouetteEditor || Boolean(paywallFeature)
+          needsPrimaryGoal ||
+          silhouettePromptVisible ||
+          showSilhouetteEditor ||
+          Boolean(paywallFeature)
         }
         onLockedFeature={(feature) => {
           openPaywall(
@@ -765,14 +784,24 @@ export function TagDashboardShell({
             document.body,
           )
         : null}
+      {portalReady && needsPrimaryGoal ? (
+        <PrimaryGoalPicker
+          onSelect={(goal) => {
+            writePrimaryGoal(goal);
+            setPrimaryGoal(goal);
+          }}
+        />
+      ) : null}
       <DashboardOnboardingTour
         enabled={
           mode === "dashboard" &&
           !showSilhouetteEditor &&
+          !needsPrimaryGoal &&
           (forceTour || deferSilhouetteForTour)
         }
         role={isOwner ? "owner" : "contributor"}
         force={forceTour}
+        primaryGoal={primaryGoal}
         onOpenChange={handleTourOpenChange}
         onSettled={handleTourSettled}
       />

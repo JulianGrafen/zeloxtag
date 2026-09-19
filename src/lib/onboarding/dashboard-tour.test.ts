@@ -66,6 +66,34 @@ describe("dashboard tour persistence", () => {
     expect(owner.at(-1)?.id).toBe("account");
   });
 
+  it("reorders owner steps and welcome copy by primary goal", () => {
+    const werterhalt = getDashboardTourSteps("owner", "werterhalt");
+    expect(werterhalt.map((s) => s.id)).toEqual([
+      "welcome",
+      "header",
+      "timeline",
+      "showcase",
+      "scan",
+      "invoices",
+      "werkstatt",
+      "account",
+    ]);
+    expect(werterhalt[0]?.body).toContain("Werterhalt");
+
+    const showcase = getDashboardTourSteps("owner", "showcase");
+    expect(showcase[1]?.id).toBe("header");
+    expect(showcase[2]?.id).toBe("showcase");
+    expect(showcase[0]?.body).toContain("Visitenkarte");
+
+    const documents = getDashboardTourSteps("owner", "documents");
+    expect(documents[2]?.id).toBe("scan");
+    expect(documents[0]?.body).toContain("einem Ort");
+
+    expect(getDashboardTourSteps("contributor", "werterhalt").some((s) => s.id === "scan")).toBe(
+      true,
+    );
+  });
+
   it("treats missing window as completed to avoid SSR flash", () => {
     vi.unstubAllGlobals();
     expect(hasCompletedDashboardTour()).toBe(true);

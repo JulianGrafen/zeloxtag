@@ -2,6 +2,8 @@
  * First-login dashboard onboarding tour — step catalog + persistence.
  */
 
+import type { ZeloxPrimaryGoal } from "@/lib/onboarding/primary-goal";
+
 export const DASHBOARD_TOUR_STORAGE_KEY = "zt_dashboard_tour_v1";
 export const DASHBOARD_TOUR_VERSION = 2;
 export const DASHBOARD_TOUR_QUERY = "tour";
@@ -125,10 +127,83 @@ const CONTRIBUTOR_STEPS: DashboardTourStep[] = [
   },
 ];
 
+const OWNER_STEP_ORDER_BY_GOAL: Record<ZeloxPrimaryGoal, string[]> = {
+  werterhalt: [
+    "welcome",
+    "header",
+    "timeline",
+    "showcase",
+    "scan",
+    "invoices",
+    "werkstatt",
+    "account",
+  ],
+  showcase: [
+    "welcome",
+    "header",
+    "showcase",
+    "scan",
+    "invoices",
+    "timeline",
+    "werkstatt",
+    "account",
+  ],
+  documents: [
+    "welcome",
+    "header",
+    "scan",
+    "invoices",
+    "timeline",
+    "werkstatt",
+    "showcase",
+    "account",
+  ],
+};
+
+const OWNER_WELCOME_BY_GOAL: Record<ZeloxPrimaryGoal, string> = {
+  werterhalt:
+    "Du legst Wert auf Werterhalt — kurz die Stellen für Historie, Showcase und Scan.",
+  showcase:
+    "Dein Auto als Visitenkarte — kurz Showcase, Scan und Akte.",
+  documents:
+    "Alles an einem Ort — kurz Scan, Belege und Historie.",
+};
+
+function orderOwnerSteps(
+  steps: DashboardTourStep[],
+  goal: ZeloxPrimaryGoal,
+): DashboardTourStep[] {
+  const byId = new Map(steps.map((step) => [step.id, step]));
+  const ordered: DashboardTourStep[] = [];
+  for (const id of OWNER_STEP_ORDER_BY_GOAL[goal]) {
+    const step = byId.get(id);
+    if (step) ordered.push(step);
+  }
+  for (const step of steps) {
+    if (!ordered.some((s) => s.id === step.id)) ordered.push(step);
+  }
+  return ordered;
+}
+
+function personalizeWelcome(
+  steps: DashboardTourStep[],
+  goal: ZeloxPrimaryGoal,
+): DashboardTourStep[] {
+  return steps.map((step) =>
+    step.id === "welcome"
+      ? { ...step, body: OWNER_WELCOME_BY_GOAL[goal] }
+      : step,
+  );
+}
+
 export function getDashboardTourSteps(
   role: DashboardTourRole,
+  primaryGoal?: ZeloxPrimaryGoal | null,
 ): DashboardTourStep[] {
-  return role === "owner" ? OWNER_STEPS : CONTRIBUTOR_STEPS;
+  if (role !== "owner") return CONTRIBUTOR_STEPS;
+  const base = [...OWNER_STEPS];
+  if (!primaryGoal) return base;
+  return personalizeWelcome(orderOwnerSteps(base, primaryGoal), primaryGoal);
 }
 
 /** Vehicle dashboard after first registration (claim with new account). */

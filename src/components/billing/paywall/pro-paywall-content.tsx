@@ -2,11 +2,13 @@
 
 import { BenefitList } from "@/components/billing/paywall/benefit-list";
 import { PaywallModalFold } from "@/components/billing/paywall/paywall-modal-fold";
+import { PaywallResaleValueChart } from "@/components/billing/paywall/paywall-resale-value-chart";
 import { PricingCards } from "@/components/billing/paywall/pricing-cards";
-import { TrialBadge } from "@/components/billing/paywall/trial-badge";
 import { TrialTimeline } from "@/components/billing/paywall/trial-timeline";
+import type { PaywallVisualKind } from "@/lib/billing/paywall-personalization";
 import {
   PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER,
+  PRO_PAYWALL_MODAL_BENEFITS,
   PRO_PAYWALL_MODAL_SUBLINE,
   PRO_PAYWALL_VALUE_FOOTNOTE,
   type ProBillingInterval,
@@ -28,6 +30,12 @@ type ProPaywallContentProps = {
   statusMessage?: React.ReactNode;
   belowFoldFooter?: React.ReactNode;
   ctaSlot: React.ReactNode;
+  /** Modal personalization — section layout keeps defaults when omitted. */
+  benefits?: readonly string[];
+  highlightLeadBenefit?: boolean;
+  visualKind?: PaywallVisualKind;
+  visualAriaLabel?: string;
+  valueFootnote?: string;
 };
 
 export function ProPaywallContent({
@@ -42,12 +50,17 @@ export function ProPaywallContent({
   statusMessage,
   belowFoldFooter,
   ctaSlot,
+  benefits = PRO_PAYWALL_MODAL_BENEFITS,
+  highlightLeadBenefit = false,
+  visualKind = "resale_chart",
+  visualAriaLabel,
+  valueFootnote = PRO_PAYWALL_VALUE_FOOTNOTE,
 }: ProPaywallContentProps) {
   const compact = true;
   const isModal = layout === "modal";
   const isStacked = layout === "section";
-  const showTrialBadge = showConversionExtras;
   const contentWidth = cn(isModal ? "mx-auto w-full max-w-lg" : "");
+  const modalPersonalized = highlightLeadBenefit;
 
   return (
     <div
@@ -85,12 +98,6 @@ export function ProPaywallContent({
             </p>
           ) : null}
 
-          {showTrialBadge ? (
-            <div className={cn("mt-3", contentWidth)}>
-              <TrialBadge compact />
-            </div>
-          ) : null}
-
           {statusMessage ? <div className="mt-2.5">{statusMessage}</div> : null}
         </div>
       </div>
@@ -105,7 +112,15 @@ export function ProPaywallContent({
           >
             <PaywallModalFold
               className="min-h-0 flex-1"
-              benefits={<BenefitList compact={compact} />}
+              visualKind={visualKind}
+              visualAriaLabel={visualAriaLabel}
+              benefits={
+                <BenefitList
+                  compact={compact}
+                  items={benefits}
+                  highlightFirst={modalPersonalized}
+                />
+              }
               pricing={
                 <PricingCards
                   interval={interval}
@@ -116,13 +131,14 @@ export function ProPaywallContent({
                 />
               }
               timeline={<TrialTimeline compact={compact} />}
-              bottomNote={PRO_PAYWALL_VALUE_FOOTNOTE}
+              bottomNote={valueFootnote}
               footer={belowFoldFooter}
             />
           </div>
         ) : (
           <div className="flex flex-col gap-5">
             <BenefitList compact={compact} />
+            <PaywallResaleValueChart compact />
             <PricingCards
               interval={interval}
               onIntervalChange={onIntervalChange}

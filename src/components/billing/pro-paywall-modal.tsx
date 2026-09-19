@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { X } from "lucide-react";
 
 import { startStripeCheckoutAction } from "@/actions/stripe-checkout";
@@ -9,13 +9,16 @@ import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
 import { setPaywallOpen } from "@/lib/billing/paywall-open-state";
 import {
+  getPaywallPersonalization,
+  resolvePaywallGoal,
+} from "@/lib/billing/paywall-personalization";
+import {
   PRO_PAYWALL_DISMISS_LABEL,
-  PRO_PAYWALL_MODAL_HEADLINE,
-  PRO_PAYWALL_MODAL_MICROCOPY,
   PRO_PLAN_CHECKOUT_HEADLINE,
   cloudAboHref,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
+import { readPrimaryGoal } from "@/lib/onboarding/primary-goal";
 import {
   type FeatureFlag,
   type PaywallVariant,
@@ -63,7 +66,16 @@ export function ProPaywallModal({
     return () => setPaywallOpen(false);
   }, [open, feature]);
 
-  if (!open || !feature) return null;
+  const personalization = useMemo(() => {
+    if (!open || !feature) return null;
+    const goal = resolvePaywallGoal({
+      primaryGoal: readPrimaryGoal(),
+      feature,
+    });
+    return getPaywallPersonalization({ goal, variant });
+  }, [open, feature, variant]);
+
+  if (!open || !feature || !personalization) return null;
 
   const aboHref = cloudAboHref(tagUuid);
   const successPath = `/v/${tagUuid}`;
@@ -119,14 +131,20 @@ export function ProPaywallModal({
               interval={interval}
               onIntervalChange={setInterval}
               showAnnualPlan={showAnnualPlan}
-              headline={PRO_PAYWALL_MODAL_HEADLINE}
+              headline={personalization.headline}
               headlineId="pro-paywall-title"
               variant={variant}
+              benefits={personalization.benefits}
+              highlightLeadBenefit
+              visualKind={personalization.visualKind}
+              visualAriaLabel={personalization.visualAriaLabel}
+              valueFootnote={personalization.footnote}
               ctaSlot={
                 <StickyPaywallCta
+                  label={personalization.ctaLabel}
                   pending={pending}
                   error={error}
-                  microCopy={PRO_PAYWALL_MODAL_MICROCOPY}
+                  microCopy={personalization.stickyMicroCopy}
                   dismissLabel={PRO_PAYWALL_DISMISS_LABEL}
                   onCheckout={handleCheckout}
                   onDismiss={onClose}

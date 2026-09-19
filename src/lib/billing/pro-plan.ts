@@ -53,11 +53,11 @@ export const PRO_PAYWALL_VALUE_FOOTNOTE =
   "Weniger als eine halbe Tankfüllung für ein ganzes Jahr Schutz und Dokumentation deines Builds.";
 
 export const PRO_PAYWALL_MODAL_BENEFITS = [
-  "Werterhalt durch lückenlose Dokumentation: Eine lückenlose Dokumentation bringt beim Wiederverkauf eines Autos im Durchschnitt 10 bis 20 Prozent mehr Erlös.",
-  "Gutachten-Tresor: ABEs, Teilegutachten & §21-Eintragungen in Sekunden griffbereit.",
-  "QR-Flex auf Treffen: Haube auf, scannen lassen. Zeig Mod-Liste, Dyno-Sheets & Soundfiles direkt vor Ort.",
-  "Keine Tipparbeit: KI fotografiert Rechnungen ab und ordnet Preise, Teile und Daten automatisch zu.",
-  "Schluss mit „Was letzte Preis?“: Generiere per Klick ein PDF-Exposé, das jeden Cent deiner Umbauten schwarz auf weiß belegt.",
+  "Werterhalt: Lückenlose Dokumentation — im Schnitt 10–20 % mehr beim Verkauf.",
+  "Gutachten-Tresor: ABEs, Teilegutachten & §21 griffbereit.",
+  "QR auf Treffen: Mod-Liste, Dyno & Sound live am Auto zeigen.",
+  "Keine Tipparbeit: Rechnung fotografieren — KI ordnet Preise & Teile zu.",
+  "Verkaufs-Exposé: PDF-Exposé deiner Umbauten — per Klick.",
 ] as const;
 
 export type ProPaywallPricingAnchor = {

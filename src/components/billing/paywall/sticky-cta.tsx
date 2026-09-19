@@ -49,14 +49,16 @@ export function StickyPaywallCta({
         >
           {pending ? "Weiter zu Stripe…" : label}
         </Button>
-        <p
-          className={cn(
-            "text-center leading-snug text-[color:var(--vd-muted)]",
-            inline ? "mt-2 text-[0.66rem]" : "mt-2 text-[0.72rem] leading-relaxed",
-          )}
-        >
-          {microCopy}
-        </p>
+        {microCopy?.trim() ? (
+          <p
+            className={cn(
+              "text-center leading-snug text-[color:var(--vd-muted)]",
+              inline ? "mt-2 text-[0.66rem]" : "mt-2 text-[0.72rem] leading-relaxed",
+            )}
+          >
+            {microCopy}
+          </p>
+        ) : null}
         {error ? (
           <p
             className={cn(

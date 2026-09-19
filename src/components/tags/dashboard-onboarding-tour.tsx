@@ -12,12 +12,14 @@ import {
   wantsForcedDashboardTour,
   type DashboardTourRole,
 } from "@/lib/onboarding/dashboard-tour";
+import type { ZeloxPrimaryGoal } from "@/lib/onboarding/primary-goal";
 
 type DashboardOnboardingTourProps = {
   enabled: boolean;
   role: DashboardTourRole;
   /** First registration after claim (`?tour=1` or pending tour cookie). */
   force?: boolean;
+  primaryGoal?: ZeloxPrimaryGoal | null;
   onSettled?: () => void;
   onOpenChange?: (open: boolean) => void;
 };
@@ -30,12 +32,16 @@ export function DashboardOnboardingTour({
   enabled,
   role,
   force = false,
+  primaryGoal = null,
   onSettled,
   onOpenChange,
 }: DashboardOnboardingTourProps) {
   const [open, setOpen] = useState(false);
   const [forceTour, setForceTour] = useState(force);
-  const catalog = useMemo(() => getDashboardTourSteps(role), [role]);
+  const catalog = useMemo(
+    () => getDashboardTourSteps(role, primaryGoal),
+    [role, primaryGoal],
+  );
   const [steps, setSteps] = useState(catalog);
 
   useEffect(() => {

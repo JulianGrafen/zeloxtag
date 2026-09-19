@@ -101,6 +101,7 @@ export function ProPaywallSection({
           <>
             <StickyPaywallCta
               label={proCheckoutButtonLabel(audience, interval)}
+              microCopy=""
               pending={pending}
               error={error}
               fixed={false}
