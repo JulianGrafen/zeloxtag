@@ -93,5 +93,7 @@ export interface VehicleDashboardProps {
   onSilhouetteProxyLoad?: () => void;
   /** Optional notice above the tile grid (e.g. Pro paywall). */
   banner?: ReactNode;
+  /** Extra tiles appended to the grid (e.g. garage switcher). */
+  extraTiles?: ReactNode;
   className?: string;
 }

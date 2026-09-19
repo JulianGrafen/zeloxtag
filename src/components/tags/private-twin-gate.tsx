@@ -3,6 +3,7 @@ import { Lock, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScanContent } from "@/components/layout/scan-content";
 import { signOutToLoginForm } from "@/lib/auth/actions";
+import type { GarageVehicle } from "@/lib/garage/types";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 type PrivateTwinGateProps = {
@@ -10,6 +11,8 @@ type PrivateTwinGateProps = {
   vehicleLabel: string;
   ownerName: string;
   sessionEmail: string | null;
+  /** Signed-in user's own vehicles — switch without logout. */
+  myGarage?: GarageVehicle[];
 };
 
 /**
@@ -21,8 +24,10 @@ export function PrivateTwinGate({
   vehicleLabel,
   ownerName,
   sessionEmail,
+  myGarage = [],
 }: PrivateTwinGateProps) {
   const loginHref = `/login?next=${encodeURIComponent(`/v/${tagUuid}`)}`;
+  const ownedElsewhere = myGarage.filter((entry) => entry.tagUuid !== tagUuid);
 
   return (
     <ScanContent className="pb-12">
@@ -52,9 +57,30 @@ export function PrivateTwinGate({
               </span>
               .
             </p>
+            {ownedElsewhere.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-[0.82rem] font-medium text-[color:var(--vd-text)]">
+                  Zu deinem Fahrzeug wechseln — ohne Abmelden:
+                </p>
+                <ul className="space-y-2">
+                  {ownedElsewhere.map((entry) => (
+                    <li key={entry.vehicleId}>
+                      <PressableLink
+                        href={`/v/${entry.tagUuid}`}
+                        variant="button"
+                        className="claim-cta w-full justify-center no-underline"
+                      >
+                        {entry.label}
+                        {entry.year != null ? ` · ${entry.year}` : ""}
+                      </PressableLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <form action={signOutToLoginForm}>
               <input type="hidden" name="next" value={`/v/${tagUuid}`} />
-              <Button type="submit">
+              <Button type="submit" variant={ownedElsewhere.length > 0 ? "outline" : "default"}>
                 <LogIn className="h-4 w-4" aria-hidden />
                 Mit Eigentümer-Konto anmelden
               </Button>

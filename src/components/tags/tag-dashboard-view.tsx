@@ -35,6 +35,8 @@ import {
   isDemoActiveTag,
 } from "@/lib/tags/demo-showcase";
 
+import { GarageSwitcherTile } from "@/components/garage/garage-switcher-tile";
+
 import { DashboardScanFab } from "./dashboard-scan-fab";
 
 interface TagDashboardViewProps {
@@ -365,6 +367,11 @@ export function TagDashboardView({
       <VehicleDashboard
         data={{ ...data, tiles }}
         className={canScan ? "pb-24" : undefined}
+        extraTiles={
+          isOwner && !demoMode && !demoShowcase ? (
+            <GarageSwitcherTile />
+          ) : null
+        }
         onTileClick={(tileId) => {
           const feature = featureForDashboardTile(tileId);
           if (feature && isProOnlyFeature(feature)) {

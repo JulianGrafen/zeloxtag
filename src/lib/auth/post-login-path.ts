@@ -3,6 +3,7 @@ import {
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { rememberActiveTagUuid } from "@/lib/garage/remember-active-tag";
 import { createClient } from "@/lib/supabase/server";
 import {
   DEMO_SHOWCASE_ROUTES,
@@ -315,14 +316,7 @@ async function resolveViaContributorGrant(
 
 /** Cache tag on the auth user so the next login skips the DB round-trip. */
 async function rememberActiveTag(path: string): Promise<void> {
-  const tagUuid = path.startsWith("/v/") ? path.slice(3) : null;
+  const tagUuid = path.startsWith("/v/") ? path.slice(3).split("/")[0] : null;
   if (!tagUuid || !UUID_RE.test(tagUuid) || isDemoActiveTag(tagUuid)) return;
-  try {
-    const supabase = await createClient();
-    await supabase.auth.updateUser({
-      data: { active_tag_uuid: tagUuid },
-    });
-  } catch {
-    /* non-fatal */
-  }
+  await rememberActiveTagUuid(tagUuid);
 }

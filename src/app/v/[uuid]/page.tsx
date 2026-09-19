@@ -44,6 +44,8 @@ import {
 } from "@/lib/onboarding/dashboard-tour";
 import { hasPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
+import { fetchUserGarage } from "@/lib/garage/fetch-user-garage";
+import { createClient } from "@/lib/supabase/server";
 import type { Vehicle } from "@/types/database";
 
 interface TagScanPageProps {
@@ -284,6 +286,11 @@ export default async function TagScanPage({
         );
       }
 
+      const myGarage =
+        user != null
+          ? await fetchUserGarage(await createClient())
+          : [];
+
       return (
         <AppShell showNavbar={false}>
           <PrivateTwinGate
@@ -291,6 +298,7 @@ export default async function TagScanPage({
             vehicleLabel={vehicleTitle(vehicle.make, vehicle.model, vehicle.year)}
             ownerName={access.ownerName}
             sessionEmail={access.sessionEmail}
+            myGarage={myGarage}
           />
         </AppShell>
       );

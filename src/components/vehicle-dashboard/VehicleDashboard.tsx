@@ -16,6 +16,7 @@ export function VehicleDashboard({
   onEditVehicleImage,
   onSilhouetteProxyLoad,
   banner,
+  extraTiles,
   className = "",
 }: VehicleDashboardProps) {
   const tiles = data.tiles ?? buildDefaultTiles(data);
@@ -56,6 +57,7 @@ export function VehicleDashboard({
           {tiles.map((tile) => (
             <DashboardTile key={tile.id} tile={tile} onClick={onTileClick} />
           ))}
+          {extraTiles}
         </div>
       </section>
 
