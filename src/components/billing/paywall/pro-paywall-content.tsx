@@ -3,6 +3,7 @@
 import { BenefitList } from "@/components/billing/paywall/benefit-list";
 import { PaywallModalFold } from "@/components/billing/paywall/paywall-modal-fold";
 import { PricingCards } from "@/components/billing/paywall/pricing-cards";
+import { TrialBadge } from "@/components/billing/paywall/trial-badge";
 import { TrialTimeline } from "@/components/billing/paywall/trial-timeline";
 import {
   PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER,
@@ -44,7 +45,10 @@ export function ProPaywallContent({
 }: ProPaywallContentProps) {
   const compact = true;
   const isModal = layout === "modal";
-  const isStacked = layout === "section" || layout === "settings";
+  const isSettings = layout === "settings";
+  const isStacked = layout === "section" || isSettings;
+  const showTrialBadge =
+    showConversionExtras && !isSettings;
   const contentWidth = cn(isModal ? "mx-auto w-full max-w-lg" : "");
 
   return (
@@ -81,6 +85,12 @@ export function ProPaywallContent({
             <p className="mt-2.5 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
               {PRO_PAYWALL_MODAL_SUBLINE}
             </p>
+          ) : null}
+
+          {showTrialBadge ? (
+            <div className={cn("mt-3", contentWidth)}>
+              <TrialBadge compact />
+            </div>
           ) : null}
 
           {statusMessage ? <div className="mt-2.5">{statusMessage}</div> : null}
@@ -143,7 +153,12 @@ export function ProPaywallContent({
         </div>
       )}
 
-      <div className={cn("relative z-20 shrink-0", isModal ? "mt-auto px-4 pb-2 pt-4" : "")}>
+      <div
+        className={cn(
+          "relative z-20 shrink-0",
+          isModal ? "mt-auto" : "mt-2",
+        )}
+      >
         {ctaSlot}
       </div>
     </div>

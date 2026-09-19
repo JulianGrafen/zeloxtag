@@ -28,7 +28,7 @@ export function PaywallModalFold({
     <div className={cn("flex min-h-0 flex-1 flex-col gap-2.5", className)}>
       <div
         className={cn(
-          "max-h-[min(17dvh,7.5rem)] shrink-0 overflow-y-auto overscroll-contain",
+          "max-h-[min(22dvh,9rem)] shrink-0 overflow-y-auto overscroll-contain",
           "[-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]",
         )}
         aria-label="Vorteile scrollen"

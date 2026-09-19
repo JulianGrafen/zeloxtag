@@ -101,12 +101,12 @@ export function ProPaywallModal({
         onClick={onClose}
       />
 
-      <div className="relative z-10 flex h-full max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-[color:var(--vd-surface)]/92 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)] backdrop-blur-2xl supports-[backdrop-filter]:bg-[color:var(--vd-surface)]/88">
+      <div className="relative z-10 flex h-full max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)]">
         <button
           type="button"
           onClick={onClose}
           aria-label="Schließen"
-          className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-text)] backdrop-blur-md transition hover:bg-white/10"
+          className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/90 text-[color:var(--vd-text)] shadow-sm backdrop-blur-md transition hover:bg-[color:var(--vd-surface)]"
         >
           <X className="h-5 w-5" aria-hidden />
         </button>

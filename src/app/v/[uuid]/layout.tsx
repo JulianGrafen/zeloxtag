@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 
-import { GarageOwnerChrome } from "@/components/garage/garage-owner-chrome";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { fetchUserGarage } from "@/lib/garage/fetch-user-garage";
 import { GarageProvider } from "@/lib/garage/garage-context";
@@ -42,7 +41,7 @@ export default async function VehicleTagLayout({
         initialActiveVehicleId={activeVehicleId}
         routeTagUuid={routeTagUuid}
       >
-        <GarageOwnerChrome>{children}</GarageOwnerChrome>
+        {children}
       </GarageProvider>
     </Suspense>
   );

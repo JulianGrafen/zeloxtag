@@ -42,8 +42,8 @@ export function PricingCard({
         "[transition-timing-function:var(--vd-ease-spring)]",
         compact ? (selected ? "px-3.5 py-3.5" : "px-3 py-3") : "px-4 py-3.5",
         selected
-          ? "z-10 scale-[1.06] border-blue-600 bg-blue-600/10 ring-2 ring-blue-600 shadow-[var(--vd-shadow)]"
-          : "scale-[0.97] border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-text)] opacity-90 hover:scale-[0.99] hover:border-neutral-400 hover:bg-white/5 hover:opacity-100",
+          ? "z-10 scale-[1.06] border-blue-600 bg-blue-50/90 ring-2 ring-blue-600 shadow-[var(--vd-shadow)]"
+          : "scale-[0.97] border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] opacity-90 hover:scale-[0.99] hover:border-neutral-400 hover:opacity-100",
       )}
     >
       {interval === "monthly" && shinePosition ? (

@@ -10,8 +10,8 @@ export function TrialBadge({ compact = false }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "vd-anim-header inline-flex w-full flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-900",
-        compact ? "mt-2 px-3 py-2" : "mt-4 px-3.5 py-2.5",
+        "inline-flex w-full flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-900",
+        compact ? "mt-0 px-3 py-2" : "mt-4 px-3.5 py-2.5",
       )}
       aria-label={`${PRO_TRIAL_BADGE_LABEL}. ${PRO_TRIAL_NO_COMMITMENT}`}
     >

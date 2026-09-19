@@ -43,12 +43,13 @@ export function DashboardScanCta({
 }: Omit<DashboardScanCtaProps, "hidden">) {
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
   const buttonClassName = cn(
-    "w-full gap-2 bg-transparent py-4 px-[1.15rem] text-[0.92rem] font-semibold shadow-none",
-    "text-[color:var(--vd-text,#0a0a0a)]",
-    scanLocked && "text-[color:var(--vd-muted,#737373)]",
+    "inline-flex w-full items-center justify-center gap-2 bg-transparent py-4 px-[1.15rem] text-[0.92rem] font-semibold shadow-none",
+    scanLocked
+      ? "text-[color:var(--vd-muted,#737373)]"
+      : "text-white drop-shadow-md",
   );
   const glassClassName = cn(
-    "w-full shadow-[var(--vd-shadow)] [&_.glass-surface__content]:p-0",
+    "w-full shadow-[0_4px_14px_rgba(0,0,0,0.18)] [&_.glass-surface__content]:p-0",
     scanLocked && "opacity-85 saturate-50",
   );
 
@@ -95,15 +96,18 @@ export function DashboardScanCta({
       <GlassSurface
         width="100%"
         height="auto"
-        borderRadius={14}
-        backgroundOpacity={scanLocked ? 0.06 : 0.12}
-        brightness={58}
-        opacity={0.92}
-        blur={11}
-        displace={0.35}
+        borderRadius={16}
+        backgroundOpacity={scanLocked ? 0.12 : 0.22}
+        brightness={52}
+        opacity={0.93}
+        blur={15}
+        displace={0.5}
         distortionScale={-180}
+        redOffset={0}
+        greenOffset={10}
+        blueOffset={20}
         mixBlendMode="screen"
-        saturation={1.6}
+        saturation={1.9}
         className={glassClassName}
       >
         {scanControl}

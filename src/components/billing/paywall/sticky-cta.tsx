@@ -31,18 +31,18 @@ export function StickyPaywallCta({
   return (
     <div
       className={cn(
-        "z-20 px-4",
+        "z-20 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl",
         inline
-          ? "shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1"
-          : "fixed inset-x-0 bottom-0 border-t border-[color:var(--vd-border)]/60 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl",
+          ? "shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
+          : "fixed inset-x-0 bottom-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2",
       )}
     >
       <div className="mx-auto w-full max-w-lg">
         <Button
           type="button"
           className={cn(
-            "paywall-cta-pulse w-full font-semibold",
-            inline ? "h-10 text-[0.88rem]" : "h-12 text-[0.95rem]",
+            "claim-cta paywall-cta-pulse w-full shadow-[var(--vd-shadow-sm)]",
+            inline ? "min-h-10 py-3 text-[0.88rem]" : "min-h-12 py-3.5 text-[0.95rem]",
           )}
           disabled={pending}
           onClick={onCheckout}
