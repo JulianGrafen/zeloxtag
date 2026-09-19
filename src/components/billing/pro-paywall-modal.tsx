@@ -89,7 +89,7 @@ export function ProPaywallModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-md"
+      className="fixed inset-0 z-[80] bg-[color:var(--paywall-modal-scrim)] backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-labelledby="pro-paywall-title"

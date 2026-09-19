@@ -42,8 +42,8 @@ export function PricingCard({
         "[transition-timing-function:var(--vd-ease-spring)]",
         compact ? (selected ? "px-3.5 py-3.5" : "px-3 py-3") : "px-4 py-3.5",
         selected
-          ? "z-10 scale-[1.06] border-blue-600 bg-blue-50/90 ring-2 ring-blue-600 shadow-[var(--vd-shadow)]"
-          : "scale-[0.97] border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] opacity-90 hover:scale-[0.99] hover:border-neutral-400 hover:opacity-100",
+          ? "z-10 scale-[1.06] border-[color:var(--paywall-pricing-selected-border)] bg-[color:var(--paywall-pricing-selected-bg)] text-[color:var(--vd-text)] ring-2 ring-[color:var(--paywall-pricing-selected-border)] shadow-[var(--vd-shadow)]"
+          : "scale-[0.97] border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] opacity-90 hover:scale-[0.99] hover:border-[color:var(--paywall-pricing-hover-border)] hover:opacity-100",
       )}
     >
       {interval === "monthly" && shinePosition ? (
@@ -67,8 +67,8 @@ export function PricingCard({
               "inline-flex rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.08em]",
               compact ? "text-[0.58rem]" : "text-[0.62rem]",
               selected
-                ? "bg-blue-600 text-white"
-                : "bg-neutral-900 text-white",
+                ? "bg-[color:var(--paywall-badge-primary-bg)] text-white"
+                : "bg-[color:var(--paywall-badge-neutral-bg)] text-[color:var(--primary-foreground)]",
             )}
           >
             {compact ? "Beliebteste Wahl" : badge}
@@ -79,8 +79,8 @@ export function PricingCard({
                 "inline-flex rounded-full px-2.5 py-0.5 font-semibold uppercase tracking-[0.06em]",
                 compact ? "text-[0.64rem]" : "text-[0.7rem]",
                 selected
-                  ? "bg-emerald-600 text-white"
-                  : "bg-emerald-500/15 text-emerald-800 ring-1 ring-emerald-500/25",
+                  ? "bg-[color:var(--paywall-benefit-icon-bg)] text-[color:var(--paywall-benefit-icon-fg)]"
+                  : "bg-[color:var(--paywall-badge-discount-bg)] text-[color:var(--paywall-badge-discount-text)] ring-1 ring-[color:var(--paywall-badge-discount-ring)]",
               )}
             >
               {PRO_ANNUAL_DISCOUNT_LABEL}
@@ -95,7 +95,9 @@ export function PricingCard({
         className={cn(
           "block font-semibold uppercase tracking-[0.12em]",
           compact ? "text-[0.62rem]" : "text-[0.72rem]",
-          selected ? "text-blue-800/80" : "text-[color:var(--vd-muted)]",
+          selected
+            ? "text-[color:var(--paywall-pricing-selected-muted)]"
+            : "text-[color:var(--vd-muted)]",
         )}
       >
         {title}
@@ -107,7 +109,7 @@ export function PricingCard({
             "mt-0.5 block line-through",
             compact ? "text-[0.68rem]" : "text-[0.78rem] mt-1",
             selected
-              ? "text-blue-800/50"
+              ? "text-[color:var(--paywall-pricing-selected-subtle)]"
               : "text-[color:var(--vd-muted)]",
           )}
         >
@@ -129,7 +131,9 @@ export function PricingCard({
           className={cn(
             "mt-0.5 block leading-snug",
             compact ? "text-[0.66rem]" : "text-[0.74rem]",
-            selected ? "text-blue-900/80" : "text-[color:var(--vd-muted)]",
+            selected
+              ? "text-[color:var(--paywall-pricing-selected-strong)]"
+              : "text-[color:var(--vd-muted)]",
           )}
         >
           {anchor.monthlyEquivalent}
@@ -141,7 +145,9 @@ export function PricingCard({
           className={cn(
             "mt-0.5 block leading-snug",
             compact ? "text-[0.64rem]" : "text-[0.72rem]",
-            selected ? "text-blue-900/70" : "text-[color:var(--vd-muted)]",
+            selected
+              ? "text-[color:var(--paywall-pricing-selected-strong)]"
+              : "text-[color:var(--vd-muted)]",
           )}
         >
           {anchor.flexSubline}
@@ -152,7 +158,9 @@ export function PricingCard({
         <span
           className={cn(
             "mt-2 block text-[0.72rem] font-medium leading-snug",
-            selected ? "text-blue-800" : "text-emerald-700",
+            selected
+              ? "text-[color:var(--paywall-pricing-selected-accent)]"
+              : "text-[color:var(--paywall-pricing-trial-unselected)]",
           )}
         >
           {anchor.trialLabel}

@@ -59,7 +59,7 @@ export function ProPaywallContent({
       <div className={cn("shrink-0", isModal ? "px-4 pt-10" : "")}>
         <div className={cn("vd-anim-header w-full", contentWidth)}>
           {showConversionExtras && variant === "free_scan_exhausted" ? (
-            <p className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-amber-900 uppercase">
+            <p className="inline-flex rounded-full bg-[color:var(--paywall-kicker-bg)] px-3 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-[color:var(--paywall-kicker-text)] uppercase">
               {PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER}
             </p>
           ) : null}

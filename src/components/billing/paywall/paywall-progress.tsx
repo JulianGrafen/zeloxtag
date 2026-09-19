@@ -39,10 +39,10 @@ export function PaywallProgress({
         aria-valuemax={100}
         aria-valuenow={percent}
         aria-label={label}
-        className="h-2 overflow-hidden rounded-full bg-black/8"
+        className="h-2 overflow-hidden rounded-full bg-[color:var(--paywall-progress-track)]"
       >
         <div
-          className="h-full rounded-full bg-[#0a0a0a] transition-[width] duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="h-full rounded-full bg-[color:var(--paywall-progress-fill)] transition-[width] duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{ width: `${percent}%` }}
         />
       </div>

@@ -42,12 +42,12 @@ export async function MembershipStatusCard({
           Mitgliedschaft
         </h2>
         {justLinked || checkoutState === "success" ? (
-          <p className="mt-2 text-[0.82rem] text-emerald-800">
+          <p className="mt-2 text-[0.82rem] text-[color:var(--vd-alert-success-text)]">
             Mitgliedschaft ist aktiv.
           </p>
         ) : null}
         {claimError ? (
-          <p className="mt-2 text-[0.82rem] text-red-700" role="alert">
+          <p className="mt-2 text-[0.82rem] text-[color:var(--vd-alert-error-text)]" role="alert">
             {claimError}
           </p>
         ) : null}
@@ -78,7 +78,7 @@ export async function MembershipStatusCard({
       statusMessage={
         <>
           {justLinked ? (
-            <p className="text-[0.82rem] text-emerald-800">
+            <p className="text-[0.82rem] text-[color:var(--vd-alert-success-text)]">
               Mitgliedschaft ist aktiv.
             </p>
           ) : null}
@@ -93,7 +93,7 @@ export async function MembershipStatusCard({
             </p>
           ) : null}
           {claimError ? (
-            <p className="text-[0.82rem] text-red-700" role="alert">
+            <p className="text-[0.82rem] text-[color:var(--vd-alert-error-text)]" role="alert">
               {claimError}
             </p>
           ) : null}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
+import { useTheme } from "next-themes";
 
 import GlassSurface from "@/components/GlassSurface";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
@@ -41,15 +42,22 @@ export function DashboardScanCta({
   scanLocked = false,
   onScanLocked,
 }: Omit<DashboardScanCtaProps, "hidden">) {
+  const { resolvedTheme } = useTheme();
+  const [themeReady, setThemeReady] = useState(false);
+  useEffect(() => {
+    setThemeReady(true);
+  }, []);
+
+  const isDark = themeReady && resolvedTheme === "dark";
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
   const buttonClassName = cn(
     "inline-flex w-full items-center justify-center gap-2 bg-transparent py-4 px-[1.15rem] text-[0.92rem] font-semibold shadow-none",
     scanLocked
-      ? "text-[color:var(--vd-muted,#737373)]"
-      : "text-[color:var(--vd-text,#0a0a0a)]",
+      ? "text-[color:var(--vd-muted)]"
+      : "text-[color:var(--vd-text)]",
   );
   const glassClassName = cn(
-    "scan-glass-cta w-full shadow-[0_4px_14px_rgba(0,0,0,0.18)] [&_.glass-surface__content]:p-0",
+    "scan-glass-cta w-full shadow-[var(--scan-glass-cta-shadow)] [&_.glass-surface__content]:p-0",
     scanLocked && "opacity-85 saturate-50",
   );
 
@@ -98,17 +106,19 @@ export function DashboardScanCta({
         height="auto"
         simBackground="fab-gradient"
         borderRadius={16}
-        backgroundOpacity={scanLocked ? 0.12 : 0.22}
-        brightness={52}
-        opacity={0.93}
+        backgroundOpacity={
+          scanLocked ? 0.1 : isDark ? 0.14 : 0.22
+        }
+        brightness={isDark ? 70 : 52}
+        opacity={isDark ? 0.9 : 0.93}
         blur={15}
         displace={0.5}
         distortionScale={-180}
         redOffset={0}
         greenOffset={10}
         blueOffset={20}
-        mixBlendMode="screen"
-        saturation={1.9}
+        mixBlendMode={isDark ? "normal" : "screen"}
+        saturation={isDark ? 1.45 : 1.9}
         className={glassClassName}
       >
         {scanControl}

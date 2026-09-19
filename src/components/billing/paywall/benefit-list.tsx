@@ -44,7 +44,7 @@ export function BenefitList({
           )}
         >
           <span
-            className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white"
+            className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color:var(--paywall-benefit-icon-bg)] text-[color:var(--paywall-benefit-icon-fg)]"
             aria-hidden
           >
             <Check className="h-3 w-3" strokeWidth={3} />

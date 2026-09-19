@@ -31,7 +31,7 @@ export function StickyPaywallCta({
   return (
     <div
       className={cn(
-        "z-20 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl",
+        "z-20 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 shadow-[var(--paywall-sticky-footer-shadow)] backdrop-blur-xl",
         inline
           ? "shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
           : "fixed inset-x-0 bottom-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2",
@@ -60,7 +60,7 @@ export function StickyPaywallCta({
         {error ? (
           <p
             className={cn(
-              "text-center text-red-700",
+              "text-center text-[color:var(--vd-alert-error-text)]",
               inline ? "mt-1 text-[0.68rem]" : "mt-2 text-[0.74rem]",
             )}
             role="alert"
