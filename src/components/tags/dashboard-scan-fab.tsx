@@ -46,7 +46,7 @@ export function DashboardScanCta({
     "inline-flex w-full items-center justify-center gap-2 bg-transparent py-4 px-[1.15rem] text-[0.92rem] font-semibold shadow-none",
     scanLocked
       ? "text-[color:var(--vd-muted,#737373)]"
-      : "text-white drop-shadow-md",
+      : "text-[color:var(--vd-text,#0a0a0a)]",
   );
   const glassClassName = cn(
     "w-full shadow-[0_4px_14px_rgba(0,0,0,0.18)] [&_.glass-surface__content]:p-0",
