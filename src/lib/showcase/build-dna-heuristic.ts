@@ -130,10 +130,10 @@ function aggregateScores(mods: readonly PublicModification[]): ScoreBucket {
 function pickArchetype(scores: ScoreBucket): BuildDnaArchetype {
   const { power, handling, style, reliability } = scores;
 
-  if (handling >= 70 && power >= 70) return "Track Weapon";
-  if (power >= 65 && style <= 45) return "Street Sleeper";
-  if (style >= 70 && power < 60) return "Show Car";
-  if (handling >= 65 && power >= 45 && power < 70) return "Canyon Carver";
+  if (handling >= 70 && power >= 70) return "Streckenwaffe";
+  if (power >= 65 && style <= 45) return "Heimlicher Renner";
+  if (style >= 70 && power < 60) return "Showcar";
+  if (handling >= 65 && power >= 45 && power < 70) return "Kurvenjäger";
   if (reliability >= 60 && style >= 45 && style <= 65) return "OEM+";
 
   const ranked = [
@@ -144,21 +144,21 @@ function pickArchetype(scores: ScoreBucket): BuildDnaArchetype {
   ].sort((a, b) => b.value - a.value);
 
   const top = ranked[0]?.key;
-  if (top === "style") return "Show Car";
-  if (top === "handling") return "Canyon Carver";
+  if (top === "style") return "Showcar";
+  if (top === "handling") return "Kurvenjäger";
   if (top === "reliability") return "OEM+";
-  return "Street Sleeper";
+  return "Heimlicher Renner";
 }
 
 function punchlineFor(archetype: BuildDnaArchetype): string {
   switch (archetype) {
-    case "Track Weapon":
+    case "Streckenwaffe":
       return "Gebaut für die Rennstrecke — Form folgt der Funktion.";
-    case "Street Sleeper":
+    case "Heimlicher Renner":
       return "Sieht harmlos aus, zieht wie ein Güterzug.";
-    case "Show Car":
+    case "Showcar":
       return "Showstopper mit Liebe zum Detail.";
-    case "Canyon Carver":
+    case "Kurvenjäger":
       return "Kurven sind die Heimat — präzise, schnell, kontrolliert.";
     case "OEM+":
       return "Dezent verbessert, solide dokumentiert — OEM+ mit Charakter.";
@@ -171,10 +171,17 @@ export function computeBuildDnaHeuristic(
   const scores = aggregateScores(modifications);
   const archetype = pickArchetype(scores);
 
-  const radar = BUILD_DNA_RADAR_CATEGORIES.map((category) => {
-    const key = category.toLowerCase() as keyof ScoreBucket;
-    return { category, score: scores[key] };
-  });
+  const radar = (
+    [
+      ["Leistung", "power"],
+      ["Fahrwerk", "handling"],
+      ["Optik", "style"],
+      ["Haltbarkeit", "reliability"],
+    ] as const
+  ).map(([category, key]) => ({
+    category,
+    score: scores[key],
+  }));
 
   return {
     archetype,

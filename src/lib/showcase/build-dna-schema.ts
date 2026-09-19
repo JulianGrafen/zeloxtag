@@ -1,20 +1,20 @@
 import { z } from "zod";
 
-export const BUILD_DNA_ARCHETYPES = [
-  "Track Weapon",
-  "Street Sleeper",
-  "Show Car",
-  "Canyon Carver",
-  "OEM+",
-] as const;
+import {
+  BUILD_DNA_ARCHETYPE_LABELS,
+  LEGACY_BUILD_DNA_ARCHETYPE,
+  LEGACY_BUILD_DNA_RADAR,
+} from "./build-dna-labels";
+
+export const BUILD_DNA_ARCHETYPES = BUILD_DNA_ARCHETYPE_LABELS;
 
 export type BuildDnaArchetype = (typeof BUILD_DNA_ARCHETYPES)[number];
 
 export const BUILD_DNA_RADAR_CATEGORIES = [
-  "Power",
-  "Handling",
-  "Style",
-  "Reliability",
+  "Leistung",
+  "Fahrwerk",
+  "Optik",
+  "Haltbarkeit",
 ] as const;
 
 export type BuildDnaRadarCategory = (typeof BUILD_DNA_RADAR_CATEGORIES)[number];
@@ -46,14 +46,37 @@ export const showcaseBuildDnaSchema = z
 
 export type ShowcaseBuildDna = z.infer<typeof showcaseBuildDnaSchema>;
 
+function normalizeShowcaseBuildDnaRaw(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const record = raw as Record<string, unknown>;
+  const archetypeRaw =
+    typeof record.archetype === "string" ? record.archetype.trim() : "";
+  const archetype = LEGACY_BUILD_DNA_ARCHETYPE[archetypeRaw] ?? archetypeRaw;
+
+  const radar = Array.isArray(record.radar)
+    ? record.radar.map((entry) => {
+        if (!entry || typeof entry !== "object") return entry;
+        const row = entry as Record<string, unknown>;
+        const categoryRaw =
+          typeof row.category === "string" ? row.category.trim() : "";
+        const category = LEGACY_BUILD_DNA_RADAR[categoryRaw] ?? categoryRaw;
+        return { ...row, category };
+      })
+    : record.radar;
+
+  return { ...record, archetype, radar };
+}
+
 export function parseShowcaseBuildDna(
   raw: unknown,
 ): ShowcaseBuildDna | null {
-  const parsed = showcaseBuildDnaSchema.safeParse(raw);
+  const parsed = showcaseBuildDnaSchema.safeParse(
+    normalizeShowcaseBuildDnaRaw(raw),
+  );
   return parsed.success ? parsed.data : null;
 }
 
-/** Normalize radar order for UI (Power → Reliability). */
+/** Normalize radar order for UI (Leistung → Haltbarkeit). */
 export function orderedRadarScores(
   dna: ShowcaseBuildDna,
 ): { category: BuildDnaRadarCategory; score: number }[] {

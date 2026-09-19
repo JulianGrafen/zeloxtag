@@ -60,13 +60,6 @@ function gridPolygon(level: number): string {
     .join(" ");
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  Power: "Power",
-  Handling: "Handling",
-  Style: "Style",
-  Reliability: "Reliability",
-};
-
 export function ShowroomBuildDna({ dna }: ShowroomBuildDnaProps) {
   const motionConfig = useShowroomMotion();
   const radar = orderedRadarScores(dna);
@@ -83,7 +76,7 @@ export function ShowroomBuildDna({ dna }: ShowroomBuildDnaProps) {
       <ShowroomRevealItem>
         <div className={showroom.panelFlat}>
           <div className="px-4 pb-5 pt-4">
-            <p className={showroom.sectionLabel}>Build DNA</p>
+            <p className={showroom.sectionLabel}>Umbau-DNA</p>
             <h2 className="text-center text-[1.05rem] font-semibold tracking-tight text-white">
               {dna.archetype}
             </h2>
@@ -92,7 +85,7 @@ export function ShowroomBuildDna({ dna }: ShowroomBuildDnaProps) {
                 viewBox={`0 0 ${SIZE} ${SIZE}`}
                 className="h-auto w-full overflow-visible"
                 role="img"
-                aria-label={`Build DNA Radar: ${dna.archetype}`}
+                aria-label={`Umbau-DNA Radar: ${dna.archetype}`}
               >
                 <g
                   fill="none"
@@ -165,7 +158,7 @@ export function ShowroomBuildDna({ dna }: ShowroomBuildDnaProps) {
                       fontWeight={500}
                       style={{ letterSpacing: "0.12em", textTransform: "uppercase" }}
                     >
-                      {CATEGORY_LABELS[row.category] ?? row.category}
+                      {row.category}
                     </text>
                   );
                 })}

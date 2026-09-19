@@ -411,7 +411,7 @@ describe("buildPublicShowcasePayload", () => {
     };
 
     const payload = buildPublicShowcasePayload(vehicle, documents);
-    expect(payload.buildDna?.archetype).toBe("Street Sleeper");
+    expect(payload.buildDna?.archetype).toBe("Heimlicher Renner");
     expect(payload.buildDna?.punchline).toBe("Test-Punchline.");
   });
 

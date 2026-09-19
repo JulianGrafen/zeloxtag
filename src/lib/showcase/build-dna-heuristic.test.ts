@@ -24,8 +24,8 @@ describe("computeBuildDnaHeuristic", () => {
       mod("KW V3 Coilover"),
       mod("Stahl-Flexlines Bremsscheiben"),
     ]);
-    const handling = dna.radar.find((row) => row.category === "Handling");
-    const style = dna.radar.find((row) => row.category === "Style");
+    const handling = dna.radar.find((row) => row.category === "Fahrwerk");
+    const style = dna.radar.find((row) => row.category === "Optik");
     expect(handling?.score).toBeGreaterThan(style?.score ?? 0);
   });
 
