@@ -10,6 +10,7 @@ import { isAnnualPlanAvailable } from "@/lib/billing/constants";
 import { setPaywallOpen } from "@/lib/billing/paywall-open-state";
 import {
   PRO_PAYWALL_DISMISS_LABEL,
+  PRO_PAYWALL_MODAL_HEADLINE,
   PRO_PAYWALL_MODAL_MICROCOPY,
   PRO_PLAN_CHECKOUT_HEADLINE,
   cloudAboHref,
@@ -118,7 +119,7 @@ export function ProPaywallModal({
               interval={interval}
               onIntervalChange={setInterval}
               showAnnualPlan={showAnnualPlan}
-              headline={PRO_PLAN_CHECKOUT_HEADLINE}
+              headline={PRO_PAYWALL_MODAL_HEADLINE}
               headlineId="pro-paywall-title"
               variant={variant}
               ctaSlot={

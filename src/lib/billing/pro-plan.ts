@@ -39,6 +39,8 @@ export const PRO_PLAN_CHECKOUT_SUBLINE =
 export const PRO_PAYWALL_PROGRESS_PERCENT = 80;
 export const PRO_PAYWALL_PROGRESS_LABEL = "Fahrzeugpass zu 80 % eingerichtet";
 export const PRO_PAYWALL_MODAL_SUBLINE = PRO_PLAN_CHECKOUT_SUBLINE;
+/** Modal hero — former subline; glove-compartment line stays on inline/section paywalls. */
+export const PRO_PAYWALL_MODAL_HEADLINE = PRO_PLAN_CHECKOUT_SUBLINE;
 export const PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER =
   "Dein Gratis-Scan ist verbraucht";
 export const PRO_PAYWALL_STICKY_MICROCOPY = PRO_TRIAL_NO_COMMITMENT;
@@ -51,6 +53,7 @@ export const PRO_PAYWALL_VALUE_FOOTNOTE =
   "Weniger als eine halbe Tankfüllung für ein ganzes Jahr Schutz und Dokumentation deines Builds.";
 
 export const PRO_PAYWALL_MODAL_BENEFITS = [
+  "Werterhalt durch lückenlose Dokumentation: Eine lückenlose Dokumentation bringt beim Wiederverkauf eines Autos im Durchschnitt 10 bis 20 Prozent mehr Erlös.",
   "Gutachten-Tresor: ABEs, Teilegutachten & §21-Eintragungen in Sekunden griffbereit.",
   "QR-Flex auf Treffen: Haube auf, scannen lassen. Zeig Mod-Liste, Dyno-Sheets & Soundfiles direkt vor Ort.",
   "Keine Tipparbeit: KI fotografiert Rechnungen ab und ordnet Preise, Teile und Daten automatisch zu.",

@@ -79,7 +79,7 @@ export function ProPaywallContent({
             {headline}
           </h2>
 
-          {showConversionExtras && (isModal || isStacked) ? (
+          {showConversionExtras && isStacked ? (
             <p className="mt-2.5 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
               {PRO_PAYWALL_MODAL_SUBLINE}
             </p>

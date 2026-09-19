@@ -39,10 +39,8 @@ export function PaywallModalFold({
       <div className="shrink-0 pt-2">{pricing}</div>
       <div className="shrink-0">{timeline}</div>
       {bottomNote ? (
-        <div className="flex min-h-0 flex-1 flex-col justify-end px-1 pt-1">
-          <p
-            className="text-center text-[0.78rem] leading-snug text-[color:var(--vd-muted)]"
-          >
+        <div className="shrink-0 px-1 pt-2 pb-3">
+          <p className="text-center text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
             {bottomNote}
           </p>
         </div>
