@@ -32,9 +32,6 @@ export type ProBillingInterval = "monthly" | "annual";
 
 export const PRO_PLAN_CHECKOUT_HEADLINE =
   "Dein Build verdient mehr als einen zerknitterten Ordner im Handschuhfach.";
-export const PRO_SETTINGS_PAYWALL_HEADLINE =
-  "Aktiviere ZeloxTag Pro für dein Fahrzeug.";
-export const PRO_SETTINGS_PAYWALL_KICKER = "Mitgliedschaft";
 export const PRO_PLAN_CHECKOUT_SUBLINE =
   "Jede Schraube, jedes Gutachten, jede Stunde Arbeit – lückenlos dokumentiert und mit einem Scan griffbereit.";
 

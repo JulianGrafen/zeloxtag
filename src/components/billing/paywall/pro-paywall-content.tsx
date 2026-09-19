@@ -14,7 +14,7 @@ import {
 import type { PaywallVariant } from "@/lib/permissions/feature-access";
 import { cn } from "@/lib/utils";
 
-export type ProPaywallLayout = "modal" | "section" | "settings";
+export type ProPaywallLayout = "modal" | "section";
 
 type ProPaywallContentProps = {
   interval: ProBillingInterval;
@@ -45,10 +45,8 @@ export function ProPaywallContent({
 }: ProPaywallContentProps) {
   const compact = true;
   const isModal = layout === "modal";
-  const isSettings = layout === "settings";
-  const isStacked = layout === "section" || isSettings;
-  const showTrialBadge =
-    showConversionExtras && !isSettings;
+  const isStacked = layout === "section";
+  const showTrialBadge = showConversionExtras;
   const contentWidth = cn(isModal ? "mx-auto w-full max-w-lg" : "");
 
   return (
@@ -81,7 +79,7 @@ export function ProPaywallContent({
             {headline}
           </h2>
 
-          {showConversionExtras && isModal ? (
+          {showConversionExtras && (isModal || isStacked) ? (
             <p className="mt-2.5 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
               {PRO_PAYWALL_MODAL_SUBLINE}
             </p>
