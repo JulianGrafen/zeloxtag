@@ -19,6 +19,7 @@ import {
   INVOICE_REVIEW_CATEGORY_LABELS,
   type InvoiceReviewCategory,
 } from "@/lib/documents/invoice-review-categories";
+import { recalculateInvoiceGrossAmount } from "@/lib/ocr/invoice-vat";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 
 export type InvoiceReviewFormProps = {
@@ -337,11 +338,15 @@ export function InvoiceReviewForm({
         items={fields.lineItems ?? []}
         totalAmount={fields.amount}
         emptyHint="Positionen manuell ergänzen."
-        onChange={(lineItems) =>
+        onChange={(lineItems) => {
+          const nextItems = lineItems.length ? lineItems : null;
           onFieldsChange({
-            lineItems: lineItems.length ? lineItems : null,
-          })
-        }
+            lineItems: nextItems,
+            amount: recalculateInvoiceGrossAmount(nextItems, {
+              hintAmount: fields.amount,
+            }),
+          });
+        }}
       />
 
       {preview ? (

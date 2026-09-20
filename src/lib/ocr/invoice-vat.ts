@@ -56,13 +56,13 @@ export function isPlausibleInvoiceVatAmount(vat: number, netSum: number): boolea
   return vat <= roundMoney(netSum * DEFAULT_VAT_RATE) + 0.05;
 }
 
+/** MwSt only from explicit scan/LLM rows — never computed (no 19%, no Brutto−Netto). */
 function resolveInvoiceVatAmount(options: {
   vatItems: InvoiceLineItem[];
   netSum: number;
   ocrText: string;
-  grossAmount: number | null;
-}): number {
-  const { vatItems, netSum, ocrText, grossAmount } = options;
+}): number | null {
+  const { vatItems, netSum, ocrText } = options;
 
   const fromOcr = ocrText ? extractVatAmountFromText(ocrText) : null;
   const fromWorkshop =
@@ -83,14 +83,16 @@ function resolveInvoiceVatAmount(options: {
   if (fromItems.length === 1) return fromItems[0]!;
   if (fromItems.length > 1) return Math.min(...fromItems);
 
-  if (grossAmount != null && grossAmount > netSum + 0.05) {
-    const diff = roundMoney(grossAmount - netSum);
-    if (isPlausibleInvoiceVatAmount(diff, netSum)) return diff;
-  }
+  const explicitFromItems = vatItems
+    .map((item) => item.amount)
+    .filter((amount) => amount > 0);
+  if (explicitFromItems.length === 1) return explicitFromItems[0]!;
+  if (explicitFromItems.length > 1) return Math.min(...explicitFromItems);
 
   if (fromOcr != null && fromOcr > 0) return fromOcr;
+  if (fromWorkshop != null && fromWorkshop > 0) return fromWorkshop;
 
-  return roundMoney(netSum * DEFAULT_VAT_RATE);
+  return null;
 }
 
 /** Parse € amount from a footer line like "MwSt 19% 114,00 €". */
@@ -139,7 +141,35 @@ function extractVatLineFromText(rawText: string): InvoiceLineItem | null {
 function resolveGrossAmount(
   amount: number | null,
   grossFromItems: number,
+  context?: {
+    footerGross?: number | null;
+    footerNet?: number | null;
+    netSum?: number | null;
+  },
 ): number {
+  const footerGross = context?.footerGross ?? null;
+  const footerNet = context?.footerNet ?? null;
+  const netSum = context?.netSum ?? null;
+
+  if (
+    footerGross != null &&
+    Math.abs(grossFromItems - footerGross) <= 0.05
+  ) {
+    return roundMoney(footerGross);
+  }
+
+  if (
+    footerNet != null &&
+    netSum != null &&
+    Math.abs(netSum - footerNet) <= 1.5 &&
+    footerGross != null &&
+    grossAmountLooksPlausible(footerNet, footerGross) &&
+    amount != null &&
+    amount > grossFromItems + 0.05
+  ) {
+    return grossFromItems;
+  }
+
   if (amount != null && amount + 0.05 >= grossFromItems) {
     return roundMoney(amount);
   }
@@ -147,8 +177,7 @@ function resolveGrossAmount(
 }
 
 /**
- * Ensure invoice positions include MwSt and document amount reflects brutto total.
- * Positions table values are net; footer MwSt is appended when missing.
+ * Align document amount with brutto; append MwSt only when explicitly present in scan/LLM.
  */
 export function ensureInvoiceVatAndGrossTotal(options: {
   lineItems: InvoiceLineItem[] | null;
@@ -201,8 +230,26 @@ export function ensureInvoiceVatAndGrossTotal(options: {
     vatItems,
     netSum,
     ocrText,
-    grossAmount: resolvedGross,
   });
+
+  const grossContext = {
+    footerGross: footerGross ?? resolvedGross ?? null,
+    footerNet,
+    netSum,
+  };
+
+  if (vatAmount == null) {
+    const totalFromList = sumLineItems(positionsOnly);
+    const grossFromItems = totalFromList ?? netSum;
+    return {
+      lineItems: positionsOnly,
+      amount: resolveGrossAmount(
+        resolvedGross ?? footerGross,
+        grossFromItems,
+        grossContext,
+      ),
+    };
+  }
 
   const fromText = ocrText ? extractVatLineFromText(ocrText) : null;
   const vatLabel =
@@ -215,6 +262,29 @@ export function ensureInvoiceVatAndGrossTotal(options: {
 
   return {
     lineItems: items,
-    amount: resolveGrossAmount(resolvedGross ?? footerGross, grossFromItems),
+    amount: resolveGrossAmount(resolvedGross ?? footerGross, grossFromItems, grossContext),
   };
+}
+
+/** Brutto from stored positions; MwSt only when already on the list or in OCR (no synthetic 19%). */
+export function recalculateInvoiceGrossAmount(
+  lineItems: InvoiceLineItem[] | null | undefined,
+  options?: { hintAmount?: number | null; ocrText?: string },
+): number | null {
+  if (!lineItems?.length) return options?.hintAmount ?? null;
+
+  const ocrText = options?.ocrText ?? "";
+  if (!ocrText.trim()) {
+    const sum = sumLineItems(lineItems);
+    const { positions, vatItems } = splitVatLineItems(lineItems);
+    const netSum = sumLineItems(positions);
+    if (vatItems.length > 0 && sum != null) return sum;
+    return options?.hintAmount ?? netSum;
+  }
+
+  return ensureInvoiceVatAndGrossTotal({
+    lineItems,
+    amount: options?.hintAmount ?? null,
+    ocrText,
+  }).amount;
 }

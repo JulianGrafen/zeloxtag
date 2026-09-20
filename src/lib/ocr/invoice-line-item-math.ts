@@ -9,7 +9,10 @@ import {
   type InvoiceLineItem,
 } from "@/lib/ocr/text-parse-schema";
 import type { LlmRawLineItem } from "@/lib/validations/invoiceSchemas";
-import { processLineItems } from "@/utils/invoiceMath";
+import {
+  processLineItems,
+  type ProcessLineItemsOptions,
+} from "@/utils/invoiceMath";
 
 export { LlmLineItemSchema, type LlmRawLineItem } from "@/lib/validations/invoiceSchemas";
 export { parseGermanNumber, processLineItems } from "@/utils/invoiceMath";
@@ -36,10 +39,13 @@ function toInvoiceLineItems(processed: ReturnType<typeof processLineItems>): Inv
  * Run bulletproof math on raw LLM output. Zod validation is best-effort only —
  * `processLineItems` always runs on the raw array so German strings are never blocked.
  */
-export function parseLlmRawLineItems(value: unknown): InvoiceLineItem[] | null {
+export function parseLlmRawLineItems(
+  value: unknown,
+  options?: ProcessLineItemsOptions,
+): InvoiceLineItem[] | null {
   if (!Array.isArray(value)) return null;
 
-  const finalItems = processLineItems(value);
+  const finalItems = processLineItems(value, options);
   const lineItems = toInvoiceLineItems(finalItems);
   return lineItems.length > 0 ? lineItems : null;
 }

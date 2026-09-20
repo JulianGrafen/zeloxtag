@@ -3,6 +3,7 @@ import {
   isPriceOnlyLineLabel,
   isUnitPriceAmountOfTotal,
 } from "@/lib/ocr/invoice-line-item-dedupe";
+import { inSignedInvoiceLineAmountRange } from "@/lib/ocr/parse-german-money";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 
 const TABLE_HEADER_LABEL =
@@ -80,7 +81,7 @@ export function isContinuationInvoiceLabel(label: string): boolean {
 }
 
 function hasPlausibleLineAmount(amount: number): boolean {
-  return Number.isFinite(amount) && amount > 0;
+  return inSignedInvoiceLineAmountRange(amount);
 }
 
 function mergeContinuationLabels(prev: string, next: string): string {
@@ -264,7 +265,7 @@ function scoreAlignment(
   for (const item of items) {
     if (isLikelyInvoiceTableHeaderRow(item)) score += 100;
     if (isPriceOnlyLineLabel(item.label)) score += 40;
-    if (item.amount <= 0 && !/rabatt|skonto|gutschrift/i.test(item.label)) {
+    if (item.amount === 0) {
       score += 25;
     }
   }

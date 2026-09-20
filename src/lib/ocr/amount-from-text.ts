@@ -1,9 +1,15 @@
 import { sumLineItems } from "@/lib/documents/line-items";
 import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
 import {
+  extractGrossTotalFromText,
+  extractNetSumFromText,
+} from "@/lib/ocr/invoice-footer-totals";
+import { ensureInvoiceVatAndGrossTotal } from "@/lib/ocr/invoice-vat";
+import {
   extractWorkshopInvoiceAmount,
   isWorkshopSectionInvoiceText,
 } from "@/lib/ocr/invoice-workshop-sections";
+import { isMonetaryDiscountLabel } from "@/lib/ocr/text-parse-schema";
 import type { DocumentLineItem } from "@/types/database";
 
 /**
@@ -113,24 +119,79 @@ export function amountAppearsOnlyAsPercent(
   return seenAsPercent && !seenAsEuro;
 }
 
+const GROSS_FROM_LINES_TOLERANCE_EUR = 0.05;
+
+function lineItemsIncludeSignedDiscount(
+  lineItems: DocumentLineItem[] | null | undefined,
+): boolean {
+  if (!lineItems?.length) return false;
+  return lineItems.some(
+    (item) =>
+      item.amount < 0 ||
+      (item.amount > 0 && isMonetaryDiscountLabel(item.label)),
+  );
+}
+
+function grossFromLineItems(
+  structured: number | null | undefined,
+  rawText: string,
+  lineItems: DocumentLineItem[] | null | undefined,
+): number | null {
+  if (!lineItems?.length) return null;
+  return ensureInvoiceVatAndGrossTotal({
+    lineItems,
+    amount: structured ?? null,
+    ocrText: rawText,
+  }).amount;
+}
+
 /** Prefer structured LLM amount; fall back to OCR heuristic / line-item sum. */
 export function preferAmount(
   structured: number | null | undefined,
   rawText: string,
   lineItems?: DocumentLineItem[] | null,
 ): number | null {
-  if (
+  const structuredValid =
     typeof structured === "number" &&
     Number.isFinite(structured) &&
     structured >= MIN_AMOUNT &&
     structured <= MAX_AMOUNT &&
     !amountAppearsOnlyAsPercent(structured, rawText)
+      ? Math.round(structured * 100) / 100
+      : null;
+
+  const fromLines = grossFromLineItems(structuredValid, rawText, lineItems);
+  const footerGross = rawText ? extractGrossTotalFromText(rawText) : null;
+  const footerNet = rawText ? extractNetSumFromText(rawText) : null;
+
+  if (
+    structuredValid != null &&
+    fromLines != null &&
+    Math.abs(structuredValid - fromLines) > GROSS_FROM_LINES_TOLERANCE_EUR
   ) {
-    return Math.round(structured * 100) / 100;
+    if (
+      footerGross != null &&
+      Math.abs(fromLines - footerGross) <= GROSS_FROM_LINES_TOLERANCE_EUR
+    ) {
+      return fromLines;
+    }
+    if (lineItemsIncludeSignedDiscount(lineItems)) {
+      if (
+        footerNet == null ||
+        footerGross == null ||
+        Math.abs(fromLines - footerGross) <= 1.5
+      ) {
+        return fromLines;
+      }
+    }
   }
+
+  if (structuredValid != null) return structuredValid;
 
   const fromText = extractAmountFromText(rawText);
   if (fromText !== null) return fromText;
+
+  if (fromLines != null) return fromLines;
 
   return sumLineItems(lineItems ?? null);
 }

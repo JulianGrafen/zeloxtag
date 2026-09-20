@@ -22,6 +22,23 @@ describe("mergeContinuationInvoiceLineItems", () => {
     ]);
   });
 
+  it("keeps a negative Aktionspreis row in the positions list", () => {
+    const items = [
+      { label: "Tieferlegung", amount: 400 },
+      { label: "Aktionspreis Tieferlegung 444€ Facebook/Instagram", amount: -596 },
+      { label: "Felgen", amount: 250 },
+    ];
+
+    expect(mergeContinuationInvoiceLineItems(items)).toEqual([
+      { label: "Tieferlegung", amount: 400 },
+      {
+        label: "Aktionspreis Tieferlegung 444€ Facebook/Instagram",
+        amount: -596,
+      },
+      { label: "Felgen", amount: 250 },
+    ]);
+  });
+
   it("merges triple continuation Schraube + ORIGINAL ERSATZTEIL + GREENPARTS", () => {
     const items = [
       { label: "Schraube, Einspritzdüsenhalter", amount: 15.06 },

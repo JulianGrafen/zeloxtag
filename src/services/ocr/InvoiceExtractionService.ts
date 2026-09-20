@@ -24,7 +24,7 @@ import {
 import { realignShiftedInvoiceLineItems } from "@/lib/ocr/invoice-line-item-alignment";
 import { isPlausibleInvoiceVatAmount } from "@/lib/ocr/invoice-vat";
 import { reconcileInvoicePlausibility } from "@/lib/ocr/invoice-plausibility";
-import { processLineItems } from "@/utils/invoiceMath";
+import { parseLlmRawLineItems } from "@/lib/ocr/invoice-line-item-math";
 import {
   normalizeVisionLineItemsPayload,
   readVisionTotalAmountRaw,
@@ -491,21 +491,10 @@ export class InvoiceExtractionService {
     );
 
     // LLM outputs raw strings per column — run bulletproof math before merge/save.
-    const finalItems = processLineItems(normalizeVisionLineItemsPayload(record), {
-      checksumMode: tableFormat === "column" ? "column" : "standard",
-    });
-    let llmLineItems: InvoiceLineItem[] = finalItems
-      .filter(
-        (item) =>
-          typeof item.label === "string" &&
-          item.label.trim().length > 0 &&
-          typeof item.gesamtpreis === "number" &&
-          item.gesamtpreis > 0,
-      )
-      .map((item) => ({
-        label: String(item.label).trim(),
-        amount: item.gesamtpreis,
-      }));
+    let llmLineItems: InvoiceLineItem[] =
+      parseLlmRawLineItems(normalizeVisionLineItemsPayload(record), {
+        checksumMode: tableFormat === "column" ? "column" : "standard",
+      }) ?? [];
 
     const layoutLineItems = azureLayout
       ? extractInvoiceLineItemsFromAzureLayout(azureLayout)

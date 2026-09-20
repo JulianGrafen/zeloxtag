@@ -12,7 +12,8 @@ import { FEATURE } from "@/lib/permissions/feature-access";
 import { featureDeniedToForbidden } from "@/lib/permissions/feature-gate-result";
 import type { FeatureForbiddenResult } from "@/lib/permissions/feature-gate-result";
 import { assertOwnerFeature, assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
-import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
+import { parseLineItems } from "@/lib/documents/line-items";
+import { recalculateInvoiceGrossAmount } from "@/lib/ocr/invoice-vat";
 import {
   isManualEntryMarker,
   isManualEntryUrl,
@@ -267,8 +268,8 @@ export async function updateDocumentFields(
     const mockPatch: Record<string, unknown> = {};
     if (lineItems !== undefined) {
       mockPatch.line_items = lineItems;
-      const total = sumLineItems(lineItems);
-      if (total !== null && total > 0) {
+      const total = recalculateInvoiceGrossAmount(lineItems);
+      if (total !== null && Number.isFinite(total)) {
         mockPatch.amount = total;
       }
     }
@@ -389,8 +390,8 @@ export async function updateDocumentFields(
   const patch: Record<string, unknown> = {};
   if (lineItems !== undefined) {
     patch.line_items = lineItems && lineItems.length > 0 ? lineItems : null;
-    const total = sumLineItems(lineItems);
-    if (total !== null && total > 0) {
+    const total = recalculateInvoiceGrossAmount(lineItems);
+    if (total !== null && Number.isFinite(total)) {
       patch.amount = total;
     }
   }
