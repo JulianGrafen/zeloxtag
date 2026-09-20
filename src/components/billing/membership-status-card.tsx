@@ -1,7 +1,10 @@
 import { StripePortalButton } from "@/components/billing/stripe-checkout-button";
 import { SettingsPaywallSection } from "@/components/billing/settings-paywall-section";
 import { getMembershipForUser } from "@/lib/billing/membership-store";
-import { isActiveMembership } from "@/lib/billing/membership";
+import {
+  isActiveMembership,
+  isMembershipProEntitled,
+} from "@/lib/billing/membership";
 import {
   type ProCheckoutAudience,
 } from "@/lib/billing/pro-plan";
@@ -28,9 +31,26 @@ export async function MembershipStatusCard({
 }) {
   const membership = await getMembershipForUser(userId);
   const active = membership
-    ? isActiveMembership(membership.status, membership.current_period_end)
+    ? isMembershipProEntitled({
+        status: membership.status,
+        currentPeriodEnd: membership.current_period_end,
+        trialEndsAt: membership.trial_ends_at,
+        stripeSubscriptionId: membership.stripe_subscription_id,
+      })
     : false;
   const periodLabel = formatPeriodEnd(membership?.current_period_end ?? null);
+  const trialLabel = formatPeriodEnd(membership?.trial_ends_at ?? null);
+  const trialEndsAt = membership?.trial_ends_at ?? null;
+  const trialEndMs = trialEndsAt ? Date.parse(trialEndsAt) : NaN;
+  const inTrialWindow =
+    Number.isFinite(trialEndMs) && trialEndMs > Date.now();
+  const showTrialCopy =
+    Boolean(trialLabel) &&
+    inTrialWindow &&
+    !isActiveMembership(
+      membership?.status ?? "pending",
+      membership?.current_period_end ?? null,
+    );
 
   if (active) {
     return (
@@ -53,7 +73,12 @@ export async function MembershipStatusCard({
         ) : null}
         <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
           Mitgliedschaft aktiv
-          {periodLabel ? ` · bezahlt bis ${periodLabel}` : ""}.
+          {showTrialCopy
+            ? ` · Probeabo bis ${trialLabel}`
+            : periodLabel
+              ? ` · bezahlt bis ${periodLabel}`
+              : ""}
+          .
         </p>
         {membership?.stripe_customer_id ? (
           <StripePortalButton returnPath="/settings" />

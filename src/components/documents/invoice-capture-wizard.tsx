@@ -406,7 +406,7 @@ export function InvoiceCaptureWizard({
             className="claim-back inline-flex w-full items-center justify-center gap-2"
           >
             <Plus className="h-4 w-4" aria-hidden />
-            Positionsblock fotografieren (optional)
+            Zusätzliche Seite scannen
           </button>
         ) : null}
 

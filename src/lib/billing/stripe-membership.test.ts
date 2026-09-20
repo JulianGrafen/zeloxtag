@@ -117,6 +117,22 @@ describe("parseStripeMembershipAction", () => {
     ).toBe("canceled");
   });
 
+  it("uses trial_end when current_period_end is missing on trialing", () => {
+    const trialEnd = 1785000000;
+    const action = parseStripeMembershipAction("customer.subscription.updated", {
+      id: "sub_trial_only_end",
+      status: "trialing",
+      customer: "cus_123",
+      metadata: { user_id: USER_ID },
+      trial_end: trialEnd,
+      items: { data: [{ price: { id: "price_cloud" } }] },
+    });
+    expect(action).toMatchObject({
+      status: "active",
+      currentPeriodEnd: new Date(trialEnd * 1000).toISOString(),
+    });
+  });
+
   it("maps trialing subscriptions and trial window timestamps", () => {
     const trialStart = 1784000000;
     const trialEnd = 1785000000;

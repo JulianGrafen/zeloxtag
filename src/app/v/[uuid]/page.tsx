@@ -304,6 +304,11 @@ export default async function TagScanPage({
       );
     }
 
+    if (session_id?.startsWith("cs_") && user) {
+      await syncStripeCheckoutSessionAction(session_id);
+      redirect(`/v/${tag.uuid}`);
+    }
+
     const membershipActive = await userHasActiveMembership(vehicle.user_id);
     const freeInvoiceScanQuota = membershipActive
       ? { remaining: 0, used: 0, limit: 1 }
@@ -321,11 +326,6 @@ export default async function TagScanPage({
     const startTour =
       access.isOwner &&
       (isForcedDashboardTourSearch({ tour }) || pendingTour);
-
-    if (session_id?.startsWith("cs_") && user) {
-      await syncStripeCheckoutSessionAction(session_id);
-      redirect(`/v/${tag.uuid}`);
-    }
     const visibleDocuments = filterDocumentsForContributorAccess(
       result.documents,
       {

@@ -1571,11 +1571,7 @@ export function InvoiceUploader({
                       scanLabel={scanDef?.title ?? "Beleg"}
                       disabled={compressing}
                       imageButtonLabel="Bild hinzufügen"
-                      cameraButtonLabel={
-                        showThinPositionsHint
-                          ? "Positionen fotografieren"
-                          : "Rechnungsblock · Kamera"
-                      }
+                      cameraButtonLabel="Zusätzliche Seite scannen"
                       onFileSelected={(file) => {
                         void handleIncomingFile(file);
                       }}
@@ -1607,8 +1603,10 @@ export function InvoiceUploader({
                       : isTeilegutachtenUpload
                         ? `Weitere Seite desselben Teilegutachtens · max. ${MAX_PAGES}`
                         : isGutachtenFamilyUpload
-                      ? `Weitere Seite desselben Gutachtens · max. ${MAX_PAGES}`
-                      : `Weitere Seite hinzufügen · max. ${MAX_PAGES}`}
+                          ? `Weitere Seite desselben Gutachtens · max. ${MAX_PAGES}`
+                          : isInvoiceFamilyScan
+                            ? `Zusätzliche Seite scannen · max. ${MAX_PAGES}`
+                            : `Weitere Seite hinzufügen · max. ${MAX_PAGES}`}
                   </p>
                 </div>
               ) : null}

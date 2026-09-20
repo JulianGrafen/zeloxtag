@@ -964,7 +964,7 @@ export function InvoiceUploadWizard({
                 <Plus className="h-4 w-4" aria-hidden />
                 {lineItemsFiles.length === 0
                   ? "Rechnungsblock scannen"
-                  : "Weiteren Block hinzufügen"}
+                  : "Zusätzliche Seite scannen"}
               </Button>
             </>
           ) : (

@@ -14,8 +14,16 @@ import {
   normalizeMembershipEmail,
   type ShopifyMembershipAction,
 } from "./shopify-membership";
+import { isMembershipProEntitled } from "./membership";
 import { shopifyMayUpdateEntitlement } from "./membership-provider";
-import type { StripeMembershipAction } from "./stripe-membership";
+import {
+  parseStripeMembershipAction,
+  type StripeMembershipAction,
+} from "./stripe-membership";
+import {
+  getStripe,
+  isStripeSecretConfigured,
+} from "./stripe";
 
 function asMembership(row: unknown): Membership | null {
   if (!row || typeof row !== "object") return null;
@@ -422,7 +430,7 @@ export async function claimMembershipForUser(
   }
 
   const already = await getMembershipForUser(userId);
-  if (already && isActiveMembership(already.status, already.current_period_end)) {
+  if (already && proEntitledFromMembership(already)) {
     return { status: "ok" };
   }
 
@@ -497,7 +505,7 @@ async function getMembershipForUserUncached(
   const { data, error } = await admin
     .from("memberships")
     .select(
-      "id, user_id, email, shopify_customer_id, shopify_order_id, shopify_order_name, shopify_order_number, shopify_order_token, shopify_product_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, billing_provider, status, current_period_end, paid_at, canceled_at, created_at, updated_at",
+      "id, user_id, email, shopify_customer_id, shopify_order_id, shopify_order_name, shopify_order_number, shopify_order_token, shopify_product_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, billing_provider, status, current_period_end, trial_started_at, trial_ends_at, paid_at, canceled_at, created_at, updated_at",
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -511,11 +519,53 @@ async function getMembershipForUserUncached(
 /** Request-memoized — Pro gates on a page share one membership lookup. */
 export const getMembershipForUser = cache(getMembershipForUserUncached);
 
+function proEntitledFromMembership(membership: Membership): boolean {
+  return isMembershipProEntitled({
+    status: membership.status,
+    currentPeriodEnd: membership.current_period_end,
+    trialEndsAt: membership.trial_ends_at,
+    stripeSubscriptionId: membership.stripe_subscription_id,
+  });
+}
+
+async function reconcileStripeMembershipIfStale(
+  membership: Membership,
+): Promise<Membership | null> {
+  if (proEntitledFromMembership(membership)) return membership;
+  const subId = membership.stripe_subscription_id?.trim();
+  const stripeLinked =
+    membership.billing_provider === "stripe" || Boolean(subId);
+  if (!stripeLinked) return membership;
+  if (!subId) return membership;
+  if (membership.status !== "pending" && membership.current_period_end) {
+    return membership;
+  }
+  if (!isStripeSecretConfigured() || !membership.user_id) return membership;
+
+  try {
+    const stripe = getStripe();
+    const sub = await stripe.subscriptions.retrieve(subId);
+    const action = parseStripeMembershipAction(
+      "customer.subscription.updated",
+      sub as unknown as Record<string, unknown>,
+    );
+    if (!action) return membership;
+    await applyStripeMembershipAction({
+      ...action,
+      userId: membership.user_id,
+    });
+    return getMembershipForUserUncached(membership.user_id);
+  } catch (error) {
+    console.error("[memberships] stripe reconcile failed", error);
+    return membership;
+  }
+}
+
 export async function userHasActiveMembership(userId: string): Promise<boolean> {
-  const membership = await getMembershipForUser(userId);
+  let membership = await getMembershipForUser(userId);
   if (!membership) return false;
-  return isActiveMembership(
-    membership.status as MembershipStatus,
-    membership.current_period_end,
-  );
+  if (proEntitledFromMembership(membership)) return true;
+  membership =
+    (await reconcileStripeMembershipIfStale(membership)) ?? membership;
+  return proEntitledFromMembership(membership);
 }

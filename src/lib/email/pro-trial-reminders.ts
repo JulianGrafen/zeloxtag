@@ -4,7 +4,7 @@ import { PRO_PLAN_MONTHLY_PRICE, PRO_TRIAL_DAYS } from "@/lib/billing/pro-plan";
 import { isResendConfigured, sendTransactionalEmail } from "@/lib/email/resend";
 import { resolvePublicSiteOrigin } from "@/lib/site-origin";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
-import { isActiveMembership } from "@/lib/billing/membership";
+import { isMembershipProEntitled } from "@/lib/billing/membership";
 
 export const REMINDER_KEYS = {
   tagActivated: "tag_activated_pro_nudge",
@@ -268,6 +268,7 @@ type TrialMembershipRow = {
   trial_ends_at: string | null;
   status: string;
   current_period_end: string | null;
+  stripe_subscription_id: string | null;
 };
 
 export async function processDueProTrialReminderEmails(
@@ -281,7 +282,7 @@ export async function processDueProTrialReminderEmails(
   const { data, error } = await admin
     .from("memberships")
     .select(
-      "user_id, email, trial_started_at, trial_ends_at, status, current_period_end",
+      "user_id, email, trial_started_at, trial_ends_at, status, current_period_end, stripe_subscription_id",
     )
     .eq("billing_provider", "stripe")
     .not("trial_started_at", "is", null)
@@ -307,10 +308,16 @@ export async function processDueProTrialReminderEmails(
     }
 
     if (
-      !isActiveMembership(
-        membership.status as "active" | "pending" | "past_due" | "canceled",
-        membership.current_period_end,
-      )
+      !isMembershipProEntitled({
+        status: membership.status as
+          | "active"
+          | "pending"
+          | "past_due"
+          | "canceled",
+        currentPeriodEnd: membership.current_period_end,
+        trialEndsAt: membership.trial_ends_at,
+        stripeSubscriptionId: membership.stripe_subscription_id,
+      })
     ) {
       skipped += 1;
       continue;

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { isActiveMembership } from "@/lib/billing/membership";
+import { isMembershipProEntitled } from "@/lib/billing/membership";
 import {
   applyStripeMembershipAction,
   getMembershipForUser,
@@ -42,7 +42,17 @@ function isProTrialEligible(
   if (membership.status === "canceled" || membership.status === "past_due") {
     return false;
   }
-  return !membership.stripe_customer_id;
+  if (
+    isMembershipProEntitled({
+      status: membership.status,
+      currentPeriodEnd: membership.current_period_end,
+      trialEndsAt: membership.trial_ends_at,
+      stripeSubscriptionId: membership.stripe_subscription_id,
+    })
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export async function startStripeCheckoutAction(input: {
@@ -69,7 +79,12 @@ export async function startStripeCheckoutAction(input: {
   const membership = await getMembershipForUser(user.id);
   if (
     membership &&
-    isActiveMembership(membership.status, membership.current_period_end)
+    isMembershipProEntitled({
+      status: membership.status,
+      currentPeriodEnd: membership.current_period_end,
+      trialEndsAt: membership.trial_ends_at,
+      stripeSubscriptionId: membership.stripe_subscription_id,
+    })
   ) {
     return { status: "active" };
   }
@@ -186,14 +201,38 @@ export async function syncStripeCheckoutSessionAction(
     if (metaUser !== user.id) {
       return { status: "error", message: "Checkout gehört zu einem anderen Konto." };
     }
-    const action = parseStripeMembershipAction(
+    let action = parseStripeMembershipAction(
       "checkout.session.completed",
       session as unknown as Record<string, unknown>,
     );
+    if (
+      action?.stripeSubscriptionId &&
+      (action.status !== "active" || !action.currentPeriodEnd)
+    ) {
+      const sub = await stripe.subscriptions.retrieve(
+        action.stripeSubscriptionId,
+      );
+      const fromSub = parseStripeMembershipAction(
+        "customer.subscription.updated",
+        sub as unknown as Record<string, unknown>,
+      );
+      if (fromSub) {
+        action = {
+          ...fromSub,
+          userId: action.userId ?? user.id,
+          email: action.email ?? fromSub.email,
+          stripeCustomerId:
+            action.stripeCustomerId ?? fromSub.stripeCustomerId,
+          stripeSubscriptionId:
+            action.stripeSubscriptionId ?? fromSub.stripeSubscriptionId,
+        };
+      }
+    }
     if (action) {
       await applyStripeMembershipAction({ ...action, userId: user.id });
     }
     revalidatePath("/settings");
+    revalidatePath("/", "layout");
     return { status: "ok" };
   } catch (error) {
     console.error("[stripe] session sync failed", error);

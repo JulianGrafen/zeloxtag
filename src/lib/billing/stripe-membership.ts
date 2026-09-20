@@ -83,7 +83,8 @@ function firstItem(subscription: Record<string, unknown>): Record<string, unknow
 function periodEndFromSubscription(subscription: Record<string, unknown>): string | null {
   return (
     unixSecondsToIso(subscription.current_period_end) ??
-    unixSecondsToIso(firstItem(subscription)?.current_period_end)
+    unixSecondsToIso(firstItem(subscription)?.current_period_end) ??
+    unixSecondsToIso(subscription.trial_end)
   );
 }
 
