@@ -322,6 +322,17 @@ describe("extractRowLineTotalAmount", () => {
     ).toBe(45);
   });
 
+  it("parses negative Ges. Preis for Aktionspreis / Rabatt rows", () => {
+    expect(
+      extractRowLineTotalAmount([
+        { rowIndex: 4, columnIndex: 1, content: "Aktionspreis Tieferlegung" },
+        { rowIndex: 4, columnIndex: 2, content: "1,00" },
+        { rowIndex: 4, columnIndex: 3, content: "-596,00 €" },
+        { rowIndex: 4, columnIndex: 4, content: "-596,00 €" },
+      ]),
+    ).toBe(-596);
+  });
+
   it("does not multiply Pos column with E-Preis (Blotzheim row 3)", () => {
     expect(
       extractRowLineTotalAmount(

@@ -21,6 +21,13 @@ function inInvoiceRange(value: number): boolean {
   );
 }
 
+/** Line-item amounts may be negative (Rabatt / Aktionspreis on the invoice). */
+export function inSignedInvoiceLineAmountRange(value: number): boolean {
+  if (!Number.isFinite(value) || value === 0) return false;
+  const abs = Math.abs(value);
+  return abs >= MIN_INVOICE_EUR && abs <= MAX_INVOICE_EUR;
+}
+
 /** Strip wrappers and currency markers from a money token. */
 export function normalizeMoneyOcrText(raw: string): string {
   return raw
@@ -124,7 +131,9 @@ function parseSingleMoneyCandidate(raw: string): number | null {
  * cent precision — typical comma-shift OCR error. Otherwise keep the largest.
  */
 export function resolveAmbiguousMoneyValues(values: number[]): number | null {
-  const unique = [...new Set(values.map(roundMoney))].filter(inInvoiceRange);
+  const unique = [...new Set(values.map(roundMoney))].filter(
+    inSignedInvoiceLineAmountRange,
+  );
   if (unique.length === 0) return null;
   if (unique.length === 1) return unique[0]!;
 
@@ -158,14 +167,17 @@ export function parseGermanMoneyAmount(raw: string): number | null {
     const asOne = parseSingleMoneyCandidate(
       normalizeMoneyOcrText(stripped.replace(/^\(/, "1")),
     );
-    if (asOne !== null && inInvoiceRange(asOne)) {
+    if (asOne !== null && inSignedInvoiceLineAmountRange(asOne)) {
       return asOne;
     }
   }
 
   const values = moneyParseCandidates(raw)
     .map(parseSingleMoneyCandidate)
-    .filter((value): value is number => value !== null && inInvoiceRange(value));
+    .filter(
+      (value): value is number =>
+        value !== null && inSignedInvoiceLineAmountRange(value),
+    );
 
   return resolveAmbiguousMoneyValues(values);
 }
@@ -220,6 +232,9 @@ export function coerceGermanMoneyAmount(
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return null;
     const sanitized = sanitizeLlmMoneyAmount(value, mode);
+    if (sanitized < 0) {
+      return inSignedInvoiceLineAmountRange(sanitized) ? sanitized : null;
+    }
     return inInvoiceRange(sanitized) ? sanitized : null;
   }
 

@@ -281,7 +281,9 @@ export function buildInvoiceTextParseJsonSchema(
 
 /** Standalone monetary discount row (must be subtracted, never dropped). */
 export function isMonetaryDiscountLabel(label: string): boolean {
-  return /rabatt|skonto|nachlass|gutschrift/i.test(label);
+  return /rabatt|skonto|nachlass|gutschrift|aktionspreis|aktion|sonderpreis|gutschein|bonus/i.test(
+    label,
+  );
 }
 
 /** Positive Rabatt/Skonto amounts are stored as negatives so they reduce the sum. */

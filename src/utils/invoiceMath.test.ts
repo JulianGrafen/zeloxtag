@@ -127,6 +127,37 @@ describe("processLineItems", () => {
     expect(item.gesamtpreis).toBe(28.73);
   });
 
+  it("keeps printed negative gesamtpreis (Aktionspreis / Rabattzeile)", () => {
+    const [item] = processLineItems([
+      {
+        label: "Aktionspreis Tieferlegung 444€ Facebook/Instagram",
+        menge: "1,00",
+        einzelpreis: "-596,00 €",
+        gesamtpreis: "-596,00 €",
+      },
+    ]);
+    expect(item.gesamtpreis).toBe(-596);
+  });
+
+  it("sums positions including a negative Aktionspreis line", () => {
+    const items = processLineItems([
+      { label: "Pos 1", menge: "1", einzelpreis: "400,00", gesamtpreis: "400,00" },
+      { label: "Pos 2", menge: "1", einzelpreis: "455,00", gesamtpreis: "455,00" },
+      { label: "Pos 3", menge: "1", einzelpreis: "185,00", gesamtpreis: "185,00" },
+      {
+        label: "Aktionspreis Tieferlegung",
+        menge: "1,00",
+        einzelpreis: "-596,00",
+        gesamtpreis: "-596,00",
+      },
+      { label: "Pos 5", menge: "1", einzelpreis: "250,00", gesamtpreis: "250,00" },
+      { label: "Pos 6", menge: "1", einzelpreis: "25,00", gesamtpreis: "25,00" },
+      { label: "Pos 7", menge: "1", einzelpreis: "260,00", gesamtpreis: "260,00" },
+    ]);
+    const sum = items.reduce((acc, row) => acc + (row.gesamtpreis ?? 0), 0);
+    expect(sum).toBeCloseTo(979, 2);
+  });
+
   it("stores standalone Rabatt rows as a negative amount", () => {
     const [item] = processLineItems([
       {

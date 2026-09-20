@@ -30,7 +30,10 @@ import {
   isPercentRestatedAsAmount,
   type InvoiceLineItem,
 } from "./text-parse-schema";
-import { parseGermanMoneyAmount } from "./parse-german-money";
+import {
+  inSignedInvoiceLineAmountRange,
+  parseGermanMoneyAmount,
+} from "./parse-german-money";
 import {
   extractWorkshopSectionLineItems,
   isWorkshopSectionInvoiceText,
@@ -172,7 +175,11 @@ export function isPlausiblePositionLineAmount(
   } = {},
 ): boolean {
   const { footerGross = null, footerNet = null, multiPosition = false } = options;
-  if (!Number.isFinite(amount) || amount <= 0) return false;
+  if (!Number.isFinite(amount) || amount === 0) return false;
+
+  if (amount < 0) {
+    return inSignedInvoiceLineAmountRange(amount);
+  }
 
   if (
     multiPosition &&

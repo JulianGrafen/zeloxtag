@@ -1,3 +1,5 @@
+import { isMonetaryDiscountLabel } from "@/lib/ocr/text-parse-schema";
+
 export function parseGermanNumber(val: string | number | null | undefined): number | null {
   if (val === null || val === undefined || val === '') return null;
   if (typeof val === 'number') return val;
@@ -108,6 +110,8 @@ export function resolveInvoiceRowGesamtpreis(options: {
   const rabattPercent = options.rabattPercent;
   const mengeExplicit = options.mengeExplicit !== false;
 
+  if (rawGesPreis !== null && rawGesPreis < 0) return rawGesPreis;
+
   if (rawEPreis === null && rawGesPreis === null) return null;
   if (rawEPreis === null) return rawGesPreis;
 
@@ -183,7 +187,7 @@ export function processLineItems(
         gesamtpreis != null &&
         gesamtpreis > 0 &&
         typeof item.label === "string" &&
-        /rabatt|skonto|nachlass|gutschrift/i.test(item.label)
+        isMonetaryDiscountLabel(item.label)
       ) {
         return -gesamtpreis;
       }
@@ -193,6 +197,15 @@ export function processLineItems(
     const rawMenge = parseGermanNumber(item.menge);
     const rawEPreis = parseGermanNumber(item.einzelpreis);
     const rawGesPreis = parseGermanNumber(item.gesamtpreis);
+
+    if (rawGesPreis !== null && rawGesPreis < 0) {
+      return {
+        ...item,
+        menge: rawMenge,
+        einzelpreis: rawEPreis,
+        gesamtpreis: rawGesPreis,
+      };
+    }
 
     if (isRateOnlyRow(rawMenge, rawEPreis, rawGesPreis, item.menge)) {
       return {

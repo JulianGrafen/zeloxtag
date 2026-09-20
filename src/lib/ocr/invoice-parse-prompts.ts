@@ -15,6 +15,7 @@ PREIS-SPALTE (PFLICHT für amount und lineItems.amount):
 7. Beispiel Zeile: nur eine Geldbetrags-Spalte ganz rechts → genau diesen Wert nehmen.
 8. Steht in einer Zeile mehr als ein €-Betrag, IMMER den RECHTSTEN nehmen (Zeilensumme).
 9. Rechnungs-Gesamtbetrag (amount): nur "Zahlbetrag", "Rechnungsbetrag", "Gesamtbetrag", "Summe brutto", "Endbetrag" — nie Netto wenn Brutto/Zahlbetrag sichtbar.
+10. Rabatt-/Aktionszeilen mit Minus in E-Preis oder Ges. Preis → lineItems.amount negativ übernehmen (z. B. -596), nicht positiv umdeuten.
 `.trim();
 
 /** Kilometerstand — Kopf der Rechnung, häufige LLM-Fehler vermeiden. */

@@ -24,7 +24,7 @@ function toInvoiceLineItems(processed: ReturnType<typeof processLineItems>): Inv
         return false;
       }
       if (item.gesamtpreis > 0) return true;
-      return item.gesamtpreis < 0 && isMonetaryDiscountLabel(item.label);
+      return item.gesamtpreis < 0;
     })
     .map((item) => ({
       label: String(item.label).trim(),
