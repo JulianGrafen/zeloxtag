@@ -17,6 +17,69 @@ import {
 } from "@/lib/ui/dashboard-prompt-orchestrator";
 import { cn } from "@/lib/utils";
 
+function useScanGlassTheme() {
+  const { resolvedTheme } = useTheme();
+  const [themeReady, setThemeReady] = useState(false);
+  useEffect(() => {
+    setThemeReady(true);
+  }, []);
+  const isDark = themeReady && resolvedTheme === "dark";
+
+  return {
+    isDark,
+    surfaceProps: {
+      simBackground: "fab-gradient" as const,
+      backgroundOpacity: isDark ? 0.14 : 0.22,
+      brightness: isDark ? 70 : 52,
+      opacity: isDark ? 0.9 : 0.93,
+      blur: 15,
+      displace: 0.5,
+      distortionScale: -180,
+      redOffset: 0,
+      greenOffset: 10,
+      blueOffset: 20,
+      mixBlendMode: (isDark ? "normal" : "screen") as "normal" | "screen",
+      saturation: isDark ? 1.45 : 1.9,
+    },
+  };
+}
+
+const scanGlassClassName =
+  "scan-glass-cta shadow-[var(--scan-glass-cta-shadow)] [&_.glass-surface__content]:p-0";
+
+/** Compact header pill — same glass treatment as the dashboard scan CTA. */
+export function ScanGlassPillLink({
+  href,
+  label = "Scannen",
+  className,
+}: {
+  href: string;
+  label?: string;
+  className?: string;
+}) {
+  const { surfaceProps } = useScanGlassTheme();
+
+  return (
+    <GlassSurface
+      width="auto"
+      height="auto"
+      borderRadius={9999}
+      {...surfaceProps}
+      className={cn(scanGlassClassName, "inline-flex shrink-0", className)}
+    >
+      <PressableLink
+        href={href}
+        variant="button"
+        nav="forward"
+        className="inline-flex items-center gap-1.5 rounded-full bg-transparent px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-none"
+      >
+        <Plus className="h-3.5 w-3.5" aria-hidden />
+        {label}
+      </PressableLink>
+    </GlassSurface>
+  );
+}
+
 export interface DashboardScanCtaProps {
   tagUuid: string;
   /** Prefer in-page scanner when provided. */
@@ -42,13 +105,7 @@ export function DashboardScanCta({
   scanLocked = false,
   onScanLocked,
 }: Omit<DashboardScanCtaProps, "hidden">) {
-  const { resolvedTheme } = useTheme();
-  const [themeReady, setThemeReady] = useState(false);
-  useEffect(() => {
-    setThemeReady(true);
-  }, []);
-
-  const isDark = themeReady && resolvedTheme === "dark";
+  const { surfaceProps } = useScanGlassTheme();
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
   const buttonClassName = cn(
     "inline-flex w-full items-center justify-center gap-2 bg-transparent py-4 px-[1.15rem] text-[0.92rem] font-semibold shadow-none",
@@ -57,7 +114,8 @@ export function DashboardScanCta({
       : "text-[color:var(--vd-text)]",
   );
   const glassClassName = cn(
-    "scan-glass-cta w-full shadow-[var(--scan-glass-cta-shadow)] [&_.glass-surface__content]:p-0",
+    scanGlassClassName,
+    "w-full",
     scanLocked && "opacity-85 saturate-50",
   );
 
@@ -104,21 +162,11 @@ export function DashboardScanCta({
       <GlassSurface
         width="100%"
         height="auto"
-        simBackground="fab-gradient"
         borderRadius={16}
+        {...surfaceProps}
         backgroundOpacity={
-          scanLocked ? 0.1 : isDark ? 0.14 : 0.22
+          scanLocked ? 0.1 : surfaceProps.backgroundOpacity
         }
-        brightness={isDark ? 70 : 52}
-        opacity={isDark ? 0.9 : 0.93}
-        blur={15}
-        displace={0.5}
-        distortionScale={-180}
-        redOffset={0}
-        greenOffset={10}
-        blueOffset={20}
-        mixBlendMode={isDark ? "normal" : "screen"}
-        saturation={isDark ? 1.45 : 1.9}
         className={glassClassName}
       >
         {scanControl}

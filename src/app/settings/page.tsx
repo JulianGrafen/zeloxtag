@@ -13,7 +13,6 @@ import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership"
 import { AppShell } from "@/components/layout/app-shell";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
 import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
-import { ThemeAppearanceSettings } from "@/components/theme/theme-appearance-settings";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
 import { getMfaRecoveryStatus } from "@/lib/auth/mfa-actions";
@@ -26,8 +25,8 @@ import {
 } from "@/lib/onboarding/dashboard-tour";
 
 export const metadata: Metadata = {
-  title: "Konto · ZeloxTag",
-  description: "Konto, Sicherheit und Abmelden für ZeloxTag.",
+  title: "Einstellungen · ZeloxTag",
+  description: "Konto, Erscheinungsbild, Sicherheit und Abmelden für ZeloxTag.",
 };
 
 interface SettingsPageProps {
@@ -106,9 +105,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           >
             ← Zurück zum Dashboard
           </Link>
-          <h1 className="claim-title mt-3">Konto</h1>
+          <h1 className="claim-title mt-3">Einstellungen</h1>
           <p className="claim-copy mt-1">
-            Sicherheit & Sitzung ·{" "}
+            Konto, Erscheinungsbild & Sitzung ·{" "}
             <span className="font-medium text-[color:var(--vd-text)]">
               {user.email ?? user.id}
             </span>
@@ -163,7 +162,23 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           />
         </Link>
 
-        <ThemeAppearanceSettings />
+        <Link
+          href="/settings/appearance"
+          className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+        >
+          <span>
+            <span className="block text-[0.88rem] font-medium">
+              Erscheinungsbild
+            </span>
+            <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
+              Dark Mode deaktivieren · Hell, Dunkel oder System
+            </span>
+          </span>
+          <ChevronRight
+            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+            aria-hidden
+          />
+        </Link>
 
         <PwaInstallSettingsPanel />
 

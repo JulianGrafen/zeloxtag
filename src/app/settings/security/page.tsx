@@ -26,7 +26,7 @@ export default async function SettingsSecurityPage() {
             href="/settings"
             className="text-[0.8rem] font-medium text-[color:var(--vd-muted)]"
           >
-            ← Zurück zum Konto
+            ← Zurück zu Einstellungen
           </Link>
           <h1 className="claim-title mt-3">Zwei-Faktor-Authentifizierung (2FA)</h1>
           <p className="claim-copy mt-1">

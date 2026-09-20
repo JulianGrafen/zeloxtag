@@ -9,6 +9,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       attribute="class"
       defaultTheme="system"
       enableSystem
+      storageKey="zt-theme-v1"
       disableTransitionOnChange
     >
       {children}

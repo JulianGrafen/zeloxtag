@@ -130,11 +130,11 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
     },
     {
       id: "settings",
-      title: "Konto",
+      title: "Einstellungen",
       icon: "settings",
       featured: true,
       meta: {
-        subtitle: "2FA & Sicherheit",
+        subtitle: "Dark Mode · 2FA & Konto",
         href: "/settings",
       },
     },

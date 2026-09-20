@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { VehicleTimeline } from "@/components/dashboard/VehicleTimeline";
+import { ScanGlassPillLink } from "@/components/tags/dashboard-scan-fab";
 import { isOilChangeDocument } from "@/lib/documents/oil-changes";
 import {
   PressableLink,
@@ -64,16 +65,7 @@ export function VehicleTimelineView({
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Zurück
             </PressableLink>
-            {scanHref ? (
-              <PressableLink
-                href={scanHref}
-                variant="pill"
-                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-2 text-[0.78rem] font-medium text-white"
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden />
-                Scannen
-              </PressableLink>
-            ) : null}
+            {scanHref ? <ScanGlassPillLink href={scanHref} /> : null}
           </div>
 
           <header className="space-y-1 px-0.5">

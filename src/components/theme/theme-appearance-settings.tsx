@@ -40,7 +40,10 @@ export function ThemeAppearanceSettings() {
         Erscheinungsbild
       </h2>
       <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Hell, dunkel oder automatisch nach Systemeinstellung.
+        Wähle <span className="font-medium text-[color:var(--vd-text)]">Hell</span>
+        , um Dark Mode zu deaktivieren — unabhängig von der
+        Systemeinstellung. Mit <span className="font-medium text-[color:var(--vd-text)]">System</span>{" "}
+        folgt ZeloxTag iOS, macOS und Android.
       </p>
 
       {!mounted ? (
