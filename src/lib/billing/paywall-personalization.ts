@@ -12,6 +12,11 @@ import {
 
 export type PaywallVisualKind = "resale_chart" | "showcase_qr" | "vault_gap";
 
+export type PaywallTriggerContext = {
+  /** Contextual goal for this modal (e.g. Rechnung tile → Werterhalt). */
+  goalOverride?: ZeloxPrimaryGoal;
+};
+
 export type PaywallPersonalization = {
   goal: ZeloxPrimaryGoal;
   headline: string;
@@ -58,6 +63,9 @@ const HEADLINE_BY_GOAL: Record<ZeloxPrimaryGoal, string> = {
 
 const HEADLINE_SCAN_EXHAUSTED_DOCUMENTS =
   "Dein Gratis-Scan ist weg — ohne Pro fehlt dir der schnellste Weg in die Akte.";
+
+const HEADLINE_SCAN_EXHAUSTED_WERTERHALT =
+  "Dein Gratis-Scan ist weg — ohne Pro fehlt der Beleg für deinen Werterhalt.";
 
 const CTA_BY_GOAL: Record<ZeloxPrimaryGoal, string> = {
   werterhalt: `Verkaufswert absichern · ${PRO_TRIAL_LABEL}`,
@@ -110,6 +118,21 @@ function reorderBenefits(goal: ZeloxPrimaryGoal): readonly string[] {
   return ordered;
 }
 
+export function paywallGoalOverrideForDashboardTile(
+  tileId: string,
+): ZeloxPrimaryGoal | undefined {
+  if (tileId === "invoices") return "werterhalt";
+  return undefined;
+}
+
+/** Scan picker tile „Rechnung“ → Werterhalt paywall. */
+export function paywallGoalOverrideForScanType(
+  scanType: string,
+): ZeloxPrimaryGoal | undefined {
+  if (scanType === "invoice") return "werterhalt";
+  return undefined;
+}
+
 export function inferPrimaryGoalFromFeature(
   feature: FeatureFlag,
 ): ZeloxPrimaryGoal {
@@ -129,7 +152,9 @@ export function inferPrimaryGoalFromFeature(
 export function resolvePaywallGoal(input: {
   primaryGoal: ZeloxPrimaryGoal | null;
   feature: FeatureFlag;
+  context?: PaywallTriggerContext;
 }): ZeloxPrimaryGoal {
+  if (input.context?.goalOverride) return input.context.goalOverride;
   if (input.primaryGoal) return input.primaryGoal;
   return inferPrimaryGoalFromFeature(input.feature);
 }
@@ -142,6 +167,9 @@ export function getPaywallPersonalization(input: {
   let headline = HEADLINE_BY_GOAL[goal];
   if (variant === "free_scan_exhausted" && goal === "documents") {
     headline = HEADLINE_SCAN_EXHAUSTED_DOCUMENTS;
+  }
+  if (variant === "free_scan_exhausted" && goal === "werterhalt") {
+    headline = HEADLINE_SCAN_EXHAUSTED_WERTERHALT;
   }
 
   return {

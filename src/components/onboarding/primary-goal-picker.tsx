@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  PRIMARY_GOAL_OPTIONS,
-  type ZeloxPrimaryGoal,
-} from "@/lib/onboarding/primary-goal";
-import { cn } from "@/lib/utils";
+import { PrimaryGoalOptionList } from "@/components/onboarding/primary-goal-option-list";
+import type { ZeloxPrimaryGoal } from "@/lib/onboarding/primary-goal";
 
 type PrimaryGoalPickerProps = {
   onSelect: (goal: ZeloxPrimaryGoal) => void;
@@ -29,30 +26,9 @@ export function PrimaryGoalPicker({ onSelect }: PrimaryGoalPickerProps) {
           Wir passen die kurze Einführung danach an — eine Auswahl reicht.
         </p>
 
-        <ul className="mt-4 flex flex-col gap-2.5">
-          {PRIMARY_GOAL_OPTIONS.map((option) => (
-            <li key={option.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(option.id)}
-                className={cn(
-                  "w-full rounded-[var(--vd-radius-control)] border border-[color:var(--vd-border)]",
-                  "bg-[color:var(--vd-surface-elevated)] px-4 py-3.5 text-left",
-                  "transition hover:border-[color:var(--vd-text)]/25 hover:bg-[color:var(--vd-surface)]",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--vd-surface)]",
-                  "active:scale-[0.99]",
-                )}
-              >
-                <span className="block text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
-                  {option.title}
-                </span>
-                <span className="mt-0.5 block text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
-                  {option.description}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-4">
+          <PrimaryGoalOptionList onSelect={onSelect} />
+        </div>
       </div>
     </div>
   );

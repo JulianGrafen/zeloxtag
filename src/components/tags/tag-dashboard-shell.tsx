@@ -23,6 +23,11 @@ import {
   type PaywallVariant,
 } from "@/lib/permissions/feature-access";
 import {
+  paywallGoalOverrideForDashboardTile,
+  paywallGoalOverrideForScanType,
+  type PaywallTriggerContext,
+} from "@/lib/billing/paywall-personalization";
+import {
   clearSilhouettePreviewFromSession,
   readSilhouettePreviewFromSession,
   writeSilhouettePreviewToSession,
@@ -42,10 +47,8 @@ import {
 } from "@/lib/ui/dashboard-prompt-orchestrator";
 import type { Document, Vehicle } from "@/types/database";
 
-import { PrimaryGoalPicker } from "@/components/onboarding/primary-goal-picker";
 import {
   readPrimaryGoal,
-  writePrimaryGoal,
   type ZeloxPrimaryGoal,
 } from "@/lib/onboarding/primary-goal";
 
@@ -219,6 +222,13 @@ export function TagDashboardShell({
       return null;
     },
   );
+  const [paywallTriggerContext, setPaywallTriggerContext] = useState<
+    PaywallTriggerContext | undefined
+  >(() => {
+    if (showFreeScanWelcome) return { goalOverride: "werterhalt" };
+    if (allowedInitial === "invoice") return { goalOverride: "werterhalt" };
+    return undefined;
+  });
   const [paywallVariant, setPaywallVariant] = useState<PaywallVariant>(() => {
     if (showFreeScanWelcome) {
       return "free_scan_exhausted";
@@ -250,13 +260,7 @@ export function TagDashboardShell({
   );
   const [forceTour, setForceTour] = useState(startTour);
   const [primaryGoal, setPrimaryGoal] = useState<ZeloxPrimaryGoal | null>(null);
-  const [primaryGoalReady, setPrimaryGoalReady] = useState(false);
   const onboardingActive = forceTour || deferSilhouetteForTour;
-  const needsPrimaryGoal =
-    isOwner &&
-    onboardingActive &&
-    primaryGoalReady &&
-    primaryGoal === null;
 
   useEffect(() => {
     setPortalReady(true);
@@ -264,7 +268,6 @@ export function TagDashboardShell({
 
   useEffect(() => {
     setPrimaryGoal(readPrimaryGoal());
-    setPrimaryGoalReady(true);
   }, []);
 
   useEffect(() => {
@@ -292,22 +295,36 @@ export function TagDashboardShell({
 
   function closePaywall() {
     setPaywallFeature(null);
+    setPaywallTriggerContext(undefined);
     clearFreeScanWelcomeParam();
+  }
+
+  function paywallContextForScanType(
+    type: ScanType,
+  ): PaywallTriggerContext | undefined {
+    const override = paywallGoalOverrideForScanType(type);
+    return override ? { goalOverride: override } : undefined;
   }
 
   function openPaywall(
     feature: FeatureFlag,
     variant: PaywallVariant = "default",
+    context?: PaywallTriggerContext,
   ) {
     setPaywallFeature(feature);
     setPaywallVariant(variant);
+    setPaywallTriggerContext(context);
   }
 
   function handleScanTypeSelect(type: ScanType) {
     if (!membershipActive) {
       if (isInvoiceFamilyScanType(type)) {
         if (localFreeInvoiceScanRemaining <= 0) {
-          openPaywall(FEATURE.SCAN_AI_RECEIPT, "free_scan_exhausted");
+          openPaywall(
+            FEATURE.SCAN_AI_RECEIPT,
+            "free_scan_exhausted",
+            paywallContextForScanType(type),
+          );
           return;
         }
       } else if (isComplimentaryAbeScanType(type)) {
@@ -316,7 +333,11 @@ export function TagDashboardShell({
           return;
         }
       } else {
-        openPaywall(FEATURE.SCAN_AI_RECEIPT, "default");
+        openPaywall(
+          FEATURE.SCAN_AI_RECEIPT,
+          "default",
+          paywallContextForScanType(type),
+        );
         return;
       }
     }
@@ -632,6 +653,7 @@ export function TagDashboardShell({
           open={Boolean(paywallFeature)}
           feature={paywallFeature}
           variant={paywallVariant}
+          triggerContext={paywallTriggerContext}
           tagUuid={tagUuid}
           isOwner={isOwner}
           onClose={closePaywall}
@@ -671,6 +693,7 @@ export function TagDashboardShell({
           open={Boolean(paywallFeature)}
           feature={paywallFeature}
           variant={paywallVariant}
+          triggerContext={paywallTriggerContext}
           tagUuid={tagUuid}
           isOwner={isOwner}
           onClose={closePaywall}
@@ -702,12 +725,14 @@ export function TagDashboardShell({
         }
         onOpenScanner={handleOpenScanner}
         hideScanFab={
-          needsPrimaryGoal ||
           silhouettePromptVisible ||
           showSilhouetteEditor ||
           Boolean(paywallFeature)
         }
-        onLockedFeature={(feature) => {
+        onLockedFeature={(feature, tileId) => {
+          const goalOverride = tileId
+            ? paywallGoalOverrideForDashboardTile(tileId)
+            : undefined;
           openPaywall(
             feature,
             !membershipActive &&
@@ -715,6 +740,7 @@ export function TagDashboardShell({
               localFreeAbeScanRemaining <= 0
               ? "free_scan_exhausted"
               : "default",
+            goalOverride ? { goalOverride } : undefined,
           );
         }}
         onEditVehicleImage={
@@ -786,20 +812,10 @@ export function TagDashboardShell({
             document.body,
           )
         : null}
-      {portalReady && needsPrimaryGoal ? (
-        <PrimaryGoalPicker
-          onSelect={(goal) => {
-            writePrimaryGoal(goal);
-            setPrimaryGoal(goal);
-          }}
-        />
-      ) : null}
       <DashboardOnboardingTour
         enabled={
           mode === "dashboard" &&
           !showSilhouetteEditor &&
-          primaryGoalReady &&
-          !needsPrimaryGoal &&
           onboardingActive
         }
         role={isOwner ? "owner" : "contributor"}
@@ -812,6 +828,7 @@ export function TagDashboardShell({
         open={Boolean(paywallFeature)}
         feature={paywallFeature}
         variant={paywallVariant}
+        triggerContext={paywallTriggerContext}
         tagUuid={tagUuid}
         isOwner={isOwner}
         onClose={closePaywall}

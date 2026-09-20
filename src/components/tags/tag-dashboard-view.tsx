@@ -65,7 +65,7 @@ interface TagDashboardViewProps {
   /** Hide the scan FAB while a photo sheet/modal is open. */
   hideScanFab?: boolean;
   /** Pro tile without href — open the action-based paywall. */
-  onLockedFeature?: (feature: FeatureFlag) => void;
+  onLockedFeature?: (feature: FeatureFlag, tileId?: string) => void;
   /** Owner: tap header cutout to change silhouette. */
   onEditVehicleImage?: () => void;
   /** Immediate header refresh after silhouette upload (same-origin display URL). */
@@ -375,7 +375,7 @@ export function TagDashboardView({
         onTileClick={(tileId) => {
           const feature = featureForDashboardTile(tileId);
           if (feature && isProOnlyFeature(feature)) {
-            onLockedFeature?.(feature);
+            onLockedFeature?.(feature, tileId);
           }
         }}
         onEditVehicleImage={

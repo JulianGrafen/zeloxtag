@@ -11,6 +11,7 @@ import { setPaywallOpen } from "@/lib/billing/paywall-open-state";
 import {
   getPaywallPersonalization,
   resolvePaywallGoal,
+  type PaywallTriggerContext,
 } from "@/lib/billing/paywall-personalization";
 import {
   PRO_PAYWALL_DISMISS_LABEL,
@@ -30,6 +31,7 @@ export function ProPaywallModal({
   tagUuid,
   isOwner = true,
   variant = "default",
+  triggerContext,
   onClose,
 }: {
   open: boolean;
@@ -37,6 +39,7 @@ export function ProPaywallModal({
   tagUuid: string;
   isOwner?: boolean;
   variant?: PaywallVariant;
+  triggerContext?: PaywallTriggerContext;
   onClose: () => void;
 }) {
   const showAnnualPlan = isAnnualPlanAvailable();
@@ -71,9 +74,10 @@ export function ProPaywallModal({
     const goal = resolvePaywallGoal({
       primaryGoal: readPrimaryGoal(),
       feature,
+      context: triggerContext,
     });
     return getPaywallPersonalization({ goal, variant });
-  }, [open, feature, variant]);
+  }, [open, feature, variant, triggerContext]);
 
   if (!open || !feature || !personalization) return null;
 

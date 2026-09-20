@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   getPaywallPersonalization,
   inferPrimaryGoalFromFeature,
+  paywallGoalOverrideForDashboardTile,
+  paywallGoalOverrideForScanType,
   resolvePaywallGoal,
 } from "@/lib/billing/paywall-personalization";
 import { FEATURE } from "@/lib/permissions/feature-access";
@@ -21,6 +23,19 @@ describe("paywall personalization", () => {
     expect(inferPrimaryGoalFromFeature(FEATURE.INVITE_SCHRAUBER)).toBe(
       "documents",
     );
+  });
+
+  it("forces Werterhalt for Rechnung triggers over stored goal", () => {
+    expect(paywallGoalOverrideForScanType("invoice")).toBe("werterhalt");
+    expect(paywallGoalOverrideForScanType("repair")).toBeUndefined();
+    expect(paywallGoalOverrideForDashboardTile("invoices")).toBe("werterhalt");
+    expect(
+      resolvePaywallGoal({
+        primaryGoal: "documents",
+        feature: FEATURE.SCAN_AI_RECEIPT,
+        context: { goalOverride: "werterhalt" },
+      }),
+    ).toBe("werterhalt");
   });
 
   it("prefers stored primary goal over feature inference", () => {
@@ -52,6 +67,15 @@ describe("paywall personalization", () => {
     const documents = getPaywallPersonalization({ goal: "documents" });
     expect(documents.visualKind).toBe("vault_gap");
     expect(documents.benefits[0]?.startsWith("Gutachten-Tresor:")).toBe(true);
+  });
+
+  it("sharpens werterhalt headline when free scan is exhausted", () => {
+    const exhausted = getPaywallPersonalization({
+      goal: "werterhalt",
+      variant: "free_scan_exhausted",
+    });
+    expect(exhausted.headline).toContain("Werterhalt");
+    expect(exhausted.visualKind).toBe("resale_chart");
   });
 
   it("sharpens documents headline when free scan is exhausted", () => {

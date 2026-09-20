@@ -13,6 +13,11 @@ import type { ClaimTransitionDirection } from "@/components/tags/claim/claim-mot
 import { ClaimIntroHero } from "@/components/tags/claim/ClaimIntroHero";
 import { ClaimShell } from "@/components/tags/claim/ClaimShell";
 import { ClaimStepTransition } from "@/components/tags/claim/ClaimStepTransition";
+import { PrimaryGoalOptionList } from "@/components/onboarding/primary-goal-option-list";
+import {
+  writePrimaryGoal,
+  type ZeloxPrimaryGoal,
+} from "@/lib/onboarding/primary-goal";
 import { AuthLegalConsentNotice } from "@/components/legal/auth-legal-consent-notice";
 import { ClaimTwinPreviewCard } from "@/components/tags/claim/ClaimTwinPreviewCard";
 import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
@@ -64,6 +69,9 @@ export function ClaimFlow({
   const [email, setEmail] = useState(userEmail ?? "");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [primaryGoal, setPrimaryGoal] = useState<ZeloxPrimaryGoal | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -418,11 +426,7 @@ export function ClaimFlow({
                   setError(validationError);
                   return;
                 }
-                if (needsAccount) {
-                  advance("account");
-                  return;
-                }
-                submitClaim();
+                advance("primaryGoal");
               }}
             >
               <ClaimSelectField
@@ -446,6 +450,45 @@ export function ClaimFlow({
                   value: String(months),
                   label: formatOilChangeIntervalMonthsLabel(months),
                 }))}
+              />
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel="Weiter"
+                submitIcon="next"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
+
+        {step === "primaryGoal" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("primaryGoal")}
+            title="Was ist dir am wichtigsten?"
+            copy="Wir passen Dashboard-Einführung und Pro-Hinweise danach an — eine Auswahl reicht."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                if (!primaryGoal) {
+                  setError("Bitte eine Option wählen.");
+                  return;
+                }
+                writePrimaryGoal(primaryGoal);
+                if (needsAccount) {
+                  advance("account");
+                  return;
+                }
+                submitClaim();
+              }}
+            >
+              <PrimaryGoalOptionList
+                selected={primaryGoal}
+                onSelect={setPrimaryGoal}
               />
               <ClaimSlideActions
                 error={error}
