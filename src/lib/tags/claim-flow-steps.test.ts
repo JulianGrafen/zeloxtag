@@ -21,20 +21,20 @@ describe("claim-flow-steps", () => {
     expect(claimWizardProgressPercent("power", true)).toBe(43);
     expect(claimWizardProgressPercent("drivetrain", true)).toBe(57);
     expect(claimWizardProgressPercent("oilInterval", true)).toBe(71);
-    expect(claimWizardProgressPercent("primaryGoal", true)).toBe(86);
+    expect(claimWizardProgressPercent("preferences", true)).toBe(86);
     expect(claimWizardProgressPercent("account", true)).toBe(100);
   });
 
-  it("finishes at 100 percent on the primary-goal slide for signed-in users", () => {
-    expect(claimWizardProgressPercent("primaryGoal", false)).toBe(100);
-    expect(claimWizardStepIndex("primaryGoal", false)).toBe(6);
+  it("finishes at 100 percent on the preferences slide for signed-in users", () => {
+    expect(claimWizardProgressPercent("preferences", false)).toBe(100);
+    expect(claimWizardStepIndex("preferences", false)).toBe(6);
   });
 
   it("walks forward and backward through the ordered steps", () => {
     expect(claimWizardNextStep("makeModel", true)).toBe("year");
     expect(claimWizardNextStep("drivetrain", true)).toBe("oilInterval");
-    expect(claimWizardNextStep("oilInterval", true)).toBe("primaryGoal");
-    expect(claimWizardPreviousStep("primaryGoal", true)).toBe("oilInterval");
+    expect(claimWizardNextStep("oilInterval", true)).toBe("preferences");
+    expect(claimWizardPreviousStep("preferences", true)).toBe("oilInterval");
     expect(claimWizardPreviousStep("oilInterval", true)).toBe("drivetrain");
     expect(claimWizardPreviousStep("year", true)).toBe("makeModel");
     expect(claimWizardPreviousStep("makeModel", true)).toBe("intro");

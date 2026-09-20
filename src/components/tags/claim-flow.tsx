@@ -426,7 +426,7 @@ export function ClaimFlow({
                   setError(validationError);
                   return;
                 }
-                advance("primaryGoal");
+                advance("preferences");
               }}
             >
               <ClaimSelectField
@@ -463,11 +463,11 @@ export function ClaimFlow({
           </ClaimWizardPanel>
         ) : null}
 
-        {step === "primaryGoal" ? (
+        {step === "preferences" ? (
           <ClaimWizardPanel
-            kicker={stepKicker("primaryGoal")}
+            kicker={stepKicker("preferences")}
             title="Was ist dir am wichtigsten?"
-            copy="Wir passen Dashboard-Einführung und Pro-Hinweise danach an — eine Auswahl reicht."
+            copy="Wir passen dein Dashboard und dein Erlebnis basierend auf der Antwort an."
           >
             <form
               className="mt-6 grid w-full gap-4"

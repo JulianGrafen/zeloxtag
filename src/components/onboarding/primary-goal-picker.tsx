@@ -23,7 +23,7 @@ export function PrimaryGoalPicker({ onSelect }: PrimaryGoalPickerProps) {
           Was ist dir am wichtigsten?
         </h2>
         <p className="mt-1.5 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Wir passen die kurze Einführung danach an — eine Auswahl reicht.
+          Wir passen dein Dashboard und dein Erlebnis basierend auf der Antwort an.
         </p>
 
         <div className="mt-4">

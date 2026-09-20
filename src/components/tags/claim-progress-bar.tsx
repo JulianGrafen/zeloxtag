@@ -19,6 +19,7 @@ const STEP_LABELS: Partial<Record<ClaimWizardStep, string>> = {
   power: "Leistung",
   drivetrain: "Antrieb",
   oilInterval: "Service",
+  preferences: "Präferenzen",
   account: "Konto",
 };
 
@@ -63,15 +64,15 @@ export function ClaimProgressBar({ step, needsAccount }: ClaimProgressBarProps) 
               <motion.div
                 layout={!motionConfig.reduceMotion}
                 className={cn(
-                  "claim-stepper__dot flex h-7 w-7 items-center justify-center rounded-full border text-[0.65rem] font-semibold transition-colors",
+                  "claim-stepper__dot flex h-7 w-7 items-center justify-center rounded-full border text-[0.65rem] font-semibold tabular-nums transition-colors",
                   isComplete &&
-                    "border-[color:var(--vd-text)] bg-[color:var(--vd-text)] text-white",
+                    "border-[color:var(--vd-icon-badge-bg)] bg-[color:var(--vd-icon-badge-bg)] text-[color:var(--vd-icon-badge-fg)]",
                   isActive &&
                     !isComplete &&
-                    "border-[color:var(--vd-text)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] ring-2 ring-black/8",
+                    "border-[color:var(--vd-text)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] ring-2 ring-[color:var(--vd-border)]",
                   !isActive &&
                     !isComplete &&
-                    "border-black/10 bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-muted)]",
+                    "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)]",
                 )}
               >
                 {isComplete ? (
@@ -101,10 +102,10 @@ export function ClaimProgressBar({ step, needsAccount }: ClaimProgressBarProps) 
         aria-valuemax={100}
         aria-valuenow={percent}
         aria-label={`Registrierung ${percent} Prozent abgeschlossen`}
-        className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/8"
+        className="mt-3 h-1.5 overflow-hidden rounded-full bg-[color:var(--tour-progress-track)]"
       >
         <motion.div
-          className="h-full rounded-full bg-[#0a0a0a]"
+          className="h-full rounded-full bg-[color:var(--tour-progress-fill)]"
           initial={false}
           animate={{ width: `${percent}%` }}
           transition={

@@ -5,7 +5,7 @@ export type ClaimWizardStep =
   | "power"
   | "drivetrain"
   | "oilInterval"
-  | "primaryGoal"
+  | "preferences"
   | "account";
 
 const VEHICLE_STEPS: ClaimWizardStep[] = [
@@ -14,7 +14,7 @@ const VEHICLE_STEPS: ClaimWizardStep[] = [
   "power",
   "drivetrain",
   "oilInterval",
-  "primaryGoal",
+  "preferences",
 ];
 
 export function claimWizardTotalSteps(needsAccount: boolean): number {
