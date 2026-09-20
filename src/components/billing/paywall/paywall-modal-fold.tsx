@@ -17,9 +17,7 @@ type PaywallModalFoldProps = {
   className?: string;
 };
 
-/**
- * Modal paywall: dedicated scroll for benefits; pricing and timeline stay fixed below.
- */
+/** Modal paywall body — scroll handled by parent in ProPaywallContent. */
 export function PaywallModalFold({
   benefits,
   pricing,
@@ -31,16 +29,8 @@ export function PaywallModalFold({
   className,
 }: PaywallModalFoldProps) {
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col gap-2.5", className)}>
-      <div
-        className={cn(
-          "max-h-[min(22dvh,9rem)] shrink-0 overflow-y-auto overscroll-contain",
-          "[-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]",
-        )}
-        aria-label="Vorteile scrollen"
-      >
-        <div className="pb-2">{benefits}</div>
-      </div>
+    <div className={cn("flex flex-col gap-2.5", className)}>
+      <div className="pb-2">{benefits}</div>
 
       <PaywallGoalVisual
         kind={visualKind}

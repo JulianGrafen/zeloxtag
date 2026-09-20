@@ -106,12 +106,13 @@ export function ProPaywallContent({
         isModal ? (
           <div
             className={cn(
-              "flex min-h-0 flex-1 flex-col px-4 pt-2",
+              "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pt-2 pb-2",
+              "[-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]",
               contentWidth,
             )}
+            aria-label="Pro-Angebot scrollen"
           >
             <PaywallModalFold
-              className="min-h-0 flex-1"
               visualKind={visualKind}
               visualAriaLabel={visualAriaLabel}
               benefits={
