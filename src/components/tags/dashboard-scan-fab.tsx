@@ -105,18 +105,12 @@ export function DashboardScanCta({
   scanLocked = false,
   onScanLocked,
 }: Omit<DashboardScanCtaProps, "hidden">) {
-  const { surfaceProps } = useScanGlassTheme();
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
   const buttonClassName = cn(
-    "inline-flex w-full items-center justify-center gap-2 bg-transparent py-4 px-[1.15rem] text-[0.92rem] font-semibold shadow-none",
+    "inline-flex w-full items-center justify-center gap-2 rounded-2xl py-4 px-[1.15rem] text-[0.92rem] font-semibold shadow-[var(--claim-cta-shadow)]",
     scanLocked
-      ? "text-[color:var(--vd-muted)]"
-      : "text-[color:var(--vd-text)]",
-  );
-  const glassClassName = cn(
-    scanGlassClassName,
-    "w-full",
-    scanLocked && "opacity-85 saturate-50",
+      ? "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-muted)]"
+      : "bg-[color:var(--claim-cta-bg)] text-[color:var(--claim-cta-fg)]",
   );
 
   function handleScanClick() {
@@ -159,18 +153,7 @@ export function DashboardScanCta({
 
   return (
     <div className="space-y-2" data-tour="scan-fab">
-      <GlassSurface
-        width="100%"
-        height="auto"
-        borderRadius={16}
-        {...surfaceProps}
-        backgroundOpacity={
-          scanLocked ? 0.1 : surfaceProps.backgroundOpacity
-        }
-        className={glassClassName}
-      >
-        {scanControl}
-      </GlassSurface>
+      {scanControl}
       {manualEntryHref ? (
         <div className="text-center">
           <PressableLink
