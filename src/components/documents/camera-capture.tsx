@@ -100,8 +100,8 @@ export function CameraCapture({
   }
 
   return (
-    <div className="space-y-3 rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-white px-4 py-6 text-center">
-      <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+    <div className="vd-scan-dropzone space-y-3 px-4 py-6 text-center">
+      <span className="vd-icon-badge mx-auto !h-14 !w-14 !rounded-2xl">
         <ImagePlus className="h-6 w-6" aria-hidden />
       </span>
 

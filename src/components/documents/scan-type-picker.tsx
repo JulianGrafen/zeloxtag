@@ -71,7 +71,7 @@ function ScanTile({
       onClick={() => onSelect(option.id)}
       className={`vd-tile flex w-full items-start gap-3 p-4 text-left transition-shadow duration-300 hover:shadow-[var(--vd-shadow-hover)] ${
         suggested
-          ? "border-neutral-900 ring-2 ring-neutral-900/12"
+          ? "border-[color:var(--vd-text)] ring-2 ring-[color:var(--vd-border)]"
           : ""
       }`}
     >
@@ -84,7 +84,7 @@ function ScanTile({
             {option.title}
           </span>
           {suggested ? (
-            <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-white">
+            <span className="rounded-full bg-[color:var(--vd-icon-badge-bg)] px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-[color:var(--vd-icon-badge-fg)]">
               Vorschlag
             </span>
           ) : null}
@@ -146,7 +146,7 @@ export function ScanTypePicker({
       </header>
 
       {showInvoiceFreeHint || showAbeFreeHint ? (
-        <p className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 px-3 py-2.5 text-[0.82rem] leading-snug text-emerald-950">
+        <p className="rounded-xl border border-[color:var(--vd-alert-success-border)] bg-[color:var(--vd-alert-success-bg)] px-3 py-2.5 text-[0.82rem] leading-snug text-[color:var(--vd-alert-success-text)]">
           <strong className="font-semibold">Gratis KI-Scans:</strong>{" "}
           {showInvoiceFreeHint ? "1× Rechnung/Service" : null}
           {showInvoiceFreeHint && showAbeFreeHint ? " · " : null}
@@ -175,7 +175,7 @@ export function ScanTypePicker({
         variant="button"
         className="vd-tile flex w-full items-start gap-3 border-dashed p-4 text-left opacity-95"
       >
-        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--vd-radius-control)] border border-[color:var(--vd-border)] bg-white text-[color:var(--vd-text)]">
+        <span className="vd-icon-badge !rounded-[var(--vd-radius-control)]">
           <NotebookPen className="h-5 w-5" strokeWidth={1.75} aria-hidden />
         </span>
         <span className="min-w-0 flex-1">

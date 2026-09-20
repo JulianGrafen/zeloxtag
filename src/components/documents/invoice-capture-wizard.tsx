@@ -59,10 +59,10 @@ function StepProgress({
             className={[
               "inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full px-2 text-[0.68rem] font-semibold",
               done
-                ? "bg-emerald-600 text-white"
+                ? "bg-emerald-600 text-white dark:bg-emerald-500/90"
                 : active
-                  ? "bg-neutral-900 text-white"
-                  : "bg-neutral-200 text-neutral-500",
+                  ? "bg-[color:var(--claim-cta-bg)] text-[color:var(--claim-cta-fg)]"
+                  : "bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-muted)]",
             ].join(" ")}
           >
             {done ? <Check className="h-3.5 w-3.5" aria-hidden /> : step}
@@ -345,7 +345,7 @@ export function InvoiceCaptureWizard({
     const captureSteps = positionFiles.length > 0 ? 2 : 1;
 
     return (
-      <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white p-3">
+      <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-[var(--vd-shadow-sm)]">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
             {positionFiles.length > 0
@@ -358,7 +358,7 @@ export function InvoiceCaptureWizard({
         </div>
 
         <ul className="grid grid-cols-3 gap-2">
-          <li className="relative overflow-hidden rounded-xl border border-emerald-300 bg-emerald-50">
+          <li className="relative overflow-hidden rounded-xl border border-[color:var(--vd-alert-success-border)] bg-[color:var(--vd-alert-success-bg)]">
             {overviewPreviewUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
@@ -375,7 +375,7 @@ export function InvoiceCaptureWizard({
           {previewUrls.map((url, index) => (
             <li
               key={url}
-              className="relative overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-neutral-100"
+              className="relative overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -383,14 +383,14 @@ export function InvoiceCaptureWizard({
                 alt={`Rechnungsblock ${index + 1}`}
                 className="aspect-[4/3] w-full object-cover"
               />
-              <span className="absolute left-1.5 top-1.5 rounded-md bg-neutral-900/85 px-1.5 py-0.5 text-[0.62rem] font-semibold text-white">
+              <span className="absolute left-1.5 top-1.5 rounded-md bg-[color:var(--vd-icon-badge-bg)] px-1.5 py-0.5 text-[0.62rem] font-semibold text-[color:var(--vd-icon-badge-fg)]">
                 Block {index + 1}
               </span>
               <button
                 type="button"
                 aria-label={`Block ${index + 1} entfernen`}
                 onClick={() => removePositionBlock(index)}
-                className="absolute bottom-1.5 right-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-neutral-800 shadow"
+                className="absolute bottom-1.5 right-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden />
               </button>
@@ -433,7 +433,7 @@ export function InvoiceCaptureWizard({
   }
 
   return (
-    <div className="space-y-3 rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-white px-4 py-4">
+    <div className="vd-scan-dropzone space-y-3 px-4 py-4">
       <h2 className="sr-only">{title}</h2>
       <p className="text-center text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
         {hint ?? INVOICE_CAPTURE_HINTS.intro}

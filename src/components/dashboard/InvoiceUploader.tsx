@@ -1335,11 +1335,14 @@ export function InvoiceUploader({
         )}
 
         {isInvoiceFamilyScan ? (
-          <div className="px-1">
+          <div className="vd-surface-card p-5">
             <p className="claim-kicker">Dokument scannen</p>
-            <h1 className="claim-title mt-1 text-[1.25rem]">{resolvedHeading}</h1>
-            <p className="claim-copy mt-0.5 text-[0.8rem]">
-              {resolvedSubheading ?? vehicleLabel}
+            <h1 className="claim-title mt-2 text-[1.25rem]">{resolvedHeading}</h1>
+            <p className="claim-copy mt-1 text-[0.85rem]">
+              {vehicleLabel}
+              {resolvedSubheading
+                ? ` · ${resolvedSubheading}`
+                : ""}
             </p>
           </div>
         ) : (

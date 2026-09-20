@@ -27,10 +27,10 @@ export function WizardStepProgress({
             className={[
               "size-2.5 shrink-0 rounded-[3px] transition-colors duration-300",
               done
-                ? "bg-neutral-900"
+                ? "bg-[color:var(--vd-text)]"
                 : active
-                  ? "bg-neutral-700"
-                  : "bg-neutral-200",
+                  ? "bg-[color:var(--vd-accent)]"
+                  : "bg-[color:var(--vd-border)]",
             ].join(" ")}
           />
         );

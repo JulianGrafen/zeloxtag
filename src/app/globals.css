@@ -71,6 +71,7 @@
   --claim-cta-fg: #ffffff;
   --claim-cta-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   --claim-cta-sm-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --claim-cta-border: transparent;
   --claim-back-bg: rgba(255, 255, 255, 0.85);
   --vd-icon-badge-bg: #0a0a0a;
   --vd-icon-badge-fg: #ffffff;
@@ -80,8 +81,6 @@
   --vd-alert-success-bg: #ecfdf5;
   --vd-alert-success-border: rgba(16, 185, 129, 0.15);
   --vd-alert-success-text: #047857;
-  --scan-glass-cta-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-
   --paywall-modal-scrim: rgba(0, 0, 0, 0.4);
   --paywall-sticky-footer-shadow: 0 -8px 24px rgba(0, 0, 0, 0.06);
   --paywall-trial-bg: #ecfdf5;
@@ -647,6 +646,7 @@ nextjs-portal {
   justify-content: center;
   gap: 0.5rem;
   border-radius: var(--vd-radius-control);
+  border: 1px solid var(--claim-cta-border);
   background: var(--claim-cta-bg);
   padding: 1rem 1.15rem;
   font-size: 0.92rem;
@@ -692,6 +692,65 @@ nextjs-portal {
 
 .claim-back:disabled {
   opacity: 0.55;
+}
+
+/** Scan compose dropzone (Rechnung scannen, Kamera, PDF). */
+.vd-scan-dropzone {
+  border-radius: 1.35rem;
+  border: 1px dashed var(--vd-border);
+  background: var(--vd-surface);
+  box-shadow: var(--vd-shadow-sm);
+}
+
+/** Fixed bottom scan FAB — flat solid CTA (no glass / SVG / backdrop). */
+.vd-scan-fab-cta {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+  background: #0a0a0a;
+  color: #ffffff;
+  padding: 1rem 1.15rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background-image: none;
+  filter: none;
+}
+
+.vd-scan-fab-cta::before,
+.vd-scan-fab-cta::after {
+  content: none;
+  display: none;
+}
+
+.vd-scan-fab-cta.vd-pressable--button[data-pressed="true"] {
+  filter: none;
+  transform: scale(0.98);
+}
+
+.vd-scan-fab-cta--locked {
+  border-color: var(--vd-border);
+  background: var(--vd-surface-elevated);
+  color: var(--vd-muted);
+  box-shadow: none;
+}
+
+.dark .vd-scan-fab-cta {
+  border-color: oklch(1 0 0 / 14%);
+  background: oklch(0.269 0 0);
+  color: oklch(0.985 0 0);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+
+.dark .vd-scan-fab-cta--locked {
+  background: var(--vd-surface-elevated);
+  color: var(--vd-muted);
 }
 
 .claim-later {
@@ -1387,26 +1446,26 @@ nextjs-portal {
   --vd-shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.55);
   --vd-overlay: rgba(0, 0, 0, 0.62);
   --vd-atmosphere-grid: rgba(255, 255, 255, 0.08);
+  --vd-atmosphere-mid: oklch(0.17 0 0);
 
   --claim-input-bg: rgba(255, 255, 255, 0.06);
   --claim-input-placeholder: rgba(255, 255, 255, 0.35);
   --claim-input-focus-border: rgba(255, 255, 255, 0.35);
   --claim-input-focus-ring: rgba(255, 255, 255, 0.12);
-  --claim-cta-bg: var(--primary);
-  --claim-cta-fg: var(--primary-foreground);
-  --claim-cta-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-  --claim-cta-sm-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --claim-cta-bg: var(--secondary);
+  --claim-cta-fg: var(--secondary-foreground);
+  --claim-cta-border: oklch(1 0 0 / 14%);
+  --claim-cta-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  --claim-cta-sm-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
   --claim-back-bg: rgba(255, 255, 255, 0.08);
-  --vd-icon-badge-bg: var(--primary);
-  --vd-icon-badge-fg: var(--primary-foreground);
+  --vd-icon-badge-bg: var(--secondary);
+  --vd-icon-badge-fg: var(--secondary-foreground);
   --vd-alert-error-bg: rgba(127, 29, 29, 0.35);
   --vd-alert-error-border: rgba(248, 113, 113, 0.25);
   --vd-alert-error-text: #fecaca;
   --vd-alert-success-bg: rgba(6, 78, 59, 0.35);
   --vd-alert-success-border: rgba(52, 211, 153, 0.25);
   --vd-alert-success-text: #a7f3d0;
-  --scan-glass-cta-shadow: 0 4px 22px rgba(0, 0, 0, 0.55);
-
   --paywall-modal-scrim: rgba(0, 0, 0, 0.62);
   --paywall-sticky-footer-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
   --paywall-trial-bg: rgba(6, 78, 59, 0.35);
@@ -1477,6 +1536,13 @@ nextjs-portal {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+.dark .paywall-cta-pulse.claim-cta {
+  --claim-cta-bg: oklch(0.985 0 0);
+  --claim-cta-fg: oklch(0.205 0 0);
+  --claim-cta-border: transparent;
+  --claim-cta-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
 }
 
 @layer base {

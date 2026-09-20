@@ -61,7 +61,7 @@ export function WizardScanHeader({
       ) : null}
 
       <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
-        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+        <div className="vd-icon-badge !rounded-2xl">
           <ScanLine className="h-5 w-5" />
         </div>
         <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">

@@ -4,11 +4,9 @@ import { useMemo } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { VehicleTimeline } from "@/components/dashboard/VehicleTimeline";
-import { ScanGlassPillLink } from "@/components/tags/dashboard-scan-fab";
+import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { isOilChangeDocument } from "@/lib/documents/oil-changes";
-import {
-  PressableLink,
-} from "@/components/vehicle-dashboard/Pressable";
+import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import type { TimelineEvent } from "@/lib/validations/timelineSchema";
 import type { Document } from "@/types/database";
 
@@ -54,28 +52,25 @@ export function VehicleTimelineView({
         className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <header className="vd-anim-header space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <PressableLink
-              href={resolvedBack}
-              variant="pill"
-              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-            >
-              <ArrowLeft className="h-4 w-4" aria-hidden />
-              Zurück
-            </PressableLink>
-            {scanHref ? <ScanGlassPillLink href={scanHref} /> : null}
-          </div>
+          <PressableLink
+            href={resolvedBack}
+            variant="pill"
+            className="vd-back-pill"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Zurück
+          </PressableLink>
 
-          <header className="space-y-1 px-0.5">
+          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
             <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)]">
               Historie
             </h1>
-            <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
+            <p className="mt-2 text-[0.9rem] text-[color:var(--vd-muted)]">
               {vehicleLabel}
             </p>
-          </header>
+          </div>
         </header>
 
         <VehicleTimeline
@@ -83,6 +78,14 @@ export function VehicleTimelineView({
           documentHref={resolveDocumentHref}
         />
       </div>
+
+      {scanHref ? (
+        <DashboardScanFab
+          tagUuid={tagUuid}
+          scanHref={scanHref}
+          scanLabel="Scannen"
+        />
+      ) : null}
     </div>
   );
 }

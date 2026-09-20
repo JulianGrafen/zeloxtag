@@ -82,7 +82,7 @@ export function VehicleTimeline({
     return (
       <div
         className={cn(
-          "rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-5 py-10 text-center text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]",
+          "vd-surface-card px-5 py-10 text-center text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]/72",
           className,
         )}
       >
