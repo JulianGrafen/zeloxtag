@@ -114,6 +114,12 @@
   --paywall-chart-axis: rgb(0 0 0 / 0.12);
   --paywall-chart-muted-label: rgb(0 0 0 / 0.45);
   --paywall-chart-badge-text: #ffffff;
+
+  --tour-scrim: rgba(0, 0, 0, 0.55);
+  --tour-spotlight-scrim: rgba(0, 0, 0, 0.72);
+  --tour-spotlight-ring: rgba(255, 255, 255, 0.88);
+  --tour-progress-track: rgb(0 0 0 / 0.08);
+  --tour-progress-fill: var(--primary);
 }
 
 @theme inline {
@@ -261,6 +267,12 @@ nextjs-portal {
   color: var(--vd-alert-success-text);
 }
 
+/** Shared onboarding overlays (goal picker, tour scrim). */
+.onboarding-scrim {
+  background: var(--vd-overlay);
+  backdrop-filter: blur(10px);
+}
+
 .vd-fab-gradient {
   pointer-events: none;
   position: absolute;
@@ -304,14 +316,14 @@ nextjs-portal {
   height: 0.25rem;
   flex: 1;
   border-radius: var(--vd-radius-pill);
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--tour-progress-track, rgb(0 0 0 / 0.08));
   overflow: hidden;
 }
 
 .vd-step-progress__fill {
   height: 100%;
   border-radius: inherit;
-  background: #0a0a0a;
+  background: var(--tour-progress-fill, var(--primary));
   transition: width 0.35s var(--vd-ease-spring);
 }
 
@@ -1427,6 +1439,12 @@ nextjs-portal {
   --paywall-chart-axis: rgb(255 255 255 / 0.14);
   --paywall-chart-muted-label: rgb(255 255 255 / 0.5);
   --paywall-chart-badge-text: #ffffff;
+
+  --tour-scrim: rgba(0, 0, 0, 0.72);
+  --tour-spotlight-scrim: rgba(0, 0, 0, 0.88);
+  --tour-spotlight-ring: rgba(255, 255, 255, 0.28);
+  --tour-progress-track: rgb(255 255 255 / 0.1);
+  --tour-progress-fill: var(--primary);
 
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);

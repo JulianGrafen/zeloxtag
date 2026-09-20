@@ -13,8 +13,7 @@ type PrimaryGoalPickerProps = {
 export function PrimaryGoalPicker({ onSelect }: PrimaryGoalPickerProps) {
   return (
     <div
-      className="fixed inset-0 z-[85] flex items-end justify-center sm:items-center"
-      style={{ background: "var(--vd-overlay)" }}
+      className="onboarding-scrim fixed inset-0 z-[85] flex items-end justify-center sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="primary-goal-title"
@@ -40,6 +39,7 @@ export function PrimaryGoalPicker({ onSelect }: PrimaryGoalPickerProps) {
                   "w-full rounded-[var(--vd-radius-control)] border border-[color:var(--vd-border)]",
                   "bg-[color:var(--vd-surface-elevated)] px-4 py-3.5 text-left",
                   "transition hover:border-[color:var(--vd-text)]/25 hover:bg-[color:var(--vd-surface)]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--vd-surface)]",
                   "active:scale-[0.99]",
                 )}
               >

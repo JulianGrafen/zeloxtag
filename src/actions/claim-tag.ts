@@ -15,6 +15,7 @@ import {
   publicClientMessage,
 } from "@/lib/security/public-error";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 import { completeClaimForOwner } from "@/lib/tags/complete-claim-for-owner";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
@@ -91,6 +92,20 @@ function normalizeClaimInput(input: ClaimTagInput): NormalizedClaim {
 
 function dashboardAfterClaimHref(tagUuid: string, startTour: boolean): string {
   return startTour ? dashboardTourHref(tagUuid) : `/v/${tagUuid}`;
+}
+
+async function countOwnerVehicles(userId: string): Promise<number> {
+  const { isConfigured } = getSupabaseEnv();
+  if (!isConfigured) return 0;
+
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("vehicles")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (error) return 0;
+  return count ?? 0;
 }
 
 /**
@@ -188,6 +203,12 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
     startTour = account.created;
   }
 
+  let runDashboardOnboarding = startTour;
+  if (currentUser && !runDashboardOnboarding) {
+    const ownedBeforeClaim = await countOwnerVehicles(ownerUserId);
+    runDashboardOnboarding = ownedBeforeClaim === 0;
+  }
+
   try {
     const result = await completeClaimForOwner(ownerUserId, {
       tagUuid: normalized.tagUuid,
@@ -204,13 +225,13 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
       return result;
     }
 
-    if (startTour) {
+    if (runDashboardOnboarding) {
       await setPendingDashboardTour();
     }
 
     return {
       status: "continue",
-      href: dashboardAfterClaimHref(result.tagUuid, startTour),
+      href: dashboardAfterClaimHref(result.tagUuid, runDashboardOnboarding),
       nextTagUuid: result.nextTagUuid,
     };
   } catch (error) {

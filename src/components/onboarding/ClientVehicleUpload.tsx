@@ -193,10 +193,10 @@ function PreviewFrame({
   emptyLabel?: string;
 }) {
   return (
-    <div className="relative mx-auto aspect-[4/3] w-full max-w-[14rem] overflow-hidden rounded-[1.1rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] shadow-[var(--vd-shadow-sm)] ring-1 ring-inset ring-white/50">
+    <div className="relative mx-auto aspect-[4/3] w-full max-w-[14rem] overflow-hidden rounded-[1.1rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] shadow-[var(--vd-shadow-sm)] ring-1 ring-inset ring-[color:var(--vd-border)]">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-3 top-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/70 to-transparent"
+        className="pointer-events-none absolute inset-x-3 top-0 z-[1] h-px bg-gradient-to-r from-transparent via-[color:var(--vd-text)]/12 to-transparent"
       />
       {previewUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -455,7 +455,7 @@ export function ClientVehicleUpload({
         onDrop={onDrop}
         className={`relative ${hideHeader ? "mt-0" : "mt-4"} cursor-pointer rounded-2xl border border-dashed px-4 py-5 transition-colors ${
           dragOver
-            ? "border-neutral-900 bg-neutral-900/[0.04]"
+            ? "border-[color:var(--vd-accent)] bg-[color:var(--vd-surface-elevated)]"
             : "border-[color:var(--vd-border)] bg-[color:var(--vd-bg)]"
         } ${busy ? "pointer-events-none opacity-70" : ""}`}
       >
@@ -471,9 +471,9 @@ export function ClientVehicleUpload({
               className="w-full py-2"
               footer={
                 !deleting ? (
-                  <div className="h-1.5 w-48 overflow-hidden rounded-full bg-black/10">
+                  <div className="h-1.5 w-48 overflow-hidden rounded-full bg-[color:var(--paywall-progress-track)]">
                     <div
-                      className="h-full min-w-[8%] rounded-full bg-neutral-900 transition-[width] duration-300"
+                      className="h-full min-w-[8%] rounded-full bg-[color:var(--paywall-progress-fill)] transition-[width] duration-300"
                       style={{ width: `${barProgress}%` }}
                     />
                   </div>
@@ -497,7 +497,7 @@ export function ClientVehicleUpload({
         <FilePickLabel
           disabled={busy}
           onChange={onInputChange}
-          className="relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white"
+          className="claim-cta relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl px-4 py-3.5 text-[0.88rem] font-semibold shadow-[var(--claim-cta-sm-shadow)]"
         >
           <ImagePlus className="relative z-0 h-4 w-4" aria-hidden />
           <span className="relative z-0">
@@ -520,7 +520,7 @@ export function ClientVehicleUpload({
           type="button"
           variant="button"
           disabled={busy}
-          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[0.88rem] font-medium text-red-700 disabled:opacity-60"
+          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-alert-error-border)] bg-[color:var(--vd-alert-error-bg)] px-4 py-3 text-[0.88rem] font-medium text-[color:var(--vd-alert-error-text)] disabled:opacity-60"
           onClick={() => void handleDelete()}
         >
           {deleting ? (
@@ -546,12 +546,18 @@ export function ClientVehicleUpload({
       ) : null}
 
       {error ? (
-        <p className="mt-3 text-[0.85rem] text-red-700" role="alert">
+        <p
+          className="mt-3 text-[0.85rem] text-[color:var(--vd-alert-error-text)]"
+          role="alert"
+        >
           {error}
         </p>
       ) : null}
       {state === "done" ? (
-        <p className="mt-3 text-[0.85rem] text-emerald-700" role="status">
+        <p
+          className="mt-3 text-[0.85rem] text-[color:var(--vd-alert-success-text)]"
+          role="status"
+        >
           Gespeichert.
         </p>
       ) : null}

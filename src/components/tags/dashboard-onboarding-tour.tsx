@@ -77,7 +77,7 @@ export function DashboardOnboardingTour({
       cancelled = true;
       timers.forEach((id) => window.clearTimeout(id));
     };
-  }, [enabled, catalog, forceTour]);
+  }, [enabled, catalog, forceTour, primaryGoal]);
 
   useEffect(() => {
     onOpenChange?.(open);

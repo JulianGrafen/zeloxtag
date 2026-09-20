@@ -4,6 +4,7 @@ import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { resolveInsiderVehiclePath } from "@/lib/auth/resolve-insider-vehicle-path";
 import { isGenericPostLoginNext, normalizeAuthCallbackNext } from "@/lib/auth/post-login-path";
 import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
+import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import { resolveAuthSiteOrigin } from "@/lib/site-origin";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { hardenCookieOptions } from "@/lib/security/cookie-options";
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest) {
     try {
       const claimResult = await completePendingClaimForUser(userId);
       if (claimResult?.status === "claimed") {
+        await setPendingDashboardTour();
         return copyCookies(
           NextResponse.redirect(
             new URL(dashboardTourHref(claimResult.tagUuid), authOrigin),

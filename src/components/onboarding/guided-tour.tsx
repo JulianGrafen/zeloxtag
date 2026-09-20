@@ -203,15 +203,15 @@ export function GuidedTour({
             left: spotlight.left,
             width: spotlight.width,
             height: spotlight.height,
-            boxShadow: "0 0 0 9999px rgba(15, 17, 21, 0.74)",
-            outline: "2px solid rgba(255,255,255,0.92)",
+            boxShadow: "0 0 0 9999px var(--tour-spotlight-scrim)",
+            outline: "2px solid var(--tour-spotlight-ring)",
             outlineOffset: 2,
           }}
         />
       ) : (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[rgba(15,17,21,0.74)]"
+          className="onboarding-scrim pointer-events-none absolute inset-0"
         />
       )}
 
@@ -219,7 +219,7 @@ export function GuidedTour({
       <div aria-hidden className="absolute inset-0 z-0" />
 
       <div
-        className="absolute z-10 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.4)] sm:p-5"
+        className="absolute z-10 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-modal)] sm:p-5"
         style={cardStyle}
       >
         <div className="mb-3 flex items-start justify-between gap-3">
@@ -237,11 +237,11 @@ export function GuidedTour({
         </div>
 
         <div
-          className="mb-3 h-1 overflow-hidden rounded-full bg-[color:var(--vd-surface-elevated)]"
+          className="mb-3 h-1 overflow-hidden rounded-full bg-[color:var(--tour-progress-track)]"
           aria-hidden
         >
           <div
-            className="h-full rounded-full bg-neutral-900 transition-all duration-300"
+            className="h-full rounded-full bg-[color:var(--tour-progress-fill)] transition-all duration-300"
             style={{ width: `${((index + 1) / steps.length) * 100}%` }}
           />
         </div>
@@ -280,7 +280,7 @@ export function GuidedTour({
                 if (isLast) onComplete();
                 else setIndex((value) => value + 1);
               }}
-              className="rounded-xl bg-neutral-900 px-4 py-2.5 text-[0.8rem] font-semibold text-white"
+              className="claim-cta rounded-xl px-4 py-2.5 text-[0.8rem] font-semibold shadow-[var(--claim-cta-sm-shadow)]"
             >
               {isLast ? "Fertig" : "Weiter"}
             </button>

@@ -251,8 +251,12 @@ export function TagDashboardShell({
   const [forceTour, setForceTour] = useState(startTour);
   const [primaryGoal, setPrimaryGoal] = useState<ZeloxPrimaryGoal | null>(null);
   const [primaryGoalReady, setPrimaryGoalReady] = useState(false);
+  const onboardingActive = forceTour || deferSilhouetteForTour;
   const needsPrimaryGoal =
-    isOwner && forceTour && primaryGoalReady && primaryGoal === null;
+    isOwner &&
+    onboardingActive &&
+    primaryGoalReady &&
+    primaryGoal === null;
 
   useEffect(() => {
     setPortalReady(true);
@@ -738,6 +742,7 @@ export function TagDashboardShell({
               }}
             >
               <VehicleSilhouetteUpload
+                className="shadow-[var(--vd-shadow-modal)]"
                 vehicleId={vehicle.id}
                 tagUuid={tagUuid}
                 title="Bilder hinzufügen"
@@ -755,10 +760,7 @@ export function TagDashboardShell({
         : null}
       {portalReady && showSilhouetteEditor
         ? createPortal(
-            <div
-              className="fixed inset-0 z-[60] flex items-end justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
-              style={{ background: "var(--vd-overlay)" }}
-            >
+            <div className="onboarding-scrim fixed inset-0 z-[60] flex items-end justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center">
               <button
                 type="button"
                 aria-label="Schließen"
@@ -796,8 +798,9 @@ export function TagDashboardShell({
         enabled={
           mode === "dashboard" &&
           !showSilhouetteEditor &&
+          primaryGoalReady &&
           !needsPrimaryGoal &&
-          (forceTour || deferSilhouetteForTour)
+          onboardingActive
         }
         role={isOwner ? "owner" : "contributor"}
         force={forceTour}

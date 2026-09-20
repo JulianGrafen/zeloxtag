@@ -3,7 +3,10 @@ import {
   dashboardTourHref,
   withForcedDashboardTour,
 } from "@/lib/onboarding/dashboard-tour";
-import { hasPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
+import {
+  hasPendingDashboardTour,
+  setPendingDashboardTour,
+} from "@/lib/onboarding/pending-dashboard-tour";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 
 export type AuthenticatedDestinationResult =
@@ -19,6 +22,7 @@ export async function resolveAuthenticatedDestination(
   try {
     const claimResult = await completePendingClaimForUser(userId);
     if (claimResult?.status === "claimed") {
+      await setPendingDashboardTour();
       return { status: "ok", href: dashboardTourHref(claimResult.tagUuid) };
     }
     if (claimResult?.status === "error") {
