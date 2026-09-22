@@ -23,8 +23,8 @@ type MintedPlaque = {
   svg: string;
 };
 
-const BATCH_OPTIONS = [1, 5, 10, 20, 25] as const;
-const DEFAULT_BATCH = 25;
+const BATCH_OPTIONS = [1, 5, 10, 20, 25, 50] as const;
+const DEFAULT_BATCH = 50;
 
 function resolvePublicOrigin(): string {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");

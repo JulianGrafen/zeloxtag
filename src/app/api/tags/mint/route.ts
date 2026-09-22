@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 /**
  * POST /api/tags/mint
  * Superuser-only batch mint for steel QR plaques.
- * Body: `{ "count": 1-25 }`
+ * Body: `{ "count": 1-50 }`
  */
 export async function POST(request: NextRequest) {
   const originBlocked = enforceSameOrigin(request);

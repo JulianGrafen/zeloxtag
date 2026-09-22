@@ -35,7 +35,7 @@ function zipFilename(count: number): string {
 /**
  * POST /api/tags/qr/zip
  * Superuser-only batch SVG download as a single ZIP archive.
- * Body: `{ "uuids": ["…", "…"] }` (max 25)
+ * Body: `{ "uuids": ["…", "…"] }` (max 50)
  */
 export async function POST(request: NextRequest) {
   const originBlocked = enforceSameOrigin(request);
