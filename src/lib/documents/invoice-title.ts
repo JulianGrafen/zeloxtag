@@ -7,17 +7,26 @@ import type { OilChangeDetection } from "./oil-changes";
 import type { DocumentLineItem } from "@/types/database";
 import type { InvoiceTextParseCategory } from "@/lib/ocr/text-parse-schema";
 
-const VAT_OR_TOTAL =
+export const INVOICE_VAT_OR_TOTAL_LINE =
   /(?:^|[^A-Za-z0-9_])(?:mwst|m\.?\s*w\.?\s*st\.?|ust\.?|umsatzsteuer|vat|steuer|summe|gesamt|netto|brutto|zahlbetrag)(?:[^A-Za-z0-9_]|$)/i;
+
+const VAT_OR_TOTAL = INVOICE_VAT_OR_TOTAL_LINE;
 
 const OIL_LINE =
   /(?:öl[-\s]*wechsel|oel[-\s]*wechsel|ol[-\s]*wechsel|motoröl|motoroel|motorol|ölfilter|oelfilter|olfilter|oil\s*filter|engine\s*oil|(?:5|0|10|15)w-?\d{2})/i;
 
-const TUNING_LINE =
-  /(?:^|[^A-Za-z0-9_])(?:sportfedern?|federn?|fahrwerk|gewindefahrwerk|downpipe|sportauspuff|auspuff|abgasanlage|intercooler|chiptuning|remap|stage\s*[1-3]|felgen?|leichtmetallr|spoiler|frontlippe|diffuser|seitenschweller|ladedruck|turbolader\s*upgrade|tuning)(?:[^A-Za-z0-9_]|$)/i;
+export const INVOICE_TUNING_LINE =
+  /(?:^|[^A-Za-z0-9_])(?:sportfedern?|federn?|fahrwerk|gewindefahrwerk|downpipe|sportauspuff|auspuffanlage|auspuff|abgasanlage|intercooler|chiptuning|remap|stage\s*[1-3]|felgen?|leichtmetallr|spoiler|frontlippe|diffuser|seitenschweller|ladedruck|turbolader\s*upgrade|montagekit|tuning)(?:[^A-Za-z0-9_]|$)/i;
 
-const REPAIR_LINE =
-  /(?:^|[^A-Za-z0-9_])(?:reparatur|instandsetzung|unfall|karosserie|lackierung|getriebe|kupplung|bremsen?|bremsscheiben|querlenker|stoßdämpfer|stossdaempfer|zahnriemen|steuerkette|defekt|schaden)(?:[^A-Za-z0-9_]|$)/i;
+const TUNING_LINE = INVOICE_TUNING_LINE;
+
+export const INVOICE_SERVICE_LINE =
+  /(?:^|[^A-Za-z0-9_])(?:inspektion|wartung|service|hu\b|hauptuntersuchung|reifenwechsel|achsvermessung|arbeitszeit)(?:[^A-Za-z0-9_]|$)/i;
+
+export const INVOICE_REPAIR_LINE =
+  /(?:^|[^A-Za-z0-9_])(?:reparatur|instandsetzung|unfall|karosserie|lackierung|getriebe|kupplung|bremsen?|bremsscheiben|querlenker|stoßdämpfer|stossdaempfer|zahnriemen|steuerkette|defekt|schaden|fehlersuche)(?:[^A-Za-z0-9_]|$)/i;
+
+const REPAIR_LINE = INVOICE_REPAIR_LINE;
 
 const OIL_ADJUNCT =
   /(?:^|[^A-Za-z0-9_])(?:entsorgung|umwelt|kleinmaterial|altöl|altol)(?:[^A-Za-z0-9_]|$)/i;
@@ -39,8 +48,23 @@ function billableItems(items: DocumentLineItem[] | null | undefined): DocumentLi
   return (items ?? []).filter((item) => !VAT_OR_TOTAL.test(item.label));
 }
 
-const SERVICE_LINE =
-  /(?:^|[^A-Za-z0-9_])(?:inspektion|wartung|service|hu\b|hauptuntersuchung|reifenwechsel|achsvermessung)(?:[^A-Za-z0-9_]|$)/i;
+const SERVICE_LINE = INVOICE_SERVICE_LINE;
+
+export function isInvoiceVatOrTotalLine(label: string): boolean {
+  return INVOICE_VAT_OR_TOTAL_LINE.test(label);
+}
+
+export function isTuningLineLabel(label: string): boolean {
+  return INVOICE_TUNING_LINE.test(label);
+}
+
+export function isInvoiceServiceLine(label: string): boolean {
+  return INVOICE_SERVICE_LINE.test(label);
+}
+
+export function isInvoiceRepairLine(label: string): boolean {
+  return INVOICE_REPAIR_LINE.test(label);
+}
 
 function isOilAdjacentLine(label: string): boolean {
   return OIL_LINE.test(label) || OIL_ADJUNCT.test(label);

@@ -49,6 +49,9 @@ describe("classifySpendBucket", () => {
     expect(classifySpendBucket("ST XA Gewindefahrwerk")).toBe("chassis");
     expect(classifySpendBucket("BBS LM Felgensatz")).toBe("wheels_tires");
     expect(classifySpendBucket("ECU Map Stage 2")).toBe("electrical_ecu");
+    expect(classifySpendBucket("Sportauspuffanlage Edelstahl")).toBe(
+      "engine_exhaust",
+    );
   });
 });
 
@@ -108,6 +111,47 @@ describe("buildVehicleCostOverview", () => {
     expect(overview.bucketBreakdown).toHaveLength(6);
     expect(overview.modificationLines.length).toBeGreaterThanOrEqual(3);
     expect(overview.yearlySeries.map((p) => p.year)).toEqual([2023, 2024, 2025]);
+  });
+
+  it("excludes MwSt and service lines from umbau buckets", () => {
+    const overview = buildVehicleCostOverview([
+      invoice({
+        id: "mix",
+        category: "tuning",
+        line_items: [
+          { label: "Sportauspuffanlage Edelstahl", amount: 890 },
+          { label: "KW V3 Gewindefahrwerk VA/HA", amount: 128.8 },
+          { label: "MwSt 19%", amount: 98.38 },
+          { label: "Arbeitszeit 2,5 h", amount: 200 },
+          { label: "Montage und Achsvermessung", amount: 189 },
+        ],
+      }),
+    ]);
+
+    const chassis = overview.bucketBreakdown.find((b) => b.bucket === "chassis");
+    const exhaust = overview.bucketBreakdown.find(
+      (b) => b.bucket === "engine_exhaust",
+    );
+    const other = overview.bucketBreakdown.find((b) => b.bucket === "other");
+
+    expect(exhaust?.amount).toBe(890);
+    expect(chassis?.amount).toBe(128.8);
+    expect(overview.modification.total).toBe(1018.8);
+    expect(other?.amount ?? 0).toBe(0);
+  });
+
+  it("includes tuning lines from other category invoices", () => {
+    const overview = buildVehicleCostOverview([
+      invoice({
+        id: "other-tuning",
+        category: "other",
+        line_items: [{ label: "BBS Felgen 19 Zoll", amount: 1500 }],
+      }),
+    ]);
+    const wheels = overview.bucketBreakdown.find(
+      (b) => b.bucket === "wheels_tires",
+    );
+    expect(wheels?.amount).toBe(1500);
   });
 
   it("counts documents without amount", () => {

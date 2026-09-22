@@ -5,6 +5,12 @@ import {
   type InvoiceListCategory,
 } from "@/lib/documents/invoice-categories";
 import { filterInvoiceReceiptDocuments } from "@/lib/documents/invoice-receipts";
+import {
+  isInvoiceRepairLine,
+  isInvoiceServiceLine,
+  isInvoiceVatOrTotalLine,
+  isTuningLineLabel,
+} from "@/lib/documents/invoice-title";
 import { resolveDocumentAmount } from "@/lib/vehicles/expose-data";
 import type { Document } from "@/types/database";
 
@@ -62,6 +68,8 @@ const KEYWORD_RULES: KeywordRule[] = [
       /\bdomlager/i,
       /\buniball/i,
       /\bchassis\b/i,
+      /\bmontagekit\b/i,
+      /\bkw\s+v[0-9]/i,
     ],
   },
   {
@@ -92,6 +100,9 @@ const KEYWORD_RULES: KeywordRule[] = [
       /\bintercooler/i,
       /\bgetriebe\b/i,
       /\bexhaust\b/i,
+      /\bsportauspuff/i,
+      /\bauspuffanlage/i,
+      /\bauspuff\b/i,
     ],
   },
   {
@@ -192,18 +203,47 @@ function roundMoney(value: number): number {
 
 type ModPosition = { label: string; amount: number; bucket: SpendBucket };
 
-function collectModificationPositions(doc: Document): ModPosition[] {
+function isExcludedUmbauLine(label: string): boolean {
+  const trimmed = label.trim();
+  if (!trimmed) return true;
+  if (isInvoiceVatOrTotalLine(trimmed)) return true;
+  if (isInvoiceServiceLine(trimmed)) return true;
+  if (isInvoiceRepairLine(trimmed)) return true;
+  if (/summe der positionen/i.test(trimmed)) return true;
+  return false;
+}
+
+function shouldIncludeUmbauLine(
+  label: string,
+  listCategory: InvoiceListCategory,
+): boolean {
+  if (isExcludedUmbauLine(label)) return false;
+  if (listCategory !== "tuning" && listCategory !== "other") return false;
+  return (
+    isTuningLineLabel(label) ||
+    classifySpendBucket(label) !== "other"
+  );
+}
+
+function collectModificationPositions(
+  doc: Document,
+  listCategory: InvoiceListCategory,
+): ModPosition[] {
   const lines = parseLineItems(doc.line_items) ?? [];
   const withAmount = lines.filter(
     (item) => Number.isFinite(item.amount) && item.amount > 0,
   );
 
-  if (withAmount.length > 0) {
-    return withAmount.map((item) => ({
+  const fromLines = withAmount
+    .filter((item) => shouldIncludeUmbauLine(item.label, listCategory))
+    .map((item) => ({
       label: item.label.trim(),
       amount: item.amount,
       bucket: classifySpendBucket(item.label, doc.part_category),
     }));
+
+  if (fromLines.length > 0) {
+    return fromLines;
   }
 
   const amount = resolveDocumentAmount(doc);
@@ -211,16 +251,24 @@ function collectModificationPositions(doc: Document): ModPosition[] {
 
   const fallbackLabel =
     doc.title?.trim() || doc.vendor?.trim() || "Umbau";
+  const combined = `${fallbackLabel} ${doc.vendor ?? ""}`;
+  if (!shouldIncludeUmbauLine(combined, listCategory)) {
+    return [];
+  }
+
   return [
     {
       label: fallbackLabel,
       amount,
-      bucket: classifySpendBucket(
-        `${fallbackLabel} ${doc.vendor ?? ""}`,
-        doc.part_category,
-      ),
+      bucket: classifySpendBucket(combined, doc.part_category),
     },
   ];
+}
+
+function contributesToUmbauBuckets(
+  listCategory: InvoiceListCategory,
+): boolean {
+  return listCategory === "tuning" || listCategory === "other";
 }
 
 export function buildVehicleCostOverview(
@@ -254,9 +302,10 @@ export function buildVehicleCostOverview(
 
     const listCategory = resolveInvoiceListCategory(doc.category);
 
-    if (listCategory === "tuning") {
-      modificationPositions.push(...collectModificationPositions(doc));
-      continue;
+    if (contributesToUmbauBuckets(listCategory)) {
+      modificationPositions.push(
+        ...collectModificationPositions(doc, listCategory),
+      );
     }
 
     if (listCategory === "repair" || listCategory === "service") {
