@@ -13,8 +13,11 @@ type VehiclePublicProfileSettingsProps = {
   vehicleId: string;
   isPublic: boolean;
   hideFinancials: boolean;
+  showcaseSwipeOptIn: boolean;
   publicSlug: string | null;
   canEdit: boolean;
+  showcaseSwipeTotalLikes?: number;
+  showcaseSwipeUnreadLikes?: number;
 };
 
 function ToggleRow({
@@ -69,11 +72,17 @@ export function VehiclePublicProfileSettings({
   vehicleId,
   isPublic: initialIsPublic,
   hideFinancials: initialHideFinancials,
+  showcaseSwipeOptIn: initialShowcaseSwipeOptIn,
   publicSlug: initialPublicSlug,
   canEdit,
+  showcaseSwipeTotalLikes = 0,
+  showcaseSwipeUnreadLikes = 0,
 }: VehiclePublicProfileSettingsProps) {
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [hideFinancials, setHideFinancials] = useState(initialHideFinancials);
+  const [showcaseSwipeOptIn, setShowcaseSwipeOptIn] = useState(
+    initialShowcaseSwipeOptIn,
+  );
   const [sharePath, setSharePath] = useState<string | null>(
     initialIsPublic && initialPublicSlug ? `/v/${initialPublicSlug}` : null,
   );
@@ -84,7 +93,11 @@ export function VehiclePublicProfileSettings({
   const shareUrl = sharePath ? `${PRODUCTION_SITE_URL}${sharePath}` : null;
 
   function saveSettings(
-    next: { isPublic?: boolean; hideFinancials?: boolean },
+    next: {
+      isPublic?: boolean;
+      hideFinancials?: boolean;
+      showcaseSwipeOptIn?: boolean;
+    },
     onError?: () => void,
   ) {
     if (!canEdit) return;
@@ -92,6 +105,7 @@ export function VehiclePublicProfileSettings({
     const payload = {
       isPublic: next.isPublic ?? isPublic,
       hideFinancials: next.hideFinancials ?? hideFinancials,
+      showcaseSwipeOptIn: next.showcaseSwipeOptIn ?? showcaseSwipeOptIn,
     };
 
     startSettingsTransition(async () => {
@@ -102,6 +116,9 @@ export function VehiclePublicProfileSettings({
         tagUuid,
         isPublic: payload.isPublic,
         hideFinancials: payload.hideFinancials,
+        showcaseSwipeOptIn: payload.isPublic
+          ? payload.showcaseSwipeOptIn
+          : false,
       });
 
       if (result.status === "error") {
@@ -145,10 +162,51 @@ export function VehiclePublicProfileSettings({
         busy={pending}
         onChange={(value) => {
           const previous = isPublic;
+          const previousSwipe = showcaseSwipeOptIn;
           setIsPublic(value);
-          saveSettings({ isPublic: value }, () => setIsPublic(previous));
+          if (!value) setShowcaseSwipeOptIn(false);
+          saveSettings(
+            { isPublic: value, showcaseSwipeOptIn: value ? showcaseSwipeOptIn : false },
+            () => {
+              setIsPublic(previous);
+              setShowcaseSwipeOptIn(previousSwipe);
+            },
+          );
         }}
       />
+      <ToggleRow
+        label="Im Build-Swipe zeigen"
+        description="Nur öffentliche Showcase-Inhalte — keine Belege oder VIN"
+        checked={showcaseSwipeOptIn}
+        disabled={!canEdit || !isPublic}
+        busy={pending}
+        onChange={(value) => {
+          const previous = showcaseSwipeOptIn;
+          setShowcaseSwipeOptIn(value);
+          saveSettings({ showcaseSwipeOptIn: value }, () =>
+            setShowcaseSwipeOptIn(previous),
+          );
+        }}
+      />
+      {!isPublic ? (
+        <p className="px-1 text-[0.76rem] text-[color:var(--vd-muted)]">
+          Zuerst öffentliches Showcase aktivieren, um im Build-Swipe sichtbar zu
+          sein.
+        </p>
+      ) : null}
+      {canEdit && (showcaseSwipeTotalLikes > 0 || showcaseSwipeUnreadLikes > 0) ? (
+        <div className={SETTINGS_SUBMENU_TILE_CLASS}>
+          <span className="min-w-0">
+            <span className="block text-[0.88rem] font-medium">Build-Swipe Likes</span>
+            <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
+              {showcaseSwipeTotalLikes} gesamt
+              {showcaseSwipeUnreadLikes > 0
+                ? ` · ${showcaseSwipeUnreadLikes} neu`
+                : ""}
+            </span>
+          </span>
+        </div>
+      ) : null}
       <ToggleRow
         label="Preise ausblenden"
         description="Beträge auf der öffentlichen Seite verbergen"

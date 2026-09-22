@@ -12,7 +12,8 @@ export type DashboardTileId =
   | "specs"
   | "settings"
   | "vehicle-settings"
-  | "schrauber";
+  | "schrauber"
+  | "build-discover";
 
 /** Serializable icon keys (resolved to Lucide on the client). */
 export type DashboardIconName =
@@ -27,7 +28,8 @@ export type DashboardIconName =
   | "settings"
   | "globe"
   | "users"
-  | "grid";
+  | "grid"
+  | "sparkles";
 
 export type DashboardTileTone =
   | "default"
@@ -80,6 +82,8 @@ export interface VehicleDashboardData {
   /** ISO-Datum des letzten Ölwechsels */
   lastOilChange?: string;
   nextInspection?: VehicleInspectionInfo;
+  /** Unread build-swipe likes on this vehicle (owner). */
+  showcaseSwipeUnreadLikes?: number;
   /** Override or extend the default tile set */
   tiles?: DashboardTileConfig[];
 }

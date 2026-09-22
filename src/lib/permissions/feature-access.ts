@@ -64,6 +64,7 @@ export const FREE_DASHBOARD_TILE_IDS = new Set([
   "specs",
   "vehicle-settings",
   "settings",
+  "build-discover",
 ]);
 
 export function featureForDashboardTile(tileId: string): FeatureFlag | null {

@@ -26,6 +26,7 @@ function twin(overrides: { is_public?: boolean }): TagScanResult {
       is_public: overrides.is_public ?? false,
       hide_financials: true,
       public_slug: null,
+      showcase_swipe_opt_in: false,
       expose_token: null,
       is_expose_active: false,
       showcase_build_dna: null,

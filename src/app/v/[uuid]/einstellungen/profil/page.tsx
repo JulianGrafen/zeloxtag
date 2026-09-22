@@ -20,7 +20,12 @@ export default async function VehiclePublicProfileSettingsPage({
   params,
 }: PublicProfileSettingsPageProps) {
   const { uuid } = await params;
-  const { vehicle, isDemo } = await loadVehiclePublicProfileSettingsPage(uuid);
+  const {
+    vehicle,
+    isDemo,
+    showcaseSwipeTotalLikes,
+    showcaseSwipeUnreadLikes,
+  } = await loadVehiclePublicProfileSettingsPage(uuid);
 
   return (
     <AppShell showNavbar={false}>
@@ -34,8 +39,11 @@ export default async function VehiclePublicProfileSettingsPage({
           vehicleId={vehicle.id}
           isPublic={Boolean(vehicle.is_public)}
           hideFinancials={vehicle.hide_financials !== false}
+          showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
           publicSlug={vehicle.public_slug}
           canEdit={!isDemo}
+          showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
+          showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
         />
       </VehicleSettingsSubpageShell>
     </AppShell>

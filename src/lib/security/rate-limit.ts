@@ -188,4 +188,6 @@ export const RATE_LIMITS = {
   tagMint: { limit: 12, windowMs: 60_000 },
   /** Account ZIP export during deletion grace. */
   accountExport: { limit: 3, windowMs: 24 * 60 * 60 * 1000 },
+  /** Build-Swipe deck + decisions (anti-scrape). */
+  showcaseSwipe: { limit: 40, windowMs: 60_000 },
 } as const;

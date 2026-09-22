@@ -30,6 +30,7 @@ const baseVehicle: Vehicle = {
   is_public: true,
   hide_financials: true,
   public_slug: "abc123XYZ",
+  showcase_swipe_opt_in: false,
   expose_token: null,
   is_expose_active: false,
   showcase_build_dna: null,

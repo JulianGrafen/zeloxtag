@@ -27,6 +27,7 @@ function vehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     is_public: false,
     hide_financials: true,
     public_slug: null,
+    showcase_swipe_opt_in: false,
     expose_token: null,
     is_expose_active: false,
     showcase_build_dna: null,

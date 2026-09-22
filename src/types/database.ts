@@ -58,6 +58,8 @@ export type Vehicle = {
   hide_financials: boolean;
   /** Share token for `/v/{public_slug}`. */
   public_slug: string | null;
+  /** Appear in authenticated build-swipe deck when public — migration 00067. */
+  showcase_swipe_opt_in: boolean;
   /** Unguessable token for `/expose/{token}` — migration 00037. */
   expose_token: string | null;
   /** When true, the token-gated sales exposé is publicly readable. */
@@ -77,6 +79,22 @@ export type Tag = {
   status: TagStatus;
   created_at: string;
   updated_at: string;
+};
+
+export type ShowcaseSwipeDecision = "like" | "pass";
+
+export type ShowcaseSwipe = {
+  id: string;
+  swiper_user_id: string;
+  vehicle_id: string;
+  decision: ShowcaseSwipeDecision;
+  created_at: string;
+};
+
+export type VehicleShowcaseLikeInbox = {
+  user_id: string;
+  vehicle_id: string;
+  last_seen_at: string;
 };
 
 export type MembershipStatus = "pending" | "active" | "past_due" | "canceled";
@@ -273,6 +291,7 @@ export type Database = {
           is_public?: boolean;
           hide_financials?: boolean;
           public_slug?: string | null;
+          showcase_swipe_opt_in?: boolean;
           expose_token?: string | null;
           is_expose_active?: boolean;
           showcase_build_dna?: ShowcaseBuildDna | Record<string, unknown> | null;
@@ -295,6 +314,7 @@ export type Database = {
           is_public?: boolean;
           hide_financials?: boolean;
           public_slug?: string | null;
+          showcase_swipe_opt_in?: boolean;
           expose_token?: string | null;
           is_expose_active?: boolean;
           showcase_build_dna?: ShowcaseBuildDna | Record<string, unknown> | null;
@@ -582,6 +602,52 @@ export type Database = {
           },
         ];
       };
+      showcase_swipes: {
+        Row: ShowcaseSwipe;
+        Insert: {
+          id?: string;
+          swiper_user_id: string;
+          vehicle_id: string;
+          decision: ShowcaseSwipeDecision;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          swiper_user_id?: string;
+          vehicle_id?: string;
+          decision?: ShowcaseSwipeDecision;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "showcase_swipes_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      vehicle_showcase_like_inbox: {
+        Row: VehicleShowcaseLikeInbox;
+        Insert: {
+          user_id: string;
+          vehicle_id: string;
+          last_seen_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          vehicle_id?: string;
+          last_seen_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_showcase_like_inbox_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -609,6 +675,14 @@ export type Database = {
           p_year: number;
           p_vin?: string | null;
         };
+        Returns: Json;
+      };
+      list_showcase_swipe_candidates: {
+        Args: { p_limit?: number };
+        Returns: Json;
+      };
+      get_showcase_swipe_inbox_summary: {
+        Args: Record<string, never>;
         Returns: Json;
       };
     };

@@ -17,6 +17,7 @@ export type UpdateVehicleShowcaseSettingsInput = {
   tagUuid: string;
   isPublic: boolean;
   hideFinancials: boolean;
+  showcaseSwipeOptIn?: boolean;
 };
 
 export type UpdateVehicleShowcaseSettingsResult =
@@ -58,7 +59,7 @@ export async function updateVehicleShowcaseSettings(
     const supabase = await createClient();
     const { data: current, error: readError } = await supabase
       .from("vehicles")
-      .select("public_slug")
+      .select("public_slug, showcase_swipe_opt_in")
       .eq("id", vehicleId)
       .eq("user_id", ownership.userId)
       .maybeSingle();
@@ -81,12 +82,21 @@ export async function updateVehicleShowcaseSettings(
       publicSlug = generatePublicSlug();
     }
 
+    const previousSwipeOptIn = Boolean(current?.showcase_swipe_opt_in);
+    let showcaseSwipeOptIn = previousSwipeOptIn;
+    if (!input.isPublic) {
+      showcaseSwipeOptIn = false;
+    } else if (input.showcaseSwipeOptIn !== undefined) {
+      showcaseSwipeOptIn = input.showcaseSwipeOptIn;
+    }
+
     const { error } = await supabase
       .from("vehicles")
       .update({
         is_public: input.isPublic,
         hide_financials: input.hideFinancials,
         public_slug: publicSlug,
+        showcase_swipe_opt_in: showcaseSwipeOptIn,
       })
       .eq("id", vehicleId)
       .eq("user_id", ownership.userId);
@@ -96,13 +106,14 @@ export async function updateVehicleShowcaseSettings(
       const missingColumn =
         error.message.includes("is_public") ||
         error.message.includes("public_slug") ||
+        error.message.includes("showcase_swipe_opt_in") ||
         error.code === "PGRST204";
 
       if (missingColumn) {
         return {
           status: "error",
           message:
-            "Showcase-Einstellungen brauchen Migration 00030_vehicle_public_showcase.sql in Supabase.",
+            "Showcase-Einstellungen brauchen die aktuelle Supabase-Migration (Showcase / Build-Swipe).",
         };
       }
 

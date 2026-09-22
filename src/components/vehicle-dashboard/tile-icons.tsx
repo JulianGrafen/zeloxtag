@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   Settings,
   ShieldCheck,
+  Sparkles,
   Stamp,
   Users,
   Wrench,
@@ -32,4 +33,5 @@ export const DASHBOARD_ICONS: Record<DashboardIconName, LucideIcon> = {
   globe: Globe,
   users: Users,
   grid: LayoutGrid,
+  sparkles: Sparkles,
 };

@@ -156,6 +156,8 @@ interface TagDashboardShellProps {
   showOperatorMinter?: boolean;
   /** When set, owner account is in deletion grace (read-only). */
   accountDeletionGraceEndsAt?: string | null;
+  showcaseSwipeUnreadLikes?: number;
+  showcaseSwipeTotalLikes?: number;
 }
 
 /**
@@ -178,6 +180,8 @@ export function TagDashboardShell({
   showFreeScanWelcome = false,
   showOperatorMinter = false,
   accountDeletionGraceEndsAt = null,
+  showcaseSwipeUnreadLikes = 0,
+  showcaseSwipeTotalLikes = 0,
 }: TagDashboardShellProps) {
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
@@ -755,6 +759,8 @@ export function TagDashboardShell({
         vehicleImageOverride={vehicleImageOverride}
         previewFallbackUrl={previewFallbackUrl}
         onSilhouetteProxyLoad={handleSilhouetteProxyLoad}
+        showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
+        showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
       />
       {portalReady &&
       silhouettePromptVisible &&

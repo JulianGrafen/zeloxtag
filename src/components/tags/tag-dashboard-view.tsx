@@ -73,6 +73,9 @@ interface TagDashboardViewProps {
   /** Data URL / blob fallback when proxy fails to load. */
   previewFallbackUrl?: string | null;
   onSilhouetteProxyLoad?: () => void;
+  /** Owner: unread build-swipe likes for badge on discover tile. */
+  showcaseSwipeUnreadLikes?: number;
+  showcaseSwipeTotalLikes?: number;
 }
 
 /**
@@ -98,6 +101,8 @@ export function TagDashboardView({
   vehicleImageOverride,
   previewFallbackUrl,
   onSilhouetteProxyLoad,
+  showcaseSwipeUnreadLikes = 0,
+  showcaseSwipeTotalLikes = 0,
 }: TagDashboardViewProps) {
   const manualEntryHref = `/v/${tagUuid}/eintrag?neu=1`;
   const scanLocked =
@@ -152,6 +157,7 @@ export function TagDashboardView({
     statusLabel: "ZeloxTag · Verbunden",
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),
+    showcaseSwipeUnreadLikes,
   };
 
   const tiles = [
@@ -328,10 +334,32 @@ export function TagDashboardView({
       };
     }
 
+    if (tile.id === "build-discover") {
+      const likeSubtitle =
+        isOwner && showcaseSwipeUnreadLikes > 0
+          ? `${showcaseSwipeUnreadLikes} neue Like${showcaseSwipeUnreadLikes === 1 ? "" : "s"}`
+          : isOwner && showcaseSwipeTotalLikes > 0
+            ? `${showcaseSwipeTotalLikes} Like${showcaseSwipeTotalLikes === 1 ? "" : "s"} gesamt`
+            : "Swipe · öffentliche Builds";
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: `/v/${tagUuid}/entdecken`,
+          subtitle: likeSubtitle,
+          badge:
+            isOwner && showcaseSwipeUnreadLikes > 0
+              ? String(showcaseSwipeUnreadLikes)
+              : undefined,
+        },
+      };
+    }
+
     return tile;
   })
     .filter((tile) => {
       if (tile.id === "settings") return isOwner && !demoMode;
+      if (tile.id === "build-discover") return !demoMode && (isOwner || isContributor);
       if (tile.id === "vehicle-settings") return isOwner || demoMode;
       if (tile.id === "schrauber") return isOwner || demoMode;
       if (isContributor && !isOwner) {

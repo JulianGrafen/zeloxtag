@@ -46,6 +46,7 @@ import { hasPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import { fetchUserGarage } from "@/lib/garage/fetch-user-garage";
 import { createClient } from "@/lib/supabase/server";
+import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
 import type { Vehicle } from "@/types/database";
 
 interface TagScanPageProps {
@@ -349,6 +350,19 @@ export default async function TagScanPage({
         ? await getAccountDeletionState(vehicle.user_id)
         : null;
 
+    let showcaseSwipeUnreadLikes = 0;
+    let showcaseSwipeTotalLikes = 0;
+    if (access.isOwner && user) {
+      try {
+        const inbox = await loadShowcaseSwipeInboxSummary();
+        const row = inbox.find((entry) => entry.vehicleId === vehicle.id);
+        showcaseSwipeUnreadLikes = row?.unreadLikes ?? 0;
+        showcaseSwipeTotalLikes = row?.totalLikes ?? 0;
+      } catch (error) {
+        console.error("[tag-dashboard] swipe inbox", error);
+      }
+    }
+
     return (
       <AppShell showNavbar={false}>
         <TagDashboardShell
@@ -372,6 +386,8 @@ export default async function TagScanPage({
               ? deletionState.graceEndsAt
               : null
           }
+          showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
+          showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
         />
       </AppShell>
     );

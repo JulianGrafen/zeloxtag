@@ -129,6 +129,12 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       featured: true,
     },
     {
+      id: "build-discover",
+      title: "Builds entdecken",
+      icon: "sparkles",
+      featured: true,
+    },
+    {
       id: "settings",
       title: "Einstellungen",
       icon: "settings",
