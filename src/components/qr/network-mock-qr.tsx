@@ -51,6 +51,37 @@ function downloadTextFile(contents: string, filename: string, type: string) {
   URL.revokeObjectURL(href);
 }
 
+async function downloadPlaqueExcel(uuids: string[]): Promise<void> {
+  const response = await fetch("/api/tags/qr/excel", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uuids }),
+  });
+
+  if (response.status === 401) {
+    throw new Error("Bitte anmelden, um QR-Codes zu minten.");
+  }
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    throw new Error(payload?.error || "Excel konnte nicht erstellt werden.");
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filename =
+    disposition.match(/filename="([^"]+)"/)?.[1] ??
+    `zelox_tags_QR_Code.xlsx`;
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(href);
+}
+
 async function downloadPlaqueZip(uuids: string[]): Promise<void> {
   const response = await fetch("/api/tags/qr/zip", {
     method: "POST",
@@ -104,7 +135,7 @@ export function NetworkMockQr() {
   const [lastBatchUuids, setLastBatchUuids] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [zipPending, setZipPending] = useState(false);
+  const [exportPending, setExportPending] = useState(false);
   const [count, setCount] = useState<(typeof BATCH_OPTIONS)[number]>(
     DEFAULT_BATCH,
   );
@@ -195,12 +226,15 @@ export function NetworkMockQr() {
         );
         setPlaques((current) => [...rendered, ...current]);
 
-        if (options?.downloadZip && mintedUuids.length > 0) {
-          setZipPending(true);
+        if (mintedUuids.length > 0) {
+          setExportPending(true);
           try {
-            await downloadPlaqueZip(mintedUuids);
+            await downloadPlaqueExcel(mintedUuids);
+            if (options?.downloadZip) {
+              await downloadPlaqueZip(mintedUuids);
+            }
           } finally {
-            setZipPending(false);
+            setExportPending(false);
           }
         }
       } catch (mintError) {
@@ -216,7 +250,7 @@ export function NetworkMockQr() {
 
   const downloadLastBatchZip = useCallback(async () => {
     if (lastBatchUuids.length === 0) return;
-    setZipPending(true);
+    setExportPending(true);
     setError(null);
     try {
       await downloadPlaqueZip(lastBatchUuids);
@@ -227,7 +261,24 @@ export function NetworkMockQr() {
           : "ZIP konnte nicht erstellt werden.",
       );
     } finally {
-      setZipPending(false);
+      setExportPending(false);
+    }
+  }, [lastBatchUuids]);
+
+  const downloadLastBatchExcel = useCallback(async () => {
+    if (lastBatchUuids.length === 0) return;
+    setExportPending(true);
+    setError(null);
+    try {
+      await downloadPlaqueExcel(lastBatchUuids);
+    } catch (excelError) {
+      setError(
+        excelError instanceof Error
+          ? excelError.message
+          : "Excel konnte nicht erstellt werden.",
+      );
+    } finally {
+      setExportPending(false);
     }
   }, [lastBatchUuids]);
 
@@ -237,7 +288,7 @@ export function NetworkMockQr() {
 
   const isLocalhost =
     origin.includes("localhost") || origin.includes("127.0.0.1");
-  const busy = loading || zipPending;
+  const busy = loading || exportPending;
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -258,7 +309,8 @@ export function NetworkMockQr() {
           </span>
         </p>
         <p className="mt-1">
-          Max. {MAX_MINT_BATCH} Tags pro Lauf. MFA + Operator-Mail erforderlich.
+          Max. {MAX_MINT_BATCH} Tags pro Lauf. Nach dem Mint: Excel wie in der
+          Produktion (Links + QR-Vorschau). MFA + Operator-Mail erforderlich.
         </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -290,8 +342,8 @@ export function NetworkMockQr() {
           >
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             {count === 1
-              ? "Tag minten & ZIP"
-              : `${count} Tags minten & ZIP`}
+              ? "Minten, Excel & ZIP"
+              : `${count} minten, Excel & ZIP`}
           </PressableButton>
           <PressableButton
             type="button"
@@ -319,16 +371,28 @@ export function NetworkMockQr() {
       {error ? <p className="vd-alert-error">{error}</p> : null}
 
       {lastBatchUuids.length > 0 ? (
-        <PressableButton
-          type="button"
-          variant="button"
-          disabled={busy}
-          onClick={() => void downloadLastBatchZip()}
-          className="claim-back !w-auto px-4 py-3 text-[0.85rem]"
-        >
-          <Download className="h-4 w-4" aria-hidden />
-          Letzte {lastBatchUuids.length} SVGs als ZIP
-        </PressableButton>
+        <div className="flex flex-wrap gap-2">
+          <PressableButton
+            type="button"
+            variant="button"
+            disabled={busy}
+            onClick={() => void downloadLastBatchExcel()}
+            className="claim-cta-sm disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Excel ({lastBatchUuids.length} Links)
+          </PressableButton>
+          <PressableButton
+            type="button"
+            variant="button"
+            disabled={busy}
+            onClick={() => void downloadLastBatchZip()}
+            className="claim-back !w-auto px-4 py-3 text-[0.85rem] disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            SVG-ZIP ({lastBatchUuids.length})
+          </PressableButton>
+        </div>
       ) : null}
 
       <div className="grid gap-4">

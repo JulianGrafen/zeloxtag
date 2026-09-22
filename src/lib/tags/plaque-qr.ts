@@ -55,3 +55,14 @@ export async function renderPlaqueQrPngDataUrl(scanUrl: string): Promise<string>
     ...PLAQUE_QR_OPTIONS,
   });
 }
+
+/** PNG buffer for Excel previews and server-side exports. */
+export async function renderPlaqueQrPngBuffer(scanUrl: string): Promise<Buffer> {
+  return QRCode.toBuffer(scanUrl, {
+    type: "png",
+    width: 256,
+    margin: PLAQUE_QR_OPTIONS.margin,
+    errorCorrectionLevel: PLAQUE_QR_OPTIONS.errorCorrectionLevel,
+    color: PLAQUE_QR_OPTIONS.color,
+  });
+}

@@ -3,33 +3,26 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireOperator } from "@/lib/auth/require-operator";
 import { enforceRateLimit, enforceSameOrigin } from "@/lib/security/api-guard";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import {
+  buildMintPlaqueExcelBuffer,
+  mintPlaqueExcelFilename,
+} from "@/lib/tags/mint-plaque-excel";
 import { MAX_MINT_BATCH } from "@/lib/tags/mint-batch";
 import { parseMintPlaqueUuidList } from "@/lib/tags/parse-mint-plaque-uuids";
-import {
-  plaqueProductionOrigin,
-  plaqueScanUrl,
-  plaqueSvgFilename,
-  renderPlaqueQrSvg,
-} from "@/lib/tags/plaque-qr";
-import { createStoreZip } from "@/lib/zip/store-zip";
+import { plaqueProductionOrigin } from "@/lib/tags/plaque-qr";
 
 export const runtime = "nodejs";
 
-function zipFilename(count: number): string {
-  const stamp = new Date().toISOString().slice(0, 10);
-  return `zeloxtag-mint-${count}-${stamp}.zip`;
-}
-
 /**
- * POST /api/tags/qr/zip
- * Superuser-only batch SVG download as a single ZIP archive.
+ * POST /api/tags/qr/excel
+ * Superuser-only Excel export (ZELOX Tags sheet with scan URLs and QR previews).
  * Body: `{ "uuids": ["…", "…"] }` (max 50)
  */
 export async function POST(request: NextRequest) {
   const originBlocked = enforceSameOrigin(request);
   if (originBlocked) return originBlocked;
 
-  const limited = await enforceRateLimit(request, "tagMint", "qr-zip");
+  const limited = await enforceRateLimit(request, "tagMint", "qr-excel");
   if (limited) return limited;
 
   const operator = await requireOperator();
@@ -94,20 +87,14 @@ export async function POST(request: NextRequest) {
   }
 
   const scanOrigin = plaqueProductionOrigin();
-  const entries = await Promise.all(
-    uuids.map(async (uuid) => {
-      const svg = await renderPlaqueQrSvg(plaqueScanUrl(scanOrigin, uuid));
-      return { name: plaqueSvgFilename(uuid), data: svg };
-    }),
-  );
+  const xlsx = await buildMintPlaqueExcelBuffer(uuids, { scanOrigin });
+  const filename = mintPlaqueExcelFilename();
 
-  const zip = createStoreZip(entries);
-  const filename = zipFilename(uuids.length);
-
-  return new NextResponse(new Uint8Array(zip), {
+  return new NextResponse(new Uint8Array(xlsx), {
     status: 200,
     headers: {
-      "Content-Type": "application/zip",
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
     },
