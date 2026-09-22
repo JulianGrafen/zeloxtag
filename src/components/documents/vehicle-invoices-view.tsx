@@ -6,6 +6,7 @@ import { ArrowLeft, BarChart3, ChevronRight, Receipt } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { SaveSuccessBanner } from "@/components/documents/save-success-banner";
+import { ProductFeaturesBanner } from "@/components/onboarding/product-features-banner";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
@@ -136,6 +137,9 @@ function VehicleInvoicesViewContent({
 
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <SaveSuccessBanner />
+        {showScanFab ? (
+          <ProductFeaturesBanner tagUuid={tagUuid} active />
+        ) : null}
 
         <header className="vd-anim-header space-y-4">
           <PressableLink

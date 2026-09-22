@@ -264,6 +264,7 @@ export function TagDashboardShell({
   );
   const [forceTour, setForceTour] = useState(startTour);
   const [primaryGoal, setPrimaryGoal] = useState<ZeloxPrimaryGoal | null>(null);
+  const [tourOpen, setTourOpen] = useState(false);
   const onboardingActive = forceTour || deferSilhouetteForTour;
 
   useEffect(() => {
@@ -431,6 +432,7 @@ export function TagDashboardShell({
   }
 
   function handleTourOpenChange(open: boolean) {
+    setTourOpen(open);
     if (!open) return;
     clearPromptTimers();
     setDashboardPromptPhase("tour");
@@ -761,6 +763,14 @@ export function TagDashboardShell({
         onSilhouetteProxyLoad={handleSilhouetteProxyLoad}
         showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
         showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
+        productFeaturesBannerActive={
+          mode === "dashboard" &&
+          !showSilhouetteEditor &&
+          !silhouettePromptVisible &&
+          !onboardingActive &&
+          !tourOpen &&
+          !Boolean(paywallFeature)
+        }
       />
       {portalReady &&
       silhouettePromptVisible &&

@@ -37,6 +37,7 @@ import {
 } from "@/lib/tags/demo-showcase";
 
 import { GarageSwitcherTile } from "@/components/garage/garage-switcher-tile";
+import { ProductFeaturesBanner } from "@/components/onboarding/product-features-banner";
 
 import { DashboardScanFab } from "./dashboard-scan-fab";
 
@@ -77,6 +78,8 @@ interface TagDashboardViewProps {
   /** Owner: unread build-swipe likes for badge on discover tile. */
   showcaseSwipeUnreadLikes?: number;
   showcaseSwipeTotalLikes?: number;
+  /** One-time neue Features (Swipe, Kostenübersicht). */
+  productFeaturesBannerActive?: boolean;
 }
 
 /**
@@ -104,6 +107,7 @@ export function TagDashboardView({
   onSilhouetteProxyLoad,
   showcaseSwipeUnreadLikes = 0,
   showcaseSwipeTotalLikes = 0,
+  productFeaturesBannerActive = true,
 }: TagDashboardViewProps) {
   const manualEntryHref = `/v/${tagUuid}/eintrag?neu=1`;
   const scanLocked =
@@ -397,10 +401,23 @@ export function TagDashboardView({
       };
     });
 
+  const showProductFeaturesBanner =
+    !demoMode &&
+    !demoShowcase &&
+    (isOwner || isContributor);
+
   return (
     <div className="relative">
       <VehicleDashboard
         data={{ ...data, tiles }}
+        banner={
+          showProductFeaturesBanner ? (
+            <ProductFeaturesBanner
+              tagUuid={tagUuid}
+              active={productFeaturesBannerActive}
+            />
+          ) : undefined
+        }
         className={canScan ? "pb-24" : undefined}
         extraTiles={
           isOwner && !demoMode && !demoShowcase ? (
