@@ -345,6 +345,7 @@ export function buildVehicleCostOverview(
       label: SPEND_BUCKET_LABELS[bucket],
       amount: bucketTotals[bucket],
     }))
+    .filter((row) => row.amount > 0)
     .sort((a, b) => {
       if (b.amount !== a.amount) return b.amount - a.amount;
       return (

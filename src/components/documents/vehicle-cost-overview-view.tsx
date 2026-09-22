@@ -147,8 +147,7 @@ export function VehicleCostOverviewView({
               </p>
             ) : null}
 
-            {overview.modification.total > 0 ||
-            overview.bucketBreakdown.length > 0 ? (
+            {overview.bucketBreakdown.length > 0 ? (
               <section className="space-y-4 rounded-[1.5rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
                 <div className="flex items-center gap-2">
                   <BarChart3
