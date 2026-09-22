@@ -86,6 +86,10 @@ export function VehicleCostOverviewView({
     ...overview.bucketBreakdown.map((row) => row.amount),
     1,
   );
+  const maxMaintenanceBucket = Math.max(
+    ...overview.maintenance.bucketBreakdown.map((row) => row.amount),
+    1,
+  );
   const hasData = overview.invoiceCount > 0;
 
   return (
@@ -204,31 +208,24 @@ export function VehicleCostOverviewView({
                     aria-hidden
                   />
                   <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-                    Wartungskosten
+                    Wartungs- & Reparatur-Verteilung
                   </h2>
                 </div>
                 <span className="text-[0.95rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
                   {formatEur(overview.maintenance.total)}
                 </span>
               </div>
-              {overview.maintenance.categories.length > 0 ? (
-                <ul className="space-y-2">
-                  {overview.maintenance.categories.map((row) => (
-                    <li
-                      key={row.category}
-                      className="flex items-center justify-between gap-3 rounded-xl bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 ring-1 ring-[color:var(--vd-border)]"
-                    >
-                      <span className="flex items-center gap-2 text-[0.82rem] text-[color:var(--vd-text)]">
-                        <span
-                          className="h-2 w-2 rounded-full bg-[color:var(--vd-accent)]"
-                          aria-hidden
-                        />
-                        {row.label}
-                      </span>
-                      <span className="text-[0.82rem] font-semibold tabular-nums">
-                        {formatEur(row.amount)}
-                      </span>
-                    </li>
+              {overview.maintenance.bucketBreakdown.length > 0 ? (
+                <ul className="space-y-3 pt-1">
+                  {overview.maintenance.bucketBreakdown.map((row) => (
+                    <CostBucketRow
+                      key={row.bucket}
+                      label={row.label}
+                      amount={row.amount}
+                      ratio={
+                        row.amount > 0 ? row.amount / maxMaintenanceBucket : 0
+                      }
+                    />
                   ))}
                 </ul>
               ) : (

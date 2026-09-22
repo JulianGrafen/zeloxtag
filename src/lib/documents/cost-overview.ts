@@ -1,6 +1,5 @@
 import { parseLineItems } from "@/lib/documents/line-items";
 import {
-  INVOICE_LIST_CATEGORY_LABELS,
   resolveInvoiceListCategory,
   type InvoiceListCategory,
 } from "@/lib/documents/invoice-categories";
@@ -9,6 +8,7 @@ import {
   isInvoiceRepairLine,
   isInvoiceServiceLine,
   isInvoiceVatOrTotalLine,
+  isOilLineLabel,
   isTuningLineLabel,
 } from "@/lib/documents/invoice-title";
 import { resolveDocumentAmount } from "@/lib/vehicles/expose-data";
@@ -163,15 +163,41 @@ export type CostModificationStats = {
   mostExpensiveAmount: number | null;
 };
 
-export type CostMaintenanceCategoryRow = {
-  category: InvoiceListCategory;
+export const MAINTENANCE_BUCKETS = [
+  "brakes",
+  "engine_drivetrain",
+  "suspension_steering",
+  "body_paint",
+  "electrical_diagnosis",
+  "inspection_hu",
+  "oil_filter",
+  "service_labor",
+  "other_maintenance",
+] as const;
+
+export type MaintenanceBucket = (typeof MAINTENANCE_BUCKETS)[number];
+
+export const MAINTENANCE_BUCKET_LABELS: Record<MaintenanceBucket, string> = {
+  brakes: "Bremse",
+  engine_drivetrain: "Motor & Antrieb",
+  suspension_steering: "Fahrwerk & Lenkung",
+  body_paint: "Karosserie & Lack",
+  electrical_diagnosis: "Elektrik & Diagnose",
+  inspection_hu: "Inspektion & HU",
+  oil_filter: "Öl & Filter",
+  service_labor: "Service & Montage",
+  other_maintenance: "Sonstiges Wartung",
+};
+
+export type CostMaintenanceBucketRow = {
+  bucket: MaintenanceBucket;
   label: string;
   amount: number;
 };
 
 export type CostMaintenanceStats = {
   total: number;
-  categories: CostMaintenanceCategoryRow[];
+  bucketBreakdown: CostMaintenanceBucketRow[];
 };
 
 export type CostYearlyPoint = {
@@ -271,6 +297,210 @@ function contributesToUmbauBuckets(
   return listCategory === "tuning" || listCategory === "other";
 }
 
+type MaintenanceKeywordRule = {
+  bucket: MaintenanceBucket;
+  patterns: RegExp[];
+};
+
+const MAINTENANCE_KEYWORD_RULES: MaintenanceKeywordRule[] = [
+  {
+    bucket: "brakes",
+    patterns: [
+      /\bbrems/i,
+      /\bbremsscheib/i,
+      /\bbremsbel/i,
+      /\bbrake/i,
+    ],
+  },
+  {
+    bucket: "engine_drivetrain",
+    patterns: [
+      /\bmotor\b/i,
+      /\bgetriebe/i,
+      /\bkupplung/i,
+      /\bzahnriemen/i,
+      /\bsteuerkette/i,
+      /\bantrieb/i,
+    ],
+  },
+  {
+    bucket: "suspension_steering",
+    patterns: [
+      /\bstossdämpfer/i,
+      /\bstoßdämpfer/i,
+      /\bquerlenker/i,
+      /\bfederbein/i,
+      /\blenkw/i,
+      /\bachsvermessung/i,
+      /\bfahrwerk\b/i,
+    ],
+  },
+  {
+    bucket: "body_paint",
+    patterns: [
+      /\bkarosserie/i,
+      /\black/i,
+      /\bunfall/i,
+      /\bdellen/i,
+      /\bspotrepair/i,
+    ],
+  },
+  {
+    bucket: "electrical_diagnosis",
+    patterns: [
+      /\bfehlersuche/i,
+      /\bdiagnose/i,
+      /\bsteuergerät/i,
+      /\bbatterie/i,
+      /\blicht\b/i,
+      /\belektrik/i,
+      /\bdynamic drive/i,
+    ],
+  },
+  {
+    bucket: "inspection_hu",
+    patterns: [
+      /\binspektion/i,
+      /\bhauptuntersuchung/i,
+      /\bhu\b/i,
+      /\btüv/i,
+      /\btuev/i,
+    ],
+  },
+  {
+    bucket: "oil_filter",
+    patterns: [/\böl/i, /\boel/i, /\boil\b/i, /\bfilter/i],
+  },
+  {
+    bucket: "service_labor",
+    patterns: [
+      /\barbeitszeit/i,
+      /\bmontage\b/i,
+      /\breifenwechsel/i,
+      /\bwartung\b/i,
+      /\bservice\b/i,
+    ],
+  },
+];
+
+export function classifyMaintenanceBucket(
+  label: string | null | undefined,
+): MaintenanceBucket {
+  const haystack = label?.trim() ?? "";
+  if (!haystack) return "other_maintenance";
+
+  if (isOilLineLabel(haystack)) return "oil_filter";
+
+  for (const rule of MAINTENANCE_KEYWORD_RULES) {
+    if (rule.patterns.some((pattern) => pattern.test(haystack))) {
+      return rule.bucket;
+    }
+  }
+
+  if (isInvoiceServiceLine(haystack)) return "service_labor";
+  if (isInvoiceRepairLine(haystack)) return "other_maintenance";
+
+  return "other_maintenance";
+}
+
+type MaintPosition = {
+  label: string;
+  amount: number;
+  bucket: MaintenanceBucket;
+};
+
+function isExcludedMaintenanceLine(label: string): boolean {
+  const trimmed = label.trim();
+  if (!trimmed) return true;
+  if (isInvoiceVatOrTotalLine(trimmed)) return true;
+  if (/summe der positionen/i.test(trimmed)) return true;
+  return false;
+}
+
+function hasMaintenanceLineSignal(label: string): boolean {
+  return (
+    isInvoiceRepairLine(label) ||
+    isInvoiceServiceLine(label) ||
+    isOilLineLabel(label) ||
+    classifyMaintenanceBucket(label) !== "other_maintenance"
+  );
+}
+
+function shouldIncludeMaintenanceLine(
+  label: string,
+  listCategory: InvoiceListCategory,
+): boolean {
+  if (isExcludedMaintenanceLine(label)) return false;
+
+  if (listCategory === "repair" || listCategory === "service") {
+    if (isTuningLineLabel(label) && !hasMaintenanceLineSignal(label)) {
+      return false;
+    }
+    return true;
+  }
+
+  if (listCategory === "other") {
+    if (shouldIncludeUmbauLine(label, listCategory)) return false;
+    return hasMaintenanceLineSignal(label);
+  }
+
+  return false;
+}
+
+function contributesToMaintenanceBuckets(
+  listCategory: InvoiceListCategory,
+): boolean {
+  return (
+    listCategory === "repair" ||
+    listCategory === "service" ||
+    listCategory === "other"
+  );
+}
+
+function collectMaintenancePositions(
+  doc: Document,
+  listCategory: InvoiceListCategory,
+): MaintPosition[] {
+  const lines = parseLineItems(doc.line_items) ?? [];
+  const withAmount = lines.filter(
+    (item) => Number.isFinite(item.amount) && item.amount > 0,
+  );
+
+  const fromLines = withAmount
+    .filter((item) => shouldIncludeMaintenanceLine(item.label, listCategory))
+    .map((item) => ({
+      label: item.label.trim(),
+      amount: item.amount,
+      bucket: classifyMaintenanceBucket(item.label),
+    }));
+
+  if (fromLines.length > 0) {
+    return fromLines;
+  }
+
+  if (listCategory !== "repair" && listCategory !== "service") {
+    return [];
+  }
+
+  const amount = resolveDocumentAmount(doc);
+  if (amount == null || amount <= 0) return [];
+
+  const fallbackLabel =
+    doc.title?.trim() || doc.vendor?.trim() || "Wartung";
+  const combined = `${fallbackLabel} ${doc.vendor ?? ""}`;
+  if (!shouldIncludeMaintenanceLine(combined, listCategory)) {
+    return [];
+  }
+
+  return [
+    {
+      label: fallbackLabel,
+      amount,
+      bucket: classifyMaintenanceBucket(combined),
+    },
+  ];
+}
+
 export function buildVehicleCostOverview(
   documents: Document[],
 ): VehicleCostOverview {
@@ -283,7 +513,10 @@ export function buildVehicleCostOverview(
   ) as Record<SpendBucket, number>;
 
   const modificationPositions: ModPosition[] = [];
-  const maintenanceByCategory = new Map<InvoiceListCategory, number>();
+  const maintenancePositions: MaintPosition[] = [];
+  const maintenanceBucketTotals = Object.fromEntries(
+    MAINTENANCE_BUCKETS.map((bucket) => [bucket, 0]),
+  ) as Record<MaintenanceBucket, number>;
   const yearlyTotals = new Map<number, number>();
 
   for (const doc of invoices) {
@@ -308,10 +541,9 @@ export function buildVehicleCostOverview(
       );
     }
 
-    if (listCategory === "repair" || listCategory === "service") {
-      maintenanceByCategory.set(
-        listCategory,
-        roundMoney((maintenanceByCategory.get(listCategory) ?? 0) + amount),
+    if (contributesToMaintenanceBuckets(listCategory)) {
+      maintenancePositions.push(
+        ...collectMaintenancePositions(doc, listCategory),
       );
     }
   }
@@ -362,18 +594,31 @@ export function buildVehicleCostOverview(
     }))
     .sort((a, b) => b.amount - a.amount);
 
-  const maintenanceCategories: CostMaintenanceCategoryRow[] = (
-    ["repair", "service"] as const
-  )
-    .map((category) => ({
-      category,
-      label: INVOICE_LIST_CATEGORY_LABELS[category],
-      amount: maintenanceByCategory.get(category) ?? 0,
+  for (const position of maintenancePositions) {
+    maintenanceBucketTotals[position.bucket] = roundMoney(
+      maintenanceBucketTotals[position.bucket] + position.amount,
+    );
+  }
+
+  const maintenanceBucketBreakdown: CostMaintenanceBucketRow[] = [
+    ...MAINTENANCE_BUCKETS,
+  ]
+    .map((bucket) => ({
+      bucket,
+      label: MAINTENANCE_BUCKET_LABELS[bucket],
+      amount: maintenanceBucketTotals[bucket],
     }))
-    .filter((row) => row.amount > 0);
+    .filter((row) => row.amount > 0)
+    .sort((a, b) => {
+      if (b.amount !== a.amount) return b.amount - a.amount;
+      return (
+        MAINTENANCE_BUCKETS.indexOf(a.bucket) -
+        MAINTENANCE_BUCKETS.indexOf(b.bucket)
+      );
+    });
 
   const maintenanceTotal = roundMoney(
-    maintenanceCategories.reduce((sum, row) => sum + row.amount, 0),
+    maintenanceBucketBreakdown.reduce((sum, row) => sum + row.amount, 0),
   );
 
   const yearlySeries: CostYearlyPoint[] = [...yearlyTotals.entries()]
@@ -401,7 +646,7 @@ export function buildVehicleCostOverview(
     },
     maintenance: {
       total: maintenanceTotal,
-      categories: maintenanceCategories,
+      bucketBreakdown: maintenanceBucketBreakdown,
     },
     yearlySeries,
   };

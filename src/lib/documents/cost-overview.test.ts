@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildVehicleCostOverview,
+  classifyMaintenanceBucket,
   classifySpendBucket,
 } from "@/lib/documents/cost-overview";
 import type { Document } from "@/types/database";
@@ -155,6 +156,52 @@ describe("buildVehicleCostOverview", () => {
       (b) => b.bucket === "wheels_tires",
     );
     expect(wheels?.amount).toBe(1500);
+  });
+
+  it("breaks down repair and service into maintenance buckets", () => {
+    const overview = buildVehicleCostOverview([
+      invoice({
+        id: "brakes",
+        category: "repair",
+        line_items: [
+          { label: "Bremsscheiben vorne", amount: 320 },
+          { label: "Bremsbeläge Satz", amount: 95 },
+          { label: "MwSt 19%", amount: 40 },
+        ],
+      }),
+      invoice({
+        id: "hu",
+        category: "service",
+        line_items: [{ label: "Inspektion inkl. HU", amount: 189 }],
+      }),
+      invoice({
+        id: "diag",
+        category: "other",
+        line_items: [
+          { label: "Fehlersuche Dynamic Drive System", amount: 149.96 },
+        ],
+      }),
+    ]);
+
+    const brakes = overview.maintenance.bucketBreakdown.find(
+      (b) => b.bucket === "brakes",
+    );
+    const inspection = overview.maintenance.bucketBreakdown.find(
+      (b) => b.bucket === "inspection_hu",
+    );
+    const electrical = overview.maintenance.bucketBreakdown.find(
+      (b) => b.bucket === "electrical_diagnosis",
+    );
+
+    expect(brakes?.amount).toBe(415);
+    expect(inspection?.amount).toBe(189);
+    expect(electrical?.amount).toBe(149.96);
+    expect(overview.maintenance.total).toBe(753.96);
+  });
+
+  it("classifies maintenance buckets by keyword", () => {
+    expect(classifyMaintenanceBucket("Bremsscheiben")).toBe("brakes");
+    expect(classifyMaintenanceBucket("Inspektion HU")).toBe("inspection_hu");
   });
 
   it("counts documents without amount", () => {

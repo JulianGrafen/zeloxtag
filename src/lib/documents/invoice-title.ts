@@ -66,6 +66,10 @@ export function isInvoiceRepairLine(label: string): boolean {
   return INVOICE_REPAIR_LINE.test(label);
 }
 
+export function isOilLineLabel(label: string): boolean {
+  return OIL_LINE.test(label) || OIL_ADJUNCT.test(label);
+}
+
 function isOilAdjacentLine(label: string): boolean {
   return OIL_LINE.test(label) || OIL_ADJUNCT.test(label);
 }
