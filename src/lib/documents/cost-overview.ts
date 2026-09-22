@@ -137,6 +137,13 @@ export type CostBucketBreakdownRow = {
   amount: number;
 };
 
+export type CostModificationLine = {
+  label: string;
+  amount: number;
+  bucket: SpendBucket;
+  bucketLabel: string;
+};
+
 export type CostModificationStats = {
   total: number;
   positionCount: number;
@@ -166,6 +173,7 @@ export type VehicleCostOverview = {
   documentsWithoutAmountCount: number;
   invoiceCount: number;
   bucketBreakdown: CostBucketBreakdownRow[];
+  modificationLines: CostModificationLine[];
   modification: CostModificationStats;
   maintenance: CostMaintenanceStats;
   yearlySeries: CostYearlyPoint[];
@@ -282,13 +290,26 @@ export function buildVehicleCostOverview(
     }
   }
 
-  const bucketBreakdown: CostBucketBreakdownRow[] = SPEND_BUCKETS
+  const bucketBreakdown: CostBucketBreakdownRow[] = [...SPEND_BUCKETS]
     .map((bucket) => ({
       bucket,
       label: SPEND_BUCKET_LABELS[bucket],
       amount: bucketTotals[bucket],
     }))
-    .filter((row) => row.amount > 0)
+    .sort((a, b) => {
+      if (b.amount !== a.amount) return b.amount - a.amount;
+      return (
+        SPEND_BUCKETS.indexOf(a.bucket) - SPEND_BUCKETS.indexOf(b.bucket)
+      );
+    });
+
+  const modificationLines: CostModificationLine[] = modificationPositions
+    .map((position) => ({
+      label: position.label,
+      amount: position.amount,
+      bucket: position.bucket,
+      bucketLabel: SPEND_BUCKET_LABELS[position.bucket],
+    }))
     .sort((a, b) => b.amount - a.amount);
 
   const maintenanceCategories: CostMaintenanceCategoryRow[] = (
@@ -317,6 +338,7 @@ export function buildVehicleCostOverview(
     documentsWithoutAmountCount,
     invoiceCount: invoices.length,
     bucketBreakdown,
+    modificationLines,
     modification: {
       total: modificationTotal,
       positionCount,

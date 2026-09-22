@@ -86,6 +86,10 @@ export function VehicleCostOverviewView({
     ...overview.bucketBreakdown.map((row) => row.amount),
     1,
   );
+  const maxLine = Math.max(
+    ...overview.modificationLines.map((row) => row.amount),
+    1,
+  );
 
   const hasData = overview.invoiceCount > 0;
 
@@ -148,8 +152,9 @@ export function VehicleCostOverviewView({
               </p>
             ) : null}
 
-            {overview.bucketBreakdown.length > 0 ? (
-              <section className="space-y-3 rounded-[1.5rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
+            {overview.modification.total > 0 ||
+            overview.bucketBreakdown.length > 0 ? (
+              <section className="space-y-4 rounded-[1.5rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
                 <div className="flex items-center gap-2">
                   <BarChart3
                     className="h-4 w-4 text-[color:var(--vd-accent)]"
@@ -165,10 +170,32 @@ export function VehicleCostOverviewView({
                       key={row.bucket}
                       label={row.label}
                       amount={row.amount}
-                      ratio={row.amount / maxBucket}
+                      ratio={row.amount > 0 ? row.amount / maxBucket : 0}
                     />
                   ))}
                 </ul>
+
+                {overview.modificationLines.length > 0 ? (
+                  <div className="space-y-2 border-t border-[color:var(--vd-border)] pt-4">
+                    <h3 className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                      Einzelpositionen
+                    </h3>
+                    <ul className="max-h-[min(50vh,420px)] space-y-2 overflow-y-auto pr-1">
+                      {overview.modificationLines.map((row, index) => (
+                        <li key={`${row.label}-${index}`}>
+                          <CostBucketRow
+                            label={row.label}
+                            amount={row.amount}
+                            ratio={row.amount / maxLine}
+                          />
+                          <p className="mt-0.5 pl-0.5 text-[0.68rem] text-[color:var(--vd-muted)]">
+                            {row.bucketLabel}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </section>
             ) : null}
 
