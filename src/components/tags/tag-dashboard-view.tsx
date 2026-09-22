@@ -24,6 +24,7 @@ import {
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
 import { deriveNextInspectionFromDocuments } from "@/lib/documents/tuev-schedule";
+import { resolveDocumentAmount } from "@/lib/vehicles/expose-data";
 import { buildTimelineFromDocuments } from "@/services/timeline";
 import {
   countFilledTechSpecs,
@@ -109,7 +110,11 @@ export function TagDashboardView({
     !cloudUnlocked &&
     freeInvoiceScanRemaining <= 0 &&
     freeAbeScanRemaining <= 0;
-  const invoiceCount = filterInvoiceReceiptDocuments(documents).length;
+  const invoiceDocuments = filterInvoiceReceiptDocuments(documents);
+  const invoiceCount = invoiceDocuments.length;
+  const hasInvoiceAmounts = invoiceDocuments.some(
+    (doc) => resolveDocumentAmount(doc) != null,
+  );
   const abeCount = filterAbeFamilyDocuments(documents).length;
   const tuevCount = documents.filter((doc) => doc.type === "tuev").length;
   const serviceCount = filterServiceInspectionDocuments(documents).length;
@@ -187,7 +192,9 @@ export function TagDashboardView({
           href: `/v/${tagUuid}/dokumente?type=invoice`,
           subtitle:
             invoiceCount > 0
-              ? belegeLabel(invoiceCount)
+              ? hasInvoiceAmounts
+                ? `${belegeLabel(invoiceCount)} · Kostenübersicht`
+                : belegeLabel(invoiceCount)
               : !cloudUnlocked && freeInvoiceScanRemaining > 0
                 ? "1× KI-Scan gratis"
                 : "Leer",

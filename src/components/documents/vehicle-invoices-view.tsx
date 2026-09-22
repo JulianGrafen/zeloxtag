@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronRight, Receipt } from "lucide-react";
+import { ArrowLeft, BarChart3, ChevronRight, Receipt } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { SaveSuccessBanner } from "@/components/documents/save-success-banner";
@@ -154,6 +154,16 @@ function VehicleInvoicesViewContent({
             <p className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
               Summe {formatEur(total)}
             </p>
+            {invoices.length > 0 ? (
+              <PressableLink
+                href={`/v/${tagUuid}/dokumente/kosten`}
+                variant="button"
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-accent)]/30 bg-[color:var(--vd-surface-elevated)] px-4 py-3 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[0_0_28px_-10px_color-mix(in_srgb,var(--vd-accent)_50%,transparent)]"
+              >
+                <BarChart3 className="h-4 w-4 text-[color:var(--vd-accent)]" aria-hidden />
+                Kostenübersicht
+              </PressableLink>
+            ) : null}
           </div>
         </header>
 
