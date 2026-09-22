@@ -1,6 +1,8 @@
 "use client";
 
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import { ArrowLeft, BarChart3, TrendingUp, Wrench } from "lucide-react";
+import { useRef } from "react";
 
 import { CostOverviewChart } from "@/components/documents/cost-overview-chart";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
@@ -48,17 +50,41 @@ function CostStatCard({
   );
 }
 
+const BUCKET_EASE = [0.22, 1, 0.36, 1] as const;
+
+const bucketListVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.04, delayChildren: 0.03 },
+  },
+};
+
+const bucketRowVariants = {
+  hidden: { opacity: 0, y: 6 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.28, ease: BUCKET_EASE },
+  },
+};
+
 function CostBucketRow({
   label,
   amount,
   ratio,
+  showBarAtTarget,
+  reduceMotion,
 }: {
   label: string;
   amount: number;
   ratio: number;
+  showBarAtTarget: boolean;
+  reduceMotion: boolean;
 }) {
+  const widthPct = `${Math.max(4, Math.round(ratio * 100))}%`;
+
   return (
-    <li className="space-y-1.5">
+    <motion.li className="space-y-1.5" variants={bucketRowVariants}>
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-[0.82rem] font-medium text-[color:var(--vd-text)]">
           {label}
@@ -68,12 +94,56 @@ function CostBucketRow({
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-[color:var(--vd-surface-elevated)] ring-1 ring-[color:var(--vd-border)]">
-        <div
-          className="h-full rounded-full bg-[color:var(--vd-accent)] transition-[width] duration-500 ease-out"
-          style={{ width: `${Math.max(4, Math.round(ratio * 100))}%` }}
+        <motion.div
+          className="h-full rounded-full bg-[color:var(--vd-accent)]"
+          initial={{ width: "0%" }}
+          animate={{ width: showBarAtTarget ? widthPct : "0%" }}
+          transition={{
+            duration: reduceMotion ? 0 : 0.65,
+            ease: BUCKET_EASE,
+          }}
         />
       </div>
-    </li>
+    </motion.li>
+  );
+}
+
+type BucketRow = { bucket: string; label: string; amount: number };
+
+function AnimatedCostBucketList({
+  rows,
+  maxAmount,
+  className,
+}: {
+  rows: BucketRow[];
+  maxAmount: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLUListElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.25 });
+  const reduceMotion = useReducedMotion();
+  const showBarAtTarget = reduceMotion || inView;
+  const listAnimate = reduceMotion ? undefined : inView ? "visible" : "hidden";
+
+  return (
+    <motion.ul
+      ref={ref}
+      className={className ?? "space-y-3"}
+      variants={reduceMotion ? undefined : bucketListVariants}
+      initial={reduceMotion ? undefined : "hidden"}
+      animate={listAnimate}
+    >
+      {rows.map((row) => (
+        <CostBucketRow
+          key={row.bucket}
+          label={row.label}
+          amount={row.amount}
+          ratio={row.amount > 0 ? row.amount / maxAmount : 0}
+          showBarAtTarget={showBarAtTarget}
+          reduceMotion={Boolean(reduceMotion)}
+        />
+      ))}
+    </motion.ul>
   );
 }
 
@@ -162,16 +232,10 @@ export function VehicleCostOverviewView({
                     Umbau-Verteilung
                   </h2>
                 </div>
-                <ul className="space-y-3">
-                  {overview.bucketBreakdown.map((row) => (
-                    <CostBucketRow
-                      key={row.bucket}
-                      label={row.label}
-                      amount={row.amount}
-                      ratio={row.amount > 0 ? row.amount / maxBucket : 0}
-                    />
-                  ))}
-                </ul>
+                <AnimatedCostBucketList
+                  rows={overview.bucketBreakdown}
+                  maxAmount={maxBucket}
+                />
               </section>
             ) : null}
 
@@ -216,18 +280,11 @@ export function VehicleCostOverviewView({
                 </span>
               </div>
               {overview.maintenance.bucketBreakdown.length > 0 ? (
-                <ul className="space-y-3 pt-1">
-                  {overview.maintenance.bucketBreakdown.map((row) => (
-                    <CostBucketRow
-                      key={row.bucket}
-                      label={row.label}
-                      amount={row.amount}
-                      ratio={
-                        row.amount > 0 ? row.amount / maxMaintenanceBucket : 0
-                      }
-                    />
-                  ))}
-                </ul>
+                <AnimatedCostBucketList
+                  className="space-y-3 pt-1"
+                  rows={overview.maintenance.bucketBreakdown}
+                  maxAmount={maxMaintenanceBucket}
+                />
               ) : (
                 <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
                   Noch keine Inspektions- oder Reparatur-Belege.
