@@ -2,6 +2,7 @@ export type InvoiceDetailEditTarget =
   | "lineItems"
   | "title"
   | "vendor"
+  | "category"
   | "date"
   | "mileage"
   | "notes"
@@ -14,6 +15,7 @@ export const INVOICE_DETAIL_EDIT_ANCHORS: Record<
   lineItems: "beleg-edit-line-items",
   title: "beleg-edit-title",
   vendor: "beleg-edit-vendor",
+  category: "beleg-edit-category",
   date: "beleg-edit-date",
   mileage: "beleg-edit-mileage",
   notes: "beleg-edit-notes",
@@ -27,6 +29,7 @@ export const INVOICE_DETAIL_EDIT_LABELS: Record<
   lineItems: "Rechnungspositionen",
   title: "Titel",
   vendor: "Werkstatt",
+  category: "Kategorie",
   date: "Datum",
   mileage: "Kilometerstand",
   notes: "Notizen",
@@ -45,6 +48,7 @@ export const INVOICE_DETAIL_EDIT_MENU_ORDER: InvoiceDetailEditTarget[] = [
   "lineItems",
   "title",
   "vendor",
+  "category",
   "date",
 ];
 
@@ -52,6 +56,7 @@ export const MANUAL_ENTRY_DETAIL_EDIT_MENU_ORDER: InvoiceDetailEditTarget[] = [
   "lineItems",
   "title",
   "vendor",
+  "category",
   "date",
   "mileage",
   "amount",

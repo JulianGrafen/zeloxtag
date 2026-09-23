@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  displayInvoiceReviewCategoryLabel,
   invoiceReviewCategoryFromScanType,
   normalizeInvoiceReviewCategory,
 } from "@/lib/documents/invoice-review-categories";
@@ -18,5 +19,11 @@ describe("invoice review categories", () => {
     expect(invoiceReviewCategoryFromScanType("repair")).toBe("repair");
     expect(invoiceReviewCategoryFromScanType("service")).toBe("service");
     expect(invoiceReviewCategoryFromScanType("invoice")).toBe("service");
+  });
+
+  it("formats stored category labels for detail UI", () => {
+    expect(displayInvoiceReviewCategoryLabel("repair")).toBe("Reparatur");
+    expect(displayInvoiceReviewCategoryLabel("other")).toBe("Sonstiges");
+    expect(displayInvoiceReviewCategoryLabel(null)).toBe("—");
   });
 });

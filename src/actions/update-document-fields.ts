@@ -12,6 +12,7 @@ import { FEATURE } from "@/lib/permissions/feature-access";
 import { featureDeniedToForbidden } from "@/lib/permissions/feature-gate-result";
 import type { FeatureForbiddenResult } from "@/lib/permissions/feature-gate-result";
 import { assertOwnerFeature, assertVehicleDocumentWrite } from "@/lib/permissions/require-feature";
+import { isInvoiceReviewCategory } from "@/lib/documents/invoice-review-categories";
 import { parseLineItems } from "@/lib/documents/line-items";
 import { recalculateInvoiceGrossAmount } from "@/lib/ocr/invoice-vat";
 import {
@@ -54,6 +55,7 @@ type UpdatePayload = {
   mileageKm?: number | null;
   notes?: string | null;
   amount?: number | null;
+  category?: string | null;
 };
 
 const MAX_VENDOR_LENGTH = 160;
@@ -171,6 +173,7 @@ export async function updateDocumentFields(
   const hasMileageKm = input.mileageKm !== undefined;
   const hasNotes = input.notes !== undefined;
   const hasAmount = input.amount !== undefined;
+  const hasCategory = input.category !== undefined;
 
   if (
     !hasLineItems &&
@@ -182,7 +185,8 @@ export async function updateDocumentFields(
     !hasDate &&
     !hasMileageKm &&
     !hasNotes &&
-    !hasAmount
+    !hasAmount &&
+    !hasCategory
   ) {
     return { status: "error", message: "Keine Änderungen übergeben." };
   }
@@ -235,6 +239,22 @@ export async function updateDocumentFields(
   const vendor = hasVendor ? parseVendor(input.vendor) : undefined;
   const title = hasTitle ? parseTitle(input.title) : undefined;
 
+  let parsedCategory: string | null | undefined;
+  if (hasCategory) {
+    if (input.category === null) {
+      parsedCategory = null;
+    } else if (typeof input.category !== "string") {
+      return { status: "error", message: "Kategorie ungültig." };
+    } else if (!isInvoiceReviewCategory(input.category)) {
+      return {
+        status: "error",
+        message: "Bitte Inspektion, Reparatur oder Tuning wählen.",
+      };
+    } else {
+      parsedCategory = input.category;
+    }
+  }
+
   if (hasTitle && !title) {
     return { status: "error", message: "Titel ist erforderlich." };
   }
@@ -254,6 +274,12 @@ export async function updateDocumentFields(
       return {
         status: "error",
         message: "Das Datum kann nur bei Rechnungs-Belegen geändert werden.",
+      };
+    }
+    if (hasCategory && target.type !== "invoice") {
+      return {
+        status: "error",
+        message: "Die Kategorie kann nur bei Rechnungs-Belegen geändert werden.",
       };
     }
     if (
@@ -288,6 +314,7 @@ export async function updateDocumentFields(
       ...(parsedMileageKm !== undefined ? { mileage_km: parsedMileageKm } : {}),
       ...(parsedNotes !== undefined ? { notes: parsedNotes } : {}),
       ...(parsedAmount !== undefined ? { amount: parsedAmount } : {}),
+      ...(parsedCategory !== undefined ? { category: parsedCategory } : {}),
     });
     revalidateDocumentPaths(tagUuid, documentId);
     if (isStoredManualEntry(target)) {
@@ -331,6 +358,13 @@ export async function updateDocumentFields(
     return {
       status: "error",
       message: "Das Datum kann nur bei Rechnungs-Belegen geändert werden.",
+    };
+  }
+
+  if (hasCategory && document.type !== "invoice") {
+    return {
+      status: "error",
+      message: "Die Kategorie kann nur bei Rechnungs-Belegen geändert werden.",
     };
   }
 
@@ -426,6 +460,9 @@ export async function updateDocumentFields(
   }
   if (parsedAmount !== undefined) {
     patch.amount = parsedAmount;
+  }
+  if (parsedCategory !== undefined) {
+    patch.category = parsedCategory;
   }
 
   const { error: updateError } = await admin

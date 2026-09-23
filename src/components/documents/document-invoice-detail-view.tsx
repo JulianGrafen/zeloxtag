@@ -28,6 +28,8 @@ import { EditableDocumentDateSection } from "@/components/documents/editable-doc
 import { EditableDocumentMileageSection } from "@/components/documents/editable-document-mileage-section";
 import { EditableDocumentNotesSection } from "@/components/documents/editable-document-notes-section";
 import { EditableVendorSection } from "@/components/documents/editable-vendor-section";
+import { EditableInvoiceCategorySection } from "@/components/documents/editable-invoice-category-section";
+import { displayInvoiceReviewCategoryLabel } from "@/lib/documents/invoice-review-categories";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { InvoiceDetailEditPickerSheet } from "@/components/documents/invoice-detail-edit-picker-sheet";
 import { DocumentOriginalPreview } from "@/components/documents/document-original-preview";
@@ -104,6 +106,9 @@ export function DocumentInvoiceDetailView({
   const [mileageKm, setMileageKm] = useState(() =>
     resolveDocumentMileageKm(document),
   );
+  const [documentCategory, setDocumentCategory] = useState(
+    () => document.category,
+  );
   const [editPickerOpen, setEditPickerOpen] = useState(false);
   const [editRequest, setEditRequest] = useState<InvoiceDetailEditTarget | null>(
     null,
@@ -161,7 +166,9 @@ export function DocumentInvoiceDetailView({
   const mileageLabel =
     mileageKm !== null ? formatMileageKmLabel(mileageKm) : null;
   const vendor = vendorLabel.trim() || title;
-  const category = document.category?.trim() || (isManual ? "Eintrag" : "Beleg");
+  const categoryLabel = displayInvoiceReviewCategoryLabel(
+    documentCategory?.trim() || document.category,
+  );
   const invoiceNumberLabel = displayManualInvoiceNumber(document.invoice_number);
 
   const tuevApprovalFields =
@@ -319,6 +326,32 @@ export function DocumentInvoiceDetailView({
             <p className="text-[0.9rem] font-medium text-[color:var(--vd-text)]">
               {vendor}
             </p>
+          ) : null}
+
+          {!isTuevDocument && document.type === "invoice" ? (
+            canEditInvoice ? (
+              <div className="mt-3 border-t border-[color:var(--vd-border)] pt-3">
+                <EditableInvoiceCategorySection
+                  documentId={document.id}
+                  vehicleId={document.vehicle_id}
+                  tagUuid={tagUuid}
+                  category={documentCategory}
+                  onSaved={setDocumentCategory}
+                  hideEditTrigger={useCentralEdit}
+                  editRequest={editRequest}
+                  editPulse={editPulse}
+                  onEditRequestConsumed={handleEditRequestConsumed}
+                  sectionId={INVOICE_DETAIL_EDIT_ANCHORS.category}
+                />
+              </div>
+            ) : (
+              <p className="mt-3 border-t border-[color:var(--vd-border)] pt-3 text-[0.82rem] text-[color:var(--vd-text)]">
+                <span className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+                  Kategorie ·{" "}
+                </span>
+                {categoryLabel}
+              </p>
+            )
           ) : null}
 
           <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-[color:var(--vd-border)] pt-3 text-[0.82rem]">

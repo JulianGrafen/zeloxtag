@@ -43,3 +43,19 @@ export function invoiceReviewCategoryFromScanType(
   const def = scanTypeDefinition(scanType);
   return normalizeInvoiceReviewCategory(def.category, "service");
 }
+
+/** UI label for stored `documents.category` (review enums + legacy OCR values). */
+export function displayInvoiceReviewCategoryLabel(
+  category: string | null | undefined,
+): string {
+  if (isInvoiceReviewCategory(category)) {
+    return INVOICE_REVIEW_CATEGORY_LABELS[category];
+  }
+  const normalized = category?.trim().toLowerCase();
+  if (normalized === "other") return "Sonstiges";
+  if (normalized === "inspection" || normalized === "wartung") return "Inspektion";
+  if (normalized && normalized.length > 0) {
+    return category!.trim();
+  }
+  return "—";
+}

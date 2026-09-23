@@ -14,11 +14,8 @@ import {
   formatDocumentAmount,
   formatMileageKmLabel,
 } from "@/lib/documents/format";
-import {
-  INVOICE_REVIEW_CATEGORIES,
-  INVOICE_REVIEW_CATEGORY_LABELS,
-  type InvoiceReviewCategory,
-} from "@/lib/documents/invoice-review-categories";
+import { InvoiceCategoryChips } from "@/components/documents/invoice-category-chips";
+import { displayInvoiceReviewCategoryLabel } from "@/lib/documents/invoice-review-categories";
 import { recalculateInvoiceGrossAmount } from "@/lib/ocr/invoice-vat";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 
@@ -80,9 +77,7 @@ export function InvoiceReviewForm({
 
   const amountLabel =
     formatDocumentAmount(fields.amount ?? null) ?? "—";
-  const categoryLabel = INVOICE_REVIEW_CATEGORY_LABELS[
-    fields.category as InvoiceReviewCategory
-  ];
+  const categoryLabel = displayInvoiceReviewCategoryLabel(fields.category);
 
   return (
     <div className="space-y-4">
@@ -202,6 +197,17 @@ export function InvoiceReviewForm({
               ) : null}
             </div>
             </button>
+            {!categoryLocked ? (
+              <div className="space-y-1.5 border-t border-[color:var(--vd-border)] pt-3">
+                <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Kategorie anpassen
+                </p>
+                <InvoiceCategoryChips
+                  value={fields.category}
+                  onChange={(category) => onFieldsChange({ category })}
+                />
+              </div>
+            ) : null}
           </div>
         ) : (
           <>
@@ -272,30 +278,10 @@ export function InvoiceReviewForm({
                   <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                     Kategorie
                   </span>
-                  <div className="flex flex-wrap gap-2">
-                    {INVOICE_REVIEW_CATEGORIES.map((option) => {
-                      const active = fields.category === option;
-                      return (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() =>
-                            onFieldsChange({
-                              category: option as InvoiceReviewCategory,
-                            })
-                          }
-                          className={[
-                            "rounded-full px-3.5 py-2 text-[0.82rem] font-medium transition-colors",
-                            active
-                              ? "bg-neutral-900 text-white"
-                              : "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)]",
-                          ].join(" ")}
-                        >
-                          {INVOICE_REVIEW_CATEGORY_LABELS[option]}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <InvoiceCategoryChips
+                    value={fields.category}
+                    onChange={(category) => onFieldsChange({ category })}
+                  />
                 </div>
               ) : null}
 

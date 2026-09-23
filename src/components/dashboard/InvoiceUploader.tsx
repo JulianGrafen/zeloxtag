@@ -1814,7 +1814,7 @@ export function InvoiceUploader({
             onFieldsChange={(patch) =>
               setFields((current) => ({ ...current, ...patch }))
             }
-            categoryLocked={Boolean(resolvedLockCategory)}
+            categoryLocked={false}
             vehicleMismatchReason={vehicleMismatchReason}
             mileageWarning={
               vehicleMismatchReason || duplicateHint ? null : mileageWarning
