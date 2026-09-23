@@ -11,7 +11,7 @@ import {
   revokeCompressedPages,
 } from "./compress-page";
 import {
-  prepareClientOcrFiles,
+  prepareClientOcrFilesDetailed,
   resolveClientOcrMaxPages,
 } from "./prepare-client-ocr-file";
 
@@ -25,7 +25,12 @@ export type ProcessorProgress = {
 
 export type ProcessInvoiceInput =
   | { kind: "images"; pages: CompressedPage[] }
-  | { kind: "pdf"; file: File };
+  | {
+      kind: "pdf";
+      file: File;
+      documentType?: "invoice" | "abe" | "tuev";
+      approvalKind?: string | null;
+    };
 
 export type ProcessInvoiceResult = {
   /** A4-compressed page file(s) (or native PDF) for Document Intelligence. */
@@ -74,7 +79,10 @@ export async function processInvoiceDocuments(
   onProgress?: (progress: ProcessorProgress) => void,
 ): Promise<ProcessInvoiceResult> {
   if (input.kind === "pdf") {
-    return processNativePdf(input.file, onProgress);
+    return processNativePdf(input.file, onProgress, {
+      documentType: input.documentType ?? "invoice",
+      approvalKind: input.approvalKind ?? null,
+    });
   }
   return processImagePages(input.pages, onProgress);
 }
@@ -132,30 +140,56 @@ async function processImagePages(
 async function processNativePdf(
   file: File,
   onProgress?: (progress: ProcessorProgress) => void,
+  routing: {
+    documentType: "invoice" | "abe" | "tuev";
+    approvalKind: string | null;
+  } = { documentType: "invoice", approvalKind: null },
 ): Promise<ProcessInvoiceResult> {
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
     throw new ProcessorError("Nur PDF-Dateien sind als native Uploads erlaubt.");
   }
 
-  onProgress?.({ label: "PDF wird geladen…", percent: 20 });
+  onProgress?.({ label: "PDF wird geladen…", percent: 12 });
 
-  onProgress?.({ label: "Seiten werden vorbereitet…", percent: 45 });
-  const analyzeFiles = await prepareClientOcrFiles(file, {
-    maxPages: resolveClientOcrMaxPages({ documentType: "invoice" }),
+  const maxPages = resolveClientOcrMaxPages({
+    documentType: routing.documentType,
+    approvalKind: routing.approvalKind,
   });
 
-  if (analyzeFiles.length === 0) {
-    throw new ProcessorError(
-      "PDF konnte nicht in Seitenbilder umgewandelt werden.",
-    );
+  let prepared;
+  try {
+    prepared = await prepareClientOcrFilesDetailed(file, {
+      maxPages,
+      onPageProgress: (page, total) => {
+        const span = 55;
+        const base = 15;
+        onProgress?.({
+          label: `Seite ${page} von ${total} wird vorbereitet…`,
+          percent: Math.min(69, base + Math.round((page / total) * span)),
+          page,
+          totalPages: total,
+        });
+      },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "PDF konnte nicht in Seitenbilder umgewandelt werden.";
+    throw new ProcessorError(message);
   }
+
+  const { files: analyzeFiles, pdfPageCount, rasterizedPages } = prepared;
 
   const previewUrl = URL.createObjectURL(analyzeFiles[0]!);
 
   onProgress?.({
-    label: "Dokument vorbereitet",
+    label:
+      pdfPageCount > rasterizedPages
+        ? `Dokument vorbereitet (${rasterizedPages} von ${pdfPageCount} Seiten)`
+        : "Dokument vorbereitet",
     percent: 70,
-    totalPages: analyzeFiles.length,
+    totalPages: rasterizedPages,
   });
 
   return {
@@ -164,7 +198,7 @@ async function processNativePdf(
     previewUrl,
     previewUrlOwned: true,
     previewKind: "image",
-    pageCount: analyzeFiles.length,
+    pageCount: rasterizedPages,
     sourceKind: "pdf",
   };
 }

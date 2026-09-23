@@ -5,7 +5,10 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
 import { destroyPdfDocument } from "@/lib/ocr/destroy-pdf-document";
-import { isPdfJsPasswordError } from "@/lib/ocr/pdf-js-document";
+import {
+  isPdfJsPasswordError,
+  openPdfJsDocument,
+} from "@/lib/ocr/pdf-js-document";
 
 const MIN_EMBEDDED_TEXT_CHARS = 48;
 const RENDER_MAX_WIDTH_PX = 2000;
@@ -31,15 +34,58 @@ async function getPdfJs() {
   return pdfjs;
 }
 
+/** German, actionable message for pdf.js load/render failures in the browser. */
+export function formatPdfClientError(error: unknown): string {
+  if (isPdfJsPasswordError(error)) {
+    return (
+      "PDF ist passwortgeschützt und konnte nicht gelesen werden. " +
+      "Bitte ohne Passwort exportieren oder „Drucken → Als PDF speichern“."
+    );
+  }
+
+  const message =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "";
+
+  if (/invalid pdf|missing pdf|corrupt|bad xref|format error/i.test(message)) {
+    return (
+      "PDF-Datei ist beschädigt oder kein gültiges PDF. " +
+      "Bitte erneut exportieren oder als Scan-Fotos hochladen."
+    );
+  }
+
+  if (/worker|fetch|failed to load/i.test(message)) {
+    return "PDF-Reader konnte nicht geladen werden. Seite neu laden und erneut versuchen.";
+  }
+
+  if (message.trim().length > 0) {
+    return `PDF konnte nicht gelesen werden: ${message.trim()}`;
+  }
+
+  return (
+    "PDF konnte nicht gelesen werden. Bitte „Drucken → Als PDF speichern“ " +
+    "oder die Seiten als Fotos hochladen."
+  );
+}
+
 export async function loadPdfDocument(file: File | Blob): Promise<PDFDocumentProxy> {
   const pdfjs = await getPdfJs();
   const data = new Uint8Array(await file.arrayBuffer());
   try {
-    return await pdfjs.getDocument({ data, useSystemFonts: true }).promise;
+    return await openPdfJsDocument<PDFDocumentProxy>(
+      pdfjs.getDocument.bind(pdfjs),
+      data,
+    );
   } catch (error) {
-    if (!isPdfJsPasswordError(error)) throw error;
-    return pdfjs.getDocument({ data, useSystemFonts: true, password: "" }).promise;
+    throw new Error(formatPdfClientError(error), { cause: error });
   }
+}
+
+/** Quick open + page count before OCR (closes the document). */
+export async function probePdfForOcr(
+  file: File | Blob,
+): Promise<{ pageCount: number }> {
+  const pageCount = await getClientPdfPageCount(file);
+  return { pageCount };
 }
 
 export async function getClientPdfPageCount(file: File | Blob): Promise<number> {

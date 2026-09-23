@@ -10,8 +10,18 @@ import {
   yieldToMain,
 } from "./pdf-source";
 
+/** Matches InvoiceUploader MAX_PAGES — client raster cap for invoice PDFs. */
+export const CLIENT_INVOICE_OCR_MAX_PAGES = 12;
+
 export type PrepareClientOcrOptions = {
   maxPages?: number;
+  onPageProgress?: (page: number, total: number) => void;
+};
+
+export type PrepareClientOcrResult = {
+  files: File[];
+  pdfPageCount: number;
+  rasterizedPages: number;
 };
 
 export function isPdfUploadFile(file: File): boolean {
@@ -32,32 +42,70 @@ export async function prepareClientOcrFiles(
   file: File,
   options: PrepareClientOcrOptions = {},
 ): Promise<File[]> {
+  const result = await prepareClientOcrFilesDetailed(file, options);
+  return result.files;
+}
+
+/**
+ * Rasterize PDF pages with metadata (page counts for UI hints).
+ */
+export async function prepareClientOcrFilesDetailed(
+  file: File,
+  options: PrepareClientOcrOptions = {},
+): Promise<PrepareClientOcrResult> {
   if (!isPdfUploadFile(file)) {
-    return [file];
+    return { files: [file], pdfPageCount: 1, rasterizedPages: 1 };
   }
 
-  const maxPages = Math.max(1, options.maxPages ?? 4);
-  const pdf = await loadPdfDocument(file);
-  const limit = Math.min(pdf.numPages, maxPages);
+  const maxPages = Math.max(1, options.maxPages ?? CLIENT_INVOICE_OCR_MAX_PAGES);
+  let pdf;
+  try {
+    pdf = await loadPdfDocument(file);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "PDF konnte nicht gelesen werden.";
+    throw new Error(message, { cause: error });
+  }
+
+  const pdfPageCount = Math.max(1, pdf.numPages);
+  const limit = Math.min(pdfPageCount, maxPages);
   const baseName = baseNameFromFile(file);
   const files: File[] = [];
 
-  for (let page = 1; page <= limit; page += 1) {
-    const raster = await rasterizePdfPage(pdf, page);
-    files.push(
-      new File([raster.blob], `${baseName}-seite-${page}.jpg`, {
-        type: "image/jpeg",
-        lastModified: Date.now(),
-      }),
-    );
-    if (page < limit) {
-      await yieldToMain();
+  try {
+    for (let page = 1; page <= limit; page += 1) {
+      options.onPageProgress?.(page, limit);
+      try {
+        const raster = await rasterizePdfPage(pdf, page);
+        files.push(
+          new File([raster.blob], `${baseName}-seite-${page}.jpg`, {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          }),
+        );
+      } catch (pageError) {
+        console.warn("[prepareClientOcrFiles] page raster failed", page, pageError);
+      }
+      if (page < limit) {
+        await yieldToMain();
+      }
     }
+  } finally {
+    await destroyPdfDocument(pdf);
   }
 
-  await destroyPdfDocument(pdf);
+  if (files.length === 0) {
+    throw new Error(
+      "PDF konnte nicht in Seitenbilder umgewandelt werden. " +
+        "Bitte „Drucken → Als PDF speichern“ oder Fotos der Seiten hochladen.",
+    );
+  }
 
-  return files.length > 0 ? files : [file];
+  return {
+    files,
+    pdfPageCount,
+    rasterizedPages: files.length,
+  };
 }
 
 /** First rasterized page — vault thumbnails. */
@@ -166,7 +214,7 @@ export function resolveClientOcrMaxPages(input: {
     return 8;
   }
   if (input.documentType === "abe") return 8;
-  return 4;
+  return CLIENT_INVOICE_OCR_MAX_PAGES;
 }
 
 /** Object URL for review UI — PDFs show first page as image. */

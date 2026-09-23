@@ -68,6 +68,8 @@ import {
   revokeCompressedPages,
   type ProcessorProgress,
 } from "@/lib/ocr/processor";
+import { probePdfForOcr } from "@/lib/ocr/pdf-source";
+import { DocumentCompressionError } from "@/lib/documents/document-compression";
 import {
   type InvoiceTextParseCategory,
   type InvoiceTextParseResult,
@@ -247,6 +249,9 @@ export function InvoiceUploader({
   const [step, setStep] = useState<WizardStep>("compose");
   const [pages, setPages] = useState<CompressedPage[]>([]);
   const [nativePdf, setNativePdf] = useState<File | null>(null);
+  const [nativePdfPageCount, setNativePdfPageCount] = useState<number | null>(
+    null,
+  );
   const [pagePrepBusy, setPagePrepBusy] = useState(false);
   const [progress, setProgress] = useState<ProcessorProgress>({
     label: "Vorbereitung…",
@@ -309,6 +314,7 @@ export function InvoiceUploader({
       URL.revokeObjectURL(previewUrl);
     }
     setNativePdf(null);
+    setNativePdfPageCount(null);
     setStep("compose");
     setPagePrepBusy(false);
     setProgress({ label: "Vorbereitung…", percent: 0 });
@@ -503,6 +509,27 @@ export function InvoiceUploader({
     });
   }
 
+  async function assignNativePdf(file: File) {
+    setNativePdf(file);
+    setNativePdfPageCount(null);
+    try {
+      const { pageCount } = await probePdfForOcr(file);
+      setNativePdfPageCount(pageCount);
+    } catch {
+      // OCR step will surface load errors.
+    }
+  }
+
+  function compressionErrorMessage(caught: unknown): string {
+    if (caught instanceof DocumentCompressionError) {
+      return caught.message;
+    }
+    if (caught instanceof Error) {
+      return caught.message;
+    }
+    return "Seite konnte nicht komprimiert werden.";
+  }
+
   async function handleIncomingFile(file: File) {
     setError(null);
     setPagePrepBusy(true);
@@ -513,12 +540,13 @@ export function InvoiceUploader({
 
       if (optimized.kind === "pdf" || isPdfFile(optimized.file)) {
         clearPages();
-        setNativePdf(optimized.file);
+        await assignNativePdf(optimized.file);
         return;
       }
 
       if (nativePdf) {
         setNativePdf(null);
+        setNativePdfPageCount(null);
       }
 
       if (pages.length >= MAX_PAGES) {
@@ -535,11 +563,7 @@ export function InvoiceUploader({
         return next;
       });
     } catch (ingestError) {
-      setError(
-        ingestError instanceof Error
-          ? ingestError.message
-          : "Seite konnte nicht komprimiert werden.",
-      );
+      setError(compressionErrorMessage(ingestError));
     } finally {
       setPagePrepBusy(false);
     }
@@ -559,7 +583,7 @@ export function InvoiceUploader({
       );
       if (pdfEntry) {
         clearPages();
-        setNativePdf(pdfEntry.file);
+        await assignNativePdf(pdfEntry.file);
         await runExtraction({ nativePdf: pdfEntry.file, pages: [] });
         return;
       }
@@ -590,11 +614,7 @@ export function InvoiceUploader({
       await runExtraction({ nativePdf: null, pages: ingestedPages });
     } catch (ingestError) {
       setStep("compose");
-      setError(
-        ingestError instanceof Error
-          ? ingestError.message
-          : "Seite konnte nicht komprimiert werden.",
-      );
+      setError(compressionErrorMessage(ingestError));
     } finally {
       setPagePrepBusy(false);
     }
@@ -705,13 +725,6 @@ export function InvoiceUploader({
     setProgress({ label: "Vorbereitung…", percent: 4 });
 
     try {
-      const processed = await processInvoiceDocuments(
-        pdf
-          ? { kind: "pdf", file: pdf }
-          : { kind: "images", pages: imagePages },
-        setProgress,
-      );
-
       const documentType = scanDef?.ocrDocumentType
         ? scanDef.ocrDocumentType
         : isAbeUpload
@@ -719,6 +732,18 @@ export function InvoiceUploader({
           : isTuevUpload
             ? "tuev"
             : "invoice";
+
+      const processed = await processInvoiceDocuments(
+        pdf
+          ? {
+              kind: "pdf",
+              file: pdf,
+              documentType,
+              approvalKind: scanDef?.approvalKind ?? null,
+            }
+          : { kind: "images", pages: imagePages },
+        setProgress,
+      );
       // ABE: combined PDF keeps multi-page tables in one parse call.
       // Invoice: always JPEG page(s) — client rasterizes PDFs to avoid server-side failures on Vercel.
       const analyzeFiles =
@@ -1484,13 +1509,31 @@ export function InvoiceUploader({
                     {nativePdf.name}
                   </p>
                   <p className="mt-0.5 text-[0.78rem] text-[color:var(--vd-muted)]">
-                    {formatBytes(nativePdf.size)} · wird unverändert hochgeladen
+                    {formatBytes(nativePdf.size)}
+                    {nativePdfPageCount != null
+                      ? ` · ${nativePdfPageCount} ${
+                          nativePdfPageCount === 1 ? "Seite" : "Seiten"
+                        }`
+                      : ""}
+                    {" · "}wird unverändert hochgeladen
                   </p>
+                  {nativePdfPageCount != null &&
+                  nativePdfPageCount > MAX_PAGES ? (
+                    <p
+                      className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]"
+                      role="status"
+                    >
+                      Erste {MAX_PAGES} Seiten werden analysiert.
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   type="button"
                   aria-label="PDF entfernen"
-                  onClick={() => setNativePdf(null)}
+                  onClick={() => {
+                    setNativePdf(null);
+                    setNativePdfPageCount(null);
+                  }}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] text-[color:var(--vd-muted)]"
                 >
                   <X className="h-4 w-4" aria-hidden />

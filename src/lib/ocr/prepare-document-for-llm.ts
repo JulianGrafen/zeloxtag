@@ -42,7 +42,8 @@ export const LLM_IMAGE_MAX_EDGE_PX = 1536;
 export const ABE_LLM_IMAGE_MAX_EDGE_PX = 1536;
 /** Full ABE PDF uploads (data hunter / multi-page Gutachten). */
 export const ABE_HUNT_MAX_PDF_PAGES = 12;
-export const LLM_INVOICE_MAX_PDF_PAGES = 4;
+/** Align with client invoice raster cap (`CLIENT_INVOICE_OCR_MAX_PAGES`). */
+export const LLM_INVOICE_MAX_PDF_PAGES = 12;
 
 function llmImagePart(bytes: Buffer, contentType = "image/png"): DocumentUserMessagePart {
   return {

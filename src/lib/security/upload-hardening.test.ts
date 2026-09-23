@@ -154,6 +154,33 @@ trailer
     }
   });
 
+  it("accepts multi-page jsPDF exports (workshop-style invoice PDFs)", async () => {
+    const { jsPDF } = await import("jspdf");
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    });
+    const tinyJpeg =
+      "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=";
+    for (let page = 0; page < 3; page += 1) {
+      if (page > 0) {
+        pdf.addPage();
+      }
+      pdf.addImage(tinyJpeg, "JPEG", 10, 10, 100, 100);
+      pdf.text(`Seite ${page + 1}`, 10, 120);
+    }
+    const bytes = new Uint8Array(pdf.output("arraybuffer"));
+    const result = await hardenUploadBytes(bytes, "application/pdf", {
+      reencodeImages: false,
+    });
+    expect(result.ok, !result.ok ? result.error : undefined).toBe(true);
+    if (result.ok) {
+      expect(findPdfActiveContent(result.bytes)).toBeNull();
+    }
+  });
+
   it("strips HTML appended after JPEG EOI", () => {
     const polyglot = concat(JPEG_SOI, encode("<html><script>alert(1)</script>"));
     const stripped = stripJpegTrailer(polyglot);
