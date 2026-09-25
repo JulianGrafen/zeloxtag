@@ -1006,10 +1006,8 @@ nextjs-portal {
   margin-bottom: 0.75rem;
 }
 
-.claim-twin-preview__picker {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--vd-border);
+.claim-twin-preview__chips {
+  margin-top: 0.55rem;
 }
 
 .claim-twin-preview__kicker {

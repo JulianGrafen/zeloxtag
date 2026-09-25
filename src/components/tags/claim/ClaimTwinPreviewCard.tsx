@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 
-import { BuildPersonalityChipPicker } from "@/components/tags/claim/BuildPersonalityChipPicker";
 import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
 import {
   buildPersonalityLabelForId,
@@ -16,7 +15,6 @@ type ClaimTwinPreviewCardProps = {
   model: string;
   year: string;
   personalityTags: readonly BuildPersonalityChipId[];
-  onPersonalityChange: (next: BuildPersonalityChipId[]) => void;
 };
 
 export function ClaimTwinPreviewCard({
@@ -24,7 +22,6 @@ export function ClaimTwinPreviewCard({
   model,
   year,
   personalityTags,
-  onPersonalityChange,
 }: ClaimTwinPreviewCardProps) {
   const motionConfig = useClaimMotion();
   const title = formatPublicVehicleTitle(make.trim(), model.trim());
@@ -59,33 +56,23 @@ export function ClaimTwinPreviewCard({
               Baujahr {yearLabel}
             </p>
           ) : null}
-          {previewLabels.length > 0 ? (
-            <ul
-              className="mt-2 flex flex-wrap gap-1.5"
-              aria-label="Gewählte Build-Vibes"
-            >
-              {previewLabels.map((label) => (
-                <li key={label}>
-                  <span className="inline-block rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-2 py-0.5 text-[0.65rem] font-medium text-[color:var(--vd-text)]">
-                    {label}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
         </div>
       </div>
 
-      <div className="claim-twin-preview__picker">
-        <p className="mb-2 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
-          Wie würdest du deinen Build nennen? Bis zu fünf Vibes — optional.
-        </p>
-        <BuildPersonalityChipPicker
-          selected={personalityTags}
-          onChange={onPersonalityChange}
-          compact
-        />
-      </div>
+      {previewLabels.length > 0 ? (
+        <ul
+          className="claim-twin-preview__chips flex flex-wrap gap-1.5"
+          aria-label="Gewählte Build-Vibes"
+        >
+          {previewLabels.map((label) => (
+            <li key={label}>
+              <span className="inline-block rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-2.5 py-0.5 text-[0.68rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]">
+                {label}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </motion.div>
   );
 }
