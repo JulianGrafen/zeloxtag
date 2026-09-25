@@ -23,10 +23,22 @@
     "security:zap:auth": "bash scripts/zap-authenticated.sh",
     "security:zap:active": "bash scripts/zap-full-active.sh",
     "security:idor": "bash scripts/idor-scan.sh",
-    "security:zap:auth:export-cookies": "node scripts/zap-export-auth-cookies.mjs"
+    "security:zap:auth:export-cookies": "node scripts/zap-export-auth-cookies.mjs",
+    "cap:sync": "cap sync",
+    "cap:ios": "cap sync ios && cap open ios",
+    "cap:android": "cap sync android && cap open android"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^7.6.9",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/poppins": "^5.3.0",
     "@napi-rs/canvas": "^0.1.100",
     "@react-pdf/renderer": "^4.6.0",
     "@react-three/drei": "^10.7.8",

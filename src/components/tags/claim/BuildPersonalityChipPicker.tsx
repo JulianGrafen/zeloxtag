@@ -10,11 +10,13 @@ import { cn } from "@/lib/utils";
 type BuildPersonalityChipPickerProps = {
   selected: readonly BuildPersonalityChipId[];
   onChange: (next: BuildPersonalityChipId[]) => void;
+  compact?: boolean;
 };
 
 export function BuildPersonalityChipPicker({
   selected,
   onChange,
+  compact = false,
 }: BuildPersonalityChipPickerProps) {
   const atMax = selected.length >= BUILD_PERSONALITY_CHIP_MAX;
 
@@ -28,11 +30,17 @@ export function BuildPersonalityChipPicker({
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
-        {selected.length} / {BUILD_PERSONALITY_CHIP_MAX} gewählt · optional
+    <div className={compact ? "space-y-2" : "space-y-3"}>
+      <p
+        className={cn(
+          "text-[color:var(--vd-muted)]",
+          compact ? "text-[0.72rem]" : "text-[0.78rem]",
+        )}
+      >
+        {selected.length} / {BUILD_PERSONALITY_CHIP_MAX} gewählt
+        {compact ? null : " · optional"}
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className={cn("flex flex-wrap", compact ? "gap-1.5" : "gap-2")}>
         {BUILD_PERSONALITY_CHIPS.map((chip) => {
           const isSelected = selected.includes(chip.id);
           const disabled = !isSelected && atMax;
@@ -44,7 +52,8 @@ export function BuildPersonalityChipPicker({
               disabled={disabled}
               aria-pressed={isSelected}
               className={cn(
-                "rounded-full border px-3.5 py-2 text-[0.82rem] font-medium transition",
+                "rounded-full border font-medium transition",
+                compact ? "px-2.5 py-1.5 text-[0.75rem]" : "px-3.5 py-2 text-[0.82rem]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]",
                 "active:scale-[0.98]",
                 isSelected

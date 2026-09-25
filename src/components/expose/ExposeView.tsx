@@ -9,6 +9,7 @@ import {
   formatExposeMileage,
 } from "@/lib/vehicles/expose-format";
 
+import { ExposePersonalityChips } from "./ExposePersonalityChips";
 import { ExposeToolbar } from "./ExposeToolbar";
 
 type ExposeViewProps = {
@@ -23,10 +24,20 @@ const KIND_TONE: Record<ExposeTimelineEntry["kind"], string> = {
   other: "bg-zinc-100 text-zinc-700",
 };
 
+function buildKeyFactsLine(data: ExposeData): string {
+  const parts: string[] = [];
+  if (data.powerLabel && data.powerLabel !== "—") {
+    parts.push(data.powerLabel);
+  }
+  parts.push(`TÜV: ${data.tuevSummary}`);
+  return parts.join(" · ");
+}
+
 export function ExposeView({ data }: ExposeViewProps) {
   const yearLabel = data.firstRegistrationYear
     ? `EZ ${data.firstRegistrationYear}`
     : "Erstzulassung —";
+  const keyFacts = buildKeyFactsLine(data);
 
   return (
     <div className="expose-root min-h-dvh bg-[#f4f1ea] text-zinc-950">
@@ -55,6 +66,12 @@ export function ExposeView({ data }: ExposeViewProps) {
             <p className="text-[0.95rem] font-medium text-zinc-600">
               {yearLabel} · {formatExposeMileage(data.mileageKm)}
             </p>
+            {keyFacts ? (
+              <p className="text-[0.82rem] font-medium text-zinc-500">
+                {keyFacts}
+              </p>
+            ) : null}
+            <ExposePersonalityChips labels={data.buildPersonalityLabels} />
             <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5">
               <BadgeCheck
                 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700"
@@ -197,8 +214,9 @@ export function ExposeView({ data }: ExposeViewProps) {
           )}
         </section>
 
-        <footer className="expose-no-print pb-[max(0.5rem,env(safe-area-inset-bottom))] text-center text-[0.68rem] uppercase tracking-[0.18em] text-zinc-400">
-          ZeloxTag · Fälschungssicheres Fahrzeugdossier
+        <footer className="expose-footer pb-[max(0.5rem,env(safe-area-inset-bottom))] text-center text-[0.68rem] uppercase tracking-[0.18em] text-zinc-400">
+          <p>Erstellt am {data.generatedAtLabel}</p>
+          <p className="mt-1">ZeloxTag · Fälschungssicheres Fahrzeugdossier</p>
         </footer>
       </article>
     </div>

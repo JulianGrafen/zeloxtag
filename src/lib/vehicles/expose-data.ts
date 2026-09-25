@@ -1,6 +1,12 @@
 import { isOilChangeDocument, latestOilChangeIsoDate } from "@/lib/documents/oil-changes";
 import { parseLineItems } from "@/lib/documents/line-items";
 import {
+  exposePersonalityLabelsFromVehicle,
+  formatExposeGeneratedAtLabel,
+} from "@/lib/vehicles/expose-payload-meta";
+import { formatPower } from "@/lib/vehicles/expose-pdf/formatters";
+import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
+import {
   TIMELINE_CATEGORY_LABELS,
   type TimelineEvent,
   type TimelineEventCategory,
@@ -49,6 +55,10 @@ export interface ExposeData {
   investmentItems: ExposeInvestmentItem[];
   timeline: ExposeTimelineEntry[];
   generatedAt: string;
+  generatedAtLabel: string;
+  buildPersonalityLabels: string[];
+  powerLabel: string;
+  tuevSummary: string;
 }
 
 const EXPOSE_KIND_LABELS: Record<ExposeKind, string> = {
@@ -343,6 +353,12 @@ export function buildExposeData(
   }));
   const latestTuev = latestTuevDocument(documents);
   const exposeToken = options?.exposeToken?.trim() || null;
+  const generatedAt = new Date().toISOString();
+  const techSpecs = parseVehicleTechSpecs(vehicle.tech_specs);
+  const tuevSummary =
+    latestTuev != null
+      ? (tuevStatusFromDocument(latestTuev) ?? "HU durchgeführt")
+      : "Kein TÜV-Beleg";
 
   return {
     vehicleTitle: `${make} ${model}`.trim(),
@@ -362,6 +378,10 @@ export function buildExposeData(
     lastTuevStatus: latestTuev ? tuevStatusFromDocument(latestTuev) : null,
     investmentItems,
     timeline: buildTimeline(timeline, documents),
-    generatedAt: new Date().toISOString(),
+    generatedAt,
+    generatedAtLabel: formatExposeGeneratedAtLabel(generatedAt),
+    buildPersonalityLabels: exposePersonalityLabelsFromVehicle(vehicle),
+    powerLabel: formatPower(techSpecs.powerPs, techSpecs.powerKw),
+    tuevSummary,
   };
 }

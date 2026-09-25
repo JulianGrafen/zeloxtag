@@ -23,6 +23,10 @@ import {
   fetchHeroImage,
 } from "./fetch-expose-images";
 import {
+  exposePersonalityLabelsFromVehicle,
+  formatExposeGeneratedAtLabel,
+} from "@/lib/vehicles/expose-payload-meta";
+import {
   buildPublicProfileUrl,
   formatCurrencyEur,
   formatGermanDate,
@@ -244,8 +248,13 @@ export async function buildExposePdfData(
   const metricCurrency = (value: number | null): string =>
     hideFinancials || value == null ? "" : formatCurrencyEur(value);
 
+  const generatedAt = new Date().toISOString();
+
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
+    generatedAtLabel: formatExposeGeneratedAtLabel(generatedAt),
+    documentCount: documents.length,
+    buildPersonalityLabels: exposePersonalityLabelsFromVehicle(vehicle),
     vehicleTitle: vehicleLabel,
     vehicleSubtitle: buildVehicleSubtitle(vehicle, modifications.length),
     publicProfileUrl: buildPublicProfileUrl(vehicle.public_slug),

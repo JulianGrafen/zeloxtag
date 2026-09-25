@@ -13,44 +13,33 @@ import {
 } from "@/lib/vehicles/expose-pdf/formatters";
 import type { ExposePdfData } from "@/lib/vehicles/expose-pdf/types";
 
+import {
+  ExposePdfChipRow,
+  ExposePdfInnerHeader,
+  ExposePdfPageFooter,
+  ExposePdfTrustBadge,
+} from "./expose-pdf-parts";
 import { exposePdfStyles as styles } from "./expose-pdf-styles";
 
 type ExposePdfDocumentProps = {
   data: ExposePdfData;
 };
 
-function PageFooter({ data }: { data: ExposePdfData }) {
+function MetricBoxPrimary({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.footer} fixed>
-      <View>
-        <Text style={styles.footerBrand}>ZeloxTag</Text>
-        <Text style={styles.footerUrl}>{data.publicProfileUrl}</Text>
-      </View>
-      <Image src={data.qrCodeDataUri} style={styles.footerQr} />
-      <Text
-        style={styles.pageNumber}
-        render={({ pageNumber, totalPages }) =>
-          `Seite ${pageNumber} von ${totalPages}`
-        }
-      />
-    </View>
-  );
-}
-
-function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <View style={styles.headerBar}>
-      <Text style={styles.headerTitle}>{title}</Text>
-      <Text style={styles.headerSubtitle}>{subtitle}</Text>
-    </View>
-  );
-}
-
-function MetricBox({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.metricBox} wrap={false}>
+    <View style={styles.metricBoxPrimary} wrap={false}>
       <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricValuePrimary}>{value}</Text>
+    </View>
+  );
+}
+
+function MetricBoxSecondary({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+  return (
+    <View style={styles.metricBoxSecondary} wrap={false}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValueSecondary}>{value}</Text>
     </View>
   );
 }
@@ -64,51 +53,72 @@ function SpecRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function buildCoverFactsLine(data: ExposePdfData): string {
+  return [data.metrics.yearLabel, data.metrics.mileageLabel, data.metrics.powerLabel]
+    .filter((part) => part && part !== "—")
+    .join(" · ");
+}
+
 function CoverPage({ data }: { data: ExposePdfData }) {
+  const factsLine = buildCoverFactsLine(data);
+
   return (
     <Page size="A4" style={styles.page}>
-      <PageHeader title="Fahrzeug-Exposé" subtitle="ZeloxTag · Digital Vehicle Twin" />
+      <View style={styles.coverBrandBar}>
+        <View>
+          <Text style={styles.coverBrandTitle}>ZeloxTag</Text>
+          <Text style={styles.coverBrandTagline}>Digital Vehicle Twin</Text>
+        </View>
+        <Text style={styles.coverBrandTagline}>Verkaufsexposé</Text>
+      </View>
+
+      <Text style={styles.eyebrow}>Verkaufsexposé</Text>
       <Text style={styles.coverTitle}>{data.vehicleTitle}</Text>
+      {factsLine ? (
+        <Text style={styles.coverFactsLine}>{factsLine}</Text>
+      ) : null}
       <Text style={styles.coverSubtitle}>{data.vehicleSubtitle}</Text>
 
-      {data.heroImage ? (
-        <Image src={data.heroImage.dataUri} style={styles.heroImage} />
-      ) : (
-        <View style={[styles.heroImage, { justifyContent: "center", alignItems: "center" }]}>
+      <View style={styles.heroFrame}>
+        {data.heroImage ? (
+          <Image src={data.heroImage.dataUri} style={styles.heroImage} />
+        ) : (
           <Text style={styles.muted}>Kein Fahrzeugfoto hinterlegt</Text>
-        </View>
-      )}
+        )}
+      </View>
 
-      <View style={styles.metricsGrid} wrap={false}>
-        <MetricBox label="Leistung" value={data.metrics.powerLabel} />
-        <MetricBox label="Kilometerstand" value={data.metrics.mileageLabel} />
-        <MetricBox label="Baujahr" value={data.metrics.yearLabel} />
-        {data.metrics.documentedTotalLabel ? (
-          <MetricBox
+      <ExposePdfTrustBadge documentCount={data.documentCount} />
+      <ExposePdfChipRow labels={data.buildPersonalityLabels} />
+
+      <View style={styles.metricsPrimaryRow} wrap={false}>
+        <MetricBoxPrimary label="Leistung" value={data.metrics.powerLabel} />
+        <MetricBoxPrimary label="Kilometerstand" value={data.metrics.mileageLabel} />
+        <MetricBoxPrimary label="Baujahr" value={data.metrics.yearLabel} />
+      </View>
+
+      {!data.hideFinancials ? (
+        <View style={styles.metricsSecondaryRow} wrap={false}>
+          <MetricBoxSecondary
             label="Gesamtkosten dokumentiert"
             value={data.metrics.documentedTotalLabel}
           />
-        ) : null}
-        {data.metrics.maintenanceValueLabel ? (
-          <MetricBox
+          <MetricBoxSecondary
             label="Wartung & Service"
             value={data.metrics.maintenanceValueLabel}
           />
-        ) : null}
-        {data.metrics.modificationValueLabel ? (
-          <MetricBox
+          <MetricBoxSecondary
             label="Investition Umbauten"
             value={data.metrics.modificationValueLabel}
           />
-        ) : null}
+        </View>
+      ) : null}
+
+      <View style={styles.sellerCard} wrap={false}>
+        <Text style={styles.sellerLabel}>Ansprechpartner</Text>
+        <Text style={styles.sellerValue}>{data.sellerContact}</Text>
       </View>
 
-      <View style={styles.sellerBadge} wrap={false}>
-        <Text style={styles.sellerBadgeLabel}>Ansprechpartner</Text>
-        <Text style={styles.sellerBadgeValue}>{data.sellerContact}</Text>
-      </View>
-
-      <PageFooter data={data} />
+      <ExposePdfPageFooter data={data} />
     </Page>
   );
 }
@@ -116,12 +126,13 @@ function CoverPage({ data }: { data: ExposePdfData }) {
 function SpecsPage({ data }: { data: ExposePdfData }) {
   return (
     <Page size="A4" style={styles.page}>
-      <PageHeader
+      <ExposePdfInnerHeader
         title="Technische Daten"
-        subtitle={`${data.vehicleTitle} · TÜV: ${data.latestTuevStatus}`}
+        subtitle={data.vehicleTitle}
       />
-
       <Text style={styles.sectionTitle}>Technisches Datenblatt</Text>
+      <Text style={styles.tuevHighlight}>TÜV: {data.latestTuevStatus}</Text>
+
       <View style={styles.specGrid} wrap={false}>
         <SpecRow label="FIN / VIN" value={data.specs.vin} />
         <SpecRow label="HSN / TSN" value={data.specs.hsnTsn} />
@@ -135,7 +146,7 @@ function SpecsPage({ data }: { data: ExposePdfData }) {
         <SpecRow label="Vorbesitzer" value={data.specs.previousOwners} />
       </View>
 
-      <PageFooter data={data} />
+      <ExposePdfPageFooter data={data} />
     </Page>
   );
 }
@@ -165,7 +176,13 @@ function MaintenanceTable({
         ) : null}
       </View>
       {rows.map((row, index) => (
-        <View key={`${row.date}-${row.service}-${index}`} style={styles.tableRow}>
+        <View
+          key={`${row.date}-${row.service}-${index}`}
+          style={[
+            styles.tableRow,
+            ...(index % 2 === 1 ? [styles.tableRowAlt] : []),
+          ]}
+        >
           <Text style={[styles.tableCell, { width: col.date }]}>{row.date}</Text>
           <Text style={[styles.tableCell, { width: col.km }]}>
             {formatTimelineMileageKm(row.mileageKm, row.mileageKnown)}
@@ -190,7 +207,7 @@ function MaintenanceTable({
   );
 }
 
-const MAINTENANCE_ROWS_PER_PAGE = 17;
+const MAINTENANCE_ROWS_PER_PAGE = 16;
 
 function MaintenanceHistoryPages({ data }: { data: ExposePdfData }) {
   const rows = data.maintenanceRows;
@@ -198,14 +215,14 @@ function MaintenanceHistoryPages({ data }: { data: ExposePdfData }) {
   if (rows.length === 0) {
     return (
       <Page size="A4" style={styles.page}>
-        <PageHeader
+        <ExposePdfInnerHeader
           title="Wartung & Servicehistorie"
           subtitle={data.vehicleTitle}
         />
         <Text style={styles.emptyState}>
           Noch keine Wartungs- oder Service-Einträge hinterlegt.
         </Text>
-        <PageFooter data={data} />
+        <ExposePdfPageFooter data={data} />
       </Page>
     );
   }
@@ -223,96 +240,141 @@ function MaintenanceHistoryPages({ data }: { data: ExposePdfData }) {
 
     return (
       <Page key={`maintenance-${pageIndex}`} size="A4" style={styles.page}>
-        <PageHeader title="Wartung & Servicehistorie" subtitle={subtitle} />
+        <ExposePdfInnerHeader
+          title="Wartung & Servicehistorie"
+          subtitle={subtitle}
+        />
         <MaintenanceTable rows={slice} hideFinancials={data.hideFinancials} />
         {!data.hideFinancials &&
         data.maintenanceTotal != null &&
         pageIndex === pageCount - 1 ? (
-          <View style={styles.totalRow} wrap={false}>
-            <Text style={styles.totalLabel}>Summe Wartung & Service:</Text>
-            <Text style={styles.totalLabel}>
+          <View style={styles.totalCard} wrap={false}>
+            <Text style={styles.totalLabel}>Summe Wartung & Service</Text>
+            <Text style={styles.totalValue}>
               {formatCurrencyEur(data.maintenanceTotal)}
             </Text>
           </View>
         ) : null}
-        <PageFooter data={data} />
+        <ExposePdfPageFooter data={data} />
       </Page>
     );
   });
 }
 
-function ModificationsPage({ data }: { data: ExposePdfData }) {
-  const showAmounts = !data.hideFinancials;
+function ModificationsTable({
+  rows,
+  hideFinancials,
+}: {
+  rows: ExposePdfData["modifications"];
+  hideFinancials: boolean;
+}) {
+  const showAmounts = !hideFinancials;
 
   return (
-    <Page size="A4" style={styles.page}>
-      <PageHeader
-        title="Umbauten & Tuning"
-        subtitle={
-          data.hideFinancials
-            ? "Finanzielle Angaben ausgeblendet (Privatsphäre)"
-            : "Investitionen transparent dokumentiert"
-        }
-      />
+    <View style={styles.table}>
+      <View style={styles.tableHeader} wrap={false}>
+        <Text style={[styles.tableHeaderCell, { width: "14%" }]}>Kategorie</Text>
+        <Text style={[styles.tableHeaderCell, { width: "24%" }]}>Teil</Text>
+        <Text style={[styles.tableHeaderCell, { width: "16%" }]}>Hersteller</Text>
+        <Text style={[styles.tableHeaderCell, { width: "14%" }]}>KBA</Text>
+        <Text style={[styles.tableHeaderCell, { width: "16%" }]}>Status</Text>
+        <Text style={[styles.tableHeaderCell, { width: "10%" }]}>Datum</Text>
+        {showAmounts ? (
+          <Text style={[styles.tableHeaderCell, { width: "10%" }]}>Preis</Text>
+        ) : null}
+      </View>
+      {rows.map((row, index) => (
+        <View
+          key={`${row.partName}-${index}`}
+          style={[
+            styles.tableRow,
+            ...(index % 2 === 1 ? [styles.tableRowAlt] : []),
+          ]}
+        >
+          <Text style={[styles.tableCell, { width: "14%" }]}>{row.category}</Text>
+          <Text style={[styles.tableCell, { width: "24%" }]}>{row.partName}</Text>
+          <Text style={[styles.tableCell, { width: "16%" }]}>{row.manufacturer}</Text>
+          <Text style={[styles.tableCell, { width: "14%" }]}>{row.kbaNumber}</Text>
+          <Text style={[styles.tableCell, { width: "16%" }]}>{row.approvalStatus}</Text>
+          <Text style={[styles.tableCell, { width: "10%" }]}>{row.installationDate}</Text>
+          {showAmounts ? (
+            <Text style={[styles.tableCell, { width: "10%" }]}>
+              {formatExposeCurrencyCell(row.amount, hideFinancials)}
+            </Text>
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
+}
 
-      {data.modifications.length === 0 ? (
+const MOD_ROWS_PER_PAGE = 14;
+
+function ModificationsPages({ data }: { data: ExposePdfData }) {
+  const rows = data.modifications;
+  const privacySubtitle = data.hideFinancials
+    ? "Finanzielle Angaben ausgeblendet (Privatsphäre)"
+    : "Investitionen transparent dokumentiert";
+
+  if (rows.length === 0) {
+    return (
+      <Page size="A4" style={styles.page}>
+        <ExposePdfInnerHeader
+          title="Umbauten & Tuning"
+          subtitle={privacySubtitle}
+        />
         <Text style={styles.emptyState}>
           Keine Umbauten oder Tuning-Teile hinterlegt.
         </Text>
-      ) : (
-        <View style={styles.table}>
-          <View style={styles.tableHeader} wrap={false}>
-            <Text style={[styles.tableHeaderCell, { width: "14%" }]}>Kategorie</Text>
-            <Text style={[styles.tableHeaderCell, { width: "24%" }]}>Teil</Text>
-            <Text style={[styles.tableHeaderCell, { width: "16%" }]}>Hersteller</Text>
-            <Text style={[styles.tableHeaderCell, { width: "14%" }]}>KBA</Text>
-            <Text style={[styles.tableHeaderCell, { width: "16%" }]}>Status</Text>
-            <Text style={[styles.tableHeaderCell, { width: "10%" }]}>Datum</Text>
-            {showAmounts ? (
-              <Text style={[styles.tableHeaderCell, { width: "10%" }]}>Preis</Text>
-            ) : null}
+        <ExposePdfPageFooter data={data} />
+      </Page>
+    );
+  }
+
+  const pageCount = Math.ceil(rows.length / MOD_ROWS_PER_PAGE);
+  return Array.from({ length: pageCount }, (_, pageIndex) => {
+    const slice = rows.slice(
+      pageIndex * MOD_ROWS_PER_PAGE,
+      (pageIndex + 1) * MOD_ROWS_PER_PAGE,
+    );
+    const subtitle =
+      pageIndex === 0
+        ? privacySubtitle
+        : `${data.vehicleTitle} · Fortsetzung`;
+
+    return (
+      <Page key={`mods-${pageIndex}`} size="A4" style={styles.page}>
+        <ExposePdfInnerHeader title="Umbauten & Tuning" subtitle={subtitle} />
+        <ModificationsTable rows={slice} hideFinancials={data.hideFinancials} />
+        {!data.hideFinancials &&
+        data.modificationTotal != null &&
+        pageIndex === pageCount - 1 ? (
+          <View style={styles.totalCard} wrap={false}>
+            <Text style={styles.totalLabel}>Gesamtinvestition Umbauten</Text>
+            <Text style={styles.totalValue}>
+              {formatCurrencyEur(data.modificationTotal)}
+            </Text>
           </View>
-          {data.modifications.map((row, index) => (
-            <View key={`${row.partName}-${index}`} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { width: "14%" }]}>{row.category}</Text>
-              <Text style={[styles.tableCell, { width: "24%" }]}>{row.partName}</Text>
-              <Text style={[styles.tableCell, { width: "16%" }]}>{row.manufacturer}</Text>
-              <Text style={[styles.tableCell, { width: "14%" }]}>{row.kbaNumber}</Text>
-              <Text style={[styles.tableCell, { width: "16%" }]}>{row.approvalStatus}</Text>
-              <Text style={[styles.tableCell, { width: "10%" }]}>{row.installationDate}</Text>
-              {showAmounts ? (
-                <Text style={[styles.tableCell, { width: "10%" }]}>
-                  {formatExposeCurrencyCell(row.amount, data.hideFinancials)}
-                </Text>
-              ) : null}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {!data.hideFinancials && data.modificationTotal != null ? (
-        <View style={styles.totalRow} wrap={false}>
-          <Text style={styles.totalLabel}>Gesamtinvestition Umbauten:</Text>
-          <Text style={styles.totalLabel}>
-            {formatCurrencyEur(data.modificationTotal)}
-          </Text>
-        </View>
-      ) : null}
-
-      <PageFooter data={data} />
-    </Page>
-  );
+        ) : null}
+        <ExposePdfPageFooter data={data} />
+      </Page>
+    );
+  });
 }
 
 function GalleryPage({ data }: { data: ExposePdfData }) {
   return (
     <Page size="A4" style={styles.page}>
-      <PageHeader title="Galerie & Leistung" subtitle={data.vehicleTitle} />
+      <ExposePdfInnerHeader
+        title="Galerie & Leistung"
+        subtitle={data.vehicleTitle}
+      />
 
       <Text style={styles.sectionTitle}>Detailaufnahmen</Text>
       {data.galleryImages.length === 0 ? (
         <Text style={styles.emptyState}>
-          Keine Umbau-Fotos hinterlegt — Fahrzeugprofil ergänzen für eine vollständige Galerie.
+          Keine Umbau-Fotos hinterlegt — Fahrzeugprofil ergänzen für eine
+          vollständige Galerie.
         </Text>
       ) : (
         <View style={styles.galleryGrid} wrap={false}>
@@ -328,7 +390,12 @@ function GalleryPage({ data }: { data: ExposePdfData }) {
 
       <Text style={styles.sectionTitle}>Leistungsdiagramm</Text>
       {data.dynoChartImage ? (
-        <Image src={data.dynoChartImage.dataUri} style={styles.dynoImage} />
+        <View style={styles.dynoCard}>
+          <Text style={styles.dynoCaption}>
+            Leistung und Drehmoment — dokumentiertes Dyno-Chart
+          </Text>
+          <Image src={data.dynoChartImage.dataUri} style={styles.dynoImage} />
+        </View>
       ) : (
         <Text style={styles.emptyState}>
           {data.dynoChartPdfNote ??
@@ -336,7 +403,7 @@ function GalleryPage({ data }: { data: ExposePdfData }) {
         </Text>
       )}
 
-      <PageFooter data={data} />
+      <ExposePdfPageFooter data={data} />
     </Page>
   );
 }
@@ -351,7 +418,7 @@ export function ExposePdfDocument({ data }: ExposePdfDocumentProps) {
       <CoverPage data={data} />
       <SpecsPage data={data} />
       <MaintenanceHistoryPages data={data} />
-      <ModificationsPage data={data} />
+      <ModificationsPages data={data} />
       <GalleryPage data={data} />
     </Document>
   );

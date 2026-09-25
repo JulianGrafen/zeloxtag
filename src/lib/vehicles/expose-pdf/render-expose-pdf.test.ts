@@ -8,6 +8,9 @@ const minimalQr =
 
 const minimalData: ExposePdfData = {
   generatedAt: "2026-01-01T00:00:00.000Z",
+  generatedAtLabel: "01.01.2026",
+  documentCount: 2,
+  buildPersonalityLabels: [],
   vehicleTitle: "BMW M2",
   vehicleSubtitle: "Test",
   publicProfileUrl: "https://zeloxtag.com/v/demo",

@@ -29,6 +29,9 @@ export type ExposeModificationRow = {
 
 export type ExposePdfData = {
   generatedAt: string;
+  generatedAtLabel: string;
+  documentCount: number;
+  buildPersonalityLabels: string[];
   vehicleTitle: string;
   vehicleSubtitle: string;
   publicProfileUrl: string;

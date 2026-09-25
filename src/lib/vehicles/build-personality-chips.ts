@@ -13,6 +13,7 @@ export const BUILD_PERSONALITY_CHIPS = [
   { id: "daily", label: "Daily" },
   { id: "klangbombe", label: "Klangbombe" },
   { id: "streckenwaffe", label: "Streckenwaffe" },
+  { id: "tracktool", label: "Tracktool" },
 ] as const;
 
 export type BuildPersonalityChipId =

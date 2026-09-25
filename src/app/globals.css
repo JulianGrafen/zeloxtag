@@ -1003,7 +1003,13 @@ nextjs-portal {
 }
 
 .claim-twin-preview {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.claim-twin-preview__picker {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--vd-border);
 }
 
 .claim-twin-preview__kicker {
@@ -1384,7 +1390,7 @@ nextjs-portal {
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 10mm;
   }
 
   .expose-no-print {
@@ -1392,14 +1398,19 @@ nextjs-portal {
   }
 
   .expose-root {
-    background: #fff !important;
-    color: #111 !important;
+    background: #f4f1ea !important;
+    color: #18181b !important;
   }
 
   .expose-card {
     break-inside: avoid;
     page-break-inside: avoid;
     box-shadow: none !important;
+    border-color: #e4e4e7 !important;
+  }
+
+  .expose-footer {
+    color: #71717a !important;
   }
 }
 

@@ -202,6 +202,20 @@ describe("buildExposeData", () => {
     expect(data.heroImageSrc).toBe(`/api/expose/${token}/silhouette`);
   });
 
+  it("includes personality labels and expose meta fields", () => {
+    const data = buildExposeData(
+      {
+        ...vehicle,
+        tech_specs: { buildPersonalityTags: ["sleeper", "oem_plus"] },
+      },
+      [invoice()],
+      [],
+    );
+    expect(data.buildPersonalityLabels).toEqual(["Sleeper", "OEM+"]);
+    expect(data.generatedAtLabel).toMatch(/\d{2}\.\d{2}\.\d{4}/);
+    expect(data.tuevSummary).toBe("Kein TÜV-Beleg");
+  });
+
   it("sorts the timeline newest-first and maps kinds", () => {
     const data = buildExposeData(vehicle, [invoice(), oilDoc()], timeline);
     expect(data.timeline.map((entry) => entry.date)).toEqual([

@@ -20,7 +20,6 @@ import {
 } from "@/lib/onboarding/primary-goal";
 import { AuthLegalConsentNotice } from "@/components/legal/auth-legal-consent-notice";
 import { ClaimTwinPreviewCard } from "@/components/tags/claim/ClaimTwinPreviewCard";
-import { BuildPersonalityChipPicker } from "@/components/tags/claim/BuildPersonalityChipPicker";
 import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
 import type { BuildPersonalityChipId } from "@/lib/vehicles/build-personality-chips";
 import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
@@ -225,7 +224,13 @@ export function ClaimFlow({
       ) : null}
 
       {showWizardChrome ? (
-        <ClaimTwinPreviewCard make={make} model={model} year={year} />
+        <ClaimTwinPreviewCard
+          make={make}
+          model={model}
+          year={year}
+          personalityTags={buildPersonalityTags}
+          onPersonalityChange={setBuildPersonalityTags}
+        />
       ) : null}
 
       <ClaimStepTransition step={step} direction={transitionDirection}>
@@ -433,7 +438,7 @@ export function ClaimFlow({
                   setError(validationError);
                   return;
                 }
-                advance("buildPersonality");
+                advance("preferences");
               }}
             >
               <ClaimSelectField
@@ -457,36 +462,6 @@ export function ClaimFlow({
                   value: String(months),
                   label: formatOilChangeIntervalMonthsLabel(months),
                 }))}
-              />
-              <ClaimSlideActions
-                error={error}
-                pending={pending}
-                onBack={goBack}
-                submitLabel="Weiter"
-                submitIcon="next"
-                showBack
-              />
-            </form>
-          </ClaimWizardPanel>
-        ) : null}
-
-        {step === "buildPersonality" ? (
-          <ClaimWizardPanel
-            kicker={stepKicker("buildPersonality")}
-            title="Wie würdest du deinen Build nennen?"
-            copy="Wähle bis zu fünf Vibes — sie erscheinen in deinem Showcase und beim Build-Swipe."
-          >
-            <form
-              className="mt-6 grid w-full gap-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setError(null);
-                advance("preferences");
-              }}
-            >
-              <BuildPersonalityChipPicker
-                selected={buildPersonalityTags}
-                onChange={setBuildPersonalityTags}
               />
               <ClaimSlideActions
                 error={error}
