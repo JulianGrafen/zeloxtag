@@ -37,6 +37,8 @@ interface VehicleInvoicesViewProps {
   canWrite?: boolean;
   /** Prefill category chip (e.g. "repair" for Reparaturen). */
   initialCategory?: InvoiceListCategory | "all";
+  /** Pro — unlocks charts; link still visible for upsell when false. */
+  canViewCostOverview?: boolean;
 }
 
 const ALL_CHIP = "all";
@@ -48,6 +50,7 @@ function VehicleInvoicesViewContent({
   canScan,
   canWrite = false,
   initialCategory = "all",
+  canViewCostOverview = false,
 }: VehicleInvoicesViewProps) {
   const showScanFab = canScan ?? canWrite;
   const searchParams = useSearchParams();
@@ -163,9 +166,19 @@ function VehicleInvoicesViewContent({
                 href={`/v/${tagUuid}/dokumente/kosten`}
                 variant="button"
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-accent)]/30 bg-[color:var(--vd-surface-elevated)] px-4 py-3 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[0_0_28px_-10px_color-mix(in_srgb,var(--vd-accent)_50%,transparent)]"
+                aria-label={
+                  canViewCostOverview
+                    ? "Kostenübersicht öffnen"
+                    : "Kostenübersicht — ZeloxTag Pro erforderlich"
+                }
               >
                 <BarChart3 className="h-4 w-4 text-[color:var(--vd-accent)]" aria-hidden />
                 Kostenübersicht
+                {!canViewCostOverview ? (
+                  <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-white">
+                    Pro
+                  </span>
+                ) : null}
               </PressableLink>
             ) : null}
           </div>
