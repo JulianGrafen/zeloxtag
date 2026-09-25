@@ -1,3 +1,8 @@
+import { parseShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
+import {
+  buildPersonalityLabels,
+  parseBuildPersonalityTags,
+} from "@/lib/vehicles/build-personality-chips";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 
 export type ShowcaseSwipeCandidateRow = {
@@ -12,6 +17,8 @@ export type ShowcaseSwipeCandidateRow = {
   accel_100_200_sec: number | null;
   modification_count: number;
   has_silhouette: boolean;
+  showcase_build_dna?: unknown;
+  build_personality_tags?: unknown;
 };
 
 function toNullableNumber(value: unknown): number | null {
@@ -32,6 +39,15 @@ export function mapSwipeCandidateToCard(
       ? `/api/vehicle/silhouette/${vehicleId}`
       : null;
 
+  const modificationCount = Math.max(
+    0,
+    Math.floor(row.modification_count ?? 0),
+  );
+  const buildDna =
+    modificationCount >= 2
+      ? parseShowcaseBuildDna(row.showcase_build_dna ?? null)
+      : null;
+
   return {
     publicSlug,
     make: row.make,
@@ -42,6 +58,10 @@ export function mapSwipeCandidateToCard(
     torqueNm: toNullableNumber(row.torque_nm),
     accel0To100Sec: toNullableNumber(row.accel_0_100_sec),
     accel100To200Sec: toNullableNumber(row.accel_100_200_sec),
-    modificationCount: Math.max(0, Math.floor(row.modification_count ?? 0)),
+    modificationCount,
+    buildDna,
+    buildPersonalityLabels: buildPersonalityLabels(
+      parseBuildPersonalityTags(row.build_personality_tags),
+    ),
   };
 }

@@ -5,6 +5,7 @@ import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 import { PublicShowcaseMarker } from "./public-showcase-marker";
 import { ShowroomHero } from "./ShowroomHero";
 import { ShowroomBuildDna } from "./ShowroomBuildDna";
+import { ShowroomBuildPersonalityChips } from "./ShowroomBuildPersonalityChips";
 import { ShowroomStats } from "./ShowroomStats";
 import { showroom } from "./showroom-styles";
 
@@ -26,6 +27,9 @@ export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
         <ShowroomStats
           profile={data.profile}
           modifications={data.modifications}
+        />
+        <ShowroomBuildPersonalityChips
+          labels={data.profile.buildPersonalityLabels}
         />
         {showBuildDna ? <ShowroomBuildDna dna={data.buildDna!} /> : null}
         <footer

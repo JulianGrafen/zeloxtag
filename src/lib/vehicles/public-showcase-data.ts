@@ -14,6 +14,7 @@ import {
   parseShowcaseBuildDna,
   type ShowcaseBuildDna,
 } from "@/lib/showcase/build-dna-schema";
+import { buildPersonalityLabels } from "@/lib/vehicles/build-personality-chips";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
 import type { Document, Vehicle } from "@/types/database";
@@ -65,6 +66,8 @@ export type PublicShowcaseProfile = {
   publicSlug: string | null;
   /** Same-origin URL for optional engine soundcheck playback. */
   engineSoundUrl: string | null;
+  /** Display labels for owner-selected build vibe chips. */
+  buildPersonalityLabels: string[];
 };
 
 export type PublicShowcasePayload = {
@@ -300,6 +303,9 @@ export function buildPublicShowcasePayload(
       engineSoundUrl: resolvePublicEngineSoundHref(
         vehicle.id,
         vehicle.sound_url,
+      ),
+      buildPersonalityLabels: buildPersonalityLabels(
+        specs.buildPersonalityTags ?? [],
       ),
     },
     photos,

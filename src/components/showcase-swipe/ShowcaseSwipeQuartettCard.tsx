@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 
+import { BuildDnaRadarChart } from "@/components/public-showcase/BuildDnaRadarChart";
+import { ShowroomBuildPersonalityChips } from "@/components/public-showcase/ShowroomBuildPersonalityChips";
 import { ShowroomQuartettBar } from "@/components/public-showcase/ShowroomQuartettBar";
 import {
   SHOWCASE_QUARTETT_ACCEL_0_100_MAX_SEC,
@@ -113,6 +115,13 @@ export function ShowcaseSwipeQuartettCard({
           <p className="text-[0.78rem] text-white/55">
             {[yearLabel, modLabel].filter(Boolean).join(" · ")}
           </p>
+          {card.buildPersonalityLabels.length > 0 ? (
+            <ShowroomBuildPersonalityChips
+              labels={card.buildPersonalityLabels}
+              compact
+              className="mt-2"
+            />
+          ) : null}
         </div>
 
         {lines.length > 0 ? (
@@ -132,6 +141,24 @@ export function ShowcaseSwipeQuartettCard({
             Tippe für den vollen Showcase.
           </p>
         )}
+
+        {card.buildDna ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3">
+            <p className="text-center text-[0.78rem] font-semibold tracking-tight text-white/90">
+              {card.buildDna.archetype}
+            </p>
+            <div className="mt-1 max-w-[200px] mx-auto">
+              <BuildDnaRadarChart
+                dna={card.buildDna}
+                variant="compact"
+                animate={false}
+              />
+            </div>
+            <p className="mt-1 line-clamp-2 text-center text-[0.68rem] leading-snug text-white/50">
+              {card.buildDna.punchline}
+            </p>
+          </div>
+        ) : null}
 
         <p className="mt-auto text-center text-[0.72rem] text-white/40">
           Tippen · Showcase öffnen

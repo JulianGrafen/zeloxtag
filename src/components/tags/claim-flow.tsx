@@ -20,7 +20,9 @@ import {
 } from "@/lib/onboarding/primary-goal";
 import { AuthLegalConsentNotice } from "@/components/legal/auth-legal-consent-notice";
 import { ClaimTwinPreviewCard } from "@/components/tags/claim/ClaimTwinPreviewCard";
+import { BuildPersonalityChipPicker } from "@/components/tags/claim/BuildPersonalityChipPicker";
 import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
+import type { BuildPersonalityChipId } from "@/lib/vehicles/build-personality-chips";
 import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
 import { formatMileageKmNumber } from "@/lib/documents/format";
 import {
@@ -72,6 +74,9 @@ export function ClaimFlow({
   const [primaryGoal, setPrimaryGoal] = useState<ZeloxPrimaryGoal | null>(
     null,
   );
+  const [buildPersonalityTags, setBuildPersonalityTags] = useState<
+    BuildPersonalityChipId[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -178,6 +183,8 @@ export function ClaimFlow({
             fuelType: fuelType.trim() || undefined,
             oilChangeIntervalKm,
             oilChangeIntervalMonths,
+            buildPersonalityTags:
+              buildPersonalityTags.length > 0 ? buildPersonalityTags : undefined,
           },
           ...(needsAccount
             ? {
@@ -426,7 +433,7 @@ export function ClaimFlow({
                   setError(validationError);
                   return;
                 }
-                advance("preferences");
+                advance("buildPersonality");
               }}
             >
               <ClaimSelectField
@@ -450,6 +457,36 @@ export function ClaimFlow({
                   value: String(months),
                   label: formatOilChangeIntervalMonthsLabel(months),
                 }))}
+              />
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel="Weiter"
+                submitIcon="next"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
+
+        {step === "buildPersonality" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("buildPersonality")}
+            title="Wie würdest du deinen Build nennen?"
+            copy="Wähle bis zu fünf Vibes — sie erscheinen in deinem Showcase und beim Build-Swipe."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                advance("preferences");
+              }}
+            >
+              <BuildPersonalityChipPicker
+                selected={buildPersonalityTags}
+                onChange={setBuildPersonalityTags}
               />
               <ClaimSlideActions
                 error={error}

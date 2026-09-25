@@ -1,3 +1,7 @@
+import {
+  parseBuildPersonalityTags,
+  type BuildPersonalityChipId,
+} from "@/lib/vehicles/build-personality-chips";
 import { parseInstagramHandle } from "@/lib/vehicles/instagram-handle";
 
 /** Allowed Kraftstoff values for Technische Daten. */
@@ -180,6 +184,8 @@ export type VehicleTechSpecs = {
   accel0To100Sec: number | null;
   /** 100–200 km/h in seconds (one decimal). */
   accel100To200Sec: number | null;
+  /** Owner-selected build vibe chips from claim (max 5). */
+  buildPersonalityTags: BuildPersonalityChipId[] | null;
 };
 
 export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
@@ -200,6 +206,7 @@ export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
   oilChangeIntervalMonths: null,
   accel0To100Sec: null,
   accel100To200Sec: null,
+  buildPersonalityTags: null,
 };
 
 function asTrimmedString(value: unknown): string | null {
@@ -314,14 +321,18 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
       ACCEL_100_200_SEC_MIN,
       ACCEL_100_200_SEC_MAX,
     ),
+    buildPersonalityTags: (() => {
+      const tags = parseBuildPersonalityTags(record.buildPersonalityTags);
+      return tags.length > 0 ? tags : null;
+    })(),
   };
 }
 
 /** Drop empty keys for compact JSON storage. */
 export function serializeVehicleTechSpecs(
   specs: VehicleTechSpecs,
-): Record<string, string | number> {
-  const out: Record<string, string | number> = {};
+): Record<string, string | number | string[]> {
+  const out: Record<string, string | number | string[]> = {};
   if (specs.engine) out.engine = specs.engine;
   if (specs.powerPs != null) out.powerPs = specs.powerPs;
   if (specs.powerKw != null) out.powerKw = specs.powerKw;
@@ -348,12 +359,16 @@ export function serializeVehicleTechSpecs(
   if (specs.accel100To200Sec != null) {
     out.accel100To200Sec = specs.accel100To200Sec;
   }
+  if (specs.buildPersonalityTags && specs.buildPersonalityTags.length > 0) {
+    out.buildPersonalityTags = [...specs.buildPersonalityTags];
+  }
   return out;
 }
 
 export function countFilledTechSpecs(specs: VehicleTechSpecs): number {
   return Object.values(specs).filter((value) => {
     if (value == null) return false;
+    if (Array.isArray(value)) return value.length > 0;
     if (typeof value === "string") return value.trim().length > 0;
     return true;
   }).length;

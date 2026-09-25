@@ -29,6 +29,7 @@ describe("claim-tech-specs", () => {
       fuelType: "Benzin",
       oilChangeIntervalKm: null,
       oilChangeIntervalMonths: null,
+      buildPersonalityTags: [],
     });
     expect(
       hasClaimTechSpecs(
@@ -51,6 +52,7 @@ describe("claim-tech-specs", () => {
       fuelType: null,
       oilChangeIntervalKm: 15_000,
       oilChangeIntervalMonths: DEFAULT_OIL_INTERVAL_MONTHS,
+      buildPersonalityTags: [],
     });
     expect(
       normalizeClaimTechSpecs({
@@ -64,6 +66,7 @@ describe("claim-tech-specs", () => {
       fuelType: null,
       oilChangeIntervalKm: 15_000,
       oilChangeIntervalMonths: 18,
+      buildPersonalityTags: [],
     });
     expect(
       normalizeClaimTechSpecs({
@@ -80,6 +83,31 @@ describe("claim-tech-specs", () => {
     expect(claimTechSpecsToVehicleSpecs(specs)).toEqual({
       oilChangeIntervalKm: 12_500,
       oilChangeIntervalMonths: DEFAULT_OIL_INTERVAL_MONTHS,
+    });
+  });
+
+  it("normalizes build personality tags only", () => {
+    expect(
+      normalizeClaimTechSpecs({
+        buildPersonalityTags: ["sleeper", "groschengrab", "nope"],
+      }),
+    ).toEqual({
+      powerPs: null,
+      displacementCc: null,
+      drivetrain: null,
+      fuelType: null,
+      oilChangeIntervalKm: null,
+      oilChangeIntervalMonths: null,
+      buildPersonalityTags: ["sleeper", "groschengrab"],
+    });
+    expect(
+      claimTechSpecsToVehicleSpecs(
+        normalizeClaimTechSpecs({
+          buildPersonalityTags: ["oem_plus"],
+        }),
+      ),
+    ).toEqual({
+      buildPersonalityTags: ["oem_plus"],
     });
   });
 });

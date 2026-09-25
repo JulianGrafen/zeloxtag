@@ -6,6 +6,8 @@ import {
   LEGACY_BUILD_DNA_RADAR,
 } from "./build-dna-labels";
 
+export const BUILD_DNA_SCHEMA_VERSION = 2;
+
 export const BUILD_DNA_ARCHETYPES = BUILD_DNA_ARCHETYPE_LABELS;
 
 export type BuildDnaArchetype = (typeof BUILD_DNA_ARCHETYPES)[number];
@@ -15,9 +17,13 @@ export const BUILD_DNA_RADAR_CATEGORIES = [
   "Fahrwerk",
   "Optik",
   "Haltbarkeit",
+  "Akustik",
+  "Straßenlage",
 ] as const;
 
 export type BuildDnaRadarCategory = (typeof BUILD_DNA_RADAR_CATEGORIES)[number];
+
+export const BUILD_DNA_RADAR_AXIS_COUNT = BUILD_DNA_RADAR_CATEGORIES.length;
 
 const radarEntrySchema = z.object({
   category: z.enum(BUILD_DNA_RADAR_CATEGORIES),
@@ -26,8 +32,9 @@ const radarEntrySchema = z.object({
 
 export const showcaseBuildDnaSchema = z
   .object({
+    version: z.literal(BUILD_DNA_SCHEMA_VERSION).default(BUILD_DNA_SCHEMA_VERSION),
     archetype: z.enum(BUILD_DNA_ARCHETYPES),
-    radar: z.array(radarEntrySchema).length(4),
+    radar: z.array(radarEntrySchema).length(BUILD_DNA_RADAR_AXIS_COUNT),
     punchline: z.string().trim().min(1).max(160),
   })
   .superRefine((value, ctx) => {
@@ -64,7 +71,12 @@ function normalizeShowcaseBuildDnaRaw(raw: unknown): unknown {
       })
     : record.radar;
 
-  return { ...record, archetype, radar };
+  const version =
+    record.version === BUILD_DNA_SCHEMA_VERSION
+      ? BUILD_DNA_SCHEMA_VERSION
+      : record.version;
+
+  return { ...record, archetype, radar, version };
 }
 
 export function parseShowcaseBuildDna(
@@ -76,7 +88,7 @@ export function parseShowcaseBuildDna(
   return parsed.success ? parsed.data : null;
 }
 
-/** Normalize radar order for UI (Leistung → Haltbarkeit). */
+/** Normalize radar order for UI (Leistung → Straßenlage). */
 export function orderedRadarScores(
   dna: ShowcaseBuildDna,
 ): { category: BuildDnaRadarCategory; score: number }[] {

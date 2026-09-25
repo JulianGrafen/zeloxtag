@@ -15,6 +15,8 @@ export const BUILD_DNA_RADAR_LABELS = [
   "Fahrwerk",
   "Optik",
   "Haltbarkeit",
+  "Akustik",
+  "Straßenlage",
 ] as const;
 
 export type BuildDnaRadarLabel = (typeof BUILD_DNA_RADAR_LABELS)[number];
@@ -34,4 +36,8 @@ export const LEGACY_BUILD_DNA_RADAR: Record<string, BuildDnaRadarLabel> = {
   Handling: "Fahrwerk",
   Style: "Optik",
   Reliability: "Haltbarkeit",
+  Acoustics: "Akustik",
+  Sound: "Akustik",
+  Street: "Straßenlage",
+  Legality: "Straßenlage",
 };

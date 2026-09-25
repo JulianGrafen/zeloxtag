@@ -33,7 +33,37 @@ describe("mapSwipeCandidateToCard", () => {
       accel0To100Sec: 3.9,
       accel100To200Sec: 11.2,
       modificationCount: 4,
+      buildDna: null,
+      buildPersonalityLabels: [],
     });
+  });
+
+  it("parses showcase build dna when present", () => {
+    const card = mapSwipeCandidateToCard({
+      ...base,
+      showcase_build_dna: {
+        version: 2,
+        archetype: "Kurvenjäger",
+        radar: [
+          { category: "Leistung", score: 55 },
+          { category: "Fahrwerk", score: 80 },
+          { category: "Optik", score: 40 },
+          { category: "Haltbarkeit", score: 60 },
+          { category: "Akustik", score: 45 },
+          { category: "Straßenlage", score: 70 },
+        ],
+        punchline: "Kurven sind Zuhause.",
+      },
+    });
+    expect(card?.buildDna?.archetype).toBe("Kurvenjäger");
+  });
+
+  it("maps build personality tags to labels", () => {
+    const card = mapSwipeCandidateToCard({
+      ...base,
+      build_personality_tags: ["sleeper", "dieselrakete"],
+    });
+    expect(card?.buildPersonalityLabels).toEqual(["Sleeper", "Dieselrakete"]);
   });
 
   it("rejects missing slug", () => {

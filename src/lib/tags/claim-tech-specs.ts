@@ -1,4 +1,5 @@
 import { DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
+import { parseBuildPersonalityTags } from "@/lib/vehicles/build-personality-chips";
 import {
   EMPTY_VEHICLE_TECH_SPECS,
   parseOilChangeIntervalKm,
@@ -16,6 +17,7 @@ export type ClaimTechSpecs = {
   fuelType: string | null;
   oilChangeIntervalKm: number | null;
   oilChangeIntervalMonths: number | null;
+  buildPersonalityTags: ReturnType<typeof parseBuildPersonalityTags>;
 };
 
 export type ClaimTechSpecsInput = {
@@ -25,6 +27,7 @@ export type ClaimTechSpecsInput = {
   fuelType?: string | null;
   oilChangeIntervalKm?: string | number | null;
   oilChangeIntervalMonths?: string | number | null;
+  buildPersonalityTags?: string[] | null;
 };
 
 function parsePositiveInt(value: string | number | null | undefined): number | null {
@@ -57,13 +60,17 @@ export function normalizeClaimTechSpecs(
   const oilChangeIntervalMonths =
     parseOilChangeIntervalMonths(input.oilChangeIntervalMonths) ??
     (oilChangeIntervalKm != null ? DEFAULT_OIL_INTERVAL_MONTHS : null);
+  const buildPersonalityTags = parseBuildPersonalityTags(
+    input.buildPersonalityTags,
+  );
 
   if (
     powerPs == null &&
     displacementCc == null &&
     !drivetrain &&
     !fuelType &&
-    oilChangeIntervalKm == null
+    oilChangeIntervalKm == null &&
+    buildPersonalityTags.length === 0
   ) {
     return null;
   }
@@ -75,6 +82,7 @@ export function normalizeClaimTechSpecs(
     fuelType,
     oilChangeIntervalKm,
     oilChangeIntervalMonths,
+    buildPersonalityTags,
   };
 }
 
@@ -93,6 +101,9 @@ export function claimTechSpecsToVehicleSpecs(
   }
   if (specs.oilChangeIntervalMonths != null) {
     partial.oilChangeIntervalMonths = specs.oilChangeIntervalMonths;
+  }
+  if (specs.buildPersonalityTags.length > 0) {
+    partial.buildPersonalityTags = specs.buildPersonalityTags;
   }
 
   return Object.keys(partial).length > 0 ? partial : null;

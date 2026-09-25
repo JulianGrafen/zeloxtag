@@ -61,6 +61,15 @@ function isClaimTechSpecs(value: unknown): value is ClaimTechSpecs {
   ) {
     return false;
   }
+  const buildPersonalityTags = record.buildPersonalityTags;
+  if (buildPersonalityTags != null) {
+    if (!Array.isArray(buildPersonalityTags)) return false;
+    if (
+      !buildPersonalityTags.every((entry) => typeof entry === "string")
+    ) {
+      return false;
+    }
+  }
   return true;
 }
 

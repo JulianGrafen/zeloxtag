@@ -2,6 +2,7 @@ import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
 
 import {
   BUILD_DNA_RADAR_CATEGORIES,
+  BUILD_DNA_SCHEMA_VERSION,
   type BuildDnaArchetype,
   type ShowcaseBuildDna,
 } from "./build-dna-schema";
@@ -11,6 +12,8 @@ type ScoreBucket = {
   handling: number;
   style: number;
   reliability: number;
+  acoustics: number;
+  street: number;
 };
 
 const KEYWORDS: Record<keyof ScoreBucket, RegExp[]> = {
@@ -85,7 +88,50 @@ const KEYWORDS: Record<keyof ScoreBucket, RegExp[]> = {
     /service/i,
     /inspektion/i,
   ],
+  acoustics: [
+    /akrapovic/i,
+    /milltek/i,
+    /remus/i,
+    /supersprint/i,
+    /klapp/i,
+    /valved/i,
+    /bov/i,
+    /dump/i,
+    /ansaug/i,
+    /intake/i,
+    /sound/i,
+    /abgasanlage/i,
+    /auspuff/i,
+    /cat\s*back/i,
+    /resonator/i,
+  ],
+  street: [
+    /\babe\b/i,
+    /\btüv\b/i,
+    /\bhu\b/i,
+    /e-gutachten/i,
+    /gutachten/i,
+    /straßenlegal/i,
+    /zulass/i,
+    /alltag/i,
+    /daily/i,
+    /oem/i,
+    /serie/i,
+    /eibach/i,
+    /h&r/i,
+    /kw\s*v[123]/i,
+  ],
 };
+
+const TRACK_ONLY_KEYWORDS = [
+  /semi\s*slick/i,
+  /slick/i,
+  /rollkäfig/i,
+  /roll cage/i,
+  /rennstrecke/i,
+  /track\s*only/i,
+  /ohne\s*abe/i,
+];
 
 function clampScore(value: number): number {
   return Math.min(100, Math.max(1, Math.round(value)));
@@ -104,6 +150,8 @@ function aggregateScores(mods: readonly PublicModification[]): ScoreBucket {
   let handling = 28;
   let style = 28;
   let reliability = 32;
+  let acoustics = 30;
+  let street = 48;
 
   for (const mod of mods) {
     const blob = `${mod.label} ${mod.category} ${mod.vendor ?? ""}`;
@@ -111,6 +159,14 @@ function aggregateScores(mods: readonly PublicModification[]): ScoreBucket {
     handling += scoreText(blob, KEYWORDS.handling) * 9;
     style += scoreText(blob, KEYWORDS.style) * 8;
     reliability += scoreText(blob, KEYWORDS.reliability) * 7;
+    acoustics += scoreText(blob, KEYWORDS.acoustics) * 8;
+    street += scoreText(blob, KEYWORDS.street) * 7;
+
+    for (const pattern of TRACK_ONLY_KEYWORDS) {
+      if (pattern.test(blob)) {
+        street -= 12;
+      }
+    }
   }
 
   const countBoost = Math.min(12, mods.length * 2);
@@ -118,12 +174,16 @@ function aggregateScores(mods: readonly PublicModification[]): ScoreBucket {
   handling += countBoost;
   style += countBoost;
   reliability += countBoost;
+  acoustics += countBoost;
+  street += Math.min(8, mods.length);
 
   return {
     power: clampScore(power),
     handling: clampScore(handling),
     style: clampScore(style),
     reliability: clampScore(reliability),
+    acoustics: clampScore(acoustics),
+    street: clampScore(street),
   };
 }
 
@@ -165,25 +225,31 @@ function punchlineFor(archetype: BuildDnaArchetype): string {
   }
 }
 
+const RADAR_KEY_MAP: Record<
+  (typeof BUILD_DNA_RADAR_CATEGORIES)[number],
+  keyof ScoreBucket
+> = {
+  Leistung: "power",
+  Fahrwerk: "handling",
+  Optik: "style",
+  Haltbarkeit: "reliability",
+  Akustik: "acoustics",
+  Straßenlage: "street",
+};
+
 export function computeBuildDnaHeuristic(
   modifications: readonly PublicModification[],
 ): ShowcaseBuildDna {
   const scores = aggregateScores(modifications);
   const archetype = pickArchetype(scores);
 
-  const radar = (
-    [
-      ["Leistung", "power"],
-      ["Fahrwerk", "handling"],
-      ["Optik", "style"],
-      ["Haltbarkeit", "reliability"],
-    ] as const
-  ).map(([category, key]) => ({
+  const radar = BUILD_DNA_RADAR_CATEGORIES.map((category) => ({
     category,
-    score: scores[key],
+    score: scores[RADAR_KEY_MAP[category]],
   }));
 
   return {
+    version: BUILD_DNA_SCHEMA_VERSION,
     archetype,
     radar,
     punchline: punchlineFor(archetype),

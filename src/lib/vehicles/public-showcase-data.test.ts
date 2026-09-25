@@ -381,6 +381,21 @@ describe("buildPublicShowcasePayload", () => {
     );
   });
 
+  it("exposes build personality labels from tech_specs", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      tech_specs: {
+        ...baseVehicle.tech_specs,
+        buildPersonalityTags: ["sleeper", "dieselrakete"],
+      },
+    };
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.profile.buildPersonalityLabels).toEqual([
+      "Sleeper",
+      "Dieselrakete",
+    ]);
+  });
+
   it("includes buildDna when cached fingerprint matches public mods", () => {
     const documents: Document[] = [
       baseInvoice({ id: "mod-a", line_items: [{ label: "Turbo", amount: 1 }] }),
@@ -400,12 +415,15 @@ describe("buildPublicShowcasePayload", () => {
       ...baseVehicle,
       showcase_build_dna_fingerprint: fingerprint,
       showcase_build_dna: {
+        version: 2,
         archetype: "Street Sleeper",
         radar: [
           { category: "Power", score: 80 },
           { category: "Handling", score: 55 },
           { category: "Style", score: 30 },
           { category: "Reliability", score: 70 },
+          { category: "Acoustics", score: 50 },
+          { category: "Street", score: 65 },
         ],
         punchline: "Test-Punchline.",
       },
@@ -427,7 +445,7 @@ describe("buildPublicShowcasePayload", () => {
 
     const payload = buildPublicShowcasePayload(baseVehicle, documents);
     expect(payload.buildDna).not.toBeNull();
-    expect(payload.buildDna?.radar).toHaveLength(4);
+    expect(payload.buildDna?.radar).toHaveLength(6);
   });
 
   it("falls back to heuristic buildDna when fingerprint is stale", () => {
@@ -443,12 +461,15 @@ describe("buildPublicShowcasePayload", () => {
       showcase_build_dna_updated_at: "2026-03-01T00:00:00Z",
       showcase_build_dna_fingerprint: "stale-fingerprint",
       showcase_build_dna: {
+        version: 2,
         archetype: "OEM+",
         radar: [
           { category: "Power", score: 50 },
           { category: "Handling", score: 50 },
           { category: "Style", score: 50 },
           { category: "Reliability", score: 50 },
+          { category: "Acoustics", score: 50 },
+          { category: "Street", score: 50 },
         ],
         punchline: "Alt.",
       },
@@ -457,6 +478,6 @@ describe("buildPublicShowcasePayload", () => {
     const payload = buildPublicShowcasePayload(vehicle, documents);
     expect(payload.buildDna).not.toBeNull();
     expect(payload.buildDna?.punchline).not.toBe("Alt.");
-    expect(payload.buildDna?.radar).toHaveLength(4);
+    expect(payload.buildDna?.radar).toHaveLength(6);
   });
 });

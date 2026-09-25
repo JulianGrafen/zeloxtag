@@ -1,7 +1,10 @@
 import "server-only";
 
 import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
-import type { ShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
+import {
+  parseShowcaseBuildDna,
+  type ShowcaseBuildDna,
+} from "@/lib/showcase/build-dna-schema";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
 import { generateShowcaseBuildDna } from "@/services/showcase/BuildDnaService";
@@ -46,9 +49,10 @@ export async function refreshShowcaseBuildDna(
   }
 
   const fingerprint = buildShowcaseModsFingerprint(modifications);
+  const cachedDna = parseShowcaseBuildDna(vehicle.showcase_build_dna);
   if (
     vehicle.showcase_build_dna_fingerprint === fingerprint &&
-    vehicle.showcase_build_dna
+    cachedDna
   ) {
     return { status: "skipped", reason: "unchanged" };
   }

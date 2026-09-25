@@ -29,12 +29,23 @@ describe("computeBuildDnaHeuristic", () => {
     expect(handling?.score).toBeGreaterThan(style?.score ?? 0);
   });
 
-  it("returns four radar categories and a punchline", () => {
+  it("returns six radar categories and a punchline", () => {
     const dna = computeBuildDnaHeuristic([
       mod("Turbo Kit"),
       mod("Downpipe"),
     ]);
-    expect(dna.radar).toHaveLength(4);
+    expect(dna.radar).toHaveLength(6);
+    expect(dna.version).toBe(2);
     expect(dna.punchline.length).toBeGreaterThan(10);
+  });
+
+  it("boosts acoustics for exhaust-focused mods", () => {
+    const dna = computeBuildDnaHeuristic([
+      mod("Akrapovic Klappenauspuff"),
+      mod("Eventuri Ansaugung"),
+    ]);
+    const acoustics = dna.radar.find((row) => row.category === "Akustik");
+    const street = dna.radar.find((row) => row.category === "Straßenlage");
+    expect(acoustics?.score).toBeGreaterThan(street?.score ?? 0);
   });
 });
