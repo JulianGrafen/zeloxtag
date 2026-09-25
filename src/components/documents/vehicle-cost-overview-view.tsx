@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, useInView, useReducedMotion } from "framer-motion";
-import { ArrowLeft, BarChart3, Wrench } from "lucide-react";
-import { useRef } from "react";
+import { ArrowLeft, BarChart3, Wrench, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { CostOverviewChart } from "@/components/documents/cost-overview-chart";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
@@ -15,6 +15,10 @@ type VehicleCostOverviewViewProps = {
   vehicleModel: string;
   overview: VehicleCostOverview;
 };
+
+function missingAmountBannerStorageKey(tagUuid: string): string {
+  return `zeloxtag:cost-overview:missing-amount-dismissed:${tagUuid}`;
+}
 
 function CostStatCard({
   label,
@@ -161,6 +165,30 @@ export function VehicleCostOverviewView({
     1,
   );
   const hasData = overview.invoiceCount > 0;
+  const missingAmountCount = overview.documentsWithoutAmountCount;
+  const missingAmountStorageKey = missingAmountBannerStorageKey(tagUuid);
+  const [missingAmountBannerHidden, setMissingAmountBannerHidden] =
+    useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(missingAmountStorageKey);
+      setMissingAmountBannerHidden(
+        raw !== null && Number(raw) === missingAmountCount,
+      );
+    } catch {
+      setMissingAmountBannerHidden(false);
+    }
+  }, [missingAmountStorageKey, missingAmountCount]);
+
+  const dismissMissingAmountBanner = () => {
+    setMissingAmountBannerHidden(true);
+    try {
+      localStorage.setItem(missingAmountStorageKey, String(missingAmountCount));
+    } catch {
+      // ignore quota / private mode
+    }
+  };
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -215,15 +243,23 @@ export function VehicleCostOverviewView({
           </div>
         ) : (
           <>
-            {overview.documentsWithoutAmountCount > 0 ? (
-              <p
-                className="rounded-xl border border-amber-500/25 bg-amber-500/8 px-4 py-3 text-[0.8rem] text-amber-900 dark:text-amber-100"
+            {missingAmountCount > 0 && !missingAmountBannerHidden ? (
+              <div
+                className="relative rounded-xl border border-amber-500/25 bg-amber-500/8 py-3 pl-4 pr-11 text-[0.8rem] text-amber-900 dark:text-amber-100"
                 role="status"
               >
-                {overview.documentsWithoutAmountCount} Beleg
-                {overview.documentsWithoutAmountCount === 1 ? "" : "e"} ohne
-                Betrag — Summen können unvollständig sein.
-              </p>
+                {missingAmountCount} Beleg
+                {missingAmountCount === 1 ? "" : "e"} ohne Betrag — Summen
+                können unvollständig sein.
+                <button
+                  type="button"
+                  onClick={dismissMissingAmountBanner}
+                  className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg text-amber-900/70 transition-colors hover:bg-amber-500/15 hover:text-amber-950 dark:text-amber-100/80 dark:hover:text-amber-50"
+                  aria-label="Hinweis schließen"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
+              </div>
             ) : null}
 
             {overview.bucketBreakdown.length > 0 ? (
