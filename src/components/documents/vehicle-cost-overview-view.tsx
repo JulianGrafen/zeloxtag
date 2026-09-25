@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView, useReducedMotion } from "framer-motion";
-import { ArrowLeft, BarChart3, TrendingUp, Wrench } from "lucide-react";
+import { ArrowLeft, BarChart3, Wrench } from "lucide-react";
 import { useRef } from "react";
 
 import { CostOverviewChart } from "@/components/documents/cost-overview-chart";
@@ -190,6 +190,11 @@ export function VehicleCostOverviewView({
             <p className="mt-2 text-[0.82rem] text-[color:var(--vd-muted)]">
               {vehicleModel} · {overview.invoiceCount} Belege erfasst
             </p>
+            {hasData ? (
+              <div className="mt-5 border-t border-[color:var(--vd-border)] pt-5">
+                <CostOverviewChart series={overview.yearlySeries} />
+              </div>
+            ) : null}
           </div>
         </header>
 
@@ -292,18 +297,6 @@ export function VehicleCostOverviewView({
               )}
             </section>
 
-            <section className="space-y-3 rounded-[1.5rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
-              <div className="flex items-center gap-2">
-                <TrendingUp
-                  className="h-4 w-4 text-[color:var(--vd-accent)]"
-                  aria-hidden
-                />
-                <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-                  Investition über die Zeit
-                </h2>
-              </div>
-              <CostOverviewChart series={overview.yearlySeries} />
-            </section>
           </>
         )}
 
