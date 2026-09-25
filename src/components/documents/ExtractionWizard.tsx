@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ArrowLeft,
   FileUp,
-  LoaderCircle,
   RotateCcw,
   Sparkles,
 } from "lucide-react";
@@ -19,7 +18,7 @@ import {
   AbeSummaryRow,
 } from "@/components/documents/abe-review-ui";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { abePartArtLabel, titleFromAbeFields } from "@/lib/documents/abe-title";
 import { localDateIso } from "@/lib/documents/format";
@@ -406,14 +405,8 @@ export function ExtractionWizard({
               detail="Dokument wird analysiert…"
               hint="KBA, Bauteil und Auflagen werden per KI ausgelesen."
               state="solving"
-              footer={
-                <>
-                  <Skeleton className="mt-2 h-24 w-full rounded-2xl" />
-                  <Skeleton className="h-12 w-full rounded-xl" />
-                  <Skeleton className="h-12 w-full rounded-xl" />
-                  <Skeleton className="h-28 w-full rounded-xl" />
-                </>
-              }
+              showProgress
+              progressPercent={72}
             />
           </div>
         </div>
@@ -494,7 +487,7 @@ export function ExtractionWizard({
             <Button type="button" disabled={isSaving} onClick={handleSave}>
               {isSaving ? (
                 <span className="inline-flex items-center gap-2">
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                  <InlineThinkingOrb state="working" label="Speichern" />
                   Speichern…
                 </span>
               ) : (

@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FileText, LoaderCircle } from "lucide-react";
+import { FileText } from "lucide-react";
+import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 
 import { Button } from "@/components/ui/button";
 
@@ -70,7 +71,7 @@ export function SmartReviewActions({
         onClick={onSave}
       >
         {isSaving ? (
-          <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+          <InlineThinkingOrb state="working" label="Speichern" />
         ) : null}
         {saveLabel}
       </Button>

@@ -1,226 +1,92 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
-  mapWithConcurrency,
-  mergeAnalyzeDocumentFields,
-  mergeInvoiceScanFields,
-  resolveOcrMaxParallelPages,
+  mergeFields,
+  resolveInvoiceMultiPageSource,
+  resolveInvoiceScanParts,
   type AnalyzeDocumentResult,
 } from "@/lib/ocr/analyze-document-client";
-import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 
-function buildResult(
-  index: number,
-  overrides: Partial<InvoiceTextParseResult> = {},
-): AnalyzeDocumentResult {
-  return {
-    kind: "invoice",
-    documentType: "invoice",
-    fields: {
-      vendor: `Vendor ${index}`,
-      date: "2026-01-15",
-      amount: 100 + index,
-      category: "service",
-      summary: `Page ${index}`,
-      lineItems: [{ label: `Item ${index}`, amount: 50 + index }],
-      kbaNumber: null,
-      vehicleApprovals: null,
-      authority: null,
-      conditions: null,
-      partCategory: null,
-      notes: null,
-      manufacturer: null,
-      invoiceNumber: null,
-      mileageKm: null,
-      ...overrides,
-    },
-    approvalFields: null,
-    rawText: `raw ${index}`,
-    modelId: "test",
-  };
-}
+describe("resolveInvoiceScanParts", () => {
+  it("uses full parse for every PDF raster page", () => {
+    expect(resolveInvoiceScanParts(4, "invoice", "pdf_pages")).toEqual([
+      "full",
+      "full",
+      "full",
+      "full",
+    ]);
+  });
 
-describe("resolveOcrMaxParallelPages", () => {
-  it("defaults to 2", () => {
-    expect(resolveOcrMaxParallelPages()).toBe(2);
+  it("uses overview + positions for photo wizard blocks", () => {
+    expect(resolveInvoiceScanParts(3, "invoice", "photo_blocks")).toEqual([
+      "overview",
+      "positions",
+      "positions",
+    ]);
+  });
+
+  it("uses full for single invoice file", () => {
+    expect(resolveInvoiceScanParts(1, "invoice", "photo_blocks")).toEqual([
+      "full",
+    ]);
   });
 });
 
-describe("mapWithConcurrency", () => {
-  it("preserves result order regardless of completion time", async () => {
-    const delays = [30, 10, 20];
-    const results = await mapWithConcurrency(
-      delays,
-      2,
-      async (delay, index) => {
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        return index;
+describe("resolveInvoiceMultiPageSource", () => {
+  it("infers pdf_pages from raster file names", () => {
+    const files = [
+      new File(["a"], "rechnung-seite-1.jpg", { type: "image/jpeg" }),
+      new File(["b"], "rechnung-seite-2.jpg", { type: "image/jpeg" }),
+    ];
+    expect(resolveInvoiceMultiPageSource(files)).toBe("pdf_pages");
+  });
+
+  it("prefers explicit source", () => {
+    const files = [new File(["a"], "scan.jpg", { type: "image/jpeg" })];
+    expect(resolveInvoiceMultiPageSource(files, "photo_blocks")).toBe(
+      "photo_blocks",
+    );
+  });
+});
+
+describe("mergeFields", () => {
+  it("merges line items from all full-page scans", () => {
+    const mk = (
+      lineItems: { label: string; amount: number }[],
+      amount: number,
+    ): AnalyzeDocumentResult => ({
+      kind: "invoice",
+      documentType: "invoice",
+      fields: {
+        vendor: "Werkstatt",
+        date: "2024-01-15",
+        amount,
+        category: "repair",
+        summary: null,
+        lineItems,
+        kbaNumber: null,
+        vehicleApprovals: null,
+        authority: null,
+        conditions: null,
+        partCategory: null,
+        notes: null,
+        manufacturer: null,
+        invoiceNumber: null,
+        mileageKm: null,
       },
-    );
+      approvalFields: null,
+      rawText: "",
+      modelId: "test",
+    });
 
-    expect(results).toEqual([0, 1, 2]);
-  });
-
-  it("respects concurrency cap", async () => {
-    let inFlight = 0;
-    let maxInFlight = 0;
-
-    await mapWithConcurrency(
-      [1, 2, 3, 4],
-      2,
-      async () => {
-        inFlight += 1;
-        maxInFlight = Math.max(maxInFlight, inFlight);
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        inFlight -= 1;
-        return null;
-      },
-    );
-
-    expect(maxInFlight).toBeLessThanOrEqual(2);
-  });
-
-  it("reports progress as items complete", async () => {
-    const onComplete = vi.fn();
-
-    await mapWithConcurrency(
-      [1, 2, 3],
-      2,
-      async (value) => value,
-      onComplete,
-    );
-
-    expect(onComplete).toHaveBeenCalledWith(1, 3);
-    expect(onComplete).toHaveBeenCalledWith(2, 3);
-    expect(onComplete).toHaveBeenCalledWith(3, 3);
-  });
-
-  it("returns empty array for empty input", async () => {
-    await expect(mapWithConcurrency([], 2, async () => 1)).resolves.toEqual([]);
-  });
-});
-
-describe("mergeAnalyzeDocumentFields", () => {
-  it("merges line items in page order", () => {
-    const merged = mergeAnalyzeDocumentFields([
-      buildResult(1, {
-        lineItems: [{ label: "Page 1 item", amount: 10 }],
-      }),
-      buildResult(2, {
-        lineItems: [{ label: "Page 2 item", amount: 20 }],
-      }),
+    const merged = mergeFields([
+      mk([{ label: "Teil A", amount: 100 }], 100),
+      mk([{ label: "Teil B", amount: 50 }], 50),
     ]);
 
-    expect(merged.lineItems).toEqual([
-      { label: "Page 1 item", amount: 10 },
-      { label: "Page 2 item", amount: 20 },
+    expect(merged.lineItems?.map((item) => item.label)).toEqual([
+      "Teil A",
+      "Teil B",
     ]);
-  });
-
-  it("uses first page with vendor and max amount across pages", () => {
-    const merged = mergeAnalyzeDocumentFields([
-      buildResult(1, { vendor: null, amount: 200 }),
-      buildResult(2, { vendor: "Werkstatt Süd", amount: 150 }),
-    ]);
-
-    expect(merged.vendor).toBe("Werkstatt Süd");
-    expect(merged.amount).toBe(200);
-  });
-});
-
-describe("mergeInvoiceScanFields", () => {
-  it("uses overview metadata and positions-only line items", () => {
-    const merged = mergeInvoiceScanFields(
-      [
-        buildResult(0, {
-          vendor: "Speedworkz",
-          date: "2026-01-15",
-          amount: 714,
-          invoiceNumber: "RE-100",
-          mileageKm: 142350,
-          summary: "Sportfedern",
-          lineItems: [{ label: "Thin overview row", amount: 10 }],
-        }),
-        buildResult(1, {
-          vendor: null,
-          date: null,
-          amount: 600,
-          lineItems: [
-            { label: "Arbeitslohn Sportfedern", amount: 120 },
-            { label: "Sportfedern H&R", amount: 480 },
-          ],
-        }),
-      ],
-      ["overview", "positions"],
-    );
-
-    expect(merged.vendor).toBe("Speedworkz");
-    expect(merged.invoiceNumber).toBe("RE-100");
-    expect(merged.mileageKm).toBe(142350);
-    expect(merged.amount).toBe(714);
-    expect(merged.lineItems).toEqual([
-      { label: "Arbeitslohn Sportfedern", amount: 120 },
-      { label: "Sportfedern H&R", amount: 480 },
-    ]);
-  });
-
-  it("falls back to overview line items when no positions blocks", () => {
-    const merged = mergeInvoiceScanFields(
-      [
-        buildResult(0, {
-          vendor: "Werkstatt",
-          amount: 100,
-          lineItems: [{ label: "Only overview", amount: 100 }],
-        }),
-      ],
-      ["overview"],
-    );
-
-    expect(merged.lineItems).toEqual([{ label: "Only overview", amount: 100 }]);
-  });
-
-  it("returns null when overview vendor is generic and positions vendor is ignored", () => {
-    const merged = mergeInvoiceScanFields(
-      [
-        buildResult(0, {
-          vendor: "Rechnung",
-          date: "2026-01-15",
-          amount: 714,
-          lineItems: [{ label: "Thin overview row", amount: 10 }],
-        }),
-        buildResult(1, {
-          vendor: "Speedworkz",
-          date: null,
-          amount: 600,
-          lineItems: [
-            { label: "Arbeitslohn Sportfedern", amount: 120 },
-            { label: "Sportfedern H&R", amount: 480 },
-          ],
-        }),
-      ],
-      ["overview", "positions"],
-    );
-
-    expect(merged.vendor).toBeNull();
-  });
-
-  it("prefers overview vendor over full when both are valid", () => {
-    const merged = mergeInvoiceScanFields(
-      [
-        buildResult(0, {
-          vendor: "Speedworkz",
-          amount: 714,
-          lineItems: null,
-        }),
-        buildResult(1, {
-          vendor: "Other Garage",
-          amount: 600,
-          lineItems: [{ label: "Position", amount: 600 }],
-        }),
-      ],
-      ["overview", "positions"],
-    );
-
-    expect(merged.vendor).toBe("Speedworkz");
   });
 });

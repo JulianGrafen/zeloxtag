@@ -1,14 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import {
-  FileText,
-  Info,
-  LoaderCircle,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { FileText, Info, Plus, Trash2, X } from "lucide-react";
 
 import { ABEOverview } from "@/components/dashboard/ABEOverview";
 import { EinzelabnahmeOverview } from "@/components/dashboard/EinzelabnahmeOverview";
@@ -17,7 +10,16 @@ import { TuevOverview } from "@/components/dashboard/TuevOverview";
 import type { TeilegutachtenReviewFields } from "@/components/dashboard/TeilegutachtenOverview";
 import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
-import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
+import {
+  SCAN_UPLOAD_HEADING,
+  ScanProcessingPanel,
+  ScanProcessingStepChips,
+} from "@/components/documents/scan-processing-panel";
+import {
+  activeInvoiceExtractStepIndex,
+  INVOICE_EXTRACT_STEPS,
+  progressToOrbState,
+} from "@/lib/documents/scan-progress-orb";
 import { CameraCapture } from "@/components/documents/camera-capture";
 import { GutachtenUploadWizard } from "@/components/documents/gutachten-upload-wizard";
 import { VaultUploadWizard } from "@/components/documents/vault-upload-wizard";
@@ -28,7 +30,6 @@ import { BackNav } from "@/components/layout/back-nav";
 import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
 import { InvoiceReviewForm } from "@/components/documents/invoice-review-form";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { localDateIso, normalizeDocumentDateForUpload, normalizeDocumentDateIso } from "@/lib/documents/format";
@@ -791,8 +792,22 @@ export function InvoiceUploader({
             isInvoiceFamilyScan && resolvedLockCategory
               ? resolvedCategory
               : null,
+          invoiceMultiPageSource:
+            processed.sourceKind === "pdf" ? "pdf_pages" : "photo_blocks",
         },
       );
+
+      if (
+        processed.sourceKind === "pdf" &&
+        processed.pdfPageCount != null &&
+        processed.rasterizedPages != null &&
+        processed.rasterizedPages < processed.pdfPageCount
+      ) {
+        setError(
+          `Nur ${processed.rasterizedPages} von ${processed.pdfPageCount} PDF-Seiten konnten vorbereitet werden. ` +
+            "Extraktion kann unvollständig sein — ggf. „Drucken → Als PDF speichern“ oder Seiten als Fotos scannen.",
+        );
+      }
 
       let uploadPdf = processed.uploadFile;
       if (!uploadPdf && processed.sourceKind === "images" && imagePages.length > 0) {
@@ -1680,9 +1695,11 @@ export function InvoiceUploader({
           {compressing ? (
             <ScanProcessingPanel
               compact
-              heading="Hochladen"
+              heading={SCAN_UPLOAD_HEADING}
               detail={compressionStatus ?? "Dateien werden vorbereitet…"}
               state="connecting"
+              showProgress
+              progressPercent={12}
             />
           ) : null}
 
@@ -1717,24 +1734,14 @@ export function InvoiceUploader({
                 ? `Seite ${progress.page} von ${progress.totalPages}`
                 : undefined
             }
-            state="solving"
+            state={progressToOrbState(progress.percent)}
+            showProgress
+            progressPercent={progress.percent}
             footer={
-              <div className="w-full max-w-sm space-y-3">
-                <div className="h-2 overflow-hidden rounded-full bg-neutral-200">
-                  <div
-                    className="h-full rounded-full bg-neutral-900 transition-[width] duration-300"
-                    style={{ width: `${progress.percent}%` }}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Skeleton className="h-40 w-full rounded-[1.2rem]" />
-                  <Skeleton className="h-10 w-full" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </div>
-              </div>
+              <ScanProcessingStepChips
+                steps={[...INVOICE_EXTRACT_STEPS]}
+                activeIndex={activeInvoiceExtractStepIndex(progress.percent)}
+              />
             }
           />
         </div>

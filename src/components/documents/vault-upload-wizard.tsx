@@ -16,7 +16,6 @@ import {
   ExternalLink,
   FileText,
   FileUp,
-  LoaderCircle,
   Plus,
   RotateCcw,
   Save,
@@ -36,6 +35,7 @@ import {
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
 import { Button } from "@/components/ui/button";
+import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 import { materializeUploadFile } from "@/lib/documents/materialize-upload-file";
 import { stageVaultDocumentViaApi } from "@/lib/documents/stage-vault-document-client";
 import { saveVaultDocument } from "@/lib/documents/vault-document";
@@ -814,7 +814,7 @@ export function VaultUploadWizard({
           >
             {phase === "saving" || pending ? (
               <>
-                <LoaderCircle className="h-4 w-4 animate-spin" />
+                <InlineThinkingOrb state="working" label="Speichern" />
                 Wird gespeichert…
               </>
             ) : (

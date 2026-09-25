@@ -7,7 +7,7 @@ import ReactCrop, {
   type Crop,
   type PixelCrop,
 } from "react-image-crop";
-import { LoaderCircle } from "lucide-react";
+import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 
 import { Button } from "@/components/ui/button";
 import { cropImageToJpegFile } from "@/lib/ocr/crop-image";
@@ -144,7 +144,7 @@ export function ImageCropOverlay({
         >
           {cropping || isBusy ? (
             <span className="inline-flex items-center gap-2">
-              <LoaderCircle className="h-4 w-4 animate-spin" />
+              <InlineThinkingOrb state="working" label="Weiter" />
               Weiter…
             </span>
           ) : (

@@ -3,7 +3,12 @@
  * Avoids server-side pdf.js + @napi-rs/canvas failures on serverless hosts.
  */
 
+import {
+  OCR_IMAGE_MAX_EDGE_PX,
+} from "@/lib/documents/document-compression";
+import { PAGE_COMPRESS_TARGET_BYTES } from "@/lib/ocr/compress-page";
 import { destroyPdfDocument } from "@/lib/ocr/destroy-pdf-document";
+import { resizeDocumentImage } from "@/lib/utils/image-optimizer";
 import {
   loadPdfDocument,
   rasterizePdfPage,
@@ -33,6 +38,34 @@ export function isPdfUploadFile(file: File): boolean {
 
 function baseNameFromFile(file: File): string {
   return file.name.replace(/\.pdf$/i, "") || "dokument";
+}
+
+async function compressRasterPageForOcr(
+  jpegFile: File,
+): Promise<File> {
+  const optimized = await resizeDocumentImage(jpegFile, {
+    maxWidth: OCR_IMAGE_MAX_EDGE_PX,
+    maxBytes: PAGE_COMPRESS_TARGET_BYTES,
+  });
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    optimized.canvas.toBlob(
+      (result) => {
+        if (!result) {
+          reject(new Error("JPEG-Kompression fehlgeschlagen."));
+          return;
+        }
+        resolve(result);
+      },
+      "image/jpeg",
+      0.88,
+    );
+  });
+  optimized.canvas.width = 0;
+  optimized.canvas.height = 0;
+  return new File([blob], jpegFile.name, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
 }
 
 /**
@@ -77,12 +110,16 @@ export async function prepareClientOcrFilesDetailed(
       options.onPageProgress?.(page, limit);
       try {
         const raster = await rasterizePdfPage(pdf, page);
-        files.push(
-          new File([raster.blob], `${baseName}-seite-${page}.jpg`, {
+        const rawPageFile = new File(
+          [raster.blob],
+          `${baseName}-seite-${page}.jpg`,
+          {
             type: "image/jpeg",
             lastModified: Date.now(),
-          }),
+          },
         );
+        const compressedPage = await compressRasterPageForOcr(rawPageFile);
+        files.push(compressedPage);
       } catch (pageError) {
         console.warn("[prepareClientOcrFiles] page raster failed", page, pageError);
       }

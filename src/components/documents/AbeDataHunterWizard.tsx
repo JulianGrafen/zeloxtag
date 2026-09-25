@@ -7,7 +7,6 @@ import {
   Camera,
   CheckCircle2,
   FileUp,
-  LoaderCircle,
   Pencil,
   RotateCcw,
   X,
@@ -27,6 +26,7 @@ import {
   ABE_CAPTURE_MAX_WIDTH_PX,
 } from "@/lib/utils/image-optimizer";
 import { Button } from "@/components/ui/button";
+import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 import { Input } from "@/components/ui/input";
 import {
   abePartArtLabel,
@@ -781,10 +781,9 @@ function AbeScanHud({
           )}
 
           {analyzing ? (
-            <LoaderCircle
-              className="h-3 w-3 shrink-0 animate-spin text-amber-200"
-              aria-label="Analysiert"
-            />
+            <span className="inline-flex shrink-0 scale-75">
+              <InlineThinkingOrb state="searching" label="Analysiert" />
+            </span>
           ) : onContinue ? (
             <button
               type="button"
@@ -1872,7 +1871,7 @@ function ReviewPanel({
           >
             {isSaving ? (
               <span className="inline-flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
+                <InlineThinkingOrb state="working" label="Speichern" />
                 Speichern…
               </span>
             ) : (

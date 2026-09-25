@@ -240,7 +240,8 @@ async function compressImageFile(file: File): Promise<DocumentCompressionResult>
 function gatePdfFile(file: File): DocumentCompressionResult {
   if (file.size > OCR_PDF_MAX_BYTES) {
     throw new DocumentCompressionError(
-      `PDF zu groß (max. ${Math.round(OCR_PDF_MAX_BYTES / (1024 * 1024))} MB).`,
+      `PDF zu groß (max. ${Math.round(OCR_PDF_MAX_BYTES / (1024 * 1024))} MB). ` +
+        "Mehrseiten-Scans sind oft größer — bitte „Drucken → Als PDF speichern“ mit kleinerer Auflösung oder die Seiten als Fotos hochladen.",
     );
   }
 

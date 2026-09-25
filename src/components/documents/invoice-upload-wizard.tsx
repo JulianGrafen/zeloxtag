@@ -14,7 +14,6 @@ import {
   Camera,
   FileText,
   FileUp,
-  LoaderCircle,
   Plus,
   RotateCcw,
   ScanLine,

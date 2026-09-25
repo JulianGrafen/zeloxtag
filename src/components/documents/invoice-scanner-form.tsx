@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FileText, LoaderCircle, RotateCcw } from "lucide-react";
+import { ArrowLeft, FileText, RotateCcw } from "lucide-react";
+import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
 
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
@@ -191,12 +192,19 @@ export function InvoiceScannerForm({
       ) : null}
 
       {step === "processing" ? (
-        <p className="vd-anim-header flex items-center justify-center gap-2 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white px-4 py-10 text-[0.9rem] text-[color:var(--vd-muted)]">
-          <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
-          {sourceCanvas
-            ? "Perspektivkorrektur & PDF wird erzeugt…"
-            : "Bild wird geladen…"}
-        </p>
+        <div className="vd-anim-header rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+          <ScanProcessingPanel
+            compact
+            detail={
+              sourceCanvas
+                ? "Perspektivkorrektur & PDF wird erzeugt…"
+                : "Bild wird geladen…"
+            }
+            state="working"
+            showProgress
+            progressPercent={45}
+          />
+        </div>
       ) : null}
 
       {step === "ready" && previewUrl && pdfFile ? (

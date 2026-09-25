@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Camera, FileUp, FlipHorizontal2, ImagePlus, X } from "lucide-react";
+import { ThinkingOrb } from "thinking-orbs";
 
 import {
   buildA4ImageFromGuideCapture,
@@ -1071,8 +1072,16 @@ export function InBrowserCamera({
 
             {/* Loading spinner */}
             {!cameraReady ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+              <div className="flex h-full flex-col items-center justify-center gap-3">
+                <ThinkingOrb
+                  state="connecting"
+                  size={64}
+                  theme="dark"
+                  aria-label="Kamera wird gestartet"
+                />
+                <p className="text-[0.8rem] font-medium text-white/80">
+                  Kamera wird gestartet…
+                </p>
               </div>
             ) : null}
 
@@ -1149,7 +1158,12 @@ export function InBrowserCamera({
 
             {processingCapture ? (
               <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black/55 px-6 text-center backdrop-blur-[2px]">
-                <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+                <ThinkingOrb
+                  state="working"
+                  size={64}
+                  theme="dark"
+                  aria-label="Wird zugeschnitten"
+                />
                 <p className="text-[0.9rem] font-semibold text-white">
                   Wird zugeschnitten…
                 </p>

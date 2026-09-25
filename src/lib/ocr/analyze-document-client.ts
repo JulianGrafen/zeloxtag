@@ -64,9 +64,33 @@ export type AnalyzeDocumentOptions = {
   pruefung192Scope?: "bericht" | "gutachten" | "vorschriften" | "full";
   /** Reuse complimentary OCR session across multi-page scans. */
   scanSessionId?: string | null;
+  /**
+   * Multi-page invoice routing: PDF raster pages vs. photo wizard blocks.
+   * Default `photo_blocks` (page 1 overview, rest positions).
+   */
+  invoiceMultiPageSource?: InvoiceMultiPageSource;
   /** @deprecated Prefer `documentType`. Mapped to documentType when unset. */
   kind?: DocumentParseKind;
 };
+
+export type InvoiceMultiPageSource = "pdf_pages" | "photo_blocks";
+
+const PDF_RASTER_PAGE_FILE_PATTERN = /-seite-\d+\.jpg$/i;
+
+/** Infer PDF raster JPEGs from `prepareClientOcrFiles` naming. */
+export function resolveInvoiceMultiPageSource(
+  files: File[],
+  explicit?: InvoiceMultiPageSource,
+): InvoiceMultiPageSource {
+  if (explicit) return explicit;
+  if (
+    files.length > 1 &&
+    files.every((file) => PDF_RASTER_PAGE_FILE_PATTERN.test(file.name))
+  ) {
+    return "pdf_pages";
+  }
+  return "photo_blocks";
+}
 
 export class AnalyzeDocumentError extends Error {
   readonly code?: string;
@@ -213,11 +237,15 @@ export async function mapWithConcurrency<T, R>(
   return results;
 }
 
-function resolveInvoiceScanParts(
+export function resolveInvoiceScanParts(
   fileCount: number,
   documentType: OcrDocumentType,
+  multiPageSource: InvoiceMultiPageSource = "photo_blocks",
 ): InvoiceScanPart[] {
   if (documentType !== "invoice" || fileCount <= 1) {
+    return Array.from({ length: fileCount }, () => "full");
+  }
+  if (multiPageSource === "pdf_pages") {
     return Array.from({ length: fileCount }, () => "full");
   }
   return Array.from({ length: fileCount }, (_, index) =>
@@ -225,7 +253,7 @@ function resolveInvoiceScanParts(
   );
 }
 
-function mergeFields(
+export function mergeFields(
   results: AnalyzeDocumentResult[],
 ): InvoiceTextParseResult {
   const categories = results.map((result) => result.fields.category);
@@ -250,6 +278,10 @@ function mergeFields(
   const lineItems = results.flatMap(
     (result) => result.fields.lineItems ?? [],
   );
+  const mergedLineItems = lineItems.length > 0 ? lineItems : null;
+  const amountHint =
+    amounts.length > 0 ? Math.max(...amounts) : null;
+  const amount = preferAmount(amountHint, "", mergedLineItems);
   const vehicleApprovals = results.flatMap(
     (result) => result.fields.vehicleApprovals ?? [],
   );
@@ -260,11 +292,11 @@ function mergeFields(
   return normalizeTextParseResult({
     vendor: results.find((result) => result.fields.vendor)?.fields.vendor ?? null,
     date: results.find((result) => result.fields.date)?.fields.date ?? null,
-    amount: amounts.length > 0 ? Math.max(...amounts) : null,
+    amount,
     category,
     summary:
       results.find((result) => result.fields.summary)?.fields.summary ?? null,
-    lineItems: lineItems.length > 0 ? lineItems : null,
+    lineItems: mergedLineItems,
     kbaNumber:
       results.find((result) => result.fields.kbaNumber)?.fields.kbaNumber ??
       null,
@@ -434,7 +466,15 @@ export async function analyzeDocumentFiles(
   const invoiceCategory = options.invoiceCategory ?? null;
   const teilegutachtenScope = options.teilegutachtenScope;
   const pruefung192Scope = options.pruefung192Scope;
-  const scanParts = resolveInvoiceScanParts(files.length, documentType);
+  const multiPageSource = resolveInvoiceMultiPageSource(
+    files,
+    options.invoiceMultiPageSource,
+  );
+  const scanParts = resolveInvoiceScanParts(
+    files.length,
+    documentType,
+    multiPageSource,
+  );
   let scanSessionId = options.scanSessionId ?? null;
 
   if (files.length === 1) {

@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, LoaderCircle, Upload } from "lucide-react";
+import { ArrowLeft, Upload } from "lucide-react";
+import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 
 import { DocumentUpload } from "@/components/dashboard/DocumentUpload";
 import { GermanDateInput } from "@/components/documents/german-date-input";
@@ -194,7 +195,7 @@ export function DocumentUploadForm({
           />
           {pending ? (
             <p className="flex items-center gap-2 text-[0.78rem] text-[color:var(--vd-muted)]">
-              <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              <InlineThinkingOrb state="connecting" label="Hochladen" />
               Wird hochgeladen…
             </p>
           ) : null}

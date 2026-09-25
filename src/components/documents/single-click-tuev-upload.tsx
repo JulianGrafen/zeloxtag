@@ -16,12 +16,13 @@ import {
   CloudUpload,
   FileText,
   Info,
-  LoaderCircle,
   RotateCcw,
   Save,
   ShieldAlert,
 } from "lucide-react";
 
+import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
+import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import {
   formatTuevYearMonth,
@@ -485,26 +486,20 @@ export function SingleClickTuevUpload({
 
   if (phase === "processing") {
     return (
-      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col items-center justify-center gap-8 px-4 py-6 text-center">
-        <div className="relative flex h-24 w-24 items-center justify-center">
-          {/* Outer ring animation */}
-          <div className="absolute inset-0 animate-spin rounded-full border-4 border-neutral-100 border-t-neutral-900" />
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900">
-            <FileText className="h-7 w-7 text-white" />
-          </div>
+      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col justify-center px-4 py-6">
+        <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+          <ScanProcessingPanel
+            compact
+            detail={processingMessage}
+            hint="Dauert etwa 10–20 Sekunden"
+            state="solving"
+            showProgress
+            progressPercent={55}
+          />
         </div>
 
-        <div className="space-y-2">
-          <p className="text-[1rem] font-semibold text-[color:var(--vd-text)]">
-            {processingMessage}
-          </p>
-          <p className="text-[0.8rem] text-[color:var(--vd-muted)]">
-            Dauert etwa 10–20 Sekunden
-          </p>
-        </div>
-
-        {/* Progress dots */}
-        <div className="flex gap-1.5">
+        {/* Progress dots — legacy visual rhythm */}
+        <div className="mt-6 flex justify-center gap-1.5">
           {PROCESSING_MESSAGES.map((_, index) => (
             <div
               key={index}
@@ -672,7 +667,7 @@ export function SingleClickTuevUpload({
               onClick={() => handleSave(true)}
             >
               {saving ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
+                <InlineThinkingOrb state="working" label="Speichern" />
               ) : (
                 <Save className="h-4 w-4" />
               )}
@@ -695,7 +690,7 @@ export function SingleClickTuevUpload({
             onClick={() => handleSave(false)}
           >
             {saving ? (
-              <LoaderCircle className="h-4 w-4 animate-spin" />
+              <InlineThinkingOrb state="working" label="Speichern" />
             ) : (
               <Save className="h-4 w-4" />
             )}

@@ -45,6 +45,10 @@ export type ProcessInvoiceResult = {
   previewKind: "pdf" | "image";
   pageCount: number;
   sourceKind: "images" | "pdf";
+  /** Set when `sourceKind === "pdf"` — total pages in the file. */
+  pdfPageCount?: number;
+  /** Pages successfully rasterized for OCR (may be less than `pdfPageCount`). */
+  rasterizedPages?: number;
 };
 
 export class ProcessorError extends Error {
@@ -200,6 +204,8 @@ async function processNativePdf(
     previewKind: "image",
     pageCount: rasterizedPages,
     sourceKind: "pdf",
+    pdfPageCount,
+    rasterizedPages,
   };
 }
 

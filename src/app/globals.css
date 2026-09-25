@@ -697,9 +697,11 @@ nextjs-portal {
 /** Scan compose dropzone (Rechnung scannen, Kamera, PDF). */
 .vd-scan-dropzone {
   border-radius: 1.35rem;
-  border: 1px dashed var(--vd-border);
+  border: 1px dashed color-mix(in srgb, var(--vd-border) 88%, transparent);
   background: var(--vd-surface);
   box-shadow: var(--vd-shadow-sm);
+  outline: 1px solid color-mix(in srgb, var(--vd-border) 35%, transparent);
+  outline-offset: -1px;
 }
 
 /** Fixed bottom scan FAB — flat solid CTA (no glass / SVG / backdrop). */

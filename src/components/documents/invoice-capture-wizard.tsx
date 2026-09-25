@@ -8,6 +8,7 @@ import {
   FileUp,
   ImagePlus,
   Plus,
+  ScanLine,
   Trash2,
 } from "lucide-react";
 
@@ -345,7 +346,7 @@ export function InvoiceCaptureWizard({
     const captureSteps = positionFiles.length > 0 ? 2 : 1;
 
     return (
-      <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-[var(--vd-shadow-sm)]">
+      <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)]">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
             {positionFiles.length > 0
@@ -433,11 +434,22 @@ export function InvoiceCaptureWizard({
   }
 
   return (
-    <div className="vd-scan-dropzone space-y-3 px-4 py-4">
+    <div className="vd-scan-dropzone space-y-4 px-4 py-6 text-center">
       <h2 className="sr-only">{title}</h2>
-      <p className="text-center text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
-        {hint ?? INVOICE_CAPTURE_HINTS.intro}
-      </p>
+      <span className="vd-icon-badge mx-auto !h-14 !w-14 !rounded-2xl">
+        <ScanLine className="h-6 w-6" aria-hidden />
+      </span>
+      <div className="space-y-1">
+        <p className="text-[0.65rem] font-medium uppercase tracking-[0.18em] text-[color:var(--vd-muted)]">
+          {scanLabel}
+        </p>
+        <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
+          {title}
+        </p>
+        <p className="text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
+          {hint ?? INVOICE_CAPTURE_HINTS.intro}
+        </p>
+      </div>
 
       <div className={allowPdf ? "grid grid-cols-2 gap-2" : "grid grid-cols-1"}>
         <button

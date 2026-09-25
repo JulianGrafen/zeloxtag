@@ -12,7 +12,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  LoaderCircle,
   RotateCcw,
   ScanLine,
   SkipForward,

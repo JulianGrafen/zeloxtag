@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   FileText,
-  LoaderCircle,
   Pencil,
   RotateCcw,
   ScanLine,
@@ -25,6 +24,7 @@ import {
 } from "@/components/documents/scan-processing-panel";
 import { WizardCameraError } from "@/components/documents/wizard-scan-shell";
 import { Button } from "@/components/ui/button";
+import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 import { Input } from "@/components/ui/input";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import { titleFromAbeFields } from "@/lib/documents/abe-title";
@@ -551,7 +551,7 @@ function ReviewSection({
           >
             {isSaving ? (
               <span className="inline-flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+                <InlineThinkingOrb state="working" label="Speichern" />
                 Speichern…
               </span>
             ) : (
