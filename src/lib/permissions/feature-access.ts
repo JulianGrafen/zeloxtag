@@ -21,6 +21,8 @@ export const FEATURE = {
   GENERATE_EXPOSE: "CAN_GENERATE_EXPOSE",
   DOCUMENT_VAULT: "CAN_USE_DOCUMENT_VAULT",
   INVITE_SCHRAUBER: "CAN_INVITE_SCHRAUBER",
+  /** Charts & breakdown: Investition, Umbau vs. Wartung, Top-Positionen. */
+  VIEW_COST_OVERVIEW: "CAN_VIEW_COST_OVERVIEW",
 } as const;
 
 export type FeatureFlag = (typeof FEATURE)[keyof typeof FEATURE];
@@ -36,6 +38,7 @@ const FEATURE_MIN_TIER: Record<FeatureFlag, UserTier> = {
   [FEATURE.GENERATE_EXPOSE]: "pro",
   [FEATURE.DOCUMENT_VAULT]: "pro",
   [FEATURE.INVITE_SCHRAUBER]: "pro",
+  [FEATURE.VIEW_COST_OVERVIEW]: "pro",
 };
 
 export const SUBSCRIPTION_REQUIRED_CODE = "SUBSCRIPTION_REQUIRED" as const;
@@ -115,6 +118,8 @@ export function paywallTitle(
       return "Die Dokumentenakte";
     case FEATURE.ADD_MANUAL_SERVICE_ENTRY:
       return "Manuelle Einträge";
+    case FEATURE.VIEW_COST_OVERVIEW:
+      return "Kostenübersicht ist Teil von Pro";
     default:
       return "Das ist eine Pro-Funktion";
   }
@@ -138,6 +143,8 @@ export function paywallBody(
       return "Rechnungen, ABEs und TÜV per KI scannen und in der Cloud speichern — mit ZeloxTag Pro. Einsehen und manuelle Einträge bleiben kostenlos.";
     case FEATURE.VIEW_DOCUMENT_VAULT:
       return "Deine Akte mit manuellen Einträgen und gespeicherten Belegen — kostenlos einsehbar.";
+    case FEATURE.VIEW_COST_OVERVIEW:
+      return "Investition, Umbau vs. Wartung und Ausgaben-Trends aus deinen Belegen — mit ZeloxTag Pro. Die Belegliste und Summen bleiben kostenlos einsehbar.";
     default:
       return "Diese Funktion gehört zu ZeloxTag Pro. Die ersten 14 Tage sind kostenlos.";
   }

@@ -59,6 +59,8 @@ interface VehicleDocumentsViewProps {
   canScan?: boolean;
   /** Prefill invoice category chip when showing Belege. */
   invoiceCategory?: InvoiceListCategory | "all";
+  /** ZeloxTag Pro — detailed cost charts & breakdown. */
+  canViewCostOverview?: boolean;
 }
 
 const FILTERS: Array<{ id: DocumentType | "all"; label: string }> = [
@@ -80,6 +82,7 @@ export function VehicleDocumentsView({
   canWrite = false,
   canScan,
   invoiceCategory = "all",
+  canViewCostOverview = false,
 }: VehicleDocumentsViewProps) {
   const showScanFab = canScan ?? canWrite;
   const router = useRouter();
@@ -189,6 +192,7 @@ export function VehicleDocumentsView({
         canScan={showScanFab}
         canWrite={canWrite}
         initialCategory={invoiceCategory}
+        canViewCostOverview={canViewCostOverview}
       />
     );
   }
