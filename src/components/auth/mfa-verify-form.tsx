@@ -94,7 +94,7 @@ export function MfaVerifyForm({ nextPath = "/dashboard" }: MfaVerifyFormProps) {
               onChange={(event) =>
                 setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
               }
-              className="w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 text-center font-mono text-[1.2rem] tracking-[0.35em] text-[color:var(--vd-text)] outline-none ring-neutral-900 focus:ring-2"
+              className="w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-center font-mono text-[1.2rem] tracking-[0.35em] text-[color:var(--vd-text)] placeholder:text-[color:var(--vd-muted)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--vd-text)]/25"
               placeholder="000000"
             />
           ) : (
@@ -111,7 +111,7 @@ export function MfaVerifyForm({ nextPath = "/dashboard" }: MfaVerifyFormProps) {
                     .slice(0, 12),
                 )
               }
-              className="w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 text-center font-mono text-[1.05rem] tracking-[0.18em] text-[color:var(--vd-text)] outline-none ring-neutral-900 focus:ring-2"
+              className="w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-center font-mono text-[1.05rem] tracking-[0.18em] text-[color:var(--vd-text)] placeholder:text-[color:var(--vd-muted)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--vd-text)]/25"
               placeholder="XXXX-XXXX"
             />
           )}

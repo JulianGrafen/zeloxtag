@@ -225,7 +225,7 @@ export function MfaSetupPanel({ showHeader = true }: { showHeader?: boolean }) {
               onChange={(event) =>
                 setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
               }
-              className="w-full rounded-xl border border-[color:var(--vd-border)] bg-white px-3 py-2.5 text-center font-mono text-[1.1rem] tracking-[0.3em] outline-none ring-neutral-900 focus:ring-2"
+              className="w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-center font-mono text-[1.1rem] tracking-[0.3em] text-[color:var(--vd-text)] placeholder:text-[color:var(--vd-muted)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--vd-text)]/25"
               placeholder="000000"
             />
             <PressableButton
