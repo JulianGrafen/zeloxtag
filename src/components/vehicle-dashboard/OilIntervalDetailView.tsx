@@ -38,6 +38,10 @@ import { EditableOilChangeVendorSection } from "@/components/documents/editable-
 import { EditableOilFilterSection } from "@/components/documents/editable-oil-filter-section";
 import { EditableOilLitersSection } from "@/components/documents/editable-oil-liters-section";
 import { EditableOilSpecSection } from "@/components/documents/editable-oil-spec-section";
+import {
+  ServiceIntervalDueHint,
+  ServiceIntervalPartNumber,
+} from "./service-interval-meta";
 import { PressableButton, PressableLink } from "./Pressable";
 
 interface OilIntervalDetailViewProps {
@@ -377,6 +381,8 @@ export function OilIntervalDetailView({
             Intervall: alle {record.intervalKm.toLocaleString("de-DE")} km oder{" "}
             {record.intervalMonths} Monate
           </p>
+          <ServiceIntervalDueHint record={record} />
+          <ServiceIntervalPartNumber partNumber={record.partNumber} />
         </section>
 
         {isManualOilLog && useCentralEdit ? (

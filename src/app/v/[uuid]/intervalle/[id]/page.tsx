@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { OilIntervalDetailView } from "@/components/vehicle-dashboard";
+import {
+  BrakeIntervalDetailView,
+  OilIntervalDetailView,
+} from "@/components/vehicle-dashboard";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { brakeServiceRecordsFromDocuments } from "@/lib/documents/brake-service";
 import {
   oilChangeRecordsFromDocuments,
   resolveOilChangeInterval,
@@ -40,9 +44,12 @@ export default async function VehicleOilIntervalDetailPage({
   const interval = resolveOilChangeInterval(
     parseVehicleTechSpecs(result.vehicle!.tech_specs),
   );
-  const records = oilChangeRecordsFromDocuments([document], interval);
-  const record = records.find((entry) => entry.id === id);
-  if (!record) {
+  const oilRecords = oilChangeRecordsFromDocuments([document], interval);
+  const oilRecord = oilRecords.find((entry) => entry.id === id);
+  const brakeRecords = brakeServiceRecordsFromDocuments([document]);
+  const brakeRecord = brakeRecords.find((entry) => entry.id === id);
+
+  if (!oilRecord && !brakeRecord) {
     notFound();
   }
 
@@ -51,6 +58,26 @@ export default async function VehicleOilIntervalDetailPage({
   const canEdit =
     access.isOwner ||
     (access.isContributor && document.type === "invoice");
+
+  if (brakeRecord && !oilRecord) {
+    return wrapProFeature({
+      isDemo: isDemoShowcase,
+      ownerUserId: result.vehicle!.user_id,
+      tagUuid: result.tag.uuid,
+      feature: FEATURE.VIEW_DOCUMENT_VAULT,
+      children: (
+        <BrakeIntervalDetailView
+          record={brakeRecord}
+          document={document}
+          vehicleModel={vehicleModel}
+          backHref={`/v/${result.tag.uuid}/intervalle?tab=bremsen`}
+          invoiceHref={`/v/${result.tag.uuid}/dokumente/${brakeRecord.id}`}
+        />
+      ),
+    });
+  }
+
+  const record = oilRecord!;
 
   return wrapProFeature({
     isDemo: isDemoShowcase,

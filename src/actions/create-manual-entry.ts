@@ -32,6 +32,7 @@ import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import { parseManualEntryAmount } from "@/lib/documents/manual-entry-input";
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
+import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
 import {
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
@@ -389,6 +390,7 @@ export async function createManualVehicleEntry(
     const { error } = await supabase.from("documents").insert({ ...attempt });
     if (!error) {
       revalidateManualEntryPaths(data.tagUuid);
+      void recomputeVehicleMaintenanceSchedules(data.vehicleId);
       return { status: "created", documentId };
     }
     lastError = error.message;

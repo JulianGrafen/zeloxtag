@@ -13,6 +13,10 @@ export interface OilChangeRecord {
   intervalMonths: number;
   nextDueKm: number;
   nextDueDate: string;
+  nextDueDateIso?: string;
+  kmBasedEstimate?: boolean;
+  kmPerDay?: number | null;
+  partNumber?: string | null;
   notes: string;
   invoiceRef?: string;
   status: "aktuell" | "erledigt";

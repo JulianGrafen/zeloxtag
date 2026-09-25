@@ -7,6 +7,7 @@ export { InvoicesView } from "./InvoicesView";
 export { InvoiceDetailView } from "./InvoiceDetailView";
 export { OilIntervalsView } from "./OilIntervalsView";
 export { OilIntervalDetailView } from "./OilIntervalDetailView";
+export { BrakeIntervalDetailView } from "./BrakeIntervalDetailView";
 export { buildDefaultTiles } from "./buildDefaultTiles";
 export { VehicleSilhouette } from "./VehicleSilhouette";
 export { ABE_DOCUMENTS, getAbeDocument } from "./abeDocuments";

@@ -2,11 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronRight, Droplet, Pencil, Plus } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  CircleStop,
+  Droplet,
+  Pencil,
+  Plus,
+} from "lucide-react";
 
 import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { isEditableManualOilChangeDocument } from "@/lib/documents/manual-oil-change-form";
+import { brakeServiceRecordListSubtitle } from "@/lib/documents/brake-service";
 import { oilChangeRecordListSubtitle } from "@/lib/documents/oil-changes";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 import type { Document } from "@/types/database";
@@ -16,12 +24,19 @@ import {
   OIL_CHANGE_RECORDS,
   type OilChangeRecord,
 } from "./oilChangeRecords";
+import {
+  getLatestBrakeService,
+  type BrakeServiceRecord,
+} from "./brakeServiceRecords";
 import { OilChangeManualForm } from "./oil-change-manual-form";
 import { PressableButton, PressableLink } from "./Pressable";
+
+type IntervalTab = "oil" | "brake";
 
 interface OilIntervalsViewProps {
   vehicleModel: string;
   records?: OilChangeRecord[];
+  brakeRecords?: BrakeServiceRecord[];
   /** Back navigation target (tag dashboard or demo home). */
   backHref?: string;
   /** Base path for detail links, e.g. `/v/{uuid}/intervalle`. */
@@ -37,6 +52,7 @@ interface OilIntervalsViewProps {
 export function OilIntervalsView({
   vehicleModel,
   records = OIL_CHANGE_RECORDS,
+  brakeRecords = [],
   backHref = "/",
   basePath = "/intervalle",
   scanHref,
@@ -48,11 +64,25 @@ export function OilIntervalsView({
   const router = useRouter();
   const searchParams = useSearchParams();
   const editDocumentId = searchParams.get("edit");
+  const activeTab: IntervalTab =
+    searchParams.get("tab") === "bremsen" ? "brake" : "oil";
   const [query, setQuery] = useState("");
   const [showManualForm, setShowManualForm] = useState(
     Boolean(editDocumentId),
   );
-  const latest = getLatestOilChange(records);
+  const latestOil = getLatestOilChange(records);
+  const latestBrake = getLatestBrakeService(brakeRecords);
+  const isBrakeTab = activeTab === "brake";
+  const latest = isBrakeTab ? latestBrake : latestOil;
+  const activeRecords = isBrakeTab ? brakeRecords : records;
+
+  function switchTab(tab: IntervalTab) {
+    if (tab === "brake") {
+      router.replace(`${basePath}?tab=bremsen`);
+      return;
+    }
+    router.replace(basePath);
+  }
 
   const documentsById = useMemo(
     () => new Map(documents.map((doc) => [doc.id, doc])),
@@ -74,7 +104,7 @@ export function OilIntervalsView({
     }
   }
 
-  const visibleRecords = useMemo(() => {
+  const visibleOilRecords = useMemo(() => {
     return records.filter((record) =>
       matchesSearchQuery(
         query,
@@ -89,10 +119,26 @@ export function OilIntervalsView({
     );
   }, [records, query]);
 
+  const visibleBrakeRecords = useMemo(() => {
+    return brakeRecords.filter((record) =>
+      matchesSearchQuery(
+        query,
+        record.date,
+        record.workshop,
+        record.notes,
+        record.status,
+        record.partNumber,
+        String(record.mileageKm),
+      ),
+    );
+  }, [brakeRecords, query]);
+
+  const visibleRecords = isBrakeTab ? visibleBrakeRecords : visibleOilRecords;
+
   const searchResultLabel =
-    visibleRecords.length === records.length
+    visibleRecords.length === activeRecords.length
       ? undefined
-      : `${visibleRecords.length} von ${records.length} Einträgen`;
+      : `${visibleRecords.length} von ${activeRecords.length} Einträgen`;
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -113,7 +159,11 @@ export function OilIntervalsView({
               Zurück
             </PressableLink>
             <div className="flex items-center gap-2">
-              {canAddManual && tagUuid && vehicleId && !showForm ? (
+              {canAddManual &&
+              !isBrakeTab &&
+              tagUuid &&
+              vehicleId &&
+              !showForm ? (
                 <PressableButton
                   type="button"
                   variant="button"
@@ -128,15 +178,42 @@ export function OilIntervalsView({
           </div>
 
           <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
-            <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
-              Öl-Wechsel
+            <div className="flex gap-2 rounded-full bg-[color:var(--vd-surface-elevated)] p-1">
+              <PressableButton
+                type="button"
+                variant="button"
+                onClick={() => switchTab("oil")}
+                className={`flex-1 rounded-full px-3 py-2 text-[0.78rem] font-medium ${
+                  !isBrakeTab
+                    ? "bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-sm"
+                    : "text-[color:var(--vd-muted)]"
+                }`}
+              >
+                Öl
+              </PressableButton>
+              <PressableButton
+                type="button"
+                variant="button"
+                onClick={() => switchTab("brake")}
+                className={`flex-1 rounded-full px-3 py-2 text-[0.78rem] font-medium ${
+                  isBrakeTab
+                    ? "bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-sm"
+                    : "text-[color:var(--vd-muted)]"
+                }`}
+              >
+                Bremsen
+              </PressableButton>
+            </div>
+
+            <h1 className="mt-4 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
+              {isBrakeTab ? "Bremsbeläge" : "Öl-Wechsel"}
             </h1>
 
             {latest ? (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
                   <p className="text-[0.7rem] text-[color:var(--vd-muted)]">
-                    Letzter Wechsel
+                    {isBrakeTab ? "Letzter Service" : "Letzter Wechsel"}
                   </p>
                   <p className="mt-0.5 text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
                     {latest.date}
@@ -161,7 +238,7 @@ export function OilIntervalsView({
           </div>
         </header>
 
-        {showForm && tagUuid && vehicleId ? (
+        {showForm && !isBrakeTab && tagUuid && vehicleId ? (
           <OilChangeManualForm
             tagUuid={tagUuid}
             vehicleId={vehicleId}
@@ -170,25 +247,33 @@ export function OilIntervalsView({
           />
         ) : null}
 
-        {records.length > 0 ? (
+        {activeRecords.length > 0 ? (
           <ListSearchControls
             query={query}
             onQueryChange={setQuery}
-            placeholder="Werkstatt, Öl, km, Notiz…"
+            placeholder={
+              isBrakeTab
+                ? "Werkstatt, Bremsen, km, Teilenummer…"
+                : "Werkstatt, Öl, km, Notiz…"
+            }
             resultLabel={searchResultLabel}
           />
         ) : null}
 
-        <section aria-label="Ölwechsel Historie" className="space-y-2">
+        <section
+          aria-label={isBrakeTab ? "Bremsen Historie" : "Ölwechsel Historie"}
+          className="space-y-2"
+        >
           <h2 className="px-1 font-[family-name:var(--font-display)] text-[0.72rem] font-semibold tracking-[0.16em] text-[color:var(--vd-muted)] uppercase">
             Historie
           </h2>
 
-          {records.length === 0 ? (
+          {activeRecords.length === 0 ? (
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-6 text-center shadow-[var(--vd-shadow-sm)]">
               <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
-                Noch kein Ölwechsel hinterlegt. Trage einen manuell ein oder
-                scanne eine Rechnung mit Motoröl / Ölfilter.
+                {isBrakeTab
+                  ? "Noch kein Brems-Service hinterlegt. Scanne eine Rechnung mit Bremsbelägen oder trage Bremsen manuell über Service ein."
+                  : "Noch kein Ölwechsel hinterlegt. Trage einen manuell ein oder scanne eine Rechnung mit Motoröl / Ölfilter."}
               </p>
             </div>
           ) : visibleRecords.length === 0 ? (
@@ -199,60 +284,107 @@ export function OilIntervalsView({
             </div>
           ) : (
           <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
-            {visibleRecords.map((record, index) => (
-              <li key={record.id}>
-                <div className="flex items-stretch">
-                  <PressableLink
-                    href={`${basePath}/${record.id}`}
-                    variant="row"
-                    className="group flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left"
-                  >
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                      <Droplet className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-                    </span>
-
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-start justify-between gap-2">
-                        <span className="font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                          {record.date}
-                        </span>
-                        {record.status === "aktuell" ? (
-                          <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
-                            Aktuell
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="mt-0.5 block text-[0.75rem] text-[color:var(--vd-muted)]">
-                        {oilChangeRecordListSubtitle(record) || "—"}
-                      </span>
-                    </span>
-
-                    <ChevronRight
-                      className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
-                      aria-hidden
-                    />
-                  </PressableLink>
-
-                  {record.isManual && tagUuid ? (
+            {isBrakeTab
+              ? visibleBrakeRecords.map((record, index) => (
+                  <li key={record.id}>
                     <PressableLink
                       href={`${basePath}/${record.id}`}
-                      variant="button"
-                      aria-label="Ölwechsel bearbeiten"
-                      className="inline-flex shrink-0 items-center justify-center border-l border-[color:var(--vd-border)] px-3 text-[color:var(--vd-muted)]"
+                      variant="row"
+                      className="group flex min-w-0 items-center gap-3 px-4 py-3.5 text-left"
                     >
-                      <Pencil className="h-4 w-4" aria-hidden />
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
+                        <CircleStop
+                          className="h-5 w-5"
+                          strokeWidth={1.75}
+                          aria-hidden
+                        />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-start justify-between gap-2">
+                          <span className="font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                            {record.date}
+                          </span>
+                          {record.status === "aktuell" ? (
+                            <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
+                              Aktuell
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="mt-0.5 block text-[0.75rem] text-[color:var(--vd-muted)]">
+                          {brakeServiceRecordListSubtitle(record) || "—"}
+                        </span>
+                      </span>
+                      <ChevronRight
+                        className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+                        aria-hidden
+                      />
                     </PressableLink>
-                  ) : null}
-                </div>
+                    {index < visibleBrakeRecords.length - 1 ? (
+                      <div
+                        aria-hidden
+                        className="mx-4 border-t border-[color:var(--vd-border)]"
+                      />
+                    ) : null}
+                  </li>
+                ))
+              : visibleOilRecords.map((record, index) => (
+                  <li key={record.id}>
+                    <div className="flex items-stretch">
+                      <PressableLink
+                        href={`${basePath}/${record.id}`}
+                        variant="row"
+                        className="group flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left"
+                      >
+                        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
+                          <Droplet
+                            className="h-5 w-5"
+                            strokeWidth={1.75}
+                            aria-hidden
+                          />
+                        </span>
 
-                {index < visibleRecords.length - 1 ? (
-                  <div
-                    aria-hidden
-                    className="mx-4 border-t border-[color:var(--vd-border)]"
-                  />
-                ) : null}
-              </li>
-            ))}
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-start justify-between gap-2">
+                            <span className="font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                              {record.date}
+                            </span>
+                            {record.status === "aktuell" ? (
+                              <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
+                                Aktuell
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="mt-0.5 block text-[0.75rem] text-[color:var(--vd-muted)]">
+                            {oilChangeRecordListSubtitle(record) || "—"}
+                          </span>
+                        </span>
+
+                        <ChevronRight
+                          className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
+                          aria-hidden
+                        />
+                      </PressableLink>
+
+                      {record.isManual && tagUuid ? (
+                        <PressableLink
+                          href={`${basePath}/${record.id}`}
+                          variant="button"
+                          aria-label="Ölwechsel bearbeiten"
+                          className="inline-flex shrink-0 items-center justify-center border-l border-[color:var(--vd-border)] px-3 text-[color:var(--vd-muted)]"
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden />
+                        </PressableLink>
+                      ) : null}
+                    </div>
+
+                    {index < visibleOilRecords.length - 1 ? (
+                      <div
+                        aria-hidden
+                        className="mx-4 border-t border-[color:var(--vd-border)]"
+                      />
+                    ) : null}
+                  </li>
+                ))}
           </ul>
           )}
         </section>

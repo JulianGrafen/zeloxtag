@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { OilIntervalsView } from "@/components/vehicle-dashboard";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { brakeServiceRecordsFromDocuments } from "@/lib/documents/brake-service";
 import {
   oilChangeRecordsFromDocuments,
   resolveOilChangeInterval,
@@ -16,8 +17,8 @@ interface OilIntervalsPageProps {
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Öl-Wechsel · ZeloxTag",
-    description: "Ölwechsel-Historie für diesen ZeloxTag.",
+    title: "Intervalle · ZeloxTag",
+    description: "Öl- und Brems-Intervalle für diesen ZeloxTag.",
   };
 }
 
@@ -39,6 +40,7 @@ export default async function VehicleOilIntervalsPage({
     parseVehicleTechSpecs(result.vehicle!.tech_specs),
   );
   const records = oilChangeRecordsFromDocuments(result.documents, interval);
+  const brakeRecords = brakeServiceRecordsFromDocuments(result.documents);
   const vehicleModel = `${result.vehicle!.make} ${result.vehicle!.model}`;
 
   return wrapProFeature({
@@ -50,6 +52,7 @@ export default async function VehicleOilIntervalsPage({
       <OilIntervalsView
         vehicleModel={vehicleModel}
         records={records}
+        brakeRecords={brakeRecords}
         documents={result.documents}
         backHref={`/v/${result.tag.uuid}`}
         basePath={`/v/${result.tag.uuid}/intervalle`}

@@ -26,6 +26,7 @@ import {
 import { parseDocumentDateField } from "@/lib/documents/document-date-field";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
 import { isOilChangeDocument } from "@/lib/documents/oil-changes";
+import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
 import type { Document } from "@/types/database";
 import { parseTechnicalSpecs } from "@/lib/documents/technical-specs";
 import { parseAbeConditions, parseStringList } from "@/lib/documents/string-list";
@@ -476,8 +477,10 @@ export async function updateDocumentFields(
   }
 
   revalidateDocumentPaths(tagUuid, documentId);
+  revalidatePath(`/v/${tagUuid}/intervalle`);
   if (isStoredManualEntry(document)) {
     revalidateManualEntryPaths(tagUuid, documentId);
   }
+  void recomputeVehicleMaintenanceSchedules(vehicleId);
   return { status: "ok" };
 }

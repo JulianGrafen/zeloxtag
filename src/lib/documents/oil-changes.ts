@@ -9,6 +9,13 @@ import {
 import type { VehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, DocumentLineItem } from "@/types/database";
 
+import { mergeServiceDueDates, toDisplayDate as formatDueDisplayDate } from "@/lib/maintenance/service-due";
+import { extractServicePartNumberFromLineItems } from "@/lib/ocr/extract-service-part-number";
+import {
+  estimateKmPerDayFromDocuments,
+  latestKnownMileageKm,
+} from "@/lib/vehicles/mileage-velocity";
+
 import { formatDocumentDate } from "./format";
 import { isManualVehicleEntry } from "./manual-entries";
 
@@ -280,10 +287,14 @@ export function oilChangeRecordsFromDocuments(
   options: {
     intervalKm?: number;
     intervalMonths?: number;
+    kmPerDay?: number | null;
   } = {},
 ): OilChangeRecord[] {
   const intervalKm = options.intervalKm ?? DEFAULT_OIL_INTERVAL_KM;
   const intervalMonths = options.intervalMonths ?? DEFAULT_OIL_INTERVAL_MONTHS;
+  const kmPerDay =
+    options.kmPerDay ?? estimateKmPerDayFromDocuments(documents);
+  const latestKm = latestKnownMileageKm(documents);
   const oilDocs = filterOilChangeDocuments(documents);
 
   return oilDocs.map((document, index) => {
@@ -298,7 +309,20 @@ export function oilChangeRecordsFromDocuments(
     const isoDate = document.date ?? document.created_at.slice(0, 10);
     const mileageKm =
       typeof document.mileage_km === "number" ? document.mileage_km : 0;
-    const nextDueIso = addMonthsIso(isoDate, intervalMonths) ?? isoDate;
+    const nextDueKm = mileageKm > 0 ? mileageKm + intervalKm : intervalKm;
+    const merged = mergeServiceDueDates({
+      lastServiceIsoDate: isoDate,
+      intervalMonths,
+      lastMileageKm: mileageKm,
+      nextDueKm,
+      latestKnownMileageKm: latestKm,
+      kmPerDay,
+    });
+    const nextDueIso = merged.nextDueDateIso;
+    const partNumber = extractServicePartNumberFromLineItems(
+      document.line_items,
+      "oil_change",
+    );
 
     const workshop = document.vendor?.trim() || null;
 
@@ -312,8 +336,12 @@ export function oilChangeRecordsFromDocuments(
       filterChanged: detected.filterChanged,
       intervalKm,
       intervalMonths,
-      nextDueKm: mileageKm > 0 ? mileageKm + intervalKm : intervalKm,
-      nextDueDate: toDisplayDate(nextDueIso),
+      nextDueKm,
+      nextDueDate: formatDueDisplayDate(nextDueIso),
+      nextDueDateIso: nextDueIso,
+      kmBasedEstimate: merged.kmBasedEstimate,
+      kmPerDay,
+      partNumber,
       notes: document.notes?.trim() || detected.notes,
       invoiceRef: document.id,
       status: index === 0 ? "aktuell" : "erledigt",

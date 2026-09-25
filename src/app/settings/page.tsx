@@ -12,6 +12,7 @@ import {
 import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership";
 import { AppShell } from "@/components/layout/app-shell";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
+import { MaintenanceEmailSettingsPanel } from "@/components/settings/maintenance-email-settings-panel";
 import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
@@ -94,6 +95,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       ? `Aktiv · ${mfaStatus.unusedCount} Recovery-Codes übrig`
       : "Optional mit Authenticator aktivieren";
   const deletionState = await getAccountDeletionState(user.id);
+  const maintenanceEmailReminders =
+    user.user_metadata?.maintenance_email_reminders !== false;
 
   return (
     <AppShell>
@@ -179,6 +182,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             aria-hidden
           />
         </Link>
+
+        <MaintenanceEmailSettingsPanel
+          initialEnabled={maintenanceEmailReminders}
+        />
 
         <PwaInstallSettingsPanel />
 

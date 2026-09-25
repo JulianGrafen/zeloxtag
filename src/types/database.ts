@@ -235,6 +235,20 @@ export type Document = {
   created_at: string;
 };
 
+/** Computed oil/brake due rows for cron (`00069`). */
+export type VehicleMaintenanceSchedule = {
+  vehicle_id: string;
+  kind: "oil_change" | "brake_pads";
+  last_document_id: string | null;
+  last_service_date: string;
+  last_mileage_km: number;
+  next_due_km: number;
+  next_due_date: string;
+  part_number: string | null;
+  km_per_day: number | null;
+  updated_at: string;
+};
+
 /** DSR audit log for account deletion lifecycle (`00055`). */
 export type AccountDataSubjectLog = {
   id: string;

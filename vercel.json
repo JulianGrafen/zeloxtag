@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/unclaimed-tag-reminders",
       "schedule": "30 9 * * *"
+    },
+    {
+      "path": "/api/cron/maintenance-reminders",
+      "schedule": "0 8 * * *"
     }
   ]
 }

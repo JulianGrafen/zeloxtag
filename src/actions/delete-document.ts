@@ -14,6 +14,7 @@ import {
 import { resolveStoragePath } from "@/lib/documents/storage-path";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
 
 export type DeleteDocumentResult =
@@ -117,5 +118,7 @@ export async function deleteDocument(input: {
   revalidatePath(`/v/${tagUuid}/eintrag`);
   revalidatePath(`/v/${tagUuid}/umbauten`);
   revalidatePath(`/v/${tagUuid}/einstellungen`);
+  revalidatePath(`/v/${tagUuid}/intervalle`);
+  void recomputeVehicleMaintenanceSchedules(vehicleId);
   return { status: "deleted", documentId };
 }

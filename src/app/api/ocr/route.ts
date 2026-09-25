@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { extractInvoiceFromImage } from "@/lib/ocr/extract-invoice";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
+import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
 import { OcrPersistError, persistOcrInvoice } from "@/lib/ocr/persist-invoice";
 import type { OcrApiError, OcrApiSuccess } from "@/lib/ocr/types";
 import {
@@ -180,9 +181,12 @@ export async function POST(request: NextRequest) {
       return jsonError(500, "Speichern nach OCR fehlgeschlagen.", "storage_failed");
     }
 
+    void recomputeVehicleMaintenanceSchedules(meta.data.vehicleId);
+
     if (meta.data.tagUuid) {
       revalidatePath(`/v/${meta.data.tagUuid}`);
       revalidatePath(`/v/${meta.data.tagUuid}/dokumente`);
+      revalidatePath(`/v/${meta.data.tagUuid}/intervalle`);
     }
 
     const body: OcrApiSuccess = {
