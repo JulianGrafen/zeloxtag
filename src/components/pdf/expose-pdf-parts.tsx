@@ -1,6 +1,6 @@
 import { Image, Text, View } from "@react-pdf/renderer";
 
-import type { ExposePdfData } from "@/lib/vehicles/expose-pdf/types";
+import type { ExposePdfData, ExposePdfImage } from "@/lib/vehicles/expose-pdf/types";
 
 import { exposePdfStyles as styles } from "./expose-pdf-styles";
 
@@ -54,6 +54,43 @@ export function ExposePdfTrustBadge({ documentCount }: { documentCount: number }
         Verifiziertes ZeloxTag Fahrzeugdossier · {label} fälschungssicher
         erfasst
       </Text>
+    </View>
+  );
+}
+
+export function ExposePdfHeroImage({
+  image,
+  emptyLabel = "Kein Fahrzeugfoto hinterlegt",
+}: {
+  image: ExposePdfImage | null;
+  emptyLabel?: string;
+}) {
+  return (
+    <View style={styles.heroShowcase} wrap={false}>
+      <View style={styles.heroShowcaseMat}>
+        <View style={styles.heroShowcaseInner}>
+          {image ? (
+            <Image src={image.dataUri} style={styles.heroShowcaseImage} />
+          ) : (
+            <Text style={styles.heroPlaceholder}>{emptyLabel}</Text>
+          )}
+        </View>
+      </View>
+      {image ? (
+        <Text style={styles.heroCaption}>Fahrzeugabbildung · Digital Twin</Text>
+      ) : null}
+    </View>
+  );
+}
+
+export function ExposePdfGalleryTile({ photo }: { photo: ExposePdfImage }) {
+  return (
+    <View style={styles.galleryTile} wrap={false}>
+      <View style={styles.photoMat}>
+        <View style={styles.photoMatInner}>
+          <Image src={photo.dataUri} style={styles.galleryTileImage} />
+        </View>
+      </View>
     </View>
   );
 }

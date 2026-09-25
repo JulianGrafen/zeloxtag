@@ -66,25 +66,64 @@ export const exposePdfStyles = StyleSheet.create({
   coverSubtitle: {
     fontSize: 9,
     color: exposeColors.textMuted,
-    marginBottom: 14,
+    marginBottom: 12,
     lineHeight: 1.4,
   },
-  heroFrame: {
+  heroShowcase: {
     width: "100%",
-    height: 200,
-    backgroundColor: exposeColors.card,
+    marginBottom: 16,
+  },
+  heroShowcaseMat: {
+    backgroundColor: "#e3dfd6",
+    borderRadius: 14,
+    padding: 5,
     borderWidth: 1,
-    borderColor: exposeColors.border,
+    borderColor: "#d4cfc4",
+  },
+  heroShowcaseInner: {
+    backgroundColor: "#faf8f5",
     borderRadius: 10,
-    marginBottom: 14,
-    overflow: "hidden",
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    minHeight: 252,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ebe6de",
   },
-  heroImage: {
-    width: "92%",
-    height: "88%",
+  heroShowcaseImage: {
+    width: "100%",
+    height: 228,
     objectFit: "contain",
+  },
+  heroCaption: {
+    fontSize: 6.5,
+    fontFamily: exposePdfFontFamilies.bodyMedium,
+    color: exposeColors.textMuted,
+    textAlign: "center",
+    marginTop: 7,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
+  },
+  heroPlaceholder: {
+    fontSize: 9,
+    color: exposeColors.textMuted,
+    textAlign: "center",
+    paddingHorizontal: 12,
+  },
+  photoMat: {
+    backgroundColor: "#e3dfd6",
+    borderRadius: 10,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: "#d4cfc4",
+  },
+  photoMatInner: {
+    backgroundColor: "#faf8f5",
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: "#ebe6de",
+    overflow: "hidden",
   },
   trustBadge: {
     backgroundColor: exposeColors.trustBg,
@@ -310,17 +349,22 @@ export const exposePdfStyles = StyleSheet.create({
   galleryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
     marginBottom: 16,
   },
-  galleryItem: {
+  galleryTile: {
     width: "48%",
-    height: 120,
-    borderRadius: 8,
+  },
+  galleryTileImage: {
+    width: "100%",
+    height: 124,
     objectFit: "cover",
-    backgroundColor: exposeColors.border,
-    borderWidth: 1,
-    borderColor: exposeColors.border,
+  },
+  galleryTileImageContain: {
+    width: "100%",
+    height: 124,
+    objectFit: "contain",
+    padding: 6,
   },
   dynoCard: {
     backgroundColor: exposeColors.card,
@@ -335,10 +379,14 @@ export const exposePdfStyles = StyleSheet.create({
     color: exposeColors.textMuted,
     marginBottom: 8,
   },
+  dynoImageFrame: {
+    marginTop: 4,
+  },
   dynoImage: {
     width: "100%",
-    height: 170,
+    height: 178,
     objectFit: "contain",
+    padding: 8,
   },
   totalCard: {
     flexDirection: "row",

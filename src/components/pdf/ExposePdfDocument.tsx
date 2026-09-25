@@ -15,6 +15,8 @@ import type { ExposePdfData } from "@/lib/vehicles/expose-pdf/types";
 
 import {
   ExposePdfChipRow,
+  ExposePdfGalleryTile,
+  ExposePdfHeroImage,
   ExposePdfInnerHeader,
   ExposePdfPageFooter,
   ExposePdfTrustBadge,
@@ -72,20 +74,14 @@ function CoverPage({ data }: { data: ExposePdfData }) {
         <Text style={styles.coverBrandTagline}>Verkaufsexposé</Text>
       </View>
 
+      <ExposePdfHeroImage image={data.heroImage} />
+
       <Text style={styles.eyebrow}>Verkaufsexposé</Text>
       <Text style={styles.coverTitle}>{data.vehicleTitle}</Text>
       {factsLine ? (
         <Text style={styles.coverFactsLine}>{factsLine}</Text>
       ) : null}
       <Text style={styles.coverSubtitle}>{data.vehicleSubtitle}</Text>
-
-      <View style={styles.heroFrame}>
-        {data.heroImage ? (
-          <Image src={data.heroImage.dataUri} style={styles.heroImage} />
-        ) : (
-          <Text style={styles.muted}>Kein Fahrzeugfoto hinterlegt</Text>
-        )}
-      </View>
 
       <ExposePdfTrustBadge documentCount={data.documentCount} />
       <ExposePdfChipRow labels={data.buildPersonalityLabels} />
@@ -379,11 +375,7 @@ function GalleryPage({ data }: { data: ExposePdfData }) {
       ) : (
         <View style={styles.galleryGrid} wrap={false}>
           {data.galleryImages.map((photo) => (
-            <Image
-              key={photo.id}
-              src={photo.dataUri}
-              style={styles.galleryItem}
-            />
+            <ExposePdfGalleryTile key={photo.id} photo={photo} />
           ))}
         </View>
       )}
@@ -394,7 +386,16 @@ function GalleryPage({ data }: { data: ExposePdfData }) {
           <Text style={styles.dynoCaption}>
             Leistung und Drehmoment — dokumentiertes Dyno-Chart
           </Text>
-          <Image src={data.dynoChartImage.dataUri} style={styles.dynoImage} />
+          <View style={styles.dynoImageFrame}>
+            <View style={styles.photoMat}>
+              <View style={styles.photoMatInner}>
+                <Image
+                  src={data.dynoChartImage.dataUri}
+                  style={styles.dynoImage}
+                />
+              </View>
+            </View>
+          </View>
         </View>
       ) : (
         <Text style={styles.emptyState}>
