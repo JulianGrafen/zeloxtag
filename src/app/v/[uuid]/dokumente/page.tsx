@@ -89,6 +89,7 @@ export default async function VehicleDocumentsPage({
         !isDemoShowcase && access.canWriteInvoices && membershipActive
       }
       canScan={!isDemoShowcase && access.canWriteInvoices}
+      canViewCostOverview={isDemoShowcase || membershipActive}
     />
   );
 }

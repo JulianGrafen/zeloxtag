@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 
 import { VehicleCostOverviewView } from "@/components/documents/vehicle-cost-overview-view";
+import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
 import { buildVehicleCostOverview } from "@/lib/documents/cost-overview";
+import { FEATURE } from "@/lib/permissions/feature-access";
 
 interface CostOverviewPageProps {
   params: Promise<{ uuid: string }>;
@@ -19,7 +21,7 @@ export default async function VehicleCostOverviewPage({
   params,
 }: CostOverviewPageProps) {
   const { uuid } = await params;
-  const { result, access } = await requireTagWriter(uuid, {
+  const { result, access, isDemoShowcase } = await requireTagWriter(uuid, {
     loginNext: `/v/${uuid}/dokumente/kosten`,
     load: {
       documents: {
@@ -40,11 +42,18 @@ export default async function VehicleCostOverviewPage({
   const vehicleModel =
     `${vehicle.make} ${vehicle.model}`.trim() || vehicle.model;
 
-  return (
-    <VehicleCostOverviewView
-      tagUuid={result.tag.uuid}
-      vehicleModel={vehicleModel}
-      overview={overview}
-    />
-  );
+  return wrapProFeature({
+    isDemo: isDemoShowcase,
+    ownerUserId: vehicle.user_id,
+    tagUuid: result.tag.uuid,
+    feature: FEATURE.VIEW_COST_OVERVIEW,
+    isContributor: access.isContributor && !access.isOwner,
+    children: (
+      <VehicleCostOverviewView
+        tagUuid={result.tag.uuid}
+        vehicleModel={vehicleModel}
+        overview={overview}
+      />
+    ),
+  });
 }

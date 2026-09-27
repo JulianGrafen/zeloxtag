@@ -115,7 +115,7 @@ export function ProductFeaturesBanner({
                 className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-accent)]/40 underline-offset-2 hover:decoration-[color:var(--vd-accent)]"
                 onClick={() => dismiss(true)}
               >
-                Kostenübersicht
+                Kostenübersicht (Pro)
               </Link>
               {" — "}
               Investition, Umbau- und Wartungskosten aus deinen Belegen.

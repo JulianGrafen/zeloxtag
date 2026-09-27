@@ -30,8 +30,10 @@ describe("hasFeatureAccess", () => {
     expect(hasFeatureAccess("free", FEATURE.VIEW_DOCUMENT_VAULT)).toBe(true);
     expect(hasFeatureAccess("free", FEATURE.GENERATE_EXPOSE)).toBe(false);
     expect(hasFeatureAccess("free", FEATURE.INVITE_SCHRAUBER)).toBe(false);
+    expect(hasFeatureAccess("free", FEATURE.VIEW_COST_OVERVIEW)).toBe(false);
 
     expect(hasFeatureAccess("pro", FEATURE.SCAN_AI_RECEIPT)).toBe(true);
+    expect(hasFeatureAccess("pro", FEATURE.VIEW_COST_OVERVIEW)).toBe(true);
     expect(hasFeatureAccess("pro", FEATURE.DOCUMENT_VAULT)).toBe(true);
     expect(hasFeatureAccess("pro", FEATURE.VIEW_DOCUMENT_VAULT)).toBe(true);
     expect(hasFeatureAccess("pro", FEATURE.GENERATE_EXPOSE)).toBe(true);

@@ -12,5 +12,6 @@ describe("ProFeatureGate policy", () => {
   it("still gates vault writes and AI scan on Pro", () => {
     expect(isProOnlyFeature(FEATURE.DOCUMENT_VAULT)).toBe(true);
     expect(isProOnlyFeature(FEATURE.SCAN_AI_RECEIPT)).toBe(true);
+    expect(isProOnlyFeature(FEATURE.VIEW_COST_OVERVIEW)).toBe(true);
   });
 });
