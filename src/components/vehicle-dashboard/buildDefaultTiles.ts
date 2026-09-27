@@ -78,6 +78,17 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       meta: oilChangeMeta(data),
     },
     {
+      id: "fuel-log",
+      title: "Tanken",
+      icon: "fuel",
+    },
+    {
+      id: "operating-costs",
+      title: "Kostenübersicht",
+      icon: "wallet",
+      featured: true,
+    },
+    {
       id: "abe",
       title: "ABE & Gutachten",
       icon: "stamp",

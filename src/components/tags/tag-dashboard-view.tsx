@@ -32,6 +32,10 @@ import {
 } from "@/lib/vehicles/tech-specs";
 import { resolveVehicleCatalogImage, resolveVehicleImage } from "@/lib/vehicles/vehicle-image";
 import {
+  formatMonthlyAverageLabel,
+} from "@/lib/vehicles/operating-costs/summary";
+import type { OperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/types";
+import {
   DEMO_SHOWCASE_VEHICLE_IMAGE,
   isDemoActiveTag,
 } from "@/lib/tags/demo-showcase";
@@ -80,6 +84,8 @@ interface TagDashboardViewProps {
   showcaseSwipeTotalLikes?: number;
   /** One-time neue Features (Swipe, Kostenübersicht). */
   productFeaturesBannerActive?: boolean;
+  /** Owner-only Betriebskosten for dashboard tile subtitles. */
+  operatingCostHint?: OperatingCostDashboardHint | null;
 }
 
 /**
@@ -108,6 +114,7 @@ export function TagDashboardView({
   showcaseSwipeUnreadLikes = 0,
   showcaseSwipeTotalLikes = 0,
   productFeaturesBannerActive = true,
+  operatingCostHint = null,
 }: TagDashboardViewProps) {
   const manualEntryHref = `/v/${tagUuid}/eintrag?neu=1`;
   const scanLocked =
@@ -304,6 +311,36 @@ export function TagDashboardView({
       };
     }
 
+    if (tile.id === "fuel-log") {
+      const fuelSubtitle =
+        operatingCostHint?.lastFuelDateLabel != null
+          ? `Letzter Tank ${operatingCostHint.lastFuelDateLabel}`
+          : operatingCostHint?.fuelEntryCount
+            ? `${operatingCostHint.fuelEntryCount} Tankungen`
+            : "Eintragen";
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: `/v/${tagUuid}/tanken`,
+          subtitle: fuelSubtitle,
+        },
+      };
+    }
+
+    if (tile.id === "operating-costs") {
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: `/v/${tagUuid}/kosten`,
+          subtitle: formatMonthlyAverageLabel(
+            operatingCostHint?.totalMonthlyAverage ?? null,
+          ),
+        },
+      };
+    }
+
     if (tile.id === "schrauber") {
       return {
         ...tile,
@@ -370,6 +407,9 @@ export function TagDashboardView({
   })
     .filter((tile) => {
       if (tile.id === "settings") return isOwner && !demoMode;
+      if (tile.id === "fuel-log" || tile.id === "operating-costs") {
+        return isOwner || demoMode;
+      }
       if (tile.id === "build-discover") return !demoMode && (isOwner || isContributor);
       if (tile.id === "vehicle-settings") return isOwner || demoMode;
       if (tile.id === "schrauber") return isOwner || demoMode;

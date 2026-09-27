@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 export type DashboardTileId =
   | "invoices"
   | "oil-change"
+  | "fuel-log"
+  | "operating-costs"
   | "abe"
   | "tuv"
   | "service"
@@ -29,7 +31,9 @@ export type DashboardIconName =
   | "globe"
   | "users"
   | "grid"
-  | "sparkles";
+  | "sparkles"
+  | "fuel"
+  | "wallet";
 
 export type DashboardTileTone =
   | "default"

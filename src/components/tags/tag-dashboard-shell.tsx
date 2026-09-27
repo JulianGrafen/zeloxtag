@@ -45,6 +45,7 @@ import {
   resetDashboardPromptOrchestrator,
   setDashboardPromptPhase,
 } from "@/lib/ui/dashboard-prompt-orchestrator";
+import type { OperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/types";
 import type { Document, Vehicle } from "@/types/database";
 
 import {
@@ -158,6 +159,7 @@ interface TagDashboardShellProps {
   accountDeletionGraceEndsAt?: string | null;
   showcaseSwipeUnreadLikes?: number;
   showcaseSwipeTotalLikes?: number;
+  operatingCostHint?: OperatingCostDashboardHint | null;
 }
 
 /**
@@ -182,6 +184,7 @@ export function TagDashboardShell({
   accountDeletionGraceEndsAt = null,
   showcaseSwipeUnreadLikes = 0,
   showcaseSwipeTotalLikes = 0,
+  operatingCostHint = null,
 }: TagDashboardShellProps) {
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
@@ -763,6 +766,7 @@ export function TagDashboardShell({
         onSilhouetteProxyLoad={handleSilhouetteProxyLoad}
         showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
         showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
+        operatingCostHint={operatingCostHint}
         productFeaturesBannerActive={
           mode === "dashboard" &&
           !showSilhouetteEditor &&

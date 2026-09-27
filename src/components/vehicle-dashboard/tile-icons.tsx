@@ -3,6 +3,7 @@
 import {
   Droplet,
   FileText,
+  Fuel,
   Globe,
   History,
   Images,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   Stamp,
   Users,
+  Wallet,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -34,4 +36,6 @@ export const DASHBOARD_ICONS: Record<DashboardIconName, LucideIcon> = {
   users: Users,
   grid: LayoutGrid,
   sparkles: Sparkles,
+  fuel: Fuel,
+  wallet: Wallet,
 };

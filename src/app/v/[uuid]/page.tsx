@@ -47,6 +47,8 @@ import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import { fetchUserGarage } from "@/lib/garage/fetch-user-garage";
 import { createClient } from "@/lib/supabase/server";
 import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
+import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
+import { buildOperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/summary";
 import type { Vehicle } from "@/types/database";
 
 interface TagScanPageProps {
@@ -350,6 +352,16 @@ export default async function TagScanPage({
         ? await getAccountDeletionState(vehicle.user_id)
         : null;
 
+    let operatingCostHint = null;
+    if (access.isOwner) {
+      try {
+        const operatingCosts = await listOperatingCostsForVehicle(vehicle.id);
+        operatingCostHint = buildOperatingCostDashboardHint(operatingCosts);
+      } catch (error) {
+        console.error("[tag-dashboard] operating costs", error);
+      }
+    }
+
     let showcaseSwipeUnreadLikes = 0;
     let showcaseSwipeTotalLikes = 0;
     if (access.isOwner && user) {
@@ -388,6 +400,7 @@ export default async function TagScanPage({
           }
           showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
           showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
+          operatingCostHint={operatingCostHint}
         />
       </AppShell>
     );

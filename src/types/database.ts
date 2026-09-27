@@ -19,6 +19,26 @@ export type { ApprovalFields };
 export type { VehicleTechSpecs };
 export type { TimelineEventCategory };
 
+export type OperatingCostCategory = "fuel" | "insurance" | "tax" | "other";
+
+export type OperatingCostBillingPeriod = "once" | "monthly" | "yearly";
+
+/** Owner-entered running costs (`00072_vehicle_operating_costs`). */
+export type VehicleOperatingCost = {
+  id: string;
+  vehicle_id: string;
+  user_id: string;
+  category: OperatingCostCategory;
+  amount_eur: number;
+  occurred_on: string;
+  billing_period: OperatingCostBillingPeriod;
+  note: string | null;
+  fuel_liters: number | null;
+  odometer_km: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /** Mileage-ordered Service Timeline row (`00029_vehicle_events`). */
 export type VehicleEvent = {
   id: string;
@@ -567,6 +587,45 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documents_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      vehicle_operating_costs: {
+        Row: VehicleOperatingCost;
+        Insert: {
+          id?: string;
+          vehicle_id: string;
+          user_id: string;
+          category: OperatingCostCategory;
+          amount_eur: number;
+          occurred_on: string;
+          billing_period?: OperatingCostBillingPeriod;
+          note?: string | null;
+          fuel_liters?: number | null;
+          odometer_km?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          vehicle_id?: string;
+          user_id?: string;
+          category?: OperatingCostCategory;
+          amount_eur?: number;
+          occurred_on?: string;
+          billing_period?: OperatingCostBillingPeriod;
+          note?: string | null;
+          fuel_liters?: number | null;
+          odometer_km?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_operating_costs_vehicle_id_fkey";
             columns: ["vehicle_id"];
             referencedRelation: "vehicles";
             referencedColumns: ["id"];
