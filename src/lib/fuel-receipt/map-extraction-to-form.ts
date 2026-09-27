@@ -9,8 +9,12 @@ function formatAmountForInput(value: number): string {
 }
 
 function formatLitersForInput(value: number): string {
-  const rounded = Math.round(value * 100) / 100;
-  return String(rounded).replace(".", ",");
+  const rounded = Math.round(value * 1000) / 1000;
+  const text = rounded.toLocaleString("de-DE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  });
+  return text;
 }
 
 export function mapExtractionToFuelFillForm(

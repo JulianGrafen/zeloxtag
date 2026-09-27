@@ -8,7 +8,18 @@ import {
 } from "./fuel-receipt-schema";
 import type { FuelReceiptExtraction } from "@/lib/fuel-receipt/types";
 
-const OCR_MAX_TOKENS = 120;
+const OCR_MAX_TOKENS = 160;
+
+const FUEL_RECEIPT_SYSTEM_PROMPT =
+  "Du extrahierst Felder von deutschen Tankstellen-Quittungen. " +
+  "Antworte nur mit JSON. Unlesbar → null. " +
+  "Gesamtbetrag = Summe/Brutto/Gesamt in EUR. " +
+  "liter = getankte MENGE in Litern (Zeile Menge, Liter, L) — NICHT der Literpreis (€/L). " +
+  "pricePerLiter = Literpreis in EUR/L falls gedruckt.";
+
+const FUEL_RECEIPT_USER_PROMPT =
+  "Lies diese Tankquittung. Extrahiere Datum (YYYY-MM-DD), Gesamtbetrag EUR, " +
+  "getankte Liter (Volumen) und Literpreis €/L falls vorhanden.";
 
 export class FuelOcrExtractionError extends Error {
   constructor(message: string) {
@@ -45,22 +56,20 @@ export async function extractFuelReceiptFromImage(input: {
       messages: [
         {
           role: "system",
-          content:
-            "Extract fields from a fuel station receipt. Return only JSON schema fields. " +
-            "Use null for unreadable values. Prefer gross total (Summe/Brutto/Gesamt).",
+          content: FUEL_RECEIPT_SYSTEM_PROMPT,
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "Read this fuel receipt and extract date, total amount in EUR, and liters.",
+              text: FUEL_RECEIPT_USER_PROMPT,
             },
             {
               type: "image_url",
               image_url: {
                 url: dataUrl,
-                detail: "low",
+                detail: "high",
               },
             },
           ],

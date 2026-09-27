@@ -11,6 +11,7 @@ describe("fuel-receipt-schema", () => {
       date: "2026-01-15",
       totalAmount: 99.999,
       liters: 40.111,
+      pricePerLiter: null,
     });
     expect(fields.date).toBe("2026-01-15");
     expect(fields.totalAmount).toBe(100);
@@ -23,10 +24,16 @@ describe("fuel-receipt-schema", () => {
         date: "2026-01-01",
         totalAmount: 50,
         liters: null,
+        pricePerLiter: 1.85,
       }),
     ).toBe(true);
-    expect(isFuelReceiptOcrFields({ date: "bad", totalAmount: 1, liters: 1 })).toBe(
-      false,
-    );
+    expect(
+      isFuelReceiptOcrFields({
+        date: "bad",
+        totalAmount: 1,
+        liters: 1,
+        pricePerLiter: null,
+      }),
+    ).toBe(false);
   });
 });

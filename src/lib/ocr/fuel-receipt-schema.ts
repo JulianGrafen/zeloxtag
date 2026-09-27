@@ -1,12 +1,14 @@
 import type { FuelReceiptExtraction } from "@/lib/fuel-receipt/types";
 
+import { reconcileFuelLiters } from "./fuel-receipt-reconcile";
+
 export const FUEL_RECEIPT_OCR_JSON_SCHEMA = {
   name: "fuel_station_receipt_ocr",
   strict: true,
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["date", "totalAmount", "liters"],
+    required: ["date", "totalAmount", "liters", "pricePerLiter"],
     properties: {
       date: {
         type: ["string", "null"],
@@ -19,7 +21,14 @@ export const FUEL_RECEIPT_OCR_JSON_SCHEMA = {
       },
       liters: {
         type: ["number", "null"],
-        description: "Fuel volume in liters, or null if unreadable.",
+        description:
+          "Dispensed fuel VOLUME in liters (Menge, Liter, L, dm³) — not €/L. " +
+          "Example: 42.38 for a fill, not 1.89.",
+      },
+      pricePerLiter: {
+        type: ["number", "null"],
+        description:
+          "Unit price in EUR per liter (Literpreis, €/L, Preis/L) if printed, else null.",
       },
     },
   },
@@ -29,6 +38,7 @@ export type FuelReceiptOcrFields = {
   date: string | null;
   totalAmount: number | null;
   liters: number | null;
+  pricePerLiter: number | null;
 };
 
 export function isFuelReceiptOcrFields(value: unknown): value is FuelReceiptOcrFields {
@@ -44,6 +54,13 @@ export function isFuelReceiptOcrFields(value: unknown): value is FuelReceiptOcrF
     return false;
   }
   if (!(record.liters === null || typeof record.liters === "number")) {
+    return false;
+  }
+  if (
+    !(
+      record.pricePerLiter === null || typeof record.pricePerLiter === "number"
+    )
+  ) {
     return false;
   }
 
@@ -65,6 +82,13 @@ export function isFuelReceiptOcrFields(value: unknown): value is FuelReceiptOcrF
     return false;
   }
 
+  if (
+    typeof record.pricePerLiter === "number" &&
+    !Number.isFinite(record.pricePerLiter)
+  ) {
+    return false;
+  }
+
   return true;
 }
 
@@ -76,10 +100,11 @@ export function normalizeFuelReceiptOcrFields(
       ? Math.round(fields.totalAmount * 100) / 100
       : null;
 
-  const liters =
-    typeof fields.liters === "number" && fields.liters > 0
-      ? Math.round(fields.liters * 100) / 100
-      : null;
+  const liters = reconcileFuelLiters({
+    liters: fields.liters,
+    totalAmount,
+    pricePerLiter: fields.pricePerLiter,
+  });
 
   return {
     date: fields.date,
