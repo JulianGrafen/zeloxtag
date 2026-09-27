@@ -79,6 +79,8 @@ export interface InvoiceCaptureWizardProps {
   scanLabel?: string;
   disabled?: boolean;
   allowPdf?: boolean;
+  /** Gallery / file pick on intro (e.g. fuel receipt upload without opening the camera). */
+  showImageUploadOnIntro?: boolean;
   /** Called when the 2-step scan (or PDF) is complete — files in order: overview, then blocks. */
   onComplete?: (files: File[]) => void;
   /** Single-file fallback (add-page variant). */
@@ -158,6 +160,7 @@ export function InvoiceCaptureWizard({
   scanLabel = "Rechnung",
   disabled = false,
   allowPdf = false,
+  showImageUploadOnIntro = false,
   onComplete,
   onFileSelected,
   variant = "initial",
@@ -207,6 +210,17 @@ export function InvoiceCaptureWizard({
       return;
     }
     onFileSelected?.(file);
+  }
+
+  function handleIntroImageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+    if (isPdfFile(file)) {
+      handlePdfSelected(file);
+      return;
+    }
+    emitComplete([file]);
   }
 
   function handleOverviewCapture(file: File) {
@@ -451,7 +465,13 @@ export function InvoiceCaptureWizard({
         </p>
       </div>
 
-      <div className={allowPdf ? "grid grid-cols-2 gap-2" : "grid grid-cols-1"}>
+      <div
+        className={
+          allowPdf || showImageUploadOnIntro
+            ? "grid grid-cols-2 gap-2"
+            : "grid grid-cols-1"
+        }
+      >
         <button
           type="button"
           disabled={disabled}
@@ -464,6 +484,18 @@ export function InvoiceCaptureWizard({
           <Camera className="h-4 w-4" aria-hidden />
           <span>{cameraButtonLabel}</span>
         </button>
+
+        {showImageUploadOnIntro ? (
+          <FilePickerLabel
+            disabled={disabled}
+            accept={IMAGE_ACCEPT}
+            onChange={handleIntroImageUpload}
+            variant="secondary"
+          >
+            <ImagePlus className="relative z-0 h-4 w-4" aria-hidden />
+            <span className="relative z-0">{imageButtonLabel}</span>
+          </FilePickerLabel>
+        ) : null}
 
         {allowPdf ? (
           <FilePickerLabel

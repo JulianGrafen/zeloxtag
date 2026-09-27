@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowLeft, Fuel, Plus } from "lucide-react";
-import { useState } from "react";
 
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
@@ -9,9 +8,8 @@ import { buildOperatingCostSummary } from "@/lib/vehicles/operating-costs/summar
 import type { VehicleOperatingCost } from "@/types/database";
 
 import { ScanContent } from "@/components/layout/scan-content";
-import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
-import { FuelFillCaptureSheet } from "./fuel-fill-capture-sheet";
 import { OperatingCostEntryList } from "./operating-cost-entry-list";
 
 type VehicleFuelLogViewProps = {
@@ -31,7 +29,6 @@ export function VehicleFuelLogView({
 }: VehicleFuelLogViewProps) {
   const fuelEntries = entries.filter((entry) => entry.category === "fuel");
   const summary = buildOperatingCostSummary(entries);
-  const [sheetOpen, setSheetOpen] = useState(false);
 
   const last = summary.fuelStats.lastFill;
 
@@ -80,22 +77,14 @@ export function VehicleFuelLogView({
       </section>
 
       {!readOnly ? (
-        <PressableButton
-          type="button"
+        <PressableLink
+          href={`/v/${tagUuid}/tanken/erfassen`}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3.5 text-[0.92rem] font-semibold text-white"
-          onClick={() => setSheetOpen(true)}
         >
           <Plus className="h-4 w-4" aria-hidden />
           Tankvorgang hinzufügen
-        </PressableButton>
+        </PressableLink>
       ) : null}
-
-      <FuelFillCaptureSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        tagUuid={tagUuid}
-        vehicleId={vehicleId}
-      />
 
       <section>
         <h2 className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--vd-muted)]">

@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { createOperatingCost } from "@/actions/operating-costs";
+import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import {
   emptyFuelFillFormState,
   mapExtractionToFuelFillForm,
@@ -11,65 +13,126 @@ import { normalizeFuelFillInput } from "@/lib/fuel-receipt/normalize-fuel-fill";
 import { processFuelReceipt } from "@/lib/fuel-receipt/process-fuel-receipt";
 import { FuelReceiptProcessError } from "@/lib/fuel-receipt/types";
 import type { FuelFillFormState } from "@/lib/fuel-receipt/types";
+import { ingestImageFile } from "@/lib/ocr/processor";
+import { DocumentCompressionError } from "@/lib/documents/document-compression";
 
-export type FuelFillScanPhase = "idle" | "scanning" | "error";
+export type FuelReceiptScanStep = "compose" | "extracting" | "review";
 
-type UseFuelFillCaptureOptions = {
-  tagUuid: string;
-  vehicleId: string;
-  open: boolean;
-  onSaved?: () => void;
+export type FuelScanProgress = {
+  label: string;
+  percent: number;
 };
 
-export function useFuelFillCapture({
+type UseFuelReceiptScanOptions = {
+  tagUuid: string;
+  vehicleId: string;
+  backHref: string;
+};
+
+function compressionErrorMessage(error: unknown): string {
+  if (error instanceof DocumentCompressionError) {
+    return error.message;
+  }
+  if (error instanceof FuelReceiptProcessError) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Verarbeitung fehlgeschlagen.";
+}
+
+export function useFuelReceiptScan({
   tagUuid,
   vehicleId,
-  open,
-  onSaved,
-}: UseFuelFillCaptureOptions) {
+  backHref,
+}: UseFuelReceiptScanOptions) {
+  const router = useRouter();
+  const { compressFile, isCompressing } = useDocumentCompression();
+
+  const [step, setStep] = useState<FuelReceiptScanStep>("compose");
   const [form, setForm] = useState<FuelFillFormState>(emptyFuelFillFormState);
-  const [scanPhase, setScanPhase] = useState<FuelFillScanPhase>("idle");
-  const [scanError, setScanError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<FuelScanProgress>({
+    label: "Vorbereitung…",
+    percent: 0,
+  });
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const previewUrlRef = useRef<string | null>(null);
 
-  const reset = useCallback(() => {
-    setForm(emptyFuelFillFormState());
-    setScanPhase("idle");
-    setScanError(null);
-    setSubmitError(null);
+  const revokePreview = useCallback(() => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setPreviewUrl(null);
   }, []);
 
-  useEffect(() => {
-    if (open) {
-      reset();
-    }
-  }, [open, reset]);
+  const resetWizard = useCallback(() => {
+    revokePreview();
+    setForm(emptyFuelFillFormState());
+    setStep("compose");
+    setProgress({ label: "Vorbereitung…", percent: 0 });
+    setError(null);
+    setSubmitError(null);
+  }, [revokePreview]);
 
-  const scanReceipt = useCallback(
-    async (file: File) => {
-      setScanPhase("scanning");
-      setScanError(null);
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
+    };
+  }, []);
+
+  const completeCapture = useCallback(
+    async (files: File[]) => {
+      const file = files[0];
+      if (!file) {
+        setError("Bitte ein Foto der Tankquittung wählen.");
+        return;
+      }
+
+      setError(null);
+      setStep("extracting");
+      setProgress({ label: "Vorbereitung…", percent: 8 });
+
       try {
+        const compressed = await compressFile(file);
+        setProgress({ label: "Seite zuschneiden…", percent: 32 });
+
+        const page = await ingestImageFile(compressed.file);
+        revokePreview();
+        previewUrlRef.current = page.previewUrl;
+        setPreviewUrl(page.previewUrl);
+
+        setProgress({ label: "Beleg analysieren…", percent: 58 });
+        const ocrFile = new File(
+          [page.blob],
+          page.sourceName || "tankbeleg.jpg",
+          {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          },
+        );
+
         const extraction = await processFuelReceipt({
-          file,
+          file: ocrFile,
           vehicleId,
           tagUuid,
         });
+
+        setProgress({ label: "Fertig", percent: 100 });
         setForm((current) => mapExtractionToFuelFillForm(extraction, current));
-        setScanPhase("idle");
-      } catch (error) {
-        setScanPhase("error");
-        if (error instanceof FuelReceiptProcessError) {
-          setScanError(error.message);
-        } else if (error instanceof Error) {
-          setScanError(error.message);
-        } else {
-          setScanError("Beleg konnte nicht analysiert werden.");
-        }
+        setStep("review");
+      } catch (captureError) {
+        setStep("compose");
+        setError(compressionErrorMessage(captureError));
       }
     },
-    [tagUuid, vehicleId],
+    [compressFile, revokePreview, tagUuid, vehicleId],
   );
 
   const submit = useCallback(() => {
@@ -98,20 +161,25 @@ export function useFuelFillCapture({
         setSubmitError(result.message);
         return;
       }
-      onSaved?.();
+
+      const separator = backHref.includes("?") ? "&" : "?";
+      router.push(`${backHref}${separator}saved=1`);
+      router.refresh();
     });
-  }, [form, onSaved, tagUuid, vehicleId]);
+  }, [backHref, form, router, tagUuid, vehicleId]);
 
   return {
+    step,
     form,
     setForm,
-    scanPhase,
-    scanError,
+    progress,
+    previewUrl,
+    error,
     submitError,
     pending,
-    scanReceipt,
+    isCompressing,
+    completeCapture,
     submit,
-    reset,
-    isScanning: scanPhase === "scanning",
+    resetWizard,
   };
 }

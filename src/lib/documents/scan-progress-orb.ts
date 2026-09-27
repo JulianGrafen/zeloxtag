@@ -34,3 +34,13 @@ export function activeInvoiceExtractStepIndex(percent: number): number {
   if (percent >= 55) return 1;
   return 0;
 }
+
+export const FUEL_EXTRACT_STEPS = [
+  "Vorbereiten",
+  "Erkennen",
+  "Fertig",
+] as const;
+
+export function activeFuelExtractStepIndex(percent: number): number {
+  return activeInvoiceExtractStepIndex(percent);
+}
