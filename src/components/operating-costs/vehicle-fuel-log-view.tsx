@@ -1,9 +1,8 @@
 "use client";
 
 import { ArrowLeft, Fuel, Plus } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
-import { createOperatingCost } from "@/actions/operating-costs";
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import { buildOperatingCostSummary } from "@/lib/vehicles/operating-costs/summary";
@@ -12,10 +11,7 @@ import type { VehicleOperatingCost } from "@/types/database";
 import { ScanContent } from "@/components/layout/scan-content";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
-import {
-  emptyOperatingCostForm,
-  OperatingCostFormFields,
-} from "./operating-cost-form-fields";
+import { FuelFillCaptureSheet } from "./fuel-fill-capture-sheet";
 import { OperatingCostEntryList } from "./operating-cost-entry-list";
 
 type VehicleFuelLogViewProps = {
@@ -35,10 +31,7 @@ export function VehicleFuelLogView({
 }: VehicleFuelLogViewProps) {
   const fuelEntries = entries.filter((entry) => entry.category === "fuel");
   const summary = buildOperatingCostSummary(entries);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(emptyOperatingCostForm("fuel"));
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const last = summary.fuelStats.lastFill;
 
@@ -86,64 +79,23 @@ export function VehicleFuelLogView({
         </div>
       </section>
 
-      {!readOnly && !showForm ? (
+      {!readOnly ? (
         <PressableButton
           type="button"
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3.5 text-[0.92rem] font-semibold text-white"
-          onClick={() => setShowForm(true)}
+          onClick={() => setSheetOpen(true)}
         >
           <Plus className="h-4 w-4" aria-hidden />
-          Tankung eintragen
+          Tankvorgang hinzufügen
         </PressableButton>
       ) : null}
 
-      {!readOnly && showForm ? (
-        <form
-          className="space-y-4 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setError(null);
-            startTransition(async () => {
-              const result = await createOperatingCost({
-                tagUuid,
-                vehicleId,
-                form: { ...form, category: "fuel", billingPeriod: "once" },
-              });
-              if (result.status === "error") {
-                setError(result.message);
-                return;
-              }
-              setShowForm(false);
-              setForm(emptyOperatingCostForm("fuel"));
-            });
-          }}
-        >
-          <OperatingCostFormFields
-            value={{ ...form, category: "fuel", billingPeriod: "once" }}
-            onChange={setForm}
-            lockCategory
-          />
-          {error ? (
-            <p className="text-sm text-red-600" role="alert">{error}</p>
-          ) : null}
-          <div className="flex gap-2">
-            <PressableButton
-              type="button"
-              className="flex-1 rounded-2xl border border-[color:var(--vd-border)] py-3 text-[0.88rem] font-semibold"
-              onClick={() => setShowForm(false)}
-            >
-              Abbrechen
-            </PressableButton>
-            <PressableButton
-              type="submit"
-              disabled={pending}
-              className="flex-1 rounded-2xl bg-neutral-950 py-3 text-[0.88rem] font-semibold text-white"
-            >
-              {pending ? "Speichern…" : "Speichern"}
-            </PressableButton>
-          </div>
-        </form>
-      ) : null}
+      <FuelFillCaptureSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        tagUuid={tagUuid}
+        vehicleId={vehicleId}
+      />
 
       <section>
         <h2 className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--vd-muted)]">

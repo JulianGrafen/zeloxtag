@@ -78,6 +78,10 @@ export function normalizeOperatingCostInput(
   const odometerKm =
     category === "fuel" ? parseOptionalKm(input.odometerKm) : null;
 
+  if (category === "fuel" && odometerKm == null) {
+    return { ok: false, message: "Bitte den Kilometerstand eingeben." };
+  }
+
   const note = input.note?.trim() || null;
 
   return {

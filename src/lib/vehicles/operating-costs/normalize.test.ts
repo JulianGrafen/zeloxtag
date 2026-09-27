@@ -20,6 +20,16 @@ describe("normalizeOperatingCostInput", () => {
     }
   });
 
+  it("rejects fuel without odometer", () => {
+    const result = normalizeOperatingCostInput({
+      category: "fuel",
+      amountEur: "50",
+      occurredOn: "2026-05-01",
+      billingPeriod: "once",
+    });
+    expect(result.ok).toBe(false);
+  });
+
   it("rejects yearly billing on fuel", () => {
     const result = normalizeOperatingCostInput({
       category: "fuel",
