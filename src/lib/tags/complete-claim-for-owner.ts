@@ -47,7 +47,12 @@ export async function completeClaimForOwner(
   ownerUserId: string,
   claim: PendingClaim,
 ): Promise<
-  | { status: "claimed"; tagUuid: string; nextTagUuid: string | null }
+  | {
+      status: "claimed";
+      tagUuid: string;
+      vehicleId: string;
+      nextTagUuid: string | null;
+    }
   | { status: "error"; message: string }
 > {
   const { isConfigured } = getSupabaseEnv();
@@ -96,6 +101,17 @@ export async function completeClaimForOwner(
 
   await applyClaimTechSpecs(claim.tagUuid, claim.techSpecs);
 
+  const { data: tagRow, error: tagLookupError } = await supabase
+    .from("tags")
+    .select("vehicle_id")
+    .eq("uuid", claim.tagUuid)
+    .maybeSingle();
+
+  if (tagLookupError || !tagRow?.vehicle_id) {
+    logServerError("[claim] vehicle id lookup failed", tagLookupError);
+    return { status: "error", message: CLAIM_UNAVAILABLE_MESSAGE };
+  }
+
   const ownerEmail = (user.email ?? claim.email).trim().toLowerCase();
   if (ownerEmail.includes("@")) {
     void notifyTagActivatedProNudge({
@@ -108,6 +124,7 @@ export async function completeClaimForOwner(
   return {
     status: "claimed",
     tagUuid: claim.tagUuid,
+    vehicleId: tagRow.vehicle_id,
     nextTagUuid: null,
   };
 }

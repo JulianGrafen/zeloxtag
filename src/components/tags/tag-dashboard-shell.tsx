@@ -54,6 +54,13 @@ import {
   readPrimaryGoal,
   type ZeloxPrimaryGoal,
 } from "@/lib/onboarding/primary-goal";
+import {
+  clearOnboardingVehiclePhotoSkipped,
+  clearPendingOnboardingVehiclePhoto,
+  readOnboardingVehiclePhotoSkipped,
+  readPendingOnboardingVehiclePhoto,
+} from "@/lib/onboarding/pending-onboarding-vehicle-photo";
+import { uploadVehiclePhotoClient } from "@/lib/vehicles/upload-vehicle-photo-client";
 
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
 import { TagDashboardView } from "./tag-dashboard-view";
@@ -280,6 +287,38 @@ export function TagDashboardShell({
   useEffect(() => {
     setPortalReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!isOwner || demoShowcase) return;
+    let cancelled = false;
+
+    void (async () => {
+      if (readOnboardingVehiclePhotoSkipped()) {
+        persistSilhouetteSkipped(vehicle.id);
+        clearOnboardingVehiclePhotoSkipped();
+      }
+
+      const pendingFile = await readPendingOnboardingVehiclePhoto();
+      if (!pendingFile || cancelled) return;
+
+      try {
+        const uploaded = await uploadVehiclePhotoClient({
+          vehicleId: vehicle.id,
+          tagUuid: tagUuid?.trim() || undefined,
+          file: pendingFile,
+        });
+        clearPendingOnboardingVehiclePhoto();
+        handleSilhouetteUploaded(uploaded);
+      } catch {
+        /* keep pending for a later visit */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per vehicle mount
+  }, [vehicle.id, isOwner, demoShowcase, tagUuid]);
 
   useEffect(() => {
     setPrimaryGoal(readPrimaryGoal());

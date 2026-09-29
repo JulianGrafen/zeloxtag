@@ -6,6 +6,7 @@ export type ClaimWizardStep =
   | "drivetrain"
   | "oilInterval"
   | "buildPersonality"
+  | "vehiclePhoto"
   | "preferences"
   | "account";
 
@@ -16,6 +17,7 @@ const VEHICLE_STEPS: ClaimWizardStep[] = [
   "drivetrain",
   "oilInterval",
   "buildPersonality",
+  "vehiclePhoto",
   "preferences",
 ];
 

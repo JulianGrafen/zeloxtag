@@ -20,6 +20,7 @@ const STEP_LABELS: Partial<Record<ClaimWizardStep, string>> = {
   drivetrain: "Antrieb",
   oilInterval: "Service",
   buildPersonality: "Vibes",
+  vehiclePhoto: "Foto",
   preferences: "Präferenzen",
   account: "Konto",
 };

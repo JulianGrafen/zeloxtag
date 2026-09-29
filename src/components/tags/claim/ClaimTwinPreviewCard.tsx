@@ -15,6 +15,7 @@ type ClaimTwinPreviewCardProps = {
   model: string;
   year: string;
   personalityTags: readonly BuildPersonalityChipId[];
+  photoPreviewUrl?: string | null;
 };
 
 export function ClaimTwinPreviewCard({
@@ -22,13 +23,15 @@ export function ClaimTwinPreviewCard({
   model,
   year,
   personalityTags,
+  photoPreviewUrl = null,
 }: ClaimTwinPreviewCardProps) {
   const motionConfig = useClaimMotion();
   const title = formatPublicVehicleTitle(make.trim(), model.trim());
   const hasTitle = Boolean(title);
   const yearLabel = year.trim() ? year.trim() : null;
+  const hasPhoto = Boolean(photoPreviewUrl?.trim());
 
-  if (!hasTitle && !yearLabel) {
+  if (!hasTitle && !yearLabel && !hasPhoto) {
     return null;
   }
 
@@ -45,8 +48,25 @@ export function ClaimTwinPreviewCard({
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
     >
       <p className="claim-twin-preview__kicker">So sehen andere dein Fahrzeug</p>
-      <div className="claim-twin-preview__card">
-        <div className="claim-twin-preview__silhouette" aria-hidden />
+      <div
+        className={
+          hasPhoto
+            ? "claim-twin-preview__card claim-twin-preview__card--with-photo"
+            : "claim-twin-preview__card"
+        }
+      >
+        {hasPhoto ? (
+          <div className="claim-twin-preview__photo-frame">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photoPreviewUrl!}
+              alt="Dein Fahrzeugfoto"
+              className="claim-twin-preview__photo"
+            />
+          </div>
+        ) : (
+          <div className="claim-twin-preview__silhouette" aria-hidden />
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
             {displayTitle}

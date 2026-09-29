@@ -1030,6 +1030,30 @@ nextjs-portal {
   box-shadow: var(--vd-shadow-sm);
 }
 
+.claim-twin-preview__card--with-photo {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+  padding: 0.65rem;
+}
+
+.claim-twin-preview__photo-frame {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.65rem;
+  border: 1px solid var(--vd-border);
+  background: var(--vd-surface-elevated);
+  aspect-ratio: 16 / 10;
+}
+
+.claim-twin-preview__photo {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
 .claim-twin-preview__silhouette {
   height: 2.75rem;
   width: 4.5rem;

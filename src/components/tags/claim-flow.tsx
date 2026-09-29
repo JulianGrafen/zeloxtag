@@ -23,6 +23,15 @@ import { AuthLegalConsentNotice } from "@/components/legal/auth-legal-consent-no
 import { ClaimTwinPreviewCard } from "@/components/tags/claim/ClaimTwinPreviewCard";
 import { BuildPersonalityChipPicker } from "@/components/tags/claim/BuildPersonalityChipPicker";
 import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
+import { ClaimVehiclePhotoPicker } from "@/components/tags/claim/ClaimVehiclePhotoPicker";
+import {
+  clearOnboardingVehiclePhotoSkipped,
+  clearPendingOnboardingVehiclePhoto,
+  markOnboardingVehiclePhotoSkipped,
+  storePendingOnboardingVehiclePhoto,
+} from "@/lib/onboarding/pending-onboarding-vehicle-photo";
+import { writeSilhouettePreviewToSession } from "@/lib/vehicles/silhouette-preview-session";
+import { uploadVehiclePhotoClient } from "@/lib/vehicles/upload-vehicle-photo-client";
 import type { BuildPersonalityChipId } from "@/lib/vehicles/build-personality-chips";
 import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
 import { formatMileageKmNumber } from "@/lib/documents/format";
@@ -81,6 +90,11 @@ export function ClaimFlow({
   const [buildPersonalityTags, setBuildPersonalityTags] = useState<
     BuildPersonalityChipId[]
   >([]);
+  const [vehiclePhotoFile, setVehiclePhotoFile] = useState<File | null>(null);
+  const [vehiclePhotoPreview, setVehiclePhotoPreview] = useState<string | null>(
+    null,
+  );
+  const [vehiclePhotoSkipped, setVehiclePhotoSkipped] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -171,6 +185,42 @@ export function ClaimFlow({
       }
     : {};
 
+  async function applyOnboardingVehiclePhoto(
+    vehicleId: string,
+    linkedTagUuid?: string,
+  ) {
+    if (vehiclePhotoFile) {
+      try {
+        const uploaded = await uploadVehiclePhotoClient({
+          vehicleId,
+          tagUuid: linkedTagUuid,
+          file: vehiclePhotoFile,
+        });
+        if (uploaded.previewDataUrl?.startsWith("data:image/")) {
+          writeSilhouettePreviewToSession(vehicleId, uploaded.previewDataUrl);
+        }
+        clearPendingOnboardingVehiclePhoto();
+        clearOnboardingVehiclePhotoSkipped();
+      } catch {
+        await storePendingOnboardingVehiclePhoto(vehiclePhotoFile);
+      }
+      return;
+    }
+    if (vehiclePhotoSkipped) {
+      markOnboardingVehiclePhotoSkipped();
+    }
+  }
+
+  async function persistPhotoForDeferredSignup() {
+    if (vehiclePhotoFile) {
+      await storePendingOnboardingVehiclePhoto(vehiclePhotoFile);
+      return;
+    }
+    if (vehiclePhotoSkipped) {
+      markOnboardingVehiclePhotoSkipped();
+    }
+  }
+
   function submitClaim() {
     setError(null);
     setInfo(null);
@@ -217,8 +267,22 @@ export function ClaimFlow({
         }
 
         if (result.status === "confirm_email") {
+          await persistPhotoForDeferredSignup();
           setInfo(result.message);
           return;
+        }
+
+        if (result.status === "continue") {
+          const vehicleId =
+            "vehicleId" in result && typeof result.vehicleId === "string"
+              ? result.vehicleId
+              : null;
+          if (vehicleId) {
+            await applyOnboardingVehiclePhoto(
+              vehicleId,
+              isDigital ? undefined : tagUuid,
+            );
+          }
         }
 
         window.location.assign(result.href);
@@ -234,8 +298,8 @@ export function ClaimFlow({
 
   const finishLabel = isDigital
     ? pending
-      ? "Garage wird angelegt…"
-      : "Garage starten"
+      ? "Wird angelegt…"
+      : "Zu deinem Build"
     : pending
       ? "Verknüpfen…"
       : "Tag aktivieren";
@@ -254,6 +318,7 @@ export function ClaimFlow({
           model={model}
           year={year}
           personalityTags={buildPersonalityTags}
+          photoPreviewUrl={vehiclePhotoPreview}
         />
       ) : null}
 
@@ -511,13 +576,62 @@ export function ClaimFlow({
               onSubmit={(event) => {
                 event.preventDefault();
                 setError(null);
-                advance("preferences");
+                advance("vehiclePhoto");
               }}
             >
               <BuildPersonalityChipPicker
                 selected={buildPersonalityTags}
                 onChange={setBuildPersonalityTags}
               />
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel="Weiter"
+                submitIcon="next"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
+
+        {step === "vehiclePhoto" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("vehiclePhoto")}
+            title="Fahrzeugfoto"
+            copy="Zeig dein Auto im Dashboard — ein Foto aus Galerie oder Kamera reicht. Du kannst es auch gleich überspringen."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                setVehiclePhotoSkipped(false);
+                advance("preferences");
+              }}
+            >
+              <ClaimVehiclePhotoPicker
+                previewUrl={vehiclePhotoPreview}
+                onPreviewChange={setVehiclePhotoPreview}
+                onFileChange={(file) => {
+                  setVehiclePhotoFile(file);
+                  if (file) setVehiclePhotoSkipped(false);
+                }}
+                disabled={pending}
+              />
+              <button
+                type="button"
+                className="text-center text-[0.8rem] text-[color:var(--vd-muted)] underline-offset-2 hover:underline"
+                disabled={pending}
+                onClick={() => {
+                  setVehiclePhotoFile(null);
+                  setVehiclePhotoPreview(null);
+                  setVehiclePhotoSkipped(true);
+                  advance("preferences");
+                }}
+              >
+                Später — ohne Foto fortfahren
+              </button>
               <ClaimSlideActions
                 error={error}
                 pending={pending}
@@ -645,7 +759,7 @@ export function ClaimFlow({
                   pending
                     ? "Konto wird angelegt…"
                     : isDigital
-                      ? "Konto anlegen & Garage starten"
+                      ? "Konto anlegen & zu deinem Build"
                       : "Konto anlegen & starten"
                 }
                 submitIcon="check"

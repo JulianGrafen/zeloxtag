@@ -46,7 +46,12 @@ export type ClaimTagInput = {
 export type ClaimTagResult =
   | { status: "error"; message: string }
   | { status: "confirm_email"; message: string }
-  | { status: "continue"; href: string; nextTagUuid: string | null };
+  | {
+      status: "continue";
+      href: string;
+      nextTagUuid: string | null;
+      vehicleId: string;
+    };
 
 type NormalizedClaim = PendingClaim & {
   password: string | null;
@@ -153,6 +158,7 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
       status: "continue",
       href: dashboardAfterClaimHref(MOCK_TAG_UUIDS.active, true),
       nextTagUuid: null,
+      vehicleId: "00000000-0000-4000-8000-000000000001",
     };
   }
 
@@ -233,6 +239,7 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
       status: "continue",
       href: dashboardAfterClaimHref(result.tagUuid, runDashboardOnboarding),
       nextTagUuid: result.nextTagUuid,
+      vehicleId: result.vehicleId,
     };
   } catch (error) {
     logServerError("[claim-tag] unexpected", error);
