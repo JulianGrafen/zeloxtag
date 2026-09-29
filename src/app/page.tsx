@@ -45,7 +45,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <AppShell showNavbar={false}>
       <LoginForm
-        nextPath={next && next !== "/" ? next : "/auth/continue"}
+        nextPath={
+          next && next !== "/"
+            ? next
+            : tab === "signup"
+              ? "/onboarding/fahrzeug"
+              : "/auth/continue"
+        }
         initialError={mapLoginQueryError(error)}
         recovered={recovered === "1"}
         initialTab={tab === "signup" ? "signup" : "password"}

@@ -21,6 +21,7 @@ import {
   signUpWithPassword,
   type AuthActionResult,
 } from "@/lib/auth/actions";
+import { DIGITAL_GARAGE_POST_SIGNUP_HINT } from "@/lib/onboarding/digital-garage-register-copy";
 import { cn } from "@/lib/utils";
 
 type AuthTab = "password" | "signup";
@@ -31,6 +32,10 @@ interface LoginFormProps {
   /** Shown after MFA recovery code disabled 2FA. */
   recovered?: boolean;
   initialTab?: AuthTab;
+  /** Digital-garage register page — signup-focused copy & hints. */
+  mode?: "default" | "digitalGarage";
+  /** Hide tab switcher (e.g. dedicated /register). */
+  lockTab?: AuthTab;
 }
 
 const AUTH_FIELD_CLASS = "min-h-11 w-full";
@@ -72,9 +77,11 @@ export function LoginForm({
   initialError,
   recovered = false,
   initialTab = "password",
+  mode = "default",
+  lockTab,
 }: LoginFormProps) {
   const router = useRouter();
-  const [tab, setTab] = useState<AuthTab>(initialTab);
+  const [tab, setTab] = useState<AuthTab>(lockTab ?? initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(initialError ?? null);
@@ -86,54 +93,71 @@ export function LoginForm({
   const [pending, startTransition] = useTransition();
 
   const isSignup = tab === "signup";
+  const isDigitalGarage = mode === "digitalGarage";
+  const showTabSwitcher = !lockTab;
 
-  return (
-    <ScanContent className="mx-auto w-full max-w-md gap-4 overflow-x-clip pb-12 px-0 pt-0 sm:px-0">
-      <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--soft -mt-[max(1.25rem,env(safe-area-inset-top))]">
-        <ZeloxBrandFadeBanner />
-      </div>
+  const shell = (
+    <>
+      {!isDigitalGarage ? (
+        <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--soft -mt-[max(1.25rem,env(safe-area-inset-top))]">
+          <ZeloxBrandFadeBanner />
+        </div>
+      ) : null}
 
-      <Card className="relative z-10 mx-4 mt-0 w-[calc(100%-2rem)] overflow-hidden sm:mx-auto sm:w-full">
+      <Card
+        className={cn(
+          "relative z-10 overflow-hidden",
+          isDigitalGarage
+            ? "w-full border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]"
+            : "mx-4 mt-0 w-[calc(100%-2rem)] sm:mx-auto sm:w-full",
+        )}
+      >
         <CardHeader className="sr-only">
           <CardTitle>Anmelden bei ZeloxTag</CardTitle>
         </CardHeader>
 
-        <CardContent className="pt-6">
-          <div
-            className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1"
-            role="tablist"
-            aria-label="Anmeldung oder Registrierung"
-          >
-            {(
-              [
-                { id: "password" as const, label: "Anmelden" },
-                { id: "signup" as const, label: "Registrieren" },
-              ] as const
-            ).map(({ id, label }) => {
-              const selected = tab === id;
-              return (
-                <Button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  variant={selected ? "default" : "ghost"}
-                  size="sm"
-                  className={cn(
-                    "min-h-10 w-full justify-center rounded-lg px-3",
-                    !selected && "bg-transparent hover:bg-background/70",
-                  )}
-                  onClick={() => {
-                    setTab(id);
-                    setMessage(null);
-                    setInfo(null);
-                  }}
-                >
-                  {label}
-                </Button>
-              );
-            })}
-          </div>
+        <CardContent className={isDigitalGarage ? "pt-5" : "pt-6"}>
+          {showTabSwitcher ? (
+            <div
+              className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1"
+              role="tablist"
+              aria-label="Anmeldung oder Registrierung"
+            >
+              {(
+                [
+                  { id: "password" as const, label: "Anmelden" },
+                  { id: "signup" as const, label: "Registrieren" },
+                ] as const
+              ).map(({ id, label }) => {
+                const selected = tab === id;
+                return (
+                  <Button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    variant={selected ? "default" : "ghost"}
+                    size="sm"
+                    className={cn(
+                      "min-h-10 w-full justify-center rounded-lg px-3",
+                      !selected && "bg-transparent hover:bg-background/70",
+                    )}
+                    onClick={() => {
+                      setTab(id);
+                      setMessage(null);
+                      setInfo(null);
+                    }}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
+              Konto erstellen
+            </p>
+          )}
 
           <form
             className="mt-4 flex w-full flex-col gap-4"
@@ -242,6 +266,12 @@ export function LoginForm({
 
             {isSignup ? <AuthLegalConsentNotice variant="signup" /> : null}
 
+            {isSignup && isDigitalGarage ? (
+              <p className="text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
+                {DIGITAL_GARAGE_POST_SIGNUP_HINT}
+              </p>
+            ) : null}
+
             <Button
               type="submit"
               disabled={pending}
@@ -258,13 +288,35 @@ export function LoginForm({
         </CardContent>
       </Card>
 
-      <p className="mx-4 text-center text-sm text-muted-foreground sm:mx-auto">
-        Neuer Tag? QR am Fahrzeug scannen.
-      </p>
+      {!isDigitalGarage ? (
+        <>
+          <p className="mx-4 text-center text-sm text-muted-foreground sm:mx-auto">
+            Digitale Garage ohne Tag?{" "}
+            <a
+              href="/register"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Kostenlos registrieren
+            </a>
+            {" · "}
+            Tag am Auto? QR scannen.
+          </p>
 
-      <LegalFooterNav
-        className="mx-4 text-xs text-muted-foreground sm:mx-auto [&_a]:text-muted-foreground"
-      />
+          <LegalFooterNav
+            className="mx-4 text-xs text-muted-foreground sm:mx-auto [&_a]:text-muted-foreground"
+          />
+        </>
+      ) : null}
+    </>
+  );
+
+  if (isDigitalGarage) {
+    return shell;
+  }
+
+  return (
+    <ScanContent className="mx-auto w-full max-w-md gap-4 overflow-x-clip pb-12 px-0 pt-0 sm:px-0">
+      {shell}
     </ScanContent>
   );
 }

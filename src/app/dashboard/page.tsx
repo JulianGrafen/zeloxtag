@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { userHasGarageVehicle } from "@/lib/auth/user-has-vehicle";
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
 import { isOperatorEmail } from "@/lib/auth/require-operator";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -33,9 +34,13 @@ export default async function DashboardPage() {
     redirect(destination);
   }
 
+  if (!(await userHasGarageVehicle(user.id))) {
+    redirect("/onboarding/fahrzeug");
+  }
+
   const superuser = isOperatorEmail(user.email);
 
-  // No linked vehicle yet — lightweight hub (not the vehicle tile menu).
+  // Fallback hub (e.g. edge cases) — most users never see this.
   return (
     <AppShell showNavbar={false}>
       <ScanContent className="max-w-2xl gap-0 px-0 pt-0">

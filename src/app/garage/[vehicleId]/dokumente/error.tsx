@@ -1,4 +1,3 @@
-import { vehicleSurfaceHref, garagePathForVehicle } from "@/lib/vehicle-surface/paths";
 "use client";
 
 import { useEffect } from "react";
@@ -8,6 +7,7 @@ import { useParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { ScanContent } from "@/components/layout/scan-content";
 import { Button } from "@/components/ui/button";
+import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
 
 type DocumentsErrorProps = {
   error: Error & { digest?: string };
@@ -19,8 +19,8 @@ export default function VehicleDocumentsError({
   reset,
 }: DocumentsErrorProps) {
   const params = useParams();
-  const tagUuid =
-    typeof params?.vehicleId === "string" ? params.uuid : "";
+  const vehicleId =
+    typeof params?.vehicleId === "string" ? params.vehicleId : "";
 
   useEffect(() => {
     console.error("[dokumente] route error", {
@@ -29,7 +29,7 @@ export default function VehicleDocumentsError({
     });
   }, [error]);
 
-  const dashboardHref = tagUuid ? `/v/${tagUuid}` : "/";
+  const dashboardHref = vehicleId ? garagePathForVehicle(vehicleId) : "/dashboard";
 
   return (
     <AppShell showNavbar={false}>
