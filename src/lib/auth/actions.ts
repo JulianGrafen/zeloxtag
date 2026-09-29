@@ -6,7 +6,8 @@ import { z } from "zod";
 
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
-import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
+import { postPasswordLoginHref } from "@/lib/auth/login-gate-url";
+import { isGenericPostLoginNext } from "@/lib/auth/post-login-path-guards";
 import { resolveInsiderVehiclePath } from "@/lib/auth/resolve-insider-vehicle-path";
 import {
   CONFIRM_EMAIL_MESSAGE,
@@ -128,7 +129,7 @@ export async function signInWithPassword(
     }
   }
 
-  return { status: "ok", redirectTo };
+  return { status: "ok", redirectTo: postPasswordLoginHref(redirectTo) };
 }
 
 /**
@@ -197,7 +198,7 @@ export async function signUpWithPassword(
     ? "/auth/continue"
     : next;
 
-  return { status: "ok", redirectTo };
+  return { status: "ok", redirectTo: postPasswordLoginHref(redirectTo) };
 }
 
 export async function signOut(): Promise<void> {

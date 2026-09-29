@@ -6,6 +6,7 @@ import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import { ActivateCloudView } from "@/components/billing/activate-cloud-view";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { requireVehicleSurfaceOwner } from "@/lib/auth/require-vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 
@@ -29,9 +30,7 @@ export default async function ActivateCloudPage({
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
   const user = await getCurrentUser();
   if (!user) {
-    redirect(
-      `/login?next=${encodeURIComponent(vehicleSurfaceHref(scope, "abo"))}`,
-    );
+    redirect(loginGateHref(vehicleSurfaceHref(scope, "abo")));
   }
 
   if (session_id?.startsWith("cs_")) {

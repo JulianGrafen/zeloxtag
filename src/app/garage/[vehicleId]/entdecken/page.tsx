@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ShowcaseSwipeDeck } from "@/components/showcase-swipe/ShowcaseSwipeDeck";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { loadShowcaseSwipeDeck } from "@/lib/showcase/swipe-deck";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -34,7 +35,7 @@ export default async function ShowcaseEntdeckenPage({
 
   const user = await getCurrentUser();
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`${vehicleSurfaceHref(scope, `entdecken`)}`)}`);
+    redirect(loginGateHref(vehicleSurfaceHref(scope, "entdecken")));
   }
 
   const { isConfigured } = getSupabaseEnv();

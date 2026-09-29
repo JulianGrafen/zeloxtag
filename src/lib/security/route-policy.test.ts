@@ -8,10 +8,36 @@ import {
 
 import {
   isProtectedApiPath,
+  isProtectedPagePath,
   isProtectedVehicleTagSubPath,
   isPublicPath,
   isPublicVehicleImagePath,
+  loginRedirectUrl,
 } from "./route-policy";
+
+describe("isProtectedPagePath", () => {
+  it("requires auth for digital garage routes", () => {
+    expect(isProtectedPagePath("/garage")).toBe(true);
+    expect(
+      isProtectedPagePath(
+        "/garage/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("loginRedirectUrl", () => {
+  it("uses home login with next param", () => {
+    const url = loginRedirectUrl(
+      "https://app.zeloxtag.de",
+      "/garage/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "",
+    );
+    expect(url).toBe(
+      "https://app.zeloxtag.de/?next=%2Fgarage%2Faaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    );
+  });
+});
 
 describe("isProtectedVehicleTagSubPath", () => {
   it("requires auth for owner sub-routes but keeps QR landing public", () => {

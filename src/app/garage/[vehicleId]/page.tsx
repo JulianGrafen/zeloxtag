@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { HardwareUpsellWidget } from "@/components/hardware/hardware-upsell-widget";
 import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { loadOwnerDashboardForVehicle } from "@/lib/vehicle-surface/load-owner-dashboard";
 interface GarageDashboardPageProps {
   params: Promise<{ vehicleId: string }>;
@@ -32,7 +33,7 @@ export default async function GarageDashboardPage({
   const vehicleId = rawId.trim();
   const user = await getCurrentUser();
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/garage/${vehicleId}`)}`);
+    redirect(loginGateHref(`/garage/${vehicleId}`));
   }
 
   const query = await searchParams;

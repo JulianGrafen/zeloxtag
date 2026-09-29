@@ -3,7 +3,8 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 
-import { isGenericPostLoginNext } from "@/lib/auth/post-login-path";
+import { postPasswordLoginHref } from "@/lib/auth/login-gate-url";
+import { isGenericPostLoginNext } from "@/lib/auth/post-login-path-guards";
 import { resolveInsiderVehiclePath } from "@/lib/auth/resolve-insider-vehicle-path";
 import {
   adminRemoveTotpFactors,
@@ -268,7 +269,10 @@ export async function verifyMfaLogin(
     }
   }
 
-  return { status: "verified", redirectTo };
+  return {
+    status: "verified",
+    redirectTo: postPasswordLoginHref(redirectTo),
+  };
 }
 
 /**

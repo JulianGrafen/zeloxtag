@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
 import {
   getTagVehicleAccess,
@@ -77,7 +78,7 @@ export async function requireVehicleSurfaceOwner(
       options?.loginNext ??
       loginNextForScope(scope, options?.pathSegment);
     if (!access.sessionUserId) {
-      redirect(`/login?next=${encodeURIComponent(loginNext)}`);
+      redirect(loginGateHref(loginNext));
     }
     if (scope.linkedTagUuid) {
       redirect(`/v/${scope.linkedTagUuid}`);
@@ -127,7 +128,7 @@ export async function requireVehicleSurfaceWriter(
       options?.loginNext ??
       loginNextForScope(scope, options?.pathSegment);
     if (!access.sessionUserId) {
-      redirect(`/login?next=${encodeURIComponent(loginNext)}`);
+      redirect(loginGateHref(loginNext));
     }
     if (scope.linkedTagUuid) {
       redirect(`/v/${scope.linkedTagUuid}`);

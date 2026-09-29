@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { loginGateHref } from "@/lib/auth/login-gate-url";
+import {
+  isGenericPostLoginNext,
+  sanitizePostLoginPath,
+} from "@/lib/auth/post-login-path-guards";
 import { resolveAuthenticatedDestination } from "@/lib/auth/resolve-authenticated-destination";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,10 +38,22 @@ async function handleContinue(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("next", "/auth/continue");
+    const nextRaw = request.nextUrl.searchParams.get("next");
+    const intended =
+      nextRaw?.trim() && !isGenericPostLoginNext(nextRaw)
+        ? sanitizePostLoginPath(nextRaw)
+        : "/auth/continue";
+    const login = new URL(loginGateHref(intended), request.url);
     login.searchParams.set("error", "session");
     return NextResponse.redirect(login);
+  }
+
+  const nextRaw = request.nextUrl.searchParams.get("next");
+  if (nextRaw?.trim()) {
+    const safe = sanitizePostLoginPath(nextRaw);
+    if (!isGenericPostLoginNext(safe)) {
+      return redirectToPath(request, safe);
+    }
   }
 
   const destination = await resolveAuthenticatedDestination(user.id);

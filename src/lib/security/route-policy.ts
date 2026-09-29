@@ -1,3 +1,4 @@
+import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { AUFLAGEN_KUERZEL_IMAGE_API_PATH } from "@/lib/documents/constants";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
@@ -137,15 +138,14 @@ export function isProtectedPagePath(pathname: string): boolean {
   if (pathname === "/settings" || pathname.startsWith("/settings/")) {
     return true;
   }
+  if (pathname === "/garage" || pathname.startsWith("/garage/")) {
+    return true;
+  }
   return false;
 }
 
 export function loginRedirectUrl(origin: string, pathname: string, search: string): string {
   const next = `${pathname}${search}`;
-  const url = new URL("/login", origin);
-  url.searchParams.set(
-    "next",
-    next.startsWith("/") ? next : "/auth/continue",
-  );
-  return url.toString();
+  const href = loginGateHref(next.startsWith("/") ? next : "/auth/continue");
+  return new URL(href, origin).toString();
 }
