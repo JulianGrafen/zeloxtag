@@ -87,6 +87,75 @@ export async function createOperatingCost(input: {
   return { status: "ok" };
 }
 
+export async function updateOperatingCost(input: {
+  tagUuid: string;
+  vehicleId: string;
+  entryId: string;
+  form: OperatingCostFormInput;
+}): Promise<OperatingCostActionResult> {
+  const tagUuid = input.tagUuid.trim();
+  const vehicleId = input.vehicleId.trim();
+  const entryId = input.entryId.trim();
+  if (!tagUuid || !vehicleId || !entryId) {
+    return { status: "error", message: "Ungültige Anfrage." };
+  }
+
+  const normalized = normalizeOperatingCostInput(input.form);
+  if (!normalized.ok) {
+    return { status: "error", message: normalized.message };
+  }
+
+  const owner = await resolveOwnerVehicle(tagUuid, vehicleId);
+  if (!owner.ok) {
+    return { status: "error", message: owner.message };
+  }
+
+  const { isConfigured } = getSupabaseEnv();
+  if (!isConfigured) {
+    return { status: "error", message: "Speichern ist lokal nicht verfügbar." };
+  }
+
+  const supabase = await createClient();
+  const { data: existing, error: loadError } = await supabase
+    .from("vehicle_operating_costs")
+    .select("id, category")
+    .eq("id", entryId)
+    .eq("vehicle_id", vehicleId)
+    .maybeSingle();
+
+  if (loadError || !existing) {
+    return { status: "error", message: "Eintrag nicht gefunden." };
+  }
+
+  if (existing.category !== normalized.value.category) {
+    return { status: "error", message: "Kategorie kann hier nicht geändert werden." };
+  }
+
+  const { error } = await supabase
+    .from("vehicle_operating_costs")
+    .update({
+      category: normalized.value.category,
+      amount_eur: normalized.value.amountEur,
+      occurred_on: normalized.value.occurredOn,
+      billing_period: normalized.value.billingPeriod,
+      note: normalized.value.note,
+      fuel_liters: normalized.value.fuelLiters,
+      odometer_km: normalized.value.odometerKm,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", entryId)
+    .eq("vehicle_id", vehicleId);
+
+  if (error) {
+    console.error("[operating-costs] update failed", error);
+    return { status: "error", message: "Eintrag konnte nicht gespeichert werden." };
+  }
+
+  revalidateOperatingCostPaths(tagUuid);
+  revalidatePath(`/v/${tagUuid}/tanken/${entryId}`);
+  return { status: "ok" };
+}
+
 export async function deleteOperatingCost(input: {
   tagUuid: string;
   vehicleId: string;

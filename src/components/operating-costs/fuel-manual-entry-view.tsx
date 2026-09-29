@@ -17,6 +17,8 @@ type FuelManualEntryViewProps = {
   vehicleId: string;
   vehicleLabel: string;
   backHref?: string;
+  entryId?: string;
+  initialForm?: FuelFillFormState;
 };
 
 export function FuelManualEntryView({
@@ -24,13 +26,19 @@ export function FuelManualEntryView({
   vehicleId,
   vehicleLabel,
   backHref,
+  entryId,
+  initialForm,
 }: FuelManualEntryViewProps) {
+  const isEdit = Boolean(entryId);
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/tanken`;
-  const [form, setForm] = useState<FuelFillFormState>(emptyFuelFillFormState);
+  const [form, setForm] = useState<FuelFillFormState>(
+    initialForm ?? emptyFuelFillFormState(),
+  );
   const { submit, submitError, pending } = useFuelFillSubmit({
     tagUuid,
     vehicleId,
     backHref: resolvedBackHref,
+    entryId,
   });
 
   return (
@@ -43,9 +51,12 @@ export function FuelManualEntryView({
             <PenLine className="h-5 w-5" aria-hidden />
           </div>
           <p className="claim-kicker mt-4">Tanken</p>
-          <h1 className="claim-title mt-2">Manuell eintragen</h1>
+          <h1 className="claim-title mt-2">
+            {isEdit ? "Tankvorgang bearbeiten" : "Manuell eintragen"}
+          </h1>
           <p className="claim-copy mt-1">
-            {vehicleLabel} · ohne Beleg-Scan
+            {vehicleLabel}
+            {isEdit ? "" : " · ohne Beleg-Scan"}
           </p>
         </div>
       </header>
@@ -72,18 +83,24 @@ export function FuelManualEntryView({
           disabled={pending}
           className="w-full rounded-2xl bg-neutral-950 py-3.5 text-[0.92rem] font-semibold text-white disabled:opacity-60"
         >
-          {pending ? "Speichern…" : "Tankvorgang speichern"}
+          {pending
+            ? "Speichern…"
+            : isEdit
+              ? "Änderungen speichern"
+              : "Tankvorgang speichern"}
         </PressableButton>
       </form>
 
-      <p className="text-center text-[0.78rem] text-[color:var(--vd-muted)]">
-        <PressableLink
-          href={`/v/${tagUuid}/tanken/erfassen`}
-          className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4"
-        >
-          Stattdessen Tankbeleg scannen
-        </PressableLink>
-      </p>
+      {!isEdit ? (
+        <p className="text-center text-[0.78rem] text-[color:var(--vd-muted)]">
+          <PressableLink
+            href={`/v/${tagUuid}/tanken/erfassen`}
+            className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4"
+          >
+            Stattdessen Tankbeleg scannen
+          </PressableLink>
+        </p>
+      ) : null}
     </ScanContent>
   );
 }
