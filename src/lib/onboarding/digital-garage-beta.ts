@@ -73,9 +73,17 @@ export async function getDigitalGarageBetaStatus(): Promise<DigitalGarageBetaSta
   }
 }
 
+export type DigitalGarageBetaClosedStatus = Extract<
+  DigitalGarageBetaStatus,
+  { limited: true }
+> & {
+  full: true;
+  enrolled: false;
+};
+
 export function isDigitalGarageBetaClosed(
   status: DigitalGarageBetaStatus,
-): boolean {
+): status is DigitalGarageBetaClosedStatus {
   return status.limited && status.full && !status.enrolled;
 }
 

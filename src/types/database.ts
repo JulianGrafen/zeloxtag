@@ -759,6 +759,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      digital_garage_beta_status: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
       link_unclaimed_tag_to_vehicle: {
         Args: {
           p_tag_uuid: string;
