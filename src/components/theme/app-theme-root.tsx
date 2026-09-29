@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { CapacitorNativeShell } from "@/components/capacitor/capacitor-native-shell";
 import { PwaRoot } from "@/components/pwa/pwa-root";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -12,6 +13,7 @@ import { ThemeProvider } from "./theme-provider";
 export function AppThemeRoot({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
+      <CapacitorNativeShell />
       <PwaThemeColorSync />
       {children}
       <PwaRoot />

@@ -63,6 +63,13 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/v/demo-active-tag")).toBe(true);
     expect(isPublicPath("/dashboard")).toBe(false);
   });
+
+  it("allows well-known app link verification", () => {
+    expect(
+      isPublicPath("/.well-known/apple-app-site-association"),
+    ).toBe(true);
+    expect(isPublicPath("/.well-known/assetlinks.json")).toBe(true);
+  });
 });
 
 describe("auflagen kuerzel image GET", () => {

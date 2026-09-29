@@ -30,6 +30,7 @@ const PUBLIC_EXACT = new Set([
 ]);
 
 const PUBLIC_PREFIXES = [
+  "/.well-known/", // Universal Links / App Links verification
   "/v/", // physical QR scan surface
   "/expose/", // token-gated sales exposé (never by vehicle id)
   "/einladung/", // Schrauber invite landing (accept requires auth)

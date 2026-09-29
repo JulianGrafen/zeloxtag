@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ZeloxTag</string>
+    <string name="title_activity_main">ZeloxTag</string>
+    <string name="package_name">de.zeloxtag.app</string>
+    <string name="custom_url_scheme">de.zeloxtag.app</string>
+</resources>
