@@ -5,6 +5,7 @@ import {
   isGenericPostLoginNext,
   sanitizePostLoginPath,
 } from "@/lib/auth/post-login-path-guards";
+import { finalizePostLoginPath } from "@/lib/auth/post-login-path";
 import { resolveAuthenticatedDestination } from "@/lib/auth/resolve-authenticated-destination";
 import { createClient } from "@/lib/supabase/server";
 
@@ -52,7 +53,8 @@ async function handleContinue(request: NextRequest) {
   if (nextRaw?.trim()) {
     const safe = sanitizePostLoginPath(nextRaw);
     if (!isGenericPostLoginNext(safe)) {
-      return redirectToPath(request, safe);
+      const href = await finalizePostLoginPath(user.id, safe);
+      return redirectToPath(request, href);
     }
   }
 
