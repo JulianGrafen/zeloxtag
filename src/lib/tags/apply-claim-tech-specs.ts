@@ -10,8 +10,8 @@ import {
   serializeVehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
 
-export async function applyClaimTechSpecs(
-  tagUuid: string,
+export async function applyClaimTechSpecsToVehicle(
+  vehicleId: string,
   specs: ClaimTechSpecs | null | undefined,
 ): Promise<void> {
   const { isConfigured } = getSupabaseEnv();
@@ -20,6 +20,39 @@ export async function applyClaimTechSpecs(
   const merged = mergeClaimTechSpecs(specs);
   const serialized = serializeVehicleTechSpecs(merged);
   if (Object.keys(serialized).length === 0) return;
+
+  const supabase = await createClient();
+
+  const { data: vehicle, error: vehicleError } = await supabase
+    .from("vehicles")
+    .select("tech_specs")
+    .eq("id", vehicleId)
+    .maybeSingle();
+
+  if (vehicleError) {
+    logServerError("[claim] tech specs vehicle lookup failed", vehicleError);
+    return;
+  }
+
+  const existing = parseVehicleTechSpecs(vehicle?.tech_specs);
+  const next = serializeVehicleTechSpecs({ ...existing, ...merged });
+
+  const { error: updateError } = await supabase
+    .from("vehicles")
+    .update({ tech_specs: next })
+    .eq("id", vehicleId);
+
+  if (updateError) {
+    logServerError("[claim] tech specs update failed", updateError);
+  }
+}
+
+export async function applyClaimTechSpecs(
+  tagUuid: string,
+  specs: ClaimTechSpecs | null | undefined,
+): Promise<void> {
+  const { isConfigured } = getSupabaseEnv();
+  if (!isConfigured || !specs) return;
 
   const supabase = await createClient();
   const { data: tag, error: tagError } = await supabase
@@ -35,26 +68,5 @@ export async function applyClaimTechSpecs(
     return;
   }
 
-  const { data: vehicle, error: vehicleError } = await supabase
-    .from("vehicles")
-    .select("tech_specs")
-    .eq("id", tag.vehicle_id)
-    .maybeSingle();
-
-  if (vehicleError) {
-    logServerError("[claim] tech specs vehicle lookup failed", vehicleError);
-    return;
-  }
-
-  const existing = parseVehicleTechSpecs(vehicle?.tech_specs);
-  const next = serializeVehicleTechSpecs({ ...existing, ...merged });
-
-  const { error: updateError } = await supabase
-    .from("vehicles")
-    .update({ tech_specs: next })
-    .eq("id", tag.vehicle_id);
-
-  if (updateError) {
-    logServerError("[claim] tech specs update failed", updateError);
-  }
+  await applyClaimTechSpecsToVehicle(tag.vehicle_id, specs);
 }

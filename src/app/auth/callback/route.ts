@@ -1,9 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { completePendingGarageVehicleForUser } from "@/lib/hardware/complete-pending-garage-vehicle";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { resolveInsiderVehiclePath } from "@/lib/auth/resolve-insider-vehicle-path";
 import { isGenericPostLoginNext, normalizeAuthCallbackNext } from "@/lib/auth/post-login-path";
-import { dashboardTourHref } from "@/lib/onboarding/dashboard-tour";
+import {
+  dashboardTourHref,
+  garageDashboardTourHref,
+} from "@/lib/onboarding/dashboard-tour";
 import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import { resolveAuthSiteOrigin } from "@/lib/site-origin";
 import { enforceRateLimit } from "@/lib/security/api-guard";
@@ -105,6 +109,24 @@ export async function GET(request: NextRequest) {
       if (claimResult?.status === "error") {
         const loginUrl = new URL("/login", authOrigin);
         loginUrl.searchParams.set("error", claimResult.message);
+        return copyCookies(NextResponse.redirect(loginUrl));
+      }
+
+      const garageResult = await completePendingGarageVehicleForUser(userId);
+      if (garageResult?.status === "created") {
+        await setPendingDashboardTour();
+        return copyCookies(
+          NextResponse.redirect(
+            new URL(
+              garageDashboardTourHref(garageResult.vehicleId, true),
+              authOrigin,
+            ),
+          ),
+        );
+      }
+      if (garageResult?.status === "error") {
+        const loginUrl = new URL("/login", authOrigin);
+        loginUrl.searchParams.set("error", garageResult.message);
         return copyCookies(NextResponse.redirect(loginUrl));
       }
     } catch {

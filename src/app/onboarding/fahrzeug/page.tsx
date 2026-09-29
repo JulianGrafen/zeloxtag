@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { CreateGarageVehicleForm } from "@/components/onboarding/create-garage-vehicle-form";
+import { ClaimFlow } from "@/components/tags/claim-flow";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { userHasGarageVehicle } from "@/lib/auth/user-has-vehicle";
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function OnboardingVehiclePage() {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/?next=/onboarding/fahrzeug&tab=signup");
+    redirect("/register");
   }
 
   if (await userHasGarageVehicle(user.id)) {
@@ -25,7 +25,11 @@ export default async function OnboardingVehiclePage() {
 
   return (
     <AppShell showNavbar={false}>
-      <CreateGarageVehicleForm />
+      <ClaimFlow
+        variant="digital"
+        isAuthenticated
+        userEmail={user.email ?? null}
+      />
     </AppShell>
   );
 }

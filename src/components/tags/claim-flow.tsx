@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { claimTag } from "@/actions/claim-tag";
+import { createDigitalGarageVehicle } from "@/actions/create-digital-garage-vehicle";
 import { ClaimProgressBar } from "@/components/tags/claim-progress-bar";
 import {
   ClaimField,
@@ -40,16 +41,19 @@ import {
 } from "@/lib/vehicles/tech-specs";
 
 interface ClaimFlowProps {
-  tagUuid: string;
+  variant?: "tag" | "digital";
+  tagUuid?: string;
   isAuthenticated?: boolean;
   userEmail?: string | null;
 }
 
 export function ClaimFlow({
+  variant = "tag",
   tagUuid,
   isAuthenticated = false,
   userEmail = null,
 }: ClaimFlowProps) {
+  const isDigital = variant === "digital";
   const [step, setStep] = useState<ClaimWizardStep>("intro");
   const [transitionDirection, setTransitionDirection] =
     useState<ClaimTransitionDirection>("forward");
@@ -148,6 +152,25 @@ export function ClaimFlow({
     return null;
   }
 
+  const techSpecsPayload = {
+    powerPs: powerPs.trim() || undefined,
+    displacementCc: displacementCc.trim() || undefined,
+    drivetrain: drivetrain.trim() || undefined,
+    fuelType: fuelType.trim() || undefined,
+    oilChangeIntervalKm,
+    oilChangeIntervalMonths,
+    buildPersonalityTags:
+      buildPersonalityTags.length > 0 ? buildPersonalityTags : undefined,
+  };
+
+  const accountPayload = needsAccount
+    ? {
+        email: email.trim(),
+        password,
+        name: name.trim() || undefined,
+      }
+    : {};
+
   function submitClaim() {
     setError(null);
     setInfo(null);
@@ -168,32 +191,25 @@ export function ClaimFlow({
       }
     }
 
+    if (!isDigital && !tagUuid?.trim()) {
+      setError("Tag-UUID fehlt.");
+      return;
+    }
+
     startTransition(async () => {
       try {
-        const result = await claimTag({
-          tagUuid,
+        const vehicleInput = {
           make,
           model,
           year,
           vin: vin.trim() || undefined,
-          techSpecs: {
-            powerPs: powerPs.trim() || undefined,
-            displacementCc: displacementCc.trim() || undefined,
-            drivetrain: drivetrain.trim() || undefined,
-            fuelType: fuelType.trim() || undefined,
-            oilChangeIntervalKm,
-            oilChangeIntervalMonths,
-            buildPersonalityTags:
-              buildPersonalityTags.length > 0 ? buildPersonalityTags : undefined,
-          },
-          ...(needsAccount
-            ? {
-                email: email.trim(),
-                password,
-                name: name.trim() || undefined,
-              }
-            : {}),
-        });
+          techSpecs: techSpecsPayload,
+          ...accountPayload,
+        };
+
+        const result = isDigital
+          ? await createDigitalGarageVehicle(vehicleInput)
+          : await claimTag({ tagUuid: tagUuid!, ...vehicleInput });
 
         if (result.status === "error") {
           setError(result.message);
@@ -216,6 +232,14 @@ export function ClaimFlow({
     });
   }
 
+  const finishLabel = isDigital
+    ? pending
+      ? "Garage wird angelegt…"
+      : "Garage starten"
+    : pending
+      ? "Verknüpfen…"
+      : "Tag aktivieren";
+
   const showWizardChrome = step !== "intro";
 
   return (
@@ -236,6 +260,7 @@ export function ClaimFlow({
       <ClaimStepTransition step={step} direction={transitionDirection}>
         {step === "intro" ? (
           <ClaimIntroHero
+            variant={variant}
             tagUuid={tagUuid}
             needsAccount={needsAccount}
             isAuthenticated={isAuthenticated}
@@ -537,11 +562,7 @@ export function ClaimFlow({
                 pending={pending}
                 onBack={goBack}
                 submitLabel={
-                  needsAccount
-                    ? "Weiter zum Konto"
-                    : pending
-                      ? "Verknüpfen…"
-                      : "Tag aktivieren"
+                  needsAccount ? "Weiter zum Konto" : finishLabel
                 }
                 submitIcon={needsAccount ? "next" : "check"}
                 showBack
@@ -621,7 +642,11 @@ export function ClaimFlow({
                 pending={pending}
                 onBack={goBack}
                 submitLabel={
-                  pending ? "Konto wird angelegt…" : "Konto anlegen & starten"
+                  pending
+                    ? "Konto wird angelegt…"
+                    : isDigital
+                      ? "Konto anlegen & Garage starten"
+                      : "Konto anlegen & starten"
                 }
                 submitIcon="check"
                 showBack

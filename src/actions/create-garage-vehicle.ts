@@ -8,6 +8,7 @@ import {
   rateLimit,
   RATE_LIMITS,
 } from "@/lib/security/rate-limit";
+import { garageDashboardTourHref } from "@/lib/onboarding/dashboard-tour";
 import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 
 export type CreateGarageVehicleResult =
@@ -59,6 +60,6 @@ export async function createGarageVehicleAction(input: {
   return {
     status: "created",
     vehicleId: result.vehicleId,
-    href: `/garage/${result.vehicleId}?tour=1&dashboard=1`,
+    href: garageDashboardTourHref(result.vehicleId, true),
   };
 }

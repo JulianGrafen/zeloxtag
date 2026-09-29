@@ -211,6 +211,16 @@ export function dashboardTourHref(tagUuid: string): string {
   return `/v/${tagUuid}?${DASHBOARD_TOUR_QUERY}=1`;
 }
 
+/** Digital garage dashboard after first vehicle (no physical tag). */
+export function garageDashboardTourHref(
+  vehicleId: string,
+  startTour = true,
+): string {
+  const base = `/garage/${vehicleId}`;
+  if (!startTour) return base;
+  return `${base}?${DASHBOARD_TOUR_QUERY}=1&dashboard=1`;
+}
+
 /**
  * Rewrites an in-app path so the vehicle dashboard opens the tour,
  * not the scanner.
