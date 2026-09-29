@@ -25,6 +25,10 @@ function vehiclePath(tagUuid: string): string | null {
   return `/v/${tagUuid}`;
 }
 
+function digitalGaragePath(vehicleId: string): string {
+  return `/garage/${vehicleId}`;
+}
+
 /** Public showcase routes — never a post-auth destination for real accounts. */
 export function isDemoOrShowcasePath(path: string): boolean {
   const trimmed = path.trim();
@@ -201,6 +205,7 @@ async function resolveViaAdmin(userId: string): Promise<string | null> {
     if (tag?.uuid && typeof tag.uuid === "string") {
       return vehiclePath(tag.uuid);
     }
+    return digitalGaragePath(vehicle.id);
   }
 
   return null;
@@ -231,6 +236,7 @@ async function resolveViaSessionUser(userId: string): Promise<string | null> {
     if (tag?.uuid && typeof tag.uuid === "string") {
       return vehiclePath(tag.uuid);
     }
+    return digitalGaragePath(vehicle.id);
   }
 
   return null;
@@ -309,6 +315,7 @@ async function resolveViaContributorGrant(
     if (tag?.uuid && typeof tag.uuid === "string") {
       return vehiclePath(tag.uuid);
     }
+    return digitalGaragePath(vehicleId);
   }
 
   return null;

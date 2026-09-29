@@ -46,6 +46,8 @@ import {
   setDashboardPromptPhase,
 } from "@/lib/ui/dashboard-prompt-orchestrator";
 import type { OperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/types";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document, Vehicle } from "@/types/database";
 
 import {
@@ -137,6 +139,7 @@ interface TagDashboardShellProps {
   vehicle: Vehicle;
   documents: Document[];
   tagUuid: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   ownerName?: string | null;
   isOwner?: boolean;
   isContributor?: boolean;
@@ -170,6 +173,7 @@ export function TagDashboardShell({
   vehicle,
   documents,
   tagUuid,
+  vehicleSurfaceScope,
   ownerName,
   isOwner = false,
   isContributor = false,
@@ -189,6 +193,9 @@ export function TagDashboardShell({
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
   const demoShowcase = isDemoActiveTag(tagUuid);
+  const dashboardBase = vehicleSurfaceScope
+    ? vehicleSurfaceHref(vehicleSurfaceScope)
+    : `/v/${tagUuid}`;
   const canAiScan =
     membershipActive ||
     freeInvoiceScanRemaining > 0 ||
@@ -643,7 +650,7 @@ export function TagDashboardShell({
       <>
         <ScanTypePicker
           vehicleLabel={vehicleLabel}
-          backHref={`/v/${tagUuid}`}
+          backHref={dashboardBase}
           role={role}
           suggestedType={allowedInitial}
           freeInvoiceScanRemaining={
@@ -682,7 +689,7 @@ export function TagDashboardShell({
           vehicleModel={vehicle.model}
           vehicleVin={vehicle.vin}
           existingDocuments={documents}
-          backHref={`/v/${tagUuid}`}
+          backHref={dashboardBase}
           backLabel="Dashboard"
           onBack={() => {
             setMode("pick-scan");
@@ -720,6 +727,7 @@ export function TagDashboardShell({
         vehicle={displayVehicle}
         documents={documents}
         tagUuid={tagUuid}
+        vehicleSurfaceScope={vehicleSurfaceScope}
         ownerName={ownerName}
         canScan={canWrite}
         isOwner={isOwner}

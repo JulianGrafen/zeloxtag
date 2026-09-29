@@ -1,49 +1,28 @@
 import { describe, expect, it } from "vitest";
 
-import { mapGarageRows } from "./map-garage-rows";
+import { mapGarageVehicleRows } from "./map-garage-rows";
 
-describe("mapGarageRows", () => {
-  it("maps tag+vehicle joins and sorts by input order", () => {
-    const rows = mapGarageRows([
+describe("mapGarageVehicleRows", () => {
+  it("includes tagless vehicles", () => {
+    const rows = mapGarageVehicleRows([
       {
-        uuid: "tag-a",
-        vehicle_id: "veh-1",
-        vehicles: {
-          id: "veh-1",
-          make: "BMW",
-          model: "M3",
-          year: 2020,
-        },
+        id: "v1",
+        make: "VW",
+        model: "Golf",
+        year: 2019,
+        tags: null,
       },
       {
-        uuid: "tag-b",
-        vehicle_id: "veh-2",
-        vehicles: {
-          id: "veh-2",
-          make: "VW",
-          model: "Golf",
-          year: 2018,
-        },
+        id: "v2",
+        make: "BMW",
+        model: "M2",
+        year: 2020,
+        tags: [{ uuid: "tag-uuid", status: "active" }],
       },
     ]);
 
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({
-      vehicleId: "veh-1",
-      tagUuid: "tag-a",
-      label: "BMW M3",
-      year: 2020,
-      imageAlt: "BMW M3",
-    });
-    expect(rows[0]?.imageSrc).toBeDefined();
-    expect(rows[1]?.tagUuid).toBe("tag-b");
-  });
-
-  it("skips rows without a linked vehicle", () => {
-    expect(
-      mapGarageRows([
-        { uuid: "orphan", vehicle_id: null, vehicles: null },
-      ]),
-    ).toEqual([]);
+    expect(rows[0]?.tagUuid).toBeNull();
+    expect(rows[1]?.tagUuid).toBe("tag-uuid");
   });
 });

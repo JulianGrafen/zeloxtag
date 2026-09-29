@@ -7,11 +7,11 @@ import { pageSocialMetadata } from "@/lib/seo/open-graph";
 export const metadata: Metadata = {
   title: "Anmelden",
   description:
-    "Bei ZeloxTag anmelden — digitale Fahrzeugakte nach QR-Scan.",
+    "Bei ZeloxTag anmelden — digitale Garage für dein Fahrzeug, optional mit V4A-Tag im Motorraum.",
   ...pageSocialMetadata({
     title: "Anmelden · ZeloxTag",
     description:
-      "Bei ZeloxTag anmelden — digitale Fahrzeugakte nach QR-Scan.",
+      "Bei ZeloxTag anmelden — digitale Garage für dein Fahrzeug, optional mit V4A-Tag im Motorraum.",
     path: "/",
   }),
 };

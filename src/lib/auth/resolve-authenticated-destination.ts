@@ -7,6 +7,7 @@ import {
   hasPendingDashboardTour,
   setPendingDashboardTour,
 } from "@/lib/onboarding/pending-dashboard-tour";
+import { userHasGarageVehicle } from "@/lib/auth/user-has-vehicle";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 
 export type AuthenticatedDestinationResult =
@@ -33,11 +34,15 @@ export async function resolveAuthenticatedDestination(
   }
 
   const path = await resolvePostLoginPath(userId);
+  if (path === "/dashboard" && !(await userHasGarageVehicle(userId))) {
+    return { status: "ok", href: "/onboarding/fahrzeug" };
+  }
+
   const pendingTour = await hasPendingDashboardTour();
+  const tourEligible =
+    path.startsWith("/v/") || path.startsWith("/garage/");
   const href =
-    pendingTour && path.startsWith("/v/")
-      ? withForcedDashboardTour(path)
-      : path;
+    pendingTour && tourEligible ? withForcedDashboardTour(path) : path;
 
   return { status: "ok", href };
 }

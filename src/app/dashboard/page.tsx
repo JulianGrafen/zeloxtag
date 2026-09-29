@@ -26,7 +26,10 @@ export default async function DashboardPage() {
   }
 
   const destination = await resolvePostLoginPath(user.id);
-  if (destination.startsWith("/v/")) {
+  if (
+    destination.startsWith("/v/") ||
+    destination.startsWith("/garage/")
+  ) {
     redirect(destination);
   }
 
@@ -51,8 +54,15 @@ export default async function DashboardPage() {
             </span>
           </p>
           <p className="mt-3 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Scanne deinen ZeloxTag-QR-Code, um das Fahrzeug-Dashboard zu öffnen.
+            Lege dein Fahrzeug in der digitalen Garage an oder scanne einen
+            ZeloxTag-QR-Code.
           </p>
+          <Link
+            href="/onboarding/fahrzeug"
+            className="claim-cta mt-5 inline-flex w-full justify-center no-underline sm:w-auto"
+          >
+            Fahrzeug anlegen
+          </Link>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

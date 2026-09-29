@@ -15,6 +15,7 @@ import {
   rememberActiveGarageTagAction,
   refreshUserGarageAction,
 } from "@/actions/garage";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 import { garageSwitchPath } from "./garage-switch-path";
 import type { GarageVehicle } from "./types";
@@ -22,7 +23,7 @@ import type { GarageVehicle } from "./types";
 type GarageContextValue = {
   userVehicles: GarageVehicle[];
   activeVehicleId: string | null;
-  routeTagUuid: string;
+  routeScope: VehicleSurfaceScope;
   isLoading: boolean;
   error: string | null;
   refreshGarage: () => Promise<void>;
@@ -35,12 +36,12 @@ export function GarageProvider({
   children,
   initialGarage,
   initialActiveVehicleId,
-  routeTagUuid,
+  routeScope,
 }: {
   children: ReactNode;
   initialGarage: GarageVehicle[];
   initialActiveVehicleId: string | null;
-  routeTagUuid: string;
+  routeScope: VehicleSurfaceScope;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -61,13 +62,17 @@ export function GarageProvider({
   }, [initialGarage]);
 
   useEffect(() => {
-    const fromRoute = userVehicles.find(
-      (entry) => entry.tagUuid === routeTagUuid,
-    )?.vehicleId;
+    const fromRoute =
+      userVehicles.find(
+        (entry) =>
+          entry.vehicleId === routeScope.vehicleId ||
+          (routeScope.linkedTagUuid &&
+            entry.tagUuid === routeScope.linkedTagUuid),
+      )?.vehicleId ?? null;
     if (fromRoute) {
       setActiveVehicleId(fromRoute);
     }
-  }, [routeTagUuid, userVehicles]);
+  }, [routeScope, userVehicles]);
 
   const refreshGarage = useCallback(async () => {
     setIsLoading(true);
@@ -91,35 +96,37 @@ export function GarageProvider({
   const switchVehicle = useCallback(
     async (vehicleId: string) => {
       const target = userVehicles.find((entry) => entry.vehicleId === vehicleId);
-      if (!target || target.tagUuid === routeTagUuid) {
+      if (!target || target.vehicleId === routeScope.vehicleId) {
         setActiveVehicleId(vehicleId);
         return;
       }
 
       setError(null);
-      const remembered = await rememberActiveGarageTagAction(target.tagUuid);
-      if (!remembered.ok) {
-        setError(remembered.message);
-        return;
+      if (target.tagUuid) {
+        const remembered = await rememberActiveGarageTagAction(target.tagUuid);
+        if (!remembered.ok) {
+          setError(remembered.message);
+          return;
+        }
       }
 
       setActiveVehicleId(vehicleId);
       const nextPath = garageSwitchPath(
         pathname,
         search ? `?${search}` : "",
-        routeTagUuid,
-        target.tagUuid,
+        routeScope,
+        target,
       );
       router.replace(nextPath);
     },
-    [userVehicles, routeTagUuid, pathname, search, router],
+    [userVehicles, routeScope, pathname, search, router],
   );
 
   const value = useMemo(
     () => ({
       userVehicles,
       activeVehicleId,
-      routeTagUuid,
+      routeScope,
       isLoading,
       error,
       refreshGarage,
@@ -128,7 +135,7 @@ export function GarageProvider({
     [
       userVehicles,
       activeVehicleId,
-      routeTagUuid,
+      routeScope,
       isLoading,
       error,
       refreshGarage,

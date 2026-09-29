@@ -34,12 +34,20 @@ export default async function VehicleTagLayout({
     garage[0]?.vehicleId ??
     null;
 
+  const routeScope = {
+    vehicleId:
+      garage.find((entry) => entry.tagUuid === routeTagUuid)?.vehicleId ??
+      activeVehicleId ??
+      routeTagUuid,
+    linkedTagUuid: routeTagUuid,
+  };
+
   return (
     <Suspense fallback={children}>
       <GarageProvider
         initialGarage={garage}
         initialActiveVehicleId={activeVehicleId}
-        routeTagUuid={routeTagUuid}
+        routeScope={routeScope}
       >
         {children}
       </GarageProvider>

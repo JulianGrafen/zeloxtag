@@ -1,7 +1,8 @@
 /** One owned active tag + linked vehicle in the user's garage. */
 export type GarageVehicle = {
   vehicleId: string;
-  tagUuid: string;
+  /** Null until a V4A tag is linked. */
+  tagUuid: string | null;
   make: string;
   model: string;
   year: number | null;

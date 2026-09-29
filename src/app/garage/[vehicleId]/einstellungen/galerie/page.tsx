@@ -1,0 +1,45 @@
+import type { Metadata } from "next";
+import { requireVehicleSurfaceOwner } from "@/lib/auth/require-vehicle-access";
+
+import { AppShell } from "@/components/layout/app-shell";
+import { VehicleShowcaseGallerySettings } from "@/components/vehicles/vehicle-showcase-gallery-settings";
+import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
+import { MAX_SHOWCASE_GALLERY_PHOTOS } from "@/lib/documents/showcase-gallery";
+import { loadVehicleGallerySettingsPage } from "@/lib/vehicles/load-vehicle-gallery-settings-page";
+
+interface GallerySettingsPageProps {
+  params: Promise<{ vehicleId: string }>;
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Showcase-Galerie · ZeloxTag",
+    description: "Fotos für die öffentliche Visitenkarte verwalten.",
+  };
+}
+
+export default async function VehicleGallerySettingsPage({
+  params,
+}: GallerySettingsPageProps) {
+  const { vehicleId } = await params;
+  const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
+  const { vehicle, isDemo, galleryPhotos } =
+    await loadVehicleGallerySettingsPage(scope.linkedTagUuid ?? vehicleId);
+
+  return (
+    <AppShell showNavbar={false}>
+      <VehicleSettingsSubpageShell
+        tagUuid={scope.linkedTagUuid ?? vehicleId}
+        title="Showcase-Galerie"
+        description={`Bis zu ${MAX_SHOWCASE_GALLERY_PHOTOS} Fotos für das öffentliche Profil — Besucher sehen sie in der Visitenkarte.`}
+      >
+        <VehicleShowcaseGallerySettings
+          tagUuid={scope.linkedTagUuid ?? vehicleId}
+          vehicleId={vehicle.id}
+          photos={galleryPhotos}
+          canEdit={!isDemo}
+        />
+      </VehicleSettingsSubpageShell>
+    </AppShell>
+  );
+}

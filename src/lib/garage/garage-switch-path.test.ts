@@ -3,20 +3,41 @@ import { describe, expect, it } from "vitest";
 import { garageSwitchPath } from "./garage-switch-path";
 
 describe("garageSwitchPath", () => {
-  it("preserves sub-path and query when switching tags", () => {
+  it("preserves sub-path and query when switching vehicles", () => {
     expect(
       garageSwitchPath(
-        "/v/old-tag/dokumente",
+        "/garage/old-vehicle/dokumente",
         "?type=abe",
-        "old-tag",
-        "new-tag",
+        { vehicleId: "old-vehicle", linkedTagUuid: null },
+        {
+          vehicleId: "new-vehicle",
+          tagUuid: null,
+          make: "VW",
+          model: "Golf",
+          year: 2020,
+          label: "VW Golf",
+          imageAlt: "VW Golf",
+        },
       ),
-    ).toBe("/v/new-tag/dokumente?type=abe");
+    ).toBe("/garage/new-vehicle/dokumente?type=abe");
   });
 
-  it("falls back to dashboard root for unrelated paths", () => {
+  it("switches to tag route when next vehicle has a linked tag", () => {
     expect(
-      garageSwitchPath("/settings", "", "old-tag", "new-tag"),
-    ).toBe("/v/new-tag");
+      garageSwitchPath(
+        "/garage/old-vehicle/dokumente",
+        "",
+        { vehicleId: "old-vehicle", linkedTagUuid: null },
+        {
+          vehicleId: "new-vehicle",
+          tagUuid: "22222222-2222-4222-8222-222222222222",
+          make: "BMW",
+          model: "M2",
+          year: 2020,
+          label: "BMW M2",
+          imageAlt: "BMW M2",
+        },
+      ),
+    ).toBe("/v/22222222-2222-4222-8222-222222222222/dokumente");
   });
 });

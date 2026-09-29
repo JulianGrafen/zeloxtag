@@ -43,12 +43,28 @@ import {
 import { GarageSwitcherTile } from "@/components/garage/garage-switcher-tile";
 import { ProductFeaturesBanner } from "@/components/onboarding/product-features-banner";
 
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
+
 import { DashboardScanFab } from "./dashboard-scan-fab";
+
+function dashboardPath(
+  scope: VehicleSurfaceScope | undefined,
+  tagUuid: string,
+  segment: string,
+): string {
+  if (scope) {
+    return vehicleSurfaceHref(scope, segment);
+  }
+  const normalized = segment.startsWith("/") ? segment : `/${segment}`;
+  return `/v/${tagUuid}${normalized}`;
+}
 
 interface TagDashboardViewProps {
   vehicle: Vehicle;
   documents: Document[];
   tagUuid: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   ownerName?: string | null;
   /** When false, hide the scan FAB (guest / wrong account). */
   canScan?: boolean;
@@ -95,6 +111,7 @@ export function TagDashboardView({
   vehicle,
   documents,
   tagUuid,
+  vehicleSurfaceScope,
   ownerName,
   canScan = true,
   isOwner = true,
@@ -116,7 +133,9 @@ export function TagDashboardView({
   productFeaturesBannerActive = true,
   operatingCostHint = null,
 }: TagDashboardViewProps) {
-  const manualEntryHref = `/v/${tagUuid}/eintrag?neu=1`;
+  const manualEntryHref = `${dashboardPath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`;
+  const path = (segment: string) =>
+    dashboardPath(vehicleSurfaceScope, tagUuid, segment);
   const scanLocked =
     !cloudUnlocked &&
     freeInvoiceScanRemaining <= 0 &&
@@ -200,7 +219,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/dokumente?type=invoice`,
+          href: `${path("dokumente")}?type=invoice`,
           subtitle:
             invoiceCount > 0
               ? hasInvoiceAmounts
@@ -218,7 +237,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/dokumente?type=abe`,
+          href: `${path("dokumente")}?type=abe`,
           subtitle:
             abeCount > 0
               ? dokumenteLabel(abeCount)
@@ -234,7 +253,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/dokumente?type=tuev`,
+          href: `${path("dokumente")}?type=tuev`,
           subtitle:
             tuevCount > 0
               ? tile.meta?.subtitle
@@ -248,7 +267,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/service`,
+          href: path("service"),
           subtitle:
             serviceCount > 0
               ? `${serviceCount} Einträge`
@@ -262,7 +281,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/historie`,
+          href: path("historie"),
           subtitle:
             timelineEventCount > 0
               ? `${timelineEventCount} Events`
@@ -276,7 +295,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/eintrag`,
+          href: path("eintrag"),
           subtitle:
             manualEntryCount > 0
               ? `${manualEntryCount} manuelle Einträge`
@@ -290,7 +309,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/umbauten`,
+          href: path("umbauten"),
           subtitle:
             umbauCount > 0 ? bilderLabel(umbauCount) : "Keine Bilder",
         },
@@ -303,7 +322,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/intervalle`,
+          href: path("intervalle"),
           subtitle:
             lastChangeSubtitle ??
             (oilChangeCount > 0 ? `${oilChangeCount} Einträge` : "Eintragen"),
@@ -322,7 +341,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/tanken`,
+          href: path("tanken"),
           subtitle: fuelSubtitle,
         },
       };
@@ -333,7 +352,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/kosten`,
+          href: path("kosten"),
           subtitle: formatMonthlyAverageLabel(
             operatingCostHint?.totalMonthlyAverage ?? null,
           ),
@@ -346,7 +365,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/schrauber`,
+          href: path("schrauber"),
           subtitle: "Verwalten",
         },
       };
@@ -360,7 +379,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/daten`,
+          href: path("daten"),
           subtitle:
             filledSpecs > 0
               ? `${filledSpecs} Felder`
@@ -374,7 +393,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/einstellungen`,
+          href: path("einstellungen"),
           subtitle: vehicle.is_public
             ? "Öffentlich"
             : "Privat",
@@ -393,7 +412,7 @@ export function TagDashboardView({
         ...tile,
         meta: {
           ...tile.meta,
-          href: `/v/${tagUuid}/entdecken`,
+          href: path("entdecken"),
           subtitle: likeSubtitle,
           badge:
             isOwner && showcaseSwipeUnreadLikes > 0

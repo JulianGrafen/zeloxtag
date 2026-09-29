@@ -17,6 +17,8 @@ import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free-scan-quota";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
+import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
+import { canResolvePublicShowcase } from "@/lib/vehicle-surface/public-showcase-eligibility";
 import {
   enrichPublicShowcaseVehicle,
   loadPublicShowcaseDocuments,
@@ -243,6 +245,27 @@ export default async function TagScanPage({
     }
 
     const tagUuid = await getActiveTagUuidForVehicle(vehicle.id);
+    const showcaseAllowed = await canResolvePublicShowcase(vehicle.id);
+
+    if (!showcaseAllowed || !tagUuid) {
+      if (user) {
+        const access = tagUuid
+          ? await getTagVehicleAccess(
+              tagUuid,
+              vehicle.user_id?.trim() || null,
+              vehicle.id,
+            )
+          : { isOwner: false, isContributor: false };
+        if (
+          access.isOwner ||
+          (vehicle.user_id && user.id === vehicle.user_id)
+        ) {
+          redirect(garagePathForVehicle(vehicle.id));
+        }
+      }
+      redirect("/profil-nicht-verfuegbar");
+    }
+
     if (tagUuid) {
       const access = await getTagVehicleAccess(
         tagUuid,
@@ -270,6 +293,13 @@ export default async function TagScanPage({
       !wantsDashboard &&
       !hasInsiderAccess(access)
     ) {
+      const showcaseAllowed = await canResolvePublicShowcase(vehicle.id);
+      if (!showcaseAllowed) {
+        if (access.isOwner) {
+          redirect(garagePathForVehicle(vehicle.id));
+        }
+        redirect("/profil-nicht-verfuegbar");
+      }
       return renderPublicShowcase(vehicle);
     }
 

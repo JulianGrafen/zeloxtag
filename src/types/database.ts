@@ -750,6 +750,22 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_garage_vehicle: {
+        Args: {
+          p_make: string;
+          p_model: string;
+          p_year: number;
+          p_vin?: string | null;
+        };
+        Returns: Json;
+      };
+      link_unclaimed_tag_to_vehicle: {
+        Args: {
+          p_tag_uuid: string;
+          p_vehicle_id: string;
+        };
+        Returns: Json;
+      };
       list_showcase_swipe_candidates: {
         Args: { p_limit?: number };
         Returns: Json;
