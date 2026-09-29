@@ -134,7 +134,9 @@ export async function uploadDocument(
     return { status: "error", message: "Bitte eine Datei auswählen." };
   }
 
-  const fileCheck = await validateDocumentUpload(file, { pdfOnly: true });
+  const fileCheck = await validateDocumentUpload(file, {
+    pdfOnly: meta.type === "abe",
+  });
   if (!fileCheck.ok) {
     return { status: "error", message: fileCheck.error };
   }

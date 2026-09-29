@@ -62,6 +62,7 @@ export default async function UploadDocumentPage({
           tagUuid={result.tag.uuid}
           vehicleLabel={vehicleLabel}
           defaultType={defaultType}
+          lockType={defaultType === "invoice" ? "invoice" : undefined}
         />
       </AppShell>
     ),

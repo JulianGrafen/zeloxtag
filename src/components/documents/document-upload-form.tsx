@@ -24,6 +24,9 @@ interface DocumentUploadFormProps {
   tagUuid: string;
   vehicleLabel: string;
   defaultType?: DocumentType;
+  /** Hide type picker (e.g. invoice-only upload from Belegliste). */
+  lockType?: DocumentType;
+  backHref?: string;
 }
 
 /** Manual PDF/file upload fallback (no cloud OCR). */
@@ -32,10 +35,17 @@ export function DocumentUploadForm({
   tagUuid,
   vehicleLabel,
   defaultType = "invoice",
+  lockType,
+  backHref,
 }: DocumentUploadFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<DocumentType>(defaultType);
+  const [type, setType] = useState<DocumentType>(lockType ?? defaultType);
+  const resolvedBackHref =
+    backHref ??
+    (lockType === "invoice" || defaultType === "invoice"
+      ? `/v/${tagUuid}/dokumente?type=invoice`
+      : `/v/${tagUuid}/dokumente`);
   const [date, setDate] = useState("");
   const [amount, setAmount] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -47,12 +57,12 @@ export function DocumentUploadForm({
     <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
       <header className="vd-anim-header space-y-4">
         <PressableLink
-          href={`/v/${tagUuid}?scan=1`}
+          href={resolvedBackHref}
           variant="pill"
           className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          Zum Scanner
+          Zurück
         </PressableLink>
 
         <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
@@ -63,7 +73,7 @@ export function DocumentUploadForm({
             Manuell
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            Datei hochladen
+            {lockType === "invoice" ? "Beleg hinzufügen" : "Datei hochladen"}
           </h1>
           <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
             {vehicleLabel} · PDF oder Bild (Bilder werden optimiert)
@@ -118,26 +128,28 @@ export function DocumentUploadForm({
           />
         </label>
 
-        <label className="block space-y-1.5">
-          <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-            Typ
-          </span>
-          <select
-            value={type}
-            onChange={(event) => {
-              const next = event.target.value as DocumentType;
-              setType(next);
-              if (next === "abe") setAmount("");
-            }}
-            className="claim-input"
-          >
-            {DOCUMENT_TYPE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {DOCUMENT_TYPE_LABELS[option]}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!lockType ? (
+          <label className="block space-y-1.5">
+            <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
+              Typ
+            </span>
+            <select
+              value={type}
+              onChange={(event) => {
+                const next = event.target.value as DocumentType;
+                setType(next);
+                if (next === "abe") setAmount("");
+              }}
+              className="claim-input"
+            >
+              {DOCUMENT_TYPE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {DOCUMENT_TYPE_LABELS[option]}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         {type === "abe" ? (
           <label className="block space-y-1.5">

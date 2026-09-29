@@ -347,7 +347,7 @@ export function InvoiceScannerForm({
 
       {step === "capture" ? (
         <PressableLink
-          href={`/v/${tagUuid}/hochladen?mode=manual`}
+          href={`/v/${tagUuid}/hochladen?mode=manual&type=invoice`}
           variant="pill"
           nav="none"
           className="block text-center text-[0.82rem] font-medium text-[color:var(--vd-muted)]"

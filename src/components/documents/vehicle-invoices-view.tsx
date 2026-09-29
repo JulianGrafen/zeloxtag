@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, BarChart3, ChevronRight, Receipt } from "lucide-react";
+import { ArrowLeft, BarChart3, ChevronRight, Receipt, Upload } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { SaveSuccessBanner } from "@/components/documents/save-success-banner";
@@ -50,6 +50,7 @@ function VehicleInvoicesViewContent({
   initialCategory = "all",
 }: VehicleInvoicesViewProps) {
   const showScanFab = canScan ?? canWrite;
+  const manualUploadHref = `/v/${tagUuid}/hochladen?mode=manual&type=invoice`;
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string>(initialCategory);
@@ -158,6 +159,16 @@ function VehicleInvoicesViewContent({
             <p className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
               Summe {formatEur(total)}
             </p>
+            {canWrite ? (
+              <PressableLink
+                href={manualUploadHref}
+                variant="button"
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+              >
+                <Upload className="h-4 w-4 text-[color:var(--vd-accent)]" aria-hidden />
+                Beleg manuell hinzufügen
+              </PressableLink>
+            ) : null}
             {invoices.length > 0 ? (
               <PressableLink
                 href={`/v/${tagUuid}/dokumente/kosten`}
@@ -188,7 +199,22 @@ function VehicleInvoicesViewContent({
 
           {invoices.length === 0 ? (
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
-              Noch keine Rechnungen. Scanne deinen ersten Beleg.
+              Noch keine Rechnungen. Scanne deinen ersten Beleg
+              {canWrite ? (
+                <>
+                  {" "}
+                  oder{" "}
+                  <PressableLink
+                    href={manualUploadHref}
+                    className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4"
+                  >
+                    lade einen Beleg hoch
+                  </PressableLink>
+                  .
+                </>
+              ) : (
+                "."
+              )}
             </div>
           ) : visible.length === 0 ? (
             <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
