@@ -26,7 +26,7 @@ function redirectToPath(request: NextRequest, path: string): NextResponse {
  * (cookies already committed). Not rate-limited — brute-force protection
  * lives on password/MFA routes; this only redirects signed-in users.
  */
-export async function GET(request: NextRequest) {
+async function handleContinue(request: NextRequest) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -51,4 +51,13 @@ export async function GET(request: NextRequest) {
     return redirectToPath(request, href);
   }
   return NextResponse.redirect(new URL(href, request.url));
+}
+
+/** POST can follow 307 redirects from login; treat like GET. */
+export async function GET(request: NextRequest) {
+  return handleContinue(request);
+}
+
+export async function POST(request: NextRequest) {
+  return handleContinue(request);
 }

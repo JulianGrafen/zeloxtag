@@ -53,8 +53,9 @@ export async function completeGarageVehicleForOwner(
     };
   }
 
-  if (payload.name && !user.user_metadata?.name) {
-    await supabase.auth.updateUser({ data: { name: payload.name } });
+  const displayName = payload.name?.trim();
+  if (displayName) {
+    await supabase.auth.updateUser({ data: { name: displayName } });
   }
 
   await applyClaimTechSpecsToVehicle(parsed.vehicleId, payload.techSpecs);

@@ -128,7 +128,7 @@ export async function signInWithPassword(
     }
   }
 
-  redirect(redirectTo);
+  return { status: "ok", redirectTo };
 }
 
 /**
@@ -197,7 +197,7 @@ export async function signUpWithPassword(
     ? "/auth/continue"
     : next;
 
-  redirect(redirectTo);
+  return { status: "ok", redirectTo };
 }
 
 export async function signOut(): Promise<void> {

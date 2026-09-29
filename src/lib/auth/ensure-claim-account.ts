@@ -32,6 +32,8 @@ export async function ensureClaimAccount(input: {
   email: string;
   password: string;
   name?: string | null;
+  /** Post-email-confirm destination (auth/callback `next`). */
+  redirectNext?: string;
 }): Promise<EnsureClaimAccountResult> {
   try {
     const headerStore = await headers();
@@ -73,11 +75,13 @@ export async function ensureClaimAccount(input: {
     return { ok: true, userId: existing.id, created: false };
   }
 
+  const redirectNext = input.redirectNext?.trim() || "/auth/continue";
+
   const result = await registerAccountWithConfirmation({
     email,
     password,
     name,
-    redirectNext: "/auth/continue",
+    redirectNext,
     confirmMessage: CLAIM_CONFIRM_EMAIL_MESSAGE,
   });
 

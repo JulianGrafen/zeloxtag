@@ -104,7 +104,10 @@ export function ClaimFlow({
   const [pending, startTransition] = useTransition();
 
   const needsAccount = !isAuthenticated;
-  const includeProfileName = !initialDisplayName?.trim();
+  /** Digital garage / register: always collect display name for dashboard greeting. */
+  const includeProfileName = isDigital
+    ? true
+    : !initialDisplayName?.trim();
   const flowOptions: ClaimWizardFlowOptions = {
     needsAccount,
     includeProfileName,
@@ -325,17 +328,18 @@ export function ClaimFlow({
           return;
         }
 
-        if (result.status === "continue") {
-          const vehicleId =
-            "vehicleId" in result && typeof result.vehicleId === "string"
-              ? result.vehicleId
-              : null;
-          if (vehicleId) {
-            await applyOnboardingVehiclePhoto(
-              vehicleId,
-              isDigital ? undefined : tagUuid,
-            );
-          }
+        if (result.status !== "continue" || !("href" in result) || !result.href) {
+          setError("Weiterleitung fehlgeschlagen.");
+          return;
+        }
+
+        const vehicleId =
+          typeof result.vehicleId === "string" ? result.vehicleId : null;
+        if (vehicleId) {
+          await applyOnboardingVehiclePhoto(
+            vehicleId,
+            isDigital ? undefined : tagUuid,
+          );
         }
 
         window.location.replace(result.href);

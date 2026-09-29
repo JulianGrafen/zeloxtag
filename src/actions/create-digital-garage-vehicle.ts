@@ -162,6 +162,7 @@ export async function createDigitalGarageVehicle(
       email: normalized.email,
       password: normalized.password,
       name: normalized.name,
+      redirectNext: "/register",
     });
 
     if (!account.ok) {
