@@ -907,6 +907,29 @@ nextjs-portal {
   touch-action: pan-y;
 }
 
+.hardware-upsell-model-slot .claim-intro-model-slot {
+  margin: 0;
+  height: min(44vw, 220px);
+  min-height: 180px;
+  max-height: 260px;
+}
+
+@media (min-width: 640px) {
+  .hardware-upsell-model-slot {
+    display: flex;
+    min-height: 100%;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0;
+  }
+
+  .hardware-upsell-model-slot .claim-intro-model-slot {
+    height: 240px;
+    max-height: none;
+    min-height: 220px;
+  }
+}
+
 .claim-intro-model-slot--empty {
   min-height: 0;
   height: 0;

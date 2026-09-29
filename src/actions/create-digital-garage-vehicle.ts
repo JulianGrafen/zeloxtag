@@ -7,6 +7,11 @@ import { ensureClaimAccount } from "@/lib/auth/ensure-claim-account";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { completeGarageVehicleForOwner } from "@/lib/hardware/complete-garage-vehicle-for-owner";
 import { setPendingGarageVehicle } from "@/lib/hardware/pending-garage-vehicle";
+import {
+  DIGITAL_GARAGE_BETA_FULL_MESSAGE,
+  getDigitalGarageBetaStatus,
+  isDigitalGarageBetaClosed,
+} from "@/lib/onboarding/digital-garage-beta";
 import { garageDashboardTourHref } from "@/lib/onboarding/dashboard-tour";
 import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import {
@@ -138,6 +143,11 @@ export async function createDigitalGarageVehicle(
       href: garageDashboardTourHref("mock-vehicle"),
       vehicleId: "mock-vehicle",
     };
+  }
+
+  const betaStatus = await getDigitalGarageBetaStatus();
+  if (isDigitalGarageBetaClosed(betaStatus)) {
+    return { status: "error", message: DIGITAL_GARAGE_BETA_FULL_MESSAGE };
   }
 
   let ownerUserId: string;

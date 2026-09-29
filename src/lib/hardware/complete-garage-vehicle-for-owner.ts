@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { mapGarageRpcError } from "@/lib/onboarding/digital-garage-beta";
 import { parseHardwareRpcResult } from "@/lib/hardware/rpc-result";
 import type { PendingGarageVehicle } from "@/lib/hardware/pending-garage-vehicle";
 import { logServerError } from "@/lib/security/public-error";
@@ -47,9 +48,10 @@ export async function completeGarageVehicleForOwner(
 
   const parsed = parseHardwareRpcResult(data);
   if (!parsed.ok || !parsed.vehicleId) {
+    const mapped = mapGarageRpcError(parsed.ok ? "unavailable" : parsed.error);
     return {
       status: "error",
-      message: "Fahrzeug konnte nicht angelegt werden.",
+      message: mapped ?? "Fahrzeug konnte nicht angelegt werden.",
     };
   }
 

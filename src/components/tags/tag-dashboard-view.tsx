@@ -492,6 +492,7 @@ export function TagDashboardView({
                   vehicleId={vehicle.id}
                   userId={tagShopUserId!}
                   userEmail={tagShopUserEmail}
+                  tagModelUuid={vehicleSurfaceScope?.linkedTagUuid}
                 />
               ) : null}
               {showProductFeaturesBanner ? (

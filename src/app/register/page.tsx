@@ -6,7 +6,12 @@ import { ClaimFlow } from "@/components/tags/claim-flow";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { ownerDisplayNameFromMetadata } from "@/lib/auth/owner-display-name";
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
+import { DigitalGarageBetaClosed } from "@/components/onboarding/digital-garage-beta-closed";
 import { userHasGarageVehicle } from "@/lib/auth/user-has-vehicle";
+import {
+  getDigitalGarageBetaStatus,
+  isDigitalGarageBetaClosed,
+} from "@/lib/onboarding/digital-garage-beta";
 import { pageSocialMetadata } from "@/lib/seo/open-graph";
 
 export const metadata: Metadata = {
@@ -26,6 +31,11 @@ export default async function RegisterPage() {
   const user = await getCurrentUser();
   if (user && (await userHasGarageVehicle(user.id))) {
     redirect(await resolvePostLoginPath(user.id));
+  }
+
+  const beta = await getDigitalGarageBetaStatus();
+  if (isDigitalGarageBetaClosed(beta)) {
+    return <DigitalGarageBetaClosed maxSlots={beta.maxSlots} />;
   }
 
   return (
