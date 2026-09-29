@@ -40,7 +40,7 @@ import {
   isDemoActiveTag,
 } from "@/lib/tags/demo-showcase";
 
-import { TagShopDashboardPromo } from "@/components/hardware/tag-shop-dashboard-promo";
+import { HardwareUpsellWidget } from "@/components/hardware/hardware-upsell-widget";
 import { GarageSwitcherTile } from "@/components/garage/garage-switcher-tile";
 import { ProductFeaturesBanner } from "@/components/onboarding/product-features-banner";
 
@@ -103,7 +103,7 @@ interface TagDashboardViewProps {
   productFeaturesBannerActive?: boolean;
   /** Owner-only Betriebskosten for dashboard tile subtitles. */
   operatingCostHint?: OperatingCostDashboardHint | null;
-  /** Digital garage without linked hardware tag — show shop + link CTA. */
+  /** Digital garage without linked hardware tag — V4A upsell + link CTA. */
   showTagShopPromo?: boolean;
   tagShopUserId?: string;
   tagShopUserEmail?: string | null;
@@ -488,7 +488,7 @@ export function TagDashboardView({
           showTagShop || showProductFeaturesBanner ? (
             <div className="flex flex-col gap-3">
               {showTagShop ? (
-                <TagShopDashboardPromo
+                <HardwareUpsellWidget
                   vehicleId={vehicle.id}
                   userId={tagShopUserId!}
                   userEmail={tagShopUserEmail}

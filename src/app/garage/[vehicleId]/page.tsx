@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { HardwareUpsellWidget } from "@/components/hardware/hardware-upsell-widget";
 import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { loginGateHref } from "@/lib/auth/login-gate-url";
@@ -49,15 +48,6 @@ export default async function GarageDashboardPage({
   return (
     <AppShell showNavbar={false}>
       <div className="flex flex-col gap-4">
-        {!dashboard.scope.linkedTagUuid ? (
-          <div className="px-4 pt-4 sm:px-5">
-            <HardwareUpsellWidget
-              vehicleId={dashboard.scope.vehicleId}
-              userId={user.id}
-              userEmail={user.email}
-            />
-          </div>
-        ) : null}
         <TagDashboardShell
           vehicle={dashboard.vehicle}
           documents={dashboard.documents}
