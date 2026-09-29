@@ -2,8 +2,10 @@ import type { VehicleWriteAccess } from "@/lib/auth/vehicle-write-access";
 import { writeAccessErrorMessage } from "@/lib/auth/vehicle-write-access";
 import {
   ownerCanUseAiAbeScan,
+  ownerCanUseAiFuelScan,
   ownerCanUseAiInvoiceScan,
   ownerHasFreeAbeScanRemaining,
+  ownerHasFreeFuelScanRemaining,
   ownerHasFreeInvoiceScanRemaining,
 } from "@/lib/billing/free-scan-quota";
 import { ownerHasProSubscription } from "@/lib/billing/owner-entitlement";
@@ -41,6 +43,8 @@ export type FeatureGateOptions = {
   allowFreeInvoiceScan?: boolean;
   /** Allow the vehicle owner's one free KI ABE scan. */
   allowFreeAbeScan?: boolean;
+  /** Allow complimentary KI fuel receipt scans on Free. */
+  allowFreeFuelScan?: boolean;
   /** Complimentary quota already consumed for an in-flight OCR session. */
   validatedFreeScanSession?: boolean;
 };
@@ -66,6 +70,20 @@ async function denyOwnerFeature(
   if (
     options?.allowFreeAbeScan &&
     !(await ownerHasFreeAbeScanRemaining(ownerUserId))
+  ) {
+    if (options.validatedFreeScanSession) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      code: FREE_SCAN_EXHAUSTED_CODE,
+      message: MEMBERSHIP_REQUIRED_MESSAGE,
+    };
+  }
+
+  if (
+    options?.allowFreeFuelScan &&
+    !(await ownerHasFreeFuelScanRemaining(ownerUserId))
   ) {
     if (options.validatedFreeScanSession) {
       return { ok: true };
@@ -107,6 +125,14 @@ export async function assertOwnerFeature(
     (feature === FEATURE.SCAN_AI_RECEIPT ||
       feature === FEATURE.DOCUMENT_VAULT) &&
     (await ownerCanUseAiAbeScan(ownerUserId))
+  ) {
+    return { ok: true };
+  }
+
+  if (
+    options?.allowFreeFuelScan &&
+    feature === FEATURE.SCAN_AI_RECEIPT &&
+    (await ownerCanUseAiFuelScan(ownerUserId))
   ) {
     return { ok: true };
   }

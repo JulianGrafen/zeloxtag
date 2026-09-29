@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { getVehicleWriteAccess } from "@/lib/auth/vehicle-write-access";
+import { withScanSessionId } from "@/lib/billing/free-scan-quota";
+import { fuelOcrAccessFromFormData } from "@/lib/security/require-fuel-ocr";
 import { extractFuelReceiptFromImage } from "@/lib/ocr/extract-fuel-receipt";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import type { FuelOcrApiError, FuelOcrApiSuccess } from "@/lib/fuel-receipt/types";
@@ -43,7 +44,7 @@ const formMetaSchema = z
 function jsonError(
   status: number,
   error: string,
-  code: FuelOcrApiError["code"],
+  code: FuelOcrApiError["code"] | "SUBSCRIPTION_REQUIRED" | "FREE_SCAN_EXHAUSTED",
 ) {
   const body: FuelOcrApiError = { ok: false, error, code };
   return NextResponse.json(body, { status });
@@ -116,16 +117,26 @@ export async function POST(request: NextRequest) {
     );
     if (gateBlocked) return gateBlocked;
 
-    const access = await getVehicleWriteAccess(
-      meta.data.vehicleId,
+    const vehicleAccess = await fuelOcrAccessFromFormData(
+      formData,
       auth.user.id,
     );
-    if (!access.ok || !access.isOwner) {
-      return jsonError(
-        403,
-        "Nur der Fahrzeughalter kann Tankbelege scannen.",
-        "forbidden",
-      );
+    if (!vehicleAccess.ok) {
+      const payload = await vehicleAccess.response.json();
+      const code = payload?.code;
+      if (
+        code === "FREE_SCAN_EXHAUSTED" ||
+        code === "SUBSCRIPTION_REQUIRED"
+      ) {
+        return jsonError(
+          403,
+          typeof payload?.error === "string"
+            ? payload.error
+            : "ZeloxTag Pro erforderlich.",
+          code,
+        );
+      }
+      return vehicleAccess.response;
     }
 
     const bytes = Buffer.from(fileCheck.bytes);
@@ -144,8 +155,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body: FuelOcrApiSuccess = { ok: true, extraction };
-    return NextResponse.json(body, { status: 200 });
+    const body: FuelOcrApiSuccess = {
+      ok: true,
+      extraction,
+      freeScanSessionStarted: vehicleAccess.freeScanSessionStarted,
+    };
+    return NextResponse.json(
+      withScanSessionId(body, vehicleAccess.scanSessionId),
+      { status: 200 },
+    );
   } catch (error) {
     const gateResponse = automotiveGateErrorFromCaught(error);
     if (gateResponse) return gateResponse;

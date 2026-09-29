@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Fuel } from "lucide-react";
 
 import { InvoiceCaptureWizard } from "@/components/documents/invoice-capture-wizard";
@@ -16,16 +17,22 @@ import {
   progressToOrbState,
 } from "@/lib/documents/scan-progress-orb";
 import { useFuelReceiptScan } from "@/hooks/use-fuel-fill-capture";
+import { useUserTier } from "@/hooks/use-user-tier";
+import type { FuelScanTierSnapshot } from "@/lib/billing/subscription-types";
+import { fuelScanQuotaBadgeLabel } from "@/lib/billing/fuel-scan-paywall-copy";
 
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 import { FuelFillFormFields } from "./fuel-fill-form-fields";
+import { FuelScanCta } from "./fuel-scan-cta";
+import { FuelScanProUpgradeModal } from "./fuel-scan-pro-upgrade-modal";
 
 type FuelReceiptUploaderProps = {
   tagUuid: string;
   vehicleId: string;
   vehicleLabel: string;
   backHref?: string;
+  fuelScanTier: FuelScanTierSnapshot;
 };
 
 export function FuelReceiptUploader({
@@ -33,8 +40,13 @@ export function FuelReceiptUploader({
   vehicleId,
   vehicleLabel,
   backHref,
+  fuelScanTier,
 }: FuelReceiptUploaderProps) {
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/tanken`;
+  const tier = useUserTier({ initial: fuelScanTier });
+  const [scanSessionId, setScanSessionId] = useState<string | null>(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const manualFormRef = useRef<HTMLDivElement>(null);
 
   const {
     step,
@@ -53,9 +65,30 @@ export function FuelReceiptUploader({
     tagUuid,
     vehicleId,
     backHref: resolvedBackHref,
+    canScan: tier.canScan,
+    scanSessionId,
+    setScanSessionId,
+    onScanPaywall: () => setPaywallOpen(true),
+    onScanQuotaConsumed: () => {
+      void tier.decrementScanCount();
+    },
   });
 
+  useEffect(() => {
+    if (!tier.canScan) {
+      setPaywallOpen(true);
+    }
+  }, [tier.canScan]);
+
   const captureBusy = isCompressing || step === "extracting";
+
+  const scanSubtitle =
+    !tier.isPro && tier.canScan
+      ? fuelScanQuotaBadgeLabel(
+          tier.remainingFreeScans,
+          tier.totalFreeScans,
+        )
+      : "Quittung einlesen";
 
   return (
     <ScanContent className="pb-12">
@@ -69,36 +102,48 @@ export function FuelReceiptUploader({
           <p className="claim-kicker mt-4">Tanken</p>
           <h1 className="claim-title mt-2">Tankbeleg scannen</h1>
           <p className="claim-copy mt-1">
-            {vehicleLabel} · Quittung einlesen
+            {vehicleLabel} · {scanSubtitle}
           </p>
         </div>
       </header>
 
       {step === "compose" ? (
         <div className="vd-anim-header space-y-3">
-          <InvoiceCaptureWizard
-            title="Tankbeleg scannen"
-            scanLabel="Tankquittung"
-            hint="Foto im Scanner aufnehmen oder ein Bild aus der Galerie hochladen."
-            allowPdf={false}
-            showImageUploadOnIntro
-            imageButtonLabel="Bild hochladen"
-            disabled={captureBusy}
-            onComplete={(files) => {
-              void completeCapture(files);
-            }}
-          />
+          {tier.canScan ? (
+            <InvoiceCaptureWizard
+              title="Tankbeleg scannen"
+              scanLabel="Tankquittung"
+              hint="Foto im Scanner aufnehmen oder ein Bild aus der Galerie hochladen."
+              allowPdf={false}
+              showImageUploadOnIntro
+              imageButtonLabel="Bild hochladen"
+              disabled={captureBusy}
+              onComplete={(files) => {
+                void completeCapture(files);
+              }}
+            />
+          ) : (
+            <FuelScanCta
+              isPro={tier.isPro}
+              remainingFreeScans={tier.remainingFreeScans}
+              totalFreeScans={tier.totalFreeScans}
+              canScan={tier.canScan}
+              onScan={() => setPaywallOpen(true)}
+            />
+          )}
           {error ? (
             <p role="alert" className="vd-alert-error">{error}</p>
           ) : null}
-          <p className="text-center text-[0.78rem] text-[color:var(--vd-muted)]">
-            <PressableLink
-              href={`/v/${tagUuid}/tanken/manuell`}
-              className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4"
-            >
-              Stattdessen manuell eintragen
-            </PressableLink>
-          </p>
+          <div ref={manualFormRef}>
+            <p className="text-center text-[0.78rem] text-[color:var(--vd-muted)]">
+              <PressableLink
+                href={`/v/${tagUuid}/tanken/manuell`}
+                className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4"
+              >
+                Stattdessen manuell eintragen
+              </PressableLink>
+            </p>
+          </div>
         </div>
       ) : null}
 
@@ -163,6 +208,19 @@ export function FuelReceiptUploader({
           </div>
         </div>
       ) : null}
+
+      <FuelScanProUpgradeModal
+        open={paywallOpen}
+        tagUuid={tagUuid}
+        onClose={() => setPaywallOpen(false)}
+        onManualEntry={() => {
+          setPaywallOpen(false);
+          manualFormRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }}
+      />
     </ScanContent>
   );
 }

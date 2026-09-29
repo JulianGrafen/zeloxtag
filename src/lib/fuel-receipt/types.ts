@@ -16,6 +16,8 @@ export type FuelFillFormState = {
 export type FuelOcrApiSuccess = {
   ok: true;
   extraction: FuelReceiptExtraction;
+  scanSessionId?: string;
+  freeScanSessionStarted?: boolean;
 };
 
 export type FuelOcrApiErrorCode =
@@ -23,7 +25,9 @@ export type FuelOcrApiErrorCode =
   | "config"
   | "forbidden"
   | "ocr_failed"
-  | "rate_limited";
+  | "rate_limited"
+  | "SUBSCRIPTION_REQUIRED"
+  | "FREE_SCAN_EXHAUSTED";
 
 export type FuelOcrApiError = {
   ok: false;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { VehicleFuelLogView } from "@/components/operating-costs/vehicle-fuel-log-view";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
+import { loadFuelScanSubscriptionForOwner } from "@/lib/billing/subscription-service";
 import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
 
 interface FuelLogPageProps {
@@ -26,6 +27,15 @@ export default async function VehicleFuelLogPage({ params }: FuelLogPageProps) {
     ? []
     : await listOperatingCostsForVehicle(vehicle.id);
   const vehicleModel = `${vehicle.make} ${vehicle.model} · ${vehicle.year}`;
+  const fuelScanTier = isDemoShowcase
+    ? {
+        isPro: false,
+        remainingFreeScans: 3,
+        totalFreeScans: 3,
+        canScan: true,
+        quotaUnavailable: false,
+      }
+    : await loadFuelScanSubscriptionForOwner(vehicle.user_id);
 
   return (
     <VehicleFuelLogView
@@ -34,6 +44,7 @@ export default async function VehicleFuelLogPage({ params }: FuelLogPageProps) {
       vehicleModel={vehicleModel}
       entries={entries}
       readOnly={isDemoShowcase}
+      fuelScanTier={fuelScanTier}
     />
   );
 }

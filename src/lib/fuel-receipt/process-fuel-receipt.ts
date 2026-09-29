@@ -11,6 +11,13 @@ export type ProcessFuelReceiptInput = {
   file: File;
   vehicleId: string;
   tagUuid: string;
+  scanSessionId?: string | null;
+};
+
+export type ProcessFuelReceiptResult = {
+  extraction: FuelReceiptExtraction;
+  scanSessionId?: string;
+  freeScanSessionStarted?: boolean;
 };
 
 function parseApiError(payload: unknown): FuelOcrApiError | null {
@@ -26,6 +33,8 @@ function parseApiError(payload: unknown): FuelOcrApiError | null {
     "forbidden",
     "ocr_failed",
     "rate_limited",
+    "SUBSCRIPTION_REQUIRED",
+    "FREE_SCAN_EXHAUSTED",
   ]);
   if (typeof code !== "string" || !allowed.has(code)) {
     return { ok: false, error, code: "ocr_failed" };
@@ -35,7 +44,7 @@ function parseApiError(payload: unknown): FuelOcrApiError | null {
 
 export async function processFuelReceipt(
   input: ProcessFuelReceiptInput,
-): Promise<FuelReceiptExtraction> {
+): Promise<ProcessFuelReceiptResult> {
   const vehicleId = input.vehicleId.trim();
   const tagUuid = input.tagUuid.trim();
   if (!vehicleId || !tagUuid) {
@@ -47,6 +56,9 @@ export async function processFuelReceipt(
   formData.set("vehicleId", vehicleId);
   formData.set("tagUuid", tagUuid);
   formData.set("file", compressed.file, compressed.file.name);
+  if (input.scanSessionId?.trim()) {
+    formData.set("scanSessionId", input.scanSessionId.trim());
+  }
 
   const response = await fetch("/api/ocr/fuel", {
     method: "POST",
@@ -80,5 +92,9 @@ export async function processFuelReceipt(
     );
   }
 
-  return success.extraction;
+  return {
+    extraction: success.extraction,
+    scanSessionId: success.scanSessionId,
+    freeScanSessionStarted: success.freeScanSessionStarted,
+  };
 }

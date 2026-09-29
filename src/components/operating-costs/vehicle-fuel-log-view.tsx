@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Fuel, Plus } from "lucide-react";
+import { ArrowLeft, Fuel } from "lucide-react";
 
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
@@ -8,9 +8,12 @@ import { formatLitersPer100Km } from "@/lib/vehicles/operating-costs/fuel-consum
 import { buildOperatingCostSummary } from "@/lib/vehicles/operating-costs/summary";
 import type { VehicleOperatingCost } from "@/types/database";
 
+import type { FuelScanTierSnapshot } from "@/lib/billing/subscription-types";
+
 import { ScanContent } from "@/components/layout/scan-content";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
+import { FuelLogActions } from "./fuel-log-actions";
 import { OperatingCostEntryList } from "./operating-cost-entry-list";
 
 type VehicleFuelLogViewProps = {
@@ -19,6 +22,7 @@ type VehicleFuelLogViewProps = {
   vehicleModel: string;
   entries: VehicleOperatingCost[];
   readOnly?: boolean;
+  fuelScanTier?: FuelScanTierSnapshot;
 };
 
 export function VehicleFuelLogView({
@@ -27,6 +31,7 @@ export function VehicleFuelLogView({
   vehicleModel,
   entries,
   readOnly = false,
+  fuelScanTier,
 }: VehicleFuelLogViewProps) {
   const fuelEntries = entries
     .filter((entry) => entry.category === "fuel")
@@ -111,22 +116,8 @@ export function VehicleFuelLogView({
         ) : null}
       </section>
 
-      {!readOnly ? (
-        <div className="flex flex-col gap-2">
-          <PressableLink
-            href={`/v/${tagUuid}/tanken/erfassen`}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3.5 text-[0.92rem] font-semibold text-white"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Tankbeleg scannen
-          </PressableLink>
-          <PressableLink
-            href={`/v/${tagUuid}/tanken/manuell`}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)]"
-          >
-            Manuell eintragen
-          </PressableLink>
-        </div>
+      {!readOnly && fuelScanTier ? (
+        <FuelLogActions tagUuid={tagUuid} fuelScanTier={fuelScanTier} />
       ) : null}
 
       <section>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { FuelReceiptUploader } from "@/components/operating-costs/fuel-receipt-uploader";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
+import { loadFuelScanSubscriptionForOwner } from "@/lib/billing/subscription-service";
 
 interface FuelCapturePageProps {
   params: Promise<{ uuid: string }>;
@@ -29,6 +30,7 @@ export default async function VehicleFuelCapturePage({
 
   const vehicle = result.vehicle!;
   const vehicleLabel = `${vehicle.make} ${vehicle.model} · ${vehicle.year}`;
+  const fuelScanTier = await loadFuelScanSubscriptionForOwner(vehicle.user_id);
 
   return (
     <FuelReceiptUploader
@@ -36,6 +38,7 @@ export default async function VehicleFuelCapturePage({
       vehicleId={vehicle.id}
       vehicleLabel={vehicleLabel}
       backHref={`/v/${result.tag.uuid}/tanken`}
+      fuelScanTier={fuelScanTier}
     />
   );
 }

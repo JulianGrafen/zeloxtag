@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import {
   FREE_AI_ABE_SCAN_LIMIT,
+  FREE_AI_FUEL_SCAN_LIMIT,
   FREE_AI_INVOICE_SCAN_LIMIT,
 } from "@/lib/billing/free-scan-constants";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
@@ -16,7 +17,7 @@ export type FreeScanGateOptions = {
   allowFreeAbeScan?: boolean;
 };
 
-export type FreeScanKind = "invoice" | "abe";
+export type FreeScanKind = "invoice" | "abe" | "fuel";
 
 export type FreeScanQuota = {
   used: number;
@@ -32,28 +33,32 @@ const scanSessionIdSchema = z.string().uuid();
 type EntitlementRow = {
   invoiceUsed: number;
   abeUsed: number;
+  fuelUsed: number;
   loadError: boolean;
 };
 
 async function loadEntitlementRow(userId: string): Promise<EntitlementRow> {
   if (!userId || !isSupabaseAdminConfigured()) {
-    return { invoiceUsed: 0, abeUsed: 0, loadError: true };
+    return { invoiceUsed: 0, abeUsed: 0, fuelUsed: 0, loadError: true };
   }
 
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("user_entitlements")
-    .select("free_ai_invoice_scans_used, free_ai_abe_scans_used")
+    .select(
+      "free_ai_invoice_scans_used, free_ai_abe_scans_used, free_ai_fuel_scans_used",
+    )
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
     console.error("[free-scan] read failed", error.message);
-    return { invoiceUsed: 0, abeUsed: 0, loadError: true };
+    return { invoiceUsed: 0, abeUsed: 0, fuelUsed: 0, loadError: true };
   }
 
   const invoiceUsed = data?.free_ai_invoice_scans_used;
   const abeUsed = data?.free_ai_abe_scans_used;
+  const fuelUsed = data?.free_ai_fuel_scans_used;
 
   return {
     invoiceUsed:
@@ -63,6 +68,10 @@ async function loadEntitlementRow(userId: string): Promise<EntitlementRow> {
     abeUsed:
       typeof abeUsed === "number" && Number.isFinite(abeUsed) && abeUsed > 0
         ? Math.floor(abeUsed)
+        : 0,
+    fuelUsed:
+      typeof fuelUsed === "number" && Number.isFinite(fuelUsed) && fuelUsed > 0
+        ? Math.floor(fuelUsed)
         : 0,
     loadError: false,
   };
@@ -90,9 +99,17 @@ const getFreeAbeScanQuotaUncached = async (
   return toQuota(row.abeUsed, FREE_AI_ABE_SCAN_LIMIT, row.loadError);
 };
 
+const getFreeFuelScanQuotaUncached = async (
+  userId: string,
+): Promise<FreeScanQuota> => {
+  const row = await loadEntitlementRow(userId);
+  return toQuota(row.fuelUsed, FREE_AI_FUEL_SCAN_LIMIT, row.loadError);
+};
+
 /** Request-memoized quota lookup for dashboard render. */
 export const getFreeInvoiceScanQuota = cache(getFreeInvoiceScanQuotaUncached);
 export const getFreeAbeScanQuota = cache(getFreeAbeScanQuotaUncached);
+export const getFreeFuelScanQuota = cache(getFreeFuelScanQuotaUncached);
 
 export async function ownerHasFreeInvoiceScanRemaining(
   ownerUserId: string,
@@ -135,6 +152,22 @@ export async function ownerCanUseAiAbeScan(
   if (await userHasActiveMembership(ownerUserId)) return true;
   if (!isSupabaseAdminConfigured()) return false;
   return ownerHasFreeAbeScanRemaining(ownerUserId);
+}
+
+export async function ownerHasFreeFuelScanRemaining(
+  ownerUserId: string,
+): Promise<boolean> {
+  const quota = await getFreeFuelScanQuota(ownerUserId);
+  return quota.remaining > 0;
+}
+
+export async function ownerCanUseAiFuelScan(
+  ownerUserId: string,
+): Promise<boolean> {
+  if (!ownerUserId) return false;
+  if (await userHasActiveMembership(ownerUserId)) return true;
+  if (!isSupabaseAdminConfigured()) return false;
+  return ownerHasFreeFuelScanRemaining(ownerUserId);
 }
 
 export function parseScanSessionId(
@@ -240,8 +273,17 @@ export async function beginFreeScanSession(
       return { ok: false, code: "quota_unavailable" };
     }
     const limit =
-      kind === "invoice" ? FREE_AI_INVOICE_SCAN_LIMIT : FREE_AI_ABE_SCAN_LIMIT;
-    const used = kind === "invoice" ? row.invoiceUsed : row.abeUsed;
+      kind === "invoice"
+        ? FREE_AI_INVOICE_SCAN_LIMIT
+        : kind === "abe"
+          ? FREE_AI_ABE_SCAN_LIMIT
+          : FREE_AI_FUEL_SCAN_LIMIT;
+    const used =
+      kind === "invoice"
+        ? row.invoiceUsed
+        : kind === "abe"
+          ? row.abeUsed
+          : row.fuelUsed;
     if (used >= limit) {
       return { ok: false, code: "free_scan_exhausted" };
     }
