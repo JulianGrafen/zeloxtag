@@ -6,6 +6,32 @@ import { chromium } from "playwright";
 const UUID_IN_PAGE =
   /"vehicleId":"([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"/i;
 
+/** Cookie banner blocks Playwright clicks on the login form in headless runs. */
+async function dismissCookieConsentIfPresent(page) {
+  const dialog = page.locator('[aria-labelledby="zt-cookie-consent-title"]');
+  const visible = await dialog.isVisible().catch(() => false);
+  if (!visible) return;
+
+  const accept = page.getByRole("button", {
+    name: /akzeptieren|zustimmen|einverstanden/i,
+  });
+  if (await accept.first().isVisible().catch(() => false)) {
+    await accept.first().click({ timeout: 10_000 });
+    await page.waitForTimeout(400);
+    return;
+  }
+
+  // Fallback: hide overlay via consent storage key used on app.zeloxtag.de.
+  await page.evaluate(() => {
+    try {
+      localStorage.setItem("zt_cookie_consent_v1", "accepted");
+    } catch {
+      /* ignore */
+    }
+  });
+  await page.reload({ waitUntil: "networkidle", timeout: 120_000 });
+}
+
 export async function loginAndGetCookieHeader({
   target,
   email,
@@ -21,6 +47,7 @@ export async function loginAndGetCookieHeader({
     waitUntil: "networkidle",
     timeout: 120_000,
   });
+  await dismissCookieConsentIfPresent(page);
   await page.getByRole("tab", { name: "Anmelden" }).click();
   await page.locator("#login-email").fill(email);
   await page.locator("#login-password").fill(password);
@@ -29,6 +56,7 @@ export async function loginAndGetCookieHeader({
   if (pwdLen.length < 10) {
     await page.locator("#login-password").fill(password);
   }
+  await dismissCookieConsentIfPresent(page);
   await page.getByRole("button", { name: "Anmelden", exact: true }).click();
 
   const deadline = Date.now() + 90_000;
@@ -37,7 +65,9 @@ export async function loginAndGetCookieHeader({
     if (page.url().includes("/login/mfa")) {
       const code = totp?.replace(/\D/g, "").slice(0, 6);
       if (!code || code.length !== 6) {
-        throw new Error("MFA required; set ZAP_AUTH_TOTP or ZAP_IDOR_ATTACKER_TOTP");
+        throw new Error(
+          `MFA required for ${email}; set ZAP_AUTH_TOTP (owner) or ZAP_IDOR_ATTACKER_TOTP (attacker) in .env`,
+        );
       }
       await page.getByPlaceholder("000000").fill(code);
       await page.getByRole("button", { name: "Bestätigen" }).click();

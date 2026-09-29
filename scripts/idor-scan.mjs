@@ -38,6 +38,12 @@ if (!tagUuid) {
 const ownerTotp = process.env.ZAP_AUTH_TOTP;
 const attackerTotp = process.env.ZAP_IDOR_ATTACKER_TOTP;
 
+if (!ownerTotp || !attackerTotp) {
+  console.warn(
+    "Tip: if either account has 2FA, set ZAP_AUTH_TOTP and ZAP_IDOR_ATTACKER_TOTP (current 6-digit codes).",
+  );
+}
+
 async function discoverIsPublicShowcase({ target, tagUuid, cookieHeader }) {
   const res = await fetch(`${target}/v/${tagUuid}/einstellungen`, {
     headers: { cookie: cookieHeader, accept: "text/html" },
