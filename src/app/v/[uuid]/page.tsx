@@ -18,7 +18,10 @@ import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free-scan-quota";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
-import { canResolvePublicShowcase } from "@/lib/vehicle-surface/public-showcase-eligibility";
+import {
+  canResolvePublicShowcase,
+  canViewPublicShowcaseSlug,
+} from "@/lib/vehicle-surface/public-showcase-eligibility";
 import { resolveVehicleIdScanMisroute } from "@/lib/vehicle-surface/resolve-vehicle-id-scan-misroute";
 import {
   enrichPublicShowcaseVehicle,
@@ -267,29 +270,20 @@ export default async function TagScanPage({
       );
     }
 
-    const tagUuid = await getActiveTagUuidForVehicle(vehicle.id);
-    const showcaseAllowed = await canResolvePublicShowcase(vehicle.id);
+    if (
+      user &&
+      vehicle.user_id?.trim() &&
+      user.id === vehicle.user_id.trim()
+    ) {
+      redirect(garagePathForVehicle(vehicle.id));
+    }
 
-    if (!showcaseAllowed || !tagUuid) {
-      if (user) {
-        const access = tagUuid
-          ? await getTagVehicleAccess(
-              tagUuid,
-              vehicle.user_id?.trim() || null,
-              vehicle.id,
-            )
-          : { isOwner: false, isContributor: false };
-        if (
-          access.isOwner ||
-          (vehicle.user_id && user.id === vehicle.user_id)
-        ) {
-          redirect(garagePathForVehicle(vehicle.id));
-        }
-      }
+    if (!canViewPublicShowcaseSlug(vehicle)) {
       redirect("/profil-nicht-verfuegbar");
     }
 
-    if (tagUuid) {
+    const tagUuid = await getActiveTagUuidForVehicle(vehicle.id);
+    if (tagUuid && user) {
       const access = await getTagVehicleAccess(
         tagUuid,
         vehicle.user_id?.trim() || null,
@@ -320,6 +314,9 @@ export default async function TagScanPage({
       if (!showcaseAllowed) {
         if (access.isOwner) {
           redirect(garagePathForVehicle(vehicle.id));
+        }
+        if (canViewPublicShowcaseSlug(vehicle)) {
+          return renderPublicShowcase(vehicle);
         }
         redirect("/profil-nicht-verfuegbar");
       }

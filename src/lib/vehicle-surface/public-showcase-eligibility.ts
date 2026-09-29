@@ -2,7 +2,17 @@ import "server-only";
 
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 
-/** Public Quartettkarte requires an active hardware tag on the vehicle. */
+/** Build-Swipe + `/v/{public_slug}` guest showcase (no hardware tag required). */
+export function canViewPublicShowcaseSlug(vehicle: {
+  is_public?: boolean | null;
+}): boolean {
+  return Boolean(vehicle.is_public);
+}
+
+/**
+ * QR `/v/{tagUuid}` guest showcase — still requires a linked active tag
+ * (digital-garage builds use slug + swipe instead).
+ */
 export async function canResolvePublicShowcase(
   vehicleId: string,
 ): Promise<boolean> {
