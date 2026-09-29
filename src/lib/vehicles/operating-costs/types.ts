@@ -43,7 +43,10 @@ export type OperatingCostSummary = {
   fuelStats: {
     lastFill: VehicleOperatingCost | null;
     monthlyFuelAverage: number;
+    litersPer100Km: number | null;
+    averageLitersPer100Km: number | null;
     eurosPer100Km: number | null;
+    consumptionSegmentCount: number;
   };
   windowMonths: number;
   entryCount: number;

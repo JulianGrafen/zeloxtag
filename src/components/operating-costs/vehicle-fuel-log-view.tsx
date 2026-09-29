@@ -4,6 +4,7 @@ import { ArrowLeft, Fuel, Plus } from "lucide-react";
 
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
+import { formatLitersPer100Km } from "@/lib/vehicles/operating-costs/fuel-consumption";
 import { buildOperatingCostSummary } from "@/lib/vehicles/operating-costs/summary";
 import type { VehicleOperatingCost } from "@/types/database";
 
@@ -27,10 +28,14 @@ export function VehicleFuelLogView({
   entries,
   readOnly = false,
 }: VehicleFuelLogViewProps) {
-  const fuelEntries = entries.filter((entry) => entry.category === "fuel");
+  const fuelEntries = entries
+    .filter((entry) => entry.category === "fuel")
+    .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
   const summary = buildOperatingCostSummary(entries);
 
   const last = summary.fuelStats.lastFill;
+  const { litersPer100Km, averageLitersPer100Km, eurosPer100Km } =
+    summary.fuelStats;
 
   return (
     <ScanContent className="gap-5">
@@ -68,22 +73,60 @@ export function VehicleFuelLogView({
               {last
                 ? formatCompactGermanDate(last.occurred_on)
                 : "Noch kein Eintrag"}
-              {summary.fuelStats.eurosPer100Km != null
-                ? ` · ca. ${formatEur(summary.fuelStats.eurosPer100Km)}/100 km`
-                : ""}
             </p>
           </div>
         </div>
+        {litersPer100Km != null ? (
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[color:var(--vd-border)] pt-4">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                Verbrauch
+              </p>
+              <p className="mt-1 text-[1rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
+                {formatLitersPer100Km(litersPer100Km)}
+              </p>
+              <p className="mt-0.5 text-[0.72rem] text-[color:var(--vd-muted)]">
+                letzte Tankung
+              </p>
+            </div>
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                Ø Verbrauch
+              </p>
+              <p className="mt-1 text-[1rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
+                {formatLitersPer100Km(averageLitersPer100Km)}
+              </p>
+              {eurosPer100Km != null ? (
+                <p className="mt-0.5 text-[0.72rem] text-[color:var(--vd-muted)]">
+                  ca. {formatEur(eurosPer100Km)}/100 km
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : fuelEntries.length > 0 ? (
+          <p className="mt-4 border-t border-[color:var(--vd-border)] pt-4 text-[0.78rem] text-[color:var(--vd-muted)]">
+            Verbrauch: nach zwei Tankungen mit Kilometerstand und Literangabe
+            berechenbar.
+          </p>
+        ) : null}
       </section>
 
       {!readOnly ? (
-        <PressableLink
-          href={`/v/${tagUuid}/tanken/erfassen`}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3.5 text-[0.92rem] font-semibold text-white"
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-          Tankvorgang hinzufügen
-        </PressableLink>
+        <div className="flex flex-col gap-2">
+          <PressableLink
+            href={`/v/${tagUuid}/tanken/erfassen`}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3.5 text-[0.92rem] font-semibold text-white"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Tankbeleg scannen
+          </PressableLink>
+          <PressableLink
+            href={`/v/${tagUuid}/tanken/manuell`}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)]"
+          >
+            Manuell eintragen
+          </PressableLink>
+        </div>
       ) : null}
 
       <section>

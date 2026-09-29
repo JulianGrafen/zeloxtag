@@ -17,7 +17,7 @@ import {
 } from "@/lib/documents/scan-progress-orb";
 import { useFuelReceiptScan } from "@/hooks/use-fuel-fill-capture";
 
-import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 import { FuelFillFormFields } from "./fuel-fill-form-fields";
 
@@ -91,6 +91,14 @@ export function FuelReceiptUploader({
           {error ? (
             <p role="alert" className="vd-alert-error">{error}</p>
           ) : null}
+          <p className="text-center text-[0.78rem] text-[color:var(--vd-muted)]">
+            <PressableLink
+              href={`/v/${tagUuid}/tanken/manuell`}
+              className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4"
+            >
+              Stattdessen manuell eintragen
+            </PressableLink>
+          </p>
         </div>
       ) : null}
 

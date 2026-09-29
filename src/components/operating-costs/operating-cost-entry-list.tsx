@@ -7,6 +7,10 @@ import { deleteOperatingCost } from "@/actions/operating-costs";
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
+  buildFuelConsumptionByEntryId,
+  formatLitersPer100Km,
+} from "@/lib/vehicles/operating-costs/fuel-consumption";
+import {
   BILLING_PERIOD_LABELS,
   OPERATING_COST_CATEGORY_LABELS,
 } from "@/lib/vehicles/operating-costs/types";
@@ -30,6 +34,9 @@ export function OperatingCostEntryList({
   fuelOnly = false,
 }: OperatingCostEntryListProps) {
   const [pending, startTransition] = useTransition();
+  const consumptionByEntryId = fuelOnly
+    ? buildFuelConsumptionByEntryId(entries)
+    : null;
 
   if (entries.length === 0) {
     return (
@@ -43,7 +50,9 @@ export function OperatingCostEntryList({
 
   return (
     <ul className="divide-y divide-[color:var(--vd-border)] overflow-hidden rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]">
-      {entries.map((entry) => (
+      {entries.map((entry) => {
+        const consumption = consumptionByEntryId?.get(entry.id);
+        return (
         <li
           key={entry.id}
           className="flex items-start justify-between gap-3 px-4 py-3.5"
@@ -67,6 +76,9 @@ export function OperatingCostEntryList({
                 : ""}
               {!fuelOnly && entry.billing_period !== "once"
                 ? ` · ${BILLING_PERIOD_LABELS[entry.billing_period]}`
+                : ""}
+              {consumption
+                ? ` · ${formatLitersPer100Km(consumption.litersPer100Km)}`
                 : ""}
             </p>
             {entry.note ? (
@@ -95,7 +107,8 @@ export function OperatingCostEntryList({
             </PressableButton>
           ) : null}
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }

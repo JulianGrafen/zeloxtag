@@ -78,6 +78,16 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       meta: oilChangeMeta(data),
     },
     {
+      id: "abe",
+      title: "ABE & Gutachten",
+      icon: "stamp",
+    },
+    {
+      id: "tuning-history",
+      title: "Manuelle Einträge",
+      icon: "history",
+    },
+    {
       id: "fuel-log",
       title: "Tanken",
       icon: "fuel",
@@ -87,16 +97,6 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       title: "Kostenübersicht",
       icon: "wallet",
       featured: true,
-    },
-    {
-      id: "abe",
-      title: "ABE & Gutachten",
-      icon: "stamp",
-    },
-    {
-      id: "tuning-history",
-      title: "Manuelle Einträge",
-      icon: "history",
     },
     {
       id: "tuv",

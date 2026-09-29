@@ -1,15 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { createOperatingCost } from "@/actions/operating-costs";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
+import { useFuelFillSubmit } from "@/hooks/use-fuel-fill-submit";
 import {
   emptyFuelFillFormState,
   mapExtractionToFuelFillForm,
 } from "@/lib/fuel-receipt/map-extraction-to-form";
-import { normalizeFuelFillInput } from "@/lib/fuel-receipt/normalize-fuel-fill";
 import { processFuelReceipt } from "@/lib/fuel-receipt/process-fuel-receipt";
 import { FuelReceiptProcessError } from "@/lib/fuel-receipt/types";
 import type { FuelFillFormState } from "@/lib/fuel-receipt/types";
@@ -47,8 +45,13 @@ export function useFuelReceiptScan({
   vehicleId,
   backHref,
 }: UseFuelReceiptScanOptions) {
-  const router = useRouter();
   const { compressFile, isCompressing } = useDocumentCompression();
+  const {
+    submit: submitFill,
+    submitError,
+    pending,
+    setSubmitError,
+  } = useFuelFillSubmit({ tagUuid, vehicleId, backHref });
 
   const [step, setStep] = useState<FuelReceiptScanStep>("compose");
   const [form, setForm] = useState<FuelFillFormState>(emptyFuelFillFormState);
@@ -58,8 +61,6 @@ export function useFuelReceiptScan({
   });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
   const previewUrlRef = useRef<string | null>(null);
 
   const revokePreview = useCallback(() => {
@@ -136,37 +137,8 @@ export function useFuelReceiptScan({
   );
 
   const submit = useCallback(() => {
-    setSubmitError(null);
-    const normalized = normalizeFuelFillInput(form);
-    if (!normalized.ok) {
-      setSubmitError(normalized.message);
-      return;
-    }
-
-    startTransition(async () => {
-      const result = await createOperatingCost({
-        tagUuid,
-        vehicleId,
-        form: {
-          category: "fuel",
-          billingPeriod: "once",
-          amountEur: form.amountEur,
-          occurredOn: form.occurredOn,
-          fuelLiters: form.fuelLiters,
-          odometerKm: form.odometerKm,
-          note: form.note,
-        },
-      });
-      if (result.status === "error") {
-        setSubmitError(result.message);
-        return;
-      }
-
-      const separator = backHref.includes("?") ? "&" : "?";
-      router.push(`${backHref}${separator}saved=1`);
-      router.refresh();
-    });
-  }, [backHref, form, router, tagUuid, vehicleId]);
+    submitFill(form);
+  }, [form, submitFill]);
 
   return {
     step,

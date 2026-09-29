@@ -1,6 +1,7 @@
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import type { VehicleOperatingCost } from "@/types/database";
 
+import { computeFuelConsumptionStats } from "./fuel-consumption";
 import { computeMonthlyAverages } from "./monthly-average";
 import type {
   OperatingCostCategory,
@@ -14,31 +15,6 @@ function sortByDateDesc(
   return [...entries].sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
 }
 
-function computeFuelEurosPer100Km(
-  fuelEntries: VehicleOperatingCost[],
-): number | null {
-  const withKm = sortByDateDesc(fuelEntries).filter(
-    (entry) =>
-      entry.odometer_km != null &&
-      entry.fuel_liters != null &&
-      entry.fuel_liters > 0,
-  );
-
-  if (withKm.length < 2) return null;
-
-  const newest = withKm[0]!;
-  const previous = withKm[1]!;
-  const kmDelta = newest.odometer_km! - previous.odometer_km!;
-  if (kmDelta <= 0) return null;
-
-  const liters = newest.fuel_liters!;
-  const cost = Number(newest.amount_eur);
-  if (!Number.isFinite(cost) || cost <= 0) return null;
-
-  const per100 = (cost / kmDelta) * 100;
-  return Math.round(per100 * 100) / 100;
-}
-
 export function buildOperatingCostSummary(
   entries: VehicleOperatingCost[],
   referenceDate = new Date(),
@@ -48,6 +24,7 @@ export function buildOperatingCostSummary(
     computeMonthlyAverages(entries, referenceDate);
 
   const fuelEntries = sorted.filter((entry) => entry.category === "fuel");
+  const fuelConsumption = computeFuelConsumptionStats(fuelEntries);
 
   return {
     totalMonthlyAverage,
@@ -56,7 +33,10 @@ export function buildOperatingCostSummary(
     fuelStats: {
       lastFill: fuelEntries[0] ?? null,
       monthlyFuelAverage: categoryMonthlyAverages.fuel,
-      eurosPer100Km: computeFuelEurosPer100Km(fuelEntries),
+      litersPer100Km: fuelConsumption.latestLitersPer100Km,
+      averageLitersPer100Km: fuelConsumption.averageLitersPer100Km,
+      eurosPer100Km: fuelConsumption.latestEurosPer100Km,
+      consumptionSegmentCount: fuelConsumption.segmentCount,
     },
     windowMonths,
     entryCount: entries.length,
