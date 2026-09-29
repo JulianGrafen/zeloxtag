@@ -8,55 +8,65 @@ export type ClaimWizardStep =
   | "buildPersonality"
   | "vehiclePhoto"
   | "preferences"
+  | "profileName"
   | "account";
+
+export type ClaimWizardFlowOptions = {
+  needsAccount: boolean;
+  includeProfileName: boolean;
+};
 
 const VEHICLE_STEPS: ClaimWizardStep[] = [
   "makeModel",
+  "vehiclePhoto",
   "year",
   "power",
   "drivetrain",
   "oilInterval",
   "buildPersonality",
-  "vehiclePhoto",
   "preferences",
 ];
 
-export function claimWizardTotalSteps(needsAccount: boolean): number {
-  return needsAccount ? VEHICLE_STEPS.length + 1 : VEHICLE_STEPS.length;
+export function claimWizardOrderedSteps(
+  options: ClaimWizardFlowOptions,
+): ClaimWizardStep[] {
+  const steps: ClaimWizardStep[] = [...VEHICLE_STEPS];
+  if (options.includeProfileName) {
+    steps.push("profileName");
+  }
+  return options.needsAccount ? [...steps, "account"] : steps;
 }
 
-export function claimWizardOrderedSteps(
-  needsAccount: boolean,
-): ClaimWizardStep[] {
-  return needsAccount ? [...VEHICLE_STEPS, "account"] : [...VEHICLE_STEPS];
+export function claimWizardTotalSteps(options: ClaimWizardFlowOptions): number {
+  return claimWizardOrderedSteps(options).length;
 }
 
 /** 1-based index among progress steps; 0 when intro or unknown. */
 export function claimWizardStepIndex(
   step: ClaimWizardStep,
-  needsAccount: boolean,
+  options: ClaimWizardFlowOptions,
 ): number {
   if (step === "intro") return 0;
-  const order = claimWizardOrderedSteps(needsAccount);
+  const order = claimWizardOrderedSteps(options);
   const index = order.indexOf(step);
   return index >= 0 ? index + 1 : 0;
 }
 
 export function claimWizardProgressPercent(
   step: ClaimWizardStep,
-  needsAccount: boolean,
+  options: ClaimWizardFlowOptions,
 ): number {
-  const index = claimWizardStepIndex(step, needsAccount);
+  const index = claimWizardStepIndex(step, options);
   if (index <= 0) return 0;
-  const total = claimWizardTotalSteps(needsAccount);
+  const total = claimWizardTotalSteps(options);
   return Math.round((index / total) * 100);
 }
 
 export function claimWizardPreviousStep(
   step: ClaimWizardStep,
-  needsAccount: boolean,
+  options: ClaimWizardFlowOptions,
 ): ClaimWizardStep {
-  const order = claimWizardOrderedSteps(needsAccount);
+  const order = claimWizardOrderedSteps(options);
   const index = order.indexOf(step);
   if (index <= 0) return "intro";
   return order[index - 1] ?? "intro";
@@ -64,9 +74,9 @@ export function claimWizardPreviousStep(
 
 export function claimWizardNextStep(
   step: ClaimWizardStep,
-  needsAccount: boolean,
+  options: ClaimWizardFlowOptions,
 ): ClaimWizardStep | null {
-  const order = claimWizardOrderedSteps(needsAccount);
+  const order = claimWizardOrderedSteps(options);
   const index = order.indexOf(step);
   if (index < 0 || index >= order.length - 1) return null;
   return order[index + 1] ?? null;

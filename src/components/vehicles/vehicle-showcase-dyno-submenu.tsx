@@ -1,19 +1,21 @@
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 type VehicleShowcaseDynoSubmenuProps = {
-  tagUuid: string;
+  surfaceScope: VehicleSurfaceScope;
   hasDynoChart: boolean;
   variant?: "tile" | "group";
 };
 
 export function VehicleShowcaseDynoSubmenu({
-  tagUuid,
+  surfaceScope,
   hasDynoChart,
   variant = "tile",
 }: VehicleShowcaseDynoSubmenuProps) {
   return (
     <VehicleSettingsSubmenuLink
-      href={`/v/${tagUuid}/einstellungen/leistungsdiagramm`}
+      href={vehicleSurfaceHref(surfaceScope, "einstellungen/leistungsdiagramm")}
       variant={variant}
       title="Leistungsdiagramm"
       subtitle={hasDynoChart ? "Hinterlegt" : "Nicht hinterlegt"}

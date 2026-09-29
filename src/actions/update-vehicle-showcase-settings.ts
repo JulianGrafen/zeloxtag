@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
+import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
+import { resolveShowcaseSharePath } from "@/lib/vehicles/public-profile-status";
 import {
   generatePublicSlug,
   isValidPublicSlug,
@@ -14,7 +17,8 @@ import { logServerError } from "@/lib/security/public-error";
 
 export type UpdateVehicleShowcaseSettingsInput = {
   vehicleId: string;
-  tagUuid: string;
+  /** Optional — used for tag-route revalidation when already known. */
+  tagUuid?: string;
   isPublic: boolean;
   hideFinancials: boolean;
   showcaseSwipeOptIn?: boolean;
@@ -29,10 +33,10 @@ export async function updateVehicleShowcaseSettings(
 ): Promise<UpdateVehicleShowcaseSettingsResult> {
   try {
     const vehicleId = input.vehicleId.trim();
-    const tagUuid = input.tagUuid.trim();
+    const tagUuidHint = input.tagUuid?.trim() ?? "";
 
-    if (!vehicleId || !tagUuid) {
-      return { status: "error", message: "Fahrzeug oder Tag fehlt." };
+    if (!vehicleId) {
+      return { status: "error", message: "Fahrzeug fehlt." };
     }
 
     const { isConfigured } = getSupabaseEnv();
@@ -123,18 +127,35 @@ export async function updateVehicleShowcaseSettings(
       };
     }
 
-    revalidatePath(`/v/${tagUuid}`);
-    revalidatePath(`/v/${tagUuid}/daten`);
-    revalidatePath(`/v/${tagUuid}/einstellungen`);
-    revalidatePath(`/v/${tagUuid}/einstellungen/profil`);
-    if (publicSlug) {
-      revalidatePath(publicShowcasePath(publicSlug));
+    const activeTagUuid = await getActiveTagUuidForVehicle(vehicleId);
+    const tagUuidForRevalidate = activeTagUuid ?? tagUuidHint;
+
+    revalidatePath(garagePathForVehicle(vehicleId));
+    revalidatePath(garagePathForVehicle(vehicleId, "einstellungen"));
+    revalidatePath(garagePathForVehicle(vehicleId, "einstellungen/profil"));
+
+    if (tagUuidForRevalidate) {
+      revalidatePath(`/v/${tagUuidForRevalidate}`);
+      revalidatePath(`/v/${tagUuidForRevalidate}/daten`);
+      revalidatePath(`/v/${tagUuidForRevalidate}/einstellungen`);
+      revalidatePath(`/v/${tagUuidForRevalidate}/einstellungen/profil`);
+    }
+
+    const sharePath = resolveShowcaseSharePath({
+      isPublic: input.isPublic,
+      publicSlug,
+      hasActiveTag: Boolean(activeTagUuid?.trim()),
+      pathForSlug: publicShowcasePath,
+    });
+
+    if (sharePath) {
+      revalidatePath(sharePath);
     }
 
     return {
       status: "ok",
       publicSlug,
-      sharePath: input.isPublic && publicSlug ? publicShowcasePath(publicSlug) : null,
+      sharePath,
     };
   } catch (error) {
     logServerError("[update-vehicle-showcase-settings] unexpected", error);

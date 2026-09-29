@@ -1,14 +1,16 @@
 import { MAX_SHOWCASE_GALLERY_PHOTOS } from "@/lib/documents/showcase-gallery";
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 type VehicleShowcaseGallerySubmenuProps = {
-  tagUuid: string;
+  surfaceScope: VehicleSurfaceScope;
   photoCount: number;
   variant?: "tile" | "group";
 };
 
 export function VehicleShowcaseGallerySubmenu({
-  tagUuid,
+  surfaceScope,
   photoCount,
   variant = "tile",
 }: VehicleShowcaseGallerySubmenuProps) {
@@ -16,7 +18,7 @@ export function VehicleShowcaseGallerySubmenu({
 
   return (
     <VehicleSettingsSubmenuLink
-      href={`/v/${tagUuid}/einstellungen/galerie`}
+      href={vehicleSurfaceHref(surfaceScope, "einstellungen/galerie")}
       variant={variant}
       title="Galerie"
       subtitle={

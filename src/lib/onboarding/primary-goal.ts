@@ -1,5 +1,7 @@
 /** Why the user chose ZeloxTag — set once at first dashboard onboarding. */
 
+import { ZELOX_TAG_PRODUCT_URL } from "@/lib/hardware/zelox-tag-product-url";
+
 export const PRIMARY_GOAL_STORAGE_KEY = "zt_primary_goal_v1";
 
 export type ZeloxPrimaryGoal = "werterhalt" | "showcase" | "documents";
@@ -8,6 +10,9 @@ export type PrimaryGoalOption = {
   id: ZeloxPrimaryGoal;
   title: string;
   description: string;
+  /** Shown on the option card when hardware is required for this goal. */
+  requirement?: string;
+  requirementHref?: string;
 };
 
 export const PRIMARY_GOAL_OPTIONS: readonly PrimaryGoalOption[] = [
@@ -20,6 +25,8 @@ export const PRIMARY_GOAL_OPTIONS: readonly PrimaryGoalOption[] = [
     id: "showcase",
     title: "Visitenkarte fürs Tuningtreffen",
     description: "Mod-Liste & Docs per QR am Auto zeigen.",
+    requirement: "Zelox Tag erforderlich",
+    requirementHref: ZELOX_TAG_PRODUCT_URL,
   },
   {
     id: "documents",

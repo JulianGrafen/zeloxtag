@@ -78,6 +78,11 @@ export default async function GarageDashboardPage({
           showcaseSwipeUnreadLikes={dashboard.showcaseSwipeUnreadLikes}
           showcaseSwipeTotalLikes={dashboard.showcaseSwipeTotalLikes}
           operatingCostHint={dashboard.operatingCostHint}
+          showTagShopPromo={
+            dashboard.isOwner && !dashboard.scope.linkedTagUuid
+          }
+          tagShopUserId={user.id}
+          tagShopUserEmail={user.email}
         />
       </div>
     </AppShell>

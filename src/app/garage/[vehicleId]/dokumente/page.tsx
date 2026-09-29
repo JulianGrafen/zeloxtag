@@ -78,6 +78,7 @@ export default async function VehicleDocumentsPage({
   return (
     <VehicleDocumentsView
       tagUuid={scope.linkedTagUuid ?? vehicleId}
+      vehicleSurfaceScope={scope}
       vehicleId={result.vehicle!.id}
       vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
       vehicleModel={result.vehicle!.model}

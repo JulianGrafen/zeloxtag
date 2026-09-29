@@ -5,10 +5,11 @@ import { filterShowcaseGalleryDocuments } from "@/lib/documents/showcase-gallery
 import { resolveOwnerDynoChartViewUrl } from "@/lib/vehicles/dyno-chart-constants";
 import { resolveOwnerEngineSoundViewUrl } from "@/lib/vehicles/engine-sound-constants";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document, Vehicle } from "@/types/database";
 
 type ShowcaseMediaSettingsProps = {
-  tagUuid: string;
+  surfaceScope: VehicleSurfaceScope;
   vehicle: Vehicle;
   galleryPhotos: Document[];
   canEdit: boolean;
@@ -16,7 +17,7 @@ type ShowcaseMediaSettingsProps = {
 };
 
 export function ShowcaseMediaSettings({
-  tagUuid,
+  surfaceScope,
   vehicle,
   galleryPhotos,
   variant = "tile",
@@ -26,13 +27,13 @@ export function ShowcaseMediaSettings({
   return (
     <>
       <VehicleShowcaseGallerySubmenu
-        tagUuid={tagUuid}
+        surfaceScope={surfaceScope}
         photoCount={filterShowcaseGalleryDocuments(galleryPhotos).length}
         variant={variant}
       />
 
       <VehicleShowcaseDynoSubmenu
-        tagUuid={tagUuid}
+        surfaceScope={surfaceScope}
         hasDynoChart={Boolean(
           resolveOwnerDynoChartViewUrl(vehicle.id, specs.dynoChartUrl),
         )}
@@ -40,7 +41,7 @@ export function ShowcaseMediaSettings({
       />
 
       <VehicleShowcaseSoundSubmenu
-        tagUuid={tagUuid}
+        surfaceScope={surfaceScope}
         hasSound={Boolean(
           resolveOwnerEngineSoundViewUrl(vehicle.id, vehicle.sound_url),
         )}

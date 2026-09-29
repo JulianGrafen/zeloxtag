@@ -41,10 +41,30 @@ import {
 } from "@/lib/documents/vault-documents";
 import type { VaultCategory } from "@/lib/validations/vaultClassificationSchema";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document, DocumentType } from "@/types/database";
+
+function surfacePath(
+  scope: VehicleSurfaceScope | undefined,
+  tagUuid: string,
+  segment?: string,
+): string {
+  if (scope) {
+    return segment?.trim()
+      ? vehicleSurfaceHref(scope, segment)
+      : vehicleSurfaceHref(scope);
+  }
+  if (!segment?.trim()) {
+    return `/v/${tagUuid}`;
+  }
+  const normalized = segment.startsWith("/") ? segment : `/${segment}`;
+  return `/v/${tagUuid}${normalized}`;
+}
 
 interface VehicleDocumentsViewProps {
   tagUuid: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   vehicleId: string;
   vehicleLabel: string;
   /** Short model label for invoice overview (e.g. RX-8). */
@@ -71,6 +91,7 @@ const FILTERS: Array<{ id: DocumentType | "all"; label: string }> = [
 
 export function VehicleDocumentsView({
   tagUuid,
+  vehicleSurfaceScope,
   vehicleId,
   vehicleLabel,
   vehicleModel,
@@ -84,6 +105,8 @@ export function VehicleDocumentsView({
   const showScanFab = canScan ?? canWrite;
   const router = useRouter();
   const [activeType, setActiveType] = useState(filterType);
+  const path = (segment?: string) =>
+    surfacePath(vehicleSurfaceScope, tagUuid, segment);
 
   useEffect(() => {
     setActiveType(filterType);
@@ -91,8 +114,8 @@ export function VehicleDocumentsView({
 
   function typeFilterHref(id: DocumentType | "all"): string {
     return id === "all"
-      ? `/v/${tagUuid}/dokumente`
-      : `/v/${tagUuid}/dokumente?type=${id}`;
+      ? path("dokumente")
+      : `${path("dokumente")}?type=${id}`;
   }
 
   function onTypeFilterChange(id: DocumentType | "all") {
@@ -184,6 +207,7 @@ export function VehicleDocumentsView({
     return (
       <VehicleInvoicesView
         tagUuid={tagUuid}
+        vehicleSurfaceScope={vehicleSurfaceScope}
         vehicleModel={vehicleModel?.trim() || vehicleLabel.split("·")[0]?.trim() || vehicleLabel}
         documents={documents}
         canScan={showScanFab}
@@ -236,7 +260,7 @@ export function VehicleDocumentsView({
       >
         <header className="vd-anim-header space-y-4">
           <PressableLink
-            href={`/v/${tagUuid}`}
+            href={path()}
             variant="pill"
             className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
           >
@@ -345,7 +369,7 @@ export function VehicleDocumentsView({
                     <p className="text-[0.82rem] leading-relaxed">
                       Manuelle Einträge kannst du jederzeit kostenlos anlegen —{" "}
                       <PressableLink
-                        href={`/v/${tagUuid}/eintrag?neu=1`}
+                        href={`${path("eintrag")}?neu=1`}
                         className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
                       >
                         jetzt eintragen
@@ -361,7 +385,7 @@ export function VehicleDocumentsView({
               {filtered.map((doc, index) => (
                 <li key={doc.id}>
                   <DocumentRow
-                    tagUuid={tagUuid}
+                    detailHref={path(`dokumente/${doc.id}`)}
                     document={doc}
                     canDelete={canWrite}
                     deleting={pending && pendingId === doc.id}
@@ -387,10 +411,10 @@ export function VehicleDocumentsView({
           tagUuid={tagUuid}
           scanHref={
             activeType === "tuev"
-              ? `/v/${tagUuid}?scan=1&type=tuev`
+              ? `${path()}?scan=1&type=tuev`
               : activeType === "abe"
-                ? `/v/${tagUuid}?scan=1&type=vault`
-                : `/v/${tagUuid}?scan=1`
+                ? `${path()}?scan=1&type=vault`
+                : `${path()}?scan=1`
           }
           scanLabel={
             activeType === "abe"
@@ -406,13 +430,13 @@ export function VehicleDocumentsView({
 }
 
 function DocumentRow({
-  tagUuid,
+  detailHref,
   document,
   canDelete: allowDelete,
   deleting,
   onDelete,
 }: {
-  tagUuid: string;
+  detailHref: string;
   document: Document;
   canDelete: boolean;
   deleting: boolean;
@@ -425,7 +449,6 @@ function DocumentRow({
   const Icon = document.type === "abe" ? Stamp : FileText;
   const canDelete =
     allowDelete && (isMock || !fileUrl.startsWith("/demo/"));
-  const detailHref = `/v/${tagUuid}/dokumente/${document.id}`;
   const lineCount = document.line_items?.length ?? 0;
   const approvalCount = document.vehicle_approvals?.length ?? 0;
 

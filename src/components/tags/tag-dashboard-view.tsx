@@ -40,6 +40,7 @@ import {
   isDemoActiveTag,
 } from "@/lib/tags/demo-showcase";
 
+import { TagShopDashboardPromo } from "@/components/hardware/tag-shop-dashboard-promo";
 import { GarageSwitcherTile } from "@/components/garage/garage-switcher-tile";
 import { ProductFeaturesBanner } from "@/components/onboarding/product-features-banner";
 
@@ -102,6 +103,10 @@ interface TagDashboardViewProps {
   productFeaturesBannerActive?: boolean;
   /** Owner-only Betriebskosten for dashboard tile subtitles. */
   operatingCostHint?: OperatingCostDashboardHint | null;
+  /** Digital garage without linked hardware tag — show shop + link CTA. */
+  showTagShopPromo?: boolean;
+  tagShopUserId?: string;
+  tagShopUserEmail?: string | null;
 }
 
 /**
@@ -132,6 +137,9 @@ export function TagDashboardView({
   showcaseSwipeTotalLikes = 0,
   productFeaturesBannerActive = true,
   operatingCostHint = null,
+  showTagShopPromo = false,
+  tagShopUserId,
+  tagShopUserEmail = null,
 }: TagDashboardViewProps) {
   const manualEntryHref = `${dashboardPath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`;
   const path = (segment: string) =>
@@ -465,16 +473,35 @@ export function TagDashboardView({
     !demoShowcase &&
     (isOwner || isContributor);
 
+  const showTagShop =
+    showTagShopPromo &&
+    isOwner &&
+    !demoMode &&
+    !demoShowcase &&
+    Boolean(tagShopUserId?.trim());
+
   return (
     <div className="relative">
       <VehicleDashboard
         data={{ ...data, tiles }}
         banner={
-          showProductFeaturesBanner ? (
-            <ProductFeaturesBanner
-              tagUuid={tagUuid}
-              active={productFeaturesBannerActive}
-            />
+          showTagShop || showProductFeaturesBanner ? (
+            <div className="flex flex-col gap-3">
+              {showTagShop ? (
+                <TagShopDashboardPromo
+                  vehicleId={vehicle.id}
+                  userId={tagShopUserId!}
+                  userEmail={tagShopUserEmail}
+                />
+              ) : null}
+              {showProductFeaturesBanner ? (
+                <ProductFeaturesBanner
+                  discoverHref={path("entdecken")}
+                  costsHref={path("dokumente/kosten")}
+                  active={productFeaturesBannerActive}
+                />
+              ) : null}
+            </div>
           ) : undefined
         }
         className={canScan ? "pb-24" : undefined}

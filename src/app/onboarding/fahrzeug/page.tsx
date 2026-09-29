@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ClaimFlow } from "@/components/tags/claim-flow";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { ownerDisplayNameFromMetadata } from "@/lib/auth/owner-display-name";
 import { userHasGarageVehicle } from "@/lib/auth/user-has-vehicle";
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
 
@@ -29,6 +30,7 @@ export default async function OnboardingVehiclePage() {
         variant="digital"
         isAuthenticated
         userEmail={user.email ?? null}
+        initialDisplayName={ownerDisplayNameFromMetadata(user)}
       />
     </AppShell>
   );

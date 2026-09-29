@@ -3,22 +3,25 @@ import { VehiclePublicProfileSubmenu } from "@/components/vehicles/vehicle-publi
 import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
 import { VehicleShowcaseModificationsSubmenu } from "@/components/vehicles/vehicle-showcase-modifications-submenu";
 import { partitionShowcaseSelectableDocuments } from "@/lib/vehicles/public-showcase-documents";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document, Vehicle } from "@/types/database";
 
 type VehicleShowcaseSettingsProps = {
-  tagUuid: string;
+  surfaceScope: VehicleSurfaceScope;
   vehicle: Vehicle;
   documents: Document[];
   galleryPhotos: Document[];
   canEdit: boolean;
+  hasLinkedTag: boolean;
 };
 
 export function VehicleShowcaseSettings({
-  tagUuid,
+  surfaceScope,
   vehicle,
   documents,
   galleryPhotos,
   canEdit,
+  hasLinkedTag,
 }: VehicleShowcaseSettingsProps) {
   const { invoices, modifications } =
     partitionShowcaseSelectableDocuments(documents);
@@ -29,13 +32,15 @@ export function VehicleShowcaseSettings({
   return (
     <VehicleSettingsSubmenuGroup>
       <VehiclePublicProfileSubmenu
-        tagUuid={tagUuid}
+        surfaceScope={surfaceScope}
         isPublic={Boolean(vehicle.is_public)}
+        showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
+        hasLinkedTag={hasLinkedTag}
         variant="group"
       />
 
       <ShowcaseMediaSettings
-        tagUuid={tagUuid}
+        surfaceScope={surfaceScope}
         vehicle={vehicle}
         galleryPhotos={galleryPhotos}
         canEdit={canEdit}
@@ -44,7 +49,7 @@ export function VehicleShowcaseSettings({
 
       {vehicle.is_public ? (
         <VehicleShowcaseModificationsSubmenu
-          tagUuid={tagUuid}
+          surfaceScope={surfaceScope}
           modificationCount={modifications.length}
           invoiceCount={invoices.length}
           visibleCount={visibleShowcaseDocCount}

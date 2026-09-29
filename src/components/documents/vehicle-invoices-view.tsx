@@ -25,10 +25,30 @@ import {
 } from "@/lib/documents/invoice-categories";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document } from "@/types/database";
+
+function surfacePath(
+  scope: VehicleSurfaceScope | undefined,
+  tagUuid: string,
+  segment?: string,
+): string {
+  if (scope) {
+    return segment?.trim()
+      ? vehicleSurfaceHref(scope, segment)
+      : vehicleSurfaceHref(scope);
+  }
+  if (!segment?.trim()) {
+    return `/v/${tagUuid}`;
+  }
+  const normalized = segment.startsWith("/") ? segment : `/${segment}`;
+  return `/v/${tagUuid}${normalized}`;
+}
 
 interface VehicleInvoicesViewProps {
   tagUuid: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   vehicleModel: string;
   documents: Document[];
   /** Show floating scan CTA (owner / Schrauber). */
@@ -43,6 +63,7 @@ const ALL_CHIP = "all";
 
 function VehicleInvoicesViewContent({
   tagUuid,
+  vehicleSurfaceScope,
   vehicleModel,
   documents,
   canScan,
@@ -50,7 +71,9 @@ function VehicleInvoicesViewContent({
   initialCategory = "all",
 }: VehicleInvoicesViewProps) {
   const showScanFab = canScan ?? canWrite;
-  const manualUploadHref = `/v/${tagUuid}/hochladen?mode=manual&type=invoice`;
+  const path = (segment?: string) =>
+    surfacePath(vehicleSurfaceScope, tagUuid, segment);
+  const manualUploadHref = `${path("hochladen")}?mode=manual&type=invoice`;
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string>(initialCategory);
@@ -139,12 +162,16 @@ function VehicleInvoicesViewContent({
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <SaveSuccessBanner />
         {showScanFab ? (
-          <ProductFeaturesBanner tagUuid={tagUuid} active />
+          <ProductFeaturesBanner
+            discoverHref={path("entdecken")}
+            costsHref={path("dokumente/kosten")}
+            active
+          />
         ) : null}
 
         <header className="vd-anim-header space-y-4">
           <PressableLink
-            href={`/v/${tagUuid}`}
+            href={path("")}
             variant="pill"
             className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
           >
@@ -171,7 +198,7 @@ function VehicleInvoicesViewContent({
             ) : null}
             {invoices.length > 0 ? (
               <PressableLink
-                href={`/v/${tagUuid}/dokumente/kosten`}
+                href={path("dokumente/kosten")}
                 variant="button"
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-accent)]/30 bg-[color:var(--vd-surface-elevated)] px-4 py-3 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[0_0_28px_-10px_color-mix(in_srgb,var(--vd-accent)_50%,transparent)]"
               >
@@ -243,7 +270,7 @@ function VehicleInvoicesViewContent({
                     }
                   >
                     <PressableLink
-                      href={`/v/${tagUuid}/dokumente/${doc.id}`}
+                      href={path(`dokumente/${doc.id}`)}
                       variant="row"
                       className="group flex w-full items-start gap-3 px-4 py-3.5 text-left"
                     >
@@ -306,8 +333,8 @@ function VehicleInvoicesViewContent({
           tagUuid={tagUuid}
           scanHref={
             categoryId === "repair"
-              ? `/v/${tagUuid}?scan=1&type=repair`
-              : `/v/${tagUuid}?scan=1&type=invoice`
+              ? `${path()}?scan=1&type=repair`
+              : `${path()}?scan=1&type=invoice`
           }
           scanLabel={
             categoryId === "repair" ? "Reparatur scannen" : "Rechnung scannen"

@@ -39,6 +39,7 @@ import {
   claimWizardPreviousStep,
   claimWizardStepIndex,
   claimWizardTotalSteps,
+  type ClaimWizardFlowOptions,
   type ClaimWizardStep,
 } from "@/lib/tags/claim-flow-steps";
 import {
@@ -54,6 +55,8 @@ interface ClaimFlowProps {
   tagUuid?: string;
   isAuthenticated?: boolean;
   userEmail?: string | null;
+  /** When set, the profile-name step is skipped (dashboard greeting uses this). */
+  initialDisplayName?: string | null;
 }
 
 export function ClaimFlow({
@@ -61,6 +64,7 @@ export function ClaimFlow({
   tagUuid,
   isAuthenticated = false,
   userEmail = null,
+  initialDisplayName = null,
 }: ClaimFlowProps) {
   const isDigital = variant === "digital";
   const [step, setStep] = useState<ClaimWizardStep>("intro");
@@ -80,7 +84,7 @@ export function ClaimFlow({
   const [oilChangeIntervalMonths, setOilChangeIntervalMonths] = useState(
     String(DEFAULT_OIL_INTERVAL_MONTHS),
   );
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => initialDisplayName?.trim() ?? "");
   const [email, setEmail] = useState(userEmail ?? "");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -100,11 +104,36 @@ export function ClaimFlow({
   const [pending, startTransition] = useTransition();
 
   const needsAccount = !isAuthenticated;
+  const includeProfileName = !initialDisplayName?.trim();
+  const flowOptions: ClaimWizardFlowOptions = {
+    needsAccount,
+    includeProfileName,
+  };
 
   function stepKicker(currentStep: ClaimWizardStep): string {
-    const index = claimWizardStepIndex(currentStep, needsAccount);
-    const total = claimWizardTotalSteps(needsAccount);
+    const index = claimWizardStepIndex(currentStep, flowOptions);
+    const total = claimWizardTotalSteps(flowOptions);
     return `Schritt ${index} von ${total}`;
+  }
+
+  function continueAfterPreferences() {
+    if (includeProfileName) {
+      advance("profileName");
+      return;
+    }
+    if (needsAccount) {
+      advance("account");
+      return;
+    }
+    submitClaim();
+  }
+
+  function continueAfterProfileName() {
+    if (needsAccount) {
+      advance("account");
+      return;
+    }
+    submitClaim();
   }
 
   function advance(next: ClaimWizardStep) {
@@ -128,7 +157,7 @@ export function ClaimFlow({
     setTransitionDirection("back");
     setError(null);
     setInfo(null);
-    setStep(claimWizardPreviousStep(step, needsAccount));
+    setStep(claimWizardPreviousStep(step, flowOptions));
   }
 
   function validateMakeModel(): string | null {
@@ -151,6 +180,17 @@ export function ClaimFlow({
 
   function validateVehicle(): string | null {
     return validateMakeModel() ?? validateYear();
+  }
+
+  function validateProfileName(): string | null {
+    if (!includeProfileName) return null;
+    if (!name.trim()) {
+      return "Bitte deinen Namen eingeben.";
+    }
+    if (name.trim().length < 2) {
+      return "Name muss mindestens 2 Zeichen haben.";
+    }
+    return null;
   }
 
   function validateAccount(): string | null {
@@ -177,13 +217,17 @@ export function ClaimFlow({
       buildPersonalityTags.length > 0 ? buildPersonalityTags : undefined,
   };
 
+  const ownerNamePayload = name.trim()
+    ? { name: name.trim() }
+    : {};
+
   const accountPayload = needsAccount
     ? {
         email: email.trim(),
         password,
-        name: name.trim() || undefined,
+        ...ownerNamePayload,
       }
-    : {};
+    : ownerNamePayload;
 
   async function applyOnboardingVehiclePhoto(
     vehicleId: string,
@@ -229,6 +273,15 @@ export function ClaimFlow({
     if (vehicleError) {
       setError(vehicleError);
       setStep(validateMakeModel() ? "makeModel" : "year");
+      return;
+    }
+
+    const profileError = validateProfileName();
+    if (profileError) {
+      setError(profileError);
+      if (includeProfileName) {
+        setStep("profileName");
+      }
       return;
     }
 
@@ -285,7 +338,7 @@ export function ClaimFlow({
           }
         }
 
-        window.location.assign(result.href);
+        window.location.replace(result.href);
       } catch (submitError) {
         setError(
           submitError instanceof Error
@@ -309,7 +362,7 @@ export function ClaimFlow({
   return (
     <ClaimShell intro={step === "intro"}>
       {showWizardChrome ? (
-        <ClaimProgressBar step={step} needsAccount={needsAccount} />
+        <ClaimProgressBar step={step} flowOptions={flowOptions} />
       ) : null}
 
       {showWizardChrome ? (
@@ -350,7 +403,7 @@ export function ClaimFlow({
                   setError(validationError);
                   return;
                 }
-                advance("year");
+                advance("vehiclePhoto");
               }}
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -576,7 +629,7 @@ export function ClaimFlow({
               onSubmit={(event) => {
                 event.preventDefault();
                 setError(null);
-                advance("vehiclePhoto");
+                advance("preferences");
               }}
             >
               <BuildPersonalityChipPicker
@@ -607,7 +660,7 @@ export function ClaimFlow({
                 event.preventDefault();
                 setError(null);
                 setVehiclePhotoSkipped(false);
-                advance("preferences");
+                advance("year");
               }}
             >
               <ClaimVehiclePhotoPicker
@@ -627,7 +680,7 @@ export function ClaimFlow({
                   setVehiclePhotoFile(null);
                   setVehiclePhotoPreview(null);
                   setVehiclePhotoSkipped(true);
-                  advance("preferences");
+                  advance("year");
                 }}
               >
                 Später — ohne Foto fortfahren
@@ -660,11 +713,7 @@ export function ClaimFlow({
                   return;
                 }
                 writePrimaryGoal(primaryGoal);
-                if (needsAccount) {
-                  advance("account");
-                  return;
-                }
-                submitClaim();
+                continueAfterPreferences();
               }}
             >
               <PrimaryGoalOptionList
@@ -676,8 +725,52 @@ export function ClaimFlow({
                 pending={pending}
                 onBack={goBack}
                 submitLabel={
-                  needsAccount ? "Weiter zum Konto" : finishLabel
+                  includeProfileName || needsAccount
+                    ? "Weiter"
+                    : finishLabel
                 }
+                submitIcon={
+                  includeProfileName || needsAccount ? "next" : "check"
+                }
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
+
+        {step === "profileName" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("profileName")}
+            title="Wie sollen wir dich nennen?"
+            copy="Dein Vorname erscheint im Dashboard — z. B. „Max' Supra“."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                const validationError = validateProfileName();
+                if (validationError) {
+                  setError(validationError);
+                  return;
+                }
+                continueAfterProfileName();
+              }}
+            >
+              <ClaimField
+                id="claim-profile-name"
+                label="Name"
+                value={name}
+                onChange={setName}
+                placeholder="Max"
+                required
+                autoComplete="name"
+              />
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel={needsAccount ? "Weiter zum Konto" : finishLabel}
                 submitIcon={needsAccount ? "next" : "check"}
                 showBack
               />
@@ -698,14 +791,6 @@ export function ClaimFlow({
                 submitClaim();
               }}
             >
-              <ClaimField
-                id="claim-account-name"
-                label="Name (optional)"
-                value={name}
-                onChange={setName}
-                placeholder="Dein Name"
-                autoComplete="name"
-              />
               <ClaimField
                 id="claim-account-email"
                 label="E-Mail"

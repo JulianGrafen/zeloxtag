@@ -63,12 +63,13 @@ export default async function VehicleSettingsPage({
         </header>
 
         <VehicleSettingsView
-          tagUuid={uuid}
+          surfaceScope={{ vehicleId: vehicle.id, linkedTagUuid: uuid }}
           vehicle={vehicle}
           documents={result.documents}
           galleryPhotos={galleryPhotos}
           canEdit={!isDemo}
           isExposeActive={expose.isExposeActive}
+          hasLinkedTag
         />
       </section>
     </AppShell>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Check, Copy } from "lucide-react";
 
@@ -7,18 +8,35 @@ import { updateVehicleShowcaseSettings } from "@/actions/update-vehicle-showcase
 import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
 import { SETTINGS_SUBMENU_TILE_CLASS } from "@/components/vehicles/vehicle-settings-submenu-link";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { resolveShowcaseSharePath } from "@/lib/vehicles/public-profile-status";
+import { publicShowcasePath } from "@/lib/vehicles/public-slug";
 
 type VehiclePublicProfileSettingsProps = {
-  tagUuid: string;
+  tagUuid?: string;
   vehicleId: string;
   isPublic: boolean;
   hideFinancials: boolean;
   showcaseSwipeOptIn: boolean;
   publicSlug: string | null;
   canEdit: boolean;
+  hasLinkedTag: boolean;
+  tagShopUrl?: string;
   showcaseSwipeTotalLikes?: number;
   showcaseSwipeUnreadLikes?: number;
 };
+
+function initialSharePath(
+  hasLinkedTag: boolean,
+  isPublic: boolean,
+  publicSlug: string | null,
+): string | null {
+  return resolveShowcaseSharePath({
+    isPublic,
+    publicSlug,
+    hasActiveTag: hasLinkedTag,
+    pathForSlug: publicShowcasePath,
+  });
+}
 
 function ToggleRow({
   label,
@@ -75,6 +93,8 @@ export function VehiclePublicProfileSettings({
   showcaseSwipeOptIn: initialShowcaseSwipeOptIn,
   publicSlug: initialPublicSlug,
   canEdit,
+  hasLinkedTag,
+  tagShopUrl,
   showcaseSwipeTotalLikes = 0,
   showcaseSwipeUnreadLikes = 0,
 }: VehiclePublicProfileSettingsProps) {
@@ -84,7 +104,7 @@ export function VehiclePublicProfileSettings({
     initialShowcaseSwipeOptIn,
   );
   const [sharePath, setSharePath] = useState<string | null>(
-    initialIsPublic && initialPublicSlug ? `/v/${initialPublicSlug}` : null,
+    initialSharePath(hasLinkedTag, initialIsPublic, initialPublicSlug),
   );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +133,7 @@ export function VehiclePublicProfileSettings({
       setMessage(null);
       const result = await updateVehicleShowcaseSettings({
         vehicleId,
-        tagUuid,
+        tagUuid: tagUuid?.trim() || undefined,
         isPublic: payload.isPublic,
         hideFinancials: payload.hideFinancials,
         showcaseSwipeOptIn: payload.isPublic
@@ -128,11 +148,15 @@ export function VehiclePublicProfileSettings({
       }
 
       setSharePath(result.sharePath);
-      setMessage(
-        payload.isPublic
-          ? "Showcase ist öffentlich — Link kann geteilt werden."
-          : "Showcase ist privat.",
-      );
+      if (!payload.isPublic) {
+        setMessage("Showcase ist privat.");
+      } else if (result.sharePath) {
+        setMessage("Showcase ist öffentlich — Link kann geteilt werden.");
+      } else if (payload.showcaseSwipeOptIn) {
+        setMessage("Im Build-Swipe sichtbar — Share-Link mit Zelox Tag.");
+      } else {
+        setMessage("Showcase-Inhalte sind vorbereitet — Build-Swipe optional aktivieren.");
+      }
     });
   }
 
@@ -155,8 +179,14 @@ export function VehiclePublicProfileSettings({
         </p>
       ) : null}
       <ToggleRow
-        label="Profil veröffentlichen"
-        description="Showcase-Seite mit Share-Link aktivieren"
+        label={
+          hasLinkedTag ? "Profil veröffentlichen" : "Showcase & Build-Swipe"
+        }
+        description={
+          hasLinkedTag
+            ? "Showcase-Seite mit Share-Link aktivieren"
+            : "Showcase-Inhalte freigeben und optional im Build-Swipe zeigen — ohne eigenen Link"
+        }
         checked={isPublic}
         disabled={!canEdit}
         busy={pending}
@@ -221,7 +251,7 @@ export function VehiclePublicProfileSettings({
           );
         }}
       />
-      {isPublic && shareUrl ? (
+      {hasLinkedTag && isPublic && shareUrl ? (
         <div className={`${SETTINGS_SUBMENU_TILE_CLASS} gap-2`}>
           <span className="min-w-0">
             <span className="block text-[0.88rem] font-medium">Share-Link</span>
@@ -242,12 +272,33 @@ export function VehiclePublicProfileSettings({
             Kopieren
           </PressableButton>
         </div>
-      ) : (
+      ) : hasLinkedTag ? (
         <div className={SETTINGS_SUBMENU_TILE_CLASS}>
           <span className="min-w-0">
             <span className="block text-[0.88rem] font-medium">Share-Link</span>
             <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
               Wird verfügbar, wenn das Profil öffentlich ist
+            </span>
+          </span>
+        </div>
+      ) : (
+        <div className={SETTINGS_SUBMENU_TILE_CLASS}>
+          <span className="min-w-0">
+            <span className="block text-[0.88rem] font-medium">Share-Link</span>
+            <span className="mt-0.5 block text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Ein eigener Link für Besucher gibt es mit einem verknüpften Zelox
+              Tag am Fahrzeug.
+              {tagShopUrl ? (
+                <>
+                  {" "}
+                  <Link
+                    href={tagShopUrl}
+                    className="font-medium text-[color:var(--vd-accent)] underline-offset-2 hover:underline"
+                  >
+                    Zelox Tag bestellen
+                  </Link>
+                </>
+              ) : null}
             </span>
           </span>
         </div>

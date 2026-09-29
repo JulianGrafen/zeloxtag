@@ -7,6 +7,7 @@ import {
   claimWizardOrderedSteps,
   claimWizardProgressPercent,
   claimWizardStepIndex,
+  type ClaimWizardFlowOptions,
   type ClaimWizardStep,
 } from "@/lib/tags/claim-flow-steps";
 import { cn } from "@/lib/utils";
@@ -22,19 +23,20 @@ const STEP_LABELS: Partial<Record<ClaimWizardStep, string>> = {
   buildPersonality: "Vibes",
   vehiclePhoto: "Foto",
   preferences: "Präferenzen",
+  profileName: "Name",
   account: "Konto",
 };
 
 type ClaimProgressBarProps = {
   step: ClaimWizardStep;
-  needsAccount: boolean;
+  flowOptions: ClaimWizardFlowOptions;
 };
 
-export function ClaimProgressBar({ step, needsAccount }: ClaimProgressBarProps) {
+export function ClaimProgressBar({ step, flowOptions }: ClaimProgressBarProps) {
   const motionConfig = useClaimMotion();
-  const percent = claimWizardProgressPercent(step, needsAccount);
-  const currentIndex = claimWizardStepIndex(step, needsAccount);
-  const ordered = claimWizardOrderedSteps(needsAccount);
+  const percent = claimWizardProgressPercent(step, flowOptions);
+  const currentIndex = claimWizardStepIndex(step, flowOptions);
+  const ordered = claimWizardOrderedSteps(flowOptions);
 
   return (
     <div className="mb-5 w-full">

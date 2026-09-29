@@ -78,6 +78,10 @@ export default async function VehicleDocumentsPage({
   return (
     <VehicleDocumentsView
       tagUuid={result.tag.uuid}
+      vehicleSurfaceScope={{
+        vehicleId: result.vehicle!.id,
+        linkedTagUuid: result.tag.uuid,
+      }}
       vehicleId={result.vehicle!.id}
       vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
       vehicleModel={result.vehicle!.model}

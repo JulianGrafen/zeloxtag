@@ -1,22 +1,33 @@
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
+import { publicProfileStatusSubtitle } from "@/lib/vehicles/public-profile-status";
 
 type VehiclePublicProfileSubmenuProps = {
-  tagUuid: string;
+  surfaceScope: VehicleSurfaceScope;
   isPublic: boolean;
+  showcaseSwipeOptIn: boolean;
+  hasLinkedTag: boolean;
   variant?: "tile" | "group";
 };
 
 export function VehiclePublicProfileSubmenu({
-  tagUuid,
+  surfaceScope,
   isPublic,
+  showcaseSwipeOptIn,
+  hasLinkedTag,
   variant = "tile",
 }: VehiclePublicProfileSubmenuProps) {
   return (
     <VehicleSettingsSubmenuLink
-      href={`/v/${tagUuid}/einstellungen/profil`}
+      href={vehicleSurfaceHref(surfaceScope, "einstellungen/profil")}
       variant={variant}
       title="Öffentliches Profil"
-      subtitle={isPublic ? "Öffentlich" : "Privat"}
+      subtitle={publicProfileStatusSubtitle({
+        isPublic,
+        showcaseSwipeOptIn,
+        hasLinkedTag,
+      })}
     />
   );
 }

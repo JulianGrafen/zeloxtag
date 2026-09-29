@@ -1,16 +1,18 @@
 import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 type VehicleExposeSubmenuProps = {
-  tagUuid: string;
+  surfaceScope: VehicleSurfaceScope;
   isExposeActive: boolean;
 };
 
 export function VehicleExposeSubmenu({
-  tagUuid,
+  surfaceScope,
   isExposeActive,
 }: VehicleExposeSubmenuProps) {
-  const base = `/v/${tagUuid}/einstellungen/expose`;
+  const base = vehicleSurfaceHref(surfaceScope, "einstellungen/expose");
 
   return (
     <div className="flex flex-col gap-2">

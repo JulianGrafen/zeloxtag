@@ -1,7 +1,9 @@
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 type VehicleShowcaseModificationsSubmenuProps = {
-  tagUuid: string;
+  surfaceScope: VehicleSurfaceScope;
   modificationCount: number;
   invoiceCount: number;
   visibleCount: number;
@@ -9,7 +11,7 @@ type VehicleShowcaseModificationsSubmenuProps = {
 };
 
 export function VehicleShowcaseModificationsSubmenu({
-  tagUuid,
+  surfaceScope,
   modificationCount,
   invoiceCount,
   visibleCount,
@@ -28,7 +30,7 @@ export function VehicleShowcaseModificationsSubmenu({
 
   return (
     <VehicleSettingsSubmenuLink
-      href={`/v/${tagUuid}/einstellungen/umbauten`}
+      href={vehicleSurfaceHref(surfaceScope, "einstellungen/umbauten")}
       variant={variant}
       title="Umbauten & Rechnungen"
       subtitle={subtitle}

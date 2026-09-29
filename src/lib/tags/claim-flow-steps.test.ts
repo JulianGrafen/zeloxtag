@@ -6,36 +6,62 @@ import {
   claimWizardProgressPercent,
   claimWizardStepIndex,
   claimWizardTotalSteps,
+  type ClaimWizardFlowOptions,
 } from "@/lib/tags/claim-flow-steps";
 
+const withProfileAndAccount: ClaimWizardFlowOptions = {
+  needsAccount: true,
+  includeProfileName: true,
+};
+
+const signedInWithProfile: ClaimWizardFlowOptions = {
+  needsAccount: false,
+  includeProfileName: true,
+};
+
 describe("claim-flow-steps", () => {
-  it("counts eight vehicle steps plus account for new users", () => {
-    expect(claimWizardTotalSteps(true)).toBe(9);
-    expect(claimWizardTotalSteps(false)).toBe(8);
+  it("counts steps with profile and account options", () => {
+    expect(claimWizardTotalSteps(withProfileAndAccount)).toBe(10);
+    expect(claimWizardTotalSteps(signedInWithProfile)).toBe(9);
+    expect(
+      claimWizardTotalSteps({ needsAccount: false, includeProfileName: false }),
+    ).toBe(8);
   });
 
   it("maps wizard steps to percentage progress", () => {
-    expect(claimWizardProgressPercent("intro", true)).toBe(0);
-    expect(claimWizardProgressPercent("makeModel", true)).toBe(11);
-    expect(claimWizardProgressPercent("vehiclePhoto", true)).toBe(78);
-    expect(claimWizardProgressPercent("preferences", true)).toBe(89);
-    expect(claimWizardProgressPercent("account", true)).toBe(100);
+    expect(claimWizardProgressPercent("intro", withProfileAndAccount)).toBe(0);
+    expect(claimWizardProgressPercent("makeModel", withProfileAndAccount)).toBe(
+      10,
+    );
+    expect(claimWizardProgressPercent("profileName", withProfileAndAccount)).toBe(
+      90,
+    );
+    expect(claimWizardProgressPercent("account", withProfileAndAccount)).toBe(
+      100,
+    );
   });
 
-  it("finishes at 100 percent on the preferences slide for signed-in users", () => {
-    expect(claimWizardProgressPercent("preferences", false)).toBe(100);
-    expect(claimWizardStepIndex("preferences", false)).toBe(8);
+  it("finishes at 100 percent on the preferences slide when profile is skipped", () => {
+    const opts = { needsAccount: false, includeProfileName: false };
+    expect(claimWizardProgressPercent("preferences", opts)).toBe(100);
+    expect(claimWizardStepIndex("preferences", opts)).toBe(8);
   });
 
   it("walks forward and backward through the ordered steps", () => {
-    expect(claimWizardNextStep("makeModel", true)).toBe("year");
-    expect(claimWizardNextStep("drivetrain", true)).toBe("oilInterval");
-    expect(claimWizardNextStep("oilInterval", true)).toBe("buildPersonality");
-    expect(claimWizardNextStep("buildPersonality", true)).toBe("vehiclePhoto");
-    expect(claimWizardNextStep("vehiclePhoto", true)).toBe("preferences");
-    expect(claimWizardPreviousStep("preferences", true)).toBe("vehiclePhoto");
-    expect(claimWizardPreviousStep("oilInterval", true)).toBe("drivetrain");
-    expect(claimWizardPreviousStep("year", true)).toBe("makeModel");
-    expect(claimWizardPreviousStep("makeModel", true)).toBe("intro");
+    expect(claimWizardNextStep("makeModel", withProfileAndAccount)).toBe(
+      "vehiclePhoto",
+    );
+    expect(claimWizardNextStep("preferences", withProfileAndAccount)).toBe(
+      "profileName",
+    );
+    expect(claimWizardNextStep("profileName", withProfileAndAccount)).toBe(
+      "account",
+    );
+    expect(claimWizardPreviousStep("account", withProfileAndAccount)).toBe(
+      "profileName",
+    );
+    expect(claimWizardPreviousStep("year", withProfileAndAccount)).toBe(
+      "vehiclePhoto",
+    );
   });
 });

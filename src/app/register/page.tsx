@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { ClaimFlow } from "@/components/tags/claim-flow";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { ownerDisplayNameFromMetadata } from "@/lib/auth/owner-display-name";
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
 import { userHasGarageVehicle } from "@/lib/auth/user-has-vehicle";
 import { pageSocialMetadata } from "@/lib/seo/open-graph";
@@ -33,6 +34,7 @@ export default async function RegisterPage() {
         variant="digital"
         isAuthenticated={Boolean(user)}
         userEmail={user?.email ?? null}
+        initialDisplayName={ownerDisplayNameFromMetadata(user)}
       />
     </AppShell>
   );

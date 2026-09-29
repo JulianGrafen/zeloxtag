@@ -23,6 +23,7 @@ export default async function VehiclePublicProfileSettingsPage({
   const {
     vehicle,
     isDemo,
+    hasLinkedTag,
     showcaseSwipeTotalLikes,
     showcaseSwipeUnreadLikes,
   } = await loadVehiclePublicProfileSettingsPage(uuid);
@@ -42,6 +43,7 @@ export default async function VehiclePublicProfileSettingsPage({
           showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
           publicSlug={vehicle.public_slug}
           canEdit={!isDemo}
+          hasLinkedTag={hasLinkedTag}
           showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
           showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
         />

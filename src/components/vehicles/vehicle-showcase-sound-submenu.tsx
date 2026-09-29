@@ -1,19 +1,21 @@
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 type VehicleShowcaseSoundSubmenuProps = {
-  tagUuid: string;
+  surfaceScope: VehicleSurfaceScope;
   hasSound: boolean;
   variant?: "tile" | "group";
 };
 
 export function VehicleShowcaseSoundSubmenu({
-  tagUuid,
+  surfaceScope,
   hasSound,
   variant = "tile",
 }: VehicleShowcaseSoundSubmenuProps) {
   return (
     <VehicleSettingsSubmenuLink
-      href={`/v/${tagUuid}/einstellungen/soundcheck`}
+      href={vehicleSurfaceHref(surfaceScope, "einstellungen/soundcheck")}
       variant={variant}
       title="Soundcheck"
       subtitle={hasSound ? "Aktiv" : "Nicht hinterlegt"}

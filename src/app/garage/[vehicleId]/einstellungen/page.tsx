@@ -64,12 +64,13 @@ export default async function VehicleSettingsPage({
         </header>
 
         <VehicleSettingsView
-          tagUuid={scope.linkedTagUuid ?? vehicleId}
+          surfaceScope={scope}
           vehicle={vehicle}
           documents={result.documents}
           galleryPhotos={galleryPhotos}
           canEdit={!isDemo}
           isExposeActive={expose.isExposeActive}
+          hasLinkedTag={Boolean(scope.linkedTagUuid?.trim())}
         />
       </section>
     </AppShell>

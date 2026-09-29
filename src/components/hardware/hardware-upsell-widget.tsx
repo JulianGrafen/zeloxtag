@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { buildV4aTagCheckoutUrl } from "@/lib/hardware/v4a-checkout-url";
+import { resolveZeloxTagShopUrl } from "@/lib/hardware/zelox-tag-product-url";
 
 import {
   HARDWARE_UPSELL_HEADLINE,
@@ -24,7 +24,7 @@ export function HardwareUpsellWidget({
   userEmail,
 }: HardwareUpsellWidgetProps) {
   const [linkOpen, setLinkOpen] = useState(false);
-  const checkoutUrl = buildV4aTagCheckoutUrl({ userId, email: userEmail });
+  const shopUrl = resolveZeloxTagShopUrl({ userId, email: userEmail });
 
   return (
     <>
@@ -43,20 +43,14 @@ export function HardwareUpsellWidget({
           {HARDWARE_UPSELL_SUBTEXT}
         </p>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-          {checkoutUrl ? (
-            <a
-              href={checkoutUrl}
-              className="claim-cta inline-flex min-h-11 items-center justify-center px-5 no-underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {HARDWARE_UPSELL_PRIMARY_CTA}
-            </a>
-          ) : (
-            <span className="text-[0.85rem] text-[color:var(--vd-muted)]">
-              Shop-Link folgt in Kürze.
-            </span>
-          )}
+          <a
+            href={shopUrl}
+            className="claim-cta inline-flex min-h-11 items-center justify-center px-5 no-underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {HARDWARE_UPSELL_PRIMARY_CTA}
+          </a>
           <button
             type="button"
             className="text-[0.88rem] font-medium text-[color:var(--vd-text)] underline-offset-4 hover:underline"

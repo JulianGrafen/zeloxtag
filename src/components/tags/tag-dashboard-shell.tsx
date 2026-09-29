@@ -170,6 +170,9 @@ interface TagDashboardShellProps {
   showcaseSwipeUnreadLikes?: number;
   showcaseSwipeTotalLikes?: number;
   operatingCostHint?: OperatingCostDashboardHint | null;
+  showTagShopPromo?: boolean;
+  tagShopUserId?: string;
+  tagShopUserEmail?: string | null;
 }
 
 /**
@@ -196,6 +199,9 @@ export function TagDashboardShell({
   showcaseSwipeUnreadLikes = 0,
   showcaseSwipeTotalLikes = 0,
   operatingCostHint = null,
+  showTagShopPromo = false,
+  tagShopUserId,
+  tagShopUserEmail = null,
 }: TagDashboardShellProps) {
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
@@ -814,6 +820,9 @@ export function TagDashboardShell({
         showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
         showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
         operatingCostHint={operatingCostHint}
+        showTagShopPromo={showTagShopPromo}
+        tagShopUserId={tagShopUserId}
+        tagShopUserEmail={tagShopUserEmail}
         productFeaturesBannerActive={
           mode === "dashboard" &&
           !showSilhouetteEditor &&

@@ -19,6 +19,7 @@ import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
 import { canResolvePublicShowcase } from "@/lib/vehicle-surface/public-showcase-eligibility";
+import { resolveVehicleIdScanMisroute } from "@/lib/vehicle-surface/resolve-vehicle-id-scan-misroute";
 import {
   enrichPublicShowcaseVehicle,
   loadPublicShowcaseDocuments,
@@ -194,14 +195,21 @@ function hasInsiderAccess(access: {
 
 function renderClaimLanding(
   tagUuid: string,
-  user: { email?: string | null } | null,
+  user: { email?: string | null; user_metadata?: { name?: unknown } } | null,
 ) {
+  const displayName =
+    typeof user?.user_metadata?.name === "string" &&
+    user.user_metadata.name.trim()
+      ? user.user_metadata.name.trim()
+      : null;
+
   return (
     <AppShell showNavbar={false}>
       <ClaimFlow
         tagUuid={tagUuid}
         isAuthenticated={Boolean(user)}
         userEmail={user?.email ?? null}
+        initialDisplayName={displayName}
       />
     </AppShell>
   );
@@ -224,6 +232,21 @@ export default async function TagScanPage({
   ]);
 
   if (!entry) {
+    const misroute = await resolveVehicleIdScanMisroute(
+      identifier,
+      user?.id ?? null,
+    );
+    if (misroute.kind === "owner_garage") {
+      redirect(garagePathForVehicle(misroute.vehicleId));
+    }
+    if (misroute.kind === "not_a_tag") {
+      return (
+        <AppShell showNavbar={false}>
+          <TagNotFound />
+        </AppShell>
+      );
+    }
+
     if (isClaimLandingIdentifier(identifier)) {
       return renderClaimLanding(identifier.trim(), user);
     }
@@ -432,6 +455,21 @@ export default async function TagScanPage({
           showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
           operatingCostHint={operatingCostHint}
         />
+      </AppShell>
+    );
+  }
+
+  const misroute = await resolveVehicleIdScanMisroute(
+    identifier,
+    user?.id ?? null,
+  );
+  if (misroute.kind === "owner_garage") {
+    redirect(garagePathForVehicle(misroute.vehicleId));
+  }
+  if (misroute.kind === "not_a_tag") {
+    return (
+      <AppShell showNavbar={false}>
+        <TagNotFound />
       </AppShell>
     );
   }

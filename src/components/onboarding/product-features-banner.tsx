@@ -13,14 +13,16 @@ import {
 import { cn } from "@/lib/utils";
 
 type ProductFeaturesBannerProps = {
-  tagUuid: string;
+  discoverHref: string;
+  costsHref: string;
   /** When false, wait before showing (e.g. onboarding tour). */
   active?: boolean;
   className?: string;
 };
 
 export function ProductFeaturesBanner({
-  tagUuid,
+  discoverHref,
+  costsHref,
   active = true,
   className,
 }: ProductFeaturesBannerProps) {
@@ -70,9 +72,6 @@ export function ProductFeaturesBanner({
   }, [active]);
 
   if (!visible) return null;
-
-  const discoverHref = `/v/${tagUuid}/entdecken`;
-  const costsHref = `/v/${tagUuid}/dokumente/kosten`;
 
   return (
     <div
