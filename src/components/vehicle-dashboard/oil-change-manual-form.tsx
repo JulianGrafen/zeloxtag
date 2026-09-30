@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { updateManualVehicleEntry } from "@/actions/update-manual-entry";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
@@ -109,6 +110,7 @@ export function OilChangeManualForm({
         return;
       }
 
+      showSavedToast();
       onClose();
       router.refresh();
     });

@@ -77,4 +77,20 @@ describe("loadVehicleSurfaceByVehicleId", () => {
     expect(mocks.hydrateTagScanWithSessionDocuments).not.toHaveBeenCalled();
     expect(loaded?.result.documents).toEqual([]);
   });
+
+  // Register-without-tag: SSR returned documents: [] while DB had rows.
+  it("regression: tagless owner must hydrate documents (not skip with empty array)", async () => {
+    mocks.hydrateTagScanWithSessionDocuments.mockImplementation(async (scan) => ({
+      ...scan,
+      documents: [
+        { id: "doc-1", title: "Umbau A", type: "invoice" },
+        { id: "doc-2", title: "Umbau B", type: "invoice" },
+      ],
+    }));
+
+    const loaded = await loadVehicleSurfaceByVehicleId(vehicleId);
+
+    expect(mocks.hydrateTagScanWithSessionDocuments).toHaveBeenCalledTimes(1);
+    expect(loaded?.result.documents).toHaveLength(2);
+  });
 });

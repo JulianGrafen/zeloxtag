@@ -17,28 +17,11 @@ import {
 } from "@/lib/documents/constants";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
-import {
-  garagePathForVehicle,
-  isVehicleId,
-  vehicleSurfaceHref,
-} from "@/lib/vehicle-surface/paths";
+import { appendSavedQuery } from "@/lib/ui/saved-toast";
+import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
+import { isVehicleId } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { DocumentType } from "@/types/database";
-
-function documentsListHref(
-  tagUuid: string,
-  type: DocumentType,
-  scope?: VehicleSurfaceScope,
-): string {
-  const query = `dokumente?type=${type}`;
-  if (scope) {
-    return vehicleSurfaceHref(scope, query);
-  }
-  if (isVehicleId(tagUuid)) {
-    return `${garagePathForVehicle(tagUuid)}/dokumente?type=${type}`;
-  }
-  return `/v/${tagUuid}/dokumente?type=${type}`;
-}
 
 interface DocumentUploadFormProps {
   vehicleId: string;
@@ -132,13 +115,17 @@ export function DocumentUploadForm({
               return;
             }
             router.push(
-              documentsListHref(
-                result.tagUuid,
-                result.document.type,
-                vehicleSurfaceScope ?? {
-                  vehicleId,
-                  linkedTagUuid: isVehicleId(result.tagUuid) ? null : result.tagUuid,
-                },
+              appendSavedQuery(
+                documentsListHref(
+                  result.tagUuid,
+                  result.document.type,
+                  vehicleSurfaceScope ?? {
+                    vehicleId,
+                    linkedTagUuid: isVehicleId(result.tagUuid)
+                      ? null
+                      : result.tagUuid,
+                  },
+                ),
               ),
             );
             router.refresh();

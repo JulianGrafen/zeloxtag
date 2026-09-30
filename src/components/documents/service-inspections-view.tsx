@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -30,6 +30,7 @@ import {
   scanTypeDefinition,
   type ScanType,
 } from "@/lib/documents/scan-types";
+import { setScanSurfaceActive } from "@/lib/ui/scan-surface-state";
 import type { Document } from "@/types/database";
 
 interface ServiceInspectionsViewProps {
@@ -85,6 +86,12 @@ export function ServiceInspectionsView({
     visibleInspections.length === inspections.length
       ? undefined
       : `${visibleInspections.length} von ${inspections.length} Einträgen`;
+
+  useEffect(() => {
+    const immersive = mode === "pick-scan" || mode === "scanner";
+    setScanSurfaceActive(immersive);
+    return () => setScanSurfaceActive(false);
+  }, [mode]);
 
   if (mode === "pick-scan" || (mode === "scanner" && !scanType)) {
     return (

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { paywallDashboardHref } from "./paywall-dashboard-href";
 import {
   garagePathForVehicle,
   vehicleSurfaceBasePath,
@@ -31,5 +32,22 @@ describe("vehicleSurface paths", () => {
     expect(garagePathForVehicle(scope.vehicleId, "dokumente")).toBe(
       "/garage/11111111-1111-4111-8111-111111111111/dokumente",
     );
+  });
+});
+
+describe("paywallDashboardHref", () => {
+  const vehicleId = "11111111-1111-4111-8111-111111111111";
+
+  it("uses garage dashboard for tagless scope", () => {
+    expect(
+      paywallDashboardHref(vehicleId, {
+        vehicleId,
+        linkedTagUuid: null,
+      }),
+    ).toBe(`/garage/${vehicleId}`);
+  });
+
+  it("uses tag dashboard when tag uuid is passed without scope", () => {
+    expect(paywallDashboardHref("zlx-deadbeef")).toBe("/v/zlx-deadbeef");
   });
 });

@@ -1,25 +1,19 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { ViewTransition, type ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
+import { ViewTransition } from "react";
 
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
+import { shouldRenderGlobalLegalFooter } from "@/lib/legal/show-global-legal-footer";
 import { usePublicShowcaseSurface } from "@/lib/legal/use-public-showcase-surface";
+import {
+  isScanSurfaceActive,
+  subscribeScanSurface,
+} from "@/lib/ui/scan-surface-state";
 
 interface PageTransitionProps {
   children: ReactNode;
-}
-
-function showGlobalLegalFooter(pathname: string): boolean {
-  if (pathname === "/" || pathname.startsWith("/login")) return false;
-  if (
-    pathname === "/impressum" ||
-    pathname === "/agb" ||
-    pathname === "/datenschutz"
-  ) {
-    return false;
-  }
-  return true;
 }
 
 /**
@@ -30,9 +24,24 @@ function showGlobalLegalFooter(pathname: string): boolean {
  */
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const publicShowcase = usePublicShowcaseSurface();
-  const showLegalFooter =
-    showGlobalLegalFooter(pathname) && !publicShowcase;
+  const [scanSurfaceActive, setScanSurfaceActive] = useState(
+    () => isScanSurfaceActive(),
+  );
+
+  useEffect(() => {
+    return subscribeScanSurface(() => {
+      setScanSurfaceActive(isScanSurfaceActive());
+    });
+  }, []);
+
+  const showLegalFooter = shouldRenderGlobalLegalFooter({
+    pathname,
+    publicShowcase,
+    scanQueryActive: searchParams.get("scan") === "1",
+    scanSurfaceActive,
+  });
 
   return (
     <ViewTransition

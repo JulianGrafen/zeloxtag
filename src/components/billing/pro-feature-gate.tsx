@@ -13,25 +13,8 @@ import {
   type FeatureFlag,
 } from "@/lib/permissions/feature-access";
 import { ownerHasFeature } from "@/lib/permissions/require-feature";
-import {
-  garagePathForVehicle,
-  isVehicleId,
-  vehicleSurfaceBasePath,
-} from "@/lib/vehicle-surface/paths";
+import { paywallDashboardHref } from "@/lib/vehicle-surface/paywall-dashboard-href";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
-
-function paywallDashboardHref(
-  tagUuid: string,
-  vehicleSurfaceScope?: VehicleSurfaceScope,
-): string {
-  if (vehicleSurfaceScope) {
-    return vehicleSurfaceBasePath(vehicleSurfaceScope);
-  }
-  if (isVehicleId(tagUuid)) {
-    return garagePathForVehicle(tagUuid);
-  }
-  return `/v/${tagUuid}`;
-}
 
 export async function ProFeatureGate({
   ownerUserId,

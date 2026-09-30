@@ -1,9 +1,7 @@
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 
-import { SaveSuccessBanner } from "@/components/documents/save-success-banner";
 import { DocumentAbeDetailView } from "@/components/documents/document-abe-detail-view";
 import { DocumentInvoiceDetailView } from "@/components/documents/document-invoice-detail-view";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
@@ -55,9 +53,6 @@ export default async function DocumentDetailPage({
   const view =
     document.type === "abe" ? (
       <>
-        <Suspense fallback={null}>
-          <SaveSuccessBanner />
-        </Suspense>
         <DocumentAbeDetailView
           tagUuid={scope.linkedTagUuid ?? vehicleId}
           vehicleLabel={vehicleLabel}
@@ -66,9 +61,6 @@ export default async function DocumentDetailPage({
       </>
     ) : (
       <>
-        <Suspense fallback={null}>
-          <SaveSuccessBanner />
-        </Suspense>
         <DocumentInvoiceDetailView
         tagUuid={scope.linkedTagUuid ?? vehicleId}
         vehicleLabel={vehicleLabel}

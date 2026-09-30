@@ -27,6 +27,7 @@ import {
   paywallGoalOverrideForScanType,
   type PaywallTriggerContext,
 } from "@/lib/billing/paywall-personalization";
+import { setScanSurfaceActive } from "@/lib/ui/scan-surface-state";
 import {
   clearSilhouettePreviewFromSession,
   readSilhouettePreviewFromSession,
@@ -293,6 +294,12 @@ export function TagDashboardShell({
   useEffect(() => {
     setPortalReady(true);
   }, []);
+
+  useEffect(() => {
+    const immersive = mode === "pick-scan" || mode === "scanner";
+    setScanSurfaceActive(immersive);
+    return () => setScanSurfaceActive(false);
+  }, [mode]);
 
   useEffect(() => {
     if (!isOwner || demoShowcase) return;

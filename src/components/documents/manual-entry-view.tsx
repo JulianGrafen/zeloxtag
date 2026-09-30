@@ -47,6 +47,7 @@ import {
   inlineDocumentProxyUrl,
   isViewableDocumentUrl,
 } from "@/lib/documents/viewable-url";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { Document, DocumentLineItem } from "@/types/database";
 
@@ -378,6 +379,7 @@ export function ManualEntryView({
           setError(result.message);
           return;
         }
+        showSavedToast();
         closeForm();
         router.refresh();
       } catch (updateError) {
@@ -424,6 +426,7 @@ export function ManualEntryView({
               return;
             }
           }
+          showSavedToast();
           resetForm();
           setShowForm(false);
           router.refresh();
@@ -461,6 +464,7 @@ export function ManualEntryView({
           setError(result.message);
           return;
         }
+        showSavedToast();
         resetForm();
         setShowForm(false);
         router.refresh();

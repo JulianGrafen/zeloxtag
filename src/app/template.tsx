@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import { PageTransition } from "@/components/vehicle-dashboard/PageTransition";
 
 export default function Template({
@@ -7,5 +9,9 @@ export default function Template({
 }: {
   children: React.ReactNode;
 }) {
-  return <PageTransition>{children}</PageTransition>;
+  return (
+    <Suspense fallback={children}>
+      <PageTransition>{children}</PageTransition>
+    </Suspense>
+  );
 }
