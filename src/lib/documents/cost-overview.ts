@@ -3,7 +3,8 @@ import {
   resolveInvoiceListCategory,
   type InvoiceListCategory,
 } from "@/lib/documents/invoice-categories";
-import { filterInvoiceReceiptDocuments } from "@/lib/documents/invoice-receipts";
+import { filterCostOverviewDocuments } from "@/lib/documents/invoice-receipts";
+import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
 import {
   isInvoiceRepairLine,
   isInvoiceServiceLine,
@@ -278,6 +279,20 @@ function collectModificationPositions(
   const fallbackLabel =
     doc.title?.trim() || doc.vendor?.trim() || "Umbau";
   const combined = `${fallbackLabel} ${doc.vendor ?? ""}`;
+
+  if (
+    isManualVehicleEntry(doc) &&
+    (listCategory === "tuning" || doc.category?.trim().toLowerCase() === "tuning")
+  ) {
+    return [
+      {
+        label: fallbackLabel,
+        amount,
+        bucket: classifySpendBucket(combined, doc.part_category),
+      },
+    ];
+  }
+
   if (!shouldIncludeUmbauLine(combined, listCategory)) {
     return [];
   }
@@ -488,6 +503,21 @@ function collectMaintenancePositions(
   const fallbackLabel =
     doc.title?.trim() || doc.vendor?.trim() || "Wartung";
   const combined = `${fallbackLabel} ${doc.vendor ?? ""}`;
+
+  if (
+    isManualVehicleEntry(doc) &&
+    (listCategory === "service" ||
+      doc.category?.trim().toLowerCase() === "service")
+  ) {
+    return [
+      {
+        label: fallbackLabel,
+        amount,
+        bucket: classifyMaintenanceBucket(combined),
+      },
+    ];
+  }
+
   if (!shouldIncludeMaintenanceLine(combined, listCategory)) {
     return [];
   }
@@ -504,7 +534,7 @@ function collectMaintenancePositions(
 export function buildVehicleCostOverview(
   documents: Document[],
 ): VehicleCostOverview {
-  const invoices = filterInvoiceReceiptDocuments(documents);
+  const invoices = filterCostOverviewDocuments(documents);
 
   let totalInvestment = 0;
   let documentsWithoutAmountCount = 0;

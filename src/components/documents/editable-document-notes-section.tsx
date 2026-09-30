@@ -8,6 +8,7 @@ import { updateDocumentFields } from "@/actions/update-document-fields";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "notes";
 
@@ -78,6 +79,7 @@ export function EditableDocumentNotesSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplayNotes(nextNotes);
       onSaved?.(nextNotes);
       setEditing(false);

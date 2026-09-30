@@ -10,6 +10,7 @@ import { formatCompactGermanDate } from "@/lib/documents/format";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "date";
 
@@ -81,6 +82,7 @@ export function EditableDocumentDateSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplayDate(draft);
       onSaved?.(draft);
       setEditing(false);

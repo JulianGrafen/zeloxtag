@@ -8,6 +8,7 @@ import { updateVehicleShowcaseSettings } from "@/actions/update-vehicle-showcase
 import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
 import { SETTINGS_SUBMENU_TILE_CLASS } from "@/components/vehicles/vehicle-settings-submenu-link";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { resolveShowcaseSharePath } from "@/lib/vehicles/public-profile-status";
 import { publicShowcasePath } from "@/lib/vehicles/public-slug";
 
@@ -148,6 +149,7 @@ export function VehiclePublicProfileSettings({
       }
 
       setSharePath(result.sharePath);
+      showSavedToast();
       if (!payload.isPublic) {
         setMessage("Showcase ist privat.");
       } else if (result.sharePath) {

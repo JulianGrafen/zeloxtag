@@ -7,6 +7,7 @@ import { updateManualOilChangeFields } from "@/actions/update-manual-oil-change-
 import { Input } from "@/components/ui/input";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { OilDetailEditTarget } from "@/lib/documents/oil-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: OilDetailEditTarget = "oilLiters";
 
@@ -71,6 +72,7 @@ export function EditableOilLitersSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       const parsed = Number.parseFloat(draft.replace(",", "."));
       const next = Number.isFinite(parsed) ? parsed : null;
       setDisplay(next);

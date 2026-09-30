@@ -70,20 +70,20 @@ export function CompactMetricBar({
     : 0;
 
   const labelClass = dense
-    ? "font-mono text-[15px] font-medium uppercase tracking-[0.14em] text-zinc-400"
+    ? "font-mono text-[20px] font-medium uppercase tracking-[0.14em] text-zinc-400"
     : compact
-      ? "font-mono text-[18px] font-medium uppercase tracking-[0.16em] text-zinc-400"
-      : "font-mono text-[22px] font-medium uppercase tracking-[0.2em] text-zinc-400";
+      ? "font-mono text-[22px] font-medium uppercase tracking-[0.16em] text-zinc-400"
+      : "font-mono text-[26px] font-medium uppercase tracking-[0.2em] text-zinc-400";
   const valueClass = dense
-    ? "text-[24px] font-bold tabular-nums tracking-tight text-white"
+    ? "text-[32px] font-bold tabular-nums tracking-tight text-white"
     : compact
-      ? "text-[30px] font-bold tabular-nums tracking-tight text-white"
-      : "text-[38px] font-bold tabular-nums tracking-tight text-white";
+      ? "text-[38px] font-bold tabular-nums tracking-tight text-white"
+      : "text-[46px] font-bold tabular-nums tracking-tight text-white";
   const deltaClass = dense
-    ? "text-[18px] font-semibold tabular-nums text-emerald-400"
+    ? "text-[22px] font-semibold tabular-nums text-emerald-400"
     : compact
-      ? "text-[22px] font-semibold tabular-nums text-emerald-400"
-      : "text-[26px] font-semibold tabular-nums text-emerald-400";
+      ? "text-[26px] font-semibold tabular-nums text-emerald-400"
+      : "text-[30px] font-semibold tabular-nums text-emerald-400";
 
   return (
     <div

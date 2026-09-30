@@ -13,6 +13,7 @@ import {
   yearMonthToIsoDate,
 } from "@/lib/documents/format";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 type EditableTuevHuSectionProps = {
   approvalFields: Extract<ApprovalFields, { kind: "tuev" }>;
@@ -63,6 +64,7 @@ export function EditableTuevHuSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplayMonth(draft.trim() || null);
       setEditing(false);
     });

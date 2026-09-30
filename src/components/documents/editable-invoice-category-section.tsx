@@ -15,6 +15,7 @@ import type { InvoiceTextParseCategory } from "@/lib/ocr/text-parse-schema";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "category";
 
@@ -91,6 +92,7 @@ export function EditableInvoiceCategorySection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplayCategory(draft);
       onSaved?.(draft);
       setEditing(false);

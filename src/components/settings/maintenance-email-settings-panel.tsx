@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { updateMaintenanceEmailRemindersAction } from "@/actions/update-maintenance-email-prefs";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 interface MaintenanceEmailSettingsPanelProps {
   initialEnabled: boolean;
@@ -22,6 +23,7 @@ export function MaintenanceEmailSettingsPanel({
       const result = await updateMaintenanceEmailRemindersAction(next);
       if (result.status === "ok") {
         setEnabled(result.enabled);
+        showSavedToast();
         return;
       }
       setError(result.message);

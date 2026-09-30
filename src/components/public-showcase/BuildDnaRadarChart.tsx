@@ -24,10 +24,10 @@ type BuildDnaRadarChartProps = {
 function chartMetrics(variant: "default" | "compact" | "story") {
   if (variant === "story") {
     return {
-      size: 136,
-      maxR: 46,
-      labelOffset: 9,
-      labelFontSize: 6.5,
+      size: 300,
+      maxR: 98,
+      labelOffset: 20,
+      labelFontSize: 13,
       showScoreLegend: false,
       showVertexScores: false,
     };
@@ -146,7 +146,7 @@ export function BuildDnaRadarChart({
             key={`${row.category}-vertex`}
             cx={vertex.x}
             cy={vertex.y}
-            r={variant === "compact" ? 2.5 : 2}
+            r={variant === "story" ? 3.5 : variant === "compact" ? 2.5 : 2}
             fill={SHAPE_STROKE}
           />
         );

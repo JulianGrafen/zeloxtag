@@ -8,6 +8,7 @@ import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { FEATURE } from "@/lib/permissions/feature-access";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import type { Vehicle } from "@/types/database";
 
 type ExposeLinkSettingsProps = {
@@ -59,6 +60,7 @@ export function ExposeLinkSettings({
 
       setIsActive(result.isActive);
       setSharePath(result.sharePath);
+      showSavedToast();
       setMessage(
         action === "deactivate"
           ? "Exposé ist deaktiviert. Der alte Link führt nicht mehr zum Dossier."

@@ -12,6 +12,7 @@ import {
 import { measureAudioFileDurationSeconds } from "@/lib/vehicles/measure-audio-duration";
 import { bytesToBase64 } from "@/lib/vehicles/engine-sound-json-upload";
 import { validateEngineSoundUploadBytes } from "@/lib/vehicles/engine-sound-validation";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 export type VehicleEngineSoundUploadProps = {
   vehicleId: string;
@@ -118,6 +119,7 @@ export function VehicleEngineSoundUpload({
         }
 
         setLocalPreviewUrl(payload.soundUrl.trim());
+        showSavedToast();
         onUploaded?.();
       } catch (uploadError) {
         setError(
@@ -161,6 +163,7 @@ export function VehicleEngineSoundUpload({
         );
       }
       setLocalPreviewUrl(null);
+      showSavedToast();
       onDeleted?.();
     } catch (deleteError) {
       setError(

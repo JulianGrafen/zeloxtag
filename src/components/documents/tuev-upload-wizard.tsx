@@ -39,6 +39,7 @@ import type { InvoiceLineItem, InvoiceTextParseResult } from "@/lib/ocr/text-par
 import { normalizeTextParseResult } from "@/lib/ocr/text-parse-schema";
 import { resolveTuevTotalAmount } from "@/lib/ocr/tuev-amount";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import {
   createDocumentPreviewUrl,
@@ -552,6 +553,7 @@ export function TuevUploadWizard({
 
       const href =
         successHref ?? `/v/${result.tagUuid}/dokumente/${result.document.id}`;
+      showSavedToast();
       window.location.assign(href);
     });
   }

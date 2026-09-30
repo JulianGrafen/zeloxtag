@@ -10,6 +10,8 @@ const MANUAL_ENTRY_SEGMENTS = [
   "/umbauten",
   "/service",
   "/dokumente",
+  "/dokumente/kosten",
+  "/kosten",
   "/intervalle",
   "/historie",
 ] as const;

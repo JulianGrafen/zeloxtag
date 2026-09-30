@@ -36,6 +36,7 @@ import {
 import { localDateIso } from "@/lib/documents/format";
 import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import {
   appendScanSessionId,
   readScanSessionId,
@@ -2985,6 +2986,7 @@ export function AbeDataHunterWizard({
         setSaveError(result.message);
         return;
       }
+      showSavedToast();
       if (useFreeScanSaveRedirect && result.freeScanConsumed) {
         window.location.assign(`/v/${result.tagUuid}?freeScanWelcome=1`);
         return;

@@ -78,20 +78,20 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
 
             <div className="absolute inset-x-0 bottom-0 z-10 px-12 pb-6">
-              <p className="text-[48px] font-bold leading-[1.05] tracking-tight break-words">
+              <p className="text-[68px] font-bold leading-[1.05] tracking-tight break-words">
                 {data.modelName}
               </p>
+              {data.instagramHandle ? (
+                <ShareCardInstagramHandle
+                  handle={data.instagramHandle}
+                  variant="hero"
+                  compact={layout.density !== "comfortable"}
+                />
+              ) : null}
             </div>
           </div>
 
           <div className="relative z-10 flex min-h-0 flex-col gap-2 overflow-hidden px-12 py-2">
-            {data.instagramHandle ? (
-              <ShareCardInstagramHandle
-                handle={data.instagramHandle}
-                compact={layout.density !== "comfortable"}
-              />
-            ) : null}
-
             <div className="min-h-0 flex-1 overflow-hidden">
               <div
                 className="origin-top-left"
@@ -105,7 +105,7 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
                     <ShareCardSpecRowView
                       key={row.key}
                       row={row}
-                      compact
+                      compact={layout.density !== "comfortable"}
                       density={layout.density}
                     />
                   ))}
@@ -113,8 +113,8 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
                     <p
                       className={`font-mono uppercase tracking-[0.16em] text-zinc-500 ${
                         layout.density === "dense"
-                          ? "text-[16px]"
-                          : "text-[18px]"
+                          ? "text-[22px]"
+                          : "text-[24px]"
                       }`}
                     >
                       {data.modificationsCount}{" "}
@@ -127,7 +127,7 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
           </div>
 
           {showDna ? (
-            <div className="relative z-10 min-h-0 overflow-hidden px-4">
+            <div className="relative z-10 min-h-0 overflow-hidden">
               <ShareCardBuildDnaBlock
                 dna={data.buildDna!}
                 compact

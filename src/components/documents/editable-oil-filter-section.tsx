@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { updateManualOilChangeFields } from "@/actions/update-manual-oil-change-fields";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { OilDetailEditTarget } from "@/lib/documents/oil-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: OilDetailEditTarget = "filter";
 
@@ -63,6 +64,7 @@ export function EditableOilFilterSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplay(draft);
       onSaved?.(draft);
       setEditing(false);

@@ -16,6 +16,7 @@ import {
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import type { TuevReport } from "@/lib/validations/documentSchemas";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 type EditableTuevDefectsSectionProps = {
   approvalFields: Extract<ApprovalFields, { kind: "tuev" }>;
@@ -82,6 +83,8 @@ export function EditableTuevDefectsSection({
         setError(result.message);
         return;
       }
+
+      showSavedToast();
 
       setDisplayData(draftRowsToReportDefects(draft));
       setEditing(false);

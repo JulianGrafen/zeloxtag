@@ -620,6 +620,7 @@ export function ManualEntryView({
         setError(result.message);
         return;
       }
+      showSavedToast();
       router.refresh();
     });
   }

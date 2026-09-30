@@ -14,6 +14,7 @@ import {
   documentMediaKind,
   inlineDocumentProxyUrl,
 } from "@/lib/documents/viewable-url";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import type { Document } from "@/types/database";
 
 type ShowcaseGallerySettingsProps = {
@@ -116,6 +117,7 @@ export function ShowcaseGallerySettings({
         }
 
         onChanged?.();
+        showSavedToast();
         return true;
       } catch (uploadError) {
         setError(
@@ -164,6 +166,7 @@ export function ShowcaseGallerySettings({
       }
 
       onChanged?.();
+      showSavedToast();
     } finally {
       setDeletingId(null);
     }

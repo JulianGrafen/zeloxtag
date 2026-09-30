@@ -13,6 +13,7 @@ import {
   openDocumentOriginal,
   inlineDocumentProxyUrl,
 } from "@/lib/documents/viewable-url";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 export type VehicleDynoChartUploadProps = {
   vehicleId: string;
@@ -127,6 +128,7 @@ export function VehicleDynoChartUpload({
         const url = payload.dynoChartUrl.trim();
         setLocalUrl(url);
         setState("done");
+        showSavedToast();
         onUploaded?.(url);
       } catch (uploadError) {
         setState("idle");
@@ -174,6 +176,7 @@ export function VehicleDynoChartUpload({
       }
       setLocalUrl(null);
       setState("idle");
+      showSavedToast();
       onDeleted?.();
     } catch (deleteError) {
       setError(

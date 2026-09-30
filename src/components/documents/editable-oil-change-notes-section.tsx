@@ -7,6 +7,7 @@ import { NotebookPen, Pencil } from "lucide-react";
 import { updateManualOilChangeFields } from "@/actions/update-manual-oil-change-fields";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { OilDetailEditTarget } from "@/lib/documents/oil-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: OilDetailEditTarget = "notes";
 
@@ -70,6 +71,7 @@ export function EditableOilChangeNotesSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       const next = draft.trim();
       setDisplayNotes(next);
       onSaved?.(next);

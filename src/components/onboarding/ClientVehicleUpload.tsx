@@ -20,6 +20,7 @@ import {
 } from "@/lib/vehicles/compress-silhouette-image";
 import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
 import { fileToPreviewDataUrl } from "@/lib/vehicles/silhouette-preview-session";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { cn } from "@/lib/utils";
 
 export type SilhouetteUploadResult = {
@@ -332,6 +333,7 @@ export function ClientVehicleUpload({
           return previewBlobUrl;
         });
         setState("done");
+        showSavedToast();
         onUploaded?.({
           storageUrl,
           displayUrl,
@@ -392,6 +394,7 @@ export function ClientVehicleUpload({
         return null;
       });
       setState("idle");
+      showSavedToast();
       onDeleted?.();
     } catch (deleteError) {
       setError(
@@ -551,14 +554,6 @@ export function ClientVehicleUpload({
           role="alert"
         >
           {error}
-        </p>
-      ) : null}
-      {state === "done" ? (
-        <p
-          className="mt-3 text-[0.85rem] text-[color:var(--vd-alert-success-text)]"
-          role="status"
-        >
-          Gespeichert.
         </p>
       ) : null}
     </section>

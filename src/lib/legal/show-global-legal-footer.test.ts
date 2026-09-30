@@ -35,4 +35,16 @@ describe("shouldRenderGlobalLegalFooter", () => {
       }),
     ).toBe(true);
   });
+
+  it("hides footer while route loading shell is active", () => {
+    expect(
+      shouldRenderGlobalLegalFooter({
+        pathname: "/v/zlx-deadbeef",
+        publicShowcase: false,
+        scanQueryActive: false,
+        scanSurfaceActive: false,
+        routeTransitionLoadingActive: true,
+      }),
+    ).toBe(false);
+  });
 });

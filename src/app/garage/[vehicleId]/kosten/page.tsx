@@ -31,6 +31,7 @@ export default async function VehicleOperatingCostsPage({
 
   return (
     <VehicleOperatingCostOverviewView
+      vehicleSurfaceScope={scope}
       tagUuid={scope.linkedTagUuid ?? vehicleId}
       vehicleId={vehicle.id}
       vehicleModel={vehicleModel}

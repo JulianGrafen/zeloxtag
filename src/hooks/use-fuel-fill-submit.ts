@@ -9,6 +9,7 @@ import {
 } from "@/actions/operating-costs";
 import { normalizeFuelFillInput } from "@/lib/fuel-receipt/normalize-fuel-fill";
 import type { FuelFillFormState } from "@/lib/fuel-receipt/types";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 type UseFuelFillSubmitOptions = {
   tagUuid: string;
@@ -64,8 +65,8 @@ export function useFuelFillSubmit({
           return;
         }
 
-        const separator = backHref.includes("?") ? "&" : "?";
-        router.push(`${backHref}${separator}saved=1`);
+        showSavedToast();
+        router.push(backHref);
         router.refresh();
       });
     },

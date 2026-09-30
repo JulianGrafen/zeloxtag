@@ -24,9 +24,11 @@ export function shouldRenderGlobalLegalFooter(input: {
   publicShowcase: boolean;
   scanQueryActive: boolean;
   scanSurfaceActive: boolean;
+  routeTransitionLoadingActive?: boolean;
 }): boolean {
   if (!showGlobalLegalFooter(input.pathname)) return false;
   if (input.publicShowcase) return false;
   if (input.scanQueryActive || input.scanSurfaceActive) return false;
+  if (input.routeTransitionLoadingActive) return false;
   return true;
 }

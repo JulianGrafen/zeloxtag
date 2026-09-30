@@ -55,6 +55,7 @@ import {
   readScanSessionId,
 } from "@/lib/billing/scan-session-client";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { cacheMockUploadFileInSession } from "@/lib/documents/mock-upload-session-cache";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { documentTypeForTextCategory } from "@/lib/ocr/category-map";
@@ -674,6 +675,7 @@ export function InvoiceUploadWizard({
           state.uploadFile,
         );
       }
+      showSavedToast();
       window.location.assign(href);
     });
   }

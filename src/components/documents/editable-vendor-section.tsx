@@ -10,6 +10,7 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "vendor";
 
@@ -87,6 +88,7 @@ export function EditableVendorSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplayVendor(nextVendor);
       onSaved?.(nextVendor);
       setEditing(false);

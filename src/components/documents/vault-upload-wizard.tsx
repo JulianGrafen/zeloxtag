@@ -37,6 +37,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 import { materializeUploadFile } from "@/lib/documents/materialize-upload-file";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { stageVaultDocumentViaApi } from "@/lib/documents/stage-vault-document-client";
 import { saveVaultDocument } from "@/lib/documents/vault-document";
 import { OCR_PDF_MAX_BYTES } from "@/lib/documents/document-compression";
@@ -506,6 +507,7 @@ export function VaultUploadWizard({
         return;
       }
 
+      showSavedToast();
       router.push(resolvedSuccessHref);
       router.refresh();
     });

@@ -38,6 +38,7 @@ import {
   VEHICLE_FUEL_TYPES,
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import type { Vehicle } from "@/types/database";
 
 type VehicleSpecsViewProps = {
@@ -95,7 +96,6 @@ export function VehicleSpecsView({
     formatAccelSecondsInput(initialSpecs.accel100To200Sec),
   );
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function patchSpec<K extends keyof VehicleTechSpecs>(
@@ -119,7 +119,6 @@ export function VehicleSpecsView({
       }
       return { ...prev, [key]: value || null };
     });
-    setSaved(false);
   }
 
   function patchAccel0To100Text(value: string) {
@@ -133,7 +132,6 @@ export function VehicleSpecsView({
         ACCEL_0_100_SEC_MAX,
       ),
     }));
-    setSaved(false);
   }
 
   function patchAccel100To200Text(value: string) {
@@ -147,7 +145,6 @@ export function VehicleSpecsView({
         ACCEL_100_200_SEC_MAX,
       ),
     }));
-    setSaved(false);
   }
 
   function commitAccel0To100Text() {
@@ -172,7 +169,6 @@ export function VehicleSpecsView({
 
   function handleSave() {
     setError(null);
-    setSaved(false);
     const accel0To100Sec = parseAccelSecondsFromDraft(
       accel0To100Text,
       ACCEL_0_100_SEC_MIN,
@@ -205,7 +201,7 @@ export function VehicleSpecsView({
         setError(result.message);
         return;
       }
-      setSaved(true);
+      showSavedToast();
       router.refresh();
     });
   }
@@ -236,7 +232,6 @@ export function VehicleSpecsView({
       oilChangeIntervalMonths:
         prev.oilChangeIntervalMonths ?? DEFAULT_OIL_INTERVAL_MONTHS,
     }));
-    setSaved(false);
   }
 
   function patchOilChangeIntervalMonths(raw: string) {
@@ -249,7 +244,6 @@ export function VehicleSpecsView({
       oilChangeIntervalKm:
         prev.oilChangeIntervalKm ?? resolveOilChangeInterval(prev).intervalKm,
     }));
-    setSaved(false);
   }
 
   return (
@@ -288,14 +282,6 @@ export function VehicleSpecsView({
             {error}
           </p>
         ) : null}
-        {saved ? (
-          <p
-            role="status"
-            className="rounded-xl bg-emerald-50 px-3 py-2.5 text-[0.8rem] text-emerald-800"
-          >
-            Gespeichert.
-          </p>
-        ) : null}
 
         <VehicleSettingsSubmenuGroup>
           <VehicleSettingsSubmenuLink
@@ -327,7 +313,6 @@ export function VehicleSpecsView({
                     value={make}
                     onChange={(event) => {
                       setMake(event.target.value);
-                      setSaved(false);
                     }}
                     className="claim-input w-full"
                     placeholder="Toyota"
@@ -339,7 +324,6 @@ export function VehicleSpecsView({
                     value={model}
                     onChange={(event) => {
                       setModel(event.target.value);
-                      setSaved(false);
                     }}
                     className="claim-input w-full"
                     placeholder="Supra"
@@ -354,7 +338,6 @@ export function VehicleSpecsView({
                     value={year}
                     onChange={(event) => {
                       setYear(event.target.value);
-                      setSaved(false);
                     }}
                     className="claim-input w-full"
                     placeholder="2011"
@@ -365,7 +348,6 @@ export function VehicleSpecsView({
                     value={vin}
                     onChange={(event) => {
                       setVin(event.target.value.toUpperCase());
-                      setSaved(false);
                     }}
                     className="claim-input w-full font-mono text-[0.85rem]"
                     placeholder="optional"

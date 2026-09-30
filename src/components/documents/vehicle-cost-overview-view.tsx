@@ -9,15 +9,17 @@ import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-discl
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import type { VehicleCostOverview } from "@/lib/documents/cost-overview";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 type VehicleCostOverviewViewProps = {
-  tagUuid: string;
+  vehicleSurfaceScope: VehicleSurfaceScope;
   vehicleModel: string;
   overview: VehicleCostOverview;
 };
 
-function missingAmountBannerStorageKey(tagUuid: string): string {
-  return `zeloxtag:cost-overview:missing-amount-dismissed:${tagUuid}`;
+function missingAmountBannerStorageKey(vehicleId: string): string {
+  return `zeloxtag:cost-overview:missing-amount-dismissed:${vehicleId}`;
 }
 
 function CostStatCard({
@@ -152,10 +154,12 @@ function AnimatedCostBucketList({
 }
 
 export function VehicleCostOverviewView({
-  tagUuid,
+  vehicleSurfaceScope,
   vehicleModel,
   overview,
 }: VehicleCostOverviewViewProps) {
+  const belegeHref = `${vehicleSurfaceHref(vehicleSurfaceScope, "dokumente")}?type=invoice`;
+  const scanHref = `${vehicleSurfaceHref(vehicleSurfaceScope)}?scan=1&type=invoice`;
   const maxBucket = Math.max(
     ...overview.bucketBreakdown.map((row) => row.amount),
     1,
@@ -166,7 +170,9 @@ export function VehicleCostOverviewView({
   );
   const hasData = overview.invoiceCount > 0;
   const missingAmountCount = overview.documentsWithoutAmountCount;
-  const missingAmountStorageKey = missingAmountBannerStorageKey(tagUuid);
+  const missingAmountStorageKey = missingAmountBannerStorageKey(
+    vehicleSurfaceScope.vehicleId,
+  );
   const [missingAmountBannerHidden, setMissingAmountBannerHidden] =
     useState(false);
 
@@ -200,7 +206,7 @@ export function VehicleCostOverviewView({
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <header className="vd-anim-header space-y-4">
           <PressableLink
-            href={`/v/${tagUuid}/dokumente?type=invoice`}
+            href={belegeHref}
             variant="pill"
             className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
           >
@@ -216,7 +222,7 @@ export function VehicleCostOverviewView({
               {formatEur(overview.totalInvestment)}
             </p>
             <p className="mt-2 text-[0.82rem] text-[color:var(--vd-muted)]">
-              {vehicleModel} · {overview.invoiceCount} Belege erfasst
+              {vehicleModel} · {overview.invoiceCount} Einträge erfasst
             </p>
             {hasData ? (
               <div className="mt-5 border-t border-[color:var(--vd-border)] pt-5">
@@ -229,13 +235,14 @@ export function VehicleCostOverviewView({
         {!hasData ? (
           <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-6 text-center shadow-[var(--vd-shadow-sm)]">
             <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
-              Noch keine Belege für eine Kostenübersicht
+              Noch keine Kosten erfasst
             </p>
             <p className="mt-2 text-[0.85rem] text-[color:var(--vd-muted)]">
-              Scanne Rechnungen — Beträge erscheinen hier automatisch.
+              Scanne Rechnungen oder trage Umbauten und Service manuell ein —
+              mit Betrag erscheinen sie hier.
             </p>
             <PressableLink
-              href={`/v/${tagUuid}?scan=1&type=invoice`}
+              href={scanHref}
               className="mt-5 inline-flex rounded-xl bg-[color:var(--vd-accent)] px-4 py-2.5 text-[0.85rem] font-semibold text-white"
             >
               Beleg scannen

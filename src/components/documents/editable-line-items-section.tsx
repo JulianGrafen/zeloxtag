@@ -9,6 +9,7 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import type { DocumentLineItem } from "@/types/database";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "lineItems";
 
@@ -168,6 +169,7 @@ export function EditableLineItemsSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplayItems(next);
       onChange?.(next);
       setEditing(false);

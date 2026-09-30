@@ -22,6 +22,7 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { TableData } from "@/lib/validations/abeSchema";
 import type { AbeAuflagenSnippet } from "@/lib/validations/documentSchemas";
 import type { DocumentTechnicalSpec } from "@/types/database";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 type EditableAbeListsSectionProps = {
   documentId: string;
@@ -149,6 +150,7 @@ export function EditableAbeListsSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplayApprovals(nextApprovals);
       setDisplaySpecs(nextSpecs);
       setDisplayConditions(nextConditions);

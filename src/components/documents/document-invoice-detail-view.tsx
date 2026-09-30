@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { deleteDocument } from "@/actions/delete-document";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 import {
   DocumentDetailHero,
@@ -168,6 +169,7 @@ export function DocumentInvoiceDetailView({
         setDeleteError(result.message);
         return;
       }
+      showSavedToast();
       router.push(resolvedBack);
       router.refresh();
     });
@@ -553,6 +555,7 @@ export function DocumentInvoiceDetailView({
               fileUrl={document.file_url}
               title={title}
               isManual={isManual}
+              pageCount={document.page_count}
             />
           </div>
         </section>

@@ -40,6 +40,10 @@ function prepareShareCardExportClone(root: HTMLElement): void {
     block.style.opacity = "1";
     block.style.visibility = "visible";
   });
+  root.querySelectorAll<HTMLElement>("[data-share-instagram-handle]").forEach((row) => {
+    row.style.opacity = "1";
+    row.style.visibility = "visible";
+  });
 }
 
 function dataUrlToBlob(dataUrl: string): Blob {

@@ -2,6 +2,8 @@
 
 import { ThinkingOrb, type OrbState } from "thinking-orbs";
 
+import { RouteTransitionLoadingMarker } from "@/components/ui/route-transition-loading-marker";
+
 export type TransitionLoadingProps = {
   /** Screen reader + visible status line */
   label?: string;
@@ -22,7 +24,7 @@ export function TransitionLoading({
 }: TransitionLoadingProps) {
   return (
     <div
-      className={`mx-auto flex w-full max-w-lg min-h-[min(70dvh,520px)] flex-col items-center justify-center gap-4 px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] sm:px-5 ${className}`}
+      className={`mx-auto flex w-full max-w-lg min-h-dvh flex-col items-center justify-center gap-4 px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] sm:px-5 ${className}`}
       role="status"
       aria-live="polite"
       aria-label={label}
@@ -43,13 +45,19 @@ export function TransitionLoading({
 
 /** Vehicle dashboard / tag routes. */
 export function DashboardTransitionLoading() {
-  return <TransitionLoading label="Dashboard wird geladen" state="connecting" />;
+  return (
+    <RouteTransitionLoadingMarker>
+      <TransitionLoading label="Dashboard wird geladen" state="connecting" />
+    </RouteTransitionLoadingMarker>
+  );
 }
 
 /** Document vault sub-routes. */
 export function DocumentsTransitionLoading() {
   return (
-    <TransitionLoading label="Dokumente werden geladen" state="searching" />
+    <RouteTransitionLoadingMarker>
+      <TransitionLoading label="Dokumente werden geladen" state="searching" />
+    </RouteTransitionLoadingMarker>
   );
 }
 

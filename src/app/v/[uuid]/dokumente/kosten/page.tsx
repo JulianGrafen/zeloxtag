@@ -42,7 +42,10 @@ export default async function VehicleCostOverviewPage({
 
   return (
     <VehicleCostOverviewView
-      tagUuid={result.tag.uuid}
+      vehicleSurfaceScope={{
+        vehicleId: vehicle.id,
+        linkedTagUuid: result.tag.uuid,
+      }}
       vehicleModel={vehicleModel}
       overview={overview}
     />

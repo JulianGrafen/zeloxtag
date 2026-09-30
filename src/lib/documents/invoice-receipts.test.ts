@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  filterCostOverviewDocuments,
   filterInvoiceReceiptDocuments,
+  isCostOverviewDocument,
   isInvoiceReceiptDocument,
 } from "@/lib/documents/invoice-receipts";
 import type { Document } from "@/types/database";
@@ -70,6 +72,40 @@ describe("isInvoiceReceiptDocument", () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+describe("isCostOverviewDocument", () => {
+  it("includes manual entries for investment overview", () => {
+    expect(
+      isCostOverviewDocument(
+        buildInvoiceDoc({
+          invoice_number: "__manual__",
+          file_url: "manual://entry",
+          category: "tuning",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("still excludes tuev-category invoices", () => {
+    expect(
+      isCostOverviewDocument(buildInvoiceDoc({ category: "tuev" })),
+    ).toBe(false);
+  });
+});
+
+describe("filterCostOverviewDocuments", () => {
+  it("keeps manual and scanned invoices", () => {
+    const docs = filterCostOverviewDocuments([
+      buildInvoiceDoc({ id: "scan" }),
+      buildInvoiceDoc({
+        id: "manual",
+        invoice_number: "__manual__",
+        file_url: "manual://x",
+      }),
+    ]);
+    expect(docs.map((d) => d.id).sort()).toEqual(["manual", "scan"]);
   });
 });
 

@@ -17,7 +17,7 @@ export const SHOWROOM_QUARTETT_SEGMENT_CLASS = cn(
  * in the scaled settings preview (same visual weight as Showroom).
  */
 export const SHARE_CARD_QUARTETT_SEGMENT_CLASS = cn(
-  "h-[28px] min-w-0 flex-1 origin-left",
+  "h-[32px] min-w-0 flex-1 origin-left",
   SHOWCASE_QUARTETT_SEGMENT_CLIP,
 );
 

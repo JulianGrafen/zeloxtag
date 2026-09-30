@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { deleteDocument } from "@/actions/delete-document";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-view";
@@ -252,6 +253,7 @@ export function VehicleDocumentsView({
         return;
       }
 
+      showSavedToast();
       router.refresh();
     });
   }

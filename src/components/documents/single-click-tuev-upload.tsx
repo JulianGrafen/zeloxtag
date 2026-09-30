@@ -31,6 +31,7 @@ import {
 } from "@/lib/documents/format";
 import { isMileagePlausibilityMessage } from "@/lib/documents/mileage-plausibility-message";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { validateMileageAgainstHistory } from "@/lib/documents/validate-mileage";
 import { prepareTuevSingleOcrFile } from "@/lib/ocr/prepare-client-ocr-file";
@@ -383,6 +384,7 @@ export function SingleClickTuevUpload({
         return;
       }
       setSavedDocumentId(result.document.id);
+      showSavedToast();
       setPhase("success");
     });
   }

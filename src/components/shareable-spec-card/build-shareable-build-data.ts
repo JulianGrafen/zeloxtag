@@ -7,6 +7,7 @@ import type {
   PublicShowcaseProfile,
 } from "@/lib/vehicles/public-showcase-data";
 import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
+import { parseInstagramHandle } from "@/lib/vehicles/instagram-handle";
 
 import { buildShareCardSpecRows } from "./build-share-card-spec-rows";
 import type { ShareableBuildData } from "./types";
@@ -67,7 +68,7 @@ export function buildShareableBuildData(
 
   return {
     modelName,
-    instagramHandle: input.profile.instagramHandle,
+    instagramHandle: parseInstagramHandle(input.profile.instagramHandle),
     imageUrl: input.profile.heroImageSrc ?? undefined,
     specRows,
     modificationsCount: Math.max(0, input.modificationsCount),

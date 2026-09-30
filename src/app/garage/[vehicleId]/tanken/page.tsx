@@ -39,6 +39,7 @@ export default async function VehicleFuelLogPage({ params }: FuelLogPageProps) {
 
   return (
     <VehicleFuelLogView
+      vehicleSurfaceScope={scope}
       tagUuid={scope.linkedTagUuid ?? vehicleId}
       vehicleId={vehicle.id}
       vehicleModel={vehicleModel}

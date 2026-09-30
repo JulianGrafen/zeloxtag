@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { deleteDocument } from "@/actions/delete-document";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
@@ -180,6 +181,7 @@ export function ServiceInspectionsView({
         setError(result.message);
         return;
       }
+      showSavedToast();
       router.refresh();
     });
   }

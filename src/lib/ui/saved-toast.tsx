@@ -24,3 +24,11 @@ export function appendSavedQuery(href: string): string {
   if (href.includes("saved=1")) return href;
   return href.includes("?") ? `${href}&saved=1` : `${href}?saved=1`;
 }
+
+type RouterLike = { refresh: () => void };
+
+/** Standard success feedback after persisting data (toast + optional refresh). */
+export function notifySaved(router?: RouterLike): void {
+  showSavedToast();
+  router?.refresh();
+}

@@ -17,7 +17,7 @@ import {
 } from "@/lib/documents/constants";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
-import { appendSavedQuery } from "@/lib/ui/saved-toast";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
 import { isVehicleId } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
@@ -114,18 +114,17 @@ export function DocumentUploadForm({
               setError(result.message);
               return;
             }
+            showSavedToast();
             router.push(
-              appendSavedQuery(
-                documentsListHref(
-                  result.tagUuid,
-                  result.document.type,
-                  vehicleSurfaceScope ?? {
-                    vehicleId,
-                    linkedTagUuid: isVehicleId(result.tagUuid)
-                      ? null
-                      : result.tagUuid,
-                  },
-                ),
+              documentsListHref(
+                result.tagUuid,
+                result.document.type,
+                vehicleSurfaceScope ?? {
+                  vehicleId,
+                  linkedTagUuid: isVehicleId(result.tagUuid)
+                    ? null
+                    : result.tagUuid,
+                },
               ),
             );
             router.refresh();

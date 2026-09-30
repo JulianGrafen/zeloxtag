@@ -36,14 +36,14 @@ export function ShareCardSpecRowView({
       <div className={dense ? "space-y-1" : "space-y-2"}>
         <p
           className={`font-mono font-medium uppercase tracking-[0.16em] text-zinc-400 ${
-            dense ? "text-[16px]" : tight ? "text-[18px]" : "text-[20px]"
+            dense ? "text-[22px]" : tight ? "text-[24px]" : "text-[26px]"
           }`}
         >
           {row.label}
         </p>
         <p
           className={`font-medium leading-snug text-white/90 ${
-            dense ? "text-[22px]" : tight ? "text-[24px]" : "text-[28px]"
+            dense ? "text-[30px]" : tight ? "text-[34px]" : "text-[38px]"
           }`}
         >
           {row.valueText}
@@ -60,14 +60,14 @@ export function ShareCardSpecRowView({
     >
       <span
         className={`shrink-0 font-mono font-medium uppercase tracking-[0.14em] text-zinc-400 ${
-          dense ? "text-[16px]" : tight ? "text-[18px]" : "text-[20px]"
+          dense ? "text-[22px]" : tight ? "text-[24px]" : "text-[26px]"
         }`}
       >
         {row.label}
       </span>
       <span
         className={`min-w-0 text-right font-semibold tabular-nums text-white break-words ${
-          dense ? "text-[22px]" : tight ? "text-[26px]" : "text-[30px]"
+          dense ? "text-[30px]" : tight ? "text-[36px]" : "text-[40px]"
         }`}
       >
         {row.valueText}

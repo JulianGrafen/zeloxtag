@@ -31,6 +31,10 @@ export default async function VehicleOperatingCostsPage({
 
   return (
     <VehicleOperatingCostOverviewView
+      vehicleSurfaceScope={{
+        vehicleId: vehicle.id,
+        linkedTagUuid: result.tag.uuid,
+      }}
       tagUuid={result.tag.uuid}
       vehicleId={vehicle.id}
       vehicleModel={vehicleModel}

@@ -11,6 +11,7 @@ import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { DocumentDetailHeroAmount } from "@/components/documents/document-detail-hero";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "amount";
 
@@ -79,6 +80,7 @@ export function EditableDocumentAmountSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplayAmount(draft);
       onSaved?.(draft);
       setEditing(false);

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { isOilChangeSelfMadeVendor } from "@/lib/documents/oil-changes";
 import type { OilDetailEditTarget } from "@/lib/documents/oil-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: OilDetailEditTarget = "vendor";
 
@@ -78,6 +79,7 @@ export function EditableOilChangeVendorSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       const nextWorkshop = selfMade
         ? "Selbst gemacht"
         : vendor.trim() || null;

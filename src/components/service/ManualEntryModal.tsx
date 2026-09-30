@@ -14,6 +14,7 @@ import {
   MANUAL_SERVICE_ENTRY_TYPES,
   type ManualServiceEntryType,
 } from "@/lib/documents/manual-entries";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 interface ManualEntryModalProps {
   tagUuid: string;
@@ -127,7 +128,7 @@ export function ManualEntryModal({
         return;
       }
 
-      setSuccess("Eintrag gespeichert.");
+      showSavedToast();
       router.refresh();
       window.setTimeout(() => {
         onClose();

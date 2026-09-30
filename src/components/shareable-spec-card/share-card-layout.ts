@@ -17,17 +17,17 @@ export type ShareCardLayout = {
 
 const CARD_HEIGHT_PX = 1920;
 const FOOTER_ZONE_PERCENT = 9;
-const DNA_ZONE_PERCENT = 22;
+const DNA_ZONE_PERCENT = 30;
 const FOOTER_BASE_PX = 168;
-const DNA_BLOCK_PX = 360;
-const INSTAGRAM_ROW_PX = 52;
-const MODS_LINE_PX = 28;
+const DNA_BLOCK_PX = 520;
+const HERO_INSTAGRAM_EXTRA_PERCENT = 3;
+const MODS_LINE_PX = 34;
 const CONTENT_PADDING_PX = 40;
 
 const ROW_HEIGHT_PX: Record<ShareCardDensity, number> = {
-  comfortable: 72,
-  compact: 64,
-  dense: 56,
+  comfortable: 96,
+  compact: 86,
+  dense: 76,
 };
 
 function stackedSpecExtraPx(data: ShareableBuildData): number {
@@ -45,6 +45,10 @@ export function computeShareCardLayout(data: ShareableBuildData): ShareCardLayou
   let heroHeightPercent = 34;
   if (specCount > 5 || hasDna) heroHeightPercent = 30;
   if (specCount > 8) heroHeightPercent = 28;
+  if (hasDna) heroHeightPercent = Math.min(heroHeightPercent, 28);
+  if (hasInstagram) {
+    heroHeightPercent = Math.min(heroHeightPercent + HERO_INSTAGRAM_EXTRA_PERCENT, 38);
+  }
 
   let density: ShareCardDensity = "comfortable";
   if (specCount > 6 || hasDna) density = "compact";
@@ -55,7 +59,6 @@ export function computeShareCardLayout(data: ShareableBuildData): ShareCardLayou
     heroPx +
     FOOTER_BASE_PX +
     CONTENT_PADDING_PX +
-    (hasInstagram ? INSTAGRAM_ROW_PX : 0) +
     (hasDna ? DNA_BLOCK_PX : 0) +
     (data.modificationsCount > 0 ? MODS_LINE_PX : 0) +
     stackedSpecExtraPx(data);
@@ -64,11 +67,11 @@ export function computeShareCardLayout(data: ShareableBuildData): ShareCardLayou
   const needed = specCount * ROW_HEIGHT_PX[density];
   let contentScale = 1;
   if (needed > available) {
-    contentScale = Math.max(0.78, available / needed);
+    contentScale = Math.max(0.92, available / needed);
   }
 
   const footerLogoHeightPx =
-    density === "dense" ? 112 : density === "compact" ? 132 : 152;
+    density === "dense" ? 132 : density === "compact" ? 152 : 172;
 
   const dnaZonePercent = hasDna ? DNA_ZONE_PERCENT : 0;
   const specsZonePercent =

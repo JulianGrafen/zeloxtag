@@ -5,6 +5,7 @@ import {
   classifyMaintenanceBucket,
   classifySpendBucket,
 } from "@/lib/documents/cost-overview";
+import { MANUAL_ENTRY_MARKER } from "@/lib/documents/manual-entries";
 import type { Document } from "@/types/database";
 
 function invoice(
@@ -211,5 +212,36 @@ describe("buildVehicleCostOverview", () => {
     ]);
     expect(overview.documentsWithoutAmountCount).toBe(1);
     expect(overview.totalInvestment).toBe(100);
+  });
+
+  it("includes manual tuning and service entries with amounts", () => {
+    const overview = buildVehicleCostOverview([
+      invoice({
+        id: "manual-tuning",
+        category: "tuning",
+        amount: 890,
+        title: "Tuning-Teil",
+        invoice_number: MANUAL_ENTRY_MARKER,
+        file_url: "manual://entry/1",
+      }),
+      invoice({
+        id: "manual-service",
+        category: "service",
+        amount: 214,
+        title: "Bremsen",
+        invoice_number: MANUAL_ENTRY_MARKER,
+        file_url: "manual://entry/2",
+        date: "2025-03-01",
+      }),
+    ]);
+
+    expect(overview.totalInvestment).toBe(1104);
+    expect(overview.invoiceCount).toBe(2);
+    expect(overview.modification.total).toBe(890);
+    expect(overview.modification.positionCount).toBe(1);
+    expect(overview.maintenance.total).toBe(214);
+    expect(
+      overview.maintenance.bucketBreakdown.some((b) => b.bucket === "brakes"),
+    ).toBe(true);
   });
 });

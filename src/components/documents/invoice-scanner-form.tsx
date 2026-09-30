@@ -6,6 +6,7 @@ import { ArrowLeft, FileText, RotateCcw } from "lucide-react";
 import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
 
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { formatCompactGermanDate, localDateIso } from "@/lib/documents/format";
 import { drawImageToCanvas, loadImageFromFile } from "@/lib/utils/image-loader";
@@ -236,6 +237,7 @@ export function InvoiceScannerForm({
                 return;
               }
 
+              showSavedToast();
               router.push(
                 `/v/${result.tagUuid}/dokumente?type=${result.document.type}`,
               );

@@ -20,9 +20,13 @@ import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
+import { showSavedToast } from "@/lib/ui/saved-toast";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 type OperatingCostEntryListProps = {
   entries: VehicleOperatingCost[];
+  vehicleSurfaceScope: VehicleSurfaceScope;
   tagUuid: string;
   vehicleId: string;
   readOnly?: boolean;
@@ -31,6 +35,7 @@ type OperatingCostEntryListProps = {
 
 export function OperatingCostEntryList({
   entries,
+  vehicleSurfaceScope,
   tagUuid,
   vehicleId,
   readOnly = false,
@@ -57,7 +62,7 @@ export function OperatingCostEntryList({
         const consumption = consumptionByEntryId?.get(entry.id);
         const editHref =
           fuelOnly && !readOnly
-            ? `/v/${tagUuid}/tanken/${entry.id}`
+            ? vehicleSurfaceHref(vehicleSurfaceScope, `tanken/${entry.id}`)
             : null;
 
         return (
@@ -141,11 +146,13 @@ export function OperatingCostEntryList({
               aria-label="Eintrag löschen"
               onClick={() => {
                 startTransition(async () => {
-                  await deleteOperatingCost({
+                  const result = await deleteOperatingCost({
                     tagUuid,
                     vehicleId,
                     entryId: entry.id,
                   });
+                  if (result.status === "error") return;
+                  showSavedToast();
                 });
               }}
             >

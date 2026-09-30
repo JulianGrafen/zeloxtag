@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { DOCUMENT_DETAIL_TITLE_CLASS } from "@/components/documents/document-detail-hero";
 import { displayDocumentTitle } from "@/lib/documents/format";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "title";
 
@@ -89,6 +90,7 @@ export function EditableTitleSection({
         setError(result.message);
         return;
       }
+      showSavedToast();
       setDisplayTitle(nextTitle);
       onSaved?.(nextTitle);
       setEditing(false);

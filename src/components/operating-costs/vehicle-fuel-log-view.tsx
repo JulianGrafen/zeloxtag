@@ -12,11 +12,14 @@ import type { FuelScanTierSnapshot } from "@/lib/billing/subscription-types";
 
 import { ScanContent } from "@/components/layout/scan-content";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 import { FuelLogActions } from "./fuel-log-actions";
 import { OperatingCostEntryList } from "./operating-cost-entry-list";
 
 type VehicleFuelLogViewProps = {
+  vehicleSurfaceScope: VehicleSurfaceScope;
   tagUuid: string;
   vehicleId: string;
   vehicleModel: string;
@@ -26,6 +29,7 @@ type VehicleFuelLogViewProps = {
 };
 
 export function VehicleFuelLogView({
+  vehicleSurfaceScope,
   tagUuid,
   vehicleId,
   vehicleModel,
@@ -46,7 +50,7 @@ export function VehicleFuelLogView({
     <ScanContent className="gap-5">
       <header className="space-y-3">
         <PressableLink
-          href={`/v/${tagUuid}`}
+          href={vehicleSurfaceHref(vehicleSurfaceScope)}
           className="inline-flex items-center gap-2 text-[0.85rem] font-medium text-[color:var(--vd-muted)]"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -126,6 +130,7 @@ export function VehicleFuelLogView({
         </h2>
         <OperatingCostEntryList
           entries={fuelEntries}
+          vehicleSurfaceScope={vehicleSurfaceScope}
           tagUuid={tagUuid}
           vehicleId={vehicleId}
           readOnly={readOnly}

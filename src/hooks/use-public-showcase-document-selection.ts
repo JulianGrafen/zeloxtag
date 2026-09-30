@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 
 import { updatePublicShowcaseDocuments } from "@/actions/update-public-showcase-documents";
+import { showSavedToast } from "@/lib/ui/saved-toast";
 import { parseLineItems } from "@/lib/documents/line-items";
 import {
   selectedShowcaseLineIndexes,
@@ -71,7 +72,8 @@ export function usePublicShowcaseDocumentSelection({
         return;
       }
 
-      setMessage("Öffentliche Inhalte aktualisiert.");
+      showSavedToast();
+      setMessage(null);
     });
   }
 
