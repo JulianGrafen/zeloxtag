@@ -6,6 +6,7 @@ import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { parseInvoiceListCategory } from "@/lib/documents/invoice-categories";
 import type { TagLoadOptions } from "@/lib/tags/get-tag-by-uuid";
 import type { DocumentType } from "@/types/database";
+import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface DocumentsPageProps {
   params: Promise<{ vehicleId: string }>;
@@ -52,6 +53,7 @@ export default async function VehicleDocumentsPage({
   searchParams,
 }: DocumentsPageProps) {
   const { vehicleId } = await params;
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { type: typeRaw, category: categoryRaw } = await searchParams;
   const requested =
     typeRaw && VALID_TYPES.has(typeRaw as DocumentType | "all")
@@ -78,7 +80,7 @@ export default async function VehicleDocumentsPage({
   return (
     <VehicleDocumentsView
       tagUuid={scope.linkedTagUuid ?? vehicleId}
-      vehicleSurfaceScope={scope}
+      vehicleSurfaceScope={garageNavScope}
       vehicleId={result.vehicle!.id}
       vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
       vehicleModel={result.vehicle!.model}

@@ -4,6 +4,7 @@ import { ManualEntryView } from "@/components/documents/manual-entry-view";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireVehicleSurfaceWriter } from "@/lib/auth/require-vehicle-access";
 import { FEATURE } from "@/lib/permissions/feature-access";
+import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface UmbautenPageProps {
   params: Promise<{ vehicleId: string }>;
@@ -18,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function UmbautenPage({ params }: UmbautenPageProps) {
   const { vehicleId } = await params;
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope, result, access, isDemoShowcase } = await requireVehicleSurfaceWriter({ vehicleId }, {
     load: {
       documents: {
@@ -36,7 +38,7 @@ export default async function UmbautenPage({ params }: UmbautenPageProps) {
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: scope.linkedTagUuid ?? vehicleId,
-    vehicleSurfaceScope: scope,
+    vehicleSurfaceScope: garageNavScope,
     feature: FEATURE.VIEW_DOCUMENT_VAULT,
     children: (
       <ManualEntryView

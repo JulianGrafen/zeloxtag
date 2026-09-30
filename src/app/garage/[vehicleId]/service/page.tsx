@@ -5,6 +5,7 @@ import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireVehicleSurfaceWriter } from "@/lib/auth/require-vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
+import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface ServicePageProps {
   params: Promise<{ vehicleId: string }>;
@@ -23,6 +24,7 @@ export default async function ServiceInspectionsPage({
   searchParams,
 }: ServicePageProps) {
   const { vehicleId } = await params;
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scan } = await searchParams;
   const { scope, result, access, isDemoShowcase } = await requireVehicleSurfaceWriter({ vehicleId });
   const documents =
@@ -40,7 +42,7 @@ export default async function ServiceInspectionsPage({
     children: (
       <ServiceInspectionsView
         tagUuid={scope.linkedTagUuid ?? vehicleId}
-        vehicleSurfaceScope={scope}
+        vehicleSurfaceScope={garageNavScope}
         vehicleId={result.vehicle!.id}
         vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
         documents={documents}

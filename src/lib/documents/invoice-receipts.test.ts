@@ -63,15 +63,16 @@ describe("isInvoiceReceiptDocument", () => {
     ).toBe(false);
   });
 
-  it("excludes manual timeline entries", () => {
+  it("includes manual entries in Belege sum and list", () => {
     expect(
       isInvoiceReceiptDocument(
         buildInvoiceDoc({
           invoice_number: "__manual__",
           file_url: "manual://entry",
+          category: "tuning",
         }),
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 
@@ -110,13 +111,19 @@ describe("filterCostOverviewDocuments", () => {
 });
 
 describe("filterInvoiceReceiptDocuments", () => {
-  it("keeps invoice scans visible in Belege list", () => {
+  it("keeps invoice scans and manual entries visible in Belege list", () => {
     const visible = filterInvoiceReceiptDocuments([
       buildInvoiceDoc({ id: "a", category: "service" }),
+      buildInvoiceDoc({
+        id: "m",
+        invoice_number: "__manual__",
+        file_url: "manual://x",
+        category: "tuning",
+      }),
       buildInvoiceDoc({ id: "b", type: "abe", category: "abe" }),
       buildInvoiceDoc({ id: "c", category: "tuev", type: "invoice" }),
     ]);
 
-    expect(visible.map((doc) => doc.id)).toEqual(["a"]);
+    expect(visible.map((doc) => doc.id).sort()).toEqual(["a", "m"]);
   });
 });

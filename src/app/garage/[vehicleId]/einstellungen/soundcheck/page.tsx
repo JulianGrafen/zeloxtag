@@ -6,6 +6,7 @@ import { VehicleSoundcheckSettings } from "@/components/vehicles/vehicle-soundch
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { resolveOwnerEngineSoundViewUrl } from "@/lib/vehicles/engine-sound-constants";
 import { loadVehicleSoundcheckSettingsPage } from "@/lib/vehicles/load-vehicle-soundcheck-settings-page";
+import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface SoundcheckSettingsPageProps {
   params: Promise<{ vehicleId: string }>;
@@ -22,6 +23,7 @@ export default async function VehicleSoundcheckSettingsPage({
   params,
 }: SoundcheckSettingsPageProps) {
   const { vehicleId } = await params;
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
   const { vehicle, isDemo } = await loadVehicleSoundcheckSettingsPage(vehicleId);
   const soundUrl = resolveOwnerEngineSoundViewUrl(
@@ -33,7 +35,7 @@ export default async function VehicleSoundcheckSettingsPage({
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={scope.linkedTagUuid ?? vehicleId}
-        vehicleSurfaceScope={scope}
+        vehicleSurfaceScope={garageNavScope}
         title="Engine soundcheck"
         description="Kurzer Motor-Sound für die öffentliche Visitenkarte (max. 10 Sekunden, MP3, M4A oder WAV, max. 2 MB)."
       >

@@ -1,4 +1,3 @@
-import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -7,6 +6,10 @@ import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { DocumentUploadForm } from "@/components/documents/document-upload-form";
 import { requireVehicleSurfaceWriter } from "@/lib/auth/require-vehicle-access";
 import { FEATURE } from "@/lib/permissions/feature-access";
+import {
+  scopeFromGarageRoute,
+  vehicleSurfaceHref,
+} from "@/lib/vehicle-surface/paths";
 import type { DocumentType } from "@/types/database";
 
 interface UploadPageProps {
@@ -26,10 +29,11 @@ export default async function UploadDocumentPage({
   searchParams,
 }: UploadPageProps) {
   const { vehicleId } = await params;
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { type: typeRaw, mode } = await searchParams;
   const { scope, result, access, isDemoShowcase } = await requireVehicleSurfaceWriter({ vehicleId });
   if (access.isContributor && !access.isOwner && typeRaw === "abe") {
-    redirect(`${vehicleSurfaceHref(scope, `?scan=1&type=repair`)}`);
+    redirect(`${vehicleSurfaceHref(garageNavScope, `?scan=1&type=repair`)}`);
   }
 
   // Camera / OCR scans always go through the type picker on the dashboard.
@@ -39,7 +43,7 @@ export default async function UploadDocumentPage({
     const qs = suggested
       ? `?scan=1&type=${encodeURIComponent(suggested)}`
       : "?scan=1";
-    redirect(`${vehicleSurfaceHref(scope, `${qs}`)}`);
+    redirect(`${vehicleSurfaceHref(garageNavScope, `${qs}`)}`);
   }
 
   const defaultType =
@@ -55,19 +59,18 @@ export default async function UploadDocumentPage({
     isDemo: isDemoShowcase,
     ownerUserId: vehicle.user_id,
     tagUuid: scope.linkedTagUuid ?? vehicleId,
-    vehicleSurfaceScope: scope,
+    vehicleSurfaceScope: garageNavScope,
     feature: FEATURE.DOCUMENT_VAULT,
     children: (
       <AppShell showNavbar={false}>
         <DocumentUploadForm
           vehicleId={vehicle.id}
           tagUuid={scope.linkedTagUuid ?? vehicleId}
-          vehicleSurfaceScope={scope}
+          vehicleSurfaceScope={garageNavScope}
           vehicleLabel={vehicleLabel}
           defaultType={defaultType}
           lockType={defaultType === "invoice" ? "invoice" : undefined}
-          backHref={vehicleSurfaceHref(
-            scope,
+          backHref={vehicleSurfaceHref(garageNavScope,
             defaultType === "invoice"
               ? "dokumente?type=invoice"
               : "dokumente",

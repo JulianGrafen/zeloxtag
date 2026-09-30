@@ -13,6 +13,7 @@ import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { loadShowcaseSwipeDeck } from "@/lib/showcase/swipe-deck";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface EntdeckenPageProps {
   params: Promise<{ vehicleId: string }>;
@@ -29,6 +30,7 @@ export default async function ShowcaseEntdeckenPage({
   params,
 }: EntdeckenPageProps) {
   const { vehicleId } = await params;
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
 
   if (isDemoActiveTag(scope.linkedTagUuid ?? "")) {
@@ -54,7 +56,7 @@ export default async function ShowcaseEntdeckenPage({
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={scope.linkedTagUuid ?? vehicleId}
-        vehicleSurfaceScope={scope}
+        vehicleSurfaceScope={garageNavScope}
         title="Builds entdecken"
         description={
           <ShowcaseDiscoverIntro

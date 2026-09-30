@@ -38,6 +38,8 @@ describe("revalidateManualEntryPaths", () => {
         "/umbauten",
         "/service",
         "/dokumente",
+        "/dokumente/kosten",
+        "/kosten",
         "/intervalle",
         "/historie",
       ],

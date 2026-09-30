@@ -1,5 +1,8 @@
 import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
-import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import {
+  scopeFromGarageRoute,
+  vehicleSurfaceHref,
+} from "@/lib/vehicle-surface/paths";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
@@ -28,6 +31,7 @@ export default async function DocumentDetailPage({
   params,
 }: DocumentDetailPageProps) {
   const { vehicleId, id } = await params;
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope, result, access, isDemoShowcase } = await requireVehicleSurfaceWriter({ vehicleId }, {
     load: { documents: { mode: "none" } },
   });
@@ -43,14 +47,14 @@ export default async function DocumentDetailPage({
     !access.isOwner &&
     document.type !== "invoice"
   ) {
-    redirect(`${vehicleSurfaceHref(scope, `dokumente?type=invoice`)}`);
+    redirect(`${vehicleSurfaceHref(garageNavScope, `dokumente?type=invoice`)}`);
   }
 
   const vehicleLabel = `${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`;
   const listBackHref = documentsListHref(
     scope.linkedTagUuid ?? vehicleId,
     document.type,
-    scope,
+    garageNavScope,
   );
   const membershipActive = await userHasActiveMembership(result.vehicle!.user_id);
   const manualEntry = isManualVehicleEntry(document);
@@ -85,7 +89,7 @@ export default async function DocumentDetailPage({
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: scope.linkedTagUuid ?? vehicleId,
-    vehicleSurfaceScope: scope,
+    vehicleSurfaceScope: garageNavScope,
     feature: FEATURE.VIEW_DOCUMENT_VAULT,
     children: view,
   });

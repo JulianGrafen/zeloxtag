@@ -6,6 +6,8 @@ import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { loadOwnerDashboardForVehicle } from "@/lib/vehicle-surface/load-owner-dashboard";
+import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
+
 interface GarageDashboardPageProps {
   params: Promise<{ vehicleId: string }>;
   searchParams: Promise<{
@@ -30,6 +32,7 @@ export default async function GarageDashboardPage({
 }: GarageDashboardPageProps) {
   const { vehicleId: rawId } = await params;
   const vehicleId = rawId.trim();
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const user = await getCurrentUser();
   if (!user) {
     redirect(loginGateHref(`/garage/${vehicleId}`));
@@ -52,7 +55,7 @@ export default async function GarageDashboardPage({
           vehicle={dashboard.vehicle}
           documents={dashboard.documents}
           tagUuid={dashboard.tagUuidForUi}
-          vehicleSurfaceScope={dashboard.scope}
+          vehicleSurfaceScope={garageNavScope}
           ownerName={dashboard.ownerName}
           isOwner={dashboard.isOwner}
           isContributor={dashboard.isContributor}

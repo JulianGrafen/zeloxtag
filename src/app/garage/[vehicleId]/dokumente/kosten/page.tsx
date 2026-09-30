@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { VehicleCostOverviewView } from "@/components/documents/vehicle-cost-overview-view";
 import { requireVehicleSurfaceWriter } from "@/lib/auth/require-vehicle-access";
 import { buildVehicleCostOverview } from "@/lib/documents/cost-overview";
+import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface CostOverviewPageProps {
   params: Promise<{ vehicleId: string }>;
@@ -19,8 +20,9 @@ export default async function VehicleCostOverviewPage({
   params,
 }: CostOverviewPageProps) {
   const { vehicleId } = await params;
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope, result, access } = await requireVehicleSurfaceWriter({ vehicleId }, {
-    loginNext: `/garage/${vehicleId}/dokumente/kosten/dokumente/kosten`,
+    loginNext: `/garage/${vehicleId}/dokumente/kosten`,
     load: {
       documents: {
         mode: "types",
@@ -42,7 +44,7 @@ export default async function VehicleCostOverviewPage({
 
   return (
     <VehicleCostOverviewView
-      vehicleSurfaceScope={scope}
+      vehicleSurfaceScope={garageNavScope}
       vehicleModel={vehicleModel}
       overview={overview}
     />

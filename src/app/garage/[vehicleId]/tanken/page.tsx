@@ -4,6 +4,7 @@ import { VehicleFuelLogView } from "@/components/operating-costs/vehicle-fuel-lo
 import { requireVehicleSurfaceOwner } from "@/lib/auth/require-vehicle-access";
 import { loadFuelScanSubscriptionForOwner } from "@/lib/billing/subscription-service";
 import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
+import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface FuelLogPageProps {
   params: Promise<{ vehicleId: string }>;
@@ -18,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function VehicleFuelLogPage({ params }: FuelLogPageProps) {
   const { vehicleId } = await params;
+  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope, result, isDemoShowcase } = await requireVehicleSurfaceOwner({ vehicleId }, {
     loginNext: `/garage/${vehicleId}/tanken`,
   });
@@ -39,7 +41,7 @@ export default async function VehicleFuelLogPage({ params }: FuelLogPageProps) {
 
   return (
     <VehicleFuelLogView
-      vehicleSurfaceScope={scope}
+      vehicleSurfaceScope={garageNavScope}
       tagUuid={scope.linkedTagUuid ?? vehicleId}
       vehicleId={vehicle.id}
       vehicleModel={vehicleModel}
