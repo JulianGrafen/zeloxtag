@@ -647,12 +647,21 @@ nextjs-portal {
   gap: 0.5rem;
   border-radius: var(--vd-radius-control);
   border: 1px solid var(--claim-cta-border);
-  background: var(--claim-cta-bg);
+  background-color: var(--claim-cta-bg);
+  background-image: none;
   padding: 1rem 1.15rem;
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--claim-cta-fg);
   box-shadow: var(--claim-cta-shadow);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+button.claim-cta,
+a.claim-cta {
+  background-color: var(--claim-cta-bg);
+  color: var(--claim-cta-fg);
 }
 
 .claim-cta-sm {
@@ -704,55 +713,18 @@ nextjs-portal {
   outline-offset: -1px;
 }
 
-/** Fixed bottom scan FAB — flat solid CTA (no glass / SVG / backdrop). */
-.vd-scan-fab-cta {
-  display: inline-flex;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 1rem;
-  border: 1px solid transparent;
-  background: #0a0a0a;
-  color: #ffffff;
-  padding: 1rem 1.15rem;
-  font-size: 0.92rem;
-  font-weight: 600;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  background-image: none;
-  filter: none;
-}
-
-.vd-scan-fab-cta::before,
-.vd-scan-fab-cta::after {
-  content: none;
-  display: none;
-}
-
-.vd-scan-fab-cta.vd-pressable--button[data-pressed="true"] {
-  filter: none;
-  transform: scale(0.98);
-}
-
-.vd-scan-fab-cta--locked {
+/** Fixed bottom scan FAB — uses .claim-cta; locked = muted surface. */
+.claim-cta.vd-scan-fab-cta--locked {
   border-color: var(--vd-border);
-  background: var(--vd-surface-elevated);
+  background-color: var(--vd-surface-elevated);
   color: var(--vd-muted);
   box-shadow: none;
 }
 
-.dark .vd-scan-fab-cta {
-  border-color: oklch(1 0 0 / 14%);
-  background: oklch(0.269 0 0);
-  color: oklch(0.985 0 0);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-}
-
-.dark .vd-scan-fab-cta--locked {
-  background: var(--vd-surface-elevated);
-  color: var(--vd-muted);
+.claim-cta.vd-scan-fab-cta.vd-pressable--button[data-pressed="true"],
+.claim-cta.vd-scan-fab-cta.vd-pressable[data-pressed="true"] {
+  filter: none;
+  transform: scale(0.98);
 }
 
 .claim-later {

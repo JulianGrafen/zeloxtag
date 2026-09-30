@@ -42,7 +42,7 @@ export function DashboardScanCta({
 }: Omit<DashboardScanCtaProps, "hidden">) {
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
   const buttonClassName = cn(
-    "vd-scan-fab-cta",
+    "claim-cta vd-scan-fab-cta no-underline",
     scanLocked && "vd-scan-fab-cta--locked",
   );
 
@@ -142,7 +142,7 @@ export function DashboardScanFab({ hidden = false, ...ctaProps }: DashboardScanC
       data-tour="scan-fab-shell"
     >
       <div aria-hidden className="vd-fab-gradient h-28" />
-      <div className="pointer-events-auto relative px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5">
+      <div className="pointer-events-auto relative z-10 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5">
         <div className="mx-auto max-w-lg">
           <DashboardScanCta {...ctaProps} />
         </div>
