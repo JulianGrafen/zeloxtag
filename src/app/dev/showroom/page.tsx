@@ -43,5 +43,7 @@ export default function DevShowroomPage() {
     };
   }
 
-  return <PublicShowcaseView data={payload} />;
+  return (
+    <PublicShowcaseView data={payload} tagUuid={MOCK_TAG_UUIDS.active} />
+  );
 }

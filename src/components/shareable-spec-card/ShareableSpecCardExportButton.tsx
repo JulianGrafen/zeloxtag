@@ -10,6 +10,8 @@ type ShareableSpecCardExportButtonProps = {
   isExporting: boolean;
   error?: string | null;
   className?: string;
+  label?: string;
+  pendingLabel?: string;
 };
 
 export function ShareableSpecCardExportButton({
@@ -17,6 +19,8 @@ export function ShareableSpecCardExportButton({
   isExporting,
   error,
   className,
+  label = "Story exportieren",
+  pendingLabel = "Export läuft…",
 }: ShareableSpecCardExportButtonProps) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -34,7 +38,7 @@ export function ShareableSpecCardExportButton({
         ) : (
           <Share2 className="h-5 w-5" aria-hidden />
         )}
-        {isExporting ? "Export läuft…" : "Story exportieren"}
+        {isExporting ? pendingLabel : label}
       </Button>
       {error ? (
         <p className="text-center text-sm text-red-400" role="alert">

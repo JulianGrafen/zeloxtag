@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
 
+import { buildBuildDnaProfileContext } from "./build-dna-profile-context";
 import { computeBuildDnaHeuristic } from "./build-dna-heuristic";
 
 function mod(
@@ -47,5 +48,27 @@ describe("computeBuildDnaHeuristic", () => {
     const acoustics = dna.radar.find((row) => row.category === "Akustik");
     const street = dna.radar.find((row) => row.category === "Straßenlage");
     expect(acoustics?.score).toBeGreaterThan(street?.score ?? 0);
+  });
+
+  it("uses specification text when scoring", () => {
+    const mods = [mod("Felgen"), mod("Spoiler")];
+    const withoutSpecs = computeBuildDnaHeuristic(mods);
+    const profile = buildBuildDnaProfileContext({
+      make: "VW",
+      model: "Golf",
+      year: 2018,
+      tech_specs: {
+        notes: "KW V3 Coilover, großer Turbo, Klappenauspuff",
+        buildPersonalityTags: ["showcar"],
+      },
+    });
+    const withSpecs = computeBuildDnaHeuristic(mods, profile);
+    const handlingWithout = withoutSpecs.radar.find(
+      (row) => row.category === "Fahrwerk",
+    )?.score;
+    const handlingWith = withSpecs.radar.find(
+      (row) => row.category === "Fahrwerk",
+    )?.score;
+    expect(handlingWith).toBeGreaterThan(handlingWithout ?? 0);
   });
 });

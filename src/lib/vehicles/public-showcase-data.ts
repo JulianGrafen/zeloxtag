@@ -8,7 +8,8 @@ import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { resolvePublicDynoChartHref } from "@/lib/vehicles/dyno-chart-constants";
 import { resolvePublicEngineSoundHref } from "@/lib/vehicles/engine-sound-constants";
 import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
-import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { buildShowcaseBuildDnaFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
 import { computeBuildDnaHeuristic } from "@/lib/showcase/build-dna-heuristic";
 import {
   parseShowcaseBuildDna,
@@ -82,13 +83,14 @@ function resolvePublicBuildDna(
   modifications: readonly PublicModification[],
 ): ShowcaseBuildDna | null {
   if (modifications.length < 2) return null;
-  const fingerprint = buildShowcaseModsFingerprint(modifications);
+  const profile = buildBuildDnaProfileContext(vehicle);
+  const fingerprint = buildShowcaseBuildDnaFingerprint(modifications, profile);
   if (vehicle.showcase_build_dna_fingerprint === fingerprint) {
     const cached = parseShowcaseBuildDna(vehicle.showcase_build_dna);
     if (cached) return cached;
   }
   // Stale or missing cache — show heuristic until refreshShowcaseBuildDna persists LLM DNA.
-  return computeBuildDnaHeuristic(modifications);
+  return computeBuildDnaHeuristic(modifications, profile);
 }
 
 function normalizeVehicleShowcaseFields(vehicle: Vehicle): {

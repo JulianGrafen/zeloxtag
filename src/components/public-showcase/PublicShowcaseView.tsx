@@ -7,13 +7,16 @@ import { ShowroomHero } from "./ShowroomHero";
 import { ShowroomBuildDna } from "./ShowroomBuildDna";
 import { ShowroomBuildPersonalityChips } from "./ShowroomBuildPersonalityChips";
 import { ShowroomStats } from "./ShowroomStats";
+import { ShowroomStoryShare } from "./ShowroomStoryShare";
 import { showroom } from "./showroom-styles";
 
 type PublicShowcaseViewProps = {
   data: PublicShowcasePayload;
+  /** Active tag UUID for V4A badge on the share card (optional on slug-only URLs). */
+  tagUuid?: string;
 };
 
-export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
+export function PublicShowcaseView({ data, tagUuid }: PublicShowcaseViewProps) {
   const showBuildDna =
     data.buildDna != null && data.modifications.length >= 2;
 
@@ -32,6 +35,7 @@ export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
           labels={data.profile.buildPersonalityLabels}
         />
         {showBuildDna ? <ShowroomBuildDna dna={data.buildDna!} /> : null}
+        <ShowroomStoryShare data={data} tagUuid={tagUuid} />
         <footer
           className={`relative isolate z-[100] space-y-3 px-4 pb-2 ${showroom.footer}`}
         >

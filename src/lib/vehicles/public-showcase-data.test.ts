@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { buildShowcaseBuildDnaFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import type { Document, Vehicle } from "@/types/database";
 
@@ -408,8 +409,10 @@ describe("buildPublicShowcasePayload", () => {
       baseVehicle,
       documents,
     );
-    const fingerprint = buildShowcaseModsFingerprint(
+    const profile = buildBuildDnaProfileContext(baseVehicle);
+    const fingerprint = buildShowcaseBuildDnaFingerprint(
       payloadWithoutCache.modifications,
+      profile,
     );
     const vehicle: Vehicle = {
       ...baseVehicle,

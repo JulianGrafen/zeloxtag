@@ -1,16 +1,20 @@
 import "server-only";
 
-import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { buildShowcaseBuildDnaFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
 import {
   parseShowcaseBuildDna,
   type ShowcaseBuildDna,
 } from "@/lib/showcase/build-dna-schema";
-import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
+import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import { generateShowcaseBuildDna } from "@/services/showcase/BuildDnaService";
 import { isMissingVehicleBuildDnaColumnError } from "@/lib/vehicles/load-vehicle-projection";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Vehicle } from "@/types/database";
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
+import type { Document, Vehicle } from "@/types/database";
 
 export type RefreshShowcaseBuildDnaResult =
   | {
@@ -48,7 +52,8 @@ export async function refreshShowcaseBuildDna(
     return { status: "skipped", reason: "insufficient_mods" };
   }
 
-  const fingerprint = buildShowcaseModsFingerprint(modifications);
+  const profile = buildBuildDnaProfileContext(vehicle);
+  const fingerprint = buildShowcaseBuildDnaFingerprint(modifications, profile);
   const cachedDna = parseShowcaseBuildDna(vehicle.showcase_build_dna);
   if (
     vehicle.showcase_build_dna_fingerprint === fingerprint &&
@@ -57,14 +62,7 @@ export async function refreshShowcaseBuildDna(
     return { status: "skipped", reason: "unchanged" };
   }
 
-  const specs = parseVehicleTechSpecs(vehicle.tech_specs);
-  const dna = await generateShowcaseBuildDna(modifications, {
-    make: vehicle.make,
-    model: vehicle.model,
-    year: vehicle.year,
-    powerPs: specs.powerPs,
-    notes: specs.notes?.trim() ? specs.notes.trim() : null,
-  });
+  const dna = await generateShowcaseBuildDna(modifications, profile);
 
   const admin = createAdminClient();
   const { error } = await admin
@@ -87,4 +85,38 @@ export async function refreshShowcaseBuildDna(
   }
 
   return { status: "updated", dna };
+}
+
+/** Recompute DNA after tech specs / notes change (best-effort). */
+export async function tryRefreshShowcaseBuildDnaForVehicle(
+  vehicleId: string,
+): Promise<void> {
+  if (!isSupabaseAdminConfigured()) return;
+
+  const admin = createAdminClient();
+  const { data: vehicle, error: vehicleError } = await admin
+    .from("vehicles")
+    .select("*")
+    .eq("id", vehicleId)
+    .maybeSingle();
+
+  if (vehicleError || !vehicle) return;
+
+  const { data: documents, error: docsError } = await admin
+    .from("documents")
+    .select("*")
+    .eq("vehicle_id", vehicleId);
+
+  if (docsError) return;
+
+  const { modifications } = buildPublicShowcasePayload(
+    vehicle as Vehicle,
+    (documents ?? []) as Document[],
+  );
+
+  try {
+    await refreshShowcaseBuildDna(vehicle as Vehicle, modifications);
+  } catch (error) {
+    console.warn("[tryRefreshShowcaseBuildDnaForVehicle] refresh failed", error);
+  }
 }

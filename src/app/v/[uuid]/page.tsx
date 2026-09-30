@@ -29,7 +29,8 @@ import {
   resolvePublicVehicleEntry,
 } from "@/lib/vehicles/get-public-vehicle";
 import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
-import { buildShowcaseModsFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { buildShowcaseBuildDnaFingerprint } from "@/lib/showcase/build-dna-fingerprint";
+import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
 import { parseShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
 import { refreshShowcaseBuildDna } from "@/lib/showcase/refresh-showcase-build-dna";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
@@ -153,16 +154,20 @@ export async function generateMetadata({
   };
 }
 
-async function renderPublicShowcase(vehicle: Vehicle) {
+async function renderPublicShowcase(vehicle: Vehicle, tagUuid?: string) {
   const showcaseVehicle = await enrichPublicShowcaseVehicle(vehicle);
   const documents = await loadPublicShowcaseDocuments(showcaseVehicle.id);
   let vehicleForPayload = showcaseVehicle;
   let payload = buildPublicShowcasePayload(vehicleForPayload, documents);
 
   if (payload.modifications.length >= 2 && isSupabaseAdminConfigured()) {
-    const modsFingerprint = buildShowcaseModsFingerprint(payload.modifications);
+    const profile = buildBuildDnaProfileContext(showcaseVehicle);
+    const dnaFingerprint = buildShowcaseBuildDnaFingerprint(
+      payload.modifications,
+      profile,
+    );
     const cacheMatches =
-      showcaseVehicle.showcase_build_dna_fingerprint === modsFingerprint &&
+      showcaseVehicle.showcase_build_dna_fingerprint === dnaFingerprint &&
       parseShowcaseBuildDna(showcaseVehicle.showcase_build_dna) != null;
 
     if (!cacheMatches) {
@@ -175,7 +180,7 @@ async function renderPublicShowcase(vehicle: Vehicle) {
           vehicleForPayload = {
             ...showcaseVehicle,
             showcase_build_dna: refresh.dna,
-            showcase_build_dna_fingerprint: modsFingerprint,
+            showcase_build_dna_fingerprint: dnaFingerprint,
             showcase_build_dna_updated_at: new Date().toISOString(),
           };
           payload = buildPublicShowcasePayload(vehicleForPayload, documents);
@@ -186,7 +191,7 @@ async function renderPublicShowcase(vehicle: Vehicle) {
     }
   }
 
-  return <PublicShowcaseView data={payload} />;
+  return <PublicShowcaseView data={payload} tagUuid={tagUuid} />;
 }
 
 function hasInsiderAccess(access: {
@@ -294,7 +299,8 @@ export default async function TagScanPage({
       }
     }
 
-    return renderPublicShowcase(vehicle);
+    const slugTagUuid = tagUuid ?? undefined;
+    return renderPublicShowcase(vehicle, slugTagUuid);
   }
 
   const result = entry.result;
@@ -316,11 +322,11 @@ export default async function TagScanPage({
           redirect(garagePathForVehicle(vehicle.id));
         }
         if (canViewPublicShowcaseSlug(vehicle)) {
-          return renderPublicShowcase(vehicle);
+          return renderPublicShowcase(vehicle, tag.uuid);
         }
         redirect("/profil-nicht-verfuegbar");
       }
-      return renderPublicShowcase(vehicle);
+      return renderPublicShowcase(vehicle, tag.uuid);
     }
 
     if (!access.isOwner && !access.isContributor) {

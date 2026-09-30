@@ -1,5 +1,17 @@
-export type { ShareableBuildData, VehicleSpecMetric } from "./types";
+export type {
+  ShareableBuildData,
+  ShareableSpecCardExportOptions,
+  VehicleSpecMetric,
+} from "./types";
 export { ShareableSpecCard } from "./ShareableSpecCard";
 export { SpecCardPreview } from "./SpecCardPreview";
-export { buildShareableBuildData } from "./build-shareable-build-data";
-export { calculateBarPercentage } from "./calculate-bar-percentage";
+export { CompactMetricBar } from "./CompactMetricBar";
+export {
+  buildShareableBuildData,
+  type BuildShareableBuildDataInput,
+} from "./build-shareable-build-data";
+export {
+  calculateBarPercentage,
+  calculateBarPercentageLowerIsBetter,
+} from "./calculate-bar-percentage";
+export { useCardExport, useCardExport as useExportCard } from "@/hooks/use-card-export";

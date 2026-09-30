@@ -19,6 +19,8 @@ type ShareableSpecCardProps = {
   className?: string;
   previewMaxWidth?: number;
   showExportButton?: boolean;
+  exportButtonLabel?: string;
+  exportButtonPendingLabel?: string;
 };
 
 export function ShareableSpecCard({
@@ -26,6 +28,8 @@ export function ShareableSpecCard({
   className,
   previewMaxWidth = 320,
   showExportButton = true,
+  exportButtonLabel,
+  exportButtonPendingLabel,
 }: ShareableSpecCardProps) {
   const exportRef = useRef<HTMLDivElement>(null);
   const { exportCard, isExporting, error } = useCardExport(exportRef);
@@ -64,6 +68,8 @@ export function ShareableSpecCard({
           isExporting={isExporting}
           error={error}
           className="w-full max-w-sm"
+          label={exportButtonLabel}
+          pendingLabel={exportButtonPendingLabel}
         />
       ) : null}
     </div>

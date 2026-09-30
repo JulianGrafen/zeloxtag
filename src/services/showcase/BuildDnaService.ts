@@ -7,19 +7,14 @@ import {
 } from "@/lib/showcase/build-dna-schema";
 import { computeBuildDnaHeuristic } from "@/lib/showcase/build-dna-heuristic";
 import { getOcrLlmClient, isLlmConfigured } from "@/lib/ocr/llm-client";
+import type { BuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
 import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
 
-export type BuildDnaVehicleContext = {
-  make: string;
-  model: string;
-  year: number | null;
-  powerPs: number | null;
-  notes: string | null;
-};
+export type BuildDnaVehicleContext = BuildDnaProfileContext;
 
 function buildUserPayload(
   modifications: readonly PublicModification[],
-  context?: BuildDnaVehicleContext,
+  context?: BuildDnaProfileContext,
 ): string {
   const mods = modifications.map((mod) => ({
     label: mod.label,
@@ -35,8 +30,16 @@ function buildUserPayload(
             make: context.make,
             model: context.model,
             year: context.year,
+            engine: context.engine,
             powerPs: context.powerPs,
+            powerKw: context.powerKw,
+            torqueNm: context.torqueNm,
+            fuelType: context.fuelType,
+            transmission: context.transmission,
+            drivetrain: context.drivetrain,
             notes: context.notes,
+            specificationsText: context.specificationsText,
+            buildPersonalityLabels: context.buildPersonalityLabels,
           }
         : null,
       modifications: mods,
@@ -48,14 +51,14 @@ function buildUserPayload(
 
 export async function generateShowcaseBuildDna(
   modifications: readonly PublicModification[],
-  context?: BuildDnaVehicleContext,
+  context?: BuildDnaProfileContext,
 ): Promise<ShowcaseBuildDna> {
   if (modifications.length < 2) {
-    return computeBuildDnaHeuristic(modifications);
+    return computeBuildDnaHeuristic(modifications, context);
   }
 
   if (!isLlmConfigured()) {
-    return computeBuildDnaHeuristic(modifications);
+    return computeBuildDnaHeuristic(modifications, context);
   }
 
   try {
@@ -75,7 +78,7 @@ export async function generateShowcaseBuildDna(
 
     const raw = completion.choices[0]?.message?.content?.trim();
     if (!raw) {
-      return computeBuildDnaHeuristic(modifications);
+      return computeBuildDnaHeuristic(modifications, context);
     }
 
     const parsed = parseShowcaseBuildDna(JSON.parse(raw));
@@ -84,5 +87,5 @@ export async function generateShowcaseBuildDna(
     console.warn("[BuildDnaService] LLM failed, using heuristic", error);
   }
 
-  return computeBuildDnaHeuristic(modifications);
+  return computeBuildDnaHeuristic(modifications, context);
 }

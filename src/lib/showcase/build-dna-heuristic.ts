@@ -1,3 +1,4 @@
+import type { BuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
 import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
 
 import {
@@ -145,7 +146,47 @@ function scoreText(text: string, patterns: RegExp[]): number {
   return hits;
 }
 
-function aggregateScores(mods: readonly PublicModification[]): ScoreBucket {
+const PERSONALITY_KEYWORDS: Record<keyof ScoreBucket, RegExp[]> = {
+  power: [/\bsleeper\b/i, /\bdieselrakete\b/i, /\bstreckenwaffe\b/i],
+  handling: [/\bkurven/i, /\btracktool\b/i],
+  style: [/\bshowcar\b/i, /\bfrontkratzer\b/i],
+  reliability: [/\boem\+\b/i, /\bdaily\b/i],
+  acoustics: [/\bklangbombe\b/i],
+  street: [/\bdaily\b/i, /\boem\+\b/i, /\bsprit/i],
+};
+
+function scoreProfileText(
+  profile: BuildDnaProfileContext | undefined,
+  scores: ScoreBucket,
+): ScoreBucket {
+  if (!profile) return scores;
+
+  const blob = `${profile.specificationsText ?? ""} ${profile.buildPersonalityLabels.join(" ")}`;
+  if (!blob.trim()) return scores;
+
+  const next = { ...scores };
+  for (const key of Object.keys(KEYWORDS) as (keyof ScoreBucket)[]) {
+    next[key] = clampScore(
+      next[key] +
+        scoreText(blob, KEYWORDS[key]) * 7 +
+        scoreText(blob, PERSONALITY_KEYWORDS[key]) * 10,
+    );
+  }
+
+  if (profile.powerPs != null && profile.powerPs >= 350) {
+    next.power = clampScore(next.power + 8);
+  }
+  if (profile.powerPs != null && profile.powerPs <= 120) {
+    next.power = clampScore(next.power - 4);
+  }
+
+  return next;
+}
+
+function aggregateScores(
+  mods: readonly PublicModification[],
+  profile?: BuildDnaProfileContext,
+): ScoreBucket {
   let power = 28;
   let handling = 28;
   let style = 28;
@@ -177,7 +218,7 @@ function aggregateScores(mods: readonly PublicModification[]): ScoreBucket {
   acoustics += countBoost;
   street += Math.min(8, mods.length);
 
-  return {
+  const base = {
     power: clampScore(power),
     handling: clampScore(handling),
     style: clampScore(style),
@@ -185,6 +226,8 @@ function aggregateScores(mods: readonly PublicModification[]): ScoreBucket {
     acoustics: clampScore(acoustics),
     street: clampScore(street),
   };
+
+  return scoreProfileText(profile, base);
 }
 
 function pickArchetype(scores: ScoreBucket): BuildDnaArchetype {
@@ -239,8 +282,9 @@ const RADAR_KEY_MAP: Record<
 
 export function computeBuildDnaHeuristic(
   modifications: readonly PublicModification[],
+  profile?: BuildDnaProfileContext,
 ): ShowcaseBuildDna {
-  const scores = aggregateScores(modifications);
+  const scores = aggregateScores(modifications, profile);
   const archetype = pickArchetype(scores);
 
   const radar = BUILD_DNA_RADAR_CATEGORIES.map((category) => ({

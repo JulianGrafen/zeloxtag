@@ -9,6 +9,7 @@ import {
 } from "@/lib/vehicles/tech-specs";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { tryRefreshShowcaseBuildDnaForVehicle } from "@/lib/showcase/refresh-showcase-build-dna";
 import { logServerError } from "@/lib/security/public-error";
 
 import { coerceVinForStorage } from "@/lib/validations/vin";
@@ -132,6 +133,9 @@ export async function updateVehicleSpecs(
       "/daten",
       "/intervalle",
     ]);
+
+    await tryRefreshShowcaseBuildDnaForVehicle(ownership.vehicleId);
+
     return { status: "ok" };
   } catch (error) {
     logServerError("[update-vehicle-specs] unexpected", error);
