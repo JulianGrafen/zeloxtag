@@ -30,6 +30,7 @@ import {
 } from "@/lib/documents/manual-oil-change-form";
 import { parseLineItems, sumLineItems } from "@/lib/documents/line-items";
 import { parseManualEntryAmount } from "@/lib/documents/manual-entry-input";
+import { collectManualEntryPhotoFilesFromForm } from "@/lib/documents/manual-entry-photo-files";
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
 import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
@@ -123,42 +124,6 @@ function fieldsFromFormData(formData: FormData) {
   };
 }
 
-function normalizeManualUploadFile(
-  value: unknown,
-  fallbackName: string,
-): File | null {
-  if (value instanceof File && value.size > 0) {
-    if (value.name?.trim()) return value;
-    return new File([value], fallbackName, {
-      type: value.type || "application/octet-stream",
-    });
-  }
-  if (typeof Blob !== "undefined" && value instanceof Blob && value.size > 0) {
-    return new File([value], fallbackName, {
-      type: value.type || "application/octet-stream",
-    });
-  }
-  return null;
-}
-
-function collectPhotoFiles(formData: FormData): File[] {
-  const files: File[] = [];
-  let index = 0;
-  for (const value of formData.getAll("photos")) {
-    const file = normalizeManualUploadFile(value, `manual-photo-${index + 1}.jpg`);
-    if (file) {
-      files.push(file);
-      index += 1;
-    }
-  }
-  const single = formData.get("photo");
-  const singleFile = normalizeManualUploadFile(single, "manual-photo.jpg");
-  if (singleFile) {
-    files.push(singleFile);
-  }
-  return files.slice(0, MANUAL_ENTRY_MAX_PHOTOS);
-}
-
 /**
  * Persist a user-written Wartung / Tuning log, optionally with photo docs.
  * Accepts FormData: text fields + optional `photos` / `photo` files.
@@ -214,7 +179,7 @@ export async function createManualVehicleEntry(
   const mileageKm = parseMileageKm(data.mileageKm);
   const documentId = randomUUID();
   const now = new Date().toISOString();
-  const photos = collectPhotoFiles(formData);
+  const photos = collectManualEntryPhotoFilesFromForm(formData);
 
   let fileUrl = `manual://entry/${documentId}`;
   let pageCount: number | null = null;

@@ -9,6 +9,7 @@ import { requireTagWriter } from "@/lib/auth/require-tag-access";
 import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
 import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
 import { resolveVehicleIdScanMisroute } from "@/lib/vehicle-surface/resolve-vehicle-id-scan-misroute";
+import { canEditVehicleDocumentDetail } from "@/lib/documents/document-detail-access";
 import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
@@ -61,8 +62,9 @@ export default async function DocumentDetailPage({
   const listBackHref = documentsListHref(result.tag.uuid, document.type, scope);
   const membershipActive = await userHasActiveMembership(result.vehicle!.user_id);
   const manualEntry = isManualVehicleEntry(document);
-  const canManageDocument =
-    membershipActive || (access.isOwner && manualEntry);
+  const canEditDocument = canEditVehicleDocumentDetail(access, document);
+  const canDeleteDocument =
+    access.isOwner && (membershipActive || manualEntry);
 
   const view =
     document.type === "abe" ? (
@@ -81,12 +83,8 @@ export default async function DocumentDetailPage({
         vehicleLabel={vehicleLabel}
         document={document}
         backHref={listBackHref}
-        canEdit={
-          canManageDocument &&
-          (access.isOwner ||
-            (access.isContributor && document.type === "invoice"))
-        }
-        canDelete={access.isOwner && canManageDocument}
+        canEdit={canEditDocument}
+        canDelete={canDeleteDocument}
       />
       </>
     );

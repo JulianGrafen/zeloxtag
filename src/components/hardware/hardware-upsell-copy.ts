@@ -12,7 +12,7 @@ export const HARDWARE_UPSELL_SECONDARY_CTA =
   "Tag bereits vorhanden? Hier scannen";
 
 export const HARDWARE_UPSELL_BENEFITS = [
-  "100% V4A-Edelstahl (Hitze- & säurebeständig)",
+  "100% V4A-Edelstahl mit Lasergravur (Hitze- & säurebeständig)",
   "Rückstandslose Montage ohne Bohren (3M High-Temp)",
   "Schaltet die öffentliche Profilansicht frei",
 ] as const;

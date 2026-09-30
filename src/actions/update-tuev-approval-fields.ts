@@ -138,7 +138,7 @@ export async function updateTuevApprovalFields(
   if (writeAccess.ownerUserId) {
     const vault = await assertOwnerFeature(
       writeAccess.ownerUserId,
-      FEATURE.DOCUMENT_VAULT,
+      FEATURE.VIEW_DOCUMENT_VAULT,
     );
     if (!vault.ok) {
       return { status: "error", message: vault.message };

@@ -1,12 +1,12 @@
 export type ClaimWizardStep =
   | "intro"
   | "makeModel"
+  | "vehiclePhoto"
   | "year"
   | "power"
   | "drivetrain"
   | "oilInterval"
   | "buildPersonality"
-  | "vehiclePhoto"
   | "preferences"
   | "profileName"
   | "account";

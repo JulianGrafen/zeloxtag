@@ -18,24 +18,31 @@ export function LegalFooterNav({
 }: LegalFooterNavProps) {
   const linkClass =
     tone === "inverse"
-      ? "text-white/55 underline-offset-2 hover:text-white/85 hover:underline active:text-white"
-      : "text-[color:var(--vd-muted)] underline-offset-2 hover:underline active:text-[color:var(--vd-text)]";
+      ? "text-white/55 underline-offset-2 hover:text-white/85 hover:underline"
+      : "text-[color:var(--vd-muted)] underline underline-offset-2 decoration-[color:var(--vd-border)] hover:text-[color:var(--vd-text)] hover:decoration-[color:var(--vd-muted)]";
 
-  const linkLayout =
-    "relative z-[1] inline-flex min-h-11 min-w-[4.5rem] cursor-pointer items-center justify-center px-2 touch-manipulation";
+  const separatorClass =
+    tone === "inverse" ? "text-white/35" : "text-[color:var(--vd-border)]";
 
   return (
     <nav
       aria-label="Rechtliches"
       className={cn(
-        "relative isolate z-[100] flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[0.72rem]",
+        "relative isolate flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-center text-[0.72rem] leading-relaxed",
         className,
       )}
     >
-      {LEGAL_PAGES.map((page) => (
-        <a key={page.href} href={page.href} className={cn(linkLayout, linkClass)}>
-          {page.label}
-        </a>
+      {LEGAL_PAGES.map((page, index) => (
+        <span key={page.href} className="inline-flex items-center gap-1.5">
+          {index > 0 ? (
+            <span aria-hidden className={separatorClass}>
+              ·
+            </span>
+          ) : null}
+          <a href={page.href} className={linkClass}>
+            {page.label}
+          </a>
+        </span>
       ))}
     </nav>
   );

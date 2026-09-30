@@ -264,7 +264,7 @@ export function ShowcaseSwipeDeck({
           disabled={busy}
           aria-label="Like"
           className={cn(
-            "flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 shadow-[var(--vd-shadow-sm)] disabled:opacity-50",
+            "flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/40 bg-[color:var(--vd-surface)] text-emerald-600 shadow-[var(--vd-shadow-sm)] disabled:opacity-50",
           )}
           onClick={() => handleSwipe("like")}
         >

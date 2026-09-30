@@ -3,8 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 
 import { usePreparedStoryFile } from "@/hooks/use-prepared-story-file";
+import { isEmbeddedSocialInAppBrowser } from "@/lib/share/story-image-for-share";
 import {
+  canOpenNativeStoryShareSheet,
   downloadStoryImageFile,
+  embeddedBrowserShareHint,
   isLikelyMobileShareDevice,
   shareStoryImageFile,
 } from "@/lib/share/share-story-image-file";
@@ -49,28 +52,29 @@ export function ShareableSpecCard({
   );
   const cacheKey = useMemo(() => buildStoryCardCacheKey(data), [data]);
 
-  const { storyFile, isPreparing, prepareError } = usePreparedStoryFile(
-    exportRef,
-    {
+  const { storyFile, nativeShareFile, isPreparing, prepareError } =
+    usePreparedStoryFile(exportRef, {
       filename: storyFilename,
       cacheKey,
-    },
-  );
+    });
 
   const scale = previewMaxWidth / SHAREABLE_SPEC_CARD_WIDTH_PX;
   const previewHeight = SHAREABLE_SPEC_CARD_HEIGHT_PX * scale;
   const mobileShare = isLikelyMobileShareDevice();
+  const inAppBrowser = mobileShare && isEmbeddedSocialInAppBrowser();
 
-  const defaultShareLabel = mobileShare
-    ? "In Instagram Story teilen"
-    : "Story-Bild speichern";
+  const shareReadyFile = nativeShareFile ?? storyFile;
 
-  const defaultShareHint = mobileShare
-    ? "Teilen-Menü öffnet sich — Instagram auswählen und in deine Story einfügen."
-    : "PNG laden und in der Instagram-App als Story hochladen.";
+  const defaultShareLabel = "Bild teilen";
+
+  const defaultShareHint = inAppBrowser
+    ? embeddedBrowserShareHint()
+    : mobileShare
+      ? "Teilen-Menü → Instagram — Bild landet direkt in der Story."
+      : "Teilen-Menü öffnen oder Bild speichern und in Instagram als Story hochladen.";
 
   const handleExport = () => {
-    if (!storyFile) {
+    if (!shareReadyFile) {
       setActionError(
         isPreparing
           ? "Story wird vorbereitet — bitte kurz warten und erneut tippen."
@@ -82,24 +86,42 @@ export function ShareableSpecCard({
     setActionError(null);
 
     if (mobileShare) {
-      setIsSharing(true);
-      void shareStoryImageFile(storyFile).then((result) => {
+      if (inAppBrowser) {
+        setActionError(embeddedBrowserShareHint());
+        return;
+      }
+
+      if (!canOpenNativeStoryShareSheet(shareReadyFile)) {
+        downloadStoryImageFile(storyFile ?? shareReadyFile);
+        setActionError(
+          "Teilen hier nicht möglich — Bild gespeichert. In Instagram: Story → Galerie.",
+        );
+        return;
+      }
+
+      // Invoke Web Share immediately in the tap handler (no setState before share).
+      const sharePromise = shareStoryImageFile(shareReadyFile);
+      void sharePromise.then((result) => {
         setIsSharing(false);
         if (result === "unavailable") {
-          downloadStoryImageFile(storyFile);
+          downloadStoryImageFile(storyFile ?? shareReadyFile);
           setActionError(
-            "System-Teilen nicht verfügbar — Bild wurde gespeichert. In Instagram: Story → Foto aus Galerie.",
+            "Teilen fehlgeschlagen — Bild gespeichert. Instagram aus der Galerie wählen.",
           );
         }
       });
+      setIsSharing(true);
       return;
     }
 
-    downloadStoryImageFile(storyFile);
+    downloadStoryImageFile(storyFile ?? shareReadyFile);
   };
 
   const isExporting = isPreparing || isSharing;
   const error = actionError ?? prepareError;
+
+  const buttonDisabled =
+    isExporting || (mobileShare && !inAppBrowser && !shareReadyFile);
 
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
@@ -123,6 +145,7 @@ export function ShareableSpecCard({
         <ShareableSpecCardExportButton
           onExport={handleExport}
           isExporting={isExporting}
+          disabled={buttonDisabled}
           error={error}
           className="w-full max-w-sm"
           label={
@@ -131,7 +154,11 @@ export function ShareableSpecCard({
               : exportButtonLabel ?? defaultShareLabel
           }
           pendingLabel={exportButtonPendingLabel ?? "Teilen-Menü öffnet…"}
-          hint={exportHint ?? defaultShareHint}
+          hint={
+            inAppBrowser
+              ? embeddedBrowserShareHint()
+              : exportHint ?? defaultShareHint
+          }
         />
       ) : null}
     </div>

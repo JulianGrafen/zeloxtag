@@ -1,3 +1,5 @@
+import { isEmbeddedSocialInAppBrowser } from "@/lib/share/story-image-for-share";
+
 export type StoryImageShareResult = "shared" | "aborted" | "unavailable";
 
 export function isLikelyMobileShareDevice(): boolean {
@@ -33,6 +35,9 @@ function shouldAttemptFileShare(file: File): boolean {
   if (!hasWebShareApi()) {
     return false;
   }
+  if (isEmbeddedSocialInAppBrowser()) {
+    return false;
+  }
   if (canShareStoryImageFile(file)) {
     return true;
   }
@@ -40,15 +45,16 @@ function shouldAttemptFileShare(file: File): boolean {
   return isLikelyMobileShareDevice();
 }
 
+/** Whether tapping share can open the OS sheet (not in Instagram's built-in browser). */
+export function canOpenNativeStoryShareSheet(file: File): boolean {
+  return shouldAttemptFileShare(file);
+}
+
 /**
  * Opens the OS share sheet with only the image file.
  * Omit title/text — on iOS, extra fields often block Instagram from accepting the file.
  */
-export async function shareStoryImageFile(file: File): Promise<StoryImageShareResult> {
-  if (!shouldAttemptFileShare(file)) {
-    return "unavailable";
-  }
-
+async function tryShareSingleFile(file: File): Promise<StoryImageShareResult> {
   try {
     await navigator.share({ files: [file] });
     return "shared";
@@ -58,6 +64,21 @@ export async function shareStoryImageFile(file: File): Promise<StoryImageShareRe
     }
     return "unavailable";
   }
+}
+
+/**
+ * Opens the native share sheet with the story image (call directly from a tap handler).
+ */
+export async function shareStoryImageFile(file: File): Promise<StoryImageShareResult> {
+  if (!shouldAttemptFileShare(file)) {
+    return "unavailable";
+  }
+
+  return tryShareSingleFile(file);
+}
+
+export function embeddedBrowserShareHint(): string {
+  return "In Instagram geöffnet? Über ⋯ „Im Browser öffnen“ (Safari/Chrome) — dann erneut teilen.";
 }
 
 export function downloadStoryImageFile(file: File): void {

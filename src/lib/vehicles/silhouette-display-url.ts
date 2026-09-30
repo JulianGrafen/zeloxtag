@@ -19,15 +19,25 @@ export function isOwnerSilhouetteSrc(url: string | null | undefined): boolean {
   return isOwnerSilhouetteDisplayUrl(trimmed);
 }
 
+export type SilhouetteDisplayUrlOptions = {
+  /** Long-edge cap for the proxy (smaller = faster dashboard loads). */
+  maxEdge?: number;
+};
+
 export function silhouetteDisplayUrl(
   vehicleId: string,
   cacheBust?: string | number | null,
+  options?: SilhouetteDisplayUrlOptions,
 ): string {
   const version =
     cacheBust == null || cacheBust === ""
       ? Date.now()
       : String(cacheBust);
-  return `/api/vehicle/silhouette/${vehicleId}?v=${encodeURIComponent(version)}`;
+  const params = new URLSearchParams({ v: String(version) });
+  if (options?.maxEdge != null && options.maxEdge > 0) {
+    params.set("w", String(Math.round(options.maxEdge)));
+  }
+  return `/api/vehicle/silhouette/${vehicleId}?${params.toString()}`;
 }
 
 /** Compare cache-busters on two Supabase silhouette URLs. */

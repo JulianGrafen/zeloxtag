@@ -7,6 +7,7 @@ import { DocumentAbeDetailView } from "@/components/documents/document-abe-detai
 import { DocumentInvoiceDetailView } from "@/components/documents/document-invoice-detail-view";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireVehicleSurfaceWriter } from "@/lib/auth/require-vehicle-access";
+import { canEditVehicleDocumentDetail } from "@/lib/documents/document-detail-access";
 import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
@@ -53,8 +54,9 @@ export default async function DocumentDetailPage({
   );
   const membershipActive = await userHasActiveMembership(result.vehicle!.user_id);
   const manualEntry = isManualVehicleEntry(document);
-  const canManageDocument =
-    membershipActive || (access.isOwner && manualEntry);
+  const canEditDocument = canEditVehicleDocumentDetail(access, document);
+  const canDeleteDocument =
+    access.isOwner && (membershipActive || manualEntry);
 
   const view =
     document.type === "abe" ? (
@@ -73,12 +75,8 @@ export default async function DocumentDetailPage({
         vehicleLabel={vehicleLabel}
         document={document}
         backHref={listBackHref}
-        canEdit={
-          canManageDocument &&
-          (access.isOwner ||
-            (access.isContributor && document.type === "invoice"))
-        }
-        canDelete={access.isOwner && canManageDocument}
+        canEdit={canEditDocument}
+        canDelete={canDeleteDocument}
       />
       </>
     );

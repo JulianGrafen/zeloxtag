@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
+import { ShowcaseDiscoverIntro } from "@/components/showcase-swipe/showcase-discover-intro";
 import { ShowcaseSwipeDeck } from "@/components/showcase-swipe/ShowcaseSwipeDeck";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
@@ -52,12 +54,19 @@ export default async function ShowcaseEntdeckenPage({
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={scope.linkedTagUuid ?? vehicleId}
+        vehicleSurfaceScope={scope}
         title="Builds entdecken"
-        description="Nur öffentliche Showcase-Daten — keine Belege oder VIN. Rechts liken, links passen."
+        description={
+          <ShowcaseDiscoverIntro
+            profilSettingsHref={vehicleSurfaceHref(scope, "einstellungen/profil")}
+            galerieSettingsHref={vehicleSurfaceHref(scope, "einstellungen/galerie")}
+          />
+        }
         backHref={`${vehicleSurfaceHref(scope)}`}
         backLabel="Dashboard"
       >
         <ShowcaseSwipeDeck tagUuid={scope.linkedTagUuid ?? vehicleId} initialCards={initialCards} />
+        <LegalFooterNav className="pt-2" />
       </VehicleSettingsSubpageShell>
     </AppShell>
   );

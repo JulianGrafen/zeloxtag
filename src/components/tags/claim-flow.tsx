@@ -22,8 +22,8 @@ import {
 import { AuthLegalConsentNotice } from "@/components/legal/auth-legal-consent-notice";
 import { ClaimTwinPreviewCard } from "@/components/tags/claim/ClaimTwinPreviewCard";
 import { BuildPersonalityChipPicker } from "@/components/tags/claim/BuildPersonalityChipPicker";
-import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
 import { ClaimVehiclePhotoPicker } from "@/components/tags/claim/ClaimVehiclePhotoPicker";
+import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
 import {
   clearOnboardingVehiclePhotoSkipped,
   clearPendingOnboardingVehiclePhoto,
@@ -439,6 +439,55 @@ export function ClaimFlow({
           </ClaimWizardPanel>
         ) : null}
 
+        {step === "vehiclePhoto" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("vehiclePhoto")}
+            title="Fahrzeugfoto"
+            copy="Zeig dein Auto im Dashboard — ein Foto aus Galerie oder Kamera reicht. Du kannst es auch gleich überspringen."
+          >
+            <form
+              className="mt-6 grid w-full gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                setVehiclePhotoSkipped(false);
+                advance("year");
+              }}
+            >
+              <ClaimVehiclePhotoPicker
+                previewUrl={vehiclePhotoPreview}
+                onPreviewChange={setVehiclePhotoPreview}
+                onFileChange={(file) => {
+                  setVehiclePhotoFile(file);
+                  if (file) setVehiclePhotoSkipped(false);
+                }}
+                disabled={pending}
+              />
+              <button
+                type="button"
+                className="text-center text-[0.8rem] text-[color:var(--vd-muted)] underline-offset-2 hover:underline"
+                disabled={pending}
+                onClick={() => {
+                  setVehiclePhotoFile(null);
+                  setVehiclePhotoPreview(null);
+                  setVehiclePhotoSkipped(true);
+                  advance("year");
+                }}
+              >
+                Später — ohne Foto fortfahren
+              </button>
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel="Weiter"
+                submitIcon="next"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
+
         {step === "year" ? (
           <ClaimWizardPanel
             kicker={stepKicker("year")}
@@ -640,55 +689,6 @@ export function ClaimFlow({
                 selected={buildPersonalityTags}
                 onChange={setBuildPersonalityTags}
               />
-              <ClaimSlideActions
-                error={error}
-                pending={pending}
-                onBack={goBack}
-                submitLabel="Weiter"
-                submitIcon="next"
-                showBack
-              />
-            </form>
-          </ClaimWizardPanel>
-        ) : null}
-
-        {step === "vehiclePhoto" ? (
-          <ClaimWizardPanel
-            kicker={stepKicker("vehiclePhoto")}
-            title="Fahrzeugfoto"
-            copy="Zeig dein Auto im Dashboard — ein Foto aus Galerie oder Kamera reicht. Du kannst es auch gleich überspringen."
-          >
-            <form
-              className="mt-6 grid w-full gap-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setError(null);
-                setVehiclePhotoSkipped(false);
-                advance("year");
-              }}
-            >
-              <ClaimVehiclePhotoPicker
-                previewUrl={vehiclePhotoPreview}
-                onPreviewChange={setVehiclePhotoPreview}
-                onFileChange={(file) => {
-                  setVehiclePhotoFile(file);
-                  if (file) setVehiclePhotoSkipped(false);
-                }}
-                disabled={pending}
-              />
-              <button
-                type="button"
-                className="text-center text-[0.8rem] text-[color:var(--vd-muted)] underline-offset-2 hover:underline"
-                disabled={pending}
-                onClick={() => {
-                  setVehiclePhotoFile(null);
-                  setVehiclePhotoPreview(null);
-                  setVehiclePhotoSkipped(true);
-                  advance("year");
-                }}
-              >
-                Später — ohne Foto fortfahren
-              </button>
               <ClaimSlideActions
                 error={error}
                 pending={pending}

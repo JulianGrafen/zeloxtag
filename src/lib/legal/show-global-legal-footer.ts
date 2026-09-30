@@ -1,6 +1,14 @@
 /** Whether the app-wide Impressum/Datenschutz footer should render under page content. */
+function isImmersiveVehicleSurface(pathname: string): boolean {
+  if (pathname.endsWith("/entdecken")) return true;
+  if (pathname.startsWith("/claim/")) return true;
+  if (pathname === "/register") return true;
+  return false;
+}
+
 export function showGlobalLegalFooter(pathname: string): boolean {
   if (pathname === "/" || pathname.startsWith("/login")) return false;
+  if (isImmersiveVehicleSurface(pathname)) return false;
   if (
     pathname === "/impressum" ||
     pathname === "/agb" ||

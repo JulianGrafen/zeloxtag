@@ -7,6 +7,7 @@ import {
   cacheBustFromSilhouetteUrl,
   silhouetteDisplayUrl,
 } from "./silhouette-display-url";
+import { SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE } from "./silhouette-constants";
 
 export type VehicleImageMatch = {
   src: string;
@@ -48,7 +49,9 @@ export function resolveVehicleImage(input: {
         ? String(input.silhouetteCacheBust)
         : cacheBustFromSilhouetteUrl(uploaded) ?? Date.now().toString();
     return {
-      src: silhouetteDisplayUrl(vehicleId, bust),
+      src: silhouetteDisplayUrl(vehicleId, bust, {
+        maxEdge: SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE,
+      }),
       alt: `${input.make} ${input.model}`.trim() || "Fahrzeug",
     };
   }

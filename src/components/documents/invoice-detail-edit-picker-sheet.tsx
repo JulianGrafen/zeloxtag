@@ -14,7 +14,9 @@ type InvoiceDetailEditPickerSheetProps = {
   onClose: () => void;
   onSelect: (target: InvoiceDetailEditTarget) => void;
   isManualEntry?: boolean;
-  manualEditHref?: string | null;
+  /** Deep-link to manual entry form with photo picker focused. */
+  addPhotosHref?: string | null;
+  addPhotosLabel?: string;
 };
 
 export function InvoiceDetailEditPickerSheet({
@@ -22,7 +24,8 @@ export function InvoiceDetailEditPickerSheet({
   onClose,
   onSelect,
   isManualEntry = false,
-  manualEditHref,
+  addPhotosHref,
+  addPhotosLabel = "Bilder hinzufügen",
 }: InvoiceDetailEditPickerSheetProps) {
   if (!open) return null;
 
@@ -39,10 +42,10 @@ export function InvoiceDetailEditPickerSheet({
       }}
     >
       <div
-        className="flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.5rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow)] sm:rounded-[1.5rem]"
+        className="flex max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4rem))] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[1.5rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow)] sm:max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] sm:rounded-[1.5rem]"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-start gap-3 border-b border-[color:var(--vd-border)] px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
+        <header className="flex shrink-0 items-start gap-3 border-b border-[color:var(--vd-border)] px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="min-w-0 flex-1">
             <p className="text-[0.65rem] font-medium uppercase tracking-[0.18em] text-[color:var(--vd-muted)]">
               {isManualEntry ? "Eintrag bearbeiten" : "Beleg bearbeiten"}
@@ -64,7 +67,25 @@ export function InvoiceDetailEditPickerSheet({
           </button>
         </header>
 
-        <ul className="overflow-y-auto px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <ul
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+        >
+          {addPhotosHref ? (
+            <li>
+              <PressableLink
+                href={addPhotosHref}
+                variant="button"
+                onClick={onClose}
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-[0.92rem] font-medium text-[color:var(--vd-text)] hover:bg-[color:var(--vd-surface-elevated)]"
+              >
+                {addPhotosLabel}
+                <ChevronRight
+                  className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+                  aria-hidden
+                />
+              </PressableLink>
+            </li>
+          ) : null}
           {menuOrder.map((target) => (
             <li key={target}>
               <PressableButton
@@ -81,22 +102,6 @@ export function InvoiceDetailEditPickerSheet({
               </PressableButton>
             </li>
           ))}
-          {manualEditHref ? (
-            <li className="mt-1 border-t border-[color:var(--vd-border)] pt-1">
-              <PressableLink
-                href={manualEditHref}
-                variant="button"
-                onClick={onClose}
-                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-[0.92rem] font-medium text-[color:var(--vd-text)] hover:bg-[color:var(--vd-surface-elevated)]"
-              >
-                Fotos bearbeiten
-                <ChevronRight
-                  className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-                  aria-hidden
-                />
-              </PressableLink>
-            </li>
-          ) : null}
         </ul>
       </div>
     </div>

@@ -11,6 +11,7 @@ import {
   isManualEntryMarker,
   isManualEntryUrl,
   isManualVehicleEntry,
+  manualEntryPhotoLimit,
   parseManualEntryCategory,
   type ManualEntryCategory,
 } from "@/lib/documents/manual-entries";
@@ -27,7 +28,12 @@ import {
   manualOilChangeFieldsFromFormData,
   resolveManualOilChangeVendor,
 } from "@/lib/documents/manual-oil-change-form";
+import { DOCUMENT_BUCKET } from "@/lib/documents/constants";
+import { collectManualEntryPhotoFiles } from "@/lib/documents/manual-entry-photo-files";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
+import { documentStorageObjectPath } from "@/lib/documents/storage-path";
+import { validateDocumentUpload } from "@/lib/security/file-upload";
+import { createClient } from "@/lib/supabase/server";
 import {
   getMockUploadedDocuments,
   updateMockUploadedDocument,
@@ -54,7 +60,7 @@ function isStoredManualEntry(document: Pick<Document, "invoice_number" | "file_u
 
 /**
  * Update an existing manual Wartung / Tuning log (text fields + line items).
- * Photos are unchanged unless a dedicated upload flow is added later.
+ * Optional `photo` / `photos` in FormData replaces or adds the stored file.
  */
 export async function updateManualVehicleEntry(
   formData: FormData,
@@ -107,7 +113,14 @@ export async function updateManualVehicleEntry(
     vendor = resolveManualOilChangeVendor(oilForm.selfMade, data.vendor);
   }
 
-  const patch = {
+  const updateCategory =
+    parseManualEntryCategory(String(formData.get("category") ?? "")) ?? "service";
+  const uploadedPhotos = collectManualEntryPhotoFiles(
+    formData,
+    manualEntryPhotoLimit(updateCategory),
+  );
+
+  const patch: Record<string, unknown> = {
     title,
     category,
     date,
@@ -195,6 +208,38 @@ export async function updateManualVehicleEntry(
       status: "error",
       message: "Nur manuelle Ölwechsel-Einträge können hier bearbeitet werden.",
     };
+  }
+
+  if (uploadedPhotos.length > 0) {
+    const supabase = await createClient();
+    const file = uploadedPhotos[0];
+    const fileCheck = await validateDocumentUpload(file, { pdfOnly: false });
+    if (!fileCheck.ok) {
+      return { status: "error", message: fileCheck.error };
+    }
+
+    const storagePath = documentStorageObjectPath(
+      data.vehicleId,
+      documentId,
+      fileCheck.safeName,
+    );
+    const bytes = Buffer.from(fileCheck.bytes);
+    const { error: storageError } = await supabase.storage
+      .from(DOCUMENT_BUCKET)
+      .upload(storagePath, bytes, {
+        contentType: fileCheck.mime,
+        upsert: true,
+      });
+
+    if (storageError) {
+      return { status: "error", message: `Foto: ${storageError.message}` };
+    }
+
+    patch.file_url = storagePath;
+    patch.page_count =
+      fileCheck.mime === "application/pdf"
+        ? null
+        : 1;
   }
 
   const { error: updateError } = await admin

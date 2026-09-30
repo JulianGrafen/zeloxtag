@@ -37,8 +37,7 @@ export function VehicleShowcaseStoryPassSettings({
           Story-Pass
         </h2>
         <p className="text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
-          9:16-Karte für Instagram Stories — alle Showcase-Specs, Umbau-DNA und
-          ZeloxTag-Logo unten links.
+          9:16-Karte für Instagram Stories
         </p>
       </div>
 

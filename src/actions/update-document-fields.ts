@@ -394,7 +394,7 @@ export async function updateDocumentFields(
         )
       : await assertVehicleDocumentWrite(
           writeAccess,
-          FEATURE.DOCUMENT_VAULT,
+          FEATURE.VIEW_DOCUMENT_VAULT,
         );
     if (!gate.ok) {
       return featureDeniedToForbidden(gate);

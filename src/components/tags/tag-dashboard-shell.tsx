@@ -37,6 +37,7 @@ import {
   cacheBustFromSilhouetteUrl,
   silhouetteDisplayUrl,
 } from "@/lib/vehicles/silhouette-display-url";
+import { SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE } from "@/lib/vehicles/silhouette-constants";
 import {
   readSilhouetteFromSession,
   readSilhouetteVersionFromSession,
@@ -122,7 +123,9 @@ function proxyUrlForStorage(
     storageUrl,
     serverUpdatedAt,
   );
-  return silhouetteDisplayUrl(vehicleId, bust);
+  return silhouetteDisplayUrl(vehicleId, bust, {
+    maxEdge: SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE,
+  });
 }
 
 function initialVehicleImageOverride(
@@ -529,7 +532,9 @@ export function TagDashboardShell({
       vehicle.updated_at,
     );
     writeSilhouetteToSession(vehicle.id, serverUrl, bust);
-    const proxy = silhouetteDisplayUrl(vehicle.id, bust);
+    const proxy = silhouetteDisplayUrl(vehicle.id, bust, {
+      maxEdge: SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE,
+    });
 
     setSilhouetteStorageUrl((current) =>
       current === serverUrl ? current : serverUrl,

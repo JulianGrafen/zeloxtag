@@ -64,6 +64,23 @@ export function AnimatedVehicleHeader({
     setUsedPreviewFallback(false);
   }, [primary]);
 
+  useEffect(() => {
+    if (!primary || typeof document === "undefined") {
+      return;
+    }
+    if (!isOwnerSilhouetteSrc(primary)) {
+      return;
+    }
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = primary;
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, [primary]);
+
   const editable = typeof onEdit === "function";
 
   function handleImageError() {
@@ -132,6 +149,10 @@ export function AnimatedVehicleHeader({
               key={activeSrc}
               src={activeSrc}
               alt={alt}
+              width={340}
+              height={255}
+              decoding="async"
+              fetchPriority="high"
               onLoad={handleImageLoad}
               onError={handleImageError}
               className="h-full w-full object-cover object-center"
@@ -188,6 +209,10 @@ export function AnimatedVehicleHeader({
             key={activeSrc}
             src={activeSrc}
             alt={alt}
+            width={340}
+            height={255}
+            decoding="async"
+            fetchPriority="high"
             onLoad={handleImageLoad}
             onError={handleImageError}
             className="h-full w-full object-cover"

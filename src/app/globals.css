@@ -884,9 +884,9 @@ a.claim-cta {
 
 .hardware-upsell-model-slot .claim-intro-model-slot {
   margin: 0;
-  height: min(44vw, 220px);
-  min-height: 180px;
-  max-height: 260px;
+  height: min(32vw, 148px);
+  min-height: 120px;
+  max-height: 168px;
 }
 
 @media (min-width: 640px) {
@@ -895,13 +895,13 @@ a.claim-cta {
     min-height: 100%;
     align-items: center;
     justify-content: center;
-    padding: 0.5rem 0;
+    padding: 0.35rem 0;
   }
 
   .hardware-upsell-model-slot .claim-intro-model-slot {
-    height: 240px;
-    max-height: none;
-    min-height: 220px;
+    height: 168px;
+    max-height: 180px;
+    min-height: 152px;
   }
 }
 

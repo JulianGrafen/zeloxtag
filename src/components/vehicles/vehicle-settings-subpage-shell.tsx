@@ -10,7 +10,7 @@ type VehicleSettingsSubpageShellProps = {
   /** When set, default back link uses garage or /v route correctly (not /v/vehicleId). */
   vehicleSurfaceScope?: VehicleSurfaceScope;
   title: string;
-  description?: string;
+  description?: ReactNode;
   backHref?: string;
   backLabel?: string;
   children: ReactNode;
@@ -46,9 +46,9 @@ export function VehicleSettingsSubpageShell({
           {title}
         </h1>
         {description ? (
-          <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+          <div className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
             {description}
-          </p>
+          </div>
         ) : null}
       </header>
 

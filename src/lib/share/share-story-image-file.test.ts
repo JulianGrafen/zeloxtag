@@ -53,4 +53,20 @@ describe("shareStoryImageFile", () => {
     await expect(shareStoryImageFile(file)).resolves.toBe("shared");
     expect(share).toHaveBeenCalledWith({ files: [file] });
   });
+
+  it("blocks share in Instagram in-app browser", async () => {
+    const file = new File([new Uint8Array([1])], "story.jpg", {
+      type: "image/jpeg",
+    });
+    const share = vi.fn();
+    vi.stubGlobal("window", { isSecureContext: true });
+    vi.stubGlobal("navigator", {
+      share,
+      canShare: () => true,
+      userAgent: "Instagram 300.0.0.0",
+    });
+
+    await expect(shareStoryImageFile(file)).resolves.toBe("unavailable");
+    expect(share).not.toHaveBeenCalled();
+  });
 });

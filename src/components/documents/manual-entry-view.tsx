@@ -39,6 +39,8 @@ import {
   MANUAL_ENTRY_CATEGORIES,
   MANUAL_ENTRY_CATEGORY_LABELS,
   MANUAL_ENTRY_MAX_PHOTOS,
+  UMBAU_ENTRY_MAX_PHOTOS,
+  manualEntryPhotoLimit,
   parseManualEntryCategory,
   resolveManualEntryTitle,
   type ManualEntryCategory,
@@ -92,6 +94,7 @@ export function ManualEntryView({
   const searchParams = useSearchParams();
   const openFormOnLoad = searchParams.get("neu") === "1";
   const editDocumentId = searchParams.get("edit");
+  const focusPhotos = searchParams.get("photos") === "1";
   const isUmbau = variant === "umbau";
   const { compressFile, isCompressing, statusLabel, error: compressError } =
     useDocumentCompression();
@@ -137,6 +140,9 @@ export function ManualEntryView({
   }, [entries, editDocumentId]);
 
   const isEditing = Boolean(editingDocument);
+  const photoLimit = isUmbau
+    ? UMBAU_ENTRY_MAX_PHOTOS
+    : manualEntryPhotoLimit(category);
 
   const existingPhotoUrl =
     editingDocument && isViewableDocumentUrl(editingDocument.file_url)
@@ -247,6 +253,16 @@ export function ManualEntryView({
     setShowForm(false);
   }, [editDocumentId, editingDocument, entries.length, documents.length]);
 
+  useEffect(() => {
+    if (!focusPhotos || !showForm) return;
+    const id = window.requestAnimationFrame(() => {
+      document
+        .getElementById("manual-entry-photos")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [focusPhotos, showForm, editingDocument?.id]);
+
   function resetForm() {
     photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
     setTitle("");
@@ -273,9 +289,9 @@ export function ManualEntryView({
   async function addPhotoFiles(fileList: FileList | null) {
     if (!fileList?.length) return;
     setError(null);
-    const remaining = MANUAL_ENTRY_MAX_PHOTOS - photos.length;
+    const remaining = photoLimit - photos.length;
     if (remaining <= 0) {
-      setError(`Maximal ${MANUAL_ENTRY_MAX_PHOTOS} Fotos pro Eintrag.`);
+      setError(`Maximal ${photoLimit} Fotos pro Eintrag.`);
       return;
     }
 
@@ -301,7 +317,7 @@ export function ManualEntryView({
         });
       }
       if (next.length > 0) {
-        setPhotos((prev) => [...prev, ...next].slice(0, MANUAL_ENTRY_MAX_PHOTOS));
+        setPhotos((prev) => [...prev, ...next].slice(0, photoLimit));
       } else {
         setError(rejectReason ?? "Kein Foto konnte hinzugefügt werden.");
       }
@@ -375,11 +391,83 @@ export function ManualEntryView({
           appendLineItemsToFormData(formData);
         }
 
+        if (isUmbau && isEditing) {
+          const result = await updateManualVehicleEntry(formData);
+          if (result.status === "error") {
+            setError(result.message);
+            return;
+          }
+
+          if (photos.length > 0) {
+            const baseTitle = resolveManualEntryTitle(title, category, {
+              umbau: true,
+            });
+            for (let index = 0; index < photos.length; index += 1) {
+              const photo = photos[index];
+              const extraForm = new FormData();
+              extraForm.set("vehicleId", vehicleId);
+              extraForm.set("tagUuid", tagUuid);
+              appendUmbauMetadata(
+                extraForm,
+                photos.length > 1
+                  ? `${baseTitle} (${index + 1}/${photos.length})`
+                  : baseTitle,
+              );
+              extraForm.set("photo", photo.file, photo.file.name);
+              const extraResult = await createManualVehicleEntry(extraForm);
+              if (extraResult.status === "error") {
+                setError(extraResult.message);
+                return;
+              }
+            }
+          }
+
+          showSavedToast();
+          closeForm();
+          router.refresh();
+          return;
+        }
+
+        if (photos.length === 1) {
+          formData.set("photo", photos[0].file, photos[0].file.name);
+        } else if (photos.length > 1 && !isUmbau) {
+          const pdf = await convertImagesToPdf(
+            photos.map((entry) => entry.file),
+          );
+          formData.set("photo", pdf, "fotos.pdf");
+          formData.set("pageCount", String(photos.length));
+        } else if (photos.length > 1 && isUmbau) {
+          formData.set("photo", photos[0].file, photos[0].file.name);
+        }
+
         const result = await updateManualVehicleEntry(formData);
         if (result.status === "error") {
           setError(result.message);
           return;
         }
+
+        if (isUmbau && photos.length > 1) {
+          const baseTitle = resolveManualEntryTitle(title, category, {
+            umbau: true,
+          });
+          for (let index = 1; index < photos.length; index += 1) {
+            const photo = photos[index];
+            const extraForm = new FormData();
+            extraForm.set("vehicleId", vehicleId);
+            extraForm.set("tagUuid", tagUuid);
+            appendUmbauMetadata(
+              extraForm,
+              `${baseTitle} (${index + 1}/${photos.length})`,
+            );
+            extraForm.set("photo", photo.file, photo.file.name);
+            const extraResult = await createManualVehicleEntry(extraForm);
+            if (extraResult.status === "error") {
+              setError(extraResult.message);
+              return;
+            }
+          }
+        }
+
         showSavedToast();
         closeForm();
         router.refresh();
@@ -701,14 +789,16 @@ export function ManualEntryView({
               />
             </label>
 
-            <div className="space-y-2">
+            <div id="manual-entry-photos" className="scroll-mt-24 space-y-2">
               <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                 Fotos{" "}
                 <span className="normal-case tracking-normal text-[color:var(--vd-muted)]">
                   {isEditing
-                    ? "(aktuell)"
+                    ? isUmbau
+                      ? `(bis zu ${UMBAU_ENTRY_MAX_PHOTOS} neue Bilder)`
+                      : "(neu hinzufügen oder ersetzen)"
                     : isUmbau
-                      ? `(mindestens 1, max. ${MANUAL_ENTRY_MAX_PHOTOS})`
+                      ? `(mindestens 1, max. ${UMBAU_ENTRY_MAX_PHOTOS})`
                       : `(optional, max. ${MANUAL_ENTRY_MAX_PHOTOS})`}
                 </span>
               </p>
@@ -736,7 +826,7 @@ export function ManualEntryView({
                 </div>
               ) : null}
 
-              {!isEditing && photos.length > 0 ? (
+              {photos.length > 0 ? (
                 <ul className="grid grid-cols-3 gap-2">
                   {photos.map((photo) => (
                     <li
@@ -763,7 +853,7 @@ export function ManualEntryView({
                 </ul>
               ) : null}
 
-              {!isEditing && photos.length < MANUAL_ENTRY_MAX_PHOTOS ? (
+              {photos.length < photoLimit ? (
                 <div className="grid grid-cols-2 gap-2">
                   <label className="claim-back relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden">
                     <input

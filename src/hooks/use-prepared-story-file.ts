@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO } from "@/components/shareable-spec-card/constants";
 import { captureShareCardPngFile } from "@/lib/share/capture-share-card-png-file";
+import { createStoryJpegForNativeShare } from "@/lib/share/story-image-for-share";
 
 type UsePreparedStoryFileOptions = {
   filename: string;
@@ -22,6 +23,8 @@ export function usePreparedStoryFile(
 ) {
   const { filename, cacheKey, enabled = true } = options;
   const [storyFile, setStoryFile] = useState<File | null>(null);
+  /** JPEG tuned for iOS / Instagram via Web Share (pre-built before tap). */
+  const [nativeShareFile, setNativeShareFile] = useState<File | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState<string | null>(null);
   const generationRef = useRef(0);
@@ -29,6 +32,7 @@ export function usePreparedStoryFile(
   useEffect(() => {
     if (!enabled) {
       setStoryFile(null);
+      setNativeShareFile(null);
       setIsPreparing(false);
       setPrepareError(null);
       return;
@@ -38,6 +42,7 @@ export function usePreparedStoryFile(
     const generation = generationRef.current + 1;
     generationRef.current = generation;
     setStoryFile(null);
+    setNativeShareFile(null);
     setIsPreparing(true);
     setPrepareError(null);
 
@@ -55,11 +60,16 @@ export function usePreparedStoryFile(
         filename,
         pixelRatio: SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO,
       })
-        .then((file) => {
+        .then(async (pngFile) => {
           if (cancelled || generationRef.current !== generation) {
             return;
           }
-          setStoryFile(file);
+          const jpegFile = await createStoryJpegForNativeShare(pngFile);
+          if (cancelled || generationRef.current !== generation) {
+            return;
+          }
+          setStoryFile(pngFile);
+          setNativeShareFile(jpegFile);
           setPrepareError(null);
         })
         .catch((cause: unknown) => {
@@ -67,6 +77,7 @@ export function usePreparedStoryFile(
             return;
           }
           setStoryFile(null);
+          setNativeShareFile(null);
           setPrepareError(
             cause instanceof Error
               ? cause.message
@@ -87,5 +98,5 @@ export function usePreparedStoryFile(
     };
   }, [cacheKey, enabled, filename, targetRef]);
 
-  return { storyFile, isPreparing, prepareError };
+  return { storyFile, nativeShareFile, isPreparing, prepareError };
 }

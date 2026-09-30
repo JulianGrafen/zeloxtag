@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 type ShareableSpecCardExportButtonProps = {
   onExport: () => void;
   isExporting: boolean;
+  disabled?: boolean;
   error?: string | null;
   className?: string;
   label?: string;
@@ -18,9 +19,10 @@ type ShareableSpecCardExportButtonProps = {
 export function ShareableSpecCardExportButton({
   onExport,
   isExporting,
+  disabled = false,
   error,
   className,
-  label = "In Instagram Story teilen",
+  label = "Bild teilen",
   pendingLabel = "Story wird erstellt…",
   hint,
 }: ShareableSpecCardExportButtonProps) {
@@ -31,7 +33,7 @@ export function ShareableSpecCardExportButton({
         variant="outline"
         size="lg"
         className="min-h-12 w-full gap-2 border-white/20 bg-white/5 text-white hover:bg-white/10"
-        disabled={isExporting}
+        disabled={isExporting || disabled}
         aria-busy={isExporting}
         onClick={() => onExport()}
       >

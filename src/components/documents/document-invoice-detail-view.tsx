@@ -117,9 +117,15 @@ export function DocumentInvoiceDetailView({
   const [editPulse, setEditPulse] = useState(0);
   const lineItems = document.line_items ?? [];
   const isManual = isManualVehicleEntry(document);
-  const manualEditHref =
+  const isUmbauManual =
+    isManual &&
+    (document.category === "tuning" ||
+      /tuning|umbau/i.test(document.category?.trim() ?? ""));
+  const manualAddPhotosHref =
     isManual && canEdit
-      ? manualEntryEditPath(tagUuid, document.id, document.category)
+      ? manualEntryEditPath(tagUuid, document.id, document.category, {
+          focusPhotos: true,
+        })
       : null;
   const paymentBadge = resolveInvoicePaymentBadge(document);
   const canEditInvoice =
@@ -579,7 +585,12 @@ export function DocumentInvoiceDetailView({
         onClose={() => setEditPickerOpen(false)}
         onSelect={handleEditPick}
         isManualEntry={isManual}
-        manualEditHref={manualEditHref}
+        addPhotosHref={manualAddPhotosHref}
+        addPhotosLabel={
+          isUmbauManual
+            ? "Bis zu 10 Bilder hinzufügen"
+            : "Bilder hinzufügen"
+        }
       />
 
       <FixedBottomActionBar>

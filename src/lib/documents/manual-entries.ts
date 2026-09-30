@@ -45,8 +45,19 @@ export const MANUAL_ENTRY_CATEGORY_LABELS: Record<ManualEntryCategory, string> =
  */
 export const MANUAL_ENTRY_MARKER = "__manual__";
 
-/** Max photos attached to one manual entry (client + server). */
+/** Max photos per manual service entry (client + server). */
 export const MANUAL_ENTRY_MAX_PHOTOS = 8;
+
+/** Max photos per Umbau upload batch (create or nachträglich via Bearbeiten). */
+export const UMBAU_ENTRY_MAX_PHOTOS = 10;
+
+export function manualEntryPhotoLimit(
+  category: ManualEntryCategory | "umbau",
+): number {
+  return category === "tuning" || category === "umbau"
+    ? UMBAU_ENTRY_MAX_PHOTOS
+    : MANUAL_ENTRY_MAX_PHOTOS;
+}
 
 export function isManualEntryUrl(fileUrl: string | null | undefined): boolean {
   return Boolean(fileUrl?.startsWith("manual://"));
@@ -125,9 +136,14 @@ export function manualEntryEditPath(
   tagUuid: string,
   documentId: string,
   category: string | null | undefined,
+  options?: { focusPhotos?: boolean },
 ): string {
   const base = isTuningLikeCategory(category)
     ? `/v/${tagUuid}/umbauten`
     : `/v/${tagUuid}/eintrag`;
-  return `${base}?edit=${encodeURIComponent(documentId)}`;
+  const params = new URLSearchParams({ edit: documentId });
+  if (options?.focusPhotos) {
+    params.set("photos", "1");
+  }
+  return `${base}?${params.toString()}`;
 }
