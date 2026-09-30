@@ -80,7 +80,10 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
             </div>
           </div>
 
-          <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 px-12 py-3">
+          <div
+            className="relative z-10 flex min-h-0 flex-col gap-2 overflow-hidden px-12 py-2"
+            style={{ height: `${layout.specsZonePercent}%` }}
+          >
             {data.instagramHandle ? (
               <ShareCardInstagramHandle
                 handle={data.instagramHandle}
@@ -88,7 +91,7 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
               />
             ) : null}
 
-            <div className="min-h-0 flex-1 overflow-visible">
+            <div className="min-h-0 flex-1 overflow-hidden">
               <div
                 className="origin-top-left"
                 style={{
@@ -120,16 +123,22 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
                 </div>
               </div>
             </div>
-
-            {showDna ? (
-              <ShareCardBuildDnaBlock
-                dna={data.buildDna!}
-                compact={layout.density !== "comfortable"}
-              />
-            ) : null}
           </div>
 
-          <footer className="relative z-10 shrink-0 border-t border-white/10 px-12 py-5">
+          {showDna ? (
+            <div
+              className="relative z-10 min-h-0 shrink-0 overflow-hidden px-4"
+              style={{ height: `${layout.dnaZonePercent}%` }}
+            >
+              <ShareCardBuildDnaBlock
+                dna={data.buildDna!}
+                compact
+                fillHeight
+              />
+            </div>
+          ) : null}
+
+          <footer className="relative z-10 mt-auto shrink-0 border-t border-white/10 px-12 py-5">
             <ShareCardZeloxMark heightPx={layout.footerLogoHeightPx} />
           </footer>
         </div>

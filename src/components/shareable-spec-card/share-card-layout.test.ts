@@ -56,5 +56,18 @@ describe("computeShareCardLayout", () => {
     expect(layout.density).toBe("dense");
     expect(layout.heroHeightPercent).toBeLessThanOrEqual(30);
     expect(layout.footerLogoHeightPx).toBeLessThan(152);
+    expect(layout.dnaZonePercent).toBe(20);
+    expect(layout.specsZonePercent).toBeGreaterThan(0);
+  });
+
+  it("reserves no DNA zone when build DNA is absent", () => {
+    const layout = computeShareCardLayout(
+      baseData({
+        specRows: [
+          { key: "power", label: "Leistung", valueText: "480 PS", layout: "quartett" },
+        ],
+      }),
+    );
+    expect(layout.dnaZonePercent).toBe(0);
   });
 });

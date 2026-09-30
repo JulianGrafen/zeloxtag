@@ -4,12 +4,18 @@ export type ShareCardDensity = "comfortable" | "compact" | "dense";
 
 export type ShareCardLayout = {
   heroHeightPercent: number;
+  /** Spec + optional Instagram (percent of card height). */
+  specsZonePercent: number;
+  /** Umbau-DNA slot (0 when no DNA). */
+  dnaZonePercent: number;
   contentScale: number;
   density: ShareCardDensity;
   footerLogoHeightPx: number;
 };
 
 const CARD_HEIGHT_PX = 1920;
+const FOOTER_ZONE_PERCENT = 9;
+const DNA_ZONE_PERCENT = 20;
 const FOOTER_BASE_PX = 168;
 const DNA_BLOCK_PX = 360;
 const INSTAGRAM_ROW_PX = 52;
@@ -62,8 +68,14 @@ export function computeShareCardLayout(data: ShareableBuildData): ShareCardLayou
   const footerLogoHeightPx =
     density === "dense" ? 112 : density === "compact" ? 132 : 152;
 
+  const dnaZonePercent = hasDna ? DNA_ZONE_PERCENT : 0;
+  const specsZonePercent =
+    100 - heroHeightPercent - dnaZonePercent - FOOTER_ZONE_PERCENT;
+
   return {
     heroHeightPercent,
+    specsZonePercent: Math.max(18, specsZonePercent),
+    dnaZonePercent,
     contentScale,
     density,
     footerLogoHeightPx,
