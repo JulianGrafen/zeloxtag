@@ -35,6 +35,7 @@ export default async function VehicleDynoSettingsPage({
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={scope.linkedTagUuid ?? vehicleId}
+        vehicleSurfaceScope={scope}
         title="Leistungsdiagramm"
         description="Dyno- oder Leistungsdiagramm als Foto oder PDF — erscheint im Showcase, wenn dein Profil öffentlich ist."
       >

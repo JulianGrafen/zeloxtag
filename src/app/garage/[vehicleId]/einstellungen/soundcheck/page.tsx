@@ -33,6 +33,7 @@ export default async function VehicleSoundcheckSettingsPage({
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={scope.linkedTagUuid ?? vehicleId}
+        vehicleSurfaceScope={scope}
         title="Engine soundcheck"
         description="Kurzer Motor-Sound für die öffentliche Visitenkarte (max. 10 Sekunden, MP3, M4A oder WAV, max. 2 MB)."
       >

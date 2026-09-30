@@ -29,11 +29,13 @@ export default async function VehicleUmbautenSettingsPage({
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={scope.linkedTagUuid ?? vehicleId}
+        vehicleSurfaceScope={scope}
         title="Umbauten & Rechnungen"
         description="Umbauten, Tuning-Einträge und Rechnungen — wähle, was Besucher im öffentlichen Profil sehen."
       >
         <VehicleShowcaseModificationsSettings
           tagUuid={scope.linkedTagUuid ?? vehicleId}
+          vehicleSurfaceScope={scope}
           vehicleId={vehicle.id}
           documents={documents}
           canEdit={!isDemo}

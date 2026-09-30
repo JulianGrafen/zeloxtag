@@ -29,6 +29,7 @@ export default async function VehicleExposeLinkPage({
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={scope.linkedTagUuid ?? vehicleId}
+        vehicleSurfaceScope={scope}
         title="Online-Verkaufsexposé"
         description="Erzeugt ein fälschungssicheres Dossier mit Investitionen, Services und Historie — ideal für Mobile.de und Kleinanzeigen. Adressen, IBAN und private Notizen bleiben draußen."
       >

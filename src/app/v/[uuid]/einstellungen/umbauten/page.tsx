@@ -32,6 +32,7 @@ export default async function VehicleUmbautenSettingsPage({
       >
         <VehicleShowcaseModificationsSettings
           tagUuid={uuid}
+          vehicleSurfaceScope={{ vehicleId: vehicle.id, linkedTagUuid: uuid }}
           vehicleId={vehicle.id}
           documents={documents}
           canEdit={!isDemo}

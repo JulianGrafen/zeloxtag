@@ -26,7 +26,7 @@ export default async function VehicleSettingsPage({
 }: VehicleSettingsPageProps) {
   const { vehicleId } = await params;
   const { scope, result, isDemoShowcase } = await requireVehicleSurfaceOwner({ vehicleId }, {
-    loginNext: `/garage/${vehicleId}/einstellungen/einstellungen`,
+    loginNext: `/garage/${vehicleId}/einstellungen`,
     load: {
       documents: {
         mode: "types",

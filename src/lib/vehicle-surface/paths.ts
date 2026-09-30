@@ -25,7 +25,11 @@ export function vehicleSurfaceHref(
   if (!segment?.trim()) {
     return base;
   }
-  const normalized = segment.startsWith("/") ? segment : `/${segment}`;
+  const trimmed = segment.trim();
+  if (trimmed.startsWith("?")) {
+    return `${base}${trimmed}`;
+  }
+  const normalized = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return `${base}${normalized}`;
 }
 

@@ -30,6 +30,7 @@ export default async function VehicleGallerySettingsPage({
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={scope.linkedTagUuid ?? vehicleId}
+        vehicleSurfaceScope={scope}
         title="Showcase-Galerie"
         description={`Bis zu ${MAX_SHOWCASE_GALLERY_PHOTOS} Fotos für das öffentliche Profil — Besucher sehen sie in der Visitenkarte.`}
       >

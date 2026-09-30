@@ -4,13 +4,17 @@ import { useMemo } from "react";
 
 import { ShowcaseDocCollapsibleGroup } from "@/components/vehicles/showcase-doc-collapsible-group";
 import { ShowcaseDocumentPicker } from "@/components/vehicles/showcase-document-picker";
+import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { usePublicShowcaseDocumentSelection } from "@/hooks/use-public-showcase-document-selection";
+import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import { partitionShowcaseSelectableDocuments } from "@/lib/vehicles/public-showcase-documents";
 import { formatShowcaseDocumentMeta } from "@/lib/vehicles/showcase-document-meta";
 import type { Document } from "@/types/database";
 
 type VehicleShowcaseModificationsSettingsProps = {
   tagUuid: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   vehicleId: string;
   documents: Document[];
   canEdit: boolean;
@@ -18,10 +22,12 @@ type VehicleShowcaseModificationsSettingsProps = {
 
 export function VehicleShowcaseModificationsSettings({
   tagUuid,
+  vehicleSurfaceScope,
   vehicleId,
   documents,
   canEdit,
 }: VehicleShowcaseModificationsSettingsProps) {
+  const belegeHref = documentsListHref(tagUuid, "invoice", vehicleSurfaceScope);
   const { invoices, modifications } = useMemo(
     () => partitionShowcaseSelectableDocuments(documents),
     [documents],
@@ -53,9 +59,15 @@ export function VehicleShowcaseModificationsSettings({
   return (
     <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 sm:p-5">
       {!hasAnyDocs ? (
-        <p className="rounded-xl border border-dashed border-[color:var(--vd-border)] px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
-          Noch keine Umbauten oder Rechnungen — lege Belege im Fahrzeug-Dashboard
-          an.
+        <p className="rounded-xl border border-dashed border-[color:var(--vd-border)] px-4 py-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+          Noch keine Umbauten oder Rechnungen —{" "}
+          <PressableLink
+            href={belegeHref}
+            className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-2"
+          >
+            Rechnungen &amp; Belege öffnen
+          </PressableLink>{" "}
+          und dort eintragen oder scannen.
         </p>
       ) : (
         <div className="space-y-5">

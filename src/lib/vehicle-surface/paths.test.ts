@@ -32,6 +32,9 @@ describe("vehicleSurface paths", () => {
     expect(garagePathForVehicle(scope.vehicleId, "dokumente")).toBe(
       "/garage/11111111-1111-4111-8111-111111111111/dokumente",
     );
+    expect(vehicleSurfaceHref(scope, "?scan=1&type=invoice")).toBe(
+      "/garage/11111111-1111-4111-8111-111111111111?scan=1&type=invoice",
+    );
   });
 });
 
