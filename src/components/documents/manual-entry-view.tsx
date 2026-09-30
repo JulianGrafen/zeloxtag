@@ -54,6 +54,10 @@ import {
   isOilChangeSelfMadeVendor,
   resolveOilChangeVendor,
 } from "@/lib/documents/oil-changes";
+import {
+  vehicleSurfaceHref,
+  vehicleSurfaceScopeFromContext,
+} from "@/lib/vehicle-surface/paths";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { Document, DocumentLineItem } from "@/types/database";
@@ -301,7 +305,11 @@ export function ManualEntryView({
     resetForm();
     setShowForm(false);
     if (editDocumentId) {
-      const base = isUmbau ? `/v/${tagUuid}/umbauten` : `/v/${tagUuid}/eintrag`;
+      const scope = vehicleSurfaceScopeFromContext(tagUuid, vehicleId);
+      const base = vehicleSurfaceHref(
+        scope,
+        isUmbau ? "umbauten" : "eintrag",
+      );
       router.replace(base);
     }
   }

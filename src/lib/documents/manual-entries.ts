@@ -1,4 +1,6 @@
 import type { Document } from "@/types/database";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 export const MANUAL_ENTRY_CATEGORIES = ["service", "tuning"] as const;
 export type ManualEntryCategory = (typeof MANUAL_ENTRY_CATEGORIES)[number];
@@ -133,17 +135,15 @@ export function isTuningLikeCategory(
 
 /** Deep-link to edit a manual entry in the list form (`?edit=`). */
 export function manualEntryEditPath(
-  tagUuid: string,
+  scope: VehicleSurfaceScope,
   documentId: string,
   category: string | null | undefined,
   options?: { focusPhotos?: boolean },
 ): string {
-  const base = isTuningLikeCategory(category)
-    ? `/v/${tagUuid}/umbauten`
-    : `/v/${tagUuid}/eintrag`;
+  const segment = isTuningLikeCategory(category) ? "umbauten" : "eintrag";
   const params = new URLSearchParams({ edit: documentId });
   if (options?.focusPhotos) {
     params.set("photos", "1");
   }
-  return `${base}?${params.toString()}`;
+  return `${vehicleSurfaceHref(scope, segment)}?${params.toString()}`;
 }

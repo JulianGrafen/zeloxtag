@@ -50,6 +50,7 @@ import {
   isManualVehicleEntry,
   manualEntryEditPath,
 } from "@/lib/documents/manual-entries";
+import { vehicleSurfaceScopeFromContext } from "@/lib/vehicle-surface/paths";
 import {
   documentDeleteButtonLabel,
   documentDeleteConfirmMessage,
@@ -121,9 +122,13 @@ export function DocumentInvoiceDetailView({
     isManual &&
     (document.category === "tuning" ||
       /tuning|umbau/i.test(document.category?.trim() ?? ""));
+  const surfaceScope = vehicleSurfaceScopeFromContext(
+    tagUuid,
+    document.vehicle_id,
+  );
   const manualAddPhotosHref =
     isManual && canEdit
-      ? manualEntryEditPath(tagUuid, document.id, document.category, {
+      ? manualEntryEditPath(surfaceScope, document.id, document.category, {
           focusPhotos: true,
         })
       : null;

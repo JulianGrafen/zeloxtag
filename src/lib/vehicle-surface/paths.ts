@@ -43,3 +43,16 @@ export function garagePathForVehicle(vehicleId: string, segment?: string): strin
 export function scopeFromGarageRoute(vehicleId: string): VehicleSurfaceScope {
   return { vehicleId: vehicleId.trim(), linkedTagUuid: null };
 }
+
+/** Map dashboard props to surface scope (garage uses vehicleId as tagUuid fallback). */
+export function vehicleSurfaceScopeFromContext(
+  tagUuid: string,
+  vehicleId: string,
+): VehicleSurfaceScope {
+  const tag = tagUuid.trim();
+  const vid = vehicleId.trim();
+  if (!tag || tag === vid) {
+    return { vehicleId: vid, linkedTagUuid: null };
+  }
+  return { vehicleId: vid, linkedTagUuid: tag };
+}
