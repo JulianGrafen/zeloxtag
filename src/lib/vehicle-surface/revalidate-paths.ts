@@ -17,11 +17,33 @@ const DOCUMENT_LIST_SEGMENTS = [
   "/rechnungen",
 ] as const;
 
+const OWNER_MUTATION_SEGMENTS = [
+  ...DOCUMENT_LIST_SEGMENTS,
+  "/daten",
+  "/einstellungen",
+  "/einstellungen/profil",
+  "/einstellungen/soundcheck",
+  "/einstellungen/galerie",
+  "/einstellungen/leistungsdiagramm",
+  "/einstellungen/umbauten",
+  "/tanken",
+  "/kosten",
+  "/dokumente/kosten",
+] as const;
+
 export async function revalidateAfterDocumentUpload(
   vehicleId: string,
 ): Promise<void> {
+  await revalidateOwnerVehicleSurfaces(vehicleId, DOCUMENT_LIST_SEGMENTS);
+}
+
+/** Revalidate garage (and linked tag) after owner mutations. */
+export async function revalidateOwnerVehicleSurfaces(
+  vehicleId: string,
+  segments: readonly string[] = OWNER_MUTATION_SEGMENTS,
+): Promise<void> {
   const scope = await resolveRevalidationScope(vehicleId);
-  revalidateVehicleSurfacePaths(scope);
+  revalidateVehicleSurfacePaths(scope, segments);
 }
 
 function revalidateSegments(basePath: string, segments: readonly string[]): void {

@@ -23,7 +23,7 @@ export default async function VehicleExposeLinkPage({
   const { vehicleId } = await params;
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
   const { vehicle, isDemo, canUseExpose, exposeToken, isExposeActive } =
-    await loadVehicleExposeSettingsPage(scope.linkedTagUuid ?? vehicleId);
+    await loadVehicleExposeSettingsPage(vehicleId);
 
   return (
     <AppShell showNavbar={false}>

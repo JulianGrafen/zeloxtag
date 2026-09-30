@@ -1,9 +1,40 @@
 import { describe, expect, it } from "vitest";
 
-import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
+import {
+  documentDetailHref,
+  documentsListHref,
+} from "@/lib/vehicle-surface/documents-list-href";
 
 const VEHICLE_ID = "11111111-1111-4111-8111-111111111111";
 const TAG_UUID = "zlx-a1b2c3d4";
+
+describe("documentDetailHref", () => {
+  const docId = "doc-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+
+  it("uses garage route for tagless digital garage scope", () => {
+    expect(
+      documentDetailHref(TAG_UUID, docId, {
+        vehicleId: VEHICLE_ID,
+        linkedTagUuid: null,
+      }),
+    ).toBe(`/garage/${VEHICLE_ID}/dokumente/${docId}`);
+  });
+
+  it("uses tag route when scope has linked tag", () => {
+    expect(
+      documentDetailHref(TAG_UUID, docId, {
+        vehicleId: VEHICLE_ID,
+        linkedTagUuid: TAG_UUID,
+      }),
+    ).toBe(`/v/${TAG_UUID}/dokumente/${docId}`);
+  });
+
+  it("falls back to garage when tagUuid is a vehicle id without scope", () => {
+    expect(documentDetailHref(VEHICLE_ID, docId)).toBe(
+      `/garage/${VEHICLE_ID}/dokumente/${docId}`,
+    );
+  });
+});
 
 describe("documentsListHref", () => {
   it("uses garage route for tagless digital garage scope", () => {

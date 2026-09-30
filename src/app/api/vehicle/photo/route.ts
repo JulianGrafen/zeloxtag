@@ -25,6 +25,10 @@ import {
   normalizeVehicleHeaderPhoto,
 } from "@/lib/vehicles/normalize-vehicle-header-photo";
 import {
+  revalidateOwnerVehicleSurfaces,
+  resolveRevalidationScope,
+} from "@/lib/vehicle-surface/revalidate-paths";
+import {
   MAX_SILHOUETTE_UPLOAD_BYTES,
   SILHOUETTE_BUCKET,
   vehiclePhotoObjectPath,
@@ -162,7 +166,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: vehicle, error: vehicleError } = await supabase
       .from("vehicles")
-      .select("id, user_id")
+      .select("id, user_id, public_slug")
       .eq("id", vehicleId)
       .maybeSingle();
 
@@ -277,10 +281,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (tagUuid) {
-      revalidatePath(`/v/${tagUuid}`, "page");
-      revalidatePath(`/v/${tagUuid}/daten`, "page");
-    }
+    await revalidateVehiclePhotoPaths(vehicleId, vehicle.public_slug);
 
     return NextResponse.json({
       ok: true as const,
@@ -298,12 +299,18 @@ export async function POST(request: NextRequest) {
 }
 
 async function revalidateVehiclePhotoPaths(
-  tagUuid: string | undefined,
+  vehicleId: string,
   publicSlug: string | null | undefined,
 ): Promise<void> {
-  if (tagUuid) {
-    revalidatePath(`/v/${tagUuid}`, "page");
-    revalidatePath(`/v/${tagUuid}/daten`, "page");
+  await revalidateOwnerVehicleSurfaces(vehicleId, [
+    "",
+    "/daten",
+    "/einstellungen/galerie",
+  ]);
+  const scope = await resolveRevalidationScope(vehicleId);
+  if (scope.linkedTagUuid) {
+    revalidatePath(`/v/${scope.linkedTagUuid}`, "page");
+    revalidatePath(`/v/${scope.linkedTagUuid}/daten`, "page");
   }
   const slug = publicSlug?.trim();
   if (slug) {
@@ -383,7 +390,7 @@ export async function DELETE(request: NextRequest) {
       return jsonError(500, "Foto konnte nicht entfernt werden.", "db_error");
     }
 
-    await revalidateVehiclePhotoPaths(tagUuid, vehicle.public_slug);
+    await revalidateVehiclePhotoPaths(vehicleId, vehicle.public_slug);
 
     return NextResponse.json({ ok: true as const });
   } catch (error) {

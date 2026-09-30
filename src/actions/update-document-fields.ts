@@ -162,9 +162,9 @@ export async function updateDocumentFields(
 ): Promise<UpdateDocumentFieldsResult> {
   const documentId = input.documentId.trim();
   const vehicleId = input.vehicleId.trim();
-  const tagUuid = input.tagUuid.trim();
+  const tagUuid = input.tagUuid?.trim() ?? "";
 
-  if (!documentId || !vehicleId || !tagUuid) {
+  if (!documentId || !vehicleId) {
     return { status: "error", message: "Ungültige Anfrage." };
   }
 

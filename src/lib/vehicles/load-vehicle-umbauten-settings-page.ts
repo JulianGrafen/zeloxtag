@@ -1,25 +1,25 @@
 import "server-only";
 
-import { requireTagOwner } from "@/lib/auth/require-tag-access";
-import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import { requireVehicleSettingsOwner } from "@/lib/vehicles/require-vehicle-settings-owner";
 
-export async function loadVehicleUmbautenSettingsPage(tagUuid: string) {
-  const { result, isDemoShowcase } = await requireTagOwner(tagUuid, {
-    loginNext: `/v/${tagUuid}/einstellungen/umbauten`,
-    load: {
-      documents: {
-        mode: "types",
-        types: ["invoice"],
-        columns: "showcase",
+export async function loadVehicleUmbautenSettingsPage(identifier: string) {
+  const { vehicle, documents, isDemo } = await requireVehicleSettingsOwner(
+    identifier,
+    {
+      loginSuffix: "einstellungen/umbauten",
+      load: {
+        documents: {
+          mode: "types",
+          types: ["invoice"],
+          columns: "showcase",
+        },
       },
     },
-  });
-  const vehicle = result.vehicle!;
-  const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(tagUuid);
+  );
 
   return {
     vehicle,
-    documents: result.documents ?? [],
+    documents,
     isDemo,
   };
 }

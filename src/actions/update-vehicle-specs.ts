@@ -1,8 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
+import { revalidateOwnerVehicleSurfaces } from "@/lib/vehicle-surface/revalidate-paths";
 import {
   parseVehicleTechSpecs,
   serializeVehicleTechSpecs,
@@ -16,7 +15,7 @@ import { coerceVinForStorage } from "@/lib/validations/vin";
 
 export type UpdateVehicleSpecsInput = {
   vehicleId: string;
-  tagUuid: string;
+  tagUuid?: string;
   make: string;
   model: string;
   year: string;
@@ -39,13 +38,8 @@ export async function updateVehicleSpecs(
     const make = input.make.trim();
     const model = input.model.trim();
     const year = Number.parseInt(input.year, 10);
-    const tagUuid = input.tagUuid.trim();
-
     if (!input.vehicleId.trim()) {
       return { status: "error", message: "Fahrzeug fehlt." };
-    }
-    if (!tagUuid) {
-      return { status: "error", message: "Tag-UUID fehlt." };
     }
     if (!make) {
       return { status: "error", message: "Marke ist erforderlich." };
@@ -133,9 +127,11 @@ export async function updateVehicleSpecs(
       };
     }
 
-    revalidatePath(`/v/${tagUuid}`);
-    revalidatePath(`/v/${tagUuid}/daten`);
-    revalidatePath(`/v/${tagUuid}/intervalle`);
+    await revalidateOwnerVehicleSurfaces(input.vehicleId.trim(), [
+      "",
+      "/daten",
+      "/intervalle",
+    ]);
     return { status: "ok" };
   } catch (error) {
     logServerError("[update-vehicle-specs] unexpected", error);

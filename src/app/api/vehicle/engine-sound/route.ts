@@ -20,6 +20,10 @@ import {
 } from "@/lib/vehicles/engine-sound-constants";
 import { ENGINE_SOUND_MAX_BASE64_LENGTH } from "@/lib/vehicles/engine-sound-json-upload";
 import { validateEngineSoundUploadBytes } from "@/lib/vehicles/engine-sound-validation";
+import {
+  revalidateOwnerVehicleSurfaces,
+  resolveRevalidationScope,
+} from "@/lib/vehicle-surface/revalidate-paths";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -221,12 +225,19 @@ async function parseEngineSoundUpload(
 }
 
 async function revalidateEngineSoundPaths(
-  tagUuid: string | undefined,
+  vehicleId: string,
   publicSlug: string | null | undefined,
 ): Promise<void> {
-  if (tagUuid) {
-    revalidatePath(`/v/${tagUuid}`, "page");
-    revalidatePath(`/v/${tagUuid}/einstellungen`, "page");
+  await revalidateOwnerVehicleSurfaces(vehicleId, [
+    "",
+    "/einstellungen",
+    "/einstellungen/soundcheck",
+  ]);
+  const scope = await resolveRevalidationScope(vehicleId);
+  if (scope.linkedTagUuid) {
+    revalidatePath(`/v/${scope.linkedTagUuid}`, "page");
+    revalidatePath(`/v/${scope.linkedTagUuid}/einstellungen`, "page");
+    revalidatePath(`/v/${scope.linkedTagUuid}/einstellungen/soundcheck`, "page");
   }
   const slug = publicSlug?.trim();
   if (slug) {
@@ -343,7 +354,7 @@ export async function POST(request: NextRequest) {
       return jsonError(500, "Sound-URL konnte nicht gespeichert werden.", "db_error");
     }
 
-    await revalidateEngineSoundPaths(tagUuid, vehicle.public_slug);
+    await revalidateEngineSoundPaths(vehicleId, vehicle.public_slug);
 
     return NextResponse.json({
       ok: true as const,
@@ -419,7 +430,7 @@ export async function DELETE(request: NextRequest) {
       return jsonError(500, "Sound konnte nicht entfernt werden.", "db_error");
     }
 
-    await revalidateEngineSoundPaths(tagUuid, vehicle.public_slug);
+    await revalidateEngineSoundPaths(vehicleId, vehicle.public_slug);
 
     return NextResponse.json({ ok: true as const });
   } catch (error) {

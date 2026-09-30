@@ -23,7 +23,7 @@ export default async function VehicleSoundcheckSettingsPage({
 }: SoundcheckSettingsPageProps) {
   const { vehicleId } = await params;
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
-  const { vehicle, isDemo } = await loadVehicleSoundcheckSettingsPage(scope.linkedTagUuid ?? vehicleId);
+  const { vehicle, isDemo } = await loadVehicleSoundcheckSettingsPage(vehicleId);
   const soundUrl = resolveOwnerEngineSoundViewUrl(
     vehicle.id,
     vehicle.sound_url,

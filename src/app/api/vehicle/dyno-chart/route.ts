@@ -22,6 +22,10 @@ import {
   vehicleDynoChartObjectPath,
 } from "@/lib/vehicles/dyno-chart-constants";
 import {
+  revalidateOwnerVehicleSurfaces,
+  resolveRevalidationScope,
+} from "@/lib/vehicle-surface/revalidate-paths";
+import {
   parseVehicleTechSpecs,
   serializeVehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
@@ -251,15 +255,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (tagUuid) {
-      revalidatePath(`/v/${tagUuid}`, "page");
-      revalidatePath(`/v/${tagUuid}/daten`, "page");
-    }
     const publicSlug =
       typeof vehicle.public_slug === "string" ? vehicle.public_slug.trim() : "";
-    if (publicSlug) {
-      revalidatePath(`/v/${publicSlug}`, "page");
-    }
+    await revalidateDynoChartPaths(vehicleId, publicSlug || null);
 
     return NextResponse.json({
       ok: true as const,
@@ -276,12 +274,18 @@ export async function POST(request: NextRequest) {
 }
 
 async function revalidateDynoChartPaths(
-  tagUuid: string | undefined,
+  vehicleId: string,
   publicSlug: string | null | undefined,
 ): Promise<void> {
-  if (tagUuid) {
-    revalidatePath(`/v/${tagUuid}`, "page");
-    revalidatePath(`/v/${tagUuid}/daten`, "page");
+  await revalidateOwnerVehicleSurfaces(vehicleId, [
+    "",
+    "/daten",
+    "/einstellungen/leistungsdiagramm",
+  ]);
+  const scope = await resolveRevalidationScope(vehicleId);
+  if (scope.linkedTagUuid) {
+    revalidatePath(`/v/${scope.linkedTagUuid}`, "page");
+    revalidatePath(`/v/${scope.linkedTagUuid}/daten`, "page");
   }
   const slug = publicSlug?.trim();
   if (slug) {
@@ -385,7 +389,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await revalidateDynoChartPaths(tagUuid, vehicle.public_slug);
+    await revalidateDynoChartPaths(vehicleId, vehicle.public_slug);
 
     return NextResponse.json({ ok: true as const });
   } catch (error) {

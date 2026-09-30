@@ -40,6 +40,7 @@ export default async function ServiceInspectionsPage({
     children: (
       <ServiceInspectionsView
         tagUuid={scope.linkedTagUuid ?? vehicleId}
+        vehicleSurfaceScope={scope}
         vehicleId={result.vehicle!.id}
         vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
         documents={documents}

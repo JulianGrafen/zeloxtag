@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import {
   contributorMayWriteDocumentType,
   getVehicleWriteAccess,
@@ -25,6 +23,10 @@ import {
   TuevReportService,
   inferResultFromDefectRows,
 } from "@/services/documents";
+import {
+  revalidateDocumentDetailPaths,
+  resolveRevalidationScope,
+} from "@/lib/vehicle-surface/revalidate-paths";
 
 export type UpdateTuevApprovalFieldsResult =
   | { status: "ok" }
@@ -33,17 +35,17 @@ export type UpdateTuevApprovalFieldsResult =
 type UpdatePayload = {
   documentId: string;
   vehicleId: string;
-  tagUuid: string;
+  tagUuid?: string;
   nextInspectionDate?: string | null;
   defectsTable?: TuevDefectRow[] | null;
 };
 
-function revalidateDocumentPaths(tagUuid: string, documentId: string) {
-  revalidatePath(`/v/${tagUuid}`);
-  revalidatePath(`/v/${tagUuid}/dokumente`);
-  revalidatePath(`/v/${tagUuid}/dokumente/${documentId}`);
-  revalidatePath(`/v/${tagUuid}/service`);
-  revalidatePath(`/v/${tagUuid}/historie`);
+async function revalidateTuevDocumentPaths(
+  vehicleId: string,
+  documentId: string,
+): Promise<void> {
+  const scope = await resolveRevalidationScope(vehicleId);
+  revalidateDocumentDetailPaths(scope, documentId);
 }
 
 function buildUpdatedTuevData(
@@ -79,9 +81,7 @@ export async function updateTuevApprovalFields(
 ): Promise<UpdateTuevApprovalFieldsResult> {
   const documentId = input.documentId.trim();
   const vehicleId = input.vehicleId.trim();
-  const tagUuid = input.tagUuid.trim();
-
-  if (!documentId || !vehicleId || !tagUuid || !hasPatch(input)) {
+  if (!documentId || !vehicleId || !hasPatch(input)) {
     return { status: "error", message: "Ungültige Anfrage." };
   }
 
@@ -119,7 +119,7 @@ export async function updateTuevApprovalFields(
     await updateMockUploadedDocument(vehicleId, documentId, {
       approval_fields: { kind: "tuev", data },
     });
-    revalidateDocumentPaths(tagUuid, documentId);
+    await revalidateTuevDocumentPaths(vehicleId, documentId);
     return { status: "ok" };
   }
 
@@ -214,6 +214,6 @@ export async function updateTuevApprovalFields(
     return { status: "error", message: updateError.message };
   }
 
-  revalidateDocumentPaths(tagUuid, documentId);
+  await revalidateTuevDocumentPaths(vehicleId, documentId);
   return { status: "ok" };
 }

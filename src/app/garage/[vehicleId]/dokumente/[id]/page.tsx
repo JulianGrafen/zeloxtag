@@ -1,3 +1,4 @@
+import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
@@ -45,6 +46,11 @@ export default async function DocumentDetailPage({
   }
 
   const vehicleLabel = `${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`;
+  const listBackHref = documentsListHref(
+    scope.linkedTagUuid ?? vehicleId,
+    document.type,
+    scope,
+  );
   const membershipActive = await userHasActiveMembership(result.vehicle!.user_id);
   const manualEntry = isManualVehicleEntry(document);
   const canManageDocument =
@@ -57,6 +63,7 @@ export default async function DocumentDetailPage({
           tagUuid={scope.linkedTagUuid ?? vehicleId}
           vehicleLabel={vehicleLabel}
           document={document}
+          backHref={listBackHref}
         />
       </>
     ) : (
@@ -65,6 +72,7 @@ export default async function DocumentDetailPage({
         tagUuid={scope.linkedTagUuid ?? vehicleId}
         vehicleLabel={vehicleLabel}
         document={document}
+        backHref={listBackHref}
         canEdit={
           canManageDocument &&
           (access.isOwner ||
@@ -79,6 +87,7 @@ export default async function DocumentDetailPage({
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: scope.linkedTagUuid ?? vehicleId,
+    vehicleSurfaceScope: scope,
     feature: FEATURE.VIEW_DOCUMENT_VAULT,
     children: view,
   });

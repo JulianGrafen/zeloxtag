@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { revalidateOwnerVehicleSurfaces } from "@/lib/vehicle-surface/revalidate-paths";
+
 import { parseLineItems } from "@/lib/documents/line-items";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
 import {
@@ -44,8 +46,8 @@ export async function updatePublicShowcaseDocuments(
     );
     const lineSelections = parseShowcaseLineSelections(input.lineSelections);
 
-    if (!vehicleId || !tagUuid) {
-      return { status: "error", message: "Fahrzeug oder Tag fehlt." };
+    if (!vehicleId) {
+      return { status: "error", message: "Fahrzeug fehlt." };
     }
 
     const { isConfigured } = getSupabaseEnv();
@@ -189,9 +191,7 @@ export async function updatePublicShowcaseDocuments(
       }
     }
 
-    revalidatePath(`/v/${tagUuid}`);
-    revalidatePath(`/v/${tagUuid}/daten`);
-    revalidatePath(`/v/${tagUuid}/einstellungen`);
+    await revalidateOwnerVehicleSurfaces(vehicleId, ["", "/daten", "/einstellungen"]);
 
     const publicSlug =
       typeof vehicleRow?.public_slug === "string" ? vehicleRow.public_slug : null;

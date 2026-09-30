@@ -1,14 +1,11 @@
 import "server-only";
 
-import { requireTagOwner } from "@/lib/auth/require-tag-access";
-import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import { requireVehicleSettingsOwner } from "@/lib/vehicles/require-vehicle-settings-owner";
 
-export async function loadVehicleDynoSettingsPage(tagUuid: string) {
-  const { result, isDemoShowcase } = await requireTagOwner(tagUuid, {
-    loginNext: `/v/${tagUuid}/einstellungen/leistungsdiagramm`,
+export async function loadVehicleDynoSettingsPage(identifier: string) {
+  const { vehicle, isDemo } = await requireVehicleSettingsOwner(identifier, {
+    loginSuffix: "einstellungen/leistungsdiagramm",
   });
-  const vehicle = result.vehicle!;
-  const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(tagUuid);
 
   return { vehicle, isDemo };
 }

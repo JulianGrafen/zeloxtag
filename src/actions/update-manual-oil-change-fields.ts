@@ -54,10 +54,10 @@ export async function updateManualOilChangeFields(
 ): Promise<UpdateManualOilChangeFieldsResult> {
   const documentId = input.documentId.trim();
   const vehicleId = input.vehicleId.trim();
-  const tagUuid = input.tagUuid.trim();
+  const tagUuid = input.tagUuid?.trim() ?? "";
   const patch = input.patch;
 
-  if (!documentId || !vehicleId || !tagUuid) {
+  if (!documentId || !vehicleId) {
     return { status: "error", message: "Ungültige Anfrage." };
   }
 

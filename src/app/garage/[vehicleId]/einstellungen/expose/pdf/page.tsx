@@ -23,7 +23,7 @@ export default async function VehicleExposePdfPage({
   const { vehicleId } = await params;
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
   const { vehicle, isDemo, canUseExpose } =
-    await loadVehicleExposeSettingsPage(scope.linkedTagUuid ?? vehicleId);
+    await loadVehicleExposeSettingsPage(vehicleId);
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`.trim();
 
   return (

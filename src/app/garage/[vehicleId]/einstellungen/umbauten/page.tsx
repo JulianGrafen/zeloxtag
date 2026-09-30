@@ -23,7 +23,7 @@ export default async function VehicleUmbautenSettingsPage({
   const { vehicleId } = await params;
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
   const { vehicle, documents, isDemo } =
-    await loadVehicleUmbautenSettingsPage(scope.linkedTagUuid ?? vehicleId);
+    await loadVehicleUmbautenSettingsPage(vehicleId);
 
   return (
     <AppShell showNavbar={false}>

@@ -41,7 +41,12 @@ import {
 } from "@/lib/documents/vault-documents";
 import type { VaultCategory } from "@/lib/validations/vaultClassificationSchema";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
-import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import { documentDetailHref } from "@/lib/vehicle-surface/documents-list-href";
+import {
+  garagePathForVehicle,
+  isVehicleId,
+  vehicleSurfaceHref,
+} from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document, DocumentType } from "@/types/database";
 
@@ -54,6 +59,9 @@ function surfacePath(
     return segment?.trim()
       ? vehicleSurfaceHref(scope, segment)
       : vehicleSurfaceHref(scope);
+  }
+  if (isVehicleId(tagUuid)) {
+    return garagePathForVehicle(tagUuid, segment);
   }
   if (!segment?.trim()) {
     return `/v/${tagUuid}`;
@@ -385,7 +393,11 @@ export function VehicleDocumentsView({
               {filtered.map((doc, index) => (
                 <li key={doc.id}>
                   <DocumentRow
-                    detailHref={path(`dokumente/${doc.id}`)}
+                    detailHref={documentDetailHref(
+                      tagUuid,
+                      doc.id,
+                      vehicleSurfaceScope,
+                    )}
                     document={doc}
                     canDelete={canWrite}
                     deleting={pending && pendingId === doc.id}

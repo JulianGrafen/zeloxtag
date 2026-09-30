@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getVehicleWriteAccess } from "@/lib/auth/vehicle-write-access";
+import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
+import {
+  revalidateOwnerVehicleSurfaces,
+  resolveRevalidationScope,
+} from "@/lib/vehicle-surface/revalidate-paths";
 import { normalizeOperatingCostInput } from "@/lib/vehicles/operating-costs/normalize";
 import type { OperatingCostFormInput } from "@/lib/vehicles/operating-costs/types";
 import { createClient } from "@/lib/supabase/server";
@@ -13,14 +18,21 @@ export type OperatingCostActionResult =
   | { status: "ok" }
   | { status: "error"; message: string };
 
-function revalidateOperatingCostPaths(tagUuid: string) {
-  revalidatePath(`/v/${tagUuid}`);
-  revalidatePath(`/v/${tagUuid}/tanken`);
-  revalidatePath(`/v/${tagUuid}/kosten`);
+async function revalidateOperatingCostPaths(
+  vehicleId: string,
+  entryId?: string,
+): Promise<void> {
+  await revalidateOwnerVehicleSurfaces(vehicleId, ["", "/tanken", "/kosten"]);
+  if (!entryId) return;
+
+  const scope = await resolveRevalidationScope(vehicleId);
+  revalidatePath(`${garagePathForVehicle(scope.vehicleId)}/tanken/${entryId}`);
+  if (scope.linkedTagUuid) {
+    revalidatePath(`/v/${scope.linkedTagUuid}/tanken/${entryId}`);
+  }
 }
 
 async function resolveOwnerVehicle(
-  tagUuid: string,
   vehicleId: string,
 ): Promise<
   | { ok: true; userId: string }
@@ -40,13 +52,12 @@ async function resolveOwnerVehicle(
 }
 
 export async function createOperatingCost(input: {
-  tagUuid: string;
+  tagUuid?: string;
   vehicleId: string;
   form: OperatingCostFormInput;
 }): Promise<OperatingCostActionResult> {
-  const tagUuid = input.tagUuid.trim();
   const vehicleId = input.vehicleId.trim();
-  if (!tagUuid || !vehicleId) {
+  if (!vehicleId) {
     return { status: "error", message: "Ungültige Anfrage." };
   }
 
@@ -55,7 +66,7 @@ export async function createOperatingCost(input: {
     return { status: "error", message: normalized.message };
   }
 
-  const owner = await resolveOwnerVehicle(tagUuid, vehicleId);
+  const owner = await resolveOwnerVehicle(vehicleId);
   if (!owner.ok) {
     return { status: "error", message: owner.message };
   }
@@ -83,20 +94,19 @@ export async function createOperatingCost(input: {
     return { status: "error", message: "Eintrag konnte nicht gespeichert werden." };
   }
 
-  revalidateOperatingCostPaths(tagUuid);
+  await revalidateOperatingCostPaths(vehicleId);
   return { status: "ok" };
 }
 
 export async function updateOperatingCost(input: {
-  tagUuid: string;
+  tagUuid?: string;
   vehicleId: string;
   entryId: string;
   form: OperatingCostFormInput;
 }): Promise<OperatingCostActionResult> {
-  const tagUuid = input.tagUuid.trim();
   const vehicleId = input.vehicleId.trim();
   const entryId = input.entryId.trim();
-  if (!tagUuid || !vehicleId || !entryId) {
+  if (!vehicleId || !entryId) {
     return { status: "error", message: "Ungültige Anfrage." };
   }
 
@@ -105,7 +115,7 @@ export async function updateOperatingCost(input: {
     return { status: "error", message: normalized.message };
   }
 
-  const owner = await resolveOwnerVehicle(tagUuid, vehicleId);
+  const owner = await resolveOwnerVehicle(vehicleId);
   if (!owner.ok) {
     return { status: "error", message: owner.message };
   }
@@ -151,24 +161,22 @@ export async function updateOperatingCost(input: {
     return { status: "error", message: "Eintrag konnte nicht gespeichert werden." };
   }
 
-  revalidateOperatingCostPaths(tagUuid);
-  revalidatePath(`/v/${tagUuid}/tanken/${entryId}`);
+  await revalidateOperatingCostPaths(vehicleId, entryId);
   return { status: "ok" };
 }
 
 export async function deleteOperatingCost(input: {
-  tagUuid: string;
+  tagUuid?: string;
   vehicleId: string;
   entryId: string;
 }): Promise<OperatingCostActionResult> {
-  const tagUuid = input.tagUuid.trim();
   const vehicleId = input.vehicleId.trim();
   const entryId = input.entryId.trim();
-  if (!tagUuid || !vehicleId || !entryId) {
+  if (!vehicleId || !entryId) {
     return { status: "error", message: "Ungültige Anfrage." };
   }
 
-  const owner = await resolveOwnerVehicle(tagUuid, vehicleId);
+  const owner = await resolveOwnerVehicle(vehicleId);
   if (!owner.ok) {
     return { status: "error", message: owner.message };
   }
@@ -190,6 +198,6 @@ export async function deleteOperatingCost(input: {
     return { status: "error", message: "Eintrag konnte nicht gelöscht werden." };
   }
 
-  revalidateOperatingCostPaths(tagUuid);
+  await revalidateOperatingCostPaths(vehicleId);
   return { status: "ok" };
 }

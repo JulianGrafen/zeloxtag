@@ -24,7 +24,12 @@ import {
 } from "@/lib/documents/invoice-categories";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
-import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import { documentDetailHref } from "@/lib/vehicle-surface/documents-list-href";
+import {
+  garagePathForVehicle,
+  isVehicleId,
+  vehicleSurfaceHref,
+} from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document } from "@/types/database";
 
@@ -37,6 +42,9 @@ function surfacePath(
     return segment?.trim()
       ? vehicleSurfaceHref(scope, segment)
       : vehicleSurfaceHref(scope);
+  }
+  if (isVehicleId(tagUuid)) {
+    return garagePathForVehicle(tagUuid, segment);
   }
   if (!segment?.trim()) {
     return `/v/${tagUuid}`;
@@ -268,7 +276,11 @@ function VehicleInvoicesViewContent({
                     }
                   >
                     <PressableLink
-                      href={path(`dokumente/${doc.id}`)}
+                      href={documentDetailHref(
+                        tagUuid,
+                        doc.id,
+                        vehicleSurfaceScope,
+                      )}
                       variant="row"
                       className="group flex w-full items-start gap-3 px-4 py-3.5 text-left"
                     >

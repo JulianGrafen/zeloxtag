@@ -47,7 +47,7 @@ export type CreateManualEntryResult =
 
 const fieldsSchema = z.object({
   vehicleId: z.string().uuid(),
-  tagUuid: z.string().trim().min(1).max(128),
+  tagUuid: z.string().trim().max(128).optional(),
   category: z.enum(MANUAL_ENTRY_CATEGORIES),
   title: z.string().trim().min(2).max(160),
   date: z.string().trim().max(32).optional().default(""),

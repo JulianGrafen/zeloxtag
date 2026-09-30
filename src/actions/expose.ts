@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
+import { revalidateOwnerVehicleSurfaces } from "@/lib/vehicle-surface/revalidate-paths";
 import { z } from "zod";
 
 import { FEATURE } from "@/lib/permissions/feature-access";
@@ -20,7 +22,7 @@ import {
 const exposeActionSchema = z
   .object({
     vehicleId: z.string().uuid(),
-    tagUuid: z.string().trim().min(1).max(80),
+    tagUuid: z.string().trim().max(80).optional(),
     action: z.enum(["generate", "deactivate", "renew"]),
   })
   .strict();
@@ -136,8 +138,12 @@ export async function manageVehicleExpose(
       };
     }
 
-    revalidatePath(`/v/${tagUuid}`);
-    revalidatePath(`/v/${tagUuid}/einstellungen`);
+    await revalidateOwnerVehicleSurfaces(vehicleId, [
+      "",
+      "/einstellungen",
+      "/einstellungen/expose/link",
+      "/einstellungen/expose/pdf",
+    ]);
     if (existingToken) revalidatePath(exposePublicPath(existingToken));
     if (nextToken) revalidatePath(exposePublicPath(nextToken));
 

@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { assertOwnerFeature } from "@/lib/permissions/require-feature";
 import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
@@ -16,6 +14,7 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
+import { revalidateOwnerVehicleSurfaces } from "@/lib/vehicle-surface/revalidate-paths";
 
 export type DeleteDocumentResult =
   | { status: "deleted"; documentId: string }
@@ -27,13 +26,13 @@ export type DeleteDocumentResult =
 export async function deleteDocument(input: {
   documentId: string;
   vehicleId: string;
-  tagUuid: string;
+  /** Legacy UI hint — garage owners may pass the vehicle id here. */
+  tagUuid?: string;
 }): Promise<DeleteDocumentResult> {
   const documentId = input.documentId.trim();
   const vehicleId = input.vehicleId.trim();
-  const tagUuid = input.tagUuid.trim();
 
-  if (!documentId || !vehicleId || !tagUuid) {
+  if (!documentId || !vehicleId) {
     return { status: "error", message: "Ungültige Lösch-Anfrage." };
   }
 
@@ -55,12 +54,7 @@ export async function deleteDocument(input: {
       return { status: "error", message: "Dokument nicht gefunden." };
     }
 
-    revalidatePath(`/v/${tagUuid}`);
-    revalidatePath(`/v/${tagUuid}/dokumente`);
-    revalidatePath(`/v/${tagUuid}/service`);
-    revalidatePath(`/v/${tagUuid}/eintrag`);
-    revalidatePath(`/v/${tagUuid}/umbauten`);
-    revalidatePath(`/v/${tagUuid}/einstellungen`);
+    await revalidateOwnerVehicleSurfaces(vehicleId);
     return { status: "deleted", documentId };
   }
 
@@ -112,13 +106,7 @@ export async function deleteDocument(input: {
     await supabase.storage.from(DOCUMENT_BUCKET).remove([storagePath]);
   }
 
-  revalidatePath(`/v/${tagUuid}`);
-  revalidatePath(`/v/${tagUuid}/dokumente`);
-  revalidatePath(`/v/${tagUuid}/service`);
-  revalidatePath(`/v/${tagUuid}/eintrag`);
-  revalidatePath(`/v/${tagUuid}/umbauten`);
-  revalidatePath(`/v/${tagUuid}/einstellungen`);
-  revalidatePath(`/v/${tagUuid}/intervalle`);
+  await revalidateOwnerVehicleSurfaces(vehicleId);
   void recomputeVehicleMaintenanceSchedules(vehicleId);
   return { status: "deleted", documentId };
 }

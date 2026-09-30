@@ -24,7 +24,7 @@ export default async function VehicleGallerySettingsPage({
   const { vehicleId } = await params;
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
   const { vehicle, isDemo, galleryPhotos } =
-    await loadVehicleGallerySettingsPage(scope.linkedTagUuid ?? vehicleId);
+    await loadVehicleGallerySettingsPage(vehicleId);
 
   return (
     <AppShell showNavbar={false}>

@@ -30,11 +30,39 @@ import {
   scanTypeDefinition,
   type ScanType,
 } from "@/lib/documents/scan-types";
+import { documentDetailHref } from "@/lib/vehicle-surface/documents-list-href";
+import {
+  garagePathForVehicle,
+  isVehicleId,
+  vehicleSurfaceHref,
+} from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import { setScanSurfaceActive } from "@/lib/ui/scan-surface-state";
 import type { Document } from "@/types/database";
 
+function surfacePath(
+  scope: VehicleSurfaceScope | undefined,
+  tagUuid: string,
+  segment?: string,
+): string {
+  if (scope) {
+    return segment?.trim()
+      ? vehicleSurfaceHref(scope, segment)
+      : vehicleSurfaceHref(scope);
+  }
+  if (isVehicleId(tagUuid)) {
+    return garagePathForVehicle(tagUuid, segment);
+  }
+  if (!segment?.trim()) {
+    return `/v/${tagUuid}`;
+  }
+  const normalized = segment.startsWith("/") ? segment : `/${segment}`;
+  return `/v/${tagUuid}${normalized}`;
+}
+
 interface ServiceInspectionsViewProps {
   tagUuid: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   vehicleId: string;
   vehicleLabel: string;
   documents: Document[];
@@ -48,6 +76,7 @@ type ServiceScanMode = "list" | "pick-scan" | "scanner";
 
 export function ServiceInspectionsView({
   tagUuid,
+  vehicleSurfaceScope,
   vehicleId,
   vehicleLabel,
   documents,
@@ -55,6 +84,8 @@ export function ServiceInspectionsView({
   canManageDocuments = true,
 }: ServiceInspectionsViewProps) {
   const router = useRouter();
+  const path = (segment?: string) =>
+    surfacePath(vehicleSurfaceScope, tagUuid, segment);
   const [mode, setMode] = useState<ServiceScanMode>(
     initialScan ? "pick-scan" : "list",
   );
@@ -97,7 +128,7 @@ export function ServiceInspectionsView({
     return (
       <ScanTypePicker
         vehicleLabel={vehicleLabel}
-        backHref={`/v/${tagUuid}/service`}
+        backHref={path("service")}
         suggestedType="service"
         onBack={() => {
           setScanType(null);
@@ -119,7 +150,7 @@ export function ServiceInspectionsView({
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
         existingDocuments={documents}
-        backHref={`/v/${tagUuid}/service`}
+        backHref={path("service")}
         backLabel="Service & Wartung"
         onBack={() => {
           setMode("pick-scan");
@@ -127,8 +158,8 @@ export function ServiceInspectionsView({
         scanType={scanType}
         successHref={
           scanType === "service"
-            ? `/v/${tagUuid}/service`
-            : `/v/${tagUuid}/dokumente?type=${def.successTypeQuery}`
+            ? path("service")
+            : path(`dokumente?type=${def.successTypeQuery}`)
         }
       />
     );
@@ -162,7 +193,7 @@ export function ServiceInspectionsView({
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <header className="vd-anim-header space-y-4">
           <PressableLink
-            href={`/v/${tagUuid}`}
+            href={path()}
             variant="pill"
             className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
           >
@@ -225,7 +256,11 @@ export function ServiceInspectionsView({
                 const canDelete =
                   canManageDocuments &&
                   (isMock || !doc.file_url.startsWith("/demo/"));
-                const detailHref = `/v/${tagUuid}/dokumente/${doc.id}`;
+                const detailHref = documentDetailHref(
+                  tagUuid,
+                  doc.id,
+                  vehicleSurfaceScope,
+                );
 
                 return (
                   <li

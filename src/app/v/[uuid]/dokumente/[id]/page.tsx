@@ -4,7 +4,11 @@ import { notFound, redirect } from "next/navigation";
 import { DocumentAbeDetailView } from "@/components/documents/document-abe-detail-view";
 import { DocumentInvoiceDetailView } from "@/components/documents/document-invoice-detail-view";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
+import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
+import { resolveVehicleIdScanMisroute } from "@/lib/vehicle-surface/resolve-vehicle-id-scan-misroute";
 import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { FEATURE } from "@/lib/permissions/feature-access";
@@ -25,6 +29,12 @@ export default async function DocumentDetailPage({
   params,
 }: DocumentDetailPageProps) {
   const { uuid, id } = await params;
+  const user = await getCurrentUser();
+  const misroute = await resolveVehicleIdScanMisroute(uuid, user?.id ?? null);
+  if (misroute.kind === "owner_garage") {
+    redirect(garagePathForVehicle(misroute.vehicleId, `dokumente/${id}`));
+  }
+
   const { result, access, isDemoShowcase } = await requireTagWriter(uuid, {
     load: { documents: { mode: "none" } },
   });
@@ -44,6 +54,11 @@ export default async function DocumentDetailPage({
   }
 
   const vehicleLabel = `${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`;
+  const scope = {
+    vehicleId: result.vehicle!.id,
+    linkedTagUuid: result.tag.uuid,
+  };
+  const listBackHref = documentsListHref(result.tag.uuid, document.type, scope);
   const membershipActive = await userHasActiveMembership(result.vehicle!.user_id);
   const manualEntry = isManualVehicleEntry(document);
   const canManageDocument =
@@ -56,6 +71,7 @@ export default async function DocumentDetailPage({
           tagUuid={result.tag.uuid}
           vehicleLabel={vehicleLabel}
           document={document}
+          backHref={listBackHref}
         />
       </>
     ) : (
@@ -64,6 +80,7 @@ export default async function DocumentDetailPage({
         tagUuid={result.tag.uuid}
         vehicleLabel={vehicleLabel}
         document={document}
+        backHref={listBackHref}
         canEdit={
           canManageDocument &&
           (access.isOwner ||

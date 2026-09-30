@@ -1,15 +1,12 @@
 import "server-only";
 
-import { requireTagOwner } from "@/lib/auth/require-tag-access";
 import { loadShowcaseGalleryDocuments } from "@/lib/documents/load-showcase-gallery";
-import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import { requireVehicleSettingsOwner } from "@/lib/vehicles/require-vehicle-settings-owner";
 
-export async function loadVehicleGallerySettingsPage(tagUuid: string) {
-  const { result, isDemoShowcase } = await requireTagOwner(tagUuid, {
-    loginNext: `/v/${tagUuid}/einstellungen/galerie`,
+export async function loadVehicleGallerySettingsPage(identifier: string) {
+  const { vehicle, isDemo } = await requireVehicleSettingsOwner(identifier, {
+    loginSuffix: "einstellungen/galerie",
   });
-  const vehicle = result.vehicle!;
-  const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(tagUuid);
   const galleryPhotos = await loadShowcaseGalleryDocuments(vehicle.id);
 
   return { vehicle, isDemo, galleryPhotos };

@@ -24,7 +24,7 @@ export default async function VehicleDynoSettingsPage({
 }: DynoSettingsPageProps) {
   const { vehicleId } = await params;
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
-  const { vehicle, isDemo } = await loadVehicleDynoSettingsPage(scope.linkedTagUuid ?? vehicleId);
+  const { vehicle, isDemo } = await loadVehicleDynoSettingsPage(vehicleId);
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
   const dynoChartUrl = resolveOwnerDynoChartViewUrl(
     vehicle.id,

@@ -1,9 +1,8 @@
 import "server-only";
 
-import { requireTagOwner } from "@/lib/auth/require-tag-access";
 import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
 import { markShowcaseLikesSeen } from "@/lib/showcase/swipe-record";
-import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import { requireVehicleSettingsOwner } from "@/lib/vehicles/require-vehicle-settings-owner";
 
 export async function loadShowcaseSwipeInboxForVehicle(
   vehicleId: string,
@@ -29,12 +28,13 @@ export async function loadShowcaseSwipeInboxForVehicle(
   return { showcaseSwipeTotalLikes, showcaseSwipeUnreadLikes };
 }
 
-export async function loadVehiclePublicProfileSettingsPage(tagUuid: string) {
-  const { result, isDemoShowcase } = await requireTagOwner(tagUuid, {
-    loginNext: `/v/${tagUuid}/einstellungen/profil`,
-  });
-  const vehicle = result.vehicle!;
-  const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(tagUuid);
+export async function loadVehiclePublicProfileSettingsPage(identifier: string) {
+  const { vehicle, scope, isDemo } = await requireVehicleSettingsOwner(
+    identifier,
+    {
+      loginSuffix: "einstellungen/profil",
+    },
+  );
 
   const { showcaseSwipeTotalLikes, showcaseSwipeUnreadLikes } =
     await loadShowcaseSwipeInboxForVehicle(vehicle.id, isDemo);
@@ -42,7 +42,7 @@ export async function loadVehiclePublicProfileSettingsPage(tagUuid: string) {
   return {
     vehicle,
     isDemo,
-    hasLinkedTag: true,
+    hasLinkedTag: Boolean(scope.linkedTagUuid?.trim()),
     showcaseSwipeTotalLikes,
     showcaseSwipeUnreadLikes,
   };
