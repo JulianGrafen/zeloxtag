@@ -96,7 +96,6 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       id: "operating-costs",
       title: "Kostenübersicht",
       icon: "wallet",
-      featured: true,
     },
     {
       id: "tuv",
