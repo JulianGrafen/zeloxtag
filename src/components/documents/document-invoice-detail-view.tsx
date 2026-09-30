@@ -531,7 +531,7 @@ export function DocumentInvoiceDetailView({
         <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
           <div className="flex items-center justify-between border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
             <div className="min-w-0">
-              <p className="truncate text-[0.75rem] font-medium text-[color:var(--vd-text)]">
+              <p className="truncate text-[0.75rem] font-medium text-neutral-900">
                 {fileName}
               </p>
               <p className="text-[0.68rem] text-[color:var(--vd-muted)]">
@@ -559,7 +559,7 @@ export function DocumentInvoiceDetailView({
               variant="button"
               disabled={deleting}
               onClick={handleDeleteInvoice}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-[0.88rem] font-semibold text-red-700 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-600 bg-red-600 px-4 py-3.5 text-[0.88rem] font-semibold text-white disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
               {deleting
@@ -593,6 +593,7 @@ export function DocumentInvoiceDetailView({
         }
       />
 
+      {!editPickerOpen ? (
       <FixedBottomActionBar>
         <div className="flex gap-2">
           {useCentralEdit ? (
@@ -621,6 +622,7 @@ export function DocumentInvoiceDetailView({
           </PressableButton>
         </div>
       </FixedBottomActionBar>
+      ) : null}
     </div>
   );
 }

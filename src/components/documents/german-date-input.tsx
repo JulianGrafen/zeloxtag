@@ -123,7 +123,7 @@ export function GermanDateInput({
             type="button"
             disabled={disabled}
             aria-label="Kalender öffnen"
-            className="inline-flex w-10 shrink-0 items-center justify-center self-stretch rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex w-[var(--claim-field-min-height)] shrink-0 items-center justify-center self-stretch rounded-[var(--vd-radius-control)] border border-[color:var(--vd-border)] bg-[var(--claim-input-bg)] text-[color:var(--vd-text)] shadow-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Calendar className="h-4 w-4" aria-hidden />
           </Popover.Trigger>

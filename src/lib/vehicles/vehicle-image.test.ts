@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE } from "./silhouette-constants";
 import { resolveVehicleCatalogImage, resolveVehicleImage } from "./vehicle-image";
 
 describe("resolveVehicleImage", () => {
@@ -13,7 +14,7 @@ describe("resolveVehicleImage", () => {
         "https://example.supabase.co/storage/v1/object/public/vehicle-silhouettes/x/silhouette.png?v=99",
     });
     expect(match).toEqual({
-      src: `/api/vehicle/silhouette/${vehicleId}?v=99`,
+      src: `/api/vehicle/silhouette/${vehicleId}?v=99&w=${SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE}`,
       alt: "BMW 530d",
     });
   });
@@ -42,7 +43,7 @@ describe("resolveVehicleImage", () => {
       silhouetteCacheBust: "2026-03-20T12:00:00.000Z",
     });
     expect(match).toEqual({
-      src: `/api/vehicle/silhouette/${vehicleId}?v=2026-03-20T12%3A00%3A00.000Z`,
+      src: `/api/vehicle/silhouette/${vehicleId}?v=2026-03-20T12%3A00%3A00.000Z&w=${SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE}`,
       alt: "BMW 530d",
     });
   });

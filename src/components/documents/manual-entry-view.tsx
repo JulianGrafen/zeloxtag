@@ -50,6 +50,10 @@ import {
   inlineDocumentProxyUrl,
   isViewableDocumentUrl,
 } from "@/lib/documents/viewable-url";
+import {
+  isOilChangeSelfMadeVendor,
+  resolveOilChangeVendor,
+} from "@/lib/documents/oil-changes";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
 import type { Document, DocumentLineItem } from "@/types/database";
@@ -79,6 +83,16 @@ type PhotoDraft = {
   file: File;
   previewUrl: string;
 };
+
+const MANUAL_ENTRY_FIELD_LABEL =
+  "text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]";
+const MANUAL_ENTRY_FIELD_BLOCK = "block space-y-1.5";
+const MANUAL_ENTRY_CONTROL =
+  "claim-input w-full min-h-[var(--claim-field-min-height)]";
+const MANUAL_ENTRY_CATEGORY_BTN =
+  "flex min-h-[var(--claim-field-min-height)] items-center rounded-[var(--vd-radius-control)] border px-3 text-left text-[0.85rem] font-semibold";
+const MANUAL_ENTRY_LIST_ICON_BTN =
+  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-neutral-900";
 
 export function ManualEntryView({
   tagUuid,
@@ -114,6 +128,7 @@ export function ManualEntryView({
   const [date, setDate] = useState("");
   const [amount, setAmount] = useState("");
   const [vendor, setVendor] = useState("");
+  const [selfMade, setSelfMade] = useState(false);
   const [mileageKm, setMileageKm] = useState("");
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([]);
@@ -234,7 +249,11 @@ export function ManualEntryView({
         ? editingDocument.amount.toFixed(2).replace(".", ",")
         : "",
     );
-    setVendor(editingDocument.vendor ?? "");
+    const storedVendor = editingDocument.vendor ?? "";
+    setSelfMade(isOilChangeSelfMadeVendor(storedVendor));
+    setVendor(
+      isOilChangeSelfMadeVendor(storedVendor) ? "" : storedVendor,
+    );
     setMileageKm(
       editingDocument.mileage_km != null
         ? String(editingDocument.mileage_km)
@@ -269,6 +288,7 @@ export function ManualEntryView({
     setDate("");
     setAmount("");
     setVendor("");
+    setSelfMade(false);
     setMileageKm("");
     setNotes("");
     setLineItems([]);
@@ -353,6 +373,13 @@ export function ManualEntryView({
     }
   }
 
+  function vendorForSubmit(): string {
+    if (selfMade) {
+      return resolveOilChangeVendor(true, "") ?? "";
+    }
+    return vendor;
+  }
+
   function appendUmbauMetadata(
     formData: FormData,
     baseTitle: string,
@@ -385,7 +412,7 @@ export function ManualEntryView({
           formData.set("title", baseTitle);
           formData.set("date", date);
           formData.set("amount", amount);
-          formData.set("vendor", vendor);
+          formData.set("vendor", vendorForSubmit());
           formData.set("mileageKm", mileageKm);
           formData.set("notes", notes);
           appendLineItemsToFormData(formData);
@@ -529,7 +556,7 @@ export function ManualEntryView({
         formData.set("title", baseTitle);
         formData.set("date", date);
         formData.set("amount", amount);
-        formData.set("vendor", vendor);
+        formData.set("vendor", vendorForSubmit());
         formData.set("mileageKm", mileageKm);
         formData.set("notes", notes);
         appendLineItemsToFormData(formData);
@@ -663,20 +690,18 @@ export function ManualEntryView({
             </p>
             {!isUmbau ? (
               <>
-                <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Art
-                </p>
-                <div className="grid grid-cols-2 gap-2">
+                <p className={MANUAL_ENTRY_FIELD_LABEL}>Art</p>
+                <div className="grid grid-cols-2 gap-3">
                   {MANUAL_ENTRY_CATEGORIES.map((id) => (
                     <PressableButton
                       key={id}
                       type="button"
                       variant="button"
                       onClick={() => setCategory(id)}
-                      className={`rounded-xl border px-3 py-3 text-left text-[0.85rem] font-semibold ${
+                      className={`${MANUAL_ENTRY_CATEGORY_BTN} ${
                         category === id
-                          ? "border-neutral-900 bg-neutral-900 text-white"
-                          : "border-[color:var(--vd-border)] bg-white text-[color:var(--vd-text)]"
+                          ? "border-neutral-900 bg-white text-neutral-900 shadow-[var(--vd-shadow-sm)]"
+                          : "border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-muted)]"
                       }`}
                     >
                       {MANUAL_ENTRY_CATEGORY_LABELS[id]}
@@ -686,14 +711,12 @@ export function ManualEntryView({
               </>
             ) : null}
 
-            <label className="block space-y-1.5">
-              <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Titel
-              </span>
+            <label className={MANUAL_ENTRY_FIELD_BLOCK}>
+              <span className={MANUAL_ENTRY_FIELD_LABEL}>Titel</span>
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                className="claim-input w-full"
+                className={MANUAL_ENTRY_CONTROL}
                 placeholder={
                   isUmbau || category === "tuning"
                     ? "z. B. KW V3 Fahrwerk (optional)"
@@ -702,27 +725,27 @@ export function ManualEntryView({
               />
             </label>
 
-            <div className={isUmbau ? "space-y-3" : "grid grid-cols-2 gap-3"}>
-              <label className="block space-y-1.5">
-                <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Datum
-                </span>
+            <div
+              className={
+                isUmbau ? "space-y-3" : "grid grid-cols-2 items-start gap-3"
+              }
+            >
+              <label className={MANUAL_ENTRY_FIELD_BLOCK}>
+                <span className={MANUAL_ENTRY_FIELD_LABEL}>Datum</span>
                 <GermanDateInput
                   value={date || null}
                   onChange={(iso) => setDate(iso ?? "")}
-                  className="claim-input w-full"
+                  className={MANUAL_ENTRY_CONTROL}
                 />
               </label>
               {!isUmbau ? (
-                <label className="block space-y-1.5">
-                  <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                    Betrag (€)
-                  </span>
+                <label className={MANUAL_ENTRY_FIELD_BLOCK}>
+                  <span className={MANUAL_ENTRY_FIELD_LABEL}>Betrag (€)</span>
                   <input
                     inputMode="decimal"
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}
-                    className="claim-input w-full"
+                    className={MANUAL_ENTRY_CONTROL}
                     placeholder={
                       lineItems.length > 0 ? "aus Positionen" : "optional"
                     }
@@ -733,26 +756,49 @@ export function ManualEntryView({
 
             {!isUmbau ? (
               <>
-                <label className="block space-y-1.5">
-                  <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                    Werkstatt / Quelle
-                  </span>
-                  <input
-                    value={vendor}
-                    onChange={(event) => setVendor(event.target.value)}
-                    className="claim-input w-full"
-                    placeholder="optional"
-                  />
-                </label>
+                <div className="space-y-2">
+                  {!selfMade ? (
+                    <label className={MANUAL_ENTRY_FIELD_BLOCK}>
+                      <span className={MANUAL_ENTRY_FIELD_LABEL}>
+                        Werkstatt / Quelle
+                      </span>
+                      <input
+                        value={vendor}
+                        onChange={(event) => setVendor(event.target.value)}
+                        className={MANUAL_ENTRY_CONTROL}
+                        placeholder="optional"
+                      />
+                    </label>
+                  ) : null}
+                  <PressableButton
+                    type="button"
+                    variant="button"
+                    aria-pressed={selfMade}
+                    onClick={() => {
+                      setSelfMade((active) => {
+                        const next = !active;
+                        if (next) setVendor("");
+                        return next;
+                      });
+                    }}
+                    className={`${MANUAL_ENTRY_CATEGORY_BTN} w-full justify-center ${
+                      selfMade
+                        ? "border-neutral-900 bg-white text-neutral-900 shadow-[var(--vd-shadow-sm)]"
+                        : "border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-muted)]"
+                    }`}
+                  >
+                    Selbstgemacht
+                  </PressableButton>
+                </div>
 
-                <label className="block space-y-1.5">
-                  <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                <label className={MANUAL_ENTRY_FIELD_BLOCK}>
+                  <span className={MANUAL_ENTRY_FIELD_LABEL}>
                     Kilometerstand
                   </span>
                   <MileageKmInput
                     value={parseMileageKmInput(mileageKm)}
                     onChange={(km) => setMileageKm(km === null ? "" : String(km))}
-                    className="claim-input w-full"
+                    className={MANUAL_ENTRY_CONTROL}
                     placeholder="optional"
                   />
                 </label>
@@ -772,15 +818,13 @@ export function ManualEntryView({
               />
             ) : null}
 
-            <label className="block space-y-1.5">
-              <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Notiz
-              </span>
+            <label className={MANUAL_ENTRY_FIELD_BLOCK}>
+              <span className={MANUAL_ENTRY_FIELD_LABEL}>Notiz</span>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
-                className="claim-input w-full resize-none"
+                className={`${MANUAL_ENTRY_CONTROL} resize-none`}
                 placeholder={
                   isUmbau
                     ? "Optional — was zeigt das Foto?"
@@ -994,7 +1038,7 @@ export function ManualEntryView({
                       href={`/v/${tagUuid}/dokumente/${doc.id}`}
                       variant="button"
                       aria-label={`Bearbeiten: ${displayDocumentTitle(doc.title)}`}
-                      className="absolute left-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-white/95 text-[color:var(--vd-text)] shadow-sm"
+                      className="absolute left-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-white/95 text-neutral-900 shadow-sm"
                     >
                       <Pencil className="h-3.5 w-3.5" aria-hidden />
                     </PressableLink>
@@ -1066,7 +1110,7 @@ export function ManualEntryView({
                       href={`/v/${tagUuid}/dokumente/${doc.id}`}
                       variant="button"
                       aria-label={`Bearbeiten: ${displayDocumentTitle(doc.title)}`}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-[color:var(--vd-text)]"
+                      className={MANUAL_ENTRY_LIST_ICON_BTN}
                     >
                       <Pencil className="h-4 w-4" aria-hidden />
                     </PressableLink>

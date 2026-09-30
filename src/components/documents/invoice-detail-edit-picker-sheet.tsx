@@ -33,7 +33,7 @@ export function InvoiceDetailEditPickerSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-neutral-950/55 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[125] flex items-end justify-center bg-neutral-950/55 p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="invoice-edit-picker-title"
@@ -42,7 +42,7 @@ export function InvoiceDetailEditPickerSheet({
       }}
     >
       <div
-        className="flex max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4rem))] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[1.5rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow)] sm:max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] sm:rounded-[1.5rem]"
+        className="flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-0.5rem))] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[1.5rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow)] sm:max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] sm:rounded-[1.5rem]"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="flex shrink-0 items-start gap-3 border-b border-[color:var(--vd-border)] px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
@@ -67,9 +67,10 @@ export function InvoiceDetailEditPickerSheet({
           </button>
         </header>
 
-        <ul
+        <div
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
         >
+          <ul className="space-y-0.5">
           {addPhotosHref ? (
             <li>
               <PressableLink
@@ -102,7 +103,8 @@ export function InvoiceDetailEditPickerSheet({
               </PressableButton>
             </li>
           ))}
-        </ul>
+          </ul>
+        </div>
       </div>
     </div>
   );
