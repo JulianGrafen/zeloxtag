@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 
+import { FIXED_BOTTOM_ACTION_Z } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import {
   isPaywallOpen,
@@ -138,12 +139,16 @@ export function DashboardScanFab({ hidden = false, ...ctaProps }: DashboardScanC
 
   return createPortal(
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-30"
+      className={cn(
+        "pointer-events-none fixed inset-x-0 bottom-0",
+        FIXED_BOTTOM_ACTION_Z,
+      )}
       data-tour="scan-fab-shell"
     >
-      <div aria-hidden className="vd-fab-gradient h-28" />
-      <div className="pointer-events-auto relative z-10 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5">
-        <div className="mx-auto max-w-lg">
+      <div
+        className="pointer-events-auto relative border-t border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_28px_rgba(0,0,0,0.08)] sm:px-5"
+      >
+        <div className="relative z-10 mx-auto max-w-lg">
           <DashboardScanCta {...ctaProps} />
         </div>
       </div>

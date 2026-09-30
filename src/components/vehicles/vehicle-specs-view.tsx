@@ -7,6 +7,7 @@ import { ArrowLeft, Gauge, Save } from "lucide-react";
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
 import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
+import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import {
   PressableButton,
   PressableLink,
@@ -24,10 +25,12 @@ import {
   ACCEL_100_200_SEC_MAX,
   ACCEL_100_200_SEC_MIN,
   formatAccelSecondsDe,
+  formatAccelSecondsInput,
   formatOilChangeIntervalMonthsLabel,
+  isAccelSecondsInputDraft,
   isOilChangeIntervalKmOption,
   isOilChangeIntervalMonthsOption,
-  parseAccelSeconds,
+  parseAccelSecondsFromDraft,
   OIL_CHANGE_INTERVAL_KM_OPTIONS,
   OIL_CHANGE_INTERVAL_MONTHS_OPTIONS,
   parseVehicleTechSpecs,
@@ -85,6 +88,12 @@ export function VehicleSpecsView({
   );
   const [vin, setVin] = useState(vehicle.vin ?? "");
   const [specs, setSpecs] = useState<VehicleTechSpecs>(initialSpecs);
+  const [accel0To100Text, setAccel0To100Text] = useState(
+    formatAccelSecondsInput(initialSpecs.accel0To100Sec),
+  );
+  const [accel100To200Text, setAccel100To200Text] = useState(
+    formatAccelSecondsInput(initialSpecs.accel100To200Sec),
+  );
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -94,28 +103,6 @@ export function VehicleSpecsView({
     value: string,
   ) {
     setSpecs((prev) => {
-      if (key === "accel0To100Sec") {
-        const trimmed = value.trim();
-        return {
-          ...prev,
-          accel0To100Sec: trimmed
-            ? parseAccelSeconds(trimmed, ACCEL_0_100_SEC_MIN, ACCEL_0_100_SEC_MAX)
-            : null,
-        };
-      }
-      if (key === "accel100To200Sec") {
-        const trimmed = value.trim();
-        return {
-          ...prev,
-          accel100To200Sec: trimmed
-            ? parseAccelSeconds(
-                trimmed,
-                ACCEL_100_200_SEC_MIN,
-                ACCEL_100_200_SEC_MAX,
-              )
-            : null,
-        };
-      }
       if (
         key === "powerPs" ||
         key === "powerKw" ||
@@ -135,9 +122,75 @@ export function VehicleSpecsView({
     setSaved(false);
   }
 
+  function patchAccel0To100Text(value: string) {
+    if (!isAccelSecondsInputDraft(value)) return;
+    setAccel0To100Text(value);
+    setSpecs((prev) => ({
+      ...prev,
+      accel0To100Sec: parseAccelSecondsFromDraft(
+        value,
+        ACCEL_0_100_SEC_MIN,
+        ACCEL_0_100_SEC_MAX,
+      ),
+    }));
+    setSaved(false);
+  }
+
+  function patchAccel100To200Text(value: string) {
+    if (!isAccelSecondsInputDraft(value)) return;
+    setAccel100To200Text(value);
+    setSpecs((prev) => ({
+      ...prev,
+      accel100To200Sec: parseAccelSecondsFromDraft(
+        value,
+        ACCEL_100_200_SEC_MIN,
+        ACCEL_100_200_SEC_MAX,
+      ),
+    }));
+    setSaved(false);
+  }
+
+  function commitAccel0To100Text() {
+    const parsed = parseAccelSecondsFromDraft(
+      accel0To100Text,
+      ACCEL_0_100_SEC_MIN,
+      ACCEL_0_100_SEC_MAX,
+    );
+    setSpecs((prev) => ({ ...prev, accel0To100Sec: parsed }));
+    setAccel0To100Text(formatAccelSecondsInput(parsed));
+  }
+
+  function commitAccel100To200Text() {
+    const parsed = parseAccelSecondsFromDraft(
+      accel100To200Text,
+      ACCEL_100_200_SEC_MIN,
+      ACCEL_100_200_SEC_MAX,
+    );
+    setSpecs((prev) => ({ ...prev, accel100To200Sec: parsed }));
+    setAccel100To200Text(formatAccelSecondsInput(parsed));
+  }
+
   function handleSave() {
     setError(null);
     setSaved(false);
+    const accel0To100Sec = parseAccelSecondsFromDraft(
+      accel0To100Text,
+      ACCEL_0_100_SEC_MIN,
+      ACCEL_0_100_SEC_MAX,
+    );
+    const accel100To200Sec = parseAccelSecondsFromDraft(
+      accel100To200Text,
+      ACCEL_100_200_SEC_MIN,
+      ACCEL_100_200_SEC_MAX,
+    );
+    const techSpecs: VehicleTechSpecs = {
+      ...specs,
+      accel0To100Sec,
+      accel100To200Sec,
+    };
+    setSpecs(techSpecs);
+    setAccel0To100Text(formatAccelSecondsInput(accel0To100Sec));
+    setAccel100To200Text(formatAccelSecondsInput(accel100To200Sec));
     startTransition(async () => {
       const result = await updateVehicleSpecs({
         vehicleId: vehicle.id,
@@ -146,7 +199,7 @@ export function VehicleSpecsView({
         model,
         year,
         vin,
-        techSpecs: specs,
+        techSpecs,
       });
       if (result.status === "error") {
         setError(result.message);
@@ -254,7 +307,9 @@ export function VehicleSpecsView({
         </VehicleSettingsSubmenuGroup>
 
         {canEdit ? (
+          <>
           <form
+            id="vehicle-tech-specs-form"
             className="space-y-5"
             onSubmit={(event) => {
               event.preventDefault();
@@ -382,14 +437,11 @@ export function VehicleSpecsView({
                 <Field label="0–100">
                   <input
                     inputMode="decimal"
-                    value={
-                      specs.accel0To100Sec != null
-                        ? String(specs.accel0To100Sec).replace(".", ",")
-                        : ""
-                    }
+                    value={accel0To100Text}
                     onChange={(event) =>
-                      patchSpec("accel0To100Sec", event.target.value)
+                      patchAccel0To100Text(event.target.value)
                     }
+                    onBlur={commitAccel0To100Text}
                     className="claim-input w-full"
                     placeholder="5,2"
                     aria-describedby="accel-0-100-hint"
@@ -398,14 +450,11 @@ export function VehicleSpecsView({
                 <Field label="100–200">
                   <input
                     inputMode="decimal"
-                    value={
-                      specs.accel100To200Sec != null
-                        ? String(specs.accel100To200Sec).replace(".", ",")
-                        : ""
-                    }
+                    value={accel100To200Text}
                     onChange={(event) =>
-                      patchSpec("accel100To200Sec", event.target.value)
+                      patchAccel100To200Text(event.target.value)
                     }
+                    onBlur={commitAccel100To200Text}
                     className="claim-input w-full"
                     placeholder="12,4"
                     aria-describedby="accel-100-200-hint"
@@ -553,20 +602,20 @@ export function VehicleSpecsView({
               </div>
             </section>
 
-            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <div className="pointer-events-auto w-full max-w-lg">
-                <PressableButton
-                  type="submit"
-                  variant="button"
-                  disabled={pending}
-                  className="claim-cta inline-flex w-full items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  <Save className="h-4 w-4" aria-hidden />
-                  {pending ? "Speichern…" : "Speichern"}
-                </PressableButton>
-              </div>
-            </div>
           </form>
+          <FixedBottomActionBar portal>
+            <PressableButton
+              type="submit"
+              form="vehicle-tech-specs-form"
+              variant="button"
+              disabled={pending}
+              className="claim-cta inline-flex w-full items-center justify-center gap-2"
+            >
+              <Save className="h-4 w-4" aria-hidden />
+              {pending ? "Speichern…" : "Speichern"}
+            </PressableButton>
+          </FixedBottomActionBar>
+          </>
         ) : (
           <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
             <ReadRow label="Marke" value={vehicle.make} />

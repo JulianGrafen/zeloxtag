@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   countFilledTechSpecs,
   formatAccelSecondsDe,
+  formatAccelSecondsInput,
   formatOilChangeIntervalMonthsLabel,
+  isAccelSecondsInputDraft,
   parseAccelSeconds,
+  parseAccelSecondsFromDraft,
   isOilChangeIntervalKmOption,
   isOilChangeIntervalMonthsOption,
   OIL_CHANGE_INTERVAL_KM_OPTIONS,
@@ -91,6 +94,14 @@ describe("vehicle tech specs", () => {
     expect(parseAccelSeconds("5.2", 1, 30)).toBe(5.2);
     expect(parseAccelSeconds(0.9, 1, 30)).toBeNull();
     expect(parseAccelSeconds(31, 1, 30)).toBeNull();
+
+    expect(isAccelSecondsInputDraft("5,")).toBe(true);
+    expect(isAccelSecondsInputDraft("5,2")).toBe(true);
+    expect(isAccelSecondsInputDraft("5.2")).toBe(true);
+    expect(isAccelSecondsInputDraft("5a")).toBe(false);
+    expect(parseAccelSecondsFromDraft("5,", 1, 30)).toBe(5);
+    expect(parseAccelSecondsFromDraft("5,2", 1, 30)).toBe(5.2);
+    expect(formatAccelSecondsInput(5.2)).toBe("5,2");
 
     const parsed = parseVehicleTechSpecs({
       accel0To100Sec: "6,8",

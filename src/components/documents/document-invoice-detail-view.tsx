@@ -34,6 +34,7 @@ import { EditableLineItemsSection } from "@/components/documents/editable-line-i
 import { InvoiceDetailEditPickerSheet } from "@/components/documents/invoice-detail-edit-picker-sheet";
 import { DocumentOriginalPreview } from "@/components/documents/document-original-preview";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
+import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import {
   PressableButton,
   PressableLink,
@@ -581,8 +582,8 @@ export function DocumentInvoiceDetailView({
         manualEditHref={manualEditHref}
       />
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
-        <div className="pointer-events-auto mx-auto flex max-w-lg gap-2">
+      <FixedBottomActionBar>
+        <div className="flex gap-2">
           {useCentralEdit ? (
             <PressableButton
               type="button"
@@ -608,7 +609,7 @@ export function DocumentInvoiceDetailView({
             Teilen
           </PressableButton>
         </div>
-      </div>
+      </FixedBottomActionBar>
     </div>
   );
 }

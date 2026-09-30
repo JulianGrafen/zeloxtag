@@ -680,8 +680,11 @@ a.claim-cta {
 
 .claim-cta-sm:disabled,
 .claim-cta:disabled {
-  opacity: 0.55;
+  opacity: 1;
+  cursor: not-allowed;
   box-shadow: none;
+  background-color: color-mix(in srgb, var(--claim-cta-bg) 82%, var(--vd-muted));
+  color: color-mix(in srgb, var(--claim-cta-fg) 88%, var(--vd-muted));
 }
 
 .claim-back {

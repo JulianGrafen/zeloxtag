@@ -42,6 +42,7 @@ import {
   ServiceIntervalDueHint,
   ServiceIntervalPartNumber,
 } from "./service-interval-meta";
+import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import { PressableButton, PressableLink } from "./Pressable";
 
 interface OilIntervalDetailViewProps {
@@ -447,19 +448,17 @@ export function OilIntervalDetailView({
       />
 
       {useCentralEdit ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
-          <div className="pointer-events-auto mx-auto flex max-w-lg gap-2">
-            <PressableButton
-              type="button"
-              variant="button"
-              onClick={() => setEditPickerOpen(true)}
-              className="claim-cta inline-flex w-full items-center justify-center gap-2"
-            >
-              <Pencil className="h-4 w-4" aria-hidden />
-              Bearbeiten
-            </PressableButton>
-          </div>
-        </div>
+        <FixedBottomActionBar>
+          <PressableButton
+            type="button"
+            variant="button"
+            onClick={() => setEditPickerOpen(true)}
+            className="claim-cta inline-flex w-full items-center justify-center gap-2"
+          >
+            <Pencil className="h-4 w-4" aria-hidden />
+            Bearbeiten
+          </PressableButton>
+        </FixedBottomActionBar>
       ) : null}
     </div>
   );

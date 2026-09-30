@@ -15,6 +15,7 @@ import { deleteDocument } from "@/actions/delete-document";
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
+import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import {
   PressableButton,
   PressableLink,
@@ -302,22 +303,20 @@ export function ServiceInspectionsView({
       </div>
 
       {canManageDocuments ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="pointer-events-auto w-full max-w-lg">
-            <PressableButton
-              type="button"
-              variant="button"
-              onClick={() => {
-                setScanType(null);
-                setMode("pick-scan");
-              }}
-              className="claim-cta inline-flex w-full items-center justify-center gap-2"
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              Inspektion scannen
-            </PressableButton>
-          </div>
-        </div>
+        <FixedBottomActionBar>
+          <PressableButton
+            type="button"
+            variant="button"
+            onClick={() => {
+              setScanType(null);
+              setMode("pick-scan");
+            }}
+            className="claim-cta inline-flex w-full items-center justify-center gap-2"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Inspektion scannen
+          </PressableButton>
+        </FixedBottomActionBar>
       ) : null}
     </div>
   );

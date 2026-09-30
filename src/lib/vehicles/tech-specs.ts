@@ -275,6 +275,30 @@ export function formatAccelSecondsDe(seconds: number): string {
   })} s`;
 }
 
+/** Controlled input value for acceleration fields (German decimal comma). */
+export function formatAccelSecondsInput(seconds: number | null): string {
+  if (seconds == null) return "";
+  return String(seconds).replace(".", ",");
+}
+
+/** Allow partial decimal entry while typing (e.g. `5,`). */
+export function isAccelSecondsInputDraft(raw: string): boolean {
+  return /^\d*([,.]\d*)?$/.test(raw);
+}
+
+/** Parse draft text; ignores trailing comma/dot until the user finishes typing. */
+export function parseAccelSecondsFromDraft(
+  raw: string,
+  min: number,
+  max: number,
+): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "," || trimmed === ".") return null;
+  const withoutTrailingSeparator = trimmed.replace(/[,.]$/, "");
+  if (!withoutTrailingSeparator) return null;
+  return parseAccelSeconds(withoutTrailingSeparator, min, max);
+}
+
 export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
   let value = raw;
   if (typeof raw === "string") {

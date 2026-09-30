@@ -34,7 +34,7 @@ export function StickyPaywallCta({
         "z-20 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 shadow-[var(--paywall-sticky-footer-shadow)] backdrop-blur-xl",
         inline
           ? "shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
-          : "fixed inset-x-0 bottom-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2",
+          : "fixed inset-x-0 bottom-0 z-[110] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2",
       )}
     >
       <div className="mx-auto w-full max-w-lg">

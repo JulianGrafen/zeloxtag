@@ -22,6 +22,7 @@ import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { parseMileageKmInput } from "@/lib/documents/format";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
+import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import {
   PressableButton,
   PressableLink,
@@ -998,19 +999,17 @@ export function ManualEntryView({
       </div>
 
       {!showForm ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="pointer-events-auto w-full max-w-lg">
-            <PressableButton
-              type="button"
-              variant="button"
-              onClick={() => setShowForm(true)}
-              className="claim-cta inline-flex w-full items-center justify-center gap-2"
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              {emptyCopy.cta}
-            </PressableButton>
-          </div>
-        </div>
+        <FixedBottomActionBar>
+          <PressableButton
+            type="button"
+            variant="button"
+            onClick={() => setShowForm(true)}
+            className="claim-cta inline-flex w-full items-center justify-center gap-2"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            {emptyCopy.cta}
+          </PressableButton>
+        </FixedBottomActionBar>
       ) : null}
     </div>
   );
