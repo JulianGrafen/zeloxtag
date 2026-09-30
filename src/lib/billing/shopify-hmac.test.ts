@@ -26,18 +26,18 @@ describe("verifyShopifyHmac", () => {
 });
 
 describe("shopMatchesAllowlist", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("fails closed in production when no allowlist is set", () => {
-    const prev = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     expect(shopMatchesAllowlist("zeloxtag.myshopify.com", null)).toBe(false);
-    process.env.NODE_ENV = prev;
   });
 
   it("allows any shop when no allowlist is set outside production", () => {
-    const prev = process.env.NODE_ENV;
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
     expect(shopMatchesAllowlist("zeloxtag.myshopify.com", null)).toBe(true);
-    process.env.NODE_ENV = prev;
   });
 
   it("requires an exact shop domain when configured", () => {

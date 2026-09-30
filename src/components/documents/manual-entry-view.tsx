@@ -460,9 +460,13 @@ export function ManualEntryView({
         } else if (photos.length > 1 && !isUmbau) {
           const pdf = await convertImagesToPdf(
             photos.map((entry) => entry.file),
+            {
+              fileName: "eintrag-fotos",
+              fullBleed: true,
+            },
           );
-          formData.set("photo", pdf, "fotos.pdf");
-          formData.set("pageCount", String(photos.length));
+          formData.set("photo", pdf.file, pdf.file.name);
+          formData.set("pageCount", String(pdf.pageCount));
         } else if (photos.length > 1 && isUmbau) {
           formData.set("photo", photos[0].file, photos[0].file.name);
         }
