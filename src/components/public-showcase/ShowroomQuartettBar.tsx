@@ -5,14 +5,14 @@ import { motion, useInView, type Variants } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 
+import {
+  SHOWROOM_QUARTETT_SEGMENT_CLASS,
+  ShowcaseQuartettSegmentBar,
+} from "./showcase-quartett-segment-bar";
 import { useShowroomMotion } from "./showroom-motion";
 import { SHOWCASE_QUARTETT_SEGMENT_COUNT } from "./showcase-quartett-scales";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
-
-/** Slanted Quartett-style parallelogram per segment. */
-const segmentShape =
-  "h-[10px] min-w-0 flex-1 origin-left [clip-path:polygon(16%_0,100%_0,84%_100%,0_100%)]";
 
 const segmentContainer: Variants = {
   hidden: {},
@@ -50,34 +50,44 @@ export function ShowroomQuartettBar({
 
   const clampedFilled = Math.min(total, Math.max(0, filled));
 
+  if (reduceMotion) {
+    return (
+      <ShowcaseQuartettSegmentBar
+        filled={clampedFilled}
+        total={total}
+        className={className}
+        segmentClassName={SHOWROOM_QUARTETT_SEGMENT_CLASS}
+      />
+    );
+  }
+
   return (
     <motion.div
       ref={ref}
       className={cn("flex w-full gap-[3px] px-0.5", className)}
       role="img"
       aria-hidden
-      variants={reduceMotion ? undefined : segmentContainer}
-      initial={reduceMotion ? undefined : "hidden"}
-      animate={reduceMotion ? undefined : inView ? "visible" : "hidden"}
+      variants={segmentContainer}
+      initial="hidden"
+      animate={inView ? "visible" : "hidden"}
     >
       {Array.from({ length: total }, (_, index) => {
         const isActive = index < clampedFilled;
 
         if (!isActive) {
           return (
-            <div key={index} className={cn(segmentShape, "bg-white/12")} />
+            <div
+              key={index}
+              className={cn(SHOWROOM_QUARTETT_SEGMENT_CLASS, "bg-white/12")}
+            />
           );
-        }
-
-        if (reduceMotion) {
-          return <div key={index} className={cn(segmentShape, "bg-white")} />;
         }
 
         return (
           <motion.div
             key={index}
             variants={segmentItem}
-            className={cn(segmentShape, "bg-white")}
+            className={cn(SHOWROOM_QUARTETT_SEGMENT_CLASS, "bg-white")}
           />
         );
       })}

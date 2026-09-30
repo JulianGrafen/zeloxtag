@@ -40,7 +40,8 @@ export function VehicleShowcaseStoryPassSettings({
           Story-Pass
         </h2>
         <p className="text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
-          9:16-Karte für Instagram Stories — Balken wie im Showroom (Quartett-Segmente).
+          9:16-Karte für Instagram Stories. Die Leistungsbalken sind angeschnittene
+          Quartett-Segmente wie im öffentlichen Showroom.
         </p>
       </div>
 

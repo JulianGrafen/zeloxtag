@@ -75,6 +75,7 @@ export function CompactMetricBar({ metric, lowerIsBetter = false }: CompactMetri
       </div>
       <ShowcaseQuartettSegmentBar
         filled={filled}
+        className="gap-1 px-1"
         segmentClassName={SHARE_CARD_QUARTETT_SEGMENT_CLASS}
       />
     </div>
