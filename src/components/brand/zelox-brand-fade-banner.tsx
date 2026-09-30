@@ -1,4 +1,4 @@
-import { showroom } from "@/components/public-showcase/showroom-styles";
+import { ZeloxBrandWordmark } from "@/components/brand/zelox-brand-wordmark";
 import { cn } from "@/lib/utils";
 
 type ZeloxBrandFadeBannerProps = {
@@ -22,9 +22,8 @@ export function ZeloxBrandFadeBanner({
           "zelox-brand-fade-banner__bar px-5 pb-2.5 pt-[max(0.65rem,env(safe-area-inset-top))]",
         )}
       >
-        <p className={`text-center ${showroom.brandWordmark}`}>
-          <span className="sr-only">ZeloxTag</span>
-          <span aria-hidden>ZELOX TAG</span>
+        <p className="text-center">
+          <ZeloxBrandWordmark size="banner" className="text-white" />
         </p>
       </div>
       {bottomFade ? (
