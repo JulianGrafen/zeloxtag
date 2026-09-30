@@ -6,7 +6,12 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { sessionCanAccessVehicleMedia } from "@/lib/auth/vehicle-access";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { logServerError } from "@/lib/security/public-error";
 import { loadVehicleSilhouetteBytes } from "@/lib/vehicles/load-silhouette-bytes";
+import {
+  imageContentTypeFromBytes,
+  isLikelyImageBytes,
+} from "@/lib/vehicles/silhouette-bytes";
 
 export const runtime = "nodejs";
 
@@ -35,15 +40,14 @@ function silhouetteCacheControl(request: NextRequest): string {
   return "private, max-age=3600";
 }
 
-async function imageResponse(
+function rawImageResponse(
   bytes: Uint8Array,
-  maxEdgePx: number,
   cacheControl: string,
-): Promise<NextResponse> {
-  const { body, contentType } = await optimizeWebImageBytes(bytes, {
-    maxEdgePx,
-  });
-  return new NextResponse(new Uint8Array(body), {
+): NextResponse {
+  const contentType = isLikelyImageBytes(bytes)
+    ? imageContentTypeFromBytes(bytes)
+    : "application/octet-stream";
+  return new NextResponse(new Uint8Array(bytes), {
     status: 200,
     headers: {
       "Content-Type": contentType,
@@ -51,6 +55,29 @@ async function imageResponse(
       "Cross-Origin-Resource-Policy": "same-origin",
     },
   });
+}
+
+async function imageResponse(
+  bytes: Uint8Array,
+  maxEdgePx: number,
+  cacheControl: string,
+): Promise<NextResponse> {
+  try {
+    const { body, contentType } = await optimizeWebImageBytes(bytes, {
+      maxEdgePx,
+    });
+    return new NextResponse(new Uint8Array(body), {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": cacheControl,
+        "Cross-Origin-Resource-Policy": "same-origin",
+      },
+    });
+  } catch (error) {
+    logServerError("[vehicle-silhouette] optimize failed", error);
+    return rawImageResponse(bytes, cacheControl);
+  }
 }
 
 /**

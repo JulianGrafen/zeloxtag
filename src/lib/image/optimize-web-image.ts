@@ -1,6 +1,9 @@
 import "server-only";
 
-import { imageContentTypeFromBytes } from "@/lib/vehicles/silhouette-bytes";
+import {
+  imageContentTypeFromBytes,
+  isLikelyImageBytes,
+} from "@/lib/vehicles/silhouette-bytes";
 
 import { getImageDimensions, resizeImageToMaxEdge } from "./server-canvas";
 
@@ -31,33 +34,48 @@ export async function optimizeWebImageBytes(
   const input = Buffer.from(bytes);
   const contentType = imageContentTypeFromBytes(bytes);
 
-  const dims = await getImageDimensions(input, contentType);
-  const longEdge = dims ? Math.max(dims.width, dims.height) : maxEdgePx + 1;
-  const needsResize = longEdge > maxEdgePx;
+  const resolvedContentType =
+    contentType === "application/octet-stream" && isLikelyImageBytes(bytes)
+      ? imageContentTypeFromBytes(bytes)
+      : contentType;
 
-  if (!needsResize && input.length <= targetMaxBytes) {
-    return { body: input, contentType };
+  const dims = await getImageDimensions(input, resolvedContentType);
+  const longEdge = dims ? Math.max(dims.width, dims.height) : 0;
+  const needsResize = dims ? longEdge > maxEdgePx : false;
+
+  if (
+    (!needsResize && input.length <= targetMaxBytes) ||
+    (!dims && isLikelyImageBytes(bytes))
+  ) {
+    return { body: input, contentType: resolvedContentType };
   }
 
-  const png = await resizeImageToMaxEdge(
-    input,
-    maxEdgePx,
-    "png",
-    90,
-    contentType,
-  );
+  try {
+    const png = await resizeImageToMaxEdge(
+      input,
+      maxEdgePx,
+      "png",
+      90,
+      resolvedContentType,
+    );
 
-  if (png.length <= targetMaxBytes || png.length < input.length) {
-    return { body: png, contentType: "image/png" };
+    if (png.length <= targetMaxBytes || png.length < input.length) {
+      return { body: png, contentType: "image/png" };
+    }
+
+    const jpeg = await resizeImageToMaxEdge(
+      input,
+      maxEdgePx,
+      "jpeg",
+      82,
+      resolvedContentType,
+    );
+
+    return { body: jpeg, contentType: "image/jpeg" };
+  } catch {
+    if (isLikelyImageBytes(bytes)) {
+      return { body: input, contentType: resolvedContentType };
+    }
+    throw new Error("Vehicle image could not be optimized.");
   }
-
-  const jpeg = await resizeImageToMaxEdge(
-    input,
-    maxEdgePx,
-    "jpeg",
-    82,
-    contentType,
-  );
-
-  return { body: jpeg, contentType: "image/jpeg" };
 }
