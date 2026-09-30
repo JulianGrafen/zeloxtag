@@ -10,6 +10,7 @@ import { ShareCardBuildDnaBlock } from "./ShareCardBuildDnaBlock";
 import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
 import { ShareCardSpecRowView } from "./ShareCardSpecRow";
 import { ShareCardZeloxMark } from "./ShareCardZeloxMark";
+import { computeShareCardLayout } from "./share-card-layout";
 import type { ShareableBuildData } from "./types";
 
 type SpecCardPreviewProps = {
@@ -22,6 +23,17 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
     const [imageFailed, setImageFailed] = useState(false);
     const showImage = Boolean(data.imageUrl) && !imageFailed;
     const showDna = data.buildDna != null;
+    const layout = computeShareCardLayout(data);
+
+    const specGapClass =
+      layout.density === "dense"
+        ? "space-y-2"
+        : layout.density === "compact"
+          ? "space-y-3"
+          : "space-y-4";
+
+    const scaleWrapperWidth =
+      layout.contentScale < 1 ? `${100 / layout.contentScale}%` : "100%";
 
     return (
       <div
@@ -43,7 +55,10 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
             }}
           />
 
-          <div className="relative h-[36%] shrink-0">
+          <div
+            className="relative shrink-0"
+            style={{ height: `${layout.heroHeightPercent}%` }}
+          >
             {showImage ? (
               // eslint-disable-next-line @next/next/no-img-element -- DOM export requires native img + crossOrigin
               <img
@@ -58,34 +73,64 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
 
-            <div className="absolute inset-x-0 top-0 z-10 px-12 pt-14">
-              <p className="max-w-[95%] text-[52px] font-bold leading-[1.05] tracking-tight">
+            <div className="absolute inset-x-0 bottom-0 z-10 px-12 pb-6">
+              <p className="text-[48px] font-bold leading-[1.05] tracking-tight break-words">
                 {data.modelName}
               </p>
-              {data.instagramHandle ? (
-                <ShareCardInstagramHandle handle={data.instagramHandle} />
-              ) : null}
             </div>
           </div>
 
-          <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-12 py-4">
-            <div className="min-h-0 flex-1 space-y-4 overflow-hidden">
-              {data.specRows.map((row) => (
-                <ShareCardSpecRowView key={row.key} row={row} compact />
-              ))}
-              {data.modificationsCount > 0 ? (
-                <p className="font-mono text-[20px] uppercase tracking-[0.18em] text-zinc-500">
-                  {data.modificationsCount}{" "}
-                  {data.modificationsCount === 1 ? "Umbau" : "Umbauten"}
-                </p>
-              ) : null}
+          <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 px-12 py-3">
+            {data.instagramHandle ? (
+              <ShareCardInstagramHandle
+                handle={data.instagramHandle}
+                compact={layout.density !== "comfortable"}
+              />
+            ) : null}
+
+            <div className="min-h-0 flex-1 overflow-visible">
+              <div
+                className="origin-top-left"
+                style={{
+                  transform: `scale(${layout.contentScale})`,
+                  width: scaleWrapperWidth,
+                }}
+              >
+                <div className={specGapClass}>
+                  {data.specRows.map((row) => (
+                    <ShareCardSpecRowView
+                      key={row.key}
+                      row={row}
+                      compact
+                      density={layout.density}
+                    />
+                  ))}
+                  {data.modificationsCount > 0 ? (
+                    <p
+                      className={`font-mono uppercase tracking-[0.16em] text-zinc-500 ${
+                        layout.density === "dense"
+                          ? "text-[16px]"
+                          : "text-[18px]"
+                      }`}
+                    >
+                      {data.modificationsCount}{" "}
+                      {data.modificationsCount === 1 ? "Umbau" : "Umbauten"}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
             </div>
 
-            {showDna ? <ShareCardBuildDnaBlock dna={data.buildDna!} /> : null}
+            {showDna ? (
+              <ShareCardBuildDnaBlock
+                dna={data.buildDna!}
+                compact={layout.density !== "comfortable"}
+              />
+            ) : null}
           </div>
 
-          <footer className="relative z-10 shrink-0 border-t border-white/10 px-12 py-8">
-            <ShareCardZeloxMark />
+          <footer className="relative z-10 shrink-0 border-t border-white/10 px-12 py-5">
+            <ShareCardZeloxMark heightPx={layout.footerLogoHeightPx} />
           </footer>
         </div>
       </div>

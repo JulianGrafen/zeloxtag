@@ -22,6 +22,7 @@ type CompactMetricBarProps = {
   scaleMin?: number;
   lowerIsBetter?: boolean;
   compact?: boolean;
+  dense?: boolean;
 };
 
 function resolveFilledSegments(
@@ -47,6 +48,7 @@ export function CompactMetricBar({
   scaleMin,
   lowerIsBetter = false,
   compact = false,
+  dense = false,
 }: CompactMetricBarProps) {
   const label = labelProp ?? metric?.label ?? "";
   const valueText =
@@ -67,21 +69,31 @@ export function CompactMetricBar({
     ? resolveFilledSegments(amount, scaleMax, scaleMin ?? metric?.scaleMin, lowerIsBetter)
     : 0;
 
-  const labelClass = compact
-    ? "font-mono text-[18px] font-medium uppercase tracking-[0.16em] text-zinc-400"
-    : "font-mono text-[22px] font-medium uppercase tracking-[0.2em] text-zinc-400";
-  const valueClass = compact
-    ? "text-[30px] font-bold tabular-nums tracking-tight text-white"
-    : "text-[38px] font-bold tabular-nums tracking-tight text-white";
-  const deltaClass = compact
-    ? "text-[22px] font-semibold tabular-nums text-emerald-400"
-    : "text-[26px] font-semibold tabular-nums text-emerald-400";
+  const labelClass = dense
+    ? "font-mono text-[15px] font-medium uppercase tracking-[0.14em] text-zinc-400"
+    : compact
+      ? "font-mono text-[18px] font-medium uppercase tracking-[0.16em] text-zinc-400"
+      : "font-mono text-[22px] font-medium uppercase tracking-[0.2em] text-zinc-400";
+  const valueClass = dense
+    ? "text-[24px] font-bold tabular-nums tracking-tight text-white"
+    : compact
+      ? "text-[30px] font-bold tabular-nums tracking-tight text-white"
+      : "text-[38px] font-bold tabular-nums tracking-tight text-white";
+  const deltaClass = dense
+    ? "text-[18px] font-semibold tabular-nums text-emerald-400"
+    : compact
+      ? "text-[22px] font-semibold tabular-nums text-emerald-400"
+      : "text-[26px] font-semibold tabular-nums text-emerald-400";
 
   return (
-    <div className={compact ? "flex flex-col gap-2" : "flex flex-col gap-3"}>
-      <div className="flex items-end justify-between gap-4">
-        <span className={labelClass}>{label}</span>
-        <div className="flex shrink-0 items-baseline gap-3 text-right">
+    <div
+      className={
+        dense ? "flex flex-col gap-1" : compact ? "flex flex-col gap-2" : "flex flex-col gap-3"
+      }
+    >
+      <div className="flex items-end justify-between gap-3">
+        <span className={`min-w-0 ${labelClass}`}>{label}</span>
+        <div className="flex min-w-0 shrink items-baseline justify-end gap-2 text-right">
           <span className={valueClass}>{valueText}</span>
           {metric?.delta ? (
             <span className={deltaClass}>{metric.delta}</span>
