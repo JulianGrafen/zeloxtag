@@ -15,13 +15,23 @@ const SHAPE_STROKE = "rgba(255,255,255,0.92)";
 
 type BuildDnaRadarChartProps = {
   dna: ShowcaseBuildDna;
-  variant?: "default" | "compact";
+  variant?: "default" | "compact" | "story";
   animate?: boolean;
   reduceMotion?: boolean;
   className?: string;
 };
 
-function chartMetrics(variant: "default" | "compact") {
+function chartMetrics(variant: "default" | "compact" | "story") {
+  if (variant === "story") {
+    return {
+      size: 136,
+      maxR: 46,
+      labelOffset: 9,
+      labelFontSize: 6.5,
+      showScoreLegend: false,
+      showVertexScores: false,
+    };
+  }
   if (variant === "compact") {
     return {
       size: 168,
@@ -111,6 +121,38 @@ export function BuildDnaRadarChart({
   const radar = orderedRadarScores(dna);
   const scores = radar.map((row) => row.score);
   const gridLevels = [0.25, 0.5, 0.75, 1];
+  const useMotion = animate && !reduceMotion;
+
+  const shapeGroup = (
+    <>
+      <polygon
+        points={polygonPoints(scores, metrics.maxR, cx, cy, axisCount)}
+        fill={SHAPE_FILL}
+        stroke={SHAPE_STROKE}
+        strokeWidth={1.75}
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      {radar.map((row, index) => {
+        const vertex = polarPoint(
+          index,
+          (Math.min(100, Math.max(0, row.score)) / 100) * metrics.maxR,
+          cx,
+          cy,
+          axisCount,
+        );
+        return (
+          <circle
+            key={`${row.category}-vertex`}
+            cx={vertex.x}
+            cy={vertex.y}
+            r={variant === "compact" ? 2.5 : 2}
+            fill={SHAPE_STROKE}
+          />
+        );
+      })}
+    </>
+  );
 
   return (
     <div className={className}>
@@ -145,38 +187,17 @@ export function BuildDnaRadarChart({
             );
           })}
         </g>
-        <motion.g
-          initial={animate && !reduceMotion ? { opacity: 0 } : false}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <polygon
-            points={polygonPoints(scores, metrics.maxR, cx, cy, axisCount)}
-            fill={SHAPE_FILL}
-            stroke={SHAPE_STROKE}
-            strokeWidth={1.75}
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-          {radar.map((row, index) => {
-            const vertex = polarPoint(
-              index,
-              (Math.min(100, Math.max(0, row.score)) / 100) * metrics.maxR,
-              cx,
-              cy,
-              axisCount,
-            );
-            return (
-              <circle
-                key={`${row.category}-vertex`}
-                cx={vertex.x}
-                cy={vertex.y}
-                r={variant === "compact" ? 2.5 : 3}
-                fill={SHAPE_STROKE}
-              />
-            );
-          })}
-        </motion.g>
+        {useMotion ? (
+          <motion.g
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {shapeGroup}
+          </motion.g>
+        ) : (
+          <g opacity={1}>{shapeGroup}</g>
+        )}
         {radar.map((row, index) => {
           const labelPos = polarPoint(
             index,
@@ -197,7 +218,10 @@ export function BuildDnaRadarChart({
               fontWeight={500}
               style={{ letterSpacing: "0.08em", textTransform: "uppercase" }}
             >
-              {shortCategoryLabel(row.category, variant === "compact")}
+              {shortCategoryLabel(
+                row.category,
+                variant === "compact" || variant === "story",
+              )}
             </text>
           );
         })}

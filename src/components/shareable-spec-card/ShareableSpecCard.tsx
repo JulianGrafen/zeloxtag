@@ -1,16 +1,20 @@
 "use client";
 
-import { useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import { useCardExport } from "@/hooks/use-card-export";
-import { isLikelyMobileShareDevice } from "@/lib/share/share-story-image-file";
+import { usePreparedStoryFile } from "@/hooks/use-prepared-story-file";
+import {
+  downloadStoryImageFile,
+  isLikelyMobileShareDevice,
+  shareStoryImageFile,
+} from "@/lib/share/share-story-image-file";
 import { cn } from "@/lib/utils";
 
 import { slugifyShareFilename } from "./format-spec-delta";
 import { ShareableSpecCardExportButton } from "./ShareableSpecCardExportButton";
 import { SpecCardPreview } from "./SpecCardPreview";
+import { buildStoryCardCacheKey } from "./story-cache-key";
 import {
-  SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO,
   SHAREABLE_SPEC_CARD_HEIGHT_PX,
   SHAREABLE_SPEC_CARD_WIDTH_PX,
 } from "./constants";
@@ -36,25 +40,66 @@ export function ShareableSpecCard({
   exportHint,
 }: ShareableSpecCardProps) {
   const exportRef = useRef<HTMLDivElement>(null);
-  const { exportCard, isExporting, error } = useCardExport(exportRef);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+
+  const storyFilename = useMemo(
+    () => `zelox-build-${slugifyShareFilename(data.modelName)}-story.png`,
+    [data.modelName],
+  );
+  const cacheKey = useMemo(() => buildStoryCardCacheKey(data), [data]);
+
+  const { storyFile, isPreparing, prepareError } = usePreparedStoryFile(
+    exportRef,
+    {
+      filename: storyFilename,
+      cacheKey,
+    },
+  );
 
   const scale = previewMaxWidth / SHAREABLE_SPEC_CARD_WIDTH_PX;
   const previewHeight = SHAREABLE_SPEC_CARD_HEIGHT_PX * scale;
+  const mobileShare = isLikelyMobileShareDevice();
 
-  const defaultShareLabel = isLikelyMobileShareDevice()
+  const defaultShareLabel = mobileShare
     ? "In Instagram Story teilen"
     : "Story-Bild speichern";
 
-  const defaultShareHint = isLikelyMobileShareDevice()
+  const defaultShareHint = mobileShare
     ? "Teilen-Menü öffnet sich — Instagram auswählen und in deine Story einfügen."
     : "PNG laden und in der Instagram-App als Story hochladen.";
 
   const handleExport = () => {
-    void exportCard({
-      filenameBase: `zelox-build-${slugifyShareFilename(data.modelName)}`,
-      pixelRatio: SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO,
-    });
+    if (!storyFile) {
+      setActionError(
+        isPreparing
+          ? "Story wird vorbereitet — bitte kurz warten und erneut tippen."
+          : prepareError ?? "Story-Bild ist noch nicht bereit.",
+      );
+      return;
+    }
+
+    setActionError(null);
+
+    if (mobileShare) {
+      setIsSharing(true);
+      void shareStoryImageFile(storyFile).then((result) => {
+        setIsSharing(false);
+        if (result === "unavailable") {
+          downloadStoryImageFile(storyFile);
+          setActionError(
+            "System-Teilen nicht verfügbar — Bild wurde gespeichert. In Instagram: Story → Foto aus Galerie.",
+          );
+        }
+      });
+      return;
+    }
+
+    downloadStoryImageFile(storyFile);
   };
+
+  const isExporting = isPreparing || isSharing;
+  const error = actionError ?? prepareError;
 
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
@@ -80,8 +125,12 @@ export function ShareableSpecCard({
           isExporting={isExporting}
           error={error}
           className="w-full max-w-sm"
-          label={exportButtonLabel ?? defaultShareLabel}
-          pendingLabel={exportButtonPendingLabel ?? "Story wird erstellt…"}
+          label={
+            isPreparing && mobileShare
+              ? "Story wird vorbereitet…"
+              : exportButtonLabel ?? defaultShareLabel
+          }
+          pendingLabel={exportButtonPendingLabel ?? "Teilen-Menü öffnet…"}
           hint={exportHint ?? defaultShareHint}
         />
       ) : null}

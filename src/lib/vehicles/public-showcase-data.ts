@@ -10,6 +10,7 @@ import { resolvePublicEngineSoundHref } from "@/lib/vehicles/engine-sound-consta
 import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { buildShowcaseBuildDnaFingerprint } from "@/lib/showcase/build-dna-fingerprint";
 import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
+import { isBuildDnaEligible } from "@/lib/showcase/build-dna-eligibility";
 import { computeBuildDnaHeuristic } from "@/lib/showcase/build-dna-heuristic";
 import {
   parseShowcaseBuildDna,
@@ -82,8 +83,10 @@ function resolvePublicBuildDna(
   vehicle: Vehicle,
   modifications: readonly PublicModification[],
 ): ShowcaseBuildDna | null {
-  if (modifications.length < 2) return null;
   const profile = buildBuildDnaProfileContext(vehicle);
+  if (!isBuildDnaEligible(modifications.length, profile)) {
+    return null;
+  }
   const fingerprint = buildShowcaseBuildDnaFingerprint(modifications, profile);
   if (vehicle.showcase_build_dna_fingerprint === fingerprint) {
     const cached = parseShowcaseBuildDna(vehicle.showcase_build_dna);

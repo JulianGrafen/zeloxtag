@@ -32,4 +32,6 @@ export interface ShareableBuildData {
 export type ShareableSpecCardExportOptions = {
   filenameBase?: string;
   pixelRatio?: number;
+  /** When true (default on mobile), opens the system share sheet if possible. */
+  preferShareSheet?: boolean;
 };

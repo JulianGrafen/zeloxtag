@@ -6,6 +6,7 @@ import {
   ShareableSpecCard,
   buildShareableBuildData,
 } from "@/components/shareable-spec-card";
+import { buildBuildDnaProfileContextFromPublicProfile } from "@/lib/showcase/build-dna-profile-context";
 import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 
 import { showroom } from "./showroom-styles";
@@ -21,6 +22,10 @@ export function ShowroomStoryShare({ data }: ShowroomStoryShareProps) {
         profile: data.profile,
         modificationsCount: data.modifications.length,
         buildDna: data.buildDna,
+        modifications: data.modifications,
+        buildDnaProfile: buildBuildDnaProfileContextFromPublicProfile(
+          data.profile,
+        ),
       }),
     [data],
   );

@@ -2,6 +2,7 @@ import "server-only";
 
 import { buildShowcaseBuildDnaFingerprint } from "@/lib/showcase/build-dna-fingerprint";
 import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
+import { isBuildDnaEligible } from "@/lib/showcase/build-dna-eligibility";
 import {
   parseShowcaseBuildDna,
   type ShowcaseBuildDna,
@@ -31,7 +32,9 @@ export async function refreshShowcaseBuildDna(
   vehicle: Vehicle,
   modifications: readonly PublicModification[],
 ): Promise<RefreshShowcaseBuildDnaResult> {
-  if (modifications.length < 2) {
+  const profile = buildBuildDnaProfileContext(vehicle);
+
+  if (!isBuildDnaEligible(modifications.length, profile)) {
     const admin = createAdminClient();
     const { error: clearError } = await admin
       .from("vehicles")
@@ -51,8 +54,6 @@ export async function refreshShowcaseBuildDna(
 
     return { status: "skipped", reason: "insufficient_mods" };
   }
-
-  const profile = buildBuildDnaProfileContext(vehicle);
   const fingerprint = buildShowcaseBuildDnaFingerprint(modifications, profile);
   const cachedDna = parseShowcaseBuildDna(vehicle.showcase_build_dna);
   if (

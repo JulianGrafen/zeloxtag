@@ -1,4 +1,5 @@
 import { buildPersonalityLabels } from "@/lib/vehicles/build-personality-chips";
+import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Vehicle } from "@/types/database";
 
@@ -19,6 +20,48 @@ export type BuildDnaProfileContext = {
   specificationsText: string | null;
   buildPersonalityLabels: string[];
 };
+
+export function buildBuildDnaProfileContextFromPublicProfile(
+  profile: PublicShowcaseProfile,
+): BuildDnaProfileContext {
+  const notes = profile.notes?.trim() ? profile.notes.trim() : null;
+  const structuredParts = [
+    profile.engine ? `Motor: ${profile.engine}` : null,
+    profile.powerPs != null ? `Leistung: ${profile.powerPs} PS` : null,
+    profile.powerKw != null ? `${profile.powerKw} kW` : null,
+    profile.torqueNm != null ? `Drehmoment: ${profile.torqueNm} Nm` : null,
+    profile.fuelType ? `Kraftstoff: ${profile.fuelType}` : null,
+    profile.transmission ? `Getriebe: ${profile.transmission}` : null,
+    profile.drivetrain ? `Antrieb: ${profile.drivetrain}` : null,
+  ].filter((part): part is string => Boolean(part));
+
+  const specificationSegments = [
+    ...structuredParts,
+    notes ? `Spezifikationen: ${notes}` : null,
+    profile.buildPersonalityLabels.length > 0
+      ? `Build-Vibe: ${profile.buildPersonalityLabels.join(", ")}`
+      : null,
+  ].filter((part): part is string => Boolean(part));
+
+  return {
+    make: profile.make,
+    model: profile.model,
+    year: profile.year,
+    engine: profile.engine,
+    powerPs: profile.powerPs,
+    powerKw: profile.powerKw,
+    torqueNm: profile.torqueNm,
+    fuelType: profile.fuelType,
+    transmission: profile.transmission,
+    drivetrain: profile.drivetrain,
+    notes,
+    specificationsText:
+      specificationSegments.length > 0
+        ? specificationSegments.join(" · ")
+        : null,
+    buildPersonalityLabels: profile.buildPersonalityLabels,
+  };
+}
 
 export function buildBuildDnaProfileContext(
   vehicle: Pick<Vehicle, "make" | "model" | "year" | "tech_specs">,

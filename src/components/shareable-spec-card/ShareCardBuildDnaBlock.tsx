@@ -17,8 +17,9 @@ export function ShareCardBuildDnaBlock({
 
   return (
     <div
+      data-share-dna-block=""
       className={`flex flex-col items-center border-t border-white/10 px-2 ${
-        fillHeight ? "h-full min-h-0 justify-center py-1" : tight ? "pt-4" : "pt-6"
+        fillHeight ? "h-full min-h-0 justify-center py-0.5" : tight ? "pt-4" : "pt-6"
       }`}
     >
       <p
@@ -29,25 +30,27 @@ export function ShareCardBuildDnaBlock({
         Umbau-DNA
       </p>
       <h3
-        className={`mt-1 text-center font-semibold tracking-tight text-white ${
-          tight ? "text-[24px]" : "text-[32px]"
+        className={`text-center font-semibold tracking-tight text-white ${
+          fillHeight ? "text-[20px] leading-tight" : tight ? "text-[24px]" : "text-[32px]"
         }`}
       >
         {dna.archetype}
       </h3>
       <div
-        className={`mt-0.5 max-w-full ${fillHeight ? "w-[240px]" : tight ? "w-[260px]" : "w-[300px]"}`}
+        className={`max-w-full shrink-0 ${
+          fillHeight ? "w-[220px]" : tight ? "w-[260px]" : "w-[300px]"
+        }`}
       >
         <BuildDnaRadarChart
           dna={dna}
-          variant="compact"
+          variant={fillHeight ? "story" : "compact"}
           animate={false}
           reduceMotion
         />
       </div>
       <p
-        className={`mt-1 line-clamp-2 text-center font-medium leading-snug text-white/70 ${
-          tight ? "text-[17px]" : "text-[22px]"
+        className={`line-clamp-2 text-center font-medium leading-snug text-white/70 ${
+          fillHeight ? "text-[15px]" : tight ? "text-[17px]" : "text-[22px]"
         }`}
       >
         {dna.punchline}

@@ -45,7 +45,14 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
           height: SHAREABLE_SPEC_CARD_HEIGHT_PX,
         }}
       >
-        <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#0a0a0a] text-white">
+        <div
+          className="relative grid h-full w-full overflow-hidden bg-[#0a0a0a] text-white"
+          style={{
+            gridTemplateRows: showDna
+              ? `${layout.heroHeightPercent}fr ${layout.specsZonePercent}fr ${layout.dnaZonePercent}fr ${layout.footerZonePercent}fr`
+              : `${layout.heroHeightPercent}fr ${layout.specsZonePercent}fr ${layout.footerZonePercent}fr`,
+          }}
+        >
           <div
             className="pointer-events-none absolute inset-0 opacity-40"
             aria-hidden
@@ -55,10 +62,7 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
             }}
           />
 
-          <div
-            className="relative shrink-0"
-            style={{ height: `${layout.heroHeightPercent}%` }}
-          >
+          <div className="relative min-h-0">
             {showImage ? (
               // eslint-disable-next-line @next/next/no-img-element -- DOM export requires native img + crossOrigin
               <img
@@ -80,10 +84,7 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
             </div>
           </div>
 
-          <div
-            className="relative z-10 flex min-h-0 flex-col gap-2 overflow-hidden px-12 py-2"
-            style={{ height: `${layout.specsZonePercent}%` }}
-          >
+          <div className="relative z-10 flex min-h-0 flex-col gap-2 overflow-hidden px-12 py-2">
             {data.instagramHandle ? (
               <ShareCardInstagramHandle
                 handle={data.instagramHandle}
@@ -126,10 +127,7 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
           </div>
 
           {showDna ? (
-            <div
-              className="relative z-10 min-h-0 shrink-0 overflow-hidden px-4"
-              style={{ height: `${layout.dnaZonePercent}%` }}
-            >
+            <div className="relative z-10 min-h-0 overflow-hidden px-4">
               <ShareCardBuildDnaBlock
                 dna={data.buildDna!}
                 compact
@@ -138,7 +136,7 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
             </div>
           ) : null}
 
-          <footer className="relative z-10 mt-auto shrink-0 border-t border-white/10 px-12 py-5">
+          <footer className="relative z-10 flex min-h-0 items-end border-t border-white/10 px-12 py-4">
             <ShareCardZeloxMark heightPx={layout.footerLogoHeightPx} />
           </footer>
         </div>

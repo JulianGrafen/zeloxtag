@@ -15,8 +15,7 @@ type PublicShowcaseViewProps = {
 };
 
 export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
-  const showBuildDna =
-    data.buildDna != null && data.modifications.length >= 2;
+  const showBuildDna = data.buildDna != null;
 
   return (
     <div className={showroom.page}>

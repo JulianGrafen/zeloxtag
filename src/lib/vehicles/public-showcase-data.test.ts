@@ -437,6 +437,22 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.buildDna?.punchline).toBe("Test-Punchline.");
   });
 
+  it("includes heuristic buildDna from owner specification text without public mods", () => {
+    const vehicle: Vehicle = {
+      ...baseVehicle,
+      tech_specs: {
+        ...baseVehicle.tech_specs,
+        notes: "Daily OEM+ — KW V3, Milltek Klappenanlage, dezente Optik",
+      },
+    };
+
+    const payload = buildPublicShowcasePayload(vehicle, []);
+    expect(payload.modifications).toHaveLength(0);
+    expect(payload.buildDna).not.toBeNull();
+    expect(payload.buildDna?.radar).toHaveLength(6);
+    expect(payload.profile.notes).toContain("KW V3");
+  });
+
   it("uses heuristic buildDna when cache was never written", () => {
     const documents: Document[] = [
       baseInvoice({ id: "mod-a", line_items: [{ label: "KW Coilover", amount: 1 }] }),

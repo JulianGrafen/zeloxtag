@@ -101,6 +101,36 @@ describe("buildShareableBuildData", () => {
     expect(accel?.quartett?.polarity).toBe("lower");
   });
 
+  it("includes build DNA from specification text without public mods", () => {
+    const data = buildShareableBuildData({
+      profile: {
+        ...baseProfile,
+        notes: "OEM+ Daily — KW V3, Milltek, 400 PS Stage 2",
+      },
+      modificationsCount: 0,
+      buildDna: null,
+      modifications: [],
+      buildDnaProfile: {
+        make: baseProfile.make,
+        model: baseProfile.model,
+        year: baseProfile.year,
+        engine: null,
+        powerPs: baseProfile.powerPs,
+        powerKw: null,
+        torqueNm: baseProfile.torqueNm,
+        fuelType: null,
+        transmission: null,
+        drivetrain: null,
+        notes: "OEM+ Daily — KW V3, Milltek, 400 PS Stage 2",
+        specificationsText: "Spezifikationen: OEM+ Daily — KW V3, Milltek, 400 PS Stage 2",
+        buildPersonalityLabels: [],
+      },
+    });
+
+    expect(data?.buildDna).not.toBeNull();
+    expect(data?.buildDna?.radar).toHaveLength(6);
+  });
+
   it("passes instagram handle from showcase profile", () => {
     const data = buildShareableBuildData({
       profile: { ...baseProfile, instagramHandle: "julian_f11" },

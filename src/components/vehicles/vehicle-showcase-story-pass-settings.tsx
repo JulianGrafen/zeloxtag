@@ -6,6 +6,7 @@ import {
   ShareableSpecCard,
   buildShareableBuildData,
 } from "@/components/shareable-spec-card";
+import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import type { Document, Vehicle } from "@/types/database";
 
@@ -24,6 +25,8 @@ export function VehicleShowcaseStoryPassSettings({
       profile: payload.profile,
       modificationsCount: payload.modifications.length,
       buildDna: payload.buildDna,
+      modifications: payload.modifications,
+      buildDnaProfile: buildBuildDnaProfileContext(vehicle),
     });
   }, [vehicle, documents]);
 
@@ -47,8 +50,8 @@ export function VehicleShowcaseStoryPassSettings({
         />
       ) : (
         <p className="mt-4 text-[0.82rem] text-[color:var(--vd-muted)]">
-          Mindestens eine technische Angabe im öffentlichen Profil oder Umbau-DNA
-          (ab zwei sichtbaren Umbauten) nötig, um die Karte zu erzeugen.
+          Mindestens eine technische Angabe, Spezifikationstext oder Umbau-DNA
+          (ab zwei Umbauten oder Beschreibung im Showcase) nötig.
         </p>
       )}
     </div>

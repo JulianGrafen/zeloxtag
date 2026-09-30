@@ -8,6 +8,8 @@ export type ShareCardLayout = {
   specsZonePercent: number;
   /** Umbau-DNA slot (0 when no DNA). */
   dnaZonePercent: number;
+  /** Footer / Zelox mark row (percent of card height). */
+  footerZonePercent: number;
   contentScale: number;
   density: ShareCardDensity;
   footerLogoHeightPx: number;
@@ -15,7 +17,7 @@ export type ShareCardLayout = {
 
 const CARD_HEIGHT_PX = 1920;
 const FOOTER_ZONE_PERCENT = 9;
-const DNA_ZONE_PERCENT = 20;
+const DNA_ZONE_PERCENT = 22;
 const FOOTER_BASE_PX = 168;
 const DNA_BLOCK_PX = 360;
 const INSTAGRAM_ROW_PX = 52;
@@ -76,6 +78,7 @@ export function computeShareCardLayout(data: ShareableBuildData): ShareCardLayou
     heroHeightPercent,
     specsZonePercent: Math.max(18, specsZonePercent),
     dnaZonePercent,
+    footerZonePercent: FOOTER_ZONE_PERCENT,
     contentScale,
     density,
     footerLogoHeightPx,
