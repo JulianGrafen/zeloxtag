@@ -12,18 +12,17 @@ import { showroom } from "./showroom-styles";
 
 type ShowroomStoryShareProps = {
   data: PublicShowcasePayload;
-  tagUuid?: string;
 };
 
-export function ShowroomStoryShare({ data, tagUuid }: ShowroomStoryShareProps) {
+export function ShowroomStoryShare({ data }: ShowroomStoryShareProps) {
   const cardData = useMemo(
     () =>
       buildShareableBuildData({
         profile: data.profile,
         modificationsCount: data.modifications.length,
-        tagUuid,
+        buildDna: data.buildDna,
       }),
-    [data, tagUuid],
+    [data],
   );
 
   if (!cardData) {

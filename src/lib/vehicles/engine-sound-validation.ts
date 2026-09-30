@@ -3,6 +3,7 @@ import {
   ENGINE_SOUND_MAX_SECONDS,
   engineSoundExtensionForFilename,
   engineSoundExtensionForMime,
+  engineSoundStorageContentType,
 } from "@/lib/vehicles/engine-sound-constants";
 import { measureEngineSoundDurationSeconds } from "@/lib/vehicles/engine-sound-duration";
 
@@ -78,13 +79,7 @@ export function validateEngineSoundMeta(
     }
   }
 
-  const resolvedMime = mimeOk
-    ? normalizeMime(mime)
-    : extension === "m4a"
-      ? "audio/mp4"
-      : extension === "wav"
-        ? "audio/wav"
-        : "audio/mpeg";
+  const resolvedMime = engineSoundStorageContentType(extension);
 
   return { ok: true, mime: resolvedMime, extension };
 }

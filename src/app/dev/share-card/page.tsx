@@ -45,11 +45,7 @@ export default function DevShareCardPage() {
   const cardData = buildShareableBuildData({
     profile: payload.profile,
     modificationsCount: payload.modifications.length,
-    tagUuid: MOCK_TAG_UUIDS.active,
-    stageInfo: "Stage 2+ Verified",
-    stockPowerPs: 340,
-    stockTorqueNm: 500,
-    curbWeightKg: 1550,
+    buildDna: payload.buildDna,
   });
 
   if (!cardData) {

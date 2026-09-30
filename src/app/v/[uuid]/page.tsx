@@ -154,7 +154,7 @@ export async function generateMetadata({
   };
 }
 
-async function renderPublicShowcase(vehicle: Vehicle, tagUuid?: string) {
+async function renderPublicShowcase(vehicle: Vehicle) {
   const showcaseVehicle = await enrichPublicShowcaseVehicle(vehicle);
   const documents = await loadPublicShowcaseDocuments(showcaseVehicle.id);
   let vehicleForPayload = showcaseVehicle;
@@ -191,7 +191,7 @@ async function renderPublicShowcase(vehicle: Vehicle, tagUuid?: string) {
     }
   }
 
-  return <PublicShowcaseView data={payload} tagUuid={tagUuid} />;
+  return <PublicShowcaseView data={payload} />;
 }
 
 function hasInsiderAccess(access: {
@@ -299,8 +299,7 @@ export default async function TagScanPage({
       }
     }
 
-    const slugTagUuid = tagUuid ?? undefined;
-    return renderPublicShowcase(vehicle, slugTagUuid);
+    return renderPublicShowcase(vehicle);
   }
 
   const result = entry.result;
@@ -322,11 +321,11 @@ export default async function TagScanPage({
           redirect(garagePathForVehicle(vehicle.id));
         }
         if (canViewPublicShowcaseSlug(vehicle)) {
-          return renderPublicShowcase(vehicle, tag.uuid);
+          return renderPublicShowcase(vehicle);
         }
         redirect("/profil-nicht-verfuegbar");
       }
-      return renderPublicShowcase(vehicle, tag.uuid);
+      return renderPublicShowcase(vehicle);
     }
 
     if (!access.isOwner && !access.isContributor) {

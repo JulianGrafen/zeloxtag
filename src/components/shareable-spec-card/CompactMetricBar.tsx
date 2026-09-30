@@ -14,62 +14,77 @@ import {
 import type { VehicleSpecMetric } from "./types";
 
 type CompactMetricBarProps = {
-  metric: VehicleSpecMetric;
-  /** When true, lower numeric values fill the bar more (kg/PS). */
+  metric?: VehicleSpecMetric;
+  label?: string;
+  valueText?: string;
+  amount?: number;
+  scaleMax?: number;
+  scaleMin?: number;
   lowerIsBetter?: boolean;
+  compact?: boolean;
 };
 
-function formatMetricValue(metric: VehicleSpecMetric): string {
-  const value =
-    typeof metric.value === "number"
-      ? metric.value.toLocaleString("de-DE")
-      : metric.value;
-  const unit = metric.unit ? ` ${metric.unit}` : "";
-  return `${value}${unit}`.trim();
-}
-
 function resolveFilledSegments(
-  metric: VehicleSpecMetric,
+  amount: number,
+  scaleMax: number,
+  scaleMin: number | undefined,
   lowerIsBetter: boolean,
 ): number {
   if (lowerIsBetter) {
-    const numeric =
-      typeof metric.value === "number"
-        ? metric.value
-        : Number.parseFloat(String(metric.value));
-    if (!Number.isFinite(numeric)) return 0;
-    return filledSegmentsLowerIsBetter(
-      numeric,
-      SHAREABLE_SPEC_POWER_TO_WEIGHT_MIN_KG_PS,
-      SHAREABLE_SPEC_POWER_TO_WEIGHT_MAX_KG_PS,
-    );
+    const min = scaleMin ?? SHAREABLE_SPEC_POWER_TO_WEIGHT_MIN_KG_PS;
+    const max = scaleMax ?? SHAREABLE_SPEC_POWER_TO_WEIGHT_MAX_KG_PS;
+    return filledSegmentsLowerIsBetter(amount, min, max);
   }
-
-  const numeric =
-    typeof metric.value === "number"
-      ? metric.value
-      : Number.parseFloat(String(metric.value));
-  if (!Number.isFinite(numeric)) return 0;
-  return filledSegments(numeric, metric.maxValue);
+  return filledSegments(amount, scaleMax);
 }
 
-export function CompactMetricBar({ metric, lowerIsBetter = false }: CompactMetricBarProps) {
-  const filled = resolveFilledSegments(metric, lowerIsBetter);
+export function CompactMetricBar({
+  metric,
+  label: labelProp,
+  valueText: valueTextProp,
+  amount: amountProp,
+  scaleMax: scaleMaxProp,
+  scaleMin,
+  lowerIsBetter = false,
+  compact = false,
+}: CompactMetricBarProps) {
+  const label = labelProp ?? metric?.label ?? "";
+  const valueText =
+    valueTextProp ??
+    (metric
+      ? `${typeof metric.value === "number" ? metric.value.toLocaleString("de-DE") : metric.value}${metric.unit ? ` ${metric.unit}` : ""}`.trim()
+      : "");
+
+  const amount =
+    amountProp ??
+    (typeof metric?.value === "number"
+      ? metric.value
+      : Number.parseFloat(String(metric?.value ?? "")));
+
+  const scaleMax = scaleMaxProp ?? metric?.maxValue ?? 100;
+
+  const filled = Number.isFinite(amount)
+    ? resolveFilledSegments(amount, scaleMax, scaleMin ?? metric?.scaleMin, lowerIsBetter)
+    : 0;
+
+  const labelClass = compact
+    ? "font-mono text-[18px] font-medium uppercase tracking-[0.16em] text-zinc-400"
+    : "font-mono text-[22px] font-medium uppercase tracking-[0.2em] text-zinc-400";
+  const valueClass = compact
+    ? "text-[30px] font-bold tabular-nums tracking-tight text-white"
+    : "text-[38px] font-bold tabular-nums tracking-tight text-white";
+  const deltaClass = compact
+    ? "text-[22px] font-semibold tabular-nums text-emerald-400"
+    : "text-[26px] font-semibold tabular-nums text-emerald-400";
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className={compact ? "flex flex-col gap-2" : "flex flex-col gap-3"}>
       <div className="flex items-end justify-between gap-4">
-        <span className="font-mono text-[22px] font-medium uppercase tracking-[0.2em] text-zinc-400">
-          {metric.label}
-        </span>
+        <span className={labelClass}>{label}</span>
         <div className="flex shrink-0 items-baseline gap-3 text-right">
-          <span className="text-[38px] font-bold tabular-nums tracking-tight text-white">
-            {formatMetricValue(metric)}
-          </span>
-          {metric.delta ? (
-            <span className="text-[26px] font-semibold tabular-nums text-emerald-400">
-              {metric.delta}
-            </span>
+          <span className={valueClass}>{valueText}</span>
+          {metric?.delta ? (
+            <span className={deltaClass}>{metric.delta}</span>
           ) : null}
         </div>
       </div>

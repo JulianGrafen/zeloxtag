@@ -7,31 +7,25 @@ import {
   buildShareableBuildData,
 } from "@/components/shareable-spec-card";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
-import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, Vehicle } from "@/types/database";
 
 type VehicleShowcaseStoryPassSettingsProps = {
   vehicle: Vehicle;
   documents: Document[];
-  linkedTagUuid: string | null;
 };
 
 export function VehicleShowcaseStoryPassSettings({
   vehicle,
   documents,
-  linkedTagUuid,
 }: VehicleShowcaseStoryPassSettingsProps) {
   const cardData = useMemo(() => {
     const payload = buildPublicShowcasePayload(vehicle, documents);
     return buildShareableBuildData({
       profile: payload.profile,
       modificationsCount: payload.modifications.length,
-      tagUuid: linkedTagUuid ?? undefined,
-      curbWeightKg: undefined,
+      buildDna: payload.buildDna,
     });
-  }, [vehicle, documents, linkedTagUuid]);
-
-  const specs = parseVehicleTechSpecs(vehicle.tech_specs);
+  }, [vehicle, documents]);
 
   return (
     <div className="px-4 py-5">
@@ -40,8 +34,8 @@ export function VehicleShowcaseStoryPassSettings({
           Story-Pass
         </h2>
         <p className="text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
-          9:16-Karte für Instagram Stories. Die Leistungsbalken sind angeschnittene
-          Quartett-Segmente wie im öffentlichen Showroom.
+          9:16-Karte für Instagram Stories — alle Showcase-Specs, Umbau-DNA und
+          ZeloxTag-Branding wie im öffentlichen Showroom.
         </p>
       </div>
 
@@ -53,9 +47,8 @@ export function VehicleShowcaseStoryPassSettings({
         />
       ) : (
         <p className="mt-4 text-[0.82rem] text-[color:var(--vd-muted)]">
-          {specs.powerPs == null || specs.torqueNm == null
-            ? "Leistung (PS) und Drehmoment (Nm) unter Stammdaten / Technische Daten pflegen."
-            : "Showcase-Daten konnten nicht geladen werden."}
+          Mindestens eine technische Angabe im öffentlichen Profil oder Umbau-DNA
+          (ab zwei sichtbaren Umbauten) nötig, um die Karte zu erzeugen.
         </p>
       )}
     </div>

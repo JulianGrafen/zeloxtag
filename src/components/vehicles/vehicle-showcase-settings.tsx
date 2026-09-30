@@ -24,7 +24,6 @@ export function VehicleShowcaseSettings({
   galleryPhotos,
   canEdit,
   hasLinkedTag,
-  linkedTagUuid,
 }: VehicleShowcaseSettingsProps) {
   const { invoices, modifications } =
     partitionShowcaseSelectableDocuments(documents);
@@ -64,7 +63,6 @@ export function VehicleShowcaseSettings({
         <VehicleShowcaseStoryPassSettings
           vehicle={vehicle}
           documents={documents}
-          linkedTagUuid={linkedTagUuid}
         />
       ) : null}
     </VehicleSettingsSubmenuGroup>

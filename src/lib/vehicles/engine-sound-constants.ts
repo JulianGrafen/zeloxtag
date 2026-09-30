@@ -30,6 +30,13 @@ const EXT_TO_CONTENT_TYPE: Record<EngineSoundExtension, string> = {
   wav: "audio/wav",
 };
 
+/** MIME sent to Supabase Storage (bucket allow-list uses these, not browser aliases). */
+export function engineSoundStorageContentType(
+  extension: EngineSoundExtension,
+): string {
+  return EXT_TO_CONTENT_TYPE[extension];
+}
+
 const ENGINE_SOUND_PATH_RE = /\/engine-sound\.(mp3|m4a|wav)$/i;
 
 export function engineSoundExtensionForMime(

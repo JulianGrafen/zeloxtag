@@ -12,11 +12,9 @@ import { showroom } from "./showroom-styles";
 
 type PublicShowcaseViewProps = {
   data: PublicShowcasePayload;
-  /** Active tag UUID for V4A badge on the share card (optional on slug-only URLs). */
-  tagUuid?: string;
 };
 
-export function PublicShowcaseView({ data, tagUuid }: PublicShowcaseViewProps) {
+export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
   const showBuildDna =
     data.buildDna != null && data.modifications.length >= 2;
 
@@ -35,7 +33,7 @@ export function PublicShowcaseView({ data, tagUuid }: PublicShowcaseViewProps) {
           labels={data.profile.buildPersonalityLabels}
         />
         {showBuildDna ? <ShowroomBuildDna dna={data.buildDna!} /> : null}
-        <ShowroomStoryShare data={data} tagUuid={tagUuid} />
+        <ShowroomStoryShare data={data} />
         <footer
           className={`relative isolate z-[100] space-y-3 px-4 pb-2 ${showroom.footer}`}
         >

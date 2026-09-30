@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { BUILD_DNA_RADAR_CATEGORIES } from "@/lib/showcase/build-dna-schema";
+import type { ShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
+
 import { buildShareableBuildData } from "./build-shareable-build-data";
 
 const baseProfile = {
@@ -10,7 +13,7 @@ const baseProfile = {
   powerPs: 480,
   powerKw: null,
   torqueNm: 650,
-  accel0To100Sec: null,
+  accel0To100Sec: 4.2,
   accel100To200Sec: null,
   engine: null,
   displacementCc: null,
@@ -31,29 +34,69 @@ const baseProfile = {
   buildPersonalityLabels: [],
 };
 
+const mockBuildDna: ShowcaseBuildDna = {
+  version: 2,
+  archetype: "Streckenwaffe",
+  punchline: "Gebaut für die Runde.",
+  radar: BUILD_DNA_RADAR_CATEGORIES.map((category, index) => ({
+    category,
+    score: 40 + index * 10,
+  })),
+};
+
 describe("buildShareableBuildData", () => {
-  it("returns null when power or torque missing", () => {
+  it("returns null when no spec rows and no build DNA", () => {
     expect(
       buildShareableBuildData({
-        profile: { ...baseProfile, powerPs: null },
-        modificationsCount: 2,
+        profile: {
+          ...baseProfile,
+          powerPs: null,
+          torqueNm: null,
+          accel0To100Sec: null,
+        },
+        modificationsCount: 0,
+        buildDna: null,
       }),
     ).toBeNull();
   });
 
-  it("maps showcase profile to card data", () => {
+  it("returns card data when only build DNA is present", () => {
+    const data = buildShareableBuildData({
+      profile: {
+        ...baseProfile,
+        powerPs: null,
+        torqueNm: null,
+        accel0To100Sec: null,
+      },
+      modificationsCount: 3,
+      buildDna: mockBuildDna,
+    });
+
+    expect(data?.specRows).toHaveLength(0);
+    expect(data?.buildDna).toEqual(mockBuildDna);
+    expect(data?.modificationsCount).toBe(3);
+  });
+
+  it("maps showcase profile to spec rows and model name", () => {
     const data = buildShareableBuildData({
       profile: baseProfile,
       modificationsCount: 12,
-      tagUuid: "a1b2c3d4-e5f6-4789-a012-345678901234",
-      stockPowerPs: 340,
-      curbWeightKg: 1550,
+      buildDna: mockBuildDna,
     });
 
     expect(data?.modelName).toContain("BMW");
-    expect(data?.metrics.modsCount).toBe(12);
-    expect(data?.metrics.power.delta).toBe("+140 PS");
-    expect(data?.v4aTagId).toBe("#ZX-1234");
-    expect(data?.metrics.powerToWeight.value).toBe("3.2");
+    expect(data?.modelName).toContain("2018");
+    expect(data?.modificationsCount).toBe(12);
+    expect(data?.buildDna).toEqual(mockBuildDna);
+
+    const keys = data?.specRows.map((row) => row.key) ?? [];
+    expect(keys).toContain("power");
+    expect(keys).toContain("torque");
+    expect(keys).toContain("accel0To100");
+
+    const accel = data?.specRows.find((row) => row.key === "accel0To100");
+    expect(accel?.valueText).toContain("4,2");
+    expect(accel?.layout).toBe("quartett");
+    expect(accel?.quartett?.polarity).toBe("lower");
   });
 });

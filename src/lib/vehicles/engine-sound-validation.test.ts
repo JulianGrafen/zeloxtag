@@ -53,6 +53,20 @@ describe("validateEngineSoundMeta", () => {
     }
   });
 
+  it("canonicalizes audio/x-m4a to audio/mp4 for storage", () => {
+    const result = validateEngineSoundMeta(
+      "audio/x-m4a",
+      "iphone-recording.m4a",
+      100_000,
+      5,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.extension).toBe("m4a");
+      expect(result.mime).toBe("audio/mp4");
+    }
+  });
+
   it("rejects unsupported extensions", () => {
     const result = validateEngineSoundMeta(
       "audio/flac",
