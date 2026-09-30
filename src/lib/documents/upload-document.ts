@@ -1,7 +1,6 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { revalidatePath } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import {
@@ -42,6 +41,7 @@ import { guardDocumentTitle } from "./guard-document-title";
 import { normalizeDocumentDateIso } from "./format";
 import { parseLineItems } from "./line-items";
 import { parseManualEntryAmount } from "./manual-entry-input";
+import { revalidateAfterDocumentUpload } from "@/lib/vehicle-surface/revalidate-paths";
 import { appendMockUploadedDocument } from "./mock-uploads";
 import {
   detectOilChangeInvoice,
@@ -235,10 +235,7 @@ export async function uploadDocument(
     };
 
     await appendMockUploadedDocument(document);
-    revalidatePath(`/v/${tagUuid}`);
-    revalidatePath(`/v/${tagUuid}/dokumente`);
-    revalidatePath(`/v/${tagUuid}/service`);
-    revalidatePath(`/v/${tagUuid}/intervalle`);
+    await revalidateAfterDocumentUpload(vehicleId);
     return { status: "uploaded", document, tagUuid };
   }
 
@@ -577,12 +574,7 @@ export async function uploadDocument(
     };
   }
 
-  revalidatePath(`/v/${tagUuid}`);
-  revalidatePath(`/v/${tagUuid}/dokumente`);
-  revalidatePath(`/v/${tagUuid}/historie`);
-  revalidatePath(`/v/${tagUuid}/service`);
-  revalidatePath(`/v/${tagUuid}/intervalle`);
-  revalidatePath(`/v/${tagUuid}/eintrag`);
+  await revalidateAfterDocumentUpload(vehicleId);
 
   let freeScanConsumed = false;
   if (!(await userHasActiveMembership(ownerUserId))) {

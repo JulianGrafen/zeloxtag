@@ -36,6 +36,7 @@ export default async function UmbautenPage({ params }: UmbautenPageProps) {
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: scope.linkedTagUuid ?? vehicleId,
+    vehicleSurfaceScope: scope,
     feature: FEATURE.VIEW_DOCUMENT_VAULT,
     children: (
       <ManualEntryView

@@ -13,16 +13,37 @@ import {
   type FeatureFlag,
 } from "@/lib/permissions/feature-access";
 import { ownerHasFeature } from "@/lib/permissions/require-feature";
+import {
+  garagePathForVehicle,
+  isVehicleId,
+  vehicleSurfaceBasePath,
+} from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
+
+function paywallDashboardHref(
+  tagUuid: string,
+  vehicleSurfaceScope?: VehicleSurfaceScope,
+): string {
+  if (vehicleSurfaceScope) {
+    return vehicleSurfaceBasePath(vehicleSurfaceScope);
+  }
+  if (isVehicleId(tagUuid)) {
+    return garagePathForVehicle(tagUuid);
+  }
+  return `/v/${tagUuid}`;
+}
 
 export async function ProFeatureGate({
   ownerUserId,
   tagUuid,
+  vehicleSurfaceScope,
   feature,
   isContributor = false,
   children,
 }: {
   ownerUserId: string;
   tagUuid: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   feature: FeatureFlag;
   isContributor?: boolean;
   children: React.ReactNode;
@@ -36,12 +57,13 @@ export async function ProFeatureGate({
     return children;
   }
 
+  const dashboardHref = paywallDashboardHref(tagUuid, vehicleSurfaceScope);
   const aboHref = cloudAboHref(tagUuid);
 
   return (
     <AppShell showNavbar={false}>
       <ScanContent>
-        <BackNav label="Dashboard" href={`/v/${tagUuid}`} />
+        <BackNav label="Dashboard" href={dashboardHref} />
         <div className="claim-panel">
           <p className="claim-kicker">ZeloxTag Pro</p>
           <h1 className="claim-title mt-2">{paywallTitle(feature)}</h1>
@@ -54,7 +76,7 @@ export async function ProFeatureGate({
             <>
               <ProPlanBenefits audience="new" showLead={false} />
               <StripeCheckoutButton
-                successPath={`/v/${tagUuid}`}
+                successPath={dashboardHref}
                 cancelPath={aboHref}
                 audience="new"
               />
@@ -70,6 +92,7 @@ export async function wrapProFeature({
   isDemo,
   ownerUserId,
   tagUuid,
+  vehicleSurfaceScope,
   feature,
   isContributor = false,
   children,
@@ -77,6 +100,7 @@ export async function wrapProFeature({
   isDemo?: boolean;
   ownerUserId: string;
   tagUuid: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   feature: FeatureFlag;
   isContributor?: boolean;
   children: React.ReactNode;
@@ -86,6 +110,7 @@ export async function wrapProFeature({
     <ProFeatureGate
       ownerUserId={ownerUserId}
       tagUuid={tagUuid}
+      vehicleSurfaceScope={vehicleSurfaceScope}
       feature={feature}
       isContributor={isContributor}
     >

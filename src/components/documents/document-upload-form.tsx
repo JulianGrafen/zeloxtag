@@ -17,7 +17,28 @@ import {
 } from "@/lib/documents/constants";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
+import {
+  garagePathForVehicle,
+  isVehicleId,
+  vehicleSurfaceHref,
+} from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { DocumentType } from "@/types/database";
+
+function documentsListHref(
+  tagUuid: string,
+  type: DocumentType,
+  scope?: VehicleSurfaceScope,
+): string {
+  const query = `dokumente?type=${type}`;
+  if (scope) {
+    return vehicleSurfaceHref(scope, query);
+  }
+  if (isVehicleId(tagUuid)) {
+    return `${garagePathForVehicle(tagUuid)}/dokumente?type=${type}`;
+  }
+  return `/v/${tagUuid}/dokumente?type=${type}`;
+}
 
 interface DocumentUploadFormProps {
   vehicleId: string;
@@ -27,6 +48,7 @@ interface DocumentUploadFormProps {
   /** Hide type picker (e.g. invoice-only upload from Belegliste). */
   lockType?: DocumentType;
   backHref?: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
 }
 
 /** Manual PDF/file upload fallback (no cloud OCR). */
@@ -37,15 +59,18 @@ export function DocumentUploadForm({
   defaultType = "invoice",
   lockType,
   backHref,
+  vehicleSurfaceScope,
 }: DocumentUploadFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [type, setType] = useState<DocumentType>(lockType ?? defaultType);
   const resolvedBackHref =
     backHref ??
-    (lockType === "invoice" || defaultType === "invoice"
-      ? `/v/${tagUuid}/dokumente?type=invoice`
-      : `/v/${tagUuid}/dokumente`);
+    documentsListHref(
+      tagUuid,
+      lockType === "invoice" || defaultType === "invoice" ? "invoice" : defaultType,
+      vehicleSurfaceScope,
+    );
   const [date, setDate] = useState("");
   const [amount, setAmount] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -107,7 +132,14 @@ export function DocumentUploadForm({
               return;
             }
             router.push(
-              `/v/${result.tagUuid}/dokumente?type=${result.document.type}`,
+              documentsListHref(
+                result.tagUuid,
+                result.document.type,
+                vehicleSurfaceScope ?? {
+                  vehicleId,
+                  linkedTagUuid: isVehicleId(result.tagUuid) ? null : result.tagUuid,
+                },
+              ),
             );
             router.refresh();
           });

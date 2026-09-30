@@ -2,8 +2,13 @@ import "server-only";
 
 import { cache } from "react";
 
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
-import { getTagByUuid, type TagLoadOptions } from "@/lib/tags/get-tag-by-uuid";
+import {
+  getTagByUuid,
+  hydrateTagScanWithSessionDocuments,
+  type TagLoadOptions,
+} from "@/lib/tags/get-tag-by-uuid";
 import { loadVehicleProjectionMaybeSingle } from "@/lib/vehicles/load-vehicle-projection";
 import { createClient } from "@/lib/supabase/server";
 import type { TagScanResult } from "@/types/database";
@@ -50,11 +55,21 @@ async function loadVehicleScanByVehicleIdUncached(
     ? await getTagByUuid(linkedTagUuid, load)
     : null;
 
-  return {
+  const baseScan = {
     tag: linkedTagUuid && taggedLoad ? taggedLoad.tag : placeholderTag,
     vehicle,
     documents: taggedLoad?.documents ?? [],
   };
+
+  const viewer = await getCurrentUser();
+  if (!viewer) {
+    return baseScan;
+  }
+
+  return hydrateTagScanWithSessionDocuments(
+    baseScan,
+    load?.documents ?? { mode: "all", columns: "list" },
+  );
 }
 
 const loadVehicleScanByVehicleId = cache(loadVehicleScanByVehicleIdUncached);

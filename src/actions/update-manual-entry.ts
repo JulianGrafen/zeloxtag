@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { getCurrentUser } from "@/lib/auth/get-user";
 import {
   contributorMayWriteDocumentType,
@@ -134,7 +132,7 @@ export async function updateManualVehicleEntry(
       return { status: "error", message: "Manueller Eintrag nicht gefunden." };
     }
     await updateMockUploadedDocument(data.vehicleId, documentId, patch);
-    revalidateManualEntryPaths(data.tagUuid, documentId);
+    await revalidateManualEntryPaths(data.vehicleId, data.tagUuid, documentId);
     return { status: "ok" };
   }
 
@@ -209,8 +207,6 @@ export async function updateManualVehicleEntry(
     return { status: "error", message: updateError.message };
   }
 
-  revalidateManualEntryPaths(data.tagUuid, documentId);
-  revalidatePath(`/v/${data.tagUuid}/dokumente/${documentId}`);
-  revalidatePath(`/v/${data.tagUuid}/intervalle/${documentId}`);
+  await revalidateManualEntryPaths(data.vehicleId, data.tagUuid, documentId);
   return { status: "ok" };
 }

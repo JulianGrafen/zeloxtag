@@ -1,19 +1,28 @@
-import { revalidatePath } from "next/cache";
+import {
+  revalidateDocumentDetailPaths,
+  revalidateVehicleSurfacePaths,
+  resolveRevalidationScope,
+} from "@/lib/vehicle-surface/revalidate-paths";
+
+const MANUAL_ENTRY_SEGMENTS = [
+  "",
+  "/eintrag",
+  "/umbauten",
+  "/service",
+  "/dokumente",
+  "/intervalle",
+  "/historie",
+] as const;
 
 /** Revalidate surfaces that list or derive from manual vehicle entries. */
-export function revalidateManualEntryPaths(
-  tagUuid: string,
+export async function revalidateManualEntryPaths(
+  vehicleId: string,
+  _tagUuid?: string,
   documentId?: string,
-): void {
-  revalidatePath(`/v/${tagUuid}`);
-  revalidatePath(`/v/${tagUuid}/eintrag`);
-  revalidatePath(`/v/${tagUuid}/umbauten`);
-  revalidatePath(`/v/${tagUuid}/service`);
-  revalidatePath(`/v/${tagUuid}/dokumente`);
-  revalidatePath(`/v/${tagUuid}/intervalle`);
-  revalidatePath(`/v/${tagUuid}/historie`);
+): Promise<void> {
+  const scope = await resolveRevalidationScope(vehicleId);
+  revalidateVehicleSurfacePaths(scope, MANUAL_ENTRY_SEGMENTS);
   if (documentId) {
-    revalidatePath(`/v/${tagUuid}/dokumente/${documentId}`);
-    revalidatePath(`/v/${tagUuid}/intervalle/${documentId}`);
+    revalidateDocumentDetailPaths(scope, documentId);
   }
 }

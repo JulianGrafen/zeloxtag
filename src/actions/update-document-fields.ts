@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 
 import {
   contributorMayWriteDocumentType,
@@ -25,6 +24,11 @@ import {
 } from "@/lib/documents/mock-uploads";
 import { parseDocumentDateField } from "@/lib/documents/document-date-field";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
+import {
+  revalidateDocumentDetailPaths,
+  revalidateVehicleSurfacePaths,
+  resolveRevalidationScope,
+} from "@/lib/vehicle-surface/revalidate-paths";
 import { isOilChangeDocument } from "@/lib/documents/oil-changes";
 import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
 import type { Document } from "@/types/database";
@@ -141,13 +145,13 @@ function parseTitle(value: unknown): string | null | undefined {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function revalidateDocumentPaths(tagUuid: string, documentId: string) {
-  revalidatePath(`/v/${tagUuid}`);
-  revalidatePath(`/v/${tagUuid}/dokumente`);
-  revalidatePath(`/v/${tagUuid}/dokumente/${documentId}`);
-  revalidatePath(`/v/${tagUuid}/service`);
-  revalidatePath(`/v/${tagUuid}/historie`);
-  revalidatePath(`/v/${tagUuid}/rechnungen`);
+async function revalidateDocumentPaths(
+  vehicleId: string,
+  documentId: string,
+): Promise<void> {
+  const scope = await resolveRevalidationScope(vehicleId);
+  revalidateVehicleSurfacePaths(scope);
+  revalidateDocumentDetailPaths(scope, documentId);
 }
 
 /**
@@ -317,9 +321,9 @@ export async function updateDocumentFields(
       ...(parsedAmount !== undefined ? { amount: parsedAmount } : {}),
       ...(parsedCategory !== undefined ? { category: parsedCategory } : {}),
     });
-    revalidateDocumentPaths(tagUuid, documentId);
+    await revalidateDocumentPaths(vehicleId, documentId);
     if (isStoredManualEntry(target)) {
-      revalidateManualEntryPaths(tagUuid, documentId);
+      await revalidateManualEntryPaths(vehicleId, tagUuid, documentId);
     }
     return { status: "ok" };
   }
@@ -476,10 +480,9 @@ export async function updateDocumentFields(
     return { status: "error", message: updateError.message };
   }
 
-  revalidateDocumentPaths(tagUuid, documentId);
-  revalidatePath(`/v/${tagUuid}/intervalle`);
+  await revalidateDocumentPaths(vehicleId, documentId);
   if (isStoredManualEntry(document)) {
-    revalidateManualEntryPaths(tagUuid, documentId);
+    await revalidateManualEntryPaths(vehicleId, tagUuid, documentId);
   }
   void recomputeVehicleMaintenanceSchedules(vehicleId);
   return { status: "ok" };

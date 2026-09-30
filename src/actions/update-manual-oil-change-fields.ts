@@ -28,8 +28,6 @@ import {
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
-import { revalidatePath } from "next/cache";
-
 export type UpdateManualOilChangeFieldsResult =
   | { status: "ok" }
   | { status: "error"; message: string };
@@ -77,8 +75,7 @@ export async function updateManualOilChangeFields(
     }
     const persistPatch = buildManualOilChangePersistPatch(target, patch);
     await updateMockUploadedDocument(vehicleId, documentId, persistPatch);
-    revalidateManualEntryPaths(tagUuid, documentId);
-    revalidatePath(`/v/${tagUuid}/intervalle/${documentId}`);
+    await revalidateManualEntryPaths(vehicleId, tagUuid, documentId);
     return { status: "ok" };
   }
 
@@ -154,8 +151,6 @@ export async function updateManualOilChangeFields(
     return { status: "error", message: updateError.message };
   }
 
-  revalidateManualEntryPaths(tagUuid, documentId);
-  revalidatePath(`/v/${tagUuid}/intervalle/${documentId}`);
-  revalidatePath(`/v/${tagUuid}/dokumente/${documentId}`);
+  await revalidateManualEntryPaths(vehicleId, tagUuid, documentId);
   return { status: "ok" };
 }

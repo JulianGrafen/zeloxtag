@@ -260,7 +260,7 @@ export async function createManualVehicleEntry(
       created_at: now,
     };
     await appendMockUploadedDocument(document);
-    revalidateManualEntryPaths(data.tagUuid);
+    await revalidateManualEntryPaths(data.vehicleId, data.tagUuid);
     return { status: "created", documentId };
   }
 
@@ -389,7 +389,7 @@ export async function createManualVehicleEntry(
   for (const attempt of insertAttempts) {
     const { error } = await supabase.from("documents").insert({ ...attempt });
     if (!error) {
-      revalidateManualEntryPaths(data.tagUuid);
+      await revalidateManualEntryPaths(data.vehicleId, data.tagUuid);
       void recomputeVehicleMaintenanceSchedules(data.vehicleId);
       return { status: "created", documentId };
     }

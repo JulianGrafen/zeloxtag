@@ -55,15 +55,23 @@ export default async function UploadDocumentPage({
     isDemo: isDemoShowcase,
     ownerUserId: vehicle.user_id,
     tagUuid: scope.linkedTagUuid ?? vehicleId,
+    vehicleSurfaceScope: scope,
     feature: FEATURE.DOCUMENT_VAULT,
     children: (
       <AppShell showNavbar={false}>
         <DocumentUploadForm
           vehicleId={vehicle.id}
           tagUuid={scope.linkedTagUuid ?? vehicleId}
+          vehicleSurfaceScope={scope}
           vehicleLabel={vehicleLabel}
           defaultType={defaultType}
           lockType={defaultType === "invoice" ? "invoice" : undefined}
+          backHref={vehicleSurfaceHref(
+            scope,
+            defaultType === "invoice"
+              ? "dokumente?type=invoice"
+              : "dokumente",
+          )}
         />
       </AppShell>
     ),

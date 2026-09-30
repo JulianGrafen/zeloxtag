@@ -258,7 +258,8 @@ async function resolveVehicleIdForHydration(
   return linked || null;
 }
 
-async function hydratePrivateTwin(
+/** Session-scoped document overlay for owner/contributor (RLS). */
+export async function hydrateTagScanWithSessionDocuments(
   scan: TagScanResult,
   documentLoad: TagDocumentLoad,
 ): Promise<TagScanResult> {
@@ -345,7 +346,7 @@ async function getTagByUuidUncached(
   const viewer = await getCurrentUser();
   if (!viewer) return viaRpc;
 
-  return hydratePrivateTwin(
+  return hydrateTagScanWithSessionDocuments(
     viaRpc,
     options?.documents ?? { mode: "all", columns: "list" },
   );
