@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/supabase/admin", () => ({
+  isSupabaseAdminConfigured: () => false,
+  createAdminClient: vi.fn(),
+}));
 
 import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 

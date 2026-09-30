@@ -29,6 +29,7 @@ export function buildShareableBuildData(
 
   return {
     modelName,
+    instagramHandle: input.profile.instagramHandle,
     imageUrl: input.profile.heroImageSrc ?? undefined,
     specRows,
     modificationsCount: Math.max(0, input.modificationsCount),

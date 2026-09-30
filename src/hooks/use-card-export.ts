@@ -4,11 +4,13 @@ import { useCallback, useRef, useState, type RefObject } from "react";
 import { toPng } from "html-to-image";
 
 import {
+  SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO,
   SHAREABLE_SPEC_CARD_HEIGHT_PX,
   SHAREABLE_SPEC_CARD_WIDTH_PX,
 } from "@/components/shareable-spec-card/constants";
 import { slugifyShareFilename } from "@/components/shareable-spec-card/format-spec-delta";
 import type { ShareableSpecCardExportOptions } from "@/components/shareable-spec-card/types";
+import { shareStoryImageFile } from "@/lib/share/share-story-image-file";
 
 async function waitForImages(root: HTMLElement): Promise<void> {
   const images = Array.from(root.querySelectorAll("img"));
@@ -53,12 +55,6 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-function prefersNativeFileShare(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  return /Android|iPhone|iPad|iPod/i.test(ua) && typeof navigator.share === "function";
-}
-
 function exportErrorMessage(cause: unknown): string {
   if (!(cause instanceof Error)) {
     return "Export fehlgeschlagen.";
@@ -95,8 +91,9 @@ export function useCardExport(targetRef: RefObject<HTMLElement | null>) {
       setError(null);
 
       const filenameBase = options?.filenameBase ?? "zelox-build";
-      const pixelRatio = options?.pixelRatio ?? 2;
-      const filename = `${slugifyShareFilename(filenameBase)}.png`;
+      const pixelRatio =
+        options?.pixelRatio ?? SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO;
+      const filename = `${slugifyShareFilename(filenameBase)}-story.png`;
 
       const mount = document.createElement("div");
       mount.setAttribute("aria-hidden", "true");
@@ -125,21 +122,9 @@ export function useCardExport(targetRef: RefObject<HTMLElement | null>) {
         const blob = dataUrlToBlob(dataUrl);
         const file = new File([blob], filename, { type: "image/png" });
 
-        if (
-          prefersNativeFileShare() &&
-          (!navigator.canShare || navigator.canShare({ files: [file] }))
-        ) {
-          try {
-            await navigator.share({
-              files: [file],
-              title: "ZeloxTag Build Card",
-            });
-            return;
-          } catch (shareError) {
-            if (shareError instanceof DOMException && shareError.name === "AbortError") {
-              return;
-            }
-          }
+        const shareResult = await shareStoryImageFile(file);
+        if (shareResult === "shared" || shareResult === "aborted") {
+          return;
         }
 
         downloadBlob(blob, filename);

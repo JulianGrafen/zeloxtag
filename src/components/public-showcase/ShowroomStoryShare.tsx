@@ -37,13 +37,12 @@ export function ShowroomStoryShare({ data }: ShowroomStoryShareProps) {
             Story teilen
           </p>
           <p className="text-[0.82rem] leading-snug text-white/55">
-            Digitaler Fahrzeugpass als 9:16-Bild — native Freigabe oder Download.
+            9:16 für Instagram Stories — auf dem Handy direkt über das Teilen-Menü.
           </p>
           <ShareableSpecCard
             data={cardData}
             previewMaxWidth={260}
             className="mt-4 w-full"
-            exportButtonLabel="Karte teilen"
           />
         </div>
       </div>

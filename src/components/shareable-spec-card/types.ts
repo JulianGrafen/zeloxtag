@@ -21,6 +21,8 @@ export type ShareCardSpecRow = {
 
 export interface ShareableBuildData {
   modelName: string;
+  /** Public Instagram handle (no @), same as showroom profile. */
+  instagramHandle: string | null;
   imageUrl?: string;
   specRows: ShareCardSpecRow[];
   modificationsCount: number;

@@ -86,6 +86,7 @@ describe("buildShareableBuildData", () => {
 
     expect(data?.modelName).toContain("BMW");
     expect(data?.modelName).toContain("2018");
+    expect(data?.instagramHandle).toBeNull();
     expect(data?.modificationsCount).toBe(12);
     expect(data?.buildDna).toEqual(mockBuildDna);
 
@@ -98,5 +99,14 @@ describe("buildShareableBuildData", () => {
     expect(accel?.valueText).toContain("4,2");
     expect(accel?.layout).toBe("quartett");
     expect(accel?.quartett?.polarity).toBe("lower");
+  });
+
+  it("passes instagram handle from showcase profile", () => {
+    const data = buildShareableBuildData({
+      profile: { ...baseProfile, instagramHandle: "julian_f11" },
+      modificationsCount: 1,
+      buildDna: null,
+    });
+    expect(data?.instagramHandle).toBe("julian_f11");
   });
 });

@@ -7,6 +7,7 @@ import {
   SHAREABLE_SPEC_CARD_WIDTH_PX,
 } from "./constants";
 import { ShareCardBuildDnaBlock } from "./ShareCardBuildDnaBlock";
+import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
 import { ShareCardSpecRowView } from "./ShareCardSpecRow";
 import { ShareCardZeloxMark } from "./ShareCardZeloxMark";
 import type { ShareableBuildData } from "./types";
@@ -61,6 +62,9 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
               <p className="max-w-[95%] text-[52px] font-bold leading-[1.05] tracking-tight">
                 {data.modelName}
               </p>
+              {data.instagramHandle ? (
+                <ShareCardInstagramHandle handle={data.instagramHandle} />
+              ) : null}
             </div>
           </div>
 
