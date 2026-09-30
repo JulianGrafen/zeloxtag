@@ -34,6 +34,7 @@ export function VehicleSettingsView({
         galleryPhotos={galleryPhotos}
         canEdit={canEdit}
         hasLinkedTag={hasLinkedTag}
+        linkedTagUuid={surfaceScope.linkedTagUuid}
       />
 
       <VehicleExposeSubmenu

@@ -1,7 +1,12 @@
 import {
-  calculateBarPercentage,
-  calculateBarPercentageLowerIsBetter,
-} from "./calculate-bar-percentage";
+  SHARE_CARD_QUARTETT_SEGMENT_CLASS,
+  ShowcaseQuartettSegmentBar,
+} from "@/components/public-showcase/showcase-quartett-segment-bar";
+import {
+  filledSegments,
+  filledSegmentsLowerIsBetter,
+} from "@/components/public-showcase/showcase-quartett-scales";
+
 import {
   SHAREABLE_SPEC_POWER_TO_WEIGHT_MAX_KG_PS,
   SHAREABLE_SPEC_POWER_TO_WEIGHT_MIN_KG_PS,
@@ -23,23 +28,33 @@ function formatMetricValue(metric: VehicleSpecMetric): string {
   return `${value}${unit}`.trim();
 }
 
-function resolveFillPercent(metric: VehicleSpecMetric, lowerIsBetter: boolean): number {
+function resolveFilledSegments(
+  metric: VehicleSpecMetric,
+  lowerIsBetter: boolean,
+): number {
   if (lowerIsBetter) {
     const numeric =
       typeof metric.value === "number"
         ? metric.value
         : Number.parseFloat(String(metric.value));
-    return calculateBarPercentageLowerIsBetter(
+    if (!Number.isFinite(numeric)) return 0;
+    return filledSegmentsLowerIsBetter(
       numeric,
       SHAREABLE_SPEC_POWER_TO_WEIGHT_MIN_KG_PS,
       SHAREABLE_SPEC_POWER_TO_WEIGHT_MAX_KG_PS,
     );
   }
-  return calculateBarPercentage(metric.value, metric.maxValue);
+
+  const numeric =
+    typeof metric.value === "number"
+      ? metric.value
+      : Number.parseFloat(String(metric.value));
+  if (!Number.isFinite(numeric)) return 0;
+  return filledSegments(numeric, metric.maxValue);
 }
 
 export function CompactMetricBar({ metric, lowerIsBetter = false }: CompactMetricBarProps) {
-  const fillPercent = resolveFillPercent(metric, lowerIsBetter);
+  const filled = resolveFilledSegments(metric, lowerIsBetter);
 
   return (
     <div className="flex flex-col gap-3">
@@ -58,15 +73,10 @@ export function CompactMetricBar({ metric, lowerIsBetter = false }: CompactMetri
           ) : null}
         </div>
       </div>
-      <div
-        className="h-2 w-full overflow-hidden rounded-full bg-zinc-800"
-        role="presentation"
-      >
-        <div
-          className="h-full rounded-full bg-white"
-          style={{ width: `${fillPercent}%` }}
-        />
-      </div>
+      <ShowcaseQuartettSegmentBar
+        filled={filled}
+        segmentClassName={SHARE_CARD_QUARTETT_SEGMENT_CLASS}
+      />
     </div>
   );
 }

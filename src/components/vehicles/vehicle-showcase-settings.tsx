@@ -2,6 +2,7 @@ import { ShowcaseMediaSettings } from "@/components/vehicles/showcase-media-sett
 import { VehiclePublicProfileSubmenu } from "@/components/vehicles/vehicle-public-profile-submenu";
 import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
 import { VehicleShowcaseModificationsSubmenu } from "@/components/vehicles/vehicle-showcase-modifications-submenu";
+import { VehicleShowcaseStoryPassSettings } from "@/components/vehicles/vehicle-showcase-story-pass-settings";
 import { partitionShowcaseSelectableDocuments } from "@/lib/vehicles/public-showcase-documents";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document, Vehicle } from "@/types/database";
@@ -13,6 +14,7 @@ type VehicleShowcaseSettingsProps = {
   galleryPhotos: Document[];
   canEdit: boolean;
   hasLinkedTag: boolean;
+  linkedTagUuid: string | null;
 };
 
 export function VehicleShowcaseSettings({
@@ -22,6 +24,7 @@ export function VehicleShowcaseSettings({
   galleryPhotos,
   canEdit,
   hasLinkedTag,
+  linkedTagUuid,
 }: VehicleShowcaseSettingsProps) {
   const { invoices, modifications } =
     partitionShowcaseSelectableDocuments(documents);
@@ -54,6 +57,14 @@ export function VehicleShowcaseSettings({
           invoiceCount={invoices.length}
           visibleCount={visibleShowcaseDocCount}
           variant="group"
+        />
+      ) : null}
+
+      {vehicle.is_public ? (
+        <VehicleShowcaseStoryPassSettings
+          vehicle={vehicle}
+          documents={documents}
+          linkedTagUuid={linkedTagUuid}
         />
       ) : null}
     </VehicleSettingsSubmenuGroup>
