@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
     const gateBlocked = await enforceAutomotiveGateFromFormData(
       formData,
       fileCheck,
+      { profile: "fuel_receipt" },
     );
     if (gateBlocked) return gateBlocked;
 

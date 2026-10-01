@@ -91,6 +91,30 @@ describe("runAutomotiveGate", () => {
     expect(mockGetOcrLlmClient).toHaveBeenCalled();
   });
 
+  it("accepts fuel station receipts with shop items using fuel_receipt profile", async () => {
+    mockLlmResponse({
+      isAutomotiveRelated: true,
+      reason: null,
+    });
+    mockGetImageData.mockReturnValue({
+      data: new Uint8ClampedArray(32 * 32 * 4).fill(200),
+    });
+
+    const { runAutomotiveGate } = await import("./verify-automotive-context");
+    const jpegLike = Buffer.from([0xff, 0xd8, 0xff, ...Array(200).fill(128)]);
+    const result = await runAutomotiveGate(jpegLike, "image/jpeg", "fuel_receipt");
+
+    expect(result.ok).toBe(true);
+    expect(mockBuildAbeVisionUserMessage).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.stringMatching(/Tankstellen/i),
+        expect.stringMatching(/Shop-Artikel/i),
+      ]),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
   it("accepts automotive documents from the gatekeeper LLM", async () => {
     mockLlmResponse({
       isAutomotiveRelated: true,

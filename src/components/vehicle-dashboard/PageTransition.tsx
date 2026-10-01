@@ -1,14 +1,23 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { ViewTransition } from "react";
 
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 import { shouldRenderGlobalLegalFooter } from "@/lib/legal/show-global-legal-footer";
 import { usePublicShowcaseSurface } from "@/lib/legal/use-public-showcase-surface";
 import {
+  activateRouteTransitionLoading,
   isRouteTransitionLoadingActive,
+  scheduleDeactivateRouteTransitionLoading,
   subscribeRouteTransitionLoading,
 } from "@/lib/ui/route-transition-loading-state";
 import {
@@ -38,6 +47,16 @@ export function PageTransition({ children }: PageTransitionProps) {
     isRouteTransitionLoadingActive,
     () => false,
   );
+  const skipPathTransitionRef = useRef(true);
+
+  useLayoutEffect(() => {
+    if (skipPathTransitionRef.current) {
+      skipPathTransitionRef.current = false;
+      return;
+    }
+    activateRouteTransitionLoading();
+    scheduleDeactivateRouteTransitionLoading();
+  }, [pathname]);
 
   useEffect(() => {
     return subscribeScanSurface(() => {

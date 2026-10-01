@@ -57,6 +57,9 @@ export type AutomotiveGateResult =
   | { ok: true; context: AutomotiveContextResult }
   | { ok: false; error: string; reason: string | null };
 
+/** Stricter default vs. Tankbon flow (shop items on gas-station receipts are OK). */
+export type AutomotiveGateProfile = "default" | "fuel_receipt";
+
 function isGatekeeperDisabled(): boolean {
   const value = process.env.OCR_GATEKEEPER_DISABLED?.trim().toLowerCase();
   return value === "1" || value === "true" || value === "yes";
@@ -71,7 +74,20 @@ function resolveGatekeeperModel(): string {
   );
 }
 
-function buildAutomotiveGatekeeperSystemPrompt(): string {
+function buildAutomotiveGatekeeperSystemPrompt(
+  profile: AutomotiveGateProfile,
+): string {
+  if (profile === "fuel_receipt") {
+    return [
+      "You classify photos of till receipts for a fuel-log app.",
+      "Return ONLY JSON: isAutomotiveRelated (boolean) and reason (string or null).",
+      "Set isAutomotiveRelated true when the receipt is from a gas station or shows fuel/diesel/charging (Tanken, Zapfsäule, Liter, €/L, Kraftstoff),",
+      "even if it also lists shop items such as drinks (Cola), snacks, tobacco, or car wash.",
+      "Set false only for clearly unrelated images: supermarket-only receipts without fuel, restaurant bills, selfies, blank pages, or random photos.",
+      "When false, reason is a short German explanation. When true, reason must be null.",
+    ].join(" ");
+  }
+
   return [
     "You are a strict classifier.",
     "Determine if this document is related to automotive parts, vehicle maintenance, tuning, TÜV reports, or car registrations.",
@@ -120,17 +136,32 @@ async function isNearUniformBlankRasterImage(
   }
 }
 
+function buildAutomotiveGatekeeperUserLines(
+  profile: AutomotiveGateProfile,
+): string[] {
+  if (profile === "fuel_receipt") {
+    return [
+      "Ist das eine Tankstellen-Quittung oder ein Beleg mit Kraftstoff?",
+      "Zusätzliche Shop-Artikel (Getränke, Snacks) auf demselben Bon sind erlaubt.",
+      "Antworte nur mit isAutomotiveRelated und reason.",
+    ];
+  }
+
+  return [
+    "Klassifiziere dieses Dokument: Hat es Bezug zu Kfz-Teilen, Werkstatt, Tuning, TÜV oder Zulassung?",
+    "Antworte nur mit isAutomotiveRelated und reason.",
+  ];
+}
+
 async function verifyAutomotiveContext(
   input: DocumentBytesInput,
+  profile: AutomotiveGateProfile,
 ): Promise<AutomotiveContextResult> {
   const model = resolveGatekeeperModel();
   const { client, model: resolvedModel } = getOcrLlmClient({ model });
 
   const userContent = await buildAbeVisionUserMessage(
-    [
-      "Klassifiziere dieses Dokument: Hat es Bezug zu Kfz-Teilen, Werkstatt, Tuning, TÜV oder Zulassung?",
-      "Antworte nur mit isAutomotiveRelated und reason.",
-    ],
+    buildAutomotiveGatekeeperUserLines(profile),
     input,
     { maxPdfPages: 1 },
   );
@@ -145,7 +176,10 @@ async function verifyAutomotiveContext(
         json_schema: AUTOMOTIVE_CONTEXT_JSON_SCHEMA,
       },
       messages: [
-        { role: "system", content: buildAutomotiveGatekeeperSystemPrompt() },
+        {
+          role: "system",
+          content: buildAutomotiveGatekeeperSystemPrompt(profile),
+        },
         { role: "user", content: userContent },
       ],
     });
@@ -174,6 +208,7 @@ async function verifyAutomotiveContext(
 export async function runAutomotiveGate(
   bytes: Buffer,
   contentType: string,
+  profile: AutomotiveGateProfile = "default",
 ): Promise<AutomotiveGateResult> {
   if (isGatekeeperDisabled()) {
     return {
@@ -196,7 +231,7 @@ export async function runAutomotiveGate(
     };
   }
 
-  const context = await verifyAutomotiveContext(input);
+  const context = await verifyAutomotiveContext(input, profile);
   if (!context.isAutomotiveRelated) {
     return {
       ok: false,

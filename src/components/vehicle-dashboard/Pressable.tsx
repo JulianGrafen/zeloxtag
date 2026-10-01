@@ -3,6 +3,8 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
+import { activateRouteTransitionLoading } from "@/lib/ui/route-transition-loading-state";
+
 import { usePressFeedback } from "./usePressFeedback";
 
 type PressVariant = "tile" | "row" | "button" | "pill";
@@ -65,6 +67,9 @@ export function PressableLink({
       {...props}
       transitionTypes={types}
       onPointerDown={(event) => {
+        if (direction !== "none") {
+          activateRouteTransitionLoading();
+        }
         pressProps.onPointerDown(event);
         onPointerDown?.(event);
       }}

@@ -9,6 +9,7 @@ import {
   AutomotiveContextRejectedError,
   isAutomotiveContextRejectedError,
   runAutomotiveGate,
+  type AutomotiveGateProfile,
 } from "@/lib/ocr/verify-automotive-context";
 import type { FileValidationSuccess } from "@/lib/security/file-upload";
 
@@ -54,13 +55,18 @@ function shouldSkipAutomotiveGate(formData: FormData): boolean {
 export async function enforceAutomotiveGateFromFormData(
   formData: FormData,
   fileCheck: FileValidationSuccess,
+  options?: { profile?: AutomotiveGateProfile },
 ): Promise<NextResponse<AutomotiveGateErrorBody> | null> {
   if (shouldSkipAutomotiveGate(formData)) {
     return null;
   }
 
   const bytes = Buffer.from(fileCheck.bytes);
-  const gate = await runAutomotiveGate(bytes, fileCheck.mime);
+  const gate = await runAutomotiveGate(
+    bytes,
+    fileCheck.mime,
+    options?.profile ?? "default",
+  );
   if (!gate.ok) {
     return automotiveGateRejectedResponse(gate.error);
   }
