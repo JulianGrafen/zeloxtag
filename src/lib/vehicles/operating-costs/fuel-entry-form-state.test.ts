@@ -25,6 +25,7 @@ describe("fuelOperatingCostToFormState", () => {
       occurredOn: "2026-05-01",
       amountEur: "89,50",
       fuelLiters: "42,5",
+      pricePerLiterEur: "2,106",
       odometerKm: "62000",
       note: "Volltankung",
     });

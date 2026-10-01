@@ -1,6 +1,9 @@
 import type { FuelReceiptExtraction } from "@/lib/fuel-receipt/types";
 
-import { reconcileFuelLiters } from "./fuel-receipt-reconcile";
+import {
+  normalizePricePerLiter,
+  reconcileFuelLiters,
+} from "./fuel-receipt-reconcile";
 
 export const FUEL_RECEIPT_OCR_JSON_SCHEMA = {
   name: "fuel_station_receipt_ocr",
@@ -100,6 +103,8 @@ export function normalizeFuelReceiptOcrFields(
       ? Math.round(fields.totalAmount * 100) / 100
       : null;
 
+  const pricePerLiter = normalizePricePerLiter(fields.pricePerLiter);
+
   const liters = reconcileFuelLiters({
     liters: fields.liters,
     totalAmount,
@@ -110,5 +115,6 @@ export function normalizeFuelReceiptOcrFields(
     date: fields.date,
     totalAmount,
     liters,
+    pricePerLiter,
   };
 }

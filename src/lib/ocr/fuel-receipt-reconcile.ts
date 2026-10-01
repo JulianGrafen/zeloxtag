@@ -41,7 +41,7 @@ export function reconcileFuelLiters(input: {
   return fromOcr != null ? clampFillLiters(fromOcr) : null;
 }
 
-function normalizePricePerLiter(value: number | null): number | null {
+export function normalizePricePerLiter(value: number | null): number | null {
   if (value == null || !Number.isFinite(value) || value <= 0) return null;
   if (value < MIN_PRICE_PER_LITER_EUR || value > MAX_PRICE_PER_LITER_EUR) {
     return null;

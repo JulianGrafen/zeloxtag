@@ -3,12 +3,15 @@ export type FuelReceiptExtraction = {
   date: string | null;
   totalAmount: number | null;
   liters: number | null;
+  pricePerLiter: number | null;
 };
 
 export type FuelFillFormState = {
   occurredOn: string;
   amountEur: string;
   fuelLiters: string;
+  /** Literpreis €/L (v. a. aus KI-Scan). */
+  pricePerLiterEur: string;
   odometerKm: string;
   note: string;
 };

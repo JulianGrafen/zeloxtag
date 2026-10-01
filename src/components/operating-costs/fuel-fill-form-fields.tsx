@@ -39,7 +39,7 @@ export function FuelFillFormFields({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="space-y-1.5">
           <label className={labelClass} htmlFor="fuel-fill-liters">
             Liter
@@ -57,6 +57,22 @@ export function FuelFillFormFields({
           />
         </div>
         <div className="space-y-1.5">
+          <label className={labelClass} htmlFor="fuel-fill-price-per-liter">
+            Litpreis (€/L)
+          </label>
+          <input
+            id="fuel-fill-price-per-liter"
+            className={inputClass}
+            inputMode="decimal"
+            placeholder="z. B. 1,89"
+            value={value.pricePerLiterEur}
+            disabled={disabled}
+            onChange={(event) =>
+              onChange({ ...value, pricePerLiterEur: event.target.value })
+            }
+          />
+        </div>
+        <div className="col-span-2 space-y-1.5 sm:col-span-1">
           <label className={labelClass} htmlFor="fuel-fill-amount">
             Gesamtbetrag (€)
           </label>

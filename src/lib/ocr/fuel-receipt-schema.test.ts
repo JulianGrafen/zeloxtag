@@ -16,6 +16,17 @@ describe("fuel-receipt-schema", () => {
     expect(fields.date).toBe("2026-01-15");
     expect(fields.totalAmount).toBe(100);
     expect(fields.liters).toBe(40.11);
+    expect(fields.pricePerLiter).toBeNull();
+  });
+
+  it("returns normalized liter price from OCR", () => {
+    const fields = normalizeFuelReceiptOcrFields({
+      date: "2026-01-15",
+      totalAmount: 80,
+      liters: 42.5,
+      pricePerLiter: 1.8899,
+    });
+    expect(fields.pricePerLiter).toBe(1.89);
   });
 
   it("validates schema shape", () => {
