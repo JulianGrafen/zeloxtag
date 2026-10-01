@@ -24,7 +24,10 @@ describe("claim-tech-specs", () => {
       }),
     ).toEqual({
       powerPs: 231,
+      torqueNm: null,
       displacementCc: 2998,
+      accel0To100Sec: null,
+      accel100To200Sec: null,
       drivetrain: "Heckantrieb",
       fuelType: "Benzin",
       oilChangeIntervalKm: null,
@@ -40,6 +43,27 @@ describe("claim-tech-specs", () => {
     ).toBe(true);
   });
 
+  it("normalizes torque and acceleration times", () => {
+    expect(
+      normalizeClaimTechSpecs({
+        torqueNm: "420",
+        accel0To100Sec: "4,1",
+        accel100To200Sec: "11.2",
+      }),
+    ).toEqual({
+      powerPs: null,
+      torqueNm: 420,
+      displacementCc: null,
+      accel0To100Sec: 4.1,
+      accel100To200Sec: 11.2,
+      drivetrain: null,
+      fuelType: null,
+      oilChangeIntervalKm: null,
+      oilChangeIntervalMonths: null,
+      buildPersonalityTags: [],
+    });
+  });
+
   it("normalizes oil-change interval km from claim input", () => {
     expect(
       normalizeClaimTechSpecs({
@@ -47,7 +71,10 @@ describe("claim-tech-specs", () => {
       }),
     ).toEqual({
       powerPs: null,
+      torqueNm: null,
       displacementCc: null,
+      accel0To100Sec: null,
+      accel100To200Sec: null,
       drivetrain: null,
       fuelType: null,
       oilChangeIntervalKm: 15_000,
@@ -61,7 +88,10 @@ describe("claim-tech-specs", () => {
       }),
     ).toEqual({
       powerPs: null,
+      torqueNm: null,
       displacementCc: null,
+      accel0To100Sec: null,
+      accel100To200Sec: null,
       drivetrain: null,
       fuelType: null,
       oilChangeIntervalKm: 15_000,
@@ -93,7 +123,10 @@ describe("claim-tech-specs", () => {
       }),
     ).toEqual({
       powerPs: null,
+      torqueNm: null,
       displacementCc: null,
+      accel0To100Sec: null,
+      accel100To200Sec: null,
       drivetrain: null,
       fuelType: null,
       oilChangeIntervalKm: null,

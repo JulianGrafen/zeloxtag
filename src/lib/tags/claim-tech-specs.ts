@@ -1,7 +1,12 @@
 import { DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
 import { parseBuildPersonalityTags } from "@/lib/vehicles/build-personality-chips";
 import {
+  ACCEL_0_100_SEC_MAX,
+  ACCEL_0_100_SEC_MIN,
+  ACCEL_100_200_SEC_MAX,
+  ACCEL_100_200_SEC_MIN,
   EMPTY_VEHICLE_TECH_SPECS,
+  parseAccelSeconds,
   parseOilChangeIntervalKm,
   parseOilChangeIntervalMonths,
   normalizeVehicleDrivetrain,
@@ -12,7 +17,10 @@ import {
 /** Optional tech fields collected during tag claim. */
 export type ClaimTechSpecs = {
   powerPs: number | null;
+  torqueNm: number | null;
   displacementCc: number | null;
+  accel0To100Sec: number | null;
+  accel100To200Sec: number | null;
   drivetrain: string | null;
   fuelType: string | null;
   oilChangeIntervalKm: number | null;
@@ -22,7 +30,10 @@ export type ClaimTechSpecs = {
 
 export type ClaimTechSpecsInput = {
   powerPs?: string | number | null;
+  torqueNm?: string | number | null;
   displacementCc?: string | number | null;
+  accel0To100Sec?: string | number | null;
+  accel100To200Sec?: string | number | null;
   drivetrain?: string | null;
   fuelType?: string | null;
   oilChangeIntervalKm?: string | number | null;
@@ -49,7 +60,18 @@ export function normalizeClaimTechSpecs(
   if (!input) return null;
 
   const powerPs = parsePositiveInt(input.powerPs);
+  const torqueNm = parsePositiveInt(input.torqueNm);
   const displacementCc = parsePositiveInt(input.displacementCc);
+  const accel0To100Sec = parseAccelSeconds(
+    input.accel0To100Sec,
+    ACCEL_0_100_SEC_MIN,
+    ACCEL_0_100_SEC_MAX,
+  );
+  const accel100To200Sec = parseAccelSeconds(
+    input.accel100To200Sec,
+    ACCEL_100_200_SEC_MIN,
+    ACCEL_100_200_SEC_MAX,
+  );
   const drivetrain =
     normalizeVehicleDrivetrain(input.drivetrain?.trim() || null) ??
     (input.drivetrain?.trim() || null);
@@ -66,7 +88,10 @@ export function normalizeClaimTechSpecs(
 
   if (
     powerPs == null &&
+    torqueNm == null &&
     displacementCc == null &&
+    accel0To100Sec == null &&
+    accel100To200Sec == null &&
     !drivetrain &&
     !fuelType &&
     oilChangeIntervalKm == null &&
@@ -77,7 +102,10 @@ export function normalizeClaimTechSpecs(
 
   return {
     powerPs,
+    torqueNm,
     displacementCc,
+    accel0To100Sec,
+    accel100To200Sec,
     drivetrain,
     fuelType,
     oilChangeIntervalKm,
@@ -93,7 +121,14 @@ export function claimTechSpecsToVehicleSpecs(
 
   const partial: Partial<VehicleTechSpecs> = {};
   if (specs.powerPs != null) partial.powerPs = specs.powerPs;
+  if (specs.torqueNm != null) partial.torqueNm = specs.torqueNm;
   if (specs.displacementCc != null) partial.displacementCc = specs.displacementCc;
+  if (specs.accel0To100Sec != null) {
+    partial.accel0To100Sec = specs.accel0To100Sec;
+  }
+  if (specs.accel100To200Sec != null) {
+    partial.accel100To200Sec = specs.accel100To200Sec;
+  }
   if (specs.drivetrain) partial.drivetrain = specs.drivetrain;
   if (specs.fuelType) partial.fuelType = specs.fuelType;
   if (specs.oilChangeIntervalKm != null) {

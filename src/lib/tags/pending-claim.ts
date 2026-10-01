@@ -22,24 +22,27 @@ const MAX_AGE_SECONDS = 60 * 60; // 1 hour
 function isClaimTechSpecs(value: unknown): value is ClaimTechSpecs {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const record = value as Record<string, unknown>;
-  const powerPs = record.powerPs;
-  const displacementCc = record.displacementCc;
-  const drivetrain = record.drivetrain;
-  const fuelType = record.fuelType;
+  const numericOrNull = (key: string) => {
+    const value = record[key];
+    return (
+      value === null ||
+      value === undefined ||
+      (typeof value === "number" && Number.isFinite(value))
+    );
+  };
 
   if (
-    !(powerPs === null || (typeof powerPs === "number" && Number.isFinite(powerPs)))
+    !numericOrNull("powerPs") ||
+    !numericOrNull("torqueNm") ||
+    !numericOrNull("displacementCc") ||
+    !numericOrNull("accel0To100Sec") ||
+    !numericOrNull("accel100To200Sec")
   ) {
     return false;
   }
-  if (
-    !(
-      displacementCc === null ||
-      (typeof displacementCc === "number" && Number.isFinite(displacementCc))
-    )
-  ) {
-    return false;
-  }
+
+  const drivetrain = record.drivetrain;
+  const fuelType = record.fuelType;
   if (!(drivetrain === null || typeof drivetrain === "string")) return false;
   if (!(fuelType === null || typeof fuelType === "string")) return false;
   const oilChangeIntervalKm = record.oilChangeIntervalKm;

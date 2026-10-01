@@ -17,7 +17,10 @@ type ClaimTwinPreviewCardProps = {
   model: string;
   year: string;
   powerPs?: string;
+  torqueNm?: string;
   displacementCc?: string;
+  accel0To100Sec?: string;
+  accel100To200Sec?: string;
   drivetrain?: string;
   fuelType?: string;
   personalityTags: readonly BuildPersonalityChipId[];
@@ -29,7 +32,10 @@ export function ClaimTwinPreviewCard({
   model,
   year,
   powerPs = "",
+  torqueNm = "",
   displacementCc = "",
+  accel0To100Sec = "",
+  accel100To200Sec = "",
   drivetrain = "",
   fuelType = "",
   personalityTags,
@@ -42,7 +48,10 @@ export function ClaimTwinPreviewCard({
   const hasPhoto = Boolean(photoPreviewUrl?.trim());
   const quartettLines = buildClaimPreviewQuartettLines({
     powerPs,
+    torqueNm,
     displacementCc,
+    accel0To100Sec,
+    accel100To200Sec,
   });
   const metaParts = [
     yearLabel ? `Baujahr ${yearLabel}` : null,

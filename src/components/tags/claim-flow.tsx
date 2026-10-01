@@ -54,6 +54,7 @@ import {
   OIL_CHANGE_INTERVAL_KM_OPTIONS,
   OIL_CHANGE_INTERVAL_MONTHS_OPTIONS,
   formatOilChangeIntervalMonthsLabel,
+  isAccelSecondsInputDraft,
 } from "@/lib/vehicles/tech-specs";
 
 interface ClaimFlowProps {
@@ -81,7 +82,10 @@ export function ClaimFlow({
   const [year, setYear] = useState("");
   const [vin, setVin] = useState("");
   const [powerPs, setPowerPs] = useState("");
+  const [torqueNm, setTorqueNm] = useState("");
   const [displacementCc, setDisplacementCc] = useState("");
+  const [accel0To100Sec, setAccel0To100Sec] = useState("");
+  const [accel100To200Sec, setAccel100To200Sec] = useState("");
   const [drivetrain, setDrivetrain] = useState("");
   const [fuelType, setFuelType] = useState("");
   const [oilChangeIntervalKm, setOilChangeIntervalKm] = useState(
@@ -231,7 +235,10 @@ export function ClaimFlow({
 
   const techSpecsPayload = {
     powerPs: powerPs.trim() || undefined,
+    torqueNm: torqueNm.trim() || undefined,
     displacementCc: displacementCc.trim() || undefined,
+    accel0To100Sec: accel0To100Sec.trim() || undefined,
+    accel100To200Sec: accel100To200Sec.trim() || undefined,
     drivetrain: drivetrain.trim() || undefined,
     fuelType: fuelType.trim() || undefined,
     oilChangeIntervalKm,
@@ -405,7 +412,10 @@ export function ClaimFlow({
           model={model}
           year={year}
           powerPs={powerPs}
+          torqueNm={torqueNm}
           displacementCc={displacementCc}
+          accel0To100Sec={accel0To100Sec}
+          accel100To200Sec={accel100To200Sec}
           drivetrain={drivetrain}
           fuelType={fuelType}
           personalityTags={buildPersonalityTags}
@@ -613,8 +623,8 @@ export function ClaimFlow({
         {step === "power" ? (
           <ClaimWizardPanel
             kicker={stepKicker("power")}
-            title="Leistung & Hubraum"
-            copy="Optional — du kannst die Werte auch später unter Fahrzeugdaten ergänzen."
+            title="Leistung & Fahrwerte"
+            copy="Optional — deine Quartett-Karte oben füllt sich live mit jedem Wert."
           >
             <form
               className="mt-6 grid w-full gap-4"
@@ -634,12 +644,44 @@ export function ClaimFlow({
                   placeholder="231"
                 />
                 <ClaimField
+                  id="claim-torque-nm"
+                  label="Drehmoment (Nm)"
+                  value={torqueNm}
+                  onChange={setTorqueNm}
+                  inputMode="numeric"
+                  placeholder="350"
+                />
+                <ClaimField
                   id="claim-displacement"
                   label="Hubraum (ccm)"
                   value={displacementCc}
                   onChange={setDisplacementCc}
                   inputMode="numeric"
                   placeholder="2998"
+                />
+                <ClaimField
+                  id="claim-accel-0-100"
+                  label="0–100 km/h (s)"
+                  value={accel0To100Sec}
+                  onChange={(value) => {
+                    if (isAccelSecondsInputDraft(value)) {
+                      setAccel0To100Sec(value);
+                    }
+                  }}
+                  inputMode="decimal"
+                  placeholder="5,2"
+                />
+                <ClaimField
+                  id="claim-accel-100-200"
+                  label="100–200 km/h (s)"
+                  value={accel100To200Sec}
+                  onChange={(value) => {
+                    if (isAccelSecondsInputDraft(value)) {
+                      setAccel100To200Sec(value);
+                    }
+                  }}
+                  inputMode="decimal"
+                  placeholder="12,4"
                 />
               </div>
               <ClaimSlideActions
