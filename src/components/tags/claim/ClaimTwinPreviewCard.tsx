@@ -96,11 +96,26 @@ export function ClaimTwinPreviewCard({
           <div className="claim-twin-preview__silhouette" aria-hidden />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-            {displayTitle}
-          </p>
+          <div
+            className="flex flex-wrap items-center gap-x-2 gap-y-1.5"
+            aria-label={
+              previewLabels.length > 0 ? "Fahrzeug und Build-Vibes" : undefined
+            }
+          >
+            <p className="text-[0.95rem] font-semibold leading-snug text-[color:var(--vd-text)]">
+              {displayTitle}
+            </p>
+            {previewLabels.map((label) => (
+              <span
+                key={label}
+                className="inline-flex shrink-0 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-2 py-0.5 text-[0.62rem] font-medium leading-none text-[color:var(--vd-text)]"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
           {metaParts.length > 0 ? (
-            <p className="mt-0.5 text-[0.78rem] text-[color:var(--vd-muted)]">
+            <p className="mt-1 text-[0.78rem] text-[color:var(--vd-muted)]">
               {metaParts.join(" · ")}
             </p>
           ) : null}
@@ -134,21 +149,6 @@ export function ClaimTwinPreviewCard({
           ) : null}
         </div>
       </div>
-
-      {previewLabels.length > 0 ? (
-        <ul
-          className="claim-twin-preview__chips flex flex-wrap gap-1.5"
-          aria-label="Gewählte Build-Vibes"
-        >
-          {previewLabels.map((label) => (
-            <li key={label}>
-              <span className="inline-block rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-2.5 py-0.5 text-[0.68rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]">
-                {label}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </motion.div>
   );
 }

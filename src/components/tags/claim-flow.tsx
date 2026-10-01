@@ -392,18 +392,12 @@ export function ClaimFlow({
   const showWizardChrome = step !== "intro" && !showPainPointEmpathy;
 
   return (
-    <ClaimShell intro={step === "intro"}>
+    <ClaimShell
+      intro={step === "intro"}
+      centered={showPainPointEmpathy}
+    >
       {showWizardChrome ? (
         <ClaimProgressBar step={step} flowOptions={flowOptions} />
-      ) : null}
-
-      {showPainPointEmpathy ? (
-        <p
-          className="mb-5 rounded-[var(--vd-radius-control)] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3.5 text-[0.9rem] font-medium leading-relaxed text-[color:var(--vd-text)]"
-          role="status"
-        >
-          {BUILD_PAIN_POINT_EMPATHY_LINE}
-        </p>
       ) : null}
 
       {showWizardChrome ? (
@@ -437,12 +431,18 @@ export function ClaimFlow({
 
         {step === "painPoint" && painPointAcknowledged ? (
           <form
-            className="claim-panel claim-panel-elevated grid w-full gap-4 p-5 sm:p-6"
+            className="claim-panel claim-panel-elevated grid w-full gap-5 p-5 sm:p-6"
             onSubmit={(event) => {
               event.preventDefault();
               advance("makeModel");
             }}
           >
+            <p
+              className="text-center text-[1.05rem] font-medium leading-relaxed text-[color:var(--vd-text)] sm:text-[1.1rem]"
+              role="status"
+            >
+              {BUILD_PAIN_POINT_EMPATHY_LINE}
+            </p>
             <ClaimSlideActions
               error={error}
               pending={pending}

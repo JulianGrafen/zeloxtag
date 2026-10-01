@@ -7,12 +7,18 @@ import { ScanContent } from "@/components/layout/scan-content";
 type ClaimShellProps = {
   children: ReactNode;
   intro?: boolean;
+  /** Vertically center wizard content (e.g. empathy beat). */
+  centered?: boolean;
 };
 
-export function ClaimShell({ children, intro = false }: ClaimShellProps) {
+export function ClaimShell({
+  children,
+  intro = false,
+  centered = false,
+}: ClaimShellProps) {
   return (
     <ScanContent
-      centered={intro}
+      centered={intro || centered}
       className={
         intro
           ? "claim-premium claim-premium-intro-shell overflow-x-clip px-0 sm:px-0"
