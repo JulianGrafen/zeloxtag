@@ -1,8 +1,9 @@
 import "server-only";
 
 /**
- * Beta slot cap for the digital garage only (`create_garage_vehicle`).
- * Tag QR claim flows never call this RPC and are not limited here.
+ * Optional beta slot cap for digital garage onboarding (`create_garage_vehicle`).
+ * Disabled when `platform_config.digital_garage_beta_max` is NULL (production default after 00076).
+ * Tag QR claim flows are never capped here.
  */
 
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -20,7 +21,7 @@ export type DigitalGarageBetaStatus =
     };
 
 export const DIGITAL_GARAGE_BETA_FULL_MESSAGE =
-  "Die Beta ist voll — alle 15 Plätze sind vergeben. Schreib uns kurz, wenn du auf die Warteliste sollst.";
+  "Die Beta ist voll — alle Plätze sind vergeben. Schreib uns kurz, wenn du auf die Warteliste sollst.";
 
 function parseBetaStatus(data: unknown): DigitalGarageBetaStatus {
   if (!data || typeof data !== "object" || Array.isArray(data)) {

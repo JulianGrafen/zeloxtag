@@ -1066,6 +1066,21 @@ a.claim-cta {
   padding: 0.65rem;
 }
 
+.claim-twin-preview__card--quartett {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+.claim-twin-preview__card--quartett:not(.claim-twin-preview__card--with-photo) {
+  padding: 0.85rem 0.9rem;
+}
+
+.claim-twin-preview__card--quartett .claim-twin-preview__silhouette {
+  width: 100%;
+  height: 4.5rem;
+}
+
 .claim-twin-preview__photo-frame {
   width: 100%;
   overflow: hidden;

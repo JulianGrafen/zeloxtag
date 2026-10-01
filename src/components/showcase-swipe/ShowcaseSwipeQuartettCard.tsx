@@ -5,66 +5,18 @@ import Image from "next/image";
 import { BuildDnaRadarChart } from "@/components/public-showcase/BuildDnaRadarChart";
 import { ShowroomBuildPersonalityChips } from "@/components/public-showcase/ShowroomBuildPersonalityChips";
 import { ShowroomQuartettBar } from "@/components/public-showcase/ShowroomQuartettBar";
-import {
-  SHOWCASE_QUARTETT_ACCEL_0_100_MAX_SEC,
-  SHOWCASE_QUARTETT_ACCEL_0_100_MIN_SEC,
-  SHOWCASE_QUARTETT_ACCEL_100_200_MAX_SEC,
-  SHOWCASE_QUARTETT_ACCEL_100_200_MIN_SEC,
-  SHOWCASE_QUARTETT_POWER_PS_MAX,
-  SHOWCASE_QUARTETT_TORQUE_NM_MAX,
-  filledSegments,
-  filledSegmentsLowerIsBetter,
-} from "@/components/public-showcase/showcase-quartett-scales";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
+import { buildQuartettLines } from "@/lib/showcase/build-quartett-lines";
 import { cn } from "@/lib/utils";
 
-type QuartettLine = {
-  label: string;
-  value: string;
-  filled: number;
-};
-
-function buildQuartettLines(card: ShowcaseSwipeCard): QuartettLine[] {
-  const lines: QuartettLine[] = [];
-
-  if (card.powerPs != null) {
-    lines.push({
-      label: "Leistung",
-      value: `${Math.round(card.powerPs)} PS`,
-      filled: filledSegments(card.powerPs, SHOWCASE_QUARTETT_POWER_PS_MAX),
-    });
-  }
-  if (card.torqueNm != null) {
-    lines.push({
-      label: "Drehmoment",
-      value: `${Math.round(card.torqueNm)} Nm`,
-      filled: filledSegments(card.torqueNm, SHOWCASE_QUARTETT_TORQUE_NM_MAX),
-    });
-  }
-  if (card.accel0To100Sec != null) {
-    lines.push({
-      label: "0–100",
-      value: `${card.accel0To100Sec.toFixed(1)} s`,
-      filled: filledSegmentsLowerIsBetter(
-        card.accel0To100Sec,
-        SHOWCASE_QUARTETT_ACCEL_0_100_MIN_SEC,
-        SHOWCASE_QUARTETT_ACCEL_0_100_MAX_SEC,
-      ),
-    });
-  }
-  if (card.accel100To200Sec != null) {
-    lines.push({
-      label: "100–200",
-      value: `${card.accel100To200Sec.toFixed(1)} s`,
-      filled: filledSegmentsLowerIsBetter(
-        card.accel100To200Sec,
-        SHOWCASE_QUARTETT_ACCEL_100_200_MIN_SEC,
-        SHOWCASE_QUARTETT_ACCEL_100_200_MAX_SEC,
-      ),
-    });
-  }
-
-  return lines.slice(0, 4);
+function buildSwipeQuartettLines(card: ShowcaseSwipeCard) {
+  return buildQuartettLines({
+    powerPs: card.powerPs,
+    torqueNm: card.torqueNm,
+    accel0To100Sec: card.accel0To100Sec,
+    accel100To200Sec: card.accel100To200Sec,
+    maxLines: 4,
+  });
 }
 
 type ShowcaseSwipeQuartettCardProps = {
@@ -78,7 +30,7 @@ export function ShowcaseSwipeQuartettCard({
 }: ShowcaseSwipeQuartettCardProps) {
   const title = [card.make, card.model].filter(Boolean).join(" ");
   const yearLabel = card.year != null ? String(card.year) : null;
-  const lines = buildQuartettLines(card);
+  const lines = buildSwipeQuartettLines(card);
   const modLabel =
     card.modificationCount > 0
       ? `${card.modificationCount} Umbauten`

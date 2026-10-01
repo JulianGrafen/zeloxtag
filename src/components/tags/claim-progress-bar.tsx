@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useClaimMotion } from "./claim/claim-motion";
 
 const STEP_LABELS: Partial<Record<ClaimWizardStep, string>> = {
+  painPoint: "Start",
   makeModel: "Fahrzeug",
   year: "Baujahr",
   power: "Leistung",

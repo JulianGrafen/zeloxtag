@@ -6,6 +6,9 @@ export const SHOWCASE_QUARTETT_POWER_PS_MAX = 1000;
 /** Category ceiling for torque bars. */
 export const SHOWCASE_QUARTETT_TORQUE_NM_MAX = 1200;
 
+/** Category ceiling for displacement bars (onboarding preview). */
+export const SHOWCASE_QUARTETT_DISPLACEMENT_CC_MAX = 8000;
+
 /** 0–100 km/h: at or below = full bar; at or above = empty. */
 export const SHOWCASE_QUARTETT_ACCEL_0_100_MIN_SEC = 2.5;
 export const SHOWCASE_QUARTETT_ACCEL_0_100_MAX_SEC = 15;

@@ -21,20 +21,23 @@ const signedInWithProfile: ClaimWizardFlowOptions = {
 
 describe("claim-flow-steps", () => {
   it("counts steps with profile and account options", () => {
-    expect(claimWizardTotalSteps(withProfileAndAccount)).toBe(10);
-    expect(claimWizardTotalSteps(signedInWithProfile)).toBe(9);
+    expect(claimWizardTotalSteps(withProfileAndAccount)).toBe(11);
+    expect(claimWizardTotalSteps(signedInWithProfile)).toBe(10);
     expect(
       claimWizardTotalSteps({ needsAccount: false, includeProfileName: false }),
-    ).toBe(8);
+    ).toBe(9);
   });
 
   it("maps wizard steps to percentage progress", () => {
     expect(claimWizardProgressPercent("intro", withProfileAndAccount)).toBe(0);
+    expect(claimWizardProgressPercent("painPoint", withProfileAndAccount)).toBe(
+      9,
+    );
     expect(claimWizardProgressPercent("makeModel", withProfileAndAccount)).toBe(
-      10,
+      18,
     );
     expect(claimWizardProgressPercent("profileName", withProfileAndAccount)).toBe(
-      90,
+      91,
     );
     expect(claimWizardProgressPercent("account", withProfileAndAccount)).toBe(
       100,
@@ -44,10 +47,13 @@ describe("claim-flow-steps", () => {
   it("finishes at 100 percent on the preferences slide when profile is skipped", () => {
     const opts = { needsAccount: false, includeProfileName: false };
     expect(claimWizardProgressPercent("preferences", opts)).toBe(100);
-    expect(claimWizardStepIndex("preferences", opts)).toBe(8);
+    expect(claimWizardStepIndex("preferences", opts)).toBe(9);
   });
 
   it("walks forward and backward through the ordered steps", () => {
+    expect(claimWizardNextStep("painPoint", withProfileAndAccount)).toBe(
+      "makeModel",
+    );
     expect(claimWizardNextStep("makeModel", withProfileAndAccount)).toBe(
       "vehiclePhoto",
     );

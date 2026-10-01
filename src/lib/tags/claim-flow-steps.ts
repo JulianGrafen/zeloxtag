@@ -1,5 +1,6 @@
 export type ClaimWizardStep =
   | "intro"
+  | "painPoint"
   | "makeModel"
   | "vehiclePhoto"
   | "year"
@@ -17,6 +18,7 @@ export type ClaimWizardFlowOptions = {
 };
 
 const VEHICLE_STEPS: ClaimWizardStep[] = [
+  "painPoint",
   "makeModel",
   "vehiclePhoto",
   "year",

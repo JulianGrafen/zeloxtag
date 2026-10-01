@@ -14,7 +14,13 @@ import type { ClaimTransitionDirection } from "@/components/tags/claim/claim-mot
 import { ClaimIntroHero } from "@/components/tags/claim/ClaimIntroHero";
 import { ClaimShell } from "@/components/tags/claim/ClaimShell";
 import { ClaimStepTransition } from "@/components/tags/claim/ClaimStepTransition";
+import { BuildPainPointOptionList } from "@/components/onboarding/build-pain-point-option-list";
 import { PrimaryGoalOptionList } from "@/components/onboarding/primary-goal-option-list";
+import {
+  BUILD_PAIN_POINT_EMPATHY_LINE,
+  writeBuildPainPoint,
+  type ZeloxBuildPainPoint,
+} from "@/lib/onboarding/build-pain-point";
 import {
   writePrimaryGoal,
   type ZeloxPrimaryGoal,
@@ -88,6 +94,9 @@ export function ClaimFlow({
   const [email, setEmail] = useState(userEmail ?? "");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [buildPainPoint, setBuildPainPoint] =
+    useState<ZeloxBuildPainPoint | null>(null);
+  const [painPointAcknowledged, setPainPointAcknowledged] = useState(false);
   const [primaryGoal, setPrimaryGoal] = useState<ZeloxPrimaryGoal | null>(
     null,
   );
@@ -160,7 +169,18 @@ export function ClaimFlow({
     setTransitionDirection("back");
     setError(null);
     setInfo(null);
-    setStep(claimWizardPreviousStep(step, flowOptions));
+    const previous = claimWizardPreviousStep(step, flowOptions);
+    if (previous === "painPoint") {
+      setPainPointAcknowledged(false);
+    }
+    setStep(previous);
+  }
+
+  function selectBuildPainPoint(pain: ZeloxBuildPainPoint) {
+    setBuildPainPoint(pain);
+    writeBuildPainPoint(pain);
+    setPainPointAcknowledged(true);
+    setError(null);
   }
 
   function validateMakeModel(): string | null {
@@ -361,7 +381,8 @@ export function ClaimFlow({
       ? "Verknüpfen…"
       : "Tag aktivieren";
 
-  const showWizardChrome = step !== "intro";
+  const showPainPointEmpathy = step === "painPoint" && painPointAcknowledged;
+  const showWizardChrome = step !== "intro" && !showPainPointEmpathy;
 
   return (
     <ClaimShell intro={step === "intro"}>
@@ -369,11 +390,24 @@ export function ClaimFlow({
         <ClaimProgressBar step={step} flowOptions={flowOptions} />
       ) : null}
 
+      {showPainPointEmpathy ? (
+        <p
+          className="mb-5 rounded-[var(--vd-radius-control)] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3.5 text-[0.9rem] font-medium leading-relaxed text-[color:var(--vd-text)]"
+          role="status"
+        >
+          {BUILD_PAIN_POINT_EMPATHY_LINE}
+        </p>
+      ) : null}
+
       {showWizardChrome ? (
         <ClaimTwinPreviewCard
           make={make}
           model={model}
           year={year}
+          powerPs={powerPs}
+          displacementCc={displacementCc}
+          drivetrain={drivetrain}
+          fuelType={fuelType}
           personalityTags={buildPersonalityTags}
           photoPreviewUrl={vehiclePhotoPreview}
         />
@@ -387,8 +421,50 @@ export function ClaimFlow({
             needsAccount={needsAccount}
             isAuthenticated={isAuthenticated}
             userEmail={userEmail}
-            onStart={() => advance("makeModel")}
+            onStart={() => advance("painPoint")}
           />
+        ) : null}
+
+        {step === "painPoint" && painPointAcknowledged ? (
+          <form
+            className="claim-panel claim-panel-elevated grid w-full gap-4 p-5 sm:p-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              advance("makeModel");
+            }}
+          >
+            <ClaimSlideActions
+              error={error}
+              pending={pending}
+              onBack={goBack}
+              submitLabel="Weiter"
+              submitIcon="next"
+              showBack
+            />
+          </form>
+        ) : null}
+
+        {step === "painPoint" && !painPointAcknowledged ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("painPoint")}
+            title="Was nervt dich an deinem bisherigen Build am meisten?"
+            copy=""
+          >
+            <div className="mt-6 grid w-full gap-4">
+              <BuildPainPointOptionList
+                selected={buildPainPoint}
+                onSelect={selectBuildPainPoint}
+              />
+              <button
+                type="button"
+                className="claim-back w-full"
+                onClick={goBack}
+                disabled={pending}
+              >
+                Zurück
+              </button>
+            </div>
+          </ClaimWizardPanel>
         ) : null}
 
         {step === "makeModel" ? (

@@ -7,13 +7,19 @@ import {
   buildPersonalityLabelForId,
   type BuildPersonalityChipId,
 } from "@/lib/vehicles/build-personality-chips";
+import { buildClaimPreviewQuartettLines } from "@/lib/tags/claim-preview-quartett";
 
+import { ClaimPreviewQuartettBar } from "./ClaimPreviewQuartettBar";
 import { useClaimMotion } from "./claim-motion";
 
 type ClaimTwinPreviewCardProps = {
   make: string;
   model: string;
   year: string;
+  powerPs?: string;
+  displacementCc?: string;
+  drivetrain?: string;
+  fuelType?: string;
   personalityTags: readonly BuildPersonalityChipId[];
   photoPreviewUrl?: string | null;
 };
@@ -22,6 +28,10 @@ export function ClaimTwinPreviewCard({
   make,
   model,
   year,
+  powerPs = "",
+  displacementCc = "",
+  drivetrain = "",
+  fuelType = "",
   personalityTags,
   photoPreviewUrl = null,
 }: ClaimTwinPreviewCardProps) {
@@ -30,8 +40,17 @@ export function ClaimTwinPreviewCard({
   const hasTitle = Boolean(title);
   const yearLabel = year.trim() ? year.trim() : null;
   const hasPhoto = Boolean(photoPreviewUrl?.trim());
+  const quartettLines = buildClaimPreviewQuartettLines({
+    powerPs,
+    displacementCc,
+  });
+  const metaParts = [
+    yearLabel ? `Baujahr ${yearLabel}` : null,
+    drivetrain.trim() || null,
+    fuelType.trim() || null,
+  ].filter(Boolean);
 
-  if (!hasTitle && !yearLabel && !hasPhoto) {
+  if (!hasTitle && !yearLabel && !hasPhoto && quartettLines.length === 0) {
     return null;
   }
 
@@ -47,12 +66,12 @@ export function ClaimTwinPreviewCard({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
     >
-      <p className="claim-twin-preview__kicker">So sehen andere dein Fahrzeug</p>
+      <p className="claim-twin-preview__kicker">Deine Quartett-Karte entsteht</p>
       <div
         className={
           hasPhoto
-            ? "claim-twin-preview__card claim-twin-preview__card--with-photo"
-            : "claim-twin-preview__card"
+            ? "claim-twin-preview__card claim-twin-preview__card--with-photo claim-twin-preview__card--quartett"
+            : "claim-twin-preview__card claim-twin-preview__card--quartett"
         }
       >
         {hasPhoto ? (
@@ -71,10 +90,38 @@ export function ClaimTwinPreviewCard({
           <p className="truncate text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
             {displayTitle}
           </p>
-          {yearLabel ? (
+          {metaParts.length > 0 ? (
             <p className="mt-0.5 text-[0.78rem] text-[color:var(--vd-muted)]">
-              Baujahr {yearLabel}
+              {metaParts.join(" · ")}
             </p>
+          ) : null}
+
+          {quartettLines.length > 0 ? (
+            <ul className="mt-3 flex flex-col gap-2.5" aria-label="Fahrzeugwerte">
+              {quartettLines.map((line) => (
+                <motion.li
+                  key={line.key}
+                  className="space-y-1"
+                  initial={
+                    motionConfig.reduceMotion
+                      ? false
+                      : { opacity: 0, y: 6 }
+                  }
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <div className="flex items-baseline justify-between gap-2 text-[0.72rem]">
+                    <span className="text-[color:var(--vd-muted)]">
+                      {line.label}
+                    </span>
+                    <span className="font-medium tabular-nums text-[color:var(--vd-text)]">
+                      {line.value}
+                    </span>
+                  </div>
+                  <ClaimPreviewQuartettBar filled={line.filled} />
+                </motion.li>
+              ))}
+            </ul>
           ) : null}
         </div>
       </div>
