@@ -21,7 +21,7 @@ export default async function VehicleSoundcheckSettingsPage({
   params,
 }: SoundcheckSettingsPageProps) {
   const { uuid } = await params;
-  const { vehicle, isDemo } = await loadVehicleSoundcheckSettingsPage(uuid);
+  const { vehicle, isDemo, scope } = await loadVehicleSoundcheckSettingsPage(uuid);
   const soundUrl = resolveOwnerEngineSoundViewUrl(
     vehicle.id,
     vehicle.sound_url,
@@ -30,7 +30,8 @@ export default async function VehicleSoundcheckSettingsPage({
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={uuid}
+        tagUuid={scope.linkedTagUuid ?? uuid}
+        vehicleSurfaceScope={scope}
         title="Engine soundcheck"
         description="Kurzer Motor-Sound für die öffentliche Visitenkarte (max. 10 Sekunden, MP3, M4A oder WAV, max. 2 MB)."
       >

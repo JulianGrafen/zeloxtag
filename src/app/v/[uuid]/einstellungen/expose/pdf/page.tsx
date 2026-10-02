@@ -20,19 +20,21 @@ export default async function VehicleExposePdfPage({
   params,
 }: ExposePdfPageProps) {
   const { uuid } = await params;
-  const { vehicle, isDemo, canUseExpose } =
-    await loadVehicleExposeSettingsPage(uuid);
+  const { vehicle, isDemo, canUseExpose, scope } =
+    await loadVehicleExposeSettingsPage(uuid, "einstellungen/expose/pdf");
+  const tagUuid = scope.linkedTagUuid ?? uuid;
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`.trim();
 
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={uuid}
+        tagUuid={tagUuid}
+        vehicleSurfaceScope={scope}
         title="PDF-Exposé"
         description={`Druckfertiges Verkaufs-Exposé für ${vehicleLabel} — inkl. Historie, Umbauten und QR-Link zum ZeloxTag-Profil.`}
       >
         <ExposePdfSettings
-          tagUuid={uuid}
+          tagUuid={tagUuid}
           vehicle={vehicle}
           canEdit={!isDemo}
           canUseExpose={canUseExpose}

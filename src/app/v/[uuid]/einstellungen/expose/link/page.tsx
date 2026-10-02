@@ -20,18 +20,20 @@ export default async function VehicleExposeLinkPage({
   params,
 }: ExposeLinkPageProps) {
   const { uuid } = await params;
-  const { vehicle, isDemo, canUseExpose, exposeToken, isExposeActive } =
-    await loadVehicleExposeSettingsPage(uuid);
+  const { vehicle, isDemo, canUseExpose, exposeToken, isExposeActive, scope } =
+    await loadVehicleExposeSettingsPage(uuid, "einstellungen/expose/link");
+  const tagUuid = scope.linkedTagUuid ?? uuid;
 
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={uuid}
+        tagUuid={tagUuid}
+        vehicleSurfaceScope={scope}
         title="Online-Verkaufsexposé"
         description="Erzeugt ein fälschungssicheres Dossier mit Investitionen, Services und Historie — ideal für Mobile.de und Kleinanzeigen. Adressen, IBAN und private Notizen bleiben draußen."
       >
         <ExposeLinkSettings
-          tagUuid={uuid}
+          tagUuid={tagUuid}
           vehicle={vehicle}
           canEdit={!isDemo}
           canUseExpose={canUseExpose}

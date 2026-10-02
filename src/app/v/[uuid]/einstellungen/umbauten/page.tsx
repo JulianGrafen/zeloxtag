@@ -20,19 +20,21 @@ export default async function VehicleUmbautenSettingsPage({
   params,
 }: UmbautenSettingsPageProps) {
   const { uuid } = await params;
-  const { vehicle, documents, isDemo } =
+  const { vehicle, documents, isDemo, scope } =
     await loadVehicleUmbautenSettingsPage(uuid);
+  const tagUuid = scope.linkedTagUuid ?? uuid;
 
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={uuid}
+        tagUuid={tagUuid}
+        vehicleSurfaceScope={scope}
         title="Umbauten & Rechnungen"
         description="Umbauten, Tuning-Einträge und Rechnungen — wähle, was Besucher im öffentlichen Profil sehen."
       >
         <VehicleShowcaseModificationsSettings
-          tagUuid={uuid}
-          vehicleSurfaceScope={{ vehicleId: vehicle.id, linkedTagUuid: uuid }}
+          tagUuid={tagUuid}
+          vehicleSurfaceScope={scope}
           vehicleId={vehicle.id}
           documents={documents}
           canEdit={!isDemo}

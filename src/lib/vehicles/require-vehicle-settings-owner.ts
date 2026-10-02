@@ -3,7 +3,7 @@ import "server-only";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
 import { requireVehicleSurfaceOwner } from "@/lib/auth/require-vehicle-access";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
-import type { TagLoadOptions } from "@/lib/tags/get-tag-by-uuid";
+import { getTagByUuid, type TagLoadOptions } from "@/lib/tags/get-tag-by-uuid";
 import {
   garagePathForVehicle,
   isVehicleId,
@@ -19,9 +19,34 @@ export type VehicleSettingsOwnerContext = {
   documents: Document[];
 };
 
+async function requireTagSettingsOwner(
+  tagUuid: string,
+  options: {
+    loginSuffix: string;
+    load?: TagLoadOptions;
+  },
+): Promise<VehicleSettingsOwnerContext> {
+  const suffix = options.loginSuffix.replace(/^\//, "");
+  const { result, isDemoShowcase } = await requireTagOwner(tagUuid, {
+    loginNext: `/v/${tagUuid}/${suffix}`,
+    load: options.load,
+  });
+  const vehicle = result.vehicle!;
+  const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(tagUuid);
+
+  return {
+    vehicle,
+    scope: { vehicleId: vehicle.id, linkedTagUuid: result.tag.uuid },
+    isDemoShowcase: Boolean(isDemoShowcase),
+    isDemo,
+    documents: result.documents ?? [],
+  };
+}
+
 /**
- * Settings subpages accept either a physical tag UUID (`zlx-…`) or a garage
- * vehicle id (UUID v4) for account-only owners without a linked tag.
+ * Settings subpages accept a tag scan UUID (`/v/{uuid}/…`) or a garage vehicle
+ * id (UUID v4) for digital-garage-only owners. Tag UUIDs are also UUID v4 —
+ * resolve the tag first when both shapes match.
  */
 export async function requireVehicleSettingsOwner(
   identifier: string,
@@ -35,6 +60,11 @@ export async function requireVehicleSettingsOwner(
   const suffix = options.loginSuffix.replace(/^\//, "");
 
   if (isVehicleId(id)) {
+    const tagScan = await getTagByUuid(id);
+    if (tagScan?.vehicle && tagScan.tag.status === "active") {
+      return requireTagSettingsOwner(id, options);
+    }
+
     const { scope, result, isDemoShowcase } = await requireVehicleSurfaceOwner(
       { vehicleId: id },
       {
@@ -52,18 +82,5 @@ export async function requireVehicleSettingsOwner(
     };
   }
 
-  const { result, isDemoShowcase } = await requireTagOwner(id, {
-    loginNext: `/v/${id}/${suffix}`,
-    load: options.load,
-  });
-  const vehicle = result.vehicle!;
-  const isDemo = Boolean(isDemoShowcase) || isDemoActiveTag(id);
-
-  return {
-    vehicle,
-    scope: { vehicleId: vehicle.id, linkedTagUuid: result.tag.uuid },
-    isDemoShowcase: Boolean(isDemoShowcase),
-    isDemo,
-    documents: result.documents ?? [],
-  };
+  return requireTagSettingsOwner(id, options);
 }

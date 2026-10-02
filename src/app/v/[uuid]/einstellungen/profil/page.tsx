@@ -23,20 +23,23 @@ export default async function VehiclePublicProfileSettingsPage({
   const {
     vehicle,
     isDemo,
+    scope,
     hasLinkedTag,
     showcaseSwipeTotalLikes,
     showcaseSwipeUnreadLikes,
   } = await loadVehiclePublicProfileSettingsPage(uuid);
+  const tagUuid = scope.linkedTagUuid ?? uuid;
 
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={uuid}
+        tagUuid={tagUuid}
+        vehicleSurfaceScope={scope}
         title="Öffentliches Profil"
         description="Showcase-Seite mit Share-Link — sichtbar für Besucher, wenn das Profil öffentlich ist."
       >
         <VehiclePublicProfileSettings
-          tagUuid={uuid}
+          tagUuid={tagUuid}
           vehicleId={vehicle.id}
           isPublic={Boolean(vehicle.is_public)}
           hideFinancials={vehicle.hide_financials !== false}

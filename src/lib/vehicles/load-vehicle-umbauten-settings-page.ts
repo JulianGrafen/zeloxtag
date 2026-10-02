@@ -3,7 +3,7 @@ import "server-only";
 import { requireVehicleSettingsOwner } from "@/lib/vehicles/require-vehicle-settings-owner";
 
 export async function loadVehicleUmbautenSettingsPage(identifier: string) {
-  const { vehicle, documents, isDemo } = await requireVehicleSettingsOwner(
+  const { vehicle, documents, isDemo, scope } = await requireVehicleSettingsOwner(
     identifier,
     {
       loginSuffix: "einstellungen/umbauten",
@@ -21,5 +21,6 @@ export async function loadVehicleUmbautenSettingsPage(identifier: string) {
     vehicle,
     documents,
     isDemo,
+    scope,
   };
 }

@@ -42,6 +42,7 @@ export async function loadVehiclePublicProfileSettingsPage(identifier: string) {
   return {
     vehicle,
     isDemo,
+    scope,
     hasLinkedTag: Boolean(scope.linkedTagUuid?.trim()),
     showcaseSwipeTotalLikes,
     showcaseSwipeUnreadLikes,

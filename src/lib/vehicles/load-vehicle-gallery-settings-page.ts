@@ -4,10 +4,13 @@ import { loadShowcaseGalleryDocuments } from "@/lib/documents/load-showcase-gall
 import { requireVehicleSettingsOwner } from "@/lib/vehicles/require-vehicle-settings-owner";
 
 export async function loadVehicleGallerySettingsPage(identifier: string) {
-  const { vehicle, isDemo } = await requireVehicleSettingsOwner(identifier, {
-    loginSuffix: "einstellungen/galerie",
-  });
+  const { vehicle, isDemo, scope } = await requireVehicleSettingsOwner(
+    identifier,
+    {
+      loginSuffix: "einstellungen/galerie",
+    },
+  );
   const galleryPhotos = await loadShowcaseGalleryDocuments(vehicle.id);
 
-  return { vehicle, isDemo, galleryPhotos };
+  return { vehicle, isDemo, galleryPhotos, scope };
 }

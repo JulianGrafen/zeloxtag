@@ -22,7 +22,7 @@ export default async function VehicleDynoSettingsPage({
   params,
 }: DynoSettingsPageProps) {
   const { uuid } = await params;
-  const { vehicle, isDemo } = await loadVehicleDynoSettingsPage(uuid);
+  const { vehicle, isDemo, scope } = await loadVehicleDynoSettingsPage(uuid);
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
   const dynoChartUrl = resolveOwnerDynoChartViewUrl(
     vehicle.id,
@@ -32,7 +32,8 @@ export default async function VehicleDynoSettingsPage({
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={uuid}
+        tagUuid={scope.linkedTagUuid ?? uuid}
+        vehicleSurfaceScope={scope}
         title="Leistungsdiagramm"
         description="Dyno- oder Leistungsdiagramm als Foto oder PDF — erscheint im Showcase, wenn dein Profil öffentlich ist."
       >

@@ -7,8 +7,6 @@ import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-setti
 import { resolveOwnerDynoChartViewUrl } from "@/lib/vehicles/dyno-chart-constants";
 import { loadVehicleDynoSettingsPage } from "@/lib/vehicles/load-vehicle-dyno-settings-page";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
-import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
-
 interface DynoSettingsPageProps {
   params: Promise<{ vehicleId: string }>;
 }
@@ -24,9 +22,9 @@ export default async function VehicleDynoSettingsPage({
   params,
 }: DynoSettingsPageProps) {
   const { vehicleId } = await params;
-  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
-  const { vehicle, isDemo } = await loadVehicleDynoSettingsPage(vehicleId);
+  const { vehicle, isDemo, scope: settingsScope } =
+    await loadVehicleDynoSettingsPage(vehicleId);
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
   const dynoChartUrl = resolveOwnerDynoChartViewUrl(
     vehicle.id,
@@ -37,7 +35,7 @@ export default async function VehicleDynoSettingsPage({
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={scope.linkedTagUuid ?? vehicleId}
-        vehicleSurfaceScope={garageNavScope}
+        vehicleSurfaceScope={settingsScope}
         title="Leistungsdiagramm"
         description="Dyno- oder Leistungsdiagramm als Foto oder PDF — erscheint im Showcase, wenn dein Profil öffentlich ist."
       >

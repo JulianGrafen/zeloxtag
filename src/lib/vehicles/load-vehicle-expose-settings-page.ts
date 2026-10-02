@@ -5,10 +5,16 @@ import { ownerHasFeature } from "@/lib/permissions/require-feature";
 import { requireVehicleSettingsOwner } from "@/lib/vehicles/require-vehicle-settings-owner";
 import { getOwnerExposeState } from "@/lib/vehicles/get-public-expose";
 
-export async function loadVehicleExposeSettingsPage(identifier: string) {
-  const { vehicle, isDemo } = await requireVehicleSettingsOwner(identifier, {
-    loginSuffix: "einstellungen",
-  });
+export async function loadVehicleExposeSettingsPage(
+  identifier: string,
+  loginSuffix: string,
+) {
+  const { vehicle, isDemo, scope } = await requireVehicleSettingsOwner(
+    identifier,
+    {
+      loginSuffix,
+    },
+  );
   const [expose, canUseExpose] = await Promise.all([
     getOwnerExposeState(vehicle.id),
     isDemo
@@ -19,6 +25,7 @@ export async function loadVehicleExposeSettingsPage(identifier: string) {
   return {
     vehicle,
     isDemo,
+    scope,
     canUseExpose,
     exposeToken: expose.exposeToken,
     isExposeActive: expose.isExposeActive,

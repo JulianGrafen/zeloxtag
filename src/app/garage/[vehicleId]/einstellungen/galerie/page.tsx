@@ -6,8 +6,6 @@ import { VehicleShowcaseGallerySettings } from "@/components/vehicles/vehicle-sh
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { MAX_SHOWCASE_GALLERY_PHOTOS } from "@/lib/documents/showcase-gallery";
 import { loadVehicleGallerySettingsPage } from "@/lib/vehicles/load-vehicle-gallery-settings-page";
-import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
-
 interface GallerySettingsPageProps {
   params: Promise<{ vehicleId: string }>;
 }
@@ -23,21 +21,21 @@ export default async function VehicleGallerySettingsPage({
   params,
 }: GallerySettingsPageProps) {
   const { vehicleId } = await params;
-  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
-  const { vehicle, isDemo, galleryPhotos } =
+  const { vehicle, isDemo, galleryPhotos, scope: settingsScope } =
     await loadVehicleGallerySettingsPage(vehicleId);
+  const tagUuid = scope.linkedTagUuid ?? vehicleId;
 
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={scope.linkedTagUuid ?? vehicleId}
-        vehicleSurfaceScope={garageNavScope}
+        tagUuid={tagUuid}
+        vehicleSurfaceScope={settingsScope}
         title="Showcase-Galerie"
         description={`Bis zu ${MAX_SHOWCASE_GALLERY_PHOTOS} Fotos für das öffentliche Profil — Besucher sehen sie in der Visitenkarte.`}
       >
         <VehicleShowcaseGallerySettings
-          tagUuid={scope.linkedTagUuid ?? vehicleId}
+          tagUuid={tagUuid}
           vehicleId={vehicle.id}
           photos={galleryPhotos}
           canEdit={!isDemo}

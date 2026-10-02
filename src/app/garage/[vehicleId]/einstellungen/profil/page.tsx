@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import { requireVehicleSurfaceOwner } from "@/lib/auth/require-vehicle-access";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { VehiclePublicProfileSettings } from "@/components/vehicles/vehicle-public-profile-settings";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
-import { loadShowcaseSwipeInboxForVehicle } from "@/lib/vehicles/load-vehicle-public-profile-settings-page";
+import { loadVehiclePublicProfileSettingsPage } from "@/lib/vehicles/load-vehicle-public-profile-settings-page";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
-import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { ZELOX_TAG_PRODUCT_URL } from "@/lib/hardware/zelox-tag-product-url";
 
 interface PublicProfileSettingsPageProps {
@@ -24,19 +22,15 @@ export default async function VehiclePublicProfileSettingsPage({
   params,
 }: PublicProfileSettingsPageProps) {
   const { vehicleId } = await params;
-  const { scope, result, isDemoShowcase } = await requireVehicleSurfaceOwner(
-    { vehicleId },
-    {
-      loginNext: `/garage/${vehicleId}/einstellungen/profil`,
-    },
-  );
-  const vehicle = result.vehicle!;
-  const hasLinkedTag = Boolean(scope.linkedTagUuid?.trim());
-  const isDemo =
-    Boolean(isDemoShowcase) || isDemoActiveTag(scope.linkedTagUuid ?? "");
-  const { showcaseSwipeTotalLikes, showcaseSwipeUnreadLikes } =
-    await loadShowcaseSwipeInboxForVehicle(vehicle.id, isDemo);
-
+  const {
+    vehicle,
+    isDemo,
+    scope,
+    hasLinkedTag,
+    showcaseSwipeTotalLikes,
+    showcaseSwipeUnreadLikes,
+  } = await loadVehiclePublicProfileSettingsPage(vehicleId);
+  const tagUuid = scope.linkedTagUuid ?? vehicleId;
   const settingsBackHref = vehicleSurfaceHref(scope, "einstellungen");
   const description = hasLinkedTag
     ? "Showcase-Seite mit Share-Link — sichtbar für Besucher, wenn das Profil öffentlich ist."
@@ -45,7 +39,8 @@ export default async function VehiclePublicProfileSettingsPage({
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={scope.linkedTagUuid ?? vehicleId}
+        tagUuid={tagUuid}
+        vehicleSurfaceScope={scope}
         backHref={settingsBackHref}
         title="Öffentliches Profil"
         description={description}

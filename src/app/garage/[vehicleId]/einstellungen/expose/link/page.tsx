@@ -5,8 +5,6 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ExposeLinkSettings } from "@/components/vehicles/ExposeLinkSettings";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { loadVehicleExposeSettingsPage } from "@/lib/vehicles/load-vehicle-expose-settings-page";
-import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
-
 interface ExposeLinkPageProps {
   params: Promise<{ vehicleId: string }>;
 }
@@ -22,21 +20,24 @@ export default async function VehicleExposeLinkPage({
   params,
 }: ExposeLinkPageProps) {
   const { vehicleId } = await params;
-  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
-  const { vehicle, isDemo, canUseExpose, exposeToken, isExposeActive } =
-    await loadVehicleExposeSettingsPage(vehicleId);
+  const { vehicle, isDemo, canUseExpose, exposeToken, isExposeActive, scope: settingsScope } =
+    await loadVehicleExposeSettingsPage(
+      vehicleId,
+      "einstellungen/expose/link",
+    );
+  const tagUuid = scope.linkedTagUuid ?? vehicleId;
 
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={scope.linkedTagUuid ?? vehicleId}
-        vehicleSurfaceScope={garageNavScope}
+        tagUuid={tagUuid}
+        vehicleSurfaceScope={settingsScope}
         title="Online-Verkaufsexposé"
         description="Erzeugt ein fälschungssicheres Dossier mit Investitionen, Services und Historie — ideal für Mobile.de und Kleinanzeigen. Adressen, IBAN und private Notizen bleiben draußen."
       >
         <ExposeLinkSettings
-          tagUuid={scope.linkedTagUuid ?? vehicleId}
+          tagUuid={tagUuid}
           vehicle={vehicle}
           canEdit={!isDemo}
           canUseExpose={canUseExpose}

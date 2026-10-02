@@ -5,8 +5,6 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ExposePdfSettings } from "@/components/vehicles/ExposePdfSettings";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { loadVehicleExposeSettingsPage } from "@/lib/vehicles/load-vehicle-expose-settings-page";
-import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
-
 interface ExposePdfPageProps {
   params: Promise<{ vehicleId: string }>;
 }
@@ -22,22 +20,25 @@ export default async function VehicleExposePdfPage({
   params,
 }: ExposePdfPageProps) {
   const { vehicleId } = await params;
-  const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
-  const { vehicle, isDemo, canUseExpose } =
-    await loadVehicleExposeSettingsPage(vehicleId);
+  const { vehicle, isDemo, canUseExpose, scope: settingsScope } =
+    await loadVehicleExposeSettingsPage(
+      vehicleId,
+      "einstellungen/expose/pdf",
+    );
+  const tagUuid = scope.linkedTagUuid ?? vehicleId;
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`.trim();
 
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
-        tagUuid={scope.linkedTagUuid ?? vehicleId}
-        vehicleSurfaceScope={garageNavScope}
+        tagUuid={tagUuid}
+        vehicleSurfaceScope={settingsScope}
         title="PDF-Exposé"
         description={`Druckfertiges Verkaufs-Exposé für ${vehicleLabel} — inkl. Historie, Umbauten und QR-Link zum ZeloxTag-Profil.`}
       >
         <ExposePdfSettings
-          tagUuid={scope.linkedTagUuid ?? vehicleId}
+          tagUuid={tagUuid}
           vehicle={vehicle}
           canEdit={!isDemo}
           canUseExpose={canUseExpose}
