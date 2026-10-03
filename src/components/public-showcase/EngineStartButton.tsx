@@ -16,6 +16,7 @@ type EngineStartButtonProps = {
   /** Renders as a row inside a ShowroomGroup (public showcase). */
   embedded?: boolean;
   className?: string;
+  onPlaybackError?: (message: string) => void;
 };
 
 export function EngineStartButton({
@@ -23,11 +24,20 @@ export function EngineStartButton({
   showMissingHint = false,
   embedded = false,
   className,
+  onPlaybackError,
 }: EngineStartButtonProps) {
   const hasSound = Boolean(soundUrl?.trim());
   const motionConfig = useShowroomMotion();
-  const { audioRef, isPlaying, togglePlayback, handleAudioEnded } =
-    useEngineSound({ soundUrl: hasSound ? soundUrl : null });
+  const {
+    audioRef,
+    isPlaying,
+    togglePlayback,
+    handleAudioEnded,
+    handleAudioError,
+  } = useEngineSound({
+    soundUrl: hasSound ? soundUrl : null,
+    onPlaybackError,
+  });
 
   if (!hasSound) {
     if (!showMissingHint) return null;
@@ -47,8 +57,10 @@ export function EngineStartButton({
       <audio
         ref={audioRef}
         preload="none"
+        playsInline
         src={soundUrl ?? undefined}
         onEnded={handleAudioEnded}
+        onError={handleAudioError}
         className="hidden"
       />
       <button

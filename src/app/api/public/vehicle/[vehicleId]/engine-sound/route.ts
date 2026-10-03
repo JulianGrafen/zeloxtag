@@ -8,10 +8,10 @@ import {
 } from "@/lib/supabase/admin";
 import {
   ENGINE_SOUND_BUCKET,
-  engineSoundContentTypeFromPath,
   resolveStoredEngineSoundPath,
   vehicleEngineSoundCandidatePaths,
 } from "@/lib/vehicles/engine-sound-constants";
+import { buildEngineSoundHttpResponse } from "@/lib/vehicles/serve-engine-sound-bytes";
 
 export const runtime = "nodejs";
 
@@ -89,33 +89,11 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const buffer = Buffer.from(await found.data.arrayBuffer());
-    const storedType = found.data.type?.split(";")[0]?.trim().toLowerCase() ?? "";
-    const allowed = [
-      "audio/mpeg",
-      "audio/mp4",
-      "audio/x-m4a",
-      "audio/wav",
-      "audio/x-wav",
-    ];
-    const contentType = allowed.includes(storedType)
-      ? storedType
-      : engineSoundContentTypeFromPath(found.path);
-    const filename = (found.path.split("/").pop() ?? "engine-sound").replace(
-      /[^\w.-]/g,
-      "_",
+    return buildEngineSoundHttpResponse(
+      found.data,
+      found.path,
+      "public, max-age=300, stale-while-revalidate=3600",
     );
-
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Content-Disposition": `inline; filename="${filename}"`,
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
-        "Cross-Origin-Resource-Policy": "same-origin",
-      },
-    });
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

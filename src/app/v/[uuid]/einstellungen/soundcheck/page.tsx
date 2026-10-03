@@ -37,7 +37,7 @@ export default async function VehicleSoundcheckSettingsPage({
       >
         <VehicleSoundcheckSettings
           vehicleId={vehicle.id}
-          tagUuid={uuid}
+          tagUuid={scope.linkedTagUuid ?? uuid}
           soundUrl={soundUrl}
           canEdit={!isDemo}
         />

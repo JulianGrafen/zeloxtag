@@ -64,9 +64,11 @@ export function VehicleEngineSoundUpload({
   const [state, setState] = useState<UploadState>("idle");
   const [deleting, setDeleting] = useState(false);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(soundUrl);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalPreviewUrl(soundUrl);
+    setPlaybackError(null);
   }, [soundUrl]);
 
   const busy = state === "uploading" || deleting;
@@ -199,6 +201,7 @@ export function VehicleEngineSoundUpload({
           soundUrl={previewUrl}
           showMissingHint
           className="mt-0"
+          onPlaybackError={setPlaybackError}
         />
       </div>
 
@@ -244,6 +247,12 @@ export function VehicleEngineSoundUpload({
             </PressableButton>
           ) : null}
         </div>
+      ) : null}
+
+      {playbackError ? (
+        <p className="mt-3 text-[0.82rem] font-medium text-red-600" role="alert">
+          {playbackError}
+        </p>
       ) : null}
 
       {error ? (

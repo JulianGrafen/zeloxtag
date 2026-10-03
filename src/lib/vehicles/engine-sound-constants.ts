@@ -146,9 +146,14 @@ export function resolveOwnerEngineSoundViewUrl(
 ): string | null {
   const trimmed = stored?.trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith("/demo/") || trimmed.startsWith("/api/")) {
+  if (trimmed.startsWith("/demo/")) {
     return trimmed;
   }
+  const ownerPrefix = `/api/vehicle/engine-sound/${vehicleId}`;
+  if (trimmed.startsWith(ownerPrefix)) {
+    return trimmed;
+  }
+  // Never use the public proxy in owner settings — private showcases return 403.
   return ownerEngineSoundDisplayPath(vehicleId);
 }
 

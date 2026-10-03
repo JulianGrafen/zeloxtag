@@ -1,16 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { getCurrentUser } from "@/lib/auth/get-user";
+import { getApiRouteUser } from "@/lib/auth/get-user";
 import { enforceRateLimit } from "@/lib/security/api-guard";
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import {
   ENGINE_SOUND_BUCKET,
-  engineSoundContentTypeFromPath,
   resolveStoredEngineSoundPath,
   vehicleEngineSoundCandidatePaths,
 } from "@/lib/vehicles/engine-sound-constants";
+import { buildEngineSoundHttpResponse } from "@/lib/vehicles/serve-engine-sound-bytes";
 
 export const runtime = "nodejs";
 
@@ -44,9 +48,16 @@ export async function GET(
     return NextResponse.json({ error: "Invalid vehicle id." }, { status: 400 });
   }
 
-  const user = await getCurrentUser();
+  const user = await getApiRouteUser();
   if (!user) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (!isSupabaseAdminConfigured()) {
+    return NextResponse.json(
+      { error: "Storage not configured." },
+      { status: 503 },
+    );
   }
 
   const vehicleId = parsed.data;
@@ -69,39 +80,18 @@ export async function GET(
     return Boolean(path) && all.indexOf(path) === index;
   });
 
+  const admin = createAdminClient();
   for (const path of paths) {
-    const { data, error } = await supabase.storage
+    const { data, error } = await admin.storage
       .from(ENGINE_SOUND_BUCKET)
       .download(path);
     if (error || !data) continue;
 
-    const buffer = Buffer.from(await data.arrayBuffer());
-    const storedType = data.type?.split(";")[0]?.trim().toLowerCase() ?? "";
-    const allowed = [
-      "audio/mpeg",
-      "audio/mp4",
-      "audio/x-m4a",
-      "audio/wav",
-      "audio/x-wav",
-    ];
-    const contentType = allowed.includes(storedType)
-      ? storedType
-      : engineSoundContentTypeFromPath(path);
-    const filename = (path.split("/").pop() ?? "engine-sound").replace(
-      /[^\w.-]/g,
-      "_",
+    return buildEngineSoundHttpResponse(
+      data,
+      path,
+      "private, max-age=60",
     );
-
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Content-Disposition": `inline; filename="${filename}"`,
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "private, max-age=60",
-        "Cross-Origin-Resource-Policy": "same-origin",
-      },
-    });
   }
 
   return NextResponse.json({ error: "Not found" }, { status: 404 });
