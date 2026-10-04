@@ -19,7 +19,8 @@ import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 
 import "./stack.css";
 
-const SWIPE_THRESHOLD = 100;
+const SWIPE_OFFSET_PX = 56;
+const SWIPE_VELOCITY_PX_S = 320;
 const MAX_VISIBLE = 4;
 const ANIMATION = { stiffness: 260, damping: 20 };
 
@@ -31,10 +32,18 @@ type StackItem = {
 type CardRotateProps = {
   children: ReactNode;
   disabled: boolean;
+  zIndex: number;
   onDragEnd: (info: PanInfo) => void;
+  onTap?: () => void;
 };
 
-function CardRotate({ children, disabled, onDragEnd }: CardRotateProps) {
+function CardRotate({
+  children,
+  disabled,
+  zIndex,
+  onDragEnd,
+  onTap,
+}: CardRotateProps) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useTransform(y, [-100, 100], [18, -18]);
@@ -51,7 +60,10 @@ function CardRotate({ children, disabled, onDragEnd }: CardRotateProps) {
 
   if (disabled) {
     return (
-      <motion.div className="card-rotate-disabled" style={{ x: 0, y: 0 }}>
+      <motion.div
+        className="card-rotate-disabled"
+        style={{ x: 0, y: 0, zIndex }}
+      >
         {children}
       </motion.div>
     );
@@ -60,12 +72,14 @@ function CardRotate({ children, disabled, onDragEnd }: CardRotateProps) {
   return (
     <motion.div
       className="card-rotate"
-      style={{ x, y, rotateX, rotateY }}
-      drag
+      style={{ x, y, rotateX, rotateY, zIndex }}
+      drag="x"
       dragConstraints={{ top: 0, right: 0, bottom: 0, left: 0 }}
-      dragElastic={0.55}
+      dragElastic={0.45}
+      dragDirectionLock
       whileTap={{ cursor: "grabbing" }}
       onDragEnd={handleDragEnd}
+      onTap={onTap}
     >
       {children}
     </motion.div>
@@ -74,28 +88,28 @@ function CardRotate({ children, disabled, onDragEnd }: CardRotateProps) {
 
 type ShowcaseSwipeStackProps = {
   cards: ShowcaseSwipeCard[];
-  sensitivity?: number;
   disabled?: boolean;
   onSwipe: (decision: "like" | "pass") => void;
-  onOpen: () => void;
+  onOpen: (card: ShowcaseSwipeCard) => void;
 };
 
-function resolveSwipeDecision(
-  offset: PanInfo["offset"],
-  sensitivity: number,
-): "like" | "pass" | null {
-  const { x, y } = offset;
-  if (x > SWIPE_THRESHOLD) return "like";
-  if (x < -SWIPE_THRESHOLD) return "pass";
-  if (Math.abs(x) > sensitivity && Math.abs(x) >= Math.abs(y)) {
-    return x > 0 ? "like" : "pass";
-  }
+function resolveSwipeDecision(info: PanInfo): "like" | "pass" | null {
+  const { x, y } = info.offset;
+  const vx = info.velocity.x;
+  const vy = info.velocity.y;
+
+  const horizontalGesture =
+    Math.abs(x) >= Math.abs(y) || Math.abs(vx) >= Math.abs(vy);
+
+  if (!horizontalGesture) return null;
+
+  if (x >= SWIPE_OFFSET_PX || vx >= SWIPE_VELOCITY_PX_S) return "like";
+  if (x <= -SWIPE_OFFSET_PX || vx <= -SWIPE_VELOCITY_PX_S) return "pass";
   return null;
 }
 
 export function ShowcaseSwipeStack({
   cards,
-  sensitivity = 140,
   disabled = false,
   onSwipe,
   onOpen,
@@ -116,12 +130,12 @@ export function ShowcaseSwipeStack({
   const handleTopDragEnd = useCallback(
     (info: PanInfo) => {
       if (disabled) return;
-      const decision = resolveSwipeDecision(info.offset, sensitivity);
+      const decision = resolveSwipeDecision(info);
       if (decision) {
         onSwipe(decision);
       }
     },
-    [disabled, onSwipe, sensitivity],
+    [disabled, onSwipe],
   );
 
   if (stack.length === 0) return null;
@@ -129,20 +143,33 @@ export function ShowcaseSwipeStack({
   return (
     <div className="showcase-swipe-stack">
       {stack.map((item, index) => {
-        const isTop = index === stack.length - 1;
-        const depth = stack.length - index - 1;
+        const isTop = index === 0;
+        const depth = index;
+
+        const layerZ = stack.length - index;
 
         return (
           <CardRotate
             key={item.id}
+            zIndex={layerZ}
             disabled={!isTop || disabled}
             onDragEnd={isTop ? handleTopDragEnd : () => {}}
+            onTap={
+              isTop && !disabled
+                ? () => {
+                    onOpen(item.card);
+                  }
+                : undefined
+            }
           >
             <motion.div
               className="stack-card"
               animate={{
                 rotateZ: depth * 4,
-                scale: 1 + index * 0.06 - stack.length * 0.06,
+                scale:
+                  1 +
+                  (stack.length - 1 - depth) * 0.06 -
+                  stack.length * 0.06,
                 transformOrigin: "90% 90%",
               }}
               initial={false}
@@ -152,17 +179,10 @@ export function ShowcaseSwipeStack({
                 damping: ANIMATION.damping,
               }}
             >
-              {isTop ? (
-                <button
-                  type="button"
-                  className="h-full w-full text-left"
-                  onClick={onOpen}
-                >
-                  <ShowcaseSwipeQuartettCard card={item.card} />
-                </button>
-              ) : (
-                <ShowcaseSwipeQuartettCard card={item.card} />
-              )}
+              <ShowcaseSwipeQuartettCard
+                card={item.card}
+                className={isTop ? "select-none" : undefined}
+              />
             </motion.div>
           </CardRotate>
         );

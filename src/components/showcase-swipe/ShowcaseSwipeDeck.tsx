@@ -90,33 +90,28 @@ export function ShowcaseSwipeDeck({
         if (decision === "like") {
           onLiked?.(current);
         }
+        removeTop();
+        setError(null);
       } catch {
         setError("Swipe konnte nicht gespeichert werden.");
       } finally {
-        removeTop();
         setBusy(false);
       }
     },
     [busy, current, onLiked, removeTop],
   );
 
-  const openShowcase = useCallback(() => {
-    if (!current) return;
-    router.push(`/v/${current.publicSlug}`);
-  }, [current, router]);
+  const openShowcase = useCallback(
+    (card: ShowcaseSwipeCard) => {
+      router.push(`/v/${card.publicSlug}`);
+    },
+    [router],
+  );
 
   if (loading) {
     return (
       <p className="text-center text-[0.9rem] text-[color:var(--vd-muted)]">
         Lade Builds…
-      </p>
-    );
-  }
-
-  if (error) {
-    return (
-      <p className="text-center text-[0.9rem] text-red-600" role="alert">
-        {error}
       </p>
     );
   }
@@ -140,7 +135,12 @@ export function ShowcaseSwipeDeck({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative mx-auto aspect-[9/16] w-full max-w-[min(100%,300px)]">
+      {error ? (
+        <p className="text-center text-[0.9rem] text-red-600" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="relative mx-auto aspect-[9/16] w-full max-w-full">
         <ShowcaseSwipeStack
           cards={cards}
           disabled={busy}

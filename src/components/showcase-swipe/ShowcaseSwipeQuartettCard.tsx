@@ -44,18 +44,19 @@ export function ShowcaseSwipeQuartettCard({
         className,
       )}
     >
-      <div className="relative min-h-0 flex-1 w-full bg-neutral-900">
+      <div className="relative min-h-0 w-full shrink-0 flex-[3] bg-neutral-900">
         {card.heroImageSrc ? (
           <Image
             src={card.heroImageSrc}
             alt={title}
             fill
-            className="object-contain object-center p-4"
-            sizes="(max-width: 480px) 100vw, 400px"
+            draggable={false}
+            className="pointer-events-none object-cover object-center"
+            sizes="(max-width: 512px) 100vw, 480px"
             unoptimized={card.heroImageSrc.startsWith("/api/")}
           />
         ) : (
-          <div className="flex h-full items-center justify-center px-6 text-center text-[0.85rem] text-white/50">
+          <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-[0.85rem] text-white/50">
             Kein Fahrzeugbild
           </div>
         )}
@@ -77,7 +78,7 @@ export function ShowcaseSwipeQuartettCard({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-neutral-950 to-transparent" />
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 px-5 pb-5 pt-3">
+      <div className="flex min-h-0 flex-[2] flex-col gap-2.5 overflow-y-auto px-4 pb-4 pt-2.5 overscroll-contain touch-pan-y">
         <div>
           <p className="text-[1.05rem] font-semibold tracking-tight">{title}</p>
           <p className="text-[0.78rem] text-white/55">
