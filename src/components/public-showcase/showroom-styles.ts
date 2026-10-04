@@ -30,7 +30,7 @@ export const showroom = {
   disclosureRow:
     "flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-white/5",
   kicker:
-    "font-mono text-[0.65rem] font-medium uppercase tracking-[0.22em] text-zinc-500",
+    "text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white/45",
   sectionTitle:
     "text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white/45",
   label: "text-[0.78rem] text-white/45",

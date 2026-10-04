@@ -15,8 +15,27 @@ import { isVehicleDynoChartStoragePath } from "@/lib/vehicles/dyno-chart-constan
 import { isPublicBuildStoryDocument } from "@/lib/vehicles/build-story-document";
 import { isVehiclePublicShowcase } from "@/lib/vehicles/get-public-vehicle";
 import { isVehicleBuildStoryPublic } from "@/lib/vehicles/is-vehicle-build-story-public";
+import {
+  optimizedImageCacheKey,
+  readOptimizedImageCache,
+  writeOptimizedImageCache,
+} from "@/lib/image/optimized-image-cache";
+import { optimizeWebImageBytes } from "@/lib/image/optimize-web-image";
+import { SILHOUETTE_SHOWCASE_GALLERY_MAX_EDGE } from "@/lib/vehicles/silhouette-constants";
+import { logServerError } from "@/lib/security/public-error";
 
 export const runtime = "nodejs";
+
+const MIN_MAX_EDGE = 128;
+const MAX_MAX_EDGE = 1600;
+
+function parseMaxEdgePx(request: NextRequest): number | null {
+  const raw = request.nextUrl.searchParams.get("w");
+  if (!raw) return null;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.min(MAX_MAX_EDGE, Math.max(MIN_MAX_EDGE, parsed));
+}
 
 const vehicleIdSchema = z.string().uuid();
 const UUID_RE =
@@ -146,8 +165,6 @@ export async function GET(
     const buffer = Buffer.from(await data.arrayBuffer());
     const storedType = data.type?.split(";")[0]?.trim().toLowerCase() ?? "";
     const fallbackType = dyno ? "application/pdf" : "image/jpeg";
-    // Never echo the stored content type back verbatim — a legacy object typed
-    // as text/html or image/svg+xml would execute in the showcase origin.
     const allowedTypes = dyno
       ? ["application/pdf", "image/jpeg", "image/png", "image/webp"]
       : ["image/jpeg", "image/png", "image/webp"];
@@ -155,13 +172,61 @@ export async function GET(
       ? storedType
       : fallbackType;
 
+    const cacheControl =
+      "public, max-age=86400, stale-while-revalidate=604800";
+
+    if (!dyno && mediaKind === "image") {
+      const maxEdgePx =
+        parseMaxEdgePx(request) ?? SILHOUETTE_SHOWCASE_GALLERY_MAX_EDGE;
+      const cacheKey = optimizedImageCacheKey({
+        scope: "public-file",
+        id: `${vehicleId}:${storagePath}`,
+        maxEdgePx,
+        version: "1",
+      });
+      const cached = readOptimizedImageCache(cacheKey);
+      if (cached) {
+        return new NextResponse(new Uint8Array(cached.body), {
+          status: 200,
+          headers: {
+            "Content-Type": cached.contentType,
+            "Content-Disposition": "inline",
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": cacheControl,
+            "Cross-Origin-Resource-Policy": "same-origin",
+          },
+        });
+      }
+
+      try {
+        const optimized = await optimizeWebImageBytes(buffer, { maxEdgePx });
+        writeOptimizedImageCache(
+          cacheKey,
+          optimized.body,
+          optimized.contentType,
+        );
+        return new NextResponse(new Uint8Array(optimized.body), {
+          status: 200,
+          headers: {
+            "Content-Type": optimized.contentType,
+            "Content-Disposition": "inline",
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": cacheControl,
+            "Cross-Origin-Resource-Policy": "same-origin",
+          },
+        });
+      } catch (error) {
+        logServerError("[public-vehicle-file] optimize failed", error);
+      }
+    }
+
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": "inline",
         "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+        "Cache-Control": cacheControl,
         "Cross-Origin-Resource-Policy": "same-origin",
       },
     });

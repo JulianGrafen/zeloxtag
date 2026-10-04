@@ -515,7 +515,7 @@ function DocumentRow({
           : documentTypeLabel(document.type);
 
   const meta = (
-    <span className={cn(automotiveMetaClassName, "mt-0.5 block normal-case")}>
+    <span className={cn(automotiveMetaClassName, "mt-0.5 block")}>
       {typeLabel}
       {" · "}
       {formatDocumentDate(document.date)}
@@ -550,7 +550,7 @@ function DocumentRow({
               <span
                 className={cn(
                   automotiveMetaClassName,
-                  "mt-0.5 block truncate normal-case",
+                  "mt-0.5 block truncate",
                 )}
                 title={subtitle}
               >

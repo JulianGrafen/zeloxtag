@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { EmailConfirmedPanel } from "@/components/auth/email-confirmed-panel";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { resolveAuthenticatedDestination } from "@/lib/auth/resolve-authenticated-destination";
+import { loginGateHref } from "@/lib/auth/login-gate-url";
+import { resolveAuthContinueHref } from "@/lib/auth/resolve-auth-continue-href";
 
 export const metadata: Metadata = {
   title: "E-Mail bestätigt · ZeloxTag",
@@ -14,17 +15,17 @@ export const metadata: Metadata = {
 export default async function EmailConfirmedPage() {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/login?error=session&next=/auth/confirmed");
+    redirect(loginGateHref("/auth/confirmed"));
   }
 
-  const destination = await resolveAuthenticatedDestination(user.id);
-  if (destination.status === "error") {
-    redirect(`/login?error=${encodeURIComponent(destination.message)}`);
+  const href = await resolveAuthContinueHref(user.id);
+  if (!href.startsWith("/?")) {
+    redirect(href);
   }
 
   return (
     <AppShell showNavbar={false}>
-      <EmailConfirmedPanel dashboardHref={destination.href} />
+      <EmailConfirmedPanel />
     </AppShell>
   );
 }

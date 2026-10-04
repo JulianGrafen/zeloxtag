@@ -1,10 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart, X } from "lucide-react";
 
-import { ShowcaseSwipeStack } from "@/components/showcase-swipe/showcase-swipe-stack";
+import {
+  ShowcaseSwipeStack,
+  type ShowcaseSwipeStackHandle,
+} from "@/components/showcase-swipe/showcase-swipe-stack";
+import { preloadImageHrefs } from "@/lib/image/preload-image-hrefs";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +62,7 @@ export function ShowcaseSwipeDeck({
   const [swipeError, setSwipeError] = useState<string | null>(null);
   const [everHadCards, setEverHadCards] = useState(initialCards.length > 0);
   const [busy, setBusy] = useState(false);
+  const stackRef = useRef<ShowcaseSwipeStackHandle>(null);
 
   const reloadDeck = useCallback(async () => {
     setHydrating(true);
@@ -101,6 +106,10 @@ export function ShowcaseSwipeDeck({
     };
   }, []);
 
+  useEffect(() => {
+    preloadImageHrefs(cards.slice(0, 5).map((card) => card.heroImageSrc));
+  }, [cards]);
+
   const current = cards[0];
 
   const removeTop = useCallback(() => {
@@ -120,6 +129,7 @@ export function ShowcaseSwipeDeck({
         setSwipeError(null);
       } catch {
         setSwipeError("Swipe konnte nicht gespeichert werden.");
+        stackRef.current?.resetTop();
       } finally {
         setBusy(false);
       }
@@ -206,6 +216,7 @@ export function ShowcaseSwipeDeck({
       ) : null}
       <div className="relative mx-auto aspect-[9/16] w-full max-w-full">
         <ShowcaseSwipeStack
+          ref={stackRef}
           cards={cards}
           disabled={busy}
           onSwipe={handleSwipe}
@@ -221,7 +232,7 @@ export function ShowcaseSwipeDeck({
           className={cn(
             "flex h-14 w-14 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-rose-500 shadow-[var(--vd-shadow-sm)] disabled:opacity-50",
           )}
-          onClick={() => handleSwipe("pass")}
+          onClick={() => stackRef.current?.swipeTop("pass")}
         >
           <X className="h-7 w-7" strokeWidth={2} />
         </button>
@@ -232,7 +243,7 @@ export function ShowcaseSwipeDeck({
           className={cn(
             "flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/40 bg-[color:var(--vd-surface)] text-emerald-600 shadow-[var(--vd-shadow-sm)] disabled:opacity-50",
           )}
-          onClick={() => handleSwipe("like")}
+          onClick={() => stackRef.current?.swipeTop("like")}
         >
           <Heart className="h-8 w-8" strokeWidth={2} />
         </button>

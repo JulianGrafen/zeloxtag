@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef, type PointerEvent as ReactPointerEvent } from "react";
 import Image from "next/image";
 import { Heart } from "lucide-react";
 
@@ -24,21 +23,14 @@ function buildSwipeQuartettLines(card: ShowcaseSwipeCard) {
 type ShowcaseSwipeQuartettCardProps = {
   card: ShowcaseSwipeCard;
   className?: string;
-  interactive?: boolean;
-  onHeroPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onDetailsTap?: () => void;
-  detailsTapMaxMovePx?: number;
+  imagePriority?: boolean;
 };
 
 export function ShowcaseSwipeQuartettCard({
   card,
   className,
-  interactive = false,
-  onHeroPointerDown,
-  onDetailsTap,
-  detailsTapMaxMovePx = 12,
+  imagePriority = false,
 }: ShowcaseSwipeQuartettCardProps) {
-  const detailsPointerStart = useRef<{ x: number; y: number } | null>(null);
   const title = [card.make, card.model].filter(Boolean).join(" ");
   const yearLabel = card.year != null ? String(card.year) : null;
   const lines = buildSwipeQuartettLines(card);
@@ -54,19 +46,15 @@ export function ShowcaseSwipeQuartettCard({
         className,
       )}
     >
-      <div
-        className={cn(
-          "relative min-h-0 w-full shrink-0 flex-[3] bg-neutral-900",
-          interactive && "touch-none cursor-grab active:cursor-grabbing",
-        )}
-        onPointerDown={interactive ? onHeroPointerDown : undefined}
-      >
+      <div className="relative min-h-0 w-full shrink-0 flex-[3] bg-neutral-900">
         {card.heroImageSrc ? (
           <Image
             src={card.heroImageSrc}
             alt={title}
             fill
             draggable={false}
+            priority={imagePriority}
+            loading={imagePriority ? "eager" : "lazy"}
             className="pointer-events-none object-cover object-center"
             sizes="(max-width: 512px) 100vw, 480px"
             unoptimized={card.heroImageSrc.startsWith("/api/")}
@@ -94,43 +82,7 @@ export function ShowcaseSwipeQuartettCard({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-neutral-950 to-transparent" />
       </div>
 
-      <div
-        className="flex min-h-0 flex-[2] flex-col gap-2.5 overflow-y-auto px-4 pb-4 pt-2.5 overscroll-contain touch-pan-y"
-        onPointerDown={
-          interactive && onDetailsTap
-            ? (event) => {
-                detailsPointerStart.current = {
-                  x: event.clientX,
-                  y: event.clientY,
-                };
-              }
-            : undefined
-        }
-        onPointerUp={
-          interactive && onDetailsTap
-            ? (event) => {
-                const start = detailsPointerStart.current;
-                detailsPointerStart.current = null;
-                if (!start) return;
-                const dx = event.clientX - start.x;
-                const dy = event.clientY - start.y;
-                if (
-                  dx * dx + dy * dy <=
-                  detailsTapMaxMovePx * detailsTapMaxMovePx
-                ) {
-                  onDetailsTap();
-                }
-              }
-            : undefined
-        }
-        onPointerCancel={
-          interactive && onDetailsTap
-            ? () => {
-                detailsPointerStart.current = null;
-              }
-            : undefined
-        }
-      >
+      <div className="flex min-h-0 flex-[2] flex-col gap-2.5 overflow-hidden px-4 pb-4 pt-2.5">
         <div>
           <p className="text-[1.05rem] font-semibold tracking-tight">{title}</p>
           <p className="text-[0.78rem] text-white/55">

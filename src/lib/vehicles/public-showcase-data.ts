@@ -17,6 +17,10 @@ import {
   type ShowcaseBuildDna,
 } from "@/lib/showcase/build-dna-schema";
 import { buildPersonalityLabels } from "@/lib/vehicles/build-personality-chips";
+import {
+  showcaseGalleryFileUrl,
+  showcaseSilhouetteHeroUrl,
+} from "@/lib/vehicles/showcase-media-url";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
 import type { BuildStoryEntry } from "@/lib/vehicles/build-story-map";
@@ -138,11 +142,6 @@ function latestMileageKm(documents: Document[]): number | null {
   return best;
 }
 
-function publicGalleryProxyUrl(vehicleId: string, src: string): string {
-  const params = new URLSearchParams({ src });
-  return `/api/public/vehicle/${vehicleId}/file?${params.toString()}`;
-}
-
 function publicGalleryPhotoSrc(vehicleId: string, fileUrl: string): string | null {
   if (
     !fileUrl ||
@@ -152,7 +151,7 @@ function publicGalleryPhotoSrc(vehicleId: string, fileUrl: string): string | nul
     return null;
   }
   if (documentMediaKind(fileUrl) !== "image") return null;
-  return publicGalleryProxyUrl(vehicleId, fileUrl);
+  return showcaseGalleryFileUrl(vehicleId, fileUrl);
 }
 
 function collectGalleryPhotos(
@@ -165,7 +164,10 @@ function collectGalleryPhotos(
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`.trim() || "Fahrzeug";
 
   if (vehicle.silhouette_image_url?.trim()) {
-    const heroSrc = `/api/vehicle/silhouette/${vehicle.id}`;
+    const heroSrc = showcaseSilhouetteHeroUrl(vehicle.id, {
+      silhouetteImageUrl: vehicle.silhouette_image_url,
+      updatedAt: vehicle.updated_at,
+    });
     photos.push({
       id: "silhouette",
       src: heroSrc,

@@ -22,6 +22,15 @@ export const MAX_SILHOUETTE_UPLOAD_BYTES = 8 * 1024 * 1024;
 /** Dashboard header thumbnail (~170px CSS, 2× retina). */
 export const SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE = 340;
 
+/** Build-Swipe card (~max 512px wide, 9:16). */
+export const SILHOUETTE_SHOWCASE_SWIPE_MAX_EDGE = 520;
+
+/** Public showcase hero carousel (full width, ~2× retina cap). */
+export const SILHOUETTE_SHOWCASE_HERO_MAX_EDGE = 960;
+
+/** Gallery photos in public showcase / lightbox. */
+export const SILHOUETTE_SHOWCASE_GALLERY_MAX_EDGE = 1280;
+
 /** Client compression targets before upload. */
 export const SILHOUETTE_CLIENT_MAX_EDGE_PX = 1600;
 export const SILHOUETTE_CLIENT_MAX_SIZE_MB = 0.85;

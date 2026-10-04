@@ -1,4 +1,5 @@
 import { parseShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
+import { showcaseSilhouetteSwipeUrl } from "@/lib/vehicles/showcase-media-url";
 import {
   buildPersonalityLabels,
   parseBuildPersonalityTags,
@@ -18,6 +19,8 @@ export type ShowcaseSwipeCandidateRow = {
   modification_count: number;
   total_likes?: number;
   has_silhouette: boolean;
+  silhouette_image_url?: string | null;
+  updated_at?: string | null;
   showcase_build_dna?: unknown;
   build_personality_tags?: unknown;
 };
@@ -37,7 +40,10 @@ export function mapSwipeCandidateToCard(
   const vehicleId = row.vehicle_id?.trim();
   const heroImageSrc =
     row.has_silhouette && vehicleId
-      ? `/api/vehicle/silhouette/${vehicleId}`
+      ? showcaseSilhouetteSwipeUrl(vehicleId, {
+          silhouetteImageUrl: row.silhouette_image_url,
+          updatedAt: row.updated_at,
+        })
       : null;
 
   const modificationCount = Math.max(

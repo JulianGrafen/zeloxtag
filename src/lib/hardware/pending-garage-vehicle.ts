@@ -1,5 +1,10 @@
 import { cookies } from "next/headers";
 
+import {
+  clearPendingGarageVehicleForUser,
+  loadPendingGarageVehicleForUser,
+  savePendingGarageVehicleForUser,
+} from "@/lib/auth/pending-signup-user-metadata";
 import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import type { ClaimTechSpecs } from "@/lib/tags/claim-tech-specs";
 
@@ -16,7 +21,8 @@ export type PendingGarageVehicle = {
   techSpecs?: ClaimTechSpecs | null;
 };
 
-const MAX_AGE_SECONDS = 60 * 60;
+/** Cookie backup when email confirm opens in the same browser. */
+const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 function isClaimTechSpecs(value: unknown): value is ClaimTechSpecs {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -72,6 +78,7 @@ function isClaimTechSpecs(value: unknown): value is ClaimTechSpecs {
 
 export async function setPendingGarageVehicle(
   payload: PendingGarageVehicle,
+  options?: { userId?: string },
 ): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(PENDING_GARAGE_VEHICLE_COOKIE, JSON.stringify(payload), {
@@ -81,7 +88,26 @@ export async function setPendingGarageVehicle(
     path: "/",
     maxAge: MAX_AGE_SECONDS,
   });
+  if (options?.userId) {
+    await savePendingGarageVehicleForUser(options.userId, payload);
+  }
   await setPendingDashboardTour();
+}
+
+/** Cookie first (same browser), then auth user metadata (email confirm in mail app). */
+export async function resolvePendingGarageVehicle(
+  userId: string,
+): Promise<PendingGarageVehicle | null> {
+  const fromCookie = await getPendingGarageVehicle();
+  if (fromCookie) return fromCookie;
+  return loadPendingGarageVehicleForUser(userId);
+}
+
+export async function clearPendingGarageVehicleState(
+  userId: string,
+): Promise<void> {
+  await clearPendingGarageVehicle();
+  await clearPendingGarageVehicleForUser(userId);
 }
 
 export async function getPendingGarageVehicle(): Promise<PendingGarageVehicle | null> {

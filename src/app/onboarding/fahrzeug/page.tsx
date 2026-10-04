@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ClaimFlow } from "@/components/tags/claim-flow";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { ownerDisplayNameFromMetadata } from "@/lib/auth/owner-display-name";
 import { DigitalGarageBetaClosed } from "@/components/onboarding/digital-garage-beta-closed";
 import { userHasGarageVehicle } from "@/lib/auth/user-has-vehicle";
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
 export default async function OnboardingVehiclePage() {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/register");
+    redirect(loginGateHref("/onboarding/fahrzeug"));
   }
 
   if (await userHasGarageVehicle(user.id)) {

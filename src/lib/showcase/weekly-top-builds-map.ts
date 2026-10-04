@@ -1,3 +1,5 @@
+import { showcaseSilhouetteSwipeUrl } from "@/lib/vehicles/showcase-media-url";
+
 export type WeeklyTopBuild = {
   rank: number;
   vehicleId: string;
@@ -18,6 +20,8 @@ export type WeeklyTopBuildRow = {
   year: number | null;
   weekly_likes: number;
   has_silhouette: boolean;
+  silhouette_image_url?: string | null;
+  updated_at?: string | null;
 };
 
 export function mapWeeklyTopBuildRow(
@@ -41,7 +45,10 @@ export function mapWeeklyTopBuildRow(
     weeklyLikes,
     heroImageSrc:
       row.has_silhouette && vehicleId
-        ? `/api/vehicle/silhouette/${vehicleId}`
+        ? showcaseSilhouetteSwipeUrl(vehicleId, {
+            silhouetteImageUrl: row.silhouette_image_url,
+            updatedAt: row.updated_at,
+          })
         : null,
   };
 }

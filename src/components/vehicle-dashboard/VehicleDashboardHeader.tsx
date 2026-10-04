@@ -98,7 +98,7 @@ export function VehicleDashboardHeader({
 
       <div className="relative grid grid-cols-1 items-end gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-5 sm:p-6">
         <div className="min-w-0 space-y-3 pl-5 sm:pl-8">
-          <p className="flex items-center gap-2 font-mono text-[0.65rem] font-medium uppercase tracking-[0.2em] text-zinc-500">
+          <p className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-zinc-500">
             <span>{statusLabel}</span>
             <span className="relative inline-flex h-2.5 w-2.5 shrink-0 items-center justify-center">
               <span className="vd-connected-dot" aria-label="Verbunden" />
@@ -109,7 +109,7 @@ export function VehicleDashboardHeader({
               {heroTitle}
             </h1>
             {year ? (
-              <p className="font-mono text-xs tracking-wider text-zinc-400 uppercase tabular-nums">
+              <p className="text-xs text-zinc-400 tabular-nums">
                 Baujahr {year}
               </p>
             ) : null}

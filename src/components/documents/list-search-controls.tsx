@@ -5,10 +5,8 @@ import { Search, X } from "lucide-react";
 import {
   automotiveFilterChipActiveClassName,
   automotiveFilterChipInactiveClassName,
-  automotiveMetaClassName,
 } from "@/components/ui/automotive";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
-import { cn } from "@/lib/utils";
 import type { ListFilterChip } from "@/lib/documents/list-search";
 
 export type ListSearchControlsProps = {
@@ -137,7 +135,9 @@ export function ListSearchControls({
       ) : null}
 
       {resultLabel ? (
-        <p className={cn("px-0.5", automotiveMetaClassName)}>{resultLabel}</p>
+        <p className="px-0.5 text-[0.72rem] text-[color:var(--vd-muted)]">
+          {resultLabel}
+        </p>
       ) : null}
     </div>
   );

@@ -22,7 +22,7 @@ describe("mapWeeklyTopBuildRow", () => {
       model: "M3",
       year: 2021,
       weeklyLikes: 12,
-      heroImageSrc: "/api/vehicle/silhouette/veh-1",
+      heroImageSrc: expect.stringContaining("/api/vehicle/silhouette/veh-1"),
     });
   });
 

@@ -17,7 +17,12 @@ const passwordSchema = z.string().min(10).max(128);
 
 export type EnsureClaimAccountResult =
   | { ok: true; userId: string; created: boolean }
-  | { ok: false; message: string; needsEmailConfirmation?: boolean };
+  | {
+      ok: false;
+      message: string;
+      needsEmailConfirmation?: boolean;
+      pendingUserId?: string;
+    };
 
 const GENERIC_EXISTING_ACCOUNT =
   "Dieses Konto existiert bereits. Bitte anmelden oder Passwort zurücksetzen.";
@@ -98,6 +103,7 @@ export async function ensureClaimAccount(input: {
       ok: false,
       needsEmailConfirmation: true,
       message: result.message,
+      pendingUserId: result.userId,
     };
   }
 

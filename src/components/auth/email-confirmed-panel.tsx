@@ -1,10 +1,12 @@
-import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function EmailConfirmedPanel({ dashboardHref }: { dashboardHref: string }) {
+/** Post-confirm CTA — always hop through `/auth/continue` for fresh session + routing. */
+const POST_CONFIRM_DASHBOARD_HREF = "/auth/continue";
+
+export function EmailConfirmedPanel() {
   return (
     <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-[max(1.75rem,env(safe-area-inset-top))] sm:px-5">
       <div className="zt-feature-panel p-6">
@@ -17,15 +19,15 @@ export function EmailConfirmedPanel({ dashboardHref }: { dashboardHref: string }
         <p className="mt-2 text-[0.92rem] leading-relaxed text-[color:var(--vd-muted)]">
           Dein Konto ist aktiv. Weiter geht&apos;s auf deinem Dashboard.
         </p>
-        <Link
-          href={dashboardHref}
+        <a
+          href={POST_CONFIRM_DASHBOARD_HREF}
           className={cn(
             buttonVariants(),
-            "mt-6 inline-flex h-12 w-full text-[0.95rem] font-semibold",
+            "mt-6 inline-flex h-12 w-full text-[0.95rem] font-semibold no-underline",
           )}
         >
           Zum Dashboard
-        </Link>
+        </a>
       </div>
     </section>
   );

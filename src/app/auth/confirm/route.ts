@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
+import { completePendingGarageVehicleForUser } from "@/lib/hardware/complete-pending-garage-vehicle";
+import {
+  dashboardTourHref,
+  garageDashboardTourHref,
+} from "@/lib/onboarding/dashboard-tour";
+import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import { completePendingClaimForUser } from "@/lib/tags/complete-pending-claim";
 import { enforceRateLimit } from "@/lib/security/api-guard";
 import { hardenCookieOptions } from "@/lib/security/cookie-options";
@@ -103,9 +109,35 @@ export async function GET(request: NextRequest) {
   if (userId) {
     try {
       const claimResult = await completePendingClaimForUser(userId);
+      if (claimResult?.status === "claimed") {
+        await setPendingDashboardTour();
+        return copyCookies(
+          NextResponse.redirect(
+            new URL(dashboardTourHref(claimResult.tagUuid), origin),
+          ),
+        );
+      }
       if (claimResult?.status === "error") {
         const loginUrl = new URL("/login", origin);
         loginUrl.searchParams.set("error", claimResult.message);
+        return copyCookies(NextResponse.redirect(loginUrl));
+      }
+
+      const garageResult = await completePendingGarageVehicleForUser(userId);
+      if (garageResult?.status === "created") {
+        await setPendingDashboardTour();
+        return copyCookies(
+          NextResponse.redirect(
+            new URL(
+              garageDashboardTourHref(garageResult.vehicleId, true),
+              origin,
+            ),
+          ),
+        );
+      }
+      if (garageResult?.status === "error") {
+        const loginUrl = new URL("/login", origin);
+        loginUrl.searchParams.set("error", garageResult.message);
         return copyCookies(NextResponse.redirect(loginUrl));
       }
     } catch {

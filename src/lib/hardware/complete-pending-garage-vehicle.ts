@@ -1,9 +1,10 @@
 import { z } from "zod";
 
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { completeGarageVehicleForOwner } from "@/lib/hardware/complete-garage-vehicle-for-owner";
 import {
-  clearPendingGarageVehicle,
-  getPendingGarageVehicle,
+  clearPendingGarageVehicleState,
+  resolvePendingGarageVehicle,
 } from "@/lib/hardware/pending-garage-vehicle";
 
 const ownerUserIdSchema = z.string().uuid();
@@ -20,10 +21,23 @@ export async function completePendingGarageVehicleForUser(
     return { status: "error", message: "Ungültige Sitzung." };
   }
 
-  const pending = await getPendingGarageVehicle();
+  const pending = await resolvePendingGarageVehicle(parsed.data);
   if (!pending) return null;
 
+  const user = await getCurrentUser();
+  if (
+    user &&
+    pending.email.trim().toLowerCase() !== user.email?.trim().toLowerCase()
+  ) {
+    return {
+      status: "error",
+      message: "Gespeicherte Fahrzeugdaten passen nicht zu diesem Konto.",
+    };
+  }
+
   const result = await completeGarageVehicleForOwner(parsed.data, pending);
-  await clearPendingGarageVehicle();
+  if (result.status === "created") {
+    await clearPendingGarageVehicleState(parsed.data);
+  }
   return result;
 }

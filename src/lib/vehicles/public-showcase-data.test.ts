@@ -349,9 +349,10 @@ describe("buildPublicShowcasePayload", () => {
       "silhouette",
       "dyno-chart",
     ]);
-    expect(payload.profile.heroImageSrc).toBe(
+    expect(payload.profile.heroImageSrc).toContain(
       `/api/vehicle/silhouette/${baseVehicle.id}`,
     );
+    expect(payload.profile.heroImageSrc).toContain("w=960");
   });
 
   it("omits gallery photos when no showcase media is uploaded", () => {

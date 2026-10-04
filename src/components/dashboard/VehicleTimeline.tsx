@@ -25,8 +25,8 @@ const TIMELINE_CARD_SHELL = cn(
 
 const TIMELINE_TITLE = "text-base font-semibold leading-snug text-zinc-100";
 const TIMELINE_META = "mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.78rem] text-zinc-500";
-const TIMELINE_MONO =
-  "font-mono text-sm text-zinc-400 tracking-tight tabular-nums";
+const TIMELINE_DATE =
+  "text-sm text-zinc-400 tabular-nums";
 
 type CategoryVisual = {
   accentBorder: string;
@@ -231,19 +231,19 @@ function TimelineEventRow({
             {mileageLabel ? (
               <>
                 <TimelineMetaSeparator />
-                <span className={TIMELINE_MONO}>{mileageLabel}</span>
+                <span className={TIMELINE_DATE}>{mileageLabel}</span>
               </>
             ) : null}
             {dateLabel ? (
               <>
                 <TimelineMetaSeparator />
-                <span className={TIMELINE_MONO}>{dateLabel}</span>
+                <span className={TIMELINE_DATE}>{dateLabel}</span>
               </>
             ) : null}
             {costLabel ? (
               <>
                 <TimelineMetaSeparator />
-                <span className={TIMELINE_MONO}>{costLabel}</span>
+                <span className={TIMELINE_DATE}>{costLabel}</span>
               </>
             ) : null}
             {event.isManualEntry ? (

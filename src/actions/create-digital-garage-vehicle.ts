@@ -172,20 +172,23 @@ export async function createDigitalGarageVehicle(
       email: normalized.email,
       password: normalized.password,
       name: normalized.name,
-      redirectNext: "/register",
+      redirectNext: "/auth/continue",
     });
 
     if (!account.ok) {
       if (account.needsEmailConfirmation) {
-        await setPendingGarageVehicle({
-          make: normalized.make,
-          model: normalized.model,
-          year: normalized.year,
-          vin: normalized.vin,
-          email: normalized.email,
-          name: normalized.name,
-          techSpecs: normalized.techSpecs,
-        });
+        await setPendingGarageVehicle(
+          {
+            make: normalized.make,
+            model: normalized.model,
+            year: normalized.year,
+            vin: normalized.vin,
+            email: normalized.email,
+            name: normalized.name,
+            techSpecs: normalized.techSpecs,
+          },
+          { userId: account.pendingUserId },
+        );
         return {
           status: "confirm_email",
           message: account.message,

@@ -30,18 +30,22 @@ export const automotiveMenuTileClassName = cn(
   automotiveCardInteractiveClassName,
 );
 
-export const automotiveCardTitleClassName =
-  "font-medium text-[0.95rem] leading-snug tracking-tight text-zinc-100";
-
-export const automotiveDisplayTitleClassName =
-  "font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-zinc-100";
-
-export const automotiveMetaClassName = cn(
-  "font-mono text-[0.68rem] font-normal leading-relaxed tracking-wider text-zinc-400 uppercase tabular-nums",
+export const automotiveCardTitleClassName = cn(
+  "font-[family-name:var(--font-display)] text-[0.95rem] font-semibold leading-snug tracking-[-0.02em] text-[color:var(--vd-text)] dark:text-zinc-100",
 );
 
+export const automotiveDisplayTitleClassName = cn(
+  "font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)] dark:text-zinc-100",
+);
+
+/** Secondary line on cards/lists — same rhythm as legacy `vd-muted` subtitles. */
+export const automotiveMetaClassName = cn(
+  "text-[0.75rem] leading-snug text-[color:var(--vd-muted)] tabular-nums dark:text-zinc-400",
+);
+
+/** Section labels above lists — display caps, not mono telemetry. */
 export const automotiveKickerClassName = cn(
-  "font-mono text-[0.65rem] font-medium uppercase tracking-[0.22em] text-zinc-500",
+  "font-[family-name:var(--font-display)] text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)] dark:text-zinc-500",
 );
 
 export const automotiveIconWrapClassName = cn(
@@ -63,8 +67,9 @@ export const automotivePageHeaderBlockClassName = "space-y-1.5";
 export const automotiveBodyMutedClassName =
   "text-[0.88rem] leading-relaxed text-zinc-400";
 
-export const automotiveMetricHighlightClassName =
-  "text-[1.05rem] font-semibold tracking-[-0.02em] text-zinc-100 tabular-nums";
+export const automotiveMetricHighlightClassName = cn(
+  "text-[1.05rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)] tabular-nums dark:text-zinc-100",
+);
 
 export const automotiveSecondaryButtonClassName = cn(
   "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[0.88rem] font-semibold",
@@ -90,13 +95,12 @@ export const automotiveSpecCellClassName = cn(
   "dark:bg-zinc-800/40 dark:ring-1 dark:ring-inset dark:ring-white/10",
 );
 
-export const automotiveSpecLabelClassName = cn(
-  automotiveMetaClassName,
-  "normal-case tracking-[0.12em]",
-);
+export const automotiveSpecLabelClassName =
+  "text-[0.7rem] text-[color:var(--vd-muted)] dark:text-zinc-500";
 
-export const automotiveSpecValueClassName =
-  "mt-0.5 font-medium tracking-tight text-zinc-100 tabular-nums";
+export const automotiveSpecValueClassName = cn(
+  "mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)] tabular-nums dark:text-zinc-100",
+);
 
 export const automotiveBackPillClassName = cn(
   "inline-flex w-fit items-center gap-2 rounded-full px-3 py-2 text-[0.78rem] font-medium",

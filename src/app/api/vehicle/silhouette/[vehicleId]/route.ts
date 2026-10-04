@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
+import {
+  optimizedImageCacheKey,
+  readOptimizedImageCache,
+  writeOptimizedImageCache,
+} from "@/lib/image/optimized-image-cache";
 import { optimizeWebImageBytes } from "@/lib/image/optimize-web-image";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { sessionCanAccessVehicleMedia } from "@/lib/auth/vehicle-access";
@@ -32,12 +37,19 @@ function parseMaxEdgePx(request: NextRequest): number {
   return Math.min(MAX_MAX_EDGE, Math.max(MIN_MAX_EDGE, parsed));
 }
 
-function silhouetteCacheControl(request: NextRequest): string {
+function silhouetteCacheControl(
+  request: NextRequest,
+  isPublicShowcase: boolean,
+): string {
   const version = request.nextUrl.searchParams.get("v");
   if (version?.trim()) {
-    return "private, max-age=31536000, immutable";
+    return isPublicShowcase
+      ? "public, max-age=31536000, immutable"
+      : "private, max-age=31536000, immutable";
   }
-  return "private, max-age=3600";
+  return isPublicShowcase
+    ? "public, max-age=3600, stale-while-revalidate=86400"
+    : "private, max-age=3600";
 }
 
 function rawImageResponse(
@@ -106,11 +118,11 @@ export async function GET(
   }
 
   const viewer = await getCurrentUser();
-  const allowed = await sessionCanAccessVehicleMedia(
+  const access = await sessionCanAccessVehicleMedia(
     parsed.data,
     viewer?.id ?? null,
   );
-  if (!allowed) {
+  if (!access.allowed) {
     return NextResponse.json(
       { ok: false, error: "Vehicle photo not found." },
       { status: 404 },
@@ -126,7 +138,42 @@ export async function GET(
   }
 
   const maxEdgePx = parseMaxEdgePx(request);
-  const cacheControl = silhouetteCacheControl(request);
+  const version = request.nextUrl.searchParams.get("v")?.trim() ?? "";
+  const cacheControl = silhouetteCacheControl(request, access.isPublicShowcase);
 
-  return imageResponse(bytes, maxEdgePx, cacheControl);
+  const cacheKey = optimizedImageCacheKey({
+    scope: "silhouette",
+    id: parsed.data,
+    maxEdgePx,
+    version,
+  });
+  const cached = readOptimizedImageCache(cacheKey);
+  if (cached) {
+    return new NextResponse(new Uint8Array(cached.body), {
+      status: 200,
+      headers: {
+        "Content-Type": cached.contentType,
+        "Cache-Control": cacheControl,
+        "Cross-Origin-Resource-Policy": "same-origin",
+      },
+    });
+  }
+
+  try {
+    const { body, contentType } = await optimizeWebImageBytes(bytes, {
+      maxEdgePx,
+    });
+    writeOptimizedImageCache(cacheKey, body, contentType);
+    return new NextResponse(new Uint8Array(body), {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": cacheControl,
+        "Cross-Origin-Resource-Policy": "same-origin",
+      },
+    });
+  } catch (error) {
+    logServerError("[vehicle-silhouette] optimize failed", error);
+    return rawImageResponse(bytes, cacheControl);
+  }
 }

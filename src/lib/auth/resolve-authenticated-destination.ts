@@ -1,6 +1,8 @@
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
+import { completePendingGarageVehicleForUser } from "@/lib/hardware/complete-pending-garage-vehicle";
 import {
   dashboardTourHref,
+  garageDashboardTourHref,
   withForcedDashboardTour,
 } from "@/lib/onboarding/dashboard-tour";
 import {
@@ -28,6 +30,18 @@ export async function resolveAuthenticatedDestination(
     }
     if (claimResult?.status === "error") {
       return { status: "error", message: claimResult.message };
+    }
+
+    const garageResult = await completePendingGarageVehicleForUser(userId);
+    if (garageResult?.status === "created") {
+      await setPendingDashboardTour();
+      return {
+        status: "ok",
+        href: garageDashboardTourHref(garageResult.vehicleId, true),
+      };
+    }
+    if (garageResult?.status === "error") {
+      return { status: "error", message: garageResult.message };
     }
   } catch {
     /* optional — fall through to dashboard resolve */

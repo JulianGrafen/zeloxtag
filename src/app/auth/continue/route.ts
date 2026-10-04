@@ -1,12 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { loginGateHref } from "@/lib/auth/login-gate-url";
-import {
-  isGenericPostLoginNext,
-  sanitizePostLoginPath,
-} from "@/lib/auth/post-login-path-guards";
-import { finalizePostLoginPath } from "@/lib/auth/post-login-path";
-import { resolveAuthenticatedDestination } from "@/lib/auth/resolve-authenticated-destination";
+import { resolveAuthContinueHref } from "@/lib/auth/resolve-auth-continue-href";
 import { createClient } from "@/lib/supabase/server";
 
 /** Absolute redirect using the request Host (ZAP/Docker uses host.docker.internal). */
@@ -38,34 +32,9 @@ async function handleContinue(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    const nextRaw = request.nextUrl.searchParams.get("next");
-    const intended =
-      nextRaw?.trim() && !isGenericPostLoginNext(nextRaw)
-        ? sanitizePostLoginPath(nextRaw)
-        : "/auth/continue";
-    const login = new URL(loginGateHref(intended), request.url);
-    login.searchParams.set("error", "session");
-    return NextResponse.redirect(login);
-  }
-
   const nextRaw = request.nextUrl.searchParams.get("next");
-  if (nextRaw?.trim()) {
-    const safe = sanitizePostLoginPath(nextRaw);
-    if (!isGenericPostLoginNext(safe)) {
-      const href = await finalizePostLoginPath(user.id, safe);
-      return redirectToPath(request, href);
-    }
-  }
+  const href = await resolveAuthContinueHref(user?.id, nextRaw);
 
-  const destination = await resolveAuthenticatedDestination(user.id);
-  if (destination.status === "error") {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("error", destination.message);
-    return NextResponse.redirect(login);
-  }
-
-  const href = destination.href;
   if (href.startsWith("/")) {
     return redirectToPath(request, href);
   }

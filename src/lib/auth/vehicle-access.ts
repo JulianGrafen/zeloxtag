@@ -311,11 +311,18 @@ export async function viewerCanAccessPrivateTwin(
  * Allowed for owners, active Schrauber, and published public showcases.
  * Exposé hero images use `/api/expose/[token]/silhouette` instead.
  */
+export type VehicleMediaAccess = {
+  allowed: boolean;
+  isPublicShowcase: boolean;
+};
+
 export async function sessionCanAccessVehicleMedia(
   vehicleId: string,
   sessionUserId: string | null,
-): Promise<boolean> {
-  if (!isSupabaseAdminConfigured()) return false;
+): Promise<VehicleMediaAccess> {
+  if (!isSupabaseAdminConfigured()) {
+    return { allowed: false, isPublicShowcase: false };
+  }
 
   const admin = createAdminClient();
   const { data: vehicle, error } = await admin
@@ -324,11 +331,24 @@ export async function sessionCanAccessVehicleMedia(
     .eq("id", vehicleId)
     .maybeSingle();
 
-  if (error || !vehicle) return false;
-  if (vehicle.is_public) return true;
-  if (!sessionUserId) return false;
-  if (vehicle.user_id === sessionUserId) return true;
+  if (error || !vehicle) {
+    return { allowed: false, isPublicShowcase: false };
+  }
+
+  const isPublicShowcase = vehicle.is_public === true;
+  if (isPublicShowcase) {
+    return { allowed: true, isPublicShowcase: true };
+  }
+  if (!sessionUserId) {
+    return { allowed: false, isPublicShowcase: false };
+  }
+  if (vehicle.user_id === sessionUserId) {
+    return { allowed: true, isPublicShowcase: false };
+  }
 
   const grant = await loadContributorGrant(vehicleId, sessionUserId);
-  return grant.active;
+  return {
+    allowed: grant.active,
+    isPublicShowcase: false,
+  };
 }

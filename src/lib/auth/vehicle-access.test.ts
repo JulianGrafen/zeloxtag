@@ -43,7 +43,7 @@ describe("sessionCanAccessVehicleMedia", () => {
     const { sessionCanAccessVehicleMedia } = await import("./vehicle-access");
     await expect(
       sessionCanAccessVehicleMedia(vehicleId, null),
-    ).resolves.toBe(true);
+    ).resolves.toEqual({ allowed: true, isPublicShowcase: true });
   });
 
   it("denies anonymous access for expose-only vehicles", async () => {
@@ -63,6 +63,6 @@ describe("sessionCanAccessVehicleMedia", () => {
     const { sessionCanAccessVehicleMedia } = await import("./vehicle-access");
     await expect(
       sessionCanAccessVehicleMedia(vehicleId, null),
-    ).resolves.toBe(false);
+    ).resolves.toEqual({ allowed: false, isPublicShowcase: false });
   });
 });

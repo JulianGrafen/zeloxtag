@@ -118,7 +118,7 @@ export function AutomotiveListRow({
           </span>
 
           <span className="mt-0.5 flex items-center justify-between gap-2">
-            <span className={cn(automotiveMetaClassName, "truncate normal-case")}>
+            <span className={cn(automotiveMetaClassName, "truncate")}>
               {meta}
             </span>
             <ChevronRight

@@ -8,7 +8,7 @@ import {
   formatTimelineMileage,
 } from "@/lib/documents/timeline-format";
 import type { BuildStoryEntry } from "@/lib/vehicles/build-story-map";
-import { automotiveKickerClassName } from "@/components/ui/automotive";
+import { showroom } from "@/components/public-showcase/showroom-styles";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +67,7 @@ export function BuildStoryTimeline({
         aria-label="Build Story"
         className="px-4"
       >
-        <h2 className={automotiveKickerClassName}>Build Story</h2>
+        <h2 className={showroom.sectionTitle}>Build Story</h2>
         <p className="zt-card mt-3 rounded-xl px-4 py-5 text-center text-sm text-zinc-400">
           Die Story dieses Builds beginnt gerade erst…
         </p>
@@ -77,7 +77,7 @@ export function BuildStoryTimeline({
 
   return (
     <section aria-label="Build Story" className="px-4">
-      <h2 className={automotiveKickerClassName}>Build Story</h2>
+      <h2 className={showroom.sectionTitle}>Build Story</h2>
       <ol className="relative mt-5 space-y-8 pl-6">
         <div
           aria-hidden
@@ -112,7 +112,7 @@ export function BuildStoryTimeline({
                   className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-zinc-950/90 via-zinc-950/40 to-transparent"
                 />
                 <div className="absolute inset-x-0 bottom-0 p-4">
-                  <p className="font-mono text-sm tracking-tight text-zinc-400 tabular-nums">
+                  <p className="text-sm tabular-nums text-zinc-400">
                     {formatTimelineDate(entry.date)}
                     {entry.mileageKm != null
                       ? ` · ${formatTimelineMileage(entry.mileageKm)}`

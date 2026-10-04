@@ -14,7 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type RegisterAccountResult =
   | { status: "session"; userId: string; created: boolean }
-  | { status: "confirm_email"; message: string }
+  | { status: "confirm_email"; message: string; userId: string }
   | { status: "error"; message: string };
 
 const CONFIRM_EMAIL_MESSAGE =
@@ -136,7 +136,18 @@ async function sendResendSignupConfirmation(input: {
               message: `E-Mail-Versand fehlgeschlagen: ${sent.message}`,
             };
           }
-          return { status: "confirm_email", message: input.confirmMessage };
+          const retryUserId = retry.data.user?.id;
+          if (!retryUserId) {
+            return {
+              status: "error",
+              message: "Kontoanlage fehlgeschlagen. Bitte erneut versuchen.",
+            };
+          }
+          return {
+            status: "confirm_email",
+            message: input.confirmMessage,
+            userId: retryUserId,
+          };
         }
       }
 
@@ -172,7 +183,19 @@ async function sendResendSignupConfirmation(input: {
     };
   }
 
-  return { status: "confirm_email", message: input.confirmMessage };
+  const createdUserId = data.user?.id;
+  if (!createdUserId) {
+    return {
+      status: "error",
+      message: "Kontoanlage fehlgeschlagen. Bitte erneut versuchen.",
+    };
+  }
+
+  return {
+    status: "confirm_email",
+    message: input.confirmMessage,
+    userId: createdUserId,
+  };
 }
 
 async function registerViaSupabaseSignUp(input: {
@@ -204,7 +227,11 @@ async function registerViaSupabaseSignUp(input: {
   }
 
   if (data.user && !data.session) {
-    return { status: "confirm_email", message: input.confirmMessage };
+    return {
+      status: "confirm_email",
+      message: input.confirmMessage,
+      userId: data.user.id,
+    };
   }
 
   if (error && looksLikeExistingUser(error.message)) {

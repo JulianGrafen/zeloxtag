@@ -1,9 +1,10 @@
 import { z } from "zod";
 
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { completeClaimForOwner } from "@/lib/tags/complete-claim-for-owner";
 import {
-  clearPendingClaim,
-  getPendingClaim,
+  clearPendingClaimState,
+  resolvePendingClaim,
 } from "@/lib/tags/pending-claim";
 
 const ownerUserIdSchema = z.string().uuid();
@@ -25,10 +26,23 @@ export async function completePendingClaimForUser(
     return { status: "error", message: "Ungültige Sitzung." };
   }
 
-  const pending = await getPendingClaim();
+  const pending = await resolvePendingClaim(parsed.data);
   if (!pending) return null;
 
+  const user = await getCurrentUser();
+  if (
+    user &&
+    pending.email.trim().toLowerCase() !== user.email?.trim().toLowerCase()
+  ) {
+    return {
+      status: "error",
+      message: "Gespeicherte Tag-Daten passen nicht zu diesem Konto.",
+    };
+  }
+
   const result = await completeClaimForOwner(parsed.data, pending);
-  await clearPendingClaim();
+  if (result.status === "claimed") {
+    await clearPendingClaimState(parsed.data);
+  }
   return result;
 }

@@ -188,16 +188,19 @@ export async function claimTag(input: ClaimTagInput): Promise<ClaimTagResult> {
 
     if (!account.ok) {
       if (account.needsEmailConfirmation) {
-        await setPendingClaim({
-          tagUuid: normalized.tagUuid,
-          make: normalized.make,
-          model: normalized.model,
-          year: normalized.year,
-          vin: normalized.vin,
-          email: normalized.email,
-          name: normalized.name,
-          techSpecs: normalized.techSpecs,
-        });
+        await setPendingClaim(
+          {
+            tagUuid: normalized.tagUuid,
+            make: normalized.make,
+            model: normalized.model,
+            year: normalized.year,
+            vin: normalized.vin,
+            email: normalized.email,
+            name: normalized.name,
+            techSpecs: normalized.techSpecs,
+          },
+          { userId: account.pendingUserId },
+        );
         return {
           status: "confirm_email",
           message: account.message,

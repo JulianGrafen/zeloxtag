@@ -27,13 +27,14 @@ describe("mapSwipeCandidateToCard", () => {
 
   it("maps public fields and hero proxy", () => {
     const card = mapSwipeCandidateToCard(base);
-    expect(card).toEqual({
+    expect(card?.heroImageSrc).toContain("/api/vehicle/silhouette/veh-1");
+    expect(card?.heroImageSrc).toContain("w=520");
+    expect(card).toMatchObject({
       publicSlug: "bmw-m3-abc",
       make: "BMW",
       model: "M3",
       year: 2020,
       totalLikes: 0,
-      heroImageSrc: "/api/vehicle/silhouette/veh-1",
       powerPs: 480,
       torqueNm: 600,
       accel0To100Sec: 3.9,

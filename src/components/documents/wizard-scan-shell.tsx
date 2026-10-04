@@ -12,8 +12,8 @@ import {
   automotiveBackPillClassName,
   automotiveDisplayTitleClassName,
   automotiveFeaturePanelClassName,
+  automotiveBodyMutedClassName,
   automotiveKickerClassName,
-  automotiveMetaClassName,
 } from "@/components/ui/automotive";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { cn } from "@/lib/utils";
@@ -76,9 +76,7 @@ export function WizardScanHeader({
         <h1 className={cn("mt-2 text-[1.4rem]", automotiveDisplayTitleClassName)}>
           {title}
         </h1>
-        <p className={cn("mt-1 normal-case", automotiveMetaClassName)}>
-          {vehicleLabel}
-        </p>
+        <p className={cn("mt-1", automotiveBodyMutedClassName)}>{vehicleLabel}</p>
       </div>
 
       {currentStep != null && totalSteps != null && currentStep > 0 ? (

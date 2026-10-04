@@ -1,5 +1,10 @@
 import { cookies } from "next/headers";
 
+import {
+  clearPendingClaimForUser,
+  loadPendingClaimForUser,
+  savePendingClaimForUser,
+} from "@/lib/auth/pending-signup-user-metadata";
 import { setPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour";
 import type { ClaimTechSpecs } from "@/lib/tags/claim-tech-specs";
 
@@ -17,7 +22,7 @@ export type PendingClaim = {
   techSpecs?: ClaimTechSpecs | null;
 };
 
-const MAX_AGE_SECONDS = 60 * 60; // 1 hour
+const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 function isClaimTechSpecs(value: unknown): value is ClaimTechSpecs {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -76,7 +81,10 @@ function isClaimTechSpecs(value: unknown): value is ClaimTechSpecs {
   return true;
 }
 
-export async function setPendingClaim(claim: PendingClaim): Promise<void> {
+export async function setPendingClaim(
+  claim: PendingClaim,
+  options?: { userId?: string },
+): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(PENDING_CLAIM_COOKIE, JSON.stringify(claim), {
     httpOnly: true,
@@ -85,7 +93,23 @@ export async function setPendingClaim(claim: PendingClaim): Promise<void> {
     path: "/",
     maxAge: MAX_AGE_SECONDS,
   });
+  if (options?.userId) {
+    await savePendingClaimForUser(options.userId, claim);
+  }
   await setPendingDashboardTour();
+}
+
+export async function resolvePendingClaim(
+  userId: string,
+): Promise<PendingClaim | null> {
+  const fromCookie = await getPendingClaim();
+  if (fromCookie) return fromCookie;
+  return loadPendingClaimForUser(userId);
+}
+
+export async function clearPendingClaimState(userId: string): Promise<void> {
+  await clearPendingClaim();
+  await clearPendingClaimForUser(userId);
 }
 
 export async function getPendingClaim(): Promise<PendingClaim | null> {
