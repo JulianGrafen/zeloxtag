@@ -12,7 +12,7 @@ type WeeklyTopBuildsProps = {
 export function WeeklyTopBuilds({ builds, className }: WeeklyTopBuildsProps) {
   return (
     <section
-      className={cn("mt-2 border-t border-white/[0.06] pt-8", className)}
+      className={cn("mb-2 border-b border-white/[0.06] pb-6", className)}
       aria-labelledby="weekly-top-builds-title"
     >
       <header className="mb-4 px-0.5">

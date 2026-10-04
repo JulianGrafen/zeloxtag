@@ -59,12 +59,12 @@ export function ShowcaseDiscoverExperience({
 
   return (
     <div className="flex flex-col gap-2">
+      <WeeklyTopBuilds builds={weeklyBuilds} />
       <ShowcaseSwipeDeck
         tagUuid={tagUuid}
         initialCards={initialCards}
         onLiked={onLiked}
       />
-      <WeeklyTopBuilds builds={weeklyBuilds} />
     </div>
   );
 }
