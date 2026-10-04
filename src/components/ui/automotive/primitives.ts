@@ -63,6 +63,41 @@ export const automotivePageHeaderBlockClassName = "space-y-1.5";
 export const automotiveBodyMutedClassName =
   "text-[0.88rem] leading-relaxed text-zinc-400";
 
+export const automotiveMetricHighlightClassName =
+  "text-[1.05rem] font-semibold tracking-[-0.02em] text-zinc-100 tabular-nums";
+
+export const automotiveSecondaryButtonClassName = cn(
+  "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[0.88rem] font-semibold",
+  "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]",
+  "dark:border-white/10 dark:bg-zinc-800/40 dark:text-zinc-100 dark:backdrop-blur-md dark:shadow-[0_8px_24px_rgba(0,0,0,0.28)]",
+);
+
+export const automotiveFilterChipActiveClassName = cn(
+  "shrink-0 rounded-full px-3.5 py-2 text-[0.78rem] font-semibold",
+  "bg-neutral-900 text-white",
+  "dark:border dark:border-white/50 dark:bg-gradient-to-b dark:from-zinc-100 dark:to-zinc-300 dark:text-zinc-950 dark:shadow-lg dark:shadow-white/10",
+);
+
+export const automotiveFilterChipInactiveClassName = cn(
+  "shrink-0 rounded-full px-3.5 py-2 text-[0.78rem] font-semibold",
+  "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-muted)]",
+  "dark:border-white/10 dark:bg-zinc-900/50 dark:text-zinc-400",
+);
+
+export const automotiveSpecCellClassName = cn(
+  "rounded-xl p-3",
+  "bg-[color:var(--vd-surface-elevated)]",
+  "dark:bg-zinc-800/40 dark:ring-1 dark:ring-inset dark:ring-white/10",
+);
+
+export const automotiveSpecLabelClassName = cn(
+  automotiveMetaClassName,
+  "normal-case tracking-[0.12em]",
+);
+
+export const automotiveSpecValueClassName =
+  "mt-0.5 font-medium tracking-tight text-zinc-100 tabular-nums";
+
 export const automotiveBackPillClassName = cn(
   "inline-flex w-fit items-center gap-2 rounded-full px-3 py-2 text-[0.78rem] font-medium",
   "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]",

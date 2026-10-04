@@ -2,7 +2,13 @@
 
 import { Search, X } from "lucide-react";
 
+import {
+  automotiveFilterChipActiveClassName,
+  automotiveFilterChipInactiveClassName,
+  automotiveMetaClassName,
+} from "@/components/ui/automotive";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { cn } from "@/lib/utils";
 import type { ListFilterChip } from "@/lib/documents/list-search";
 
 export type ListSearchControlsProps = {
@@ -47,12 +53,11 @@ function ChipRow({
             variant="button"
             title={chip.title ?? chip.label}
             onClick={() => onChipChange(chip.id)}
-            className={[
-              "shrink-0 rounded-full px-3.5 py-2 text-[0.78rem] font-semibold",
+            className={
               active
-                ? "bg-neutral-900 text-white"
-                : "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-muted)]",
-            ].join(" ")}
+                ? automotiveFilterChipActiveClassName
+                : automotiveFilterChipInactiveClassName
+            }
           >
             {chip.label}
             {typeof chip.count === "number" ? (
@@ -132,9 +137,7 @@ export function ListSearchControls({
       ) : null}
 
       {resultLabel ? (
-        <p className="px-0.5 text-[0.72rem] text-[color:var(--vd-muted)]">
-          {resultLabel}
-        </p>
+        <p className={cn("px-0.5", automotiveMetaClassName)}>{resultLabel}</p>
       ) : null}
     </div>
   );

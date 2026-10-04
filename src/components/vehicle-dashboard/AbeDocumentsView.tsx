@@ -1,9 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronRight, FileText } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
+import {
+  AutomotiveEmptyPanel,
+  AutomotiveList,
+  AutomotiveListRow,
+  AutomotiveSectionLabel,
+  AutomotiveSummaryPanel,
+  automotiveFilterChipActiveClassName,
+  automotiveFilterChipInactiveClassName,
+} from "@/components/ui/automotive";
+import { cn } from "@/lib/utils";
 import {
   collectFilterValues,
   matchesSearchQuery,
@@ -77,11 +87,7 @@ export function AbeDocumentsView({
             Zurück
           </PressableLink>
 
-          <div className="zt-feature-panel p-5 sm:p-6">
-            <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
-              ABE & Gutachten
-            </h1>
-          </div>
+          <AutomotiveSummaryPanel title="ABE & Gutachten" />
         </header>
 
         <ListSearchControls
@@ -103,12 +109,12 @@ export function AbeDocumentsView({
                 key={chip.id}
                 type="button"
                 onClick={() => setStatusId(chip.id)}
-                className={[
-                  "shrink-0 rounded-full px-3 py-1.5 text-[0.72rem] font-semibold",
+                className={cn(
                   active
-                    ? "bg-emerald-600 text-white"
-                    : "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-muted)]",
-                ].join(" ")}
+                    ? automotiveFilterChipActiveClassName
+                    : automotiveFilterChipInactiveClassName,
+                  "px-3 py-1.5 text-[0.72rem]",
+                )}
               >
                 {chip.label}
               </button>
@@ -117,60 +123,30 @@ export function AbeDocumentsView({
         </div>
 
         <section aria-label="ABE Dokumente" className="space-y-2">
-          <h2 className="px-1 font-[family-name:var(--font-display)] text-[0.72rem] font-semibold tracking-[0.16em] text-[color:var(--vd-muted)] uppercase">
-            Teileliste
-          </h2>
+          <AutomotiveSectionLabel>Teileliste</AutomotiveSectionLabel>
 
           {visible.length === 0 ? (
-            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <AutomotiveEmptyPanel>
               Keine Treffer für diese Suche / Filter.
-            </div>
+            </AutomotiveEmptyPanel>
           ) : (
-            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
+            <AutomotiveList aria-label="ABE Dokumente">
               {visible.map((doc, index) => (
-                <li key={doc.id}>
-                  <PressableLink
-                    href={`/abe/${doc.id}`}
-                    variant="row"
-                    className="group flex w-full items-center gap-3 px-4 py-3.5 text-left"
-                  >
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                      <FileText
-                        className="h-5 w-5"
-                        strokeWidth={1.75}
-                        aria-hidden
-                      />
+                <AutomotiveListRow
+                  key={doc.id}
+                  href={`/abe/${doc.id}`}
+                  icon={FileText}
+                  title={doc.partName}
+                  meta={`${doc.manufacturer} · ${doc.category} · ${doc.issuedAt}`}
+                  badge={
+                    <span className="inline-flex rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-400">
+                      {doc.status}
                     </span>
-
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                        {doc.partName}
-                      </span>
-                      <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.75rem] text-[color:var(--vd-muted)]">
-                        <span>{doc.manufacturer}</span>
-                        <span>· {doc.category}</span>
-                        <span>· {doc.issuedAt}</span>
-                        <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
-                          {doc.status}
-                        </span>
-                      </span>
-                    </span>
-
-                    <ChevronRight
-                      className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
-                      aria-hidden
-                    />
-                  </PressableLink>
-
-                  {index < visible.length - 1 ? (
-                    <div
-                      aria-hidden
-                      className="mx-4 border-t border-[color:var(--vd-border)]"
-                    />
-                  ) : null}
-                </li>
+                  }
+                  showDivider={index < visible.length - 1}
+                />
               ))}
-            </ul>
+            </AutomotiveList>
           )}
         </section>
       </div>

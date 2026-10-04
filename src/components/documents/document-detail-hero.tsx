@@ -1,12 +1,19 @@
 import type { ReactNode } from "react";
 
+import {
+  automotiveBodyMutedClassName,
+  automotiveDisplayTitleClassName,
+  automotiveMetricHighlightClassName,
+} from "@/components/ui/automotive";
 import { cn } from "@/lib/utils";
 
 export const DOCUMENT_DETAIL_HERO_CLASS =
   "zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)] sm:p-6";
 
-export const DOCUMENT_DETAIL_TITLE_CLASS =
-  "font-[family-name:var(--font-display)] text-[1.35rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.5rem]";
+export const DOCUMENT_DETAIL_TITLE_CLASS = cn(
+  automotiveDisplayTitleClassName,
+  "sm:text-[1.5rem]",
+);
 
 type DocumentDetailHeroProps = {
   title: ReactNode;
@@ -37,9 +44,7 @@ export function DocumentDetailHero({
             <div className="min-w-0">{title}</div>
           )}
           {subtitle ? (
-            <p className="mt-1 text-[0.88rem] leading-snug text-[color:var(--vd-muted)]">
-              {subtitle}
-            </p>
+            <p className={cn("mt-1", automotiveBodyMutedClassName)}>{subtitle}</p>
           ) : null}
         </div>
         {hasAside ? (
@@ -61,7 +66,12 @@ export function DocumentDetailHeroAmount({
   children: ReactNode;
 }) {
   return (
-    <p className="text-[1.28rem] font-bold leading-none tracking-[-0.03em] tabular-nums text-[color:var(--vd-text)] sm:text-[1.35rem]">
+    <p
+      className={cn(
+        automotiveMetricHighlightClassName,
+        "text-[1.28rem] font-bold leading-none sm:text-[1.35rem]",
+      )}
+    >
       {children}
     </p>
   );

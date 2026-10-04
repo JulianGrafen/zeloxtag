@@ -13,6 +13,12 @@ import {
   DocumentDetailHeroChip,
 } from "@/components/documents/document-detail-hero";
 import {
+  AutomotiveSectionLabel,
+  automotiveSpecCellClassName,
+  automotiveSpecLabelClassName,
+  automotiveSpecValueClassName,
+} from "@/components/ui/automotive";
+import {
   formatEur,
   type InvoiceDocument,
 } from "./invoiceDocuments";
@@ -35,11 +41,7 @@ export function InvoiceDetailView({
       />
 
       <div className="vd-anim-stack relative z-10 mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <PressableLink
-          href="/rechnungen"
-          variant="pill"
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-        >
+        <PressableLink href="/rechnungen" variant="pill" className="vd-back-pill">
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Zurück zur Liste
         </PressableLink>
@@ -61,38 +63,34 @@ export function InvoiceDetailView({
         />
 
         <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Belegdaten
-          </h2>
+          <AutomotiveSectionLabel className="mb-3">Belegdaten</AutomotiveSectionLabel>
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">Nummer</dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+            <div className={automotiveSpecCellClassName}>
+              <dt className={automotiveSpecLabelClassName}>Nummer</dt>
+              <dd className={automotiveSpecValueClassName}>
                 {document.invoiceNumber}
               </dd>
             </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">Zahlung</dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+            <div className={automotiveSpecCellClassName}>
+              <dt className={automotiveSpecLabelClassName}>Zahlung</dt>
+              <dd className={automotiveSpecValueClassName}>
                 {document.paymentMethod}
               </dd>
             </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">Fahrzeug</dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {vehicleModel}
-              </dd>
+            <div className={automotiveSpecCellClassName}>
+              <dt className={automotiveSpecLabelClassName}>Fahrzeug</dt>
+              <dd className={automotiveSpecValueClassName}>{vehicleModel}</dd>
             </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <dt className="text-[0.7rem] text-[color:var(--vd-muted)]">km-Stand</dt>
-              <dd className="mt-0.5 font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+            <div className={automotiveSpecCellClassName}>
+              <dt className={automotiveSpecLabelClassName}>km-Stand</dt>
+              <dd className={automotiveSpecValueClassName}>
                 {document.mileageKm
                   ? `${document.mileageKm.toLocaleString("de-DE")} km`
                   : "—"}
               </dd>
             </div>
           </dl>
-          <p className="mt-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+          <p className="mt-3 text-[0.82rem] leading-relaxed text-zinc-400">
             {document.notes}
           </p>
         </section>

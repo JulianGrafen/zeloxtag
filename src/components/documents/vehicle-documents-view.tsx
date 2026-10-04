@@ -16,6 +16,17 @@ import { ListSearchControls } from "@/components/documents/list-search-controls"
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { VehicleInvoicesView } from "@/components/documents/vehicle-invoices-view";
 import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
+import {
+  AutomotiveEmptyPanel,
+  AutomotiveList,
+  AutomotiveSummaryPanel,
+  automotiveCardTitleClassName,
+  automotiveFilterChipActiveClassName,
+  automotiveFilterChipInactiveClassName,
+  automotiveIconWrapClassName,
+  automotiveMetaClassName,
+} from "@/components/ui/automotive";
+import { cn } from "@/lib/utils";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
 import { displayAbeDocumentTitle } from "@/lib/documents/abe-title";
@@ -278,20 +289,20 @@ export function VehicleDocumentsView({
             Dashboard
           </PressableLink>
 
-          <div className="zt-feature-panel p-5">
-            <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-              {activeType === "abe"
+          <AutomotiveSummaryPanel
+            title={
+              activeType === "abe"
                 ? "ABE & Gutachten"
                 : activeType === "tuev"
                   ? "TÜV / HU"
-                  : "Dokumente"}
-            </h1>
-            {invoiceSum > 0 ? (
-              <p className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                Rechnungen {formatDocumentAmount(invoiceSum)}
-              </p>
-            ) : null}
-          </div>
+                  : "Dokumente"
+            }
+            metric={
+              invoiceSum > 0
+                ? `Rechnungen ${formatDocumentAmount(invoiceSum)}`
+                : undefined
+            }
+          />
         </header>
 
         <nav
@@ -306,12 +317,11 @@ export function VehicleDocumentsView({
                 type="button"
                 variant="pill"
                 onClick={() => onTypeFilterChange(filter.id)}
-                className={[
-                  "shrink-0 rounded-full px-3.5 py-2 text-[0.78rem] font-semibold",
+                className={
                   active
-                    ? "bg-neutral-900 text-white"
-                    : "border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-muted)]",
-                ].join(" ")}
+                    ? automotiveFilterChipActiveClassName
+                    : automotiveFilterChipInactiveClassName
+                }
               >
                 {filter.label}
               </PressableButton>
@@ -352,7 +362,7 @@ export function VehicleDocumentsView({
 
         <section aria-label="Dokumentliste" className="space-y-2">
           {filtered.length === 0 ? (
-            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <AutomotiveEmptyPanel>
               {typed.length > 0 &&
               (query.trim() ||
                 (activeType === "abe" && vaultCategoryId !== "all")) ? (
@@ -389,9 +399,9 @@ export function VehicleDocumentsView({
                   ) : null}
                 </div>
               )}
-            </div>
+            </AutomotiveEmptyPanel>
           ) : (
-            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
+            <AutomotiveList aria-label="Dokumentliste">
               {filtered.map((doc, index) => (
                 <li key={doc.id}>
                   <DocumentRow
@@ -413,7 +423,7 @@ export function VehicleDocumentsView({
                   ) : null}
                 </li>
               ))}
-            </ul>
+            </AutomotiveList>
           )}
         </section>
 
@@ -505,7 +515,7 @@ function DocumentRow({
           : documentTypeLabel(document.type);
 
   const meta = (
-    <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
+    <span className={cn(automotiveMetaClassName, "mt-0.5 block normal-case")}>
       {typeLabel}
       {" · "}
       {formatDocumentDate(document.date)}
@@ -524,23 +534,37 @@ function DocumentRow({
 
   const body = (
     <>
-      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-        <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+      <span className={automotiveIconWrapClassName}>
+        <Icon className="h-5 w-5 text-zinc-100" strokeWidth={1.75} aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-2">
           <span className="min-w-0">
-            <span className="block truncate font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]" title={listTitle}>
+            <span
+              className={cn(automotiveCardTitleClassName, "block truncate")}
+              title={listTitle}
+            >
               {listTitle}
             </span>
             {subtitle ? (
-              <span className="mt-0.5 block truncate text-[0.75rem] text-[color:var(--vd-muted)]" title={subtitle}>
+              <span
+                className={cn(
+                  automotiveMetaClassName,
+                  "mt-0.5 block truncate normal-case",
+                )}
+                title={subtitle}
+              >
                 {subtitle}
               </span>
             ) : null}
           </span>
           {amount ? (
-            <span className="shrink-0 text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
+            <span
+              className={cn(
+                automotiveCardTitleClassName,
+                "shrink-0 text-[0.88rem] tabular-nums",
+              )}
+            >
               {amount}
             </span>
           ) : null}

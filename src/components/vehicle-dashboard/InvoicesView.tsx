@@ -1,9 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronRight, Receipt } from "lucide-react";
+import { ArrowLeft, Receipt } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
+import {
+  AutomotiveEmptyPanel,
+  AutomotiveList,
+  AutomotiveListRow,
+  AutomotiveSectionLabel,
+  AutomotiveSummaryPanel,
+} from "@/components/ui/automotive";
 import { collectFilterValues, matchesSearchQuery } from "@/lib/documents/list-search";
 
 import {
@@ -78,14 +85,10 @@ export function InvoicesView({
             Zurück
           </PressableLink>
 
-          <div className="zt-feature-panel p-5 sm:p-6">
-            <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
-              Rechnungen & Belege
-            </h1>
-            <p className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-              Summe {formatEur(total)}
-            </p>
-          </div>
+          <AutomotiveSummaryPanel
+            title="Rechnungen & Belege"
+            metric={`Summe ${formatEur(total)}`}
+          />
         </header>
 
         <ListSearchControls
@@ -99,61 +102,26 @@ export function InvoicesView({
         />
 
         <section aria-label="Rechnungen" className="space-y-2">
-          <h2 className="px-1 font-[family-name:var(--font-display)] text-[0.72rem] font-semibold tracking-[0.16em] text-[color:var(--vd-muted)] uppercase">
-            Belegliste
-          </h2>
+          <AutomotiveSectionLabel>Belegliste</AutomotiveSectionLabel>
 
           {visible.length === 0 ? (
-            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <AutomotiveEmptyPanel>
               Keine Treffer für diese Suche / Filter.
-            </div>
+            </AutomotiveEmptyPanel>
           ) : (
-            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
+            <AutomotiveList aria-label="Belegliste">
               {visible.map((doc, index) => (
-                <li key={doc.id}>
-                  <PressableLink
-                    href={`/rechnungen/${doc.id}`}
-                    variant="row"
-                    className="group flex w-full items-start gap-3 px-4 py-3.5 text-left"
-                  >
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                      <Receipt
-                        className="h-5 w-5"
-                        strokeWidth={1.75}
-                        aria-hidden
-                      />
-                    </span>
-
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-start justify-between gap-2">
-                        <span className="font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                          {doc.title}
-                        </span>
-                        <span className="shrink-0 text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
-                          {formatEur(doc.amount)}
-                        </span>
-                      </span>
-                      <span className="mt-0.5 flex items-center justify-between gap-2">
-                        <span className="truncate text-[0.75rem] text-[color:var(--vd-muted)]">
-                          {doc.vendor} · {doc.issuedAt} · {doc.category}
-                        </span>
-                        <ChevronRight
-                          className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
-                          aria-hidden
-                        />
-                      </span>
-                    </span>
-                  </PressableLink>
-
-                  {index < visible.length - 1 ? (
-                    <div
-                      aria-hidden
-                      className="mx-4 border-t border-[color:var(--vd-border)]"
-                    />
-                  ) : null}
-                </li>
+                <AutomotiveListRow
+                  key={doc.id}
+                  href={`/rechnungen/${doc.id}`}
+                  icon={Receipt}
+                  title={doc.title}
+                  amount={formatEur(doc.amount)}
+                  meta={`${doc.vendor} · ${doc.issuedAt} · ${doc.category}`}
+                  showDivider={index < visible.length - 1}
+                />
               ))}
-            </ul>
+            </AutomotiveList>
           )}
         </section>
       </div>

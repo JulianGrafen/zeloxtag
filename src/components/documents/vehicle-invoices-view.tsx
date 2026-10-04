@@ -2,12 +2,20 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, BarChart3, ChevronRight, Receipt, Upload } from "lucide-react";
+import { ArrowLeft, BarChart3, Receipt, Upload } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { ProductFeaturesBanner } from "@/components/onboarding/product-features-banner";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
+import {
+  AutomotiveEmptyPanel,
+  AutomotiveList,
+  AutomotiveListRow,
+  AutomotiveSectionLabel,
+  AutomotiveSummaryPanel,
+  automotiveSecondaryButtonClassName,
+} from "@/components/ui/automotive";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
@@ -185,20 +193,17 @@ function VehicleInvoicesViewContent({
             Zurück
           </PressableLink>
 
-          <div className="zt-feature-panel p-5 sm:p-6">
-            <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
-              {heading}
-            </h1>
-            <p className="mt-3 text-[1.05rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-              Summe {formatEur(total)}
-            </p>
+          <AutomotiveSummaryPanel
+            title={heading}
+            metric={`Summe ${formatEur(total)}`}
+          >
             {canWrite ? (
               <PressableLink
                 href={manualUploadHref}
                 variant="button"
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+                className={`${automotiveSecondaryButtonClassName} mt-4`}
               >
-                <Upload className="h-4 w-4 text-[color:var(--vd-accent)]" aria-hidden />
+                <Upload className="h-4 w-4 text-amber-300" aria-hidden />
                 Beleg manuell hinzufügen
               </PressableLink>
             ) : null}
@@ -206,13 +211,13 @@ function VehicleInvoicesViewContent({
               <PressableLink
                 href={path("dokumente/kosten")}
                 variant="button"
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-accent)]/30 bg-[color:var(--vd-surface-elevated)] px-4 py-3 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[0_0_28px_-10px_color-mix(in_srgb,var(--vd-accent)_50%,transparent)]"
+                className={`${automotiveSecondaryButtonClassName} mt-3`}
               >
-                <BarChart3 className="h-4 w-4 text-[color:var(--vd-accent)]" aria-hidden />
+                <BarChart3 className="h-4 w-4 text-amber-300" aria-hidden />
                 Kostenübersicht
               </PressableLink>
             ) : null}
-          </div>
+          </AutomotiveSummaryPanel>
         </header>
 
         <ListSearchControls
@@ -226,12 +231,10 @@ function VehicleInvoicesViewContent({
         />
 
         <section aria-label="Belegliste" className="space-y-2">
-          <h2 className="px-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Belegliste
-          </h2>
+          <AutomotiveSectionLabel>Belegliste</AutomotiveSectionLabel>
 
           {invoices.length === 0 ? (
-            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <AutomotiveEmptyPanel>
               Noch keine Rechnungen. Scanne deinen ersten Beleg
               {canWrite ? (
                 <>
@@ -248,13 +251,13 @@ function VehicleInvoicesViewContent({
               ) : (
                 "."
               )}
-            </div>
+            </AutomotiveEmptyPanel>
           ) : visible.length === 0 ? (
-            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <AutomotiveEmptyPanel>
               Keine Treffer für diese Suche / Filter.
-            </div>
+            </AutomotiveEmptyPanel>
           ) : (
-            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
+            <AutomotiveList aria-label="Belege">
               {visible.map((doc, index) => {
                 const amount =
                   typeof doc.amount === "number" ? formatEur(doc.amount) : null;
@@ -267,71 +270,34 @@ function VehicleInvoicesViewContent({
                 const paymentBadge = resolveInvoicePaymentBadge(doc);
 
                 return (
-                  <li
+                  <AutomotiveListRow
                     key={doc.id}
                     className={
                       highlightId === doc.id
                         ? "bg-emerald-500/8 ring-1 ring-inset ring-emerald-500/25"
                         : undefined
                     }
-                  >
-                    <PressableLink
-                      href={documentDetailHref(
-                        tagUuid,
-                        doc.id,
-                        vehicleSurfaceScope,
-                      )}
-                      variant="row"
-                      className="group flex w-full items-start gap-3 px-4 py-3.5 text-left"
-                    >
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                        <Receipt
-                          className="h-5 w-5"
-                          strokeWidth={1.75}
-                          aria-hidden
-                        />
-                      </span>
-
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-start justify-between gap-3">
-                          <span className="font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                            {displayDocumentTitle(doc.title)}
-                          </span>
-                          {amount ? (
-                            <span className="shrink-0 text-[0.88rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
-                              {amount}
-                            </span>
-                          ) : null}
+                    href={documentDetailHref(
+                      tagUuid,
+                      doc.id,
+                      vehicleSurfaceScope,
+                    )}
+                    icon={Receipt}
+                    title={displayDocumentTitle(doc.title)}
+                    amount={amount ?? undefined}
+                    meta={`${vendor} · ${issued} · ${categoryLabel}`}
+                    badge={
+                      paymentBadge ? (
+                        <span className="inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-400">
+                          {paymentBadge}
                         </span>
-
-                        <span className="mt-0.5 flex items-center justify-between gap-2">
-                          <span className="truncate text-[0.75rem] text-[color:var(--vd-muted)]">
-                            {vendor} · {issued} · {categoryLabel}
-                          </span>
-                          <ChevronRight
-                            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
-                            aria-hidden
-                          />
-                        </span>
-
-                        {paymentBadge ? (
-                          <span className="mt-1.5 inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-700">
-                            {paymentBadge}
-                          </span>
-                        ) : null}
-                      </span>
-                    </PressableLink>
-
-                    {index < visible.length - 1 ? (
-                      <div
-                        aria-hidden
-                        className="mx-4 border-t border-[color:var(--vd-border)]"
-                      />
-                    ) : null}
-                  </li>
+                      ) : undefined
+                    }
+                    showDivider={index < visible.length - 1}
+                  />
                 );
               })}
-            </ul>
+            </AutomotiveList>
           )}
         </section>
 
