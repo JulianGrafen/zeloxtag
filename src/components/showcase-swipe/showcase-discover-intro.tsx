@@ -5,32 +5,30 @@ const LINK_CLASS =
 
 type ShowcaseDiscoverIntroProps = {
   profilSettingsHref: string;
-  galerieSettingsHref: string;
 };
 
 export function ShowcaseDiscoverIntro({
   profilSettingsHref,
-  galerieSettingsHref,
 }: ShowcaseDiscoverIntroProps) {
   return (
     <div className="space-y-3">
-      <p>
-        Rechts liken, links passen — nur öffentliche Showcase-Daten, keine Belege
-        oder VIN.
-      </p>
+      <p>Rechts liken, links passen.</p>
       <p>
         Sichtbar im Swipe: Unter{" "}
         <Link href={profilSettingsHref} className={LINK_CLASS}>
           Öffentliches Profil
         </Link>{" "}
-        „Profil veröffentlichen“ und „Im Build-Swipe zeigen“ aktivieren.
-      </p>
-      <p>
-        Showcase-Fotos kannst du jederzeit nachträglich unter{" "}
-        <Link href={galerieSettingsHref} className={LINK_CLASS}>
-          Galerie
+        <Link
+          href={`${profilSettingsHref}#profil-veroeffentlichen`}
+          className={LINK_CLASS}
+        >
+          „Profil veröffentlichen“
         </Link>{" "}
-        ergänzen.
+        und{" "}
+        <Link href={`${profilSettingsHref}#build-swipe`} className={LINK_CLASS}>
+          „Im Build-Swipe zeigen“
+        </Link>{" "}
+        aktivieren.
       </p>
     </div>
   );

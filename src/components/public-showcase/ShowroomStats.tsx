@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 
 import type {
@@ -51,6 +51,7 @@ function animatedStatValue(
 
 export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
   const motionConfig = useShowroomMotion();
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
   const vehicleRows = buildShowcaseSpecRows(profile, animatedStatValue);
   const hasSoundcheck = Boolean(profile.engineSoundUrl?.trim());
   const hasModsSection = modifications.length > 0;
@@ -108,7 +109,16 @@ export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
                   <EngineStartButton
                     soundUrl={profile.engineSoundUrl}
                     embedded
+                    onPlaybackError={setPlaybackError}
                   />
+                  {playbackError ? (
+                    <p
+                      className="px-4 pb-3 text-[0.82rem] font-medium text-red-400"
+                      role="alert"
+                    >
+                      {playbackError}
+                    </p>
+                  ) : null}
                 </ShowroomGroup>
               ) : null}
               {hasModsSection ? (

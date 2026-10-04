@@ -2,20 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  animate,
-  motion,
-  useMotionValue,
-  useTransform,
-  type PanInfo,
-} from "framer-motion";
 import { Heart, X } from "lucide-react";
 
-import { ShowcaseSwipeQuartettCard } from "@/components/showcase-swipe/ShowcaseSwipeQuartettCard";
+import { ShowcaseSwipeStack } from "@/components/showcase-swipe/showcase-swipe-stack";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 import { cn } from "@/lib/utils";
-
-const SWIPE_THRESHOLD = 120;
 
 type ShowcaseSwipeDeckProps = {
   tagUuid: string;
@@ -55,88 +46,6 @@ async function postSwipe(
   }
 }
 
-function SwipeCard({
-  card,
-  active,
-  onSwipe,
-  onOpen,
-}: {
-  card: ShowcaseSwipeCard;
-  active: boolean;
-  onSwipe: (decision: "like" | "pass") => void;
-  onOpen: () => void;
-}) {
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-12, 12]);
-  const likeOpacity = useTransform(x, [40, 120], [0, 1]);
-  const passOpacity = useTransform(x, [-120, -40], [1, 0]);
-
-  const commitSwipe = useCallback(
-    (decision: "like" | "pass", offsetX: number) => {
-      const target = decision === "like" ? 420 : -420;
-      animate(x, target, {
-        duration: 0.22,
-        onComplete: () => onSwipe(decision),
-      });
-      if (offsetX !== target) {
-        x.set(offsetX);
-      }
-    },
-    [onSwipe, x],
-  );
-
-  const onDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.x > SWIPE_THRESHOLD) {
-      commitSwipe("like", info.offset.x);
-      return;
-    }
-    if (info.offset.x < -SWIPE_THRESHOLD) {
-      commitSwipe("pass", info.offset.x);
-      return;
-    }
-    animate(x, 0, { duration: 0.2 });
-  };
-
-  if (!active) {
-    return (
-      <div className="absolute inset-0 scale-[0.96] opacity-60">
-        <ShowcaseSwipeQuartettCard card={card} />
-      </div>
-    );
-  }
-
-  return (
-    <motion.div
-      className="absolute inset-0 touch-none"
-      style={{ x, rotate, zIndex: 20 }}
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.9}
-      onDragEnd={onDragEnd}
-    >
-      <motion.div
-        className="pointer-events-none absolute left-4 top-4 z-10 rounded-xl border-2 border-emerald-400 px-3 py-1 text-sm font-bold uppercase tracking-wide text-emerald-400"
-        style={{ opacity: likeOpacity }}
-      >
-        Like
-      </motion.div>
-      <motion.div
-        className="pointer-events-none absolute right-4 top-4 z-10 rounded-xl border-2 border-rose-400 px-3 py-1 text-sm font-bold uppercase tracking-wide text-rose-400"
-        style={{ opacity: passOpacity }}
-      >
-        Pass
-      </motion.div>
-      <button
-        type="button"
-        className="h-full w-full text-left"
-        onClick={onOpen}
-      >
-        <ShowcaseSwipeQuartettCard card={card} />
-      </button>
-    </motion.div>
-  );
-}
-
 export function ShowcaseSwipeDeck({
   tagUuid,
   initialCards = [],
@@ -167,7 +76,6 @@ export function ShowcaseSwipeDeck({
   }, [initialCards.length]);
 
   const current = cards[0];
-  const next = cards[1];
 
   const removeTop = useCallback(() => {
     setCards((prev) => prev.slice(1));
@@ -235,18 +143,10 @@ export function ShowcaseSwipeDeck({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative mx-auto h-[min(72vh,520px)] w-full max-w-sm">
-        {next ? (
-          <SwipeCard
-            card={next}
-            active={false}
-            onSwipe={() => {}}
-            onOpen={() => {}}
-          />
-        ) : null}
-        <SwipeCard
-          card={current}
-          active
+      <div className="relative mx-auto aspect-[9/16] w-full max-w-[min(100%,300px)]">
+        <ShowcaseSwipeStack
+          cards={cards}
+          disabled={busy}
           onSwipe={handleSwipe}
           onOpen={openShowcase}
         />

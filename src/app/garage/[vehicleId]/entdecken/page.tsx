@@ -68,7 +68,6 @@ export default async function ShowcaseEntdeckenPage({
         description={
           <ShowcaseDiscoverIntro
             profilSettingsHref={vehicleSurfaceHref(scope, "einstellungen/profil")}
-            galerieSettingsHref={vehicleSurfaceHref(scope, "einstellungen/galerie")}
           />
         }
         backHref={`${vehicleSurfaceHref(scope)}`}

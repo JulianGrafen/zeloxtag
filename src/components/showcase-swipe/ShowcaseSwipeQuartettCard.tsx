@@ -40,11 +40,11 @@ export function ShowcaseSwipeQuartettCard({
   return (
     <div
       className={cn(
-        "relative flex h-full w-full flex-col overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-white/10",
+        "relative flex h-full w-full min-h-0 flex-col overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-white/10",
         className,
       )}
     >
-      <div className="relative aspect-[4/3] w-full bg-neutral-900">
+      <div className="relative min-h-0 flex-1 w-full bg-neutral-900">
         {card.heroImageSrc ? (
           <Image
             src={card.heroImageSrc}

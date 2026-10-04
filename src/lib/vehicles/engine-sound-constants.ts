@@ -131,11 +131,26 @@ export function resolvePublicEngineSoundHref(
 ): string | null {
   const trimmed = stored?.trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith("/demo/") || trimmed.startsWith("/api/")) {
+  if (trimmed.startsWith("/demo/")) {
     return trimmed;
   }
+
+  const publicProxy = publicVehicleEngineSoundPath(vehicleId);
+  const ownerPrefix = `/api/vehicle/engine-sound/${vehicleId}`;
+
+  if (
+    trimmed.startsWith(publicProxy) ||
+    trimmed.startsWith(ownerPrefix)
+  ) {
+    return publicProxy;
+  }
+
+  if (trimmed.startsWith("/api/")) {
+    return null;
+  }
+
   if (resolveStoredEngineSoundPath(vehicleId, trimmed)) {
-    return publicVehicleEngineSoundPath(vehicleId);
+    return publicProxy;
   }
   return null;
 }

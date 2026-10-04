@@ -40,6 +40,7 @@ function initialSharePath(
 }
 
 function ToggleRow({
+  id,
   label,
   description,
   checked,
@@ -47,6 +48,7 @@ function ToggleRow({
   busy,
   onChange,
 }: {
+  id?: string;
   label: string;
   description: string;
   checked: boolean;
@@ -56,11 +58,12 @@ function ToggleRow({
 }) {
   return (
     <button
+      id={id}
       type="button"
       disabled={disabled}
       aria-pressed={checked}
       onClick={() => onChange(!checked)}
-      className={`${SETTINGS_SUBMENU_TILE_CLASS} w-full touch-manipulation text-left disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`${SETTINGS_SUBMENU_TILE_CLASS} w-full scroll-mt-24 touch-manipulation text-left disabled:cursor-not-allowed disabled:opacity-60 ${
         busy ? "opacity-80" : ""
       }`}
     >
@@ -181,6 +184,7 @@ export function VehiclePublicProfileSettings({
         </p>
       ) : null}
       <ToggleRow
+        id="profil-veroeffentlichen"
         label={
           hasLinkedTag ? "Profil veröffentlichen" : "Showcase & Build-Swipe"
         }
@@ -207,6 +211,7 @@ export function VehiclePublicProfileSettings({
         }}
       />
       <ToggleRow
+        id="build-swipe"
         label="Im Build-Swipe zeigen"
         description="Nur öffentliche Showcase-Inhalte — keine Belege oder VIN"
         checked={showcaseSwipeOptIn}

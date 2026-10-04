@@ -67,7 +67,6 @@ export default async function ShowcaseEntdeckenPage({
         description={
           <ShowcaseDiscoverIntro
             profilSettingsHref={`/v/${uuid}/einstellungen/profil`}
-            galerieSettingsHref={`/v/${uuid}/einstellungen/galerie`}
           />
         }
         backHref={`/v/${uuid}`}
