@@ -33,6 +33,17 @@ export async function loadShowcaseSwipeDeck(
   return cards;
 }
 
+export async function loadOwnerVehicleSwipeLikeCounts(
+  vehicleId: string,
+): Promise<{ totalLikes: number; unreadLikes: number }> {
+  const inbox = await loadShowcaseSwipeInboxSummary();
+  const row = inbox.find((entry) => entry.vehicleId === vehicleId);
+  return {
+    totalLikes: row?.totalLikes ?? 0,
+    unreadLikes: row?.unreadLikes ?? 0,
+  };
+}
+
 export async function loadShowcaseSwipeInboxSummary(): Promise<
   ShowcaseSwipeInboxRow[]
 > {

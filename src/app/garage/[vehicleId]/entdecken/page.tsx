@@ -10,7 +10,10 @@ import { ShowcaseDiscoverExperience } from "@/components/showcase-swipe/showcase
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { loginGateHref } from "@/lib/auth/login-gate-url";
-import { loadShowcaseSwipeDeck } from "@/lib/showcase/swipe-deck";
+import {
+  loadOwnerVehicleSwipeLikeCounts,
+  loadShowcaseSwipeDeck,
+} from "@/lib/showcase/swipe-deck";
 import { loadWeeklyTopBuilds } from "@/lib/showcase/weekly-top-builds";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -46,6 +49,8 @@ export default async function ShowcaseEntdeckenPage({
   const { isConfigured } = getSupabaseEnv();
   let initialCards: Awaited<ReturnType<typeof loadShowcaseSwipeDeck>> = [];
   let initialWeeklyBuilds: Awaited<ReturnType<typeof loadWeeklyTopBuilds>> = [];
+  let ownSwipeTotalLikes = 0;
+  let ownSwipeUnreadLikes = 0;
   if (isConfigured) {
     try {
       initialCards = await loadShowcaseSwipeDeck(15);
@@ -56,6 +61,13 @@ export default async function ShowcaseEntdeckenPage({
       initialWeeklyBuilds = await loadWeeklyTopBuilds(10);
     } catch (error) {
       console.error("[entdecken] weekly top preload failed", error);
+    }
+    try {
+      const counts = await loadOwnerVehicleSwipeLikeCounts(vehicleId);
+      ownSwipeTotalLikes = counts.totalLikes;
+      ownSwipeUnreadLikes = counts.unreadLikes;
+    } catch (error) {
+      console.error("[entdecken] own swipe likes preload failed", error);
     }
   }
 
@@ -77,6 +89,8 @@ export default async function ShowcaseEntdeckenPage({
           tagUuid={scope.linkedTagUuid ?? vehicleId}
           initialCards={initialCards}
           initialWeeklyBuilds={initialWeeklyBuilds}
+          ownSwipeTotalLikes={ownSwipeTotalLikes}
+          ownSwipeUnreadLikes={ownSwipeUnreadLikes}
         />
         <LegalFooterNav className="pt-2" />
       </VehicleSettingsSubpageShell>

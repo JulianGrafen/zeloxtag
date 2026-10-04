@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 
+import { ShowcaseInviteFriends } from "@/components/showcase-swipe/showcase-invite-friends";
+import { ShowcaseOwnSwipeLikes } from "@/components/showcase-swipe/showcase-own-swipe-likes";
 import { ShowcaseSwipeDeck } from "@/components/showcase-swipe/ShowcaseSwipeDeck";
 import { WeeklyTopBuilds } from "@/components/showcase-swipe/weekly-top-builds";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
@@ -11,6 +13,8 @@ type ShowcaseDiscoverExperienceProps = {
   tagUuid: string;
   initialCards?: ShowcaseSwipeCard[];
   initialWeeklyBuilds: WeeklyTopBuild[];
+  ownSwipeTotalLikes: number;
+  ownSwipeUnreadLikes?: number;
 };
 
 function sortWeeklyBuilds(rows: WeeklyTopBuild[]): WeeklyTopBuild[] {
@@ -28,6 +32,8 @@ export function ShowcaseDiscoverExperience({
   tagUuid,
   initialCards = [],
   initialWeeklyBuilds,
+  ownSwipeTotalLikes,
+  ownSwipeUnreadLikes = 0,
 }: ShowcaseDiscoverExperienceProps) {
   const [weeklyBuilds, setWeeklyBuilds] = useState(initialWeeklyBuilds);
 
@@ -59,6 +65,11 @@ export function ShowcaseDiscoverExperience({
 
   return (
     <div className="flex flex-col gap-2">
+      <ShowcaseOwnSwipeLikes
+        totalLikes={ownSwipeTotalLikes}
+        unreadLikes={ownSwipeUnreadLikes}
+      />
+      <ShowcaseInviteFriends />
       <WeeklyTopBuilds builds={weeklyBuilds} />
       <ShowcaseSwipeDeck
         tagUuid={tagUuid}

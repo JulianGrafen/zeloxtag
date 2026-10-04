@@ -127,9 +127,6 @@ export function ShowcaseSwipeDeck({
         <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
           Du hast alles gesehen
         </p>
-        <p className="mt-2 text-[0.85rem] text-[color:var(--vd-muted)]">
-          Schau später wieder vorbei — neue opt-in Builds kommen dazu.
-        </p>
         <button
           type="button"
           className="mt-6 text-[0.85rem] font-medium text-[color:var(--vd-accent)]"
