@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ownerEngineSoundDisplayPath,
@@ -6,8 +6,17 @@ import {
 } from "@/lib/vehicles/engine-sound-constants";
 
 const vehicleId = "8f3a9b2c-1234-5678-9abc-def012345678";
+const FIXED_NOW = 1_791_118_280_152;
 
 describe("resolveOwnerEngineSoundViewUrl", () => {
+  beforeEach(() => {
+    vi.spyOn(Date, "now").mockReturnValue(FIXED_NOW);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("returns null when nothing is stored", () => {
     expect(resolveOwnerEngineSoundViewUrl(vehicleId, null)).toBeNull();
     expect(resolveOwnerEngineSoundViewUrl(vehicleId, "  ")).toBeNull();
