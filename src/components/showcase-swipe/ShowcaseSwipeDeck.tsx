@@ -20,6 +20,7 @@ const SWIPE_THRESHOLD = 120;
 type ShowcaseSwipeDeckProps = {
   tagUuid: string;
   initialCards?: ShowcaseSwipeCard[];
+  onLiked?: (card: ShowcaseSwipeCard) => void;
 };
 
 async function fetchDeck(): Promise<ShowcaseSwipeCard[]> {
@@ -139,6 +140,7 @@ function SwipeCard({
 export function ShowcaseSwipeDeck({
   tagUuid,
   initialCards = [],
+  onLiked,
 }: ShowcaseSwipeDeckProps) {
   const router = useRouter();
   const [cards, setCards] = useState<ShowcaseSwipeCard[]>(initialCards);
@@ -177,6 +179,9 @@ export function ShowcaseSwipeDeck({
       setBusy(true);
       try {
         await postSwipe(current.publicSlug, decision);
+        if (decision === "like") {
+          onLiked?.(current);
+        }
       } catch {
         setError("Swipe konnte nicht gespeichert werden.");
       } finally {
@@ -184,7 +189,7 @@ export function ShowcaseSwipeDeck({
         setBusy(false);
       }
     },
-    [busy, current, removeTop],
+    [busy, current, onLiked, removeTop],
   );
 
   const openShowcase = useCallback(() => {

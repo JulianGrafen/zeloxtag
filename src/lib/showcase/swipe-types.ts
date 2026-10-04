@@ -7,6 +7,7 @@ export type ShowcaseSwipeCard = {
   make: string;
   model: string;
   year: number | null;
+  totalLikes: number;
   heroImageSrc: string | null;
   powerPs: number | null;
   torqueNm: number | null;

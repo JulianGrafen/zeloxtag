@@ -4,10 +4,11 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 import { ShowcaseDiscoverIntro } from "@/components/showcase-swipe/showcase-discover-intro";
-import { ShowcaseSwipeDeck } from "@/components/showcase-swipe/ShowcaseSwipeDeck";
+import { ShowcaseDiscoverExperience } from "@/components/showcase-swipe/showcase-discover-experience";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { loadShowcaseSwipeDeck } from "@/lib/showcase/swipe-deck";
+import { loadWeeklyTopBuilds } from "@/lib/showcase/weekly-top-builds";
 import { getTagByUuid } from "@/lib/tags/get-tag-by-uuid";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -44,11 +45,17 @@ export default async function ShowcaseEntdeckenPage({
 
   const { isConfigured } = getSupabaseEnv();
   let initialCards: Awaited<ReturnType<typeof loadShowcaseSwipeDeck>> = [];
+  let initialWeeklyBuilds: Awaited<ReturnType<typeof loadWeeklyTopBuilds>> = [];
   if (isConfigured) {
     try {
       initialCards = await loadShowcaseSwipeDeck(15);
     } catch (error) {
       console.error("[entdecken] deck preload failed", error);
+    }
+    try {
+      initialWeeklyBuilds = await loadWeeklyTopBuilds(10);
+    } catch (error) {
+      console.error("[entdecken] weekly top preload failed", error);
     }
   }
 
@@ -66,7 +73,11 @@ export default async function ShowcaseEntdeckenPage({
         backHref={`/v/${uuid}`}
         backLabel="Dashboard"
       >
-        <ShowcaseSwipeDeck tagUuid={uuid} initialCards={initialCards} />
+        <ShowcaseDiscoverExperience
+          tagUuid={uuid}
+          initialCards={initialCards}
+          initialWeeklyBuilds={initialWeeklyBuilds}
+        />
         <LegalFooterNav className="pt-2" />
       </VehicleSettingsSubpageShell>
     </AppShell>

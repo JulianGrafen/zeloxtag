@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Heart } from "lucide-react";
 
 import { BuildDnaRadarChart } from "@/components/public-showcase/BuildDnaRadarChart";
 import { ShowroomBuildPersonalityChips } from "@/components/public-showcase/ShowroomBuildPersonalityChips";
@@ -58,6 +59,21 @@ export function ShowcaseSwipeQuartettCard({
             Kein Fahrzeugbild
           </div>
         )}
+        {card.totalLikes > 0 ? (
+          <div
+            className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 ring-1 ring-white/15 backdrop-blur-md"
+            aria-label={`${card.totalLikes} Likes`}
+          >
+            <Heart
+              className="h-3.5 w-3.5 text-rose-400"
+              fill="currentColor"
+              aria-hidden
+            />
+            <span className="font-mono text-[0.78rem] font-semibold tabular-nums tracking-tight text-white">
+              {card.totalLikes}
+            </span>
+          </div>
+        ) : null}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-neutral-950 to-transparent" />
       </div>
 

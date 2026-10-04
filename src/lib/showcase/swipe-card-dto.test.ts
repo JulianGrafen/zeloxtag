@@ -20,6 +20,11 @@ describe("mapSwipeCandidateToCard", () => {
     has_silhouette: true,
   };
 
+  it("maps total likes from rpc", () => {
+    const card = mapSwipeCandidateToCard({ ...base, total_likes: 42 });
+    expect(card?.totalLikes).toBe(42);
+  });
+
   it("maps public fields and hero proxy", () => {
     const card = mapSwipeCandidateToCard(base);
     expect(card).toEqual({
@@ -27,6 +32,7 @@ describe("mapSwipeCandidateToCard", () => {
       make: "BMW",
       model: "M3",
       year: 2020,
+      totalLikes: 0,
       heroImageSrc: "/api/vehicle/silhouette/veh-1",
       powerPs: 480,
       torqueNm: 600,

@@ -905,6 +905,10 @@ export type Database = {
         Args: Record<string, never>;
         Returns: Json;
       };
+      get_weekly_top_builds: {
+        Args: { p_limit?: number };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

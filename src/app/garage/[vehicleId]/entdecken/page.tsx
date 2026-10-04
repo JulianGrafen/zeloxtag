@@ -6,11 +6,12 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 import { ShowcaseDiscoverIntro } from "@/components/showcase-swipe/showcase-discover-intro";
-import { ShowcaseSwipeDeck } from "@/components/showcase-swipe/ShowcaseSwipeDeck";
+import { ShowcaseDiscoverExperience } from "@/components/showcase-swipe/showcase-discover-experience";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { loadShowcaseSwipeDeck } from "@/lib/showcase/swipe-deck";
+import { loadWeeklyTopBuilds } from "@/lib/showcase/weekly-top-builds";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
@@ -44,11 +45,17 @@ export default async function ShowcaseEntdeckenPage({
 
   const { isConfigured } = getSupabaseEnv();
   let initialCards: Awaited<ReturnType<typeof loadShowcaseSwipeDeck>> = [];
+  let initialWeeklyBuilds: Awaited<ReturnType<typeof loadWeeklyTopBuilds>> = [];
   if (isConfigured) {
     try {
       initialCards = await loadShowcaseSwipeDeck(15);
     } catch (error) {
       console.error("[entdecken] deck preload failed", error);
+    }
+    try {
+      initialWeeklyBuilds = await loadWeeklyTopBuilds(10);
+    } catch (error) {
+      console.error("[entdecken] weekly top preload failed", error);
     }
   }
 
@@ -67,7 +74,11 @@ export default async function ShowcaseEntdeckenPage({
         backHref={`${vehicleSurfaceHref(scope)}`}
         backLabel="Dashboard"
       >
-        <ShowcaseSwipeDeck tagUuid={scope.linkedTagUuid ?? vehicleId} initialCards={initialCards} />
+        <ShowcaseDiscoverExperience
+          tagUuid={scope.linkedTagUuid ?? vehicleId}
+          initialCards={initialCards}
+          initialWeeklyBuilds={initialWeeklyBuilds}
+        />
         <LegalFooterNav className="pt-2" />
       </VehicleSettingsSubpageShell>
     </AppShell>

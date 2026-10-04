@@ -16,6 +16,7 @@ export type ShowcaseSwipeCandidateRow = {
   accel_0_100_sec: number | null;
   accel_100_200_sec: number | null;
   modification_count: number;
+  total_likes?: number;
   has_silhouette: boolean;
   showcase_build_dna?: unknown;
   build_personality_tags?: unknown;
@@ -48,11 +49,17 @@ export function mapSwipeCandidateToCard(
       ? parseShowcaseBuildDna(row.showcase_build_dna ?? null)
       : null;
 
+  const totalLikes = Math.max(
+    0,
+    Math.floor(row.total_likes ?? 0),
+  );
+
   return {
     publicSlug,
     make: row.make,
     model: row.model,
     year: row.year ?? null,
+    totalLikes,
     heroImageSrc,
     powerPs: toNullableNumber(row.power_ps),
     torqueNm: toNullableNumber(row.torque_nm),
