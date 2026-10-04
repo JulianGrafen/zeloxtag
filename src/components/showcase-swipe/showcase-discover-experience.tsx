@@ -14,7 +14,6 @@ type ShowcaseDiscoverExperienceProps = {
   initialCards?: ShowcaseSwipeCard[];
   initialWeeklyBuilds: WeeklyTopBuild[];
   ownSwipeTotalLikes: number;
-  ownSwipeUnreadLikes?: number;
 };
 
 function sortWeeklyBuilds(rows: WeeklyTopBuild[]): WeeklyTopBuild[] {
@@ -33,7 +32,6 @@ export function ShowcaseDiscoverExperience({
   initialCards = [],
   initialWeeklyBuilds,
   ownSwipeTotalLikes,
-  ownSwipeUnreadLikes = 0,
 }: ShowcaseDiscoverExperienceProps) {
   const [weeklyBuilds, setWeeklyBuilds] = useState(initialWeeklyBuilds);
 
@@ -65,10 +63,7 @@ export function ShowcaseDiscoverExperience({
 
   return (
     <div className="flex flex-col gap-2">
-      <ShowcaseOwnSwipeLikes
-        totalLikes={ownSwipeTotalLikes}
-        unreadLikes={ownSwipeUnreadLikes}
-      />
+      <ShowcaseOwnSwipeLikes totalLikes={ownSwipeTotalLikes} />
       <ShowcaseInviteFriends />
       <WeeklyTopBuilds builds={weeklyBuilds} />
       <ShowcaseSwipeDeck

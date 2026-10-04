@@ -50,7 +50,6 @@ export default async function ShowcaseEntdeckenPage({
   let initialCards: Awaited<ReturnType<typeof loadShowcaseSwipeDeck>> = [];
   let initialWeeklyBuilds: Awaited<ReturnType<typeof loadWeeklyTopBuilds>> = [];
   let ownSwipeTotalLikes = 0;
-  let ownSwipeUnreadLikes = 0;
   if (isConfigured) {
     try {
       initialCards = await loadShowcaseSwipeDeck(15);
@@ -65,7 +64,6 @@ export default async function ShowcaseEntdeckenPage({
     try {
       const counts = await loadOwnerVehicleSwipeLikeCounts(vehicleId);
       ownSwipeTotalLikes = counts.totalLikes;
-      ownSwipeUnreadLikes = counts.unreadLikes;
     } catch (error) {
       console.error("[entdecken] own swipe likes preload failed", error);
     }
@@ -90,7 +88,6 @@ export default async function ShowcaseEntdeckenPage({
           initialCards={initialCards}
           initialWeeklyBuilds={initialWeeklyBuilds}
           ownSwipeTotalLikes={ownSwipeTotalLikes}
-          ownSwipeUnreadLikes={ownSwipeUnreadLikes}
         />
         <LegalFooterNav className="pt-2" />
       </VehicleSettingsSubpageShell>

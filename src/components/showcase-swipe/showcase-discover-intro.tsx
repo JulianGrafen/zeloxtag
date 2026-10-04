@@ -12,7 +12,6 @@ export function ShowcaseDiscoverIntro({
 }: ShowcaseDiscoverIntroProps) {
   return (
     <div className="space-y-3">
-      <p>Rechts liken, links passen.</p>
       <p>
         Sichtbar im Swipe: Unter{" "}
         <Link href={profilSettingsHref} className={LINK_CLASS}>
