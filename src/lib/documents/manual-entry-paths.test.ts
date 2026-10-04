@@ -42,6 +42,7 @@ describe("revalidateManualEntryPaths", () => {
         "/kosten",
         "/intervalle",
         "/historie",
+        "/build-planner",
       ],
     );
   });

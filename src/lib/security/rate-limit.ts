@@ -192,6 +192,4 @@ export const RATE_LIMITS = {
   showcaseSwipe: { limit: 40, windowMs: 60_000 },
   /** Build Planner KI extract (link / image / text). */
   buildPlanner: { limit: 8, windowMs: 60_000 },
-  /** Roast My Build (LLM, owner-only). */
-  roast: { limit: 5, windowMs: 60_000 },
 } as const;

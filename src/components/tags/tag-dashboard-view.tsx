@@ -40,7 +40,6 @@ import {
   isDemoActiveTag,
 } from "@/lib/tags/demo-showcase";
 
-import { RoastBuildTrigger } from "@/components/roast/roast-build-trigger";
 import { HardwareUpsellWidget } from "@/components/hardware/hardware-upsell-widget";
 import { GarageSwitcherTile } from "@/components/garage/garage-switcher-tile";
 import { ProductFeaturesBanner } from "@/components/onboarding/product-features-banner";
@@ -503,14 +502,8 @@ export function TagDashboardView({
       <VehicleDashboard
         data={{ ...data, tiles }}
         banner={
-          showTagShop || showProductFeaturesBanner || (isOwner && !demoMode && !demoShowcase) ? (
+          showTagShop || showProductFeaturesBanner ? (
             <div className="flex flex-col gap-2.5">
-              {isOwner && !demoMode && !demoShowcase ? (
-                <RoastBuildTrigger
-                  vehicleId={vehicle.id}
-                  vehicleLabel={`${vehicle.make} ${vehicle.model}`}
-                />
-              ) : null}
               {showTagShop ? (
                 <HardwareUpsellWidget
                   vehicleId={vehicle.id}
