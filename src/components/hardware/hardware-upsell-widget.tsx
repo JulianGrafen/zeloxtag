@@ -39,31 +39,34 @@ export function HardwareUpsellWidget({
   return (
     <>
       <section
-        className="hardware-upsell-widget vd-surface-card overflow-hidden border border-[color:var(--vd-border)] bg-[#141418]"
+        className="hardware-upsell-widget overflow-hidden rounded-[var(--vd-radius-panel)] border shadow-[var(--vd-shadow)]"
         aria-labelledby="hardware-upsell-title"
       >
         <div className="grid sm:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] sm:items-stretch">
           <div
-            className="relative border-b border-[color:var(--vd-border)] bg-[#0a0a0c] py-1 sm:border-b-0 sm:border-r sm:py-0"
+            className="hardware-upsell-widget__stage relative border-b border-white/[0.08] py-1 sm:border-b-0 sm:border-r sm:py-0"
           >
             <div className="hardware-upsell-model-slot">
-              <ClaimTagModelHero tagUuid={modelUuid} />
+              <ClaimTagModelHero
+                tagUuid={modelUuid}
+                presentation="hardware-upsell"
+              />
             </div>
           </div>
 
           <div className="flex flex-col justify-center p-4 sm:p-4 sm:py-5">
             <p
-              className="text-[0.62rem] font-semibold tracking-[0.14em] text-[color:var(--vd-muted)] uppercase"
+              className="text-[0.62rem] font-semibold tracking-[0.14em] text-[color:var(--hardware-upsell-muted)] uppercase"
             >
               {HARDWARE_UPSELL_EYEBROW}
             </p>
             <h2
               id="hardware-upsell-title"
-              className="claim-title mt-2 text-balance text-[1.22rem] leading-[1.15] text-[color:var(--vd-text)] sm:text-[1.32rem]"
+              className="claim-title mt-2 text-balance text-[1.22rem] leading-[1.15] text-[color:var(--hardware-upsell-fg)] sm:text-[1.32rem]"
             >
               {HARDWARE_UPSELL_HEADLINE}
             </h2>
-            <p className="mt-2 text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
+            <p className="mt-2 text-[0.8rem] leading-snug text-[color:var(--hardware-upsell-muted)]">
               {HARDWARE_UPSELL_SUBTEXT}
             </p>
 
@@ -71,10 +74,10 @@ export function HardwareUpsellWidget({
               {HARDWARE_UPSELL_BENEFITS.map((benefit) => (
                 <li
                   key={benefit}
-                  className="flex gap-2 text-[0.76rem] leading-snug text-[color:var(--vd-text)]"
+                  className="flex gap-2 text-[0.76rem] leading-snug text-[color:var(--hardware-upsell-fg)]"
                 >
                   <Check
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--vd-accent)]"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-300"
                     aria-hidden
                   />
                   <span>{benefit}</span>
@@ -93,7 +96,7 @@ export function HardwareUpsellWidget({
               </a>
               <button
                 type="button"
-                className="min-h-10 text-left text-[0.8rem] font-medium leading-snug text-[color:var(--vd-muted)] underline-offset-4 hover:text-[color:var(--vd-text)] hover:underline sm:text-center"
+                className="min-h-10 text-left text-[0.8rem] font-medium leading-snug text-[color:var(--hardware-upsell-muted)] underline-offset-4 hover:text-[color:var(--hardware-upsell-fg)] hover:underline sm:text-center"
                 onClick={() => setLinkOpen(true)}
               >
                 {HARDWARE_UPSELL_SECONDARY_CTA}

@@ -14,6 +14,7 @@ const MANUAL_ENTRY_SEGMENTS = [
   "/kosten",
   "/intervalle",
   "/historie",
+  "/build-planner",
 ] as const;
 
 /** Revalidate surfaces that list or derive from manual vehicle entries. */

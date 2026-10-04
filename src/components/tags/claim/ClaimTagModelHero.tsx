@@ -21,17 +21,35 @@ const ClaimTagModelCanvas = dynamic(
   },
 );
 
+export type ClaimTagModelPresentation = "claim" | "hardware-upsell";
+
 type ClaimTagModelHeroProps = {
   tagUuid: string;
+  presentation?: ClaimTagModelPresentation;
 };
 
-export function ClaimTagModelHero({ tagUuid }: ClaimTagModelHeroProps) {
+export function ClaimTagModelHero({
+  tagUuid,
+  presentation = "claim",
+}: ClaimTagModelHeroProps) {
   const { reduceMotion } = useClaimMotion();
+  const isHardware = presentation === "hardware-upsell";
 
   return (
     <ClaimTagModelErrorBoundary>
-      <div className="claim-intro-model-slot" aria-hidden>
-        <ClaimTagModelCanvas tagUuid={tagUuid} reduceMotion={reduceMotion} />
+      <div
+        className={
+          isHardware
+            ? "claim-intro-model-slot claim-intro-model-slot--hardware"
+            : "claim-intro-model-slot"
+        }
+        aria-hidden
+      >
+        <ClaimTagModelCanvas
+          tagUuid={tagUuid}
+          reduceMotion={reduceMotion}
+          presentation={presentation}
+        />
       </div>
     </ClaimTagModelErrorBoundary>
   );

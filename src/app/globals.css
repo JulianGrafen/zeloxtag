@@ -121,6 +121,12 @@
   --tour-spotlight-ring: rgba(255, 255, 255, 0.88);
   --tour-progress-track: rgb(0 0 0 / 0.08);
   --tour-progress-fill: var(--primary);
+
+  /* Hardware upsell — product stage stays dark in light + dark app theme */
+  --hardware-upsell-shell-bg: #141418;
+  --hardware-upsell-stage-bg: #0a0a0c;
+  --hardware-upsell-fg: #fafafa;
+  --hardware-upsell-muted: #a1a1aa;
 }
 
 @theme inline {
@@ -944,6 +950,60 @@ a.claim-cta {
 
 .claim-intro-model-slot--loading {
   background: transparent;
+}
+
+/* Dashboard hardware card: always a dark product stage (tag readable in light mode). */
+.hardware-upsell-widget {
+  background: var(--hardware-upsell-shell-bg) !important;
+  color: var(--hardware-upsell-fg);
+  border-color: rgb(255 255 255 / 0.08) !important;
+}
+
+.hardware-upsell-widget__stage {
+  background: var(--hardware-upsell-stage-bg);
+}
+
+.hardware-upsell-model-slot .claim-intro-model-slot--loading {
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 45%, rgb(255 255 255 / 0.06), transparent 62%),
+    linear-gradient(165deg, #1c1c22 0%, var(--hardware-upsell-stage-bg) 55%, #050506 100%);
+}
+
+.hardware-upsell-model-slot .claim-intro-model-slot--loading::after {
+  content: "";
+  position: absolute;
+  inset: 18% 28%;
+  border-radius: 0.65rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.07) 0%, transparent 55%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 12px 32px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+}
+
+@keyframes hardware-tag-stage-shimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+.hardware-upsell-model-slot .claim-intro-model-slot--loading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.05) 50%,
+    transparent 65%
+  );
+  animation: hardware-tag-stage-shimmer 2.4s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .claim-intro-model-canvas {

@@ -21,6 +21,10 @@ export const FEATURE = {
   GENERATE_EXPOSE: "CAN_GENERATE_EXPOSE",
   DOCUMENT_VAULT: "CAN_USE_DOCUMENT_VAULT",
   INVITE_SCHRAUBER: "CAN_INVITE_SCHRAUBER",
+  /** KI extract for Build Planner (link / image / text). */
+  USE_BUILD_PLANNER_AI: "CAN_USE_BUILD_PLANNER_AI",
+  /** Manual planned mods and todos without KI. */
+  MANAGE_BUILD_PLANNER: "CAN_MANAGE_BUILD_PLANNER",
 } as const;
 
 export type FeatureFlag = (typeof FEATURE)[keyof typeof FEATURE];
@@ -36,6 +40,8 @@ const FEATURE_MIN_TIER: Record<FeatureFlag, UserTier> = {
   [FEATURE.GENERATE_EXPOSE]: "pro",
   [FEATURE.DOCUMENT_VAULT]: "pro",
   [FEATURE.INVITE_SCHRAUBER]: "pro",
+  [FEATURE.USE_BUILD_PLANNER_AI]: "pro",
+  [FEATURE.MANAGE_BUILD_PLANNER]: "free",
 };
 
 export const SUBSCRIPTION_REQUIRED_CODE = "SUBSCRIPTION_REQUIRED" as const;
@@ -73,6 +79,8 @@ export function featureForDashboardTile(tileId: string): FeatureFlag | null {
   }
 
   if (tileId === "schrauber") return FEATURE.INVITE_SCHRAUBER;
+
+  if (tileId === "build-planner") return FEATURE.MANAGE_BUILD_PLANNER;
 
   if (
     tileId === "oil-change" ||
@@ -115,6 +123,8 @@ export function paywallTitle(
       return "Die Dokumentenakte";
     case FEATURE.ADD_MANUAL_SERVICE_ENTRY:
       return "Manuelle Einträge";
+    case FEATURE.USE_BUILD_PLANNER_AI:
+      return "Build Planner KI ist Teil von Pro";
     default:
       return "Das ist eine Pro-Funktion";
   }
@@ -138,6 +148,8 @@ export function paywallBody(
       return "Rechnungen, ABEs und TÜV per KI scannen und in der Cloud speichern — mit ZeloxTag Pro. Einsehen und manuelle Einträge bleiben kostenlos.";
     case FEATURE.VIEW_DOCUMENT_VAULT:
       return "Deine Akte mit manuellen Einträgen und gespeicherten Belegen — kostenlos einsehbar.";
+    case FEATURE.USE_BUILD_PLANNER_AI:
+      return "Teile, Links oder Fotos per KI in Build-Schritte und Budget umwandeln — mit ZeloxTag Pro. Manuelles Planen bleibt kostenlos.";
     default:
       return "Diese Funktion gehört zu ZeloxTag Pro. Die ersten 14 Tage sind kostenlos.";
   }

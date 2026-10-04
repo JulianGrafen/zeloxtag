@@ -27,6 +27,7 @@ const FAIL_CLOSED_RATE_BUCKETS = new Set<RateBucket>([
   "ocr",
   "upload",
   "tagMint",
+  "buildPlanner",
 ]);
 
 export function rateLimitResponse(result: RateLimitResult): NextResponse {

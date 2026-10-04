@@ -1,10 +1,24 @@
 "use client";
 
 import { motion, useInView, useReducedMotion } from "framer-motion";
-import { ArrowLeft, BarChart3, Wrench, X } from "lucide-react";
+import {
+  ArrowLeft,
+  BarChart3,
+  LineChart,
+  Wrench,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { CostOverviewChart } from "@/components/documents/cost-overview-chart";
+import {
+  CostOverviewChart,
+  CostOverviewChartLegend,
+  type CostOverviewChartMode,
+} from "@/components/documents/cost-overview-chart";
+import {
+  COST_CHART_MAINTENANCE_COLOR,
+  COST_CHART_MODIFICATION_COLOR,
+} from "@/lib/documents/cost-overview-chart";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
@@ -80,12 +94,14 @@ function CostBucketRow({
   ratio,
   showBarAtTarget,
   reduceMotion,
+  barColor,
 }: {
   label: string;
   amount: number;
   ratio: number;
   showBarAtTarget: boolean;
   reduceMotion: boolean;
+  barColor: string;
 }) {
   const widthPct = `${Math.max(4, Math.round(ratio * 100))}%`;
 
@@ -101,7 +117,8 @@ function CostBucketRow({
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-[color:var(--vd-surface-elevated)] ring-1 ring-[color:var(--vd-border)]">
         <motion.div
-          className="h-full rounded-full bg-[color:var(--vd-accent)]"
+          className="h-full rounded-full"
+          style={{ backgroundColor: barColor }}
           initial={{ width: "0%" }}
           animate={{ width: showBarAtTarget ? widthPct : "0%" }}
           transition={{
@@ -120,10 +137,12 @@ function AnimatedCostBucketList({
   rows,
   maxAmount,
   className,
+  barColor = COST_CHART_MODIFICATION_COLOR,
 }: {
   rows: BucketRow[];
   maxAmount: number;
   className?: string;
+  barColor?: string;
 }) {
   const ref = useRef<HTMLUListElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.25 });
@@ -147,9 +166,126 @@ function AnimatedCostBucketList({
           ratio={row.amount > 0 ? row.amount / maxAmount : 0}
           showBarAtTarget={showBarAtTarget}
           reduceMotion={Boolean(reduceMotion)}
+          barColor={barColor}
         />
       ))}
     </motion.ul>
+  );
+}
+
+function CostSplitHero({
+  modificationTotal,
+  maintenanceTotal,
+  reduceMotion,
+}: {
+  modificationTotal: number;
+  maintenanceTotal: number;
+  reduceMotion: boolean;
+}) {
+  const classifiedTotal = modificationTotal + maintenanceTotal;
+  if (classifiedTotal <= 0) return null;
+
+  const modShare = modificationTotal / classifiedTotal;
+  const maintShare = maintenanceTotal / classifiedTotal;
+  const modPct = Math.round(modShare * 100);
+  const maintPct = Math.round(maintShare * 100);
+
+  return (
+    <div className="mt-4 space-y-3 border-t border-[color:var(--vd-border)] pt-4">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+            Umbau vs. Wartung
+          </p>
+        </div>
+        <p className="text-right text-[0.72rem] tabular-nums text-[color:var(--vd-muted)]">
+          {formatEur(classifiedTotal)}
+        </p>
+      </div>
+
+      <div className="flex h-3 overflow-hidden rounded-full bg-[color:var(--vd-surface-elevated)] ring-1 ring-[color:var(--vd-border)]">
+        <motion.div
+          className="h-full bg-[color:var(--vd-text)]"
+          initial={{ width: "0%" }}
+          animate={{ width: `${modShare * 100}%` }}
+          transition={{ duration: reduceMotion ? 0 : 0.7, ease: BUCKET_EASE }}
+          title={`Umbau ${modPct}%`}
+        />
+        <motion.div
+          className="h-full bg-[color:var(--vd-muted)]"
+          initial={{ width: "0%" }}
+          animate={{ width: `${maintShare * 100}%` }}
+          transition={{
+            duration: reduceMotion ? 0 : 0.7,
+            delay: reduceMotion ? 0 : 0.08,
+            ease: BUCKET_EASE,
+          }}
+          title={`Wartung ${maintPct}%`}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+            Umbaukosten
+          </p>
+          <p className="mt-0.5 text-[1rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
+            {formatEur(modificationTotal)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+            Wartung
+          </p>
+          <p className="mt-0.5 text-[1rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
+            {formatEur(maintenanceTotal)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChartModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: CostOverviewChartMode;
+  onChange: (mode: CostOverviewChartMode) => void;
+}) {
+  return (
+    <div
+      className="inline-flex rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-0.5"
+      role="group"
+      aria-label="Diagrammtyp"
+    >
+      <button
+        type="button"
+        onClick={() => onChange("line")}
+        className={`inline-flex items-center gap-1.5 rounded-[0.65rem] px-2.5 py-1.5 text-[0.72rem] font-semibold transition-colors ${
+          mode === "line"
+            ? "bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-sm"
+            : "text-[color:var(--vd-muted)]"
+        }`}
+        aria-pressed={mode === "line"}
+      >
+        <LineChart className="h-3.5 w-3.5" aria-hidden />
+        Graph
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("bar")}
+        className={`inline-flex items-center gap-1.5 rounded-[0.65rem] px-2.5 py-1.5 text-[0.72rem] font-semibold transition-colors ${
+          mode === "bar"
+            ? "bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-sm"
+            : "text-[color:var(--vd-muted)]"
+        }`}
+        aria-pressed={mode === "bar"}
+      >
+        <BarChart3 className="h-3.5 w-3.5" aria-hidden />
+        Balken
+      </button>
+    </div>
   );
 }
 
@@ -175,6 +311,8 @@ export function VehicleCostOverviewView({
   );
   const [missingAmountBannerHidden, setMissingAmountBannerHidden] =
     useState(false);
+  const [chartMode, setChartMode] = useState<CostOverviewChartMode>("line");
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     try {
@@ -225,9 +363,32 @@ export function VehicleCostOverviewView({
               {vehicleModel} · {overview.invoiceCount} Einträge erfasst
             </p>
             {hasData ? (
-              <div className="mt-5 border-t border-[color:var(--vd-border)] pt-5">
-                <CostOverviewChart series={overview.yearlySeries} />
-              </div>
+              <>
+                <CostSplitHero
+                  modificationTotal={overview.modification.total}
+                  maintenanceTotal={overview.maintenance.total}
+                  reduceMotion={Boolean(reduceMotion)}
+                />
+                <div className="mt-5 space-y-3 border-t border-[color:var(--vd-border)] pt-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                      Verlauf nach Jahr
+                    </p>
+                    <ChartModeToggle mode={chartMode} onChange={setChartMode} />
+                  </div>
+                  {chartMode === "bar" ? (
+                    <CostOverviewChartLegend />
+                  ) : (
+                    <p className="text-[0.72rem] font-medium text-[color:var(--vd-muted)]">
+                      Gesamt-Investition pro Jahr
+                    </p>
+                  )}
+                  <CostOverviewChart
+                    series={overview.yearlySeries}
+                    mode={chartMode}
+                  />
+                </div>
+              </>
             ) : null}
           </div>
         </header>
@@ -271,25 +432,31 @@ export function VehicleCostOverviewView({
 
             {overview.bucketBreakdown.length > 0 ? (
               <section className="space-y-4 rounded-[1.5rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
-                <div className="flex items-center gap-2">
-                  <BarChart3
-                    className="h-4 w-4 text-[color:var(--vd-accent)]"
-                    aria-hidden
-                  />
-                  <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-                    Umbau-Verteilung
-                  </h2>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <BarChart3
+                      className="h-4 w-4 text-[color:var(--vd-muted)]"
+                      aria-hidden
+                    />
+                    <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+                      Umbau-Verteilung
+                    </h2>
+                  </div>
+                  <span className="text-[0.95rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
+                    {formatEur(overview.modification.total)}
+                  </span>
                 </div>
                 <AnimatedCostBucketList
                   rows={overview.bucketBreakdown}
                   maxAmount={maxBucket}
+                  barColor={COST_CHART_MODIFICATION_COLOR}
                 />
               </section>
             ) : null}
 
             <section className="space-y-3">
               <h2 className="px-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-                Umbaukosten
+                Umbaukosten · Kennzahlen
               </h2>
               <div className="grid grid-cols-2 gap-2.5">
                 <CostStatCard
@@ -316,7 +483,7 @@ export function VehicleCostOverviewView({
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Wrench
-                    className="h-4 w-4 text-[color:var(--vd-accent)]"
+                    className="h-4 w-4 text-[color:var(--vd-muted)]"
                     aria-hidden
                   />
                   <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
@@ -332,6 +499,7 @@ export function VehicleCostOverviewView({
                   className="space-y-3 pt-1"
                   rows={overview.maintenance.bucketBreakdown}
                   maxAmount={maxMaintenanceBucket}
+                  barColor={COST_CHART_MAINTENANCE_COLOR}
                 />
               ) : (
                 <p className="text-[0.82rem] text-[color:var(--vd-muted)]">

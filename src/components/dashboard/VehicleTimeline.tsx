@@ -15,35 +15,62 @@ import {
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { cn } from "@/lib/utils";
 
+/** Premium timeline card — machined surface, subtle depth. */
+const TIMELINE_CARD_SHELL = cn(
+  "min-w-0 rounded-2xl border border-white/[0.07] border-t border-white/[0.15]",
+  "bg-gradient-to-b from-zinc-900/90 to-zinc-900/50 backdrop-blur-md",
+  "p-4 shadow-[0_12px_40px_rgba(0,0,0,0.32)]",
+  "transition-[box-shadow,transform,border-color] duration-200",
+);
+
+const TIMELINE_TITLE = "text-base font-semibold leading-snug text-zinc-100";
+const TIMELINE_META = "mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.78rem] text-zinc-500";
+const TIMELINE_MONO =
+  "font-mono text-sm text-zinc-400 tracking-tight tabular-nums";
+
 type CategoryVisual = {
   accentBorder: string;
   dotClass: string;
+  spineTint: string;
 };
 
+/** Motorsport accents: amber maintenance, emerald / ice for completed mods. */
 const CATEGORY_VISUALS: Record<TimelineEventCategory, CategoryVisual> = {
   oil_change: {
-    accentBorder: "border-l-amber-500/70",
-    dotClass: "bg-amber-500",
+    accentBorder: "border-l-[#F59E0B]/55",
+    dotClass:
+      "bg-[#F59E0B] shadow-[0_0_14px_rgba(245,158,11,0.55)] ring-1 ring-[#F59E0B]/30",
+    spineTint: "from-[#F59E0B]/25",
   },
   repair: {
-    accentBorder: "border-l-rose-500/70",
-    dotClass: "bg-rose-500",
+    accentBorder: "border-l-[#F59E0B]/55",
+    dotClass:
+      "bg-[#F59E0B] shadow-[0_0_14px_rgba(245,158,11,0.55)] ring-1 ring-[#F59E0B]/30",
+    spineTint: "from-[#F59E0B]/25",
   },
   inspection: {
-    accentBorder: "border-l-sky-500/70",
-    dotClass: "bg-sky-500",
+    accentBorder: "border-l-[#F59E0B]/45",
+    dotClass:
+      "bg-[#F59E0B]/90 shadow-[0_0_12px_rgba(245,158,11,0.4)] ring-1 ring-[#F59E0B]/25",
+    spineTint: "from-[#F59E0B]/20",
   },
   part_install: {
-    accentBorder: "border-l-emerald-500/70",
-    dotClass: "bg-emerald-500",
+    accentBorder: "border-l-emerald-400/55",
+    dotClass:
+      "bg-emerald-400/95 shadow-[0_0_14px_rgba(52,211,153,0.5)] ring-1 ring-emerald-400/35",
+    spineTint: "from-emerald-400/20",
   },
   tuev: {
-    accentBorder: "border-l-blue-500/70",
-    dotClass: "bg-blue-500",
+    accentBorder: "border-l-sky-400/50",
+    dotClass:
+      "bg-sky-400/90 shadow-[0_0_12px_rgba(56,189,248,0.45)] ring-1 ring-sky-400/30",
+    spineTint: "from-sky-400/18",
   },
   other: {
-    accentBorder: "border-l-neutral-400/80",
-    dotClass: "bg-neutral-500",
+    accentBorder: "border-l-zinc-500/50",
+    dotClass:
+      "bg-zinc-400 shadow-[0_0_10px_rgba(161,161,170,0.35)] ring-1 ring-zinc-400/25",
+    spineTint: "from-zinc-500/15",
   },
 };
 
@@ -82,7 +109,8 @@ export function VehicleTimeline({
     return (
       <div
         className={cn(
-          "vd-surface-card px-5 py-10 text-center text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]/72",
+          TIMELINE_CARD_SHELL,
+          "px-5 py-10 text-center text-[0.88rem] leading-relaxed text-zinc-400",
           className,
         )}
       >
@@ -106,7 +134,7 @@ export function VehicleTimeline({
 
       {withoutMileage.length > 0 ? (
         <section className="space-y-3">
-          <p className="px-1 text-[0.78rem] font-medium text-[color:var(--vd-muted)]">
+          <p className="px-1 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-zinc-500">
             Ohne Kilometerstand
           </p>
           <TimelineEventList
@@ -132,11 +160,16 @@ function TimelineEventList({
   ariaLabel: string;
   showMileage: boolean;
 }) {
+  const spineFrom = CATEGORY_VISUALS[events[0]?.category ?? "other"].spineTint;
+
   return (
     <ol aria-label={ariaLabel} className="relative space-y-0">
       <div
         aria-hidden
-        className="pointer-events-none absolute bottom-3 left-[11px] top-3 w-px bg-gradient-to-b from-[color:var(--vd-border)] via-[color:var(--vd-border)] to-transparent"
+        className={cn(
+          "pointer-events-none absolute bottom-3 left-[11px] top-3 w-px bg-gradient-to-b via-zinc-700/40 to-transparent",
+          spineFrom,
+        )}
       />
       {events.map((event, index) => (
         <TimelineEventRow
@@ -148,6 +181,14 @@ function TimelineEventList({
         />
       ))}
     </ol>
+  );
+}
+
+function TimelineMetaSeparator() {
+  return (
+    <span aria-hidden className="text-zinc-600 select-none">
+      ·
+    </span>
   );
 }
 
@@ -164,57 +205,50 @@ function TimelineEventRow({
 }) {
   const visual = CATEGORY_VISUALS[event.category];
   const costLabel = formatTimelineCost(event.cost);
+  const dateLabel = formatTimelineDate(event.date);
+  const mileageLabel = showMileage
+    ? formatTimelineMileage(event.mileage, { known: event.mileageKnown })
+    : null;
   const href =
     event.documentId && documentHref
       ? documentHref(event.documentId)
       : null;
-  const dateLine = [
-    formatTimelineDate(event.date),
-    costLabel ? costLabel : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 
   const card = (
     <article
       className={cn(
-        "min-w-0 rounded-2xl border border-[color:var(--vd-border)] border-l-[3px] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] transition-[box-shadow,transform] duration-200",
+        TIMELINE_CARD_SHELL,
+        "border-l-[3px]",
         visual.accentBorder,
-        href && "group-hover:shadow-[var(--vd-shadow-hover)]",
+        href && "group-hover:border-white/[0.12] group-hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)]",
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {showMileage ? (
-            <p className="font-[family-name:var(--font-display)] text-[1.12rem] font-semibold tracking-[-0.03em] tabular-nums text-[color:var(--vd-text)]">
-              {formatTimelineMileage(event.mileage, {
-                known: event.mileageKnown,
-              })}
-            </p>
-          ) : null}
-          <h3
-            className={cn(
-              "text-[0.94rem] font-medium leading-snug tracking-[-0.02em] text-[color:var(--vd-text)]",
-              showMileage && "mt-1",
-            )}
-          >
-            {event.title}
-          </h3>
-          <p className="mt-1.5 text-[0.78rem] text-[color:var(--vd-muted)]">
+          <h3 className={TIMELINE_TITLE}>{event.title}</h3>
+          <p className={TIMELINE_META}>
             <span>{TIMELINE_CATEGORY_LABELS[event.category]}</span>
-            {dateLine ? (
+            {mileageLabel ? (
               <>
-                <span aria-hidden className="mx-1.5 text-[color:var(--vd-border)]">
-                  ·
-                </span>
-                <span className="tabular-nums">{dateLine}</span>
+                <TimelineMetaSeparator />
+                <span className={TIMELINE_MONO}>{mileageLabel}</span>
+              </>
+            ) : null}
+            {dateLabel ? (
+              <>
+                <TimelineMetaSeparator />
+                <span className={TIMELINE_MONO}>{dateLabel}</span>
+              </>
+            ) : null}
+            {costLabel ? (
+              <>
+                <TimelineMetaSeparator />
+                <span className={TIMELINE_MONO}>{costLabel}</span>
               </>
             ) : null}
             {event.isManualEntry ? (
               <>
-                <span aria-hidden className="mx-1.5 text-[color:var(--vd-border)]">
-                  ·
-                </span>
+                <TimelineMetaSeparator />
                 <span>Manuell</span>
               </>
             ) : null}
@@ -222,14 +256,14 @@ function TimelineEventRow({
         </div>
         {href ? (
           <ChevronRight
-            className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--vd-muted)] transition-transform duration-200 group-hover:translate-x-0.5 group-active:translate-x-0.5"
+            className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-zinc-300 group-active:translate-x-0.5"
             aria-hidden
           />
         ) : null}
       </div>
 
       {event.description ? (
-        <p className="mt-2.5 line-clamp-3 text-[0.84rem] leading-relaxed text-[color:var(--vd-muted)]">
+        <p className="mt-2.5 line-clamp-3 text-[0.84rem] leading-relaxed text-zinc-500">
           {event.description}
         </p>
       ) : null}
@@ -237,11 +271,16 @@ function TimelineEventRow({
   );
 
   return (
-    <li className={cn("relative grid grid-cols-[24px_1fr] gap-x-3", !isLast && "pb-5")}>
+    <li
+      className={cn(
+        "relative grid min-w-0 grid-cols-[24px_minmax(0,1fr)] gap-x-3",
+        !isLast && "pb-5",
+      )}
+    >
       <div className="relative flex justify-center pt-5">
         <span
           aria-hidden
-          className="relative z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]"
+          className="relative z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full border border-white/10 bg-zinc-950/70 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
         >
           <span className={cn("h-2 w-2 rounded-full", visual.dotClass)} />
         </span>
@@ -249,7 +288,7 @@ function TimelineEventRow({
 
       <div className="min-w-0 pt-3">
         {href ? (
-          <PressableLink href={href} variant="row" nav="forward" className="group block">
+          <PressableLink href={href} variant="row" nav="forward" className="group block min-w-0">
             <span className="sr-only">
               {event.isManualEntry ? "Eintrag öffnen" : "Dokument anzeigen"}
             </span>

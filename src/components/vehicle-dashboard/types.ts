@@ -15,7 +15,8 @@ export type DashboardTileId =
   | "settings"
   | "vehicle-settings"
   | "schrauber"
-  | "build-discover";
+  | "build-discover"
+  | "build-planner";
 
 /** Serializable icon keys (resolved to Lucide on the client). */
 export type DashboardIconName =
@@ -33,7 +34,8 @@ export type DashboardIconName =
   | "grid"
   | "sparkles"
   | "fuel"
-  | "wallet";
+  | "wallet"
+  | "list-checks";
 
 export type DashboardTileTone =
   | "default"

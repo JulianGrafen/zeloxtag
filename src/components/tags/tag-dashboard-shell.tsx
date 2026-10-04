@@ -174,6 +174,7 @@ interface TagDashboardShellProps {
   showcaseSwipeUnreadLikes?: number;
   showcaseSwipeTotalLikes?: number;
   operatingCostHint?: OperatingCostDashboardHint | null;
+  buildPlannerHint?: { subtitle: string } | null;
   showTagShopPromo?: boolean;
   tagShopUserId?: string;
   tagShopUserEmail?: string | null;
@@ -203,6 +204,7 @@ export function TagDashboardShell({
   showcaseSwipeUnreadLikes = 0,
   showcaseSwipeTotalLikes = 0,
   operatingCostHint = null,
+  buildPlannerHint = null,
   showTagShopPromo = false,
   tagShopUserId,
   tagShopUserEmail = null,
@@ -832,6 +834,7 @@ export function TagDashboardShell({
         showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
         showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
         operatingCostHint={operatingCostHint}
+        buildPlannerHint={buildPlannerHint}
         showTagShopPromo={showTagShopPromo}
         tagShopUserId={tagShopUserId}
         tagShopUserEmail={tagShopUserEmail}

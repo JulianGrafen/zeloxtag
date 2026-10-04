@@ -210,12 +210,18 @@ function TagGlb({ tagUuid, animate, reduceMotion }: TagGlbProps) {
 type ClaimTagModelCanvasProps = {
   tagUuid: string;
   reduceMotion: boolean;
+  presentation?: "claim" | "hardware-upsell";
 };
 
 export function ClaimTagModelCanvas({
   tagUuid,
   reduceMotion,
+  presentation = "claim",
 }: ClaimTagModelCanvasProps) {
+  const isHardware = presentation === "hardware-upsell";
+  const exposure = isHardware ? 1.52 : 1.28;
+  const ambient = isHardware ? 0.92 : 0.78;
+
   return (
     <Canvas
       className="claim-intro-model-canvas"
@@ -229,12 +235,18 @@ export function ClaimTagModelCanvas({
         antialias: true,
         powerPreference: "high-performance",
         toneMapping: ACESFilmicToneMapping,
-        toneMappingExposure: 1.28,
+        toneMappingExposure: exposure,
       }}
       dpr={[1, 2.5]}
     >
-      <ambientLight intensity={0.78} />
-      <hemisphereLight args={["#ffffff", "#5a5a5a", 0.65]} />
+      <ambientLight intensity={ambient} />
+      <hemisphereLight
+        args={
+          isHardware
+            ? ["#ffffff", "#2a2a30", 0.78]
+            : ["#ffffff", "#5a5a5a", 0.65]
+        }
+      />
       <ClaimTagKeyLight
         animate={!reduceMotion}
         reduceMotion={reduceMotion}

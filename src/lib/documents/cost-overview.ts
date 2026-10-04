@@ -203,7 +203,10 @@ export type CostMaintenanceStats = {
 
 export type CostYearlyPoint = {
   year: number;
+  /** Summe aller Belege im Jahr (Dokumentebene). */
   amount: number;
+  modificationAmount: number;
+  maintenanceAmount: number;
 };
 
 export type VehicleCostOverview = {
@@ -548,6 +551,8 @@ export function buildVehicleCostOverview(
     MAINTENANCE_BUCKETS.map((bucket) => [bucket, 0]),
   ) as Record<MaintenanceBucket, number>;
   const yearlyTotals = new Map<number, number>();
+  const yearlyModification = new Map<number, number>();
+  const yearlyMaintenance = new Map<number, number>();
 
   for (const doc of invoices) {
     const amount = resolveDocumentAmount(doc);
@@ -559,22 +564,34 @@ export function buildVehicleCostOverview(
     totalInvestment += amount;
 
     const year = documentYear(doc);
-    if (year != null) {
-      yearlyTotals.set(year, (yearlyTotals.get(year) ?? 0) + amount);
-    }
-
     const listCategory = resolveInvoiceListCategory(doc.category);
 
-    if (contributesToUmbauBuckets(listCategory)) {
-      modificationPositions.push(
-        ...collectModificationPositions(doc, listCategory),
-      );
-    }
+    const docModification = contributesToUmbauBuckets(listCategory)
+      ? collectModificationPositions(doc, listCategory)
+      : [];
+    const docMaintenance = contributesToMaintenanceBuckets(listCategory)
+      ? collectMaintenancePositions(doc, listCategory)
+      : [];
 
-    if (contributesToMaintenanceBuckets(listCategory)) {
-      maintenancePositions.push(
-        ...collectMaintenancePositions(doc, listCategory),
-      );
+    modificationPositions.push(...docModification);
+    maintenancePositions.push(...docMaintenance);
+
+    if (year != null) {
+      yearlyTotals.set(year, (yearlyTotals.get(year) ?? 0) + amount);
+      const modYearSum = docModification.reduce((sum, row) => sum + row.amount, 0);
+      const maintYearSum = docMaintenance.reduce((sum, row) => sum + row.amount, 0);
+      if (modYearSum > 0) {
+        yearlyModification.set(
+          year,
+          (yearlyModification.get(year) ?? 0) + modYearSum,
+        );
+      }
+      if (maintYearSum > 0) {
+        yearlyMaintenance.set(
+          year,
+          (yearlyMaintenance.get(year) ?? 0) + maintYearSum,
+        );
+      }
     }
   }
 
@@ -651,10 +668,18 @@ export function buildVehicleCostOverview(
     maintenanceBucketBreakdown.reduce((sum, row) => sum + row.amount, 0),
   );
 
-  const yearlySeries: CostYearlyPoint[] = [...yearlyTotals.entries()]
-    .map(([year, yearAmount]) => ({
+  const yearlyYears = new Set<number>([
+    ...yearlyTotals.keys(),
+    ...yearlyModification.keys(),
+    ...yearlyMaintenance.keys(),
+  ]);
+
+  const yearlySeries: CostYearlyPoint[] = [...yearlyYears]
+    .map((year) => ({
       year,
-      amount: roundMoney(yearAmount),
+      amount: roundMoney(yearlyTotals.get(year) ?? 0),
+      modificationAmount: roundMoney(yearlyModification.get(year) ?? 0),
+      maintenanceAmount: roundMoney(yearlyMaintenance.get(year) ?? 0),
     }))
     .sort((a, b) => a.year - b.year);
 

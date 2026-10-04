@@ -8,6 +8,7 @@ import {
   History,
   Images,
   Info,
+  ListChecks,
   LayoutGrid,
   Settings,
   ShieldCheck,
@@ -38,4 +39,5 @@ export const DASHBOARD_ICONS: Record<DashboardIconName, LucideIcon> = {
   sparkles: Sparkles,
   fuel: Fuel,
   wallet: Wallet,
+  "list-checks": ListChecks,
 };

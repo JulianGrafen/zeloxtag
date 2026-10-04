@@ -40,6 +40,7 @@ import {
   isDemoActiveTag,
 } from "@/lib/tags/demo-showcase";
 
+import { RoastBuildTrigger } from "@/components/roast/roast-build-trigger";
 import { HardwareUpsellWidget } from "@/components/hardware/hardware-upsell-widget";
 import { GarageSwitcherTile } from "@/components/garage/garage-switcher-tile";
 import { ProductFeaturesBanner } from "@/components/onboarding/product-features-banner";
@@ -103,6 +104,7 @@ interface TagDashboardViewProps {
   productFeaturesBannerActive?: boolean;
   /** Owner-only Betriebskosten for dashboard tile subtitles. */
   operatingCostHint?: OperatingCostDashboardHint | null;
+  buildPlannerHint?: { subtitle: string } | null;
   /** Digital garage without linked hardware tag — V4A upsell + link CTA. */
   showTagShopPromo?: boolean;
   tagShopUserId?: string;
@@ -137,6 +139,7 @@ export function TagDashboardView({
   showcaseSwipeTotalLikes = 0,
   productFeaturesBannerActive = true,
   operatingCostHint = null,
+  buildPlannerHint = null,
   showTagShopPromo = false,
   tagShopUserId,
   tagShopUserEmail = null,
@@ -368,6 +371,17 @@ export function TagDashboardView({
       };
     }
 
+    if (tile.id === "build-planner") {
+      return {
+        ...tile,
+        meta: {
+          ...tile.meta,
+          href: path("build-planner"),
+          subtitle: buildPlannerHint?.subtitle ?? "Build planen",
+        },
+      };
+    }
+
     if (tile.id === "schrauber") {
       return {
         ...tile,
@@ -434,7 +448,11 @@ export function TagDashboardView({
   })
     .filter((tile) => {
       if (tile.id === "settings") return isOwner && !demoMode;
-      if (tile.id === "fuel-log" || tile.id === "operating-costs") {
+      if (
+        tile.id === "fuel-log" ||
+        tile.id === "operating-costs" ||
+        tile.id === "build-planner"
+      ) {
         return isOwner || demoMode;
       }
       if (tile.id === "build-discover") return !demoMode && (isOwner || isContributor);
@@ -485,8 +503,14 @@ export function TagDashboardView({
       <VehicleDashboard
         data={{ ...data, tiles }}
         banner={
-          showTagShop || showProductFeaturesBanner ? (
+          showTagShop || showProductFeaturesBanner || (isOwner && !demoMode && !demoShowcase) ? (
             <div className="flex flex-col gap-2.5">
+              {isOwner && !demoMode && !demoShowcase ? (
+                <RoastBuildTrigger
+                  vehicleId={vehicle.id}
+                  vehicleLabel={`${vehicle.make} ${vehicle.model}`}
+                />
+              ) : null}
               {showTagShop ? (
                 <HardwareUpsellWidget
                   vehicleId={vehicle.id}

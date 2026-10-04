@@ -116,6 +116,11 @@ describe("buildVehicleCostOverview", () => {
     ).toBe(true);
     expect(overview.modificationLines.length).toBeGreaterThanOrEqual(3);
     expect(overview.yearlySeries.map((p) => p.year)).toEqual([2023, 2024, 2025]);
+    const y2023 = overview.yearlySeries.find((p) => p.year === 2023);
+    const y2025 = overview.yearlySeries.find((p) => p.year === 2025);
+    expect(y2023?.modificationAmount).toBe(1170);
+    expect(y2025?.maintenanceAmount).toBe(414);
+    expect(y2025?.modificationAmount).toBe(0);
   });
 
   it("excludes MwSt and service lines from umbau buckets", () => {

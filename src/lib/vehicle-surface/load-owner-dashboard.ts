@@ -21,6 +21,8 @@ import {
 } from "@/lib/tags/public-tag-dto";
 import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
 import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
+import { buildPlannerDashboardHint } from "@/lib/build-planner/build-planner-summary";
+import { listPlannedModsWithTodosForVehicle } from "@/lib/build-planner/planned-mods-repository";
 import { buildOperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/summary";
 import type { OperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/types";
 import type { Document, Vehicle } from "@/types/database";
@@ -49,6 +51,7 @@ export type OwnerDashboardPayload = {
   showcaseSwipeUnreadLikes: number;
   showcaseSwipeTotalLikes: number;
   operatingCostHint: OperatingCostDashboardHint | null;
+  buildPlannerHint: { subtitle: string } | null;
 };
 
 export async function loadOwnerDashboardForVehicle(
@@ -118,12 +121,22 @@ export async function loadOwnerDashboardForVehicle(
       : null;
 
   let operatingCostHint = null;
+  let buildPlannerHint = null;
   if (access.isOwner && !isDemoShowcase) {
     try {
       const operatingCosts = await listOperatingCostsForVehicle(vehicle.id);
       operatingCostHint = buildOperatingCostDashboardHint(operatingCosts);
     } catch (error) {
       console.error("[garage-dashboard] operating costs", error);
+    }
+    try {
+      const mods = await listPlannedModsWithTodosForVehicle(vehicle.id);
+      buildPlannerHint = buildPlannerDashboardHint({
+        mods,
+        todos: mods.flatMap((mod) => mod.todos),
+      });
+    } catch (error) {
+      console.error("[garage-dashboard] build planner", error);
     }
   }
 
@@ -165,5 +178,6 @@ export async function loadOwnerDashboardForVehicle(
     showcaseSwipeUnreadLikes,
     showcaseSwipeTotalLikes,
     operatingCostHint,
+    buildPlannerHint,
   };
 }

@@ -23,6 +23,47 @@ export type OperatingCostCategory = "fuel" | "insurance" | "tax" | "other";
 
 export type OperatingCostBillingPeriod = "once" | "monthly" | "yearly";
 
+export type PlannedModStatus = "draft" | "active" | "completed" | "archived";
+
+export type PlannedModSourceKind = "link" | "image" | "text" | "manual";
+
+export type BuildTodoStatus = "pending" | "done";
+
+/** Smart build planner row (`00077_planned_mods_build_todos`). */
+export type PlannedMod = {
+  id: string;
+  vehicle_id: string;
+  user_id: string;
+  status: PlannedModStatus;
+  title: string;
+  manufacturer: string | null;
+  category: string | null;
+  planned_price_eur: number | null;
+  source_url: string | null;
+  source_kind: PlannedModSourceKind;
+  source_payload: Record<string, unknown> | null;
+  ai_model: string | null;
+  document_id: string | null;
+  completed_at: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BuildTodo = {
+  id: string;
+  planned_mod_id: string;
+  vehicle_id: string;
+  user_id: string;
+  title: string;
+  status: BuildTodoStatus;
+  is_ai_generated: boolean;
+  sort_order: number;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /** Owner-entered running costs (`00072_vehicle_operating_costs`). */
 export type VehicleOperatingCost = {
   id: string;
@@ -589,6 +630,92 @@ export type Database = {
             foreignKeyName: "documents_vehicle_id_fkey";
             columns: ["vehicle_id"];
             referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      planned_mods: {
+        Row: PlannedMod;
+        Insert: {
+          id?: string;
+          vehicle_id: string;
+          user_id: string;
+          status?: PlannedModStatus;
+          title: string;
+          manufacturer?: string | null;
+          category?: string | null;
+          planned_price_eur?: number | null;
+          source_url?: string | null;
+          source_kind?: PlannedModSourceKind;
+          source_payload?: Record<string, unknown> | null;
+          ai_model?: string | null;
+          document_id?: string | null;
+          completed_at?: string | null;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          vehicle_id?: string;
+          user_id?: string;
+          status?: PlannedModStatus;
+          title?: string;
+          manufacturer?: string | null;
+          category?: string | null;
+          planned_price_eur?: number | null;
+          source_url?: string | null;
+          source_kind?: PlannedModSourceKind;
+          source_payload?: Record<string, unknown> | null;
+          ai_model?: string | null;
+          document_id?: string | null;
+          completed_at?: string | null;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "planned_mods_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      build_todos: {
+        Row: BuildTodo;
+        Insert: {
+          id?: string;
+          planned_mod_id: string;
+          vehicle_id: string;
+          user_id: string;
+          title: string;
+          status?: BuildTodoStatus;
+          is_ai_generated?: boolean;
+          sort_order?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          planned_mod_id?: string;
+          vehicle_id?: string;
+          user_id?: string;
+          title?: string;
+          status?: BuildTodoStatus;
+          is_ai_generated?: boolean;
+          sort_order?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "build_todos_planned_mod_id_fkey";
+            columns: ["planned_mod_id"];
+            referencedRelation: "planned_mods";
             referencedColumns: ["id"];
           },
         ];

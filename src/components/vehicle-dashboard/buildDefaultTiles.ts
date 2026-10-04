@@ -98,6 +98,12 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       icon: "wallet",
     },
     {
+      id: "build-planner",
+      title: "Build Planner",
+      icon: "list-checks",
+      featured: true,
+    },
+    {
       id: "tuv",
       title: "TÜV",
       icon: "shield-check",
