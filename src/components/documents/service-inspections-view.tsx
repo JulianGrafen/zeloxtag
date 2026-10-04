@@ -198,13 +198,13 @@ export function ServiceInspectionsView({
           <PressableLink
             href={path()}
             variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            className="vd-back-pill"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Dashboard
           </PressableLink>
 
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+          <div className="zt-feature-panel p-5">
             <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
               <Wrench className="h-5 w-5" aria-hidden />
             </div>
@@ -234,7 +234,7 @@ export function ServiceInspectionsView({
 
         <section aria-label="Inspektionsliste" className="space-y-2">
           {inspections.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
                 <ClipboardList className="h-5 w-5" aria-hidden />
               </div>
@@ -247,11 +247,11 @@ export function ServiceInspectionsView({
               </p>
             </div>
           ) : visibleInspections.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               Keine Treffer für diese Suche.
             </div>
           ) : (
-            <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
               {visibleInspections.map((doc) => {
                 const amount = formatDocumentAmount(doc.amount);
                 const workshop = doc.vendor?.trim() || null;

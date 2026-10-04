@@ -262,7 +262,7 @@ export function GutachtenOverview({
         ) : null}
       </div>
 
-      <div className="space-y-4 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white p-4 shadow-[var(--vd-shadow-sm)]">
+      <div className="space-y-4 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
         <SmartReviewField label="Bauteil / Umrüstung">
           <Input
             value={review.partName}

@@ -29,6 +29,7 @@ const baseProfile = {
   publicSlug: null,
   engineSoundUrl: null,
   buildPersonalityLabels: [],
+  isStoryPublic: false,
 };
 
 describe("buildShareCardSpecRows", () => {

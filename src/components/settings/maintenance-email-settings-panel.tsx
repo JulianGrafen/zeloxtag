@@ -33,7 +33,7 @@ export function MaintenanceEmailSettingsPanel({
   return (
     <section
       aria-label="Wartungs-Erinnerungen"
-      className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-4 shadow-[var(--vd-shadow-sm)]"
+      className="zt-feature-panel px-4 py-4 shadow-[var(--vd-shadow-sm)]"
     >
       <div className="flex items-start justify-between gap-4">
         <div>

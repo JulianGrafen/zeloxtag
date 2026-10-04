@@ -131,7 +131,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
         <Link
           href="/settings/password"
-          className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          className="flex items-center justify-between gap-3 zt-feature-panel px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
         >
           <span>
             <span className="block text-[0.88rem] font-medium">Passwort</span>
@@ -149,7 +149,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
         <Link
           href="/settings/security"
-          className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          className="flex items-center justify-between gap-3 zt-feature-panel px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
         >
           <span>
             <span className="block text-[0.88rem] font-medium">
@@ -167,7 +167,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
         <Link
           href="/settings/appearance"
-          className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          className="flex items-center justify-between gap-3 zt-feature-panel px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
         >
           <span>
             <span className="block text-[0.88rem] font-medium">

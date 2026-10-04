@@ -144,13 +144,13 @@ export function InvoiceScannerForm({
         <PressableLink
           href={`/v/${tagUuid}/dokumente`}
           variant="pill"
-          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          className="vd-back-pill"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Zurück
         </PressableLink>
 
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+        <div className="zt-feature-panel p-5">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
             <FileText className="h-5 w-5" aria-hidden />
           </div>
@@ -193,7 +193,7 @@ export function InvoiceScannerForm({
       ) : null}
 
       {step === "processing" ? (
-        <div className="vd-anim-header rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+        <div className="vd-anim-header zt-feature-panel shadow-[var(--vd-shadow-sm)]">
           <ScanProcessingPanel
             compact
             detail={
@@ -245,7 +245,7 @@ export function InvoiceScannerForm({
             });
           }}
         >
-          <div className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
+          <div className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewUrl}
@@ -267,7 +267,7 @@ export function InvoiceScannerForm({
             </div>
           </div>
 
-          <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+          <div className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
             <Label>
               <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                 Titel

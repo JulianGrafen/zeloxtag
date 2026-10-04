@@ -1,14 +1,21 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
+import {
+  automotiveCardClassName,
+  automotiveCardTitleClassName,
+  automotiveMetaClassName,
+} from "@/components/ui/automotive";
 import { cn } from "@/lib/utils";
 
-/** Standalone settings row — same surface as Konto & Sicherheit. */
-export const SETTINGS_SUBMENU_TILE_CLASS =
-  "flex items-center justify-between gap-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]";
+/** Standalone settings row — automotive material surface in dark. */
+export const SETTINGS_SUBMENU_TILE_CLASS = cn(
+  automotiveCardClassName,
+  "flex items-center justify-between gap-3 px-4 py-3.5 transition-[border-color,box-shadow] duration-200 hover:border-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]",
+);
 
 export const SETTINGS_SUBMENU_GROUP_ROW_CLASS =
-  "flex items-center justify-between gap-3 px-4 py-3.5 text-[color:var(--vd-text)] transition-colors hover:bg-black/[0.02] active:bg-black/[0.04]";
+  "flex items-center justify-between gap-3 px-4 py-3.5 text-zinc-100 transition-colors hover:bg-white/[0.03] active:bg-white/[0.05]";
 
 type VehicleSettingsSubmenuLinkProps = {
   href: string;
@@ -36,15 +43,15 @@ export function VehicleSettingsSubmenuLink({
       )}
     >
       <span className="min-w-0">
-        <span className="block text-[0.88rem] font-medium">{title}</span>
+        <span className={cn("block", automotiveCardTitleClassName)}>{title}</span>
         {subtitle ? (
-          <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
+          <span className={cn("mt-0.5 block", automotiveMetaClassName)}>
             {subtitle}
           </span>
         ) : null}
       </span>
       <ChevronRight
-        className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+        className="h-4 w-4 shrink-0 text-zinc-500"
         aria-hidden
       />
     </Link>

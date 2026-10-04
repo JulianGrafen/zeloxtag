@@ -32,6 +32,7 @@ const baseProfile = {
   publicSlug: null,
   engineSoundUrl: null,
   buildPersonalityLabels: [],
+  isStoryPublic: false,
 };
 
 const mockBuildDna: ShowcaseBuildDna = {

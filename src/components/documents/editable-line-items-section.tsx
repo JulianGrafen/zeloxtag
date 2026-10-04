@@ -179,7 +179,7 @@ export function EditableLineItemsSection({
   return (
     <section
       id={sectionId}
-      className="scroll-mt-24 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 space-y-3"
+      className="scroll-mt-24 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 space-y-3"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">

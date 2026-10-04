@@ -22,7 +22,7 @@ export function MfaVerifyForm({ nextPath = "/dashboard" }: MfaVerifyFormProps) {
 
   return (
     <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-6 sm:px-5">
-      <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-6 shadow-[var(--vd-shadow)]">
+      <div className="zt-feature-panel p-6">
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-900 text-white">
           <Shield className="h-5 w-5" aria-hidden />
         </div>
@@ -37,7 +37,7 @@ export function MfaVerifyForm({ nextPath = "/dashboard" }: MfaVerifyFormProps) {
       </div>
 
       <form
-        className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
+        className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
         onSubmit={(event) => {
           event.preventDefault();
           setMessage(null);

@@ -141,11 +141,11 @@ export function SchrauberManagePanel({
   return (
     <div className="space-y-5">
       {readOnly ? (
-        <p className="rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3 text-[0.85rem] text-[color:var(--vd-muted)]">
+        <p className="zt-feature-panel border-dashed px-4 py-3 text-[0.85rem] text-[color:var(--vd-muted)]">
           Demo — Einladungen und Schrauber-Verwaltung sind hier nur zur Ansicht.
         </p>
       ) : null}
-      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
+      <section className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]">
         <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
           Schrauber einladen
         </h2>
@@ -301,7 +301,7 @@ export function SchrauberManagePanel({
         ) : null}
       </section>
 
-      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
+      <section className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]">
         <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
           Aktive Zugänge
         </h2>

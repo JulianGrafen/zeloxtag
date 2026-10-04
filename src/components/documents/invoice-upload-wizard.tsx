@@ -691,7 +691,7 @@ export function InvoiceUploadWizard({
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+              className="vd-back-pill"
             >
               <ArrowLeft className="h-4 w-4" />
               {backLabel}
@@ -700,7 +700,7 @@ export function InvoiceUploadWizard({
             <PressableLink
               href={backHref}
               variant="pill"
-              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+              className="vd-back-pill"
             >
               <ArrowLeft className="h-4 w-4" />
               {backLabel}
@@ -708,7 +708,7 @@ export function InvoiceUploadWizard({
           ) : null}
         </header>
 
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+        <div className="zt-feature-panel p-5">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
             <ScanLine className="h-5 w-5" />
           </div>
@@ -771,7 +771,7 @@ export function InvoiceUploadWizard({
         <button
           type="button"
           onClick={() => pdfInputRef.current?.click()}
-          className="group w-full rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-left shadow-[var(--vd-shadow-sm)] transition-colors hover:border-neutral-300 active:bg-neutral-50"
+          className="group w-full zt-feature-panel p-5 text-left shadow-[var(--vd-shadow-sm)] transition-colors hover:border-neutral-300 active:bg-neutral-50"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1029,7 +1029,7 @@ export function InvoiceUploadWizard({
 
       {canReview && fields && uploadFile ? (
         <form className="space-y-4" onSubmit={handleSave}>
-          <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white p-4 shadow-[var(--vd-shadow-sm)]">
+          <div className="zt-feature-panel space-y-3 p-4 shadow-[var(--vd-shadow-sm)]">
             <Label>
               <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                 Titel
@@ -1145,7 +1145,7 @@ export function InvoiceUploadWizard({
             />
           </div>
 
-          <div className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
+          <div className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
             {previewUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img

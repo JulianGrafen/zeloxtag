@@ -67,13 +67,13 @@ export function DocumentUploadForm({
         <PressableLink
           href={resolvedBackHref}
           variant="pill"
-          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          className="vd-back-pill"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Zurück
         </PressableLink>
 
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+        <div className="zt-feature-panel p-5">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
             <Upload className="h-5 w-5" aria-hidden />
           </div>
@@ -90,7 +90,7 @@ export function DocumentUploadForm({
       </header>
 
       <form
-        className="vd-anim-header space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
+        className="vd-anim-header space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
         onSubmit={(event) => {
           event.preventDefault();
           setError(null);

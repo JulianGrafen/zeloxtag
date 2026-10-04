@@ -316,7 +316,7 @@ export function DocumentInvoiceDetailView({
           />
         ) : null}
 
-        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
           {canEditVendor ? (
             <EditableVendorSection
               documentId={document.id}
@@ -467,7 +467,7 @@ export function DocumentInvoiceDetailView({
             sectionId={INVOICE_DETAIL_EDIT_ANCHORS.lineItems}
           />
         ) : !isTuevDocument ? (
-          <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+          <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
             <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
               Positionen
             </h2>
@@ -525,7 +525,7 @@ export function DocumentInvoiceDetailView({
             sectionId={INVOICE_DETAIL_EDIT_ANCHORS.notes}
           />
         ) : isManual && documentNotes?.trim() ? (
-          <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+          <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
             <h2 className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
               Notizen
             </h2>
@@ -535,7 +535,7 @@ export function DocumentInvoiceDetailView({
           </section>
         ) : null}
 
-        <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
+        <section className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
           <div className="flex items-center justify-between border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
             <div className="min-w-0">
               <p className="truncate text-[0.75rem] font-medium text-neutral-900">
@@ -621,7 +621,7 @@ export function DocumentInvoiceDetailView({
             onClick={() => {
               void handleShare();
             }}
-            className={`inline-flex items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow)] ${
+            className={`inline-flex items-center justify-center gap-2 zt-feature-panel px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow)] ${
               useCentralEdit ? "flex-1" : "w-full"
             }`}
           >

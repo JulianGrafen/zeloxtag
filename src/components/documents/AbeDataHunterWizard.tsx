@@ -1138,7 +1138,7 @@ function AuflagenDetailPanel({
         />
       ) : null}
 
-      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)]">
+      <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow)]">
         <header>
           <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
             Schritt 2 · Auflagen vorbereiten
@@ -1557,7 +1557,7 @@ function ReviewPanel({
         />
       ) : null}
 
-      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)]">
+      <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow)]">
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">

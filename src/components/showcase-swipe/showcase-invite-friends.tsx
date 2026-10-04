@@ -46,7 +46,7 @@ export function ShowcaseInviteFriends({ className }: ShowcaseInviteFriendsProps)
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 zt-feature-panel px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
     >

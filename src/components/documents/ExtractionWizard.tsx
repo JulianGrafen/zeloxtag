@@ -350,7 +350,7 @@ export function ExtractionWizard({
 
       {phase === "upload" ? (
         <div className="space-y-4">
-          <div className="rounded-[1.35rem] border border-dashed border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-center shadow-[var(--vd-shadow)]">
+          <div className="zt-feature-panel border-dashed p-5 text-center shadow-[var(--vd-shadow)]">
             <FileUp className="mx-auto h-8 w-8 text-[color:var(--vd-muted)]" />
             <p className="mt-3 text-[0.92rem] font-medium text-[color:var(--vd-text)]">
               PDF oder Fotos der ABE
@@ -399,7 +399,7 @@ export function ExtractionWizard({
 
       {phase === "analyzing" ? (
         <div className="space-y-4">
-          <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-2 shadow-[var(--vd-shadow)]">
+          <div className="zt-feature-panel p-2 shadow-[var(--vd-shadow)]">
             <ScanProcessingPanel
               compact
               detail="Dokument wird analysiert…"
@@ -413,7 +413,7 @@ export function ExtractionWizard({
       ) : null}
 
       {phase === "review" || phase === "manual" ? (
-        <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)]">
+        <div className="zt-feature-panel p-4 shadow-[var(--vd-shadow)]">
           <header>
             <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
               {phase === "manual" ? "Manuelle Eingabe" : "Prüfen & korrigieren"}
@@ -453,7 +453,7 @@ export function ExtractionWizard({
       ) : null}
 
       {phase === "confirm" ? (
-        <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)]">
+        <div className="zt-feature-panel p-4 shadow-[var(--vd-shadow)]">
           <header>
             <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
               Bestätigung

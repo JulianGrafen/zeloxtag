@@ -409,7 +409,7 @@ export function ClientVehicleUpload({
 
   const shellClass =
     layout === "card"
-      ? "relative rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+      ? "relative zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
       : "relative";
 
   return (

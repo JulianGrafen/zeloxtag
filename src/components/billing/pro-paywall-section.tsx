@@ -79,7 +79,7 @@ export function ProPaywallSection({
   return (
     <section
       aria-label="ZeloxTag Pro"
-      className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+      className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
     >
       <ProPaywallContent
         layout="section"

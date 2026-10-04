@@ -144,7 +144,7 @@ export function DocumentCornerEditor({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3 shadow-[var(--vd-shadow-sm)]">
+      <div className="zt-feature-panel p-3 shadow-[var(--vd-shadow-sm)]">
         <p className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
           Dokument zuschneiden
         </p>

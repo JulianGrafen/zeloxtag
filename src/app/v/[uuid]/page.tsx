@@ -34,6 +34,7 @@ import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-co
 import { parseShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
 import { refreshShowcaseBuildDna } from "@/lib/showcase/refresh-showcase-build-dna";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { loadPublicBuildStoryBySlug } from "@/lib/vehicles/build-story";
 import { buildPublicShowcasePayload, vehicleSupportsPublicShowcase } from "@/lib/vehicles/public-showcase-data";
 import {
   pageSocialMetadata,
@@ -191,6 +192,37 @@ async function renderPublicShowcase(vehicle: Vehicle) {
         // Guest view still shows heuristic fallback from payload builder.
       }
     }
+  }
+
+  if (payload.profile.isStoryPublic && payload.profile.publicSlug) {
+    try {
+      const storyPage = await loadPublicBuildStoryBySlug(
+        payload.profile.publicSlug,
+        {
+          limit: 12,
+          offset: 0,
+          vehicleId: vehicleForPayload.id,
+        },
+      );
+      payload = {
+        ...payload,
+        buildStory: {
+          entries: storyPage?.entries ?? [],
+          hasMore: storyPage?.hasMore ?? false,
+        },
+      };
+    } catch (error) {
+      console.error("[public-showcase] build story load failed", error);
+      payload = {
+        ...payload,
+        buildStory: { entries: [], hasMore: false },
+      };
+    }
+  } else if (payload.profile.isStoryPublic) {
+    payload = {
+      ...payload,
+      buildStory: { entries: [], hasMore: false },
+    };
   }
 
   return <PublicShowcaseView data={payload} />;

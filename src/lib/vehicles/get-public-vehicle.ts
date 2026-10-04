@@ -8,8 +8,6 @@ import {
 } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-import { parseShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
-import { resolvePublicEngineSoundHref } from "@/lib/vehicles/engine-sound-constants";
 import { withDefaultShowcaseFields } from "@/lib/vehicles/public-showcase-data";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, TagScanResult, Vehicle } from "@/types/database";
@@ -165,35 +163,32 @@ export async function loadPublicShowcaseDocuments(
 }
 
 const PUBLIC_SHOWCASE_VEHICLE_ENRICH_COLUMNS =
-  `sound_url, ${VEHICLE_BUILD_DNA_COLUMNS}` as const;
+  `sound_url, public_slug, is_story_public, hide_financials, ${VEHICLE_BUILD_DNA_COLUMNS}` as const;
 
-function needsPublicShowcaseVehicleEnrichment(vehicle: Vehicle): boolean {
-  if (!vehicle.is_public) return false;
-  const vehicleId = vehicle.id?.trim();
-  const publicSoundReady = Boolean(
-    vehicleId &&
-      resolvePublicEngineSoundHref(vehicleId, vehicle.sound_url),
-  );
-  const hasDnaCache = Boolean(
-    vehicle.showcase_build_dna_fingerprint?.trim() &&
-      parseShowcaseBuildDna(vehicle.showcase_build_dna),
-  );
-  return !publicSoundReady || !hasDnaCache;
+const PUBLIC_SHOWCASE_VEHICLE_ENRICH_FALLBACK_COLUMNS =
+  "sound_url, public_slug, is_story_public, hide_financials" as const;
+
+function isMissingVehicleStoryColumnError(error: {
+  message?: string;
+}): boolean {
+  const message = error.message ?? "";
+  return message.includes("is_story_public");
 }
 
 /**
- * Public tag/slug resolvers omit `sound_url` and cached Build DNA.
- * Hydrate both for guest showcase rendering.
+ * Public tag/slug resolvers omit `sound_url`, Build DNA cache, and sometimes
+ * `is_story_public`. Hydrate from service role for reliable guest showcase.
  */
 export async function enrichPublicShowcaseVehicle(
   vehicle: Vehicle,
 ): Promise<Vehicle> {
-  if (!vehicle.is_public) return vehicle;
-  if (!needsPublicShowcaseVehicleEnrichment(vehicle)) {
+  if (!vehicle.is_public) {
     return withDefaultShowcaseFields(vehicle);
   }
 
-  if (!isSupabaseAdminConfigured()) return vehicle;
+  if (!isSupabaseAdminConfigured()) {
+    return withDefaultShowcaseFields(vehicle);
+  }
 
   const admin = createAdminClient();
   let data: Record<string, unknown> | null = null;
@@ -207,22 +202,25 @@ export async function enrichPublicShowcaseVehicle(
 
   if (!primary.error && primary.data) {
     data = primary.data as Record<string, unknown>;
-  } else if (
-    primary.error &&
-    isMissingVehicleBuildDnaColumnError(primary.error)
-  ) {
-    const fallback = await admin
-      .from("vehicles")
-      .select("sound_url")
-      .eq("id", vehicle.id)
-      .eq("is_public", true)
-      .maybeSingle();
-    if (!fallback.error && fallback.data) {
-      data = fallback.data as Record<string, unknown>;
+  } else if (primary.error) {
+    const missingDna = isMissingVehicleBuildDnaColumnError(primary.error);
+    const missingStory = isMissingVehicleStoryColumnError(primary.error);
+    if (missingDna || missingStory) {
+      const fallback = await admin
+        .from("vehicles")
+        .select(PUBLIC_SHOWCASE_VEHICLE_ENRICH_FALLBACK_COLUMNS)
+        .eq("id", vehicle.id)
+        .eq("is_public", true)
+        .maybeSingle();
+      if (!fallback.error && fallback.data) {
+        data = fallback.data as Record<string, unknown>;
+      }
     }
   }
 
-  if (!data) return vehicle;
+  if (!data) {
+    return withDefaultShowcaseFields(vehicle);
+  }
 
   const soundUrl =
     typeof data.sound_url === "string" ? data.sound_url.trim() : "";
@@ -230,6 +228,12 @@ export async function enrichPublicShowcaseVehicle(
   return withDefaultShowcaseFields({
     ...vehicle,
     sound_url: soundUrl || vehicle.sound_url,
+    public_slug:
+      typeof data.public_slug === "string"
+        ? data.public_slug
+        : vehicle.public_slug,
+    is_story_public: data.is_story_public === true,
+    hide_financials: data.hide_financials !== false,
     showcase_build_dna:
       (data.showcase_build_dna as Vehicle["showcase_build_dna"]) ??
       vehicle.showcase_build_dna,

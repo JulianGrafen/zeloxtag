@@ -63,6 +63,7 @@ const fieldsSchema = z.object({
   oilAmountLiters: z.string().trim().max(16).optional().default(""),
   filterChanged: z.enum(["true", "false", ""]).optional().default(""),
   selfMade: z.enum(["true", "false", ""]).optional().default(""),
+  showOnBuildStory: z.enum(["true", "false", ""]).optional().default(""),
 });
 
 function parseMileageKm(raw: string | undefined): number | null {
@@ -121,7 +122,16 @@ function fieldsFromFormData(formData: FormData) {
     oilAmountLiters: String(formData.get("oilAmountLiters") ?? ""),
     filterChanged: String(formData.get("filterChanged") ?? ""),
     selfMade: String(formData.get("selfMade") ?? ""),
+    showOnBuildStory: String(formData.get("showOnBuildStory") ?? ""),
   };
+}
+
+function parseShowOnBuildStoryFlag(
+  raw: string | undefined,
+  hasImageFile: boolean,
+): boolean {
+  if (!hasImageFile) return false;
+  return raw === "true";
 }
 
 /**
@@ -180,6 +190,10 @@ export async function createManualVehicleEntry(
   const documentId = randomUUID();
   const now = new Date().toISOString();
   const photos = collectManualEntryPhotoFilesFromForm(formData);
+  const showOnBuildStory = parseShowOnBuildStoryFlag(
+    data.showOnBuildStory,
+    photos.length > 0,
+  );
 
   let fileUrl = `manual://entry/${documentId}`;
   let pageCount: number | null = null;
@@ -222,6 +236,7 @@ export async function createManualVehicleEntry(
       approval_fields: null,
       amount,
       date,
+      show_on_build_story: showOnBuildStory,
       created_at: now,
     };
     await appendMockUploadedDocument(document);
@@ -310,6 +325,11 @@ export async function createManualVehicleEntry(
           : 1;
   }
 
+  const showOnBuildStoryFinal =
+    showOnBuildStory &&
+    fileUrl !== `manual://entry/${documentId}` &&
+    !fileUrl.startsWith("mock://");
+
   const row = {
     id: documentId,
     vehicle_id: data.vehicleId,
@@ -327,11 +347,13 @@ export async function createManualVehicleEntry(
     page_count: pageCount,
     amount,
     date,
+    show_on_build_story: showOnBuildStoryFinal,
   };
 
   const insertAttempts = [
     row,
     { ...row, created_by: undefined },
+    { ...row, created_by: undefined, show_on_build_story: undefined },
     {
       id: row.id,
       vehicle_id: row.vehicle_id,

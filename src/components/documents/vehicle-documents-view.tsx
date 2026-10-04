@@ -272,13 +272,13 @@ export function VehicleDocumentsView({
           <PressableLink
             href={path()}
             variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            className="vd-back-pill"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Dashboard
           </PressableLink>
 
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+          <div className="zt-feature-panel p-5">
             <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
               {activeType === "abe"
                 ? "ABE & Gutachten"
@@ -352,7 +352,7 @@ export function VehicleDocumentsView({
 
         <section aria-label="Dokumentliste" className="space-y-2">
           {filtered.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               {typed.length > 0 &&
               (query.trim() ||
                 (activeType === "abe" && vaultCategoryId !== "all")) ? (
@@ -391,7 +391,7 @@ export function VehicleDocumentsView({
               )}
             </div>
           ) : (
-            <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
               {filtered.map((doc, index) => (
                 <li key={doc.id}>
                   <DocumentRow

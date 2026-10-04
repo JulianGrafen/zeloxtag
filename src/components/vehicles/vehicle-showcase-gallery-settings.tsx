@@ -21,7 +21,7 @@ export function VehicleShowcaseGallerySettings({
   const router = useRouter();
 
   return (
-    <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 sm:p-5">
+    <section className="zt-feature-panel p-4 sm:p-5">
       <ShowcaseGallerySettings
         embedded
         tagUuid={tagUuid}

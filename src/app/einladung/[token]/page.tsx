@@ -40,7 +40,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
   return (
     <AppShell showNavbar={false}>
       <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-5">
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-6 shadow-[var(--vd-shadow)]">
+        <div className="zt-feature-panel p-6">
           <p className="flex items-center gap-2 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
             <Wrench className="h-3.5 w-3.5" aria-hidden />
             Schrauber-Zugang

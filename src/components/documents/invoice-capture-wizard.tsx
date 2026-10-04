@@ -360,7 +360,7 @@ export function InvoiceCaptureWizard({
     const captureSteps = positionFiles.length > 0 ? 2 : 1;
 
     return (
-      <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)]">
+      <div className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow)]">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
             {positionFiles.length > 0

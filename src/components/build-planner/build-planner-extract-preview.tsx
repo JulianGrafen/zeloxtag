@@ -28,7 +28,7 @@ export function BuildPlannerExtractPreview({
   const [localError, setLocalError] = useState<string | null>(null);
 
   return (
-    <section className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 space-y-3">
+    <section className="zt-feature-panel p-4 space-y-3">
       <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
         Vorschau · vor dem Speichern bearbeiten
       </p>

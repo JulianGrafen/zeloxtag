@@ -84,7 +84,7 @@ export function BrakeIntervalDetailView({
           }
         />
 
-        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Nächstes Intervall
           </h2>
@@ -111,7 +111,7 @@ export function BrakeIntervalDetailView({
         </section>
 
         {record.notes ? (
-          <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+          <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
             <div className="mb-2 flex items-center gap-2 text-[color:var(--vd-muted)]">
               <Wrench className="h-3.5 w-3.5" aria-hidden />
               <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em]">

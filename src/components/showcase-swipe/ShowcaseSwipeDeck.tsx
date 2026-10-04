@@ -53,27 +53,53 @@ export function ShowcaseSwipeDeck({
 }: ShowcaseSwipeDeckProps) {
   const router = useRouter();
   const [cards, setCards] = useState<ShowcaseSwipeCard[]>(initialCards);
-  const [loading, setLoading] = useState(initialCards.length === 0);
-  const [error, setError] = useState<string | null>(null);
+  const [hydrating, setHydrating] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [swipeError, setSwipeError] = useState<string | null>(null);
+  const [everHadCards, setEverHadCards] = useState(initialCards.length > 0);
   const [busy, setBusy] = useState(false);
 
+  const reloadDeck = useCallback(async () => {
+    setHydrating(true);
+    setLoadError(null);
+    try {
+      const deck = await fetchDeck();
+      setCards(deck);
+      if (deck.length > 0) {
+        setEverHadCards(true);
+      }
+    } catch {
+      setLoadError("Builds konnten nicht geladen werden.");
+    } finally {
+      setHydrating(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (initialCards.length > 0) return;
     let cancelled = false;
     (async () => {
       try {
         const deck = await fetchDeck();
-        if (!cancelled) setCards(deck);
+        if (cancelled) return;
+        setCards(deck);
+        if (deck.length > 0) {
+          setEverHadCards(true);
+        }
+        setLoadError(null);
       } catch {
-        if (!cancelled) setError("Builds konnten nicht geladen werden.");
+        if (!cancelled) {
+          setLoadError("Builds konnten nicht geladen werden.");
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setHydrating(false);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [initialCards.length]);
+  }, []);
 
   const current = cards[0];
 
@@ -91,9 +117,9 @@ export function ShowcaseSwipeDeck({
           onLiked?.(current);
         }
         removeTop();
-        setError(null);
+        setSwipeError(null);
       } catch {
-        setError("Swipe konnte nicht gespeichert werden.");
+        setSwipeError("Swipe konnte nicht gespeichert werden.");
       } finally {
         setBusy(false);
       }
@@ -108,7 +134,7 @@ export function ShowcaseSwipeDeck({
     [router],
   );
 
-  if (loading) {
+  if (hydrating && !current) {
     return (
       <p className="text-center text-[0.9rem] text-[color:var(--vd-muted)]">
         Lade Builds…
@@ -117,8 +143,46 @@ export function ShowcaseSwipeDeck({
   }
 
   if (!current) {
+    if (loadError) {
+      return (
+        <div className="zt-feature-panel px-5 py-10 text-center">
+          <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
+            {loadError}
+          </p>
+          <button
+            type="button"
+            className="mt-6 text-[0.85rem] font-medium text-[color:var(--vd-accent)]"
+            onClick={() => void reloadDeck()}
+          >
+            Erneut laden
+          </button>
+        </div>
+      );
+    }
+
+    if (!everHadCards) {
+      return (
+        <div className="zt-feature-panel px-5 py-10 text-center">
+          <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
+            Aktuell keine Builds zum Swipen
+          </p>
+          <p className="mt-2 text-[0.85rem] text-[color:var(--vd-muted)]">
+            Sobald andere Nutzer ihr Profil veröffentlichen und im Build-Swipe
+            sichtbar sind, erscheinen sie hier.
+          </p>
+          <button
+            type="button"
+            className="mt-6 text-[0.85rem] font-medium text-[color:var(--vd-accent)]"
+            onClick={() => void reloadDeck()}
+          >
+            Erneut laden
+          </button>
+        </div>
+      );
+    }
+
     return (
-      <div className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-5 py-10 text-center">
+      <div className="zt-feature-panel px-5 py-10 text-center">
         <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
           Du hast alles gesehen
         </p>
@@ -135,9 +199,9 @@ export function ShowcaseSwipeDeck({
 
   return (
     <div className="flex flex-col gap-6">
-      {error ? (
+      {swipeError ? (
         <p className="text-center text-[0.9rem] text-red-600" role="alert">
-          {error}
+          {swipeError}
         </p>
       ) : null}
       <div className="relative mx-auto aspect-[9/16] w-full max-w-full">

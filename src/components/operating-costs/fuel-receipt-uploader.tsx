@@ -148,7 +148,7 @@ export function FuelReceiptUploader({
       ) : null}
 
       {step === "extracting" ? (
-        <div className="vd-anim-header rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+        <div className="vd-anim-header zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
           <ScanProcessingPanel
             compact
             detail={progress.label}
@@ -168,7 +168,7 @@ export function FuelReceiptUploader({
       {step === "review" ? (
         <div className="vd-anim-header space-y-4">
           {previewUrl ? (
-            <div className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]">
+            <div className="zt-feature-panel overflow-hidden">
               <img
                 src={previewUrl}
                 alt="Vorschau Tankquittung"

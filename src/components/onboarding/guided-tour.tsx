@@ -219,7 +219,7 @@ export function GuidedTour({
       <div aria-hidden className="absolute inset-0 z-0" />
 
       <div
-        className="absolute z-10 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-modal)] sm:p-5"
+        className="absolute z-10 zt-feature-panel p-4 shadow-[var(--vd-shadow-modal)] sm:p-5"
         style={cardStyle}
       >
         <div className="mb-3 flex items-start justify-between gap-3">

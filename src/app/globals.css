@@ -226,6 +226,155 @@ nextjs-portal {
   backdrop-filter: blur(12px);
 }
 
+/* —— Automotive UI (dark-first; light keeps vd-surface-card) —— */
+.zt-feature-panel {
+  overflow: hidden;
+  border-radius: 1.35rem;
+  border: 1px solid var(--vd-border);
+  background: var(--vd-surface);
+  box-shadow: var(--vd-shadow);
+}
+
+.dark .zt-card {
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.05);
+  border-top-color: rgb(255 255 255 / 0.1);
+  background: linear-gradient(
+    to bottom,
+    rgb(39 39 42 / 0.4),
+    rgb(24 24 27 / 0.8)
+  );
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
+}
+
+.dark .zt-kicker {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgb(161 161 170);
+}
+
+.dark .zt-meta {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: rgb(161 161 170);
+}
+
+.dark .zt-cta-primary {
+  display: inline-flex;
+  min-height: 3rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.5);
+  background: linear-gradient(to bottom, rgb(244 244 245), rgb(212 212 216));
+  font-weight: 600;
+  color: rgb(9 9 11);
+  box-shadow: 0 10px 15px -3px rgb(255 255 255 / 0.1);
+}
+
+.dark .zt-cta-primary--locked {
+  border-color: rgb(255 255 255 / 0.1);
+  background: linear-gradient(
+    to bottom,
+    rgb(39 39 42 / 0.6),
+    rgb(24 24 27 / 0.9)
+  );
+  color: rgb(161 161 170);
+  box-shadow: none;
+}
+
+/* Wizard/auth primary actions — metallic CTA in dark; light keeps --claim-cta-* tokens */
+.dark .claim-cta:not(.vd-scan-fab-cta):not(.vd-scan-fab-cta--locked) {
+  min-height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.5);
+  background: linear-gradient(to bottom, rgb(244 244 245), rgb(212 212 216));
+  background-image: linear-gradient(to bottom, rgb(244 244 245), rgb(212 212 216));
+  color: rgb(9 9 11);
+  box-shadow: 0 10px 15px -3px rgb(255 255 255 / 0.1);
+}
+
+.dark .claim-cta:not(.vd-scan-fab-cta):not(.vd-scan-fab-cta--locked):disabled {
+  border-color: rgb(255 255 255 / 0.1);
+  background: linear-gradient(
+    to bottom,
+    rgb(39 39 42 / 0.6),
+    rgb(24 24 27 / 0.9)
+  );
+  background-image: linear-gradient(
+    to bottom,
+    rgb(39 39 42 / 0.6),
+    rgb(24 24 27 / 0.9)
+  );
+  color: rgb(161 161 170);
+  box-shadow: none;
+  opacity: 1;
+}
+
+.dark .zt-back-pill,
+.dark .vd-back-pill {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(24 24 27 / 0.6);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgb(244 244 245);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.28);
+  backdrop-filter: blur(12px);
+}
+
+/* Shadcn Card shells on auth / marketing surfaces */
+.dark [data-surface="automotive"] [data-slot="card"] {
+  border-color: rgb(255 255 255 / 0.05);
+  border-top-color: rgb(255 255 255 / 0.1);
+  background: linear-gradient(
+    to bottom,
+    rgb(39 39 42 / 0.4),
+    rgb(24 24 27 / 0.8)
+  );
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
+}
+
+.dark .vd-surface-card,
+.dark .vd-tile,
+.dark .zt-feature-panel {
+  border-color: rgb(255 255 255 / 0.05);
+  border-top-color: rgb(255 255 255 / 0.1);
+  background: linear-gradient(
+    to bottom,
+    rgb(39 39 42 / 0.4),
+    rgb(24 24 27 / 0.8)
+  );
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
+}
+
+.dark .claim-kicker {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgb(161 161 170);
+}
+
 .vd-back-pill {
   display: inline-flex;
   width: fit-content;

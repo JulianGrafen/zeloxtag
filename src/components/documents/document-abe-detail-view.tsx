@@ -212,7 +212,7 @@ export function DocumentAbeDetailView({
 
         <ApprovalFieldsSection approvalFields={document.approval_fields} />
 
-        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
           <h2 className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Dokumentdaten
           </h2>
@@ -393,7 +393,7 @@ export function DocumentAbeDetailView({
           />
         ) : null}
 
-        <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white shadow-[var(--vd-shadow-sm)]">
+        <section className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
           <div className="flex items-center justify-between border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
             <div className="min-w-0">
               <p className="truncate text-[0.75rem] font-medium text-[color:var(--vd-text)]">

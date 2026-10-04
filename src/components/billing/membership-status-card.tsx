@@ -56,7 +56,7 @@ export async function MembershipStatusCard({
     return (
       <section
         aria-label="Mitgliedschaft"
-        className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+        className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
       >
         <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
           Mitgliedschaft

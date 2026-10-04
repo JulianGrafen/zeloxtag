@@ -258,13 +258,13 @@ export function VehicleSpecsView({
           <PressableLink
             href={`/v/${tagUuid}`}
             variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            className="vd-back-pill"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Dashboard
           </PressableLink>
 
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+          <div className="zt-feature-panel p-5">
             <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
               <Gauge className="h-5 w-5" aria-hidden />
             </div>
@@ -302,7 +302,7 @@ export function VehicleSpecsView({
               handleSave();
             }}
           >
-            <section className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+            <section className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
               <h2 className="font-[family-name:var(--font-display)] text-[1rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
                 Stammdaten
               </h2>
@@ -357,7 +357,7 @@ export function VehicleSpecsView({
               </div>
             </section>
 
-            <section className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+            <section className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
               <h2 className="font-[family-name:var(--font-display)] text-[1rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
                 Antrieb & Fahrwerk
               </h2>
@@ -536,7 +536,7 @@ export function VehicleSpecsView({
               </Field>
             </section>
 
-            <section className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+            <section className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
               <div>
                 <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
                   Wartung
@@ -599,7 +599,7 @@ export function VehicleSpecsView({
           </FixedBottomActionBar>
           </>
         ) : (
-          <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+          <section className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
             <ReadRow label="Marke" value={vehicle.make} />
             <ReadRow label="Modell" value={vehicle.model} />
             <ReadRow

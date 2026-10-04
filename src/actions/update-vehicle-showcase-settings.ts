@@ -22,6 +22,7 @@ export type UpdateVehicleShowcaseSettingsInput = {
   isPublic: boolean;
   hideFinancials: boolean;
   showcaseSwipeOptIn?: boolean;
+  isStoryPublic?: boolean;
 };
 
 export type UpdateVehicleShowcaseSettingsResult =
@@ -63,7 +64,7 @@ export async function updateVehicleShowcaseSettings(
     const supabase = await createClient();
     const { data: current, error: readError } = await supabase
       .from("vehicles")
-      .select("public_slug, showcase_swipe_opt_in")
+      .select("public_slug, showcase_swipe_opt_in, is_story_public")
       .eq("id", vehicleId)
       .eq("user_id", ownership.userId)
       .maybeSingle();
@@ -94,6 +95,14 @@ export async function updateVehicleShowcaseSettings(
       showcaseSwipeOptIn = input.showcaseSwipeOptIn;
     }
 
+    const previousStoryPublic = Boolean(current?.is_story_public);
+    let isStoryPublic = previousStoryPublic;
+    if (!input.isPublic) {
+      isStoryPublic = false;
+    } else if (input.isStoryPublic !== undefined) {
+      isStoryPublic = input.isStoryPublic;
+    }
+
     const { error } = await supabase
       .from("vehicles")
       .update({
@@ -101,6 +110,7 @@ export async function updateVehicleShowcaseSettings(
         hide_financials: input.hideFinancials,
         public_slug: publicSlug,
         showcase_swipe_opt_in: showcaseSwipeOptIn,
+        is_story_public: isStoryPublic,
       })
       .eq("id", vehicleId)
       .eq("user_id", ownership.userId);
@@ -111,6 +121,7 @@ export async function updateVehicleShowcaseSettings(
         error.message.includes("is_public") ||
         error.message.includes("public_slug") ||
         error.message.includes("showcase_swipe_opt_in") ||
+        error.message.includes("is_story_public") ||
         error.code === "PGRST204";
 
       if (missingColumn) {

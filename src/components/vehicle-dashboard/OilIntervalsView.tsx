@@ -153,7 +153,7 @@ export function OilIntervalsView({
             <PressableLink
               href={backHref}
               variant="pill"
-              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+              className="vd-back-pill"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Zurück
@@ -177,7 +177,7 @@ export function OilIntervalsView({
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
+          <div className="zt-feature-panel p-5 sm:p-6">
             <div className="flex gap-2 rounded-full bg-[color:var(--vd-surface-elevated)] p-1">
               <PressableButton
                 type="button"
@@ -269,7 +269,7 @@ export function OilIntervalsView({
           </h2>
 
           {activeRecords.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-6 text-center shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel px-4 py-6 text-center shadow-[var(--vd-shadow-sm)]">
               <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
                 {isBrakeTab
                   ? "Noch kein Brems-Service hinterlegt. Scanne eine Rechnung mit Bremsbelägen oder trage Bremsen manuell über Service ein."
@@ -277,13 +277,13 @@ export function OilIntervalsView({
               </p>
             </div>
           ) : visibleRecords.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-6 text-center shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel px-4 py-6 text-center shadow-[var(--vd-shadow-sm)]">
               <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
                 Keine Treffer für diese Suche.
               </p>
             </div>
           ) : (
-          <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+          <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
             {isBrakeTab
               ? visibleBrakeRecords.map((record, index) => (
                   <li key={record.id}>

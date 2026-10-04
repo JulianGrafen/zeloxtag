@@ -149,7 +149,7 @@ export function ManualEntryModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="manual-entry-title"
-        className="relative z-10 w-full max-w-lg rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)]"
+        className="relative z-10 w-full max-w-lg zt-feature-panel p-4 shadow-[var(--vd-shadow)]"
       >
         <div className="mb-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">

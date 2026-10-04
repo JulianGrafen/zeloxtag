@@ -12,7 +12,7 @@ export function VehicleSettingsSubmenuGroup({
 }: VehicleSettingsSubmenuGroupProps) {
   return (
     <div
-      className={`overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)] divide-y divide-[color:var(--vd-border)] ${className}`.trim()}
+      className={`zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)] divide-y divide-[color:var(--vd-border)] ${className}`.trim()}
     >
       {children}
     </div>

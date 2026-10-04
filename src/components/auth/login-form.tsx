@@ -106,9 +106,9 @@ export function LoginForm({
 
       <Card
         className={cn(
-          "relative z-10 overflow-hidden",
+          "relative z-10 overflow-hidden zt-feature-panel vd-surface-card",
           isDigitalGarage
-            ? "w-full border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]"
+            ? "w-full"
             : "mx-4 mt-0 w-[calc(100%-2rem)] sm:mx-auto sm:w-full",
         )}
       >

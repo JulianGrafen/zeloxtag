@@ -12,7 +12,9 @@ import {
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
 import { isVehicleDynoChartStoragePath } from "@/lib/vehicles/dyno-chart-constants";
+import { isPublicBuildStoryDocument } from "@/lib/vehicles/build-story-document";
 import { isVehiclePublicShowcase } from "@/lib/vehicles/get-public-vehicle";
+import { isVehicleBuildStoryPublic } from "@/lib/vehicles/is-vehicle-build-story-public";
 
 export const runtime = "nodejs";
 
@@ -104,7 +106,7 @@ export async function GET(
       const { data: doc } = await admin
         .from("documents")
         .select(
-          "id, category, invoice_number, file_url, type, show_on_public_showcase",
+          "id, category, invoice_number, file_url, type, show_on_public_showcase, show_on_build_story",
         )
         .eq("id", documentId)
         .eq("vehicle_id", vehicleId)
@@ -120,7 +122,14 @@ export async function GET(
             doc as Parameters<typeof isShowcaseGalleryDocument>[0],
           ));
 
-      if (!allowedShowcase) {
+      const allowedBuildStory =
+        doc &&
+        isPublicBuildStoryDocument(
+          doc as Parameters<typeof isPublicBuildStoryDocument>[0],
+        ) &&
+        (await isVehicleBuildStoryPublic(vehicleId));
+
+      if (!allowedShowcase && !allowedBuildStory) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }

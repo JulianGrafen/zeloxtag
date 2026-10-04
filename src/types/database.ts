@@ -121,6 +121,8 @@ export type Vehicle = {
   public_slug: string | null;
   /** Appear in authenticated build-swipe deck when public — migration 00067. */
   showcase_swipe_opt_in: boolean;
+  /** Public Build Story timeline — migration 00079. */
+  is_story_public: boolean;
   /** Unguessable token for `/expose/{token}` — migration 00037. */
   expose_token: string | null;
   /** When true, the token-gated sales exposé is publicly readable. */
@@ -293,6 +295,8 @@ export type Document = {
   date: string | null;
   /** Owner opt-in: include mods/photos on public showcase (default false). */
   show_on_public_showcase?: boolean;
+  /** Owner opt-in: include umbau photo on public Build Story — migration 00079. */
+  show_on_build_story?: boolean;
   created_at: string;
 };
 
@@ -367,6 +371,7 @@ export type Database = {
           hide_financials?: boolean;
           public_slug?: string | null;
           showcase_swipe_opt_in?: boolean;
+          is_story_public?: boolean;
           expose_token?: string | null;
           is_expose_active?: boolean;
           showcase_build_dna?: ShowcaseBuildDna | Record<string, unknown> | null;
@@ -390,6 +395,7 @@ export type Database = {
           hide_financials?: boolean;
           public_slug?: string | null;
           showcase_swipe_opt_in?: boolean;
+          is_story_public?: boolean;
           expose_token?: string | null;
           is_expose_active?: boolean;
           showcase_build_dna?: ShowcaseBuildDna | Record<string, unknown> | null;
@@ -595,6 +601,7 @@ export type Database = {
           amount?: number | null;
           date?: string | null;
           show_on_public_showcase?: boolean;
+          show_on_build_story?: boolean;
           created_at?: string;
         };
         Update: {
@@ -623,6 +630,7 @@ export type Database = {
           amount?: number | null;
           date?: string | null;
           show_on_public_showcase?: boolean;
+          show_on_build_story?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -907,6 +915,10 @@ export type Database = {
       };
       get_weekly_top_builds: {
         Args: { p_limit?: number };
+        Returns: Json;
+      };
+      list_public_build_story: {
+        Args: { p_slug: string; p_limit?: number; p_offset?: number };
         Returns: Json;
       };
     };

@@ -4,6 +4,7 @@ import {
   mapSwipeCandidateToCard,
   type ShowcaseSwipeCandidateRow,
 } from "@/lib/showcase/swipe-card-dto";
+import { parseJsonbRpcArray } from "@/lib/showcase/parse-jsonb-rpc-array";
 import type {
   ShowcaseSwipeCard,
   ShowcaseSwipeInboxRow,
@@ -22,10 +23,10 @@ export async function loadShowcaseSwipeDeck(
     throw new Error(error.message);
   }
 
-  if (!Array.isArray(data)) return [];
+  const rows = parseJsonbRpcArray(data);
 
   const cards: ShowcaseSwipeCard[] = [];
-  for (const entry of data) {
+  for (const entry of rows) {
     if (!entry || typeof entry !== "object") continue;
     const card = mapSwipeCandidateToCard(entry as ShowcaseSwipeCandidateRow);
     if (card) cards.push(card);

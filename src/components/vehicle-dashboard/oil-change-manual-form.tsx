@@ -118,7 +118,7 @@ export function OilChangeManualForm({
 
   return (
     <form
-      className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
+      className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
       onSubmit={(event) => {
         event.preventDefault();
         handleSubmit();

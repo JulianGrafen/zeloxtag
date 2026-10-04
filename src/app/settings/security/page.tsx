@@ -39,7 +39,7 @@ export default async function SettingsSecurityPage() {
 
         <section
           aria-label="Zwei-Faktor-Authentifizierung"
-          className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+          className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
         >
           <MfaSetupPanel showHeader={false} />
         </section>

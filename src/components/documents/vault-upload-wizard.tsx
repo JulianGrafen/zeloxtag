@@ -727,7 +727,7 @@ export function VaultUploadWizard({
         ) : null}
 
         <form
-          className="space-y-4 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
+          className="space-y-4 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
           onSubmit={(event) => {
             event.preventDefault();
             handleSave();
@@ -838,7 +838,7 @@ export function VaultUploadWizard({
         </form>
 
         {previewUrl ? (
-          <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+          <section className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
             <div className="flex items-center justify-between gap-2 border-b border-[color:var(--vd-border)] px-3 py-2.5">
               <div className="flex min-w-0 items-center gap-2 text-[0.78rem] text-[color:var(--vd-muted)]">
                 <FileText className="h-4 w-4 shrink-0" aria-hidden />
@@ -888,7 +888,7 @@ export function VaultUploadWizard({
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            className="vd-back-pill"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             {backLabel}
@@ -897,7 +897,7 @@ export function VaultUploadWizard({
           <PressableLink
             href={resolvedBackHref}
             variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            className="vd-back-pill"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             {backLabel}
@@ -905,7 +905,7 @@ export function VaultUploadWizard({
         )}
       </header>
 
-      <div className="mt-4 rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+      <div className="mt-4 zt-feature-panel p-5">
         <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
           <Archive className="h-5 w-5" aria-hidden />
         </div>
@@ -967,7 +967,7 @@ export function VaultUploadWizard({
       <button
         type="button"
         onClick={() => openFilePicker(false)}
-        className="group w-full rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-left shadow-[var(--vd-shadow-sm)] transition-colors hover:border-neutral-300 active:bg-neutral-50"
+        className="group w-full zt-feature-panel p-5 text-left shadow-[var(--vd-shadow-sm)] transition-colors hover:border-neutral-300 active:bg-neutral-50"
       >
         <div className="flex items-start justify-between gap-3">
           <div>

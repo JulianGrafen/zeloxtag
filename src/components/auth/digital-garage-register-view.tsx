@@ -29,7 +29,7 @@ export function DigitalGarageRegisterView({
           </p>
         </div>
 
-        <ol className="grid gap-2 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/60 p-4">
+        <ol className="zt-feature-panel grid gap-2 p-4">
           {DIGITAL_GARAGE_REGISTER_STEPS.map((step, index) => (
             <li
               key={step}

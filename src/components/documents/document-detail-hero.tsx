@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export const DOCUMENT_DETAIL_HERO_CLASS =
-  "rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] sm:p-6";
+  "zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)] sm:p-6";
 
 export const DOCUMENT_DETAIL_TITLE_CLASS =
   "font-[family-name:var(--font-display)] text-[1.35rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.5rem]";

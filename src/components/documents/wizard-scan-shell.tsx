@@ -8,7 +8,15 @@ import {
   type ScanStatusHeading,
 } from "@/components/documents/scan-processing-panel";
 import { WizardStepProgress } from "@/components/documents/wizard-step-progress";
+import {
+  automotiveBackPillClassName,
+  automotiveDisplayTitleClassName,
+  automotiveFeaturePanelClassName,
+  automotiveKickerClassName,
+  automotiveMetaClassName,
+} from "@/components/ui/automotive";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { cn } from "@/lib/utils";
 
 /** Fixed toast for camera-phase errors — consistent across scan wizards. */
 export function WizardCameraError({ message }: { message: string }) {
@@ -44,7 +52,7 @@ export function WizardScanHeader({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          className={automotiveBackPillClassName}
         >
           <ArrowLeft className="h-4 w-4" />
           {backLabel}
@@ -53,24 +61,22 @@ export function WizardScanHeader({
         <PressableLink
           href={backHref}
           variant="pill"
-          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+          className={automotiveBackPillClassName}
         >
           <ArrowLeft className="h-4 w-4" />
           {backLabel}
         </PressableLink>
       ) : null}
 
-      <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+      <div className={automotiveFeaturePanelClassName}>
         <div className="vd-icon-badge !rounded-2xl">
           <ScanLine className="h-5 w-5" />
         </div>
-        <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-          {eyebrow}
-        </p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+        <p className={cn("mt-4", automotiveKickerClassName)}>{eyebrow}</p>
+        <h1 className={cn("mt-2 text-[1.4rem]", automotiveDisplayTitleClassName)}>
           {title}
         </h1>
-        <p className="mt-1 text-[0.88rem] text-[color:var(--vd-muted)]">
+        <p className={cn("mt-1 normal-case", automotiveMetaClassName)}>
           {vehicleLabel}
         </p>
       </div>

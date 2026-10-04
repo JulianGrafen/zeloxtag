@@ -44,6 +44,7 @@ export default async function VehiclePublicProfileSettingsPage({
           isPublic={Boolean(vehicle.is_public)}
           hideFinancials={vehicle.hide_financials !== false}
           showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
+          isStoryPublic={Boolean(vehicle.is_story_public)}
           publicSlug={vehicle.public_slug}
           canEdit={!isDemo}
           hasLinkedTag={hasLinkedTag}

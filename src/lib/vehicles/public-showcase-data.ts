@@ -19,6 +19,7 @@ import {
 import { buildPersonalityLabels } from "@/lib/vehicles/build-personality-chips";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
+import type { BuildStoryEntry } from "@/lib/vehicles/build-story-map";
 import type { Document, Vehicle } from "@/types/database";
 
 export type PublicGalleryPhoto = {
@@ -70,6 +71,12 @@ export type PublicShowcaseProfile = {
   engineSoundUrl: string | null;
   /** Display labels for owner-selected build vibe chips. */
   buildPersonalityLabels: string[];
+  isStoryPublic: boolean;
+};
+
+export type PublicBuildStorySlice = {
+  entries: BuildStoryEntry[];
+  hasMore: boolean;
 };
 
 export type PublicShowcasePayload = {
@@ -77,6 +84,7 @@ export type PublicShowcasePayload = {
   photos: PublicGalleryPhoto[];
   modifications: PublicModification[];
   buildDna: ShowcaseBuildDna | null;
+  buildStory: PublicBuildStorySlice | null;
 };
 
 function resolvePublicBuildDna(
@@ -98,6 +106,7 @@ function resolvePublicBuildDna(
 
 function normalizeVehicleShowcaseFields(vehicle: Vehicle): {
   is_public: boolean;
+  is_story_public: boolean;
   hide_financials: boolean;
   public_slug: string | null;
   expose_token: string | null;
@@ -105,6 +114,7 @@ function normalizeVehicleShowcaseFields(vehicle: Vehicle): {
 } {
   return {
     is_public: Boolean(vehicle.is_public),
+    is_story_public: vehicle.is_story_public === true,
     hide_financials: vehicle.hide_financials !== false,
     public_slug:
       typeof vehicle.public_slug === "string" ? vehicle.public_slug : null,
@@ -262,7 +272,8 @@ export function buildPublicShowcasePayload(
   vehicle: Vehicle,
   documents: Document[],
 ): PublicShowcasePayload {
-  const { hide_financials, public_slug } = normalizeVehicleShowcaseFields(vehicle);
+  const { hide_financials, public_slug, is_story_public } =
+    normalizeVehicleShowcaseFields(vehicle);
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
   const publicDocs = filterPublicShowcaseDocuments(documents);
 
@@ -312,10 +323,12 @@ export function buildPublicShowcasePayload(
       buildPersonalityLabels: buildPersonalityLabels(
         specs.buildPersonalityTags ?? [],
       ),
+      isStoryPublic: is_story_public,
     },
     photos,
     modifications,
     buildDna: resolvePublicBuildDna(vehicle, modifications),
+    buildStory: null,
   };
 }
 
@@ -328,6 +341,7 @@ export function withDefaultShowcaseFields(vehicle: Vehicle): Vehicle {
     public_slug: fields.public_slug,
     expose_token: fields.expose_token,
     is_expose_active: fields.is_expose_active,
+    is_story_public: fields.is_story_public,
     showcase_build_dna: vehicle.showcase_build_dna ?? null,
     showcase_build_dna_fingerprint:
       vehicle.showcase_build_dna_fingerprint ?? null,

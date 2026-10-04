@@ -47,7 +47,7 @@ export function CompatibilityTable({
   return (
     <section
       className={[
-        "rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]",
+        "zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]",
         className,
       ]
         .filter(Boolean)

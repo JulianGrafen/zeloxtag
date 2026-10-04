@@ -12,7 +12,7 @@ export function PwaInstallSettingsPanel() {
     return (
       <section
         aria-label="App installiert"
-        className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+        className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
       >
         <div className="flex items-start gap-3">
           <CheckCircle2
@@ -35,7 +35,7 @@ export function PwaInstallSettingsPanel() {
   return (
     <section
       aria-label="App installieren"
-      className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+      className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
     >
       <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
         Mobile App

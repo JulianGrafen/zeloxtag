@@ -179,13 +179,13 @@ function VehicleInvoicesViewContent({
           <PressableLink
             href={path("")}
             variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            className="vd-back-pill"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Zurück
           </PressableLink>
 
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)] sm:p-6">
+          <div className="zt-feature-panel p-5 sm:p-6">
             <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)] sm:text-[1.75rem]">
               {heading}
             </h1>
@@ -231,7 +231,7 @@ function VehicleInvoicesViewContent({
           </h2>
 
           {invoices.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               Noch keine Rechnungen. Scanne deinen ersten Beleg
               {canWrite ? (
                 <>
@@ -250,11 +250,11 @@ function VehicleInvoicesViewContent({
               )}
             </div>
           ) : visible.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               Keine Treffer für diese Suche / Filter.
             </div>
           ) : (
-            <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
               {visible.map((doc, index) => {
                 const amount =
                   typeof doc.amount === "number" ? formatEur(doc.amount) : null;

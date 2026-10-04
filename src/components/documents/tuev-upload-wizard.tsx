@@ -573,7 +573,7 @@ export function TuevUploadWizard({
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+              className="vd-back-pill"
             >
               <ArrowLeft className="h-4 w-4" />
               {backLabel}
@@ -582,7 +582,7 @@ export function TuevUploadWizard({
             <PressableLink
               href={backHref}
               variant="pill"
-              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+              className="vd-back-pill"
             >
               <ArrowLeft className="h-4 w-4" />
               {backLabel}
@@ -591,7 +591,7 @@ export function TuevUploadWizard({
         </header>
 
         {/* Heading card */}
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+        <div className="zt-feature-panel p-5">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
             <ScanLine className="h-5 w-5" />
           </div>
@@ -647,7 +647,7 @@ export function TuevUploadWizard({
           onClick={() =>
             setState((prev) => ({ ...prev, phase: "single-click" }))
           }
-          className="group w-full rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-left shadow-[var(--vd-shadow-sm)] transition-colors hover:border-neutral-300 active:bg-neutral-50"
+          className="group w-full zt-feature-panel p-5 text-left shadow-[var(--vd-shadow-sm)] transition-colors hover:border-neutral-300 active:bg-neutral-50"
         >
           <div className="flex items-start justify-between gap-3">
             <div>

@@ -199,7 +199,7 @@ export function TagDashboardView({
       : previewFallbackUrl ?? undefined,
     vehicleImageFrameless: demoShowcase,
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
-    statusLabel: "ZeloxTag · Verbunden",
+    statusLabel: "Verbunden",
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),
     showcaseSwipeUnreadLikes,

@@ -8,6 +8,8 @@ import { bumpSilhouetteCacheUrl } from "@/lib/vehicles/prefetch-silhouette-image
 import { isOwnerSilhouetteSrc } from "@/lib/vehicles/silhouette-display-url";
 
 type AnimatedVehicleHeaderProps = {
+  /** Compact header thumb vs. dashboard hero prominence. */
+  size?: "default" | "hero";
   /** Owner vehicle photo URL. Null → placeholder frame. */
   silhouetteImageUrl?: string | null;
   /** Session data URL / blob when proxy fails — owner uploads only. */
@@ -35,7 +37,18 @@ const ENTRANCE = {
 /**
  * Dashboard header vehicle photo in a modern 4:3 frame (top-right).
  */
+const FRAME_WIDTH = {
+  default: "w-[6.75rem] sm:w-[8.5rem]",
+  hero: "w-[10.25rem] sm:w-[13rem]",
+} as const;
+
+const FRAMELESS_WIDTH = {
+  default: "w-[9rem] sm:w-[11rem]",
+  hero: "w-[11rem] sm:w-[14rem]",
+} as const;
+
 export function AnimatedVehicleHeader({
+  size = "default",
   silhouetteImageUrl,
   previewFallbackUrl,
   fallbackImageUrl,
@@ -132,7 +145,7 @@ export function AnimatedVehicleHeader({
   if (frameless) {
     const showcasePhoto = (
       <motion.div
-        className="relative aspect-[4/3] w-[9rem] shrink-0 sm:w-[11rem]"
+        className={`relative aspect-[4/3] shrink-0 ${FRAMELESS_WIDTH[size]}`}
         initial={{ opacity: 0, scale: 0.96, y: 6 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={ENTRANCE}
@@ -189,7 +202,7 @@ export function AnimatedVehicleHeader({
 
   const frame = (
     <motion.div
-      className="relative aspect-[4/3] w-[6.75rem] sm:w-[8.5rem]"
+      className={`relative aspect-[4/3] ${FRAME_WIDTH[size]}`}
       initial={{ opacity: 0, scale: 0.94, y: 6 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={ENTRANCE}

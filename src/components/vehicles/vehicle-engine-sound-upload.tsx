@@ -179,8 +179,8 @@ export function VehicleEngineSoundUpload({
   }
 
   const wrapperClass = embedded
-    ? `rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 sm:p-5 ${className}`
-    : `rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 ${className}`;
+    ? `zt-feature-panel p-4 sm:p-5 ${className}`
+    : `zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 ${className}`;
 
   return (
     <section className={wrapperClass}>

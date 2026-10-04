@@ -57,7 +57,7 @@ export function OperatingCostEntryList({
   }
 
   return (
-    <ul className="divide-y divide-[color:var(--vd-border)] overflow-hidden rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]">
+    <ul className="divide-y divide-[color:var(--vd-border)] overflow-hidden zt-feature-panel">
       {entries.map((entry) => {
         const consumption = consumptionByEntryId?.get(entry.id);
         const editHref =

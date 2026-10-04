@@ -52,7 +52,7 @@ function CostStatCard({
       className={`rounded-2xl border p-4 ${
         featured
           ? "border-[color:var(--vd-accent)]/35 bg-[color:var(--vd-surface-elevated)] shadow-[0_0_32px_-8px_color-mix(in_srgb,var(--vd-accent)_45%,transparent)]"
-          : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]"
+          : "zt-feature-panel border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]"
       }`}
     >
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
@@ -346,7 +346,7 @@ export function VehicleCostOverviewView({
           <PressableLink
             href={belegeHref}
             variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            className="vd-back-pill"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Belege
@@ -394,7 +394,7 @@ export function VehicleCostOverviewView({
         </header>
 
         {!hasData ? (
-          <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-6 text-center shadow-[var(--vd-shadow-sm)]">
+          <div className="zt-feature-panel p-6 text-center shadow-[var(--vd-shadow-sm)]">
             <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
               Noch keine Kosten erfasst
             </p>

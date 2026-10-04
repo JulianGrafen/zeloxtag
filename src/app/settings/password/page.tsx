@@ -41,7 +41,7 @@ export default async function SettingsPasswordPage() {
 
         <section
           aria-label="Passwort"
-          className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+          className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
         >
           <ChangePasswordPanel
             hasPasswordLogin={hasPasswordLogin}

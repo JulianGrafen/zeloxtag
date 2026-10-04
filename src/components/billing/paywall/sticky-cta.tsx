@@ -5,6 +5,7 @@ import {
   PRO_PAYWALL_STICKY_MICROCOPY,
   PRO_TRIAL_LABEL,
 } from "@/lib/billing/pro-plan";
+import { automotiveBottomBarShellClassName } from "@/components/ui/automotive";
 import { cn } from "@/lib/utils";
 
 export function StickyPaywallCta({
@@ -31,10 +32,14 @@ export function StickyPaywallCta({
   return (
     <div
       className={cn(
-        "z-20 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 shadow-[var(--paywall-sticky-footer-shadow)] backdrop-blur-xl",
-        inline
-          ? "shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
-          : "fixed inset-x-0 bottom-0 z-[110] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2",
+        fixed
+          ? cn(
+              "fixed inset-x-0 bottom-0 z-[110]",
+              automotiveBottomBarShellClassName,
+            )
+          : cn(
+              "z-20 shrink-0 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[var(--paywall-sticky-footer-shadow)] backdrop-blur-xl",
+            ),
       )}
     >
       <div className="mx-auto w-full max-w-lg">

@@ -71,7 +71,7 @@ export function EditableTuevHuSection({
   }
 
   return (
-    <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+    <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
           Nächste HU

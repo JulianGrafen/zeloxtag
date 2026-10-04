@@ -62,7 +62,7 @@ export function FuelManualEntryView({
       </header>
 
       <form
-        className="vd-anim-header space-y-4 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
+        className="vd-anim-header space-y-4 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
         onSubmit={(event) => {
           event.preventDefault();
           submit(form);

@@ -191,7 +191,7 @@ export function VehicleDynoChartUpload({
 
   const wrapperClass = embedded
     ? `space-y-3 ${className}`.trim()
-    : `rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim();
+    : `zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)] ${className}`.trim();
 
   return (
     <div className={wrapperClass}>

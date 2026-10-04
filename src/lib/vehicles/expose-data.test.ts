@@ -19,6 +19,7 @@ const vehicle: Vehicle = {
   hide_financials: false,
   public_slug: null,
   showcase_swipe_opt_in: false,
+  is_story_public: false,
   expose_token: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   is_expose_active: true,
   showcase_build_dna: null,

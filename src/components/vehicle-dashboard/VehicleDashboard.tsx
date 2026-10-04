@@ -51,9 +51,11 @@ export function VehicleDashboard({
         style={{ animationDelay: "0.12s" }}
         data-tour="tile-grid"
       >
-        <h2 className="claim-kicker px-1">Fahrzeugmenü</h2>
+        <h2 className="px-1 font-mono text-[0.65rem] font-medium uppercase tracking-[0.22em] text-zinc-500">
+          Fahrzeugmenü
+        </h2>
 
-        <div className="vd-anim-stagger grid grid-cols-2 gap-3">
+        <div className="vd-anim-stagger grid grid-cols-2 gap-3 sm:gap-3.5">
           {tiles.map((tile) => (
             <DashboardTile key={tile.id} tile={tile} onClick={onTileClick} />
           ))}

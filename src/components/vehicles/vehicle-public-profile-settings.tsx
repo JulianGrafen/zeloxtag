@@ -18,6 +18,7 @@ type VehiclePublicProfileSettingsProps = {
   isPublic: boolean;
   hideFinancials: boolean;
   showcaseSwipeOptIn: boolean;
+  isStoryPublic: boolean;
   publicSlug: string | null;
   canEdit: boolean;
   hasLinkedTag: boolean;
@@ -95,6 +96,7 @@ export function VehiclePublicProfileSettings({
   isPublic: initialIsPublic,
   hideFinancials: initialHideFinancials,
   showcaseSwipeOptIn: initialShowcaseSwipeOptIn,
+  isStoryPublic: initialIsStoryPublic,
   publicSlug: initialPublicSlug,
   canEdit,
   hasLinkedTag,
@@ -107,6 +109,7 @@ export function VehiclePublicProfileSettings({
   const [showcaseSwipeOptIn, setShowcaseSwipeOptIn] = useState(
     initialShowcaseSwipeOptIn,
   );
+  const [isStoryPublic, setIsStoryPublic] = useState(initialIsStoryPublic);
   const [sharePath, setSharePath] = useState<string | null>(
     initialSharePath(hasLinkedTag, initialIsPublic, initialPublicSlug),
   );
@@ -121,6 +124,7 @@ export function VehiclePublicProfileSettings({
       isPublic?: boolean;
       hideFinancials?: boolean;
       showcaseSwipeOptIn?: boolean;
+      isStoryPublic?: boolean;
     },
     onError?: () => void,
   ) {
@@ -130,6 +134,7 @@ export function VehiclePublicProfileSettings({
       isPublic: next.isPublic ?? isPublic,
       hideFinancials: next.hideFinancials ?? hideFinancials,
       showcaseSwipeOptIn: next.showcaseSwipeOptIn ?? showcaseSwipeOptIn,
+      isStoryPublic: next.isStoryPublic ?? isStoryPublic,
     };
 
     startSettingsTransition(async () => {
@@ -143,6 +148,7 @@ export function VehiclePublicProfileSettings({
         showcaseSwipeOptIn: payload.isPublic
           ? payload.showcaseSwipeOptIn
           : false,
+        isStoryPublic: payload.isPublic ? payload.isStoryPublic : false,
       });
 
       if (result.status === "error") {
@@ -199,13 +205,22 @@ export function VehiclePublicProfileSettings({
         onChange={(value) => {
           const previous = isPublic;
           const previousSwipe = showcaseSwipeOptIn;
+          const previousStory = isStoryPublic;
           setIsPublic(value);
-          if (!value) setShowcaseSwipeOptIn(false);
+          if (!value) {
+            setShowcaseSwipeOptIn(false);
+            setIsStoryPublic(false);
+          }
           saveSettings(
-            { isPublic: value, showcaseSwipeOptIn: value ? showcaseSwipeOptIn : false },
+            {
+              isPublic: value,
+              showcaseSwipeOptIn: value ? showcaseSwipeOptIn : false,
+              isStoryPublic: value ? isStoryPublic : false,
+            },
             () => {
               setIsPublic(previous);
               setShowcaseSwipeOptIn(previousSwipe);
+              setIsStoryPublic(previousStory);
             },
           );
         }}
@@ -225,10 +240,22 @@ export function VehiclePublicProfileSettings({
           );
         }}
       />
+      <ToggleRow
+        label="Build-Story öffentlich machen"
+        description="Zeigt deine Umbauten und Bilder als chronologische Timeline für Besucher an, die dein Profil oder deinen QR-Code scannen."
+        checked={isStoryPublic}
+        disabled={!canEdit || !isPublic}
+        busy={pending}
+        onChange={(value) => {
+          const previous = isStoryPublic;
+          setIsStoryPublic(value);
+          saveSettings({ isStoryPublic: value }, () => setIsStoryPublic(previous));
+        }}
+      />
       {!isPublic ? (
         <p className="px-1 text-[0.76rem] text-[color:var(--vd-muted)]">
-          Zuerst öffentliches Showcase aktivieren, um im Build-Swipe sichtbar zu
-          sein.
+          Zuerst öffentliches Showcase aktivieren, um Build-Swipe und Build-Story
+          zu nutzen.
         </p>
       ) : null}
       {canEdit && (showcaseSwipeTotalLikes > 0 || showcaseSwipeUnreadLikes > 0) ? (

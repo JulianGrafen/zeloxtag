@@ -261,7 +261,7 @@ export function BuildPlannerView({
             .map((mod) => (
               <div
                 key={mod.id}
-                className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3"
+                className="zt-feature-panel px-4 py-3"
               >
                 <p className="font-medium text-[color:var(--vd-text)]">
                   {mod.title}

@@ -57,7 +57,7 @@ export function VehicleShowcaseModificationsSettings({
   const hasAnyDocs = modifications.length > 0 || invoices.length > 0;
 
   return (
-    <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 sm:p-5">
+    <section className="zt-feature-panel p-4 sm:p-5">
       {!hasAnyDocs ? (
         <p className="rounded-xl border border-dashed border-[color:var(--vd-border)] px-4 py-3 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
           Noch keine Umbauten oder Rechnungen —{" "}

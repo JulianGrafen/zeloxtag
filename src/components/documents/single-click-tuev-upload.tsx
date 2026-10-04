@@ -403,7 +403,7 @@ export function SingleClickTuevUpload({
     <button
       type="button"
       onClick={onBack}
-      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+      className="vd-back-pill"
     >
       <ArrowLeft className="h-4 w-4" />
       {backLabel}
@@ -412,7 +412,7 @@ export function SingleClickTuevUpload({
     <PressableLink
       href={backHref}
       variant="pill"
-      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+      className="vd-back-pill"
     >
       <ArrowLeft className="h-4 w-4" />
       {backLabel}
@@ -489,7 +489,7 @@ export function SingleClickTuevUpload({
   if (phase === "processing") {
     return (
       <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col justify-center px-4 py-6">
-        <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+        <div className="zt-feature-panel shadow-[var(--vd-shadow-sm)]">
           <ScanProcessingPanel
             compact
             detail={processingMessage}
@@ -530,7 +530,7 @@ export function SingleClickTuevUpload({
         {backButton}
 
         {/* Header */}
-        <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+        <div className="zt-feature-panel p-5">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
             <CheckCircle2 className="h-5 w-5" />
           </div>
@@ -560,7 +560,7 @@ export function SingleClickTuevUpload({
         ) : null}
 
         {/* Extraction summary */}
-        <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white px-4 py-1 shadow-[var(--vd-shadow-sm)]">
+        <div className="zt-feature-panel px-4 py-1 shadow-[var(--vd-shadow-sm)]">
           <div className="divide-y divide-[color:var(--vd-border)]">
             <SummaryRow
               label="Prüforganisation"
@@ -620,7 +620,7 @@ export function SingleClickTuevUpload({
           </div>
         </div>
 
-        <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+        <div className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
           <h2 className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Festgestellte Mängel
           </h2>
@@ -719,7 +719,7 @@ export function SingleClickTuevUpload({
       {backButton}
 
       {/* Header */}
-      <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+      <div className="zt-feature-panel p-5">
         <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
           <CloudUpload className="h-5 w-5" />
         </div>

@@ -145,7 +145,7 @@ export function ChangePasswordPanel({
   return (
     <section
       aria-label="Passwort"
-      className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]"
+      className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
     >
       <h2 className="font-[family-name:var(--font-display)] text-[1.2rem] font-semibold text-[color:var(--vd-text)]">
         Passwort

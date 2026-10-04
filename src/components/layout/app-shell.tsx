@@ -18,7 +18,9 @@ export function AppShell({ children, showNavbar = true }: AppShellProps) {
       />
       <div className="relative z-10 flex min-h-dvh flex-col">
         {showNavbar ? <Navbar /> : null}
-        <main className="flex-1">{children}</main>
+        <main className="flex-1" data-surface="automotive">
+          {children}
+        </main>
         <CookieConsentBanner />
       </div>
     </div>

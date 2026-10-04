@@ -30,7 +30,7 @@ export function LegalDocumentLayout({
           </Link>
         </div>
 
-        <article className="vd-surface-card space-y-6 p-6">
+        <article className="zt-feature-panel vd-surface-card space-y-6 p-6">
           <header className="space-y-2">
             <h1 className="claim-title text-[1.65rem]">{title}</h1>
             {description ? (

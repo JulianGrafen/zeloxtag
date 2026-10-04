@@ -51,7 +51,8 @@ export function VehicleFuelLogView({
       <header className="space-y-3">
         <PressableLink
           href={vehicleSurfaceHref(vehicleSurfaceScope)}
-          className="inline-flex items-center gap-2 text-[0.85rem] font-medium text-[color:var(--vd-muted)]"
+          variant="pill"
+          className="vd-back-pill"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Dashboard
@@ -66,7 +67,7 @@ export function VehicleFuelLogView({
         </div>
       </header>
 
-      <section className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4">
+      <section className="zt-feature-panel p-4">
         <div className="flex items-start gap-3">
           <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
             <Fuel className="h-5 w-5" aria-hidden />

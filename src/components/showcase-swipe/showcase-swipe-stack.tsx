@@ -5,10 +5,11 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   motion,
+  useDragControls,
   useMotionValue,
   useTransform,
   type PanInfo,
@@ -19,8 +20,11 @@ import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 
 import "./stack.css";
 
-const SWIPE_OFFSET_PX = 56;
-const SWIPE_VELOCITY_PX_S = 320;
+const SWIPE_OFFSET_PX = 48;
+const SWIPE_VELOCITY_PX_S = 280;
+const OPEN_TAP_MAX_OFFSET_PX = 10;
+const OPEN_TAP_MAX_VELOCITY_PX_S = 160;
+const DETAILS_TAP_MAX_MOVE_PX = 12;
 const MAX_VISIBLE = 4;
 const ANIMATION = { stiffness: 260, damping: 20 };
 
@@ -28,63 +32,6 @@ type StackItem = {
   id: string;
   card: ShowcaseSwipeCard;
 };
-
-type CardRotateProps = {
-  children: ReactNode;
-  disabled: boolean;
-  zIndex: number;
-  onDragEnd: (info: PanInfo) => void;
-  onTap?: () => void;
-};
-
-function CardRotate({
-  children,
-  disabled,
-  zIndex,
-  onDragEnd,
-  onTap,
-}: CardRotateProps) {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rotateX = useTransform(y, [-100, 100], [18, -18]);
-  const rotateY = useTransform(x, [-100, 100], [-18, 18]);
-
-  const handleDragEnd = useCallback(
-    (_: unknown, info: PanInfo) => {
-      onDragEnd(info);
-      x.set(0);
-      y.set(0);
-    },
-    [onDragEnd, x, y],
-  );
-
-  if (disabled) {
-    return (
-      <motion.div
-        className="card-rotate-disabled"
-        style={{ x: 0, y: 0, zIndex }}
-      >
-        {children}
-      </motion.div>
-    );
-  }
-
-  return (
-    <motion.div
-      className="card-rotate"
-      style={{ x, y, rotateX, rotateY, zIndex }}
-      drag="x"
-      dragConstraints={{ top: 0, right: 0, bottom: 0, left: 0 }}
-      dragElastic={0.45}
-      dragDirectionLock
-      whileTap={{ cursor: "grabbing" }}
-      onDragEnd={handleDragEnd}
-      onTap={onTap}
-    >
-      {children}
-    </motion.div>
-  );
-}
 
 type ShowcaseSwipeStackProps = {
   cards: ShowcaseSwipeCard[];
@@ -108,6 +55,104 @@ function resolveSwipeDecision(info: PanInfo): "like" | "pass" | null {
   return null;
 }
 
+function isOpenTap(info: PanInfo): boolean {
+  const { x, y } = info.offset;
+  if (
+    Math.abs(x) > OPEN_TAP_MAX_OFFSET_PX ||
+    Math.abs(y) > OPEN_TAP_MAX_OFFSET_PX
+  ) {
+    return false;
+  }
+  return (
+    Math.abs(info.velocity.x) < OPEN_TAP_MAX_VELOCITY_PX_S &&
+    Math.abs(info.velocity.y) < OPEN_TAP_MAX_VELOCITY_PX_S
+  );
+}
+
+type SwipeableTopCardProps = {
+  card: ShowcaseSwipeCard;
+  zIndex: number;
+  depth: number;
+  stackLength: number;
+  disabled: boolean;
+  onGestureEnd: (info: PanInfo, card: ShowcaseSwipeCard) => void;
+  onOpen: (card: ShowcaseSwipeCard) => void;
+};
+
+function SwipeableTopCard({
+  card,
+  zIndex,
+  depth,
+  stackLength,
+  disabled,
+  onGestureEnd,
+  onOpen,
+}: SwipeableTopCardProps) {
+  const dragControls = useDragControls();
+  const x = useMotionValue(0);
+  const rotateY = useTransform(x, [-100, 100], [-18, 18]);
+
+  const handleDragEnd = useCallback(
+    (_: unknown, info: PanInfo) => {
+      onGestureEnd(info, card);
+      x.set(0);
+    },
+    [card, onGestureEnd, x],
+  );
+
+  const handleHeroPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      dragControls.start(event);
+    },
+    [disabled, dragControls],
+  );
+
+  const handleDetailsTap = useCallback(() => {
+    if (disabled) return;
+    onOpen(card);
+  }, [card, disabled, onOpen]);
+
+  return (
+    <motion.div
+      className="card-rotate"
+      style={{ x, rotateY, zIndex }}
+      drag="x"
+      dragControls={dragControls}
+      dragListener={false}
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+      dragElastic={0.4}
+      dragDirectionLock
+      onDragEnd={handleDragEnd}
+    >
+      <motion.div
+        className="stack-card"
+        animate={{
+          rotateZ: depth * 4,
+          scale:
+            1 + (stackLength - 1 - depth) * 0.06 - stackLength * 0.06,
+          transformOrigin: "90% 90%",
+        }}
+        initial={false}
+        transition={{
+          type: "spring",
+          stiffness: ANIMATION.stiffness,
+          damping: ANIMATION.damping,
+        }}
+      >
+        <ShowcaseSwipeQuartettCard
+          card={card}
+          className="select-none"
+          interactive
+          onHeroPointerDown={handleHeroPointerDown}
+          onDetailsTap={handleDetailsTap}
+          detailsTapMaxMovePx={DETAILS_TAP_MAX_MOVE_PX}
+        />
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export function ShowcaseSwipeStack({
   cards,
   disabled = false,
@@ -127,15 +172,21 @@ export function ShowcaseSwipeStack({
     setStack(visibleCards.map((card) => ({ id: card.publicSlug, card })));
   }, [visibleCards]);
 
-  const handleTopDragEnd = useCallback(
-    (info: PanInfo) => {
+  const handleTopGestureEnd = useCallback(
+    (info: PanInfo, card: ShowcaseSwipeCard) => {
       if (disabled) return;
+
       const decision = resolveSwipeDecision(info);
       if (decision) {
         onSwipe(decision);
+        return;
+      }
+
+      if (isOpenTap(info)) {
+        onOpen(card);
       }
     },
-    [disabled, onSwipe],
+    [disabled, onOpen, onSwipe],
   );
 
   if (stack.length === 0) return null;
@@ -145,22 +196,28 @@ export function ShowcaseSwipeStack({
       {stack.map((item, index) => {
         const isTop = index === 0;
         const depth = index;
-
         const layerZ = stack.length - index;
 
+        if (isTop) {
+          return (
+            <SwipeableTopCard
+              key={item.id}
+              card={item.card}
+              zIndex={layerZ}
+              depth={depth}
+              stackLength={stack.length}
+              disabled={disabled}
+              onGestureEnd={handleTopGestureEnd}
+              onOpen={onOpen}
+            />
+          );
+        }
+
         return (
-          <CardRotate
+          <div
             key={item.id}
-            zIndex={layerZ}
-            disabled={!isTop || disabled}
-            onDragEnd={isTop ? handleTopDragEnd : () => {}}
-            onTap={
-              isTop && !disabled
-                ? () => {
-                    onOpen(item.card);
-                  }
-                : undefined
-            }
+            className="card-rotate-disabled"
+            style={{ zIndex: layerZ }}
           >
             <motion.div
               className="stack-card"
@@ -179,12 +236,9 @@ export function ShowcaseSwipeStack({
                 damping: ANIMATION.damping,
               }}
             >
-              <ShowcaseSwipeQuartettCard
-                card={item.card}
-                className={isTop ? "select-none" : undefined}
-              />
+              <ShowcaseSwipeQuartettCard card={item.card} />
             </motion.div>
-          </CardRotate>
+          </div>
         );
       })}
     </div>

@@ -1514,7 +1514,7 @@ export function InvoiceUploader({
           ) : null}
 
           {nativePdf ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white p-4 shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
@@ -1558,7 +1558,7 @@ export function InvoiceUploader({
           ) : null}
 
           {pages.length > 0 ? (
-            <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-white p-4 shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel space-y-3 p-4 shadow-[var(--vd-shadow-sm)]">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                   {pages.length} {pages.length === 1 ? "Seite" : "Seiten"}
@@ -1725,7 +1725,7 @@ export function InvoiceUploader({
       ) : null}
 
       {step === "extracting" ? (
-        <div className="vd-anim-header rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+        <div className="vd-anim-header zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
           <ScanProcessingPanel
             compact
             detail={progress.label}

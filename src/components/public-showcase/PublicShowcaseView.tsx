@@ -8,6 +8,7 @@ import { ShowroomBuildDna } from "./ShowroomBuildDna";
 import { ShowroomBuildPersonalityChips } from "./ShowroomBuildPersonalityChips";
 import { ShowroomStats } from "./ShowroomStats";
 import { ShowroomStoryShare } from "./ShowroomStoryShare";
+import { BuildStoryTimeline } from "./BuildStoryTimeline";
 import { showroom } from "./showroom-styles";
 
 type PublicShowcaseViewProps = {
@@ -32,6 +33,13 @@ export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
           labels={data.profile.buildPersonalityLabels}
         />
         {showBuildDna ? <ShowroomBuildDna dna={data.buildDna!} /> : null}
+        {data.profile.isStoryPublic && data.profile.publicSlug ? (
+          <BuildStoryTimeline
+            slug={data.profile.publicSlug}
+            initialEntries={data.buildStory?.entries ?? []}
+            initialHasMore={data.buildStory?.hasMore ?? false}
+          />
+        ) : null}
         <ShowroomStoryShare data={data} />
         <footer
           className={`relative isolate z-[100] space-y-3 px-4 pb-2 ${showroom.footer}`}

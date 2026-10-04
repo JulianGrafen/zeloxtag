@@ -14,6 +14,18 @@ export function isMissingVehicleBuildDnaColumnError(error: {
   return message.includes("showcase_build_dna");
 }
 
+function isMissingVehicleShowcaseColumnError(error: {
+  message?: string;
+}): boolean {
+  const message = error.message ?? "";
+  return (
+    isMissingVehicleBuildDnaColumnError(error) ||
+    message.includes("is_story_public") ||
+    message.includes("showcase_swipe_opt_in") ||
+    message.includes("expose_token")
+  );
+}
+
 function normalizeVehicleRow(row: Record<string, unknown>): Vehicle {
   return withDefaultShowcaseFields(row as Vehicle);
 }
@@ -58,7 +70,7 @@ export async function loadVehicleProjectionMaybeSingle(
     and,
   );
 
-  if (!primary.error || !isMissingVehicleBuildDnaColumnError(primary.error)) {
+  if (!primary.error || !isMissingVehicleShowcaseColumnError(primary.error)) {
     return {
       data: primary.data ? normalizeVehicleRow(primary.data) : null,
       error: primary.error,

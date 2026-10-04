@@ -83,7 +83,7 @@ export function EditableOilChangeNotesSection({
   return (
     <section
       id={sectionId}
-      className="scroll-mt-24 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
+      className="scroll-mt-24 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
     >
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-[color:var(--vd-muted)]">

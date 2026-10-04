@@ -10,11 +10,12 @@ export const showroom = {
   heroSwipeBand: "bottom-[34%] min-h-[min(52dvh,520px)]",
   content: "relative z-10 bg-black pt-2",
   panel:
-    "overflow-hidden rounded-[1.25rem] border border-white/15 bg-white/[0.03]",
+    "overflow-hidden rounded-2xl border border-white/5 border-t-white/10 bg-gradient-to-b from-zinc-800/40 to-zinc-900/80 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-md",
   /** Legacy / gallery thumbs — light inset, no heavy shadow. */
-  specSurface: "overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]",
+  specSurface:
+    "overflow-hidden rounded-2xl border border-white/5 border-t-white/10 bg-gradient-to-b from-zinc-800/35 to-zinc-900/75 backdrop-blur-md",
   panelFlat:
-    "overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]",
+    "overflow-hidden rounded-2xl border border-white/10 border-t-white/15 bg-gradient-to-b from-zinc-800/30 to-zinc-900/70",
   group: "overflow-hidden rounded-2xl bg-white/[0.07]",
   groupAccent:
     "relative before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
@@ -29,7 +30,7 @@ export const showroom = {
   disclosureRow:
     "flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-white/5",
   kicker:
-    "text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-white/50",
+    "font-mono text-[0.65rem] font-medium uppercase tracking-[0.22em] text-zinc-500",
   sectionTitle:
     "text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white/45",
   label: "text-[0.78rem] text-white/45",

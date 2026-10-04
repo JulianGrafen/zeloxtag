@@ -14,6 +14,11 @@ import {
   getDashboardPromptSnapshot,
   subscribeDashboardPrompts,
 } from "@/lib/ui/dashboard-prompt-orchestrator";
+import {
+  automotiveBottomBarShellClassName,
+  automotivePrimaryCtaClassName,
+  automotivePrimaryCtaLockedClassName,
+} from "@/components/ui/automotive";
 import { cn } from "@/lib/utils";
 
 export interface DashboardScanCtaProps {
@@ -43,8 +48,8 @@ export function DashboardScanCta({
 }: Omit<DashboardScanCtaProps, "hidden">) {
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
   const buttonClassName = cn(
-    "claim-cta vd-scan-fab-cta no-underline",
-    scanLocked && "vd-scan-fab-cta--locked",
+    "vd-pressable vd-pressable--button",
+    scanLocked ? automotivePrimaryCtaLockedClassName : automotivePrimaryCtaClassName,
   );
 
   function handleScanClick() {
@@ -146,7 +151,7 @@ export function DashboardScanFab({ hidden = false, ...ctaProps }: DashboardScanC
       data-tour="scan-fab-shell"
     >
       <div
-        className="pointer-events-auto relative border-t border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_28px_rgba(0,0,0,0.08)] sm:px-5"
+        className={automotiveBottomBarShellClassName}
       >
         <div className="relative z-10 mx-auto max-w-lg">
           <DashboardScanCta {...ctaProps} />

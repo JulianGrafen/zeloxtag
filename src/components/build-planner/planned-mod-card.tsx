@@ -31,7 +31,7 @@ export function PlannedModCard({
   const allDone = total > 0 && done === total;
 
   return (
-    <article className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]">
+    <article className="zt-feature-panel">
       <button
         type="button"
         className="flex w-full items-start justify-between gap-3 p-4 text-left"

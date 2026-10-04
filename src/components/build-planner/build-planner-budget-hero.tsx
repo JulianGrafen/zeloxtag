@@ -12,7 +12,7 @@ export function BuildPlannerBudgetHero({ summary }: BuildPlannerBudgetHeroProps)
   const spent = summary.spentEur;
 
   return (
-    <section className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 space-y-4">
+    <section className="zt-feature-panel p-4 space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
           <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">

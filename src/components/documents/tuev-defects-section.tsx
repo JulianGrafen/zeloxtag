@@ -47,7 +47,7 @@ export function TuevDefectsSection({
   }
 
   return (
-    <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+    <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
       <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
         Festgestellte Mängel
       </h2>

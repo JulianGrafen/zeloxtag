@@ -120,6 +120,9 @@ export async function updateManualVehicleEntry(
     manualEntryPhotoLimit(updateCategory),
   );
 
+  const showOnBuildStoryRaw = String(formData.get("showOnBuildStory") ?? "");
+  const wantsBuildStory = showOnBuildStoryRaw === "true";
+
   const patch: Record<string, unknown> = {
     title,
     category,
@@ -240,6 +243,19 @@ export async function updateManualVehicleEntry(
       fileCheck.mime === "application/pdf"
         ? null
         : 1;
+  }
+
+  if (formData.has("showOnBuildStory")) {
+    const nextFileUrl =
+      typeof patch.file_url === "string"
+        ? patch.file_url
+        : document.file_url;
+    const hasImage =
+      uploadedPhotos.length > 0 ||
+      (typeof nextFileUrl === "string" &&
+        !nextFileUrl.startsWith("manual://") &&
+        !nextFileUrl.startsWith("mock://"));
+    patch.show_on_build_story = wantsBuildStory && hasImage;
   }
 
   const { error: updateError } = await admin

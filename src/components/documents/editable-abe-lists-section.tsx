@@ -174,7 +174,7 @@ export function EditableAbeListsSection({
         ) : null}
       </div>
 
-      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+      <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
         <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
           Freigabe
         </h2>
@@ -218,7 +218,7 @@ export function EditableAbeListsSection({
         ) : null}
       </section>
 
-      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+      <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
         <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
           Technische Daten
         </h2>
@@ -257,7 +257,7 @@ export function EditableAbeListsSection({
       </section>
 
       {ownerNotes ? (
-        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Hinweise für den Fahrzeughalter
           </h2>
@@ -267,7 +267,7 @@ export function EditableAbeListsSection({
         </section>
       ) : null}
 
-      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+      <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
         <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
           {isIvStructuredAuflagen(displayConditions)
             ? "Hinweise und Auflagen (IV.)"
@@ -306,7 +306,7 @@ export function EditableAbeListsSection({
               variant="button"
               disabled={pending}
               onClick={cancelEdit}
-              className="inline-flex flex-1 items-center justify-center rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2.5 text-[0.85rem] font-medium text-[color:var(--vd-text)]"
+              className="inline-flex flex-1 items-center justify-center zt-feature-panel px-3 py-2.5 text-[0.85rem] font-medium text-[color:var(--vd-text)]"
             >
               Abbrechen
             </PressableButton>

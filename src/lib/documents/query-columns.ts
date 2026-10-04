@@ -10,7 +10,7 @@ export const VEHICLE_BUILD_DNA_COLUMNS =
   "showcase_build_dna, showcase_build_dna_fingerprint, showcase_build_dna_updated_at" as const;
 
 export const VEHICLE_COLUMNS_BASE =
-  "id, user_id, make, model, year, vin, tech_specs, silhouette_image_url, sound_url, spatial_scene, is_public, hide_financials, public_slug, created_at, updated_at" as const;
+  "id, user_id, make, model, year, vin, tech_specs, silhouette_image_url, sound_url, spatial_scene, is_public, hide_financials, public_slug, showcase_swipe_opt_in, is_story_public, expose_token, is_expose_active, created_at, updated_at" as const;
 
 export const VEHICLE_COLUMNS =
   `${VEHICLE_COLUMNS_BASE}, ${VEHICLE_BUILD_DNA_COLUMNS}` as const;
@@ -43,6 +43,7 @@ export const DOCUMENT_LIST_COLUMNS = [
   "amount",
   "date",
   "show_on_public_showcase",
+  "show_on_build_story",
   "created_at",
 ].join(", ");
 
@@ -64,6 +65,7 @@ export const DOCUMENT_INVOICE_LIST_COLUMNS = [
   "amount",
   "date",
   "show_on_public_showcase",
+  "show_on_build_story",
   "created_at",
 ].join(", ");
 

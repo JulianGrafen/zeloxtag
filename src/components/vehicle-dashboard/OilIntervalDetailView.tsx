@@ -174,7 +174,7 @@ export function OilIntervalDetailView({
           }
         />
 
-        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Stand beim Wechsel
           </h2>
@@ -236,7 +236,7 @@ export function OilIntervalDetailView({
           </div>
         </section>
 
-        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Spezifikation
           </h2>
@@ -360,7 +360,7 @@ export function OilIntervalDetailView({
           </dl>
         </section>
 
-        <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]">
+        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
           <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Nächstes Intervall
           </h2>
@@ -415,7 +415,7 @@ export function OilIntervalDetailView({
         ) : (
           <section
             id={OIL_DETAIL_EDIT_ANCHORS.notes}
-            className="scroll-mt-24 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
+            className="scroll-mt-24 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
           >
             <div className="mb-2 flex items-center gap-2 text-[color:var(--vd-muted)]">
               <Wrench className="h-3.5 w-3.5" aria-hidden />

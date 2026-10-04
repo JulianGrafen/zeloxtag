@@ -218,7 +218,7 @@ export function Pruefung192Overview({
 
   return (
     <div className="vd-anim-header flex flex-col gap-4">
-      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow)] sm:p-5">
+      <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow)] sm:p-5">
         <header>
           <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
             § 19 Abs. 2 StVZO
@@ -410,7 +410,7 @@ export function Pruefung192Overview({
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+      <section className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
         <div className="flex items-center gap-2 border-b border-[color:var(--vd-border)] px-3 py-2.5 text-[0.78rem] text-[color:var(--vd-muted)]">
           <FileText className="h-4 w-4" />
           Dokumentvorschau · {pageCount} {pageCount === 1 ? "Seite" : "Seiten"}

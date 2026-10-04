@@ -61,10 +61,7 @@ export function VehicleOperatingCostOverviewView({
   return (
     <ScanContent className="gap-5 pb-8">
       <header className="space-y-3">
-        <PressableLink
-          href={dashboardHref}
-          className="inline-flex items-center gap-2 text-[0.85rem] font-medium text-[color:var(--vd-muted)]"
-        >
+        <PressableLink href={dashboardHref} variant="pill" className="vd-back-pill">
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Dashboard
         </PressableLink>
@@ -88,7 +85,7 @@ export function VehicleOperatingCostOverviewView({
         {OPERATING_COST_CATEGORIES.map((category) => (
           <div
             key={category}
-            className="rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-3.5"
+            className="zt-feature-panel p-3.5"
           >
             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
               {OPERATING_COST_CATEGORY_LABELS[category]}
@@ -116,7 +113,7 @@ export function VehicleOperatingCostOverviewView({
 
       {!readOnly && showForm ? (
         <form
-          className="space-y-4 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4"
+          className="space-y-4 zt-feature-panel p-4"
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);

@@ -23,6 +23,7 @@ import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { parseMileageKmInput } from "@/lib/documents/format";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
+import { automotiveBackPillClassName } from "@/components/ui/automotive";
 import {
   PressableButton,
   PressableLink,
@@ -137,6 +138,7 @@ export function ManualEntryView({
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([]);
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
+  const [showOnBuildStory, setShowOnBuildStory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -171,6 +173,11 @@ export function ManualEntryView({
     Boolean(existingPhotoUrl) &&
     editingDocument &&
     documentMediaKind(editingDocument.file_url) === "image";
+
+  const canOfferBuildStory =
+    isUmbau || category === "tuning";
+  const hasPhotoForBuildStory =
+    photos.length > 0 || Boolean(existingPhotoIsImage);
 
   const listChips = useMemo(() => {
     const withPhoto = entries.filter((doc) =>
@@ -265,6 +272,7 @@ export function ManualEntryView({
     );
     setNotes(editingDocument.notes ?? "");
     setLineItems(editingDocument.line_items ?? []);
+    setShowOnBuildStory(editingDocument.show_on_build_story === true);
     setPhotos([]);
     setError(null);
   }, [editingDocument]);
@@ -297,6 +305,7 @@ export function ManualEntryView({
     setNotes("");
     setLineItems([]);
     setPhotos([]);
+    setShowOnBuildStory(false);
     setCategory(isUmbau ? "tuning" : "service");
     setError(null);
   }
@@ -401,6 +410,14 @@ export function ManualEntryView({
     formData.set("mileageKm", "");
   }
 
+  function appendBuildStoryOptIn(formData: FormData) {
+    const enabled =
+      canOfferBuildStory &&
+      hasPhotoForBuildStory &&
+      showOnBuildStory;
+    formData.set("showOnBuildStory", enabled ? "true" : "false");
+  }
+
   function handleUpdate() {
     if (!editingDocument) return;
     setError(null);
@@ -425,6 +442,7 @@ export function ManualEntryView({
           formData.set("notes", notes);
           appendLineItemsToFormData(formData);
         }
+        appendBuildStoryOptIn(formData);
 
         if (isUmbau && isEditing) {
           const result = await updateManualVehicleEntry(formData);
@@ -449,6 +467,7 @@ export function ManualEntryView({
                   : baseTitle,
               );
               extraForm.set("photo", photo.file, photo.file.name);
+              appendBuildStoryOptIn(extraForm);
               const extraResult = await createManualVehicleEntry(extraForm);
               if (extraResult.status === "error") {
                 setError(extraResult.message);
@@ -499,6 +518,7 @@ export function ManualEntryView({
               `${baseTitle} (${index + 1}/${photos.length})`,
             );
             extraForm.set("photo", photo.file, photo.file.name);
+            appendBuildStoryOptIn(extraForm);
             const extraResult = await createManualVehicleEntry(extraForm);
             if (extraResult.status === "error") {
               setError(extraResult.message);
@@ -547,6 +567,7 @@ export function ManualEntryView({
                 : baseTitle,
             );
             formData.set("photo", photo.file, photo.file.name);
+            appendBuildStoryOptIn(formData);
 
             const result = await createManualVehicleEntry(formData);
             if (result.status === "error") {
@@ -572,6 +593,7 @@ export function ManualEntryView({
         formData.set("mileageKm", mileageKm);
         formData.set("notes", notes);
         appendLineItemsToFormData(formData);
+        appendBuildStoryOptIn(formData);
 
         if (photos.length === 1) {
           formData.set("photo", photos[0].file, photos[0].file.name);
@@ -639,13 +661,13 @@ export function ManualEntryView({
           <PressableLink
             href={`/v/${tagUuid}`}
             variant="pill"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
+            className={automotiveBackPillClassName}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Dashboard
           </PressableLink>
 
-          <div className="rounded-[1.75rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow)]">
+          <div className="zt-feature-panel p-5">
             <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
               {isUmbau ? (
                 <ImagePlus className="h-5 w-5" aria-hidden />
@@ -682,7 +704,7 @@ export function ManualEntryView({
 
         {showForm ? (
           <form
-            className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)]"
+            className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
             onSubmit={(event) => {
               event.preventDefault();
               if (isEditing) {
@@ -952,6 +974,32 @@ export function ManualEntryView({
               ) : null}
             </div>
 
+            {canOfferBuildStory && hasPhotoForBuildStory ? (
+              <label
+                className="flex cursor-pointer items-start gap-3 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3"
+              >
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 shrink-0 rounded border-[color:var(--vd-border)] accent-[color:var(--vd-accent)]"
+                  checked={showOnBuildStory}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setShowOnBuildStory(event.target.checked)
+                  }
+                />
+                <span className="min-w-0 space-y-1">
+                  <span className="block text-[0.88rem] font-medium text-[color:var(--vd-text)]">
+                    In der Build-Story zeigen
+                  </span>
+                  <span className="block text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
+                    Sichtbar für Besucher nur wenn die Build-Story im Profil
+                    öffentlich ist. Deine Auswahl wird mit dem Eintrag
+                    gespeichert.
+                  </span>
+                </span>
+              </label>
+            ) : null}
+
             <div className="flex gap-2 pt-1">
               <PressableButton
                 type="button"
@@ -988,7 +1036,7 @@ export function ManualEntryView({
           className="space-y-2"
         >
           {entries.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
                 {isUmbau ? (
                   <ImagePlus className="h-5 w-5" aria-hidden />
@@ -1002,7 +1050,7 @@ export function ManualEntryView({
               <p className="mt-1">{emptyCopy.body}</p>
             </div>
           ) : visibleEntries.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
+            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               {query.trim() || listFilter !== "all"
                 ? "Keine Treffer für diese Suche / Filter."
                 : emptyCopy.title}
@@ -1070,7 +1118,7 @@ export function ManualEntryView({
               })}
             </ul>
           ) : (
-            <ul className="vd-anim-list overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
               {visibleEntries.map((doc) => {
                 const kind =
                   doc.category === "tuning"

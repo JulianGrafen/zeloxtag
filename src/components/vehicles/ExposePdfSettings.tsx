@@ -24,7 +24,7 @@ export function ExposePdfSettings({
   const [paywallOpen, setPaywallOpen] = useState(false);
 
   return (
-    <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+    <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
       <GenerateExposeButton
         vehicleId={vehicle.id}
         vehicleLabel={vehicleLabel}

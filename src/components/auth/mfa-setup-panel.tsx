@@ -176,7 +176,7 @@ export function MfaSetupPanel({ showHeader = true }: { showHeader?: boolean }) {
   const enrollmentAndMessages = (
     <>
       {qrCode && factorId ? (
-        <div className="space-y-3 rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
+        <div className="space-y-3 zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]">
           <p className="text-[0.85rem] text-[color:var(--vd-muted)]">
             Scanne den QR-Code und bestätige mit dem aktuellen Code.
           </p>
@@ -269,7 +269,7 @@ export function MfaSetupPanel({ showHeader = true }: { showHeader?: boolean }) {
 
   return (
     <div className="space-y-4" data-tour="mfa-settings">
-      <div className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-5 shadow-[var(--vd-shadow-sm)]">
+      <div className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]">
         {content}
       </div>
       {enrollmentAndMessages}

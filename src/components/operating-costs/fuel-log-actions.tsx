@@ -43,7 +43,7 @@ export function FuelLogActions({ tagUuid, fuelScanTier }: FuelLogActionsProps) {
         />
         <PressableLink
           href={`/v/${tagUuid}/tanken/manuell`}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)]"
+          className="flex w-full items-center justify-center gap-2 zt-feature-panel px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)]"
         >
           Manuell eintragen
         </PressableLink>

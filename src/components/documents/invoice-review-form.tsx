@@ -113,7 +113,7 @@ export function InvoiceReviewForm({
         </div>
       ) : null}
 
-      <section className="rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+      <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
             Belegdaten
@@ -336,7 +336,7 @@ export function InvoiceReviewForm({
       />
 
       {preview ? (
-        <details className="overflow-hidden rounded-[1.35rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]">
+        <details className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
           <summary className="cursor-pointer px-4 py-3 text-[0.82rem] font-medium text-[color:var(--vd-text)]">
             Scan-Vorschau · {preview.pageCount}{" "}
             {preview.pageCount === 1 ? "Seite" : "Seiten"} ·{" "}
