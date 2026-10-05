@@ -1,5 +1,9 @@
 import { sumLineItems } from "@/lib/documents/line-items";
-import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
+import {
+  INVOICE_OCR_MONEY_PATTERN,
+  isLikelyDecimalShiftPair,
+  parseGermanMoneyAmount,
+} from "@/lib/ocr/parse-german-money";
 import {
   extractGrossTotalFromText,
   extractNetSumFromText,
@@ -65,11 +69,7 @@ export function extractAmountFromText(rawText: string): number | null {
     if (!/(?:summe|gesamt|brutto|zahlbetrag|rechnungsbetrag|total)/i.test(line)) {
       continue;
     }
-    const amounts = [
-      ...line.matchAll(
-        /([0-9]{1,3}(?:\.[0-9]{3})*,\d{2}|[0-9]+,\d{2}|[0-9]+\.\d{2})/g,
-      ),
-    ]
+    const amounts = [...line.matchAll(INVOICE_OCR_MONEY_PATTERN)]
       .filter((match) => !isFollowedByPercent(line, match))
       .map((match) => parseEurAmount(match[1] ?? ""))
       .filter((value): value is number => value !== null);
@@ -163,6 +163,11 @@ export function preferAmount(
   const fromLines = grossFromLineItems(structuredValid, rawText, lineItems);
   const footerGross = rawText ? extractGrossTotalFromText(rawText) : null;
   const footerNet = rawText ? extractNetSumFromText(rawText) : null;
+  const fromText = rawText ? extractAmountFromText(rawText) : null;
+  const ocrTotalReference =
+    footerGross != null && fromText != null
+      ? Math.max(footerGross, fromText)
+      : footerGross ?? fromText;
 
   if (
     structuredValid != null &&
@@ -186,9 +191,16 @@ export function preferAmount(
     }
   }
 
-  if (structuredValid != null) return structuredValid;
+  if (structuredValid != null) {
+    if (
+      ocrTotalReference != null &&
+      isLikelyDecimalShiftPair(structuredValid, ocrTotalReference)
+    ) {
+      return ocrTotalReference;
+    }
+    return structuredValid;
+  }
 
-  const fromText = extractAmountFromText(rawText);
   if (fromText !== null) return fromText;
 
   if (fromLines != null) return fromLines;

@@ -6,6 +6,27 @@
 export const MIN_INVOICE_EUR = 0.01;
 export const MAX_INVOICE_EUR = 250_000;
 
+/**
+ * German EUR token in OCR text.
+ * Thousands: dot or space; decimals: 1–2 digits.
+ */
+/** Inline / table OCR amounts (strict — avoids article numbers like 7.10334.07.0). */
+export const INVOICE_OCR_MONEY_TOKEN =
+  "-?\\d{1,3}(?:\\.\\d{3})*,\\d{2}|-?\\d{1,3}(?:\\s\\d{3})+,\\d{1,2}|-?\\d+,\\d{2}";
+
+/** Labeled footer totals — also allows 1999,0 without thousand separators. */
+export const INVOICE_FOOTER_MONEY_CAPTURE =
+  "(-?\\d{1,3}(?:[.\\s]\\d{3})*,\\d{1,2}|-?\\d{4,},\\d{1}|-?\\d+,\\d{2})";
+
+/** @deprecated Use {@link INVOICE_FOOTER_MONEY_CAPTURE} for footers or {@link INVOICE_OCR_MONEY_TOKEN} for rows. */
+export const INVOICE_OCR_MONEY_CAPTURE = INVOICE_FOOTER_MONEY_CAPTURE;
+
+/** Global matcher for trailing / inline money tokens in invoice table rows. */
+export const INVOICE_OCR_MONEY_PATTERN = new RegExp(
+  `(${INVOICE_OCR_MONEY_TOKEN})`,
+  "g",
+);
+
 const PAREN_TO_ONE = /\(/g;
 const PAREN_TO_THREE = /\(/g;
 
@@ -41,6 +62,26 @@ export function normalizeMoneyOcrText(raw: string): string {
 function stripLeadingParenOcr(raw: string): string {
   return raw.trim().replace(/\u00a0/g, "").replace(/\s/g, "").replace(/€|eur/gi, "");
 }
+
+/** True when the raw token is only digits (no decimal comma/dot) after normalization. */
+export function rawMoneyIsBareIntegerToken(raw: string): boolean {
+  const base = normalizeMoneyOcrText(stripLeadingParenOcr(raw));
+  return /^-?\d+$/.test(base);
+}
+
+/** True when comma-shift heuristics apply (,00 misreads or 5+ digit plain integers). */
+export function rawMoneyAllowsDecimalShift(raw: string): boolean {
+  const base = normalizeMoneyOcrText(stripLeadingParenOcr(raw));
+  if (/^-?\d{4,},\d{2}$/.test(base) && base.endsWith(",00")) return true;
+  if (/^-?\d{4,}\.\d{2}$/.test(base) && base.endsWith(".00")) return true;
+  if (/^-?\d{5,}$/.test(base)) return true;
+  return false;
+}
+
+export type ResolveMoneyOptions = {
+  /** When false, prefer the largest plausible candidate (no 10×/100× shift). */
+  preferDecimalShift?: boolean;
+};
 
 /** Build parse candidates including (↔1/3) swaps and shifted-comma variants. */
 export function moneyParseCandidates(raw: string): string[] {
@@ -82,8 +123,8 @@ export function moneyParseCandidates(raw: string): string[] {
     addShiftedDecimal(dotCents[1], ",");
   }
 
-  // 1416 / 14160 without decimals — insert decimal before last digit
-  const plainInt = base.match(/^(-?\d{4,})$/);
+  // 14160 without decimals — insert decimal before last digit (not 4-digit totals like 1999)
+  const plainInt = base.match(/^(-?\d{5,})$/);
   if (plainInt?.[1]) {
     addShiftedDecimal(plainInt[1], ",");
   }
@@ -96,7 +137,7 @@ function parseSingleMoneyCandidate(raw: string): number | null {
 
   let normalized = raw;
 
-  // 1.234,56 — German thousands + decimal comma
+  // 1.234,56 / 1 234,5 — German thousands + decimal comma (spaces stripped before parse)
   if (/^-?\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(normalized)) {
     normalized = normalized.replace(/\./g, "").replace(",", ".");
     const value = Number.parseFloat(normalized);
@@ -130,7 +171,12 @@ function parseSingleMoneyCandidate(raw: string): number | null {
  * if it is exactly 10× or 100× smaller than the largest candidate AND carries
  * cent precision — typical comma-shift OCR error. Otherwise keep the largest.
  */
-export function resolveAmbiguousMoneyValues(values: number[]): number | null {
+export function resolveAmbiguousMoneyValues(
+  values: number[],
+  options: ResolveMoneyOptions = {},
+): number | null {
+  const preferDecimalShift = options.preferDecimalShift ?? true;
+
   const unique = [...new Set(values.map(roundMoney))].filter(
     inSignedInvoiceLineAmountRange,
   );
@@ -139,6 +185,10 @@ export function resolveAmbiguousMoneyValues(values: number[]): number | null {
 
   unique.sort((a, b) => a - b);
   const largest = unique[unique.length - 1]!;
+
+  if (!preferDecimalShift) {
+    return largest;
+  }
 
   const hasCents = (value: number) =>
     Math.abs(value - Math.round(value)) > 0.001;
@@ -179,7 +229,11 @@ export function parseGermanMoneyAmount(raw: string): number | null {
         value !== null && inSignedInvoiceLineAmountRange(value),
     );
 
-  return resolveAmbiguousMoneyValues(values);
+  const preferDecimalShift =
+    rawMoneyAllowsDecimalShift(raw) ||
+    (!rawMoneyIsBareIntegerToken(raw) && values.length > 1);
+
+  return resolveAmbiguousMoneyValues(values, { preferDecimalShift });
 }
 
 /**
@@ -201,25 +255,32 @@ export function sanitizeLlmMoneyAmount(
   const digitCount = String(Math.round(Math.abs(value))).length;
 
   if (mode === "aggressive" && looksLikeLostDecimal) {
-    // Comma shift adds a digit (141,60 → 1416) — avoid shrinking real round totals like 89 €.
-    if (digitCount >= 4) {
+    if (digitCount >= 5) {
       candidates.push(roundMoney(value / 10));
     }
-    if (digitCount >= 5) {
+    if (digitCount >= 6) {
       candidates.push(roundMoney(value / 100));
     }
-  } else if (
-    mode === "conservative" &&
-    looksLikeLostDecimal &&
-    digitCount >= 4 &&
-    value >= 1_000
-  ) {
-    candidates.push(roundMoney(value / 10));
   }
 
   const plausible = candidates.filter(inInvoiceRange);
-  const resolved = resolveAmbiguousMoneyValues(plausible);
+  const resolved = resolveAmbiguousMoneyValues(plausible, {
+    preferDecimalShift: mode === "aggressive" && candidates.length > 1,
+  });
   return resolved ?? value;
+}
+
+/** True when `larger` is ~10× or ~100× `smaller` (comma-shift misread). */
+export function isLikelyDecimalShiftPair(
+  smaller: number,
+  larger: number,
+): boolean {
+  if (!Number.isFinite(smaller) || !Number.isFinite(larger)) return false;
+  if (larger <= smaller + 0.01) return false;
+  return (
+    Math.abs(larger - smaller * 10) <= 0.05 ||
+    Math.abs(larger - smaller * 100) <= 0.05
+  );
 }
 
 /** Coerce LLM/OCR values (string or number) into EUR amounts. */

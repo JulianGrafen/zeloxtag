@@ -1,4 +1,7 @@
-import { parseGermanMoneyAmount } from "@/lib/ocr/parse-german-money";
+import {
+  INVOICE_FOOTER_MONEY_CAPTURE,
+  parseGermanMoneyAmount,
+} from "@/lib/ocr/parse-german-money";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 
 const VAT_LABEL =
@@ -42,15 +45,24 @@ export function extractNetSumFromText(rawText: string): number | null {
   return (
     parseLabeledAmount(
       text,
-      /nettosumme\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+      new RegExp(
+        `nettosumme\\s*[:.]?\\s*${INVOICE_FOOTER_MONEY_CAPTURE}\\s*(?:€|eur)?`,
+        "gi",
+      ),
     ) ??
     parseLabeledAmount(
       text,
-      /netto\s+summe\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+      new RegExp(
+        `netto\\s+summe\\s*[:.]?\\s*${INVOICE_FOOTER_MONEY_CAPTURE}\\s*(?:€|eur)?`,
+        "gi",
+      ),
     ) ??
     parseLabeledAmount(
       text,
-      /positionssumme\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+      new RegExp(
+        `positionssumme\\s*[:.]?\\s*${INVOICE_FOOTER_MONEY_CAPTURE}\\s*(?:€|eur)?`,
+        "gi",
+      ),
     )
   );
 }
@@ -61,15 +73,24 @@ export function extractGrossTotalFromText(rawText: string): number | null {
   return (
     parseLabeledAmount(
       text,
-      /gesamtbetrag\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+      new RegExp(
+        `gesamtbetrag\\s*[:.]?\\s*${INVOICE_FOOTER_MONEY_CAPTURE}\\s*(?:€|eur)?`,
+        "gi",
+      ),
     ) ??
     parseLabeledAmount(
       text,
-      /(?:rechnungsbetrag|zahlbetrag|endbetrag)\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+      new RegExp(
+        `(?:rechnungsbetrag|zahlbetrag|endbetrag)\\s*[:.]?\\s*${INVOICE_FOOTER_MONEY_CAPTURE}\\s*(?:€|eur)?`,
+        "gi",
+      ),
     ) ??
     parseLabeledAmount(
       text,
-      /endpreis\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|eur)?/gi,
+      new RegExp(
+        `endpreis\\s*[:.]?\\s*${INVOICE_FOOTER_MONEY_CAPTURE}\\s*(?:€|eur)?`,
+        "gi",
+      ),
     )
   );
 }

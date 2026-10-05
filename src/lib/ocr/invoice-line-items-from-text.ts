@@ -31,7 +31,10 @@ import {
   type InvoiceLineItem,
 } from "./text-parse-schema";
 import {
+  INVOICE_OCR_MONEY_PATTERN,
+  INVOICE_OCR_MONEY_TOKEN,
   inSignedInvoiceLineAmountRange,
+  isLikelyDecimalShiftPair,
   parseGermanMoneyAmount,
 } from "./parse-german-money";
 import {
@@ -132,8 +135,7 @@ function cleanLabel(value: string): string {
     .slice(0, MAX_LABEL);
 }
 
-const MONEY =
-  /-?\d{1,3}(?:\.\d{3})*(?:,\d{2})|-?\d+,\d{2}/g;
+const MONEY = INVOICE_OCR_MONEY_PATTERN;
 
 const INLINE_FOOTER_MARKER =
   /\b(?:nettosumme|netto\s*summe|gesamtbetrag|mwst|m\.?\s*w\.?\s*st\.?|umsatzsteuer|vat)\b/i;
@@ -256,7 +258,7 @@ export function lineTotalFromInvoiceRow(
   const normalized = line.replace(/[^\S\n]+/g, " ").trim();
   if (normalized.length < 4) return null;
 
-  const moneyMatches = [...normalized.matchAll(new RegExp(MONEY.source, "g"))];
+  const moneyMatches = [...normalized.matchAll(MONEY)];
   if (moneyMatches.length === 0) return null;
 
   const amounts = moneyMatches
@@ -296,7 +298,7 @@ export function lineTotalFromInvoiceRow(
   let label = normalized.slice(0, total.index).trim();
   // Drop leftover unit-price / qty columns from the label.
   label = label
-    .replace(new RegExp(`(?:${MONEY.source})\\s*$`, "g"), "")
+    .replace(new RegExp(`(?:${INVOICE_OCR_MONEY_TOKEN})\\s*$`, "g"), "")
     .replace(/\s+\d+(?:[.,]\d+)?\s*(?:x|×|stk|stück|st\.?|stk\.?)?\s*$/i, "")
     .replace(/\s+[A-Z0-9]{1,2}\s*$/i, "")
     .replace(/\s+/g, " ")
@@ -520,6 +522,12 @@ function shouldUpgradeAmountFromOcrMatch(options: {
   if (
     options.textAmount > options.itemAmount + 0.01 &&
     isUnitPriceAmountOfTotal(options.itemAmount, options.textAmount)
+  ) {
+    return true;
+  }
+  if (
+    options.labelScore >= 35 &&
+    isLikelyDecimalShiftPair(options.itemAmount, options.textAmount)
   ) {
     return true;
   }

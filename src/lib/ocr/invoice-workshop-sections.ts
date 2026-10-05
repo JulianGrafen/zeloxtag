@@ -30,7 +30,7 @@ const SKIP_LINE =
   /^(?:beschreibung|rab\.?\s*%|art\.?|pg\.?|std\.?|preis|einzelpreis|mechanik|ersatzteile|material(?:ien)?|sonstige\s+kosten|fremdleistungen?|nebenkosten|arbeitszeit|lohnarbeiten|positionssumme|netto|mwst|endpreis|endsummen|zahlbar)\b/i;
 
 const AMOUNT_ONLY_LINE =
-  /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*(?:€|eur))?\s*$/i;
+  /^\s*(?:€|eur)?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})(?:\s*(?:€|eur))?\s*$/i;
 
 /** Art/PG column (1–9) printed on its own OCR line. */
 const WORKSHOP_ART_PG_TOKEN = /^[1-9]$/;

@@ -3,23 +3,30 @@ import {
   isPriceOnlyLineLabel,
   isUnitPriceAmountOfTotal,
 } from "@/lib/ocr/invoice-line-item-dedupe";
-import { inSignedInvoiceLineAmountRange } from "@/lib/ocr/parse-german-money";
+import {
+  INVOICE_OCR_MONEY_TOKEN,
+  inSignedInvoiceLineAmountRange,
+} from "@/lib/ocr/parse-german-money";
 import type { InvoiceLineItem } from "@/lib/ocr/text-parse-schema";
 
 const TABLE_HEADER_LABEL =
   /^(?:pos\.?|position|bezeichnung|beschreibung|artikel|menge|einzelpreis|e-?preis|ep|stückpreis|stück|stk\.?|std\.?|einheit|ges\.?\s*preis|gesamtpreis|ges\.?\s*summe|gp|betrag|summe|nr\.?|anz\.?|preis|wert|total|endpreis|netto|endsummen)$/i;
 
-const AMOUNT_ONLY_LINE =
-  /^\s*(?:€|eur)?\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s+[A-Z0-9]{1,2})?\s*(?:€|eur)?\s*$/i;
+const AMOUNT_ONLY_LINE = new RegExp(
+  `^\\s*(?:€|eur)?\\s*${INVOICE_OCR_MONEY_TOKEN}(?:\\s+[A-Z0-9]{1,2})?\\s*(?:€|eur)?\\s*$`,
+  "i",
+);
 
 /** Trailing Ges. Preis on a table row, optionally followed by tax column (A / 0) or €. */
-const TRAILING_ROW_AMOUNT =
-  /^(.*?)(?:\s+)(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s+[A-Z0-9]{1,2})?(?:\s*(?:€|eur))?\s*$/i;
+const TRAILING_ROW_AMOUNT = new RegExp(
+  `^(.*?)(?:\\s+)(${INVOICE_OCR_MONEY_TOKEN})(?:\\s+[A-Z0-9]{1,2})?(?:\\s*(?:€|eur))?\\s*$`,
+  "i",
+);
 
 const TABLE_HEADER_LINE =
   /\b(?:bezeichnung|beschreibung|artikel)\b.*\b(?:einzelpreis|e-?preis|ep|ges\.?\s*preis|gesamtpreis|menge)\b/i;
 
-const MONEY_IN_LABEL = /\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}/;
+const MONEY_IN_LABEL = new RegExp(INVOICE_OCR_MONEY_TOKEN);
 
 /** Verb-only wrap fragments on Pos tables — never part names like Thermostat. */
 const CONTINUATION_VERB_LABEL =
