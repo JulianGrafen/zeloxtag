@@ -63,6 +63,29 @@ export function ShowcaseSwipeDeck({
   const [everHadCards, setEverHadCards] = useState(initialCards.length > 0);
   const [busy, setBusy] = useState(false);
   const stackRef = useRef<ShowcaseSwipeStackHandle>(null);
+  const [highlightedAction, setHighlightedAction] = useState<
+    "like" | "pass" | null
+  >(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashActionButton = useCallback((decision: "like" | "pass") => {
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    setHighlightedAction(decision);
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedAction(null);
+      highlightTimerRef.current = null;
+    }, 520);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
 
   const reloadDeck = useCallback(async () => {
     setHydrating(true);
@@ -220,6 +243,7 @@ export function ShowcaseSwipeDeck({
           cards={cards}
           disabled={busy}
           onSwipe={handleSwipe}
+          onDecisionHighlight={flashActionButton}
           onOpen={openShowcase}
         />
       </div>
@@ -230,7 +254,9 @@ export function ShowcaseSwipeDeck({
           disabled={busy}
           aria-label="Pass"
           className={cn(
-            "flex h-14 w-14 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-rose-500 shadow-[var(--vd-shadow-sm)] disabled:opacity-50",
+            "flex h-14 w-14 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-rose-500 shadow-[var(--vd-shadow-sm)] transition-all duration-300 disabled:opacity-50",
+            highlightedAction === "pass" &&
+              "scale-110 border-rose-400 bg-rose-500/20 text-rose-600 shadow-[0_0_28px_rgba(244,63,94,0.45)] ring-[3px] ring-rose-400/60",
           )}
           onClick={() => stackRef.current?.swipeTop("pass")}
         >
@@ -241,7 +267,9 @@ export function ShowcaseSwipeDeck({
           disabled={busy}
           aria-label="Like"
           className={cn(
-            "flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/40 bg-[color:var(--vd-surface)] text-emerald-600 shadow-[var(--vd-shadow-sm)] disabled:opacity-50",
+            "flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/40 bg-[color:var(--vd-surface)] text-emerald-600 shadow-[var(--vd-shadow-sm)] transition-all duration-300 disabled:opacity-50",
+            highlightedAction === "like" &&
+              "scale-110 border-emerald-400 bg-emerald-500/20 text-emerald-700 shadow-[0_0_32px_rgba(16,185,129,0.45)] ring-[3px] ring-emerald-400/65",
           )}
           onClick={() => stackRef.current?.swipeTop("like")}
         >

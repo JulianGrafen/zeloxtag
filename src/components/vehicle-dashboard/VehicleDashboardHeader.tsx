@@ -16,6 +16,8 @@ interface VehicleDashboardHeaderProps {
   vehicleImageAlt?: string;
   vehicleImageFrameless?: boolean;
   statusLabel?: string;
+  /** When false, show offline styling instead of the green “verbunden” dot. */
+  tagCoupled?: boolean;
   onEditVehicleImage?: () => void;
   onSilhouetteProxyLoad?: () => void;
 }
@@ -63,6 +65,7 @@ export function VehicleDashboardHeader({
   vehicleImageAlt,
   vehicleImageFrameless = false,
   statusLabel = "Verbunden",
+  tagCoupled = true,
   onEditVehicleImage,
   onSilhouetteProxyLoad,
 }: VehicleDashboardHeaderProps) {
@@ -98,10 +101,20 @@ export function VehicleDashboardHeader({
 
       <div className="relative grid grid-cols-1 items-end gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-5 sm:p-6">
         <div className="min-w-0 space-y-3 pl-5 sm:pl-8">
-          <p className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+          <p
+            className={
+              tagCoupled
+                ? "flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-zinc-500"
+                : "flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-rose-400/90"
+            }
+          >
             <span>{statusLabel}</span>
             <span className="relative inline-flex h-2.5 w-2.5 shrink-0 items-center justify-center">
-              <span className="vd-connected-dot" aria-label="Verbunden" />
+              {tagCoupled ? (
+                <span className="vd-connected-dot" aria-label="Verbunden" />
+              ) : (
+                <span className="vd-offline-dot" aria-label="Offline" />
+              )}
             </span>
           </p>
           <div className="space-y-1.5">

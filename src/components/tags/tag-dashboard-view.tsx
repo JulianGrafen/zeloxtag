@@ -183,6 +183,10 @@ export function TagDashboardView({
       (vehicleImageOverride || vehicle.silhouette_image_url?.trim()),
   );
 
+  const garageTagCoupled = Boolean(vehicleSurfaceScope?.linkedTagUuid?.trim());
+  const showGarageOfflineStatus =
+    Boolean(vehicleSurfaceScope) && !garageTagCoupled && !demoMode && !demoShowcase;
+
   const data = {
     ownerName: ownerName?.trim() || "Fahrer",
     vehicleModel: `${vehicleModel} · ${vehicle.year}`,
@@ -199,7 +203,8 @@ export function TagDashboardView({
       : previewFallbackUrl ?? undefined,
     vehicleImageFrameless: demoShowcase,
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
-    statusLabel: "Verbunden",
+    statusLabel: showGarageOfflineStatus ? "Status: Offline" : "Verbunden",
+    tagCoupled: showGarageOfflineStatus ? false : true,
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),
     showcaseSwipeUnreadLikes,

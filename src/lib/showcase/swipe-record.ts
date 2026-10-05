@@ -5,6 +5,8 @@ import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/adm
 import { createClient } from "@/lib/supabase/server";
 import { isValidPublicSlug } from "@/lib/vehicles/public-slug";
 import { notifyShowcaseLikeReceived } from "@/lib/email/showcase-like-email";
+import { notifyWeeklyTopBuildRankOneIfNew } from "@/lib/email/showcase-weekly-top-email";
+import { loadWeeklyLeaderboardAdmin } from "@/lib/showcase/weekly-leaderboard-admin";
 
 export type RecordShowcaseSwipeInput = {
   publicSlug: string;
@@ -71,6 +73,9 @@ export async function recordShowcaseSwipe(
     };
   }
 
+  const topBeforeWeekly =
+    decision === "like" ? await loadWeeklyLeaderboardAdmin(2) : [];
+
   const { error: insertError } = await supabase.from("showcase_swipes").insert({
     swiper_user_id: user.id,
     vehicle_id: vehicle.id,
@@ -93,12 +98,21 @@ export async function recordShowcaseSwipe(
   }
 
   if (decision === "like" && vehicle.user_id) {
+    const vehicleLabel = `${vehicle.make} ${vehicle.model}`.trim();
     void notifyShowcaseLikeReceived({
       ownerUserId: vehicle.user_id,
       vehicleId: vehicle.id,
-      vehicleLabel: `${vehicle.make} ${vehicle.model}`.trim(),
+      vehicleLabel,
     }).catch((error) => {
       console.error("[showcase-swipe] like email failed", error);
+    });
+    void notifyWeeklyTopBuildRankOneIfNew({
+      ownerUserId: vehicle.user_id,
+      vehicleId: vehicle.id,
+      vehicleLabel,
+      topBefore: topBeforeWeekly,
+    }).catch((error) => {
+      console.error("[showcase-swipe] weekly top email failed", error);
     });
   }
 

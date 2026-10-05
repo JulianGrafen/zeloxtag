@@ -38,6 +38,7 @@ export function VehicleDashboard({
           vehicleImageAlt={data.vehicleImageAlt}
           vehicleImageFrameless={data.vehicleImageFrameless}
           statusLabel={data.statusLabel}
+          tagCoupled={data.tagCoupled}
           onEditVehicleImage={onEditVehicleImage}
           onSilhouetteProxyLoad={onSilhouetteProxyLoad}
         />

@@ -133,28 +133,28 @@ export function InvoiceReviewForm({
 
         {!editingHeader ? (
           <div className="space-y-3">
-            <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-b border-[color:var(--vd-border)] pb-4">
-              <div>
-                <dt className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+            <div className="grid grid-cols-2 gap-3 border-b border-[color:var(--vd-border)] pb-4">
+              <div className="min-w-0 space-y-1">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                   Betrag
-                </dt>
-                <dd className="mt-0.5 text-[0.95rem] tabular-nums text-[color:var(--vd-text)]">
+                </span>
+                <p
+                  className="flex min-h-[var(--claim-field-min-height)] items-center text-[0.95rem] tabular-nums text-[color:var(--vd-text)]"
+                >
                   {amountLabel}
-                </dd>
+                </p>
               </div>
-              <div>
-                <label className="block space-y-1">
-                  <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                    Datum
-                  </span>
-                  <GermanDateInput
-                    value={fields.date}
-                    onChange={(iso) => onFieldsChange({ date: iso })}
-                    className="claim-input w-[9.5rem] min-w-0"
-                  />
-                </label>
-              </div>
-            </dl>
+              <label className="block min-w-0 space-y-1">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Datum
+                </span>
+                <GermanDateInput
+                  value={fields.date}
+                  onChange={(iso) => onFieldsChange({ date: iso })}
+                  className="claim-input min-w-0"
+                />
+              </label>
+            </div>
             <button
               type="button"
               onClick={() => setEditingHeader(true)}
@@ -211,7 +211,7 @@ export function InvoiceReviewForm({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-[1fr_auto] items-end gap-3 border-b border-[color:var(--vd-border)] pb-4">
+            <div className="grid grid-cols-2 items-end gap-3 border-b border-[color:var(--vd-border)] pb-4">
               <label className="block min-w-0 space-y-1">
                 <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                   Betrag
@@ -223,14 +223,14 @@ export function InvoiceReviewForm({
                   className="claim-input"
                 />
               </label>
-              <label className="block w-[9.5rem] space-y-1">
+              <label className="block min-w-0 space-y-1">
                 <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                   Datum
                 </span>
                 <GermanDateInput
                   value={fields.date}
                   onChange={(iso) => onFieldsChange({ date: iso })}
-                  className="claim-input"
+                  className="claim-input min-w-0"
                 />
               </label>
             </div>

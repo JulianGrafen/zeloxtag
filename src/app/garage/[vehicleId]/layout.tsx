@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { fetchUserGarage } from "@/lib/garage/fetch-user-garage";
+import { GarageTagCouplingStatusHost } from "@/components/garage/garage-tag-coupling-status";
 import { GarageProvider } from "@/lib/garage/garage-context";
 import { createClient } from "@/lib/supabase/server";
 
@@ -44,6 +45,7 @@ export default async function GarageVehicleLayout({
         initialActiveVehicleId={routeScope.vehicleId}
         routeScope={routeScope}
       >
+        <GarageTagCouplingStatusHost />
         {children}
       </GarageProvider>
     </Suspense>

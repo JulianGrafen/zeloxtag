@@ -56,6 +56,7 @@ type SwipeableTopCardProps = {
   stackLength: number;
   disabled: boolean;
   onSwipeComplete: (decision: "like" | "pass") => void;
+  onDecisionHighlight?: (decision: "like" | "pass") => void;
   onOpen: (card: ShowcaseSwipeCard) => void;
 };
 
@@ -105,6 +106,7 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
       stackLength,
       disabled,
       onSwipeComplete,
+      onDecisionHighlight,
       onOpen,
     },
     ref,
@@ -130,12 +132,13 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
         if (exitingRef.current || disabled) return;
         exitingRef.current = true;
         setIsExiting(true);
+        onDecisionHighlight?.(decision);
         const exitX = decision === "like" ? EXIT_OFFSET_PX : -EXIT_OFFSET_PX;
         await springMotionValue(x, exitX, SPRING_EXIT);
         await springMotionValue(y, 0, SPRING_BACK);
         onSwipeComplete(decision);
       },
-      [disabled, onSwipeComplete, x, y],
+      [disabled, onDecisionHighlight, onSwipeComplete, x, y],
     );
 
     useImperativeHandle(ref, () => ({ flyOff, reset }), [flyOff, reset]);
@@ -252,6 +255,7 @@ type ShowcaseSwipeStackProps = {
   cards: ShowcaseSwipeCard[];
   disabled?: boolean;
   onSwipe: (decision: "like" | "pass") => void;
+  onDecisionHighlight?: (decision: "like" | "pass") => void;
   onOpen: (card: ShowcaseSwipeCard) => void;
 };
 
@@ -259,7 +263,7 @@ export const ShowcaseSwipeStack = forwardRef<
   ShowcaseSwipeStackHandle,
   ShowcaseSwipeStackProps
 >(function ShowcaseSwipeStack(
-  { cards, disabled = false, onSwipe, onOpen },
+  { cards, disabled = false, onSwipe, onDecisionHighlight, onOpen },
   ref,
 ) {
   const visibleCards = useMemo(
@@ -317,6 +321,7 @@ export const ShowcaseSwipeStack = forwardRef<
               stackLength={stack.length}
               disabled={disabled}
               onSwipeComplete={handleSwipeComplete}
+              onDecisionHighlight={onDecisionHighlight}
               onOpen={onOpen}
             />
           );

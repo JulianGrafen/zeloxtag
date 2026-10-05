@@ -55,7 +55,7 @@ type ScanStep = "capture" | "crop" | "processing" | "ready";
 export function InvoiceScannerForm({
   vehicleId,
   tagUuid,
-  vehicleLabel,
+  vehicleLabel: _vehicleLabel,
 }: InvoiceScannerFormProps) {
   const router = useRouter();
   const [step, setStep] = useState<ScanStep>("capture");
@@ -160,9 +160,6 @@ export function InvoiceScannerForm({
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
             Rechnung scannen
           </h1>
-          <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel} · Zuschnitt, Graustufen & A4-PDF lokal
-          </p>
         </div>
       </header>
 
@@ -299,8 +296,8 @@ export function InvoiceScannerForm({
               </select>
             </Label>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Label>
+            <div className="grid grid-cols-2 items-end gap-3">
+              <Label className="min-w-0">
                 <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                   Betrag (€)
                 </span>
@@ -309,15 +306,17 @@ export function InvoiceScannerForm({
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
                   placeholder="optional"
+                  className="claim-input"
                 />
               </Label>
-              <Label>
+              <Label className="min-w-0">
                 <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
                   Datum
                 </span>
                 <GermanDateInput
                   value={date || null}
                   onChange={(iso) => setDate(iso ?? "")}
+                  className="claim-input min-w-0"
                 />
               </Label>
             </div>

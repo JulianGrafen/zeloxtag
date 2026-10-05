@@ -460,9 +460,11 @@ export function InvoiceCaptureWizard({
         <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
           {title}
         </p>
-        <p className="text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
-          {hint ?? INVOICE_CAPTURE_HINTS.intro}
-        </p>
+        {hint ? (
+          <p className="text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
+            {hint}
+          </p>
+        ) : null}
       </div>
 
       <div

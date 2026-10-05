@@ -463,6 +463,33 @@ nextjs-portal {
   }
 }
 
+.vd-offline-dot {
+  position: absolute;
+  top: 0.1rem;
+  left: 0.15rem;
+  height: 0.4rem;
+  width: 0.4rem;
+  border-radius: 50%;
+  background: #f43f5e;
+  box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.55);
+  animation: vd-offline-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes vd-offline-ping {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.55);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 7px rgba(244, 63, 94, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0);
+  }
+}
+
 .vd-step-progress {
   height: 0.25rem;
   flex: 1;
