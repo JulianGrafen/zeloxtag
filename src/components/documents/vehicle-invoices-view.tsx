@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, BarChart3, Receipt, Upload } from "lucide-react";
 
@@ -17,9 +17,9 @@ import {
   automotiveSecondaryButtonClassName,
 } from "@/components/ui/automotive";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
-import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
   displayDocumentTitle,
+  formatDocumentAmount,
   formatDocumentDateCompact,
   sumInvoiceAmounts,
 } from "@/lib/documents/format";
@@ -92,6 +92,45 @@ function ownerScanEntryHref(
 
 const ALL_CHIP = "all";
 
+/** Isolated so the list can SSR/hydrate without suspending the whole Belege view. */
+function VehicleInvoicesUrlQuerySync({
+  onSaved,
+  onHighlight,
+}: {
+  onSaved: () => void;
+  onHighlight: (documentId: string) => void;
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("saved") === "1") {
+      onSaved();
+    }
+    const highlight = searchParams.get("highlight")?.trim();
+    if (highlight) {
+      onHighlight(highlight);
+    }
+  }, [searchParams, onSaved, onHighlight]);
+
+  return null;
+}
+
+function invoiceLineItemSearchText(
+  lineItems: Document["line_items"],
+): string {
+  if (!lineItems?.length) return "";
+  return lineItems
+    .map((item) => {
+      if (typeof item.label === "string" && item.label.trim()) {
+        return item.label;
+      }
+      const legacy = item as { name?: string; description?: string };
+      return legacy.name?.trim() || legacy.description?.trim() || "";
+    })
+    .filter(Boolean)
+    .join(" ");
+}
+
 function VehicleInvoicesViewContent({
   tagUuid,
   vehicleSurfaceScope,
@@ -108,20 +147,17 @@ function VehicleInvoicesViewContent({
   const path = (segment?: string) =>
     surfacePath(vehicleSurfaceScope, tagUuid, segment);
   const manualUploadHref = `${path("hochladen")}?mode=manual&type=invoice`;
-  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string>(initialCategory);
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (searchParams.get("saved") === "1") {
-      setCategoryId(ALL_CHIP);
-    }
-    const highlight = searchParams.get("highlight")?.trim();
-    if (highlight) {
-      setHighlightId(highlight);
-    }
-  }, [searchParams]);
+  const onSavedQuery = useCallback(() => {
+    setCategoryId(ALL_CHIP);
+  }, []);
+
+  const onHighlightQuery = useCallback((documentId: string) => {
+    setHighlightId(documentId);
+  }, []);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -160,8 +196,7 @@ function VehicleInvoicesViewContent({
     return invoices.filter((doc) => {
       const resolved = resolveInvoiceListCategory(doc.category);
       if (categoryId !== ALL_CHIP && resolved !== categoryId) return false;
-      const lineLabels =
-        doc.line_items?.map((item) => item.label).join(" ") ?? "";
+      const lineLabels = invoiceLineItemSearchText(doc.line_items);
       return matchesSearchQuery(
         query,
         doc.title,
@@ -176,8 +211,9 @@ function VehicleInvoicesViewContent({
   }, [invoices, categoryId, query]);
 
   const total = sumInvoiceAmounts(visible);
+  const totalLabel = formatDocumentAmount(total) ?? "0,00 €";
   const searchResultLabel =
-    visible.length === invoices.length
+    !query.trim() && visible.length === invoices.length
       ? undefined
       : `${visible.length} von ${invoices.length} Belegen`;
 
@@ -188,6 +224,12 @@ function VehicleInvoicesViewContent({
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
+      <Suspense fallback={null}>
+        <VehicleInvoicesUrlQuerySync
+          onSaved={onSavedQuery}
+          onHighlight={onHighlightQuery}
+        />
+      </Suspense>
       <div
         aria-hidden
         className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
@@ -214,7 +256,7 @@ function VehicleInvoicesViewContent({
 
           <AutomotiveSummaryPanel
             title={heading}
-            metric={`Summe ${formatEur(total)}`}
+            metric={`Summe ${totalLabel}`}
           >
             {canWrite ? (
               <PressableLink
@@ -279,7 +321,9 @@ function VehicleInvoicesViewContent({
             <AutomotiveList aria-label="Belege">
               {visible.map((doc, index) => {
                 const amount =
-                  typeof doc.amount === "number" ? formatEur(doc.amount) : null;
+                  typeof doc.amount === "number"
+                    ? formatDocumentAmount(doc.amount)
+                    : null;
                 const vendor = doc.vendor?.trim() || "Unbekannter Anbieter";
                 const issued = formatDocumentDateCompact(doc.date);
                 const categoryLabel =
@@ -348,9 +392,5 @@ function VehicleInvoicesViewContent({
 
 /** Invoice overview matching the "Rechnungen & Belege" dashboard mock. */
 export function VehicleInvoicesView(props: VehicleInvoicesViewProps) {
-  return (
-    <Suspense fallback={null}>
-      <VehicleInvoicesViewContent {...props} />
-    </Suspense>
-  );
+  return <VehicleInvoicesViewContent {...props} />;
 }
