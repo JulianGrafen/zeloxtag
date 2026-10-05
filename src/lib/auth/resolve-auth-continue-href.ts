@@ -16,7 +16,7 @@ function loginGateWithError(nextPath: string, error: string): string {
 }
 
 /**
- * Target path after `/auth/continue` (page or route handler).
+ * Target path after `/auth/continue` (route handler).
  * Returns an in-app path starting with `/`.
  */
 export async function resolveAuthContinueHref(
