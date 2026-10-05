@@ -53,6 +53,7 @@ import {
 } from "@/lib/documents/vault-documents";
 import type { VaultCategory } from "@/lib/validations/vaultClassificationSchema";
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
+import { isScanFabLocked } from "@/lib/billing/ai-scan-access";
 import { documentDetailHref } from "@/lib/vehicle-surface/documents-list-href";
 import {
   garagePathForVehicle,
@@ -97,8 +98,25 @@ interface VehicleDocumentsViewProps {
   canWrite?: boolean;
   /** Floating scan CTA — available without Pro when free scan quota remains. */
   canScan?: boolean;
+  membershipActive?: boolean;
+  freeInvoiceScanRemaining?: number;
+  freeAbeScanRemaining?: number;
   /** Prefill invoice category chip when showing Belege. */
   invoiceCategory?: InvoiceListCategory | "all";
+}
+
+function ownerScanEntryHref(
+  vehicleSurfaceScope: VehicleSurfaceScope | undefined,
+  tagUuid: string,
+  scanTypeParam?: string | null,
+): string {
+  const qs = scanTypeParam
+    ? `?scan=1&type=${encodeURIComponent(scanTypeParam)}`
+    : "?scan=1";
+  if (vehicleSurfaceScope) {
+    return vehicleSurfaceHref(vehicleSurfaceScope, qs);
+  }
+  return `/v/${tagUuid}${qs}`;
 }
 
 const FILTERS: Array<{ id: DocumentType | "all"; label: string }> = [
@@ -120,6 +138,9 @@ export function VehicleDocumentsView({
   documentsScope = "filtered",
   canWrite = false,
   canScan,
+  membershipActive = false,
+  freeInvoiceScanRemaining = 0,
+  freeAbeScanRemaining = 0,
   invoiceCategory = "all",
 }: VehicleDocumentsViewProps) {
   const showScanFab = canScan ?? canWrite;
@@ -233,6 +254,9 @@ export function VehicleDocumentsView({
         canScan={showScanFab}
         canWrite={canWrite}
         initialCategory={invoiceCategory}
+        membershipActive={membershipActive}
+        freeInvoiceScanRemaining={freeInvoiceScanRemaining}
+        freeAbeScanRemaining={freeAbeScanRemaining}
       />
     );
   }
@@ -433,13 +457,25 @@ export function VehicleDocumentsView({
       {showScanFab ? (
         <DashboardScanFab
           tagUuid={tagUuid}
-          scanHref={
+          scanHref={ownerScanEntryHref(
+            vehicleSurfaceScope,
+            tagUuid,
             activeType === "tuev"
-              ? `${path()}?scan=1&type=tuev`
+              ? "tuev"
               : activeType === "abe"
-                ? `${path()}?scan=1&type=vault`
-                : `${path()}?scan=1`
-          }
+                ? "vault"
+                : null,
+          )}
+          scanLocked={isScanFabLocked(
+            membershipActive,
+            freeInvoiceScanRemaining,
+            freeAbeScanRemaining,
+            activeType === "tuev"
+              ? "tuev"
+              : activeType === "abe"
+                ? "vault"
+                : null,
+          )}
           scanLabel={
             activeType === "abe"
               ? "In Gutachten Tresor ablegen"

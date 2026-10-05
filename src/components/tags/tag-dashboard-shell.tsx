@@ -8,6 +8,7 @@ import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
 import { VehicleSilhouetteUpload } from "@/components/onboarding/VehicleSilhouetteUpload";
 import type { SilhouetteUploadResult } from "@/components/onboarding/VehicleSilhouetteUpload";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
+import { canStartAiScan } from "@/lib/billing/ai-scan-access";
 import {
   parseScanType,
   isComplimentaryAbeScanType,
@@ -167,6 +168,8 @@ interface TagDashboardShellProps {
   freeAbeScanRemaining?: number;
   /** Post-save upsell after the one free scan (`?freeScanWelcome=1`). */
   showFreeScanWelcome?: boolean;
+  /** `?scan=1` deep link blocked — show paywall immediately (no picker/uploader). */
+  forceScanPaywall?: boolean;
   /** Inventory minter tile for configured superuser. */
   showOperatorMinter?: boolean;
   /** When set, owner account is in deletion grace (read-only). */
@@ -199,6 +202,7 @@ export function TagDashboardShell({
   freeInvoiceScanRemaining = 0,
   freeAbeScanRemaining = 0,
   showFreeScanWelcome = false,
+  forceScanPaywall = false,
   showOperatorMinter = false,
   accountDeletionGraceEndsAt = null,
   showcaseSwipeUnreadLikes = 0,
@@ -215,10 +219,11 @@ export function TagDashboardShell({
   const dashboardBase = vehicleSurfaceScope
     ? vehicleSurfaceHref(vehicleSurfaceScope)
     : `/v/${tagUuid}`;
-  const canAiScan =
-    membershipActive ||
-    freeInvoiceScanRemaining > 0 ||
-    freeAbeScanRemaining > 0;
+  const canAiScan = canStartAiScan(
+    membershipActive,
+    freeInvoiceScanRemaining,
+    freeAbeScanRemaining,
+  );
   const parsedInitial = parseScanType(initialScanType ?? undefined);
   const allowedInitial =
     parsedInitial &&
@@ -229,7 +234,12 @@ export function TagDashboardShell({
   const openScannerDirectly =
     Boolean(allowedInitial) &&
     canWrite &&
-    canAiScan &&
+    canStartAiScan(
+      membershipActive,
+      freeInvoiceScanRemaining,
+      freeAbeScanRemaining,
+      allowedInitial,
+    ) &&
     (initialMode === "pick-scan" || initialMode === "scanner");
 
   const [mode, setMode] = useState<DashboardMode>(() => {
@@ -243,6 +253,9 @@ export function TagDashboardShell({
   const [paywallFeature, setPaywallFeature] = useState<FeatureFlag | null>(
     () => {
       if (showFreeScanWelcome) {
+        return FEATURE.SCAN_AI_RECEIPT;
+      }
+      if (forceScanPaywall) {
         return FEATURE.SCAN_AI_RECEIPT;
       }
       if (
@@ -263,7 +276,7 @@ export function TagDashboardShell({
     return undefined;
   });
   const [paywallVariant, setPaywallVariant] = useState<PaywallVariant>(() => {
-    if (showFreeScanWelcome) {
+    if (showFreeScanWelcome || forceScanPaywall) {
       return "free_scan_exhausted";
     }
     if (

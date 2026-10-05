@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 
 import { VehicleDocumentsView } from "@/components/documents/vehicle-documents-view";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
+import {
+  getFreeAbeScanQuota,
+  getFreeInvoiceScanQuota,
+} from "@/lib/billing/free-scan-quota";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { parseInvoiceListCategory } from "@/lib/documents/invoice-categories";
 import type { TagLoadOptions } from "@/lib/tags/get-tag-by-uuid";
@@ -73,7 +77,14 @@ export default async function VehicleDocumentsPage({
     ? result.documents.filter((doc) => doc.type === "invoice")
     : result.documents;
   const invoiceCategory = parseInvoiceListCategory(categoryRaw) ?? "all";
-  const membershipActive = await userHasActiveMembership(result.vehicle!.user_id);
+  const ownerUserId = result.vehicle!.user_id;
+  const membershipActive = await userHasActiveMembership(ownerUserId);
+  const freeInvoiceScanQuota = membershipActive
+    ? { remaining: 0 }
+    : await getFreeInvoiceScanQuota(ownerUserId);
+  const freeAbeScanQuota = membershipActive
+    ? { remaining: 0 }
+    : await getFreeAbeScanQuota(ownerUserId);
 
   return (
     <VehicleDocumentsView
@@ -93,6 +104,9 @@ export default async function VehicleDocumentsPage({
         !isDemoShowcase && access.canWriteInvoices && membershipActive
       }
       canScan={!isDemoShowcase && access.canWriteInvoices}
+      membershipActive={membershipActive}
+      freeInvoiceScanRemaining={freeInvoiceScanQuota.remaining}
+      freeAbeScanRemaining={freeAbeScanQuota.remaining}
     />
   );
 }

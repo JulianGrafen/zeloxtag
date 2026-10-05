@@ -15,6 +15,7 @@ import { getAccountDeletionState } from "@/lib/account/account-lifecycle";
 import { isOperatorEmail } from "@/lib/auth/require-operator";
 import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
+import { resolveDashboardScanGate } from "@/lib/billing/ai-scan-access";
 import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free-scan-quota";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
@@ -409,11 +410,13 @@ export default async function TagScanPage({
       ? { remaining: 0, used: 0, limit: 1 }
       : await getFreeAbeScanQuota(vehicle.user_id);
     const wantsScan = scan === "1" && tour !== "1";
-    const openScanner =
-      wantsScan &&
-      (membershipActive ||
-        freeInvoiceScanQuota.remaining > 0 ||
-        freeAbeScanQuota.remaining > 0);
+    const scanGate = resolveDashboardScanGate({
+      wantsScan,
+      membershipActive,
+      freeInvoiceRemaining: freeInvoiceScanQuota.remaining,
+      freeAbeRemaining: freeAbeScanQuota.remaining,
+      scanTypeRaw: scanType,
+    });
     const pendingTour = await hasPendingDashboardTour();
     const startTour =
       access.isOwner &&
@@ -484,8 +487,11 @@ export default async function TagScanPage({
           isOwner={access.isOwner}
           isContributor={access.isContributor}
           sessionEmail={access.sessionEmail}
-          initialMode={wantsScan ? "pick-scan" : "dashboard"}
-          initialScanType={openScanner ? (scanType ?? null) : null}
+          initialMode={
+            wantsScan && !scanGate.showScanPaywall ? "pick-scan" : "dashboard"
+          }
+          initialScanType={scanGate.initialScanType}
+          forceScanPaywall={scanGate.showScanPaywall}
           startTour={startTour}
           membershipActive={membershipActive}
           freeInvoiceScanRemaining={freeInvoiceScanQuota.remaining}

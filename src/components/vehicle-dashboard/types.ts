@@ -85,6 +85,8 @@ export interface VehicleDashboardData {
     vehicleImageFrameless?: boolean;
   /** Accent label under the greeting, e.g. "QR Tag · Active" */
   statusLabel?: string;
+  /** Secondary line on the status row (offline garage without tag). */
+  statusDetail?: string;
   /** False when digital garage has no linked V4A tag (offline header styling). */
   tagCoupled?: boolean;
   /** ISO-Datum des letzten Ölwechsels */

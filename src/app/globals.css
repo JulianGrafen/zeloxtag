@@ -1855,6 +1855,33 @@ a.claim-cta {
   --claim-cta-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
 }
 
+/* Paywall checkout — override default .claim-cta padding for centered label */
+.paywall-sticky-cta.claim-cta {
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.84rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.paywall-sticky-cta.claim-cta--inline {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+}
+
+.dark .paywall-sticky-cta.claim-cta:not(.vd-scan-fab-cta):not(.vd-scan-fab-cta--locked) {
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.84rem;
+}
+
+.dark .paywall-sticky-cta.claim-cta--inline:not(.vd-scan-fab-cta):not(.vd-scan-fab-cta--locked) {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

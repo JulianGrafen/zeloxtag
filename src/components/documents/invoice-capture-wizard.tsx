@@ -167,7 +167,7 @@ export function InvoiceCaptureWizard({
   imageButtonLabel = "Bild hochladen",
   cameraButtonLabel = "Scannen",
   pdfButtonLabel = "PDF",
-  hint,
+  hint: _hint,
 }: InvoiceCaptureWizardProps) {
   const [phase, setPhase] = useState<CapturePhase>("intro");
   const [overviewFile, setOverviewFile] = useState<File | null>(null);
@@ -453,20 +453,6 @@ export function InvoiceCaptureWizard({
       <span className="vd-icon-badge mx-auto !h-14 !w-14 !rounded-2xl">
         <ScanLine className="h-6 w-6" aria-hidden />
       </span>
-      <div className="space-y-1">
-        <p className="text-[0.65rem] font-medium uppercase tracking-[0.18em] text-[color:var(--vd-muted)]">
-          {scanLabel}
-        </p>
-        <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-          {title}
-        </p>
-        {hint ? (
-          <p className="text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
-            {hint}
-          </p>
-        ) : null}
-      </div>
-
       <div
         className={
           allowPdf || showImageUploadOnIntro

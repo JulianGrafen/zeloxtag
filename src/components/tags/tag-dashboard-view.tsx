@@ -204,6 +204,9 @@ export function TagDashboardView({
     vehicleImageFrameless: demoShowcase,
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
     statusLabel: showGarageOfflineStatus ? "Status: Offline" : "Verbunden",
+    statusDetail: showGarageOfflineStatus
+      ? "Kein Zelox Tag vorhanden"
+      : undefined,
     tagCoupled: showGarageOfflineStatus ? false : true,
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),

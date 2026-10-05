@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   PRO_PAYWALL_STICKY_MICROCOPY,
   PRO_TRIAL_LABEL,
@@ -43,17 +42,17 @@ export function StickyPaywallCta({
       )}
     >
       <div className="mx-auto w-full max-w-lg">
-        <Button
+        <button
           type="button"
           className={cn(
-            "claim-cta paywall-cta-pulse w-full shadow-[var(--vd-shadow-sm)]",
-            inline ? "min-h-10 py-3 text-[0.88rem]" : "min-h-12 py-3.5 text-[0.95rem]",
+            "claim-cta paywall-sticky-cta paywall-cta-pulse w-full shadow-[var(--vd-shadow-sm)]",
+            inline && "paywall-sticky-cta--inline",
           )}
           disabled={pending}
           onClick={onCheckout}
         >
           {pending ? "Weiter zu Stripe…" : label}
-        </Button>
+        </button>
         {microCopy?.trim() ? (
           <p
             className={cn(

@@ -32,6 +32,7 @@ import {
 } from "@/lib/documents/invoice-categories";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
+import { isScanFabLocked } from "@/lib/billing/ai-scan-access";
 import { documentDetailHref } from "@/lib/vehicle-surface/documents-list-href";
 import {
   garagePathForVehicle,
@@ -72,6 +73,21 @@ interface VehicleInvoicesViewProps {
   canWrite?: boolean;
   /** Prefill category chip (e.g. "repair" for Reparaturen). */
   initialCategory?: InvoiceListCategory | "all";
+  membershipActive?: boolean;
+  freeInvoiceScanRemaining?: number;
+  freeAbeScanRemaining?: number;
+}
+
+function ownerScanEntryHref(
+  vehicleSurfaceScope: VehicleSurfaceScope | undefined,
+  tagUuid: string,
+  scanTypeParam: string,
+): string {
+  const qs = `?scan=1&type=${encodeURIComponent(scanTypeParam)}`;
+  if (vehicleSurfaceScope) {
+    return vehicleSurfaceHref(vehicleSurfaceScope, qs);
+  }
+  return `/v/${tagUuid}${qs}`;
 }
 
 const ALL_CHIP = "all";
@@ -84,6 +100,9 @@ function VehicleInvoicesViewContent({
   canScan,
   canWrite = false,
   initialCategory = "all",
+  membershipActive = false,
+  freeInvoiceScanRemaining = 0,
+  freeAbeScanRemaining = 0,
 }: VehicleInvoicesViewProps) {
   const showScanFab = canScan ?? canWrite;
   const path = (segment?: string) =>
@@ -307,11 +326,17 @@ function VehicleInvoicesViewContent({
       {showScanFab ? (
         <DashboardScanFab
           tagUuid={tagUuid}
-          scanHref={
-            categoryId === "repair"
-              ? `${path()}?scan=1&type=repair`
-              : `${path()}?scan=1&type=invoice`
-          }
+          scanHref={ownerScanEntryHref(
+            vehicleSurfaceScope,
+            tagUuid,
+            categoryId === "repair" ? "repair" : "invoice",
+          )}
+          scanLocked={isScanFabLocked(
+            membershipActive,
+            freeInvoiceScanRemaining,
+            freeAbeScanRemaining,
+            categoryId === "repair" ? "repair" : "invoice",
+          )}
           scanLabel={
             categoryId === "repair" ? "Reparatur scannen" : "Rechnung scannen"
           }

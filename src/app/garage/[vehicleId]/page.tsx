@@ -60,8 +60,13 @@ export default async function GarageDashboardPage({
           isOwner={dashboard.isOwner}
           isContributor={dashboard.isContributor}
           sessionEmail={dashboard.sessionEmail}
-          initialMode={dashboard.wantsScan ? "pick-scan" : "dashboard"}
-          initialScanType={dashboard.openScanner ? (query.type ?? null) : null}
+          initialMode={
+            dashboard.wantsScan && !dashboard.showScanPaywall
+              ? "pick-scan"
+              : "dashboard"
+          }
+          initialScanType={dashboard.scanGateInitialType}
+          forceScanPaywall={dashboard.showScanPaywall}
           startTour={dashboard.startTour}
           membershipActive={dashboard.membershipActive}
           freeInvoiceScanRemaining={dashboard.freeInvoiceScanRemaining}

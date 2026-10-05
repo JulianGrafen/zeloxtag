@@ -6,10 +6,12 @@ import { getAccountDeletionState } from "@/lib/account/account-lifecycle";
 import { isOperatorEmail } from "@/lib/auth/require-operator";
 import { requireVehicleSurfaceOwner } from "@/lib/auth/require-vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
+import { resolveDashboardScanGate } from "@/lib/billing/ai-scan-access";
 import {
   getFreeAbeScanQuota,
   getFreeInvoiceScanQuota,
 } from "@/lib/billing/free-scan-quota";
+import type { ScanType } from "@/lib/documents/scan-types";
 import {
   isForcedDashboardTourSearch,
 } from "@/lib/onboarding/dashboard-tour";
@@ -39,8 +41,8 @@ export type OwnerDashboardPayload = {
   isContributor: boolean;
   sessionEmail: string | null;
   wantsScan: boolean;
-  openScanner: boolean;
-  scanType: string | null | undefined;
+  scanGateInitialType: ScanType | null;
+  showScanPaywall: boolean;
   startTour: boolean;
   membershipActive: boolean;
   freeInvoiceScanRemaining: number;
@@ -85,11 +87,13 @@ export async function loadOwnerDashboardForVehicle(
     ? { remaining: 0, used: 0, limit: 1 }
     : await getFreeAbeScanQuota(vehicle.user_id);
   const wantsScan = scan === "1" && tour !== "1";
-  const openScanner =
-    wantsScan &&
-    (membershipActive ||
-      freeInvoiceScanQuota.remaining > 0 ||
-      freeAbeScanQuota.remaining > 0);
+  const scanGate = resolveDashboardScanGate({
+    wantsScan,
+    membershipActive,
+    freeInvoiceRemaining: freeInvoiceScanQuota.remaining,
+    freeAbeRemaining: freeAbeScanQuota.remaining,
+    scanTypeRaw: scanType,
+  });
   const pendingTour = await hasPendingDashboardTour();
   const startTour =
     access.isOwner &&
@@ -165,8 +169,8 @@ export async function loadOwnerDashboardForVehicle(
     isContributor: access.isContributor,
     sessionEmail: access.sessionEmail,
     wantsScan,
-    openScanner,
-    scanType,
+    scanGateInitialType: scanGate.initialScanType,
+    showScanPaywall: scanGate.showScanPaywall,
     startTour,
     membershipActive,
     freeInvoiceScanRemaining: freeInvoiceScanQuota.remaining,

@@ -16,6 +16,8 @@ interface VehicleDashboardHeaderProps {
   vehicleImageAlt?: string;
   vehicleImageFrameless?: boolean;
   statusLabel?: string;
+  /** Shown beside the status line when offline (e.g. missing hardware tag). */
+  statusDetail?: string;
   /** When false, show offline styling instead of the green “verbunden” dot. */
   tagCoupled?: boolean;
   onEditVehicleImage?: () => void;
@@ -65,6 +67,7 @@ export function VehicleDashboardHeader({
   vehicleImageAlt,
   vehicleImageFrameless = false,
   statusLabel = "Verbunden",
+  statusDetail,
   tagCoupled = true,
   onEditVehicleImage,
   onSilhouetteProxyLoad,
@@ -104,18 +107,27 @@ export function VehicleDashboardHeader({
           <p
             className={
               tagCoupled
-                ? "flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-zinc-500"
-                : "flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-rose-400/90"
+                ? "flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-zinc-500"
+                : "flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-rose-400/90"
             }
           >
-            <span>{statusLabel}</span>
-            <span className="relative inline-flex h-2.5 w-2.5 shrink-0 items-center justify-center">
-              {tagCoupled ? (
-                <span className="vd-connected-dot" aria-label="Verbunden" />
-              ) : (
-                <span className="vd-offline-dot" aria-label="Offline" />
-              )}
+            <span className="inline-flex items-center gap-2">
+              <span>{statusLabel}</span>
+              <span className="relative inline-flex h-2.5 w-2.5 shrink-0 items-center justify-center">
+                {tagCoupled ? (
+                  <span className="vd-connected-dot" aria-label="Verbunden" />
+                ) : (
+                  <span className="vd-offline-dot" aria-label="Offline" />
+                )}
+              </span>
             </span>
+            {statusDetail ? (
+              <span
+                className="font-medium normal-case tracking-normal text-zinc-400"
+              >
+                {statusDetail}
+              </span>
+            ) : null}
           </p>
           <div className="space-y-1.5">
             <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-white sm:text-[1.75rem]">
