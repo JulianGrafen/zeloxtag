@@ -11,6 +11,7 @@ import {
   rateLimit,
   RATE_LIMITS,
 } from "@/lib/security/rate-limit";
+import { createClient } from "@/lib/supabase/server";
 
 const emailSchema = z.string().trim().email().max(320);
 const passwordSchema = z.string().min(10).max(128);
@@ -91,6 +92,21 @@ export async function ensureClaimAccount(input: {
   });
 
   if (result.status === "session") {
+    if (result.created) {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user && !user.email_confirmed_at) {
+        await supabase.auth.signOut();
+        return {
+          ok: false,
+          needsEmailConfirmation: true,
+          message: CLAIM_CONFIRM_EMAIL_MESSAGE,
+          pendingUserId: result.userId,
+        };
+      }
+    }
     return {
       ok: true,
       userId: result.userId,

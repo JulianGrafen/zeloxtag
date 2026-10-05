@@ -33,6 +33,18 @@ function looksLikeExistingUser(message: string): boolean {
   );
 }
 
+function isUserEmailConfirmed(
+  user: { email_confirmed_at?: string | null } | null | undefined,
+): boolean {
+  const confirmedAt = user?.email_confirmed_at;
+  return typeof confirmedAt === "string" && confirmedAt.trim().length > 0;
+}
+
+async function clearServerAuthSession(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+}
+
 function buildSignupConfirmUrl(
   siteUrl: string,
   hashedToken: string,
@@ -219,9 +231,18 @@ async function registerViaSupabaseSignUp(input: {
   });
 
   if (data.session?.user) {
+    const user = data.session.user;
+    if (!isUserEmailConfirmed(user)) {
+      await clearServerAuthSession();
+      return {
+        status: "confirm_email",
+        message: input.confirmMessage,
+        userId: user.id,
+      };
+    }
     return {
       status: "session",
-      userId: data.session.user.id,
+      userId: user.id,
       created: true,
     };
   }
