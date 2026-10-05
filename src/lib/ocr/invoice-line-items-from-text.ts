@@ -296,9 +296,13 @@ export function lineTotalFromInvoiceRow(
   }
 
   let label = normalized.slice(0, total.index).trim();
-  // Drop leftover unit-price / qty columns from the label.
+  // Drop Einzelpreis / Menge columns using known match spans (avoid bogus $-regex joins).
+  for (let i = amounts.length - 2; i >= 0; i -= 1) {
+    const { raw, index } = amounts[i]!;
+    if (index > label.length) continue;
+    label = `${label.slice(0, index)}${label.slice(index + raw.length)}`.trim();
+  }
   label = label
-    .replace(new RegExp(`(?:${INVOICE_OCR_MONEY_TOKEN})\\s*$`, "g"), "")
     .replace(/\s+\d+(?:[.,]\d+)?\s*(?:x|×|stk|stück|st\.?|stk\.?)?\s*$/i, "")
     .replace(/\s+[A-Z0-9]{1,2}\s*$/i, "")
     .replace(/\s+/g, " ")

@@ -12,7 +12,7 @@ export const MAX_INVOICE_EUR = 250_000;
  */
 /** Inline / table OCR amounts (strict — avoids article numbers like 7.10334.07.0). */
 export const INVOICE_OCR_MONEY_TOKEN =
-  "-?\\d{1,3}(?:\\.\\d{3})*,\\d{2}|-?\\d{1,3}(?:\\s\\d{3})+,\\d{1,2}|-?\\d+,\\d{2}";
+  "-?\\d{1,3}(?:\\.\\d{3})*,\\d{2}|(?<![,\\d])-?\\d{1,3}(?:\\s\\d{3})+,\\d{1,2}|-?\\d+,\\d{2}";
 
 /** Labeled footer totals — also allows 1999,0 without thousand separators. */
 export const INVOICE_FOOTER_MONEY_CAPTURE =
