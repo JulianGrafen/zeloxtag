@@ -72,6 +72,8 @@ interface TagScanPageProps {
     checkout?: string;
     session_id?: string;
     freeScanWelcome?: string;
+    /** From Entdecken tap — always show public showcase, not owner dashboard. */
+    showcase?: string;
   }>;
 }
 
@@ -266,9 +268,17 @@ export default async function TagScanPage({
   searchParams,
 }: TagScanPageProps) {
   const { uuid: identifier } = await params;
-  const { scan, type: scanType, dashboard, tour, session_id, freeScanWelcome } =
-    await searchParams;
+  const {
+    scan,
+    type: scanType,
+    dashboard,
+    tour,
+    session_id,
+    freeScanWelcome,
+    showcase: showcaseRaw,
+  } = await searchParams;
   const wantsDashboard = dashboard === "1" || scan === "1";
+  const forcePublicShowcase = showcaseRaw === "1";
   const [entry, user] = await Promise.all([
     resolvePublicVehicleEntry(identifier),
     getCurrentUser(),
@@ -311,6 +321,7 @@ export default async function TagScanPage({
     }
 
     if (
+      !forcePublicShowcase &&
       user &&
       vehicle.user_id?.trim() &&
       user.id === vehicle.user_id.trim()
@@ -323,7 +334,7 @@ export default async function TagScanPage({
     }
 
     const tagUuid = await getActiveTagUuidForVehicle(vehicle.id);
-    if (tagUuid && user) {
+    if (!forcePublicShowcase && tagUuid && user) {
       const access = await getTagVehicleAccess(
         tagUuid,
         vehicle.user_id?.trim() || null,

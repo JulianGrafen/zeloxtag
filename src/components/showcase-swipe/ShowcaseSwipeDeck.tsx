@@ -60,7 +60,8 @@ export function ShowcaseSwipeDeck({
   const [hydrating, setHydrating] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [swipeError, setSwipeError] = useState<string | null>(null);
-  const [everHadCards, setEverHadCards] = useState(initialCards.length > 0);
+  /** True only after a non-empty client deck load or a swipe — not from SSR preload alone. */
+  const [hadCardsThisSession, setHadCardsThisSession] = useState(false);
   const [busy, setBusy] = useState(false);
   const stackRef = useRef<ShowcaseSwipeStackHandle>(null);
   const [highlightedAction, setHighlightedAction] = useState<
@@ -93,9 +94,7 @@ export function ShowcaseSwipeDeck({
     try {
       const deck = await fetchDeck();
       setCards(deck);
-      if (deck.length > 0) {
-        setEverHadCards(true);
-      }
+      setHadCardsThisSession(deck.length > 0);
     } catch {
       setLoadError("Builds konnten nicht geladen werden.");
     } finally {
@@ -110,9 +109,7 @@ export function ShowcaseSwipeDeck({
         const deck = await fetchDeck();
         if (cancelled) return;
         setCards(deck);
-        if (deck.length > 0) {
-          setEverHadCards(true);
-        }
+        setHadCardsThisSession(deck.length > 0);
         setLoadError(null);
       } catch {
         if (!cancelled) {
@@ -136,7 +133,12 @@ export function ShowcaseSwipeDeck({
   const current = cards[0];
 
   const removeTop = useCallback(() => {
-    setCards((prev) => prev.slice(1));
+    setCards((prev) => {
+      if (prev.length > 0) {
+        setHadCardsThisSession(true);
+      }
+      return prev.slice(1);
+    });
   }, []);
 
   const handleSwipe = useCallback(
@@ -162,7 +164,8 @@ export function ShowcaseSwipeDeck({
 
   const openShowcase = useCallback(
     (card: ShowcaseSwipeCard) => {
-      router.push(`/v/${card.publicSlug}`);
+      const slug = encodeURIComponent(card.publicSlug);
+      router.push(`/v/${slug}?showcase=1`);
     },
     [router],
   );
@@ -193,15 +196,15 @@ export function ShowcaseSwipeDeck({
       );
     }
 
-    if (!everHadCards) {
+    if (!hadCardsThisSession) {
       return (
         <div className="zt-feature-panel px-5 py-10 text-center">
           <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
-            Aktuell keine Builds zum Swipen
+            Aktuell keine öffentlichen Builds
           </p>
           <p className="mt-2 text-[0.85rem] text-[color:var(--vd-muted)]">
-            Sobald andere Nutzer ihr Profil veröffentlichen und im Build-Swipe
-            sichtbar sind, erscheinen sie hier.
+            Sobald andere Fahrzeuge im Showcase sichtbar sind, kannst du hier
+            swipen und liken.
           </p>
           <button
             type="button"

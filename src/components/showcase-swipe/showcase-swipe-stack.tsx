@@ -119,6 +119,7 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
     const passOpacity = useTransform(x, [-80, 0], [1, 0]);
     const [isExiting, setIsExiting] = useState(false);
     const exitingRef = useRef(false);
+    const dragGestureRef = useRef(false);
 
     const reset = useCallback(() => {
       exitingRef.current = false;
@@ -143,6 +144,15 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
 
     useImperativeHandle(ref, () => ({ flyOff, reset }), [flyOff, reset]);
 
+    const openShowcaseFromGesture = useCallback(() => {
+      if (disabled || exitingRef.current) return;
+      onOpen(card);
+    }, [card, disabled, onOpen]);
+
+    const handleDragStart = useCallback(() => {
+      dragGestureRef.current = true;
+    }, []);
+
     const handleDragEnd = useCallback(
       (_: unknown, info: PanInfo) => {
         if (disabled || exitingRef.current) return;
@@ -150,18 +160,32 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
         const decision = resolveSwipeDecision(info);
         if (decision) {
           void flyOff(decision);
+          dragGestureRef.current = false;
           return;
         }
 
         if (isOpenTap(info)) {
-          onOpen(card);
+          openShowcaseFromGesture();
+          dragGestureRef.current = false;
+          void springMotionValue(x, 0, SPRING_BACK);
+          void springMotionValue(y, 0, SPRING_BACK);
+          return;
         }
 
+        dragGestureRef.current = false;
         void springMotionValue(x, 0, SPRING_BACK);
         void springMotionValue(y, 0, SPRING_BACK);
       },
-      [card, disabled, flyOff, onOpen, x, y],
+      [disabled, flyOff, openShowcaseFromGesture, x, y],
     );
+
+    const handleTap = useCallback(() => {
+      if (dragGestureRef.current) {
+        dragGestureRef.current = false;
+        return;
+      }
+      openShowcaseFromGesture();
+    }, [openShowcaseFromGesture]);
 
     return (
       <motion.div
@@ -173,7 +197,9 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
         dragDirectionLock
         dragMomentum={false}
         whileTap={{ cursor: "grabbing" }}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onTap={handleTap}
       >
         <motion.div
           className="stack-card"

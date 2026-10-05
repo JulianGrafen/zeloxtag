@@ -38,7 +38,7 @@ export function VehicleRankCard({ build, className }: VehicleRankCardProps) {
 
   return (
     <Link
-      href={`/v/${build.publicSlug}`}
+      href={`/v/${build.publicSlug}?showcase=1`}
       className={cn(
         "group flex w-[min(72vw,17rem)] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border bg-gradient-to-b backdrop-blur-md",
         "border-t border-white/[0.1] shadow-[0_12px_40px_rgba(0,0,0,0.35)]",
