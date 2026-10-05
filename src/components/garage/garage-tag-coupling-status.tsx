@@ -54,8 +54,11 @@ export function GarageTagCouplingStatus({
       <button
         type="button"
         className={cn(
-          "fixed right-4 z-[60] flex max-w-[min(100vw-2rem,18rem)] items-center gap-2 rounded-full border border-rose-500/35 bg-zinc-950/88 px-2.5 py-1.5 text-left shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:border-rose-400/55 hover:bg-zinc-950/95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400/70",
-          "top-[max(0.65rem,env(safe-area-inset-top))]",
+          "fixed right-4 z-[50] flex items-center gap-2 rounded-full border border-rose-500/35 bg-zinc-950/88 text-left shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:border-rose-400/55 hover:bg-zinc-950/95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400/70",
+          /* Below centered hero wordmark — not over ZELOX TAG bar */
+          "top-[max(3rem,calc(env(safe-area-inset-top)+2.65rem))]",
+          "max-w-[min(100vw-2rem,18rem)] px-2.5 py-1.5 sm:max-w-[18rem]",
+          "max-sm:max-w-none max-sm:px-1.5 max-sm:py-1.5",
           className,
         )}
         aria-label={GARAGE_TAG_OFFLINE_STATUS_LABEL}
@@ -76,7 +79,7 @@ export function GarageTagCouplingStatus({
           </span>
           <span className="vd-offline-dot pointer-events-none" aria-hidden />
         </span>
-        <span className="min-w-0 pr-0.5">
+        <span className="hidden min-w-0 pr-0.5 sm:block">
           <span className="block text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-rose-400/95">
             Offline
           </span>
