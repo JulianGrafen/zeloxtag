@@ -31,6 +31,27 @@ export async function completeGarageVehicleForOwner(
   }
 
   const supabase = await createClient();
+
+  const { data: existingVehicle } = await supabase
+    .from("vehicles")
+    .select("id")
+    .eq("user_id", ownerUserId)
+    .eq("make", payload.make.trim())
+    .eq("model", payload.model.trim())
+    .eq("year", payload.year)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingVehicle?.id) {
+    const displayName = payload.name?.trim();
+    if (displayName) {
+      await supabase.auth.updateUser({ data: { name: displayName } });
+    }
+    await applyClaimTechSpecsToVehicle(existingVehicle.id, payload.techSpecs);
+    return { status: "created", vehicleId: existingVehicle.id };
+  }
+
   const { data, error } = await supabase.rpc("create_garage_vehicle", {
     p_make: payload.make.trim(),
     p_model: payload.model.trim(),

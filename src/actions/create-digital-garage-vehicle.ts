@@ -6,7 +6,10 @@ import { checkAccountWritable } from "@/lib/account/account-lifecycle";
 import { ensureClaimAccount } from "@/lib/auth/ensure-claim-account";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { completeGarageVehicleForOwner } from "@/lib/hardware/complete-garage-vehicle-for-owner";
-import { setPendingGarageVehicle } from "@/lib/hardware/pending-garage-vehicle";
+import {
+  clearPendingGarageVehicleState,
+  setPendingGarageVehicle,
+} from "@/lib/hardware/pending-garage-vehicle";
 import {
   DIGITAL_GARAGE_BETA_FULL_MESSAGE,
   getDigitalGarageBetaStatus,
@@ -220,6 +223,8 @@ export async function createDigitalGarageVehicle(
     if (result.status === "error") {
       return result;
     }
+
+    await clearPendingGarageVehicleState(ownerUserId);
 
     if (runDashboardOnboarding) {
       await setPendingDashboardTour();
