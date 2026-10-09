@@ -9,5 +9,6 @@ export function buildStoryCardCacheKey(data: ShareableBuildData): string {
     modificationsCount: data.modificationsCount,
     specRows: data.specRows,
     buildDna: data.buildDna,
+    weeklyShowcaseRank: data.weeklyShowcaseRank,
   });
 }

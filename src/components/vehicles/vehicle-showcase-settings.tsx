@@ -2,7 +2,10 @@ import { ShowcaseMediaSettings } from "@/components/vehicles/showcase-media-sett
 import { VehiclePublicProfileSubmenu } from "@/components/vehicles/vehicle-public-profile-submenu";
 import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
 import { VehicleShowcaseModificationsSubmenu } from "@/components/vehicles/vehicle-showcase-modifications-submenu";
+import { ShowcaseWeeklyPlacement } from "@/components/showcase-swipe/showcase-weekly-placement";
 import { VehicleShowcaseStoryPassSettings } from "@/components/vehicles/vehicle-showcase-story-pass-settings";
+import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import { partitionShowcaseSelectableDocuments } from "@/lib/vehicles/public-showcase-documents";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document, Vehicle } from "@/types/database";
@@ -15,6 +18,7 @@ type VehicleShowcaseSettingsProps = {
   canEdit: boolean;
   hasLinkedTag: boolean;
   linkedTagUuid: string | null;
+  weeklyRank?: VehicleWeeklyShowcaseRank | null;
 };
 
 export function VehicleShowcaseSettings({
@@ -24,6 +28,7 @@ export function VehicleShowcaseSettings({
   galleryPhotos,
   canEdit,
   hasLinkedTag,
+  weeklyRank = null,
 }: VehicleShowcaseSettingsProps) {
   const { invoices, modifications } =
     partitionShowcaseSelectableDocuments(documents);
@@ -60,10 +65,23 @@ export function VehicleShowcaseSettings({
       ) : null}
 
       {vehicle.is_public ? (
-        <VehicleShowcaseStoryPassSettings
-          vehicle={vehicle}
-          documents={documents}
-        />
+        <>
+          <ShowcaseWeeklyPlacement
+            isPublic={Boolean(vehicle.is_public)}
+            showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
+            profilSettingsHref={vehicleSurfaceHref(
+              surfaceScope,
+              "einstellungen/profil",
+            )}
+            weeklyRank={weeklyRank}
+            variant="section"
+          />
+          <VehicleShowcaseStoryPassSettings
+            vehicle={vehicle}
+            documents={documents}
+            weeklyRank={weeklyRank}
+          />
+        </>
       ) : null}
     </VehicleSettingsSubmenuGroup>
   );

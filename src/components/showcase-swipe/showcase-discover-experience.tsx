@@ -2,11 +2,15 @@
 
 import { useCallback, useState } from "react";
 
+import type { ShareableBuildData } from "@/components/shareable-spec-card/types";
 import { ShowcaseInviteFriends } from "@/components/showcase-swipe/showcase-invite-friends";
 import { ShowcaseOwnSwipeLikes } from "@/components/showcase-swipe/showcase-own-swipe-likes";
 import { ShowcaseSwipeDeck } from "@/components/showcase-swipe/ShowcaseSwipeDeck";
+import { ShowcaseTopThreeStoryShare } from "@/components/showcase-swipe/showcase-top-three-story-share";
+import { ShowcaseWeeklyPlacement } from "@/components/showcase-swipe/showcase-weekly-placement";
 import { WeeklyTopBuilds } from "@/components/showcase-swipe/weekly-top-builds";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
+import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
 import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
 
 type ShowcaseDiscoverExperienceProps = {
@@ -14,6 +18,11 @@ type ShowcaseDiscoverExperienceProps = {
   initialCards?: ShowcaseSwipeCard[];
   initialWeeklyBuilds: WeeklyTopBuild[];
   ownSwipeTotalLikes: number;
+  isPublic: boolean;
+  showcaseSwipeOptIn: boolean;
+  profilSettingsHref: string;
+  ownWeeklyRank: VehicleWeeklyShowcaseRank | null;
+  ownTopThreeShareCardData: ShareableBuildData | null;
 };
 
 function sortWeeklyBuilds(rows: WeeklyTopBuild[]): WeeklyTopBuild[] {
@@ -32,6 +41,11 @@ export function ShowcaseDiscoverExperience({
   initialCards = [],
   initialWeeklyBuilds,
   ownSwipeTotalLikes,
+  isPublic,
+  showcaseSwipeOptIn,
+  profilSettingsHref,
+  ownWeeklyRank,
+  ownTopThreeShareCardData,
 }: ShowcaseDiscoverExperienceProps) {
   const [weeklyBuilds, setWeeklyBuilds] = useState(initialWeeklyBuilds);
 
@@ -64,6 +78,20 @@ export function ShowcaseDiscoverExperience({
   return (
     <div className="flex flex-col gap-2">
       <ShowcaseOwnSwipeLikes totalLikes={ownSwipeTotalLikes} />
+      <ShowcaseWeeklyPlacement
+        isPublic={isPublic}
+        showcaseSwipeOptIn={showcaseSwipeOptIn}
+        profilSettingsHref={profilSettingsHref}
+        weeklyRank={ownWeeklyRank}
+        variant="compact"
+        className="mb-1"
+      />
+      {ownTopThreeShareCardData ? (
+        <ShowcaseTopThreeStoryShare
+          cardData={ownTopThreeShareCardData}
+          className="mb-2 border-b border-white/[0.06] pb-6"
+        />
+      ) : null}
       <ShowcaseInviteFriends />
       <WeeklyTopBuilds builds={weeklyBuilds} />
       <ShowcaseSwipeDeck

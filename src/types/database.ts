@@ -913,6 +913,10 @@ export type Database = {
         Args: Record<string, never>;
         Returns: Json;
       };
+      get_vehicle_weekly_showcase_rank: {
+        Args: { p_vehicle_id: string };
+        Returns: Json;
+      };
       get_weekly_top_builds: {
         Args: { p_limit?: number };
         Returns: Json;

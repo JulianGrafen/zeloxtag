@@ -9,6 +9,7 @@ import {
 import { ShareCardBuildDnaBlock } from "./ShareCardBuildDnaBlock";
 import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
 import { ShareCardSpecRowView } from "./ShareCardSpecRow";
+import { ShareCardWeeklyRankBadge } from "./ShareCardWeeklyRankBadge";
 import { ShareCardZeloxMark } from "./ShareCardZeloxMark";
 import { computeShareCardLayout } from "./share-card-layout";
 import type { ShareableBuildData } from "./types";
@@ -76,6 +77,12 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
               <div className="absolute inset-0 bg-zinc-900" />
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
+
+            {data.weeklyShowcaseRank != null ? (
+              <div className="absolute left-10 top-10 z-20">
+                <ShareCardWeeklyRankBadge rank={data.weeklyShowcaseRank} />
+              </div>
+            ) : null}
 
             <div className="absolute inset-x-0 bottom-0 z-10 px-12 pb-6">
               <p className="text-[68px] font-bold leading-[1.05] tracking-tight break-words">

@@ -14,6 +14,9 @@ import {
   loadOwnerVehicleSwipeLikeCounts,
   loadShowcaseSwipeDeck,
 } from "@/lib/showcase/swipe-deck";
+import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareable-build-data";
+import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank";
+import { topThreeWeeklyRankOrNull } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import { loadWeeklyTopBuilds } from "@/lib/showcase/weekly-top-builds";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -35,7 +38,16 @@ export default async function ShowcaseEntdeckenPage({
 }: EntdeckenPageProps) {
   const { vehicleId } = await params;
   const garageNavScope = scopeFromGarageRoute(vehicleId);
-  const { scope } = await requireVehicleSurfaceOwner({ vehicleId });
+  const { scope, result } = await requireVehicleSurfaceOwner({ vehicleId }, {
+    load: {
+      documents: {
+        mode: "types",
+        types: ["invoice"],
+        columns: "showcase",
+      },
+    },
+  });
+  const vehicle = result.vehicle!;
 
   if (isDemoActiveTag(scope.linkedTagUuid ?? "")) {
     redirect(`${vehicleSurfaceHref(scope)}`);
@@ -50,6 +62,10 @@ export default async function ShowcaseEntdeckenPage({
   let initialCards: Awaited<ReturnType<typeof loadShowcaseSwipeDeck>> = [];
   let initialWeeklyBuilds: Awaited<ReturnType<typeof loadWeeklyTopBuilds>> = [];
   let ownSwipeTotalLikes = 0;
+  let ownWeeklyRank: Awaited<
+    ReturnType<typeof loadVehicleWeeklyShowcaseRank>
+  > = null;
+  let ownTopThreeShareCardData = null;
   if (isConfigured) {
     try {
       initialCards = await loadShowcaseSwipeDeck(15);
@@ -66,6 +82,21 @@ export default async function ShowcaseEntdeckenPage({
       ownSwipeTotalLikes = counts.totalLikes;
     } catch (error) {
       console.error("[entdecken] own swipe likes preload failed", error);
+    }
+    try {
+      ownWeeklyRank = await loadVehicleWeeklyShowcaseRank(vehicle.id);
+      if (
+        ownWeeklyRank &&
+        topThreeWeeklyRankOrNull(ownWeeklyRank.rank) != null
+      ) {
+        ownTopThreeShareCardData = buildOwnerShareableBuildData(
+          vehicle,
+          result.documents ?? [],
+          ownWeeklyRank,
+        );
+      }
+    } catch (error) {
+      console.error("[entdecken] weekly rank preload failed", error);
     }
   }
 
@@ -88,6 +119,11 @@ export default async function ShowcaseEntdeckenPage({
           initialCards={initialCards}
           initialWeeklyBuilds={initialWeeklyBuilds}
           ownSwipeTotalLikes={ownSwipeTotalLikes}
+          isPublic={Boolean(vehicle.is_public)}
+          showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
+          profilSettingsHref={vehicleSurfaceHref(scope, "einstellungen/profil")}
+          ownWeeklyRank={ownWeeklyRank}
+          ownTopThreeShareCardData={ownTopThreeShareCardData}
         />
         <LegalFooterNav className="pt-2" />
       </VehicleSettingsSubpageShell>

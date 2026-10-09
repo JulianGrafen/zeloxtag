@@ -4,6 +4,7 @@ import { VehicleExposeSubmenu } from "@/components/vehicles/vehicle-expose-subme
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
 import { VehicleShowcaseSettings } from "@/components/vehicles/vehicle-showcase-settings";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
+import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
 import type { Document, Vehicle } from "@/types/database";
 
 type VehicleSettingsViewProps = {
@@ -14,6 +15,7 @@ type VehicleSettingsViewProps = {
   canEdit: boolean;
   isExposeActive: boolean;
   hasLinkedTag: boolean;
+  weeklyRank?: VehicleWeeklyShowcaseRank | null;
 };
 
 export function VehicleSettingsView({
@@ -24,6 +26,7 @@ export function VehicleSettingsView({
   canEdit,
   isExposeActive,
   hasLinkedTag,
+  weeklyRank = null,
 }: VehicleSettingsViewProps) {
   return (
     <div className="flex flex-col gap-5">
@@ -35,6 +38,7 @@ export function VehicleSettingsView({
         canEdit={canEdit}
         hasLinkedTag={hasLinkedTag}
         linkedTagUuid={surfaceScope.linkedTagUuid}
+        weeklyRank={weeklyRank}
       />
 
       <VehicleExposeSubmenu

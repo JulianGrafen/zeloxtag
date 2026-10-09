@@ -1,5 +1,7 @@
 import { toPng } from "html-to-image";
 
+import { inlineShareCardImages } from "@/lib/share/inline-share-card-images";
+
 import {
   SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO,
   SHAREABLE_SPEC_CARD_HEIGHT_PX,
@@ -88,13 +90,16 @@ export async function captureShareCardPngFile(
     await waitForFonts();
     await waitForImages(clone);
     prepareShareCardExportClone(clone);
+    await inlineShareCardImages(clone);
+    await waitForImages(clone);
 
     const dataUrl = await toPng(clone, {
       width: SHAREABLE_SPEC_CARD_WIDTH_PX,
       height: SHAREABLE_SPEC_CARD_HEIGHT_PX,
       pixelRatio,
-      cacheBust: true,
+      cacheBust: false,
       skipFonts: false,
+      fetchRequestInit: { credentials: "include" },
     });
 
     const blob = dataUrlToBlob(dataUrl);

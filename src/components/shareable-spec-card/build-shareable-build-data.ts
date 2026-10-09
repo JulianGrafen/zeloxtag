@@ -9,6 +9,8 @@ import type {
 import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
 import { parseInstagramHandle } from "@/lib/vehicles/instagram-handle";
 
+import type { TopThreeWeeklyRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
+
 import { buildShareCardSpecRows } from "./build-share-card-spec-rows";
 import type { ShareableBuildData } from "./types";
 
@@ -19,6 +21,7 @@ export type BuildShareableBuildDataInput = {
   /** When set, heuristic DNA is used if cache is missing but ≥2 public mods exist. */
   modifications?: readonly PublicModification[];
   buildDnaProfile?: BuildDnaProfileContext;
+  weeklyShowcaseRank?: TopThreeWeeklyRank;
 };
 
 /** Same visibility rules as public showcase DNA block. */
@@ -73,5 +76,8 @@ export function buildShareableBuildData(
     specRows,
     modificationsCount: Math.max(0, input.modificationsCount),
     buildDna,
+    ...(input.weeklyShowcaseRank != null
+      ? { weeklyShowcaseRank: input.weeklyShowcaseRank }
+      : {}),
   };
 }

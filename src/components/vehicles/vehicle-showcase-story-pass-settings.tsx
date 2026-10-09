@@ -2,42 +2,39 @@
 
 import { useMemo } from "react";
 
-import {
-  ShareableSpecCard,
-  buildShareableBuildData,
-} from "@/components/shareable-spec-card";
-import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
-import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
+import { ShareableSpecCard } from "@/components/shareable-spec-card";
+import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareable-build-data";
+import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
+import { topThreeWeeklyRankOrNull } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import type { Document, Vehicle } from "@/types/database";
 
 type VehicleShowcaseStoryPassSettingsProps = {
   vehicle: Vehicle;
   documents: Document[];
+  weeklyRank?: VehicleWeeklyShowcaseRank | null;
 };
 
 export function VehicleShowcaseStoryPassSettings({
   vehicle,
   documents,
+  weeklyRank = null,
 }: VehicleShowcaseStoryPassSettingsProps) {
-  const cardData = useMemo(() => {
-    const payload = buildPublicShowcasePayload(vehicle, documents);
-    return buildShareableBuildData({
-      profile: payload.profile,
-      modificationsCount: payload.modifications.length,
-      buildDna: payload.buildDna,
-      modifications: payload.modifications,
-      buildDnaProfile: buildBuildDnaProfileContext(vehicle),
-    });
-  }, [vehicle, documents]);
+  const topThree = topThreeWeeklyRankOrNull(weeklyRank?.rank ?? 0);
+  const cardData = useMemo(
+    () => buildOwnerShareableBuildData(vehicle, documents, weeklyRank),
+    [vehicle, documents, weeklyRank],
+  );
 
   return (
     <div className="px-4 py-5">
       <div className="space-y-1">
         <h2 className="text-[0.98rem] font-semibold text-[color:var(--vd-text)]">
-          Story-Pass
+          {topThree != null ? "Story-Pass · Top 3" : "Story-Pass"}
         </h2>
         <p className="text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
-          9:16-Karte für Instagram Stories
+          {topThree != null
+            ? "9:16-Karte mit deiner Wochenplatzierung für Instagram Stories"
+            : "9:16-Karte für Instagram Stories"}
         </p>
       </div>
 

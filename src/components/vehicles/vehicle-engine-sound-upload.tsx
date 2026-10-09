@@ -10,7 +10,6 @@ import {
   ENGINE_SOUND_MAX_SECONDS,
 } from "@/lib/vehicles/engine-sound-constants";
 import { measureAudioFileDurationSeconds } from "@/lib/vehicles/measure-audio-duration";
-import { bytesToBase64 } from "@/lib/vehicles/engine-sound-json-upload";
 import { validateEngineSoundUploadBytes } from "@/lib/vehicles/engine-sound-validation";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
@@ -41,6 +40,15 @@ function mapUploadError(
 ): string {
   const message = payload?.error?.trim();
   if (message) return message;
+  if (status === 0) {
+    return "Netzwerkfehler beim Hochladen — bitte Verbindung prüfen.";
+  }
+  if (status === 401) {
+    return "Sitzung abgelaufen — bitte erneut anmelden.";
+  }
+  if (status === 403) {
+    return "Hochladen nicht erlaubt — nur der Fahrzeughalter darf Sounds hochladen.";
+  }
   if (status === 413) return "Datei ist zu groß (max. 2 MB).";
   if (status === 415 || status === 422) {
     return "Nur MP3, M4A oder WAV bis 10 Sekunden werden unterstützt.";
@@ -95,18 +103,22 @@ export function VehicleEngineSoundUpload({
           throw new Error(meta.error);
         }
 
+        const body = new FormData();
+        body.append("vehicleId", vehicleId);
+        const trimmedTag = tagUuid.trim();
+        if (trimmedTag) {
+          body.append("tagUuid", trimmedTag);
+        }
+        body.append(
+          "durationSeconds",
+          String(durationSeconds > 0 ? durationSeconds : 1),
+        );
+        body.append("file", file, file.name || "engine-sound");
+
         const response = await fetch("/api/vehicle/engine-sound", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          body,
           credentials: "include",
-          body: JSON.stringify({
-            vehicleId,
-            tagUuid: tagUuid.trim() || undefined,
-            durationSeconds: durationSeconds > 0 ? durationSeconds : 1,
-            filename: file.name || "engine-sound",
-            mime: file.type || undefined,
-            fileBase64: bytesToBase64(bytes),
-          }),
         });
 
         let payload: UploadApiPayload | null = null;

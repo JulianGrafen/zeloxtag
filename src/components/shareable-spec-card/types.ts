@@ -1,4 +1,5 @@
 import type { ShowcaseQuartettMeta } from "@/components/public-showcase/showcase-spec-rows";
+import type { TopThreeWeeklyRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import type { ShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
 
 export interface VehicleSpecMetric {
@@ -27,6 +28,8 @@ export interface ShareableBuildData {
   specRows: ShareCardSpecRow[];
   modificationsCount: number;
   buildDna: ShowcaseBuildDna | null;
+  /** Top-3 weekly swipe leaderboard rank for Story export overlay. */
+  weeklyShowcaseRank?: TopThreeWeeklyRank;
 }
 
 export type ShareableSpecCardExportOptions = {
