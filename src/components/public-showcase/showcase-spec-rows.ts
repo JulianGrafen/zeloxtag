@@ -129,14 +129,6 @@ export function buildShowcaseSpecRows(
     rows.push({ key: "drivetrain", label: "Antrieb", value: drive });
   }
 
-  for (const field of buildShowcaseTechnicalFields(profile)) {
-    rows.push({
-      key: field.key,
-      label: field.label,
-      value: field.value,
-    });
-  }
-
   const specification = profile.notes?.trim();
   if (specification) {
     rows.push({
@@ -144,6 +136,14 @@ export function buildShowcaseSpecRows(
       label: "Spezifikation",
       value: specification,
       layout: "stacked",
+    });
+  }
+
+  for (const field of buildShowcaseTechnicalFields(profile)) {
+    rows.push({
+      key: field.key,
+      label: field.label,
+      value: field.value,
     });
   }
 

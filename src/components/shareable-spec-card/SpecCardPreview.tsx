@@ -11,6 +11,11 @@ import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
 import { ShareCardSpecRowView } from "./ShareCardSpecRow";
 import { ShareCardWeeklyRankBadge } from "./ShareCardWeeklyRankBadge";
 import { ShareCardZeloxMark } from "./ShareCardZeloxMark";
+import {
+  isShareCardCatalogCutout,
+  shareCardImageCrossOrigin,
+} from "@/lib/share/share-card-image-cross-origin";
+
 import { computeShareCardLayout } from "./share-card-layout";
 import type { ShareableBuildData } from "./types";
 
@@ -23,6 +28,7 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
   function SpecCardPreview({ data, className }, ref) {
     const [imageFailed, setImageFailed] = useState(false);
     const showImage = Boolean(data.imageUrl) && !imageFailed;
+    const isCatalogCutout = isShareCardCatalogCutout(data.imageUrl);
     const showDna = data.buildDna != null;
     const layout = computeShareCardLayout(data);
 
@@ -69,8 +75,12 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
               <img
                 src={data.imageUrl}
                 alt=""
-                crossOrigin="anonymous"
-                className="absolute inset-0 h-full w-full object-cover object-[center_42%]"
+                crossOrigin={shareCardImageCrossOrigin(data.imageUrl)}
+                className={
+                  isCatalogCutout
+                    ? "absolute inset-x-0 bottom-0 h-[92%] w-full object-contain object-bottom"
+                    : "absolute inset-0 h-full w-full object-cover object-[50%_58%]"
+                }
                 onError={() => setImageFailed(true)}
               />
             ) : (

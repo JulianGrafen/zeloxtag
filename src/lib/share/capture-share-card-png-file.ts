@@ -8,20 +8,32 @@ import {
   SHAREABLE_SPEC_CARD_WIDTH_PX,
 } from "@/components/shareable-spec-card/constants";
 
-async function waitForImages(root: HTMLElement): Promise<void> {
+function imageReady(img: HTMLImageElement): boolean {
+  return img.complete && img.naturalWidth > 0 && img.naturalHeight > 0;
+}
+
+async function waitForImages(root: HTMLElement, timeoutMs = 12_000): Promise<void> {
   const images = Array.from(root.querySelectorAll("img"));
+  if (images.length === 0) {
+    return;
+  }
+
+  const deadline = Date.now() + timeoutMs;
+
   await Promise.all(
-    images.map(
-      (img) =>
-        new Promise<void>((resolve) => {
-          if (img.complete) {
-            resolve();
-            return;
-          }
-          img.addEventListener("load", () => resolve(), { once: true });
-          img.addEventListener("error", () => resolve(), { once: true });
-        }),
-    ),
+    images.map(async (img) => {
+      while (!imageReady(img)) {
+        if (Date.now() >= deadline) {
+          return;
+        }
+        await new Promise<void>((resolve) => {
+          const done = () => resolve();
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+          window.setTimeout(done, 120);
+        });
+      }
+    }),
   );
 }
 
@@ -88,7 +100,7 @@ export async function captureShareCardPngFile(
 
   try {
     await waitForFonts();
-    await waitForImages(clone);
+    await waitForImages(node);
     prepareShareCardExportClone(clone);
     await inlineShareCardImages(clone);
     await waitForImages(clone);

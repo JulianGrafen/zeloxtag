@@ -46,9 +46,11 @@ export async function inlineShareCardImages(root: HTMLElement): Promise<void> {
       }
 
       try {
+        const sameOrigin =
+          new URL(absoluteUrl).origin === window.location.origin;
         const response = await fetch(absoluteUrl, {
           credentials: "include",
-          mode: "cors",
+          mode: sameOrigin ? "same-origin" : "cors",
         });
         if (!response.ok) {
           return;

@@ -61,9 +61,9 @@ type HeroBackdropProps = {
 function heroImageClassName(src: string): string {
   const contain = photoUsesContainLayout(src);
   if (contain) {
-    return "object-contain object-top px-3 pb-[38%] pt-[max(3.5rem,env(safe-area-inset-top))]";
+    return "object-contain object-bottom px-2 pb-[28%] pt-[max(4.5rem,env(safe-area-inset-top))]";
   }
-  return "object-cover object-[center_42%]";
+  return "object-cover object-[50%_55%]";
 }
 
 function HeroBackdrop({
@@ -116,7 +116,7 @@ function HeroBackdrop({
     return (
       <div className="absolute inset-0 bg-black" aria-hidden>
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[52%] bg-gradient-to-t from-black from-[18%] via-black/80 to-transparent"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/85"
           aria-hidden
         />
       </div>
@@ -202,7 +202,11 @@ function HeroBackdrop({
       </motion.div>
 
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[52%] bg-gradient-to-t from-black from-[18%] via-black/80 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-[32%] bg-gradient-to-b from-black/70 to-transparent"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[min(58%,28rem)] bg-gradient-to-t from-black from-[22%] via-black/75 to-transparent"
         aria-hidden
       />
     </div>
@@ -258,6 +262,10 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
         <div
           className={`pointer-events-none relative z-10 flex ${showroom.heroMinHeight} flex-col justify-end px-5 pb-8 pt-[max(4.5rem,env(safe-area-inset-top))]`}
         >
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[min(52%,26rem)] bg-gradient-to-t from-black via-black/85 to-transparent"
+            aria-hidden
+          />
           {visiblePhotos.length > 1 ? (
             <HeroPhotoPagination
               photos={visiblePhotos}
@@ -267,7 +275,9 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
               }
             />
           ) : null}
-          <HeroCopy profile={profile} title={title} yearLabel={yearLabel} />
+          <div className="relative z-10 w-full">
+            <HeroCopy profile={profile} title={title} yearLabel={yearLabel} />
+          </div>
         </div>
       </header>
 
@@ -293,7 +303,7 @@ function HeroPhotoPagination({
 }) {
   return (
     <div
-      className="pointer-events-auto mb-4 flex justify-center gap-2"
+      className="pointer-events-auto relative z-10 mb-4 flex justify-center gap-2"
       role="tablist"
       aria-label="Fotoauswahl"
     >
@@ -329,31 +339,42 @@ function HeroCopy({
 }) {
   const motionConfig = useShowroomMotion();
   const instagramHandle = profile.instagramHandle;
-  const hasMeta = Boolean(yearLabel || instagramHandle);
 
   return (
     <motion.div
-      className="pointer-events-none max-w-[22rem]"
+      className="pointer-events-none w-full max-w-none"
       variants={motionConfig.heroStaggerContainer}
       initial="hidden"
       animate="visible"
     >
-      <motion.h1
+      <motion.div
         variants={motionConfig.fadeUp}
-        className="font-[family-name:var(--font-display)] text-[2.05rem] font-semibold leading-[1.05] tracking-[-0.04em] text-white sm:text-[2.45rem]"
+        className="flex max-w-full items-end justify-between gap-4 drop-shadow-[0_4px_28px_rgba(0,0,0,0.75)]"
       >
-        {title || "Fahrzeug"}
-      </motion.h1>
+        <h1
+          className="min-w-0 flex-1 font-[family-name:var(--font-display)] text-[2.05rem] font-semibold leading-[1.05] tracking-[-0.04em] text-white sm:text-[2.45rem]"
+        >
+          {title || "Fahrzeug"}
+        </h1>
+        {yearLabel ? (
+          <p
+            className="shrink-0 pb-0.5 text-right text-[0.92rem] font-medium leading-snug tabular-nums tracking-[-0.02em] text-white/75 sm:text-[1rem]"
+          >
+            <span className="block text-[0.68rem] font-normal uppercase tracking-[0.12em] text-white/45">
+              Baujahr
+            </span>
+            <span className="text-[1.15rem] font-semibold text-white/90 sm:text-[1.25rem]">
+              {yearLabel}
+            </span>
+          </p>
+        ) : null}
+      </motion.div>
 
-      {hasMeta ? (
+      {instagramHandle ? (
         <motion.p
           variants={motionConfig.fadeUp}
-          className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.92rem] font-medium leading-snug text-white/55"
+          className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.92rem] font-medium leading-snug text-white/55"
         >
-          {yearLabel ? <span>Baujahr {yearLabel}</span> : null}
-          {yearLabel && instagramHandle ? (
-            <span aria-hidden className="text-white/30">·</span>
-          ) : null}
           {instagramHandle ? (
             <a
               href={instagramProfileUrl(instagramHandle)}
