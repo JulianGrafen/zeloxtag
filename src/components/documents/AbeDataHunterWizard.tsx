@@ -341,17 +341,19 @@ function KbaHuntOverlay({
           />
           {!detectedKba
             ? createPortal(
-                <div className="pointer-events-none fixed inset-0 z-[10050] flex flex-col items-center justify-center px-4 pt-[max(3.25rem,calc(env(safe-area-inset-top)+2.75rem))] pb-[max(7.5rem,calc(env(safe-area-inset-bottom)+6.5rem))]">
+                <div
+                  className="pointer-events-none fixed inset-x-0 bottom-0 z-[10050] flex flex-col items-center px-4 pb-[max(9.25rem,calc(env(safe-area-inset-bottom)+8.25rem))]"
+                >
                   <Input
                     inputMode="numeric"
                     placeholder="KBA manuell (mind. 5 Ziffern)"
                     value={manualValue}
                     onChange={(event) => onManualChange(event.target.value)}
                     aria-invalid={manualTooShort}
-                    className="pointer-events-auto h-10 w-full max-w-[min(100%,280px)] border-white/15 bg-black/45 px-3 text-center text-[0.88rem] font-semibold text-white placeholder:text-white/35 backdrop-blur-[2px]"
+                    className="pointer-events-auto h-11 w-full max-w-[min(100%,320px)] border-white/20 bg-black/55 px-3 text-center text-[0.92rem] font-semibold text-white placeholder:text-white/40 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
                   />
                   {manualTooShort ? (
-                    <p className="pointer-events-none mt-2 max-w-[min(100%,280px)] text-center text-[0.68rem] font-medium text-amber-200">
+                    <p className="pointer-events-none mt-2 max-w-[min(100%,320px)] text-center text-[0.68rem] font-medium text-amber-200">
                       Mindestens {MIN_MANUAL_ABE_KBA_DIGITS} Ziffern eingeben
                     </p>
                   ) : null}
