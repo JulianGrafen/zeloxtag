@@ -832,15 +832,6 @@ export function TagDashboardShell({
             goalOverride ? { goalOverride } : undefined,
           );
         }}
-        onEditVehicleImage={
-          isOwner && !demoShowcase
-            ? () => {
-                setSilhouettePromptVisible(false);
-                setDashboardPromptPhase("silhouette");
-                setShowSilhouetteEditor(true);
-              }
-            : undefined
-        }
         vehicleImageOverride={vehicleImageOverride}
         previewFallbackUrl={previewFallbackUrl}
         onSilhouetteProxyLoad={handleSilhouetteProxyLoad}

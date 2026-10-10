@@ -8,6 +8,10 @@ import { updateDocumentFields } from "@/actions/update-document-fields";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import {
+  GarageField,
+  GarageInsetTextarea,
+} from "@/components/ui/garage-field";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "notes";
@@ -121,14 +125,17 @@ export function EditableDocumentNotesSection({
         </div>
       ) : (
         <div className="space-y-3">
-          <textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            rows={4}
-            maxLength={500}
-            placeholder="z. B. Filter mitgewechselt, nächster Service in 15.000 km"
-            className="claim-input w-full min-w-0 resize-y rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2.5 text-[0.88rem] text-[color:var(--vd-text)]"
-          />
+          <GarageField label="Notizen" htmlFor={`editable-notes-${documentId}`}>
+            <GarageInsetTextarea
+              id={`editable-notes-${documentId}`}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              rows={4}
+              maxLength={500}
+              placeholder="z. B. Filter mitgewechselt, nächster Service in 15.000 km"
+              className="text-[0.88rem]"
+            />
+          </GarageField>
           <div className="flex flex-wrap gap-2">
             <PressableButton
               type="button"

@@ -2,6 +2,13 @@
 
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
+import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  GarageInsetInput,
+  GarageInsetSelect,
+} from "@/components/ui/garage-field";
 import { parseMileageKmInput } from "@/lib/documents/format";
 import {
   BILLING_PERIOD_LABELS,
@@ -9,12 +16,6 @@ import {
   OPERATING_COST_CATEGORY_LABELS,
   type OperatingCostFormInput,
 } from "@/lib/vehicles/operating-costs/types";
-
-const labelClass =
-  "text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]";
-
-const inputClass =
-  "w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2.5 text-[0.95rem] text-[color:var(--vd-text)]";
 
 type OperatingCostFormFieldsProps = {
   value: OperatingCostFormInput;
@@ -33,13 +34,9 @@ export function OperatingCostFormFields({
   return (
     <div className="grid gap-4">
       {!lockCategory ? (
-        <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="op-cost-category">
-            Kategorie
-          </label>
-          <select
+        <GarageField label="Kategorie" htmlFor="op-cost-category">
+          <GarageInsetSelect
             id="op-cost-category"
-            className={inputClass}
             value={value.category}
             onChange={(event) =>
               onChange({
@@ -57,50 +54,41 @@ export function OperatingCostFormFields({
                 </option>
               ),
             )}
-          </select>
-        </div>
+          </GarageInsetSelect>
+        </GarageField>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="op-cost-date">
-            Datum
-          </label>
+      <GarageFieldRow>
+        <GarageFieldCell label="Datum" htmlFor="op-cost-date">
           <GermanDateInput
             id="op-cost-date"
+            variant="inset"
             value={value.occurredOn || null}
             onChange={(next) =>
               onChange({ ...value, occurredOn: next ?? value.occurredOn })
             }
             required
           />
-        </div>
-        <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="op-cost-amount">
-            Betrag (€)
-          </label>
-          <input
+        </GarageFieldCell>
+        <GarageFieldCell label="Betrag (€)" htmlFor="op-cost-amount">
+          <GarageInsetInput
             id="op-cost-amount"
-            className={inputClass}
             inputMode="decimal"
             placeholder="0,00"
+            className="tabular-nums"
             value={value.amountEur}
             onChange={(event) =>
               onChange({ ...value, amountEur: event.target.value })
             }
             required
           />
-        </div>
-      </div>
+        </GarageFieldCell>
+      </GarageFieldRow>
 
       {!isFuel ? (
-        <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="op-cost-period">
-            Abrechnung
-          </label>
-          <select
+        <GarageField label="Abrechnung" htmlFor="op-cost-period">
+          <GarageInsetSelect
             id="op-cost-period"
-            className={inputClass}
             value={value.billingPeriod}
             onChange={(event) =>
               onChange({
@@ -114,19 +102,15 @@ export function OperatingCostFormFields({
                 {BILLING_PERIOD_LABELS[period]}
               </option>
             ))}
-          </select>
-        </div>
+          </GarageInsetSelect>
+        </GarageField>
       ) : null}
 
       {isFuel ? (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label className={labelClass} htmlFor="op-cost-liters">
-              Liter (optional)
-            </label>
-            <input
+        <GarageFieldRow>
+          <GarageFieldCell label="Liter (optional)" htmlFor="op-cost-liters">
+            <GarageInsetInput
               id="op-cost-liters"
-              className={inputClass}
               inputMode="decimal"
               placeholder="z. B. 38"
               value={value.fuelLiters ?? ""}
@@ -134,13 +118,11 @@ export function OperatingCostFormFields({
                 onChange({ ...value, fuelLiters: event.target.value })
               }
             />
-          </div>
-          <div className="space-y-1.5">
-            <label className={labelClass} htmlFor="op-cost-km">
-              Kilometerstand
-            </label>
+          </GarageFieldCell>
+          <GarageFieldCell label="Kilometerstand" htmlFor="op-cost-km">
             <MileageKmInput
               id="op-cost-km"
+              variant="inset"
               value={
                 value.odometerKm?.trim()
                   ? parseMileageKmInput(value.odometerKm)
@@ -153,22 +135,18 @@ export function OperatingCostFormFields({
                 })
               }
             />
-          </div>
-        </div>
+          </GarageFieldCell>
+        </GarageFieldRow>
       ) : null}
 
-      <div className="space-y-1.5">
-        <label className={labelClass} htmlFor="op-cost-note">
-          Notiz (optional)
-        </label>
-        <input
+      <GarageField label="Notiz (optional)" htmlFor="op-cost-note">
+        <GarageInsetInput
           id="op-cost-note"
-          className={inputClass}
           value={value.note ?? ""}
           onChange={(event) => onChange({ ...value, note: event.target.value })}
           placeholder="z. B. Volltankung, Teilkasko"
         />
-      </div>
+      </GarageField>
     </div>
   );
 }

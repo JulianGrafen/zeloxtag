@@ -1,10 +1,12 @@
 import type {
   DashboardIconName,
   DashboardTileConfig,
+  DashboardTileId,
   VehicleDashboardData,
 } from "./types";
 import { formatTuevYearMonth } from "@/lib/documents/format";
 import { formatLastOilChangeSubtitle } from "@/lib/documents/oil-changes";
+import { DASHBOARD_PRIMARY_TILE_IDS } from "./dashboard-tile-layout";
 
 function daysUntil(isoDate: string): number {
   const target = new Date(
@@ -59,44 +61,67 @@ type TileDraft = Omit<DashboardTileConfig, "icon"> & {
   icon: DashboardIconName;
 };
 
-export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConfig[] {
+type CoreTileSpec = {
+  id: DashboardTileId;
+  title: string;
+  icon: DashboardIconName;
+  menuHighlight?: boolean;
+  meta?: DashboardTileConfig["meta"];
+  metaFromData?: (data: VehicleDashboardData) => DashboardTileConfig["meta"];
+};
+
+const CORE_MENU_TILE_SPECS: CoreTileSpec[] = [
+  {
+    id: "invoices",
+    title: "Belege",
+    icon: "file-text",
+    meta: { href: "/rechnungen" },
+  },
+  {
+    id: "oil-change",
+    title: "Ölwechsel",
+    icon: "droplet",
+    metaFromData: oilChangeMeta,
+  },
+  {
+    id: "abe",
+    title: "ABE & Gutachten",
+    icon: "stamp",
+    menuHighlight: true,
+  },
+  {
+    id: "tuning-history",
+    title: "Manuelle Einträge",
+    icon: "history",
+  },
+  {
+    id: "fuel-log",
+    title: "Tanken",
+    icon: "fuel",
+  },
+  {
+    id: "operating-costs",
+    title: "Kostenübersicht",
+    icon: "wallet",
+  },
+];
+
+function buildCoreMenuTiles(data: VehicleDashboardData): TileDraft[] {
+  return CORE_MENU_TILE_SPECS.map((spec) => ({
+    id: spec.id,
+    title: spec.title,
+    icon: spec.icon,
+    menuHighlight: spec.menuHighlight,
+    meta: spec.metaFromData ? spec.metaFromData(data) : spec.meta,
+  }));
+}
+
+function buildExtendedMenuTiles(data: VehicleDashboardData): TileDraft[] {
   const inspectionDays = data.nextInspection
     ? daysUntil(data.nextInspection.nextDate)
     : null;
 
-  const tiles: TileDraft[] = [
-    {
-      id: "invoices",
-      title: "Belege",
-      icon: "file-text",
-      meta: { href: "/rechnungen" },
-    },
-    {
-      id: "oil-change",
-      title: "Ölwechsel",
-      icon: "droplet",
-      meta: oilChangeMeta(data),
-    },
-    {
-      id: "abe",
-      title: "ABE & Gutachten",
-      icon: "stamp",
-    },
-    {
-      id: "tuning-history",
-      title: "Manuelle Einträge",
-      icon: "history",
-    },
-    {
-      id: "fuel-log",
-      title: "Tanken",
-      icon: "fuel",
-    },
-    {
-      id: "operating-costs",
-      title: "Kostenübersicht",
-      icon: "wallet",
-    },
+  return [
     {
       id: "build-planner",
       title: "Build Planner",
@@ -161,6 +186,10 @@ export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConf
       },
     },
   ];
-
-  return tiles;
 }
+
+export function buildDefaultTiles(data: VehicleDashboardData): DashboardTileConfig[] {
+  return [...buildCoreMenuTiles(data), ...buildExtendedMenuTiles(data)];
+}
+
+export { DASHBOARD_PRIMARY_TILE_IDS };

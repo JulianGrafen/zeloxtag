@@ -89,8 +89,6 @@ interface TagDashboardViewProps {
   hideScanFab?: boolean;
   /** Pro tile without href — open the action-based paywall. */
   onLockedFeature?: (feature: FeatureFlag, tileId?: string) => void;
-  /** Owner: tap header cutout to change silhouette. */
-  onEditVehicleImage?: () => void;
   /** Immediate header refresh after silhouette upload (same-origin display URL). */
   vehicleImageOverride?: string | null;
   /** Data URL / blob fallback when proxy fails to load. */
@@ -130,7 +128,6 @@ export function TagDashboardView({
   onOpenScanner,
   hideScanFab = false,
   onLockedFeature,
-  onEditVehicleImage,
   vehicleImageOverride,
   previewFallbackUrl,
   onSilhouetteProxyLoad,
@@ -183,10 +180,6 @@ export function TagDashboardView({
       (vehicleImageOverride || vehicle.silhouette_image_url?.trim()),
   );
 
-  const garageTagCoupled = Boolean(vehicleSurfaceScope?.linkedTagUuid?.trim());
-  const showGarageOfflineStatus =
-    Boolean(vehicleSurfaceScope) && !garageTagCoupled && !demoMode && !demoShowcase;
-
   const data = {
     ownerName: ownerName?.trim() || "Fahrer",
     vehicleModel: `${vehicleModel} · ${vehicle.year}`,
@@ -203,15 +196,9 @@ export function TagDashboardView({
       : previewFallbackUrl ?? undefined,
     vehicleImageFrameless: demoShowcase,
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
-    statusLabel: showGarageOfflineStatus ? "Status: Offline" : "Verbunden",
-    statusDetail: showGarageOfflineStatus
-      ? "Kein Zelox Tag vorhanden"
-      : undefined,
-    tagCoupled: showGarageOfflineStatus ? false : true,
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),
     showcaseSwipeUnreadLikes,
-    vehicleDataHref: path("daten"),
   };
 
   const tiles = [
@@ -562,7 +549,7 @@ export function TagDashboardView({
             </div>
           ) : undefined
         }
-        className={canScan ? "pb-24" : undefined}
+        className={canScan ? "pb-20" : undefined}
         extraTiles={
           isOwner && !demoMode && !demoShowcase ? (
             <GarageSwitcherTile />
@@ -574,11 +561,6 @@ export function TagDashboardView({
             onLockedFeature?.(feature, tileId);
           }
         }}
-        onEditVehicleImage={
-          isOwner && !demoMode && !demoShowcase
-            ? onEditVehicleImage
-            : undefined
-        }
         onSilhouetteProxyLoad={onSilhouetteProxyLoad}
       />
       {canScan ? (
@@ -588,7 +570,11 @@ export function TagDashboardView({
           onOpenScanner={onOpenScanner}
           scanLocked={scanLocked}
           onScanLocked={() => onLockedFeature?.(FEATURE.SCAN_AI_RECEIPT)}
+          fuelLogHref={path("tanken")}
           manualEntryHref={manualEntryHref}
+          scanActionLabel={
+            isContributor && !isOwner ? "Beleg scannen" : "Rechnung scannen"
+          }
           scanLabel={
             !cloudUnlocked &&
             !scanLocked &&

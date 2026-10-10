@@ -30,6 +30,23 @@ export const automotiveMenuTileClassName = cn(
   automotiveCardInteractiveClassName,
 );
 
+/** ~18% shorter than default — dashboard primary menu (44px+ touch via min-height). */
+export const automotiveMenuTileCompactClassName = cn(
+  "group relative z-10 flex min-h-[6.875rem] w-full min-w-0 cursor-pointer flex-col justify-between overflow-hidden p-3 text-left select-none",
+  automotiveCardInteractiveClassName,
+);
+
+export const automotiveMenuTileHighlightClassName = cn(
+  "border-amber-500/25 ring-1 ring-inset ring-amber-400/20",
+);
+
+export const automotiveIconWrapCompactClassName = cn(
+  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+  "bg-gradient-to-b from-zinc-700/50 to-zinc-900/80 text-zinc-100",
+  "ring-1 ring-inset ring-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
+  "transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:scale-90",
+);
+
 export const automotiveCardTitleClassName = cn(
   "font-[family-name:var(--font-display)] text-[0.95rem] font-semibold leading-snug tracking-[-0.02em] text-[color:var(--vd-text)] dark:text-zinc-100",
 );
@@ -41,6 +58,16 @@ export const automotiveDisplayTitleClassName = cn(
 /** Secondary line on cards/lists — same rhythm as legacy `vd-muted` subtitles. */
 export const automotiveMetaClassName = cn(
   "text-[0.75rem] leading-snug text-[color:var(--vd-muted)] tabular-nums dark:text-zinc-400",
+);
+
+export const automotiveMenuTileCompactTitleClassName = cn(
+  automotiveCardTitleClassName,
+  "text-[0.9rem] leading-tight",
+);
+
+export const automotiveMenuTileCompactMetaClassName = cn(
+  automotiveMetaClassName,
+  "text-[0.7rem] leading-tight line-clamp-2",
 );
 
 /** Section labels above lists — display caps, not mono telemetry. */

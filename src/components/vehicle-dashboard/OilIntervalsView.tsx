@@ -393,8 +393,9 @@ export function OilIntervalsView({
       {scanHref && tagUuid ? (
         <DashboardScanFab
           tagUuid={tagUuid}
+          directAction="scan"
           scanHref={scanHref}
-          scanLabel="Beleg scannen"
+          scanActionLabel="Beleg scannen"
         />
       ) : null}
     </div>

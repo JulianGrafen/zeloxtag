@@ -25,6 +25,11 @@ import {
 import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import {
+  GarageField,
+  GarageInsetInput,
+  GarageInsetSelect,
+} from "@/components/ui/garage-field";
+import {
   WizardAnalyzingPanel,
   WizardCameraError,
   WizardScanHeader,
@@ -733,36 +738,31 @@ export function VaultUploadWizard({
             handleSave();
           }}
         >
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Dokumenttitel
-            </span>
-            <input
+          <GarageField label="Dokumenttitel" htmlFor="vault-upload-title">
+            <GarageInsetInput
+              id="vault-upload-title"
               required
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="z. B. KW V3 Gewindefahrwerk"
-              className="claim-input"
               autoFocus
+              className="w-full"
             />
-          </label>
+          </GarageField>
 
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Scandatum
-            </span>
+          <GarageField label="Scandatum" htmlFor="vault-upload-scan-date">
             <GermanDateInput
+              id="vault-upload-scan-date"
+              variant="inset"
               value={scanDate}
               onChange={(value) => setScanDate(value ?? localDateIso())}
               required
             />
-          </label>
+          </GarageField>
 
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Art des Dokuments
-            </span>
-            <select
+          <GarageField label="Art des Dokuments" htmlFor="vault-upload-kind">
+            <GarageInsetSelect
+              id="vault-upload-kind"
               value={documentKind ?? ""}
               onChange={(event) => {
                 const value = event.target.value;
@@ -770,7 +770,7 @@ export function VaultUploadWizard({
                   value ? (value as VaultDocumentKind) : null,
                 );
               }}
-              className="claim-input"
+              className="w-full"
             >
               <option value="">Unbekannt / Sonstiges</option>
               {VAULT_DOCUMENT_KINDS.map((value) => (
@@ -778,27 +778,25 @@ export function VaultUploadWizard({
                   {VAULT_DOCUMENT_KIND_LABELS[value]}
                 </option>
               ))}
-            </select>
-          </label>
+            </GarageInsetSelect>
+          </GarageField>
 
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Kategorie
-            </span>
-            <select
+          <GarageField label="Kategorie" htmlFor="vault-upload-category">
+            <GarageInsetSelect
+              id="vault-upload-category"
               value={category}
               onChange={(event) =>
                 setCategory(event.target.value as VaultCategory)
               }
-              className="claim-input"
+              className="w-full"
             >
               {VAULT_CATEGORIES.map((value) => (
                 <option key={value} value={value}>
                   {VAULT_CATEGORY_LABELS[value]}
                 </option>
               ))}
-            </select>
-          </label>
+            </GarageInsetSelect>
+          </GarageField>
 
           {error ? (
             <p

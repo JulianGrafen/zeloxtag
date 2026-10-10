@@ -7,6 +7,10 @@ import { NotebookPen, Pencil } from "lucide-react";
 import { updateManualOilChangeFields } from "@/actions/update-manual-oil-change-fields";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { OilDetailEditTarget } from "@/lib/documents/oil-detail-edit";
+import {
+  GarageField,
+  GarageInsetTextarea,
+} from "@/components/ui/garage-field";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: OilDetailEditTarget = "notes";
@@ -111,13 +115,16 @@ export function EditableOilChangeNotesSection({
         </p>
       ) : (
         <div className="space-y-3">
-          <textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            rows={4}
-            maxLength={500}
-            className="claim-input w-full min-w-0 resize-y rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2.5 text-[0.88rem]"
-          />
+          <GarageField label="Notiz" htmlFor={`editable-oil-notes-${documentId}`}>
+            <GarageInsetTextarea
+              id={`editable-oil-notes-${documentId}`}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              rows={4}
+              maxLength={500}
+              className="text-[0.88rem]"
+            />
+          </GarageField>
           <div className="flex flex-wrap gap-2">
             <PressableButton
               type="button"

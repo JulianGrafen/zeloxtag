@@ -9,3 +9,4 @@ export {
   AutomotiveSummaryPanel,
 } from "./AutomotiveList";
 export * from "./primitives";
+export * from "../garage-field";

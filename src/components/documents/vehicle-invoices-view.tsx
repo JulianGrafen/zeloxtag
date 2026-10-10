@@ -370,6 +370,9 @@ function VehicleInvoicesViewContent({
       {showScanFab ? (
         <DashboardScanFab
           tagUuid={tagUuid}
+          directAction="scan"
+          fuelLogHref={surfacePath(vehicleSurfaceScope, tagUuid, "tanken")}
+          manualEntryHref={`${surfacePath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`}
           scanHref={ownerScanEntryHref(
             vehicleSurfaceScope,
             tagUuid,
@@ -381,7 +384,7 @@ function VehicleInvoicesViewContent({
             freeAbeScanRemaining,
             categoryId === "repair" ? "repair" : "invoice",
           )}
-          scanLabel={
+          scanActionLabel={
             categoryId === "repair" ? "Reparatur scannen" : "Rechnung scannen"
           }
         />

@@ -6,6 +6,7 @@ import { Pencil } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import { GermanAmountInput } from "@/components/documents/german-amount-input";
+import { GarageField } from "@/components/ui/garage-field";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
@@ -114,13 +115,19 @@ export function EditableDocumentAmountSection({
           ) : null}
         </div>
       ) : (
-        <div className="space-y-2 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3">
-          <GermanAmountInput
-            value={draft}
-            onChange={setDraft}
-            className="claim-input w-full min-w-0"
-            placeholder="189,50"
-          />
+        <div className="space-y-2">
+          <GarageField
+            label="Gesamtbetrag"
+            htmlFor={`editable-amount-${documentId}`}
+          >
+            <GermanAmountInput
+              id={`editable-amount-${documentId}`}
+              variant="inset"
+              value={draft}
+              onChange={setDraft}
+              placeholder="189,50"
+            />
+          </GarageField>
           <div className="flex flex-wrap gap-2">
             <PressableButton
               type="button"

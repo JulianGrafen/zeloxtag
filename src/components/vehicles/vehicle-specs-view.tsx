@@ -38,8 +38,15 @@ import {
   VEHICLE_FUEL_TYPES,
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
+import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  garageFieldControlClassName,
+} from "@/components/ui/garage-field";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import type { Vehicle } from "@/types/database";
+import { cn } from "@/lib/utils";
 
 type VehicleSpecsViewProps = {
   tagUuid: string;
@@ -49,18 +56,17 @@ type VehicleSpecsViewProps = {
 
 function Field({
   label,
+  htmlFor,
   children,
 }: {
   label: string;
+  htmlFor?: string;
   children: ReactNode;
 }) {
   return (
-    <label className="block space-y-1.5">
-      <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-        {label}
-      </span>
+    <GarageField label={label} htmlFor={htmlFor}>
       {children}
-    </label>
+    </GarageField>
   );
 }
 
@@ -314,7 +320,7 @@ export function VehicleSpecsView({
                     onChange={(event) => {
                       setMake(event.target.value);
                     }}
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="Toyota"
                   />
                 </Field>
@@ -325,7 +331,7 @@ export function VehicleSpecsView({
                     onChange={(event) => {
                       setModel(event.target.value);
                     }}
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="Supra"
                   />
                 </Field>
@@ -339,7 +345,7 @@ export function VehicleSpecsView({
                     onChange={(event) => {
                       setYear(event.target.value);
                     }}
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="2011"
                   />
                 </Field>
@@ -349,7 +355,10 @@ export function VehicleSpecsView({
                     onChange={(event) => {
                       setVin(event.target.value.toUpperCase());
                     }}
-                    className="claim-input w-full font-mono text-[0.85rem]"
+                    className={cn(
+                      garageFieldControlClassName,
+                      "w-full min-h-[1.75rem] font-mono text-[0.85rem]",
+                    )}
                     placeholder="optional"
                     autoCapitalize="characters"
                   />
@@ -365,7 +374,7 @@ export function VehicleSpecsView({
                 <input
                   value={specs.engine ?? ""}
                   onChange={(event) => patchSpec("engine", event.target.value)}
-                  className="claim-input w-full"
+                  className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                   placeholder="z. B. 3.0 Twin-Turbo (2JZ-GTE)"
                 />
               </Field>
@@ -377,7 +386,7 @@ export function VehicleSpecsView({
                     onChange={(event) =>
                       patchSpec("powerPs", event.target.value)
                     }
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="231"
                   />
                 </Field>
@@ -388,7 +397,7 @@ export function VehicleSpecsView({
                     onChange={(event) =>
                       patchSpec("powerKw", event.target.value)
                     }
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="170"
                   />
                 </Field>
@@ -399,7 +408,7 @@ export function VehicleSpecsView({
                     onChange={(event) =>
                       patchSpec("torqueNm", event.target.value)
                     }
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="350"
                   />
                 </Field>
@@ -410,7 +419,7 @@ export function VehicleSpecsView({
                     onChange={(event) =>
                       patchSpec("displacementCc", event.target.value)
                     }
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="1308"
                   />
                 </Field>
@@ -424,7 +433,7 @@ export function VehicleSpecsView({
                       patchAccel0To100Text(event.target.value)
                     }
                     onBlur={commitAccel0To100Text}
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="5,2"
                     aria-describedby="accel-0-100-hint"
                   />
@@ -437,7 +446,7 @@ export function VehicleSpecsView({
                       patchAccel100To200Text(event.target.value)
                     }
                     onBlur={commitAccel100To200Text}
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="12,4"
                     aria-describedby="accel-100-200-hint"
                   />
@@ -456,7 +465,7 @@ export function VehicleSpecsView({
                     onChange={(event) =>
                       patchSpec("fuelType", event.target.value)
                     }
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                   >
                     <option value="">—</option>
                     {VEHICLE_FUEL_TYPES.map((option) => (
@@ -472,7 +481,7 @@ export function VehicleSpecsView({
                     onChange={(event) =>
                       patchSpec("transmission", event.target.value)
                     }
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="6-Gang manuell"
                   />
                 </Field>
@@ -484,7 +493,7 @@ export function VehicleSpecsView({
                     onChange={(event) =>
                       patchSpec("drivetrain", event.target.value)
                     }
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                   >
                     <option value="">—</option>
                     {VEHICLE_DRIVETRAIN_TYPES.map((option) => (
@@ -500,7 +509,7 @@ export function VehicleSpecsView({
                     onChange={(event) =>
                       patchSpec("bodyType", event.target.value)
                     }
-                    className="claim-input w-full"
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                     placeholder="Coupé"
                   />
                 </Field>
@@ -509,7 +518,7 @@ export function VehicleSpecsView({
                 <input
                   value={specs.color ?? ""}
                   onChange={(event) => patchSpec("color", event.target.value)}
-                  className="claim-input w-full"
+                  className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                   placeholder="Velocity Red"
                 />
               </Field>
@@ -519,7 +528,7 @@ export function VehicleSpecsView({
                   onChange={(event) =>
                     patchSpec("instagramHandle", event.target.value)
                   }
-                  className="claim-input w-full"
+                  className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
                   placeholder="@julian_f11"
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -530,7 +539,7 @@ export function VehicleSpecsView({
                   rows={3}
                   value={specs.notes ?? ""}
                   onChange={(event) => patchSpec("notes", event.target.value)}
-                  className="claim-input w-full resize-none"
+                  className={cn(garageFieldControlClassName, "w-full min-h-[5.5rem] resize-none")}
                   placeholder="Serienstand, Besonderheiten…"
                 />
               </Field>
@@ -546,42 +555,52 @@ export function VehicleSpecsView({
                   Registrieren übernommen und kann hier angepasst werden.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-                <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Ölwechsel-Intervall (km)
-                </span>
-                <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Ölwechsel-Intervall (Monate)
-                </span>
-                <select
-                  value={oilIntervalKmSelectValue}
-                  onChange={(event) =>
-                    patchOilChangeIntervalKm(event.target.value)
-                  }
-                  className="claim-input w-full"
-                  aria-label="Ölwechsel-Intervall in Kilometern"
+              <GarageFieldRow>
+                <GarageFieldCell
+                  label="Intervall (km)"
+                  htmlFor="oil-interval-km"
                 >
-                  {OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => (
-                    <option key={km} value={String(km)}>
-                      {formatMileageKmNumber(km)} km
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={oilIntervalMonthsSelectValue}
-                  onChange={(event) =>
-                    patchOilChangeIntervalMonths(event.target.value)
-                  }
-                  className="claim-input w-full"
-                  aria-label="Ölwechsel-Intervall in Monaten"
+                  <select
+                    id="oil-interval-km"
+                    value={oilIntervalKmSelectValue}
+                    onChange={(event) =>
+                      patchOilChangeIntervalKm(event.target.value)
+                    }
+                    className={cn(
+                      garageFieldControlClassName,
+                      "w-full min-h-[1.75rem] appearance-none bg-transparent",
+                    )}
+                  >
+                    {OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => (
+                      <option key={km} value={String(km)}>
+                        {formatMileageKmNumber(km)} km
+                      </option>
+                    ))}
+                  </select>
+                </GarageFieldCell>
+                <GarageFieldCell
+                  label="Intervall (Monate)"
+                  htmlFor="oil-interval-months"
                 >
-                  {OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => (
-                    <option key={months} value={String(months)}>
-                      {formatOilChangeIntervalMonthsLabel(months)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <select
+                    id="oil-interval-months"
+                    value={oilIntervalMonthsSelectValue}
+                    onChange={(event) =>
+                      patchOilChangeIntervalMonths(event.target.value)
+                    }
+                    className={cn(
+                      garageFieldControlClassName,
+                      "w-full min-h-[1.75rem] appearance-none bg-transparent",
+                    )}
+                  >
+                    {OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => (
+                      <option key={months} value={String(months)}>
+                        {formatOilChangeIntervalMonthsLabel(months)}
+                      </option>
+                    ))}
+                  </select>
+                </GarageFieldCell>
+              </GarageFieldRow>
             </section>
 
           </form>

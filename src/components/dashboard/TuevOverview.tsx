@@ -23,6 +23,10 @@ import { Button } from "@/components/ui/button";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  GarageField,
+  GarageInsetSelect,
+} from "@/components/ui/garage-field";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import {
   isoDateToYearMonth,
@@ -348,27 +352,29 @@ export function TuevOverview({
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <FieldBlock label="Prüfdatum">
             <GermanDateInput
+              variant="inset"
               value={review.testDate}
               onChange={(iso) => patch("testDate", iso)}
             />
           </FieldBlock>
           <FieldBlock label="Ergebnis">
-            <select
+            <GarageInsetSelect
               value={review.result}
               onChange={(event) =>
                 patch("result", event.target.value as TuevResult)
               }
-              className="claim-input w-full"
+              className="w-full"
             >
               {TUEV_RESULTS.map((option) => (
                 <option key={option} value={option}>
                   {TUEV_RESULT_LABELS[option]}
                 </option>
               ))}
-            </select>
+            </GarageInsetSelect>
           </FieldBlock>
           <FieldBlock label="Kilometerstand">
             <MileageKmInput
+              variant="inset"
               value={review.mileageKm}
               onChange={(km) => patch("mileageKm", km)}
               placeholder="z. B. 87.200"
@@ -384,7 +390,7 @@ export function TuevOverview({
             />
           </FieldBlock>
           <FieldBlock label="Prüforganisation">
-            <select
+            <GarageInsetSelect
               value={review.testingOrganization}
               onChange={(event) =>
                 patch(
@@ -392,14 +398,14 @@ export function TuevOverview({
                   event.target.value as TestingOrganization,
                 )
               }
-              className="claim-input w-full"
+              className="w-full"
             >
               {TESTING_ORGANIZATIONS.map((option) => (
                 <option key={option} value={option}>
                   {option === "other" ? "Sonstige" : option}
                 </option>
               ))}
-            </select>
+            </GarageInsetSelect>
           </FieldBlock>
           <FieldBlock label="Werkstatt / Prüfstelle" className="sm:col-span-2">
             <Input
@@ -565,11 +571,8 @@ function FieldBlock({
   className?: string;
 }) {
   return (
-    <Label className={className}>
-      <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-        {label}
-      </span>
-      <div className="mt-1.5">{children}</div>
-    </Label>
+    <GarageField label={label} className={className}>
+      {children}
+    </GarageField>
   );
 }

@@ -26,11 +26,10 @@ export function DashboardQuickAccessBar({
       aria-label="Schnellzugriff"
       className={cn(
         card
-          ? "vd-anim-header rounded-2xl border border-zinc-800/90 bg-zinc-950/70 px-2 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm"
-          : "vd-anim-header shrink-0 px-0 py-1",
+          ? "vd-anim-header rounded-2xl border border-zinc-800/90 bg-zinc-950/70 px-2 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm"
+          : "vd-anim-header shrink-0 px-0 py-0.5 [animation-delay:0.06s]",
         className,
       )}
-      style={{ animationDelay: "0.06s" }}
       data-tour="dashboard-quick-access"
     >
       <ul
@@ -47,7 +46,7 @@ export function DashboardQuickAccessBar({
               <PressableLink
                 href={item.href}
                 variant="row"
-                className="group flex flex-col items-center gap-1.5 px-1 py-0.5 text-center"
+                className="group flex min-h-11 flex-col items-center justify-center gap-1 px-1 py-0.5 text-center"
                 aria-label={item.label}
               >
                 <Icon

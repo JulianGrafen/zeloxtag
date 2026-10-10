@@ -13,6 +13,10 @@ import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  GarageField,
+  GarageInsetTextarea,
+} from "@/components/ui/garage-field";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { parseEinzelabnahmeField22Meta } from "@/lib/documents/einzelabnahme-field22-meta";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
@@ -303,20 +307,21 @@ export function EinzelabnahmeOverview({
             </FieldBlock>
             <FieldBlock label="KM-Stand">
               <MileageKmInput
+                variant="inset"
                 value={review.mileageKm}
                 onChange={(km) => patch("mileageKm", km)}
                 placeholder="z. B. 142.350"
               />
             </FieldBlock>
             <FieldBlock label="Feld 22 · Bemerkungen / Änderungen">
-              <textarea
+              <GarageInsetTextarea
                 value={review.modificationsField22 ?? ""}
                 onChange={(event) =>
                   patch("modificationsField22", event.target.value || null)
                 }
                 rows={5}
                 placeholder="Wörtlich aus Feld 22 übernehmen…"
-                className="claim-input min-h-[7rem] resize-y font-mono text-[0.82rem] leading-relaxed"
+                className="min-h-[7rem] font-mono text-[0.82rem] leading-relaxed"
               />
               {field22Missing ? (
                 <p className="mt-1 text-[0.75rem] text-amber-800">
@@ -325,14 +330,14 @@ export function EinzelabnahmeOverview({
               ) : null}
             </FieldBlock>
             <FieldBlock label="Zusätzliche Bemerkungen">
-              <textarea
+              <GarageInsetTextarea
                 value={review.additionalRemarks ?? ""}
                 onChange={(event) =>
                   patch("additionalRemarks", event.target.value || null)
                 }
                 rows={3}
                 placeholder="Optional · Zusatztext zur Fahrzeugbeschreibung"
-                className="claim-input min-h-[5rem] resize-y text-[0.85rem] leading-relaxed"
+                className="min-h-[5rem] text-[0.85rem] leading-relaxed"
               />
             </FieldBlock>
           </div>
@@ -410,12 +415,5 @@ function FieldBlock({
   label: string;
   children: ReactNode;
 }) {
-  return (
-    <Label>
-      <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-        {label}
-      </span>
-      <div className="mt-1.5">{children}</div>
-    </Label>
-  );
+  return <GarageField label={label}>{children}</GarageField>;
 }

@@ -6,6 +6,7 @@ import { Calendar, Pencil } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import { GermanDateInput } from "@/components/documents/german-date-input";
+import { GarageField } from "@/components/ui/garage-field";
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
@@ -96,11 +97,12 @@ export function EditableDocumentDateSection({
 
   return (
     <div id={sectionId} className="scroll-mt-24">
+      {!editing ? (
       <div className="mb-1 flex items-center justify-between gap-2">
         <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
           {label}
         </dt>
-        {!editing && !hideEditTrigger ? (
+        {!hideEditTrigger ? (
           <PressableButton
             type="button"
             variant="button"
@@ -112,6 +114,7 @@ export function EditableDocumentDateSection({
           </PressableButton>
         ) : null}
       </div>
+      ) : null}
 
       {!editing ? (
         <dd className="mt-0.5 flex items-center gap-1.5 font-medium text-[color:var(--vd-text)]">
@@ -120,11 +123,17 @@ export function EditableDocumentDateSection({
         </dd>
       ) : (
         <div className="mt-1 space-y-2">
-          <GermanDateInput
-            value={draft}
-            onChange={(iso) => setDraft(iso)}
-            className="claim-input w-full min-w-0"
-          />
+          <GarageField
+            label={label}
+            htmlFor={`editable-date-${documentId}`}
+          >
+            <GermanDateInput
+              id={`editable-date-${documentId}`}
+              variant="inset"
+              value={draft}
+              onChange={(iso) => setDraft(iso)}
+            />
+          </GarageField>
           <div className="flex flex-wrap gap-2">
             <PressableButton
               type="button"

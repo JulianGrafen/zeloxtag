@@ -457,6 +457,9 @@ export function VehicleDocumentsView({
       {showScanFab ? (
         <DashboardScanFab
           tagUuid={tagUuid}
+          directAction="scan"
+          fuelLogHref={surfacePath(vehicleSurfaceScope, tagUuid, "tanken")}
+          manualEntryHref={`${surfacePath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`}
           scanHref={ownerScanEntryHref(
             vehicleSurfaceScope,
             tagUuid,
@@ -476,9 +479,9 @@ export function VehicleDocumentsView({
                 ? "vault"
                 : null,
           )}
-          scanLabel={
+          scanActionLabel={
             activeType === "abe"
-              ? "In Gutachten Tresor ablegen"
+              ? "Gutachten scannen"
               : activeType === "tuev"
                 ? "TÜV scannen"
                 : "Dokument scannen"

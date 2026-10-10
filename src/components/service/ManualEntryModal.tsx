@@ -14,6 +14,14 @@ import {
   MANUAL_SERVICE_ENTRY_TYPES,
   type ManualServiceEntryType,
 } from "@/lib/documents/manual-entries";
+import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  GarageInsetInput,
+  GarageInsetSelect,
+  GarageInsetTextarea,
+} from "@/components/ui/garage-field";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
 interface ManualEntryModalProps {
@@ -195,78 +203,71 @@ export function ManualEntryModal({
         ) : null}
 
         <div className="space-y-3">
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Typ
-            </span>
-            <select
+          <GarageField label="Typ" htmlFor="manual-entry-modal-type">
+            <GarageInsetSelect
+              id="manual-entry-modal-type"
               value={serviceType}
               onChange={(event) =>
                 setServiceType(event.target.value as ManualServiceEntryType)
               }
-              className="claim-input w-full"
+              className="w-full"
             >
               {MANUAL_SERVICE_ENTRY_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {MANUAL_SERVICE_ENTRY_LABELS[type]}
                 </option>
               ))}
-            </select>
-          </label>
+            </GarageInsetSelect>
+          </GarageField>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block space-y-1.5">
-              <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Datum
-              </span>
+          <GarageFieldRow>
+            <GarageFieldCell label="Datum" htmlFor="manual-entry-modal-date">
               <GermanDateInput
+                id="manual-entry-modal-date"
+                variant="inset"
                 value={date || null}
                 onChange={(iso) => setDate(iso ?? "")}
-                className="claim-input w-full"
               />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Kilometerstand
-              </span>
+            </GarageFieldCell>
+            <GarageFieldCell label="Kilometerstand" htmlFor="manual-entry-modal-km">
               <MileageKmInput
+                id="manual-entry-modal-km"
+                variant="inset"
                 value={parseMileageKmInput(mileageKm)}
                 onChange={(km) => setMileageKm(km === null ? "" : String(km))}
-                className="claim-input w-full"
                 placeholder="z. B. 84.200"
                 required
               />
-            </label>
-          </div>
+            </GarageFieldCell>
+          </GarageFieldRow>
 
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Kosten (€)
-            </span>
-            <input
+          <GarageField label="Kosten (€)" htmlFor="manual-entry-modal-amount">
+            <GarageInsetInput
+              id="manual-entry-modal-amount"
               inputMode="decimal"
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
-              className="claim-input w-full"
               placeholder="optional"
+              className="w-full tabular-nums"
             />
-          </label>
+          </GarageField>
 
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Details / Spezifikation
-            </span>
-            <input
+          <GarageField
+            label="Details / Spezifikation"
+            htmlFor="manual-entry-modal-details"
+          >
+            <GarageInsetInput
+              id="manual-entry-modal-details"
               value={details}
               onChange={(event) => setDetails(event.target.value)}
-              className="claim-input w-full"
+              className="w-full"
               placeholder={
                 serviceType === "oil_change"
                   ? "z. B. 5W-30 Shell Helix, Filter gewechselt"
                   : "z. B. Bremsbeläge vorne, Inspektion"
               }
             />
-          </label>
+          </GarageField>
 
           {serviceType === "oil_change" ? (
             <label className="flex items-center gap-2 text-[0.85rem] text-[color:var(--vd-text)]">
@@ -284,48 +285,47 @@ export function ManualEntryModal({
           ) : null}
 
           {serviceType !== "oil_change" || !selfMade ? (
-            <label className="block space-y-1.5">
-              <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                {serviceType === "oil_change" ? "Werkstatt / Quelle" : "Werkstatt"}
-              </span>
-              <input
+            <GarageField
+              label={
+                serviceType === "oil_change" ? "Werkstatt / Quelle" : "Werkstatt"
+              }
+              htmlFor="manual-entry-modal-vendor"
+            >
+              <GarageInsetInput
+                id="manual-entry-modal-vendor"
                 value={vendor}
                 onChange={(event) => setVendor(event.target.value)}
-                className="claim-input w-full"
+                className="w-full"
                 placeholder="optional"
               />
-            </label>
+            </GarageField>
           ) : null}
 
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Beleg-Foto
-            </span>
-            <input
+          <GarageField label="Beleg-Foto" htmlFor="manual-entry-modal-receipt">
+            <GarageInsetInput
+              id="manual-entry-modal-receipt"
               type="file"
               accept="image/*,application/pdf"
-              className="claim-input w-full text-[0.82rem]"
+              className="w-full text-[0.82rem]"
               onChange={(event) => {
                 setReceiptPhoto(event.target.files?.[0] ?? null);
               }}
             />
-            <span className="block text-[0.75rem] text-[color:var(--vd-muted)]">
+            <span className="mt-1 block text-[0.75rem] text-[color:var(--vd-muted)]">
               Optional — Foto oder PDF des Werkstattbelegs
             </span>
-          </label>
+          </GarageField>
 
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Notizen
-            </span>
-            <textarea
+          <GarageField label="Notizen" htmlFor="manual-entry-modal-notes">
+            <GarageInsetTextarea
+              id="manual-entry-modal-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               rows={2}
-              className="claim-input w-full resize-none"
+              className="min-h-[3.5rem] resize-none"
               placeholder="optional"
             />
-          </label>
+          </GarageField>
         </div>
 
         <div className="mt-4 flex gap-2">

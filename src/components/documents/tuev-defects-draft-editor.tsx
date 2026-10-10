@@ -3,6 +3,12 @@
 import { Plus, Trash2 } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import {
+  GarageField,
+  GarageInsetInput,
+  GarageInsetSelect,
+  GarageInsetTextarea,
+} from "@/components/ui/garage-field";
 import { parseTuevDefectLine } from "@/lib/ocr/tuev-defects-from-text";
 import type { TuevDefectRow, TuevReport } from "@/lib/validations/documentSchemas";
 
@@ -109,11 +115,13 @@ export function TuevDefectsDraftEditor({
             className="rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3"
           >
             <div className="grid gap-2 sm:grid-cols-[6.5rem_5.5rem_1fr_auto] sm:items-start">
-              <label className="block min-w-0">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                  Prüfpunkt
-                </span>
-                <input
+              <GarageField
+                label="Prüfpunkt"
+                htmlFor={`tuev-defect-checkpoint-${row.key}`}
+                className="min-w-0"
+              >
+                <GarageInsetInput
+                  id={`tuev-defect-checkpoint-${row.key}`}
                   value={row.checkpoint}
                   disabled={disabled}
                   onChange={(event) => {
@@ -125,14 +133,16 @@ export function TuevDefectsDraftEditor({
                     );
                   }}
                   placeholder="z. B. 1.3.2a"
-                  className="claim-input mt-1 w-full font-mono text-[0.82rem]"
+                  className="w-full font-mono text-[0.82rem]"
                 />
-              </label>
-              <label className="block min-w-0">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                  Art
-                </span>
-                <select
+              </GarageField>
+              <GarageField
+                label="Art"
+                htmlFor={`tuev-defect-severity-${row.key}`}
+                className="min-w-0"
+              >
+                <GarageInsetSelect
+                  id={`tuev-defect-severity-${row.key}`}
                   value={row.severity}
                   disabled={disabled}
                   onChange={(event) => {
@@ -143,18 +153,20 @@ export function TuevDefectsDraftEditor({
                       ),
                     );
                   }}
-                  className="claim-input mt-1 w-full text-[0.82rem]"
+                  className="w-full text-[0.82rem]"
                 >
                   <option value="">—</option>
                   <option value="EM">EM</option>
                   <option value="GM">GM</option>
-                </select>
-              </label>
-              <label className="block min-w-0 sm:col-span-1">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                  Mangel
-                </span>
-                <textarea
+                </GarageInsetSelect>
+              </GarageField>
+              <GarageField
+                label="Mangel"
+                htmlFor={`tuev-defect-desc-${row.key}`}
+                className="min-w-0 sm:col-span-1"
+              >
+                <GarageInsetTextarea
+                  id={`tuev-defect-desc-${row.key}`}
                   value={row.description}
                   rows={2}
                   disabled={disabled}
@@ -167,9 +179,9 @@ export function TuevDefectsDraftEditor({
                     );
                   }}
                   placeholder="Beschreibung des Mangels"
-                  className="claim-input mt-1 min-h-[2.75rem] w-full resize-y text-[0.88rem]"
+                  className="min-h-[2.75rem] w-full text-[0.88rem]"
                 />
-              </label>
+              </GarageField>
               <PressableButton
                 type="button"
                 variant="button"

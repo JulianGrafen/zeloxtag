@@ -6,6 +6,8 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { garageFieldControlClassName } from "@/components/ui/garage-field";
+import { cn } from "@/lib/utils";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import type { DocumentLineItem } from "@/types/database";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
@@ -227,7 +229,10 @@ export function EditableLineItemsSection({
                     });
                   }}
                   placeholder="Bezeichnung"
-                  className="claim-input min-w-0 text-[0.88rem]"
+                  className={cn(
+                    garageFieldControlClassName,
+                    "min-w-0 text-[0.88rem]",
+                  )}
                 />
                 <input
                   inputMode="decimal"
@@ -247,7 +252,10 @@ export function EditableLineItemsSection({
                     });
                   }}
                   placeholder="€"
-                  className="claim-input text-right text-[0.88rem] tabular-nums"
+                  className={cn(
+                    garageFieldControlClassName,
+                    "text-right text-[0.88rem] tabular-nums",
+                  )}
                 />
                 <PressableButton
                   type="button"

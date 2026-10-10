@@ -8,6 +8,13 @@ import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 import { DocumentUpload } from "@/components/dashboard/DocumentUpload";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  GarageInsetInput,
+  GarageInsetSelect,
+} from "@/components/ui/garage-field";
+import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
@@ -131,80 +138,71 @@ export function DocumentUploadForm({
           });
         }}
       >
-        <label className="block space-y-1.5">
-          <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-            {type === "abe" ? "Bauteil" : "Titel"}
-          </span>
-          <input
+        <GarageField
+          label={type === "abe" ? "Bauteil" : "Titel"}
+          htmlFor="document-upload-title"
+        >
+          <GarageInsetInput
+            id="document-upload-title"
             required
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder={
               type === "abe" ? "z. B. Carbon Frontlippe" : "z. B. Ölwechsel Rechnung"
             }
-            className="claim-input"
           />
-        </label>
+        </GarageField>
 
         {!lockType ? (
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-              Typ
-            </span>
-            <select
+          <GarageField label="Typ" htmlFor="document-upload-type">
+            <GarageInsetSelect
+              id="document-upload-type"
               value={type}
               onChange={(event) => {
                 const next = event.target.value as DocumentType;
                 setType(next);
                 if (next === "abe") setAmount("");
               }}
-              className="claim-input"
             >
               {DOCUMENT_TYPE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {DOCUMENT_TYPE_LABELS[option]}
                 </option>
               ))}
-            </select>
-          </label>
+            </GarageInsetSelect>
+          </GarageField>
         ) : null}
 
         {type === "abe" ? (
-          <label className="block space-y-1.5">
-            <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-              Datum
-            </span>
+          <GarageField label="Datum" htmlFor="document-upload-date">
             <GermanDateInput
+              id="document-upload-date"
+              variant="inset"
               value={date || null}
               onChange={(iso) => setDate(iso ?? "")}
-              className="claim-input"
             />
-          </label>
+          </GarageField>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block space-y-1.5">
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Datum
-              </span>
+          <GarageFieldRow>
+            <GarageFieldCell label="Datum" htmlFor="document-upload-date">
               <GermanDateInput
+                id="document-upload-date"
+                variant="inset"
                 value={date || null}
                 onChange={(iso) => setDate(iso ?? "")}
-                className="claim-input"
               />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Betrag (€)
-              </span>
-              <input
+            </GarageFieldCell>
+            <GarageFieldCell label="Betrag (€)" htmlFor="document-upload-amount">
+              <GarageInsetInput
+                id="document-upload-amount"
                 inputMode="decimal"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 placeholder="optional"
-                className="claim-input"
+                className="tabular-nums"
               />
-            </label>
-          </div>
+            </GarageFieldCell>
+          </GarageFieldRow>
         )}
 
         <div className="space-y-1.5">

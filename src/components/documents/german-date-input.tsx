@@ -5,6 +5,7 @@ import { Calendar } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 
 import { GermanDateCalendar } from "@/components/documents/german-date-calendar";
+import { garageFieldControlClassName } from "@/components/ui/garage-field";
 import { Input } from "@/components/ui/input";
 import {
   formatCompactGermanDate,
@@ -24,6 +25,7 @@ type GermanDateInputProps = {
   maxDate?: string | null;
   /** Show calendar picker button (default: true). */
   showCalendar?: boolean;
+  variant?: "default" | "inset";
 };
 
 function isoToDisplay(value: string | null): string {
@@ -43,7 +45,9 @@ export function GermanDateInput({
   minDate = null,
   maxDate = null,
   showCalendar = true,
+  variant = "default",
 }: GermanDateInputProps) {
+  const inset = variant === "inset";
   const [text, setText] = useState(() => isoToDisplay(value));
   const [focused, setFocused] = useState(false);
   const [open, setOpen] = useState(false);
@@ -72,7 +76,16 @@ export function GermanDateInput({
       autoComplete="off"
       lang="de"
       placeholder={placeholder}
-      className={cn(showCalendar ? "flex-1" : undefined, className)}
+      className={cn(
+        inset
+          ? cn(
+              garageFieldControlClassName,
+              "min-h-0 border-0 shadow-none focus-visible:ring-0",
+            )
+          : "claim-input min-h-[var(--claim-field-min-height)]",
+        showCalendar ? "flex-1" : undefined,
+        className,
+      )}
       value={text}
       aria-describedby={showCalendar ? hintId : undefined}
       onFocus={() => setFocused(true)}
@@ -117,13 +130,23 @@ export function GermanDateInput({
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <div className="flex w-full flex-col gap-1">
-        <div className="flex w-full items-stretch gap-2">
+        <div
+          className={cn(
+            "flex w-full items-stretch",
+            inset ? "gap-0 pr-1" : "gap-2",
+          )}
+        >
           {input}
           <Popover.Trigger
             type="button"
             disabled={disabled}
             aria-label="Kalender öffnen"
-            className="inline-flex w-[var(--claim-field-min-height)] shrink-0 items-center justify-center self-stretch rounded-[var(--vd-radius-control)] border border-[color:var(--vd-border)] bg-[var(--claim-input-bg)] text-[color:var(--vd-text)] shadow-none disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              "inline-flex shrink-0 items-center justify-center self-stretch text-[color:var(--vd-text)] disabled:cursor-not-allowed disabled:opacity-50",
+              inset
+                ? "h-8 w-8 rounded-[var(--vd-radius-field)] text-zinc-400 hover:bg-white/5"
+                : "w-[var(--claim-field-min-height)] rounded-[var(--vd-radius-field)] border border-[color:var(--vd-border)] bg-[var(--claim-input-bg)] shadow-none",
+            )}
           >
             <Calendar className="h-4 w-4" aria-hidden />
           </Popover.Trigger>

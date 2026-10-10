@@ -1,19 +1,21 @@
 "use client";
 
-import { Car, Pencil } from "lucide-react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { bumpSilhouetteCacheUrl } from "@/lib/vehicles/prefetch-silhouette-image";
+import { isOwnerSilhouetteSrc } from "@/lib/vehicles/silhouette-display-url";
 
 import { dashboardHeroShellClassName } from "./dashboard-menu-styles";
-import { PressableButton } from "./Pressable";
 import { cn } from "@/lib/utils";
 
 interface VehicleDashboardHeaderProps {
+  ownerName?: string;
   vehicleModel: string;
-  vehicleDataHref?: string;
-  statusLabel?: string;
-  statusDetail?: string;
-  tagCoupled?: boolean;
-  onEditVehicleImage?: () => void;
+  vehicleImage?: string;
+  vehicleImageFallback?: string;
+  vehicleImagePreviewFallback?: string;
+  vehicleImageAlt?: string;
+  vehicleImageFrameless?: boolean;
+  onSilhouetteProxyLoad?: () => void;
 }
 
 function parseVehicleHeroLabel(vehicleModel: string): {
@@ -33,78 +35,167 @@ function parseVehicleHeroLabel(vehicleModel: string): {
   return { name: vehicleModel.trim(), year: null };
 }
 
+function resolveInitialHeroSrc(
+  vehicleImage?: string,
+  previewFallback?: string,
+  catalogFallback?: string,
+): string | null {
+  return (
+    vehicleImage?.trim() ||
+    previewFallback?.trim() ||
+    catalogFallback?.trim() ||
+    null
+  );
+}
+
 export function VehicleDashboardHeader({
+  ownerName,
   vehicleModel,
-  vehicleDataHref,
-  statusLabel = "Verbunden",
-  statusDetail,
-  tagCoupled = true,
-  onEditVehicleImage,
+  vehicleImage,
+  vehicleImageFallback,
+  vehicleImagePreviewFallback,
+  vehicleImageAlt,
+  vehicleImageFrameless: _vehicleImageFrameless = false,
+  onSilhouetteProxyLoad,
 }: VehicleDashboardHeaderProps) {
   const { name, year } = parseVehicleHeroLabel(vehicleModel);
+  const ownerLabel = ownerName?.trim() || null;
+  const primary = vehicleImage?.trim() || null;
+  const previewFallback = vehicleImagePreviewFallback?.trim() || null;
+  const catalogFallback = vehicleImageFallback?.trim() || null;
+  const ownerLocked =
+    isOwnerSilhouetteSrc(primary) || isOwnerSilhouetteSrc(vehicleImage);
+
+  const [heroSrc, setHeroSrc] = useState<string | null>(() =>
+    resolveInitialHeroSrc(vehicleImage, vehicleImagePreviewFallback, vehicleImageFallback),
+  );
+  const [heroVisible, setHeroVisible] = useState(Boolean(heroSrc));
+  const [proxyRetries, setProxyRetries] = useState(0);
+  const [usedPreviewFallback, setUsedPreviewFallback] = useState(false);
+
+  useEffect(() => {
+    const next = resolveInitialHeroSrc(
+      vehicleImage,
+      vehicleImagePreviewFallback,
+      vehicleImageFallback,
+    );
+    setHeroSrc(next);
+    setHeroVisible(Boolean(next));
+    setProxyRetries(0);
+    setUsedPreviewFallback(false);
+  }, [vehicleImage, vehicleImagePreviewFallback, vehicleImageFallback]);
+
+  function handleHeroError() {
+    if (
+      heroSrc?.startsWith("blob:") ||
+      heroSrc?.startsWith("data:image/")
+    ) {
+      return;
+    }
+    if (
+      isOwnerSilhouetteSrc(heroSrc) &&
+      proxyRetries < 6 &&
+      typeof window !== "undefined"
+    ) {
+      setProxyRetries((count) => count + 1);
+      setHeroSrc(bumpSilhouetteCacheUrl(heroSrc!));
+      return;
+    }
+    if (
+      (ownerLocked || isOwnerSilhouetteSrc(heroSrc)) &&
+      previewFallback &&
+      !usedPreviewFallback &&
+      heroSrc !== previewFallback
+    ) {
+      setUsedPreviewFallback(true);
+      setHeroSrc(previewFallback);
+      return;
+    }
+    if (ownerLocked || isOwnerSilhouetteSrc(heroSrc)) {
+      return;
+    }
+    if (catalogFallback && heroSrc !== catalogFallback) {
+      setHeroSrc(catalogFallback);
+      return;
+    }
+    setHeroVisible(false);
+    setHeroSrc(null);
+  }
+
+  function handleHeroLoad() {
+    if (
+      isOwnerSilhouetteSrc(heroSrc) &&
+      heroSrc &&
+      !heroSrc.startsWith("blob:") &&
+      !heroSrc.startsWith("data:image/")
+    ) {
+      onSilhouetteProxyLoad?.();
+    }
+  }
+
+  const showPhoto = Boolean(heroSrc && heroVisible);
 
   return (
     <header
       className={cn(
         dashboardHeroShellClassName,
-        "vd-anim-header relative z-40 shrink-0",
+        "vd-anim-header relative z-40 min-h-[11rem] shrink-0 overflow-hidden sm:min-h-[12rem]",
       )}
       data-tour="dashboard-header"
     >
-      <div
-        className="flex min-h-[10.5rem] flex-col justify-center px-4 py-6 sm:min-h-[11rem] sm:px-5 sm:py-7"
-      >
-        <div className="flex justify-center" aria-hidden>
-          <Car className="h-5 w-5 text-zinc-500" strokeWidth={1.5} />
+      {showPhoto ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            key={heroSrc}
+            src={heroSrc!}
+            alt=""
+            className="absolute inset-0 h-full w-full scale-105 object-cover object-[center_30%]"
+            onLoad={handleHeroLoad}
+            onError={handleHeroError}
+          />
+          <div
+            className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-zinc-950/15"
+          />
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-zinc-950/80 via-zinc-950/25 to-transparent"
+          />
         </div>
+      ) : (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.12)_0%,transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(255,255,255,0.04)_0%,transparent_50%)]"
+        />
+      )}
 
-        {!tagCoupled ? (
-          <p
-            className="mt-2 text-center text-[0.68rem] font-medium leading-snug text-rose-400/90"
+      <div
+        className="relative flex min-h-[11rem] flex-col justify-end px-4 pb-5 pt-8 sm:min-h-[12rem] sm:px-5 sm:pb-6"
+      >
+        <div className="min-w-0">
+          <h1
+            className="font-[family-name:var(--font-display)] text-[1.35rem] leading-tight tracking-tight text-white drop-shadow-sm sm:text-[1.45rem]"
           >
-            {statusLabel}
-            {statusDetail ? ` · ${statusDetail}` : null}
-          </p>
-        ) : null}
-
-        <div className="mt-4 flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <h1
-              className="font-[family-name:var(--font-display)] text-[1.35rem] font-bold leading-tight tracking-tight text-white sm:text-[1.45rem]"
-            >
-              {name}
-            </h1>
-            <p
-              className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.8rem] text-zinc-400"
-            >
-              {year ? (
-                <span className="tabular-nums">{year}</span>
-              ) : null}
-              {vehicleDataHref ? (
-                <Link
-                  href={vehicleDataHref}
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full text-zinc-500 transition hover:bg-white/5 hover:text-zinc-200"
-                  aria-label="Fahrzeugdaten bearbeiten"
-                >
-                  <Pencil className="h-3.5 w-3.5" aria-hidden />
-                </Link>
-              ) : null}
+            {ownerLabel ? (
+              <>
+                <span className="font-medium text-white/80">{ownerLabel}</span>{" "}
+                <span className="font-bold text-white">{name}</span>
+              </>
+            ) : (
+              <span className="font-bold">{name}</span>
+            )}
+          </h1>
+          {year ? (
+            <p className="mt-1.5 text-[0.8rem] tabular-nums text-zinc-300">
+              {year}
             </p>
-          </div>
-
-          {onEditVehicleImage ? (
-            <PressableButton
-              type="button"
-              variant="button"
-              onClick={onEditVehicleImage}
-              aria-label="Fahrzeugfoto ändern"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-zinc-800/90 text-zinc-100 transition hover:bg-zinc-700/90"
-            >
-              <Pencil className="h-4 w-4" aria-hidden />
-            </PressableButton>
           ) : null}
         </div>
       </div>
+
+      {/* Screen readers: decorative hero uses empty alt; name is in h1 */}
+      {showPhoto && vehicleImageAlt ? (
+        <span className="sr-only">{vehicleImageAlt}</span>
+      ) : null}
     </header>
   );
 }

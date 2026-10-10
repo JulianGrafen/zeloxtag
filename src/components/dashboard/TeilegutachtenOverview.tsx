@@ -12,6 +12,10 @@ import { GermanDateInput } from "@/components/documents/german-date-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  GarageField,
+  GarageInsetTextarea,
+} from "@/components/ui/garage-field";
 import { titleFromAbeFields } from "@/lib/documents/abe-title";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { normalizeDocumentDateIso } from "@/lib/documents/format";
@@ -425,14 +429,14 @@ export function TeilegutachtenOverview({
             />
           </Field>
           <Field label="Art der Umrüstung">
-            <textarea
+            <GarageInsetTextarea
               value={review.modificationType ?? ""}
               onChange={(event) =>
                 patch("modificationType", event.target.value || null)
               }
               placeholder={"z. B. Sonderfahrwerksfedern\nSportfahrwerk / Tieferlegung\nAbgasananlage"}
               rows={5}
-              className="claim-input min-h-[6rem] w-full resize-y text-[0.88rem] leading-relaxed whitespace-pre-wrap"
+              className="min-h-[6rem] w-full text-[0.88rem] leading-relaxed whitespace-pre-wrap"
             />
           </Field>
           <Field label="Bauteil / Bezeichnung">
@@ -489,7 +493,7 @@ export function TeilegutachtenOverview({
                 ) : null}
               </div>
             ) : (
-              <textarea
+              <GarageInsetTextarea
                 value={formatLinesForEdit(review.vehicleApprovals)}
                 onChange={(event) =>
                   patch(
@@ -499,20 +503,20 @@ export function TeilegutachtenOverview({
                 }
                 placeholder={"Mazda RX-8 · SE3P\nBMW 3er · E90"}
                 rows={4}
-                className="claim-input min-h-[5.5rem] w-full resize-y text-[0.88rem]"
+                className="min-h-[5.5rem] w-full text-[0.88rem]"
               />
             )}
           </Field>
           {!review.compatibilityTable?.rows.length ? (
             <Field label="Verwendungsbereich">
-              <textarea
+              <GarageInsetTextarea
                 value={review.verwendungsbereich ?? ""}
                 onChange={(event) =>
                   patch("verwendungsbereich", event.target.value || null)
                 }
                 placeholder="Kurzbeschreibung, wenn keine Tabelle erkannt wurde"
                 rows={4}
-                className="claim-input min-h-[5.5rem] w-full resize-y text-[0.88rem]"
+                className="min-h-[5.5rem] w-full text-[0.88rem]"
               />
             </Field>
           ) : null}
@@ -529,14 +533,14 @@ export function TeilegutachtenOverview({
             )}
           </Field>
           <Field label="Hinweise für den Fahrzeughalter">
-            <textarea
+            <GarageInsetTextarea
               value={review.ownerNotes ?? ""}
               onChange={(event) =>
                 patch("ownerNotes", event.target.value || null)
               }
               placeholder="Abschnitt III — wörtlich aus dem Dokument"
               rows={6}
-              className="claim-input min-h-[7rem] w-full resize-y text-[0.84rem] leading-relaxed whitespace-pre-wrap"
+              className="min-h-[7rem] w-full text-[0.84rem] leading-relaxed whitespace-pre-wrap"
             />
           </Field>
           <Field label="Hinweise und Auflagen (IV.)">
@@ -552,14 +556,14 @@ export function TeilegutachtenOverview({
                 <span>Auflagen bearbeiten</span>
               </summary>
               <div className="border-t border-[color:var(--vd-border)] p-3">
-                <textarea
+                <GarageInsetTextarea
                   value={formatAuflagenForEdit(review.auflagen)}
                   onChange={(event) =>
                     patch("auflagen", parseAuflagenFromEdit(event.target.value))
                   }
                   placeholder={"IV.1. Auflagen für den Hersteller / Einbaubetrieb:\n1. …"}
                   rows={8}
-                  className="claim-input min-h-[8rem] w-full resize-y text-[0.84rem] leading-relaxed whitespace-pre-wrap"
+                  className="min-h-[8rem] w-full text-[0.84rem] leading-relaxed whitespace-pre-wrap"
                 />
               </div>
             </details>
@@ -649,10 +653,5 @@ function Field({
   label: string;
   children: ReactNode;
 }) {
-  return (
-    <Label className="block space-y-1.5 text-[0.78rem]">
-      <span className="font-medium text-[color:var(--vd-muted)]">{label}</span>
-      {children}
-    </Label>
-  );
+  return <GarageField label={label}>{children}</GarageField>;
 }

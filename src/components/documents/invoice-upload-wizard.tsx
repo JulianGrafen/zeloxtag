@@ -37,6 +37,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  GarageInsetInput,
+  GarageInsetSelect,
+} from "@/components/ui/garage-field";
+import {
   buildInvoiceDashboardTitle,
   isPrimaryOilChange,
 } from "@/lib/documents/invoice-title";
@@ -1030,17 +1037,15 @@ export function InvoiceUploadWizard({
       {canReview && fields && uploadFile ? (
         <form className="space-y-4" onSubmit={handleSave}>
           <div className="zt-feature-panel space-y-3 p-4 shadow-[var(--vd-shadow-sm)]">
-            <Label>
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Titel
-              </span>
-              <Input
+            <GarageField label="Titel" htmlFor="invoice-wizard-review-title">
+              <GarageInsetInput
+                id="invoice-wizard-review-title"
                 value={title}
                 onChange={(event) =>
                   setState((prev) => ({ ...prev, title: event.target.value }))
                 }
               />
-            </Label>
+            </GarageField>
 
             <ReviewRow label="Werkstatt" value={fields.vendor} />
             <ReviewRow label="Belegnr." value={fields.invoiceNumber} />
@@ -1053,11 +1058,12 @@ export function InvoiceUploadWizard({
               }
             />
 
-            <Label>
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Art der Rechnung
-              </span>
-              <select
+            <GarageField
+              label="Art der Rechnung"
+              htmlFor="invoice-wizard-review-category"
+            >
+              <GarageInsetSelect
+                id="invoice-wizard-review-category"
                 value={fields.category}
                 onChange={(event) =>
                   setState((prev) =>
@@ -1073,22 +1079,24 @@ export function InvoiceUploadWizard({
                       : prev,
                   )
                 }
-                className="claim-input mt-1"
+                className="w-full"
               >
                 {INVOICE_REVIEW_CATEGORIES.map((option) => (
                   <option key={option} value={option}>
                     {INVOICE_REVIEW_CATEGORY_LABELS[option]}
                   </option>
                 ))}
-              </select>
-            </Label>
+              </GarageInsetSelect>
+            </GarageField>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Label>
-                <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                  Betrag (€)
-                </span>
+            <GarageFieldRow>
+              <GarageFieldCell
+                label="Betrag (€)"
+                htmlFor="invoice-wizard-review-amount"
+              >
                 <GermanAmountInput
+                  id="invoice-wizard-review-amount"
+                  variant="inset"
                   value={fields.amount ?? null}
                   onChange={(amount) =>
                     setState((prev) =>
@@ -1101,12 +1109,14 @@ export function InvoiceUploadWizard({
                     )
                   }
                 />
-              </Label>
-              <Label>
-                <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                  Datum
-                </span>
+              </GarageFieldCell>
+              <GarageFieldCell
+                label="Datum"
+                htmlFor="invoice-wizard-review-date"
+              >
                 <GermanDateInput
+                  id="invoice-wizard-review-date"
+                  variant="inset"
                   value={fields.date}
                   onChange={(iso) =>
                     setState((prev) =>
@@ -1122,8 +1132,8 @@ export function InvoiceUploadWizard({
                     )
                   }
                 />
-              </Label>
-            </div>
+              </GarageFieldCell>
+            </GarageFieldRow>
 
             <EditableLineItemsSection
               items={fields.lineItems ?? []}

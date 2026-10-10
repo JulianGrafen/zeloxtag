@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { ArrowLeft, Fuel } from "lucide-react";
 
 import { formatCompactGermanDate } from "@/lib/documents/format";
@@ -11,11 +13,13 @@ import type { VehicleOperatingCost } from "@/types/database";
 import type { FuelScanTierSnapshot } from "@/lib/billing/subscription-types";
 
 import { ScanContent } from "@/components/layout/scan-content";
+import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 import { FuelLogActions } from "./fuel-log-actions";
+import { FuelScanProUpgradeModal } from "./fuel-scan-pro-upgrade-modal";
 import { OperatingCostEntryList } from "./operating-cost-entry-list";
 
 type VehicleFuelLogViewProps = {
@@ -37,6 +41,17 @@ export function VehicleFuelLogView({
   readOnly = false,
   fuelScanTier,
 }: VehicleFuelLogViewProps) {
+  const router = useRouter();
+  const [fuelPaywallOpen, setFuelPaywallOpen] = useState(false);
+  const fuelCaptureHref = vehicleSurfaceHref(
+    vehicleSurfaceScope,
+    "tanken/erfassen",
+  );
+  const fuelManualHref = vehicleSurfaceHref(
+    vehicleSurfaceScope,
+    "tanken/manuell",
+  );
+
   const fuelEntries = entries
     .filter((entry) => entry.category === "fuel")
     .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
@@ -138,6 +153,31 @@ export function VehicleFuelLogView({
           fuelOnly
         />
       </section>
+
+      {!readOnly && fuelScanTier ? (
+        <>
+          <FuelScanProUpgradeModal
+            open={fuelPaywallOpen}
+            tagUuid={tagUuid}
+            onClose={() => setFuelPaywallOpen(false)}
+            onManualEntry={() => {
+              router.push(fuelManualHref);
+            }}
+          />
+          <DashboardScanFab
+            tagUuid={tagUuid}
+            directAction="fuel"
+            fuelLogHref={vehicleSurfaceHref(vehicleSurfaceScope, "tanken")}
+            onFuelScan={() => {
+              if (!fuelScanTier.canScan) {
+                setFuelPaywallOpen(true);
+                return;
+              }
+              router.push(fuelCaptureHref);
+            }}
+          />
+        </>
+      ) : null}
     </ScanContent>
   );
 }

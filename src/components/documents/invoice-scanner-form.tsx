@@ -14,8 +14,13 @@ import type { QuadPoints } from "@/lib/utils/perspective";
 import { buildScanFromCorners } from "@/lib/utils/scan-pipeline";
 import type { DocumentType } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  GarageInsetInput,
+  GarageInsetSelect,
+} from "@/components/ui/garage-field";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 import { CameraCapture } from "./camera-capture";
@@ -265,61 +270,53 @@ export function InvoiceScannerForm({
           </div>
 
           <div className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-            <Label>
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Titel
-              </span>
-              <Input
+            <GarageField label="Titel" htmlFor="scanner-form-title">
+              <GarageInsetInput
+                id="scanner-form-title"
                 required
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="z. B. Ölwechsel Beleg"
               />
-            </Label>
+            </GarageField>
 
-            <Label>
-              <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                Kategorie
-              </span>
-              <select
+            <GarageField label="Kategorie" htmlFor="scanner-form-category">
+              <GarageInsetSelect
+                id="scanner-form-category"
                 value={category}
                 onChange={(event) =>
                   setCategory(event.target.value as ScanCategory)
                 }
-                className="claim-input"
+                className="w-full"
               >
                 {SCAN_CATEGORIES.map((option) => (
                   <option key={option} value={option}>
                     {SCAN_CATEGORY_LABELS[option]}
                   </option>
                 ))}
-              </select>
-            </Label>
+              </GarageInsetSelect>
+            </GarageField>
 
-            <div className="grid grid-cols-2 items-end gap-3">
-              <Label className="min-w-0">
-                <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                  Betrag (€)
-                </span>
-                <Input
+            <GarageFieldRow>
+              <GarageFieldCell label="Betrag (€)" htmlFor="scanner-form-amount">
+                <GarageInsetInput
+                  id="scanner-form-amount"
                   inputMode="decimal"
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
                   placeholder="optional"
-                  className="claim-input"
+                  className="tabular-nums"
                 />
-              </Label>
-              <Label className="min-w-0">
-                <span className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase">
-                  Datum
-                </span>
+              </GarageFieldCell>
+              <GarageFieldCell label="Datum" htmlFor="scanner-form-date">
                 <GermanDateInput
+                  id="scanner-form-date"
+                  variant="inset"
                   value={date || null}
                   onChange={(iso) => setDate(iso ?? "")}
-                  className="claim-input min-w-0"
                 />
-              </Label>
-            </div>
+              </GarageFieldCell>
+            </GarageFieldRow>
           </div>
 
           {error ? (

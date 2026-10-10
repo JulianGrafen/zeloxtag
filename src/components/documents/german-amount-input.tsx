@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { garageFieldControlClassName } from "@/components/ui/garage-field";
 import { Input } from "@/components/ui/input";
 import {
   formatGermanAmountInput,
@@ -17,6 +18,7 @@ type GermanAmountInputProps = {
   required?: boolean;
   id?: string;
   disabled?: boolean;
+  variant?: "default" | "inset";
 };
 
 /** EUR amount — free text while focused; parse on blur (German comma decimals). */
@@ -28,6 +30,7 @@ export function GermanAmountInput({
   required,
   id,
   disabled = false,
+  variant = "default",
 }: GermanAmountInputProps) {
   const [text, setText] = useState(() => formatGermanAmountInput(value));
   const [focused, setFocused] = useState(false);
@@ -48,7 +51,12 @@ export function GermanAmountInput({
       autoComplete="off"
       lang="de"
       placeholder={placeholder}
-      className={cn("tabular-nums", className)}
+      className={cn(
+        variant === "inset"
+          ? cn(garageFieldControlClassName, "tabular-nums")
+          : "claim-input min-h-[var(--claim-field-min-height)] tabular-nums",
+        className,
+      )}
       value={text}
       onFocus={() => setFocused(true)}
       onChange={(event) => {

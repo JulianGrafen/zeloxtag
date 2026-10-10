@@ -61,6 +61,8 @@ export interface DashboardTileConfig {
   meta?: DashboardTileMeta;
   /** Span full width on mobile grid */
   featured?: boolean;
+  /** Emphasis ring on the primary 6-tile menu (e.g. ABE & Gutachten). */
+  menuHighlight?: boolean;
   /** Pro-gated: tile leads to checkout instead of the feature. */
   locked?: boolean;
 }
@@ -83,18 +85,11 @@ export interface VehicleDashboardData {
   /** Show catalog cutout PNG without the rounded header frame (demo showcase). */
     /** Demo showcase: rounded photo frame in the header. */
     vehicleImageFrameless?: boolean;
-  /** Accent label under the greeting, e.g. "QR Tag · Active" */
-  statusLabel?: string;
-  /** Secondary line on the status row (offline garage without tag). */
-  statusDetail?: string;
-  /** False when digital garage has no linked V4A tag (offline header styling). */
-  tagCoupled?: boolean;
   /** ISO-Datum des letzten Ölwechsels */
   lastOilChange?: string;
   nextInspection?: VehicleInspectionInfo;
   /** Unread build-swipe likes on this vehicle (owner). */
   showcaseSwipeUnreadLikes?: number;
-  vehicleDataHref?: string;
   /** Override or extend the default tile set */
   tiles?: DashboardTileConfig[];
 }
@@ -114,7 +109,6 @@ export interface VehicleDashboardProps {
   /** Called when a tile without href is activated */
   onTileClick?: (tileId: string) => void;
   /** Owner tap on header cutout → change / upload silhouette */
-  onEditVehicleImage?: () => void;
   onSilhouetteProxyLoad?: () => void;
   /** Optional notice above the tile grid (e.g. Pro paywall). */
   banner?: ReactNode;

@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { ZeloxBrandFadeBanner } from "@/components/brand/zelox-brand-fade-banner";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { ScanContent } from "@/components/layout/scan-content";
@@ -7,7 +9,9 @@ import { cn } from "@/lib/utils";
 
 import { buildDefaultTiles } from "./buildDefaultTiles";
 import { DashboardQuickAccessBar } from "./dashboard-quick-access-bar";
-import { DashboardTile } from "./DashboardTile";
+import { dashboardMenuKickerClassName } from "./dashboard-menu-styles";
+import { partitionDashboardTiles } from "./dashboard-tile-layout";
+import { DashboardTileGrid } from "./DashboardTileGrid";
 import type { VehicleDashboardProps } from "./types";
 import { VehicleDashboardHeader } from "./VehicleDashboardHeader";
 
@@ -15,13 +19,16 @@ export function VehicleDashboard({
   data,
   quickAccessItems,
   onTileClick,
-  onEditVehicleImage,
   onSilhouetteProxyLoad,
   banner,
   extraTiles,
   className = "",
 }: VehicleDashboardProps) {
   const tiles = data.tiles ?? buildDefaultTiles(data);
+  const { primary, secondary } = useMemo(
+    () => partitionDashboardTiles(tiles),
+    [tiles],
+  );
 
   return (
     <ScanContent className={cn("gap-0 px-0 pt-0", className)}>
@@ -29,15 +36,17 @@ export function VehicleDashboard({
         <ZeloxBrandFadeBanner />
       </div>
 
-      <div className="relative z-10 -mt-1 flex flex-col gap-5 px-4 sm:px-5">
-        <div className="flex flex-col gap-3">
+      <div className="relative z-10 -mt-1 flex min-h-0 flex-1 flex-col gap-3 px-4 sm:px-5">
+        <div className="flex shrink-0 flex-col gap-2.5">
           <VehicleDashboardHeader
+            ownerName={data.ownerName}
             vehicleModel={data.vehicleModel}
-            vehicleDataHref={data.vehicleDataHref}
-            statusLabel={data.statusLabel}
-            statusDetail={data.statusDetail}
-            tagCoupled={data.tagCoupled}
-            onEditVehicleImage={onEditVehicleImage}
+            vehicleImage={data.vehicleImage}
+            vehicleImageFallback={data.vehicleImageFallback}
+            vehicleImagePreviewFallback={data.vehicleImagePreviewFallback}
+            vehicleImageAlt={data.vehicleImageAlt}
+            vehicleImageFrameless={data.vehicleImageFrameless}
+            onSilhouetteProxyLoad={onSilhouetteProxyLoad}
           />
 
           {quickAccessItems && quickAccessItems.length > 0 ? (
@@ -45,27 +54,49 @@ export function VehicleDashboard({
           ) : null}
         </div>
 
-      {banner}
+        {banner}
 
-      <section
-        aria-label="Fahrzeugmenü"
-        className="vd-anim-header space-y-3"
-        style={{ animationDelay: "0.12s" }}
-        data-tour="tile-grid"
-      >
-        <h2 className="px-1 font-mono text-[0.65rem] font-medium uppercase tracking-[0.22em] text-zinc-500">
-          Fahrzeugmenü
-        </h2>
+        <section
+          aria-label="Fahrzeugmenü"
+          className="vd-anim-header flex min-h-0 flex-col gap-2 [animation-delay:0.12s]"
+          data-tour="tile-grid"
+        >
+          <h2 className={cn(dashboardMenuKickerClassName, "px-0.5")}>
+            Fahrzeugmenü
+          </h2>
 
-        <div className="vd-anim-stagger grid grid-cols-2 gap-3 sm:gap-3.5">
-          {tiles.map((tile) => (
-            <DashboardTile key={tile.id} tile={tile} onClick={onTileClick} />
-          ))}
-          {extraTiles}
-        </div>
-      </section>
+          {primary.length > 0 ? (
+            <DashboardTileGrid
+              tiles={primary}
+              density="compact"
+              onTileClick={onTileClick}
+              className="shrink-0"
+            />
+          ) : null}
 
-      <VehicleDataDisclaimer className="vd-anim-header" />
+          {secondary.length > 0 ? (
+            <div className="flex flex-col gap-2 pt-0.5">
+              <h3
+                className={cn(
+                  dashboardMenuKickerClassName,
+                  "px-0.5 text-[0.62rem] tracking-[0.2em] text-zinc-600",
+                )}
+              >
+                Weitere
+              </h3>
+              <DashboardTileGrid
+                tiles={secondary}
+                density="comfortable"
+                onTileClick={onTileClick}
+              />
+              {extraTiles}
+            </div>
+          ) : (
+            extraTiles
+          )}
+        </section>
+
+        <VehicleDataDisclaimer className="vd-anim-header shrink-0" />
       </div>
     </ScanContent>
   );

@@ -6,6 +6,7 @@ import {
   automotiveFilterChipActiveClassName,
   automotiveFilterChipInactiveClassName,
 } from "@/components/ui/automotive";
+import { GarageField, GarageInsetInput } from "@/components/ui/garage-field";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { ListFilterChip } from "@/lib/documents/list-search";
 
@@ -89,32 +90,34 @@ export function ListSearchControls({
 }: ListSearchControlsProps) {
   return (
     <div className={["space-y-2.5", className].filter(Boolean).join(" ")}>
-      <label className="relative block">
-        <span className="sr-only">Suchen</span>
-        <Search
-          className="pointer-events-none absolute left-3.5 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[color:var(--vd-muted)]"
-          aria-hidden
-        />
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder={placeholder}
-          autoComplete="off"
-          enterKeyHint="search"
-          className="claim-input claim-input--search w-full"
-        />
-        {query ? (
-          <button
-            type="button"
-            aria-label="Suche leeren"
-            onClick={() => onQueryChange("")}
-            className="absolute right-2 top-1/2 z-[1] inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[color:var(--vd-muted)]"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
-        ) : null}
-      </label>
+      <GarageField label="Suchen" htmlFor="list-search-query">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[color:var(--vd-muted)]"
+            aria-hidden
+          />
+          <GarageInsetInput
+            id="list-search-query"
+            type="search"
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder={placeholder}
+            autoComplete="off"
+            enterKeyHint="search"
+            className="garage-field__control--search"
+          />
+          {query ? (
+            <button
+              type="button"
+              aria-label="Suche leeren"
+              onClick={() => onQueryChange("")}
+              className="absolute right-1 top-1/2 z-[1] inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[color:var(--vd-muted)]"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      </GarageField>
 
       {chips && chips.length > 0 && onChipChange ? (
         <ChipRow

@@ -3,9 +3,11 @@
 import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import {
+  GarageField,
+  GarageInsetInput,
+  GarageInsetSelect,
+} from "@/components/ui/garage-field";
 
 export function ClaimFormField({
   label,
@@ -17,19 +19,11 @@ export function ClaimFormField({
   children: ReactNode;
 }) {
   return (
-    <div className="grid w-full gap-2">
-      <Label
-        htmlFor={htmlFor}
-        className="text-[0.72rem] font-medium tracking-[0.14em] text-[color:var(--vd-muted)] uppercase"
-      >
-        {label}
-      </Label>
+    <GarageField label={label} htmlFor={htmlFor}>
       {children}
-    </div>
+    </GarageField>
   );
 }
-
-const CLAIM_FIELD_CLASS = "min-h-11 w-full";
 
 export function ClaimField({
   id,
@@ -54,7 +48,7 @@ export function ClaimField({
 }) {
   return (
     <ClaimFormField label={label} htmlFor={id}>
-      <Input
+      <GarageInsetInput
         id={id}
         type={type}
         inputMode={inputMode}
@@ -62,7 +56,6 @@ export function ClaimField({
         value={value}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className={CLAIM_FIELD_CLASS}
         onChange={(event) => onChange(event.target.value)}
       />
     </ClaimFormField>
@@ -92,12 +85,11 @@ export function ClaimSelectField({
 
   return (
     <ClaimFormField label={label} htmlFor={id}>
-      <select
+      <GarageInsetSelect
         id={id}
         value={value}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className={cn("claim-input", CLAIM_FIELD_CLASS)}
       >
         {!required ? <option value="">—</option> : null}
         {normalized.map((option) => (
@@ -105,7 +97,7 @@ export function ClaimSelectField({
             {option.label}
           </option>
         ))}
-      </select>
+      </GarageInsetSelect>
     </ClaimFormField>
   );
 }

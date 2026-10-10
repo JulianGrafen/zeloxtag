@@ -7,6 +7,10 @@ import { Mail, Wrench } from "lucide-react";
 import { acceptSchrauberInvite } from "@/actions/vehicle-contributors";
 import { requestMagicLinkLogin } from "@/lib/auth/actions";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import {
+  GarageField,
+  GarageInsetInput,
+} from "@/components/ui/garage-field";
 
 type AcceptInvitePanelProps = {
   token: string;
@@ -63,11 +67,9 @@ export function AcceptInvitePanel({
           Gib deine Werkstatt-E-Mail ein — du erhältst einen Anmelde-Link ohne
           Passwort und kannst sofort Belege für {vehicleLabel} eintragen.
         </p>
-        <label className="block space-y-1.5">
-          <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-            E-Mail
-          </span>
-          <input
+        <GarageField label="E-Mail" htmlFor="invite-email">
+          <GarageInsetInput
+            id="invite-email"
             type="email"
             required
             autoComplete="email"
@@ -79,9 +81,9 @@ export function AcceptInvitePanel({
               setInfo(null);
             }}
             placeholder="werkstatt@beispiel.de"
-            className="claim-input w-full"
+            className="w-full"
           />
-        </label>
+        </GarageField>
         {info ? (
           <p className="rounded-xl bg-emerald-50 px-3 py-2.5 text-[0.8rem] text-emerald-800" role="status">
             {info}

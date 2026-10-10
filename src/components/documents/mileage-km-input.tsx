@@ -1,6 +1,8 @@
 "use client";
 
+import { garageFieldControlClassName } from "@/components/ui/garage-field";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   formatMileageKmNumber,
   parseMileageKmInput,
@@ -13,6 +15,7 @@ type MileageKmInputProps = {
   className?: string;
   id?: string;
   required?: boolean;
+  variant?: "default" | "inset";
 };
 
 /** Kilometerstand — displays German thousand separators (178.605). */
@@ -23,13 +26,19 @@ export function MileageKmInput({
   className,
   id,
   required,
+  variant = "default",
 }: MileageKmInputProps) {
   return (
     <Input
       id={id}
       required={required}
       inputMode="numeric"
-      className={className}
+      className={cn(
+        variant === "inset"
+          ? cn(garageFieldControlClassName, "tabular-nums")
+          : "claim-input min-h-[var(--claim-field-min-height)] tabular-nums",
+        className,
+      )}
       value={formatMileageKmNumber(value)}
       onChange={(event) => onChange(parseMileageKmInput(event.target.value))}
       placeholder={placeholder}

@@ -9,7 +9,12 @@ import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  GarageInsetInput,
+} from "@/components/ui/garage-field";
 import {
   formatDocumentAmount,
   formatMileageKmLabel,
@@ -133,28 +138,26 @@ export function InvoiceReviewForm({
 
         {!editingHeader ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3 border-b border-[color:var(--vd-border)] pb-4">
-              <div className="min-w-0 space-y-1">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Betrag
-                </span>
+            <GarageFieldRow className="border-b border-[color:var(--vd-border)] pb-4">
+              <GarageFieldCell label="Betrag">
                 <p
-                  className="flex min-h-[var(--claim-field-min-height)] items-center text-[0.95rem] tabular-nums text-[color:var(--vd-text)]"
+                  className="flex min-h-[1.75rem] items-center text-[0.95rem] tabular-nums text-[color:var(--vd-text)]"
                 >
                   {amountLabel}
                 </p>
-              </div>
-              <label className="block min-w-0 space-y-1">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Datum
-                </span>
+              </GarageFieldCell>
+              <GarageFieldCell
+                label="Datum"
+                htmlFor="invoice-review-date-inline"
+              >
                 <GermanDateInput
+                  id="invoice-review-date-inline"
+                  variant="inset"
                   value={fields.date}
                   onChange={(iso) => onFieldsChange({ date: iso })}
-                  className="claim-input min-w-0"
                 />
-              </label>
-            </div>
+              </GarageFieldCell>
+            </GarageFieldRow>
             <button
               type="button"
               onClick={() => setEditingHeader(true)}
@@ -211,67 +214,57 @@ export function InvoiceReviewForm({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 items-end gap-3 border-b border-[color:var(--vd-border)] pb-4">
-              <label className="block min-w-0 space-y-1">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Betrag
-                </span>
+            <GarageFieldRow className="border-b border-[color:var(--vd-border)] pb-4">
+              <GarageFieldCell label="Betrag" htmlFor="invoice-review-amount">
                 <GermanAmountInput
+                  id="invoice-review-amount"
+                  variant="inset"
                   value={fields.amount ?? null}
                   onChange={(amount) => onFieldsChange({ amount })}
                   placeholder="0,00"
-                  className="claim-input"
                 />
-              </label>
-              <label className="block min-w-0 space-y-1">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Datum
-                </span>
+              </GarageFieldCell>
+              <GarageFieldCell label="Datum" htmlFor="invoice-review-date">
                 <GermanDateInput
+                  id="invoice-review-date"
+                  variant="inset"
                   value={fields.date}
                   onChange={(iso) => onFieldsChange({ date: iso })}
-                  className="claim-input min-w-0"
                 />
-              </label>
-            </div>
+              </GarageFieldCell>
+            </GarageFieldRow>
 
             <div className="mt-4 space-y-3">
-              <label className="block space-y-1">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Werkstatt
-                </span>
-                <Input
+              <GarageField label="Werkstatt" htmlFor="invoice-review-vendor">
+                <GarageInsetInput
+                  id="invoice-review-vendor"
                   value={fields.vendor ?? ""}
                   onChange={(event) =>
                     onFieldsChange({ vendor: event.target.value || null })
                   }
                   placeholder="Name der Werkstatt"
                 />
-              </label>
+              </GarageField>
 
-              <label className="block space-y-1">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Bezeichnung
-                </span>
-                <Input
+              <GarageField label="Bezeichnung" htmlFor="invoice-review-title">
+                <GarageInsetInput
+                  id="invoice-review-title"
                   required
                   value={title}
                   onChange={(event) => onTitleChange(event.target.value)}
                   placeholder="z. B. Inspektion 60.000 km"
                 />
-              </label>
+              </GarageField>
 
-              <label className="block space-y-1">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Kilometerstand
-                </span>
+              <GarageField label="Kilometerstand" htmlFor="invoice-review-km">
                 <MileageKmInput
+                  id="invoice-review-km"
+                  variant="inset"
                   value={fields.mileageKm ?? null}
                   onChange={(km) => onFieldsChange({ mileageKm: km })}
-                  className="claim-input"
                   placeholder="z. B. 187.430"
                 />
-              </label>
+              </GarageField>
 
               {!categoryLocked ? (
                 <div className="space-y-1.5">
@@ -290,11 +283,12 @@ export function InvoiceReviewForm({
                   Weitere Angaben
                 </summary>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="block space-y-1">
-                    <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                      Belegnummer
-                    </span>
-                    <Input
+                  <GarageField
+                    label="Belegnummer"
+                    htmlFor="invoice-review-invoice-number"
+                  >
+                    <GarageInsetInput
+                      id="invoice-review-invoice-number"
                       value={fields.invoiceNumber ?? ""}
                       onChange={(event) =>
                         onFieldsChange({
@@ -303,7 +297,7 @@ export function InvoiceReviewForm({
                       }
                       placeholder="optional"
                     />
-                  </label>
+                  </GarageField>
                 </div>
               </details>
             </div>

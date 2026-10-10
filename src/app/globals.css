@@ -17,7 +17,11 @@
   --vd-radius-panel: 1.75rem;
   --vd-radius-tile: 1.35rem;
   --vd-radius-control: 1rem;
+  --vd-radius-field: 0.5rem;
   --vd-radius-pill: 9999px;
+  --vd-field-bg: rgba(255, 255, 255, 0.95);
+  --vd-field-border: var(--vd-border);
+  --vd-field-label: var(--vd-muted);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -782,11 +786,105 @@ nextjs-portal {
   backdrop-filter: blur(16px);
 }
 
+.garage-field {
+  border-radius: var(--vd-radius-field);
+  border: 1px solid var(--vd-field-border);
+  background: var(--vd-field-bg);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.garage-field:focus-within {
+  border-color: var(--claim-input-focus-border);
+  box-shadow: 0 0 0 3px var(--claim-input-focus-ring);
+}
+
+.garage-field__label {
+  display: block;
+  padding: 0.55rem 0.75rem 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--vd-field-label);
+}
+
+.garage-field__control,
+.garage-field .garage-field__control {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  background: transparent;
+  padding: 0.15rem 0.75rem 0.65rem;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--vd-text);
+  outline: none;
+  box-shadow: none;
+}
+
+.garage-field__control::placeholder {
+  color: var(--claim-input-placeholder);
+}
+
+.garage-field__control:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Leading/trailing icons in search fields — beats shorthand padding above. */
+.garage-field__control.garage-field__control--search {
+  padding-left: 2.75rem;
+  padding-right: 2.25rem;
+}
+
+.garage-field__control.garage-field__control--search::-webkit-search-decoration,
+.garage-field__control.garage-field__control--search::-webkit-search-cancel-button,
+.garage-field__control.garage-field__control--search::-webkit-search-results-button,
+.garage-field__control.garage-field__control--search::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+.garage-field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.garage-field-row > .garage-field {
+  border-radius: 0;
+  border-width: 0;
+  background: transparent;
+}
+
+.garage-field-row > .garage-field:focus-within {
+  box-shadow: none;
+}
+
+.garage-field-row > .garage-field + .garage-field {
+  border-left: 1px solid var(--vd-field-border);
+}
+
+.garage-field-row-shell {
+  overflow: hidden;
+  border-radius: var(--vd-radius-field);
+  border: 1px solid var(--vd-field-border);
+  background: var(--vd-field-bg);
+}
+
+.garage-field-row-shell:focus-within {
+  border-color: var(--claim-input-focus-border);
+  box-shadow: 0 0 0 3px var(--claim-input-focus-ring);
+}
+
 .claim-input {
   width: 100%;
   box-sizing: border-box;
-  border-radius: var(--vd-radius-control);
-  border: 1px solid var(--vd-border);
+  border-radius: var(--vd-radius-field);
+  border: 1px solid var(--vd-field-border);
   background: var(--claim-input-bg);
   padding: 0.85rem 0.95rem;
   font-size: 1rem;
@@ -803,7 +901,7 @@ nextjs-portal {
 [data-slot="input"].claim-input {
   height: auto;
   min-height: var(--claim-field-min-height);
-  border-radius: var(--vd-radius-control);
+  border-radius: var(--vd-radius-field);
   padding: 0.85rem 0.95rem;
   font-size: 1rem;
   line-height: 1.25;
@@ -922,6 +1020,30 @@ a.claim-cta {
   box-shadow: var(--vd-shadow-sm);
   outline: 1px solid color-mix(in srgb, var(--vd-border) 35%, transparent);
   outline-offset: -1px;
+}
+
+/** Fixed bottom scan FAB — circular; overrides full-width .claim-cta / .zt-cta-primary. */
+.claim-cta.vd-scan-fab-cta,
+button.claim-cta.vd-scan-fab-cta,
+a.claim-cta.vd-scan-fab-cta,
+.zt-cta-primary.vd-scan-fab-cta {
+  width: 3.5rem;
+  min-width: 3.5rem;
+  max-width: 3.5rem;
+  height: 3.5rem;
+  min-height: 3.5rem;
+  padding: 0;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.dark .zt-cta-primary.vd-scan-fab-cta {
+  width: 3.5rem;
+  min-width: 3.5rem;
+  max-width: 3.5rem;
+  height: 3.5rem;
+  min-height: 3.5rem;
+  border-radius: 9999px;
 }
 
 /** Fixed bottom scan FAB — uses .claim-cta; locked = muted surface. */
@@ -1758,7 +1880,11 @@ a.claim-cta {
   --vd-atmosphere-grid: rgba(255, 255, 255, 0.08);
   --vd-atmosphere-mid: oklch(0.17 0 0);
 
-  --claim-input-bg: rgba(255, 255, 255, 0.06);
+  --vd-field-bg: rgba(24, 24, 27, 0.55);
+  --vd-field-border: rgba(255, 255, 255, 0.1);
+  --vd-field-label: rgb(161 161 170);
+
+  --claim-input-bg: var(--vd-field-bg);
   --claim-input-placeholder: rgba(255, 255, 255, 0.35);
   --claim-input-focus-border: rgba(255, 255, 255, 0.35);
   --claim-input-focus-ring: rgba(255, 255, 255, 0.12);

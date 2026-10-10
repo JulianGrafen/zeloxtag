@@ -25,6 +25,13 @@ import { ListSearchControls } from "@/components/documents/list-search-controls"
 import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import { automotiveBackPillClassName } from "@/components/ui/automotive";
 import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  GarageInsetInput,
+  GarageInsetTextarea,
+} from "@/components/ui/garage-field";
+import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
@@ -91,11 +98,8 @@ type PhotoDraft = {
 
 const MANUAL_ENTRY_FIELD_LABEL =
   "text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]";
-const MANUAL_ENTRY_FIELD_BLOCK = "block space-y-1.5";
-const MANUAL_ENTRY_CONTROL =
-  "claim-input w-full min-h-[var(--claim-field-min-height)]";
 const MANUAL_ENTRY_CATEGORY_BTN =
-  "flex min-h-[var(--claim-field-min-height)] items-center rounded-[var(--vd-radius-control)] border px-3 text-left text-[0.85rem] font-semibold";
+  "flex min-h-[var(--claim-field-min-height)] items-center rounded-[var(--vd-radius-field)] border px-3 text-left text-[0.85rem] font-semibold";
 const MANUAL_ENTRY_LIST_ICON_BTN =
   "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-neutral-900";
 
@@ -746,64 +750,67 @@ export function ManualEntryView({
               </>
             ) : null}
 
-            <label className={MANUAL_ENTRY_FIELD_BLOCK}>
-              <span className={MANUAL_ENTRY_FIELD_LABEL}>Titel</span>
-              <input
+            <GarageField label="Beleg" htmlFor="manual-entry-title">
+              <GarageInsetInput
+                id="manual-entry-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                className={MANUAL_ENTRY_CONTROL}
                 placeholder={
                   isUmbau || category === "tuning"
-                    ? "z. B. KW V3 Fahrwerk (optional)"
+                    ? "Was war am Auto? Beschreibung (optional)"
                     : "z. B. Ölwechsel selbst gemacht (optional)"
                 }
               />
-            </label>
+            </GarageField>
 
-            <div
-              className={
-                isUmbau ? "space-y-3" : "grid grid-cols-2 items-start gap-3"
-              }
-            >
-              <label className={MANUAL_ENTRY_FIELD_BLOCK}>
-                <span className={MANUAL_ENTRY_FIELD_LABEL}>Datum</span>
+            {isUmbau ? (
+              <GarageField label="Datum" htmlFor="manual-entry-date">
                 <GermanDateInput
+                  id="manual-entry-date"
+                  variant="inset"
                   value={date || null}
                   onChange={(iso) => setDate(iso ?? "")}
-                  className={MANUAL_ENTRY_CONTROL}
                 />
-              </label>
-              {!isUmbau ? (
-                <label className={MANUAL_ENTRY_FIELD_BLOCK}>
-                  <span className={MANUAL_ENTRY_FIELD_LABEL}>Betrag (€)</span>
-                  <input
+              </GarageField>
+            ) : (
+              <GarageFieldRow>
+                <GarageFieldCell label="Datum" htmlFor="manual-entry-date">
+                  <GermanDateInput
+                    id="manual-entry-date"
+                    variant="inset"
+                    value={date || null}
+                    onChange={(iso) => setDate(iso ?? "")}
+                  />
+                </GarageFieldCell>
+                <GarageFieldCell label="Betrag (€)" htmlFor="manual-entry-amount">
+                  <GarageInsetInput
+                    id="manual-entry-amount"
                     inputMode="decimal"
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}
-                    className={MANUAL_ENTRY_CONTROL}
                     placeholder={
                       lineItems.length > 0 ? "aus Positionen" : "optional"
                     }
                   />
-                </label>
-              ) : null}
-            </div>
+                </GarageFieldCell>
+              </GarageFieldRow>
+            )}
 
             {!isUmbau ? (
               <>
                 <div className="space-y-2">
                   {!selfMade ? (
-                    <label className={MANUAL_ENTRY_FIELD_BLOCK}>
-                      <span className={MANUAL_ENTRY_FIELD_LABEL}>
-                        Werkstatt / Quelle
-                      </span>
-                      <input
+                    <GarageField
+                      label="Werkstatt / Quelle"
+                      htmlFor="manual-entry-vendor"
+                    >
+                      <GarageInsetInput
+                        id="manual-entry-vendor"
                         value={vendor}
                         onChange={(event) => setVendor(event.target.value)}
-                        className={MANUAL_ENTRY_CONTROL}
                         placeholder="optional"
                       />
-                    </label>
+                    </GarageField>
                   ) : null}
                   <PressableButton
                     type="button"
@@ -826,17 +833,15 @@ export function ManualEntryView({
                   </PressableButton>
                 </div>
 
-                <label className={MANUAL_ENTRY_FIELD_BLOCK}>
-                  <span className={MANUAL_ENTRY_FIELD_LABEL}>
-                    Kilometerstand
-                  </span>
+                <GarageField label="Kilometerstand" htmlFor="manual-entry-km">
                   <MileageKmInput
+                    id="manual-entry-km"
+                    variant="inset"
                     value={parseMileageKmInput(mileageKm)}
                     onChange={(km) => setMileageKm(km === null ? "" : String(km))}
-                    className={MANUAL_ENTRY_CONTROL}
                     placeholder="optional"
                   />
-                </label>
+                </GarageField>
               </>
             ) : null}
 
@@ -853,20 +858,20 @@ export function ManualEntryView({
               />
             ) : null}
 
-            <label className={MANUAL_ENTRY_FIELD_BLOCK}>
-              <span className={MANUAL_ENTRY_FIELD_LABEL}>Notiz</span>
-              <textarea
+            <GarageField label="Notiz" htmlFor="manual-entry-notes">
+              <GarageInsetTextarea
+                id="manual-entry-notes"
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
-                className={`${MANUAL_ENTRY_CONTROL} resize-none`}
+                className="resize-none"
                 placeholder={
                   isUmbau
                     ? "Optional — was zeigt das Foto?"
                     : "Was wurde gemacht?"
                 }
               />
-            </label>
+            </GarageField>
 
             <div id="manual-entry-photos" className="scroll-mt-24 space-y-2">
               <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">

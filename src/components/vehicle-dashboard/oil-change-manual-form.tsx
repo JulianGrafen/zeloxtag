@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 
@@ -11,6 +11,13 @@ import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { parseMileageKmInput } from "@/lib/documents/format";
 import { manualOilChangeFormFromDocument } from "@/lib/documents/manual-oil-change-form";
+import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  GarageInsetInput,
+  GarageInsetTextarea,
+} from "@/components/ui/garage-field";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { Document } from "@/types/database";
 
@@ -20,30 +27,6 @@ interface OilChangeManualFormProps {
   onClose: () => void;
   /** When set, the form updates an existing manual Ölwechsel log. */
   editDocument?: Document | null;
-}
-
-const fieldLabelClassName =
-  "text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]";
-
-function TwoColFieldRow({
-  leftLabel,
-  rightLabel,
-  left,
-  right,
-}: {
-  leftLabel: string;
-  rightLabel: string;
-  left: ReactNode;
-  right: ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-      <span className={fieldLabelClassName}>{leftLabel}</span>
-      <span className={fieldLabelClassName}>{rightLabel}</span>
-      <div className="min-w-0">{left}</div>
-      <div className="min-w-0">{right}</div>
-    </div>
-  );
 }
 
 export function OilChangeManualForm({
@@ -145,25 +128,25 @@ export function OilChangeManualForm({
       ) : null}
 
       <div className="space-y-3">
-        <TwoColFieldRow
-          leftLabel="Datum"
-          rightLabel="KM-Stand"
-          left={
+        <GarageFieldRow>
+          <GarageFieldCell label="Datum" htmlFor="oil-change-date">
             <GermanDateInput
+              id="oil-change-date"
+              variant="inset"
               value={date || null}
               onChange={(iso) => setDate(iso ?? "")}
-              className="claim-input w-full min-w-0"
             />
-          }
-          right={
+          </GarageFieldCell>
+          <GarageFieldCell label="KM-Stand" htmlFor="oil-change-km">
             <MileageKmInput
+              id="oil-change-km"
+              variant="inset"
               value={parseMileageKmInput(mileageKm)}
               onChange={(km) => setMileageKm(km === null ? "" : String(km))}
-              className="claim-input w-full"
               placeholder="z. B. 84.200"
             />
-          }
-        />
+          </GarageFieldCell>
+        </GarageFieldRow>
 
         <label className="flex items-center gap-2 text-[0.85rem] text-[color:var(--vd-text)]">
           <input
@@ -179,38 +162,35 @@ export function OilChangeManualForm({
         </label>
 
         {!selfMade ? (
-          <label className="block space-y-1.5">
-            <span className={fieldLabelClassName}>Werkstatt / Quelle</span>
-            <input
+          <GarageField label="Werkstatt / Quelle" htmlFor="oil-change-vendor">
+            <GarageInsetInput
+              id="oil-change-vendor"
               value={vendor}
               onChange={(event) => setVendor(event.target.value)}
-              className="claim-input w-full"
               placeholder="optional"
             />
-          </label>
+          </GarageField>
         ) : null}
 
-        <TwoColFieldRow
-          leftLabel="Motoröl"
-          rightLabel="Menge (l)"
-          left={
-            <input
+        <GarageFieldRow>
+          <GarageFieldCell label="Motoröl" htmlFor="oil-change-spec">
+            <GarageInsetInput
+              id="oil-change-spec"
               value={oilSpec}
               onChange={(event) => setOilSpec(event.target.value)}
-              className="claim-input w-full"
               placeholder="z. B. 5W-30"
             />
-          }
-          right={
-            <input
+          </GarageFieldCell>
+          <GarageFieldCell label="Menge (l)" htmlFor="oil-change-liters">
+            <GarageInsetInput
+              id="oil-change-liters"
               inputMode="decimal"
               value={oilLiters}
               onChange={(event) => setOilLiters(event.target.value)}
-              className="claim-input w-full"
               placeholder="optional"
             />
-          }
-        />
+          </GarageFieldCell>
+        </GarageFieldRow>
 
         <label className="flex items-center gap-2 text-[0.85rem] text-[color:var(--vd-text)]">
           <input
@@ -222,25 +202,24 @@ export function OilChangeManualForm({
           Ölfilter gewechselt
         </label>
 
-        <label className="block space-y-1.5">
-          <span className={fieldLabelClassName}>Notiz</span>
-          <textarea
+        <GarageField label="Notiz" htmlFor="oil-change-notes">
+          <GarageInsetTextarea
+            id="oil-change-notes"
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             rows={2}
-            className="claim-input w-full resize-none"
+            className="resize-none"
             placeholder="optional"
           />
-        </label>
+        </GarageField>
       </div>
 
       <div className="mt-4 flex gap-2">
         <PressableButton
           type="button"
           variant="button"
-          disabled={pending}
           onClick={onClose}
-          className="claim-back flex-1"
+          className="flex-1 rounded-2xl border border-[color:var(--vd-border)] px-3 py-2.5 text-[0.85rem] font-medium"
         >
           Abbrechen
         </PressableButton>
@@ -248,9 +227,9 @@ export function OilChangeManualForm({
           type="submit"
           variant="button"
           disabled={pending}
-          className="claim-cta flex-1 disabled:opacity-60"
+          className="claim-cta flex-1 rounded-2xl px-3 py-2.5 text-[0.85rem] font-semibold disabled:opacity-60"
         >
-          {pending ? "Speichern…" : isEditing ? "Übernehmen" : "Speichern"}
+          {pending ? "Speichern…" : isEditing ? "Aktualisieren" : "Speichern"}
         </PressableButton>
       </div>
     </form>
