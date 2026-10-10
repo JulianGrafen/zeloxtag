@@ -12,6 +12,9 @@ export const AUFLAGEN_KUERZEL_IMAGE_API_PATH =
 /** Max upload size — room for high-fidelity invoice photos / multi-page PDFs. */
 export const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 
+/** Max pages per invoice / receipt file (scan + append). */
+export const DOCUMENT_MAX_PAGES = 12;
+
 export const ALLOWED_DOCUMENT_MIME_TYPES = [
   "application/pdf",
   "image/jpeg",

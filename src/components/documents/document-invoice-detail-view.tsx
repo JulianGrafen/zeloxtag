@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
   FileText,
+  ImagePlus,
   Pencil,
   Share2,
   Trash2,
@@ -32,6 +33,7 @@ import { EditableVendorSection } from "@/components/documents/editable-vendor-se
 import { EditableInvoiceCategorySection } from "@/components/documents/editable-invoice-category-section";
 import { displayInvoiceReviewCategoryLabel } from "@/lib/documents/invoice-review-categories";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
+import { InvoiceAddPhotosSheet } from "@/components/documents/invoice-add-photos-sheet";
 import { InvoiceDetailEditPickerSheet } from "@/components/documents/invoice-detail-edit-picker-sheet";
 import { DocumentOriginalPreview } from "@/components/documents/document-original-preview";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
@@ -46,11 +48,15 @@ import {
   formatMileageKmLabel,
   formatDocumentDateCompact,
 } from "@/lib/documents/format";
+import { documentAppendPhotoLimit } from "@/lib/documents/document-page-limits";
 import {
   displayManualInvoiceNumber,
   isManualVehicleEntry,
   manualEntryEditPath,
 } from "@/lib/documents/manual-entries";
+import {
+  isViewableDocumentUrl,
+} from "@/lib/documents/viewable-url";
 import { vehicleSurfaceScopeFromContext } from "@/lib/vehicle-surface/paths";
 import {
   documentDeleteButtonLabel,
@@ -97,6 +103,7 @@ export function DocumentInvoiceDetailView({
   canDelete = false,
 }: DocumentInvoiceDetailViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, startDelete] = useTransition();
   const [vendorLabel, setVendorLabel] = useState(
@@ -117,6 +124,8 @@ export function DocumentInvoiceDetailView({
     null,
   );
   const [editPulse, setEditPulse] = useState(0);
+  const [addPhotosOpen, setAddPhotosOpen] = useState(false);
+  const [showSavedPhotoHint, setShowSavedPhotoHint] = useState(false);
   const lineItems = document.line_items ?? [];
   const isManual = isManualVehicleEntry(document);
   const isUmbauManual =
@@ -127,12 +136,30 @@ export function DocumentInvoiceDetailView({
     tagUuid,
     document.vehicle_id,
   );
+  const currentPageCount =
+    document.page_count != null && document.page_count > 0
+      ? document.page_count
+      : isViewableDocumentUrl(document.file_url)
+        ? 1
+        : 0;
+  const canAddPhotos =
+    canEdit &&
+    document.type === "invoice" &&
+    Boolean(document.vehicle_id) &&
+    !isUmbauManual &&
+    documentAppendPhotoLimit(currentPageCount) > 0;
   const manualAddPhotosHref =
-    isManual && canEdit
+    isUmbauManual && canEdit
       ? manualEntryEditPath(surfaceScope, document.id, document.category, {
           focusPhotos: true,
         })
       : null;
+
+  useEffect(() => {
+    if (searchParams.get("saved") === "1" && canAddPhotos) {
+      setShowSavedPhotoHint(true);
+    }
+  }, [searchParams, canAddPhotos]);
   const paymentBadge = resolveInvoicePaymentBadge(document);
   const canEditInvoice =
     canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
@@ -535,19 +562,57 @@ export function DocumentInvoiceDetailView({
           </section>
         ) : null}
 
+        {showSavedPhotoHint && canAddPhotos ? (
+          <div className="rounded-2xl border border-[color:var(--vd-accent)]/35 bg-[color:var(--vd-surface-elevated)] p-4">
+            <p className="text-[0.88rem] font-medium text-[color:var(--vd-text)]">
+              Beleg gespeichert
+            </p>
+            <p className="mt-1 text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
+              Du kannst jetzt weitere Fotos oder Seiten anhängen — z. B.
+              Quittungen, Detailaufnahmen oder Folgeseiten.
+            </p>
+            <PressableButton
+              type="button"
+              variant="button"
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3 text-[0.88rem] font-semibold text-white"
+              onClick={() => {
+                setShowSavedPhotoHint(false);
+                setAddPhotosOpen(true);
+              }}
+            >
+              <ImagePlus className="h-4 w-4" aria-hidden />
+              Bilder hinzufügen
+            </PressableButton>
+          </div>
+        ) : null}
+
         <section className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
-          <div className="flex items-center justify-between border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3 border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
             <div className="min-w-0">
               <p className="truncate text-[0.75rem] font-medium text-neutral-900">
                 {fileName}
               </p>
               <p className="text-[0.68rem] text-[color:var(--vd-muted)]">
-                {isManual ? "Fotodoku" : "Original-PDF"}
+                {isManual ? "Fotodoku" : "Original"}
+                {document.page_count && document.page_count > 1
+                  ? ` · ${document.page_count} Seiten`
+                  : ""}
                 {scannedLabel
                   ? ` · ${isManual ? "erstellt" : "gescannt"} ${scannedLabel}`
                   : ""}
               </p>
             </div>
+            {canAddPhotos ? (
+              <PressableButton
+                type="button"
+                variant="button"
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-neutral-900"
+                onClick={() => setAddPhotosOpen(true)}
+              >
+                <ImagePlus className="h-3.5 w-3.5" aria-hidden />
+                Bilder
+              </PressableButton>
+            ) : null}
           </div>
           <div className="space-y-3 p-4">
             <DocumentOriginalPreview
@@ -594,11 +659,24 @@ export function DocumentInvoiceDetailView({
         onSelect={handleEditPick}
         isManualEntry={isManual}
         addPhotosHref={manualAddPhotosHref}
+        onAddPhotos={canAddPhotos ? () => setAddPhotosOpen(true) : undefined}
         addPhotosLabel={
           isUmbauManual
             ? "Bis zu 10 Bilder hinzufügen"
             : "Bilder hinzufügen"
         }
+      />
+
+      <InvoiceAddPhotosSheet
+        open={addPhotosOpen}
+        onClose={() => setAddPhotosOpen(false)}
+        onSaved={() => router.refresh()}
+        documentId={document.id}
+        vehicleId={document.vehicle_id}
+        tagUuid={tagUuid}
+        fileUrl={document.file_url}
+        pageCount={document.page_count}
+        title={title}
       />
 
       {!editPickerOpen ? (

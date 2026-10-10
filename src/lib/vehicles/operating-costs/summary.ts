@@ -1,6 +1,8 @@
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import type { VehicleOperatingCost } from "@/types/database";
 
+import { buildOperatingCostChartData } from "./chart-data";
+import type { OperatingCostChartData } from "./chart-data";
 import { computeFuelConsumptionStats } from "./fuel-consumption";
 import { computeMonthlyAverages } from "./monthly-average";
 import type {
@@ -22,6 +24,7 @@ export function buildOperatingCostSummary(
   const sorted = sortByDateDesc(entries);
   const { totalMonthlyAverage, categoryMonthlyAverages, windowMonths } =
     computeMonthlyAverages(entries, referenceDate);
+  const chart = buildOperatingCostChartData(entries, referenceDate);
 
   const fuelEntries = sorted.filter((entry) => entry.category === "fuel");
   const fuelConsumption = computeFuelConsumptionStats(fuelEntries);
@@ -29,6 +32,7 @@ export function buildOperatingCostSummary(
   return {
     totalMonthlyAverage,
     categoryMonthlyAverages,
+    chart,
     recentEntries: sorted.slice(0, 12),
     fuelStats: {
       lastFill: fuelEntries[0] ?? null,

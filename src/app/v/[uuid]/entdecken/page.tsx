@@ -8,10 +8,7 @@ import { ShowcaseDiscoverExperience } from "@/components/showcase-swipe/showcase
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
 import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareable-build-data";
-import {
-  loadOwnerVehicleSwipeLikeCounts,
-  loadShowcaseSwipeDeck,
-} from "@/lib/showcase/swipe-deck";
+import { loadShowcaseSwipeDeck } from "@/lib/showcase/swipe-deck";
 import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank";
 import { topThreeWeeklyRankOrNull } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import { loadWeeklyTopBuilds } from "@/lib/showcase/weekly-top-builds";
@@ -55,7 +52,6 @@ export default async function ShowcaseEntdeckenPage({
   const { isConfigured } = getSupabaseEnv();
   let initialCards: Awaited<ReturnType<typeof loadShowcaseSwipeDeck>> = [];
   let initialWeeklyBuilds: Awaited<ReturnType<typeof loadWeeklyTopBuilds>> = [];
-  let ownSwipeTotalLikes = 0;
   let ownWeeklyRank: Awaited<
     ReturnType<typeof loadVehicleWeeklyShowcaseRank>
   > = null;
@@ -70,12 +66,6 @@ export default async function ShowcaseEntdeckenPage({
       initialWeeklyBuilds = await loadWeeklyTopBuilds(10);
     } catch (error) {
       console.error("[entdecken] weekly top preload failed", error);
-    }
-    try {
-      const counts = await loadOwnerVehicleSwipeLikeCounts(vehicle.id);
-      ownSwipeTotalLikes = counts.totalLikes;
-    } catch (error) {
-      console.error("[entdecken] own swipe likes preload failed", error);
     }
     try {
       ownWeeklyRank = await loadVehicleWeeklyShowcaseRank(vehicle.id);
@@ -111,7 +101,6 @@ export default async function ShowcaseEntdeckenPage({
           tagUuid={uuid}
           initialCards={initialCards}
           initialWeeklyBuilds={initialWeeklyBuilds}
-          ownSwipeTotalLikes={ownSwipeTotalLikes}
           isPublic={Boolean(vehicle.is_public)}
           showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
           profilSettingsHref={vehicleSurfaceHref(scope, "einstellungen/profil")}

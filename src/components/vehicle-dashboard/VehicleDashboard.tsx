@@ -6,12 +6,14 @@ import { ScanContent } from "@/components/layout/scan-content";
 import { cn } from "@/lib/utils";
 
 import { buildDefaultTiles } from "./buildDefaultTiles";
+import { DashboardQuickAccessBar } from "./dashboard-quick-access-bar";
 import { DashboardTile } from "./DashboardTile";
 import type { VehicleDashboardProps } from "./types";
 import { VehicleDashboardHeader } from "./VehicleDashboardHeader";
 
 export function VehicleDashboard({
   data,
+  quickAccessItems,
   onTileClick,
   onEditVehicleImage,
   onSilhouetteProxyLoad,
@@ -28,22 +30,20 @@ export function VehicleDashboard({
       </div>
 
       <div className="relative z-10 -mt-1 flex flex-col gap-5 px-4 sm:px-5">
-      <div data-tour="dashboard-header">
-        <VehicleDashboardHeader
-          ownerName={data.ownerName}
-          vehicleModel={data.vehicleModel}
-          vehicleImage={data.vehicleImage}
-          vehicleImageFallback={data.vehicleImageFallback}
-          vehicleImagePreviewFallback={data.vehicleImagePreviewFallback}
-          vehicleImageAlt={data.vehicleImageAlt}
-          vehicleImageFrameless={data.vehicleImageFrameless}
-          statusLabel={data.statusLabel}
-          statusDetail={data.statusDetail}
-          tagCoupled={data.tagCoupled}
-          onEditVehicleImage={onEditVehicleImage}
-          onSilhouetteProxyLoad={onSilhouetteProxyLoad}
-        />
-      </div>
+        <div className="flex flex-col gap-3">
+          <VehicleDashboardHeader
+            vehicleModel={data.vehicleModel}
+            vehicleDataHref={data.vehicleDataHref}
+            statusLabel={data.statusLabel}
+            statusDetail={data.statusDetail}
+            tagCoupled={data.tagCoupled}
+            onEditVehicleImage={onEditVehicleImage}
+          />
+
+          {quickAccessItems && quickAccessItems.length > 0 ? (
+            <DashboardQuickAccessBar items={quickAccessItems} />
+          ) : null}
+        </div>
 
       {banner}
 

@@ -211,6 +211,7 @@ export function TagDashboardView({
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),
     showcaseSwipeUnreadLikes,
+    vehicleDataHref: path("daten"),
   };
 
   const tiles = [
@@ -505,10 +506,41 @@ export function TagDashboardView({
     !demoShowcase &&
     Boolean(tagShopUserId?.trim());
 
+  const quickAccessCandidates = [
+    {
+      id: "invoices",
+      label: "Dokumente",
+      icon: "file-text" as const,
+      href: path("dokumente"),
+    },
+    {
+      id: "operating-costs",
+      label: "Kosten",
+      icon: "wallet" as const,
+      href: path("kosten"),
+    },
+    {
+      id: "build-planner",
+      label: "To-dos",
+      icon: "list-checks" as const,
+      href: path("build-planner"),
+    },
+    {
+      id: "fuel-log",
+      label: "Tanken",
+      icon: "fuel" as const,
+      href: path("tanken"),
+    },
+  ];
+  const quickAccessItems = quickAccessCandidates.filter((item) =>
+    tiles.some((tile) => tile.id === item.id),
+  );
+
   return (
     <div className="relative">
       <VehicleDashboard
         data={{ ...data, tiles }}
+        quickAccessItems={quickAccessItems}
         banner={
           showTagShop || showProductFeaturesBanner ? (
             <div className="flex flex-col gap-2.5">

@@ -17,6 +17,7 @@ type InvoiceDetailEditPickerSheetProps = {
   /** Deep-link to manual entry form with photo picker focused. */
   addPhotosHref?: string | null;
   addPhotosLabel?: string;
+  onAddPhotos?: () => void;
 };
 
 export function InvoiceDetailEditPickerSheet({
@@ -26,6 +27,7 @@ export function InvoiceDetailEditPickerSheet({
   isManualEntry = false,
   addPhotosHref,
   addPhotosLabel = "Bilder hinzufügen",
+  onAddPhotos,
 }: InvoiceDetailEditPickerSheetProps) {
   if (!open) return null;
 
@@ -71,7 +73,25 @@ export function InvoiceDetailEditPickerSheet({
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
         >
           <ul className="space-y-0.5">
-          {addPhotosHref ? (
+          {onAddPhotos ? (
+            <li>
+              <PressableButton
+                type="button"
+                variant="button"
+                onClick={() => {
+                  onClose();
+                  onAddPhotos();
+                }}
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-[0.92rem] font-medium text-[color:var(--vd-text)] hover:bg-[color:var(--vd-surface-elevated)]"
+              >
+                {addPhotosLabel}
+                <ChevronRight
+                  className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+                  aria-hidden
+                />
+              </PressableButton>
+            </li>
+          ) : addPhotosHref ? (
             <li>
               <PressableLink
                 href={addPhotosHref}

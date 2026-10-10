@@ -41,7 +41,7 @@ export function rollingMonthWindowStart(endMonthKey: string): string {
   return monthKey(start.year, start.month);
 }
 
-function monthsBetweenInclusive(startKey: string, endKey: string): string[] {
+export function monthsBetweenInclusive(startKey: string, endKey: string): string[] {
   const keys: string[] = [];
   let { year, month } = parseMonthKey(startKey);
   const end = parseMonthKey(endKey);
@@ -179,3 +179,9 @@ export function computeMonthlyAverages(
 }
 
 export const OPERATING_COST_WINDOW_MONTHS = WINDOW_MONTHS;
+
+export function listRollingWindowMonthKeys(referenceDate = new Date()): string[] {
+  const windowEnd = rollingMonthWindowEnd(referenceDate);
+  const windowStart = rollingMonthWindowStart(windowEnd);
+  return monthsBetweenInclusive(windowStart, windowEnd);
+}

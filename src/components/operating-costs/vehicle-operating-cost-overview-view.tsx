@@ -26,6 +26,7 @@ import {
 import { MonthlyCostHero } from "./monthly-cost-hero";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
+import { OperatingCostDetailCharts } from "./operating-cost-detail-charts";
 import { OperatingCostEntryList } from "./operating-cost-entry-list";
 
 type VehicleOperatingCostOverviewViewProps = {
@@ -67,7 +68,7 @@ export function VehicleOperatingCostOverviewView({
         </PressableLink>
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            Kostenübersicht
+            Kosten & Ausgaben
           </h1>
           <p className="mt-1 text-[0.88rem] text-[color:var(--vd-muted)]">
             {vehicleModel} · Betriebskosten
@@ -81,20 +82,19 @@ export function VehicleOperatingCostOverviewView({
         entryCount={summary.entryCount}
       />
 
+      <OperatingCostDetailCharts chart={summary.chart} />
+
       <section className="grid grid-cols-2 gap-3">
         {OPERATING_COST_CATEGORIES.map((category) => (
-          <div
-            key={category}
-            className="zt-feature-panel p-3.5"
-          >
+          <div key={category} className="zt-feature-panel p-3.5">
             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
               {OPERATING_COST_CATEGORY_LABELS[category]}
             </p>
-            <p className="mt-1.5 text-[1rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
-              {formatEur(summary.categoryMonthlyAverages[category])}
-              <span className="text-[0.72rem] font-medium text-[color:var(--vd-muted)]">
-                /M
-              </span>
+            <p className="mt-1.5 text-[0.95rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
+              {formatEur(summary.chart.categoryTotals[category])}
+            </p>
+            <p className="mt-0.5 text-[0.72rem] tabular-nums text-[color:var(--vd-muted)]">
+              ø {formatEur(summary.categoryMonthlyAverages[category])}/M
             </p>
           </div>
         ))}
@@ -107,7 +107,7 @@ export function VehicleOperatingCostOverviewView({
           onClick={() => setShowForm(true)}
         >
           <Plus className="h-4 w-4" aria-hidden />
-          Kosten eintragen
+          Kosten erfassen
         </PressableButton>
       ) : null}
 

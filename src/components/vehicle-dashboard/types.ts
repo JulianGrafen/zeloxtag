@@ -94,12 +94,23 @@ export interface VehicleDashboardData {
   nextInspection?: VehicleInspectionInfo;
   /** Unread build-swipe likes on this vehicle (owner). */
   showcaseSwipeUnreadLikes?: number;
+  vehicleDataHref?: string;
   /** Override or extend the default tile set */
   tiles?: DashboardTileConfig[];
 }
 
+export type DashboardQuickAccessItem = {
+  id: string;
+  label: string;
+  href: string;
+  icon: DashboardIconName;
+  iconOnly?: boolean;
+};
+
 export interface VehicleDashboardProps {
   data: VehicleDashboardData;
+  /** Shortcuts below the vehicle hero (Tanken, Historie, Kosten). */
+  quickAccessItems?: DashboardQuickAccessItem[];
   /** Called when a tile without href is activated */
   onTileClick?: (tileId: string) => void;
   /** Owner tap on header cutout → change / upload silhouette */

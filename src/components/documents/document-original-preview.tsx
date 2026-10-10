@@ -47,9 +47,7 @@ export function DocumentOriginalPreview({
       : null;
 
   const useFotodokuGallery =
-    isManual &&
-    previewKind != null &&
-    (previewKind === "image" || previewKind === "pdf");
+    previewKind != null && (previewKind === "image" || previewKind === "pdf");
 
   const {
     slides: gallerySlides,

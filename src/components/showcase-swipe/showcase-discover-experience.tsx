@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 
 import type { ShareableBuildData } from "@/components/shareable-spec-card/types";
 import { ShowcaseInviteFriends } from "@/components/showcase-swipe/showcase-invite-friends";
-import { ShowcaseOwnSwipeLikes } from "@/components/showcase-swipe/showcase-own-swipe-likes";
 import { ShowcaseSwipeDeck } from "@/components/showcase-swipe/ShowcaseSwipeDeck";
 import { ShowcaseTopThreeStoryShare } from "@/components/showcase-swipe/showcase-top-three-story-share";
 import { ShowcaseWeeklyPlacement } from "@/components/showcase-swipe/showcase-weekly-placement";
@@ -17,7 +16,6 @@ type ShowcaseDiscoverExperienceProps = {
   tagUuid: string;
   initialCards?: ShowcaseSwipeCard[];
   initialWeeklyBuilds: WeeklyTopBuild[];
-  ownSwipeTotalLikes: number;
   isPublic: boolean;
   showcaseSwipeOptIn: boolean;
   profilSettingsHref: string;
@@ -40,7 +38,6 @@ export function ShowcaseDiscoverExperience({
   tagUuid,
   initialCards = [],
   initialWeeklyBuilds,
-  ownSwipeTotalLikes,
   isPublic,
   showcaseSwipeOptIn,
   profilSettingsHref,
@@ -77,7 +74,6 @@ export function ShowcaseDiscoverExperience({
 
   return (
     <div className="flex flex-col gap-2">
-      <ShowcaseOwnSwipeLikes totalLikes={ownSwipeTotalLikes} />
       <ShowcaseWeeklyPlacement
         isPublic={isPublic}
         showcaseSwipeOptIn={showcaseSwipeOptIn}

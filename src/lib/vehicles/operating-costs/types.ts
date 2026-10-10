@@ -4,6 +4,8 @@ import type {
   VehicleOperatingCost,
 } from "@/types/database";
 
+import type { OperatingCostChartData } from "./chart-data";
+
 export type { OperatingCostBillingPeriod, OperatingCostCategory, VehicleOperatingCost };
 
 export const OPERATING_COST_CATEGORIES: OperatingCostCategory[] = [
@@ -39,6 +41,7 @@ export type OperatingCostFormInput = {
 export type OperatingCostSummary = {
   totalMonthlyAverage: number;
   categoryMonthlyAverages: Record<OperatingCostCategory, number>;
+  chart: OperatingCostChartData;
   recentEntries: VehicleOperatingCost[];
   fuelStats: {
     lastFill: VehicleOperatingCost | null;

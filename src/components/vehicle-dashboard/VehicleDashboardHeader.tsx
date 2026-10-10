@@ -1,27 +1,19 @@
 "use client";
 
-import { useState } from "react";
-
-import { AnimatedVehicleHeader } from "@/components/dashboard/AnimatedVehicleHeader";
-import { isOwnerSilhouetteSrc } from "@/lib/vehicles/silhouette-display-url";
+import { Car, Pencil } from "lucide-react";
+import Link from "next/link";
 
 import { dashboardHeroShellClassName } from "./dashboard-menu-styles";
+import { PressableButton } from "./Pressable";
+import { cn } from "@/lib/utils";
 
 interface VehicleDashboardHeaderProps {
-  ownerName: string;
   vehicleModel: string;
-  vehicleImage?: string;
-  vehicleImageFallback?: string;
-  vehicleImagePreviewFallback?: string;
-  vehicleImageAlt?: string;
-  vehicleImageFrameless?: boolean;
+  vehicleDataHref?: string;
   statusLabel?: string;
-  /** Shown beside the status line when offline (e.g. missing hardware tag). */
   statusDetail?: string;
-  /** When false, show offline styling instead of the green “verbunden” dot. */
   tagCoupled?: boolean;
   onEditVehicleImage?: () => void;
-  onSilhouetteProxyLoad?: () => void;
 }
 
 function parseVehicleHeroLabel(vehicleModel: string): {
@@ -41,118 +33,77 @@ function parseVehicleHeroLabel(vehicleModel: string): {
   return { name: vehicleModel.trim(), year: null };
 }
 
-function formatOwnerPossessive(ownerName: string): string {
-  const trimmed = ownerName.trim();
-  if (!trimmed) return "";
-  if (/[sxzß]$/i.test(trimmed)) {
-    return `${trimmed}'`;
-  }
-  return `${trimmed}s`;
-}
-
-function buildHeroTitle(ownerName: string, vehicleName: string): string {
-  const owner = ownerName.trim();
-  if (!owner || owner === "Fahrer") {
-    return vehicleName;
-  }
-  return `${formatOwnerPossessive(owner)} ${vehicleName}`;
-}
-
 export function VehicleDashboardHeader({
-  ownerName,
   vehicleModel,
-  vehicleImage,
-  vehicleImageFallback,
-  vehicleImagePreviewFallback,
-  vehicleImageAlt,
-  vehicleImageFrameless = false,
+  vehicleDataHref,
   statusLabel = "Verbunden",
   statusDetail,
   tagCoupled = true,
   onEditVehicleImage,
-  onSilhouetteProxyLoad,
 }: VehicleDashboardHeaderProps) {
   const { name, year } = parseVehicleHeroLabel(vehicleModel);
-  const heroTitle = buildHeroTitle(ownerName, name);
-  const heroBgSrc =
-    vehicleImage?.trim() ||
-    vehicleImagePreviewFallback?.trim() ||
-    vehicleImageFallback?.trim() ||
-    null;
-  const [heroBgVisible, setHeroBgVisible] = useState(Boolean(heroBgSrc));
 
   return (
-    <header className={`${dashboardHeroShellClassName} min-h-[11.5rem] sm:min-h-[12.5rem]`}>
-      {heroBgSrc && heroBgVisible ? (
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={heroBgSrc}
-            alt=""
-            className="absolute inset-0 h-full w-full scale-110 object-cover object-[center_35%] opacity-[0.38]"
-            onError={() => setHeroBgVisible(false)}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/82 to-zinc-950/45" />
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-zinc-950/20" />
-        </div>
-      ) : (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.12)_0%,transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(255,255,255,0.04)_0%,transparent_50%)]"
-        />
+    <header
+      className={cn(
+        dashboardHeroShellClassName,
+        "vd-anim-header relative z-40 shrink-0",
       )}
-
-      <div className="relative grid grid-cols-1 items-end gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-5 sm:p-6">
-        <div className="min-w-0 space-y-3 pl-5 sm:pl-8">
-          <p
-            className={
-              tagCoupled
-                ? "flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-zinc-500"
-                : "flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-rose-400/90"
-            }
-          >
-            <span className="inline-flex items-center gap-2">
-              <span>{statusLabel}</span>
-              <span className="relative inline-flex h-2.5 w-2.5 shrink-0 items-center justify-center">
-                {tagCoupled ? (
-                  <span className="vd-connected-dot" aria-label="Verbunden" />
-                ) : (
-                  <span className="vd-offline-dot" aria-label="Offline" />
-                )}
-              </span>
-            </span>
-            {statusDetail ? (
-              <span
-                className="font-medium normal-case tracking-normal text-zinc-400"
-              >
-                {statusDetail}
-              </span>
-            ) : null}
-          </p>
-          <div className="space-y-1.5">
-            <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-white sm:text-[1.75rem]">
-              {heroTitle}
-            </h1>
-            {year ? (
-              <p className="text-xs text-zinc-400 tabular-nums">
-                Baujahr {year}
-              </p>
-            ) : null}
-          </div>
+      data-tour="dashboard-header"
+    >
+      <div
+        className="flex min-h-[10.5rem] flex-col justify-center px-4 py-6 sm:min-h-[11rem] sm:px-5 sm:py-7"
+      >
+        <div className="flex justify-center" aria-hidden>
+          <Car className="h-5 w-5 text-zinc-500" strokeWidth={1.5} />
         </div>
 
-        <AnimatedVehicleHeader
-          size="hero"
-          silhouetteImageUrl={vehicleImage}
-          previewFallbackUrl={vehicleImagePreviewFallback}
-          fallbackImageUrl={vehicleImageFallback}
-          lockOwnerSilhouette={isOwnerSilhouetteSrc(vehicleImage)}
-          frameless={vehicleImageFrameless}
-          alt={vehicleImageAlt ?? heroTitle}
-          onEdit={onEditVehicleImage}
-          onPrimaryLoad={onSilhouetteProxyLoad}
-          className="justify-self-end"
-        />
+        {!tagCoupled ? (
+          <p
+            className="mt-2 text-center text-[0.68rem] font-medium leading-snug text-rose-400/90"
+          >
+            {statusLabel}
+            {statusDetail ? ` · ${statusDetail}` : null}
+          </p>
+        ) : null}
+
+        <div className="mt-4 flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h1
+              className="font-[family-name:var(--font-display)] text-[1.35rem] font-bold leading-tight tracking-tight text-white sm:text-[1.45rem]"
+            >
+              {name}
+            </h1>
+            <p
+              className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.8rem] text-zinc-400"
+            >
+              {year ? (
+                <span className="tabular-nums">{year}</span>
+              ) : null}
+              {vehicleDataHref ? (
+                <Link
+                  href={vehicleDataHref}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full text-zinc-500 transition hover:bg-white/5 hover:text-zinc-200"
+                  aria-label="Fahrzeugdaten bearbeiten"
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden />
+                </Link>
+              ) : null}
+            </p>
+          </div>
+
+          {onEditVehicleImage ? (
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={onEditVehicleImage}
+              aria-label="Fahrzeugfoto ändern"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-zinc-800/90 text-zinc-100 transition hover:bg-zinc-700/90"
+            >
+              <Pencil className="h-4 w-4" aria-hidden />
+            </PressableButton>
+          ) : null}
+        </div>
       </div>
     </header>
   );
