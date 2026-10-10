@@ -762,6 +762,8 @@ export function TagDashboardShell({
           vehicleVin={vehicle.vin}
           existingDocuments={documents}
           backHref={dashboardBase}
+          dashboardHomeHref={dashboardBase}
+          vehicleSurfaceScope={vehicleSurfaceScope}
           backLabel="Dashboard"
           onBack={() => {
             setMode("pick-scan");

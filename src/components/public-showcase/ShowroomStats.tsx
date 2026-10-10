@@ -7,6 +7,7 @@ import type {
   PublicModification,
   PublicShowcaseProfile,
 } from "@/lib/vehicles/public-showcase-data";
+import { cn } from "@/lib/utils";
 
 import CountUp from "./CountUp";
 import { EngineStartButton } from "./EngineStartButton";
@@ -15,7 +16,10 @@ import { ShowroomGroup } from "./ShowroomGroup";
 import { ShowroomMods } from "./ShowroomMods";
 import { ShowroomRevealItem } from "./ShowroomRevealItem";
 import { ShowroomSpecRow } from "./ShowroomSpecRow";
-import { buildShowcaseSpecRows } from "./showcase-spec-rows";
+import {
+  buildShowcaseSpecificationRow,
+  buildShowcaseSpecRows,
+} from "./showcase-spec-rows";
 import { useShowroomMotion } from "./showroom-motion";
 import { showroom } from "./showroom-styles";
 
@@ -52,13 +56,14 @@ function animatedStatValue(
 export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
   const motionConfig = useShowroomMotion();
   const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const specificationRow = buildShowcaseSpecificationRow(profile);
   const vehicleRows = buildShowcaseSpecRows(profile, animatedStatValue);
   const hasSoundcheck = Boolean(profile.engineSoundUrl?.trim());
   const hasModsSection = modifications.length > 0;
   const hasDyno = Boolean(profile.dynoChartUrl);
   const hasShowcaseGroup = hasSoundcheck || hasModsSection || hasDyno;
 
-  if (vehicleRows.length === 0 && !hasShowcaseGroup) {
+  if (vehicleRows.length === 0 && !specificationRow && !hasShowcaseGroup) {
     return null;
   }
 
@@ -70,6 +75,21 @@ export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
       whileInView="visible"
       viewport={motionConfig.viewport}
     >
+      {specificationRow ? (
+        <ShowroomRevealItem>
+          <div>
+            <h2 className={showroom.sectionLabel}>Spezifikation</h2>
+            <ShowroomGroup>
+              <div className="px-4 py-3.5">
+                <div className={cn("min-w-0 whitespace-pre-wrap", showroom.body)}>
+                  {specificationRow.value}
+                </div>
+              </div>
+            </ShowroomGroup>
+          </div>
+        </ShowroomRevealItem>
+      ) : null}
+
       {vehicleRows.length > 0 ? (
         <ShowroomRevealItem>
           <div>

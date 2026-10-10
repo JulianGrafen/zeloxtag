@@ -129,16 +129,6 @@ export function buildShowcaseSpecRows(
     rows.push({ key: "drivetrain", label: "Antrieb", value: drive });
   }
 
-  const specification = profile.notes?.trim();
-  if (specification) {
-    rows.push({
-      key: "specification",
-      label: "Spezifikation",
-      value: specification,
-      layout: "stacked",
-    });
-  }
-
   for (const field of buildShowcaseTechnicalFields(profile)) {
     rows.push({
       key: field.key,
@@ -148,4 +138,18 @@ export function buildShowcaseSpecRows(
   }
 
   return rows;
+}
+
+/** Owner free-text specs — rendered above the Fahrzeugdaten block on the showcase. */
+export function buildShowcaseSpecificationRow(
+  profile: PublicShowcaseProfile,
+): ShowcaseSpecRow | null {
+  const specification = profile.notes?.trim();
+  if (!specification) return null;
+  return {
+    key: "specification",
+    label: "Spezifikation",
+    value: specification,
+    layout: "stacked",
+  };
 }

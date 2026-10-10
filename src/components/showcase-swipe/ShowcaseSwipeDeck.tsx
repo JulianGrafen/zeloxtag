@@ -9,11 +9,13 @@ import {
   type ShowcaseSwipeStackHandle,
 } from "@/components/showcase-swipe/showcase-swipe-stack";
 import { preloadImageHrefs } from "@/lib/image/preload-image-hrefs";
+import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 import { cn } from "@/lib/utils";
 
 type ShowcaseSwipeDeckProps = {
   tagUuid: string;
+  entdeckenReturnHref: string;
   initialCards?: ShowcaseSwipeCard[];
   onLiked?: (card: ShowcaseSwipeCard) => void;
 };
@@ -52,6 +54,7 @@ async function postSwipe(
 
 export function ShowcaseSwipeDeck({
   tagUuid,
+  entdeckenReturnHref,
   initialCards = [],
   onLiked,
 }: ShowcaseSwipeDeckProps) {
@@ -164,10 +167,11 @@ export function ShowcaseSwipeDeck({
 
   const openShowcase = useCallback(
     (card: ShowcaseSwipeCard) => {
-      const slug = encodeURIComponent(card.publicSlug);
-      router.push(`/v/${slug}?showcase=1`);
+      router.push(
+        buildDiscoverShowcaseHref(card.publicSlug, entdeckenReturnHref),
+      );
     },
-    [router],
+    [entdeckenReturnHref, router],
   );
 
   if (hydrating && !current) {

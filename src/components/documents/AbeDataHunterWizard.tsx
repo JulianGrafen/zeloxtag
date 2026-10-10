@@ -36,6 +36,8 @@ import {
 import { localDateIso } from "@/lib/documents/format";
 import { ABE_VEHICLE_MODEL_DISPLAY_LABEL } from "@/lib/documents/abe-detail-display";
 import { uploadDocument } from "@/lib/documents/upload-document";
+import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import {
   appendScanSessionId,
@@ -131,6 +133,9 @@ export interface AbeDataHunterWizardProps {
   backLabel?: string;
   /** After free scan save, redirect to dashboard upsell instead of document list. */
   useFreeScanSaveRedirect?: boolean;
+  /** Owner dashboard base (tag or `/garage/{vehicleId}`). */
+  dashboardHomeHref?: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
 }
 
 type WizardPhase =
@@ -1902,6 +1907,8 @@ export function AbeDataHunterWizard({
   onBack,
   backHref,
   useFreeScanSaveRedirect = false,
+  dashboardHomeHref,
+  vehicleSurfaceScope,
 }: AbeDataHunterWizardProps) {
   const [phase, setPhase] = useState<WizardPhase>("choose");
   const [huntMode, setHuntMode] = useState<HuntMode | null>(null);
@@ -2990,12 +2997,18 @@ export function AbeDataHunterWizard({
       }
       showSavedToast();
       if (useFreeScanSaveRedirect && result.freeScanConsumed) {
-        window.location.assign(`/v/${result.tagUuid}?freeScanWelcome=1`);
+        const welcomeBase =
+          dashboardHomeHref?.trim() || `/v/${result.tagUuid}`;
+        window.location.assign(`${welcomeBase}?freeScanWelcome=1`);
         return;
       }
       if (successHref) window.location.href = successHref;
       else if (result.tagUuid) {
-        window.location.href = `/v/${result.tagUuid}/dokumente?type=abe`;
+        window.location.href = documentsListHref(
+          result.tagUuid,
+          "abe",
+          vehicleSurfaceScope,
+        );
       }
     });
   }

@@ -23,6 +23,10 @@ export type FreeScanQuota = {
   used: number;
   remaining: number;
   limit: number;
+  /**
+   * Entitlement read failed — show full bucket in UI; OCR still enforces at session start.
+   */
+  readFailed?: boolean;
 };
 
 export type FreeInvoiceScanQuota = FreeScanQuota;
@@ -79,7 +83,7 @@ async function loadEntitlementRow(userId: string): Promise<EntitlementRow> {
 
 function toQuota(used: number, limit: number, loadError = false): FreeScanQuota {
   if (loadError) {
-    return { used: limit, remaining: 0, limit };
+    return { used: 0, remaining: limit, limit, readFailed: true };
   }
   const remaining = Math.max(0, limit - used);
   return { used, remaining, limit };

@@ -567,6 +567,11 @@ export function TagDashboardView({
       {canScan ? (
         <DashboardScanFab
           tagUuid={tagUuid}
+          scanHref={
+            vehicleSurfaceScope
+              ? `${vehicleSurfaceHref(vehicleSurfaceScope, "?scan=1")}`
+              : `/v/${tagUuid}?scan=1`
+          }
           hidden={hideScanFab}
           onOpenScanner={onOpenScanner}
           scanLocked={scanLocked}

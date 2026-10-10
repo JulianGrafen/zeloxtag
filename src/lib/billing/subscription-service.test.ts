@@ -29,4 +29,15 @@ describe("buildFuelScanSubscriptionStatus", () => {
     expect(status.quotaUnavailable).toBe(true);
     expect(status.canScan).toBe(false);
   });
+
+  it("allows scan when entitlement read failed but UI shows full bucket", () => {
+    const status = buildFuelScanSubscriptionStatus(false, {
+      used: 0,
+      remaining: MAX_FREE_FUEL_SCANS,
+      limit: MAX_FREE_FUEL_SCANS,
+      readFailed: true,
+    });
+    expect(status.canScan).toBe(true);
+    expect(status.remainingFreeScans).toBe(MAX_FREE_FUEL_SCANS);
+  });
 });

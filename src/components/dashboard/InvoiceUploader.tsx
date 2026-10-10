@@ -76,6 +76,8 @@ import {
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
 import type { Document } from "@/types/database";
+import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 import {
   invoiceReviewCategoryFromScanType,
@@ -112,6 +114,9 @@ interface InvoiceUploaderProps {
   scanType: ScanType;
   /** After free scan save, redirect to dashboard upsell instead of document list. */
   useFreeScanSaveRedirect?: boolean;
+  /** Owner dashboard base (tag or `/garage/{vehicleId}`). */
+  dashboardHomeHref?: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   /** After successful save (default: documents list for that type). */
   successHref?: string;
   /** Existing vehicle documents — used for client-side mileage plausibility checks. */
@@ -220,6 +225,8 @@ export function InvoiceUploader({
   lockCategory = false,
   scanType,
   useFreeScanSaveRedirect = false,
+  dashboardHomeHref,
+  vehicleSurfaceScope,
   successHref,
   existingDocuments = [],
   heading = "Rechnung scannen",
@@ -480,7 +487,9 @@ export function InvoiceUploader({
         }
 
         if (useFreeScanSaveRedirect && result.freeScanConsumed) {
-          window.location.assign(`/v/${result.tagUuid}?freeScanWelcome=1`);
+          const welcomeBase =
+            dashboardHomeHref?.trim() || `/v/${result.tagUuid}`;
+          window.location.assign(`${welcomeBase}?freeScanWelcome=1`);
           return;
         }
 
@@ -694,11 +703,16 @@ export function InvoiceUploader({
         tagUuid={tagUuid}
         vehicleLabel={vehicleLabel}
         vehicleContext={vehicleContext}
-        successHref={successHref}
+        successHref={
+          successHref ??
+          documentsListHref(tagUuid, "abe", vehicleSurfaceScope)
+        }
         onBack={onBack}
         backHref={resolvedBackHref}
         backLabel={backLabel}
         useFreeScanSaveRedirect={useFreeScanSaveRedirect}
+        dashboardHomeHref={dashboardHomeHref}
+        vehicleSurfaceScope={vehicleSurfaceScope}
       />
     );
   }

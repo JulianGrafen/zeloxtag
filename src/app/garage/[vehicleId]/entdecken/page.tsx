@@ -106,6 +106,7 @@ export default async function ShowcaseEntdeckenPage({
       >
         <ShowcaseDiscoverExperience
           tagUuid={scope.linkedTagUuid ?? vehicleId}
+          entdeckenReturnHref={vehicleSurfaceHref(scope, "entdecken")}
           initialCards={initialCards}
           initialWeeklyBuilds={initialWeeklyBuilds}
           isPublic={Boolean(vehicle.is_public)}

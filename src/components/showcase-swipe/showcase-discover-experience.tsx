@@ -14,6 +14,7 @@ import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
 
 type ShowcaseDiscoverExperienceProps = {
   tagUuid: string;
+  entdeckenReturnHref: string;
   initialCards?: ShowcaseSwipeCard[];
   initialWeeklyBuilds: WeeklyTopBuild[];
   isPublic: boolean;
@@ -36,6 +37,7 @@ function sortWeeklyBuilds(rows: WeeklyTopBuild[]): WeeklyTopBuild[] {
 
 export function ShowcaseDiscoverExperience({
   tagUuid,
+  entdeckenReturnHref,
   initialCards = [],
   initialWeeklyBuilds,
   isPublic,
@@ -89,9 +91,13 @@ export function ShowcaseDiscoverExperience({
         />
       ) : null}
       <ShowcaseInviteFriends />
-      <WeeklyTopBuilds builds={weeklyBuilds} />
+      <WeeklyTopBuilds
+        builds={weeklyBuilds}
+        entdeckenReturnHref={entdeckenReturnHref}
+      />
       <ShowcaseSwipeDeck
         tagUuid={tagUuid}
+        entdeckenReturnHref={entdeckenReturnHref}
         initialCards={initialCards}
         onLiked={onLiked}
       />

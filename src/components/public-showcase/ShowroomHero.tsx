@@ -31,6 +31,7 @@ import {
 import { ShowroomGalleryLightbox } from "./ShowroomGalleryLightbox";
 import { InstagramGlyph } from "./InstagramGlyph";
 import { ShowroomBrandBanner } from "./ShowroomBrandBanner";
+import { ShowroomDiscoverBackButton } from "./showroom-discover-back-button";
 import {
   HERO_KEN_BURNS_DURATION_S,
   useShowroomMotion,
@@ -42,6 +43,8 @@ import { showroom } from "./showroom-styles";
 type ShowroomHeroProps = {
   profile: PublicShowcaseProfile;
   photos: PublicGalleryPhoto[];
+  showDiscoverBack?: boolean;
+  discoverBackHref?: string | null;
 };
 
 export type HeroCarouselHandle = {
@@ -146,13 +149,17 @@ function HeroBackdrop({
               index === activeIndex;
 
             return (
-              <div
+              <button
                 key={photo.id}
-                className="relative h-full min-w-full shrink-0 snap-center"
+                type="button"
+                onClick={() => onOpenAtIndex(index)}
+                className="relative h-full min-w-full shrink-0 cursor-zoom-in snap-center border-0 bg-transparent p-0 text-left"
+                aria-label={`${photo.alt || title} im Vollbild anzeigen`}
                 aria-hidden={index !== activeIndex}
+                tabIndex={index === activeIndex ? 0 : -1}
               >
                 <motion.div
-                  className="absolute inset-0"
+                  className="pointer-events-none absolute inset-0"
                   animate={
                     kenBurnsActive
                       ? {
@@ -186,19 +193,10 @@ function HeroBackdrop({
                     draggable={false}
                   />
                 </motion.div>
-              </div>
+              </button>
             );
           })}
         </div>
-
-        <button
-          type="button"
-          onClick={() => onOpenAtIndex(activeIndex)}
-          className="pointer-events-auto absolute right-3 top-[max(3.25rem,calc(env(safe-area-inset-top)+2.5rem))] z-[2] inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white/90 backdrop-blur-sm"
-          aria-label="Aktuelles Foto vergrößern"
-        >
-          <Expand className="h-4 w-4" aria-hidden />
-        </button>
       </motion.div>
 
       <div
@@ -213,7 +211,12 @@ function HeroBackdrop({
   );
 }
 
-export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
+export function ShowroomHero({
+  profile,
+  photos,
+  showDiscoverBack = false,
+  discoverBackHref = null,
+}: ShowroomHeroProps) {
   const title =
     formatPublicVehicleTitle(profile.make, profile.model) || "Fahrzeug";
   const yearLabel = profile.year ? String(profile.year) : null;
@@ -258,6 +261,21 @@ export function ShowroomHero({ profile, photos }: ShowroomHeroProps) {
         />
 
         <ShowroomBrandBanner />
+
+        {showDiscoverBack ? (
+          <ShowroomDiscoverBackButton backHref={discoverBackHref} />
+        ) : null}
+
+        {visiblePhotos.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setLightboxIndex(activeIndex)}
+            className="pointer-events-auto absolute right-3 top-[max(3.25rem,calc(env(safe-area-inset-top)+2.5rem))] z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white/90 backdrop-blur-sm"
+            aria-label="Aktuelles Foto vergrößern"
+          >
+            <Expand className="h-4 w-4" aria-hidden />
+          </button>
+        ) : null}
 
         <div
           className={`pointer-events-none relative z-10 flex ${showroom.heroMinHeight} flex-col justify-end px-5 pb-8 pt-[max(4.5rem,env(safe-area-inset-top))]`}

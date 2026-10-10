@@ -6,10 +6,15 @@ import { cn } from "@/lib/utils";
 
 type WeeklyTopBuildsProps = {
   builds: WeeklyTopBuild[];
+  entdeckenReturnHref: string;
   className?: string;
 };
 
-export function WeeklyTopBuilds({ builds, className }: WeeklyTopBuildsProps) {
+export function WeeklyTopBuilds({
+  builds,
+  entdeckenReturnHref,
+  className,
+}: WeeklyTopBuildsProps) {
   return (
     <section
       className={cn("mb-2 border-b border-white/[0.06] pb-6", className)}
@@ -44,7 +49,10 @@ export function WeeklyTopBuilds({ builds, className }: WeeklyTopBuildsProps) {
         >
           {builds.map((build) => (
             <li key={build.publicSlug}>
-              <VehicleRankCard build={build} />
+              <VehicleRankCard
+                build={build}
+                entdeckenReturnHref={entdeckenReturnHref}
+              />
             </li>
           ))}
         </ul>

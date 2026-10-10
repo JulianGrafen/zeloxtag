@@ -105,6 +105,17 @@ interface VehicleDocumentsViewProps {
   invoiceCategory?: InvoiceListCategory | "all";
 }
 
+/** Free tier: classic ABE uses the complimentary scan; vault is Pro-only. */
+function abeDocumentsScanType(
+  membershipActive: boolean,
+  freeAbeScanRemaining: number,
+): "abe" | "vault" {
+  if (!membershipActive && freeAbeScanRemaining > 0) {
+    return "abe";
+  }
+  return "vault";
+}
+
 function ownerScanEntryHref(
   vehicleSurfaceScope: VehicleSurfaceScope | undefined,
   tagUuid: string,
@@ -146,6 +157,12 @@ export function VehicleDocumentsView({
   const showScanFab = canScan ?? canWrite;
   const router = useRouter();
   const [activeType, setActiveType] = useState(filterType);
+  const abeScanType =
+    activeType === "abe"
+      ? abeDocumentsScanType(membershipActive, freeAbeScanRemaining)
+      : activeType === "tuev"
+        ? "tuev"
+        : null;
   const path = (segment?: string) =>
     surfacePath(vehicleSurfaceScope, tagUuid, segment);
 
@@ -463,25 +480,19 @@ export function VehicleDocumentsView({
           scanHref={ownerScanEntryHref(
             vehicleSurfaceScope,
             tagUuid,
-            activeType === "tuev"
-              ? "tuev"
-              : activeType === "abe"
-                ? "vault"
-                : null,
+            abeScanType,
           )}
           scanLocked={isScanFabLocked(
             membershipActive,
             freeInvoiceScanRemaining,
             freeAbeScanRemaining,
-            activeType === "tuev"
-              ? "tuev"
-              : activeType === "abe"
-                ? "vault"
-                : null,
+            abeScanType,
           )}
           scanActionLabel={
             activeType === "abe"
-              ? "Gutachten scannen"
+              ? abeScanType === "abe"
+                ? "ABE scannen"
+                : "Gutachten scannen"
               : activeType === "tuev"
                 ? "TÜV scannen"
                 : "Dokument scannen"

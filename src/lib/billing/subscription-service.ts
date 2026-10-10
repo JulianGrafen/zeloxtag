@@ -39,12 +39,14 @@ export function buildFuelScanSubscriptionStatus(
   }
 
   const remainingFreeScans = Math.max(0, quota?.remaining ?? 0);
+  const optimisticRead =
+    quota?.readFailed === true && remainingFreeScans >= totalFreeScans;
 
   return {
     isPro: false,
     remainingFreeScans,
     totalFreeScans,
-    canScan: remainingFreeScans > 0,
+    canScan: optimisticRead || remainingFreeScans > 0,
     quotaUnavailable: false,
   };
 }

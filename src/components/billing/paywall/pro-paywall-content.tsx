@@ -2,7 +2,6 @@
 
 import { BenefitList } from "@/components/billing/paywall/benefit-list";
 import { PaywallAnimatedGoalVisual } from "@/components/billing/paywall/paywall-animated-goal-visual";
-import { PaywallBrandRow } from "@/components/billing/paywall/paywall-brand-row";
 import { PaywallFeatureRows } from "@/components/billing/paywall/paywall-feature-rows";
 import { PaywallModalFold } from "@/components/billing/paywall/paywall-modal-fold";
 import { PaywallResaleValueChart } from "@/components/billing/paywall/paywall-resale-value-chart";
@@ -130,8 +129,6 @@ export function ProPaywallContent({
                   </span>
                 </p>
               ) : null}
-
-              <PaywallBrandRow />
 
               <div className="vd-anim-header space-y-2 text-center">
                 <h2

@@ -13,15 +13,27 @@ import { showroom } from "./showroom-styles";
 
 type PublicShowcaseViewProps = {
   data: PublicShowcasePayload;
+  /** From Builds entdecken (`?showcase=1`) — show top-left back control. */
+  discoverBackHref?: string | null;
+  showDiscoverBack?: boolean;
 };
 
-export function PublicShowcaseView({ data }: PublicShowcaseViewProps) {
+export function PublicShowcaseView({
+  data,
+  discoverBackHref = null,
+  showDiscoverBack = false,
+}: PublicShowcaseViewProps) {
   const showBuildDna = data.buildDna != null;
 
   return (
     <div className={showroom.page}>
       <PublicShowcaseMarker />
-      <ShowroomHero profile={data.profile} photos={data.photos} />
+      <ShowroomHero
+        profile={data.profile}
+        photos={data.photos}
+        showDiscoverBack={showDiscoverBack}
+        discoverBackHref={discoverBackHref}
+      />
       <div
         className={`${showroom.content} mx-auto flex w-full max-w-lg flex-col gap-6 pb-[max(2rem,env(safe-area-inset-bottom))]`}
       >

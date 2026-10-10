@@ -3,8 +3,11 @@ export const showroom = {
   page: "min-h-dvh bg-black text-white",
   /** Tall hero so charts/photos breathe before the spec stack. */
   heroMinHeight: "min-h-[min(92dvh,920px)]",
-  /** Full-bleed hero carousel; title sits in the bottom fade. */
-  heroSwipeBand: "inset-0",
+  /**
+   * Horizontal swipe capture: upper hero only. The lower band (title, dots) stays
+   * outside so vertical page scroll still works on mobile.
+   */
+  heroSwipeBand: "bottom-[34%] min-h-[min(52dvh,520px)]",
   content: "relative z-10 bg-black pt-2",
   panel:
     "overflow-hidden rounded-2xl border border-white/5 border-t-white/10 bg-gradient-to-b from-zinc-800/40 to-zinc-900/80 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-md",

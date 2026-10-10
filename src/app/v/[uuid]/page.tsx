@@ -18,6 +18,7 @@ import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { resolveDashboardScanGate } from "@/lib/billing/ai-scan-access";
 import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free-scan-quota";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
+import { garageOwnerRedirectHref } from "@/lib/vehicle-surface/garage-owner-redirect";
 import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
 import {
   canResolvePublicShowcase,
@@ -55,6 +56,7 @@ import { hasPendingDashboardTour } from "@/lib/onboarding/pending-dashboard-tour
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import { fetchUserGarage } from "@/lib/garage/fetch-user-garage";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeDiscoverBackHref } from "@/lib/showcase/discover-showcase-navigation";
 import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
 import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
 import { buildPlannerDashboardHint } from "@/lib/build-planner/build-planner-summary";
@@ -74,6 +76,8 @@ interface TagScanPageProps {
     freeScanWelcome?: string;
     /** From Entdecken tap — always show public showcase, not owner dashboard. */
     showcase?: string;
+    /** Return target for entdecken back button (relative path). */
+    back?: string;
   }>;
 }
 
@@ -160,7 +164,15 @@ export async function generateMetadata({
   };
 }
 
-async function renderPublicShowcase(vehicle: Vehicle) {
+type PublicShowcaseRenderOptions = {
+  showDiscoverBack?: boolean;
+  discoverBackHref?: string | null;
+};
+
+async function renderPublicShowcase(
+  vehicle: Vehicle,
+  options?: PublicShowcaseRenderOptions,
+) {
   const showcaseVehicle = await enrichPublicShowcaseVehicle(vehicle);
   const documents = await loadPublicShowcaseDocuments(showcaseVehicle.id);
   let vehicleForPayload = showcaseVehicle;
@@ -228,7 +240,13 @@ async function renderPublicShowcase(vehicle: Vehicle) {
     };
   }
 
-  return <PublicShowcaseView data={payload} />;
+  return (
+    <PublicShowcaseView
+      data={payload}
+      showDiscoverBack={options?.showDiscoverBack ?? false}
+      discoverBackHref={options?.discoverBackHref ?? null}
+    />
+  );
 }
 
 function hasInsiderAccess(access: {
@@ -276,9 +294,17 @@ export default async function TagScanPage({
     session_id,
     freeScanWelcome,
     showcase: showcaseRaw,
+    back: discoverBackRaw,
   } = await searchParams;
   const wantsDashboard = dashboard === "1" || scan === "1";
   const forcePublicShowcase = showcaseRaw === "1";
+  const discoverShowcaseOptions: PublicShowcaseRenderOptions | undefined =
+    forcePublicShowcase
+      ? {
+          showDiscoverBack: true,
+          discoverBackHref: sanitizeDiscoverBackHref(discoverBackRaw),
+        }
+      : undefined;
   const [entry, user] = await Promise.all([
     resolvePublicVehicleEntry(identifier),
     getCurrentUser(),
@@ -290,7 +316,15 @@ export default async function TagScanPage({
       user?.id ?? null,
     );
     if (misroute.kind === "owner_garage") {
-      redirect(garagePathForVehicle(misroute.vehicleId));
+      redirect(
+        garageOwnerRedirectHref(misroute.vehicleId, {
+          scan,
+          type: scanType,
+          tour,
+          session_id,
+          freeScanWelcome,
+        }),
+      );
     }
     if (misroute.kind === "not_a_tag") {
       return (
@@ -345,7 +379,7 @@ export default async function TagScanPage({
       }
     }
 
-    return renderPublicShowcase(vehicle);
+    return renderPublicShowcase(vehicle, discoverShowcaseOptions);
   }
 
   const result = entry.result;
@@ -528,7 +562,15 @@ export default async function TagScanPage({
     user?.id ?? null,
   );
   if (misroute.kind === "owner_garage") {
-    redirect(garagePathForVehicle(misroute.vehicleId));
+    redirect(
+      garageOwnerRedirectHref(misroute.vehicleId, {
+        scan,
+        type: scanType,
+        tour,
+        session_id,
+        freeScanWelcome,
+      }),
+    );
   }
   if (misroute.kind === "not_a_tag") {
     return (

@@ -99,6 +99,7 @@ export default async function ShowcaseEntdeckenPage({
       >
         <ShowcaseDiscoverExperience
           tagUuid={uuid}
+          entdeckenReturnHref={`/v/${uuid}/entdecken`}
           initialCards={initialCards}
           initialWeeklyBuilds={initialWeeklyBuilds}
           isPublic={Boolean(vehicle.is_public)}

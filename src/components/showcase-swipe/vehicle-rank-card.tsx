@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 
+import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
 import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
 import { cn } from "@/lib/utils";
 
@@ -29,16 +30,21 @@ function rankAccent(rank: number): RankAccent {
 
 type VehicleRankCardProps = {
   build: WeeklyTopBuild;
+  entdeckenReturnHref: string;
   className?: string;
 };
 
-export function VehicleRankCard({ build, className }: VehicleRankCardProps) {
+export function VehicleRankCard({
+  build,
+  entdeckenReturnHref,
+  className,
+}: VehicleRankCardProps) {
   const title = [build.make, build.model].filter(Boolean).join(" ");
   const accent = rankAccent(build.rank);
 
   return (
     <Link
-      href={`/v/${build.publicSlug}?showcase=1`}
+      href={buildDiscoverShowcaseHref(build.publicSlug, entdeckenReturnHref)}
       className={cn(
         "group flex w-[min(72vw,17rem)] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border bg-gradient-to-b backdrop-blur-md",
         "border-t border-white/[0.1] shadow-[0_12px_40px_rgba(0,0,0,0.35)]",
