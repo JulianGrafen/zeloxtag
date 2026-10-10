@@ -146,6 +146,7 @@ function silhouetteProxyCacheBust(url: string | null | undefined): string | null
 }
 
 type DashboardMode = "dashboard" | "pick-scan" | "scanner";
+type ScanBackTarget = "dashboard" | "pick-scan";
 
 interface TagDashboardShellProps {
   vehicle: Vehicle;
@@ -296,6 +297,9 @@ export function TagDashboardShell({
   const [scanType, setScanType] = useState<ScanType | null>(() =>
     openScannerDirectly && allowedInitial ? allowedInitial : null,
   );
+  const [scanBackTarget, setScanBackTarget] = useState<ScanBackTarget>(() =>
+    openScannerDirectly ? "dashboard" : "pick-scan",
+  );
   const [silhouettePromptVisible, setSilhouettePromptVisible] = useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
@@ -431,19 +435,8 @@ export function TagDashboardShell({
   }
 
   function handleOpenScanner() {
-    if (
-      !membershipActive &&
-      localFreeInvoiceScanRemaining <= 0 &&
-      localFreeAbeScanRemaining <= 0
-    ) {
-      openPaywall(
-        FEATURE.SCAN_AI_RECEIPT,
-        "free_scan_exhausted",
-      );
-      return;
-    }
-    setScanType(null);
-    setMode("pick-scan");
+    setScanBackTarget("dashboard");
+    handleScanTypeSelect("invoice");
   }
 
   const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
@@ -766,6 +759,11 @@ export function TagDashboardShell({
           vehicleSurfaceScope={vehicleSurfaceScope}
           backLabel="Dashboard"
           onBack={() => {
+            setScanType(null);
+            if (scanBackTarget === "dashboard") {
+              setMode("dashboard");
+              return;
+            }
             setMode("pick-scan");
           }}
           scanType={scanType}
