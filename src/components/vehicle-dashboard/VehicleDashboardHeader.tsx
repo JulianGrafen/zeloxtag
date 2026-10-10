@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { bumpSilhouetteCacheUrl } from "@/lib/vehicles/prefetch-silhouette-image";
+import { SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE } from "@/lib/vehicles/silhouette-constants";
 import { isOwnerSilhouetteSrc } from "@/lib/vehicles/silhouette-display-url";
 
 import { dashboardHeroShellClassName } from "./dashboard-menu-styles";
@@ -40,12 +41,35 @@ function resolveInitialHeroSrc(
   previewFallback?: string,
   catalogFallback?: string,
 ): string | null {
-  return (
+  const raw =
     vehicleImage?.trim() ||
     previewFallback?.trim() ||
     catalogFallback?.trim() ||
-    null
-  );
+    null;
+  return raw ? withDashboardSilhouetteWidth(raw) : null;
+}
+
+/** Bump legacy `w=340` proxy URLs to the current dashboard hero cap. */
+function withDashboardSilhouetteWidth(src: string): string {
+  if (!src.startsWith("/api/vehicle/silhouette/")) {
+    return src;
+  }
+  try {
+    const parsed = new URL(src, "http://zeloxtag.local");
+    const current = Number.parseInt(parsed.searchParams.get("w") ?? "", 10);
+    const target = SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE;
+    if (!Number.isFinite(current) || current < target) {
+      parsed.searchParams.set("w", String(target));
+      return `${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    return src;
+  }
+  return src;
+}
+
+function isCatalogCutoutSrc(src: string | null): boolean {
+  return Boolean(src?.includes("/api/vehicle/catalog/"));
 }
 
 export function VehicleDashboardHeader({
@@ -55,7 +79,7 @@ export function VehicleDashboardHeader({
   vehicleImageFallback,
   vehicleImagePreviewFallback,
   vehicleImageAlt,
-  vehicleImageFrameless: _vehicleImageFrameless = false,
+  vehicleImageFrameless = false,
   onSilhouetteProxyLoad,
 }: VehicleDashboardHeaderProps) {
   const { name, year } = parseVehicleHeroLabel(vehicleModel);
@@ -133,13 +157,21 @@ export function VehicleDashboardHeader({
     }
   }
 
-  const showPhoto = Boolean(heroSrc && heroVisible);
+  const displaySrc = heroSrc ? withDashboardSilhouetteWidth(heroSrc) : null;
+  const isCutoutHero =
+    vehicleImageFrameless || isCatalogCutoutSrc(displaySrc);
+  const isOwnerPhoto =
+    Boolean(displaySrc) &&
+    !isCutoutHero &&
+    isOwnerSilhouetteSrc(displaySrc);
+  const showPhoto = Boolean(displaySrc && heroVisible);
 
   return (
     <header
       className={cn(
         dashboardHeroShellClassName,
         "vd-anim-header relative z-40 min-h-[11rem] shrink-0 overflow-hidden sm:min-h-[12rem]",
+        isCutoutHero && "min-h-[12rem] sm:min-h-[13rem]",
       )}
       data-tour="dashboard-header"
     >
@@ -147,19 +179,38 @@ export function VehicleDashboardHeader({
         <div aria-hidden className="pointer-events-none absolute inset-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            key={heroSrc}
-            src={heroSrc!}
+            key={displaySrc}
+            src={displaySrc!}
             alt=""
-            className="absolute inset-0 h-full w-full scale-105 object-cover object-[center_30%]"
+            decoding="async"
+            fetchPriority="high"
+            className={cn(
+              "absolute left-0 right-0 mx-auto w-full max-w-none",
+              isCutoutHero
+                ? "bottom-0 h-[128%] max-w-[112%] object-contain object-bottom drop-shadow-[0_18px_42px_rgba(0,0,0,0.55)]"
+                : cn(
+                    "inset-0 h-full object-cover",
+                    isOwnerPhoto
+                      ? "object-[50%_62%]"
+                      : "object-[50%_55%]",
+                  ),
+            )}
             onLoad={handleHeroLoad}
             onError={handleHeroError}
           />
           <div
-            className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-zinc-950/15"
+            className={cn(
+              "absolute inset-0 bg-gradient-to-t from-zinc-950",
+              isCutoutHero
+                ? "via-zinc-950/35 to-transparent"
+                : "via-zinc-950/50 to-zinc-950/5",
+            )}
           />
-          <div
-            className="absolute inset-0 bg-gradient-to-r from-zinc-950/80 via-zinc-950/25 to-transparent"
-          />
+          {!isCutoutHero ? (
+            <div
+              className="absolute inset-0 bg-gradient-to-r from-zinc-950/65 via-zinc-950/10 to-transparent"
+            />
+          ) : null}
         </div>
       ) : (
         <div

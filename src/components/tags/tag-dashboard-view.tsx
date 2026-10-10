@@ -194,7 +194,8 @@ export function TagDashboardView({
     vehicleImagePreviewFallback: demoShowcase
       ? undefined
       : previewFallbackUrl ?? undefined,
-    vehicleImageFrameless: demoShowcase,
+    vehicleImageFrameless:
+      demoShowcase || (!hasOwnerSilhouette && Boolean(catalogCutout?.src)),
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
     lastOilChange: lastOilChange ?? undefined,
     nextInspection: deriveNextInspectionFromDocuments(documents),

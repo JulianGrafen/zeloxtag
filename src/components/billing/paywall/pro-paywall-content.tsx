@@ -1,6 +1,9 @@
 "use client";
 
 import { BenefitList } from "@/components/billing/paywall/benefit-list";
+import { PaywallAnimatedGoalVisual } from "@/components/billing/paywall/paywall-animated-goal-visual";
+import { PaywallBrandRow } from "@/components/billing/paywall/paywall-brand-row";
+import { PaywallFeatureRows } from "@/components/billing/paywall/paywall-feature-rows";
 import { PaywallModalFold } from "@/components/billing/paywall/paywall-modal-fold";
 import { PaywallResaleValueChart } from "@/components/billing/paywall/paywall-resale-value-chart";
 import { PricingCards } from "@/components/billing/paywall/pricing-cards";
@@ -69,72 +72,100 @@ export function ProPaywallContent({
         isModal ? "h-full min-h-0 flex-1" : "gap-5",
       )}
     >
-      <div className={cn("shrink-0", isModal ? "px-4 pt-6" : "")}>
-        <div className={cn("vd-anim-header w-full", contentWidth)}>
-          {showConversionExtras && variant === "free_scan_exhausted" ? (
-            <p className="inline-flex rounded-full bg-[color:var(--paywall-kicker-bg)] px-3 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-[color:var(--paywall-kicker-text)] uppercase">
-              {PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER}
-            </p>
-          ) : null}
+      {!isModal ? (
+        <div className={cn("shrink-0", "")}>
+          <div className={cn("vd-anim-header w-full", contentWidth)}>
+            {showConversionExtras && variant === "free_scan_exhausted" ? (
+              <p className="inline-flex rounded-full bg-[color:var(--paywall-kicker-bg)] px-3 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-[color:var(--paywall-kicker-text)] uppercase">
+                {PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER}
+              </p>
+            ) : null}
 
-          <h2
-            id={headlineId}
-            className={cn(
-              "font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]",
-              variant === "free_scan_exhausted" ? "mt-2" : "",
-              isModal
-                ? "text-[1.05rem] leading-snug"
-                : isStacked
+            <h2
+              id={headlineId}
+              className={cn(
+                "font-[family-name:var(--font-display)] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]",
+                variant === "free_scan_exhausted" ? "mt-2" : "",
+                isStacked
                   ? "text-[1.15rem] leading-snug"
                   : "text-[1.15rem] leading-snug sm:text-[1.25rem]",
-            )}
-          >
-            {headline}
-          </h2>
+              )}
+            >
+              {headline}
+            </h2>
 
-          {showConversionExtras && isStacked ? (
-            <p className="mt-2.5 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
-              {PRO_PAYWALL_MODAL_SUBLINE}
-            </p>
-          ) : null}
+            {showConversionExtras && isStacked ? (
+              <p className="mt-2.5 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
+                {PRO_PAYWALL_MODAL_SUBLINE}
+              </p>
+            ) : null}
 
-          {statusMessage ? <div className="mt-2.5">{statusMessage}</div> : null}
+            {statusMessage ? <div className="mt-2.5">{statusMessage}</div> : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {showConversionExtras ? (
         isModal ? (
           <div
             className={cn(
-              "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pt-2 pb-2",
+              "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-2",
               "[-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]",
-              contentWidth,
             )}
             aria-label="Pro-Angebot scrollen"
           >
-            <PaywallModalFold
-              visualKind={visualKind}
-              visualAriaLabel={visualAriaLabel}
-              benefits={
-                <BenefitList
-                  compact={compact}
-                  items={benefits}
-                  highlightFirst={modalPersonalized}
-                />
+            <PaywallAnimatedGoalVisual
+              kind={visualKind}
+              ariaLabel={
+                visualAriaLabel ??
+                "Fahrzeugwert beim Verkauf: mit ZeloxTag höher als ohne Dokumentation"
               }
-              pricing={
-                <PricingCards
-                  interval={interval}
-                  onIntervalChange={onIntervalChange}
-                  showAnnualPlan={showAnnualPlan}
-                  compact={compact}
-                  className="!mt-0"
-                />
-              }
-              timeline={<TrialTimeline compact={compact} />}
-              bottomNote={valueFootnote}
-              footer={belowFoldFooter}
             />
+
+            <div className={cn("space-y-4 px-4 pt-4", contentWidth)}>
+              {variant === "free_scan_exhausted" ? (
+                <p className="text-center">
+                  <span className="inline-flex rounded-full bg-[color:var(--paywall-kicker-bg)] px-3 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-[color:var(--paywall-kicker-text)] uppercase">
+                    {PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER}
+                  </span>
+                </p>
+              ) : null}
+
+              <PaywallBrandRow />
+
+              <div className="vd-anim-header space-y-2 text-center">
+                <h2
+                  id={headlineId}
+                  className="font-[family-name:var(--font-display)] text-[1.35rem] font-semibold leading-tight tracking-[-0.03em] text-[color:var(--vd-text)] sm:text-[1.45rem]"
+                >
+                  {headline}
+                </h2>
+                <p className="text-[0.84rem] leading-relaxed text-[color:var(--vd-muted)]">
+                  {PRO_PAYWALL_MODAL_SUBLINE}
+                </p>
+                {statusMessage ? <div className="pt-1">{statusMessage}</div> : null}
+              </div>
+
+              <PaywallFeatureRows
+                items={benefits}
+                highlightFirst={modalPersonalized}
+              />
+
+              <PaywallModalFold
+                pricing={
+                  <PricingCards
+                    interval={interval}
+                    onIntervalChange={onIntervalChange}
+                    showAnnualPlan={showAnnualPlan}
+                    compact={compact}
+                    className="!mt-0"
+                  />
+                }
+                timeline={<TrialTimeline compact={compact} />}
+                bottomNote={valueFootnote}
+                footer={belowFoldFooter}
+              />
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-5">

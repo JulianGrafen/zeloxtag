@@ -2,45 +2,29 @@
 
 import type { ReactNode } from "react";
 
-import { PaywallGoalVisual } from "@/components/billing/paywall/paywall-goal-visual";
-import type { PaywallVisualKind } from "@/lib/billing/paywall-personalization";
 import { cn } from "@/lib/utils";
 
 type PaywallModalFoldProps = {
-  benefits: ReactNode;
+  benefits?: ReactNode;
   pricing: ReactNode;
   timeline: ReactNode;
-  visualKind?: PaywallVisualKind;
-  visualAriaLabel?: string;
   bottomNote?: string;
   footer?: ReactNode;
   className?: string;
 };
 
-/** Modal paywall body — scroll handled by parent in ProPaywallContent. */
+/** Modal paywall fold — pricing & trial below hero copy; scroll in parent. */
 export function PaywallModalFold({
   benefits,
   pricing,
   timeline,
-  visualKind = "resale_chart",
-  visualAriaLabel,
   bottomNote,
   footer,
   className,
 }: PaywallModalFoldProps) {
   return (
     <div className={cn("flex flex-col gap-2.5", className)}>
-      <div className="pb-2">{benefits}</div>
-
-      <PaywallGoalVisual
-        kind={visualKind}
-        ariaLabel={
-          visualAriaLabel ??
-          "Fahrzeugwert beim Verkauf: mit ZeloxTag höher als ohne Dokumentation"
-        }
-        compact
-        className="shrink-0"
-      />
+      {benefits ? <div className="pb-2">{benefits}</div> : null}
 
       <div className="shrink-0 pt-1">{pricing}</div>
       <div className="shrink-0">{timeline}</div>

@@ -137,7 +137,7 @@ export function ProPaywallModal({
 
           <motion.div
             {...sheetMotion}
-            className="relative z-10 flex h-[min(50dvh,calc(50vh-env(safe-area-inset-bottom)))] max-h-[50dvh] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[1.5rem] border border-b-0 border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)]"
+            className="relative z-10 flex h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] max-h-[92dvh] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[1.5rem] border border-b-0 border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div

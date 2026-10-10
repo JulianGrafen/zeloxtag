@@ -1,21 +1,18 @@
 import { Check } from "lucide-react";
 
+import { parsePaywallBenefit } from "@/components/billing/paywall/paywall-benefit-parse";
 import { PRO_PAYWALL_MODAL_BENEFITS } from "@/lib/billing/pro-plan";
 import { cn } from "@/lib/utils";
 
 function BenefitText({ benefit }: { benefit: string }) {
-  const colonIndex = benefit.indexOf(":");
-  if (colonIndex === -1) {
-    return <span>{benefit}</span>;
+  const { title, description } = parsePaywallBenefit(benefit);
+  if (!description) {
+    return <span>{title}</span>;
   }
-
-  const title = benefit.slice(0, colonIndex + 1);
-  const description = benefit.slice(colonIndex + 1);
 
   return (
     <span>
-      <span className="font-semibold">{title}</span>
-      {description}
+      <span className="font-semibold">{title}:</span> {description}
     </span>
   );
 }

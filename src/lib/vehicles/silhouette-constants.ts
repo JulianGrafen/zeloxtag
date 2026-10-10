@@ -19,8 +19,8 @@ export function silhouetteObjectPath(vehicleId: string): string {
 /** Hard server-side cap for inbound photos (pre-compression). */
 export const MAX_SILHOUETTE_UPLOAD_BYTES = 8 * 1024 * 1024;
 
-/** Dashboard header thumbnail (~170px CSS, 2× retina). */
-export const SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE = 340;
+/** Dashboard hero — full tile width at ~2–3× retina (proxy `w` cap). */
+export const SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE = 960;
 
 /** Build-Swipe card (~max 512px wide, 9:16). */
 export const SILHOUETTE_SHOWCASE_SWIPE_MAX_EDGE = 520;
