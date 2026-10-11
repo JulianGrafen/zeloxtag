@@ -76,7 +76,7 @@ export function PaywallCopyBlock({
   return (
     <div
       className={cn(
-        "vd-anim-header paywall-copy space-y-2",
+        "paywall-copy space-y-2",
         centered ? "text-center" : "text-left",
       )}
     >

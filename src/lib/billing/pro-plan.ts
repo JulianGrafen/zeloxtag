@@ -48,9 +48,9 @@ export const PRO_PAYWALL_MODAL_MICROCOPY = "Jederzeit kündbar";
 export const PRO_PAYWALL_DISMISS_LABEL = "Mit ZeloxTag Free fortfahren";
 export const PRO_PAYWALL_BRAND_BADGE = "ZELOXTAG PRO";
 export const PRO_PAYWALL_CONVERSION_SUBLINE =
-  "Keine verlorenen ABEs — jeder Cent deines Umbaus felsenfest belegt.";
+  "Keine verlorenen Rechnungen, jeder Cent deines Umbaus felsenfest belegt.";
 export const PRO_PAYWALL_CONVERSION_FOOTNOTE =
-  "Kostet im Monat weniger als ein Liter Motoröl — sichert aber Umbauten im Wert von tausenden Euro ab.";
+  "Kostet im Monat weniger als ein Liter Motoröl und sichert Umbauten im Wert von tausenden Euro ab.";
 export const PRO_PAYWALL_ANNUAL_BEST_DEAL_LABEL = "Bester Deal";
 export const PRO_MONTHLY_CARD_SUBLINE =
   "Volle Flexibilität. Jederzeit mit einem Klick kündbar.";
@@ -62,7 +62,7 @@ export const PRO_PAYWALL_VALUE_FOOTNOTE =
 export const PRO_PAYWALL_CONVERSION_BENEFITS = [
   "TÜV- & Gutachten-Tresor: Alle ABEs, Teilegutachten und § 21-Eintragungen sofort griffbereit.",
   "Showcase auf Treffen: Mod-Liste, Leistungsdiagramm und Soundfiles live per Scan am Motorraum teilbar.",
-  "Build-Wert & Exposé: Rechnungen per KI scannen — erzeugt mit einem Klick das Wertgutachten für Versicherung und Verkauf.",
+  "Build-Wert & Exposé: Rechnungen per KI scannen und mit einem Klick das Wertgutachten für Versicherung und Verkauf erzeugen.",
 ] as const;
 
 export const PRO_PAYWALL_MODAL_BENEFITS = PRO_PAYWALL_CONVERSION_BENEFITS;
@@ -111,7 +111,7 @@ export const PRO_PAYWALL_TRIAL_TIMELINE: readonly ProPaywallTimelineNode[] = [
   },
   {
     icon: "shield",
-    text: "Tag 14: Erstmalige Abrechnung — vorher jederzeit mit 1 Klick kündbar",
+    text: "Tag 14: Erstmalige Abrechnung. Vorher jederzeit mit 1 Klick kündbar",
   },
 ] as const;
 

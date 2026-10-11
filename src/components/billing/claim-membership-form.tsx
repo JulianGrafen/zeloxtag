@@ -49,7 +49,7 @@ export function ClaimMembershipForm({
       </p>
       <p className="text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
         Die E-Mail, mit der du im Shop bezahlt hast. Stimmt sie mit dem Login
-        überein, verknüpfen wir sofort — sonst geht ein Link an genau diese Mail.
+        überein, verknüpfen wir sofort. Sonst geht ein Link an genau diese Mail.
       </p>
       <Input
         name="shopifyEmail"

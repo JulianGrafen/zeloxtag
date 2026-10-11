@@ -109,7 +109,7 @@ export async function MembershipStatusCard({
           ) : null}
           {checkoutState === "success" ? (
             <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
-              Zahlung eingegangen — das Abo wird in wenigen Sekunden freigeschaltet.
+              Zahlung eingegangen. Das Abo wird in wenigen Sekunden freigeschaltet.
             </p>
           ) : null}
           {checkoutState === "cancel" ? (
@@ -124,7 +124,7 @@ export async function MembershipStatusCard({
           ) : null}
           {membership?.status === "past_due" ? (
             <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Zahlung fehlgeschlagen — bitte in Stripe prüfen oder erneut abschließen.
+              Zahlung fehlgeschlagen. Bitte in Stripe prüfen oder erneut abschließen.
             </p>
           ) : membership?.status === "canceled" ? (
             <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">

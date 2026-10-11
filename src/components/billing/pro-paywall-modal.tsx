@@ -29,7 +29,10 @@ import {
 } from "@/lib/permissions/feature-access";
 import { cn } from "@/lib/utils";
 
-const SHEET_EASE = [0.22, 1, 0.36, 1] as const;
+/** iOS-like sheet: ease-out, no overshoot */
+const PAYWALL_EASE = [0.25, 0.1, 0.25, 1] as const;
+const PAYWALL_SHEET_MS = 0.32;
+const PAYWALL_SCRIM_MS = 0.22;
 
 export function ProPaywallModal({
   open,
@@ -79,7 +82,7 @@ export function ProPaywallModal({
   }, [open, feature]);
 
   const personalization = useMemo(() => {
-    if (!open || !feature) return null;
+    if (!feature) return null;
     const goal = resolvePaywallGoal({
       primaryGoal: readPrimaryGoal(),
       feature,
@@ -90,7 +93,7 @@ export function ProPaywallModal({
       variant,
       vehicleLabel: triggerContext?.vehicleLabel,
     });
-  }, [open, feature, variant, triggerContext]);
+  }, [feature, variant, triggerContext]);
 
   const aboHref = cloudAboHref(tagUuid);
   const successPath = `/v/${tagUuid}`;
@@ -121,13 +124,18 @@ export function ProPaywallModal({
         initial: { y: "100%" },
         animate: { y: 0 },
         exit: { y: "100%" },
-        transition: { duration: 0.38, ease: SHEET_EASE },
+        transition: { duration: PAYWALL_SHEET_MS, ease: PAYWALL_EASE },
       };
+
+  if (!feature || !personalization) {
+    return null;
+  }
 
   return (
     <AnimatePresence>
-      {open && feature && personalization ? (
+      {open ? (
         <motion.div
+          key="pro-paywall-layer"
           className="fixed inset-0 z-[80] flex items-end justify-center bg-[color:var(--paywall-modal-scrim)] backdrop-blur-md"
           role="dialog"
           aria-modal="true"
@@ -135,7 +143,7 @@ export function ProPaywallModal({
           initial={reduceMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.22 }}
+          transition={{ duration: PAYWALL_SCRIM_MS, ease: PAYWALL_EASE }}
         >
           <button
             type="button"
@@ -148,7 +156,7 @@ export function ProPaywallModal({
             {...sheetMotion}
             className={cn(
               PAYWALL_APPLE_CLASS,
-              "paywall-sheet relative z-10 flex h-[50dvh] max-h-[50dvh] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[20px] border border-b-0 border-[color:var(--paywall-grouped-separator)] bg-[color:var(--paywall-sheet-bg)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)]",
+              "paywall-sheet relative z-10 flex h-[75dvh] max-h-[75dvh] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[20px] border border-b-0 border-[color:var(--paywall-grouped-separator)] bg-[color:var(--paywall-sheet-bg)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)]",
             )}
             onClick={(event) => event.stopPropagation()}
           >
@@ -225,3 +233,4 @@ export function ProPaywallModal({
     </AnimatePresence>
   );
 }
+

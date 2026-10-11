@@ -149,6 +149,24 @@ function silhouetteProxyCacheBust(url: string | null | undefined): string | null
 type DashboardMode = "dashboard" | "pick-scan" | "scanner";
 type ScanBackTarget = "dashboard" | "pick-scan";
 
+function shouldPaywallTakeoverOnEntry(input: {
+  showFreeScanWelcome: boolean;
+  forceScanPaywall: boolean;
+  canWrite: boolean;
+  canAiScan: boolean;
+  initialMode: DashboardMode;
+}): boolean {
+  if (input.showFreeScanWelcome || input.forceScanPaywall) return true;
+  if (
+    input.canWrite &&
+    !input.canAiScan &&
+    (input.initialMode === "pick-scan" || input.initialMode === "scanner")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 interface TagDashboardShellProps {
   vehicle: Vehicle;
   documents: Document[];
@@ -226,6 +244,11 @@ export function TagDashboardShell({
     freeInvoiceScanRemaining,
     freeAbeScanRemaining,
   );
+  const paywallVehicleLabelForInit = formatPaywallVehicleLabel(
+    vehicle.make,
+    vehicle.model,
+    vehicle.year,
+  );
   const parsedInitial = parseScanType(initialScanType ?? undefined);
   const allowedInitial =
     parsedInitial &&
@@ -273,10 +296,40 @@ export function TagDashboardShell({
   const [paywallTriggerContext, setPaywallTriggerContext] = useState<
     PaywallTriggerContext | undefined
   >(() => {
-    if (showFreeScanWelcome) return { goalOverride: "werterhalt" };
-    if (allowedInitial === "invoice") return { goalOverride: "werterhalt" };
-    return undefined;
+    if (showFreeScanWelcome) {
+      return {
+        goalOverride: "werterhalt",
+        vehicleLabel: paywallVehicleLabelForInit,
+      };
+    }
+    if (forceScanPaywall) {
+      const goalOverride = allowedInitial
+        ? paywallGoalOverrideForScanType(allowedInitial)
+        : undefined;
+      return {
+        vehicleLabel: paywallVehicleLabelForInit,
+        ...(goalOverride ? { goalOverride } : {}),
+      };
+    }
+    if (allowedInitial === "invoice") {
+      return {
+        goalOverride: "werterhalt",
+        vehicleLabel: paywallVehicleLabelForInit,
+      };
+    }
+    return paywallVehicleLabelForInit
+      ? { vehicleLabel: paywallVehicleLabelForInit }
+      : undefined;
   });
+  const [paywallTakeoverActive, setPaywallTakeoverActive] = useState(() =>
+    shouldPaywallTakeoverOnEntry({
+      showFreeScanWelcome,
+      forceScanPaywall,
+      canWrite,
+      canAiScan,
+      initialMode,
+    }),
+  );
   const [paywallVariant, setPaywallVariant] = useState<PaywallVariant>(() => {
     if (showFreeScanWelcome || forceScanPaywall) {
       return "free_scan_exhausted";
@@ -386,8 +439,21 @@ export function TagDashboardShell({
   function closePaywall() {
     setPaywallFeature(null);
     setPaywallTriggerContext(undefined);
+    setPaywallTakeoverActive(false);
     clearFreeScanWelcomeParam();
   }
+
+  const paywallModal = (
+    <ProPaywallModal
+      open={Boolean(paywallFeature)}
+      feature={paywallFeature}
+      variant={paywallVariant}
+      triggerContext={paywallTriggerContext}
+      tagUuid={tagUuid}
+      isOwner={isOwner}
+      onClose={closePaywall}
+    />
+  );
 
   function paywallContextForScanType(
     type: ScanType,
@@ -656,7 +722,7 @@ export function TagDashboardShell({
   }, [vehicle.id]);
 
   useEffect(() => {
-    if (mode !== "dashboard" || !canWrite) {
+    if (paywallTakeoverActive || mode !== "dashboard" || !canWrite) {
       clearPromptTimers();
       resetDashboardPromptOrchestrator();
       setSilhouettePromptVisible(false);
@@ -689,6 +755,7 @@ export function TagDashboardShell({
       resetDashboardPromptOrchestrator();
     };
   }, [
+    paywallTakeoverActive,
     mode,
     canWrite,
     forceTour,
@@ -699,6 +766,7 @@ export function TagDashboardShell({
 
   useEffect(() => {
     if (
+      paywallTakeoverActive ||
       !isOwner ||
       hasSilhouette ||
       demoShowcase ||
@@ -708,6 +776,7 @@ export function TagDashboardShell({
       setSilhouettePromptVisible(false);
     }
   }, [
+    paywallTakeoverActive,
     isOwner,
     hasSilhouette,
     demoShowcase,
@@ -739,15 +808,7 @@ export function TagDashboardShell({
           }}
           onSelect={handleScanTypeSelect}
         />
-        <ProPaywallModal
-          open={Boolean(paywallFeature)}
-          feature={paywallFeature}
-          variant={paywallVariant}
-          triggerContext={paywallTriggerContext}
-          tagUuid={tagUuid}
-          isOwner={isOwner}
-          onClose={closePaywall}
-        />
+        {paywallModal}
       </>
     );
   }
@@ -786,16 +847,14 @@ export function TagDashboardShell({
                 localFreeAbeScanRemaining > 0))
           }
         />
-        <ProPaywallModal
-          open={Boolean(paywallFeature)}
-          feature={paywallFeature}
-          variant={paywallVariant}
-          triggerContext={paywallTriggerContext}
-          tagUuid={tagUuid}
-          isOwner={isOwner}
-          onClose={closePaywall}
-        />
+        {paywallModal}
       </>
+    );
+  }
+
+  if (paywallTakeoverActive && paywallFeature) {
+    return (
+      <div className="min-h-dvh bg-[color:var(--vd-surface)]">{paywallModal}</div>
     );
   }
 
@@ -876,7 +935,7 @@ export function TagDashboardShell({
                 vehicleId={vehicle.id}
                 tagUuid={tagUuid}
                 title="Bilder hinzufügen"
-                description="Lade ein Foto deines Autos hoch — es erscheint oben im Dashboard."
+                description="Lade ein Foto deines Autos hoch. Es erscheint oben im Dashboard."
                 onUploaded={(result) => {
                   handleSilhouetteUploaded(result);
                   dismissSilhouettePrompt(true);
@@ -902,7 +961,7 @@ export function TagDashboardShell({
                   vehicleId={vehicle.id}
                   tagUuid={tagUuid}
                   title="Fahrzeugfoto ändern"
-                  description="Neues Foto aus Galerie oder Kamera — es erscheint oben rechts in deinem Dashboard."
+                  description="Neues Foto aus Galerie oder Kamera. Es erscheint oben rechts in deinem Dashboard."
                   skipLabel="Schließen"
                   onDismiss={closeSilhouetteEditor}
                   onUploaded={(result) => {
@@ -928,15 +987,7 @@ export function TagDashboardShell({
         onOpenChange={handleTourOpenChange}
         onSettled={handleTourSettled}
       />
-      <ProPaywallModal
-        open={Boolean(paywallFeature)}
-        feature={paywallFeature}
-        variant={paywallVariant}
-        triggerContext={paywallTriggerContext}
-        tagUuid={tagUuid}
-        isOwner={isOwner}
-        onClose={closePaywall}
-      />
+      {paywallModal}
     </>
   );
 }

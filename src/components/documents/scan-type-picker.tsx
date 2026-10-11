@@ -144,7 +144,7 @@ export function ScanTypePicker({
         <p className="claim-copy">
           {role === "contributor"
             ? `Vor jedem Scan: Wähle Service oder Rechnung für ${vehicleLabel}.`
-            : `Vor jedem Scan: Wähle den Dokumenttyp — die Extraktion nutzt dann die passenden Felder für ${vehicleLabel}.`}
+            : `Vor jedem Scan: Wähle den Dokumenttyp. Die Extraktion nutzt dann die passenden Felder für ${vehicleLabel}.`}
         </p>
       </header>
 
@@ -154,7 +154,7 @@ export function ScanTypePicker({
           {showInvoiceFreeHint ? "1× Rechnung/Service" : null}
           {showInvoiceFreeHint && showAbeFreeHint ? " · " : null}
           {showAbeFreeHint ? "1× ABE" : null}
-          {" — "}danach Pro für TÜV, Gutachten und weitere Scans.
+          {". "}Danach Pro für TÜV, Gutachten und weitere Scans.
         </p>
       ) : null}
 

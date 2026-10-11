@@ -137,19 +137,19 @@ export function paywallBody(
   switch (feature) {
     case FEATURE.SCAN_AI_RECEIPT:
       if (variant === "free_scan_exhausted") {
-        return `Du hast deine kostenlosen KI-Scans genutzt (${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung, ${FREE_AI_ABE_SCAN_LIMIT}× ABE). Für weitere Belege, ABEs und die volle Akte: ZeloxTag Pro — die ersten 14 Tage sind kostenlos.`;
+        return `Du hast deine kostenlosen KI-Scans genutzt (${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung, ${FREE_AI_ABE_SCAN_LIMIT}× ABE). Für weitere Belege, ABEs und die volle Akte: ZeloxTag Pro. Die ersten 14 Tage sind kostenlos.`;
       }
-      return `Belege und ABEs per KI auslesen — mit ZeloxTag Pro. Oder teste kostenlos (${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung, ${FREE_AI_ABE_SCAN_LIMIT}× ABE). Die ersten 14 Tage Pro sind ebenfalls kostenlos.`;
+      return `Belege und ABEs per KI auslesen mit ZeloxTag Pro. Oder teste kostenlos (${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung, ${FREE_AI_ABE_SCAN_LIMIT}× ABE). Die ersten 14 Tage Pro sind ebenfalls kostenlos.`;
     case FEATURE.GENERATE_EXPOSE:
       return "Das PDF-Verkaufsdossier gibt’s mit Pro. Deine digitale Visitenkarte bleibt kostenlos.";
     case FEATURE.INVITE_SCHRAUBER:
-      return "Werkstätten ohne Passwort mitarbeiten lassen — mit ZeloxTag Pro.";
+      return "Werkstätten ohne Passwort mitarbeiten lassen mit ZeloxTag Pro.";
     case FEATURE.DOCUMENT_VAULT:
-      return "Rechnungen, ABEs und TÜV per KI scannen und in der Cloud speichern — mit ZeloxTag Pro. Einsehen und manuelle Einträge bleiben kostenlos.";
+      return "Rechnungen, ABEs und TÜV per KI scannen und in der Cloud speichern mit ZeloxTag Pro. Einsehen und manuelle Einträge bleiben kostenlos.";
     case FEATURE.VIEW_DOCUMENT_VAULT:
-      return "Deine Akte mit manuellen Einträgen und gespeicherten Belegen — kostenlos einsehbar.";
+      return "Deine Akte mit manuellen Einträgen und gespeicherten Belegen, kostenlos einsehbar.";
     case FEATURE.USE_BUILD_PLANNER_AI:
-      return "Teile, Links oder Fotos per KI in Build-Schritte und Budget umwandeln — mit ZeloxTag Pro. Manuelles Planen bleibt kostenlos.";
+      return "Teile, Links oder Fotos per KI in Build-Schritte und Budget umwandeln mit ZeloxTag Pro. Manuelles Planen bleibt kostenlos.";
     default:
       return "Diese Funktion gehört zu ZeloxTag Pro. Die ersten 14 Tage sind kostenlos.";
   }

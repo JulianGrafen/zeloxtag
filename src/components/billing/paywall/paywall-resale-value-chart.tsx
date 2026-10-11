@@ -1,13 +1,15 @@
 import { cn } from "@/lib/utils";
 
 const VIEW_W = 280;
-const VIEW_H = 132;
-const PLOT = { left: 28, right: 268, top: 18, bottom: 96 };
+const VIEW_H = 100;
+const PLOT = { left: 8, right: 272, top: 12, bottom: 72 };
 
-/** Speak-style comparison: flat “Ohne” vs rising “ZeloxTag” toward resale. */
+/**
+ * Ruhiger Vergleich: dokumentierter vs. lückenhafter Werthalt — ohne Badge oder Achsen-Deko.
+ */
 export function PaywallResaleValueChart({
   className,
-  ariaLabel = "Fahrzeugwert beim Verkauf: mit ZeloxTag höher als ohne Dokumentation",
+  ariaLabel = "Fahrzeugwert beim Verkauf: mit lückenloser Dokumentation höher als ohne Belege",
 }: {
   compact?: boolean;
   className?: string;
@@ -17,116 +19,72 @@ export function PaywallResaleValueChart({
   const x1 = PLOT.right;
   const yBase = PLOT.bottom;
 
-  const ohnePath = `M ${x0} ${yBase - 4} Q ${(x0 + x1) / 2} ${yBase - 10} ${x1} ${yBase - 14}`;
-  const zeloxPath = `M ${x0} ${yBase - 4} C ${x0 + 52} ${yBase - 2}, ${x0 + 120} ${PLOT.top + 38}, ${x1} ${PLOT.top + 8}`;
+  const ohnePath = `M ${x0} ${yBase - 6} L ${x1} ${yBase - 10}`;
+  const zeloxPath = `M ${x0} ${yBase - 6} C ${x0 + 70} ${yBase - 8}, ${x0 + 150} ${PLOT.top + 28}, ${x1} ${PLOT.top + 14}`;
+  const zeloxArea = `${zeloxPath} L ${x1} ${yBase} L ${x0} ${yBase} Z`;
 
   return (
-    <figure
-      className={cn("px-0 py-0", className)}
-      aria-label={ariaLabel}
-    >
+    <figure className={cn("px-1 py-2", className)} aria-label={ariaLabel}>
+      <p
+        className="mx-auto mb-1.5 max-w-[18rem] text-left text-[11px] font-medium tracking-[-0.01em] text-[color:var(--vd-muted)]"
+      >
+        Fahrzeugwert
+      </p>
       <svg
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        className="mx-auto block h-auto w-full max-w-[20rem]"
+        className="mx-auto block h-auto w-full max-w-[18rem]"
         role="img"
         aria-hidden
       >
-        <text
-          x={10}
-          y={(PLOT.top + PLOT.bottom) / 2}
-          textAnchor="middle"
-          transform={`rotate(-90, 10, ${(PLOT.top + PLOT.bottom) / 2})`}
-          className="fill-[color:var(--paywall-chart-muted-label)] text-[9px] font-medium"
-          style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif" }}
-        >
-          Fahrzeugwert
-        </text>
-
-        {/* Y axis */}
         <line
-          x1={PLOT.left}
-          y1={PLOT.top}
-          x2={PLOT.left}
-          y2={PLOT.bottom}
+          x1={x0}
+          y1={yBase}
+          x2={x1}
+          y2={yBase}
           className="stroke-[color:var(--paywall-chart-axis)]"
-          strokeWidth="1.5"
+          strokeWidth="1"
         />
-        {/* X axis */}
-        <line
-          x1={PLOT.left}
-          y1={PLOT.bottom}
-          x2={PLOT.right}
-          y2={PLOT.bottom}
-          className="stroke-[color:var(--paywall-chart-axis)]"
-          strokeWidth="1.5"
+
+        <path
+          d={zeloxArea}
+          className="fill-[color:var(--paywall-chart-accent)] opacity-[0.08]"
         />
 
         <path
           d={ohnePath}
           fill="none"
           className="stroke-[color:var(--paywall-chart-muted)]"
-          strokeWidth="2"
+          strokeWidth="1.5"
           strokeLinecap="round"
+          strokeDasharray="4 3"
         />
         <path
           d={zeloxPath}
           fill="none"
           className="stroke-[color:var(--paywall-chart-accent)]"
-          strokeWidth="3.5"
+          strokeWidth="2"
           strokeLinecap="round"
         />
-
-        {/* End markers */}
-        <circle
-          cx={x1}
-          cy={yBase - 14}
-          r="3"
-          className="fill-[color:var(--paywall-chart-muted)]"
-        />
-        <circle
-          cx={x1}
-          cy={PLOT.top + 8}
-          r="4"
-          className="fill-[color:var(--paywall-chart-accent)]"
-        />
-
-        {/* Stat badge */}
-        <circle
-          cx={92}
-          cy={42}
-          r="26"
-          className="fill-[color:var(--paywall-chart-accent)]"
-        />
-        <text
-          x={92}
-          y={46}
-          textAnchor="middle"
-          className="fill-[color:var(--paywall-chart-badge-text)] text-[11px] font-bold"
-          style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif" }}
-        >
-          +10–20%
-        </text>
-
-        <text
-          x={x1 - 4}
-          y={PLOT.top + 2}
-          textAnchor="end"
-          className="fill-[color:var(--paywall-chart-accent)] text-[10px] font-semibold"
-          style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif" }}
-        >
-          ZeloxTag
-        </text>
-        <text
-          x={x1 - 4}
-          y={yBase - 18}
-          textAnchor="end"
-          className="fill-[color:var(--paywall-chart-muted-label)] text-[9px] font-medium"
-          style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif" }}
-        >
-          Ohne
-        </text>
-
       </svg>
+
+      <figcaption
+        className="mx-auto mt-2 flex max-w-[18rem] items-center justify-center gap-5 text-[11px] leading-none text-[color:var(--vd-muted)]"
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className="inline-block h-px w-4 border-t border-dashed border-[color:var(--paywall-chart-muted)]"
+            aria-hidden
+          />
+          Ohne Akte
+        </span>
+        <span className="inline-flex items-center gap-1.5 font-medium text-[color:var(--vd-text)]">
+          <span
+            className="inline-block h-0.5 w-4 rounded-full bg-[color:var(--paywall-chart-accent)]"
+            aria-hidden
+          />
+          Lückenlos dokumentiert
+        </span>
+      </figcaption>
     </figure>
   );
 }
