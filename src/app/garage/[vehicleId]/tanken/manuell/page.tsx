@@ -20,7 +20,7 @@ export default async function VehicleFuelManualEntryPage({
 }: FuelManualEntryPageProps) {
   const { vehicleId } = await params;
   const { scope, result, isDemoShowcase } = await requireVehicleSurfaceOwner({ vehicleId }, {
-    loginNext: `/garage/${vehicleId}/tanken/manuell/tanken/manuell`,
+    loginNext: `/garage/${vehicleId}/tanken/manuell`,
   });
 
   if (isDemoShowcase) {
@@ -37,6 +37,7 @@ export default async function VehicleFuelManualEntryPage({
       vehicleId={vehicle.id}
       vehicleLabel={vehicleLabel}
       backHref={`${vehicleSurfaceHref(scope, `tanken`)}`}
+      scanHref={vehicleSurfaceHref(scope, "tanken/erfassen")}
     />
   );
 }

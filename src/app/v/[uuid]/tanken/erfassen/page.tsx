@@ -38,6 +38,7 @@ export default async function VehicleFuelCapturePage({
       vehicleId={vehicle.id}
       vehicleLabel={vehicleLabel}
       backHref={`/v/${result.tag.uuid}/tanken`}
+      manualHref={`/v/${result.tag.uuid}/tanken/manuell`}
       fuelScanTier={fuelScanTier}
     />
   );

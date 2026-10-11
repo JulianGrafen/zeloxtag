@@ -32,6 +32,7 @@ type FuelReceiptUploaderProps = {
   vehicleId: string;
   vehicleLabel: string;
   backHref?: string;
+  manualHref?: string;
   fuelScanTier: FuelScanTierSnapshot;
 };
 
@@ -40,9 +41,11 @@ export function FuelReceiptUploader({
   vehicleId,
   vehicleLabel,
   backHref,
+  manualHref,
   fuelScanTier,
 }: FuelReceiptUploaderProps) {
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/tanken`;
+  const resolvedManualHref = manualHref ?? `/v/${tagUuid}/tanken/manuell`;
   const tier = useUserTier({ initial: fuelScanTier });
   const [scanSessionId, setScanSessionId] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -137,7 +140,7 @@ export function FuelReceiptUploader({
           <div ref={manualFormRef}>
             <p className="text-center text-[0.78rem] text-[color:var(--vd-muted)]">
               <PressableLink
-                href={`/v/${tagUuid}/tanken/manuell`}
+                href={resolvedManualHref}
                 className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4"
               >
                 Stattdessen manuell eintragen

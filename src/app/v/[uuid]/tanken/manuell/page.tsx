@@ -36,6 +36,7 @@ export default async function VehicleFuelManualEntryPage({
       vehicleId={vehicle.id}
       vehicleLabel={vehicleLabel}
       backHref={`/v/${result.tag.uuid}/tanken`}
+      scanHref={`/v/${result.tag.uuid}/tanken/erfassen`}
     />
   );
 }

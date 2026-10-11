@@ -17,6 +17,7 @@ type FuelManualEntryViewProps = {
   vehicleId: string;
   vehicleLabel: string;
   backHref?: string;
+  scanHref?: string;
   entryId?: string;
   initialForm?: FuelFillFormState;
 };
@@ -26,11 +27,13 @@ export function FuelManualEntryView({
   vehicleId,
   vehicleLabel,
   backHref,
+  scanHref,
   entryId,
   initialForm,
 }: FuelManualEntryViewProps) {
   const isEdit = Boolean(entryId);
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/tanken`;
+  const resolvedScanHref = scanHref ?? `/v/${tagUuid}/tanken/erfassen`;
   const [form, setForm] = useState<FuelFillFormState>(
     initialForm ?? emptyFuelFillFormState(),
   );
@@ -94,7 +97,7 @@ export function FuelManualEntryView({
       {!isEdit ? (
         <p className="text-center text-[0.78rem] text-[color:var(--vd-muted)]">
           <PressableLink
-            href={`/v/${tagUuid}/tanken/erfassen`}
+            href={resolvedScanHref}
             className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4"
           >
             Stattdessen Tankbeleg scannen

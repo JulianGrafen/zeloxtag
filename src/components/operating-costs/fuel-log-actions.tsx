@@ -10,11 +10,19 @@ import type { FuelScanTierSnapshot } from "@/lib/billing/subscription-types";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 type FuelLogActionsProps = {
+  /** Checkout / Pro flows (tag UUID when linked, else vehicle id). */
   tagUuid: string;
   fuelScanTier: FuelScanTierSnapshot;
+  captureHref: string;
+  manualHref: string;
 };
 
-export function FuelLogActions({ tagUuid, fuelScanTier }: FuelLogActionsProps) {
+export function FuelLogActions({
+  tagUuid,
+  fuelScanTier,
+  captureHref,
+  manualHref,
+}: FuelLogActionsProps) {
   const router = useRouter();
   const tier = useUserTier({ initial: fuelScanTier });
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -28,7 +36,7 @@ export function FuelLogActions({ tagUuid, fuelScanTier }: FuelLogActionsProps) {
       openPaywall();
       return;
     }
-    router.push(`/v/${tagUuid}/tanken/erfassen`);
+    router.push(captureHref);
   }
 
   return (
@@ -42,7 +50,7 @@ export function FuelLogActions({ tagUuid, fuelScanTier }: FuelLogActionsProps) {
           onScan={handleScan}
         />
         <PressableLink
-          href={`/v/${tagUuid}/tanken/manuell`}
+          href={manualHref}
           className="flex w-full items-center justify-center gap-2 zt-feature-panel px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)]"
         >
           Manuell eintragen
@@ -54,7 +62,7 @@ export function FuelLogActions({ tagUuid, fuelScanTier }: FuelLogActionsProps) {
         tagUuid={tagUuid}
         onClose={() => setPaywallOpen(false)}
         onManualEntry={() => {
-          router.push(`/v/${tagUuid}/tanken/manuell`);
+          router.push(manualHref);
         }}
       />
     </>

@@ -137,7 +137,12 @@ export function VehicleFuelLogView({
       </section>
 
       {!readOnly && fuelScanTier ? (
-        <FuelLogActions tagUuid={tagUuid} fuelScanTier={fuelScanTier} />
+        <FuelLogActions
+          tagUuid={tagUuid}
+          fuelScanTier={fuelScanTier}
+          captureHref={fuelCaptureHref}
+          manualHref={fuelManualHref}
+        />
       ) : null}
 
       <section>
