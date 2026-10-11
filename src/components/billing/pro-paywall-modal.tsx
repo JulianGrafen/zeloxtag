@@ -80,7 +80,11 @@ export function ProPaywallModal({
       feature,
       context: triggerContext,
     });
-    return getPaywallPersonalization({ goal, variant });
+    return getPaywallPersonalization({
+      goal,
+      variant,
+      vehicleLabel: triggerContext?.vehicleLabel,
+    });
   }, [open, feature, variant, triggerContext]);
 
   const aboHref = cloudAboHref(tagUuid);
@@ -162,6 +166,8 @@ export function ProPaywallModal({
                   onIntervalChange={setInterval}
                   showAnnualPlan={showAnnualPlan}
                   headline={personalization.headline}
+                  subline={personalization.subline}
+                  vehicleEyebrow={personalization.vehicleEyebrow}
                   headlineId="pro-paywall-title"
                   variant={variant}
                   benefits={personalization.benefits}

@@ -90,7 +90,6 @@ export function ShowcaseDiscoverExperience({
           className="mb-2 border-b border-white/[0.06] pb-6"
         />
       ) : null}
-      <ShowcaseInviteFriends />
       <WeeklyTopBuilds
         builds={weeklyBuilds}
         entdeckenReturnHref={entdeckenReturnHref}
@@ -101,6 +100,7 @@ export function ShowcaseDiscoverExperience({
         initialCards={initialCards}
         onLiked={onLiked}
       />
+      <ShowcaseInviteFriends className="mt-2" />
     </div>
   );
 }

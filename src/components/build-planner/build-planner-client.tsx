@@ -54,6 +54,9 @@ export function BuildPlannerClient({
         onClose={() => setPaywallOpen(false)}
         feature={FEATURE.USE_BUILD_PLANNER_AI}
         tagUuid={tagUuid}
+        triggerContext={{
+          vehicleLabel: vehicleModel.trim() || null,
+        }}
       />
     </>
   );

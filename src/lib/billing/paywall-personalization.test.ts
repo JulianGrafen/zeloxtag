@@ -78,6 +78,17 @@ describe("paywall personalization", () => {
     expect(exhausted.visualKind).toBe("resale_chart");
   });
 
+  it("personalizes copy for a specific vehicle", () => {
+    const personalized = getPaywallPersonalization({
+      goal: "werterhalt",
+      vehicleLabel: "BMW M3 · 2019",
+    });
+    expect(personalized.vehicleEyebrow).toBe("Dein BMW M3 · 2019");
+    expect(personalized.headline).toContain("BMW M3 · 2019");
+    expect(personalized.subline).toContain("BMW M3 · 2019");
+    expect(personalized.stickyMicroCopy).toContain("BMW M3 · 2019");
+  });
+
   it("sharpens documents headline when free scan is exhausted", () => {
     const base = getPaywallPersonalization({ goal: "documents" });
     const exhausted = getPaywallPersonalization({

@@ -49,13 +49,13 @@ export function PaywallFeatureRows({
           <li
             key={benefit}
             className={cn(
-              "flex gap-3.5 px-4 py-3.5",
+              "flex gap-3 px-4 py-3",
               index > 0 && "border-t border-[color:var(--vd-border)]",
             )}
           >
             <span
               className={cn(
-                "mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                "mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
                 lead
                   ? "bg-[color:var(--paywall-benefit-icon-bg)] text-[color:var(--paywall-benefit-icon-fg)] shadow-[0_8px_20px_rgba(5,150,105,0.35)]"
                   : "bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] ring-1 ring-[color:var(--vd-border)]",

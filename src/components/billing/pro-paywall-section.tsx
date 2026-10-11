@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { startStripeCheckoutAction } from "@/actions/stripe-checkout";
 import { ProPaywallContent } from "@/components/billing/paywall/pro-paywall-content";
@@ -9,12 +9,17 @@ import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { StripePortalButton } from "@/components/billing/stripe-checkout-button";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
 import {
+  getPaywallPersonalization,
+  resolvePaywallGoal,
+} from "@/lib/billing/paywall-personalization";
+import {
   PRO_PAYWALL_DISMISS_LABEL,
   PRO_PLAN_CHECKOUT_HEADLINE,
   proCheckoutButtonLabel,
   type ProBillingInterval,
   type ProCheckoutAudience,
 } from "@/lib/billing/pro-plan";
+import { readPrimaryGoal } from "@/lib/onboarding/primary-goal";
 import {
   FEATURE,
   paywallTitle,
@@ -29,6 +34,7 @@ type ProPaywallSectionProps = {
   showPortal?: boolean;
   feature?: FeatureFlag;
   variant?: PaywallVariant;
+  vehicleLabel?: string | null;
   dismissHref?: string;
   dismissLabel?: string;
   statusMessage?: React.ReactNode;
@@ -41,6 +47,7 @@ export function ProPaywallSection({
   showPortal = false,
   feature = FEATURE.DOCUMENT_VAULT,
   variant = "default",
+  vehicleLabel = null,
   dismissHref,
   dismissLabel = PRO_PAYWALL_DISMISS_LABEL,
   statusMessage,
@@ -52,9 +59,20 @@ export function ProPaywallSection({
   const [error, setError] = useState<string | null>(null);
 
   const useConversionCopy = variant === "default";
-  const headline = useConversionCopy
+  const fallbackHeadline = useConversionCopy
     ? PRO_PLAN_CHECKOUT_HEADLINE
     : paywallTitle(feature, variant);
+
+  const personalization = useMemo(() => {
+    if (!useConversionCopy) return null;
+    const goal = resolvePaywallGoal({
+      primaryGoal: readPrimaryGoal(),
+      feature,
+    });
+    return getPaywallPersonalization({ goal, variant, vehicleLabel });
+  }, [feature, useConversionCopy, variant, vehicleLabel]);
+
+  const headline = personalization?.headline ?? fallbackHeadline;
 
   function handleCheckout() {
     setError(null);
@@ -79,7 +97,7 @@ export function ProPaywallSection({
   return (
     <section
       aria-label="ZeloxTag Pro"
-      className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
+      className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5"
     >
       <ProPaywallContent
         layout="section"
@@ -87,8 +105,15 @@ export function ProPaywallSection({
         onIntervalChange={setInterval}
         showAnnualPlan={showAnnualPlan}
         headline={headline}
+        subline={personalization?.subline}
+        vehicleEyebrow={personalization?.vehicleEyebrow ?? null}
         showConversionExtras={useConversionCopy}
         variant={variant}
+        benefits={personalization?.benefits}
+        highlightLeadBenefit={Boolean(personalization)}
+        visualKind={personalization?.visualKind}
+        visualAriaLabel={personalization?.visualAriaLabel}
+        valueFootnote={personalization?.footnote}
         statusMessage={statusMessage}
         belowFoldFooter={
           dismissHref ? (
@@ -100,8 +125,11 @@ export function ProPaywallSection({
         ctaSlot={
           <>
             <StickyPaywallCta
-              label={proCheckoutButtonLabel(audience, interval)}
-              microCopy=""
+              label={
+                personalization?.ctaLabel ??
+                proCheckoutButtonLabel(audience, interval)
+              }
+              microCopy={personalization?.stickyMicroCopy ?? ""}
               pending={pending}
               error={error}
               fixed={false}

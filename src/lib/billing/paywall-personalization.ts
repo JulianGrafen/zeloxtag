@@ -1,9 +1,11 @@
 import {
   PRO_PAYWALL_MODAL_BENEFITS,
+  PRO_PAYWALL_MODAL_SUBLINE,
   PRO_PAYWALL_VALUE_FOOTNOTE,
   PRO_TRIAL_LABEL,
 } from "@/lib/billing/pro-plan";
 import type { ZeloxPrimaryGoal } from "@/lib/onboarding/primary-goal";
+import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
 import {
   FEATURE,
   type FeatureFlag,
@@ -15,11 +17,15 @@ export type PaywallVisualKind = "resale_chart" | "showcase_qr" | "vault_gap";
 export type PaywallTriggerContext = {
   /** Contextual goal for this modal (e.g. Rechnung tile → Werterhalt). */
   goalOverride?: ZeloxPrimaryGoal;
+  /** e.g. "BMW M3 · 2019" — personalisiert Headline & Subline. */
+  vehicleLabel?: string | null;
 };
 
 export type PaywallPersonalization = {
   goal: ZeloxPrimaryGoal;
   headline: string;
+  subline: string;
+  vehicleEyebrow: string | null;
   visualKind: PaywallVisualKind;
   benefits: readonly string[];
   ctaLabel: string;
@@ -27,6 +33,24 @@ export type PaywallPersonalization = {
   footnote: string;
   visualAriaLabel: string;
 };
+
+/** Kurzlabel für Paywall-Copy (Marke/Modell, optional Baujahr). */
+export function formatPaywallVehicleLabel(
+  make: string | null | undefined,
+  model: string | null | undefined,
+  year?: number | null,
+): string | null {
+  const title = formatPublicVehicleTitle(make, model);
+  if (!title) return null;
+  if (year != null && Number.isFinite(year)) {
+    return `${title} · ${year}`;
+  }
+  return title;
+}
+
+function withVehicle(template: string, vehicleLabel: string): string {
+  return template.replace(/\{vehicle\}/g, vehicleLabel);
+}
 
 const BENEFIT_ORDER: Record<ZeloxPrimaryGoal, readonly string[]> = {
   werterhalt: [
@@ -66,6 +90,49 @@ const HEADLINE_SCAN_EXHAUSTED_DOCUMENTS =
 
 const HEADLINE_SCAN_EXHAUSTED_WERTERHALT =
   "Dein Gratis-Scan ist weg — ohne Pro fehlt der Beleg für deinen Werterhalt.";
+
+const HEADLINE_VEHICLE_BY_GOAL: Record<ZeloxPrimaryGoal, string> = {
+  werterhalt:
+    "Ohne lückenlose Belege verschenkst du beim Verkauf von deinem {vehicle} bis zu 20 %.",
+  showcase:
+    "Am Treffen scannt man deinen {vehicle} — ohne Pro bleibt dein Build unsichtbar.",
+  documents:
+    "Für deinen {vehicle}: Gutachten und Belege an einem Ort — sonst wird's teuer.",
+};
+
+const HEADLINE_SCAN_EXHAUSTED_WERTERHALT_VEHICLE =
+  "Dein Gratis-Scan ist weg — für deinen {vehicle} fehlt ohne Pro der Beleg im Werterhalt.";
+
+const HEADLINE_SCAN_EXHAUSTED_DOCUMENTS_VEHICLE =
+  "Dein Gratis-Scan ist weg — für deinen {vehicle} fehlt ohne Pro der schnellste Weg in die Akte.";
+
+const SUBLINE_VEHICLE =
+  "Für deinen {vehicle}: Umbau, Gutachten und Werkstatt — lückenlos dokumentiert und mit einem Scan griffbereit.";
+
+const MICROCOPY_VEHICLE_BY_GOAL: Record<ZeloxPrimaryGoal, string> = {
+  werterhalt:
+    "Jeder fehlende Nachweis für deinen {vehicle} kostet beim Verkauf — Pro sichert alles ab.",
+  showcase:
+    "Ohne Pro zeigt dein QR am {vehicle} kein Mod-Profil — Interessenten sehen nichts.",
+  documents:
+    "Zettel im Handschuhfach verlieren sich — Pro behält jeden Beleg für deinen {vehicle}.",
+};
+
+const FOOTNOTE_VEHICLE_BY_GOAL: Record<ZeloxPrimaryGoal, string> = {
+  werterhalt:
+    "Weniger als eine halbe Tankfüllung — dafür den Verkaufswert von deinem {vehicle} absichern.",
+  showcase:
+    "Weniger als eine halbe Tankfüllung — dafür deinen {vehicle} live am Treffen zeigen.",
+  documents:
+    "Weniger als eine halbe Tankfüllung — dafür die komplette Akte für deinen {vehicle}.",
+};
+
+const VISUAL_ARIA_VEHICLE_BY_GOAL: Record<ZeloxPrimaryGoal, string> = {
+  werterhalt:
+    "Verkaufswert von {vehicle}: mit ZeloxTag höher als ohne Dokumentation",
+  showcase: "QR am {vehicle}: mit Pro Mod-Profil sichtbar, ohne Pro leer",
+  documents: "Akte für {vehicle}: mit ZeloxTag alles im Tresor",
+};
 
 const CTA_BY_GOAL: Record<ZeloxPrimaryGoal, string> = {
   werterhalt: `Verkaufswert absichern · ${PRO_TRIAL_LABEL}`,
@@ -162,24 +229,57 @@ export function resolvePaywallGoal(input: {
 export function getPaywallPersonalization(input: {
   goal: ZeloxPrimaryGoal;
   variant?: PaywallVariant;
+  vehicleLabel?: string | null;
 }): PaywallPersonalization {
   const { goal, variant = "default" } = input;
-  let headline = HEADLINE_BY_GOAL[goal];
+  const vehicle = input.vehicleLabel?.trim() || null;
+  const hasVehicle = Boolean(vehicle);
+
+  let headline = hasVehicle
+    ? HEADLINE_VEHICLE_BY_GOAL[goal]
+    : HEADLINE_BY_GOAL[goal];
+
   if (variant === "free_scan_exhausted" && goal === "documents") {
-    headline = HEADLINE_SCAN_EXHAUSTED_DOCUMENTS;
+    headline = hasVehicle
+      ? HEADLINE_SCAN_EXHAUSTED_DOCUMENTS_VEHICLE
+      : HEADLINE_SCAN_EXHAUSTED_DOCUMENTS;
   }
   if (variant === "free_scan_exhausted" && goal === "werterhalt") {
-    headline = HEADLINE_SCAN_EXHAUSTED_WERTERHALT;
+    headline = hasVehicle
+      ? HEADLINE_SCAN_EXHAUSTED_WERTERHALT_VEHICLE
+      : HEADLINE_SCAN_EXHAUSTED_WERTERHALT;
   }
+
+  if (hasVehicle) {
+    headline = withVehicle(headline, vehicle!);
+  }
+
+  const subline = hasVehicle
+    ? withVehicle(SUBLINE_VEHICLE, vehicle!)
+    : PRO_PAYWALL_MODAL_SUBLINE;
+
+  const stickyMicroCopy = hasVehicle
+    ? withVehicle(MICROCOPY_VEHICLE_BY_GOAL[goal], vehicle!)
+    : MICROCOPY_BY_GOAL[goal];
+
+  const footnote = hasVehicle
+    ? withVehicle(FOOTNOTE_VEHICLE_BY_GOAL[goal], vehicle!)
+    : FOOTNOTE_BY_GOAL[goal];
+
+  const visualAriaLabel = hasVehicle
+    ? withVehicle(VISUAL_ARIA_VEHICLE_BY_GOAL[goal], vehicle!)
+    : VISUAL_ARIA_BY_GOAL[goal];
 
   return {
     goal,
     headline,
+    subline,
+    vehicleEyebrow: hasVehicle ? `Dein ${vehicle}` : null,
     visualKind: VISUAL_KIND_BY_GOAL[goal],
     benefits: reorderBenefits(goal),
     ctaLabel: CTA_BY_GOAL[goal],
-    stickyMicroCopy: MICROCOPY_BY_GOAL[goal],
-    footnote: FOOTNOTE_BY_GOAL[goal],
-    visualAriaLabel: VISUAL_ARIA_BY_GOAL[goal],
+    stickyMicroCopy,
+    footnote,
+    visualAriaLabel,
   };
 }

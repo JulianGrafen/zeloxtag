@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { PaywallDevPreview } from "@/components/billing/paywall-dev-preview";
 import { AppShell } from "@/components/layout/app-shell";
@@ -10,7 +11,9 @@ export default function DevPaywallPage() {
 
   return (
     <AppShell showNavbar={false}>
-      <PaywallDevPreview />
+      <Suspense fallback={null}>
+        <PaywallDevPreview />
+      </Suspense>
     </AppShell>
   );
 }

@@ -6,6 +6,7 @@ import { Copy, ExternalLink, Link2, RefreshCw, ShieldOff } from "lucide-react";
 import { manageVehicleExpose } from "@/actions/expose";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
+import { formatPaywallVehicleLabel } from "@/lib/billing/paywall-personalization";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { showSavedToast } from "@/lib/ui/saved-toast";
@@ -163,6 +164,13 @@ export function ExposeLinkSettings({
         open={paywallOpen}
         feature={FEATURE.GENERATE_EXPOSE}
         tagUuid={tagUuid}
+        triggerContext={{
+          vehicleLabel: formatPaywallVehicleLabel(
+            vehicle.make,
+            vehicle.model,
+            vehicle.year,
+          ),
+        }}
         onClose={() => setPaywallOpen(false)}
       />
     </section>

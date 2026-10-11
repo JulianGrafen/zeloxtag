@@ -37,7 +37,7 @@ export function StickyPaywallCta({
               automotiveBottomBarShellClassName,
             )
           : cn(
-              "z-20 shrink-0 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[var(--paywall-sticky-footer-shadow)] backdrop-blur-xl",
+              "z-20 shrink-0 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/95 px-4 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2.5 shadow-[var(--paywall-sticky-footer-shadow)] backdrop-blur-xl",
             ),
       )}
     >

@@ -24,6 +24,7 @@ import {
   type PaywallVariant,
 } from "@/lib/permissions/feature-access";
 import {
+  formatPaywallVehicleLabel,
   paywallGoalOverrideForDashboardTile,
   paywallGoalOverrideForScanType,
   type PaywallTriggerContext,
@@ -402,7 +403,10 @@ export function TagDashboardShell({
   ) {
     setPaywallFeature(feature);
     setPaywallVariant(variant);
-    setPaywallTriggerContext(context);
+    setPaywallTriggerContext({
+      vehicleLabel: paywallVehicleLabel,
+      ...context,
+    });
   }
 
   function handleScanTypeSelect(type: ScanType) {
@@ -456,6 +460,11 @@ export function TagDashboardShell({
   const previewBlobRef = useRef<string | null>(null);
 
   const vehicleLabel = `${vehicle.make} ${vehicle.model}`;
+  const paywallVehicleLabel = formatPaywallVehicleLabel(
+    vehicle.make,
+    vehicle.model,
+    vehicle.year,
+  );
   const displayVehicle = {
     ...vehicle,
     silhouette_image_url: silhouetteStorageUrl,

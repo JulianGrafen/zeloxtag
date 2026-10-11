@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
+import { formatPaywallVehicleLabel } from "@/lib/billing/paywall-personalization";
 import { GenerateExposeButton } from "@/components/vehicles/GenerateExposeButton";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import type { Vehicle } from "@/types/database";
@@ -38,6 +39,13 @@ export function ExposePdfSettings({
         open={paywallOpen}
         feature={FEATURE.GENERATE_EXPOSE}
         tagUuid={tagUuid}
+        triggerContext={{
+          vehicleLabel: formatPaywallVehicleLabel(
+            vehicle.make,
+            vehicle.model,
+            vehicle.year,
+          ),
+        }}
         onClose={() => setPaywallOpen(false)}
       />
     </section>

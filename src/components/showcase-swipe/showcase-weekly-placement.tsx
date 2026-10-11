@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Heart } from "lucide-react";
 
 import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
 import { isTopThreeRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
@@ -11,6 +12,28 @@ function rankAccentBorder(rank: number): string {
   if (rank === 2) return "border-zinc-300/25 from-zinc-800/50 to-black";
   if (rank === 3) return "border-orange-700/35 from-orange-950/30 to-black";
   return "border-white/[0.08] from-zinc-900 to-black";
+}
+
+function compactRankBadgeClass(rank: number): string {
+  const base =
+    "flex h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border bg-black/20 font-mono text-[1.05rem] font-bold tabular-nums tracking-tight text-[color:var(--vd-text)]";
+  if (rank === 1) {
+    return cn(base, "border-amber-400/35 text-amber-100");
+  }
+  if (rank === 2) {
+    return cn(base, "border-zinc-300/25 text-zinc-100");
+  }
+  if (rank === 3) {
+    return cn(base, "border-orange-700/35 text-orange-100/95");
+  }
+  return cn(base, "border-white/[0.08]");
+}
+
+function compactPanelRing(rank: number): string {
+  if (rank === 1) return "ring-1 ring-amber-400/20";
+  if (rank === 2) return "ring-1 ring-zinc-400/15";
+  if (rank === 3) return "ring-1 ring-orange-600/20";
+  return "";
 }
 
 type ShowcaseWeeklyPlacementProps = {
@@ -57,16 +80,11 @@ export function ShowcaseWeeklyPlacement({
   if (!weeklyRank) {
     if (variant === "compact") {
       return (
-        <div
-          className={cn(
-            "rounded-2xl border border-white/[0.08] bg-zinc-900/40 px-4 py-3",
-            className,
-          )}
-        >
-          <p className="text-[0.88rem] font-medium text-[color:var(--vd-text)]">
+        <div className={cn("zt-feature-panel px-4 py-3.5", className)}>
+          <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
             Deine Platzierung
           </p>
-          <p className="mt-1 text-[0.8rem] text-[color:var(--vd-muted)]">
+          <p className="mt-0.5 text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
             Noch keine Platzierung diese Woche — sammle Likes durch Swipes.
           </p>
         </div>
@@ -98,34 +116,44 @@ export function ShowcaseWeeklyPlacement({
     : rankAccentBorder(99);
 
   if (variant === "compact") {
+    const subtitle =
+      weeklyRank.rank === 1
+        ? "Build of the Week"
+        : "In der Wochenrangliste";
+
     return (
       <div
         className={cn(
-          "flex items-center justify-between gap-3 rounded-2xl border bg-gradient-to-b px-4 py-3.5",
-          accent,
+          "zt-feature-panel px-4 py-3.5",
+          compactPanelRing(weeklyRank.rank),
           className,
         )}
         aria-label={rankLabel}
       >
-        <div>
-          <p className="text-[0.78rem] font-medium uppercase tracking-wide text-[color:var(--vd-muted)]">
-            Deine Platzierung
-          </p>
-          <p className="mt-0.5 text-[1.35rem] font-semibold tabular-nums tracking-tight text-[color:var(--vd-text)]">
+        <div className="flex items-center gap-3">
+          <div className={compactRankBadgeClass(weeklyRank.rank)}>
             #{weeklyRank.rank}
-            {weeklyRank.rank === 1 ? (
-              <span className="ml-2 text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-amber-400/95">
-                Build of the Week
-              </span>
-            ) : null}
-          </p>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
+              Deine Platzierung
+            </p>
+            <p className="mt-0.5 text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
+              {subtitle}
+            </p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p
+              className="flex items-center justify-end gap-1 font-mono text-[0.92rem] font-semibold tabular-nums tracking-tight text-amber-400/95"
+            >
+              <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {weeklyRank.weeklyLikes}
+            </p>
+            <p className="mt-0.5 text-[0.68rem] text-[color:var(--vd-muted)]">
+              {likeWord} · 7 Tage
+            </p>
+          </div>
         </div>
-        <p className="shrink-0 text-right font-mono text-[0.85rem] tabular-nums text-amber-400/90">
-          {weeklyRank.weeklyLikes}
-          <span className="block text-[0.68rem] font-sans font-normal text-zinc-500">
-            {likeWord} · 7 Tage
-          </span>
-        </p>
       </div>
     );
   }
