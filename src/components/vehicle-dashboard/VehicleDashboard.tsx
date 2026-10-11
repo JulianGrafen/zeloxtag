@@ -90,10 +90,6 @@ export function VehicleDashboard({
                 className="vd-anim-header flex min-h-0 flex-col gap-2 [animation-delay:0.12s]"
                 data-tour="tile-grid"
               >
-                <h2 className={cn(dashboardMenuKickerClassName, "px-0.5")}>
-                  Fahrzeugmenü
-                </h2>
-
                 {primary.length > 0 ? (
                   <DashboardTileGrid
                     tiles={primary}
@@ -151,10 +147,6 @@ export function VehicleDashboard({
             className="vd-anim-header flex min-h-0 flex-col gap-2 [animation-delay:0.12s]"
             data-tour="tile-grid"
           >
-            <h2 className={cn(dashboardMenuKickerClassName, "px-0.5")}>
-              Fahrzeugmenü
-            </h2>
-
             {primary.length > 0 ? (
               <DashboardTileGrid
                 tiles={primary}
