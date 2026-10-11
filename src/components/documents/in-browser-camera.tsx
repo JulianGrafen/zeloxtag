@@ -899,6 +899,7 @@ export function InBrowserCamera({
   }
 
   const fileAccept = allowPdf ? PDF_ACCEPT : IMAGE_ACCEPT;
+  const showBottomFilePicker = continuousCapture || showHeaderGalleryPicker;
 
   const frameOutsideShadow = guideFrameOutsideShadow(guideFrameDimOutside);
   const chromeTopPad = compactChrome
@@ -1074,10 +1075,10 @@ export function InBrowserCamera({
           <span className="h-[3.25rem] w-[3.25rem] rounded-full bg-white transition-transform active:scale-90" />
         </button>
 
-        {continuousCapture ? (
+        {showBottomFilePicker && cameraReady ? (
           <label
             className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-[2px] transition-opacity active:opacity-60"
-            aria-label="Aus Galerie oder Datei wählen"
+            aria-label="Foto oder Datei hochladen"
           >
             <input
               type="file"
@@ -1156,7 +1157,7 @@ export function InBrowserCamera({
 
             {/* Loading spinner */}
             {!cameraReady && !cameraError ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3">
+              <div className="flex h-full flex-col items-center justify-center gap-4 px-8">
                 <ThinkingOrb
                   state="connecting"
                   size={64}
@@ -1166,6 +1167,12 @@ export function InBrowserCamera({
                 <p className="text-[0.8rem] font-medium text-white/80">
                   Kamera wird gestartet…
                 </p>
+                {showHeaderGalleryPicker ? (
+                  <CameraFallbackMediaPicker
+                    allowPdf={allowPdf}
+                    onFileChange={handleFileChange}
+                  />
+                ) : null}
               </div>
             ) : null}
 

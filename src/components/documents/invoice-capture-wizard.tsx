@@ -329,7 +329,7 @@ export function InvoiceCaptureWizard({
         a4OutputFormat="jpeg"
         showFramingGuide
         showBriefing={false}
-        showHeaderGalleryPicker={false}
+        allowPdf={allowPdf}
         allowOpticalZoom
         enforceCaptureQuality
         captureStep={{ current: 1, total: 1 }}
