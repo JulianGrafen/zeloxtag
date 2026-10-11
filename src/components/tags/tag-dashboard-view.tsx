@@ -587,6 +587,7 @@ export function TagDashboardView({
       {canScan ? (
         <DashboardScanFab
           tagUuid={tagUuid}
+          directAction={onOpenScanner ? "scan" : "menu"}
           scanHref={
             vehicleSurfaceScope
               ? `${vehicleSurfaceHref(vehicleSurfaceScope, "?scan=1")}`

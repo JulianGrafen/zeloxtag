@@ -85,6 +85,8 @@ export interface InvoiceCaptureWizardProps {
   autoStartCamera?: boolean;
   /** Called when the 2-step scan (or PDF) is complete — files in order: overview, then blocks. */
   onComplete?: (files: File[]) => void;
+  /** Close camera with no capture yet (e.g. Plus flow → back to dashboard). */
+  onEmptyClose?: () => void;
   /** Single-file fallback (add-page variant). */
   onFileSelected?: (file: File) => void;
   variant?: "initial" | "add-page";
@@ -171,7 +173,8 @@ export function InvoiceCaptureWizard({
   imageButtonLabel = "Bild hochladen",
   cameraButtonLabel = "Scannen",
   pdfButtonLabel = "PDF",
-  hint: _hint,
+  hint,
+  onEmptyClose,
 }: InvoiceCaptureWizardProps) {
   const [phase, setPhase] = useState<CapturePhase>(
     autoStartCamera ? "capture-overview" : "intro",
@@ -317,8 +320,8 @@ export function InvoiceCaptureWizard({
   if (phase === "capture-overview") {
     return (
       <InBrowserCamera
-        title="Gesamtseite"
-        hint={INVOICE_CAPTURE_HINTS.overview}
+        title={hint ? title : "Gesamtseite"}
+        hint={hint ?? INVOICE_CAPTURE_HINTS.overview}
         guideLabel={scanLabel}
         guideFrame="a4"
         guideFrameDimOutside
@@ -332,6 +335,14 @@ export function InvoiceCaptureWizard({
         captureStep={{ current: 1, total: 1 }}
         onCapture={handleOverviewCapture}
         onClose={() => {
+          if (!overviewFile && positionFiles.length === 0) {
+            if (onEmptyClose) {
+              onEmptyClose();
+              return;
+            }
+            resetWizard();
+            return;
+          }
           if (overviewFile || positionFiles.length > 0) {
             if (
               !window.confirm("Scan abbrechen? Erfasste Fotos gehen verloren.")

@@ -102,6 +102,10 @@ import type { OcrDocumentType } from "@/lib/ocr/ocr-types";
 
 const MAX_PAGES = 12;
 
+const PLUS_BELEG_SCAN_HEADING = "Beleg scannen";
+const PLUS_BELEG_SCAN_HINT =
+  "Tankbeleg oder Werkstattrechnung. KI erkennt automatisch.";
+
 type WizardStep =
   | "compose"
   | "extracting"
@@ -282,7 +286,12 @@ export function InvoiceUploader({
   const resolvedCategory = scanDef.category ?? initialCategory;
   const resolvedLockCategory = scanDef.lockCategory ?? lockCategory;
   const defaultReviewCategory = invoiceReviewCategoryFromScanType(scanType);
+  const isPlusBelegAutoRoute =
+    autoRouteReceiptKind && scanType === "invoice";
   const resolvedHeading = scanDef.heading ?? heading;
+  const displayHeading = isPlusBelegAutoRoute
+    ? PLUS_BELEG_SCAN_HEADING
+    : resolvedHeading;
   const resolvedSubheading = `${vehicleLabel} · ${scanDef.subheading}`;
   const resolvedBackHref = backHref ?? `/v/${tagUuid}/dokumente`;
   const {
@@ -1593,7 +1602,12 @@ export function InvoiceUploader({
         {isInvoiceFamilyScan ? (
           <div className="vd-surface-card p-5">
             <p className="claim-kicker">Dokument scannen</p>
-            <h1 className="claim-title mt-2 text-[1.25rem]">{resolvedHeading}</h1>
+            <h1 className="claim-title mt-2 text-[1.25rem]">{displayHeading}</h1>
+            {isPlusBelegAutoRoute ? (
+              <p className="claim-copy mt-2 text-[0.88rem]">
+                {PLUS_BELEG_SCAN_HINT}
+              </p>
+            ) : null}
           </div>
         ) : (
           <div className="vd-surface-card p-5">
@@ -1601,7 +1615,7 @@ export function InvoiceUploader({
               <FileText className="h-5 w-5" aria-hidden />
             </div>
             <p className="claim-kicker mt-4">Dokument scannen</p>
-            <h1 className="claim-title mt-2">{resolvedHeading}</h1>
+            <h1 className="claim-title mt-2">{displayHeading}</h1>
             <p className="claim-copy mt-1">
               {resolvedSubheading ?? `${vehicleLabel} · Beleg einlesen`}
             </p>
@@ -1614,12 +1628,14 @@ export function InvoiceUploader({
           {!nativePdf && pages.length === 0 ? (
             isInvoiceFamilyScan ? (
               <InvoiceCaptureWizard
-                title={resolvedHeading}
+                title={displayHeading}
+                hint={isPlusBelegAutoRoute ? PLUS_BELEG_SCAN_HINT : undefined}
                 scanLabel={scanDef?.title ?? "Beleg"}
                 allowPdf
                 showImageUploadOnIntro
                 autoStartCamera
                 disabled={compressing}
+                onEmptyClose={isPlusBelegAutoRoute ? onBack : undefined}
                 onComplete={(files) => {
                   void completeInvoiceScan(files);
                 }}

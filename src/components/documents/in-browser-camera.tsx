@@ -294,15 +294,6 @@ function CameraFallbackMediaPicker({
   );
 }
 
-function formatTopBarLabel(
-  title: string,
-  captureStep?: { current: number; total: number },
-): string {
-  if (!captureStep) return title;
-  const stepLabel = `${captureStep.current}/${captureStep.total}`;
-  return title ? `${stepLabel} · ${title}` : stepLabel;
-}
-
 function guideFrameBorderClass(captureReady: boolean): string {
   if (captureReady) {
     return "border-emerald-400/95 shadow-[0_0_0_2px_rgba(52,211,153,0.35)]";
@@ -393,7 +384,6 @@ export function InBrowserCamera({
 
   const shutterHint = hint === "" ? undefined : hint;
   const resolvedHint = compactChrome ? undefined : shutterHint;
-  const topBarLabel = formatTopBarLabel(title, captureStep);
   const showBottomHintPanel =
     !compactChrome &&
     Boolean(
@@ -934,12 +924,6 @@ export function InBrowserCamera({
       >
         <X className="h-5 w-5" />
       </button>
-
-      <div className="absolute left-1/2 top-1/2 w-[min(84vw,24rem)] -translate-x-1/2 -translate-y-1/2 text-center">
-        <p className="text-[0.8rem] font-semibold leading-snug text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-          {topBarLabel}
-        </p>
-      </div>
 
       {showHeaderGalleryPicker ? (
         <label
