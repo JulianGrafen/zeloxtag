@@ -22,6 +22,7 @@ import {
   type AuthActionResult,
 } from "@/lib/auth/actions";
 import { DIGITAL_GARAGE_POST_SIGNUP_HINT } from "@/lib/onboarding/digital-garage-register-copy";
+import { GarageDataTrustBanner } from "@/components/trust/garage-data-trust-banner";
 import { cn } from "@/lib/utils";
 
 type AuthTab = "password" | "signup";
@@ -287,6 +288,14 @@ export function LoginForm({
           </form>
         </CardContent>
       </Card>
+
+      <GarageDataTrustBanner
+        className={
+          isDigitalGarage
+            ? "w-full"
+            : "mx-4 w-[calc(100%-2rem)] sm:mx-auto sm:w-full"
+        }
+      />
 
       {!isDigitalGarage ? (
         <>

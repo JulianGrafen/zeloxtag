@@ -9,6 +9,7 @@ import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { resolveDashboardScanGate } from "@/lib/billing/ai-scan-access";
 import {
   getFreeAbeScanQuota,
+  getFreeFuelScanQuota,
   getFreeInvoiceScanQuota,
 } from "@/lib/billing/free-scan-quota";
 import type { ScanType } from "@/lib/documents/scan-types";
@@ -47,6 +48,7 @@ export type OwnerDashboardPayload = {
   membershipActive: boolean;
   freeInvoiceScanRemaining: number;
   freeAbeScanRemaining: number;
+  freeFuelScanRemaining: number;
   showFreeScanWelcome: boolean;
   showOperatorMinter: boolean;
   accountDeletionGraceEndsAt: string | null;
@@ -86,12 +88,16 @@ export async function loadOwnerDashboardForVehicle(
   const freeAbeScanQuota = membershipActive
     ? { remaining: 0, used: 0, limit: 1 }
     : await getFreeAbeScanQuota(vehicle.user_id);
+  const freeFuelScanQuota = membershipActive
+    ? { remaining: 0, used: 0, limit: 1 }
+    : await getFreeFuelScanQuota(vehicle.user_id);
   const wantsScan = scan === "1" && tour !== "1";
   const scanGate = resolveDashboardScanGate({
     wantsScan,
     membershipActive,
     freeInvoiceRemaining: freeInvoiceScanQuota.remaining,
     freeAbeRemaining: freeAbeScanQuota.remaining,
+    freeFuelRemaining: freeFuelScanQuota.remaining,
     scanTypeRaw: scanType,
   });
   const pendingTour = await hasPendingDashboardTour();
@@ -175,6 +181,7 @@ export async function loadOwnerDashboardForVehicle(
     membershipActive,
     freeInvoiceScanRemaining: freeInvoiceScanQuota.remaining,
     freeAbeScanRemaining: freeAbeScanQuota.remaining,
+    freeFuelScanRemaining: freeFuelScanQuota.remaining,
     showFreeScanWelcome: freeScanWelcome === "1",
     showOperatorMinter,
     accountDeletionGraceEndsAt:

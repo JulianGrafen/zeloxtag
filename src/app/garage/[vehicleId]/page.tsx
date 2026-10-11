@@ -78,6 +78,7 @@ export default async function GarageDashboardPage({
           membershipActive={dashboard.membershipActive}
           freeInvoiceScanRemaining={dashboard.freeInvoiceScanRemaining}
           freeAbeScanRemaining={dashboard.freeAbeScanRemaining}
+          freeFuelScanRemaining={dashboard.freeFuelScanRemaining}
           showFreeScanWelcome={dashboard.showFreeScanWelcome}
           showOperatorMinter={dashboard.showOperatorMinter}
           accountDeletionGraceEndsAt={dashboard.accountDeletionGraceEndsAt}

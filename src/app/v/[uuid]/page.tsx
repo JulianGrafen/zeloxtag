@@ -16,7 +16,11 @@ import { isOperatorEmail } from "@/lib/auth/require-operator";
 import { getTagVehicleAccess } from "@/lib/auth/vehicle-access";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 import { resolveDashboardScanGate } from "@/lib/billing/ai-scan-access";
-import { getFreeAbeScanQuota, getFreeInvoiceScanQuota } from "@/lib/billing/free-scan-quota";
+import {
+  getFreeAbeScanQuota,
+  getFreeFuelScanQuota,
+  getFreeInvoiceScanQuota,
+} from "@/lib/billing/free-scan-quota";
 import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-vehicle";
 import { garageOwnerRedirectHref } from "@/lib/vehicle-surface/garage-owner-redirect";
 import { garagePathForVehicle } from "@/lib/vehicle-surface/paths";
@@ -455,12 +459,16 @@ export default async function TagScanPage({
     const freeAbeScanQuota = membershipActive
       ? { remaining: 0, used: 0, limit: 1 }
       : await getFreeAbeScanQuota(vehicle.user_id);
+    const freeFuelScanQuota = membershipActive
+      ? { remaining: 0, used: 0, limit: 1 }
+      : await getFreeFuelScanQuota(vehicle.user_id);
     const wantsScan = scan === "1" && tour !== "1";
     const scanGate = resolveDashboardScanGate({
       wantsScan,
       membershipActive,
       freeInvoiceRemaining: freeInvoiceScanQuota.remaining,
       freeAbeRemaining: freeAbeScanQuota.remaining,
+      freeFuelRemaining: freeFuelScanQuota.remaining,
       scanTypeRaw: scanType,
     });
     const pendingTour = await hasPendingDashboardTour();
@@ -548,6 +556,7 @@ export default async function TagScanPage({
           membershipActive={membershipActive}
           freeInvoiceScanRemaining={freeInvoiceScanQuota.remaining}
           freeAbeScanRemaining={freeAbeScanQuota.remaining}
+          freeFuelScanRemaining={freeFuelScanQuota.remaining}
           showFreeScanWelcome={freeScanWelcome === "1"}
           showOperatorMinter={showOperatorMinter}
           accountDeletionGraceEndsAt={

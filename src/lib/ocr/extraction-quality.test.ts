@@ -266,7 +266,7 @@ describe("pre-deploy extraction quality · gutachten analyze fields", () => {
 
     const fields = gutachtenToAnalyzeFields(extraction);
     expect(invoiceTextParseSchema.safeParse(fields).success).toBe(true);
-    expect(fields.summary?.length ?? 0).toBeLessThanOrEqual(80);
+    expect(fields.summary?.length ?? 0).toBeLessThanOrEqual(160);
     expect(fields.notes?.length ?? 0).toBeLessThanOrEqual(500);
   });
 

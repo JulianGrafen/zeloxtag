@@ -15,6 +15,7 @@ import {
   DIGITAL_GARAGE_REGISTER_HEADLINE,
   DIGITAL_GARAGE_REGISTER_LEAD,
 } from "@/lib/onboarding/digital-garage-register-copy";
+import { GarageDataTrustBanner } from "@/components/trust/garage-data-trust-banner";
 
 type ClaimIntroHeroProps = {
   variant?: "tag" | "digital";
@@ -61,6 +62,8 @@ export function ClaimIntroHero({
           <p className="claim-intro-lead">{lead}</p>
 
           <ClaimCommunityStrip />
+
+          {isDigital ? <GarageDataTrustBanner /> : null}
         </div>
 
         <div className="space-y-3">

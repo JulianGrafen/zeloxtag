@@ -14,9 +14,36 @@ describe("resolveDashboardScanGate", () => {
         membershipActive: false,
         freeInvoiceRemaining: 0,
         freeAbeRemaining: 0,
+        freeFuelRemaining: 0,
         scanTypeRaw: null,
       }),
     ).toEqual({ initialScanType: null, showScanPaywall: true });
+  });
+
+  it("allows scan picker when only fuel free scan remains", () => {
+    expect(
+      resolveDashboardScanGate({
+        wantsScan: true,
+        membershipActive: false,
+        freeInvoiceRemaining: 0,
+        freeAbeRemaining: 0,
+        freeFuelRemaining: 1,
+        scanTypeRaw: null,
+      }),
+    ).toEqual({ initialScanType: null, showScanPaywall: false });
+  });
+
+  it("allows invoice deep link when only fuel free scan remains", () => {
+    expect(
+      resolveDashboardScanGate({
+        wantsScan: true,
+        membershipActive: false,
+        freeInvoiceRemaining: 0,
+        freeAbeRemaining: 0,
+        freeFuelRemaining: 1,
+        scanTypeRaw: "invoice",
+      }),
+    ).toEqual({ initialScanType: "invoice", showScanPaywall: false });
   });
 
   it("blocks invoice deep link when only abe free scan remains", () => {
@@ -48,6 +75,11 @@ describe("isScanFabLocked", () => {
   it("locks invoice FAB when invoice quota is used", () => {
     expect(isScanFabLocked(false, 0, 1, "invoice")).toBe(true);
     expect(isScanFabLocked(false, 0, 1, null)).toBe(false);
+  });
+
+  it("unlocks FAB when fuel quota remains", () => {
+    expect(isScanFabLocked(false, 0, 0, null, 1)).toBe(false);
+    expect(isScanFabLocked(false, 0, 0, "invoice", 1)).toBe(false);
   });
 });
 

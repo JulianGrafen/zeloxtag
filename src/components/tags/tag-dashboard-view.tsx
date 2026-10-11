@@ -88,6 +88,8 @@ interface TagDashboardViewProps {
   freeInvoiceScanRemaining?: number;
   /** One free KI ABE scan still available for the owner. */
   freeAbeScanRemaining?: number;
+  /** Complimentary KI fuel receipt scans still available for the owner. */
+  freeFuelScanRemaining?: number;
   onOpenScanner?: () => void;
   /** Hide the scan FAB while a photo sheet/modal is open. */
   hideScanFab?: boolean;
@@ -131,6 +133,7 @@ export function TagDashboardView({
   cloudUnlocked = true,
   freeInvoiceScanRemaining = 0,
   freeAbeScanRemaining = 0,
+  freeFuelScanRemaining = 0,
   onOpenScanner,
   hideScanFab = false,
   onLockedFeature,
@@ -177,7 +180,8 @@ export function TagDashboardView({
   const scanLocked =
     !cloudUnlocked &&
     freeInvoiceScanRemaining <= 0 &&
-    freeAbeScanRemaining <= 0;
+    freeAbeScanRemaining <= 0 &&
+    freeFuelScanRemaining <= 0;
   const invoiceDocuments = filterInvoiceReceiptDocuments(documents);
   const invoiceCount = invoiceDocuments.length;
   const hasInvoiceAmounts = invoiceDocuments.some(
@@ -448,10 +452,6 @@ export function TagDashboardView({
           ...tile.meta,
           href: path("entdecken"),
           subtitle: likeSubtitle,
-          badge:
-            isOwner && showcaseSwipeUnreadLikes > 0
-              ? String(showcaseSwipeUnreadLikes)
-              : undefined,
         },
       };
     }
@@ -598,19 +598,15 @@ export function TagDashboardView({
           onScanLocked={() => onLockedFeature?.(FEATURE.SCAN_AI_RECEIPT)}
           fuelLogHref={path("tanken")}
           manualEntryHref={manualEntryHref}
-          scanActionLabel={
-            isContributor && !isOwner ? "Beleg scannen" : "Rechnung scannen"
-          }
+          scanActionLabel="Beleg scannen"
           scanLabel={
             !cloudUnlocked &&
             !scanLocked &&
-            (freeInvoiceScanRemaining > 0 || freeAbeScanRemaining > 0)
-              ? isContributor && !isOwner
-                ? "Beleg scannen (gratis)"
-                : "Dokument scannen (gratis)"
-              : isContributor && !isOwner
-                ? "Beleg scannen"
-                : "Dokument scannen"
+            (freeInvoiceScanRemaining > 0 ||
+              freeAbeScanRemaining > 0 ||
+              freeFuelScanRemaining > 0)
+              ? "Beleg scannen (gratis)"
+              : "Beleg scannen"
           }
         />
       ) : null}

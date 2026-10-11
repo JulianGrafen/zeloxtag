@@ -21,10 +21,6 @@ import {
 } from "@/lib/documents/format";
 import { EntryTopicChips } from "@/components/documents/entry-topic-chips";
 import { InvoiceCategoryChips } from "@/components/documents/invoice-category-chips";
-import {
-  ENTRY_TOPIC_TAG_LABELS,
-  type EntryTopicTag,
-} from "@/lib/documents/entry-topic-tags";
 import { displayInvoiceReviewCategoryLabel } from "@/lib/documents/invoice-review-categories";
 import { recalculateInvoiceGrossAmount } from "@/lib/ocr/invoice-vat";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
@@ -216,14 +212,18 @@ export function InvoiceReviewForm({
                 />
               </div>
             ) : null}
-            {(fields.topicTags?.length ?? 0) > 0 ? (
-              <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
-                Themen:{" "}
-                {(fields.topicTags ?? [])
-                  .map((tag) => ENTRY_TOPIC_TAG_LABELS[tag as EntryTopicTag])
-                  .join(" · ")}
+            <div className="space-y-1.5 border-t border-[color:var(--vd-border)] pt-3">
+              <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                Themen
               </p>
-            ) : null}
+              <p className="text-[0.72rem] text-[color:var(--vd-muted)]">
+                Nach dem Scan vorausgewählt — bei Bedarf ergänzen oder entfernen.
+              </p>
+              <EntryTopicChips
+                value={fields.topicTags ?? []}
+                onChange={(topicTags) => onFieldsChange({ topicTags })}
+              />
+            </div>
           </div>
         ) : (
           <>

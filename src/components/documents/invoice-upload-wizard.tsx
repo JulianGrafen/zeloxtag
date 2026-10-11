@@ -1073,6 +1073,9 @@ export function InvoiceUploadWizard({
               <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
                 Themen
               </span>
+              <p className="text-[0.72rem] text-[color:var(--vd-muted)]">
+                Nach dem Scan vorausgewählt — bei Bedarf ergänzen oder entfernen.
+              </p>
               <EntryTopicChips
                 value={fields.topicTags ?? []}
                 onChange={(topicTags) =>

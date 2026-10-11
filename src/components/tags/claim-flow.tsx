@@ -26,6 +26,7 @@ import {
   type ZeloxPrimaryGoal,
 } from "@/lib/onboarding/primary-goal";
 import { AuthLegalConsentNotice } from "@/components/legal/auth-legal-consent-notice";
+import { GarageDataTrustBanner } from "@/components/trust/garage-data-trust-banner";
 import { ClaimTwinPreviewCard } from "@/components/tags/claim/ClaimTwinPreviewCard";
 import { BuildPersonalityChipPicker } from "@/components/tags/claim/BuildPersonalityChipPicker";
 import { ClaimVehiclePhotoPicker } from "@/components/tags/claim/ClaimVehiclePhotoPicker";
@@ -955,6 +956,8 @@ export function ClaimFlow({
                   {info}
                 </p>
               ) : null}
+
+              {isDigital ? <GarageDataTrustBanner /> : null}
 
               <AuthLegalConsentNotice variant="claim" />
 

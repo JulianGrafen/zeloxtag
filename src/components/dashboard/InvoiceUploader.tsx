@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { FileText, Info, Plus, Trash2, X } from "lucide-react";
 
 import { ABEOverview } from "@/components/dashboard/ABEOverview";
@@ -38,6 +38,7 @@ import {
   isPrimaryOilChange,
 } from "@/lib/documents/invoice-title";
 import { detectOilChangeInvoice } from "@/lib/documents/oil-changes";
+import { applyClientEntryPresentationFallback } from "@/lib/documents/entry-topic-presentation-fallback";
 import { serializeTopicTags } from "@/lib/documents/entry-topic-tags";
 import {
   scanTypeDefinition,
@@ -78,6 +79,7 @@ import {
 } from "@/lib/ocr/text-parse-schema";
 import type { Document } from "@/types/database";
 import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 import {
@@ -85,10 +87,35 @@ import {
   normalizeInvoiceReviewCategory,
 } from "@/lib/documents/invoice-review-categories";
 import { isThinInvoiceExtraction } from "@/lib/documents/invoice-extraction-thin";
+import { FuelFillFormFields } from "@/components/operating-costs/fuel-fill-form-fields";
+import { useFuelFillSubmit } from "@/hooks/use-fuel-fill-submit";
+import {
+  emptyFuelFillFormState,
+  mapExtractionToFuelFillForm,
+} from "@/lib/fuel-receipt/map-extraction-to-form";
+import { processFuelReceipt } from "@/lib/fuel-receipt/process-fuel-receipt";
+import { FuelReceiptProcessError } from "@/lib/fuel-receipt/types";
+import type { FuelFillFormState } from "@/lib/fuel-receipt/types";
+import { classifyReceiptKindClient } from "@/lib/receipt/classify-receipt-kind-client";
+import { receiptKindToRouteTarget } from "@/lib/receipt/receipt-route";
+import type { OcrDocumentType } from "@/lib/ocr/ocr-types";
 
 const MAX_PAGES = 12;
 
-type WizardStep = "compose" | "extracting" | "review";
+type WizardStep =
+  | "compose"
+  | "extracting"
+  | "choose-receipt-kind"
+  | "review"
+  | "review-fuel";
+
+type PendingAutoRouteContext = {
+  processed: Awaited<ReturnType<typeof processInvoiceDocuments>>;
+  imagePages: CompressedPage[];
+  pdf: File | null;
+  analyzeFiles: File[];
+  documentType: OcrDocumentType;
+};
 
 interface InvoiceUploaderProps {
   vehicleId: string;
@@ -124,6 +151,10 @@ interface InvoiceUploaderProps {
   existingDocuments?: Document[];
   heading?: string;
   subheading?: string;
+  /** Plus-button flow: classify fuel vs workshop after capture. */
+  autoRouteReceiptKind?: boolean;
+  fuelSuccessHref?: string;
+  onFuelScanPaywall?: () => void;
 }
 
 function emptyFields(
@@ -233,6 +264,9 @@ export function InvoiceUploader({
   existingDocuments = [],
   heading = "Rechnung scannen",
   subheading,
+  autoRouteReceiptKind = false,
+  fuelSuccessHref,
+  onFuelScanPaywall,
 }: InvoiceUploaderProps) {
   const vehicleContext = useMemo(
     () =>
@@ -288,6 +322,27 @@ export function InvoiceUploader({
   const [duplicateHint, setDuplicateHint] = useState<string | null>(null);
   const [showThinPositionsHint, setShowThinPositionsHint] = useState(false);
   const [scanSessionId, setScanSessionId] = useState<string | null>(null);
+  const [fuelForm, setFuelForm] = useState<FuelFillFormState>(
+    emptyFuelFillFormState,
+  );
+  const pendingAutoRouteRef = useRef<PendingAutoRouteContext | null>(null);
+
+  const resolvedFuelBackHref =
+    fuelSuccessHref?.trim() ||
+    (vehicleSurfaceScope
+      ? `${vehicleSurfaceHref(vehicleSurfaceScope, "tanken")}`
+      : `/v/${tagUuid}/tanken`);
+
+  const {
+    submit: submitFuelFill,
+    submitError: fuelSubmitError,
+    pending: fuelPending,
+    setSubmitError: setFuelSubmitError,
+  } = useFuelFillSubmit({
+    tagUuid,
+    vehicleId,
+    backHref: resolvedFuelBackHref,
+  });
 
   const mileageWarning = useMemo(() => {
     const km = fields.mileageKm;
@@ -342,6 +397,9 @@ export function InvoiceUploader({
     setDuplicateHint(null);
     setShowThinPositionsHint(false);
     setScanSessionId(null);
+    setFuelForm(emptyFuelFillFormState());
+    setFuelSubmitError(null);
+    pendingAutoRouteRef.current = null;
   }
 
   function buildInvoiceSaveValues(resolvedTitle: string) {
@@ -727,6 +785,226 @@ export function InvoiceUploader({
   const isGutachtenFamilyUpload = false;
   const isMultiPageGutachtenUpload = false;
 
+  async function runFuelExtractionPipeline(
+    ocrFile: File,
+    processed: PendingAutoRouteContext["processed"],
+    imagePages: CompressedPage[],
+  ) {
+    setProgress({ label: "Tankbeleg wird ausgelesen…", percent: 72 });
+    const result = await processFuelReceipt({
+      file: ocrFile,
+      vehicleId,
+      tagUuid,
+      scanSessionId,
+    });
+    if (result.scanSessionId) {
+      setScanSessionId(result.scanSessionId);
+    }
+
+    setUploadFile(null);
+    setPreviewUrl(processed.previewUrl);
+    setPreviewKind(processed.previewKind);
+    setPreviewOwned(processed.previewUrlOwned);
+    setPageCount(processed.pageCount);
+    setFuelForm(
+      mapExtractionToFuelFillForm(result.extraction, emptyFuelFillFormState()),
+    );
+    setProgress({ label: "Fertig", percent: 100 });
+    setStep("review-fuel");
+  }
+
+  async function completeWorkshopExtraction(
+    context: PendingAutoRouteContext,
+  ) {
+    const { processed, imagePages, pdf, analyzeFiles, documentType } = context;
+
+    const analyzed = await analyzeDocumentFiles(
+      analyzeFiles,
+      (page, totalPages) => {
+        const span = 25 / Math.max(1, totalPages);
+        setProgress({
+          label:
+            totalPages > 1
+              ? `Seite ${page} von ${totalPages} wird analysiert…`
+              : documentType === "abe"
+                ? isEinzelabnahmeUpload
+                  ? "Einzelabnahme wird analysiert…"
+                  : isTeilegutachtenUpload
+                    ? "Teilegutachten wird analysiert…"
+                    : `${scanDef?.title ?? "Gutachten"} wird analysiert…`
+                : documentType === "tuev"
+                  ? "TÜV-Bericht wird analysiert…"
+                  : "Rechnung wird analysiert…",
+          percent: Math.min(99, Math.round(70 + (page - 1) * span + span * 0.5)),
+          page,
+          totalPages,
+        });
+      },
+      {
+        vehicleId,
+        documentType,
+        approvalKind: scanDef?.approvalKind ?? null,
+        vehicleContext: documentType === "abe" ? vehicleContext : null,
+        garageVin:
+          scanDef?.approvalKind === "einzelabnahme" ? vehicleVin ?? null : null,
+        invoiceCategory:
+          isInvoiceFamilyScan && resolvedLockCategory
+            ? resolvedCategory
+            : null,
+        invoiceMultiPageSource:
+          processed.sourceKind === "pdf" ? "pdf_pages" : "photo_blocks",
+      },
+    );
+
+    if (
+      processed.sourceKind === "pdf" &&
+      processed.pdfPageCount != null &&
+      processed.rasterizedPages != null &&
+      processed.rasterizedPages < processed.pdfPageCount
+    ) {
+      setError(
+        `Nur ${processed.rasterizedPages} von ${processed.pdfPageCount} PDF-Seiten konnten vorbereitet werden. ` +
+          "Extraktion kann unvollständig sein — ggf. „Drucken → Als PDF speichern“ oder Seiten als Fotos scannen.",
+      );
+    }
+
+    let uploadPdf = processed.uploadFile;
+    if (!uploadPdf && processed.sourceKind === "images" && imagePages.length > 0) {
+      setProgress({
+        label: "PDF für Speicherung wird erzeugt…",
+        percent: 96,
+        totalPages: processed.pageCount,
+      });
+      uploadPdf = await buildUploadPdfFromPages(imagePages);
+    }
+
+    setUploadFile(uploadPdf);
+    setPreviewUrl(processed.previewUrl);
+    setPreviewKind(processed.previewKind);
+    setPreviewOwned(processed.previewUrlOwned);
+    setPageCount(processed.pageCount);
+    setRawText(analyzed.rawText);
+    setApprovalFields(analyzed.approvalFields);
+    setScanSessionId(analyzed.scanSessionId ?? null);
+
+    const oil = detectOilChangeInvoice({
+      title: analyzed.fields.summary,
+      summary: analyzed.fields.summary,
+      vendor: analyzed.fields.vendor,
+      category: analyzed.fields.category,
+      notes: analyzed.fields.notes,
+      lineItems: analyzed.fields.lineItems,
+      rawText: analyzed.rawText,
+    });
+    const oilPrimary = isPrimaryOilChange({
+      summary: analyzed.fields.summary,
+      vendor: analyzed.fields.vendor,
+      category: analyzed.fields.category,
+      lineItems: analyzed.fields.lineItems,
+      rawText: analyzed.rawText,
+      oil,
+    });
+
+    const baseFields = {
+      ...analyzed.fields,
+      date: normalizeDocumentDateIso(analyzed.fields.date),
+      category: normalizeInvoiceReviewCategory(
+        resolvedLockCategory ? resolvedCategory : analyzed.fields.category,
+        defaultReviewCategory,
+      ),
+    };
+
+    const patchedFields =
+      oil.isOilChange && !oilPrimary
+        ? {
+            ...baseFields,
+            notes: baseFields.notes?.trim()
+              ? `${baseFields.notes.trim()} · ${oil.notes}`
+              : oil.notes,
+          }
+        : baseFields;
+
+    const nextFields =
+      documentType === "invoice"
+        ? applyClientEntryPresentationFallback(patchedFields, {
+            rawText: analyzed.rawText,
+          })
+        : patchedFields;
+    setFields(nextFields);
+
+    const defaultTitle =
+      nextFields.summary?.trim() ||
+      buildInvoiceDashboardTitle({
+        summary: nextFields.summary,
+        vendor: nextFields.vendor,
+        category: nextFields.category,
+        lineItems: nextFields.lineItems,
+        rawText: analyzed.rawText,
+        oil,
+      });
+    setTitle(defaultTitle);
+
+    setProgress({ label: "Fertig", percent: 100 });
+
+    const usedSingleOverviewScan =
+      isInvoiceFamilyScan && !pdf && imagePages.length === 1;
+    if (
+      usedSingleOverviewScan &&
+      isThinInvoiceExtraction({
+        lineItems: nextFields.lineItems,
+        amount: nextFields.amount,
+      })
+    ) {
+      setShowThinPositionsHint(true);
+      setStep("compose");
+      return;
+    }
+
+    setShowThinPositionsHint(false);
+    setStep("review");
+  }
+
+  async function resumeAutoRouteAs(target: "fuel" | "workshop") {
+    const pending = pendingAutoRouteRef.current;
+    if (!pending) {
+      setError("Keine gescannten Daten mehr vorhanden — bitte erneut scannen.");
+      setStep("compose");
+      return;
+    }
+    setError(null);
+    setStep("extracting");
+    try {
+      if (target === "fuel") {
+        const ocrFile = pending.analyzeFiles[0];
+        if (!ocrFile) {
+          throw new Error("Kein Bild für den Tankbeleg vorhanden.");
+        }
+        await runFuelExtractionPipeline(
+          ocrFile,
+          pending.processed,
+          pending.imagePages,
+        );
+        return;
+      }
+      await completeWorkshopExtraction(pending);
+    } catch (resumeError) {
+      setStep("compose");
+      if (
+        resumeError instanceof FuelReceiptProcessError &&
+        (resumeError.code === "FREE_SCAN_EXHAUSTED" ||
+          resumeError.code === "SUBSCRIPTION_REQUIRED")
+      ) {
+        onFuelScanPaywall?.();
+        return;
+      }
+      const message =
+        resumeError instanceof Error
+          ? resumeError.message
+          : "Extraktion fehlgeschlagen.";
+      setError(message);
+    }
+  }
+
   async function runExtraction(source?: {
     nativePdf?: File | null;
     pages?: CompressedPage[];
@@ -775,149 +1053,66 @@ export function InvoiceUploader({
               ? [processed.uploadFile]
               : processed.analyzeFiles;
 
-      const analyzed = await analyzeDocumentFiles(
+      const routeContext: PendingAutoRouteContext = {
+        processed,
+        imagePages,
+        pdf,
         analyzeFiles,
-        (page, totalPages) => {
-          const span = 25 / Math.max(1, totalPages);
-          setProgress({
-            label:
-              totalPages > 1
-                ? `Seite ${page} von ${totalPages} wird analysiert…`
-                : documentType === "abe"
-                  ? isEinzelabnahmeUpload
-                    ? "Einzelabnahme wird analysiert…"
-                    : isTeilegutachtenUpload
-                      ? "Teilegutachten wird analysiert…"
-                      : `${scanDef?.title ?? "Gutachten"} wird analysiert…`
-                  : documentType === "tuev"
-                    ? "TÜV-Bericht wird analysiert…"
-                    : "Rechnung wird analysiert…",
-            percent: Math.min(99, Math.round(70 + (page - 1) * span + span * 0.5)),
-            page,
-            totalPages,
-          });
-        },
-        {
-          vehicleId,
-          documentType,
-          approvalKind: scanDef?.approvalKind ?? null,
-          vehicleContext:
-            documentType === "abe" ? vehicleContext : null,
-          garageVin:
-            scanDef?.approvalKind === "einzelabnahme"
-              ? vehicleVin ?? null
-              : null,
-          invoiceCategory:
-            isInvoiceFamilyScan && resolvedLockCategory
-              ? resolvedCategory
-              : null,
-          invoiceMultiPageSource:
-            processed.sourceKind === "pdf" ? "pdf_pages" : "photo_blocks",
-        },
-      );
-
-      if (
-        processed.sourceKind === "pdf" &&
-        processed.pdfPageCount != null &&
-        processed.rasterizedPages != null &&
-        processed.rasterizedPages < processed.pdfPageCount
-      ) {
-        setError(
-          `Nur ${processed.rasterizedPages} von ${processed.pdfPageCount} PDF-Seiten konnten vorbereitet werden. ` +
-            "Extraktion kann unvollständig sein — ggf. „Drucken → Als PDF speichern“ oder Seiten als Fotos scannen.",
-        );
-      }
-
-      let uploadPdf = processed.uploadFile;
-      if (!uploadPdf && processed.sourceKind === "images" && imagePages.length > 0) {
-        setProgress({
-          label: "PDF für Speicherung wird erzeugt…",
-          percent: 96,
-          totalPages: processed.pageCount,
-        });
-        uploadPdf = await buildUploadPdfFromPages(imagePages);
-      }
-
-      setUploadFile(uploadPdf);
-      setPreviewUrl(processed.previewUrl);
-      setPreviewKind(processed.previewKind);
-      setPreviewOwned(processed.previewUrlOwned);
-      setPageCount(processed.pageCount);
-      setRawText(analyzed.rawText);
-      setApprovalFields(analyzed.approvalFields);
-      setScanSessionId(analyzed.scanSessionId ?? null);
-
-      const oil = detectOilChangeInvoice({
-        title: analyzed.fields.summary,
-        summary: analyzed.fields.summary,
-        vendor: analyzed.fields.vendor,
-        category: analyzed.fields.category,
-        notes: analyzed.fields.notes,
-        lineItems: analyzed.fields.lineItems,
-        rawText: analyzed.rawText,
-      });
-      const oilPrimary = isPrimaryOilChange({
-        summary: analyzed.fields.summary,
-        vendor: analyzed.fields.vendor,
-        category: analyzed.fields.category,
-        lineItems: analyzed.fields.lineItems,
-        rawText: analyzed.rawText,
-        oil,
-      });
-
-      const baseFields = {
-        ...analyzed.fields,
-        date: normalizeDocumentDateIso(analyzed.fields.date),
-        category: normalizeInvoiceReviewCategory(
-          resolvedLockCategory ? resolvedCategory : analyzed.fields.category,
-          defaultReviewCategory,
-        ),
+        documentType,
       };
 
-      const nextFields =
-        oil.isOilChange && !oilPrimary
-          ? {
-              ...baseFields,
-              notes: baseFields.notes?.trim()
-                ? `${baseFields.notes.trim()} · ${oil.notes}`
-                : oil.notes,
+      const shouldAutoRoute =
+        autoRouteReceiptKind &&
+        scanType === "invoice" &&
+        documentType === "invoice" &&
+        isInvoiceFamilyScan;
+
+      if (shouldAutoRoute) {
+        const isPdfSource = Boolean(pdf) || processed.sourceKind === "pdf";
+        const firstImage = analyzeFiles[0];
+        if (!isPdfSource && firstImage) {
+          setProgress({ label: "Beleg wird erkannt…", percent: 38 });
+          try {
+            const classification = await classifyReceiptKindClient({
+              file: firstImage,
+              vehicleId,
+            });
+            const target = receiptKindToRouteTarget(classification.kind);
+            if (target === "fuel") {
+              await runFuelExtractionPipeline(
+                firstImage,
+                processed,
+                imagePages,
+              );
+              return;
             }
-          : baseFields;
-      setFields(nextFields);
-
-      const defaultTitle =
-        nextFields.summary?.trim() ||
-        buildInvoiceDashboardTitle({
-          summary: nextFields.summary,
-          vendor: nextFields.vendor,
-          category: nextFields.category,
-          lineItems: nextFields.lineItems,
-          rawText: analyzed.rawText,
-          oil,
-        });
-      setTitle(defaultTitle);
-
-      setProgress({ label: "Fertig", percent: 100 });
-
-      const usedSingleOverviewScan =
-        isInvoiceFamilyScan && !pdf && imagePages.length === 1;
-      if (
-        usedSingleOverviewScan &&
-        isThinInvoiceExtraction({
-          lineItems: nextFields.lineItems,
-          amount: nextFields.amount,
-        })
-      ) {
-        setShowThinPositionsHint(true);
-        setStep("compose");
-        return;
+            if (target === null) {
+              pendingAutoRouteRef.current = routeContext;
+              setStep("choose-receipt-kind");
+              setProgress({ label: "Art wählen", percent: 48 });
+              return;
+            }
+          } catch {
+            pendingAutoRouteRef.current = routeContext;
+            setStep("choose-receipt-kind");
+            setProgress({ label: "Art wählen", percent: 48 });
+            return;
+          }
+        }
       }
 
-      setShowThinPositionsHint(false);
-      setStep("review");
+      await completeWorkshopExtraction(routeContext);
     } catch (extractError) {
       setStep("compose");
       setUploadFile(null);
+      if (
+        extractError instanceof FuelReceiptProcessError &&
+        (extractError.code === "FREE_SCAN_EXHAUSTED" ||
+          extractError.code === "SUBSCRIPTION_REQUIRED")
+      ) {
+        onFuelScanPaywall?.();
+        return;
+      }
       const message =
         extractError instanceof Error
           ? extractError.message
@@ -1761,6 +1956,104 @@ export function InvoiceUploader({
               />
             }
           />
+        </div>
+      ) : null}
+
+      {step === "choose-receipt-kind" ? (
+        <div className="vd-anim-header zt-feature-panel space-y-4 p-4 shadow-[var(--vd-shadow-sm)]">
+          <div>
+            <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
+              Welche Art von Beleg ist das?
+            </p>
+            <p className="mt-1 text-[0.8rem] text-[color:var(--vd-muted)]">
+              Die automatische Erkennung war unsicher — bitte kurz bestätigen.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto rounded-2xl px-4 py-3 text-left"
+              onClick={() => {
+                void resumeAutoRouteAs("fuel");
+              }}
+            >
+              <span className="block text-[0.88rem] font-semibold">Tankbeleg</span>
+              <span className="mt-0.5 block text-[0.75rem] font-normal text-[color:var(--vd-muted)]">
+                Tankquittung → Tanken
+              </span>
+            </Button>
+            <Button
+              type="button"
+              className="h-auto rounded-2xl px-4 py-3 text-left"
+              onClick={() => {
+                void resumeAutoRouteAs("workshop");
+              }}
+            >
+              <span className="block text-[0.88rem] font-semibold">
+                Werkstattrechnung
+              </span>
+              <span className="mt-0.5 block text-[0.75rem] font-normal text-white/80">
+                Beleg mit Positionen → Dokumente
+              </span>
+            </Button>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={resetWizard}
+          >
+            Abbrechen
+          </Button>
+        </div>
+      ) : null}
+
+      {step === "review-fuel" ? (
+        <div className="vd-anim-header space-y-4">
+          {previewUrl ? (
+            <div className="zt-feature-panel overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="Vorschau Tankquittung"
+                className="max-h-48 w-full object-contain bg-black/5"
+              />
+            </div>
+          ) : null}
+          <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+            Als Tankbeleg erkannt — Daten prüfen und speichern.
+          </p>
+          <FuelFillFormFields
+            value={fuelForm}
+            onChange={setFuelForm}
+            disabled={fuelPending}
+          />
+          {fuelSubmitError ? (
+            <p role="alert" className="vd-alert-error">{fuelSubmitError}</p>
+          ) : null}
+          {error ? (
+            <p role="alert" className="vd-alert-error">{error}</p>
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 rounded-2xl"
+              disabled={fuelPending}
+              onClick={resetWizard}
+            >
+              Anderen Beleg scannen
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 rounded-2xl"
+              disabled={fuelPending}
+              onClick={() => submitFuelFill(fuelForm)}
+            >
+              {fuelPending ? "Speichern…" : "Tankvorgang speichern"}
+            </Button>
+          </div>
         </div>
       ) : null}
 

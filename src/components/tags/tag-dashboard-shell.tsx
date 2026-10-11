@@ -187,6 +187,8 @@ interface TagDashboardShellProps {
   freeInvoiceScanRemaining?: number;
   /** Remaining complimentary KI ABE scans for the vehicle owner. */
   freeAbeScanRemaining?: number;
+  /** Remaining complimentary KI fuel receipt scans for the vehicle owner. */
+  freeFuelScanRemaining?: number;
   /** Post-save upsell after the one free scan (`?freeScanWelcome=1`). */
   showFreeScanWelcome?: boolean;
   /** `?scan=1` deep link blocked — show paywall immediately (no picker/uploader). */
@@ -223,6 +225,7 @@ export function TagDashboardShell({
   membershipActive = false,
   freeInvoiceScanRemaining = 0,
   freeAbeScanRemaining = 0,
+  freeFuelScanRemaining = 0,
   showFreeScanWelcome = false,
   forceScanPaywall = false,
   showOperatorMinter = false,
@@ -246,6 +249,8 @@ export function TagDashboardShell({
     membershipActive,
     freeInvoiceScanRemaining,
     freeAbeScanRemaining,
+    null,
+    freeFuelScanRemaining,
   );
   const paywallVehicleLabelForInit = formatPaywallVehicleLabel(
     vehicle.make,
@@ -267,6 +272,7 @@ export function TagDashboardShell({
       freeInvoiceScanRemaining,
       freeAbeScanRemaining,
       allowedInitial,
+      freeFuelScanRemaining,
     ) &&
     (initialMode === "pick-scan" || initialMode === "scanner");
 
@@ -340,6 +346,7 @@ export function TagDashboardShell({
     if (
       freeInvoiceScanRemaining === 0 &&
       freeAbeScanRemaining === 0 &&
+      freeFuelScanRemaining === 0 &&
       !membershipActive
     ) {
       return "free_scan_exhausted";
@@ -350,6 +357,13 @@ export function TagDashboardShell({
     useState(freeInvoiceScanRemaining);
   const [localFreeAbeScanRemaining, setLocalFreeAbeScanRemaining] = useState(
     freeAbeScanRemaining,
+  );
+  const [localFreeFuelScanRemaining, setLocalFreeFuelScanRemaining] =
+    useState(freeFuelScanRemaining);
+  const [autoRouteReceiptKind, setAutoRouteReceiptKind] = useState(
+    () =>
+      openScannerDirectly &&
+      allowedInitial === "invoice",
   );
   const [scanType, setScanType] = useState<ScanType | null>(() =>
     openScannerDirectly && allowedInitial ? allowedInitial : null,
@@ -431,6 +445,10 @@ export function TagDashboardShell({
     setLocalFreeAbeScanRemaining(freeAbeScanRemaining);
   }, [freeAbeScanRemaining]);
 
+  useEffect(() => {
+    setLocalFreeFuelScanRemaining(freeFuelScanRemaining);
+  }, [freeFuelScanRemaining]);
+
   function clearFreeScanWelcomeParam() {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
@@ -479,8 +497,21 @@ export function TagDashboardShell({
   }
 
   function handleScanTypeSelect(type: ScanType) {
+    setAutoRouteReceiptKind(type === "invoice");
     if (!membershipActive) {
-      if (isInvoiceFamilyScanType(type)) {
+      if (type === "invoice") {
+        if (
+          localFreeInvoiceScanRemaining <= 0 &&
+          localFreeFuelScanRemaining <= 0
+        ) {
+          openPaywall(
+            FEATURE.SCAN_AI_RECEIPT,
+            "free_scan_exhausted",
+            paywallContextForScanType(type),
+          );
+          return;
+        }
+      } else if (isInvoiceFamilyScanType(type)) {
         if (localFreeInvoiceScanRemaining <= 0) {
           openPaywall(
             FEATURE.SCAN_AI_RECEIPT,
@@ -509,6 +540,7 @@ export function TagDashboardShell({
 
   function handleOpenScanner() {
     setScanBackTarget("dashboard");
+    setAutoRouteReceiptKind(true);
     handleScanTypeSelect("invoice");
   }
 
@@ -840,6 +872,11 @@ export function TagDashboardShell({
             setMode("pick-scan");
           }}
           scanType={scanType}
+          autoRouteReceiptKind={autoRouteReceiptKind}
+          fuelSuccessHref={`${dashboardBase}/tanken`}
+          onFuelScanPaywall={() =>
+            openPaywall(FEATURE.SCAN_AI_RECEIPT, "free_scan_exhausted")
+          }
           useFreeScanSaveRedirect={
             !membershipActive &&
             ((scanType != null &&
@@ -882,6 +919,9 @@ export function TagDashboardShell({
         }
         freeAbeScanRemaining={
           membershipActive ? 0 : localFreeAbeScanRemaining
+        }
+        freeFuelScanRemaining={
+          membershipActive ? 0 : localFreeFuelScanRemaining
         }
         onOpenScanner={handleOpenScanner}
         hideScanFab={
