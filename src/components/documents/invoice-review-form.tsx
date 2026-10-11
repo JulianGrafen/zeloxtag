@@ -19,7 +19,12 @@ import {
   formatDocumentAmount,
   formatMileageKmLabel,
 } from "@/lib/documents/format";
+import { EntryTopicChips } from "@/components/documents/entry-topic-chips";
 import { InvoiceCategoryChips } from "@/components/documents/invoice-category-chips";
+import {
+  ENTRY_TOPIC_TAG_LABELS,
+  type EntryTopicTag,
+} from "@/lib/documents/entry-topic-tags";
 import { displayInvoiceReviewCategoryLabel } from "@/lib/documents/invoice-review-categories";
 import { recalculateInvoiceGrossAmount } from "@/lib/ocr/invoice-vat";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
@@ -211,6 +216,14 @@ export function InvoiceReviewForm({
                 />
               </div>
             ) : null}
+            {(fields.topicTags?.length ?? 0) > 0 ? (
+              <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+                Themen:{" "}
+                {(fields.topicTags ?? [])
+                  .map((tag) => ENTRY_TOPIC_TAG_LABELS[tag as EntryTopicTag])
+                  .join(" · ")}
+              </p>
+            ) : null}
           </div>
         ) : (
           <>
@@ -277,6 +290,16 @@ export function InvoiceReviewForm({
                   />
                 </div>
               ) : null}
+
+              <div className="space-y-1.5">
+                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                  Themen
+                </span>
+                <EntryTopicChips
+                  value={fields.topicTags ?? []}
+                  onChange={(topicTags) => onFieldsChange({ topicTags })}
+                />
+              </div>
 
               <details className="group rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]/60 px-3 py-2.5">
                 <summary className="cursor-pointer list-none text-[0.8rem] font-medium text-[color:var(--vd-muted)] marker:content-none [&::-webkit-details-marker]:hidden">

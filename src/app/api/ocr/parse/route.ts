@@ -17,8 +17,13 @@ import {
 import {
   INVOICE_TEXT_PARSE_CATEGORIES,
   invoiceTextParseSchema,
+  normalizeTextParseResult,
   type InvoiceTextParseResult,
 } from "@/lib/ocr/text-parse-schema";
+import {
+  enrichInvoiceEntryPresentation,
+  mergePresentationIntoParseFields,
+} from "@/services/documents/InvoiceEntryPresentationService";
 import {
   enforceRateLimit,
   enforceSameOrigin,
@@ -270,6 +275,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let responseFields: InvoiceTextParseResult = validated.data;
+    if (documentType === "invoice") {
+      const presentation = await enrichInvoiceEntryPresentation({
+        lineItems: validated.data.lineItems,
+        vendor: validated.data.vendor,
+        rawText: result.rawText,
+        reviewCategory: validated.data.category,
+      });
+      responseFields = normalizeTextParseResult(
+        mergePresentationIntoParseFields(validated.data, presentation),
+      );
+    }
+
     const body: ParseSuccess = {
       ok: true,
       documentType: result.documentType,
@@ -279,7 +297,7 @@ export async function POST(request: NextRequest) {
           ? true
           : undefined,
       contentFormat: result.ocrJson.contentFormat,
-      fields: validated.data,
+      fields: responseFields,
       approvalFields: parseApprovalFields(result.approvalFields),
       rawText: result.rawText,
       modelId: result.modelId,

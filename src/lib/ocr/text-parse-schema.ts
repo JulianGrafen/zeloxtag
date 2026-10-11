@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  ENTRY_TOPIC_TAGS,
+  normalizeTopicTags,
+} from "@/lib/documents/entry-topic-tags";
 import { normalizeDocumentDateIso } from "@/lib/documents/format";
 import {
   coerceGermanMoneyAmount,
@@ -76,7 +80,9 @@ export const invoiceTextParseSchema = z.object({
     .nullable(),
   amount: looseMoneySchema(250_000),
   category: z.enum(INVOICE_TEXT_PARSE_CATEGORIES),
-  summary: z.string().trim().min(1).max(80).nullable(),
+  summary: z.string().trim().min(1).max(160).nullable(),
+  /** Workshop invoice topic chips (Reifen, Fahrwerk, …) — filled after OCR enrichment. */
+  topicTags: z.array(z.enum(ENTRY_TOPIC_TAGS)).max(5).optional(),
   lineItems: z.array(invoiceLineItemSchema).max(60).nullable(),
   /** ABE / Teilegutachten approval number (KBA, ABE-Nr., …). */
   kbaNumber: z.string().trim().min(1).max(80).nullable(),
@@ -402,7 +408,8 @@ export function normalizeTextParseResult(
         ? sanitizeLlmMoneyAmount(fields.amount, "conservative")
         : null,
     category: fields.category,
-    summary: fields.summary?.trim().slice(0, 80) || null,
+    summary: fields.summary?.trim().slice(0, 160) || null,
+    topicTags: normalizeTopicTags(fields.topicTags),
     lineItems: options.preservePositions
       ? normalizeLineItemsForReview(fields.lineItems, 60)
       : normalizeLineItemsList(fields.lineItems, 60),

@@ -43,6 +43,9 @@ import {
   GarageInsetInput,
   GarageInsetSelect,
 } from "@/components/ui/garage-field";
+import { applyClientEntryPresentationFallback } from "@/lib/documents/entry-topic-presentation-fallback";
+import { serializeTopicTags } from "@/lib/documents/entry-topic-tags";
+import { EntryTopicChips } from "@/components/documents/entry-topic-chips";
 import {
   buildInvoiceDashboardTitle,
   isPrimaryOilChange,
@@ -522,13 +525,16 @@ export function InvoiceUploadWizard({
         lineItemsResult,
         { lockedCategory },
       );
-      const fields = {
-        ...merged,
-        category: normalizeInvoiceReviewCategory(
-          merged.category,
-          defaultReviewCategory,
-        ),
-      };
+      const fields = applyClientEntryPresentationFallback(
+        {
+          ...merged,
+          category: normalizeInvoiceReviewCategory(
+            merged.category,
+            defaultReviewCategory,
+          ),
+          topicTags: merged.topicTags ?? [],
+        },
+      );
 
       const uploadFile = await buildUploadFile(overviewFile, lineItemsFiles);
       const previewSource =
@@ -609,14 +615,16 @@ export function InvoiceUploadWizard({
       });
 
       const category = oilPrimary ? "service" : fields.category;
-      const storedTitle = buildInvoiceDashboardTitle({
-        summary: resolvedTitle,
-        vendor: fields.vendor,
-        category,
-        lineItems: fields.lineItems,
-        rawText: null,
-        oil,
-      });
+      const storedTitle =
+        resolvedTitle ||
+        buildInvoiceDashboardTitle({
+          summary: resolvedTitle,
+          vendor: fields.vendor,
+          category,
+          lineItems: fields.lineItems,
+          rawText: null,
+          oil,
+        });
 
       const formData = new FormData();
       formData.set("vehicleId", vehicleId);
@@ -641,7 +649,10 @@ export function InvoiceUploadWizard({
       formData.set("authority", "");
       formData.set("conditions", "");
       formData.set("technicalSpecs", "");
-      formData.set("partCategory", "");
+      formData.set(
+        "partCategory",
+        serializeTopicTags(fields.topicTags ?? []),
+      );
       formData.set(
         "notes",
         oil.isOilChange
@@ -1057,6 +1068,25 @@ export function InvoiceUploadWizard({
                   : formatMileageKmLabel(fields.mileageKm)
               }
             />
+
+            <div className="space-y-1.5">
+              <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+                Themen
+              </span>
+              <EntryTopicChips
+                value={fields.topicTags ?? []}
+                onChange={(topicTags) =>
+                  setState((prev) =>
+                    prev.fields
+                      ? {
+                          ...prev,
+                          fields: { ...prev.fields, topicTags },
+                        }
+                      : prev,
+                  )
+                }
+              />
+            </div>
 
             <GarageField
               label="Art der Rechnung"

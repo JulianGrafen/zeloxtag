@@ -38,6 +38,7 @@ import {
   isPrimaryOilChange,
 } from "@/lib/documents/invoice-title";
 import { detectOilChangeInvoice } from "@/lib/documents/oil-changes";
+import { serializeTopicTags } from "@/lib/documents/entry-topic-tags";
 import {
   scanTypeDefinition,
   type ScanType,
@@ -134,6 +135,7 @@ function emptyFields(
     amount: null,
     category,
     summary: null,
+    topicTags: [],
     lineItems: null,
     kbaNumber: null,
     vehicleApprovals: null,
@@ -443,7 +445,10 @@ export function InvoiceUploader({
       formData.set("authority", "");
       formData.set("conditions", "");
       formData.set("technicalSpecs", "");
-      formData.set("partCategory", "");
+      formData.set(
+        "partCategory",
+        serializeTopicTags(fields.topicTags ?? []),
+      );
       formData.set(
         "notes",
         fields.notes?.trim() ?? "",
@@ -880,14 +885,16 @@ export function InvoiceUploader({
           : baseFields;
       setFields(nextFields);
 
-      const defaultTitle = buildInvoiceDashboardTitle({
-        summary: nextFields.summary,
-        vendor: nextFields.vendor,
-        category: nextFields.category,
-        lineItems: nextFields.lineItems,
-        rawText: analyzed.rawText,
-        oil,
-      });
+      const defaultTitle =
+        nextFields.summary?.trim() ||
+        buildInvoiceDashboardTitle({
+          summary: nextFields.summary,
+          vendor: nextFields.vendor,
+          category: nextFields.category,
+          lineItems: nextFields.lineItems,
+          rawText: analyzed.rawText,
+          oil,
+        });
       setTitle(defaultTitle);
 
       setProgress({ label: "Fertig", percent: 100 });

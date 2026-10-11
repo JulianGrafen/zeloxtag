@@ -7,6 +7,8 @@ import type {
   ApprovalFields,
 } from "@/lib/documents/approval-fields";
 import { parseApprovalFields } from "@/lib/documents/approval-fields";
+import { applyClientEntryPresentationFallback } from "@/lib/documents/entry-topic-presentation-fallback";
+import { normalizeTopicTags } from "@/lib/documents/entry-topic-tags";
 
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 
@@ -296,6 +298,9 @@ export function mergeFields(
     category,
     summary:
       results.find((result) => result.fields.summary)?.fields.summary ?? null,
+    topicTags: normalizeTopicTags(
+      results.flatMap((result) => result.fields.topicTags ?? []),
+    ),
     lineItems: mergedLineItems,
     kbaNumber:
       results.find((result) => result.fields.kbaNumber)?.fields.kbaNumber ??
@@ -414,6 +419,9 @@ export function mergeInvoiceScanFields(
       amount: withVat.amount,
       category,
       summary: overviewFields?.summary ?? null,
+      topicTags: normalizeTopicTags(
+        results.flatMap((result) => result.fields.topicTags ?? []),
+      ),
       lineItems: normalizeLineItemsForReview(withVat.lineItems, 60),
       kbaNumber: null,
       vehicleApprovals: null,
@@ -543,10 +551,20 @@ export async function analyzeDocumentFiles(
     ? "abe"
     : "invoice";
 
+  const mergedFields = mergeAnalyzeDocumentFields(
+    results,
+    scanParts,
+    invoiceCategory,
+  );
+  const fields =
+    documentType === "invoice"
+      ? applyClientEntryPresentationFallback(mergedFields, { rawText })
+      : mergedFields;
+
   return {
     kind: mergedKind,
     documentType,
-    fields: mergeAnalyzeDocumentFields(results, scanParts, invoiceCategory),
+    fields,
     approvalFields:
       results.find((result) => result.approvalFields)?.approvalFields ?? null,
     rawText,
