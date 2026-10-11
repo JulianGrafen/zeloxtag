@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type ChangeEvent,
@@ -95,12 +96,22 @@ export interface InBrowserCameraProps {
   showFramingGuide?: boolean;
   /** Show pinch-style zoom slider when the camera supports optical zoom. */
   allowOpticalZoom?: boolean;
+  /** Gallery/file picker in the top bar (right). Default: true. */
+  showHeaderGalleryPicker?: boolean;
+  /**
+   * Dev/preview: skip `getUserMedia` and render scanner chrome with a mock
+   * viewfinder, loading, or error state.
+   */
+  uiPreviewMock?: "viewfinder" | "loading" | "error";
 }
 
 type FacingMode = "environment" | "user";
 
 const IMAGE_ACCEPT = "image/*";
 const PDF_ACCEPT = "image/*,application/pdf,.pdf";
+/** No `capture` — mobile OS shows Kamera, Mediathek and Dateien. */
+const MOBILE_IMAGE_PICKER_ACCEPT = "image/*,.heic,.heif";
+const PDF_ONLY_ACCEPT = "application/pdf,.pdf";
 
 /** DIN A4 portrait ratio (210 × 297 mm). */
 const A4_ASPECT_RATIO = "210 / 297";
@@ -235,6 +246,54 @@ function guideFrameOutsideShadow(dimOutside: boolean): string {
   return dimOutside ? "shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" : "";
 }
 
+function CameraFallbackMediaPicker({
+  allowPdf,
+  onFileChange,
+}: {
+  allowPdf: boolean;
+  onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  const imageInputId = useId();
+  const pdfInputId = useId();
+
+  return (
+    <div className="flex w-full max-w-xs flex-col gap-2">
+      <input
+        id={imageInputId}
+        type="file"
+        accept={MOBILE_IMAGE_PICKER_ACCEPT}
+        className="sr-only"
+        onChange={onFileChange}
+      />
+      <label
+        htmlFor={imageInputId}
+        className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-semibold text-black"
+      >
+        <ImagePlus className="h-4 w-4 shrink-0" aria-hidden />
+        Foto oder Datei
+      </label>
+      {allowPdf ? (
+        <>
+          <input
+            id={pdfInputId}
+            type="file"
+            accept={PDF_ONLY_ACCEPT}
+            className="sr-only"
+            onChange={onFileChange}
+          />
+          <label
+            htmlFor={pdfInputId}
+            className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-6 py-3.5 text-sm font-semibold text-white"
+          >
+            <FileUp className="h-4 w-4 shrink-0" aria-hidden />
+            PDF hochladen
+          </label>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function formatTopBarLabel(
   title: string,
   captureStep?: { current: number; total: number },
@@ -294,6 +353,8 @@ export function InBrowserCamera({
   enforceCaptureQuality = false,
   showFramingGuide = false,
   allowOpticalZoom = false,
+  showHeaderGalleryPicker = true,
+  uiPreviewMock,
 }: InBrowserCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const viewfinderRef = useRef<HTMLDivElement>(null);
@@ -546,12 +607,39 @@ export function InBrowserCamera({
   }
 
   useEffect(() => {
+    if (uiPreviewMock) {
+      stopStream(streamRef.current);
+      streamRef.current = null;
+      setCaptureRejectMessage(null);
+
+      if (uiPreviewMock === "error") {
+        setCameraReady(false);
+        setCameraError(
+          "Kamerazugriff verweigert. Bitte in den Browser-Einstellungen erlauben.",
+        );
+        setHasMultipleCameras(false);
+        return;
+      }
+
+      if (uiPreviewMock === "loading") {
+        setCameraReady(false);
+        setCameraError(null);
+        setHasMultipleCameras(false);
+        return;
+      }
+
+      setCameraError(null);
+      setCameraReady(true);
+      setHasMultipleCameras(true);
+      return;
+    }
+
     void startCamera(facingMode);
     return () => {
       stopStream(streamRef.current);
       streamRef.current = null;
     };
-  }, [facingMode]);
+  }, [facingMode, uiPreviewMock]);
 
   function flipCamera() {
     setFacingMode((current) =>
@@ -853,22 +941,26 @@ export function InBrowserCamera({
         </p>
       </div>
 
-      <label
-        className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-[2px] transition-opacity active:opacity-60"
-        aria-label="Aus Galerie oder Datei wählen"
-      >
-        <input
-          type="file"
-          accept={fileAccept}
-          className="absolute inset-0 cursor-pointer opacity-0"
-          onChange={handleFileChange}
-        />
-        {allowPdf ? (
-          <FileUp className="h-5 w-5" />
-        ) : (
-          <ImagePlus className="h-5 w-5" />
-        )}
-      </label>
+      {showHeaderGalleryPicker ? (
+        <label
+          className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-[2px] transition-opacity active:opacity-60"
+          aria-label="Aus Galerie oder Datei wählen"
+        >
+          <input
+            type="file"
+            accept={fileAccept}
+            className="absolute inset-0 cursor-pointer opacity-0"
+            onChange={handleFileChange}
+          />
+          {allowPdf ? (
+            <FileUp className="h-5 w-5" />
+          ) : (
+            <ImagePlus className="h-5 w-5" />
+          )}
+        </label>
+      ) : (
+        <div className="h-10 w-10 shrink-0" aria-hidden />
+      )}
     </div>
   );
 
@@ -1045,20 +1137,26 @@ export function InBrowserCamera({
                 </p>
               </div>
             ) : null}
-            <label className="relative inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-semibold text-black">
-              <input
-                type="file"
-                accept={fileAccept}
-                className="absolute inset-0 cursor-pointer opacity-0"
-                onChange={handleFileChange}
-              />
-              <ImagePlus className="h-4 w-4" />
-              Datei auswählen
-            </label>
+            <CameraFallbackMediaPicker
+              allowPdf={allowPdf}
+              onFileChange={handleFileChange}
+            />
           </div>
         ) : (
           <>
             {/* Live video stream */}
+            {uiPreviewMock === "viewfinder" ? (
+              <div
+                className="absolute inset-0 bg-[linear-gradient(145deg,#3d3d3d_0%,#1a1a1a_45%,#0d0d0d_100%)]"
+                aria-hidden
+              >
+                <div
+                  className="absolute inset-[12%] rounded-lg border border-white/10 bg-white/[0.04] shadow-inner"
+                  aria-hidden
+                />
+              </div>
+            ) : null}
+
             <video
               ref={videoRef}
               autoPlay
@@ -1066,12 +1164,14 @@ export function InBrowserCamera({
               muted
               className={[
                 "absolute inset-0 h-full w-full object-cover transition-opacity duration-500",
-                cameraReady ? "opacity-100" : "opacity-0",
+                cameraReady && uiPreviewMock !== "viewfinder"
+                  ? "opacity-100"
+                  : "opacity-0",
               ].join(" ")}
             />
 
             {/* Loading spinner */}
-            {!cameraReady ? (
+            {!cameraReady && !cameraError ? (
               <div className="flex h-full flex-col items-center justify-center gap-3">
                 <ThinkingOrb
                   state="connecting"

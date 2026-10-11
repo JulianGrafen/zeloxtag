@@ -1415,6 +1415,8 @@ export function InvoiceUploader({
                 title={resolvedHeading}
                 scanLabel={scanDef?.title ?? "Beleg"}
                 allowPdf
+                showImageUploadOnIntro
+                autoStartCamera
                 disabled={compressing}
                 onComplete={(files) => {
                   void completeInvoiceScan(files);

@@ -81,6 +81,8 @@ export interface InvoiceCaptureWizardProps {
   allowPdf?: boolean;
   /** Gallery / file pick on intro (e.g. fuel receipt upload without opening the camera). */
   showImageUploadOnIntro?: boolean;
+  /** Skip intro dropzone and open the in-browser camera immediately. */
+  autoStartCamera?: boolean;
   /** Called when the 2-step scan (or PDF) is complete — files in order: overview, then blocks. */
   onComplete?: (files: File[]) => void;
   /** Single-file fallback (add-page variant). */
@@ -146,6 +148,7 @@ function PositionsCamera({
       guideSectionAnchor="center"
       guideFrameDimOutside
       showBriefing={false}
+      showHeaderGalleryPicker={false}
       enforceCaptureQuality
       allowOpticalZoom
       captureStep={{ current: 2, total: 2 }}
@@ -161,6 +164,7 @@ export function InvoiceCaptureWizard({
   disabled = false,
   allowPdf = false,
   showImageUploadOnIntro = false,
+  autoStartCamera = false,
   onComplete,
   onFileSelected,
   variant = "initial",
@@ -169,7 +173,9 @@ export function InvoiceCaptureWizard({
   pdfButtonLabel = "PDF",
   hint: _hint,
 }: InvoiceCaptureWizardProps) {
-  const [phase, setPhase] = useState<CapturePhase>("intro");
+  const [phase, setPhase] = useState<CapturePhase>(
+    autoStartCamera ? "capture-overview" : "intro",
+  );
   const [overviewFile, setOverviewFile] = useState<File | null>(null);
   const [overviewPreviewUrl, setOverviewPreviewUrl] = useState<string | null>(
     null,
@@ -320,6 +326,7 @@ export function InvoiceCaptureWizard({
         a4OutputFormat="jpeg"
         showFramingGuide
         showBriefing={false}
+        showHeaderGalleryPicker={false}
         allowOpticalZoom
         enforceCaptureQuality
         captureStep={{ current: 1, total: 1 }}
@@ -447,19 +454,16 @@ export function InvoiceCaptureWizard({
     );
   }
 
+  const showImageUpload = showImageUploadOnIntro;
+  const showPdfPicker = allowPdf;
+
   return (
     <div className="vd-scan-dropzone space-y-4 px-4 py-6 text-center">
       <h2 className="sr-only">{title}</h2>
       <span className="vd-icon-badge mx-auto !h-14 !w-14 !rounded-2xl">
         <ScanLine className="h-6 w-6" aria-hidden />
       </span>
-      <div
-        className={
-          allowPdf || showImageUploadOnIntro
-            ? "grid grid-cols-2 gap-2"
-            : "grid grid-cols-1"
-        }
-      >
+      <div className="space-y-2">
         <button
           type="button"
           disabled={disabled}
@@ -473,28 +477,38 @@ export function InvoiceCaptureWizard({
           <span>{cameraButtonLabel}</span>
         </button>
 
-        {showImageUploadOnIntro ? (
-          <FilePickerLabel
-            disabled={disabled}
-            accept={IMAGE_ACCEPT}
-            onChange={handleIntroImageUpload}
-            variant="secondary"
+        {showImageUpload || showPdfPicker ? (
+          <div
+            className={
+              showImageUpload && showPdfPicker
+                ? "grid grid-cols-2 gap-2"
+                : "grid grid-cols-1"
+            }
           >
-            <ImagePlus className="relative z-0 h-4 w-4" aria-hidden />
-            <span className="relative z-0">{imageButtonLabel}</span>
-          </FilePickerLabel>
-        ) : null}
+            {showImageUpload ? (
+              <FilePickerLabel
+                disabled={disabled}
+                accept={IMAGE_ACCEPT}
+                onChange={handleIntroImageUpload}
+                variant="secondary"
+              >
+                <ImagePlus className="relative z-0 h-4 w-4" aria-hidden />
+                <span className="relative z-0">{imageButtonLabel}</span>
+              </FilePickerLabel>
+            ) : null}
 
-        {allowPdf ? (
-          <FilePickerLabel
-            disabled={disabled}
-            accept={PDF_ACCEPT}
-            onChange={handleFileChange}
-            variant="secondary"
-          >
-            <FileUp className="relative z-0 h-4 w-4" aria-hidden />
-            <span className="relative z-0">{pdfButtonLabel}</span>
-          </FilePickerLabel>
+            {showPdfPicker ? (
+              <FilePickerLabel
+                disabled={disabled}
+                accept={PDF_ACCEPT}
+                onChange={handleFileChange}
+                variant="secondary"
+              >
+                <FileUp className="relative z-0 h-4 w-4" aria-hidden />
+                <span className="relative z-0">{pdfButtonLabel}</span>
+              </FilePickerLabel>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>
