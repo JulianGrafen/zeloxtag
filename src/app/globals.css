@@ -1214,9 +1214,9 @@ a.claim-cta.vd-scan-fab-cta,
 
 .hardware-upsell-model-slot .claim-intro-model-slot {
   margin: 0;
-  height: min(32vw, 148px);
-  min-height: 120px;
-  max-height: 168px;
+  height: min(28vw, 112px);
+  min-height: 96px;
+  max-height: 128px;
 }
 
 @media (min-width: 640px) {
