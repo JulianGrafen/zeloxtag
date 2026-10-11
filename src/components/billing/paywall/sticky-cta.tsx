@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 export function StickyPaywallCta({
   label = PRO_TRIAL_LABEL,
   microCopy = PRO_PAYWALL_STICKY_MICROCOPY,
+  anchorText,
   pending,
   error,
   dismissLabel,
@@ -19,6 +20,7 @@ export function StickyPaywallCta({
 }: {
   label?: string;
   microCopy?: string;
+  anchorText?: string;
   pending: boolean;
   error: string | null;
   dismissLabel?: string;
@@ -37,7 +39,7 @@ export function StickyPaywallCta({
               automotiveBottomBarShellClassName,
             )
           : cn(
-              "z-20 shrink-0 border-t border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/95 px-4 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2.5 shadow-[var(--paywall-sticky-footer-shadow)] backdrop-blur-xl",
+              "paywall-sticky-footer z-20 shrink-0 border-t border-[color:var(--paywall-grouped-separator)] bg-[color:var(--paywall-sheet-footer-bg)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-2xl backdrop-saturate-150",
             ),
       )}
     >
@@ -45,7 +47,7 @@ export function StickyPaywallCta({
         <button
           type="button"
           className={cn(
-            "claim-cta paywall-sticky-cta paywall-cta-pulse w-full shadow-[var(--vd-shadow-sm)]",
+            "claim-cta paywall-sticky-cta paywall-apple-cta w-full",
             inline && "paywall-sticky-cta--inline",
           )}
           disabled={pending}
@@ -57,10 +59,20 @@ export function StickyPaywallCta({
           <p
             className={cn(
               "text-center leading-snug text-[color:var(--vd-muted)]",
-              inline ? "mt-2 text-[0.66rem]" : "mt-2 text-[0.72rem] leading-relaxed",
+              inline ? "mt-2 text-[12px]" : "mt-2 text-[13px] leading-snug",
             )}
           >
             {microCopy}
+          </p>
+        ) : null}
+        {anchorText?.trim() ? (
+          <p
+            className={cn(
+              "text-center leading-snug text-[color:var(--vd-muted)]",
+              inline ? "mt-2 text-[12px]" : "mt-2.5 text-[13px] leading-snug",
+            )}
+          >
+            {anchorText}
           </p>
         ) : null}
         {error ? (
@@ -79,8 +91,8 @@ export function StickyPaywallCta({
             type="button"
             onClick={onDismiss}
             className={cn(
-              "claim-later w-full rounded-xl px-3",
-              inline ? "mt-2 py-2 text-[0.76rem]" : "mt-2 py-2 text-[0.84rem]",
+              "paywall-dismiss claim-later w-full rounded-xl px-3 font-normal",
+              inline ? "mt-2 py-2 text-[15px]" : "mt-2 py-2.5 text-[15px]",
             )}
           >
             {dismissLabel}

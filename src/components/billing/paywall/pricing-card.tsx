@@ -1,9 +1,10 @@
 "use client";
 
+import { CheckCircle2, Circle } from "lucide-react";
+
 import { MotionShineOverlay } from "@/components/billing/paywall/motion-shine-overlay";
 import {
-  PRO_ANNUAL_DISCOUNT_LABEL,
-  PRO_ANNUAL_RECOMMENDED_LABEL,
+  proPaywallCardCopy,
   proPaywallPricingAnchor,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
@@ -25,9 +26,90 @@ export function PricingCard({
   shinePosition?: ShinePosition;
   shineMotionActive?: boolean;
 }) {
+  if (compact) {
+    const copy = proPaywallCardCopy(interval);
+    const showShine = interval === "monthly" && shinePosition;
+
+    return (
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        onClick={onSelect}
+        className={cn(
+          "paywall-plan-row relative flex w-full origin-center items-start gap-3 overflow-hidden rounded-[12px] px-3.5 py-3 text-left will-change-transform",
+          "transition-[transform,box-shadow,border-color,background-color,opacity] duration-350",
+          "[transition-timing-function:var(--vd-ease-spring)]",
+          selected
+            ? "z-10 scale-[1.03] bg-[color:var(--paywall-pricing-selected-bg)] shadow-[var(--vd-shadow-sm)] ring-1 ring-[color:var(--paywall-pricing-selected-border)]"
+            : "scale-[0.98] bg-[color:var(--paywall-grouped-bg)] opacity-95 ring-1 ring-transparent hover:scale-[1] hover:bg-[color:var(--paywall-grouped-bg-hover)] hover:opacity-100",
+        )}
+      >
+        {showShine ? (
+          <MotionShineOverlay
+            position={shinePosition}
+            selected={selected}
+            motionActive={shineMotionActive}
+          />
+        ) : null}
+
+        <span className="relative z-[1] min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="text-[15px] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+              {copy.title}
+            </span>
+            {copy.bestDealBadge ? (
+              <span className="rounded-md bg-[color:var(--paywall-apple-blue)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-white">
+                {copy.bestDealBadge}
+              </span>
+            ) : null}
+            {copy.discountBadge ? (
+              <span className="rounded-md bg-[color:var(--paywall-apple-green)]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--paywall-apple-green)]">
+                {copy.discountBadge}
+              </span>
+            ) : null}
+          </span>
+
+          <span
+            className={cn(
+              "mt-0.5 block font-semibold tracking-[-0.03em] text-[color:var(--vd-text)] transition-[font-size] duration-350 [transition-timing-function:var(--vd-ease-spring)]",
+              selected ? "text-[17px]" : "text-[16px]",
+            )}
+          >
+            {copy.primaryPrice}
+          </span>
+
+          {copy.secondaryLine ? (
+            <span className="mt-0.5 block text-[13px] leading-snug text-[color:var(--vd-muted)]">
+              {copy.secondaryLine}
+            </span>
+          ) : null}
+
+          <span className="mt-1 block text-[13px] leading-snug text-[color:var(--vd-muted)]">
+            {copy.subline}
+          </span>
+        </span>
+
+        <span
+          className="relative z-[1] mt-0.5 shrink-0 text-[color:var(--paywall-apple-blue)]"
+          aria-hidden
+        >
+          {selected ? (
+            <CheckCircle2 className="h-[22px] w-[22px]" strokeWidth={2} />
+          ) : (
+            <Circle
+              className="h-[22px] w-[22px] text-[color:var(--vd-muted)]"
+              strokeWidth={1.75}
+            />
+          )}
+        </span>
+      </button>
+    );
+  }
+
   const anchor = proPaywallPricingAnchor(interval);
   const title = interval === "annual" ? "Jährlich" : "Monatlich";
-  const badge = interval === "annual" ? PRO_ANNUAL_RECOMMENDED_LABEL : undefined;
+  const showShine = interval === "monthly" && shinePosition;
 
   return (
     <button
@@ -36,137 +118,31 @@ export function PricingCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "relative overflow-hidden rounded-2xl border text-left",
-        "origin-center will-change-transform",
-        "transition-[transform,box-shadow,border-color,background-color,opacity] duration-350",
-        "[transition-timing-function:var(--vd-ease-spring)]",
-        compact ? (selected ? "px-3.5 py-3.5" : "px-3 py-3") : "px-4 py-3.5",
+        "relative overflow-hidden rounded-2xl border px-4 py-3.5 text-left",
         selected
-          ? "z-10 scale-[1.06] border-[color:var(--paywall-pricing-selected-border)] bg-[color:var(--paywall-pricing-selected-bg)] text-[color:var(--vd-text)] ring-2 ring-[color:var(--paywall-pricing-selected-border)] shadow-[var(--vd-shadow)]"
-          : "scale-[0.97] border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] opacity-90 hover:scale-[0.99] hover:border-[color:var(--paywall-pricing-hover-border)] hover:opacity-100",
+          ? "border-[color:var(--paywall-pricing-selected-border)] bg-[color:var(--paywall-pricing-selected-bg)] ring-2 ring-[color:var(--paywall-pricing-selected-border)]"
+          : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]",
       )}
     >
-      {interval === "monthly" && shinePosition ? (
+      {showShine ? (
         <MotionShineOverlay
           position={shinePosition}
           selected={selected}
           motionActive={shineMotionActive}
         />
       ) : null}
-
-      <div className="relative z-[1]">
-      {badge ? (
-        <div
-          className={cn(
-            "mb-1.5 flex flex-wrap items-center gap-1.5",
-            compact ? "mb-1.5" : "mb-2",
-          )}
-        >
-          <span
-            className={cn(
-              "inline-flex rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.08em]",
-              compact ? "text-[0.58rem]" : "text-[0.62rem]",
-              selected
-                ? "bg-[color:var(--paywall-badge-primary-bg)] text-white"
-                : "bg-[color:var(--paywall-badge-neutral-bg)] text-[color:var(--primary-foreground)]",
-            )}
-          >
-            {compact ? "Beliebteste Wahl" : badge}
-          </span>
-          {interval === "annual" ? (
-            <span
-              className={cn(
-                "inline-flex rounded-full px-2.5 py-0.5 font-semibold uppercase tracking-[0.06em]",
-                compact ? "text-[0.64rem]" : "text-[0.7rem]",
-                selected
-                  ? "bg-[color:var(--paywall-benefit-icon-bg)] text-[color:var(--paywall-benefit-icon-fg)]"
-                  : "bg-[color:var(--paywall-badge-discount-bg)] text-[color:var(--paywall-badge-discount-text)] ring-1 ring-[color:var(--paywall-badge-discount-ring)]",
-              )}
-            >
-              {PRO_ANNUAL_DISCOUNT_LABEL}
-            </span>
-          ) : null}
-        </div>
-      ) : compact ? null : (
-        <span className="mb-2 block min-h-[1.375rem]" aria-hidden />
-      )}
-
-      <span
-        className={cn(
-          "block font-semibold uppercase tracking-[0.12em]",
-          compact ? "text-[0.62rem]" : "text-[0.72rem]",
-          selected
-            ? "text-[color:var(--paywall-pricing-selected-muted)]"
-            : "text-[color:var(--vd-muted)]",
-        )}
-      >
+      <span className="relative z-[1] block text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
         {title}
       </span>
-
-      {anchor.referencePrice ? (
-        <span
-          className={cn(
-            "mt-0.5 block line-through",
-            compact ? "text-[0.68rem]" : "text-[0.78rem] mt-1",
-            selected
-              ? "text-[color:var(--paywall-pricing-selected-subtle)]"
-              : "text-[color:var(--vd-muted)]",
-          )}
-        >
-          {anchor.referencePrice}
-        </span>
-      ) : null}
-
-      <span
-        className={cn(
-          "mt-0.5 block font-semibold tracking-[-0.02em] transition-[font-size] duration-350 [transition-timing-function:var(--vd-ease-spring)]",
-          compact ? (selected ? "text-[0.94rem]" : "text-[0.88rem]") : "text-[0.98rem]",
-        )}
-      >
-        {anchor.currentPrice}
-      </span>
-
+      <span className="relative z-[1] mt-1 block font-semibold">{anchor.currentPrice}</span>
       {anchor.monthlyEquivalent ? (
-        <span
-          className={cn(
-            "mt-0.5 block leading-snug",
-            compact ? "text-[0.66rem]" : "text-[0.74rem]",
-            selected
-              ? "text-[color:var(--paywall-pricing-selected-strong)]"
-              : "text-[color:var(--vd-muted)]",
-          )}
-        >
+        <span className="relative z-[1] mt-0.5 block text-[0.74rem] text-[color:var(--vd-muted)]">
           {anchor.monthlyEquivalent}
         </span>
       ) : null}
-
-      {anchor.flexSubline ? (
-        <span
-          className={cn(
-            "mt-0.5 block leading-snug",
-            compact ? "text-[0.64rem]" : "text-[0.72rem]",
-            selected
-              ? "text-[color:var(--paywall-pricing-selected-strong)]"
-              : "text-[color:var(--vd-muted)]",
-          )}
-        >
-          {anchor.flexSubline}
-        </span>
-      ) : null}
-
-      {!compact ? (
-        <span
-          className={cn(
-            "mt-2 block text-[0.72rem] font-medium leading-snug",
-            selected
-              ? "text-[color:var(--paywall-pricing-selected-accent)]"
-              : "text-[color:var(--paywall-pricing-trial-unselected)]",
-          )}
-        >
-          {anchor.trialLabel}
-        </span>
-      ) : null}
-      </div>
+      <span className="relative z-[1] mt-2 block text-[0.72rem] font-medium text-[color:var(--paywall-pricing-trial-unselected)]">
+        {anchor.trialLabel}
+      </span>
     </button>
   );
 }

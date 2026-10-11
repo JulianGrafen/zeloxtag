@@ -5,8 +5,14 @@ import {
   inferPrimaryGoalFromFeature,
   paywallGoalOverrideForDashboardTile,
   paywallGoalOverrideForScanType,
+  paywallVehicleShortName,
   resolvePaywallGoal,
 } from "@/lib/billing/paywall-personalization";
+import {
+  PRO_PAYWALL_CONVERSION_FOOTNOTE,
+  PRO_PAYWALL_CONVERSION_SUBLINE,
+  PRO_TRIAL_LABEL,
+} from "@/lib/billing/pro-plan";
 import { FEATURE } from "@/lib/permissions/feature-access";
 
 describe("paywall personalization", () => {
@@ -53,49 +59,39 @@ describe("paywall personalization", () => {
     ).toBe("werterhalt");
   });
 
-  it("returns goal-specific headline, visual, and lead benefit", () => {
+  it("returns unified conversion copy for all goals", () => {
     const werterhalt = getPaywallPersonalization({ goal: "werterhalt" });
-    expect(werterhalt.headline.length).toBeGreaterThan(10);
-    expect(werterhalt.visualKind).toBe("resale_chart");
-    expect(werterhalt.benefits[0]?.startsWith("Werterhalt:")).toBe(true);
-    expect(werterhalt.ctaLabel).toContain("Verkaufswert");
-
     const showcase = getPaywallPersonalization({ goal: "showcase" });
-    expect(showcase.visualKind).toBe("showcase_qr");
-    expect(showcase.benefits[0]?.startsWith("QR auf Treffen:")).toBe(true);
 
-    const documents = getPaywallPersonalization({ goal: "documents" });
-    expect(documents.visualKind).toBe("vault_gap");
-    expect(documents.benefits[0]?.startsWith("Gutachten-Tresor:")).toBe(true);
+    expect(werterhalt.headline).toBe("Dein Build. Lückenlos.");
+    expect(werterhalt.subline).toBe(PRO_PAYWALL_CONVERSION_SUBLINE);
+    expect(werterhalt.ctaLabel).toBe(PRO_TRIAL_LABEL);
+    expect(werterhalt.footnote).toBe(PRO_PAYWALL_CONVERSION_FOOTNOTE);
+    expect(werterhalt.showProBadge).toBe(false);
+    expect(werterhalt.benefits[0]).toContain("TÜV- & Gutachten-Tresor");
+
+    expect(showcase.headline).toBe(werterhalt.headline);
+    expect(showcase.benefits).toEqual(werterhalt.benefits);
   });
 
-  it("sharpens werterhalt headline when free scan is exhausted", () => {
-    const exhausted = getPaywallPersonalization({
-      goal: "werterhalt",
-      variant: "free_scan_exhausted",
-    });
-    expect(exhausted.headline).toContain("Werterhalt");
-    expect(exhausted.visualKind).toBe("resale_chart");
-  });
-
-  it("personalizes copy for a specific vehicle", () => {
+  it("strips year from vehicle headline", () => {
+    expect(paywallVehicleShortName("Toyota GR Supra · 2022")).toBe(
+      "Toyota GR Supra",
+    );
     const personalized = getPaywallPersonalization({
       goal: "werterhalt",
-      vehicleLabel: "BMW M3 · 2019",
+      vehicleLabel: "Toyota GR Supra · 2022",
     });
-    expect(personalized.vehicleEyebrow).toBe("Dein BMW M3 · 2019");
-    expect(personalized.headline).toContain("BMW M3 · 2019");
-    expect(personalized.subline).toContain("BMW M3 · 2019");
-    expect(personalized.stickyMicroCopy).toContain("BMW M3 · 2019");
+    expect(personalized.headline).toBe("Dein Toyota GR Supra. Lückenlos.");
+    expect(personalized.vehicleEyebrow).toBeNull();
   });
 
-  it("sharpens documents headline when free scan is exhausted", () => {
+  it("keeps same headline when free scan is exhausted (kicker only in UI)", () => {
     const base = getPaywallPersonalization({ goal: "documents" });
     const exhausted = getPaywallPersonalization({
       goal: "documents",
       variant: "free_scan_exhausted",
     });
-    expect(exhausted.headline).not.toBe(base.headline);
-    expect(exhausted.headline).toContain("Gratis-Scan");
+    expect(exhausted.headline).toBe(base.headline);
   });
 });

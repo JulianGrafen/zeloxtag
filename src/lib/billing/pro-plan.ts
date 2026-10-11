@@ -45,20 +45,27 @@ export const PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER =
   "Dein Gratis-Scan ist verbraucht";
 export const PRO_PAYWALL_STICKY_MICROCOPY = PRO_TRIAL_NO_COMMITMENT;
 export const PRO_PAYWALL_MODAL_MICROCOPY = "Jederzeit kündbar";
-export const PRO_PAYWALL_DISMISS_LABEL = "Weiter mit ZeloxTag Free";
+export const PRO_PAYWALL_DISMISS_LABEL = "Mit ZeloxTag Free fortfahren";
+export const PRO_PAYWALL_BRAND_BADGE = "ZELOXTAG PRO";
+export const PRO_PAYWALL_CONVERSION_SUBLINE =
+  "Keine verlorenen ABEs — jeder Cent deines Umbaus felsenfest belegt.";
+export const PRO_PAYWALL_CONVERSION_FOOTNOTE =
+  "Kostet im Monat weniger als ein Liter Motoröl — sichert aber Umbauten im Wert von tausenden Euro ab.";
+export const PRO_PAYWALL_ANNUAL_BEST_DEAL_LABEL = "Bester Deal";
 export const PRO_MONTHLY_CARD_SUBLINE =
   "Volle Flexibilität. Jederzeit mit einem Klick kündbar.";
 export const PRO_ANNUAL_CARD_HIGHLIGHT = "2 Monate geschenkt";
 export const PRO_PAYWALL_VALUE_FOOTNOTE =
   "Weniger als eine halbe Tankfüllung für ein ganzes Jahr Schutz und Dokumentation deines Builds.";
 
-export const PRO_PAYWALL_MODAL_BENEFITS = [
-  "Werterhalt: Lückenlose Dokumentation — im Schnitt 10–20 % mehr beim Verkauf.",
-  "Gutachten-Tresor: ABEs, Teilegutachten & §21 griffbereit.",
-  "QR auf Treffen: Mod-Liste, Dyno & Sound live am Auto zeigen.",
-  "Keine Tipparbeit: Rechnung fotografieren — KI ordnet Preise & Teile zu.",
-  "Verkaufs-Exposé: PDF-Exposé deiner Umbauten — per Klick.",
+/** Kompakte 3-Säulen-Copy in der Conversion-Paywall (Modal & Section). */
+export const PRO_PAYWALL_CONVERSION_BENEFITS = [
+  "TÜV- & Gutachten-Tresor: Alle ABEs, Teilegutachten und § 21-Eintragungen sofort griffbereit.",
+  "Showcase auf Treffen: Mod-Liste, Leistungsdiagramm und Soundfiles live per Scan am Motorraum teilbar.",
+  "Build-Wert & Exposé: Rechnungen per KI scannen — erzeugt mit einem Klick das Wertgutachten für Versicherung und Verkauf.",
 ] as const;
+
+export const PRO_PAYWALL_MODAL_BENEFITS = PRO_PAYWALL_CONVERSION_BENEFITS;
 
 export type ProPaywallPricingAnchor = {
   referencePrice?: string;
@@ -96,17 +103,53 @@ export type ProPaywallTimelineNode = {
 export const PRO_PAYWALL_TRIAL_TIMELINE: readonly ProPaywallTimelineNode[] = [
   {
     icon: "check",
-    text: "Heute: 14 Tage Pro gratis (0,00 €)",
+    text: "Heute: 14 Tage Pro kostenlos testen (0,00 €)",
   },
   {
     icon: "mail",
-    text: "Tag 12: Erinnerungs-Mail vor Testende",
+    text: "Tag 12: Erinnerungs-Mail vor Ablauf des Testzeitraums",
   },
   {
     icon: "shield",
-    text: "Tag 14: Erstmalige Abrechnung · vorher jederzeit mit 1 Klick kündbar",
+    text: "Tag 14: Erstmalige Abrechnung — vorher jederzeit mit 1 Klick kündbar",
   },
 ] as const;
+
+export type PaywallPricingCardCopy = {
+  title: string;
+  primaryPrice: string;
+  secondaryLine?: string;
+  subline: string;
+  bestDealBadge?: string;
+  discountBadge?: string;
+};
+
+export function proPaywallCardCopy(
+  interval: ProBillingInterval,
+): PaywallPricingCardCopy {
+  if (interval === "annual") {
+    return {
+      title: "Jährlich",
+      primaryPrice: `${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat`,
+      secondaryLine: `abgerechnet als ${PRO_PLAN_ANNUAL_PRICE} / Jahr`,
+      subline: "2 Monate geschenkt. Inklusive 14 Tage Testphase.",
+      bestDealBadge: PRO_PAYWALL_ANNUAL_BEST_DEAL_LABEL,
+      discountBadge: PRO_ANNUAL_DISCOUNT_LABEL,
+    };
+  }
+  return {
+    title: "Monatlich",
+    primaryPrice: `${PRO_PLAN_MONTHLY_PRICE} / Monat`,
+    subline: "Monatlich kündbar.",
+  };
+}
+
+export function proPaywallCtaSubline(interval: ProBillingInterval): string {
+  if (interval === "annual") {
+    return `Danach ${PRO_PLAN_ANNUAL_PRICE} / Jahr · Jederzeit kündbar`;
+  }
+  return `Danach ${PRO_PLAN_MONTHLY_PRICE} / Monat · Jederzeit kündbar`;
+}
 
 export const PRO_CHECKOUT_BUTTON_LABEL = PRO_TRIAL_LABEL;
 export const PRO_CHECKOUT_BUTTON_RETURNING_LABEL = `Pro Abo abschließen · ${PRO_PLAN_MONTHLY_PRICE} / Monat`;

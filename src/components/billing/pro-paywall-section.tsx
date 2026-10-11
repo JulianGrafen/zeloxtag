@@ -8,6 +8,7 @@ import { ProPaywallContent } from "@/components/billing/paywall/pro-paywall-cont
 import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { StripePortalButton } from "@/components/billing/stripe-checkout-button";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
+import { PAYWALL_APPLE_CLASS } from "@/lib/billing/paywall-apple";
 import {
   getPaywallPersonalization,
   resolvePaywallGoal,
@@ -16,6 +17,7 @@ import {
   PRO_PAYWALL_DISMISS_LABEL,
   PRO_PLAN_CHECKOUT_HEADLINE,
   proCheckoutButtonLabel,
+  proPaywallCtaSubline,
   type ProBillingInterval,
   type ProCheckoutAudience,
 } from "@/lib/billing/pro-plan";
@@ -26,6 +28,7 @@ import {
   type FeatureFlag,
   type PaywallVariant,
 } from "@/lib/permissions/feature-access";
+import { cn } from "@/lib/utils";
 
 type ProPaywallSectionProps = {
   successPath: string;
@@ -53,7 +56,9 @@ export function ProPaywallSection({
   statusMessage,
 }: ProPaywallSectionProps) {
   const showAnnualPlan = isAnnualPlanAvailable();
-  const defaultInterval: ProBillingInterval = "monthly";
+  const defaultInterval: ProBillingInterval = showAnnualPlan
+    ? "annual"
+    : "monthly";
   const [interval, setInterval] = useState<ProBillingInterval>(defaultInterval);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +102,10 @@ export function ProPaywallSection({
   return (
     <section
       aria-label="ZeloxTag Pro"
-      className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5"
+      className={cn(
+        PAYWALL_APPLE_CLASS,
+        "zt-feature-panel paywall-sheet p-4 shadow-[var(--vd-shadow-sm)] sm:p-5",
+      )}
     >
       <ProPaywallContent
         layout="section"
@@ -110,10 +118,8 @@ export function ProPaywallSection({
         showConversionExtras={useConversionCopy}
         variant={variant}
         benefits={personalization?.benefits}
-        highlightLeadBenefit={Boolean(personalization)}
         visualKind={personalization?.visualKind}
         visualAriaLabel={personalization?.visualAriaLabel}
-        valueFootnote={personalization?.footnote}
         statusMessage={statusMessage}
         belowFoldFooter={
           dismissHref ? (
@@ -129,7 +135,12 @@ export function ProPaywallSection({
                 personalization?.ctaLabel ??
                 proCheckoutButtonLabel(audience, interval)
               }
-              microCopy={personalization?.stickyMicroCopy ?? ""}
+              microCopy={
+                personalization
+                  ? proPaywallCtaSubline(interval)
+                  : ""
+              }
+              anchorText={personalization?.footnote}
               pending={pending}
               error={error}
               fixed={false}

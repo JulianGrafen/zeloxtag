@@ -6,14 +6,14 @@ import {
   PaywallExhaustedKicker,
   PaywallOfferSections,
 } from "@/components/billing/paywall/paywall-layout";
-import { PricingCards } from "@/components/billing/paywall/pricing-cards";
 import type { PaywallVisualKind } from "@/lib/billing/paywall-personalization";
+import { PricingCards } from "@/components/billing/paywall/pricing-cards";
 import {
   PRO_PAYWALL_MODAL_BENEFITS,
   PRO_PAYWALL_MODAL_SUBLINE,
-  PRO_PAYWALL_VALUE_FOOTNOTE,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
+import { PAYWALL_APPLE_CLASS } from "@/lib/billing/paywall-apple";
 import type { PaywallVariant } from "@/lib/permissions/feature-access";
 import { cn } from "@/lib/utils";
 
@@ -35,13 +35,12 @@ type ProPaywallContentProps = {
   highlightLeadBenefit?: boolean;
   visualKind?: PaywallVisualKind;
   visualAriaLabel?: string;
-  valueFootnote?: string;
   vehicleEyebrow?: string | null;
   subline?: string;
 };
 
 const DEFAULT_VISUAL_ARIA =
-  "Fahrzeugwert beim Verkauf: mit ZeloxTag höher als ohne Dokumentation";
+  "Umbau-Werthaltung: mit lückenloser Dokumentation höherer Verkaufswert";
 
 export function ProPaywallContent({
   interval,
@@ -59,7 +58,6 @@ export function ProPaywallContent({
   highlightLeadBenefit = false,
   visualKind = "resale_chart",
   visualAriaLabel,
-  valueFootnote = PRO_PAYWALL_VALUE_FOOTNOTE,
   vehicleEyebrow = null,
   subline = PRO_PAYWALL_MODAL_SUBLINE,
 }: ProPaywallContentProps) {
@@ -75,7 +73,6 @@ export function ProPaywallContent({
       interval={interval}
       onIntervalChange={onIntervalChange}
       showAnnualPlan={showAnnualPlan}
-      valueFootnote={valueFootnote}
       belowFoldFooter={belowFoldFooter}
       compact={compact}
     />
@@ -84,6 +81,7 @@ export function ProPaywallContent({
   return (
     <div
       className={cn(
+        PAYWALL_APPLE_CLASS,
         "flex min-h-0 flex-col",
         isModal ? "h-full min-h-0 flex-1" : "gap-4",
       )}
@@ -132,7 +130,7 @@ export function ProPaywallContent({
             <PaywallAnimatedGoalVisual
               kind={visualKind}
               ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
-              className="overflow-hidden rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]/30"
+              className="overflow-hidden rounded-[12px] bg-[color:var(--paywall-sheet-bg)]"
             />
             {offerSections}
           </div>

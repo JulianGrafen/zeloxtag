@@ -15,7 +15,7 @@ export function MotionShineOverlay({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-0 overflow-hidden rounded-2xl",
+        "pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]",
         selected ? "opacity-100" : "opacity-70",
       )}
       aria-hidden

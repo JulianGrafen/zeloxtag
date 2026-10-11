@@ -14,10 +14,12 @@ import {
   resolvePaywallGoal,
   type PaywallTriggerContext,
 } from "@/lib/billing/paywall-personalization";
+import { PAYWALL_APPLE_CLASS } from "@/lib/billing/paywall-apple";
 import {
   PRO_PAYWALL_DISMISS_LABEL,
   PRO_PLAN_CHECKOUT_HEADLINE,
   cloudAboHref,
+  proPaywallCtaSubline,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
 import { readPrimaryGoal } from "@/lib/onboarding/primary-goal";
@@ -25,6 +27,7 @@ import {
   type FeatureFlag,
   type PaywallVariant,
 } from "@/lib/permissions/feature-access";
+import { cn } from "@/lib/utils";
 
 const SHEET_EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -46,7 +49,9 @@ export function ProPaywallModal({
   onClose: () => void;
 }) {
   const showAnnualPlan = isAnnualPlanAvailable();
-  const defaultInterval: ProBillingInterval = "monthly";
+  const defaultInterval: ProBillingInterval = showAnnualPlan
+    ? "annual"
+    : "monthly";
   const [interval, setInterval] = useState<ProBillingInterval>(defaultInterval);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +61,7 @@ export function ProPaywallModal({
     if (!open) return;
     setInterval(defaultInterval);
     setError(null);
-  }, [open, defaultInterval]);
+  }, [open, showAnnualPlan, defaultInterval]);
 
   useEffect(() => {
     if (!open) return;
@@ -141,11 +146,14 @@ export function ProPaywallModal({
 
           <motion.div
             {...sheetMotion}
-            className="relative z-10 flex h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] max-h-[92dvh] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[1.5rem] border border-b-0 border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)]"
+            className={cn(
+              PAYWALL_APPLE_CLASS,
+              "paywall-sheet relative z-10 flex h-[50dvh] max-h-[50dvh] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[20px] border border-b-0 border-[color:var(--paywall-grouped-separator)] bg-[color:var(--paywall-sheet-bg)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)]",
+            )}
             onClick={(event) => event.stopPropagation()}
           >
             <div
-              className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-[color:var(--vd-border)]"
+              className="mx-auto mt-2 h-[5px] w-9 shrink-0 rounded-full bg-[color:var(--paywall-grouped-separator)]"
               aria-hidden
             />
 
@@ -153,7 +161,7 @@ export function ProPaywallModal({
               type="button"
               onClick={onClose}
               aria-label="Schließen"
-              className="absolute top-[max(0.65rem,env(safe-area-inset-top))] right-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/95 text-[color:var(--vd-text)] shadow-sm backdrop-blur-md transition hover:bg-[color:var(--vd-surface)]"
+              className="absolute top-[max(0.65rem,env(safe-area-inset-top))] right-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--paywall-grouped-bg)] text-[color:var(--vd-muted)] transition hover:bg-[color:var(--paywall-grouped-bg-hover)] hover:text-[color:var(--vd-text)]"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
@@ -171,16 +179,15 @@ export function ProPaywallModal({
                   headlineId="pro-paywall-title"
                   variant={variant}
                   benefits={personalization.benefits}
-                  highlightLeadBenefit
                   visualKind={personalization.visualKind}
                   visualAriaLabel={personalization.visualAriaLabel}
-                  valueFootnote={personalization.footnote}
                   ctaSlot={
                     <StickyPaywallCta
                       label={personalization.ctaLabel}
                       pending={pending}
                       error={error}
-                      microCopy={personalization.stickyMicroCopy}
+                      microCopy={proPaywallCtaSubline(interval)}
+                      anchorText={personalization.footnote}
                       dismissLabel={PRO_PAYWALL_DISMISS_LABEL}
                       onCheckout={handleCheckout}
                       onDismiss={onClose}

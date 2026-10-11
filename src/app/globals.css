@@ -1981,6 +1981,68 @@ a.claim-cta.vd-scan-fab-cta,
   --claim-cta-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
 }
 
+/* ——— Paywall: Apple HIG subscription sheet ——— */
+.paywall-apple {
+  --paywall-apple-blue: #007aff;
+  --paywall-apple-green: #34c759;
+  --paywall-grouped-bg: rgba(120, 120, 128, 0.12);
+  --paywall-grouped-bg-hover: rgba(120, 120, 128, 0.18);
+  --paywall-grouped-separator: rgba(60, 60, 67, 0.16);
+  --paywall-sheet-bg: var(--vd-surface);
+  --paywall-sheet-footer-bg: color-mix(
+    in srgb,
+    var(--vd-surface) 88%,
+    transparent
+  );
+  --paywall-pricing-selected-bg: rgba(0, 122, 255, 0.1);
+  --paywall-pricing-selected-border: rgba(0, 122, 255, 0.45);
+  --paywall-chart-accent: #007aff;
+  --paywall-badge-primary-bg: #007aff;
+  font-feature-settings: "kern" 1, "liga" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .paywall-apple,
+.paywall-apple:where(.dark *) {
+  --paywall-apple-blue: #0a84ff;
+  --paywall-apple-green: #30d158;
+  --paywall-grouped-bg: rgba(120, 120, 128, 0.22);
+  --paywall-grouped-bg-hover: rgba(120, 120, 128, 0.3);
+  --paywall-grouped-separator: rgba(84, 84, 88, 0.65);
+  --paywall-sheet-bg: oklch(0.19 0 0);
+  --paywall-sheet-footer-bg: color-mix(
+    in srgb,
+    oklch(0.19 0 0) 92%,
+    transparent
+  );
+  --paywall-pricing-selected-bg: rgba(10, 132, 255, 0.14);
+  --paywall-pricing-selected-border: rgba(10, 132, 255, 0.5);
+  --paywall-chart-accent: #0a84ff;
+  --paywall-badge-primary-bg: #0a84ff;
+}
+
+.paywall-apple .paywall-apple-cta.claim-cta {
+  --claim-cta-bg: var(--paywall-apple-blue);
+  --claim-cta-fg: #ffffff;
+  --claim-cta-border: transparent;
+  --claim-cta-shadow: none;
+  min-height: 3.125rem;
+  border-radius: 0.875rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  animation: none;
+}
+
+.paywall-apple .paywall-apple-cta.claim-cta:not(:disabled):active {
+  filter: brightness(0.92);
+}
+
+.paywall-apple .paywall-dismiss.claim-later {
+  color: var(--paywall-apple-blue);
+  background: transparent;
+}
+
 /* Paywall checkout — override default .claim-cta padding for centered label */
 .paywall-sticky-cta.claim-cta {
   min-height: 2.75rem;

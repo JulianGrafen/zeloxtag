@@ -24,21 +24,12 @@ export function PricingCards({
     <div className={cn(compact ? "mt-0" : "mt-6", className)}>
       <div
         className={cn(
-          "vd-anim-stagger grid items-center overflow-visible",
-          showAnnualPlan ? "grid-cols-2" : "grid-cols-1",
-          compact ? "gap-3" : "mt-3 gap-3",
+          "paywall-pricing-stack flex flex-col gap-2 overflow-visible",
+          !compact && "mt-3",
         )}
         role="radiogroup"
         aria-label="Abrechnungsintervall"
       >
-        <PricingCard
-          interval="monthly"
-          selected={interval === "monthly"}
-          onSelect={() => onIntervalChange("monthly")}
-          compact={compact}
-          shinePosition={position}
-          shineMotionActive={motionActive}
-        />
         {showAnnualPlan ? (
           <PricingCard
             interval="annual"
@@ -47,6 +38,14 @@ export function PricingCards({
             compact={compact}
           />
         ) : null}
+        <PricingCard
+          interval="monthly"
+          selected={interval === "monthly"}
+          onSelect={() => onIntervalChange("monthly")}
+          compact={compact}
+          shinePosition={position}
+          shineMotionActive={motionActive}
+        />
       </div>
     </div>
   );
