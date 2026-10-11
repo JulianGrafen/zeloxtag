@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import type { TimelineEvent } from "@/lib/validations/timelineSchema";
+import type { Document } from "@/types/database";
+
 export type DashboardTileId =
   | "invoices"
   | "oil-change"
@@ -106,6 +109,12 @@ export interface VehicleDashboardProps {
   data: VehicleDashboardData;
   /** Shortcuts below the vehicle hero (Tanken, Historie, Kosten). */
   quickAccessItems?: DashboardQuickAccessItem[];
+  timelineEvents?: TimelineEvent[];
+  documents?: Document[];
+  resolveDocumentHref?: (documentId: string) => string;
+  chronikEmptyCtaHref?: string;
+  canAddChronikEntry?: boolean;
+  defaultTab?: "overview" | "timeline";
   /** Called when a tile without href is activated */
   onTileClick?: (tileId: string) => void;
   /** Owner tap on header cutout → change / upload silhouette */

@@ -6,6 +6,7 @@ import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { loadOwnerDashboardForVehicle } from "@/lib/vehicle-surface/load-owner-dashboard";
+import { loadVehicleTimelineEvents } from "@/lib/vehicles/load-vehicle-timeline";
 import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface GarageDashboardPageProps {
@@ -48,6 +49,12 @@ export default async function GarageDashboardPage({
     redirect(`/v/${dashboard.scope.linkedTagUuid}`);
   }
 
+  const timelineEvents = await loadVehicleTimelineEvents(
+    dashboard.vehicle.id,
+    dashboard.documents,
+    "desc",
+  );
+
   return (
     <AppShell showNavbar={false}>
       <div className="flex flex-col gap-4">
@@ -83,6 +90,7 @@ export default async function GarageDashboardPage({
           }
           tagShopUserId={user.id}
           tagShopUserEmail={user.email}
+          timelineEvents={timelineEvents}
         />
       </div>
     </AppShell>

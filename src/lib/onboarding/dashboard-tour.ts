@@ -51,9 +51,9 @@ const OWNER_STEPS: DashboardTourStep[] = [
   },
   {
     id: "timeline",
-    target: "[data-tour='tile-timeline']",
-    title: "Historie & Timeline",
-    body: "Alle Meilensteine in einer Timeline: Belege, Service, TÜV und Ölwechsel — sortiert nach Kilometerstand. Perfekt für Übergabe und Verkauf.",
+    target: "[data-tour='dashboard-chronik-tab']",
+    title: "Chronik",
+    body: "Im Tab Chronik siehst du Meilensteine, Umbauten und Service — sortiert nach Kilometerstand. Perfekt für Übergabe und Verkauf.",
     placement: "bottom",
   },
   {
@@ -101,9 +101,9 @@ const CONTRIBUTOR_STEPS: DashboardTourStep[] = [
   },
   {
     id: "timeline",
-    target: "[data-tour='tile-timeline']",
-    title: "Historie & Timeline",
-    body: "Chronologische Übersicht aller Einträge nach Kilometerstand — Reparaturen, Service und TÜV auf einen Blick.",
+    target: "[data-tour='dashboard-chronik-tab']",
+    title: "Chronik",
+    body: "Wechsle zum Tab Chronik für alle Einträge nach Kilometerstand — Reparaturen, Service und TÜV auf einen Blick.",
     placement: "bottom",
   },
   {

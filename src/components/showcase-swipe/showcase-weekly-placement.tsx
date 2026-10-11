@@ -145,12 +145,10 @@ export function ShowcaseWeeklyPlacement({
           <div className="shrink-0 text-right">
             <p
               className="flex items-center justify-end gap-1 font-mono text-[0.92rem] font-semibold tabular-nums tracking-tight text-amber-400/95"
+              aria-label={`${weeklyRank.weeklyLikes} ${likeWord}`}
             >
               <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
               {weeklyRank.weeklyLikes}
-            </p>
-            <p className="mt-0.5 text-[0.68rem] text-[color:var(--vd-muted)]">
-              {likeWord} · 7 Tage
             </p>
           </div>
         </div>

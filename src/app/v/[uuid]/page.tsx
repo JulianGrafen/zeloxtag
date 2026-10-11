@@ -62,6 +62,7 @@ import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-cost
 import { buildPlannerDashboardHint } from "@/lib/build-planner/build-planner-summary";
 import { listPlannedModsWithTodosForVehicle } from "@/lib/build-planner/planned-mods-repository";
 import { buildOperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/summary";
+import { loadVehicleTimelineEvents } from "@/lib/vehicles/load-vehicle-timeline";
 import type { Vehicle } from "@/types/database";
 
 interface TagScanPageProps {
@@ -509,6 +510,12 @@ export default async function TagScanPage({
       }
     }
 
+    const timelineEvents = await loadVehicleTimelineEvents(
+      vehicle.id,
+      ownerTwin.documents,
+      "desc",
+    );
+
     let showcaseSwipeUnreadLikes = 0;
     let showcaseSwipeTotalLikes = 0;
     if (access.isOwner && user) {
@@ -552,6 +559,7 @@ export default async function TagScanPage({
           showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
           operatingCostHint={operatingCostHint}
           buildPlannerHint={buildPlannerHint}
+          timelineEvents={timelineEvents}
         />
       </AppShell>
     );

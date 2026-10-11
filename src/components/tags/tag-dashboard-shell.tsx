@@ -52,6 +52,7 @@ import {
 import type { OperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/types";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
+import type { TimelineEvent } from "@/lib/validations/timelineSchema";
 import type { Document, Vehicle } from "@/types/database";
 
 import {
@@ -201,6 +202,7 @@ interface TagDashboardShellProps {
   showTagShopPromo?: boolean;
   tagShopUserId?: string;
   tagShopUserEmail?: string | null;
+  timelineEvents?: TimelineEvent[];
 }
 
 /**
@@ -232,6 +234,7 @@ export function TagDashboardShell({
   showTagShopPromo = false,
   tagShopUserId,
   tagShopUserEmail = null,
+  timelineEvents,
 }: TagDashboardShellProps) {
   const canWrite = isOwner || isContributor;
   const role = isOwner ? "owner" : "contributor";
@@ -910,6 +913,7 @@ export function TagDashboardShell({
         showTagShopPromo={showTagShopPromo}
         tagShopUserId={tagShopUserId}
         tagShopUserEmail={tagShopUserEmail}
+        timelineEvents={timelineEvents}
         productFeaturesBannerActive={
           mode === "dashboard" &&
           !showSilhouetteEditor &&

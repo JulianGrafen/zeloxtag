@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { ZeloxBrandFadeBanner } from "@/components/brand/zelox-brand-fade-banner";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
@@ -9,26 +9,41 @@ import { cn } from "@/lib/utils";
 
 import { buildDefaultTiles } from "./buildDefaultTiles";
 import { DashboardQuickAccessBar } from "./dashboard-quick-access-bar";
+import {
+  DashboardTabSwitch,
+  type DashboardTabId,
+} from "./dashboard-tab-switch";
 import { dashboardMenuKickerClassName } from "./dashboard-menu-styles";
 import { partitionDashboardTiles } from "./dashboard-tile-layout";
 import { DashboardTileGrid } from "./DashboardTileGrid";
+import { DashboardTabPanelTransition } from "./dashboard-tab-panel-transition";
+import { VehicleDashboardTimeline } from "./VehicleTimeline";
 import type { VehicleDashboardProps } from "./types";
 import { VehicleDashboardHeader } from "./VehicleDashboardHeader";
 
 export function VehicleDashboard({
   data,
   quickAccessItems,
+  timelineEvents = [],
+  documents = [],
+  resolveDocumentHref,
+  chronikEmptyCtaHref = "#",
+  canAddChronikEntry = true,
+  defaultTab = "overview",
   onTileClick,
   onSilhouetteProxyLoad,
   banner,
   extraTiles,
   className = "",
 }: VehicleDashboardProps) {
+  const [activeTab, setActiveTab] = useState<DashboardTabId>(defaultTab);
   const tiles = data.tiles ?? buildDefaultTiles(data);
   const { primary, secondary } = useMemo(
     () => partitionDashboardTiles(tiles),
     [tiles],
   );
+  const showChronik =
+    Boolean(resolveDocumentHref) && timelineEvents !== undefined;
 
   return (
     <ScanContent className={cn("gap-0 px-0 pt-0", className)}>
@@ -52,49 +67,125 @@ export function VehicleDashboard({
           {quickAccessItems && quickAccessItems.length > 0 ? (
             <DashboardQuickAccessBar items={quickAccessItems} />
           ) : null}
+
+          {showChronik ? (
+            <DashboardTabSwitch
+              activeTab={activeTab}
+              onChange={setActiveTab}
+            />
+          ) : null}
         </div>
 
         {banner}
 
-        <section
-          aria-label="Fahrzeugmenü"
-          className="vd-anim-header flex min-h-0 flex-col gap-2 [animation-delay:0.12s]"
-          data-tour="tile-grid"
-        >
-          <h2 className={cn(dashboardMenuKickerClassName, "px-0.5")}>
-            Fahrzeugmenü
-          </h2>
-
-          {primary.length > 0 ? (
-            <DashboardTileGrid
-              tiles={primary}
-              density="compact"
-              onTileClick={onTileClick}
-              className="shrink-0"
-            />
-          ) : null}
-
-          {secondary.length > 0 ? (
-            <div className="flex flex-col gap-2 pt-0.5">
-              <h3
-                className={cn(
-                  dashboardMenuKickerClassName,
-                  "px-0.5 text-[0.62rem] tracking-[0.2em] text-zinc-600",
-                )}
+        {showChronik ? (
+          <DashboardTabPanelTransition
+            activeTab={activeTab}
+            overview={
+              <section
+                id="dashboard-panel-overview"
+                role="tabpanel"
+                aria-labelledby="dashboard-tab-overview"
+                aria-label="Fahrzeugmenü"
+                className="vd-anim-header flex min-h-0 flex-col gap-2 [animation-delay:0.12s]"
+                data-tour="tile-grid"
               >
-                Weitere
-              </h3>
+                <h2 className={cn(dashboardMenuKickerClassName, "px-0.5")}>
+                  Fahrzeugmenü
+                </h2>
+
+                {primary.length > 0 ? (
+                  <DashboardTileGrid
+                    tiles={primary}
+                    density="compact"
+                    onTileClick={onTileClick}
+                    className="shrink-0"
+                  />
+                ) : null}
+
+                {secondary.length > 0 ? (
+                  <div className="flex flex-col gap-2 pt-0.5">
+                    <h3
+                      className={cn(
+                        dashboardMenuKickerClassName,
+                        "px-0.5 text-[0.62rem] tracking-[0.2em] text-zinc-600",
+                      )}
+                    >
+                      Weitere
+                    </h3>
+                    <DashboardTileGrid
+                      tiles={secondary}
+                      density="comfortable"
+                      onTileClick={onTileClick}
+                    />
+                    {extraTiles}
+                  </div>
+                ) : (
+                  extraTiles
+                )}
+              </section>
+            }
+            timeline={
+              <section
+                id="dashboard-panel-timeline"
+                role="tabpanel"
+                aria-labelledby="dashboard-tab-timeline"
+                className="vd-anim-header flex min-h-0 flex-col gap-2 pb-2 [animation-delay:0.12s]"
+              >
+                <VehicleDashboardTimeline
+                  events={timelineEvents}
+                  documents={documents}
+                  documentHref={resolveDocumentHref!}
+                  emptyCtaHref={chronikEmptyCtaHref}
+                  canAddEntry={canAddChronikEntry}
+                />
+              </section>
+            }
+          />
+        ) : (
+          <section
+            id="dashboard-panel-overview"
+            role="tabpanel"
+            aria-labelledby="dashboard-tab-overview"
+            aria-label="Fahrzeugmenü"
+            className="vd-anim-header flex min-h-0 flex-col gap-2 [animation-delay:0.12s]"
+            data-tour="tile-grid"
+          >
+            <h2 className={cn(dashboardMenuKickerClassName, "px-0.5")}>
+              Fahrzeugmenü
+            </h2>
+
+            {primary.length > 0 ? (
               <DashboardTileGrid
-                tiles={secondary}
-                density="comfortable"
+                tiles={primary}
+                density="compact"
                 onTileClick={onTileClick}
+                className="shrink-0"
               />
-              {extraTiles}
-            </div>
-          ) : (
-            extraTiles
-          )}
-        </section>
+            ) : null}
+
+            {secondary.length > 0 ? (
+              <div className="flex flex-col gap-2 pt-0.5">
+                <h3
+                  className={cn(
+                    dashboardMenuKickerClassName,
+                    "px-0.5 text-[0.62rem] tracking-[0.2em] text-zinc-600",
+                  )}
+                >
+                  Weitere
+                </h3>
+                <DashboardTileGrid
+                  tiles={secondary}
+                  density="comfortable"
+                  onTileClick={onTileClick}
+                />
+                {extraTiles}
+              </div>
+            ) : (
+              extraTiles
+            )}
+          </section>
+        )}
 
         <VehicleDataDisclaimer className="vd-anim-header shrink-0" />
       </div>

@@ -138,12 +138,6 @@ function buildExtendedMenuTiles(data: VehicleDashboardData): TileDraft[] {
       meta: inspectionMeta(data),
     },
     {
-      id: "timeline",
-      title: "Historie",
-      icon: "history",
-      featured: true,
-    },
-    {
       id: "service",
       title: "Service",
       icon: "wrench",

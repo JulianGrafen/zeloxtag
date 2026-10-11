@@ -16,6 +16,24 @@ export function formatTimelineDate(isoDate: string | null | undefined): string {
   return formatDocumentDate(isoDate);
 }
 
+/** Chronik header, e.g. "14. Okt 2026". */
+export function formatTimelineChronikDate(
+  isoDate: string | null | undefined,
+): string {
+  if (!isoDate?.trim()) return "Ohne Datum";
+  const normalized = isoDate.trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return formatDocumentDate(isoDate);
+  }
+  const date = new Date(`${normalized}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return formatDocumentDate(isoDate);
+  return date.toLocaleDateString("de-DE", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export function formatTimelineCost(
   cost: TimelineEvent["cost"] | null | undefined,
 ): string | null {

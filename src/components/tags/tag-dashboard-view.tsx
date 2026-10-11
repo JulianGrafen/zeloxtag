@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useMemo } from "react";
+
 import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
 import {
@@ -13,6 +15,7 @@ import type { Document, Vehicle } from "@/types/database";
 import {
   filterOilChangeDocuments,
   formatLastOilChangeSubtitle,
+  isOilChangeDocument,
   latestOilChangeIsoDate,
 } from "@/lib/documents/oil-changes";
 import { filterAbeFamilyDocuments } from "@/lib/documents/abe-family-documents";
@@ -26,6 +29,7 @@ import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspec
 import { deriveNextInspectionFromDocuments } from "@/lib/documents/tuev-schedule";
 import { resolveDocumentAmount } from "@/lib/vehicles/expose-data";
 import { buildTimelineFromDocuments } from "@/services/timeline";
+import type { TimelineEvent } from "@/lib/validations/timelineSchema";
 import {
   countFilledTechSpecs,
   parseVehicleTechSpecs,
@@ -106,6 +110,8 @@ interface TagDashboardViewProps {
   showTagShopPromo?: boolean;
   tagShopUserId?: string;
   tagShopUserEmail?: string | null;
+  /** Server-loaded timeline (parity with /historie). Falls back to document-derived. */
+  timelineEvents?: TimelineEvent[];
 }
 
 /**
@@ -139,10 +145,35 @@ export function TagDashboardView({
   showTagShopPromo = false,
   tagShopUserId,
   tagShopUserEmail = null,
+  timelineEvents: timelineEventsProp,
 }: TagDashboardViewProps) {
   const manualEntryHref = `${dashboardPath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`;
   const path = (segment: string) =>
     dashboardPath(vehicleSurfaceScope, tagUuid, segment);
+  const timelineEvents = useMemo(
+    () =>
+      timelineEventsProp ??
+      buildTimelineFromDocuments(documents, "desc"),
+    [timelineEventsProp, documents],
+  );
+  const resolveDocumentHref = useCallback(
+    (documentId: string) => {
+      const document = documents.find((doc) => doc.id === documentId);
+      if (document && isOilChangeDocument(document)) {
+        return dashboardPath(
+          vehicleSurfaceScope,
+          tagUuid,
+          `intervalle/${documentId}`,
+        );
+      }
+      return dashboardPath(
+        vehicleSurfaceScope,
+        tagUuid,
+        `dokumente/${documentId}`,
+      );
+    },
+    [documents, tagUuid, vehicleSurfaceScope],
+  );
   const scanLocked =
     !cloudUnlocked &&
     freeInvoiceScanRemaining <= 0 &&
@@ -162,7 +193,6 @@ export function TagDashboardView({
       doc.category === "tuning" && isViewableDocumentUrl(doc.file_url),
   ).length;
   const oilChangeCount = filterOilChangeDocuments(documents).length;
-  const timelineEventCount = buildTimelineFromDocuments(documents).length;
   const lastOilChange = latestOilChangeIsoDate(documents);
   const vehicleModel = `${vehicle.make} ${vehicle.model}`;
   const vinLabel = vehicle.vin ? `VIN ${vehicle.vin}` : "VIN nicht hinterlegt";
@@ -279,20 +309,6 @@ export function TagDashboardView({
             serviceCount > 0
               ? `${serviceCount} Einträge`
               : "Scannen",
-        },
-      };
-    }
-
-    if (tile.id === "timeline") {
-      return {
-        ...tile,
-        meta: {
-          ...tile.meta,
-          href: path("historie"),
-          subtitle:
-            timelineEventCount > 0
-              ? `${timelineEventCount} Events`
-              : "Leer",
         },
       };
     }
@@ -459,7 +475,6 @@ export function TagDashboardView({
           tile.id === "invoices" ||
           tile.id === "service" ||
           tile.id === "oil-change" ||
-          tile.id === "timeline" ||
           tile.id === "tuning-history"
         );
       }
@@ -529,6 +544,11 @@ export function TagDashboardView({
       <VehicleDashboard
         data={{ ...data, tiles }}
         quickAccessItems={quickAccessItems}
+        timelineEvents={timelineEvents}
+        documents={documents}
+        resolveDocumentHref={resolveDocumentHref}
+        chronikEmptyCtaHref={manualEntryHref}
+        canAddChronikEntry={canScan && (isOwner || isContributor) && !demoMode}
         banner={
           showTagShop || showProductFeaturesBanner ? (
             <div className="flex flex-col gap-2.5">
