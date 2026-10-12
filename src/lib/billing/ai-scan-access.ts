@@ -35,16 +35,11 @@ export function canUseFreeScanForType(
   return false;
 }
 
-function hasAnyFreeBelegScan(
+function hasAnyFreeInvoiceOrAbeScan(
   freeInvoiceRemaining: number,
   freeAbeRemaining: number,
-  freeFuelRemaining: number,
 ): boolean {
-  return (
-    freeInvoiceRemaining > 0 ||
-    freeAbeRemaining > 0 ||
-    freeFuelRemaining > 0
-  );
+  return freeInvoiceRemaining > 0 || freeAbeRemaining > 0;
 }
 
 export function canStartAiScan(
@@ -52,26 +47,19 @@ export function canStartAiScan(
   freeInvoiceRemaining: number,
   freeAbeRemaining: number,
   scanType?: ScanType | null,
-  freeFuelRemaining = 0,
+  _freeFuelRemaining = 0,
 ): boolean {
   if (membershipActive) return true;
   if (scanType) {
-    if (scanType === "invoice") {
-      return (
-        freeInvoiceRemaining > 0 ||
-        freeFuelRemaining > 0
-      );
-    }
     return canUseFreeScanForType(
       scanType,
       freeInvoiceRemaining,
       freeAbeRemaining,
     );
   }
-  return hasAnyFreeBelegScan(
+  return hasAnyFreeInvoiceOrAbeScan(
     freeInvoiceRemaining,
     freeAbeRemaining,
-    freeFuelRemaining,
   );
 }
 
@@ -84,7 +72,6 @@ export function resolveDashboardScanGate(
     membershipActive,
     freeInvoiceRemaining,
     freeAbeRemaining,
-    freeFuelRemaining = 0,
     scanTypeRaw,
   } = input;
 
@@ -99,23 +86,13 @@ export function resolveDashboardScanGate(
   }
 
   if (!parsed) {
-    const hasAnyFree = hasAnyFreeBelegScan(
+    const hasAnyFree = hasAnyFreeInvoiceOrAbeScan(
       freeInvoiceRemaining,
       freeAbeRemaining,
-      freeFuelRemaining,
     );
     return {
       initialScanType: null,
       showScanPaywall: !hasAnyFree,
-    };
-  }
-
-  if (parsed === "invoice") {
-    const allowed =
-      freeInvoiceRemaining > 0 || freeFuelRemaining > 0;
-    return {
-      initialScanType: allowed ? parsed : null,
-      showScanPaywall: !allowed,
     };
   }
 
@@ -131,19 +108,15 @@ export function isScanFabLocked(
   freeInvoiceRemaining: number,
   freeAbeRemaining: number,
   scanTypeRaw?: string | null,
-  freeFuelRemaining = 0,
+  _freeFuelRemaining = 0,
 ): boolean {
   if (membershipActive) return false;
   const parsed = parseScanType(scanTypeRaw);
   if (!parsed) {
-    return !hasAnyFreeBelegScan(
+    return !hasAnyFreeInvoiceOrAbeScan(
       freeInvoiceRemaining,
       freeAbeRemaining,
-      freeFuelRemaining,
     );
-  }
-  if (parsed === "invoice") {
-    return freeInvoiceRemaining <= 0 && freeFuelRemaining <= 0;
   }
   return !canUseFreeScanForType(
     parsed,

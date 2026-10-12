@@ -1,7 +1,10 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
+import { useState } from "react";
 
+import { TimelineEventDetailSheet } from "@/components/documents/timeline-event-detail-sheet";
+import { resolveTimelineEventDocumentHref } from "@/lib/documents/timeline-event-href";
 import {
   formatTimelineCost,
   formatTimelineDate,
@@ -12,7 +15,10 @@ import {
   type TimelineEvent,
   type TimelineEventCategory,
 } from "@/lib/validations/timelineSchema";
-import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import {
+  PressableButton,
+  PressableLink,
+} from "@/components/vehicle-dashboard/Pressable";
 import { cn } from "@/lib/utils";
 
 /** Premium timeline card — machined surface, subtle depth. */
@@ -105,6 +111,12 @@ export function VehicleTimeline({
   emptyMessage = "Noch keine Einträge — Beleg scannen oder manuell hinzufügen.",
   className = "",
 }: VehicleTimelineProps) {
+  const [detailEvent, setDetailEvent] = useState<TimelineEvent | null>(null);
+  const detailDocumentHref =
+    detailEvent && documentHref
+      ? resolveTimelineEventDocumentHref(detailEvent, documentHref)
+      : null;
+
   if (events.length === 0) {
     return (
       <div
@@ -122,30 +134,41 @@ export function VehicleTimeline({
   const { withMileage, withoutMileage } = partitionTimelineEvents(events);
 
   return (
-    <div className={cn("space-y-8", className)}>
-      {withMileage.length > 0 ? (
-        <TimelineEventList
-          events={withMileage}
-          documentHref={documentHref}
-          ariaLabel="Historie nach Kilometerstand"
-          showMileage
-        />
-      ) : null}
-
-      {withoutMileage.length > 0 ? (
-        <section className="space-y-3">
-          <p className="px-1 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-zinc-500">
-            Ohne Kilometerstand
-          </p>
+    <>
+      <div className={cn("space-y-8", className)}>
+        {withMileage.length > 0 ? (
           <TimelineEventList
-            events={withoutMileage}
+            events={withMileage}
             documentHref={documentHref}
-            ariaLabel="Einträge ohne Kilometerstand"
-            showMileage={false}
+            ariaLabel="Historie nach Kilometerstand"
+            showMileage
+            onShowDetail={setDetailEvent}
           />
-        </section>
-      ) : null}
-    </div>
+        ) : null}
+
+        {withoutMileage.length > 0 ? (
+          <section className="space-y-3">
+            <p className="px-1 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-zinc-500">
+              Ohne Kilometerstand
+            </p>
+            <TimelineEventList
+              events={withoutMileage}
+              documentHref={documentHref}
+              ariaLabel="Einträge ohne Kilometerstand"
+              showMileage={false}
+              onShowDetail={setDetailEvent}
+            />
+          </section>
+        ) : null}
+      </div>
+
+      <TimelineEventDetailSheet
+        open={detailEvent != null}
+        event={detailEvent}
+        documentHref={detailDocumentHref}
+        onClose={() => setDetailEvent(null)}
+      />
+    </>
   );
 }
 
@@ -154,11 +177,13 @@ function TimelineEventList({
   documentHref,
   ariaLabel,
   showMileage,
+  onShowDetail,
 }: {
   events: TimelineEvent[];
   documentHref?: (documentId: string) => string;
   ariaLabel: string;
   showMileage: boolean;
+  onShowDetail: (event: TimelineEvent) => void;
 }) {
   const spineFrom = CATEGORY_VISUALS[events[0]?.category ?? "other"].spineTint;
 
@@ -178,6 +203,7 @@ function TimelineEventList({
           documentHref={documentHref}
           showMileage={showMileage}
           isLast={index === events.length - 1}
+          onShowDetail={onShowDetail}
         />
       ))}
     </ol>
@@ -197,11 +223,13 @@ function TimelineEventRow({
   documentHref,
   showMileage,
   isLast,
+  onShowDetail,
 }: {
   event: TimelineEvent;
   documentHref?: (documentId: string) => string;
   showMileage: boolean;
   isLast: boolean;
+  onShowDetail: (event: TimelineEvent) => void;
 }) {
   const visual = CATEGORY_VISUALS[event.category];
   const costLabel = formatTimelineCost(event.cost);
@@ -210,9 +238,10 @@ function TimelineEventRow({
     ? formatTimelineMileage(event.mileage, { known: event.mileageKnown })
     : null;
   const href =
-    event.documentId && documentHref
-      ? documentHref(event.documentId)
+    documentHref
+      ? resolveTimelineEventDocumentHref(event, documentHref)
       : null;
+  const canOpenDetail = !href && Boolean(event.description);
 
   const card = (
     <article
@@ -254,7 +283,7 @@ function TimelineEventRow({
             ) : null}
           </p>
         </div>
-        {href ? (
+        {href || canOpenDetail ? (
           <ChevronRight
             className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-zinc-300 group-active:translate-x-0.5"
             aria-hidden
@@ -294,6 +323,16 @@ function TimelineEventRow({
             </span>
             {card}
           </PressableLink>
+        ) : canOpenDetail ? (
+          <PressableButton
+            type="button"
+            variant="row"
+            className="group block min-w-0 w-full text-left"
+            onClick={() => onShowDetail(event)}
+          >
+            <span className="sr-only">Eintragsdetails anzeigen</span>
+            {card}
+          </PressableButton>
         ) : (
           card
         )}

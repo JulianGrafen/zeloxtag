@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { Camera, History, Stamp } from "lucide-react";
-import { useMemo } from "react";
+import { Camera, ChevronRight, History, Stamp } from "lucide-react";
+import { useMemo, useState } from "react";
 
+import { TimelineEventDetailSheet } from "@/components/documents/timeline-event-detail-sheet";
 import { isAbeFamilyDocument } from "@/lib/documents/abe-family-documents";
+import { resolveTimelineEventDocumentHref } from "@/lib/documents/timeline-event-href";
 import {
   formatTimelineChronikDate,
   formatTimelineCost,
@@ -17,7 +19,7 @@ import {
 } from "@/lib/documents/viewable-url";
 import type { TimelineEvent } from "@/lib/validations/timelineSchema";
 import type { Document } from "@/types/database";
-import { PressableLink } from "./Pressable";
+import { PressableButton, PressableLink } from "./Pressable";
 import { cn } from "@/lib/utils";
 
 export type VehicleDashboardTimelineProps = {
@@ -46,6 +48,7 @@ export function VehicleDashboardTimeline({
   canAddEntry = true,
   className,
 }: VehicleDashboardTimelineProps) {
+  const [detailEvent, setDetailEvent] = useState<TimelineEvent | null>(null);
   const documentsById = useMemo(
     () => new Map(documents.map((doc) => [doc.id, doc])),
     [documents],
@@ -82,95 +85,142 @@ export function VehicleDashboardTimeline({
     );
   }
 
+  const detailDocumentHref = detailEvent
+    ? resolveTimelineEventDocumentHref(detailEvent, documentHref)
+    : null;
+
   return (
-    <div
-      className={cn(
-        "relative ml-4 space-y-6 border-l-2 border-neutral-800 pl-4",
-        className,
-      )}
-      aria-label="Fahrzeug-Chronik"
-    >
-      {events.map((event) => {
-        const linkedDoc = event.documentId
-          ? documentsById.get(event.documentId)
-          : undefined;
-        const imageSrc = resolveEventImageUrl(linkedDoc);
-        const costLabel = formatTimelineCost(event.cost);
-        const dateLabel = formatTimelineChronikDate(event.date);
-        const mileageLabel = formatTimelineMileage(event.mileage, {
-          known: event.mileageKnown,
-        });
-        const docHref =
-          event.documentId ? documentHref(event.documentId) : null;
-        const showAbeBadge =
-          linkedDoc != null && isAbeFamilyDocument(linkedDoc) && docHref;
+    <>
+      <div
+        className={cn(
+          "relative ml-4 space-y-6 border-l-2 border-neutral-800 pl-4",
+          className,
+        )}
+        aria-label="Fahrzeug-Chronik"
+      >
+        {events.map((event) => {
+          const linkedDoc = event.documentId
+            ? documentsById.get(event.documentId)
+            : undefined;
+          const imageSrc = resolveEventImageUrl(linkedDoc);
+          const costLabel = formatTimelineCost(event.cost);
+          const dateLabel = formatTimelineChronikDate(event.date);
+          const mileageLabel = formatTimelineMileage(event.mileage, {
+            known: event.mileageKnown,
+          });
+          const docHref = resolveTimelineEventDocumentHref(event, documentHref);
+          const showAbeBadge =
+            linkedDoc != null && isAbeFamilyDocument(linkedDoc) && docHref;
+          const isInteractive = Boolean(docHref) || Boolean(event.description);
 
-        return (
-          <article key={event.id} className="relative">
-            <span
-              aria-hidden
-              className="absolute -left-[calc(1rem+5px)] top-1.5 h-2.5 w-2.5 rounded-full border border-neutral-700 bg-neutral-400"
-            />
+          const body = (
+            <>
+              <header className="text-xs text-neutral-400">
+                {dateLabel}
+                {event.mileageKnown !== false ? (
+                  <>
+                    <span aria-hidden className="px-1.5 text-neutral-600">
+                      ·
+                    </span>
+                    {mileageLabel}
+                  </>
+                ) : null}
+              </header>
 
-            <header className="text-xs text-neutral-400">
-              {dateLabel}
-              {event.mileageKnown !== false ? (
-                <>
-                  <span aria-hidden className="px-1.5 text-neutral-600">
-                    ·
-                  </span>
-                  {mileageLabel}
-                </>
+              <div className="mt-1 flex items-start justify-between gap-2">
+                <h3 className="text-sm font-semibold text-white">
+                  {event.title}
+                </h3>
+                {isInteractive ? (
+                  <ChevronRight
+                    className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500"
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
+
+              {imageSrc ? (
+                <div className="relative mt-2 aspect-video w-full overflow-hidden rounded-xl border border-neutral-800">
+                  <Image
+                    src={imageSrc}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 512px) 100vw, 512px"
+                    unoptimized
+                  />
+                </div>
               ) : null}
-            </header>
 
-            <h3 className="mt-1 text-sm font-semibold text-white">
-              {event.title}
-            </h3>
+              {(costLabel || showAbeBadge) ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {costLabel ? (
+                    <span
+                      className="inline-flex items-center rounded-full border border-neutral-800 bg-neutral-900 px-2.5 py-0.5 text-[0.68rem] font-medium text-neutral-300"
+                    >
+                      {costLabel}
+                    </span>
+                  ) : null}
+                  {showAbeBadge ? (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full border border-neutral-800 bg-neutral-900 px-2.5 py-0.5 text-[0.68rem] font-medium text-neutral-300"
+                    >
+                      <Stamp className="h-3 w-3 shrink-0" aria-hidden />
+                      ABE hinterlegt
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
 
-            {imageSrc ? (
-              <div className="relative mt-2 aspect-video w-full overflow-hidden rounded-xl border border-neutral-800">
-                <Image
-                  src={imageSrc}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 512px) 100vw, 512px"
-                  unoptimized
-                />
-              </div>
-            ) : null}
+              {event.description ? (
+                <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-neutral-500">
+                  {event.description}
+                </p>
+              ) : null}
+            </>
+          );
 
-            {(costLabel || showAbeBadge) ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {costLabel ? (
-                  <span
-                    className="inline-flex items-center rounded-full border border-neutral-800 bg-neutral-900 px-2.5 py-0.5 text-[0.68rem] font-medium text-neutral-300"
-                  >
-                    {costLabel}
-                  </span>
-                ) : null}
-                {showAbeBadge ? (
-                  <PressableLink
-                    href={docHref!}
-                    variant="pill"
-                    className="inline-flex items-center gap-1 rounded-full border border-neutral-800 bg-neutral-900 px-2.5 py-0.5 text-[0.68rem] font-medium text-neutral-300 no-underline hover:text-white"
-                  >
-                    <Stamp className="h-3 w-3 shrink-0" aria-hidden />
-                    ABE hinterlegt
-                  </PressableLink>
-                ) : null}
-              </div>
-            ) : null}
+          return (
+            <article key={event.id} className="relative">
+              <span
+                aria-hidden
+                className="absolute -left-[calc(1rem+5px)] top-1.5 h-2.5 w-2.5 rounded-full border border-neutral-700 bg-neutral-400"
+              />
 
-            {event.description ? (
-              <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-neutral-500">
-                {event.description}
-              </p>
-            ) : null}
-          </article>
-        );
-      })}
-    </div>
+              {docHref ? (
+                <PressableLink
+                  href={docHref}
+                  variant="row"
+                  nav="forward"
+                  className="group block min-w-0 rounded-xl text-left no-underline -m-1 p-1"
+                >
+                  <span className="sr-only">Eintrag öffnen</span>
+                  {body}
+                </PressableLink>
+              ) : isInteractive ? (
+                <PressableButton
+                  type="button"
+                  variant="row"
+                  className="block w-full min-w-0 rounded-xl text-left -m-1 p-1"
+                  onClick={() => setDetailEvent(event)}
+                >
+                  <span className="sr-only">Eintragsdetails anzeigen</span>
+                  {body}
+                </PressableButton>
+              ) : (
+                body
+              )}
+            </article>
+          );
+        })}
+      </div>
+
+      <TimelineEventDetailSheet
+        open={detailEvent != null}
+        event={detailEvent}
+        documentHref={detailDocumentHref}
+        onClose={() => setDetailEvent(null)}
+      />
+    </>
   );
 }

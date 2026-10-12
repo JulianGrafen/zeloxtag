@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PenLine } from "lucide-react";
-
 import { BackNav } from "@/components/layout/back-nav";
 import { ScanContent } from "@/components/layout/scan-content";
 import { useFuelFillSubmit } from "@/hooks/use-fuel-fill-submit";
@@ -50,10 +48,7 @@ export function FuelManualEntryView({
         <BackNav label="Tanken" href={resolvedBackHref} />
 
         <div className="vd-surface-card p-5">
-          <div className="vd-icon-badge">
-            <PenLine className="h-5 w-5" aria-hidden />
-          </div>
-          <p className="claim-kicker mt-4">Tanken</p>
+          <p className="claim-kicker">Tanken</p>
           <h1 className="claim-title mt-2">
             {isEdit ? "Tankvorgang bearbeiten" : "Manuell eintragen"}
           </h1>
@@ -65,7 +60,7 @@ export function FuelManualEntryView({
       </header>
 
       <form
-        className="vd-anim-header space-y-4 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
+        className="vd-anim-header space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
           submit(form);

@@ -159,7 +159,7 @@ export function DashboardScanFab({
       label: scanActionLabel,
       description: scanLocked
         ? "ZeloxTag Pro oder Gratis-Scan nötig"
-        : "Tankbeleg oder Werkstattrechnung. KI erkennt automatisch.",
+        : "Werkstattbeleg mit KI auslesen",
       icon: Receipt,
       onClick: runScanAction,
     });

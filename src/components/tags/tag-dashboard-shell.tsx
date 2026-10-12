@@ -360,11 +360,6 @@ export function TagDashboardShell({
   );
   const [localFreeFuelScanRemaining, setLocalFreeFuelScanRemaining] =
     useState(freeFuelScanRemaining);
-  const [autoRouteReceiptKind, setAutoRouteReceiptKind] = useState(
-    () =>
-      openScannerDirectly &&
-      allowedInitial === "invoice",
-  );
   const [scanType, setScanType] = useState<ScanType | null>(() =>
     openScannerDirectly && allowedInitial ? allowedInitial : null,
   );
@@ -497,21 +492,8 @@ export function TagDashboardShell({
   }
 
   function handleScanTypeSelect(type: ScanType) {
-    setAutoRouteReceiptKind(type === "invoice");
     if (!membershipActive) {
-      if (type === "invoice") {
-        if (
-          localFreeInvoiceScanRemaining <= 0 &&
-          localFreeFuelScanRemaining <= 0
-        ) {
-          openPaywall(
-            FEATURE.SCAN_AI_RECEIPT,
-            "free_scan_exhausted",
-            paywallContextForScanType(type),
-          );
-          return;
-        }
-      } else if (isInvoiceFamilyScanType(type)) {
+      if (isInvoiceFamilyScanType(type)) {
         if (localFreeInvoiceScanRemaining <= 0) {
           openPaywall(
             FEATURE.SCAN_AI_RECEIPT,
@@ -540,7 +522,6 @@ export function TagDashboardShell({
 
   function handleOpenScanner() {
     setScanBackTarget("dashboard");
-    setAutoRouteReceiptKind(true);
     handleScanTypeSelect("invoice");
   }
 
@@ -872,11 +853,7 @@ export function TagDashboardShell({
             setMode("pick-scan");
           }}
           scanType={scanType}
-          autoRouteReceiptKind={autoRouteReceiptKind}
-          fuelSuccessHref={`${dashboardBase}/tanken`}
-          onFuelScanPaywall={() =>
-            openPaywall(FEATURE.SCAN_AI_RECEIPT, "free_scan_exhausted")
-          }
+          dashboardQuickScan={scanBackTarget === "dashboard"}
           useFreeScanSaveRedirect={
             !membershipActive &&
             ((scanType != null &&

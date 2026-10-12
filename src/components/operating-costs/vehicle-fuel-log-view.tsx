@@ -136,13 +136,8 @@ export function VehicleFuelLogView({
         ) : null}
       </section>
 
-      {!readOnly && fuelScanTier ? (
-        <FuelLogActions
-          tagUuid={tagUuid}
-          fuelScanTier={fuelScanTier}
-          captureHref={fuelCaptureHref}
-          manualHref={fuelManualHref}
-        />
+      {!readOnly ? (
+        <FuelLogActions manualHref={fuelManualHref} />
       ) : null}
 
       <section>

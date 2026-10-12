@@ -180,8 +180,7 @@ export function TagDashboardView({
   const scanLocked =
     !cloudUnlocked &&
     freeInvoiceScanRemaining <= 0 &&
-    freeAbeScanRemaining <= 0 &&
-    freeFuelScanRemaining <= 0;
+    freeAbeScanRemaining <= 0;
   const invoiceDocuments = filterInvoiceReceiptDocuments(documents);
   const invoiceCount = invoiceDocuments.length;
   const hasInvoiceAmounts = invoiceDocuments.some(
@@ -603,9 +602,7 @@ export function TagDashboardView({
           scanLabel={
             !cloudUnlocked &&
             !scanLocked &&
-            (freeInvoiceScanRemaining > 0 ||
-              freeAbeScanRemaining > 0 ||
-              freeFuelScanRemaining > 0)
+            (freeInvoiceScanRemaining > 0 || freeAbeScanRemaining > 0)
               ? "Beleg scannen (gratis)"
               : "Beleg scannen"
           }
