@@ -19,6 +19,8 @@ type GermanAmountInputProps = {
   id?: string;
   disabled?: boolean;
   variant?: "default" | "inset";
+  /** Trailing symbol inside the field. Default: € for inset, none for default. */
+  currencySuffix?: string | null;
 };
 
 /** EUR amount — free text while focused; parse on blur (German comma decimals). */
@@ -31,7 +33,14 @@ export function GermanAmountInput({
   id,
   disabled = false,
   variant = "default",
+  currencySuffix,
 }: GermanAmountInputProps) {
+  const resolvedSuffix =
+    currencySuffix === undefined
+      ? variant === "inset"
+        ? "€"
+        : null
+      : currencySuffix;
   const [text, setText] = useState(() => formatGermanAmountInput(value));
   const [focused, setFocused] = useState(false);
 
@@ -41,7 +50,7 @@ export function GermanAmountInput({
     }
   }, [value, focused]);
 
-  return (
+  const input = (
     <Input
       id={id}
       required={required}
@@ -53,7 +62,11 @@ export function GermanAmountInput({
       placeholder={placeholder}
       className={cn(
         variant === "inset"
-          ? cn(garageFieldControlClassName, "tabular-nums")
+          ? cn(
+              garageFieldControlClassName,
+              "tabular-nums",
+              resolvedSuffix ? "!pr-7" : null,
+            )
           : "claim-input min-h-[var(--claim-field-min-height)] tabular-nums",
         className,
       )}
@@ -84,5 +97,21 @@ export function GermanAmountInput({
         setText(formatGermanAmountInput(value));
       }}
     />
+  );
+
+  if (!resolvedSuffix) {
+    return input;
+  }
+
+  return (
+    <div className="relative w-full">
+      {input}
+      <span
+        className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[0.9rem] font-medium text-[color:var(--vd-muted)]"
+        aria-hidden
+      >
+        {resolvedSuffix}
+      </span>
+    </div>
   );
 }
