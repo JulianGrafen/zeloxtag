@@ -37,6 +37,8 @@ export interface DashboardScanCtaProps {
   /** Free KI scan used — muted CTA that routes to paywall on tap. */
   scanLocked?: boolean;
   onScanLocked?: () => void;
+  fuelScanLocked?: boolean;
+  onFuelScanLocked?: () => void;
   /** Hide while a photo sheet / modal needs the bottom of the screen. */
   hidden?: boolean;
 }
@@ -69,6 +71,8 @@ export function DashboardScanFab({
   scanActionLabel = "Rechnung scannen",
   scanLocked = false,
   onScanLocked,
+  fuelScanLocked = false,
+  onFuelScanLocked,
 }: DashboardScanCtaProps) {
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -111,6 +115,10 @@ export function DashboardScanFab({
     promptPhase === "silhouette" || promptPhase === "tour";
 
   const runFuelAction = useCallback(() => {
+    if (fuelScanLocked) {
+      onFuelScanLocked?.();
+      return;
+    }
     if (onFuelScan) {
       onFuelScan();
       return;
@@ -119,7 +127,7 @@ export function DashboardScanFab({
       const base = fuelLogHref.replace(/\/$/, "");
       window.location.assign(`${base}/erfassen`);
     }
-  }, [fuelLogHref, onFuelScan]);
+  }, [fuelLogHref, fuelScanLocked, onFuelScan, onFuelScanLocked]);
 
   const runScanAction = useCallback(() => {
     if (scanLocked) {
@@ -144,25 +152,27 @@ export function DashboardScanFab({
   const quickActions = useMemo(() => {
     const items = [];
 
-    if (fuelLogHref) {
-      items.push({
-        id: "fuel",
-        label: "Tanken",
-        description: "Tankbeleg oder Tankung eintragen",
-        icon: Fuel,
-        href: fuelLogHref,
-      });
-    }
-
     items.push({
-      id: "scan",
-      label: scanActionLabel,
+      id: "scan-invoice",
+      label: "Rechnung scannen",
       description: scanLocked
         ? "ZeloxTag Pro oder Gratis-Scan nötig"
         : "Werkstattbeleg mit KI auslesen",
       icon: Receipt,
       onClick: runScanAction,
     });
+
+    if (fuelLogHref || onFuelScan) {
+      items.push({
+        id: "scan-fuel",
+        label: "Tankbeleg scannen",
+        description: fuelScanLocked
+          ? "ZeloxTag Pro oder Gratis-Tank-Scan nötig"
+          : "Tankquittung mit KI auslesen",
+        icon: Fuel,
+        onClick: runFuelAction,
+      });
+    }
 
     if (manualEntryHref) {
       items.push({
@@ -177,9 +187,11 @@ export function DashboardScanFab({
     return items;
   }, [
     fuelLogHref,
+    fuelScanLocked,
     manualEntryHref,
+    onFuelScan,
+    runFuelAction,
     runScanAction,
-    scanActionLabel,
     scanLocked,
   ]);
 
@@ -214,6 +226,7 @@ export function DashboardScanFab({
         <DashboardQuickActionSheet
           open={menuOpen}
           onClose={() => setMenuOpen(false)}
+          title="Rechnung oder Tankbeleg"
           actions={quickActions}
         />
       ) : null}

@@ -91,6 +91,7 @@ interface TagDashboardViewProps {
   /** Complimentary KI fuel receipt scans still available for the owner. */
   freeFuelScanRemaining?: number;
   onOpenScanner?: () => void;
+  onOpenFuelScanner?: () => void;
   /** Hide the scan FAB while a photo sheet/modal is open. */
   hideScanFab?: boolean;
   /** Pro tile without href — open the action-based paywall. */
@@ -135,6 +136,7 @@ export function TagDashboardView({
   freeAbeScanRemaining = 0,
   freeFuelScanRemaining = 0,
   onOpenScanner,
+  onOpenFuelScanner,
   hideScanFab = false,
   onLockedFeature,
   vehicleImageOverride,
@@ -181,6 +183,7 @@ export function TagDashboardView({
     !cloudUnlocked &&
     freeInvoiceScanRemaining <= 0 &&
     freeAbeScanRemaining <= 0;
+  const fuelScanLocked = !cloudUnlocked && freeFuelScanRemaining <= 0;
   const invoiceDocuments = filterInvoiceReceiptDocuments(documents);
   const invoiceCount = invoiceDocuments.length;
   const hasInvoiceAmounts = invoiceDocuments.some(
@@ -586,7 +589,6 @@ export function TagDashboardView({
       {canScan ? (
         <DashboardScanFab
           tagUuid={tagUuid}
-          directAction={onOpenScanner ? "scan" : "menu"}
           scanHref={
             vehicleSurfaceScope
               ? `${vehicleSurfaceHref(vehicleSurfaceScope, "?scan=1")}`
@@ -594,11 +596,14 @@ export function TagDashboardView({
           }
           hidden={hideScanFab}
           onOpenScanner={onOpenScanner}
+          onFuelScan={onOpenFuelScanner}
           scanLocked={scanLocked}
           onScanLocked={() => onLockedFeature?.(FEATURE.SCAN_AI_RECEIPT)}
+          fuelScanLocked={fuelScanLocked}
+          onFuelScanLocked={() => onLockedFeature?.(FEATURE.SCAN_AI_RECEIPT)}
           fuelLogHref={path("tanken")}
           manualEntryHref={manualEntryHref}
-          scanActionLabel="Beleg scannen"
+          scanActionLabel="Rechnung scannen"
           scanLabel={
             !cloudUnlocked &&
             !scanLocked &&

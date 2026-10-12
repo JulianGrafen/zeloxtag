@@ -525,6 +525,14 @@ export function TagDashboardShell({
     handleScanTypeSelect("invoice");
   }
 
+  function handleOpenFuelScanner() {
+    if (!membershipActive && localFreeFuelScanRemaining <= 0) {
+      openPaywall(FEATURE.SCAN_AI_RECEIPT, "free_scan_exhausted");
+      return;
+    }
+    window.location.assign(`${dashboardBase}/tanken/erfassen`);
+  }
+
   const [silhouetteStorageUrl, setSilhouetteStorageUrl] = useState(
     () => initialSilhouetteStorageUrl(vehicle),
   );
@@ -901,6 +909,7 @@ export function TagDashboardShell({
           membershipActive ? 0 : localFreeFuelScanRemaining
         }
         onOpenScanner={handleOpenScanner}
+        onOpenFuelScanner={handleOpenFuelScanner}
         hideScanFab={
           silhouettePromptVisible ||
           showSilhouetteEditor ||
