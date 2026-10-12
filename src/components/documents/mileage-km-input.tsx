@@ -15,6 +15,7 @@ type MileageKmInputProps = {
   className?: string;
   id?: string;
   required?: boolean;
+  disabled?: boolean;
   variant?: "default" | "inset";
 };
 
@@ -26,12 +27,14 @@ export function MileageKmInput({
   className,
   id,
   required,
+  disabled = false,
   variant = "default",
 }: MileageKmInputProps) {
   return (
     <Input
       id={id}
       required={required}
+      disabled={disabled}
       inputMode="numeric"
       className={cn(
         variant === "inset"
