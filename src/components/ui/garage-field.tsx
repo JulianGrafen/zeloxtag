@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -89,6 +90,36 @@ export function GarageInsetInput({
   );
 }
 
+type GarageInsetInputWithSuffixProps = ComponentProps<"input"> & {
+  suffix?: string;
+};
+
+/** Inset input with trailing symbol (e.g. €) inside the field. */
+export function GarageInsetInputWithSuffix({
+  suffix = "€",
+  className,
+  ...props
+}: GarageInsetInputWithSuffixProps) {
+  if (!suffix) {
+    return <GarageInsetInput className={className} {...props} />;
+  }
+
+  return (
+    <div className="relative w-full">
+      <GarageInsetInput
+        className={cn("pr-7", className)}
+        {...props}
+      />
+      <span
+        className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[0.9rem] font-medium text-[color:var(--vd-muted)]"
+        aria-hidden
+      >
+        {suffix}
+      </span>
+    </div>
+  );
+}
+
 export function GarageInsetTextarea({
   className,
   ...props
@@ -118,5 +149,41 @@ export function GarageInsetSelect({
       )}
       {...props}
     />
+  );
+}
+
+type GarageFieldDisclosureSummaryProps = {
+  label: string;
+  children: ReactNode;
+  valueClassName?: string;
+};
+
+/** Aligned summary row for `<details className="garage-field-row-shell group">`. */
+export function GarageFieldDisclosureSummary({
+  label,
+  children,
+  valueClassName,
+}: GarageFieldDisclosureSummaryProps) {
+  return (
+    <summary
+      className={cn(
+        "garage-field-disclosure-summary",
+        "marker:content-none [&::-webkit-details-marker]:hidden",
+      )}
+    >
+      <span className="garage-field-disclosure-summary__label">{label}</span>
+      <span
+        className={cn(
+          "garage-field-disclosure-summary__value truncate",
+          valueClassName,
+        )}
+      >
+        {children}
+      </span>
+      <ChevronDown
+        className="garage-field-disclosure-summary__chevron"
+        aria-hidden
+      />
+    </summary>
   );
 }

@@ -2,14 +2,14 @@
 
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
+import {
+  GarageField,
+  GarageFieldCell,
+  GarageFieldRow,
+  GarageInsetInputWithSuffix,
+} from "@/components/ui/garage-field";
 import { parseMileageKmInput } from "@/lib/documents/format";
 import type { FuelFillFormState } from "@/lib/fuel-receipt/types";
-
-const labelClass =
-  "text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]";
-
-const inputClass =
-  "w-full rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2.5 text-[0.95rem] text-[color:var(--vd-text)]";
 
 type FuelFillFormFieldsProps = {
   value: FuelFillFormState;
@@ -24,12 +24,10 @@ export function FuelFillFormFields({
 }: FuelFillFormFieldsProps) {
   return (
     <div className="grid gap-4">
-      <div className="space-y-1.5">
-        <label className={labelClass} htmlFor="fuel-fill-date">
-          Datum
-        </label>
+      <GarageField label="Datum" htmlFor="fuel-fill-date">
         <GermanDateInput
           id="fuel-fill-date"
+          variant="inset"
           value={value.occurredOn || null}
           onChange={(next) =>
             onChange({ ...value, occurredOn: next ?? value.occurredOn })
@@ -37,67 +35,60 @@ export function FuelFillFormFields({
           required
           disabled={disabled}
         />
-      </div>
+      </GarageField>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="fuel-fill-liters">
-            Liter
-          </label>
-          <input
+      <GarageFieldRow>
+        <GarageFieldCell label="Liter" htmlFor="fuel-fill-liters">
+          <GarageInsetInputWithSuffix
             id="fuel-fill-liters"
-            className={inputClass}
+            suffix="L"
             inputMode="decimal"
             placeholder="z. B. 38"
+            className="tabular-nums"
             value={value.fuelLiters}
             disabled={disabled}
             onChange={(event) =>
               onChange({ ...value, fuelLiters: event.target.value })
             }
           />
-        </div>
-        <div className="space-y-1.5">
-          <label className={labelClass} htmlFor="fuel-fill-price-per-liter">
-            Litpreis (€/L)
-          </label>
-          <input
+        </GarageFieldCell>
+        <GarageFieldCell label="Literpreis" htmlFor="fuel-fill-price-per-liter">
+          <GarageInsetInputWithSuffix
             id="fuel-fill-price-per-liter"
-            className={inputClass}
+            suffix="€/L"
             inputMode="decimal"
             placeholder="z. B. 1,89"
+            className="tabular-nums !pr-11"
             value={value.pricePerLiterEur}
             disabled={disabled}
             onChange={(event) =>
               onChange({ ...value, pricePerLiterEur: event.target.value })
             }
           />
-        </div>
-        <div className="col-span-2 space-y-1.5 sm:col-span-1">
-          <label className={labelClass} htmlFor="fuel-fill-amount">
-            Gesamtbetrag (€)
-          </label>
-          <input
-            id="fuel-fill-amount"
-            className={inputClass}
-            inputMode="decimal"
-            placeholder="0,00"
-            value={value.amountEur}
-            disabled={disabled}
-            required
-            onChange={(event) =>
-              onChange({ ...value, amountEur: event.target.value })
-            }
-          />
-        </div>
-      </div>
+        </GarageFieldCell>
+      </GarageFieldRow>
 
-      <div className="space-y-1.5">
-        <label className={labelClass} htmlFor="fuel-fill-km">
-          Kilometerstand
-        </label>
+      <GarageField label="Gesamtbetrag" htmlFor="fuel-fill-amount">
+        <GarageInsetInputWithSuffix
+          id="fuel-fill-amount"
+          inputMode="decimal"
+          placeholder="0,00"
+          className="tabular-nums"
+          value={value.amountEur}
+          disabled={disabled}
+          required
+          onChange={(event) =>
+            onChange({ ...value, amountEur: event.target.value })
+          }
+        />
+      </GarageField>
+
+      <GarageField label="Kilometerstand" htmlFor="fuel-fill-km">
         <MileageKmInput
           id="fuel-fill-km"
+          variant="inset"
           required
+          disabled={disabled}
           value={
             value.odometerKm?.trim()
               ? parseMileageKmInput(value.odometerKm)
@@ -110,7 +101,7 @@ export function FuelFillFormFields({
             })
           }
         />
-      </div>
+      </GarageField>
     </div>
   );
 }

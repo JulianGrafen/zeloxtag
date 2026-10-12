@@ -10,7 +10,6 @@ import {
 } from "@/components/documents/scan-processing-panel";
 import { BackNav } from "@/components/layout/back-nav";
 import { ScanContent } from "@/components/layout/scan-content";
-import { Button } from "@/components/ui/button";
 import {
   activeFuelExtractStepIndex,
   FUEL_EXTRACT_STEPS,
@@ -191,19 +190,18 @@ export function FuelReceiptUploader({
           ) : null}
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 rounded-2xl"
-              disabled={pending}
-              onClick={resetWizard}
-            >
-              Anderen Beleg scannen
-            </Button>
             <PressableButton
               type="button"
               disabled={pending}
-              className="flex-1 rounded-2xl bg-neutral-950 py-3 text-[0.92rem] font-semibold text-white"
+              className="flex w-full flex-1 items-center justify-center rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] py-3.5 text-[0.92rem] font-semibold text-[color:var(--vd-text)]"
+              onClick={resetWizard}
+            >
+              Anderen Beleg scannen
+            </PressableButton>
+            <PressableButton
+              type="button"
+              disabled={pending}
+              className="flex w-full flex-1 items-center justify-center rounded-2xl bg-neutral-950 py-3.5 text-[0.92rem] font-semibold text-white disabled:opacity-60"
               onClick={submit}
             >
               {pending ? "Speichern…" : "Speichern"}
