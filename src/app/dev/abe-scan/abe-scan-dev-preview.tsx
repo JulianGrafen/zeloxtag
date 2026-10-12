@@ -29,7 +29,6 @@ export function AbeScanDevPreview() {
         window.location.href = "/dev/abe-scan";
       }}
       scanType="abe"
-      dashboardQuickScan
     />
   );
 }
