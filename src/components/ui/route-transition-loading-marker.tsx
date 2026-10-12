@@ -9,8 +9,6 @@ import {
 
 /** Marks route-level loading UI so global chrome (legal footer) stays hidden. */
 export function RouteTransitionLoadingMarker({ children }: { children: ReactNode }) {
-  activateRouteTransitionLoading();
-
   useLayoutEffect(() => {
     activateRouteTransitionLoading();
     return () => {

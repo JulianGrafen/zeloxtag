@@ -16,11 +16,11 @@ export function isRouteTransitionLoadingActive(): boolean {
 }
 
 export function activateRouteTransitionLoading(): void {
+  if (routeTransitionLoadingActive) return;
   if (releaseTimer) {
     clearTimeout(releaseTimer);
     releaseTimer = undefined;
   }
-  if (routeTransitionLoadingActive) return;
   routeTransitionLoadingActive = true;
   notifyListeners();
 }

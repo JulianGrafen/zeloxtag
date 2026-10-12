@@ -25,15 +25,14 @@ describe("routeTransitionLoadingActive", () => {
     expect(isRouteTransitionLoadingActive()).toBe(false);
   });
 
-  it("cancels pending release when re-activated", () => {
+  it("does not cancel pending release on redundant activate", () => {
     vi.useFakeTimers();
     activateRouteTransitionLoading();
     scheduleDeactivateRouteTransitionLoading(100);
     vi.advanceTimersByTime(50);
 
     activateRouteTransitionLoading();
-    scheduleDeactivateRouteTransitionLoading(100);
-    vi.advanceTimersByTime(99);
-    expect(isRouteTransitionLoadingActive()).toBe(true);
+    vi.advanceTimersByTime(50);
+    expect(isRouteTransitionLoadingActive()).toBe(false);
   });
 });

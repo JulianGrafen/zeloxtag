@@ -16,6 +16,7 @@ import {
   DIGITAL_GARAGE_REGISTER_LEAD,
 } from "@/lib/onboarding/digital-garage-register-copy";
 import { GarageDataTrustBanner } from "@/components/trust/garage-data-trust-banner";
+import { cn } from "@/lib/utils";
 
 type ClaimIntroHeroProps = {
   variant?: "tag" | "digital";
@@ -50,7 +51,12 @@ export function ClaimIntroHero({
 
       {!isDigital && tagUuid ? <ClaimTagModelHero tagUuid={tagUuid} /> : null}
 
-      <div className="relative z-[1] flex flex-col gap-8 pt-1">
+      <div
+        className={cn(
+          "relative z-[1] flex flex-col pt-1",
+          isDigital ? "gap-10" : "gap-8",
+        )}
+      >
         <div className="space-y-5">
           <span className="claim-intro-status">
             <span className="claim-intro-status__dot" aria-hidden />
@@ -62,9 +68,9 @@ export function ClaimIntroHero({
           <p className="claim-intro-lead">{lead}</p>
 
           <ClaimCommunityStrip />
-
-          {isDigital ? <GarageDataTrustBanner /> : null}
         </div>
+
+        {isDigital ? <GarageDataTrustBanner /> : null}
 
         <div className="space-y-3">
           {isAuthenticated && userEmail ? (
