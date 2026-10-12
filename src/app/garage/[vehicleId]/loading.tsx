@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { DashboardTransitionLoading } from "@/components/ui/transition-loading";
+import { RouteTransitionLoadingTrigger } from "@/components/ui/transition-loading";
 
 export default function GarageDashboardLoading() {
   return (
     <AppShell showNavbar={false}>
-      <DashboardTransitionLoading />
+      <RouteTransitionLoadingTrigger label="Dashboard wird geladen" />
     </AppShell>
   );
 }

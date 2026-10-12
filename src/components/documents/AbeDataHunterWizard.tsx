@@ -307,6 +307,7 @@ function KbaHuntOverlay({
   report,
   manualValue,
   analyzing,
+  showManualEntry,
   onManualChange,
   onContinue,
   onClose,
@@ -314,6 +315,8 @@ function KbaHuntOverlay({
   report: AbeDataHunterReport;
   manualValue: string;
   analyzing: boolean;
+  /** Shown after repeated failed KBA scan attempts. */
+  showManualEntry: boolean;
   onManualChange: (value: string) => void;
   onContinue: () => void;
   onClose: () => void;
@@ -344,7 +347,7 @@ function KbaHuntOverlay({
             onClose={onClose}
             onContinue={detectedKba ? onContinue : undefined}
           />
-          {!detectedKba
+          {!detectedKba && showManualEntry
             ? createPortal(
                 <div
                   className="pointer-events-none fixed inset-x-0 bottom-0 z-[10050] flex flex-col items-center px-4 pb-[max(9.25rem,calc(env(safe-area-inset-bottom)+8.25rem))]"
@@ -1929,6 +1932,8 @@ export function AbeDataHunterWizard({
   const [isSaving, startSaveTransition] = useTransition();
   const [huntSessionKey, setHuntSessionKey] = useState(0);
   const [manualKbaInput, setManualKbaInput] = useState("");
+  const [kbaScanFailCount, setKbaScanFailCount] = useState(0);
+  const kbaScanFailCountRef = useRef(0);
   const [kuerzelDbReady, setKuerzelDbReady] = useState(false);
   const [auflagenScanSkipped, setAuflagenScanSkipped] = useState(false);
   const [skippedAuflagenCodes, setSkippedAuflagenCodes] = useState<string[]>([]);
@@ -2336,11 +2341,34 @@ export function AbeDataHunterWizard({
     goToReview();
   }
 
+  function resetKbaScanFailCount() {
+    kbaScanFailCountRef.current = 0;
+    setKbaScanFailCount(0);
+  }
+
+  function recordKbaScanFailure(fallbackMessage?: string) {
+    const next = kbaScanFailCountRef.current + 1;
+    kbaScanFailCountRef.current = next;
+    setKbaScanFailCount(next);
+    if (next >= 2) {
+      setHuntError(
+        fallbackMessage ??
+          "KBA-Nummer nicht erkannt — erneut fotografieren oder manuell eintragen.",
+      );
+      return;
+    }
+    setHuntError(
+      fallbackMessage ??
+        "KBA-Nummer nicht erkannt — bitte näher heran oder erneut fotografieren.",
+    );
+  }
+
   function returnToChooser() {
     queueRef.current = [];
     auflagenQueueRef.current = [];
     drainingRef.current = false;
     auflagenDrainingRef.current = false;
+    resetKbaScanFailCount();
     setHuntMode(null);
     setPhase("choose");
   }
@@ -2383,6 +2411,7 @@ export function AbeDataHunterWizard({
 
   function startCameraHunt() {
     setManualKbaInput("");
+    resetKbaScanFailCount();
     setHuntSessionKey((current) => current + 1);
     queueModeRef.current = "kba";
     setHuntMode("camera");
@@ -2395,6 +2424,7 @@ export function AbeDataHunterWizard({
       return;
     }
     setManualKbaInput("");
+    resetKbaScanFailCount();
     setHuntMode("pdf");
     setSourcePdf(file);
     setHuntSessionKey((current) => current + 1);
@@ -2414,6 +2444,7 @@ export function AbeDataHunterWizard({
     setPhotos([]);
     setSourcePdf(null);
     setHuntError(null);
+    resetKbaScanFailCount();
     setQueuedCount(0);
     setAnalyzing(false);
     setAnalyzingPdf(false);
@@ -2512,10 +2543,9 @@ export function AbeDataHunterWizard({
           if (kba) {
             setManualKbaInput(kba);
             setHuntError(null);
+            resetKbaScanFailCount();
           } else {
-            setHuntError(
-              "KBA-Nummer nicht erkannt — bitte näher heran, erneut fotografieren oder manuell eintragen.",
-            );
+            recordKbaScanFailure();
           }
           continue;
         }
@@ -2606,9 +2636,13 @@ export function AbeDataHunterWizard({
           break;
         }
       } catch (err) {
-        setHuntError(
-          err instanceof Error ? err.message : "Analyse fehlgeschlagen.",
-        );
+        const message =
+          err instanceof Error ? err.message : "Analyse fehlgeschlagen.";
+        if (queueModeRef.current === "kba") {
+          recordKbaScanFailure(message);
+        } else {
+          setHuntError(message);
+        }
       }
     }
 
@@ -3127,6 +3161,7 @@ export function AbeDataHunterWizard({
         report={report}
         manualValue={manualKbaInput}
         analyzing={analyzing}
+        showManualEntry={kbaScanFailCount >= 2}
         onManualChange={handleManualKbaChange}
         onContinue={startMainHuntFromKba}
         onClose={returnToChooser}

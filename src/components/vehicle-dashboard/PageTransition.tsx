@@ -11,6 +11,7 @@ import {
 } from "react";
 import { ViewTransition } from "react";
 
+import { RouteTransitionLoadingOverlay } from "@/components/ui/transition-loading";
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 import { shouldRenderGlobalLegalFooter } from "@/lib/legal/show-global-legal-footer";
 import { usePublicShowcaseSurface } from "@/lib/legal/use-public-showcase-surface";
@@ -88,6 +89,9 @@ export function PageTransition({ children }: PageTransitionProps) {
       default="none"
     >
       <div className="vd-page" data-vd-page data-pathname={pathname}>
+        {routeTransitionLoadingActive ? (
+          <RouteTransitionLoadingOverlay />
+        ) : null}
         {children}
         {showLegalFooter ? (
           <div className="relative isolate z-[100]">

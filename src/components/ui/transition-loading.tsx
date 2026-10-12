@@ -43,21 +43,45 @@ export function TransitionLoading({
   );
 }
 
-/** Vehicle dashboard / tag routes. */
-export function DashboardTransitionLoading() {
+/** Activates route-level loading (orb overlay in PageTransition). No full-screen fallback UI. */
+export function RouteTransitionLoadingTrigger({
+  label = "Lädt",
+}: {
+  label?: string;
+}) {
   return (
     <RouteTransitionLoadingMarker>
-      <TransitionLoading label="Dashboard wird geladen" state="connecting" />
+      <span className="sr-only">{label}</span>
     </RouteTransitionLoadingMarker>
   );
 }
 
-/** Document vault sub-routes. */
+/** Centered orb while a route segment is loading (see PageTransition). */
+export function RouteTransitionLoadingOverlay() {
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center"
+      aria-hidden
+    >
+      <ThinkingOrb
+        state="connecting"
+        size={64}
+        theme="auto"
+        aria-label="Lädt"
+      />
+    </div>
+  );
+}
+
+/** @deprecated Use AppShell + RouteTransitionLoadingTrigger in loading.tsx */
+export function DashboardTransitionLoading() {
+  return <RouteTransitionLoadingTrigger label="Dashboard wird geladen" />;
+}
+
+/** @deprecated Use AppShell + RouteTransitionLoadingTrigger in loading.tsx */
 export function DocumentsTransitionLoading() {
   return (
-    <RouteTransitionLoadingMarker>
-      <TransitionLoading label="Dokumente werden geladen" state="searching" />
-    </RouteTransitionLoadingMarker>
+    <RouteTransitionLoadingTrigger label="Dokumente werden geladen" />
   );
 }
 
