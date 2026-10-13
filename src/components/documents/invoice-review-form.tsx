@@ -231,8 +231,6 @@ export function InvoiceReviewForm({
 
         <div className="mt-5 border-t border-[color:var(--vd-field-border)] pt-5">
           <EditableLineItemsSection
-            mode="inline"
-            hideEditTrigger
             items={fields.lineItems ?? []}
             totalAmount={fields.amount}
             emptyHint="Positionen manuell ergänzen."
