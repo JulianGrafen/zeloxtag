@@ -1342,7 +1342,7 @@ function HuntEntryChooser({
 
       <header className="mt-6">
         <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-          ABE erfassen
+          ABE Hunter
         </p>
         <h1 className="mt-2 text-[1.35rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
           Wie möchtest du starten?

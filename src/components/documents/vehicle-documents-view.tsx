@@ -105,15 +105,9 @@ interface VehicleDocumentsViewProps {
   invoiceCategory?: InvoiceListCategory | "all";
 }
 
-/** Free tier: classic ABE uses the complimentary scan; vault is Pro-only. */
-function abeDocumentsScanType(
-  membershipActive: boolean,
-  freeAbeScanRemaining: number,
-): "abe" | "vault" {
-  if (!membershipActive && freeAbeScanRemaining > 0) {
-    return "abe";
-  }
-  return "vault";
+/** ABE list FAB always opens the guided ABE Hunter (`scanType=abe`). Vault is a separate scan intent. */
+function abeDocumentsScanType(): "abe" {
+  return "abe";
 }
 
 function ownerScanEntryHref(
@@ -159,7 +153,7 @@ export function VehicleDocumentsView({
   const [activeType, setActiveType] = useState(filterType);
   const abeScanType =
     activeType === "abe"
-      ? abeDocumentsScanType(membershipActive, freeAbeScanRemaining)
+      ? abeDocumentsScanType()
       : activeType === "tuev"
         ? "tuev"
         : null;

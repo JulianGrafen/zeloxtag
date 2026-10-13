@@ -1005,16 +1005,7 @@ export function ManualEntryView({
               </label>
             ) : null}
 
-            <div className="flex gap-2 pt-1">
-              <PressableButton
-                type="button"
-                variant="button"
-                disabled={busy}
-                onClick={closeForm}
-                className="claim-back flex-1"
-              >
-                Abbrechen
-              </PressableButton>
+            <div className="flex flex-col gap-2 pt-1">
               <PressableButton
                 type="submit"
                 variant="button"
@@ -1022,7 +1013,7 @@ export function ManualEntryView({
                   busy ||
                   (!isEditing && isUmbau && photos.length === 0)
                 }
-                className="claim-cta flex-1 disabled:opacity-60"
+                className="claim-cta w-full disabled:opacity-60"
               >
                 {busy
                   ? "Speichern…"
@@ -1032,6 +1023,15 @@ export function ManualEntryView({
                       ? "Fotos speichern"
                       : "Eintrag speichern"}
               </PressableButton>
+              <PressableButton
+                type="button"
+                variant="button"
+                disabled={busy}
+                onClick={closeForm}
+                className="claim-back w-full"
+              >
+                Abbrechen
+              </PressableButton>
             </div>
           </form>
         ) : null}
@@ -1040,21 +1040,7 @@ export function ManualEntryView({
           aria-label={isUmbau ? "Umbau-Bilder" : "Manuelle Einträge"}
           className="space-y-2"
         >
-          {entries.length === 0 ? (
-            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                {isUmbau ? (
-                  <ImagePlus className="h-5 w-5" aria-hidden />
-                ) : (
-                  <Wrench className="h-5 w-5" aria-hidden />
-                )}
-              </div>
-              <p className="font-medium text-[color:var(--vd-text)]">
-                {emptyCopy.title}
-              </p>
-              <p className="mt-1">{emptyCopy.body}</p>
-            </div>
-          ) : visibleEntries.length === 0 ? (
+          {entries.length === 0 ? null : visibleEntries.length === 0 ? (
             <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
               {query.trim() || listFilter !== "all"
                 ? "Keine Treffer für diese Suche / Filter."
