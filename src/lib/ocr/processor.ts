@@ -209,4 +209,27 @@ async function processNativePdf(
   };
 }
 
+/**
+ * Decouple review preview from compressed page URLs (revoked when pages are cleared).
+ */
+export function attachOwnedPreviewUrl(
+  result: ProcessInvoiceResult,
+  imagePages: CompressedPage[],
+): ProcessInvoiceResult {
+  if (result.previewUrlOwned) {
+    return result;
+  }
+
+  const blob = imagePages[0]?.blob ?? result.analyzeFiles[0];
+  if (!blob) {
+    return result;
+  }
+
+  return {
+    ...result,
+    previewUrl: URL.createObjectURL(blob),
+    previewUrlOwned: true,
+  };
+}
+
 export { revokeCompressedPages };

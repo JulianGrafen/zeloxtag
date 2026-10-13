@@ -65,6 +65,7 @@ import {
 } from "@/lib/validations/abeSchema";
 import type { CompressedPage } from "@/lib/ocr/compress-page";
 import {
+  attachOwnedPreviewUrl,
   buildUploadPdfFromPages,
   ingestImageFile,
   processInvoiceDocuments,
@@ -807,9 +808,14 @@ export function InvoiceUploader({
     }
 
     setUploadFile(uploadPdf);
-    setPreviewUrl(processed.previewUrl);
-    setPreviewKind(processed.previewKind);
-    setPreviewOwned(processed.previewUrlOwned);
+
+    const previewReady = attachOwnedPreviewUrl(processed, imagePages);
+    if (previewOwned && previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(previewReady.previewUrl);
+    setPreviewKind(previewReady.previewKind);
+    setPreviewOwned(previewReady.previewUrlOwned);
     setPageCount(processed.pageCount);
     setRawText(analyzed.rawText);
     setApprovalFields(analyzed.approvalFields);

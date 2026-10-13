@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/garage-field";
 import { EntryTopicChips } from "@/components/documents/entry-topic-chips";
 import { InvoiceCategoryChips } from "@/components/documents/invoice-category-chips";
+import { ScanDocumentPreview } from "@/components/documents/scan-document-preview";
 import { recalculateInvoiceGrossAmount } from "@/lib/ocr/invoice-vat";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 
@@ -256,20 +257,11 @@ export function InvoiceReviewForm({
             {preview.fileSizeLabel || formatBytes(0)}
           </summary>
           <div className="border-t border-[color:var(--vd-border)]">
-            {preview.kind === "pdf" ? (
-              <iframe
-                title="Dokumentvorschau"
-                src={preview.url}
-                className="max-h-[32vh] w-full border-0 bg-neutral-100"
-              />
-            ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={preview.url}
-                alt="Dokumentvorschau"
-                className="max-h-[32vh] w-full bg-neutral-100 object-contain"
-              />
-            )}
+            <ScanDocumentPreview
+              url={preview.url}
+              kind={preview.kind}
+              pageCount={preview.pageCount}
+            />
             {onReset ? (
               <div className="border-t border-[color:var(--vd-border)] px-4 py-2.5">
                 <button

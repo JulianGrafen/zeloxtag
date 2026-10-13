@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { CompatibilityTable } from "@/components/dashboard/CompatibilityTable";
+import { ScanDocumentPreview } from "@/components/documents/scan-document-preview";
 import {
   AbeFieldLabel,
   AbeKbaHero,
@@ -372,20 +373,13 @@ export function ABEOverview({
           </div>
         </div>
         <div className="max-h-[min(62vh,560px)] min-h-[240px] overflow-auto bg-neutral-100">
-          {previewKind === "pdf" ? (
-            <iframe
-              title="ABE Vorschau"
-              src={previewUrl}
-              className="h-[min(62vh,560px)] w-full border-0 bg-white"
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={previewUrl}
-              alt="ABE Dokumentvorschau"
-              className="mx-auto block w-full object-contain"
-            />
-          )}
+          <ScanDocumentPreview
+            url={previewUrl}
+            kind={previewKind}
+            pageCount={pageCount}
+            alt="ABE Dokumentvorschau"
+            className="mx-auto block min-h-[240px] w-full"
+          />
         </div>
       </section>
     </div>

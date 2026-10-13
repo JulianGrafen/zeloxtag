@@ -22,6 +22,8 @@ import { fuelScanQuotaBadgeLabel } from "@/lib/billing/fuel-scan-paywall-copy";
 
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
+import { ScanDocumentPreview } from "@/components/documents/scan-document-preview";
+
 import { FuelFillFormFields } from "./fuel-fill-form-fields";
 import { FuelScanCta } from "./fuel-scan-cta";
 import { FuelScanProUpgradeModal } from "./fuel-scan-pro-upgrade-modal";
@@ -171,10 +173,11 @@ export function FuelReceiptUploader({
         <div className="vd-anim-header space-y-4">
           {previewUrl ? (
             <div className="zt-feature-panel overflow-hidden">
-              <img
-                src={previewUrl}
+              <ScanDocumentPreview
+                url={previewUrl}
+                kind="image"
                 alt="Vorschau Tankquittung"
-                className="max-h-48 w-full object-contain bg-black/5"
+                className="max-h-48 w-full bg-black/5"
               />
             </div>
           ) : null}
