@@ -6,12 +6,8 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
-import {
-  GarageInsetInputWithSuffix,
-  GarageInsetTextarea,
-} from "@/components/ui/garage-field";
+import { GarageInsetInput } from "@/components/ui/garage-field";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
-import { sumLineItems } from "@/lib/documents/line-items";
 import type { DocumentLineItem } from "@/types/database";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
 import { showSavedToast } from "@/lib/ui/saved-toast";
@@ -78,25 +74,6 @@ function parseDraft(draft: DraftItem[]): DocumentLineItem[] {
     if (items.length >= 40) break;
   }
   return items;
-}
-
-function resolveLineItemsTotal(
-  totalAmount: number | null | undefined,
-  items: DocumentLineItem[],
-): number | null {
-  if (typeof totalAmount === "number" && Number.isFinite(totalAmount)) {
-    return totalAmount;
-  }
-  return sumLineItems(items.length > 0 ? items : null);
-}
-
-function LineItemsTotalRow({ total }: { total: number }) {
-  return (
-    <li className="garage-grouped-list__row garage-grouped-list__row--total">
-      <span className="garage-grouped-list__label">Gesamt</span>
-      <span className="garage-grouped-list__value">{formatEur(total)}</span>
-    </li>
-  );
 }
 
 /**
@@ -197,12 +174,6 @@ export function EditableLineItemsSection({
     });
   }
 
-  const parsedDraftItems = parseDraft(draft);
-  const editingDisplayTotal = resolveLineItemsTotal(
-    totalAmount,
-    parsedDraftItems,
-  );
-
   return (
     <section id={sectionId} className="scroll-mt-24 space-y-3">
       <div className="flex items-center justify-between gap-3 px-0.5">
@@ -226,11 +197,10 @@ export function EditableLineItemsSection({
             {draft.map((row, index) => (
               <li
                 key={row.key}
-                className="garage-grouped-list__row grid grid-cols-[1fr_7.25rem_auto] items-start gap-2 !py-2"
+                className="garage-grouped-list__row grid grid-cols-[1fr_5.75rem_auto] items-center gap-2 !py-2"
               >
-                <GarageInsetTextarea
+                <GarageInsetInput
                   value={row.label}
-                  rows={2}
                   onChange={(event) => {
                     const value = event.target.value;
                     setDraft((current) => {
@@ -246,10 +216,9 @@ export function EditableLineItemsSection({
                     });
                   }}
                   placeholder="Bezeichnung"
-                  className="min-h-[2.5rem] min-w-0 resize-none !px-0 !py-1 text-[0.875rem] leading-snug"
+                  className="min-w-0 !px-0 !py-1 text-[0.875rem]"
                 />
-                <GarageInsetInputWithSuffix
-                  suffix="€"
+                <GarageInsetInput
                   inputMode="decimal"
                   value={row.amount}
                   onChange={(event) => {
@@ -266,7 +235,7 @@ export function EditableLineItemsSection({
                       return next;
                     });
                   }}
-                  placeholder="0,00"
+                  placeholder="€"
                   className="text-right !px-0 !py-1 text-[0.875rem] tabular-nums"
                 />
                 <PressableButton
@@ -280,15 +249,12 @@ export function EditableLineItemsSection({
                         : draft.filter((_, i) => i !== index),
                     );
                   }}
-                  className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[color:var(--vd-muted)] active:opacity-70"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[color:var(--vd-muted)] active:opacity-70"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />
                 </PressableButton>
               </li>
             ))}
-            {editingDisplayTotal !== null ? (
-              <LineItemsTotalRow total={editingDisplayTotal} />
-            ) : null}
           </ul>
 
           <PressableButton
@@ -349,15 +315,14 @@ export function EditableLineItemsSection({
               </span>
             </li>
           ))}
-          {(() => {
-            const readOnlyTotal = resolveLineItemsTotal(
-              totalAmount,
-              displayItems,
-            );
-            return readOnlyTotal !== null ? (
-              <LineItemsTotalRow total={readOnlyTotal} />
-            ) : null;
-          })()}
+          {totalAmount !== null ? (
+            <li className="garage-grouped-list__row garage-grouped-list__row--total">
+              <span className="garage-grouped-list__label">Gesamt</span>
+              <span className="garage-grouped-list__value">
+                {formatEur(totalAmount)}
+              </span>
+            </li>
+          ) : null}
         </ul>
       )}
     </section>
