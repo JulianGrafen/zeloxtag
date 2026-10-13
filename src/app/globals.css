@@ -895,10 +895,11 @@ nextjs-portal {
 
 .garage-field-disclosure-summary {
   display: grid;
-  grid-template-columns: 5.25rem minmax(0, 1fr) 1.125rem;
+  grid-template-columns: minmax(5.25rem, auto) minmax(0, 1fr) 1.125rem;
   align-items: center;
   column-gap: 0.5rem;
-  padding: 0.65rem 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
   cursor: pointer;
   list-style: none;
 }
@@ -944,6 +945,20 @@ nextjs-portal {
 
 .garage-field-row-shell.group[open] .garage-field-disclosure-summary__chevron {
   transform: rotate(180deg);
+}
+
+.garage-disclosure-body {
+  border-top: 1px solid var(--vd-field-border);
+  padding: 0.65rem 0.75rem 0.75rem;
+}
+
+.garage-disclosure-body .garage-field-row {
+  border-radius: var(--vd-radius-field);
+  overflow: hidden;
+}
+
+.garage-disclosure-body .garage-field-row > .garage-field .garage-field__label {
+  padding-top: 0.45rem;
 }
 
 .garage-grouped-list {

@@ -15,10 +15,7 @@ import {
   GarageFieldRow,
   GarageInsetInput,
 } from "@/components/ui/garage-field";
-import {
-  EntryTopicChips,
-  EntryTopicTagsReadonly,
-} from "@/components/documents/entry-topic-chips";
+import { EntryTopicChips } from "@/components/documents/entry-topic-chips";
 import { InvoiceCategoryChips } from "@/components/documents/invoice-category-chips";
 import { recalculateInvoiceGrossAmount } from "@/lib/ocr/invoice-vat";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
@@ -77,13 +74,9 @@ export function InvoiceReviewForm({
   onDismissMismatch,
   onDismissDuplicate,
 }: InvoiceReviewFormProps) {
-  const detailsSummary = (() => {
-    const parts = [
-      fields.vendor?.trim(),
-      fields.invoiceNumber?.trim(),
-    ].filter(Boolean);
-    return parts.length > 0 ? parts.join(" · ") : "Optional ergänzen";
-  })();
+  const topicCount = fields.topicTags?.length ?? 0;
+  const disclosureHintClassName =
+    "text-[0.82rem] font-normal text-[color:var(--vd-muted)]";
 
   return (
     <div className="space-y-4">
@@ -181,45 +174,48 @@ export function InvoiceReviewForm({
 
           <details className="garage-field-row-shell group">
             <GarageFieldDisclosureSummary label="Details">
-              {detailsSummary}
+              <span className={disclosureHintClassName}>Optional ergänzen</span>
             </GarageFieldDisclosureSummary>
-            <div className="grid gap-3 border-t border-[color:var(--vd-border)] px-3.5 pb-3.5 pt-3">
-              <GarageField label="Werkstatt" htmlFor="invoice-review-vendor">
-                <GarageInsetInput
-                  id="invoice-review-vendor"
-                  value={fields.vendor ?? ""}
-                  onChange={(event) =>
-                    onFieldsChange({ vendor: event.target.value || null })
-                  }
-                  placeholder="Name der Werkstatt"
-                />
-              </GarageField>
-              <GarageField
-                label="Belegnummer"
-                htmlFor="invoice-review-invoice-number"
-              >
-                <GarageInsetInput
-                  id="invoice-review-invoice-number"
-                  value={fields.invoiceNumber ?? ""}
-                  onChange={(event) =>
-                    onFieldsChange({
-                      invoiceNumber: event.target.value || null,
-                    })
-                  }
-                  placeholder="optional"
-                />
-              </GarageField>
+            <div className="garage-disclosure-body">
+              <GarageFieldRow>
+                <GarageFieldCell label="Werkstatt" htmlFor="invoice-review-vendor">
+                  <GarageInsetInput
+                    id="invoice-review-vendor"
+                    value={fields.vendor ?? ""}
+                    onChange={(event) =>
+                      onFieldsChange({ vendor: event.target.value || null })
+                    }
+                    placeholder="Name der Werkstatt"
+                  />
+                </GarageFieldCell>
+                <GarageFieldCell
+                  label="Belegnr."
+                  htmlFor="invoice-review-invoice-number"
+                >
+                  <GarageInsetInput
+                    id="invoice-review-invoice-number"
+                    value={fields.invoiceNumber ?? ""}
+                    onChange={(event) =>
+                      onFieldsChange({
+                        invoiceNumber: event.target.value || null,
+                      })
+                    }
+                    placeholder="optional"
+                  />
+                </GarageFieldCell>
+              </GarageFieldRow>
             </div>
           </details>
 
           <details className="garage-field-row-shell group">
-            <GarageFieldDisclosureSummary
-              label="Themen"
-              valueClassName="garage-field-disclosure-summary__value--chips !truncate-none"
-            >
-              <EntryTopicTagsReadonly tags={fields.topicTags ?? []} />
+            <GarageFieldDisclosureSummary label="Themen">
+              <span className={disclosureHintClassName}>
+                {topicCount > 0
+                  ? `${topicCount} ausgewählt`
+                  : "Keine erkannt"}
+              </span>
             </GarageFieldDisclosureSummary>
-            <div className="space-y-2 border-t border-[color:var(--vd-border)] px-3.5 pb-3.5 pt-3">
+            <div className="garage-disclosure-body space-y-2">
               <p className="text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
                 Nach dem Scan vorausgewählt — bei Bedarf ergänzen oder entfernen.
               </p>
