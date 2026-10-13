@@ -1428,10 +1428,21 @@ export function InvoiceUploader({
         )}
 
         {isInvoiceFamilyScan ? (
-          <div className="vd-surface-card p-5">
-            <p className="claim-kicker">Dokument scannen</p>
-            <h1 className="claim-title mt-2 text-[1.25rem]">{resolvedHeading}</h1>
-          </div>
+          step === "review" ? (
+            <div className="vd-surface-card p-5">
+              <p className="claim-kicker">Beleg prüfen</p>
+              <h1 className="claim-title mt-2 text-[1.25rem]">
+                Daten vor dem Speichern checken
+              </h1>
+            </div>
+          ) : (
+            <div className="vd-surface-card p-5">
+              <p className="claim-kicker">Dokument scannen</p>
+              <h1 className="claim-title mt-2 text-[1.25rem]">
+                {resolvedHeading}
+              </h1>
+            </div>
+          )
         ) : (
           <div className="vd-surface-card p-5">
             <div className="vd-icon-badge">

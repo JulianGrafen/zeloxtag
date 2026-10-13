@@ -6,14 +6,16 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
-import { garageFieldControlClassName } from "@/components/ui/garage-field";
-import { cn } from "@/lib/utils";
+import { GarageInsetInput } from "@/components/ui/garage-field";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import type { DocumentLineItem } from "@/types/database";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "lineItems";
+
+const SECTION_HEADING_CLASS =
+  "text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]";
 
 type EditableLineItemsSectionProps = {
   items: DocumentLineItem[];
@@ -53,12 +55,6 @@ function toDraft(items: DocumentLineItem[]): DraftItem[] {
       Number.isFinite(item.amount) ? String(item.amount).replace(".", ",") : "",
     showOnPublicShowcase: item.showOnPublicShowcase,
   }));
-}
-
-function zebraRowClass(index: number): string {
-  return index % 2 === 0
-    ? "bg-[color:var(--vd-surface)]"
-    : "bg-[color:var(--vd-surface-elevated)]/80";
 }
 
 function parseDraft(draft: DraftItem[]): DocumentLineItem[] {
@@ -179,20 +175,15 @@ export function EditableLineItemsSection({
   }
 
   return (
-    <section
-      id={sectionId}
-      className="scroll-mt-24 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5 space-y-3"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          Positionen
-        </h2>
+    <section id={sectionId} className="scroll-mt-24 space-y-3">
+      <div className="flex items-center justify-between gap-3 px-0.5">
+        <h2 className={SECTION_HEADING_CLASS}>Positionen</h2>
         {!editing && !inline && !hideEditTrigger ? (
           <PressableButton
             type="button"
             variant="button"
             onClick={startEdit}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-1.5 text-[0.72rem] font-medium text-[color:var(--vd-text)]"
+            className="inline-flex items-center gap-1 text-[0.8rem] font-medium text-[color:var(--vd-field-label)] transition-opacity active:opacity-70"
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden />
             Bearbeiten
@@ -202,17 +193,13 @@ export function EditableLineItemsSection({
 
       {editing ? (
         <div className="space-y-3">
-          <ul className="overflow-hidden rounded-xl border border-[color:var(--vd-border)]">
+          <ul className="garage-grouped-list">
             {draft.map((row, index) => (
               <li
                 key={row.key}
-                className={[
-                  "grid grid-cols-[1fr_6.5rem_auto] items-start gap-2 px-2 py-2.5 sm:px-3",
-                  zebraRowClass(index),
-                  index > 0 ? "border-t border-[color:var(--vd-border)]/60" : "",
-                ].join(" ")}
+                className="garage-grouped-list__row grid grid-cols-[1fr_5.75rem_auto] items-center gap-2 !py-2"
               >
-                <input
+                <GarageInsetInput
                   value={row.label}
                   onChange={(event) => {
                     const value = event.target.value;
@@ -229,12 +216,9 @@ export function EditableLineItemsSection({
                     });
                   }}
                   placeholder="Bezeichnung"
-                  className={cn(
-                    garageFieldControlClassName,
-                    "min-w-0 text-[0.88rem]",
-                  )}
+                  className="min-w-0 !px-0 !py-1 text-[0.875rem]"
                 />
-                <input
+                <GarageInsetInput
                   inputMode="decimal"
                   value={row.amount}
                   onChange={(event) => {
@@ -252,10 +236,7 @@ export function EditableLineItemsSection({
                     });
                   }}
                   placeholder="€"
-                  className={cn(
-                    garageFieldControlClassName,
-                    "text-right text-[0.88rem] tabular-nums",
-                  )}
+                  className="text-right !px-0 !py-1 text-[0.875rem] tabular-nums"
                 />
                 <PressableButton
                   type="button"
@@ -268,7 +249,7 @@ export function EditableLineItemsSection({
                         : draft.filter((_, i) => i !== index),
                     );
                   }}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[color:var(--vd-border)] text-[color:var(--vd-muted)]"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[color:var(--vd-muted)] active:opacity-70"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />
                 </PressableButton>
@@ -285,26 +266,26 @@ export function EditableLineItemsSection({
                 { key: crypto.randomUUID(), label: "", amount: "" },
               ]);
             }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2 text-[0.8rem] font-medium text-[color:var(--vd-text)]"
+            className="claim-back inline-flex w-full items-center justify-center gap-1.5 rounded-[var(--vd-radius-field)] px-3 py-2.5 text-[0.82rem] font-medium"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
             Position hinzufügen
           </PressableButton>
 
           {error ? (
-            <p className="text-[0.82rem] text-red-700" role="alert">
+            <p className="vd-alert-error" role="alert">
               {error}
             </p>
           ) : null}
 
           {!inline ? (
-            <div className="flex gap-2 pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <PressableButton
                 type="button"
                 variant="button"
                 disabled={pending}
                 onClick={cancelEdit}
-                className="inline-flex flex-1 items-center justify-center rounded-2xl border border-[color:var(--vd-border)] px-3 py-2.5 text-[0.85rem] font-medium text-[color:var(--vd-text)]"
+                className="claim-back inline-flex items-center justify-center rounded-[var(--vd-radius-field)] px-3 py-2.5 text-[0.85rem] font-medium"
               >
                 Abbrechen
               </PressableButton>
@@ -313,7 +294,7 @@ export function EditableLineItemsSection({
                 variant="button"
                 disabled={pending}
                 onClick={commit}
-                className="inline-flex flex-1 items-center justify-center rounded-2xl bg-neutral-900 px-3 py-2.5 text-[0.85rem] font-semibold text-white disabled:opacity-60"
+                className="claim-cta inline-flex items-center justify-center rounded-[var(--vd-radius-field)] px-3 py-2.5 text-[0.85rem] font-semibold disabled:opacity-60"
               >
                 {pending ? "Speichern…" : "Übernehmen"}
               </PressableButton>
@@ -321,39 +302,29 @@ export function EditableLineItemsSection({
           ) : null}
         </div>
       ) : displayItems.length === 0 ? (
-        <p className="text-[0.88rem] text-[color:var(--vd-muted)]">{emptyHint}</p>
+        <p className="px-0.5 text-[0.875rem] text-[color:var(--vd-muted)]">
+          {emptyHint}
+        </p>
       ) : (
-        <ul className="overflow-hidden rounded-xl border border-[color:var(--vd-border)]">
+        <ul className="garage-grouped-list">
           {displayItems.map((item, index) => (
-            <li
-              key={`${item.label}-${index}`}
-              className={[
-                "flex items-start justify-between gap-3 px-3 py-2.5 text-[0.88rem]",
-                zebraRowClass(index),
-                index > 0 ? "border-t border-[color:var(--vd-border)]/60" : "",
-              ].join(" ")}
-            >
-              <span className="whitespace-pre-line text-[color:var(--vd-text)]">
-                {item.label}
-              </span>
-              <span className="shrink-0 tabular-nums text-[color:var(--vd-text)]">
+            <li key={`${item.label}-${index}`} className="garage-grouped-list__row">
+              <span className="garage-grouped-list__label">{item.label}</span>
+              <span className="garage-grouped-list__value">
                 {formatEur(item.amount)}
               </span>
             </li>
           ))}
+          {totalAmount !== null ? (
+            <li className="garage-grouped-list__row garage-grouped-list__row--total">
+              <span className="garage-grouped-list__label">Gesamt</span>
+              <span className="garage-grouped-list__value">
+                {formatEur(totalAmount)}
+              </span>
+            </li>
+          ) : null}
         </ul>
       )}
-
-      {!editing && totalAmount !== null ? (
-        <div className="mt-5 flex items-center justify-between border-t border-[color:var(--vd-border)] pt-3">
-          <span className="text-[0.95rem] font-bold tracking-[-0.02em] text-[color:var(--vd-text)]">
-            Gesamt
-          </span>
-          <span className="text-[1.05rem] font-bold tracking-[-0.02em] tabular-nums text-[color:var(--vd-text)]">
-            {formatEur(totalAmount)}
-          </span>
-        </div>
-      ) : null}
     </section>
   );
 }

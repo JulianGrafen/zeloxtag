@@ -1,27 +1,25 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { AlertTriangle, Pencil } from "lucide-react";
+import { type ReactNode } from "react";
+import { AlertTriangle } from "lucide-react";
 
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { GermanAmountInput } from "@/components/documents/german-amount-input";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
-import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Button } from "@/components/ui/button";
 import {
   GarageField,
   GarageFieldCell,
+  GarageFieldDisclosureSummary,
   GarageFieldRow,
   GarageInsetInput,
 } from "@/components/ui/garage-field";
 import {
-  formatDocumentAmount,
-  formatMileageKmLabel,
-} from "@/lib/documents/format";
-import { EntryTopicChips } from "@/components/documents/entry-topic-chips";
+  EntryTopicChips,
+  EntryTopicTagsReadonly,
+} from "@/components/documents/entry-topic-chips";
 import { InvoiceCategoryChips } from "@/components/documents/invoice-category-chips";
-import { displayInvoiceReviewCategoryLabel } from "@/lib/documents/invoice-review-categories";
 import { recalculateInvoiceGrossAmount } from "@/lib/ocr/invoice-vat";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 
@@ -79,18 +77,20 @@ export function InvoiceReviewForm({
   onDismissMismatch,
   onDismissDuplicate,
 }: InvoiceReviewFormProps) {
-  const [editingHeader, setEditingHeader] = useState(false);
-
-  const amountLabel =
-    formatDocumentAmount(fields.amount ?? null) ?? "—";
-  const categoryLabel = displayInvoiceReviewCategoryLabel(fields.category);
+  const detailsSummary = (() => {
+    const parts = [
+      fields.vendor?.trim(),
+      fields.invoiceNumber?.trim(),
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(" · ") : "Optional ergänzen";
+  })();
 
   return (
     <div className="space-y-4">
       {topBanner}
 
       {vehicleMismatchReason ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-[0.85rem] text-amber-950">
+        <div role="alert" className="vd-alert-warning">
           <p className="flex items-start gap-2 font-semibold">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             Anderes Fahrzeug erkannt?
@@ -100,7 +100,7 @@ export function InvoiceReviewForm({
       ) : null}
 
       {mileageWarning ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-[0.85rem] text-amber-950">
+        <div role="alert" className="vd-alert-warning">
           <p className="flex items-start gap-2 font-semibold">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             Kilometerstand prüfen
@@ -110,7 +110,7 @@ export function InvoiceReviewForm({
       ) : null}
 
       {duplicateHint ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-[0.85rem] text-amber-950">
+        <div role="alert" className="vd-alert-warning">
           <p className="flex items-start gap-2 font-semibold">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             Mögliches Duplikat
@@ -120,134 +120,70 @@ export function InvoiceReviewForm({
       ) : null}
 
       <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Belegdaten
-          </h2>
-          {!editingHeader ? (
-            <PressableButton
-              type="button"
-              variant="button"
-              onClick={() => setEditingHeader(true)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-1.5 text-[0.72rem] font-medium text-[color:var(--vd-text)]"
-            >
-              <Pencil className="h-3.5 w-3.5" aria-hidden />
-              Bearbeiten
-            </PressableButton>
-          ) : null}
-        </div>
+        <h2 className="mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+          Belegdaten
+        </h2>
 
-        {!editingHeader ? (
-          <div className="space-y-3">
-            <GarageFieldRow className="border-b border-[color:var(--vd-border)] pb-4">
-              <GarageFieldCell label="Betrag">
-                <p
-                  className="flex min-h-[1.75rem] items-center text-[0.95rem] tabular-nums text-[color:var(--vd-text)]"
-                >
-                  {amountLabel}
-                </p>
-              </GarageFieldCell>
-              <GarageFieldCell
-                label="Datum"
-                htmlFor="invoice-review-date-inline"
+        <div className="grid gap-4">
+          <GarageFieldRow>
+            <GarageFieldCell label="Betrag" htmlFor="invoice-review-amount">
+              <GermanAmountInput
+                id="invoice-review-amount"
+                variant="inset"
+                value={fields.amount ?? null}
+                onChange={(amount) => onFieldsChange({ amount })}
+                placeholder="0,00"
+              />
+            </GarageFieldCell>
+            <GarageFieldCell label="Datum" htmlFor="invoice-review-date">
+              <GermanDateInput
+                id="invoice-review-date"
+                variant="inset"
+                value={fields.date}
+                onChange={(iso) => onFieldsChange({ date: iso })}
+              />
+            </GarageFieldCell>
+          </GarageFieldRow>
+
+          <GarageField label="Bezeichnung" htmlFor="invoice-review-title">
+            <GarageInsetInput
+              id="invoice-review-title"
+              required
+              value={title}
+              onChange={(event) => onTitleChange(event.target.value)}
+              placeholder="z. B. Inspektion 60.000 km"
+            />
+          </GarageField>
+
+          <GarageField label="Kilometerstand" htmlFor="invoice-review-km">
+            <MileageKmInput
+              id="invoice-review-km"
+              variant="inset"
+              value={fields.mileageKm ?? null}
+              onChange={(km) => onFieldsChange({ mileageKm: km })}
+              placeholder="z. B. 187.430"
+            />
+          </GarageField>
+
+          {!categoryLocked ? (
+            <GarageField label="Kategorie" htmlFor="invoice-review-category">
+              <div
+                id="invoice-review-category"
+                className="garage-field__control min-h-[1.75rem] py-1.5"
               >
-                <GermanDateInput
-                  id="invoice-review-date-inline"
-                  variant="inset"
-                  value={fields.date}
-                  onChange={(iso) => onFieldsChange({ date: iso })}
-                />
-              </GarageFieldCell>
-            </GarageFieldRow>
-            <button
-              type="button"
-              onClick={() => setEditingHeader(true)}
-              className="w-full space-y-2 text-left"
-            >
-            <div className="space-y-2 text-[0.88rem] text-[color:var(--vd-text)]">
-              <p>
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Werkstatt ·{" "}
-                </span>
-                {fields.vendor?.trim() || "—"}
-              </p>
-              <p>
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Bezeichnung ·{" "}
-                </span>
-                {title.trim() || "—"}
-              </p>
-              <p>
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Kilometerstand ·{" "}
-                </span>
-                {formatMileageKmLabel(fields.mileageKm)}
-              </p>
-              {!categoryLocked ? (
-                <p>
-                  <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                    Kategorie ·{" "}
-                  </span>
-                  {categoryLabel}
-                </p>
-              ) : null}
-              {fields.invoiceNumber?.trim() ? (
-                <p>
-                  <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                    Belegnummer ·{" "}
-                  </span>
-                  {fields.invoiceNumber.trim()}
-                </p>
-              ) : null}
-            </div>
-            </button>
-            {!categoryLocked ? (
-              <div className="space-y-1.5 border-t border-[color:var(--vd-border)] pt-3">
-                <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Kategorie anpassen
-                </p>
                 <InvoiceCategoryChips
                   value={fields.category}
                   onChange={(category) => onFieldsChange({ category })}
                 />
               </div>
-            ) : null}
-            <div className="space-y-1.5 border-t border-[color:var(--vd-border)] pt-3">
-              <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Themen
-              </p>
-              <p className="text-[0.72rem] text-[color:var(--vd-muted)]">
-                Nach dem Scan vorausgewählt — bei Bedarf ergänzen oder entfernen.
-              </p>
-              <EntryTopicChips
-                value={fields.topicTags ?? []}
-                onChange={(topicTags) => onFieldsChange({ topicTags })}
-              />
-            </div>
-          </div>
-        ) : (
-          <>
-            <GarageFieldRow className="border-b border-[color:var(--vd-border)] pb-4">
-              <GarageFieldCell label="Betrag" htmlFor="invoice-review-amount">
-                <GermanAmountInput
-                  id="invoice-review-amount"
-                  variant="inset"
-                  value={fields.amount ?? null}
-                  onChange={(amount) => onFieldsChange({ amount })}
-                  placeholder="0,00"
-                />
-              </GarageFieldCell>
-              <GarageFieldCell label="Datum" htmlFor="invoice-review-date">
-                <GermanDateInput
-                  id="invoice-review-date"
-                  variant="inset"
-                  value={fields.date}
-                  onChange={(iso) => onFieldsChange({ date: iso })}
-                />
-              </GarageFieldCell>
-            </GarageFieldRow>
+            </GarageField>
+          ) : null}
 
-            <div className="mt-4 space-y-3">
+          <details className="garage-field-row-shell group">
+            <GarageFieldDisclosureSummary label="Details">
+              {detailsSummary}
+            </GarageFieldDisclosureSummary>
+            <div className="grid gap-3 border-t border-[color:var(--vd-border)] px-3.5 pb-3.5 pt-3">
               <GarageField label="Werkstatt" htmlFor="invoice-review-vendor">
                 <GarageInsetInput
                   id="invoice-review-vendor"
@@ -258,99 +194,63 @@ export function InvoiceReviewForm({
                   placeholder="Name der Werkstatt"
                 />
               </GarageField>
-
-              <GarageField label="Bezeichnung" htmlFor="invoice-review-title">
+              <GarageField
+                label="Belegnummer"
+                htmlFor="invoice-review-invoice-number"
+              >
                 <GarageInsetInput
-                  id="invoice-review-title"
-                  required
-                  value={title}
-                  onChange={(event) => onTitleChange(event.target.value)}
-                  placeholder="z. B. Inspektion 60.000 km"
+                  id="invoice-review-invoice-number"
+                  value={fields.invoiceNumber ?? ""}
+                  onChange={(event) =>
+                    onFieldsChange({
+                      invoiceNumber: event.target.value || null,
+                    })
+                  }
+                  placeholder="optional"
                 />
               </GarageField>
-
-              <GarageField label="Kilometerstand" htmlFor="invoice-review-km">
-                <MileageKmInput
-                  id="invoice-review-km"
-                  variant="inset"
-                  value={fields.mileageKm ?? null}
-                  onChange={(km) => onFieldsChange({ mileageKm: km })}
-                  placeholder="z. B. 187.430"
-                />
-              </GarageField>
-
-              {!categoryLocked ? (
-                <div className="space-y-1.5">
-                  <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                    Kategorie
-                  </span>
-                  <InvoiceCategoryChips
-                    value={fields.category}
-                    onChange={(category) => onFieldsChange({ category })}
-                  />
-                </div>
-              ) : null}
-
-              <div className="space-y-1.5">
-                <span className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                  Themen
-                </span>
-                <EntryTopicChips
-                  value={fields.topicTags ?? []}
-                  onChange={(topicTags) => onFieldsChange({ topicTags })}
-                />
-              </div>
-
-              <details className="group rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]/60 px-3 py-2.5">
-                <summary className="cursor-pointer list-none text-[0.8rem] font-medium text-[color:var(--vd-muted)] marker:content-none [&::-webkit-details-marker]:hidden">
-                  Weitere Angaben
-                </summary>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <GarageField
-                    label="Belegnummer"
-                    htmlFor="invoice-review-invoice-number"
-                  >
-                    <GarageInsetInput
-                      id="invoice-review-invoice-number"
-                      value={fields.invoiceNumber ?? ""}
-                      onChange={(event) =>
-                        onFieldsChange({
-                          invoiceNumber: event.target.value || null,
-                        })
-                      }
-                      placeholder="optional"
-                    />
-                  </GarageField>
-                </div>
-              </details>
             </div>
+          </details>
 
-            <PressableButton
-              type="button"
-              variant="button"
-              onClick={() => setEditingHeader(false)}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-[color:var(--vd-border)] px-3 py-2.5 text-[0.85rem] font-medium text-[color:var(--vd-text)]"
+          <details className="garage-field-row-shell group">
+            <GarageFieldDisclosureSummary
+              label="Themen"
+              valueClassName="garage-field-disclosure-summary__value--chips !truncate-none"
             >
-              Fertig
-            </PressableButton>
-          </>
-        )}
-      </section>
+              <EntryTopicTagsReadonly tags={fields.topicTags ?? []} />
+            </GarageFieldDisclosureSummary>
+            <div className="space-y-2 border-t border-[color:var(--vd-border)] px-3.5 pb-3.5 pt-3">
+              <p className="text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
+                Nach dem Scan vorausgewählt — bei Bedarf ergänzen oder entfernen.
+              </p>
+              <EntryTopicChips
+                compact
+                value={fields.topicTags ?? []}
+                onChange={(topicTags) => onFieldsChange({ topicTags })}
+              />
+            </div>
+          </details>
+        </div>
 
-      <EditableLineItemsSection
-        items={fields.lineItems ?? []}
-        totalAmount={fields.amount}
-        emptyHint="Positionen manuell ergänzen."
-        onChange={(lineItems) => {
-          const nextItems = lineItems.length ? lineItems : null;
-          onFieldsChange({
-            lineItems: nextItems,
-            amount: recalculateInvoiceGrossAmount(nextItems, {
-              hintAmount: fields.amount,
-            }),
-          });
-        }}
-      />
+        <div className="mt-5 border-t border-[color:var(--vd-field-border)] pt-5">
+          <EditableLineItemsSection
+            mode="inline"
+            hideEditTrigger
+            items={fields.lineItems ?? []}
+            totalAmount={fields.amount}
+            emptyHint="Positionen manuell ergänzen."
+            onChange={(lineItems) => {
+              const nextItems = lineItems.length ? lineItems : null;
+              onFieldsChange({
+                lineItems: nextItems,
+                amount: recalculateInvoiceGrossAmount(nextItems, {
+                  hintAmount: fields.amount,
+                }),
+              });
+            }}
+          />
+        </div>
+      </section>
 
       {preview ? (
         <details className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
