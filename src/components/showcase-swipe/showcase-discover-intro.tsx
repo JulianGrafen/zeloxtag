@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const LINK_CLASS =
-  "font-medium text-[color:var(--vd-accent)] underline-offset-2 hover:underline";
+  "font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4 hover:decoration-[color:var(--vd-muted)]";
 
 type ShowcaseDiscoverIntroProps = {
   profilSettingsHref: string;
@@ -11,9 +11,10 @@ export function ShowcaseDiscoverIntro({
   profilSettingsHref,
 }: ShowcaseDiscoverIntroProps) {
   return (
-    <p>
+    <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
+      Like öffentliche Builds und entdecke Umbauten aus der Community.{" "}
       <Link href={`${profilSettingsHref}#build-swipe`} className={LINK_CLASS}>
-        Hier kannst du deinen Build fürs Swipen sichtbar machen
+        Eigenen Build sichtbar machen
       </Link>
     </p>
   );

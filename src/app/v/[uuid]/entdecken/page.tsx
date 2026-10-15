@@ -11,6 +11,7 @@ import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareab
 import { loadShowcaseSwipeDeck } from "@/lib/showcase/swipe-deck";
 import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank";
 import { topThreeWeeklyRankOrNull } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
+import { formatDiscoverWeeklyRankMeta } from "@/lib/showcase/discover-weekly-rank-meta";
 import { loadWeeklyTopBuilds } from "@/lib/showcase/weekly-top-builds";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -84,15 +85,23 @@ export default async function ShowcaseEntdeckenPage({
     }
   }
 
+  const profilSettingsHref = vehicleSurfaceHref(scope, "einstellungen/profil");
+  const discoverEligible =
+    Boolean(vehicle.is_public) && Boolean(vehicle.showcase_swipe_opt_in);
+  const weeklyRankMeta =
+    discoverEligible && ownWeeklyRank
+      ? formatDiscoverWeeklyRankMeta(ownWeeklyRank)
+      : undefined;
+
   return (
     <AppShell showNavbar={false}>
       <VehicleSettingsSubpageShell
         tagUuid={uuid}
+        kicker="Entdecken"
         title="Builds entdecken"
+        meta={weeklyRankMeta}
         description={
-          <ShowcaseDiscoverIntro
-            profilSettingsHref={vehicleSurfaceHref(scope, "einstellungen/profil")}
-          />
+          <ShowcaseDiscoverIntro profilSettingsHref={profilSettingsHref} />
         }
         backHref={`/v/${uuid}`}
         backLabel="Dashboard"
@@ -104,9 +113,10 @@ export default async function ShowcaseEntdeckenPage({
           initialWeeklyBuilds={initialWeeklyBuilds}
           isPublic={Boolean(vehicle.is_public)}
           showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
-          profilSettingsHref={vehicleSurfaceHref(scope, "einstellungen/profil")}
+          profilSettingsHref={profilSettingsHref}
           ownWeeklyRank={ownWeeklyRank}
           ownTopThreeShareCardData={ownTopThreeShareCardData}
+          weeklyRankShownInHeader={Boolean(weeklyRankMeta)}
         />
         <LegalFooterNav className="pt-2" />
       </VehicleSettingsSubpageShell>

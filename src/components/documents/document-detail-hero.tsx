@@ -69,7 +69,7 @@ export function DocumentDetailHeroAmount({
     <p
       className={cn(
         automotiveMetricHighlightClassName,
-        "text-[1.28rem] font-bold leading-none sm:text-[1.35rem]",
+        "block text-right text-[1.28rem] font-bold leading-none sm:text-[1.35rem]",
       )}
     >
       {children}

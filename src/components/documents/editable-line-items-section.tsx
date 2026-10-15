@@ -197,7 +197,7 @@ export function EditableLineItemsSection({
             {draft.map((row, index) => (
               <li
                 key={row.key}
-                className="garage-grouped-list__row grid grid-cols-[1fr_5.75rem_auto] items-center gap-2 !py-2"
+                className="garage-grouped-list__row garage-grouped-list__row--edit !py-2"
               >
                 <GarageInsetInput
                   value={row.label}
@@ -236,7 +236,7 @@ export function EditableLineItemsSection({
                     });
                   }}
                   placeholder="€"
-                  className="text-right !px-0 !py-1 text-[0.875rem] tabular-nums"
+                  className="w-full text-right !px-0 !py-1 text-[0.875rem] tabular-nums"
                 />
                 <PressableButton
                   type="button"

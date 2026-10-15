@@ -44,6 +44,8 @@ type ShowcaseWeeklyPlacementProps = {
   className?: string;
   /** Compact row for Builds entdecken; full block on Showcase settings. */
   variant?: "section" | "compact";
+  /** Rank line already shown in page header — hide duplicate badge row. */
+  rankShownInHeader?: boolean;
 };
 
 export function ShowcaseWeeklyPlacement({
@@ -53,6 +55,7 @@ export function ShowcaseWeeklyPlacement({
   weeklyRank,
   className,
   variant = "section",
+  rankShownInHeader = false,
 }: ShowcaseWeeklyPlacementProps) {
   const eligible = isPublic && showcaseSwipeOptIn;
 
@@ -80,11 +83,8 @@ export function ShowcaseWeeklyPlacement({
   if (!weeklyRank) {
     if (variant === "compact") {
       return (
-        <div className={cn("zt-feature-panel px-4 py-3.5", className)}>
-          <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
-            Deine Platzierung
-          </p>
-          <p className="mt-0.5 text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
+        <div className={cn("px-3.5 py-3", className)}>
+          <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
             Noch keine Platzierung diese Woche — sammle Likes durch Swipes.
           </p>
         </div>
@@ -121,11 +121,33 @@ export function ShowcaseWeeklyPlacement({
         ? "Build of the Week"
         : "In der Wochenrangliste";
 
+    if (rankShownInHeader) {
+      return (
+        <div
+          className={cn("px-3.5 py-3", className)}
+          aria-label={rankLabel}
+        >
+          <p className="text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
+            {subtitle}
+            <span className="text-[color:var(--vd-border)]"> · </span>
+            <span
+              className="inline-flex items-center gap-1 font-mono tabular-nums text-[color:var(--vd-text)]"
+              aria-label={`${weeklyRank.weeklyLikes} ${likeWord}`}
+            >
+              <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {weeklyRank.weeklyLikes} {likeWord} in 7 Tagen
+            </span>
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div
         className={cn(
-          "zt-feature-panel px-4 py-3.5",
-          compactPanelRing(weeklyRank.rank),
+          "px-4 py-3.5",
+          !rankShownInHeader && "zt-feature-panel",
+          !rankShownInHeader && compactPanelRing(weeklyRank.rank),
           className,
         )}
         aria-label={rankLabel}

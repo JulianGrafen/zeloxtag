@@ -2,30 +2,30 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 
+import { showcaseVehicleFocusImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
 import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
 import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
 import { cn } from "@/lib/utils";
 
-export type RankAccent = "gold" | "silver" | "bronze" | "default";
-
-function accentClasses(accent: RankAccent): string {
-  switch (accent) {
-    case "gold":
-      return "border-amber-400/35 from-amber-950/40 to-black";
-    case "silver":
-      return "border-zinc-300/25 from-zinc-800/50 to-black";
-    case "bronze":
-      return "border-orange-700/35 from-orange-950/30 to-black";
-    default:
-      return "border-white/[0.08] from-zinc-900 to-black";
+function rankBadgeClass(rank: number): string {
+  const base =
+    "absolute left-3 top-3 z-10 flex h-8 min-w-8 items-center justify-center rounded-lg px-2 font-mono text-sm font-semibold tabular-nums tracking-tight ring-1 backdrop-blur-md";
+  if (rank === 1) {
+    return cn(
+      base,
+      "bg-black/45 text-amber-100 ring-amber-400/45",
+    );
   }
-}
-
-function rankAccent(rank: number): RankAccent {
-  if (rank === 1) return "gold";
-  if (rank === 2) return "silver";
-  if (rank === 3) return "bronze";
-  return "default";
+  if (rank === 2) {
+    return cn(base, "bg-black/45 text-zinc-100 ring-zinc-300/35");
+  }
+  if (rank === 3) {
+    return cn(
+      base,
+      "bg-black/45 text-orange-100/95 ring-orange-500/40",
+    );
+  }
+  return cn(base, "bg-black/45 text-white ring-white/20");
 }
 
 type VehicleRankCardProps = {
@@ -40,62 +40,69 @@ export function VehicleRankCard({
   className,
 }: VehicleRankCardProps) {
   const title = [build.make, build.model].filter(Boolean).join(" ");
-  const accent = rankAccent(build.rank);
 
   return (
     <Link
       href={buildDiscoverShowcaseHref(build.publicSlug, entdeckenReturnHref)}
       className={cn(
-        "group flex w-[min(72vw,17rem)] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border bg-gradient-to-b backdrop-blur-md",
-        "border-t border-white/[0.1] shadow-[0_12px_40px_rgba(0,0,0,0.35)]",
+        "group relative flex w-[min(58vw,11.25rem)] shrink-0 snap-start overflow-hidden rounded-2xl bg-neutral-950 text-white shadow-[0_14px_36px_rgba(0,0,0,0.38)] ring-1 ring-white/10",
         "transition-transform duration-200 active:scale-[0.98]",
-        accentClasses(accent),
         className,
       )}
     >
-      <div className="relative aspect-[16/10] bg-zinc-950/80">
+      <div className="relative aspect-[3/4] w-full">
         {build.heroImageSrc ? (
           <Image
             src={build.heroImageSrc}
             alt={title}
             fill
-            className="object-contain object-center p-3"
-            sizes="272px"
+            className={showcaseVehicleFocusImageClassName(
+              build.heroImageSrc,
+              "rankCard",
+            )}
+            sizes="180px"
             unoptimized={build.heroImageSrc.startsWith("/api/")}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-[0.72rem] text-zinc-500">
+          <div className="absolute inset-0 bg-neutral-900" aria-hidden />
+        )}
+
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"
+          aria-hidden
+        />
+
+        <div className={rankBadgeClass(build.rank)}>#{build.rank}</div>
+
+        {!build.heroImageSrc ? (
+          <div className="absolute inset-0 flex items-center justify-center text-[0.72rem] text-white/45">
             Kein Bild
           </div>
-        )}
-        <div
-          className={cn(
-            "absolute left-3 top-3 flex h-8 min-w-8 items-center justify-center rounded-lg px-2",
-            "bg-black/55 font-mono text-sm font-semibold tabular-nums tracking-tight text-white ring-1 ring-white/15 backdrop-blur-sm",
-          )}
-        >
-          #{build.rank}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1 px-3.5 py-3">
-        <p className="truncate text-[0.9rem] font-semibold text-zinc-100">
-          {title}
-        </p>
-        {build.year != null ? (
-          <p className="font-mono text-[0.72rem] tabular-nums tracking-tight text-zinc-500">
-            {build.year}
-          </p>
         ) : null}
-        <p
-          className="mt-1 flex items-center gap-1.5 font-mono text-[0.8rem] font-medium tabular-nums tracking-tight text-amber-400/95"
-        >
-          <Heart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          {build.weeklyLikes}
-          <span className="text-[0.68rem] font-normal text-zinc-500">
-            diese Woche
-          </span>
-        </p>
+
+        <div className="absolute inset-x-0 bottom-0 z-10 p-3.5">
+          <p className="truncate text-[0.92rem] font-semibold leading-tight tracking-tight">
+            {title}
+          </p>
+          {build.year != null ? (
+            <p className="mt-0.5 font-mono text-[0.72rem] tabular-nums tracking-tight text-white/55">
+              {build.year}
+            </p>
+          ) : null}
+          <p
+            className="mt-2 flex items-center gap-1.5 font-mono text-[0.78rem] font-medium tabular-nums tracking-tight text-white/90"
+          >
+            <Heart
+              className="h-3.5 w-3.5 shrink-0 text-rose-400"
+              fill="currentColor"
+              aria-hidden
+            />
+            {build.weeklyLikes}
+            <span className="text-[0.65rem] font-normal text-white/50">
+              diese Woche
+            </span>
+          </p>
+        </div>
       </div>
     </Link>
   );

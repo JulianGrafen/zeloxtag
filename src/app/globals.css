@@ -652,6 +652,27 @@ nextjs-portal {
   }
 }
 
+@keyframes discover-rankings-rise {
+  from {
+    opacity: 0.72;
+    transform: translate3d(0, 2.75rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.discover-rankings-reveal {
+  animation: discover-rankings-rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discover-rankings-reveal {
+    animation: none;
+  }
+}
+
 @keyframes vd-fade-slide {
   from {
     opacity: 0;
@@ -991,8 +1012,16 @@ nextjs-portal {
 
 .garage-grouped-list__value {
   flex-shrink: 0;
+  min-width: 6.75rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.garage-grouped-list__row--edit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6.75rem auto;
+  align-items: start;
+  gap: 0.5rem;
 }
 
 .garage-grouped-list__row--total {

@@ -3,7 +3,6 @@
 import { useCallback, useState } from "react";
 import { Share2 } from "lucide-react";
 
-import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { buildAppInviteSharePayloadForClient } from "@/lib/share/app-invite";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { cn } from "@/lib/utils";
@@ -46,28 +45,25 @@ export function ShowcaseInviteFriends({ className }: ShowcaseInviteFriendsProps)
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 zt-feature-panel px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-2 border-t border-[color:var(--vd-border)] pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
         className,
       )}
     >
-      <div className="min-w-0">
-        <p className="text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
+      <p className="min-w-0 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+        <span className="font-medium text-[color:var(--vd-text)]">
           Freunde einladen
-        </p>
-        <p className="mt-0.5 text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Teile ZeloxTag — deine Freunde können sich anmelden und selbst Builds
-          swipen und anlegen.
-        </p>
-      </div>
-      <PressableButton
+        </span>
+        {" — "}
+        Teile ZeloxTag, damit andere Builds swipen und anlegen können.
+      </p>
+      <button
         type="button"
-        variant="button"
-        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[color:var(--vd-text)] px-4 py-2.5 text-[0.85rem] font-semibold text-[color:var(--vd-bg)] shadow-[var(--vd-shadow-sm)]"
+        className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-[color:var(--vd-border)] bg-transparent px-3.5 py-2.5 text-[0.85rem] font-semibold text-[color:var(--vd-text)] transition-colors hover:bg-[color:var(--vd-surface-elevated)]"
         onClick={() => void shareInvite()}
       >
         <Share2 className="h-4 w-4" aria-hidden />
         Teilen
-      </PressableButton>
+      </button>
       {error ? (
         <p className="text-[0.78rem] font-medium text-red-600 sm:basis-full" role="alert">
           {error}

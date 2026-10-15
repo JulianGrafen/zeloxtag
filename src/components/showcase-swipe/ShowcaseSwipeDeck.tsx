@@ -18,6 +18,8 @@ type ShowcaseSwipeDeckProps = {
   entdeckenReturnHref: string;
   initialCards?: ShowcaseSwipeCard[];
   onLiked?: (card: ShowcaseSwipeCard) => void;
+  /** Fired once when the user swiped through all cards in this session. */
+  onDeckExhausted?: () => void;
 };
 
 async function fetchDeck(): Promise<ShowcaseSwipeCard[]> {
@@ -57,6 +59,7 @@ export function ShowcaseSwipeDeck({
   entdeckenReturnHref,
   initialCards = [],
   onLiked,
+  onDeckExhausted,
 }: ShowcaseSwipeDeckProps) {
   const router = useRouter();
   const [cards, setCards] = useState<ShowcaseSwipeCard[]>(initialCards);
@@ -71,6 +74,7 @@ export function ShowcaseSwipeDeck({
     "like" | "pass" | null
   >(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deckExhaustedNotifiedRef = useRef(false);
 
   const flashActionButton = useCallback((decision: "like" | "pass") => {
     if (highlightTimerRef.current) {
@@ -135,6 +139,15 @@ export function ShowcaseSwipeDeck({
 
   const current = cards[0];
 
+  const deckExhausted =
+    !hydrating && !current && !loadError && hadCardsThisSession;
+
+  useEffect(() => {
+    if (!deckExhausted || deckExhaustedNotifiedRef.current) return;
+    deckExhaustedNotifiedRef.current = true;
+    onDeckExhausted?.();
+  }, [deckExhausted, onDeckExhausted]);
+
   const removeTop = useCallback(() => {
     setCards((prev) => {
       if (prev.length > 0) {
@@ -176,22 +189,24 @@ export function ShowcaseSwipeDeck({
 
   if (hydrating && !current) {
     return (
-      <p className="text-center text-[0.9rem] text-[color:var(--vd-muted)]">
-        Lade Builds…
-      </p>
+      <div
+        className="mx-auto aspect-[9/16] w-full max-h-[min(72vh,640px)] max-w-full animate-pulse rounded-3xl bg-[color:var(--vd-surface-elevated)]"
+        aria-busy="true"
+        aria-label="Builds werden geladen"
+      />
     );
   }
 
   if (!current) {
     if (loadError) {
       return (
-        <div className="zt-feature-panel px-5 py-10 text-center">
+        <div className="rounded-2xl border border-[color:var(--vd-border)] px-5 py-10 text-center">
           <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
             {loadError}
           </p>
           <button
             type="button"
-            className="mt-6 text-[0.85rem] font-medium text-[color:var(--vd-accent)]"
+            className="mt-5 text-[0.85rem] font-semibold text-[color:var(--vd-accent)]"
             onClick={() => void reloadDeck()}
           >
             Erneut laden
@@ -202,17 +217,16 @@ export function ShowcaseSwipeDeck({
 
     if (!hadCardsThisSession) {
       return (
-        <div className="zt-feature-panel px-5 py-10 text-center">
+        <div className="rounded-2xl border border-[color:var(--vd-border)] px-5 py-10 text-center">
           <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
             Aktuell keine öffentlichen Builds
           </p>
-          <p className="mt-2 text-[0.85rem] text-[color:var(--vd-muted)]">
-            Sobald andere Fahrzeuge im Showcase sichtbar sind, kannst du hier
-            swipen und liken.
+          <p className="mt-2 text-[0.82rem] text-[color:var(--vd-muted)]">
+            Sobald andere Showcases live sind, kannst du hier swipen.
           </p>
           <button
             type="button"
-            className="mt-6 text-[0.85rem] font-medium text-[color:var(--vd-accent)]"
+            className="mt-5 text-[0.85rem] font-semibold text-[color:var(--vd-accent)]"
             onClick={() => void reloadDeck()}
           >
             Erneut laden
@@ -222,16 +236,19 @@ export function ShowcaseSwipeDeck({
     }
 
     return (
-      <div className="zt-feature-panel px-5 py-10 text-center">
-        <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
-          Du hast alles gesehen
+      <div className="space-y-2 py-1 text-center" role="status">
+        <p className="text-[0.88rem] font-medium text-[color:var(--vd-text)]">
+          Alle Builds geswiped
+        </p>
+        <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+          Rankings und Top der Woche siehst du jetzt direkt darunter.
         </p>
         <button
           type="button"
-          className="mt-6 text-[0.85rem] font-medium text-[color:var(--vd-accent)]"
+          className="text-[0.8rem] font-medium text-[color:var(--vd-accent)]"
           onClick={() => router.push(`/v/${tagUuid}`)}
         >
-          Zurück zum Dashboard
+          Zum Dashboard
         </button>
       </div>
     );
@@ -244,7 +261,9 @@ export function ShowcaseSwipeDeck({
           {swipeError}
         </p>
       ) : null}
-      <div className="relative mx-auto aspect-[9/16] w-full max-w-full">
+      <div
+        className="relative mx-auto aspect-[9/16] w-full max-h-[min(72vh,640px)] max-w-full"
+      >
         <ShowcaseSwipeStack
           ref={stackRef}
           cards={cards}
@@ -284,8 +303,8 @@ export function ShowcaseSwipeDeck({
         </button>
       </div>
 
-      <p className="text-center text-[0.78rem] text-[color:var(--vd-muted)]">
-        Nach links wischen = Pass · Nach rechts = Like · Tippen = Showcase
+      <p className="mt-2 text-center text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
+        Links = Pass · Rechts = Like · Tippen öffnet Showcase
       </p>
     </div>
   );

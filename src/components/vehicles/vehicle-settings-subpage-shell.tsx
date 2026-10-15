@@ -10,6 +10,8 @@ type VehicleSettingsSubpageShellProps = {
   vehicleSurfaceScope?: VehicleSurfaceScope;
   title: string;
   description?: ReactNode;
+  kicker?: string;
+  meta?: string;
   backHref?: string;
   backLabel?: string;
   children: ReactNode;
@@ -20,6 +22,8 @@ export function VehicleSettingsSubpageShell({
   vehicleSurfaceScope,
   title,
   description,
+  kicker,
+  meta,
   backHref,
   backLabel = "Showcase",
   children,
@@ -33,7 +37,9 @@ export function VehicleSettingsSubpageShell({
   return (
     <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
       <AutomotivePageHeader
+        kicker={kicker}
         title={title}
+        meta={meta}
         description={description}
         backHref={resolvedBackHref}
         backLabel={backLabel}

@@ -8,6 +8,7 @@ import { ShowroomBuildPersonalityChips } from "@/components/public-showcase/Show
 import { ShowroomQuartettBar } from "@/components/public-showcase/ShowroomQuartettBar";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 import { buildQuartettLines } from "@/lib/showcase/build-quartett-lines";
+import { showcaseVehicleFocusImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
 import { cn } from "@/lib/utils";
 
 function buildSwipeQuartettLines(card: ShowcaseSwipeCard) {
@@ -42,7 +43,7 @@ export function ShowcaseSwipeQuartettCard({
   return (
     <div
       className={cn(
-        "relative flex h-full w-full min-h-0 flex-col overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-white/10",
+        "relative flex h-full w-full min-h-0 flex-col overflow-hidden rounded-3xl bg-neutral-950 text-white shadow-[0_16px_40px_rgba(0,0,0,0.38)] ring-1 ring-white/10",
         className,
       )}
     >
@@ -55,7 +56,15 @@ export function ShowcaseSwipeQuartettCard({
             draggable={false}
             priority={imagePriority}
             loading={imagePriority ? "eager" : "lazy"}
-            className="pointer-events-none object-cover object-center"
+            className={cn(
+              "pointer-events-none",
+              card.heroImageSrc
+                ? showcaseVehicleFocusImageClassName(
+                    card.heroImageSrc,
+                    "swipeHero",
+                  )
+                : "object-contain object-center",
+            )}
             sizes="(max-width: 512px) 100vw, 480px"
             unoptimized={card.heroImageSrc.startsWith("/api/")}
           />

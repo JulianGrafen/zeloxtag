@@ -92,7 +92,7 @@ export function EditableDocumentAmountSection({
   return (
     <div id={sectionId} className="scroll-mt-24">
       {!editing ? (
-        <div className="flex items-start justify-end gap-2">
+        <div className="flex flex-col items-end gap-2">
           {displayAmount !== null ? (
             <DocumentDetailHeroAmount>
               {formatEur(displayAmount)}
@@ -108,7 +108,7 @@ export function EditableDocumentAmountSection({
               variant="button"
               onClick={() => setEditing(true)}
               aria-label="Gesamtbetrag bearbeiten"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)]"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)]"
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden />
             </PressableButton>

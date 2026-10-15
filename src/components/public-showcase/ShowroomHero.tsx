@@ -23,6 +23,7 @@ import type {
 } from "@/lib/vehicles/public-showcase-data";
 import { cn } from "@/lib/utils";
 
+import { showcaseVehicleFocusImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
 import {
   filterVisibleGalleryPhotos,
   photoUsesContainLayout,
@@ -60,14 +61,6 @@ type HeroBackdropProps = {
   onActiveIndexChange: (index: number) => void;
   onOpenAtIndex: (index: number) => void;
 };
-
-function heroImageClassName(src: string): string {
-  const contain = photoUsesContainLayout(src);
-  if (contain) {
-    return "object-contain object-bottom px-2 pb-[28%] pt-[max(4.5rem,env(safe-area-inset-top))]";
-  }
-  return "object-cover object-[50%_55%]";
-}
 
 function HeroBackdrop({
   photos,
@@ -188,7 +181,7 @@ function HeroBackdrop({
                       Math.abs(index - activeIndex) <= 1 ? "eager" : "lazy"
                     }
                     unoptimized={photo.src.startsWith("/api/")}
-                    className={`pointer-events-none ${heroImageClassName(photo.src)}`}
+                    className={`pointer-events-none ${showcaseVehicleFocusImageClassName(photo.src, "showroomHero")}`}
                     sizes="100vw"
                     draggable={false}
                   />

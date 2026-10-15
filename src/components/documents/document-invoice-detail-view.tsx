@@ -476,23 +476,25 @@ export function DocumentInvoiceDetailView({
         ) : null}
 
         {!isTuevDocument && canEditPositions ? (
-          <EditableLineItemsSection
-            items={lineItems}
-            documentId={document.id}
-            vehicleId={document.vehicle_id}
-            tagUuid={tagUuid}
-            totalAmount={documentAmount}
-            emptyHint={
-              isManual
-                ? "Noch keine Positionen. Bearbeiten tippen, um Teile und Kosten einzutragen."
-                : "Keine Positionen erkannt. Original-PDF unten öffnen."
-            }
-            hideEditTrigger={useCentralEdit}
-            editRequest={editRequest}
-            editPulse={editPulse}
-            onEditRequestConsumed={handleEditRequestConsumed}
-            sectionId={INVOICE_DETAIL_EDIT_ANCHORS.lineItems}
-          />
+          <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+            <EditableLineItemsSection
+              items={lineItems}
+              documentId={document.id}
+              vehicleId={document.vehicle_id}
+              tagUuid={tagUuid}
+              totalAmount={documentAmount}
+              emptyHint={
+                isManual
+                  ? "Noch keine Positionen. Bearbeiten tippen, um Teile und Kosten einzutragen."
+                  : "Keine Positionen erkannt. Original-PDF unten öffnen."
+              }
+              hideEditTrigger={useCentralEdit}
+              editRequest={editRequest}
+              editPulse={editPulse}
+              onEditRequestConsumed={handleEditRequestConsumed}
+              sectionId={INVOICE_DETAIL_EDIT_ANCHORS.lineItems}
+            />
+          </section>
         ) : !isTuevDocument ? (
           <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
             <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
@@ -515,10 +517,10 @@ export function DocumentInvoiceDetailView({
                       index > 0 ? "border-t border-[color:var(--vd-border)]/60" : "",
                     ].join(" ")}
                   >
-                    <span className="whitespace-pre-line text-[color:var(--vd-text)]">
+                    <span className="min-w-0 flex-1 whitespace-pre-line text-[color:var(--vd-text)]">
                       {item.label}
                     </span>
-                    <span className="shrink-0 tabular-nums text-[color:var(--vd-text)]">
+                    <span className="min-w-[6.75rem] shrink-0 text-right tabular-nums text-[color:var(--vd-text)]">
                       {formatEur(item.amount)}
                     </span>
                   </li>
@@ -530,7 +532,7 @@ export function DocumentInvoiceDetailView({
                 <span className="text-[0.95rem] font-bold tracking-[-0.02em] text-[color:var(--vd-text)]">
                   Gesamt
                 </span>
-                <span className="text-[1.05rem] font-bold tracking-[-0.02em] tabular-nums text-[color:var(--vd-text)]">
+                <span className="min-w-[6.75rem] text-right text-[1.05rem] font-bold tracking-[-0.02em] tabular-nums text-[color:var(--vd-text)]">
                   {formatEur(document.amount)}
                 </span>
               </div>
