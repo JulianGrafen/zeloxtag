@@ -7,6 +7,10 @@ import {
   createOperatingCost,
   updateOperatingCost,
 } from "@/actions/operating-costs";
+import {
+  formatFuelAmountForInput,
+  formatFuelLitersForInput,
+} from "@/lib/fuel-receipt/fuel-fill-format";
 import { normalizeFuelFillInput } from "@/lib/fuel-receipt/normalize-fuel-fill";
 import type { FuelFillFormState } from "@/lib/fuel-receipt/types";
 import { showSavedToast } from "@/lib/ui/saved-toast";
@@ -38,12 +42,16 @@ export function useFuelFillSubmit({
       }
 
       startTransition(async () => {
+        const { value } = normalized;
         const payload = {
           category: "fuel" as const,
           billingPeriod: "once" as const,
-          amountEur: form.amountEur,
-          occurredOn: form.occurredOn,
-          fuelLiters: form.fuelLiters,
+          amountEur: formatFuelAmountForInput(value.amountEur),
+          occurredOn: value.occurredOn,
+          fuelLiters:
+            value.fuelLiters != null
+              ? formatFuelLitersForInput(value.fuelLiters)
+              : "",
           odometerKm: form.odometerKm,
           note: form.note,
         };

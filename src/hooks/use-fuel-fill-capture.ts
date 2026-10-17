@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
 import { useFuelFillSubmit } from "@/hooks/use-fuel-fill-submit";
+import { completeFuelFillDerivedFields } from "@/lib/fuel-receipt/fuel-fill-derived-fields";
 import {
   emptyFuelFillFormState,
   mapExtractionToFuelFillForm,
@@ -150,7 +151,9 @@ export function useFuelReceiptScan({
 
         setProgress({ label: "Fertig", percent: 100 });
         setForm((current) =>
-          mapExtractionToFuelFillForm(result.extraction, current),
+          completeFuelFillDerivedFields(
+            mapExtractionToFuelFillForm(result.extraction, current),
+          ),
         );
         setStep("review");
       } catch (captureError) {
