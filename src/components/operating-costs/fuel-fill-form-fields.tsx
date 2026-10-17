@@ -9,6 +9,7 @@ import {
   GarageInsetInputWithSuffix,
 } from "@/components/ui/garage-field";
 import { parseMileageKmInput } from "@/lib/documents/format";
+import { applyFuelFillFieldChange } from "@/lib/fuel-receipt/fuel-fill-derived-fields";
 import type { FuelFillFormState } from "@/lib/fuel-receipt/types";
 
 type FuelFillFormFieldsProps = {
@@ -48,7 +49,13 @@ export function FuelFillFormFields({
             value={value.fuelLiters}
             disabled={disabled}
             onChange={(event) =>
-              onChange({ ...value, fuelLiters: event.target.value })
+              onChange(
+                applyFuelFillFieldChange(
+                  value,
+                  "fuelLiters",
+                  event.target.value,
+                ),
+              )
             }
           />
         </GarageFieldCell>
@@ -62,7 +69,13 @@ export function FuelFillFormFields({
             value={value.pricePerLiterEur}
             disabled={disabled}
             onChange={(event) =>
-              onChange({ ...value, pricePerLiterEur: event.target.value })
+              onChange(
+                applyFuelFillFieldChange(
+                  value,
+                  "pricePerLiterEur",
+                  event.target.value,
+                ),
+              )
             }
           />
         </GarageFieldCell>
@@ -78,7 +91,9 @@ export function FuelFillFormFields({
           disabled={disabled}
           required
           onChange={(event) =>
-            onChange({ ...value, amountEur: event.target.value })
+            onChange(
+              applyFuelFillFieldChange(value, "amountEur", event.target.value),
+            )
           }
         />
       </GarageField>
