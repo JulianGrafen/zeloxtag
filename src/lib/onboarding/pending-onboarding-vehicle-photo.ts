@@ -30,11 +30,11 @@ function fromBase64(base64: string): Uint8Array {
 
 export async function storePendingOnboardingVehiclePhoto(
   file: File,
-): Promise<void> {
-  if (typeof window === "undefined") return;
+): Promise<boolean> {
+  if (typeof window === "undefined") return false;
   const compressed = await compressSilhouetteImage(file);
   const bytes = new Uint8Array(await compressed.arrayBuffer());
-  if (bytes.byteLength > 900_000) return;
+  if (bytes.byteLength > 900_000) return false;
   const payload: StoredPhoto = {
     mime: compressed.type || "image/png",
     base64: toBase64(bytes),
@@ -43,8 +43,9 @@ export async function storePendingOnboardingVehiclePhoto(
   try {
     sessionStorage.setItem(PENDING_PHOTO_KEY, JSON.stringify(payload));
     sessionStorage.removeItem(PENDING_PHOTO_SKIP_KEY);
+    return true;
   } catch {
-    /* quota */
+    return false;
   }
 }
 

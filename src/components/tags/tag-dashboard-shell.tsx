@@ -32,6 +32,7 @@ import {
 import { setScanSurfaceActive } from "@/lib/ui/scan-surface-state";
 import {
   clearSilhouettePreviewFromSession,
+  fileToPreviewDataUrl,
   readSilhouettePreviewFromSession,
   writeSilhouettePreviewToSession,
 } from "@/lib/vehicles/silhouette-preview-session";
@@ -65,6 +66,7 @@ import {
   readOnboardingVehiclePhotoSkipped,
   readPendingOnboardingVehiclePhoto,
 } from "@/lib/onboarding/pending-onboarding-vehicle-photo";
+import { persistVehiclePhotoUploadToSession } from "@/lib/vehicles/persist-vehicle-photo-session";
 import { uploadVehiclePhotoClient } from "@/lib/vehicles/upload-vehicle-photo-client";
 
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
@@ -403,6 +405,12 @@ export function TagDashboardShell({
       if (!pendingFile || cancelled) return;
 
       try {
+        const previewDataUrl = await fileToPreviewDataUrl(pendingFile);
+        if (previewDataUrl) {
+          writeSilhouettePreviewToSession(vehicle.id, previewDataUrl);
+          setPreviewFallbackUrl(previewDataUrl);
+        }
+
         const uploaded = await uploadVehiclePhotoClient({
           vehicleId: vehicle.id,
           tagUuid: tagUuid?.trim() || undefined,
@@ -673,15 +681,11 @@ export function TagDashboardShell({
   }
 
   function handleSilhouetteUploaded(result: SilhouetteUploadResult) {
-    const displayBust =
-      cacheBustFromSilhouetteUrl(result.displayUrl) ?? Date.now().toString();
-
+    persistVehiclePhotoUploadToSession(vehicle.id, result);
     setSilhouetteStorageUrl(result.storageUrl);
-    writeSilhouetteToSession(vehicle.id, result.storageUrl, displayBust);
 
     const previewDataUrl = result.previewDataUrl?.trim();
     if (previewDataUrl?.startsWith("data:image/")) {
-      writeSilhouettePreviewToSession(vehicle.id, previewDataUrl);
       setPreviewFallbackUrl(previewDataUrl);
     }
 
