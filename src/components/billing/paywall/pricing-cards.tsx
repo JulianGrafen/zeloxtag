@@ -9,20 +9,24 @@ export function PricingCards({
   onIntervalChange,
   showAnnualPlan,
   compact = false,
+  embeddedInCard = false,
   className,
 }: {
   interval: ProBillingInterval;
   onIntervalChange: (interval: ProBillingInterval) => void;
   showAnnualPlan: boolean;
   compact?: boolean;
+  embeddedInCard?: boolean;
   className?: string;
 }) {
   return (
     <div className={cn(compact ? "mt-0" : "mt-6", className)}>
       <div
         className={cn(
-          "paywall-pricing-stack flex flex-col gap-2",
-          !compact && "mt-3",
+          "paywall-pricing-stack flex flex-col",
+          embeddedInCard ? "gap-0" : "gap-2",
+          !compact && !embeddedInCard && "mt-3",
+          embeddedInCard && "px-1 py-1",
         )}
         role="radiogroup"
         aria-label="Abrechnungsintervall"
@@ -33,6 +37,8 @@ export function PricingCards({
             selected={interval === "annual"}
             onSelect={() => onIntervalChange("annual")}
             compact={compact}
+            embeddedInCard={embeddedInCard}
+            showTopDivider={false}
           />
         ) : null}
         <PricingCard
@@ -40,6 +46,8 @@ export function PricingCards({
           selected={interval === "monthly"}
           onSelect={() => onIntervalChange("monthly")}
           compact={compact}
+          embeddedInCard={embeddedInCard}
+          showTopDivider={showAnnualPlan}
         />
       </div>
     </div>

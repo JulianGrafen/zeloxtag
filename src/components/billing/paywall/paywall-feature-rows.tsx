@@ -16,7 +16,7 @@ export function PaywallFeatureRows({
   return (
     <ul
       className={cn(
-        "paywall-feature-group overflow-hidden rounded-[12px] bg-[color:var(--paywall-grouped-bg)]",
+        "paywall-feature-group overflow-hidden rounded-2xl bg-[color:var(--paywall-grouped-bg)] ring-1 ring-[color:var(--paywall-grouped-separator)]",
         className,
       )}
       aria-label="Vorteile von ZeloxTag Pro"

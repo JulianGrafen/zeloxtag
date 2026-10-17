@@ -14,11 +14,15 @@ export function PricingCard({
   selected,
   onSelect,
   compact = false,
+  embeddedInCard = false,
+  showTopDivider = false,
 }: {
   interval: ProBillingInterval;
   selected: boolean;
   onSelect: () => void;
   compact?: boolean;
+  embeddedInCard?: boolean;
+  showTopDivider?: boolean;
   shinePosition?: unknown;
   shineMotionActive?: boolean;
 }) {
@@ -32,11 +36,19 @@ export function PricingCard({
         aria-checked={selected}
         onClick={onSelect}
         className={cn(
-          "paywall-plan-row relative flex w-full items-start gap-3 rounded-[12px] px-3.5 py-3 text-left",
+          "paywall-plan-row relative flex w-full items-start gap-3 px-3.5 py-3 text-left",
+          embeddedInCard ? "rounded-none" : "rounded-2xl",
           "transition-[border-color,background-color,box-shadow] duration-200 ease-out",
+          embeddedInCard &&
+            showTopDivider &&
+            "border-t border-[color:var(--paywall-grouped-separator)]",
           selected
-            ? "bg-[color:var(--paywall-pricing-selected-bg)] ring-1 ring-[color:var(--paywall-pricing-selected-border)]"
-            : "bg-[color:var(--paywall-grouped-bg)] ring-1 ring-transparent hover:bg-[color:var(--paywall-grouped-bg-hover)]",
+            ? embeddedInCard
+              ? "bg-[color:var(--paywall-pricing-selected-bg)]"
+              : "bg-[color:var(--paywall-pricing-selected-bg)] ring-1 ring-[color:var(--paywall-pricing-selected-border)]"
+            : embeddedInCard
+              ? "bg-transparent hover:bg-[color:var(--paywall-grouped-bg-hover)]"
+              : "bg-[color:var(--paywall-grouped-bg)] ring-1 ring-transparent hover:bg-[color:var(--paywall-grouped-bg-hover)]",
         )}
       >
         <span className="min-w-0 flex-1">

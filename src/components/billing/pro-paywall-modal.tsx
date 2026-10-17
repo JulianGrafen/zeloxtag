@@ -14,7 +14,10 @@ import {
   resolvePaywallGoal,
   type PaywallTriggerContext,
 } from "@/lib/billing/paywall-personalization";
-import { PAYWALL_APPLE_CLASS } from "@/lib/billing/paywall-apple";
+import {
+  PAYWALL_APPLE_CLASS,
+  PAYWALL_SHEET_TOP_RADIUS_CLASS,
+} from "@/lib/billing/paywall-apple";
 import {
   PRO_PAYWALL_DISMISS_LABEL,
   PRO_PLAN_CHECKOUT_HEADLINE,
@@ -136,7 +139,7 @@ export function ProPaywallModal({
       {open ? (
         <motion.div
           key="pro-paywall-layer"
-          className="fixed inset-0 z-[80] flex items-end justify-center bg-[color:var(--paywall-modal-scrim)] backdrop-blur-md"
+          className="fixed inset-0 z-[80] flex justify-center bg-[color:var(--paywall-modal-scrim)] backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="pro-paywall-title"
@@ -156,20 +159,16 @@ export function ProPaywallModal({
             {...sheetMotion}
             className={cn(
               PAYWALL_APPLE_CLASS,
-              "paywall-sheet relative z-10 flex h-[75dvh] max-h-[75dvh] w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-[20px] border border-b-0 border-[color:var(--paywall-grouped-separator)] bg-[color:var(--paywall-sheet-bg)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)]",
+              "paywall-sheet relative z-10 flex h-dvh max-h-dvh w-full max-w-lg min-h-0 flex-col overflow-hidden border-0 border-b-0 bg-[color:var(--paywall-sheet-bg)] text-[color:var(--vd-text)] shadow-[var(--vd-shadow-modal)]",
+              PAYWALL_SHEET_TOP_RADIUS_CLASS,
             )}
             onClick={(event) => event.stopPropagation()}
           >
-            <div
-              className="mx-auto mt-2 h-[5px] w-9 shrink-0 rounded-full bg-[color:var(--paywall-grouped-separator)]"
-              aria-hidden
-            />
-
             <button
               type="button"
               onClick={onClose}
               aria-label="Schließen"
-              className="absolute top-[max(0.65rem,env(safe-area-inset-top))] right-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--paywall-grouped-bg)] text-[color:var(--vd-muted)] transition hover:bg-[color:var(--paywall-grouped-bg-hover)] hover:text-[color:var(--vd-text)]"
+              className="absolute top-[max(0.875rem,env(safe-area-inset-top))] right-4 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--paywall-grouped-bg)] text-[color:var(--vd-muted)] transition hover:bg-[color:var(--paywall-grouped-bg-hover)] hover:text-[color:var(--vd-text)]"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>

@@ -48,7 +48,7 @@ export const PRO_PAYWALL_MODAL_MICROCOPY = "Jederzeit kündbar";
 export const PRO_PAYWALL_DISMISS_LABEL = "Mit ZeloxTag Free fortfahren";
 export const PRO_PAYWALL_BRAND_BADGE = "ZELOXTAG PRO";
 export const PRO_PAYWALL_CONVERSION_SUBLINE =
-  "Keine verlorenen Rechnungen, jeder Cent deines Umbaus felsenfest belegt.";
+  "Jeder Cent deines Umbaus felsenfest belegt.";
 export const PRO_PAYWALL_CONVERSION_FOOTNOTE =
   "Kostet im Monat weniger als ein Liter Motoröl und sichert Umbauten im Wert von tausenden Euro ab.";
 export const PRO_PAYWALL_ANNUAL_BEST_DEAL_LABEL = "Bester Deal";
@@ -107,7 +107,7 @@ export const PRO_PAYWALL_TRIAL_TIMELINE: readonly ProPaywallTimelineNode[] = [
   },
   {
     icon: "mail",
-    text: "Tag 12: Erinnerungs-Mail vor Ablauf des Testzeitraums",
+    text: "Tag 7: Erinnerungs-Mail vor Ablauf des Testzeitraums",
   },
   {
     icon: "shield",

@@ -95,6 +95,7 @@ export function ProPaywallContent({
             <PaywallAnimatedGoalVisual
               kind={visualKind}
               ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
+              className="px-4 pb-3 pt-[max(2.75rem,calc(env(safe-area-inset-top)+2rem))]"
             />
 
             <div className="mx-auto w-full max-w-lg space-y-4 px-4 pt-3">
@@ -130,7 +131,7 @@ export function ProPaywallContent({
             <PaywallAnimatedGoalVisual
               kind={visualKind}
               ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
-              className="overflow-hidden rounded-[12px] bg-[color:var(--paywall-sheet-bg)]"
+              className="overflow-hidden rounded-2xl bg-[color:var(--paywall-grouped-bg)] ring-1 ring-[color:var(--paywall-grouped-separator)]"
             />
             {offerSections}
           </div>

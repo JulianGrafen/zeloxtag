@@ -70,7 +70,7 @@ export function PaywallDevPreview() {
           Paywall Vorschau
         </h1>
         <p className="text-[0.85rem] text-[color:var(--vd-muted)]">
-          Ziel und Variante wählen. Modal unten. Nur lokal (
+          Ziel und Variante wählen. Vollbild-Modal. Nur lokal (
           <code className="text-[0.8rem]">/dev/paywall</code>
           ).
         </p>

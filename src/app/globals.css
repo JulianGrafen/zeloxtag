@@ -2203,6 +2203,17 @@ a.claim-cta.vd-scan-fab-cta,
   --paywall-badge-primary-bg: #0a84ff;
 }
 
+.paywall-apple.paywall-sheet {
+  border-top-left-radius: 2.375rem;
+  border-top-right-radius: 2.375rem;
+}
+
+@supports (corner-shape: squircle) {
+  .paywall-apple.paywall-sheet {
+    corner-shape: squircle;
+  }
+}
+
 .paywall-apple .paywall-apple-cta.claim-cta {
   --claim-cta-bg: var(--paywall-apple-blue);
   --claim-cta-fg: #ffffff;

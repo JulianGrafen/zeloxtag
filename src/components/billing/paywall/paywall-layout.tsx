@@ -126,6 +126,7 @@ export function PaywallOfferSections({
   showAnnualPlan,
   belowFoldFooter,
   compact = true,
+  embeddedInCard = false,
   className,
 }: {
   benefits?: readonly string[];
@@ -135,17 +136,29 @@ export function PaywallOfferSections({
   showAnnualPlan: boolean;
   belowFoldFooter?: ReactNode;
   compact?: boolean;
+  /** Sections inside one rounded paywall card — flat cells, dividers only. */
+  embeddedInCard?: boolean;
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
+    <div className={cn(embeddedInCard ? "flex flex-col" : "flex flex-col gap-3", className)}>
       <PaywallFeatureRows
         items={benefits}
         highlightFirst={highlightLeadBenefit}
+        className={
+          embeddedInCard
+            ? "rounded-none border-t border-[color:var(--paywall-grouped-separator)] bg-transparent ring-0"
+            : undefined
+        }
       />
 
       <div
-        className="flex flex-col gap-3"
+        className={cn(
+          "flex flex-col",
+          embeddedInCard
+            ? "gap-0 border-t border-[color:var(--paywall-grouped-separator)]"
+            : "gap-3",
+        )}
         aria-label="Preise und Testphase"
       >
         <PricingCards
@@ -153,9 +166,10 @@ export function PaywallOfferSections({
           onIntervalChange={onIntervalChange}
           showAnnualPlan={showAnnualPlan}
           compact={compact}
+          embeddedInCard={embeddedInCard}
           className="!mt-0"
         />
-        <TrialTimeline compact={compact} />
+        <TrialTimeline compact={compact} embeddedInCard={embeddedInCard} />
       </div>
 
       {belowFoldFooter ? <div className="shrink-0">{belowFoldFooter}</div> : null}

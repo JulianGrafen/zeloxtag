@@ -43,19 +43,33 @@ function TimelineText({ text }: { text: string }) {
 export function TrialTimeline({
   nodes = PRO_PAYWALL_TRIAL_TIMELINE,
   compact = false,
+  embeddedInCard = false,
 }: {
   nodes?: readonly { icon: ProPaywallTimelineIcon; text: string }[];
   compact?: boolean;
+  embeddedInCard?: boolean;
 }) {
   return (
-    <div className={cn(compact ? "mt-0" : "mt-6")} aria-label="Testphase-Ablauf">
+    <div
+      className={cn(
+        compact ? "mt-0" : "mt-6",
+        embeddedInCard &&
+          "border-t border-[color:var(--paywall-grouped-separator)] px-1 pt-3 pb-1",
+      )}
+      aria-label="Testphase-Ablauf"
+    >
       <p
         className="mb-2 px-1 text-[13px] font-medium uppercase tracking-[0.02em] text-[color:var(--vd-muted)]"
       >
         So läuft deine Testphase
       </p>
       <ol
-        className="paywall-timeline-group overflow-hidden rounded-[12px] bg-[color:var(--paywall-grouped-bg)]"
+        className={cn(
+          "paywall-timeline-group overflow-hidden",
+          embeddedInCard
+            ? "rounded-none bg-transparent ring-0"
+            : "rounded-2xl bg-[color:var(--paywall-grouped-bg)] ring-1 ring-[color:var(--paywall-grouped-separator)]",
+        )}
       >
         {nodes.map((node, index) => (
           <li
