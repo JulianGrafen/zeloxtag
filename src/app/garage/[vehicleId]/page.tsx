@@ -57,7 +57,7 @@ export default async function GarageDashboardPage({
 
   return (
     <AppShell showNavbar={false}>
-      <div className="flex flex-col gap-4">
+      <div className="flex min-w-0 max-w-full flex-col gap-4 overflow-x-clip">
         <TagDashboardShell
           vehicle={dashboard.vehicle}
           documents={dashboard.documents}

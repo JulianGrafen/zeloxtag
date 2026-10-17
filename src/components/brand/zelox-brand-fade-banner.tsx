@@ -13,7 +13,7 @@ export function ZeloxBrandFadeBanner({
   return (
     <div
       className={cn(
-        "pointer-events-none relative w-full",
+        "pointer-events-none relative w-full overflow-x-clip",
         !bottomFade && "zelox-brand-fade-banner--solid",
       )}
     >

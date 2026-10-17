@@ -46,7 +46,7 @@ export function VehicleDashboard({
     Boolean(resolveDocumentHref) && timelineEvents !== undefined;
 
   return (
-    <ScanContent className={cn("gap-0 px-0 pt-0", className)}>
+    <ScanContent className={cn("min-w-0 gap-0 overflow-x-clip px-0 pt-0", className)}>
       <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
         <ZeloxBrandFadeBanner />
       </div>

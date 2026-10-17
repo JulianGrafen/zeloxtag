@@ -542,7 +542,7 @@ export function TagDashboardView({
   );
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0 max-w-full overflow-x-clip">
       <VehicleDashboard
         data={{ ...data, tiles }}
         quickAccessItems={quickAccessItems}
