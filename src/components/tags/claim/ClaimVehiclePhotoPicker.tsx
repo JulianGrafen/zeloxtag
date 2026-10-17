@@ -21,6 +21,7 @@ type ClaimVehiclePhotoPickerProps = {
   previewUrl: string | null;
   onPreviewChange: (url: string | null) => void;
   onFileChange: (file: File | null) => void;
+  onPreparingChange?: (preparing: boolean) => void;
   disabled?: boolean;
   className?: string;
   /** When true, large frame is hidden — photo is shown in the wizard header preview. */
@@ -31,6 +32,7 @@ export function ClaimVehiclePhotoPicker({
   previewUrl,
   onPreviewChange,
   onFileChange,
+  onPreparingChange,
   disabled = false,
   className,
   compactWhenPreview = true,
@@ -52,6 +54,7 @@ export function ClaimVehiclePhotoPicker({
     async (file: File) => {
       setError(null);
       setPreparing(true);
+      onPreparingChange?.(true);
       try {
         const compressed = await compressSilhouetteImage(file);
         if (blobRef.current?.startsWith("blob:")) {
@@ -71,9 +74,10 @@ export function ClaimVehiclePhotoPicker({
         );
       } finally {
         setPreparing(false);
+        onPreparingChange?.(false);
       }
     },
-    [onFileChange, onPreviewChange],
+    [onFileChange, onPreparingChange, onPreviewChange],
   );
 
   function onInputChange(event: ChangeEvent<HTMLInputElement>) {

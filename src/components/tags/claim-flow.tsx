@@ -37,7 +37,11 @@ import {
   markOnboardingVehiclePhotoSkipped,
   storePendingOnboardingVehiclePhoto,
 } from "@/lib/onboarding/pending-onboarding-vehicle-photo";
-import { writeSilhouettePreviewToSession } from "@/lib/vehicles/silhouette-preview-session";
+import { persistVehiclePhotoUploadToSession } from "@/lib/vehicles/persist-vehicle-photo-session";
+import {
+  fileToPreviewDataUrl,
+  writeSilhouettePreviewToSession,
+} from "@/lib/vehicles/silhouette-preview-session";
 import { uploadVehiclePhotoClient } from "@/lib/vehicles/upload-vehicle-photo-client";
 import type { BuildPersonalityChipId } from "@/lib/vehicles/build-personality-chips";
 import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
@@ -112,6 +116,7 @@ export function ClaimFlow({
   const [vehiclePhotoPreview, setVehiclePhotoPreview] = useState<string | null>(
     null,
   );
+  const [vehiclePhotoPreparing, setVehiclePhotoPreparing] = useState(false);
   const [vehiclePhotoSkipped, setVehiclePhotoSkipped] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -260,28 +265,63 @@ export function ClaimFlow({
       }
     : ownerNamePayload;
 
+  async function uploadOnboardingPhotoWithRetry(
+    vehicleId: string,
+    linkedTagUuid: string | undefined,
+    file: File,
+  ) {
+    try {
+      return await uploadVehiclePhotoClient({
+        vehicleId,
+        tagUuid: linkedTagUuid,
+        file,
+      });
+    } catch (firstError) {
+      const message =
+        firstError instanceof Error ? firstError.message : String(firstError);
+      if (!message.includes("Sitzung abgelaufen")) {
+        throw firstError;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 450));
+      return uploadVehiclePhotoClient({
+        vehicleId,
+        tagUuid: linkedTagUuid,
+        file,
+      });
+    }
+  }
+
   async function applyOnboardingVehiclePhoto(
     vehicleId: string,
     linkedTagUuid?: string,
   ) {
     if (vehiclePhotoFile) {
+      const previewDataUrl = await fileToPreviewDataUrl(vehiclePhotoFile);
+      if (previewDataUrl) {
+        writeSilhouettePreviewToSession(vehicleId, previewDataUrl);
+      }
+
       try {
-        const uploaded = await uploadVehiclePhotoClient({
+        const uploaded = await uploadOnboardingPhotoWithRetry(
           vehicleId,
-          tagUuid: linkedTagUuid,
-          file: vehiclePhotoFile,
-        });
-        if (uploaded.previewDataUrl?.startsWith("data:image/")) {
-          writeSilhouettePreviewToSession(vehicleId, uploaded.previewDataUrl);
-        }
+          linkedTagUuid,
+          vehiclePhotoFile,
+        );
+        persistVehiclePhotoUploadToSession(vehicleId, uploaded);
         clearPendingOnboardingVehiclePhoto();
         clearOnboardingVehiclePhotoSkipped();
       } catch {
-        await storePendingOnboardingVehiclePhoto(vehiclePhotoFile);
+        const stored = await storePendingOnboardingVehiclePhoto(vehiclePhotoFile);
+        if (!stored && !previewDataUrl) {
+          console.warn(
+            "[claim] onboarding photo could not be persisted for retry",
+          );
+        }
       }
       return;
     }
     if (vehiclePhotoSkipped) {
+      clearPendingOnboardingVehiclePhoto();
       markOnboardingVehiclePhotoSkipped();
     }
   }
@@ -544,19 +584,26 @@ export function ClaimFlow({
               <ClaimVehiclePhotoPicker
                 previewUrl={vehiclePhotoPreview}
                 onPreviewChange={setVehiclePhotoPreview}
+                onPreparingChange={setVehiclePhotoPreparing}
                 onFileChange={(file) => {
                   setVehiclePhotoFile(file);
-                  if (file) setVehiclePhotoSkipped(false);
+                  if (file) {
+                    setVehiclePhotoSkipped(false);
+                    void storePendingOnboardingVehiclePhoto(file);
+                  } else {
+                    clearPendingOnboardingVehiclePhoto();
+                  }
                 }}
                 disabled={pending}
               />
               <button
                 type="button"
                 className="text-center text-[0.8rem] text-[color:var(--vd-muted)] underline-offset-2 hover:underline"
-                disabled={pending}
+                disabled={pending || vehiclePhotoPreparing}
                 onClick={() => {
                   setVehiclePhotoFile(null);
                   setVehiclePhotoPreview(null);
+                  clearPendingOnboardingVehiclePhoto();
                   setVehiclePhotoSkipped(true);
                   advance("year");
                 }}
@@ -565,7 +612,7 @@ export function ClaimFlow({
               </button>
               <ClaimSlideActions
                 error={error}
-                pending={pending}
+                pending={pending || vehiclePhotoPreparing}
                 onBack={goBack}
                 submitLabel="Weiter"
                 submitIcon="next"
