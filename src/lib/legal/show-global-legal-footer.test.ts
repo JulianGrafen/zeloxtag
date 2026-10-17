@@ -36,6 +36,18 @@ describe("shouldRenderGlobalLegalFooter", () => {
     ).toBe(true);
   });
 
+  it("hides footer while Pro paywall is open", () => {
+    expect(
+      shouldRenderGlobalLegalFooter({
+        pathname: "/dev/paywall",
+        publicShowcase: false,
+        scanQueryActive: false,
+        scanSurfaceActive: false,
+        paywallOpen: true,
+      }),
+    ).toBe(false);
+  });
+
   it("hides footer while route loading shell is active", () => {
     expect(
       shouldRenderGlobalLegalFooter({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
@@ -64,6 +64,7 @@ import {
   readOnboardingVehiclePhotoSkipped,
 } from "@/lib/onboarding/pending-onboarding-vehicle-photo";
 import { flushPendingOnboardingVehiclePhoto } from "@/lib/onboarding/flush-pending-onboarding-vehicle-photo";
+import { resolveVehicleHeroDisplay } from "@/lib/vehicles/resolve-vehicle-hero-display";
 
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
 import { TagDashboardView } from "./tag-dashboard-view";
@@ -451,18 +452,6 @@ export function TagDashboardShell({
     clearFreeScanWelcomeParam();
   }
 
-  const paywallModal = (
-    <ProPaywallModal
-      open={Boolean(paywallFeature)}
-      feature={paywallFeature}
-      variant={paywallVariant}
-      triggerContext={paywallTriggerContext}
-      tagUuid={tagUuid}
-      isOwner={isOwner}
-      onClose={closePaywall}
-    />
-  );
-
   function paywallContextForScanType(
     type: ScanType,
   ): PaywallTriggerContext | undefined {
@@ -477,8 +466,20 @@ export function TagDashboardShell({
   ) {
     setPaywallFeature(feature);
     setPaywallVariant(variant);
+    const hero = resolveVehicleHeroDisplay({
+      vehicle: displayVehicle,
+      tagUuid,
+      vehicleImageOverride,
+      previewFallbackUrl,
+      demoMode: demoShowcase,
+    });
     setPaywallTriggerContext({
       vehicleLabel: paywallVehicleLabel,
+      vehicleImage: hero.vehicleImage,
+      vehicleImageFallback: hero.vehicleImageFallback,
+      vehicleImagePreviewFallback: hero.vehicleImagePreviewFallback,
+      vehicleImageFrameless: hero.vehicleImageFrameless,
+      vehicleImageAlt: hero.vehicleImageAlt,
       ...context,
     });
   }
@@ -551,6 +552,35 @@ export function TagDashboardShell({
     ...vehicle,
     silhouette_image_url: silhouetteStorageUrl,
   };
+  const paywallVehicleHero = useMemo(
+    () =>
+      resolveVehicleHeroDisplay({
+        vehicle: displayVehicle,
+        tagUuid,
+        vehicleImageOverride,
+        previewFallbackUrl,
+        demoMode: demoShowcase,
+      }),
+    [
+      displayVehicle,
+      tagUuid,
+      vehicleImageOverride,
+      previewFallbackUrl,
+      demoShowcase,
+    ],
+  );
+  const paywallModal = (
+    <ProPaywallModal
+      open={Boolean(paywallFeature)}
+      feature={paywallFeature}
+      variant={paywallVariant}
+      triggerContext={paywallTriggerContext}
+      vehicleHero={paywallVehicleHero}
+      tagUuid={tagUuid}
+      isOwner={isOwner}
+      onClose={closePaywall}
+    />
+  );
   const hasSilhouette = Boolean(silhouetteStorageUrl?.trim());
   const wantsSilhouettePrompt =
     isOwner &&

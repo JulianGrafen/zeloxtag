@@ -60,9 +60,9 @@ export const PRO_PAYWALL_VALUE_FOOTNOTE =
 
 /** Kompakte 3-Säulen-Copy in der Conversion-Paywall (Modal & Section). */
 export const PRO_PAYWALL_CONVERSION_BENEFITS = [
-  "TÜV- & Gutachten-Tresor: Alle ABEs, Teilegutachten und § 21-Eintragungen sofort griffbereit.",
-  "Showcase auf Treffen: Mod-Liste, Leistungsdiagramm und Soundfiles live per Scan am Motorraum teilbar.",
-  "Build-Wert & Exposé: Rechnungen per KI scannen und mit einem Klick das Wertgutachten für Versicherung und Verkauf erzeugen.",
+  "Build-Wert & Exposé: Rechnungen in Sekunden digitalisieren.",
+  "TÜV- & Gutachten-Tresor: Alle ABEs und Teilegutachten sofort griffbereit.",
+  "Showcase auf Treffen: Build per Scan am Motorraum teilen.",
 ] as const;
 
 export const PRO_PAYWALL_MODAL_BENEFITS = PRO_PAYWALL_CONVERSION_BENEFITS;

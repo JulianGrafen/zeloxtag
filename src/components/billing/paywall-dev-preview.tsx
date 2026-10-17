@@ -8,7 +8,9 @@ import { ProPaywallSection } from "@/components/billing/pro-paywall-section";
 import {
   getPaywallPersonalization,
   formatPaywallVehicleLabel,
+  paywallVehicleHeroFromContext,
 } from "@/lib/billing/paywall-personalization";
+import { resolveVehicleCatalogImage } from "@/lib/vehicles/vehicle-image";
 import type { ZeloxPrimaryGoal } from "@/lib/onboarding/primary-goal";
 import {
   FEATURE,
@@ -18,6 +20,14 @@ import { cn } from "@/lib/utils";
 
 const PREVIEW_TAG = "demo-active-tag";
 const PREVIEW_VEHICLE = formatPaywallVehicleLabel("Toyota", "GR Supra", 2022);
+const PREVIEW_CATALOG = resolveVehicleCatalogImage("Toyota", "GR Supra");
+const PREVIEW_TRIGGER_CONTEXT = {
+  goalOverride: "werterhalt" as const,
+  vehicleLabel: PREVIEW_VEHICLE,
+  vehicleImage: PREVIEW_CATALOG?.src ?? null,
+  vehicleImageFrameless: true,
+  vehicleImageAlt: PREVIEW_CATALOG?.alt ?? "Toyota GR Supra (2022)",
+};
 
 const GOALS: { id: ZeloxPrimaryGoal; label: string }[] = [
   { id: "werterhalt", label: "Werterhalt" },
@@ -58,6 +68,19 @@ export function PaywallDevPreview() {
         vehicleLabel: PREVIEW_VEHICLE,
       }),
     [goal, variant],
+  );
+
+  const triggerContext = useMemo(
+    () => ({
+      ...PREVIEW_TRIGGER_CONTEXT,
+      goalOverride: goal,
+    }),
+    [goal],
+  );
+
+  const previewVehicleHero = useMemo(
+    () => paywallVehicleHeroFromContext(triggerContext),
+    [triggerContext],
   );
 
   return (
@@ -131,16 +154,14 @@ export function PaywallDevPreview() {
         cancelPath={`/v/${PREVIEW_TAG}/abo`}
         dismissHref={`/v/${PREVIEW_TAG}`}
         vehicleLabel={PREVIEW_VEHICLE}
+        vehicleHero={previewVehicleHero}
       />
 
       <ProPaywallModal
         open={modalOpen}
         feature={FEATURE.SCAN_AI_RECEIPT}
         variant={variant}
-        triggerContext={{
-          goalOverride: goal,
-          vehicleLabel: PREVIEW_VEHICLE,
-        }}
+        triggerContext={triggerContext}
         tagUuid={PREVIEW_TAG}
         onClose={() => setModalOpen(false)}
       />

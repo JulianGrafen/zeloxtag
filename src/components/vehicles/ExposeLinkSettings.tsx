@@ -7,6 +7,7 @@ import { manageVehicleExpose } from "@/actions/expose";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { ProPaywallModal } from "@/components/billing/pro-paywall-modal";
 import { formatPaywallVehicleLabel } from "@/lib/billing/paywall-personalization";
+import { resolveVehicleHeroDisplay } from "@/lib/vehicles/resolve-vehicle-hero-display";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { FEATURE } from "@/lib/permissions/feature-access";
 import { showSavedToast } from "@/lib/ui/saved-toast";
@@ -37,6 +38,10 @@ export function ExposeLinkSettings({
   const [error, setError] = useState<string | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const paywallHero = resolveVehicleHeroDisplay({
+    vehicle,
+    tagUuid,
+  });
 
   function runAction(action: "generate" | "deactivate" | "renew") {
     if (!canEdit) return;
@@ -170,7 +175,13 @@ export function ExposeLinkSettings({
             vehicle.model,
             vehicle.year,
           ),
+          vehicleImage: paywallHero.vehicleImage,
+          vehicleImageFallback: paywallHero.vehicleImageFallback,
+          vehicleImagePreviewFallback: paywallHero.vehicleImagePreviewFallback,
+          vehicleImageFrameless: paywallHero.vehicleImageFrameless,
+          vehicleImageAlt: paywallHero.vehicleImageAlt,
         }}
+        vehicleHero={paywallHero}
         onClose={() => setPaywallOpen(false)}
       />
     </section>

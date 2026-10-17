@@ -21,6 +21,10 @@ import {
   subscribeRouteTransitionLoading,
 } from "@/lib/ui/route-transition-loading-state";
 import {
+  isPaywallOpen,
+  subscribePaywallOpen,
+} from "@/lib/billing/paywall-open-state";
+import {
   isScanSurfaceActive,
   subscribeScanSurface,
 } from "@/lib/ui/scan-surface-state";
@@ -47,6 +51,11 @@ export function PageTransition({ children }: PageTransitionProps) {
     isRouteTransitionLoadingActive,
     () => false,
   );
+  const paywallOpen = useSyncExternalStore(
+    subscribePaywallOpen,
+    isPaywallOpen,
+    () => false,
+  );
   const skipPathTransitionRef = useRef(true);
 
   useLayoutEffect(() => {
@@ -70,6 +79,7 @@ export function PageTransition({ children }: PageTransitionProps) {
     scanQueryActive: searchParams.get("scan") === "1",
     scanSurfaceActive,
     routeTransitionLoadingActive,
+    paywallOpen,
   });
 
   return (
@@ -90,7 +100,7 @@ export function PageTransition({ children }: PageTransitionProps) {
       <div className="vd-page" data-vd-page data-pathname={pathname}>
         {children}
         {showLegalFooter ? (
-          <div className="relative isolate z-[100]">
+          <div className="relative isolate z-10">
             <LegalFooterNav
               className="mx-auto w-full max-w-lg px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
             />

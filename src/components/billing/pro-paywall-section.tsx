@@ -12,6 +12,7 @@ import { PAYWALL_APPLE_CLASS } from "@/lib/billing/paywall-apple";
 import {
   getPaywallPersonalization,
   resolvePaywallGoal,
+  type PaywallVehicleHeroContext,
 } from "@/lib/billing/paywall-personalization";
 import {
   PRO_PAYWALL_DISMISS_LABEL,
@@ -38,6 +39,7 @@ type ProPaywallSectionProps = {
   feature?: FeatureFlag;
   variant?: PaywallVariant;
   vehicleLabel?: string | null;
+  vehicleHero?: PaywallVehicleHeroContext | null;
   dismissHref?: string;
   dismissLabel?: string;
   statusMessage?: React.ReactNode;
@@ -51,6 +53,7 @@ export function ProPaywallSection({
   feature = FEATURE.DOCUMENT_VAULT,
   variant = "default",
   vehicleLabel = null,
+  vehicleHero = null,
   dismissHref,
   dismissLabel = PRO_PAYWALL_DISMISS_LABEL,
   statusMessage,
@@ -120,6 +123,7 @@ export function ProPaywallSection({
         benefits={personalization?.benefits}
         visualKind={personalization?.visualKind}
         visualAriaLabel={personalization?.visualAriaLabel}
+        vehicleHero={vehicleHero}
         statusMessage={statusMessage}
         belowFoldFooter={
           dismissHref ? (

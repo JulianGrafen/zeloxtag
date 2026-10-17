@@ -12,9 +12,22 @@ import {
   type PaywallVariant,
 } from "@/lib/permissions/feature-access";
 
-export type PaywallVisualKind = "resale_chart" | "showcase_qr" | "vault_gap";
+export type PaywallVisualKind = "vehicle_hero" | "showcase_qr" | "vault_gap";
+
+export type PaywallVehicleHeroContext = {
+  vehicleImage: string | null;
+  vehicleImageFallback?: string | null;
+  vehicleImagePreviewFallback?: string | null;
+  vehicleImageFrameless: boolean;
+  vehicleImageAlt?: string;
+};
 
 export type PaywallTriggerContext = {
+  vehicleImage?: string | null;
+  vehicleImageFallback?: string | null;
+  vehicleImagePreviewFallback?: string | null;
+  vehicleImageFrameless?: boolean;
+  vehicleImageAlt?: string;
   /** Contextual goal for this modal (e.g. Rechnung tile → Werterhalt). */
   goalOverride?: ZeloxPrimaryGoal;
   /** e.g. "BMW M3 · 2019" — personalisiert Headline. */
@@ -50,6 +63,26 @@ export function formatPaywallVehicleLabel(
 }
 
 /** Headline ohne Baujahr — „Dein Toyota GR Supra. Lückenlos.“ */
+export function paywallVehicleHeroFromContext(
+  context?: PaywallTriggerContext | null,
+): PaywallVehicleHeroContext | null {
+  if (!context) return null;
+  const hasImage =
+    context.vehicleImage?.trim() ||
+    context.vehicleImageFallback?.trim() ||
+    context.vehicleImagePreviewFallback?.trim();
+  if (!hasImage && context.vehicleImageFrameless !== true) {
+    return null;
+  }
+  return {
+    vehicleImage: context.vehicleImage ?? null,
+    vehicleImageFallback: context.vehicleImageFallback,
+    vehicleImagePreviewFallback: context.vehicleImagePreviewFallback,
+    vehicleImageFrameless: context.vehicleImageFrameless ?? false,
+    vehicleImageAlt: context.vehicleImageAlt,
+  };
+}
+
 export function paywallVehicleShortName(
   vehicleLabel: string | null | undefined,
 ): string | null {
@@ -121,12 +154,13 @@ export function getPaywallPersonalization(input: {
     subline: PRO_PAYWALL_CONVERSION_SUBLINE,
     vehicleEyebrow: null,
     showProBadge: false,
-    visualKind: "resale_chart",
+    visualKind: "vehicle_hero",
     benefits: PRO_PAYWALL_CONVERSION_BENEFITS,
     ctaLabel: PRO_TRIAL_LABEL,
     stickyMicroCopy: "",
     footnote: PRO_PAYWALL_CONVERSION_FOOTNOTE,
-    visualAriaLabel:
-      "Umbau-Werthaltung: mit lückenloser Dokumentation höherer Verkaufswert",
+    visualAriaLabel: vehicleShort
+      ? `Fahrzeugfoto: ${vehicleShort}`
+      : "Fahrzeugfoto in der Digitalen Akte",
   };
 }

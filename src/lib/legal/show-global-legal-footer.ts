@@ -25,10 +25,12 @@ export function shouldRenderGlobalLegalFooter(input: {
   scanQueryActive: boolean;
   scanSurfaceActive: boolean;
   routeTransitionLoadingActive?: boolean;
+  paywallOpen?: boolean;
 }): boolean {
   if (!showGlobalLegalFooter(input.pathname)) return false;
   if (input.publicShowcase) return false;
   if (input.scanQueryActive || input.scanSurfaceActive) return false;
   if (input.routeTransitionLoadingActive) return false;
+  if (input.paywallOpen) return false;
   return true;
 }

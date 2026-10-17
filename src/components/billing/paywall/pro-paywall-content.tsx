@@ -6,7 +6,10 @@ import {
   PaywallExhaustedKicker,
   PaywallOfferSections,
 } from "@/components/billing/paywall/paywall-layout";
-import type { PaywallVisualKind } from "@/lib/billing/paywall-personalization";
+import type {
+  PaywallVehicleHeroContext,
+  PaywallVisualKind,
+} from "@/lib/billing/paywall-personalization";
 import { PricingCards } from "@/components/billing/paywall/pricing-cards";
 import {
   PRO_PAYWALL_MODAL_BENEFITS,
@@ -35,6 +38,7 @@ type ProPaywallContentProps = {
   highlightLeadBenefit?: boolean;
   visualKind?: PaywallVisualKind;
   visualAriaLabel?: string;
+  vehicleHero?: PaywallVehicleHeroContext | null;
   vehicleEyebrow?: string | null;
   subline?: string;
 };
@@ -56,8 +60,9 @@ export function ProPaywallContent({
   ctaSlot,
   benefits = PRO_PAYWALL_MODAL_BENEFITS,
   highlightLeadBenefit = false,
-  visualKind = "resale_chart",
+  visualKind = "vehicle_hero",
   visualAriaLabel,
+  vehicleHero = null,
   vehicleEyebrow = null,
   subline = PRO_PAYWALL_MODAL_SUBLINE,
 }: ProPaywallContentProps) {
@@ -92,23 +97,33 @@ export function ProPaywallContent({
             className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]"
             aria-label="Pro-Angebot scrollen"
           >
-            <PaywallAnimatedGoalVisual
-              kind={visualKind}
-              ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
-              className="px-4 pb-3 pt-[max(2.75rem,calc(env(safe-area-inset-top)+2rem))]"
-            />
+            <div className="relative shrink-0 px-4 pt-4 sm:pt-5">
+              <PaywallAnimatedGoalVisual
+                kind={visualKind}
+                ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
+                vehicleHero={vehicleHero}
+                className={cn(
+                  "overflow-hidden rounded-[1.25rem]",
+                  "pt-[max(2.25rem,calc(env(safe-area-inset-top)+1.5rem))]",
+                )}
+                figureClassName="min-h-[12.5rem] sm:min-h-[13.5rem] pb-1"
+              />
+              <div className="pointer-events-none absolute inset-x-4 bottom-0 z-10 px-4 pb-4 pt-20">
+                <PaywallCopyBlock
+                  headline={headline}
+                  headlineId={headlineId}
+                  subline={subline}
+                  vehicleEyebrow={vehicleEyebrow}
+                  align="center"
+                  kicker={kicker}
+                  statusMessage={statusMessage}
+                  titleSize="modal"
+                  tone="hero-overlay"
+                />
+              </div>
+            </div>
 
             <div className="mx-auto w-full max-w-lg space-y-4 px-4 pt-3">
-              <PaywallCopyBlock
-                headline={headline}
-                headlineId={headlineId}
-                subline={subline}
-                vehicleEyebrow={vehicleEyebrow}
-                align="center"
-                kicker={kicker}
-                statusMessage={statusMessage}
-                titleSize="modal"
-              />
               {offerSections}
             </div>
           </div>
@@ -131,6 +146,7 @@ export function ProPaywallContent({
             <PaywallAnimatedGoalVisual
               kind={visualKind}
               ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
+              vehicleHero={vehicleHero}
               className="overflow-hidden rounded-2xl bg-[color:var(--paywall-grouped-bg)] ring-1 ring-[color:var(--paywall-grouped-separator)]"
             />
             {offerSections}

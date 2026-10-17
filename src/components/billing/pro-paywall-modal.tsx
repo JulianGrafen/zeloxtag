@@ -11,8 +11,10 @@ import { isAnnualPlanAvailable } from "@/lib/billing/constants";
 import { setPaywallOpen } from "@/lib/billing/paywall-open-state";
 import {
   getPaywallPersonalization,
+  paywallVehicleHeroFromContext,
   resolvePaywallGoal,
   type PaywallTriggerContext,
+  type PaywallVehicleHeroContext,
 } from "@/lib/billing/paywall-personalization";
 import {
   PAYWALL_APPLE_CLASS,
@@ -44,6 +46,7 @@ export function ProPaywallModal({
   isOwner = true,
   variant = "default",
   triggerContext,
+  vehicleHero: vehicleHeroProp,
   onClose,
 }: {
   open: boolean;
@@ -52,6 +55,8 @@ export function ProPaywallModal({
   isOwner?: boolean;
   variant?: PaywallVariant;
   triggerContext?: PaywallTriggerContext;
+  /** Live dashboard hero (wins over stale triggerContext image fields). */
+  vehicleHero?: PaywallVehicleHeroContext | null;
   onClose: () => void;
 }) {
   const showAnnualPlan = isAnnualPlanAvailable();
@@ -98,6 +103,13 @@ export function ProPaywallModal({
     });
   }, [feature, variant, triggerContext]);
 
+  const vehicleHero = useMemo(
+    () =>
+      vehicleHeroProp ??
+      paywallVehicleHeroFromContext(triggerContext),
+    [triggerContext, vehicleHeroProp],
+  );
+
   const aboHref = cloudAboHref(tagUuid);
   const successPath = `/v/${tagUuid}`;
 
@@ -139,7 +151,7 @@ export function ProPaywallModal({
       {open ? (
         <motion.div
           key="pro-paywall-layer"
-          className="fixed inset-0 z-[80] flex justify-center bg-[color:var(--paywall-modal-scrim)] backdrop-blur-md"
+          className="fixed inset-0 z-[110] flex justify-center bg-[color:var(--paywall-modal-scrim)] backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="pro-paywall-title"
@@ -188,6 +200,7 @@ export function ProPaywallModal({
                   benefits={personalization.benefits}
                   visualKind={personalization.visualKind}
                   visualAriaLabel={personalization.visualAriaLabel}
+                  vehicleHero={vehicleHero}
                   ctaSlot={
                     <StickyPaywallCta
                       label={personalization.ctaLabel}

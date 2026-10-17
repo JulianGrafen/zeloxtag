@@ -60,6 +60,7 @@ export function PaywallCopyBlock({
   kicker,
   statusMessage,
   titleSize = "modal",
+  tone = "default",
 }: {
   headline: string;
   headlineId?: string;
@@ -70,8 +71,11 @@ export function PaywallCopyBlock({
   kicker?: ReactNode;
   statusMessage?: ReactNode;
   titleSize?: "modal" | "section";
+  /** White type over the vehicle hero fade (dashboard-style). */
+  tone?: "default" | "hero-overlay";
 }) {
   const centered = align === "center";
+  const onHero = tone === "hero-overlay";
 
   return (
     <div
@@ -85,7 +89,8 @@ export function PaywallCopyBlock({
       {vehicleEyebrow ? (
         <p
           className={cn(
-            "text-[0.8rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]",
+            "text-[0.8rem] font-semibold tracking-[-0.02em]",
+            onHero ? "text-white/85 drop-shadow-sm" : "text-[color:var(--vd-text)]",
             centered ? "mx-auto max-w-[22rem]" : "",
           )}
         >
@@ -95,7 +100,10 @@ export function PaywallCopyBlock({
       <h2
         id={headlineId}
         className={cn(
-          "paywall-headline font-[family-name:var(--font-display)] font-bold tracking-[-0.03em] text-[color:var(--vd-text)]",
+          "paywall-headline font-[family-name:var(--font-display)] font-bold tracking-[-0.03em]",
+          onHero
+            ? "text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)]"
+            : "text-[color:var(--vd-text)]",
           titleSize === "modal"
             ? "text-[1.375rem] leading-[1.15] sm:text-[1.5rem]"
             : "text-[1.25rem] leading-snug",
@@ -106,7 +114,8 @@ export function PaywallCopyBlock({
       {subline ? (
         <p
           className={cn(
-            "paywall-subline text-[0.8125rem] leading-[1.35] text-[color:var(--vd-muted)]",
+            "paywall-subline text-[0.8125rem] leading-[1.35]",
+            onHero ? "text-zinc-300 drop-shadow-sm" : "text-[color:var(--vd-muted)]",
             centered ? "mx-auto max-w-[20rem]" : "",
           )}
         >
