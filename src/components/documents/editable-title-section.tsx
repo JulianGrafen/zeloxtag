@@ -10,7 +10,11 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DOCUMENT_DETAIL_TITLE_CLASS } from "@/components/documents/document-detail-hero";
-import { displayDocumentTitle } from "@/lib/documents/format";
+import { cn } from "@/lib/utils";
+import {
+  displayDocumentHeroTitle,
+  displayDocumentTitle,
+} from "@/lib/documents/format";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
@@ -21,6 +25,8 @@ type EditableTitleSectionProps = {
   vehicleId: string;
   tagUuid: string;
   title: string;
+  /** When set, trailing price text may be hidden from the hero title. */
+  documentAmount?: number | null;
   onSaved?: (title: string) => void;
   hideEditTrigger?: boolean;
   editRequest?: InvoiceDetailEditTarget | null;
@@ -37,6 +43,7 @@ export function EditableTitleSection({
   vehicleId,
   tagUuid,
   title,
+  documentAmount = null,
   onSaved,
   hideEditTrigger = false,
   editRequest = null,
@@ -46,18 +53,19 @@ export function EditableTitleSection({
 }: EditableTitleSectionProps) {
   const router = useRouter();
   const storedTitle = displayDocumentTitle(title);
+  const heroTitle = displayDocumentHeroTitle(title, documentAmount);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(storedTitle);
-  const [displayTitle, setDisplayTitle] = useState(storedTitle);
+  const [displayTitle, setDisplayTitle] = useState(heroTitle);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!editing) {
-      setDisplayTitle(storedTitle);
+      setDisplayTitle(displayDocumentHeroTitle(title, documentAmount));
       setDraft(storedTitle);
     }
-  }, [storedTitle, editing]);
+  }, [storedTitle, title, documentAmount, editing]);
 
   useEffect(() => {
     if (editRequest !== EDIT_TARGET || editPulse === 0) return;
@@ -91,7 +99,7 @@ export function EditableTitleSection({
         return;
       }
       showSavedToast();
-      setDisplayTitle(nextTitle);
+      setDisplayTitle(displayDocumentHeroTitle(nextTitle, documentAmount));
       onSaved?.(nextTitle);
       setEditing(false);
       router.refresh();
@@ -102,7 +110,7 @@ export function EditableTitleSection({
     <div id={sectionId} className="min-w-0 scroll-mt-24">
       {!editing ? (
         <div className="flex items-start gap-2">
-          <h1 className={`min-w-0 ${DOCUMENT_DETAIL_TITLE_CLASS}`}>
+          <h1 className={cn("min-w-0", DOCUMENT_DETAIL_TITLE_CLASS)}>
             {displayTitle}
           </h1>
           {!hideEditTrigger ? (
