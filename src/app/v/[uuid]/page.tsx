@@ -539,6 +539,7 @@ export default async function TagScanPage({
 
     return (
       <AppShell showNavbar={false}>
+        <div className="flex min-w-0 max-w-full flex-col overflow-x-clip">
         <TagDashboardShell
           vehicle={ownerTwin.vehicle!}
           documents={ownerTwin.documents}
@@ -570,6 +571,7 @@ export default async function TagScanPage({
           buildPlannerHint={buildPlannerHint}
           timelineEvents={timelineEvents}
         />
+        </div>
       </AppShell>
     );
   }
