@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { motion } from "motion/react";
 
 import type { ShareableBuildData } from "@/components/shareable-spec-card/types";
-import { ShowcaseDiscoverOptInBanner } from "@/components/showcase-swipe/showcase-discover-opt-in-banner";
+import { ShowcaseWeeklyRankCelebration } from "@/components/showcase-swipe/showcase-weekly-rank-celebration";
 import { ShowcaseDiscoverSection } from "@/components/showcase-swipe/showcase-discover-section";
 import { ShowcaseInviteFriends } from "@/components/showcase-swipe/showcase-invite-friends";
 import { ShowcaseSwipeDeck } from "@/components/showcase-swipe/ShowcaseSwipeDeck";
@@ -13,6 +13,9 @@ import { ShowcaseWeeklyPlacement } from "@/components/showcase-swipe/showcase-we
 import { WeeklyTopBuilds } from "@/components/showcase-swipe/weekly-top-builds";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
+import { fetchWeeklyTopBuildsClient } from "@/lib/showcase/fetch-weekly-top-builds-client";
+import { SHOWCASE_WEEKLY_LIKE_WINDOW_LABEL } from "@/lib/showcase/showcase-weekly-like-window";
+import type { ShowcaseWeeklyRankAward } from "@/lib/showcase/weekly-rank-award-types";
 import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
 import { cn } from "@/lib/utils";
 
@@ -28,20 +31,14 @@ type ShowcaseDiscoverExperienceProps = {
   profilSettingsHref: string;
   ownWeeklyRank: VehicleWeeklyShowcaseRank | null;
   ownTopThreeShareCardData: ShareableBuildData | null;
+  weeklyRankCelebration?: {
+    award: ShowcaseWeeklyRankAward;
+    shareCardData: ShareableBuildData;
+  } | null;
+  openWeeklyAwardFromEmail?: boolean;
   /** When set, page header already shows Platz · Likes — placement stays slim. */
   weeklyRankShownInHeader?: boolean;
 };
-
-function sortWeeklyBuilds(rows: WeeklyTopBuild[]): WeeklyTopBuild[] {
-  return [...rows]
-    .sort((a, b) => {
-      if (b.weeklyLikes !== a.weeklyLikes) {
-        return b.weeklyLikes - a.weeklyLikes;
-      }
-      return a.rank - b.rank;
-    })
-    .map((item, index) => ({ ...item, rank: index + 1 }));
-}
 
 export function ShowcaseDiscoverExperience({
   tagUuid,
@@ -53,6 +50,8 @@ export function ShowcaseDiscoverExperience({
   profilSettingsHref,
   ownWeeklyRank,
   ownTopThreeShareCardData,
+  weeklyRankCelebration = null,
+  openWeeklyAwardFromEmail = false,
   weeklyRankShownInHeader = false,
 }: ShowcaseDiscoverExperienceProps) {
   const [weeklyBuilds, setWeeklyBuilds] = useState(initialWeeklyBuilds);
@@ -60,30 +59,14 @@ export function ShowcaseDiscoverExperience({
   const rankingsRef = useRef<HTMLDivElement>(null);
   const eligible = isPublic && showcaseSwipeOptIn;
 
-  const onLiked = useCallback((card: ShowcaseSwipeCard) => {
-    setWeeklyBuilds((prev) => {
-      const existing = prev.find((b) => b.publicSlug === card.publicSlug);
-      if (existing) {
-        const next = prev.map((b) =>
-          b.publicSlug === card.publicSlug
-            ? { ...b, weeklyLikes: b.weeklyLikes + 1 }
-            : b,
-        );
-        return sortWeeklyBuilds(next).slice(0, 10);
-      }
-
-      const newcomer: WeeklyTopBuild = {
-        rank: prev.length + 1,
-        vehicleId: "",
-        publicSlug: card.publicSlug,
-        make: card.make,
-        model: card.model,
-        year: card.year,
-        weeklyLikes: 1,
-        heroImageSrc: card.heroImageSrc,
-      };
-      return sortWeeklyBuilds([...prev, newcomer]).slice(0, 10);
-    });
+  const onLiked = useCallback((_card: ShowcaseSwipeCard) => {
+    void fetchWeeklyTopBuildsClient(10)
+      .then((builds) => {
+        setWeeklyBuilds(builds);
+      })
+      .catch((error) => {
+        console.error("[entdecken] weekly top refresh failed", error);
+      });
   }, []);
 
   const handleDeckExhausted = useCallback(() => {
@@ -100,8 +83,12 @@ export function ShowcaseDiscoverExperience({
 
   return (
     <div className="flex flex-col gap-8">
-      {!eligible ? (
-        <ShowcaseDiscoverOptInBanner profilSettingsHref={profilSettingsHref} />
+      {weeklyRankCelebration ? (
+        <ShowcaseWeeklyRankCelebration
+          award={weeklyRankCelebration.award}
+          shareCardData={weeklyRankCelebration.shareCardData}
+          initiallyExpanded={openWeeklyAwardFromEmail}
+        />
       ) : null}
 
       <motion.section

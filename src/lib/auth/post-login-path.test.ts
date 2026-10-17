@@ -5,6 +5,7 @@ import {
   isGenericPostLoginNext,
   normalizeAuthCallbackNext,
   sanitizePostLoginPath,
+  vehicleTagPathTail,
 } from "@/lib/auth/post-login-path";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 
@@ -62,6 +63,22 @@ describe("sanitizePostLoginPath", () => {
     expect(
       sanitizePostLoginPath("/v/8f3a9b2c-1a2b-4c3d-8e9f-0a1b2c3d4e5f"),
     ).toBe("/v/8f3a9b2c-1a2b-4c3d-8e9f-0a1b2c3d4e5f");
+  });
+});
+
+describe("vehicleTagPathTail", () => {
+  it("keeps subpaths and query after /v/{id}", () => {
+    expect(
+      vehicleTagPathTail(
+        "/v/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/entdecken?tour=1",
+      ),
+    ).toBe("/entdecken?tour=1");
+  });
+
+  it("returns empty tail for tag root", () => {
+    expect(
+      vehicleTagPathTail("/v/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+    ).toBe("");
   });
 });
 

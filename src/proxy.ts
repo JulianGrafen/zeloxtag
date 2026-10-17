@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { applyStaticSecurityHeaders } from "@/lib/security/csp";
 import {
+  finalizePostLoginPath,
   isDemoOrShowcasePath,
   isGenericPostLoginNext,
   sanitizePostLoginPath,
@@ -142,7 +143,8 @@ export async function proxy(request: NextRequest) {
       !next.startsWith("//") &&
       !isGenericPostLoginNext(next)
     ) {
-      return secureRedirect(new URL(sanitizePostLoginPath(next), origin));
+      const href = await finalizePostLoginPath(userId, next);
+      return secureRedirect(new URL(href, origin));
     }
     return secureRedirect(new URL("/auth/continue", origin));
   }

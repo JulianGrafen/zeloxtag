@@ -84,6 +84,8 @@ export default async function GarageDashboardPage({
           accountDeletionGraceEndsAt={dashboard.accountDeletionGraceEndsAt}
           showcaseSwipeUnreadLikes={dashboard.showcaseSwipeUnreadLikes}
           showcaseSwipeTotalLikes={dashboard.showcaseSwipeTotalLikes}
+          weeklyRankAward={dashboard.weeklyRankAward}
+          weeklyRankAwardEntdeckenHref={dashboard.weeklyRankAwardEntdeckenHref}
           operatingCostHint={dashboard.operatingCostHint}
           buildPlannerHint={dashboard.buildPlannerHint}
           showTagShopPromo={

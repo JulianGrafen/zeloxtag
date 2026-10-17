@@ -4,6 +4,17 @@ function photoUsesContainLayout(src: string): boolean {
   return src.includes(".svg") || src.includes("dyno-chart");
 }
 
+/** Top Builds rank cards: owner photos cover; catalog cutouts contain on dark. */
+export function weeklyRankCardHeroImageClassName(
+  src: string,
+  useCoverLayout: boolean,
+): string {
+  if (useCoverLayout) {
+    return "object-cover object-[50%_48%] brightness-[1.03]";
+  }
+  return showcaseVehicleFocusImageClassName(src, "rankCard");
+}
+
 /**
  * Keeps the vehicle in frame (contain + bottom anchor) instead of cropping with cover.
  */

@@ -160,6 +160,17 @@ export type VehicleShowcaseLikeInbox = {
   last_seen_at: string;
 };
 
+export type ShowcaseWeeklyRankAwardRow = {
+  id: string;
+  user_id: string;
+  vehicle_id: string;
+  week_key: string;
+  rank: number;
+  weekly_likes: number;
+  created_at: string;
+  seen_at: string | null;
+};
+
 export type MembershipStatus = "pending" | "active" | "past_due" | "canceled";
 
 /** Paid Cloud Abo, synced from Stripe (`00038_memberships` + `00041_stripe_memberships`). */
@@ -850,6 +861,37 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "vehicle_showcase_like_inbox_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      showcase_weekly_rank_awards: {
+        Row: ShowcaseWeeklyRankAwardRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          vehicle_id: string;
+          week_key: string;
+          rank: number;
+          weekly_likes: number;
+          created_at?: string;
+          seen_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          vehicle_id?: string;
+          week_key?: string;
+          rank?: number;
+          weekly_likes?: number;
+          created_at?: string;
+          seen_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "showcase_weekly_rank_awards_vehicle_id_fkey";
             columns: ["vehicle_id"];
             referencedRelation: "vehicles";
             referencedColumns: ["id"];

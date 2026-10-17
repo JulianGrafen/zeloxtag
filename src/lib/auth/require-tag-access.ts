@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
 import {
   getTagVehicleAccess,
@@ -49,7 +50,7 @@ export async function requireTagWriter(
   if (!access.canWriteInvoices) {
     if (!access.sessionUserId) {
       const next = options?.loginNext ?? `/v/${result.tag.uuid}`;
-      redirect(`/login?next=${encodeURIComponent(next)}`);
+      redirect(loginGateHref(next));
     }
     redirect(`/v/${result.tag.uuid}`);
   }
@@ -98,7 +99,7 @@ export async function requireTagOwner(
   if (!access.isOwner) {
     if (!access.sessionUserId) {
       const next = options?.loginNext ?? `/v/${result.tag.uuid}`;
-      redirect(`/login?next=${encodeURIComponent(next)}`);
+      redirect(loginGateHref(next));
     }
     redirect(`/v/${result.tag.uuid}`);
   }

@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, X } from "lucide-react";
-
 import {
   ShowcaseSwipeStack,
   type ShowcaseSwipeStackHandle,
@@ -11,7 +9,6 @@ import {
 import { preloadImageHrefs } from "@/lib/image/preload-image-hrefs";
 import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
-import { cn } from "@/lib/utils";
 
 type ShowcaseSwipeDeckProps = {
   tagUuid: string;
@@ -70,30 +67,7 @@ export function ShowcaseSwipeDeck({
   const [hadCardsThisSession, setHadCardsThisSession] = useState(false);
   const [busy, setBusy] = useState(false);
   const stackRef = useRef<ShowcaseSwipeStackHandle>(null);
-  const [highlightedAction, setHighlightedAction] = useState<
-    "like" | "pass" | null
-  >(null);
-  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deckExhaustedNotifiedRef = useRef(false);
-
-  const flashActionButton = useCallback((decision: "like" | "pass") => {
-    if (highlightTimerRef.current) {
-      clearTimeout(highlightTimerRef.current);
-    }
-    setHighlightedAction(decision);
-    highlightTimerRef.current = setTimeout(() => {
-      setHighlightedAction(null);
-      highlightTimerRef.current = null;
-    }, 520);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (highlightTimerRef.current) {
-        clearTimeout(highlightTimerRef.current);
-      }
-    };
-  }, []);
 
   const reloadDeck = useCallback(async () => {
     setHydrating(true);
@@ -269,42 +243,13 @@ export function ShowcaseSwipeDeck({
           cards={cards}
           disabled={busy}
           onSwipe={handleSwipe}
-          onDecisionHighlight={flashActionButton}
           onOpen={openShowcase}
         />
       </div>
 
-      <div className="flex items-center justify-center gap-4">
-        <button
-          type="button"
-          disabled={busy}
-          aria-label="Pass"
-          className={cn(
-            "flex h-14 w-14 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-rose-500 shadow-[var(--vd-shadow-sm)] transition-all duration-300 disabled:opacity-50",
-            highlightedAction === "pass" &&
-              "scale-110 border-rose-400 bg-rose-500/20 text-rose-600 shadow-[0_0_28px_rgba(244,63,94,0.45)] ring-[3px] ring-rose-400/60",
-          )}
-          onClick={() => stackRef.current?.swipeTop("pass")}
-        >
-          <X className="h-7 w-7" strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          aria-label="Like"
-          className={cn(
-            "flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/40 bg-[color:var(--vd-surface)] text-emerald-600 shadow-[var(--vd-shadow-sm)] transition-all duration-300 disabled:opacity-50",
-            highlightedAction === "like" &&
-              "scale-110 border-emerald-400 bg-emerald-500/20 text-emerald-700 shadow-[0_0_32px_rgba(16,185,129,0.45)] ring-[3px] ring-emerald-400/65",
-          )}
-          onClick={() => stackRef.current?.swipeTop("like")}
-        >
-          <Heart className="h-8 w-8" strokeWidth={2} />
-        </button>
-      </div>
-
-      <p className="mt-2 text-center text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Links = Pass · Rechts = Like · Tippen öffnet Showcase
+      <p className="text-center text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
+        Wischen oder Like/Pass auf der Karte · Showcase nur über „Showcase
+        ansehen“
       </p>
     </div>
   );

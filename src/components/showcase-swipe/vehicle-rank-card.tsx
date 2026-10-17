@@ -2,14 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 
-import { showcaseVehicleFocusImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
+import { weeklyRankCardHeroImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
 import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
 import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
 import { cn } from "@/lib/utils";
 
 function rankBadgeClass(rank: number): string {
   const base =
-    "absolute left-3 top-3 z-10 flex h-8 min-w-8 items-center justify-center rounded-lg px-2 font-mono text-sm font-semibold tabular-nums tracking-tight ring-1 backdrop-blur-md";
+    "absolute left-3 top-3 z-20 flex h-8 min-w-8 items-center justify-center rounded-lg px-2 font-mono text-sm font-semibold tabular-nums tracking-tight ring-1 backdrop-blur-md";
   if (rank === 1) {
     return cn(
       base,
@@ -40,6 +40,7 @@ export function VehicleRankCard({
   className,
 }: VehicleRankCardProps) {
   const title = [build.make, build.model].filter(Boolean).join(" ");
+  const heroSrc = build.heroImageSrc?.trim() || null;
 
   return (
     <Link
@@ -50,37 +51,40 @@ export function VehicleRankCard({
         className,
       )}
     >
-      <div className="relative aspect-[3/4] w-full">
-        {build.heroImageSrc ? (
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-950">
+        {heroSrc ? (
           <Image
-            src={build.heroImageSrc}
-            alt={title}
+            src={heroSrc}
+            alt=""
             fill
-            className={showcaseVehicleFocusImageClassName(
-              build.heroImageSrc,
-              "rankCard",
+            priority={build.rank <= 3}
+            className={cn(
+              "pointer-events-none transition-transform duration-300 group-active:scale-[1.03]",
+              weeklyRankCardHeroImageClassName(
+                heroSrc,
+                build.heroImageUsesCover,
+              ),
             )}
             sizes="180px"
-            unoptimized={build.heroImageSrc.startsWith("/api/")}
+            unoptimized={heroSrc.startsWith("/api/")}
           />
         ) : (
-          <div className="absolute inset-0 bg-neutral-900" aria-hidden />
-        )}
-
-        <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"
-          aria-hidden
-        />
-
-        <div className={rankBadgeClass(build.rank)}>#{build.rank}</div>
-
-        {!build.heroImageSrc ? (
           <div className="absolute inset-0 flex items-center justify-center text-[0.72rem] text-white/45">
             Kein Bild
           </div>
-        ) : null}
+        )}
 
-        <div className="absolute inset-x-0 bottom-0 z-10 p-3.5">
+        <div
+          className="pointer-events-none absolute inset-0 z-[1]"
+          aria-hidden
+        >
+          <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/40 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black via-black/90 to-transparent" />
+        </div>
+
+        <div className={rankBadgeClass(build.rank)}>#{build.rank}</div>
+
+        <div className="absolute inset-x-0 bottom-0 z-10 p-3.5 pt-8">
           <p className="truncate text-[0.92rem] font-semibold leading-tight tracking-tight">
             {title}
           </p>
@@ -91,6 +95,7 @@ export function VehicleRankCard({
           ) : null}
           <p
             className="mt-2 flex items-center gap-1.5 font-mono text-[0.78rem] font-medium tabular-nums tracking-tight text-white/90"
+            aria-label={`${build.weeklyLikes} Likes`}
           >
             <Heart
               className="h-3.5 w-3.5 shrink-0 text-rose-400"
@@ -98,11 +103,9 @@ export function VehicleRankCard({
               aria-hidden
             />
             {build.weeklyLikes}
-            <span className="text-[0.65rem] font-normal text-white/50">
-              diese Woche
-            </span>
           </p>
         </div>
+        <span className="sr-only">{title}</span>
       </div>
     </Link>
   );

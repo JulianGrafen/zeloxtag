@@ -22,7 +22,10 @@ import {
   toContributorClientTagScanResult,
   toOwnerClientTagScanResult,
 } from "@/lib/tags/public-tag-dto";
+import { loadPendingWeeklyRankAwardForVehicle } from "@/lib/showcase/load-weekly-rank-award";
+import type { ShowcaseWeeklyRankAward } from "@/lib/showcase/weekly-rank-award-types";
 import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
+import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
 import { buildPlannerDashboardHint } from "@/lib/build-planner/build-planner-summary";
 import { listPlannedModsWithTodosForVehicle } from "@/lib/build-planner/planned-mods-repository";
@@ -54,6 +57,8 @@ export type OwnerDashboardPayload = {
   accountDeletionGraceEndsAt: string | null;
   showcaseSwipeUnreadLikes: number;
   showcaseSwipeTotalLikes: number;
+  weeklyRankAward: ShowcaseWeeklyRankAward | null;
+  weeklyRankAwardEntdeckenHref: string | null;
   operatingCostHint: OperatingCostDashboardHint | null;
   buildPlannerHint: { subtitle: string } | null;
 };
@@ -152,6 +157,8 @@ export async function loadOwnerDashboardForVehicle(
 
   let showcaseSwipeUnreadLikes = 0;
   let showcaseSwipeTotalLikes = 0;
+  let weeklyRankAward: ShowcaseWeeklyRankAward | null = null;
+  let weeklyRankAwardEntdeckenHref: string | null = null;
   if (access.isOwner && user && !isDemoShowcase) {
     try {
       const inbox = await loadShowcaseSwipeInboxSummary();
@@ -160,6 +167,18 @@ export async function loadOwnerDashboardForVehicle(
       showcaseSwipeTotalLikes = row?.totalLikes ?? 0;
     } catch (error) {
       console.error("[garage-dashboard] swipe inbox", error);
+    }
+    try {
+      const celebration = await loadPendingWeeklyRankAwardForVehicle(
+        user.id,
+        vehicle.id,
+      );
+      if (celebration) {
+        weeklyRankAward = celebration.award;
+        weeklyRankAwardEntdeckenHref = vehicleSurfaceHref(scope, "entdecken");
+      }
+    } catch (error) {
+      console.error("[garage-dashboard] weekly rank award", error);
     }
   }
 
@@ -188,6 +207,8 @@ export async function loadOwnerDashboardForVehicle(
       deletionState?.status === "grace" ? deletionState.graceEndsAt : null,
     showcaseSwipeUnreadLikes,
     showcaseSwipeTotalLikes,
+    weeklyRankAward,
+    weeklyRankAwardEntdeckenHref,
     operatingCostHint,
     buildPlannerHint,
   };

@@ -15,6 +15,7 @@ import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareab
 import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank";
 import { topThreeWeeklyRankOrNull } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import { formatDiscoverWeeklyRankMeta } from "@/lib/showcase/discover-weekly-rank-meta";
+import { loadPendingWeeklyRankAwardForVehicle } from "@/lib/showcase/load-weekly-rank-award";
 import { loadWeeklyTopBuilds } from "@/lib/showcase/weekly-top-builds";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -22,6 +23,7 @@ import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface EntdeckenPageProps {
   params: Promise<{ vehicleId: string }>;
+  searchParams: Promise<{ weeklyAward?: string }>;
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -33,10 +35,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ShowcaseEntdeckenPage({
   params,
+  searchParams,
 }: EntdeckenPageProps) {
   const { vehicleId } = await params;
+  const { weeklyAward } = await searchParams;
   const garageNavScope = scopeFromGarageRoute(vehicleId);
   const { scope, result } = await requireVehicleSurfaceOwner({ vehicleId }, {
+    pathSegment: "entdecken",
     load: {
       documents: {
         mode: "types",
@@ -54,6 +59,16 @@ export default async function ShowcaseEntdeckenPage({
   const user = await getCurrentUser();
   if (!user) {
     redirect(loginGateHref(vehicleSurfaceHref(scope, "entdecken")));
+  }
+
+  let weeklyRankCelebration = null;
+  try {
+    weeklyRankCelebration = await loadPendingWeeklyRankAwardForVehicle(
+      user.id,
+      vehicle.id,
+    );
+  } catch (error) {
+    console.error("[entdecken] weekly award preload failed", error);
   }
 
   const { isConfigured } = getSupabaseEnv();
@@ -123,6 +138,8 @@ export default async function ShowcaseEntdeckenPage({
           profilSettingsHref={profilSettingsHref}
           ownWeeklyRank={ownWeeklyRank}
           ownTopThreeShareCardData={ownTopThreeShareCardData}
+          weeklyRankCelebration={weeklyRankCelebration}
+          openWeeklyAwardFromEmail={weeklyAward === "1"}
           weeklyRankShownInHeader={Boolean(weeklyRankMeta)}
         />
         <LegalFooterNav className="pt-2" />

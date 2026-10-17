@@ -27,7 +27,10 @@ export function becameWeeklyTopBuildLeader(
   return true;
 }
 
-/** UTC ISO week bucket for one-shot weekly-top emails per vehicle. */
+/**
+ * UTC ISO week bucket for one-shot weekly-top emails per vehicle.
+ * Like counts use a rolling 7-day window in Postgres — not this calendar week.
+ */
 export function weeklyTopBuildReminderWeekKey(date = new Date()): string {
   const utc = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),

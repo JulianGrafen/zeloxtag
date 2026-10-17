@@ -293,6 +293,13 @@ async function activeTagExists(tagUuid: string): Promise<boolean> {
   return Boolean(data?.uuid);
 }
 
+/** Subpath + query after `/v/{identifier}` (used when rewriting mis-scanned vehicle IDs). */
+export function vehicleTagPathTail(path: string): string {
+  const parsed = new URL(path.trim(), "https://app.zeloxtag.de");
+  const afterTag = parsed.pathname.replace(/^\/v\/[^/]+/, "");
+  return `${afterTag}${parsed.search}${parsed.hash}`;
+}
+
 /** Rewrite stale `/v/{tag}` deep links to garage or a fresh vehicle resolve. */
 async function coerceResolvedPostLoginPath(
   userId: string,
@@ -304,13 +311,16 @@ async function coerceResolvedPostLoginPath(
   const identifier = match[1]?.trim() ?? "";
   if (!identifier) return path;
 
+  const tail = vehicleTagPathTail(path);
+
   if (UUID_RE.test(identifier) && (await userOwnsVehicleId(userId, identifier))) {
-    return await ownerDashboardPathForVehicle(identifier);
+    const base = await ownerDashboardPathForVehicle(identifier);
+    return `${base}${tail}`;
   }
 
   if (!(await activeTagExists(identifier))) {
     const fallback = await resolveViaSessionUser(userId);
-    if (fallback) return fallback;
+    if (fallback) return `${fallback}${tail}`;
   }
 
   return path;

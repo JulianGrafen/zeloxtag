@@ -69,7 +69,9 @@ export function MfaVerifyForm({ nextPath = "/dashboard" }: MfaVerifyFormProps) {
               return;
             }
             if (result.status === "verified") {
-              window.location.assign("/auth/continue");
+              window.location.assign(
+                result.redirectTo ?? "/auth/continue",
+              );
               return;
             }
             if (result.status === "error") {

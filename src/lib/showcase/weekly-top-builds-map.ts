@@ -9,6 +9,8 @@ export type WeeklyTopBuild = {
   year: number | null;
   weeklyLikes: number;
   heroImageSrc: string | null;
+  /** Owner upload → full-bleed cover; catalog / cutout → contain on dark (avoids white margins). */
+  heroImageUsesCover: boolean;
 };
 
 export type WeeklyTopBuildRow = {
@@ -43,12 +45,10 @@ export function mapWeeklyTopBuildRow(
     model: row.model ?? "",
     year: row.year ?? null,
     weeklyLikes,
-    heroImageSrc:
-      row.has_silhouette && vehicleId
-        ? showcaseSilhouetteSwipeUrl(vehicleId, {
-            silhouetteImageUrl: row.silhouette_image_url,
-            updatedAt: row.updated_at,
-          })
-        : null,
+    heroImageSrc: showcaseSilhouetteSwipeUrl(vehicleId, {
+      silhouetteImageUrl: row.silhouette_image_url,
+      updatedAt: row.updated_at,
+    }),
+    heroImageUsesCover: Boolean(row.has_silhouette),
   };
 }

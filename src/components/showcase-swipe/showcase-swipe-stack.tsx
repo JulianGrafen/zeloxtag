@@ -8,8 +8,10 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { Heart, X } from "lucide-react";
 import {
   animate,
   motion,
@@ -26,8 +28,6 @@ import "./stack.css";
 
 const SWIPE_OFFSET_PX = 56;
 const SWIPE_VELOCITY_PX_S = 320;
-const OPEN_TAP_MAX_OFFSET_PX = 12;
-const OPEN_TAP_MAX_VELOCITY_PX_S = 180;
 const EXIT_OFFSET_PX = 520;
 const MAX_VISIBLE = 4;
 const ANIMATION = { stiffness: 260, damping: 20 };
@@ -75,20 +75,6 @@ function resolveSwipeDecision(info: PanInfo): "like" | "pass" | null {
   return null;
 }
 
-function isOpenTap(info: PanInfo): boolean {
-  const { x, y } = info.offset;
-  if (
-    Math.abs(x) > OPEN_TAP_MAX_OFFSET_PX ||
-    Math.abs(y) > OPEN_TAP_MAX_OFFSET_PX
-  ) {
-    return false;
-  }
-  return (
-    Math.abs(info.velocity.x) < OPEN_TAP_MAX_VELOCITY_PX_S &&
-    Math.abs(info.velocity.y) < OPEN_TAP_MAX_VELOCITY_PX_S
-  );
-}
-
 async function springMotionValue(
   value: MotionValue<number>,
   target: number,
@@ -119,7 +105,6 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
     const passOpacity = useTransform(x, [-80, 0], [1, 0]);
     const [isExiting, setIsExiting] = useState(false);
     const exitingRef = useRef(false);
-    const dragGestureRef = useRef(false);
 
     const reset = useCallback(() => {
       exitingRef.current = false;
@@ -149,10 +134,6 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
       onOpen(card);
     }, [card, disabled, onOpen]);
 
-    const handleDragStart = useCallback(() => {
-      dragGestureRef.current = true;
-    }, []);
-
     const handleDragEnd = useCallback(
       (_: unknown, info: PanInfo) => {
         if (disabled || exitingRef.current) return;
@@ -160,32 +141,18 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
         const decision = resolveSwipeDecision(info);
         if (decision) {
           void flyOff(decision);
-          dragGestureRef.current = false;
           return;
         }
 
-        if (isOpenTap(info)) {
-          openShowcaseFromGesture();
-          dragGestureRef.current = false;
-          void springMotionValue(x, 0, SPRING_BACK);
-          void springMotionValue(y, 0, SPRING_BACK);
-          return;
-        }
-
-        dragGestureRef.current = false;
         void springMotionValue(x, 0, SPRING_BACK);
         void springMotionValue(y, 0, SPRING_BACK);
       },
-      [disabled, flyOff, openShowcaseFromGesture, x, y],
+      [disabled, flyOff, x, y],
     );
 
-    const handleTap = useCallback(() => {
-      if (dragGestureRef.current) {
-        dragGestureRef.current = false;
-        return;
-      }
-      openShowcaseFromGesture();
-    }, [openShowcaseFromGesture]);
+    const stopDragPropagation = useCallback((event: ReactPointerEvent) => {
+      event.stopPropagation();
+    }, []);
 
     return (
       <motion.div
@@ -197,9 +164,7 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
         dragDirectionLock
         dragMomentum={false}
         whileTap={{ cursor: "grabbing" }}
-        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onTap={handleTap}
       >
         <motion.div
           className="stack-card"
@@ -235,6 +200,51 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
             className="select-none touch-none"
             imagePriority
           />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-3 bg-gradient-to-t from-neutral-950 via-neutral-950/90 to-transparent px-4 pb-4 pt-10"
+            aria-hidden={false}
+          >
+            <button
+              type="button"
+              disabled={disabled || isExiting}
+              className="pointer-events-auto min-h-9 rounded-full border border-white/15 bg-black/40 px-4 py-1.5 text-[0.72rem] font-semibold tracking-wide text-white/90 backdrop-blur-sm transition active:scale-[0.98] disabled:opacity-50"
+              onPointerDown={stopDragPropagation}
+              onClick={(event) => {
+                event.stopPropagation();
+                openShowcaseFromGesture();
+              }}
+            >
+              Showcase ansehen
+            </button>
+            <div className="pointer-events-auto flex w-full max-w-[15rem] items-center justify-between gap-4">
+              <button
+                type="button"
+                disabled={disabled || isExiting}
+                aria-label="Pass"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-rose-400 shadow-lg backdrop-blur-md transition active:scale-95 disabled:opacity-50"
+                onPointerDown={stopDragPropagation}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void flyOff("pass");
+                }}
+              >
+                <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+              </button>
+              <button
+                type="button"
+                disabled={disabled || isExiting}
+                aria-label="Like"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-emerald-400/35 bg-black/45 text-emerald-400 shadow-lg backdrop-blur-md transition active:scale-95 disabled:opacity-50"
+                onPointerDown={stopDragPropagation}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void flyOff("like");
+                }}
+              >
+                <Heart className="h-7 w-7" strokeWidth={2.25} aria-hidden />
+              </button>
+            </div>
+          </div>
         </motion.div>
       </motion.div>
     );

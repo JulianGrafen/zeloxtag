@@ -50,6 +50,8 @@ import {
   setDashboardPromptPhase,
 } from "@/lib/ui/dashboard-prompt-orchestrator";
 import type { OperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/types";
+import { ShowcaseWeeklyRankDashboardNotice } from "@/components/showcase-swipe/showcase-weekly-rank-dashboard-notice";
+import type { ShowcaseWeeklyRankAward } from "@/lib/showcase/weekly-rank-award-types";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { TimelineEvent } from "@/lib/validations/timelineSchema";
@@ -198,6 +200,8 @@ interface TagDashboardShellProps {
   accountDeletionGraceEndsAt?: string | null;
   showcaseSwipeUnreadLikes?: number;
   showcaseSwipeTotalLikes?: number;
+  weeklyRankAward?: ShowcaseWeeklyRankAward | null;
+  weeklyRankAwardEntdeckenHref?: string | null;
   operatingCostHint?: OperatingCostDashboardHint | null;
   buildPlannerHint?: { subtitle: string } | null;
   showTagShopPromo?: boolean;
@@ -231,6 +235,8 @@ export function TagDashboardShell({
   accountDeletionGraceEndsAt = null,
   showcaseSwipeUnreadLikes = 0,
   showcaseSwipeTotalLikes = 0,
+  weeklyRankAward = null,
+  weeklyRankAwardEntdeckenHref = null,
   operatingCostHint = null,
   buildPlannerHint = null,
   showTagShopPromo = false,
@@ -909,6 +915,14 @@ export function TagDashboardShell({
     <>
       {isOwner && accountDeletionGraceEndsAt ? (
         <AccountDeletionBanner graceEndsAt={accountDeletionGraceEndsAt} />
+      ) : null}
+      {isOwner && weeklyRankAward && weeklyRankAwardEntdeckenHref ? (
+        <div className="px-4 pt-2 sm:px-5">
+          <ShowcaseWeeklyRankDashboardNotice
+            award={weeklyRankAward}
+            entdeckenHref={weeklyRankAwardEntdeckenHref}
+          />
+        </div>
       ) : null}
       <TagDashboardView
         vehicle={displayVehicle}

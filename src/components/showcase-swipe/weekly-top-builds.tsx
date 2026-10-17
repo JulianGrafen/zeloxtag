@@ -2,6 +2,7 @@
 
 import { ShowcaseDiscoverSection } from "@/components/showcase-swipe/showcase-discover-section";
 import { VehicleRankCard } from "@/components/showcase-swipe/vehicle-rank-card";
+import { SHOWCASE_WEEKLY_LIKE_WINDOW_LABEL } from "@/lib/showcase/showcase-weekly-like-window";
 import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
 type WeeklyTopBuildsProps = {
   builds: WeeklyTopBuild[];
@@ -16,8 +17,8 @@ export function WeeklyTopBuilds({
 }: WeeklyTopBuildsProps) {
   return (
     <ShowcaseDiscoverSection
-      title="Top der Woche"
-      subtitle="Meiste Likes in 7 Tagen"
+      title="Top Builds"
+      subtitle={`Meiste Likes in ${SHOWCASE_WEEKLY_LIKE_WINDOW_LABEL}`}
       className={className}
       id="weekly-top-builds"
     >

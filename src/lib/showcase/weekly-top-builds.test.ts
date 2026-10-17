@@ -23,6 +23,7 @@ describe("mapWeeklyTopBuildRow", () => {
       year: 2021,
       weeklyLikes: 12,
       heroImageSrc: expect.stringContaining("/api/vehicle/silhouette/veh-1"),
+      heroImageUsesCover: true,
     });
   });
 
@@ -39,6 +40,23 @@ describe("mapWeeklyTopBuildRow", () => {
         has_silhouette: false,
       }),
     ).toBeNull();
+  });
+
+  it("builds hero proxy URL even without stored silhouette", () => {
+    const build = mapWeeklyTopBuildRow({
+      rank: 2,
+      vehicle_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      public_slug: "golf-r",
+      make: "VW",
+      model: "Golf R",
+      year: 2016,
+      weekly_likes: 3,
+      has_silhouette: false,
+    });
+    expect(build?.heroImageSrc).toContain(
+      "/api/vehicle/silhouette/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    );
+    expect(build?.heroImageUsesCover).toBe(false);
   });
 
   it("rejects zero weekly likes", () => {
