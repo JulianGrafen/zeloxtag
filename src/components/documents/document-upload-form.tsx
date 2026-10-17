@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload } from "lucide-react";
 import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 
@@ -51,7 +50,6 @@ export function DocumentUploadForm({
   backHref,
   vehicleSurfaceScope,
 }: DocumentUploadFormProps) {
-  const router = useRouter();
   const [title, setTitle] = useState("");
   const [type, setType] = useState<DocumentType>(lockType ?? defaultType);
   const resolvedBackHref =
@@ -122,7 +120,7 @@ export function DocumentUploadForm({
               return;
             }
             showSavedToast();
-            router.push(
+            window.location.assign(
               documentsListHref(
                 result.tagUuid,
                 result.document.type,
@@ -134,7 +132,6 @@ export function DocumentUploadForm({
                 },
               ),
             );
-            router.refresh();
           });
         }}
       >

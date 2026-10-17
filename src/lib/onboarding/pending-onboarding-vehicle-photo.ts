@@ -1,9 +1,13 @@
 "use client";
 
-import { compressSilhouetteImage } from "@/lib/vehicles/compress-silhouette-image";
+import imageCompression from "browser-image-compression";
+
+import { SILHOUETTE_CLIENT_MAX_EDGE_PX } from "@/lib/vehicles/silhouette-constants";
 
 const PENDING_PHOTO_KEY = "zlx-onboarding-pending-photo";
 const PENDING_PHOTO_SKIP_KEY = "zlx-onboarding-pending-photo-skipped";
+/** sessionStorage quota — JPEG pending blob, not full PNG silhouette. */
+const PENDING_MAX_BYTES = 4_000_000;
 
 type StoredPhoto = {
   mime: string;
@@ -28,17 +32,39 @@ function fromBase64(base64: string): Uint8Array {
   return bytes;
 }
 
+async function compressForPendingSessionStorage(file: File): Promise<File | null> {
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "vehicle-photo";
+  try {
+    const compressed = await imageCompression(file, {
+      maxSizeMB: 1.25,
+      maxWidthOrHeight: SILHOUETTE_CLIENT_MAX_EDGE_PX,
+      useWebWorker: false,
+      fileType: "image/jpeg",
+      initialQuality: 0.82,
+    });
+    const bytes = new Uint8Array(await compressed.arrayBuffer());
+    if (bytes.byteLength > PENDING_MAX_BYTES) return null;
+    return new File([bytes], `${baseName}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function storePendingOnboardingVehiclePhoto(
   file: File,
 ): Promise<void> {
   if (typeof window === "undefined") return;
-  const compressed = await compressSilhouetteImage(file);
+  const compressed = await compressForPendingSessionStorage(file);
+  if (!compressed) return;
+
   const bytes = new Uint8Array(await compressed.arrayBuffer());
-  if (bytes.byteLength > 900_000) return;
   const payload: StoredPhoto = {
-    mime: compressed.type || "image/png",
+    mime: compressed.type || "image/jpeg",
     base64: toBase64(bytes),
-    name: compressed.name || "vehicle-photo.png",
+    name: compressed.name || "vehicle-photo.jpg",
   };
   try {
     sessionStorage.setItem(PENDING_PHOTO_KEY, JSON.stringify(payload));

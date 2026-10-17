@@ -1,7 +1,7 @@
 "use client";
 
 import { Camera, ImagePlus, Loader2, X } from "lucide-react";
-import { useEffect, useId, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import { appendInvoiceDocumentMedia } from "@/actions/append-invoice-document-media";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
@@ -51,6 +51,8 @@ export function InvoiceAddPhotosSheet({
   const cameraInputId = `${inputId}-camera`;
   const galleryInputId = `${inputId}-gallery`;
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
+  const photosRef = useRef(photos);
+  photosRef.current = photos;
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { compressFile, isCompressing, error: compressError } =
@@ -65,19 +67,17 @@ export function InvoiceAddPhotosSheet({
   const busy = pending || isCompressing;
 
   useEffect(() => {
-    if (!open) {
-      photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
-      setPhotos([]);
-      setError(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when sheet closes
+    if (open) return;
+    photosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+    setPhotos([]);
+    setError(null);
   }, [open]);
 
   useEffect(() => {
     return () => {
-      photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+      photosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
     };
-  }, [photos]);
+  }, []);
 
   async function addFiles(fileList: FileList | null) {
     if (!fileList?.length || remainingSlots <= 0) return;

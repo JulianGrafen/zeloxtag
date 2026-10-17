@@ -7,7 +7,6 @@ import {
   useTransition,
   type ChangeEvent,
 } from "react";
-import { useRouter } from "next/navigation";
 import {
   Archive,
   ArrowLeft,
@@ -185,7 +184,6 @@ export function VaultUploadWizard({
   backHref,
   backLabel = "Zurück",
 }: VaultUploadWizardProps) {
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const filePickerAppendRef = useRef(false);
   const pagePreviewUrlsRef = useRef<string[]>([]);
@@ -513,8 +511,7 @@ export function VaultUploadWizard({
       }
 
       showSavedToast();
-      router.push(resolvedSuccessHref);
-      router.refresh();
+      window.location.assign(resolvedSuccessHref);
     });
   }
 

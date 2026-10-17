@@ -20,7 +20,7 @@ export default async function VehicleSpecsPage({
 }: VehicleSpecsPageProps) {
   const { vehicleId } = await params;
   const { scope, result, access, isDemoShowcase } = await requireVehicleSurfaceOwner({ vehicleId }, {
-    loginNext: `/garage/${vehicleId}/daten/daten`,
+    loginNext: `/garage/${vehicleId}/daten`,
   });
   const vehicle = result.vehicle;
   if (!vehicle) {

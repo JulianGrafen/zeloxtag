@@ -61,11 +61,9 @@ import {
 } from "@/lib/onboarding/primary-goal";
 import {
   clearOnboardingVehiclePhotoSkipped,
-  clearPendingOnboardingVehiclePhoto,
   readOnboardingVehiclePhotoSkipped,
-  readPendingOnboardingVehiclePhoto,
 } from "@/lib/onboarding/pending-onboarding-vehicle-photo";
-import { uploadVehiclePhotoClient } from "@/lib/vehicles/upload-vehicle-photo-client";
+import { flushPendingOnboardingVehiclePhoto } from "@/lib/onboarding/flush-pending-onboarding-vehicle-photo";
 
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
 import { TagDashboardView } from "./tag-dashboard-view";
@@ -399,19 +397,13 @@ export function TagDashboardShell({
         clearOnboardingVehiclePhotoSkipped();
       }
 
-      const pendingFile = await readPendingOnboardingVehiclePhoto();
-      if (!pendingFile || cancelled) return;
-
-      try {
-        const uploaded = await uploadVehiclePhotoClient({
-          vehicleId: vehicle.id,
-          tagUuid: tagUuid?.trim() || undefined,
-          file: pendingFile,
-        });
-        clearPendingOnboardingVehiclePhoto();
+      const uploaded = await flushPendingOnboardingVehiclePhoto({
+        vehicleId: vehicle.id,
+        tagUuid: tagUuid?.trim() || undefined,
+        isCancelled: () => cancelled,
+      });
+      if (uploaded && !cancelled) {
         handleSilhouetteUploaded(uploaded);
-      } catch {
-        /* keep pending for a later visit */
       }
     })();
 

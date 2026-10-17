@@ -23,7 +23,7 @@ export default async function VehicleFuelEntryEditPage({
 }: FuelEntryEditPageProps) {
   const { vehicleId, entryId } = await params;
   const { scope, result, isDemoShowcase } = await requireVehicleSurfaceOwner({ vehicleId }, {
-    loginNext: `/garage/${vehicleId}/tanken/[entryId]/tanken/${entryId}`,
+    loginNext: `/garage/${vehicleId}/tanken/${entryId}`,
   });
 
   if (isDemoShowcase) {

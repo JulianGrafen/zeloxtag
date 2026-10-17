@@ -22,7 +22,7 @@ export default async function VehicleFahrzeugbildPage({
 }: FahrzeugbildPageProps) {
   const { vehicleId } = await params;
   const { scope, result, access, isDemoShowcase } = await requireVehicleSurfaceOwner({ vehicleId }, {
-    loginNext: `/garage/${vehicleId}/daten/fahrzeugbild/daten/fahrzeugbild`,
+    loginNext: `/garage/${vehicleId}/daten/fahrzeugbild`,
   });
   const vehicle = result.vehicle;
   if (!vehicle) {

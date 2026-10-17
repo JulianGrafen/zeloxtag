@@ -3,6 +3,7 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -351,6 +352,7 @@ export function InBrowserCamera({
   const viewfinderRef = useRef<HTMLDivElement>(null);
   const guideFrameRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const [streamEpoch, setStreamEpoch] = useState(0);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
@@ -543,6 +545,21 @@ export function InBrowserCamera({
     setInstructionsOpen(shouldShowBriefing);
   }, [shouldShowBriefing, continuousCapture]);
 
+  useLayoutEffect(() => {
+    if (uiPreviewMock) return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) {
+      setCameraReady(false);
+      return;
+    }
+    video.srcObject = stream;
+    void video.play().then(
+      () => setCameraReady(true),
+      () => setCameraReady(true),
+    );
+  }, [streamEpoch, uiPreviewMock]);
+
   async function startCamera(facing: FacingMode) {
     stopStream(streamRef.current);
     streamRef.current = null;
@@ -567,10 +584,7 @@ export function InBrowserCamera({
       });
 
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setCameraReady(true);
+      setStreamEpoch((current) => current + 1);
 
       // Check if multiple cameras are available for flip button.
       try {
