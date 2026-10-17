@@ -9,6 +9,7 @@ import {
   resolvePaywallGoal,
 } from "@/lib/billing/paywall-personalization";
 import {
+  PRO_PAYWALL_CONVERSION_BENEFITS,
   PRO_PAYWALL_CONVERSION_FOOTNOTE,
   PRO_PAYWALL_CONVERSION_SUBLINE,
   PRO_TRIAL_LABEL,
@@ -68,7 +69,9 @@ describe("paywall personalization", () => {
     expect(werterhalt.ctaLabel).toBe(PRO_TRIAL_LABEL);
     expect(werterhalt.footnote).toBe(PRO_PAYWALL_CONVERSION_FOOTNOTE);
     expect(werterhalt.showProBadge).toBe(false);
-    expect(werterhalt.benefits[0]).toContain("TÜV- & Gutachten-Tresor");
+    expect(werterhalt.benefits).toEqual(PRO_PAYWALL_CONVERSION_BENEFITS);
+    expect(werterhalt.benefits[0]).toContain("Build-Wert & Exposé");
+    expect(werterhalt.benefits[2]).toContain("PDF-Expose");
 
     expect(showcase.headline).toBe(werterhalt.headline);
     expect(showcase.benefits).toEqual(werterhalt.benefits);
