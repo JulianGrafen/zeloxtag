@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  displayDocumentHeroTitle,
+  displayDocumentTitle,
   formatCompactGermanDate,
   formatDocumentDate,
   formatDocumentDateCompact,
@@ -8,6 +10,26 @@ import {
   normalizeDocumentDateForUpload,
   normalizeDocumentDateIso,
 } from "@/lib/documents/format";
+
+describe("displayDocumentHeroTitle", () => {
+  it("strips a trailing price when it matches the document amount", () => {
+    expect(
+      displayDocumentHeroTitle("Bremsen Hinterachse · 412,50 €", 412.5),
+    ).toBe("Bremsen Hinterachse");
+    expect(displayDocumentHeroTitle("Ölwechsel 89,00€", 89)).toBe("Ölwechsel");
+  });
+
+  it("keeps title when trailing price does not match amount", () => {
+    expect(displayDocumentHeroTitle("Service 100,00 €", 412.5)).toBe(
+      "Service 100,00 €",
+    );
+  });
+
+  it("applies legacy prefix cleanup like displayDocumentTitle", () => {
+    expect(displayDocumentHeroTitle("[repair] Reifen", 120)).toBe("Reifen");
+    expect(displayDocumentTitle("[repair] Reifen")).toBe("Reifen");
+  });
+});
 
 describe("normalizeDocumentDateIso", () => {
   it("parses mixed OCR / UI formats to ISO", () => {

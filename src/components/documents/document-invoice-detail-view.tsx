@@ -44,6 +44,7 @@ import {
 } from "@/components/vehicle-dashboard/Pressable";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
+  displayDocumentHeroTitle,
   displayDocumentTitle,
   formatMileageKmLabel,
   formatDocumentDateCompact,
@@ -281,6 +282,7 @@ export function DocumentInvoiceDetailView({
                 vehicleId={document.vehicle_id}
                 tagUuid={tagUuid}
                 title={title}
+                documentAmount={documentAmount}
                 onSaved={setTitle}
                 hideEditTrigger={useCentralEdit}
                 editRequest={editRequest}
@@ -289,7 +291,7 @@ export function DocumentInvoiceDetailView({
                 sectionId={INVOICE_DETAIL_EDIT_ANCHORS.title}
               />
             ) : (
-              title
+              displayDocumentHeroTitle(title, documentAmount)
             )
           }
           subtitle={
