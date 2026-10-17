@@ -48,7 +48,7 @@ export const PRO_PAYWALL_MODAL_MICROCOPY = "Jederzeit kündbar";
 export const PRO_PAYWALL_DISMISS_LABEL = "Mit ZeloxTag Free fortfahren";
 export const PRO_PAYWALL_BRAND_BADGE = "ZELOXTAG PRO";
 export const PRO_PAYWALL_CONVERSION_SUBLINE =
-  "Jeder Cent deines Umbaus felsenfest belegt.";
+  "Wert, Umbau & Historie felsenfest belegt.";
 export const PRO_PAYWALL_CONVERSION_FOOTNOTE =
   "Kostet im Monat weniger als ein Liter Motoröl und sichert Umbauten im Wert von tausenden Euro ab.";
 export const PRO_PAYWALL_ANNUAL_BEST_DEAL_LABEL = "Bester Deal";
@@ -62,7 +62,7 @@ export const PRO_PAYWALL_VALUE_FOOTNOTE =
 export const PRO_PAYWALL_CONVERSION_BENEFITS = [
   "Build-Wert & Exposé: Rechnungen in Sekunden digitalisieren.",
   "TÜV- & Gutachten-Tresor: Alle ABEs und Teilegutachten sofort griffbereit.",
-  "Showcase auf Treffen: Build per Scan am Motorraum teilen.",
+  "PDF-Expose: Verkaufs-PDF mit Umbau, Specs und Werten — ohne sensible Belege.",
 ] as const;
 
 export const PRO_PAYWALL_MODAL_BENEFITS = PRO_PAYWALL_CONVERSION_BENEFITS;

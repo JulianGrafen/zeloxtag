@@ -27,7 +27,7 @@ export function PaywallAnimatedGoalVisual({
   return (
     <div
       className={cn(
-        "paywall-hero-visual relative shrink-0 overflow-hidden bg-[color:var(--paywall-grouped-bg)]",
+        "paywall-hero-visual relative shrink-0 overflow-hidden bg-[color:var(--paywall-sheet-bg)]",
         className,
       )}
     >

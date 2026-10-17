@@ -97,18 +97,15 @@ export function ProPaywallContent({
             className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]"
             aria-label="Pro-Angebot scrollen"
           >
-            <div className="relative shrink-0 px-4 pt-4 sm:pt-5">
+            <div className="relative shrink-0">
               <PaywallAnimatedGoalVisual
                 kind={visualKind}
                 ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
                 vehicleHero={vehicleHero}
-                className={cn(
-                  "overflow-hidden rounded-[1.25rem]",
-                  "pt-[max(2.25rem,calc(env(safe-area-inset-top)+1.5rem))]",
-                )}
+                className="pt-[max(2.75rem,calc(env(safe-area-inset-top)+2rem))]"
                 figureClassName="min-h-[12.5rem] sm:min-h-[13.5rem] pb-1"
               />
-              <div className="pointer-events-none absolute inset-x-4 bottom-0 z-10 px-4 pb-4 pt-20">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 pb-4 pt-20">
                 <PaywallCopyBlock
                   headline={headline}
                   headlineId={headlineId}
