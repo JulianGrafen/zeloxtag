@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { CapacitorNativeShell } from "@/components/capacitor/capacitor-native-shell";
 import { PwaRoot } from "@/components/pwa/pwa-root";
+import { SavedToastHost } from "@/components/ui/saved-toast-host";
 import { SavedToastListener } from "@/components/ui/saved-toast-listener";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -19,6 +20,7 @@ export function AppThemeRoot({ children }: { children: ReactNode }) {
       <PwaThemeColorSync />
       {children}
       <PwaRoot />
+      <SavedToastHost />
       <Suspense fallback={null}>
         <SavedToastListener />
       </Suspense>
