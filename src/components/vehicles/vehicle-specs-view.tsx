@@ -253,13 +253,13 @@ export function VehicleSpecsView({
   }
 
   return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
+    <div className="vd-root relative min-h-dvh w-full max-w-full overflow-x-clip">
       <div
         aria-hidden
         className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
+      <div className="relative z-10 mx-auto flex w-full min-w-0 max-w-lg flex-col gap-5 overflow-x-clip px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <header className="vd-anim-header space-y-4">
           <PressableLink
             href={`/v/${tagUuid}`}

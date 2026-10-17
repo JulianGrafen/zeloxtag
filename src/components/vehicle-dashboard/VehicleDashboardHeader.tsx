@@ -185,9 +185,9 @@ export function VehicleDashboardHeader({
             decoding="async"
             fetchPriority="high"
             className={cn(
-              "absolute left-0 right-0 mx-auto w-full max-w-none",
+              "absolute left-0 right-0 mx-auto w-full max-w-full",
               isCutoutHero
-                ? "bottom-0 h-[128%] max-w-full object-contain object-bottom drop-shadow-[0_18px_42px_rgba(0,0,0,0.55)]"
+                ? "bottom-0 h-[128%] object-contain object-bottom drop-shadow-[0_18px_42px_rgba(0,0,0,0.55)]"
                 : cn(
                     "inset-0 h-full object-cover",
                     isOwnerPhoto
