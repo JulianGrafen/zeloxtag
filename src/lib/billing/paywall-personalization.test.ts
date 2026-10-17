@@ -70,7 +70,7 @@ describe("paywall personalization", () => {
     expect(werterhalt.footnote).toBe(PRO_PAYWALL_CONVERSION_FOOTNOTE);
     expect(werterhalt.showProBadge).toBe(false);
     expect(werterhalt.benefits).toEqual(PRO_PAYWALL_CONVERSION_BENEFITS);
-    expect(werterhalt.benefits[0]).toContain("Build-Wert & Exposé");
+    expect(werterhalt.benefits[0]).toContain("Unbegrenzte KI-Scans");
     expect(werterhalt.benefits[2]).toContain("PDF-Expose");
 
     expect(showcase.headline).toBe(werterhalt.headline);

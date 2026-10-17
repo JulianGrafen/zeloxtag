@@ -172,9 +172,9 @@ export function PaywallVehicleHeroVisual({
               "absolute left-0 right-0 mx-auto w-full max-w-none transition-opacity duration-[520ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
               imageLoaded ? "opacity-100" : "opacity-0",
               isCutoutHero
-                ? "bottom-0 h-[128%] max-w-full object-contain object-bottom drop-shadow-[0_18px_42px_rgba(0,0,0,0.55)]"
+                ? "bottom-0 h-[128%] max-w-full object-contain object-bottom brightness-[1.06] contrast-[1.04] drop-shadow-[0_12px_28px_rgba(0,0,0,0.35)]"
                 : cn(
-                    "inset-0 h-full object-cover",
+                    "inset-0 h-full object-cover brightness-[1.03]",
                     isOwnerPhoto ? "object-[50%_62%]" : "object-[50%_55%]",
                   ),
             )}
@@ -186,15 +186,22 @@ export function PaywallVehicleHeroVisual({
           />
           <div
             className={cn(
-              "absolute inset-0 bg-gradient-to-t from-[color:var(--paywall-sheet-bg)] via-zinc-950/75 to-transparent",
-              isCutoutHero && "via-zinc-950/55",
+              "absolute inset-0 bg-gradient-to-t from-[color:var(--paywall-sheet-bg)] to-transparent",
+              isCutoutHero
+                ? "via-zinc-950/25"
+                : "via-zinc-950/50 to-zinc-950/5",
             )}
           />
           {!isCutoutHero ? (
-            <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/70 via-zinc-950/15 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/45 via-zinc-950/8 to-transparent" />
           ) : null}
-          <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-zinc-950/85 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[color:var(--paywall-sheet-bg)] via-[color:var(--paywall-sheet-bg)]/85 to-transparent" />
+          <div
+            className={cn(
+              "absolute inset-x-0 top-0 h-14 bg-gradient-to-b to-transparent",
+              isCutoutHero ? "from-zinc-950/45" : "from-zinc-950/65",
+            )}
+          />
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[color:var(--paywall-sheet-bg)] via-[color:var(--paywall-sheet-bg)]/55 to-transparent" />
         </div>
       ) : (
         <div

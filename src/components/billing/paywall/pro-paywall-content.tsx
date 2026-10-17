@@ -105,7 +105,7 @@ export function ProPaywallContent({
                 className="pt-[max(2.75rem,calc(env(safe-area-inset-top)+2rem))]"
                 figureClassName="min-h-[12.5rem] sm:min-h-[13.5rem] pb-1"
               />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 pb-4 pt-20">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 translate-y-1.5 px-4 pb-0.5 pt-20">
                 <PaywallCopyBlock
                   headline={headline}
                   headlineId={headlineId}

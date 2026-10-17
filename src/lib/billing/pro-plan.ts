@@ -60,7 +60,7 @@ export const PRO_PAYWALL_VALUE_FOOTNOTE =
 
 /** Kompakte 3-Säulen-Copy in der Conversion-Paywall (Modal & Section). */
 export const PRO_PAYWALL_CONVERSION_BENEFITS = [
-  "Build-Wert & Exposé: Rechnungen in Sekunden digitalisieren.",
+  "Unbegrenzte KI-Scans: Rechnungen in Sekunden digitalisieren & detaillierter Kostenüberblick.",
   "TÜV- & Gutachten-Tresor: Alle ABEs und Teilegutachten sofort griffbereit.",
   "PDF-Expose: Verkaufs-PDF mit Umbau, Specs und Werten — ohne sensible Belege.",
 ] as const;
