@@ -291,6 +291,36 @@ export function displayDocumentTitle(title: string): string {
   return title.replace(/^\[[a-z_]+\]\s*/i, "").trim() || title;
 }
 
+const TRAILING_TITLE_PRICE =
+  /(?:\s*[·\-–|]\s*|\s+)(?:EUR\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*€?\s*$/i;
+
+function parseGermanMoneyToken(raw: string): number | null {
+  const normalized = raw.replace(/\./g, "").replace(",", ".");
+  const value = Number.parseFloat(normalized);
+  return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Detail hero: same as list title cleanup, but drops a trailing price when it
+ * duplicates the structured `amount` field (common OCR title noise).
+ */
+export function displayDocumentHeroTitle(
+  title: string,
+  amount?: number | null,
+): string {
+  const base = displayDocumentTitle(title);
+  if (amount == null || !Number.isFinite(amount)) return base;
+
+  const match = base.match(TRAILING_TITLE_PRICE);
+  if (!match || match.index == null) return base;
+
+  const parsed = parseGermanMoneyToken(match[1] ?? "");
+  if (parsed == null || Math.abs(parsed - amount) >= 0.01) return base;
+
+  const trimmed = base.slice(0, match.index).trim();
+  return trimmed || base;
+}
+
 export function filterDocumentsByType(
   documents: Document[],
   type?: DocumentType | "all",
