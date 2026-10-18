@@ -40,6 +40,26 @@ export function ScanProgressBar({
   );
 }
 
+/** Full-viewport centered loader (OCR / analyze phases). */
+export function ScanAnalyzingFullscreen({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={[
+        "mx-auto flex w-full min-h-[calc(100dvh-env(safe-area-inset-top))] max-w-[440px] flex-col items-center justify-center px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
+        className,
+      ].join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function ScanProcessingPanel({
   heading = SCAN_PROCESSING_HEADING,
   detail,
@@ -53,6 +73,8 @@ export function ScanProcessingPanel({
   orbSize = 64,
   showProgress = false,
   progressPercent = 0,
+  /** Fixed block centered by a parent (e.g. ScanAnalyzingFullscreen) — no flex-1 stretch. */
+  centeredBlock = false,
 }: {
   /** Uppercase status line above the detail (Verarbeiten vs Hochladen). */
   heading?: ScanStatusHeading;
@@ -70,6 +92,7 @@ export function ScanProcessingPanel({
   orbSize?: OrbSize;
   showProgress?: boolean;
   progressPercent?: number;
+  centeredBlock?: boolean;
 }) {
   const titleClass =
     surface === "inverse"
@@ -94,7 +117,9 @@ export function ScanProcessingPanel({
       className={[
         compact
           ? "flex flex-col items-center gap-4 py-6 text-center"
-          : "flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center",
+          : centeredBlock
+            ? "flex w-full flex-col items-center justify-center gap-4 py-8 text-center"
+            : "flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center",
         className,
       ].join(" ")}
       role="status"

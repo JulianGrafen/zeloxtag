@@ -12,6 +12,7 @@ import type { TuevReviewFields } from "@/components/dashboard/TuevOverview";
 import { technicalSpecsFromTeilegutachtenTable } from "@/lib/validations/teilegutachten-technical-data";
 import {
   SCAN_UPLOAD_HEADING,
+  ScanAnalyzingFullscreen,
   ScanProcessingPanel,
   ScanProcessingStepChips,
 } from "@/components/documents/scan-processing-panel";
@@ -1416,6 +1417,32 @@ export function InvoiceUploader({
     });
   }
 
+  if (step === "extracting") {
+    return (
+      <ScanAnalyzingFullscreen>
+        <ScanProcessingPanel
+          detail={progress.label}
+          hint={
+            progress.page && progress.totalPages
+              ? `Seite ${progress.page} von ${progress.totalPages}`
+              : undefined
+          }
+          state={progressToOrbState(progress.percent)}
+          showProgress
+          progressPercent={progress.percent}
+          centeredBlock
+          className="max-w-sm"
+          footer={
+            <ScanProcessingStepChips
+              steps={[...INVOICE_EXTRACT_STEPS]}
+              activeIndex={activeInvoiceExtractStepIndex(progress.percent)}
+            />
+          }
+        />
+      </ScanAnalyzingFullscreen>
+    );
+  }
+
   return (
     <ScanContent
       wide={
@@ -1788,29 +1815,6 @@ export function InvoiceUploader({
               {error}
             </p>
           ) : null}
-        </div>
-      ) : null}
-
-      {step === "extracting" ? (
-        <div className="vd-anim-header zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-          <ScanProcessingPanel
-            compact
-            detail={progress.label}
-            hint={
-              progress.page && progress.totalPages
-                ? `Seite ${progress.page} von ${progress.totalPages}`
-                : undefined
-            }
-            state={progressToOrbState(progress.percent)}
-            showProgress
-            progressPercent={progress.percent}
-            footer={
-              <ScanProcessingStepChips
-                steps={[...INVOICE_EXTRACT_STEPS]}
-                activeIndex={activeInvoiceExtractStepIndex(progress.percent)}
-              />
-            }
-          />
         </div>
       ) : null}
 

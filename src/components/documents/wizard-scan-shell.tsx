@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ArrowLeft, ScanLine } from "lucide-react";
 
 import {
+  ScanAnalyzingFullscreen,
   ScanProcessingPanel,
   type ScanStatusHeading,
 } from "@/components/documents/scan-processing-panel";
@@ -98,12 +99,16 @@ export function WizardAnalyzingPanel({
   heading?: ScanStatusHeading;
 }) {
   return (
-    <ScanProcessingPanel
-      heading={heading}
-      detail={label}
-      hint={subtitle}
-      footer={footer}
-    />
+    <ScanAnalyzingFullscreen>
+      <ScanProcessingPanel
+        heading={heading}
+        detail={label}
+        hint={subtitle}
+        footer={footer}
+        centeredBlock
+        className="max-w-sm"
+      />
+    </ScanAnalyzingFullscreen>
   );
 }
 

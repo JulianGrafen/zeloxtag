@@ -27,6 +27,7 @@ import { InBrowserCamera } from "@/components/documents/in-browser-camera";
 import {
   ScanProcessingPanel,
   ScanProcessingStepChips,
+  ScanAnalyzingFullscreen,
 } from "@/components/documents/scan-processing-panel";
 import {
   WizardCameraError,
@@ -1009,18 +1010,20 @@ export function InvoiceUploadWizard({
 
   if (phase === "analyzing") {
     return (
-      <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col px-4 py-6">
+      <ScanAnalyzingFullscreen>
         <ScanProcessingPanel
           detail="Rechnung wird analysiert…"
           hint="Kopf · Positionen · Gesamtbetrag — direkt ans LLM"
           state="working"
+          centeredBlock
+          className="max-w-sm"
           footer={
             <ScanProcessingStepChips
               steps={["Übersicht", "Kopf", "Positionen"]}
             />
           }
         />
-      </section>
+      </ScanAnalyzingFullscreen>
     );
   }
 
