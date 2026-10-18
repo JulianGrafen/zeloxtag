@@ -12,7 +12,7 @@ export const DOCUMENT_DETAIL_HERO_CLASS =
 
 export const DOCUMENT_DETAIL_TITLE_CLASS = cn(
   automotiveDisplayTitleClassName,
-  "sm:text-[1.5rem]",
+  "break-words text-balance sm:text-[1.5rem]",
 );
 
 type DocumentDetailHeroProps = {
@@ -36,24 +36,33 @@ export function DocumentDetailHero({
 
   return (
     <header className={cn(DOCUMENT_DETAIL_HERO_CLASS, className)}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          {typeof title === "string" ? (
-            <h1 className={DOCUMENT_DETAIL_TITLE_CLASS}>{title}</h1>
-          ) : (
-            <div className="min-w-0">{title}</div>
+      <div className="space-y-1">
+        <div
+          className={cn(
+            "flex gap-x-4",
+            hasAside ? "items-baseline justify-between" : "flex-col",
           )}
-          {subtitle ? (
-            <p className={cn("mt-1", automotiveBodyMutedClassName)}>{subtitle}</p>
+        >
+          <div className="min-w-0 flex-1">
+            {typeof title === "string" ? (
+              <h1 className={DOCUMENT_DETAIL_TITLE_CLASS}>{title}</h1>
+            ) : (
+              <div className="min-w-0">{title}</div>
+            )}
+          </div>
+          {hasAside ? (
+            <div className="flex shrink-0 flex-col items-end gap-2 text-right">
+              {trailing}
+              {chips ? (
+                <div className="flex flex-wrap justify-end gap-1.5">{chips}</div>
+              ) : null}
+            </div>
           ) : null}
         </div>
-        {hasAside ? (
-          <div className="flex max-w-[45%] shrink-0 flex-col items-end gap-2 text-right">
-            {trailing}
-            {chips ? (
-              <div className="flex flex-wrap justify-end gap-1.5">{chips}</div>
-            ) : null}
-          </div>
+        {subtitle ? (
+          <p className={cn("min-w-0", automotiveBodyMutedClassName)}>
+            {subtitle}
+          </p>
         ) : null}
       </div>
     </header>
@@ -69,7 +78,7 @@ export function DocumentDetailHeroAmount({
     <p
       className={cn(
         automotiveMetricHighlightClassName,
-        "block text-right text-[1.28rem] font-bold leading-none sm:text-[1.35rem]",
+        "block whitespace-nowrap text-right text-[1.28rem] font-bold leading-snug tabular-nums sm:text-[1.35rem]",
       )}
     >
       {children}

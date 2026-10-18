@@ -96,7 +96,7 @@ function fileNameFromUrl(fileUrl: string, fallback: string): string {
  */
 export function DocumentInvoiceDetailView({
   tagUuid,
-  vehicleLabel,
+  vehicleLabel: _vehicleLabel,
   document,
   backHref,
   canEdit = false,
@@ -291,12 +291,6 @@ export function DocumentInvoiceDetailView({
             ) : (
               title
             )
-          }
-          subtitle={
-            <>
-              {vendor}
-              {vehicleLabel ? ` · ${vehicleLabel}` : ""}
-            </>
           }
           trailing={
             isManual && canEditInvoice ? (
