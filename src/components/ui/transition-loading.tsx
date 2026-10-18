@@ -60,7 +60,7 @@ export function RouteTransitionLoadingTrigger({
 export function RouteTransitionLoadingOverlay() {
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center"
+      className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center bg-[color:var(--vd-surface)]"
       aria-hidden
     >
       <ThinkingOrb
