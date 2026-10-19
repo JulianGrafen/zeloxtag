@@ -7,10 +7,10 @@ import {
 } from "@/lib/share/app-invite";
 
 describe("buildAppInviteRegisterUrl", () => {
-  it("points to register with invite utm params", () => {
+  it("points to home signup tab with invite utm params", () => {
     const href = buildAppInviteRegisterUrl("https://app.zeloxtag.de");
     expect(href).toBe(
-      `https://app.zeloxtag.de/register?utm_source=${APP_INVITE_UTM_SOURCE}&utm_medium=share`,
+      `https://app.zeloxtag.de/?tab=signup&utm_source=${APP_INVITE_UTM_SOURCE}&utm_medium=share`,
     );
   });
 });
@@ -18,7 +18,7 @@ describe("buildAppInviteRegisterUrl", () => {
 describe("buildAppInviteSharePayload", () => {
   it("includes registration url and share copy", () => {
     const payload = buildAppInviteSharePayload("https://app.zeloxtag.de");
-    expect(payload.url).toContain("/register");
+    expect(payload.url).toContain("tab=signup");
     expect(payload.title).toMatch(/ZeloxTag/);
     expect(payload.text.length).toBeGreaterThan(20);
   });

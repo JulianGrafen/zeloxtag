@@ -2,6 +2,8 @@
 
 import { useTransition } from "react";
 
+import { AppleIcon } from "@/components/auth/icons/apple-icon";
+import { GoogleGIcon } from "@/components/auth/icons/google-g-icon";
 import { Button } from "@/components/ui/button";
 import {
   OAUTH_PROVIDERS,
@@ -18,6 +20,19 @@ type OAuthProviderButtonsProps = {
   /** Return false to abort redirect (e.g. pending garage staging failed). */
   beforeRedirect?: (provider: OAuthProvider) => Promise<boolean | void>;
 };
+
+function OAuthProviderIcon({
+  provider,
+  className,
+}: {
+  provider: OAuthProvider;
+  className?: string;
+}) {
+  if (provider === "google") {
+    return <GoogleGIcon className={className} />;
+  }
+  return <AppleIcon className={className} />;
+}
 
 export function OAuthProviderButtons({
   nextPath = "/auth/continue",
@@ -44,11 +59,17 @@ export function OAuthProviderButtons({
           key={provider}
           type="button"
           variant="outline"
-          className="min-h-11 w-full justify-center gap-2 font-medium"
+          className={cn(
+            "min-h-11 w-full justify-center gap-2.5 border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] font-medium text-[color:var(--vd-text)] shadow-none hover:bg-[color:var(--vd-surface)]",
+            provider === "google" && "bg-white hover:bg-neutral-50",
+          )}
           disabled={disabled || pending}
           onClick={() => handleClick(provider)}
         >
-          {pending ? "Weiter…" : `Mit ${oauthProviderLabel(provider)} fortfahren`}
+          <OAuthProviderIcon provider={provider} className="h-5 w-5 shrink-0" />
+          <span>
+            {pending ? "Weiter…" : `Mit ${oauthProviderLabel(provider)} fortfahren`}
+          </span>
         </Button>
       ))}
     </div>

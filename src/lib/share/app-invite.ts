@@ -3,7 +3,8 @@ import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
 export const APP_INVITE_UTM_SOURCE = "friend_invite";
 
 export function buildAppInviteRegisterUrl(siteOrigin = PRODUCTION_SITE_URL): string {
-  const url = new URL("/register", siteOrigin);
+  const url = new URL("/", siteOrigin);
+  url.searchParams.set("tab", "signup");
   url.searchParams.set("utm_source", APP_INVITE_UTM_SOURCE);
   url.searchParams.set("utm_medium", "share");
   return url.toString();

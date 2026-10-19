@@ -2,7 +2,6 @@
 function isImmersiveVehicleSurface(pathname: string): boolean {
   if (pathname.endsWith("/entdecken")) return true;
   if (pathname.startsWith("/claim/")) return true;
-  if (pathname === "/register") return true;
   return false;
 }
 

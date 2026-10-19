@@ -53,7 +53,7 @@ function parseBetaStatus(data: unknown): DigitalGarageBetaStatus {
   };
 }
 
-/** Server-side beta cap for `/register` and garage onboarding. */
+/** Server-side beta cap for garage onboarding (`/onboarding/fahrzeug`). */
 export async function getDigitalGarageBetaStatus(): Promise<DigitalGarageBetaStatus> {
   const { isConfigured } = getSupabaseEnv();
   if (!isConfigured) {

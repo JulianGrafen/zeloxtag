@@ -962,17 +962,6 @@ export function ClaimFlow({
             >
               {isDigital ? <AuthLegalConsentNotice variant="claim" /> : null}
 
-              {isDigital ? (
-                <>
-                  <OAuthProviderButtons
-                    nextPath="/auth/continue"
-                    disabled={pending}
-                    beforeRedirect={prepareDigitalGarageOAuth}
-                  />
-                  <OAuthDivider />
-                </>
-              ) : null}
-
               <ClaimField
                 id="claim-account-email"
                 label="E-Mail"
@@ -1032,6 +1021,17 @@ export function ClaimFlow({
                 submitIcon="check"
                 showBack
               />
+
+              {isDigital ? (
+                <>
+                  <OAuthDivider className="mt-2" />
+                  <OAuthProviderButtons
+                    nextPath="/auth/continue"
+                    disabled={pending}
+                    beforeRedirect={prepareDigitalGarageOAuth}
+                  />
+                </>
+              ) : null}
             </form>
           </ClaimWizardPanel>
         ) : null}

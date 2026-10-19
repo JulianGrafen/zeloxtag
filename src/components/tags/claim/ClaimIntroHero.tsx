@@ -14,6 +14,7 @@ import {
 import {
   DIGITAL_GARAGE_REGISTER_HEADLINE,
   DIGITAL_GARAGE_REGISTER_LEAD,
+  DIGITAL_GARAGE_REGISTER_USPS,
 } from "@/lib/onboarding/digital-garage-register-copy";
 import { GarageDataTrustBanner } from "@/components/trust/garage-data-trust-banner";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,7 @@ export function ClaimIntroHero({
   const lead = isDigital ? DIGITAL_GARAGE_REGISTER_LEAD : CLAIM_INTRO_LEAD;
   const statusLabel = isDigital ? "Garage bereit" : "Tag bereit";
   const ctaLabel = isDigital ? "Jetzt starten" : "Jetzt aktivieren";
-  const loginNext = isDigital ? "/register" : `/v/${tagUuid ?? ""}`;
+  const loginNext = isDigital ? "/onboarding/fahrzeug" : `/v/${tagUuid ?? ""}`;
   const loginHref = `/login?next=${encodeURIComponent(loginNext)}`;
 
   return (
@@ -67,7 +68,12 @@ export function ClaimIntroHero({
 
           <p className="claim-intro-lead">{lead}</p>
 
-          <ClaimCommunityStrip />
+          <ClaimCommunityStrip
+            items={isDigital ? DIGITAL_GARAGE_REGISTER_USPS : undefined}
+            ariaLabel={
+              isDigital ? "Deine Vorteile mit der digitalen Garage" : undefined
+            }
+          />
         </div>
 
         {isDigital ? <GarageDataTrustBanner /> : null}
