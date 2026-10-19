@@ -24,7 +24,7 @@ import {
   PRO_PAYWALL_DISMISS_LABEL,
   PRO_PLAN_CHECKOUT_HEADLINE,
   cloudAboHref,
-  proPaywallCtaSubline,
+  proCheckoutMicroCopy,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
 import { readPrimaryGoal } from "@/lib/onboarding/primary-goal";
@@ -206,7 +206,7 @@ export function ProPaywallModal({
                       label={personalization.ctaLabel}
                       pending={pending}
                       error={error}
-                      microCopy={proPaywallCtaSubline(interval)}
+                      microCopy={proCheckoutMicroCopy(interval)}
                       anchorText={personalization.footnote}
                       dismissLabel={PRO_PAYWALL_DISMISS_LABEL}
                       onCheckout={handleCheckout}

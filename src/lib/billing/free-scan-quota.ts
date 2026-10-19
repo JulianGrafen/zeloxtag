@@ -264,6 +264,9 @@ export async function beginFreeScanSession(
     p_kind: kind,
     p_vehicle_id: vehicleId,
     p_session_id: null,
+    p_invoice_limit: FREE_AI_INVOICE_SCAN_LIMIT,
+    p_abe_limit: FREE_AI_ABE_SCAN_LIMIT,
+    p_fuel_limit: FREE_AI_FUEL_SCAN_LIMIT,
   });
 
   if (error) {

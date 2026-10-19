@@ -15,6 +15,10 @@ import { BackNav } from "@/components/layout/back-nav";
 import { ScanContent } from "@/components/layout/scan-content";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import {
+  FREE_AI_ABE_SCAN_LIMIT,
+  FREE_AI_INVOICE_SCAN_LIMIT,
+} from "@/lib/billing/free-scan-constants";
+import {
   SCAN_TYPE_OPTIONS,
   isComplimentaryAbeScanType,
   isInvoiceFamilyScanType,
@@ -151,9 +155,11 @@ export function ScanTypePicker({
       {showInvoiceFreeHint || showAbeFreeHint ? (
         <p className="rounded-xl border border-[color:var(--vd-alert-success-border)] bg-[color:var(--vd-alert-success-bg)] px-3 py-2.5 text-[0.82rem] leading-snug text-[color:var(--vd-alert-success-text)]">
           <strong className="font-semibold">Gratis KI-Scans:</strong>{" "}
-          {showInvoiceFreeHint ? "1× Rechnung/Service" : null}
+          {showInvoiceFreeHint
+            ? `${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung/Service`
+            : null}
           {showInvoiceFreeHint && showAbeFreeHint ? " · " : null}
-          {showAbeFreeHint ? "1× ABE" : null}
+          {showAbeFreeHint ? `${FREE_AI_ABE_SCAN_LIMIT}× ABE` : null}
           {". "}Danach Pro für TÜV, Gutachten und weitere Scans.
         </p>
       ) : null}

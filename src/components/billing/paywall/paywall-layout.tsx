@@ -4,15 +4,33 @@ import type { ReactNode } from "react";
 
 import { PaywallFeatureRows } from "@/components/billing/paywall/paywall-feature-rows";
 import { PricingCards } from "@/components/billing/paywall/pricing-cards";
-import { TrialTimeline } from "@/components/billing/paywall/trial-timeline";
 import type { ProBillingInterval } from "@/lib/billing/pro-plan";
 import {
+  PRO_FREE_KI_SCAN_HOOK,
   PRO_PAYWALL_BRAND_BADGE,
   PRO_PAYWALL_FREE_SCAN_EXHAUSTED_KICKER,
   PRO_PAYWALL_MODAL_BENEFITS,
   PRO_PAYWALL_MODAL_SUBLINE,
 } from "@/lib/billing/pro-plan";
 import { cn } from "@/lib/utils";
+
+export function PaywallFreeScanOfferKicker({
+  className,
+  align = "center",
+}: {
+  className?: string;
+  align?: "center" | "start";
+}) {
+  return (
+    <p className={cn(align === "center" ? "text-center" : "text-left", className)}>
+      <span
+        className="inline-flex rounded-full border border-[color:var(--paywall-trial-border)] bg-[color:var(--paywall-trial-bg)] px-3 py-1 text-[12px] font-medium tracking-[-0.01em] text-[color:var(--paywall-trial-text)]"
+      >
+        {PRO_FREE_KI_SCAN_HOOK}
+      </span>
+    </p>
+  );
+}
 
 export function PaywallExhaustedKicker({
   className,
@@ -168,7 +186,7 @@ export function PaywallOfferSections({
             ? "gap-0 border-t border-[color:var(--paywall-grouped-separator)]"
             : "gap-3",
         )}
-        aria-label="Preise und Testphase"
+        aria-label="Preise und Free-Tier"
       >
         <PricingCards
           interval={interval}
@@ -178,7 +196,6 @@ export function PaywallOfferSections({
           embeddedInCard={embeddedInCard}
           className="!mt-0"
         />
-        <TrialTimeline compact={compact} embeddedInCard={embeddedInCard} />
       </div>
 
       {belowFoldFooter ? <div className="shrink-0">{belowFoldFooter}</div> : null}

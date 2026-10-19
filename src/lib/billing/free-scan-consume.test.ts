@@ -83,7 +83,7 @@ describe("tryConsumeFreeOcrScanForOwner", () => {
   });
 
   it("returns exhausted when invoice quota is already used", async () => {
-    mockCreateAdminClient.mockReturnValue(entitlementAdminClient(1));
+    mockCreateAdminClient.mockReturnValue(entitlementAdminClient(2));
     const { tryConsumeFreeOcrScanForOwner } = await import("./free-scan-quota");
 
     const result = await tryConsumeFreeOcrScanForOwner(
@@ -188,12 +188,12 @@ describe("beginFreeScanSession", () => {
 
   it("returns exhausted when begin RPC yields null and quota is used", async () => {
     mockCreateAdminClient.mockReturnValue({
-      ...entitlementAdminClient(1),
+      ...entitlementAdminClient(2),
       rpc: async (name: string) => {
         if (name === "begin_free_scan_session") {
           return { data: null, error: null };
         }
-        return entitlementAdminClient(1).rpc(name);
+        return entitlementAdminClient(2).rpc(name);
       },
     });
 

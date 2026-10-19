@@ -4,6 +4,7 @@ import { PaywallAnimatedGoalVisual } from "@/components/billing/paywall/paywall-
 import {
   PaywallCopyBlock,
   PaywallExhaustedKicker,
+  PaywallFreeScanOfferKicker,
   PaywallOfferSections,
 } from "@/components/billing/paywall/paywall-layout";
 import type {
@@ -69,7 +70,11 @@ export function ProPaywallContent({
   const compact = true;
   const isModal = layout === "modal";
   const showExhaustedKicker = variant === "free_scan_exhausted";
-  const kicker = showExhaustedKicker ? <PaywallExhaustedKicker /> : null;
+  const kicker = showExhaustedKicker ? (
+    <PaywallExhaustedKicker />
+  ) : (
+    <PaywallFreeScanOfferKicker />
+  );
 
   const offerSections = (
     <PaywallOfferSections
@@ -135,7 +140,9 @@ export function ProPaywallContent({
               kicker={
                 showExhaustedKicker ? (
                   <PaywallExhaustedKicker align="start" />
-                ) : null
+                ) : (
+                  <PaywallFreeScanOfferKicker align="start" />
+                )
               }
               statusMessage={statusMessage}
               titleSize="section"

@@ -1,6 +1,10 @@
 import "server-only";
 
-import { PRO_PLAN_MONTHLY_PRICE, PRO_TRIAL_DAYS } from "@/lib/billing/pro-plan";
+import { PRO_FREE_KI_SCAN_HOOK, PRO_PLAN_MONTHLY_PRICE, PRO_TRIAL_DAYS } from "@/lib/billing/pro-plan";
+import {
+  FREE_AI_ABE_SCAN_LIMIT,
+  FREE_AI_INVOICE_SCAN_LIMIT,
+} from "@/lib/billing/free-scan-constants";
 import { isResendConfigured, sendTransactionalEmail } from "@/lib/email/resend";
 import { resolvePublicSiteOrigin } from "@/lib/site-origin";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
@@ -128,7 +132,7 @@ export async function sendTagActivatedProNudgeEmail(input: {
 
   const result = await sendTransactionalEmail({
     to: input.to,
-    subject: "Dein Build ist online — schalte dir 14 Tage PRO frei",
+    subject: "Dein Build ist online — teste die KI-Scans gratis",
     headline,
     bodyBlocks: [
       {
@@ -138,7 +142,7 @@ export async function sendTagActivatedProNudgeEmail(input: {
       },
       {
         kind: "paragraph",
-        text: `In deinem Dashboard wartet dein Startbonus: Du kannst dir ab sofort ${PRO_TRIAL_DAYS} Tage PRO komplett kostenlos freischalten – ohne Zahlungsdaten, ohne Abo-Falle.`,
+        text: `In deinem Dashboard wartet dein Startbonus: ${PRO_FREE_KI_SCAN_HOOK} — ${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung und ${FREE_AI_ABE_SCAN_LIMIT}× ABE ohne Abo.`,
       },
       { kind: "heading", text: "Warum sich das lohnt:" },
       {
@@ -147,7 +151,7 @@ export async function sendTagActivatedProNudgeEmail(input: {
           "Mit PRO fotografierst du Rechnungen, ABEs und Dyno-Sheets einfach ab. Unsere KI zieht Beträge, Werkstattdaten und Teilenummern in zwei Sekunden automatisch in deine Akte.",
       },
     ],
-    ctaLabel: "14 Tage PRO in der App aktivieren",
+    ctaLabel: "Gratis KI-Scan in der App testen",
     ctaUrl: proUrl,
     afterCtaLine: "Hol das Maximum aus deinem ersten Scan heraus.",
     signOffLines: ["Beste Grüße", "Julian von ZeloxTag"],

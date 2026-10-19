@@ -1,22 +1,22 @@
-import { TrialBadge } from "@/components/billing/paywall/trial-badge";
+import { FreeScanOfferBadge } from "@/components/billing/paywall/trial-badge";
 import { cn } from "@/lib/utils";
 
 export function PaywallHero({
   headline,
   subline,
   headlineId,
-  showTrialBadge = true,
+  showFreeScanOffer = false,
   compact = false,
 }: {
   headline: string;
   subline: string;
   headlineId?: string;
-  showTrialBadge?: boolean;
+  showFreeScanOffer?: boolean;
   compact?: boolean;
 }) {
   return (
     <div className={cn(compact ? "mt-2" : "mt-4")}>
-      {showTrialBadge ? <TrialBadge compact={compact} /> : null}
+      {showFreeScanOffer ? <FreeScanOfferBadge compact={compact} /> : null}
       <h2
         id={headlineId}
         className={cn(

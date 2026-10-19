@@ -137,9 +137,9 @@ export function paywallBody(
   switch (feature) {
     case FEATURE.SCAN_AI_RECEIPT:
       if (variant === "free_scan_exhausted") {
-        return `Du hast deine kostenlosen KI-Scans genutzt (${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung, ${FREE_AI_ABE_SCAN_LIMIT}× ABE). Für weitere Belege, ABEs und die volle Akte: ZeloxTag Pro. Die ersten 14 Tage sind kostenlos.`;
+        return `Du hast deine kostenlosen KI-Scans genutzt (${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung, ${FREE_AI_ABE_SCAN_LIMIT}× ABE). Für weitere Belege, ABEs und die volle Akte: ZeloxTag Pro.`;
       }
-      return `Belege und ABEs per KI auslesen mit ZeloxTag Pro. Oder teste kostenlos (${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung, ${FREE_AI_ABE_SCAN_LIMIT}× ABE). Die ersten 14 Tage Pro sind ebenfalls kostenlos.`;
+      return `Belege und ABEs per KI auslesen mit ZeloxTag Pro. Auf Free: ${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung und ${FREE_AI_ABE_SCAN_LIMIT}× ABE kostenlos scannen.`;
     case FEATURE.GENERATE_EXPOSE:
       return "Das PDF-Verkaufsdossier gibt’s mit Pro. Deine digitale Visitenkarte bleibt kostenlos.";
     case FEATURE.INVITE_SCHRAUBER:
@@ -151,6 +151,6 @@ export function paywallBody(
     case FEATURE.USE_BUILD_PLANNER_AI:
       return "Teile, Links oder Fotos per KI in Build-Schritte und Budget umwandeln mit ZeloxTag Pro. Manuelles Planen bleibt kostenlos.";
     default:
-      return "Diese Funktion gehört zu ZeloxTag Pro. Die ersten 14 Tage sind kostenlos.";
+      return "Diese Funktion gehört zu ZeloxTag Pro. Auf Free bleiben die begrenzten KI-Scans.";
   }
 }

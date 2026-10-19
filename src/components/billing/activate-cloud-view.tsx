@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ProPlanBenefits } from "@/components/billing/pro-plan-benefits";
 import { StripeCheckoutButton } from "@/components/billing/stripe-checkout-button";
 import { isAnnualPlanConfigured } from "@/lib/billing/stripe";
+import { PaywallFreeScanOfferKicker } from "@/components/billing/paywall/paywall-layout";
 import {
   PRO_PLAN_CHECKOUT_HEADLINE,
   PRO_PLAN_CHECKOUT_SUBLINE,
@@ -23,9 +24,10 @@ export function ActivateCloudView({ tagUuid }: { tagUuid: string }) {
             {PRO_PLAN_CHECKOUT_HEADLINE}
           </h1>
           <p className="claim-copy mt-2">{PRO_PLAN_CHECKOUT_SUBLINE}</p>
+          <PaywallFreeScanOfferKicker className="mt-3" align="start" />
         </header>
 
-        <ProPlanBenefits audience="new" showLead={false} />
+        <ProPlanBenefits audience="new" showLead />
 
         <StripeCheckoutButton
           successPath={dashboardHref}

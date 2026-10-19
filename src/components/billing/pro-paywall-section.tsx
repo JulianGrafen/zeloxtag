@@ -18,7 +18,7 @@ import {
   PRO_PAYWALL_DISMISS_LABEL,
   PRO_PLAN_CHECKOUT_HEADLINE,
   proCheckoutButtonLabel,
-  proPaywallCtaSubline,
+  proCheckoutMicroCopy,
   type ProBillingInterval,
   type ProCheckoutAudience,
 } from "@/lib/billing/pro-plan";
@@ -139,11 +139,7 @@ export function ProPaywallSection({
                 personalization?.ctaLabel ??
                 proCheckoutButtonLabel(audience, interval)
               }
-              microCopy={
-                personalization
-                  ? proPaywallCtaSubline(interval)
-                  : ""
-              }
+              microCopy={proCheckoutMicroCopy(interval)}
               anchorText={personalization?.footnote}
               pending={pending}
               error={error}

@@ -12,7 +12,7 @@ import {
   PRO_PAYWALL_CONVERSION_BENEFITS,
   PRO_PAYWALL_CONVERSION_FOOTNOTE,
   PRO_PAYWALL_CONVERSION_SUBLINE,
-  PRO_TRIAL_LABEL,
+  proCheckoutButtonLabel,
 } from "@/lib/billing/pro-plan";
 import { FEATURE } from "@/lib/permissions/feature-access";
 
@@ -66,7 +66,7 @@ describe("paywall personalization", () => {
 
     expect(werterhalt.headline).toBe("Dein Build. Lückenlos.");
     expect(werterhalt.subline).toBe(PRO_PAYWALL_CONVERSION_SUBLINE);
-    expect(werterhalt.ctaLabel).toBe(PRO_TRIAL_LABEL);
+    expect(werterhalt.ctaLabel).toBe(proCheckoutButtonLabel("new", "annual"));
     expect(werterhalt.footnote).toBe(PRO_PAYWALL_CONVERSION_FOOTNOTE);
     expect(werterhalt.showProBadge).toBe(false);
     expect(werterhalt.benefits).toEqual(PRO_PAYWALL_CONVERSION_BENEFITS);

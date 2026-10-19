@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
 
+import { FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-constants";
 import {
   MEMBERSHIP_REQUIRED_MESSAGE,
   PRO_ANNUAL_RECOMMENDED_LABEL,
   PRO_ANNUAL_SAVINGS_COPY,
+  PRO_FREE_KI_SCAN_HOOK,
   PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY,
   PRO_PLAN_ANNUAL_PRICE,
   PRO_PLAN_BENEFITS,
   PRO_PLAN_CHECKOUT_HEADLINE,
   PRO_PLAN_CHECKOUT_SUBLINE,
   PRO_PAYWALL_MODAL_SUBLINE,
+  PRO_PAYWALL_TRIAL_TIMELINE,
   PRO_TRIAL_DAYS,
-  PRO_TRIAL_LABEL,
   cloudAboHref,
   proCheckoutButtonLabel,
   proCheckoutLead,
@@ -21,12 +23,12 @@ import {
 } from "@/lib/billing/pro-plan";
 
 describe("pro plan copy", () => {
-  it("promises a 14-day trial for first checkout", () => {
+  it("does not promise a 14-day trial for new checkout", () => {
     expect(PRO_TRIAL_DAYS).toBe(14);
-    expect(PRO_TRIAL_LABEL).toBe("14 Tage kostenlos testen");
-    expect(proCheckoutLead("new")).toContain("14 Tage");
-    expect(proCheckoutLead("new")).toContain("kostenlos");
-    expect(proCheckoutButtonLabel("new")).toBe(PRO_TRIAL_LABEL);
+    expect(proCheckoutLead("new")).not.toContain("14 Tage");
+    expect(proCheckoutLead("new")).toContain("Tag 1");
+    expect(proCheckoutButtonLabel("new", "monthly")).toContain("4,99");
+    expect(proCheckoutMicroCopy("monthly")).toContain("Abrechnung ab sofort");
   });
 
   it("does not re-promise a trial to returning subscribers", () => {
@@ -41,8 +43,9 @@ describe("pro plan copy", () => {
     expect(PRO_PAYWALL_MODAL_SUBLINE).toBe(PRO_PLAN_CHECKOUT_SUBLINE);
   });
 
-  it("shows weekly price on the monthly plan picker", () => {
-    expect(proIntervalPriceDisplay("monthly").secondary).toContain("1,15 € pro Woche");
+  it("shows monthly price on the plan picker", () => {
+    expect(proIntervalPriceDisplay("monthly").primary).toContain("4,99 €");
+    expect(proIntervalPriceDisplay("monthly").secondary).toContain("kündbar");
   });
 
   it("highlights annual savings with gifted months framing", () => {
@@ -55,9 +58,9 @@ describe("pro plan copy", () => {
   });
 
   it("supports annual checkout copy", () => {
-    expect(proCheckoutButtonLabel("new", "annual")).toBe(PRO_TRIAL_LABEL);
-    expect(proCheckoutLead("new", "annual")).toContain("14 Tage");
+    expect(proCheckoutButtonLabel("new", "annual")).toContain(PRO_PLAN_ANNUAL_PRICE);
     expect(proCheckoutLead("new", "annual")).toContain(PRO_PLAN_ANNUAL_PRICE);
+    expect(proCheckoutLead("new", "annual")).not.toContain("14 Tage");
     expect(proCheckoutButtonLabel("returning", "annual")).toContain("Jahresabo");
   });
 
@@ -66,8 +69,14 @@ describe("pro plan copy", () => {
     expect(proCheckoutMicroCopy("monthly")).toContain("4,99 €/Mo");
   });
 
+  it("frames paywall timeline around free scans and Pro", () => {
+    expect(FREE_AI_INVOICE_SCAN_LIMIT).toBe(2);
+    expect(PRO_PAYWALL_TRIAL_TIMELINE[0]?.text).toContain("Free:");
+    expect(PRO_FREE_KI_SCAN_HOOK).toContain("2× Rechnung");
+  });
+
   it("lists benefit-led Pro arguments", () => {
-    expect(PRO_PLAN_BENEFITS.length).toBe(5);
+    expect(PRO_PLAN_BENEFITS.length).toBe(9);
     expect(PRO_PLAN_BENEFITS.some((item) => item.title.includes("Zettelchaos"))).toBe(
       true,
     );
@@ -77,7 +86,7 @@ describe("pro plan copy", () => {
   });
 
   it("states that features require a membership", () => {
-    expect(MEMBERSHIP_REQUIRED_MESSAGE).toContain("Pro");
+    expect(MEMBERSHIP_REQUIRED_MESSAGE).toContain("begrenzten KI-Scans");
     expect(cloudAboHref("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")).toBe(
       "/v/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/abo",
     );

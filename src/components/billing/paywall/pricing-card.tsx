@@ -125,9 +125,11 @@ export function PricingCard({
           {anchor.monthlyEquivalent}
         </span>
       ) : null}
-      <span className="mt-2 block text-[0.72rem] font-medium text-[color:var(--paywall-pricing-trial-unselected)]">
-        {anchor.trialLabel}
-      </span>
+      {anchor.flexSubline ? (
+        <span className="mt-2 block text-[0.72rem] text-[color:var(--vd-muted)]">
+          {anchor.flexSubline}
+        </span>
+      ) : null}
     </button>
   );
 }

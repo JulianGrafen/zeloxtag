@@ -2,7 +2,7 @@ import {
   PRO_PAYWALL_CONVERSION_BENEFITS,
   PRO_PAYWALL_CONVERSION_FOOTNOTE,
   PRO_PAYWALL_CONVERSION_SUBLINE,
-  PRO_TRIAL_LABEL,
+  proCheckoutButtonLabel,
 } from "@/lib/billing/pro-plan";
 import type { ZeloxPrimaryGoal } from "@/lib/onboarding/primary-goal";
 import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
@@ -156,7 +156,7 @@ export function getPaywallPersonalization(input: {
     showProBadge: false,
     visualKind: "vehicle_hero",
     benefits: PRO_PAYWALL_CONVERSION_BENEFITS,
-    ctaLabel: PRO_TRIAL_LABEL,
+    ctaLabel: proCheckoutButtonLabel("new", "annual"),
     stickyMicroCopy: "",
     footnote: PRO_PAYWALL_CONVERSION_FOOTNOTE,
     visualAriaLabel: vehicleShort

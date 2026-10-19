@@ -2,13 +2,13 @@
 
 import {
   PRO_PAYWALL_STICKY_MICROCOPY,
-  PRO_TRIAL_LABEL,
+  proCheckoutButtonLabel,
 } from "@/lib/billing/pro-plan";
 import { automotiveBottomBarShellClassName } from "@/components/ui/automotive";
 import { cn } from "@/lib/utils";
 
 export function StickyPaywallCta({
-  label = PRO_TRIAL_LABEL,
+  label = proCheckoutButtonLabel("new", "annual"),
   microCopy = PRO_PAYWALL_STICKY_MICROCOPY,
   anchorText,
   pending,

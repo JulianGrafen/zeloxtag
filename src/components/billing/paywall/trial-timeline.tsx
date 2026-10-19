@@ -56,12 +56,12 @@ export function TrialTimeline({
         embeddedInCard &&
           "border-t border-[color:var(--paywall-grouped-separator)] px-1 pt-3 pb-1",
       )}
-      aria-label="Testphase-Ablauf"
+      aria-label="Free und Pro im Überblick"
     >
       <p
         className="mb-2 px-1 text-[13px] font-medium uppercase tracking-[0.02em] text-[color:var(--vd-muted)]"
       >
-        So läuft deine Testphase
+        Free & Pro im Überblick
       </p>
       <ol
         className={cn(

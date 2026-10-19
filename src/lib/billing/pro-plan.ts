@@ -1,5 +1,10 @@
 /** ZeloxTag Cloud Pro — public checkout copy. */
 
+import {
+  FREE_AI_ABE_SCAN_LIMIT,
+  FREE_AI_INVOICE_SCAN_LIMIT,
+} from "@/lib/billing/free-scan-constants";
+
 export const PRO_PLAN_NAME = "ZeloxTag Pro";
 export const PRO_PLAN_MONTHLY_PRICE = "4,99 €";
 export const PRO_PLAN_MONTHLY_REFERENCE_PRICE = "5,99 €";
@@ -18,9 +23,15 @@ export const PRO_ANNUAL_DISCOUNT_STORY =
 export const PRO_ANNUAL_RECOMMENDED_LABEL = "Beliebteste Wahl";
 export const PRO_ANNUAL_SAVINGS_COPY =
   "2 Monate geschenkt (Spare 10 € gegenüber Monatszahlung)";
+/** Legacy Stripe trials only (bestehende Abos); neue Checkouts ohne Testphase. */
 export const PRO_TRIAL_DAYS = 14;
-export const PRO_TRIAL_LABEL = "14 Tage kostenlos testen";
-export const PRO_TRIAL_BADGE_LABEL = "14 Tage kostenlos";
+
+export const PRO_FREE_KI_SCAN_HOOK = `Gratis: ${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung & ${FREE_AI_ABE_SCAN_LIMIT}× ABE per KI scannen`;
+
+/** @deprecated Use {@link proCheckoutButtonLabel} — kept for imports during migration. */
+export const PRO_TRIAL_LABEL = "Pro Abo starten";
+
+export const PRO_TRIAL_BADGE_LABEL = PRO_FREE_KI_SCAN_HOOK;
 export const PRO_TRIAL_NO_COMMITMENT =
   "Keine Verpflichtung · Jederzeit kündbar";
 
@@ -72,7 +83,6 @@ export type ProPaywallPricingAnchor = {
   currentPrice: string;
   monthlyEquivalent?: string;
   flexSubline?: string;
-  trialLabel: string;
 };
 
 export function proPaywallPricingAnchor(
@@ -83,13 +93,11 @@ export function proPaywallPricingAnchor(
       referencePrice: `${PRO_PLAN_ANNUAL_REFERENCE_PRICE} / Jahr`,
       currentPrice: `${PRO_PLAN_ANNUAL_PRICE} / Jahr`,
       monthlyEquivalent: PRO_ANNUAL_CARD_HIGHLIGHT,
-      trialLabel: PRO_TRIAL_LABEL,
     };
   }
   return {
     currentPrice: `${PRO_PLAN_MONTHLY_PRICE} / Monat`,
     flexSubline: PRO_MONTHLY_CARD_SUBLINE,
-    trialLabel: PRO_TRIAL_LABEL,
   };
 }
 
@@ -103,15 +111,15 @@ export type ProPaywallTimelineNode = {
 export const PRO_PAYWALL_TRIAL_TIMELINE: readonly ProPaywallTimelineNode[] = [
   {
     icon: "check",
-    text: "Heute: 14 Tage Pro kostenlos testen (0,00 €)",
-  },
-  {
-    icon: "mail",
-    text: "Tag 7: Erinnerungs-Mail vor Ablauf des Testzeitraums",
+    text: `Free: ${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung und ${FREE_AI_ABE_SCAN_LIMIT}× ABE per KI scannen`,
   },
   {
     icon: "shield",
-    text: "Tag 14: Erstmalige Abrechnung. Vorher jederzeit mit 1 Klick kündbar",
+    text: "Pro: Unbegrenzte KI-Scans, Tresor und volle Akte",
+  },
+  {
+    icon: "mail",
+    text: "Abo: Sofort starten · Jederzeit kündbar",
   },
 ] as const;
 
@@ -132,7 +140,7 @@ export function proPaywallCardCopy(
       title: "Jährlich",
       primaryPrice: `${PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY} / Monat`,
       secondaryLine: `abgerechnet als ${PRO_PLAN_ANNUAL_PRICE} / Jahr`,
-      subline: "2 Monate geschenkt. Inklusive 14 Tage Testphase.",
+      subline: "2 Monate geschenkt.",
       bestDealBadge: PRO_PAYWALL_ANNUAL_BEST_DEAL_LABEL,
       discountBadge: PRO_ANNUAL_DISCOUNT_LABEL,
     };
@@ -146,24 +154,22 @@ export function proPaywallCardCopy(
 
 export function proPaywallCtaSubline(interval: ProBillingInterval): string {
   if (interval === "annual") {
-    return `Danach ${PRO_PLAN_ANNUAL_PRICE} / Jahr · Jederzeit kündbar`;
+    return `${PRO_PLAN_ANNUAL_PRICE} / Jahr · Jederzeit kündbar`;
   }
-  return `Danach ${PRO_PLAN_MONTHLY_PRICE} / Monat · Jederzeit kündbar`;
+  return `${PRO_PLAN_MONTHLY_PRICE} / Monat · Jederzeit kündbar`;
 }
 
-export const PRO_CHECKOUT_BUTTON_LABEL = PRO_TRIAL_LABEL;
+export const PRO_CHECKOUT_BUTTON_LABEL = "Pro Abo starten";
 export const PRO_CHECKOUT_BUTTON_RETURNING_LABEL = `Pro Abo abschließen · ${PRO_PLAN_MONTHLY_PRICE} / Monat`;
 
-export const PRO_TRIAL_HEADLINE = `Die ersten ${PRO_TRIAL_DAYS} Tage sind kostenlos.`;
-export const PRO_TRIAL_PRICE_COPY = `Danach ${PRO_PLAN_MONTHLY_PRICE} im Monat, jederzeit kündbar.`;
-export const PRO_ANNUAL_TRIAL_PRICE_COPY = `Danach ${PRO_PLAN_ANNUAL_PRICE} pro Jahr, jederzeit kündbar.`;
-export const PRO_ANNUAL_PRICE_COPY = PRO_ANNUAL_TRIAL_PRICE_COPY;
-export const PRO_TRIAL_CHECKOUT_COPY = PRO_PLAN_CHECKOUT_SUBLINE;
+export const PRO_NEW_SUBSCRIBER_MONTHLY_LEAD = `${PRO_PLAN_MONTHLY_PRICE} im Monat · voller Pro-Zugang ab Tag 1. Jederzeit kündbar.`;
+export const PRO_NEW_SUBSCRIBER_ANNUAL_LEAD = `${PRO_PLAN_ANNUAL_PRICE} pro Jahr · voller Pro-Zugang ab Tag 1. Jederzeit kündbar.`;
+export const PRO_ANNUAL_PRICE_COPY = PRO_NEW_SUBSCRIBER_ANNUAL_LEAD;
 export const PRO_RETURNING_PRICE_COPY = `Cloud-Abo ${PRO_PLAN_MONTHLY_PRICE} im Monat, Zahlung über Stripe.`;
 export const PRO_RETURNING_ANNUAL_PRICE_COPY = `Cloud-Abo ${PRO_PLAN_ANNUAL_PRICE} pro Jahr, Zahlung über Stripe.`;
 
 export const MEMBERSHIP_REQUIRED_MESSAGE =
-  "ZeloxTag Pro ist nötig, um diese Funktion zu nutzen. Die ersten 14 Tage sind kostenlos.";
+  "ZeloxTag Pro ist nötig, um diese Funktion zu nutzen. Auf Free bleiben die begrenzten KI-Scans.";
 
 export function cloudAboHref(tagUuid: string): string {
   return `/v/${tagUuid}/abo`;
@@ -257,11 +263,11 @@ export function proCheckoutButtonLabel(
   if (interval === "annual") {
     return audience === "returning"
       ? `Jahresabo abschließen · ${PRO_PLAN_ANNUAL_PRICE} / Jahr`
-      : PRO_CHECKOUT_BUTTON_LABEL;
+      : `Pro starten · ${PRO_PLAN_ANNUAL_PRICE} / Jahr`;
   }
   return audience === "returning"
     ? PRO_CHECKOUT_BUTTON_RETURNING_LABEL
-    : PRO_CHECKOUT_BUTTON_LABEL;
+    : `Pro starten · ${PRO_PLAN_MONTHLY_PRICE} / Mo.`;
 }
 
 export function proCheckoutMicroCopy(interval: ProBillingInterval): string {
@@ -269,7 +275,7 @@ export function proCheckoutMicroCopy(interval: ProBillingInterval): string {
     interval === "annual"
       ? PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY
       : PRO_PLAN_MONTHLY_PRICE;
-  return `Erst nach ${PRO_TRIAL_DAYS} Tagen ${monthlyRate}/Mo. ${PRO_TRIAL_NO_COMMITMENT}.`;
+  return `Abrechnung ab sofort · ${monthlyRate}/Mo. ${PRO_TRIAL_NO_COMMITMENT}.`;
 }
 
 export function proCheckoutLead(
@@ -279,9 +285,9 @@ export function proCheckoutLead(
   if (interval === "annual") {
     return audience === "returning"
       ? PRO_RETURNING_ANNUAL_PRICE_COPY
-      : `${PRO_TRIAL_HEADLINE} ${PRO_ANNUAL_TRIAL_PRICE_COPY}`;
+      : PRO_NEW_SUBSCRIBER_ANNUAL_LEAD;
   }
   return audience === "returning"
     ? PRO_RETURNING_PRICE_COPY
-    : `${PRO_TRIAL_HEADLINE} ${PRO_TRIAL_PRICE_COPY}`;
+    : PRO_NEW_SUBSCRIBER_MONTHLY_LEAD;
 }

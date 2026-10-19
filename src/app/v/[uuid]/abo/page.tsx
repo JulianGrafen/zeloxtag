@@ -6,6 +6,10 @@ import { ActivateCloudView } from "@/components/billing/activate-cloud-view";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { requireTagOwner } from "@/lib/auth/require-tag-access";
+import {
+  FREE_AI_ABE_SCAN_LIMIT,
+  FREE_AI_INVOICE_SCAN_LIMIT,
+} from "@/lib/billing/free-scan-constants";
 import { userHasActiveMembership } from "@/lib/billing/membership-store";
 
 interface ActivateCloudPageProps {
@@ -16,7 +20,7 @@ interface ActivateCloudPageProps {
 export const metadata: Metadata = {
   title: "Cloud aktivieren · ZeloxTag",
   description:
-    "ZeloxTag Pro: 14 Tage kostenlos, danach 4,99 € im Monat. Digitale Fahrzeugakte, Belege, ABEs und TÜV.",
+    `ZeloxTag Pro ab 4,99 €/Monat. Free: ${FREE_AI_INVOICE_SCAN_LIMIT}× Rechnung & ${FREE_AI_ABE_SCAN_LIMIT}× ABE per KI scannen. Digitale Fahrzeugakte, Belege, ABEs und TÜV.`,
 };
 
 export default async function ActivateCloudPage({
