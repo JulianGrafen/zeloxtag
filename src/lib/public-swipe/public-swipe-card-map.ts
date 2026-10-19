@@ -36,30 +36,66 @@ function readInt(value: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function readStringField(
+  record: Record<string, unknown>,
+  snakeKey: string,
+  camelKey: string,
+): string {
+  return readString(record[snakeKey] ?? record[camelKey]);
+}
+
+function readOptionalNumberField(
+  record: Record<string, unknown>,
+  snakeKey: string,
+  camelKey: string,
+): number | null {
+  return readOptionalNumber(record[snakeKey] ?? record[camelKey]);
+}
+
+function readIntField(
+  record: Record<string, unknown>,
+  snakeKey: string,
+  camelKey: string,
+  fallback = 0,
+): number {
+  return readInt(record[snakeKey] ?? record[camelKey], fallback);
+}
+
 export function mapPublicSwipeCardRow(row: unknown): PublicSwipeCard | null {
   if (!row || typeof row !== "object") return null;
   const record = row as Record<string, unknown>;
   const id = readString(record.id);
-  const carName = readString(record.car_name);
-  const thumbnailPath = readString(record.thumbnail_path);
+  const carName = readStringField(record, "car_name", "carName");
+  const thumbnailPath = readStringField(record, "thumbnail_path", "thumbnailPath");
   if (!id || !carName || !thumbnailPath) return null;
 
-  const topRaw = record.top_3_mods;
+  const topRaw = record.top_3_mods ?? record.top3Mods;
   const top3Mods = Array.isArray(topRaw)
     ? topRaw.filter((item): item is string => typeof item === "string")
     : [];
+
+  const verified =
+    record.is_verified_build === true || record.isVerifiedBuild === true;
 
   return {
     id,
     carName,
     hp: readOptionalNumber(record.hp),
-    totalInvestedAmount: readOptionalNumber(record.total_invested_amount),
+    totalInvestedAmount: readOptionalNumberField(
+      record,
+      "total_invested_amount",
+      "totalInvestedAmount",
+    ),
     thumbnailPath,
     top3Mods,
-    isVerifiedBuild: record.is_verified_build === true,
-    upvotesCount: readInt(record.upvotes_count),
-    downvotesCount: readInt(record.downvotes_count),
-    cleanScorePercent: readOptionalNumber(record.clean_score_percent),
+    isVerifiedBuild: verified,
+    upvotesCount: readIntField(record, "upvotes_count", "upvotesCount"),
+    downvotesCount: readIntField(record, "downvotes_count", "downvotesCount"),
+    cleanScorePercent: readOptionalNumberField(
+      record,
+      "clean_score_percent",
+      "cleanScorePercent",
+    ),
   };
 }
 
@@ -100,9 +136,14 @@ export function mapRegisterAnonymousSwipeResult(
 
   return {
     ok: true,
-    alreadyVoted: record.already_voted === true,
-    upvotesCount: readInt(record.upvotes_count),
-    downvotesCount: readInt(record.downvotes_count),
-    cleanScorePercent: readOptionalNumber(record.clean_score_percent),
+    alreadyVoted:
+      record.already_voted === true || record.alreadyVoted === true,
+    upvotesCount: readIntField(record, "upvotes_count", "upvotesCount"),
+    downvotesCount: readIntField(record, "downvotes_count", "downvotesCount"),
+    cleanScorePercent: readOptionalNumberField(
+      record,
+      "clean_score_percent",
+      "cleanScorePercent",
+    ),
   };
 }

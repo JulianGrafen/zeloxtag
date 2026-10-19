@@ -51,6 +51,23 @@ describe("publicSwipeCardToShowcaseCard", () => {
 });
 
 describe("mapPublicSwipeCardList", () => {
+  it("maps API envelope (camelCase) from /api/public/swipe/cards", () => {
+    const cards = mapPublicSwipeCardList([
+      {
+        id: "11111111-1111-1111-1111-111111111111",
+        carName: "BMW M2",
+        thumbnailPath: "/api/vehicle/silhouette/x",
+        top3Mods: ["Exhaust"],
+        isVerifiedBuild: true,
+        upvotesCount: 2,
+        downvotesCount: 1,
+        cleanScorePercent: 67,
+      },
+    ]);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]?.carName).toBe("BMW M2");
+  });
+
   it("filters invalid rows", () => {
     expect(
       mapPublicSwipeCardList([
@@ -74,6 +91,18 @@ describe("mapRegisterAnonymousSwipeResult", () => {
         upvotes_count: 10,
         downvotes_count: 2,
         clean_score_percent: 83,
+      }),
+    ).toMatchObject({ alreadyVoted: false, cleanScorePercent: 83 });
+  });
+
+  it("maps API envelope (camelCase) from /api/public/swipe", () => {
+    expect(
+      mapRegisterAnonymousSwipeResult({
+        ok: true,
+        alreadyVoted: false,
+        upvotesCount: 10,
+        downvotesCount: 2,
+        cleanScorePercent: 83,
       }),
     ).toMatchObject({ alreadyVoted: false, cleanScorePercent: 83 });
   });
