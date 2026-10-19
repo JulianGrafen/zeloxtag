@@ -4,6 +4,11 @@ import { useState, useTransition } from "react";
 
 import { claimTag } from "@/actions/claim-tag";
 import { createDigitalGarageVehicle } from "@/actions/create-digital-garage-vehicle";
+import { stageDigitalGarageForOAuth } from "@/actions/stage-digital-garage-oauth";
+import {
+  OAuthDivider,
+  OAuthProviderButtons,
+} from "@/components/auth/oauth-provider-buttons";
 import { ClaimProgressBar } from "@/components/tags/claim-progress-bar";
 import {
   ClaimField,
@@ -294,6 +299,47 @@ export function ClaimFlow({
     if (vehiclePhotoSkipped) {
       markOnboardingVehiclePhotoSkipped();
     }
+  }
+
+  function garageVehicleStagePayload() {
+    return {
+      make,
+      model,
+      year,
+      vin: vin.trim() || undefined,
+      techSpecs: techSpecsPayload,
+      name: name.trim() || undefined,
+    };
+  }
+
+  async function prepareDigitalGarageOAuth(): Promise<boolean> {
+    setError(null);
+    setInfo(null);
+
+    const vehicleError = validateVehicle();
+    if (vehicleError) {
+      setError(vehicleError);
+      setStep(validateMakeModel() ? "makeModel" : "year");
+      return false;
+    }
+
+    const profileError = validateProfileName();
+    if (profileError) {
+      setError(profileError);
+      if (includeProfileName) {
+        setStep("profileName");
+      }
+      return false;
+    }
+
+    await persistPhotoForDeferredSignup();
+
+    const staged = await stageDigitalGarageForOAuth(garageVehicleStagePayload());
+    if (staged.status === "error") {
+      setError(staged.message);
+      return false;
+    }
+    return true;
   }
 
   function submitClaim() {
@@ -914,6 +960,19 @@ export function ClaimFlow({
                 submitClaim();
               }}
             >
+              {isDigital ? <AuthLegalConsentNotice variant="claim" /> : null}
+
+              {isDigital ? (
+                <>
+                  <OAuthProviderButtons
+                    nextPath="/auth/continue"
+                    disabled={pending}
+                    beforeRedirect={prepareDigitalGarageOAuth}
+                  />
+                  <OAuthDivider />
+                </>
+              ) : null}
+
               <ClaimField
                 id="claim-account-email"
                 label="E-Mail"
@@ -958,8 +1017,6 @@ export function ClaimFlow({
               ) : null}
 
               {isDigital ? <GarageDataTrustBanner /> : null}
-
-              <AuthLegalConsentNotice variant="claim" />
 
               <ClaimSlideActions
                 error={null}

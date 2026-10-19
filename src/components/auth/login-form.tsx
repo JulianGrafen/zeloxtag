@@ -17,6 +17,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  OAuthDivider,
+  OAuthProviderButtons,
+} from "@/components/auth/oauth-provider-buttons";
+import {
   signInWithPassword,
   signUpWithPassword,
   type AuthActionResult,
@@ -160,8 +164,19 @@ export function LoginForm({
             </p>
           )}
 
+          {isSignup ? (
+            <AuthLegalConsentNotice variant="signup" className="mt-4" />
+          ) : null}
+
+          <OAuthProviderButtons
+            nextPath={nextPath || "/auth/continue"}
+            disabled={pending}
+            className={isSignup ? "mt-3" : "mt-4"}
+          />
+          <OAuthDivider className="mt-1" />
+
           <form
-            className="mt-4 flex w-full flex-col gap-4"
+            className="mt-2 flex w-full flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               setMessage(null);
@@ -264,8 +279,6 @@ export function LoginForm({
                 {info}
               </p>
             ) : null}
-
-            {isSignup ? <AuthLegalConsentNotice variant="signup" /> : null}
 
             {isSignup && isDigitalGarage ? (
               <p className="text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">

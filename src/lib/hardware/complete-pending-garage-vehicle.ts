@@ -54,17 +54,21 @@ export async function completePendingGarageVehicleForUser(
   }
 
   const user = await getCurrentUser();
-  if (
-    user &&
-    pending.email.trim().toLowerCase() !== user.email?.trim().toLowerCase()
-  ) {
+  const pendingEmail = pending.email.trim().toLowerCase();
+  const sessionEmail = user?.email?.trim().toLowerCase() ?? "";
+  if (pendingEmail && sessionEmail && pendingEmail !== sessionEmail) {
     return {
       status: "error",
       message: "Gespeicherte Fahrzeugdaten passen nicht zu diesem Konto.",
     };
   }
 
-  const result = await completeGarageVehicleForOwner(parsed.data, pending);
+  const payloadForOwner =
+    sessionEmail && !pendingEmail
+      ? { ...pending, email: sessionEmail }
+      : pending;
+
+  const result = await completeGarageVehicleForOwner(parsed.data, payloadForOwner);
   if (result.status === "created") {
     await clearPendingGarageVehicleState(parsed.data);
   }

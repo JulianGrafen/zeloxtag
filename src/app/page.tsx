@@ -36,6 +36,9 @@ function mapLoginQueryError(error: string | undefined): string | undefined {
   if (error === "session") {
     return "Sitzung konnte nicht geladen werden. Bitte erneut anmelden.";
   }
+  if (error === "oauth_start_failed" || error === "oauth_provider") {
+    return "Anmeldung mit Google oder Apple ist gerade nicht möglich. Bitte E-Mail & Passwort nutzen.";
+  }
   return error;
 }
 
