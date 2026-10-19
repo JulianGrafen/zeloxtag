@@ -123,9 +123,9 @@ function buildExtendedMenuTiles(data: VehicleDashboardData): TileDraft[] {
 
   return [
     {
-      id: "build-planner",
-      title: "Build Planner",
-      icon: "list-checks",
+      id: "build-discover",
+      title: "Builds entdecken",
+      icon: "sparkles",
       featured: true,
     },
     {
@@ -161,12 +161,6 @@ function buildExtendedMenuTiles(data: VehicleDashboardData): TileDraft[] {
       id: "vehicle-settings",
       title: "Showcase",
       icon: "globe",
-      featured: true,
-    },
-    {
-      id: "build-discover",
-      title: "Builds entdecken",
-      icon: "sparkles",
       featured: true,
     },
     {

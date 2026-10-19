@@ -146,7 +146,6 @@ export function TagDashboardView({
   showcaseSwipeTotalLikes = 0,
   productFeaturesBannerActive = true,
   operatingCostHint = null,
-  buildPlannerHint = null,
   showTagShopPromo = false,
   tagShopUserId,
   tagShopUserEmail = null,
@@ -389,17 +388,6 @@ export function TagDashboardView({
       };
     }
 
-    if (tile.id === "build-planner") {
-      return {
-        ...tile,
-        meta: {
-          ...tile.meta,
-          href: path("build-planner"),
-          subtitle: buildPlannerHint?.subtitle ?? "Build planen",
-        },
-      };
-    }
-
     if (tile.id === "schrauber") {
       return {
         ...tile,
@@ -462,11 +450,7 @@ export function TagDashboardView({
   })
     .filter((tile) => {
       if (tile.id === "settings") return isOwner && !demoMode;
-      if (
-        tile.id === "fuel-log" ||
-        tile.id === "operating-costs" ||
-        tile.id === "build-planner"
-      ) {
+      if (tile.id === "fuel-log" || tile.id === "operating-costs") {
         return isOwner || demoMode;
       }
       if (tile.id === "build-discover") return !demoMode && (isOwner || isContributor);
