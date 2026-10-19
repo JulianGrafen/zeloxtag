@@ -3,17 +3,17 @@
 import { useMemo, useRef, useState } from "react";
 
 import { usePreparedStoryFile } from "@/hooks/use-prepared-story-file";
+import { useServerStoryShare } from "@/hooks/use-server-story-share";
 import { isEmbeddedSocialInAppBrowser } from "@/lib/share/story-image-for-share";
 import {
-  canOpenNativeStoryShareSheet,
-  downloadStoryImageFile,
   embeddedBrowserShareHint,
   isLikelyMobileShareDevice,
-  shareStoryImageFile,
 } from "@/lib/share/share-story-image-file";
+import { usePlatformServices } from "@/services/platform/context/platform-services-context";
 import { cn } from "@/lib/utils";
 
 import { slugifyShareFilename } from "./format-spec-delta";
+import { ShareBuildToStoryButton } from "./ShareBuildToStoryButton";
 import { ShareableSpecCardExportButton } from "./ShareableSpecCardExportButton";
 import { SpecCardPreview } from "./SpecCardPreview";
 import { buildStoryCardCacheKey } from "./story-cache-key";
@@ -25,6 +25,8 @@ import type { ShareableBuildData } from "./types";
 
 type ShareableSpecCardProps = {
   data: ShareableBuildData;
+  /** When set, story export uses server OG PNG (no client canvas). */
+  vehicleId?: string;
   className?: string;
   previewMaxWidth?: number;
   showExportButton?: boolean;
@@ -35,6 +37,7 @@ type ShareableSpecCardProps = {
 
 export function ShareableSpecCard({
   data,
+  vehicleId,
   className,
   previewMaxWidth = 320,
   showExportButton = true,
@@ -42,9 +45,10 @@ export function ShareableSpecCard({
   exportButtonPendingLabel,
   exportHint,
 }: ShareableSpecCardProps) {
+  const { nativeBridge } = usePlatformServices();
   const exportRef = useRef<HTMLDivElement>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [isSharing, setIsSharing] = useState(false);
+  const [isCanvasSharing, setIsCanvasSharing] = useState(false);
 
   const storyFilename = useMemo(
     () => `zelox-build-${slugifyShareFilename(data.modelName)}-story.png`,
@@ -52,10 +56,18 @@ export function ShareableSpecCard({
   );
   const cacheKey = useMemo(() => buildStoryCardCacheKey(data), [data]);
 
+  const useServerOg = Boolean(vehicleId?.trim());
+
+  const serverShare = useServerStoryShare({
+    vehicleId: vehicleId ?? "",
+    filename: storyFilename,
+  });
+
   const { storyFile, nativeShareFile, isPreparing, prepareError } =
     usePreparedStoryFile(exportRef, {
       filename: storyFilename,
       cacheKey,
+      enabled: !useServerOg,
     });
 
   const scale = previewMaxWidth / SHAREABLE_SPEC_CARD_WIDTH_PX;
@@ -65,7 +77,7 @@ export function ShareableSpecCard({
 
   const shareReadyFile = nativeShareFile ?? storyFile;
 
-  const defaultShareLabel = "Bild teilen";
+  const defaultShareLabel = useServerOg ? "Share Build to Story" : "Bild teilen";
 
   const defaultShareHint = inAppBrowser
     ? embeddedBrowserShareHint()
@@ -73,7 +85,7 @@ export function ShareableSpecCard({
       ? "Teilen-Menü → Instagram — Bild landet direkt in der Story."
       : "Teilen-Menü öffnen oder Bild speichern und in Instagram als Story hochladen.";
 
-  const handleExport = () => {
+  const handleCanvasExport = () => {
     if (!shareReadyFile) {
       setActionError(
         isPreparing
@@ -91,37 +103,48 @@ export function ShareableSpecCard({
         return;
       }
 
-      if (!canOpenNativeStoryShareSheet(shareReadyFile)) {
-        downloadStoryImageFile(storyFile ?? shareReadyFile);
-        setActionError(
-          "Teilen hier nicht möglich — Bild gespeichert. In Instagram: Story → Galerie.",
-        );
-        return;
-      }
-
-      // Invoke Web Share immediately in the tap handler (no setState before share).
-      const sharePromise = shareStoryImageFile(shareReadyFile);
-      void sharePromise.then((result) => {
-        setIsSharing(false);
-        if (result === "unavailable") {
-          downloadStoryImageFile(storyFile ?? shareReadyFile);
-          setActionError(
-            "Teilen fehlgeschlagen — Bild gespeichert. Instagram aus der Galerie wählen.",
-          );
-        }
-      });
-      setIsSharing(true);
+      setIsCanvasSharing(true);
+      void nativeBridge
+        .shareContent({ files: [shareReadyFile] })
+        .then((result) => {
+          setIsCanvasSharing(false);
+          if (result === "unavailable" || result === "cancelled") {
+            if (result === "unavailable") {
+              setActionError(
+                "Teilen fehlgeschlagen — Bild gespeichert. Instagram aus der Galerie wählen.",
+              );
+            }
+          }
+        });
       return;
     }
 
-    downloadStoryImageFile(storyFile ?? shareReadyFile);
+    void nativeBridge
+      .shareContent({ files: [storyFile ?? shareReadyFile] })
+      .then((result) => {
+        if (result === "unavailable") {
+          setActionError("Teilen nicht verfügbar — bitte Bild speichern.");
+        }
+      });
   };
 
-  const isExporting = isPreparing || isSharing;
-  const error = actionError ?? prepareError;
+  const handleServerExport = () => {
+    setActionError(null);
+    serverShare.clearError();
+    void serverShare.shareToStory();
+  };
 
-  const buttonDisabled =
-    isExporting || (mobileShare && !inAppBrowser && !shareReadyFile);
+  const isExporting = useServerOg
+    ? serverShare.isSharing
+    : isPreparing || isCanvasSharing;
+
+  const error = useServerOg
+    ? actionError ?? serverShare.error
+    : actionError ?? prepareError;
+
+  const buttonDisabled = useServerOg
+    ? isExporting
+    : isExporting || (mobileShare && !inAppBrowser && !shareReadyFile);
 
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
@@ -142,24 +165,43 @@ export function ShareableSpecCard({
       </div>
 
       {showExportButton ? (
-        <ShareableSpecCardExportButton
-          onExport={handleExport}
-          isExporting={isExporting}
-          disabled={buttonDisabled}
-          error={error}
-          className="w-full max-w-sm"
-          label={
-            isPreparing && mobileShare
-              ? "Story wird vorbereitet…"
-              : exportButtonLabel ?? defaultShareLabel
-          }
-          pendingLabel={exportButtonPendingLabel ?? "Teilen-Menü öffnet…"}
-          hint={
-            inAppBrowser
-              ? embeddedBrowserShareHint()
-              : exportHint ?? defaultShareHint
-          }
-        />
+        useServerOg ? (
+          <ShareBuildToStoryButton
+            onShare={handleServerExport}
+            isSharing={isExporting}
+            disabled={buttonDisabled}
+            error={error}
+            className="w-full max-w-sm"
+            label={exportButtonLabel ?? defaultShareLabel}
+            pendingLabel={
+              exportButtonPendingLabel ?? "Story wird erstellt…"
+            }
+            hint={
+              inAppBrowser
+                ? embeddedBrowserShareHint()
+                : exportHint ?? defaultShareHint
+            }
+          />
+        ) : (
+          <ShareableSpecCardExportButton
+            onExport={handleCanvasExport}
+            isExporting={isExporting}
+            disabled={buttonDisabled}
+            error={error}
+            className="w-full max-w-sm"
+            label={
+              isPreparing && mobileShare
+                ? "Story wird vorbereitet…"
+                : exportButtonLabel ?? defaultShareLabel
+            }
+            pendingLabel={exportButtonPendingLabel ?? "Teilen-Menü öffnet…"}
+            hint={
+              inAppBrowser
+                ? embeddedBrowserShareHint()
+                : exportHint ?? defaultShareHint
+            }
+          />
+        )
       ) : null}
     </div>
   );

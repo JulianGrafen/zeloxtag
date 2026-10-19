@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api/api-fetch";
 import { fileToPreviewDataUrl } from "@/lib/vehicles/silhouette-preview-session";
 
 export type VehiclePhotoUploadResult = {
@@ -66,10 +67,9 @@ export async function uploadVehiclePhotoClient(input: {
   }
   body.append("file", uploadFile, uploadFile.name);
 
-  const response = await fetch("/api/vehicle/photo", {
+  const response = await apiFetch("/api/vehicle/photo", {
     method: "POST",
     body,
-    credentials: "include",
   });
 
   let payload: UploadApiPayload | null = null;

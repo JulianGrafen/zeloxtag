@@ -4,7 +4,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { X } from "lucide-react";
 
-import { startStripeCheckoutAction } from "@/actions/stripe-checkout";
+import { mapProIntervalToPlanType } from "@/services/platform/billing/plan-type";
+import { usePlatformServices } from "@/services/platform/context/platform-services-context";
 import { ProPaywallContent } from "@/components/billing/paywall/pro-paywall-content";
 import { StickyPaywallCta } from "@/components/billing/paywall/sticky-cta";
 import { isAnnualPlanAvailable } from "@/lib/billing/constants";
@@ -25,6 +26,7 @@ import {
   PRO_PLAN_CHECKOUT_HEADLINE,
   cloudAboHref,
   proCheckoutMicroCopy,
+  proCheckoutPendingLabel,
   type ProBillingInterval,
 } from "@/lib/billing/pro-plan";
 import { readPrimaryGoal } from "@/lib/onboarding/primary-goal";
@@ -59,6 +61,7 @@ export function ProPaywallModal({
   vehicleHero?: PaywallVehicleHeroContext | null;
   onClose: () => void;
 }) {
+  const { billing, platform } = usePlatformServices();
   const showAnnualPlan = isAnnualPlanAvailable();
   const defaultInterval: ProBillingInterval = showAnnualPlan
     ? "annual"
@@ -116,20 +119,13 @@ export function ProPaywallModal({
   function handleCheckout() {
     setError(null);
     startTransition(async () => {
-      const result = await startStripeCheckoutAction({
-        successPath,
-        cancelPath: aboHref,
-        interval,
-      });
-      if (result.status === "ok") {
-        window.location.assign(result.url);
-        return;
+      const result = await billing.purchasePlan(
+        mapProIntervalToPlanType(interval),
+        { successPath, cancelPath: aboHref },
+      );
+      if (result.status === "error") {
+        setError(result.message);
       }
-      if (result.status === "active") {
-        window.location.assign(successPath);
-        return;
-      }
-      setError(result.message);
     });
   }
 
@@ -205,6 +201,7 @@ export function ProPaywallModal({
                     <StickyPaywallCta
                       label={personalization.ctaLabel}
                       pending={pending}
+                      pendingLabel={proCheckoutPendingLabel(platform.isNativeApp)}
                       error={error}
                       microCopy={proCheckoutMicroCopy(interval)}
                       anchorText={personalization.footnote}

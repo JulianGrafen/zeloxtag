@@ -44,6 +44,7 @@ import {
   GarageInsetInput,
   GarageInsetSelect,
 } from "@/components/ui/garage-field";
+import { apiFetch } from "@/lib/api/api-fetch";
 import { applyClientEntryPresentationFallback } from "@/lib/documents/entry-topic-presentation-fallback";
 import { serializeTopicTags } from "@/lib/documents/entry-topic-tags";
 import { EntryTopicChips } from "@/components/documents/entry-topic-chips";
@@ -175,7 +176,7 @@ async function callInvoiceStep<T>(
   }
   appendScanSessionId(body, scanSessionId);
 
-  const response = await fetch("/api/ocr/invoice", { method: "POST", body });
+  const response = await apiFetch("/api/ocr/invoice", { method: "POST", body });
   const payload = (await response.json().catch(() => null)) as
     | { ok: true; extraction: T; scanSessionId?: string }
     | { ok: false; error?: string; code?: string }

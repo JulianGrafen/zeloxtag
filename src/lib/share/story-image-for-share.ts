@@ -1,11 +1,13 @@
 const JPEG_QUALITY = 0.92;
 
-/** Instagram / Facebook in-app browsers usually block Web Share with files. */
+import { detectEmbeddedSocialWebView } from "@/services/platform/platform-service";
+
+/** Instagram / Facebook / TikTok in-app browsers usually block Web Share with files. */
 export function isEmbeddedSocialInAppBrowser(): boolean {
   if (typeof navigator === "undefined") {
     return false;
   }
-  return /Instagram|FB_IAB|FBAV|FBAN|Line\//i.test(navigator.userAgent);
+  return detectEmbeddedSocialWebView(navigator.userAgent);
 }
 
 function jpegFilenameFromPng(name: string): string {

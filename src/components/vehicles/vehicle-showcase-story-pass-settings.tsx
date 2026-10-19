@@ -41,6 +41,7 @@ export function VehicleShowcaseStoryPassSettings({
       {cardData ? (
         <ShareableSpecCard
           data={cardData}
+          vehicleId={vehicle.id}
           previewMaxWidth={280}
           className="mt-5 w-full"
         />

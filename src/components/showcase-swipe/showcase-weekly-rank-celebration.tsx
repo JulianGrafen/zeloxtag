@@ -5,6 +5,7 @@ import { Sparkles, X } from "lucide-react";
 
 import { ShareableSpecCard } from "@/components/shareable-spec-card";
 import type { ShareableBuildData } from "@/components/shareable-spec-card/types";
+import { apiFetch } from "@/lib/api/api-fetch";
 import { weeklyRankAwardHeadline } from "@/lib/showcase/weekly-rank-award-keys";
 import {
   WEEKLY_RANK_CELEBRATION_BODY,
@@ -25,9 +26,8 @@ type ShowcaseWeeklyRankCelebrationProps = {
 };
 
 async function markAwardSeen(awardId: string): Promise<void> {
-  await fetch("/api/showcase/weekly-award/seen", {
+  await apiFetch("/api/showcase/weekly-award/seen", {
     method: "POST",
-    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ awardId }),
   });
@@ -95,6 +95,7 @@ export function ShowcaseWeeklyRankCelebration({
         <div className="mt-5 border-t border-[color:var(--vd-border)] pt-5">
           <ShareableSpecCard
             data={shareCardData}
+            vehicleId={award.vehicleId}
             previewMaxWidth={280}
             className="w-full"
             exportButtonLabel={WEEKLY_RANK_STORY_EXPORT_LABEL}

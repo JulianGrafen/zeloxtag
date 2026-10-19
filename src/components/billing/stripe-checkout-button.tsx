@@ -2,15 +2,14 @@
 
 import { useState, useTransition } from "react";
 
-import {
-  startStripeCheckoutAction,
-  startStripePortalAction,
-} from "@/actions/stripe-checkout";
+import { mapProIntervalToPlanType } from "@/services/platform/billing/plan-type";
+import { usePlatformServices } from "@/services/platform/context/platform-services-context";
 import { ProPlanIntervalPicker } from "@/components/billing/pro-plan-interval-picker";
 import { Button } from "@/components/ui/button";
 import {
   proCheckoutButtonLabel,
   proCheckoutMicroCopy,
+  proCheckoutPendingLabel,
   type ProBillingInterval,
   type ProCheckoutAudience,
 } from "@/lib/billing/pro-plan";
@@ -30,6 +29,7 @@ export function StripeCheckoutButton({
   showAnnualPlan?: boolean;
   defaultInterval?: ProBillingInterval;
 }) {
+  const { billing, platform } = usePlatformServices();
   const [interval, setInterval] = useState<ProBillingInterval>(defaultInterval);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -50,24 +50,19 @@ export function StripeCheckoutButton({
         onClick={() => {
           setError(null);
           startTransition(async () => {
-            const result = await startStripeCheckoutAction({
-              successPath,
-              cancelPath,
-              interval,
-            });
-            if (result.status === "ok") {
-              window.location.assign(result.url);
-              return;
+            const result = await billing.purchasePlan(
+              mapProIntervalToPlanType(interval),
+              { successPath, cancelPath },
+            );
+            if (result.status === "error") {
+              setError(result.message);
             }
-            if (result.status === "active") {
-              window.location.assign(successPath);
-              return;
-            }
-            setError(result.message);
           });
         }}
       >
-        {pending ? "Weiter zu Stripe…" : resolvedLabel}
+        {pending
+          ? proCheckoutPendingLabel(platform.isNativeApp)
+          : resolvedLabel}
       </Button>
       {audience === "new" ? (
         <p className="text-center text-[0.72rem] leading-relaxed text-[color:var(--vd-muted)]">
@@ -88,6 +83,7 @@ export function StripePortalButton({
 }: {
   returnPath?: string;
 }) {
+  const { billing } = usePlatformServices();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -101,12 +97,10 @@ export function StripePortalButton({
         onClick={() => {
           setError(null);
           startTransition(async () => {
-            const result = await startStripePortalAction({ returnPath });
-            if (result.status === "ok") {
-              window.location.assign(result.url);
-              return;
+            const result = await billing.restorePurchases({ returnPath });
+            if (result.status === "error") {
+              setError(result.message);
             }
-            setError(result.message);
           });
         }}
       >

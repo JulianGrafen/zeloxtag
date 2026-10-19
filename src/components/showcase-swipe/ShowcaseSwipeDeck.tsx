@@ -6,6 +6,7 @@ import {
   ShowcaseSwipeStack,
   type ShowcaseSwipeStackHandle,
 } from "@/components/showcase-swipe/showcase-swipe-stack";
+import { apiFetch } from "@/lib/api/api-fetch";
 import { preloadImageHrefs } from "@/lib/image/preload-image-hrefs";
 import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
@@ -20,9 +21,7 @@ type ShowcaseSwipeDeckProps = {
 };
 
 async function fetchDeck(): Promise<ShowcaseSwipeCard[]> {
-  const response = await fetch("/api/showcase/swipe/deck", {
-    credentials: "same-origin",
-  });
+  const response = await apiFetch("/api/showcase/swipe/deck");
   const json = (await response.json()) as {
     ok?: boolean;
     cards?: ShowcaseSwipeCard[];
@@ -37,9 +36,8 @@ async function postSwipe(
   publicSlug: string,
   decision: "like" | "pass",
 ): Promise<void> {
-  const response = await fetch("/api/showcase/swipe", {
+  const response = await apiFetch("/api/showcase/swipe", {
     method: "POST",
-    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ publicSlug, decision }),
   });

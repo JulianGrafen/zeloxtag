@@ -8,6 +8,7 @@ const serverUrl =
   process.env.CAPACITOR_SERVER_URL?.trim() || PRODUCTION_SITE_URL;
 const allowCleartext = serverUrl.startsWith("http://");
 
+/** Native WebView loads this remote origin; client `/api` calls need `NEXT_PUBLIC_API_BASE_URL`. */
 const config: CapacitorConfig = {
   appId: CAPACITOR_APP_ID,
   appName: "ZeloxTag",

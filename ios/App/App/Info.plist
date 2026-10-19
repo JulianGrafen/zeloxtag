@@ -45,5 +45,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>ZeloxTag nutzt die Kamera zum Scannen von Belegen und Dokumenten.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ZeloxTag benötigt Zugriff auf Fotos, um Belege aus der Galerie zu importieren.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>ZeloxTag kann Story-Bilder in deiner Fotomediathek speichern.</string>
 </dict>
 </plist>

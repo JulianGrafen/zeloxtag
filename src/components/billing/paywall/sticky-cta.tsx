@@ -12,6 +12,7 @@ export function StickyPaywallCta({
   microCopy = PRO_PAYWALL_STICKY_MICROCOPY,
   anchorText,
   pending,
+  pendingLabel = "Weiter zu Stripe…",
   error,
   dismissLabel,
   onCheckout,
@@ -22,6 +23,7 @@ export function StickyPaywallCta({
   microCopy?: string;
   anchorText?: string;
   pending: boolean;
+  pendingLabel?: string;
   error: string | null;
   dismissLabel?: string;
   onCheckout: () => void;
@@ -53,7 +55,7 @@ export function StickyPaywallCta({
           disabled={pending}
           onClick={onCheckout}
         >
-          {pending ? "Weiter zu Stripe…" : label}
+          {pending ? pendingLabel : label}
         </button>
         {microCopy?.trim() ? (
           <p

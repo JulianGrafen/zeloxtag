@@ -4,7 +4,6 @@ import {
   FREE_AI_ABE_SCAN_LIMIT,
   FREE_AI_INVOICE_SCAN_LIMIT,
 } from "@/lib/billing/free-scan-constants";
-
 export const PRO_PLAN_NAME = "ZeloxTag Pro";
 export const PRO_PLAN_MONTHLY_PRICE = "4,99 €";
 export const PRO_PLAN_MONTHLY_REFERENCE_PRICE = "5,99 €";
@@ -276,6 +275,10 @@ export function proCheckoutMicroCopy(interval: ProBillingInterval): string {
       ? PRO_PLAN_ANNUAL_EQUIVALENT_MONTHLY
       : PRO_PLAN_MONTHLY_PRICE;
   return `Abrechnung ab sofort · ${monthlyRate}/Mo. ${PRO_TRIAL_NO_COMMITMENT}.`;
+}
+
+export function proCheckoutPendingLabel(isNativeApp: boolean): string {
+  return isNativeApp ? "Kauf wird verarbeitet…" : "Weiter zu Stripe…";
 }
 
 export function proCheckoutLead(
