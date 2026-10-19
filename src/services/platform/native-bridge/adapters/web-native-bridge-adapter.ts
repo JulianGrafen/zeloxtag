@@ -15,6 +15,10 @@ export class WebNativeBridgeAdapter implements INativeBridgeService {
     // Web has no system haptics — intentional no-op.
   }
 
+  async triggerSelectionHaptic(): Promise<void> {
+    // Web has no system haptics — intentional no-op.
+  }
+
   async captureReceiptPhoto() {
     return captureReceiptPhotoViaFileInput();
   }

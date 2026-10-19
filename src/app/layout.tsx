@@ -11,6 +11,7 @@ import { getSiteUrl } from "@/lib/seo/site-url";
 
 import "./globals.css";
 import { AppThemeRoot } from "@/components/theme/app-theme-root";
+import { getRequestLocalePreferences } from "@/lib/i18n/get-request-locale";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -62,6 +63,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: PWA_THEME_COLOR,
 };
 
@@ -73,9 +75,12 @@ export default async function RootLayout({
   // Required for nonce-based CSP — pages render per request, not at build time.
   await connection();
 
+  const localePreferences = await getRequestLocalePreferences();
+  const htmlLang = localePreferences.locale === "de" ? "de" : "en";
+
   return (
     <html
-      lang="de"
+      lang={htmlLang}
       suppressHydrationWarning
       className={cn(
         "h-full antialiased",
@@ -85,7 +90,9 @@ export default async function RootLayout({
       )}
     >
       <body className="min-h-full bg-background font-sans text-foreground">
-        <AppThemeRoot>{children}</AppThemeRoot>
+        <AppThemeRoot initialLocalePreferences={localePreferences}>
+          {children}
+        </AppThemeRoot>
       </body>
     </html>
   );

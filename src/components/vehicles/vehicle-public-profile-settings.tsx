@@ -6,7 +6,7 @@ import { Check, Copy } from "lucide-react";
 
 import { updateVehicleShowcaseSettings } from "@/actions/update-vehicle-showcase-settings";
 import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
-import { SETTINGS_SUBMENU_TILE_CLASS } from "@/components/vehicles/vehicle-settings-submenu-link";
+import { SETTINGS_SUBMENU_TILE_CLASS } from "@/components/vehicles/vehicle-settings-submenu-styles";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { resolveShowcaseSharePath } from "@/lib/vehicles/public-profile-status";

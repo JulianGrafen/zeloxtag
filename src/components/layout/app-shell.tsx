@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { CookieConsentBanner } from "@/components/legal/cookie-consent-banner";
-import { Navbar } from "./navbar";
+import { AdaptiveNavShell } from "@/components/layout/adaptive-nav-shell";
 
 interface AppShellProps {
   children: ReactNode;
@@ -17,10 +17,11 @@ export function AppShell({ children, showNavbar = true }: AppShellProps) {
         className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
       />
       <div className="relative z-10 flex min-h-dvh flex-col">
-        {showNavbar ? <Navbar /> : null}
-        <main className="flex min-w-0 flex-1 overflow-x-clip" data-surface="automotive">
-          {children}
-        </main>
+        <AdaptiveNavShell showNavbar={showNavbar}>
+          <main className="flex min-w-0 flex-1 overflow-x-clip" data-surface="automotive">
+            {children}
+          </main>
+        </AdaptiveNavShell>
         <CookieConsentBanner />
       </div>
     </div>

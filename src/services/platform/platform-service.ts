@@ -52,6 +52,11 @@ export class PlatformService {
     return this.snapshot.isNativeApp;
   }
 
+  /** Alias for Capacitor native shell detection. */
+  get isNativePlatform(): boolean {
+    return this.snapshot.isNativeApp;
+  }
+
   get platform(): AppPlatform {
     return this.snapshot.platform;
   }

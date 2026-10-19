@@ -1,0 +1,20 @@
+:root {
+  --ios-bg: #000000;
+  --ios-surface: #1c1c1e;
+  --ios-surface-elevated: #2c2c2e;
+  --ios-separator: rgba(255, 255, 255, 0.08);
+  --ios-green: #30d158;
+  --ios-switch-off: #39393d;
+  --ios-destructive: #ff453a;
+  --ios-label-secondary: rgba(235, 235, 245, 0.6);
+}
+
+.ios-settings-surface {
+  --vd-bg: var(--ios-bg);
+  --vd-surface: var(--ios-surface);
+  --vd-surface-elevated: var(--ios-surface-elevated);
+  --vd-border: var(--ios-separator);
+  --background: var(--ios-bg);
+  --card: var(--ios-surface);
+  --secondary: var(--ios-surface-elevated);
+}

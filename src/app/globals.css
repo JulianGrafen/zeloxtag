@@ -1,8 +1,39 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../styles/shadcn-tailwind.css";
+@import "../components/ui/ios/tokens.css";
 
 @custom-variant dark (&:is(.dark *));
+
+@layer base {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  button,
+  a,
+  [role="button"],
+  [role="tab"],
+  label,
+  summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  [data-ios-ui],
+  .ios-ui {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  select,
+  [contenteditable="true"] {
+    -webkit-touch-callout: default;
+    user-select: text;
+  }
+}
 
 html {
   overflow-x: clip;

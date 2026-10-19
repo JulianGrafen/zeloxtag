@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Gauge, Save } from "lucide-react";
 
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
+import { useRegionalFormatters } from "@/lib/i18n/hooks/use-regional-formatters";
 import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
 import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
@@ -87,6 +88,7 @@ export function VehicleSpecsView({
   canEdit,
 }: VehicleSpecsViewProps) {
   const router = useRouter();
+  const { formatPowerFromPs, formatPowerLabel } = useRegionalFormatters();
   const initialSpecs = parseVehicleTechSpecs(vehicle.tech_specs);
   const [make, setMake] = useState(vehicle.make);
   const [model, setModel] = useState(vehicle.model);
@@ -631,9 +633,9 @@ export function VehicleSpecsView({
             ) : null}
             {specs.powerPs != null || specs.powerKw != null ? (
               <ReadRow
-                label="Leistung"
+                label={formatPowerLabel()}
                 value={[
-                  specs.powerPs != null ? `${specs.powerPs} PS` : null,
+                  specs.powerPs != null ? formatPowerFromPs(specs.powerPs) : null,
                   specs.powerKw != null ? `${specs.powerKw} kW` : null,
                 ]
                   .filter(Boolean)

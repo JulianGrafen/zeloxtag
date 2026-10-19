@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { ChangePasswordPanel } from "@/components/auth/change-password-panel";
 import { AppShell } from "@/components/layout/app-shell";
+import { SettingsSubpageLayout } from "@/components/settings/settings-subpage-layout";
+import { IOSGroupedList } from "@/components/ui/ios";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
 import { getCurrentUser } from "@/lib/auth/get-user";
 
@@ -23,32 +24,23 @@ export default async function SettingsPasswordPage() {
 
   return (
     <AppShell>
-      <section className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pb-12 pt-6 sm:px-5">
-        <div>
-          <Link
-            href="/settings"
-            className="text-[0.8rem] font-medium text-[color:var(--vd-muted)]"
-          >
-            ← Zurück zum Konto
-          </Link>
-          <h1 className="claim-title mt-3">Passwort</h1>
-          <p className="claim-copy mt-1">
-            {hasPasswordLogin
-              ? "Ändere dein Anmeldepasswort. Mindestens 10 Zeichen."
-              : "Lege ein Passwort fest, um dich künftig zusätzlich per E-Mail anzumelden."}
-          </p>
-        </div>
-
-        <section
-          aria-label="Passwort"
-          className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
-        >
-          <ChangePasswordPanel
-            hasPasswordLogin={hasPasswordLogin}
-            showHeader={false}
-          />
-        </section>
-      </section>
+      <SettingsSubpageLayout
+        title="Passwort"
+        subtitle={
+          hasPasswordLogin
+            ? "Ändere dein Anmeldepasswort. Mindestens 10 Zeichen."
+            : "Lege ein Passwort fest, um dich künftig zusätzlich per E-Mail anzumelden."
+        }
+      >
+        <IOSGroupedList>
+          <div className="p-4">
+            <ChangePasswordPanel
+              hasPasswordLogin={hasPasswordLogin}
+              showHeader={false}
+            />
+          </div>
+        </IOSGroupedList>
+      </SettingsSubpageLayout>
     </AppShell>
   );
 }

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { SettingsSubpageLayout } from "@/components/settings/settings-subpage-layout";
 import { ThemeAppearanceSettings } from "@/components/theme/theme-appearance-settings";
 import { getCurrentUser } from "@/lib/auth/get-user";
 
@@ -21,23 +21,17 @@ export default async function SettingsAppearancePage() {
 
   return (
     <AppShell>
-      <section className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pb-12 pt-6 sm:px-5">
-        <div>
-          <Link
-            href="/settings"
-            className="text-[0.8rem] font-medium text-[color:var(--vd-muted)]"
-          >
-            ← Zurück zu Einstellungen
-          </Link>
-          <h1 className="claim-title mt-3">Erscheinungsbild</h1>
-          <p className="claim-copy mt-1">
+      <SettingsSubpageLayout
+        title="Erscheinungsbild"
+        subtitle={
+          <>
             Dark Mode abschalten mit <strong className="font-medium">Hell</strong>
             , oder automatisch an die Systemeinstellung deines Geräts anbinden.
-          </p>
-        </div>
-
+          </>
+        }
+      >
         <ThemeAppearanceSettings />
-      </section>
+      </SettingsSubpageLayout>
     </AppShell>
   );
 }

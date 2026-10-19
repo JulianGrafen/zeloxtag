@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight } from "lucide-react";
 
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { resolvePostLoginPath } from "@/lib/auth/post-login-path";
@@ -12,18 +10,12 @@ import {
 import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership";
 import { AppShell } from "@/components/layout/app-shell";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
-import { MaintenanceEmailSettingsPanel } from "@/components/settings/maintenance-email-settings-panel";
-import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
-import { SignOutButton } from "@/components/auth/sign-out-button";
+import { SettingsScreen } from "@/components/settings/settings-screen";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
 import { getMfaRecoveryStatus } from "@/lib/auth/mfa-actions";
 import { getAccountDeletionState } from "@/lib/account/account-lifecycle";
 import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
-import { AccountDeletionPanel } from "@/components/account/account-deletion-panel";
-import { AccountDeletionBanner } from "@/components/account/account-deletion-banner";
-import {
-  isPostPaymentReturn,
-} from "@/lib/onboarding/dashboard-tour";
+import { isPostPaymentReturn } from "@/lib/onboarding/dashboard-tour";
 
 export const metadata: Metadata = {
   title: "Einstellungen · ZeloxTag",
@@ -100,113 +92,23 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   return (
     <AppShell>
-      <section className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pb-12 pt-6 sm:px-5">
-        <div>
-          <Link
-            href={dashboardHref}
-            className="text-[0.8rem] font-medium text-[color:var(--vd-muted)]"
-          >
-            ← Zurück zum Dashboard
-          </Link>
-          <h1 className="claim-title mt-3">Einstellungen</h1>
-          <p className="claim-copy mt-1">
-            Konto, Erscheinungsbild & Sitzung ·{" "}
-            <span className="font-medium text-[color:var(--vd-text)]">
-              {user.email ?? user.id}
-            </span>
-          </p>
-        </div>
-
-        {deletionState.status === "grace" && deletionState.graceEndsAt ? (
-          <AccountDeletionBanner graceEndsAt={deletionState.graceEndsAt} />
-        ) : null}
-
-        <MembershipStatusCard
-          userId={user.id}
-          email={user.email}
-          claimError={claimError}
-          justLinked={justLinked}
-          checkoutState={checkoutState}
-        />
-
-        <Link
-          href="/settings/password"
-          className="flex items-center justify-between gap-3 zt-feature-panel px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-        >
-          <span>
-            <span className="block text-[0.88rem] font-medium">Passwort</span>
-            <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
-              {hasPasswordLogin
-                ? "Passwort ändern"
-                : "Passwort festlegen"}
-            </span>
-          </span>
-          <ChevronRight
-            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-            aria-hidden
+      <SettingsScreen
+        email={user.email ?? user.id}
+        dashboardHref={dashboardHref}
+        mfaSubtitle={mfaSubtitle}
+        maintenanceEmailReminders={maintenanceEmailReminders}
+        deletionState={deletionState}
+        hasPasswordLogin={hasPasswordLogin}
+        membershipSection={
+          <MembershipStatusCard
+            userId={user.id}
+            email={user.email}
+            claimError={claimError}
+            justLinked={justLinked}
+            checkoutState={checkoutState}
           />
-        </Link>
-
-        <Link
-          href="/settings/security"
-          className="flex items-center justify-between gap-3 zt-feature-panel px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-        >
-          <span>
-            <span className="block text-[0.88rem] font-medium">
-              Zwei-Faktor-Authentifizierung (2FA)
-            </span>
-            <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
-              {mfaSubtitle}
-            </span>
-          </span>
-          <ChevronRight
-            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-            aria-hidden
-          />
-        </Link>
-
-        <Link
-          href="/settings/appearance"
-          className="flex items-center justify-between gap-3 zt-feature-panel px-4 py-3.5 text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-        >
-          <span>
-            <span className="block text-[0.88rem] font-medium">
-              Erscheinungsbild
-            </span>
-            <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
-              Dark Mode deaktivieren · Hell, Dunkel oder System
-            </span>
-          </span>
-          <ChevronRight
-            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-            aria-hidden
-          />
-        </Link>
-
-        <MaintenanceEmailSettingsPanel
-          initialEnabled={maintenanceEmailReminders}
-        />
-
-        <PwaInstallSettingsPanel />
-
-        <section aria-label="Sitzung" className="vd-surface-card p-5 shadow-[var(--vd-shadow-sm)]">
-          <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-            Sitzung
-          </h2>
-          <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Melde dich ab, wenn du dieses Gerät nicht mehr nutzen willst.
-          </p>
-          <div className="mt-4">
-            <SignOutButton />
-          </div>
-        </section>
-
-        <AccountDeletionPanel
-          userEmail={user.email ?? ""}
-          hasPasswordLogin={hasPasswordLogin}
-          deletionState={deletionState}
-        />
-      </section>
+        }
+      />
     </AppShell>
   );
 }

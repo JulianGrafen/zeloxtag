@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { MfaSetupPanel } from "@/components/auth/mfa-setup-panel";
 import { AppShell } from "@/components/layout/app-shell";
+import { SettingsSubpageLayout } from "@/components/settings/settings-subpage-layout";
+import { IOSGroupedList } from "@/components/ui/ios";
 import { getCurrentUser } from "@/lib/auth/get-user";
 
 export const metadata: Metadata = {
@@ -20,30 +21,23 @@ export default async function SettingsSecurityPage() {
 
   return (
     <AppShell>
-      <section className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pb-12 pt-6 sm:px-5">
-        <div>
-          <Link
-            href="/settings"
-            className="text-[0.8rem] font-medium text-[color:var(--vd-muted)]"
-          >
-            ← Zurück zu Einstellungen
-          </Link>
-          <h1 className="claim-title mt-3">Zwei-Faktor-Authentifizierung (2FA)</h1>
-          <p className="claim-copy mt-1">
+      <SettingsSubpageLayout
+        title="Zwei-Faktor-Authentifizierung (2FA)"
+        subtitle={
+          <>
             Optional: Schütze dein Konto mit einem Authenticator (Google
-            Authenticator, 1Password, Authy, …). Nach der Aktivierung brauchst du
-            bei jedem Login zusätzlich einen 6-stelligen Code — oder einen
+            Authenticator, 1Password, Authy, …). Nach der Aktivierung brauchst
+            du bei jedem Login zusätzlich einen 6-stelligen Code — oder einen
             Recovery-Code, falls die App verloren geht.
-          </p>
-        </div>
-
-        <section
-          aria-label="Zwei-Faktor-Authentifizierung"
-          className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
-        >
-          <MfaSetupPanel showHeader={false} />
-        </section>
-      </section>
+          </>
+        }
+      >
+        <IOSGroupedList>
+          <div className="p-4">
+            <MfaSetupPanel showHeader={false} />
+          </div>
+        </IOSGroupedList>
+      </SettingsSubpageLayout>
     </AppShell>
   );
 }

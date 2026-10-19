@@ -1,5 +1,6 @@
 "use client";
 
+import { IOSGroupedList } from "@/components/ui/ios";
 import { VehicleExposeSubmenu } from "@/components/vehicles/vehicle-expose-submenu";
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
 import { VehicleShowcaseSettings } from "@/components/vehicles/vehicle-showcase-settings";
@@ -29,7 +30,7 @@ export function VehicleSettingsView({
   weeklyRank = null,
 }: VehicleSettingsViewProps) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="ios-settings-surface flex flex-col gap-5 bg-[#000000] pb-8">
       <VehicleShowcaseSettings
         surfaceScope={surfaceScope}
         vehicle={vehicle}
@@ -46,12 +47,15 @@ export function VehicleSettingsView({
         isExposeActive={isExposeActive}
       />
 
-      <VehicleSettingsSubmenuLink
-        href="/settings"
-        tour="konto-security-link"
-        title="Konto & Sicherheit"
-        subtitle="2FA, Sitzung und Abmelden"
-      />
+      <IOSGroupedList headerTitle="Konto">
+        <VehicleSettingsSubmenuLink
+          href="/settings"
+          tour="konto-security-link"
+          title="Konto & Sicherheit"
+          subtitle="2FA, Sitzung und Abmelden"
+          isLast
+        />
+      </IOSGroupedList>
     </div>
   );
 }

@@ -24,6 +24,15 @@ export class CapacitorNativeBridgeAdapter implements INativeBridgeService {
     }
   }
 
+  async triggerSelectionHaptic(): Promise<void> {
+    try {
+      const { Haptics } = await import("@capacitor/haptics");
+      await Haptics.selectionChanged();
+    } catch {
+      // Plugin unavailable — ignore.
+    }
+  }
+
   async captureReceiptPhoto(): Promise<CapturedImage | null> {
     try {
       const { Camera, CameraResultType, CameraSource } = await import(
