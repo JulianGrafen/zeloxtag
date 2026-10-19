@@ -6,6 +6,7 @@ import {
 
 export type PublicSwipeCard = {
   id: string;
+  publicSlug: string;
   carName: string;
   hp: number | null;
   totalInvestedAmount: number | null;
@@ -73,7 +74,8 @@ export function mapPublicSwipeCardRow(row: unknown): PublicSwipeCard | null {
   const id = readString(record.id);
   const carName = readStringField(record, "car_name", "carName");
   const thumbnailPath = readStringField(record, "thumbnail_path", "thumbnailPath");
-  if (!id || !carName || !thumbnailPath) return null;
+  const publicSlug = readStringField(record, "public_slug", "publicSlug");
+  if (!id || !publicSlug || !carName || !thumbnailPath) return null;
 
   const topRaw = record.top_3_mods ?? record.top3Mods;
   const top3Mods = Array.isArray(topRaw)
@@ -85,6 +87,7 @@ export function mapPublicSwipeCardRow(row: unknown): PublicSwipeCard | null {
 
   return {
     id,
+    publicSlug,
     carName,
     hp: readOptionalNumber(record.hp),
     totalInvestedAmount: readOptionalNumberField(
@@ -118,7 +121,7 @@ export function publicSwipeCardToShowcaseCard(
   card: PublicSwipeCard,
 ): ShowcaseSwipeCard {
   return {
-    publicSlug: card.id,
+    publicSlug: card.publicSlug,
     make: card.carName.trim(),
     model: "",
     year: null,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildDiscoverShowcaseHref,
+  isNavigableShowcasePublicSlug,
   sanitizeDiscoverBackHref,
 } from "./discover-showcase-navigation";
 
@@ -28,6 +29,18 @@ describe("sanitizeDiscoverBackHref", () => {
     expect(sanitizeDiscoverBackHref("https://evil.test/entdecken")).toBeNull();
     expect(sanitizeDiscoverBackHref("/garage/abc")).toBeNull();
     expect(sanitizeDiscoverBackHref("//evil.test/entdecken")).toBeNull();
+  });
+});
+
+describe("isNavigableShowcasePublicSlug", () => {
+  it("rejects vehicle UUID slugs", () => {
+    expect(
+      isNavigableShowcasePublicSlug("a1b2c3d4-e5f6-4789-a012-3456789abcde"),
+    ).toBe(false);
+  });
+
+  it("accepts public slugs", () => {
+    expect(isNavigableShowcasePublicSlug("my-build")).toBe(true);
   });
 });
 

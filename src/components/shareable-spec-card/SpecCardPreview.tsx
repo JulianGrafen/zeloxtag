@@ -15,7 +15,7 @@ import { ShareCardSpecRowView } from "./ShareCardSpecRow";
 import { ShareCardWeeklyRankBadge } from "./ShareCardWeeklyRankBadge";
 import { ShareCardZeloxMark } from "./ShareCardZeloxMark";
 import {
-  isShareCardCatalogCutout,
+  isShareCardCutoutHero,
   shareCardImageCrossOrigin,
 } from "@/lib/share/share-card-image-cross-origin";
 
@@ -35,7 +35,7 @@ const ShowcaseSpecCardPreview = forwardRef<
 >(function ShowcaseSpecCardPreview({ data, format, className }, ref) {
     const [imageFailed, setImageFailed] = useState(false);
     const showImage = Boolean(data.imageUrl) && !imageFailed;
-    const isCatalogCutout = isShareCardCatalogCutout(data.imageUrl);
+    const isCatalogCutout = isShareCardCutoutHero(data.imageUrl);
     /** Post 3:4 — no Umbau-DNA (radar overlapped hero/specs). Story keeps DNA zone. */
     const showDna = data.buildDna != null && format !== "post";
     const { width, height } = shareCardDimensions(format);

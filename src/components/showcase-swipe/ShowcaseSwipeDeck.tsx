@@ -16,7 +16,10 @@ import {
 } from "@/components/showcase-swipe/showcase-swipe-stack";
 import { apiFetch } from "@/lib/api/api-fetch";
 import { preloadImageHrefs } from "@/lib/image/preload-image-hrefs";
-import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
+import {
+  buildDiscoverShowcaseHref,
+  isNavigableShowcasePublicSlug,
+} from "@/lib/showcase/discover-showcase-navigation";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 
 type ShowcaseSwipeDeckProps = {
@@ -169,6 +172,12 @@ export function ShowcaseSwipeDeck({
 
   const openShowcase = useCallback(
     (card: ShowcaseSwipeCard) => {
+      if (!isNavigableShowcasePublicSlug(card.publicSlug)) {
+        console.warn(
+          "[entdecken] showcase slug missing or vehicle UUID — reload deck",
+        );
+        return;
+      }
       router.push(
         buildDiscoverShowcaseHref(card.publicSlug, entdeckenReturnHref),
       );

@@ -23,6 +23,7 @@ import { preloadImageHrefs } from "@/lib/image/preload-image-hrefs";
 import { ANONYMOUS_SWIPE_GATE_LIMIT } from "@/lib/public-swipe/anonymous-swipe-storage";
 import {
   buildDiscoverShowcaseHref,
+  isNavigableShowcasePublicSlug,
   PUBLIC_SWIPE_DISCOVER_BACK_HREF,
 } from "@/lib/showcase/discover-showcase-navigation";
 import {
@@ -182,6 +183,12 @@ export function PublicSwipeExperience() {
     (card: ShowcaseSwipeCard) => {
       if (isGated || swipeCount >= ANONYMOUS_SWIPE_GATE_LIMIT) {
         setGateReason("limit");
+        return;
+      }
+      if (!isNavigableShowcasePublicSlug(card.publicSlug)) {
+        console.warn(
+          "[public-swipe] showcase slug missing or vehicle UUID — reload deck",
+        );
         return;
       }
       router.push(

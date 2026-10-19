@@ -7,7 +7,7 @@ import {
   type ShareCardFormat,
 } from "@/lib/share/share-card-variant";
 import {
-  isShareCardCatalogCutout,
+  isShareCardCutoutHero,
   shareCardImageCrossOrigin,
 } from "@/lib/share/share-card-image-cross-origin";
 
@@ -28,7 +28,7 @@ export const ShareCardRankHeroPreview = forwardRef<
 >(function ShareCardRankHeroPreview({ data, format, className }, ref) {
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = Boolean(data.imageUrl) && !imageFailed;
-  const isCatalogCutout = isShareCardCatalogCutout(data.imageUrl);
+  const isCatalogCutout = isShareCardCutoutHero(data.imageUrl);
   const { width, height } = shareCardDimensions(format);
   const isPost = format === "post";
   const modelSizePx = isPost ? 52 : 68;

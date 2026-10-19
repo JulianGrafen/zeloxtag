@@ -11,6 +11,7 @@ describe("mapPublicSwipeCardRow", () => {
   it("maps RPC card shape", () => {
     const card = mapPublicSwipeCardRow({
       id: "11111111-1111-1111-1111-111111111111",
+      public_slug: "supra-gr-2021",
       car_name: "Toyota GR Supra · 2021",
       hp: 387,
       total_invested_amount: 12500,
@@ -23,6 +24,7 @@ describe("mapPublicSwipeCardRow", () => {
     });
 
     expect(card?.carName).toContain("Supra");
+    expect(card?.publicSlug).toBe("supra-gr-2021");
     expect(card?.cleanScorePercent).toBe(84);
     expect(card?.top3Mods).toHaveLength(2);
   });
@@ -32,6 +34,7 @@ describe("publicSwipeCardToShowcaseCard", () => {
   it("maps into showcase stack card shape", () => {
     const card = mapPublicSwipeCardRow({
       id: "11111111-1111-1111-1111-111111111111",
+      public_slug: "supra-gr-2021",
       car_name: "Toyota GR Supra · 2021",
       hp: 387,
       thumbnail_path: "/api/vehicle/silhouette/111?v=1",
@@ -43,7 +46,8 @@ describe("publicSwipeCardToShowcaseCard", () => {
     });
     expect(card).not.toBeNull();
     const showcase = publicSwipeCardToShowcaseCard(card!);
-    expect(showcase.publicSlug).toBe(card!.id);
+    expect(showcase.publicSlug).toBe("supra-gr-2021");
+    expect(showcase.publicSlug).not.toBe(card!.id);
     expect(showcase.make).toContain("Supra");
     expect(showcase.heroImageSrc).toBe(card!.thumbnailPath);
     expect(showcase.heroImageUsesCover).toBe(true);
@@ -54,6 +58,7 @@ describe("publicSwipeCardToShowcaseCard", () => {
   it("maps tuner personality tags into swipe chips", () => {
     const card = mapPublicSwipeCardRow({
       id: "11111111-1111-1111-1111-111111111111",
+      public_slug: "bmw-x3-2011",
       car_name: "BMW X3 · 2011",
       hp: 226,
       thumbnail_path: "/api/vehicle/silhouette/x",
@@ -77,6 +82,7 @@ describe("mapPublicSwipeCardList", () => {
     const cards = mapPublicSwipeCardList([
       {
         id: "11111111-1111-1111-1111-111111111111",
+        publicSlug: "bmw-m2",
         carName: "BMW M2",
         thumbnailPath: "/api/vehicle/silhouette/x",
         top3Mods: ["Exhaust"],
@@ -96,6 +102,7 @@ describe("mapPublicSwipeCardList", () => {
         { id: "x", car_name: "", thumbnail_path: "" },
         {
           id: "11111111-1111-1111-1111-111111111111",
+          public_slug: "ok-build",
           car_name: "Ok",
           thumbnail_path: "/t",
         },

@@ -4,6 +4,8 @@ export type OgImageFetchResult =
   | { ok: true; dataUri: string; mimeType: string }
   | { ok: false; reason: "missing_url" | "fetch_failed" | "empty" | "timeout" };
 
+import { imageContentTypeFromBytes } from "@/lib/vehicles/silhouette-bytes";
+
 function mimeFromContentType(contentType: string | null): string {
   const normalized = contentType?.split(";")[0]?.trim().toLowerCase();
   if (normalized === "image/jpeg" || normalized === "image/jpg") {
@@ -13,6 +15,16 @@ function mimeFromContentType(contentType: string | null): string {
     return "image/webp";
   }
   return "image/png";
+}
+
+/** In-memory image bytes → Satori data URI (owner silhouette storage). */
+export function bytesToOgImageDataUri(bytes: Uint8Array): OgImageFetchResult {
+  if (bytes.byteLength === 0) {
+    return { ok: false, reason: "empty" };
+  }
+  const mimeType = imageContentTypeFromBytes(bytes);
+  const base64 = Buffer.from(bytes).toString("base64");
+  return { ok: true, dataUri: `data:${mimeType};base64,${base64}`, mimeType };
 }
 
 /** Loads a remote hero image for Satori (`<img src={dataUri} />`). */

@@ -8,6 +8,7 @@ import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 
 type SwipeCardDetailsContentProps = {
   card: ShowcaseSwipeCard;
+  showVehicleHeader?: boolean;
 };
 
 function buildSwipeQuartettLines(card: ShowcaseSwipeCard) {
@@ -20,18 +21,23 @@ function buildSwipeQuartettLines(card: ShowcaseSwipeCard) {
   });
 }
 
-export function SwipeCardDetailsContent({ card }: SwipeCardDetailsContentProps) {
+export function SwipeCardDetailsContent({
+  card,
+  showVehicleHeader = true,
+}: SwipeCardDetailsContentProps) {
   const title = [card.make, card.model].filter(Boolean).join(" ");
   const lines = buildSwipeQuartettLines(card);
 
   return (
     <div className="flex flex-col gap-5 pb-4 text-white">
-      <div>
-        <p className="text-[1.05rem] font-semibold tracking-tight">{title}</p>
-        {card.year != null ? (
-          <p className="text-[0.82rem] text-zinc-400">{card.year}</p>
-        ) : null}
-      </div>
+      {showVehicleHeader ? (
+        <div>
+          <p className="text-[1.05rem] font-semibold tracking-tight">{title}</p>
+          {card.year != null ? (
+            <p className="text-[0.82rem] text-zinc-400">{card.year}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       {card.buildPersonalityLabels.length > 0 ? (
         <ShowroomBuildPersonalityChips

@@ -18,7 +18,7 @@ export function SwipeCardDetailsSheet({
 }: SwipeCardDetailsSheetProps) {
   const open = card != null;
   const title = card
-    ? [card.make, card.model].filter(Boolean).join(" ")
+    ? [card.make, card.model].filter(Boolean).join(" ") || card.make
     : undefined;
 
   return (
@@ -41,7 +41,9 @@ export function SwipeCardDetailsSheet({
         ) : null
       }
     >
-      {card ? <SwipeCardDetailsContent card={card} /> : null}
+      {card ? (
+        <SwipeCardDetailsContent card={card} showVehicleHeader={false} />
+      ) : null}
     </DiscoverBottomSheet>
   );
 }

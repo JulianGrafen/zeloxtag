@@ -9,6 +9,7 @@ import {
   buildStoryCardOgPayload,
   resolveStoryCardHeroAbsoluteUrl,
 } from "@/lib/og/story-card/build-story-card-og-payload";
+import { resolveStoryCardHeroDataUri } from "@/lib/og/story-card/resolve-story-card-hero-data-uri";
 import { loadStoryCardOgFonts } from "@/lib/og/story-card/load-story-card-og-fonts";
 import { StoryCardOgRankHeroTemplate } from "@/lib/og/story-card/story-card-og-template-rank-hero";
 import { StoryCardOgTemplate } from "@/lib/og/story-card/story-card-og-template";
@@ -97,12 +98,11 @@ export async function GET(request: NextRequest) {
     origin,
   );
   const logoAbsolute = resolveAbsoluteAssetUrl(ZELOX_BRAND_MARK_SRC, origin);
-  const [heroFetch, logoFetch, weeklyRank] = await Promise.all([
-    fetchOgImageDataUri(heroAbsolute),
+  const [heroImageDataUri, logoFetch, weeklyRank] = await Promise.all([
+    resolveStoryCardHeroDataUri({ vehicleId, heroAbsoluteUrl: heroAbsolute }),
     fetchOgImageDataUri(logoAbsolute),
     loadVehicleWeeklyShowcaseRank(vehicleId),
   ]);
-  const heroImageDataUri = heroFetch.ok ? heroFetch.dataUri : null;
   const logoDataUri = logoFetch.ok ? logoFetch.dataUri : null;
 
   const payload = buildStoryCardOgPayload({

@@ -26,3 +26,13 @@ export function shareCardImageCrossOrigin(
 export function isShareCardCatalogCutout(src: string | undefined): boolean {
   return Boolean(src?.includes("/api/vehicle/catalog/"));
 }
+
+/** Owner silhouette proxy or catalog cutout — contain layout, not full-bleed cover. */
+export function isShareCardCutoutHero(src: string | undefined): boolean {
+  const trimmed = src?.trim();
+  if (!trimmed) return false;
+  return (
+    isShareCardCatalogCutout(trimmed) ||
+    trimmed.includes("/api/vehicle/silhouette/")
+  );
+}
