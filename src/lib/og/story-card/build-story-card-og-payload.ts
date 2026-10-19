@@ -65,6 +65,7 @@ export type BuildStoryCardOgPayloadInput = {
   weeklyRank?: VehicleWeeklyShowcaseRank | null;
   siteOrigin?: string;
   heroImageDataUri?: string | null;
+  logoDataUri?: string | null;
 };
 
 export function buildStoryCardOgPayload(
@@ -126,11 +127,13 @@ export function buildStoryCardOgPayload(
 
   return {
     modelName,
+    instagramHandle: shareData?.instagramHandle ?? null,
     powerLabel,
     topMods,
     totalInvestedLabel,
     trustBadge: formatStoryCardTrustBadge(input.vehicle.public_slug, origin),
     heroImageDataUri: input.heroImageDataUri ?? null,
+    logoDataUri: input.logoDataUri ?? null,
     weeklyRank,
     modificationsCount: showcase.modifications.length,
   };

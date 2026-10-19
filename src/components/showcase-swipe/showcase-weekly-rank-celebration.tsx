@@ -98,6 +98,8 @@ export function ShowcaseWeeklyRankCelebration({
             vehicleId={award.vehicleId}
             previewMaxWidth={280}
             className="w-full"
+            defaultFormat="story"
+            defaultStyle="rankHero"
             exportButtonLabel={WEEKLY_RANK_STORY_EXPORT_LABEL}
             exportButtonPendingLabel={WEEKLY_RANK_STORY_EXPORT_PENDING_LABEL}
             exportHint={WEEKLY_RANK_STORY_EXPORT_HINT}

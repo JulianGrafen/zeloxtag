@@ -1,3 +1,8 @@
+import {
+  shareCardDimensions,
+  type ShareCardFormat,
+} from "@/lib/share/share-card-variant";
+
 import type { ShareableBuildData } from "./types";
 
 export type ShareCardDensity = "comfortable" | "compact" | "dense";
@@ -15,7 +20,7 @@ export type ShareCardLayout = {
   footerLogoHeightPx: number;
 };
 
-const CARD_HEIGHT_PX = 1920;
+const STORY_HEIGHT_PX = 1920;
 const FOOTER_ZONE_PERCENT = 9;
 const DNA_ZONE_PERCENT = 30;
 const FOOTER_BASE_PX = 168;
@@ -37,41 +42,52 @@ function stackedSpecExtraPx(data: ShareableBuildData): number {
   return Math.min(160, 36 + lines * 22);
 }
 
-export function computeShareCardLayout(data: ShareableBuildData): ShareCardLayout {
+export function computeShareCardLayout(
+  data: ShareableBuildData,
+  format: ShareCardFormat = "story",
+): ShareCardLayout {
+  const cardHeightPx = shareCardDimensions(format).height;
+  const heightScale = cardHeightPx / STORY_HEIGHT_PX;
+
   const specCount = data.specRows.length;
   const hasDna = data.buildDna != null;
   const hasInstagram = Boolean(data.instagramHandle);
 
-  let heroHeightPercent = 34;
-  if (specCount > 5 || hasDna) heroHeightPercent = 30;
-  if (specCount > 8) heroHeightPercent = 28;
-  if (hasDna) heroHeightPercent = Math.min(heroHeightPercent, 28);
+  let heroHeightPercent = format === "post" ? 38 : 34;
+  if (specCount > 5 || hasDna) heroHeightPercent = format === "post" ? 34 : 30;
+  if (specCount > 8) heroHeightPercent = format === "post" ? 32 : 28;
+  if (hasDna) heroHeightPercent = Math.min(heroHeightPercent, format === "post" ? 32 : 28);
   if (hasInstagram) {
-    heroHeightPercent = Math.min(heroHeightPercent + HERO_INSTAGRAM_EXTRA_PERCENT, 38);
+    heroHeightPercent = Math.min(
+      heroHeightPercent + HERO_INSTAGRAM_EXTRA_PERCENT,
+      format === "post" ? 42 : 38,
+    );
   }
 
   let density: ShareCardDensity = "comfortable";
   if (specCount > 6 || hasDna) density = "compact";
   if (specCount > 9 || (specCount > 7 && hasDna)) density = "dense";
 
-  const heroPx = (CARD_HEIGHT_PX * heroHeightPercent) / 100;
+  const heroPx = (cardHeightPx * heroHeightPercent) / 100;
+  const dnaBlockPx = hasDna ? DNA_BLOCK_PX * heightScale : 0;
   const reserved =
     heroPx +
-    FOOTER_BASE_PX +
+    FOOTER_BASE_PX * heightScale +
     CONTENT_PADDING_PX +
-    (hasDna ? DNA_BLOCK_PX : 0) +
+    dnaBlockPx +
     (data.modificationsCount > 0 ? MODS_LINE_PX : 0) +
     stackedSpecExtraPx(data);
 
-  const available = Math.max(200, CARD_HEIGHT_PX - reserved);
+  const available = Math.max(160, cardHeightPx - reserved);
   const needed = specCount * ROW_HEIGHT_PX[density];
   let contentScale = 1;
   if (needed > available) {
     contentScale = Math.max(0.92, available / needed);
   }
 
-  const footerLogoHeightPx =
+  const footerLogoBase =
     density === "dense" ? 132 : density === "compact" ? 152 : 172;
+  const footerLogoHeightPx = Math.round(footerLogoBase * heightScale);
 
   const dnaZonePercent = hasDna ? DNA_ZONE_PERCENT : 0;
   const specsZonePercent =

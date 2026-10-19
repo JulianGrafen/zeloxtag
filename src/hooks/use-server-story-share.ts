@@ -3,6 +3,10 @@
 import { useCallback, useState } from "react";
 
 import { fetchStoryCardPngFile } from "@/lib/share/fetch-story-card-png-file";
+import type {
+  ShareCardFormat,
+  ShareCardStyle,
+} from "@/lib/share/share-card-variant";
 import { embeddedBrowserShareHint } from "@/lib/share/share-story-image-file";
 import { isEmbeddedSocialInAppBrowser } from "@/lib/share/story-image-for-share";
 import { usePlatformServices } from "@/services/platform/context/platform-services-context";
@@ -10,11 +14,15 @@ import { usePlatformServices } from "@/services/platform/context/platform-servic
 export type UseServerStoryShareOptions = {
   vehicleId: string;
   filename: string;
+  format?: ShareCardFormat;
+  style?: ShareCardStyle;
 };
 
 export function useServerStoryShare({
   vehicleId,
   filename,
+  format,
+  style,
 }: UseServerStoryShareOptions) {
   const { nativeBridge } = usePlatformServices();
   const [isSharing, setIsSharing] = useState(false);
@@ -30,7 +38,10 @@ export function useServerStoryShare({
     setError(null);
 
     try {
-      const file = await fetchStoryCardPngFile(vehicleId, filename);
+      const file = await fetchStoryCardPngFile(vehicleId, filename, {
+        format,
+        style,
+      });
       const result = await nativeBridge.shareContent({ files: [file] });
       if (result === "unavailable") {
         setError(
@@ -46,7 +57,7 @@ export function useServerStoryShare({
     } finally {
       setIsSharing(false);
     }
-  }, [filename, nativeBridge, vehicleId]);
+  }, [filename, format, nativeBridge, style, vehicleId]);
 
   return {
     shareToStory,

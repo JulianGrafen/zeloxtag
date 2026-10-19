@@ -50,10 +50,10 @@ export default function DemoPage() {
               Demo · BMW E36
             </p>
             <Link
-              href="/"
+              href="/demo/share-card"
               className="shrink-0 rounded-full bg-neutral-900 px-3 py-1.5 text-[0.72rem] font-semibold text-white"
             >
-              Anmelden
+              Share-Karte
             </Link>
           </div>
         </div>

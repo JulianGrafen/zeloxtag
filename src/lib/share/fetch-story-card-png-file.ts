@@ -1,5 +1,8 @@
 import { apiFetch } from "@/lib/api/api-fetch";
-import { buildStoryCardOgApiPath } from "@/lib/share/build-story-card-og-url";
+import {
+  buildStoryCardOgApiPath,
+  type StoryCardOgUrlOptions,
+} from "@/lib/share/build-story-card-og-url";
 
 export class StoryCardFetchError extends Error {
   readonly status: number;
@@ -14,8 +17,9 @@ export class StoryCardFetchError extends Error {
 export async function fetchStoryCardPngFile(
   vehicleId: string,
   filename: string,
+  options?: StoryCardOgUrlOptions,
 ): Promise<File> {
-  const response = await apiFetch(buildStoryCardOgApiPath(vehicleId), {
+  const response = await apiFetch(buildStoryCardOgApiPath(vehicleId, options), {
     method: "GET",
     headers: { Accept: "image/png" },
   });

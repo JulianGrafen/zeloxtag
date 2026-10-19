@@ -33,8 +33,8 @@ export function VehicleShowcaseStoryPassSettings({
         </h2>
         <p className="text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
           {topThree != null
-            ? "9:16-Karte mit deiner Wochenplatzierung für Instagram Stories"
-            : "9:16-Karte für Instagram Stories"}
+            ? "Format und Stil wählen — Story oder Post, Platzierung oder voller Showcase."
+            : "Story oder Post — voller Showcase oder Fokus auf dein Fahrzeug."}
         </p>
       </div>
 

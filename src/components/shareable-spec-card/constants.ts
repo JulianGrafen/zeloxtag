@@ -8,6 +8,9 @@ import { ZELOX_BRAND_MARK_SRC } from "@/lib/brand/constants";
 export const SHAREABLE_SPEC_CARD_WIDTH_PX = 1080;
 export const SHAREABLE_SPEC_CARD_HEIGHT_PX = 1920;
 
+/** Instagram feed post (3:4). */
+export const SHAREABLE_SPEC_CARD_POST_HEIGHT_PX = 1440;
+
 /** 1× = 1080×1920 output; matches Instagram Story resolution. */
 export const SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO = 1;
 

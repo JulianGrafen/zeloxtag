@@ -21,6 +21,7 @@ const PUBLIC_EXACT = new Set([
   "/auth/callback",
   "/auth/confirm",
   "/demo",
+  "/demo/share-card",
   "/impressum",
   "/agb",
   "/datenschutz",

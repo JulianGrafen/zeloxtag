@@ -1,19 +1,22 @@
 import type { CSSProperties } from "react";
 
 import {
-  SHAREABLE_SPEC_CARD_HEIGHT_PX,
-  SHAREABLE_SPEC_CARD_WIDTH_PX,
-} from "@/components/shareable-spec-card/constants";
+  shareCardDimensions,
+  type ShareCardFormat,
+} from "@/lib/share/share-card-variant";
 
 import type { StoryCardOgPayload } from "./story-card-og-types";
 
 type StoryCardOgTemplateProps = {
   payload: StoryCardOgPayload;
+  format?: ShareCardFormat;
 };
 
-const root: CSSProperties = {
-  width: SHAREABLE_SPEC_CARD_WIDTH_PX,
-  height: SHAREABLE_SPEC_CARD_HEIGHT_PX,
+function showcaseRoot(format: ShareCardFormat): CSSProperties {
+  const { width, height } = shareCardDimensions(format);
+  return {
+  width,
+  height,
   display: "flex",
   flexDirection: "column",
   background: "#0a0a0a",
@@ -22,6 +25,7 @@ const root: CSSProperties = {
   position: "relative",
   overflow: "hidden",
 };
+}
 
 const heroGradient: CSSProperties = {
   position: "absolute",
@@ -42,11 +46,16 @@ function weeklyRankLabel(rank: 1 | 2 | 3): string {
   return `Top ${rank} · Woche`;
 }
 
-export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
+export function StoryCardOgTemplate({
+  payload,
+  format = "story",
+}: StoryCardOgTemplateProps) {
   const showHero = Boolean(payload.heroImageDataUri);
+  const scale = shareCardDimensions(format).height / 1920;
+  const s = (px: number) => px * scale;
 
   return (
-    <div style={root}>
+    <div style={showcaseRoot(format)}>
       <div style={heroGradient} />
       <div
         style={{
@@ -87,13 +96,13 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
           <div
             style={{
               position: "absolute",
-              top: 40,
-              left: 48,
-              padding: "12px 20px",
-              borderRadius: 16,
+              top: s(40),
+              left: s(48),
+              padding: `${s(12)}px ${s(20)}px`,
+              borderRadius: s(16),
               background: "rgba(245, 158, 11, 0.18)",
               border: "1px solid rgba(245, 158, 11, 0.35)",
-              fontSize: 26,
+              fontSize: s(26),
               fontWeight: 700,
               letterSpacing: "0.06em",
               textTransform: "uppercase",
@@ -104,10 +113,16 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
           </div>
         ) : null}
 
-        <div style={{ position: "relative", padding: "0 48px 32px", zIndex: 2 }}>
+        <div
+          style={{
+            position: "relative",
+            padding: `0 ${s(48)}px ${s(32)}px`,
+            zIndex: 2,
+          }}
+        >
           <div
             style={{
-              fontSize: 64,
+              fontSize: s(64),
               fontWeight: 700,
               lineHeight: 1.05,
               letterSpacing: "-0.03em",
@@ -124,15 +139,15 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          gap: 28,
-          padding: "24px 48px",
+          gap: s(28),
+          padding: `${s(24)}px ${s(48)}px`,
           zIndex: 2,
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div
             style={{
-              fontSize: 22,
+              fontSize: s(22),
               letterSpacing: "0.2em",
               textTransform: "uppercase",
               color: "rgba(255,255,255,0.45)",
@@ -141,7 +156,13 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
           >
             Gesamtleistung
           </div>
-          <div style={{ fontSize: 52, fontWeight: 700, letterSpacing: "-0.02em" }}>
+          <div
+            style={{
+              fontSize: s(52),
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+            }}
+          >
             {payload.powerLabel}
           </div>
         </div>
@@ -150,7 +171,7 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div
               style={{
-                fontSize: 22,
+                fontSize: s(22),
                 letterSpacing: "0.2em",
                 textTransform: "uppercase",
                 color: "rgba(255,255,255,0.45)",
@@ -166,21 +187,21 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
                   display: "flex",
                   alignItems: "center",
                   gap: 16,
-                  fontSize: 30,
+                  fontSize: s(30),
                   fontWeight: 600,
                   color: "rgba(255,255,255,0.92)",
                 }}
               >
                 <span
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
+                    width: s(36),
+                    height: s(36),
+                    borderRadius: s(10),
                     background: "rgba(255,255,255,0.08)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 20,
+                    fontSize: s(20),
                     color: "rgba(255,255,255,0.55)",
                     fontWeight: 700,
                   }}
@@ -197,7 +218,7 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div
               style={{
-                fontSize: 22,
+                fontSize: s(22),
                 letterSpacing: "0.2em",
                 textTransform: "uppercase",
                 color: "rgba(255,255,255,0.45)",
@@ -206,7 +227,13 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
             >
               Total Invested
             </div>
-            <div style={{ fontSize: 44, fontWeight: 700, color: "#34d399" }}>
+            <div
+              style={{
+                fontSize: s(44),
+                fontWeight: 700,
+                color: "#34d399",
+              }}
+            >
               {payload.totalInvestedLabel}
             </div>
           </div>
@@ -215,7 +242,7 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
         {payload.modificationsCount > 0 ? (
           <div
             style={{
-              fontSize: 22,
+              fontSize: s(22),
               letterSpacing: "0.16em",
               textTransform: "uppercase",
               color: "rgba(113,113,122,1)",
@@ -232,7 +259,7 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
         style={{
           flexShrink: 0,
           borderTop: "1px solid rgba(255,255,255,0.1)",
-          padding: "28px 48px 36px",
+          padding: `${s(28)}px ${s(48)}px ${s(36)}px`,
           display: "flex",
           flexDirection: "column",
           gap: 12,
@@ -241,7 +268,7 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
       >
         <div
           style={{
-            fontSize: 24,
+            fontSize: s(24),
             fontWeight: 600,
             letterSpacing: "0.04em",
             color: "rgba(255,255,255,0.72)",
@@ -249,17 +276,26 @@ export function StoryCardOgTemplate({ payload }: StoryCardOgTemplateProps) {
         >
           {payload.trustBadge}
         </div>
-        <div
-          style={{
-            fontSize: 20,
-            fontWeight: 700,
-            letterSpacing: "0.28em",
-            textTransform: "uppercase",
-            color: "rgba(255,255,255,0.35)",
-          }}
-        >
-          ZELOXTAG
-        </div>
+        {payload.logoDataUri ? (
+          // eslint-disable-next-line @next/next/no-img-element -- Satori OG render
+          <img
+            src={payload.logoDataUri}
+            alt="ZeloxTag"
+            style={{ height: s(132), width: "auto" }}
+          />
+        ) : (
+          <div
+            style={{
+              fontSize: s(20),
+              fontWeight: 700,
+              letterSpacing: "0.28em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.35)",
+            }}
+          >
+            ZELOXTAG
+          </div>
+        )}
       </div>
     </div>
   );

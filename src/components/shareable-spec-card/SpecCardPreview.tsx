@@ -3,9 +3,12 @@
 import { forwardRef, useState } from "react";
 
 import {
-  SHAREABLE_SPEC_CARD_HEIGHT_PX,
-  SHAREABLE_SPEC_CARD_WIDTH_PX,
-} from "./constants";
+  shareCardDimensions,
+  type ShareCardFormat,
+  type ShareCardStyle,
+} from "@/lib/share/share-card-variant";
+
+import { ShareCardRankHeroPreview } from "./ShareCardRankHeroPreview";
 import { ShareCardBuildDnaBlock } from "./ShareCardBuildDnaBlock";
 import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
 import { ShareCardSpecRowView } from "./ShareCardSpecRow";
@@ -21,16 +24,21 @@ import type { ShareableBuildData } from "./types";
 
 type SpecCardPreviewProps = {
   data: ShareableBuildData;
+  format?: ShareCardFormat;
+  style?: ShareCardStyle;
   className?: string;
 };
 
-export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
-  function SpecCardPreview({ data, className }, ref) {
+const ShowcaseSpecCardPreview = forwardRef<
+  HTMLDivElement,
+  Omit<SpecCardPreviewProps, "style"> & { format: ShareCardFormat }
+>(function ShowcaseSpecCardPreview({ data, format, className }, ref) {
     const [imageFailed, setImageFailed] = useState(false);
     const showImage = Boolean(data.imageUrl) && !imageFailed;
     const isCatalogCutout = isShareCardCatalogCutout(data.imageUrl);
     const showDna = data.buildDna != null;
-    const layout = computeShareCardLayout(data);
+    const { width, height } = shareCardDimensions(format);
+    const layout = computeShareCardLayout(data, format);
 
     const specGapClass =
       layout.density === "dense"
@@ -47,10 +55,7 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
         ref={ref}
         data-share-card-export=""
         className={className}
-        style={{
-          width: SHAREABLE_SPEC_CARD_WIDTH_PX,
-          height: SHAREABLE_SPEC_CARD_HEIGHT_PX,
-        }}
+        style={{ width, height }}
       >
         <div
           className="relative grid h-full w-full overflow-hidden bg-[#0a0a0a] text-white"
@@ -158,6 +163,32 @@ export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
           </footer>
         </div>
       </div>
+    );
+});
+
+export const SpecCardPreview = forwardRef<HTMLDivElement, SpecCardPreviewProps>(
+  function SpecCardPreview(
+    { data, format = "story", style = "showcase", className },
+    ref,
+  ) {
+    if (style === "rankHero") {
+      return (
+        <ShareCardRankHeroPreview
+          ref={ref}
+          data={data}
+          format={format}
+          className={className}
+        />
+      );
+    }
+
+    return (
+      <ShowcaseSpecCardPreview
+        ref={ref}
+        data={data}
+        format={format}
+        className={className}
+      />
     );
   },
 );

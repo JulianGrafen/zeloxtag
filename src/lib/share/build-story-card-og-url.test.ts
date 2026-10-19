@@ -18,6 +18,17 @@ describe("buildStoryCardOgUrl", () => {
     );
   });
 
+  it("appends non-default format and style", () => {
+    expect(
+      buildStoryCardOgApiPath(vehicleId, {
+        format: "post",
+        style: "rankHero",
+      }),
+    ).toBe(
+      `/api/og/story-card?vehicleId=${vehicleId}&format=post&style=rankHero`,
+    );
+  });
+
   it("prefixes API base when configured", () => {
     process.env.NEXT_PUBLIC_API_BASE_URL = "https://app.zeloxtag.de";
     expect(buildStoryCardOgUrl(vehicleId)).toBe(

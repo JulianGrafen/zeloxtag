@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
+import { ZELOX_BRAND_MARK_SRC } from "@/lib/brand/constants";
 import { resolvePublicAppOrigin } from "@/lib/api/resolve-api-base-url";
 import { fetchOgImageDataUri } from "@/lib/og/fetch-og-image-bytes";
 import {
@@ -9,12 +10,13 @@ import {
   resolveStoryCardHeroAbsoluteUrl,
 } from "@/lib/og/story-card/build-story-card-og-payload";
 import { loadStoryCardOgFonts } from "@/lib/og/story-card/load-story-card-og-fonts";
+import { StoryCardOgRankHeroTemplate } from "@/lib/og/story-card/story-card-og-template-rank-hero";
 import { StoryCardOgTemplate } from "@/lib/og/story-card/story-card-og-template";
-import {
-  SHAREABLE_SPEC_CARD_HEIGHT_PX,
-  SHAREABLE_SPEC_CARD_WIDTH_PX,
-} from "@/components/shareable-spec-card/constants";
+import { resolveAbsoluteAssetUrl } from "@/lib/og/resolve-absolute-url";
+import { parseShareCardQuery } from "@/lib/share/share-card-variant";
+import { shareCardDimensions } from "@/lib/share/share-card-variant";
 import { enforceRateLimit } from "@/lib/security/api-guard";
+import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
 import { createClient } from "@/lib/supabase/server";
 import type { Document, Vehicle } from "@/types/database";
@@ -39,6 +41,13 @@ export async function GET(request: NextRequest) {
   const parsed = vehicleIdSchema.safeParse(vehicleIdRaw);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid vehicle id." }, { status: 400 });
+  }
+
+  let variant;
+  try {
+    variant = parseShareCardQuery(request.nextUrl.searchParams);
+  } catch {
+    return NextResponse.json({ error: "Invalid share card options." }, { status: 400 });
   }
 
   const vehicleId = parsed.data;
@@ -87,14 +96,22 @@ export async function GET(request: NextRequest) {
     (documents ?? []) as Document[],
     origin,
   );
-  const heroFetch = await fetchOgImageDataUri(heroAbsolute);
+  const logoAbsolute = resolveAbsoluteAssetUrl(ZELOX_BRAND_MARK_SRC, origin);
+  const [heroFetch, logoFetch, weeklyRank] = await Promise.all([
+    fetchOgImageDataUri(heroAbsolute),
+    fetchOgImageDataUri(logoAbsolute),
+    loadVehicleWeeklyShowcaseRank(vehicleId),
+  ]);
   const heroImageDataUri = heroFetch.ok ? heroFetch.dataUri : null;
+  const logoDataUri = logoFetch.ok ? logoFetch.dataUri : null;
 
   const payload = buildStoryCardOgPayload({
     vehicle: vehicle as Vehicle,
     documents: (documents ?? []) as Document[],
+    weeklyRank,
     siteOrigin: origin,
     heroImageDataUri,
+    logoDataUri,
   });
 
   if (!payload) {
@@ -105,16 +122,21 @@ export async function GET(request: NextRequest) {
   }
 
   const fonts = await loadFontsFallback();
+  const { width, height } = shareCardDimensions(variant.format);
 
-  return new ImageResponse(
-    <StoryCardOgTemplate payload={payload} />,
-    {
-      width: SHAREABLE_SPEC_CARD_WIDTH_PX,
-      height: SHAREABLE_SPEC_CARD_HEIGHT_PX,
-      fonts,
-      headers: {
-        "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
-      },
+  const element =
+    variant.style === "rankHero" ? (
+      <StoryCardOgRankHeroTemplate payload={payload} format={variant.format} />
+    ) : (
+      <StoryCardOgTemplate payload={payload} format={variant.format} />
+    );
+
+  return new ImageResponse(element, {
+    width,
+    height,
+    fonts,
+    headers: {
+      "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
     },
-  );
+  });
 }
