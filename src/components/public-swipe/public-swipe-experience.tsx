@@ -1,17 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { PublicSwipeConversionGate } from "@/components/public-swipe/public-swipe-conversion-gate";
+import {
+  discoverDeckFrameClassName,
+  discoverDeckSkeletonClassName,
+  discoverEmptyActionClassName,
+  discoverEmptyBodyClassName,
+  discoverEmptyPanelClassName,
+  discoverEmptyTitleClassName,
+} from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
 import {
   ShowcaseSwipeStack,
   type ShowcaseSwipeStackHandle,
 } from "@/components/showcase-swipe/showcase-swipe-stack";
-import { ShowcaseDiscoverSection } from "@/components/showcase-swipe/showcase-discover-section";
 import { Button } from "@/components/ui/button";
 import { useAnonymousSwipe } from "@/hooks/useAnonymousSwipe";
+import { usePlatformServices } from "@/services/platform/context/platform-services-context";
 import { preloadImageHrefs } from "@/lib/image/preload-image-hrefs";
 import { ANONYMOUS_SWIPE_GATE_LIMIT } from "@/lib/public-swipe/anonymous-swipe-storage";
+import {
+  buildDiscoverShowcaseHref,
+  PUBLIC_SWIPE_DISCOVER_BACK_HREF,
+} from "@/lib/showcase/discover-showcase-navigation";
 import {
   mapPublicSwipeCardList,
   publicSwipeCardToShowcaseCard,
@@ -20,13 +33,14 @@ import {
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 import { cn } from "@/lib/utils";
 
-type GateReason = "limit" | "details" | "upload" | null;
+type GateReason = "limit" | "upload" | null;
 
 type SwipeFeedback = {
   cleanScorePercent: number | null;
 };
 
 export function PublicSwipeExperience() {
+  const router = useRouter();
   const {
     sessionReady,
     sessionHash,
@@ -36,6 +50,7 @@ export function PublicSwipeExperience() {
     isGated,
     recordSwipe,
   } = useAnonymousSwipe();
+  const { nativeBridge } = usePlatformServices();
   const [cards, setCards] = useState<PublicSwipeCard[]>([]);
   const [hydrating, setHydrating] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -146,6 +161,7 @@ export function PublicSwipeExperience() {
 
       setFeedback({ cleanScorePercent });
       window.setTimeout(() => setFeedback(null), 900);
+      void nativeBridge.triggerHaptic("light");
 
       removeTop();
       setSwipeError(null);
@@ -155,7 +171,7 @@ export function PublicSwipeExperience() {
       }
       setBusy(false);
     },
-    [busy, current, gateOpen, recordSwipe, removeTop, swipeCount],
+    [busy, current, gateOpen, nativeBridge, recordSwipe, removeTop, swipeCount],
   );
 
   const openGate = useCallback((reason: GateReason) => {
@@ -163,17 +179,26 @@ export function PublicSwipeExperience() {
   }, []);
 
   const openFromCard = useCallback(
-    (_card: ShowcaseSwipeCard) => {
-      openGate("details");
+    (card: ShowcaseSwipeCard) => {
+      if (isGated || swipeCount >= ANONYMOUS_SWIPE_GATE_LIMIT) {
+        setGateReason("limit");
+        return;
+      }
+      router.push(
+        buildDiscoverShowcaseHref(
+          card.publicSlug,
+          PUBLIC_SWIPE_DISCOVER_BACK_HREF,
+        ),
+      );
     },
-    [openGate],
+    [isGated, router, swipeCount],
   );
 
   const deckBody = (() => {
     if (hydrating && !current) {
       return (
         <div
-          className="mx-auto aspect-[9/16] w-full max-h-[min(72vh,640px)] max-w-full animate-pulse rounded-3xl bg-[color:var(--vd-surface-elevated)]"
+          className={discoverDeckSkeletonClassName}
           aria-busy="true"
           aria-label="Builds werden geladen"
         />
@@ -183,13 +208,11 @@ export function PublicSwipeExperience() {
     if (!current) {
       if (loadError) {
         return (
-          <div className="rounded-2xl border border-[color:var(--vd-border)] px-5 py-10 text-center">
-            <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
-              {loadError}
-            </p>
+          <div className={discoverEmptyPanelClassName}>
+            <p className={discoverEmptyTitleClassName}>{loadError}</p>
             <button
               type="button"
-              className="mt-5 text-[0.85rem] font-semibold text-[color:var(--vd-accent)]"
+              className={discoverEmptyActionClassName}
               onClick={() => void loadDeck()}
             >
               Erneut laden
@@ -203,17 +226,17 @@ export function PublicSwipeExperience() {
           swipedCarIds.length > 0 || swipeCount > 0 || isGated;
         if (weekExhausted) {
           return (
-            <div className="rounded-2xl border border-[color:var(--vd-border)] px-5 py-10 text-center">
-              <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
+            <div className={discoverEmptyPanelClassName}>
+              <p className={discoverEmptyTitleClassName}>
                 Diese Woche durchgeswiped
               </p>
-              <p className="mt-2 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+              <p className={discoverEmptyBodyClassName}>
                 Montag kommen bekannte Builds wieder ins Deck. Bis dahin kannst
                 du dein eigenes Projektauto hochladen.
               </p>
               <button
                 type="button"
-                className="mt-5 text-[0.85rem] font-semibold text-[color:var(--vd-accent)]"
+                className={discoverEmptyActionClassName}
                 onClick={() => openGate("upload")}
               >
                 Eigenes Auto hochladen
@@ -222,17 +245,17 @@ export function PublicSwipeExperience() {
           );
         }
         return (
-          <div className="rounded-2xl border border-[color:var(--vd-border)] px-5 py-10 text-center">
-            <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
+          <div className={discoverEmptyPanelClassName}>
+            <p className={discoverEmptyTitleClassName}>
               Aktuell keine öffentlichen Builds
             </p>
-            <p className="mt-2 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+            <p className={discoverEmptyBodyClassName}>
               Builds erscheinen hier, wenn Halter ihr Showcase veröffentlichen,
               ein Fahrzeugbild haben und „Im Build-Swipe zeigen“ aktivieren.
             </p>
             <button
               type="button"
-              className="mt-5 text-[0.85rem] font-semibold text-[color:var(--vd-accent)]"
+              className={discoverEmptyActionClassName}
               onClick={() => void loadDeck()}
             >
               Erneut laden
@@ -243,15 +266,13 @@ export function PublicSwipeExperience() {
 
       return (
         <div className="space-y-2 py-1 text-center" role="status">
-          <p className="text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-            Alle Builds geswiped
-          </p>
-          <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+          <p className={discoverEmptyTitleClassName}>Alle Builds geswiped</p>
+          <p className="text-[0.78rem] text-zinc-400">
             Lade dein Projektauto hoch und werde Teil der Community.
           </p>
           <button
             type="button"
-            className="text-[0.8rem] font-medium text-[color:var(--vd-accent)]"
+            className="text-[0.8rem] font-medium text-white/85"
             onClick={() => openGate("upload")}
           >
             Eigenes Auto hochladen
@@ -263,11 +284,11 @@ export function PublicSwipeExperience() {
     return (
       <div className="flex flex-col gap-6">
         {swipeError ? (
-          <p className="text-center text-[0.9rem] text-red-600" role="alert">
+          <p className="text-center text-[0.9rem] text-rose-400" role="alert">
             {swipeError}
           </p>
         ) : null}
-        <div className="relative mx-auto aspect-[9/16] w-full max-h-[min(72vh,640px)] max-w-full">
+        <div className={discoverDeckFrameClassName}>
           <ShowcaseSwipeStack
             ref={stackRef}
             cards={showcaseCards}
@@ -285,15 +306,12 @@ export function PublicSwipeExperience() {
             </div>
           ) : null}
         </div>
-        <p className="text-center text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Wischen oder Like/Pass auf der Karte · Details nach Registrierung
-        </p>
       </div>
     );
   })();
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5">
       <section
         aria-label="Builds swipen"
         className={cn("relative pb-2", gateOpen && "pb-0")}
@@ -307,19 +325,14 @@ export function PublicSwipeExperience() {
         </div>
       </section>
 
-      <ShowcaseDiscoverSection
-        title="Dein Build"
-        subtitle="Dokumentiert, öffentlich, swipebar — wie in der Garage."
+      <Button
+        type="button"
+        variant="ghost"
+        className="min-h-11 w-full rounded-full border border-white/10 bg-zinc-900/50 text-white hover:bg-zinc-900"
+        onClick={() => openGate("upload")}
       >
-        <Button
-          type="button"
-          size="lg"
-          className="min-h-12 w-full"
-          onClick={() => openGate("upload")}
-        >
-          Eigenes Auto hochladen
-        </Button>
-      </ShowcaseDiscoverSection>
+        Eigenes Auto hochladen
+      </Button>
 
       <PublicSwipeConversionGate
         open={gateOpen}

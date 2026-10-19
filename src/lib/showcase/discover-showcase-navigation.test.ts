@@ -20,6 +20,10 @@ describe("sanitizeDiscoverBackHref", () => {
     ).toBe("/v/zlx-tag/entdecken");
   });
 
+  it("accepts public swipe return path", () => {
+    expect(sanitizeDiscoverBackHref("/swipe")).toBe("/swipe");
+  });
+
   it("rejects external and non-entdecken URLs", () => {
     expect(sanitizeDiscoverBackHref("https://evil.test/entdecken")).toBeNull();
     expect(sanitizeDiscoverBackHref("/garage/abc")).toBeNull();
@@ -33,5 +37,13 @@ describe("buildDiscoverShowcaseHref", () => {
     expect(href).toBe(
       "/v/my-build?showcase=1&back=%2Fgarage%2Fv1%2Fentdecken",
     );
+  });
+
+  it("supports public swipe return path", () => {
+    const href = buildDiscoverShowcaseHref(
+      "vehicle-uuid",
+      "/swipe",
+    );
+    expect(href).toBe("/v/vehicle-uuid?showcase=1&back=%2Fswipe");
   });
 });

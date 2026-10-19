@@ -67,6 +67,7 @@ export function mapSwipeCandidateToCard(
     year: row.year ?? null,
     totalLikes,
     heroImageSrc,
+    heroImageUsesCover: Boolean(row.has_silhouette),
     powerPs: toNullableNumber(row.power_ps),
     torqueNm: toNullableNumber(row.torque_nm),
     accel0To100Sec: toNullableNumber(row.accel_0_100_sec),

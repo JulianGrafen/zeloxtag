@@ -36,7 +36,8 @@ const ShowcaseSpecCardPreview = forwardRef<
     const [imageFailed, setImageFailed] = useState(false);
     const showImage = Boolean(data.imageUrl) && !imageFailed;
     const isCatalogCutout = isShareCardCatalogCutout(data.imageUrl);
-    const showDna = data.buildDna != null;
+    /** Post 3:4 — no Umbau-DNA (radar overlapped hero/specs). Story keeps DNA zone. */
+    const showDna = data.buildDna != null && format !== "post";
     const { width, height } = shareCardDimensions(format);
     const layout = computeShareCardLayout(data, format);
 

@@ -49,12 +49,22 @@ export default function DemoPage() {
             <p className="truncate text-[0.72rem] font-medium text-[color:var(--vd-muted)]">
               Demo · BMW E36
             </p>
-            <Link
-              href="/demo/share-card"
-              className="shrink-0 rounded-full bg-neutral-900 px-3 py-1.5 text-[0.72rem] font-semibold text-white"
-            >
-              Share-Karte
-            </Link>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {process.env.NODE_ENV !== "production" ? (
+                <Link
+                  href="/dev/entdecken?native=1"
+                  className="rounded-full border border-[color:var(--vd-border)] px-2.5 py-1.5 text-[0.68rem] font-semibold text-[color:var(--vd-text)]"
+                >
+                  Entdecken
+                </Link>
+              ) : null}
+              <Link
+                href="/demo/share-card"
+                className="rounded-full bg-neutral-900 px-3 py-1.5 text-[0.72rem] font-semibold text-white"
+              >
+                Share-Karte
+              </Link>
+            </div>
           </div>
         </div>
 

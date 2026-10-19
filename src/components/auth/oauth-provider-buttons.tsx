@@ -2,7 +2,6 @@
 
 import { useTransition } from "react";
 
-import { AppleIcon } from "@/components/auth/icons/apple-icon";
 import { GoogleGIcon } from "@/components/auth/icons/google-g-icon";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +32,7 @@ function OAuthProviderIcon({
   if (provider === "google") {
     return <GoogleGIcon className={className} />;
   }
-  return <AppleIcon className={className} />;
+  return null;
 }
 
 export function OAuthProviderButtons({

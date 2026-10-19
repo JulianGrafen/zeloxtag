@@ -52,12 +52,16 @@ import {
   sectionOcrMatchesFooterNet,
 } from "@/lib/ocr/invoice-workshop-sections";
 import { extractAmountFromText } from "@/lib/ocr/amount-from-text";
+import type { AppLocale } from "@/lib/i18n/types";
+import { normalizeInvoiceMileageKmForLocale } from "@/lib/i18n/ocr/mileage-locale-normalize";
+import {
+  buildInvoiceHeaderSystemPrompt,
+  buildInvoiceSystemPrompt,
+} from "@/lib/i18n/ocr/invoice-prompts";
 import {
   INVOICE_HEADER_USER_LINES,
   INVOICE_OVERVIEW_USER_LINES,
-  buildInvoiceHeaderSystemPrompt,
   buildInvoiceLineItemsSystemPromptForFormat,
-  buildInvoiceSystemPrompt,
   invoiceLineItemsUserLinesForFormat,
 } from "@/lib/ocr/invoice-parse-prompts";
 import { extractJsonObject } from "@/lib/ocr/json-from-llm";
@@ -218,7 +222,12 @@ export type InvoiceExtractionOptions = {
   model?: string;
   /** Locked category from scan type picker (repair/service). */
   lockedCategory?: InvoiceTextParseCategory | null;
+  locale?: AppLocale;
 };
+
+function resolveExtractionLocale(options: InvoiceExtractionOptions): AppLocale {
+  return options.locale ?? "de";
+}
 
 function parseHeaderMileage(
   raw: unknown,
@@ -360,8 +369,9 @@ export class InvoiceExtractionService {
     options: InvoiceExtractionOptions = {},
   ): Promise<InvoiceOverviewExtraction> {
     const prepared = await prepareSinglePageOcrInput(input);
+    const locale = resolveExtractionLocale(options);
     const record = await runVisionExtract<Record<string, unknown>>(
-      buildInvoiceSystemPrompt().replace(
+      buildInvoiceSystemPrompt(locale).replace(
         /lineItems = JEDE Tabellen/,
         "lineItems werden in einem separaten Scan erfasst — hier nicht extrahieren",
       ),
@@ -396,8 +406,9 @@ export class InvoiceExtractionService {
       ? await analyzeLayoutWithAzure(azureInput.bytes, azureInput.contentType)
       : null;
 
+    const locale = resolveExtractionLocale(options);
     const record = await runVisionExtract<Record<string, unknown>>(
-      buildInvoiceHeaderSystemPrompt(),
+      buildInvoiceHeaderSystemPrompt(locale),
       INVOICE_HEADER_USER_LINES,
       prepared,
       INVOICE_HEADER_JSON_SCHEMA,
@@ -414,6 +425,7 @@ export class InvoiceExtractionService {
         invoiceNumber,
       );
     }
+    mileageKm = normalizeInvoiceMileageKmForLocale(mileageKm, locale);
 
     return {
       vendor: parseNullableString(record.vendor, 160),

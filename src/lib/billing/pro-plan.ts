@@ -4,6 +4,9 @@ import {
   FREE_AI_ABE_SCAN_LIMIT,
   FREE_AI_INVOICE_SCAN_LIMIT,
 } from "@/lib/billing/free-scan-constants";
+import { getTerm } from "@/lib/i18n/terminology";
+import type { AppLocale } from "@/lib/i18n/types";
+
 export const PRO_PLAN_NAME = "ZeloxTag Pro";
 export const PRO_PLAN_MONTHLY_PRICE = "4,99 €";
 export const PRO_PLAN_MONTHLY_REFERENCE_PRICE = "5,99 €";
@@ -76,6 +79,16 @@ export const PRO_PAYWALL_CONVERSION_BENEFITS = [
 ] as const;
 
 export const PRO_PAYWALL_MODAL_BENEFITS = PRO_PAYWALL_CONVERSION_BENEFITS;
+
+export function proPaywallConversionBenefits(
+  locale: AppLocale = "de",
+): readonly string[] {
+  return [
+    PRO_PAYWALL_CONVERSION_BENEFITS[0],
+    getTerm("proVaultBenefit", locale),
+    PRO_PAYWALL_CONVERSION_BENEFITS[2],
+  ] as const;
+}
 
 export type ProPaywallPricingAnchor = {
   referencePrice?: string;

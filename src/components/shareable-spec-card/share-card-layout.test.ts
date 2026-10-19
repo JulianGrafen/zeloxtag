@@ -70,4 +70,27 @@ describe("computeShareCardLayout", () => {
     );
     expect(layout.dnaZonePercent).toBe(0);
   });
+
+  it("omits DNA zone on post format even when build DNA is present", () => {
+    const dna = {
+      version: 2 as const,
+      archetype: "Streckenwaffe" as const,
+      punchline: "Test",
+      radar: [
+        { category: "Leistung" as const, score: 50 },
+        { category: "Fahrwerk" as const, score: 50 },
+        { category: "Optik" as const, score: 50 },
+        { category: "Haltbarkeit" as const, score: 50 },
+        { category: "Akustik" as const, score: 50 },
+        { category: "Straßenlage" as const, score: 50 },
+      ],
+    };
+    const layout = computeShareCardLayout(
+      baseData({ buildDna: dna }),
+      "post",
+    );
+    expect(layout.dnaZonePercent).toBe(0);
+    const storyLayout = computeShareCardLayout(baseData({ buildDna: dna }), "story");
+    expect(storyLayout.dnaZonePercent).toBe(30);
+  });
 });

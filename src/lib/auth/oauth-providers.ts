@@ -1,4 +1,4 @@
-export const OAUTH_PROVIDERS = ["google", "apple"] as const;
+export const OAUTH_PROVIDERS = ["google"] as const;
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
@@ -10,8 +10,6 @@ export function oauthProviderLabel(provider: OAuthProvider): string {
   switch (provider) {
     case "google":
       return "Google";
-    case "apple":
-      return "Apple";
   }
 }
 

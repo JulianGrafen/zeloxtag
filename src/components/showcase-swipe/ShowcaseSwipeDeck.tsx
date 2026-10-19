@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  discoverDeckFrameClassName,
+  discoverDeckSkeletonClassName,
+  discoverEmptyActionClassName,
+  discoverEmptyBodyClassName,
+  discoverEmptyPanelClassName,
+  discoverEmptyTitleClassName,
+} from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
+import {
   ShowcaseSwipeStack,
   type ShowcaseSwipeStackHandle,
 } from "@/components/showcase-swipe/showcase-swipe-stack";
@@ -15,6 +23,8 @@ type ShowcaseSwipeDeckProps = {
   tagUuid: string;
   entdeckenReturnHref: string;
   initialCards?: ShowcaseSwipeCard[];
+  /** Dev/preview: skip API, local swipe only (owner entdecken design). */
+  designPreview?: boolean;
   onLiked?: (card: ShowcaseSwipeCard) => void;
   /** Fired once when the user swiped through all cards in this session. */
   onDeckExhausted?: () => void;
@@ -53,12 +63,13 @@ export function ShowcaseSwipeDeck({
   tagUuid,
   entdeckenReturnHref,
   initialCards = [],
+  designPreview = false,
   onLiked,
   onDeckExhausted,
 }: ShowcaseSwipeDeckProps) {
   const router = useRouter();
   const [cards, setCards] = useState<ShowcaseSwipeCard[]>(initialCards);
-  const [hydrating, setHydrating] = useState(true);
+  const [hydrating, setHydrating] = useState(!designPreview);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [swipeError, setSwipeError] = useState<string | null>(null);
   /** True only after a non-empty client deck load or a swipe — not from SSR preload alone. */
@@ -82,6 +93,10 @@ export function ShowcaseSwipeDeck({
   }, []);
 
   useEffect(() => {
+    if (designPreview) {
+      setHadCardsThisSession(initialCards.length > 0);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -103,7 +118,7 @@ export function ShowcaseSwipeDeck({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [designPreview, initialCards.length]);
 
   useEffect(() => {
     preloadImageHrefs(cards.slice(0, 5).map((card) => card.heroImageSrc));
@@ -134,7 +149,9 @@ export function ShowcaseSwipeDeck({
       if (!current || busy) return;
       setBusy(true);
       try {
-        await postSwipe(current.publicSlug, decision);
+        if (!designPreview) {
+          await postSwipe(current.publicSlug, decision);
+        }
         if (decision === "like") {
           onLiked?.(current);
         }
@@ -147,7 +164,7 @@ export function ShowcaseSwipeDeck({
         setBusy(false);
       }
     },
-    [busy, current, onLiked, removeTop],
+    [busy, current, designPreview, onLiked, removeTop],
   );
 
   const openShowcase = useCallback(
@@ -162,7 +179,7 @@ export function ShowcaseSwipeDeck({
   if (hydrating && !current) {
     return (
       <div
-        className="mx-auto aspect-[9/16] w-full max-h-[min(72vh,640px)] max-w-full animate-pulse rounded-3xl bg-[color:var(--vd-surface-elevated)]"
+        className={discoverDeckSkeletonClassName}
         aria-busy="true"
         aria-label="Builds werden geladen"
       />
@@ -172,13 +189,11 @@ export function ShowcaseSwipeDeck({
   if (!current) {
     if (loadError) {
       return (
-        <div className="rounded-2xl border border-[color:var(--vd-border)] px-5 py-10 text-center">
-          <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
-            {loadError}
-          </p>
+        <div className={discoverEmptyPanelClassName}>
+          <p className={discoverEmptyTitleClassName}>{loadError}</p>
           <button
             type="button"
-            className="mt-5 text-[0.85rem] font-semibold text-[color:var(--vd-accent)]"
+            className={discoverEmptyActionClassName}
             onClick={() => void reloadDeck()}
           >
             Erneut laden
@@ -189,16 +204,16 @@ export function ShowcaseSwipeDeck({
 
     if (!hadCardsThisSession) {
       return (
-        <div className="rounded-2xl border border-[color:var(--vd-border)] px-5 py-10 text-center">
-          <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
+        <div className={discoverEmptyPanelClassName}>
+          <p className={discoverEmptyTitleClassName}>
             Aktuell keine öffentlichen Builds
           </p>
-          <p className="mt-2 text-[0.82rem] text-[color:var(--vd-muted)]">
+          <p className={discoverEmptyBodyClassName}>
             Sobald andere Showcases live sind, kannst du hier swipen.
           </p>
           <button
             type="button"
-            className="mt-5 text-[0.85rem] font-semibold text-[color:var(--vd-accent)]"
+            className={discoverEmptyActionClassName}
             onClick={() => void reloadDeck()}
           >
             Erneut laden
@@ -209,15 +224,13 @@ export function ShowcaseSwipeDeck({
 
     return (
       <div className="space-y-2 py-1 text-center" role="status">
-        <p className="text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-          Alle Builds geswiped
-        </p>
-        <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
+        <p className={discoverEmptyTitleClassName}>Alle Builds geswiped</p>
+        <p className="text-[0.78rem] text-zinc-400">
           Rankings und Top der Woche siehst du jetzt direkt darunter.
         </p>
         <button
           type="button"
-          className="text-[0.8rem] font-medium text-[color:var(--vd-accent)]"
+          className="text-[0.8rem] font-medium text-white/85"
           onClick={() => router.push(`/v/${tagUuid}`)}
         >
           Zum Dashboard
@@ -229,13 +242,11 @@ export function ShowcaseSwipeDeck({
   return (
     <div className="flex flex-col gap-6">
       {swipeError ? (
-        <p className="text-center text-[0.9rem] text-red-600" role="alert">
+        <p className="text-center text-[0.9rem] text-rose-400" role="alert">
           {swipeError}
         </p>
       ) : null}
-      <div
-        className="relative mx-auto aspect-[9/16] w-full max-h-[min(72vh,640px)] max-w-full"
-      >
+      <div className={discoverDeckFrameClassName}>
         <ShowcaseSwipeStack
           ref={stackRef}
           cards={cards}
@@ -245,10 +256,6 @@ export function ShowcaseSwipeDeck({
         />
       </div>
 
-      <p className="text-center text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Wischen oder Like/Pass auf der Karte · Showcase nur über „Showcase
-        ansehen“
-      </p>
     </div>
   );
 }

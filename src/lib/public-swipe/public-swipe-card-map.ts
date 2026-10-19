@@ -1,4 +1,8 @@
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
+import {
+  buildPersonalityLabels,
+  parseBuildPersonalityTags,
+} from "@/lib/vehicles/build-personality-chips";
 
 export type PublicSwipeCard = {
   id: string;
@@ -7,6 +11,8 @@ export type PublicSwipeCard = {
   totalInvestedAmount: number | null;
   thumbnailPath: string;
   top3Mods: string[];
+  buildPersonalityTags: unknown;
+  modificationCount: number;
   isVerifiedBuild: boolean;
   upvotesCount: number;
   downvotesCount: number;
@@ -88,6 +94,14 @@ export function mapPublicSwipeCardRow(row: unknown): PublicSwipeCard | null {
     ),
     thumbnailPath,
     top3Mods,
+    buildPersonalityTags:
+      record.build_personality_tags ?? record.buildPersonalityTags ?? [],
+    modificationCount: readIntField(
+      record,
+      "modification_count",
+      "modificationCount",
+      0,
+    ),
     isVerifiedBuild: verified,
     upvotesCount: readIntField(record, "upvotes_count", "upvotesCount"),
     downvotesCount: readIntField(record, "downvotes_count", "downvotesCount"),
@@ -110,13 +124,16 @@ export function publicSwipeCardToShowcaseCard(
     year: null,
     totalLikes: card.upvotesCount,
     heroImageSrc: card.thumbnailPath,
+    heroImageUsesCover: true,
     powerPs: card.hp,
     torqueNm: null,
     accel0To100Sec: null,
     accel100To200Sec: null,
-    modificationCount: card.top3Mods.length,
+    modificationCount: Math.max(0, card.modificationCount),
     buildDna: null,
-    buildPersonalityLabels: card.top3Mods.slice(0, 3),
+    buildPersonalityLabels: buildPersonalityLabels(
+      parseBuildPersonalityTags(card.buildPersonalityTags),
+    ),
   };
 }
 

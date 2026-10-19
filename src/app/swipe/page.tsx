@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
+import { discoverPageRootClassName } from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
 import { PublicSwipeExperience } from "@/components/public-swipe/public-swipe-experience";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { pageSocialMetadata } from "@/lib/seo/open-graph";
@@ -20,22 +21,19 @@ export const metadata: Metadata = {
 
 export default function PublicSwipePage() {
   return (
-    <AppShell showNavbar={false}>
-      <VehicleSettingsSubpageShell
-        tagUuid="public"
-        kicker="Entdecken"
-        title="Builds entdecken"
-        backHref="/"
-        backLabel="Start"
-        description={
-          <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Like öffentliche Projektautos aus der Community
-          </p>
-        }
-      >
-        <PublicSwipeExperience />
-        <LegalFooterNav className="pt-2" />
-      </VehicleSettingsSubpageShell>
+    <AppShell showNavbar={false} immersiveNativeNav>
+      <div className={discoverPageRootClassName}>
+        <VehicleSettingsSubpageShell
+          tagUuid="public"
+          title="Builds entdecken"
+          backHref="/"
+          backLabel="Start"
+          theme="discover"
+        >
+          <PublicSwipeExperience />
+          <LegalFooterNav tone="inverse" className="pt-2" />
+        </VehicleSettingsSubpageShell>
+      </div>
     </AppShell>
   );
 }

@@ -46,7 +46,29 @@ describe("publicSwipeCardToShowcaseCard", () => {
     expect(showcase.publicSlug).toBe(card!.id);
     expect(showcase.make).toContain("Supra");
     expect(showcase.heroImageSrc).toBe(card!.thumbnailPath);
-    expect(showcase.buildPersonalityLabels).toEqual(["Downpipe"]);
+    expect(showcase.heroImageUsesCover).toBe(true);
+    expect(showcase.buildPersonalityLabels).toEqual([]);
+    expect(showcase.modificationCount).toBe(0);
+  });
+
+  it("maps tuner personality tags into swipe chips", () => {
+    const card = mapPublicSwipeCardRow({
+      id: "11111111-1111-1111-1111-111111111111",
+      car_name: "BMW X3 · 2011",
+      hp: 226,
+      thumbnail_path: "/api/vehicle/silhouette/x",
+      top_3_mods: ["Galerie 10", "Galerie 9"],
+      build_personality_tags: ["sleeper", "oem_plus"],
+      modification_count: 3,
+      is_verified_build: false,
+      upvotes_count: 2,
+      downvotes_count: 0,
+      clean_score_percent: 100,
+    });
+    expect(card).not.toBeNull();
+    const showcase = publicSwipeCardToShowcaseCard(card!);
+    expect(showcase.buildPersonalityLabels).toEqual(["Sleeper", "OEM+"]);
+    expect(showcase.modificationCount).toBe(3);
   });
 });
 

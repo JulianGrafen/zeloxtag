@@ -23,6 +23,8 @@ type ShowcaseWeeklyRankCelebrationProps = {
   className?: string;
   /** Auto-open when landing from email CTA. */
   initiallyExpanded?: boolean;
+  /** Matches OLED discover pages. */
+  surface?: "default" | "discover";
 };
 
 async function markAwardSeen(awardId: string): Promise<void> {
@@ -38,7 +40,9 @@ export function ShowcaseWeeklyRankCelebration({
   shareCardData,
   className,
   initiallyExpanded = false,
+  surface = "default",
 }: ShowcaseWeeklyRankCelebrationProps) {
+  const isDiscover = surface === "discover";
   const [dismissed, setDismissed] = useState(false);
   const [expanded, setExpanded] = useState(initiallyExpanded);
   const [pending, startTransition] = useTransition();
@@ -58,14 +62,22 @@ export function ShowcaseWeeklyRankCelebration({
   return (
     <section
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]/80 p-4 shadow-[var(--vd-shadow-sm)]",
+        "relative overflow-hidden rounded-2xl border p-4",
+        isDiscover
+          ? "border-white/10 bg-zinc-900/70 shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+          : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]/80 shadow-[var(--vd-shadow-sm)]",
         className,
       )}
       aria-labelledby="weekly-rank-celebration-title"
     >
       <button
         type="button"
-        className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-muted)]"
+        className={cn(
+          "absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border",
+          isDiscover
+            ? "border-white/10 bg-zinc-800/80 text-zinc-400"
+            : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-muted)]",
+        )}
         aria-label="Schließen"
         disabled={pending}
         onClick={() => void dismiss()}
@@ -74,17 +86,30 @@ export function ShowcaseWeeklyRankCelebration({
       </button>
 
       <div className="flex items-start gap-3 pr-10">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
+        <div
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15",
+            isDiscover ? "text-amber-400" : "text-amber-600",
+          )}
+        >
           <Sparkles className="h-5 w-5" aria-hidden />
         </div>
         <div>
           <p
             id="weekly-rank-celebration-title"
-            className="text-[0.98rem] font-semibold text-[color:var(--vd-text)]"
+            className={cn(
+              "text-[0.98rem] font-semibold",
+              isDiscover ? "text-white" : "text-[color:var(--vd-text)]",
+            )}
           >
             {headline}
           </p>
-          <p className="mt-1 text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
+          <p
+            className={cn(
+              "mt-1 text-[0.82rem] leading-snug",
+              isDiscover ? "text-zinc-400" : "text-[color:var(--vd-muted)]",
+            )}
+          >
             Platz {award.rank} · {award.weeklyLikes} {likeWord} (
             {award.weekKey}). {WEEKLY_RANK_CELEBRATION_BODY}
           </p>
@@ -92,7 +117,12 @@ export function ShowcaseWeeklyRankCelebration({
       </div>
 
       {expanded ? (
-        <div className="mt-5 border-t border-[color:var(--vd-border)] pt-5">
+        <div
+          className={cn(
+            "mt-5 border-t pt-5",
+            isDiscover ? "border-white/10" : "border-[color:var(--vd-border)]",
+          )}
+        >
           <ShareableSpecCard
             data={shareCardData}
             vehicleId={award.vehicleId}
@@ -106,7 +136,10 @@ export function ShowcaseWeeklyRankCelebration({
           />
           <button
             type="button"
-            className="mt-4 w-full text-center text-[0.8rem] font-medium text-[color:var(--vd-muted)]"
+            className={cn(
+              "mt-4 w-full text-center text-[0.8rem] font-medium",
+              isDiscover ? "text-zinc-400" : "text-[color:var(--vd-muted)]",
+            )}
             disabled={pending}
             onClick={() => void dismiss()}
           >
@@ -116,7 +149,12 @@ export function ShowcaseWeeklyRankCelebration({
       ) : (
         <button
           type="button"
-          className="mt-4 w-full min-h-11 rounded-xl bg-[color:var(--vd-text)] text-[0.88rem] font-semibold text-[color:var(--vd-surface)]"
+          className={cn(
+            "mt-4 w-full min-h-11 rounded-xl text-[0.88rem] font-semibold",
+            isDiscover
+              ? "bg-white text-black"
+              : "bg-[color:var(--vd-text)] text-[color:var(--vd-surface)]",
+          )}
           onClick={() => setExpanded(true)}
         >
           {WEEKLY_RANK_STORY_OPEN_CTA}

@@ -27,7 +27,7 @@ export function showcaseVehicleFocusImageClassName(
       case "rankCard":
         return "object-contain object-bottom px-2 pb-[42%] pt-2";
       case "swipeHero":
-        return "object-contain object-bottom px-2 pb-4 pt-2";
+        return "object-cover object-[50%_55%]";
       case "showroomHero":
         return "object-contain object-bottom px-2 pb-[28%] pt-[max(4.5rem,env(safe-area-inset-top))]";
     }
@@ -37,7 +37,7 @@ export function showcaseVehicleFocusImageClassName(
     case "rankCard":
       return "object-contain object-bottom px-1.5 pb-[42%] pt-3";
     case "swipeHero":
-      return "object-contain object-bottom px-2 pb-5 pt-3";
+      return "object-cover object-[50%_55%]";
     case "showroomHero":
       return "object-cover object-[50%_55%]";
   }

@@ -22,6 +22,7 @@ import {
   enforceAutomotiveGateFromFormData,
 } from "@/lib/ocr/ocr-automotive-gate";
 import { AUTOMOTIVE_REJECTION_CODE } from "@/lib/ocr/verify-automotive-context";
+import { getRequestLocalePreferences } from "@/lib/i18n/get-request-locale";
 import {
   invoiceExtractionService,
   type InvoiceHeaderExtraction,
@@ -166,7 +167,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const sniffed = fileCheck.mime;
 
     const input = { bytes, contentType: sniffed };
-    const options = { lockedCategory };
+    const localePreferences = await getRequestLocalePreferences();
+    const options = {
+      lockedCategory,
+      locale: localePreferences.locale,
+    };
     const parseModel = resolveInvoiceParseModel();
     const invoiceNanoTestMode = isInvoiceNanoTestMode();
 

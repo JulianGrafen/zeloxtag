@@ -21,7 +21,8 @@ import {
   type PanInfo,
 } from "motion/react";
 
-import { ShowcaseSwipeQuartettCard } from "@/components/showcase-swipe/ShowcaseSwipeQuartettCard";
+import { SwipeCardDetailsSheet } from "@/components/showcase-swipe/discover-minimal/SwipeCardDetailsSheet";
+import { SwipeCardMinimal } from "@/components/showcase-swipe/discover-minimal/SwipeCardMinimal";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 
 import "./stack.css";
@@ -57,7 +58,7 @@ type SwipeableTopCardProps = {
   disabled: boolean;
   onSwipeComplete: (decision: "like" | "pass") => void;
   onDecisionHighlight?: (decision: "like" | "pass") => void;
-  onOpen: (card: ShowcaseSwipeCard) => void;
+  onOpenDetails: (card: ShowcaseSwipeCard) => void;
 };
 
 function resolveSwipeDecision(info: PanInfo): "like" | "pass" | null {
@@ -93,7 +94,7 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
       disabled,
       onSwipeComplete,
       onDecisionHighlight,
-      onOpen,
+      onOpenDetails,
     },
     ref,
   ) {
@@ -128,11 +129,6 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
     );
 
     useImperativeHandle(ref, () => ({ flyOff, reset }), [flyOff, reset]);
-
-    const openShowcaseFromGesture = useCallback(() => {
-      if (disabled || exitingRef.current) return;
-      onOpen(card);
-    }, [card, disabled, onOpen]);
 
     const handleDragEnd = useCallback(
       (_: unknown, info: PanInfo) => {
@@ -195,27 +191,16 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
           >
             Pass
           </motion.div>
-          <ShowcaseSwipeQuartettCard
+          <SwipeCardMinimal
             card={card}
             className="select-none touch-none"
             imagePriority
+            onOpenDetails={() => onOpenDetails(card)}
           />
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-3 bg-gradient-to-t from-neutral-950 via-neutral-950/90 to-transparent px-4 pb-4 pt-10"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-3 bg-gradient-to-t from-neutral-950 via-neutral-950/75 to-transparent px-4 pb-4 pt-16"
             aria-hidden={false}
           >
-            <button
-              type="button"
-              disabled={disabled || isExiting}
-              className="pointer-events-auto min-h-9 rounded-full border border-white/15 bg-black/40 px-4 py-1.5 text-[0.72rem] font-semibold tracking-wide text-white/90 backdrop-blur-sm transition active:scale-[0.98] disabled:opacity-50"
-              onPointerDown={stopDragPropagation}
-              onClick={(event) => {
-                event.stopPropagation();
-                openShowcaseFromGesture();
-              }}
-            >
-              Showcase ansehen
-            </button>
             <div className="pointer-events-auto flex w-full max-w-[15rem] items-center justify-between gap-4">
               <button
                 type="button"
@@ -310,8 +295,12 @@ export const ShowcaseSwipeStack = forwardRef<
   const [stack, setStack] = useState<StackItem[]>(() =>
     visibleCards.map((card) => ({ id: card.publicSlug, card })),
   );
+  const [detailsCard, setDetailsCard] = useState<ShowcaseSwipeCard | null>(
+    null,
+  );
 
   const topCardRef = useRef<SwipeableTopCardHandle>(null);
+  const stackDisabled = disabled || detailsCard != null;
 
   useEffect(() => {
     setStack(visibleCards.map((card) => ({ id: card.publicSlug, card })));
@@ -340,40 +329,47 @@ export const ShowcaseSwipeStack = forwardRef<
   if (stack.length === 0) return null;
 
   return (
-    <div className="showcase-swipe-stack">
-      {stack.map((item, index) => {
-        const isTop = index === 0;
-        const depth = index;
-        const layerZ = stack.length - index;
+    <>
+      <div className="showcase-swipe-stack">
+        {stack.map((item, index) => {
+          const isTop = index === 0;
+          const depth = index;
+          const layerZ = stack.length - index;
 
-        if (isTop) {
+          if (isTop) {
+            return (
+              <SwipeableTopCard
+                key={item.id}
+                ref={topCardRef}
+                card={item.card}
+                zIndex={layerZ}
+                depth={depth}
+                stackLength={stack.length}
+                disabled={stackDisabled}
+                onSwipeComplete={handleSwipeComplete}
+                onDecisionHighlight={onDecisionHighlight}
+                onOpenDetails={setDetailsCard}
+              />
+            );
+          }
+
           return (
-            <SwipeableTopCard
+            <StaticStackCard
               key={item.id}
-              ref={topCardRef}
-              card={item.card}
               zIndex={layerZ}
               depth={depth}
               stackLength={stack.length}
-              disabled={disabled}
-              onSwipeComplete={handleSwipeComplete}
-              onDecisionHighlight={onDecisionHighlight}
-              onOpen={onOpen}
-            />
+            >
+              <SwipeCardMinimal card={item.card} variant="back" />
+            </StaticStackCard>
           );
-        }
-
-        return (
-          <StaticStackCard
-            key={item.id}
-            zIndex={layerZ}
-            depth={depth}
-            stackLength={stack.length}
-          >
-            <ShowcaseSwipeQuartettCard card={item.card} />
-          </StaticStackCard>
-        );
-      })}
-    </div>
+        })}
+      </div>
+      <SwipeCardDetailsSheet
+        card={detailsCard}
+        onClose={() => setDetailsCard(null)}
+        onOpenShowcase={onOpen}
+      />
+    </>
   );
 });

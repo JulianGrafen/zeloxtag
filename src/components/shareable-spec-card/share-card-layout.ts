@@ -50,13 +50,13 @@ export function computeShareCardLayout(
   const heightScale = cardHeightPx / STORY_HEIGHT_PX;
 
   const specCount = data.specRows.length;
-  const hasDna = data.buildDna != null;
+  const hasDna = data.buildDna != null && format !== "post";
   const hasInstagram = Boolean(data.instagramHandle);
 
   let heroHeightPercent = format === "post" ? 38 : 34;
   if (specCount > 5 || hasDna) heroHeightPercent = format === "post" ? 34 : 30;
   if (specCount > 8) heroHeightPercent = format === "post" ? 32 : 28;
-  if (hasDna) heroHeightPercent = Math.min(heroHeightPercent, format === "post" ? 32 : 28);
+  if (hasDna) heroHeightPercent = Math.min(heroHeightPercent, 28);
   if (hasInstagram) {
     heroHeightPercent = Math.min(
       heroHeightPercent + HERO_INSTAGRAM_EXTRA_PERCENT,

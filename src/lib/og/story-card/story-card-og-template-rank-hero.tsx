@@ -88,7 +88,7 @@ export function StoryCardOgRankHeroTemplate({
               left: 40 * scale,
               display: "flex",
               overflow: "hidden",
-              borderRadius: 20 * scale,
+              borderRadius: 28 * scale,
               border: "1px solid rgba(255,255,255,0.12)",
               background: "rgba(0,0,0,0.55)",
             }}
@@ -96,10 +96,10 @@ export function StoryCardOgRankHeroTemplate({
             <div
               style={{
                 display: "flex",
-                minWidth: 88 * scale,
+                minWidth: 132 * scale,
                 alignItems: "center",
                 justifyContent: "center",
-                padding: `${16 * scale}px ${20 * scale}px`,
+                padding: `${20 * scale}px ${24 * scale}px`,
                 background:
                   payload.weeklyRank === 1
                     ? "linear-gradient(135deg, rgba(245,158,11,0.35), rgba(69,26,3,0.5))"
@@ -110,10 +110,10 @@ export function StoryCardOgRankHeroTemplate({
             >
               <span
                 style={{
-                  fontSize: 72 * scale,
+                  fontSize: 118 * scale,
                   fontWeight: 700,
                   lineHeight: 1,
-                  letterSpacing: "-0.04em",
+                  letterSpacing: "-0.045em",
                 }}
               >
                 {payload.weeklyRank}
@@ -124,15 +124,15 @@ export function StoryCardOgRankHeroTemplate({
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "center",
-                gap: 6 * scale,
+                gap: 8 * scale,
                 borderLeft: "1px solid rgba(255,255,255,0.1)",
-                padding: `${14 * scale}px ${18 * scale}px`,
-                maxWidth: 360 * scale,
+                padding: `${18 * scale}px ${24 * scale}px`,
+                maxWidth: 480 * scale,
               }}
             >
               <span
                 style={{
-                  fontSize: 11 * scale,
+                  fontSize: 13 * scale,
                   fontWeight: 600,
                   letterSpacing: "0.22em",
                   textTransform: "uppercase",
@@ -143,11 +143,11 @@ export function StoryCardOgRankHeroTemplate({
               </span>
               <span
                 style={{
-                  fontSize: 22 * scale,
+                  fontSize: 34 * scale,
                   fontWeight: 600,
-                  letterSpacing: "0.06em",
+                  letterSpacing: "0.05em",
                   textTransform: "uppercase",
-                  lineHeight: 1.05,
+                  lineHeight: 1.02,
                 }}
               >
                 {rankHeadline(payload.weeklyRank)}

@@ -33,7 +33,7 @@ export const ShareCardRankHeroPreview = forwardRef<
   const isPost = format === "post";
   const modelSizePx = isPost ? 52 : 68;
   const footerLogoPx = isPost ? 132 : 172;
-  const badgeScale = isPost ? 0.82 : 1;
+  const badgeScale = isPost ? 0.92 : 1.08;
 
   return (
     <div

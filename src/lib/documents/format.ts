@@ -1,5 +1,15 @@
 import type { Document, DocumentType } from "@/types/database";
 
+import {
+  formatDistanceFromKm,
+  formatDistanceNumberFromKm,
+  formatDocumentDateEmpty as i18nFormatDocumentDateEmpty,
+  formatIsoDateCompact,
+  formatMoney,
+} from "@/lib/i18n/formatters";
+import { defaultRegionalProfile } from "@/lib/i18n/regional-profile";
+import type { RegionalProfile } from "@/lib/i18n/types";
+
 import { DOCUMENT_TYPE_LABELS } from "./constants";
 import { filterAbeFamilyDocuments } from "./abe-family-documents";
 import { filterInvoiceReceiptDocuments } from "./invoice-receipts";
@@ -247,18 +257,23 @@ export function formatCompactGermanDate(isoOrRaw: string | null): string {
 }
 
 /** List/detail helper — numeric DE date or „Ohne Datum“. */
-export function formatDocumentDateCompact(isoOrRaw: string | null): string {
-  if (!isoOrRaw?.trim()) return "Ohne Datum";
-  const compact = formatCompactGermanDate(isoOrRaw);
+export function formatDocumentDateCompact(
+  isoOrRaw: string | null,
+  profile: RegionalProfile = defaultRegionalProfile(),
+): string {
+  if (!isoOrRaw?.trim()) return i18nFormatDocumentDateEmpty(profile);
+  const compact =
+    profile.locale === "de"
+      ? formatCompactGermanDate(isoOrRaw)
+      : formatIsoDateCompact(isoOrRaw, profile);
   return compact || isoOrRaw;
 }
 
-export function formatDocumentAmount(amount: number | null): string | null {
-  if (amount === null || Number.isNaN(amount)) return null;
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-  }).format(amount);
+export function formatDocumentAmount(
+  amount: number | null,
+  profile: RegionalProfile = defaultRegionalProfile(),
+): string | null {
+  return formatMoney(amount, profile);
 }
 
 export function documentTypeLabel(type: DocumentType): string {
@@ -266,15 +281,20 @@ export function documentTypeLabel(type: DocumentType): string {
 }
 
 /** Odometer number with German thousand separators — 178605 → "178.605". */
-export function formatMileageKmNumber(km: number | null | undefined): string {
+export function formatMileageKmNumber(
+  km: number | null | undefined,
+  profile: RegionalProfile = defaultRegionalProfile(),
+): string {
   if (km == null || !Number.isFinite(km)) return "";
-  return Math.round(km).toLocaleString("de-DE");
+  return formatDistanceNumberFromKm(km, profile);
 }
 
-/** Odometer with unit — 178605 → "178.605 km", null → "—". */
-export function formatMileageKmLabel(km: number | null | undefined): string {
-  const formatted = formatMileageKmNumber(km);
-  return formatted ? `${formatted} km` : "—";
+/** Odometer with unit — canonical km in DB, locale-aware display. */
+export function formatMileageKmLabel(
+  km: number | null | undefined,
+  profile: RegionalProfile = defaultRegionalProfile(),
+): string {
+  return formatDistanceFromKm(km, profile);
 }
 
 /** Parse typed/pasted mileage (digits only, ignores thousand-separator dots). */

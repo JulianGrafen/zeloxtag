@@ -20,10 +20,10 @@ export const DIGITAL_GARAGE_REGISTER_USPS = [
 ] as const;
 
 export const DIGITAL_GARAGE_REGISTER_STEPS = [
-  "Konto mit Google, Apple oder E-Mail",
+  "Konto mit Google oder E-Mail",
   "Marke, Modell, Baujahr",
   "Sofort ins Fahrzeug-Dashboard",
 ] as const;
 
 export const DIGITAL_GARAGE_POST_SIGNUP_HINT =
-  "Mit Google oder Apple geht es sofort weiter. Bei E-Mail & Passwort bestätigst du zuerst dein Postfach.";
+  "Mit Google geht es sofort weiter. Bei E-Mail & Passwort bestätigst du zuerst dein Postfach.";

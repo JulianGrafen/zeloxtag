@@ -8,7 +8,8 @@ import type { DocumentBytesInput } from "@/lib/ocr/prepare-document-for-llm";
 import { AzureLayoutDocumentParser } from "@/services/invoice/adapters/AzureLayoutDocumentParser";
 import { OpenAIModelEngine } from "@/services/invoice/adapters/OpenAIModelEngine";
 import { HYBRID_INVOICE_JSON_SCHEMA } from "@/services/invoice/hybrid-invoice-json-schema";
-import { HYBRID_INVOICE_SYSTEM_PROMPT } from "@/services/invoice/hybrid-invoice-system-prompt";
+import { buildHybridInvoiceSystemPrompt } from "@/lib/i18n/ocr/invoice-prompts";
+import type { AppLocale } from "@/lib/i18n/types";
 import type {
   IDocumentParser,
   IModelEngine,
@@ -37,6 +38,7 @@ export type HybridInvoiceServiceOptions = {
   model?: string;
   /** Max markdown chars sent to the LLM (token guard). */
   maxMarkdownChars?: number;
+  locale?: AppLocale;
 };
 
 export class HybridInvoiceExtractionError extends Error {
@@ -59,6 +61,7 @@ export class HybridInvoiceExtractionError extends Error {
  */
 export class HybridInvoiceService {
   private readonly maxMarkdownChars: number;
+  private readonly locale: AppLocale;
 
   constructor(
     private readonly documentParser: IDocumentParser,
@@ -66,6 +69,7 @@ export class HybridInvoiceService {
     options: HybridInvoiceServiceOptions = {},
   ) {
     this.maxMarkdownChars = options.maxMarkdownChars ?? 28_000;
+    this.locale = options.locale ?? "de";
   }
 
   async extract(input: HybridInvoiceExtractInput): Promise<HybridInvoiceExtractResult> {
@@ -107,7 +111,7 @@ export class HybridInvoiceService {
     try {
       llmRaw = await this.modelEngine.parseStructuredJson<HybridInvoiceLlmResponse>(
         {
-          systemPrompt: HYBRID_INVOICE_SYSTEM_PROMPT,
+          systemPrompt: buildHybridInvoiceSystemPrompt(this.locale),
           userContent: [
             "Extract structured invoice data from this layout OCR markdown.",
             "Rows are anchored with Z01, Z02, Z03 … markers in the leftmost column.",

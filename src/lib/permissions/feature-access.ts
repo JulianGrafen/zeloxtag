@@ -6,6 +6,8 @@
  */
 
 import { FREE_AI_ABE_SCAN_LIMIT, FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-constants";
+import { getTerm } from "@/lib/i18n/terminology";
+import type { AppLocale } from "@/lib/i18n/types";
 
 export const USER_TIERS = ["free", "pro"] as const;
 export type UserTier = (typeof USER_TIERS)[number];
@@ -133,6 +135,7 @@ export function paywallTitle(
 export function paywallBody(
   feature: FeatureFlag,
   variant: PaywallVariant = "default",
+  locale: AppLocale = "de",
 ): string {
   switch (feature) {
     case FEATURE.SCAN_AI_RECEIPT:
@@ -145,7 +148,7 @@ export function paywallBody(
     case FEATURE.INVITE_SCHRAUBER:
       return "Werkstätten ohne Passwort mitarbeiten lassen mit ZeloxTag Pro.";
     case FEATURE.DOCUMENT_VAULT:
-      return "Rechnungen, ABEs und TÜV per KI scannen und in der Cloud speichern mit ZeloxTag Pro. Einsehen und manuelle Einträge bleiben kostenlos.";
+      return getTerm("paywallScanVault", locale);
     case FEATURE.VIEW_DOCUMENT_VAULT:
       return "Deine Akte mit manuellen Einträgen und gespeicherten Belegen, kostenlos einsehbar.";
     case FEATURE.USE_BUILD_PLANNER_AI:

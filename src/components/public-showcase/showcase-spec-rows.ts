@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import { formatPowerLabel } from "@/lib/i18n/formatters";
+import { defaultRegionalProfile } from "@/lib/i18n/regional-profile";
+import type { RegionalProfile } from "@/lib/i18n/types";
 import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
 
 import { buildShowcaseTechnicalFields } from "./showcase-technical-fields";
@@ -51,19 +54,21 @@ export function buildShowcaseSpecRows(
     unit: string,
     options?: { decimals?: number },
   ) => ReactNode,
+  regionalProfile: RegionalProfile = defaultRegionalProfile(),
 ): ShowcaseSpecRow[] {
   const rows: ShowcaseSpecRow[] = [];
+  const powerUnit = regionalProfile.powerLabel;
 
   if (profile.powerPs != null) {
     rows.push({
       key: "power",
-      label: "Leistung",
-      value: renderAnimatedStat(profile.powerPs, "PS"),
+      label: formatPowerLabel(regionalProfile),
+      value: renderAnimatedStat(profile.powerPs, powerUnit),
       emphasis: true,
       layout: "quartett",
       quartett: {
         amount: profile.powerPs,
-        unit: "PS",
+        unit: powerUnit,
         scaleMax: SHOWCASE_QUARTETT_POWER_PS_MAX,
         polarity: "higher",
       },

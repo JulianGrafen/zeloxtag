@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
-import { ShowcaseDiscoverIntro } from "@/components/showcase-swipe/showcase-discover-intro";
+import { discoverPageRootClassName } from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
 import { ShowcaseDiscoverExperience } from "@/components/showcase-swipe/showcase-discover-experience";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
@@ -14,7 +14,6 @@ import { loadShowcaseSwipeDeck } from "@/lib/showcase/swipe-deck";
 import { loadVehicleShowcaseSwipeDailyStats } from "@/lib/showcase/vehicle-showcase-swipe-daily-stats";
 import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank";
 import { topThreeWeeklyRankOrNull } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
-import { formatDiscoverWeeklyRankMeta } from "@/lib/showcase/discover-weekly-rank-meta";
 import { loadPendingWeeklyRankAwardForVehicle } from "@/lib/showcase/load-weekly-rank-award";
 import { loadWeeklyTopBuilds } from "@/lib/showcase/weekly-top-builds";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
@@ -140,44 +139,33 @@ export default async function ShowcaseEntdeckenPage({
     }
   }
 
-  const profilSettingsHref = vehicleSurfaceHref(scope, "einstellungen/profil");
-  const discoverEligible =
-    Boolean(vehicle.is_public) && Boolean(vehicle.showcase_swipe_opt_in);
-  const weeklyRankMeta =
-    discoverEligible && ownWeeklyRank
-      ? formatDiscoverWeeklyRankMeta(ownWeeklyRank)
-      : undefined;
-
   return (
-    <AppShell showNavbar={false}>
+    <AppShell showNavbar={false} immersiveNativeNav>
+      <div className={discoverPageRootClassName}>
       <VehicleSettingsSubpageShell
         tagUuid={uuid}
-        kicker="Entdecken"
         title="Builds entdecken"
-        meta={weeklyRankMeta}
-        description={
-          <ShowcaseDiscoverIntro profilSettingsHref={profilSettingsHref} />
-        }
         backHref={`/v/${uuid}`}
         backLabel="Dashboard"
+        theme="discover"
       >
         <ShowcaseDiscoverExperience
           tagUuid={uuid}
+          vehicleId={vehicle.id}
           entdeckenReturnHref={`/v/${uuid}/entdecken`}
           initialCards={initialCards}
           initialWeeklyBuilds={initialWeeklyBuilds}
           isPublic={Boolean(vehicle.is_public)}
           showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
-          profilSettingsHref={profilSettingsHref}
           ownWeeklyRank={ownWeeklyRank}
           dailySwipeStats={dailySwipeStats}
           ownTopThreeShareCardData={ownTopThreeShareCardData}
           weeklyRankCelebration={weeklyRankCelebration}
           openWeeklyAwardFromEmail={weeklyAward === "1"}
-          weeklyRankShownInHeader={Boolean(weeklyRankMeta)}
         />
-        <LegalFooterNav className="pt-2" />
+        <LegalFooterNav tone="inverse" className="pt-2" />
       </VehicleSettingsSubpageShell>
+      </div>
     </AppShell>
   );
 }

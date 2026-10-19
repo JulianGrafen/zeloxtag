@@ -7,6 +7,7 @@ import type {
   PublicModification,
   PublicShowcaseProfile,
 } from "@/lib/vehicles/public-showcase-data";
+import { useRegionalFormatters } from "@/lib/i18n/hooks/use-regional-formatters";
 import { cn } from "@/lib/utils";
 
 import CountUp from "./CountUp";
@@ -55,9 +56,14 @@ function animatedStatValue(
 
 export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
   const motionConfig = useShowroomMotion();
+  const { profile: regionalProfile } = useRegionalFormatters();
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const specificationRow = buildShowcaseSpecificationRow(profile);
-  const vehicleRows = buildShowcaseSpecRows(profile, animatedStatValue);
+  const vehicleRows = buildShowcaseSpecRows(
+    profile,
+    animatedStatValue,
+    regionalProfile,
+  );
   const hasSoundcheck = Boolean(profile.engineSoundUrl?.trim());
   const hasModsSection = modifications.length > 0;
   const hasDyno = Boolean(profile.dynoChartUrl);

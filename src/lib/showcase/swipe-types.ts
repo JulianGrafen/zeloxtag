@@ -9,6 +9,8 @@ export type ShowcaseSwipeCard = {
   year: number | null;
   totalLikes: number;
   heroImageSrc: string | null;
+  /** Owner silhouette → cover-style fill; catalog cutout → contain (see weekly top builds). */
+  heroImageUsesCover?: boolean;
   powerPs: number | null;
   torqueNm: number | null;
   accel0To100Sec: number | null;

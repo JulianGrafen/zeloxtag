@@ -129,4 +129,4 @@ export function saveAnonymousSwipeStorage(
   return normalized;
 }
 
-export const ANONYMOUS_SWIPE_GATE_LIMIT = 7;
+export const ANONYMOUS_SWIPE_GATE_LIMIT = 5;

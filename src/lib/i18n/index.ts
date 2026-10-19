@@ -43,7 +43,3 @@ export {
 export { getTerm, type TermKey } from "@/lib/i18n/terminology";
 export { uiMessages, type UiMessages } from "@/lib/i18n/messages";
 export { kilometersToMiles, milesToKilometers } from "@/lib/i18n/units-convert";
-export {
-  getRequestLocale,
-  getRequestLocalePreferences,
-} from "@/lib/i18n/get-request-locale";
