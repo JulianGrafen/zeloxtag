@@ -150,24 +150,25 @@ export function ShowcaseSwipeDeck({
   const handleSwipe = useCallback(
     async (decision: "like" | "pass") => {
       if (!current || busy) return;
+      const swiped = current;
       setBusy(true);
+      removeTop();
       try {
         if (!designPreview) {
-          await postSwipe(current.publicSlug, decision);
+          await postSwipe(swiped.publicSlug, decision);
         }
         if (decision === "like") {
-          onLiked?.(current);
+          onLiked?.(swiped);
         }
-        removeTop();
         setSwipeError(null);
       } catch {
         setSwipeError("Swipe konnte nicht gespeichert werden.");
-        stackRef.current?.resetTop();
+        void reloadDeck();
       } finally {
         setBusy(false);
       }
     },
-    [busy, current, designPreview, onLiked, removeTop],
+    [busy, current, designPreview, onLiked, reloadDeck, removeTop],
   );
 
   const openShowcase = useCallback(

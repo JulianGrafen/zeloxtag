@@ -148,23 +148,24 @@ export function PublicSwipeExperience() {
       }
 
       setBusy(true);
+      const swiped = current;
       const vote = decision === "like" ? "up" : "down";
-      const result = await recordSwipe(current.id, vote);
+      removeTop();
+      void nativeBridge.triggerHaptic("light");
+
+      const result = await recordSwipe(swiped.id, vote);
       if (!result) {
         setSwipeError("Swipe konnte nicht gespeichert werden.");
-        stackRef.current?.resetTop();
+        void loadDeck();
         setBusy(false);
         return;
       }
 
       const cleanScorePercent =
-        result.cleanScorePercent ?? current.cleanScorePercent;
+        result.cleanScorePercent ?? swiped.cleanScorePercent;
 
       setFeedback({ cleanScorePercent });
-      window.setTimeout(() => setFeedback(null), 900);
-      void nativeBridge.triggerHaptic("light");
-
-      removeTop();
+      window.setTimeout(() => setFeedback(null), 520);
       setSwipeError(null);
 
       if (swipeCount + 1 >= ANONYMOUS_SWIPE_GATE_LIMIT) {
@@ -172,7 +173,16 @@ export function PublicSwipeExperience() {
       }
       setBusy(false);
     },
-    [busy, current, gateOpen, nativeBridge, recordSwipe, removeTop, swipeCount],
+    [
+      busy,
+      current,
+      gateOpen,
+      loadDeck,
+      nativeBridge,
+      recordSwipe,
+      removeTop,
+      swipeCount,
+    ],
   );
 
   const openGate = useCallback((reason: GateReason) => {

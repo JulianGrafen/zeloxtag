@@ -29,11 +29,16 @@ import "./stack.css";
 
 const SWIPE_OFFSET_PX = 56;
 const SWIPE_VELOCITY_PX_S = 320;
-const EXIT_OFFSET_PX = 520;
+const EXIT_OFFSET_PX = 420;
 const MAX_VISIBLE = 4;
-const ANIMATION = { stiffness: 260, damping: 20 };
-const SPRING_BACK = { type: "spring" as const, stiffness: 420, damping: 34 };
-const SPRING_EXIT = { type: "spring" as const, stiffness: 320, damping: 28 };
+const ANIMATION = { stiffness: 380, damping: 28 };
+const SPRING_BACK = { type: "spring" as const, stiffness: 520, damping: 38 };
+/** Short ease-out — predictable, snappy exit (springs felt sluggish at 520px). */
+const EXIT_TRANSITION = {
+  type: "tween" as const,
+  duration: 0.22,
+  ease: [0.32, 0.72, 0, 1] as const,
+};
 
 type StackItem = {
   id: string;
@@ -76,10 +81,12 @@ function resolveSwipeDecision(info: PanInfo): "like" | "pass" | null {
   return null;
 }
 
+type MotionTransition = typeof SPRING_BACK | typeof EXIT_TRANSITION;
+
 async function springMotionValue(
   value: MotionValue<number>,
   target: number,
-  transition: typeof SPRING_BACK | typeof SPRING_EXIT,
+  transition: MotionTransition,
 ): Promise<void> {
   await animate(value, target, transition);
 }
@@ -121,8 +128,7 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
         setIsExiting(true);
         onDecisionHighlight?.(decision);
         const exitX = decision === "like" ? EXIT_OFFSET_PX : -EXIT_OFFSET_PX;
-        await springMotionValue(x, exitX, SPRING_EXIT);
-        await springMotionValue(y, 0, SPRING_BACK);
+        await springMotionValue(x, exitX, EXIT_TRANSITION);
         onSwipeComplete(decision);
       },
       [disabled, onDecisionHighlight, onSwipeComplete, x, y],
