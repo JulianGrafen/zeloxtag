@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/cron/showcase-weekly-rank-awards",
-      "schedule": "0 18 * * 0"
+      "schedule": "0 5 * * 1"
     }
   ]
 }

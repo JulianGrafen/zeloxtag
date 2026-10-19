@@ -1,7 +1,7 @@
 import "server-only";
 
 import { sendWeeklyRankAwardEmail } from "@/lib/email/showcase-weekly-rank-award-email";
-import { weeklyTopBuildReminderWeekKey } from "@/lib/showcase/weekly-leaderboard-logic";
+import { previousShowcaseCalendarWeekKey } from "@/lib/showcase/showcase-calendar-week";
 import { loadWeeklyLeaderboardAdmin } from "@/lib/showcase/weekly-leaderboard-admin";
 import {
   isTopThreeRank,
@@ -52,9 +52,11 @@ export async function processWeeklyShowcaseRankAwards(options?: {
     return { weekKey: "", processed: 0, emailsSent: 0, skipped: 0 };
   }
 
-  const weekKey = options?.weekKey?.trim() || weeklyTopBuildReminderWeekKey();
+  const weekKey = options?.weekKey?.trim() || previousShowcaseCalendarWeekKey();
   const limit = Math.min(Math.max(options?.limit ?? 3, 1), 3);
-  const leaderboard = await loadWeeklyLeaderboardAdmin(limit);
+  const leaderboard = await loadWeeklyLeaderboardAdmin(limit, {
+    completedWeek: true,
+  });
 
   if (leaderboard.length === 0) {
     return { weekKey, processed: 0, emailsSent: 0, skipped: 0 };

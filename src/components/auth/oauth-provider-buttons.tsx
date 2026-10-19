@@ -17,6 +17,8 @@ type OAuthProviderButtonsProps = {
   nextPath?: string;
   disabled?: boolean;
   className?: string;
+  /** Defaults to all configured providers. */
+  providers?: readonly OAuthProvider[];
   /** Return false to abort redirect (e.g. pending garage staging failed). */
   beforeRedirect?: (provider: OAuthProvider) => Promise<boolean | void>;
 };
@@ -38,6 +40,7 @@ export function OAuthProviderButtons({
   nextPath = "/auth/continue",
   disabled = false,
   className,
+  providers = OAUTH_PROVIDERS,
   beforeRedirect,
 }: OAuthProviderButtonsProps) {
   const [pending, startTransition] = useTransition();
@@ -54,7 +57,7 @@ export function OAuthProviderButtons({
 
   return (
     <div className={cn("grid w-full gap-2", className)}>
-      {OAUTH_PROVIDERS.map((provider) => (
+      {providers.map((provider) => (
         <Button
           key={provider}
           type="button"

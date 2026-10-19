@@ -190,6 +190,8 @@ export const RATE_LIMITS = {
   accountExport: { limit: 3, windowMs: 24 * 60 * 60 * 1000 },
   /** Build-Swipe deck + decisions (anti-scrape). */
   showcaseSwipe: { limit: 40, windowMs: 60_000 },
+  /** Public anonymous /swipe page. */
+  publicSwipe: { limit: 50, windowMs: 60_000 },
   /** Build Planner KI extract (link / image / text). */
   buildPlanner: { limit: 8, windowMs: 60_000 },
 } as const;

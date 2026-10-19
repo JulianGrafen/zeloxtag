@@ -27,19 +27,9 @@ export function becameWeeklyTopBuildLeader(
   return true;
 }
 
-/**
- * UTC ISO week bucket for one-shot weekly-top emails per vehicle.
- * Like counts use a rolling 7-day window in Postgres — not this calendar week.
- */
+import { showcaseCalendarWeekKey } from "@/lib/showcase/showcase-calendar-week";
+
+/** Calendar week bucket (Mon–So Europe/Berlin) for weekly rank awards & emails. */
 export function weeklyTopBuildReminderWeekKey(date = new Date()): string {
-  const utc = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
-  const day = utc.getUTCDay() || 7;
-  utc.setUTCDate(utc.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(
-    ((utc.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7,
-  );
-  return `${utc.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+  return showcaseCalendarWeekKey(date);
 }

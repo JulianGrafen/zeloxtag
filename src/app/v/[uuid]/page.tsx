@@ -61,6 +61,10 @@ import { syncStripeCheckoutSessionAction } from "@/actions/stripe-checkout";
 import { fetchUserGarage } from "@/lib/garage/fetch-user-garage";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeDiscoverBackHref } from "@/lib/showcase/discover-showcase-navigation";
+import { ShowcaseWeeklyRankDashboardMockToast } from "@/components/showcase-swipe/showcase-weekly-rank-dashboard-mock-toast";
+import { ShowcaseWeeklyRankDashboardNotice } from "@/components/showcase-swipe/showcase-weekly-rank-dashboard-notice";
+import { parseWeeklyRankMockParam } from "@/lib/showcase/parse-weekly-rank-mock-param";
+import { mockWeeklyRankAward } from "@/lib/showcase/weekly-rank-share-mock-data";
 import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
 import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
 import { buildPlannerDashboardHint } from "@/lib/build-planner/build-planner-summary";
@@ -83,6 +87,7 @@ interface TagScanPageProps {
     showcase?: string;
     /** Return target for entdecken back button (relative path). */
     back?: string;
+    mockWeeklyRank?: string;
   }>;
 }
 
@@ -300,7 +305,9 @@ export default async function TagScanPage({
     freeScanWelcome,
     showcase: showcaseRaw,
     back: discoverBackRaw,
+    mockWeeklyRank: mockWeeklyRankRaw,
   } = await searchParams;
+  const weeklyRankMockRank = parseWeeklyRankMockParam(mockWeeklyRankRaw);
   const wantsDashboard = dashboard === "1" || scan === "1";
   const forcePublicShowcase = showcaseRaw === "1";
   const discoverShowcaseOptions: PublicShowcaseRenderOptions | undefined =
@@ -415,8 +422,27 @@ export default async function TagScanPage({
 
     if (!access.isOwner && !access.isContributor) {
       if (tag.uuid === MOCK_TAG_UUIDS.active) {
+        const demoEntdeckenHref = `/v/${tag.uuid}/entdecken`;
+        const demoRankMock =
+          weeklyRankMockRank != null
+            ? mockWeeklyRankAward(weeklyRankMockRank)
+            : null;
         return (
           <AppShell showNavbar={false}>
+            {demoRankMock ? (
+              <>
+                <ShowcaseWeeklyRankDashboardMockToast
+                  award={demoRankMock}
+                  entdeckenHref={demoEntdeckenHref}
+                />
+                <div className="px-4 pt-2 sm:px-5">
+                  <ShowcaseWeeklyRankDashboardNotice
+                    award={demoRankMock}
+                    entdeckenHref={demoEntdeckenHref}
+                  />
+                </div>
+              </>
+            ) : null}
             <TagDashboardView
               vehicle={vehicle}
               documents={result.documents}
@@ -569,6 +595,7 @@ export default async function TagScanPage({
           operatingCostHint={operatingCostHint}
           buildPlannerHint={buildPlannerHint}
           timelineEvents={timelineEvents}
+          weeklyRankMockRank={weeklyRankMockRank}
         />
       </AppShell>
     );

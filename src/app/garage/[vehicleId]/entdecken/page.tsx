@@ -12,6 +12,7 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { loadShowcaseSwipeDeck } from "@/lib/showcase/swipe-deck";
 import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareable-build-data";
+import { loadVehicleShowcaseSwipeDailyStats } from "@/lib/showcase/vehicle-showcase-swipe-daily-stats";
 import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank";
 import { topThreeWeeklyRankOrNull } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import { formatDiscoverWeeklyRankMeta } from "@/lib/showcase/discover-weekly-rank-meta";
@@ -77,6 +78,9 @@ export default async function ShowcaseEntdeckenPage({
   let ownWeeklyRank: Awaited<
     ReturnType<typeof loadVehicleWeeklyShowcaseRank>
   > = null;
+  let dailySwipeStats: Awaited<
+    ReturnType<typeof loadVehicleShowcaseSwipeDailyStats>
+  > = null;
   let ownTopThreeShareCardData = null;
   if (isConfigured) {
     try {
@@ -103,6 +107,11 @@ export default async function ShowcaseEntdeckenPage({
       }
     } catch (error) {
       console.error("[entdecken] weekly rank preload failed", error);
+    }
+    try {
+      dailySwipeStats = await loadVehicleShowcaseSwipeDailyStats(vehicle.id);
+    } catch (error) {
+      console.error("[entdecken] daily swipe stats preload failed", error);
     }
   }
 
@@ -137,6 +146,7 @@ export default async function ShowcaseEntdeckenPage({
           showcaseSwipeOptIn={Boolean(vehicle.showcase_swipe_opt_in)}
           profilSettingsHref={profilSettingsHref}
           ownWeeklyRank={ownWeeklyRank}
+          dailySwipeStats={dailySwipeStats}
           ownTopThreeShareCardData={ownTopThreeShareCardData}
           weeklyRankCelebration={weeklyRankCelebration}
           openWeeklyAwardFromEmail={weeklyAward === "1"}

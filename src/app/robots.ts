@@ -15,6 +15,7 @@ export default function robots(): MetadataRoute.Robots {
         "/datenschutz",
         "/agb",
         "/login",
+        "/swipe",
       ],
       disallow: [
         "/v/",

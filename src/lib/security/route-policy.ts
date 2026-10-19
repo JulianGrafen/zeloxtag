@@ -24,6 +24,7 @@ const PUBLIC_EXACT = new Set([
   "/impressum",
   "/agb",
   "/datenschutz",
+  "/swipe",
   // /login/update-password requires a recovery session (checked in page)
   // /qr requires auth — inventory mint must not be anonymous
   // /auth/continue is protected — resolves owner dashboard after login
@@ -54,6 +55,7 @@ const PUBLIC_API_GET_PREFIXES = [
   "/api/vehicle/silhouette/",
   "/api/vehicle/catalog/",
   "/api/public/vehicle/",
+  "/api/public/swipe/",
   "/api/expose/",
 ];
 
@@ -73,6 +75,7 @@ export function isPublicVehicleImagePath(
 const PUBLIC_API_POST = new Set<string>([
   SHOPIFY_WEBHOOK_API_PATH,
   STRIPE_WEBHOOK_API_PATH,
+  "/api/public/swipe",
 ]);
 
 export function isPublicPath(pathname: string): boolean {

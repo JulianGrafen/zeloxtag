@@ -271,6 +271,7 @@ export function LoginForm({
             nextPath={nextPath || "/auth/continue"}
             disabled={pending}
             className="mt-2"
+            providers={isSignup ? (["google"] as const) : undefined}
           />
         </CardContent>
       </Card>

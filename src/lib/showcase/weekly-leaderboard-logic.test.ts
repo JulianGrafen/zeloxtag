@@ -47,9 +47,9 @@ describe("becameWeeklyTopBuildLeader", () => {
 });
 
 describe("weeklyTopBuildReminderWeekKey", () => {
-  it("returns a stable ISO week label", () => {
+  it("returns Berlin calendar week start (Monday YMD)", () => {
     expect(
-      weeklyTopBuildReminderWeekKey(new Date("2026-04-06T12:00:00.000Z")),
-    ).toMatch(/^\d{4}-W\d{2}$/);
+      weeklyTopBuildReminderWeekKey(new Date("2026-04-08T10:00:00.000Z")),
+    ).toBe("2026-04-06");
   });
 });

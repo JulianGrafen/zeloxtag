@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { loginGateHref } from "@/lib/auth/login-gate-url";
 import { loadOwnerDashboardForVehicle } from "@/lib/vehicle-surface/load-owner-dashboard";
 import { loadVehicleTimelineEvents } from "@/lib/vehicles/load-vehicle-timeline";
+import { parseWeeklyRankMockParam } from "@/lib/showcase/parse-weekly-rank-mock-param";
 import { scopeFromGarageRoute } from "@/lib/vehicle-surface/paths";
 
 interface GarageDashboardPageProps {
@@ -17,6 +18,7 @@ interface GarageDashboardPageProps {
     tour?: string;
     session_id?: string;
     freeScanWelcome?: string;
+    mockWeeklyRank?: string;
   }>;
 }
 
@@ -86,6 +88,7 @@ export default async function GarageDashboardPage({
           showcaseSwipeTotalLikes={dashboard.showcaseSwipeTotalLikes}
           weeklyRankAward={dashboard.weeklyRankAward}
           weeklyRankAwardEntdeckenHref={dashboard.weeklyRankAwardEntdeckenHref}
+          weeklyRankMockRank={parseWeeklyRankMockParam(query.mockWeeklyRank)}
           operatingCostHint={dashboard.operatingCostHint}
           buildPlannerHint={dashboard.buildPlannerHint}
           showTagShopPromo={

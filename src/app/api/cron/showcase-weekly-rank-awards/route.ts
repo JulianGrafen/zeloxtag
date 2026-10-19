@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 /**
  * GET /api/cron/showcase-weekly-rank-awards
- * Sunday close: notify swipe leaderboard ranks 1–3 (email + in-app award).
+ * Monday morning (UTC cron): finalize last Mon–So Berlin week — email + in-app award ranks 1–3.
  */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request)) {

@@ -9,9 +9,11 @@ import { ShowcaseDiscoverSection } from "@/components/showcase-swipe/showcase-di
 import { ShowcaseInviteFriends } from "@/components/showcase-swipe/showcase-invite-friends";
 import { ShowcaseSwipeDeck } from "@/components/showcase-swipe/ShowcaseSwipeDeck";
 import { ShowcaseTopThreeStoryShare } from "@/components/showcase-swipe/showcase-top-three-story-share";
+import { ShowcaseSwipeDailyStatsLine } from "@/components/showcase-swipe/showcase-swipe-daily-stats-line";
 import { ShowcaseWeeklyPlacement } from "@/components/showcase-swipe/showcase-weekly-placement";
 import { WeeklyTopBuilds } from "@/components/showcase-swipe/weekly-top-builds";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
+import type { VehicleShowcaseSwipeDailyStats } from "@/lib/showcase/vehicle-showcase-swipe-daily-stats-map";
 import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
 import { fetchWeeklyTopBuildsClient } from "@/lib/showcase/fetch-weekly-top-builds-client";
 import { SHOWCASE_WEEKLY_LIKE_WINDOW_LABEL } from "@/lib/showcase/showcase-weekly-like-window";
@@ -30,6 +32,7 @@ type ShowcaseDiscoverExperienceProps = {
   showcaseSwipeOptIn: boolean;
   profilSettingsHref: string;
   ownWeeklyRank: VehicleWeeklyShowcaseRank | null;
+  dailySwipeStats?: VehicleShowcaseSwipeDailyStats | null;
   ownTopThreeShareCardData: ShareableBuildData | null;
   weeklyRankCelebration?: {
     award: ShowcaseWeeklyRankAward;
@@ -49,6 +52,7 @@ export function ShowcaseDiscoverExperience({
   showcaseSwipeOptIn,
   profilSettingsHref,
   ownWeeklyRank,
+  dailySwipeStats = null,
   ownTopThreeShareCardData,
   weeklyRankCelebration = null,
   openWeeklyAwardFromEmail = false,
@@ -97,6 +101,9 @@ export function ShowcaseDiscoverExperience({
         className={cn("pb-2", rankingsRevealed && "pb-0")}
         transition={{ layout: { duration: 0.55, ease: RANKINGS_REVEAL_EASE } }}
       >
+        {eligible && dailySwipeStats ? (
+          <ShowcaseSwipeDailyStatsLine stats={dailySwipeStats} className="mb-4" />
+        ) : null}
         <ShowcaseSwipeDeck
           tagUuid={tagUuid}
           entdeckenReturnHref={entdeckenReturnHref}

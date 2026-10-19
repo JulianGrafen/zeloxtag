@@ -22,15 +22,17 @@ function parseServiceWeeklyRows(data: unknown): WeeklyLeaderEntry[] {
   return entries;
 }
 
-/** Top builds by likes in the rolling 7-day window (service role). */
+/** Top builds by likes in the calendar swipe week (service role). */
 export async function loadWeeklyLeaderboardAdmin(
   limit = 2,
+  options?: { completedWeek?: boolean },
 ): Promise<WeeklyLeaderEntry[]> {
   if (!isSupabaseAdminConfigured()) return [];
 
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("service_weekly_top_builds", {
     p_limit: Math.min(Math.max(limit, 1), 10),
+    p_use_completed_week: options?.completedWeek ?? false,
   });
 
   if (error) {

@@ -51,7 +51,10 @@ import {
 } from "@/lib/ui/dashboard-prompt-orchestrator";
 import type { OperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/types";
 import { ShowcaseWeeklyRankDashboardNotice } from "@/components/showcase-swipe/showcase-weekly-rank-dashboard-notice";
+import { ShowcaseWeeklyRankDashboardMockToast } from "@/components/showcase-swipe/showcase-weekly-rank-dashboard-mock-toast";
 import type { ShowcaseWeeklyRankAward } from "@/lib/showcase/weekly-rank-award-types";
+import { mockWeeklyRankAward } from "@/lib/showcase/weekly-rank-share-mock-data";
+import type { TopThreeWeeklyRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { TimelineEvent } from "@/lib/validations/timelineSchema";
@@ -202,6 +205,8 @@ interface TagDashboardShellProps {
   showcaseSwipeTotalLikes?: number;
   weeklyRankAward?: ShowcaseWeeklyRankAward | null;
   weeklyRankAwardEntdeckenHref?: string | null;
+  /** Dev-only: `?mockWeeklyRank=` dashboard preview. */
+  weeklyRankMockRank?: TopThreeWeeklyRank | null;
   operatingCostHint?: OperatingCostDashboardHint | null;
   buildPlannerHint?: { subtitle: string } | null;
   showTagShopPromo?: boolean;
@@ -237,6 +242,7 @@ export function TagDashboardShell({
   showcaseSwipeTotalLikes = 0,
   weeklyRankAward = null,
   weeklyRankAwardEntdeckenHref = null,
+  weeklyRankMockRank = null,
   operatingCostHint = null,
   buildPlannerHint = null,
   showTagShopPromo = false,
@@ -250,6 +256,17 @@ export function TagDashboardShell({
   const dashboardBase = vehicleSurfaceScope
     ? vehicleSurfaceHref(vehicleSurfaceScope)
     : `/v/${tagUuid}`;
+  const defaultEntdeckenHref = vehicleSurfaceScope
+    ? vehicleSurfaceHref(vehicleSurfaceScope, "entdecken")
+    : `/v/${tagUuid}/entdecken`;
+  const displayWeeklyRankAward =
+    weeklyRankMockRank != null
+      ? mockWeeklyRankAward(weeklyRankMockRank)
+      : weeklyRankAward;
+  const displayWeeklyRankEntdeckenHref =
+    weeklyRankMockRank != null
+      ? defaultEntdeckenHref
+      : weeklyRankAwardEntdeckenHref;
   const canAiScan = canStartAiScan(
     membershipActive,
     freeInvoiceScanRemaining,
@@ -916,11 +933,17 @@ export function TagDashboardShell({
       {isOwner && accountDeletionGraceEndsAt ? (
         <AccountDeletionBanner graceEndsAt={accountDeletionGraceEndsAt} />
       ) : null}
-      {isOwner && weeklyRankAward && weeklyRankAwardEntdeckenHref ? (
+      {weeklyRankMockRank != null && displayWeeklyRankAward ? (
+        <ShowcaseWeeklyRankDashboardMockToast
+          award={displayWeeklyRankAward}
+          entdeckenHref={defaultEntdeckenHref}
+        />
+      ) : null}
+      {isOwner && displayWeeklyRankAward && displayWeeklyRankEntdeckenHref ? (
         <div className="px-4 pt-2 sm:px-5">
           <ShowcaseWeeklyRankDashboardNotice
-            award={weeklyRankAward}
-            entdeckenHref={weeklyRankAwardEntdeckenHref}
+            award={displayWeeklyRankAward}
+            entdeckenHref={displayWeeklyRankEntdeckenHref}
           />
         </div>
       ) : null}

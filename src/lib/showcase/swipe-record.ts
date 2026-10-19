@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isValidPublicSlug } from "@/lib/vehicles/public-slug";
 import { notifyShowcaseLikeReceived } from "@/lib/email/showcase-like-email";
 import { notifyWeeklyTopBuildRankOneIfNew } from "@/lib/email/showcase-weekly-top-email";
+import { showcaseCalendarWeekKey } from "@/lib/showcase/showcase-calendar-week";
 import { loadWeeklyLeaderboardAdmin } from "@/lib/showcase/weekly-leaderboard-admin";
 
 export type RecordShowcaseSwipeInput = {
@@ -76,20 +77,19 @@ export async function recordShowcaseSwipe(
   const topBeforeWeekly =
     decision === "like" ? await loadWeeklyLeaderboardAdmin(2) : [];
 
-  const { error: insertError } = await supabase.from("showcase_swipes").insert({
-    swiper_user_id: user.id,
-    vehicle_id: vehicle.id,
-    decision,
-  });
+  const calendarWeekStart = showcaseCalendarWeekKey();
+
+  const { error: insertError } = await supabase.from("showcase_swipes").upsert(
+    {
+      swiper_user_id: user.id,
+      vehicle_id: vehicle.id,
+      decision,
+      calendar_week_start: calendarWeekStart,
+    },
+    { onConflict: "swiper_user_id,vehicle_id,calendar_week_start" },
+  );
 
   if (insertError) {
-    if (insertError.code === "23505") {
-      return {
-        ok: false,
-        status: 409,
-        error: "Du hast diesen Build bereits bewertet.",
-      };
-    }
     return {
       ok: false,
       status: 500,

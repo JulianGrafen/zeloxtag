@@ -151,6 +151,7 @@ export type ShowcaseSwipe = {
   swiper_user_id: string;
   vehicle_id: string;
   decision: ShowcaseSwipeDecision;
+  calendar_week_start: string;
   created_at: string;
 };
 
@@ -828,6 +829,7 @@ export type Database = {
           swiper_user_id: string;
           vehicle_id: string;
           decision: ShowcaseSwipeDecision;
+          calendar_week_start?: string;
           created_at?: string;
         };
         Update: {
@@ -835,6 +837,7 @@ export type Database = {
           swiper_user_id?: string;
           vehicle_id?: string;
           decision?: ShowcaseSwipeDecision;
+          calendar_week_start?: string;
           created_at?: string;
         };
         Relationships: [
@@ -957,6 +960,30 @@ export type Database = {
       };
       get_vehicle_weekly_showcase_rank: {
         Args: { p_vehicle_id: string };
+        Returns: Json;
+      };
+      get_vehicle_showcase_swipe_daily_stats: {
+        Args: { p_vehicle_id?: string | null };
+        Returns: Json;
+      };
+      list_public_swipe_cards: {
+        Args: {
+          p_exclude_vehicle_ids?: string[];
+          p_limit?: number;
+          p_client_session_hash?: string;
+        };
+        Returns: Json;
+      };
+      showcase_swipe_calendar_week_date: {
+        Args: { p_at?: string };
+        Returns: string;
+      };
+      register_anonymous_swipe: {
+        Args: {
+          p_vehicle_id: string;
+          p_vote_type: string;
+          p_client_session_hash: string;
+        };
         Returns: Json;
       };
       get_weekly_top_builds: {
