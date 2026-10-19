@@ -21,7 +21,6 @@ import {
   type PanInfo,
 } from "motion/react";
 
-import { SwipeCardDetailsSheet } from "@/components/showcase-swipe/discover-minimal/SwipeCardDetailsSheet";
 import { SwipeCardMinimal } from "@/components/showcase-swipe/discover-minimal/SwipeCardMinimal";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 
@@ -301,12 +300,9 @@ export const ShowcaseSwipeStack = forwardRef<
   const [stack, setStack] = useState<StackItem[]>(() =>
     visibleCards.map((card) => ({ id: card.publicSlug, card })),
   );
-  const [detailsCard, setDetailsCard] = useState<ShowcaseSwipeCard | null>(
-    null,
-  );
 
   const topCardRef = useRef<SwipeableTopCardHandle>(null);
-  const stackDisabled = disabled || detailsCard != null;
+  const stackDisabled = disabled;
 
   useEffect(() => {
     setStack(visibleCards.map((card) => ({ id: card.publicSlug, card })));
@@ -354,7 +350,7 @@ export const ShowcaseSwipeStack = forwardRef<
                 disabled={stackDisabled}
                 onSwipeComplete={handleSwipeComplete}
                 onDecisionHighlight={onDecisionHighlight}
-                onOpenDetails={setDetailsCard}
+                onOpenDetails={() => onOpen(item.card)}
               />
             );
           }
@@ -371,11 +367,6 @@ export const ShowcaseSwipeStack = forwardRef<
           );
         })}
       </div>
-      <SwipeCardDetailsSheet
-        card={detailsCard}
-        onClose={() => setDetailsCard(null)}
-        onOpenShowcase={onOpen}
-      />
     </>
   );
 });

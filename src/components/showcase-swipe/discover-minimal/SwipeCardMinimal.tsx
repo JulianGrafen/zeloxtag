@@ -136,7 +136,7 @@ export function SwipeCardMinimal({
             onOpenDetails?.();
           }}
         >
-          Details &amp; Mods ansehen
+          Showcase ansehen
           <ChevronRight className="h-4 w-4 opacity-70" aria-hidden />
         </button>
       </div>
