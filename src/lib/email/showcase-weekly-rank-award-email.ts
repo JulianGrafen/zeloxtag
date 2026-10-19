@@ -6,6 +6,7 @@ import {
   weeklyRankAwardEmailSubject,
   weeklyRankAwardHeadline,
 } from "@/lib/showcase/weekly-rank-award-keys";
+import { WEEKLY_RANK_STORY_OPEN_CTA } from "@/lib/showcase/weekly-rank-story-share-copy";
 import type { TopThreeWeeklyRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import { resolvePublicSiteOrigin } from "@/lib/site-origin";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
@@ -89,10 +90,10 @@ export async function sendWeeklyRankAwardEmail(options: {
       },
       {
         kind: "paragraph",
-        text: "In der App findest du deine Story-Karte zum Teilen — große Platzierung, Premium-Look, ready für Instagram.",
+        text: "In der App wartet deine fertige 9:16-Story-Grafik mit Platzierung — in Instagram als Story teilen.",
       },
     ],
-    ctaLabel: "Story-Karte öffnen",
+    ctaLabel: WEEKLY_RANK_STORY_OPEN_CTA,
     ctaUrl: entdeckenHref,
   });
 

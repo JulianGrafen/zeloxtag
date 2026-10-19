@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
 import { weeklyRankAwardHeadline } from "@/lib/showcase/weekly-rank-award-keys";
+import { WEEKLY_RANK_DASHBOARD_NOTICE_SUBLINE } from "@/lib/showcase/weekly-rank-story-share-copy";
 import type { ShowcaseWeeklyRankAward } from "@/lib/showcase/weekly-rank-award-types";
 
 type ShowcaseWeeklyRankDashboardNoticeProps = {
@@ -28,7 +29,7 @@ export function ShowcaseWeeklyRankDashboardNotice({
           {headline}
         </span>
         <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
-          Story-Karte für Instagram — jetzt teilen
+          {WEEKLY_RANK_DASHBOARD_NOTICE_SUBLINE}
         </span>
       </span>
       <span className="font-mono text-lg font-bold tabular-nums text-amber-600">

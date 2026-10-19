@@ -64,7 +64,7 @@ export async function updateVehicleShowcaseSettings(
     const supabase = await createClient();
     const { data: current, error: readError } = await supabase
       .from("vehicles")
-      .select("public_slug, showcase_swipe_opt_in, is_story_public")
+      .select("is_public, public_slug, showcase_swipe_opt_in, is_story_public")
       .eq("id", vehicleId)
       .eq("user_id", ownership.userId)
       .maybeSingle();
@@ -87,12 +87,15 @@ export async function updateVehicleShowcaseSettings(
       publicSlug = generatePublicSlug();
     }
 
+    const wasPublic = Boolean(current?.is_public);
     const previousSwipeOptIn = Boolean(current?.showcase_swipe_opt_in);
     let showcaseSwipeOptIn = previousSwipeOptIn;
     if (!input.isPublic) {
       showcaseSwipeOptIn = false;
     } else if (input.showcaseSwipeOptIn !== undefined) {
       showcaseSwipeOptIn = input.showcaseSwipeOptIn;
+    } else if (!wasPublic && input.isPublic) {
+      showcaseSwipeOptIn = true;
     }
 
     const previousStoryPublic = Boolean(current?.is_story_public);

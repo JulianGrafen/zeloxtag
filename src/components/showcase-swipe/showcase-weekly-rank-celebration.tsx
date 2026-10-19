@@ -6,6 +6,13 @@ import { Sparkles, X } from "lucide-react";
 import { ShareableSpecCard } from "@/components/shareable-spec-card";
 import type { ShareableBuildData } from "@/components/shareable-spec-card/types";
 import { weeklyRankAwardHeadline } from "@/lib/showcase/weekly-rank-award-keys";
+import {
+  WEEKLY_RANK_CELEBRATION_BODY,
+  WEEKLY_RANK_STORY_EXPORT_HINT,
+  WEEKLY_RANK_STORY_EXPORT_LABEL,
+  WEEKLY_RANK_STORY_EXPORT_PENDING_LABEL,
+  WEEKLY_RANK_STORY_OPEN_CTA,
+} from "@/lib/showcase/weekly-rank-story-share-copy";
 import type { ShowcaseWeeklyRankAward } from "@/lib/showcase/weekly-rank-award-types";
 import { cn } from "@/lib/utils";
 
@@ -78,8 +85,8 @@ export function ShowcaseWeeklyRankCelebration({
             {headline}
           </p>
           <p className="mt-1 text-[0.82rem] leading-snug text-[color:var(--vd-muted)]">
-            Platz {award.rank} · {award.weeklyLikes} {likeWord} in der Woche{" "}
-            {award.weekKey}. Teile deine Story-Karte auf Instagram.
+            Platz {award.rank} · {award.weeklyLikes} {likeWord} (
+            {award.weekKey}). {WEEKLY_RANK_CELEBRATION_BODY}
           </p>
         </div>
       </div>
@@ -90,8 +97,9 @@ export function ShowcaseWeeklyRankCelebration({
             data={shareCardData}
             previewMaxWidth={280}
             className="w-full"
-            exportButtonLabel="Story teilen"
-            exportButtonPendingLabel="Story wird vorbereitet…"
+            exportButtonLabel={WEEKLY_RANK_STORY_EXPORT_LABEL}
+            exportButtonPendingLabel={WEEKLY_RANK_STORY_EXPORT_PENDING_LABEL}
+            exportHint={WEEKLY_RANK_STORY_EXPORT_HINT}
           />
           <button
             type="button"
@@ -108,7 +116,7 @@ export function ShowcaseWeeklyRankCelebration({
           className="mt-4 w-full min-h-11 rounded-xl bg-[color:var(--vd-text)] text-[0.88rem] font-semibold text-[color:var(--vd-surface)]"
           onClick={() => setExpanded(true)}
         >
-          Story-Karte öffnen
+          {WEEKLY_RANK_STORY_OPEN_CTA}
         </button>
       )}
     </section>

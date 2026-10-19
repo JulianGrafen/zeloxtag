@@ -199,13 +199,36 @@ export function PublicSwipeExperience() {
       }
 
       if (!hadCardsThisSession) {
+        const weekExhausted =
+          swipedCarIds.length > 0 || swipeCount > 0 || isGated;
+        if (weekExhausted) {
+          return (
+            <div className="rounded-2xl border border-[color:var(--vd-border)] px-5 py-10 text-center">
+              <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
+                Diese Woche durchgeswiped
+              </p>
+              <p className="mt-2 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+                Montag kommen bekannte Builds wieder ins Deck. Bis dahin kannst
+                du dein eigenes Projektauto hochladen.
+              </p>
+              <button
+                type="button"
+                className="mt-5 text-[0.85rem] font-semibold text-[color:var(--vd-accent)]"
+                onClick={() => openGate("upload")}
+              >
+                Eigenes Auto hochladen
+              </button>
+            </div>
+          );
+        }
         return (
           <div className="rounded-2xl border border-[color:var(--vd-border)] px-5 py-10 text-center">
             <p className="text-[0.95rem] font-medium text-[color:var(--vd-text)]">
               Aktuell keine öffentlichen Builds
             </p>
-            <p className="mt-2 text-[0.82rem] text-[color:var(--vd-muted)]">
-              Sobald Showcases live sind, kannst du hier swipen.
+            <p className="mt-2 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+              Builds erscheinen hier, wenn Halter ihr Showcase veröffentlichen,
+              ein Fahrzeugbild haben und „Im Build-Swipe zeigen“ aktivieren.
             </p>
             <button
               type="button"

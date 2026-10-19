@@ -214,7 +214,7 @@ export function VehiclePublicProfileSettings({
           saveSettings(
             {
               isPublic: value,
-              showcaseSwipeOptIn: value ? showcaseSwipeOptIn : false,
+              showcaseSwipeOptIn: value ? (isPublic ? showcaseSwipeOptIn : true) : false,
               isStoryPublic: value ? isStoryPublic : false,
             },
             () => {
