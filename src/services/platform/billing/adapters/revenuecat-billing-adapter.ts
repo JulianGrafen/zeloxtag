@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api/api-fetch";
 import {
   isNativeBillingEnabled,
   resolveRevenueCatApiKey,
@@ -20,6 +21,14 @@ type PurchasesModule = typeof import("@revenuecat/purchases-capacitor");
 
 function planTypeToPackageKind(planType: BillingPlanType): RevenueCatPackageKind {
   return planType === "yearly" ? "yearly" : "monthly";
+}
+
+async function syncRevenueCatMembershipToServer(): Promise<void> {
+  try {
+    await apiFetch("/api/billing/revenuecat/sync", { method: "POST" });
+  } catch (error) {
+    console.error("[revenuecat] server sync failed", error);
+  }
 }
 
 export class RevenueCatBillingAdapter implements IBillingService {
@@ -98,6 +107,7 @@ export class RevenueCatBillingAdapter implements IBillingService {
       }
 
       await Purchases.purchasePackage({ aPackage: selected });
+      await syncRevenueCatMembershipToServer();
       window.location.assign(context.successPath);
       return { status: "completed" };
     } catch (error) {
@@ -121,6 +131,7 @@ export class RevenueCatBillingAdapter implements IBillingService {
       if (!active) {
         return { status: "nothing_to_restore" };
       }
+      await syncRevenueCatMembershipToServer();
       return { status: "restored" };
     } catch (error) {
       const message =

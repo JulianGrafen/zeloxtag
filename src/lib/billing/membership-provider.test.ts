@@ -20,6 +20,8 @@ const baseMembership = (): Membership => ({
   stripe_subscription_id: null,
   stripe_price_id: null,
   billing_provider: null,
+  revenuecat_app_user_id: null,
+  revenuecat_product_id: null,
   status: "active",
   current_period_end: "2099-01-01T00:00:00.000Z",
   trial_started_at: null,

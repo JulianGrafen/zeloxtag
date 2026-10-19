@@ -6,9 +6,9 @@ import {
 } from "@/lib/auth/oauth-providers";
 
 describe("oauth providers", () => {
-  it("accepts google only", () => {
+  it("accepts google and apple", () => {
     expect(isOAuthProvider("google")).toBe(true);
-    expect(isOAuthProvider("apple")).toBe(false);
+    expect(isOAuthProvider("apple")).toBe(true);
     expect(isOAuthProvider("facebook")).toBe(false);
   });
 

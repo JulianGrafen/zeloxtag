@@ -88,7 +88,6 @@ export function PublicSwipeConversionGate({
         <div className="mt-6 space-y-3">
           <OAuthProviderButtons
             nextPath={SIGNUP_NEXT}
-            providers={["google"] as const}
             disabled={pending}
           />
 

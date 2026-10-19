@@ -20,6 +20,11 @@ import {
   parseStripeMembershipAction,
   type StripeMembershipAction,
 } from "./stripe-membership";
+import type {
+  RevenueCatMembershipAction,
+  RevenueCatSubscriberSnapshot,
+} from "./revenuecat-membership";
+import { isStripeManagedMembership } from "./membership-provider";
 import {
   getStripe,
   isStripeSecretConfigured,
@@ -75,8 +80,18 @@ function asMembership(row: unknown): Membership | null {
     stripe_price_id:
       typeof record.stripe_price_id === "string" ? record.stripe_price_id : null,
     billing_provider:
-      record.billing_provider === "stripe" || record.billing_provider === "shopify"
+      record.billing_provider === "stripe" ||
+      record.billing_provider === "shopify" ||
+      record.billing_provider === "revenuecat"
         ? record.billing_provider
+        : null,
+    revenuecat_app_user_id:
+      typeof record.revenuecat_app_user_id === "string"
+        ? record.revenuecat_app_user_id
+        : null,
+    revenuecat_product_id:
+      typeof record.revenuecat_product_id === "string"
+        ? record.revenuecat_product_id
         : null,
     status,
     current_period_end:
@@ -254,6 +269,118 @@ async function findExistingStripeMembership(
     if (byEmail) return byEmail;
   }
   return null;
+}
+
+async function upsertRevenueCatMembershipRow(input: {
+  userId: string;
+  email: string | null;
+  productId: string | null;
+  status: MembershipStatus;
+  currentPeriodEnd: string | null;
+}): Promise<void> {
+  const admin = createAdminClient();
+  const existing = await getMembershipForUserUncached(input.userId);
+  if (
+    existing &&
+    isStripeManagedMembership(existing) &&
+    proEntitledFromMembership(existing)
+  ) {
+    return;
+  }
+
+  const email =
+    input.email?.toLowerCase() ??
+    existing?.email ??
+    `${input.userId}@users.zeloxtag.internal`;
+  const now = new Date().toISOString();
+  const row: Record<string, unknown> = {
+    email,
+    user_id: input.userId,
+    billing_provider: "revenuecat",
+    revenuecat_app_user_id: input.userId,
+    status: input.status,
+    claim_token: null,
+  };
+  if (input.productId) row.revenuecat_product_id = input.productId;
+  if (input.currentPeriodEnd) row.current_period_end = input.currentPeriodEnd;
+  if (input.status === "active") row.paid_at = now;
+  if (input.status === "canceled") row.canceled_at = now;
+  else row.canceled_at = null;
+
+  if (existing) {
+    const { error } = await admin.from("memberships").update(row).eq("id", existing.id);
+    if (error) {
+      throw new Error(`Membership RevenueCat update failed: ${error.message}`);
+    }
+    return;
+  }
+
+  const { error } = await admin.from("memberships").insert(row);
+  if (error) {
+    throw new Error(`Membership RevenueCat insert failed: ${error.message}`);
+  }
+}
+
+export async function applyRevenueCatMembershipAction(
+  action: RevenueCatMembershipAction,
+): Promise<void> {
+  if (!isSupabaseAdminConfigured()) {
+    throw new Error("Supabase admin is not configured.");
+  }
+  const email = await findUserEmailById(action.userId);
+  await upsertRevenueCatMembershipRow({
+    userId: action.userId,
+    email,
+    productId: action.productId,
+    status: action.status,
+    currentPeriodEnd: action.currentPeriodEnd,
+  });
+}
+
+export async function applyRevenueCatSubscriberSnapshot(
+  snapshot: RevenueCatSubscriberSnapshot,
+): Promise<void> {
+  if (!isSupabaseAdminConfigured()) {
+    throw new Error("Supabase admin is not configured.");
+  }
+  const email = await findUserEmailById(snapshot.userId);
+  await upsertRevenueCatMembershipRow({
+    userId: snapshot.userId,
+    email,
+    productId: snapshot.productId,
+    status: snapshot.status,
+    currentPeriodEnd: snapshot.currentPeriodEnd,
+  });
+}
+
+async function findUserEmailById(userId: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.auth.admin.getUserById(userId);
+  if (error || !data.user?.email) return null;
+  return normalizeMembershipEmail(data.user.email);
+}
+
+export async function reserveRevenueCatWebhookEvent(
+  id: string,
+  type: string,
+): Promise<"new" | "duplicate"> {
+  if (!isSupabaseAdminConfigured()) return "new";
+  const admin = createAdminClient();
+  const { error } = await admin.from("revenuecat_webhook_events").insert({ id, type });
+  if (error) {
+    if (error.code === "23505") return "duplicate";
+    throw new Error(`RevenueCat webhook log failed: ${error.message}`);
+  }
+  return "new";
+}
+
+export async function releaseRevenueCatWebhookEvent(id: string): Promise<void> {
+  if (!isSupabaseAdminConfigured() || !id) return;
+  const admin = createAdminClient();
+  const { error } = await admin.from("revenuecat_webhook_events").delete().eq("id", id);
+  if (error) {
+    console.error("[memberships] revenuecat webhook release failed", error.message);
+  }
 }
 
 export async function applyStripeMembershipAction(
@@ -505,7 +632,7 @@ async function getMembershipForUserUncached(
   const { data, error } = await admin
     .from("memberships")
     .select(
-      "id, user_id, email, shopify_customer_id, shopify_order_id, shopify_order_name, shopify_order_number, shopify_order_token, shopify_product_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, billing_provider, status, current_period_end, trial_started_at, trial_ends_at, paid_at, canceled_at, created_at, updated_at",
+      "id, user_id, email, shopify_customer_id, shopify_order_id, shopify_order_name, shopify_order_number, shopify_order_token, shopify_product_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, billing_provider, revenuecat_app_user_id, revenuecat_product_id, status, current_period_end, trial_started_at, trial_ends_at, paid_at, canceled_at, created_at, updated_at",
     )
     .eq("user_id", userId)
     .maybeSingle();

@@ -1,6 +1,12 @@
 # Platform Module 1b — RevenueCat → Supabase (follow-up)
 
-Module 1 ships the **client** RevenueCat adapter only. Store review and account continuity require a **trusted server sync**.
+Module 1 ships the **client** RevenueCat adapter. **Server sync (implemented):**
+
+- Migration [`00095_membership_revenuecat.sql`](../supabase/migrations/00095_membership_revenuecat.sql)
+- `POST /api/billing/revenuecat/webhook`
+- `POST /api/billing/revenuecat/sync` (authenticated, after purchase/restore)
+
+Legacy note below kept for design rationale.
 
 ## Recommended scope
 

@@ -1,5 +1,7 @@
 # ZeloxTag Capacitor (iOS + Android)
 
+**App Store Launch (iOS):** Schritt-für-Schritt in [`docs/app-store/README.md`](./app-store/README.md).
+
 Native shells load the hosted Next.js app from **https://app.zeloxtag.de** (see [`capacitor.config.ts`](../capacitor.config.ts)). Server routes, Supabase auth, and cron stay on Vercel.
 
 ## Prerequisites

@@ -13,6 +13,9 @@
 | `NEXT_PUBLIC_REVENUECAT_ANDROID_KEY` | RevenueCat public SDK key (Android) |
 | `NEXT_PUBLIC_REVENUECAT_PACKAGE_MONTHLY` | Offering package id (default `monthly`) |
 | `NEXT_PUBLIC_REVENUECAT_PACKAGE_YEARLY` | Offering package id (default `yearly`) |
+| `REVENUECAT_WEBHOOK_SECRET` | Server: RevenueCat webhook Authorization |
+| `REVENUECAT_SECRET_API_KEY` | Server: REST subscriber sync (`/sync`) |
+| `REVENUECAT_ENTITLEMENT_ID` | Optional entitlement id (default `pro`) |
 
 Stripe env vars remain unchanged for web checkout.
 

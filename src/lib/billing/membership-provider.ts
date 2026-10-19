@@ -1,6 +1,19 @@
 import type { Membership } from "@/types/database";
 
-export type BillingProvider = "stripe" | "shopify";
+export type BillingProvider = "stripe" | "shopify" | "revenuecat";
+
+export function isRevenueCatManagedMembership(
+  membership: Pick<
+    Membership,
+    "billing_provider" | "revenuecat_app_user_id"
+  > | null,
+): boolean {
+  if (!membership) return false;
+  return (
+    membership.billing_provider === "revenuecat" ||
+    Boolean(membership.revenuecat_app_user_id)
+  );
+}
 
 export function isStripeManagedMembership(
   membership: Pick<
@@ -26,5 +39,8 @@ export function isShopifyManagedMembership(
 export function shopifyMayUpdateEntitlement(
   membership: Membership | null,
 ): boolean {
-  return !isStripeManagedMembership(membership);
+  return (
+    !isStripeManagedMembership(membership) &&
+    !isRevenueCatManagedMembership(membership)
+  );
 }

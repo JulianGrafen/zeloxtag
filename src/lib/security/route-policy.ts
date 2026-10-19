@@ -3,6 +3,7 @@ import { AUFLAGEN_KUERZEL_IMAGE_API_PATH } from "@/lib/documents/constants";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import {
+  REVENUECAT_WEBHOOK_API_PATH,
   SHOPIFY_WEBHOOK_API_PATH,
   STRIPE_WEBHOOK_API_PATH,
 } from "@/lib/billing/constants";
@@ -76,6 +77,7 @@ export function isPublicVehicleImagePath(
 const PUBLIC_API_POST = new Set<string>([
   SHOPIFY_WEBHOOK_API_PATH,
   STRIPE_WEBHOOK_API_PATH,
+  REVENUECAT_WEBHOOK_API_PATH,
   "/api/public/swipe",
 ]);
 

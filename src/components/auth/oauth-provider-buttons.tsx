@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 
+import { AppleIcon } from "@/components/auth/icons/apple-icon";
 import { GoogleGIcon } from "@/components/auth/icons/google-g-icon";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,9 @@ function OAuthProviderIcon({
 }) {
   if (provider === "google") {
     return <GoogleGIcon className={className} />;
+  }
+  if (provider === "apple") {
+    return <AppleIcon className={className} />;
   }
   return null;
 }
@@ -64,6 +68,8 @@ export function OAuthProviderButtons({
           className={cn(
             "min-h-11 w-full justify-center gap-2.5 border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] font-medium text-[color:var(--vd-text)] shadow-none hover:bg-[color:var(--vd-surface)]",
             provider === "google" && "bg-white hover:bg-neutral-50",
+            provider === "apple" &&
+              "border-black bg-black text-white hover:bg-neutral-900 hover:text-white",
           )}
           disabled={disabled || pending}
           onClick={() => handleClick(provider)}

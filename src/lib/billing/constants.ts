@@ -1,5 +1,6 @@
 export const SHOPIFY_WEBHOOK_API_PATH = "/api/shopify/webhook";
 export const STRIPE_WEBHOOK_API_PATH = "/api/stripe/webhook";
+export const REVENUECAT_WEBHOOK_API_PATH = "/api/billing/revenuecat/webhook";
 
 /** Public Stripe Payment Link for ZeloxTag Cloud (Pro Abo, monthly). */
 export const STRIPE_PRO_PAYMENT_LINK =

@@ -51,5 +51,7 @@
 	<string>ZeloxTag benötigt Zugriff auf Fotos, um Belege aus der Galerie zu importieren.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>ZeloxTag kann Story-Bilder in deiner Fotomediathek speichern.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
