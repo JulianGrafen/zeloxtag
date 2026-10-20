@@ -47,7 +47,7 @@
     "@react-pdf/renderer": "^4.6.0",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
-    "@revenuecat/purchases-capacitor": "^10.4.0",
+    "@revenuecat/purchases-capacitor": "^13.7.4",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.109.0",
     "browser-image-compression": "^2.0.2",

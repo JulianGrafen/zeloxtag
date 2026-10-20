@@ -16,12 +16,12 @@ PODS:
   - CapacitorStatusBar (8.0.3):
     - Capacitor
   - IONCameraLib (2.0.0)
-  - PurchasesHybridCommon (14.3.0):
-    - RevenueCat (= 5.32.0)
-  - RevenueCat (5.32.0)
-  - RevenuecatPurchasesCapacitor (10.4.0):
+  - PurchasesHybridCommon (19.12.0):
+    - RevenueCat (= 5.95.0)
+  - RevenueCat (5.95.0)
+  - RevenuecatPurchasesCapacitor (13.7.4):
     - Capacitor
-    - PurchasesHybridCommon (= 14.3.0)
+    - PurchasesHybridCommon (= 19.12.0)
 
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
@@ -70,9 +70,9 @@ SPEC CHECKSUMS:
   CapacitorSplashScreen: 7bf61c2001557ff9e195e601c6b87344480d3c65
   CapacitorStatusBar: eca7bc2b58d9f886f1ef9edb66e57a9b29c121af
   IONCameraLib: 729cae576e1a952602ce750a9790b6dc7d7e2e95
-  PurchasesHybridCommon: 7f0944cc5411bdcd1ea5d69affa6a6f9aaf87b13
-  RevenueCat: 7e1d0768fb287c9983173c9b28e39ccbeeb828a9
-  RevenuecatPurchasesCapacitor: c84ce1cd5253bf22758c28decfb4313267cabb2c
+  PurchasesHybridCommon: 7ba4a84cdd9738a936b2091f7e982952c1feb6f6
+  RevenueCat: 431637b02e9e5dc1165c2031936947d0468e1ed4
+  RevenuecatPurchasesCapacitor: 9eb1bdb1739367f4c28ae5069e37087dc544c503
 
 PODFILE CHECKSUM: 7f76ae23af3b121c35943b2cddf95af6d38a1eef
 
