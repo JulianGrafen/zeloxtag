@@ -309,26 +309,6 @@ export function createProxiedResponse(request: NextRequest): {
   return { response, nonce };
 }
 
-/** Recreate proxied response after cookie mutation — keeps the same nonce. */
-export function recreateProxiedResponse(
-  request: NextRequest,
-  nonce: string,
-): NextResponse {
-  const csp = buildContentSecurityPolicy({ nonce });
-  const requestHeaders = buildNonceRequestHeaders(request, nonce, csp);
-
-  const response = proxiedNextResponse(request, requestHeaders);
-  const pathname = request.nextUrl.pathname;
-
-  applyProxiedResponseSecurityHeaders(response, pathname);
-  response.headers.delete("X-Powered-By");
-  if (!isInlineDocumentFileApiPath(pathname)) {
-    response.headers.set("Content-Security-Policy", csp);
-  }
-
-  return response;
-}
-
 /**
  * @deprecated CSP is set per request in Proxy. Use `staticSecurityHeaderEntries`
  * for next.config routes that bypass Proxy (document viewer, vehicle PNG).

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { authCookieOptions, hardenCookieOptions } from "@/lib/security/cookie-options";
-import { createProxiedResponse, recreateProxiedResponse } from "@/lib/security/csp";
+import { createProxiedResponse } from "@/lib/security/csp";
 import type { Database } from "@/types/database";
 
 import { getSupabaseEnv } from "./env";
@@ -21,7 +21,7 @@ export type SessionRefreshResult = {
 export async function updateSession(
   request: NextRequest,
 ): Promise<SessionRefreshResult> {
-  const { response: initialResponse, nonce } = createProxiedResponse(request);
+  const { response: initialResponse } = createProxiedResponse(request);
   let response = initialResponse;
   const { url, anonKey, isConfigured } = getSupabaseEnv();
 
@@ -39,7 +39,8 @@ export async function updateSession(
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
-        response = recreateProxiedResponse(request, nonce);
+        // Do not call NextResponse.next() again here — a second proxied request
+        // with the same body stream breaks multipart PDF/image uploads (formData parse).
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, hardenCookieOptions(options));
         });
