@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { discoverPageRootClassName } from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
+import { discoverFullPageRootClassName } from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
 import { DemoDiscoverExperience } from "@/components/demo/demo-discover-experience";
 import { loadDemoEntdeckenDiscoverData } from "@/lib/demo/load-demo-entdecken-discover-data";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
@@ -18,7 +18,7 @@ export default async function DevEntdeckenPage() {
 
   return (
     <AppShell showNavbar={false} immersiveNativeNav>
-      <div className={discoverPageRootClassName}>
+      <div className={discoverFullPageRootClassName}>
         <VehicleSettingsSubpageShell
           tagUuid={tagUuid}
           title="Builds entdecken"

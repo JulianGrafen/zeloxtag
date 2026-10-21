@@ -2,7 +2,13 @@ import { cn } from "@/lib/utils";
 
 /** Full-page wrapper for entdecken / public swipe (covers vd-atmosphere). */
 export const discoverPageRootClassName = cn(
-  "dark relative flex min-h-dvh w-full flex-col bg-black text-white",
+  "dark relative flex w-full flex-col bg-black text-white",
+);
+
+/** Full-route entdecken (not embedded in demo dashboard tab). */
+export const discoverFullPageRootClassName = cn(
+  discoverPageRootClassName,
+  "min-h-dvh",
 );
 
 export const discoverEmptyPanelClassName = cn(

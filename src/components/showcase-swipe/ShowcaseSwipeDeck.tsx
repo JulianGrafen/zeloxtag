@@ -21,6 +21,7 @@ import {
   isNavigableShowcasePublicSlug,
 } from "@/lib/showcase/discover-showcase-navigation";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
+import { cn } from "@/lib/utils";
 
 type ShowcaseSwipeDeckProps = {
   tagUuid: string;
@@ -256,7 +257,7 @@ export function ShowcaseSwipeDeck({
           {swipeError}
         </p>
       ) : null}
-      <div className={discoverDeckFrameClassName}>
+      <div className={cn(discoverDeckFrameClassName, "touch-pan-y")}>
         <ShowcaseSwipeStack
           ref={stackRef}
           cards={cards}

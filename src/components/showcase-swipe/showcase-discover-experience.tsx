@@ -83,7 +83,7 @@ export function ShowcaseDiscoverExperience({
   }, []);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex touch-pan-y flex-col gap-5">
       {weeklyRankCelebration ? (
         <ShowcaseWeeklyRankCelebration
           award={weeklyRankCelebration.award}

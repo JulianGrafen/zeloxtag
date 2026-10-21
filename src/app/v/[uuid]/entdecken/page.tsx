@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
-import { discoverPageRootClassName } from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
+import { discoverFullPageRootClassName } from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
 import { ShowcaseDiscoverExperience } from "@/components/showcase-swipe/showcase-discover-experience";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
 import { getCurrentUser } from "@/lib/auth/get-user";
@@ -51,7 +51,7 @@ export default async function ShowcaseEntdeckenPage({
     const discoverData = await loadDemoEntdeckenDiscoverData();
     return (
       <AppShell showNavbar={false} immersiveNativeNav>
-        <div className={discoverPageRootClassName}>
+        <div className={discoverFullPageRootClassName}>
           <VehicleSettingsSubpageShell
             tagUuid={uuid}
             title="Builds entdecken"
@@ -164,7 +164,7 @@ export default async function ShowcaseEntdeckenPage({
 
   return (
     <AppShell showNavbar={false} immersiveNativeNav>
-      <div className={discoverPageRootClassName}>
+      <div className={discoverFullPageRootClassName}>
       <VehicleSettingsSubpageShell
         tagUuid={uuid}
         title="Builds entdecken"

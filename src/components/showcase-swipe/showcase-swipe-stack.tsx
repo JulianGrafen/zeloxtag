@@ -158,7 +158,7 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
     return (
       <motion.div
         className="card-rotate"
-        style={{ x, y, rotateX, rotateY, zIndex, touchAction: "none" }}
+        style={{ x, y, rotateX, rotateY, zIndex, touchAction: "pan-y pinch-zoom" }}
         drag={disabled || isExiting ? false : "x"}
         dragConstraints={{ top: 0, right: 0, bottom: 0, left: 0 }}
         dragElastic={0.5}
@@ -198,7 +198,7 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
           </motion.div>
           <SwipeCardMinimal
             card={card}
-            className="select-none touch-none"
+            className="select-none touch-pan-y"
             imagePriority
             onOpenDetails={() => onOpenDetails(card)}
           />
