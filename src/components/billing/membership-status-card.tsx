@@ -1,13 +1,9 @@
 import { StripePortalButton } from "@/components/billing/stripe-checkout-button";
-import { SettingsPaywallSection } from "@/components/billing/settings-paywall-section";
 import { getMembershipForUser } from "@/lib/billing/membership-store";
 import {
   isActiveMembership,
   isMembershipProEntitled,
 } from "@/lib/billing/membership";
-import {
-  type ProCheckoutAudience,
-} from "@/lib/billing/pro-plan";
 
 import { formatCompactGermanDate } from "@/lib/documents/format";
 
@@ -91,48 +87,47 @@ export async function MembershipStatusCard({
     );
   }
 
-  const audience: ProCheckoutAudience =
-    membership?.status === "canceled" || membership?.status === "past_due"
-      ? "returning"
-      : "new";
-
   return (
-    <SettingsPaywallSection
-      audience={audience}
-      showPortal={Boolean(membership?.stripe_customer_id)}
-      statusMessage={
-        <>
-          {justLinked ? (
-            <p className="text-[0.82rem] text-[color:var(--vd-alert-success-text)]">
-              Mitgliedschaft ist aktiv.
-            </p>
-          ) : null}
-          {checkoutState === "success" ? (
-            <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
-              Zahlung eingegangen. Das Abo wird in wenigen Sekunden freigeschaltet.
-            </p>
-          ) : null}
-          {checkoutState === "cancel" ? (
-            <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
-              Checkout abgebrochen. Du kannst jederzeit neu starten.
-            </p>
-          ) : null}
-          {claimError ? (
-            <p className="text-[0.82rem] text-[color:var(--vd-alert-error-text)]" role="alert">
-              {claimError}
-            </p>
-          ) : null}
-          {membership?.status === "past_due" ? (
-            <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Zahlung fehlgeschlagen. Bitte in Stripe prüfen oder erneut abschließen.
-            </p>
-          ) : membership?.status === "canceled" ? (
-            <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Mitgliedschaft beendet. Du kannst sie hier neu starten.
-            </p>
-          ) : null}
-        </>
-      }
-    />
+    <div className="space-y-2">
+      {justLinked ? (
+        <p className="text-[0.82rem] text-[color:var(--vd-alert-success-text)]">
+          Mitgliedschaft ist aktiv.
+        </p>
+      ) : null}
+      {checkoutState === "success" ? (
+        <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
+          Zahlung eingegangen. Das Abo wird in wenigen Sekunden freigeschaltet.
+        </p>
+      ) : null}
+      {checkoutState === "cancel" ? (
+        <p className="text-[0.82rem] text-[color:var(--vd-muted)]">
+          Checkout abgebrochen.
+        </p>
+      ) : null}
+      {claimError ? (
+        <p
+          className="text-[0.82rem] text-[color:var(--vd-alert-error-text)]"
+          role="alert"
+        >
+          {claimError}
+        </p>
+      ) : null}
+      {membership?.status === "past_due" ? (
+        <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+          Zahlung fehlgeschlagen. Bitte im Kundenportal prüfen.
+        </p>
+      ) : membership?.status === "canceled" ? (
+        <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+          Mitgliedschaft beendet.
+        </p>
+      ) : (
+        <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+          Kein aktives ZeloxTag Pro-Abo.
+        </p>
+      )}
+      {membership?.stripe_customer_id ? (
+        <StripePortalButton returnPath="/settings" />
+      ) : null}
+    </div>
   );
 }

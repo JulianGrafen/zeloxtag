@@ -29,6 +29,11 @@ export const showroom = {
     "text-right text-[1.02rem] font-semibold tracking-tight tabular-nums text-white",
   disclosureRow:
     "flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-white/5",
+  /** Leading icon slot — aligned with garage IOSListItem rows. */
+  listLeadingIcon:
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white",
+  listTitle: "block text-[0.94rem] font-medium leading-snug text-white",
+  listSubtitle: "mt-0.5 block text-[0.82rem] leading-snug text-white/50",
   kicker:
     "text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white/45",
   sectionTitle:

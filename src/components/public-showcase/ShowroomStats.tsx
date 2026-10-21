@@ -11,11 +11,9 @@ import { useRegionalFormatters } from "@/lib/i18n/hooks/use-regional-formatters"
 import { cn } from "@/lib/utils";
 
 import CountUp from "./CountUp";
-import { EngineStartButton } from "./EngineStartButton";
-import { ShowroomDyno } from "./ShowroomDyno";
 import { ShowroomGroup } from "./ShowroomGroup";
-import { ShowroomMods } from "./ShowroomMods";
 import { ShowroomRevealItem } from "./ShowroomRevealItem";
+import { ShowroomShowcaseMedia } from "./ShowroomShowcaseMedia";
 import { ShowroomSpecRow } from "./ShowroomSpecRow";
 import {
   buildShowcaseSpecificationRow,
@@ -70,14 +68,21 @@ export function ShowroomStats({
     animatedStatValue,
     regionalProfile,
   );
-  const hasSoundcheck = Boolean(profile.engineSoundUrl?.trim());
-  const hasModsSection = modifications.length > 0;
-  const hasDyno = Boolean(profile.dynoChartUrl);
-  const hasShowcaseGroup = hasSoundcheck || hasModsSection || hasDyno;
+  const hasShowcaseMedia =
+    Boolean(profile.engineSoundUrl?.trim()) ||
+    modifications.length > 0 ||
+    Boolean(profile.dynoChartUrl);
 
-  if (vehicleRows.length === 0 && !specificationRow && !hasShowcaseGroup) {
+  if (vehicleRows.length === 0 && !specificationRow && !hasShowcaseMedia) {
     return null;
   }
+
+  const rowRevealMotion = revealOnMount
+    ? { animate: "visible" as const }
+    : {
+        whileInView: "visible" as const,
+        viewport: motionConfig.viewport,
+      };
 
   return (
     <motion.section
@@ -113,8 +118,7 @@ export function ShowroomStats({
             <motion.div
               variants={motionConfig.rowRevealContainer}
               initial="hidden"
-              whileInView="visible"
-              viewport={motionConfig.viewport}
+              {...rowRevealMotion}
             >
               <ShowroomGroup>
                 {vehicleRows.map((row) => (
@@ -137,37 +141,14 @@ export function ShowroomStats({
         </ShowroomRevealItem>
       ) : null}
 
-      {hasShowcaseGroup ? (
+      {hasShowcaseMedia ? (
         <ShowroomRevealItem>
-          <div className="flex flex-col gap-4">
-              {hasSoundcheck ? (
-                <ShowroomGroup accent>
-                  <EngineStartButton
-                    soundUrl={profile.engineSoundUrl}
-                    embedded
-                    onPlaybackError={setPlaybackError}
-                  />
-                  {playbackError ? (
-                    <p
-                      className="px-4 pb-3 text-[0.82rem] font-medium text-red-400"
-                      role="alert"
-                    >
-                      {playbackError}
-                    </p>
-                  ) : null}
-                </ShowroomGroup>
-              ) : null}
-              {hasModsSection ? (
-                <ShowroomGroup>
-                  <ShowroomMods modifications={modifications} embedded />
-                </ShowroomGroup>
-              ) : null}
-              {hasDyno ? (
-                <ShowroomGroup>
-                  <ShowroomDyno profile={profile} embedded />
-                </ShowroomGroup>
-              ) : null}
-          </div>
+          <ShowroomShowcaseMedia
+            profile={profile}
+            modifications={modifications}
+            playbackError={playbackError}
+            onPlaybackError={setPlaybackError}
+          />
         </ShowroomRevealItem>
       ) : null}
     </motion.section>

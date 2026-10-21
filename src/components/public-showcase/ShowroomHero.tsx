@@ -99,6 +99,10 @@ function HeroBackdrop({
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
+      const el = scrollerRef.current;
+      if (!el || el.clientWidth <= 0) return;
+      const targetLeft = initialIndex * el.clientWidth;
+      if (Math.abs(el.scrollLeft - targetLeft) < 2) return;
       scrollToIndex(initialIndex, "auto");
     });
     return () => cancelAnimationFrame(frame);

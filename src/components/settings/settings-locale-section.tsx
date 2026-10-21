@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Globe } from "lucide-react";
+import { Globe, Palette } from "lucide-react";
+
+import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
+import { usePlatformServices } from "@/services/platform/context/platform-services-context";
 
 import { updateAppLocaleAction } from "@/actions/update-app-locale";
 import {
@@ -13,9 +16,12 @@ import { useLocale } from "@/lib/i18n/hooks/use-locale";
 import { useRegionalFormatters } from "@/lib/i18n/hooks/use-regional-formatters";
 import type { AppLocale, EnCurrency } from "@/lib/i18n/types";
 
-export function SettingsLocaleSection() {
+type LocaleSettingsVariant = "general" | "locale-only";
+
+function LocaleSettingsContent({ variant }: { variant: LocaleSettingsVariant }) {
   const { preferences, setPreferences, messages } = useLocale();
   const regional = useRegionalFormatters();
+  const { platform } = usePlatformServices();
   const [pending, startTransition] = useTransition();
   const [sheet, setSheet] = useState<"locale" | "currency" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,11 +54,15 @@ export function SettingsLocaleSection() {
         : messages.enCurrencyUsd;
 
   const unitsLabel = `${regional.profile.powerLabel} · ${regional.profile.distanceUnit === "km" ? "km" : "mi"} · ${regional.profile.currency}`;
+  const isGeneral = variant === "general";
+  const unitsIsLast = !isGeneral;
 
   return (
     <>
       <IOSGroupedList
-        headerTitle={messages.settingsLanguageTitle}
+        headerTitle={
+          isGeneral ? "Allgemein" : messages.settingsLanguageTitle
+        }
         footerText={
           error ??
           "Einheiten folgen der Sprache (DE: PS/km/€, EN: HP/mi/USD oder GBP)."
@@ -77,8 +87,24 @@ export function SettingsLocaleSection() {
           label="Einheiten"
           sublabel="Anzeige in der App"
           value={unitsLabel}
-          isLast
+          isLast={unitsIsLast}
         />
+        {isGeneral ? (
+          <>
+            <IOSListItem
+              label="Erscheinungsbild"
+              sublabel="Hell, Dunkel oder System"
+              href="/settings/appearance"
+              icon={<Palette className="h-4 w-4" />}
+              isLast={platform.isNativeApp}
+            />
+            {!platform.isNativeApp ? (
+              <div className="border-t border-white/[0.07] p-4">
+                <PwaInstallSettingsPanel />
+              </div>
+            ) : null}
+          </>
+        ) : null}
       </IOSGroupedList>
 
       <IOSSheetModal
@@ -136,4 +162,12 @@ export function SettingsLocaleSection() {
       ) : null}
     </>
   );
+}
+
+export function SettingsGeneralSection() {
+  return <LocaleSettingsContent variant="general" />;
+}
+
+export function SettingsLocaleSection() {
+  return <LocaleSettingsContent variant="locale-only" />;
 }

@@ -7,9 +7,11 @@ import type { AccountDeletionState } from "@/lib/account/account-deletion-shared
 import { NativeRestorePurchasesButton } from "@/components/billing/native-restore-purchases-button";
 import { IOSGroupedList, IOSListItem, IOSPageHeader } from "@/components/ui/ios";
 
-import { SettingsAppSection } from "./settings-app-section";
+import { SettingsNotificationsSection } from "./settings-app-section";
+import { SettingsGeneralSection } from "./settings-locale-section";
 import { SettingsLegalSection } from "./settings-legal-section";
-import { SettingsLocaleSection } from "./settings-locale-section";
+import { SettingsSecuritySection } from "./settings-security-section";
+import { SettingsSignOutSection } from "./settings-sign-out-section";
 
 export type SettingsScreenProps = {
   email: string;
@@ -49,7 +51,7 @@ export function SettingsScreen({
           <AccountDeletionBanner graceEndsAt={deletionState.graceEndsAt} />
         ) : null}
 
-        <IOSGroupedList headerTitle="Account & Zelox Pro">
+        <IOSGroupedList headerTitle="Konto">
           <IOSListItem label="Profil" value={email} showChevron={false} />
           <div className="border-t border-white/[0.07] px-4 py-3">
             {membershipSection}
@@ -57,10 +59,11 @@ export function SettingsScreen({
           <NativeRestorePurchasesButton />
         </IOSGroupedList>
 
-        <SettingsLocaleSection />
+        <SettingsSecuritySection mfaSubtitle={mfaSubtitle} />
 
-        <SettingsAppSection
-          mfaSubtitle={mfaSubtitle}
+        <SettingsGeneralSection />
+
+        <SettingsNotificationsSection
           maintenanceEmailReminders={maintenanceEmailReminders}
         />
 
@@ -69,6 +72,8 @@ export function SettingsScreen({
           hasPasswordLogin={hasPasswordLogin}
           deletionState={deletionState}
         />
+
+        <SettingsSignOutSection />
       </div>
     </div>
   );

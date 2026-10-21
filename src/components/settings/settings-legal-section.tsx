@@ -24,7 +24,7 @@ export function SettingsLegalSection({
 
   return (
     <div className="flex flex-col gap-5">
-      <IOSGroupedList headerTitle="Rechtliches">
+      <IOSGroupedList headerTitle="Rechtliches & Support">
         <IOSListItem
           label="Datenschutz"
           href="/datenschutz"

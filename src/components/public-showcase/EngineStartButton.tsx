@@ -50,7 +50,9 @@ export function EngineStartButton({
   }
 
   const actionLabel = isPlaying ? "Stoppen" : "Motor starten";
-  const embeddedLabel = isPlaying ? "Stoppen" : "Soundcheck";
+  const embeddedSubtitle = isPlaying
+    ? "Läuft…"
+    : "Motor-Sound abspielen (max. 10 s)";
 
   return (
     <div className={cn("pointer-events-auto relative w-full", className)}>
@@ -68,7 +70,7 @@ export function EngineStartButton({
         onClick={togglePlayback}
         className={cn(
           embedded
-            ? showroom.disclosureRow
+            ? cn(showroom.disclosureRow, isPlaying && "bg-white/[0.04]")
             : cn(
                 showroom.panelFlat,
                 "flex min-h-[3.35rem] w-full items-center gap-3 px-4 py-3.5 text-left",
@@ -80,18 +82,19 @@ export function EngineStartButton({
         aria-pressed={isPlaying}
         aria-label={embedded ? `Soundcheck, ${actionLabel}` : actionLabel}
       >
-        <span aria-hidden className="flex shrink-0 text-white/80">
+        <span aria-hidden className={showroom.listLeadingIcon}>
           {isPlaying ? (
-            <Pause className="h-5 w-5" aria-hidden />
+            <Pause className="h-4 w-4" aria-hidden />
           ) : (
-            <Play className="h-5 w-5 translate-x-0.5" aria-hidden />
+            <Play className="h-4 w-4 translate-x-0.5" aria-hidden />
           )}
         </span>
         <span className="min-w-0 flex-1 text-left">
           {embedded ? (
-            <span className="block text-[0.94rem] font-medium text-white">
-              {embeddedLabel}
-            </span>
+            <>
+              <span className={showroom.listTitle}>Soundcheck</span>
+              <span className={showroom.listSubtitle}>{embeddedSubtitle}</span>
+            </>
           ) : (
             <>
               <span className={`block ${showroom.rowLabel}`}>Soundcheck</span>
@@ -101,7 +104,11 @@ export function EngineStartButton({
             </>
           )}
         </span>
-        {!embedded ? (
+        {embedded ? (
+          <span className="shrink-0 text-[0.82rem] font-medium text-white/45">
+            {isPlaying ? "Stoppen" : "Abspielen"}
+          </span>
+        ) : (
           <span
             aria-hidden
             className={cn(
@@ -111,7 +118,7 @@ export function EngineStartButton({
                 : "bg-red-500",
             )}
           />
-        ) : null}
+        )}
       </button>
       {embedded && isPlaying && !motionConfig.reduceMotion ? (
         <motion.span

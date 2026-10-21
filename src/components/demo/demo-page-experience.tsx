@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -41,6 +41,11 @@ export function DemoPageExperience({
       ),
     [vehicle.id],
   );
+
+  useLayoutEffect(() => {
+    if (activeView !== "showcase") return;
+    window.scrollTo(0, 0);
+  }, [activeView]);
 
   return (
     <AppShell showNavbar={false}>

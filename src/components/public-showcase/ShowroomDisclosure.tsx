@@ -34,18 +34,9 @@ export function ShowroomDisclosure({
 
   const headerContent = (
     <span className="min-w-0 flex-1 text-left">
-      <span
-        className={cn(
-          "block truncate",
-          subtitle
-            ? showroom.rowLabel
-            : "text-[0.94rem] font-medium text-white",
-        )}
-      >
-        {title}
-      </span>
+      <span className={cn("block truncate", showroom.listTitle)}>{title}</span>
       {subtitle ? (
-        <span className="mt-0.5 block truncate text-[0.82rem] text-white/50">
+        <span className={cn("truncate", showroom.listSubtitle)}>
           {subtitle}
         </span>
       ) : null}

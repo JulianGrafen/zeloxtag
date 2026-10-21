@@ -5,21 +5,23 @@ import Link from "next/link";
 
 import { weeklyRankCardHeroImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
 import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
+import {
+  discoverOwnPlacementBadgeGlowClass,
+  discoverOwnPlacementShellClass,
+  discoverRankAccentGradient,
+  discoverRankBadgeClass,
+  discoverRankListAccentClass,
+} from "@/lib/showcase/discover-weekly-rank-visual";
 import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
 import { cn } from "@/lib/utils";
-
-function rankAccentClass(rank: number): string {
-  if (rank === 1) return "text-amber-400";
-  if (rank === 2) return "text-zinc-300";
-  if (rank === 3) return "text-orange-400";
-  return "text-zinc-500";
-}
 
 type LeaderboardCompactProps = {
   builds: WeeklyTopBuild[];
   entdeckenReturnHref: string;
   title?: string;
   className?: string;
+  /** Highlights the signed-in owner's row in the list. */
+  ownVehicleId?: string | null;
 };
 
 export function LeaderboardCompact({
@@ -27,6 +29,7 @@ export function LeaderboardCompact({
   entdeckenReturnHref,
   title = "Top Builds",
   className,
+  ownVehicleId = null,
 }: LeaderboardCompactProps) {
   return (
     <section
@@ -50,17 +53,44 @@ export function LeaderboardCompact({
               build.publicSlug,
               entdeckenReturnHref,
             );
+            const isOwn =
+              ownVehicleId != null && build.vehicleId === ownVehicleId;
 
             return (
               <li key={build.publicSlug}>
                 <Link
                   href={href}
-                  className="flex items-center gap-3 border-b border-white/5 py-3 transition active:bg-white/[0.03]"
+                  className={cn(
+                    "flex items-center gap-3 border-b border-white/5 py-3 transition active:bg-white/[0.03]",
+                    isOwn &&
+                      cn(
+                        "relative my-1.5 rounded-2xl border-0 border-b-0 bg-gradient-to-b px-3 py-3.5 pt-4 -mx-1",
+                        discoverRankAccentGradient(build.rank),
+                        discoverOwnPlacementShellClass(build.rank),
+                      ),
+                  )}
+                  aria-current={isOwn ? "true" : undefined}
                 >
+                  {isOwn ? (
+                    <span
+                      className="absolute -top-2 left-3 rounded-full bg-amber-400 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-black shadow-sm"
+                      aria-hidden
+                    >
+                      Dein Build
+                    </span>
+                  ) : null}
                   <span
                     className={cn(
-                      "w-8 shrink-0 font-mono text-[0.82rem] font-semibold tabular-nums",
-                      rankAccentClass(build.rank),
+                      isOwn
+                        ? cn(
+                            discoverRankBadgeClass(build.rank),
+                            "h-10 min-w-10 text-[0.95rem]",
+                            discoverOwnPlacementBadgeGlowClass(build.rank),
+                          )
+                        : cn(
+                            "w-8 shrink-0 font-mono text-[0.82rem] font-semibold tabular-nums",
+                            discoverRankListAccentClass(build.rank),
+                          ),
                     )}
                   >
                     #{build.rank}
@@ -87,6 +117,11 @@ export function LeaderboardCompact({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[0.88rem] font-medium text-white">
                       {label}
+                      {isOwn ? (
+                        <span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-white ring-1 ring-white/25">
+                          Du
+                        </span>
+                      ) : null}
                     </p>
                     {build.year != null ? (
                       <p className="text-[0.75rem] text-zinc-500">{build.year}</p>

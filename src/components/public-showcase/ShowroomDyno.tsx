@@ -15,8 +15,12 @@ type ShowroomDynoProps = {
   embedded?: boolean;
 };
 
+function dynoCollapsedSubtitle(profile: PublicShowcaseProfile): string {
+  return profile.dynoChartIsImage ? "Diagramm anzeigen" : "PDF öffnen";
+}
+
 export function ShowroomDyno({ profile, embedded = false }: ShowroomDynoProps) {
-  const [open, setOpen] = useState(embedded);
+  const [open, setOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   if (!profile.dynoChartUrl) return null;
@@ -67,10 +71,11 @@ export function ShowroomDyno({ profile, embedded = false }: ShowroomDynoProps) {
   const disclosure = (
     <ShowroomDisclosure
       title="Leistungsdiagramm"
-      open={embedded ? true : open}
-      onToggle={embedded ? undefined : () => setOpen((value) => !value)}
+      subtitle={open ? undefined : dynoCollapsedSubtitle(profile)}
+      open={open}
+      onToggle={() => setOpen((value) => !value)}
       panelId="showroom-dyno-panel"
-      collapsible={!embedded}
+      collapsible
     >
       {panel}
     </ShowroomDisclosure>

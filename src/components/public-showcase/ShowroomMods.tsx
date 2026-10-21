@@ -28,7 +28,7 @@ function umbautenSubtitle(
 ): string | undefined {
   if (open || modifications.length === 0) return undefined;
   const count = modifications.length;
-  return count === 1 ? "1 Eintrag" : `${count} Einträge`;
+  return count === 1 ? "1 Umbau" : `${count} Umbauten`;
 }
 
 function UmbautenList({ modifications }: { modifications: PublicModification[] }) {

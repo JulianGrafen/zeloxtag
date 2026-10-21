@@ -130,6 +130,7 @@ export function ShowcaseDiscoverExperience({
         <LeaderboardCompact
           builds={weeklyBuilds}
           entdeckenReturnHref={entdeckenReturnHref}
+          ownVehicleId={vehicleId}
         />
       </motion.div>
     </div>
