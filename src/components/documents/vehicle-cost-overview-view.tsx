@@ -360,7 +360,8 @@ export function VehicleCostOverviewView({
               {formatEur(overview.totalInvestment)}
             </p>
             <p className="mt-2 text-[0.82rem] text-[color:var(--vd-muted)]">
-              {vehicleModel} · {overview.invoiceCount} Einträge erfasst
+              {vehicleModel} · {overview.invoiceCount} Belege · inkl. MwSt.,
+              Montage & manuelle Umbauten
             </p>
             {hasData ? (
               <>

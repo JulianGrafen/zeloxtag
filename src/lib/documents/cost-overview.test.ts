@@ -99,8 +99,11 @@ describe("buildVehicleCostOverview", () => {
 
     const overview = buildVehicleCostOverview(docs);
 
-    expect(overview.totalInvestment).toBe(4964);
     expect(overview.modification.total).toBe(4550);
+    expect(overview.totalInvestment).toBe(
+      overview.modification.total + overview.maintenance.total,
+    );
+    expect(overview.totalInvestment).toBe(4964);
     expect(overview.modification.positionCount).toBe(3);
     expect(overview.modification.mostExpensiveAmount).toBe(2400);
     expect(overview.maintenance.total).toBe(414);
@@ -121,9 +124,36 @@ describe("buildVehicleCostOverview", () => {
     expect(y2023?.modificationAmount).toBe(1170);
     expect(y2025?.maintenanceAmount).toBe(414);
     expect(y2025?.modificationAmount).toBe(0);
+    for (const point of overview.yearlySeries) {
+      expect(point.amount).toBe(
+        point.modificationAmount + point.maintenanceAmount,
+      );
+    }
+    expect(overview.totalInvestment).toBe(
+      overview.modification.total + overview.maintenance.total,
+    );
   });
 
-  it("excludes MwSt and service lines from umbau buckets", () => {
+  it("counts full receipt including MwSt and labor on tuning invoices", () => {
+    const overview = buildVehicleCostOverview([
+      invoice({
+        id: "partial",
+        category: "tuning",
+        amount: 1200,
+        line_items: [
+          { label: "Sportauspuffanlage Edelstahl", amount: 890 },
+          { label: "MwSt 19%", amount: 98 },
+          { label: "Arbeitszeit Montage", amount: 212 },
+        ],
+      }),
+    ]);
+
+    expect(overview.totalInvestment).toBe(1200);
+    expect(overview.modification.total).toBe(1200);
+    expect(overview.maintenance.total).toBe(0);
+  });
+
+  it("includes MwSt and service lines in umbau buckets on tuning receipts", () => {
     const overview = buildVehicleCostOverview([
       invoice({
         id: "mix",
@@ -146,8 +176,8 @@ describe("buildVehicleCostOverview", () => {
 
     expect(exhaust?.amount).toBe(890);
     expect(chassis?.amount).toBe(128.8);
-    expect(overview.modification.total).toBe(1018.8);
-    expect(other?.amount ?? 0).toBe(0);
+    expect(overview.modification.total).toBe(1506.18);
+    expect(other?.amount ?? 0).toBeGreaterThan(0);
   });
 
   it("includes tuning lines from other category invoices", () => {
@@ -202,7 +232,7 @@ describe("buildVehicleCostOverview", () => {
     expect(brakes?.amount).toBe(415);
     expect(inspection?.amount).toBe(189);
     expect(electrical?.amount).toBe(149.96);
-    expect(overview.maintenance.total).toBe(753.96);
+    expect(overview.maintenance.total).toBe(793.96);
   });
 
   it("classifies maintenance buckets by keyword", () => {
@@ -213,10 +243,15 @@ describe("buildVehicleCostOverview", () => {
   it("counts documents without amount", () => {
     const overview = buildVehicleCostOverview([
       invoice({ id: "a", amount: null, line_items: null }),
-      invoice({ id: "b", amount: 100 }),
+      invoice({
+        id: "b",
+        amount: 100,
+        title: "KW V3 Gewindefahrwerk",
+      }),
     ]);
     expect(overview.documentsWithoutAmountCount).toBe(1);
     expect(overview.totalInvestment).toBe(100);
+    expect(overview.modification.total).toBe(100);
   });
 
   it("includes manual tuning and service entries with amounts", () => {
@@ -240,6 +275,9 @@ describe("buildVehicleCostOverview", () => {
       }),
     ]);
 
+    expect(overview.totalInvestment).toBe(
+      overview.modification.total + overview.maintenance.total,
+    );
     expect(overview.totalInvestment).toBe(1104);
     expect(overview.invoiceCount).toBe(2);
     expect(overview.modification.total).toBe(890);

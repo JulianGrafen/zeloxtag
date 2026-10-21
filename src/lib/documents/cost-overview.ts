@@ -8,7 +8,6 @@ import { isManualVehicleEntry } from "@/lib/documents/manual-entries";
 import {
   isInvoiceRepairLine,
   isInvoiceServiceLine,
-  isInvoiceVatOrTotalLine,
   isOilLineLabel,
   isTuningLineLabel,
 } from "@/lib/documents/invoice-title";
@@ -203,13 +202,14 @@ export type CostMaintenanceStats = {
 
 export type CostYearlyPoint = {
   year: number;
-  /** Summe aller Belege im Jahr (Dokumentebene). */
+  /** Summe aller Beleg-Gesamtbeträge im Jahr (gleich `modificationAmount + maintenanceAmount` nach Zuordnung). */
   amount: number;
   modificationAmount: number;
   maintenanceAmount: number;
 };
 
 export type VehicleCostOverview = {
+  /** Summe aller Beleg-Gesamtbeträge — deckt sich mit `modification.total + maintenance.total`. */
   totalInvestment: number;
   documentsWithoutAmountCount: number;
   invoiceCount: number;
@@ -233,14 +233,22 @@ function roundMoney(value: number): number {
 
 type ModPosition = { label: string; amount: number; bucket: SpendBucket };
 
-function isExcludedUmbauLine(label: string): boolean {
+/** Duplicate invoice totals only — MwSt., Arbeitszeit and parts stay as positions. */
+function isReceiptRollupLine(label: string): boolean {
   const trimmed = label.trim();
   if (!trimmed) return true;
-  if (isInvoiceVatOrTotalLine(trimmed)) return true;
-  if (isInvoiceServiceLine(trimmed)) return true;
-  if (isInvoiceRepairLine(trimmed)) return true;
   if (/summe der positionen/i.test(trimmed)) return true;
+  if (
+    /^(?:summe|gesamt|zahlbetrag|rechnungsbetrag|endsumme)\b/i.test(trimmed) &&
+    !/(?:mwst|m\.?\s*w\.?\s*st|ust|vat|steuer)/i.test(trimmed)
+  ) {
+    return true;
+  }
   return false;
+}
+
+function isExcludedUmbauLine(label: string): boolean {
+  return isReceiptRollupLine(label);
 }
 
 function shouldIncludeUmbauLine(
@@ -265,7 +273,11 @@ function collectModificationPositions(
   );
 
   const fromLines = withAmount
-    .filter((item) => shouldIncludeUmbauLine(item.label, listCategory))
+    .filter((item) => {
+      if (isReceiptRollupLine(item.label)) return false;
+      if (listCategory === "tuning") return true;
+      return shouldIncludeUmbauLine(item.label, listCategory);
+    })
     .map((item) => ({
       label: item.label.trim(),
       amount: item.amount,
@@ -283,10 +295,20 @@ function collectModificationPositions(
     doc.title?.trim() || doc.vendor?.trim() || "Umbau";
   const combined = `${fallbackLabel} ${doc.vendor ?? ""}`;
 
-  if (
-    isManualVehicleEntry(doc) &&
-    (listCategory === "tuning" || doc.category?.trim().toLowerCase() === "tuning")
-  ) {
+  if (isManualVehicleEntry(doc)) {
+    const manualCategory = doc.category?.trim().toLowerCase();
+    if (manualCategory === "tuning" || listCategory === "tuning") {
+      return [
+        {
+          label: fallbackLabel,
+          amount,
+          bucket: classifySpendBucket(combined, doc.part_category),
+        },
+      ];
+    }
+  }
+
+  if (listCategory === "tuning") {
     return [
       {
         label: fallbackLabel,
@@ -428,11 +450,7 @@ type MaintPosition = {
 };
 
 function isExcludedMaintenanceLine(label: string): boolean {
-  const trimmed = label.trim();
-  if (!trimmed) return true;
-  if (isInvoiceVatOrTotalLine(trimmed)) return true;
-  if (/summe der positionen/i.test(trimmed)) return true;
-  return false;
+  return isReceiptRollupLine(label);
 }
 
 function hasMaintenanceLineSignal(label: string): boolean {
@@ -485,7 +503,13 @@ function collectMaintenancePositions(
   );
 
   const fromLines = withAmount
-    .filter((item) => shouldIncludeMaintenanceLine(item.label, listCategory))
+    .filter((item) => {
+      if (isReceiptRollupLine(item.label)) return false;
+      if (listCategory === "repair" || listCategory === "service") {
+        return true;
+      }
+      return shouldIncludeMaintenanceLine(item.label, listCategory);
+    })
     .map((item) => ({
       label: item.label.trim(),
       amount: item.amount,
@@ -534,6 +558,107 @@ function collectMaintenancePositions(
   ];
 }
 
+function sumModificationAmount(positions: readonly ModPosition[]): number {
+  return positions.reduce((sum, row) => sum + row.amount, 0);
+}
+
+function sumMaintenanceAmount(positions: readonly MaintPosition[]): number {
+  return positions.reduce((sum, row) => sum + row.amount, 0);
+}
+
+function reconcileDocumentCosts(
+  amount: number,
+  listCategory: InvoiceListCategory,
+  doc: Document,
+  initialMod: ModPosition[],
+  initialMaint: MaintPosition[],
+): { mod: ModPosition[]; maint: MaintPosition[] } {
+  let mod = [...initialMod];
+  let maint = [...initialMaint];
+  const classified = roundMoney(
+    sumModificationAmount(mod) + sumMaintenanceAmount(maint),
+  );
+
+  const fallbackLabel =
+    doc.title?.trim() || doc.vendor?.trim() || "Beleg";
+
+  if (classified <= 0) {
+    if (
+      isManualVehicleEntry(doc) &&
+      (doc.category?.trim().toLowerCase() === "tuning" ||
+        listCategory === "tuning")
+    ) {
+      mod = [
+        {
+          label: fallbackLabel,
+          amount,
+          bucket: classifySpendBucket(
+            `${fallbackLabel} ${doc.vendor ?? ""}`,
+            doc.part_category,
+          ),
+        },
+      ];
+      return { mod, maint };
+    }
+    if (contributesToUmbauBuckets(listCategory)) {
+      mod = [
+        {
+          label: fallbackLabel,
+          amount,
+          bucket: classifySpendBucket(
+            `${fallbackLabel} ${doc.vendor ?? ""}`,
+            doc.part_category,
+          ),
+        },
+      ];
+      return { mod, maint: [] };
+    }
+    if (listCategory === "repair" || listCategory === "service") {
+      maint = [
+        {
+          label: fallbackLabel,
+          amount,
+          bucket: classifyMaintenanceBucket(fallbackLabel),
+        },
+      ];
+      return { mod: [], maint };
+    }
+    mod = [
+      {
+        label: fallbackLabel,
+        amount,
+        bucket: "other",
+      },
+    ];
+    return { mod, maint: [] };
+  }
+
+  const remainder = roundMoney(amount - classified);
+  if (remainder > 0.009) {
+    if (listCategory === "repair" || listCategory === "service") {
+      maint = [
+        ...maint,
+        {
+          label: "Sonstiges (Beleg)",
+          amount: remainder,
+          bucket: "other_maintenance",
+        },
+      ];
+    } else {
+      mod = [
+        ...mod,
+        {
+          label: "Sonstiges (Beleg)",
+          amount: remainder,
+          bucket: "other",
+        },
+      ];
+    }
+  }
+
+  return { mod, maint };
+}
+
 export function buildVehicleCostOverview(
   documents: Document[],
 ): VehicleCostOverview {
@@ -566,12 +691,20 @@ export function buildVehicleCostOverview(
     const year = documentYear(doc);
     const listCategory = resolveInvoiceListCategory(doc.category);
 
-    const docModification = contributesToUmbauBuckets(listCategory)
+    const rawModification = contributesToUmbauBuckets(listCategory)
       ? collectModificationPositions(doc, listCategory)
       : [];
-    const docMaintenance = contributesToMaintenanceBuckets(listCategory)
+    const rawMaintenance = contributesToMaintenanceBuckets(listCategory)
       ? collectMaintenancePositions(doc, listCategory)
       : [];
+
+    const { mod: docModification, maint: docMaintenance } = reconcileDocumentCosts(
+      amount,
+      listCategory,
+      doc,
+      rawModification,
+      rawMaintenance,
+    );
 
     modificationPositions.push(...docModification);
     maintenancePositions.push(...docMaintenance);
@@ -665,7 +798,7 @@ export function buildVehicleCostOverview(
     });
 
   const maintenanceTotal = roundMoney(
-    maintenanceBucketBreakdown.reduce((sum, row) => sum + row.amount, 0),
+    maintenancePositions.reduce((sum, row) => sum + row.amount, 0),
   );
 
   const yearlyYears = new Set<number>([
@@ -675,12 +808,16 @@ export function buildVehicleCostOverview(
   ]);
 
   const yearlySeries: CostYearlyPoint[] = [...yearlyYears]
-    .map((year) => ({
-      year,
-      amount: roundMoney(yearlyTotals.get(year) ?? 0),
-      modificationAmount: roundMoney(yearlyModification.get(year) ?? 0),
-      maintenanceAmount: roundMoney(yearlyMaintenance.get(year) ?? 0),
-    }))
+    .map((year) => {
+      const modificationAmount = roundMoney(yearlyModification.get(year) ?? 0);
+      const maintenanceAmount = roundMoney(yearlyMaintenance.get(year) ?? 0);
+      return {
+        year,
+        modificationAmount,
+        maintenanceAmount,
+        amount: roundMoney(yearlyTotals.get(year) ?? 0),
+      };
+    })
     .sort((a, b) => a.year - b.year);
 
   return {
