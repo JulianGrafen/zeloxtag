@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { DemoPageExperience } from "@/components/demo/demo-page-experience";
+import { loadDemoEntdeckenDiscoverData } from "@/lib/demo/load-demo-entdecken-discover-data";
 import { AppShell } from "@/components/layout/app-shell";
 import { ClaimFlow } from "@/components/tags/claim-flow";
 import { PrivateTwinGate } from "@/components/tags/private-twin-gate";
@@ -436,6 +437,7 @@ export default async function TagScanPage({
           demoVehicle,
           result.documents,
         );
+        const discoverData = await loadDemoEntdeckenDiscoverData();
 
         return (
           <>
@@ -458,6 +460,7 @@ export default async function TagScanPage({
               documents={result.documents}
               tagUuid={tag.uuid}
               showcasePayload={showcasePayload}
+              discoverData={discoverData}
             />
           </>
         );

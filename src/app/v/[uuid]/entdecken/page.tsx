@@ -16,6 +16,8 @@ import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-sho
 import { topThreeWeeklyRankOrNull } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import { loadPendingWeeklyRankAwardForVehicle } from "@/lib/showcase/load-weekly-rank-award";
 import { loadWeeklyTopBuilds } from "@/lib/showcase/weekly-top-builds";
+import { DemoDiscoverExperience } from "@/components/demo/demo-discover-experience";
+import { loadDemoEntdeckenDiscoverData } from "@/lib/demo/load-demo-entdecken-discover-data";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
 import { getTagByUuid, type TagLoadOptions } from "@/lib/tags/get-tag-by-uuid";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -45,7 +47,28 @@ export default async function ShowcaseEntdeckenPage({
   const { weeklyAward } = await searchParams;
 
   if (isDemoActiveTag(uuid)) {
-    redirect(`/v/${uuid}`);
+    const entdeckenReturnHref = `/v/${uuid}/entdecken`;
+    const discoverData = await loadDemoEntdeckenDiscoverData();
+    return (
+      <AppShell showNavbar={false} immersiveNativeNav>
+        <div className={discoverPageRootClassName}>
+          <VehicleSettingsSubpageShell
+            tagUuid={uuid}
+            title="Builds entdecken"
+            backHref={`/v/${uuid}`}
+            backLabel="Demo"
+            theme="discover"
+          >
+            <DemoDiscoverExperience
+              tagUuid={uuid}
+              entdeckenReturnHref={entdeckenReturnHref}
+              discoverData={discoverData}
+              embeddedInShell
+            />
+          </VehicleSettingsSubpageShell>
+        </div>
+      </AppShell>
+    );
   }
 
   const documentLoad: TagLoadOptions = {

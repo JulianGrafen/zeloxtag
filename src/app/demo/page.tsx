@@ -5,6 +5,7 @@ import {
   buildDemoPublicShowcasePayload,
   enrichDemoShowcaseVehicle,
 } from "@/lib/demo/demo-public-showcase-payload";
+import { loadDemoEntdeckenDiscoverData } from "@/lib/demo/load-demo-entdecken-discover-data";
 import { pageSocialMetadata } from "@/lib/seo/open-graph";
 import {
   getMockTagScan,
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
  * Optional showcase of the vehicle twin — not the production landing page.
  * Landing remains `/` (login). Deep-link: `/demo`.
  */
-export default function DemoPage() {
+export default async function DemoPage() {
   const result = getMockTagScan(MOCK_TAG_UUIDS.active);
   if (!result?.vehicle) {
     return null;
@@ -39,6 +40,7 @@ export default function DemoPage() {
     vehicle,
     result.documents,
   );
+  const discoverData = await loadDemoEntdeckenDiscoverData();
 
   return (
     <DemoPageExperience
@@ -46,6 +48,7 @@ export default function DemoPage() {
       documents={result.documents}
       tagUuid={result.tag.uuid}
       showcasePayload={showcasePayload}
+      discoverData={discoverData}
     />
   );
 }

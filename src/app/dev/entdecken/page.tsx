@@ -1,26 +1,20 @@
 import { notFound } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 import { discoverPageRootClassName } from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
-import { ShowcaseDiscoverExperience } from "@/components/showcase-swipe/showcase-discover-experience";
+import { DemoDiscoverExperience } from "@/components/demo/demo-discover-experience";
+import { loadDemoEntdeckenDiscoverData } from "@/lib/demo/load-demo-entdecken-discover-data";
 import { VehicleSettingsSubpageShell } from "@/components/vehicles/vehicle-settings-subpage-shell";
-import { buildDemoShareCardData } from "@/lib/demo/demo-share-card-data";
-import {
-  DEV_ENTDECKEN_MOCK_CARDS,
-  DEV_ENTDECKEN_MOCK_DAILY_STATS,
-  DEV_ENTDECKEN_MOCK_WEEKLY_BUILDS,
-  DEV_ENTDECKEN_MOCK_WEEKLY_RANK,
-} from "@/lib/showcase/dev-entdecken-mock";
+import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 
-export default function DevEntdeckenPage() {
+export default async function DevEntdeckenPage() {
   if (process.env.NODE_ENV === "production") {
     notFound();
   }
 
-  const tagUuid = "dev-entdecken";
+  const tagUuid = MOCK_TAG_UUIDS.active;
   const entdeckenReturnHref = "/dev/entdecken";
-  const ownTopThreeShareCardData = buildDemoShareCardData(2);
+  const discoverData = await loadDemoEntdeckenDiscoverData();
 
   return (
     <AppShell showNavbar={false} immersiveNativeNav>
@@ -32,19 +26,12 @@ export default function DevEntdeckenPage() {
           backLabel="Dashboard"
           theme="discover"
         >
-          <ShowcaseDiscoverExperience
+          <DemoDiscoverExperience
             tagUuid={tagUuid}
             entdeckenReturnHref={entdeckenReturnHref}
-            initialCards={DEV_ENTDECKEN_MOCK_CARDS}
-            initialWeeklyBuilds={DEV_ENTDECKEN_MOCK_WEEKLY_BUILDS}
-            isPublic
-            showcaseSwipeOptIn
-            ownWeeklyRank={DEV_ENTDECKEN_MOCK_WEEKLY_RANK}
-            dailySwipeStats={DEV_ENTDECKEN_MOCK_DAILY_STATS}
-            ownTopThreeShareCardData={ownTopThreeShareCardData}
-            designPreview
+            discoverData={discoverData}
+            embeddedInShell
           />
-          <LegalFooterNav tone="inverse" className="pt-2" />
         </VehicleSettingsSubpageShell>
       </div>
     </AppShell>

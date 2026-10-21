@@ -6,12 +6,14 @@ import { ArrowLeft } from "lucide-react";
 
 import { ZeloxBrandWordmark } from "@/components/brand/zelox-brand-wordmark";
 import { AppShell } from "@/components/layout/app-shell";
+import { DemoDiscoverExperience } from "@/components/demo/demo-discover-experience";
 import { DemoViewSwitch, type DemoViewId } from "@/components/demo/demo-view-switch";
 import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { buildDemoTimelineEvents } from "@/lib/demo/demo-timeline-events";
 import { getDemoOperatingCostsForVehicle } from "@/lib/demo/mock-operating-costs";
 import { buildOperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/summary";
+import type { DemoEntdeckenDiscoverData } from "@/lib/demo/load-demo-entdecken-discover-data";
 import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import type { Document, Vehicle } from "@/types/database";
@@ -21,6 +23,7 @@ type DemoPageExperienceProps = {
   documents: Document[];
   tagUuid: string;
   showcasePayload: PublicShowcasePayload;
+  discoverData: DemoEntdeckenDiscoverData;
 };
 
 export function DemoPageExperience({
@@ -28,6 +31,7 @@ export function DemoPageExperience({
   documents,
   tagUuid,
   showcasePayload,
+  discoverData,
 }: DemoPageExperienceProps) {
   const [activeView, setActiveView] = useState<DemoViewId>("garage");
   const timelineEvents = useMemo(
@@ -43,9 +47,11 @@ export function DemoPageExperience({
   );
 
   useLayoutEffect(() => {
-    if (activeView !== "showcase") return;
+    if (activeView === "garage") return;
     window.scrollTo(0, 0);
   }, [activeView]);
+
+  const demoEntdeckenHref = `/v/${tagUuid}/entdecken`;
 
   return (
     <AppShell showNavbar={false}>
@@ -63,18 +69,7 @@ export function DemoPageExperience({
               <p className="truncate text-[0.72rem] font-medium text-zinc-400">
                 Demo · BMW E36
               </p>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {process.env.NODE_ENV !== "production" ? (
-                  <Link
-                    href="/dev/entdecken?native=1"
-                    className="rounded-full border border-white/15 px-2.5 py-1.5 text-[0.68rem] font-semibold text-white"
-                  >
-                    Entdecken
-                  </Link>
-                ) : (
-                  <span className="w-[4.5rem]" aria-hidden />
-                )}
-              </div>
+              <span className="w-[4.5rem] shrink-0" aria-hidden />
             </div>
 
             <div className="mx-auto mt-3 w-full max-w-lg text-center">
@@ -103,12 +98,23 @@ export function DemoPageExperience({
             hideBrandBanner
             productFeaturesBannerActive={false}
             operatingCostHint={operatingCostHint}
+            onDashboardTileClick={(tileId) => {
+              if (tileId === "build-discover") {
+                setActiveView("entdecken");
+              }
+            }}
           />
-        ) : (
+        ) : activeView === "showcase" ? (
           <PublicShowcaseView
             data={showcasePayload}
             hideBrandBanner
             revealShowroomStatsOnMount
+          />
+        ) : (
+          <DemoDiscoverExperience
+            tagUuid={tagUuid}
+            entdeckenReturnHref={demoEntdeckenHref}
+            discoverData={discoverData}
           />
         )}
       </div>

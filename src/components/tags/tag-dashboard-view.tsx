@@ -96,6 +96,8 @@ interface TagDashboardViewProps {
   hideScanFab?: boolean;
   /** Pro tile without href — open the action-based paywall. */
   onLockedFeature?: (feature: FeatureFlag, tileId?: string) => void;
+  /** Demo / custom tiles without href (e.g. in-app Builds entdecken). */
+  onDashboardTileClick?: (tileId: string) => void;
   /** Immediate header refresh after silhouette upload (same-origin display URL). */
   vehicleImageOverride?: string | null;
   /** Data URL / blob fallback when proxy fails to load. */
@@ -145,6 +147,7 @@ export function TagDashboardView({
   onOpenFuelScanner,
   hideScanFab = false,
   onLockedFeature,
+  onDashboardTileClick,
   vehicleImageOverride,
   previewFallbackUrl,
   onSilhouetteProxyLoad,
@@ -440,16 +443,18 @@ export function TagDashboardView({
 
     if (tile.id === "build-discover") {
       const likeSubtitle =
-        isOwner && showcaseSwipeUnreadLikes > 0
-          ? `${showcaseSwipeUnreadLikes} neue Like${showcaseSwipeUnreadLikes === 1 ? "" : "s"}`
-          : isOwner && showcaseSwipeTotalLikes > 0
-            ? `${showcaseSwipeTotalLikes} Like${showcaseSwipeTotalLikes === 1 ? "" : "s"} gesamt`
-            : "Swipe · öffentliche Builds";
+        demoMode
+          ? "Community-Builds live"
+          : isOwner && showcaseSwipeUnreadLikes > 0
+            ? `${showcaseSwipeUnreadLikes} neue Like${showcaseSwipeUnreadLikes === 1 ? "" : "s"}`
+            : isOwner && showcaseSwipeTotalLikes > 0
+              ? `${showcaseSwipeTotalLikes} Like${showcaseSwipeTotalLikes === 1 ? "" : "s"} gesamt`
+              : "Swipe · öffentliche Builds";
       return {
         ...tile,
         meta: {
           ...tile.meta,
-          href: path("entdecken"),
+          href: demoMode ? undefined : path("entdecken"),
           subtitle: likeSubtitle,
         },
       };
@@ -462,7 +467,9 @@ export function TagDashboardView({
       if (tile.id === "fuel-log" || tile.id === "operating-costs") {
         return isOwner || demoMode;
       }
-      if (tile.id === "build-discover") return !demoMode && (isOwner || isContributor);
+      if (tile.id === "build-discover") {
+        return demoMode || isOwner || isContributor;
+      }
       if (tile.id === "vehicle-settings") return isOwner || demoMode;
       if (tile.id === "schrauber") return isOwner || demoMode;
       if (isContributor && !isOwner) {
@@ -575,6 +582,7 @@ export function TagDashboardView({
           ) : null
         }
         onTileClick={(tileId) => {
+          onDashboardTileClick?.(tileId);
           const feature = featureForDashboardTile(tileId);
           if (feature && isProOnlyFeature(feature)) {
             onLockedFeature?.(feature, tileId);
