@@ -1,7 +1,10 @@
 import type { VehicleAccess } from "@/lib/auth/vehicle-access";
+import { DEMO_ENGINE_SOUND_URL } from "@/lib/demo/demo-assets";
 import { vehicleCatalogImageUrl } from "@/lib/vehicles/vehicle-image";
 
 import { MOCK_TAG_UUIDS } from "./mock-tags";
+
+export { DEMO_ENGINE_SOUND_URL };
 
 /** Canonical QR entry for the public BMW E36 showcase twin. */
 export const DEMO_SHOWCASE_BACK_HREF = `/v/${MOCK_TAG_UUIDS.active}`;
@@ -24,9 +27,6 @@ export const DEMO_SHOWCASE_OWNER_NAME = "Julian";
 export const DEMO_SHOWCASE_VEHICLE_IMAGE = vehicleCatalogImageUrl(
   "bmw-e36.png",
 );
-
-/** Trimmed M52 exhaust clip (9 s) for demo Soundcheck — `public/demo/e36-engine-sound.mp3`. */
-export const DEMO_ENGINE_SOUND_URL = "/demo/e36-engine-sound.mp3";
 
 /** Guest access for the public E36 showcase — browse all surfaces, no writes. */
 export function demoShowcaseAccess(): VehicleAccess {

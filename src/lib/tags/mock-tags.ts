@@ -1,5 +1,5 @@
 import { MANUAL_ENTRY_MARKER } from "@/lib/documents/manual-entries";
-import { DEMO_ENGINE_SOUND_URL } from "@/lib/tags/demo-showcase";
+import { DEMO_ENGINE_SOUND_URL } from "@/lib/demo/demo-assets";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
 /** Demo UUIDs for local development without Supabase. */
