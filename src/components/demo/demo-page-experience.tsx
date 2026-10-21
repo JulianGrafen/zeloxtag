@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-import { ZeloxBrandFadeBanner } from "@/components/brand/zelox-brand-fade-banner";
+import { ZeloxBrandWordmark } from "@/components/brand/zelox-brand-wordmark";
 import { AppShell } from "@/components/layout/app-shell";
 import { DemoShareCardStudio } from "@/components/demo/demo-share-card-studio";
 import { DemoViewSwitch, type DemoViewId } from "@/components/demo/demo-view-switch";
@@ -30,68 +30,71 @@ export function DemoPageExperience({
     [documents],
   );
 
-  const viewSwitch = (
-    <DemoViewSwitch activeView={activeView} onChange={setActiveView} />
-  );
-
   return (
     <AppShell showNavbar={false}>
-      <div className="relative">
-        <div className="pointer-events-none fixed inset-x-0 top-0 z-40 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5">
-          <div className="pointer-events-auto mx-auto flex w-full max-w-lg items-center justify-between gap-3 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]/95 px-3 py-2 shadow-[var(--vd-shadow-sm)] backdrop-blur-md">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[0.78rem] font-medium text-[color:var(--vd-text)]"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-              Anmelden
-            </Link>
-            <p className="truncate text-[0.72rem] font-medium text-[color:var(--vd-muted)]">
-              Demo · BMW E36
-            </p>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {process.env.NODE_ENV !== "production" ? (
-                <Link
-                  href="/dev/entdecken?native=1"
-                  className="rounded-full border border-[color:var(--vd-border)] px-2.5 py-1.5 text-[0.68rem] font-semibold text-[color:var(--vd-text)]"
-                >
-                  Entdecken
-                </Link>
-              ) : null}
+      <div className="relative min-h-dvh bg-[color:var(--vd-bg)]">
+        <header className="sticky top-0 z-50 border-b border-[color:var(--vd-border)] bg-black pb-3 shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
+          <div className="px-4 pt-[max(0.65rem,env(safe-area-inset-top))] sm:px-5">
+            <div className="mx-auto flex w-full max-w-lg items-center justify-between gap-3">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[0.78rem] font-medium text-white/90"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+                Anmelden
+              </Link>
+              <p className="truncate text-[0.72rem] font-medium text-zinc-400">
+                Demo · BMW E36
+              </p>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {process.env.NODE_ENV !== "production" ? (
+                  <Link
+                    href="/dev/entdecken?native=1"
+                    className="rounded-full border border-white/15 px-2.5 py-1.5 text-[0.68rem] font-semibold text-white"
+                  >
+                    Entdecken
+                  </Link>
+                ) : (
+                  <span className="w-[4.5rem]" aria-hidden />
+                )}
+              </div>
+            </div>
+
+            <div className="mx-auto mt-3 w-full max-w-lg text-center">
+              <ZeloxBrandWordmark size="banner" className="text-white" />
+            </div>
+
+            <div className="mx-auto mt-3 w-full max-w-lg">
+              <DemoViewSwitch
+                activeView={activeView}
+                onChange={setActiveView}
+              />
             </div>
           </div>
-        </div>
+        </header>
 
-        <div className="pt-14">
-          {activeView === "garage" ? (
-            <TagDashboardView
-              vehicle={vehicle}
-              documents={documents}
-              tagUuid={tagUuid}
-              ownerName={DEMO_SHOWCASE_OWNER_NAME}
-              canScan={false}
-              demoMode
-              timelineEvents={timelineEvents}
-              defaultDashboardTab="timeline"
-              belowBrandBanner={viewSwitch}
-              productFeaturesBannerActive={false}
-            />
-          ) : (
-            <div className="min-h-dvh bg-black pb-12 text-white">
-              <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
-                <ZeloxBrandFadeBanner />
-              </div>
-              <div className="relative z-20 -mt-2 px-4 sm:px-5">{viewSwitch}</div>
-              <div className="mx-auto max-w-lg px-4 pt-5 sm:px-5">
-                <p className="text-[0.82rem] leading-snug text-zinc-400">
-                  Share-Karte wie nach Entdecken-Swipe — Story, Post, Platzierung
-                  und Showcase-Layout.
-                </p>
-                <DemoShareCardStudio className="mt-6" />
-              </div>
-            </div>
-          )}
-        </div>
+        {activeView === "garage" ? (
+          <TagDashboardView
+            vehicle={vehicle}
+            documents={documents}
+            tagUuid={tagUuid}
+            ownerName={DEMO_SHOWCASE_OWNER_NAME}
+            canScan={false}
+            demoMode
+            timelineEvents={timelineEvents}
+            defaultDashboardTab="timeline"
+            hideBrandBanner
+            productFeaturesBannerActive={false}
+          />
+        ) : (
+          <div className="mx-auto max-w-lg px-4 pb-12 pt-5 text-white sm:px-5">
+            <p className="text-[0.82rem] leading-snug text-zinc-400">
+              Share-Karte wie nach Entdecken-Swipe — Story, Post, Platzierung und
+              Showcase-Layout.
+            </p>
+            <DemoShareCardStudio className="mt-6" />
+          </div>
+        )}
       </div>
     </AppShell>
   );

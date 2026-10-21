@@ -35,6 +35,7 @@ export function VehicleDashboard({
   banner,
   extraTiles,
   belowBrandBanner,
+  hideBrandBanner = false,
   className = "",
 }: VehicleDashboardProps) {
   const [activeTab, setActiveTab] = useState<DashboardTabId>(defaultTab);
@@ -48,12 +49,16 @@ export function VehicleDashboard({
 
   return (
     <ScanContent className={cn("min-w-0 gap-0 overflow-x-clip px-0 pt-0", className)}>
-      <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
-        <ZeloxBrandFadeBanner />
-      </div>
+      {!hideBrandBanner ? (
+        <>
+          <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
+            <ZeloxBrandFadeBanner />
+          </div>
 
-      {belowBrandBanner ? (
-        <div className="relative z-20 -mt-2 px-4 sm:px-5">{belowBrandBanner}</div>
+          {belowBrandBanner ? (
+            <div className="relative z-20 -mt-2 px-4 sm:px-5">{belowBrandBanner}</div>
+          ) : null}
+        </>
       ) : null}
 
       <div className="relative z-10 -mt-1 flex min-h-0 flex-1 flex-col gap-3 px-4 sm:px-5">

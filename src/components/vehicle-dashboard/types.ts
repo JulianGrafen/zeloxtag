@@ -125,5 +125,7 @@ export interface VehicleDashboardProps {
   extraTiles?: ReactNode;
   /** Interactive controls directly under the brand wordmark (demo switch, etc.). */
   belowBrandBanner?: ReactNode;
+  /** Hide Zelox wordmark bar when the parent page renders its own header. */
+  hideBrandBanner?: boolean;
   className?: string;
 }

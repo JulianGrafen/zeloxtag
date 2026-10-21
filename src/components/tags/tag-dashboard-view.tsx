@@ -119,6 +119,8 @@ interface TagDashboardViewProps {
   defaultDashboardTab?: "overview" | "timeline";
   /** Slot under Zelox wordmark (demo view switch). */
   belowBrandBanner?: ReactNode;
+  /** Parent renders brand header (e.g. /demo sticky chrome). */
+  hideBrandBanner?: boolean;
 }
 
 /**
@@ -156,6 +158,7 @@ export function TagDashboardView({
   timelineEvents: timelineEventsProp,
   defaultDashboardTab = "overview",
   belowBrandBanner,
+  hideBrandBanner = false,
 }: TagDashboardViewProps) {
   const manualEntryHref = `${dashboardPath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`;
   const path = (segment: string) =>
@@ -543,6 +546,7 @@ export function TagDashboardView({
         canAddChronikEntry={canScan && (isOwner || isContributor) && !demoMode}
         defaultTab={defaultDashboardTab}
         belowBrandBanner={belowBrandBanner}
+        hideBrandBanner={hideBrandBanner}
         banner={
           showTagShop || showProductFeaturesBanner ? (
             <div className="flex flex-col gap-2.5">
