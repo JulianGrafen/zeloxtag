@@ -44,8 +44,9 @@ export function PwaInstallSettingsPanel() {
         ZeloxTag als App installieren
       </h2>
       <p className="mt-1 text-[0.85rem] leading-relaxed text-[color:var(--vd-muted)]">
-        Schneller Zugriff vom Home-Bildschirm — ohne Browser-Leiste. Wähle
-        deinen Browser:
+        Schneller Zugriff vom Home-Bildschirm — ohne Browser-Leiste. Die Schritte
+        passen sich an dein Gerät an; bei Bedarf zwischen Safari und Chrome
+        wechseln.
       </p>
 
       <div className="mt-4">

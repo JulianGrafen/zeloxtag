@@ -261,10 +261,16 @@ export function ShowroomHero({
     preloadImageHrefs(neighbors);
   }, [activeIndex, visiblePhotos]);
 
-  return (
-    <>
+  const heroMinHeightClass = hideBrandBanner
+    ? "min-h-[min(78dvh,780px)]"
+    : showroom.heroMinHeight;
+
+  const heroHeader = (
       <header
-        className={`relative z-0 isolate ${showroom.heroMinHeight} overflow-hidden`}
+        className={cn(
+          "relative z-0 isolate overflow-hidden",
+          heroMinHeightClass,
+        )}
       >
         <HeroBackdrop
           photos={visiblePhotos}
@@ -302,7 +308,7 @@ export function ShowroomHero({
         <div
           className={cn(
             "pointer-events-none relative z-10 flex flex-col justify-end px-5 pb-8",
-            showroom.heroMinHeight,
+            heroMinHeightClass,
             hideBrandBanner ? "pt-4" : "pt-[max(4.5rem,env(safe-area-inset-top))]",
           )}
         >
@@ -324,6 +330,23 @@ export function ShowroomHero({
           </div>
         </div>
       </header>
+  );
+
+  return (
+    <>
+      {hideBrandBanner ? (
+        <div className="bg-black pt-3">
+          <div className="mx-auto w-full max-w-lg px-4 sm:px-5">
+            <div
+              className="overflow-hidden rounded-[1.35rem] ring-1 ring-white/10"
+            >
+              {heroHeader}
+            </div>
+          </div>
+        </div>
+      ) : (
+        heroHeader
+      )}
 
       {lightboxIndex !== null ? (
         <ShowroomGalleryLightbox

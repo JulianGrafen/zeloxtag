@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  buildDemoBuildStorySlice,
+  DEMO_BUILD_STORY_SLUG,
+} from "@/lib/demo/demo-build-story";
 import { loadPublicBuildStoryBySlug } from "@/lib/vehicles/build-story";
 import {
   enforceRateLimit,
@@ -43,6 +47,16 @@ export async function GET(request: NextRequest) {
     offsetParam != null ? Math.max(0, Number(offsetParam) || 0) : 0;
 
   try {
+    if (slug === DEMO_BUILD_STORY_SLUG) {
+      const slice = buildDemoBuildStorySlice(limit, offset);
+      return NextResponse.json({
+        ok: true,
+        entries: slice.entries,
+        hasMore: slice.hasMore,
+        vehicleId: "",
+      });
+    }
+
     const page = await loadPublicBuildStoryBySlug(slug, { limit, offset });
     if (!page) {
       return NextResponse.json({ ok: true, entries: [], hasMore: false });

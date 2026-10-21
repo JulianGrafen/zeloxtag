@@ -16,7 +16,7 @@ type ShowroomDynoProps = {
 };
 
 export function ShowroomDyno({ profile, embedded = false }: ShowroomDynoProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   if (!profile.dynoChartUrl) return null;

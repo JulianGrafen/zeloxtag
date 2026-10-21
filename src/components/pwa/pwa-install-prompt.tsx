@@ -16,8 +16,8 @@ import {
   type PwaInstallGuideTrack,
 } from "@/lib/pwa/install";
 import {
-  filterChromeInstallSteps,
-  stepsForGuideTrack,
+  resolveInstallGuidePlatform,
+  resolveInstallGuideSteps,
 } from "@/lib/pwa/install-guide-steps";
 import {
   DASHBOARD_FAB_CLEARANCE,
@@ -36,15 +36,15 @@ export function PwaInstallPrompt() {
   const activeTrack: PwaInstallGuideTrack =
     resolved === "chooser" ? "safari" : resolved;
 
-  const steps = useMemo(() => {
-    if (activeTrack === "chrome") {
-      return filterChromeInstallSteps(
-        stepsForGuideTrack("chrome"),
-        canNativeInstall,
-      );
-    }
-    return stepsForGuideTrack("safari");
-  }, [activeTrack, canNativeInstall]);
+  const platform = resolveInstallGuidePlatform();
+
+  const steps = useMemo(
+    () =>
+      resolveInstallGuideSteps(activeTrack, platform, {
+        includeNativeInstall: canNativeInstall && activeTrack === "chrome",
+      }),
+    [activeTrack, canNativeInstall, platform],
+  );
 
   const isLastStep = stepIndex >= steps.length - 1;
 
@@ -147,7 +147,7 @@ export function PwaInstallPrompt() {
                 steps={steps}
                 activeIndex={stepIndex}
                 onActiveIndexChange={setStepIndex}
-                slideMinHeightClassName="min-h-[11rem]"
+                slideMinHeightClassName="min-h-[12.5rem]"
               />
             )}
           </div>

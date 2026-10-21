@@ -82,28 +82,10 @@ export function VehicleOperatingCostOverviewView({
         entryCount={summary.entryCount}
       />
 
-      <OperatingCostDetailCharts chart={summary.chart} />
-
-      <section className="grid grid-cols-2 gap-3">
-        {OPERATING_COST_CATEGORIES.map((category) => (
-          <div key={category} className="zt-feature-panel p-3.5">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-              {OPERATING_COST_CATEGORY_LABELS[category]}
-            </p>
-            <p className="mt-1.5 text-[0.95rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
-              {formatEur(summary.chart.categoryTotals[category])}
-            </p>
-            <p className="mt-0.5 text-[0.72rem] tabular-nums text-[color:var(--vd-muted)]">
-              ø {formatEur(summary.categoryMonthlyAverages[category])}/M
-            </p>
-          </div>
-        ))}
-      </section>
-
       {!readOnly && !showForm ? (
         <PressableButton
           type="button"
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3.5 text-[0.92rem] font-semibold text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-[0.92rem] font-semibold text-neutral-950 shadow-[var(--vd-shadow-sm)]"
           onClick={() => setShowForm(true)}
         >
           <Plus className="h-4 w-4" aria-hidden />
@@ -166,6 +148,24 @@ export function VehicleOperatingCostOverviewView({
           </div>
         </form>
       ) : null}
+
+      <OperatingCostDetailCharts chart={summary.chart} />
+
+      <section className="grid grid-cols-2 gap-3">
+        {OPERATING_COST_CATEGORIES.map((category) => (
+          <div key={category} className="zt-feature-panel p-3.5">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+              {OPERATING_COST_CATEGORY_LABELS[category]}
+            </p>
+            <p className="mt-1.5 text-[0.95rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
+              {formatEur(summary.chart.categoryTotals[category])}
+            </p>
+            <p className="mt-0.5 text-[0.72rem] tabular-nums text-[color:var(--vd-muted)]">
+              ø {formatEur(summary.categoryMonthlyAverages[category])}/M
+            </p>
+          </div>
+        ))}
+      </section>
 
       <section>
         <h2 className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--vd-muted)]">

@@ -6,8 +6,9 @@ import { Download } from "lucide-react";
 import { PwaInstallStepCarousel } from "@/components/pwa/pwa-install-step-carousel";
 import { Button } from "@/components/ui/button";
 import {
-  filterChromeInstallSteps,
-  stepsForGuideTrack,
+  resolveInstallGuidePlatform,
+  resolveInstallGuideSteps,
+  type InstallGuidePlatform,
 } from "@/lib/pwa/install-guide-steps";
 import type { PwaInstallGuideTrack } from "@/lib/pwa/install";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,10 @@ export function PwaInstallGuide({
   className,
 }: PwaInstallGuideProps) {
   const [tabTrack, setTabTrack] = useState<PwaInstallGuideTrack>("safari");
+  const platform: InstallGuidePlatform = useMemo(
+    () => resolveInstallGuidePlatform(),
+    [],
+  );
 
   const track: PwaInstallGuideTrack | "both" =
     variant === "auto"
@@ -80,17 +85,12 @@ export function PwaInstallGuide({
         : variant;
 
   const steps = useMemo(() => {
-    if (track === "both") {
-      const raw = stepsForGuideTrack(tabTrack);
-      return tabTrack === "chrome"
-        ? filterChromeInstallSteps(raw, showChromeInstallButton)
-        : raw;
-    }
-    const raw = stepsForGuideTrack(track);
-    return track === "chrome"
-      ? filterChromeInstallSteps(raw, showChromeInstallButton)
-      : raw;
-  }, [showChromeInstallButton, tabTrack, track]);
+    const activeTrack = track === "both" ? tabTrack : track;
+    return resolveInstallGuideSteps(activeTrack, platform, {
+      includeNativeInstall:
+        showChromeInstallButton && activeTrack === "chrome",
+    });
+  }, [platform, showChromeInstallButton, tabTrack, track]);
 
   return (
     <div className={className}>
@@ -100,7 +100,7 @@ export function PwaInstallGuide({
 
       <PwaInstallStepCarousel
         steps={steps}
-        slideMinHeightClassName={compact ? "min-h-[11rem]" : "min-h-[12.5rem]"}
+        slideMinHeightClassName={compact ? "min-h-[12.5rem]" : "min-h-[14rem]"}
       />
 
       {showChromeInstallButton &&

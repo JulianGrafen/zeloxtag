@@ -33,25 +33,27 @@ function StepSlide({
   return (
     <div
       className={cn(
-        "flex min-w-full shrink-0 snap-center snap-always flex-col justify-center px-1",
-        compact ? "min-h-[11rem]" : "min-h-[12.5rem]",
+        "flex min-w-full shrink-0 snap-center snap-always flex-col justify-center px-4 py-3",
+        compact ? "min-h-[12.5rem]" : "min-h-[14rem]",
       )}
     >
-      <div className="flex flex-col items-center text-center">
-        <span
-          className={cn(
-            "mb-3 inline-flex items-center justify-center rounded-2xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] ring-1 ring-[color:var(--vd-border)]",
-            compact ? "h-12 w-12" : "h-14 w-14",
-          )}
-        >
-          <Icon className={compact ? "h-6 w-6" : "h-7 w-7"} aria-hidden />
-        </span>
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-          Schritt {index + 1} von {total}
-        </p>
+      <div className="mx-auto flex w-full max-w-[19rem] flex-col">
+        <div className="flex flex-col items-center">
+          <span
+            className={cn(
+              "inline-flex items-center justify-center rounded-2xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-text)] ring-1 ring-[color:var(--vd-border)]",
+              compact ? "h-12 w-12" : "h-14 w-14",
+            )}
+          >
+            <Icon className={compact ? "h-6 w-6" : "h-7 w-7"} aria-hidden />
+          </span>
+          <p className="mt-3 text-center text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
+            Schritt {index + 1} von {total}
+          </p>
+        </div>
         <h3
           className={cn(
-            "mt-2 font-[family-name:var(--font-display)] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]",
+            "mt-3 min-h-[2.5rem] text-left font-[family-name:var(--font-display)] font-semibold leading-snug tracking-[-0.02em] text-[color:var(--vd-text)]",
             compact ? "text-[1rem]" : "text-[1.05rem]",
           )}
         >
@@ -59,7 +61,7 @@ function StepSlide({
         </h3>
         <p
           className={cn(
-            "mt-2 max-w-[22rem] leading-relaxed text-[color:var(--vd-muted)]",
+            "mt-2 min-h-[4.25rem] text-left text-pretty leading-relaxed text-[color:var(--vd-muted)]",
             compact ? "text-[0.82rem]" : "text-[0.86rem]",
           )}
         >
@@ -166,7 +168,7 @@ export function PwaInstallStepCarousel({
                 step={step}
                 index={index}
                 total={steps.length}
-                compact={slideMinHeightClassName?.includes("11rem")}
+                compact={slideMinHeightClassName?.includes("12.5rem")}
               />
             </div>
           ))}

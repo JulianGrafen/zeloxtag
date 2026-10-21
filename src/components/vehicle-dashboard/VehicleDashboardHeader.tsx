@@ -17,8 +17,10 @@ interface VehicleDashboardHeaderProps {
   vehicleImagePreviewFallback?: string;
   vehicleImageAlt?: string;
   vehicleImageFrameless?: boolean;
-  /** Edge-to-edge hero under sticky demo chrome (no rounded gray card ears). */
+  /** Bleed hero into horizontal page padding (full-bleed under sticky chrome). */
   heroFlush?: boolean;
+  /** Rounded hero shell (demo / embedded dashboard). */
+  heroRounded?: boolean;
   onSilhouetteProxyLoad?: () => void;
 }
 
@@ -84,6 +86,7 @@ export function VehicleDashboardHeader({
   vehicleImageAlt,
   vehicleImageFrameless = false,
   heroFlush = false,
+  heroRounded = false,
   onSilhouetteProxyLoad,
 }: VehicleDashboardHeaderProps) {
   const { name, year } = parseVehicleHeroLabel(vehicleModel);
@@ -180,8 +183,8 @@ export function VehicleDashboardHeader({
         isCutoutHero && "min-h-[12rem] sm:min-h-[13rem]",
         framelessHero &&
           "border-0 bg-black shadow-none [background-image:none]",
-        framelessHero && "rounded-none",
-        heroFlush && "-mx-4 w-auto sm:-mx-5",
+        framelessHero && !heroRounded && "rounded-none",
+        heroFlush && !heroRounded && "-mx-4 w-auto sm:-mx-5",
         opaqueCatalogPhoto && framelessHero && "min-h-[12.5rem] sm:min-h-[13.5rem]",
       )}
       data-tour="dashboard-header"

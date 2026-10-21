@@ -27,6 +27,8 @@ import { showroom } from "./showroom-styles";
 type ShowroomStatsProps = {
   profile: PublicShowcaseProfile;
   modifications: PublicModification[];
+  /** e.g. demo tab — do not wait for scroll intersection to reveal rows. */
+  revealOnMount?: boolean;
 };
 
 function animatedStatValue(
@@ -54,7 +56,11 @@ function animatedStatValue(
   );
 }
 
-export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
+export function ShowroomStats({
+  profile,
+  modifications,
+  revealOnMount = false,
+}: ShowroomStatsProps) {
   const motionConfig = useShowroomMotion();
   const { profile: regionalProfile } = useRegionalFormatters();
   const [playbackError, setPlaybackError] = useState<string | null>(null);
@@ -78,8 +84,12 @@ export function ShowroomStats({ profile, modifications }: ShowroomStatsProps) {
       className="relative z-10 flex flex-col gap-6 px-4"
       variants={motionConfig.staggerContainer}
       initial="hidden"
-      whileInView="visible"
-      viewport={motionConfig.viewport}
+      {...(revealOnMount
+        ? { animate: "visible" }
+        : {
+            whileInView: "visible",
+            viewport: motionConfig.viewport,
+          })}
     >
       {specificationRow ? (
         <ShowroomRevealItem>

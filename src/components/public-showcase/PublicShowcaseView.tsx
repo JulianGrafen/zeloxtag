@@ -18,6 +18,8 @@ type PublicShowcaseViewProps = {
   showDiscoverBack?: boolean;
   /** Parent already shows wordmark + tabs (e.g. /demo sticky chrome). */
   hideBrandBanner?: boolean;
+  /** Stats block visible immediately (demo Garage/Showcase switch). */
+  revealShowroomStatsOnMount?: boolean;
 };
 
 export function PublicShowcaseView({
@@ -25,6 +27,7 @@ export function PublicShowcaseView({
   discoverBackHref = null,
   showDiscoverBack = false,
   hideBrandBanner = false,
+  revealShowroomStatsOnMount = false,
 }: PublicShowcaseViewProps) {
   const showBuildDna = data.buildDna != null;
 
@@ -44,6 +47,7 @@ export function PublicShowcaseView({
         <ShowroomStats
           profile={data.profile}
           modifications={data.modifications}
+          revealOnMount={revealShowroomStatsOnMount}
         />
         <ShowroomBuildPersonalityChips
           labels={data.profile.buildPersonalityLabels}

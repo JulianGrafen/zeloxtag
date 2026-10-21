@@ -6,7 +6,6 @@ import { ArrowLeft } from "lucide-react";
 
 import { ZeloxBrandWordmark } from "@/components/brand/zelox-brand-wordmark";
 import { AppShell } from "@/components/layout/app-shell";
-import { DemoEngineSoundcheck } from "@/components/demo/demo-engine-soundcheck";
 import { DemoViewSwitch, type DemoViewId } from "@/components/demo/demo-view-switch";
 import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
@@ -87,8 +86,6 @@ export function DemoPageExperience({
         </header>
 
         {activeView === "garage" ? (
-          <>
-          <DemoEngineSoundcheck className="pb-2 pt-1" />
           <TagDashboardView
             vehicle={vehicle}
             documents={documents}
@@ -102,11 +99,11 @@ export function DemoPageExperience({
             productFeaturesBannerActive={false}
             operatingCostHint={operatingCostHint}
           />
-          </>
         ) : (
           <PublicShowcaseView
             data={showcasePayload}
             hideBrandBanner
+            revealShowroomStatsOnMount
           />
         )}
       </div>
