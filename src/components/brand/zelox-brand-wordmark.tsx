@@ -17,7 +17,10 @@ export function ZeloxBrandWordmark({
       className={cn(
         "font-[family-name:var(--font-bebas-neue)] font-normal leading-none",
         size === "banner"
-          ? showroom.brandWordmark
+          ? cn(
+              showroom.brandWordmark,
+              "block max-w-full overflow-x-clip tracking-[0.26em] sm:tracking-[0.34em]",
+            )
           : "text-[1.08rem] tracking-[0.32em] text-[color:var(--vd-text)] sm:text-[1.12rem]",
         className,
       )}

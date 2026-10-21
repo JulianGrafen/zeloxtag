@@ -97,7 +97,11 @@ export function PageTransition({ children }: PageTransitionProps) {
       }}
       default="none"
     >
-      <div className="vd-page" data-vd-page data-pathname={pathname}>
+      <div
+        className="vd-page min-w-0 max-w-full overflow-x-clip"
+        data-vd-page
+        data-pathname={pathname}
+      >
         {children}
         {showLegalFooter ? (
           <div className="relative isolate z-10">

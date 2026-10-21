@@ -48,7 +48,7 @@ export function VehicleDashboard({
 
   return (
     <ScanContent className={cn("min-w-0 gap-0 overflow-x-clip px-0 pt-0", className)}>
-      <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))] overflow-x-clip">
         <ZeloxBrandFadeBanner />
       </div>
 

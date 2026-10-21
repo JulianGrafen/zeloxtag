@@ -36,12 +36,12 @@
 }
 
 html {
-  overflow-x: clip;
+  overflow-x: hidden;
   max-width: 100%;
 }
 
 body {
-  overflow-x: clip;
+  overflow-x: hidden;
   max-width: 100%;
 }
 
@@ -727,7 +727,13 @@ nextjs-portal {
 
 .vd-page {
   min-height: 100dvh;
+  max-width: 100%;
   overflow-x: clip;
+}
+
+/* View-transition slides must not widen the document (100% enter offset). */
+::view-transition-group(*) {
+  overflow: clip;
 }
 
 .vd-anim-header {
@@ -1289,8 +1295,9 @@ a.claim-cta.vd-scan-fab-cta,
 [data-scan-content="default"] > .zelox-brand-banner-bleed,
 [data-scan-content="default"] > .claim-intro-brand-bleed,
 [data-scan-content="default"] > .claim-intro-brand-bleed .zelox-brand-banner-bleed {
-  width: calc(100% + 2rem);
-  max-width: 100%;
+  align-self: stretch;
+  width: auto;
+  max-width: none;
   margin-inline: -1rem;
 }
 
@@ -1298,7 +1305,6 @@ a.claim-cta.vd-scan-fab-cta,
   [data-scan-content="default"] > .zelox-brand-banner-bleed,
   [data-scan-content="default"] > .claim-intro-brand-bleed,
   [data-scan-content="default"] > .claim-intro-brand-bleed .zelox-brand-banner-bleed {
-    width: calc(100% + 2.5rem);
     margin-inline: -1.25rem;
   }
 }
@@ -1325,6 +1331,7 @@ a.claim-cta.vd-scan-fab-cta,
 /* Solid black bar (wordmark stays crisp; fade is a separate masked tail) */
 .zelox-brand-fade-banner__bar {
   background: #000;
+  overflow-x: clip;
 }
 
 /* Overlap bar + long masked tail + soft blur halo (no visible box edge) */
@@ -1334,6 +1341,7 @@ a.claim-cta.vd-scan-fab-cta,
   padding-top: 1.5rem;
   pointer-events: none;
   isolation: isolate;
+  overflow-x: clip;
 }
 
 .zelox-brand-fade-banner__tail {
@@ -1373,7 +1381,7 @@ a.claim-cta.vd-scan-fab-cta,
 
 .zelox-brand-fade-banner__tail-halo {
   position: absolute;
-  inset: -12% -8% -28%;
+  inset: -12% 0 -28%;
   z-index: -1;
   background: #000;
   opacity: 0.42;
