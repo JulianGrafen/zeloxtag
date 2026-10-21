@@ -38,13 +38,12 @@ export function mapSwipeCandidateToCard(
   if (!publicSlug) return null;
 
   const vehicleId = row.vehicle_id?.trim();
-  const heroImageSrc =
-    row.has_silhouette && vehicleId
-      ? showcaseSilhouetteSwipeUrl(vehicleId, {
-          silhouetteImageUrl: row.silhouette_image_url,
-          updatedAt: row.updated_at,
-        })
-      : null;
+  const heroImageSrc = vehicleId
+    ? showcaseSilhouetteSwipeUrl(vehicleId, {
+        silhouetteImageUrl: row.silhouette_image_url,
+        updatedAt: row.updated_at,
+      })
+    : null;
 
   const modificationCount = Math.max(
     0,

@@ -45,13 +45,17 @@ export async function loadDemoEntdeckenDiscoverData(): Promise<DemoEntdeckenDisc
   const usesLiveCommunityData =
     initialCards.length > 0 || initialWeeklyBuilds.length > 0;
 
+  if (!usesLiveCommunityData) {
+    return {
+      initialCards: DEV_ENTDECKEN_MOCK_CARDS,
+      initialWeeklyBuilds: DEV_ENTDECKEN_MOCK_WEEKLY_BUILDS,
+      usesLiveCommunityData: false,
+    };
+  }
+
   return {
-    initialCards:
-      initialCards.length > 0 ? initialCards : DEV_ENTDECKEN_MOCK_CARDS,
-    initialWeeklyBuilds:
-      initialWeeklyBuilds.length > 0
-        ? initialWeeklyBuilds
-        : DEV_ENTDECKEN_MOCK_WEEKLY_BUILDS,
-    usesLiveCommunityData,
+    initialCards,
+    initialWeeklyBuilds,
+    usesLiveCommunityData: true,
   };
 }

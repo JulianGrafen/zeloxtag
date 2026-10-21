@@ -12,6 +12,24 @@ import type { DemoEntdeckenDiscoverData } from "@/lib/demo/load-demo-entdecken-d
 import { MOCK_DEMO_VEHICLE_ID } from "@/lib/tags/mock-tags";
 import { cn } from "@/lib/utils";
 
+function resolveDemoOwnWeeklyRank(
+  discoverData: DemoEntdeckenDiscoverData,
+): typeof DEMO_ENTDECKEN_MOCK_WEEKLY_RANK | null {
+  if (discoverData.usesLiveCommunityData) {
+    return null;
+  }
+  return DEMO_ENTDECKEN_MOCK_WEEKLY_RANK;
+}
+
+function resolveDemoDailySwipeStats(
+  discoverData: DemoEntdeckenDiscoverData,
+): typeof DEMO_ENTDECKEN_MOCK_DAILY_STATS | null {
+  if (discoverData.usesLiveCommunityData) {
+    return null;
+  }
+  return DEMO_ENTDECKEN_MOCK_DAILY_STATS;
+}
+
 type DemoDiscoverExperienceProps = {
   tagUuid: string;
   entdeckenReturnHref: string;
@@ -28,20 +46,25 @@ export function DemoDiscoverExperience({
   embeddedInShell = false,
   className,
 }: DemoDiscoverExperienceProps) {
-  const ownTopThreeShareCardData = buildDemoShareCardData(3);
+  const usesLive = discoverData.usesLiveCommunityData;
+  const ownTopThreeShareCardData = usesLive
+    ? null
+    : buildDemoShareCardData(3);
+  const ownWeeklyRank = resolveDemoOwnWeeklyRank(discoverData);
+  const dailySwipeStats = resolveDemoDailySwipeStats(discoverData);
 
   const experience = (
     <>
       <ShowcaseDiscoverExperience
         tagUuid={tagUuid}
-        vehicleId={MOCK_DEMO_VEHICLE_ID}
+        vehicleId={usesLive ? undefined : MOCK_DEMO_VEHICLE_ID}
         entdeckenReturnHref={entdeckenReturnHref}
         initialCards={discoverData.initialCards}
         initialWeeklyBuilds={discoverData.initialWeeklyBuilds}
         isPublic
         showcaseSwipeOptIn
-        ownWeeklyRank={DEMO_ENTDECKEN_MOCK_WEEKLY_RANK}
-        dailySwipeStats={DEMO_ENTDECKEN_MOCK_DAILY_STATS}
+        ownWeeklyRank={ownWeeklyRank}
+        dailySwipeStats={dailySwipeStats}
         ownTopThreeShareCardData={ownTopThreeShareCardData}
         designPreview
       />

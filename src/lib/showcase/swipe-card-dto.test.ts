@@ -79,11 +79,12 @@ describe("mapSwipeCandidateToCard", () => {
     ).toBeNull();
   });
 
-  it("omits hero when no silhouette", () => {
+  it("still maps hero proxy when has_silhouette is false (catalog / legacy URL via API)", () => {
     const card = mapSwipeCandidateToCard({
       ...base,
       has_silhouette: false,
     });
-    expect(card?.heroImageSrc).toBeNull();
+    expect(card?.heroImageSrc).toContain("/api/vehicle/silhouette/veh-1");
+    expect(card?.heroImageUsesCover).toBe(false);
   });
 });
