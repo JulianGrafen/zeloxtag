@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 import { ModBadge } from "./ModBadge";
 import { ShowroomDisclosure } from "./ShowroomDisclosure";
+import { showroomModLabelTypography } from "./showroom-mod-typography";
 import { showroom } from "./showroom-styles";
 
 type ShowroomModsProps = {
@@ -33,29 +34,40 @@ function umbautenSubtitle(
 
 function UmbautenList({ modifications }: { modifications: PublicModification[] }) {
   return (
-    <ul id="showroom-mods-list">
+    <ul id="showroom-mods-list" className="min-w-0 max-w-full overflow-x-hidden">
       {modifications.map((mod, index) => {
         const dateLabel = formatDate(mod.date);
         const isLastMod = index === modifications.length - 1;
+        const labelType = showroomModLabelTypography(mod.label);
         return (
           <li
             key={mod.id}
             className={cn(
-              "flex items-start justify-between gap-3 px-4 py-3",
+              "min-w-0 px-4 py-3.5",
               !isLastMod && "border-b border-white/10",
             )}
           >
-            <div className="min-w-0">
-              <p className="text-[0.94rem] font-medium leading-snug text-white">
-                {mod.label}
-              </p>
-              {dateLabel ? (
-                <p className="mt-0.5 text-[0.78rem] text-white/45">
-                  {dateLabel}
-                </p>
-              ) : null}
-            </div>
-            {mod.vendor ? <ModBadge>{mod.vendor}</ModBadge> : null}
+            <p
+              className={cn(
+                labelType.className,
+                "max-w-full break-words [overflow-wrap:anywhere] text-pretty",
+              )}
+              style={labelType.style}
+            >
+              {mod.label}
+            </p>
+            {(dateLabel || mod.vendor) ? (
+              <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+                {dateLabel ? (
+                  <p className="text-[0.76rem] tabular-nums text-white/42">
+                    {dateLabel}
+                  </p>
+                ) : null}
+                {mod.vendor ? (
+                  <ModBadge className="max-w-full shrink">{mod.vendor}</ModBadge>
+                ) : null}
+              </div>
+            ) : null}
           </li>
         );
       })}

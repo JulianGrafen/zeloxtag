@@ -88,11 +88,11 @@ export function StripePortalButton({
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="mt-4 space-y-2.5">
+    <div className="mt-4 w-full min-w-0 max-w-full space-y-2.5">
       <Button
         type="button"
         variant="outline"
-        className="h-11 w-full"
+        className="h-auto min-h-11 w-full max-w-full whitespace-normal px-3 py-2.5 text-center text-[0.88rem] leading-snug"
         disabled={pending}
         onClick={() => {
           setError(null);

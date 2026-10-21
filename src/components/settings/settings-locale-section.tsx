@@ -3,9 +3,6 @@
 import { useState, useTransition } from "react";
 import { Globe, Palette } from "lucide-react";
 
-import { PwaInstallSettingsPanel } from "@/components/pwa/pwa-install-settings-panel";
-import { usePlatformServices } from "@/services/platform/context/platform-services-context";
-
 import { updateAppLocaleAction } from "@/actions/update-app-locale";
 import {
   IOSGroupedList,
@@ -21,7 +18,6 @@ type LocaleSettingsVariant = "general" | "locale-only";
 function LocaleSettingsContent({ variant }: { variant: LocaleSettingsVariant }) {
   const { preferences, setPreferences, messages } = useLocale();
   const regional = useRegionalFormatters();
-  const { platform } = usePlatformServices();
   const [pending, startTransition] = useTransition();
   const [sheet, setSheet] = useState<"locale" | "currency" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,20 +86,13 @@ function LocaleSettingsContent({ variant }: { variant: LocaleSettingsVariant }) 
           isLast={unitsIsLast}
         />
         {isGeneral ? (
-          <>
-            <IOSListItem
-              label="Erscheinungsbild"
-              sublabel="Hell, Dunkel oder System"
-              href="/settings/appearance"
-              icon={<Palette className="h-4 w-4" />}
-              isLast={platform.isNativeApp}
-            />
-            {!platform.isNativeApp ? (
-              <div className="border-t border-white/[0.07] p-4">
-                <PwaInstallSettingsPanel />
-              </div>
-            ) : null}
-          </>
+          <IOSListItem
+            label="Erscheinungsbild"
+            sublabel="Hell, Dunkel oder System"
+            href="/settings/appearance"
+            icon={<Palette className="h-4 w-4" />}
+            isLast
+          />
         ) : null}
       </IOSGroupedList>
 

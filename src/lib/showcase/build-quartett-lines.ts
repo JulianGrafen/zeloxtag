@@ -8,6 +8,7 @@ import {
   SHOWCASE_QUARTETT_DISPLACEMENT_CC_MAX,
   SHOWCASE_QUARTETT_POWER_PS_MAX,
   SHOWCASE_QUARTETT_TORQUE_NM_MAX,
+  SHOWCASE_QUARTETT_VMAX_KMH_MAX,
 } from "@/components/public-showcase/showcase-quartett-scales";
 
 export type QuartettLineSpec = {
@@ -23,6 +24,7 @@ export type BuildQuartettLinesInput = {
   displacementCc?: number | null;
   accel0To100Sec?: number | null;
   accel100To200Sec?: number | null;
+  vmaxKmh?: number | null;
   /** Include hubraum bar (claim preview); public swipe cards omit this. */
   includeDisplacement?: boolean;
   maxLines?: number;
@@ -91,6 +93,15 @@ export function buildQuartettLines(
         SHOWCASE_QUARTETT_ACCEL_100_200_MIN_SEC,
         SHOWCASE_QUARTETT_ACCEL_100_200_MAX_SEC,
       ),
+    });
+  }
+
+  if (input.vmaxKmh != null && input.vmaxKmh > 0) {
+    lines.push({
+      key: "vmax",
+      label: "V-Max",
+      value: `${Math.round(input.vmaxKmh)} km/h`,
+      filled: filledSegments(input.vmaxKmh, SHOWCASE_QUARTETT_VMAX_KMH_MAX),
     });
   }
 

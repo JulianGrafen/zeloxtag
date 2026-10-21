@@ -50,9 +50,6 @@ export function EngineStartButton({
   }
 
   const actionLabel = isPlaying ? "Stoppen" : "Motor starten";
-  const embeddedSubtitle = isPlaying
-    ? "Läuft…"
-    : "Motor-Sound abspielen (max. 10 s)";
 
   return (
     <div className={cn("pointer-events-auto relative w-full", className)}>
@@ -91,10 +88,7 @@ export function EngineStartButton({
         </span>
         <span className="min-w-0 flex-1 text-left">
           {embedded ? (
-            <>
-              <span className={showroom.listTitle}>Soundcheck</span>
-              <span className={showroom.listSubtitle}>{embeddedSubtitle}</span>
-            </>
+            <span className={showroom.listTitle}>Soundcheck</span>
           ) : (
             <>
               <span className={`block ${showroom.rowLabel}`}>Soundcheck</span>

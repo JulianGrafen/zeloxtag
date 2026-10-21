@@ -38,7 +38,7 @@ export function AccountDeletionPanel({
   return (
     <section
       aria-label="Konto löschen"
-      className="vd-surface-card border border-red-200/80 p-5 shadow-[var(--vd-shadow-sm)]"
+      className="vd-surface-card w-full min-w-0 max-w-full border border-red-200/80 p-5 shadow-[var(--vd-shadow-sm)]"
     >
       <div className="flex items-start gap-3">
         <span
@@ -74,17 +74,18 @@ export function AccountDeletionPanel({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <a
               href="/api/account/export"
-              className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-white px-3.5 py-2 text-[0.85rem] font-medium text-[color:var(--vd-text)]"
+              className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-white px-3.5 py-2.5 text-center text-[0.85rem] font-medium text-[color:var(--vd-text)] sm:w-auto sm:flex-1"
             >
-              <Download className="h-4 w-4" aria-hidden />
+              <Download className="h-4 w-4 shrink-0" aria-hidden />
               Daten exportieren (ZIP)
             </a>
             <PressableButton
               type="button"
               variant="button"
+              className="w-full min-w-0 sm:w-auto sm:flex-1"
               disabled={pending}
               onClick={() => {
                 setError(null);
@@ -109,7 +110,7 @@ export function AccountDeletionPanel({
             <PressableButton
               type="button"
               variant="button"
-              className="border-red-200 text-red-800 hover:bg-red-50"
+              className="w-full min-w-0 border-red-200 text-red-800 hover:bg-red-50"
               onClick={() => {
                 setShowDeleteForm(true);
                 setError(null);
@@ -178,11 +179,11 @@ export function AccountDeletionPanel({
                   />
                 </label>
               ) : null}
-              <div className="flex flex-wrap gap-2 pt-1">
+              <div className="flex flex-col gap-2 pt-1 sm:flex-row">
                 <PressableButton
                   type="submit"
                   variant="button"
-                  className="bg-red-700 text-white hover:bg-red-800"
+                  className="w-full min-w-0 bg-red-700 text-white hover:bg-red-800 sm:flex-1"
                   disabled={pending}
                 >
                   Endgültig löschen
@@ -190,6 +191,7 @@ export function AccountDeletionPanel({
                 <PressableButton
                   type="button"
                   variant="button"
+                  className="w-full min-w-0 sm:flex-1"
                   disabled={pending}
                   onClick={() => setShowDeleteForm(false)}
                 >

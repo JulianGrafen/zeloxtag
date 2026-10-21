@@ -107,6 +107,10 @@ export const ACCEL_0_100_SEC_MAX = 30;
 export const ACCEL_100_200_SEC_MIN = 1;
 export const ACCEL_100_200_SEC_MAX = 60;
 
+/** Top speed (V-Max) in km/h. */
+export const VMAX_KMH_MIN = 50;
+export const VMAX_KMH_MAX = 450;
+
 /** Dropdown options for oil-change interval (km), 2.500 km steps. */
 export const OIL_CHANGE_INTERVAL_KM_OPTIONS: readonly number[] = Array.from(
   {
@@ -184,6 +188,8 @@ export type VehicleTechSpecs = {
   accel0To100Sec: number | null;
   /** 100–200 km/h in seconds (one decimal). */
   accel100To200Sec: number | null;
+  /** Top speed (V-Max) in km/h. */
+  vmaxKmh: number | null;
   /** Owner-selected build vibe chips from claim (max 5). */
   buildPersonalityTags: BuildPersonalityChipId[] | null;
 };
@@ -206,6 +212,7 @@ export const EMPTY_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
   oilChangeIntervalMonths: null,
   accel0To100Sec: null,
   accel100To200Sec: null,
+  vmaxKmh: null,
   buildPersonalityTags: null,
 };
 
@@ -345,6 +352,7 @@ export function parseVehicleTechSpecs(raw: unknown): VehicleTechSpecs {
       ACCEL_100_200_SEC_MIN,
       ACCEL_100_200_SEC_MAX,
     ),
+    vmaxKmh: asBoundedInt(record.vmaxKmh, VMAX_KMH_MIN, VMAX_KMH_MAX),
     buildPersonalityTags: (() => {
       const tags = parseBuildPersonalityTags(record.buildPersonalityTags);
       return tags.length > 0 ? tags : null;
@@ -382,6 +390,9 @@ export function serializeVehicleTechSpecs(
   }
   if (specs.accel100To200Sec != null) {
     out.accel100To200Sec = specs.accel100To200Sec;
+  }
+  if (specs.vmaxKmh != null) {
+    out.vmaxKmh = specs.vmaxKmh;
   }
   if (specs.buildPersonalityTags && specs.buildPersonalityTags.length > 0) {
     out.buildPersonalityTags = [...specs.buildPersonalityTags];

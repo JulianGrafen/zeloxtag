@@ -63,11 +63,13 @@ export function SettingsLegalSection({
       </IOSGroupedList>
 
       {showDeletion ? (
+        <div className="min-w-0 max-w-full overflow-x-clip">
         <AccountDeletionPanel
           userEmail={userEmail}
           hasPasswordLogin={hasPasswordLogin}
           deletionState={deletionState}
         />
+        </div>
       ) : null}
     </div>
   );

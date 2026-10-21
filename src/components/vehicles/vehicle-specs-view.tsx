@@ -116,6 +116,7 @@ export function VehicleSpecsView({
         key === "powerKw" ||
         key === "torqueNm" ||
         key === "displacementCc" ||
+        key === "vmaxKmh" ||
         key === "oilChangeIntervalKm" ||
         key === "oilChangeIntervalMonths"
       ) {
@@ -453,12 +454,23 @@ export function VehicleSpecsView({
                     aria-describedby="accel-100-200-hint"
                   />
                 </Field>
+                <Field label="V-Max">
+                  <input
+                    inputMode="numeric"
+                    value={specs.vmaxKmh ?? ""}
+                    onChange={(event) =>
+                      patchSpec("vmaxKmh", event.target.value)
+                    }
+                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
+                    placeholder="265"
+                  />
+                </Field>
               </div>
               <p
                 id="accel-0-100-hint"
                 className="text-[0.75rem] text-[color:var(--vd-muted)]"
               >
-                Beschleunigungszeiten in Sekunden (optional).
+                Beschleunigungszeiten in Sekunden, V-Max in km/h (optional).
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Kraftstoff">
@@ -656,6 +668,9 @@ export function VehicleSpecsView({
                 label="100–200"
                 value={formatAccelSecondsDe(specs.accel100To200Sec)}
               />
+            ) : null}
+            {specs.vmaxKmh != null ? (
+              <ReadRow label="V-Max" value={`${specs.vmaxKmh} km/h`} />
             ) : null}
             {specs.displacementCc != null ? (
               <ReadRow label="Hubraum" value={`${specs.displacementCc} ccm`} />

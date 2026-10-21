@@ -56,6 +56,7 @@ export type PublicShowcaseProfile = {
   torqueNm: number | null;
   accel0To100Sec: number | null;
   accel100To200Sec: number | null;
+  vmaxKmh: number | null;
   engine: string | null;
   displacementCc: number | null;
   fuelType: string | null;
@@ -303,6 +304,7 @@ export function buildPublicShowcasePayload(
       torqueNm: specs.torqueNm,
       accel0To100Sec: specs.accel0To100Sec,
       accel100To200Sec: specs.accel100To200Sec,
+      vmaxKmh: specs.vmaxKmh,
       engine: specs.engine,
       displacementCc: specs.displacementCc,
       fuelType: specs.fuelType,

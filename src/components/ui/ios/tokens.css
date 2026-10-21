@@ -18,3 +18,27 @@
   --card: var(--ios-surface);
   --secondary: var(--ios-surface-elevated);
 }
+
+/* Full-width actions inside grouped lists — no horizontal bleed (pulse/scale). */
+.ios-settings-surface .ios-ui {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ios-settings-surface .ios-ui [data-slot="button"],
+.ios-settings-surface .ios-ui .vd-pressable--button,
+.ios-settings-surface .ios-ui form {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ios-settings-surface .ios-ui [data-slot="button"] {
+  width: 100%;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.ios-settings-surface .ios-ui .paywall-cta-pulse:not(:disabled) {
+  animation: none;
+}

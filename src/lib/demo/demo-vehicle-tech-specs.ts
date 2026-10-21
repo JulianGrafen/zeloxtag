@@ -21,5 +21,6 @@ export const DEMO_E36_VEHICLE_TECH_SPECS: VehicleTechSpecs = {
   oilChangeIntervalMonths: 12,
   accel0To100Sec: 5.4,
   accel100To200Sec: 11.8,
+  vmaxKmh: 265,
   buildPersonalityTags: ["showcar", "tracktool", "oem_plus"],
 };

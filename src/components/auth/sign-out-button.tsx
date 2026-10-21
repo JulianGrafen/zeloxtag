@@ -16,7 +16,7 @@ export function SignOutButton({
   label = "Abmelden",
 }: SignOutButtonProps) {
   return (
-    <form action={signOut}>
+    <form action={signOut} className="w-full min-w-0 max-w-full">
       <PressableButton
         type="submit"
         variant="button"

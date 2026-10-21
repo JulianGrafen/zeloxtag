@@ -13,6 +13,7 @@ import {
   SHOWCASE_QUARTETT_ACCEL_100_200_MIN_SEC,
   SHOWCASE_QUARTETT_POWER_PS_MAX,
   SHOWCASE_QUARTETT_TORQUE_NM_MAX,
+  SHOWCASE_QUARTETT_VMAX_KMH_MAX,
 } from "./showcase-quartett-scales";
 
 export type ShowcaseQuartettMeta = {
@@ -120,6 +121,22 @@ export function buildShowcaseSpecRows(
         scaleMin: SHOWCASE_QUARTETT_ACCEL_100_200_MIN_SEC,
         scaleMax: SHOWCASE_QUARTETT_ACCEL_100_200_MAX_SEC,
         polarity: "lower",
+      },
+    });
+  }
+
+  if (profile.vmaxKmh != null) {
+    rows.push({
+      key: "vmax",
+      label: "V-Max",
+      value: renderAnimatedStat(profile.vmaxKmh, "km/h"),
+      emphasis: true,
+      layout: "quartett",
+      quartett: {
+        amount: profile.vmaxKmh,
+        unit: "km/h",
+        scaleMax: SHOWCASE_QUARTETT_VMAX_KMH_MAX,
+        polarity: "higher",
       },
     });
   }

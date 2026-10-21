@@ -52,11 +52,8 @@ export async function MembershipStatusCard({
     return (
       <section
         aria-label="Mitgliedschaft"
-        className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]"
+        className="min-w-0 w-full max-w-full"
       >
-        <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-          Mitgliedschaft
-        </h2>
         {justLinked || checkoutState === "success" ? (
           <p className="mt-2 text-[0.82rem] text-[color:var(--vd-alert-success-text)]">
             Mitgliedschaft ist aktiv.
@@ -88,7 +85,7 @@ export async function MembershipStatusCard({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 w-full max-w-full space-y-2">
       {justLinked ? (
         <p className="text-[0.82rem] text-[color:var(--vd-alert-success-text)]">
           Mitgliedschaft ist aktiv.

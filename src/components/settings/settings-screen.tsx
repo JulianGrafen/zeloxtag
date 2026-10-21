@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { AccountDeletionBanner } from "@/components/account/account-deletion-banner";
 import type { AccountDeletionState } from "@/lib/account/account-deletion-shared";
 import { NativeRestorePurchasesButton } from "@/components/billing/native-restore-purchases-button";
-import { IOSGroupedList, IOSListItem, IOSPageHeader } from "@/components/ui/ios";
+import { IOSGroupedList, IOSPageHeader } from "@/components/ui/ios";
 
 import { SettingsNotificationsSection } from "./settings-app-section";
 import { SettingsGeneralSection } from "./settings-locale-section";
@@ -37,25 +37,19 @@ export function SettingsScreen({
       <IOSPageHeader
         title="Einstellungen"
         subtitle={
-          <>
-            Konto ·{" "}
-            <span className="font-medium text-white">{email}</span>
-          </>
+          <span className="font-medium text-white">{email}</span>
         }
         backHref={dashboardHref}
         backLabel="Garage"
       />
 
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 sm:px-5">
+      <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-6 overflow-x-clip px-4 sm:px-5">
         {deletionState.status === "grace" && deletionState.graceEndsAt ? (
           <AccountDeletionBanner graceEndsAt={deletionState.graceEndsAt} />
         ) : null}
 
-        <IOSGroupedList headerTitle="Konto">
-          <IOSListItem label="Profil" value={email} showChevron={false} />
-          <div className="border-t border-white/[0.07] px-4 py-3">
-            {membershipSection}
-          </div>
+        <IOSGroupedList headerTitle="Mitgliedschaft">
+          <div className="min-w-0 max-w-full px-4 py-3">{membershipSection}</div>
           <NativeRestorePurchasesButton />
         </IOSGroupedList>
 

@@ -15,6 +15,7 @@ const baseProfile = {
   torqueNm: 650,
   accel0To100Sec: 4.2,
   accel100To200Sec: null,
+  vmaxKmh: null,
   engine: null,
   displacementCc: null,
   fuelType: null,

@@ -17,6 +17,9 @@ export const SHOWCASE_QUARTETT_ACCEL_0_100_MAX_SEC = 15;
 export const SHOWCASE_QUARTETT_ACCEL_100_200_MIN_SEC = 5;
 export const SHOWCASE_QUARTETT_ACCEL_100_200_MAX_SEC = 30;
 
+/** V-Max (km/h) category ceiling for quartett bars. */
+export const SHOWCASE_QUARTETT_VMAX_KMH_MAX = 400;
+
 /**
  * How many segments to fill. Uses round so mid-range values feel fair on cards;
  * clamped so 0 < value ≤ max never exceeds segment count.

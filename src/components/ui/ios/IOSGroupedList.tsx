@@ -22,7 +22,7 @@ export function IOSGroupedList({
           {headerTitle}
         </h2>
       ) : null}
-      <div className="overflow-hidden rounded-2xl bg-[color:var(--ios-surface,#1C1C1E)]">
+      <div className="min-w-0 max-w-full overflow-hidden rounded-2xl bg-[color:var(--ios-surface,#1C1C1E)]">
         {children}
       </div>
       {footerText ? (
