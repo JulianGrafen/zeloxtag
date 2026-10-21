@@ -131,10 +131,7 @@ export function ProPaywallSection({
         ctaSlot={
           <>
             <StickyPaywallCta
-              label={
-                personalization?.ctaLabel ??
-                proCheckoutButtonLabel(audience, interval)
-              }
+              label={proCheckoutButtonLabel(audience, interval)}
               microCopy={proCheckoutMicroCopy(interval)}
               anchorText={personalization?.footnote}
               pending={pending}

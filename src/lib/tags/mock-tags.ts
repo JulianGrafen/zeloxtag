@@ -7,10 +7,13 @@ export const MOCK_TAG_UUIDS = {
   active: "demo-active-tag",
 } as const;
 
+/** Vehicle id for {@link MOCK_TAG_UUIDS.active} mock twin. */
+export const MOCK_DEMO_VEHICLE_ID = "veh_demo_e36";
+
 const now = "2026-03-12T10:00:00.000Z";
 
 const mockVehicle: Vehicle = {
-  id: "veh_demo_e36",
+  id: MOCK_DEMO_VEHICLE_ID,
   user_id: "user_demo",
   make: "BMW",
   model: "328i",
@@ -455,7 +458,7 @@ const mockDocuments: Document[] = [
     created_by: mockVehicle.user_id,
     title: "KW V1 Coilover",
     type: "abe",
-    file_url: "/demo/abe-frontlippe.pdf",
+    file_url: "/demo/abe-kw-v1.pdf",
     vendor: "KW Automotive",
     category: "abe",
     line_items: null,

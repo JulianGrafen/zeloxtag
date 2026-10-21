@@ -24,7 +24,11 @@ import { withDefaultShowcaseFields } from "@/lib/vehicles/public-showcase-data";
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, DocumentType, Tag, TagScanResult, Vehicle } from "@/types/database";
 
-import { getMockTagScan, MOCK_TAG_UUIDS } from "./mock-tags";
+import {
+  getMockTagScan,
+  MOCK_DEMO_VEHICLE_ID,
+  MOCK_TAG_UUIDS,
+} from "./mock-tags";
 
 function isTagScanResult(value: unknown): value is TagScanResult {
   if (!value || typeof value !== "object") return false;
@@ -356,6 +360,20 @@ async function getTagByUuidUncached(
 export const getTagByUuid = cache(getTagByUuidUncached);
 
 /** Full document row for detail views (list payload omits notes/conditions/specs). */
+async function resolveMockDemoDocument(
+  documentId: string,
+): Promise<Document | null> {
+  const uploaded = await getMockUploadedDocuments(MOCK_DEMO_VEHICLE_ID);
+  const uploadedDoc = uploaded.find((doc) => doc.id === documentId) ?? null;
+  if (uploadedDoc) {
+    return normalizeDocument(uploadedDoc);
+  }
+
+  const catalog = getMockTagScan(MOCK_TAG_UUIDS.active)?.documents ?? [];
+  const catalogDoc = catalog.find((doc) => doc.id === documentId) ?? null;
+  return catalogDoc ? normalizeDocument(catalogDoc) : null;
+}
+
 export async function getDocumentById(
   vehicleId: string,
   documentId: string,
@@ -363,6 +381,10 @@ export async function getDocumentById(
   const vid = vehicleId.trim();
   const did = documentId.trim();
   if (!vid || !did) return null;
+
+  if (vid === MOCK_DEMO_VEHICLE_ID) {
+    return resolveMockDemoDocument(did);
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -380,6 +402,10 @@ export async function getDocumentById(
   }
 
   const uploaded = await getMockUploadedDocuments(vid);
-  const mockDoc = uploaded.find((doc) => doc.id === did) ?? null;
-  return mockDoc ? normalizeDocument(mockDoc) : null;
+  const uploadedDoc = uploaded.find((doc) => doc.id === did) ?? null;
+  if (uploadedDoc) {
+    return normalizeDocument(uploadedDoc);
+  }
+
+  return null;
 }

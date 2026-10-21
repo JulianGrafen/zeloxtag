@@ -25,6 +25,7 @@ import {
   PRO_PAYWALL_DISMISS_LABEL,
   PRO_PLAN_CHECKOUT_HEADLINE,
   cloudAboHref,
+  proCheckoutButtonLabel,
   proCheckoutMicroCopy,
   proCheckoutPendingLabel,
   type ProBillingInterval,
@@ -199,7 +200,7 @@ export function ProPaywallModal({
                   vehicleHero={vehicleHero}
                   ctaSlot={
                     <StickyPaywallCta
-                      label={personalization.ctaLabel}
+                      label={proCheckoutButtonLabel("new", interval)}
                       pending={pending}
                       pendingLabel={proCheckoutPendingLabel(platform.isNativeApp)}
                       error={error}

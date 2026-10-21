@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { DemoPageExperience } from "@/components/demo/demo-page-experience";
 import { AppShell } from "@/components/layout/app-shell";
 import { ClaimFlow } from "@/components/tags/claim-flow";
 import { PrivateTwinGate } from "@/components/tags/private-twin-gate";
@@ -46,7 +47,7 @@ import {
   pageSocialMetadata,
   SHOWCASE_OG_DESCRIPTION,
 } from "@/lib/seo/open-graph";
-import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
+import { buildDemoPublicShowcasePayload } from "@/lib/demo/demo-public-showcase-payload";
 import { isClaimLandingIdentifier } from "@/lib/tags/claim-landing";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import {
@@ -427,10 +428,15 @@ export default async function TagScanPage({
           weeklyRankMockRank != null
             ? mockWeeklyRankAward(weeklyRankMockRank)
             : null;
+        const showcasePayload = buildDemoPublicShowcasePayload(
+          vehicle,
+          result.documents,
+        );
+
         return (
-          <AppShell showNavbar={false}>
+          <>
             {demoRankMock ? (
-              <>
+              <AppShell showNavbar={false}>
                 <ShowcaseWeeklyRankDashboardMockToast
                   award={demoRankMock}
                   entdeckenHref={demoEntdeckenHref}
@@ -441,17 +447,15 @@ export default async function TagScanPage({
                     entdeckenHref={demoEntdeckenHref}
                   />
                 </div>
-              </>
+              </AppShell>
             ) : null}
-            <TagDashboardView
+            <DemoPageExperience
               vehicle={vehicle}
               documents={result.documents}
               tagUuid={tag.uuid}
-              ownerName={DEMO_SHOWCASE_OWNER_NAME}
-              canScan={false}
-              demoMode
+              showcasePayload={showcasePayload}
             />
-          </AppShell>
+          </>
         );
       }
 

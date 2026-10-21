@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DemoPageExperience } from "@/components/demo/demo-page-experience";
+import { buildDemoPublicShowcasePayload } from "@/lib/demo/demo-public-showcase-payload";
 import { pageSocialMetadata } from "@/lib/seo/open-graph";
 import {
   getMockTagScan,
@@ -30,11 +31,17 @@ export default function DemoPage() {
     return null;
   }
 
+  const showcasePayload = buildDemoPublicShowcasePayload(
+    result.vehicle,
+    result.documents,
+  );
+
   return (
     <DemoPageExperience
       vehicle={result.vehicle}
       documents={result.documents}
       tagUuid={result.tag.uuid}
+      showcasePayload={showcasePayload}
     />
   );
 }

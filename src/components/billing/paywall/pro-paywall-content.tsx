@@ -4,7 +4,6 @@ import { PaywallAnimatedGoalVisual } from "@/components/billing/paywall/paywall-
 import {
   PaywallCopyBlock,
   PaywallExhaustedKicker,
-  PaywallFreeScanOfferKicker,
   PaywallOfferSections,
 } from "@/components/billing/paywall/paywall-layout";
 import type {
@@ -70,11 +69,7 @@ export function ProPaywallContent({
   const compact = true;
   const isModal = layout === "modal";
   const showExhaustedKicker = variant === "free_scan_exhausted";
-  const kicker = showExhaustedKicker ? (
-    <PaywallExhaustedKicker />
-  ) : (
-    <PaywallFreeScanOfferKicker />
-  );
+  const kicker = showExhaustedKicker ? <PaywallExhaustedKicker /> : null;
 
   const offerSections = (
     <PaywallOfferSections
@@ -108,9 +103,9 @@ export function ProPaywallContent({
                 ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
                 vehicleHero={vehicleHero}
                 className="pt-[max(2.75rem,calc(env(safe-area-inset-top)+2rem))]"
-                figureClassName="min-h-[12.5rem] sm:min-h-[13.5rem] pb-1"
+                figureClassName="min-h-[15rem] sm:min-h-[17rem] pb-6"
               />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 translate-y-1.5 px-4 pb-0.5 pt-20">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 pb-2 pt-8">
                 <PaywallCopyBlock
                   headline={headline}
                   headlineId={headlineId}
@@ -140,9 +135,7 @@ export function ProPaywallContent({
               kicker={
                 showExhaustedKicker ? (
                   <PaywallExhaustedKicker align="start" />
-                ) : (
-                  <PaywallFreeScanOfferKicker align="start" />
-                )
+                ) : null
               }
               statusMessage={statusMessage}
               titleSize="section"

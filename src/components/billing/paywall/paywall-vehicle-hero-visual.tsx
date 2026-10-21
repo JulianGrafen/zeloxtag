@@ -172,7 +172,7 @@ export function PaywallVehicleHeroVisual({
               "absolute left-0 right-0 mx-auto w-full max-w-none transition-opacity duration-[520ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
               imageLoaded ? "opacity-100" : "opacity-0",
               isCutoutHero
-                ? "bottom-0 h-[128%] max-w-full object-contain object-bottom brightness-[1.06] contrast-[1.04] drop-shadow-[0_12px_28px_rgba(0,0,0,0.35)]"
+                ? "bottom-3 h-[118%] max-w-full object-contain object-bottom brightness-[1.06] contrast-[1.04] drop-shadow-[0_12px_28px_rgba(0,0,0,0.35)]"
                 : cn(
                     "inset-0 h-full object-cover brightness-[1.03]",
                     isOwnerPhoto ? "object-[50%_62%]" : "object-[50%_55%]",
@@ -188,7 +188,7 @@ export function PaywallVehicleHeroVisual({
             className={cn(
               "absolute inset-0 bg-gradient-to-t from-[color:var(--paywall-sheet-bg)] to-transparent",
               isCutoutHero
-                ? "via-zinc-950/25"
+                ? "via-zinc-950/10"
                 : "via-zinc-950/50 to-zinc-950/5",
             )}
           />
@@ -198,10 +198,17 @@ export function PaywallVehicleHeroVisual({
           <div
             className={cn(
               "absolute inset-x-0 top-0 h-14 bg-gradient-to-b to-transparent",
-              isCutoutHero ? "from-zinc-950/45" : "from-zinc-950/65",
+              isCutoutHero ? "from-zinc-950/30" : "from-zinc-950/65",
             )}
           />
-          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[color:var(--paywall-sheet-bg)] via-[color:var(--paywall-sheet-bg)]/55 to-transparent" />
+          <div
+            className={cn(
+              "absolute inset-x-0 bottom-0 bg-gradient-to-t from-[color:var(--paywall-sheet-bg)] to-transparent",
+              isCutoutHero
+                ? "h-24 via-[color:var(--paywall-sheet-bg)]/35"
+                : "h-28 via-[color:var(--paywall-sheet-bg)]/55",
+            )}
+          />
         </div>
       ) : (
         <div

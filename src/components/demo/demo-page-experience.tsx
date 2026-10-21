@@ -6,10 +6,11 @@ import { ArrowLeft } from "lucide-react";
 
 import { ZeloxBrandWordmark } from "@/components/brand/zelox-brand-wordmark";
 import { AppShell } from "@/components/layout/app-shell";
-import { DemoShareCardStudio } from "@/components/demo/demo-share-card-studio";
 import { DemoViewSwitch, type DemoViewId } from "@/components/demo/demo-view-switch";
+import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { buildDemoTimelineEvents } from "@/lib/demo/demo-timeline-events";
+import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import type { Document, Vehicle } from "@/types/database";
 
@@ -17,12 +18,14 @@ type DemoPageExperienceProps = {
   vehicle: Vehicle;
   documents: Document[];
   tagUuid: string;
+  showcasePayload: PublicShowcasePayload;
 };
 
 export function DemoPageExperience({
   vehicle,
   documents,
   tagUuid,
+  showcasePayload,
 }: DemoPageExperienceProps) {
   const [activeView, setActiveView] = useState<DemoViewId>("garage");
   const timelineEvents = useMemo(
@@ -87,13 +90,7 @@ export function DemoPageExperience({
             productFeaturesBannerActive={false}
           />
         ) : (
-          <div className="mx-auto max-w-lg px-4 pb-12 pt-5 text-white sm:px-5">
-            <p className="text-[0.82rem] leading-snug text-zinc-400">
-              Share-Karte wie nach Entdecken-Swipe — Story, Post, Platzierung und
-              Showcase-Layout.
-            </p>
-            <DemoShareCardStudio className="mt-6" />
-          </div>
+          <PublicShowcaseView data={showcasePayload} />
         )}
       </div>
     </AppShell>
