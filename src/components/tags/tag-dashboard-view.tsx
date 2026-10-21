@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 
 import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
@@ -115,6 +115,10 @@ interface TagDashboardViewProps {
   tagShopUserEmail?: string | null;
   /** Server-loaded timeline (parity with /historie). Falls back to document-derived. */
   timelineEvents?: TimelineEvent[];
+  /** Default Chronik tab (e.g. demo). */
+  defaultDashboardTab?: "overview" | "timeline";
+  /** Slot under Zelox wordmark (demo view switch). */
+  belowBrandBanner?: ReactNode;
 }
 
 /**
@@ -150,6 +154,8 @@ export function TagDashboardView({
   tagShopUserId,
   tagShopUserEmail = null,
   timelineEvents: timelineEventsProp,
+  defaultDashboardTab = "overview",
+  belowBrandBanner,
 }: TagDashboardViewProps) {
   const manualEntryHref = `${dashboardPath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`;
   const path = (segment: string) =>
@@ -535,6 +541,8 @@ export function TagDashboardView({
         resolveDocumentHref={resolveDocumentHref}
         chronikEmptyCtaHref={manualEntryHref}
         canAddChronikEntry={canScan && (isOwner || isContributor) && !demoMode}
+        defaultTab={defaultDashboardTab}
+        belowBrandBanner={belowBrandBanner}
         banner={
           showTagShop || showProductFeaturesBanner ? (
             <div className="flex flex-col gap-2.5">

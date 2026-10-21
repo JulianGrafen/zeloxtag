@@ -34,6 +34,7 @@ export function VehicleDashboard({
   onSilhouetteProxyLoad,
   banner,
   extraTiles,
+  belowBrandBanner,
   className = "",
 }: VehicleDashboardProps) {
   const [activeTab, setActiveTab] = useState<DashboardTabId>(defaultTab);
@@ -50,6 +51,10 @@ export function VehicleDashboard({
       <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
         <ZeloxBrandFadeBanner />
       </div>
+
+      {belowBrandBanner ? (
+        <div className="relative z-20 -mt-2 px-4 sm:px-5">{belowBrandBanner}</div>
+      ) : null}
 
       <div className="relative z-10 -mt-1 flex min-h-0 flex-1 flex-col gap-3 px-4 sm:px-5">
         <div className="flex shrink-0 flex-col gap-2.5">

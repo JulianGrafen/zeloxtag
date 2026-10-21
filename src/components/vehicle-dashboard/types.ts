@@ -123,5 +123,7 @@ export interface VehicleDashboardProps {
   banner?: ReactNode;
   /** Extra tiles appended to the grid (e.g. garage switcher). */
   extraTiles?: ReactNode;
+  /** Interactive controls directly under the brand wordmark (demo switch, etc.). */
+  belowBrandBanner?: ReactNode;
   className?: string;
 }
