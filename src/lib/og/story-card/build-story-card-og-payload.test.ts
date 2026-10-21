@@ -70,7 +70,8 @@ describe("buildStoryCardOgPayload", () => {
       "Stage 2 Software",
       "Downpipe",
     ]);
-    expect(payload!.totalInvestedLabel).toMatch(/4\.200/);
+    // Tuning receipt: all line items (incl. Ölwechsel) — not only the document total field.
+    expect(payload!.totalInvestedLabel).toMatch(/4\.320/);
   });
 
   it("hides total invested when hide_financials is true", () => {
