@@ -7,10 +7,13 @@ describe("demo build story", () => {
   it("includes public story slice on demo showcase payload", () => {
     const scan = getMockTagScan(MOCK_TAG_UUIDS.active);
     expect(scan?.vehicle).toBeDefined();
+    if (!scan?.vehicle) {
+      throw new Error("expected demo vehicle on active mock tag");
+    }
 
     const payload = buildDemoPublicShowcasePayload(
-      scan!.vehicle,
-      scan!.documents,
+      scan.vehicle,
+      scan.documents,
     );
 
     expect(payload.profile.isStoryPublic).toBe(true);
