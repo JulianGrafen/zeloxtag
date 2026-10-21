@@ -6,10 +6,13 @@ import { ArrowLeft } from "lucide-react";
 
 import { ZeloxBrandWordmark } from "@/components/brand/zelox-brand-wordmark";
 import { AppShell } from "@/components/layout/app-shell";
+import { DemoEngineSoundcheck } from "@/components/demo/demo-engine-soundcheck";
 import { DemoViewSwitch, type DemoViewId } from "@/components/demo/demo-view-switch";
 import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { buildDemoTimelineEvents } from "@/lib/demo/demo-timeline-events";
+import { getDemoOperatingCostsForVehicle } from "@/lib/demo/mock-operating-costs";
+import { buildOperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/summary";
 import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
 import type { Document, Vehicle } from "@/types/database";
@@ -31,6 +34,13 @@ export function DemoPageExperience({
   const timelineEvents = useMemo(
     () => buildDemoTimelineEvents(documents),
     [documents],
+  );
+  const operatingCostHint = useMemo(
+    () =>
+      buildOperatingCostDashboardHint(
+        getDemoOperatingCostsForVehicle(vehicle.id),
+      ),
+    [vehicle.id],
   );
 
   return (
@@ -77,6 +87,8 @@ export function DemoPageExperience({
         </header>
 
         {activeView === "garage" ? (
+          <>
+          <DemoEngineSoundcheck className="pb-2 pt-1" />
           <TagDashboardView
             vehicle={vehicle}
             documents={documents}
@@ -85,12 +97,17 @@ export function DemoPageExperience({
             canScan={false}
             demoMode
             timelineEvents={timelineEvents}
-            defaultDashboardTab="timeline"
+            defaultDashboardTab="overview"
             hideBrandBanner
             productFeaturesBannerActive={false}
+            operatingCostHint={operatingCostHint}
           />
+          </>
         ) : (
-          <PublicShowcaseView data={showcasePayload} />
+          <PublicShowcaseView
+            data={showcasePayload}
+            hideBrandBanner
+          />
         )}
       </div>
     </AppShell>

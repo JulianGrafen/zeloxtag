@@ -1,3 +1,5 @@
+import { isOpaqueCatalogPhotoSrc } from "@/lib/vehicles/vehicle-image";
+
 type ShowcaseVehicleImageSlot = "rankCard" | "swipeHero" | "showroomHero";
 
 function photoUsesContainLayout(src: string): boolean {
@@ -39,6 +41,8 @@ export function showcaseVehicleFocusImageClassName(
     case "swipeHero":
       return "object-cover object-[50%_55%]";
     case "showroomHero":
-      return "object-cover object-[50%_55%]";
+      return isOpaqueCatalogPhotoSrc(src)
+        ? "object-cover object-[50%_54%]"
+        : "object-cover object-[50%_55%]";
   }
 }

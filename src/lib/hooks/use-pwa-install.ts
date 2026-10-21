@@ -13,9 +13,12 @@ import {
   isBeforeInstallPromptEvent,
   isIosDevice,
   isMobileDevice,
+  isPwaInstalled,
   isStandaloneDisplay,
-  persistInstallDismissed,
-  readInstallDismissed,
+  persistPwaInstalled,
+  persistPwaSnooze,
+  readPwaSnoozed,
+  shouldOfferPwaInstallPrompt,
   type BeforeInstallPromptEvent,
 } from "@/lib/pwa/install";
 
@@ -26,6 +29,8 @@ export type UsePwaInstallResult = {
   visible: boolean;
   /** App already running as installed PWA. */
   isStandalone: boolean;
+  /** Persisted or runtime installed state. */
+  hasInstalled: boolean;
   platform: PwaInstallPlatform;
   /** Android/Chrome — native install prompt available. */
   canNativeInstall: boolean;
@@ -37,15 +42,25 @@ export function usePwaInstall(): UsePwaInstallResult {
   const pathname = usePathname();
   const onVehicleDashboard = isVehicleDashboardPath(pathname ?? "");
   const [isStandalone, setIsStandalone] = useState(true);
-  const [dismissed, setDismissed] = useState(true);
+  const [hasInstalled, setHasInstalled] = useState(true);
+  const [, setSnoozed] = useState(true);
   const [orchestratorReady, setOrchestratorReady] = useState(!onVehicleDashboard);
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [platform, setPlatform] = useState<PwaInstallPlatform>(null);
 
+  const syncInstallState = useCallback(() => {
+    const standalone = isStandaloneDisplay();
+    setIsStandalone(standalone);
+    if (standalone) {
+      persistPwaInstalled();
+    }
+    setHasInstalled(isPwaInstalled());
+    setSnoozed(readPwaSnoozed());
+  }, []);
+
   useEffect(() => {
-    setIsStandalone(isStandaloneDisplay());
-    setDismissed(readInstallDismissed());
+    syncInstallState();
 
     const ios = isIosDevice();
     const android = isAndroidDevice();
@@ -61,21 +76,28 @@ export function usePwaInstall(): UsePwaInstallResult {
     }
 
     function onDisplayModeChange() {
-      setIsStandalone(isStandaloneDisplay());
+      syncInstallState();
+    }
+
+    function onAppInstalled() {
+      persistPwaInstalled();
+      syncInstallState();
     }
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
     window
       .matchMedia("(display-mode: standalone)")
       .addEventListener("change", onDisplayModeChange);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
       window
         .matchMedia("(display-mode: standalone)")
         .removeEventListener("change", onDisplayModeChange);
     };
-  }, []);
+  }, [syncInstallState]);
 
   useEffect(() => {
     if (!onVehicleDashboard) {
@@ -91,23 +113,26 @@ export function usePwaInstall(): UsePwaInstallResult {
   }, [onVehicleDashboard]);
 
   const dismiss = useCallback(() => {
-    persistInstallDismissed();
-    setDismissed(true);
+    persistPwaSnooze();
+    setSnoozed(true);
   }, []);
 
   const promptInstall = useCallback(async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    const choice = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
-  }, [deferredPrompt]);
+    if (choice.outcome === "accepted") {
+      persistPwaInstalled();
+      syncInstallState();
+    }
+  }, [deferredPrompt, syncInstallState]);
 
   const canNativeInstall = deferredPrompt != null;
   const showIosGuide = platform === "ios";
   const showAndroidGuide = platform === "android";
   const visible =
-    !isStandalone &&
-    !dismissed &&
+    shouldOfferPwaInstallPrompt() &&
     isMobileDevice() &&
     (showIosGuide || showAndroidGuide) &&
     orchestratorReady;
@@ -115,6 +140,7 @@ export function usePwaInstall(): UsePwaInstallResult {
   return {
     visible,
     isStandalone,
+    hasInstalled,
     platform,
     canNativeInstall,
     dismiss,

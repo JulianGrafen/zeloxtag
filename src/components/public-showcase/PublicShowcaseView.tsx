@@ -16,12 +16,15 @@ type PublicShowcaseViewProps = {
   /** From Builds entdecken (`?showcase=1`) — show top-left back control. */
   discoverBackHref?: string | null;
   showDiscoverBack?: boolean;
+  /** Parent already shows wordmark + tabs (e.g. /demo sticky chrome). */
+  hideBrandBanner?: boolean;
 };
 
 export function PublicShowcaseView({
   data,
   discoverBackHref = null,
   showDiscoverBack = false,
+  hideBrandBanner = false,
 }: PublicShowcaseViewProps) {
   const showBuildDna = data.buildDna != null;
 
@@ -33,6 +36,7 @@ export function PublicShowcaseView({
         photos={data.photos}
         showDiscoverBack={showDiscoverBack}
         discoverBackHref={discoverBackHref}
+        hideBrandBanner={hideBrandBanner}
       />
       <div
         className={`${showroom.content} mx-auto flex w-full max-w-lg flex-col gap-6 pb-[max(2rem,env(safe-area-inset-bottom))]`}

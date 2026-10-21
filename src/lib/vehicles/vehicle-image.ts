@@ -18,6 +18,16 @@ export function vehicleCatalogImageUrl(filename: string): string {
   return `/api/vehicle/catalog/${filename}`;
 }
 
+/** Full-scene catalog PNGs (not transparent cutouts) — crop vignette with cover + scale. */
+export function isOpaqueCatalogPhotoSrc(src: string | null | undefined): boolean {
+  if (!src?.includes("/api/vehicle/catalog/")) {
+    return false;
+  }
+  const base =
+    src.split("/").pop()?.split("?")[0]?.toLowerCase() ?? "";
+  return !base.includes("transparent") && !base.includes("cutout");
+}
+
 function normalize(value: string): string {
   return value
     .toLowerCase()

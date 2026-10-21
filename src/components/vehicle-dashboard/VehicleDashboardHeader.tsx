@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { bumpSilhouetteCacheUrl } from "@/lib/vehicles/prefetch-silhouette-image";
 import { SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE } from "@/lib/vehicles/silhouette-constants";
 import { isOwnerSilhouetteSrc } from "@/lib/vehicles/silhouette-display-url";
+import { isOpaqueCatalogPhotoSrc } from "@/lib/vehicles/vehicle-image";
 
 import { dashboardHeroShellClassName } from "./dashboard-menu-styles";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,8 @@ interface VehicleDashboardHeaderProps {
   vehicleImagePreviewFallback?: string;
   vehicleImageAlt?: string;
   vehicleImageFrameless?: boolean;
+  /** Edge-to-edge hero under sticky demo chrome (no rounded gray card ears). */
+  heroFlush?: boolean;
   onSilhouetteProxyLoad?: () => void;
 }
 
@@ -80,6 +83,7 @@ export function VehicleDashboardHeader({
   vehicleImagePreviewFallback,
   vehicleImageAlt,
   vehicleImageFrameless = false,
+  heroFlush = false,
   onSilhouetteProxyLoad,
 }: VehicleDashboardHeaderProps) {
   const { name, year } = parseVehicleHeroLabel(vehicleModel);
@@ -160,6 +164,8 @@ export function VehicleDashboardHeader({
   const displaySrc = heroSrc ? withDashboardSilhouetteWidth(heroSrc) : null;
   const isCutoutHero =
     vehicleImageFrameless || isCatalogCutoutSrc(displaySrc);
+  const opaqueCatalogPhoto = isOpaqueCatalogPhotoSrc(displaySrc);
+  const framelessHero = vehicleImageFrameless && isCutoutHero;
   const isOwnerPhoto =
     Boolean(displaySrc) &&
     !isCutoutHero &&
@@ -172,6 +178,11 @@ export function VehicleDashboardHeader({
         dashboardHeroShellClassName,
         "vd-anim-header relative z-40 min-h-[11rem] shrink-0 overflow-hidden sm:min-h-[12rem]",
         isCutoutHero && "min-h-[12rem] sm:min-h-[13rem]",
+        framelessHero &&
+          "border-0 bg-black shadow-none [background-image:none]",
+        framelessHero && "rounded-none",
+        heroFlush && "-mx-4 w-auto sm:-mx-5",
+        opaqueCatalogPhoto && framelessHero && "min-h-[12.5rem] sm:min-h-[13.5rem]",
       )}
       data-tour="dashboard-header"
     >
@@ -187,7 +198,9 @@ export function VehicleDashboardHeader({
             className={cn(
               "absolute left-0 right-0 mx-auto w-full max-w-none",
               isCutoutHero
-                ? "bottom-0 h-[128%] max-w-full object-contain object-bottom drop-shadow-[0_18px_42px_rgba(0,0,0,0.55)]"
+                ? opaqueCatalogPhoto
+                  ? "inset-0 h-full scale-[1.06] object-cover object-[50%_56%]"
+                  : "bottom-0 h-[128%] max-w-full object-contain object-bottom drop-shadow-[0_18px_42px_rgba(0,0,0,0.55)]"
                 : cn(
                     "inset-0 h-full object-cover",
                     isOwnerPhoto
@@ -200,9 +213,11 @@ export function VehicleDashboardHeader({
           />
           <div
             className={cn(
-              "absolute inset-0 bg-gradient-to-t from-zinc-950",
+              "absolute inset-0 bg-gradient-to-t from-black",
               isCutoutHero
-                ? "via-zinc-950/35 to-transparent"
+                ? framelessHero
+                  ? "via-black/45 to-transparent"
+                  : "via-zinc-950/35 to-transparent"
                 : "via-zinc-950/50 to-zinc-950/5",
             )}
           />

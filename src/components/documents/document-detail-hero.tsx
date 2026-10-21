@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { AdaptiveDocumentDetailTitle } from "@/components/documents/adaptive-document-detail-title";
 import {
   automotiveBodyMutedClassName,
   automotiveDisplayTitleClassName,
@@ -10,9 +11,10 @@ import { cn } from "@/lib/utils";
 export const DOCUMENT_DETAIL_HERO_CLASS =
   "zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)] sm:p-6";
 
+/** Base typography for edit mode (fixed size while editing). */
 export const DOCUMENT_DETAIL_TITLE_CLASS = cn(
   automotiveDisplayTitleClassName,
-  "break-words text-balance sm:text-[1.5rem]",
+  "min-w-0 text-balance [overflow-wrap:anywhere]",
 );
 
 type DocumentDetailHeroProps = {
@@ -40,12 +42,14 @@ export function DocumentDetailHero({
         <div
           className={cn(
             "flex gap-x-4",
-            hasAside ? "items-baseline justify-between" : "flex-col",
+            hasAside ? "items-start justify-between" : "flex-col",
           )}
         >
           <div className="min-w-0 flex-1">
             {typeof title === "string" ? (
-              <h1 className={DOCUMENT_DETAIL_TITLE_CLASS}>{title}</h1>
+              <AdaptiveDocumentDetailTitle hasTrailingAside={hasAside}>
+                {title}
+              </AdaptiveDocumentDetailTitle>
             ) : (
               <div className="min-w-0">{title}</div>
             )}

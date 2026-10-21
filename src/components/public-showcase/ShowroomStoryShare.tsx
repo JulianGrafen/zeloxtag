@@ -6,7 +6,9 @@ import {
   ShareableSpecCard,
   buildShareableBuildData,
 } from "@/components/shareable-spec-card";
+import { buildDemoShareCardData } from "@/lib/demo/demo-share-card-data";
 import { buildBuildDnaProfileContextFromPublicProfile } from "@/lib/showcase/build-dna-profile-context";
+import { MOCK_DEMO_VEHICLE_ID } from "@/lib/tags/mock-tags";
 import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 
 import { showroom } from "./showroom-styles";
@@ -16,19 +18,20 @@ type ShowroomStoryShareProps = {
 };
 
 export function ShowroomStoryShare({ data }: ShowroomStoryShareProps) {
-  const cardData = useMemo(
-    () =>
-      buildShareableBuildData({
-        profile: data.profile,
-        modificationsCount: data.modifications.length,
-        buildDna: data.buildDna,
-        modifications: data.modifications,
-        buildDnaProfile: buildBuildDnaProfileContextFromPublicProfile(
-          data.profile,
-        ),
-      }),
-    [data],
-  );
+  const cardData = useMemo(() => {
+    if (data.profile.vehicleId === MOCK_DEMO_VEHICLE_ID) {
+      return buildDemoShareCardData(1);
+    }
+    return buildShareableBuildData({
+      profile: data.profile,
+      modificationsCount: data.modifications.length,
+      buildDna: data.buildDna,
+      modifications: data.modifications,
+      buildDnaProfile: buildBuildDnaProfileContextFromPublicProfile(
+        data.profile,
+      ),
+    });
+  }, [data]);
 
   if (!cardData) {
     return null;

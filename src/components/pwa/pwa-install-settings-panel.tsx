@@ -6,9 +6,9 @@ import { PwaInstallGuide } from "@/components/pwa/pwa-install-guide";
 import { usePwaInstall } from "@/lib/hooks/use-pwa-install";
 
 export function PwaInstallSettingsPanel() {
-  const { isStandalone, canNativeInstall, promptInstall } = usePwaInstall();
+  const { hasInstalled, canNativeInstall, promptInstall } = usePwaInstall();
 
-  if (isStandalone) {
+  if (hasInstalled) {
     return (
       <section
         aria-label="App installiert"

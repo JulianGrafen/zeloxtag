@@ -9,6 +9,7 @@ import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AdaptiveDocumentDetailTitle } from "@/components/documents/adaptive-document-detail-title";
 import { DOCUMENT_DETAIL_TITLE_CLASS } from "@/components/documents/document-detail-hero";
 import { displayDocumentTitle } from "@/lib/documents/format";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
@@ -102,9 +103,9 @@ export function EditableTitleSection({
     <div id={sectionId} className="min-w-0 scroll-mt-24">
       {!editing ? (
         <div className="flex items-start gap-2">
-          <h1 className={`min-w-0 ${DOCUMENT_DETAIL_TITLE_CLASS}`}>
+          <AdaptiveDocumentDetailTitle hasTrailingAside>
             {displayTitle}
-          </h1>
+          </AdaptiveDocumentDetailTitle>
           {!hideEditTrigger ? (
             <PressableButton
               type="button"

@@ -71,6 +71,7 @@ export function VehicleDashboard({
             vehicleImagePreviewFallback={data.vehicleImagePreviewFallback}
             vehicleImageAlt={data.vehicleImageAlt}
             vehicleImageFrameless={data.vehicleImageFrameless}
+            heroFlush={hideBrandBanner}
             onSilhouetteProxyLoad={onSilhouetteProxyLoad}
           />
 

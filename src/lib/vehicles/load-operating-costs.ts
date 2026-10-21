@@ -1,3 +1,4 @@
+import { getDemoOperatingCostsForVehicle } from "@/lib/demo/mock-operating-costs";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { VehicleOperatingCost } from "@/types/database";
@@ -42,4 +43,15 @@ export async function listOperatingCostsForVehicle(
   }
 
   return (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
+}
+
+/** Demo showcase twins ship with local mock costs instead of Supabase rows. */
+export async function resolveOperatingCostsForVehicle(
+  vehicleId: string,
+  isDemoShowcase: boolean,
+): Promise<VehicleOperatingCost[]> {
+  if (isDemoShowcase) {
+    return getDemoOperatingCostsForVehicle(vehicleId);
+  }
+  return listOperatingCostsForVehicle(vehicleId);
 }

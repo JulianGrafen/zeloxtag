@@ -1,4 +1,5 @@
 import { MANUAL_ENTRY_MARKER } from "@/lib/documents/manual-entries";
+import { DEMO_ENGINE_SOUND_URL } from "@/lib/tags/demo-showcase";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
 /** Demo UUIDs for local development without Supabase. */
@@ -34,7 +35,7 @@ const mockVehicle: Vehicle = {
     dynoChartUrl: "/demo/dyno-e36.svg",
   },
   silhouette_image_url: null,
-  sound_url: null,
+  sound_url: DEMO_ENGINE_SOUND_URL,
   is_public: false,
   hide_financials: true,
   public_slug: null,

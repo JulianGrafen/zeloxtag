@@ -38,6 +38,7 @@ import {
   useShowroomMotion,
 } from "./showroom-motion";
 import { preloadImageHrefs } from "@/lib/image/preload-image-hrefs";
+import { isOpaqueCatalogPhotoSrc } from "@/lib/vehicles/vehicle-image";
 
 import { showroom } from "./showroom-styles";
 
@@ -46,6 +47,8 @@ type ShowroomHeroProps = {
   photos: PublicGalleryPhoto[];
   showDiscoverBack?: boolean;
   discoverBackHref?: string | null;
+  /** Sticky parent chrome already covers the top — skip in-hero wordmark + fade. */
+  hideBrandBanner?: boolean;
 };
 
 export type HeroCarouselHandle = {
@@ -60,6 +63,7 @@ type HeroBackdropProps = {
   carouselRef: RefObject<HeroCarouselHandle | null>;
   onActiveIndexChange: (index: number) => void;
   onOpenAtIndex: (index: number) => void;
+  hideBrandBanner?: boolean;
 };
 
 function HeroBackdrop({
@@ -70,6 +74,7 @@ function HeroBackdrop({
   carouselRef,
   onActiveIndexChange,
   onOpenAtIndex,
+  hideBrandBanner = false,
 }: HeroBackdropProps) {
   const motionConfig = useShowroomMotion();
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -122,7 +127,12 @@ function HeroBackdrop({
   return (
     <div className="absolute inset-0 bg-black">
       <motion.div
-        className={`absolute inset-x-0 top-0 z-[1] ${showroom.heroSwipeBand}`}
+        className={cn(
+          "absolute inset-x-0 top-0 z-[1]",
+          hideBrandBanner
+            ? "bottom-[28%] min-h-[min(58dvh,580px)]"
+            : showroom.heroSwipeBand,
+        )}
         variants={motionConfig.heroImageSettle}
         initial="hidden"
         animate="visible"
@@ -140,23 +150,27 @@ function HeroBackdrop({
               motionConfig.enableHeroKenBurns &&
               !photoUsesContainLayout(photo.src) &&
               index === activeIndex;
+            const opaqueCatalog = isOpaqueCatalogPhotoSrc(photo.src);
 
             return (
               <button
                 key={photo.id}
                 type="button"
                 onClick={() => onOpenAtIndex(index)}
-                className="relative h-full min-w-full shrink-0 cursor-zoom-in snap-center border-0 bg-transparent p-0 text-left"
+                className="relative h-full min-w-full shrink-0 cursor-zoom-in snap-center overflow-hidden border-0 bg-black p-0 text-left"
                 aria-label={`${photo.alt || title} im Vollbild anzeigen`}
                 aria-hidden={index !== activeIndex}
                 tabIndex={index === activeIndex ? 0 : -1}
               >
                 <motion.div
-                  className="pointer-events-none absolute inset-0"
+                  className={cn(
+                    "pointer-events-none absolute inset-0",
+                    opaqueCatalog && !kenBurnsActive && "scale-[1.07]",
+                  )}
                   animate={
                     kenBurnsActive
                       ? {
-                          scale: [1, 1.06],
+                          scale: opaqueCatalog ? [1.07, 1.12] : [1, 1.06],
                           transition: {
                             duration: HERO_KEN_BURNS_DURATION_S,
                             ease: "linear" as const,
@@ -164,7 +178,7 @@ function HeroBackdrop({
                             repeatType: "reverse" as const,
                           },
                         }
-                      : { scale: 1 }
+                      : { scale: opaqueCatalog ? 1.07 : 1 }
                   }
                   style={{ transformOrigin: "center 42%" }}
                 >
@@ -180,7 +194,10 @@ function HeroBackdrop({
                     loading={
                       Math.abs(index - activeIndex) <= 1 ? "eager" : "lazy"
                     }
-                    unoptimized={photo.src.startsWith("/api/")}
+                    unoptimized={
+                      photo.src.startsWith("/api/") ||
+                      photo.src.endsWith(".svg")
+                    }
                     className={`pointer-events-none ${showcaseVehicleFocusImageClassName(photo.src, "showroomHero")}`}
                     sizes="100vw"
                     draggable={false}
@@ -193,7 +210,12 @@ function HeroBackdrop({
       </motion.div>
 
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-[32%] bg-gradient-to-b from-black/70 to-transparent"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 z-[2] bg-gradient-to-b to-transparent",
+          hideBrandBanner
+            ? "h-[14%] from-black/35"
+            : "h-[32%] from-black/70",
+        )}
         aria-hidden
       />
       <div
@@ -209,6 +231,7 @@ export function ShowroomHero({
   photos,
   showDiscoverBack = false,
   discoverBackHref = null,
+  hideBrandBanner = false,
 }: ShowroomHeroProps) {
   const title =
     formatPublicVehicleTitle(profile.make, profile.model) || "Fahrzeug";
@@ -251,9 +274,10 @@ export function ShowroomHero({
           carouselRef={carouselRef}
           onActiveIndexChange={setActiveIndex}
           onOpenAtIndex={(index) => setLightboxIndex(index)}
+          hideBrandBanner={hideBrandBanner}
         />
 
-        <ShowroomBrandBanner />
+        {hideBrandBanner ? null : <ShowroomBrandBanner />}
 
         {showDiscoverBack ? (
           <ShowroomDiscoverBackButton backHref={discoverBackHref} />
@@ -263,7 +287,12 @@ export function ShowroomHero({
           <button
             type="button"
             onClick={() => setLightboxIndex(activeIndex)}
-            className="pointer-events-auto absolute right-3 top-[max(3.25rem,calc(env(safe-area-inset-top)+2.5rem))] z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white/90 backdrop-blur-sm"
+            className={cn(
+              "pointer-events-auto absolute right-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white/90 backdrop-blur-sm",
+              hideBrandBanner
+                ? "top-3"
+                : "top-[max(3.25rem,calc(env(safe-area-inset-top)+2.5rem))]",
+            )}
             aria-label="Aktuelles Foto vergrößern"
           >
             <Expand className="h-4 w-4" aria-hidden />
@@ -271,7 +300,11 @@ export function ShowroomHero({
         ) : null}
 
         <div
-          className={`pointer-events-none relative z-10 flex ${showroom.heroMinHeight} flex-col justify-end px-5 pb-8 pt-[max(4.5rem,env(safe-area-inset-top))]`}
+          className={cn(
+            "pointer-events-none relative z-10 flex flex-col justify-end px-5 pb-8",
+            showroom.heroMinHeight,
+            hideBrandBanner ? "pt-4" : "pt-[max(4.5rem,env(safe-area-inset-top))]",
+          )}
         >
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[min(52%,26rem)] bg-gradient-to-t from-black via-black/85 to-transparent"

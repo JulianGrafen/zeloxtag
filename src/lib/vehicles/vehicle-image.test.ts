@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE } from "./silhouette-constants";
-import { resolveVehicleCatalogImage, resolveVehicleImage } from "./vehicle-image";
+import {
+  isOpaqueCatalogPhotoSrc,
+  resolveVehicleCatalogImage,
+  resolveVehicleImage,
+} from "./vehicle-image";
 
 describe("resolveVehicleImage", () => {
   it("maps uploaded silhouettes to the same-origin proxy when vehicleId is set", () => {
@@ -90,6 +94,18 @@ describe("resolveVehicleImage", () => {
       src: "/api/vehicle/catalog/bmw-e36.png",
       alt: "BMW E36",
     });
+  });
+
+  it("detects opaque vs transparent catalog filenames", () => {
+    expect(isOpaqueCatalogPhotoSrc("/api/vehicle/catalog/bmw-e36.png")).toBe(
+      true,
+    );
+    expect(
+      isOpaqueCatalogPhotoSrc("/api/vehicle/catalog/m3-f82-transparent.png"),
+    ).toBe(false);
+    expect(isOpaqueCatalogPhotoSrc("/api/vehicle/catalog/m3-f82-cutout.png")).toBe(
+      false,
+    );
   });
 
   it("maps Toyota Supra to the A80 showcase cutout", () => {

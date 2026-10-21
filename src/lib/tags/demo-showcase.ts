@@ -25,6 +25,9 @@ export const DEMO_SHOWCASE_VEHICLE_IMAGE = vehicleCatalogImageUrl(
   "bmw-e36.png",
 );
 
+/** Trimmed M52 exhaust clip (9 s) for demo Soundcheck — `public/demo/e36-engine-sound.mp3`. */
+export const DEMO_ENGINE_SOUND_URL = "/demo/e36-engine-sound.mp3";
+
 /** Guest access for the public E36 showcase — browse all surfaces, no writes. */
 export function demoShowcaseAccess(): VehicleAccess {
   return {

@@ -1,187 +1,123 @@
 "use client";
 
-import { Download, MoreVertical, Plus, Share } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Download } from "lucide-react";
 
+import { PwaInstallStepCarousel } from "@/components/pwa/pwa-install-step-carousel";
 import { Button } from "@/components/ui/button";
+import {
+  filterChromeInstallSteps,
+  stepsForGuideTrack,
+} from "@/lib/pwa/install-guide-steps";
+import type { PwaInstallGuideTrack } from "@/lib/pwa/install";
 import { cn } from "@/lib/utils";
 
-function Step({
-  index,
-  children,
-  compact,
-}: {
-  index: number;
-  children: React.ReactNode;
+type PwaInstallGuideProps = {
+  /** Auto-detect single track, or both with tabs. */
+  variant?: "auto" | "full" | PwaInstallGuideTrack;
+  showChromeInstallButton?: boolean;
+  onChromeInstall?: () => void;
   compact?: boolean;
-}) {
-  return (
-    <li
-      className={cn(
-        "flex gap-2.5 leading-snug text-[color:var(--vd-text)]",
-        compact ? "text-[0.8rem]" : "text-[0.84rem]",
-      )}
-    >
-      <span
-        className={cn(
-          "inline-flex shrink-0 items-center justify-center rounded-full bg-[color:var(--vd-surface-elevated)] font-semibold text-[color:var(--vd-muted)]",
-          compact ? "mt-0.5 h-5 w-5 text-[0.65rem]" : "mt-0.5 h-6 w-6 text-[0.7rem]",
-        )}
-        aria-hidden
-      >
-        {index}
-      </span>
-      <span className="pt-0.5">{children}</span>
-    </li>
-  );
-}
-
-function BrowserHeading({
-  label,
-  compact,
-}: {
-  label: string;
-  compact?: boolean;
-}) {
-  return (
-    <h3
-      className={cn(
-        "font-[family-name:var(--font-display)] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]",
-        compact ? "text-[0.88rem]" : "text-[0.92rem]",
-      )}
-    >
-      {label}
-    </h3>
-  );
-}
-
-export function SafariInstallGuide({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className={cn(compact ? "space-y-2" : "space-y-2.5")}>
-      <BrowserHeading label="Safari (iPhone & iPad)" compact={compact} />
-      <ol className={cn(compact ? "space-y-2" : "space-y-2.5")}>
-        <Step index={1} compact={compact}>
-          Öffne ZeloxTag in Safari.
-        </Step>
-        <Step index={2} compact={compact}>
-          Tippe unten auf das Teilen-Symbol{" "}
-          <Share
-            className="mx-0.5 inline h-4 w-4 align-[-0.2em] text-[color:var(--vd-text)]"
-            aria-hidden
-          />
-          .
-        </Step>
-        <Step index={3} compact={compact}>
-          Wähle{" "}
-          <span className="inline-flex items-center gap-0.5 font-medium">
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Zum Home-Bildschirm
-          </span>
-          .
-        </Step>
-        <Step index={4} compact={compact}>
-          Bestätige mit „Hinzufügen“.
-        </Step>
-      </ol>
-    </div>
-  );
-}
-
-type ChromeInstallGuideProps = {
-  compact?: boolean;
-  showInstallButton?: boolean;
-  onInstall?: () => void;
+  className?: string;
 };
 
-export function ChromeInstallGuide({
-  compact = false,
-  showInstallButton = false,
-  onInstall,
-}: ChromeInstallGuideProps) {
+function BrowserTabs({
+  active,
+  onChange,
+}: {
+  active: PwaInstallGuideTrack;
+  onChange: (track: PwaInstallGuideTrack) => void;
+}) {
   return (
-    <div className={cn(compact ? "space-y-2" : "space-y-2.5")}>
-      <BrowserHeading label="Chrome (Android & iPhone)" compact={compact} />
-      {showInstallButton && onInstall ? (
-        <>
-          <p
-            className={cn(
-              "leading-relaxed text-[color:var(--vd-muted)]",
-              compact ? "text-[0.8rem]" : "text-[0.84rem]",
-            )}
-          >
-            Auf Android kannst du ZeloxTag direkt installieren:
-          </p>
-          <Button
+    <div
+      role="tablist"
+      aria-label="Browser-Anleitung"
+      className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-1"
+    >
+      {(
+        [
+          { id: "safari" as const, label: "Safari" },
+          { id: "chrome" as const, label: "Chrome" },
+        ] as const
+      ).map((tab) => {
+        const selected = active === tab.id;
+        return (
+          <button
+            key={tab.id}
             type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(tab.id)}
             className={cn(
-              "w-full font-semibold",
-              compact ? "h-10 text-[0.88rem]" : "h-11",
+              "rounded-lg px-3 py-2 text-[0.82rem] font-semibold transition-colors",
+              selected
+                ? "bg-[color:var(--vd-surface)] text-[color:var(--vd-text)] shadow-sm"
+                : "text-[color:var(--vd-muted)]",
             )}
-            onClick={() => void onInstall()}
           >
-            <Download className="mr-2 h-4 w-4" aria-hidden />
-            App installieren
-          </Button>
-        </>
-      ) : null}
-      <ol className={cn(compact ? "space-y-2" : "space-y-2.5")}>
-        {!showInstallButton ? (
-          <Step index={1} compact={compact}>
-            Öffne ZeloxTag in Chrome.
-          </Step>
-        ) : null}
-        <Step index={showInstallButton ? 1 : 2} compact={compact}>
-          <span className="font-medium">Android:</span> Tippe oben rechts auf
-          das Menü{" "}
-          <MoreVertical
-            className="mx-0.5 inline h-4 w-4 align-[-0.2em] text-[color:var(--vd-text)]"
-            aria-hidden
-          />{" "}
-          und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.
-        </Step>
-        <Step index={showInstallButton ? 2 : 3} compact={compact}>
-          <span className="font-medium">iPhone:</span> Menü{" "}
-          <MoreVertical
-            className="mx-0.5 inline h-4 w-4 align-[-0.2em] text-[color:var(--vd-text)]"
-            aria-hidden
-          />{" "}
-          → „Teilen…“ →{" "}
-          <span className="inline-flex items-center gap-0.5 font-medium">
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Zum Home-Bildschirm
-          </span>
-          .
-        </Step>
-      </ol>
+            {tab.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
 export function PwaInstallGuide({
-  compact = false,
   variant = "full",
   showChromeInstallButton = false,
   onChromeInstall,
-}: {
-  compact?: boolean;
-  variant?: "full" | "safari" | "chrome";
-  showChromeInstallButton?: boolean;
-  onChromeInstall?: () => void;
-}) {
-  const showSafari = variant === "full" || variant === "safari";
-  const showChrome = variant === "full" || variant === "chrome";
+  compact = false,
+  className,
+}: PwaInstallGuideProps) {
+  const [tabTrack, setTabTrack] = useState<PwaInstallGuideTrack>("safari");
+
+  const track: PwaInstallGuideTrack | "both" =
+    variant === "auto"
+      ? "both"
+      : variant === "full"
+        ? "both"
+        : variant;
+
+  const steps = useMemo(() => {
+    if (track === "both") {
+      const raw = stepsForGuideTrack(tabTrack);
+      return tabTrack === "chrome"
+        ? filterChromeInstallSteps(raw, showChromeInstallButton)
+        : raw;
+    }
+    const raw = stepsForGuideTrack(track);
+    return track === "chrome"
+      ? filterChromeInstallSteps(raw, showChromeInstallButton)
+      : raw;
+  }, [showChromeInstallButton, tabTrack, track]);
 
   return (
-    <div className={cn(compact ? "space-y-4" : "space-y-5")}>
-      {showSafari ? <SafariInstallGuide compact={compact} /> : null}
-      {showSafari && showChrome ? (
-        <div className="h-px bg-[color:var(--vd-border)]" aria-hidden />
+    <div className={className}>
+      {track === "both" ? (
+        <BrowserTabs active={tabTrack} onChange={setTabTrack} />
       ) : null}
-      {showChrome ? (
-        <ChromeInstallGuide
-          compact={compact}
-          showInstallButton={showChromeInstallButton}
-          onInstall={onChromeInstall}
-        />
+
+      <PwaInstallStepCarousel
+        steps={steps}
+        slideMinHeightClassName={compact ? "min-h-[11rem]" : "min-h-[12.5rem]"}
+      />
+
+      {showChromeInstallButton &&
+      onChromeInstall &&
+      track !== "safari" &&
+      (track === "chrome" || tabTrack === "chrome") ? (
+        <Button
+          type="button"
+          className={cn(
+            "mt-4 w-full font-semibold",
+            compact ? "h-10 text-[0.88rem]" : "h-11",
+          )}
+          onClick={() => void onChromeInstall()}
+        >
+          <Download className="mr-2 h-4 w-4" aria-hidden />
+          App installieren
+        </Button>
       ) : null}
     </div>
   );

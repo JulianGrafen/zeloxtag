@@ -26,6 +26,7 @@ import { loadPendingWeeklyRankAwardForVehicle } from "@/lib/showcase/load-weekly
 import type { ShowcaseWeeklyRankAward } from "@/lib/showcase/weekly-rank-award-types";
 import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
+import { getDemoOperatingCostsForVehicle } from "@/lib/demo/mock-operating-costs";
 import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
 import { buildPlannerDashboardHint } from "@/lib/build-planner/build-planner-summary";
 import { listPlannedModsWithTodosForVehicle } from "@/lib/build-planner/planned-mods-repository";
@@ -137,21 +138,25 @@ export async function loadOwnerDashboardForVehicle(
 
   let operatingCostHint = null;
   let buildPlannerHint = null;
-  if (access.isOwner && !isDemoShowcase) {
+  if (access.isOwner) {
     try {
-      const operatingCosts = await listOperatingCostsForVehicle(vehicle.id);
+      const operatingCosts = isDemoShowcase
+        ? getDemoOperatingCostsForVehicle(vehicle.id)
+        : await listOperatingCostsForVehicle(vehicle.id);
       operatingCostHint = buildOperatingCostDashboardHint(operatingCosts);
     } catch (error) {
       console.error("[garage-dashboard] operating costs", error);
     }
-    try {
-      const mods = await listPlannedModsWithTodosForVehicle(vehicle.id);
-      buildPlannerHint = buildPlannerDashboardHint({
-        mods,
-        todos: mods.flatMap((mod) => mod.todos),
-      });
-    } catch (error) {
-      console.error("[garage-dashboard] build planner", error);
+    if (!isDemoShowcase) {
+      try {
+        const mods = await listPlannedModsWithTodosForVehicle(vehicle.id);
+        buildPlannerHint = buildPlannerDashboardHint({
+          mods,
+          todos: mods.flatMap((mod) => mod.todos),
+        });
+      } catch (error) {
+        console.error("[garage-dashboard] build planner", error);
+      }
     }
   }
 
