@@ -10,11 +10,13 @@ import {
   DEMO_BUILD_STORY_SLUG,
 } from "@/lib/demo/demo-build-story";
 import { DEMO_DYNO_CHART_URL } from "@/lib/demo/demo-assets";
+import { DEMO_E36_VEHICLE_TECH_SPECS } from "@/lib/demo/demo-vehicle-tech-specs";
 import { DEMO_SHOWCASE_VEHICLE_IMAGE } from "@/lib/tags/demo-showcase";
 import { MOCK_DEMO_VEHICLE_ID } from "@/lib/tags/mock-tags";
 import type { Document, Vehicle } from "@/types/database";
 
-function demoShowcaseVehicle(vehicle: Vehicle): Vehicle {
+/** Full demo twin fields (Garage, Showcase, Share Card). */
+export function enrichDemoShowcaseVehicle(vehicle: Vehicle): Vehicle {
   const specs = parseVehicleTechSpecs(vehicle.tech_specs);
   return {
     ...vehicle,
@@ -24,11 +26,11 @@ function demoShowcaseVehicle(vehicle: Vehicle): Vehicle {
     public_slug: DEMO_BUILD_STORY_SLUG,
     tech_specs: {
       ...specs,
-      dynoChartUrl: specs.dynoChartUrl?.trim() || DEMO_DYNO_CHART_URL,
-      instagramHandle: specs.instagramHandle ?? "julian.grafen",
-      buildPersonalityTags: specs.buildPersonalityTags?.length
-        ? specs.buildPersonalityTags
-        : ["showcar", "tracktool", "oem_plus"],
+      ...DEMO_E36_VEHICLE_TECH_SPECS,
+      dynoChartUrl:
+        specs.dynoChartUrl?.trim() ||
+        DEMO_E36_VEHICLE_TECH_SPECS.dynoChartUrl ||
+        DEMO_DYNO_CHART_URL,
     },
   };
 }
@@ -89,7 +91,7 @@ export function buildDemoPublicShowcasePayload(
   vehicle: Vehicle,
   documents: Document[],
 ): PublicShowcasePayload {
-  const enrichedVehicle = demoShowcaseVehicle(vehicle);
+  const enrichedVehicle = enrichDemoShowcaseVehicle(vehicle);
   const enrichedDocs = demoShowcaseDocuments(documents);
   const payload = buildPublicShowcasePayload(enrichedVehicle, enrichedDocs);
   const vehicleLabel =

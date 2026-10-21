@@ -67,9 +67,10 @@ export function ShowroomDyno({ profile, embedded = false }: ShowroomDynoProps) {
   const disclosure = (
     <ShowroomDisclosure
       title="Leistungsdiagramm"
-      open={open}
-      onToggle={() => setOpen((value) => !value)}
+      open={embedded ? true : open}
+      onToggle={embedded ? undefined : () => setOpen((value) => !value)}
       panelId="showroom-dyno-panel"
+      collapsible={!embedded}
     >
       {panel}
     </ShowroomDisclosure>

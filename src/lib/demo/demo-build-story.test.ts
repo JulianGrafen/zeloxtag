@@ -24,6 +24,9 @@ describe("demo build story", () => {
     );
     expect(payload.profile.dynoChartUrl).toBe("/demo/dyno-e36.svg");
     expect(payload.profile.dynoChartIsImage).toBe(true);
+    expect(payload.profile.accel0To100Sec).toBe(5.4);
+    expect(payload.profile.accel100To200Sec).toBe(11.8);
+    expect(payload.profile.powerPs).toBe(301);
     expect(payload.photos.some((p) => p.id === "demo-dyno")).toBe(true);
   });
 });

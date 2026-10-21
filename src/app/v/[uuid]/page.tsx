@@ -47,7 +47,10 @@ import {
   pageSocialMetadata,
   SHOWCASE_OG_DESCRIPTION,
 } from "@/lib/seo/open-graph";
-import { buildDemoPublicShowcasePayload } from "@/lib/demo/demo-public-showcase-payload";
+import {
+  buildDemoPublicShowcasePayload,
+  enrichDemoShowcaseVehicle,
+} from "@/lib/demo/demo-public-showcase-payload";
 import { isClaimLandingIdentifier } from "@/lib/tags/claim-landing";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 import {
@@ -428,8 +431,9 @@ export default async function TagScanPage({
           weeklyRankMockRank != null
             ? mockWeeklyRankAward(weeklyRankMockRank)
             : null;
+        const demoVehicle = enrichDemoShowcaseVehicle(vehicle);
         const showcasePayload = buildDemoPublicShowcasePayload(
-          vehicle,
+          demoVehicle,
           result.documents,
         );
 
@@ -450,7 +454,7 @@ export default async function TagScanPage({
               </AppShell>
             ) : null}
             <DemoPageExperience
-              vehicle={vehicle}
+              vehicle={demoVehicle}
               documents={result.documents}
               tagUuid={tag.uuid}
               showcasePayload={showcasePayload}

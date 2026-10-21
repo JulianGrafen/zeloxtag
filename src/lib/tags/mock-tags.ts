@@ -1,5 +1,6 @@
 import { MANUAL_ENTRY_MARKER } from "@/lib/documents/manual-entries";
 import { DEMO_ENGINE_SOUND_URL } from "@/lib/demo/demo-assets";
+import { DEMO_E36_VEHICLE_TECH_SPECS } from "@/lib/demo/demo-vehicle-tech-specs";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
 /** Demo UUIDs for local development without Supabase. */
@@ -20,20 +21,7 @@ const mockVehicle: Vehicle = {
   model: "328i",
   year: 1995,
   vin: "WBABA9105SAL123456",
-  tech_specs: {
-    engine: "2.8 M52",
-    powerPs: 193,
-    powerKw: 142,
-    torqueNm: 298,
-    displacementCc: 2793,
-    fuelType: "Benzin",
-    transmission: "5-Gang manuell",
-    drivetrain: "Heckantrieb",
-    color: "Arctissilber Metallic",
-    bodyType: "Coupé",
-    notes: "E36 · Widebody · GT-Flügel · KW V1 · BBS LM",
-    dynoChartUrl: "/demo/dyno-e36.svg",
-  },
+  tech_specs: { ...DEMO_E36_VEHICLE_TECH_SPECS },
   silhouette_image_url: null,
   sound_url: DEMO_ENGINE_SOUND_URL,
   is_public: false,
