@@ -14,6 +14,8 @@ export const MOCK_AULITZKY_VEHICLE_ID = "veh_demo_m3_g80";
 export const DEMO_AULITZKY_PARTNER_WEB_URL =
   "https://aulitzkyexhaust.de/Tuning/Abgassysteme/Abgasanlagen/";
 export const DEMO_AULITZKY_VEHICLE_IMAGE = "/demo/aulitzky-hero.jpg";
+/** Front-facing build photo — primary showcase hero & carousel lead. */
+export const DEMO_AULITZKY_SHOWCASE_IMAGE = "/demo/aulitzky-showcase.png";
 export const DEMO_AULITZKY_LIVERY_IMAGE = "/demo/aulitzky-livery.png";
 export const DEMO_AULITZKY_GALLERY_EXHAUST_IMAGE = "/demo/aulitzky-exhaust.jpg";
 export const DEMO_AULITZKY_LOGO_SRC = "/demo/aulitzky-tuning-logo.png";
@@ -230,9 +232,14 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
 
   const photos = [
     {
+      id: "aulitzky-showcase",
+      src: DEMO_AULITZKY_SHOWCASE_IMAGE,
+      alt: `${vehicleLabel} — Aulitzky Build`,
+    },
+    {
       id: "aulitzky-livery",
       src: DEMO_AULITZKY_LIVERY_IMAGE,
-      alt: `${vehicleLabel} — Aulitzky Build`,
+      alt: `${vehicleLabel} — Livery`,
     },
     {
       id: "aulitzky-hero",
@@ -251,7 +258,7 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
     photos,
     profile: {
       ...base.profile,
-      heroImageSrc: DEMO_AULITZKY_LIVERY_IMAGE,
+      heroImageSrc: DEMO_AULITZKY_SHOWCASE_IMAGE,
       dynoChartUrl: null,
       dynoChartIsImage: false,
       hideFinancials: true,
