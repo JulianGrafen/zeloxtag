@@ -1,6 +1,7 @@
 "use client";
 
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
+import { DiscoverBuildOfWeekHero } from "@/components/showcase-swipe/discover-minimal/DiscoverBuildOfWeekHero";
 import { discoverPageRootClassName } from "@/components/showcase-swipe/discover-minimal/discover-surface-styles";
 import { ShowcaseDiscoverExperience } from "@/components/showcase-swipe/showcase-discover-experience";
 import { buildDemoShareCardData } from "@/lib/demo/demo-share-card-data";
@@ -53,8 +54,17 @@ export function DemoDiscoverExperience({
   const ownWeeklyRank = resolveDemoOwnWeeklyRank(discoverData);
   const dailySwipeStats = resolveDemoDailySwipeStats(discoverData);
 
+  const buildOfTheWeek = discoverData.buildOfTheWeek;
+
   const experience = (
     <>
+      {buildOfTheWeek ? (
+        <DiscoverBuildOfWeekHero
+          build={buildOfTheWeek}
+          entdeckenReturnHref={entdeckenReturnHref}
+          className="mb-1"
+        />
+      ) : null}
       <ShowcaseDiscoverExperience
         tagUuid={tagUuid}
         vehicleId={usesLive ? undefined : MOCK_DEMO_VEHICLE_ID}
@@ -67,6 +77,11 @@ export function DemoDiscoverExperience({
         dailySwipeStats={dailySwipeStats}
         ownTopThreeShareCardData={ownTopThreeShareCardData}
         designPreview
+        leaderboardTitle={
+          usesLive && discoverData.initialWeeklyBuilds.length > 0
+            ? "Top Builds · diese Woche"
+            : "Top Builds"
+        }
       />
       <LegalFooterNav tone="inverse" className="pt-2" />
     </>

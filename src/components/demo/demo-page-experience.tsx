@@ -13,6 +13,7 @@ import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { buildDemoTimelineEvents } from "@/lib/demo/demo-timeline-events";
 import { getDemoOperatingCostsForVehicle } from "@/lib/demo/mock-operating-costs";
 import { buildOperatingCostDashboardHint } from "@/lib/vehicles/operating-costs/summary";
+import { formatDemoBuildOfWeekLabel } from "@/lib/demo/format-demo-build-of-week-label";
 import type { DemoEntdeckenDiscoverData } from "@/lib/demo/load-demo-entdecken-discover-data";
 import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import { DEMO_SHOWCASE_OWNER_NAME } from "@/lib/tags/demo-showcase";
@@ -52,6 +53,9 @@ export function DemoPageExperience({
   }, [activeView]);
 
   const demoEntdeckenHref = `/v/${tagUuid}/entdecken`;
+  const demoEntdeckenSubtitle = formatDemoBuildOfWeekLabel(
+    discoverData.buildOfTheWeek,
+  );
 
   return (
     <AppShell showNavbar={false}>
@@ -103,6 +107,7 @@ export function DemoPageExperience({
                 setActiveView("entdecken");
               }
             }}
+            demoEntdeckenSubtitle={demoEntdeckenSubtitle}
           />
         ) : activeView === "showcase" ? (
           <PublicShowcaseView

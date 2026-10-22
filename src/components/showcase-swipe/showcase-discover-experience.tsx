@@ -35,6 +35,7 @@ type ShowcaseDiscoverExperienceProps = {
   } | null;
   openWeeklyAwardFromEmail?: boolean;
   designPreview?: boolean;
+  leaderboardTitle?: string;
 };
 
 export function ShowcaseDiscoverExperience({
@@ -51,6 +52,7 @@ export function ShowcaseDiscoverExperience({
   weeklyRankCelebration = null,
   openWeeklyAwardFromEmail = false,
   designPreview = false,
+  leaderboardTitle = "Top Builds",
 }: ShowcaseDiscoverExperienceProps) {
   const [weeklyBuilds, setWeeklyBuilds] = useState(initialWeeklyBuilds);
   const [rankingsRevealed, setRankingsRevealed] = useState(false);
@@ -131,6 +133,7 @@ export function ShowcaseDiscoverExperience({
           builds={weeklyBuilds}
           entdeckenReturnHref={entdeckenReturnHref}
           ownVehicleId={vehicleId}
+          title={leaderboardTitle}
         />
       </motion.div>
     </div>

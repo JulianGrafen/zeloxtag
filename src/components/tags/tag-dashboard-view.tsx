@@ -98,6 +98,8 @@ interface TagDashboardViewProps {
   onLockedFeature?: (feature: FeatureFlag, tileId?: string) => void;
   /** Demo / custom tiles without href (e.g. in-app Builds entdecken). */
   onDashboardTileClick?: (tileId: string) => void;
+  /** Demo: subtitle for Builds entdecken tile (e.g. Build der Woche). */
+  demoEntdeckenSubtitle?: string | null;
   /** Immediate header refresh after silhouette upload (same-origin display URL). */
   vehicleImageOverride?: string | null;
   /** Data URL / blob fallback when proxy fails to load. */
@@ -148,6 +150,7 @@ export function TagDashboardView({
   hideScanFab = false,
   onLockedFeature,
   onDashboardTileClick,
+  demoEntdeckenSubtitle = null,
   vehicleImageOverride,
   previewFallbackUrl,
   onSilhouetteProxyLoad,
@@ -444,7 +447,7 @@ export function TagDashboardView({
     if (tile.id === "build-discover") {
       const likeSubtitle =
         demoMode
-          ? "Community-Builds live"
+          ? (demoEntdeckenSubtitle?.trim() || "Community-Builds live")
           : isOwner && showcaseSwipeUnreadLikes > 0
             ? `${showcaseSwipeUnreadLikes} neue Like${showcaseSwipeUnreadLikes === 1 ? "" : "s"}`
             : isOwner && showcaseSwipeTotalLikes > 0
