@@ -15,7 +15,7 @@ export const DEMO_AULITZKY_PARTNER_WEB_URL =
   "https://aulitzkyexhaust.de/Tuning/Abgassysteme/Abgasanlagen/";
 export const DEMO_AULITZKY_VEHICLE_IMAGE = "/demo/aulitzky-hero.jpg";
 /** Front-facing build photo — primary showcase hero & carousel lead. */
-export const DEMO_AULITZKY_SHOWCASE_IMAGE = "/demo/aulitzky-showcase.png";
+export const DEMO_AULITZKY_SHOWCASE_IMAGE = "/demo/aulitzky-showcase.jpg";
 export const DEMO_AULITZKY_LIVERY_IMAGE = "/demo/aulitzky-livery.png";
 export const DEMO_AULITZKY_GALLERY_EXHAUST_IMAGE = "/demo/aulitzky-exhaust.jpg";
 export const DEMO_AULITZKY_LOGO_SRC = "/demo/aulitzky-tuning-logo.png";
