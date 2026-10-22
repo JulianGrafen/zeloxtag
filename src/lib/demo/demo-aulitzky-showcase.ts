@@ -7,7 +7,8 @@ import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
 
 export const MOCK_AULITZKY_VEHICLE_ID = "veh_demo_m3_g80";
-export const DEMO_AULITZKY_PARTNER_APP_URL = "https://aulitzky-tuning.de";
+export const DEMO_AULITZKY_PARTNER_APP_URL =
+  "https://aulitzkyexhaust.de/Tuning/Abgassysteme/Abgasanlagen/";
 export const DEMO_AULITZKY_VEHICLE_IMAGE = vehicleCatalogImageUrl(
   "m3-f82-cutout.png",
 );
@@ -238,7 +239,7 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
       name: "Aulitzky Tuning",
       logoSrc: DEMO_AULITZKY_LOGO_SRC,
       logoAlt: "Aulitzky Tuning / Exhaust",
-      ctaLabel: "Zur Aulitzky App",
+      ctaLabel: "Abgasanlagen entdecken",
       ctaHref: DEMO_AULITZKY_PARTNER_APP_URL,
     },
     featureFlags: {
