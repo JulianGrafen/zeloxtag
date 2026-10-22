@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 
+import { showroom } from "@/components/public-showcase/showroom-styles";
 import { weeklyRankCardHeroImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
 import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
 import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
@@ -79,7 +80,12 @@ export function VehicleRankCard({
           aria-hidden
         >
           <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black via-black/90 to-transparent" />
+          <div
+            className={cn(
+              showroom.heroBackdropBottomFade,
+              "z-[2] h-[42%] min-h-0",
+            )}
+          />
         </div>
 
         <div className={rankBadgeClass(build.rank)}>#{build.rank}</div>

@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ExternalLink, Shield, Smartphone } from "lucide-react";
+import { BadgeCheck, ExternalLink, Shield, Smartphone } from "lucide-react";
 
 import type { PublicShowcaseB2bPartner } from "@/lib/vehicles/public-showcase-data";
 import { cn } from "@/lib/utils";
@@ -53,7 +53,15 @@ export function ShowcaseBuiltByPartner({
 
   return (
     <section className={cn("px-4", className)} aria-label="Offizieller Erbauer">
-      <h2 className={showroom.sectionLabel}>{partner.kicker}</h2>
+      <h2 className={cn(showroom.sectionLabel, "flex items-center gap-1.5")}>
+        <span>{partner.kicker}</span>
+        <BadgeCheck
+          className="h-3.5 w-3.5 shrink-0 text-sky-400"
+          strokeWidth={2.25}
+          aria-hidden
+        />
+        <span className="sr-only">Verifiziert</span>
+      </h2>
       <ShowroomGroup accent>
         <div className="flex items-center gap-3 px-4 py-3.5">
           <div
@@ -77,9 +85,6 @@ export function ShowcaseBuiltByPartner({
           </div>
           <div className="min-w-0 flex-1">
             <p className={showroom.listTitle}>{partner.name}</p>
-            <p className={showroom.listSubtitle}>
-              ZeloxTag verbindet Schlossträger und Partner-App
-            </p>
           </div>
         </div>
         <div className="flex flex-col gap-2 px-4 py-3.5">

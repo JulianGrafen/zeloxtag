@@ -63,7 +63,6 @@ type HeroBackdropProps = {
   carouselRef: RefObject<HeroCarouselHandle | null>;
   onActiveIndexChange: (index: number) => void;
   onOpenAtIndex: (index: number) => void;
-  hideBrandBanner?: boolean;
 };
 
 function HeroBackdrop({
@@ -74,7 +73,6 @@ function HeroBackdrop({
   carouselRef,
   onActiveIndexChange,
   onOpenAtIndex,
-  hideBrandBanner = false,
 }: HeroBackdropProps) {
   const motionConfig = useShowroomMotion();
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -131,12 +129,7 @@ function HeroBackdrop({
   return (
     <div className="absolute inset-0 bg-black">
       <motion.div
-        className={cn(
-          "absolute inset-x-0 top-0 z-[1]",
-          hideBrandBanner
-            ? "bottom-[28%] min-h-[min(58dvh,580px)]"
-            : showroom.heroSwipeBand,
-        )}
+        className={cn("absolute z-[1]", showroom.heroSwipeBand)}
         variants={motionConfig.heroImageSettle}
         initial="hidden"
         animate="visible"
@@ -213,19 +206,8 @@ function HeroBackdrop({
         </div>
       </motion.div>
 
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 z-[2] bg-gradient-to-b to-transparent",
-          hideBrandBanner
-            ? "h-[14%] from-black/35"
-            : "h-[32%] from-black/70",
-        )}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[min(58%,28rem)] bg-gradient-to-t from-black from-[22%] via-black/75 to-transparent"
-        aria-hidden
-      />
+      <div className={showroom.heroBackdropTopFade} aria-hidden />
+      <div className={showroom.heroBackdropBottomFade} aria-hidden />
     </div>
   );
 }
@@ -265,15 +247,11 @@ export function ShowroomHero({
     preloadImageHrefs(neighbors);
   }, [activeIndex, visiblePhotos]);
 
-  const heroMinHeightClass = hideBrandBanner
-    ? "min-h-[min(78dvh,780px)]"
-    : showroom.heroMinHeight;
-
   const heroHeader = (
       <header
         className={cn(
           "relative z-0 isolate overflow-hidden",
-          heroMinHeightClass,
+          showroom.heroMinHeight,
         )}
       >
         <HeroBackdrop
@@ -284,7 +262,6 @@ export function ShowroomHero({
           carouselRef={carouselRef}
           onActiveIndexChange={setActiveIndex}
           onOpenAtIndex={(index) => setLightboxIndex(index)}
-          hideBrandBanner={hideBrandBanner}
         />
 
         {hideBrandBanner ? null : <ShowroomBrandBanner />}
@@ -311,15 +288,11 @@ export function ShowroomHero({
 
         <div
           className={cn(
-            "pointer-events-none relative z-10 flex flex-col justify-end px-5 pb-8",
-            heroMinHeightClass,
-            hideBrandBanner ? "pt-4" : "pt-[max(4.5rem,env(safe-area-inset-top))]",
+            "pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col justify-end px-5",
+            hideBrandBanner ? "pb-6 pt-4" : "pb-8",
           )}
         >
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[min(52%,26rem)] bg-gradient-to-t from-black via-black/85 to-transparent"
-            aria-hidden
-          />
+          <div className={showroom.heroCopyBottomFade} aria-hidden />
           {visiblePhotos.length > 1 ? (
             <HeroPhotoPagination
               photos={visiblePhotos}
@@ -338,19 +311,7 @@ export function ShowroomHero({
 
   return (
     <>
-      {hideBrandBanner ? (
-        <div className="bg-black pt-3">
-          <div className="mx-auto w-full max-w-lg px-4 sm:px-5">
-            <div
-              className="overflow-hidden rounded-[1.35rem] ring-1 ring-white/10"
-            >
-              {heroHeader}
-            </div>
-          </div>
-        </div>
-      ) : (
-        heroHeader
-      )}
+      {heroHeader}
 
       {lightboxIndex !== null ? (
         <ShowroomGalleryLightbox

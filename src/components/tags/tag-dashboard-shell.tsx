@@ -71,6 +71,12 @@ import {
 import { flushPendingOnboardingVehiclePhoto } from "@/lib/onboarding/flush-pending-onboarding-vehicle-photo";
 import { resolveVehicleHeroDisplay } from "@/lib/vehicles/resolve-vehicle-hero-display";
 
+import { DashboardShowcaseSharePrompt } from "@/components/onboarding/dashboard-showcase-share-prompt";
+import {
+  hasDismissedShowcaseSharePrompt,
+  markShowcaseSharePromptDismissed,
+} from "@/lib/onboarding/showcase-share-prompt";
+
 import { DashboardOnboardingTour } from "./dashboard-onboarding-tour";
 import { TagDashboardView } from "./tag-dashboard-view";
 import { AccountDeletionBanner } from "@/components/account/account-deletion-banner";
@@ -96,6 +102,7 @@ function persistSilhouetteSkipped(vehicleId: string): void {
 }
 
 const SILHOUETTE_PROMPT_DELAY_MS = 700;
+const SHOWCASE_SHARE_PROMPT_DELAY_MS = 450;
 const PWA_AFTER_SILHOUETTE_MS = 900;
 const PWA_ALONE_DELAY_MS = 1_600;
 
@@ -389,10 +396,13 @@ export function TagDashboardShell({
     openScannerDirectly ? "dashboard" : "pick-scan",
   );
   const [silhouettePromptVisible, setSilhouettePromptVisible] = useState(false);
+  const [showcaseSharePromptVisible, setShowcaseSharePromptVisible] =
+    useState(false);
   const [showSilhouetteEditor, setShowSilhouetteEditor] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
   const promptTimersRef = useRef<number[]>([]);
   const postTourSequenceHandledRef = useRef(false);
+  const firstRegistrationRef = useRef(startTour);
   const [deferSilhouetteForTour, setDeferSilhouetteForTour] = useState(
     Boolean(startTour),
   );
@@ -640,7 +650,45 @@ export function TagDashboardShell({
       persistSilhouetteSkipped(vehicle.id);
     }
     setSilhouettePromptVisible(false);
+    if (firstRegistrationRef.current) {
+      setDashboardPromptPhase("idle");
+      return;
+    }
     schedulePwaPrompt(PWA_AFTER_SILHOUETTE_MS);
+  }
+
+  function continuePostOnboardingPrompts() {
+    if (wantsSilhouettePrompt) {
+      scheduleSilhouettePrompt(SILHOUETTE_PROMPT_DELAY_MS);
+      return;
+    }
+    if (!firstRegistrationRef.current) {
+      schedulePwaPrompt(PWA_ALONE_DELAY_MS);
+    }
+  }
+
+  function scheduleShowcaseSharePrompt(
+    delayMs = SHOWCASE_SHARE_PROMPT_DELAY_MS,
+  ) {
+    if (
+      !isOwner ||
+      demoShowcase ||
+      hasDismissedShowcaseSharePrompt(vehicle.id)
+    ) {
+      continuePostOnboardingPrompts();
+      return;
+    }
+    schedulePrompt(() => {
+      setShowcaseSharePromptVisible(true);
+      setDashboardPromptPhase("showcaseShare");
+    }, delayMs);
+  }
+
+  function dismissShowcaseSharePrompt() {
+    markShowcaseSharePromptDismissed(vehicle.id);
+    setShowcaseSharePromptVisible(false);
+    setDashboardPromptPhase("idle");
+    continuePostOnboardingPrompts();
   }
 
   function closeSilhouetteEditor() {
@@ -654,6 +702,7 @@ export function TagDashboardShell({
     clearPromptTimers();
     setDashboardPromptPhase("tour");
     setSilhouettePromptVisible(false);
+    setShowcaseSharePromptVisible(false);
   }
 
   function handleTourSettled() {
@@ -662,12 +711,12 @@ export function TagDashboardShell({
     postTourSequenceHandledRef.current = true;
     clearPromptTimers();
 
-    if (wantsSilhouettePrompt) {
-      scheduleSilhouettePrompt(SILHOUETTE_PROMPT_DELAY_MS);
+    if (!isOwner || demoShowcase) {
+      continuePostOnboardingPrompts();
       return;
     }
 
-    schedulePwaPrompt(PWA_ALONE_DELAY_MS);
+    scheduleShowcaseSharePrompt(SHOWCASE_SHARE_PROMPT_DELAY_MS);
   }
 
   /**
@@ -815,7 +864,7 @@ export function TagDashboardShell({
     clearPromptTimers();
     if (wantsSilhouettePrompt) {
       scheduleSilhouettePrompt(SILHOUETTE_PROMPT_DELAY_MS);
-    } else {
+    } else if (!firstRegistrationRef.current) {
       schedulePwaPrompt(PWA_ALONE_DELAY_MS);
     }
 
@@ -1003,6 +1052,7 @@ export function TagDashboardShell({
           mode === "dashboard" &&
           !showSilhouetteEditor &&
           !silhouettePromptVisible &&
+          !showcaseSharePromptVisible &&
           !onboardingActive &&
           !tourOpen &&
           !Boolean(paywallFeature)
@@ -1011,7 +1061,8 @@ export function TagDashboardShell({
       {portalReady &&
       silhouettePromptVisible &&
       mode === "dashboard" &&
-      !showSilhouetteEditor
+      !showSilhouetteEditor &&
+      !showcaseSharePromptVisible
         ? createPortal(
             <div
               className="fixed inset-x-0 z-[60] mx-auto max-w-lg px-4 pt-2"
@@ -1033,6 +1084,18 @@ export function TagDashboardShell({
                 onDismiss={() => dismissSilhouettePrompt(true)}
               />
             </div>,
+            document.body,
+          )
+        : null}
+      {portalReady && showcaseSharePromptVisible && mode === "dashboard"
+        ? createPortal(
+            <DashboardShowcaseSharePrompt
+              open
+              vehicle={vehicle}
+              documents={documents}
+              tagUuid={tagUuid}
+              onDismiss={dismissShowcaseSharePrompt}
+            />,
             document.body,
           )
         : null}
@@ -1068,6 +1131,7 @@ export function TagDashboardShell({
         enabled={
           mode === "dashboard" &&
           !showSilhouetteEditor &&
+          !showcaseSharePromptVisible &&
           onboardingActive
         }
         role={isOwner ? "owner" : "contributor"}

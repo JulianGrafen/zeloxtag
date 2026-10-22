@@ -285,7 +285,7 @@ export function VehiclePublicProfileSettings({
           );
         }}
       />
-      {hasLinkedTag && isPublic && shareUrl ? (
+      {isPublic && shareUrl ? (
         <div className={`${SETTINGS_SUBMENU_TILE_CLASS} gap-2`}>
           <span className="min-w-0">
             <span className="block text-[0.88rem] font-medium">Share-Link</span>
@@ -306,23 +306,15 @@ export function VehiclePublicProfileSettings({
             Kopieren
           </PressableButton>
         </div>
-      ) : hasLinkedTag ? (
-        <div className={SETTINGS_SUBMENU_TILE_CLASS}>
-          <span className="min-w-0">
-            <span className="block text-[0.88rem] font-medium">Share-Link</span>
-            <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
-              Wird verfügbar, wenn das Profil öffentlich ist
-            </span>
-          </span>
-        </div>
       ) : (
         <div className={SETTINGS_SUBMENU_TILE_CLASS}>
           <span className="min-w-0">
             <span className="block text-[0.88rem] font-medium">Share-Link</span>
             <span className="mt-0.5 block text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Ein eigener Link für Besucher gibt es mit einem verknüpften Zelox
-              Tag am Fahrzeug.
-              {tagShopUrl ? (
+              {hasLinkedTag
+                ? "Wird verfügbar, wenn das Profil öffentlich ist."
+                : "Veröffentliche dein Showcase für einen Link in deiner Bio."}
+              {!hasLinkedTag && tagShopUrl ? (
                 <>
                   {" "}
                   <Link
@@ -331,6 +323,8 @@ export function VehiclePublicProfileSettings({
                   >
                     Zelox Tag bestellen
                   </Link>
+                  {" "}
+                  für QR am Fahrzeug.
                 </>
               ) : null}
             </span>

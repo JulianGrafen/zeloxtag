@@ -13,8 +13,6 @@ export const DEMO_AULITZKY_TAG_UUID = "demo-aulitzky";
 export const MOCK_AULITZKY_VEHICLE_ID = "veh_demo_m3_g80";
 export const DEMO_AULITZKY_PARTNER_WEB_URL =
   "https://aulitzkyexhaust.de/Tuning/Abgassysteme/Abgasanlagen/";
-/** Demo deep link — tag scan → partner app (replace with production URL when live). */
-export const DEMO_AULITZKY_PARTNER_APP_URL = "https://aulitzkyexhaust.de/app";
 export const DEMO_AULITZKY_VEHICLE_IMAGE = "/demo/aulitzky-hero.jpg";
 export const DEMO_AULITZKY_GALLERY_EXHAUST_IMAGE = "/demo/aulitzky-exhaust.jpg";
 export const DEMO_AULITZKY_LOGO_SRC = "/demo/aulitzky-tuning-logo.png";
@@ -268,8 +266,6 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
       name: "Aulitzky Tuning",
       logoSrc: DEMO_AULITZKY_LOGO_SRC,
       logoAlt: "Aulitzky Tuning / Exhaust",
-      appOpenLabel: "Fahrzeug in der Aulitzky App öffnen",
-      appOpenHref: DEMO_AULITZKY_PARTNER_APP_URL,
       ctaLabel: "Abgasanlagen entdecken",
       ctaHref: DEMO_AULITZKY_PARTNER_WEB_URL,
     },

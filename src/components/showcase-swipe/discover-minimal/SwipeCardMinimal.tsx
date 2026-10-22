@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { ChevronRight, Heart } from "lucide-react";
 
+import { showroom } from "@/components/public-showcase/showroom-styles";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 import { cn } from "@/lib/utils";
 
@@ -90,14 +91,9 @@ export function SwipeCardMinimal({
         </div>
       )}
 
-      <div
-        className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/50 via-black/15 to-neutral-950"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[min(68%,22rem)] bg-gradient-to-t from-neutral-950 from-[18%] via-neutral-950/90 to-transparent"
-        aria-hidden
-      />
+      <div className={cn(showroom.heroBackdropTopFade, "z-[1]")} aria-hidden />
+      <div className={cn(showroom.heroBackdropBottomFade, "z-[1]")} aria-hidden />
+      <div className={cn(showroom.heroCopyBottomFade, "z-[1]")} aria-hidden />
 
       {card.totalLikes > 0 && !isBack ? (
         <div

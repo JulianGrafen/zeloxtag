@@ -24,7 +24,8 @@ describe("demo Aulitzky partner showcase", () => {
       "Aulitzky Abgasanlage ab OPF",
     );
     expect(payload.b2bPartner?.name).toBe("Aulitzky Tuning");
-    expect(payload.b2bPartner?.appOpenLabel).toContain("Aulitzky App");
+    expect(payload.b2bPartner?.appOpenLabel).toBeUndefined();
+    expect(payload.b2bPartner?.ctaLabel).toContain("Abgasanlagen");
     expect(payload.b2bPartner?.ctaHref).toContain("Abgasanlagen");
     expect(payload.profile.dynoChartUrl).toBeNull();
     expect(payload.profile.engineSoundUrl).toBe(DEMO_AULITZKY_SOUND_URL);

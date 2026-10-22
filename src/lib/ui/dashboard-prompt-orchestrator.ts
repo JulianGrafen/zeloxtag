@@ -1,6 +1,11 @@
 "use client";
 
-export type DashboardPromptPhase = "tour" | "silhouette" | "pwa" | "idle";
+export type DashboardPromptPhase =
+  | "tour"
+  | "showcaseShare"
+  | "silhouette"
+  | "pwa"
+  | "idle";
 
 export const DASHBOARD_FAB_CLEARANCE =
   "calc(max(1rem, env(safe-area-inset-bottom)) + 5.5rem)";
@@ -36,6 +41,10 @@ export function setDashboardPromptPhase(phase: DashboardPromptPhase): void {
     pwaAllowed: phase === "pwa",
   };
   emit();
+}
+
+export function isShowcaseSharePromptPhase(): boolean {
+  return snapshot.phase === "showcaseShare";
 }
 
 export function subscribeDashboardPrompts(listener: () => void): () => void {

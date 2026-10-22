@@ -1,13 +1,17 @@
 /** Shared black/white styling for the public showcase. */
 export const showroom = {
   page: "min-h-dvh bg-black text-white",
-  /** Tall hero so charts/photos breathe before the spec stack. */
-  heroMinHeight: "min-h-[min(92dvh,920px)]",
-  /**
-   * Horizontal swipe capture: upper hero only. The lower band (title, dots) stays
-   * outside so vertical page scroll still works on mobile.
-   */
-  heroSwipeBand: "bottom-[34%] min-h-[min(52dvh,520px)]",
+  /** Tall hero — title sits on the photo with a bottom fade. */
+  heroMinHeight: "min-h-[min(88dvh,880px)]",
+  /** Full-bleed hero photo; title sits on bottom fade. */
+  heroSwipeBand: "inset-0",
+  /** Shared black fades — public showcase hero + in-app swipe cards. */
+  heroBackdropTopFade:
+    "pointer-events-none absolute inset-x-0 top-0 z-[2] h-[32%] bg-gradient-to-b from-black/70 to-transparent",
+  heroBackdropBottomFade:
+    "pointer-events-none absolute inset-x-0 bottom-0 z-[4] h-[min(62%,28rem)] bg-gradient-to-t from-black from-0% via-black/85 via-[42%] to-transparent",
+  heroCopyBottomFade:
+    "pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-[min(50%,22rem)] bg-gradient-to-t from-black via-black/75 to-transparent",
   content: "relative z-10 bg-black pt-2",
   panel:
     "overflow-hidden rounded-2xl border border-white/5 border-t-white/10 bg-gradient-to-b from-zinc-800/40 to-zinc-900/80 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-md",

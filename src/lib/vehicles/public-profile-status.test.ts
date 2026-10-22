@@ -30,12 +30,23 @@ describe("publicProfileStatusSubtitle", () => {
 describe("resolveShowcaseSharePath", () => {
   const pathForSlug = (slug: string) => `/v/${slug}`;
 
-  it("returns null without active tag", () => {
+  it("returns path when public without tag", () => {
     expect(
       resolveShowcaseSharePath({
         isPublic: true,
         publicSlug: "my-build",
         hasActiveTag: false,
+        pathForSlug,
+      }),
+    ).toBe("/v/my-build");
+  });
+
+  it("returns null when private", () => {
+    expect(
+      resolveShowcaseSharePath({
+        isPublic: false,
+        publicSlug: "my-build",
+        hasActiveTag: true,
         pathForSlug,
       }),
     ).toBeNull();
