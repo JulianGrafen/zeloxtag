@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 import type {
   PublicModification,
-  PublicShowcaseFeatureFlags,
+  PublicShowcaseB2bPartner,
   PublicShowcaseProfile,
 } from "@/lib/vehicles/public-showcase-data";
 import { useRegionalFormatters } from "@/lib/i18n/hooks/use-regional-formatters";
@@ -26,9 +26,9 @@ import { showroom } from "./showroom-styles";
 type ShowroomStatsProps = {
   profile: PublicShowcaseProfile;
   modifications: PublicModification[];
+  partnerBranding?: PublicShowcaseB2bPartner | null;
   /** e.g. demo tab — do not wait for scroll intersection to reveal rows. */
   revealOnMount?: boolean;
-  featureFlags?: PublicShowcaseFeatureFlags;
 };
 
 function animatedStatValue(
@@ -59,20 +59,22 @@ function animatedStatValue(
 export function ShowroomStats({
   profile,
   modifications,
+  partnerBranding = null,
   revealOnMount = false,
-  featureFlags,
 }: ShowroomStatsProps) {
   const motionConfig = useShowroomMotion();
   const { profile: regionalProfile } = useRegionalFormatters();
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const specificationRow = buildShowcaseSpecificationRow(profile);
-  const vehicleRows = featureFlags?.partnerPerformanceHero
-    ? []
-    : buildShowcaseSpecRows(profile, animatedStatValue, regionalProfile);
+  const vehicleRows = buildShowcaseSpecRows(
+    profile,
+    animatedStatValue,
+    regionalProfile,
+  );
   const hasShowcaseMedia =
     Boolean(profile.engineSoundUrl?.trim()) ||
     modifications.length > 0 ||
-    (Boolean(profile.dynoChartUrl) && !featureFlags?.partnerPerformanceHero);
+    Boolean(profile.dynoChartUrl);
 
   if (vehicleRows.length === 0 && !specificationRow && !hasShowcaseMedia) {
     return null;
@@ -147,6 +149,7 @@ export function ShowroomStats({
           <ShowroomShowcaseMedia
             profile={profile}
             modifications={modifications}
+            partnerBranding={partnerBranding}
             playbackError={playbackError}
             onPlaybackError={setPlaybackError}
           />

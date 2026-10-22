@@ -1,6 +1,10 @@
 "use client";
 
-import type { PublicModification, PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
+import type {
+  PublicModification,
+  PublicShowcaseB2bPartner,
+  PublicShowcaseProfile,
+} from "@/lib/vehicles/public-showcase-data";
 
 import { EngineStartButton } from "./EngineStartButton";
 import { ShowroomDyno } from "./ShowroomDyno";
@@ -11,6 +15,7 @@ import { showroom } from "./showroom-styles";
 type ShowroomShowcaseMediaProps = {
   profile: PublicShowcaseProfile;
   modifications: PublicModification[];
+  partnerBranding?: PublicShowcaseB2bPartner | null;
   playbackError: string | null;
   onPlaybackError: (message: string) => void;
 };
@@ -22,6 +27,7 @@ type ShowroomShowcaseMediaProps = {
 export function ShowroomShowcaseMedia({
   profile,
   modifications,
+  partnerBranding = null,
   playbackError,
   onPlaybackError,
 }: ShowroomShowcaseMediaProps) {
@@ -45,7 +51,11 @@ export function ShowroomShowcaseMedia({
           />
         ) : null}
         {hasModsSection ? (
-          <ShowroomMods modifications={modifications} embedded />
+          <ShowroomMods
+            modifications={modifications}
+            partnerBranding={partnerBranding}
+            embedded
+          />
         ) : null}
         {hasDyno ? <ShowroomDyno profile={profile} embedded /> : null}
       </ShowroomGroup>

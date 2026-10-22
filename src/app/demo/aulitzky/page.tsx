@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 
-import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
+import { DemoAulitzkyShowcasePage } from "@/components/demo/demo-aulitzky-showcase-page";
 import { buildDemoAulitzkyPublicShowcasePayload } from "@/lib/demo/demo-aulitzky-showcase";
 import { pageSocialMetadata } from "@/lib/seo/open-graph";
 
-const TITLE = "BMW M3 G80 · Aulitzky Tuning";
+const TITLE = "BMW M4 G82 · Aulitzky Tuning";
 
 export const metadata: Metadata = {
   title: `Partner Demo · ${TITLE}`,
@@ -23,13 +23,7 @@ export const metadata: Metadata = {
  * Same twin as `/v/demo-aulitzky`.
  */
 export default function DemoAulitzkyPartnerPage() {
-  const payload = buildDemoAulitzkyPublicShowcasePayload();
+  const showcasePayload = buildDemoAulitzkyPublicShowcasePayload();
 
-  return (
-    <PublicShowcaseView
-      data={payload}
-      revealShowroomStatsOnMount
-      hideBrandBanner={false}
-    />
-  );
+  return <DemoAulitzkyShowcasePage showcasePayload={showcasePayload} />;
 }

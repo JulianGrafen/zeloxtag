@@ -1,19 +1,41 @@
 import { MANUAL_ENTRY_MARKER } from "@/lib/documents/manual-entries";
+import {
+  BUILD_DNA_SCHEMA_VERSION,
+  type ShowcaseBuildDna,
+} from "@/lib/showcase/build-dna-schema";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
-import { vehicleCatalogImageUrl } from "@/lib/vehicles/vehicle-image";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
-import { MOCK_TAG_UUIDS } from "@/lib/tags/mock-tags";
+/** QR / tag uuid — keep in sync with `MOCK_TAG_UUIDS.aulitzky` in mock-tags. */
+export const DEMO_AULITZKY_TAG_UUID = "demo-aulitzky";
 
 export const MOCK_AULITZKY_VEHICLE_ID = "veh_demo_m3_g80";
-export const DEMO_AULITZKY_PARTNER_APP_URL =
+export const DEMO_AULITZKY_PARTNER_WEB_URL =
   "https://aulitzkyexhaust.de/Tuning/Abgassysteme/Abgasanlagen/";
-export const DEMO_AULITZKY_VEHICLE_IMAGE = vehicleCatalogImageUrl(
-  "m3-f82-cutout.png",
-);
-export const DEMO_AULITZKY_DYNO_CHART_URL = "/demo/dyno-aulitzky-placeholder.svg";
+/** Demo deep link — tag scan → partner app (replace with production URL when live). */
+export const DEMO_AULITZKY_PARTNER_APP_URL = "https://aulitzkyexhaust.de/app";
+export const DEMO_AULITZKY_VEHICLE_IMAGE = "/demo/aulitzky-hero.jpg";
+export const DEMO_AULITZKY_GALLERY_EXHAUST_IMAGE = "/demo/aulitzky-exhaust.jpg";
 export const DEMO_AULITZKY_LOGO_SRC = "/demo/aulitzky-tuning-logo.png";
+/** M3 soundcheck clip (11–18 s from partner source), same pattern as E36 `/demo/…`. */
+export const DEMO_AULITZKY_SOUND_URL = "/demo/aulitzky-soundcheck.mp3";
+
+/** Curated DNA for the partner M4 — not the E36-style „Heimlicher Renner“ heuristic. */
+export const DEMO_AULITZKY_BUILD_DNA: ShowcaseBuildDna = {
+  version: BUILD_DNA_SCHEMA_VERSION,
+  archetype: "Streckenwaffe",
+  punchline:
+    "720 PS Stage 2 von Aulitzky — laut, präzise, für Straße und gelegentliche Runde.",
+  radar: [
+    { category: "Leistung", score: 91 },
+    { category: "Fahrwerk", score: 72 },
+    { category: "Optik", score: 62 },
+    { category: "Haltbarkeit", score: 54 },
+    { category: "Akustik", score: 78 },
+    { category: "Straßenlage", score: 68 },
+  ],
+};
 
 const now = "2026-03-20T12:00:00.000Z";
 
@@ -21,7 +43,7 @@ const aulitzkyVehicle: Vehicle = {
   id: MOCK_AULITZKY_VEHICLE_ID,
   user_id: "user_demo_aulitzky",
   make: "BMW",
-  model: "M3 G80 Competition",
+  model: "M4 G82 Competition",
   year: 2023,
   vin: "WBS8M9C50P5A12345",
   tech_specs: {
@@ -29,20 +51,24 @@ const aulitzkyVehicle: Vehicle = {
     powerKw: 530,
     torqueNm: 850,
     accel0To100Sec: 3.2,
+    accel100To200Sec: 8.1,
+    vmaxKmh: 305,
     engine: "3.0 L Twin-Turbo · Stage 2",
     drivetrain: "xDrive",
     transmission: "8-Gang M Steptronic",
     fuelType: "Benzin",
-    dynoChartUrl: DEMO_AULITZKY_DYNO_CHART_URL,
     buildPersonalityTags: ["track", "stance"],
     notes:
-      "Öffentliches Partner-Demo-Profil — Rechnungen und Preise sind für Besucher ausgeblendet.",
+      "Basis: BMW M4 G82 Competition (S58, xDrive, 2023)\n" +
+      "Motor: Aulitzky Stage 2 · Eventuri Carbon Ansaugung\n" +
+      "Abgasanlage: Aulitzky OPF-System · KW V4 Gewindefahrwerk\n" +
+      "Leistung (Dyno): ca. 720 PS · 850 Nm · 0–100 km/h in 3,2 s",
   },
   silhouette_image_url: null,
-  sound_url: null,
+  sound_url: DEMO_AULITZKY_SOUND_URL,
   is_public: true,
   hide_financials: true,
-  public_slug: "aulitzky-m3-g80",
+  public_slug: "aulitzky-m4-g82",
   showcase_swipe_opt_in: false,
   is_story_public: false,
   expose_token: null,
@@ -181,7 +207,7 @@ export const demoAulitzkyDocuments: Document[] = [
 
 const aulitzkyTag: Tag = {
   id: "tag_demo_aulitzky",
-  uuid: MOCK_TAG_UUIDS.aulitzky,
+  uuid: DEMO_AULITZKY_TAG_UUID,
   vehicle_id: aulitzkyVehicle.id,
   status: "active",
   created_at: now,
@@ -189,7 +215,7 @@ const aulitzkyTag: Tag = {
 };
 
 export function isDemoAulitzkyTag(tagUuid: string): boolean {
-  return tagUuid.trim() === MOCK_TAG_UUIDS.aulitzky;
+  return tagUuid.trim() === DEMO_AULITZKY_TAG_UUID;
 }
 
 export function getDemoAulitzkyTagScan(): TagScanResult {
@@ -211,9 +237,9 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
       alt: vehicleLabel,
     },
     {
-      id: "aulitzky-dyno",
-      src: DEMO_AULITZKY_DYNO_CHART_URL,
-      alt: "Leistungsdiagramm",
+      id: "aulitzky-exhaust",
+      src: DEMO_AULITZKY_GALLERY_EXHAUST_IMAGE,
+      alt: `${vehicleLabel} — Aulitzky Abgasanlage`,
     },
   ];
 
@@ -223,27 +249,29 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
     profile: {
       ...base.profile,
       heroImageSrc: DEMO_AULITZKY_VEHICLE_IMAGE,
-      dynoChartUrl: DEMO_AULITZKY_DYNO_CHART_URL,
-      dynoChartIsImage: true,
+      dynoChartUrl: null,
+      dynoChartIsImage: false,
       hideFinancials: true,
       isStoryPublic: false,
       publicSlug: null,
       powerPs: 720,
       torqueNm: 850,
       accel0To100Sec: 3.2,
+      accel100To200Sec: 8.1,
+      vmaxKmh: 305,
+      engineSoundUrl: DEMO_AULITZKY_SOUND_URL,
     },
-    buildDna: null,
+    buildDna: DEMO_AULITZKY_BUILD_DNA,
     buildStory: null,
     b2bPartner: {
       kicker: "Official Build by",
       name: "Aulitzky Tuning",
       logoSrc: DEMO_AULITZKY_LOGO_SRC,
       logoAlt: "Aulitzky Tuning / Exhaust",
+      appOpenLabel: "Fahrzeug in der Aulitzky App öffnen",
+      appOpenHref: DEMO_AULITZKY_PARTNER_APP_URL,
       ctaLabel: "Abgasanlagen entdecken",
-      ctaHref: DEMO_AULITZKY_PARTNER_APP_URL,
-    },
-    featureFlags: {
-      partnerPerformanceHero: true,
+      ctaHref: DEMO_AULITZKY_PARTNER_WEB_URL,
     },
   };
 }

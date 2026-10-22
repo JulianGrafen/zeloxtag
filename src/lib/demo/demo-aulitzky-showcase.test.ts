@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildDemoAulitzkyPublicShowcasePayload,
+  DEMO_AULITZKY_SOUND_URL,
   getDemoAulitzkyTagScan,
 } from "./demo-aulitzky-showcase";
 
@@ -16,11 +17,18 @@ describe("demo Aulitzky partner showcase", () => {
     const payload = buildDemoAulitzkyPublicShowcasePayload();
     expect(payload.profile.powerPs).toBe(720);
     expect(payload.profile.torqueNm).toBe(850);
+    expect(payload.profile.accel100To200Sec).toBe(8.1);
+    expect(payload.profile.vmaxKmh).toBe(305);
     expect(payload.modifications).toHaveLength(4);
     expect(payload.modifications.map((m) => m.label)).toContain(
       "Aulitzky Abgasanlage ab OPF",
     );
     expect(payload.b2bPartner?.name).toBe("Aulitzky Tuning");
-    expect(payload.featureFlags?.partnerPerformanceHero).toBe(true);
+    expect(payload.b2bPartner?.appOpenLabel).toContain("Aulitzky App");
+    expect(payload.b2bPartner?.ctaHref).toContain("Abgasanlagen");
+    expect(payload.profile.dynoChartUrl).toBeNull();
+    expect(payload.profile.engineSoundUrl).toBe(DEMO_AULITZKY_SOUND_URL);
+    expect(payload.buildDna?.archetype).toBe("Streckenwaffe");
+    expect(payload.buildDna?.punchline).toContain("Aulitzky");
   });
 });

@@ -431,6 +431,7 @@ export default async function TagScanPage({
         return (
           <PublicShowcaseView
             data={buildDemoAulitzkyPublicShowcasePayload()}
+            hideBrandBanner
             revealShowroomStatsOnMount
           />
         );

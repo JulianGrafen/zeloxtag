@@ -2,18 +2,27 @@
 
 import { useState } from "react";
 
-import type { PublicModification } from "@/lib/vehicles/public-showcase-data";
+import type {
+  PublicModification,
+  PublicShowcaseB2bPartner,
+} from "@/lib/vehicles/public-showcase-data";
+import {
+  modMatchesPartnerBrand,
+  partnerBrandHref,
+} from "@/lib/showcase/partner-mod-branding";
 
 import { formatDocumentDate } from "@/lib/documents/format";
 import { cn } from "@/lib/utils";
 
 import { ModBadge } from "./ModBadge";
+import { ShowcasePartnerVendorBadge } from "./ShowcasePartnerVendorBadge";
 import { ShowroomDisclosure } from "./ShowroomDisclosure";
 import { showroomModLabelTypography } from "./showroom-mod-typography";
 import { showroom } from "./showroom-styles";
 
 type ShowroomModsProps = {
   modifications: PublicModification[];
+  partnerBranding?: PublicShowcaseB2bPartner | null;
   embedded?: boolean;
 };
 
@@ -32,13 +41,29 @@ function umbautenSubtitle(
   return count === 1 ? "1 Umbau" : `${count} Umbauten`;
 }
 
-function UmbautenList({ modifications }: { modifications: PublicModification[] }) {
+function UmbautenList({
+  modifications,
+  partnerBranding,
+}: {
+  modifications: PublicModification[];
+  partnerBranding?: PublicShowcaseB2bPartner | null;
+}) {
   return (
     <ul id="showroom-mods-list" className="min-w-0 max-w-full overflow-x-hidden">
       {modifications.map((mod, index) => {
         const dateLabel = formatDate(mod.date);
         const isLastMod = index === modifications.length - 1;
         const labelType = showroomModLabelTypography(mod.label);
+        const isPartnerMod = modMatchesPartnerBrand(mod, partnerBranding);
+        const partnerHref = isPartnerMod
+          ? partnerBrandHref(partnerBranding)
+          : null;
+        const titleClassName = cn(
+          labelType.className,
+          "max-w-full break-words [overflow-wrap:anywhere] text-pretty",
+          partnerHref &&
+            "pointer-events-auto underline decoration-white/20 underline-offset-2 transition-colors hover:text-white hover:decoration-white/45",
+        );
         return (
           <li
             key={mod.id}
@@ -47,23 +72,36 @@ function UmbautenList({ modifications }: { modifications: PublicModification[] }
               !isLastMod && "border-b border-white/10",
             )}
           >
-            <p
-              className={cn(
-                labelType.className,
-                "max-w-full break-words [overflow-wrap:anywhere] text-pretty",
-              )}
-              style={labelType.style}
-            >
-              {mod.label}
-            </p>
-            {(dateLabel || mod.vendor) ? (
+            {partnerHref ? (
+              <a
+                href={partnerHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="pointer-events-auto relative z-[1] block min-w-0"
+              >
+                <p className={titleClassName} style={labelType.style}>
+                  {mod.label}
+                </p>
+              </a>
+            ) : (
+              <p className={titleClassName} style={labelType.style}>
+                {mod.label}
+              </p>
+            )}
+            {dateLabel || mod.vendor || isPartnerMod ? (
               <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
                 {dateLabel ? (
                   <p className="text-[0.76rem] tabular-nums text-white/42">
                     {dateLabel}
                   </p>
                 ) : null}
-                {mod.vendor ? (
+                {isPartnerMod && partnerBranding ? (
+                  <ShowcasePartnerVendorBadge
+                    partner={partnerBranding}
+                    vendorLabel={mod.vendor}
+                    className="max-w-full shrink"
+                  />
+                ) : mod.vendor ? (
                   <ModBadge className="max-w-full shrink">{mod.vendor}</ModBadge>
                 ) : null}
               </div>
@@ -77,6 +115,7 @@ function UmbautenList({ modifications }: { modifications: PublicModification[] }
 
 export function ShowroomMods({
   modifications,
+  partnerBranding = null,
   embedded = false,
 }: ShowroomModsProps) {
   const [open, setOpen] = useState(false);
@@ -85,7 +124,12 @@ export function ShowroomMods({
     return null;
   }
 
-  const list = <UmbautenList modifications={modifications} />;
+  const list = (
+    <UmbautenList
+      modifications={modifications}
+      partnerBranding={partnerBranding}
+    />
+  );
 
   const subtitle = umbautenSubtitle(modifications, open);
 

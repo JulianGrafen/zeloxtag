@@ -90,13 +90,12 @@ export type PublicShowcaseB2bPartner = {
   name: string;
   logoSrc?: string | null;
   logoAlt?: string;
+  /** Partner web / catalog link (Umbauten badges, optional secondary CTA). */
   ctaLabel: string;
   ctaHref: string;
-};
-
-export type PublicShowcaseFeatureFlags = {
-  /** Headline performance block + dyno placeholder instead of quartett rows only. */
-  partnerPerformanceHero?: boolean;
+  /** Primary CTA in the „Built by“ block — e.g. deep link into partner app. */
+  appOpenLabel?: string;
+  appOpenHref?: string;
 };
 
 export type PublicShowcasePayload = {
@@ -106,7 +105,6 @@ export type PublicShowcasePayload = {
   buildDna: ShowcaseBuildDna | null;
   buildStory: PublicBuildStorySlice | null;
   b2bPartner?: PublicShowcaseB2bPartner | null;
-  featureFlags?: PublicShowcaseFeatureFlags;
 };
 
 function resolvePublicBuildDna(
