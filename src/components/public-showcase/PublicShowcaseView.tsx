@@ -42,12 +42,16 @@ export function PublicShowcaseView({
         showDiscoverBack={showDiscoverBack}
         discoverBackHref={discoverBackHref}
         hideBrandBanner={hideBrandBanner}
+        hideInstagramInHero={Boolean(data.b2bPartner)}
       />
       <div
         className={`${showroom.content} mx-auto flex w-full max-w-lg flex-col gap-6 pb-[max(2rem,env(safe-area-inset-bottom))]`}
       >
         {data.b2bPartner ? (
-          <ShowcaseBuiltByPartner partner={data.b2bPartner} />
+          <ShowcaseBuiltByPartner
+            partner={data.b2bPartner}
+            instagramHandle={data.profile.instagramHandle}
+          />
         ) : null}
         <ShowroomStats
           profile={data.profile}

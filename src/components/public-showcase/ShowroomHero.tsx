@@ -49,6 +49,8 @@ type ShowroomHeroProps = {
   discoverBackHref?: string | null;
   /** Sticky parent chrome already covers the top — skip in-hero wordmark + fade. */
   hideBrandBanner?: boolean;
+  /** Partner card shows social — keep hero title area minimal. */
+  hideInstagramInHero?: boolean;
 };
 
 export type HeroCarouselHandle = {
@@ -218,6 +220,7 @@ export function ShowroomHero({
   showDiscoverBack = false,
   discoverBackHref = null,
   hideBrandBanner = false,
+  hideInstagramInHero = false,
 }: ShowroomHeroProps) {
   const title =
     formatPublicVehicleTitle(profile.make, profile.model) || "Fahrzeug";
@@ -303,7 +306,12 @@ export function ShowroomHero({
             />
           ) : null}
           <div className="relative z-10 w-full">
-            <HeroCopy profile={profile} title={title} yearLabel={yearLabel} />
+            <HeroCopy
+              profile={profile}
+              title={title}
+              yearLabel={yearLabel}
+              hideInstagram={hideInstagramInHero}
+            />
           </div>
         </div>
       </header>
@@ -364,13 +372,15 @@ function HeroCopy({
   profile,
   title,
   yearLabel,
+  hideInstagram = false,
 }: {
   profile: PublicShowcaseProfile;
   title: string;
   yearLabel: string | null;
+  hideInstagram?: boolean;
 }) {
   const motionConfig = useShowroomMotion();
-  const instagramHandle = profile.instagramHandle;
+  const instagramHandle = hideInstagram ? null : profile.instagramHandle;
 
   return (
     <motion.div

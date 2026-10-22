@@ -1,14 +1,21 @@
 import Image from "next/image";
 import { BadgeCheck, ExternalLink, Shield, Smartphone } from "lucide-react";
 
+import {
+  instagramHandleLabel,
+  instagramProfileUrl,
+  parseInstagramHandle,
+} from "@/lib/vehicles/instagram-handle";
 import type { PublicShowcaseB2bPartner } from "@/lib/vehicles/public-showcase-data";
 import { cn } from "@/lib/utils";
 
+import { InstagramGlyph } from "./InstagramGlyph";
 import { ShowroomGroup } from "./ShowroomGroup";
 import { showroom } from "./showroom-styles";
 
 type ShowcaseBuiltByPartnerProps = {
   partner: PublicShowcaseB2bPartner;
+  instagramHandle?: string | null;
   className?: string;
 };
 
@@ -46,10 +53,12 @@ function resolveBuiltByCtas(partner: PublicShowcaseB2bPartner): {
 
 export function ShowcaseBuiltByPartner({
   partner,
+  instagramHandle: instagramHandleRaw,
   className,
 }: ShowcaseBuiltByPartnerProps) {
   const logoSrc = partner.logoSrc?.trim() || null;
   const { primary, secondary } = resolveBuiltByCtas(partner);
+  const instagramHandle = parseInstagramHandle(instagramHandleRaw);
 
   return (
     <section className={cn("px-4", className)} aria-label="Offizieller Erbauer">
@@ -85,6 +94,19 @@ export function ShowcaseBuiltByPartner({
           </div>
           <div className="min-w-0 flex-1">
             <p className={showroom.listTitle}>{partner.name}</p>
+            {instagramHandle ? (
+              <a
+                href={instagramProfileUrl(instagramHandle)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex max-w-full min-h-9 items-center gap-1.5 text-[0.82rem] font-medium text-white/60 transition-colors hover:text-white/85"
+              >
+                <InstagramGlyph className="h-[0.9rem] w-[0.9rem] shrink-0 text-white/50" />
+                <span className="truncate">
+                  {instagramHandleLabel(instagramHandle)}
+                </span>
+              </a>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-col gap-2 px-4 py-3.5">
