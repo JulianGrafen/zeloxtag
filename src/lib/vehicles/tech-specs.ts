@@ -164,6 +164,11 @@ export function parseOilChangeIntervalMonths(value: unknown): number | null {
   return isOilChangeIntervalMonthsOption(parsed) ? parsed : null;
 }
 
+/** Parse top speed (V-Max) in km/h from claim / form input. */
+export function parseVmaxKmh(value: unknown): number | null {
+  return asBoundedInt(value, VMAX_KMH_MIN, VMAX_KMH_MAX);
+}
+
 export type VehicleTechSpecs = {
   engine: string | null;
   powerPs: number | null;

@@ -21,6 +21,7 @@ type ClaimTwinPreviewCardProps = {
   displacementCc?: string;
   accel0To100Sec?: string;
   accel100To200Sec?: string;
+  vmaxKmh?: string;
   drivetrain?: string;
   fuelType?: string;
   personalityTags: readonly BuildPersonalityChipId[];
@@ -36,6 +37,7 @@ export function ClaimTwinPreviewCard({
   displacementCc = "",
   accel0To100Sec = "",
   accel100To200Sec = "",
+  vmaxKmh = "",
   drivetrain = "",
   fuelType = "",
   personalityTags,
@@ -52,6 +54,7 @@ export function ClaimTwinPreviewCard({
     displacementCc,
     accel0To100Sec,
     accel100To200Sec,
+    vmaxKmh,
   });
   const metaParts = [
     yearLabel ? `Baujahr ${yearLabel}` : null,

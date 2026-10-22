@@ -24,6 +24,12 @@ describe("buildClaimPreviewQuartettLines", () => {
     expect(lines[4]?.value).toBe("11.2 s");
   });
 
+  it("includes vmax when provided", () => {
+    const lines = buildClaimPreviewQuartettLines({ vmaxKmh: "312" });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ key: "vmax", value: "312 km/h" });
+  });
+
   it("ignores empty or invalid input", () => {
     expect(buildClaimPreviewQuartettLines({ powerPs: "", displacementCc: "" })).toEqual(
       [],

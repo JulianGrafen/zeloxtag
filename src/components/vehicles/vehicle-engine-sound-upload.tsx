@@ -210,6 +210,7 @@ export function VehicleEngineSoundUpload({
 
       <div className={`${embedded ? "" : "mt-4 "}rounded-[1.15rem] bg-black p-4`}>
         <EngineStartButton
+          variant="toggle"
           soundUrl={previewUrl}
           showMissingHint
           className="mt-0"

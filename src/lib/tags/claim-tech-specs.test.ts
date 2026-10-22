@@ -28,6 +28,7 @@ describe("claim-tech-specs", () => {
       displacementCc: 2998,
       accel0To100Sec: null,
       accel100To200Sec: null,
+      vmaxKmh: null,
       drivetrain: "Heckantrieb",
       fuelType: "Benzin",
       oilChangeIntervalKm: null,
@@ -43,6 +44,26 @@ describe("claim-tech-specs", () => {
     ).toBe(true);
   });
 
+  it("normalizes vmax in km/h", () => {
+    expect(normalizeClaimTechSpecs({ vmaxKmh: "305" })).toEqual({
+      powerPs: null,
+      torqueNm: null,
+      displacementCc: null,
+      accel0To100Sec: null,
+      accel100To200Sec: null,
+      vmaxKmh: 305,
+      drivetrain: null,
+      fuelType: null,
+      oilChangeIntervalKm: null,
+      oilChangeIntervalMonths: null,
+      buildPersonalityTags: [],
+    });
+    expect(normalizeClaimTechSpecs({ vmaxKmh: "25" })).toBeNull();
+    expect(
+      claimTechSpecsToVehicleSpecs(normalizeClaimTechSpecs({ vmaxKmh: "280" })),
+    ).toEqual({ vmaxKmh: 280 });
+  });
+
   it("normalizes torque and acceleration times", () => {
     expect(
       normalizeClaimTechSpecs({
@@ -56,6 +77,7 @@ describe("claim-tech-specs", () => {
       displacementCc: null,
       accel0To100Sec: 4.1,
       accel100To200Sec: 11.2,
+      vmaxKmh: null,
       drivetrain: null,
       fuelType: null,
       oilChangeIntervalKm: null,
@@ -75,6 +97,7 @@ describe("claim-tech-specs", () => {
       displacementCc: null,
       accel0To100Sec: null,
       accel100To200Sec: null,
+      vmaxKmh: null,
       drivetrain: null,
       fuelType: null,
       oilChangeIntervalKm: 15_000,
@@ -92,6 +115,7 @@ describe("claim-tech-specs", () => {
       displacementCc: null,
       accel0To100Sec: null,
       accel100To200Sec: null,
+      vmaxKmh: null,
       drivetrain: null,
       fuelType: null,
       oilChangeIntervalKm: 15_000,
@@ -127,6 +151,7 @@ describe("claim-tech-specs", () => {
       displacementCc: null,
       accel0To100Sec: null,
       accel100To200Sec: null,
+      vmaxKmh: null,
       drivetrain: null,
       fuelType: null,
       oilChangeIntervalKm: null,

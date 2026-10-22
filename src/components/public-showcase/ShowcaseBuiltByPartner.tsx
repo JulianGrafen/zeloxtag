@@ -66,21 +66,21 @@ export function ShowcaseBuiltByPartner({
         <div className="flex items-center gap-3 px-4 py-3.5">
           <div
             className={cn(
-              showroom.listLeadingIcon,
-              "h-11 w-11 overflow-hidden rounded-xl bg-black/40",
+              "flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-black/55 px-3.5 py-2 ring-1 ring-white/5",
+              logoSrc ? "h-10 min-w-[8.75rem] max-w-[11.5rem]" : "h-11 w-11",
             )}
           >
             {logoSrc ? (
               <Image
                 src={logoSrc}
                 alt={partner.logoAlt ?? partner.name}
-                width={88}
-                height={44}
-                className="h-full w-full object-contain p-1"
+                width={184}
+                height={48}
+                className="h-[1.35rem] w-auto max-w-full object-contain object-center sm:h-6"
                 unoptimized
               />
             ) : (
-              <Shield className="h-4 w-4" aria-hidden />
+              <Shield className="h-4 w-4 text-white/80" aria-hidden />
             )}
           </div>
           <div className="min-w-0 flex-1">

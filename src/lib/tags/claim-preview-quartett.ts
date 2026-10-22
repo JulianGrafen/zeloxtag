@@ -5,6 +5,7 @@ import {
   ACCEL_100_200_SEC_MAX,
   ACCEL_100_200_SEC_MIN,
   parseAccelSecondsFromDraft,
+  parseVmaxKmh,
 } from "@/lib/vehicles/tech-specs";
 
 function parsePositiveInt(value: string): number | null {
@@ -20,6 +21,7 @@ export function buildClaimPreviewQuartettLines(input: {
   displacementCc?: string;
   accel0To100Sec?: string;
   accel100To200Sec?: string;
+  vmaxKmh?: string;
 }) {
   return buildQuartettLines({
     powerPs: parsePositiveInt(input.powerPs ?? ""),
@@ -35,6 +37,7 @@ export function buildClaimPreviewQuartettLines(input: {
       ACCEL_100_200_SEC_MIN,
       ACCEL_100_200_SEC_MAX,
     ),
+    vmaxKmh: parseVmaxKmh(input.vmaxKmh ?? ""),
     includeDisplacement: true,
     maxLines: 6,
   });

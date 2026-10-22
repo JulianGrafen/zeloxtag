@@ -41,7 +41,8 @@ function isClaimTechSpecs(value: unknown): value is ClaimTechSpecs {
     !numericOrNull("torqueNm") ||
     !numericOrNull("displacementCc") ||
     !numericOrNull("accel0To100Sec") ||
-    !numericOrNull("accel100To200Sec")
+    !numericOrNull("accel100To200Sec") ||
+    !numericOrNull("vmaxKmh")
   ) {
     return false;
   }

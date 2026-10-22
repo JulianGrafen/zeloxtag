@@ -9,6 +9,7 @@ import {
   parseAccelSeconds,
   parseOilChangeIntervalKm,
   parseOilChangeIntervalMonths,
+  parseVmaxKmh,
   normalizeVehicleDrivetrain,
   normalizeVehicleFuelType,
   type VehicleTechSpecs,
@@ -21,6 +22,7 @@ export type ClaimTechSpecs = {
   displacementCc: number | null;
   accel0To100Sec: number | null;
   accel100To200Sec: number | null;
+  vmaxKmh: number | null;
   drivetrain: string | null;
   fuelType: string | null;
   oilChangeIntervalKm: number | null;
@@ -34,6 +36,7 @@ export type ClaimTechSpecsInput = {
   displacementCc?: string | number | null;
   accel0To100Sec?: string | number | null;
   accel100To200Sec?: string | number | null;
+  vmaxKmh?: string | number | null;
   drivetrain?: string | null;
   fuelType?: string | null;
   oilChangeIntervalKm?: string | number | null;
@@ -72,6 +75,7 @@ export function normalizeClaimTechSpecs(
     ACCEL_100_200_SEC_MIN,
     ACCEL_100_200_SEC_MAX,
   );
+  const vmaxKmh = parseVmaxKmh(input.vmaxKmh);
   const drivetrain =
     normalizeVehicleDrivetrain(input.drivetrain?.trim() || null) ??
     (input.drivetrain?.trim() || null);
@@ -92,6 +96,7 @@ export function normalizeClaimTechSpecs(
     displacementCc == null &&
     accel0To100Sec == null &&
     accel100To200Sec == null &&
+    vmaxKmh == null &&
     !drivetrain &&
     !fuelType &&
     oilChangeIntervalKm == null &&
@@ -106,6 +111,7 @@ export function normalizeClaimTechSpecs(
     displacementCc,
     accel0To100Sec,
     accel100To200Sec,
+    vmaxKmh,
     drivetrain,
     fuelType,
     oilChangeIntervalKm,
@@ -128,6 +134,9 @@ export function claimTechSpecsToVehicleSpecs(
   }
   if (specs.accel100To200Sec != null) {
     partial.accel100To200Sec = specs.accel100To200Sec;
+  }
+  if (specs.vmaxKmh != null) {
+    partial.vmaxKmh = specs.vmaxKmh;
   }
   if (specs.drivetrain) partial.drivetrain = specs.drivetrain;
   if (specs.fuelType) partial.fuelType = specs.fuelType;

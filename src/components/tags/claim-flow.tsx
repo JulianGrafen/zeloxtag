@@ -92,6 +92,7 @@ export function ClaimFlow({
   const [displacementCc, setDisplacementCc] = useState("");
   const [accel0To100Sec, setAccel0To100Sec] = useState("");
   const [accel100To200Sec, setAccel100To200Sec] = useState("");
+  const [vmaxKmh, setVmaxKmh] = useState("");
   const [drivetrain, setDrivetrain] = useState("");
   const [fuelType, setFuelType] = useState("");
   const [oilChangeIntervalKm, setOilChangeIntervalKm] = useState(
@@ -245,6 +246,7 @@ export function ClaimFlow({
     displacementCc: displacementCc.trim() || undefined,
     accel0To100Sec: accel0To100Sec.trim() || undefined,
     accel100To200Sec: accel100To200Sec.trim() || undefined,
+    vmaxKmh: vmaxKmh.trim() || undefined,
     drivetrain: drivetrain.trim() || undefined,
     fuelType: fuelType.trim() || undefined,
     oilChangeIntervalKm,
@@ -457,6 +459,7 @@ export function ClaimFlow({
           displacementCc={displacementCc}
           accel0To100Sec={accel0To100Sec}
           accel100To200Sec={accel100To200Sec}
+          vmaxKmh={vmaxKmh}
           drivetrain={drivetrain}
           fuelType={fuelType}
           personalityTags={buildPersonalityTags}
@@ -729,6 +732,14 @@ export function ClaimFlow({
                   }}
                   inputMode="decimal"
                   placeholder="12,4"
+                />
+                <ClaimField
+                  id="claim-vmax-kmh"
+                  label="V-Max (km/h)"
+                  value={vmaxKmh}
+                  onChange={setVmaxKmh}
+                  inputMode="numeric"
+                  placeholder="250"
                 />
               </div>
               <ClaimSlideActions

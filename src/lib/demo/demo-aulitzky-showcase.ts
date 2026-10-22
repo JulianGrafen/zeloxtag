@@ -14,6 +14,7 @@ export const MOCK_AULITZKY_VEHICLE_ID = "veh_demo_m3_g80";
 export const DEMO_AULITZKY_PARTNER_WEB_URL =
   "https://aulitzkyexhaust.de/Tuning/Abgassysteme/Abgasanlagen/";
 export const DEMO_AULITZKY_VEHICLE_IMAGE = "/demo/aulitzky-hero.jpg";
+export const DEMO_AULITZKY_LIVERY_IMAGE = "/demo/aulitzky-livery.png";
 export const DEMO_AULITZKY_GALLERY_EXHAUST_IMAGE = "/demo/aulitzky-exhaust.jpg";
 export const DEMO_AULITZKY_LOGO_SRC = "/demo/aulitzky-tuning-logo.png";
 /** M3 soundcheck clip (11–18 s from partner source), same pattern as E36 `/demo/…`. */
@@ -57,10 +58,9 @@ const aulitzkyVehicle: Vehicle = {
     fuelType: "Benzin",
     buildPersonalityTags: ["track", "stance"],
     notes:
-      "Basis: BMW M4 G82 Competition (S58, xDrive, 2023)\n" +
-      "Motor: Aulitzky Stage 2 · Eventuri Carbon Ansaugung\n" +
-      "Abgasanlage: Aulitzky OPF-System · KW V4 Gewindefahrwerk\n" +
-      "Leistung (Dyno): ca. 720 PS · 850 Nm · 0–100 km/h in 3,2 s",
+      "• Aulitzky Stage 2 + OPF-Abgasanlage\n" +
+      "• 720 PS · 850 Nm · 3,2 s (Dyno)\n" +
+      "• Eventuri Ansaugung · KW V4 · G82 xDrive",
   },
   silhouette_image_url: null,
   sound_url: DEMO_AULITZKY_SOUND_URL,
@@ -230,6 +230,11 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
 
   const photos = [
     {
+      id: "aulitzky-livery",
+      src: DEMO_AULITZKY_LIVERY_IMAGE,
+      alt: `${vehicleLabel} — Aulitzky Build`,
+    },
+    {
       id: "aulitzky-hero",
       src: DEMO_AULITZKY_VEHICLE_IMAGE,
       alt: vehicleLabel,
@@ -246,7 +251,7 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
     photos,
     profile: {
       ...base.profile,
-      heroImageSrc: DEMO_AULITZKY_VEHICLE_IMAGE,
+      heroImageSrc: DEMO_AULITZKY_LIVERY_IMAGE,
       dynoChartUrl: null,
       dynoChartIsImage: false,
       hideFinancials: true,
@@ -266,7 +271,7 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
       name: "Aulitzky Tuning",
       logoSrc: DEMO_AULITZKY_LOGO_SRC,
       logoAlt: "Aulitzky Tuning / Exhaust",
-      ctaLabel: "Abgasanlagen entdecken",
+      ctaLabel: "Diesen Umbau anfragen",
       ctaHref: DEMO_AULITZKY_PARTNER_WEB_URL,
     },
   };

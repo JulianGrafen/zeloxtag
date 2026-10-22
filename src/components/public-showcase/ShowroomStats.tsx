@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import CountUp from "./CountUp";
 import { ShowroomGroup } from "./ShowroomGroup";
 import { ShowroomRevealItem } from "./ShowroomRevealItem";
+import { ShowroomEngineSoundcheck } from "./ShowroomEngineSoundcheck";
 import { ShowroomShowcaseMedia } from "./ShowroomShowcaseMedia";
 import { ShowroomSpecRow } from "./ShowroomSpecRow";
 import {
@@ -71,12 +72,16 @@ export function ShowroomStats({
     animatedStatValue,
     regionalProfile,
   );
+  const hasEngineSound = Boolean(profile.engineSoundUrl?.trim());
   const hasShowcaseMedia =
-    Boolean(profile.engineSoundUrl?.trim()) ||
-    modifications.length > 0 ||
-    Boolean(profile.dynoChartUrl);
+    modifications.length > 0 || Boolean(profile.dynoChartUrl);
 
-  if (vehicleRows.length === 0 && !specificationRow && !hasShowcaseMedia) {
+  if (
+    vehicleRows.length === 0 &&
+    !specificationRow &&
+    !hasShowcaseMedia &&
+    !hasEngineSound
+  ) {
     return null;
   }
 
@@ -144,16 +149,33 @@ export function ShowroomStats({
         </ShowroomRevealItem>
       ) : null}
 
+      {hasEngineSound ? (
+        <ShowroomRevealItem>
+          <ShowroomEngineSoundcheck
+            soundUrl={profile.engineSoundUrl!.trim()}
+            partnerBranding={partnerBranding}
+            onPlaybackError={setPlaybackError}
+          />
+        </ShowroomRevealItem>
+      ) : null}
+
       {hasShowcaseMedia ? (
         <ShowroomRevealItem>
           <ShowroomShowcaseMedia
             profile={profile}
             modifications={modifications}
             partnerBranding={partnerBranding}
-            playbackError={playbackError}
-            onPlaybackError={setPlaybackError}
           />
         </ShowroomRevealItem>
+      ) : null}
+
+      {playbackError ? (
+        <p
+          className="px-1 text-[0.82rem] font-medium text-red-400"
+          role="alert"
+        >
+          {playbackError}
+        </p>
       ) : null}
     </motion.section>
   );
