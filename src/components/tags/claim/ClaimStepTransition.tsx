@@ -36,7 +36,7 @@ export function ClaimStepTransition({
         initial="initial"
         animate="animate"
         exit="exit"
-        className="w-full"
+        className="w-full overflow-x-clip"
       >
         {children}
       </motion.div>

@@ -22,7 +22,7 @@ export function ClaimShell({
       className={
         intro
           ? "claim-premium claim-premium-intro-shell overflow-x-clip px-0 sm:px-0"
-          : "claim-premium claim-premium-wizard"
+          : "claim-premium claim-premium-wizard overflow-x-clip"
       }
     >
       <div className={intro ? "mx-auto w-full max-w-lg px-4 sm:px-5" : "contents"}>

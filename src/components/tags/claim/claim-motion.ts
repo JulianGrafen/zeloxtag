@@ -16,18 +16,20 @@ export const transitionSnappy: Transition = {
 export type ClaimTransitionDirection = "forward" | "back";
 
 function stepVariants(direction: ClaimTransitionDirection): Variants {
-  const enterX = direction === "forward" ? 28 : -28;
-  const exitX = direction === "forward" ? -20 : 20;
+  const enterY = direction === "forward" ? 10 : -6;
+  const exitY = direction === "forward" ? -6 : 10;
   return {
-    initial: { opacity: 0, x: enterX },
+    initial: { opacity: 0, y: enterY, x: 0 },
     animate: {
       opacity: 1,
+      y: 0,
       x: 0,
       transition: { duration: CLAIM_MOTION_DURATION, ease: EASE_OUT },
     },
     exit: {
       opacity: 0,
-      x: exitX,
+      y: exitY,
+      x: 0,
       transition: { duration: 0.22, ease: EASE_OUT },
     },
   };
@@ -61,7 +63,8 @@ export const introStepVariants: Variants = {
   animate: { opacity: 1, x: 0 },
   exit: {
     opacity: 0,
-    x: -20,
+    x: 0,
+    y: -6,
     transition: { duration: 0.22, ease: EASE_OUT },
   },
 };

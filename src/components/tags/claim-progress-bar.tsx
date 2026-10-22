@@ -67,7 +67,6 @@ export function ClaimProgressBar({ step, flowOptions }: ClaimProgressBarProps) {
               aria-current={isActive ? "step" : undefined}
             >
               <motion.div
-                layout={!motionConfig.reduceMotion}
                 className={cn(
                   "claim-stepper__dot flex h-7 w-7 items-center justify-center rounded-full border text-[0.65rem] font-semibold tabular-nums transition-colors",
                   isComplete &&
