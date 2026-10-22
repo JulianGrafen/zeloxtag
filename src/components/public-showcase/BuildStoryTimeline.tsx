@@ -21,6 +21,14 @@ type BuildStoryTimelineProps = {
 const SPINE_DOT =
   "bg-emerald-400/95 shadow-[0_0_14px_rgba(52,211,153,0.5)] ring-1 ring-emerald-400/35";
 
+function buildStoryImageUnoptimized(src: string): boolean {
+  return (
+    src.startsWith("/api/") ||
+    src.startsWith("/demo/") ||
+    src.endsWith(".svg")
+  );
+}
+
 export function BuildStoryTimeline({
   slug,
   initialEntries,
@@ -106,6 +114,7 @@ export function BuildStoryTimeline({
                   className="object-cover"
                   sizes="(max-width: 512px) 100vw, 512px"
                   loading="lazy"
+                  unoptimized={buildStoryImageUnoptimized(entry.imageSrc)}
                 />
                 <div
                   aria-hidden
