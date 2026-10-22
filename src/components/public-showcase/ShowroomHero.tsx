@@ -137,7 +137,7 @@ function HeroBackdrop({
         <div
           ref={scrollerRef}
           onScroll={handleScroll}
-          className="flex h-full w-full touch-pan-x snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [touch-action:pan-x_pan-y] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="region"
           aria-roledescription="Karussell"
           aria-label="Fahrzeugfotos"
@@ -154,7 +154,7 @@ function HeroBackdrop({
                 key={photo.id}
                 type="button"
                 onClick={() => onOpenAtIndex(index)}
-                className="relative h-full min-w-full shrink-0 cursor-zoom-in snap-center overflow-hidden border-0 bg-black p-0 text-left"
+                className="relative h-full min-w-full shrink-0 cursor-zoom-in snap-center overflow-hidden border-0 bg-black p-0 text-left [touch-action:pan-x_pan-y]"
                 aria-label={`${photo.alt || title} im Vollbild anzeigen`}
                 aria-hidden={index !== activeIndex}
                 tabIndex={index === activeIndex ? 0 : -1}
