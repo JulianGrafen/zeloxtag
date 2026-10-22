@@ -25,7 +25,7 @@ describe("demo Aulitzky partner showcase", () => {
     );
     expect(payload.b2bPartner?.name).toBe("Aulitzky Tuning");
     expect(payload.b2bPartner?.appOpenLabel).toBeUndefined();
-    expect(payload.b2bPartner?.ctaLabel).toContain("Abgasanlagen");
+    expect(payload.b2bPartner?.ctaLabel).toBe("Diesen Umbau anfragen");
     expect(payload.b2bPartner?.ctaHref).toContain("Abgasanlagen");
     expect(payload.profile.dynoChartUrl).toBeNull();
     expect(payload.profile.engineSoundUrl).toBe(DEMO_AULITZKY_SOUND_URL);
