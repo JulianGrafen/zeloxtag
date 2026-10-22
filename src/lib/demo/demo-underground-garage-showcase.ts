@@ -15,7 +15,7 @@ export const DEMO_UNDERGROUND_GARAGE_TAG_UUID = "demo-underground-garage";
 export const MOCK_UNDERGROUND_GARAGE_VEHICLE_ID = "veh_demo_440i_g22";
 export const DEMO_UNDERGROUND_GARAGE_INSTAGRAM_HANDLE = "underground.garage";
 export const DEMO_UNDERGROUND_GARAGE_PARTNER_WEB_URL =
-  "https://www.instagram.com/underground.garage/";
+  "https://www.underground-garage.com/";
 export const DEMO_UNDERGROUND_GARAGE_SHOWCASE_IMAGE =
   "/demo/underground-garage-440i.jpg";
 export const DEMO_UNDERGROUND_GARAGE_LOGO_SRC =
