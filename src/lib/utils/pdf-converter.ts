@@ -308,6 +308,19 @@ export async function rasterizePdfFirstPage(
   return canvas;
 }
 
+/** Fetch a public PDF URL and render page 1 to canvas (showcase dyno preview). */
+export async function rasterizePdfFirstPageFromUrl(
+  url: string,
+  maxWidth = 1600,
+): Promise<HTMLCanvasElement> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`PDF konnte nicht geladen werden (${response.status}).`);
+  }
+  const blob = await response.blob();
+  return rasterizePdfFirstPage(blob, maxWidth);
+}
+
 /**
  * Normalize wizard pages (PDF or image) into sources for multi-page PDF assembly.
  */

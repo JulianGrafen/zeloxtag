@@ -20,6 +20,8 @@ export const DEMO_AULITZKY_GALLERY_EXHAUST_IMAGE = "/demo/aulitzky-exhaust.jpg";
 export const DEMO_AULITZKY_LOGO_SRC = "/demo/aulitzky-tuning-logo.png";
 /** M3 soundcheck clip (11–18 s from partner source), same pattern as E36 `/demo/…`. */
 export const DEMO_AULITZKY_SOUND_URL = "/demo/aulitzky-soundcheck.mp3";
+export const DEMO_AULITZKY_DYNO_CHART_URL =
+  "/demo/aulitzky-leistungsdiagramm-m4-720ps.pdf";
 
 /** Curated DNA for the partner M4 — not the E36-style „Heimlicher Renner“ heuristic. */
 export const DEMO_AULITZKY_BUILD_DNA: ShowcaseBuildDna = {
@@ -253,7 +255,7 @@ export function buildDemoAulitzkyPublicShowcasePayload(): PublicShowcasePayload 
     profile: {
       ...base.profile,
       heroImageSrc: DEMO_AULITZKY_SHOWCASE_IMAGE,
-      dynoChartUrl: null,
+      dynoChartUrl: DEMO_AULITZKY_DYNO_CHART_URL,
       dynoChartIsImage: false,
       hideFinancials: true,
       isStoryPublic: false,

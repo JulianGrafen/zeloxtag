@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, Expand } from "lucide-react";
+import { Expand } from "lucide-react";
 
 import { formatPublicVehicleTitle } from "@/lib/vehicles/format-public-vehicle-title";
 import type { PublicShowcaseProfile } from "@/lib/vehicles/public-showcase-data";
 
 import { ShowroomDisclosure } from "./ShowroomDisclosure";
+import { ShowroomDynoPdfPreview } from "./ShowroomDynoPdfPreview";
 import { ShowroomGalleryLightbox } from "./ShowroomGalleryLightbox";
 import { showroom } from "./showroom-styles";
 
@@ -15,13 +16,14 @@ type ShowroomDynoProps = {
   embedded?: boolean;
 };
 
-function dynoCollapsedSubtitle(profile: PublicShowcaseProfile): string {
-  return profile.dynoChartIsImage ? "Diagramm anzeigen" : "PDF öffnen";
+function dynoCollapsedSubtitle(): string {
+  return "Diagramm anzeigen";
 }
 
 export function ShowroomDyno({ profile, embedded = false }: ShowroomDynoProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   if (!profile.dynoChartUrl) return null;
 
@@ -53,17 +55,14 @@ export function ShowroomDyno({ profile, embedded = false }: ShowroomDynoProps) {
           </span>
         </button>
       ) : (
-        <div className="px-4 py-4">
-          <a
-            href={profile.dynoChartUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={showroom.cta}
-          >
-            <ExternalLink className="h-4 w-4" aria-hidden />
-            PDF öffnen
-          </a>
-        </div>
+        <ShowroomDynoPdfPreview
+          url={profile.dynoChartUrl}
+          alt={dynoAlt}
+          onExpand={(previewSrc) => {
+            setLightboxSrc(previewSrc);
+            setLightboxOpen(true);
+          }}
+        />
       )}
     </>
   );
@@ -71,7 +70,7 @@ export function ShowroomDyno({ profile, embedded = false }: ShowroomDynoProps) {
   const disclosure = (
     <ShowroomDisclosure
       title="Leistungsdiagramm"
-      subtitle={open ? undefined : dynoCollapsedSubtitle(profile)}
+      subtitle={open ? undefined : dynoCollapsedSubtitle()}
       open={open}
       onToggle={() => setOpen((value) => !value)}
       panelId="showroom-dyno-panel"
@@ -85,17 +84,20 @@ export function ShowroomDyno({ profile, embedded = false }: ShowroomDynoProps) {
     <>
       {embedded ? disclosure : <div className={showroom.panelFlat}>{disclosure}</div>}
 
-      {lightboxOpen && profile.dynoChartIsImage && profile.dynoChartUrl ? (
+      {lightboxOpen && profile.dynoChartUrl ? (
         <ShowroomGalleryLightbox
           photos={[
             {
               id: "dyno-chart",
-              src: profile.dynoChartUrl,
+              src: lightboxSrc ?? profile.dynoChartUrl,
               alt: dynoAlt,
             },
           ]}
           initialIndex={0}
-          onClose={() => setLightboxOpen(false)}
+          onClose={() => {
+            setLightboxOpen(false);
+            setLightboxSrc(null);
+          }}
         />
       ) : null}
     </>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildDemoAulitzkyPublicShowcasePayload,
+  DEMO_AULITZKY_DYNO_CHART_URL,
   DEMO_AULITZKY_SOUND_URL,
   getDemoAulitzkyTagScan,
 } from "./demo-aulitzky-showcase";
@@ -27,7 +28,8 @@ describe("demo Aulitzky partner showcase", () => {
     expect(payload.b2bPartner?.appOpenLabel).toBeUndefined();
     expect(payload.b2bPartner?.ctaLabel).toBe("Diesen Umbau anfragen");
     expect(payload.b2bPartner?.ctaHref).toContain("Abgasanlagen");
-    expect(payload.profile.dynoChartUrl).toBeNull();
+    expect(payload.profile.dynoChartUrl).toBe(DEMO_AULITZKY_DYNO_CHART_URL);
+    expect(payload.profile.dynoChartIsImage).toBe(false);
     expect(payload.profile.engineSoundUrl).toBe(DEMO_AULITZKY_SOUND_URL);
     expect(payload.buildDna?.archetype).toBe("Streckenwaffe");
     expect(payload.buildDna?.punchline).toContain("Aulitzky");
