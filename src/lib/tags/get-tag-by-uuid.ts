@@ -213,7 +213,9 @@ async function resolveMockTag(uuid: string): Promise<TagScanResult | null> {
 
 function isDemoTagUuid(uuid: string): boolean {
   return (
-    uuid === MOCK_TAG_UUIDS.active || uuid === MOCK_TAG_UUIDS.unclaimed
+    uuid === MOCK_TAG_UUIDS.active ||
+    uuid === MOCK_TAG_UUIDS.unclaimed ||
+    uuid === MOCK_TAG_UUIDS.aulitzky
   );
 }
 

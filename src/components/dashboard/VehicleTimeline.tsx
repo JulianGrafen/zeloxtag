@@ -1,9 +1,11 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { TimelineEventDetailSheet } from "@/components/documents/timeline-event-detail-sheet";
+import { TimelineEventHeroImage } from "@/components/documents/timeline-event-hero-image";
+import { resolveTimelineEventImageUrl } from "@/lib/documents/timeline-event-image";
 import { resolveTimelineEventDocumentHref } from "@/lib/documents/timeline-event-href";
 import {
   formatTimelineCost,
@@ -15,6 +17,7 @@ import {
   type TimelineEvent,
   type TimelineEventCategory,
 } from "@/lib/validations/timelineSchema";
+import type { Document } from "@/types/database";
 import {
   PressableButton,
   PressableLink,
@@ -82,6 +85,7 @@ const CATEGORY_VISUALS: Record<TimelineEventCategory, CategoryVisual> = {
 
 export type VehicleTimelineProps = {
   events: TimelineEvent[];
+  documents?: Document[];
   documentHref?: (documentId: string) => string;
   emptyMessage?: string;
   className?: string;
@@ -107,11 +111,16 @@ function partitionTimelineEvents(events: TimelineEvent[]): {
 
 export function VehicleTimeline({
   events,
+  documents = [],
   documentHref,
   emptyMessage = "Noch keine Einträge — Beleg scannen oder manuell hinzufügen.",
   className = "",
 }: VehicleTimelineProps) {
   const [detailEvent, setDetailEvent] = useState<TimelineEvent | null>(null);
+  const documentsById = useMemo(
+    () => new Map(documents.map((doc) => [doc.id, doc])),
+    [documents],
+  );
   const detailDocumentHref =
     detailEvent && documentHref
       ? resolveTimelineEventDocumentHref(detailEvent, documentHref)
@@ -139,6 +148,7 @@ export function VehicleTimeline({
         {withMileage.length > 0 ? (
           <TimelineEventList
             events={withMileage}
+            documentsById={documentsById}
             documentHref={documentHref}
             ariaLabel="Historie nach Kilometerstand"
             showMileage
@@ -153,6 +163,7 @@ export function VehicleTimeline({
             </p>
             <TimelineEventList
               events={withoutMileage}
+              documentsById={documentsById}
               documentHref={documentHref}
               ariaLabel="Einträge ohne Kilometerstand"
               showMileage={false}
@@ -174,12 +185,14 @@ export function VehicleTimeline({
 
 function TimelineEventList({
   events,
+  documentsById,
   documentHref,
   ariaLabel,
   showMileage,
   onShowDetail,
 }: {
   events: TimelineEvent[];
+  documentsById: Map<string, Document>;
   documentHref?: (documentId: string) => string;
   ariaLabel: string;
   showMileage: boolean;
@@ -200,6 +213,7 @@ function TimelineEventList({
         <TimelineEventRow
           key={event.id}
           event={event}
+          documentsById={documentsById}
           documentHref={documentHref}
           showMileage={showMileage}
           isLast={index === events.length - 1}
@@ -220,18 +234,24 @@ function TimelineMetaSeparator() {
 
 function TimelineEventRow({
   event,
+  documentsById,
   documentHref,
   showMileage,
   isLast,
   onShowDetail,
 }: {
   event: TimelineEvent;
+  documentsById: Map<string, Document>;
   documentHref?: (documentId: string) => string;
   showMileage: boolean;
   isLast: boolean;
   onShowDetail: (event: TimelineEvent) => void;
 }) {
   const visual = CATEGORY_VISUALS[event.category];
+  const linkedDoc = event.documentId
+    ? documentsById.get(event.documentId)
+    : undefined;
+  const imageSrc = resolveTimelineEventImageUrl(linkedDoc);
   const costLabel = formatTimelineCost(event.cost);
   const dateLabel = formatTimelineDate(event.date);
   const mileageLabel = showMileage
@@ -290,6 +310,8 @@ function TimelineEventRow({
           />
         ) : null}
       </div>
+
+      {imageSrc ? <TimelineEventHeroImage src={imageSrc} /> : null}
 
       {event.description ? (
         <p className="mt-2.5 line-clamp-3 text-[0.84rem] leading-relaxed text-zinc-500">

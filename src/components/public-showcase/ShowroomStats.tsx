@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 
 import type {
   PublicModification,
+  PublicShowcaseFeatureFlags,
   PublicShowcaseProfile,
 } from "@/lib/vehicles/public-showcase-data";
 import { useRegionalFormatters } from "@/lib/i18n/hooks/use-regional-formatters";
@@ -27,6 +28,7 @@ type ShowroomStatsProps = {
   modifications: PublicModification[];
   /** e.g. demo tab — do not wait for scroll intersection to reveal rows. */
   revealOnMount?: boolean;
+  featureFlags?: PublicShowcaseFeatureFlags;
 };
 
 function animatedStatValue(
@@ -58,20 +60,19 @@ export function ShowroomStats({
   profile,
   modifications,
   revealOnMount = false,
+  featureFlags,
 }: ShowroomStatsProps) {
   const motionConfig = useShowroomMotion();
   const { profile: regionalProfile } = useRegionalFormatters();
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const specificationRow = buildShowcaseSpecificationRow(profile);
-  const vehicleRows = buildShowcaseSpecRows(
-    profile,
-    animatedStatValue,
-    regionalProfile,
-  );
+  const vehicleRows = featureFlags?.partnerPerformanceHero
+    ? []
+    : buildShowcaseSpecRows(profile, animatedStatValue, regionalProfile);
   const hasShowcaseMedia =
     Boolean(profile.engineSoundUrl?.trim()) ||
     modifications.length > 0 ||
-    Boolean(profile.dynoChartUrl);
+    (Boolean(profile.dynoChartUrl) && !featureFlags?.partnerPerformanceHero);
 
   if (vehicleRows.length === 0 && !specificationRow && !hasShowcaseMedia) {
     return null;

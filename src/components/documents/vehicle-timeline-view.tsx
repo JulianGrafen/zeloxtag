@@ -80,6 +80,7 @@ export function VehicleTimelineView({
 
         <VehicleTimeline
           events={events}
+          documents={documents}
           documentHref={resolveDocumentHref}
         />
       </div>

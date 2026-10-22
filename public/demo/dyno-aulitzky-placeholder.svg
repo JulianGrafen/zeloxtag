@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" fill="none" role="img" aria-label="Prüfstandsdiagramm Platzhalter">
+  <rect width="640" height="360" fill="#0a0a0a"/>
+  <defs>
+    <linearGradient id="grid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#27272a" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#09090b" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="curve" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="55%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+  </defs>
+  <rect x="48" y="32" width="544" height="296" rx="12" fill="url(#grid)" stroke="#3f3f46" stroke-width="1"/>
+  <g stroke="#52525b" stroke-width="0.75" opacity="0.55">
+    <path d="M72 88 H568 M72 144 H568 M72 200 H568 M72 256 H568"/>
+    <path d="M120 56 V304 M216 56 V304 M312 56 V304 M408 56 V304 M504 56 V304"/>
+  </g>
+  <path d="M88 268 C140 248 200 220 260 188 C320 156 380 132 440 108 C500 88 540 78 568 72" stroke="url(#curve)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M88 292 C150 278 220 258 300 238 C380 218 460 202 568 188" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>
+  <text x="72" y="52" fill="#a1a1aa" font-family="system-ui,sans-serif" font-size="11" letter-spacing="0.08em">DYNO · PS / NM</text>
+  <text x="72" y="318" fill="#71717a" font-family="system-ui,sans-serif" font-size="10">Demo · Aulitzky Stage 2</text>
+</svg>

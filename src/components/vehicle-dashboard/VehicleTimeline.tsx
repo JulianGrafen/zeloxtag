@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Camera, ChevronRight, History, Stamp } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -12,11 +11,8 @@ import {
   formatTimelineCost,
   formatTimelineMileage,
 } from "@/lib/documents/timeline-format";
-import {
-  documentMediaKind,
-  isViewableDocumentUrl,
-  resolveDocumentViewUrl,
-} from "@/lib/documents/viewable-url";
+import { TimelineEventHeroImage } from "@/components/documents/timeline-event-hero-image";
+import { resolveTimelineEventImageUrl } from "@/lib/documents/timeline-event-image";
 import type { TimelineEvent } from "@/lib/validations/timelineSchema";
 import type { Document } from "@/types/database";
 import { PressableButton, PressableLink } from "./Pressable";
@@ -30,15 +26,6 @@ export type VehicleDashboardTimelineProps = {
   canAddEntry?: boolean;
   className?: string;
 };
-
-function resolveEventImageUrl(
-  document: Document | undefined,
-): string | null {
-  if (!document?.file_url) return null;
-  if (!isViewableDocumentUrl(document.file_url)) return null;
-  if (documentMediaKind(document.file_url) !== "image") return null;
-  return resolveDocumentViewUrl(document.file_url);
-}
 
 export function VehicleDashboardTimeline({
   events,
@@ -102,7 +89,7 @@ export function VehicleDashboardTimeline({
           const linkedDoc = event.documentId
             ? documentsById.get(event.documentId)
             : undefined;
-          const imageSrc = resolveEventImageUrl(linkedDoc);
+          const imageSrc = resolveTimelineEventImageUrl(linkedDoc);
           const costLabel = formatTimelineCost(event.cost);
           const dateLabel = formatTimelineChronikDate(event.date);
           const mileageLabel = formatTimelineMileage(event.mileage, {
@@ -140,16 +127,7 @@ export function VehicleDashboardTimeline({
               </div>
 
               {imageSrc ? (
-                <div className="relative mt-2 aspect-video w-full overflow-hidden rounded-xl border border-neutral-800">
-                  <Image
-                    src={imageSrc}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 512px) 100vw, 512px"
-                    unoptimized
-                  />
-                </div>
+                <TimelineEventHeroImage src={imageSrc} className="mt-2" />
               ) : null}
 
               {(costLabel || showAbeBadge) ? (

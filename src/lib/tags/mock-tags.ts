@@ -1,5 +1,9 @@
 import { MANUAL_ENTRY_MARKER } from "@/lib/documents/manual-entries";
 import { DEMO_ENGINE_SOUND_URL } from "@/lib/demo/demo-assets";
+import {
+  getDemoAulitzkyTagScan,
+  MOCK_AULITZKY_VEHICLE_ID,
+} from "@/lib/demo/demo-aulitzky-showcase";
 import { DEMO_E36_VEHICLE_TECH_SPECS } from "@/lib/demo/demo-vehicle-tech-specs";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
@@ -7,6 +11,7 @@ import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 export const MOCK_TAG_UUIDS = {
   unclaimed: "demo-unclaimed-tag",
   active: "demo-active-tag",
+  aulitzky: "demo-aulitzky",
 } as const;
 
 /** Vehicle id for {@link MOCK_TAG_UUIDS.active} mock twin. */
@@ -701,9 +706,21 @@ const mockTags: Record<string, Tag> = {
     created_at: now,
     updated_at: now,
   },
+  [MOCK_TAG_UUIDS.aulitzky]: {
+    id: "tag_demo_aulitzky",
+    uuid: MOCK_TAG_UUIDS.aulitzky,
+    vehicle_id: MOCK_AULITZKY_VEHICLE_ID,
+    status: "active",
+    created_at: now,
+    updated_at: now,
+  },
 };
 
 export function getMockTagScan(uuid: string): TagScanResult | null {
+  if (uuid === MOCK_TAG_UUIDS.aulitzky) {
+    return getDemoAulitzkyTagScan();
+  }
+
   const tag = mockTags[uuid];
   if (!tag) return null;
 

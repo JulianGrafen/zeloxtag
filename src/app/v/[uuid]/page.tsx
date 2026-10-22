@@ -48,6 +48,7 @@ import {
   pageSocialMetadata,
   SHOWCASE_OG_DESCRIPTION,
 } from "@/lib/seo/open-graph";
+import { buildDemoAulitzkyPublicShowcasePayload } from "@/lib/demo/demo-aulitzky-showcase";
 import {
   buildDemoPublicShowcasePayload,
   enrichDemoShowcaseVehicle,
@@ -426,6 +427,15 @@ export default async function TagScanPage({
     }
 
     if (!access.isOwner && !access.isContributor) {
+      if (tag.uuid === MOCK_TAG_UUIDS.aulitzky) {
+        return (
+          <PublicShowcaseView
+            data={buildDemoAulitzkyPublicShowcasePayload()}
+            revealShowroomStatsOnMount
+          />
+        );
+      }
+
       if (tag.uuid === MOCK_TAG_UUIDS.active) {
         const demoEntdeckenHref = `/v/${tag.uuid}/entdecken`;
         const demoRankMock =

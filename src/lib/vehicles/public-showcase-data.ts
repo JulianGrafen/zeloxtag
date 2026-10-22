@@ -84,12 +84,29 @@ export type PublicBuildStorySlice = {
   hasMore: boolean;
 };
 
+/** Workshop / tuner branding on the public spec sheet (B2B partner demos). */
+export type PublicShowcaseB2bPartner = {
+  kicker: string;
+  name: string;
+  logoSrc?: string | null;
+  logoAlt?: string;
+  ctaLabel: string;
+  ctaHref: string;
+};
+
+export type PublicShowcaseFeatureFlags = {
+  /** Headline performance block + dyno placeholder instead of quartett rows only. */
+  partnerPerformanceHero?: boolean;
+};
+
 export type PublicShowcasePayload = {
   profile: PublicShowcaseProfile;
   photos: PublicGalleryPhoto[];
   modifications: PublicModification[];
   buildDna: ShowcaseBuildDna | null;
   buildStory: PublicBuildStorySlice | null;
+  b2bPartner?: PublicShowcaseB2bPartner | null;
+  featureFlags?: PublicShowcaseFeatureFlags;
 };
 
 function resolvePublicBuildDna(

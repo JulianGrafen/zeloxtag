@@ -2,7 +2,9 @@ import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data"
 
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 
+import { ShowcaseBuiltByPartner } from "./ShowcaseBuiltByPartner";
 import { ShowcaseB2bPartnerFooterLink } from "./showcase-b2b-partner-footer-link";
+import { ShowroomPartnerPerformanceCard } from "./ShowroomPartnerPerformanceCard";
 import { PublicShowcaseMarker } from "./public-showcase-marker";
 import { ShowroomHero } from "./ShowroomHero";
 import { ShowroomBuildDna } from "./ShowroomBuildDna";
@@ -45,10 +47,17 @@ export function PublicShowcaseView({
       <div
         className={`${showroom.content} mx-auto flex w-full max-w-lg flex-col gap-6 pb-[max(2rem,env(safe-area-inset-bottom))]`}
       >
+        {data.b2bPartner ? (
+          <ShowcaseBuiltByPartner partner={data.b2bPartner} className="mx-4" />
+        ) : null}
+        {data.featureFlags?.partnerPerformanceHero ? (
+          <ShowroomPartnerPerformanceCard profile={data.profile} />
+        ) : null}
         <ShowroomStats
           profile={data.profile}
           modifications={data.modifications}
           revealOnMount={revealShowroomStatsOnMount}
+          featureFlags={data.featureFlags}
         />
         <ShowroomBuildPersonalityChips
           labels={data.profile.buildPersonalityLabels}
