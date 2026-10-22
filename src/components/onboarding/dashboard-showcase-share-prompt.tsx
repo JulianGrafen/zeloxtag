@@ -106,17 +106,6 @@ export function DashboardShowcaseSharePrompt({
             TikTok oder überall, wo du dein Auto zeigst.
           </p>
 
-          {shareCardData ? (
-            <div className="mt-4 flex justify-center overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-black/40 p-2">
-              <ShareableSpecCard
-                data={shareCardData}
-                vehicleId={vehicle.id}
-                previewMaxWidth={200}
-                showExportButton={false}
-              />
-            </div>
-          ) : null}
-
           <div className="mt-4 space-y-2">
             {pending ? (
               <p className="text-[0.8rem] text-[color:var(--vd-muted)]">
@@ -141,7 +130,7 @@ export function DashboardShowcaseSharePrompt({
                 type="button"
                 variant="button"
                 disabled={!shareUrl || pending}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[color:var(--vd-accent)] px-4 py-2.5 text-[0.88rem] font-semibold text-white disabled:opacity-50"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[color:var(--vd-border)] bg-white px-4 py-2.5 text-[0.88rem] font-semibold text-black disabled:opacity-50"
                 onClick={copyLink}
               >
                 {copied ? (
@@ -164,6 +153,17 @@ export function DashboardShowcaseSharePrompt({
               ) : null}
             </div>
           </div>
+
+          {shareCardData ? (
+            <div className="mt-4 flex justify-center overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-black/40 p-2">
+              <ShareableSpecCard
+                data={shareCardData}
+                vehicleId={vehicle.id}
+                previewMaxWidth={200}
+                showExportButton={false}
+              />
+            </div>
+          ) : null}
 
           <p className="mt-4 text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
             Die ZeloxTag-App kannst du später unter Konto installieren — kein

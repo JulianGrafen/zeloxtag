@@ -2,6 +2,7 @@ import {
   shareCardDimensions,
   type ShareCardFormat,
 } from "@/lib/share/share-card-variant";
+import { isShareCardCutoutHero } from "@/lib/share/share-card-image-cross-origin";
 
 import type { ShareableBuildData } from "./types";
 
@@ -52,8 +53,13 @@ export function computeShareCardLayout(
   const specCount = data.specRows.length;
   const hasDna = data.buildDna != null && format !== "post";
   const hasInstagram = Boolean(data.instagramHandle);
+  const fullBleedHero =
+    Boolean(data.imageUrl?.trim()) && !isShareCardCutoutHero(data.imageUrl);
 
   let heroHeightPercent = format === "post" ? 38 : 34;
+  if (fullBleedHero) {
+    heroHeightPercent = format === "post" ? 46 : 44;
+  }
   if (specCount > 5 || hasDna) heroHeightPercent = format === "post" ? 34 : 30;
   if (specCount > 8) heroHeightPercent = format === "post" ? 32 : 28;
   if (hasDna) heroHeightPercent = Math.min(heroHeightPercent, 28);

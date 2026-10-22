@@ -6,10 +6,7 @@ import {
   shareCardDimensions,
   type ShareCardFormat,
 } from "@/lib/share/share-card-variant";
-import {
-  isShareCardCutoutHero,
-  shareCardImageCrossOrigin,
-} from "@/lib/share/share-card-image-cross-origin";
+import { ShareCardHeroMedia } from "./ShareCardHeroMedia";
 
 import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
 import { ShareCardWeeklyRankBadge } from "./ShareCardWeeklyRankBadge";
@@ -28,7 +25,6 @@ export const ShareCardRankHeroPreview = forwardRef<
 >(function ShareCardRankHeroPreview({ data, format, className }, ref) {
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = Boolean(data.imageUrl) && !imageFailed;
-  const isCatalogCutout = isShareCardCutoutHero(data.imageUrl);
   const { width, height } = shareCardDimensions(format);
   const isPost = format === "post";
   const modelSizePx = isPost ? 52 : 68;
@@ -43,25 +39,16 @@ export const ShareCardRankHeroPreview = forwardRef<
       style={{ width, height }}
     >
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#0a0a0a] text-white">
-        <div className="relative min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1 overflow-hidden">
           {showImage ? (
-            // eslint-disable-next-line @next/next/no-img-element -- DOM export
-            <img
-              src={data.imageUrl}
-              alt=""
-              crossOrigin={shareCardImageCrossOrigin(data.imageUrl)}
-              className={
-                isCatalogCutout
-                  ? "absolute inset-x-0 bottom-[8%] h-[88%] w-full object-contain object-bottom"
-                  : "absolute inset-0 h-full w-full object-cover object-[50%_58%]"
-              }
+            <ShareCardHeroMedia
+              imageUrl={data.imageUrl!}
               onError={() => setImageFailed(true)}
+              variant="rank"
             />
           ) : (
             <div className="absolute inset-0 bg-zinc-900" />
           )}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/55 to-black/20" />
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-[45%] bg-gradient-to-r from-black/75 to-transparent" />
 
           {data.weeklyShowcaseRank != null ? (
             <div

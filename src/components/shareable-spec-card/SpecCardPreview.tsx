@@ -14,10 +14,7 @@ import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
 import { ShareCardSpecRowView } from "./ShareCardSpecRow";
 import { ShareCardWeeklyRankBadge } from "./ShareCardWeeklyRankBadge";
 import { ShareCardZeloxMark } from "./ShareCardZeloxMark";
-import {
-  isShareCardCutoutHero,
-  shareCardImageCrossOrigin,
-} from "@/lib/share/share-card-image-cross-origin";
+import { ShareCardHeroMedia } from "./ShareCardHeroMedia";
 
 import { computeShareCardLayout } from "./share-card-layout";
 import type { ShareableBuildData } from "./types";
@@ -35,7 +32,6 @@ const ShowcaseSpecCardPreview = forwardRef<
 >(function ShowcaseSpecCardPreview({ data, format, className }, ref) {
     const [imageFailed, setImageFailed] = useState(false);
     const showImage = Boolean(data.imageUrl) && !imageFailed;
-    const isCatalogCutout = isShareCardCutoutHero(data.imageUrl);
     /** Post 3:4 — no Umbau-DNA (radar overlapped hero/specs). Story keeps DNA zone. */
     const showDna = data.buildDna != null && format !== "post";
     const { width, height } = shareCardDimensions(format);
@@ -75,24 +71,16 @@ const ShowcaseSpecCardPreview = forwardRef<
             }}
           />
 
-          <div className="relative min-h-0">
+          <div className="relative min-h-0 overflow-hidden">
             {showImage ? (
-              // eslint-disable-next-line @next/next/no-img-element -- DOM export requires native img + crossOrigin
-              <img
-                src={data.imageUrl}
-                alt=""
-                crossOrigin={shareCardImageCrossOrigin(data.imageUrl)}
-                className={
-                  isCatalogCutout
-                    ? "absolute inset-x-0 bottom-0 h-[92%] w-full object-contain object-bottom"
-                    : "absolute inset-0 h-full w-full object-cover object-[50%_58%]"
-                }
+              <ShareCardHeroMedia
+                imageUrl={data.imageUrl!}
                 onError={() => setImageFailed(true)}
+                variant="showcase"
               />
             ) : (
               <div className="absolute inset-0 bg-zinc-900" />
             )}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
 
             {data.weeklyShowcaseRank != null ? (
               <div className="absolute left-10 top-10 z-20">
