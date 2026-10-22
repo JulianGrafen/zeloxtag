@@ -105,28 +105,45 @@ export function PwaInstallStepCarousel({
     }
   }, [setIndex, steps.length]);
 
+  /** Reset or re-sync scroll position only when step content changes — not on each controlled index tick. */
   useEffect(() => {
-    indexRef.current = 0;
+    const el = scrollerRef.current;
+    const targetIndex =
+      controlledIndex === undefined ? 0 : Math.max(0, controlledIndex);
+
+    indexRef.current = targetIndex;
     if (controlledIndex === undefined) {
       setInternalIndex(0);
     }
-    const el = scrollerRef.current;
+
     if (!el) return;
+
     const frame = window.requestAnimationFrame(() => {
-      el.scrollLeft = 0;
+      if (el.clientWidth <= 0) return;
+      el.scrollTo({
+        left: targetIndex * el.clientWidth,
+        behavior: "auto",
+      });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [steps, controlledIndex]);
+  }, [steps]);
 
   useEffect(() => {
     if (controlledIndex === undefined) return;
     const el = scrollerRef.current;
-    if (!el || el.clientWidth <= 0) return;
-    el.scrollTo({
-      left: controlledIndex * el.clientWidth,
-      behavior: "smooth",
-    });
-    indexRef.current = controlledIndex;
+    if (!el) return;
+
+    const scrollToControlled = () => {
+      if (el.clientWidth <= 0) return;
+      el.scrollTo({
+        left: controlledIndex * el.clientWidth,
+        behavior: "smooth",
+      });
+      indexRef.current = controlledIndex;
+    };
+
+    const frame = window.requestAnimationFrame(scrollToControlled);
+    return () => window.cancelAnimationFrame(frame);
   }, [controlledIndex]);
 
   const scrollToIndex = useCallback(

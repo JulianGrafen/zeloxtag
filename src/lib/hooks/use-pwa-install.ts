@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
+import { useAuthenticatedSession } from "@/lib/hooks/use-authenticated-session";
 import {
   getDashboardPromptSnapshot,
   isVehicleDashboardPath,
@@ -40,6 +41,7 @@ export type UsePwaInstallResult = {
 
 export function usePwaInstall(): UsePwaInstallResult {
   const pathname = usePathname();
+  const { isAuthenticated, isLoading: authLoading } = useAuthenticatedSession();
   const onVehicleDashboard = isVehicleDashboardPath(pathname ?? "");
   const [isStandalone, setIsStandalone] = useState(true);
   const [hasInstalled, setHasInstalled] = useState(true);
@@ -132,6 +134,8 @@ export function usePwaInstall(): UsePwaInstallResult {
   const showIosGuide = platform === "ios";
   const showAndroidGuide = platform === "android";
   const visible =
+    !authLoading &&
+    isAuthenticated &&
     shouldOfferPwaInstallPrompt() &&
     isMobileDevice() &&
     (showIosGuide || showAndroidGuide) &&

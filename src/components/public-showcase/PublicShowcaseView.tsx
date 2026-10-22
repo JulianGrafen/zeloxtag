@@ -2,6 +2,7 @@ import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data"
 
 import { LegalFooterNav } from "@/components/legal/legal-footer-nav";
 
+import { ShowcaseB2bPartnerFooterLink } from "./showcase-b2b-partner-footer-link";
 import { PublicShowcaseMarker } from "./public-showcase-marker";
 import { ShowroomHero } from "./ShowroomHero";
 import { ShowroomBuildDna } from "./ShowroomBuildDna";
@@ -65,6 +66,7 @@ export function PublicShowcaseView({
           className={`relative isolate z-[100] space-y-3 px-4 pb-2 ${showroom.footer}`}
         >
           <p>ZeloxTag</p>
+          <ShowcaseB2bPartnerFooterLink />
           <LegalFooterNav tone="inverse" />
         </footer>
       </div>
