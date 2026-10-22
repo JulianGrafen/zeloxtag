@@ -45,12 +45,17 @@ export function ZeloxBrandFadeBanner({
           </div>
         ) : null}
       </div>
-      {bottomFade ? (
-        <div className="zelox-brand-fade-banner__fade" aria-hidden>
-          <div className="zelox-brand-fade-banner__tail" />
-          <div className="zelox-brand-fade-banner__tail-halo" />
-        </div>
-      ) : null}
+      {bottomFade ? <ZeloxBrandFadeTail /> : null}
+    </div>
+  );
+}
+
+/** Masked black → transparent tail (overlaps content below, e.g. showcase hero). */
+export function ZeloxBrandFadeTail({ className }: { className?: string }) {
+  return (
+    <div className={cn("zelox-brand-fade-banner__fade", className)} aria-hidden>
+      <div className="zelox-brand-fade-banner__tail" />
+      <div className="zelox-brand-fade-banner__tail-halo" />
     </div>
   );
 }

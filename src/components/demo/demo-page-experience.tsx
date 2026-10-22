@@ -4,6 +4,7 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+import { ZeloxBrandFadeTail } from "@/components/brand/zelox-brand-fade-banner";
 import { ZeloxBrandWordmark } from "@/components/brand/zelox-brand-wordmark";
 import { AppShell } from "@/components/layout/app-shell";
 import { DemoDiscoverExperience } from "@/components/demo/demo-discover-experience";
@@ -60,8 +61,8 @@ export function DemoPageExperience({
   return (
     <AppShell showNavbar={false}>
       <div className="relative min-h-dvh bg-[color:var(--vd-bg)]">
-        <header className="sticky top-0 z-50 border-b border-[color:var(--vd-border)] bg-black pb-3 shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
-          <div className="px-4 pt-[max(0.65rem,env(safe-area-inset-top))] sm:px-5">
+        <header className="sticky top-0 z-50 pointer-events-none">
+          <div className="pointer-events-auto bg-black px-4 pt-[max(0.65rem,env(safe-area-inset-top))] sm:px-5">
             <div className="mx-auto flex w-full max-w-lg items-center justify-between gap-3">
               <Link
                 href="/"
@@ -80,12 +81,15 @@ export function DemoPageExperience({
               <ZeloxBrandWordmark size="banner" className="text-white" />
             </div>
 
-            <div className="mx-auto mt-3 w-full max-w-lg">
+            <div className="mx-auto mt-3 w-full max-w-lg pb-2">
               <DemoViewSwitch
                 activeView={activeView}
                 onChange={setActiveView}
               />
             </div>
+          </div>
+          <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight w-full">
+            <ZeloxBrandFadeTail />
           </div>
         </header>
 

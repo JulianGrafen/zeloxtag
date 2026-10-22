@@ -49,6 +49,7 @@ import {
   SHOWCASE_OG_DESCRIPTION,
 } from "@/lib/seo/open-graph";
 import { buildDemoAulitzkyPublicShowcasePayload } from "@/lib/demo/demo-aulitzky-showcase";
+import { buildDemoUndergroundGaragePublicShowcasePayload } from "@/lib/demo/demo-underground-garage-showcase";
 import {
   buildDemoPublicShowcasePayload,
   enrichDemoShowcaseVehicle,
@@ -431,7 +432,15 @@ export default async function TagScanPage({
         return (
           <PublicShowcaseView
             data={buildDemoAulitzkyPublicShowcasePayload()}
-            hideBrandBanner
+            revealShowroomStatsOnMount
+          />
+        );
+      }
+
+      if (tag.uuid === MOCK_TAG_UUIDS.undergroundGarage) {
+        return (
+          <PublicShowcaseView
+            data={buildDemoUndergroundGaragePublicShowcasePayload()}
             revealShowroomStatsOnMount
           />
         );
