@@ -22,8 +22,8 @@ export const MAX_SILHOUETTE_UPLOAD_BYTES = 8 * 1024 * 1024;
 /** Dashboard hero — full tile width at ~2–3× retina (proxy `w` cap). */
 export const SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE = 960;
 
-/** Build-Swipe card (~max 512px wide, 9:16). */
-export const SILHOUETTE_SHOWCASE_SWIPE_MAX_EDGE = 520;
+/** Build-Swipe card (9:16, ~2–3× retina + hero zoom in swipe-card-hero-utils). */
+export const SILHOUETTE_SHOWCASE_SWIPE_MAX_EDGE = 1280;
 
 /** Public showcase hero carousel (full width, ~2× retina cap). */
 export const SILHOUETTE_SHOWCASE_HERO_MAX_EDGE = 960;

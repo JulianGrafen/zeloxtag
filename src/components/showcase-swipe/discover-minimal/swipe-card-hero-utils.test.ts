@@ -9,7 +9,7 @@ describe("resolveSwipeCardHeroPresentation", () => {
       true,
     );
     expect(presentation.objectFit).toBe("cover");
-    expect(presentation.imageClassName).toContain("scale-[1.28]");
+    expect(presentation.imageClassName).toContain("scale-[1.18]");
   });
 
   it("uses scaled contain for silhouette catalog fallback", () => {

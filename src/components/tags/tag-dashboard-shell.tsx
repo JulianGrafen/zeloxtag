@@ -102,7 +102,6 @@ function persistSilhouetteSkipped(vehicleId: string): void {
 }
 
 const SILHOUETTE_PROMPT_DELAY_MS = 700;
-const SHOWCASE_SHARE_PROMPT_DELAY_MS = 450;
 const PWA_AFTER_SILHOUETTE_MS = 900;
 const PWA_ALONE_DELAY_MS = 1_600;
 
@@ -667,21 +666,17 @@ export function TagDashboardShell({
     }
   }
 
-  function scheduleShowcaseSharePrompt(
-    delayMs = SHOWCASE_SHARE_PROMPT_DELAY_MS,
-  ) {
+  function openShowcaseSharePromptIfEligible(): boolean {
     if (
       !isOwner ||
       demoShowcase ||
       hasDismissedShowcaseSharePrompt(vehicle.id)
     ) {
-      continuePostOnboardingPrompts();
-      return;
+      return false;
     }
-    schedulePrompt(() => {
-      setShowcaseSharePromptVisible(true);
-      setDashboardPromptPhase("showcaseShare");
-    }, delayMs);
+    setShowcaseSharePromptVisible(true);
+    setDashboardPromptPhase("showcaseShare");
+    return true;
   }
 
   function dismissShowcaseSharePrompt() {
@@ -711,12 +706,9 @@ export function TagDashboardShell({
     postTourSequenceHandledRef.current = true;
     clearPromptTimers();
 
-    if (!isOwner || demoShowcase) {
+    if (!openShowcaseSharePromptIfEligible()) {
       continuePostOnboardingPrompts();
-      return;
     }
-
-    scheduleShowcaseSharePrompt(SHOWCASE_SHARE_PROMPT_DELAY_MS);
   }
 
   /**
@@ -840,6 +832,12 @@ export function TagDashboardShell({
   }, [vehicle.id]);
 
   useEffect(() => {
+    if (startTour) {
+      firstRegistrationRef.current = true;
+    }
+  }, [startTour]);
+
+  useEffect(() => {
     if (paywallTakeoverActive || mode !== "dashboard" || !canWrite) {
       clearPromptTimers();
       resetDashboardPromptOrchestrator();
@@ -855,10 +853,7 @@ export function TagDashboardShell({
     }
 
     if (postTourSequenceHandledRef.current) {
-      return () => {
-        clearPromptTimers();
-        resetDashboardPromptOrchestrator();
-      };
+      return undefined;
     }
 
     clearPromptTimers();

@@ -55,7 +55,7 @@ export function DiscoverBuildOfWeekHero({
               heroSrc,
               build.heroImageUsesCover,
             )}
-            sizes="(max-width: 512px) 100vw, 480px"
+            sizes="(max-width: 768px) 100vw, 640px"
             unoptimized={heroSrc.startsWith("/api/")}
             priority
           />

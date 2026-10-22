@@ -78,7 +78,7 @@ export function ShowcaseSwipeQuartettCard({
             swipeCardHeroImageClassName(heroSrc),
           )}
           style={heroCoversCard ? { objectFit: "cover" } : { objectFit: "contain" }}
-          sizes="(max-width: 512px) 100vw, 480px"
+          sizes="(max-width: 768px) 100vw, 640px"
           unoptimized={heroSrc.startsWith("/api/")}
         />
       ) : (

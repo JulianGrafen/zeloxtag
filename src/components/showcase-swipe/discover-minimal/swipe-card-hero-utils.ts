@@ -33,7 +33,7 @@ function silhouetteSwipeHeroPresentation(
     return {
       objectFit: "cover",
       imageClassName:
-        "object-cover object-[50%_56%] scale-[1.28] [transform-origin:50%_56%]",
+        "object-cover object-[50%_56%] scale-[1.18] [transform-origin:50%_56%]",
     };
   }
   return {

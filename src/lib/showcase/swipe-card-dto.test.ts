@@ -28,7 +28,7 @@ describe("mapSwipeCandidateToCard", () => {
   it("maps public fields and hero proxy", () => {
     const card = mapSwipeCandidateToCard(base);
     expect(card?.heroImageSrc).toContain("/api/vehicle/silhouette/veh-1");
-    expect(card?.heroImageSrc).toContain("w=520");
+    expect(card?.heroImageSrc).toContain("w=1280");
     expect(card).toMatchObject({
       publicSlug: "bmw-m3-abc",
       make: "BMW",
