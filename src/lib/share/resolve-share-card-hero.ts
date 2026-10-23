@@ -7,6 +7,7 @@ import { filterShowcaseGalleryDocuments } from "@/lib/documents/showcase-gallery
 import { resolveAbsoluteAssetUrl } from "@/lib/og/resolve-absolute-url";
 import { fetchOgImageDataUri } from "@/lib/og/fetch-og-image-bytes";
 import { resolvePublicAppOrigin } from "@/lib/api/resolve-api-base-url";
+import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareable-build-data";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import { filterPublicShowcaseDocuments } from "@/lib/vehicles/public-showcase-documents";
 import { loadShowcaseStorageImageBytes } from "@/lib/vehicles/load-showcase-storage-image";
@@ -34,14 +35,13 @@ async function loadCatalogHeroBytesFromDisk(
   }
 }
 
-/** Relative hero URL for preview metadata (showcase / catalog). */
+/** Owner share-card hero URL (story-hero API when a hero exists). */
 export function resolveShareCardHeroPath(
   vehicle: Vehicle,
   documents: Document[],
 ): string | null {
-  const payload = buildPublicShowcasePayload(vehicle, documents);
-  const catalog = resolveVehicleCatalogImage(vehicle.make, vehicle.model);
-  return payload.profile.heroImageSrc ?? catalog?.src ?? null;
+  const shareData = buildOwnerShareableBuildData(vehicle, documents);
+  return shareData?.imageUrl?.trim() ?? null;
 }
 
 function galleryStorageSrcFromPhotoSrc(photoSrc: string): string | null {
@@ -212,6 +212,10 @@ export async function loadShareCardHeroBytes(
     if (fromOwnerShowcase && isLikelyImageBytes(fromOwnerShowcase)) {
       return fromOwnerShowcase;
     }
+  }
+
+  if (heroPath?.includes("/story-hero")) {
+    return loadCatalogHeroBytes(vehicle, options?.fetchOrigin);
   }
 
   if (heroPath?.startsWith("/api/")) {

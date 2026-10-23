@@ -1,5 +1,25 @@
+import { resolveApiBaseUrl } from "@/lib/api/resolve-api-base-url";
 import { showcaseVehicleFocusImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
 import { isOpaqueCatalogPhotoSrc } from "@/lib/vehicles/vehicle-image";
+
+function isSameOriginOrConfiguredApiBase(
+  resolved: string,
+  windowOrigin: string,
+): boolean {
+  try {
+    const url = new URL(resolved, windowOrigin);
+    if (url.origin === windowOrigin) {
+      return true;
+    }
+    const apiBase = resolveApiBaseUrl();
+    if (apiBase) {
+      return url.origin === new URL(apiBase).origin;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
 
 /** html-to-image: same-origin imgs must not use anonymous CORS (drops session cookies). */
 export function shareCardImageCrossOrigin(
@@ -18,7 +38,7 @@ export function shareCardImageCrossOrigin(
       typeof window !== "undefined"
         ? window.location.origin
         : "http://localhost";
-    if (new URL(resolved, origin).origin === origin) {
+    if (isSameOriginOrConfiguredApiBase(resolved, origin)) {
       return undefined;
     }
   } catch {

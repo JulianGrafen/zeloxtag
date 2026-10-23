@@ -8,11 +8,11 @@ import {
   type TopThreeWeeklyRank,
 } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
+import { resolveShareCardStoryHeroApiPath } from "@/lib/share/share-card-story-hero-url";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
+import { resolveShowcaseSilhouetteCacheBust } from "@/lib/vehicles/showcase-media-url";
 import { resolveVehicleCatalogImage } from "@/lib/vehicles/vehicle-image";
 import type { Document, Vehicle } from "@/types/database";
-
-import { toOwnerShareCardHeroSrc } from "@/lib/share/share-card-owner-showcase-file-url";
 import type { ShareableBuildData } from "@/components/shareable-spec-card/types";
 
 export function weeklyShowcaseRankForShareCard(
@@ -33,11 +33,16 @@ export function buildOwnerShareableBuildData(
   const catalogHero = resolveVehicleCatalogImage(vehicle.make, vehicle.model);
   const rawHeroImageSrc =
     payload.profile.heroImageSrc ?? catalogHero?.src ?? null;
-  const heroImageSrc = toOwnerShareCardHeroSrc(
-    vehicle.id,
-    rawHeroImageSrc,
-    vehicle.is_public === true,
-  );
+  const heroImageSrc =
+    rawHeroImageSrc != null
+      ? resolveShareCardStoryHeroApiPath(
+          vehicle.id,
+          resolveShowcaseSilhouetteCacheBust({
+            silhouetteImageUrl: vehicle.silhouette_image_url,
+            updatedAt: vehicle.updated_at,
+          }),
+        )
+      : null;
 
   const input: BuildShareableBuildDataInput = {
     profile: { ...payload.profile, heroImageSrc },

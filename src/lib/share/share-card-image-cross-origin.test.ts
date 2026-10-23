@@ -8,6 +8,17 @@ import {
 } from "./share-card-image-cross-origin";
 
 describe("shareCardImageCrossOrigin", () => {
+  it("omits crossOrigin for NEXT_PUBLIC_API_BASE_URL targets", () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = "https://app.zeloxtag.de";
+    expect(
+      shareCardImageCrossOrigin(
+        "/api/vehicle/11111111-1111-4111-8111-111111111111/story-hero?v=1",
+        "https://app.zeloxtag.de/api/vehicle/11111111-1111-4111-8111-111111111111/story-hero?v=1",
+      ),
+    ).toBeUndefined();
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  });
+
   it("omits crossOrigin for same-origin API paths", () => {
     expect(
       shareCardImageCrossOrigin(

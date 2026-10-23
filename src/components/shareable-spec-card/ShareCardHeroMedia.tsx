@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 import { toShareCardImageFetchUrl } from "@/lib/share/share-card-hero-image-url";
+import { promoteShareCardHeroToDataUrl } from "@/lib/share/promote-share-card-hero-to-data-url";
 import {
   shareCardHeroImageClassName,
   shareCardImageCrossOrigin,
@@ -21,17 +24,41 @@ export function ShareCardHeroMedia({
   onError,
   variant = "showcase",
 }: ShareCardHeroMediaProps) {
+  const imgRef = useRef<HTMLImageElement>(null);
   const fetchUrl = toShareCardImageFetchUrl(imageUrl);
+  const [displaySrc, setDisplaySrc] = useState(fetchUrl);
+  const inliningRef = useRef(false);
+
+  useEffect(() => {
+    setDisplaySrc(fetchUrl);
+    inliningRef.current = false;
+  }, [fetchUrl]);
+
+  const inlineHeroForExport = () => {
+    if (inliningRef.current || displaySrc.startsWith("data:")) {
+      return;
+    }
+    inliningRef.current = true;
+    void promoteShareCardHeroToDataUrl(fetchUrl).then((dataUrl) => {
+      if (!dataUrl || dataUrl === displaySrc) {
+        return;
+      }
+      setDisplaySrc(dataUrl);
+      imgRef.current?.removeAttribute("crossorigin");
+    });
+  };
 
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element -- DOM export */}
       <img
+        ref={imgRef}
         data-share-card-hero=""
-        src={fetchUrl}
+        src={displaySrc}
         alt=""
-        crossOrigin={shareCardImageCrossOrigin(imageUrl, fetchUrl)}
+        crossOrigin={shareCardImageCrossOrigin(imageUrl, displaySrc)}
         className={shareCardHeroImageClassName(imageUrl, variant)}
+        onLoad={inlineHeroForExport}
         onError={onError}
       />
       <div

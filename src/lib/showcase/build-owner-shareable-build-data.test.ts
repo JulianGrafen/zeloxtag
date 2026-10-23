@@ -33,10 +33,10 @@ const vehicle: Vehicle = {
 describe("buildOwnerShareableBuildData", () => {
   it("falls back to catalog cutout when no owner silhouette is stored", () => {
     const data = buildOwnerShareableBuildData(vehicle, [] as Document[]);
-    expect(data?.imageUrl).toContain("/api/vehicle/catalog/bmw-530d.png");
+    expect(data?.imageUrl).toContain(`/api/vehicle/${vehicle.id}/story-hero`);
   });
 
-  it("rewrites public gallery hero to owner showcase-file when not public", () => {
+  it("uses story-hero for private gallery vehicles", () => {
     const doc = {
       id: "33333333-3333-4333-8333-333333333333",
       vehicle_id: vehicle.id,
@@ -55,7 +55,7 @@ describe("buildOwnerShareableBuildData", () => {
       [doc],
     );
 
-    expect(data?.imageUrl).toContain(`/api/vehicle/${vehicle.id}/showcase-file`);
+    expect(data?.imageUrl).toContain(`/api/vehicle/${vehicle.id}/story-hero`);
     expect(data?.imageUrl).not.toContain("/api/public/vehicle/");
   });
 });

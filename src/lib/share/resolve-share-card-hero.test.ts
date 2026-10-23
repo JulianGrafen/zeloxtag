@@ -68,17 +68,17 @@ describe("parseOwnerShowcaseFileHeroPath", () => {
 });
 
 describe("resolveShareCardHeroPath", () => {
-  it("returns silhouette proxy when silhouette_image_url is set", () => {
+  it("returns owner story-hero when a hero source exists", () => {
     const path = resolveShareCardHeroPath(baseVehicle, []);
-    expect(path).toContain(`/api/vehicle/silhouette/${vehicleId}`);
+    expect(path).toContain(`/api/vehicle/${vehicleId}/story-hero`);
   });
 
-  it("falls back to catalog when no photos", () => {
+  it("returns story-hero for catalog fallback vehicles", () => {
     const path = resolveShareCardHeroPath(
       { ...baseVehicle, silhouette_image_url: null },
       [],
     );
-    expect(path).toMatch(/\/api\/vehicle\/catalog\//);
+    expect(path).toContain(`/api/vehicle/${vehicleId}/story-hero`);
   });
 });
 

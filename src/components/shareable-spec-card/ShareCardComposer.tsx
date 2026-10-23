@@ -140,12 +140,47 @@ export function ShareCardComposer({
     [data, variant],
   );
 
+  const [heroInlinedToDataUrl, setHeroInlinedToDataUrl] = useState(false);
+
+  useEffect(() => {
+    setHeroInlinedToDataUrl(false);
+    const node = exportRef.current;
+    if (!node || !expectsHeroImage) {
+      return;
+    }
+    const hero = node.querySelector<HTMLImageElement>("img[data-share-card-hero]");
+    const syncInline = () => {
+      const src = hero?.currentSrc || hero?.getAttribute("src") || "";
+      setHeroInlinedToDataUrl(src.startsWith("data:"));
+    };
+    syncInline();
+    hero?.addEventListener("load", syncInline);
+    const observer = new MutationObserver(syncInline);
+    if (hero) {
+      observer.observe(hero, { attributes: true, attributeFilter: ["src"] });
+    }
+    return () => {
+      hero?.removeEventListener("load", syncInline);
+      observer.disconnect();
+    };
+  }, [expectsHeroImage, data.imageUrl, format, style, variant]);
+
   const cacheKey = useMemo(() => {
     if (!expectsHeroImage) {
       return baseCacheKey;
     }
-    return `${baseCacheKey}:${previewHeroReady ? "hero-ready" : "hero-pending"}`;
-  }, [baseCacheKey, expectsHeroImage, previewHeroReady]);
+    const readySuffix = heroInlinedToDataUrl
+      ? "hero-inlined"
+      : previewHeroReady
+        ? "hero-preview"
+        : "hero-pending";
+    return `${baseCacheKey}:${readySuffix}`;
+  }, [
+    baseCacheKey,
+    expectsHeroImage,
+    heroInlinedToDataUrl,
+    previewHeroReady,
+  ]);
 
   const useServerOg = Boolean(vehicleId?.trim());
 
@@ -166,8 +201,10 @@ export function ShareCardComposer({
   const mobileShare = isLikelyMobileShareDevice();
   const inAppBrowser = mobileShare && isEmbeddedSocialInAppBrowser();
   const shareReadyFile = nativeShareFile ?? storyFile;
+  const heroExportReady =
+    !expectsHeroImage || heroInlinedToDataUrl || previewHeroReady;
   const preparedShareFileReady =
-    Boolean(shareReadyFile) && (!expectsHeroImage || previewHeroReady);
+    Boolean(shareReadyFile) && heroExportReady;
 
   const defaultShareHint = inAppBrowser
     ? embeddedBrowserShareHint()
@@ -305,7 +342,7 @@ export function ShareCardComposer({
     serverShare.clearError();
 
     if (expectsHeroImage) {
-      if (!previewHeroReady && !preparedShareFileReady) {
+      if (!heroExportReady && !preparedShareFileReady) {
         setActionError(
           isPreparing
             ? "Bild wird vorbereitet — bitte kurz warten und erneut tippen."
