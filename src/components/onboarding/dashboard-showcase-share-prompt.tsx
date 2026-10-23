@@ -8,6 +8,11 @@ import { ensureOnboardingShowcasePublished } from "@/actions/ensure-onboarding-s
 import { ShareableSpecCard } from "@/components/shareable-spec-card";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareable-build-data";
+import {
+  vehicleSurfaceHref,
+  vehicleSurfaceScopeFromContext,
+} from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document, Vehicle } from "@/types/database";
 
 type DashboardShowcaseSharePromptProps = {
@@ -15,6 +20,7 @@ type DashboardShowcaseSharePromptProps = {
   vehicle: Vehicle;
   documents: Document[];
   tagUuid?: string;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
   onDismiss: () => void;
 };
 
@@ -23,8 +29,17 @@ export function DashboardShowcaseSharePrompt({
   vehicle,
   documents,
   tagUuid,
+  vehicleSurfaceScope,
   onDismiss,
 }: DashboardShowcaseSharePromptProps) {
+  const surfaceScope =
+    vehicleSurfaceScope ??
+    vehicleSurfaceScopeFromContext(tagUuid ?? vehicle.id, vehicle.id);
+  const settingsHref = vehicleSurfaceHref(surfaceScope, "einstellungen");
+  const profileSettingsHref = vehicleSurfaceHref(
+    surfaceScope,
+    "einstellungen/profil",
+  );
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sharePath, setSharePath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,11 +114,11 @@ export function DashboardShowcaseSharePrompt({
             id="showcase-share-prompt-title"
             className="pr-10 text-[1.05rem] font-semibold leading-snug text-[color:var(--vd-text)]"
           >
-            Packe diesen Link in deine Bio, um deinen Build zu zeigen!
+            Deinen Build in die Instagram-Story teilen
           </h2>
           <p className="mt-2 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Dein öffentliches Showcase ist bereit — teile den Link in Instagram,
-            TikTok oder überall, wo du dein Auto zeigst.
+            Story-Karte mit Fahrzeugfoto unten — per Teilen-Menü direkt in
+            Instagram. Den Showcase-Link kannst du zusätzlich in deine Bio packen.
           </p>
 
           <div className="mt-4 space-y-2">
@@ -159,16 +174,52 @@ export function DashboardShowcaseSharePrompt({
               <ShareableSpecCard
                 data={shareCardData}
                 vehicleId={vehicle.id}
-                previewMaxWidth={200}
-                showExportButton={false}
+                previewMaxWidth={240}
+                defaultFormat="story"
+                exportButtonLabel="In Story teilen"
+                exportHint="Teilen-Menü → Instagram — Bild landet in der Story."
               />
             </div>
           ) : null}
 
-          <p className="mt-4 text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Die ZeloxTag-App kannst du später unter Konto installieren — kein
-            Muss für den Start.
-          </p>
+          <div
+            className="mt-4 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-3 text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]"
+          >
+            <p className="font-medium text-[color:var(--vd-text)]">
+              Später im Showcase
+            </p>
+            <p className="mt-1.5">
+              <strong className="font-medium text-[color:var(--vd-text)]">
+                Share-Link:
+              </strong>{" "}
+              <Link
+                href={profileSettingsHref}
+                className="font-medium text-[color:var(--vd-text)] underline decoration-white/30 underline-offset-2"
+              >
+                Einstellungen → Öffentliches Profil
+              </Link>
+              {" "}
+              — dort „Share-Link“ kopieren (Bio, TikTok und Co.).
+            </p>
+            <p className="mt-2">
+              <strong className="font-medium text-[color:var(--vd-text)]">
+                Story-Karte:
+              </strong>{" "}
+              <Link
+                href={settingsHref}
+                className="font-medium text-[color:var(--vd-text)] underline decoration-white/30 underline-offset-2"
+              >
+                Einstellungen
+              </Link>
+              {" "}
+              öffnen und weiter unten bei{" "}
+              <span className="font-medium text-[color:var(--vd-text)]">
+                Story-Pass
+              </span>{" "}
+              erneut „In Story teilen“ wählen (sichtbar, sobald dein Showcase
+              öffentlich ist).
+            </p>
+          </div>
 
           <PressableButton
             type="button"

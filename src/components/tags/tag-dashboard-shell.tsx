@@ -72,6 +72,7 @@ import { flushPendingOnboardingVehiclePhoto } from "@/lib/onboarding/flush-pendi
 import { resolveVehicleHeroDisplay } from "@/lib/vehicles/resolve-vehicle-hero-display";
 
 import { DashboardShowcaseSharePrompt } from "@/components/onboarding/dashboard-showcase-share-prompt";
+import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareable-build-data";
 import {
   hasDismissedShowcaseSharePrompt,
   markShowcaseSharePromptDismissed,
@@ -102,6 +103,7 @@ function persistSilhouetteSkipped(vehicleId: string): void {
 }
 
 const SILHOUETTE_PROMPT_DELAY_MS = 700;
+const SHOWCASE_SHARE_PROMPT_DELAY_MS = 1_200;
 const PWA_AFTER_SILHOUETTE_MS = 900;
 const PWA_ALONE_DELAY_MS = 1_600;
 
@@ -584,6 +586,10 @@ export function TagDashboardShell({
     ...vehicle,
     silhouette_image_url: silhouetteStorageUrl,
   };
+  const ownerShareCardData = useMemo(
+    () => buildOwnerShareableBuildData(vehicle, documents),
+    [vehicle, documents],
+  );
   const paywallVehicleHero = useMemo(
     () =>
       resolveVehicleHeroDisplay({
@@ -670,6 +676,7 @@ export function TagDashboardShell({
     if (
       !isOwner ||
       demoShowcase ||
+      !ownerShareCardData ||
       hasDismissedShowcaseSharePrompt(vehicle.id)
     ) {
       return false;
@@ -838,7 +845,12 @@ export function TagDashboardShell({
   }, [startTour]);
 
   useEffect(() => {
-    if (paywallTakeoverActive || mode !== "dashboard" || !canWrite) {
+    if (
+      paywallTakeoverActive ||
+      Boolean(paywallFeature) ||
+      mode !== "dashboard" ||
+      !canWrite
+    ) {
       clearPromptTimers();
       resetDashboardPromptOrchestrator();
       setSilhouettePromptVisible(false);
@@ -857,11 +869,18 @@ export function TagDashboardShell({
     }
 
     clearPromptTimers();
-    if (wantsSilhouettePrompt) {
-      scheduleSilhouettePrompt(SILHOUETTE_PROMPT_DELAY_MS);
-    } else if (!firstRegistrationRef.current) {
-      schedulePwaPrompt(PWA_ALONE_DELAY_MS);
-    }
+    schedulePrompt(() => {
+      if (openShowcaseSharePromptIfEligible()) {
+        return;
+      }
+      if (wantsSilhouettePrompt) {
+        scheduleSilhouettePrompt(0);
+        return;
+      }
+      if (!firstRegistrationRef.current) {
+        schedulePwaPrompt(PWA_ALONE_DELAY_MS);
+      }
+    }, SHOWCASE_SHARE_PROMPT_DELAY_MS);
 
     return () => {
       clearPromptTimers();
@@ -869,12 +888,16 @@ export function TagDashboardShell({
     };
   }, [
     paywallTakeoverActive,
+    paywallFeature,
     mode,
     canWrite,
     forceTour,
     deferSilhouetteForTour,
     wantsSilhouettePrompt,
     vehicle.id,
+    ownerShareCardData,
+    isOwner,
+    demoShowcase,
   ]);
 
   useEffect(() => {
@@ -1089,6 +1112,7 @@ export function TagDashboardShell({
               vehicle={vehicle}
               documents={documents}
               tagUuid={tagUuid}
+              vehicleSurfaceScope={vehicleSurfaceScope}
               onDismiss={dismissShowcaseSharePrompt}
             />,
             document.body,
