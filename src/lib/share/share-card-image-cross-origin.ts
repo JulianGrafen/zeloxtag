@@ -4,12 +4,13 @@ import { isOpaqueCatalogPhotoSrc } from "@/lib/vehicles/vehicle-image";
 /** html-to-image: same-origin imgs must not use anonymous CORS (drops session cookies). */
 export function shareCardImageCrossOrigin(
   src: string | undefined,
+  fetchUrl?: string,
 ): "anonymous" | undefined {
-  const trimmed = src?.trim();
-  if (!trimmed || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+  const resolved = fetchUrl?.trim() || src?.trim();
+  if (!resolved || resolved.startsWith("data:") || resolved.startsWith("blob:")) {
     return undefined;
   }
-  if (trimmed.startsWith("/")) {
+  if (resolved.startsWith("/")) {
     return undefined;
   }
   try {
@@ -17,7 +18,7 @@ export function shareCardImageCrossOrigin(
       typeof window !== "undefined"
         ? window.location.origin
         : "http://localhost";
-    if (new URL(trimmed, origin).origin === origin) {
+    if (new URL(resolved, origin).origin === origin) {
       return undefined;
     }
   } catch {

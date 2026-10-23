@@ -8,6 +8,7 @@ import {
   loadShareCardHeroBytes,
   resolveShareCardHeroPath,
 } from "@/lib/share/resolve-share-card-hero";
+import { buildOwnerShareableBuildData } from "@/lib/showcase/build-owner-shareable-build-data";
 import { SILHOUETTE_SHOWCASE_HERO_MAX_EDGE } from "@/lib/vehicles/silhouette-constants";
 import { isLikelyImageBytes } from "@/lib/vehicles/silhouette-bytes";
 import type { Document, Vehicle } from "@/types/database";
@@ -41,19 +42,36 @@ export async function resolveStoryCardHeroDataUri(input: {
   fetchOrigin?: string;
   cookieHeader?: string;
 }): Promise<string | null> {
+  const heroPath = resolveShareCardHeroPath(input.vehicle, input.documents);
   const bytes = await loadShareCardHeroBytes(input.vehicle, input.documents, {
     fetchOrigin: input.fetchOrigin,
     cookieHeader: input.cookieHeader,
   });
   if (!bytes) {
+    console.error("[og-story-card] hero bytes load failed", {
+      vehicleId: input.vehicle.id,
+      heroPath,
+      bytesLength: 0,
+      dataUriLength: 0,
+    });
     return null;
   }
-  return bytesToOptimizedHeroDataUri(bytes);
+  const dataUri = await bytesToOptimizedHeroDataUri(bytes);
+  if (!dataUri) {
+    console.error("[og-story-card] hero data uri encode failed", {
+      vehicleId: input.vehicle.id,
+      heroPath,
+      bytesLength: bytes.byteLength,
+      dataUriLength: 0,
+    });
+  }
+  return dataUri;
 }
 
 export function shareCardExpectsHeroImage(
   vehicle: Vehicle,
   documents: Document[],
 ): boolean {
-  return resolveShareCardHeroPath(vehicle, documents) != null;
+  const shareData = buildOwnerShareableBuildData(vehicle, documents);
+  return Boolean(shareData?.imageUrl?.trim());
 }

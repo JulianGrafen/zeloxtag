@@ -1,9 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { usePreparedStoryFile } from "@/hooks/use-prepared-story-file";
 import { useServerStoryShare } from "@/hooks/use-server-story-share";
+import { captureShareCardPngFile } from "@/lib/share/capture-share-card-png-file";
+import { isShareCardPreviewHeroReady } from "@/lib/share/share-card-preview-hero-ready";
+import { createStoryJpegForNativeShare } from "@/lib/share/story-image-for-share";
 import { useIosHaptics } from "@/components/ui/ios/use-ios-haptics";
 import { isEmbeddedSocialInAppBrowser } from "@/lib/share/story-image-for-share";
 import {
@@ -122,6 +125,42 @@ export function ShareCardComposer({
   const mobileShare = isLikelyMobileShareDevice();
   const inAppBrowser = mobileShare && isEmbeddedSocialInAppBrowser();
   const shareReadyFile = nativeShareFile ?? storyFile;
+  const expectsHeroImage = Boolean(data.imageUrl?.trim());
+  const [previewHeroReady, setPreviewHeroReady] = useState(false);
+
+  useEffect(() => {
+    const node = exportRef.current;
+    if (!node || !expectsHeroImage) {
+      setPreviewHeroReady(false);
+      return;
+    }
+
+    const sync = () => {
+      setPreviewHeroReady(isShareCardPreviewHeroReady(node));
+    };
+
+    sync();
+    const hero = node.querySelector<HTMLImageElement>("img[data-share-card-hero]");
+    hero?.addEventListener("load", sync);
+    hero?.addEventListener("error", sync);
+
+    const observer = new MutationObserver(sync);
+    observer.observe(node, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["src"],
+    });
+
+    return () => {
+      hero?.removeEventListener("load", sync);
+      hero?.removeEventListener("error", sync);
+      observer.disconnect();
+    };
+  }, [expectsHeroImage, data.imageUrl, format, style, cacheKey]);
+
+  const preferCanvasShare =
+    expectsHeroImage && (Boolean(shareReadyFile) || previewHeroReady);
 
   const defaultShareHint = inAppBrowser
     ? embeddedBrowserShareHint()
@@ -181,16 +220,7 @@ export function ShareCardComposer({
     }
   };
 
-  const handleCanvasExport = () => {
-    if (!shareReadyFile) {
-      setActionError(
-        isPreparing
-          ? "Bild wird vorbereitet — bitte kurz warten und erneut tippen."
-          : prepareError ?? "Export-Bild ist noch nicht bereit.",
-      );
-      return;
-    }
-
+  const sharePreparedFile = (file: File) => {
     setActionError(null);
 
     if (mobileShare) {
@@ -200,31 +230,85 @@ export function ShareCardComposer({
       }
 
       setIsCanvasSharing(true);
-      void nativeBridge
-        .shareContent({ files: [shareReadyFile] })
-        .then((result) => {
-          setIsCanvasSharing(false);
-          if (result === "unavailable") {
-            setActionError(
-              "Teilen fehlgeschlagen — Bild gespeichert. Instagram aus der Galerie wählen.",
-            );
-          }
-        });
+      void nativeBridge.shareContent({ files: [file] }).then((result) => {
+        setIsCanvasSharing(false);
+        if (result === "unavailable") {
+          setActionError(
+            "Teilen fehlgeschlagen — Bild gespeichert. Instagram aus der Galerie wählen.",
+          );
+        }
+      });
       return;
     }
 
-    void nativeBridge.shareContent({ files: [storyFile ?? shareReadyFile] }).then(
-      (result) => {
-        if (result === "unavailable") {
-          setActionError("Teilen nicht verfügbar — bitte Bild speichern.");
+    void nativeBridge.shareContent({ files: [file] }).then((result) => {
+      if (result === "unavailable") {
+        setActionError("Teilen nicht verfügbar — bitte Bild speichern.");
+      }
+    });
+  };
+
+  const resolveShareFile = async (): Promise<File | null> => {
+    if (shareReadyFile) {
+      return shareReadyFile;
+    }
+    const node = exportRef.current;
+    if (!node || !expectsHeroImage || !isShareCardPreviewHeroReady(node)) {
+      return null;
+    }
+    try {
+      const pngFile = await captureShareCardPngFile(node, {
+        filename: storyFilename,
+      });
+      return await createStoryJpegForNativeShare(pngFile);
+    } catch {
+      return null;
+    }
+  };
+
+  const handleCanvasExport = () => {
+    if (isCanvasSharing) {
+      return;
+    }
+    setIsCanvasSharing(true);
+    void (async () => {
+      try {
+        const file = await resolveShareFile();
+        if (!file) {
+          setActionError(
+            isPreparing
+              ? "Bild wird vorbereitet — bitte kurz warten und erneut tippen."
+              : prepareError ?? "Export-Bild ist noch nicht bereit.",
+          );
+          setIsCanvasSharing(false);
+          return;
         }
-      },
-    );
+        sharePreparedFile(file);
+        if (!mobileShare) {
+          setIsCanvasSharing(false);
+        }
+      } catch {
+        setIsCanvasSharing(false);
+      }
+    })();
   };
 
   const handleServerExport = () => {
     setActionError(null);
     serverShare.clearError();
+
+    if (preferCanvasShare) {
+      handleCanvasExport();
+      return;
+    }
+
+    if (expectsHeroImage && isPreparing) {
+      setActionError(
+        "Bild wird vorbereitet — bitte kurz warten und erneut tippen.",
+      );
+      return;
+    }
+
     void serverShare.shareToStory().then((shared) => {
       if (!shared) {
         handleCanvasExport();
@@ -233,7 +317,7 @@ export function ShareCardComposer({
   };
 
   const isExporting = useServerOg
-    ? serverShare.isSharing
+    ? serverShare.isSharing || isCanvasSharing
     : isPreparing || isCanvasSharing;
 
   const error = useServerOg
@@ -241,7 +325,11 @@ export function ShareCardComposer({
     : actionError ?? prepareError;
 
   const buttonDisabled = useServerOg
-    ? isExporting
+    ? isExporting ||
+      (expectsHeroImage &&
+        isPreparing &&
+        !shareReadyFile &&
+        !previewHeroReady)
     : isExporting || (mobileShare && !inAppBrowser && !shareReadyFile);
 
   const resolvedExportLabel =
@@ -359,7 +447,10 @@ export function ShareCardComposer({
             className="w-full max-w-sm"
             label={resolvedExportLabel}
             pendingLabel={
-              exportButtonPendingLabel ?? "Bild wird erstellt…"
+              exportButtonPendingLabel ??
+              (expectsHeroImage && isPreparing && !shareReadyFile
+                ? "Bild wird vorbereitet…"
+                : "Bild wird erstellt…")
             }
             hint={
               inAppBrowser

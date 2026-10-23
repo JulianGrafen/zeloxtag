@@ -12,6 +12,7 @@ import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data"
 import { resolveVehicleCatalogImage } from "@/lib/vehicles/vehicle-image";
 import type { Document, Vehicle } from "@/types/database";
 
+import { toOwnerShareCardHeroSrc } from "@/lib/share/share-card-owner-showcase-file-url";
 import type { ShareableBuildData } from "@/components/shareable-spec-card/types";
 
 export function weeklyShowcaseRankForShareCard(
@@ -30,8 +31,13 @@ export function buildOwnerShareableBuildData(
   const payload = buildPublicShowcasePayload(vehicle, documents);
   const weeklyShowcaseRank = weeklyShowcaseRankForShareCard(weeklyRank);
   const catalogHero = resolveVehicleCatalogImage(vehicle.make, vehicle.model);
-  const heroImageSrc =
+  const rawHeroImageSrc =
     payload.profile.heroImageSrc ?? catalogHero?.src ?? null;
+  const heroImageSrc = toOwnerShareCardHeroSrc(
+    vehicle.id,
+    rawHeroImageSrc,
+    vehicle.is_public === true,
+  );
 
   const input: BuildShareableBuildDataInput = {
     profile: { ...payload.profile, heroImageSrc },

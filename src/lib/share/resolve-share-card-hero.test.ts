@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { describe, expect, it, vi } from "vitest";
 
 import type { Document, Vehicle } from "@/types/database";
@@ -15,6 +17,10 @@ vi.mock("@/lib/vehicles/load-silhouette-bytes", () => ({
 
 vi.mock("@/lib/vehicles/load-showcase-storage-image", () => ({
   loadShowcaseStorageImageBytes: vi.fn(),
+}));
+
+vi.mock("node:fs/promises", () => ({
+  readFile: vi.fn(),
 }));
 
 const vehicleId = "11111111-1111-4111-8111-111111111111";
@@ -85,6 +91,22 @@ describe("loadShareCardHeroBytes", () => {
     );
     expect(bytes).not.toBeNull();
     expect(loadShowcaseStorageImageBytes).toHaveBeenCalled();
+  });
+
+  it("reads catalog bytes from disk without HTTP", async () => {
+    vi.mocked(loadVehicleSilhouetteBytes).mockResolvedValue(null);
+    vi.mocked(loadShowcaseStorageImageBytes).mockResolvedValue(null);
+    vi.mocked(readFile).mockResolvedValue(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    );
+
+    const bytes = await loadShareCardHeroBytes(
+      { ...baseVehicle, silhouette_image_url: null },
+      [],
+    );
+
+    expect(bytes).not.toBeNull();
+    expect(readFile).toHaveBeenCalled();
   });
 });
 

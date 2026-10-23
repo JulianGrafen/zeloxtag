@@ -1,5 +1,8 @@
 import "server-only";
 
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { filterShowcaseGalleryDocuments } from "@/lib/documents/showcase-gallery";
 import { resolveAbsoluteAssetUrl } from "@/lib/og/resolve-absolute-url";
 import { fetchOgImageDataUri } from "@/lib/og/fetch-og-image-bytes";
@@ -13,6 +16,23 @@ import { resolveVehicleCatalogImage } from "@/lib/vehicles/vehicle-image";
 import type { Document, Vehicle } from "@/types/database";
 
 const HERO_HTTP_FETCH_TIMEOUT_MS = 8_000;
+const CATALOG_FILENAME_RE = /^[a-z0-9-]+\.png$/i;
+
+async function loadCatalogHeroBytesFromDisk(
+  catalogSrc: string,
+): Promise<Uint8Array | null> {
+  const filename = catalogSrc.split("/").pop()?.split("?")[0]?.trim();
+  if (!filename || !CATALOG_FILENAME_RE.test(filename)) {
+    return null;
+  }
+  try {
+    const filePath = path.join(process.cwd(), "public", "vehicles", filename);
+    const bytes = await readFile(filePath);
+    return isLikelyImageBytes(bytes) ? new Uint8Array(bytes) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Relative hero URL for preview metadata (showcase / catalog). */
 export function resolveShareCardHeroPath(
@@ -104,6 +124,11 @@ async function loadCatalogHeroBytes(
     return null;
   }
 
+  const fromDisk = await loadCatalogHeroBytesFromDisk(catalog.src);
+  if (fromDisk) {
+    return fromDisk;
+  }
+
   const origin = fetchOrigin ?? resolvePublicAppOrigin();
   const absolute = resolveAbsoluteAssetUrl(catalog.src, origin);
   const remote = await fetchOgImageDataUri(absolute);
@@ -151,6 +176,13 @@ export async function loadShareCardHeroBytes(
   }
 
   const heroPath = resolveShareCardHeroPath(vehicle, documents);
+
+  if (heroPath?.includes("/api/vehicle/catalog/")) {
+    const fromCatalogPath = await loadCatalogHeroBytesFromDisk(heroPath);
+    if (fromCatalogPath) {
+      return fromCatalogPath;
+    }
+  }
 
   if (heroPath?.startsWith("/api/")) {
     const fromHeroPath = await loadHeroPathHttpBytes(heroPath, options);

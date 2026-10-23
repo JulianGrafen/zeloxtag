@@ -21,14 +21,16 @@ export function ShareCardHeroMedia({
   onError,
   variant = "showcase",
 }: ShareCardHeroMediaProps) {
+  const fetchUrl = toShareCardImageFetchUrl(imageUrl);
+
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element -- DOM export */}
       <img
         data-share-card-hero=""
-        src={toShareCardImageFetchUrl(imageUrl)}
+        src={fetchUrl}
         alt=""
-        crossOrigin={shareCardImageCrossOrigin(imageUrl)}
+        crossOrigin={shareCardImageCrossOrigin(imageUrl, fetchUrl)}
         className={shareCardHeroImageClassName(imageUrl, variant)}
         onError={onError}
       />
