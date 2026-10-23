@@ -12,9 +12,16 @@ function imageReady(img: HTMLImageElement): boolean {
   return img.complete && img.naturalWidth > 0 && img.naturalHeight > 0;
 }
 
-async function waitForImages(root: HTMLElement, timeoutMs = 12_000): Promise<void> {
+async function waitForImages(
+  root: HTMLElement,
+  timeoutMs = 12_000,
+  options?: { requireHero?: boolean },
+): Promise<void> {
   const images = Array.from(root.querySelectorAll("img"));
   if (images.length === 0) {
+    if (options?.requireHero) {
+      throw new Error("Fahrzeugbild konnte nicht geladen werden.");
+    }
     return;
   }
 
@@ -22,8 +29,12 @@ async function waitForImages(root: HTMLElement, timeoutMs = 12_000): Promise<voi
 
   await Promise.all(
     images.map(async (img) => {
+      const isHero = img.hasAttribute("data-share-card-hero");
       while (!imageReady(img)) {
         if (Date.now() >= deadline) {
+          if (isHero && options?.requireHero) {
+            throw new Error("Fahrzeugbild konnte nicht geladen werden.");
+          }
           return;
         }
         await new Promise<void>((resolve) => {
@@ -83,6 +94,9 @@ export async function captureShareCardPngFile(
   node: HTMLElement,
   options: CaptureShareCardPngFileOptions,
 ): Promise<File> {
+  const requireHero = Boolean(
+    node.querySelector("img[data-share-card-hero]"),
+  );
   const pixelRatio =
     options.pixelRatio ?? SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO;
 
@@ -100,10 +114,10 @@ export async function captureShareCardPngFile(
 
   try {
     await waitForFonts();
-    await waitForImages(node);
+    await waitForImages(node, 12_000, { requireHero });
     prepareShareCardExportClone(clone);
     await inlineShareCardImages(clone);
-    await waitForImages(clone);
+    await waitForImages(clone, 12_000, { requireHero });
 
     const dataUrl = await toPng(clone, {
       width: SHAREABLE_SPEC_CARD_WIDTH_PX,

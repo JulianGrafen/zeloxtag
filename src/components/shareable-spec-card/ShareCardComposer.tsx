@@ -101,30 +101,6 @@ export function ShareCardComposer({
     [data.modelName, format, style],
   );
 
-  const cacheKey = useMemo(
-    () => buildStoryCardCacheKey(data, variant),
-    [data, variant],
-  );
-
-  const useServerOg = Boolean(vehicleId?.trim());
-
-  const serverShare = useServerStoryShare({
-    vehicleId: vehicleId ?? "",
-    filename: storyFilename,
-    format,
-    style,
-  });
-
-  const { storyFile, nativeShareFile, isPreparing, prepareError } =
-    usePreparedStoryFile(exportRef, {
-      filename: storyFilename,
-      cacheKey,
-      enabled: true,
-    });
-
-  const mobileShare = isLikelyMobileShareDevice();
-  const inAppBrowser = mobileShare && isEmbeddedSocialInAppBrowser();
-  const shareReadyFile = nativeShareFile ?? storyFile;
   const expectsHeroImage = Boolean(data.imageUrl?.trim());
   const [previewHeroReady, setPreviewHeroReady] = useState(false);
 
@@ -157,10 +133,41 @@ export function ShareCardComposer({
       hero?.removeEventListener("error", sync);
       observer.disconnect();
     };
-  }, [expectsHeroImage, data.imageUrl, format, style, cacheKey]);
+  }, [expectsHeroImage, data.imageUrl, format, style, variant]);
 
-  const preferCanvasShare =
-    expectsHeroImage && (Boolean(shareReadyFile) || previewHeroReady);
+  const baseCacheKey = useMemo(
+    () => buildStoryCardCacheKey(data, variant),
+    [data, variant],
+  );
+
+  const cacheKey = useMemo(() => {
+    if (!expectsHeroImage) {
+      return baseCacheKey;
+    }
+    return `${baseCacheKey}:${previewHeroReady ? "hero-ready" : "hero-pending"}`;
+  }, [baseCacheKey, expectsHeroImage, previewHeroReady]);
+
+  const useServerOg = Boolean(vehicleId?.trim());
+
+  const serverShare = useServerStoryShare({
+    vehicleId: vehicleId ?? "",
+    filename: storyFilename,
+    format,
+    style,
+  });
+
+  const { storyFile, nativeShareFile, isPreparing, prepareError } =
+    usePreparedStoryFile(exportRef, {
+      filename: storyFilename,
+      cacheKey,
+      enabled: true,
+    });
+
+  const mobileShare = isLikelyMobileShareDevice();
+  const inAppBrowser = mobileShare && isEmbeddedSocialInAppBrowser();
+  const shareReadyFile = nativeShareFile ?? storyFile;
+  const preparedShareFileReady =
+    Boolean(shareReadyFile) && (!expectsHeroImage || previewHeroReady);
 
   const defaultShareHint = inAppBrowser
     ? embeddedBrowserShareHint()
@@ -249,7 +256,7 @@ export function ShareCardComposer({
   };
 
   const resolveShareFile = async (): Promise<File | null> => {
-    if (shareReadyFile) {
+    if (preparedShareFileReady && shareReadyFile) {
       return shareReadyFile;
     }
     const node = exportRef.current;
@@ -297,15 +304,16 @@ export function ShareCardComposer({
     setActionError(null);
     serverShare.clearError();
 
-    if (preferCanvasShare) {
+    if (expectsHeroImage) {
+      if (!previewHeroReady && !preparedShareFileReady) {
+        setActionError(
+          isPreparing
+            ? "Bild wird vorbereitet — bitte kurz warten und erneut tippen."
+            : "Fahrzeugbild lädt noch — bitte kurz warten und erneut tippen.",
+        );
+        return;
+      }
       handleCanvasExport();
-      return;
-    }
-
-    if (expectsHeroImage && isPreparing) {
-      setActionError(
-        "Bild wird vorbereitet — bitte kurz warten und erneut tippen.",
-      );
       return;
     }
 
@@ -328,7 +336,7 @@ export function ShareCardComposer({
     ? isExporting ||
       (expectsHeroImage &&
         isPreparing &&
-        !shareReadyFile &&
+        !preparedShareFileReady &&
         !previewHeroReady)
     : isExporting || (mobileShare && !inAppBrowser && !shareReadyFile);
 
@@ -448,7 +456,10 @@ export function ShareCardComposer({
             label={resolvedExportLabel}
             pendingLabel={
               exportButtonPendingLabel ??
-              (expectsHeroImage && isPreparing && !shareReadyFile
+              (expectsHeroImage &&
+              isPreparing &&
+              !preparedShareFileReady &&
+              !previewHeroReady
                 ? "Bild wird vorbereitet…"
                 : "Bild wird erstellt…")
             }

@@ -6,7 +6,11 @@ import type { Document, Vehicle } from "@/types/database";
 
 import { SHOWCASE_GALLERY_MARKER } from "@/lib/documents/showcase-gallery";
 
-import { resolveShareCardHeroPath, loadShareCardHeroBytes } from "./resolve-share-card-hero";
+import {
+  loadShareCardHeroBytes,
+  parseOwnerShowcaseFileHeroPath,
+  resolveShareCardHeroPath,
+} from "./resolve-share-card-hero";
 import { resolveShareCardStoryHeroApiPath } from "./share-card-story-hero-url";
 import { loadVehicleSilhouetteBytes } from "@/lib/vehicles/load-silhouette-bytes";
 import { loadShowcaseStorageImageBytes } from "@/lib/vehicles/load-showcase-storage-image";
@@ -49,6 +53,19 @@ const baseVehicle: Vehicle = {
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-02T00:00:00Z",
 };
+
+describe("parseOwnerShowcaseFileHeroPath", () => {
+  it("parses owner showcase-file hero URLs", () => {
+    expect(
+      parseOwnerShowcaseFileHeroPath(
+        `/api/vehicle/${vehicleId}/showcase-file?src=vehicles%2Fx%2Fphoto.jpg`,
+      ),
+    ).toEqual({
+      vehicleId,
+      src: "vehicles/x/photo.jpg",
+    });
+  });
+});
 
 describe("resolveShareCardHeroPath", () => {
   it("returns silhouette proxy when silhouette_image_url is set", () => {

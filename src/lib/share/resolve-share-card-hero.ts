@@ -53,6 +53,23 @@ function galleryStorageSrcFromPhotoSrc(photoSrc: string): string | null {
   }
 }
 
+/** Owner showcase-file proxy URLs (no server-side session loopback). */
+export function parseOwnerShowcaseFileHeroPath(
+  heroPath: string,
+): { vehicleId: string; src: string } | null {
+  try {
+    const parsed = new URL(heroPath, "http://localhost");
+    const match = parsed.pathname.match(/\/api\/vehicle\/([^/]+)\/showcase-file$/);
+    const src = parsed.searchParams.get("src")?.trim();
+    if (!match?.[1] || !src) {
+      return null;
+    }
+    return { vehicleId: match[1], src };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchHeroImageBytesFromUrl(
   absoluteUrl: string,
   cookieHeader?: string,
@@ -181,6 +198,19 @@ export async function loadShareCardHeroBytes(
     const fromCatalogPath = await loadCatalogHeroBytesFromDisk(heroPath);
     if (fromCatalogPath) {
       return fromCatalogPath;
+    }
+  }
+
+  const ownerShowcase = heroPath
+    ? parseOwnerShowcaseFileHeroPath(heroPath)
+    : null;
+  if (ownerShowcase && ownerShowcase.vehicleId === vehicle.id) {
+    const fromOwnerShowcase = await loadShowcaseStorageImageBytes(
+      vehicle.id,
+      ownerShowcase.src,
+    );
+    if (fromOwnerShowcase && isLikelyImageBytes(fromOwnerShowcase)) {
+      return fromOwnerShowcase;
     }
   }
 
