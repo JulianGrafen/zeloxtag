@@ -102,7 +102,10 @@ export async function GET(
   const bytes = await loadShareCardHeroBytes(
     vehicle as Vehicle,
     (documents ?? []) as Document[],
-    { fetchOrigin: request.nextUrl.origin },
+    {
+      fetchOrigin: request.nextUrl.origin,
+      cookieHeader: request.headers.get("cookie") ?? undefined,
+    },
   );
 
   if (!bytes || !isLikelyImageBytes(bytes)) {

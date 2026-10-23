@@ -8,7 +8,6 @@ import {
   type TopThreeWeeklyRank,
 } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
-import { resolveShareCardStoryHeroApiPath } from "@/lib/share/share-card-story-hero-url";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import { resolveVehicleCatalogImage } from "@/lib/vehicles/vehicle-image";
 import type { Document, Vehicle } from "@/types/database";
@@ -31,12 +30,8 @@ export function buildOwnerShareableBuildData(
   const payload = buildPublicShowcasePayload(vehicle, documents);
   const weeklyShowcaseRank = weeklyShowcaseRankForShareCard(weeklyRank);
   const catalogHero = resolveVehicleCatalogImage(vehicle.make, vehicle.model);
-  const hasHeroAsset = Boolean(
-    payload.profile.heroImageSrc ?? catalogHero?.src,
-  );
-  const heroImageSrc = hasHeroAsset
-    ? resolveShareCardStoryHeroApiPath(vehicle.id, vehicle.updated_at)
-    : null;
+  const heroImageSrc =
+    payload.profile.heroImageSrc ?? catalogHero?.src ?? null;
 
   const input: BuildShareableBuildDataInput = {
     profile: { ...payload.profile, heroImageSrc },

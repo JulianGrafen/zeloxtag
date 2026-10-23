@@ -31,8 +31,7 @@ export async function fetchStoryCardPngFile(
     } else if (response.status === 403) {
       message = "Keine Berechtigung für dieses Story-Bild.";
     } else if (response.status === 422) {
-      message =
-        "Showcase-Daten reichen noch nicht für ein Story-Bild — Specs oder Umbauten ergänzen.";
+      message = "Fahrzeugbild konnte nicht geladen werden.";
     }
     try {
       const body = (await response.json()) as { error?: string };

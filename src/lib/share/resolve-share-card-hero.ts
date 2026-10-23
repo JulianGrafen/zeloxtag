@@ -1,13 +1,18 @@
 import "server-only";
 
+import { filterShowcaseGalleryDocuments } from "@/lib/documents/showcase-gallery";
 import { resolveAbsoluteAssetUrl } from "@/lib/og/resolve-absolute-url";
 import { fetchOgImageDataUri } from "@/lib/og/fetch-og-image-bytes";
+import { resolvePublicAppOrigin } from "@/lib/api/resolve-api-base-url";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
+import { filterPublicShowcaseDocuments } from "@/lib/vehicles/public-showcase-documents";
 import { loadShowcaseStorageImageBytes } from "@/lib/vehicles/load-showcase-storage-image";
 import { loadVehicleSilhouetteBytes } from "@/lib/vehicles/load-silhouette-bytes";
 import { isLikelyImageBytes } from "@/lib/vehicles/silhouette-bytes";
 import { resolveVehicleCatalogImage } from "@/lib/vehicles/vehicle-image";
 import type { Document, Vehicle } from "@/types/database";
+
+const HERO_HTTP_FETCH_TIMEOUT_MS = 8_000;
 
 /** Relative hero URL for preview metadata (showcase / catalog). */
 export function resolveShareCardHeroPath(
@@ -25,6 +30,31 @@ function galleryStorageSrcFromPhotoSrc(photoSrc: string): string | null {
     return parsed.searchParams.get("src")?.trim() || null;
   } catch {
     return null;
+  }
+}
+
+async function fetchHeroImageBytesFromUrl(
+  absoluteUrl: string,
+  cookieHeader?: string,
+): Promise<Uint8Array | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HERO_HTTP_FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(absoluteUrl, {
+      signal: controller.signal,
+      cache: "no-store",
+      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return isLikelyImageBytes(bytes) ? bytes : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -50,6 +80,18 @@ async function loadGalleryHeroBytes(
     }
   }
 
+  for (const entry of filterShowcaseGalleryDocuments(
+    filterPublicShowcaseDocuments(documents),
+  )) {
+    const bytes = await loadShowcaseStorageImageBytes(
+      vehicle.id,
+      entry.file_url,
+    );
+    if (bytes && isLikelyImageBytes(bytes)) {
+      return bytes;
+    }
+  }
+
   return null;
 }
 
@@ -62,7 +104,8 @@ async function loadCatalogHeroBytes(
     return null;
   }
 
-  const absolute = resolveAbsoluteAssetUrl(catalog.src, fetchOrigin);
+  const origin = fetchOrigin ?? resolvePublicAppOrigin();
+  const absolute = resolveAbsoluteAssetUrl(catalog.src, origin);
   const remote = await fetchOgImageDataUri(absolute);
   if (!remote.ok) {
     return null;
@@ -79,11 +122,23 @@ async function loadCatalogHeroBytes(
   }
 }
 
-/** Silhouette storage → gallery documents → catalog / demo HTTP. */
+async function loadHeroPathHttpBytes(
+  heroPath: string,
+  options?: { fetchOrigin?: string; cookieHeader?: string },
+): Promise<Uint8Array | null> {
+  const origin = options?.fetchOrigin ?? resolvePublicAppOrigin();
+  const absolute = resolveAbsoluteAssetUrl(heroPath, origin);
+  if (!absolute) {
+    return null;
+  }
+  return fetchHeroImageBytesFromUrl(absolute, options?.cookieHeader);
+}
+
+/** Silhouette storage → gallery documents → hero URL HTTP → catalog / demo HTTP. */
 export async function loadShareCardHeroBytes(
   vehicle: Vehicle,
   documents: Document[],
-  options?: { fetchOrigin?: string },
+  options?: { fetchOrigin?: string; cookieHeader?: string },
 ): Promise<Uint8Array | null> {
   const silhouette = await loadVehicleSilhouetteBytes(vehicle.id);
   if (silhouette && isLikelyImageBytes(silhouette)) {
@@ -96,6 +151,14 @@ export async function loadShareCardHeroBytes(
   }
 
   const heroPath = resolveShareCardHeroPath(vehicle, documents);
+
+  if (heroPath?.startsWith("/api/")) {
+    const fromHeroPath = await loadHeroPathHttpBytes(heroPath, options);
+    if (fromHeroPath) {
+      return fromHeroPath;
+    }
+  }
+
   if (heroPath?.startsWith("/demo/")) {
     const absolute = resolveAbsoluteAssetUrl(heroPath, options?.fetchOrigin);
     const remote = await fetchOgImageDataUri(absolute);

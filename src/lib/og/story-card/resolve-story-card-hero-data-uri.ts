@@ -39,9 +39,11 @@ export async function resolveStoryCardHeroDataUri(input: {
   vehicle: Vehicle;
   documents: Document[];
   fetchOrigin?: string;
+  cookieHeader?: string;
 }): Promise<string | null> {
   const bytes = await loadShareCardHeroBytes(input.vehicle, input.documents, {
     fetchOrigin: input.fetchOrigin,
+    cookieHeader: input.cookieHeader,
   });
   if (!bytes) {
     return null;

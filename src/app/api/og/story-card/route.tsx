@@ -103,6 +103,7 @@ export async function GET(request: NextRequest) {
       vehicle: vehicleRow,
       documents: documentRows,
       fetchOrigin,
+      cookieHeader: request.headers.get("cookie") ?? undefined,
     }),
     fetchOgImageDataUri(logoAbsolute),
     loadVehicleWeeklyShowcaseRank(vehicleId),
