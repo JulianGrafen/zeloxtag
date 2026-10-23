@@ -29,7 +29,7 @@ export const ShareCardRankHeroPreview = forwardRef<
   const isPost = format === "post";
   const modelSizePx = isPost ? 52 : 68;
   const footerLogoPx = isPost ? 132 : 172;
-  const badgeScale = isPost ? 0.92 : 1.08;
+  const badgeScale = isPost ? 1.02 : 1.24;
 
   return (
     <div
@@ -76,7 +76,7 @@ export const ShareCardRankHeroPreview = forwardRef<
           </div>
         </div>
 
-        <footer className="relative z-10 flex shrink-0 items-center justify-center border-t border-white/10 px-10 py-4">
+        <footer className="relative z-10 flex shrink-0 items-center justify-center border-t border-white/10 px-10 py-3">
           <ShareCardZeloxMark heightPx={footerLogoPx} />
         </footer>
       </div>

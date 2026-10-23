@@ -4,6 +4,7 @@ import {
   shareCardHeroImageClassName,
   shareCardImageCrossOrigin,
 } from "@/lib/share/share-card-image-cross-origin";
+import { cn } from "@/lib/utils";
 
 type ShareCardHeroMediaProps = {
   imageUrl: string;
@@ -25,15 +26,23 @@ export function ShareCardHeroMedia({
         src={imageUrl}
         alt=""
         crossOrigin={shareCardImageCrossOrigin(imageUrl)}
-        className={shareCardHeroImageClassName(imageUrl)}
+        className={shareCardHeroImageClassName(imageUrl, variant)}
         onError={onError}
       />
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-[32%] bg-gradient-to-b from-black/70 to-transparent"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 z-[2] bg-gradient-to-b from-black/70 to-transparent",
+          variant === "rank" ? "h-[22%]" : "h-[28%]",
+        )}
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-[4] h-[min(62%,28rem)] bg-gradient-to-t from-[#0a0a0a] from-0% via-[#0a0a0a]/85 via-[42%] to-transparent"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 z-[4] bg-gradient-to-t from-[#0a0a0a] from-0% via-[#0a0a0a]/85 to-transparent",
+          variant === "rank"
+            ? "h-[min(42%,18rem)] via-[38%]"
+            : "h-[min(52%,24rem)] via-[42%]",
+        )}
         aria-hidden
       />
       {variant === "rank" ? (

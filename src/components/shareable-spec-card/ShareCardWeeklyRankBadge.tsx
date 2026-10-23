@@ -43,14 +43,14 @@ export function ShareCardWeeklyRankBadge({
   return (
     <div
       className={cn(
-        "inline-flex max-w-[min(100%,34rem)] items-stretch gap-0 overflow-hidden rounded-[28px] bg-black/55 ring-1 backdrop-blur-xl",
+        "inline-flex max-w-[min(100%,38rem)] items-stretch gap-0 overflow-hidden rounded-[32px] bg-black/55 ring-1 backdrop-blur-xl",
         rankShellClass(rank),
         className,
       )}
     >
       <div
         className={cn(
-          "flex min-w-[8.25rem] items-center justify-center bg-gradient-to-br px-5 py-4",
+          "flex min-w-[9.5rem] items-center justify-center bg-gradient-to-br px-6 py-5",
           rank === 1
             ? "from-amber-500/35 to-amber-950/40"
             : rank === 2
@@ -60,20 +60,20 @@ export function ShareCardWeeklyRankBadge({
       >
         <span
           className={cn(
-            "font-mono text-[118px] font-bold leading-none tabular-nums tracking-[-0.045em]",
+            "font-mono text-[142px] font-bold leading-none tabular-nums tracking-[-0.045em]",
             rankNumberClass(rank),
           )}
         >
           {rank}
         </span>
       </div>
-      <div className="flex flex-col justify-center gap-1.5 border-l border-white/10 px-6 py-4">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
+      <div className="flex flex-col justify-center gap-2 border-l border-white/10 px-7 py-5">
+        <p className="text-[14px] font-semibold uppercase tracking-[0.22em] text-white/55">
           ZeloxTag
         </p>
         <p
           className={cn(
-            "text-[34px] font-semibold uppercase leading-[1.02] tracking-[0.05em]",
+            "text-[40px] font-semibold uppercase leading-[1.02] tracking-[0.05em]",
             rank === 1 ? "text-amber-100" : "text-white",
           )}
         >

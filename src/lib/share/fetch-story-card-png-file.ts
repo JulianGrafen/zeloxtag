@@ -26,6 +26,14 @@ export async function fetchStoryCardPngFile(
 
   if (!response.ok) {
     let message = "Story-Bild konnte nicht geladen werden.";
+    if (response.status === 401) {
+      message = "Bitte erneut anmelden, um das Story-Bild zu teilen.";
+    } else if (response.status === 403) {
+      message = "Keine Berechtigung für dieses Story-Bild.";
+    } else if (response.status === 422) {
+      message =
+        "Showcase-Daten reichen noch nicht für ein Story-Bild — Specs oder Umbauten ergänzen.";
+    }
     try {
       const body = (await response.json()) as { error?: string };
       if (body.error?.trim()) {

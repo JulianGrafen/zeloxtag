@@ -40,9 +40,15 @@ export function isShareCardCutoutHero(src: string | undefined): boolean {
   );
 }
 
-export function shareCardHeroImageClassName(src: string | undefined): string {
+export function shareCardHeroImageClassName(
+  src: string | undefined,
+  variant: "showcase" | "rank" = "showcase",
+): string {
   if (isShareCardCutoutHero(src)) {
-    return "absolute inset-x-0 bottom-0 h-[92%] w-full object-contain object-bottom";
+    return "absolute inset-x-0 bottom-0 h-full w-full origin-bottom scale-[1.14] object-contain object-bottom";
   }
-  return "absolute inset-0 h-full w-full object-cover object-[50%_55%]";
+  if (variant === "rank") {
+    return "absolute inset-0 h-full w-full object-cover object-[50%_48%] scale-[1.06]";
+  }
+  return "absolute inset-0 h-full w-full object-cover object-[50%_52%] scale-[1.04]";
 }

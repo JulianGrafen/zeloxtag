@@ -131,12 +131,20 @@ export async function GET(request: NextRequest) {
       <StoryCardOgTemplate payload={payload} format={variant.format} />
     );
 
-  return new ImageResponse(element, {
-    width,
-    height,
-    fonts,
-    headers: {
-      "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
-    },
-  });
+  try {
+    return new ImageResponse(element, {
+      width,
+      height,
+      fonts,
+      headers: {
+        "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
+      },
+    });
+  } catch (error) {
+    console.error("[og-story-card] ImageResponse failed", error);
+    return NextResponse.json(
+      { error: "Story-Bild konnte nicht gerendert werden." },
+      { status: 500 },
+    );
+  }
 }

@@ -105,7 +105,7 @@ export function ShareCardComposer({
     usePreparedStoryFile(exportRef, {
       filename: storyFilename,
       cacheKey,
-      enabled: !useServerOg,
+      enabled: true,
     });
 
   const mobileShare = isLikelyMobileShareDevice();
@@ -214,7 +214,11 @@ export function ShareCardComposer({
   const handleServerExport = () => {
     setActionError(null);
     serverShare.clearError();
-    void serverShare.shareToStory();
+    void serverShare.shareToStory().then((shared) => {
+      if (!shared) {
+        handleCanvasExport();
+      }
+    });
   };
 
   const isExporting = useServerOg

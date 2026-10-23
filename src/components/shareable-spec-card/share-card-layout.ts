@@ -56,17 +56,23 @@ export function computeShareCardLayout(
   const fullBleedHero =
     Boolean(data.imageUrl?.trim()) && !isShareCardCutoutHero(data.imageUrl);
 
-  let heroHeightPercent = format === "post" ? 38 : 34;
+  const cutoutHero =
+    Boolean(data.imageUrl?.trim()) && isShareCardCutoutHero(data.imageUrl);
+
+  let heroHeightPercent = format === "post" ? 40 : 38;
   if (fullBleedHero) {
-    heroHeightPercent = format === "post" ? 46 : 44;
+    heroHeightPercent = format === "post" ? 52 : 50;
   }
-  if (specCount > 5 || hasDna) heroHeightPercent = format === "post" ? 34 : 30;
-  if (specCount > 8) heroHeightPercent = format === "post" ? 32 : 28;
-  if (hasDna) heroHeightPercent = Math.min(heroHeightPercent, 28);
+  if (cutoutHero) {
+    heroHeightPercent = format === "post" ? 50 : 54;
+  }
+  if (specCount > 5 || hasDna) heroHeightPercent = format === "post" ? 36 : 34;
+  if (specCount > 8) heroHeightPercent = format === "post" ? 34 : 30;
+  if (hasDna) heroHeightPercent = Math.min(heroHeightPercent, 30);
   if (hasInstagram) {
     heroHeightPercent = Math.min(
       heroHeightPercent + HERO_INSTAGRAM_EXTRA_PERCENT,
-      format === "post" ? 42 : 38,
+      format === "post" ? 48 : 46,
     );
   }
 

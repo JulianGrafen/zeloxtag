@@ -51,7 +51,9 @@ export function StoryCardOgRankHeroTemplate({
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              objectPosition: "50% 58%",
+              objectPosition: "50% 46%",
+              transform: "scale(1.08)",
+              transformOrigin: "center center",
             }}
           />
         ) : (
@@ -68,15 +70,15 @@ export function StoryCardOgRankHeroTemplate({
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to top, #0a0a0a 0%, rgba(10,10,10,0.55) 42%, rgba(0,0,0,0.25) 100%)",
+              "linear-gradient(to top, #0a0a0a 0%, rgba(10,10,10,0.5) 36%, rgba(0,0,0,0.18) 100%)",
           }}
         />
         <div
           style={{
             position: "absolute",
-            inset: "0 55% 0 0",
+            inset: "0 52% 0 0",
             background:
-              "linear-gradient(to right, rgba(0,0,0,0.78) 0%, transparent 100%)",
+              "linear-gradient(to right, rgba(0,0,0,0.72) 0%, transparent 100%)",
           }}
         />
 
@@ -84,22 +86,24 @@ export function StoryCardOgRankHeroTemplate({
           <div
             style={{
               position: "absolute",
-              top: 40 * scale,
-              left: 40 * scale,
+              top: 36 * scale,
+              left: 36 * scale,
               display: "flex",
               overflow: "hidden",
-              borderRadius: 28 * scale,
+              borderRadius: 32 * scale,
               border: "1px solid rgba(255,255,255,0.12)",
               background: "rgba(0,0,0,0.55)",
+              transform: `scale(${format === "post" ? 1.02 : 1.2})`,
+              transformOrigin: "top left",
             }}
           >
             <div
               style={{
                 display: "flex",
-                minWidth: 132 * scale,
+                minWidth: 156 * scale,
                 alignItems: "center",
                 justifyContent: "center",
-                padding: `${20 * scale}px ${24 * scale}px`,
+                padding: `${24 * scale}px ${28 * scale}px`,
                 background:
                   payload.weeklyRank === 1
                     ? "linear-gradient(135deg, rgba(245,158,11,0.35), rgba(69,26,3,0.5))"
@@ -110,7 +114,7 @@ export function StoryCardOgRankHeroTemplate({
             >
               <span
                 style={{
-                  fontSize: 118 * scale,
+                  fontSize: 142 * scale,
                   fontWeight: 700,
                   lineHeight: 1,
                   letterSpacing: "-0.045em",
@@ -126,13 +130,13 @@ export function StoryCardOgRankHeroTemplate({
                 justifyContent: "center",
                 gap: 8 * scale,
                 borderLeft: "1px solid rgba(255,255,255,0.1)",
-                padding: `${18 * scale}px ${24 * scale}px`,
-                maxWidth: 480 * scale,
+                padding: `${20 * scale}px ${28 * scale}px`,
+                maxWidth: 520 * scale,
               }}
             >
               <span
                 style={{
-                  fontSize: 13 * scale,
+                  fontSize: 14 * scale,
                   fontWeight: 600,
                   letterSpacing: "0.22em",
                   textTransform: "uppercase",
@@ -143,7 +147,7 @@ export function StoryCardOgRankHeroTemplate({
               </span>
               <span
                 style={{
-                  fontSize: 34 * scale,
+                  fontSize: 40 * scale,
                   fontWeight: 600,
                   letterSpacing: "0.05em",
                   textTransform: "uppercase",

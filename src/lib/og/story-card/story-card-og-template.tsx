@@ -60,7 +60,7 @@ export function StoryCardOgTemplate({
       <div
         style={{
           position: "relative",
-          flex: "0 0 46%",
+          flex: "0 0 50%",
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
@@ -78,7 +78,9 @@ export function StoryCardOgTemplate({
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              objectPosition: "50% 58%",
+              objectPosition: "50% 50%",
+              transform: "scale(1.06)",
+              transformOrigin: "center center",
             }}
           />
         ) : (

@@ -28,10 +28,10 @@ export function useServerStoryShare({
   const [isSharing, setIsSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const shareToStory = useCallback(async () => {
+  const shareToStory = useCallback(async (): Promise<boolean> => {
     if (isEmbeddedSocialInAppBrowser()) {
       setError(embeddedBrowserShareHint());
-      return;
+      return false;
     }
 
     setIsSharing(true);
@@ -47,13 +47,16 @@ export function useServerStoryShare({
         setError(
           "Teilen fehlgeschlagen — Bild speichern und in Instagram als Story wählen.",
         );
+        return false;
       }
+      return true;
     } catch (cause) {
       const message =
         cause instanceof Error && cause.message
           ? cause.message
           : "Story-Bild konnte nicht erstellt werden.";
       setError(message);
+      return false;
     } finally {
       setIsSharing(false);
     }

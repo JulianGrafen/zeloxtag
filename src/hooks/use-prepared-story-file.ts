@@ -6,6 +6,22 @@ import { SHAREABLE_SPEC_CARD_EXPORT_PIXEL_RATIO } from "@/components/shareable-s
 import { captureShareCardPngFile } from "@/lib/share/capture-share-card-png-file";
 import { createStoryJpegForNativeShare } from "@/lib/share/story-image-for-share";
 
+function prepareErrorMessage(cause: unknown): string {
+  if (!(cause instanceof Error)) {
+    return "Story-Bild konnte nicht vorbereitet werden.";
+  }
+  const lower = cause.message.toLowerCase();
+  if (
+    lower.includes("css") ||
+    lower.includes("security") ||
+    lower.includes("tainted") ||
+    lower.includes("cors")
+  ) {
+    return "Story-Bild blockiert — Fahrzeugfoto über andere Quelle laden oder Seite neu laden.";
+  }
+  return cause.message || "Story-Bild konnte nicht vorbereitet werden.";
+}
+
 type UsePreparedStoryFileOptions = {
   filename: string;
   /** When this changes, the PNG is regenerated in the background. */
@@ -78,11 +94,7 @@ export function usePreparedStoryFile(
           }
           setStoryFile(null);
           setNativeShareFile(null);
-          setPrepareError(
-            cause instanceof Error
-              ? cause.message
-              : "Story-Vorschau fehlgeschlagen.",
-          );
+          setPrepareError(prepareErrorMessage(cause));
         })
         .finally(() => {
           if (!cancelled && generationRef.current === generation) {

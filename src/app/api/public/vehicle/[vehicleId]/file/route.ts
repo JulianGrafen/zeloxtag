@@ -6,7 +6,7 @@ import { isShowcaseGalleryDocument } from "@/lib/documents/showcase-gallery";
 import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
 import { enforceRateLimit } from "@/lib/security/api-guard";
-import { storagePathFromPublicOrAuthenticatedUrl } from "@/lib/security/file-upload";
+import { resolveShowcaseStoragePath } from "@/lib/vehicles/load-showcase-storage-image";
 import {
   createAdminClient,
   isSupabaseAdminConfigured,
@@ -45,23 +45,6 @@ const querySchema = z
     src: z.string().trim().min(1).max(2048),
   })
   .strict();
-
-function resolveShowcaseStoragePath(
-  vehicleId: string,
-  src: string,
-): string | null {
-  const fromUrl = storagePathFromPublicOrAuthenticatedUrl(src, DOCUMENT_BUCKET);
-  if (fromUrl?.startsWith(`${vehicleId}/`)) {
-    return fromUrl;
-  }
-
-  const bare = src.trim().split("?")[0]?.split("#")[0] ?? "";
-  if (bare.startsWith(`${vehicleId}/`) && !bare.includes("..")) {
-    return bare;
-  }
-
-  return null;
-}
 
 /**
  * Public showcase media proxy — images + dyno chart only when is_public.

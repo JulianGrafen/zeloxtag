@@ -54,7 +54,7 @@ describe("computeShareCardLayout", () => {
       }),
     );
     expect(layout.density).toBe("dense");
-    expect(layout.heroHeightPercent).toBeLessThanOrEqual(33);
+    expect(layout.heroHeightPercent).toBeLessThanOrEqual(35);
     expect(layout.footerLogoHeightPx).toBeLessThan(152);
     expect(layout.dnaZonePercent).toBe(30);
     expect(layout.specsZonePercent).toBeGreaterThan(0);
