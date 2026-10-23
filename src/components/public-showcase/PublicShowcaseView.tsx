@@ -11,6 +11,7 @@ import { ShowroomBuildPersonalityChips } from "./ShowroomBuildPersonalityChips";
 import { ShowroomStats } from "./ShowroomStats";
 import { ShowroomStoryShare } from "./ShowroomStoryShare";
 import { BuildStoryTimeline } from "./BuildStoryTimeline";
+import { ShowcaseShopCta } from "./ShowcaseShopCta";
 import { showroom } from "./showroom-styles";
 
 type PublicShowcaseViewProps = {
@@ -71,6 +72,7 @@ export function PublicShowcaseView({
           />
         ) : null}
         <ShowroomStoryShare data={data} />
+        <ShowcaseShopCta />
         <footer
           className={`relative isolate z-[100] space-y-3 px-4 pb-2 ${showroom.footer}`}
         >

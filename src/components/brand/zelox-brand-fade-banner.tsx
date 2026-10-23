@@ -2,6 +2,8 @@ import { ZeloxBrandWordmark } from "@/components/brand/zelox-brand-wordmark";
 import { cn } from "@/lib/utils";
 
 type ZeloxBrandFadeBannerProps = {
+  /** Optional shop link on the wordmark (public showcase header). */
+  wordmarkHref?: string;
   /** Schwarzer Verlauf unter dem Wordmark (z. B. aus bei 3D-Tag direkt darunter). */
   bottomFade?: boolean;
   /** Unter dem Wordmark im schwarzen Bereich (z. B. Login/Register). */
@@ -12,6 +14,7 @@ type ZeloxBrandFadeBannerProps = {
 
 /** Schwarzer Balken + optional Verlauf — Login, Dashboard, Claim, Showcase. */
 export function ZeloxBrandFadeBanner({
+  wordmarkHref,
   bottomFade = true,
   tagline,
   subtagline,
@@ -27,10 +30,23 @@ export function ZeloxBrandFadeBanner({
         className={cn(
           "zelox-brand-fade-banner__bar px-5 pt-[max(0.65rem,env(safe-area-inset-top))]",
           tagline ? "flex flex-col items-center pb-6 sm:pb-8" : "pb-2.5",
+          wordmarkHref && "pointer-events-auto",
         )}
       >
         <p className="w-full shrink-0 text-center">
-          <ZeloxBrandWordmark size="banner" className="text-white" />
+          {wordmarkHref ? (
+            <a
+              href={wordmarkHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block rounded-sm text-white transition-opacity hover:opacity-85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/60"
+              aria-label="ZeloxTag im Shop — V4A-Tag konfigurieren"
+            >
+              <ZeloxBrandWordmark size="banner" className="text-white" />
+            </a>
+          ) : (
+            <ZeloxBrandWordmark size="banner" className="text-white" />
+          )}
         </p>
         {tagline ? (
           <div className="flex w-full min-h-[4.75rem] flex-col items-center justify-center gap-1.5 px-2 sm:min-h-[5.35rem] sm:gap-2">
