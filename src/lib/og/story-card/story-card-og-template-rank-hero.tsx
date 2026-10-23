@@ -4,6 +4,11 @@ import {
   WEEKLY_RANK_STORY_ACCENT,
   weeklyRankStoryCardKicker,
 } from "@/components/shareable-spec-card/weekly-rank-story-card-copy";
+import {
+  WEEKLY_RANK_STORY_RANK_OFFSET_PX,
+  weeklyRankStoryKickerFontPx,
+  weeklyRankStoryRankFontPx,
+} from "@/components/shareable-spec-card/weekly-rank-story-rank-typography";
 import type { TopThreeWeeklyRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-helpers";
 import {
   shareCardDimensions,
@@ -37,8 +42,8 @@ export function StoryCardOgRankHeroTemplate({
     overflow: "hidden",
   };
 
-  const rankSize = (isPost ? 104 : 144) * scale;
-  const kickerSize = (isPost ? 28 : 38) * scale;
+  const rankSize = weeklyRankStoryRankFontPx(format) * scale;
+  const kickerSize = weeklyRankStoryKickerFontPx(format) * scale;
   const modelSize = (isPost ? 56 : 72) * scale;
   const logoHeight = (isPost ? 84 : 100) * scale;
 
@@ -86,8 +91,8 @@ export function StoryCardOgRankHeroTemplate({
         <div
           style={{
             position: "absolute",
-            top: 48 * scale,
-            left: 48 * scale,
+            top: WEEKLY_RANK_STORY_RANK_OFFSET_PX * scale,
+            left: WEEKLY_RANK_STORY_RANK_OFFSET_PX * scale,
             zIndex: 3,
             display: "flex",
             flexDirection: "column",
@@ -95,10 +100,11 @@ export function StoryCardOgRankHeroTemplate({
         >
           <span
             style={{
+              fontFamily: "Bebas Neue",
               fontSize: rankSize,
-              fontWeight: 800,
-              lineHeight: 1,
-              letterSpacing: "-0.04em",
+              fontWeight: 400,
+              lineHeight: 0.92,
+              letterSpacing: "0.02em",
               color: WEEKLY_RANK_STORY_ACCENT,
             }}
           >
@@ -106,12 +112,13 @@ export function StoryCardOgRankHeroTemplate({
           </span>
           <span
             style={{
-              marginTop: 4 * scale,
+              fontFamily: "Bebas Neue",
+              marginTop: rankSize * 0.04,
               fontSize: kickerSize,
-              fontWeight: 700,
-              letterSpacing: "0.14em",
+              fontWeight: 400,
+              letterSpacing: "0.22em",
               textTransform: "uppercase",
-              lineHeight: 1.05,
+              lineHeight: 1,
               color: WEEKLY_RANK_STORY_ACCENT,
             }}
           >

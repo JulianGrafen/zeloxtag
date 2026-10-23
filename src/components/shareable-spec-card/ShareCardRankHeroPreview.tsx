@@ -8,6 +8,7 @@ import {
 } from "@/lib/share/share-card-variant";
 
 import { ShareCardBuildDerWocheHeader } from "./ShareCardBuildDerWocheHeader";
+import { WEEKLY_RANK_STORY_RANK_OFFSET_PX } from "./weekly-rank-story-rank-typography";
 import { ShareCardHeroMedia } from "./ShareCardHeroMedia";
 import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
 import { ShareCardStoryFooterMark } from "./ShareCardStoryFooterMark";
@@ -49,11 +50,18 @@ export const ShareCardRankHeroPreview = forwardRef<
         )}
 
         {data.weeklyShowcaseRank != null ? (
-          <ShareCardBuildDerWocheHeader
-            rank={data.weeklyShowcaseRank}
-            format={format}
-            className="absolute left-10 top-10 z-20 sm:left-12 sm:top-12"
-          />
+          <div
+            className="absolute z-20"
+            style={{
+              left: WEEKLY_RANK_STORY_RANK_OFFSET_PX,
+              top: WEEKLY_RANK_STORY_RANK_OFFSET_PX,
+            }}
+          >
+            <ShareCardBuildDerWocheHeader
+              rank={data.weeklyShowcaseRank}
+              format={format}
+            />
+          </div>
         ) : null}
 
         <div

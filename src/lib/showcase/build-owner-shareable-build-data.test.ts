@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { resolveShareCardStoryHeroApiPath } from "@/lib/share/share-card-story-hero-url";
+
 import { buildOwnerShareableBuildData } from "./build-owner-shareable-build-data";
 import type { Document, Vehicle } from "@/types/database";
 
@@ -29,8 +31,10 @@ const vehicle: Vehicle = {
 };
 
 describe("buildOwnerShareableBuildData", () => {
-  it("falls back to catalog cutout when no owner silhouette is stored", () => {
+  it("uses story-hero API when catalog cutout is the resolved hero asset", () => {
     const data = buildOwnerShareableBuildData(vehicle, [] as Document[]);
-    expect(data?.imageUrl).toContain("/api/vehicle/catalog/bmw-530d.png");
+    expect(data?.imageUrl).toBe(
+      resolveShareCardStoryHeroApiPath(vehicle.id, vehicle.updated_at),
+    );
   });
 });
