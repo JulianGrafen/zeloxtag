@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Check, Copy } from "lucide-react";
+import { Copy } from "lucide-react";
 
 import { updateVehicleShowcaseSettings } from "@/actions/update-vehicle-showcase-settings";
-import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
-import { SETTINGS_SUBMENU_TILE_CLASS } from "@/components/vehicles/vehicle-settings-submenu-styles";
+import { IOSGroupedList, IOSListItem } from "@/components/ui/ios";
+import { VehicleIosSettingsToggleRow } from "@/components/vehicles/vehicle-ios-settings-toggle-row";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { resolveShowcaseSharePath } from "@/lib/vehicles/public-profile-status";
 import { publicShowcasePath } from "@/lib/vehicles/public-slug";
@@ -40,56 +41,6 @@ function initialSharePath(
   });
 }
 
-function ToggleRow({
-  id,
-  label,
-  description,
-  checked,
-  disabled,
-  busy,
-  onChange,
-}: {
-  id?: string;
-  label: string;
-  description: string;
-  checked: boolean;
-  disabled?: boolean;
-  busy?: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <button
-      id={id}
-      type="button"
-      disabled={disabled}
-      aria-pressed={checked}
-      onClick={() => onChange(!checked)}
-      className={`${SETTINGS_SUBMENU_TILE_CLASS} w-full scroll-mt-24 touch-manipulation text-left disabled:cursor-not-allowed disabled:opacity-60 ${
-        busy ? "opacity-80" : ""
-      }`}
-    >
-      <span className="min-w-0">
-        <span className="block text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-          {label}
-        </span>
-        <span className="mt-0.5 block text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-          {description}
-        </span>
-      </span>
-      <span
-        aria-hidden
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-          checked
-            ? "border-[color:var(--vd-accent)] bg-[color:var(--vd-accent)] text-white"
-            : "border-[color:var(--vd-border)] bg-[color:var(--vd-surface)]"
-        }`}
-      >
-        {checked ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
-      </span>
-    </button>
-  );
-}
-
 export function VehiclePublicProfileSettings({
   tagUuid,
   vehicleId,
@@ -118,6 +69,8 @@ export function VehiclePublicProfileSettings({
   const [pending, startSettingsTransition] = useTransition();
 
   const shareUrl = sharePath ? `${PRODUCTION_SITE_URL}${sharePath}` : null;
+  const showLikesRow =
+    canEdit && (showcaseSwipeTotalLikes > 0 || showcaseSwipeUnreadLikes > 0);
 
   function saveSettings(
     next: {
@@ -166,7 +119,9 @@ export function VehiclePublicProfileSettings({
       } else if (payload.showcaseSwipeOptIn) {
         setMessage("Im Build-Swipe sichtbar — Share-Link mit Zelox Tag.");
       } else {
-        setMessage("Showcase-Inhalte sind vorbereitet — Build-Swipe optional aktivieren.");
+        setMessage(
+          "Showcase-Inhalte sind vorbereitet — Build-Swipe optional aktivieren.",
+        );
       }
     });
   }
@@ -181,162 +136,167 @@ export function VehiclePublicProfileSettings({
     }
   }
 
+  const publicLabel = hasLinkedTag
+    ? "Profil veröffentlichen"
+    : "Showcase & Build-Swipe";
+  const publicSublabel = hasLinkedTag
+    ? "Showcase-Seite mit Share-Link aktivieren"
+    : "Inhalte freigeben und optional im Build-Swipe zeigen";
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-5">
       {!canEdit ? (
-        <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
+        <p className="px-1 text-[13px] leading-relaxed text-zinc-400">
           In der Demo-Vorschau sind diese Schalter nur zur Ansicht — am eigenen
           Fahrzeug kannst du sie unter Showcase bearbeiten.
         </p>
       ) : null}
-      <ToggleRow
-        id="profil-veroeffentlichen"
-        label={
-          hasLinkedTag ? "Profil veröffentlichen" : "Showcase & Build-Swipe"
+
+      <IOSGroupedList
+        headerTitle="Sichtbarkeit"
+        footerText={
+          !isPublic
+            ? "Aktiviere das öffentliche Showcase, um Build-Swipe und Build-Story zu nutzen."
+            : undefined
         }
-        description={
-          hasLinkedTag
-            ? "Showcase-Seite mit Share-Link aktivieren"
-            : "Showcase-Inhalte freigeben und optional im Build-Swipe zeigen — ohne eigenen Link"
-        }
-        checked={isPublic}
-        disabled={!canEdit}
-        busy={pending}
-        onChange={(value) => {
-          const previous = isPublic;
-          const previousSwipe = showcaseSwipeOptIn;
-          const previousStory = isStoryPublic;
-          setIsPublic(value);
-          if (!value) {
-            setShowcaseSwipeOptIn(false);
-            setIsStoryPublic(false);
-          }
-          saveSettings(
-            {
-              isPublic: value,
-              showcaseSwipeOptIn: value ? (isPublic ? showcaseSwipeOptIn : true) : false,
-              isStoryPublic: value ? isStoryPublic : false,
-            },
-            () => {
-              setIsPublic(previous);
-              setShowcaseSwipeOptIn(previousSwipe);
-              setIsStoryPublic(previousStory);
-            },
-          );
-        }}
-      />
-      <ToggleRow
-        id="build-swipe"
-        label="Im Build-Swipe zeigen"
-        description="Nur öffentliche Showcase-Inhalte — keine Belege oder VIN"
-        checked={showcaseSwipeOptIn}
-        disabled={!canEdit || !isPublic}
-        busy={pending}
-        onChange={(value) => {
-          const previous = showcaseSwipeOptIn;
-          setShowcaseSwipeOptIn(value);
-          saveSettings({ showcaseSwipeOptIn: value }, () =>
-            setShowcaseSwipeOptIn(previous),
-          );
-        }}
-      />
-      <ToggleRow
-        label="Build-Story öffentlich machen"
-        description="Zeigt deine Umbauten und Bilder als chronologische Timeline für Besucher an, die dein Profil oder deinen QR-Code scannen."
-        checked={isStoryPublic}
-        disabled={!canEdit || !isPublic}
-        busy={pending}
-        onChange={(value) => {
-          const previous = isStoryPublic;
-          setIsStoryPublic(value);
-          saveSettings({ isStoryPublic: value }, () => setIsStoryPublic(previous));
-        }}
-      />
-      {!isPublic ? (
-        <p className="px-1 text-[0.76rem] text-[color:var(--vd-muted)]">
-          Zuerst öffentliches Showcase aktivieren, um Build-Swipe und Build-Story
-          zu nutzen.
-        </p>
-      ) : null}
-      {canEdit && (showcaseSwipeTotalLikes > 0 || showcaseSwipeUnreadLikes > 0) ? (
-        <div className={SETTINGS_SUBMENU_TILE_CLASS}>
-          <span className="min-w-0">
-            <span className="block text-[0.88rem] font-medium">Build-Swipe Likes</span>
-            <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
-              {showcaseSwipeTotalLikes} gesamt
-              {showcaseSwipeUnreadLikes > 0
+      >
+        <div id="profil-veroeffentlichen" className="scroll-mt-24">
+          <VehicleIosSettingsToggleRow
+            label={publicLabel}
+            sublabel={publicSublabel}
+            checked={isPublic}
+            disabled={!canEdit || pending}
+            onCheckedChange={(value) => {
+              const previous = isPublic;
+              const previousSwipe = showcaseSwipeOptIn;
+              const previousStory = isStoryPublic;
+              setIsPublic(value);
+              if (!value) {
+                setShowcaseSwipeOptIn(false);
+                setIsStoryPublic(false);
+              }
+              saveSettings(
+                {
+                  isPublic: value,
+                  showcaseSwipeOptIn: value
+                    ? isPublic
+                      ? showcaseSwipeOptIn
+                      : true
+                    : false,
+                  isStoryPublic: value ? isStoryPublic : false,
+                },
+                () => {
+                  setIsPublic(previous);
+                  setShowcaseSwipeOptIn(previousSwipe);
+                  setIsStoryPublic(previousStory);
+                },
+              );
+            }}
+          />
+        </div>
+        <div id="build-swipe" className="scroll-mt-24">
+          <VehicleIosSettingsToggleRow
+            label="Im Build-Swipe zeigen"
+            sublabel="Nur öffentliche Showcase-Inhalte — keine Belege oder VIN"
+            checked={showcaseSwipeOptIn}
+            disabled={!canEdit || !isPublic || pending}
+            onCheckedChange={(value) => {
+              const previous = showcaseSwipeOptIn;
+              setShowcaseSwipeOptIn(value);
+              saveSettings({ showcaseSwipeOptIn: value }, () =>
+                setShowcaseSwipeOptIn(previous),
+              );
+            }}
+          />
+        </div>
+        <VehicleIosSettingsToggleRow
+          label="Build-Story öffentlich"
+          sublabel="Chronologische Timeline für Profil- und QR-Besucher"
+          checked={isStoryPublic}
+          disabled={!canEdit || !isPublic || pending}
+          onCheckedChange={(value) => {
+            const previous = isStoryPublic;
+            setIsStoryPublic(value);
+            saveSettings({ isStoryPublic: value }, () =>
+              setIsStoryPublic(previous),
+            );
+          }}
+        />
+        {showLikesRow ? (
+          <IOSListItem
+            label="Build-Swipe Likes"
+            sublabel={`${showcaseSwipeTotalLikes} gesamt${
+              showcaseSwipeUnreadLikes > 0
                 ? ` · ${showcaseSwipeUnreadLikes} neu`
-                : ""}
-            </span>
-          </span>
-        </div>
-      ) : null}
-      <ToggleRow
-        label="Preise ausblenden"
-        description="Beträge auf der öffentlichen Seite verbergen"
-        checked={hideFinancials}
-        disabled={!canEdit}
-        busy={pending}
-        onChange={(value) => {
-          const previous = hideFinancials;
-          setHideFinancials(value);
-          saveSettings({ hideFinancials: value }, () =>
-            setHideFinancials(previous),
-          );
-        }}
-      />
-      {isPublic && shareUrl ? (
-        <div className={`${SETTINGS_SUBMENU_TILE_CLASS} gap-2`}>
-          <span className="min-w-0">
-            <span className="block text-[0.88rem] font-medium">Share-Link</span>
-            <p
-              className="mt-0.5 truncate font-mono text-[0.76rem] leading-snug text-[color:var(--vd-muted)]"
-              title={shareUrl}
-            >
-              {shareUrl.replace(/^https?:\/\//, "")}
-            </p>
-          </span>
-          <PressableButton
-            type="button"
-            variant="button"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2 text-[0.8rem] font-medium"
-            onClick={copyShareLink}
-          >
-            <Copy className="h-4 w-4" aria-hidden />
-            Kopieren
-          </PressableButton>
-        </div>
-      ) : (
-        <div className={SETTINGS_SUBMENU_TILE_CLASS}>
-          <span className="min-w-0">
-            <span className="block text-[0.88rem] font-medium">Share-Link</span>
-            <span className="mt-0.5 block text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-              {hasLinkedTag
-                ? "Wird verfügbar, wenn das Profil öffentlich ist."
-                : "Veröffentliche dein Showcase für einen Link in deiner Bio."}
-              {!hasLinkedTag && tagShopUrl ? (
-                <>
-                  {" "}
-                  <Link
-                    href={tagShopUrl}
-                    className="font-medium text-[color:var(--vd-accent)] underline-offset-2 hover:underline"
-                  >
-                    Zelox Tag bestellen
-                  </Link>
-                  {" "}
-                  für QR am Fahrzeug.
-                </>
-              ) : null}
-            </span>
-          </span>
-        </div>
-      )}
+                : ""
+            }`}
+            showChevron={false}
+          />
+        ) : null}
+        <VehicleIosSettingsToggleRow
+          label="Preise ausblenden"
+          sublabel="Beträge auf der öffentlichen Seite verbergen"
+          checked={hideFinancials}
+          disabled={!canEdit || pending}
+          isLast
+          onCheckedChange={(value) => {
+            const previous = hideFinancials;
+            setHideFinancials(value);
+            saveSettings({ hideFinancials: value }, () =>
+              setHideFinancials(previous),
+            );
+          }}
+        />
+      </IOSGroupedList>
+
+      <IOSGroupedList headerTitle="Share-Link">
+        {isPublic && shareUrl ? (
+          <IOSListItem
+            label="Dein Link"
+            sublabel={shareUrl.replace(/^https?:\/\//, "")}
+            showChevron={false}
+            isLast
+            trailing={
+              <PressableButton
+                type="button"
+                variant="button"
+                className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-[13px] font-medium text-white"
+                onClick={copyShareLink}
+              >
+                <Copy className="h-3.5 w-3.5" aria-hidden />
+                Kopieren
+              </PressableButton>
+            }
+          />
+        ) : (
+          <IOSListItem
+            label="Share-Link"
+            sublabel={
+              hasLinkedTag
+                ? "Verfügbar, sobald das Profil öffentlich ist."
+                : "Mit öffentlichem Showcase für Bio & Social."
+            }
+            showChevron={false}
+            isLast
+            trailing={
+              !hasLinkedTag && tagShopUrl ? (
+                <Link
+                  href={tagShopUrl}
+                  className="shrink-0 text-[13px] font-medium text-[#0A84FF]"
+                >
+                  Tag bestellen
+                </Link>
+              ) : undefined
+            }
+          />
+        )}
+      </IOSGroupedList>
 
       {message ? (
-        <p className="pt-1 text-[0.82rem] text-[color:var(--vd-accent)]">{message}</p>
+        <p className="px-4 text-[13px] text-[#30D158]">{message}</p>
       ) : null}
       {error ? (
-        <p className="pt-1 text-[0.82rem] text-red-600" role="alert">
+        <p className="px-4 text-[13px] text-[#FF453A]" role="alert">
           {error}
         </p>
       ) : null}

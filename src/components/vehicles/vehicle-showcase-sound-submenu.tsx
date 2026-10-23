@@ -6,12 +6,14 @@ type VehicleShowcaseSoundSubmenuProps = {
   surfaceScope: VehicleSurfaceScope;
   hasSound: boolean;
   variant?: "tile" | "group";
+  isLast?: boolean;
 };
 
 export function VehicleShowcaseSoundSubmenu({
   surfaceScope,
   hasSound,
   variant = "tile",
+  isLast = false,
 }: VehicleShowcaseSoundSubmenuProps) {
   return (
     <VehicleSettingsSubmenuLink
@@ -19,6 +21,7 @@ export function VehicleShowcaseSoundSubmenu({
       variant={variant}
       title="Soundcheck"
       subtitle={hasSound ? "Aktiv" : "Nicht hinterlegt"}
+      isLast={isLast}
     />
   );
 }

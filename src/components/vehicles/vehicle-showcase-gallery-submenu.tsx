@@ -7,12 +7,14 @@ type VehicleShowcaseGallerySubmenuProps = {
   surfaceScope: VehicleSurfaceScope;
   photoCount: number;
   variant?: "tile" | "group";
+  isLast?: boolean;
 };
 
 export function VehicleShowcaseGallerySubmenu({
   surfaceScope,
   photoCount,
   variant = "tile",
+  isLast = false,
 }: VehicleShowcaseGallerySubmenuProps) {
   const hasPhotos = photoCount > 0;
 
@@ -26,6 +28,7 @@ export function VehicleShowcaseGallerySubmenu({
           ? `${photoCount}/${MAX_SHOWCASE_GALLERY_PHOTOS} Fotos`
           : `Bis zu ${MAX_SHOWCASE_GALLERY_PHOTOS} Fotos`
       }
+      isLast={isLast}
     />
   );
 }

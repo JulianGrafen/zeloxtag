@@ -1,4 +1,4 @@
-import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
+import { IOSGroupedList } from "@/components/ui/ios";
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
@@ -15,24 +15,18 @@ export function VehicleExposeSubmenu({
   const base = vehicleSurfaceHref(surfaceScope, "einstellungen/expose");
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="px-1 text-[0.78rem] font-medium text-[color:var(--vd-muted)]">
-        Verkaufsexposé
-      </p>
-      <VehicleSettingsSubmenuGroup>
-        <VehicleSettingsSubmenuLink
-          href={`${base}/link`}
-          variant="group"
-          title="Online-Link"
-          subtitle={isExposeActive ? "Aktiv" : "Inaktiv"}
-        />
-        <VehicleSettingsSubmenuLink
-          href={`${base}/pdf`}
-          variant="group"
-          title="PDF"
-          subtitle="Druckfertig exportieren"
-        />
-      </VehicleSettingsSubmenuGroup>
-    </div>
+    <IOSGroupedList headerTitle="Verkaufsexposé">
+      <VehicleSettingsSubmenuLink
+        href={`${base}/link`}
+        title="Online-Link"
+        subtitle={isExposeActive ? "Aktiv" : "Inaktiv"}
+      />
+      <VehicleSettingsSubmenuLink
+        href={`${base}/pdf`}
+        title="PDF"
+        subtitle="Druckfertig exportieren"
+        isLast
+      />
+    </IOSGroupedList>
   );
 }

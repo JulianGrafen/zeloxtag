@@ -43,7 +43,7 @@ type ShowcaseWeeklyPlacementProps = {
   weeklyRank: VehicleWeeklyShowcaseRank | null;
   className?: string;
   /** Compact row for Builds entdecken; full block on Showcase settings. */
-  variant?: "section" | "compact";
+  variant?: "section" | "compact" | "inset";
   /** Rank line already shown in page header — hide duplicate badge row. */
   rankShownInHeader?: boolean;
 };
@@ -61,6 +61,22 @@ export function ShowcaseWeeklyPlacement({
 
   if (!eligible) {
     if (variant === "compact") return null;
+    if (variant === "inset") {
+      return (
+        <div className={cn("px-4 py-3", className)}>
+          <p className="text-[13px] leading-snug text-zinc-400">
+            Aktiviere „Im Build-Swipe zeigen“ unter{" "}
+            <Link
+              href={profilSettingsHref}
+              className="text-white underline underline-offset-2"
+            >
+              Öffentliches Profil
+            </Link>
+            .
+          </p>
+        </div>
+      );
+    }
     return (
       <div className={cn("px-4 py-4", className)}>
         <h2 className="text-[0.98rem] font-semibold text-[color:var(--vd-text)]">
@@ -87,6 +103,22 @@ export function ShowcaseWeeklyPlacement({
           <p className="text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
             Noch keine Platzierung diese Woche — sammle Likes durch Swipes.
           </p>
+        </div>
+      );
+    }
+    if (variant === "inset") {
+      return (
+        <div className={cn("px-4 py-3", className)}>
+          <div
+            className="rounded-xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-black px-4 py-5 text-center"
+          >
+            <p className="text-[15px] font-medium text-zinc-200">
+              Noch keine Platzierung diese Woche.
+            </p>
+            <p className="mt-2 text-[13px] text-zinc-500">
+              Likes aus „Builds entdecken“ zählen für die letzten 7 Tage.
+            </p>
+          </div>
         </div>
       );
     }
@@ -173,6 +205,38 @@ export function ShowcaseWeeklyPlacement({
               {weeklyRank.weeklyLikes}
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "inset") {
+    return (
+      <div className={cn("px-4 py-3", className)} aria-label={rankLabel}>
+        <div
+          className={cn(
+            "flex items-center justify-between gap-4 rounded-xl border bg-gradient-to-b px-4 py-4",
+            accent,
+          )}
+        >
+          <div>
+            <p
+              className="font-mono text-[2rem] font-bold tabular-nums leading-none tracking-tight text-white"
+            >
+              #{weeklyRank.rank}
+            </p>
+            {weeklyRank.rank === 1 ? (
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-amber-400/95">
+                Build of the Week
+              </p>
+            ) : null}
+          </div>
+          <p className="text-right font-mono text-[1rem] tabular-nums text-amber-400/90">
+            {weeklyRank.weeklyLikes}
+            <span className="block text-[12px] font-sans font-normal text-zinc-500">
+              {likeWord} · 7 Tage
+            </span>
+          </p>
         </div>
       </div>
     );

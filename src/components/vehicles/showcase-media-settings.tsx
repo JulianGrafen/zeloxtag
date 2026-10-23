@@ -46,6 +46,7 @@ export function ShowcaseMediaSettings({
           resolveOwnerEngineSoundViewUrl(vehicle.id, vehicle.sound_url),
         )}
         variant={variant}
+        isLast
       />
     </>
   );

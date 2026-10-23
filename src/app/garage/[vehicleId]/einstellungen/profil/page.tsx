@@ -44,6 +44,7 @@ export default async function VehiclePublicProfileSettingsPage({
         backHref={settingsBackHref}
         title="Öffentliches Profil"
         description={description}
+        theme="discover"
       >
         <VehiclePublicProfileSettings
           tagUuid={scope.linkedTagUuid ?? undefined}

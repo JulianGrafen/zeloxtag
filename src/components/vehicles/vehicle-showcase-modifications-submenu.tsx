@@ -8,6 +8,7 @@ type VehicleShowcaseModificationsSubmenuProps = {
   invoiceCount: number;
   visibleCount: number;
   variant?: "tile" | "group";
+  isLast?: boolean;
 };
 
 export function VehicleShowcaseModificationsSubmenu({
@@ -16,6 +17,7 @@ export function VehicleShowcaseModificationsSubmenu({
   invoiceCount,
   visibleCount,
   variant = "tile",
+  isLast = false,
 }: VehicleShowcaseModificationsSubmenuProps) {
   const totalCount = modificationCount + invoiceCount;
 
@@ -34,6 +36,7 @@ export function VehicleShowcaseModificationsSubmenu({
       variant={variant}
       title="Umbauten & Rechnungen"
       subtitle={subtitle}
+      isLast={isLast}
     />
   );
 }

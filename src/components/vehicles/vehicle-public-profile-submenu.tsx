@@ -9,6 +9,7 @@ type VehiclePublicProfileSubmenuProps = {
   showcaseSwipeOptIn: boolean;
   hasLinkedTag: boolean;
   variant?: "tile" | "group";
+  isLast?: boolean;
 };
 
 export function VehiclePublicProfileSubmenu({
@@ -17,6 +18,7 @@ export function VehiclePublicProfileSubmenu({
   showcaseSwipeOptIn,
   hasLinkedTag,
   variant = "tile",
+  isLast = false,
 }: VehiclePublicProfileSubmenuProps) {
   return (
     <VehicleSettingsSubmenuLink
@@ -28,6 +30,7 @@ export function VehiclePublicProfileSubmenu({
         showcaseSwipeOptIn,
         hasLinkedTag,
       })}
+      isLast={isLast}
     />
   );
 }
