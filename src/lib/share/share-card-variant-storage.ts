@@ -45,9 +45,18 @@ export function writeShareCardVariantToSession(
 export function resolveInitialShareCardVariant(
   vehicleId: string | undefined,
   defaults: ShareCardVariant,
+  options?: { preferRankHeroStyle?: boolean },
 ): ShareCardVariant {
   const stored = readShareCardVariantFromSession(vehicleId);
-  if (stored) return stored;
+  if (stored) {
+    if (
+      options?.preferRankHeroStyle &&
+      stored.style === DEFAULT_SHARE_CARD_STYLE
+    ) {
+      return { format: stored.format, style: "rankHero" };
+    }
+    return stored;
+  }
   return {
     format: defaults.format ?? DEFAULT_SHARE_CARD_FORMAT,
     style: defaults.style ?? DEFAULT_SHARE_CARD_STYLE,

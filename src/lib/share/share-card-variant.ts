@@ -64,3 +64,14 @@ export function isDefaultShareCardVariant(variant: ShareCardVariant): boolean {
     variant.style === DEFAULT_SHARE_CARD_STYLE
   );
 }
+
+/** Weekly top-3 cards default to the Build-der-Woche placement layout. */
+export function resolveDefaultShareCardStyle(input: {
+  weeklyShowcaseRank?: number | null;
+  explicitDefault?: ShareCardStyle;
+}): ShareCardStyle {
+  if (input.explicitDefault) {
+    return input.explicitDefault;
+  }
+  return input.weeklyShowcaseRank != null ? "rankHero" : DEFAULT_SHARE_CARD_STYLE;
+}

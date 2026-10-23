@@ -1,5 +1,6 @@
 "use client";
 
+import { toShareCardImageFetchUrl } from "@/lib/share/share-card-hero-image-url";
 import {
   shareCardHeroImageClassName,
   shareCardImageCrossOrigin,
@@ -24,7 +25,8 @@ export function ShareCardHeroMedia({
     <>
       {/* eslint-disable-next-line @next/next/no-img-element -- DOM export */}
       <img
-        src={imageUrl}
+        data-share-card-hero=""
+        src={toShareCardImageFetchUrl(imageUrl)}
         alt=""
         crossOrigin={shareCardImageCrossOrigin(imageUrl)}
         className={shareCardHeroImageClassName(imageUrl, variant)}

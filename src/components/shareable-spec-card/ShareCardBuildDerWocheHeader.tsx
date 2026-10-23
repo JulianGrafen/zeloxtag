@@ -19,8 +19,8 @@ export function ShareCardBuildDerWocheHeader({
   format = "story",
 }: ShareCardBuildDerWocheHeaderProps) {
   const isPost = format === "post";
-  const rankSizePx = isPost ? 88 : 112;
-  const kickerSizePx = isPost ? 26 : 32;
+  const rankSizePx = isPost ? 104 : 144;
+  const kickerSizePx = isPost ? 28 : 38;
 
   return (
     <div

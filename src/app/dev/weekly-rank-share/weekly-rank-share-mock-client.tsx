@@ -54,6 +54,8 @@ export function WeeklyRankShareMockClient() {
               previewMaxWidth={280}
               showExportButton={false}
               className="w-full"
+              defaultFormat="story"
+              defaultStyle="rankHero"
             />
           </div>
         ))}

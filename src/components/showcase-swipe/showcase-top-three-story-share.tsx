@@ -5,11 +5,13 @@ import type { ShareableBuildData } from "@/components/shareable-spec-card/types"
 
 type ShowcaseTopThreeStoryShareProps = {
   cardData: ShareableBuildData;
+  vehicleId?: string;
   className?: string;
 };
 
 export function ShowcaseTopThreeStoryShare({
   cardData,
+  vehicleId,
   className,
 }: ShowcaseTopThreeStoryShareProps) {
   return (
@@ -24,8 +26,11 @@ export function ShowcaseTopThreeStoryShare({
       </div>
       <ShareableSpecCard
         data={cardData}
+        vehicleId={vehicleId}
         previewMaxWidth={280}
         className="mt-5 w-full px-4"
+        defaultFormat="story"
+        defaultStyle="rankHero"
       />
     </div>
   );

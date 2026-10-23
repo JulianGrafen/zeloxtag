@@ -44,6 +44,8 @@ export function VehicleShowcaseStoryPassSettings({
           vehicleId={vehicle.id}
           previewMaxWidth={280}
           className="mt-5 w-full"
+          defaultFormat="story"
+          defaultStyle={topThree != null ? "rankHero" : undefined}
         />
       ) : (
         <p className="mt-4 text-[0.82rem] text-[color:var(--vd-muted)]">

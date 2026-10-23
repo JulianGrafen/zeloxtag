@@ -37,8 +37,8 @@ export function StoryCardOgRankHeroTemplate({
     overflow: "hidden",
   };
 
-  const rankSize = (isPost ? 88 : 112) * scale;
-  const kickerSize = (isPost ? 26 : 32) * scale;
+  const rankSize = (isPost ? 104 : 144) * scale;
+  const kickerSize = (isPost ? 28 : 38) * scale;
   const modelSize = (isPost ? 56 : 72) * scale;
   const logoHeight = (isPost ? 84 : 100) * scale;
 

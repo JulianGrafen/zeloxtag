@@ -2,9 +2,27 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseShareCardQuery,
+  resolveDefaultShareCardStyle,
   shareCardDimensions,
   shareCardQuerySchema,
 } from "./share-card-variant";
+
+describe("resolveDefaultShareCardStyle", () => {
+  it("prefers rankHero when weekly rank is set", () => {
+    expect(
+      resolveDefaultShareCardStyle({ weeklyShowcaseRank: 1 }),
+    ).toBe("rankHero");
+  });
+
+  it("honors explicit default over weekly rank", () => {
+    expect(
+      resolveDefaultShareCardStyle({
+        weeklyShowcaseRank: 1,
+        explicitDefault: "showcase",
+      }),
+    ).toBe("showcase");
+  });
+});
 
 describe("shareCardDimensions", () => {
   it("returns story and post pixel sizes", () => {

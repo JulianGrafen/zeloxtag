@@ -11,6 +11,7 @@ import {
   isLikelyMobileShareDevice,
 } from "@/lib/share/share-story-image-file";
 import {
+  resolveDefaultShareCardStyle,
   shareCardDimensions,
   type ShareCardFormat,
   type ShareCardStyle,
@@ -56,7 +57,7 @@ export function ShareCardComposer({
   previewMaxWidth = 320,
   showExportButton = true,
   defaultFormat = "story",
-  defaultStyle = "showcase",
+  defaultStyle,
   exportButtonLabel,
   exportButtonPendingLabel,
   exportHint,
@@ -67,11 +68,21 @@ export function ShareCardComposer({
   const exportRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
 
+  const preferRankHeroStyle = data.weeklyShowcaseRank != null;
+  const resolvedDefaultStyle = resolveDefaultShareCardStyle({
+    weeklyShowcaseRank: data.weeklyShowcaseRank,
+    explicitDefault: defaultStyle,
+  });
+
   const [variant, setVariant] = useState(() =>
-    resolveInitialShareCardVariant(vehicleId, {
-      format: defaultFormat,
-      style: defaultStyle,
-    }),
+    resolveInitialShareCardVariant(
+      vehicleId,
+      {
+        format: defaultFormat,
+        style: resolvedDefaultStyle,
+      },
+      { preferRankHeroStyle },
+    ),
   );
   const [actionError, setActionError] = useState<string | null>(null);
   const [isCanvasSharing, setIsCanvasSharing] = useState(false);

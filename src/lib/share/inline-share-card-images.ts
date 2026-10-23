@@ -1,3 +1,5 @@
+import { toShareCardImageFetchUrl } from "@/lib/share/share-card-hero-image-url";
+
 function waitForImageElement(img: HTMLImageElement): Promise<void> {
   return new Promise((resolve) => {
     if (img.complete && img.naturalWidth > 0) {
@@ -24,6 +26,10 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+function isHeroShareCardImage(img: HTMLImageElement): boolean {
+  return img.hasAttribute("data-share-card-hero");
+}
+
 /**
  * html-to-image refetches img sources without cookies by default.
  * Owner silhouette URLs (/api/vehicle/silhouette/…) need session cookies.
@@ -38,29 +44,40 @@ export async function inlineShareCardImages(root: HTMLElement): Promise<void> {
         return;
       }
 
-      let absoluteUrl = rawSrc;
-      try {
-        absoluteUrl = new URL(rawSrc, window.location.origin).href;
-      } catch {
+      const absoluteUrl = toShareCardImageFetchUrl(rawSrc);
+      if (!absoluteUrl) {
         return;
       }
 
+      const isHero = isHeroShareCardImage(img);
+
       try {
         const sameOrigin =
-          new URL(absoluteUrl).origin === window.location.origin;
+          new URL(absoluteUrl, window.location.origin).origin ===
+          window.location.origin;
         const response = await fetch(absoluteUrl, {
           credentials: "include",
           mode: sameOrigin ? "same-origin" : "cors",
         });
         if (!response.ok) {
+          if (isHero) {
+            throw new Error("Fahrzeugbild konnte nicht geladen werden.");
+          }
           return;
         }
         const dataUrl = await blobToDataUrl(await response.blob());
         img.setAttribute("src", dataUrl);
         img.removeAttribute("crossorigin");
         await waitForImageElement(img);
-      } catch {
-        // Keep original src — export may still partially succeed.
+        if (isHero && img.naturalWidth === 0) {
+          throw new Error("Fahrzeugbild konnte nicht geladen werden.");
+        }
+      } catch (error) {
+        if (isHero) {
+          throw error instanceof Error
+            ? error
+            : new Error("Fahrzeugbild konnte nicht geladen werden.");
+        }
       }
     }),
   );

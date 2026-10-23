@@ -5,11 +5,11 @@ import { z } from "zod";
 import { ZELOX_BRAND_MARK_SRC } from "@/lib/brand/constants";
 import { resolvePublicAppOrigin } from "@/lib/api/resolve-api-base-url";
 import { fetchOgImageDataUri } from "@/lib/og/fetch-og-image-bytes";
+import { buildStoryCardOgPayload } from "@/lib/og/story-card/build-story-card-og-payload";
 import {
-  buildStoryCardOgPayload,
-  resolveStoryCardHeroAbsoluteUrl,
-} from "@/lib/og/story-card/build-story-card-og-payload";
-import { resolveStoryCardHeroDataUri } from "@/lib/og/story-card/resolve-story-card-hero-data-uri";
+  resolveStoryCardHeroDataUri,
+  shareCardExpectsHeroImage,
+} from "@/lib/og/story-card/resolve-story-card-hero-data-uri";
 import { loadStoryCardOgFonts } from "@/lib/og/story-card/load-story-card-og-fonts";
 import { StoryCardOgRankHeroTemplate } from "@/lib/og/story-card/story-card-og-template-rank-hero";
 import { StoryCardOgTemplate } from "@/lib/og/story-card/story-card-og-template";
@@ -92,18 +92,30 @@ export async function GET(request: NextRequest) {
   }
 
   const origin = resolvePublicAppOrigin();
-  const heroAbsolute = resolveStoryCardHeroAbsoluteUrl(
-    vehicle as Vehicle,
-    (documents ?? []) as Document[],
-    origin,
-  );
+  const fetchOrigin = request.nextUrl.origin;
   const logoAbsolute = resolveAbsoluteAssetUrl(ZELOX_BRAND_MARK_SRC, origin);
+  const vehicleRow = vehicle as Vehicle;
+  const documentRows = (documents ?? []) as Document[];
+  const expectsHero = shareCardExpectsHeroImage(vehicleRow, documentRows);
+
   const [heroImageDataUri, logoFetch, weeklyRank] = await Promise.all([
-    resolveStoryCardHeroDataUri({ vehicleId, heroAbsoluteUrl: heroAbsolute }),
+    resolveStoryCardHeroDataUri({
+      vehicle: vehicleRow,
+      documents: documentRows,
+      fetchOrigin,
+    }),
     fetchOgImageDataUri(logoAbsolute),
     loadVehicleWeeklyShowcaseRank(vehicleId),
   ]);
   const logoDataUri = logoFetch.ok ? logoFetch.dataUri : null;
+
+  if (expectsHero && !heroImageDataUri) {
+    console.error("[og-story-card] hero bytes missing", { vehicleId });
+    return NextResponse.json(
+      { error: "Fahrzeugbild konnte nicht geladen werden." },
+      { status: 422 },
+    );
+  }
 
   const payload = buildStoryCardOgPayload({
     vehicle: vehicle as Vehicle,
