@@ -94,7 +94,7 @@ export function ShowroomStats({
 
   return (
     <motion.section
-      className="relative z-10 flex flex-col gap-6 px-4"
+      className="relative z-10 flex flex-col gap-5 px-4"
       variants={motionConfig.staggerContainer}
       initial="hidden"
       {...(revealOnMount

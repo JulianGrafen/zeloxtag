@@ -292,7 +292,7 @@ export function ShowroomHero({
         <div
           className={cn(
             "pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col justify-end px-5",
-            hideBrandBanner ? "pb-6 pt-4" : "pb-8",
+            hideBrandBanner ? "pb-4 pt-3" : "pb-5",
           )}
         >
           <div className={showroom.heroCopyBottomFade} aria-hidden />
@@ -343,7 +343,7 @@ function HeroPhotoPagination({
 }) {
   return (
     <div
-      className="pointer-events-auto relative z-10 mb-4 flex justify-center gap-2"
+      className="pointer-events-auto relative z-10 mb-2.5 flex justify-center gap-2"
       role="tablist"
       aria-label="Fotoauswahl"
     >
@@ -415,14 +415,14 @@ function HeroCopy({
       {instagramHandle ? (
         <motion.p
           variants={motionConfig.fadeUp}
-          className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.92rem] font-medium leading-snug text-white/55"
+          className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.92rem] font-medium leading-snug text-white/55"
         >
           {instagramHandle ? (
             <a
               href={instagramProfileUrl(instagramHandle)}
               target="_blank"
               rel="noopener noreferrer"
-              className="pointer-events-auto inline-flex min-h-9 max-w-full items-center gap-1.5 text-white/70 transition-colors hover:text-white/90"
+              className="pointer-events-auto inline-flex min-h-8 max-w-full items-center gap-1.5 text-white/70 transition-colors hover:text-white/90"
             >
               <InstagramGlyph className="h-[0.95rem] w-[0.95rem] shrink-0 text-white/55" />
               <span className="truncate">

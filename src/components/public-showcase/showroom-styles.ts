@@ -12,7 +12,7 @@ export const showroom = {
     "pointer-events-none absolute inset-x-0 bottom-0 z-[4] h-[min(62%,28rem)] bg-gradient-to-t from-black from-0% via-black/85 via-[42%] to-transparent",
   heroCopyBottomFade:
     "pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-[min(50%,22rem)] bg-gradient-to-t from-black via-black/75 to-transparent",
-  content: "relative z-10 bg-black pt-2",
+  content: "relative z-10 bg-black pt-0",
   panel:
     "overflow-hidden rounded-2xl border border-white/5 border-t-white/10 bg-gradient-to-b from-zinc-800/40 to-zinc-900/80 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-md",
   /** Legacy / gallery thumbs — light inset, no heavy shadow. */
@@ -25,7 +25,7 @@ export const showroom = {
     "relative before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
   groupDivider: "border-white/10",
   sectionLabel:
-    "mb-2 px-1 text-[0.81rem] font-medium text-white/45",
+    "mb-1.5 px-1 text-[0.81rem] font-medium text-white/45",
   rowLabel: "text-[0.94rem] text-white/55",
   rowValue:
     "text-right text-[0.94rem] font-medium tabular-nums text-white",

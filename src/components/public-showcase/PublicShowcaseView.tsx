@@ -46,7 +46,7 @@ export function PublicShowcaseView({
         hideInstagramInHero={Boolean(data.b2bPartner)}
       />
       <div
-        className={`${showroom.content} mx-auto flex w-full max-w-lg flex-col gap-6 pb-[max(2rem,env(safe-area-inset-bottom))]`}
+        className={`${showroom.content} mx-auto flex w-full max-w-lg flex-col gap-4 pb-[max(2rem,env(safe-area-inset-bottom))]`}
       >
         {data.b2bPartner ? (
           <ShowcaseBuiltByPartner

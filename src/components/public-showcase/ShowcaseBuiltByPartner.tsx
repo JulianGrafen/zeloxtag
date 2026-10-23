@@ -99,7 +99,7 @@ export function ShowcaseBuiltByPartner({
                 href={instagramProfileUrl(instagramHandle)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-flex max-w-full min-h-9 items-center gap-1.5 text-[0.82rem] font-medium text-white/60 transition-colors hover:text-white/85"
+                className="mt-0.5 inline-flex max-w-full min-h-8 items-center gap-1.5 text-[0.82rem] font-medium leading-snug text-white/60 transition-colors hover:text-white/85"
               >
                 <InstagramGlyph className="h-[0.9rem] w-[0.9rem] shrink-0 text-white/50" />
                 <span className="truncate">
