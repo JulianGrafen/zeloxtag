@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildDemoAulitzkyPublicShowcasePayload,
   DEMO_AULITZKY_DYNO_CHART_URL,
+  DEMO_AULITZKY_INSTAGRAM_HANDLE,
   DEMO_AULITZKY_SOUND_URL,
   getDemoAulitzkyTagScan,
 } from "./demo-aulitzky-showcase";
+import { instagramProfileUrl } from "@/lib/vehicles/instagram-handle";
 
 describe("demo Aulitzky partner showcase", () => {
   it("exposes only public mods, not invoice amounts", () => {
@@ -25,6 +27,10 @@ describe("demo Aulitzky partner showcase", () => {
       "Aulitzky Abgasanlage ab OPF",
     );
     expect(payload.b2bPartner?.name).toBe("Aulitzky Tuning");
+    expect(payload.profile.instagramHandle).toBe(DEMO_AULITZKY_INSTAGRAM_HANDLE);
+    expect(instagramProfileUrl(DEMO_AULITZKY_INSTAGRAM_HANDLE)).toBe(
+      "https://www.instagram.com/aulitzky_exhaust/",
+    );
     expect(payload.b2bPartner?.appOpenLabel).toBeUndefined();
     expect(payload.b2bPartner?.ctaLabel).toBe("Diesen Umbau anfragen");
     expect(payload.b2bPartner?.ctaHref).toContain("Abgasanlagen");

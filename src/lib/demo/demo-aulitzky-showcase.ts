@@ -11,6 +11,7 @@ import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 export const DEMO_AULITZKY_TAG_UUID = "demo-aulitzky";
 
 export const MOCK_AULITZKY_VEHICLE_ID = "veh_demo_m3_g80";
+export const DEMO_AULITZKY_INSTAGRAM_HANDLE = "aulitzky_exhaust";
 export const DEMO_AULITZKY_PARTNER_WEB_URL =
   "https://aulitzkyexhaust.de/Tuning/Abgassysteme/Abgasanlagen/";
 export const DEMO_AULITZKY_VEHICLE_IMAGE = "/demo/aulitzky-hero.jpg";
@@ -60,6 +61,7 @@ const aulitzkyVehicle: Vehicle = {
     transmission: "8-Gang M Steptronic",
     fuelType: "Benzin",
     buildPersonalityTags: ["track", "stance"],
+    instagramHandle: DEMO_AULITZKY_INSTAGRAM_HANDLE,
     notes:
       "• Aulitzky Stage 2 + OPF-Abgasanlage\n" +
       "• 720 PS · 850 Nm · 3,2 s (Dyno)\n" +
