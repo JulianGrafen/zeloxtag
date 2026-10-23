@@ -6,11 +6,11 @@ import {
   shareCardDimensions,
   type ShareCardFormat,
 } from "@/lib/share/share-card-variant";
-import { ShareCardHeroMedia } from "./ShareCardHeroMedia";
 
+import { ShareCardBuildDerWocheHeader } from "./ShareCardBuildDerWocheHeader";
+import { ShareCardHeroMedia } from "./ShareCardHeroMedia";
 import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
-import { ShareCardWeeklyRankBadge } from "./ShareCardWeeklyRankBadge";
-import { ShareCardZeloxMark } from "./ShareCardZeloxMark";
+import { ShareCardStoryFooterMark } from "./ShareCardStoryFooterMark";
 import type { ShareableBuildData } from "./types";
 
 type ShareCardRankHeroPreviewProps = {
@@ -27,9 +27,8 @@ export const ShareCardRankHeroPreview = forwardRef<
   const showImage = Boolean(data.imageUrl) && !imageFailed;
   const { width, height } = shareCardDimensions(format);
   const isPost = format === "post";
-  const modelSizePx = isPost ? 52 : 68;
-  const footerLogoPx = isPost ? 132 : 172;
-  const badgeScale = isPost ? 1.02 : 1.24;
+  const modelSizePx = isPost ? 56 : 72;
+  const footerLogoPx = isPost ? 84 : 100;
 
   return (
     <div
@@ -38,47 +37,47 @@ export const ShareCardRankHeroPreview = forwardRef<
       className={className}
       style={{ width, height }}
     >
-      <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#0a0a0a] text-white">
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          {showImage ? (
-            <ShareCardHeroMedia
-              imageUrl={data.imageUrl!}
-              onError={() => setImageFailed(true)}
-              variant="rank"
+      <div className="relative h-full w-full overflow-hidden bg-[#0a0a0a] text-white">
+        {showImage ? (
+          <ShareCardHeroMedia
+            imageUrl={data.imageUrl!}
+            onError={() => setImageFailed(true)}
+            variant="rank"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-zinc-900" />
+        )}
+
+        {data.weeklyShowcaseRank != null ? (
+          <ShareCardBuildDerWocheHeader
+            rank={data.weeklyShowcaseRank}
+            format={format}
+            className="absolute left-10 top-10 z-20 sm:left-12 sm:top-12"
+          />
+        ) : null}
+
+        <div
+          className="absolute inset-x-0 bottom-0 z-10 px-10 pb-[max(7.5rem,18%)]"
+        >
+          <p
+            className="font-[family-name:var(--font-display)] font-bold leading-[1.05] tracking-[-0.03em] break-words drop-shadow-[0_4px_24px_rgba(0,0,0,0.75)]"
+            style={{ fontSize: modelSizePx }}
+          >
+            {data.modelName}
+          </p>
+          {data.instagramHandle ? (
+            <ShareCardInstagramHandle
+              handle={data.instagramHandle}
+              variant="hero"
+              compact={isPost}
+              tight
             />
-          ) : (
-            <div className="absolute inset-0 bg-zinc-900" />
-          )}
-
-          {data.weeklyShowcaseRank != null ? (
-            <div
-              className="absolute left-8 top-8 z-20 origin-top-left"
-              style={{ transform: `scale(${badgeScale})` }}
-            >
-              <ShareCardWeeklyRankBadge rank={data.weeklyShowcaseRank} />
-            </div>
           ) : null}
-
-          <div className="absolute inset-x-0 bottom-0 z-10 px-10 pb-4">
-            <p
-              className="font-bold leading-[1.05] tracking-tight break-words"
-              style={{ fontSize: modelSizePx }}
-            >
-              {data.modelName}
-            </p>
-            {data.instagramHandle ? (
-              <ShareCardInstagramHandle
-                handle={data.instagramHandle}
-                variant="hero"
-                compact={isPost}
-              />
-            ) : null}
-          </div>
         </div>
 
-        <footer className="relative z-10 flex shrink-0 items-center justify-center border-t border-white/10 px-10 py-3">
-          <ShareCardZeloxMark heightPx={footerLogoPx} />
-        </footer>
+        <div className="absolute inset-x-0 bottom-8 z-20 flex justify-center px-6">
+          <ShareCardStoryFooterMark heightPx={footerLogoPx} />
+        </div>
       </div>
     </div>
   );
