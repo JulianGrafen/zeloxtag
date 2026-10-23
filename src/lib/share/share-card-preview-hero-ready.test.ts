@@ -15,7 +15,7 @@ describe("isShareCardPreviewHeroReady", () => {
           naturalWidth: 1200,
           naturalHeight: 800,
         }) as HTMLImageElement,
-    } as HTMLElement;
+    } as unknown as HTMLElement;
 
     expect(isShareCardPreviewHeroReady(root)).toBe(true);
   });
@@ -28,7 +28,7 @@ describe("isShareCardPreviewHeroReady", () => {
           naturalWidth: 0,
           naturalHeight: 0,
         }) as HTMLImageElement,
-    } as HTMLElement;
+    } as unknown as HTMLElement;
 
     expect(isShareCardPreviewHeroReady(root)).toBe(false);
   });

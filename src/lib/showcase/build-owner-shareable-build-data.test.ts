@@ -37,7 +37,7 @@ describe("buildOwnerShareableBuildData", () => {
   });
 
   it("rewrites public gallery hero to owner showcase-file when not public", () => {
-    const doc: Document = {
+    const doc = {
       id: "33333333-3333-4333-8333-333333333333",
       vehicle_id: vehicle.id,
       title: "Photo",
@@ -48,7 +48,7 @@ describe("buildOwnerShareableBuildData", () => {
       invoice_number: SHOWCASE_GALLERY_MARKER,
       show_on_public_showcase: true,
       created_at: "2026-01-01T00:00:00Z",
-    };
+    } as Document;
 
     const data = buildOwnerShareableBuildData(
       { ...vehicle, is_public: false, silhouette_image_url: null },
