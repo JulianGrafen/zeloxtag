@@ -37,9 +37,13 @@ const heroGradient: CSSProperties = {
 
 const heroFade: CSSProperties = {
   position: "absolute",
-  inset: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  height: "62%",
+  maxHeight: 448,
   background:
-    "linear-gradient(to top, #0a0a0a 0%, rgba(10,10,10,0.4) 45%, transparent 100%)",
+    "linear-gradient(to top, #000000 0%, rgba(0,0,0,0.85) 42%, transparent 100%)",
 };
 
 function weeklyRankLabel(rank: 1 | 2 | 3): string {
@@ -60,7 +64,7 @@ export function StoryCardOgTemplate({
       <div
         style={{
           position: "relative",
-          flex: "0 0 50%",
+          flex: "0 0 58%",
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
@@ -78,9 +82,9 @@ export function StoryCardOgTemplate({
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              objectPosition: "50% 50%",
-              transform: "scale(1.06)",
-              transformOrigin: "center center",
+              objectPosition: "50% 55%",
+              transform: "scale(1.07)",
+              transformOrigin: "center 42%",
             }}
           />
         ) : (

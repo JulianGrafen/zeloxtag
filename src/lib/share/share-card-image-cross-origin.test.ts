@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isShareCardCatalogCutout,
   isShareCardCutoutHero,
+  shareCardHeroImageClassName,
   shareCardImageCrossOrigin,
 } from "./share-card-image-cross-origin";
 
@@ -46,11 +47,28 @@ describe("isShareCardCutoutHero", () => {
     );
   });
 
-  it("uses contain layout for silhouette proxies", () => {
+  it("treats owner silhouette proxies like showroom full-bleed heroes", () => {
     expect(
       isShareCardCutoutHero(
         "/api/vehicle/silhouette/11111111-1111-4111-8111-111111111111?v=1",
       ),
-    ).toBe(true);
+    ).toBe(false);
+  });
+});
+
+describe("shareCardHeroImageClassName", () => {
+  it("matches public showroom cover framing for silhouette heroes", () => {
+    expect(
+      shareCardHeroImageClassName(
+        "/api/vehicle/silhouette/11111111-1111-4111-8111-111111111111?v=1",
+        "showcase",
+      ),
+    ).toContain("object-cover");
+    expect(
+      shareCardHeroImageClassName(
+        "/api/vehicle/silhouette/11111111-1111-4111-8111-111111111111?v=1",
+        "showcase",
+      ),
+    ).toContain("object-[50%_55%]");
   });
 });

@@ -59,12 +59,12 @@ export function computeShareCardLayout(
   const cutoutHero =
     Boolean(data.imageUrl?.trim()) && isShareCardCutoutHero(data.imageUrl);
 
-  let heroHeightPercent = format === "post" ? 40 : 38;
+  let heroHeightPercent = format === "post" ? 42 : 40;
   if (fullBleedHero) {
-    heroHeightPercent = format === "post" ? 52 : 50;
+    heroHeightPercent = format === "post" ? 56 : 58;
   }
   if (cutoutHero) {
-    heroHeightPercent = format === "post" ? 50 : 54;
+    heroHeightPercent = format === "post" ? 48 : 50;
   }
   if (specCount > 5 || hasDna) heroHeightPercent = format === "post" ? 36 : 34;
   if (specCount > 8) heroHeightPercent = format === "post" ? 34 : 30;

@@ -4,6 +4,7 @@ import {
   shareCardHeroImageClassName,
   shareCardImageCrossOrigin,
 } from "@/lib/share/share-card-image-cross-origin";
+import { showroom } from "@/components/public-showcase/showroom-styles";
 import { cn } from "@/lib/utils";
 
 type ShareCardHeroMediaProps = {
@@ -31,17 +32,19 @@ export function ShareCardHeroMedia({
       />
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 z-[2] bg-gradient-to-b from-black/70 to-transparent",
-          variant === "rank" ? "h-[22%]" : "h-[28%]",
+          "pointer-events-none absolute inset-x-0 top-0 z-[2]",
+          variant === "rank"
+            ? "h-[22%] bg-gradient-to-b from-black/70 to-transparent"
+            : showroom.heroBackdropTopFade,
         )}
         aria-hidden
       />
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 z-[4] bg-gradient-to-t from-[#0a0a0a] from-0% via-[#0a0a0a]/85 to-transparent",
+          "pointer-events-none absolute inset-x-0 bottom-0 z-[4]",
           variant === "rank"
-            ? "h-[min(42%,18rem)] via-[38%]"
-            : "h-[min(52%,24rem)] via-[42%]",
+            ? "h-[min(42%,18rem)] bg-gradient-to-t from-[#0a0a0a] from-0% via-[#0a0a0a]/85 via-[38%] to-transparent"
+            : showroom.heroBackdropBottomFade,
         )}
         aria-hidden
       />
