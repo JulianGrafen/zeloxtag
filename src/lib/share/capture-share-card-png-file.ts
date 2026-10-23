@@ -8,6 +8,27 @@ import {
   SHAREABLE_SPEC_CARD_WIDTH_PX,
 } from "@/components/shareable-spec-card/constants";
 
+/**
+ * WebKit (Safari, every iOS browser, WKWebView) paints <img> inside the SVG
+ * foreignObject only after the image was decoded by an earlier render, so the
+ * first html-to-image pass comes back without the vehicle photo.
+ */
+const WEBKIT_RENDER_PASSES = 3;
+
+export function isWebKitRenderer(userAgent?: string): boolean {
+  const ua =
+    userAgent ?? (typeof navigator !== "undefined" ? navigator.userAgent : "");
+  return /AppleWebKit/i.test(ua) && !/Chrome\/|Chromium\/|Edg\//i.test(ua);
+}
+
+async function decodeImages(root: HTMLElement): Promise<void> {
+  await Promise.all(
+    Array.from(root.querySelectorAll("img")).map((img) =>
+      typeof img.decode === "function" ? img.decode().catch(() => undefined) : undefined,
+    ),
+  );
+}
+
 function imageReady(img: HTMLImageElement): boolean {
   return img.complete && img.naturalWidth > 0 && img.naturalHeight > 0;
 }
@@ -118,15 +139,22 @@ export async function captureShareCardPngFile(
     prepareShareCardExportClone(clone);
     await inlineShareCardImages(clone);
     await waitForImages(clone, 12_000, { requireHero });
+    await decodeImages(clone);
 
-    const dataUrl = await toPng(clone, {
+    const renderOptions = {
       width: SHAREABLE_SPEC_CARD_WIDTH_PX,
       height: SHAREABLE_SPEC_CARD_HEIGHT_PX,
       pixelRatio,
       cacheBust: false,
       skipFonts: false,
-      fetchRequestInit: { credentials: "include" },
-    });
+      fetchRequestInit: { credentials: "include" as RequestCredentials },
+    };
+
+    const renderPasses = isWebKitRenderer() ? WEBKIT_RENDER_PASSES : 1;
+    let dataUrl = "";
+    for (let pass = 0; pass < renderPasses; pass += 1) {
+      dataUrl = await toPng(clone, renderOptions);
+    }
 
     const blob = dataUrlToBlob(dataUrl);
     return new File([blob], options.filename, { type: "image/png" });
