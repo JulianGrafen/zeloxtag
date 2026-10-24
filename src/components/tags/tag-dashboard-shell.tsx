@@ -102,6 +102,7 @@ function persistSilhouetteSkipped(vehicleId: string): void {
 }
 
 const SILHOUETTE_PROMPT_DELAY_MS = 700;
+const SHOWCASE_SHARE_PROMPT_DELAY_MS = 1_200;
 const PWA_AFTER_SILHOUETTE_MS = 900;
 const PWA_ALONE_DELAY_MS = 1_600;
 
@@ -401,6 +402,7 @@ export function TagDashboardShell({
   const [portalReady, setPortalReady] = useState(false);
   const promptTimersRef = useRef<number[]>([]);
   const postTourSequenceHandledRef = useRef(false);
+  const tourSettledHandledRef = useRef(false);
   const firstRegistrationRef = useRef(startTour);
   const [deferSilhouetteForTour, setDeferSilhouetteForTour] = useState(
     Boolean(startTour),
@@ -701,6 +703,8 @@ export function TagDashboardShell({
   }
 
   function handleTourSettled() {
+    if (tourSettledHandledRef.current) return;
+    tourSettledHandledRef.current = true;
     setDeferSilhouetteForTour(false);
     setForceTour(false);
     postTourSequenceHandledRef.current = true;
@@ -829,6 +833,7 @@ export function TagDashboardShell({
 
   useEffect(() => {
     postTourSequenceHandledRef.current = false;
+    tourSettledHandledRef.current = false;
   }, [vehicle.id]);
 
   useEffect(() => {
@@ -862,11 +867,18 @@ export function TagDashboardShell({
     }
 
     clearPromptTimers();
-    if (wantsSilhouettePrompt) {
-      scheduleSilhouettePrompt(SILHOUETTE_PROMPT_DELAY_MS);
-    } else if (!firstRegistrationRef.current) {
-      schedulePwaPrompt(PWA_ALONE_DELAY_MS);
-    }
+    schedulePrompt(() => {
+      if (openShowcaseSharePromptIfEligible()) {
+        return;
+      }
+      if (wantsSilhouettePrompt) {
+        scheduleSilhouettePrompt(0);
+        return;
+      }
+      if (!firstRegistrationRef.current) {
+        schedulePwaPrompt(PWA_ALONE_DELAY_MS);
+      }
+    }, SHOWCASE_SHARE_PROMPT_DELAY_MS);
 
     return () => {
       clearPromptTimers();
@@ -881,6 +893,8 @@ export function TagDashboardShell({
     deferSilhouetteForTour,
     wantsSilhouettePrompt,
     vehicle.id,
+    isOwner,
+    demoShowcase,
   ]);
 
   useEffect(() => {

@@ -33,7 +33,7 @@ export async function GET(
       headers: {
         "Content-Type": optimized.contentType,
         "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
-        "Cross-Origin-Resource-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
   } catch {

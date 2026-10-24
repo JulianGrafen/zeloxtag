@@ -1,12 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import { weeklyRankCardHeroImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
 import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
 import type { WeeklyTopBuild } from "@/lib/showcase/weekly-top-builds-map";
 import { cn } from "@/lib/utils";
+
+import { SwipeHeroImage } from "./SwipeHeroImage";
 
 type DiscoverBuildOfWeekHeroProps = {
   build: WeeklyTopBuild;
@@ -20,7 +21,7 @@ export function DiscoverBuildOfWeekHero({
   className,
 }: DiscoverBuildOfWeekHeroProps) {
   const label = [build.make, build.model].filter(Boolean).join(" ");
-  const heroSrc = build.heroImageSrc?.trim() || null;
+  const rawHero = build.heroImageSrc?.trim() ?? "";
   const href = buildDiscoverShowcaseHref(build.publicSlug, entdeckenReturnHref);
 
   return (
@@ -46,18 +47,17 @@ export function DiscoverBuildOfWeekHero({
         </p>
       </div>
       <div className="relative mt-3 aspect-[16/10] w-full bg-zinc-900">
-        {heroSrc ? (
-          <Image
-            src={heroSrc}
+        {rawHero ? (
+          <SwipeHeroImage
+            initialSrc={build.heroImageSrc}
+            make={build.make}
+            model={build.model}
             alt={label || "Build der Woche"}
-            fill
+            priority
             className={weeklyRankCardHeroImageClassName(
-              heroSrc,
+              rawHero,
               build.heroImageUsesCover,
             )}
-            sizes="(max-width: 768px) 100vw, 640px"
-            unoptimized={heroSrc.startsWith("/api/")}
-            priority
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-black" />

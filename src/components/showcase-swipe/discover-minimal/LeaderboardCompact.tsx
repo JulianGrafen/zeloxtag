@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
-import { weeklyRankCardHeroImageClassName } from "@/lib/image/showcase-vehicle-focus-image";
+import { SwipeLeaderboardThumb } from "@/components/showcase-swipe/discover-minimal/SwipeLeaderboardThumb";
 import { buildDiscoverShowcaseHref } from "@/lib/showcase/discover-showcase-navigation";
 import {
   discoverOwnPlacementBadgeGlowClass,
@@ -48,7 +47,6 @@ export function LeaderboardCompact({
         <ul className="flex flex-col">
           {builds.map((build) => {
             const label = [build.make, build.model].filter(Boolean).join(" ");
-            const heroSrc = build.heroImageSrc?.trim() || null;
             const href = buildDiscoverShowcaseHref(
               build.publicSlug,
               entdeckenReturnHref,
@@ -96,23 +94,12 @@ export function LeaderboardCompact({
                     #{build.rank}
                   </span>
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-zinc-900 ring-1 ring-white/10">
-                    {heroSrc ? (
-                      <Image
-                        src={heroSrc}
-                        alt=""
-                        fill
-                        className={weeklyRankCardHeroImageClassName(
-                          heroSrc,
-                          build.heroImageUsesCover,
-                        )}
-                        sizes="48px"
-                        unoptimized={heroSrc.startsWith("/api/")}
-                      />
-                    ) : (
-                      <span className="flex h-full items-center justify-center text-[0.65rem] text-zinc-600">
-                        —
-                      </span>
-                    )}
+                    <SwipeLeaderboardThumb
+                      heroImageSrc={build.heroImageSrc}
+                      make={build.make}
+                      model={build.model}
+                      heroImageUsesCover={build.heroImageUsesCover}
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[0.88rem] font-medium text-white">

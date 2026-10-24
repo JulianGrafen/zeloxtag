@@ -79,9 +79,20 @@ describe("mapSwipeCandidateToCard", () => {
     ).toBeNull();
   });
 
-  it("still maps hero proxy when has_silhouette is false (catalog / legacy URL via API)", () => {
+  it("uses catalog cutout when has_silhouette is false and make/model match", () => {
     const card = mapSwipeCandidateToCard({
       ...base,
+      has_silhouette: false,
+    });
+    expect(card?.heroImageSrc).toContain("/api/vehicle/catalog/");
+    expect(card?.heroImageUsesCover).toBe(false);
+  });
+
+  it("falls back to silhouette proxy when no catalog match and no upload flag", () => {
+    const card = mapSwipeCandidateToCard({
+      ...base,
+      make: "Volkswagen",
+      model: "Golf",
       has_silhouette: false,
     });
     expect(card?.heroImageSrc).toContain("/api/vehicle/silhouette/veh-1");

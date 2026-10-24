@@ -7,6 +7,7 @@ import { GuidedTour } from "@/components/onboarding/guided-tour";
 import {
   clearForcedDashboardTourFromUrl,
   getDashboardTourSteps,
+  hasCompletedDashboardTour,
   markDashboardTourCompleted,
   resolveAvailableTourSteps,
   wantsForcedDashboardTour,
@@ -56,6 +57,18 @@ export function DashboardOnboardingTour({
 
   useEffect(() => {
     if (!enabled || !forceTour) return;
+
+    if (hasCompletedDashboardTour()) {
+      let cancelled = false;
+      const id = window.setTimeout(() => {
+        if (cancelled) return;
+        void finish();
+      }, 400);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(id);
+      };
+    }
 
     let cancelled = false;
     const timers: number[] = [];

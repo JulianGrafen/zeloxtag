@@ -1,5 +1,5 @@
 import { parseShowcaseBuildDna } from "@/lib/showcase/build-dna-schema";
-import { showcaseSilhouetteSwipeUrl } from "@/lib/vehicles/showcase-media-url";
+import { resolveShowcaseSwipeHero } from "@/lib/showcase/resolve-showcase-swipe-hero";
 import {
   buildPersonalityLabels,
   parseBuildPersonalityTags,
@@ -37,13 +37,17 @@ export function mapSwipeCandidateToCard(
   const publicSlug = row.public_slug?.trim();
   if (!publicSlug) return null;
 
-  const vehicleId = row.vehicle_id?.trim();
-  const heroImageSrc = vehicleId
-    ? showcaseSilhouetteSwipeUrl(vehicleId, {
+  const vehicleId = row.vehicle_id?.trim() ?? "";
+  const hero = vehicleId
+    ? resolveShowcaseSwipeHero({
+        vehicleId,
+        make: row.make,
+        model: row.model,
+        hasSilhouette: Boolean(row.has_silhouette),
         silhouetteImageUrl: row.silhouette_image_url,
         updatedAt: row.updated_at,
       })
-    : null;
+    : { heroImageSrc: null, heroImageUsesCover: false };
 
   const modificationCount = Math.max(
     0,
@@ -65,8 +69,8 @@ export function mapSwipeCandidateToCard(
     model: row.model,
     year: row.year ?? null,
     totalLikes,
-    heroImageSrc,
-    heroImageUsesCover: Boolean(row.has_silhouette),
+    heroImageSrc: hero.heroImageSrc,
+    heroImageUsesCover: hero.heroImageUsesCover,
     powerPs: toNullableNumber(row.power_ps),
     torqueNm: toNullableNumber(row.torque_nm),
     accel0To100Sec: toNullableNumber(row.accel_0_100_sec),

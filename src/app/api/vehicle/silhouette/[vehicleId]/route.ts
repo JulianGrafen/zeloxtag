@@ -52,9 +52,14 @@ function silhouetteCacheControl(
     : "private, max-age=3600";
 }
 
+function resourcePolicyForShowcase(isPublicShowcase: boolean): string {
+  return isPublicShowcase ? "cross-origin" : "same-origin";
+}
+
 function rawImageResponse(
   bytes: Uint8Array,
   cacheControl: string,
+  isPublicShowcase: boolean,
 ): NextResponse {
   const contentType = isLikelyImageBytes(bytes)
     ? imageContentTypeFromBytes(bytes)
@@ -64,7 +69,7 @@ function rawImageResponse(
     headers: {
       "Content-Type": contentType,
       "Cache-Control": cacheControl,
-      "Cross-Origin-Resource-Policy": "same-origin",
+      "Cross-Origin-Resource-Policy": resourcePolicyForShowcase(isPublicShowcase),
     },
   });
 }
@@ -73,7 +78,9 @@ async function imageResponse(
   bytes: Uint8Array,
   maxEdgePx: number,
   cacheControl: string,
+  isPublicShowcase: boolean,
 ): Promise<NextResponse> {
+  const corp = resourcePolicyForShowcase(isPublicShowcase);
   try {
     const { body, contentType } = await optimizeWebImageBytes(bytes, {
       maxEdgePx,
@@ -83,12 +90,12 @@ async function imageResponse(
       headers: {
         "Content-Type": contentType,
         "Cache-Control": cacheControl,
-        "Cross-Origin-Resource-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": corp,
       },
     });
   } catch (error) {
     logServerError("[vehicle-silhouette] optimize failed", error);
-    return rawImageResponse(bytes, cacheControl);
+    return rawImageResponse(bytes, cacheControl, isPublicShowcase);
   }
 }
 
@@ -140,6 +147,7 @@ export async function GET(
   const maxEdgePx = parseMaxEdgePx(request);
   const version = request.nextUrl.searchParams.get("v")?.trim() ?? "";
   const cacheControl = silhouetteCacheControl(request, access.isPublicShowcase);
+  const corp = resourcePolicyForShowcase(access.isPublicShowcase);
 
   const cacheKey = optimizedImageCacheKey({
     scope: "silhouette",
@@ -154,7 +162,7 @@ export async function GET(
       headers: {
         "Content-Type": cached.contentType,
         "Cache-Control": cacheControl,
-        "Cross-Origin-Resource-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": corp,
       },
     });
   }
@@ -169,11 +177,11 @@ export async function GET(
       headers: {
         "Content-Type": contentType,
         "Cache-Control": cacheControl,
-        "Cross-Origin-Resource-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": corp,
       },
     });
   } catch (error) {
     logServerError("[vehicle-silhouette] optimize failed", error);
-    return rawImageResponse(bytes, cacheControl);
+    return rawImageResponse(bytes, cacheControl, access.isPublicShowcase);
   }
 }

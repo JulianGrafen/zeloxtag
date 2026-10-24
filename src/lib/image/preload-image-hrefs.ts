@@ -1,5 +1,7 @@
 "use client";
 
+import { toShareCardImageFetchUrl } from "@/lib/share/share-card-hero-image-url";
+
 /** Warm the HTTP cache for upcoming carousel / swipe images. */
 export function preloadImageHrefs(hrefs: readonly (string | null | undefined)[]): void {
   if (typeof window === "undefined") return;
@@ -10,6 +12,6 @@ export function preloadImageHrefs(hrefs: readonly (string | null | undefined)[])
     seen.add(src);
     const img = new window.Image();
     img.decoding = "async";
-    img.src = src;
+    img.src = toShareCardImageFetchUrl(src);
   }
 }

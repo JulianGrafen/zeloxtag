@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { ChevronRight, Heart } from "lucide-react";
 
 import { showroom } from "@/components/public-showcase/showroom-styles";
@@ -8,6 +7,7 @@ import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 import { cn } from "@/lib/utils";
 
 import { resolveSwipeCardHeroPresentation } from "./swipe-card-hero-utils";
+import { SwipeHeroImage } from "./SwipeHeroImage";
 
 function buildSubtitle(card: ShowcaseSwipeCard): string {
   const parts: string[] = [];
@@ -44,9 +44,9 @@ export function SwipeCardMinimal({
   const isBack = variant === "back";
   const title = [card.make, card.model].filter(Boolean).join(" ") || card.make;
   const yearLabel = card.year != null ? String(card.year) : null;
-  const heroSrc = card.heroImageSrc?.trim() ?? "";
-  const heroPresentation = heroSrc
-    ? resolveSwipeCardHeroPresentation(heroSrc, card.heroImageUsesCover)
+  const rawHero = card.heroImageSrc?.trim() ?? "";
+  const heroPresentation = rawHero
+    ? resolveSwipeCardHeroPresentation(rawHero, card.heroImageUsesCover)
     : null;
 
   return (
@@ -56,16 +56,27 @@ export function SwipeCardMinimal({
         className,
       )}
     >
-      {heroSrc ? (
-        <Image
-          src={heroSrc}
+      <div
+        className="absolute inset-0 z-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black"
+        aria-hidden
+      >
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 50% 78%, rgba(255,255,255,0.12), transparent 55%)",
+          }}
+        />
+      </div>
+      {rawHero ? (
+        <SwipeHeroImage
+          initialSrc={card.heroImageSrc}
+          make={card.make}
+          model={card.model}
           alt={title}
-          fill
-          draggable={false}
           priority={imagePriority}
-          loading={imagePriority ? "eager" : "lazy"}
           className={cn(
-            "pointer-events-none z-0",
+            "pointer-events-none z-[1]",
             heroPresentation?.imageClassName,
           )}
           style={
@@ -73,23 +84,8 @@ export function SwipeCardMinimal({
               ? { objectFit: heroPresentation.objectFit }
               : undefined
           }
-          sizes="(max-width: 768px) 100vw, 640px"
-          unoptimized={heroSrc.startsWith("/api/")}
         />
-      ) : (
-        <div
-          className="absolute inset-0 z-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black"
-          aria-hidden
-        >
-          <div
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 50% 78%, rgba(255,255,255,0.12), transparent 55%)",
-            }}
-          />
-        </div>
-      )}
+      ) : null}
 
       <div className={cn(showroom.heroBackdropTopFade, "z-[1]")} aria-hidden />
       <div className={cn(showroom.heroBackdropBottomFade, "z-[1]")} aria-hidden />

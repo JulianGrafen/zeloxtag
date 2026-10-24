@@ -1,4 +1,4 @@
-import { showcaseSilhouetteSwipeUrl } from "@/lib/vehicles/showcase-media-url";
+import { resolveShowcaseSwipeHero } from "@/lib/showcase/resolve-showcase-swipe-hero";
 
 export type WeeklyTopBuild = {
   rank: number;
@@ -37,6 +37,15 @@ export function mapWeeklyTopBuildRow(
   const weeklyLikes = Math.max(0, Math.floor(row.weekly_likes ?? 0));
   if (weeklyLikes <= 0) return null;
 
+  const hero = resolveShowcaseSwipeHero({
+    vehicleId,
+    make: row.make ?? "",
+    model: row.model ?? "",
+    hasSilhouette: Boolean(row.has_silhouette),
+    silhouetteImageUrl: row.silhouette_image_url,
+    updatedAt: row.updated_at,
+  });
+
   return {
     rank,
     vehicleId,
@@ -45,10 +54,7 @@ export function mapWeeklyTopBuildRow(
     model: row.model ?? "",
     year: row.year ?? null,
     weeklyLikes,
-    heroImageSrc: showcaseSilhouetteSwipeUrl(vehicleId, {
-      silhouetteImageUrl: row.silhouette_image_url,
-      updatedAt: row.updated_at,
-    }),
-    heroImageUsesCover: Boolean(row.has_silhouette),
+    heroImageSrc: hero.heroImageSrc,
+    heroImageUsesCover: hero.heroImageUsesCover,
   };
 }
