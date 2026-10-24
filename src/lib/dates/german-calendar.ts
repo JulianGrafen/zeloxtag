@@ -67,6 +67,18 @@ export function formatGermanMonthYear(year: number, monthIndex: number): string 
   return `${GERMAN_MONTH_LABELS[monthIndex]} ${year}`;
 }
 
+/** `YYYY-MM` → e.g. „September 2026“. Falls ungültig, Rohwert. */
+export function formatIsoMonthKeyLabel(monthKey: string): string {
+  const match = monthKey.trim().match(/^(\d{4})-(\d{2})$/);
+  if (!match) return monthKey;
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  if (!Number.isFinite(year) || monthIndex < 0 || monthIndex > 11) {
+    return monthKey;
+  }
+  return formatGermanMonthYear(year, monthIndex);
+}
+
 export function addMonths(
   year: number,
   monthIndex: number,

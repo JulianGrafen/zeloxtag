@@ -5,6 +5,8 @@ import { ArrowLeft, ChevronRight, Plus, Wrench } from "lucide-react";
 
 import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
+import { formatIsoMonthKeyLabel } from "@/lib/dates/german-calendar";
+import { groupByIsoMonthKeyDesc, isoMonthKeyFromIsoTimestamp } from "@/lib/documents/group-by-iso-month";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 import { useServiceHistory } from "@/hooks/use-service-history";
 import { QUICK_CHIP_CATEGORIES } from "@/lib/service/category-presets";
@@ -79,16 +81,13 @@ export function ServiceBookView({
     );
   }, [filteredRecords, query, categoryLabel]);
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, ServiceRecord[]>();
-    for (const record of visibleRecords) {
-      const key = record.date.slice(0, 7);
-      const list = map.get(key) ?? [];
-      list.push(record);
-      map.set(key, list);
-    }
-    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  }, [visibleRecords]);
+  const grouped = useMemo(
+    () =>
+      groupByIsoMonthKeyDesc(visibleRecords, (record) =>
+        isoMonthKeyFromIsoTimestamp(record.date),
+      ),
+    [visibleRecords],
+  );
 
   return (
     <div className="vd-root relative min-h-dvh overflow-x-hidden">
@@ -178,10 +177,10 @@ export function ServiceBookView({
               <p className="text-[0.9rem] text-[color:var(--vd-muted)]">Keine Treffer.</p>
             </div>
           ) : (
-            grouped.map(([monthKey, monthRecords]) => (
+            grouped.map(({ monthKey, items: monthRecords }) => (
               <div key={monthKey} className="space-y-2">
                 <h2 className="px-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-                  {monthKey}
+                  {formatIsoMonthKeyLabel(monthKey)}
                 </h2>
                 <ul className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
                   {monthRecords.map((record, index) => (

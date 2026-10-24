@@ -86,6 +86,7 @@ export default async function GarageDashboardPage({
           accountDeletionGraceEndsAt={dashboard.accountDeletionGraceEndsAt}
           showcaseSwipeUnreadLikes={dashboard.showcaseSwipeUnreadLikes}
           showcaseSwipeTotalLikes={dashboard.showcaseSwipeTotalLikes}
+          showcaseSwipeWeeklyLikes={dashboard.showcaseSwipeWeeklyLikes}
           weeklyRankAward={dashboard.weeklyRankAward}
           weeklyRankAwardEntdeckenHref={dashboard.weeklyRankAwardEntdeckenHref}
           weeklyRankMockRank={parseWeeklyRankMockParam(query.mockWeeklyRank)}

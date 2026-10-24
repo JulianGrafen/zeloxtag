@@ -27,8 +27,10 @@ async function revalidateOperatingCostPaths(
 
   const scope = await resolveRevalidationScope(vehicleId);
   revalidatePath(`${garagePathForVehicle(scope.vehicleId)}/tanken/${entryId}`);
+  revalidatePath(`${garagePathForVehicle(scope.vehicleId)}/kosten/${entryId}`);
   if (scope.linkedTagUuid) {
     revalidatePath(`/v/${scope.linkedTagUuid}/tanken/${entryId}`);
+    revalidatePath(`/v/${scope.linkedTagUuid}/kosten/${entryId}`);
   }
 }
 

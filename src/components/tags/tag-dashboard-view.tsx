@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, type ReactNode } from "react";
 
+import { useShowcaseSwipeInboxForVehicle } from "@/hooks/use-showcase-swipe-inbox-for-vehicle";
+
 import { VehicleDashboard } from "@/components/vehicle-dashboard";
 import { buildDefaultTiles } from "@/components/vehicle-dashboard/buildDefaultTiles";
 import {
@@ -108,6 +110,7 @@ interface TagDashboardViewProps {
   /** Owner: unread build-swipe likes for badge on discover tile. */
   showcaseSwipeUnreadLikes?: number;
   showcaseSwipeTotalLikes?: number;
+  showcaseSwipeWeeklyLikes?: number;
   /** One-time neue Features (Swipe, Kostenübersicht). */
   productFeaturesBannerActive?: boolean;
   /** Owner-only Betriebskosten for dashboard tile subtitles. */
@@ -158,6 +161,7 @@ export function TagDashboardView({
   onSilhouetteProxyLoad,
   showcaseSwipeUnreadLikes = 0,
   showcaseSwipeTotalLikes = 0,
+  showcaseSwipeWeeklyLikes = 0,
   productFeaturesBannerActive = true,
   operatingCostHint = null,
   showTagShopPromo = false,
@@ -169,6 +173,17 @@ export function TagDashboardView({
   belowBrandBanner,
   hideBrandBanner = false,
 }: TagDashboardViewProps) {
+  const inboxPollEnabled =
+    isOwner && !demoMode && !isDemoActiveTag(tagUuid);
+  const liveSwipeInbox = useShowcaseSwipeInboxForVehicle(
+    vehicle.id,
+    {
+      totalLikes: showcaseSwipeTotalLikes,
+      unreadLikes: showcaseSwipeUnreadLikes,
+    },
+    inboxPollEnabled,
+  );
+
   const manualEntryHref = `${dashboardPath(vehicleSurfaceScope, tagUuid, "umbauten")}?neu=1`;
   const path = (segment: string) =>
     dashboardPath(vehicleSurfaceScope, tagUuid, segment);
@@ -466,8 +481,9 @@ export function TagDashboardView({
 
     if (tile.id === "build-discover") {
       const likeSubtitle = formatBuildDiscoverDashboardSubtitle({
-        totalLikes: isOwner ? showcaseSwipeTotalLikes : 0,
-        unreadLikes: isOwner ? showcaseSwipeUnreadLikes : 0,
+        totalLikes: isOwner ? liveSwipeInbox.totalLikes : 0,
+        unreadLikes: isOwner ? liveSwipeInbox.unreadLikes : 0,
+        weeklyLikes: isOwner ? showcaseSwipeWeeklyLikes : 0,
         demoMode,
         demoSubtitle: demoEntdeckenSubtitle,
       });

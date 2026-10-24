@@ -75,6 +75,7 @@ import { ShowcaseWeeklyRankDashboardNotice } from "@/components/showcase-swipe/s
 import { parseWeeklyRankMockParam } from "@/lib/showcase/parse-weekly-rank-mock-param";
 import { mockWeeklyRankAward } from "@/lib/showcase/weekly-rank-share-mock-data";
 import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
+import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank";
 import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
 import { buildPlannerDashboardHint } from "@/lib/build-planner/build-planner-summary";
 import { listPlannedModsWithTodosForVehicle } from "@/lib/build-planner/planned-mods-repository";
@@ -630,6 +631,7 @@ export default async function TagScanPage({
 
     let showcaseSwipeUnreadLikes = 0;
     let showcaseSwipeTotalLikes = 0;
+    let showcaseSwipeWeeklyLikes = 0;
     if (access.isOwner && user) {
       try {
         const inbox = await loadShowcaseSwipeInboxSummary();
@@ -638,6 +640,12 @@ export default async function TagScanPage({
         showcaseSwipeTotalLikes = row?.totalLikes ?? 0;
       } catch (error) {
         console.error("[tag-dashboard] swipe inbox", error);
+      }
+      try {
+        const weeklyRank = await loadVehicleWeeklyShowcaseRank(vehicle.id);
+        showcaseSwipeWeeklyLikes = weeklyRank?.weeklyLikes ?? 0;
+      } catch (error) {
+        console.error("[tag-dashboard] weekly swipe rank", error);
       }
     }
 
@@ -671,6 +679,7 @@ export default async function TagScanPage({
           }
           showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
           showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
+          showcaseSwipeWeeklyLikes={showcaseSwipeWeeklyLikes}
           operatingCostHint={operatingCostHint}
           buildPlannerHint={buildPlannerHint}
           timelineEvents={timelineEvents}

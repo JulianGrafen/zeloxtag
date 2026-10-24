@@ -21,6 +21,26 @@ describe("formatBuildDiscoverDashboardSubtitle", () => {
     ).toBe("2 neu · 12 Likes gesamt");
   });
 
+  it("shows weekly likes when all likes are this week", () => {
+    expect(
+      formatBuildDiscoverDashboardSubtitle({
+        totalLikes: 3,
+        unreadLikes: 0,
+        weeklyLikes: 3,
+      }),
+    ).toBe("3 Likes diese Woche");
+  });
+
+  it("combines weekly with older total likes", () => {
+    expect(
+      formatBuildDiscoverDashboardSubtitle({
+        totalLikes: 12,
+        unreadLikes: 0,
+        weeklyLikes: 2,
+      }),
+    ).toBe("2 Likes diese Woche · 12 Likes gesamt");
+  });
+
   it("falls back when no likes yet", () => {
     expect(
       formatBuildDiscoverDashboardSubtitle({

@@ -1,9 +1,7 @@
 "use client";
 
-import { ChevronRight, Trash2 } from "lucide-react";
-import { useTransition } from "react";
+import { ChevronRight } from "lucide-react";
 
-import { deleteOperatingCost } from "@/actions/operating-costs";
 import { formatCompactGermanDate } from "@/lib/documents/format";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
@@ -16,32 +14,35 @@ import {
 } from "@/lib/vehicles/operating-costs/types";
 import type { VehicleOperatingCost } from "@/types/database";
 
-import {
-  PressableButton,
-  PressableLink,
-} from "@/components/vehicle-dashboard/Pressable";
-import { showSavedToast } from "@/lib/ui/saved-toast";
+import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
 type OperatingCostEntryListProps = {
   entries: VehicleOperatingCost[];
   vehicleSurfaceScope: VehicleSurfaceScope;
-  tagUuid: string;
-  vehicleId: string;
   readOnly?: boolean;
   fuelOnly?: boolean;
 };
 
+function resolveEntryDetailHref(
+  entry: VehicleOperatingCost,
+  vehicleSurfaceScope: VehicleSurfaceScope,
+  readOnly: boolean,
+): string | null {
+  if (readOnly) return null;
+  if (entry.category === "fuel") {
+    return vehicleSurfaceHref(vehicleSurfaceScope, `tanken/${entry.id}`);
+  }
+  return vehicleSurfaceHref(vehicleSurfaceScope, `kosten/${entry.id}`);
+}
+
 export function OperatingCostEntryList({
   entries,
   vehicleSurfaceScope,
-  tagUuid,
-  vehicleId,
   readOnly = false,
   fuelOnly = false,
 }: OperatingCostEntryListProps) {
-  const [pending, startTransition] = useTransition();
   const consumptionByEntryId = fuelOnly
     ? buildFuelConsumptionByEntryId(entries)
     : null;
@@ -60,54 +61,31 @@ export function OperatingCostEntryList({
     <ul className="divide-y divide-[color:var(--vd-border)] overflow-hidden zt-feature-panel">
       {entries.map((entry) => {
         const consumption = consumptionByEntryId?.get(entry.id);
-        const editHref =
-          fuelOnly && !readOnly
-            ? vehicleSurfaceHref(vehicleSurfaceScope, `tanken/${entry.id}`)
-            : null;
+        const detailHref = resolveEntryDetailHref(
+          entry,
+          vehicleSurfaceScope,
+          readOnly,
+        );
 
-        return (
-        <li
-          key={entry.id}
-          className="flex items-stretch gap-1"
-        >
-          {editHref ? (
-            <PressableLink
-              href={editHref}
-              variant="row"
-              className="group flex min-w-0 flex-1 items-start gap-3 px-4 py-3.5 text-left"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
-                  {formatEur(Number(entry.amount_eur))}
-                </p>
-                <p className="mt-0.5 text-[0.78rem] text-[color:var(--vd-muted)]">
-                  {formatCompactGermanDate(entry.occurred_on)}
-                  {entry.fuel_liters != null
-                    ? ` · ${entry.fuel_liters.toLocaleString("de-DE")} L`
-                    : ""}
-                  {entry.odometer_km != null
-                    ? ` · ${entry.odometer_km.toLocaleString("de-DE")} km`
-                    : ""}
-                  {consumption
-                    ? ` · ${formatLitersPer100Km(consumption.litersPer100Km)}`
-                    : ""}
-                </p>
-                {entry.note ? (
-                  <p className="mt-1 text-[0.75rem] text-[color:var(--vd-muted)]">
-                    {entry.note}
-                  </p>
-                ) : null}
-              </div>
-              <span className="flex shrink-0 items-center gap-1 pt-0.5 text-[0.75rem] font-medium text-[color:var(--vd-muted)]">
-                Bearbeiten
-                <ChevronRight
-                  className="h-4 w-4 transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5"
-                  aria-hidden
-                />
-              </span>
-            </PressableLink>
-          ) : (
-            <div className="min-w-0 flex-1 px-4 py-3.5">
+        const metaParts: string[] = [formatCompactGermanDate(entry.occurred_on)];
+        if (fuelOnly || entry.category === "fuel") {
+          if (entry.fuel_liters != null) {
+            metaParts.push(`${entry.fuel_liters.toLocaleString("de-DE")} L`);
+          }
+          if (entry.odometer_km != null) {
+            metaParts.push(`${entry.odometer_km.toLocaleString("de-DE")} km`);
+          }
+        } else if (entry.billing_period !== "once") {
+          metaParts.push(BILLING_PERIOD_LABELS[entry.billing_period]);
+        }
+        if (consumption) {
+          metaParts.push(formatLitersPer100Km(consumption.litersPer100Km));
+        }
+        const metaLine = metaParts.join(" · ");
+
+        const rowContent = (
+          <>
+            <div className="min-w-0 flex-1">
               <p className="text-[0.92rem] font-semibold text-[color:var(--vd-text)]">
                 {formatEur(Number(entry.amount_eur))}
                 {!fuelOnly ? (
@@ -116,20 +94,14 @@ export function OperatingCostEntryList({
                   </span>
                 ) : null}
               </p>
-              <p className="mt-0.5 text-[0.78rem] text-[color:var(--vd-muted)]">
-                {formatCompactGermanDate(entry.occurred_on)}
-                {entry.category === "fuel" && entry.fuel_liters != null
-                  ? ` · ${entry.fuel_liters.toLocaleString("de-DE")} L`
-                  : ""}
-                {entry.category === "fuel" && entry.odometer_km != null
-                  ? ` · ${entry.odometer_km.toLocaleString("de-DE")} km`
-                  : ""}
-                {!fuelOnly && entry.billing_period !== "once"
-                  ? ` · ${BILLING_PERIOD_LABELS[entry.billing_period]}`
-                  : ""}
-                {consumption
-                  ? ` · ${formatLitersPer100Km(consumption.litersPer100Km)}`
-                  : ""}
+              <p className="mt-0.5 flex items-center justify-between gap-2 text-[0.78rem] text-[color:var(--vd-muted)]">
+                <span className="min-w-0 truncate">{metaLine}</span>
+                {detailHref ? (
+                  <ChevronRight
+                    className="h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1.5 group-data-[pressed=true]:text-zinc-300"
+                    aria-hidden
+                  />
+                ) : null}
               </p>
               {entry.note ? (
                 <p className="mt-1 text-[0.75rem] text-[color:var(--vd-muted)]">
@@ -137,29 +109,23 @@ export function OperatingCostEntryList({
                 </p>
               ) : null}
             </div>
-          )}
-          {!readOnly ? (
-            <PressableButton
-              type="button"
-              disabled={pending}
-              className="my-2 mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-full border border-[color:var(--vd-border)] text-[color:var(--vd-muted)]"
-              aria-label="Eintrag löschen"
-              onClick={() => {
-                startTransition(async () => {
-                  const result = await deleteOperatingCost({
-                    tagUuid,
-                    vehicleId,
-                    entryId: entry.id,
-                  });
-                  if (result.status === "error") return;
-                  showSavedToast();
-                });
-              }}
-            >
-              <Trash2 className="h-4 w-4" aria-hidden />
-            </PressableButton>
-          ) : null}
-        </li>
+          </>
+        );
+
+        return (
+          <li key={entry.id}>
+            {detailHref ? (
+              <PressableLink
+                href={detailHref}
+                variant="row"
+                className="group flex w-full items-start gap-3 px-4 py-3.5 text-left"
+              >
+                {rowContent}
+              </PressableLink>
+            ) : (
+              <div className="px-4 py-3.5">{rowContent}</div>
+            )}
+          </li>
         );
       })}
     </ul>

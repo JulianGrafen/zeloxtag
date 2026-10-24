@@ -140,8 +140,6 @@ export function VehicleFuelLogView({
         <OperatingCostEntryList
           entries={fuelEntries}
           vehicleSurfaceScope={vehicleSurfaceScope}
-          tagUuid={tagUuid}
-          vehicleId={vehicleId}
           readOnly={readOnly}
           fuelOnly
         />

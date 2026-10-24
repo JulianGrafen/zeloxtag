@@ -174,8 +174,6 @@ export function VehicleOperatingCostOverviewView({
         <OperatingCostEntryList
           entries={summary.recentEntries}
           vehicleSurfaceScope={vehicleSurfaceScope}
-          tagUuid={tagUuid}
-          vehicleId={vehicleId}
           readOnly={readOnly}
         />
       </section>

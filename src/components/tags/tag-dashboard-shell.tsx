@@ -210,6 +210,7 @@ interface TagDashboardShellProps {
   accountDeletionGraceEndsAt?: string | null;
   showcaseSwipeUnreadLikes?: number;
   showcaseSwipeTotalLikes?: number;
+  showcaseSwipeWeeklyLikes?: number;
   weeklyRankAward?: ShowcaseWeeklyRankAward | null;
   weeklyRankAwardEntdeckenHref?: string | null;
   /** Dev-only: `?mockWeeklyRank=` dashboard preview. */
@@ -247,6 +248,7 @@ export function TagDashboardShell({
   accountDeletionGraceEndsAt = null,
   showcaseSwipeUnreadLikes = 0,
   showcaseSwipeTotalLikes = 0,
+  showcaseSwipeWeeklyLikes = 0,
   weeklyRankAward = null,
   weeklyRankAwardEntdeckenHref = null,
   weeklyRankMockRank = null,
@@ -1057,6 +1059,7 @@ export function TagDashboardShell({
         onSilhouetteProxyLoad={handleSilhouetteProxyLoad}
         showcaseSwipeUnreadLikes={showcaseSwipeUnreadLikes}
         showcaseSwipeTotalLikes={showcaseSwipeTotalLikes}
+        showcaseSwipeWeeklyLikes={showcaseSwipeWeeklyLikes}
         operatingCostHint={operatingCostHint}
         buildPlannerHint={buildPlannerHint}
         showTagShopPromo={showTagShopPromo}

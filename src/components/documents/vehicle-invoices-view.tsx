@@ -30,6 +30,11 @@ import {
   resolveInvoiceListCategory,
   type InvoiceListCategory,
 } from "@/lib/documents/invoice-categories";
+import { formatIsoMonthKeyLabel } from "@/lib/dates/german-calendar";
+import {
+  groupByIsoMonthKeyDesc,
+  isoMonthKeyFromIsoTimestamp,
+} from "@/lib/documents/group-by-iso-month";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 import { resolveInvoicePaymentBadge } from "@/lib/documents/payment-status";
 import { isScanFabLocked } from "@/lib/billing/ai-scan-access";
@@ -210,6 +215,14 @@ function VehicleInvoicesViewContent({
     });
   }, [invoices, categoryId, query]);
 
+  const groupedVisible = useMemo(
+    () =>
+      groupByIsoMonthKeyDesc(visible, (doc) =>
+        isoMonthKeyFromIsoTimestamp(doc.date ?? doc.created_at),
+      ),
+    [visible],
+  );
+
   const total = sumInvoiceAmounts(visible);
   const totalLabel = formatDocumentAmount(total) ?? "0,00 €";
   const searchResultLabel =
@@ -291,7 +304,7 @@ function VehicleInvoicesViewContent({
           resultLabel={searchResultLabel}
         />
 
-        <section aria-label="Belegliste" className="space-y-2">
+        <section aria-label="Belegliste" className="space-y-4">
           <AutomotiveSectionLabel>Belegliste</AutomotiveSectionLabel>
 
           {invoices.length === 0 ? (
@@ -318,49 +331,61 @@ function VehicleInvoicesViewContent({
               Keine Treffer für diese Suche / Filter.
             </AutomotiveEmptyPanel>
           ) : (
-            <AutomotiveList aria-label="Belege">
-              {visible.map((doc, index) => {
-                const amount =
-                  typeof doc.amount === "number"
-                    ? formatDocumentAmount(doc.amount)
-                    : null;
-                const vendor = doc.vendor?.trim() || "Unbekannter Anbieter";
-                const issued = formatDocumentDateCompact(doc.date);
-                const categoryLabel =
-                  INVOICE_LIST_CATEGORY_LABELS[
-                    resolveInvoiceListCategory(doc.category)
-                  ];
-                const paymentBadge = resolveInvoicePaymentBadge(doc);
+            <div className="space-y-4">
+              {groupedVisible.map(({ monthKey, items: monthDocs }) => (
+                <div key={monthKey} className="space-y-2">
+                  <h2
+                    className="px-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]"
+                  >
+                    {formatIsoMonthKeyLabel(monthKey)}
+                  </h2>
+                  <AutomotiveList aria-label={`Belege ${formatIsoMonthKeyLabel(monthKey)}`}>
+                    {monthDocs.map((doc, index) => {
+                      const amount =
+                        typeof doc.amount === "number"
+                          ? formatDocumentAmount(doc.amount)
+                          : null;
+                      const vendor =
+                        doc.vendor?.trim() || "Unbekannter Anbieter";
+                      const issued = formatDocumentDateCompact(doc.date);
+                      const categoryLabel =
+                        INVOICE_LIST_CATEGORY_LABELS[
+                          resolveInvoiceListCategory(doc.category)
+                        ];
+                      const paymentBadge = resolveInvoicePaymentBadge(doc);
 
-                return (
-                  <AutomotiveListRow
-                    key={doc.id}
-                    className={
-                      highlightId === doc.id
-                        ? "bg-emerald-500/8 ring-1 ring-inset ring-emerald-500/25"
-                        : undefined
-                    }
-                    href={documentDetailHref(
-                      tagUuid,
-                      doc.id,
-                      vehicleSurfaceScope,
-                    )}
-                    icon={Receipt}
-                    title={displayDocumentTitle(doc.title)}
-                    amount={amount ?? undefined}
-                    meta={`${vendor} · ${issued} · ${categoryLabel}`}
-                    badge={
-                      paymentBadge ? (
-                        <span className="inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-400">
-                          {paymentBadge}
-                        </span>
-                      ) : undefined
-                    }
-                    showDivider={index < visible.length - 1}
-                  />
-                );
-              })}
-            </AutomotiveList>
+                      return (
+                        <AutomotiveListRow
+                          key={doc.id}
+                          className={
+                            highlightId === doc.id
+                              ? "bg-emerald-500/8 ring-1 ring-inset ring-emerald-500/25"
+                              : undefined
+                          }
+                          href={documentDetailHref(
+                            tagUuid,
+                            doc.id,
+                            vehicleSurfaceScope,
+                          )}
+                          icon={Receipt}
+                          title={displayDocumentTitle(doc.title)}
+                          amount={amount ?? undefined}
+                          meta={`${vendor} · ${issued} · ${categoryLabel}`}
+                          badge={
+                            paymentBadge ? (
+                              <span className="inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-400">
+                                {paymentBadge}
+                              </span>
+                            ) : undefined
+                          }
+                          showDivider={index < monthDocs.length - 1}
+                        />
+                      );
+                    })}
+                  </AutomotiveList>
+                </div>
+              ))}
+            </div>
           )}
         </section>
 

@@ -25,6 +25,7 @@ import {
 import { loadPendingWeeklyRankAwardForVehicle } from "@/lib/showcase/load-weekly-rank-award";
 import type { ShowcaseWeeklyRankAward } from "@/lib/showcase/weekly-rank-award-types";
 import { loadShowcaseSwipeInboxSummary } from "@/lib/showcase/swipe-deck";
+import { loadVehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import { getDemoOperatingCostsForVehicle } from "@/lib/demo/mock-operating-costs";
 import { listOperatingCostsForVehicle } from "@/lib/vehicles/load-operating-costs";
@@ -58,6 +59,7 @@ export type OwnerDashboardPayload = {
   accountDeletionGraceEndsAt: string | null;
   showcaseSwipeUnreadLikes: number;
   showcaseSwipeTotalLikes: number;
+  showcaseSwipeWeeklyLikes: number;
   weeklyRankAward: ShowcaseWeeklyRankAward | null;
   weeklyRankAwardEntdeckenHref: string | null;
   operatingCostHint: OperatingCostDashboardHint | null;
@@ -162,6 +164,7 @@ export async function loadOwnerDashboardForVehicle(
 
   let showcaseSwipeUnreadLikes = 0;
   let showcaseSwipeTotalLikes = 0;
+  let showcaseSwipeWeeklyLikes = 0;
   let weeklyRankAward: ShowcaseWeeklyRankAward | null = null;
   let weeklyRankAwardEntdeckenHref: string | null = null;
   if (access.isOwner && user && !isDemoShowcase) {
@@ -172,6 +175,12 @@ export async function loadOwnerDashboardForVehicle(
       showcaseSwipeTotalLikes = row?.totalLikes ?? 0;
     } catch (error) {
       console.error("[garage-dashboard] swipe inbox", error);
+    }
+    try {
+      const weeklyRank = await loadVehicleWeeklyShowcaseRank(vehicle.id);
+      showcaseSwipeWeeklyLikes = weeklyRank?.weeklyLikes ?? 0;
+    } catch (error) {
+      console.error("[garage-dashboard] weekly swipe rank", error);
     }
     try {
       const celebration = await loadPendingWeeklyRankAwardForVehicle(
@@ -212,6 +221,7 @@ export async function loadOwnerDashboardForVehicle(
       deletionState?.status === "grace" ? deletionState.graceEndsAt : null,
     showcaseSwipeUnreadLikes,
     showcaseSwipeTotalLikes,
+    showcaseSwipeWeeklyLikes,
     weeklyRankAward,
     weeklyRankAwardEntdeckenHref,
     operatingCostHint,
