@@ -18,7 +18,7 @@ describe("manualEntryEditPath", () => {
         { focusPhotos: true },
       ),
     ).toBe(
-      `/garage/${vehicleId}/eintrag?edit=${docId}&photos=1`,
+      `/garage/${vehicleId}/umbauten?edit=${docId}&photos=1`,
     );
   });
 
