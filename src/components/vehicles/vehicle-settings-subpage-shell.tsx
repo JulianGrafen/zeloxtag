@@ -39,21 +39,23 @@ export function VehicleSettingsSubpageShell({
       : `/v/${tagUuid}/einstellungen`);
 
   return (
-    <section
-      className={cn(
-        "mx-auto flex w-full max-w-lg flex-col px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
-        theme === "discover" ? "dark gap-4" : "gap-5",
-      )}
-    >
-      <AutomotivePageHeader
-        kicker={kicker}
-        title={title}
-        meta={meta}
-        description={description}
-        backHref={resolvedBackHref}
-        backLabel={backLabel}
-      />
-      {children}
-    </section>
+    <div className="ios-settings-surface min-h-dvh w-full bg-[#000000]">
+      <section
+        className={cn(
+          "mx-auto flex w-full max-w-lg flex-col px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
+          theme === "discover" ? "dark gap-4" : "gap-5",
+        )}
+      >
+        <AutomotivePageHeader
+          kicker={kicker}
+          title={title}
+          meta={meta}
+          description={description}
+          backHref={resolvedBackHref}
+          backLabel={backLabel}
+        />
+        {children}
+      </section>
+    </div>
   );
 }

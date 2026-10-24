@@ -17,6 +17,8 @@
   --background: var(--ios-bg);
   --card: var(--ios-surface);
   --secondary: var(--ios-surface-elevated);
+  background-color: var(--ios-bg);
+  color-scheme: dark;
 }
 
 /* Full-width actions inside grouped lists — no horizontal bleed (pulse/scale). */

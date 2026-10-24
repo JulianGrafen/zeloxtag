@@ -45,6 +45,7 @@ import {
   GarageFieldRow,
   garageFieldControlClassName,
 } from "@/components/ui/garage-field";
+import { GarageYearPickerField } from "@/components/ui/garage-year-picker-field";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import type { Vehicle } from "@/types/database";
 import { cn } from "@/lib/utils";
@@ -273,11 +274,14 @@ export function VehicleSpecsView({
             Dashboard
           </PressableLink>
 
-          <div className="zt-feature-panel p-5">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-              <Gauge className="h-5 w-5" aria-hidden />
-            </div>
-            <h1 className="mt-4 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
+          <div className="zt-feature-panel flex items-center gap-3 p-4">
+            <span
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white"
+              aria-hidden
+            >
+              <Gauge className="h-5 w-5" />
+            </span>
+            <h1 className="min-w-0 font-[family-name:var(--font-display)] text-[1.35rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)]">
               Technische Daten
             </h1>
           </div>
@@ -340,18 +344,13 @@ export function VehicleSpecsView({
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Baujahr">
-                  <input
-                    required
-                    inputMode="numeric"
-                    value={year}
-                    onChange={(event) => {
-                      setYear(event.target.value);
-                    }}
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="2011"
-                  />
-                </Field>
+                <GarageYearPickerField
+                  id="vehicle-year"
+                  label="Baujahr"
+                  value={year}
+                  onChange={setYear}
+                  required
+                />
                 <Field label="VIN">
                   <input
                     value={vin}

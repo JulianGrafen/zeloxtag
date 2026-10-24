@@ -8,4 +8,5 @@ export { IOSPageHeader } from "./IOSPageHeader";
 export type { IOSPageHeaderProps } from "./IOSPageHeader";
 export { IOSSheetModal } from "./IOSSheetModal";
 export type { IOSSheetModalProps, IOSSheetOption } from "./IOSSheetModal";
+export { IOSYearWheelPicker } from "./IOSYearWheelPicker";
 export { useIosHaptics } from "./use-ios-haptics";

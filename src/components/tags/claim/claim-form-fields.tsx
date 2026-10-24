@@ -8,6 +8,7 @@ import {
   GarageInsetInput,
   GarageInsetSelect,
 } from "@/components/ui/garage-field";
+import { IOSYearWheelPicker } from "@/components/ui/ios";
 
 export function ClaimFormField({
   label,
@@ -22,6 +23,24 @@ export function ClaimFormField({
     <GarageField label={label} htmlFor={htmlFor}>
       {children}
     </GarageField>
+  );
+}
+
+export function ClaimYearPickerField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <ClaimFormField label={label} htmlFor={id}>
+      <IOSYearWheelPicker id={id} value={value} onChange={onChange} />
+    </ClaimFormField>
   );
 }
 

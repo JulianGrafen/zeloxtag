@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { claimTag } from "@/actions/claim-tag";
-import { ClaimField, ClaimSlideActions } from "@/components/tags/claim/claim-form-fields";
+import {
+  ClaimField,
+  ClaimSlideActions,
+  ClaimYearPickerField,
+} from "@/components/tags/claim/claim-form-fields";
 import { ClaimShell } from "@/components/tags/claim/ClaimShell";
 import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
 import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
@@ -134,13 +138,11 @@ export function AddTagToGarageFlow({ tagUuid }: AddTagToGarageFlowProps) {
               onChange={setModel}
               required
             />
-            <ClaimField
+            <ClaimYearPickerField
               id="garage-claim-year"
               label="Baujahr"
               value={year}
               onChange={setYear}
-              required
-              inputMode="numeric"
             />
             <ClaimField
               id="garage-claim-vin"

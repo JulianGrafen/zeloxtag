@@ -26,7 +26,6 @@ type VehicleFuelLogViewProps = {
   vehicleSurfaceScope: VehicleSurfaceScope;
   tagUuid: string;
   vehicleId: string;
-  vehicleModel: string;
   entries: VehicleOperatingCost[];
   readOnly?: boolean;
   fuelScanTier?: FuelScanTierSnapshot;
@@ -36,7 +35,6 @@ export function VehicleFuelLogView({
   vehicleSurfaceScope,
   tagUuid,
   vehicleId,
-  vehicleModel,
   entries,
   readOnly = false,
   fuelScanTier,
@@ -72,14 +70,9 @@ export function VehicleFuelLogView({
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Dashboard
         </PressableLink>
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            Tanken
-          </h1>
-          <p className="mt-1 text-[0.88rem] text-[color:var(--vd-muted)]">
-            {vehicleModel}
-          </p>
-        </div>
+        <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
+          Tanken
+        </h1>
       </header>
 
       <section className="zt-feature-panel p-4">

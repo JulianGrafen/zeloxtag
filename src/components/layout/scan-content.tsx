@@ -23,7 +23,8 @@ export function ScanContent({
     <div
       data-scan-content={flushHorizontal ? "flush" : "default"}
       className={[
-        "mx-auto flex w-full min-w-0 max-w-full flex-col gap-5 overflow-x-clip px-4 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
+        "mx-auto flex w-full min-w-0 max-w-full flex-col gap-5 overflow-x-clip pb-10 pt-[max(1.25rem,env(safe-area-inset-top))]",
+        flushHorizontal ? "" : "px-4 sm:px-5",
         wide ? "max-w-5xl" : "max-w-lg",
         centered ? "min-h-[calc(100dvh-env(safe-area-inset-top))] justify-center pb-12" : "",
         className,

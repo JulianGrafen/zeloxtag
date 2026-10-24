@@ -59,6 +59,7 @@ export default async function VehicleSettingsPage({
 
   return (
     <AppShell showNavbar={false}>
+      <div className="ios-settings-surface min-h-dvh w-full bg-[#000000]">
       <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
         <Link
           href={`${vehicleSurfaceHref(scope)}`}
@@ -68,14 +69,10 @@ export default async function VehicleSettingsPage({
           Dashboard
         </Link>
 
-        <header className="space-y-1">
+        <header>
           <h1 className="font-[family-name:var(--font-display)] text-[1.65rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
             Showcase
           </h1>
-          <p className="text-[0.9rem] text-[color:var(--vd-muted)]">
-            {vehicle.make} {vehicle.model}
-            {vehicle.year ? ` · ${vehicle.year}` : ""}
-          </p>
         </header>
 
         <VehicleSettingsView
@@ -89,6 +86,7 @@ export default async function VehicleSettingsPage({
           weeklyRank={weeklyRank}
         />
       </section>
+      </div>
     </AppShell>
   );
 }

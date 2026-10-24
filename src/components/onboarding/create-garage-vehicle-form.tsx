@@ -7,6 +7,7 @@ import { createGarageVehicleAction } from "@/actions/create-garage-vehicle";
 import {
   ClaimField,
   ClaimSlideActions,
+  ClaimYearPickerField,
 } from "@/components/tags/claim/claim-form-fields";
 import { ClaimShell } from "@/components/tags/claim/ClaimShell";
 import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
@@ -75,13 +76,11 @@ export function CreateGarageVehicleForm() {
             onChange={setModel}
             required
           />
-          <ClaimField
+          <ClaimYearPickerField
             id="year"
             label="Baujahr"
             value={year}
             onChange={setYear}
-            inputMode="numeric"
-            required
           />
           <ClaimField
             id="vin"

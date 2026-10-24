@@ -29,7 +29,6 @@ export default async function VehicleFuelLogPage({ params }: FuelLogPageProps) {
     vehicle.id,
     Boolean(isDemoShowcase),
   );
-  const vehicleModel = `${vehicle.make} ${vehicle.model} · ${vehicle.year}`;
   const fuelScanTier = isDemoShowcase
     ? {
         isPro: false,
@@ -45,7 +44,6 @@ export default async function VehicleFuelLogPage({ params }: FuelLogPageProps) {
       vehicleSurfaceScope={garageNavScope}
       tagUuid={scope.linkedTagUuid ?? vehicleId}
       vehicleId={vehicle.id}
-      vehicleModel={vehicleModel}
       entries={entries}
       readOnly={isDemoShowcase}
       fuelScanTier={fuelScanTier}

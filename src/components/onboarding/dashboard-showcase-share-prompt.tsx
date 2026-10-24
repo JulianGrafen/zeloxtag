@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Check, Copy, ExternalLink, X } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 
 import { ensureOnboardingShowcasePublished } from "@/actions/ensure-onboarding-showcase-published";
 import { ShareableSpecCard } from "@/components/shareable-spec-card";
@@ -26,7 +25,6 @@ export function DashboardShowcaseSharePrompt({
   onDismiss,
 }: DashboardShowcaseSharePromptProps) {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [sharePath, setSharePath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -48,11 +46,9 @@ export function DashboardShowcaseSharePrompt({
       if (result.status === "error") {
         setError(result.message);
         setShareUrl(null);
-        setSharePath(null);
         return;
       }
       setShareUrl(result.shareUrl);
-      setSharePath(result.sharePath);
     });
   }, [open, vehicle.id, tagUuid]);
 
@@ -102,7 +98,7 @@ export function DashboardShowcaseSharePrompt({
             Packe diesen Link in deine Bio, um deinen Build zu zeigen!
           </h2>
           <p className="mt-2 text-[0.82rem] leading-relaxed text-[color:var(--vd-muted)]">
-            Dein öffentliches Showcase ist bereit — teile den Link in Instagram,
+            Dein öffentliches Showcase ist bereit! Teile den Link in Instagram,
             TikTok oder überall, wo du dein Auto zeigst.
           </p>
 
@@ -140,17 +136,6 @@ export function DashboardShowcaseSharePrompt({
                 )}
                 {copied ? "Kopiert" : "Link kopieren"}
               </PressableButton>
-              {sharePath ? (
-                <Link
-                  href={sharePath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-4 py-2.5 text-[0.88rem] font-medium text-[color:var(--vd-text)]"
-                >
-                  <ExternalLink className="h-4 w-4" aria-hidden />
-                  Showcase öffnen
-                </Link>
-              ) : null}
             </div>
           </div>
 

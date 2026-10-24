@@ -26,6 +26,7 @@ const OWNER_MUTATION_SEGMENTS = [
   "/einstellungen/galerie",
   "/einstellungen/leistungsdiagramm",
   "/einstellungen/umbauten",
+  "/einstellungen/story-pass",
   "/tanken",
   "/kosten",
   "/dokumente/kosten",

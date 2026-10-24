@@ -14,6 +14,7 @@ import {
   ClaimField,
   ClaimSelectField,
   ClaimSlideActions,
+  ClaimYearPickerField,
 } from "@/components/tags/claim/claim-form-fields";
 import type { ClaimTransitionDirection } from "@/components/tags/claim/claim-motion";
 import { ClaimIntroHero } from "@/components/tags/claim/ClaimIntroHero";
@@ -643,14 +644,11 @@ export function ClaimFlow({
                 advance("power");
               }}
             >
-              <ClaimField
+              <ClaimYearPickerField
                 id="claim-year"
                 label="Baujahr"
                 value={year}
                 onChange={setYear}
-                inputMode="numeric"
-                placeholder="2011"
-                required
               />
               <ClaimField
                 id="claim-vin"

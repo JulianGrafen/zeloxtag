@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState, type ChangeEvent } from "react";
-import { ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { ImagePlus, Loader2 } from "lucide-react";
+
+import { ShowcaseGalleryReorderGrid } from "@/components/vehicles/showcase-gallery-reorder-grid";
 
 import { deleteDocument } from "@/actions/delete-document";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
@@ -10,10 +12,6 @@ import {
   MAX_SHOWCASE_GALLERY_PHOTOS,
   filterShowcaseGalleryDocuments,
 } from "@/lib/documents/showcase-gallery";
-import {
-  documentMediaKind,
-  inlineDocumentProxyUrl,
-} from "@/lib/documents/viewable-url";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import type { Document } from "@/types/database";
 
@@ -147,6 +145,40 @@ export function ShowcaseGallerySettings({
     event.target.value = "";
   }
 
+  const persistGalleryOrder = useCallback(
+    async (orderedDocumentIds: string[]) => {
+      setError(null);
+      const response = await fetch("/api/vehicle/showcase-gallery/reorder", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          vehicleId,
+          tagUuid,
+          orderedDocumentIds,
+        }),
+      });
+
+      let payload: { ok?: boolean; error?: string } | null = null;
+      try {
+        payload = (await response.json()) as { ok?: boolean; error?: string };
+      } catch {
+        payload = null;
+      }
+
+      if (!response.ok || !payload?.ok) {
+        throw new Error(
+          payload?.error?.trim() ||
+            `Reihenfolge konnte nicht gespeichert werden (${response.status}).`,
+        );
+      }
+
+      onChanged?.();
+      showSavedToast();
+    },
+    [onChanged, tagUuid, vehicleId],
+  );
+
   async function handleDelete(documentId: string) {
     if (!canEdit || deletingId) return;
 
@@ -193,52 +225,24 @@ export function ShowcaseGallerySettings({
       )}
 
       {galleryPhotos.length > 0 ? (
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {galleryPhotos.map((photo) => {
-            const previewSrc =
-              documentMediaKind(photo.file_url) === "image"
-                ? inlineDocumentProxyUrl(photo.file_url)
-                : null;
-
-            return (
-              <li
-                key={photo.id}
-                className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]"
-              >
-                {previewSrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={previewSrc}
-                    alt={photo.title}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-[0.72rem] text-[color:var(--vd-muted)]">
-                    Vorschau
-                  </div>
-                )}
-
-                {canEdit ? (
-                  <PressableButton
-                    type="button"
-                    variant="button"
-                    aria-label={`${photo.title} löschen`}
-                    className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--vd-border)] bg-black/55 text-white backdrop-blur-sm"
-                    disabled={busy}
-                    onClick={() => handleDelete(photo.id)}
-                  >
-                    {deletingId === photo.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                    ) : (
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    )}
-                  </PressableButton>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        <ShowcaseGalleryReorderGrid
+          photos={galleryPhotos}
+          canEdit={canEdit}
+          busy={busy}
+          deletingId={deletingId}
+          onDelete={handleDelete}
+          onReorder={async (orderedDocumentIds) => {
+            try {
+              await persistGalleryOrder(orderedDocumentIds);
+            } catch (reorderError) {
+              setError(
+                reorderError instanceof Error
+                  ? reorderError.message
+                  : "Reihenfolge konnte nicht gespeichert werden.",
+              );
+            }
+          }}
+        />
       ) : (
         <p className="rounded-xl border border-dashed border-[color:var(--vd-border)] px-4 py-3 text-[0.82rem] text-[color:var(--vd-muted)]">
           Noch keine Galerie-Fotos — füge Bilder hinzu, die Besucher im

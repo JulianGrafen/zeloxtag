@@ -30,7 +30,7 @@ export function VehicleSettingsView({
   weeklyRank = null,
 }: VehicleSettingsViewProps) {
   return (
-    <div className="ios-settings-surface flex flex-col gap-5 bg-[#000000] pb-8">
+    <div className="flex flex-col gap-5 pb-8">
       <VehicleShowcaseSettings
         surfaceScope={surfaceScope}
         vehicle={vehicle}

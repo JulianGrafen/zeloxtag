@@ -224,6 +224,7 @@ export async function POST(request: NextRequest) {
       invoice_number: SHOWCASE_GALLERY_MARKER,
       show_on_public_showcase: true,
       page_count: 1,
+      amount: (count ?? 0) + 1,
       date: now.slice(0, 10),
     };
 
