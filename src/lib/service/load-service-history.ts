@@ -1,6 +1,6 @@
 import "server-only";
 
-import { rowToServiceRecord } from "./service-record";
+import { rowToServiceRecord, type ServiceRecord } from "./service-record";
 import { serviceHistoryFromData } from "./merge-service-history";
 import type { Document, Vehicle } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";

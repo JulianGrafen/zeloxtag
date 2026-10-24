@@ -12,8 +12,7 @@ import type {
 } from "@/services/platform/native-bridge/types";
 
 export class WebNativeBridgeAdapter implements INativeBridgeService {
-  async triggerHaptic(style: HapticStyle): Promise<void> {
-    if (style === "heavy") return;
+  async triggerHaptic(_style: HapticStyle): Promise<void> {
     playWebHapticTap();
   }
 

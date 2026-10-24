@@ -32,7 +32,10 @@ function buildSyntheticPlayingLevels(t: number): number[] {
   });
 }
 
-function readAnalyserLevels(analyser: AnalyserNode, buffer: Uint8Array): number[] {
+function readAnalyserLevels(
+  analyser: AnalyserNode,
+  buffer: Uint8Array<ArrayBuffer>,
+): number[] {
   analyser.getByteFrequencyData(buffer);
   const step = Math.floor(buffer.length / BAR_COUNT);
   return Array.from({ length: BAR_COUNT }, (_, index) => {
@@ -52,7 +55,7 @@ export function useAudioWaveformLevels(
 ): number[] {
   const [levels, setLevels] = useState<number[]>(() => buildIdleLevels());
   const graphRef = useRef<AudioGraph | null>(null);
-  const dataRef = useRef<Uint8Array | null>(null);
+  const dataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -89,7 +92,9 @@ export function useAudioWaveformLevels(
     }
 
     if (analyser && !dataRef.current) {
-      dataRef.current = new Uint8Array(analyser.frequencyBinCount);
+      dataRef.current = new Uint8Array(
+        analyser.frequencyBinCount,
+      ) as Uint8Array<ArrayBuffer>;
     }
 
     const tick = (time: number) => {

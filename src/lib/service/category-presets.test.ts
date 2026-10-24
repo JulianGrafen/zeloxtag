@@ -2,8 +2,25 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeNextIntervals,
+  QUICK_CHIP_CATEGORIES,
   serviceCategoryPreset,
 } from "./category-presets";
+
+describe("QUICK_CHIP_CATEGORIES", () => {
+  it("follows workshop display order", () => {
+    expect(QUICK_CHIP_CATEGORIES.map((c) => serviceCategoryPreset(c).label)).toEqual([
+      "Ölwechsel",
+      "Inspektion",
+      "Luftfilter",
+      "Innenraumfilter",
+      "Zündkerzen",
+      "Getriebeöl",
+      "Bremsflüssigkeit",
+      "Bremsen vorne",
+      "Bremsen hinten",
+    ]);
+  });
+});
 
 describe("serviceCategoryPreset", () => {
   it("uses vehicle oil interval from specs", () => {

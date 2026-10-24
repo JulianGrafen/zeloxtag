@@ -83,7 +83,7 @@ export function AutomotiveListRow({
   className,
 }: {
   href: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: ReactNode;
   amount?: ReactNode;
   meta: ReactNode;
@@ -98,9 +98,11 @@ export function AutomotiveListRow({
         variant="row"
         className="group flex w-full items-start gap-3 px-4 py-3.5 text-left"
       >
-        <span className={automotiveIconWrapClassName}>
-          <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-        </span>
+        {Icon ? (
+          <span className={automotiveIconWrapClassName}>
+            <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+          </span>
+        ) : null}
 
         <span className="min-w-0 flex-1">
           <span className="flex items-start justify-between gap-3">

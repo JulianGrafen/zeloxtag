@@ -12,6 +12,7 @@ import type { ServiceRecord } from "@/lib/service/service-record";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 
 import { ServiceRecordFormModal } from "./ServiceRecordFormModal";
+import { serviceFilterChipClassName } from "./service-filter-chip-styles";
 
 interface ServiceBookViewProps {
   vehicleModel: string;
@@ -131,11 +132,7 @@ export function ServiceBookView({
             type="button"
             variant="button"
             onClick={() => setCategoryFilter("all")}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-[0.75rem] font-medium ${
-              categoryFilter === "all"
-                ? "bg-[color:var(--vd-accent)] text-white"
-                : "bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-muted)]"
-            }`}
+            className={serviceFilterChipClassName(categoryFilter === "all")}
           >
             Alle
           </PressableButton>
@@ -145,11 +142,7 @@ export function ServiceBookView({
               type="button"
               variant="button"
               onClick={() => setCategoryFilter(chip)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-[0.75rem] font-medium ${
-                categoryFilter === chip
-                  ? "bg-[color:var(--vd-accent)] text-white"
-                  : "bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-muted)]"
-              }`}
+              className={serviceFilterChipClassName(categoryFilter === chip)}
             >
               {categoryLabel(chip)}
             </PressableButton>

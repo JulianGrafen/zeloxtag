@@ -14,12 +14,18 @@ import {
   GarageInsetTextarea,
 } from "@/components/ui/garage-field";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { resolveOilChangeVendor } from "@/lib/documents/oil-changes";
 import {
   QUICK_CHIP_CATEGORIES,
   serviceCategoryPreset,
 } from "@/lib/service/category-presets";
 import type { ServiceRecordCategory } from "@/lib/service/service-record";
 import { showSavedToast } from "@/lib/ui/saved-toast";
+
+import { serviceFilterChipFormClassName } from "./service-filter-chip-styles";
+
+const SERVICE_SELF_MADE_BTN =
+  "flex min-h-[var(--claim-field-min-height)] items-center rounded-[var(--vd-radius-field)] border px-3 text-left text-[0.85rem] font-semibold";
 
 interface ServiceRecordFormModalProps {
   vehicleId: string;
@@ -39,6 +45,7 @@ export function ServiceRecordFormModal({
   const [date, setDate] = useState<string | null>(null);
   const [mileageKm, setMileageKm] = useState<number | null>(null);
   const [performedBy, setPerformedBy] = useState("");
+  const [selfMade, setSelfMade] = useState(false);
   const [notes, setNotes] = useState("");
   const [showOnShowcase, setShowOnShowcase] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +66,10 @@ export function ServiceRecordFormModal({
       formData.set("title", title);
       formData.set("date", date ?? "");
       formData.set("mileageKm", mileageKm != null ? String(mileageKm) : "");
-      formData.set("performedBy", performedBy);
+      formData.set(
+        "performedBy",
+        resolveOilChangeVendor(selfMade, performedBy) ?? "",
+      );
       formData.set("notes", notes);
       formData.set(
         "showOnPublicShowcase",
@@ -92,18 +102,14 @@ export function ServiceRecordFormModal({
         </PressableButton>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {QUICK_CHIP_CATEGORIES.map((chip) => (
           <PressableButton
             key={chip}
             type="button"
             variant="button"
             onClick={() => selectCategory(chip)}
-            className={`rounded-full px-3 py-1.5 text-[0.78rem] font-medium ${
-              category === chip
-                ? "bg-[color:var(--vd-accent)] text-white"
-                : "bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-muted)]"
-            }`}
+            className={serviceFilterChipFormClassName(category === chip)}
           >
             {serviceCategoryPreset(chip).label}
           </PressableButton>
@@ -115,25 +121,45 @@ export function ServiceRecordFormModal({
       </GarageField>
 
       <GarageFieldRow>
-        <GarageFieldCell>
-          <GarageField label="Datum">
-            <GermanDateInput value={date} onChange={setDate} variant="inset" />
-          </GarageField>
+        <GarageFieldCell label="Datum">
+          <GermanDateInput value={date} onChange={setDate} variant="inset" />
         </GarageFieldCell>
-        <GarageFieldCell>
-          <GarageField label="Kilometerstand">
-            <MileageKmInput value={mileageKm} onChange={setMileageKm} variant="inset" />
-          </GarageField>
+        <GarageFieldCell label="Kilometerstand">
+          <MileageKmInput value={mileageKm} onChange={setMileageKm} variant="inset" />
         </GarageFieldCell>
       </GarageFieldRow>
 
-      <GarageField label="Werkstatt / DIY">
-        <GarageInsetInput
-          value={performedBy}
-          onChange={(e) => setPerformedBy(e.target.value)}
-          placeholder="z. B. Werkstatt oder Eigenregie"
-        />
-      </GarageField>
+      <div className="space-y-2">
+        {!selfMade ? (
+          <GarageField label="Werkstatt / DIY" htmlFor="service-record-performed-by">
+            <GarageInsetInput
+              id="service-record-performed-by"
+              value={performedBy}
+              onChange={(e) => setPerformedBy(e.target.value)}
+              placeholder="optional"
+            />
+          </GarageField>
+        ) : null}
+        <PressableButton
+          type="button"
+          variant="button"
+          aria-pressed={selfMade}
+          onClick={() => {
+            setSelfMade((active) => {
+              const next = !active;
+              if (next) setPerformedBy("");
+              return next;
+            });
+          }}
+          className={`${SERVICE_SELF_MADE_BTN} w-full justify-center ${
+            selfMade
+              ? "border-neutral-900 bg-white text-neutral-900 shadow-[var(--vd-shadow-sm)] dark:border-white/40 dark:bg-zinc-100 dark:text-zinc-950"
+              : "border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-muted)] dark:border-white/12 dark:text-zinc-400"
+          }`}
+        >
+          Selbstgemacht
+        </PressableButton>
+      </div>
 
       <GarageField label="Notizen">
         <GarageInsetTextarea
@@ -162,7 +188,7 @@ export function ServiceRecordFormModal({
         variant="button"
         disabled={pending || !date}
         onClick={handleSubmit}
-        className="w-full rounded-xl bg-[color:var(--vd-accent)] py-3 text-[0.9rem] font-semibold text-white"
+        className="w-full rounded-xl bg-[color:var(--vd-accent)] py-3 text-[0.9rem] font-semibold text-[color:var(--primary-foreground)]"
       >
         {pending ? "Speichern…" : "Speichern"}
       </PressableButton>

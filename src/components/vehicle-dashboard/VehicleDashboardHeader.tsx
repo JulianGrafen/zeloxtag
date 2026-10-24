@@ -181,6 +181,8 @@ export function VehicleDashboardHeader({
         dashboardHeroShellClassName,
         "vd-anim-header relative z-40 min-h-[11rem] shrink-0 overflow-hidden sm:min-h-[12rem]",
         isCutoutHero && "min-h-[12rem] sm:min-h-[13rem]",
+        isOwnerPhoto &&
+          "vd-hero-dashboard--owner-photo min-h-[12.25rem] sm:min-h-[13.75rem]",
         framelessHero &&
           "border-0 bg-black shadow-none [background-image:none]",
         framelessHero && !heroRounded && "rounded-none",
@@ -204,7 +206,7 @@ export function VehicleDashboardHeader({
             decoding="async"
             fetchPriority="high"
             className={cn(
-              "absolute left-0 right-0 mx-auto w-full max-w-none",
+              "vd-hero-dashboard-media absolute left-0 right-0 mx-auto w-full max-w-none",
               isCutoutHero
                 ? opaqueCatalogPhoto
                   ? "inset-0 h-full scale-[1.06] object-cover object-[50%_56%]"
@@ -212,7 +214,7 @@ export function VehicleDashboardHeader({
                 : cn(
                     "inset-0 h-full object-cover",
                     isOwnerPhoto
-                      ? "object-[50%_62%] vd-hero-photo-mask"
+                      ? "object-[50%_58%] vd-hero-photo-mask brightness-[0.9] contrast-[1.08] saturate-[0.96]"
                       : "object-[50%_55%]",
                   ),
             )}
@@ -230,8 +232,15 @@ export function VehicleDashboardHeader({
             className={cn(
               "vd-hero-cinematic-vignette",
               isCutoutHero && "vd-hero-cinematic-vignette--cutout",
+              isOwnerPhoto && "vd-hero-cinematic-vignette--photo",
             )}
           />
+          {isOwnerPhoto ? (
+            <div
+              aria-hidden
+              className="vd-hero-dashboard-grain absolute inset-0"
+            />
+          ) : null}
         </div>
       ) : (
         <div
@@ -243,24 +252,18 @@ export function VehicleDashboardHeader({
       <div
         className="relative flex min-h-[11rem] flex-col justify-end px-4 pb-5 pt-8 sm:min-h-[12rem] sm:px-5 sm:pb-6"
       >
-        <div className="min-w-0">
-          <h1
-            className="font-[family-name:var(--font-display)] text-[1.35rem] leading-tight tracking-tight text-white drop-shadow-sm sm:text-[1.45rem]"
-          >
+        <div className="relative z-[1] min-w-0">
+          <h1 className="vd-hero-dashboard-title">
             {ownerLabel ? (
               <>
-                <span className="font-medium text-white/80">{ownerLabel}</span>{" "}
-                <span className="font-bold text-white">{name}</span>
+                <span className="font-medium text-white/78">{ownerLabel}</span>{" "}
+                <span>{name}</span>
               </>
             ) : (
-              <span className="font-bold">{name}</span>
+              name
             )}
           </h1>
-          {year ? (
-            <p className="mt-1.5 text-[0.8rem] tabular-nums text-zinc-300">
-              {year}
-            </p>
-          ) : null}
+          {year ? <p className="vd-hero-dashboard-year">{year}</p> : null}
         </div>
       </div>
 

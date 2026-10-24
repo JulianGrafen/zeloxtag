@@ -50,7 +50,7 @@ function buildLegacyRecord(
     nextIntervalDate: options.nextIntervalDate,
     showOnPublicShowcase: document.show_on_public_showcase === true,
     createdAt: document.created_at,
-    updatedAt: document.updated_at,
+    updatedAt: document.created_at,
     source: "legacy_document",
   };
 }

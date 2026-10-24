@@ -5,10 +5,7 @@ import {
 } from "@/lib/documents/oil-changes";
 import { DEFAULT_BRAKE_INTERVAL_KM, DEFAULT_BRAKE_INTERVAL_MONTHS } from "@/lib/documents/brake-service";
 import type { VehicleTechSpecs } from "@/lib/vehicles/tech-specs";
-import {
-  SERVICE_RECORD_CATEGORIES,
-  type ServiceRecordCategory,
-} from "./service-record";
+import type { ServiceRecordCategory } from "./service-record";
 
 export type ServiceCategoryPreset = {
   defaultTitle: string;
@@ -129,9 +126,26 @@ export function serviceCategoryLabel(category: ServiceRecordCategory): string {
   return serviceCategoryPreset(category).label;
 }
 
-export const QUICK_CHIP_CATEGORIES: ServiceRecordCategory[] = (
-  SERVICE_RECORD_CATEGORIES as ServiceRecordCategory[]
-).filter((c) => serviceCategoryPreset(c).quickChip);
+/**
+ * Scheckheft filter + form chips — fixed workshop order (not enum iteration).
+ * Fluids/service → filters → ignition/drivetrain → brake system.
+ */
+export const QUICK_CHIP_CATEGORY_ORDER: readonly ServiceRecordCategory[] = [
+  "oil_change",
+  "inspection",
+  "air_filter",
+  "cabin_filter",
+  "spark_plugs",
+  "transmission_fluid",
+  "brake_fluid",
+  "brakes_front",
+  "brakes_rear",
+];
+
+export const QUICK_CHIP_CATEGORIES: ServiceRecordCategory[] =
+  QUICK_CHIP_CATEGORY_ORDER.filter((category) =>
+    serviceCategoryPreset(category).quickChip,
+  );
 
 export function computeNextIntervals(input: {
   category: ServiceRecordCategory;

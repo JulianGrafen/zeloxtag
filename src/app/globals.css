@@ -759,6 +759,96 @@ nextjs-portal {
   );
 }
 
+.vd-hero-cinematic-vignette--photo::before {
+  background:
+    linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0.42) 0%,
+      transparent 28%,
+      transparent 52%,
+      rgb(0 0 0 / 0.18) 100%
+    ),
+    radial-gradient(
+      ellipse 120% 95% at 50% 62%,
+      transparent 0%,
+      transparent 32%,
+      color-mix(in srgb, var(--vd-hero-vignette) 18%, transparent) 62%,
+      color-mix(in srgb, var(--vd-hero-vignette) 78%, transparent) 82%,
+      var(--vd-hero-vignette) 100%
+    );
+}
+
+.vd-hero-cinematic-vignette--photo::after {
+  background: linear-gradient(
+    to top,
+    rgb(9 9 11 / 0.97) 0%,
+    rgb(9 9 11 / 0.78) 18%,
+    rgb(9 9 11 / 0.35) 42%,
+    transparent 72%
+  );
+}
+
+.vd-hero-dashboard--owner-photo {
+  box-shadow:
+    0 24px 56px rgb(0 0 0 / 0.52),
+    inset 0 1px 0 rgb(255 255 255 / 0.1);
+}
+
+.vd-hero-dashboard-media {
+  transform-origin: 50% 62%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .vd-hero-dashboard--owner-photo .vd-hero-dashboard-media {
+    animation: vd-hero-ken-burns 22s ease-out forwards;
+  }
+}
+
+@keyframes vd-hero-ken-burns {
+  from {
+    transform: scale(1.04);
+  }
+  to {
+    transform: scale(1.1);
+  }
+}
+
+.vd-hero-dashboard-grain {
+  opacity: 0.045;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+.vd-hero-dashboard-kicker {
+  margin-bottom: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.5);
+}
+
+.vd-hero-dashboard-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: clamp(1.42rem, 4.8vw, 1.72rem);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  color: #fff;
+  text-shadow:
+    0 2px 28px rgb(0 0 0 / 0.55),
+    0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+.vd-hero-dashboard-year {
+  margin-top: 0.45rem;
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.14em;
+  color: rgb(255 255 255 / 0.42);
+}
+
 .vd-connected-dot {
   position: absolute;
   inset: 0;
