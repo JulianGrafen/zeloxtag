@@ -6,7 +6,7 @@ import { AppleIcon } from "@/components/auth/icons/apple-icon";
 import { GoogleGIcon } from "@/components/auth/icons/google-g-icon";
 import { Button } from "@/components/ui/button";
 import {
-  OAUTH_PROVIDERS,
+  OAUTH_SIGNIN_PROVIDERS,
   oauthProviderLabel,
   oauthStartPath,
   type OAuthProvider,
@@ -43,7 +43,7 @@ export function OAuthProviderButtons({
   nextPath = "/auth/continue",
   disabled = false,
   className,
-  providers = OAUTH_PROVIDERS,
+  providers = OAUTH_SIGNIN_PROVIDERS,
   beforeRedirect,
 }: OAuthProviderButtonsProps) {
   const [pending, startTransition] = useTransition();

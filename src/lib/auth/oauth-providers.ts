@@ -2,6 +2,9 @@ export const OAUTH_PROVIDERS = ["google", "apple"] as const;
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
+/** Shown on login / claim / signup — Apple hidden until IdP rollout is ready. */
+export const OAUTH_SIGNIN_PROVIDERS: readonly OAuthProvider[] = ["google"];
+
 export function isOAuthProvider(value: string): value is OAuthProvider {
   return (OAUTH_PROVIDERS as readonly string[]).includes(value);
 }
