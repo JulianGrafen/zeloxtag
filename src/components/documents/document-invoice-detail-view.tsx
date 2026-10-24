@@ -4,11 +4,15 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
+  Building2,
+  Calendar,
   CheckCircle2,
   FileText,
+  Gauge,
   ImagePlus,
   Pencil,
   Share2,
+  Tag,
   Trash2,
 } from "lucide-react";
 
@@ -35,6 +39,12 @@ import { displayInvoiceReviewCategoryLabel } from "@/lib/documents/invoice-revie
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { InvoiceAddPhotosSheet } from "@/components/documents/invoice-add-photos-sheet";
 import { InvoiceDetailEditPickerSheet } from "@/components/documents/invoice-detail-edit-picker-sheet";
+import {
+  documentDetailMetadataKickerClassName,
+  documentDetailMetadataListClassName,
+  documentDetailMetadataRowClassName,
+  documentDetailMetadataValueClassName,
+} from "@/components/documents/document-detail-metadata-styles";
 import { DocumentOriginalPreview } from "@/components/documents/document-original-preview";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
 import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
@@ -237,8 +247,6 @@ export function DocumentInvoiceDetailView({
   const showDateField = canEditInvoice || Boolean(issuedLabel);
   const showMileageEditable = isManual && canEditInvoice;
   const showMileageReadOnly = !showMileageEditable && Boolean(mileageLabel);
-  const showInvoiceMetadata =
-    showBelegnr || showDateField || showMileageEditable || showMileageReadOnly;
 
   const tuevApprovalFields =
     document.approval_fields?.kind === "tuev"
@@ -366,34 +374,48 @@ export function DocumentInvoiceDetailView({
         ) : null}
 
         <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-          {canEditVendor ? (
-            <EditableVendorSection
-              documentId={document.id}
-              vehicleId={document.vehicle_id}
-              tagUuid={tagUuid}
-              vendor={document.vendor}
-              label={isManual ? "Werkstatt / Ausführender" : "Werkstatt"}
-              placeholder={
-                isManual ? "z. B. selbst, Werkstatt Name" : "z. B. Auto Meister GmbH"
-              }
-              onSaved={(nextVendor) =>
-                setVendorLabel(nextVendor?.trim() || title)
-              }
-              hideEditTrigger={useCentralEdit}
-              editRequest={editRequest}
-              editPulse={editPulse}
-              onEditRequestConsumed={handleEditRequestConsumed}
-              sectionId={INVOICE_DETAIL_EDIT_ANCHORS.vendor}
-            />
-          ) : document.type === "invoice" ? (
-            <p className="text-[0.9rem] font-medium text-[color:var(--vd-text)]">
-              {vendor}
-            </p>
-          ) : null}
+          <div className={documentDetailMetadataListClassName}>
+            {canEditVendor ? (
+              <EditableVendorSection
+                documentId={document.id}
+                vehicleId={document.vehicle_id}
+                tagUuid={tagUuid}
+                vendor={document.vendor}
+                label={isManual ? "Werkstatt / Ausführender" : "Werkstatt"}
+                placeholder={
+                  isManual
+                    ? "z. B. selbst, Werkstatt Name"
+                    : "z. B. Auto Meister GmbH"
+                }
+                onSaved={(nextVendor) =>
+                  setVendorLabel(nextVendor?.trim() || title)
+                }
+                hideEditTrigger={useCentralEdit}
+                editRequest={editRequest}
+                editPulse={editPulse}
+                onEditRequestConsumed={handleEditRequestConsumed}
+                sectionId={INVOICE_DETAIL_EDIT_ANCHORS.vendor}
+                embedded
+              />
+            ) : document.type === "invoice" ? (
+              <div className={documentDetailMetadataRowClassName}>
+                <p className={documentDetailMetadataKickerClassName}>
+                  {isManual ? "Werkstatt / Ausführender" : "Werkstatt"}
+                </p>
+                <p
+                  className={`mt-1.5 flex items-center gap-2 ${documentDetailMetadataValueClassName}`}
+                >
+                  <Building2
+                    className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+                    aria-hidden
+                  />
+                  {vendor}
+                </p>
+              </div>
+            ) : null}
 
-          {!isTuevDocument && document.type === "invoice" ? (
-            canEditInvoice ? (
-              <div className="mt-3 border-t border-[color:var(--vd-border)] pt-3">
+            {!isTuevDocument && document.type === "invoice" ? (
+              canEditInvoice ? (
                 <EditableInvoiceCategorySection
                   documentId={document.id}
                   vehicleId={document.vehicle_id}
@@ -405,84 +427,108 @@ export function DocumentInvoiceDetailView({
                   editPulse={editPulse}
                   onEditRequestConsumed={handleEditRequestConsumed}
                   sectionId={INVOICE_DETAIL_EDIT_ANCHORS.category}
+                  embedded
                 />
-              </div>
-            ) : (
-              <p className="mt-3 border-t border-[color:var(--vd-border)] pt-3 text-[0.82rem] text-[color:var(--vd-text)]">
-                <span className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                  Kategorie ·{" "}
-                </span>
-                {categoryLabel}
-              </p>
-            )
-          ) : null}
-
-          {showInvoiceMetadata ? (
-            <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-[color:var(--vd-border)] pt-3 text-[0.82rem]">
-              {showBelegnr ? (
-                <div>
-                  <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                    Belegnr.
-                  </dt>
-                  <dd className="mt-0.5 font-medium tabular-nums text-[color:var(--vd-text)]">
-                    {invoiceNumberLabel}
-                  </dd>
+              ) : (
+                <div className={documentDetailMetadataRowClassName}>
+                  <p className={documentDetailMetadataKickerClassName}>
+                    Kategorie
+                  </p>
+                  <p
+                    className={`mt-1.5 flex items-center gap-2 ${documentDetailMetadataValueClassName}`}
+                  >
+                    <Tag
+                      className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+                      aria-hidden
+                    />
+                    {categoryLabel}
+                  </p>
                 </div>
-              ) : null}
-              {showDateField ? (
-                <div>
-                  {canEditInvoice ? (
-                    <EditableDocumentDateSection
+              )
+            ) : null}
+
+            {showBelegnr ? (
+              <div className={documentDetailMetadataRowClassName}>
+                <p className={documentDetailMetadataKickerClassName}>Belegnr.</p>
+                <p
+                  className={`mt-1.5 tabular-nums ${documentDetailMetadataValueClassName}`}
+                >
+                  {invoiceNumberLabel}
+                </p>
+              </div>
+            ) : null}
+
+            {showDateField || showMileageEditable || showMileageReadOnly ? (
+              <div
+                className={`${documentDetailMetadataRowClassName} grid grid-cols-2 gap-x-4 gap-y-3`}
+              >
+                {showDateField ? (
+                  <div className="min-w-0">
+                    {canEditInvoice ? (
+                      <EditableDocumentDateSection
+                        documentId={document.id}
+                        vehicleId={document.vehicle_id}
+                        tagUuid={tagUuid}
+                        date={documentDate}
+                        onSaved={setDocumentDate}
+                        hideEditTrigger={useCentralEdit}
+                        editRequest={editRequest}
+                        editPulse={editPulse}
+                        onEditRequestConsumed={handleEditRequestConsumed}
+                        sectionId={INVOICE_DETAIL_EDIT_ANCHORS.date}
+                        embedded
+                      />
+                    ) : (
+                      <>
+                        <p className={documentDetailMetadataKickerClassName}>
+                          Datum
+                        </p>
+                        <p
+                          className={`mt-1.5 flex items-center gap-2 ${documentDetailMetadataValueClassName}`}
+                        >
+                          <Calendar
+                            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+                            aria-hidden
+                          />
+                          {issuedLabel}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                ) : null}
+                {showMileageEditable ? (
+                  <div className="min-w-0">
+                    <EditableDocumentMileageSection
                       documentId={document.id}
                       vehicleId={document.vehicle_id}
                       tagUuid={tagUuid}
-                      date={documentDate}
-                      onSaved={setDocumentDate}
+                      mileageKm={mileageKm}
+                      onSaved={setMileageKm}
                       hideEditTrigger={useCentralEdit}
                       editRequest={editRequest}
                       editPulse={editPulse}
                       onEditRequestConsumed={handleEditRequestConsumed}
-                      sectionId={INVOICE_DETAIL_EDIT_ANCHORS.date}
+                      sectionId={INVOICE_DETAIL_EDIT_ANCHORS.mileage}
+                      embedded
                     />
-                  ) : (
-                    <>
-                      <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                        Datum
-                      </dt>
-                      <dd className="mt-0.5 font-medium text-[color:var(--vd-text)]">
-                        {issuedLabel}
-                      </dd>
-                    </>
-                  )}
-                </div>
-              ) : null}
-              {showMileageEditable ? (
-                <div>
-                  <EditableDocumentMileageSection
-                    documentId={document.id}
-                    vehicleId={document.vehicle_id}
-                    tagUuid={tagUuid}
-                    mileageKm={mileageKm}
-                    onSaved={setMileageKm}
-                    hideEditTrigger={useCentralEdit}
-                    editRequest={editRequest}
-                    editPulse={editPulse}
-                    onEditRequestConsumed={handleEditRequestConsumed}
-                    sectionId={INVOICE_DETAIL_EDIT_ANCHORS.mileage}
-                  />
-                </div>
-              ) : showMileageReadOnly ? (
-                <div>
-                  <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                    KM
-                  </dt>
-                  <dd className="mt-0.5 font-medium tabular-nums text-[color:var(--vd-text)]">
-                    {mileageLabel}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          ) : null}
+                  </div>
+                ) : showMileageReadOnly ? (
+                  <div className="min-w-0">
+                    <p className={documentDetailMetadataKickerClassName}>KM</p>
+                    <p
+                      className={`mt-1.5 flex items-center gap-2 tabular-nums ${documentDetailMetadataValueClassName}`}
+                    >
+                      <Gauge
+                        className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
+                        aria-hidden
+                      />
+                      {mileageLabel}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </section>
 
         {canEdit && tuevApprovalFields ? (

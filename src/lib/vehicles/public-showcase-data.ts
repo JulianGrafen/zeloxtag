@@ -24,7 +24,17 @@ import {
 import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import { extractVehicleModifications } from "@/lib/vehicles/vehicle-modifications";
 import type { BuildStoryEntry } from "@/lib/vehicles/build-story-map";
+import { serviceCategoryLabel } from "@/lib/service/category-presets";
+import type { ServiceRecordRow } from "@/types/database";
 import type { Document, Vehicle } from "@/types/database";
+
+export type PublicServiceBookEntry = {
+  id: string;
+  title: string;
+  categoryLabel: string;
+  date: string;
+  mileageKm: number | null;
+};
 
 export type PublicGalleryPhoto = {
   id: string;
@@ -102,10 +112,26 @@ export type PublicShowcasePayload = {
   profile: PublicShowcaseProfile;
   photos: PublicGalleryPhoto[];
   modifications: PublicModification[];
+  serviceBook: PublicServiceBookEntry[];
   buildDna: ShowcaseBuildDna | null;
   buildStory: PublicBuildStorySlice | null;
   b2bPartner?: PublicShowcaseB2bPartner | null;
 };
+
+function mapPublicServiceBookEntries(
+  rows: readonly ServiceRecordRow[],
+): PublicServiceBookEntry[] {
+  return rows
+    .filter((row) => row.show_on_public_showcase)
+    .sort((a, b) => b.service_date.localeCompare(a.service_date))
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      categoryLabel: serviceCategoryLabel(row.category),
+      date: row.service_date,
+      mileageKm: row.mileage_km,
+    }));
+}
 
 function resolvePublicBuildDna(
   vehicle: Vehicle,
@@ -289,6 +315,7 @@ export function groupPublicModifications(
 export function buildPublicShowcasePayload(
   vehicle: Vehicle,
   documents: Document[],
+  serviceRecords: readonly ServiceRecordRow[] = [],
 ): PublicShowcasePayload {
   const { hide_financials, public_slug, is_story_public } =
     normalizeVehicleShowcaseFields(vehicle);
@@ -346,6 +373,7 @@ export function buildPublicShowcasePayload(
     },
     photos,
     modifications,
+    serviceBook: mapPublicServiceBookEntries(serviceRecords),
     buildDna: resolvePublicBuildDna(vehicle, modifications),
     buildStory: null,
   };

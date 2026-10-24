@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { Document } from "@/types/database";
 
+import { MANUAL_ENTRY_MARKER } from "./manual-entries";
 import {
+  documentEligibleForChronikPhotoPreview,
   documentHasTimelinePreview,
   resolveTimelineEventImageUrl,
 } from "./timeline-event-image";
@@ -38,14 +40,29 @@ function stubDoc(partial: Partial<Document> & Pick<Document, "id">): Document {
 }
 
 describe("resolveTimelineEventImageUrl", () => {
-  it("returns proxy URL for storage image paths", () => {
+  it("returns proxy URL for manual Umbau storage images", () => {
     const path =
       "a0b1c2d3-e4f5-4678-89ab-cdef01234567/b1c2d3e4-f5a6-4789-abcd-ef0123456789-photo.webp";
     const url = resolveTimelineEventImageUrl(
-      stubDoc({ id: "doc-1", file_url: path }),
+      stubDoc({
+        id: "doc-1",
+        file_url: path,
+        category: "tuning",
+        invoice_number: MANUAL_ENTRY_MARKER,
+      }),
     );
     expect(url).toContain("/api/documents/file?");
     expect(url).toContain(encodeURIComponent(path));
+  });
+
+  it("ignores scanned invoice images", () => {
+    const path =
+      "a0b1c2d3-e4f5-4678-89ab-cdef01234567/b1c2d3e4-f5a6-4789-abcd-ef0123456789-photo.webp";
+    expect(
+      resolveTimelineEventImageUrl(
+        stubDoc({ id: "doc-scan", file_url: path, category: "tuning" }),
+      ),
+    ).toBeNull();
   });
 
   it("ignores PDFs and manual placeholders for direct image URL", () => {
@@ -65,19 +82,43 @@ describe("resolveTimelineEventImageUrl", () => {
     ).toBeNull();
   });
 
-  it("flags PDFs and images for chronik preview", () => {
+  it("flags manual Umbau PDFs and images for chronik preview", () => {
     expect(
       documentHasTimelinePreview(
         stubDoc({
           id: "doc-4",
           file_url:
             "a0b1c2d3-e4f5-4678-89ab-cdef01234567/b1c2d3e4-f5a6-4789-abcd-ef0123456789-scan.pdf",
+          category: "tuning",
+          invoice_number: MANUAL_ENTRY_MARKER,
         }),
       ),
     ).toBe(true);
     expect(
       documentHasTimelinePreview(
+        stubDoc({
+          id: "doc-scan-pdf",
+          file_url:
+            "a0b1c2d3-e4f5-4678-89ab-cdef01234567/b1c2d3e4-f5a6-4789-abcd-ef0123456789-scan.pdf",
+          category: "tuning",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      documentHasTimelinePreview(
         stubDoc({ id: "doc-5", file_url: "manual://entry/doc-5" }),
+      ),
+    ).toBe(false);
+  });
+
+  it("excludes manual service entries without tuning category", () => {
+    expect(
+      documentEligibleForChronikPhotoPreview(
+        stubDoc({
+          id: "doc-6",
+          category: "service",
+          invoice_number: MANUAL_ENTRY_MARKER,
+        }),
       ),
     ).toBe(false);
   });

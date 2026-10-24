@@ -59,6 +59,9 @@ describe("dashboard tile mapping", () => {
   });
 
   it("keeps manual service history tiles on the free tier", () => {
+    expect(featureForDashboardTile("service-maintenance")).toBe(
+      FEATURE.ADD_MANUAL_SERVICE_ENTRY,
+    );
     expect(featureForDashboardTile("oil-change")).toBe(
       FEATURE.ADD_MANUAL_SERVICE_ENTRY,
     );

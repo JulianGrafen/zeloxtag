@@ -1,10 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Pause, Play } from "lucide-react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 
+import { EngineSoundWaveform } from "@/components/audio/engine-sound-waveform";
+import { useAudioWaveformLevels } from "@/hooks/use-audio-waveform-levels";
 import { useEngineSound } from "@/hooks/use-engine-sound";
 import { useHoldEngineSound } from "@/hooks/use-hold-engine-sound";
+import { playWebHapticTap } from "@/lib/ui/web-haptics";
 import { cn } from "@/lib/utils";
 
 import { useShowroomMotion } from "./showroom-motion";
@@ -96,6 +99,12 @@ function EngineStartToggleButton({
   });
 
   const actionLabel = isPlaying ? "Stoppen" : "Motor starten";
+  const waveformLevels = useAudioWaveformLevels(audioRef, isPlaying);
+
+  function handleToggle() {
+    playWebHapticTap();
+    togglePlayback();
+  }
 
   return (
     <div className={cn("pointer-events-auto relative w-full", className)}>
@@ -110,13 +119,13 @@ function EngineStartToggleButton({
       />
       <button
         type="button"
-        onClick={togglePlayback}
+        onClick={handleToggle}
         className={cn(
           embedded
-            ? cn(showroom.disclosureRow, isPlaying && "bg-white/[0.04]")
+            ? cn(showroom.disclosureRow, "flex-col items-stretch gap-2.5 py-3.5", isPlaying && "bg-white/[0.04]")
             : cn(
                 showroom.panelFlat,
-                "flex min-h-[3.35rem] w-full items-center gap-3 px-4 py-3.5 text-left",
+                "flex w-full flex-col gap-3 px-4 py-3.5 text-left",
               ),
           "transition-colors active:scale-[0.99] active:bg-white/5",
           !embedded && "hover:bg-white/[0.05]",
@@ -125,45 +134,36 @@ function EngineStartToggleButton({
         aria-pressed={isPlaying}
         aria-label={embedded ? `Soundcheck, ${actionLabel}` : actionLabel}
       >
-        <span aria-hidden className={showroom.listLeadingIcon}>
-          {isPlaying ? (
-            <Pause className="h-4 w-4" aria-hidden />
-          ) : (
-            <Play className="h-4 w-4 translate-x-0.5" aria-hidden />
-          )}
-        </span>
-        <span className="min-w-0 flex-1 text-left">
-          {embedded ? (
-            <span className={showroom.listTitle}>Soundcheck</span>
-          ) : (
-            <>
-              <span className={`block ${showroom.rowLabel}`}>Soundcheck</span>
-              <span className="mt-0.5 block text-[0.94rem] font-medium text-white">
-                {actionLabel}
-              </span>
-            </>
-          )}
-        </span>
-        {embedded ? (
-          <span className="shrink-0 text-[0.82rem] font-medium text-white/45">
-            {isPlaying ? "Stoppen" : "Abspielen"}
-          </span>
-        ) : (
-          <span
-            aria-hidden
-            className={cn(
-              "h-2 w-2 shrink-0 rounded-full transition-colors",
-              isPlaying ? "animate-pulse bg-emerald-500" : "bg-red-500",
+        <EngineSoundWaveform levels={waveformLevels} isPlaying={isPlaying} />
+        <span className="flex w-full items-center justify-between gap-3">
+          <span className="min-w-0 text-left">
+            {embedded ? (
+              <span className={showroom.listTitle}>Soundcheck</span>
+            ) : (
+              <>
+                <span className={`block ${showroom.rowLabel}`}>Soundcheck</span>
+                <span className="mt-0.5 block text-[0.94rem] font-medium text-white">
+                  {actionLabel}
+                </span>
+              </>
             )}
-          />
-        )}
+          </span>
+          <span
+            className={cn(
+              "shrink-0 text-[0.78rem] font-medium tabular-nums tracking-wide",
+              isPlaying ? "text-emerald-400/90" : "text-white/40",
+            )}
+          >
+            {isPlaying ? "LIVE" : "TAP"}
+          </span>
+        </span>
       </button>
       {embedded && isPlaying && !motionConfig.reduceMotion ? (
         <motion.span
           aria-hidden
-          className="pointer-events-none absolute inset-x-4 bottom-0 h-px origin-left bg-white/30"
-          initial={{ scaleX: 0.15, opacity: 0.4 }}
-          animate={{ scaleX: [0.15, 1, 0.35], opacity: [0.4, 0.85, 0.5] }}
+          className="pointer-events-none absolute inset-x-4 bottom-0 h-px origin-left bg-emerald-400/35"
+          initial={{ scaleX: 0.15, opacity: 0.35 }}
+          animate={{ scaleX: [0.15, 1, 0.35], opacity: [0.35, 0.75, 0.45] }}
           transition={{
             duration: 1.4,
             ease: "easeInOut",
@@ -173,7 +173,7 @@ function EngineStartToggleButton({
       ) : embedded && isPlaying ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-white/30"
+          className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-emerald-400/35"
         />
       ) : null}
     </div>
@@ -209,6 +209,15 @@ function EngineStartHoldButton({
   });
 
   const caption = isActive ? holdActiveLabel : holdIdleLabel;
+  const waveformLevels = useAudioWaveformLevels(audioRef, isActive);
+
+  function handleHoldStart(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    if (event.button !== 0 && event.pointerType === "mouse") return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    playWebHapticTap();
+    startHold();
+  }
 
   return (
     <div
@@ -226,7 +235,12 @@ function EngineStartHoldButton({
         onError={handleAudioError}
         className="hidden"
       />
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex w-full flex-col items-center gap-3">
+        <EngineSoundWaveform
+          className="max-w-[14rem] px-1"
+          levels={waveformLevels}
+          isPlaying={isActive}
+        />
         <div className="relative flex items-center justify-center">
           {isActive && !motionConfig.reduceMotion ? (
             <span
@@ -250,12 +264,7 @@ function EngineStartHoldButton({
             style={{ touchAction: "none" }}
             aria-pressed={isActive}
             aria-label="Engine Start Stop Soundcheck"
-            onPointerDown={(event) => {
-              event.preventDefault();
-              if (event.button !== 0 && event.pointerType === "mouse") return;
-              event.currentTarget.setPointerCapture(event.pointerId);
-              startHold();
-            }}
+            onPointerDown={handleHoldStart}
             onPointerUp={(event) => {
               event.preventDefault();
               if (event.currentTarget.hasPointerCapture(event.pointerId)) {

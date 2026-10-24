@@ -1,6 +1,7 @@
 "use client";
 
 import { downloadStoryImageFile } from "@/lib/share/share-story-image-file";
+import { playWebHapticTap } from "@/lib/ui/web-haptics";
 
 import type { INativeBridgeService } from "@/services/platform/native-bridge/native-bridge-service";
 import { captureReceiptPhotoViaFileInput } from "@/services/platform/native-bridge/web-capture-receipt-photo";
@@ -11,12 +12,13 @@ import type {
 } from "@/services/platform/native-bridge/types";
 
 export class WebNativeBridgeAdapter implements INativeBridgeService {
-  async triggerHaptic(_style: HapticStyle): Promise<void> {
-    // Web has no system haptics — intentional no-op.
+  async triggerHaptic(style: HapticStyle): Promise<void> {
+    if (style === "heavy") return;
+    playWebHapticTap();
   }
 
   async triggerSelectionHaptic(): Promise<void> {
-    // Web has no system haptics — intentional no-op.
+    playWebHapticTap();
   }
 
   async captureReceiptPhoto() {

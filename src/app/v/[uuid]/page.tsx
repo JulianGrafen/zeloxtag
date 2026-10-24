@@ -9,6 +9,8 @@ import { PrivateTwinGate } from "@/components/tags/private-twin-gate";
 import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { TagNotFound } from "@/components/tags/tag-not-found";
+import { TagScanRitualGate } from "@/components/tags/tag-scan-ritual-gate";
+import { isTagScanRitualSuppressedBySearch } from "@/lib/tags/tag-scan-ritual";
 import { PublicProfilePrivate } from "@/components/public-showcase/PublicProfilePrivate";
 import { PublicShowcaseView } from "@/components/public-showcase/PublicShowcaseView";
 import { filterDocumentsForContributorAccess } from "@/lib/auth/contributor-document-access";
@@ -184,6 +186,8 @@ export async function generateMetadata({
 type PublicShowcaseRenderOptions = {
   showDiscoverBack?: boolean;
   discoverBackHref?: string | null;
+  tagUuid?: string;
+  playScanRitual?: boolean;
 };
 
 async function renderPublicShowcase(
@@ -192,8 +196,16 @@ async function renderPublicShowcase(
 ) {
   const showcaseVehicle = await enrichPublicShowcaseVehicle(vehicle);
   const documents = await loadPublicShowcaseDocuments(showcaseVehicle.id);
+  const { loadPublicServiceRecords } = await import(
+    "@/lib/service/load-public-service-records"
+  );
+  const serviceRecords = await loadPublicServiceRecords(showcaseVehicle.id);
   let vehicleForPayload = showcaseVehicle;
-  let payload = buildPublicShowcasePayload(vehicleForPayload, documents);
+  let payload = buildPublicShowcasePayload(
+    vehicleForPayload,
+    documents,
+    serviceRecords,
+  );
 
   if (payload.modifications.length >= 2 && isSupabaseAdminConfigured()) {
     const profile = buildBuildDnaProfileContext(showcaseVehicle);
@@ -218,7 +230,11 @@ async function renderPublicShowcase(
             showcase_build_dna_fingerprint: dnaFingerprint,
             showcase_build_dna_updated_at: new Date().toISOString(),
           };
-          payload = buildPublicShowcasePayload(vehicleForPayload, documents);
+          payload = buildPublicShowcasePayload(
+            vehicleForPayload,
+            documents,
+            serviceRecords,
+          );
         }
       } catch {
         // Guest view still shows heuristic fallback from payload builder.
@@ -257,12 +273,18 @@ async function renderPublicShowcase(
     };
   }
 
+  const ritualTagUuid =
+    options?.tagUuid?.trim() || payload.profile.publicSlug?.trim() || vehicle.id;
+  const playScanRitual = options?.playScanRitual ?? true;
+
   return (
-    <PublicShowcaseView
-      data={payload}
-      showDiscoverBack={options?.showDiscoverBack ?? false}
-      discoverBackHref={options?.discoverBackHref ?? null}
-    />
+    <TagScanRitualGate tagUuid={ritualTagUuid} enabled={playScanRitual}>
+      <PublicShowcaseView
+        data={payload}
+        showDiscoverBack={options?.showDiscoverBack ?? false}
+        discoverBackHref={options?.discoverBackHref ?? null}
+      />
+    </TagScanRitualGate>
   );
 }
 
@@ -308,6 +330,7 @@ export default async function TagScanPage({
     type: scanType,
     dashboard,
     tour,
+    checkout,
     session_id,
     freeScanWelcome,
     showcase: showcaseRaw,
@@ -317,11 +340,19 @@ export default async function TagScanPage({
   const weeklyRankMockRank = parseWeeklyRankMockParam(mockWeeklyRankRaw);
   const wantsDashboard = dashboard === "1" || scan === "1";
   const forcePublicShowcase = showcaseRaw === "1";
+  const playScanRitual = !isTagScanRitualSuppressedBySearch({
+    showcase: showcaseRaw,
+    tour,
+    checkout,
+    session_id,
+    freeScanWelcome,
+  });
   const discoverShowcaseOptions: PublicShowcaseRenderOptions | undefined =
     forcePublicShowcase
       ? {
           showDiscoverBack: true,
           discoverBackHref: sanitizeDiscoverBackHref(discoverBackRaw),
+          playScanRitual: false,
         }
       : undefined;
   const [entry, user] = await Promise.all([
@@ -398,7 +429,11 @@ export default async function TagScanPage({
       }
     }
 
-    return renderPublicShowcase(vehicle, discoverShowcaseOptions);
+    return renderPublicShowcase(vehicle, {
+      ...discoverShowcaseOptions,
+      tagUuid: tagUuid ?? identifier,
+      playScanRitual: discoverShowcaseOptions?.playScanRitual ?? playScanRitual,
+    });
   }
 
   const result = entry.result;
@@ -420,29 +455,39 @@ export default async function TagScanPage({
           redirect(garagePathForVehicle(vehicle.id));
         }
         if (canViewPublicShowcaseSlug(vehicle)) {
-          return renderPublicShowcase(vehicle);
+          return renderPublicShowcase(vehicle, {
+            tagUuid: tag.uuid,
+            playScanRitual,
+          });
         }
         redirect("/profil-nicht-verfuegbar");
       }
-      return renderPublicShowcase(vehicle);
+      return renderPublicShowcase(vehicle, {
+        tagUuid: tag.uuid,
+        playScanRitual,
+      });
     }
 
     if (!access.isOwner && !access.isContributor) {
       if (tag.uuid === MOCK_TAG_UUIDS.aulitzky) {
         return (
-          <PublicShowcaseView
-            data={buildDemoAulitzkyPublicShowcasePayload()}
-            revealShowroomStatsOnMount
-          />
+          <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
+            <PublicShowcaseView
+              data={buildDemoAulitzkyPublicShowcasePayload()}
+              revealShowroomStatsOnMount
+            />
+          </TagScanRitualGate>
         );
       }
 
       if (tag.uuid === MOCK_TAG_UUIDS.undergroundGarage) {
         return (
-          <PublicShowcaseView
-            data={buildDemoUndergroundGaragePublicShowcasePayload()}
-            revealShowroomStatsOnMount
-          />
+          <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
+            <PublicShowcaseView
+              data={buildDemoUndergroundGaragePublicShowcasePayload()}
+              revealShowroomStatsOnMount
+            />
+          </TagScanRitualGate>
         );
       }
 
@@ -460,7 +505,7 @@ export default async function TagScanPage({
         const discoverData = await loadDemoEntdeckenDiscoverData();
 
         return (
-          <>
+          <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
             {demoRankMock ? (
               <AppShell showNavbar={false}>
                 <ShowcaseWeeklyRankDashboardMockToast
@@ -482,7 +527,7 @@ export default async function TagScanPage({
               showcasePayload={showcasePayload}
               discoverData={discoverData}
             />
-          </>
+          </TagScanRitualGate>
         );
       }
 
@@ -493,13 +538,15 @@ export default async function TagScanPage({
 
       return (
         <AppShell showNavbar={false}>
-          <PrivateTwinGate
-            tagUuid={tag.uuid}
-            vehicleLabel={vehicleTitle(vehicle.make, vehicle.model, vehicle.year)}
-            ownerName={access.ownerName}
-            sessionEmail={access.sessionEmail}
-            myGarage={myGarage}
-          />
+          <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
+            <PrivateTwinGate
+              tagUuid={tag.uuid}
+              vehicleLabel={vehicleTitle(vehicle.make, vehicle.model, vehicle.year)}
+              ownerName={access.ownerName}
+              sessionEmail={access.sessionEmail}
+              myGarage={myGarage}
+            />
+          </TagScanRitualGate>
         </AppShell>
       );
     }
@@ -596,10 +643,11 @@ export default async function TagScanPage({
 
     return (
       <AppShell showNavbar={false}>
-        <TagDashboardShell
-          vehicle={ownerTwin.vehicle!}
-          documents={ownerTwin.documents}
-          tagUuid={tag.uuid}
+        <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
+          <TagDashboardShell
+            vehicle={ownerTwin.vehicle!}
+            documents={ownerTwin.documents}
+            tagUuid={tag.uuid}
           ownerName={access.ownerName}
           isOwner={access.isOwner}
           isContributor={access.isContributor}
@@ -627,7 +675,8 @@ export default async function TagScanPage({
           buildPlannerHint={buildPlannerHint}
           timelineEvents={timelineEvents}
           weeklyRankMockRank={weeklyRankMockRank}
-        />
+          />
+        </TagScanRitualGate>
       </AppShell>
     );
   }

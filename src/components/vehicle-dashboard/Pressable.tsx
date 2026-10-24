@@ -4,8 +4,15 @@ import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
 import { activateRouteTransitionLoading } from "@/lib/ui/route-transition-loading-state";
+import { playWebHapticTap } from "@/lib/ui/web-haptics";
 
 import { usePressFeedback } from "./usePressFeedback";
+
+function maybeHapticOnTilePress(variant: PressVariant) {
+  if (variant === "tile") {
+    playWebHapticTap();
+  }
+}
 
 type PressVariant = "tile" | "row" | "button" | "pill";
 
@@ -70,6 +77,7 @@ export function PressableLink({
         if (direction !== "none") {
           activateRouteTransitionLoading();
         }
+        maybeHapticOnTilePress(variant);
         pressProps.onPointerDown(event);
         onPointerDown?.(event);
       }}
@@ -113,6 +121,7 @@ export function PressableButton({
       type={type}
       {...props}
       onPointerDown={(event) => {
+        maybeHapticOnTilePress(variant);
         pressProps.onPointerDown(event);
         onPointerDown?.(event);
       }}

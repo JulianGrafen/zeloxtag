@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 
 import { PressableButton, PressableLink } from "./Pressable";
 import {
@@ -54,12 +54,7 @@ export function DashboardTile({
 
         {tile.locked ? (
           <Lock className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
-        ) : (
-          <ChevronRight
-            className="h-3.5 w-3.5 shrink-0 text-zinc-500 transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:translate-x-1 group-data-[pressed=true]:text-zinc-300"
-            aria-hidden
-          />
-        )}
+        ) : null}
       </div>
 
       <div className={cn(compact ? "mt-2 space-y-0.5" : "mt-4 space-y-1.5")}>

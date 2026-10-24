@@ -10,7 +10,13 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import {
+  documentDetailMetadataKickerClassName,
+  documentDetailMetadataRowClassName,
+  documentDetailMetadataValueClassName,
+} from "@/components/documents/document-detail-metadata-styles";
 import { showSavedToast } from "@/lib/ui/saved-toast";
+import { cn } from "@/lib/utils";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "vendor";
 
@@ -27,6 +33,8 @@ type EditableVendorSectionProps = {
   editPulse?: number;
   onEditRequestConsumed?: () => void;
   sectionId?: string;
+  /** Flat row inside {@link documentDetailMetadataListClassName}. */
+  embedded?: boolean;
 };
 
 /**
@@ -45,6 +53,7 @@ export function EditableVendorSection({
   editPulse = 0,
   onEditRequestConsumed,
   sectionId,
+  embedded = false,
 }: EditableVendorSectionProps) {
   const router = useRouter();
   const storedVendor = vendor?.trim() || null;
@@ -99,10 +108,26 @@ export function EditableVendorSection({
   return (
     <div
       id={sectionId}
-      className="scroll-mt-24 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3"
+      className={cn(
+        "scroll-mt-24",
+        embedded
+          ? documentDetailMetadataRowClassName
+          : "rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3",
+      )}
     >
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+      <div
+        className={cn(
+          "flex items-center justify-between gap-3",
+          embedded ? "mb-1.5" : "mb-2",
+        )}
+      >
+        <p
+          className={
+            embedded
+              ? documentDetailMetadataKickerClassName
+              : "text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]"
+          }
+        >
           {label}
         </p>
         {!editing && !hideEditTrigger ? (
@@ -124,7 +149,13 @@ export function EditableVendorSection({
             className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
             aria-hidden
           />
-          <p className="text-[0.92rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+          <p
+            className={
+              embedded
+                ? documentDetailMetadataValueClassName
+                : "text-[0.92rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]"
+            }
+          >
             {displayVendor ?? "—"}
           </p>
         </div>

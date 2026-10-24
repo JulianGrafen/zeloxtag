@@ -1,10 +1,12 @@
 import { cn } from "@/lib/utils";
 
+/** Specular gradient edge + frosted carbon (see globals `.vd-automotive-card-surface`). */
+const automotiveCardSurfaceBackground = "vd-automotive-card-surface";
+
 /** Material card — dark automotive (use inside .dark or explicit zinc contexts). */
 export const automotiveCardClassName = cn(
-  "relative overflow-hidden rounded-2xl border border-white/5 border-t-white/10",
-  "bg-gradient-to-b from-zinc-800/40 to-zinc-900/80 backdrop-blur-md",
-  "shadow-[0_12px_40px_rgba(0,0,0,0.28)]",
+  "relative overflow-hidden rounded-2xl",
+  automotiveCardSurfaceBackground,
 );
 
 /** Feature page hero panel — theme-aware (vd-surface in light, material in dark). */
@@ -19,8 +21,7 @@ export const automotiveFeaturePanelLgClassName = cn(
 
 export const automotiveCardInteractiveClassName = cn(
   automotiveCardClassName,
-  "transition-[box-shadow,background-color,border-color,transform] duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
-  "hover:border-white/10 hover:from-zinc-800/55 hover:to-zinc-900/90 hover:shadow-[0_0_28px_rgba(255,255,255,0.07)]",
+  "vd-automotive-card-surface--interactive",
   "group-data-[pressed=true]:scale-[0.98] group-data-[pressed=true]:brightness-105",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
 );
@@ -37,7 +38,8 @@ export const automotiveMenuTileCompactClassName = cn(
 );
 
 export const automotiveMenuTileHighlightClassName = cn(
-  "border-amber-500/25 ring-1 ring-inset ring-amber-400/20",
+  "vd-automotive-card-surface--highlight",
+  "ring-1 ring-inset ring-amber-400/20",
 );
 
 export const automotiveIconWrapCompactClassName = cn(

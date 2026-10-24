@@ -1,30 +1,26 @@
 import type { Metadata } from "next";
 
-import { OilIntervalsView } from "@/components/vehicle-dashboard";
+import { ServiceBookView } from "@/components/service-book";
 import { wrapProFeature } from "@/components/billing/pro-feature-gate";
 import { requireTagWriter } from "@/lib/auth/require-tag-access";
-import { brakeServiceRecordsFromDocuments } from "@/lib/documents/brake-service";
-import {
-  oilChangeRecordsFromDocuments,
-  resolveOilChangeInterval,
-} from "@/lib/documents/oil-changes";
 import { FEATURE } from "@/lib/permissions/feature-access";
-import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
+import { loadServiceHistoryForVehicle } from "@/lib/service/load-service-history";
+import { latestKnownMileageKm } from "@/lib/vehicles/mileage-velocity";
 
-interface OilIntervalsPageProps {
+interface ServiceBookPageProps {
   params: Promise<{ uuid: string }>;
 }
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Intervalle · ZeloxTag",
-    description: "Öl- und Brems-Intervalle für diesen ZeloxTag.",
+    title: "Service & Wartung · ZeloxTag",
+    description: "Digitales Scheckheft für diesen ZeloxTag.",
   };
 }
 
-export default async function VehicleOilIntervalsPage({
+export default async function VehicleServiceBookPage({
   params,
-}: OilIntervalsPageProps) {
+}: ServiceBookPageProps) {
   const { uuid } = await params;
   const { result, isDemoShowcase } = await requireTagWriter(uuid, {
     load: {
@@ -36,12 +32,13 @@ export default async function VehicleOilIntervalsPage({
     },
   });
 
-  const interval = resolveOilChangeInterval(
-    parseVehicleTechSpecs(result.vehicle!.tech_specs),
+  const records = await loadServiceHistoryForVehicle(
+    result.vehicle!.id,
+    result.documents,
+    result.vehicle!.tech_specs,
   );
-  const records = oilChangeRecordsFromDocuments(result.documents, interval);
-  const brakeRecords = brakeServiceRecordsFromDocuments(result.documents);
   const vehicleModel = `${result.vehicle!.make} ${result.vehicle!.model}`;
+  const currentMileageKm = latestKnownMileageKm(result.documents);
 
   return wrapProFeature({
     isDemo: isDemoShowcase,
@@ -49,16 +46,15 @@ export default async function VehicleOilIntervalsPage({
     tagUuid: result.tag.uuid,
     feature: FEATURE.ADD_MANUAL_SERVICE_ENTRY,
     children: (
-      <OilIntervalsView
+      <ServiceBookView
         vehicleModel={vehicleModel}
         records={records}
-        brakeRecords={brakeRecords}
-        documents={result.documents}
+        vehicleId={result.vehicle!.id}
+        currentMileageKm={currentMileageKm}
         backHref={`/v/${result.tag.uuid}`}
         basePath={`/v/${result.tag.uuid}/intervalle`}
         scanHref={`/v/${result.tag.uuid}?scan=1`}
         tagUuid={result.tag.uuid}
-        vehicleId={result.vehicle!.id}
         canAddManual
       />
     ),

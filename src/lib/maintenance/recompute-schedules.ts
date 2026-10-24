@@ -1,19 +1,19 @@
 import "server-only";
 
-import { brakeServiceRecordsFromDocuments } from "@/lib/documents/brake-service";
-import {
-  oilChangeRecordsFromDocuments,
-  resolveOilChangeInterval,
-} from "@/lib/documents/oil-changes";
+import { serviceCategoryLabel } from "@/lib/service/category-presets";
+import { loadServiceHistoryForVehicle } from "@/lib/service/load-service-history";
+import type { ServiceRecordCategory } from "@/lib/service/service-record";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
-import { parseVehicleTechSpecs } from "@/lib/vehicles/tech-specs";
 import type { Document, Vehicle } from "@/types/database";
 
-export type MaintenanceScheduleKind = "oil_change" | "brake_pads";
+export type MaintenanceScheduleKind =
+  | ServiceRecordCategory
+  | "oil_change"
+  | "brake_pads";
 
 type ScheduleRow = {
   vehicle_id: string;
-  kind: MaintenanceScheduleKind;
+  kind: string;
   last_document_id: string | null;
   last_service_date: string;
   last_mileage_km: number;
@@ -23,54 +23,44 @@ type ScheduleRow = {
   km_per_day: number | null;
 };
 
-function serviceDateFromDocument(document: Document): string {
-  return document.date?.slice(0, 10) ?? document.created_at.slice(0, 10);
+function latestByCategory(
+  records: Awaited<ReturnType<typeof loadServiceHistoryForVehicle>>,
+) {
+  const map = new Map<ServiceRecordCategory, (typeof records)[number]>();
+  for (const record of records) {
+    const existing = map.get(record.category);
+    if (!existing || record.date.localeCompare(existing.date) > 0) {
+      map.set(record.category, record);
+    }
+  }
+  return map;
 }
 
-function buildRows(
+async function buildRowsFromServiceHistory(
   vehicleId: string,
   documents: Document[],
   techSpecs: Vehicle["tech_specs"],
-): ScheduleRow[] {
-  const oilInterval = resolveOilChangeInterval(parseVehicleTechSpecs(techSpecs));
-  const oilRecords = oilChangeRecordsFromDocuments(documents, oilInterval);
-  const brakeRecords = brakeServiceRecordsFromDocuments(documents);
-
+): Promise<ScheduleRow[]> {
+  const history = await loadServiceHistoryForVehicle(
+    vehicleId,
+    documents,
+    techSpecs,
+  );
+  const byCategory = latestByCategory(history);
   const rows: ScheduleRow[] = [];
 
-  const latestOil = oilRecords[0];
-  if (latestOil) {
-    const oilDoc = documents.find((d) => d.id === latestOil.id);
+  for (const [category, record] of byCategory) {
+    if (record.nextIntervalMileage == null && !record.nextIntervalDate) continue;
     rows.push({
       vehicle_id: vehicleId,
-      kind: "oil_change",
-      last_document_id: latestOil.id,
-      last_service_date: oilDoc
-        ? serviceDateFromDocument(oilDoc)
-        : new Date().toISOString().slice(0, 10),
-      last_mileage_km: latestOil.mileageKm,
-      next_due_km: latestOil.nextDueKm,
-      next_due_date: latestOil.nextDueDateIso ?? latestOil.nextDueDate,
-      part_number: latestOil.partNumber ?? null,
-      km_per_day: latestOil.kmPerDay ?? null,
-    });
-  }
-
-  const latestBrake = brakeRecords[0];
-  if (latestBrake) {
-    const brakeDoc = documents.find((d) => d.id === latestBrake.id);
-    rows.push({
-      vehicle_id: vehicleId,
-      kind: "brake_pads",
-      last_document_id: latestBrake.id,
-      last_service_date: brakeDoc
-        ? serviceDateFromDocument(brakeDoc)
-        : new Date().toISOString().slice(0, 10),
-      last_mileage_km: latestBrake.mileageKm,
-      next_due_km: latestBrake.nextDueKm,
-      next_due_date: latestBrake.nextDueDateIso,
-      part_number: latestBrake.partNumber ?? null,
-      km_per_day: latestBrake.kmPerDay ?? null,
+      kind: category,
+      last_document_id: record.invoiceDocumentId,
+      last_service_date: record.date,
+      last_mileage_km: record.mileage,
+      next_due_km: record.nextIntervalMileage ?? record.mileage,
+      next_due_date: record.nextIntervalDate ?? record.date,
+      part_number: null,
+      km_per_day: null,
     });
   }
 
@@ -98,7 +88,7 @@ export async function recomputeVehicleMaintenanceSchedules(
 
   if (docError) return;
 
-  const rows = buildRows(
+  const rows = await buildRowsFromServiceHistory(
     vehicleId,
     (documents ?? []) as Document[],
     vehicle.tech_specs,
@@ -117,4 +107,14 @@ export async function recomputeVehicleMaintenanceSchedules(
       updated_at: new Date().toISOString(),
     })),
   );
+}
+
+export function maintenanceScheduleLabel(kind: string): string {
+  if (kind === "brake_pads") return "Bremsbeläge";
+  if (kind === "oil_change") return "Ölwechsel";
+  try {
+    return serviceCategoryLabel(kind as ServiceRecordCategory);
+  } catch {
+    return kind;
+  }
 }

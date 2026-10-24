@@ -12,6 +12,7 @@ import { ShowroomStats } from "./ShowroomStats";
 import { ShowroomStoryShare } from "./ShowroomStoryShare";
 import { BuildStoryTimeline } from "./BuildStoryTimeline";
 import { ShowcaseShopCta } from "./ShowcaseShopCta";
+import { ShowroomServiceBook } from "./ShowroomServiceBook";
 import { showroom } from "./showroom-styles";
 
 type PublicShowcaseViewProps = {
@@ -63,6 +64,7 @@ export function PublicShowcaseView({
         <ShowroomBuildPersonalityChips
           labels={data.profile.buildPersonalityLabels}
         />
+        <ShowroomServiceBook entries={data.serviceBook} />
         {showBuildDna ? <ShowroomBuildDna dna={data.buildDna!} /> : null}
         {data.profile.isStoryPublic && data.profile.publicSlug ? (
           <BuildStoryTimeline

@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 
 import { readMockUploadFileFromSession } from "@/lib/documents/mock-upload-session-cache";
-import { resolveTimelineEventImageUrl } from "@/lib/documents/timeline-event-image";
+import {
+  documentEligibleForChronikPhotoPreview,
+  resolveTimelineEventImageUrl,
+} from "@/lib/documents/timeline-event-image";
 import {
   documentMediaKind,
   isViewableDocumentUrl,
@@ -81,6 +84,11 @@ export function useTimelineDocumentThumbnail(
     };
 
     async function run() {
+      if (!documentEligibleForChronikPhotoPreview(document)) {
+        setState({ src: null, loading: false });
+        return;
+      }
+
       if (!document?.file_url) {
         setState({ src: null, loading: false });
         return;

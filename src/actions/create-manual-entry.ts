@@ -34,6 +34,7 @@ import { collectManualEntryPhotoFilesFromForm } from "@/lib/documents/manual-ent
 import { appendMockUploadedDocument } from "@/lib/documents/mock-uploads";
 import { revalidateManualEntryPaths } from "@/lib/documents/manual-entry-paths";
 import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
+import { syncServiceRecordForDocument } from "@/lib/service/sync-document";
 import {
   validateDocumentUpload,
 } from "@/lib/security/file-upload";
@@ -64,6 +65,7 @@ const fieldsSchema = z.object({
   filterChanged: z.enum(["true", "false", ""]).optional().default(""),
   selfMade: z.enum(["true", "false", ""]).optional().default(""),
   showOnBuildStory: z.enum(["true", "false", ""]).optional().default(""),
+  showOnPublicShowcase: z.enum(["true", "false", ""]).optional().default(""),
 });
 
 function parseMileageKm(raw: string | undefined): number | null {
@@ -123,6 +125,7 @@ function fieldsFromFormData(formData: FormData) {
     filterChanged: String(formData.get("filterChanged") ?? ""),
     selfMade: String(formData.get("selfMade") ?? ""),
     showOnBuildStory: String(formData.get("showOnBuildStory") ?? ""),
+    showOnPublicShowcase: String(formData.get("showOnPublicShowcase") ?? ""),
   };
 }
 
@@ -194,6 +197,7 @@ export async function createManualVehicleEntry(
     data.showOnBuildStory,
     photos.length > 0,
   );
+  const showOnPublicShowcase = data.showOnPublicShowcase === "true";
 
   let fileUrl = `manual://entry/${documentId}`;
   let pageCount: number | null = null;
@@ -237,10 +241,13 @@ export async function createManualVehicleEntry(
       amount,
       date,
       show_on_build_story: showOnBuildStory,
+      show_on_public_showcase: showOnPublicShowcase,
       created_at: now,
     };
     await appendMockUploadedDocument(document);
+    await syncServiceRecordForDocument(document);
     await revalidateManualEntryPaths(data.vehicleId, data.tagUuid);
+    void recomputeVehicleMaintenanceSchedules(data.vehicleId);
     return { status: "created", documentId };
   }
 
@@ -348,6 +355,7 @@ export async function createManualVehicleEntry(
     amount,
     date,
     show_on_build_story: showOnBuildStoryFinal,
+    show_on_public_showcase: showOnPublicShowcase,
   };
 
   const insertAttempts = [
@@ -376,6 +384,14 @@ export async function createManualVehicleEntry(
   for (const attempt of insertAttempts) {
     const { error } = await supabase.from("documents").insert({ ...attempt });
     if (!error) {
+      const { data: inserted } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", documentId)
+        .maybeSingle();
+      if (inserted) {
+        await syncServiceRecordForDocument(inserted as Document);
+      }
       await revalidateManualEntryPaths(data.vehicleId, data.tagUuid);
       void recomputeVehicleMaintenanceSchedules(data.vehicleId);
       return { status: "created", documentId };

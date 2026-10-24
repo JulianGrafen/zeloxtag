@@ -5,6 +5,7 @@ import type { Document } from "@/types/database";
 
 export type DashboardTileId =
   | "invoices"
+  | "service-maintenance"
   | "oil-change"
   | "fuel-log"
   | "operating-costs"
@@ -88,8 +89,12 @@ export interface VehicleDashboardData {
   /** Show catalog cutout PNG without the rounded header frame (demo showcase). */
     /** Demo showcase: rounded photo frame in the header. */
     vehicleImageFrameless?: boolean;
-  /** ISO-Datum des letzten Ölwechsels */
+  /** @deprecated use serviceMaintenance */
   lastOilChange?: string;
+  serviceMaintenance?: {
+    subtitle: string;
+    tone?: "default" | "warning" | "critical";
+  };
   nextInspection?: VehicleInspectionInfo;
   /** Unread build-swipe likes on this vehicle (owner). */
   showcaseSwipeUnreadLikes?: number;

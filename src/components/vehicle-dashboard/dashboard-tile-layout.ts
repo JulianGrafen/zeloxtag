@@ -3,7 +3,7 @@ import type { DashboardTileConfig, DashboardTileId } from "./types";
 /** First six menu tiles — 3×2 on mobile (viewport-optimized block). */
 export const DASHBOARD_PRIMARY_TILE_IDS: readonly DashboardTileId[] = [
   "invoices",
-  "oil-change",
+  "service-maintenance",
   "abe",
   "modifications",
   "fuel-log",

@@ -7,23 +7,26 @@ import {
   Camera,
   ImagePlus,
   NotebookPen,
-  Pencil,
   Plus,
-  Trash2,
   Wrench,
   X,
 } from "lucide-react";
 
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
 import { updateManualVehicleEntry } from "@/actions/update-manual-entry";
-import { deleteDocument } from "@/actions/delete-document";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import { MileageKmInput } from "@/components/documents/mileage-km-input";
 import { parseMileageKmInput } from "@/lib/documents/format";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
-import { automotiveBackPillClassName } from "@/components/ui/automotive";
+import {
+  automotiveBackPillClassName,
+  AutomotiveEmptyPanel,
+  AutomotiveList,
+  AutomotiveListRow,
+  AutomotiveSectionLabel,
+} from "@/components/ui/automotive";
 import {
   GarageField,
   GarageFieldCell,
@@ -41,7 +44,9 @@ import {
   displayDocumentTitle,
   formatDocumentAmount,
   formatDocumentDate,
+  formatDocumentDateCompact,
 } from "@/lib/documents/format";
+import { documentDetailHref } from "@/lib/vehicle-surface/documents-list-href";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 import {
   filterManualVehicleEntries,
@@ -97,13 +102,30 @@ type PhotoDraft = {
   previewUrl: string;
 };
 
+async function attachEntryPhotosToFormData(
+  formData: FormData,
+  photoDrafts: PhotoDraft[],
+): Promise<void> {
+  if (photoDrafts.length === 0) return;
+  if (photoDrafts.length === 1) {
+    formData.set("photo", photoDrafts[0].file, photoDrafts[0].file.name);
+    return;
+  }
+  const pdf = await convertImagesToPdf(
+    photoDrafts.map((entry) => entry.file),
+    {
+      fileName: "fotodoku",
+      fullBleed: true,
+    },
+  );
+  formData.set("photo", pdf.file, pdf.file.name);
+  formData.set("pageCount", String(pdf.pageCount));
+}
+
 const MANUAL_ENTRY_FIELD_LABEL =
   "text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]";
 const MANUAL_ENTRY_CATEGORY_BTN =
   "flex min-h-[var(--claim-field-min-height)] items-center rounded-[var(--vd-radius-field)] border px-3 text-left text-[0.85rem] font-semibold";
-const MANUAL_ENTRY_LIST_ICON_BTN =
-  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-neutral-900";
-
 export function ManualEntryView({
   tagUuid,
   vehicleId,
@@ -145,8 +167,12 @@ export function ManualEntryView({
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
   const [showOnBuildStory, setShowOnBuildStory] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const surfaceScope = useMemo(
+    () => vehicleSurfaceScopeFromContext(tagUuid, vehicleId),
+    [tagUuid, vehicleId],
+  );
 
   const entries = useMemo(() => {
     const all = filterManualVehicleEntries(documents);
@@ -448,88 +474,12 @@ export function ManualEntryView({
           appendLineItemsToFormData(formData);
         }
         appendBuildStoryOptIn(formData);
-
-        if (isUmbau && isEditing) {
-          const result = await updateManualVehicleEntry(formData);
-          if (result.status === "error") {
-            setError(result.message);
-            return;
-          }
-
-          if (photos.length > 0) {
-            const baseTitle = resolveManualEntryTitle(title, category, {
-              umbau: true,
-            });
-            for (let index = 0; index < photos.length; index += 1) {
-              const photo = photos[index];
-              const extraForm = new FormData();
-              extraForm.set("vehicleId", vehicleId);
-              extraForm.set("tagUuid", tagUuid);
-              appendUmbauMetadata(
-                extraForm,
-                photos.length > 1
-                  ? `${baseTitle} (${index + 1}/${photos.length})`
-                  : baseTitle,
-              );
-              extraForm.set("photo", photo.file, photo.file.name);
-              appendBuildStoryOptIn(extraForm);
-              const extraResult = await createManualVehicleEntry(extraForm);
-              if (extraResult.status === "error") {
-                setError(extraResult.message);
-                return;
-              }
-            }
-          }
-
-          showSavedToast();
-          closeForm();
-          router.refresh();
-          return;
-        }
-
-        if (photos.length === 1) {
-          formData.set("photo", photos[0].file, photos[0].file.name);
-        } else if (photos.length > 1 && !isUmbau) {
-          const pdf = await convertImagesToPdf(
-            photos.map((entry) => entry.file),
-            {
-              fileName: "eintrag-fotos",
-              fullBleed: true,
-            },
-          );
-          formData.set("photo", pdf.file, pdf.file.name);
-          formData.set("pageCount", String(pdf.pageCount));
-        } else if (photos.length > 1 && isUmbau) {
-          formData.set("photo", photos[0].file, photos[0].file.name);
-        }
+        await attachEntryPhotosToFormData(formData, photos);
 
         const result = await updateManualVehicleEntry(formData);
         if (result.status === "error") {
           setError(result.message);
           return;
-        }
-
-        if (isUmbau && photos.length > 1) {
-          const baseTitle = resolveManualEntryTitle(title, category, {
-            umbau: true,
-          });
-          for (let index = 1; index < photos.length; index += 1) {
-            const photo = photos[index];
-            const extraForm = new FormData();
-            extraForm.set("vehicleId", vehicleId);
-            extraForm.set("tagUuid", tagUuid);
-            appendUmbauMetadata(
-              extraForm,
-              `${baseTitle} (${index + 1}/${photos.length})`,
-            );
-            extraForm.set("photo", photo.file, photo.file.name);
-            appendBuildStoryOptIn(extraForm);
-            const extraResult = await createManualVehicleEntry(extraForm);
-            if (extraResult.status === "error") {
-              setError(extraResult.message);
-              return;
-            }
-          }
         }
 
         showSavedToast();
@@ -558,35 +508,6 @@ export function ManualEntryView({
           umbau: isUmbau,
         });
 
-        // Umbau-Bilder: one document per photo so thumbnails stay images.
-        if (isUmbau && photos.length > 0) {
-          for (let index = 0; index < photos.length; index += 1) {
-            const photo = photos[index];
-            const formData = new FormData();
-            formData.set("vehicleId", vehicleId);
-            formData.set("tagUuid", tagUuid);
-            appendUmbauMetadata(
-              formData,
-              photos.length > 1
-                ? `${baseTitle} (${index + 1}/${photos.length})`
-                : baseTitle,
-            );
-            formData.set("photo", photo.file, photo.file.name);
-            appendBuildStoryOptIn(formData);
-
-            const result = await createManualVehicleEntry(formData);
-            if (result.status === "error") {
-              setError(result.message);
-              return;
-            }
-          }
-          showSavedToast();
-          resetForm();
-          setShowForm(false);
-          router.refresh();
-          return;
-        }
-
         const formData = new FormData();
         formData.set("vehicleId", vehicleId);
         formData.set("tagUuid", tagUuid);
@@ -600,19 +521,11 @@ export function ManualEntryView({
         appendLineItemsToFormData(formData);
         appendBuildStoryOptIn(formData);
 
-        if (photos.length === 1) {
-          formData.set("photo", photos[0].file, photos[0].file.name);
-        } else if (photos.length > 1) {
-          const pdf = await convertImagesToPdf(
-            photos.map((photo) => photo.file),
-            {
-              fileName: "eintrag-fotos",
-              fullBleed: true,
-            },
-          );
-          formData.set("photo", pdf.file, pdf.file.name);
-          formData.set("pageCount", String(pdf.pageCount));
+        if (isUmbau) {
+          appendUmbauMetadata(formData, baseTitle);
         }
+
+        await attachEntryPhotosToFormData(formData, photos);
 
         const result = await createManualVehicleEntry(formData);
         if (result.status === "error") {
@@ -630,25 +543,6 @@ export function ManualEntryView({
             : "Eintrag konnte nicht gespeichert werden.",
         );
       }
-    });
-  }
-
-  function handleDelete(documentId: string) {
-    setError(null);
-    setPendingId(documentId);
-    startTransition(async () => {
-      const result = await deleteDocument({
-        documentId,
-        vehicleId,
-        tagUuid,
-      });
-      setPendingId(null);
-      if (result.status === "error") {
-        setError(result.message);
-        return;
-      }
-      showSavedToast();
-      router.refresh();
     });
   }
 
@@ -1039,146 +933,54 @@ export function ManualEntryView({
           aria-label={isUmbau ? "Umbau-Bilder" : "Manuelle Einträge"}
           className="space-y-2"
         >
-          {entries.length === 0 ? null : visibleEntries.length === 0 ? (
-            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
-              {query.trim() || listFilter !== "all"
-                ? "Keine Treffer für diese Suche / Filter."
-                : emptyCopy.title}
-            </div>
-          ) : isUmbau ? (
-            <ul className="grid grid-cols-2 gap-3">
-              {visibleEntries.map((doc) => {
-                const hasPhoto = isViewableDocumentUrl(doc.file_url);
-                const thumbSrc = hasPhoto
-                  ? inlineDocumentProxyUrl(doc.file_url)
-                  : null;
-                const isImage =
-                  hasPhoto && documentMediaKind(doc.file_url) === "image";
+          <AutomotiveSectionLabel>
+            {isUmbau ? "Umbau-Bilder" : "Einträge"}
+          </AutomotiveSectionLabel>
 
-                return (
-                  <li key={doc.id} className="relative">
-                    <PressableLink
-                      href={`/v/${tagUuid}/dokumente/${doc.id}`}
-                      variant="tile"
-                      className="group flex flex-col overflow-hidden rounded-[1.25rem] border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] shadow-[var(--vd-shadow-sm)]"
-                    >
-                      <span className="relative aspect-square w-full overflow-hidden bg-[color:var(--vd-surface-elevated)]">
-                        {thumbSrc && isImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={thumbSrc}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-[color:var(--vd-muted)]">
-                            <ImagePlus className="h-8 w-8" aria-hidden />
-                          </span>
-                        )}
-                      </span>
-                      <span className="space-y-0.5 p-3">
-                        <span className="block truncate font-[family-name:var(--font-display)] text-[0.88rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                          {displayDocumentTitle(doc.title)}
-                        </span>
-                        <span className="block text-[0.72rem] text-[color:var(--vd-muted)]">
-                          {formatDocumentDate(doc.date)}
-                        </span>
-                      </span>
-                    </PressableLink>
-                    <PressableLink
-                      href={`/v/${tagUuid}/dokumente/${doc.id}`}
-                      variant="button"
-                      aria-label={`Bearbeiten: ${displayDocumentTitle(doc.title)}`}
-                      className="absolute left-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-white/95 text-neutral-900 shadow-sm"
-                    >
-                      <Pencil className="h-3.5 w-3.5" aria-hidden />
-                    </PressableLink>
-                    <PressableButton
-                      type="button"
-                      variant="button"
-                      aria-label={`Löschen: ${displayDocumentTitle(doc.title)}`}
-                      disabled={pending && pendingId === doc.id}
-                      onClick={() => handleDelete(doc.id)}
-                      className="absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-white/95 text-red-600 shadow-sm disabled:opacity-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                    </PressableButton>
-                  </li>
-                );
-              })}
-            </ul>
+          {entries.length === 0 ? (
+            <AutomotiveEmptyPanel>
+              {emptyCopy.title}. {emptyCopy.body}
+            </AutomotiveEmptyPanel>
+          ) : visibleEntries.length === 0 ? (
+            <AutomotiveEmptyPanel>
+              Keine Treffer für diese Suche / Filter.
+            </AutomotiveEmptyPanel>
           ) : (
-            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
-              {visibleEntries.map((doc) => {
+            <AutomotiveList aria-label="Umbauten und Einträge">
+              {visibleEntries.map((doc, index) => {
                 const kind =
                   doc.category === "tuning"
                     ? MANUAL_ENTRY_CATEGORY_LABELS.tuning
                     : MANUAL_ENTRY_CATEGORY_LABELS.service;
-                const amountLabel = formatDocumentAmount(doc.amount);
+                const amount =
+                  typeof doc.amount === "number"
+                    ? formatDocumentAmount(doc.amount)
+                    : null;
+                const vendor = doc.vendor?.trim() || kind;
+                const issued = formatDocumentDateCompact(doc.date);
                 const hasPhoto = isViewableDocumentUrl(doc.file_url);
-                const thumbSrc = hasPhoto
-                  ? inlineDocumentProxyUrl(doc.file_url)
-                  : null;
-                const isImage =
-                  hasPhoto && documentMediaKind(doc.file_url) === "image";
+                const RowIcon = doc.category === "tuning" ? Wrench : NotebookPen;
 
                 return (
-                  <li
+                  <AutomotiveListRow
                     key={doc.id}
-                    className="flex w-full items-center gap-2 border-b border-[color:var(--vd-border)] px-3 py-3 last:border-b-0 sm:px-4"
-                  >
-                    <PressableLink
-                      href={`/v/${tagUuid}/dokumente/${doc.id}`}
-                      variant="row"
-                      className="vd-pressable vd-pressable--row group flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left"
-                    >
-                      <span className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                        {thumbSrc && isImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={thumbSrc}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <NotebookPen className="h-5 w-5" aria-hidden />
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                          {displayDocumentTitle(doc.title)}
+                    href={documentDetailHref(tagUuid, doc.id, surfaceScope)}
+                    icon={RowIcon}
+                    title={displayDocumentTitle(doc.title)}
+                    amount={amount ?? undefined}
+                    meta={`${vendor} · ${issued} · ${kind}`}
+                    badge={
+                      hasPhoto ? (
+                        <span className="inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-400">
+                          Foto
                         </span>
-                        <span className="mt-0.5 block truncate text-[0.75rem] text-[color:var(--vd-muted)]">
-                          {kind}
-                          {" · "}
-                          {formatDocumentDate(doc.date)}
-                          {amountLabel ? ` · ${amountLabel}` : ""}
-                          {hasPhoto ? " · Foto" : ""}
-                        </span>
-                      </span>
-                    </PressableLink>
-                    <PressableLink
-                      href={`/v/${tagUuid}/dokumente/${doc.id}`}
-                      variant="button"
-                      aria-label={`Bearbeiten: ${displayDocumentTitle(doc.title)}`}
-                      className={MANUAL_ENTRY_LIST_ICON_BTN}
-                    >
-                      <Pencil className="h-4 w-4" aria-hidden />
-                    </PressableLink>
-                    <PressableButton
-                      type="button"
-                      variant="button"
-                      aria-label={`Löschen: ${displayDocumentTitle(doc.title)}`}
-                      disabled={pending && pendingId === doc.id}
-                      onClick={() => handleDelete(doc.id)}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-red-600 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </PressableButton>
-                  </li>
+                      ) : undefined
+                    }
+                    showDivider={index < visibleEntries.length - 1}
+                  />
                 );
               })}
-            </ul>
+            </AutomotiveList>
           )}
         </section>
       </div>

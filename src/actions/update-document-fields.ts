@@ -31,6 +31,7 @@ import {
 } from "@/lib/vehicle-surface/revalidate-paths";
 import { isOilChangeDocument } from "@/lib/documents/oil-changes";
 import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
+import { syncServiceRecordForDocument } from "@/lib/service/sync-document";
 import type { Document } from "@/types/database";
 import { parseTechnicalSpecs } from "@/lib/documents/technical-specs";
 import { parseAbeConditions, parseStringList } from "@/lib/documents/string-list";
@@ -483,6 +484,14 @@ export async function updateDocumentFields(
   await revalidateDocumentPaths(vehicleId, documentId);
   if (isStoredManualEntry(document)) {
     await revalidateManualEntryPaths(vehicleId, tagUuid, documentId);
+  }
+  const { data: refreshed } = await admin
+    .from("documents")
+    .select("*")
+    .eq("id", documentId)
+    .maybeSingle();
+  if (refreshed) {
+    await syncServiceRecordForDocument(refreshed as Document);
   }
   void recomputeVehicleMaintenanceSchedules(vehicleId);
   return { status: "ok" };

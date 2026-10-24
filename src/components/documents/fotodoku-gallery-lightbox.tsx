@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import type { FotodokuGallerySlide } from "@/components/documents/document-fotodoku-gallery";
@@ -86,9 +87,9 @@ export function FotodokuGalleryLightbox({
   const canGoBack = index > 0;
   const canGoForward = index < slides.length - 1;
 
-  return (
+  const overlay = (
     <div
-      className="fixed inset-0 z-[200] flex min-h-dvh flex-col bg-black"
+      className="fixed inset-0 z-[500] flex min-h-dvh flex-col bg-black"
       role="dialog"
       aria-modal="true"
       aria-label="Fotodoku Vollbild"
@@ -160,4 +161,10 @@ export function FotodokuGalleryLightbox({
       </p>
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

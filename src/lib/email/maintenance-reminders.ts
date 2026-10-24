@@ -6,22 +6,19 @@ import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/adm
 
 const MS_PER_DAY = 86_400_000;
 
-export type MaintenanceScheduleKind = "oil_change" | "brake_pads";
+import { maintenanceScheduleLabel } from "@/lib/maintenance/recompute-schedules";
 
-const KIND_LABEL: Record<MaintenanceScheduleKind, string> = {
-  oil_change: "Ölwechsel",
-  brake_pads: "Bremsbeläge",
-};
+export type MaintenanceScheduleKind = string;
 
 export function maintenanceDueReminderKey(
-  kind: MaintenanceScheduleKind,
+  kind: string,
   vehicleId: string,
 ): string {
   return `maintenance_due:${kind}:${vehicleId}`;
 }
 
 export function maintenanceOverdueReminderKey(
-  kind: MaintenanceScheduleKind,
+  kind: string,
   vehicleId: string,
 ): string {
   return `maintenance_overdue:${kind}:${vehicleId}`;
@@ -99,7 +96,7 @@ async function resolveUserFirstName(userId: string): Promise<string | null> {
 
 type ScheduleRow = {
   vehicle_id: string;
-  kind: MaintenanceScheduleKind;
+  kind: string;
   next_due_km: number;
   next_due_date: string;
   part_number: string | null;
@@ -130,14 +127,14 @@ async function sendMaintenanceEmail(input: {
   email: string;
   greeting: string;
   vehicleLabel: string;
-  kind: MaintenanceScheduleKind;
+  kind: string;
   nextDueDate: string;
   nextDueKm: number;
   partNumber: string | null;
   tagUuid: string;
   overdue: boolean;
 }): Promise<boolean> {
-  const serviceLabel = KIND_LABEL[input.kind];
+  const serviceLabel = maintenanceScheduleLabel(input.kind);
   const intervalsUrl = `${siteOrigin()}/v/${input.tagUuid}/intervalle`;
   const subject = input.overdue
     ? `Überfällig: ${serviceLabel} · ${input.vehicleLabel}`

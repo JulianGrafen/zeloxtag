@@ -115,6 +115,14 @@ export function DocumentOriginalPreview({
         <DocumentFotodokuGallery slides={gallerySlides} layout="photos" />
       );
     }
+
+    if (!galleryLoading) {
+      return (
+        <p className="rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
+          Fotos konnten nicht geladen werden.
+        </p>
+      );
+    }
   }
 
   if (

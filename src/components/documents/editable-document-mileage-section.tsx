@@ -11,7 +11,12 @@ import { formatMileageKmLabel } from "@/lib/documents/format";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import {
+  documentDetailMetadataKickerClassName,
+  documentDetailMetadataValueClassName,
+} from "@/components/documents/document-detail-metadata-styles";
 import { showSavedToast } from "@/lib/ui/saved-toast";
+import { cn } from "@/lib/utils";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "mileage";
 
@@ -27,6 +32,7 @@ type EditableDocumentMileageSectionProps = {
   editPulse?: number;
   onEditRequestConsumed?: () => void;
   sectionId?: string;
+  embedded?: boolean;
 };
 
 export function EditableDocumentMileageSection({
@@ -41,6 +47,7 @@ export function EditableDocumentMileageSection({
   editPulse = 0,
   onEditRequestConsumed,
   sectionId,
+  embedded = false,
 }: EditableDocumentMileageSectionProps) {
   const router = useRouter();
   const storedKm = mileageKm;
@@ -98,7 +105,13 @@ export function EditableDocumentMileageSection({
     <div id={sectionId} className="scroll-mt-24">
       {!editing ? (
       <div className="mb-1 flex items-center justify-between gap-2">
-        <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+        <dt
+          className={
+            embedded
+              ? documentDetailMetadataKickerClassName
+              : "text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]"
+          }
+        >
           {label}
         </dt>
         {!hideEditTrigger ? (
@@ -116,8 +129,15 @@ export function EditableDocumentMileageSection({
       ) : null}
 
       {!editing ? (
-        <dd className="mt-0.5 flex items-center gap-1.5 font-medium tabular-nums text-[color:var(--vd-text)]">
-          <Gauge className="h-3.5 w-3.5 text-[color:var(--vd-muted)]" aria-hidden />
+        <dd
+          className={cn(
+            "mt-1 flex items-center gap-2 tabular-nums",
+            embedded
+              ? documentDetailMetadataValueClassName
+              : "mt-0.5 font-medium text-[color:var(--vd-text)]",
+          )}
+        >
+          <Gauge className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]" aria-hidden />
           {displayLabel}
         </dd>
       ) : (

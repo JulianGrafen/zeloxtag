@@ -30,6 +30,8 @@ export interface DashboardScanCtaProps {
   /** Direct link to scan flow (sub-pages without in-page picker). */
   scanHref?: string;
   manualEntryHref?: string;
+  /** Opens in-page flow (e.g. Scheckheft-Formular) instead of navigating. */
+  onManualEntry?: () => void;
   fuelLogHref?: string;
   scanLabel?: string;
   /** Label in the quick-action sheet for scan (defaults to Rechnung scannen). */
@@ -41,6 +43,12 @@ export interface DashboardScanCtaProps {
   onFuelScanLocked?: () => void;
   /** Hide while a photo sheet / modal needs the bottom of the screen. */
   hidden?: boolean;
+  /** Bottom sheet title when `directAction` is `menu`. */
+  menuTitle?: string;
+  /** Omit Tankbeleg from the quick-action sheet (e.g. Belege list). */
+  hideFuelAction?: boolean;
+  manualActionLabel?: string;
+  manualActionDescription?: string;
 }
 
 const scanFabClassName = (
@@ -66,6 +74,7 @@ export function DashboardScanFab({
   onOpenScanner,
   scanHref,
   manualEntryHref,
+  onManualEntry,
   fuelLogHref,
   scanLabel = "Dokument scannen",
   scanActionLabel = "Rechnung scannen",
@@ -73,6 +82,10 @@ export function DashboardScanFab({
   onScanLocked,
   fuelScanLocked = false,
   onFuelScanLocked,
+  menuTitle = "Rechnung oder Tankbeleg",
+  hideFuelAction = false,
+  manualActionLabel = "Manueller Eintrag",
+  manualActionDescription = "Ohne Scan — Umbau, Service, Notiz",
 }: DashboardScanCtaProps) {
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -154,7 +167,7 @@ export function DashboardScanFab({
 
     items.push({
       id: "scan-invoice",
-      label: "Rechnung scannen",
+      label: scanActionLabel,
       description: scanLocked
         ? "ZeloxTag Pro oder Gratis-Scan nötig"
         : "Werkstattbeleg mit KI auslesen",
@@ -162,7 +175,7 @@ export function DashboardScanFab({
       onClick: runScanAction,
     });
 
-    if (fuelLogHref || onFuelScan) {
+    if (!hideFuelAction && (fuelLogHref || onFuelScan)) {
       items.push({
         id: "scan-fuel",
         label: "Tankbeleg scannen",
@@ -174,13 +187,14 @@ export function DashboardScanFab({
       });
     }
 
-    if (manualEntryHref) {
+    if (manualEntryHref || onManualEntry) {
       items.push({
         id: "manual",
-        label: "Manueller Eintrag",
-        description: "Ohne Scan — Umbau, Service, Notiz",
+        label: manualActionLabel,
+        description: manualActionDescription,
         icon: PenLine,
         href: manualEntryHref,
+        onClick: onManualEntry,
       });
     }
 
@@ -188,10 +202,15 @@ export function DashboardScanFab({
   }, [
     fuelLogHref,
     fuelScanLocked,
+    hideFuelAction,
+    manualActionDescription,
+    manualActionLabel,
     manualEntryHref,
+    onManualEntry,
     onFuelScan,
     runFuelAction,
     runScanAction,
+    scanActionLabel,
     scanLocked,
   ]);
 
@@ -226,7 +245,7 @@ export function DashboardScanFab({
         <DashboardQuickActionSheet
           open={menuOpen}
           onClose={() => setMenuOpen(false)}
-          title="Rechnung oder Tankbeleg"
+          title={menuTitle}
           actions={quickActions}
         />
       ) : null}

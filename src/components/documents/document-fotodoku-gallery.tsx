@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 import { FotodokuGalleryLightbox } from "@/components/documents/fotodoku-gallery-lightbox";
 import { cn } from "@/lib/utils";
@@ -36,6 +42,35 @@ export function DocumentFotodokuGallery({
   const indexRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const tapStartRef = useRef<{ x: number; y: number } | null>(null);
+  const lastLightboxOpenRef = useRef(0);
+
+  const openLightbox = useCallback((slideIndex: number) => {
+    const now = Date.now();
+    if (now - lastLightboxOpenRef.current < 320) return;
+    lastLightboxOpenRef.current = now;
+    setLightboxIndex(slideIndex);
+  }, []);
+
+  const handleStagePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      tapStartRef.current = { x: event.clientX, y: event.clientY };
+    },
+    [],
+  );
+
+  const handleStagePointerUp = useCallback(
+    (slideIndex: number, event: ReactPointerEvent<HTMLButtonElement>) => {
+      const start = tapStartRef.current;
+      tapStartRef.current = null;
+      if (!start) return;
+      const dx = Math.abs(event.clientX - start.x);
+      const dy = Math.abs(event.clientY - start.y);
+      if (dx > 18 || dy > 18) return;
+      openLightbox(slideIndex);
+    },
+    [openLightbox],
+  );
 
   const scrollToIndex = useCallback(
     (index: number, behavior: ScrollBehavior = "smooth") => {
@@ -89,10 +124,11 @@ export function DocumentFotodokuGallery({
   }
 
   const photosLayout = layout === "photos";
-  const showThumbnails = photosLayout && slides.length > 1;
+  const showThumbnails = photosLayout && slides.length > 0;
   const showDots = !photosLayout && slides.length > 1;
-  const mainMaxHeight = photosLayout ? "max-h-[38vh]" : "max-h-[50vh]";
-  const mainMinHeight = photosLayout ? "min-h-[10rem]" : "min-h-[12rem]";
+  const showPhotoCounter = photosLayout && slides.length > 1;
+  const mainMaxHeight = photosLayout ? "max-h-[min(42vh,28rem)]" : "max-h-[50vh]";
+  const mainMinHeight = photosLayout ? "min-h-[12rem]" : "min-h-[12rem]";
 
   return (
     <div className={className}>
@@ -108,7 +144,7 @@ export function DocumentFotodokuGallery({
         aria-roledescription="Karussell"
         aria-label="Fotodoku"
       >
-        {slides.length > 1 ? (
+        {showPhotoCounter ? (
           <p
             className={cn(
               "pointer-events-none absolute right-2 top-2 z-10 rounded-full px-2.5 py-0.5 text-[0.68rem] font-medium tabular-nums backdrop-blur-sm",
@@ -135,8 +171,16 @@ export function DocumentFotodokuGallery({
               {enableLightbox ? (
                 <button
                   type="button"
-                  onClick={() => setLightboxIndex(index)}
-                  className="flex h-full w-full cursor-zoom-in items-center justify-center border-0 bg-transparent p-0"
+                  onPointerDown={handleStagePointerDown}
+                  onPointerUp={(event) => handleStagePointerUp(index, event)}
+                  onPointerCancel={() => {
+                    tapStartRef.current = null;
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openLightbox(index);
+                  }}
+                  className="flex h-full w-full cursor-zoom-in touch-manipulation items-center justify-center border-0 bg-transparent p-0"
                   aria-label={`${slide.alt} im Vollbild anzeigen`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -186,10 +230,10 @@ export function DocumentFotodokuGallery({
                 aria-label={`Foto ${index + 1} von ${slides.length}`}
                 onClick={() => scrollToIndex(index)}
                 className={cn(
-                  "relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,opacity,transform]",
+                  "relative h-[3.25rem] w-[3.25rem] shrink-0 overflow-hidden rounded-xl border-2 transition-[border-color,opacity,transform] touch-manipulation",
                   isActive
-                    ? "border-[color:var(--vd-accent)] opacity-100 ring-2 ring-[color:var(--vd-accent)]/35"
-                    : "border-[color:var(--vd-border)] opacity-60 hover:opacity-85",
+                    ? "border-[color:var(--vd-accent)] opacity-100 ring-2 ring-[color:var(--vd-accent)]/35 scale-[1.02]"
+                    : "border-[color:var(--vd-border)] opacity-55 hover:opacity-90",
                 )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}

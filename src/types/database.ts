@@ -80,6 +80,38 @@ export type VehicleOperatingCost = {
   updated_at: string;
 };
 
+/** Digital service book row (`00096_service_records`). */
+export type ServiceRecordCategory =
+  | "oil_change"
+  | "brakes_front"
+  | "brakes_rear"
+  | "spark_plugs"
+  | "transmission_fluid"
+  | "brake_fluid"
+  | "cabin_filter"
+  | "air_filter"
+  | "timing_belt"
+  | "inspection"
+  | "tuev"
+  | "custom";
+
+export type ServiceRecordRow = {
+  id: string;
+  vehicle_id: string;
+  category: ServiceRecordCategory;
+  title: string;
+  service_date: string;
+  mileage_km: number;
+  performed_by: string | null;
+  notes: string | null;
+  invoice_document_id: string | null;
+  next_interval_mileage_km: number | null;
+  next_interval_date: string | null;
+  show_on_public_showcase: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 /** Mileage-ordered Service Timeline row (`00029_vehicle_events`). */
 export type VehicleEvent = {
   id: string;
@@ -738,6 +770,55 @@ export type Database = {
             foreignKeyName: "build_todos_planned_mod_id_fkey";
             columns: ["planned_mod_id"];
             referencedRelation: "planned_mods";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      service_records: {
+        Row: ServiceRecordRow;
+        Insert: {
+          id?: string;
+          vehicle_id: string;
+          category: ServiceRecordCategory;
+          title: string;
+          service_date: string;
+          mileage_km?: number;
+          performed_by?: string | null;
+          notes?: string | null;
+          invoice_document_id?: string | null;
+          next_interval_mileage_km?: number | null;
+          next_interval_date?: string | null;
+          show_on_public_showcase?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          vehicle_id?: string;
+          category?: ServiceRecordCategory;
+          title?: string;
+          service_date?: string;
+          mileage_km?: number;
+          performed_by?: string | null;
+          notes?: string | null;
+          invoice_document_id?: string | null;
+          next_interval_mileage_km?: number | null;
+          next_interval_date?: string | null;
+          show_on_public_showcase?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_records_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "service_records_invoice_document_id_fkey";
+            columns: ["invoice_document_id"];
+            referencedRelation: "documents";
             referencedColumns: ["id"];
           },
         ];

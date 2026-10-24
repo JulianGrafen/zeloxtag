@@ -85,6 +85,7 @@ export function featureForDashboardTile(tileId: string): FeatureFlag | null {
   if (tileId === "build-planner") return FEATURE.MANAGE_BUILD_PLANNER;
 
   if (
+    tileId === "service-maintenance" ||
     tileId === "oil-change" ||
     tileId === "tuning-history" ||
     tileId === "modifications" ||

@@ -15,7 +15,13 @@ import type { InvoiceTextParseCategory } from "@/lib/ocr/text-parse-schema";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import {
+  documentDetailMetadataKickerClassName,
+  documentDetailMetadataRowClassName,
+  documentDetailMetadataValueClassName,
+} from "@/components/documents/document-detail-metadata-styles";
 import { showSavedToast } from "@/lib/ui/saved-toast";
+import { cn } from "@/lib/utils";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "category";
 
@@ -30,6 +36,7 @@ type EditableInvoiceCategorySectionProps = {
   editPulse?: number;
   onEditRequestConsumed?: () => void;
   sectionId?: string;
+  embedded?: boolean;
 };
 
 export function EditableInvoiceCategorySection({
@@ -43,6 +50,7 @@ export function EditableInvoiceCategorySection({
   editPulse = 0,
   onEditRequestConsumed,
   sectionId,
+  embedded = false,
 }: EditableInvoiceCategorySectionProps) {
   const router = useRouter();
   const storedCategory = category?.trim() || null;
@@ -105,10 +113,26 @@ export function EditableInvoiceCategorySection({
   return (
     <div
       id={sectionId}
-      className="scroll-mt-24 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3"
+      className={cn(
+        "scroll-mt-24",
+        embedded
+          ? documentDetailMetadataRowClassName
+          : "rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] p-3",
+      )}
     >
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
+      <div
+        className={cn(
+          "flex items-center justify-between gap-3",
+          embedded ? "mb-1.5" : "mb-2",
+        )}
+      >
+        <p
+          className={
+            embedded
+              ? documentDetailMetadataKickerClassName
+              : "text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]"
+          }
+        >
           Kategorie
         </p>
         {!editing && !hideEditTrigger ? (
@@ -130,7 +154,13 @@ export function EditableInvoiceCategorySection({
             className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
             aria-hidden
           />
-          <p className="text-[0.92rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+          <p
+            className={
+              embedded
+                ? documentDetailMetadataValueClassName
+                : "text-[0.92rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]"
+            }
+          >
             {displayLabel}
           </p>
         </div>

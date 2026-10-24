@@ -370,9 +370,12 @@ function VehicleInvoicesViewContent({
       {showScanFab ? (
         <DashboardScanFab
           tagUuid={tagUuid}
-          directAction="scan"
-          fuelLogHref={surfacePath(vehicleSurfaceScope, tagUuid, "tanken")}
-          manualEntryHref={`${surfacePath(vehicleSurfaceScope, tagUuid, "umbauten")}?neu=1`}
+          directAction="menu"
+          menuTitle="Beleg hinzufügen"
+          hideFuelAction
+          manualEntryHref={manualUploadHref}
+          manualActionLabel="Manuell hinzufügen"
+          manualActionDescription="PDF oder Foto ohne KI-Scan hochladen"
           scanHref={ownerScanEntryHref(
             vehicleSurfaceScope,
             tagUuid,

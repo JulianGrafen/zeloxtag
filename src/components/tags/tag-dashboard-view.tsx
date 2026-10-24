@@ -12,12 +12,11 @@ import {
 } from "@/lib/permissions/feature-access";
 import type { Document, Vehicle } from "@/types/database";
 
-import {
-  filterOilChangeDocuments,
-  formatLastOilChangeSubtitle,
-  isOilChangeDocument,
-  latestOilChangeIsoDate,
-} from "@/lib/documents/oil-changes";
+import { filterOilChangeDocuments, isOilChangeDocument } from "@/lib/documents/oil-changes";
+import { serviceHistoryFromData } from "@/lib/service/merge-service-history";
+import { buildServiceMaintenanceTileMeta } from "@/lib/service/service-due-priority";
+import type { ServiceRecordRow } from "@/types/database";
+import { latestKnownMileageKm } from "@/lib/vehicles/mileage-velocity";
 import { filterAbeFamilyDocuments } from "@/lib/documents/abe-family-documents";
 import { filterInvoiceReceiptDocuments, isInvoiceReceiptDocument } from "@/lib/documents/invoice-receipts";
 import { bilderLabel, dokumenteLabel, belegeLabel } from "@/lib/i18n/pluralize-de";
@@ -27,6 +26,7 @@ import {
 import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import { filterServiceInspectionDocuments } from "@/lib/documents/service-inspections";
 import { deriveNextInspectionFromDocuments } from "@/lib/documents/tuev-schedule";
+import { formatBuildDiscoverDashboardSubtitle } from "@/lib/showcase/build-discover-dashboard-subtitle";
 import { resolveDocumentAmount } from "@/lib/vehicles/expose-data";
 import { buildTimelineFromDocuments } from "@/services/timeline";
 import type { TimelineEvent } from "@/lib/validations/timelineSchema";
@@ -119,6 +119,8 @@ interface TagDashboardViewProps {
   tagShopUserEmail?: string | null;
   /** Server-loaded timeline (parity with /historie). Falls back to document-derived. */
   timelineEvents?: TimelineEvent[];
+  /** Persisted service book rows (merged with document legacy at display time). */
+  serviceRecordRows?: ServiceRecordRow[];
   /** Default Chronik tab (e.g. demo). */
   defaultDashboardTab?: "overview" | "timeline";
   /** Slot under Zelox wordmark (demo view switch). */
@@ -162,6 +164,7 @@ export function TagDashboardView({
   tagShopUserId,
   tagShopUserEmail = null,
   timelineEvents: timelineEventsProp,
+  serviceRecordRows = [],
   defaultDashboardTab = "overview",
   belowBrandBanner,
   hideBrandBanner = false,
@@ -213,7 +216,23 @@ export function TagDashboardView({
       doc.category === "tuning" && isViewableDocumentUrl(doc.file_url),
   ).length;
   const oilChangeCount = filterOilChangeDocuments(documents).length;
-  const lastOilChange = latestOilChangeIsoDate(documents);
+  const serviceHistory = useMemo(
+    () =>
+      serviceHistoryFromData({
+        vehicleId: vehicle.id,
+        documents,
+        databaseRows: serviceRecordRows,
+        techSpecs: vehicle.tech_specs,
+      }),
+    [vehicle.id, vehicle.tech_specs, documents, serviceRecordRows],
+  );
+  const serviceMaintenance = useMemo(
+    () =>
+      buildServiceMaintenanceTileMeta(serviceHistory, {
+        currentMileageKm: latestKnownMileageKm(documents),
+      }),
+    [serviceHistory, documents],
+  );
   const vehicleModel = `${vehicle.make} ${vehicle.model}`;
   const vinLabel = vehicle.vin ? `VIN ${vehicle.vin}` : "VIN nicht hinterlegt";
   const demoShowcase = isDemoActiveTag(tagUuid);
@@ -247,7 +266,7 @@ export function TagDashboardView({
     vehicleImageFrameless:
       demoShowcase || (!hasOwnerSilhouette && Boolean(catalogCutout?.src)),
     vehicleImageAlt: cutout?.alt ?? catalogCutout?.alt ?? `${vehicleModel} (${vehicle.year})`,
-    lastOilChange: lastOilChange ?? undefined,
+    serviceMaintenance,
     nextInspection: deriveNextInspectionFromDocuments(documents),
     showcaseSwipeUnreadLikes,
   };
@@ -350,16 +369,26 @@ export function TagDashboardView({
       };
     }
 
-    if (tile.id === "oil-change") {
-      const lastChangeSubtitle = formatLastOilChangeSubtitle(lastOilChange);
+    if (tile.id === "service-maintenance") {
       return {
         ...tile,
+        tone: serviceMaintenance.tone ?? tile.tone,
         meta: {
           ...tile.meta,
           href: path("intervalle"),
           subtitle:
-            lastChangeSubtitle ??
-            (oilChangeCount > 0 ? `${oilChangeCount} Einträge` : "Eintragen"),
+            serviceMaintenance.subtitle ??
+            (serviceHistory.length > 0
+              ? `${serviceHistory.length} Einträge`
+              : oilChangeCount > 0
+                ? `${oilChangeCount} Öl-Einträge`
+                : "Eintragen"),
+          badge:
+            serviceMaintenance.tone === "critical"
+              ? "Fällig"
+              : serviceMaintenance.tone === "warning"
+                ? "Bald fällig"
+                : tile.meta?.badge,
         },
       };
     }
@@ -436,14 +465,12 @@ export function TagDashboardView({
     }
 
     if (tile.id === "build-discover") {
-      const likeSubtitle =
-        demoMode
-          ? (demoEntdeckenSubtitle?.trim() || "Community-Builds live")
-          : isOwner && showcaseSwipeUnreadLikes > 0
-            ? `${showcaseSwipeUnreadLikes} neue Like${showcaseSwipeUnreadLikes === 1 ? "" : "s"}`
-            : isOwner && showcaseSwipeTotalLikes > 0
-              ? `${showcaseSwipeTotalLikes} Like${showcaseSwipeTotalLikes === 1 ? "" : "s"} gesamt`
-              : "Swipe · öffentliche Builds";
+      const likeSubtitle = formatBuildDiscoverDashboardSubtitle({
+        totalLikes: isOwner ? showcaseSwipeTotalLikes : 0,
+        unreadLikes: isOwner ? showcaseSwipeUnreadLikes : 0,
+        demoMode,
+        demoSubtitle: demoEntdeckenSubtitle,
+      });
       return {
         ...tile,
         meta: {
@@ -470,6 +497,7 @@ export function TagDashboardView({
         return (
           tile.id === "invoices" ||
           tile.id === "service" ||
+          tile.id === "service-maintenance" ||
           tile.id === "oil-change" ||
           tile.id === "modifications"
         );

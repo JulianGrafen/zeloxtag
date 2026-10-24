@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { bumpSilhouetteCacheUrl } from "@/lib/vehicles/prefetch-silhouette-image";
 import { SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE } from "@/lib/vehicles/silhouette-constants";
 import { isOwnerSilhouetteSrc } from "@/lib/vehicles/silhouette-display-url";
@@ -188,6 +188,11 @@ export function VehicleDashboardHeader({
         opaqueCatalogPhoto && framelessHero && "min-h-[12.5rem] sm:min-h-[13.5rem]",
       )}
       data-tour="dashboard-header"
+      style={
+        framelessHero
+          ? ({ "--vd-hero-vignette": "#000000" } as CSSProperties)
+          : undefined
+      }
     >
       {showPhoto ? (
         <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -207,28 +212,26 @@ export function VehicleDashboardHeader({
                 : cn(
                     "inset-0 h-full object-cover",
                     isOwnerPhoto
-                      ? "object-[50%_62%]"
+                      ? "object-[50%_62%] vd-hero-photo-mask"
                       : "object-[50%_55%]",
                   ),
             )}
             onLoad={handleHeroLoad}
             onError={handleHeroError}
           />
-          <div
-            className={cn(
-              "absolute inset-0 bg-gradient-to-t from-black",
-              isCutoutHero
-                ? framelessHero
-                  ? "via-black/45 to-transparent"
-                  : "via-zinc-950/35 to-transparent"
-                : "via-zinc-950/50 to-zinc-950/5",
-            )}
-          />
-          {!isCutoutHero ? (
+          {isCutoutHero ? (
             <div
-              className="absolute inset-0 bg-gradient-to-r from-zinc-950/65 via-zinc-950/10 to-transparent"
+              aria-hidden
+              className="absolute bottom-[6%] left-1/2 h-14 w-[min(92%,22rem)] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.04)_42%,transparent_72%)] blur-[2px]"
             />
           ) : null}
+          <div
+            aria-hidden
+            className={cn(
+              "vd-hero-cinematic-vignette",
+              isCutoutHero && "vd-hero-cinematic-vignette--cutout",
+            )}
+          />
         </div>
       ) : (
         <div

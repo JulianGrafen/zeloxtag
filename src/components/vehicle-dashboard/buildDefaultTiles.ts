@@ -5,7 +5,6 @@ import type {
   VehicleDashboardData,
 } from "./types";
 import { formatTuevYearMonth } from "@/lib/documents/format";
-import { formatLastOilChangeSubtitle } from "@/lib/documents/oil-changes";
 import { DASHBOARD_PRIMARY_TILE_IDS } from "./dashboard-tile-layout";
 
 function daysUntil(isoDate: string): number {
@@ -45,14 +44,28 @@ function inspectionMeta(data: VehicleDashboardData): DashboardTileConfig["meta"]
   };
 }
 
-function oilChangeMeta(data: VehicleDashboardData): DashboardTileConfig["meta"] {
-  const subtitle = formatLastOilChangeSubtitle(data.lastOilChange);
-  if (!subtitle) {
-    return { subtitle: "Noch offen", href: "/intervalle" };
+function serviceMaintenanceMeta(
+  data: VehicleDashboardData,
+): DashboardTileConfig["meta"] {
+  const maintenance = data.serviceMaintenance;
+  if (maintenance?.subtitle) {
+    return {
+      subtitle: maintenance.subtitle,
+      href: "/intervalle",
+      badge:
+        maintenance.tone === "critical"
+          ? "Fällig"
+          : maintenance.tone === "warning"
+            ? "Bald fällig"
+            : undefined,
+    };
   }
 
+  const legacy = data.lastOilChange
+    ? `Letzter Wechsel · ${data.lastOilChange}`
+    : null;
   return {
-    subtitle,
+    subtitle: legacy ?? "Noch offen",
     href: "/intervalle",
   };
 }
@@ -78,16 +91,15 @@ const CORE_MENU_TILE_SPECS: CoreTileSpec[] = [
     meta: { href: "/rechnungen" },
   },
   {
-    id: "oil-change",
-    title: "Ölwechsel",
-    icon: "droplet",
-    metaFromData: oilChangeMeta,
+    id: "service-maintenance",
+    title: "Service & Wartung",
+    icon: "wrench",
+    metaFromData: serviceMaintenanceMeta,
   },
   {
     id: "abe",
     title: "ABE & Gutachten",
     icon: "stamp",
-    menuHighlight: true,
   },
   {
     id: "modifications",

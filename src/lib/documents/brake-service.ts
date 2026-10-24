@@ -40,6 +40,21 @@ export function isBrakeServiceDocument(document: Document): boolean {
   return BRAKE_INVOICE.test(blob);
 }
 
+export function inferBrakeCategoryFromDocument(
+  document: Document,
+): "brakes_front" | "brakes_rear" {
+  const blob = [
+    document.title,
+    document.notes,
+    ...(document.line_items ?? []).map((item) => item.label),
+  ]
+    .filter(Boolean)
+    .join("\n")
+    .toLowerCase();
+  if (/\b(hinten|ha\b|rear)\b/.test(blob)) return "brakes_rear";
+  return "brakes_front";
+}
+
 export function filterBrakeServiceDocuments(documents: Document[]): Document[] {
   return documents
     .filter(isBrakeServiceDocument)

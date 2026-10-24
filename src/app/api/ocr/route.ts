@@ -5,6 +5,7 @@ import { z } from "zod";
 import { extractInvoiceFromImage } from "@/lib/ocr/extract-invoice";
 import { isLlmConfigured } from "@/lib/ocr/llm-client";
 import { recomputeVehicleMaintenanceSchedules } from "@/lib/maintenance/recompute-schedules";
+import { syncServiceRecordForDocument } from "@/lib/service/sync-document";
 import { OcrPersistError, persistOcrInvoice } from "@/lib/ocr/persist-invoice";
 import type { OcrApiError, OcrApiSuccess } from "@/lib/ocr/types";
 import {
@@ -181,6 +182,7 @@ export async function POST(request: NextRequest) {
       return jsonError(500, "Speichern nach OCR fehlgeschlagen.", "storage_failed");
     }
 
+    await syncServiceRecordForDocument(document);
     void recomputeVehicleMaintenanceSchedules(meta.data.vehicleId);
 
     if (meta.data.tagUuid) {
